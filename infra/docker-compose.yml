@@ -1,0 +1,10 @@
+version: '3.2'
+services:
+  zk:
+    image: "matterlabs/llvm_runner:latest"
+    working_dir: /usr/src/zksync
+    command: "tail -f /dev/null"
+    volumes:
+      - ${GITHUB_WORKSPACE}:/usr/src/zksync
+    environment:
+      - SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY}
