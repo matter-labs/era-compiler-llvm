@@ -1,0 +1,16 @@
+Determining if the C compiler works failed with the following output:
+Change Dir: //wsl$/Ubuntu/home/hedgar/src/llvm-project/llvm/lib/Target/SyncVM/cmake-build-debug/CMakeFiles/CMakeTmp
+
+Run Build Command(s):nmake /nologo cmTC_2cd6e\fast && NMAKE : fatal error U1073: don't know how to make 'cmTC_2cd6e\fast'
+Stop.
+
+
+
+Determining if the C compiler works failed with the following output:
+Change Dir: //wsl$/Ubuntu/home/hedgar/src/llvm-project/llvm/lib/Target/SyncVM/cmake-build-debug/CMakeFiles/CMakeTmp
+
+Run Build Command(s):nmake /nologo cmTC_c4dc3\fast && NMAKE : fatal error U1073: don't know how to make 'cmTC_c4dc3\fast'
+Stop.
+
+
+
