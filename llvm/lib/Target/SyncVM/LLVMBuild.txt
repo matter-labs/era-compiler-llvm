@@ -9,7 +9,7 @@
 ;===------------------------------------------------------------------------===;
 
 [common]
-subdirectories = AsmParser Disassembler MCTargetDesc TargetInfo
+subdirectories = TargetInfo MCTargetDesc AsmParser Disassembler
 
 [component_0]
 type = TargetGroup

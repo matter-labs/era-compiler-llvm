@@ -56,7 +56,4 @@ createSyncVMELFObjectWriter(uint8_t OSABI);
 #define GET_INSTRINFO_ENUM
 #include "SyncVMGenInstrInfo.inc"
 
-#define GET_SUBTARGETINFO_ENUM
-#include "SyncVMGenSubtargetInfo.inc"
-
 #endif

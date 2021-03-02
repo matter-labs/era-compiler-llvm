@@ -4,34 +4,40 @@
 //
 //===----------------------------------------------------------------------===//
 
-class SyncVMReg<bits<4> num, string n> : Register<n> {
+class SyncVMRegister<bits<4> num, string n> : Register<n> {
   field bits<4> Num = num;
+
   let Namespace = "SyncVM";
 }
 
+
+
 //===----------------------------------------------------------------------===//
-//  Registers
+// General purpose registers
 //===----------------------------------------------------------------------===//
 
-def PC  : SyncVMReg<0,   "pc">;
-def SP  : SyncVMReg<1,   "sp">;
-def R1  : SyncVMReg<2,   "r1">;
-def R2  : SyncVMReg<3,   "r2">;
-def R3  : SyncVMReg<4,   "r3">;
-def R4  : SyncVMReg<5,   "r4">;
-def R5  : SyncVMReg<6,   "r5">;
-def R6  : SyncVMReg<7,   "r6">;
-def R7  : SyncVMReg<8,   "r7">;
-def R8  : SyncVMReg<9,   "r8">;
-def R9  : SyncVMReg<10,  "r9">;
-def R10 : SyncVMReg<11,  "r10">;
-def R11 : SyncVMReg<12,  "r11">;
-def R12 : SyncVMReg<13,  "r12">;
+def R1  : SyncVMRegister<0,  "r1">;
+def R2  : SyncVMRegister<1,  "r2">;
+def R3  : SyncVMRegister<2,  "r3">;
+def R4  : SyncVMRegister<3,  "r4">;
+def R5  : SyncVMRegister<4,  "r5">;
+def R6  : SyncVMRegister<5,  "r6">;
+def R7  : SyncVMRegister<6,  "r7">;
+def R8  : SyncVMRegister<7,  "r8">;
+def R9  : SyncVMRegister<8,  "r9">;
+def R10 : SyncVMRegister<9,  "r10">;
+def R11 : SyncVMRegister<10, "r11">;
+def R12 : SyncVMRegister<11, "r12">;
 
-def GR256 : RegisterClass<"SyncVM", [v256i1], 256, (add
-    PC,
-    SP,
-    R1,  R2,  R3,  R4,
-    R5,  R6,  R7,  R8,
-    R9,  R10, R11, R12
-)>;
+def GR256 : RegisterClass<"SyncVM", [v32i8], 256, (add R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12)>;
+
+
+
+//===----------------------------------------------------------------------===//
+// Special registers
+//===----------------------------------------------------------------------===//
+
+def PC : SyncVMRegister<12, "pc">;
+def SP : SyncVMRegister<13, "sp">;
+
+def GR16 : RegisterClass<"SyncVM", [i16], 16, (add PC, SP)>;
