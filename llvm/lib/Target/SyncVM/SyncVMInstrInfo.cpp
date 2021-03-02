@@ -24,7 +24,7 @@ using namespace llvm;
 void SyncVMInstrInfo::anchor() {}
 
 SyncVMInstrInfo::SyncVMInstrInfo()
-  : SyncVMGenInstrInfo(SyncVM::PC, SyncVM::SP),
+  : SyncVMGenInstrInfo(0, 0),
     RI() {}
 
 void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,

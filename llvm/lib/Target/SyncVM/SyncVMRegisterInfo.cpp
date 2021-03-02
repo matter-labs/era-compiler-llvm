@@ -25,34 +25,24 @@ using namespace llvm;
 #include "SyncVMGenRegisterInfo.inc"
 
 SyncVMRegisterInfo::SyncVMRegisterInfo()
-  : SyncVMGenRegisterInfo(SyncVM::PC) {}
+  : SyncVMGenRegisterInfo(0) {}
 
 const MCPhysReg*
-SyncVMRegisterInfo::getCalleeSavedRegs() const {
-  static const MCPhysReg CalleeSavedRegs[] = {
-    SyncVM::R1,  SyncVM::R2,  SyncVM::R3,  SyncVM::R4,
-    SyncVM::R5,  SyncVM::R6,  SyncVM::R7,  SyncVM::R8,
-    SyncVM::R9,  SyncVM::R10, SyncVM::R11, SyncVM::R12,
-  };
-
-  return CalleeSavedRegs;
+SyncVMRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
+  return nullptr;
 }
 
-BitVector SyncVMRegisterInfo::getReservedRegs() const {
+BitVector SyncVMRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   BitVector Reserved(getNumRegs());
-
-  // Mark 2 special registers as reserved.
-  Reserved.set(SyncVM::PC);
-  Reserved.set(SyncVM::SP);
-
   return Reserved;
 }
 
 const TargetRegisterClass *
-SyncVMRegisterInfo::getPointerRegClass() const {
-  return &SyncVM::GR256;
+SyncVMRegisterInfo::getPointerRegClass(const MachineFunction &MF,
+                                       unsigned Kind) const {
+  return nullptr;
 }
 
 Register SyncVMRegisterInfo::getFrameRegister(const MachineFunction &MF) const {
-  return SyncVM::SP;
+  return 0;
 }
