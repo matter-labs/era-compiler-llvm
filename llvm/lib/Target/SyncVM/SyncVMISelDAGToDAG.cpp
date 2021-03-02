@@ -28,12 +28,9 @@ using namespace llvm;
 
 namespace {
   struct SyncVMISelAddressMode {
-    enum {
-      RegBase,
-      FrameIndexBase
-    } BaseType = RegBase;
+    enum { RegBase, FrameIndexBase } BaseType = RegBase;
 
-    struct {            // This is really a union, discriminated by BaseType!
+    struct { // This is really a union, discriminated by BaseType!
       SDValue Reg;
       int FrameIndex = 0;
     } Base;
@@ -51,6 +48,8 @@ namespace {
     bool hasSymbolicDisplacement() const {
       return GV != nullptr || CP != nullptr || ES != nullptr || JT != -1;
     }
+  };
+}
 
 /// SyncVMDAGToDAGISel - SyncVM specific code to select SyncVM machine
 /// instructions for SelectionDAG operations.
@@ -87,14 +86,6 @@ namespace {
   };
 }  // end anonymous namespace
 
-/// createSyncVMISelDag - This pass converts a legalized DAG into a
-/// SyncVM-specific DAG, ready for instruction scheduling.
-///
-FunctionPass *llvm::createSyncVMISelDag(SyncVMTargetMachine &TM,
-                                        CodeGenOpt::Level OptLevel) {
-  return new SyncVMDAGToDAGISel(TM, OptLevel);
-}
-
 
 /// MatchWrapper - Try to match SyncVMISD::Wrapper node into an addressing mode.
 /// These wrap things that will resolve down into a symbol reference.  If no
@@ -110,7 +101,7 @@ bool SyncVMDAGToDAGISel::MatchAddressBase(SDValue N, SyncVMISelAddressMode &AM) 
 }
 
 bool SyncVMDAGToDAGISel::MatchAddress(SDValue N, SyncVMISelAddressMode &AM) {
-  return true
+  return true;
 }
 
 /// SelectAddr - returns true if it is able pattern match an addressing mode.
@@ -125,10 +116,6 @@ bool SyncVMDAGToDAGISel::
 SelectInlineAsmMemoryOperand(const SDValue &Op, unsigned ConstraintID,
                              std::vector<SDValue> &OutOps) {
   return false;
-}
-
-static bool isValidIndexedLoad(const LoadSDNode *LD) {
-  return true;
 }
 
 bool SyncVMDAGToDAGISel::tryIndexedLoad(SDNode *N) {

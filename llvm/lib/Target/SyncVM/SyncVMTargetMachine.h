@@ -9,6 +9,7 @@
 #define LLVM_LIB_TARGET_SYNCVM_SYNCVMTARGETMACHINE_H
 
 #include "llvm/CodeGen/TargetFrameLowering.h"
+#include "llvm/Target/TargetMachine.h"
 
 namespace llvm {
 

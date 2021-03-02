@@ -5,6 +5,7 @@ cmake \
     -B 'build/' \
     -G 'Unix Makefiles' \
     -DCMAKE_INSTALL_PREFIX="${HOME}/opt/llvm" \
+    -DLLVM_TARGETS_TO_BUILD='' \
     -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD='SyncVM' \
     -DCMAKE_C_COMPILER='clang-11' \
     -DCMAKE_CXX_COMPILER='clang++-11' \

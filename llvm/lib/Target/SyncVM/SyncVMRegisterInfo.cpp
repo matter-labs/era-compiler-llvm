@@ -52,3 +52,7 @@ const TargetRegisterClass *
 SyncVMRegisterInfo::getPointerRegClass() const {
   return &SyncVM::GR256;
 }
+
+Register SyncVMRegisterInfo::getFrameRegister(const MachineFunction &MF) const {
+  return SyncVM::SP;
+}

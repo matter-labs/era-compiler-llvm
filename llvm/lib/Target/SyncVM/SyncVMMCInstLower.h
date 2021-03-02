@@ -4,8 +4,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIB_TARGET_SyncVM_SyncVMMCINSTLOWER_H
-#define LLVM_LIB_TARGET_SyncVM_SyncVMMCINSTLOWER_H
+#ifndef LLVM_LIB_TARGET_SYNCVM_SYNCVMMCINSTLOWER_H
+#define LLVM_LIB_TARGET_SYNCVM_SYNCVMMCINSTLOWER_H
 
 #include "llvm/Support/Compiler.h"
 

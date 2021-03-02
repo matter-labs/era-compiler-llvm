@@ -1,33 +1,27 @@
-//===-- MSP430InstrInfo.h - MSP430 Instruction Information ------*- C++ -*-===//
+//===-- SyncVMInstrInfo.h - SyncVM Instruction Information ------*- C++ -*-===//
 //
-// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
-// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-//
-//===----------------------------------------------------------------------===//
-//
-// This file contains the MSP430 implementation of the TargetInstrInfo class.
+// This file contains the SyncVM implementation of the TargetInstrInfo class.
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIB_TARGET_MSP430_MSP430INSTRINFO_H
-#define LLVM_LIB_TARGET_MSP430_MSP430INSTRINFO_H
+#ifndef LLVM_LIB_TARGET_SYNCVM_SYNCVMINSTRINFO_H
+#define LLVM_LIB_TARGET_SYNCVM_SYNCVMINSTRINFO_H
 
-#include "MSP430RegisterInfo.h"
+#include "SyncVMRegisterInfo.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
 
 #define GET_INSTRINFO_HEADER
-#include "MSP430GenInstrInfo.inc"
+#include "SyncVMGenInstrInfo.inc"
 
 namespace llvm {
 
-class MSP430Subtarget;
+class SyncVMSubtarget;
 
-class MSP430InstrInfo : public MSP430GenInstrInfo {
-  const MSP430RegisterInfo RI;
+class SyncVMInstrInfo : public SyncVMGenInstrInfo {
+  const SyncVMRegisterInfo RI;
   virtual void anchor();
 public:
-  explicit MSP430InstrInfo(MSP430Subtarget &STI);
+  explicit SyncVMInstrInfo();
 
   /// getRegisterInfo - TargetInstrInfo is a superset of MRegister info.  As
   /// such, whenever a client has an instance of instruction info, it should
@@ -59,19 +53,17 @@ public:
   bool analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB,
                      MachineBasicBlock *&FBB,
                      SmallVectorImpl<MachineOperand> &Cond,
-                     bool AllowModify) const override;
+                     bool AllowModify) const override { return false; }
 
   unsigned removeBranch(MachineBasicBlock &MBB,
-                        int *BytesRemoved = nullptr) const override;
+                        int *BytesRemoved = nullptr) const override { return 0; }
   unsigned insertBranch(MachineBasicBlock &MBB, MachineBasicBlock *TBB,
                         MachineBasicBlock *FBB, ArrayRef<MachineOperand> Cond,
                         const DebugLoc &DL,
-                        int *BytesAdded = nullptr) const override;
+                        int *BytesAdded = nullptr) const override { return 0; }
 
   int64_t getFramePoppedByCallee(const MachineInstr &I) const {
-    assert(isFrameInstr(I) && "Not a frame instruction");
-    assert(I.getOperand(1).getImm() >= 0 && "Size must not be negative");
-    return I.getOperand(1).getImm();
+    return 0;
   }
 };
 

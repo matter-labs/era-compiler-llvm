@@ -1,11 +1,11 @@
-//===-- MSP430MachineFunctionInfo.cpp - MSP430 machine function info ------===//
+//===-- SyncVMMachineFunctionInfo.cpp - SyncVM machine function info ------===//
 //
 //
 //
 //===----------------------------------------------------------------------===//
 
-#include "MSP430MachineFunctionInfo.h"
+#include "SyncVMMachineFunctionInfo.h"
 
 using namespace llvm;
 
-void MSP430MachineFunctionInfo::anchor() { }
+void SyncVMMachineFunctionInfo::anchor() { }
