@@ -33,7 +33,6 @@ SyncVMRegisterInfo::getCalleeSavedRegs() const {
     SyncVM::R1,  SyncVM::R2,  SyncVM::R3,  SyncVM::R4,
     SyncVM::R5,  SyncVM::R6,  SyncVM::R7,  SyncVM::R8,
     SyncVM::R9,  SyncVM::R10, SyncVM::R11, SyncVM::R12,
-    0
   };
 
   return CalleeSavedRegs;
@@ -51,5 +50,5 @@ BitVector SyncVMRegisterInfo::getReservedRegs() const {
 
 const TargetRegisterClass *
 SyncVMRegisterInfo::getPointerRegClass() const {
-  return &SyncVM::GR256RegClass;
+  return &SyncVM::GR256;
 }

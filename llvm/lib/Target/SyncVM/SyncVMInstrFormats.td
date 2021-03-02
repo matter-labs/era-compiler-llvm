@@ -1,40 +1,90 @@
 //===-- SyncVMInstrFormats.td - SyncVM Instruction Formats -*- tablegen -*-===//
 //
-// 
+// This file describes the SyncVM instruction formats in TableGen format.
 //
 //===----------------------------------------------------------------------===//
 
+
+
 //===----------------------------------------------------------------------===//
-//  Describe SyncVM instructions format here
-//
+// Generic SyncVM instruction
+//===----------------------------------------------------------------------===//
 
-class OperationCode<bits<8> value> {
-  bits<8> Value = value;
-}
-
-
-// Generic instruction
 class SyncVMInstruction<
-  dag inputs,
-  dag outputs
+  dag outs,
+  dag ins,
+  string asmstr,
+  list<dag> pattern
 > : Instruction
 {
-  field bits<256> Bits;
+  field bits<256> Inst;
 
-  dag InputOperandList = inputs;
-  dag OutputOperandList = outputs;
+  let Namespace         = "SyncVM";
+  let AsmString         = asmstr;
+  let Size              = 32;
+  let OutOperandList    = outs;
+  let InOperandList     = ins;
+  let Pattern           = pattern;
+
+  bits<8> Opcode = 0;
+
+  let Inst{255-248} = Opcode;
+
+  field bits<32> SoftFail = 0;
 }
 
 
-// ADD arithmetic instruction
-class Add<
-  OperationCode opcode,
-  dag inputs,
-  dag outputs
+
+//===----------------------------------------------------------------------===//
+// Binary operation with two source registers and one destination
+//===----------------------------------------------------------------------===//
+
+class ArithmeticTwoRegistersOneDestination<
+  bits<8> opcode,
+  dag outs,
+  dag ins,
+  string asmstr,
+  list<dag> pattern
 > : SyncVMInstruction<
-  inputs,
-  outputs
->
-{
-  let Bits{0-7} = opcode.Value;
+  outs,
+  ins,
+  asmstr,
+  pattern
+> {
+  bits<4> src1;
+  bits<4> src2;
+  bits<4> dst;
+
+  let Inst{247-244} = src1;
+  let Inst{243-240} = src2;
+  let Inst{239-236} = dst;
+}
+
+
+
+//===----------------------------------------------------------------------===//
+// Binary operation with two source registers and two destinations
+//===----------------------------------------------------------------------===//
+
+class ArithmeticTwoRegistersTwoDestinations<
+  bits<8> opcode,
+  dag outs,
+  dag ins,
+  string asmstr,
+  list<dag> pattern
+> : SyncVMInstruction<
+  outs,
+  ins,
+  asmstr,
+  pattern
+> {
+  bits<4> src1;
+  bits<4> src2;
+  bits<4> dst1;
+  bits<4> dst2;
+
+  let Inst{247-244} = src1;
+  let Inst{243-240} = src2;
+  let Inst{239-236} = dst1;
+  let Inst{235-232} = dst2;
 }

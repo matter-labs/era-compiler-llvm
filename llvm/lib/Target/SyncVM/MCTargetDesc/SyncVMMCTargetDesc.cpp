@@ -24,9 +24,6 @@ using namespace llvm;
 #define GET_INSTRINFO_MC_DESC
 #include "SyncVMGenInstrInfo.inc"
 
-#define GET_SUBTARGETINFO_MC_DESC
-#include "SyncVMGenSubtargetInfo.inc"
-
 #define GET_REGINFO_MC_DESC
 #include "SyncVMGenRegisterInfo.inc"
 
@@ -40,11 +37,6 @@ static MCRegisterInfo *createSyncVMMCRegisterInfo(const Triple &TT) {
   MCRegisterInfo *X = new MCRegisterInfo();
   InitSyncVMMCRegisterInfo(X, SyncVM::PC);
   return X;
-}
-
-static MCSubtargetInfo *
-createSyncVMMCSubtargetInfo(const Triple &TT, StringRef CPU, StringRef FS) {
-  return createSyncVMMCSubtargetInfoImpl(TT, CPU, FS);
 }
 
 static MCInstPrinter *createSyncVMMCInstPrinter(const Triple &T,
@@ -63,10 +55,8 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTargetMC() {
   RegisterMCAsmInfo<SyncVMMCAsmInfo> X(T);
   TargetRegistry::RegisterMCInstrInfo(T, createSyncVMMCInstrInfo);
   TargetRegistry::RegisterMCRegInfo(T, createSyncVMMCRegisterInfo);
-  TargetRegistry::RegisterMCSubtargetInfo(T, createSyncVMMCSubtargetInfo);
   TargetRegistry::RegisterMCInstPrinter(T, createSyncVMMCInstPrinter);
   TargetRegistry::RegisterMCCodeEmitter(T, createSyncVMMCCodeEmitter);
   TargetRegistry::RegisterMCAsmBackend(T, createSyncVMMCAsmBackend);
-  TargetRegistry::RegisterObjectTargetStreamer(
-      T, createSyncVMObjectTargetStreamer);
+  TargetRegistry::RegisterObjectTargetStreamer(T, createSyncVMObjectTargetStreamer);
 }
