@@ -15,8 +15,6 @@
 
 namespace llvm {
 
-class SyncVMSubtarget;
-
 class SyncVMInstrInfo : public SyncVMGenInstrInfo {
   const SyncVMRegisterInfo RI;
   virtual void anchor();
