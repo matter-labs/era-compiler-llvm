@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 class SyncVMInstruction<
+  bits<8> opcode,
   dag outs,
   dag ins,
   string asmstr,
@@ -18,6 +19,7 @@ class SyncVMInstruction<
 > : Instruction
 {
   field bits<256> Inst;
+  field bits<256> SoftFail = 0;
 
   let Namespace         = "SyncVM";
   let AsmString         = asmstr;
@@ -26,12 +28,28 @@ class SyncVMInstruction<
   let InOperandList     = ins;
   let Pattern           = pattern;
 
-  bits<8> Opcode = 0;
-
-  let Inst{255-248} = Opcode;
-
-  field bits<32> SoftFail = 0;
+  let Inst{255-248} = opcode;
 }
+
+
+
+//===----------------------------------------------------------------------===//
+// An empty operation
+//===----------------------------------------------------------------------===//
+
+class Empty<
+  bits<8> opcode,
+  dag outs,
+  dag ins,
+  string asmstr,
+  list<dag> pattern
+> : SyncVMInstruction<
+  opcode,
+  outs,
+  ins,
+  asmstr,
+  pattern
+> {}
 
 
 
@@ -46,6 +64,7 @@ class ArithmeticTwoRegistersOneDestination<
   string asmstr,
   list<dag> pattern
 > : SyncVMInstruction<
+  opcode,
   outs,
   ins,
   asmstr,
@@ -73,6 +92,7 @@ class ArithmeticTwoRegistersTwoDestinations<
   string asmstr,
   list<dag> pattern
 > : SyncVMInstruction<
+  opcode,
   outs,
   ins,
   asmstr,

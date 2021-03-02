@@ -50,9 +50,9 @@ DecodeStatus SyncVMDisassembler::getInstruction(MCInst &MI, uint64_t &Size,
                                                 ArrayRef<uint8_t> Bytes,
                                                 uint64_t Address,
                                                 raw_ostream &CStream) const {
-  MI.setOpcode(SyncVM::ADD);
+  MI.setOpcode(SyncVM::NOOP);
 
-  Size = 1;
+  Size = 32;
 
   return DecodeStatus::Success;
 }
