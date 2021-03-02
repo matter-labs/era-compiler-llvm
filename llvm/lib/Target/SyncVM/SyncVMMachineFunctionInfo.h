@@ -4,8 +4,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIB_TARGET_SyncVM_SyncVMMACHINEFUNCTIONINFO_H
-#define LLVM_LIB_TARGET_SyncVM_SyncVMMACHINEFUNCTIONINFO_H
+#ifndef LLVM_LIB_TARGET_SYNCVM_SYNCVMMACHINEFUNCTIONINFO_H
+#define LLVM_LIB_TARGET_SYNCVM_SYNCVMMACHINEFUNCTIONINFO_H
 
 #include "llvm/CodeGen/MachineFunction.h"
 

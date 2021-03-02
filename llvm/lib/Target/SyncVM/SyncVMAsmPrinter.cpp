@@ -59,74 +59,20 @@ namespace {
 
 void SyncVMAsmPrinter::PrintSymbolOperand(const MachineOperand &MO,
                                           raw_ostream &O) {
-  uint64_t Offset = MO.getOffset();
-  if (Offset)
-    O << '(' << Offset << '+';
-
-  getSymbol(MO.getGlobal())->print(O, MAI);
-
-  if (Offset)
-    O << ')';
 }
 
 void SyncVMAsmPrinter::printOperand(const MachineInstr *MI, int OpNum,
                                     raw_ostream &O, const char *Modifier) {
-  const MachineOperand &MO = MI->getOperand(OpNum);
-  switch (MO.getType()) {
-  default: llvm_unreachable("Not implemented yet!");
-  case MachineOperand::MO_Register:
-    O << SyncVMInstPrinter::getRegisterName(MO.getReg());
-    return;
-  case MachineOperand::MO_Immediate:
-    if (!Modifier || strcmp(Modifier, "nohash"))
-      O << '#';
-    O << MO.getImm();
-    return;
-  case MachineOperand::MO_MachineBasicBlock:
-    MO.getMBB()->getSymbol()->print(O, MAI);
-    return;
-  case MachineOperand::MO_GlobalAddress: {
-    // If the global address expression is a part of displacement field with a
-    // register base, we should not emit any prefix symbol here, e.g.
-    //   mov.w glb(r1), r2
-    // Otherwise (!) syncvm-as will silently miscompile the output :(
-    if (!Modifier || strcmp(Modifier, "nohash"))
-      O << '#';
-    PrintSymbolOperand(MO, O);
-    return;
-  }
-  }
 }
 
 void SyncVMAsmPrinter::printSrcMemOperand(const MachineInstr *MI, int OpNum,
                                           raw_ostream &O) {
-  const MachineOperand &Base = MI->getOperand(OpNum);
-  const MachineOperand &Disp = MI->getOperand(OpNum+1);
-
-  // Print displacement first
-
-  // Imm here is in fact global address - print extra modifier.
-  if (Disp.isImm() && Base.getReg() == SyncVM::SR)
-    O << '&';
-  printOperand(MI, OpNum+1, O, "nohash");
-
-  // Print register base field
-  if (Base.getReg() != SyncVM::SR && Base.getReg() != SyncVM::PC) {
-    O << '(';
-    printOperand(MI, OpNum, O);
-    O << ')';
-  }
 }
 
 /// PrintAsmOperand - Print out an operand for an inline asm expression.
 ///
 bool SyncVMAsmPrinter::PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
                                        const char *ExtraCode, raw_ostream &O) {
-  // Does this asm operand have a single letter operand modifier?
-  if (ExtraCode && ExtraCode[0])
-    return AsmPrinter::PrintAsmOperand(MI, OpNo, ExtraCode, O);
-
-  printOperand(MI, OpNo, O);
   return false;
 }
 
@@ -134,47 +80,17 @@ bool SyncVMAsmPrinter::PrintAsmMemoryOperand(const MachineInstr *MI,
                                              unsigned OpNo,
                                              const char *ExtraCode,
                                              raw_ostream &O) {
-  if (ExtraCode && ExtraCode[0]) {
-    return true; // Unknown modifier.
-  }
-  printSrcMemOperand(MI, OpNo, O);
   return false;
 }
 
 //===----------------------------------------------------------------------===//
 void SyncVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
-  SyncVMMCInstLower MCInstLowering(OutContext, *this);
-
-  MCInst TmpInst;
-  MCInstLowering.Lower(MI, TmpInst);
-  EmitToStreamer(*OutStreamer, TmpInst);
 }
 
 void SyncVMAsmPrinter::EmitInterruptVectorSection(MachineFunction &ISR) {
-  MCSection *Cur = OutStreamer->getCurrentSectionOnly();
-  const auto *F = &ISR.getFunction();
-  if (F->getCallingConv() != CallingConv::SyncVM_INTR) {
-    report_fatal_error("Functions with 'interrupt' attribute must have syncvm_intrcc CC");
-  }
-  StringRef IVIdx = F->getFnAttribute("interrupt").getValueAsString();
-  MCSection *IV = OutStreamer->getContext().getELFSection(
-    "__interrupt_vector_" + IVIdx,
-    ELF::SHT_PROGBITS, ELF::SHF_ALLOC | ELF::SHF_EXECINSTR);
-  OutStreamer->SwitchSection(IV);
-
-  const MCSymbol *FunctionSymbol = getSymbol(F);
-  OutStreamer->emitSymbolValue(FunctionSymbol, TM.getProgramPointerSize());
-  OutStreamer->SwitchSection(Cur);
 }
 
 bool SyncVMAsmPrinter::runOnMachineFunction(MachineFunction &MF) {
-  // Emit separate section for an interrupt vector if ISR
-  if (MF.getFunction().hasFnAttribute("interrupt")) {
-    EmitInterruptVectorSection(MF);
-  }
-
-  SetupMachineFunction(MF);
-  emitFunctionBody();
   return false;
 }
 
