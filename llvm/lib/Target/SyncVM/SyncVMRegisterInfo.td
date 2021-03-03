@@ -8,6 +8,7 @@ class SyncVMRegister<bits<4> num, string n> : Register<n> {
   field bits<4> Num = num;
 
   let Namespace = "SyncVM";
+  let HWEncoding{3-0} = num;
 }
 
 

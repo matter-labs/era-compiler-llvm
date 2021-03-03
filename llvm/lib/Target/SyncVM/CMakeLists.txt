@@ -8,18 +8,21 @@ tablegen(LLVM SyncVMGenDisassemblerTables.inc -gen-disassembler)
 tablegen(LLVM SyncVMGenInstrInfo.inc -gen-instr-info)
 tablegen(LLVM SyncVMGenMCCodeEmitter.inc -gen-emitter)
 tablegen(LLVM SyncVMGenRegisterInfo.inc -gen-register-info)
+tablegen(LLVM SyncVMGenSubtargetInfo.inc -gen-subtarget)
 
 add_public_tablegen_target(SyncVMCommonTableGen)
 
 add_llvm_target(SyncVMCodeGen
   SyncVMTargetMachine.cpp
+  SyncVMSubtarget.cpp
   SyncVMRegisterInfo.cpp
-  SyncVMAsmPrinter.cpp
   SyncVMInstrInfo.cpp
+  SyncVMMCInstLower.cpp
+  SyncVMAsmPrinter.cpp
+  SyncVMMachineFunctionInfo.cpp
+  SyncVMFrameLowering.cpp
   SyncVMISelDAGToDAG.cpp
   SyncVMISelLowering.cpp
-  SyncVMMachineFunctionInfo.cpp
-  SyncVMMCInstLower.cpp
   )
 
 add_subdirectory(TargetInfo)

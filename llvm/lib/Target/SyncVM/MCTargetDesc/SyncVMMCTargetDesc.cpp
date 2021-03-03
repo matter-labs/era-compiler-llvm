@@ -49,12 +49,18 @@ static MCInstPrinter *createSyncVMMCInstPrinter(const Triple &T,
   return nullptr;
 }
 
+static MCSubtargetInfo *
+createSyncVMMCSubtargetInfo(const Triple &TT, StringRef CPU, StringRef FS) {
+  return nullptr;
+}
+
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTargetMC() {
   Target &T = getTheSyncVMTarget();
 
   RegisterMCAsmInfo<SyncVMMCAsmInfo> X(T);
   TargetRegistry::RegisterMCInstrInfo(T, createSyncVMMCInstrInfo);
   TargetRegistry::RegisterMCRegInfo(T, createSyncVMMCRegisterInfo);
+  TargetRegistry::RegisterMCSubtargetInfo(T, createSyncVMMCSubtargetInfo);
   TargetRegistry::RegisterMCInstPrinter(T, createSyncVMMCInstPrinter);
   TargetRegistry::RegisterMCCodeEmitter(T, createSyncVMMCCodeEmitter);
   TargetRegistry::RegisterMCAsmBackend(T, createSyncVMMCAsmBackend);
