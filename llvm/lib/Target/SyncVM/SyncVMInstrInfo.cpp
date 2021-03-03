@@ -23,33 +23,37 @@ using namespace llvm;
 // Pin the vtable to this file.
 void SyncVMInstrInfo::anchor() {}
 
-SyncVMInstrInfo::SyncVMInstrInfo()
-  : SyncVMGenInstrInfo(0, 0),
-    RI() {}
+SyncVMInstrInfo::SyncVMInstrInfo() : SyncVMGenInstrInfo(0, 0), RI() {}
 
 void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
                                           MachineBasicBlock::iterator MI,
-                                    Register SrcReg, bool isKill, int FrameIdx,
+                                          Register SrcReg, bool isKill,
+                                          int FrameIdx,
                                           const TargetRegisterClass *RC,
                                           const TargetRegisterInfo *TRI) const {
 }
 
-void SyncVMInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
-                                           MachineBasicBlock::iterator MI,
-                                           Register DestReg, int FrameIdx,
-                                           const TargetRegisterClass *RC,
-                                           const TargetRegisterInfo *TRI) const{
-}
+void SyncVMInstrInfo::loadRegFromStackSlot(
+    MachineBasicBlock &MBB, MachineBasicBlock::iterator MI, Register DestReg,
+    int FrameIdx, const TargetRegisterClass *RC,
+    const TargetRegisterInfo *TRI) const {}
 
 void SyncVMInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                   MachineBasicBlock::iterator I,
                                   const DebugLoc &DL, MCRegister DestReg,
-                                  MCRegister SrcReg, bool KillSrc) const {
-}
+                                  MCRegister SrcReg, bool KillSrc) const {}
 
 /// GetInstSize - Return the number of bytes of code the specified
 /// instruction may be.  This returns the maximum number of bytes.
 ///
 unsigned SyncVMInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
   return 256;
+}
+
+// TODO: Implement properly
+bool SyncVMInstrInfo::reverseBranchCondition(
+    SmallVectorImpl<MachineOperand> &Cond) const {
+  assert(Cond.size() == 2 && "Wrong Cond args size");
+  Cond[0].setImm(!Cond[0].getImm());
+  return false;
 }
