@@ -27,6 +27,9 @@ using namespace llvm;
 #define GET_REGINFO_MC_DESC
 #include "SyncVMGenRegisterInfo.inc"
 
+#define GET_SUBTARGETINFO_MC_DESC
+#include "SyncVMGenSubtargetInfo.inc"
+
 static MCInstrInfo *createSyncVMMCInstrInfo() {
   MCInstrInfo *X = new MCInstrInfo();
   InitSyncVMMCInstrInfo(X);

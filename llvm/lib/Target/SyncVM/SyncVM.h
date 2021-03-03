@@ -8,6 +8,7 @@
 #ifndef LLVM_LIB_TARGET_SYNCVM_SYNCVM_H
 #define LLVM_LIB_TARGET_SYNCVM_SYNCVM_H
 
+#include "MCTargetDesc/SyncVMMCTargetDesc.h"
 #include "llvm/Target/TargetMachine.h"
 
 namespace llvm {
