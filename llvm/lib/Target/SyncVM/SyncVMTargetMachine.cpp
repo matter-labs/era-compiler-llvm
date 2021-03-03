@@ -8,6 +8,10 @@
 #include "SyncVM.h"
 #include "TargetInfo/SyncVMTargetInfo.h"
 #include "llvm/Support/TargetRegistry.h"
+#include "llvm/CodeGen/TargetPassConfig.h"
+#include "llvm/CodeGen/Passes.h"
+#include "llvm/CodeGen/TargetLoweringObjectFileImpl.h"
+#include "llvm/MC/MCAsmInfo.h"
 
 using namespace llvm;
 
@@ -36,16 +40,38 @@ SyncVMTargetMachine::SyncVMTargetMachine(
     Optional<CodeModel::Model> CM,
     CodeGenOpt::Level OL,
     bool JIT
-) : LLVMTargetMachine(
-    T,
-    computeDataLayout(),
-    TT,
-    CPU,
-    FS,
-    Options,
-    getEffectiveRelocModel(RM),
-    getEffectiveCodeModel(CM, CodeModel::Small),
-    OL
-) {}
+) : LLVMTargetMachine(T, computeDataLayout(), TT, CPU, FS,
+  Options, getEffectiveRelocModel(RM), getEffectiveCodeModel(CM, CodeModel::Small), OL),
+  TLOF(std::make_unique<TargetLoweringObjectFileELF>()),
+  Subtarget(TT, std::string(CPU), std::string(FS), *this)
+{}
 
 SyncVMTargetMachine::~SyncVMTargetMachine() {}
+
+namespace {
+/// SyncVM Code Generator Pass Configuration Options.
+class SyncVMPassConfig : public TargetPassConfig {
+public:
+  SyncVMPassConfig(SyncVMTargetMachine &TM, PassManagerBase &PM)
+      : TargetPassConfig(TM, PM) {}
+
+  SyncVMTargetMachine &getSyncVMTargetMachine() const {
+    return getTM<SyncVMTargetMachine>();
+  }
+
+  bool addInstSelector() override;
+  void addPreEmitPass() override;
+};
+} // namespace
+
+TargetPassConfig *SyncVMTargetMachine::createPassConfig(PassManagerBase &PM) {
+  return new SyncVMPassConfig(*this, PM);
+}
+
+bool SyncVMPassConfig::addInstSelector() {
+  return false;
+}
+
+void SyncVMPassConfig::addPreEmitPass() {
+}
+

@@ -8,6 +8,7 @@
 #ifndef LLVM_LIB_TARGET_SYNCVM_SYNCVMTARGETMACHINE_H
 #define LLVM_LIB_TARGET_SYNCVM_SYNCVMTARGETMACHINE_H
 
+#include "SyncVMSubtarget.h"
 #include "llvm/CodeGen/TargetFrameLowering.h"
 #include "llvm/Target/TargetMachine.h"
 
@@ -16,6 +17,8 @@ namespace llvm {
 /// SyncVMTargetMachine
 ///
 class SyncVMTargetMachine : public LLVMTargetMachine {
+  std::unique_ptr<TargetLoweringObjectFile> TLOF;
+  SyncVMSubtarget        Subtarget;
 
 public:
   SyncVMTargetMachine(
@@ -30,6 +33,15 @@ public:
     bool JIT
   );
   ~SyncVMTargetMachine() override;
+
+  const SyncVMSubtarget *getSubtargetImpl(const Function &F) const override {
+    return &Subtarget;
+  }
+  TargetPassConfig *createPassConfig(PassManagerBase &PM) override;
+
+  TargetLoweringObjectFile *getObjFileLowering() const override {
+    return TLOF.get();
+  }
   
 }; // SyncVMTargetMachine.
 

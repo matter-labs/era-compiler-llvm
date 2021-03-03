@@ -26,7 +26,7 @@ def NOOP : Empty<
 // The ADD arithmetic instruction
 //===----------------------------------------------------------------------===//
 
-def ADD : ArithmeticTwoRegistersOneDestination<
+def ADD : ArithmeticTwoSourcesOneDestination<
   0x01,
   (outs GR256:$dst),
   (ins GR256:$src1, GR256:$src2),
@@ -40,7 +40,7 @@ def ADD : ArithmeticTwoRegistersOneDestination<
 // The SUB arithmetic instruction
 //===----------------------------------------------------------------------===//
 
-def SUB : ArithmeticTwoRegistersOneDestination<
+def SUB : ArithmeticTwoSourcesOneDestination<
   0x02,
   (outs GR256:$dst),
   (ins GR256:$src1, GR256:$src2),
@@ -54,7 +54,7 @@ def SUB : ArithmeticTwoRegistersOneDestination<
 // The MUL arithmetic instruction
 //===----------------------------------------------------------------------===//
 
-def MUL : ArithmeticTwoRegistersTwoDestinations<
+def MUL : ArithmeticTwoSourcesTwoDestinations<
   0x03,
   (outs GR256:$dst1, GR256:$dst2),
   (ins GR256:$src1, GR256:$src2),
@@ -68,10 +68,122 @@ def MUL : ArithmeticTwoRegistersTwoDestinations<
 // The DIV arithmetic instruction
 //===----------------------------------------------------------------------===//
 
-def DIV : ArithmeticTwoRegistersTwoDestinations<
+def DIV : ArithmeticTwoSourcesTwoDestinations<
   0x04,
   (outs GR256:$dst1, GR256:$dst2),
   (ins GR256:$src1, GR256:$src2),
   "div",
+  []
+>;
+
+
+
+//===----------------------------------------------------------------------===//
+// The LOAD constant immediate instruction
+//===----------------------------------------------------------------------===//
+
+def LOAD : Immediate<
+  0x05,
+  (outs GR256:$dst),
+  (ins),
+  "load",
+  []
+>;
+
+
+
+//===----------------------------------------------------------------------===//
+// The JUMP instruction
+//===----------------------------------------------------------------------===//
+
+def JUMP : Jump<
+  0x06,
+  (outs),
+  (ins GR256:$src),
+  "jump",
+  []
+>;
+
+
+
+//===----------------------------------------------------------------------===//
+// The CALL instruction
+//===----------------------------------------------------------------------===//
+
+def CALL : Call<
+  0x07,
+  (outs),
+  (ins GR256:$src),
+  "call",
+  []
+>;
+
+
+
+//===----------------------------------------------------------------------===//
+// The SWITCH context instruction
+//===----------------------------------------------------------------------===//
+
+def SWITCH : Empty<
+  0x08,
+  (outs),
+  (ins),
+  "swch",
+  []
+>;
+
+
+
+//===----------------------------------------------------------------------===//
+// The MEMORY load or store instruction
+//===----------------------------------------------------------------------===//
+
+def MEMORY : Memory<
+  0x09,
+  (outs),
+  (ins GR256:$src1, GR256:$src2),
+  "mmio",
+  []
+>;
+
+
+
+//===----------------------------------------------------------------------===//
+// The STORAGE load or store instruction
+//===----------------------------------------------------------------------===//
+
+def STORAGE : Storage<
+  0x0A,
+  (outs GR256:$dst),
+  (ins GR256:$src1, GR256:$src2),
+  "strg",
+  []
+>;
+
+
+
+//===----------------------------------------------------------------------===//
+// The HABS hash absorb instruction
+//===----------------------------------------------------------------------===//
+
+def HABS : Storage<
+  0x0B,
+  (outs),
+  (ins GR256:$src),
+  "habs",
+  []
+>;
+
+
+
+//===----------------------------------------------------------------------===//
+// The HOUT hash output instruction
+//===----------------------------------------------------------------------===//
+
+def HOUT : Storage<
+  0x0C,
+  (outs GR256:$dst),
+  (ins),
+  "hout",
   []
 >;

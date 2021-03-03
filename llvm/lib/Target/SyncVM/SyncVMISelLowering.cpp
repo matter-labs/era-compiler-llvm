@@ -30,10 +30,10 @@ using namespace llvm;
 
 #define DEBUG_TYPE "syncvm-lower"
 
-static cl::opt<bool>SyncVMNoLegalImmediate(
-  "syncvm-no-legal-immediate", cl::Hidden,
-  cl::desc("Enable non legal immediates (for testing purposes only)"),
-  cl::init(false));
-
-SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM)
-    : TargetLowering(TM) {}
+SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
+                                           const SyncVMSubtarget &STI)
+    : TargetLowering(TM) {
+  // Set up the register classes.
+  addRegisterClass(MVT::v32i8, &SyncVM::GR256RegClass);
+  addRegisterClass(MVT::i16, &SyncVM::GR16RegClass);
+}
