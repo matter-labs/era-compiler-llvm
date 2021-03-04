@@ -4,7 +4,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
 #ifndef LLVM_LIB_TARGET_SYNCVM_SYNCVMTARGETMACHINE_H
 #define LLVM_LIB_TARGET_SYNCVM_SYNCVMTARGETMACHINE_H
 
@@ -18,20 +17,13 @@ namespace llvm {
 ///
 class SyncVMTargetMachine : public LLVMTargetMachine {
   std::unique_ptr<TargetLoweringObjectFile> TLOF;
-  SyncVMSubtarget        Subtarget;
+  SyncVMSubtarget Subtarget;
 
 public:
-  SyncVMTargetMachine(
-    const Target &T,
-    const Triple &TT,
-    StringRef CPU,
-    StringRef FS,
-    const TargetOptions &Options,
-    Optional<Reloc::Model> RM,
-    Optional<CodeModel::Model> CM,
-    CodeGenOpt::Level OL,
-    bool JIT
-  );
+  SyncVMTargetMachine(const Target &T, const Triple &TT, StringRef CPU,
+                      StringRef FS, const TargetOptions &Options,
+                      Optional<Reloc::Model> RM, Optional<CodeModel::Model> CM,
+                      CodeGenOpt::Level OL, bool JIT);
   ~SyncVMTargetMachine() override;
 
   const SyncVMSubtarget *getSubtargetImpl(const Function &F) const override {
@@ -42,7 +34,7 @@ public:
   TargetLoweringObjectFile *getObjFileLowering() const override {
     return TLOF.get();
   }
-  
+
 }; // SyncVMTargetMachine.
 
 } // end namespace llvm
