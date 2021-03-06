@@ -190,6 +190,9 @@ Type *EVT::getTypeForEVT(LLVMContext &Context) const {
   case MVT::i32:     return Type::getInt32Ty(Context);
   case MVT::i64:     return Type::getInt64Ty(Context);
   case MVT::i128:    return IntegerType::get(Context, 128);
+  // SyncVM local begin
+  case MVT::i256:    return Type::getInt256Ty(Context);
+  // SyncVM local end
   case MVT::f16:     return Type::getHalfTy(Context);
   case MVT::bf16:     return Type::getBFloatTy(Context);
   case MVT::f32:     return Type::getFloatTy(Context);

@@ -937,6 +937,9 @@ enum IIT_Info {
   IIT_STRUCT9 = 49,
   IIT_V256 = 50,
   IIT_AMX  = 51
+  // SyncVM local begin
+  IIT_I256 = 52
+  // SyncVM local end
 };
 
 static void DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
@@ -1147,7 +1150,12 @@ static void DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
                                              ArgInfo));
     return;
   }
+  // SyncVM local begin
+  case IIT_I256:
+    OutputTable.push_back(IITDescriptor::get(IITDescriptor::Integer, 256));
+    return;
   }
+  // SyncVM local end
   llvm_unreachable("unhandled");
 }
 
