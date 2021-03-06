@@ -34,6 +34,6 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
                                            const SyncVMSubtarget &STI)
     : TargetLowering(TM) {
   // Set up the register classes.
-  addRegisterClass(MVT::v32i8, &SyncVM::GR256RegClass);
+  addRegisterClass(MVT::i256, &SyncVM::GR256RegClass);
   addRegisterClass(MVT::i16, &SyncVM::GR16RegClass);
 }

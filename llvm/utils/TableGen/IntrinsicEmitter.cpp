@@ -246,7 +246,10 @@ enum IIT_Info {
   IIT_SUBDIVIDE4_ARG = 45,
   IIT_VEC_OF_BITCASTS_TO_INT = 46,
   IIT_V128 = 47,
-  IIT_BF16 = 48
+  // SyncVM local begin
+  IIT_BF16 = 48,
+  IIT_I256 = 49
+  // SyncVM local end
 };
 
 static void EncodeFixedValueType(MVT::SimpleValueType VT,
@@ -261,6 +264,9 @@ static void EncodeFixedValueType(MVT::SimpleValueType VT,
     case 32: return Sig.push_back(IIT_I32);
     case 64: return Sig.push_back(IIT_I64);
     case 128: return Sig.push_back(IIT_I128);
+    // SyncVM local begin
+    case 256: return Sig.push_back(IIT_I256);
+    // SyncVM local end
     }
   }
 

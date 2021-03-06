@@ -30,7 +30,7 @@ def R10 : SyncVMRegister<9,  "r10">;
 def R11 : SyncVMRegister<10, "r11">;
 def R12 : SyncVMRegister<11, "r12">;
 
-def GR256 : RegisterClass<"SyncVM", [v32i8], 256, (add R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12)>;
+def GR256 : RegisterClass<"SyncVM", [i256], 256, (add R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12)>;
 
 
 

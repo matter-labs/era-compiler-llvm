@@ -770,7 +770,10 @@ enum IIT_Info {
   IIT_SUBDIVIDE4_ARG = 45,
   IIT_VEC_OF_BITCASTS_TO_INT = 46,
   IIT_V128 = 47,
-  IIT_BF16 = 48
+  IIT_BF16 = 48,
+  // SyncVM local begin
+  IIT_I256 = 49
+  // SyncVM local end
 };
 
 static void DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
@@ -973,7 +976,12 @@ static void DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
                                              ArgInfo));
     return;
   }
+  // SyncVM local begin
+  case IIT_I256:
+    OutputTable.push_back(IITDescriptor::get(IITDescriptor::Integer, 256));
+    return;
   }
+  // SyncVM local end
   llvm_unreachable("unhandled");
 }
 
