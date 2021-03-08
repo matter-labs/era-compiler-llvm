@@ -39,14 +39,12 @@ class SyncVMInstruction<
 
 class Empty<
   bits<8> opcode,
-  dag outs,
-  dag ins,
   string asmstr,
   list<dag> pattern
 > : SyncVMInstruction<
   opcode,
-  outs,
-  ins,
+  (outs),
+  (ins),
   asmstr,
   pattern
 > {}
@@ -59,16 +57,14 @@ class Empty<
 
 class ArithmeticTwoSourcesOneDestination<
   bits<8> opcode,
-  dag outs,
-  dag ins,
-  string asmstr,
-  list<dag> pattern
+  string name,
+  SDNode node
 > : SyncVMInstruction<
   opcode,
-  outs,
-  ins,
-  asmstr,
-  pattern
+  (outs GR256:$dst),
+  (ins GR256:$src1, GR256:$src2),
+  !strconcat(name, "\t$dst, $src1, $src2"),
+  [(set i256:$dst, (node i256:$src1, i256:$src2))]
 > {
   bits<4> src1;
   bits<4> src2;

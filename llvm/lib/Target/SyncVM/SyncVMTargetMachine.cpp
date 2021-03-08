@@ -65,7 +65,12 @@ TargetPassConfig *SyncVMTargetMachine::createPassConfig(PassManagerBase &PM) {
   return new SyncVMPassConfig(*this, PM);
 }
 
-bool SyncVMPassConfig::addInstSelector() { return false; }
+bool SyncVMPassConfig::addInstSelector() {
+  (void)TargetPassConfig::addInstSelector();
+  // Install an instruction selector.
+  addPass(createSyncVMISelDag(getSyncVMTargetMachine(), getOptLevel()));
+  return false;
+}
 
 void SyncVMPassConfig::addPreEmitPass() {}
 

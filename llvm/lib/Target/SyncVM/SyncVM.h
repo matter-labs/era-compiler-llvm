@@ -14,6 +14,9 @@
 namespace llvm {
   class SyncVMTargetMachine;
 
+  FunctionPass *createSyncVMISelDag(SyncVMTargetMachine &TM,
+                                    CodeGenOpt::Level OptLevel);
+
 } // end namespace llvm;
 
 #endif

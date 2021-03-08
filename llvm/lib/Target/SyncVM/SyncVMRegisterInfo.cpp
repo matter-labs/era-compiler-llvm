@@ -24,12 +24,12 @@ using namespace llvm;
 #define GET_REGINFO_TARGET_DESC
 #include "SyncVMGenRegisterInfo.inc"
 
-SyncVMRegisterInfo::SyncVMRegisterInfo()
-  : SyncVMGenRegisterInfo(0) {}
+SyncVMRegisterInfo::SyncVMRegisterInfo() : SyncVMGenRegisterInfo(0) {}
 
-const MCPhysReg*
+const MCPhysReg *
 SyncVMRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
-  return nullptr;
+  static const MCPhysReg CalleeSavedRegs[] = {0};
+  return CalleeSavedRegs;
 }
 
 BitVector SyncVMRegisterInfo::getReservedRegs(const MachineFunction &MF) const {

@@ -23,25 +23,41 @@ using namespace llvm;
 void SyncVMInstPrinter::printInst(const MCInst *MI, uint64_t Address,
                                   StringRef Annot, const MCSubtargetInfo &STI,
                                   raw_ostream &O) {
+  if (!printAliasInstr(MI, Address, O))
+    printInstruction(MI, Address, O);
+  printAnnotation(O, Annot);
 }
 
 void SyncVMInstPrinter::printPCRelImmOperand(const MCInst *MI, unsigned OpNo,
                                              raw_ostream &O) {
+  llvm_unreachable("Not implemented yet!");
 }
 
 void SyncVMInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
                                      raw_ostream &O, const char *Modifier) {
+  assert((Modifier == nullptr || Modifier[0] == 0) && "No modifiers supported");
+  const MCOperand &Op = MI->getOperand(OpNo);
+  if (Op.isReg()) {
+    O << getRegisterName(Op.getReg());
+  } else if (Op.isImm()) {
+    O << Op.getImm();
+  } else {
+    llvm_unreachable("Not implemented yet!");
+  }
 }
 
 void SyncVMInstPrinter::printSrcMemOperand(const MCInst *MI, unsigned OpNo,
                                            raw_ostream &O,
                                            const char *Modifier) {
+  llvm_unreachable("Not implemented yet!");
 }
 
 void SyncVMInstPrinter::printIndRegOperand(const MCInst *MI, unsigned OpNo,
                                            raw_ostream &O) {
+  llvm_unreachable("Not implemented yet!");
 }
 
 void SyncVMInstPrinter::printPostIndRegOperand(const MCInst *MI, unsigned OpNo,
                                                raw_ostream &O) {
+  llvm_unreachable("Not implemented yet!");
 }
