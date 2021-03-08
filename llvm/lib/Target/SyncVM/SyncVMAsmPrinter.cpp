@@ -59,20 +59,34 @@ namespace {
 
 void SyncVMAsmPrinter::PrintSymbolOperand(const MachineOperand &MO,
                                           raw_ostream &O) {
+  llvm_unreachable("Not implemented yet!");
 }
 
 void SyncVMAsmPrinter::printOperand(const MachineInstr *MI, int OpNum,
                                     raw_ostream &O, const char *Modifier) {
+  const MachineOperand &MO = MI->getOperand(OpNum);
+  switch (MO.getType()) {
+  default:
+    llvm_unreachable("Not implemented yet!");
+  case MachineOperand::MO_Register:
+    O << SyncVMInstPrinter::getRegisterName(MO.getReg());
+    return;
+  case MachineOperand::MO_Immediate:
+    O << MO.getImm();
+    return;
+  }
 }
 
 void SyncVMAsmPrinter::printSrcMemOperand(const MachineInstr *MI, int OpNum,
                                           raw_ostream &O) {
+  llvm_unreachable("Not implemented yet!");
 }
 
 /// PrintAsmOperand - Print out an operand for an inline asm expression.
 ///
 bool SyncVMAsmPrinter::PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
                                        const char *ExtraCode, raw_ostream &O) {
+  llvm_unreachable("Not implemented yet!");
   return false;
 }
 
@@ -80,17 +94,26 @@ bool SyncVMAsmPrinter::PrintAsmMemoryOperand(const MachineInstr *MI,
                                              unsigned OpNo,
                                              const char *ExtraCode,
                                              raw_ostream &O) {
+  llvm_unreachable("Not implemented yet!");
   return false;
 }
 
 //===----------------------------------------------------------------------===//
 void SyncVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
+  SyncVMMCInstLower MCInstLowering(OutContext, *this);
+
+  MCInst TmpInst;
+  MCInstLowering.Lower(MI, TmpInst);
+  EmitToStreamer(*OutStreamer, TmpInst);
 }
 
 void SyncVMAsmPrinter::EmitInterruptVectorSection(MachineFunction &ISR) {
+  llvm_unreachable("Not implemented yet!");
 }
 
 bool SyncVMAsmPrinter::runOnMachineFunction(MachineFunction &MF) {
+  SetupMachineFunction(MF);
+  emitFunctionBody();
   return false;
 }
 

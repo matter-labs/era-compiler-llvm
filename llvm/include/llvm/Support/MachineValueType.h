@@ -1177,7 +1177,7 @@ namespace llvm {
         return MVT::i128;
       // SyncVM local begin
       case 256:
-        return MVT::i128;
+        return MVT::i256;
       // SyncVM local end
       }
     }

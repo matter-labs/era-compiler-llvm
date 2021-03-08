@@ -1151,9 +1151,10 @@ static void DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
     return;
   }
   // SyncVM local begin
-  case IIT_I256:
+  case IIT_I256: {
     OutputTable.push_back(IITDescriptor::get(IITDescriptor::Integer, 256));
     return;
+  }
   }
   // SyncVM local end
   llvm_unreachable("unhandled");

@@ -1,0 +1,10 @@
+//- SyncVMISD.def - SyncVM ISD -------------------------------------*- C++ -*-//
+///
+/// \file
+/// This file describes the various SyncVM ISD node types.
+///
+//===----------------------------------------------------------------------===//
+
+// NOTE: NO INCLUDE GUARD DESIRED!
+
+HANDLE_NODETYPE(RET)

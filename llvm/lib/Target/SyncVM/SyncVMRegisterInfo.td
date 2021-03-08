@@ -23,14 +23,8 @@ def R3  : SyncVMRegister<2,  "r3">;
 def R4  : SyncVMRegister<3,  "r4">;
 def R5  : SyncVMRegister<4,  "r5">;
 def R6  : SyncVMRegister<5,  "r6">;
-def R7  : SyncVMRegister<6,  "r7">;
-def R8  : SyncVMRegister<7,  "r8">;
-def R9  : SyncVMRegister<8,  "r9">;
-def R10 : SyncVMRegister<9,  "r10">;
-def R11 : SyncVMRegister<10, "r11">;
-def R12 : SyncVMRegister<11, "r12">;
 
-def GR256 : RegisterClass<"SyncVM", [i256], 256, (add R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12)>;
+def GR256 : RegisterClass<"SyncVM", [i256], 256, (add R1, R2, R3, R4, R5, R6)>;
 
 
 
@@ -38,7 +32,7 @@ def GR256 : RegisterClass<"SyncVM", [i256], 256, (add R1, R2, R3, R4, R5, R6, R7
 // Special registers
 //===----------------------------------------------------------------------===//
 
-def PC : SyncVMRegister<12, "pc">;
-def SP : SyncVMRegister<13, "sp">;
+def PC : SyncVMRegister<6, "pc">;
+def SP : SyncVMRegister<7, "sp">;
 
 def GR16 : RegisterClass<"SyncVM", [i16], 16, (add PC, SP)>;
