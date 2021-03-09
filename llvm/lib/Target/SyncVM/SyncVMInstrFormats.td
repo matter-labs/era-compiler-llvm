@@ -75,24 +75,20 @@ class ArithmeticTwoSourcesOneDestination<
   let Inst{239-236} = dst;
 }
 
-
-
 //===----------------------------------------------------------------------===//
 // Binary operation with two source registers and two destinations
 //===----------------------------------------------------------------------===//
 
 class ArithmeticTwoSourcesTwoDestinations<
   bits<8> opcode,
-  dag outs,
-  dag ins,
-  string asmstr,
-  list<dag> pattern
+  string name,
+  SDNode node
 > : SyncVMInstruction<
   opcode,
-  outs,
-  ins,
-  asmstr,
-  pattern
+  (outs GR256:$dst1, GR256:$dst2),
+  (ins GR256:$src1, GR256:$src2),
+  !strconcat(name, "\t$dst1, $dst2, $src1, $src2"),
+  [(set i256:$dst1, i256:$dst2, (node i256:$src1, i256:$src2))]
 > {
   bits<4> src1;
   bits<4> src2;
@@ -105,6 +101,48 @@ class ArithmeticTwoSourcesTwoDestinations<
   let Inst{235-232} = dst2;
 }
 
+// Two destination instructions that dispose on of its results
+class ArithmeticRZRR <
+  bits<8> opcode,
+  string name,
+  SDNode node
+> : SyncVMInstruction <
+  opcode,
+  (outs GR256:$dst),
+  (ins GR256:$src1, GR256:$src2),
+  !strconcat(name, "\t$dst, r0, $src1, $src2"),
+  [(set i256:$dst, (node i256:$src1, i256:$src2))]
+> {
+  bits<4> src1;
+  bits<4> src2;
+  bits<4> dst;
+
+  let Inst{247-244} = src1;
+  let Inst{243-240} = src2;
+  let Inst{239-236} = dst;
+  let Inst{235-232} = 0;
+}
+
+class ArithmeticZRRR <
+  bits<8> opcode,
+  string name,
+  SDNode node
+> : SyncVMInstruction <
+  opcode,
+  (outs GR256:$dst),
+  (ins GR256:$src1, GR256:$src2),
+  !strconcat(name, "\tr0, $dst, $src1, $src2"),
+  [(set i256:$dst, (node i256:$src1, i256:$src2))]
+> {
+  bits<4> src1;
+  bits<4> src2;
+  bits<4> dst;
+
+  let Inst{247-244} = src1;
+  let Inst{243-240} = src2;
+  let Inst{239-236} = 0;
+  let Inst{235-232} = dst;
+}
 
 
 //===----------------------------------------------------------------------===//
