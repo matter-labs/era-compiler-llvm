@@ -23,8 +23,15 @@ def NOOP : Empty< 0x00, "noop", [] >;
 // Arithmetic
 //===----------------------------------------------------------------------===//
 
-def ADD : ArithmeticTwoSourcesOneDestination< 0x01, "add", add >;
-def SUB : ArithmeticTwoSourcesOneDestination< 0x02, "sub", sub >;
+def ADDrrr     : ArithmeticTwoSourcesOneDestination< 0x01, "add", add >;
+def SUBrrr     : ArithmeticTwoSourcesOneDestination< 0x02, "sub", sub >;
+def MULrzrr    : ArithmeticRZRR< 0x03, "mul", mul >;
+// div/rem instruction
+// TODO: results in decoding conflict, consider other approach to generate div
+def DIVrrr     : ArithmeticRZRR< 0x04, "div", udiv >;
+def REMrrr     : ArithmeticZRRR< 0x04, "div", urem >;
+// TODO: needs logic in isel lowering to be generated
+def DIVREMrrrr : ArithmeticTwoSourcesTwoDestinations< 0x04, "div", udivrem >;
 
 //===----------------------------------------------------------------------===//
 // Control flow instructions
@@ -33,34 +40,6 @@ def SUB : ArithmeticTwoSourcesOneDestination< 0x02, "sub", sub >;
 let isReturn = 1, isTerminator = 1, isBarrier = 1 in
 def RET : SyncVMInstruction<0x42, (outs), (ins), "ret", [(SyncVMret)]>;
 
-////===----------------------------------------------------------------------===//
-//// The MUL arithmetic instruction
-////===----------------------------------------------------------------------===//
-//
-//def MUL : ArithmeticTwoSourcesTwoDestinations<
-//  0x03,
-//  (outs GR256:$dst1, GR256:$dst2),
-//  (ins GR256:$src1, GR256:$src2),
-//  "mul",
-//  []
-//>;
-//
-//
-//
-////===----------------------------------------------------------------------===//
-//// The DIV arithmetic instruction
-////===----------------------------------------------------------------------===//
-//
-//def DIV : ArithmeticTwoSourcesTwoDestinations<
-//  0x04,
-//  (outs GR256:$dst1, GR256:$dst2),
-//  (ins GR256:$src1, GR256:$src2),
-//  "div",
-//  []
-//>;
-//
-//
-//
 ////===----------------------------------------------------------------------===//
 //// The LOAD constant immediate instruction
 ////===----------------------------------------------------------------------===//
