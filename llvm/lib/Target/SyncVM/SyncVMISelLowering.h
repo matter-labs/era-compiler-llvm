@@ -46,6 +46,8 @@ public:
   /// DAG node.
   const char *getTargetNodeName(unsigned Opcode) const override;
 
+  SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
+
   TargetLowering::ConstraintType
   getConstraintType(StringRef Constraint) const override {
     return TargetLowering::ConstraintType::C_Unknown;
@@ -94,9 +96,7 @@ private:
                                const SDLoc &dl, SelectionDAG &DAG,
                                SmallVectorImpl<SDValue> &InVals) const override;
   SDValue LowerCall(TargetLowering::CallLoweringInfo &CLI,
-                    SmallVectorImpl<SDValue> &InVals) const override {
-    return SDValue{};
-  }
+                    SmallVectorImpl<SDValue> &InVals) const override;
 
   bool CanLowerReturn(CallingConv::ID CallConv, MachineFunction &MF,
                       bool IsVarArg,

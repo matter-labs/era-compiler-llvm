@@ -42,6 +42,7 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   // Compute derived properties from the register classes
   computeRegisterProperties(STI.getRegisterInfo());
 
+  setOperationAction(ISD::GlobalAddress, MVT::i16, Custom);
   // Support of truncate, sext, zext
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i1, Expand);
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i8, Expand);
@@ -103,7 +104,7 @@ SyncVMTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   SmallVector<CCValAssign, 1> RVLocs;
   CCState CCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), RVLocs,
                  *DAG.getContext());
-  CCInfo.AnalyzeReturn(Outs, RetCC_SYNCVM);
+  CCInfo.AnalyzeReturn(Outs, CC_SYNCVM);
 
   SmallVector<SDValue, 4> RetOps(1, Chain);
   SDValue Flag;
@@ -150,20 +151,11 @@ SDValue SyncVMTargetLowering::LowerFormalArguments(
 
   MachineFunction &MF = DAG.getMachineFunction();
   MachineRegisterInfo &RegInfo = MF.getRegInfo();
-  static const MCPhysReg CRegList[] = {SyncVM::R1, SyncVM::R2, SyncVM::R3,
-                                       SyncVM::R4, SyncVM::R5, SyncVM::R6};
 
   SmallVector<CCValAssign, 16> ArgLocs;
   CCState CCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), ArgLocs,
                  *DAG.getContext());
-
-  unsigned ValNo = 0;
-  assert(Ins.size());
-  for (const auto &In : Ins) {
-    unsigned Reg = CCInfo.AllocateReg(CRegList);
-    CCInfo.addLoc(
-        CCValAssign::getReg(ValNo++, In.VT, Reg, In.VT, CCValAssign::Full));
-  }
+  CCInfo.AnalyzeArguments(Ins, CC_SYNCVM);
 
   for (CCValAssign &VA : ArgLocs) {
     Register VReg = RegInfo.createVirtualRegister(&SyncVM::GR256RegClass);
@@ -176,6 +168,72 @@ SDValue SyncVMTargetLowering::LowerFormalArguments(
   return Chain;
 }
 
+SDValue
+SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
+                                SmallVectorImpl<SDValue> &InVals) const {
+  SelectionDAG &DAG = CLI.DAG;
+  SDLoc &DL = CLI.DL;
+  SmallVectorImpl<ISD::OutputArg> &Outs = CLI.Outs;
+  SmallVectorImpl<SDValue> &OutVals = CLI.OutVals;
+  SmallVectorImpl<ISD::InputArg> &Ins = CLI.Ins;
+  SDValue Chain = CLI.Chain;
+  SDValue Callee = CLI.Callee;
+  bool &IsTailCall = CLI.IsTailCall;
+  CallingConv::ID CallConv = CLI.CallConv;
+  bool IsVarArg = CLI.IsVarArg;
+
+  // TODO: SyncVM target does not yet support tail call optimization.
+  IsTailCall = false;
+
+  if (!CallingConvSupported(CallConv))
+    fail(DL, DAG, "SyncVM doesn't support non-C calling conventions");
+
+  SmallVector<CCValAssign, 16> ArgLocs;
+  CCState CCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), ArgLocs,
+                 *DAG.getContext());
+  CCInfo.AnalyzeCallOperands(Outs, CC_SYNCVM);
+
+  SDValue InFlag;
+  for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
+    Chain =
+        DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), OutVals[i], InFlag);
+    InFlag = Chain.getValue(1);
+  }
+
+  // Returns a chain & a flag for retval copy to use.
+  SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
+  SmallVector<SDValue, 8> Ops;
+  Ops.push_back(Chain);
+  Ops.push_back(Callee);
+
+  // Add argument registers to the end of the list so that they are
+  // known live into the call.
+  for (auto &ArgLoc : ArgLocs)
+    Ops.push_back(DAG.getRegister(ArgLoc.getLocReg(), ArgLoc.getValVT()));
+
+  if (InFlag.getNode())
+    Ops.push_back(InFlag);
+
+  Chain = DAG.getNode(SyncVMISD::CALL, DL, NodeTys, Ops);
+  InFlag = Chain.getValue(1);
+
+  SmallVector<CCValAssign, 16> RVLocs;
+  CCState RetCCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), RVLocs,
+                    *DAG.getContext());
+  RetCCInfo.AnalyzeCallResult(Ins, CC_SYNCVM);
+
+  // Copy all of the result registers out of their specified physreg.
+  for (unsigned i = 0; i != RVLocs.size(); ++i) {
+    Chain = DAG.getCopyFromReg(Chain, DL, RVLocs[i].getLocReg(),
+                               RVLocs[i].getValVT(), InFlag)
+                .getValue(1);
+    InFlag = Chain.getValue(2);
+    InVals.push_back(Chain.getValue(0));
+  }
+
+  return Chain;
+}
+
 //===----------------------------------------------------------------------===//
 //                      Other Lowerings
 //===----------------------------------------------------------------------===//
@@ -183,9 +241,22 @@ SDValue SyncVMTargetLowering::LowerFormalArguments(
 SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
                                              SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
+  case ISD::GlobalAddress:
+    return LowerGlobalAddress(Op, DAG);
   default:
     llvm_unreachable("unimplemented operand");
   }
+}
+
+SDValue SyncVMTargetLowering::LowerGlobalAddress(SDValue Op,
+                                                 SelectionDAG &DAG) const {
+  const GlobalValue *GV = cast<GlobalAddressSDNode>(Op)->getGlobal();
+  int64_t Offset = cast<GlobalAddressSDNode>(Op)->getOffset();
+  auto PtrVT = getPointerTy(DAG.getDataLayout());
+
+  // Create the TargetGlobalAddress node, folding in the constant offset.
+  SDValue Result = DAG.getTargetGlobalAddress(GV, SDLoc(Op), PtrVT, Offset);
+  return Result;
 }
 
 const char *SyncVMTargetLowering::getTargetNodeName(unsigned Opcode) const {

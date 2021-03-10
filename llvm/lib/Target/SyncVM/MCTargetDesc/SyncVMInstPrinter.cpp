@@ -42,7 +42,9 @@ void SyncVMInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
   } else if (Op.isImm()) {
     O << Op.getImm();
   } else {
-    llvm_unreachable("Not implemented yet!");
+    assert(Op.isExpr() && "unknown operand kind in printOperand");
+    O << '@';
+    Op.getExpr()->print(O, &MAI);
   }
 }
 

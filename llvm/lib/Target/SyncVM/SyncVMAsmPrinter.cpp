@@ -74,6 +74,9 @@ void SyncVMAsmPrinter::printOperand(const MachineInstr *MI, int OpNum,
   case MachineOperand::MO_Immediate:
     O << MO.getImm();
     return;
+  case MachineOperand::MO_GlobalAddress:
+    PrintSymbolOperand(MO, O);
+    return;
   }
 }
 
