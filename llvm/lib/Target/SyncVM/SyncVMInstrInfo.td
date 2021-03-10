@@ -65,8 +65,6 @@ def DIVREMrrrr : ArithmeticRRRR< 0x04, "div", udivrem >;
 let isReturn = 1, isTerminator = 1, isBarrier = 1 in
 def RET : SyncVMInstruction<0x42, (outs), (ins), "ret", [(SyncVMret)]>;
 
-<<<<<<< HEAD
-
 
 //===----------------------------------------------------------------------===//
 // The LOAD constant immediate instruction
