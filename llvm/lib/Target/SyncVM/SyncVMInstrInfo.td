@@ -7,11 +7,17 @@
 include "SyncVMInstrFormats.td"
 
 //===----------------------------------------------------------------------===//
-// SyncVM specific node definitions.
+// Type Profiles.
 //===----------------------------------------------------------------------===//
+def SDT_SyncVMCall         : SDTypeProfile<0, -1, [SDTCisPtrTy<0>]>;
 
-def SyncVMret : SDNode<"SyncVMISD::RET", SDTNone,
-                       [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+//===----------------------------------------------------------------------===//
+// SyncVM Specific Node Definitions.
+//===----------------------------------------------------------------------===//
+def SyncVMret   : SDNode<"SyncVMISD::RET", SDTNone,
+                   [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+def SyncVMcall  : SDNode<"SyncVMISD::CALL", SDT_SyncVMCall,
+                   [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
 
 
 
@@ -59,6 +65,7 @@ def DIVREMrrrr : ArithmeticRRRR< 0x04, "div", udivrem >;
 let isReturn = 1, isTerminator = 1, isBarrier = 1 in
 def RET : SyncVMInstruction<0x42, (outs), (ins), "ret", [(SyncVMret)]>;
 
+<<<<<<< HEAD
 
 
 //===----------------------------------------------------------------------===//
@@ -78,20 +85,6 @@ def LOAD : Immediate< 0x05, "cnst" >;
 //  (outs),
 //  (ins GR256:$src),
 //  "jump",
-//  []
-//>;
-//
-//
-//
-////===----------------------------------------------------------------------===//
-//// The CALL instruction
-////===----------------------------------------------------------------------===//
-//
-//def CALL : Call<
-//  0x07,
-//  (outs),
-//  (ins GR256:$src),
-//  "call",
 //  []
 //>;
 //
@@ -164,3 +157,10 @@ def LOAD : Immediate< 0x05, "cnst" >;
 //  "hout",
 //  []
 //>;
+
+let isCall = 1,
+    Defs = [R1, R2, R3, R4, R5, R6],
+    Uses = [SP] in {
+  def CALL : Call<0x43, (outs), (ins i16imm:$callee),
+                  "call\t$callee", [(SyncVMcall tglobaladdr:$callee)]>;
+}
