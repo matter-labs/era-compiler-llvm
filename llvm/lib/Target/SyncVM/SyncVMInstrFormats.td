@@ -53,7 +53,8 @@ class Empty<
 // Binary operation with two source registers and one destination
 //===----------------------------------------------------------------------===//
 
-class ArithmeticTwoSourcesOneDestination<
+// The destination is populated with the result
+class ArithmeticRRR<
   bits<8> opcode,
   string name,
   SDNode node
@@ -61,7 +62,28 @@ class ArithmeticTwoSourcesOneDestination<
   opcode,
   (outs GR256:$dst),
   (ins GR256:$src1, GR256:$src2),
-  !strconcat(name, "\t$dst, $src1, $src2"),
+  !strconcat(name, "\t$src1, $src2, $dst"),
+  [(set i256:$dst, (node i256:$src1, i256:$src2))]
+> {
+  bits<4> src1;
+  bits<4> src2;
+  bits<4> dst;
+
+  let Inst{247-244} = src1;
+  let Inst{243-240} = src2;
+  let Inst{239-236} = dst;
+}
+
+// The destination disposes of its result
+class ArithmeticRRZ<
+  bits<8> opcode,
+  string name,
+  SDNode node
+> : SyncVMInstruction<
+  opcode,
+  (outs GR256:$dst),
+  (ins GR256:$src1, GR256:$src2),
+  !strconcat(name, "\t$src1, $src2, $dst"),
   [(set i256:$dst, (node i256:$src1, i256:$src2))]
 > {
   bits<4> src1;
@@ -77,7 +99,8 @@ class ArithmeticTwoSourcesOneDestination<
 // Binary operation with two source registers and two destinations
 //===----------------------------------------------------------------------===//
 
-class ArithmeticTwoSourcesTwoDestinations<
+// Two destinations are populated with the result
+class ArithmeticRRRR<
   bits<8> opcode,
   string name,
   SDNode node
@@ -85,7 +108,7 @@ class ArithmeticTwoSourcesTwoDestinations<
   opcode,
   (outs GR256:$dst1, GR256:$dst2),
   (ins GR256:$src1, GR256:$src2),
-  !strconcat(name, "\t$dst1, $dst2, $src1, $src2"),
+  !strconcat(name, "\t$src1, $src2, $dst1, $dst2"),
   [(set i256:$dst1, i256:$dst2, (node i256:$src1, i256:$src2))]
 > {
   bits<4> src1;
@@ -99,8 +122,8 @@ class ArithmeticTwoSourcesTwoDestinations<
   let Inst{235-232} = dst2;
 }
 
-// Two destination instructions that dispose on of its results
-class ArithmeticRZRR <
+// The first destination disposes of its result
+class ArithmeticRRZR <
   bits<8> opcode,
   string name,
   SDNode node
@@ -108,28 +131,7 @@ class ArithmeticRZRR <
   opcode,
   (outs GR256:$dst),
   (ins GR256:$src1, GR256:$src2),
-  !strconcat(name, "\t$dst, r0, $src1, $src2"),
-  [(set i256:$dst, (node i256:$src1, i256:$src2))]
-> {
-  bits<4> src1;
-  bits<4> src2;
-  bits<4> dst;
-
-  let Inst{247-244} = src1;
-  let Inst{243-240} = src2;
-  let Inst{239-236} = dst;
-  let Inst{235-232} = 0;
-}
-
-class ArithmeticZRRR <
-  bits<8> opcode,
-  string name,
-  SDNode node
-> : SyncVMInstruction <
-  opcode,
-  (outs GR256:$dst),
-  (ins GR256:$src1, GR256:$src2),
-  !strconcat(name, "\tr0, $dst, $src1, $src2"),
+  !strconcat(name, "\t$src1, $src2, r0, $dst"),
   [(set i256:$dst, (node i256:$src1, i256:$src2))]
 > {
   bits<4> src1;
@@ -142,6 +144,28 @@ class ArithmeticZRRR <
   let Inst{235-232} = dst;
 }
 
+// The second destination disposes of its result
+class ArithmeticRRRZ <
+  bits<8> opcode,
+  string name,
+  SDNode node
+> : SyncVMInstruction <
+  opcode,
+  (outs GR256:$dst),
+  (ins GR256:$src1, GR256:$src2),
+  !strconcat(name, "\t$src1, $src2, $dst, r0"),
+  [(set i256:$dst, (node i256:$src1, i256:$src2))]
+> {
+  bits<4> src1;
+  bits<4> src2;
+  bits<4> dst;
+
+  let Inst{247-244} = src1;
+  let Inst{243-240} = src2;
+  let Inst{239-236} = dst;
+  let Inst{235-232} = 0;
+}
+
 
 //===----------------------------------------------------------------------===//
 // Immediate loading operation with one destination
@@ -149,23 +173,20 @@ class ArithmeticZRRR <
 
 class Immediate<
   bits<8> opcode,
-  dag outs,
-  dag ins,
-  string asmstr,
-  list<dag> pattern
+  string name
 > : SyncVMInstruction<
   opcode,
-  outs,
-  ins,
-  asmstr,
-  pattern
+  (outs GR256:$dst),
+  (ins i128imm:$imm),
+  !strconcat(name, "\t$imm, $dst"),
+  [(set i256:$dst, imm:$imm)]
 > {
   bits<4>   dst;
-  bits<128> val;
+  bits<128> imm;
   bit       is_high;
 
   let Inst{247-244} = dst;
-  let Inst{243-116} = val;
+  let Inst{243-116} = imm;
   let Inst{115}     = is_high;
 }
 
