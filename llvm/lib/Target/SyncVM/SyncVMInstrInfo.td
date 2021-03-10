@@ -7,10 +7,27 @@
 include "SyncVMInstrFormats.td"
 
 //===----------------------------------------------------------------------===//
-// SyncVM Specific Node Definitions.
+// SyncVM specific node definitions.
 //===----------------------------------------------------------------------===//
+
 def SyncVMret : SDNode<"SyncVMISD::RET", SDTNone,
                        [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+
+
+
+//===----------------------------------------------------------------------===//
+// SyncVM data classes.
+//===----------------------------------------------------------------------===//
+
+def ImmediateSrc : Operand<i128> {
+//  let ParserMatchClass = MemAsmOperand;
+//  let PrintMethod = "printSrcMemOperand";
+//  let DecoderMethod = "DecodeMemOperand";
+//  let EncoderMethod = "getMemOpValue";
+
+  let MIOperandInfo = (ops GR256, i128imm);
+}
+
 
 
 //===----------------------------------------------------------------------===//
@@ -19,19 +36,21 @@ def SyncVMret : SDNode<"SyncVMISD::RET", SDTNone,
 
 def NOOP : Empty< 0x00, "noop", [] >;
 
+
+
 //===----------------------------------------------------------------------===//
 // Arithmetic
 //===----------------------------------------------------------------------===//
 
-def ADDrrr     : ArithmeticTwoSourcesOneDestination< 0x01, "add", add >;
-def SUBrrr     : ArithmeticTwoSourcesOneDestination< 0x02, "sub", sub >;
-def MULrzrr    : ArithmeticRZRR< 0x03, "mul", mul >;
-// div/rem instruction
-// TODO: results in decoding conflict, consider other approach to generate div
-def DIVrrr     : ArithmeticRZRR< 0x04, "div", udiv >;
-def REMrrr     : ArithmeticZRRR< 0x04, "div", urem >;
+def ADDrrr     : ArithmeticRRR< 0x01, "add", add >;
+def SUBrrr     : ArithmeticRRR< 0x02, "sub", sub >;
+def MULrrrz    : ArithmeticRRRZ< 0x03, "mul", mul >;
+def DIVrrrz    : ArithmeticRRRZ< 0x04, "div", udiv >;
+def REMrrzr    : ArithmeticRRZR< 0x04, "div", urem >;
 // TODO: needs logic in isel lowering to be generated
-def DIVREMrrrr : ArithmeticTwoSourcesTwoDestinations< 0x04, "div", udivrem >;
+def DIVREMrrrr : ArithmeticRRRR< 0x04, "div", udivrem >;
+
+
 
 //===----------------------------------------------------------------------===//
 // Control flow instructions
@@ -40,20 +59,16 @@ def DIVREMrrrr : ArithmeticTwoSourcesTwoDestinations< 0x04, "div", udivrem >;
 let isReturn = 1, isTerminator = 1, isBarrier = 1 in
 def RET : SyncVMInstruction<0x42, (outs), (ins), "ret", [(SyncVMret)]>;
 
-////===----------------------------------------------------------------------===//
-//// The LOAD constant immediate instruction
-////===----------------------------------------------------------------------===//
-//
-//def LOAD : Immediate<
-//  0x05,
-//  (outs GR256:$dst),
-//  (ins),
-//  "load",
-//  []
-//>;
-//
-//
-//
+
+
+//===----------------------------------------------------------------------===//
+// The LOAD constant immediate instruction
+//===----------------------------------------------------------------------===//
+
+def LOAD : Immediate< 0x05, "cnst" >;
+
+
+
 ////===----------------------------------------------------------------------===//
 //// The JUMP instruction
 ////===----------------------------------------------------------------------===//
