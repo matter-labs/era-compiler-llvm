@@ -4,8 +4,6 @@
 //
 //===----------------------------------------------------------------------===//
 
-
-
 //===----------------------------------------------------------------------===//
 // Generic SyncVM instruction
 //===----------------------------------------------------------------------===//
@@ -216,7 +214,7 @@ class Jump<
 //===----------------------------------------------------------------------===//
 // Call/return operation with one source
 //===----------------------------------------------------------------------===//
-
+// TODO: Fix encoding
 class Call<
   bits<8> opcode,
   dag outs,
@@ -230,17 +228,17 @@ class Call<
   asmstr,
   pattern
 > {
-  bits<4>   src;
-  bit       call_or_return;
-  bit       external_or_local;
-  bit       with_error;
-  bits<1>   flags_space;
+  bits<16>   address;
+//  bit       call_or_return;
+//  bit       external_or_local;
+//  bit       with_error;
+//  bits<1>   flags_space;
 
-  let Inst{247-244} = src;
-  let Inst{243}     = call_or_return;
-  let Inst{242}     = external_or_local;
-  let Inst{241}     = with_error;
-  let Inst{240-240} = flags_space;
+  let Inst{247-232} = address;
+//  let Inst{243}     = call_or_return;
+//  let Inst{242}     = external_or_local;
+//  let Inst{241}     = with_error;
+//  let Inst{240-240} = flags_space;
 }
 
 
