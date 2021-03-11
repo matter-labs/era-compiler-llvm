@@ -32,7 +32,7 @@ def ImmediateSrc : Operand<i256> {
 //  let DecoderMethod = "DecodeMemOperand";
 //  let EncoderMethod = "getMemOpValue";
 
-  let MIOperandInfo = (ops GR256, i128imm);
+//  let MIOperandInfo = (ops GR256, i128imm);
 }
 
 
