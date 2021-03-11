@@ -95,6 +95,28 @@ class ArithmeticRRZ<
   let Inst{239-236} = dst;
 }
 
+// Arithmetic instruction with 0 as the second argument.
+// The purpose is primarially implement MOV via ADD rSrc, r0, rDst.
+class ArithmeticRZR<
+  bits<8> opcode,
+  string name,
+  SDNode node
+> : SyncVMInstruction<
+  opcode,
+  (outs GR256:$dst),
+  (ins GR256:$src, Z256:$z),
+  !strconcat(name, "\t$src, $z, $dst"),
+  [] // Doesn't make sense for LLVM, so it's only generated, not selected
+> {
+  bits<4> src;
+  bits<4> z;
+  bits<4> dst;
+
+  let Inst{247-244} = src;
+  let Inst{243-240} = z;
+  let Inst{239-236} = dst;
+}
+
 //===----------------------------------------------------------------------===//
 // Binary operation with two source registers and two destinations
 //===----------------------------------------------------------------------===//
@@ -171,13 +193,16 @@ class ArithmeticRRRZ <
 // Immediate loading operation with one destination
 //===----------------------------------------------------------------------===//
 
+let OperandType = "OPERAND_IMMEDIATE" in
+def i256imm : Operand<i256>;
+
 class Immediate<
   bits<8> opcode,
   string name
 > : SyncVMInstruction<
   opcode,
   (outs GR256:$dst),
-  (ins i128imm:$imm),
+  (ins i256imm:$imm),
   !strconcat(name, "\t$imm, $dst"),
   [(set i256:$dst, imm:$imm)]
 > {

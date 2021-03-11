@@ -41,7 +41,11 @@ void SyncVMInstrInfo::loadRegFromStackSlot(
 void SyncVMInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                   MachineBasicBlock::iterator I,
                                   const DebugLoc &DL, MCRegister DestReg,
-                                  MCRegister SrcReg, bool KillSrc) const {}
+                                  MCRegister SrcReg, bool KillSrc) const {
+  BuildMI(MBB, I, DL, get(SyncVM::MOV), DestReg)
+    .addReg(SrcReg, getKillRegState(KillSrc))
+    .addReg(SyncVM::R0);
+}
 
 /// GetInstSize - Return the number of bytes of code the specified
 /// instruction may be.  This returns the maximum number of bytes.
