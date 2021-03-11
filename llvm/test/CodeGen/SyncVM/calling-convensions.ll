@@ -21,6 +21,16 @@ define i256 @caller2(i256 %a1, i256 %a2) nounwind {
   ret i256 %1
 }
 
+; CHECK-LABEL: caller2.swp
+define i256 @caller2.swp(i256 %a1, i256 %a2) nounwind {
+; CHECK: add	r1, r0, r3
+; CHECK: add	r2, r0, r1
+; CHECK: add	r3, r0, r2
+; CHECK: call @twoarg
+  %1 = call i256 @twoarg(i256 %a2, i256 %a1)
+  ret i256 %1
+}
+
 ; CHECK-LABEL: caller3
 define i256 @caller3(i256 %a1, i256 %a2, i256 %a3) nounwind {
 ; CHECK: call @threearg

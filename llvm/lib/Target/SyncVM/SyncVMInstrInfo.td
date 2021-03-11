@@ -58,6 +58,12 @@ def REMrrzr    : ArithmeticRRZR< 0x04, "div", urem >;
 def DIVREMrrrr : ArithmeticRRRR< 0x04, "div", udivrem >;
 
 
+//===----------------------------------------------------------------------===//
+// Operations with memory and registers
+//===----------------------------------------------------------------------===//
+
+// MOV is ADD rSrc, r0, rDst
+def MOV        : ArithmeticRZR< 0x01, "add", add >;
 
 //===----------------------------------------------------------------------===//
 // Control flow instructions
