@@ -14,8 +14,10 @@ def SDT_SyncVMCall         : SDTypeProfile<0, -1, [SDTCisPtrTy<0>]>;
 //===----------------------------------------------------------------------===//
 // SyncVM Specific Node Definitions.
 //===----------------------------------------------------------------------===//
+
 def SyncVMret   : SDNode<"SyncVMISD::RET", SDTNone,
                    [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+
 def SyncVMcall  : SDNode<"SyncVMISD::CALL", SDT_SyncVMCall,
                    [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
 
@@ -24,7 +26,7 @@ def SyncVMcall  : SDNode<"SyncVMISD::CALL", SDT_SyncVMCall,
 // SyncVM data classes.
 //===----------------------------------------------------------------------===//
 
-def ImmediateSrc : Operand<i128> {
+def ImmediateSrc : Operand<i256> {
 //  let ParserMatchClass = MemAsmOperand;
 //  let PrintMethod = "printSrcMemOperand";
 //  let DecoderMethod = "DecodeMemOperand";
