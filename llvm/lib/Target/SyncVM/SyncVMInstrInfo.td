@@ -26,7 +26,10 @@ def SyncVMcall  : SDNode<"SyncVMISD::CALL", SDT_SyncVMCall,
 // SyncVM data classes.
 //===----------------------------------------------------------------------===//
 
-def ImmediateSrc : Operand<i256> {
+def ImmediateSrc : Operand<i256>, IntImmLeaf<i256, [{
+  int64_t Val = Imm.getZExtValue();
+  return ((unsigned long) Val) <= ((1ul << 128) - 1);
+}]> {
 //  let ParserMatchClass = MemAsmOperand;
 //  let PrintMethod = "printSrcMemOperand";
 //  let DecoderMethod = "DecodeMemOperand";
