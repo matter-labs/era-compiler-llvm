@@ -10,35 +10,40 @@ include "SyncVMInstrFormats.td"
 // Type Profiles.
 //===----------------------------------------------------------------------===//
 def SDT_SyncVMCall         : SDTypeProfile<0, -1, [SDTCisPtrTy<0>]>;
+def SDT_SyncVMBrCC         : SDTypeProfile<0,  3, [SDTCisVT<0, OtherVT>,
+                                                   SDTCisVT<1, OtherVT>,
+                                                   SDTCisVT<2, i256>]>;
+def SDT_SyncVMBinary       : SDTypeProfile<0,  2, [SDTCisSameAs<0, 1>]>;
 
 //===----------------------------------------------------------------------===//
 // SyncVM Specific Node Definitions.
 //===----------------------------------------------------------------------===//
 
-def SyncVMret   : SDNode<"SyncVMISD::RET", SDTNone,
-                   [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
-
-def SyncVMcall  : SDNode<"SyncVMISD::CALL", SDT_SyncVMCall,
-                   [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
-
+def SyncVMret    : SDNode<"SyncVMISD::RET", SDTNone,
+                    [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+def SyncVMcall   : SDNode<"SyncVMISD::CALL", SDT_SyncVMCall,
+                    [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
+def SyncVMbrcc   : SDNode<"SyncVMISD::BR_CC", SDT_SyncVMBrCC,
+                    [SDNPHasChain, SDNPInGlue]>;
+def SyncVMsub    : SDNode<"SyncVMISD::SUB", SDT_SyncVMBinary, [SDNPOutGlue]>;
 
 //===----------------------------------------------------------------------===//
-// SyncVM data classes.
+// MSP430 Operand Definitions.
 //===----------------------------------------------------------------------===//
 
 def ImmediateSrc : Operand<i256>, IntImmLeaf<i256, [{
   int64_t Val = Imm.getZExtValue();
   return ((unsigned long) Val) <= ((1ul << 128) - 1);
-}]> {
-//  let ParserMatchClass = MemAsmOperand;
-//  let PrintMethod = "printSrcMemOperand";
-//  let DecoderMethod = "DecodeMemOperand";
-//  let EncoderMethod = "getMemOpValue";
+}]> {}
 
-//  let MIOperandInfo = (ops GR256, i128imm);
+// Operand for printing out a condition code.
+def cc : Operand<i256> {
+  let PrintMethod = "printCCOperand";
+  // TODO: Implement once encoding is defined.
+  //let EncoderMethod = "getCCOpValue";
 }
 
-
+def jmptarget : Operand<OtherVT>;
 
 //===----------------------------------------------------------------------===//
 // The NoOperation instruction
@@ -46,20 +51,25 @@ def ImmediateSrc : Operand<i256>, IntImmLeaf<i256, [{
 
 def NOOP : Empty< 0x00, "noop", [] >;
 
-
-
 //===----------------------------------------------------------------------===//
 // Arithmetic
 //===----------------------------------------------------------------------===//
 
-def ADDrrr     : ArithmeticRRR< 0x01, "add", add >;
-def SUBrrr     : ArithmeticRRR< 0x02, "sub", sub >;
-def MULrrrz    : ArithmeticRRRZ< 0x03, "mul", mul >;
+let isCommutable = 1 in {
+  def ADDrrr     : ArithmeticRRR<  0x01, "add", add >;
+  def MULrrrz    : ArithmeticRRRZ< 0x03, "mul", mul >;
+}
+
+def SUBrrr     : ArithmeticRRR<  0x02, "sub", sub >;
+
+let Defs = [Flags] in
+def CMP     : SyncVMInstruction<  0x02, (outs), (ins GR256:$src1, GR256:$src2),
+                        "sub\t$src1, $src2, r0", [(SyncVMsub GR256:$src1, GR256:$src2), (implicit Flags)]>;
+
 def DIVrrrz    : ArithmeticRRRZ< 0x04, "div", udiv >;
 def REMrrzr    : ArithmeticRRZR< 0x04, "div", urem >;
 // TODO: needs logic in isel lowering to be generated
 def DIVREMrrrr : ArithmeticRRRR< 0x04, "div", udivrem >;
-
 
 //===----------------------------------------------------------------------===//
 // Operations with memory and registers
@@ -71,9 +81,8 @@ def MOV        : ArithmeticRZR< 0x01, "add", add >;
 //===----------------------------------------------------------------------===//
 // Control flow instructions
 //===----------------------------------------------------------------------===//
-// TODO: opcode is not in the spec
 let isReturn = 1, isTerminator = 1, isBarrier = 1 in
-def RET : SyncVMInstruction<0x42, (outs), (ins), "ret", [(SyncVMret)]>;
+def RET : SyncVMInstruction<0x07, (outs), (ins), "ret", [(SyncVMret)]>;
 
 let isCall = 1,
     Defs = [R1, R2, R3, R4, R5, R6],
@@ -82,6 +91,10 @@ let isCall = 1,
                   "call\t$callee", [(SyncVMcall tglobaladdr:$callee)]>;
 }
 
+let isTerminator = 1, isBranch = 1, Uses = [Flags] in
+def JCC: Jump<0x08, (outs), (ins jmptarget:$dst_true, jmptarget:$dst_false, cc:$cond),
+              "j$cond\t$dst_true, $dst_false",
+              [(SyncVMbrcc bb:$dst_true, bb:$dst_false, imm:$cond)]>;
 
 //===----------------------------------------------------------------------===//
 // The LOAD constant immediate instruction
@@ -100,20 +113,6 @@ def LOAD : Immediate< 0x05, "cnst" >;
 //  (outs),
 //  (ins GR256:$src),
 //  "jump",
-//  []
-//>;
-//
-//
-//
-////===----------------------------------------------------------------------===//
-//// The CALL instruction
-////===----------------------------------------------------------------------===//
-//
-//def CALL : Call<
-//  0x07,
-//  (outs),
-//  (ins GR256:$src),
-//  "call",
 //  []
 //>;
 //
@@ -186,3 +185,4 @@ def LOAD : Immediate< 0x05, "cnst" >;
 //  "hout",
 //  []
 //>;
+

@@ -31,13 +31,7 @@ private:
   void printOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O,
                     const char *Modifier = nullptr);
   void printPCRelImmOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
-  void printSrcMemOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O,
-                          const char *Modifier = nullptr);
-  void printIndRegOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
-  void printPostIndRegOperand(const MCInst *MI, unsigned OpNo,
-                              raw_ostream &O);
   void printCCOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
-
 };
 }
 

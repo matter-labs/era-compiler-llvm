@@ -234,25 +234,22 @@ class Jump<
   asmstr,
   pattern
 > {
-  bits<4>   src;
-  bit       unconditional;
-  bit       less;
-  bit       equals;
-  bit       greater;
-  bit       src_zero;
-  bits<3>   flags_space;
+  // TODO: Encoding assumption
+  // SyncVMCC        | Z(E) | L | G
+  // UNCONDIONAL = 0 | 0    | 0 | 0
+  // EQ          = 1 | 1    | 0 | 0
+  // LT          = 2 | 0    | 1 | 0
+  // LE          = 3 | 1    | 1 | 0
+  // GT          = 4 | 0    | 0 | 1
+  // GE          = 5 | 1    | 0 | 1
+  // NE          = 6 | 0    | 1 | 1
+  bits<3>   flags;
   bits<16>  if_dst;
   bits<16>  else_dst;
 
-  let Inst{247-244} = src;
-  let Inst{243}     = unconditional;
-  let Inst{242}     = less;
-  let Inst{241}     = equals;
-  let Inst{240}     = greater;
-  let Inst{239}     = src_zero;
-  let Inst{238-236} = flags_space;
-  let Inst{235-220} = if_dst;
-  let Inst{219-204} = else_dst;
+  let Inst{247-245} = flags;
+  let Inst{245-230} = if_dst;
+  let Inst{229-214} = else_dst;
 }
 
 
