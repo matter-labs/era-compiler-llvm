@@ -47,6 +47,7 @@ public:
   const char *getTargetNodeName(unsigned Opcode) const override;
 
   SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerBR(SDValue Op, SelectionDAG &DAG) const;
 
   TargetLowering::ConstraintType
   getConstraintType(StringRef Constraint) const override {

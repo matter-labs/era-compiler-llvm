@@ -11,6 +11,21 @@
 #include "MCTargetDesc/SyncVMMCTargetDesc.h"
 #include "llvm/Target/TargetMachine.h"
 
+namespace SyncVMCC {
+// MSP430 specific condition code.
+enum CondCodes {
+  COND_NONE = 0, // unconditional
+  COND_E = 1,    // aka COND_Z
+  COND_LT = 2,
+  COND_LE = 3,
+  COND_GT = 4,
+  COND_GE = 5,
+  COND_NE = 6, // aka COND_NZ
+
+  COND_INVALID = -1
+};
+} // namespace SyncVMCC
+
 namespace llvm {
   class SyncVMTargetMachine;
 
