@@ -20,7 +20,7 @@ namespace {
 class SyncVMELFObjectWriter : public MCELFObjectTargetWriter {
 public:
   SyncVMELFObjectWriter(uint8_t OSABI)
-      : MCELFObjectTargetWriter(false, OSABI, ELF::EM_MSP430,
+      : MCELFObjectTargetWriter(false, OSABI, ELF::EM_NONE,
       /*HasRelocationAddend*/ true) {}
 
   ~SyncVMELFObjectWriter() override {}

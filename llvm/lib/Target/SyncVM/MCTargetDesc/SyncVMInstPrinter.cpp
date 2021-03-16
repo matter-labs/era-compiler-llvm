@@ -48,18 +48,32 @@ void SyncVMInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
   }
 }
 
-void SyncVMInstPrinter::printSrcMemOperand(const MCInst *MI, unsigned OpNo,
-                                           raw_ostream &O,
-                                           const char *Modifier) {
-  llvm_unreachable("Not implemented yet!");
-}
+void SyncVMInstPrinter::printCCOperand(const MCInst *MI, unsigned OpNo,
+                                       raw_ostream &O) {
+  unsigned CC = MI->getOperand(OpNo).getImm();
 
-void SyncVMInstPrinter::printIndRegOperand(const MCInst *MI, unsigned OpNo,
-                                           raw_ostream &O) {
-  llvm_unreachable("Not implemented yet!");
-}
-
-void SyncVMInstPrinter::printPostIndRegOperand(const MCInst *MI, unsigned OpNo,
-                                               raw_ostream &O) {
-  llvm_unreachable("Not implemented yet!");
+  switch (CC) {
+  default:
+    llvm_unreachable("Unsupported CC code");
+  case SyncVMCC::COND_E:
+    O << "e";
+    break;
+  case SyncVMCC::COND_NE:
+    O << "ne";
+    break;
+  case SyncVMCC::COND_LT:
+    O << "lt";
+    break;
+  case SyncVMCC::COND_LE:
+    O << "le";
+    break;
+  case SyncVMCC::COND_GT:
+    O << "gt";
+    break;
+  case SyncVMCC::COND_GE:
+    O << "ge";
+    break;
+  case SyncVMCC::COND_NONE:
+    break;
+  }
 }

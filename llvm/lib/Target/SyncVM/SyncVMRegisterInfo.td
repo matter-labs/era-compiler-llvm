@@ -42,4 +42,9 @@ def Z256 : RegisterClass<"SyncVM", [i256], 256, (add R0)>;
 def PC : SyncVMRegister<6, "pc">;
 def SP : SyncVMRegister<7, "sp">;
 
-def GR16 : RegisterClass<"SyncVM", [i16], 16, (add PC, SP)>;
+// Flags pseudo register is to model flags. SyncVM doesn't privide explicit
+// access to it, but it's needed to track impilicit def and use of flages in
+// codegen.
+def Flags : SyncVMRegister<8, "#BAD#">;
+
+def GR16 : RegisterClass<"SyncVM", [i16], 16, (add PC, SP, Flags)>;

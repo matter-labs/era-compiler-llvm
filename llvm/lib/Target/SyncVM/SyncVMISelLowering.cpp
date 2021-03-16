@@ -43,6 +43,7 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   computeRegisterProperties(STI.getRegisterInfo());
 
   setOperationAction(ISD::GlobalAddress, MVT::i16, Custom);
+  setOperationAction(ISD::BR, MVT::Other, Custom);
   // Support of truncate, sext, zext
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i1, Expand);
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i8, Expand);
@@ -50,6 +51,8 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i32, Expand);
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i64, Expand);
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i128, Expand);
+
+  //  setOperationAction(SyncVMISD::BR_CC, MVT::Other, Legal);
 }
 
 //===----------------------------------------------------------------------===//
@@ -238,11 +241,69 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 //                      Other Lowerings
 //===----------------------------------------------------------------------===//
 
+static SDValue EmitCMP(SDValue &LHS, SDValue &RHS, SDValue &TargetCC,
+                       ISD::CondCode CC, const SDLoc &DL, SelectionDAG &DAG) {
+  assert(!LHS.getValueType().isFloatingPoint() &&
+         "SyncVM doesn't support floats");
+
+  SyncVMCC::CondCodes TCC = SyncVMCC::COND_INVALID;
+  switch (CC) {
+  default:
+    llvm_unreachable("Invalid integer condition!");
+  case ISD::SETEQ:
+    TCC = SyncVMCC::COND_E; // aka COND_Z
+    // Minor optimization: if LHS is a constant, swap operands, then the
+    // constant can be folded into comparison.
+    if (LHS.getOpcode() == ISD::Constant)
+      std::swap(LHS, RHS);
+    break;
+  case ISD::SETNE:
+    TCC = SyncVMCC::COND_NE; // aka COND_NZ
+    // Minor optimization: if LHS is a constant, swap operands, then the
+    // constant can be folded into comparison.
+    if (LHS.getOpcode() == ISD::Constant)
+      std::swap(LHS, RHS);
+    break;
+  case ISD::SETULT:
+    TCC = SyncVMCC::COND_LT;
+    // Minor optimization: if LHS is a constant, swap operands, then the
+    // constant can be folded into comparison.
+    if (LHS.getOpcode() == ISD::Constant)
+      std::swap(LHS, RHS);
+    break;
+  case ISD::SETULE:
+    TCC = SyncVMCC::COND_LE;
+    // Minor optimization: if LHS is a constant, swap operands, then the
+    // constant can be folded into comparison.
+    if (LHS.getOpcode() == ISD::Constant)
+      std::swap(LHS, RHS);
+    break;
+  case ISD::SETUGT:
+    TCC = SyncVMCC::COND_GT;
+    // Minor optimization: if LHS is a constant, swap operands, then the
+    // constant can be folded into comparison.
+    if (LHS.getOpcode() == ISD::Constant)
+      std::swap(LHS, RHS);
+    break;
+  case ISD::SETUGE:
+    TCC = SyncVMCC::COND_GE;
+    // Minor optimization: if LHS is a constant, swap operands, then the
+    // constant can be folded into comparison.
+    if (LHS.getOpcode() == ISD::Constant)
+      std::swap(LHS, RHS);
+    break;
+  }
+
+  return DAG.getConstant(TCC, DL, MVT::i256);
+}
+
 SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
                                              SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
   case ISD::GlobalAddress:
     return LowerGlobalAddress(Op, DAG);
+  case ISD::BR:
+    return LowerBR(Op, DAG);
   default:
     llvm_unreachable("unimplemented operand");
   }
@@ -257,6 +318,29 @@ SDValue SyncVMTargetLowering::LowerGlobalAddress(SDValue Op,
   // Create the TargetGlobalAddress node, folding in the constant offset.
   SDValue Result = DAG.getTargetGlobalAddress(GV, SDLoc(Op), PtrVT, Offset);
   return Result;
+}
+
+SDValue SyncVMTargetLowering::LowerBR(SDValue Op, SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  SDValue Chain = Op.getOperand(0);
+  SDValue DestFalse = Op.getOperand(1);
+  if (Chain.getOpcode() != ISD::BR_CC) {
+    SDValue UnconditionalCC = DAG.getConstant(SyncVMCC::COND_NONE, DL, MVT::i8);
+    return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain,
+                       DestFalse, DestFalse, UnconditionalCC);
+  }
+
+  Op = Chain;
+  Chain = Op.getOperand(0);
+  ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(1))->get();
+  SDValue LHS = Op.getOperand(2);
+  SDValue RHS = Op.getOperand(3);
+  SDValue DestTrue = Op.getOperand(4);
+
+  SDValue TargetCC = EmitCMP(LHS, RHS, TargetCC, CC, DL, DAG);
+  SDValue Cmp = DAG.getNode(SyncVMISD::SUB, DL, MVT::Glue, LHS, RHS);
+  return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain, DestTrue,
+                     DestFalse, TargetCC, Cmp);
 }
 
 const char *SyncVMTargetLowering::getTargetNodeName(unsigned Opcode) const {
