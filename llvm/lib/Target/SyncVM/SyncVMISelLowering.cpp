@@ -51,8 +51,6 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i32, Expand);
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i64, Expand);
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i128, Expand);
-
-  //  setOperationAction(SyncVMISD::BR_CC, MVT::Other, Legal);
 }
 
 //===----------------------------------------------------------------------===//
@@ -341,6 +339,16 @@ SDValue SyncVMTargetLowering::LowerBrccBr(SDValue Op, SDValue DestFalse, SDLoc D
   SDValue LHS = Op.getOperand(2);
   SDValue RHS = Op.getOperand(3);
   SDValue DestTrue = Op.getOperand(4);
+
+  if (LHS.getOpcode() == ISD::AND && CC == ISD::SETEQ &&
+      RHS.getOpcode() == ISD::Constant &&
+      cast<ConstantSDNode>(RHS)->isNullValue() &&
+      LHS.getOperand(1).getOpcode() == ISD::Constant &&
+      cast<ConstantSDNode>(LHS.getOperand(1))->isOne() &&
+      LHS.getOperand(0).getOpcode() == ISD::TRUNCATE) {
+    LHS = LHS.getOperand(0).getOperand(0);
+    RHS = DAG.getConstant(0, DL, MVT::i256);
+  }
 
   SDValue TargetCC = EmitCMP(LHS, RHS, TargetCC, CC, DL, DAG);
   SDValue Cmp = DAG.getNode(SyncVMISD::SUB, DL, MVT::Glue, LHS, RHS);

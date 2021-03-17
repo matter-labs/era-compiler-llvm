@@ -36,6 +36,10 @@ def ImmediateSrc : Operand<i256>, IntImmLeaf<i256, [{
   return ((unsigned long) Val) <= ((1ul << 128) - 1);
 }]> {}
 
+def z256 : Operand<i256>, IntImmLeaf<i256, [{
+  return Imm.isNullValue();
+}]> {}
+
 // Operand for printing out a condition code.
 def cc : Operand<i256> {
   let PrintMethod = "printCCOperand";
@@ -62,9 +66,19 @@ let isCommutable = 1 in {
 
 def SUBrrr     : ArithmeticRRR<  0x02, "sub", sub >;
 
-let Defs = [Flags] in
-def CMP     : SyncVMInstruction<  0x02, (outs), (ins GR256:$src1, GR256:$src2),
-                        "sub\t$src1, $src2, r0", [(SyncVMsub GR256:$src1, GR256:$src2), (implicit Flags)]>;
+let Defs = [Flags] in {
+def CMPrr   : SyncVMInstruction<  0x02, (outs),
+                                  (ins GR256:$src1, GR256:$src2),
+                                  "sub\t$src1, $src2, r0",
+                                  [(SyncVMsub GR256:$src1, GR256:$src2),
+                                   (implicit Flags)] >;
+
+def CMPrz   : SyncVMInstruction<  0x02, (outs),
+                                  (ins GR256:$src1, GR256:$src2),
+                                  "sub\t$src1, r0, r0",
+                                  [(SyncVMsub GR256:$src1, z256:$src2),
+                                   (implicit Flags)] >;
+}
 
 def DIVrrrz    : ArithmeticRRRZ< 0x04, "div", udiv >;
 def REMrrzr    : ArithmeticRRZR< 0x04, "div", urem >;
@@ -91,98 +105,17 @@ let isCall = 1,
                   "call\t$callee", [(SyncVMcall tglobaladdr:$callee)]>;
 }
 
-let isTerminator = 1, isBranch = 1, Uses = [Flags] in
+let isTerminator = 1, isBranch = 1, Uses = [Flags] in {
 def JCC: Jump<0x08, (outs), (ins jmptarget:$dst_true, jmptarget:$dst_false, cc:$cond),
               "j$cond\t$dst_true, $dst_false",
               [(SyncVMbrcc bb:$dst_true, bb:$dst_false, imm:$cond)]>;
+def J: Jump<0x08, (outs), (ins jmptarget:$dst_true, jmptarget:$dst_false, GR256:$cond),
+            "j$cond\t$dst_true, $dst_false",
+            [(SyncVMbrcc bb:$dst_true, bb:$dst_false, GR256:$cond)]>;
+}
 
 //===----------------------------------------------------------------------===//
 // The LOAD constant immediate instruction
 //===----------------------------------------------------------------------===//
 
 def LOAD : Immediate< 0x05, "cnst" >;
-
-
-
-////===----------------------------------------------------------------------===//
-//// The JUMP instruction
-////===----------------------------------------------------------------------===//
-//
-//def JUMP : Jump<
-//  0x06,
-//  (outs),
-//  (ins GR256:$src),
-//  "jump",
-//  []
-//>;
-//
-//
-//
-////===----------------------------------------------------------------------===//
-//// The SWITCH context instruction
-////===----------------------------------------------------------------------===//
-//
-//def SWITCH : Empty<
-//  0x08,
-//  (outs),
-//  (ins),
-//  "swch",
-//  []
-//>;
-//
-//
-//
-////===----------------------------------------------------------------------===//
-//// The MEMORY load or store instruction
-////===----------------------------------------------------------------------===//
-//
-//def MEMORY : Memory<
-//  0x09,
-//  (outs),
-//  (ins GR256:$src1, GR256:$src2),
-//  "mmio",
-//  []
-//>;
-//
-//
-//
-////===----------------------------------------------------------------------===//
-//// The STORAGE load or store instruction
-////===----------------------------------------------------------------------===//
-//
-//def STORAGE : Storage<
-//  0x0A,
-//  (outs GR256:$dst),
-//  (ins GR256:$src1, GR256:$src2),
-//  "strg",
-//  []
-//>;
-//
-//
-//
-////===----------------------------------------------------------------------===//
-//// The HABS hash absorb instruction
-////===----------------------------------------------------------------------===//
-//
-//def HABS : Storage<
-//  0x0B,
-//  (outs),
-//  (ins GR256:$src),
-//  "habs",
-//  []
-//>;
-//
-//
-//
-////===----------------------------------------------------------------------===//
-//// The HOUT hash output instruction
-////===----------------------------------------------------------------------===//
-//
-//def HOUT : Storage<
-//  0x0C,
-//  (outs GR256:$dst),
-//  (ins),
-//  "hout",
-//  []
-//>;
-
