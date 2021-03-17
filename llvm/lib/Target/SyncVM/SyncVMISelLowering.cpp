@@ -324,14 +324,19 @@ SDValue SyncVMTargetLowering::LowerBR(SDValue Op, SelectionDAG &DAG) const {
   SDLoc DL(Op);
   SDValue Chain = Op.getOperand(0);
   SDValue DestFalse = Op.getOperand(1);
-  if (Chain.getOpcode() != ISD::BR_CC) {
-    SDValue UnconditionalCC = DAG.getConstant(SyncVMCC::COND_NONE, DL, MVT::i8);
+  switch (Chain.getOpcode()) {
+  default: {
+    SDValue UnconditionalCC = DAG.getConstant(SyncVMCC::COND_NONE, DL, MVT::i256);
     return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain,
                        DestFalse, DestFalse, UnconditionalCC);
   }
+  case ISD::BR_CC:
+    return LowerBrccBr(Chain, DestFalse, DL, DAG);
+  }
+}
 
-  Op = Chain;
-  Chain = Op.getOperand(0);
+SDValue SyncVMTargetLowering::LowerBrccBr(SDValue Op, SDValue DestFalse, SDLoc DL, SelectionDAG &DAG) const {
+  SDValue Chain = Op.getOperand(0);
   ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(1))->get();
   SDValue LHS = Op.getOperand(2);
   SDValue RHS = Op.getOperand(3);
