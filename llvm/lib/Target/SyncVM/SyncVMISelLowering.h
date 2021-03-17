@@ -49,6 +49,8 @@ public:
   SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerBR(SDValue Op, SelectionDAG &DAG) const;
 
+  SDValue LowerBrccBr(SDValue Op, SDValue DestFalse, SDLoc DL, SelectionDAG &DAG) const;
+
   TargetLowering::ConstraintType
   getConstraintType(StringRef Constraint) const override {
     return TargetLowering::ConstraintType::C_Unknown;
