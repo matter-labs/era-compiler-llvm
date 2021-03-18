@@ -10,14 +10,19 @@
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/CodeGen/TargetLoweringObjectFileImpl.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
+#include "llvm/InitializePasses.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/Support/TargetRegistry.h"
+#include "llvm/Transforms/Utils.h"
 
 using namespace llvm;
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   // Register the target.
   RegisterTargetMachine<SyncVMTargetMachine> X(getTheSyncVMTarget());
+  // TODO: optimize switch lowering
+  auto &PR = *PassRegistry::getPassRegistry();
+  initializeLowerSwitchPass(PR);
 }
 
 static std::string computeDataLayout() { return "e-p:16:8-i256:256:256"; }
@@ -56,6 +61,7 @@ public:
     return getTM<SyncVMTargetMachine>();
   }
 
+  void addIRPasses() override;
   bool addInstSelector() override;
   void addPreEmitPass() override;
 };
@@ -64,6 +70,8 @@ public:
 TargetPassConfig *SyncVMTargetMachine::createPassConfig(PassManagerBase &PM) {
   return new SyncVMPassConfig(*this, PM);
 }
+
+void SyncVMPassConfig::addIRPasses() { addPass(createLowerSwitchPass()); }
 
 bool SyncVMPassConfig::addInstSelector() {
   (void)TargetPassConfig::addInstSelector();

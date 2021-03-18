@@ -3,7 +3,7 @@
 target datalayout = "e-p:16:8-i256:256:256"
 target triple = "syncvm"
 
-; CHECK-LABEL: foo
+; CHECK-LABEL: diamond
 define i256 @diamond(i256 %p1, i256 %p2, i256 %x, i256 %y) nounwind {
   %1 = icmp ugt i256 %p1, %p2
   br i1 %1, label %l1, label %l2
