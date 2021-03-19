@@ -27,10 +27,13 @@ enum CondCodes {
 } // namespace SyncVMCC
 
 namespace llvm {
-  class SyncVMTargetMachine;
+class SyncVMTargetMachine;
 
-  FunctionPass *createSyncVMISelDag(SyncVMTargetMachine &TM,
-                                    CodeGenOpt::Level OptLevel);
+FunctionPass *createSyncVMISelDag(SyncVMTargetMachine &TM,
+                                  CodeGenOpt::Level OptLevel);
+FunctionPass *createSyncVMLowerBitwise();
+
+void initializeSyncVMLowerBitwisePass(PassRegistry &);
 
 } // end namespace llvm;
 
