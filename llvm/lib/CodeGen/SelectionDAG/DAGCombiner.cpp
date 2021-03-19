@@ -3582,6 +3582,10 @@ SDValue DAGCombiner::visitMUL(SDNode *N) {
                        DAG.getConstant(0, DL, VT), N0);
   }
 
+// TODO: The following code needs to be enabled on the architectures where it's
+// profitable to use shl. Consider implementing a check for it.
+// SyncVM local begin
+#if 0
   // fold (mul x, (1 << c)) -> x << c
   if (isConstantOrConstantVector(N1, /*NoOpaques*/ true) &&
       DAG.isKnownToBeAPowerOfTwo(N1) &&
@@ -3638,6 +3642,8 @@ SDValue DAGCombiner::visitMUL(SDNode *N) {
       return R;
     }
   }
+#endif
+// SyncVM local end
 
   // (mul (shl X, c1), c2) -> (mul X, c2 << c1)
   if (N0.getOpcode() == ISD::SHL &&
