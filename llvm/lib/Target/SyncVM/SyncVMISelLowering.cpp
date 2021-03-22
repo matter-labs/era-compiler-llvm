@@ -106,23 +106,26 @@ SyncVMTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   CCState CCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), RVLocs,
                  *DAG.getContext());
   CCInfo.AnalyzeReturn(Outs, CC_SYNCVM);
-
   SmallVector<SDValue, 4> RetOps(1, Chain);
-  SDValue Flag;
-  CCValAssign &VA = RVLocs[0];
-  Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), OutVals[0], Flag);
-  // Guarantee that all emitted copies are stuck together,
-  // avoiding something bad.
-  Flag = Chain.getValue(1);
-  RetOps.push_back(DAG.getRegister(VA.getLocReg(), VA.getLocVT()));
 
-  // OutVals.push_back(DAG.getRegister(VA.getLocReg(), VA.getLocVT()));
-  // TODO: Return instruction
-  RetOps[0] = Chain; // Update chain.
+  if (!RVLocs.empty()) {
+    SDValue Flag;
+    CCValAssign &VA = RVLocs[0];
+    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), OutVals[0], Flag);
+    // Guarantee that all emitted copies are stuck together,
+    // avoiding something bad.
+    Flag = Chain.getValue(1);
+    RetOps.push_back(DAG.getRegister(VA.getLocReg(), VA.getLocVT()));
 
-  // Add the flag if we have it.
-  if (Flag.getNode())
-    RetOps.push_back(Flag);
+    // OutVals.push_back(DAG.getRegister(VA.getLocReg(), VA.getLocVT()));
+    // TODO: Return instruction
+    RetOps[0] = Chain; // Update chain.
+
+    // Add the flag if we have it.
+    if (Flag.getNode())
+      RetOps.push_back(Flag);
+  }
+
   return DAG.getNode(SyncVMISD::RET, DL, MVT::Other, RetOps);
 }
 
