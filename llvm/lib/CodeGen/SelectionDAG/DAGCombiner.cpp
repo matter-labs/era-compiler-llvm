@@ -4219,6 +4219,9 @@ SDValue DAGCombiner::visitSDIVLike(SDValue N0, SDValue N1, SDNode *N) {
     return false;
   };
 
+// TODO: Implement architecture / profitability check
+// SyncVM local begin
+#if 0
   // fold (sdiv X, pow2) -> simple ops after legalize
   // FIXME: We check for the exact bit here because the generic lowering gives
   // better results in that case. The target-specific lowering should learn how
@@ -4269,6 +4272,8 @@ SDValue DAGCombiner::visitSDIVLike(SDValue N0, SDValue N1, SDNode *N) {
     SDValue Res = DAG.getSelect(DL, VT, IsNeg, Sub, Sra);
     return Res;
   }
+#endif
+// SyncVM local end
 
   // If integer divide is expensive and we satisfy the requirements, emit an
   // alternate sequence.  Targets may check function attributes for size/speed
@@ -4341,6 +4346,9 @@ SDValue DAGCombiner::visitUDIVLike(SDValue N0, SDValue N1, SDNode *N) {
   SDLoc DL(N);
   EVT VT = N->getValueType(0);
 
+// TODO: Implement architecture / profitability check
+// SyncVM local begin
+#if 0
   // fold (udiv x, (1 << c)) -> x >>u c
   if (isConstantOrConstantVector(N1, /*NoOpaques*/ true) &&
       DAG.isKnownToBeAPowerOfTwo(N1)) {
@@ -4352,6 +4360,8 @@ SDValue DAGCombiner::visitUDIVLike(SDValue N0, SDValue N1, SDNode *N) {
     AddToWorklist(Trunc.getNode());
     return DAG.getNode(ISD::SRL, DL, VT, N0, Trunc);
   }
+#endif
+// SyncVM local end
 
   // fold (udiv x, (shl c, y)) -> x >>u (log2(c)+y) iff c is power of 2
   if (N1.getOpcode() == ISD::SHL) {
@@ -4370,12 +4380,17 @@ SDValue DAGCombiner::visitUDIVLike(SDValue N0, SDValue N1, SDNode *N) {
     }
   }
 
+// TODO: Implement architecture / profitability check
+// SyncVM local begin
+#if 0
   // fold (udiv x, c) -> alternate
   AttributeList Attr = DAG.getMachineFunction().getFunction().getAttributes();
   if (isConstantOrConstantVector(N1) &&
       !TLI.isIntDivCheap(N->getValueType(0), Attr))
     if (SDValue Op = BuildUDIV(N))
       return Op;
+#endif
+// SyncVM local end
 
   return SDValue();
 }

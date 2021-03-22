@@ -1,4 +1,4 @@
-//===-------- SyncVMLowerBitwise.cpp - Replace bitwise operations ---------===//
+//===------- SyncVMCodegenPrepare.cpp - Replace bitwise operations --------===//
 
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
@@ -13,16 +13,16 @@
 using namespace llvm;
 
 namespace llvm {
-FunctionPass *createSyncVMLowerBitwise();
-void initializeSyncVMLowerBitwisePass(PassRegistry &);
+FunctionPass *createSyncVMCodegenPrepare();
+void initializeSyncVMCodegenPreparePass(PassRegistry &);
 } // namespace llvm
 
 namespace {
-struct SyncVMLowerBitwise : public FunctionPass {
+struct SyncVMCodegenPrepare : public FunctionPass {
 public:
   static char ID;
-  SyncVMLowerBitwise() : FunctionPass(ID) {
-    initializeSyncVMLowerBitwisePass(*PassRegistry::getPassRegistry());
+  SyncVMCodegenPrepare() : FunctionPass(ID) {
+    initializeSyncVMCodegenPreparePass(*PassRegistry::getPassRegistry());
   }
   bool runOnFunction(Function &F) override;
 
@@ -36,9 +36,9 @@ public:
 };
 } // namespace
 
-char SyncVMLowerBitwise::ID = 0;
+char SyncVMCodegenPrepare::ID = 0;
 
-INITIALIZE_PASS(SyncVMLowerBitwise, "lower-bitwise",
+INITIALIZE_PASS(SyncVMCodegenPrepare, "lower-bitwise",
                 "Replace bitwise operations with arithmetic ones", false, false)
 
 /// Replace a & b with a * b
@@ -73,7 +73,43 @@ static void replaceXor(Instruction &I) {
   I.replaceAllUsesWith(NewI);
 }
 
-bool SyncVMLowerBitwise::runOnFunction(Function &F) {
+static Value* pow2Const(ConstantInt *PowValue, IRBuilder<> &Builder) {
+  uint64_t Power = PowValue->getZExtValue();
+  APInt Pow2(PowValue->getType()->getIntegerBitWidth(),
+             1, false /* IsSigned */);
+  Pow2 <<= Power;
+  return Builder.getInt(Pow2);
+}
+static void replaceShl(Instruction &I) {
+  Value *LHS = I.getOperand(0);
+  Value *RHS = I.getOperand(1);
+  if (auto *RHSConst = dyn_cast<ConstantInt>(RHS)) {
+    IRBuilder<> Builder(&I);
+    Value *Pow2 = pow2Const(RHSConst, Builder);
+    auto *Mul = Builder.CreateMul(LHS, Pow2);
+    I.replaceAllUsesWith(Mul);
+    return;
+  }
+  // TODO: Implement
+  llvm_unreachable("Variable shifts are not supported yet");
+}
+
+static void replaceLShr(Instruction &I) {
+  Value *LHS = I.getOperand(0);
+  Value *RHS = I.getOperand(1);
+  IRBuilder<> Builder(&I);
+  if (auto *RHSConst = dyn_cast<ConstantInt>(RHS)) {
+    IRBuilder<> Builder(&I);
+    Value *Pow2 = pow2Const(RHSConst, Builder);
+    auto *Div = Builder.CreateUDiv(LHS, Pow2);
+    I.replaceAllUsesWith(Div);
+    return;
+  }
+  // TODO: Implement
+  llvm_unreachable("Variable shifts are not supported yet");
+}
+
+bool SyncVMCodegenPrepare::runOnFunction(Function &F) {
   std::vector<Instruction *> Replaced;
   for (auto &BB : F)
     for (auto &I : BB) {
@@ -90,6 +126,14 @@ bool SyncVMLowerBitwise::runOnFunction(Function &F) {
         replaceXor(I);
         Replaced.push_back(&I);
         break;
+      case Instruction::Shl:
+        replaceShl(I);
+        Replaced.push_back(&I);
+        break;
+      case Instruction::LShr:
+        replaceLShr(I);
+        Replaced.push_back(&I);
+        break;
       }
     }
   for (auto *I : Replaced)
@@ -97,6 +141,6 @@ bool SyncVMLowerBitwise::runOnFunction(Function &F) {
   return !Replaced.empty();
 }
 
-FunctionPass *llvm::createSyncVMLowerBitwise() {
-  return new SyncVMLowerBitwise();
+FunctionPass *llvm::createSyncVMCodegenPrepare() {
+  return new SyncVMCodegenPrepare();
 }
