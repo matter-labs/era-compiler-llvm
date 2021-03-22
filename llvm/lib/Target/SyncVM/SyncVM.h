@@ -31,9 +31,9 @@ class SyncVMTargetMachine;
 
 FunctionPass *createSyncVMISelDag(SyncVMTargetMachine &TM,
                                   CodeGenOpt::Level OptLevel);
-FunctionPass *createSyncVMLowerBitwise();
+FunctionPass *createSyncVMCodegenPrepare();
 
-void initializeSyncVMLowerBitwisePass(PassRegistry &);
+void initializeSyncVMCodegenPreparePass(PassRegistry &);
 
 } // end namespace llvm;
 

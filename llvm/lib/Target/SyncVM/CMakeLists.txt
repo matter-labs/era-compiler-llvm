@@ -23,7 +23,7 @@ add_llvm_target(SyncVMCodeGen
   SyncVMFrameLowering.cpp
   SyncVMISelDAGToDAG.cpp
   SyncVMISelLowering.cpp
-  SyncVMLowerBitwise.cpp
+  SyncVMCodegenPrepare.cpp
   )
 
 add_subdirectory(TargetInfo)
