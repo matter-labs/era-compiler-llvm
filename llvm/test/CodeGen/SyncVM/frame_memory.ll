@@ -33,4 +33,17 @@ define i256 @load_from_frame(i256 %par) nounwind {
   ret i256 %3
 }
 
+; CHECK-LABEL: spill
+define i256 @spill(i256 %par, i256 %par2) nounwind {
+; CHECK: mst r2, 0(sp)
+; CHECK: mst r1, 32(sp)
+  %1 = call i256 @foo()
+; CHECK: mld 0(sp), r2
+; CHECK: mld 32(sp), r3
+  %2 = add i256 %par, %1
+  %3 = add i256 %par2, %1
+  %4 = add i256 %2, %3
+  ret i256 %4
+}
+
 declare i256 @foo()
