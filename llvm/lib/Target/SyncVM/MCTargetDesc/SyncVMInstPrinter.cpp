@@ -77,3 +77,20 @@ void SyncVMInstPrinter::printCCOperand(const MCInst *MI, unsigned OpNo,
     break;
   }
 }
+
+void SyncVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
+                                        raw_ostream &O) {
+  const MCOperand &Base = MI->getOperand(OpNo);
+  const MCOperand &Disp = MI->getOperand(OpNo + 1);
+
+  // Print displacement first
+  if (Disp.isExpr())
+    Disp.getExpr()->print(O, &MAI);
+  else {
+    assert(Disp.isImm() && "Expected immediate in displacement field");
+    O << Disp.getImm();
+  }
+
+  // Print register base field
+  O << '(' << getRegisterName(Base.getReg()) << ')';
+}

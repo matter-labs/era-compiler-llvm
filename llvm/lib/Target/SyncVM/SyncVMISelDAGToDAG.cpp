@@ -48,6 +48,31 @@ struct SyncVMISelAddressMode {
   bool hasSymbolicDisplacement() const {
     return GV != nullptr || CP != nullptr || ES != nullptr || JT != -1;
   }
+
+#if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
+  LLVM_DUMP_METHOD void dump() {
+    errs() << "SyncVMISelAddressMode " << this << '\n';
+    if (BaseType == RegBase && Base.Reg.getNode() != nullptr) {
+      errs() << "Base.Reg ";
+      Base.Reg.getNode()->dump();
+    } else if (BaseType == FrameIndexBase) {
+      errs() << " Base.FrameIndex " << Base.FrameIndex << '\n';
+    }
+    errs() << " Disp " << Disp << '\n';
+    if (GV) {
+      errs() << "GV ";
+      GV->dump();
+    } else if (CP) {
+      errs() << " CP ";
+      CP->dump();
+      errs() << " Align" << Alignment.value() << '\n';
+    } else if (ES) {
+      errs() << "ES ";
+      errs() << ES << '\n';
+    } else if (JT != -1)
+      errs() << " JT" << JT << " Align" << Alignment.value() << '\n';
+  }
+#endif
 };
 } // namespace
 
@@ -66,8 +91,6 @@ private:
   }
 
   bool MatchAddress(SDValue N, SyncVMISelAddressMode &AM);
-  bool MatchWrapper(SDValue N, SyncVMISelAddressMode &AM);
-  bool MatchAddressBase(SDValue N, SyncVMISelAddressMode &AM);
 
   bool SelectInlineAsmMemoryOperand(const SDValue &Op, unsigned ConstraintID,
                                     std::vector<SDValue> &OutOps) override;
@@ -86,21 +109,26 @@ private:
 };
 } // end anonymous namespace
 
-/// MatchWrapper - Try to match SyncVMISD::Wrapper node into an addressing mode.
-/// These wrap things that will resolve down into a symbol reference.  If no
-/// match is possible, this returns true, otherwise it returns false.
-bool SyncVMDAGToDAGISel::MatchWrapper(SDValue N, SyncVMISelAddressMode &AM) {
-  return false;
-}
-
-/// MatchAddressBase - Helper for MatchAddress. Add the specified node to the
-/// specified addressing mode without any further recursion.
-bool SyncVMDAGToDAGISel::MatchAddressBase(SDValue N,
-                                          SyncVMISelAddressMode &AM) {
-  return false;
-}
-
 bool SyncVMDAGToDAGISel::MatchAddress(SDValue N, SyncVMISelAddressMode &AM) {
+  LLVM_DEBUG(errs() << "MatchAddress: "; AM.dump());
+
+  switch (N.getOpcode()) {
+  default:
+    break;
+  case ISD::Constant: {
+    uint64_t Val = cast<ConstantSDNode>(N)->getSExtValue();
+    AM.Disp += Val;
+    return false;
+  }
+  case ISD::FrameIndex:
+    if (AM.BaseType == SyncVMISelAddressMode::RegBase &&
+        AM.Base.Reg.getNode() == nullptr) {
+      AM.BaseType = SyncVMISelAddressMode::FrameIndexBase;
+      AM.Base.FrameIndex = cast<FrameIndexSDNode>(N)->getIndex();
+      return false;
+    }
+    break;
+  }
   return true;
 }
 
@@ -108,6 +136,19 @@ bool SyncVMDAGToDAGISel::MatchAddress(SDValue N, SyncVMISelAddressMode &AM) {
 /// It returns the operands which make up the maximal addressing mode it can
 /// match by reference.
 bool SyncVMDAGToDAGISel::SelectAddr(SDValue N, SDValue &Base, SDValue &Disp) {
+  SyncVMISelAddressMode AM;
+
+  if (MatchAddress(N, AM))
+    return false;
+
+  Base = (AM.BaseType == SyncVMISelAddressMode::FrameIndexBase)
+             ? CurDAG->getTargetFrameIndex(
+                   AM.Base.FrameIndex,
+                   getTargetLowering()->getPointerTy(CurDAG->getDataLayout()))
+             : AM.Base.Reg;
+
+  Disp = CurDAG->getTargetConstant(AM.Disp, SDLoc(N), MVT::i16);
+
   return true;
 }
 
