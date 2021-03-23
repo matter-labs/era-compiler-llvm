@@ -46,3 +46,33 @@ SyncVMRegisterInfo::getPointerRegClass(const MachineFunction &MF,
 Register SyncVMRegisterInfo::getFrameRegister(const MachineFunction &MF) const {
   return 0;
 }
+
+void SyncVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
+                                             int SPAdj, unsigned FIOperandNum,
+                                             RegScavenger *RS) const {
+  assert(SPAdj == 0 && "Unexpected");
+
+  MachineInstr &MI = *II;
+  MachineBasicBlock &MBB = *MI.getParent();
+  MachineFunction &MF = *MBB.getParent();
+  const SyncVMFrameLowering *TFI = getFrameLowering(MF);
+  DebugLoc dl = MI.getDebugLoc();
+  int FrameIndex = MI.getOperand(FIOperandNum).getIndex();
+
+  unsigned BasePtr = SyncVM::SP;
+  int Offset = MF.getFrameInfo().getObjectOffset(FrameIndex);
+
+  // Skip the saved PC
+  Offset += 2;
+
+  if (!TFI->hasFP(MF))
+    Offset += MF.getFrameInfo().getStackSize();
+  else
+    Offset += 2; // Skip the saved FP
+
+  // Fold imm into offset
+  Offset += MI.getOperand(FIOperandNum + 1).getImm();
+
+  MI.getOperand(FIOperandNum).ChangeToRegister(BasePtr, false);
+  MI.getOperand(FIOperandNum + 1).ChangeToImmediate(Offset);
+}

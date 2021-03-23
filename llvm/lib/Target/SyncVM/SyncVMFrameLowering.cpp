@@ -20,11 +20,7 @@
 using namespace llvm;
 
 bool SyncVMFrameLowering::hasFP(const MachineFunction &MF) const {
-  const MachineFrameInfo &MFI = MF.getFrameInfo();
-
-  return (MF.getTarget().Options.DisableFramePointerElim(MF) ||
-          MF.getFrameInfo().hasVarSizedObjects() ||
-          MFI.isFrameAddressTaken());
+  return false;
 }
 
 bool SyncVMFrameLowering::hasReservedCallFrame(const MachineFunction &MF) const {
