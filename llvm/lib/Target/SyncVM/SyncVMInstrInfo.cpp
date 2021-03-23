@@ -31,12 +31,51 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
                                           int FrameIdx,
                                           const TargetRegisterClass *RC,
                                           const TargetRegisterInfo *TRI) const {
+  DebugLoc DL;
+  if (MI != MBB.end())
+    DL = MI->getDebugLoc();
+  MachineFunction &MF = *MBB.getParent();
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+
+  MachineMemOperand *MMO = MF.getMachineMemOperand(
+      MachinePointerInfo::getFixedStack(MF, FrameIdx),
+      MachineMemOperand::MOStore, MFI.getObjectSize(FrameIdx),
+      MFI.getObjectAlign(FrameIdx));
+
+  if (RC == &SyncVM::GR256RegClass)
+    BuildMI(MBB, MI, DL, get(SyncVM::MST))
+        .addReg(SrcReg, getKillRegState(isKill))
+        .addFrameIndex(FrameIdx)
+        .addImm(0)
+        .addMemOperand(MMO);
+  else
+    llvm_unreachable("Cannot store this register to stack slot!");
 }
 
 void SyncVMInstrInfo::loadRegFromStackSlot(
     MachineBasicBlock &MBB, MachineBasicBlock::iterator MI, Register DestReg,
     int FrameIdx, const TargetRegisterClass *RC,
-    const TargetRegisterInfo *TRI) const {}
+    const TargetRegisterInfo *TRI) const {
+  DebugLoc DL;
+  if (MI != MBB.end())
+    DL = MI->getDebugLoc();
+  MachineFunction &MF = *MBB.getParent();
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+
+  MachineMemOperand *MMO = MF.getMachineMemOperand(
+      MachinePointerInfo::getFixedStack(MF, FrameIdx),
+      MachineMemOperand::MOLoad, MFI.getObjectSize(FrameIdx),
+      MFI.getObjectAlign(FrameIdx));
+
+  if (RC == &SyncVM::GR256RegClass)
+    BuildMI(MBB, MI, DL, get(SyncVM::MLD))
+        .addReg(DestReg, getDefRegState(true))
+        .addFrameIndex(FrameIdx)
+        .addImm(0)
+        .addMemOperand(MMO);
+  else
+    llvm_unreachable("Cannot store this register to stack slot!");
+}
 
 void SyncVMInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                   MachineBasicBlock::iterator I,
