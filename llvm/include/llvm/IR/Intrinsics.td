@@ -1784,3 +1784,6 @@ include "llvm/IR/IntrinsicsSystemZ.td"
 include "llvm/IR/IntrinsicsWebAssembly.td"
 include "llvm/IR/IntrinsicsRISCV.td"
 include "llvm/IR/IntrinsicsVE.td"
+// SyncVM local begin
+include "llvm/IR/IntrinsicsSyncVM.td"
+// SyncVM local end

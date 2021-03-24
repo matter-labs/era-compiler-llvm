@@ -135,7 +135,18 @@ def J: Jump<0x08, (outs), (ins jmptarget:$dst_true, jmptarget:$dst_false, GR256:
 }
 
 //===----------------------------------------------------------------------===//
-// The LOAD constant immediate instruction
+// Constants materialization
 //===----------------------------------------------------------------------===//
 
 def LOAD : Immediate< 0x05, "cnst" >;
+
+//===----------------------------------------------------------------------===//
+// Intrinsics lowering
+//===----------------------------------------------------------------------===//
+
+def HABS: SyncVMInstruction<0x11, (outs), (ins GR256:$val),
+                            "habs\t$val", [(int_syncvm_habs GR256:$val)]>;
+def HABSR: SyncVMInstruction<0x12, (outs), (ins GR256:$val),
+                             "habsr\t$val", [(int_syncvm_habsr GR256:$val)]>;
+def HOUT: SyncVMInstruction<0x13, (outs GR256:$out), (ins),
+                            "hout\t$out", [(set GR256:$out, (int_syncvm_hout))]>;
