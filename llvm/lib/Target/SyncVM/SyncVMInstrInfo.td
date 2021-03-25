@@ -31,9 +31,9 @@ def SyncVMsub    : SDNode<"SyncVMISD::SUB", SDT_SyncVMBinary, [SDNPOutGlue]>;
 // MSP430 Operand Definitions.
 //===----------------------------------------------------------------------===//
 
-def ImmediateSrc : Operand<i256>, IntImmLeaf<i256, [{
-  int64_t Val = Imm.getZExtValue();
-  return ((unsigned long) Val) <= ((1ul << 128) - 1);
+def imm128 : Operand<i256>, IntImmLeaf<i256, [{
+  auto Cmp = APInt(256, 1, false).shl(128);
+  return Imm.ult(Cmp);
 }]> {}
 
 def z256 : Operand<i256>, IntImmLeaf<i256, [{
@@ -138,7 +138,13 @@ def J: Jump<0x08, (outs), (ins jmptarget:$dst_true, jmptarget:$dst_false, GR256:
 // Constants materialization
 //===----------------------------------------------------------------------===//
 
-def LOAD : Immediate< 0x05, "cnst" >;
+let isPseudo = 1 in
+def CONST : Pseudo< (outs GR256:$out), (ins i256imm:$val),
+                    "#pseudo#", [(set GR256:$out, imm:$val)] >;
+def MOVL  : SyncVMInstruction< 0x05, (outs GR256:$out), (ins imm128:$val),
+                               "movl\t$val, $out", [] >;
+def MOVH  : SyncVMInstruction< 0x051, (outs GR256:$out), (ins imm128:$val),
+                               "movh\t$val, $out", [] >;
 
 //===----------------------------------------------------------------------===//
 // Intrinsics lowering

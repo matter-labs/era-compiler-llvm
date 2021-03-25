@@ -31,9 +31,11 @@ class SyncVMTargetMachine;
 
 FunctionPass *createSyncVMISelDag(SyncVMTargetMachine &TM,
                                   CodeGenOpt::Level OptLevel);
-FunctionPass *createSyncVMCodegenPrepare();
+FunctionPass *createSyncVMCodegenPreparePass();
+FunctionPass *createSyncVMExpandPseudoPass();
 
 void initializeSyncVMCodegenPreparePass(PassRegistry &);
+void initializeSyncVMExpandPseudoPass(PassRegistry &);
 
 } // end namespace llvm;
 

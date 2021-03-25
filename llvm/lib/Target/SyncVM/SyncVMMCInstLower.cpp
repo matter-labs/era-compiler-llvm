@@ -6,10 +6,12 @@
 //===----------------------------------------------------------------------===//
 
 #include "SyncVMMCInstLower.h"
+
 #include "llvm/ADT/SmallString.h"
 #include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/CodeGen/MachineBasicBlock.h"
 #include "llvm/CodeGen/MachineInstr.h"
+#include "llvm/IR/Constants.h"
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/Mangler.h"
 #include "llvm/MC/MCAsmInfo.h"
@@ -19,6 +21,9 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
+
+#include "SyncVMMCExpr.h"
+
 using namespace llvm;
 
 MCSymbol *SyncVMMCInstLower::
@@ -87,19 +92,7 @@ GetBlockAddressSymbol(const MachineOperand &MO) const {
 
 MCOperand SyncVMMCInstLower::
 LowerSymbolOperand(const MachineOperand &MO, MCSymbol *Sym) const {
-  // FIXME: We would like an efficient form for this, so we don't have to do a
-  // lot of extra uniquing.
   const MCExpr *Expr = MCSymbolRefExpr::create(Sym, Ctx);
-
-  switch (MO.getTargetFlags()) {
-  default: llvm_unreachable("Unknown target flag on GV operand");
-  case 0: break;
-  }
-
-  if (!MO.isJTI() && MO.getOffset())
-    Expr = MCBinaryExpr::createAdd(Expr,
-                                   MCConstantExpr::create(MO.getOffset(), Ctx),
-                                   Ctx);
   return MCOperand::createExpr(Expr);
 }
 
@@ -125,6 +118,20 @@ void SyncVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) const {
     case MachineOperand::MO_Immediate:
       MCOp = MCOperand::createImm(MO.getImm());
       break;
+    case MachineOperand::MO_CImmediate:
+      if (MO.getCImm()->getValue().getMinSignedBits() <= 64) {
+        MCOp = MCOperand::createImm(MO.getCImm()->getZExtValue());
+      } else {
+        // To avoid a memory leak, initial size of the SmallString should be
+        // chosen enough for the entire string. Otherwise, its internal memory
+        // will be reallocated into the generic heap but not into the Ctx
+        // arena and thus never deallocated.
+        auto Str = new (Ctx) SmallString<80>();
+        MO.getCImm()->getValue().toStringUnsigned(*Str);
+        MCOp = MCOperand::createExpr(SyncVMCImmMCExpr::create(*Str, Ctx));
+      }
+      break;
+
     case MachineOperand::MO_MachineBasicBlock:
       MCOp = MCOperand::createExpr(MCSymbolRefExpr::create(
                          MO.getMBB()->getSymbol(), Ctx));
