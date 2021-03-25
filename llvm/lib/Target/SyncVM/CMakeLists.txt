@@ -17,6 +17,7 @@ add_llvm_target(SyncVMCodeGen
   SyncVMSubtarget.cpp
   SyncVMRegisterInfo.cpp
   SyncVMInstrInfo.cpp
+  SyncVMMCExpr.cpp
   SyncVMMCInstLower.cpp
   SyncVMAsmPrinter.cpp
   SyncVMMachineFunctionInfo.cpp
@@ -24,6 +25,7 @@ add_llvm_target(SyncVMCodeGen
   SyncVMISelDAGToDAG.cpp
   SyncVMISelLowering.cpp
   SyncVMCodegenPrepare.cpp
+  SyncVMExpandPseudoInsts.cpp
   )
 
 add_subdirectory(TargetInfo)

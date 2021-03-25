@@ -43,7 +43,8 @@ void SyncVMInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
     O << Op.getImm();
   } else {
     assert(Op.isExpr() && "unknown operand kind in printOperand");
-    O << '@';
+    if (isa<MCSymbolRefExpr>(Op.getExpr()))
+      O << "@";
     Op.getExpr()->print(O, &MAI);
   }
 }

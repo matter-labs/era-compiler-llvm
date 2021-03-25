@@ -402,3 +402,8 @@ class HashOutput<
 
   let Inst{247-244} = dst;
 }
+
+
+// Pseudo instructions
+class Pseudo<dag outs, dag ins, string asmstr, list<dag> pattern>
+  : SyncVMInstruction< 0, outs, ins, asmstr, pattern>;
