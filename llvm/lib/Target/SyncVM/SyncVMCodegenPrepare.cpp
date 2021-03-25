@@ -141,6 +141,6 @@ bool SyncVMCodegenPrepare::runOnFunction(Function &F) {
   return !Replaced.empty();
 }
 
-FunctionPass *llvm::createSyncVMCodegenPrepare() {
+FunctionPass *llvm::createSyncVMCodegenPreparePass() {
   return new SyncVMCodegenPrepare();
 }
