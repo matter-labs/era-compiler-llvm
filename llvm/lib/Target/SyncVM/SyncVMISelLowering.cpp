@@ -37,13 +37,13 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
     : TargetLowering(TM) {
   // Set up the register classes.
   addRegisterClass(MVT::i256, &SyncVM::GR256RegClass);
-  addRegisterClass(MVT::i16, &SyncVM::GR16RegClass);
 
   // Compute derived properties from the register classes
   computeRegisterProperties(STI.getRegisterInfo());
 
-  setOperationAction(ISD::GlobalAddress, MVT::i16, Custom);
+  setOperationAction(ISD::GlobalAddress, MVT::i256, Custom);
   setOperationAction(ISD::BR, MVT::Other, Custom);
+  setOperationAction(ISD::AND, MVT::i256, Custom);
   // Support of truncate, sext, zext
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i1, Expand);
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i8, Expand);
@@ -305,6 +305,8 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
     return LowerGlobalAddress(Op, DAG);
   case ISD::BR:
     return LowerBR(Op, DAG);
+  case ISD::AND:
+    return LowerAnd(Op, DAG);
   default:
     llvm_unreachable("unimplemented operand");
   }
@@ -334,6 +336,17 @@ SDValue SyncVMTargetLowering::LowerBR(SDValue Op, SelectionDAG &DAG) const {
   case ISD::BR_CC:
     return LowerBrccBr(Chain, DestFalse, DL, DAG);
   }
+}
+
+SDValue SyncVMTargetLowering::LowerAnd(SDValue Op, SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  EVT Ty = Op.getValueType();
+  SDValue RHS = Op.getOperand(1);
+  assert(RHS.getOpcode() == ISD::Constant && "Unsupported and");
+  APInt Val = cast<ConstantSDNode>(RHS)->getAPIntValue() + 1;
+  assert(Val.isPowerOf2() && "Unsupported and");
+  return DAG.getNode(ISD::UREM, DL, Ty, Op.getOperand(0),
+                     DAG.getConstant(Val, DL, Ty));
 }
 
 SDValue SyncVMTargetLowering::LowerBrccBr(SDValue Op, SDValue DestFalse, SDLoc DL, SelectionDAG &DAG) const {

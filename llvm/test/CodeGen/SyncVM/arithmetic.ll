@@ -1,6 +1,6 @@
 ; RUN: llc < %s | FileCheck %s
 
-target datalayout = "e-p:16:8-i256:256:256"
+target datalayout = "e-p:256:256-i256:256:256"
 target triple = "syncvm"
 
 ; CHECK-LABEL: addi256
