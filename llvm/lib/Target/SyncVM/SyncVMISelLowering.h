@@ -48,6 +48,7 @@ public:
 
   SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerBR(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerAnd(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue LowerBrccBr(SDValue Op, SDValue DestFalse, SDLoc DL, SelectionDAG &DAG) const;
 
@@ -83,7 +84,7 @@ public:
 
   bool isLegalICmpImmediate(int64_t) const override { return false; }
   bool shouldAvoidTransformToShift(EVT VT, unsigned Amount) const override {
-    return false;
+    return true;
   }
 
   MachineBasicBlock *

@@ -4428,6 +4428,8 @@ SDValue DAGCombiner::visitREM(SDNode *N) {
     if (DAG.SignBitIsZero(N1) && DAG.SignBitIsZero(N0))
       return DAG.getNode(ISD::UREM, DL, VT, N0, N1);
   } else {
+// SyncVM local begin
+#if 0
     if (DAG.isKnownToBeAPowerOfTwo(N1)) {
       // fold (urem x, pow2) -> (and x, pow2-1)
       SDValue NegOne = DAG.getAllOnesConstant(DL, VT);
@@ -4443,6 +4445,8 @@ SDValue DAGCombiner::visitREM(SDNode *N) {
       AddToWorklist(Add.getNode());
       return DAG.getNode(ISD::AND, DL, VT, N0, Add);
     }
+#endif
+// SyncVM local end
   }
 
   AttributeList Attr = DAG.getMachineFunction().getFunction().getAttributes();
