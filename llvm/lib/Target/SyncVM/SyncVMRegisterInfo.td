@@ -47,4 +47,5 @@ def SP : SyncVMRegister<7, "sp">;
 // codegen.
 def Flags : SyncVMRegister<8, "#BAD#">;
 
+let isAllocatable = 0 in
 def GR16 : RegisterClass<"SyncVM", [i16], 16, (add PC, SP, Flags)>;
