@@ -128,6 +128,11 @@ bool SyncVMDAGToDAGISel::MatchAddress(SDValue N, SyncVMISelAddressMode &AM) {
       return false;
     }
     break;
+  case ISD::TargetGlobalAddress:
+    auto *G = cast<GlobalAddressSDNode>(N);
+    AM.GV = G->getGlobal();
+    AM.Disp += G->getOffset();
+    return false;
   }
   return true;
 }
@@ -141,13 +146,22 @@ bool SyncVMDAGToDAGISel::SelectAddr(SDValue N, SDValue &Base, SDValue &Disp) {
   if (MatchAddress(N, AM))
     return false;
 
+  // TODO: Hack (constant is used to designate immediate addressing mode),
+  // redesign.
+  if (AM.BaseType == SyncVMISelAddressMode::RegBase)
+    if (!AM.Base.Reg.getNode())
+      AM.Base.Reg = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
+
   Base = (AM.BaseType == SyncVMISelAddressMode::FrameIndexBase)
              ? CurDAG->getTargetFrameIndex(
                    AM.Base.FrameIndex,
                    getTargetLowering()->getPointerTy(CurDAG->getDataLayout()))
              : AM.Base.Reg;
-
-  Disp = CurDAG->getTargetConstant(AM.Disp, SDLoc(N), MVT::i16);
+  if (AM.GV)
+    Disp = CurDAG->getTargetGlobalAddress(AM.GV, SDLoc(N), MVT::i256, AM.Disp,
+                                          0 /*AM.SymbolFlags*/);
+  else
+    Disp = CurDAG->getTargetConstant(AM.Disp, SDLoc(N), MVT::i16);
 
   return true;
 }

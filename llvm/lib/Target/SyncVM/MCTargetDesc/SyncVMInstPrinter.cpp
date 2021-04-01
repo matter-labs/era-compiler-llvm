@@ -84,6 +84,9 @@ void SyncVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
   const MCOperand &Base = MI->getOperand(OpNo);
   const MCOperand &Disp = MI->getOperand(OpNo + 1);
 
+  if (!Disp.isReg())
+    O << "@";
+
   // Print displacement first
   if (Disp.isExpr())
     Disp.getExpr()->print(O, &MAI);
@@ -93,5 +96,6 @@ void SyncVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
   }
 
   // Print register base field
-  O << '(' << getRegisterName(Base.getReg()) << ')';
+  if (Disp.isReg())
+    O << '(' << getRegisterName(Base.getReg()) << ')';
 }
