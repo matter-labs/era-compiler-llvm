@@ -7,14 +7,14 @@ target triple = "syncvm"
 
 ; CHECK-LABEL: store_to_global
 define void @store_to_global(i256 %par) nounwind {
-; CHECK: mst @val, r1
+; CHECK: mst r1, @val
   store i256 %par, i256* @val
   ret void
 }
 
 ; CHECK-LABEL: load_from_global
 define i256 @load_from_global() nounwind {
-; CHECK: mld r1, @val
+; CHECK: mld @val, r1
   %1 = load i256, i256* @val
   ret i256 %1
 }

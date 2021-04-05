@@ -132,6 +132,11 @@ bool SyncVMDAGToDAGISel::MatchAddress(SDValue N, SyncVMISelAddressMode &AM) {
     auto *G = cast<GlobalAddressSDNode>(N);
     AM.GV = G->getGlobal();
     AM.Disp += G->getOffset();
+    // Ext loads, trunc stores has offset in bits
+    if ((isa<StoreSDNode>(N) && cast<StoreSDNode>(N)->isTruncatingStore()) ||
+        (isa<LoadSDNode>(N) &&
+         cast<LoadSDNode>(N)->getExtensionType() != ISD::NON_EXTLOAD))
+      AM.Disp /= 8;
     return false;
   }
   return true;
@@ -143,8 +148,12 @@ bool SyncVMDAGToDAGISel::MatchAddress(SDValue N, SyncVMISelAddressMode &AM) {
 bool SyncVMDAGToDAGISel::SelectAddr(SDValue N, SDValue &Base, SDValue &Disp) {
   SyncVMISelAddressMode AM;
 
-  if (MatchAddress(N, AM))
+  if (MatchAddress(N, AM)) {
+    LLVM_DEBUG(errs() << "Failed to match address.");
     return false;
+  } else {
+    LLVM_DEBUG(errs() << "Matched: "; AM.dump());
+  }
 
   // TODO: Hack (constant is used to designate immediate addressing mode),
   // redesign.

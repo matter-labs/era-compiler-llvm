@@ -49,6 +49,7 @@ public:
   SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerBR(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerAnd(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerStore(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue LowerBrccBr(SDValue Op, SDValue DestFalse, SDLoc DL, SelectionDAG &DAG) const;
 
