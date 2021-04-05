@@ -44,6 +44,7 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::GlobalAddress, MVT::i256, Custom);
   setOperationAction(ISD::BR, MVT::Other, Custom);
   setOperationAction(ISD::AND, MVT::i256, Custom);
+  setOperationAction(ISD::TRUNCATE, MVT::i64, Promote);
   // Support of truncate, sext, zext
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i1, Expand);
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i8, Expand);
@@ -307,6 +308,8 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
     return LowerBR(Op, DAG);
   case ISD::AND:
     return LowerAnd(Op, DAG);
+  case ISD::STORE:
+    return LowerStore(Op, DAG);
   default:
     llvm_unreachable("unimplemented operand");
   }
@@ -347,6 +350,23 @@ SDValue SyncVMTargetLowering::LowerAnd(SDValue Op, SelectionDAG &DAG) const {
   assert(Val.isPowerOf2() && "Unsupported and");
   return DAG.getNode(ISD::UREM, DL, Ty, Op.getOperand(0),
                      DAG.getConstant(Val, DL, Ty));
+}
+
+SDValue SyncVMTargetLowering::LowerStore(SDValue Op, SelectionDAG &DAG) const {
+  llvm::outs() << "Lower store\n";
+  /*
+  StoreSDNode *SD = cast<StoreSDNode>(Op);
+  EVT MemVT = SD->getMemoryVT();
+  SDLoc DL(Op);
+  EVT Ty = Op.getValueType();
+  SDValue RHS = Op.getOperand(1);
+  assert(RHS.getOpcode() == ISD::Constant && "Unsupported and");
+  APInt Val = cast<ConstantSDNode>(RHS)->getAPIntValue() + 1;
+  assert(Val.isPowerOf2() && "Unsupported and");
+  return DAG.getNode(ISD::UREM, DL, Ty, Op.getOperand(0),
+                     DAG.getConstant(Val, DL, Ty));
+                     */
+  return {};
 }
 
 SDValue SyncVMTargetLowering::LowerBrccBr(SDValue Op, SDValue DestFalse, SDLoc DL, SelectionDAG &DAG) const {
