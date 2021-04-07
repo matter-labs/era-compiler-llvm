@@ -1,4 +1,6 @@
-#!/bin/bash -Cex
+#!/usr/bin/env bash
+
+set -Cex
 
 cmake \
     -S 'llvm' \
@@ -6,7 +8,7 @@ cmake \
     -G 'Unix Makefiles' \
     -DCMAKE_INSTALL_PREFIX="${HOME}/opt/llvm/" \
     -DCMAKE_BUILD_TYPE='Debug' \
-    -DLLVM_TARGETS_TO_BUILD='' \
+    -DLLVM_TARGETS_TO_BUILD='X86' \
     -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD='SyncVM' \
     -DLLVM_ENABLE_ASSERTIONS='On' \
     -DLLVM_OPTIMIZED_TABLEGEN='On' \
