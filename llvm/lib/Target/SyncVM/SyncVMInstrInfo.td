@@ -121,6 +121,9 @@ def MLD        : SyncVMInstruction< 0x10, (outs GR256:$val), (ins memop:$addr),
 def MLDe       : SyncVMInstruction< 0x10, (outs GR256:$val), (ins memop:$addr),
                                     "mld\t$addr, $val",
                                     [(set GR256:$val, (extload addr:$addr))]>;
+def MLDz       : SyncVMInstruction< 0x10, (outs GR256:$val), (ins memop:$addr),
+                                    "mld\t$addr, $val",
+                                    [(set GR256:$val, (zextload addr:$addr))]>;
 }
 
 //===----------------------------------------------------------------------===//

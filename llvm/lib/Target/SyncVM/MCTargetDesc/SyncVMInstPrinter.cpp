@@ -88,9 +88,9 @@ void SyncVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
     O << "@";
 
   // Print displacement first
-  if (Disp.isExpr())
+  if (Disp.isExpr()) {
     Disp.getExpr()->print(O, &MAI);
-  else {
+  } else {
     assert(Disp.isImm() && "Expected immediate in displacement field");
     O << Disp.getImm();
   }

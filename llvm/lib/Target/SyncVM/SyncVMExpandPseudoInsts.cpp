@@ -55,7 +55,6 @@ void SyncVMExpandPseudo::expandConst(MachineInstr &MI) const {
                                        : APInt(256, Constant.getImm(), true);
   APInt ValLo = Val.shl(128).lshr(128);
   APInt ValHi = Val.lshr(128);
-  llvm::outs() << ValLo << "\n" << ValHi << "\n";
   BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(SyncVM::MOVL))
       .add(Reg)
       .addCImm(ConstantInt::get(*Context, ValLo));
