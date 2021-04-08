@@ -91,6 +91,7 @@ private:
   }
 
   bool MatchAddress(SDValue N, SyncVMISelAddressMode &AM);
+  bool MatchAddressBase(SDValue N, SyncVMISelAddressMode &AM);
 
   bool SelectInlineAsmMemoryOperand(const SDValue &Op, unsigned ConstraintID,
                                     std::vector<SDValue> &OutOps) override;
@@ -109,18 +110,35 @@ private:
 };
 } // end anonymous namespace
 
+/// MatchAddressBase - Helper for MatchAddress. Add the specified node to the
+/// specified addressing mode without any further recursion.
+bool SyncVMDAGToDAGISel::MatchAddressBase(SDValue N,
+                                          SyncVMISelAddressMode &AM) {
+  // Is the base register already occupied?
+  if (AM.BaseType != SyncVMISelAddressMode::RegBase || AM.Base.Reg.getNode()) {
+    // If so, we cannot select it.
+    return true;
+  }
+
+  // Default, generate it as a register.
+  AM.BaseType = SyncVMISelAddressMode::RegBase;
+  AM.Base.Reg = N;
+  return false;
+}
+
 bool SyncVMDAGToDAGISel::MatchAddress(SDValue N, SyncVMISelAddressMode &AM) {
   LLVM_DEBUG(errs() << "MatchAddress: "; AM.dump());
 
   switch (N.getOpcode()) {
-  default:
+  default: {
     break;
+  }
   case ISD::Constant: {
     uint64_t Val = cast<ConstantSDNode>(N)->getSExtValue();
     AM.Disp += Val;
     return false;
   }
-  case ISD::FrameIndex:
+  case ISD::FrameIndex: {
     if (AM.BaseType == SyncVMISelAddressMode::RegBase &&
         AM.Base.Reg.getNode() == nullptr) {
       AM.BaseType = SyncVMISelAddressMode::FrameIndexBase;
@@ -128,7 +146,8 @@ bool SyncVMDAGToDAGISel::MatchAddress(SDValue N, SyncVMISelAddressMode &AM) {
       return false;
     }
     break;
-  case ISD::TargetGlobalAddress:
+  }
+  case ISD::TargetGlobalAddress: {
     auto *G = cast<GlobalAddressSDNode>(N);
     AM.GV = G->getGlobal();
     AM.Disp += G->getOffset();
@@ -139,7 +158,21 @@ bool SyncVMDAGToDAGISel::MatchAddress(SDValue N, SyncVMISelAddressMode &AM) {
       AM.Disp /= 8;
     return false;
   }
-  return true;
+  case ISD::ADD: {
+    SyncVMISelAddressMode Backup = AM;
+    if (!MatchAddress(N.getNode()->getOperand(0), AM) &&
+        !MatchAddress(N.getNode()->getOperand(1), AM))
+      return false;
+    AM = Backup;
+    if (!MatchAddress(N.getNode()->getOperand(1), AM) &&
+        !MatchAddress(N.getNode()->getOperand(0), AM))
+      return false;
+    AM = Backup;
+
+    break;
+  }
+  }
+  return MatchAddressBase(N, AM);
 }
 
 /// SelectAddr - returns true if it is able pattern match an addressing mode.

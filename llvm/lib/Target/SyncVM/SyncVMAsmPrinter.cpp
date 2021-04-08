@@ -45,8 +45,6 @@ namespace {
     void PrintSymbolOperand(const MachineOperand &MO, raw_ostream &O) override;
     void printOperand(const MachineInstr *MI, int OpNum,
                       raw_ostream &O, const char* Modifier = nullptr);
-    void printSrcMemOperand(const MachineInstr *MI, int OpNum,
-                            raw_ostream &O);
     bool PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
                          const char *ExtraCode, raw_ostream &O) override;
     bool PrintAsmMemoryOperand(const MachineInstr *MI, unsigned OpNo,
@@ -59,7 +57,12 @@ namespace {
 
 void SyncVMAsmPrinter::PrintSymbolOperand(const MachineOperand &MO,
                                           raw_ostream &O) {
-  llvm_unreachable("Not implemented yet!");
+  uint64_t Offset = MO.getOffset();
+  if (Offset)
+    O << '(' << Offset << '+';
+  getSymbol(MO.getGlobal())->print(O, MAI);
+  if (Offset)
+    O << ')';
 }
 
 void SyncVMAsmPrinter::printOperand(const MachineInstr *MI, int OpNum,
@@ -78,11 +81,6 @@ void SyncVMAsmPrinter::printOperand(const MachineInstr *MI, int OpNum,
     PrintSymbolOperand(MO, O);
     return;
   }
-}
-
-void SyncVMAsmPrinter::printSrcMemOperand(const MachineInstr *MI, int OpNum,
-                                          raw_ostream &O) {
-  llvm_unreachable("Not implemented yet!");
 }
 
 /// PrintAsmOperand - Print out an operand for an inline asm expression.

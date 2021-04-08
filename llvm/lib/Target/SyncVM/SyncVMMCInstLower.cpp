@@ -93,6 +93,17 @@ GetBlockAddressSymbol(const MachineOperand &MO) const {
 MCOperand SyncVMMCInstLower::
 LowerSymbolOperand(const MachineOperand &MO, MCSymbol *Sym) const {
   const MCExpr *Expr = MCSymbolRefExpr::create(Sym, Ctx);
+
+  switch (MO.getTargetFlags()) {
+  default:
+    llvm_unreachable("Unknown target flag on GV operand");
+  case 0:
+    break;
+  }
+
+  if (MO.getOffset())
+    Expr = MCBinaryExpr::createAdd(
+        Expr, MCConstantExpr::create(MO.getOffset(), Ctx), Ctx);
   return MCOperand::createExpr(Expr);
 }
 
