@@ -23,5 +23,5 @@ has_disassembler = 1
 type = Library
 name = SyncVMCodeGen
 parent = SyncVM
-required_libraries = AsmPrinter CodeGen Core MC SyncVMDesc SyncVMInfo SelectionDAG Support Target TransformUtils
+required_libraries = Analysis AsmPrinter CodeGen Core MC SyncVMDesc SyncVMInfo SelectionDAG Support Target TransformUtils
 add_to_library_groups = SyncVM

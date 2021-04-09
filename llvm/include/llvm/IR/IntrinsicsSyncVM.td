@@ -14,4 +14,7 @@ def int_syncvm_habsr: Intrinsic<[], [llvm_i256_ty], []>;
 // Return has computation results.
 def int_syncvm_hout: Intrinsic<[llvm_i256_ty], [], []>;
 
+// Call an external contract
+def int_syncvm_call: Intrinsic<[llvm_ptr_ty], [llvm_vararg_ty], []>;
+
 }
