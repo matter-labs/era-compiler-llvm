@@ -27,6 +27,9 @@ add_llvm_target(SyncVMCodeGen
   SyncVMCodegenPrepare.cpp
   SyncVMExpandPseudoInsts.cpp
   SyncVMLowerIntrinsics.cpp
+
+  DEPENDS
+  intrinsics_gen
   )
 
 add_subdirectory(TargetInfo)
