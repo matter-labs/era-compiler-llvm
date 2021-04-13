@@ -34,6 +34,7 @@ public:
   TargetLoweringObjectFile *getObjFileLowering() const override {
     return TLOF.get();
   }
+  TargetTransformInfo getTargetTransformInfo(const Function &F) override;
 
 }; // SyncVMTargetMachine.
 

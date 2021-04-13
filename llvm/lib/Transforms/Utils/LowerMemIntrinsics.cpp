@@ -192,10 +192,13 @@ void llvm::createMemCpyLoopUnknownSize(Instruction *InsertBefore,
       LoopBuilder.CreateAdd(LoopIndex, ConstantInt::get(CopyLenType, 1U));
   LoopIndex->addIncoming(NewIndex, LoopBB);
 
-  if (!LoopOpIsInt8) {
-   // Add in the
-   Value *RuntimeResidual = PLBuilder.CreateURem(CopyLen, CILoopOpSize);
-   Value *RuntimeBytesCopied = PLBuilder.CreateSub(CopyLen, RuntimeResidual);
+  // SyncVM local begin
+  // TODO: Dirty hack
+  if (!LoopOpIsInt8 && LoopOpSize != 32) {
+    // SyncVM local end
+    // Add in the
+    Value *RuntimeResidual = PLBuilder.CreateURem(CopyLen, CILoopOpSize);
+    Value *RuntimeBytesCopied = PLBuilder.CreateSub(CopyLen, RuntimeResidual);
 
     // Loop body for the residual copy.
     BasicBlock *ResLoopBB = BasicBlock::Create(Ctx, "loop-memcpy-residual",

@@ -25,14 +25,14 @@ define i256 @hout() nounwind {
 }
 
 ; CHECK-LABEL: memcpy00
-define void @memcpy00(i256* %dest, i256* %src, i256 %size) {
-  call void @llvm.memcpy.p0i256.p0i256.i256(i256* %dest, i256* %src, i256 %size, i1 false)
+define void @memcpy00(i256* align 256 %dest, i256* align 256 %src, i256 %size) {
+  call void @llvm.memcpy.p0i256.p0i256.i256(i256* align 256 %dest, i256* align 256 %src, i256 %size, i1 false)
   ret void
 }
 
 ; CHECK-LABEL: memmov00
-define void @memmov00(i256* %dest, i256* %src, i256 %size) {
-  call void @llvm.memmov.p0i256.p0i256.i256(i256* %dest, i256* %src, i256 %size, i1 false)
+define void @memmov00(i256* align 256 %dest, i256* align 256 %src, i256 %size) {
+  call void @llvm.memmov.p0i256.p0i256.i256(i256* align 256 %dest, i256* align 256 %src, i256 %size, i1 false)
   ret void
 }
 
