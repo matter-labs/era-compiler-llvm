@@ -102,28 +102,17 @@ def DIVREMrrrr : ArithmeticRRRR< 0x04, "div", udivrem >;
 //===----------------------------------------------------------------------===//
 
 // MOV is ADD rSrc, r0, rDst
-def MOV        : ArithmeticRZR< 0x01, "add", add >;
+def MOVrr      : ArithmeticRZR< 0x01, "add", add >;
 let mayStore = 1 in {
-def MST        : SyncVMInstruction< 0x09, (outs), (ins GR256:$val, memop:$dst),
-                                    "mst\t$val, $dst",
-                                    [(store GR256:$val, addr:$dst)]>;
-// TODO: SyncVM doesn't really have truncstores. Fix.
-def MSTt       : SyncVMInstruction< 0x09, (outs), (ins GR256:$val, memop:$dst),
-                                    "mst\t$val, $dst",
-                                    [(truncstore GR256:$val, addr:$dst)]>;
+def MOVrm      : SyncVMInstruction< 0x09, (outs), (ins GR256:$val, memop:$dst),
+                                    "mov\t$val, $dst",
+                                    [(unindexedstore GR256:$val, addr:$dst)]>;
 }
 
 let mayLoad = 1 in {
-def MLD        : SyncVMInstruction< 0x10, (outs GR256:$val), (ins memop:$addr),
-                                    "mld\t$addr, $val",
-                                    [(set GR256:$val, (load addr:$addr))]>;
-// TODO: SyncVM doesn't really have extstores. Fix.
-def MLDe       : SyncVMInstruction< 0x10, (outs GR256:$val), (ins memop:$addr),
-                                    "mld\t$addr, $val",
-                                    [(set GR256:$val, (extload addr:$addr))]>;
-def MLDz       : SyncVMInstruction< 0x10, (outs GR256:$val), (ins memop:$addr),
-                                    "mld\t$addr, $val",
-                                    [(set GR256:$val, (zextload addr:$addr))]>;
+def MOVmr      : SyncVMInstruction< 0x10, (outs GR256:$val), (ins memop:$addr),
+                                    "mov\t$addr, $val",
+                                    [(set GR256:$val, (unindexedload addr:$addr))]>;
 }
 
 //===----------------------------------------------------------------------===//
