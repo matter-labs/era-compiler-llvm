@@ -5,7 +5,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "SyncVMTargetMachine.h"
-#include "SyncVM.h"
+
 #include "TargetInfo/SyncVMTargetInfo.h"
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/CodeGen/TargetLoweringObjectFileImpl.h"
@@ -14,6 +14,9 @@
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/Support/TargetRegistry.h"
 #include "llvm/Transforms/Utils.h"
+
+#include "SyncVM.h"
+#include "SyncVMTargetTransformInfo.h"
 
 using namespace llvm;
 
@@ -52,6 +55,11 @@ SyncVMTargetMachine::SyncVMTargetMachine(const Target &T, const Triple &TT,
 }
 
 SyncVMTargetMachine::~SyncVMTargetMachine() {}
+
+TargetTransformInfo
+SyncVMTargetMachine::getTargetTransformInfo(const Function &F) {
+  return TargetTransformInfo(SyncVMTTIImpl(this, F));
+}
 
 namespace {
 /// SyncVM Code Generator Pass Configuration Options.
