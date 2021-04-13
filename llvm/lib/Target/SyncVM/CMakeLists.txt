@@ -27,6 +27,7 @@ add_llvm_target(SyncVMCodeGen
   SyncVMCodegenPrepare.cpp
   SyncVMExpandPseudoInsts.cpp
   SyncVMLowerIntrinsics.cpp
+  SyncVMTargetTransformInfo.cpp
 
   DEPENDS
   intrinsics_gen
