@@ -30,6 +30,18 @@ define void @memcpy00(i256* align 256 %dest, i256* align 256 %src, i256 %size) {
   ret void
 }
 
+; CHECK-LABEL: memcpy02
+define void @memcpy02(i256* align 256 %dest, i256 addrspace(2)* align 256 %src, i256 %size) {
+  call void @llvm.memcpy.p0i256.p2i256.i256(i256* align 256 %dest, i256 addrspace(2)* align 256 %src, i256 %size, i1 false)
+  ret void
+}
+
+; CHECK-LABEL: memcpy30
+define void @memcpy30(i256 addrspace(3)* align 256 %dest, i256* align 256 %src, i256 %size) {
+  call void @llvm.memcpy.p3i256.p0i256.i256(i256 addrspace(3)* align 256 %dest, i256* align 256 %src, i256 %size, i1 false)
+  ret void
+}
+
 ; CHECK-LABEL: memmov00
 define void @memmov00(i256* align 256 %dest, i256* align 256 %src, i256 %size) {
   call void @llvm.memmov.p0i256.p0i256.i256(i256* align 256 %dest, i256* align 256 %src, i256 %size, i1 false)
@@ -47,5 +59,7 @@ declare void @llvm.syncvm.habs(i256 %in)
 declare void @llvm.syncvm.habsr(i256 %in)
 declare i256 @llvm.syncvm.hout()
 declare void @llvm.memcpy.p0i256.p0i256.i256(i256*, i256*, i256, i1)
+declare void @llvm.memcpy.p0i256.p2i256.i256(i256*, i256 addrspace(2)*, i256, i1)
+declare void @llvm.memcpy.p3i256.p0i256.i256(i256 addrspace(3)*, i256*, i256, i1)
 declare void @llvm.memmov.p0i256.p0i256.i256(i256*, i256*, i256, i1)
 declare void @llvm.memset.p0i256.i256(i256*, i8, i256, i1)
