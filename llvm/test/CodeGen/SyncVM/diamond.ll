@@ -12,7 +12,7 @@ l1:
   br label %exit
 l2:
   %3 = add i256 %p2, %y
-; CHECK: j	@.LBB0_3, @.LBB0_3
+; CHECK: j .LBB0_3, .LBB0_3
   br label %exit
 exit:
   %4 = phi i256 [ %2, %l1  ], [ %3, %l2 ]

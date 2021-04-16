@@ -142,10 +142,10 @@ def MOVrm      : SyncVMInstruction< 0x090, (outs), (ins GR256:$val, memop:$dst),
                                     "mov\t$val, $dst",
                                     [(store_flat GR256:$val, addr:$dst)]>;
 def MOVrp      : SyncVMInstruction< 0x091, (outs), (ins GR256:$val, memop:$dst),
-                                    "movp\t$val, $dst",
+                                    "mov.p\t$val, $dst",
                                     [(store_parent GR256:$val, addr:$dst)]>;
 def MOVrc      : SyncVMInstruction< 0x092, (outs), (ins GR256:$val, memop:$dst),
-                                    "movc\t$val, $dst",
+                                    "mov.c\t$val, $dst",
                                     [(store_child GR256:$val, addr:$dst)]>;
 }
 
@@ -154,10 +154,10 @@ def MOVmr      : SyncVMInstruction< 0x100, (outs GR256:$val), (ins memop:$addr),
                                     "mov\t$addr, $val",
                                     [(set GR256:$val, (load_flat addr:$addr))]>;
 def MOVmp      : SyncVMInstruction< 0x101, (outs GR256:$val), (ins memop:$addr),
-                                    "movp\t$addr, $val",
+                                    "mov.p\t$addr, $val",
                                     [(set GR256:$val, (load_parent addr:$addr))]>;
 def MOVmc      : SyncVMInstruction< 0x102, (outs GR256:$val), (ins memop:$addr),
-                                    "movc\t$addr, $val",
+                                    "mov.c\t$addr, $val",
                                     [(set GR256:$val, (load_child addr:$addr))]>;
 }
 
@@ -191,9 +191,9 @@ let isPseudo = 1 in
 def CONST : Pseudo< (outs GR256:$out), (ins i256imm:$val),
                     "#pseudo#", [(set GR256:$out, imm:$val)] >;
 def MOVL  : SyncVMInstruction< 0x05, (outs GR256:$out), (ins imm128:$val),
-                               "movl\t$val, $out", [] >;
+                               "movl\t#$val, $out", [] >;
 def MOVH  : SyncVMInstruction< 0x051, (outs GR256:$out), (ins imm128:$val),
-                               "movh\t$val, $out", [] >;
+                               "movh\t#$val, $out", [] >;
 
 //===----------------------------------------------------------------------===//
 // Intrinsics lowering

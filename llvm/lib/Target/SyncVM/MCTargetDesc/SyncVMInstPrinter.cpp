@@ -42,9 +42,6 @@ void SyncVMInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
   } else if (Op.isImm()) {
     O << Op.getImm();
   } else {
-    assert(Op.isExpr() && "unknown operand kind in printOperand");
-    if (isa<MCSymbolRefExpr>(Op.getExpr()))
-      O << "@";
     Op.getExpr()->print(O, &MAI);
   }
 }
@@ -83,13 +80,6 @@ void SyncVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
                                         raw_ostream &O) {
   const MCOperand &Base = MI->getOperand(OpNo);
   const MCOperand &Disp = MI->getOperand(OpNo + 1);
-
-  if (!Base.isReg()) {
-    if (Disp.isExpr())
-      O << "@";
-    else
-      O << "#";
-  }
 
   // Print displacement first
   if (Disp.isExpr()) {
