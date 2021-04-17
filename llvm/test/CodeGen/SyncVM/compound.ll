@@ -12,12 +12,12 @@ target triple = "syncvm"
 ; CHECK-LABEL: array_ldst_to_parameter
 define void @array_ldst_to_parameter([10 x i256]* %array, i256 %val) {
   %idx = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 6
-; CHECK: mov 192(r1), r3
+; CHECK: mov 6(r1), r3
   %1 = load i256, i256* %idx
 ; CHECK: add r3, r2, r2
   %2 = add i256 %1, %val
   %idx2 = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 2
-; CHECK: mov r2, 64(r1)
+; CHECK: mov r2, 2(r1)
   store i256 %2, i256* %idx2
   ret void
 }
@@ -48,10 +48,10 @@ define i256 @read_from_global(i256 %index, i256 %val) {
 define i256 @frame_compound_idx(i256 %val) {
   %1 = alloca [5 x i256]
   %2 = getelementptr inbounds [5 x i256], [5 x i256]* %1, i256 0, i256 2
-; CHECK: mov r1, 64(sp)
+; CHECK: mov r1, 2(sp)
   store i256 %val, i256* %2
   call void @foo()
-; CHECK: mov 64(sp), r1
+; CHECK: mov 2(sp), r1
   %3 = load i256, i256* %2
   ret i256 %3
 }

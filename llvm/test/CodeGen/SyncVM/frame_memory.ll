@@ -17,7 +17,7 @@ define void @store_to_frame2(i256 %par) nounwind {
   %2 = alloca i256
 ; CHECK: mov	r1, 0(sp)
   store i256 %par, i256* %1
-; CHECK: mov	r1, 32(sp)
+; CHECK: mov	r1, 1(sp)
   store i256 %par, i256* %2
   ret void
 }
@@ -36,10 +36,10 @@ define i256 @load_from_frame(i256 %par) nounwind {
 ; CHECK-LABEL: spill
 define i256 @spill(i256 %par, i256 %par2) nounwind {
 ; CHECK: mov r2, 0(sp)
-; CHECK: mov r1, 32(sp)
+; CHECK: mov r1, 1(sp)
   %1 = call i256 @foo()
 ; CHECK: mov 0(sp), r2
-; CHECK: mov 32(sp), r3
+; CHECK: mov 1(sp), r3
   %2 = add i256 %par, %1
   %3 = add i256 %par2, %1
   %4 = add i256 %2, %3
@@ -52,7 +52,8 @@ define void @store_to_frame.i64(i64 %par) nounwind {
   %2 = alloca i64, align 256
 ; CHECK: mov r1, 0(sp)
   store i64 %par, i64* %1
-; CHECK: mov r1, 256(sp)
+; TODO: Fix truncstores
+; CHECK: mov r1, 8(sp)
   store i64 %par, i64* %2
   ret void
 }
