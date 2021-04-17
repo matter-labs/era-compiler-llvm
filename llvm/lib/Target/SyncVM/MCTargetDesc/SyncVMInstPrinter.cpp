@@ -86,7 +86,7 @@ void SyncVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
     Disp.getExpr()->print(O, &MAI);
   } else {
     assert(Disp.isImm() && "Expected immediate in displacement field");
-    O << Disp.getImm();
+    O << Disp.getImm() / 32; // Displacement is in 8-bit bytes. The memory cells are 256 bits wide.
   }
 
   // Print register base field
