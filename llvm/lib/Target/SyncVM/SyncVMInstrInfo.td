@@ -188,12 +188,12 @@ def J: Jump<0x08, (outs), (ins jmptarget:$dst_true, jmptarget:$dst_false, GR256:
 //===----------------------------------------------------------------------===//
 
 let isPseudo = 1 in
-def CONST : Pseudo< (outs GR256:$out), (ins i256imm:$val),
-                    "#pseudo#", [(set GR256:$out, imm:$val)] >;
-def MOVL  : SyncVMInstruction< 0x05, (outs GR256:$out), (ins imm128:$val),
-                               "movl\t#$val, $out", [] >;
-def MOVH  : SyncVMInstruction< 0x051, (outs GR256:$out), (ins imm128:$val),
-                               "movh\t#$val, $out", [] >;
+def CONST   : Pseudo< (outs GR256:$out), (ins i256imm:$val),
+                      "#pseudo#", [(set GR256:$out, imm:$val)] >;
+def SFLLir  : SyncVMInstruction< 0x050, (outs GR256:$out), (ins imm128:$val, GR256:$reg),
+                                 "sfll\t#$val, $reg, $out", [] >;
+def SFLHir  : SyncVMInstruction< 0x051, (outs GR256:$out), (ins imm128:$val, GR256:$reg),
+                                 "sflh\t#$val, $reg, $out", [] >;
 
 //===----------------------------------------------------------------------===//
 // Intrinsics lowering
