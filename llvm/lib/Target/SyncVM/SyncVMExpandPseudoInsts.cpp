@@ -55,12 +55,14 @@ void SyncVMExpandPseudo::expandConst(MachineInstr &MI) const {
                                        : APInt(256, Constant.getImm(), true);
   APInt ValLo = Val.shl(128).lshr(128);
   APInt ValHi = Val.lshr(128);
-  BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(SyncVM::MOVL))
+  BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(SyncVM::SFLLir))
       .add(Reg)
-      .addCImm(ConstantInt::get(*Context, ValLo));
-  BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(SyncVM::MOVH))
+      .addCImm(ConstantInt::get(*Context, ValLo))
+      .add(Reg);
+  BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(SyncVM::SFLHir))
       .add(Reg)
-      .addCImm(ConstantInt::get(*Context, ValHi));
+      .addCImm(ConstantInt::get(*Context, ValHi))
+      .add(Reg);
 }
 
 bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
