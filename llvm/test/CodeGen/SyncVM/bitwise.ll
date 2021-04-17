@@ -23,8 +23,8 @@ define i256 @or(i256 %par, i256 %p2) nounwind {
 define i256 @xor(i256 %par, i256 %p2) nounwind {
 ; CHECK: add	r1, r2, r3
 ; CHECK: mul	r1, r2, r1, r0
-; CHECK: movl	#2, r2
-; CHECK: movh	#0, r2
+; CHECK: sfll #2, r2, r2
+; CHECK: sflh #0, r2, r2
 ; CHECK: mul	r1, r2, r1, r0
 ; CHECK: sub	r3, r1, r1
   %1 = xor i256 %par, %p2
