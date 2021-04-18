@@ -74,3 +74,19 @@ l1:
 l2:
   ret i256 72
 }
+
+define i256 @loop(i256 %p1) {
+entry:
+  br label %loop.cond
+loop.cond:
+  %i = phi i256 [0, %entry], [%i.next, %loop.body]
+  %res = phi i256 [0, %entry], [%res.next, %loop.body]
+  %cond = icmp ne i256 %i, %p1
+  br i1 %cond, label %loop.body, label %loop.exit
+loop.body:
+  %i.next = add i256 %i, 1
+  %res.next = add i256 %res, %i
+  br label %loop.cond
+loop.exit:
+  ret i256 %res
+}
