@@ -74,6 +74,7 @@ public:
 
   void addIRPasses() override;
   bool addInstSelector() override;
+  void addPostRegAlloc() override;
   void addPreEmitPass() override;
 };
 } // namespace
@@ -93,6 +94,11 @@ bool SyncVMPassConfig::addInstSelector() {
   // Install an instruction selector.
   addPass(createSyncVMISelDag(getSyncVMTargetMachine(), getOptLevel()));
   return false;
+}
+
+void SyncVMPassConfig::addPostRegAlloc() {
+  // TODO: Fix the logic rather than disable the pass
+  disablePass(&BranchFolderPassID);
 }
 
 void SyncVMPassConfig::addPreEmitPass() {
