@@ -55,9 +55,33 @@ define void @memset0(i256* %dest, i8 %val, i256 %size) {
   ret void
 }
 
+; CHECK-LABEL: sstore
+define void @sstore(i256 %val, i256 %dest) {
+; CHECK: st r1, r2
+  call void @llvm.syncvm.sstore(i256 %val, i256 %dest)
+  ret void
+}
+
+; CHECK-LABEL: sload
+define i256 @sload(i256 %dest) {
+; CHECK: ld r1, r2
+  %1 = call i256 @llvm.syncvm.sload(i256 %dest)
+  ret i256 %dest
+}
+
+; CHECK-LABEL: cycles_remain
+define i256 @cycles_remain() {
+; CHECK: cyc r1
+  %1 = call i256 @llvm.syncvm.cyclesremain()
+  ret i256 %1
+}
+
 declare void @llvm.syncvm.habs(i256 %in)
 declare void @llvm.syncvm.habsr(i256 %in)
 declare i256 @llvm.syncvm.hout()
+declare void @llvm.syncvm.sstore(i256, i256)
+declare i256 @llvm.syncvm.sload(i256)
+declare i256 @llvm.syncvm.cyclesremain()
 declare void @llvm.memcpy.p0i256.p0i256.i256(i256*, i256*, i256, i1)
 declare void @llvm.memcpy.p0i256.p2i256.i256(i256*, i256 addrspace(2)*, i256, i1)
 declare void @llvm.memcpy.p3i256.p0i256.i256(i256 addrspace(3)*, i256*, i256, i1)

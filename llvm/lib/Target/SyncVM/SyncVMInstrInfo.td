@@ -147,6 +147,9 @@ def MOVrp      : SyncVMInstruction< 0x091, (outs), (ins GR256:$val, memop:$dst),
 def MOVrc      : SyncVMInstruction< 0x092, (outs), (ins GR256:$val, memop:$dst),
                                     "mov.c\t$val, $dst",
                                     [(store_child GR256:$val, addr:$dst)]>;
+def Store      : SyncVMInstruction< 0x12, (outs), (ins GR256:$val, GR256:$addr),
+                                    "st\t$val, $addr",
+                                    [(int_syncvm_sstore GR256:$val, GR256:$addr)]>;
 }
 
 let mayLoad = 1 in {
@@ -159,6 +162,9 @@ def MOVmp      : SyncVMInstruction< 0x101, (outs GR256:$val), (ins memop:$addr),
 def MOVmc      : SyncVMInstruction< 0x102, (outs GR256:$val), (ins memop:$addr),
                                     "mov.c\t$addr, $val",
                                     [(set GR256:$val, (load_child addr:$addr))]>;
+def Load       : SyncVMInstruction< 0x13, (outs GR256:$val), (ins GR256:$addr),
+                                    "ld\t$addr, $val",
+                                    [(set GR256:$val, (int_syncvm_sload GR256:$addr))]>;
 }
 
 //===----------------------------------------------------------------------===//
@@ -199,9 +205,11 @@ def SFLHir  : SyncVMInstruction< 0x051, (outs GR256:$out), (ins imm128:$val, GR2
 // Intrinsics lowering
 //===----------------------------------------------------------------------===//
 
-def HABS: SyncVMInstruction<0x11, (outs), (ins GR256:$val),
+def HABS: SyncVMInstruction<0x13, (outs), (ins GR256:$val),
                             "habs\t$val", [(int_syncvm_habs GR256:$val)]>;
-def HABSR: SyncVMInstruction<0x12, (outs), (ins GR256:$val),
+def HABSR: SyncVMInstruction<0x14, (outs), (ins GR256:$val),
                              "habsr\t$val", [(int_syncvm_habsr GR256:$val)]>;
-def HOUT: SyncVMInstruction<0x13, (outs GR256:$out), (ins),
+def HOUT: SyncVMInstruction<0x15, (outs GR256:$out), (ins),
                             "hout\t$out", [(set GR256:$out, (int_syncvm_hout))]>;
+def CYC: SyncVMInstruction<0x16, (outs GR256:$out), (ins),
+                           "cyc\t$out", [(set GR256:$out, (int_syncvm_cyclesremain))]>;
