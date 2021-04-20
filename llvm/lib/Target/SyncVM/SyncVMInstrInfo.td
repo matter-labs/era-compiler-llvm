@@ -216,4 +216,6 @@ def CYC: SyncVMInstruction<0x16, (outs GR256:$out), (ins),
                            "cyc\t$out", [(set GR256:$out, (int_syncvm_cyclesremain))]>;
 def SC: SyncVMInstruction<0x17, (outs), (ins),
                            "sc", [(int_syncvm_switchcontext)]>;
+def SETST: SyncVMInstruction<0x18, (outs), (ins GR256:$storage),
+                           "setst", [(int_syncvm_setstorage GR256:$storage)]>;
 }

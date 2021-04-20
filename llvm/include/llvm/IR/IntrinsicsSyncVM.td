@@ -21,6 +21,7 @@ def int_syncvm_call: Intrinsic<[llvm_ptr_ty], [llvm_vararg_ty], []>;
 def int_syncvm_cyclesremain: Intrinsic<[llvm_i256_ty], [], []>;
 
 // Persistent memory access.
+def int_syncvm_setstorage: Intrinsic<[], [llvm_i256_ty], []>;
 def int_syncvm_sstore: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty], []>;
 def int_syncvm_sload: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], []>;
 
