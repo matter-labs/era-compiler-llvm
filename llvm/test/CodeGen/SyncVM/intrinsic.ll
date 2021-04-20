@@ -76,12 +76,20 @@ define i256 @cycles_remain() {
   ret i256 %1
 }
 
+; CHECK-LABEL: switch_context
+define void @switch_context() {
+; CHECK: sw
+  call void @llvm.syncvm.switchcontext()
+  ret void
+}
+
 declare void @llvm.syncvm.habs(i256 %in)
 declare void @llvm.syncvm.habsr(i256 %in)
 declare i256 @llvm.syncvm.hout()
 declare void @llvm.syncvm.sstore(i256, i256)
 declare i256 @llvm.syncvm.sload(i256)
 declare i256 @llvm.syncvm.cyclesremain()
+declare void @llvm.syncvm.switchcontext()
 declare void @llvm.memcpy.p0i256.p0i256.i256(i256*, i256*, i256, i1)
 declare void @llvm.memcpy.p0i256.p2i256.i256(i256*, i256 addrspace(2)*, i256, i1)
 declare void @llvm.memcpy.p3i256.p0i256.i256(i256 addrspace(3)*, i256*, i256, i1)
