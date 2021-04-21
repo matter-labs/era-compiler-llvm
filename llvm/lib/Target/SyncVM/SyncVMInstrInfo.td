@@ -178,6 +178,10 @@ let isCall = 1,
     Uses = [SP] in {
   def CALL : Call<0x43, (outs), (ins i16imm:$callee),
                   "call\t$callee", [(SyncVMcall tglobaladdr:$callee)]>;
+  def CALLL : SyncVMInstruction<0x44, (outs), (ins GR256:$call_config),
+                                "calll\t$call_config", [(int_syncvm_localcall GR256:$call_config)]>;
+  def CALLF : SyncVMInstruction<0x45, (outs), (ins GR256:$call_config),
+                                "callf\t$call_config", [(int_syncvm_farcall GR256:$call_config)]>;
 }
 
 let isTerminator = 1, isBranch = 1, Uses = [Flags] in {

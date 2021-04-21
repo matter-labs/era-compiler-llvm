@@ -90,6 +90,20 @@ define void @set_storage() {
   ret void
 }
 
+; CHECK-LABEL: local_call
+define void @local_call() {
+; CHECK: calll
+  call void @llvm.syncvm.localcall(i256 42)
+  ret void
+}
+
+; CHECK-LABEL: far_call
+define void @far_call() {
+; CHECK: callf
+  call void @llvm.syncvm.farcall(i256 42)
+  ret void
+}
+
 declare void @llvm.syncvm.habs(i256 %in)
 declare void @llvm.syncvm.habsr(i256 %in)
 declare i256 @llvm.syncvm.hout()
@@ -98,6 +112,8 @@ declare i256 @llvm.syncvm.sload(i256)
 declare i256 @llvm.syncvm.cyclesremain()
 declare void @llvm.syncvm.switchcontext()
 declare void @llvm.syncvm.setstorage(i256)
+declare void @llvm.syncvm.localcall(i256)
+declare void @llvm.syncvm.farcall(i256)
 declare void @llvm.memcpy.p0i256.p0i256.i256(i256*, i256*, i256, i1)
 declare void @llvm.memcpy.p0i256.p2i256.i256(i256*, i256 addrspace(2)*, i256, i1)
 declare void @llvm.memcpy.p3i256.p0i256.i256(i256 addrspace(3)*, i256*, i256, i1)
