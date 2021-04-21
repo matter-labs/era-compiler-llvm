@@ -112,7 +112,7 @@ let isCommutable = 1 in {
 
 def SUBrrr     : ArithmeticRRR<  0x02, "sub", sub >;
 
-let Defs = [Flags] in {
+let Defs = [Flags], isTerminator = 1 in {
 def CMPrr   : SyncVMInstruction<  0x02, (outs),
                                   (ins GR256:$src1, GR256:$src2),
                                   "sub\t$src1, $src2, r0",
