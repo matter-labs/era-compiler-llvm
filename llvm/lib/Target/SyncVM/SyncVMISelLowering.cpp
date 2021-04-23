@@ -157,6 +157,7 @@ SDValue SyncVMTargetLowering::LowerFormalArguments(
 
   MachineFunction &MF = DAG.getMachineFunction();
   MachineRegisterInfo &RegInfo = MF.getRegInfo();
+  MachineFrameInfo &MFI = MF.getFrameInfo();
 
   SmallVector<CCValAssign, 16> ArgLocs;
   CCState CCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), ArgLocs,
@@ -164,11 +165,28 @@ SDValue SyncVMTargetLowering::LowerFormalArguments(
   CCInfo.AnalyzeArguments(Ins, CC_SYNCVM);
 
   for (CCValAssign &VA : ArgLocs) {
-    Register VReg = RegInfo.createVirtualRegister(&SyncVM::GR256RegClass);
-    RegInfo.addLiveIn(VA.getLocReg(), VReg);
-    SDValue ArgValue = DAG.getCopyFromReg(Chain, DL, VReg, VA.getLocVT());
-    ArgValue = DAG.getNode(ISD::TRUNCATE, DL, VA.getValVT(), ArgValue);
-    InVals.push_back(ArgValue);
+    if (VA.isRegLoc()) {
+      Register VReg = RegInfo.createVirtualRegister(&SyncVM::GR256RegClass);
+      RegInfo.addLiveIn(VA.getLocReg(), VReg);
+      SDValue ArgValue = DAG.getCopyFromReg(Chain, DL, VReg, VA.getLocVT());
+      ArgValue = DAG.getNode(ISD::TRUNCATE, DL, VA.getValVT(), ArgValue);
+      InVals.push_back(ArgValue);
+    } else {
+      // Sanity check
+      assert(VA.isMemLoc());
+      // Load the argument to a virtual register
+      unsigned ObjSize = VA.getLocVT().getSizeInBits() / 8;
+      // Create the frame index object for this incoming parameter...
+      int FI = MFI.CreateFixedObject(ObjSize, VA.getLocMemOffset(), true);
+
+      // Create the SelectionDAG nodes corresponding to a load
+      // from this parameter
+      SDValue FIN = DAG.getFrameIndex(FI, MVT::i256);
+      SDValue InVal = DAG.getLoad(
+          VA.getLocVT(), DL, Chain, FIN,
+          MachinePointerInfo::getFixedStack(DAG.getMachineFunction(), FI));
+      InVals.push_back(InVal);
+    }
   }
 
   return Chain;
@@ -187,6 +205,9 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   bool &IsTailCall = CLI.IsTailCall;
   CallingConv::ID CallConv = CLI.CallConv;
   bool IsVarArg = CLI.IsVarArg;
+  SmallVector<SDValue, 12> MemOpChains;
+  SDValue StackPtr;
+  auto PtrVT = getPointerTy(DAG.getDataLayout());
 
   // TODO: SyncVM target does not yet support tail call optimization.
   IsTailCall = false;
@@ -201,9 +222,23 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 
   SDValue InFlag;
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
-    Chain =
-        DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), OutVals[i], InFlag);
-    InFlag = Chain.getValue(1);
+    if (ArgLocs[i].isRegLoc()) {
+      Chain = DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), OutVals[i],
+                               InFlag);
+    } else {
+      if (!StackPtr.getNode())
+        StackPtr = DAG.getRegister(SyncVM::SP, PtrVT);
+      SDValue PtrOff =
+          DAG.getNode(ISD::ADD, DL, PtrVT, StackPtr,
+                      DAG.getIntPtrConstant(ArgLocs[i].getLocMemOffset(), DL));
+      SDValue MemOp =
+          DAG.getStore(Chain, DL, OutVals[i], PtrOff, MachinePointerInfo());
+      MemOpChains.push_back(MemOp);
+    }
+    // Transform all store nodes into one single node because all store nodes
+    // are independent of each other.
+    if (!MemOpChains.empty())
+      Chain = DAG.getNode(ISD::TokenFactor, DL, MVT::Other, MemOpChains);
   }
 
   // Returns a chain & a flag for retval copy to use.
@@ -214,8 +249,10 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 
   // Add argument registers to the end of the list so that they are
   // known live into the call.
-  for (auto &ArgLoc : ArgLocs)
-    Ops.push_back(DAG.getRegister(ArgLoc.getLocReg(), ArgLoc.getValVT()));
+  for (auto &ArgLoc : ArgLocs) {
+    if (ArgLoc.isRegLoc())
+      Ops.push_back(DAG.getRegister(ArgLoc.getLocReg(), ArgLoc.getValVT()));
+  }
 
   if (InFlag.getNode())
     Ops.push_back(InFlag);
