@@ -48,4 +48,4 @@ def SP : SyncVMRegister<7, "sp">;
 def Flags : SyncVMRegister<8, "#BAD#">;
 
 let isAllocatable = 0 in
-def GR16 : RegisterClass<"SyncVM", [i16], 16, (add PC, SP, Flags)>;
+def SPR256 : RegisterClass<"SyncVM", [i256], 256, (add PC, SP, Flags)>;
