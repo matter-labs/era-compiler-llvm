@@ -112,6 +112,39 @@ define i256 @caller_i128.ret(i256 %a1) nounwind {
   ret i256 %2
 }
 
+; CHECK-LABEL: call.sevenarg
+define i256 @call.sevenarg() nounwind {
+; CHECK: mov r1, 0(sp)
+  %1 = call i256 @sevenarg(i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0)
+  ret i256 %1
+}
+
+; CHECK-LABEL: call.eightarg
+define i256 @call.eightarg() nounwind {
+; CHECK: sfll #2, r1, r1
+; CHECK: mov r1, 1(sp)
+; CHECK: sfll #1, r1, r1
+; CHECK: mov r1, 0(sp)
+  %1 = call i256 @eightarg(i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 1, i256 2)
+  ret i256 %1
+}
+
+; CHECK-LABEL: sum8
+define i256 @sum8(i256 %a1, i256 %a2, i256 %a3, i256 %a4, i256 %a5, i256 %a6, i256 %a7, i256 %a8) nounwind {
+  %1 = add i256 %a1, %a2
+  %2 = add i256 %1, %a3
+  %3 = add i256 %2, %a4
+  %4 = add i256 %3, %a5
+  %5 = add i256 %4, %a6
+; CHECK: mov 1(sp), r2
+; CHECK: add r1, r2, r1
+  %6 = add i256 %5, %a7
+; CHECK: mov 2(sp), r2
+; CHECK: add r1, r2, r1
+  %7 = add i256 %6, %a8
+  ret i256 %7
+}
+
 declare i256 @i1.arg(i1 %a1) nounwind
 declare i256 @i8.arg(i8 %a1) nounwind
 declare i256 @i16.arg(i16 %a1) nounwind
@@ -129,3 +162,5 @@ declare i128 @i128.ret(i256 %a1) nounwind
 declare i256 @onearg(i256 %a1) nounwind
 declare i256 @twoarg(i256 %a1, i256 %a2) nounwind
 declare i256 @threearg(i256 %a1, i256 %a2, i256 %a3) nounwind
+declare i256 @sevenarg(i256, i256, i256, i256, i256, i256, i256) nounwind
+declare i256 @eightarg(i256, i256, i256, i256, i256, i256, i256, i256) nounwind
