@@ -171,6 +171,23 @@ bool SyncVMDAGToDAGISel::MatchAddress(SDValue N, SyncVMISelAddressMode &AM) {
 
     break;
   }
+  case ISD::OR:
+    // Handle "X | C" as "X + C" iff X is known to have C bits clear.
+    if (ConstantSDNode *CN = dyn_cast<ConstantSDNode>(N.getOperand(1))) {
+      SyncVMISelAddressMode Backup = AM;
+      uint64_t Offset = CN->getSExtValue();
+      // Start with the LHS as an addr mode.
+      if (!MatchAddress(N.getOperand(0), AM) &&
+          // Address could not have picked a GV address for the displacement.
+          AM.GV == nullptr &&
+          // Check to see if the LHS & C is zero.
+          CurDAG->MaskedValueIsZero(N.getOperand(0), CN->getAPIntValue())) {
+        AM.Disp += Offset;
+        return false;
+      }
+      AM = Backup;
+    }
+    break;
   }
   return MatchAddressBase(N, AM);
 }
