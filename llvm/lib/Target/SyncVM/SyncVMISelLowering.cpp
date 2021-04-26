@@ -41,11 +41,15 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   // Compute derived properties from the register classes
   computeRegisterProperties(STI.getRegisterInfo());
 
+  // Provide all sorts of operation actions
+  setStackPointerRegisterToSaveRestore(SyncVM::SP);
+
   setOperationAction(ISD::GlobalAddress, MVT::i256, Custom);
   setOperationAction(ISD::BR, MVT::Other, Custom);
   setOperationAction(ISD::AND, MVT::i256, Custom);
   setOperationAction(ISD::SHL, MVT::i256, Custom);
   setOperationAction(ISD::TRUNCATE, MVT::i64, Promote);
+  setOperationAction(ISD::DYNAMIC_STACKALLOC, MVT::i256, Expand);
   // Support of truncate, sext, zext
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i1, Expand);
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i8, Expand);
@@ -220,6 +224,9 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
                  *DAG.getContext());
   CCInfo.AnalyzeCallOperands(Outs, CC_SYNCVM);
 
+  unsigned NumBytes = CCInfo.getNextStackOffset();
+  Chain = DAG.getCALLSEQ_START(Chain, NumBytes, 0, DL);
+
   SDValue InFlag;
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
     if (ArgLocs[i].isRegLoc()) {
@@ -258,6 +265,11 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
     Ops.push_back(InFlag);
 
   Chain = DAG.getNode(SyncVMISD::CALL, DL, NodeTys, Ops);
+  InFlag = Chain.getValue(1);
+
+  // Create the CALLSEQ_END node.
+  Chain = DAG.getCALLSEQ_END(Chain, DAG.getConstant(NumBytes, DL, PtrVT, true),
+                             DAG.getConstant(0, DL, PtrVT, true), InFlag, DL);
   InFlag = Chain.getValue(1);
 
   SmallVector<CCValAssign, 16> RVLocs;
@@ -384,10 +396,20 @@ SDValue SyncVMTargetLowering::LowerAnd(SDValue Op, SelectionDAG &DAG) const {
   EVT Ty = Op.getValueType();
   SDValue RHS = Op.getOperand(1);
   assert(RHS.getOpcode() == ISD::Constant && "Unsupported and");
-  APInt Val = cast<ConstantSDNode>(RHS)->getAPIntValue() + 1;
-  assert(Val.isPowerOf2() && "Unsupported and");
-  return DAG.getNode(ISD::UREM, DL, Ty, Op.getOperand(0),
-                     DAG.getConstant(Val, DL, Ty));
+  APInt Val = cast<ConstantSDNode>(RHS)->getAPIntValue();
+  APInt PosPow2 = Val + 1;
+  if (PosPow2.isPowerOf2())
+    return DAG.getNode(ISD::UREM, DL, Ty, Op.getOperand(0),
+                       DAG.getConstant(PosPow2, DL, Ty));
+  APInt NegPow2 = Val;
+  NegPow2 = NegPow2.reverseBits();
+  NegPow2 += 1;
+  if (NegPow2.isPowerOf2())
+    return DAG.getNode(ISD::MUL, DL, Ty,
+                       DAG.getNode(ISD::UDIV, DL, Ty, Op.getOperand(0),
+                                   DAG.getConstant(NegPow2, DL, Ty)),
+                       DAG.getConstant(NegPow2, DL, Ty));
+  llvm_unreachable("Bad and");
 }
 
 SDValue SyncVMTargetLowering::LowerShl(SDValue Op, SelectionDAG &DAG) const {

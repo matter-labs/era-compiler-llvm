@@ -51,6 +51,57 @@ bool SyncVMFrameLowering::restoreCalleeSavedRegisters(
 MachineBasicBlock::iterator SyncVMFrameLowering::eliminateCallFramePseudoInstr(
     MachineFunction &MF, MachineBasicBlock &MBB,
     MachineBasicBlock::iterator I) const {
+  const SyncVMInstrInfo &TII =
+      *static_cast<const SyncVMInstrInfo *>(MF.getSubtarget().getInstrInfo());
+  if (!hasReservedCallFrame(MF)) {
+    // If the stack pointer can be changed after prologue, turn the
+    // adjcallstackup instruction into a 'sub SP, <amt>' and the
+    // adjcallstackdown instruction into 'add SP, <amt>'
+    // TODO: consider using push / pop instead of sub + store / add
+    MachineInstr &Old = *I;
+    uint64_t Amount = TII.getFrameSize(Old);
+    if (Amount != 0) {
+      // We need to keep the stack aligned properly.  To do this, we round the
+      // amount of space needed for the outgoing arguments up to the next
+      // alignment boundary.
+      Amount = alignTo(Amount, getStackAlign());
+
+      MachineInstr *New = nullptr;
+      if (Old.getOpcode() == TII.getCallFrameSetupOpcode()) {
+        New = BuildMI(MF, Old.getDebugLoc(), TII.get(SyncVM::PUSH))
+                  .addImm(Amount);
+      } else {
+        assert(Old.getOpcode() == TII.getCallFrameDestroyOpcode());
+        // factor out the amount the callee already popped.
+        Amount -= TII.getFramePoppedByCallee(Old);
+        if (Amount)
+          New = BuildMI(MF, Old.getDebugLoc(), TII.get(SyncVM::POP))
+                    .addImm(Amount);
+      }
+
+      if (New) {
+        // The SRW implicit def is dead.
+        New->getOperand(3).setIsDead();
+
+        // Replace the pseudo instruction with a new instruction...
+        MBB.insert(I, New);
+      }
+    }
+  } else if (I->getOpcode() == TII.getCallFrameDestroyOpcode()) {
+    // If we are performing frame pointer elimination and if the callee pops
+    // something off the stack pointer, add it back.
+    if (uint64_t CalleeAmt = TII.getFramePoppedByCallee(*I)) {
+      MachineInstr &Old = *I;
+      MachineInstr *New = BuildMI(MF, Old.getDebugLoc(), TII.get(SyncVM::PUSH))
+                              .addImm(CalleeAmt);
+      // The SRW implicit def is dead.
+      New->getOperand(3).setIsDead();
+
+      MBB.insert(I, New);
+    }
+  }
+
+  return MBB.erase(I);
   return I;
 }
 
