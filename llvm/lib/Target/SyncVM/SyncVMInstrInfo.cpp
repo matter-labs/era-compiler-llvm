@@ -23,7 +23,9 @@ using namespace llvm;
 // Pin the vtable to this file.
 void SyncVMInstrInfo::anchor() {}
 
-SyncVMInstrInfo::SyncVMInstrInfo() : SyncVMGenInstrInfo(0, 0), RI() {}
+SyncVMInstrInfo::SyncVMInstrInfo()
+    : SyncVMGenInstrInfo(SyncVM::ADJCALLSTACKDOWN, SyncVM::ADJCALLSTACKUP),
+      RI() {}
 
 void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
                                           MachineBasicBlock::iterator MI,

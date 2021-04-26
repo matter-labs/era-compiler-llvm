@@ -10,6 +10,10 @@ include "SyncVMInstrFormats.td"
 // Type Profiles.
 //===----------------------------------------------------------------------===//
 def SDT_SyncVMCall         : SDTypeProfile<0, -1, [SDTCisPtrTy<0>]>;
+def SDT_SyncVMCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i256>,
+                                             SDTCisVT<1, i256>]>;
+def SDT_SyncVMCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i256>, SDTCisVT<1, i256>]>;
+
 def SDT_SyncVMBrCC         : SDTypeProfile<0,  3, [SDTCisVT<0, OtherVT>,
                                                    SDTCisVT<1, OtherVT>,
                                                    SDTCisVT<2, i256>]>;
@@ -26,6 +30,13 @@ def SyncVMcall   : SDNode<"SyncVMISD::CALL", SDT_SyncVMCall,
 def SyncVMbrcc   : SDNode<"SyncVMISD::BR_CC", SDT_SyncVMBrCC,
                     [SDNPHasChain, SDNPInGlue]>;
 def SyncVMsub    : SDNode<"SyncVMISD::SUB", SDT_SyncVMBinary, [SDNPOutGlue]>;
+def SyncVMcallseq_start :
+                 SDNode<"ISD::CALLSEQ_START", SDT_SyncVMCallSeqStart,
+                        [SDNPHasChain, SDNPOutGlue]>;
+def SyncVMcallseq_end :
+                 SDNode<"ISD::CALLSEQ_END",   SDT_SyncVMCallSeqEnd,
+                        [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
+
 
 //===----------------------------------------------------------------------===//
 // MSP430 Operand Definitions.
@@ -93,6 +104,22 @@ def store_#as : PatFrag<(ops node:$val, node:$ptr),
   let IsStore = 1;
 }
 }
+}
+
+//===----------------------------------------------------------------------===//
+// Instruction list..
+// ADJCALLSTACKDOWN/UP implicitly use/def SP because they may be expanded into
+// a stack adjustment and the codegen must know that they may modify the stack
+// pointer before prolog-epilog rewriting occurs.
+// Pessimistically assume ADJCALLSTACKDOWN / ADJCALLSTACKUP will become
+// sub / add which can clobber SR.
+let isCodeGenOnly = 1, Defs = [SP], Uses = [SP] in {
+def ADJCALLSTACKDOWN : Pseudo<(outs), (ins i256imm:$amt1, i256imm:$amt2),
+                              "#ADJCALLSTACKDOWN $amt1 $amt2",
+                              [(SyncVMcallseq_start timm:$amt1, timm:$amt2)]>;
+def ADJCALLSTACKUP   : Pseudo<(outs), (ins i256imm:$amt1, i256imm:$amt2),
+                              "#ADJCALLSTACKUP $amt1 $amt2",
+                              [(SyncVMcallseq_end timm:$amt1, timm:$amt2)]>;
 }
 
 //===----------------------------------------------------------------------===//
@@ -204,6 +231,14 @@ def SFLLir  : SyncVMInstruction< 0x050, (outs GR256:$out), (ins imm128:$val, GR2
                                  "sfll\t#$val, $reg, $out", [] >;
 def SFLHir  : SyncVMInstruction< 0x051, (outs GR256:$out), (ins imm128:$val, GR256:$reg),
                                  "sflh\t#$val, $reg, $out", [] >;
+//===----------------------------------------------------------------------===//
+// Stack adjustments
+//===----------------------------------------------------------------------===//
+def PUSH    : SyncVMInstruction< 0x19, (outs), (ins i256imm:$val),
+                                 "push\t$val", [] >;
+def POP     : SyncVMInstruction< 0x1a, (outs), (ins i256imm:$val),
+                                 "pop\t$val", [] >;
+
 
 //===----------------------------------------------------------------------===//
 // Intrinsics lowering
