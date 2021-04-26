@@ -31,7 +31,9 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMLowerIntrinsicsPass(PR);
 }
 
-static std::string computeDataLayout() { return "e-p:256:256-i256:256:256"; }
+static std::string computeDataLayout() {
+  return "e-p:256:256-i256:256:256-S32";
+}
 
 static Reloc::Model getEffectiveRelocModel(Optional<Reloc::Model> RM) {
   if (!RM.hasValue())

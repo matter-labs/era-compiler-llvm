@@ -55,6 +55,7 @@ public:
   const SelectionDAGTargetInfo *getSelectionDAGInfo() const override {
     return &TSInfo;
   }
+  Align getStackAlignment() const { return Align(32); }
 };
 } // End llvm namespace
 
