@@ -33,6 +33,8 @@ private:
   void printPCRelImmOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
   void printCCOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
   void printMemOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
+  /// Print external address flag
+  void printEAFOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
 };
 }
 
