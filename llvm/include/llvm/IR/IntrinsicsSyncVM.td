@@ -29,4 +29,7 @@ def int_syncvm_event: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], 
 // Switch context.
 def int_syncvm_switchcontext: Intrinsic<[], [], []>;
 
+// Return with error.
+def int_syncvm_throw: Intrinsic<[], [], []>;
+
 }

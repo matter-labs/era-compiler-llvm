@@ -206,8 +206,10 @@ def Load       : SyncVMInstruction< 0x13, (outs GR256:$val), (ins GR256:$addr, e
 //===----------------------------------------------------------------------===//
 // Control flow instructions
 //===----------------------------------------------------------------------===//
-let isReturn = 1, isTerminator = 1, isBarrier = 1 in
-def RET : SyncVMInstruction<0x07, (outs), (ins), "ret", [(SyncVMret)]>;
+let isReturn = 1, isTerminator = 1, isBarrier = 1 in {
+def RET   : SyncVMInstruction<0x07, (outs), (ins), "ret", [(SyncVMret)]>;
+def THROW : SyncVMInstruction<0x071, (outs), (ins), "throw", [(int_syncvm_throw)]>;
+}
 
 let isCall = 1,
     Defs = [R1, R2, R3, R4, R5, R6],
