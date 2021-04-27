@@ -58,14 +58,18 @@ define void @memset0(i256* %dest, i8 %val, i256 %size) {
 ; CHECK-LABEL: sstore
 define void @sstore(i256 %val, i256 %dest) {
 ; CHECK: st r1, r2
-  call void @llvm.syncvm.sstore(i256 %val, i256 %dest)
+  call void @llvm.syncvm.sstore(i256 %val, i256 %dest, i256 0)
+; CHECK: st.e r1, r2
+  call void @llvm.syncvm.sstore(i256 %val, i256 %dest, i256 1)
   ret void
 }
 
 ; CHECK-LABEL: sload
 define i256 @sload(i256 %dest) {
 ; CHECK: ld r1, r2
-  %1 = call i256 @llvm.syncvm.sload(i256 %dest)
+  %1 = call i256 @llvm.syncvm.sload(i256 %dest, i256 0)
+; CHECK: ld.e r1, r2
+  %2 = call i256 @llvm.syncvm.sload(i256 %dest, i256 1)
   ret i256 %dest
 }
 
@@ -90,13 +94,6 @@ define void @set_storage() {
   ret void
 }
 
-; CHECK-LABEL: local_call
-define void @local_call() {
-; CHECK: calll
-  call void @llvm.syncvm.localcall(i256 42)
-  ret void
-}
-
 ; CHECK-LABEL: far_call
 define void @far_call() {
 ; CHECK: callf
@@ -107,12 +104,11 @@ define void @far_call() {
 declare void @llvm.syncvm.habs(i256 %in)
 declare void @llvm.syncvm.habsr(i256 %in)
 declare i256 @llvm.syncvm.hout()
-declare void @llvm.syncvm.sstore(i256, i256)
-declare i256 @llvm.syncvm.sload(i256)
+declare void @llvm.syncvm.sstore(i256, i256, i256)
+declare i256 @llvm.syncvm.sload(i256, i256)
 declare i256 @llvm.syncvm.cyclesremain()
 declare void @llvm.syncvm.switchcontext()
 declare void @llvm.syncvm.setstorage(i256)
-declare void @llvm.syncvm.localcall(i256)
 declare void @llvm.syncvm.farcall(i256)
 declare void @llvm.memcpy.p0i256.p0i256.i256(i256*, i256*, i256, i1)
 declare void @llvm.memcpy.p0i256.p2i256.i256(i256*, i256 addrspace(2)*, i256, i1)

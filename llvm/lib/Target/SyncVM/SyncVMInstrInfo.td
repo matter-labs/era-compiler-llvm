@@ -51,6 +51,12 @@ def z256 : Operand<i256>, IntImmLeaf<i256, [{
   return Imm.isNullValue();
 }]> {}
 
+def ext_address_flag : Operand<i256>, IntImmLeaf<i256, [{
+  return Imm.isNullValue() || Imm.isOneValue();
+}]> {
+  let PrintMethod = "printEAFOperand";
+}
+
 // Operand for printing out a condition code.
 def cc : Operand<i256> {
   let PrintMethod = "printCCOperand";
@@ -174,9 +180,9 @@ def MOVrp      : SyncVMInstruction< 0x091, (outs), (ins GR256:$val, memop:$dst),
 def MOVrc      : SyncVMInstruction< 0x092, (outs), (ins GR256:$val, memop:$dst),
                                     "mov.c\t$val, $dst",
                                     [(store_child GR256:$val, addr:$dst)]>;
-def Store      : SyncVMInstruction< 0x12, (outs), (ins GR256:$val, GR256:$addr),
-                                    "st\t$val, $addr",
-                                    [(int_syncvm_sstore GR256:$val, GR256:$addr)]>;
+def Store      : SyncVMInstruction< 0x12, (outs), (ins GR256:$val, GR256:$addr, ext_address_flag:$eaf),
+                                    "st$eaf\t$val, $addr",
+                                    [(int_syncvm_sstore GR256:$val, GR256:$addr, imm:$eaf)]>;
 }
 
 let mayLoad = 1 in {
@@ -189,9 +195,9 @@ def MOVmp      : SyncVMInstruction< 0x101, (outs GR256:$val), (ins memop:$addr),
 def MOVmc      : SyncVMInstruction< 0x102, (outs GR256:$val), (ins memop:$addr),
                                     "mov.c\t$addr, $val",
                                     [(set GR256:$val, (load_child addr:$addr))]>;
-def Load       : SyncVMInstruction< 0x13, (outs GR256:$val), (ins GR256:$addr),
-                                    "ld\t$addr, $val",
-                                    [(set GR256:$val, (int_syncvm_sload GR256:$addr))]>;
+def Load       : SyncVMInstruction< 0x13, (outs GR256:$val), (ins GR256:$addr, ext_address_flag:$eaf),
+                                    "ld$eaf\t$addr, $val",
+                                    [(set GR256:$val, (int_syncvm_sload GR256:$addr, imm:$eaf))]>;
 }
 
 //===----------------------------------------------------------------------===//
@@ -205,8 +211,6 @@ let isCall = 1,
     Uses = [SP] in {
   def CALL : Call<0x43, (outs), (ins i16imm:$callee),
                   "call\t$callee", [(SyncVMcall tglobaladdr:$callee)]>;
-  def CALLL : SyncVMInstruction<0x44, (outs), (ins GR256:$call_config),
-                                "calll\t$call_config", [(int_syncvm_localcall GR256:$call_config)]>;
   def CALLF : SyncVMInstruction<0x45, (outs), (ins GR256:$call_config),
                                 "callf\t$call_config", [(int_syncvm_farcall GR256:$call_config)]>;
 }
