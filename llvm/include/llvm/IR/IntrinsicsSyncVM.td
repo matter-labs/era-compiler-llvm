@@ -24,6 +24,7 @@ def int_syncvm_cyclesremain: Intrinsic<[llvm_i256_ty], [], []>;
 def int_syncvm_setstorage: Intrinsic<[], [llvm_i256_ty], []>;
 def int_syncvm_sstore: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], []>;
 def int_syncvm_sload: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], []>;
+def int_syncvm_event: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], []>;
 
 // Switch context.
 def int_syncvm_switchcontext: Intrinsic<[], [], []>;

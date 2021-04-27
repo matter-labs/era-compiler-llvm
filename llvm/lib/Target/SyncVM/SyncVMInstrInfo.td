@@ -183,6 +183,9 @@ def MOVrc      : SyncVMInstruction< 0x092, (outs), (ins GR256:$val, memop:$dst),
 def Store      : SyncVMInstruction< 0x12, (outs), (ins GR256:$val, GR256:$addr, ext_address_flag:$eaf),
                                     "st$eaf\t$val, $addr",
                                     [(int_syncvm_sstore GR256:$val, GR256:$addr, imm:$eaf)]>;
+def Event      : SyncVMInstruction< 0x121, (outs), (ins GR256:$val, GR256:$addr, ext_address_flag:$eaf),
+                                    "evt$eaf\t$val, $addr",
+                                    [(int_syncvm_event GR256:$val, GR256:$addr, imm:$eaf)]>;
 }
 
 let mayLoad = 1 in {
