@@ -73,6 +73,15 @@ define i256 @sload(i256 %dest) {
   ret i256 %dest
 }
 
+; CHECK-LABEL: event
+define void @event(i256 %val, i256 %dest) {
+; CHECK: evt r1, r2
+  call void @llvm.syncvm.event(i256 %val, i256 %dest, i256 0)
+; CHECK: evt.e r1, r2
+  call void @llvm.syncvm.event(i256 %val, i256 %dest, i256 1)
+  ret void
+}
+
 ; CHECK-LABEL: cycles_remain
 define i256 @cycles_remain() {
 ; CHECK: cyc r1
@@ -105,6 +114,7 @@ declare void @llvm.syncvm.habs(i256 %in)
 declare void @llvm.syncvm.habsr(i256 %in)
 declare i256 @llvm.syncvm.hout()
 declare void @llvm.syncvm.sstore(i256, i256, i256)
+declare void @llvm.syncvm.event(i256, i256, i256)
 declare i256 @llvm.syncvm.sload(i256, i256)
 declare i256 @llvm.syncvm.cyclesremain()
 declare void @llvm.syncvm.switchcontext()
