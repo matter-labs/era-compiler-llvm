@@ -110,6 +110,13 @@ define void @far_call() {
   ret void
 }
 
+; CHECK-LABEL: throw
+define void @throw() {
+; CHECK: throw
+  call void @llvm.syncvm.throw()
+  ret void
+}
+
 declare void @llvm.syncvm.habs(i256 %in)
 declare void @llvm.syncvm.habsr(i256 %in)
 declare i256 @llvm.syncvm.hout()
@@ -120,6 +127,7 @@ declare i256 @llvm.syncvm.cyclesremain()
 declare void @llvm.syncvm.switchcontext()
 declare void @llvm.syncvm.setstorage(i256)
 declare void @llvm.syncvm.farcall(i256)
+declare void @llvm.syncvm.throw()
 declare void @llvm.memcpy.p0i256.p0i256.i256(i256*, i256*, i256, i1)
 declare void @llvm.memcpy.p0i256.p2i256.i256(i256*, i256 addrspace(2)*, i256, i1)
 declare void @llvm.memcpy.p3i256.p0i256.i256(i256 addrspace(3)*, i256*, i256, i1)
