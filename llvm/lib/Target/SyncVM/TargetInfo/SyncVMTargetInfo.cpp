@@ -14,7 +14,7 @@ Target &llvm::getTheSyncVMTarget() {
 }
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTargetInfo() {
-  RegisterTarget<Triple::UnknownArch> X(
+  RegisterTarget<Triple::syncvm, /*HasJIT*/false> X(
     getTheSyncVMTarget(),
     "syncvm",
     "SyncVM [experimental]",
