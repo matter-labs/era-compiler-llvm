@@ -30,24 +30,15 @@ namespace {
 struct SyncVMISelAddressMode {
   enum { RegBase, FrameIndexBase } BaseType = RegBase;
 
-  struct { // This is really a union, discriminated by BaseType!
+  struct {
     SDValue Reg;
     int FrameIndex = 0;
   } Base;
 
   int16_t Disp = 0;
   const GlobalValue *GV = nullptr;
-  const Constant *CP = nullptr;
-  const BlockAddress *BlockAddr = nullptr;
-  const char *ES = nullptr;
-  int JT = -1;
-  Align Alignment; // CP alignment.
 
   SyncVMISelAddressMode() = default;
-
-  bool hasSymbolicDisplacement() const {
-    return GV != nullptr || CP != nullptr || ES != nullptr || JT != -1;
-  }
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
   LLVM_DUMP_METHOD void dump() {
@@ -62,15 +53,7 @@ struct SyncVMISelAddressMode {
     if (GV) {
       errs() << "GV ";
       GV->dump();
-    } else if (CP) {
-      errs() << " CP ";
-      CP->dump();
-      errs() << " Align" << Alignment.value() << '\n';
-    } else if (ES) {
-      errs() << "ES ";
-      errs() << ES << '\n';
-    } else if (JT != -1)
-      errs() << " JT" << JT << " Align" << Alignment.value() << '\n';
+    }
   }
 #endif
 };
@@ -102,11 +85,7 @@ private:
   // Main method to transform nodes into machine nodes.
   void Select(SDNode *N) override;
 
-  bool tryIndexedLoad(SDNode *Op);
-  bool tryIndexedBinOp(SDNode *Op, SDValue N1, SDValue N2, unsigned Opc8,
-                       unsigned Opc16);
-
-  bool SelectAddr(SDValue Addr, SDValue &Base, SDValue &Disp);
+  bool SelectMemAddr(SDValue Addr, SDValue &Base, SDValue &Disp);
 };
 } // end anonymous namespace
 
@@ -192,10 +171,11 @@ bool SyncVMDAGToDAGISel::MatchAddress(SDValue N, SyncVMISelAddressMode &AM) {
   return MatchAddressBase(N, AM);
 }
 
-/// SelectAddr - returns true if it is able pattern match an addressing mode.
+/// SelectMemAddr - returns true if it is able pattern match an addressing mode.
 /// It returns the operands which make up the maximal addressing mode it can
 /// match by reference.
-bool SyncVMDAGToDAGISel::SelectAddr(SDValue N, SDValue &Base, SDValue &Disp) {
+bool SyncVMDAGToDAGISel::SelectMemAddr(SDValue N, SDValue &Base,
+                                       SDValue &Disp) {
   SyncVMISelAddressMode AM;
 
   if (MatchAddress(N, AM)) {
@@ -227,13 +207,6 @@ bool SyncVMDAGToDAGISel::SelectAddr(SDValue N, SDValue &Base, SDValue &Disp) {
 
 bool SyncVMDAGToDAGISel::SelectInlineAsmMemoryOperand(
     const SDValue &Op, unsigned ConstraintID, std::vector<SDValue> &OutOps) {
-  return false;
-}
-
-bool SyncVMDAGToDAGISel::tryIndexedLoad(SDNode *N) { return true; }
-
-bool SyncVMDAGToDAGISel::tryIndexedBinOp(SDNode *Op, SDValue N1, SDValue N2,
-                                         unsigned Opc8, unsigned Opc16) {
   return false;
 }
 
