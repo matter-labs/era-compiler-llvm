@@ -1,7 +1,7 @@
 ; RUN: llc < %s | FileCheck %s
 
 target datalayout = "e-p:256:256-i256:256:256"
-target triple = "tvm"
+target triple = "syncvm"
 
 ; CHECK-LABEL: caller1
 define i256 @caller1(i256 %a1) nounwind {

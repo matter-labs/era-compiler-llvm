@@ -48,19 +48,19 @@ define i256 @spill(i256 %par, i256 %par2) nounwind {
 
 ; CHECK-LABEL: store_to_frame.i64
 define void @store_to_frame.i64(i64 %par) nounwind {
-  %1 = alloca i64, align 256
-  %2 = alloca i64, align 256
+  %1 = alloca i64, align 32
+  %2 = alloca i64, align 32
 ; CHECK: mov r1, 0(sp)
   store i64 %par, i64* %1
 ; TODO: Fix truncstores
-; CHECK: mov r1, 8(sp)
+; CHECK: mov r1, 1(sp)
   store i64 %par, i64* %2
   ret void
 }
 
 ; CHECK-LABEL: load_from_frame.i64
 define i64 @load_from_frame.i64(i64 %par) nounwind {
-  %1 = alloca i64, align 256
+  %1 = alloca i64, align 32
 ; CHECK: mov r1, 0(sp)
   store i64 %par, i64* %1
   %2 = call i256 @foo()
