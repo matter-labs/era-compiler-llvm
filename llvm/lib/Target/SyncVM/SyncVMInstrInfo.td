@@ -72,11 +72,17 @@ def memop : Operand<i256> {
   let MIOperandInfo = (ops GR256, i256imm);
 }
 
+def stackop : Operand<i256> {
+  let PrintMethod = "printStackOperand";
+  let MIOperandInfo = (ops GR256, GR256, i256imm);
+}
+
 //===----------------------------------------------------------------------===//
 // Complex Pattern Definitions.
 //===----------------------------------------------------------------------===//
 
-def memaddr : ComplexPattern<iPTR, 2, "SelectMemAddr", [], []>;
+def memaddr   : ComplexPattern<iPTR, 2, "SelectMemAddr", [], []>;
+def stackaddr : ComplexPattern<iPTR, 3, "SelectStackAddr", [], []>;
 
 //===----------------------------------------------------------------------===//
 // Pattern Fragments Definitions.
@@ -171,13 +177,16 @@ def DIVREMrrrr : ArithmeticRRRR< 0x04, "div", udivrem >;
 // MOV is ADD rSrc, r0, rDst
 def MOVrr      : ArithmeticRZR< 0x01, "add", add >;
 let mayStore = 1 in {
-def MOVrm      : SyncVMInstruction< 0x090, (outs), (ins GR256:$val, memop:$dst),
+def MOVrs      : SyncVMInstruction< 0x090, (outs), (ins GR256:$val, stackop:$dst),
+                                    "mov\t$val, $dst",
+                                    [(store_flat GR256:$val, stackaddr:$dst)]>;
+def MOVrh      : SyncVMInstruction< 0x091, (outs), (ins GR256:$val, memop:$dst),
                                     "mov\t$val, $dst",
                                     [(store_flat GR256:$val, memaddr:$dst)]>;
-def MOVrp      : SyncVMInstruction< 0x091, (outs), (ins GR256:$val, memop:$dst),
+def MOVrp      : SyncVMInstruction< 0x092, (outs), (ins GR256:$val, memop:$dst),
                                     "mov.p\t$val, $dst",
                                     [(store_parent GR256:$val, memaddr:$dst)]>;
-def MOVrc      : SyncVMInstruction< 0x092, (outs), (ins GR256:$val, memop:$dst),
+def MOVrc      : SyncVMInstruction< 0x093, (outs), (ins GR256:$val, memop:$dst),
                                     "mov.c\t$val, $dst",
                                     [(store_child GR256:$val, memaddr:$dst)]>;
 def Store      : SyncVMInstruction< 0x12, (outs), (ins GR256:$val, GR256:$addr, ext_address_flag:$eaf),
@@ -189,13 +198,16 @@ def Event      : SyncVMInstruction< 0x121, (outs), (ins GR256:$val, GR256:$addr,
 }
 
 let mayLoad = 1 in {
-def MOVmr      : SyncVMInstruction< 0x100, (outs GR256:$val), (ins memop:$addr),
+def MOVsr      : SyncVMInstruction< 0x100, (outs GR256:$val), (ins stackop:$addr),
+                                    "mov\t$addr, $val",
+                                    [(set GR256:$val, (load_flat stackaddr:$addr))]>;
+def MOVhr      : SyncVMInstruction< 0x101, (outs GR256:$val), (ins memop:$addr),
                                     "mov\t$addr, $val",
                                     [(set GR256:$val, (load_flat memaddr:$addr))]>;
-def MOVpr      : SyncVMInstruction< 0x101, (outs GR256:$val), (ins memop:$addr),
+def MOVpr      : SyncVMInstruction< 0x102, (outs GR256:$val), (ins memop:$addr),
                                     "mov.p\t$addr, $val",
                                     [(set GR256:$val, (load_parent memaddr:$addr))]>;
-def MOVcr      : SyncVMInstruction< 0x102, (outs GR256:$val), (ins memop:$addr),
+def MOVcr      : SyncVMInstruction< 0x103, (outs GR256:$val), (ins memop:$addr),
                                     "mov.c\t$addr, $val",
                                     [(set GR256:$val, (load_child memaddr:$addr))]>;
 def Load       : SyncVMInstruction< 0x13, (outs GR256:$val), (ins GR256:$addr, ext_address_flag:$eaf),

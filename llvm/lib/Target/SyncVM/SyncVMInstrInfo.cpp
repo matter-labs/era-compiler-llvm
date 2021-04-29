@@ -45,9 +45,10 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
       MFI.getObjectAlign(FrameIdx));
 
   if (RC == &SyncVM::GR256RegClass)
-    BuildMI(MBB, MI, DL, get(SyncVM::MOVrm))
+    BuildMI(MBB, MI, DL, get(SyncVM::MOVrs))
         .addReg(SrcReg, getKillRegState(isKill))
         .addFrameIndex(FrameIdx)
+        .addImm(0)
         .addImm(0)
         .addMemOperand(MMO);
   else
@@ -70,9 +71,10 @@ void SyncVMInstrInfo::loadRegFromStackSlot(
       MFI.getObjectAlign(FrameIdx));
 
   if (RC == &SyncVM::GR256RegClass)
-    BuildMI(MBB, MI, DL, get(SyncVM::MOVmr))
+    BuildMI(MBB, MI, DL, get(SyncVM::MOVsr))
         .addReg(DestReg, getDefRegState(true))
         .addFrameIndex(FrameIdx)
+        .addImm(0)
         .addImm(0)
         .addMemOperand(MMO);
   else
