@@ -103,3 +103,26 @@ void SyncVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
   if (Base.isReg())
     O << '(' << getRegisterName(Base.getReg()) << ')';
 }
+
+void SyncVMInstPrinter::printStackOperand(const MCInst *MI, unsigned OpNo,
+                                          raw_ostream &O) {
+  const MCOperand &Base1 = MI->getOperand(OpNo);
+  const MCOperand &Base2 = MI->getOperand(OpNo + 1);
+  const MCOperand &Disp = MI->getOperand(OpNo + 2);
+
+  assert(Base1.isReg() && "Expected SP register");
+
+  // Print displacement first
+  if (Disp.isExpr()) {
+    Disp.getExpr()->print(O, &MAI);
+  } else {
+    assert(Disp.isImm() && "Expected immediate in displacement field");
+    O << Disp.getImm() / 32; // Displacement is in 8-bit bytes. The memory cells
+                             // are 256 bits wide.
+  }
+
+  O << '(' << getRegisterName(Base1.getReg());
+  if (Base2.isReg())
+    O << '-' << getRegisterName(Base2.getReg());
+  O << ")";
+}
