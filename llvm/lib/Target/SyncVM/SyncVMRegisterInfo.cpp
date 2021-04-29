@@ -71,8 +71,8 @@ void SyncVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     Offset += 2; // Skip the saved FP
 
   // Fold imm into offset
-  Offset += MI.getOperand(FIOperandNum + 1).getImm();
+  Offset += MI.getOperand(FIOperandNum + 2).getImm();
 
   MI.getOperand(FIOperandNum).ChangeToRegister(BasePtr, false);
-  MI.getOperand(FIOperandNum + 1).ChangeToImmediate(Offset);
+  MI.getOperand(FIOperandNum + 2).ChangeToImmediate(Offset);
 }

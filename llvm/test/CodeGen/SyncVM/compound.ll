@@ -70,15 +70,17 @@ define i256 @struct_sum() {
   ret i256 %6
 }
 
-; TODO: Random access in a stack frame has not been implemented yet
-;define i256 @frame_compound(i256 %index, i256 %val) {
-;  %1 = alloca [5 x i256]
-;  %2 = getelementptr inbounds [5 x i256], [5 x i256]* %1, i256 0, i256 %index
-;  store i256 %val, i256* %2
-;  call void @foo()
-;  %3 = load i256, i256* %2
-;  ret i256 %3
-;}
+; CHECK: frame_compound
+define i256 @frame_compound(i256 %index, i256 %val) {
+  %1 = alloca [5 x i256]
+  %2 = getelementptr inbounds [5 x i256], [5 x i256]* %1, i256 0, i256 %index
+  ; CHECK: mov r2, 1(sp-r1)
+  store i256 %val, i256* %2
+  call void @foo()
+	; CHECK: mov 1(sp-r1), r1
+  %3 = load i256, i256* %2
+  ret i256 %3
+}
 
 declare void @foo()
 
