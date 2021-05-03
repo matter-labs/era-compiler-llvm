@@ -46,6 +46,7 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
 
   setOperationAction(ISD::GlobalAddress, MVT::i256, Custom);
   setOperationAction(ISD::BR, MVT::Other, Custom);
+  setOperationAction(ISD::BRCOND, MVT::Other, Expand);
   setOperationAction(ISD::AND, MVT::i256, Custom);
   setOperationAction(ISD::SHL, MVT::i256, Custom);
   setOperationAction(ISD::TRUNCATE, MVT::i64, Promote);
@@ -293,8 +294,8 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 //                      Other Lowerings
 //===----------------------------------------------------------------------===//
 
-static SDValue EmitCMP(SDValue &LHS, SDValue &RHS, SDValue &TargetCC,
-                       ISD::CondCode CC, const SDLoc &DL, SelectionDAG &DAG) {
+static SDValue EmitCMP(SDValue &LHS, SDValue &RHS, ISD::CondCode CC,
+                       const SDLoc &DL, SelectionDAG &DAG) {
   assert(!LHS.getValueType().isFloatingPoint() &&
          "SyncVM doesn't support floats");
 
@@ -388,6 +389,8 @@ SDValue SyncVMTargetLowering::LowerBR(SDValue Op, SelectionDAG &DAG) const {
   }
   case ISD::BR_CC:
     return LowerBrccBr(Chain, DestFalse, DL, DAG);
+  case ISD::BRCOND:
+    return LowerBrcondBr(Chain, DestFalse, DL, DAG);
   }
 }
 
@@ -440,8 +443,21 @@ SDValue SyncVMTargetLowering::LowerBrccBr(SDValue Op, SDValue DestFalse, SDLoc D
     RHS = DAG.getConstant(0, DL, MVT::i256);
   }
 
-  SDValue TargetCC = EmitCMP(LHS, RHS, TargetCC, CC, DL, DAG);
+  SDValue TargetCC = EmitCMP(LHS, RHS, CC, DL, DAG);
   SDValue Cmp = DAG.getNode(SyncVMISD::SUB, DL, MVT::Glue, LHS, RHS);
+  return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain, DestTrue,
+                     DestFalse, TargetCC, Cmp);
+}
+
+SDValue SyncVMTargetLowering::LowerBrcondBr(SDValue Op, SDValue DestFalse,
+                                            SDLoc DL, SelectionDAG &DAG) const {
+  SDValue Chain = Op.getOperand(0);
+  SDValue Cond = Op.getOperand(1);
+  SDValue DestTrue = Op.getOperand(2);
+  SDValue Zero = DAG.getConstant(0, DL, Cond.getValueType());
+
+  SDValue TargetCC = EmitCMP(Cond, Zero, ISD::SETNE, DL, DAG);
+  SDValue Cmp = DAG.getNode(SyncVMISD::SUB, DL, MVT::Glue, Cond, Zero);
   return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain, DestTrue,
                      DestFalse, TargetCC, Cmp);
 }
