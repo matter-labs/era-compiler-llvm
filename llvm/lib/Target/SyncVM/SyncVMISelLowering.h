@@ -52,6 +52,8 @@ public:
   SDValue LowerShl(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue LowerBrccBr(SDValue Op, SDValue DestFalse, SDLoc DL, SelectionDAG &DAG) const;
+  SDValue LowerBrcondBr(SDValue Op, SDValue DestFalse, SDLoc DL,
+                        SelectionDAG &DAG) const;
 
   TargetLowering::ConstraintType
   getConstraintType(StringRef Constraint) const override {
