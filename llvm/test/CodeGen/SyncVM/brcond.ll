@@ -14,3 +14,20 @@ l1:
 l2:
   ret i256 43
 }
+
+; CHECK-LABEL: bug.21.05.04
+define void @bug.21.05.04() {
+entry:
+  br label %condition
+
+condition:                                        ; preds = %entry
+; CHECK: sub r1, r0, r0
+; CHECK: jne .LBB1_3, .LBB1_2
+  br i1 undef, label %body, label %join
+
+body:                                             ; preds = %condition
+  unreachable
+
+join:                                             ; preds = %condition
+  unreachable
+}
