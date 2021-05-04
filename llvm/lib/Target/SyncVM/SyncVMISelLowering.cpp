@@ -49,6 +49,8 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::BRCOND, MVT::Other, Expand);
   setOperationAction(ISD::AND, MVT::i256, Custom);
   setOperationAction(ISD::SHL, MVT::i256, Custom);
+  setOperationAction(ISD::SETCC, MVT::i256, Expand);
+  setOperationAction(ISD::SELECT_CC, MVT::i256, Custom);
   setOperationAction(ISD::TRUNCATE, MVT::i64, Promote);
   setOperationAction(ISD::DYNAMIC_STACKALLOC, MVT::i256, Expand);
   // Support of truncate, sext, zext
@@ -357,6 +359,8 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
     return LowerGlobalAddress(Op, DAG);
   case ISD::BR:
     return LowerBR(Op, DAG);
+  case ISD::SELECT_CC:
+    return LowerSELECT_CC(Op, DAG);
   case ISD::AND:
     return LowerAnd(Op, DAG);
   case ISD::SHL:
@@ -392,6 +396,24 @@ SDValue SyncVMTargetLowering::LowerBR(SDValue Op, SelectionDAG &DAG) const {
   case ISD::BRCOND:
     return LowerBrcondBr(Chain, DestFalse, DL, DAG);
   }
+}
+
+SDValue SyncVMTargetLowering::LowerSELECT_CC(SDValue Op,
+                                             SelectionDAG &DAG) const {
+  SDValue LHS = Op.getOperand(0);
+  SDValue RHS = Op.getOperand(1);
+  SDValue TrueV = Op.getOperand(2);
+  SDValue FalseV = Op.getOperand(3);
+  ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(4))->get();
+  SDLoc DL(Op);
+
+  SDValue TargetCC = EmitCMP(LHS, RHS, CC, DL, DAG);
+  SDValue Cmp = DAG.getNode(SyncVMISD::SUB, DL, MVT::Glue, LHS, RHS);
+
+  SDVTList VTs = DAG.getVTList(Op.getValueType(), MVT::Glue);
+  SDValue Ops[] = {TrueV, FalseV, TargetCC, Cmp};
+
+  return DAG.getNode(SyncVMISD::SELECT_CC, DL, VTs, Ops);
 }
 
 SDValue SyncVMTargetLowering::LowerAnd(SDValue Op, SelectionDAG &DAG) const {
@@ -460,6 +482,77 @@ SDValue SyncVMTargetLowering::LowerBrcondBr(SDValue Op, SDValue DestFalse,
   SDValue Cmp = DAG.getNode(SyncVMISD::SUB, DL, MVT::Glue, Cond, Zero);
   return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain, DestTrue,
                      DestFalse, TargetCC, Cmp);
+}
+
+MachineBasicBlock *
+SyncVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
+                                                  MachineBasicBlock *BB) const {
+  unsigned Opc = MI.getOpcode();
+  const TargetInstrInfo &TII = *BB->getParent()->getSubtarget().getInstrInfo();
+  DebugLoc DL = MI.getDebugLoc();
+
+  assert(Opc == SyncVM::Select && "Unexpected instr type to insert");
+
+  // To "insert" a SELECT instruction, we actually have to insert the diamond
+  // control-flow pattern.  The incoming instruction knows the destination vreg
+  // to set, the condition code register to branch on, the true/false values to
+  // select between, and a branch opcode to use.
+  const BasicBlock *LLVM_BB = BB->getBasicBlock();
+  MachineFunction::iterator I = ++BB->getIterator();
+
+  //  thisMBB:
+  //  ...
+  //   sub r0, r1, r2
+  //   jCC copy1MBB, copy0MBB
+  //  copy0MBB:
+  //   j copy1MBB
+  //  copy1MBB:
+  //   val = PHI [TrueVal, thisMBB], [FalseVal, copy0MBB]
+
+  MachineBasicBlock *thisMBB = BB;
+  MachineFunction *F = BB->getParent();
+  MachineBasicBlock *copy0MBB = F->CreateMachineBasicBlock(LLVM_BB);
+  MachineBasicBlock *copy1MBB = F->CreateMachineBasicBlock(LLVM_BB);
+  F->insert(I, copy0MBB);
+  F->insert(I, copy1MBB);
+  // Update machine-CFG edges by transferring all successors of the current
+  // block to the new block which will contain the Phi node for the select.
+  copy1MBB->splice(copy1MBB->begin(), BB,
+                   std::next(MachineBasicBlock::iterator(MI)), BB->end());
+  copy1MBB->transferSuccessorsAndUpdatePHIs(BB);
+  // Next, add the true and fallthrough blocks as its successors.
+  BB->addSuccessor(copy0MBB);
+  BB->addSuccessor(copy1MBB);
+
+  BuildMI(BB, DL, TII.get(SyncVM::JCC))
+      .addMBB(copy1MBB)
+      .addMBB(copy0MBB)
+      .addImm(MI.getOperand(3).getCImm()->getZExtValue());
+
+  //  copy0MBB:
+  //   %FalseValue = ...
+  //   # fallthrough to copy1MBB
+  BB = copy0MBB;
+  BuildMI(BB, DL, TII.get(SyncVM::JCC))
+      .addMBB(copy1MBB)
+      .addMBB(copy1MBB)
+      .addImm(SyncVMCC::COND_NONE);
+
+  // Update machine-CFG edges
+  BB->addSuccessor(copy1MBB);
+
+  //  copy1MBB:
+  //   %Result = phi [ %FalseValue, copy0MBB ], [ %TrueValue, thisMBB ]
+  //  ...
+  BB = copy1MBB;
+  BuildMI(*BB, BB->begin(), DL, TII.get(SyncVM::PHI), MI.getOperand(0).getReg())
+      .addReg(MI.getOperand(2).getReg())
+      .addMBB(copy0MBB)
+      .addReg(MI.getOperand(1).getReg())
+      .addMBB(thisMBB);
+
+  MI.eraseFromParent(); // The pseudo instruction is gone now.
+  return BB;
 }
 
 const char *SyncVMTargetLowering::getTargetNodeName(unsigned Opcode) const {

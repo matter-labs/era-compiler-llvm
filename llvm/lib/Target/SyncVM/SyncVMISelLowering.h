@@ -48,6 +48,7 @@ public:
 
   SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerBR(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerAnd(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerShl(SDValue Op, SelectionDAG &DAG) const;
 
@@ -92,9 +93,7 @@ public:
 
   MachineBasicBlock *
   EmitInstrWithCustomInserter(MachineInstr &MI,
-                              MachineBasicBlock *BB) const override {
-    return nullptr;
-  }
+                              MachineBasicBlock *BB) const override;
 
 private:
   SDValue LowerFormalArguments(SDValue Chain, CallingConv::ID CallConv,
