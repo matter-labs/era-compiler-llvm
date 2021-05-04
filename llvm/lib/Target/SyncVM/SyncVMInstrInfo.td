@@ -17,6 +17,9 @@ def SDT_SyncVMCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i256>, SDTCisVT<1, i256>]
 def SDT_SyncVMBrCC         : SDTypeProfile<0,  3, [SDTCisVT<0, OtherVT>,
                                                    SDTCisVT<1, OtherVT>,
                                                    SDTCisVT<2, i256>]>;
+def SDT_SyncVMSelectCC     : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
+                                                  SDTCisSameAs<1, 2>, 
+                                                  SDTCisVT<3, i256>]>;
 def SDT_SyncVMBinary       : SDTypeProfile<0,  2, [SDTCisSameAs<0, 1>]>;
 
 //===----------------------------------------------------------------------===//
@@ -29,6 +32,8 @@ def SyncVMcall   : SDNode<"SyncVMISD::CALL", SDT_SyncVMCall,
                     [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
 def SyncVMbrcc   : SDNode<"SyncVMISD::BR_CC", SDT_SyncVMBrCC,
                     [SDNPHasChain, SDNPInGlue]>;
+def SyncVMselectcc: SDNode<"SyncVMISD::SELECT_CC", SDT_SyncVMSelectCC,
+                           [SDNPInGlue]>;
 def SyncVMsub    : SDNode<"SyncVMISD::SUB", SDT_SyncVMBinary, [SDNPOutGlue]>;
 def SyncVMcallseq_start :
                  SDNode<"ISD::CALLSEQ_START", SDT_SyncVMCallSeqStart,
@@ -133,6 +138,11 @@ def ADJCALLSTACKUP   : Pseudo<(outs), (ins i256imm:$amt1, i256imm:$amt2),
                               "#ADJCALLSTACKUP $amt1 $amt2",
                               [(SyncVMcallseq_end timm:$amt1, timm:$amt2)]>;
 }
+let isCodeGenOnly = 1, usesCustomInserter = 1 in
+  def Select : Pseudo<(outs GR256:$dst), (ins GR256:$src, GR256:$src2, i256imm:$cc),
+                       "# Select PSEUDO",
+                       [(set GR256:$dst,
+                          (SyncVMselectcc GR256:$src, GR256:$src2, imm:$cc))]>;
 
 //===----------------------------------------------------------------------===//
 // The NoOperation instruction
