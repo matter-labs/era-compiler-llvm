@@ -18,6 +18,11 @@ case "${1}" in
         ;;
 esac
 
+sudo apt --yes install \
+    cmake \
+    clang-11 \
+    lld-11
+
 cmake \
     -S 'llvm' \
     -B "build-${DIRECTORY_SUFFIX}/" \
