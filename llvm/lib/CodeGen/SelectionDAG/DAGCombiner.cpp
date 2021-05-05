@@ -2222,6 +2222,8 @@ SDValue DAGCombiner::visitADDLike(SDNode *N) {
     // We don't transform this pattern:
     //   add (zext i1 X), -1 -> sext (not i1 X)
     // because most (?) targets generate better code for the zext form.
+// SyncVM local change begin
+#if 0
     if (N0.getOpcode() == ISD::SIGN_EXTEND && N0.hasOneUse() &&
         isOneOrOneSplat(N1)) {
       SDValue X = N0.getOperand(0);
@@ -2233,6 +2235,7 @@ SDValue DAGCombiner::visitADDLike(SDNode *N) {
         return DAG.getNode(ISD::ZERO_EXTEND, DL, VT, Not);
       }
     }
+#endif
 
     // Fold (add (or x, c0), c1) -> (add x, (c0 + c1)) if (or x, c0) is
     // equivalent to (add x, c0).
@@ -2328,6 +2331,8 @@ SDValue DAGCombiner::visitADDLike(SDNode *N) {
   if (SimplifyDemandedBits(SDValue(N, 0)))
     return SDValue(N, 0);
 
+// SyncVM local begin
+#if 0
   if (isOneOrOneSplat(N1)) {
     // fold (add (xor a, -1), 1) -> (sub 0, a)
     if (isBitwiseNot(N0))
@@ -2370,6 +2375,8 @@ SDValue DAGCombiner::visitADDLike(SDNode *N) {
     SDValue Xor = DAG.getNode(ISD::XOR, DL, VT, N0.getOperand(1), N1);
     return DAG.getNode(ISD::ADD, DL, VT, Xor, N0.getOperand(0));
   }
+#endif
+// SyncVM local end
 
   if (SDValue Combined = visitADDLikeCommutative(N0, N1, N))
     return Combined;
@@ -2395,10 +2402,14 @@ SDValue DAGCombiner::visitADD(SDNode *N) {
   if (SDValue V = foldAddSubOfSignBit(N, DAG))
     return V;
 
+// SyncVM local begin
+#if 0
   // fold (a+b) -> (a|b) iff a and b share no bits.
   if ((!LegalOperations || TLI.isOperationLegal(ISD::OR, VT)) &&
       DAG.haveNoCommonBitsSet(N0, N1))
     return DAG.getNode(ISD::OR, DL, VT, N0, N1);
+#endif
+// SyncVM local end
 
   // Fold (add (vscale * C0), (vscale * C1)) to (vscale * (C0 + C1)).
   if (N0.getOpcode() == ISD::VSCALE && N1.getOpcode() == ISD::VSCALE) {
@@ -2542,12 +2553,16 @@ SDValue DAGCombiner::visitADDLikeCommutative(SDValue N0, SDValue N1,
   //   add (add x, 1), y
   // And if the target does not like this form then turn into:
   //   sub y, (xor x, -1)
+  // SyncVM local begin
+#if 0
   if (!TLI.preferIncOfAddToSubOfNot(VT) && N0.hasOneUse() &&
       N0.getOpcode() == ISD::ADD && isOneOrOneSplat(N0.getOperand(1))) {
     SDValue Not = DAG.getNode(ISD::XOR, DL, VT, N0.getOperand(0),
                               DAG.getAllOnesConstant(DL, VT));
     return DAG.getNode(ISD::SUB, DL, VT, N1, Not);
   }
+#endif
+  // SyncVM local end
 
   // Hoist one-use subtraction by non-opaque constant:
   //   (x - C) + y  ->  (x + y) - C
@@ -3114,8 +3129,12 @@ SDValue DAGCombiner::visitSUB(SDNode *N) {
   }
 
   // Canonicalize (sub -1, x) -> ~x, i.e. (xor x, -1)
+  // SyncVM local begin
+#if 0
   if (isAllOnesOrAllOnesSplat(N0))
     return DAG.getNode(ISD::XOR, DL, VT, N1, N0);
+#endif
+  // SyncVM local end
 
   // fold (A - (0-B)) -> A+B
   if (N1.getOpcode() == ISD::SUB && isNullOrNullSplat(N1.getOperand(0)))
@@ -3248,11 +3267,15 @@ SDValue DAGCombiner::visitSUB(SDNode *N) {
     return V;
 
   // (x - y) - 1  ->  add (xor y, -1), x
+  // SyncVM local begin
+#if 0
   if (N0.hasOneUse() && N0.getOpcode() == ISD::SUB && isOneOrOneSplat(N1)) {
     SDValue Xor = DAG.getNode(ISD::XOR, DL, VT, N0.getOperand(1),
                               DAG.getAllOnesConstant(DL, VT));
     return DAG.getNode(ISD::ADD, DL, VT, Xor, N0.getOperand(0));
   }
+#endif
+  // SyncVM local end
 
   // Look for:
   //   sub y, (xor x, -1)
@@ -3428,9 +3451,13 @@ SDValue DAGCombiner::visitSUBC(SDNode *N) {
     return CombineTo(N, N0, DAG.getNode(ISD::CARRY_FALSE, DL, MVT::Glue));
 
   // Canonicalize (sub -1, x) -> ~x, i.e. (xor x, -1) + no borrow
+  // SyncVM local begin
+#if 0
   if (isAllOnesConstant(N0))
     return CombineTo(N, DAG.getNode(ISD::XOR, DL, VT, N1, N0),
                      DAG.getNode(ISD::CARRY_FALSE, DL, MVT::Glue));
+#endif
+  // SyncVM local end
 
   return SDValue();
 }
@@ -8912,6 +8939,8 @@ SDValue DAGCombiner::foldSelectOfConstants(SDNode *N) {
     return SDValue();
   }
 
+// SyncVM local begin
+#if 0
   // fold (select Cond, 0, 1) -> (xor Cond, 1)
   // We can't do this reliably if integer based booleans have different contents
   // to floating point based booleans. This is because we can't tell whether we
@@ -8933,6 +8962,8 @@ SDValue DAGCombiner::foldSelectOfConstants(SDNode *N) {
       return NotCond;
     return DAG.getZExtOrTrunc(NotCond, DL, VT);
   }
+#endif
+// SyncVM local end
 
   return SDValue();
 }
@@ -8949,6 +8980,8 @@ SDValue DAGCombiner::visitSELECT(SDNode *N) {
   if (SDValue V = DAG.simplifySelect(N0, N1, N2))
     return V;
 
+// SyncVM local begin
+#if 0
   // fold (select X, X, Y) -> (or X, Y)
   // fold (select X, 1, Y) -> (or C, Y)
   if (VT == VT0 && VT == MVT::i1 && (N0 == N1 || isOneConstant(N1)))
@@ -8973,6 +9006,8 @@ SDValue DAGCombiner::visitSELECT(SDNode *N) {
   // fold (select X, Y, 0) -> (and X, Y)
   if (VT == VT0 && VT == MVT::i1 && (N0 == N2 || isNullConstant(N2)))
     return DAG.getNode(ISD::AND, DL, VT, N0, N1);
+#endif
+  // SyncVM local end
 
   // If we can fold this based on the true/false value, do so.
   if (SimplifySelectOps(N, N1, N2))
@@ -9018,6 +9053,8 @@ SDValue DAGCombiner::visitSELECT(SDNode *N) {
     }
 
     // select Cond0, (select Cond1, X, Y), Y -> select (and Cond0, Cond1), X, Y
+    // SyncVM local begin
+#if 0
     if (N1->getOpcode() == ISD::SELECT && N1->hasOneUse()) {
       SDValue N1_0 = N1->getOperand(0);
       SDValue N1_1 = N1->getOperand(1);
@@ -9036,6 +9073,8 @@ SDValue DAGCombiner::visitSELECT(SDNode *N) {
         }
       }
     }
+#endif
+    //SyncVM local end
     // select Cond0, X, (select Cond1, X, Y) -> select (or Cond0, Cond1), X, Y
     if (N2->getOpcode() == ISD::SELECT && N2->hasOneUse()) {
       SDValue N2_0 = N2->getOperand(0);
@@ -10433,6 +10472,8 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
   //      (and/or/xor (zextload x), (zext cst))
   // Unless (and (load x) cst) will match as a zextload already and has
   // additional users.
+  // SyncVM local begin
+#if 0
   if ((N0.getOpcode() == ISD::AND || N0.getOpcode() == ISD::OR ||
        N0.getOpcode() == ISD::XOR) &&
       isa<LoadSDNode>(N0.getOperand(0)) &&
@@ -10486,6 +10527,8 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
       }
     }
   }
+#endif
+  // SyncVM local end
 
   // fold (zext (and/or/xor (shl/shr (load x), cst), cst)) ->
   //      (and/or/xor (shl/shr (zextload x), (zext cst)), (zext cst))

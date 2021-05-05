@@ -80,8 +80,6 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
     for (MachineInstr &MI : MBB) {
       if (MI.isPseudo()) {
         switch (MI.getOpcode()) {
-        default:
-          llvm_unreachable("Unknown pseudo");
         case SyncVM::CONST:
           expandConst(MI);
           break;
