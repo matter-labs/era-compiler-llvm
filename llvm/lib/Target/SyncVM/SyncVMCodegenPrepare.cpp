@@ -41,19 +41,23 @@ char SyncVMCodegenPrepare::ID = 0;
 INITIALIZE_PASS(SyncVMCodegenPrepare, "lower-bitwise",
                 "Replace bitwise operations with arithmetic ones", false, false)
 
-/// Replace a & b with a * b
+/// Replace a & b with a * b for and i1
 static void replaceAnd(Instruction &I) {
   Value *LHS = I.getOperand(0);
   Value *RHS = I.getOperand(1);
+  if (LHS->getType()->getIntegerBitWidth() != 1u)
+    return;
   IRBuilder<> Builder(&I);
   auto *NewI = Builder.CreateMul(LHS, RHS);
   I.replaceAllUsesWith(NewI);
 }
 
-/// Replace a | b with a + b - a * b
+/// Replace a | b with a + b - a * b for i1
 static void replaceOr(Instruction &I) {
   Value *LHS = I.getOperand(0);
   Value *RHS = I.getOperand(1);
+  if (LHS->getType()->getIntegerBitWidth() != 1u)
+    return;
   IRBuilder<> Builder(&I);
   auto *Mul = Builder.CreateMul(LHS, RHS);
   auto *Add = Builder.CreateAdd(LHS, RHS);
@@ -61,22 +65,21 @@ static void replaceOr(Instruction &I) {
   I.replaceAllUsesWith(NewI);
 }
 
-/// Replace a ^ b with a + b - 2 * a * b
+/// Replace a ^ b with a + b for i1
 static void replaceXor(Instruction &I) {
   Value *LHS = I.getOperand(0);
   Value *RHS = I.getOperand(1);
+  if (LHS->getType()->getIntegerBitWidth() != 1u)
+    return;
   IRBuilder<> Builder(&I);
-  auto *Mul = Builder.CreateMul(LHS, RHS);
-  Mul = Builder.CreateMul(Mul, Builder.getIntN(256, 2));
   auto *Add = Builder.CreateAdd(LHS, RHS);
-  auto *NewI = Builder.CreateSub(Add, Mul);
-  I.replaceAllUsesWith(NewI);
+  I.replaceAllUsesWith(Add);
 }
 
-static Value* pow2Const(ConstantInt *PowValue, IRBuilder<> &Builder) {
+static Value *pow2Const(ConstantInt *PowValue, IRBuilder<> &Builder) {
   uint64_t Power = PowValue->getZExtValue();
-  APInt Pow2(PowValue->getType()->getIntegerBitWidth(),
-             1, false /* IsSigned */);
+  APInt Pow2(PowValue->getType()->getIntegerBitWidth(), 1,
+             false /* IsSigned */);
   Pow2 <<= Power;
   return Builder.getInt(Pow2);
 }
