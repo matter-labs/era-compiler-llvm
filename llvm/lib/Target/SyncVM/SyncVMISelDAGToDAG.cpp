@@ -38,15 +38,20 @@ struct SyncVMISelAddressMode {
   int16_t Disp = 0;
   const GlobalValue *GV = nullptr;
 
+  bool isDefault() const {
+    return !BaseType && !Base.Reg.getNode() && !Base.FrameIndex && !Disp && !GV;
+  }
+
   SyncVMISelAddressMode() = default;
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
   LLVM_DUMP_METHOD void dump() {
     errs() << "SyncVMISelAddressMode " << this << '\n';
-    if (BaseType == RegBase && Base.Reg.getNode() != nullptr) {
+    if (Base.Reg.getNode() != nullptr) {
       errs() << "Base.Reg ";
       Base.Reg.getNode()->dump();
-    } else if (BaseType == FrameIndexBase) {
+    }
+    if (BaseType == FrameIndexBase) {
       errs() << " Base.FrameIndex " << Base.FrameIndex << '\n';
     }
     errs() << " Disp " << Disp << '\n';
@@ -85,8 +90,32 @@ private:
   bool SelectMemAddr(SDValue Addr, SDValue &Base, SDValue &Disp);
   bool SelectStackAddr(SDValue Addr, SDValue &Base1, SDValue &Base2,
                        SDValue &Disp);
+  SyncVMISelAddressMode MergeAddr(const SyncVMISelAddressMode &LHS,
+                                  const SyncVMISelAddressMode &RHS, SDLoc DL);
 };
 } // end anonymous namespace
+
+/// Merge \p LHS and \p RHS address modes as if they are added together.
+/// The main goal is to transform patterns like (+ (+ fi reg), (* reg ci)) to
+/// (+ (+ fi ci), NewReg) so SyncVM can select it.
+SyncVMISelAddressMode
+SyncVMDAGToDAGISel::MergeAddr(const SyncVMISelAddressMode &LHS,
+                              const SyncVMISelAddressMode &RHS, SDLoc DL) {
+  SyncVMISelAddressMode Result;
+  Result.BaseType = SyncVMISelAddressMode::FrameIndexBase;
+  Result.Base.FrameIndex = LHS.Base.FrameIndex | RHS.Base.FrameIndex;
+  if (LHS.Base.Reg.getNode() && RHS.Base.Reg.getNode()) {
+    Result.Base.Reg =
+        CurDAG->getNode(ISD::ADD, DL, MVT::i256, LHS.Base.Reg, RHS.Base.Reg);
+    SelectCode(Result.Base.Reg.getNode());
+  } else if (LHS.Base.Reg.getNode()) {
+    Result.Base.Reg = LHS.Base.Reg;
+  } else if (RHS.Base.Reg.getNode()) {
+    Result.Base.Reg = RHS.Base.Reg;
+  }
+  Result.Disp += LHS.Disp + RHS.Disp;
+  return Result;
+}
 
 /// MatchAddressBase - Helper for MatchAddress. Add the specified node to the
 /// specified addressing mode without any further recursion.
@@ -118,8 +147,9 @@ bool SyncVMDAGToDAGISel::MatchAddress(SDValue N, SyncVMISelAddressMode &AM,
     return false;
   }
   case ISD::FrameIndex: {
-    if (IsStackAddr && AM.BaseType == SyncVMISelAddressMode::RegBase &&
-        AM.Base.Reg.getNode() == nullptr) {
+    if (!IsStackAddr)
+      return true;
+    if (IsStackAddr && AM.BaseType == SyncVMISelAddressMode::RegBase) {
       AM.BaseType = SyncVMISelAddressMode::FrameIndexBase;
       AM.Base.FrameIndex = cast<FrameIndexSDNode>(N)->getIndex();
       return false;
@@ -139,15 +169,34 @@ bool SyncVMDAGToDAGISel::MatchAddress(SDValue N, SyncVMISelAddressMode &AM,
   }
   case ISD::ADD: {
     SyncVMISelAddressMode Backup = AM;
-    if (!MatchAddress(N.getNode()->getOperand(0), AM, IsStackAddr) &&
-        !MatchAddress(N.getNode()->getOperand(1), AM, IsStackAddr))
+    const SDValue &Operand0 = N.getNode()->getOperand(0);
+    const SDValue &Operand1 = N.getNode()->getOperand(1);
+    if (!MatchAddress(Operand0, AM, IsStackAddr) &&
+        !MatchAddress(Operand1, AM, IsStackAddr))
       return false;
     AM = Backup;
-    if (!MatchAddress(N.getNode()->getOperand(1), AM, IsStackAddr) &&
-        !MatchAddress(N.getNode()->getOperand(0), AM, IsStackAddr))
+    if (!MatchAddress(Operand1, AM, IsStackAddr) &&
+        !MatchAddress(Operand0, AM, IsStackAddr))
       return false;
     AM = Backup;
-
+    if (!AM.isDefault() || !IsStackAddr)
+      break;
+    LLVM_DEBUG(errs() << "MatchAddress split, attempting to combine\n");
+    SyncVMISelAddressMode LHS, RHS;
+    if (!MatchAddress(Operand0, LHS, true) &&
+        !MatchAddress(Operand1, RHS, false) &&
+        LHS.BaseType == SyncVMISelAddressMode::FrameIndexBase) {
+      AM = MergeAddr(LHS, RHS, SDLoc(N));
+      return false;
+    }
+    LHS = SyncVMISelAddressMode();
+    RHS = SyncVMISelAddressMode();
+    if (!MatchAddress(Operand0, LHS, false) &&
+        !MatchAddress(Operand1, RHS, true) &&
+        RHS.BaseType == SyncVMISelAddressMode::FrameIndexBase) {
+      AM = MergeAddr(LHS, RHS, SDLoc(N));
+      return false;
+    }
     break;
   }
   case ISD::OR:
