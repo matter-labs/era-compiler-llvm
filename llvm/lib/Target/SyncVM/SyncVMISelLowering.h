@@ -95,6 +95,16 @@ public:
   EmitInstrWithCustomInserter(MachineInstr &MI,
                               MachineBasicBlock *BB) const override;
 
+  /// allowsMisalignedMemoryAccesses - Returns true if the target allows
+  /// unaligned memory accesses of the specified type. Returns whether it
+  /// is "fast" by reference in the second argument.
+  bool allowsMisalignedMemoryAccesses(EVT VT, unsigned AddrSpace,
+                                      unsigned Align,
+                                      MachineMemOperand::Flags Flags,
+                                      bool *Fast) const override {
+    return false;
+  }
+
 private:
   SDValue LowerFormalArguments(SDValue Chain, CallingConv::ID CallConv,
                                bool isVarArg,
