@@ -119,11 +119,11 @@ define i256 @call.sevenarg() nounwind {
 ; CHECK: add r1, r0, r2
 ; CHECK: add r1, r0, r3
 ; CHECK: add r1, r0, r4
-; CHECK: push #1, r1
-; CHECK: push #1, r1
-; CHECK: push #1, r1
+; CHECK: push #0, r1
+; CHECK: push #0, r1
+; CHECK: push #0, r1
 ; CHECK: call sevenarg
-; CHECK: pop #3, r2
+; CHECK: pop #2, r0
   %1 = call i256 @sevenarg(i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0)
   ret i256 %1
 }
@@ -135,16 +135,16 @@ define i256 @call.eightarg() nounwind {
 ; CHECK: add r1, r0, r2
 ; CHECK: add r1, r0, r3
 ; CHECK: add r1, r0, r4
-; CHECK: push #1, r1
-; CHECK: push #1, r1
+; CHECK: push #0, r1
+; CHECK: push #0, r1
 ; CHECK: sfll #1, r5, r5
 ; CHECK: sflh #0, r5, r5
-; CHECK: push #1, r5
+; CHECK: push #0, r5
 ; CHECK: sfll #2, r5, r5
 ; CHECK: sflh #0, r5, r5
-; CHECK: push #1, r5
+; CHECK: push #0, r5
 ; CHECK: call eightarg
-; CHECK: pop #4, r2
+; CHECK: pop #3, r0
   %1 = call i256 @eightarg(i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 1, i256 2)
   ret i256 %1
 }
