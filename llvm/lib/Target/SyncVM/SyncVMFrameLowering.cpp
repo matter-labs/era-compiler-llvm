@@ -29,10 +29,48 @@ bool SyncVMFrameLowering::hasReservedCallFrame(const MachineFunction &MF) const 
 
 void SyncVMFrameLowering::emitPrologue(MachineFunction &MF,
                                        MachineBasicBlock &MBB) const {
+  assert(&MF.front() == &MBB && "Shrink-wrapping not yet supported");
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+  SyncVMMachineFunctionInfo *SyncVMFI = MF.getInfo<SyncVMMachineFunctionInfo>();
+  const SyncVMInstrInfo &TII =
+      *static_cast<const SyncVMInstrInfo *>(MF.getSubtarget().getInstrInfo());
+
+  MachineBasicBlock::iterator MBBI = MBB.begin();
+  DebugLoc DL = MBBI != MBB.end() ? MBBI->getDebugLoc() : DebugLoc();
+
+  // Get the number of bytes to allocate from the FrameInfo.
+  uint64_t StackSize = MFI.getStackSize();
+
+  uint64_t NumCells = (StackSize - SyncVMFI->getCalleeSavedFrameSize()) / 32;
+
+  // TODO: Handle callee saved registers once support them
+  if (NumCells)
+    BuildMI(MBB, MBBI, DL, TII.get(SyncVM::PUSH))
+        .addImm(NumCells)
+        .addReg(SyncVM::R0);
 }
 
 void SyncVMFrameLowering::emitEpilogue(MachineFunction &MF,
                                        MachineBasicBlock &MBB) const {
+  const MachineFrameInfo &MFI = MF.getFrameInfo();
+  SyncVMMachineFunctionInfo *SyncVMFI = MF.getInfo<SyncVMMachineFunctionInfo>();
+  const SyncVMInstrInfo &TII =
+      *static_cast<const SyncVMInstrInfo *>(MF.getSubtarget().getInstrInfo());
+
+  MachineBasicBlock::iterator MBBI = MBB.getLastNonDebugInstr();
+  DebugLoc DL = MBBI->getDebugLoc();
+
+  // Get the number of bytes to allocate from the FrameInfo
+  uint64_t StackSize = MFI.getStackSize();
+  unsigned CSSize = SyncVMFI->getCalleeSavedFrameSize();
+  uint64_t NumCells = (StackSize - CSSize) / 32;
+
+  DL = MBBI->getDebugLoc();
+
+  // TODO: Handle callee saved registers once support them
+  // adjust stack pointer back: SP += numbytes
+  if (NumCells)
+    BuildMI(MBB, MBBI, DL, TII.get(SyncVM::POP), SyncVM::R0).addImm(NumCells);
 }
 
 // FIXME: Can we eleminate these in favour of generic code?
