@@ -114,19 +114,37 @@ define i256 @caller_i128.ret(i256 %a1) nounwind {
 
 ; CHECK-LABEL: call.sevenarg
 define i256 @call.sevenarg() nounwind {
-; CHECK-DAG: mov r1, 0(sp)
-; CHECK-DAG: mov r1, 1(sp)
-; CHECK-DAG: mov r1, 2(sp)
+; CHECK: sfll #0, r1, r1
+; CHECK: sflh #0, r1, r1
+; CHECK: add r1, r0, r2
+; CHECK: add r1, r0, r3
+; CHECK: add r1, r0, r4
+; CHECK: push #1, r1
+; CHECK: push #1, r1
+; CHECK: push #1, r1
+; CHECK: call sevenarg
+; CHECK: pop #3, r2
   %1 = call i256 @sevenarg(i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0)
   ret i256 %1
 }
 
 ; CHECK-LABEL: call.eightarg
 define i256 @call.eightarg() nounwind {
+; CHECK: sfll #0, r1, r1
+; CHECK: sflh #0, r1, r1
+; CHECK: add r1, r0, r2
+; CHECK: add r1, r0, r3
+; CHECK: add r1, r0, r4
+; CHECK: push #1, r1
+; CHECK: push #1, r1
 ; CHECK: sfll #1, r5, r5
-; CHECK: mov r5, 2(sp)
+; CHECK: sflh #0, r5, r5
+; CHECK: push #1, r5
 ; CHECK: sfll #2, r5, r5
-; CHECK: mov r5, 3(sp)
+; CHECK: sflh #0, r5, r5
+; CHECK: push #1, r5
+; CHECK: call eightarg
+; CHECK: pop #4, r2
   %1 = call i256 @eightarg(i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 1, i256 2)
   ret i256 %1
 }
