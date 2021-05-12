@@ -238,7 +238,7 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
                                InFlag);
     } else {
       Chain = DAG.getNode(SyncVMISD::PUSH, DL, MVT::Other, Chain,
-                          DAG.getTargetConstant(1, DL, MVT::i256), OutVals[i]);
+                          DAG.getTargetConstant(0, DL, MVT::i256), OutVals[i]);
     }
   }
 
@@ -263,8 +263,9 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 
   if (NumMemOps) {
     SDValue R0 = DAG.getRegister(SyncVM::R0, MVT::i256);
+    // TODO: ISel here is wrong: it assigns POP result to a GPR instead of r0.
     Chain = DAG.getNode(SyncVMISD::POP, DL, MVT::Glue, Chain,
-                        DAG.getTargetConstant(NumMemOps, DL, MVT::i256), R0,
+                        DAG.getTargetConstant(NumMemOps - 1, DL, MVT::i256), R0,
                         InFlag);
   }
 

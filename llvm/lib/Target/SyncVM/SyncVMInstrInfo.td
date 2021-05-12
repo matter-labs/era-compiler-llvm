@@ -272,8 +272,9 @@ let hasSideEffects = 1 in {
 def PUSH    : SyncVMInstruction< 0x19, (outs), (ins i256imm:$size, GR256:$val),
                                  "push\t#$size, $val",
                                  [(SyncVMpush timm:$size, GR256:$val)] >;
+// TODO r0 should not be hardcoded
 def POP     : SyncVMInstruction< 0x1a, (outs GR256:$val), (ins i256imm:$size),
-                                 "pop\t#$size, $val",
+                                 "pop\t#$size, r0",
                                  [(set GR256:$val, (SyncVMpop timm:$size))] >;
 }
 
