@@ -13,7 +13,9 @@ def SDT_SyncVMCall         : SDTypeProfile<0, -1, [SDTCisPtrTy<0>]>;
 def SDT_SyncVMCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i256>,
                                              SDTCisVT<1, i256>]>;
 def SDT_SyncVMCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i256>, SDTCisVT<1, i256>]>;
-
+def SDT_SyncVMPush         : SDTypeProfile<0,  2, [SDTCisVT<0, i256>,
+                                                   SDTCisVT<1, i256>]>;
+def SDT_SyncVMPop          : SDTypeProfile<1,  1, [SDTCisVT<0, i256>]>;
 def SDT_SyncVMBrCC         : SDTypeProfile<0,  3, [SDTCisVT<0, OtherVT>,
                                                    SDTCisVT<1, OtherVT>,
                                                    SDTCisVT<2, i256>]>;
@@ -41,7 +43,8 @@ def SyncVMcallseq_start :
 def SyncVMcallseq_end :
                  SDNode<"ISD::CALLSEQ_END",   SDT_SyncVMCallSeqEnd,
                         [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
-
+def SyncVMpush : SDNode<"SyncVMISD::PUSH", SDT_SyncVMPush, [SDNPHasChain]>;
+def SyncVMpop : SDNode<"SyncVMISD::POP",   SDT_SyncVMPop, [SDNPHasChain]>;
 
 //===----------------------------------------------------------------------===//
 // MSP430 Operand Definitions.
@@ -265,11 +268,14 @@ def SFLHir  : SyncVMInstruction< 0x051, (outs GR256:$out), (ins imm128:$val, GR2
 //===----------------------------------------------------------------------===//
 // Stack adjustments
 //===----------------------------------------------------------------------===//
-def PUSH    : SyncVMInstruction< 0x19, (outs), (ins i256imm:$val),
-                                 "push\t$val", [] >;
-def POP     : SyncVMInstruction< 0x1a, (outs), (ins i256imm:$val),
-                                 "pop\t$val", [] >;
-
+let hasSideEffects = 1 in {
+def PUSH    : SyncVMInstruction< 0x19, (outs), (ins i256imm:$size, GR256:$val),
+                                 "push\t#$size, $val",
+                                 [(SyncVMpush timm:$size, GR256:$val)] >;
+def POP     : SyncVMInstruction< 0x1a, (outs GR256:$val), (ins i256imm:$size),
+                                 "pop\t#$size, $val",
+                                 [(set GR256:$val, (SyncVMpop timm:$size))] >;
+}
 
 //===----------------------------------------------------------------------===//
 // Intrinsics lowering

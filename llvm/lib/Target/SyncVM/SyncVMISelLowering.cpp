@@ -228,27 +228,18 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   CCInfo.AnalyzeCallOperands(Outs, CC_SYNCVM);
 
   unsigned NumBytes = CCInfo.getNextStackOffset();
-  Chain = DAG.getCALLSEQ_START(Chain, NumBytes, 0, DL);
-
+  unsigned NumMemOps =
+      std::count_if(std::begin(ArgLocs), std::end(ArgLocs),
+                    [](const CCValAssign &VA) { return !VA.isRegLoc(); });
   SDValue InFlag;
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
     if (ArgLocs[i].isRegLoc()) {
       Chain = DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), OutVals[i],
                                InFlag);
     } else {
-      if (!StackPtr.getNode())
-        StackPtr = DAG.getRegister(SyncVM::SP, PtrVT);
-      SDValue PtrOff =
-          DAG.getNode(ISD::ADD, DL, PtrVT, StackPtr,
-                      DAG.getIntPtrConstant(ArgLocs[i].getLocMemOffset(), DL));
-      SDValue MemOp =
-          DAG.getStore(Chain, DL, OutVals[i], PtrOff, MachinePointerInfo());
-      MemOpChains.push_back(MemOp);
+      Chain = DAG.getNode(SyncVMISD::PUSH, DL, MVT::Other, Chain,
+                          DAG.getTargetConstant(1, DL, MVT::i256), OutVals[i]);
     }
-    // Transform all store nodes into one single node because all store nodes
-    // are independent of each other.
-    if (!MemOpChains.empty())
-      Chain = DAG.getNode(ISD::TokenFactor, DL, MVT::Other, MemOpChains);
   }
 
   // Returns a chain & a flag for retval copy to use.
@@ -270,16 +261,20 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   Chain = DAG.getNode(SyncVMISD::CALL, DL, NodeTys, Ops);
   InFlag = Chain.getValue(1);
 
-  // Create the CALLSEQ_END node.
-  Chain = DAG.getCALLSEQ_END(Chain, DAG.getConstant(NumBytes, DL, PtrVT, true),
-                             DAG.getConstant(0, DL, PtrVT, true), InFlag, DL);
-  InFlag = Chain.getValue(1);
+  if (NumMemOps) {
+    SDValue R0 = DAG.getRegister(SyncVM::R0, MVT::i256);
+    Chain = DAG.getNode(SyncVMISD::POP, DL, MVT::Glue, Chain,
+                        DAG.getTargetConstant(NumMemOps, DL, MVT::i256), R0,
+                        InFlag);
+  }
 
   SmallVector<CCValAssign, 16> RVLocs;
   CCState RetCCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), RVLocs,
                     *DAG.getContext());
   RetCCInfo.AnalyzeCallResult(Ins, CC_SYNCVM);
 
+  // TODO: Glue had been broken by this point, needs to be fixed.
+  InFlag = SDValue();
   // Copy all of the result registers out of their specified physreg.
   for (unsigned i = 0; i != RVLocs.size(); ++i) {
     Chain = DAG.getCopyFromReg(Chain, DL, RVLocs[i].getLocReg(),
