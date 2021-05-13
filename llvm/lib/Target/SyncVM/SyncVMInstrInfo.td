@@ -268,15 +268,17 @@ def SFLHir  : SyncVMInstruction< 0x051, (outs GR256:$out), (ins imm128:$val, GR2
 //===----------------------------------------------------------------------===//
 // Stack adjustments
 //===----------------------------------------------------------------------===//
-let hasSideEffects = 1 in {
+// TODO: should be mayStore.
+let hasSideEffects = 1 in
 def PUSH    : SyncVMInstruction< 0x19, (outs), (ins i256imm:$size, GR256:$val),
                                  "push\t#$size, $val",
                                  [(SyncVMpush timm:$size, GR256:$val)] >;
-// TODO r0 should not be hardcoded
+
+// TODO: r0 should not be hardcoded
+let mayLoad = 1, hasSideEffects = 1 in
 def POP     : SyncVMInstruction< 0x1a, (outs GR256:$val), (ins i256imm:$size),
                                  "pop\t#$size, r0",
                                  [(set GR256:$val, (SyncVMpop timm:$size))] >;
-}
 
 //===----------------------------------------------------------------------===//
 // Intrinsics lowering
