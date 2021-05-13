@@ -52,7 +52,15 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SETCC, MVT::i256, Expand);
   setOperationAction(ISD::SELECT_CC, MVT::i256, Custom);
   setOperationAction(ISD::TRUNCATE, MVT::i64, Promote);
+
+  // Dynamic stack allocation: use the default expansion.
+  setOperationAction(ISD::STACKSAVE, MVT::Other, Expand);
+  setOperationAction(ISD::STACKRESTORE, MVT::Other, Expand);
   setOperationAction(ISD::DYNAMIC_STACKALLOC, MVT::i256, Expand);
+
+  // setOperationAction(ISD::FrameIndex, MVT::i256, Custom);
+  setOperationAction(ISD::CopyToReg, MVT::Other, Custom);
+
   // Support of truncate, sext, zext
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i1, Expand);
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i8, Expand);
@@ -351,6 +359,9 @@ static SDValue EmitCMP(SDValue &LHS, SDValue &RHS, ISD::CondCode CC,
 SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
                                              SelectionDAG &DAG) const {
   switch (Op.getOpcode()) {
+  default:
+    llvm_unreachable("unimplemented operation lowering");
+    return SDValue();
   case ISD::GlobalAddress:
     return LowerGlobalAddress(Op, DAG);
   case ISD::BR:
@@ -361,8 +372,8 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
     return LowerAnd(Op, DAG);
   case ISD::SHL:
     return LowerShl(Op, DAG);
-  default:
-    llvm_unreachable("unimplemented operand");
+  case ISD::CopyToReg:
+    return LowerCopyToReg(Op, DAG);
   }
 }
 
@@ -442,6 +453,28 @@ SDValue SyncVMTargetLowering::LowerShl(SDValue Op, SelectionDAG &DAG) const {
   auto Val = APInt(256, 1, false).shl(Shift);
   return DAG.getNode(ISD::MUL, DL, Ty, Op.getOperand(0),
                      DAG.getConstant(Val, DL, Ty));
+}
+
+SDValue SyncVMTargetLowering::LowerCopyToReg(SDValue Op,
+                                             SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  EVT Ty = Op.getValueType();
+  SDValue Src = Op.getOperand(2);
+  MachineFunction &MF = DAG.getMachineFunction();
+  MachineFrameInfo &MFI = MF.getFrameInfo();
+
+  if (auto *SrcFI = dyn_cast<FrameIndexSDNode>(Src.getNode())) {
+    int FI = SrcFI->getIndex();
+    SDValue Load = DAG.getLoad(
+        MVT::i256, DL, Op.getOperand(0), Op.getOperand(2),
+        MachinePointerInfo::getFixedStack(DAG.getMachineFunction(), FI));
+    unsigned Reg = cast<RegisterSDNode>(Op.getOperand(1))->getReg();
+    SDValue CTR = DAG.getCopyToReg(Load.getOperand(0), DL, Reg, Load,
+                                   Op.getNumOperands() == 4 ? Op.getOperand(3)
+                                                            : SDValue());
+    return CTR;
+  }
+  return SDValue();
 }
 
 SDValue SyncVMTargetLowering::LowerBrccBr(SDValue Op, SDValue DestFalse, SDLoc DL, SelectionDAG &DAG) const {
