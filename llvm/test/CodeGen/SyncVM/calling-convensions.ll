@@ -169,6 +169,14 @@ define i256 @sum8(i256 %a1, i256 %a2, i256 %a3, i256 %a4, i256 %a5, i256 %a6, i2
   ret i256 %7
 }
 
+; CHECK-LABEL: checkcc
+define void @checkcc(i256 %arg) nounwind {
+  call void @ccc(i256 %arg)
+  call void @fastcc(i256 %arg)
+  call void @coldcc(i256 %arg)
+  ret void
+}
+
 declare i256 @i1.arg(i1 %a1) nounwind
 declare i256 @i8.arg(i8 %a1) nounwind
 declare i256 @i16.arg(i16 %a1) nounwind
@@ -188,3 +196,7 @@ declare i256 @twoarg(i256 %a1, i256 %a2) nounwind
 declare i256 @threearg(i256 %a1, i256 %a2, i256 %a3) nounwind
 declare i256 @sevenarg(i256, i256, i256, i256, i256, i256, i256) nounwind
 declare i256 @eightarg(i256, i256, i256, i256, i256, i256, i256, i256) nounwind
+
+declare ccc void @ccc(i256 %a1) nounwind
+declare fastcc void @fastcc(i256 %a1) nounwind
+declare coldcc void @coldcc(i256 %a1) nounwind
