@@ -42,38 +42,41 @@ INITIALIZE_PASS(SyncVMCodegenPrepare, "lower-bitwise",
                 "Replace bitwise operations with arithmetic ones", false, false)
 
 /// Replace a & b with a * b for and i1
-static void replaceAnd(Instruction &I) {
+static bool replaceAnd(Instruction &I) {
   Value *LHS = I.getOperand(0);
   Value *RHS = I.getOperand(1);
   if (LHS->getType()->getIntegerBitWidth() != 1u)
-    return;
+    return false;
   IRBuilder<> Builder(&I);
   auto *NewI = Builder.CreateMul(LHS, RHS);
   I.replaceAllUsesWith(NewI);
+  return true;
 }
 
 /// Replace a | b with a + b - a * b for i1
-static void replaceOr(Instruction &I) {
+static bool replaceOr(Instruction &I) {
   Value *LHS = I.getOperand(0);
   Value *RHS = I.getOperand(1);
   if (LHS->getType()->getIntegerBitWidth() != 1u)
-    return;
+    return false;
   IRBuilder<> Builder(&I);
   auto *Mul = Builder.CreateMul(LHS, RHS);
   auto *Add = Builder.CreateAdd(LHS, RHS);
   auto *NewI = Builder.CreateSub(Add, Mul);
   I.replaceAllUsesWith(NewI);
+  return true;
 }
 
 /// Replace a ^ b with a + b for i1
-static void replaceXor(Instruction &I) {
+static bool replaceXor(Instruction &I) {
   Value *LHS = I.getOperand(0);
   Value *RHS = I.getOperand(1);
   if (LHS->getType()->getIntegerBitWidth() != 1u)
-    return;
+    return false;
   IRBuilder<> Builder(&I);
   auto *Add = Builder.CreateAdd(LHS, RHS);
   I.replaceAllUsesWith(Add);
+  return true;
 }
 
 static Value *pow2Const(ConstantInt *PowValue, IRBuilder<> &Builder) {
@@ -118,16 +121,16 @@ bool SyncVMCodegenPrepare::runOnFunction(Function &F) {
     for (auto &I : BB) {
       switch (I.getOpcode()) {
       case Instruction::And:
-        replaceAnd(I);
-        Replaced.push_back(&I);
+        if (replaceAnd(I))
+          Replaced.push_back(&I);
         break;
       case Instruction::Or:
-        replaceOr(I);
-        Replaced.push_back(&I);
+        if (replaceOr(I))
+          Replaced.push_back(&I);
         break;
       case Instruction::Xor:
-        replaceXor(I);
-        Replaced.push_back(&I);
+        if (replaceXor(I))
+          Replaced.push_back(&I);
         break;
       case Instruction::Shl:
         replaceShl(I);
