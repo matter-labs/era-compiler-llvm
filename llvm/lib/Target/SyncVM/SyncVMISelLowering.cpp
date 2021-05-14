@@ -224,8 +224,6 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   CallingConv::ID CallConv = CLI.CallConv;
   bool IsVarArg = CLI.IsVarArg;
   SmallVector<SDValue, 12> MemOpChains;
-  SDValue StackPtr;
-  auto PtrVT = getPointerTy(DAG.getDataLayout());
 
   // TODO: SyncVM target does not yet support tail call optimization.
   IsTailCall = false;
@@ -238,7 +236,6 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
                  *DAG.getContext());
   CCInfo.AnalyzeCallOperands(Outs, CC_SYNCVM);
 
-  unsigned NumBytes = CCInfo.getNextStackOffset();
   unsigned NumMemOps =
       std::count_if(std::begin(ArgLocs), std::end(ArgLocs),
                     [](const CCValAssign &VA) { return !VA.isRegLoc(); });
@@ -461,10 +458,7 @@ SDValue SyncVMTargetLowering::LowerShl(SDValue Op, SelectionDAG &DAG) const {
 SDValue SyncVMTargetLowering::LowerCopyToReg(SDValue Op,
                                              SelectionDAG &DAG) const {
   SDLoc DL(Op);
-  EVT Ty = Op.getValueType();
   SDValue Src = Op.getOperand(2);
-  MachineFunction &MF = DAG.getMachineFunction();
-  MachineFrameInfo &MFI = MF.getFrameInfo();
 
   if (auto *SrcFI = dyn_cast<FrameIndexSDNode>(Src.getNode())) {
     int FI = SrcFI->getIndex();
