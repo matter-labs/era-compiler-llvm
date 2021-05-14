@@ -84,7 +84,9 @@ static void fail(const SDLoc &DL, SelectionDAG &DAG, const char *msg) {
 
 /// Test whether the given calling convention is supported.
 static bool CallingConvSupported(CallingConv::ID CallConv) {
-  return CallConv == CallingConv::C;
+  // TODO: SyncVM currently doesn't distinguish between different calling convensions.
+  return CallConv == CallingConv::C || CallConv == CallingConv::Fast ||
+         CallConv == CallingConv::Cold;
 }
 
 bool SyncVMTargetLowering::CanLowerReturn(
