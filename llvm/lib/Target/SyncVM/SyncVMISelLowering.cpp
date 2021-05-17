@@ -24,6 +24,7 @@
 #include "llvm/IR/GlobalAlias.h"
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/Intrinsics.h"
+#include "llvm/IR/IntrinsicsSyncVM.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -485,10 +486,35 @@ SDValue SyncVMTargetLowering::LowerBrccBr(SDValue Op, SDValue DestFalse, SDLoc D
       RHS.getOpcode() == ISD::Constant &&
       cast<ConstantSDNode>(RHS)->isNullValue() &&
       LHS.getOperand(1).getOpcode() == ISD::Constant &&
-      cast<ConstantSDNode>(LHS.getOperand(1))->isOne() &&
-      LHS.getOperand(0).getOpcode() == ISD::TRUNCATE) {
-    LHS = LHS.getOperand(0).getOperand(0);
-    RHS = DAG.getConstant(0, DL, MVT::i256);
+      cast<ConstantSDNode>(LHS.getOperand(1))->isOne()) {
+    SDValue LHSInner = LHS.getOperand(0);
+    // TODO: negations for flags might also be possible.
+    if (LHSInner.getOpcode() == ISD::INTRINSIC_W_CHAIN) {
+      ConstantSDNode *CN = cast<ConstantSDNode>(LHSInner.getOperand(1));
+      Intrinsic::ID IntID = static_cast<Intrinsic::ID>(CN->getZExtValue());
+      switch (IntID) {
+      case Intrinsic::syncvm_gtflag:
+        CC = ISD::SETUGT;
+        break;
+      case Intrinsic::syncvm_ltflag:
+        CC = ISD::SETULT;
+        break;
+      case Intrinsic::syncvm_eqflag:
+        CC = ISD::SETEQ;
+        break;
+      }
+      if (IntID == Intrinsic::syncvm_gtflag ||
+          IntID == Intrinsic::syncvm_ltflag ||
+          IntID == Intrinsic::syncvm_eqflag) {
+        SDValue TargetCC = EmitCMP(LHS, RHS, CC, DL, DAG);
+        Chain = LHSInner.getOperand(0);
+        return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain,
+                           DestTrue, DestFalse, TargetCC, Chain);
+      }
+    } else if (LHSInner.getOpcode() == ISD::TRUNCATE) {
+      LHS = LHSInner.getOperand(0);
+      RHS = DAG.getConstant(0, DL, MVT::i256);
+    }
   }
 
   SDValue TargetCC = EmitCMP(LHS, RHS, CC, DL, DAG);
