@@ -471,6 +471,25 @@ SDValue SyncVMTargetLowering::LowerCopyToReg(SDValue Op,
                                    Op.getNumOperands() == 4 ? Op.getOperand(3)
                                                             : SDValue());
     return CTR;
+  } else if (Src.getOpcode() == ISD::ADD) {
+    auto *AddFI = Src.getNode();
+    auto *SrcFI = dyn_cast<FrameIndexSDNode>(AddFI->getOperand(0));
+    auto *DispNode = dyn_cast<ConstantSDNode>(AddFI->getOperand(1));
+    if (SrcFI && DispNode) {
+      assert(DispNode->getSExtValue() % 32 == 0 &&
+             "Unsupported unaligned memory access");
+
+      int FI = SrcFI->getIndex();
+      SDValue Load = DAG.getLoad(
+          MVT::i256, DL, Op.getOperand(0), Op.getOperand(2),
+          MachinePointerInfo::getFixedStack(DAG.getMachineFunction(), FI,
+                                            DispNode->getSExtValue()));
+      unsigned Reg = cast<RegisterSDNode>(Op.getOperand(1))->getReg();
+      SDValue CTR = DAG.getCopyToReg(Load.getOperand(0), DL, Reg, Load,
+                                     Op.getNumOperands() == 4 ? Op.getOperand(3)
+                                                              : SDValue());
+      return CTR;
+    }
   }
   return SDValue();
 }
