@@ -548,6 +548,32 @@ SDValue SyncVMTargetLowering::LowerBrcondBr(SDValue Op, SDValue DestFalse,
   SDValue Cond = Op.getOperand(1);
   SDValue DestTrue = Op.getOperand(2);
   SDValue Zero = DAG.getConstant(0, DL, Cond.getValueType());
+  // TODO: Code duplication.
+  if (Cond.getOpcode() == ISD::INTRINSIC_W_CHAIN) {
+    ISD::CondCode CC;
+    ConstantSDNode *CN = cast<ConstantSDNode>(Cond.getOperand(1));
+    Intrinsic::ID IntID = static_cast<Intrinsic::ID>(CN->getZExtValue());
+    switch (IntID) {
+    case Intrinsic::syncvm_gtflag:
+      CC = ISD::SETUGT;
+      break;
+    case Intrinsic::syncvm_ltflag:
+      CC = ISD::SETULT;
+      break;
+    case Intrinsic::syncvm_eqflag:
+      CC = ISD::SETEQ;
+      break;
+    }
+    if (IntID == Intrinsic::syncvm_gtflag ||
+        IntID == Intrinsic::syncvm_ltflag ||
+        IntID == Intrinsic::syncvm_eqflag) {
+      SDValue RHS = DAG.getConstant(0, DL, Cond.getValueType()), LHS = DAG.getConstant(0, DL, Cond.getValueType());
+      SDValue TargetCC = EmitCMP(LHS, RHS, CC, DL, DAG);
+      Chain = Cond.getOperand(0);
+      return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain,
+                         DestTrue, DestFalse, TargetCC, Chain);
+    }
+  }
 
   SDValue TargetCC = EmitCMP(Cond, Zero, ISD::SETNE, DL, DAG);
   SDValue Cmp = DAG.getNode(SyncVMISD::SUB, DL, MVT::Glue, Cond, Zero);
