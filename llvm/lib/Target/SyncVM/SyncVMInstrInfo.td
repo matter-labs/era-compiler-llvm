@@ -291,8 +291,8 @@ def HABSR: SyncVMInstruction<0x14, (outs), (ins GR256:$val),
 def HOUT: SyncVMInstruction<0x15, (outs GR256:$out), (ins),
                             "hout\t$out", [(set GR256:$out, (int_syncvm_hout))]>;
 let hasSideEffects = 1 in {
-def CYC: SyncVMInstruction<0x16, (outs GR256:$out), (ins),
-                           "cyc\t$out", [(set GR256:$out, (int_syncvm_cyclesremain))]>;
+def CTX: SyncVMInstruction<0x16, (outs GR256:$out), (ins i256imm:$val),
+                           "ctx\t#$val, $out", [(set GR256:$out, (int_syncvm_getfromcontext imm:$val))]>;
 def SC: SyncVMInstruction<0x17, (outs), (ins),
                            "sc", [(int_syncvm_switchcontext)]>;
 def SETST: SyncVMInstruction<0x18, (outs), (ins GR256:$storage),

@@ -82,10 +82,10 @@ define void @event(i256 %val, i256 %dest) {
   ret void
 }
 
-; CHECK-LABEL: cycles_remain
-define i256 @cycles_remain() {
-; CHECK: cyc r1
-  %1 = call i256 @llvm.syncvm.cyclesremain()
+; CHECK-LABEL: get_from_context
+define i256 @get_from_context() {
+; CHECK: ctx #1, r1
+  %1 = call i256 @llvm.syncvm.getfromcontext(i256 1)
   ret i256 %1
 }
 
@@ -123,7 +123,7 @@ declare i256 @llvm.syncvm.hout()
 declare void @llvm.syncvm.sstore(i256, i256, i256)
 declare void @llvm.syncvm.event(i256, i256, i256)
 declare i256 @llvm.syncvm.sload(i256, i256)
-declare i256 @llvm.syncvm.cyclesremain()
+declare i256 @llvm.syncvm.getfromcontext(i256)
 declare void @llvm.syncvm.switchcontext()
 declare void @llvm.syncvm.setstorage(i256)
 declare void @llvm.syncvm.farcall(i256)
