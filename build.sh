@@ -18,6 +18,7 @@ case "${1}" in
         ;;
 esac
 
+sudo apt --yes update
 sudo apt --yes install \
     cmake \
     clang-11 \
