@@ -17,8 +17,8 @@ def int_syncvm_hout: Intrinsic<[llvm_i256_ty], [], []>;
 // Call an external contract.
 def int_syncvm_farcall: Intrinsic<[], [llvm_i256_ty], []>;
 
-// Number of cycles remained.
-def int_syncvm_cyclesremain: Intrinsic<[llvm_i256_ty], [], []>;
+// Get value from the context.
+def int_syncvm_getfromcontext: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], []>;
 
 // Persistent memory access.
 def int_syncvm_setstorage: Intrinsic<[], [llvm_i256_ty], []>;
