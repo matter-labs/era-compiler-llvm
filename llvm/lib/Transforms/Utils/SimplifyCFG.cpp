@@ -6361,6 +6361,8 @@ bool SimplifyCFGOpt::simplifyCondBranch(BranchInst *BI, IRBuilder<> &Builder) {
     return false;
 
   // Conditional branch
+  // SyncVM local begin
+#if 0
   if (isValueEqualityComparison(BI)) {
     // If we only have one predecessor, and if it is a branch on this value,
     // see if that predecessor totally determines the outcome of this
@@ -6381,6 +6383,8 @@ bool SimplifyCFGOpt::simplifyCondBranch(BranchInst *BI, IRBuilder<> &Builder) {
         return requestResimplify();
     }
   }
+#endif
+  // SyncVM local end
 
   // Try to turn "br (X == 0 | X == 1), T, F" into a switch instruction.
   if (SimplifyBranchOnICmpChain(BI, Builder, DL))
