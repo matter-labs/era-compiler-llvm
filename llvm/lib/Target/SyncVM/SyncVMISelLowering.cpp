@@ -49,6 +49,7 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::BR, MVT::Other, Custom);
   setOperationAction(ISD::BRCOND, MVT::Other, Expand);
   setOperationAction(ISD::AND, MVT::i256, Custom);
+  setOperationAction(ISD::XOR, MVT::i256, Custom);
   setOperationAction(ISD::SHL, MVT::i256, Custom);
   setOperationAction(ISD::SETCC, MVT::i256, Expand);
   setOperationAction(ISD::SELECT_CC, MVT::i256, Custom);
@@ -371,6 +372,8 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
     return LowerSELECT_CC(Op, DAG);
   case ISD::AND:
     return LowerAnd(Op, DAG);
+  case ISD::XOR:
+    return LowerXor(Op, DAG);
   case ISD::SHL:
     return LowerShl(Op, DAG);
   case ISD::CopyToReg:
@@ -395,7 +398,8 @@ SDValue SyncVMTargetLowering::LowerBR(SDValue Op, SelectionDAG &DAG) const {
   SDValue DestFalse = Op.getOperand(1);
   switch (Chain.getOpcode()) {
   default: {
-    SDValue UnconditionalCC = DAG.getConstant(SyncVMCC::COND_NONE, DL, MVT::i256);
+    SDValue UnconditionalCC =
+        DAG.getConstant(SyncVMCC::COND_NONE, DL, MVT::i256);
     return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain,
                        DestFalse, DestFalse, UnconditionalCC);
   }
@@ -428,7 +432,8 @@ SDValue SyncVMTargetLowering::LowerAnd(SDValue Op, SelectionDAG &DAG) const {
   SDLoc DL(Op);
   EVT Ty = Op.getValueType();
   SDValue RHS = Op.getOperand(1);
-  assert(RHS.getOpcode() == ISD::Constant && "Unsupported and");
+  if (RHS.getOpcode() != ISD::Constant)
+    fail(DL, DAG, "And with two registers should not reach zkEVM backend");
   APInt Val = cast<ConstantSDNode>(RHS)->getAPIntValue();
   APInt PosPow2 = Val + 1;
   if (PosPow2.isPowerOf2())
@@ -442,7 +447,23 @@ SDValue SyncVMTargetLowering::LowerAnd(SDValue Op, SelectionDAG &DAG) const {
                        DAG.getNode(ISD::UDIV, DL, Ty, Op.getOperand(0),
                                    DAG.getConstant(NegPow2, DL, Ty)),
                        DAG.getConstant(NegPow2, DL, Ty));
-  llvm_unreachable("Bad and");
+  fail(DL, DAG, "Unsupported constant in AND");
+  return {};
+}
+
+SDValue SyncVMTargetLowering::LowerXor(SDValue Op, SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  EVT Ty = Op.getValueType();
+  SDValue RHS = Op.getOperand(1);
+  if (RHS.getOpcode() != ISD::Constant)
+    fail(DL, DAG, "Xor with two registers should not reach zkEVM backend");
+  if (cast<ConstantSDNode>(RHS)->getSExtValue() != -1)
+    fail(DL, DAG, "Only xor rN, -1 is supported by zkEVM backend");
+  return DAG.getNode(ISD::SUB, DL, Ty,
+                     DAG.getNode(ISD::SUB, DL, Ty,
+                                 DAG.getRegister(SyncVM::R0, Ty),
+                                 Op.getOperand(0)),
+                     DAG.getConstant(1, DL, Ty));
 }
 
 SDValue SyncVMTargetLowering::LowerShl(SDValue Op, SelectionDAG &DAG) const {
@@ -494,7 +515,8 @@ SDValue SyncVMTargetLowering::LowerCopyToReg(SDValue Op,
   return SDValue();
 }
 
-SDValue SyncVMTargetLowering::LowerBrccBr(SDValue Op, SDValue DestFalse, SDLoc DL, SelectionDAG &DAG) const {
+SDValue SyncVMTargetLowering::LowerBrccBr(SDValue Op, SDValue DestFalse,
+                                          SDLoc DL, SelectionDAG &DAG) const {
   SDValue Chain = Op.getOperand(0);
   ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(1))->get();
   SDValue LHS = Op.getOperand(2);
@@ -567,7 +589,8 @@ SDValue SyncVMTargetLowering::LowerBrcondBr(SDValue Op, SDValue DestFalse,
     if (IntID == Intrinsic::syncvm_gtflag ||
         IntID == Intrinsic::syncvm_ltflag ||
         IntID == Intrinsic::syncvm_eqflag) {
-      SDValue RHS = DAG.getConstant(0, DL, Cond.getValueType()), LHS = DAG.getConstant(0, DL, Cond.getValueType());
+      SDValue RHS = DAG.getConstant(0, DL, Cond.getValueType()),
+              LHS = DAG.getConstant(0, DL, Cond.getValueType());
       SDValue TargetCC = EmitCMP(LHS, RHS, CC, DL, DAG);
       Chain = Cond.getOperand(0);
       return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain,
