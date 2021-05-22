@@ -29,6 +29,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMCodegenPreparePass(PR);
   initializeSyncVMExpandPseudoPass(PR);
   initializeSyncVMLowerIntrinsicsPass(PR);
+  initializeSyncVMAllocaHoistingPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -87,6 +88,7 @@ TargetPassConfig *SyncVMTargetMachine::createPassConfig(PassManagerBase &PM) {
 
 void SyncVMPassConfig::addIRPasses() {
   addPass(createLowerSwitchPass());
+  addPass(createSyncVMAllocaHoistingPass());
   addPass(createSyncVMLowerIntrinsicsPass());
   addPass(createSyncVMCodegenPreparePass());
 }

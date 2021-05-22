@@ -34,10 +34,12 @@ FunctionPass *createSyncVMISelDag(SyncVMTargetMachine &TM,
 ModulePass *createSyncVMLowerIntrinsicsPass();
 FunctionPass *createSyncVMCodegenPreparePass();
 FunctionPass *createSyncVMExpandPseudoPass();
+FunctionPass *createSyncVMAllocaHoistingPass();
 
 void initializeSyncVMLowerIntrinsicsPass(PassRegistry &);
 void initializeSyncVMCodegenPreparePass(PassRegistry &);
 void initializeSyncVMExpandPseudoPass(PassRegistry &);
+void initializeSyncVMAllocaHoistingPass(PassRegistry &);
 
 } // end namespace llvm;
 
