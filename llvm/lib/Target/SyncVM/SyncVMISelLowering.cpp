@@ -56,9 +56,6 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::TRUNCATE, MVT::i64, Promote);
 
   // Dynamic stack allocation: use the default expansion.
-  setOperationAction(ISD::STACKSAVE, MVT::Other, Expand);
-  setOperationAction(ISD::STACKRESTORE, MVT::Other, Expand);
-  setOperationAction(ISD::DYNAMIC_STACKALLOC, MVT::i256, Expand);
 
   // setOperationAction(ISD::FrameIndex, MVT::i256, Custom);
   setOperationAction(ISD::CopyToReg, MVT::Other, Custom);
