@@ -52,6 +52,7 @@ public:
   SDValue LowerAnd(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerXor(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerShl(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerSrl(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerFrameIndex(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerCopyToReg(SDValue Op, SelectionDAG &DAG) const;
 
@@ -97,6 +98,14 @@ public:
   MachineBasicBlock *
   EmitInstrWithCustomInserter(MachineInstr &MI,
                               MachineBasicBlock *BB) const override;
+
+  bool allowsMemoryAccess(LLVMContext &Context, const DataLayout &DL, EVT VT,
+                          unsigned AddrSpace, Align Alignment,
+                          MachineMemOperand::Flags Flags,
+                          bool *Fast) const override {
+    *Fast = true;
+    return true;
+  }
 
   /// allowsMisalignedMemoryAccesses - Returns true if the target allows
   /// unaligned memory accesses of the specified type. Returns whether it
