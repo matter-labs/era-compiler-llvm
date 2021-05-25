@@ -559,6 +559,8 @@ void SelectionDAGLegalize::LegalizeStoreOps(SDNode *Node) {
                           ST->getOriginalAlign(), MMOFlags, AAInfo);
     ReplaceNode(SDValue(Node, 0), Result);
   } else if (!StVT.isVector() && !isPowerOf2_64(StWidth.getFixedSize())) {
+// SyncVM local begin
+#if 0
     // If not storing a power-of-2 number of bits, expand as two stores.
     assert(!StVT.isVector() && "Unsupported truncstore!");
     unsigned StWidthBits = StWidth.getFixedSize();
@@ -615,6 +617,8 @@ void SelectionDAGLegalize::LegalizeStoreOps(SDNode *Node) {
     // The order of the stores doesn't matter.
     SDValue Result = DAG.getNode(ISD::TokenFactor, dl, MVT::Other, Lo, Hi);
     ReplaceNode(SDValue(Node, 0), Result);
+#endif
+// SyncVM local end
   } else {
     switch (TLI.getTruncStoreAction(ST->getValue().getValueType(), StVT)) {
     default: llvm_unreachable("This action is not supported yet!");
@@ -622,11 +626,15 @@ void SelectionDAGLegalize::LegalizeStoreOps(SDNode *Node) {
       EVT MemVT = ST->getMemoryVT();
       // If this is an unaligned store and the target doesn't support it,
       // expand it.
+// SyncVM local begin
+#if 0
       if (!TLI.allowsMemoryAccessForAlignment(*DAG.getContext(), DL, MemVT,
                                               *ST->getMemOperand())) {
         SDValue Result = TLI.expandUnalignedStore(ST, DAG);
         ReplaceNode(SDValue(ST, 0), Result);
       }
+#endif
+// SyncVM local end
       break;
     }
     case TargetLowering::Custom: {
@@ -770,6 +778,8 @@ void SelectionDAGLegalize::LegalizeLoadOps(SDNode *Node) {
     Value = Result;
     Chain = Ch;
   } else if (!isPowerOf2_64(SrcWidth.getKnownMinSize())) {
+// SyncVM local begin
+#if 0
     // If not loading a power-of-2 number of bits, expand as two loads.
     assert(!SrcVT.isVector() && "Unsupported extload!");
     unsigned SrcWidthBits = SrcWidth.getFixedSize();
@@ -845,6 +855,8 @@ void SelectionDAGLegalize::LegalizeLoadOps(SDNode *Node) {
     }
 
     Chain = Ch;
+#endif
+// SyncVM local end
   } else {
     bool isCustom = false;
     switch (TLI.getLoadExtAction(ExtType, Node->getValueType(0),
@@ -867,10 +879,14 @@ void SelectionDAGLegalize::LegalizeLoadOps(SDNode *Node) {
         // expand it.
         EVT MemVT = LD->getMemoryVT();
         const DataLayout &DL = DAG.getDataLayout();
+// SyncVM local begin
+#if 0
         if (!TLI.allowsMemoryAccess(*DAG.getContext(), DL, MemVT,
                                     *LD->getMemOperand())) {
           std::tie(Value, Chain) = TLI.expandUnalignedLoad(LD, DAG);
         }
+#endif
+// SyncVM local end
       }
       break;
 
@@ -944,6 +960,7 @@ void SelectionDAGLegalize::LegalizeLoadOps(SDNode *Node) {
 
   // Since loads produce two values, make sure to remember that we legalized
   // both of them.
+#if 0
   if (Chain.getNode() != Node) {
     assert(Value.getNode() != Node && "Load must be completely replaced");
     DAG.ReplaceAllUsesOfValueWith(SDValue(Node, 0), Value);
@@ -954,6 +971,7 @@ void SelectionDAGLegalize::LegalizeLoadOps(SDNode *Node) {
     }
     ReplacedNode(Node);
   }
+#endif
 }
 
 /// Return a legal replacement for the given operation, with all legal operands.
