@@ -1400,7 +1400,10 @@ bool MemCpyOptPass::runImpl(
 
 /// This is the main transformation entry point for a function.
 bool MemCpyOptLegacyPass::runOnFunction(Function &F) {
-  if (skipFunction(F))
+  // TODO: The pass should only be skipped for SyncVM.
+  // SyncVM local begin
+  if (true || skipFunction(F))
+  // SyncVM local end
     return false;
 
   auto *MD = &getAnalysis<MemoryDependenceWrapperPass>().getMemDep();
