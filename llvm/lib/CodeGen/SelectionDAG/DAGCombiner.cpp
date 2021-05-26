@@ -5492,6 +5492,12 @@ SDValue DAGCombiner::visitAND(SDNode *N) {
     }
   }
 
+// SyncVM local begin
+// It seems LLVM has a bug here:
+// %.mask = and i256 %hash, -26959946667150639794667015087019630673637144422540572481103610249216
+// is replaced with
+// %.mask = shl i256 %hash, 224
+#if 0
   // fold (and (load x), 255) -> (zextload x, i8)
   // fold (and (extload x, i16), 255) -> (zextload x, i8)
   // fold (and (any_ext (extload x, i16)), 255) -> (zextload x, i8)
@@ -5506,6 +5512,8 @@ SDValue DAGCombiner::visitAND(SDNode *N) {
       return SDValue(N, 0);
     }
   }
+#endif
+// SyncVM local end
 
   if (LegalTypes) {
     // Attempt to propagate the AND back up to the leaves which, if they're
