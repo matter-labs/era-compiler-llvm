@@ -5903,21 +5903,6 @@ SDValue DAGCombiner::visitAND(SDNode *N) {
     }
   }
 
-  // fold (and (load x), 255) -> (zextload x, i8)
-  // fold (and (extload x, i16), 255) -> (zextload x, i8)
-  // fold (and (any_ext (extload x, i16)), 255) -> (zextload x, i8)
-  if (!VT.isVector() && N1C && (N0.getOpcode() == ISD::LOAD ||
-                                (N0.getOpcode() == ISD::ANY_EXTEND &&
-                                 N0.getOperand(0).getOpcode() == ISD::LOAD))) {
-    if (SDValue Res = ReduceLoadWidth(N)) {
-      LoadSDNode *LN0 = N0->getOpcode() == ISD::ANY_EXTEND
-        ? cast<LoadSDNode>(N0.getOperand(0)) : cast<LoadSDNode>(N0);
-      AddToWorklist(N);
-      DAG.ReplaceAllUsesOfValueWith(SDValue(LN0, 0), Res);
-      return SDValue(N, 0);
-    }
-  }
-
   if (LegalTypes) {
     // Attempt to propagate the AND back up to the leaves which, if they're
     // loads, can be combined to narrow loads and the AND node can be removed.
