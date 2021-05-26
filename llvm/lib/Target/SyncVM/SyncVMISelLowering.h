@@ -103,7 +103,6 @@ public:
                           unsigned AddrSpace, Align Alignment,
                           MachineMemOperand::Flags Flags,
                           bool *Fast) const override {
-    *Fast = true;
     return true;
   }
 
