@@ -54,7 +54,7 @@ l2:
 ; CHECK-LABEL: eq
 define i256 @eq(i256 %p1, i256 %p2) nounwind {
 ; CHECK: sub r1, r2, r0
-; CHECK-NEXT: jne .LBB4_2, .LBB4_1
+; CHECK-NEXT: je .LBB4_1, .LBB4_2
   %1 = icmp eq i256 %p1, %p2
   br i1 %1, label %l1, label %l2
 l1:

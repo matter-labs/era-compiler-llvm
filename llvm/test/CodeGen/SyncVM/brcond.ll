@@ -1,4 +1,4 @@
-; RUN: llc < %s | FileCheck %s
+; RUN: llc -O0 < %s | FileCheck %s
 
 target datalayout = "e-p:256:256-i256:256:256"
 target triple = "syncvm"
@@ -31,3 +31,21 @@ body:                                             ; preds = %condition
 join:                                             ; preds = %condition
   unreachable
 }
+
+; CHECK-LABEL: negflag
+define i256 @negflag() nounwind {
+; CHECK: call foo
+; CHECK-NEXT: jlt .LBB2_2, .LBB2_1
+  call void @foo()
+  %1 = tail call i256 @llvm.syncvm.ltflag()
+  %2 = and i256 %1, 1
+  %3 = icmp ne i256 %2, 0
+  br i1 %3, label %l1, label %l2
+l1:
+  ret i256 1
+l2:
+  ret i256 42
+}
+
+declare void @foo()
+declare i256 @llvm.syncvm.ltflag()
