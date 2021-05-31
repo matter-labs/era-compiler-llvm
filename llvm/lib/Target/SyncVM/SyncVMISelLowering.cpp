@@ -569,6 +569,11 @@ SDValue SyncVMTargetLowering::LowerBrccBr(SDValue Op, SDValue DestFalse,
   SDValue RHS = Op.getOperand(3);
   SDValue DestTrue = Op.getOperand(4);
 
+  if (CC == ISD::SETNE) {
+    CC = ISD::SETEQ;
+    std::swap(DestFalse, DestTrue);
+  }
+
   if (LHS.getOpcode() == ISD::AND && CC == ISD::SETEQ &&
       RHS.getOpcode() == ISD::Constant &&
       cast<ConstantSDNode>(RHS)->isNullValue() &&
