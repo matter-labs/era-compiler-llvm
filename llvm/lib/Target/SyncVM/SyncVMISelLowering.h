@@ -56,9 +56,12 @@ public:
   SDValue LowerFrameIndex(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerCopyToReg(SDValue Op, SelectionDAG &DAG) const;
 
-  SDValue LowerBrccBr(SDValue Op, SDValue DestFalse, SDLoc DL, SelectionDAG &DAG) const;
+  SDValue LowerBrccBr(SDValue Op, SDValue DestFalse, SDLoc DL,
+                      SelectionDAG &DAG) const;
   SDValue LowerBrcondBr(SDValue Op, SDValue DestFalse, SDLoc DL,
                         SelectionDAG &DAG) const;
+  SDValue LowerBrFlag(SDValue Cond, SDValue Chain, SDValue DestFalse,
+                      SDValue DestTrue, SDLoc DL, SelectionDAG &DAG) const;
 
   TargetLowering::ConstraintType
   getConstraintType(StringRef Constraint) const override {
