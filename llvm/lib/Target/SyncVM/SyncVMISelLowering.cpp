@@ -580,29 +580,11 @@ SDValue SyncVMTargetLowering::LowerBrccBr(SDValue Op, SDValue DestFalse,
       LHS.getOperand(1).getOpcode() == ISD::Constant &&
       cast<ConstantSDNode>(LHS.getOperand(1))->isOne()) {
     SDValue LHSInner = LHS.getOperand(0);
-    // TODO: negations for flags might also be possible.
     if (LHSInner.getOpcode() == ISD::INTRINSIC_W_CHAIN) {
-      ConstantSDNode *CN = cast<ConstantSDNode>(LHSInner.getOperand(1));
-      Intrinsic::ID IntID = static_cast<Intrinsic::ID>(CN->getZExtValue());
-      switch (IntID) {
-      case Intrinsic::syncvm_gtflag:
-        CC = ISD::SETUGT;
-        break;
-      case Intrinsic::syncvm_ltflag:
-        CC = ISD::SETULT;
-        break;
-      case Intrinsic::syncvm_eqflag:
-        CC = ISD::SETEQ;
-        break;
-      }
-      if (IntID == Intrinsic::syncvm_gtflag ||
-          IntID == Intrinsic::syncvm_ltflag ||
-          IntID == Intrinsic::syncvm_eqflag) {
-        SDValue TargetCC = EmitCMP(LHS, RHS, CC, DL, DAG);
-        Chain = LHSInner.getOperand(0);
-        return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain,
-                           DestTrue, DestFalse, TargetCC, Chain);
-      }
+      SDValue BrFlag =
+          LowerBrFlag(LHSInner, Chain, DestFalse, DestTrue, DL, DAG);
+      if (BrFlag)
+        return BrFlag;
     } else if (LHSInner.getOpcode() == ISD::TRUNCATE) {
       LHS = LHSInner.getOperand(0);
       RHS = DAG.getConstant(0, DL, MVT::i256);
@@ -623,36 +605,56 @@ SDValue SyncVMTargetLowering::LowerBrcondBr(SDValue Op, SDValue DestFalse,
   SDValue Zero = DAG.getConstant(0, DL, Cond.getValueType());
   // TODO: Code duplication.
   if (Cond.getOpcode() == ISD::INTRINSIC_W_CHAIN) {
-    ISD::CondCode CC;
-    ConstantSDNode *CN = cast<ConstantSDNode>(Cond.getOperand(1));
-    Intrinsic::ID IntID = static_cast<Intrinsic::ID>(CN->getZExtValue());
-    switch (IntID) {
-    case Intrinsic::syncvm_gtflag:
-      CC = ISD::SETUGT;
-      break;
-    case Intrinsic::syncvm_ltflag:
-      CC = ISD::SETULT;
-      break;
-    case Intrinsic::syncvm_eqflag:
-      CC = ISD::SETEQ;
-      break;
-    }
-    if (IntID == Intrinsic::syncvm_gtflag ||
-        IntID == Intrinsic::syncvm_ltflag ||
-        IntID == Intrinsic::syncvm_eqflag) {
-      SDValue RHS = DAG.getConstant(0, DL, Cond.getValueType()),
-              LHS = DAG.getConstant(0, DL, Cond.getValueType());
-      SDValue TargetCC = EmitCMP(LHS, RHS, CC, DL, DAG);
-      Chain = Cond.getOperand(0);
-      return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain,
-                         DestTrue, DestFalse, TargetCC, Chain);
-    }
+    SDValue BrFlag = LowerBrFlag(Cond, Chain, DestFalse, DestTrue, DL, DAG);
+    if (BrFlag)
+      return BrFlag;
   }
 
   SDValue TargetCC = EmitCMP(Cond, Zero, ISD::SETNE, DL, DAG);
   SDValue Cmp = DAG.getNode(SyncVMISD::SUB, DL, MVT::Glue, Cond, Zero);
   return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain, DestTrue,
                      DestFalse, TargetCC, Cmp);
+}
+
+SDValue SyncVMTargetLowering::LowerBrFlag(SDValue Cond, SDValue Chain,
+                                          SDValue DestFalse, SDValue DestTrue,
+                                          SDLoc DL, SelectionDAG &DAG) const {
+  ISD::CondCode CC;
+  ConstantSDNode *CN = cast<ConstantSDNode>(Cond.getOperand(1));
+  Intrinsic::ID IntID = static_cast<Intrinsic::ID>(CN->getZExtValue());
+  switch (IntID) {
+  case Intrinsic::syncvm_gtflag:
+    CC = ISD::SETUGT;
+    break;
+  case Intrinsic::syncvm_ltflag:
+    CC = ISD::SETULT;
+    break;
+  case Intrinsic::syncvm_eqflag:
+    CC = ISD::SETEQ;
+    break;
+  }
+  if (IntID == Intrinsic::syncvm_gtflag || IntID == Intrinsic::syncvm_ltflag ||
+      IntID == Intrinsic::syncvm_eqflag) {
+    SDValue RHS = DAG.getConstant(0, DL, Cond.getValueType()),
+            LHS = DAG.getConstant(0, DL, Cond.getValueType());
+    SDValue TargetCC = EmitCMP(LHS, RHS, CC, DL, DAG);
+    if (Chain.getOpcode() != ISD::TokenFactor)
+      Chain = Chain.getOperand(0);
+    else {
+      std::vector<SDValue> Vals;
+      for (unsigned i = 0, e = Chain.getNumOperands(); i < e; ++i) {
+        SDValue Val = Chain.getOperand(i);
+        if (Val == Cond.getValue(1))
+          Vals.push_back(Val.getOperand(0));
+        else
+          Vals.push_back(Val);
+      }
+      Chain = DAG.getNode(ISD::TokenFactor, DL, MVT::Other, Vals);
+    }
+    return DAG.getNode(SyncVMISD::BR_CC, DL, MVT::Other, Chain, DestTrue,
+                       DestFalse, TargetCC, Cond.getValue(1));
+  }
+  return {};
 }
 
 MachineBasicBlock *
