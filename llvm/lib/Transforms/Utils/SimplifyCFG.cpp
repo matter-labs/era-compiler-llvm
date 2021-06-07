@@ -6383,12 +6383,12 @@ bool SimplifyCFGOpt::simplifyCondBranch(BranchInst *BI, IRBuilder<> &Builder) {
         return requestResimplify();
     }
   }
-#endif
-  // SyncVM local end
 
   // Try to turn "br (X == 0 | X == 1), T, F" into a switch instruction.
   if (SimplifyBranchOnICmpChain(BI, Builder, DL))
     return true;
+#endif
+// SyncVM local end
 
   // If this basic block has dominating predecessor blocks and the dominating
   // blocks' conditions imply BI's condition, we know the direction of BI.
