@@ -53,6 +53,7 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SHL, MVT::i256, Custom);
   setOperationAction(ISD::SRL, MVT::i256, Custom);
   setOperationAction(ISD::SETCC, MVT::i256, Expand);
+  setOperationAction(ISD::SELECT, MVT::i256, Expand);
   setOperationAction(ISD::SELECT_CC, MVT::i256, Custom);
   setOperationAction(ISD::TRUNCATE, MVT::i64, Promote);
 
