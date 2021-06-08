@@ -273,7 +273,7 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   if (NumMemOps) {
     SDValue R0 = DAG.getRegister(SyncVM::R0, MVT::i256);
     // TODO: ISel here is wrong: it assigns POP result to a GPR instead of r0.
-    Chain = DAG.getNode(SyncVMISD::POP, DL, MVT::Glue, Chain,
+    Chain = DAG.getNode(SyncVMISD::POP, DL, MVT::Other, Chain,
                         DAG.getTargetConstant(NumMemOps - 1, DL, MVT::i256), R0,
                         InFlag);
   }
