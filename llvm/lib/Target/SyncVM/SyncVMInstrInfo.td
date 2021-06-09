@@ -20,7 +20,7 @@ def SDT_SyncVMBrCC         : SDTypeProfile<0,  3, [SDTCisVT<0, OtherVT>,
                                                    SDTCisVT<1, OtherVT>,
                                                    SDTCisVT<2, i256>]>;
 def SDT_SyncVMSelectCC     : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
-                                                  SDTCisSameAs<1, 2>, 
+                                                  SDTCisSameAs<1, 2>,
                                                   SDTCisVT<3, i256>]>;
 def SDT_SyncVMBinary       : SDTypeProfile<0,  2, [SDTCisSameAs<0, 1>]>;
 
@@ -274,10 +274,9 @@ def PUSH    : SyncVMInstruction< 0x19, (outs), (ins i256imm:$size, GR256:$val),
                                  "push\t#$size, $val",
                                  [(SyncVMpush timm:$size, GR256:$val)] >;
 
-// TODO: r0 should not be hardcoded
 let mayLoad = 1, hasSideEffects = 1 in
 def POP     : SyncVMInstruction< 0x1a, (outs GR256:$val), (ins i256imm:$size),
-                                 "pop\t#$size, r0",
+                                 "pop\t#$size, $val",
                                  [(set GR256:$val, (SyncVMpop timm:$size))] >;
 
 //===----------------------------------------------------------------------===//

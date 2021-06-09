@@ -271,10 +271,8 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   InFlag = Chain.getValue(1);
 
   if (NumMemOps) {
-    SDValue R0 = DAG.getRegister(SyncVM::R0, MVT::i256);
-    // TODO: ISel here is wrong: it assigns POP result to a GPR instead of r0.
     Chain = DAG.getNode(SyncVMISD::POP, DL, MVT::Other, Chain,
-                        DAG.getTargetConstant(NumMemOps - 1, DL, MVT::i256), R0,
+                        DAG.getTargetConstant(NumMemOps - 1, DL, MVT::i256),
                         InFlag);
   }
 
@@ -285,13 +283,20 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 
   // TODO: Glue had been broken by this point, needs to be fixed.
   InFlag = SDValue();
+  DenseMap<unsigned, SDValue> CopiedRegs;
   // Copy all of the result registers out of their specified physreg.
   for (unsigned i = 0; i != RVLocs.size(); ++i) {
-    Chain = DAG.getCopyFromReg(Chain, DL, RVLocs[i].getLocReg(),
-                               RVLocs[i].getValVT(), InFlag)
-                .getValue(1);
-    InFlag = Chain.getValue(2);
-    InVals.push_back(Chain.getValue(0));
+    // Avoid copying a physreg twice since RegAllocFast is incompetent and only
+    // allows one use of a physreg per block.
+    SDValue Val = CopiedRegs.lookup(RVLocs[i].getLocReg());
+    if (!Val) {
+      Val =
+          DAG.getCopyFromReg(Chain, DL, RVLocs[i].getLocReg(), RVLocs[i].getValVT(), InFlag);
+      Chain = Val.getValue(1);
+      InFlag = Val.getValue(2);
+      CopiedRegs[RVLocs[i].getLocReg()] = Val;
+    }
+    InVals.push_back(Val);
   }
 
   return Chain;
