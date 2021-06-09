@@ -30,6 +30,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMExpandPseudoPass(PR);
   initializeSyncVMLowerIntrinsicsPass(PR);
   initializeSyncVMAllocaHoistingPass(PR);
+  initializeSyncVMDropUnusedRegistersPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -77,6 +78,7 @@ public:
 
   void addIRPasses() override;
   bool addInstSelector() override;
+  void addPreRegAlloc() override;
   void addPostRegAlloc() override;
   void addPreEmitPass() override;
 };
@@ -98,6 +100,10 @@ bool SyncVMPassConfig::addInstSelector() {
   // Install an instruction selector.
   addPass(createSyncVMISelDag(getSyncVMTargetMachine(), getOptLevel()));
   return false;
+}
+
+void SyncVMPassConfig::addPreRegAlloc() {
+  addPass(createSyncVMDropUnusedRegistersPass());
 }
 
 void SyncVMPassConfig::addPostRegAlloc() {

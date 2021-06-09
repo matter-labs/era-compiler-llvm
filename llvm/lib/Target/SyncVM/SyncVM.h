@@ -35,11 +35,13 @@ ModulePass *createSyncVMLowerIntrinsicsPass();
 FunctionPass *createSyncVMCodegenPreparePass();
 FunctionPass *createSyncVMExpandPseudoPass();
 FunctionPass *createSyncVMAllocaHoistingPass();
+FunctionPass *createSyncVMDropUnusedRegistersPass();
 
 void initializeSyncVMLowerIntrinsicsPass(PassRegistry &);
 void initializeSyncVMCodegenPreparePass(PassRegistry &);
 void initializeSyncVMExpandPseudoPass(PassRegistry &);
 void initializeSyncVMAllocaHoistingPass(PassRegistry &);
+void initializeSyncVMDropUnusedRegistersPass(PassRegistry &);
 
 } // end namespace llvm;
 
