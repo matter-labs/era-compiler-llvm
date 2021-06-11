@@ -49,7 +49,7 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
         .addReg(SrcReg, getKillRegState(isKill))
         .addFrameIndex(FrameIdx)
         .addImm(0)
-        .addImm(0)
+        .addImm(32)
         .addMemOperand(MMO);
   else
     llvm_unreachable("Cannot store this register to stack slot!");
@@ -75,7 +75,7 @@ void SyncVMInstrInfo::loadRegFromStackSlot(
         .addReg(DestReg, getDefRegState(true))
         .addFrameIndex(FrameIdx)
         .addImm(0)
-        .addImm(0)
+        .addImm(32)
         .addMemOperand(MMO);
   else
     llvm_unreachable("Cannot store this register to stack slot!");
