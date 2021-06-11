@@ -279,10 +279,10 @@ bool SyncVMDAGToDAGISel::SelectStackAddr(SDValue N, SDValue &Base1,
   Base2 = AM.Base.Reg;
 
   if (AM.GV)
-    Disp = CurDAG->getTargetGlobalAddress(AM.GV, SDLoc(N), MVT::i256, AM.Disp,
-                                          0 /*AM.SymbolFlags*/);
+    Disp = CurDAG->getTargetGlobalAddress(AM.GV, SDLoc(N), MVT::i256,
+                                          AM.Disp + 32, 0 /*AM.SymbolFlags*/);
   else
-    Disp = CurDAG->getTargetConstant(AM.Disp, SDLoc(N), MVT::i16);
+    Disp = CurDAG->getTargetConstant(AM.Disp + 32, SDLoc(N), MVT::i16);
 
   return true;
 }

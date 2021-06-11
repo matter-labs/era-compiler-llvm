@@ -48,10 +48,10 @@ define i256 @read_from_global(i256 %index, i256 %val) {
 define i256 @frame_compound_idx(i256 %val) {
   %1 = alloca [5 x i256]
   %2 = getelementptr inbounds [5 x i256], [5 x i256]* %1, i256 0, i256 2
-; CHECK: mov r1, 2(sp)
+; CHECK: mov r1, 3(sp)
   store i256 %val, i256* %2
   call void @foo()
-; CHECK: mov 2(sp), r1
+; CHECK: mov 3(sp), r1
   %3 = load i256, i256* %2
   ret i256 %3
 }
@@ -74,10 +74,10 @@ define i256 @struct_sum() {
 define i256 @frame_compound(i256 %index, i256 %val) {
   %1 = alloca [5 x i256]
   %2 = getelementptr inbounds [5 x i256], [5 x i256]* %1, i256 0, i256 %index
-  ; CHECK: mov r2, 1(sp-r1)
+  ; CHECK: mov r2, 2(sp-r1)
   store i256 %val, i256* %2
   call void @foo()
-	; CHECK: mov 1(sp-r1), r1
+	; CHECK: mov 2(sp-r1), r1
   %3 = load i256, i256* %2
   ret i256 %3
 }

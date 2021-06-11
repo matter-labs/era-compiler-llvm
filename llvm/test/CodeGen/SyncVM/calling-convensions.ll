@@ -154,16 +154,16 @@ define i256 @sum8(i256 %a1, i256 %a2, i256 %a3, i256 %a4, i256 %a5, i256 %a6, i2
   %1 = add i256 %a1, %a2
   %2 = add i256 %1, %a3
   %3 = add i256 %2, %a4
-; CHECK: mov 0(sp), r2
-; CHECK: add r1, r2, r1
-  %4 = add i256 %3, %a5
 ; CHECK: mov 1(sp), r2
 ; CHECK: add r1, r2, r1
-  %5 = add i256 %4, %a6
+  %4 = add i256 %3, %a5
 ; CHECK: mov 2(sp), r2
 ; CHECK: add r1, r2, r1
-  %6 = add i256 %5, %a7
+  %5 = add i256 %4, %a6
 ; CHECK: mov 3(sp), r2
+; CHECK: add r1, r2, r1
+  %6 = add i256 %5, %a7
+; CHECK: mov 4(sp), r2
 ; CHECK: add r1, r2, r1
   %7 = add i256 %6, %a8
   ret i256 %7
