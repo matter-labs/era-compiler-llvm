@@ -4825,6 +4825,10 @@ public:
   }
 
   bool runOnFunction(Function &F) override {
+  // SyncVM local begin
+  // FIXME: enable the pass
+    return false;
+  // SyncVM local end
     if (skipFunction(F))
       return false;
 
