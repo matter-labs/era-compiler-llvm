@@ -64,6 +64,11 @@ def ext_address_flag : Operand<i256>, IntImmLeaf<i256, [{
 }]> {
   let PrintMethod = "printEAFOperand";
 }
+def init_flag : Operand<i256>, IntImmLeaf<i256, [{
+  return Imm.isNullValue() || Imm.isOneValue();
+}]> {
+  let PrintMethod = "printInitOperand";
+}
 
 // Operand for printing out a condition code.
 def cc : Operand<i256> {
@@ -205,9 +210,9 @@ def MOVrc      : SyncVMInstruction< 0x093, (outs), (ins GR256:$val, memop:$dst),
 def Store      : SyncVMInstruction< 0x12, (outs), (ins GR256:$val, GR256:$addr, ext_address_flag:$eaf),
                                     "st$eaf\t$val, $addr",
                                     [(int_syncvm_sstore GR256:$val, GR256:$addr, imm:$eaf)]>;
-def Event      : SyncVMInstruction< 0x121, (outs), (ins GR256:$val, GR256:$addr, ext_address_flag:$eaf),
-                                    "evt$eaf\t$val, $addr",
-                                    [(int_syncvm_event GR256:$val, GR256:$addr, imm:$eaf)]>;
+def Event      : SyncVMInstruction< 0x121, (outs), (ins GR256:$val, GR256:$addr, init_flag:$init),
+                                    "evt$init\t$val, $addr",
+                                    [(int_syncvm_event GR256:$val, GR256:$addr, imm:$init)]>;
 }
 
 let mayLoad = 1 in {
