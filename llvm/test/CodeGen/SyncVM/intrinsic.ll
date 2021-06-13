@@ -77,7 +77,7 @@ define i256 @sload(i256 %dest) {
 define void @event(i256 %val, i256 %dest) {
 ; CHECK: evt r1, r2
   call void @llvm.syncvm.event(i256 %val, i256 %dest, i256 0)
-; CHECK: evt.e r1, r2
+; CHECK: evt.i r1, r2
   call void @llvm.syncvm.event(i256 %val, i256 %dest, i256 1)
   ret void
 }

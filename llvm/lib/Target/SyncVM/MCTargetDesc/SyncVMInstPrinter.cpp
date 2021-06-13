@@ -86,6 +86,15 @@ void SyncVMInstPrinter::printEAFOperand(const MCInst *MI, unsigned OpNo,
   }
 }
 
+void SyncVMInstPrinter::printInitOperand(const MCInst *MI, unsigned OpNo,
+                                         raw_ostream &O) {
+  const MCOperand &EAF = MI->getOperand(OpNo);
+  assert(EAF.isImm() && "Expected immediate in init field");
+  if (EAF.getImm() == 1) {
+    O << ".i";
+  }
+}
+
 void SyncVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
                                         raw_ostream &O) {
   const MCOperand &Base = MI->getOperand(OpNo);
@@ -96,7 +105,8 @@ void SyncVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
     Disp.getExpr()->print(O, &MAI);
   } else {
     assert(Disp.isImm() && "Expected immediate in displacement field");
-    O << Disp.getImm() / 32; // Displacement is in 8-bit bytes. The memory cells are 256 bits wide.
+    O << Disp.getImm() / 32; // Displacement is in 8-bit bytes. The memory cells
+                             // are 256 bits wide.
   }
 
   // Print register base field
