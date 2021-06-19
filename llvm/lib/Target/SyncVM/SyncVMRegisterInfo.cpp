@@ -62,13 +62,15 @@ void SyncVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   unsigned BasePtr = SyncVM::SP;
   int Offset = MF.getFrameInfo().getObjectOffset(FrameIndex);
 
-  // Skip the saved PC
-  Offset += 2;
+  Offset += MF.getFrameInfo().getStackSize();
 
-  if (!TFI->hasFP(MF))
-    Offset += MF.getFrameInfo().getStackSize();
-  else
-    Offset += 2; // Skip the saved FP
+  if (MI.getOpcode() == SyncVM::ADDframe) {
+    const TargetInstrInfo &TII = *MF.getSubtarget().getInstrInfo();
+    MI.setDesc(TII.get(SyncVM::SFLLir));
+    MI.getOperand(1).ChangeToImmediate(Offset);
+    MI.getOperand(2).ChangeToRegister(SyncVM::R0, false /* IsDef */);
+    return;
+  }
 
   // Fold imm into offset
   Offset += MI.getOperand(FIOperandNum + 2).getImm();

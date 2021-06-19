@@ -53,7 +53,6 @@ public:
   SDValue LowerXor(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerShl(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSrl(SDValue Op, SelectionDAG &DAG) const;
-  SDValue LowerFrameIndex(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerCopyToReg(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue LowerBrccBr(SDValue Op, SDValue DestFalse, SDLoc DL,
