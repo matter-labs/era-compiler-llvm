@@ -59,7 +59,6 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
 
   // Dynamic stack allocation: use the default expansion.
 
-  // setOperationAction(ISD::FrameIndex, MVT::i256, Custom);
   setOperationAction(ISD::CopyToReg, MVT::Other, Custom);
 
   // Support of truncate, sext, zext
@@ -290,8 +289,8 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
     // allows one use of a physreg per block.
     SDValue Val = CopiedRegs.lookup(RVLocs[i].getLocReg());
     if (!Val) {
-      Val =
-          DAG.getCopyFromReg(Chain, DL, RVLocs[i].getLocReg(), RVLocs[i].getValVT(), InFlag);
+      Val = DAG.getCopyFromReg(Chain, DL, RVLocs[i].getLocReg(),
+                               RVLocs[i].getValVT(), InFlag);
       Chain = Val.getValue(1);
       InFlag = Val.getValue(2);
       CopiedRegs[RVLocs[i].getLocReg()] = Val;
@@ -446,10 +445,11 @@ SDValue SyncVMTargetLowering::LowerAnd(SDValue Op, SelectionDAG &DAG) const {
     return DAG.getNode(ISD::UREM, DL, Ty, Op.getOperand(0),
                        DAG.getConstant(PosPow2, DL, Ty));
   if (Val.countTrailingZeros() + Val.countLeadingOnes() == Val.getBitWidth())
-    return DAG.getNode(ISD::MUL, DL, Ty,
-                       DAG.getNode(ISD::UDIV, DL, Ty, Op.getOperand(0),
-                                   DAG.getConstant(Val.countLeadingOnes(), DL, Ty)),
-                       DAG.getConstant(Val.countLeadingOnes(), DL, Ty));
+    return DAG.getNode(
+        ISD::MUL, DL, Ty,
+        DAG.getNode(ISD::UDIV, DL, Ty, Op.getOperand(0),
+                    DAG.getConstant(Val.countLeadingOnes(), DL, Ty)),
+        DAG.getConstant(Val.countLeadingOnes(), DL, Ty));
   std::vector<unsigned> SeparatorBits;
   while (!Val.isNullValue()) {
     unsigned NumZ = Val.countLeadingZeros();
@@ -531,39 +531,22 @@ SDValue SyncVMTargetLowering::LowerCopyToReg(SDValue Op,
                                              SelectionDAG &DAG) const {
   SDLoc DL(Op);
   SDValue Src = Op.getOperand(2);
-
-  if (auto *SrcFI = dyn_cast<FrameIndexSDNode>(Src.getNode())) {
-    int FI = SrcFI->getIndex();
-    SDValue Load = DAG.getLoad(
-        MVT::i256, DL, Op.getOperand(0), Op.getOperand(2),
-        MachinePointerInfo::getFixedStack(DAG.getMachineFunction(), FI));
+  if (Src.getOpcode() == ISD::FrameIndex ||
+      (Src.getOpcode() == ISD::ADD &&
+       Src.getOperand(0).getOpcode() == ISD::FrameIndex)) {
     unsigned Reg = cast<RegisterSDNode>(Op.getOperand(1))->getReg();
-    SDValue CTR = DAG.getCopyToReg(Load.getOperand(0), DL, Reg, Load,
+    // TODO: It's really a hack:
+    // If we put an expression involving stack frame, we replase the address in
+    // bytes with the address in cells. Probably we need to reconsider that
+    // desing.
+    SDValue Div = DAG.getNode(ISD::UDIV, DL, MVT::i256, Src,
+                              DAG.getConstant(32, DL, MVT::i256));
+    SDValue CTR = DAG.getCopyToReg(Op.getOperand(0), DL, Reg, Div,
                                    Op.getNumOperands() == 4 ? Op.getOperand(3)
                                                             : SDValue());
     return CTR;
-  } else if (Src.getOpcode() == ISD::ADD) {
-    auto *AddFI = Src.getNode();
-    auto *SrcFI = dyn_cast<FrameIndexSDNode>(AddFI->getOperand(0));
-    if (SrcFI) {
-      auto *DispNode = dyn_cast<ConstantSDNode>(AddFI->getOperand(1));
-      if (DispNode)
-        assert(DispNode->getSExtValue() % 32 == 0 &&
-               "Unsupported unaligned memory access");
-
-      int FI = SrcFI->getIndex();
-      SDValue Load =
-          DAG.getLoad(MVT::i256, DL, Op.getOperand(0), Op.getOperand(2),
-                      MachinePointerInfo::getFixedStack(
-                          DAG.getMachineFunction(), FI,
-                          DispNode ? DispNode->getSExtValue() : 0));
-      unsigned Reg = cast<RegisterSDNode>(Op.getOperand(1))->getReg();
-      SDValue CTR = DAG.getCopyToReg(Load.getOperand(0), DL, Reg, Load,
-                                     Op.getNumOperands() == 4 ? Op.getOperand(3)
-                                                              : SDValue());
-      return CTR;
-    }
   }
+
   return SDValue();
 }
 

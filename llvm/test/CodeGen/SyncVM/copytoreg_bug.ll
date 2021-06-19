@@ -8,7 +8,6 @@ define dso_local void @foo() {
 entry:
   %0 = alloca i8, align 32
   %1 = bitcast i8* %0 to i256*
-; CHECK: mov 1(sp), r1
   br label %condition
 
 condition:                                        ; preds = %condition, %entry
