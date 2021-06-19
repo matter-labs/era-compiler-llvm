@@ -28,7 +28,7 @@ using namespace llvm;
 
 namespace {
 struct SyncVMISelAddressMode {
-  enum { RegBase, FrameIndexBase } BaseType = RegBase;
+  enum { RegBase, FrameIndexBase, StackRegBase } BaseType = RegBase;
 
   struct {
     SDValue Reg;
@@ -41,6 +41,8 @@ struct SyncVMISelAddressMode {
   bool isDefault() const {
     return !BaseType && !Base.Reg.getNode() && !Base.FrameIndex && !Disp && !GV;
   }
+
+  bool isOnStack() const { return BaseType != RegBase; }
 
   SyncVMISelAddressMode() = default;
 
@@ -216,6 +218,13 @@ bool SyncVMDAGToDAGISel::MatchAddress(SDValue N, SyncVMISelAddressMode &AM,
       AM = Backup;
     }
     break;
+  case ISD::CopyFromReg:
+    if (IsStackAddr)
+      // The offset is in a register, no frame index involved
+      AM.BaseType = SyncVMISelAddressMode::StackRegBase;
+    break;
+  case ISD::AssertZext:
+    return MatchAddress(N->getOperand(0), AM, IsStackAddr);
   }
   return MatchAddressBase(N, AM, IsStackAddr);
 }
@@ -265,29 +274,81 @@ bool SyncVMDAGToDAGISel::SelectStackAddr(SDValue N, SDValue &Base1,
     LLVM_DEBUG(errs() << "Matched: "; AM.dump());
   }
 
-  if (AM.BaseType != SyncVMISelAddressMode::FrameIndexBase) {
+  if (!AM.isOnStack()) {
     return false;
   }
   // TODO: Hack (constant is used to designate immediate addressing mode),
   // redesign.
   if (!AM.Base.Reg.getNode())
     AM.Base.Reg = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
+  else if (AM.Base.Reg.getOpcode() != ISD::CopyFromReg) {
+    SDValue &Reg = AM.Base.Reg;
+    if (Reg.getOpcode() == ISD::MUL &&
+        Reg.getOperand(1).getOpcode() == ISD::Constant &&
+        cast<ConstantSDNode>(Reg.getOperand(1))->getSExtValue() == 32)
+      AM.Base.Reg = Reg.getOperand(0);
+    else {
+      SDValue NewAddr =
+          CurDAG->getNode(ISD::UDIV, SDLoc(N), MVT::i256, AM.Base.Reg,
+                          CurDAG->getConstant(32, SDLoc(N), MVT::i256));
+      CurDAG->ReplaceAllUsesWith(AM.Base.Reg, NewAddr);
+      AM.Base.Reg = NewAddr;
+      SelectCode(AM.Base.Reg.getNode());
+    }
+  }
 
-  Base1 = CurDAG->getTargetFrameIndex(
-      AM.Base.FrameIndex,
-      getTargetLowering()->getPointerTy(CurDAG->getDataLayout()));
+  Base1 = (AM.BaseType == SyncVMISelAddressMode::FrameIndexBase)
+              ? CurDAG->getTargetFrameIndex(
+                    AM.Base.FrameIndex,
+                    getTargetLowering()->getPointerTy(CurDAG->getDataLayout()))
+              : CurDAG->getRegister(SyncVM::SP, MVT::i256);
   Base2 = AM.Base.Reg;
 
+  // 1(sp) is the index of the 1st element on the stack rather than 0(sp).
+  AM.Disp += 32;
+
   if (AM.GV)
-    Disp = CurDAG->getTargetGlobalAddress(AM.GV, SDLoc(N), MVT::i256,
-                                          AM.Disp + 32, 0 /*AM.SymbolFlags*/);
+    Disp = CurDAG->getTargetGlobalAddress(AM.GV, SDLoc(N), MVT::i256, AM.Disp,
+                                          0 /*AM.SymbolFlags*/);
   else
-    Disp = CurDAG->getTargetConstant(AM.Disp + 32, SDLoc(N), MVT::i16);
+    Disp = CurDAG->getTargetConstant(AM.Disp, SDLoc(N), MVT::i16);
 
   return true;
 }
 
-void SyncVMDAGToDAGISel::Select(SDNode *Node) { SelectCode(Node); }
+void SyncVMDAGToDAGISel::Select(SDNode *Node) {
+  SDLoc DL(Node);
+
+  // If we have a custom node, we already have selected!
+  if (Node->isMachineOpcode()) {
+    LLVM_DEBUG(errs() << "== "; Node->dump(CurDAG); errs() << "\n");
+    Node->setNodeId(-1);
+    return;
+  }
+
+  // Few custom selection stuff.
+  switch (Node->getOpcode()) {
+  default:
+    break;
+  case ISD::FrameIndex: {
+    assert(Node->getValueType(0) == MVT::i256);
+    int FI = cast<FrameIndexSDNode>(Node)->getIndex();
+    SDValue TFI = CurDAG->getTargetFrameIndex(FI, MVT::i256);
+    if (Node->hasOneUse()) {
+      CurDAG->SelectNodeTo(Node, SyncVM::ADDframe, MVT::i256, TFI,
+                           CurDAG->getTargetConstant(0, DL, MVT::i256));
+      return;
+    }
+    ReplaceNode(Node, CurDAG->getMachineNode(
+                          SyncVM::ADDframe, DL, MVT::i256, TFI,
+                          CurDAG->getTargetConstant(0, DL, MVT::i256)));
+    return;
+  }
+  }
+
+  // Select the default instruction
+  SelectCode(Node);
+}
 
 /// createSyncVMISelDag - This pass converts a legalized DAG into a
 /// SyncVM-specific DAG, ready for instruction scheduling.
