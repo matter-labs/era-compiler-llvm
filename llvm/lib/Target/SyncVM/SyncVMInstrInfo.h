@@ -51,14 +51,14 @@ public:
   bool analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB,
                      MachineBasicBlock *&FBB,
                      SmallVectorImpl<MachineOperand> &Cond,
-                     bool AllowModify) const override { return false; }
+                     bool AllowModify) const override;
 
   unsigned removeBranch(MachineBasicBlock &MBB,
-                        int *BytesRemoved = nullptr) const override { return 0; }
+                        int *BytesRemoved = nullptr) const override;
   unsigned insertBranch(MachineBasicBlock &MBB, MachineBasicBlock *TBB,
                         MachineBasicBlock *FBB, ArrayRef<MachineOperand> Cond,
                         const DebugLoc &DL,
-                        int *BytesAdded = nullptr) const override { return 0; }
+                        int *BytesAdded = nullptr) const override;
 
   int64_t getFramePoppedByCallee(const MachineInstr &I) const {
     return 0;
