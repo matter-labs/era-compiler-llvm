@@ -138,7 +138,7 @@ def store_#as : PatFrag<(ops node:$val, node:$ptr),
 // pointer before prolog-epilog rewriting occurs.
 // Pessimistically assume ADJCALLSTACKDOWN / ADJCALLSTACKUP will become
 // sub / add which can clobber SR.
-let isCodeGenOnly = 1, Defs = [SP], Uses = [SP] in {
+let isCodeGenOnly = 1, Defs = [SP, Flags], Uses = [SP] in {
 def ADJCALLSTACKDOWN : Pseudo<(outs), (ins i256imm:$amt1, i256imm:$amt2),
                               "#ADJCALLSTACKDOWN $amt1 $amt2",
                               [(SyncVMcallseq_start timm:$amt1, timm:$amt2)]>;
@@ -146,6 +146,12 @@ def ADJCALLSTACKUP   : Pseudo<(outs), (ins i256imm:$amt1, i256imm:$amt2),
                               "#ADJCALLSTACKUP $amt1 $amt2",
                               [(SyncVMcallseq_end timm:$amt1, timm:$amt2)]>;
 }
+
+let isCodeGenOnly = 1, Defs = [Flags], Uses = [SP] in {
+def ADDframe : Pseudo<(outs GR256:$dst), (ins i256imm:$base, i256imm:$offset),
+                      "# ADDframe PSEUDO", []>;
+}
+
 let isCodeGenOnly = 1, usesCustomInserter = 1 in
   def Select : Pseudo<(outs GR256:$dst), (ins GR256:$src, GR256:$src2, i256imm:$cc),
                        "# Select PSEUDO",

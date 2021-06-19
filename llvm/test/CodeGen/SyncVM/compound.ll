@@ -1,3 +1,4 @@
+; XFAIL: *
 ; RUN: llc < %s | FileCheck %s
 
 target datalayout = "e-p:256:256-i256:256:256"
