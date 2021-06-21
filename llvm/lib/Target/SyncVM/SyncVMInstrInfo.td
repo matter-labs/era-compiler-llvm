@@ -256,7 +256,7 @@ let isCall = 1,
                                 "callf\t$call_config", [(int_syncvm_farcall GR256:$call_config)]>;
 }
 
-let isTerminator = 1, isBranch = 1, Uses = [Flags] in {
+let isTerminator = 1, isBranch = 1, isBarrier = 1, Uses = [Flags] in {
 def JCC: Jump<0x08, (outs), (ins jmptarget:$dst_true, jmptarget:$dst_false, cc:$cond),
               "j$cond\t$dst_true, $dst_false",
               [(SyncVMbrcc bb:$dst_true, bb:$dst_false, imm:$cond)]>;

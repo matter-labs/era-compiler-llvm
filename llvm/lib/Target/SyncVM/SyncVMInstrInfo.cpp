@@ -118,7 +118,6 @@ bool SyncVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
       while (std::next(I) != MBB.end())
         std::next(I)->eraseFromParent();
       Cond.clear();
-      FBB = nullptr;
 
       // Delete the JMP if it's equivalent to a fall-through.
       if (MBB.isLayoutSuccessor(I->getOperand(0).getMBB())) {
