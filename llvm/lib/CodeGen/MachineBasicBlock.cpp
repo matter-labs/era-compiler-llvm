@@ -658,8 +658,10 @@ void MachineBasicBlock::updateTerminator(
     if (TBB) {
       // The block has an unconditional branch. If its successor is now its
       // layout successor, delete the branch.
-      if (isLayoutSuccessor(TBB))
+      // SyncVM local begin
+      if (isLayoutSuccessor(TBB) && !FBB)
         TII->removeBranch(*this);
+      // SyncVM local end
     } else {
       // The block has an unconditional fallthrough, or the end of the block is
       // unreachable.
