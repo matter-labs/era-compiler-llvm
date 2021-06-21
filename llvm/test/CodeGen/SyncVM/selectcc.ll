@@ -11,7 +11,6 @@ define i256 @test.selectcc(i256 %v1, i256 %v2, i256 %v3) {
 ; CHECK:   je .LBB0_2, .LBB0_1
 ; CHECK: .LBB0_1:
 ; CHECK    add r2, r0, r1
-; CHECK:   j .LBB0_2, .LBB0_2
 ; CHECK: .LBB0_2:
 ; CHECK:   ret
   %1 = icmp eq i256 %v3, 34
@@ -31,7 +30,6 @@ define fastcc i256 @test.select1(i256 %0) {
 ; CHECK: .LBB1_1:
 ; CHECK:   sfll #0, r1, r1
 ; CHECK:   sflh #0, r1, r1
-; CHECK:   j .LBB1_2, .LBB1_2
 ; CHECK: .LBB1_2:
 ; CHECK:   ret
 entry:
