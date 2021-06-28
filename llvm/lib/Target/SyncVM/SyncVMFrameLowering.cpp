@@ -23,7 +23,8 @@ bool SyncVMFrameLowering::hasFP(const MachineFunction &MF) const {
   return false;
 }
 
-bool SyncVMFrameLowering::hasReservedCallFrame(const MachineFunction &MF) const {
+bool SyncVMFrameLowering::hasReservedCallFrame(
+    const MachineFunction &MF) const {
   return !MF.getFrameInfo().hasVarSizedObjects();
 }
 
@@ -46,7 +47,7 @@ void SyncVMFrameLowering::emitPrologue(MachineFunction &MF,
   // TODO: Handle callee saved registers once support them
   if (NumCells)
     BuildMI(MBB, MBBI, DL, TII.get(SyncVM::PUSH))
-        .addImm(NumCells)
+        .addImm(NumCells - 1)
         .addReg(SyncVM::R0);
 }
 
@@ -70,7 +71,8 @@ void SyncVMFrameLowering::emitEpilogue(MachineFunction &MF,
   // TODO: Handle callee saved registers once support them
   // adjust stack pointer back: SP += numbytes
   if (NumCells)
-    BuildMI(MBB, MBBI, DL, TII.get(SyncVM::POP), SyncVM::R0).addImm(NumCells);
+    BuildMI(MBB, MBBI, DL, TII.get(SyncVM::POP), SyncVM::R0)
+        .addImm(NumCells - 1);
 }
 
 // FIXME: Can we eleminate these in favour of generic code?
@@ -143,7 +145,5 @@ MachineBasicBlock::iterator SyncVMFrameLowering::eliminateCallFramePseudoInstr(
   return I;
 }
 
-void
-SyncVMFrameLowering::processFunctionBeforeFrameFinalized(MachineFunction &MF,
-                                                         RegScavenger *) const {
-}
+void SyncVMFrameLowering::processFunctionBeforeFrameFinalized(
+    MachineFunction &MF, RegScavenger *) const {}
