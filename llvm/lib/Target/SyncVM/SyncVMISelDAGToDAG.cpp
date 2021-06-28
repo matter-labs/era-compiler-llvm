@@ -139,6 +139,13 @@ bool SyncVMDAGToDAGISel::MatchAddress(SDValue N, SyncVMISelAddressMode &AM,
                                       bool IsStackAddr) {
   LLVM_DEBUG(errs() << "MatchAddress: "; AM.dump());
 
+  if (N.isMachineOpcode() && N.getMachineOpcode() == SyncVM::AdjSP) {
+    if (IsStackAddr)
+      // The offset is in a register, no frame index involved
+      AM.BaseType = SyncVMISelAddressMode::StackRegBase;
+    return MatchAddressBase(N, AM, IsStackAddr);
+  }
+
   switch (N.getOpcode()) {
   default: {
     break;
@@ -281,7 +288,9 @@ bool SyncVMDAGToDAGISel::SelectStackAddr(SDValue N, SDValue &Base1,
   // redesign.
   if (!AM.Base.Reg.getNode())
     AM.Base.Reg = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
-  else if (AM.Base.Reg.getOpcode() != ISD::CopyFromReg) {
+  else if (AM.Base.Reg.getOpcode() != ISD::CopyFromReg &&
+           !(AM.Base.Reg.isMachineOpcode() &&
+             AM.Base.Reg.getMachineOpcode() == SyncVM::AdjSP)) {
     SDValue &Reg = AM.Base.Reg;
     if (Reg.getOpcode() == ISD::MUL &&
         Reg.getOperand(1).getOpcode() == ISD::Constant &&

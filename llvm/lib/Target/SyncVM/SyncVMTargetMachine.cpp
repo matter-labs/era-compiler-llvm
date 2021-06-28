@@ -31,6 +31,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMLowerIntrinsicsPass(PR);
   initializeSyncVMAllocaHoistingPass(PR);
   initializeSyncVMDropUnusedRegistersPass(PR);
+  initializeSyncVMAdjustSPBasedOffsetsPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -112,5 +113,6 @@ void SyncVMPassConfig::addPostRegAlloc() {
 }
 
 void SyncVMPassConfig::addPreEmitPass() {
+  addPass(createSyncVMAdjustSPBasedOffsetsPass());
   addPass(createSyncVMExpandPseudoPass());
 }
