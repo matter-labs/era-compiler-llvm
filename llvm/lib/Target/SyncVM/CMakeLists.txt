@@ -26,6 +26,7 @@ add_llvm_target(SyncVMCodeGen
   SyncVMISelLowering.cpp
   SyncVMCodegenPrepare.cpp
   SyncVMExpandPseudoInsts.cpp
+  SyncVMAdjustSPBasedOffsets.cpp
   SyncVMLowerIntrinsics.cpp
   SyncVMAllocaHoisting.cpp
   SyncVMTargetTransformInfo.cpp

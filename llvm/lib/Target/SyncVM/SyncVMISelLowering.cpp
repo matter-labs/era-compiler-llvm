@@ -182,12 +182,22 @@ SDValue SyncVMTargetLowering::LowerFormalArguments(
                  *DAG.getContext());
   CCInfo.AnalyzeArguments(Ins, CC_SYNCVM);
 
+  unsigned InIdx = 0;
   for (CCValAssign &VA : ArgLocs) {
     if (VA.isRegLoc()) {
       Register VReg = RegInfo.createVirtualRegister(&SyncVM::GR256RegClass);
       RegInfo.addLiveIn(VA.getLocReg(), VReg);
       SDValue ArgValue = DAG.getCopyFromReg(Chain, DL, VReg, VA.getLocVT());
       ArgValue = DAG.getNode(ISD::TRUNCATE, DL, VA.getValVT(), ArgValue);
+      if (Ins[InIdx].isOrigArg()) {
+        unsigned Idx = Ins[InIdx].getOrigArgIndex();
+        Type *T = MF.getFunction().getArg(Idx)->getType();
+        if (T->isPointerTy() && T->getPointerAddressSpace() == 0) {
+          auto AdjSPNode = DAG.getMachineNode(SyncVM::AdjSP, DL, MVT::i256,
+                                              ArgValue);
+          ArgValue = SDValue(AdjSPNode, 0);
+        }
+      }
       InVals.push_back(ArgValue);
     } else {
       // Sanity check
@@ -205,6 +215,7 @@ SDValue SyncVMTargetLowering::LowerFormalArguments(
           MachinePointerInfo::getFixedStack(DAG.getMachineFunction(), FI));
       InVals.push_back(InVal);
     }
+    ++InIdx;
   }
 
   return Chain;
