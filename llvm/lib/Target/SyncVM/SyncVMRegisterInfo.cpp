@@ -55,7 +55,6 @@ void SyncVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   MachineInstr &MI = *II;
   MachineBasicBlock &MBB = *MI.getParent();
   MachineFunction &MF = *MBB.getParent();
-  const SyncVMFrameLowering *TFI = getFrameLowering(MF);
   DebugLoc dl = MI.getDebugLoc();
   int FrameIndex = MI.getOperand(FIOperandNum).getIndex();
 

@@ -28,8 +28,6 @@ public:
   static char ID;
   SyncVMAdjustSPBasedOffsets() : MachineFunctionPass(ID) {}
 
-  const TargetRegisterInfo *TRI;
-
   bool runOnMachineFunction(MachineFunction &Fn) override;
 
   StringRef getPassName() const override {
@@ -37,7 +35,6 @@ public:
   }
 
 private:
-  void expandConst(MachineInstr &MI) const;
   const TargetInstrInfo *TII;
   LLVMContext *Context;
 };
@@ -48,38 +45,6 @@ char SyncVMAdjustSPBasedOffsets::ID = 0;
 
 INITIALIZE_PASS(SyncVMAdjustSPBasedOffsets, DEBUG_TYPE,
                 SYNCVM_ADJUST_SP_BASED_OFFSETS, false, false)
-
-MachineBasicBlock::iterator adjSPLookup(MachineBasicBlock &MBB,
-                                        MachineBasicBlock::iterator It,
-                                        unsigned Reg) {
-  auto Begin = MBB.begin();
-  while (Begin != It) {
-    for (auto &MOP : It->defs()) {
-      if (MOP.isReg() && MOP.getReg() == Reg) {
-        if (It->getOpcode() == SyncVM::AdjSP) {
-          // FIXME: wrong assumption
-          assert(It->getOperand(1).getReg() == Reg && "Unexpected format");
-          return It;
-        } else {
-          return MBB.end();
-        }
-      }
-    }
-    --It;
-  }
-  for (auto &MOP : It->defs()) {
-    if (MOP.isReg() && MOP.getReg() == Reg) {
-      if (It->getOpcode() == SyncVM::AdjSP) {
-        assert(It->getOperand(1).getReg() == Reg && "Unexpected format");
-        return It;
-      } else {
-        return MBB.end();
-      }
-    }
-  }
-  llvm_unreachable("No defs for Reg");
-  return MBB.end();
-}
 
 bool SyncVMAdjustSPBasedOffsets::runOnMachineFunction(MachineFunction &MF) {
   LLVM_DEBUG(dbgs() << "********** SyncVM ADJUST SP-BASED OFFSETS **********\n"
@@ -104,27 +69,32 @@ bool SyncVMAdjustSPBasedOffsets::runOnMachineFunction(MachineFunction &MF) {
     for (auto MII = MBB.begin(), MIE = MBB.end(); MII != MIE; ++MII) {
       auto &MI = *MII;
       switch (MI.getOpcode()) {
-      case SyncVM::MOVsr:
-      case SyncVM::MOVrs:
-        if (MI.getOperand(2).isReg()) {
-          auto It = adjSPLookup(MBB, std::prev(MII), MI.getOperand(2).getReg());
-          if (It != MIE) {
-            auto Offset = MI.getOperand(3).getImm();
-            MI.getOperand(3).ChangeToImmediate(Offset + Adjustment * 32);
-          }
-        }
+      case SyncVM::AdjMOVsr: {
+        unsigned Offset = MI.getOperand(3).getImm();
+        BuildMI(MBB, MI, MI.getDebugLoc(), TII->get(SyncVM::MOVsr))
+            .add(MI.getOperand(0))
+            .add(MI.getOperand(1))
+            .add(MI.getOperand(2))
+            .addImm(Offset + Adjustment * 32);
+        Pseudos.push_back(&MI);
         break;
+      }
+      case SyncVM::AdjMOVrs: {
+        unsigned Offset = MI.getOperand(3).getImm();
+        BuildMI(MBB, MI, MI.getDebugLoc(), TII->get(SyncVM::MOVrs))
+            .add(MI.getOperand(0))
+            .add(MI.getOperand(1))
+            .add(MI.getOperand(2))
+            .addImm(Offset + Adjustment * 32);
+        Pseudos.push_back(&MI);
+        break;
+      }
       }
     }
   }
 
-  for (MachineBasicBlock &MBB : MF)
-    for (MachineInstr &MI : MBB)
-      if (MI.getOpcode() == SyncVM::AdjSP)
-        Pseudos.push_back(&MI);
-
-  for (auto *I : Pseudos)
-    I->eraseFromParent();
+  for (auto *MI : Pseudos)
+    MI->eraseFromParent();
 
   LLVM_DEBUG(
       dbgs() << "*******************************************************\n");

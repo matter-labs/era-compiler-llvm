@@ -1,4 +1,3 @@
-; XFAIL: *
 ; RUN: llc < %s | FileCheck %s
 
 target datalayout = "e-p:256:256-i256:256:256"
@@ -17,10 +16,10 @@ condition7:                                       ; preds = %condition
   br i1 undef, label %body8, label %join10
 
 body8:                                            ; preds = %condition7
-  %i15 = load i8, i8* undef, align 32
+  %i15 = load i8, i8 addrspace(1)* undef, align 32
   %0 = zext i8 %i15 to i256
   %1 = getelementptr [4 x [4 x i256]], [4 x [4 x i256]]* %array, i256 0, i256 %0
-  %j16 = load i8, i8* undef, align 32
+  %j16 = load i8, i8 addrspace(1)* undef, align 32
   %2 = zext i8 %j16 to i256
   %3 = getelementptr [4 x i256], [4 x i256]* %1, i256 0, i256 %2
 ; CHECK: mov r2, 1(sp-r1)
