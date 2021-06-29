@@ -59,7 +59,7 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
 
   // Dynamic stack allocation: use the default expansion.
 
-  setOperationAction(ISD::CopyToReg, MVT::Other, Custom);
+  // setOperationAction(ISD::CopyToReg, MVT::Other, Custom);
 
   // Support of truncate, sext, zext
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i1, Expand);
@@ -131,7 +131,8 @@ SyncVMTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
   if (!RVLocs.empty()) {
     SDValue Flag;
     CCValAssign &VA = RVLocs[0];
-    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), OutVals[0], Flag);
+    SDValue V = OutVals[0];
+    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), V, Flag);
     // Guarantee that all emitted copies are stuck together,
     // avoiding something bad.
     Flag = Chain.getValue(1);

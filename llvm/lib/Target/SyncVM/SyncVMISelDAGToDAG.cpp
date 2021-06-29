@@ -37,6 +37,7 @@ struct SyncVMISelAddressMode {
 
   int16_t Disp = 0;
   const GlobalValue *GV = nullptr;
+  bool NeedsAdjustment = false;
 
   bool isDefault() const {
     return !BaseType && !Base.Reg.getNode() && !Base.FrameIndex && !Disp && !GV;
@@ -92,6 +93,10 @@ private:
   bool SelectMemAddr(SDValue Addr, SDValue &Base, SDValue &Disp);
   bool SelectStackAddr(SDValue Addr, SDValue &Base1, SDValue &Base2,
                        SDValue &Disp);
+  bool SelectAdjStackAddr(SDValue Addr, SDValue &Base1, SDValue &Base2,
+                          SDValue &Disp);
+  bool SelectStackAddrCommon(SDValue Addr, SDValue &Base1, SDValue &Base2,
+                             SDValue &Disp, bool IsAdjusted);
   SyncVMISelAddressMode MergeAddr(const SyncVMISelAddressMode &LHS,
                                   const SyncVMISelAddressMode &RHS, SDLoc DL);
 };
@@ -140,10 +145,11 @@ bool SyncVMDAGToDAGISel::MatchAddress(SDValue N, SyncVMISelAddressMode &AM,
   LLVM_DEBUG(errs() << "MatchAddress: "; AM.dump());
 
   if (N.isMachineOpcode() && N.getMachineOpcode() == SyncVM::AdjSP) {
-    if (IsStackAddr)
-      // The offset is in a register, no frame index involved
-      AM.BaseType = SyncVMISelAddressMode::StackRegBase;
-    return MatchAddressBase(N, AM, IsStackAddr);
+    assert(IsStackAddr && "Unexpected AdjSP in non-stack addressing");
+    // The offset is in a register, no frame index involved
+    AM.BaseType = SyncVMISelAddressMode::StackRegBase;
+    AM.NeedsAdjustment = true;
+    return MatchAddressBase(N.getOperand(0), AM, IsStackAddr);
   }
 
   switch (N.getOpcode()) {
@@ -188,24 +194,8 @@ bool SyncVMDAGToDAGISel::MatchAddress(SDValue N, SyncVMISelAddressMode &AM,
         !MatchAddress(Operand0, AM, IsStackAddr))
       return false;
     AM = Backup;
-    if (!AM.isDefault() || !IsStackAddr)
-      break;
-    LLVM_DEBUG(errs() << "MatchAddress split, attempting to combine\n");
-    SyncVMISelAddressMode LHS, RHS;
-    if (!MatchAddress(Operand0, LHS, true) &&
-        !MatchAddress(Operand1, RHS, false) &&
-        LHS.BaseType == SyncVMISelAddressMode::FrameIndexBase) {
-      AM = MergeAddr(LHS, RHS, SDLoc(N));
-      return false;
-    }
-    LHS = SyncVMISelAddressMode();
-    RHS = SyncVMISelAddressMode();
-    if (!MatchAddress(Operand0, LHS, false) &&
-        !MatchAddress(Operand1, RHS, true) &&
-        RHS.BaseType == SyncVMISelAddressMode::FrameIndexBase) {
-      AM = MergeAddr(LHS, RHS, SDLoc(N));
-      return false;
-    }
+    if (IsStackAddr)
+      AM.BaseType = SyncVMISelAddressMode::StackRegBase;
     break;
   }
   case ISD::OR:
@@ -270,8 +260,9 @@ bool SyncVMDAGToDAGISel::SelectMemAddr(SDValue N, SDValue &Base,
 /// SelectStackAddr - returns true if it is able pattern match an addressing
 /// mode for stack. It returns the operands which make up the maximal addressing
 /// mode it can match by reference.
-bool SyncVMDAGToDAGISel::SelectStackAddr(SDValue N, SDValue &Base1,
-                                         SDValue &Base2, SDValue &Disp) {
+bool SyncVMDAGToDAGISel::SelectStackAddrCommon(SDValue N, SDValue &Base1,
+                                               SDValue &Base2, SDValue &Disp,
+                                               bool IsAdjusted) {
   SyncVMISelAddressMode AM;
 
   if (MatchAddress(N, AM, true /* IsStackAddr */)) {
@@ -281,9 +272,12 @@ bool SyncVMDAGToDAGISel::SelectStackAddr(SDValue N, SDValue &Base1,
     LLVM_DEBUG(errs() << "Matched: "; AM.dump());
   }
 
-  if (!AM.isOnStack()) {
+  if (!AM.isOnStack())
     return false;
-  }
+
+  if (AM.NeedsAdjustment != IsAdjusted)
+    return false;
+
   // TODO: Hack (constant is used to designate immediate addressing mode),
   // redesign.
   if (!AM.Base.Reg.getNode())
@@ -300,7 +294,7 @@ bool SyncVMDAGToDAGISel::SelectStackAddr(SDValue N, SDValue &Base1,
       SDValue NewAddr =
           CurDAG->getNode(ISD::UDIV, SDLoc(N), MVT::i256, AM.Base.Reg,
                           CurDAG->getConstant(32, SDLoc(N), MVT::i256));
-      CurDAG->ReplaceAllUsesWith(AM.Base.Reg, NewAddr);
+      // CurDAG->ReplaceAllUsesWith(AM.Base.Reg, NewAddr);
       AM.Base.Reg = NewAddr;
       SelectCode(AM.Base.Reg.getNode());
     }
@@ -323,6 +317,16 @@ bool SyncVMDAGToDAGISel::SelectStackAddr(SDValue N, SDValue &Base1,
     Disp = CurDAG->getTargetConstant(AM.Disp, SDLoc(N), MVT::i16);
 
   return true;
+}
+
+bool SyncVMDAGToDAGISel::SelectStackAddr(SDValue N, SDValue &Base1,
+                                         SDValue &Base2, SDValue &Disp) {
+  return SelectStackAddrCommon(N, Base1, Base2, Disp, false);
+}
+
+bool SyncVMDAGToDAGISel::SelectAdjStackAddr(SDValue N, SDValue &Base1,
+                                            SDValue &Base2, SDValue &Disp) {
+  return SelectStackAddrCommon(N, Base1, Base2, Disp, true);
 }
 
 void SyncVMDAGToDAGISel::Select(SDNode *Node) {
