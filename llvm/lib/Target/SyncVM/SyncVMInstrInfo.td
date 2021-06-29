@@ -96,6 +96,7 @@ def stackop : Operand<i256> {
 
 def memaddr   : ComplexPattern<iPTR, 2, "SelectMemAddr", [], []>;
 def stackaddr : ComplexPattern<iPTR, 3, "SelectStackAddr", [], []>;
+def adjstackaddr : ComplexPattern<iPTR, 3, "SelectAdjStackAddr", [], []>;
 
 //===----------------------------------------------------------------------===//
 // Pattern Fragments Definitions.
@@ -114,12 +115,12 @@ class AddressSpaceList<list<int> AS> {
   list<int> AddrSpaces = AS;
 }
 
-def Address_flat : AddressSpaceList<[ AddrSpaces.Stack,
-                                          AddrSpaces.Heap ]>;
+def Address_stack  : AddressSpaceList<[ AddrSpaces.Stack ]>;
+def Address_heap   : AddressSpaceList<[ AddrSpaces.Heap ]>;
 def Address_parent : AddressSpaceList<[ AddrSpaces.Parent ]>;
-def Address_child : AddressSpaceList<[ AddrSpaces.Child ]>;
+def Address_child  : AddressSpaceList<[ AddrSpaces.Child ]>;
 
-foreach as = [ "flat", "parent", "child" ] in {
+foreach as = [ "stack", "heap", "parent", "child" ] in {
 let AddressSpaces = !cast<AddressSpaceList>("Address_"#as).AddrSpaces in {
 def load_#as : PatFrag<(ops node:$ptr), (unindexedload node:$ptr)> {
   let IsLoad = 1;
@@ -150,8 +151,23 @@ def ADJCALLSTACKUP   : Pseudo<(outs), (ins i256imm:$amt1, i256imm:$amt2),
 let isCodeGenOnly = 1, Defs = [Flags], Uses = [SP] in {
 def ADDframe : Pseudo<(outs GR256:$dst), (ins i256imm:$base, i256imm:$offset),
                       "# ADDframe PSEUDO", []>;
+}
+let isCodeGenOnly = 1 in {
+// Since all stack addressing modes are SP based, SyncVM needs to insert PSEUDOs
+// to adjust for a callee frame size. AdjSPBasedOffsets pass is to replace
+// adjusted load and stores with their non-pseudo counterparts.
 def AdjSP : Pseudo<(outs GR256:$dst), (ins GR256:$base),
                    "# AdjSP PSEUDO", []>;
+let mayStore = 1 in {
+  def AdjMOVrs      : Pseudo< (outs), (ins GR256:$val, stackop:$dst),
+                              "# AdjMOVrs PSEUDO",
+                              [(store_stack GR256:$val, adjstackaddr:$dst)]>;
+}
+let mayLoad = 1 in {
+  def AdjMOVsr      : Pseudo< (outs GR256:$val), (ins stackop:$addr),
+                              "# AdjMOVsr PSEUDO",
+                              [(set GR256:$val, (load_stack adjstackaddr:$addr))]>;
+}
 }
 
 let isCodeGenOnly = 1, usesCustomInserter = 1 in
@@ -205,10 +221,10 @@ def MOVrr      : ArithmeticRZR< 0x01, "add", add >;
 let mayStore = 1 in {
 def MOVrs      : SyncVMInstruction< 0x090, (outs), (ins GR256:$val, stackop:$dst),
                                     "mov\t$val, $dst",
-                                    [(store_flat GR256:$val, stackaddr:$dst)]>;
+                                    [(store_stack GR256:$val, stackaddr:$dst)]>;
 def MOVrh      : SyncVMInstruction< 0x091, (outs), (ins GR256:$val, memop:$dst),
                                     "mov\t$val, $dst",
-                                    [(store_flat GR256:$val, memaddr:$dst)]>;
+                                    [(store_heap GR256:$val, memaddr:$dst)]>;
 def MOVrp      : SyncVMInstruction< 0x092, (outs), (ins GR256:$val, memop:$dst),
                                     "mov.p\t$val, $dst",
                                     [(store_parent GR256:$val, memaddr:$dst)]>;
@@ -226,10 +242,10 @@ def Event      : SyncVMInstruction< 0x121, (outs), (ins GR256:$val, GR256:$addr,
 let mayLoad = 1 in {
 def MOVsr      : SyncVMInstruction< 0x100, (outs GR256:$val), (ins stackop:$addr),
                                     "mov\t$addr, $val",
-                                    [(set GR256:$val, (load_flat stackaddr:$addr))]>;
+                                    [(set GR256:$val, (load_stack stackaddr:$addr))]>;
 def MOVhr      : SyncVMInstruction< 0x101, (outs GR256:$val), (ins memop:$addr),
                                     "mov\t$addr, $val",
-                                    [(set GR256:$val, (load_flat memaddr:$addr))]>;
+                                    [(set GR256:$val, (load_heap memaddr:$addr))]>;
 def MOVpr      : SyncVMInstruction< 0x102, (outs GR256:$val), (ins memop:$addr),
                                     "mov.p\t$addr, $val",
                                     [(set GR256:$val, (load_parent memaddr:$addr))]>;

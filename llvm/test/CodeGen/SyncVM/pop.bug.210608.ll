@@ -7,7 +7,7 @@ target triple = "syncvm"
 define private i64 @test() {
 entry:
   %"5" = call i8 @main(i16 1, i8 1, i16 2, i8 1, i16 3, i8 1)
-  store i64 0, i64* null, align 32
+  store i64 0, i64 addrspace(1)* null, align 32
   unreachable
 }
 
