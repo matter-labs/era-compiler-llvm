@@ -282,21 +282,20 @@ bool SyncVMDAGToDAGISel::SelectStackAddrCommon(SDValue N, SDValue &Base1,
   // redesign.
   if (!AM.Base.Reg.getNode())
     AM.Base.Reg = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
-  else if (AM.Base.Reg.getOpcode() != ISD::CopyFromReg &&
-           !(AM.Base.Reg.isMachineOpcode() &&
-             AM.Base.Reg.getMachineOpcode() == SyncVM::AdjSP)) {
+  if (AM.Base.Reg.getOpcode() != ISD::TargetConstant) {
     SDValue &Reg = AM.Base.Reg;
     if (Reg.getOpcode() == ISD::MUL &&
         Reg.getOperand(1).getOpcode() == ISD::Constant &&
         cast<ConstantSDNode>(Reg.getOperand(1))->getSExtValue() == 32)
       AM.Base.Reg = Reg.getOperand(0);
     else {
-      SDValue NewAddr =
-          CurDAG->getNode(ISD::UDIV, SDLoc(N), MVT::i256, AM.Base.Reg,
-                          CurDAG->getConstant(32, SDLoc(N), MVT::i256));
-      // CurDAG->ReplaceAllUsesWith(AM.Base.Reg, NewAddr);
-      AM.Base.Reg = NewAddr;
-      SelectCode(AM.Base.Reg.getNode());
+      auto ConstMaterialize = CurDAG->getMachineNode(
+          SyncVM::CONST, SDLoc(N), MVT::i256,
+          CurDAG->getTargetConstant(32, SDLoc(N), MVT::i256));
+      auto AddrNode =
+          CurDAG->getMachineNode(SyncVM::DIVrrrz, SDLoc(N), MVT::i256,
+                                 AM.Base.Reg, SDValue(ConstMaterialize, 0));
+      AM.Base.Reg = SDValue(AddrNode, 0);
     }
   }
 
