@@ -57,7 +57,7 @@ bool SyncVMAdjustSPBasedOffsets::runOnMachineFunction(MachineFunction &MF) {
   unsigned Adjustment = 0;
 
   if (!EntryBB.empty() && EntryBB.front().getOpcode() == SyncVM::PUSH)
-    Adjustment = EntryBB.front().getOperand(0).getImm();
+    Adjustment = EntryBB.front().getOperand(0).getImm() + 1;
 
   TII = MF.getSubtarget<SyncVMSubtarget>().getInstrInfo();
   assert(TII && "TargetInstrInfo must be a valid object");
