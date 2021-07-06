@@ -10,10 +10,10 @@ define void @array_ldst_to_parameter([10 x i256]* %array, i256 %val) {
   %1 = load i256, i256* %idx
   %2 = add i256 %1, %val
   %idx2 = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 2
-  ; CHECK: mov r{{[1-6]}}, 12(sp-r{{[1-6]}})
+  ; CHECK: mov r{{[1-6]}}, 13(sp-r{{[1-6]}})
   store i256 %2, i256* %idx2
   %idx3 = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 1
-  ; CHECK: mov 11(sp-r{{[1-6]}}), r{{[1-6]}}
+  ; CHECK: mov 12(sp-r{{[1-6]}}), r{{[1-6]}}
   %3 = load i256, i256* %idx3
   %idx4 = getelementptr inbounds [10 x i256], [10 x i256]* %starr, i256 0, i256 1
   store i256 %3, i256* %idx4

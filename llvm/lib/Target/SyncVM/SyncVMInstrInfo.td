@@ -51,8 +51,7 @@ def SyncVMpop : SDNode<"SyncVMISD::POP",   SDT_SyncVMPop, [SDNPHasChain]>;
 //===----------------------------------------------------------------------===//
 
 def imm128 : Operand<i256>, IntImmLeaf<i256, [{
-  auto Cmp = APInt(256, 1, false).shl(128);
-  return Imm.ult(Cmp);
+  return APInt(256, 1, false).shl(128).ugt(Imm);
 }]> {}
 
 def z256 : Operand<i256>, IntImmLeaf<i256, [{
@@ -192,6 +191,10 @@ let isCommutable = 1 in {
 }
 
 def SUBrrr     : ArithmeticRRR<  0x02, "sub", sub >;
+def ADDirr     : SyncVMInstruction< 0x011, (outs GR256:$out),
+                                    (ins GR256:$in1, imm128:$in2),
+                                    "add\t#$in2, $in1, $out",
+                                    [(set GR256:$out, (add GR256:$in1, imm128:$in2))]>;
 
 let Defs = [Flags], isTerminator = 1 in {
 def CMPrr   : SyncVMInstruction<  0x02, (outs),
