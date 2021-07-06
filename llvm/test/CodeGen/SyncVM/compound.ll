@@ -24,9 +24,6 @@ define void @array_ldst_to_parameter([10 x i256]* %array, i256 %val) {
 
 ; CHECK-LABEL: write_to_global
 define void @write_to_global(i256 %index, i256 %val) {
-; CHECK: sfll #32, r3, r3
-; CHECK: sflh #0, r3, r3
-; CHECK: mul r1, r3, r1, r0
   %idx = getelementptr inbounds [5 x i256], [5 x i256] addrspace(1)* @arr, i256 0, i256 %index
 ; CHECK: mov r2, arr(r1)
   store i256 %val, i256 addrspace(1)* %idx
@@ -35,9 +32,6 @@ define void @write_to_global(i256 %index, i256 %val) {
 
 ; CHECK-LABEL: read_from_global
 define i256 @read_from_global(i256 %index, i256 %val) {
-; CHECK: sfll #32, r2, r2
-; CHECK: sflh #0, r2, r2
-; CHECK: mul r1, r2, r1, r0
   %idx = getelementptr inbounds [5 x i256], [5 x i256] addrspace(1)* @arr, i256 0, i256 %index
 ; CHECK: mov arr(r1), r1
   %1 = load i256, i256 addrspace(1)* %idx

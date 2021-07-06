@@ -246,6 +246,23 @@ bool SyncVMDAGToDAGISel::SelectMemAddr(SDValue N, SDValue &Base,
   if (!AM.Base.Reg.getNode())
     AM.Base.Reg = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
 
+  if (AM.Base.Reg.getOpcode() != ISD::TargetConstant) {
+    SDValue &Reg = AM.Base.Reg;
+    if (Reg.getOpcode() == ISD::MUL &&
+        Reg.getOperand(1).getOpcode() == ISD::Constant &&
+        cast<ConstantSDNode>(Reg.getOperand(1))->getSExtValue() == 32)
+      AM.Base.Reg = Reg.getOperand(0);
+    else {
+      auto ConstMaterialize = CurDAG->getMachineNode(
+          SyncVM::CONST, SDLoc(N), MVT::i256,
+          CurDAG->getTargetConstant(32, SDLoc(N), MVT::i256));
+      auto AddrNode =
+          CurDAG->getMachineNode(SyncVM::DIVrrrz, SDLoc(N), MVT::i256,
+                                 AM.Base.Reg, SDValue(ConstMaterialize, 0));
+      AM.Base.Reg = SDValue(AddrNode, 0);
+    }
+  }
+
   Base = AM.Base.Reg;
 
   if (AM.GV)
