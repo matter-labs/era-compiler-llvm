@@ -21,9 +21,7 @@ define i1 @or(i1 %a1, i1 %a2) nounwind {
 
 ; CHECK-LABEL: neg
 define i1 @neg(i1 %a1) nounwind {
-; CHECK: sfll #1, r2, r2
-; CHECK: sflh #0, r2, r2
-; CHECK: add r1, r2, r1
+; CHECK: add #1, r1, r1
   %1 = xor i1 true, %a1
   ret i1 %1
 }

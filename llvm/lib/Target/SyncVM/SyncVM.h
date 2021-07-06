@@ -37,7 +37,6 @@ FunctionPass *createSyncVMExpandPseudoPass();
 FunctionPass *createSyncVMAllocaHoistingPass();
 FunctionPass *createSyncVMDropUnusedRegistersPass();
 FunctionPass *createSyncVMAdjustSPBasedOffsetsPass();
-FunctionPass *createSyncVMRemoveAdjSPPseudoPass();
 
 void initializeSyncVMLowerIntrinsicsPass(PassRegistry &);
 void initializeSyncVMCodegenPreparePass(PassRegistry &);
@@ -45,7 +44,6 @@ void initializeSyncVMExpandPseudoPass(PassRegistry &);
 void initializeSyncVMAllocaHoistingPass(PassRegistry &);
 void initializeSyncVMDropUnusedRegistersPass(PassRegistry &);
 void initializeSyncVMAdjustSPBasedOffsetsPass(PassRegistry &);
-void initializeSyncVMRemoveAdjSPPseudoPass(PassRegistry &);
 
 } // end namespace llvm;
 
