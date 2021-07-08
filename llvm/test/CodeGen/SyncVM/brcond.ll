@@ -35,7 +35,7 @@ join:                                             ; preds = %condition
 ; CHECK-LABEL: negflag
 define i256 @negflag() nounwind {
 ; CHECK: call foo
-; CHECK-NEXT: jlt .LBB2_2, .LBB2_1
+; CHECK-NEXT: jlt .LBB2_1, .LBB2_2
   call void @foo()
   %1 = tail call i256 @llvm.syncvm.ltflag()
   %2 = and i256 %1, 1
