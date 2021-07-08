@@ -476,8 +476,13 @@ SDValue SyncVMTargetLowering::LowerAnd(SDValue Op, SelectionDAG &DAG) const {
       break;
     }
     if (Val.eq(APInt::getOneBitSet(256, Pos))) {
-      SeparatorBits.push_back(Pos);
-      SeparatorBits.push_back(Pos - 1);
+      // if the mask is like 0bxx00100 rather than 0bxx11100
+      if (SeparatorBits.size() % 2) {
+        SeparatorBits.push_back(Pos - 1);
+      } else {
+        SeparatorBits.push_back(Pos);
+        SeparatorBits.push_back(Pos - 1);
+      }
       break;
     }
     SeparatorBits.push_back(Pos);

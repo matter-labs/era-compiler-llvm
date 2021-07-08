@@ -29,3 +29,16 @@ define i256 @and(i256 %par) nounwind {
   %1 = and i256 %par, 340282366920938463463374607431768211452
   ret i256 %1
 }
+
+; CHECK-LABEL: and2
+define i256 @and2(i256 %par) nounwind {
+; CHECK: sfll #32, r2, r2
+; CHECK: sflh #0, r2, r2
+; CHECK: div r1, r2, r0, r2
+; CHECK: sfll #65536, r3, r3
+; CHECK: sflh #0, r3, r3
+; CHECK: div r1, r3, r0, r1
+; CHECK: sub r1, r2, r1
+  %1 = and i256 %par, 65504
+  ret i256 %1
+}
