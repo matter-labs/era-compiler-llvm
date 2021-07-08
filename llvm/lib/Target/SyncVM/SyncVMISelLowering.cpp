@@ -657,8 +657,8 @@ SDValue SyncVMTargetLowering::LowerBrFlag(SDValue Cond, SDValue Chain,
       }
       Chain = DAG.getNode(ISD::TokenFactor, DL, MVT::Other, Vals);
     }
-    return DAG.getNode(SyncVMISD::BR_CC, DL, MVT::Other, Chain, DestTrue,
-                       DestFalse, TargetCC, Cond.getValue(1));
+    return DAG.getNode(SyncVMISD::BR_CC, DL, MVT::Other, Chain, DestFalse,
+                       DestTrue, TargetCC, Cond.getValue(1));
   }
   return {};
 }
