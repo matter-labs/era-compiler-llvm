@@ -456,12 +456,13 @@ SDValue SyncVMTargetLowering::LowerAnd(SDValue Op, SelectionDAG &DAG) const {
   if (PosPow2.isPowerOf2())
     return DAG.getNode(ISD::UREM, DL, Ty, Op.getOperand(0),
                        DAG.getConstant(PosPow2, DL, Ty));
-  if (Val.countTrailingZeros() + Val.countLeadingOnes() == Val.getBitWidth())
-    return DAG.getNode(
-        ISD::MUL, DL, Ty,
-        DAG.getNode(ISD::UDIV, DL, Ty, Op.getOperand(0),
-                    DAG.getConstant(Val.countLeadingOnes(), DL, Ty)),
-        DAG.getConstant(Val.countLeadingOnes(), DL, Ty));
+  if (Val.countTrailingZeros() + Val.countLeadingOnes() == Val.getBitWidth()) {
+    APInt Pow2 = APInt::getOneBitSet(256, Val.countTrailingZeros());
+    return DAG.getNode(ISD::MUL, DL, Ty,
+                       DAG.getNode(ISD::UDIV, DL, Ty, Op.getOperand(0),
+                                   DAG.getConstant(Pow2, DL, Ty)),
+                       DAG.getConstant(Pow2, DL, Ty));
+  }
   std::vector<unsigned> SeparatorBits;
   while (!Val.isNullValue()) {
     unsigned NumZ = Val.countLeadingZeros();
