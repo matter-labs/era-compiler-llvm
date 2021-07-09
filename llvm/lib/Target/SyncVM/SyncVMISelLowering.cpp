@@ -194,8 +194,8 @@ SDValue SyncVMTargetLowering::LowerFormalArguments(
         unsigned Idx = Ins[InIdx].getOrigArgIndex();
         Type *T = MF.getFunction().getArg(Idx)->getType();
         if (T->isPointerTy() && T->getPointerAddressSpace() == 0) {
-          auto AdjSPNode = DAG.getMachineNode(SyncVM::AdjSP, DL, MVT::i256,
-                                              ArgValue);
+          auto AdjSPNode =
+              DAG.getMachineNode(SyncVM::AdjSP, DL, MVT::i256, ArgValue);
           ArgValue = SDValue(AdjSPNode, 0);
         }
       }
@@ -253,13 +253,17 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
                     [](const CCValAssign &VA) { return !VA.isRegLoc(); });
   SDValue InFlag;
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
-    if (ArgLocs[i].isRegLoc()) {
+    if (ArgLocs[i].isRegLoc())
       Chain = DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), OutVals[i],
                                InFlag);
-    } else {
-      Chain = DAG.getNode(SyncVMISD::PUSH, DL, MVT::Other, Chain,
-                          DAG.getTargetConstant(0, DL, MVT::i256), OutVals[i]);
-    }
+  }
+
+  for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
+    unsigned revI = e - i - 1;
+    if (!ArgLocs[revI].isRegLoc())
+      Chain =
+          DAG.getNode(SyncVMISD::PUSH, DL, MVT::Other, Chain,
+                      DAG.getTargetConstant(0, DL, MVT::i256), OutVals[revI]);
   }
 
   // Returns a chain & a flag for retval copy to use.
