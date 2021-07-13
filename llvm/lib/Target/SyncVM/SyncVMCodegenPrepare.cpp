@@ -140,6 +140,29 @@ bool SyncVMCodegenPrepare::runOnFunction(Function &F) {
         replaceLShr(I);
         Replaced.push_back(&I);
         break;
+      case Instruction::ICmp:
+        auto &Cmp = cast<ICmpInst>(I);
+        CmpInst::Predicate P = Cmp.getPredicate();
+        auto *CmpVal = dyn_cast<ConstantInt>(I.getOperand(1));
+        if (CmpVal && CmpVal->getValue().isNullValue()) {
+          unsigned NumBits = CmpVal->getType()->getIntegerBitWidth();
+          APInt Val = APInt(NumBits, -1, true).lshr(1);
+          if (P == CmpInst::ICMP_SLT)
+            P = CmpInst::ICMP_UGT;
+          if (P == CmpInst::ICMP_SGT)
+            P = CmpInst::ICMP_ULE;
+
+          if (P == CmpInst::ICMP_UGT || P == CmpInst::ICMP_ULE) {
+            IRBuilder<> Builder(&I);
+            auto Val256 =
+                Builder.CreateZExt(Builder.getInt(Val), Builder.getIntNTy(256));
+            auto Op256 =
+                Builder.CreateZExt(I.getOperand(0), Builder.getIntNTy(256));
+            auto *NewCmp = Builder.CreateICmp(P, Val256, Op256);
+            I.replaceAllUsesWith(NewCmp);
+            Replaced.push_back(&I);
+          }
+        }
       }
     }
   for (auto *I : Replaced)
