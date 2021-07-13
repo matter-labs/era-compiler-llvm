@@ -925,6 +925,15 @@ void TargetPassConfig::addPassesToHandleExceptions() {
     addPass(createWinEHPass(/*DemoteCatchSwitchPHIOnly=*/false));
     addPass(createWasmEHPass());
     break;
+  // SyncVM local begin
+  case ExceptionHandling::SyncVM:
+    // Wasm EH uses Windows EH instructions, but it does not need to demote PHIs
+    // on catchpads and cleanuppads because it does not outline them into
+    // funclets. Catchswitch blocks are not lowered in SelectionDAG, so we
+    // should remove PHIs there.
+    addPass(createSyncVMEHPass());
+    break;
+  // SyncVM local end
   case ExceptionHandling::None:
     addPass(createLowerInvokePass());
 
