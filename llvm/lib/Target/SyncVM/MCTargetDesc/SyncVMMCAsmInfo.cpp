@@ -20,4 +20,5 @@ SyncVMMCAsmInfo::SyncVMMCAsmInfo(const Triple &TT,
   UsesELFSectionDirectiveForBSS = true;
 
   SupportsDebugInformation = true;
+  ExceptionsType = ExceptionHandling::SyncVM;
 }

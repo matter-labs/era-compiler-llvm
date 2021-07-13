@@ -346,6 +346,11 @@ bool AsmPrinter::doInitialization(Module &M) {
   EHStreamer *ES = nullptr;
   switch (MAI->getExceptionHandlingType()) {
   case ExceptionHandling::None:
+  // SyncVM local begin
+  // SyncVM doesn't fully support exceptions by now, so it doesn't stream
+  // anything to a file.
+  case ExceptionHandling::SyncVM:
+  // SyncVM local end
     break;
   case ExceptionHandling::SjLj:
   case ExceptionHandling::DwarfCFI:
