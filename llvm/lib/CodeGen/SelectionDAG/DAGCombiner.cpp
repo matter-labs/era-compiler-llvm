@@ -5218,6 +5218,7 @@ SDValue DAGCombiner::visitANDLike(SDValue N0, SDValue N1, SDNode *N) {
     }
   }
 
+#if 0
   // Reduce bit extract of low half of an integer to the narrower type.
   // (and (srl i64:x, K), KMask) ->
   //   (i64 zero_extend (and (srl (i32 (trunc i64:x)), K)), KMask)
@@ -5266,6 +5267,7 @@ SDValue DAGCombiner::visitANDLike(SDValue N0, SDValue N1, SDNode *N) {
       }
     }
   }
+#endif
 
   return SDValue();
 }

@@ -219,9 +219,10 @@ def DIVREMrrrr : ArithmeticRRRR< 0x04, "div", udivrem >;
 // Operations with memory and registers
 //===----------------------------------------------------------------------===//
 
+let Defs = [Flags] in
 // MOV is ADD rSrc, r0, rDst
 def MOVrr      : ArithmeticRZR< 0x01, "add", add >;
-let mayStore = 1 in {
+let mayStore = 1, Defs = [Flags] in {
 def MOVrs      : SyncVMInstruction< 0x090, (outs), (ins GR256:$val, stackop:$dst),
                                     "mov\t$val, $dst",
                                     [(store_stack GR256:$val, stackaddr:$dst)]>;
@@ -242,7 +243,7 @@ def Event      : SyncVMInstruction< 0x121, (outs), (ins GR256:$val, GR256:$addr,
                                     [(int_syncvm_event GR256:$val, GR256:$addr, imm:$init)]>;
 }
 
-let mayLoad = 1 in {
+let mayLoad = 1, Defs = [Flags] in {
 def MOVsr      : SyncVMInstruction< 0x100, (outs GR256:$val), (ins stackop:$addr),
                                     "mov\t$addr, $val",
                                     [(set GR256:$val, (load_stack stackaddr:$addr))]>;
@@ -301,12 +302,12 @@ def SFLHir  : SyncVMInstruction< 0x051, (outs GR256:$out), (ins imm128:$val, GR2
 // Stack adjustments
 //===----------------------------------------------------------------------===//
 // TODO: should be mayStore.
-let hasSideEffects = 1 in
+let hasSideEffects = 1, Defs = [SP], Uses = [SP] in
 def PUSH    : SyncVMInstruction< 0x19, (outs), (ins i256imm:$size, GR256:$val),
                                  "push\t#$size, $val",
                                  [(SyncVMpush timm:$size, GR256:$val)] >;
 
-let mayLoad = 1, hasSideEffects = 1 in
+let mayLoad = 1, hasSideEffects = 1, Defs = [SP], Uses = [SP] in
 def POP     : SyncVMInstruction< 0x1a, (outs GR256:$val), (ins i256imm:$size),
                                  "pop\t#$size, $val",
                                  [(set GR256:$val, (SyncVMpop timm:$size))] >;

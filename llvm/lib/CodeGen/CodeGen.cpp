@@ -109,6 +109,9 @@ void llvm::initializeCodeGen(PassRegistry &Registry) {
   initializeStackProtectorPass(Registry);
   initializeStackSlotColoringPass(Registry);
   initializeStripDebugMachineModulePass(Registry);
+  // SyncVM local begin
+  initializeSyncVMEHPreparePass(Registry);
+  // SyncVM local end
   initializeTailDuplicatePass(Registry);
   initializeTargetPassConfigPass(Registry);
   initializeTwoAddressInstructionPassPass(Registry);

@@ -165,7 +165,11 @@ codegen::RegisterCodeGenFlags::RegisterCodeGenFlags() {
           clEnumValN(ExceptionHandling::WinEH, "wineh",
                      "Windows exception model"),
           clEnumValN(ExceptionHandling::Wasm, "wasm",
-                     "WebAssembly exception handling")));
+                     "WebAssembly exception handling"),
+          // SyncVM local begin
+          clEnumValN(ExceptionHandling::SyncVM, "syncvm",
+                     "SyncVM exception handling")));
+          // SyncVM local end
   CGBINDOPT(ExceptionModel);
 
   static cl::opt<CodeGenFileType> FileType(
