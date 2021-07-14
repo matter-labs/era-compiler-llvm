@@ -4068,8 +4068,12 @@ Instruction *InstCombiner::foldICmpBinOp(ICmpInst &I, const SimplifyQuery &SQ) {
     }
   }
 
+// SyncVM local begin
+#if 0
   if (Value *V = foldUnsignedMultiplicationOverflowCheck(I))
     return replaceInstUsesWith(I, V);
+#endif
+// SyncVM local end
 
   if (Value *V = foldICmpWithLowBitMaskedVal(I, Builder))
     return replaceInstUsesWith(I, V);
@@ -4713,6 +4717,7 @@ static Instruction *processUMulZExtIdiom(ICmpInst &I, Value *MulVal,
 
   InstCombiner::BuilderTy &Builder = IC.Builder;
   Builder.SetInsertPoint(MulInstr);
+
 
   // Replace: mul(zext A, zext B) --> mul.with.overflow(A, B)
   Value *MulA = A, *MulB = B;
@@ -5696,6 +5701,9 @@ Instruction *InstCombiner::visitICmpInst(ICmpInst &I) {
       }
     }
 
+// SyncVM local begin
+// FIXME: support umulo
+#if 0
     // (zext a) * (zext b)  --> llvm.umul.with.overflow.
     if (match(Op0, m_Mul(m_ZExt(m_Value(A)), m_ZExt(m_Value(B))))) {
       if (Instruction *R = processUMulZExtIdiom(I, Op0, Op1, *this))
@@ -5705,9 +5713,12 @@ Instruction *InstCombiner::visitICmpInst(ICmpInst &I) {
       if (Instruction *R = processUMulZExtIdiom(I, Op1, Op0, *this))
         return R;
     }
+#endif
+// SyncVM local end
   }
 
   // SyncVM local begin
+  // FIXME: support umulo
 #if 0
   if (Instruction *Res = foldICmpEquality(I))
     return Res;
