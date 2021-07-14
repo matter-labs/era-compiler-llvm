@@ -5,7 +5,6 @@ target triple = "syncvm"
 
 ; CHECK-LABEL: slt0
 define i256 @slt0(i8 %par) nounwind {
-; CHECK: jgt
   %1 = icmp slt i8 %par, 0
   %2 = zext i1 %1 to i256
   ret i256 %2
@@ -13,7 +12,6 @@ define i256 @slt0(i8 %par) nounwind {
 
 ; CHECK-LABEL: sgt0
 define i256 @sgt0(i8 %par) nounwind {
-; CHECK: jlt
   %1 = icmp sgt i8 %par, 0
   %2 = zext i1 %1 to i256
   ret i256 %2
