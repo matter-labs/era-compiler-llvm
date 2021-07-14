@@ -1317,7 +1317,7 @@ static bool inferConvergent(const SCCNodeSet &SCCNodes) {
 static bool inferAttrsFromFunctionBodies(const SCCNodeSet &SCCNodes) {
   AttributeInferer AI;
 
-  if (!DisableNoUnwindInference)
+  if (false && !DisableNoUnwindInference)
     // Request to infer nounwind attribute for all the functions in the SCC if
     // every callsite within the SCC is not throwing (except for calls to
     // functions within the SCC). Note that nounwind attribute suffers from
