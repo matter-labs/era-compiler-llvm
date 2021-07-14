@@ -30,7 +30,7 @@ def int_syncvm_event: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], 
 def int_syncvm_switchcontext: Intrinsic<[], [], []>;
 
 // Return with error.
-def int_syncvm_throw: Intrinsic<[], [], []>;
+def int_syncvm_throw: Intrinsic<[], [], [Throws, IntrNoReturn]>;
 
 // Access to flags.
 def int_syncvm_gtflag: Intrinsic<[llvm_i256_ty], [], []>;
