@@ -100,11 +100,11 @@ static cl::list<std::string>
 /// after a pass.
 
 bool llvm::shouldPrintBeforePass() {
-  return PrintBeforeAll || !PrintBefore.empty();
+  return PrintBeforeAll || std::getenv("LLVM_PRINT_BEFORE_ALL") || !PrintBefore.empty();
 }
 
 bool llvm::shouldPrintAfterPass() {
-  return PrintAfterAll || !PrintAfter.empty();
+  return PrintAfterAll || std::getenv("LLVM_PRINT_AFTER_ALL") || !PrintAfter.empty();
 }
 
 static bool ShouldPrintBeforeOrAfterPass(StringRef PassID,
@@ -119,11 +119,11 @@ static bool ShouldPrintBeforeOrAfterPass(StringRef PassID,
 }
 
 bool llvm::shouldPrintBeforePass(StringRef PassID) {
-  return PrintBeforeAll || ShouldPrintBeforeOrAfterPass(PassID, PrintBefore);
+  return PrintBeforeAll || std::getenv("LLVM_PRINT_BEFORE_ALL") || ShouldPrintBeforeOrAfterPass(PassID, PrintBefore);
 }
 
 bool llvm::shouldPrintAfterPass(StringRef PassID) {
-  return PrintAfterAll || ShouldPrintBeforeOrAfterPass(PassID, PrintAfter);
+  return PrintAfterAll || std::getenv("LLVM_PRINT_AFTER_ALL") || ShouldPrintBeforeOrAfterPass(PassID, PrintAfter);
 }
 
 bool llvm::forcePrintModuleIR() { return PrintModuleScope; }
