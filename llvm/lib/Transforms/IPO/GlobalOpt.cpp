@@ -3152,10 +3152,6 @@ struct GlobalOptLegacyPass : public ModulePass {
   }
 
   bool runOnModule(Module &M) override {
-    // SyncVM local begin
-    // FIXME: something is wrong with EH on SyncVM
-    return false;
-    // SyncVM local end
     if (skipModule(M))
       return false;
 
