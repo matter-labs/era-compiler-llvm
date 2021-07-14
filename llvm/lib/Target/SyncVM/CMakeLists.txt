@@ -31,6 +31,7 @@ add_llvm_target(SyncVMCodeGen
   SyncVMAllocaHoisting.cpp
   SyncVMTargetTransformInfo.cpp
   SyncVMDropUnusedRegisters.cpp
+  SyncVMMoveCallResultSpill.cpp
 
   DEPENDS
   intrinsics_gen
