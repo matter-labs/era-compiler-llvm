@@ -156,7 +156,9 @@ bool SyncVMEHPrepare::prepareEHPads(Function &F) {
       BB.getInstList().erase(II);
 
       // Remove lpad instruction in the unwind BB.
-      II->getUnwindDest()->front().eraseFromParent();
+      auto UnwindBB = II->getUnwindDest();
+      if (!UnwindBB->empty() && isa<LandingPadInst>(UnwindBB->front()))
+        UnwindBB->front().eraseFromParent();
 
       Changed = true;
     }
