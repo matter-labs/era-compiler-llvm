@@ -67,28 +67,77 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
     if (Terminator.getOpcode() != SyncVM::JCC)
       continue;
     unsigned CC = Terminator.getOperand(2).isImm()
-      ? Terminator.getOperand(2).getImm()
-      : Terminator.getOperand(2).getCImm()->getZExtValue();
+                      ? Terminator.getOperand(2).getImm()
+                      : Terminator.getOperand(2).getCImm()->getZExtValue();
 
     // No exception handling involved
     if (CC != SyncVMCC::COND_LT)
       continue;
 
-    auto &Spill = *II++;
+    auto &SpillOrPop = *II++;
+    MachineInstr *Spill = nullptr, *Pop = nullptr;
     // No spill involved
-    if (Spill.getOpcode() != SyncVM::MOVrs ||
-        Spill.getOperand(0).getReg() != SyncVM::R1)
+    if (SpillOrPop.getOpcode() == SyncVM::MOVrs &&
+        SpillOrPop.getOperand(0).getReg() == SyncVM::R1)
+      Spill = &SpillOrPop;
+    else if (SpillOrPop.getOpcode() == SyncVM::POP)
+      Pop = &SpillOrPop;
+    else
       continue;
+
+    switch (II->getOpcode()) {
+    default:
+      continue;
+    case SyncVM::MOVrs:
+      if (Spill || II->getOperand(0).getReg() != SyncVM::R1)
+        continue;
+      Spill = &*II++;
+      break;
+    case SyncVM::POP:
+      if (Pop)
+        continue;
+      Pop = &*II++;
+      break;
+    case SyncVM::CALL:
+      break;
+    }
 
     auto &Call = *II;
     // No call involved
     if (Call.getOpcode() != SyncVM::CALL)
       continue;
 
-    auto *TrueMBB = Terminator.getOperand(0).getMBB();
-    Spill.removeFromParent();
-    TrueMBB->insert(TrueMBB->begin(), &Spill);
-    Changed = true;
+    auto *FalseMBB = Terminator.getOperand(1).getMBB();
+    if (FalseMBB->pred_size() != 1) {
+      DebugLoc DL = Terminator.getDebugLoc();
+      MachineFunction *F = FalseMBB->getParent();
+      auto *NewMBB = F->CreateMachineBasicBlock();
+      F->insert(MBB.getIterator(), NewMBB);
+      BuildMI(NewMBB, DL, TII->get(SyncVM::JCC))
+          .addMBB(FalseMBB)
+          .addMBB(FalseMBB)
+          .addImm(SyncVMCC::COND_NONE);
+      NewMBB->addSuccessor(FalseMBB);
+      BuildMI(&MBB, DL, TII->get(SyncVM::JCC))
+          .add(Terminator.getOperand(0))
+          .addMBB(NewMBB)
+          .add(Terminator.getOperand(2));
+      Terminator.eraseFromParent();
+      MBB.removeSuccessor(FalseMBB);
+      MBB.addSuccessor(NewMBB);
+      FalseMBB = NewMBB;
+    }
+
+    if (Pop) {
+      Pop->removeFromParent();
+      FalseMBB->insert(FalseMBB->begin(), Pop);
+      Changed = true;
+    }
+    if (Spill) {
+      Spill->removeFromParent();
+      FalseMBB->insert(FalseMBB->begin(), Spill);
+      Changed = true;
+    }
   }
 
   LLVM_DEBUG(
