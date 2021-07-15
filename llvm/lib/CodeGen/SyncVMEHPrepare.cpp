@@ -150,9 +150,9 @@ bool SyncVMEHPrepare::prepareEHPads(Function &F) {
       auto *TruncFlag = Builder.CreateTrunc(LTFlag, Builder.getInt1Ty());
 
       // Insert an unconditional branch to the normal destination.
-      Builder.CreateCondBr(TruncFlag, II->getNormalDest(), II->getUnwindDest());
-      // Remove the invoke instruction now.
+      Builder.CreateCondBr(TruncFlag, II->getUnwindDest(), II->getNormalDest());
 
+      // Remove the invoke instruction now.
       BB.getInstList().erase(II);
 
       // Remove lpad instruction in the unwind BB.
