@@ -236,6 +236,7 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   CallingConv::ID CallConv = CLI.CallConv;
   bool IsVarArg = CLI.IsVarArg;
   SmallVector<SDValue, 12> MemOpChains;
+  auto CalleeF = cast<Function>(cast<GlobalAddressSDNode>(Callee)->getGlobal());
 
   // TODO: SyncVM target does not yet support tail call optimization.
   IsTailCall = false;
@@ -252,18 +253,34 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
       std::count_if(std::begin(ArgLocs), std::end(ArgLocs),
                     [](const CCValAssign &VA) { return !VA.isRegLoc(); });
   SDValue InFlag;
+
+  std::vector<SDValue> OutValsAdj;
+  OutValsAdj.reserve(OutVals.size());
+
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
-    if (ArgLocs[i].isRegLoc())
-      Chain = DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), OutVals[i],
+    unsigned Idx = Outs[i].OrigArgIndex;
+    Type *T = CalleeF->getArg(Idx)->getType();
+    if (NumMemOps && T->isPointerTy() && T->getPointerAddressSpace() == 0)
+      OutValsAdj.push_back(
+          DAG.getNode(ISD::ADD, DL, MVT::i256, OutVals[i],
+                      DAG.getConstant(NumMemOps * 32, DL, MVT::i256)));
+    else
+      OutValsAdj.push_back(OutVals[i]);
+  }
+
+  for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
+    if (ArgLocs[i].isRegLoc()) {
+      Chain = DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), OutValsAdj[i],
                                InFlag);
+    }
   }
 
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
     unsigned revI = e - i - 1;
     if (!ArgLocs[revI].isRegLoc())
-      Chain =
-          DAG.getNode(SyncVMISD::PUSH, DL, MVT::Other, Chain,
-                      DAG.getTargetConstant(0, DL, MVT::i256), OutVals[revI]);
+      Chain = DAG.getNode(SyncVMISD::PUSH, DL, MVT::Other, Chain,
+                          DAG.getTargetConstant(0, DL, MVT::i256),
+                          OutValsAdj[revI]);
   }
 
   // Returns a chain & a flag for retval copy to use.
@@ -296,7 +313,6 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
                     *DAG.getContext());
   RetCCInfo.AnalyzeCallResult(Ins, CC_SYNCVM);
 
-  // TODO: Glue had been broken by this point, needs to be fixed.
   InFlag = SDValue();
   DenseMap<unsigned, SDValue> CopiedRegs;
   // Copy all of the result registers out of their specified physreg.
@@ -310,6 +326,12 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
       Chain = Val.getValue(1);
       InFlag = Val.getValue(2);
       CopiedRegs[RVLocs[i].getLocReg()] = Val;
+    }
+    Type *T = CalleeF->getReturnType();
+    if (NumMemOps && T->isPointerTy() && T->getPointerAddressSpace() == 0 &&
+        i == 0) {
+      Val = DAG.getNode(ISD::SUB, DL, MVT::i256, Val,
+                        DAG.getConstant(NumMemOps * 32, DL, MVT::i256));
     }
     InVals.push_back(Val);
   }
