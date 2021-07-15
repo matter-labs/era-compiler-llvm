@@ -616,7 +616,7 @@ SDValue SyncVMTargetLowering::LowerBrcondBr(SDValue Op, SDValue DestFalse,
   SDValue Zero = DAG.getConstant(0, DL, Cond.getValueType());
   // TODO: Code duplication.
   if (Cond.getOpcode() == ISD::INTRINSIC_W_CHAIN) {
-    SDValue BrFlag = LowerBrFlag(Cond, Chain, DestFalse, DestTrue, DL, DAG);
+    SDValue BrFlag = LowerBrFlag(Cond, Chain, DestTrue, DestFalse, DL, DAG);
     if (BrFlag)
       return BrFlag;
   }
