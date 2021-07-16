@@ -356,43 +356,55 @@ static SDValue EmitCMP(SDValue &LHS, SDValue &RHS, ISD::CondCode CC,
     TCC = SyncVMCC::COND_E; // aka COND_Z
     // Minor optimization: if LHS is a constant, swap operands, then the
     // constant can be folded into comparison.
-    if (LHS.getOpcode() == ISD::Constant)
+    if (LHS.getOpcode() == ISD::Constant) {
       std::swap(LHS, RHS);
+      TCC = SyncVMCC::COND_NE;
+    }
     break;
   case ISD::SETNE:
     TCC = SyncVMCC::COND_NE; // aka COND_NZ
     // Minor optimization: if LHS is a constant, swap operands, then the
     // constant can be folded into comparison.
-    if (LHS.getOpcode() == ISD::Constant)
+    if (LHS.getOpcode() == ISD::Constant) {
       std::swap(LHS, RHS);
+      TCC = SyncVMCC::COND_E;
+    }
     break;
   case ISD::SETULT:
     TCC = SyncVMCC::COND_LT;
     // Minor optimization: if LHS is a constant, swap operands, then the
     // constant can be folded into comparison.
-    if (LHS.getOpcode() == ISD::Constant)
+    if (LHS.getOpcode() == ISD::Constant) {
       std::swap(LHS, RHS);
+      TCC = SyncVMCC::COND_GE;
+    }
     break;
   case ISD::SETULE:
     TCC = SyncVMCC::COND_LE;
     // Minor optimization: if LHS is a constant, swap operands, then the
     // constant can be folded into comparison.
-    if (LHS.getOpcode() == ISD::Constant)
+    if (LHS.getOpcode() == ISD::Constant) {
       std::swap(LHS, RHS);
+      TCC = SyncVMCC::COND_GT;
+    }
     break;
   case ISD::SETUGT:
     TCC = SyncVMCC::COND_GT;
     // Minor optimization: if LHS is a constant, swap operands, then the
     // constant can be folded into comparison.
-    if (LHS.getOpcode() == ISD::Constant)
+    if (LHS.getOpcode() == ISD::Constant) {
       std::swap(LHS, RHS);
+      TCC = SyncVMCC::COND_LE;
+    }
     break;
   case ISD::SETUGE:
     TCC = SyncVMCC::COND_GE;
     // Minor optimization: if LHS is a constant, swap operands, then the
     // constant can be folded into comparison.
-    if (LHS.getOpcode() == ISD::Constant)
+    if (LHS.getOpcode() == ISD::Constant) {
       std::swap(LHS, RHS);
+      TCC = SyncVMCC::COND_LT;
+    }
     break;
   }
 
