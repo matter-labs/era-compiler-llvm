@@ -58,6 +58,79 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
   Context = &MF.getFunction().getContext();
 
   bool Changed = false;
+
+  for (MachineBasicBlock &MBB : MF) {
+    std::vector<MachineBasicBlock::iterator> PushIts;
+    MachineBasicBlock::iterator PopIt, CallIt, PushIt;
+    PushIt = PopIt = CallIt = MBB.end();
+    for (auto It = MBB.begin(), E = MBB.end(); It != E; ++It) {
+      switch (It->getOpcode()) {
+      default:
+        continue;
+      case SyncVM::PUSH:
+        PushIts.push_back(It);
+        continue;
+      case SyncVM::CALL:
+        CallIt = It;
+        continue;
+      case SyncVM::POP:
+        assert(PopIt == E);
+        PopIt = It;
+        if (CallIt == E) {
+          PopIt = CallIt = PushIt = E;
+          PushIts.clear();
+          continue;
+        }
+        unsigned Num = PopIt->getOperand(1).isImm()
+          ? PopIt->getOperand(1).getImm()
+          : PopIt->getOperand(1).getCImm()->getZExtValue();
+        for (auto PIIt = std::rbegin(PushIts), PIE = std::rend(PushIts);
+             PIIt != PIE; ++PIIt) {
+          unsigned NumPush = (*PIIt)->getOperand(0).isImm()
+            ? (*PIIt)->getOperand(0).getImm()
+            : (*PIIt)->getOperand(0).getCImm()->getZExtValue();
+          if (NumPush != 0) {
+            PushIt = PopIt = CallIt = E;
+            PushIts.clear();
+            break;
+          }
+          if (Num-- == 0) {
+            PushIt = *PIIt;
+            break;
+          }
+        }
+        if (CallIt == E)
+          continue;
+        for (auto SplIt = std::next(PushIt); SplIt != CallIt;) {
+          if (SplIt->getOpcode() == SyncVM::MOVrs || SplIt->getOpcode() == SyncVM::MOVsr) {
+            auto NewIt = std::next(SplIt);
+            BuildMI(MBB, SplIt, SplIt->getDebugLoc(), TII->get(SplIt->getOpcode()))
+                .add(SplIt->getOperand(0))
+                .add(SplIt->getOperand(1))
+                .add(SplIt->getOperand(2))
+                .addImm(SplIt->getOperand(3).getImm() + Num * 32);
+            SplIt = NewIt;
+            Changed = true;
+          } else {
+            ++SplIt;
+          }
+        }
+        for (auto SplIt = std::next(CallIt); SplIt != PopIt;) {
+          if (SplIt->getOpcode() == SyncVM::MOVrs || SplIt->getOpcode() == SyncVM::MOVsr) {
+            auto NextIt = std::next(SplIt);
+            MBB.splice(std::next(PopIt), &MBB, SplIt);
+            SplIt = NextIt;
+            Changed = true;
+          } else {
+            ++SplIt;
+          }
+        }
+        PushIt = PopIt = CallIt = E;
+        break;
+      }
+    }
+  }
+
   for (MachineBasicBlock &MBB : MF) {
     if (MBB.size() < 3)
       continue;
@@ -71,41 +144,26 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
                       : Terminator.getOperand(2).getCImm()->getZExtValue();
 
     // No exception handling involved
-    if (CC != SyncVMCC::COND_LT)
+    if (CC != SyncVMCC::COND_LT || II->getOpcode() == SyncVM::CMPrr)
       continue;
 
-    auto &SpillOrPop = *II++;
-    MachineInstr *Spill = nullptr, *Pop = nullptr;
-    // No spill involved
-    if (SpillOrPop.getOpcode() == SyncVM::MOVrs &&
-        SpillOrPop.getOperand(0).getReg() == SyncVM::R1)
-      Spill = &SpillOrPop;
-    else if (SpillOrPop.getOpcode() == SyncVM::POP)
-      Pop = &SpillOrPop;
-    else
-      continue;
-
-    switch (II->getOpcode()) {
-    default:
-      continue;
-    case SyncVM::MOVrs:
-      if (Spill || II->getOperand(0).getReg() != SyncVM::R1)
-        continue;
-      Spill = &*II++;
-      break;
-    case SyncVM::POP:
-      if (Pop)
-        continue;
-      Pop = &*II++;
-      break;
-    case SyncVM::CALL:
-      break;
+    std::vector<MachineInstr *> InstrToMove;
+    while (II->getOpcode() != SyncVM::CALL) {
+      // Function result spill
+      if (II->getOpcode() == SyncVM::MOVrs &&
+          II->getOperand(0).getReg() == SyncVM::R1)
+        InstrToMove.push_back(&*II);
+      // Pop
+      else if (II->getOpcode() == SyncVM::POP)
+        InstrToMove.push_back(&*II);
+      // Reload
+      else if (II->getOpcode() == SyncVM::MOVsr)
+        InstrToMove.push_back(&*II);
+      else
+        llvm_unreachable("Unexpected instr");
+      ++II;
+      assert(II != MBB.rend());
     }
-
-    auto &Call = *II;
-    // No call involved
-    if (Call.getOpcode() != SyncVM::CALL)
-      continue;
 
     auto *FalseMBB = Terminator.getOperand(1).getMBB();
     if (FalseMBB->pred_size() != 1) {
@@ -128,14 +186,10 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
       FalseMBB = NewMBB;
     }
 
-    if (Pop) {
-      Pop->removeFromParent();
-      FalseMBB->insert(FalseMBB->begin(), Pop);
-      Changed = true;
-    }
-    if (Spill) {
-      Spill->removeFromParent();
-      FalseMBB->insert(FalseMBB->begin(), Spill);
+    for (auto IIt = InstrToMove.rbegin(), IE = InstrToMove.rend();
+         IIt != IE; ++IIt) {
+      (*IIt)->removeFromParent();
+      FalseMBB->insert(FalseMBB->begin(), *IIt);
       Changed = true;
     }
   }
