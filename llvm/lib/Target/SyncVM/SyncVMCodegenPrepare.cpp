@@ -161,7 +161,7 @@ bool SyncVMCodegenPrepare::runOnFunction(Function &F) {
                 Builder.CreateZExt(Builder.getInt(Val), Builder.getIntNTy(256));
             auto Op256 =
                 Builder.CreateZExt(I.getOperand(0), Builder.getIntNTy(256));
-            auto *NewCmp = Builder.CreateICmp(P, Val256, Op256);
+            auto *NewCmp = Builder.CreateICmp(P, Op256, Val256);
             I.replaceAllUsesWith(NewCmp);
             Replaced.push_back(&I);
           }

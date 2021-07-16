@@ -9126,6 +9126,8 @@ SDValue DAGCombiner::visitSELECT(SDNode *N) {
                                                 CC, TLI, DAG))
         return FMinMax;
 
+    // SyncVM local begin
+#if 0
     // Use 'unsigned add with overflow' to optimize an unsigned saturating add.
     // This is conservatively limited to pre-legal-operations to give targets
     // a chance to reverse the transform if they want to do that. Also, it is
@@ -9154,6 +9156,8 @@ SDValue DAGCombiner::visitSELECT(SDNode *N) {
         return DAG.getSelect(DL, VT, UAO.getValue(1), N1, UAO.getValue(0));
       }
     }
+#endif
+    // SyncVM local end
 
     if (TLI.isOperationLegal(ISD::SELECT_CC, VT) ||
         (!LegalOperations &&
@@ -9517,9 +9521,11 @@ SDValue DAGCombiner::visitSETCC(SDNode *N) {
   bool PreferSetCC =
       N->hasOneUse() && N->use_begin()->getOpcode() == ISD::BRCOND;
 
-  SDValue Combined = SimplifySetCC(
+  // SyncVM local begin
+  SDValue Combined = {}; /*SimplifySetCC(
       N->getValueType(0), N->getOperand(0), N->getOperand(1),
-      cast<CondCodeSDNode>(N->getOperand(2))->get(), SDLoc(N), !PreferSetCC);
+      cast<CondCodeSDNode>(N->getOperand(2))->get(), SDLoc(N), !PreferSetCC);*/
+  // SyncVM local end
 
   if (!Combined)
     return SDValue();
