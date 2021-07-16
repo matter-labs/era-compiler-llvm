@@ -157,6 +157,8 @@ let isCodeGenOnly = 1 in {
 // adjusted load and stores with their non-pseudo counterparts.
 def AdjSP : Pseudo<(outs GR256:$dst), (ins GR256:$base),
                    "# AdjSP PSEUDO", []>;
+def AdjSPDown : Pseudo<(outs GR256:$dst), (ins GR256:$base),
+                       "# AdjSPDown PSEUDO", []>;
 let mayStore = 1 in {
   def AdjMOVrs      : Pseudo< (outs), (ins GR256:$val, stackop:$dst),
                               "# AdjMOVrs PSEUDO",
@@ -194,6 +196,10 @@ def SUBrrr     : ArithmeticRRR<  0x02, "sub", sub >;
 def ADDirr     : SyncVMInstruction< 0x011, (outs GR256:$out),
                                     (ins GR256:$in1, imm128:$in2),
                                     "add\t#$in2, $in1, $out",
+                                    [(set GR256:$out, (add GR256:$in1, imm128:$in2))]>;
+def SUBrir     : SyncVMInstruction< 0x011, (outs GR256:$out),
+                                    (ins GR256:$in1, imm128:$in2),
+                                    "sub\t$in1, #$in2, $out",
                                     [(set GR256:$out, (add GR256:$in1, imm128:$in2))]>;
 
 let Defs = [Flags], isTerminator = 1 in {
@@ -302,12 +308,12 @@ def SFLHir  : SyncVMInstruction< 0x051, (outs GR256:$out), (ins imm128:$val, GR2
 // Stack adjustments
 //===----------------------------------------------------------------------===//
 // TODO: should be mayStore.
-let hasSideEffects = 1, Defs = [SP], Uses = [SP] in
+let hasSideEffects = 1, Defs = [SP, Flags], Uses = [SP] in
 def PUSH    : SyncVMInstruction< 0x19, (outs), (ins i256imm:$size, GR256:$val),
                                  "push\t#$size, $val",
                                  [(SyncVMpush timm:$size, GR256:$val)] >;
 
-let mayLoad = 1, hasSideEffects = 1, Defs = [SP], Uses = [SP] in
+let mayLoad = 1, hasSideEffects = 1, Defs = [SP, Flags], Uses = [SP] in
 def POP     : SyncVMInstruction< 0x1a, (outs GR256:$val), (ins i256imm:$size),
                                  "pop\t#$size, $val",
                                  [(set GR256:$val, (SyncVMpop timm:$size))] >;
