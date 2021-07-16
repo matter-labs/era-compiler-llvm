@@ -150,7 +150,7 @@ bool SyncVMCodegenPrepare::runOnFunction(Function &F) {
           if (P == CmpInst::ICMP_SLT)
             P = CmpInst::ICMP_UGT;
           if (P == CmpInst::ICMP_SGT)
-            P = CmpInst::ICMP_ULE;
+            P = CmpInst::ICMP_ULT;
 
           if (P == CmpInst::ICMP_UGT || P == CmpInst::ICMP_ULE) {
             IRBuilder<> Builder(&I);
