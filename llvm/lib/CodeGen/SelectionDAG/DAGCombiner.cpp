@@ -14242,9 +14242,11 @@ SDValue DAGCombiner::visitBR_CC(SDNode *N) {
   // MachineBasicBlock CFG, which is awkward.
 
   // Use SimplifySetCC to simplify SETCC's.
-  SDValue Simp = SimplifySetCC(getSetCCResultType(CondLHS.getValueType()),
+  // SyncVM local begin
+  SDValue Simp = {}; /*SimplifySetCC(getSetCCResultType(CondLHS.getValueType()),
                                CondLHS, CondRHS, CC->get(), SDLoc(N),
-                               false);
+                               false); */
+  // SyncVM local end
   if (Simp.getNode()) AddToWorklist(Simp.getNode());
 
   // fold to a simpler setcc
