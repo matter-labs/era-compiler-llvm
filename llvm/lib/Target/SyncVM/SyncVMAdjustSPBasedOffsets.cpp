@@ -95,6 +95,15 @@ bool SyncVMAdjustSPBasedOffsets::runOnMachineFunction(MachineFunction &MF) {
             .add(MI.getOperand(1))
             .addImm(Adjustment * 32);
         Pseudos.push_back(&MI);
+        break;
+      }
+      case SyncVM::AdjSPDown: {
+        BuildMI(MBB, MI, MI.getDebugLoc(), TII->get(SyncVM::SUBrir))
+            .add(MI.getOperand(0))
+            .add(MI.getOperand(1))
+            .addImm(Adjustment * 32);
+        Pseudos.push_back(&MI);
+        break;
       }
       }
     }

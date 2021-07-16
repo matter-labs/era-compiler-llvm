@@ -127,19 +127,21 @@ SyncVMTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                  *DAG.getContext());
   CCInfo.AnalyzeReturn(Outs, CC_SYNCVM);
   SmallVector<SDValue, 4> RetOps(1, Chain);
+  MachineFunction &MF = DAG.getMachineFunction();
+  auto *Ty = MF.getFunction().getReturnType();
 
   if (!RVLocs.empty()) {
     SDValue Flag;
     CCValAssign &VA = RVLocs[0];
     SDValue V = OutVals[0];
+    if (Ty->isPointerTy() && Ty->getPointerAddressSpace() == 0)
+      V = SDValue(DAG.getMachineNode(SyncVM::AdjSPDown, DL, MVT::i256, V), 0);
     Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), V, Flag);
     // Guarantee that all emitted copies are stuck together,
     // avoiding something bad.
     Flag = Chain.getValue(1);
     RetOps.push_back(DAG.getRegister(VA.getLocReg(), VA.getLocVT()));
 
-    // OutVals.push_back(DAG.getRegister(VA.getLocReg(), VA.getLocVT()));
-    // TODO: Return instruction
     RetOps[0] = Chain; // Update chain.
 
     // Add the flag if we have it.
