@@ -600,6 +600,20 @@ SDValue SyncVMTargetLowering::LowerBrccBr(SDValue Op, SDValue DestFalse,
     }
   }
 
+  if (LHS.getOpcode() == ISD::AND && CC == ISD::SETEQ &&
+      RHS.getOpcode() == ISD::Constant &&
+      cast<ConstantSDNode>(RHS)->isOne() &&
+      LHS.getOperand(1).getOpcode() == ISD::Constant &&
+      cast<ConstantSDNode>(LHS.getOperand(1))->isOne()) {
+    SDValue LHSInner = LHS.getOperand(0);
+    if (LHSInner.getOpcode() == ISD::INTRINSIC_W_CHAIN) {
+      SDValue BrFlag =
+          LowerBrFlag(LHSInner, Chain, DestTrue, DestFalse, DL, DAG);
+      if (BrFlag)
+        return BrFlag;
+    }
+  }
+
   SDValue TargetCC = EmitCMP(LHS, RHS, CC, DL, DAG);
   SDValue Cmp = DAG.getNode(SyncVMISD::SUB, DL, MVT::Glue, LHS, RHS);
   return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain, DestTrue,
