@@ -142,6 +142,9 @@ bool SyncVMCodegenPrepare::runOnFunction(Function &F) {
         break;
       case Instruction::ICmp:
         auto &Cmp = cast<ICmpInst>(I);
+        // unsigned cmp is ok
+        if (Cmp.isUnsigned())
+          break;
         CmpInst::Predicate P = Cmp.getPredicate();
         auto *CmpVal = dyn_cast<ConstantInt>(I.getOperand(1));
         if (CmpVal && CmpVal->getValue().isNullValue()) {
@@ -163,6 +166,7 @@ bool SyncVMCodegenPrepare::runOnFunction(Function &F) {
             Replaced.push_back(&I);
           }
         }
+        break;
       }
     }
   for (auto *I : Replaced)
