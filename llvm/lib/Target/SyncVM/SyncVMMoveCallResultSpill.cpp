@@ -102,7 +102,13 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
         }
         if (CallIt == E)
           continue;
+        unsigned Adjust = 1;
         for (auto SplIt = std::next(PushIt); SplIt != CallIt;) {
+          if (SplIt->getOpcode() == SyncVM::PUSH) {
+            ++Adjust;
+            ++SplIt;
+            continue;
+          }
           if (SplIt->getOpcode() == SyncVM::MOVrs ||
               SplIt->getOpcode() == SyncVM::MOVsr) {
             auto NewIt = std::next(SplIt);
@@ -111,7 +117,8 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
                 .add(SplIt->getOperand(0))
                 .add(SplIt->getOperand(1))
                 .add(SplIt->getOperand(2))
-                .addImm(SplIt->getOperand(3).getImm() + Num * 32);
+                .addImm(SplIt->getOperand(3).getImm() + Adjust * 32);
+            SplIt->eraseFromParent();
             SplIt = NewIt;
             Changed = true;
           } else {
@@ -121,9 +128,15 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
         for (auto SplIt = std::next(CallIt); SplIt != PopIt;) {
           if (SplIt->getOpcode() == SyncVM::MOVrs ||
               SplIt->getOpcode() == SyncVM::MOVsr) {
-            auto NextIt = std::next(SplIt);
-            MBB.splice(std::next(PopIt), &MBB, SplIt);
-            SplIt = NextIt;
+            auto NewIt = std::next(SplIt);
+            BuildMI(MBB, SplIt, SplIt->getDebugLoc(),
+                    TII->get(SplIt->getOpcode()))
+                .add(SplIt->getOperand(0))
+                .add(SplIt->getOperand(1))
+                .add(SplIt->getOperand(2))
+                .addImm(SplIt->getOperand(3).getImm() - Num * 32);
+            SplIt->eraseFromParent();
+            SplIt = NewIt;
             Changed = true;
           } else {
             ++SplIt;
@@ -178,7 +191,7 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
       FalseMBB = NewMBB;
     }
 
-    for (auto IIt = InstrToMove.rbegin(), IE = InstrToMove.rend(); IIt != IE;
+    for (auto IIt = InstrToMove.begin(), IE = InstrToMove.end(); IIt != IE;
          ++IIt) {
       (*IIt)->removeFromParent();
       FalseMBB->insert(FalseMBB->begin(), *IIt);
