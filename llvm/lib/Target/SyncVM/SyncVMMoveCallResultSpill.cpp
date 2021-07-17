@@ -100,7 +100,7 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
             break;
           }
         }
-        if (CallIt == E)
+        if (CallIt == E || (PushIt == MBB.begin() && &MBB == &MF.front()))
           continue;
         unsigned Adjust = 1;
         for (auto SplIt = std::next(PushIt); SplIt != CallIt;) {
@@ -134,7 +134,7 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
                 .add(SplIt->getOperand(0))
                 .add(SplIt->getOperand(1))
                 .add(SplIt->getOperand(2))
-                .addImm(SplIt->getOperand(3).getImm() - Num * 32);
+                .addImm(SplIt->getOperand(3).getImm() + Adjust * 32);
             SplIt->eraseFromParent();
             SplIt = NewIt;
             Changed = true;
