@@ -60,9 +60,12 @@ static bool replaceOr(Instruction &I) {
   if (LHS->getType()->getIntegerBitWidth() != 1u)
     return false;
   IRBuilder<> Builder(&I);
+  LHS = Builder.CreateZExt(LHS, Builder.getIntNTy(256));
+  RHS = Builder.CreateZExt(RHS, Builder.getIntNTy(256));
   auto *Mul = Builder.CreateMul(LHS, RHS);
   auto *Add = Builder.CreateAdd(LHS, RHS);
   auto *NewI = Builder.CreateSub(Add, Mul);
+  NewI = Builder.CreateTrunc(NewI, Builder.getInt1Ty());
   I.replaceAllUsesWith(NewI);
   return true;
 }
@@ -74,7 +77,11 @@ static bool replaceXor(Instruction &I) {
   if (LHS->getType()->getIntegerBitWidth() != 1u)
     return false;
   IRBuilder<> Builder(&I);
+  LHS = Builder.CreateZExt(LHS, Builder.getIntNTy(256));
+  RHS = Builder.CreateZExt(RHS, Builder.getIntNTy(256));
   auto *Add = Builder.CreateAdd(LHS, RHS);
+  Add = Builder.CreateURem(Add, Builder.getIntN(256, 2));
+  Add = Builder.CreateTrunc(Add, Builder.getInt1Ty());
   I.replaceAllUsesWith(Add);
   return true;
 }
@@ -152,10 +159,10 @@ bool SyncVMCodegenPrepare::runOnFunction(Function &F) {
           APInt Val = APInt(NumBits, -1, true).lshr(1);
           if (P == CmpInst::ICMP_SLT)
             P = CmpInst::ICMP_UGT;
-          if (P == CmpInst::ICMP_SGT)
-            P = CmpInst::ICMP_ULT;
+          else
+            break;
 
-          if (P == CmpInst::ICMP_UGT || P == CmpInst::ICMP_ULE) {
+          if (P == CmpInst::ICMP_UGT) {
             IRBuilder<> Builder(&I);
             auto Val256 =
                 Builder.CreateZExt(Builder.getInt(Val), Builder.getIntNTy(256));
