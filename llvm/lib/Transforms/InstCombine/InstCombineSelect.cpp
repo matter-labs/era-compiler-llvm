@@ -2531,6 +2531,11 @@ static Instruction *foldSelectToPhi(SelectInst &Sel, const DominatorTree &DT,
 }
 
 Instruction *InstCombiner::visitSelectInst(SelectInst &SI) {
+  // SyncVM local begin
+  // FIXME: the pass replaces constant shifts with variable ones, yet
+  // the exclusion should be more precise.
+  return nullptr;
+  // SyncVM local end
   Value *CondVal = SI.getCondition();
   Value *TrueVal = SI.getTrueValue();
   Value *FalseVal = SI.getFalseValue();
