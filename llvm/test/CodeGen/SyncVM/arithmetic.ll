@@ -55,9 +55,7 @@ define i256 @udivremi256(i256 %par, i256 %p2) nounwind {
 define i256 @addi64(i64 %p1, i64 %p2) nounwind {
 ; CHECK: add r1, r2, r1
   %1 = add i64 %p1, %p2
-; CHECK: sfll #18446744073709551616, r2, r2
-; CHECK: sflh #0, r2, r2
-; CHECK: div r1, r2, r0, r1
+; CHECK: div r1, #18446744073709551616, r0, r1
   %2 = zext i64 %1 to i256
   ret i256 %2
 }

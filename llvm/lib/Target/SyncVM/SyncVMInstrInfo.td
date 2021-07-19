@@ -197,6 +197,10 @@ def ADDirr     : SyncVMInstruction< 0x011, (outs GR256:$out),
                                     (ins GR256:$in1, imm128:$in2),
                                     "add\t#$in2, $in1, $out",
                                     [(set GR256:$out, (add GR256:$in1, imm128:$in2))]>;
+def MULirr     : SyncVMInstruction< 0x011, (outs GR256:$out),
+                                    (ins GR256:$in1, imm128:$in2),
+                                    "mul\t#$in2, $in1, $out, r0",
+                                    [(set GR256:$out, (mul GR256:$in1, imm128:$in2))]>;
 def SUBrir     : SyncVMInstruction< 0x011, (outs GR256:$out),
                                     (ins GR256:$in1, imm128:$in2),
                                     "sub\t$in1, #$in2, $out",
@@ -217,7 +221,15 @@ def CMPrz   : SyncVMInstruction<  0x02, (outs),
 }
 
 def DIVrrrz    : ArithmeticRRRZ< 0x04, "div", udiv >;
+def DIVrirz    : SyncVMInstruction< 0x04, (outs GR256:$out),
+                                    (ins GR256:$in1, imm128:$in2),
+                                    "div\t$in1, #$in2, $out, r0",
+                                    [(set GR256:$out, (udiv GR256:$in1, imm128:$in2))]>;
 def REMrrzr    : ArithmeticRRZR< 0x04, "div", urem >;
+def DIVrizr    : SyncVMInstruction< 0x04, (outs GR256:$out),
+                                    (ins GR256:$in1, imm128:$in2),
+                                    "div\t$in1, #$in2, r0, $out",
+                                    [(set GR256:$out, (urem GR256:$in1, imm128:$in2))]>;
 // TODO: needs logic in isel lowering to be generated
 def DIVREMrrrr : ArithmeticRRRR< 0x04, "div", udivrem >;
 
