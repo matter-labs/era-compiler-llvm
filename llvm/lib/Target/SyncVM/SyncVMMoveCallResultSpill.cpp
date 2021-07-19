@@ -100,7 +100,8 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
             break;
           }
         }
-        if (CallIt == E || (PushIt == MBB.begin() && &MBB == &MF.front()))
+        if (Num + 1 != 0 || CallIt == E
+            || (PushIt == MBB.begin() && &MBB == &MF.front()))
           continue;
         unsigned Adjust = 1;
         for (auto SplIt = std::next(PushIt); SplIt != CallIt;) {
