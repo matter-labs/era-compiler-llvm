@@ -100,7 +100,7 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
             break;
           }
         }
-        if (Num != 0 || CallIt == E
+        if (Num + 1 != 0 || CallIt == E
             || (PushIt == MBB.begin() && &MBB == &MF.front()))
           continue;
         unsigned Adjust = 1;
