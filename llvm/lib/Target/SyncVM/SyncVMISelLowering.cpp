@@ -271,18 +271,20 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   }
 
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
-    if (ArgLocs[i].isRegLoc()) {
-      Chain = DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), OutValsAdj[i],
-                               InFlag);
+    unsigned revI = e - i - 1;
+    if (!ArgLocs[revI].isRegLoc()) {
+      Chain = DAG.getNode(SyncVMISD::PUSH, DL, MVT::Other, Chain,
+                          DAG.getTargetConstant(0, DL, MVT::i256),
+                          OutValsAdj[revI]);
     }
   }
 
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
-    unsigned revI = e - i - 1;
-    if (!ArgLocs[revI].isRegLoc())
-      Chain = DAG.getNode(SyncVMISD::PUSH, DL, MVT::Other, Chain,
-                          DAG.getTargetConstant(0, DL, MVT::i256),
-                          OutValsAdj[revI]);
+    if (ArgLocs[i].isRegLoc()) {
+      Chain = DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), OutValsAdj[i],
+                               InFlag);
+      InFlag = Chain.getValue(1);
+    }
   }
 
   // Returns a chain & a flag for retval copy to use.
@@ -306,8 +308,7 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 
   if (NumMemOps) {
     Chain = DAG.getNode(SyncVMISD::POP, DL, MVT::Other, Chain,
-                        DAG.getTargetConstant(NumMemOps - 1, DL, MVT::i256),
-                        InFlag);
+                        DAG.getTargetConstant(NumMemOps - 1, DL, MVT::i256));
   }
 
   SmallVector<CCValAssign, 16> RVLocs;

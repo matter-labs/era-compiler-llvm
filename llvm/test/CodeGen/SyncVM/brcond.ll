@@ -5,9 +5,10 @@ target triple = "syncvm"
 
 ; CHECK-LABEL: brcond
 define i256 @brcond(i256 %p1) nounwind {
-; CHECK: sfll #1, r2, r2
-; CHECK: sflh #0, r2, r2
-; CHECK: sub	r1, r2, r0
+; CHECK: div r2, #2, r0, r2
+; CHECK: sfll #1, r3, r3
+; CHECK: sflh #0, r3, r3
+; CHECK: sub	r2, r3, r0
 ; CHECK: je	.LBB0_1, .LBB0_2
   %1 = trunc i256 %p1 to i1
   br i1 %1, label %l1, label %l2
@@ -23,7 +24,7 @@ entry:
   br label %condition
 
 condition:                                        ; preds = %entry
-; CHECK: sub r1, r0, r0
+; CHECK: sub r{{[0-9]}}, r0, r0
 ; CHECK: jne .LBB1_3, .LBB1_2
   br i1 undef, label %body, label %join
 

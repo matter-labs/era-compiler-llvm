@@ -5,7 +5,7 @@ target triple = "syncvm"
 
 ; CHECK-LABEL: shl_smallconst
 define i256 @shl_smallconst(i256 %par) nounwind {
-; CHECK: mul r1, #1024, r1, r0
+; CHECK: mul #1024, r1, r1, r0
   %1 = shl i256 %par, 10
   ret i256 %1
 }

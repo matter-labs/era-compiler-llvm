@@ -43,8 +43,10 @@ def SyncVMcallseq_start :
 def SyncVMcallseq_end :
                  SDNode<"ISD::CALLSEQ_END",   SDT_SyncVMCallSeqEnd,
                         [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
-def SyncVMpush : SDNode<"SyncVMISD::PUSH", SDT_SyncVMPush, [SDNPHasChain]>;
-def SyncVMpop : SDNode<"SyncVMISD::POP",   SDT_SyncVMPop, [SDNPHasChain]>;
+def SyncVMpush : SDNode<"SyncVMISD::PUSH", SDT_SyncVMPush,
+                        [SDNPHasChain, SDNPInGlue, SDNPOutGlue]>;
+def SyncVMpop : SDNode<"SyncVMISD::POP",   SDT_SyncVMPop,
+                       [SDNPHasChain, SDNPInGlue, SDNPOutGlue]>;
 
 //===----------------------------------------------------------------------===//
 // MSP430 Operand Definitions.
@@ -214,7 +216,7 @@ def CMPrr   : SyncVMInstruction<  0x02, (outs),
                                    (implicit Flags)] >;
 
 def CMPrz   : SyncVMInstruction<  0x02, (outs),
-                                  (ins GR256:$src1, GR256:$src2),
+                                  (ins GR256:$src1, i256imm:$src2),
                                   "sub\t$src1, r0, r0",
                                   [(SyncVMsub GR256:$src1, z256:$src2),
                                    (implicit Flags)] >;
@@ -326,9 +328,9 @@ def PUSH    : SyncVMInstruction< 0x19, (outs), (ins i256imm:$size, GR256:$val),
                                  [(SyncVMpush timm:$size, GR256:$val)] >;
 
 let mayLoad = 1, hasSideEffects = 1, Defs = [SP, Flags], Uses = [SP] in
-def POP     : SyncVMInstruction< 0x1a, (outs GR256:$val), (ins i256imm:$size),
+def POP     : SyncVMInstruction< 0x1a, (outs Z256:$val), (ins i256imm:$size),
                                  "pop\t#$size, $val",
-                                 [(set GR256:$val, (SyncVMpop timm:$size))] >;
+                                 [(set Z256:$val, (SyncVMpop timm:$size))] >;
 
 //===----------------------------------------------------------------------===//
 // Intrinsics lowering
