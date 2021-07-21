@@ -34,6 +34,12 @@ SyncVMRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
 
 BitVector SyncVMRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   BitVector Reserved(getNumRegs());
+  Reserved.set(SyncVM::SP);
+  Reserved.set(SyncVM::Flags);
+  Reserved.set(SyncVM::R0);
+  // FIXME: When a call result is move to a successor, CodeGen needs to count R1
+  // as live.
+  Reserved.set(SyncVM::R1);
   return Reserved;
 }
 
