@@ -22,7 +22,7 @@ define void @store_to_parent(i256 %par) nounwind {
 ; CHECK-LABEL: load_from_child
 define i256 @load_from_child(i256 %addr) nounwind {
   %1 = inttoptr i256 %addr to i256 addrspace(2)*
-; CHECK: mov.p 0(r1), r1
+; CHECK: mov.p 0(r2), r1
   %2 = load i256, i256 addrspace(2)* %1
   ret i256 %2
 }
@@ -30,7 +30,7 @@ define i256 @load_from_child(i256 %addr) nounwind {
 ; CHECK-LABEL: load_from_parent
 define i256 @load_from_parent(i256 %addr) nounwind {
   %1 = inttoptr i256 %addr to i256 addrspace(3)*
-; CHECK: mov.c 0(r1), r1
+; CHECK: mov.c 0(r2), r1
   %2 = load i256, i256 addrspace(3)* %1
   ret i256 %2
 }
