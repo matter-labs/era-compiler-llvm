@@ -104,14 +104,14 @@ define i256 @caller_i128.ret(i256 %a1) nounwind {
 
 ; CHECK-LABEL: call.sevenarg
 define i256 @call.sevenarg() nounwind {
-; CHECK: sfll #0, r1, r1
-; CHECK: sflh #0, r1, r1
-; CHECK: add r1, r0, r2
-; CHECK: add r1, r0, r3
-; CHECK: add r1, r0, r4
-; CHECK: push #0, r1
-; CHECK: push #0, r1
-; CHECK: push #0, r1
+; CHECK: sfll #0, r2, r2
+; CHECK: sflh #0, r2, r2
+; CHECK: push #0, r2
+; CHECK: push #0, r2
+; CHECK: push #0, r2
+; CHECK: add r2, r0, r1
+; CHECK: add r2, r0, r3
+; CHECK: add r2, r0, r4
 ; CHECK: call sevenarg
 ; CHECK: pop #2, r0
   %1 = call i256 @sevenarg(i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0)
@@ -120,19 +120,19 @@ define i256 @call.sevenarg() nounwind {
 
 ; CHECK-LABEL: call.eightarg
 define i256 @call.eightarg() nounwind {
-; CHECK: sfll #0, r1, r1
-; CHECK: sflh #0, r1, r1
-; CHECK: add r1, r0, r2
-; CHECK: add r1, r0, r3
-; CHECK: add r1, r0, r4
-; CHECK: sfll #2, r5, r5
-; CHECK: sflh #0, r5, r5
-; CHECK: push #0, r5
-; CHECK: sfll #1, r5, r5
-; CHECK: sflh #0, r5, r5
-; CHECK: push #0, r5
-; CHECK: push #0, r1
-; CHECK: push #0, r1
+; CHECK: sfll #2, r2, r2
+; CHECK: sflh #0, r2, r2
+; CHECK: push #0, r2
+; CHECK: sfll #1, r2, r2
+; CHECK: sflh #0, r2, r2
+; CHECK: push #0, r2
+; CHECK: sfll #0, r2, r2
+; CHECK: sflh #0, r2, r2
+; CHECK: push #0, r2
+; CHECK: push #0, r2
+; CHECK: add r2, r0, r1
+; CHECK: add r2, r0, r3
+; CHECK: add r2, r0, r4
 ; CHECK: call eightarg
 ; CHECK: pop #3, r0
   %1 = call i256 @eightarg(i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 1, i256 2)
@@ -144,17 +144,17 @@ define i256 @sum8(i256 %a1, i256 %a2, i256 %a3, i256 %a4, i256 %a5, i256 %a6, i2
   %1 = add i256 %a1, %a2
   %2 = add i256 %1, %a3
   %3 = add i256 %2, %a4
-; CHECK: mov 1(sp), r2
-; CHECK: add r1, r2, r1
+; CHECK: mov 1(sp), r3
+; CHECK: add r2, r3, r2
   %4 = add i256 %3, %a5
-; CHECK: mov 2(sp), r2
-; CHECK: add r1, r2, r1
+; CHECK: mov 2(sp), r3
+; CHECK: add r2, r3, r2
   %5 = add i256 %4, %a6
-; CHECK: mov 3(sp), r2
-; CHECK: add r1, r2, r1
+; CHECK: mov 3(sp), r3
+; CHECK: add r2, r3, r2
   %6 = add i256 %5, %a7
-; CHECK: mov 4(sp), r2
-; CHECK: add r1, r2, r1
+; CHECK: mov 4(sp), r3
+; CHECK: add r2, r3, r1
   %7 = add i256 %6, %a8
   ret i256 %7
 }

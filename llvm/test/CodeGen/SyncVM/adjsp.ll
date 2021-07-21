@@ -42,12 +42,13 @@ join:                                             ; preds = %entry
 ; CHECK-LABEL: caller
 define i256* @caller() {
   %alloc = alloca i256
-; CHECK: add #32, r1, r1
+; CHECK: add #32, r{{[1-6]}}, r1
   %v = call i256* @callee(i256* %alloc, i256 0, i256 0, i256 0, i256 0)
 ; CHECK: pop #0, r0
 ; CHECK: sfll #340282366920938463463374607431768211424, r2, r2
 ; CHECK: sflh #340282366920938463463374607431768211455, r2, r2
-; CHECK: add r1, r2, r1
+; CHECK: add r1, r2, r2
+; CHECK: sub r2, #32, r1
   ret i256* %v
 }
 
