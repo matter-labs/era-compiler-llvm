@@ -10,6 +10,6 @@
 // SyncVM Return Value Calling Convention
 //===----------------------------------------------------------------------===//
 def CC_SYNCVM : CallingConv<[
-  CCAssignToReg<[R1, R2, R3, R4]>,
+  CCAssignToReg<[R1, R2, R3, R4, R5, R6]>,
   CCAssignToStack<32, 32>
 ]>;
