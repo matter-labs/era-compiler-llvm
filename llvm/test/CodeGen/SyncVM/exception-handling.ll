@@ -24,7 +24,7 @@ try.cont:
 }
 
 ; CHECK-LABEL: test2
-; CHECK:   call foo
+; CHECK:   call foo7
 ; CHECK:   jlt .LBB1_1, .LBB1_2
 ; CHECK: .LBB1_2:
 ; CHECK:   pop #0, r0
@@ -33,7 +33,7 @@ try.cont:
 ; CHECK:   throw
 define void @test2(i32 %a) personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
 entry:
-  invoke void @foo5(i32 %a, i32 %a, i32 %a, i32 %a, i32 %a)
+  invoke void @foo7(i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 0, i32 0)
           to label %try.cont unwind label %lpad
 
 lpad:
@@ -55,7 +55,7 @@ entry:
   br i1 %cmp, label %try.cont, label %invokebb
 
 invokebb:
-  invoke void @foo5(i32 %a, i32 %a, i32 %a, i32 %a, i32 %a)
+  invoke void @foo7(i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a)
           to label %try.cont unwind label %lpad
 
 lpad:
@@ -68,6 +68,6 @@ try.cont:
 }
 
 declare void @foo(i32)
-declare void @foo5(i32, i32, i32, i32, i32)
+declare void @foo7(i32, i32, i32, i32, i32, i32, i32)
 declare i32 @__gxx_personality_v0(...)
 declare void @llvm.syncvm.throw()
