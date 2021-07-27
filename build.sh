@@ -41,7 +41,9 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 
     cd "build-${DIRECTORY_SUFFIX}/"
     make -j "$(sysctl -n hw.logicalcpu)"
-else
+fi
+
+if [[ "$OSTYPE" == "linux-gnu" ]]; then
     sudo apt --yes update
     sudo apt --yes install \
         cmake \
