@@ -35,7 +35,7 @@ struct SyncVMISelAddressMode {
     int FrameIndex = 0;
   } Base;
 
-  int16_t Disp = 0;
+  int64_t Disp = 0;
   const GlobalValue *GV = nullptr;
   bool NeedsAdjustment = false;
 
@@ -240,6 +240,19 @@ bool SyncVMDAGToDAGISel::SelectMemAddr(SDValue N, SDValue &Base,
     LLVM_DEBUG(errs() << "Matched: "; AM.dump());
   }
 
+  // SyncVM doesn't support offsets by unaligned number of bytes, so add
+  // the displacement to the base register.
+  if (unsigned Unaligned = AM.Disp % 32) {
+    if (AM.Base.Reg.getNode()) {
+      auto AddToReg =
+          CurDAG->getTargetConstant(AM.Disp % 32, SDLoc(N), MVT::i256);
+      auto AddrNode = CurDAG->getMachineNode(SyncVM::ADDirr, SDLoc(N),
+                                             MVT::i256, AM.Base.Reg, AddToReg);
+      AM.Base.Reg = SDValue(AddrNode, 0);
+    }
+    AM.Disp -= AM.Disp % 32;
+  }
+
   // TODO: Hack (constant is used to designate immediate addressing mode),
   // redesign.
   assert(AM.BaseType == SyncVMISelAddressMode::RegBase);
@@ -269,7 +282,7 @@ bool SyncVMDAGToDAGISel::SelectMemAddr(SDValue N, SDValue &Base,
     Disp = CurDAG->getTargetGlobalAddress(AM.GV, SDLoc(N), MVT::i256, AM.Disp,
                                           0 /*AM.SymbolFlags*/);
   else
-    Disp = CurDAG->getTargetConstant(AM.Disp, SDLoc(N), MVT::i16);
+    Disp = CurDAG->getTargetConstant(AM.Disp, SDLoc(N), MVT::i64);
 
   return true;
 }
@@ -330,7 +343,7 @@ bool SyncVMDAGToDAGISel::SelectStackAddrCommon(SDValue N, SDValue &Base1,
     Disp = CurDAG->getTargetGlobalAddress(AM.GV, SDLoc(N), MVT::i256, AM.Disp,
                                           0 /*AM.SymbolFlags*/);
   else
-    Disp = CurDAG->getTargetConstant(AM.Disp, SDLoc(N), MVT::i16);
+    Disp = CurDAG->getTargetConstant(AM.Disp, SDLoc(N), MVT::i64);
 
   return true;
 }
