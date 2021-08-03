@@ -34,3 +34,13 @@ define i256 @load_from_parent(i256 %addr) nounwind {
   %2 = load i256, i256 addrspace(3)* %1
   ret i256 %2
 }
+
+; CHECK-LABEL: load_from_parent_unaligned_offset
+define i256 @load_from_parent_unaligned_offset(i256 %addr) nounwind {
+  %aligned = add i256 %addr, 4
+  %1 = inttoptr i256 %aligned to i256 addrspace(3)*
+; CHECK: add #4, r1, r2
+; CHECK: mov.c 0(r2), r1
+  %2 = load i256, i256 addrspace(3)* %1
+  ret i256 %2
+}
