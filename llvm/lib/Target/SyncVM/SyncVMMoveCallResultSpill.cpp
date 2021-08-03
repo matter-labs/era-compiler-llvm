@@ -176,7 +176,7 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
       DebugLoc DL = Terminator.getDebugLoc();
       MachineFunction *F = FalseMBB->getParent();
       auto *NewMBB = F->CreateMachineBasicBlock();
-      F->insert(MBB.getIterator(), NewMBB);
+      F->insert(FalseMBB->getIterator(), NewMBB);
       BuildMI(NewMBB, DL, TII->get(SyncVM::JCC))
           .addMBB(FalseMBB)
           .addMBB(FalseMBB)
