@@ -216,6 +216,15 @@ SDValue SyncVMTargetLowering::LowerFormalArguments(
       SDValue InVal = DAG.getLoad(
           VA.getLocVT(), DL, Chain, FIN,
           MachinePointerInfo::getFixedStack(DAG.getMachineFunction(), FI));
+      if (Ins[InIdx].isOrigArg()) {
+        unsigned Idx = Ins[InIdx].getOrigArgIndex();
+        Type *T = MF.getFunction().getArg(Idx)->getType();
+        if (T->isPointerTy() && T->getPointerAddressSpace() == 0) {
+          auto AdjSPNode =
+              DAG.getMachineNode(SyncVM::AdjSP, DL, MVT::i256, InVal);
+          InVal = SDValue(AdjSPNode, 0);
+        }
+      }
       InVals.push_back(InVal);
     }
     ++InIdx;
