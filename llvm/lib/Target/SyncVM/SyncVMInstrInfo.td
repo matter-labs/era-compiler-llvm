@@ -208,6 +208,33 @@ def SUBrir     : SyncVMInstruction< 0x011, (outs GR256:$out),
                                     "sub\t$in1, #$in2, $out",
                                     [(set GR256:$out, (add GR256:$in1, imm128:$in2))]>;
 
+let isCommutable = 1 in {
+def ANDrrr     : SyncVMInstruction< 0xa00, (outs GR256:$out),
+                                    (ins GR256:$in1, GR256:$in2),
+                                    "and\t$in1, $in2, $out",
+                                    [(set GR256:$out, (and GR256:$in1, GR256:$in2))]>;
+def ANDirr     : SyncVMInstruction< 0xa01, (outs GR256:$out),
+                                    (ins GR256:$in1, imm128:$in2),
+                                    "and\t#$in2, $in1, $out",
+                                    [(set GR256:$out, (and GR256:$in1, imm128:$in2))]>;
+def ORrrr      : SyncVMInstruction< 0xa10, (outs GR256:$out),
+                                    (ins GR256:$in1, GR256:$in2),
+                                    "or\t$in1, $in2, $out",
+                                    [(set GR256:$out, (or GR256:$in1, GR256:$in2))]>;
+def ORirr      : SyncVMInstruction< 0xa11, (outs GR256:$out),
+                                    (ins GR256:$in1, imm128:$in2),
+                                    "or\t#$in2, $in1, $out",
+                                    [(set GR256:$out, (or GR256:$in1, imm128:$in2))]>;
+def XORrrr     : SyncVMInstruction< 0xa20, (outs GR256:$out),
+                                    (ins GR256:$in1, GR256:$in2),
+                                    "xor\t$in1, $in2, $out",
+                                    [(set GR256:$out, (xor GR256:$in1, GR256:$in2))]>;
+def XORirr     : SyncVMInstruction< 0xa21, (outs GR256:$out),
+                                    (ins GR256:$in1, imm128:$in2),
+                                    "xor\t#$in2, $in1, $out",
+                                    [(set GR256:$out, (xor GR256:$in1, imm128:$in2))]>;
+}
+
 let Defs = [Flags], isTerminator = 1 in {
 def CMPrr   : SyncVMInstruction<  0x02, (outs),
                                   (ins GR256:$src1, GR256:$src2),
