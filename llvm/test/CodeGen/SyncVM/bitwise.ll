@@ -42,6 +42,41 @@ define i8 @and3(i8 %in) {
   ret i8 %1
 }
 
+; CHECK-LABEL: bw_and
+define i256 @bw_and(i256 %a, i256 %b) {
+; CHECK: and r1, r2, r1
+  %1 = and i256 %a, %b
+  ret i256 %1
+}
+
+; CHECK-LABEL: bw_or
+define i256 @bw_or(i256 %a, i256 %b) {
+; CHECK: or r1, r2, r1
+  %1 = or i256 %a, %b
+  ret i256 %1
+}
+
+; CHECK-LABEL: bw_or_const
+define i256 @bw_or_const(i256 %a) {
+; CHECK: or #42, r1, r1
+  %1 = or i256 %a, 42
+  ret i256 %1
+}
+
+; CHECK-LABEL: bw_xor
+define i256 @bw_xor(i256 %a, i256 %b) {
+; CHECK: xor r1, r2, r1
+  %1 = xor i256 %a, %b
+  ret i256 %1
+}
+
+; CHECK-LABEL: bw_xor_const
+define i256 @bw_xor_const(i256 %a) {
+; CHECK: xor #42, r1, r1
+  %1 = xor i256 %a, 42
+  ret i256 %1
+}
+
 ; CHECK-LABEL: select_and
 define i256 @select_and(i1 %x, i1 %y, i256 %v) nounwind {
 ; CHECK: mul r1, r2, r2, r0

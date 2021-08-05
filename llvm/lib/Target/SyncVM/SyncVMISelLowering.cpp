@@ -464,7 +464,7 @@ SDValue SyncVMTargetLowering::LowerAnd(SDValue Op, SelectionDAG &DAG) const {
   EVT Ty = Op.getValueType();
   SDValue RHS = Op.getOperand(1);
   if (RHS.getOpcode() != ISD::Constant)
-    fail(DL, DAG, "And with two registers should not reach zkEVM backend");
+    return {};
   APInt Val = cast<ConstantSDNode>(RHS)->getAPIntValue();
   APInt PosPow2 = Val + 1;
   if (PosPow2.isPowerOf2())
@@ -525,9 +525,9 @@ SDValue SyncVMTargetLowering::LowerXor(SDValue Op, SelectionDAG &DAG) const {
   EVT Ty = Op.getValueType();
   SDValue RHS = Op.getOperand(1);
   if (RHS.getOpcode() != ISD::Constant)
-    fail(DL, DAG, "Xor with two registers should not reach zkEVM backend");
+    return {};
   if (cast<ConstantSDNode>(RHS)->getSExtValue() != -1)
-    fail(DL, DAG, "Only xor rN, -1 is supported by zkEVM backend");
+    return {};
   return DAG.getNode(ISD::SUB, DL, Ty,
                      DAG.getNode(ISD::SUB, DL, Ty,
                                  DAG.getRegister(SyncVM::R0, Ty),
