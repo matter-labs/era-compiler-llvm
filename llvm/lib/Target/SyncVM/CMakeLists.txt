@@ -32,6 +32,7 @@ add_llvm_target(SyncVMCodeGen
   SyncVMTargetTransformInfo.cpp
   SyncVMDropUnusedRegisters.cpp
   SyncVMMoveCallResultSpill.cpp
+  SyncVMAdjustStackInCallSeq.cpp
 
   DEPENDS
   intrinsics_gen
