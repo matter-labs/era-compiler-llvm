@@ -67,6 +67,7 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
     auto &Terminator = *II++;
     if (Terminator.getOpcode() != SyncVM::JCC)
       continue;
+
     unsigned CC = Terminator.getOperand(2).isImm()
                       ? Terminator.getOperand(2).getImm()
                       : Terminator.getOperand(2).getCImm()->getZExtValue();
@@ -75,9 +76,15 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
     if (CC != SyncVMCC::COND_LT || II->getOpcode() == SyncVM::CMPrr)
       continue;
 
+    auto E = std::find_if(II, MBB.rend(), [](MachineInstr &MI) {
+      return MI.getOpcode() == SyncVM::CALL || MI.getOpcode() == SyncVM::CALLF;
+    });
+
+    if (E == MBB.rend())
+      continue;
+
     std::vector<MachineInstr *> InstrToMove;
-    while (II->getOpcode() != SyncVM::CALL &&
-           II->getOpcode() != SyncVM::CALLF) {
+    while (II != E) {
       InstrToMove.push_back(&*II++);
     }
 
