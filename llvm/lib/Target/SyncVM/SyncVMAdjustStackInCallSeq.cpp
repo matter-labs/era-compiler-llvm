@@ -76,7 +76,8 @@ bool SyncVMAdjustStackInCallseq::runOnMachineFunction(MachineFunction &MF) {
     MachineBasicBlock *BB = Current.BB;
     unsigned Disp = Current.Disp;
     if (Processed.count(BB) != 0) {
-      assert(Processed[BB] == Disp && "Stack corrupted");
+      if (BB->empty() || BB->back().getOpcode() != SyncVM::THROW)
+        assert(Processed[BB] == Disp && "Stack corrupted");
       WorkList.pop_front();
       continue;
     }
