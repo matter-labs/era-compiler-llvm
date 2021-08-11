@@ -59,7 +59,8 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
 
   bool Changed = false;
 
-  for (MachineBasicBlock &MBB : MF) {
+  for (auto MBBIt = MF.begin(); MBBIt != MF.end(); ++MBBIt) {
+    MachineBasicBlock &MBB = *MBBIt;
     if (MBB.size() < 3)
       continue;
 
@@ -93,7 +94,9 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
       DebugLoc DL = Terminator.getDebugLoc();
       MachineFunction *F = FalseMBB->getParent();
       auto *NewMBB = F->CreateMachineBasicBlock();
-      F->insert(FalseMBB->getIterator(), NewMBB);
+      // The only place we can guarantee that fallthrough doesn't happen to the
+      // newly created block.
+      F->insert(std::next(MBBIt), NewMBB);
       BuildMI(NewMBB, DL, TII->get(SyncVM::JCC))
           .addMBB(FalseMBB)
           .addMBB(FalseMBB)
