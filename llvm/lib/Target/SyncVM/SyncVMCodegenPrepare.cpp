@@ -154,7 +154,8 @@ bool SyncVMCodegenPrepare::runOnFunction(Function &F) {
           break;
         CmpInst::Predicate P = Cmp.getPredicate();
         auto *CmpVal = dyn_cast<ConstantInt>(I.getOperand(1));
-        if (CmpVal && CmpVal->getValue().isNullValue()) {
+        if (CmpVal && (CmpVal->getValue().isNullValue()
+                       || CmpVal->getValue().isOneValue())) {
           unsigned NumBits = CmpVal->getType()->getIntegerBitWidth();
           APInt Val = APInt(NumBits, -1, true).lshr(1);
           if (P == CmpInst::ICMP_SLT)
@@ -169,6 +170,12 @@ bool SyncVMCodegenPrepare::runOnFunction(Function &F) {
             auto Op256 =
                 Builder.CreateZExt(I.getOperand(0), Builder.getIntNTy(256));
             auto *NewCmp = Builder.CreateICmp(P, Op256, Val256);
+            if (CmpVal->getValue().isOneValue()) {
+              auto *Cmp0 =
+                Builder.CreateICmp(CmpInst::ICMP_EQ, Op256,
+                                   Builder.getInt(APInt(256, 0, false)));
+              NewCmp = Builder.CreateOr(NewCmp, Cmp0);
+            }
             I.replaceAllUsesWith(NewCmp);
             Replaced.push_back(&I);
           }
