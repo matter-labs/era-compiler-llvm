@@ -9,3 +9,10 @@ define i256 @slt0(i8 %par) nounwind {
   %2 = zext i1 %1 to i256
   ret i256 %2
 }
+
+; CHECK-LABEL: slt1
+define i256 @slt1(i8 %par) nounwind {
+  %1 = icmp slt i8 %par, 1
+  %2 = zext i1 %1 to i256
+  ret i256 %2
+}
