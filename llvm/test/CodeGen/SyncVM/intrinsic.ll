@@ -74,11 +74,11 @@ define i256 @sload(i256 %dest) {
 }
 
 ; CHECK-LABEL: event
-define void @event(i256 %val, i256 %dest) {
-; CHECK: evt r1, r2
-  call void @llvm.syncvm.event(i256 %val, i256 %dest, i256 0)
+define void @event(i256 %val1, i256 %val2, i256 %val3, i256 %val4) {
 ; CHECK: evt.i r1, r2
-  call void @llvm.syncvm.event(i256 %val, i256 %dest, i256 1)
+  call void @llvm.syncvm.event(i256 %val1, i256 %val2, i256 1)
+; CHECK: evt r3, r4
+  call void @llvm.syncvm.event(i256 %val3, i256 %val4, i256 0)
   ret void
 }
 
