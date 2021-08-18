@@ -8507,9 +8507,13 @@ SDValue DAGCombiner::visitSRL(SDNode *N) {
     if (SDValue NewSRL = visitShiftByConstant(N))
       return NewSRL;
 
+  // SyncVM local change begin
+#if 0
   // Attempt to convert a srl of a load into a narrower zero-extending load.
   if (SDValue NarrowLoad = ReduceLoadWidth(N))
     return NarrowLoad;
+#endif
+  // SyncVM local change end
 
   // Here is a common situation. We want to optimize:
   //

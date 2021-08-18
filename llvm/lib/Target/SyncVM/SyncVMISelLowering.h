@@ -49,10 +49,6 @@ public:
   SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerBR(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const;
-  SDValue LowerAnd(SDValue Op, SelectionDAG &DAG) const;
-  SDValue LowerXor(SDValue Op, SelectionDAG &DAG) const;
-  SDValue LowerShl(SDValue Op, SelectionDAG &DAG) const;
-  SDValue LowerSrl(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerCopyToReg(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue LowerBrccBr(SDValue Op, SDValue DestFalse, SDLoc DL,

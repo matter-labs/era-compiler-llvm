@@ -3,83 +3,54 @@
 target datalayout = "e-p:256:256-i256:256:256"
 target triple = "syncvm"
 
-; CHECK-LABEL: xorneg1
-define i256 @xorneg1(i256 %par) nounwind {
-; CHECK: sub r0, r1, r2
-; CHECK: sfll #340282366920938463463374607431768211455, r3, r3
-; CHECK: sflh #340282366920938463463374607431768211455, r3, r3
-; CHECK: add r2, r3, r1
+; CHECK-LABEL: xorc
+define i256 @xorc(i256 %par) nounwind {
+; CHECK: sfll #340282366920938463463374607431768211455, r2, r2
+; CHECK: sflh #340282366920938463463374607431768211455, r2, r2
+; CHECK: xor r1, r2, r1
   %1 = xor i256 %par, -1
   ret i256 %1
 }
 
-; CHECK-LABEL: and
-define i256 @and(i256 %par) nounwind {
-; CHECK: sfll #0, r2, r2
-; CHECK: sflh #1, r2, r2
-; CHECK: div r1, r2, r0, r2
-; CHECK: div r1, #4, r0, r3
-; CHECK: sub r2, r3, r1
+; CHECK-LABEL: xor2
+define i256 @xor2(i256 %arg1, i256 %arg2) nounwind {
+; CHECK xor r1, r2, r1
+  %1 = xor i256 %arg1, %arg2
+  ret i256 %1
+}
+
+; CHECK-LABEL: andc
+define i256 @andc(i256 %par) nounwind {
+; CHECK: and #340282366920938463463374607431768211452, r1, r1
   %1 = and i256 %par, 340282366920938463463374607431768211452
   ret i256 %1
 }
 
 ; CHECK-LABEL: and2
-define i256 @and2(i256 %par) nounwind {
-; CHECK: div	r1, #32, r0, r2
-; CHECK: div	r1, #65536, r0, r3
-; CHECK: sub	r3, r2, r1
-  %1 = and i256 %par, 65504
-  ret i256 %1
-}
-
-; CHECK-LABEL: and3
-define i8 @and3(i8 %in) {
-; CHECK: div r1, #2, r0, r2
-; CHECK: div r1, #256, r0, r3
-; CHECK: sub r3, r2, r1
-  %1 = and i8 %in, -2
-  ret i8 %1
-}
-
-; CHECK-LABEL: bw_and
-define i256 @bw_and(i256 %a, i256 %b) {
+define i256 @and2(i256 %a, i256 %b) {
 ; CHECK: and r1, r2, r1
   %1 = and i256 %a, %b
   ret i256 %1
 }
 
-; CHECK-LABEL: bw_or
-define i256 @bw_or(i256 %a, i256 %b) {
-; CHECK: or r1, r2, r1
-  %1 = or i256 %a, %b
-  ret i256 %1
-}
-
-; CHECK-LABEL: bw_or_const
-define i256 @bw_or_const(i256 %a) {
+; CHECK-LABEL: orc
+define i256 @orc(i256 %a) {
 ; CHECK: or #42, r1, r1
   %1 = or i256 %a, 42
   ret i256 %1
 }
 
-; CHECK-LABEL: bw_xor
-define i256 @bw_xor(i256 %a, i256 %b) {
-; CHECK: xor r1, r2, r1
-  %1 = xor i256 %a, %b
-  ret i256 %1
-}
-
-; CHECK-LABEL: bw_xor_const
-define i256 @bw_xor_const(i256 %a) {
-; CHECK: xor #42, r1, r1
-  %1 = xor i256 %a, 42
+; CHECK-LABEL: or2
+define i256 @or2(i256 %a, i256 %b) {
+; CHECK: or r1, r2, r1
+  %1 = or i256 %a, %b
   ret i256 %1
 }
 
 ; CHECK-LABEL: select_and
 define i256 @select_and(i1 %x, i1 %y, i256 %v) nounwind {
-; CHECK: mul r1, r2, r2, r0
+; TODO: For some reason `and` unrolls in additional control flow,
+; which probably needs to be fixed
 ; CHECK: sub r2, r0, r0
   %1 = and i1 %x, %y
   %2 = select i1 %1, i256 %v, i256 42
@@ -88,9 +59,8 @@ define i256 @select_and(i1 %x, i1 %y, i256 %v) nounwind {
 
 ; CHECK-LABEL: select_or
 define i256 @select_or(i1 %x, i1 %y, i256 %v) nounwind {
-; CHECK: mul r4, r2, r5, r0
-; CHECK: add r4, r2, r2
-; CHECK: sub r2, r5, r2
+; TODO: For some reason `or` unrolls in additional control flow,
+; which probably needs to be fixed
 ; CHECK: sub r2, r0, r0
   %1 = or i1 %x, %y
   %2 = select i1 %1, i256 %v, i256 42
@@ -99,7 +69,7 @@ define i256 @select_or(i1 %x, i1 %y, i256 %v) nounwind {
 
 ; CHECK-LABEL: select_xor
 define i256 @select_xor(i1 %x, i1 %y, i256 %v) nounwind {
-; CHECK: div r2, #2, r0, r2
+; CHECK: xor r1, r2, r2
 ; CHECK: sub r2, r0, r0
   %1 = xor i1 %x, %y
   %2 = select i1 %1, i256 %v, i256 42

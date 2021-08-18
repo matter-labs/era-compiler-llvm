@@ -50,7 +50,7 @@ define i256 @caller_argtypes(i1 %a1, i8 %a2, i16 %a3, i32 %a4, i64 %a5, i128 %a6
 define i256 @caller_i1.ret(i256 %a1) nounwind {
 ; CHECK: call	i1.ret
   %1 = call i1 @i1.ret(i256 %a1)
-; CHECK: div r1, #2, r0, r1
+; CHECK: and #1, r1, r1
   %2 = zext i1 %1 to i256
   ret i256 %2
 }
@@ -59,7 +59,7 @@ define i256 @caller_i1.ret(i256 %a1) nounwind {
 define i256 @caller_i8.ret(i256 %a1) nounwind {
 ; CHECK: call	i8.ret
   %1 = call i8 @i8.ret(i256 %a1)
-; CHECK: div r1, #256, r0, r1
+; CHECK: and #255, r1, r1
   %2 = zext i8 %1 to i256
   ret i256 %2
 }
@@ -68,7 +68,7 @@ define i256 @caller_i8.ret(i256 %a1) nounwind {
 define i256 @caller_i16.ret(i256 %a1) nounwind {
 ; CHECK: call	i16.ret
   %1 = call i16 @i16.ret(i256 %a1)
-; CHECK: div r1, #65536, r0, r1
+; CHECK: and #65535, r1, r1
   %2 = zext i16 %1 to i256
   ret i256 %2
 }
@@ -77,7 +77,7 @@ define i256 @caller_i16.ret(i256 %a1) nounwind {
 define i256 @caller_i32.ret(i256 %a1) nounwind {
 ; CHECK: call	i32.ret
   %1 = call i32 @i32.ret(i256 %a1)
-; CHECK: div r1, #4294967296, r0, r1
+; CHECK: and #4294967295, r1, r1
   %2 = zext i32 %1 to i256
   ret i256 %2
 }
@@ -86,7 +86,7 @@ define i256 @caller_i32.ret(i256 %a1) nounwind {
 define i256 @caller_i64.ret(i256 %a1) nounwind {
 ; CHECK: call	i64.ret
   %1 = call i64 @i64.ret(i256 %a1)
-; CHECK: div r1, #18446744073709551616, r0, r1
+; CHECK: and #18446744073709551615, r1, r1
   %2 = zext i64 %1 to i256
   ret i256 %2
 }
@@ -95,9 +95,7 @@ define i256 @caller_i64.ret(i256 %a1) nounwind {
 define i256 @caller_i128.ret(i256 %a1) nounwind {
 ; CHECK: call	i128.ret
   %1 = call i128 @i128.ret(i256 %a1)
-; CHECK: sfll #0, r2, r2
-; CHECK: sflh #1, r2, r2
-; CHECK: div r1, r2, r0, r1
+; CHECK: and #340282366920938463463374607431768211455, r1, r1
   %2 = zext i128 %1 to i256
   ret i256 %2
 }
