@@ -3,9 +3,10 @@
 target datalayout = "e-p:256:256-i256:256:256"
 target triple = "syncvm"
 
-; CHECK-LABEL: brcond
+; CHECK-LABEL: brcond:
 define i256 @brcond(i256 %p1) nounwind {
-; CHECK: div r2, #2, r0, r2
+; CHECK: add r1, r0, r2
+; CHECK: and #1, r2, r2
 ; CHECK: sfll #1, r3, r3
 ; CHECK: sflh #0, r3, r3
 ; CHECK: sub	r2, r3, r0

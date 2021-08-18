@@ -48,10 +48,6 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::GlobalAddress, MVT::i256, Custom);
   setOperationAction(ISD::BR, MVT::Other, Custom);
   setOperationAction(ISD::BRCOND, MVT::Other, Expand);
-  setOperationAction(ISD::AND, MVT::i256, Custom);
-  setOperationAction(ISD::XOR, MVT::i256, Custom);
-  setOperationAction(ISD::SHL, MVT::i256, Custom);
-  setOperationAction(ISD::SRL, MVT::i256, Custom);
   setOperationAction(ISD::SETCC, MVT::i256, Expand);
   setOperationAction(ISD::SELECT, MVT::i256, Expand);
   setOperationAction(ISD::SELECT_CC, MVT::i256, Custom);
@@ -399,14 +395,6 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
     return LowerBR(Op, DAG);
   case ISD::SELECT_CC:
     return LowerSELECT_CC(Op, DAG);
-  case ISD::AND:
-    return LowerAnd(Op, DAG);
-  case ISD::XOR:
-    return LowerXor(Op, DAG);
-  case ISD::SHL:
-    return LowerShl(Op, DAG);
-  case ISD::SRL:
-    return LowerSrl(Op, DAG);
   case ISD::CopyToReg:
     return LowerCopyToReg(Op, DAG);
   }
@@ -457,106 +445,6 @@ SDValue SyncVMTargetLowering::LowerSELECT_CC(SDValue Op,
   SDValue Ops[] = {TrueV, FalseV, TargetCC, Cmp};
 
   return DAG.getNode(SyncVMISD::SELECT_CC, DL, VTs, Ops);
-}
-
-SDValue SyncVMTargetLowering::LowerAnd(SDValue Op, SelectionDAG &DAG) const {
-  SDLoc DL(Op);
-  EVT Ty = Op.getValueType();
-  SDValue RHS = Op.getOperand(1);
-  if (RHS.getOpcode() != ISD::Constant)
-    return {};
-  APInt Val = cast<ConstantSDNode>(RHS)->getAPIntValue();
-  APInt PosPow2 = Val + 1;
-  if (PosPow2.isPowerOf2())
-    return DAG.getNode(ISD::UREM, DL, Ty, Op.getOperand(0),
-                       DAG.getConstant(PosPow2, DL, Ty));
-  if (Val.countTrailingZeros() + Val.countLeadingOnes() == Val.getBitWidth()) {
-    APInt Pow2 = APInt::getOneBitSet(256, Val.countTrailingZeros());
-    return DAG.getNode(ISD::MUL, DL, Ty,
-                       DAG.getNode(ISD::UDIV, DL, Ty, Op.getOperand(0),
-                                   DAG.getConstant(Pow2, DL, Ty)),
-                       DAG.getConstant(Pow2, DL, Ty));
-  }
-  std::vector<unsigned> SeparatorBits;
-  while (!Val.isNullValue()) {
-    unsigned NumZ = Val.countLeadingZeros();
-    unsigned Pos = 255 - NumZ;
-    SeparatorBits.push_back(Pos);
-    APInt Check(255, 0, false);
-    while (Val.ugt(APInt::getOneBitSet(256, Pos))) {
-      Val.clearBit(Pos--);
-    }
-    if (Pos == 0 && Val.isOneValue()) {
-      Val.clearBit(0);
-      break;
-    }
-    if (Val.eq(APInt::getOneBitSet(256, Pos))) {
-      // if the mask is like 0bxx00100 rather than 0bxx11100
-      if (SeparatorBits.size() % 2) {
-        SeparatorBits.push_back(Pos - 1);
-      } else {
-        SeparatorBits.push_back(Pos);
-        SeparatorBits.push_back(Pos - 1);
-      }
-      break;
-    }
-    SeparatorBits.push_back(Pos);
-  }
-  SDValue Result;
-  for (unsigned i = 0, e = SeparatorBits.size(); i < e; ++i) {
-    SDValue Extract;
-    APInt Pow2 = APInt::getOneBitSet(256, SeparatorBits[i] + 1);
-    Extract = DAG.getNode(ISD::UREM, DL, Ty, Op.getOperand(0),
-                          DAG.getConstant(Pow2, DL, Ty));
-    if (Result) {
-      if (i % 2)
-        Result = DAG.getNode(ISD::SUB, DL, Ty, Result, Extract);
-      else
-        Result = DAG.getNode(ISD::ADD, DL, Ty, Result, Extract);
-    } else {
-      Result = Extract;
-    }
-  }
-  return Result;
-}
-
-SDValue SyncVMTargetLowering::LowerXor(SDValue Op, SelectionDAG &DAG) const {
-  SDLoc DL(Op);
-  EVT Ty = Op.getValueType();
-  SDValue RHS = Op.getOperand(1);
-  if (RHS.getOpcode() != ISD::Constant)
-    return {};
-  if (cast<ConstantSDNode>(RHS)->getSExtValue() != -1)
-    return {};
-  return DAG.getNode(ISD::SUB, DL, Ty,
-                     DAG.getNode(ISD::SUB, DL, Ty,
-                                 DAG.getRegister(SyncVM::R0, Ty),
-                                 Op.getOperand(0)),
-                     DAG.getConstant(1, DL, Ty));
-}
-
-SDValue SyncVMTargetLowering::LowerShl(SDValue Op, SelectionDAG &DAG) const {
-  SDLoc DL(Op);
-  EVT Ty = Op.getValueType();
-  SDValue RHS = Op.getOperand(1);
-  if (RHS.getOpcode() != ISD::Constant)
-    fail(DL, DAG, "shl with two registers should not reach zkEVM backend");
-  APInt Shift = cast<ConstantSDNode>(RHS)->getAPIntValue();
-  auto Val = APInt(256, 1, false).shl(Shift);
-  return DAG.getNode(ISD::MUL, DL, Ty, Op.getOperand(0),
-                     DAG.getConstant(Val, DL, Ty));
-}
-
-SDValue SyncVMTargetLowering::LowerSrl(SDValue Op, SelectionDAG &DAG) const {
-  SDLoc DL(Op);
-  EVT Ty = Op.getValueType();
-  SDValue RHS = Op.getOperand(1);
-  if (RHS.getOpcode() != ISD::Constant)
-    fail(DL, DAG, "srl with two registers should not reach zkEVM backend");
-  APInt Shift = cast<ConstantSDNode>(RHS)->getAPIntValue();
-  auto Val = APInt(256, 1, false).shl(Shift);
-  return DAG.getNode(ISD::UDIV, DL, Ty, Op.getOperand(0),
-                     DAG.getConstant(Val, DL, Ty));
 }
 
 SDValue SyncVMTargetLowering::LowerCopyToReg(SDValue Op,
