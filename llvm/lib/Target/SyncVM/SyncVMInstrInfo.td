@@ -235,6 +235,39 @@ def XORirr     : SyncVMInstruction< 0xa21, (outs GR256:$out),
                                     [(set GR256:$out, (xor GR256:$in1, imm128:$in2))]>;
 }
 
+def SHLrrr     : SyncVMInstruction< 0xa00, (outs GR256:$out),
+                                    (ins GR256:$in1, GR256:$in2),
+                                    "shl\t$in1, $in2, $out",
+                                    [(set GR256:$out, (shl GR256:$in1, GR256:$in2))]>;
+def SHLirr     : SyncVMInstruction< 0xa01, (outs GR256:$out),
+                                    (ins GR256:$in1, imm128:$in2),
+                                    "shl\t$in1, #$in2, $out",
+                                    [(set GR256:$out, (shl GR256:$in1, imm128:$in2))]>;
+def ROLrrr     : SyncVMInstruction< 0xa10, (outs GR256:$out),
+                                    (ins GR256:$in1, GR256:$in2),
+                                    "rol\t$in1, $in2, $out",
+                                    [(set GR256:$out, (rotl GR256:$in1, GR256:$in2))]>;
+def ROLirr     : SyncVMInstruction< 0xa11, (outs GR256:$out),
+                                    (ins GR256:$in1, imm128:$in2),
+                                    "rol\t$in1, #$in2, $out",
+                                    [(set GR256:$out, (rotl GR256:$in1, imm128:$in2))]>;
+def SHRrrr     : SyncVMInstruction< 0xa20, (outs GR256:$out),
+                                    (ins GR256:$in1, GR256:$in2),
+                                    "shr\t$in1, $in2, $out",
+                                    [(set GR256:$out, (srl GR256:$in1, GR256:$in2))]>;
+def SHRirr     : SyncVMInstruction< 0xa21, (outs GR256:$out),
+                                    (ins GR256:$in1, imm128:$in2),
+                                    "shr\t$in1, #$in2, $out",
+                                    [(set GR256:$out, (srl GR256:$in1, imm128:$in2))]>;
+def RORrrr     : SyncVMInstruction< 0xa31, (outs GR256:$out),
+                                    (ins GR256:$in1, GR256:$in2),
+                                    "ror\t$in1, $in2, $out",
+                                    [(set GR256:$out, (rotr GR256:$in1, GR256:$in2))]>;
+def RORirr     : SyncVMInstruction< 0xa32, (outs GR256:$out),
+                                    (ins GR256:$in1, imm128:$in2),
+                                    "ror\t$in1, $in2, $out",
+                                    [(set GR256:$out, (rotr GR256:$in1, imm128:$in2))]>;
+
 let Defs = [Flags], isTerminator = 1 in {
 def CMPrr   : SyncVMInstruction<  0x02, (outs),
                                   (ins GR256:$src1, GR256:$src2),
