@@ -345,12 +345,8 @@ Instruction *InstCombiner::visitMul(BinaryOperator &I) {
   }
 
   /// i1 mul -> i1 and.
-  // SyncVM local begin
-#if 0
   if (I.getType()->isIntOrIntVectorTy(1))
     return BinaryOperator::CreateAnd(Op0, Op1);
-#endif
-  // SyncVM local end
 
   // X*(1 << Y) --> X << Y
   // (1 << Y)*X --> X << Y
@@ -374,8 +370,6 @@ Instruction *InstCombiner::visitMul(BinaryOperator &I) {
     }
   }
 
-  // SyncVM local begin
-#if 0
   // (zext bool X) * (zext bool Y) --> zext (and X, Y)
   // (sext bool X) * (sext bool Y) --> zext (and X, Y)
   // Note: -1 * -1 == 1 * 1 == 1 (if the extends match, the result is the same)
@@ -396,8 +390,6 @@ Instruction *InstCombiner::visitMul(BinaryOperator &I) {
     Value *And = Builder.CreateAnd(X, Y, "mulbool");
     return CastInst::Create(Instruction::SExt, And, I.getType());
   }
-#endif
-  // SyncVM local end
 
   // (bool X) * Y --> X ? Y : 0
   // Y * (bool X) --> X ? Y : 0
@@ -412,15 +404,11 @@ Instruction *InstCombiner::visitMul(BinaryOperator &I) {
   //       is better for analysis?
   // TODO: Should we canonicalize to '(X < 0) ? Y : 0' instead? That would be
   //       more similar to what we're doing above.
-  // SyncVM local begin
-#if 0
   const APInt *C;
   if (match(Op0, m_LShr(m_Value(X), m_APInt(C))) && *C == C->getBitWidth() - 1)
     return BinaryOperator::CreateAnd(Builder.CreateAShr(X, *C), Op1);
   if (match(Op1, m_LShr(m_Value(X), m_APInt(C))) && *C == C->getBitWidth() - 1)
     return BinaryOperator::CreateAnd(Builder.CreateAShr(X, *C), Op0);
-#endif
-  // SyncVM local end
 
   if (Instruction *Ext = narrowMathIfNoOverflow(I))
     return Ext;
@@ -1436,8 +1424,6 @@ Instruction *InstCombiner::visitURem(BinaryOperator &I) {
   // X urem Y -> X and Y-1, where Y is a power of 2,
   Value *Op0 = I.getOperand(0), *Op1 = I.getOperand(1);
   Type *Ty = I.getType();
-  // SyncVM local begin
-#if 0
   if (isKnownToBeAPowerOfTwo(Op1, /*OrZero*/ true, 0, &I)) {
     // This may increase instruction count, we don't enforce that Y is a
     // constant.
@@ -1445,8 +1431,6 @@ Instruction *InstCombiner::visitURem(BinaryOperator &I) {
     Value *Add = Builder.CreateAdd(Op1, N1);
     return BinaryOperator::CreateAnd(Op0, Add);
   }
-#endif
-  // SyncVM local end
 
   // 1 urem X -> zext(X != 1)
   if (match(Op0, m_One())) {

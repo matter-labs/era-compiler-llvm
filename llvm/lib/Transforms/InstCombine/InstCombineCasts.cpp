@@ -1223,12 +1223,8 @@ Instruction *InstCombiner::visitZExt(ZExtInst &CI) {
     }
   }
 
-  // SyncVM local begin
-#if 0
   if (ICmpInst *Cmp = dyn_cast<ICmpInst>(Src))
     return transformZExtICmp(Cmp, CI);
-#endif
-  // SyncVM local end
 
   BinaryOperator *SrcI = dyn_cast<BinaryOperator>(Src);
   if (SrcI && SrcI->getOpcode() == Instruction::Or) {
