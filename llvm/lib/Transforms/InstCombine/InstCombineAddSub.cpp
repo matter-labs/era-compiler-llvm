@@ -912,8 +912,6 @@ Instruction *InstCombinerImpl::foldAddWithConstant(BinaryOperator &Add) {
   if (match(Op0, m_Or(m_Value(), m_APInt(C2))) && *C2 == -*C)
     return BinaryOperator::CreateXor(Op0, ConstantInt::get(Add.getType(), *C2));
 
-  // SyncVM local begin
-#if 0
   if (C->isSignMask()) {
     // If wrapping is not allowed, then the addition must set the sign bit:
     // X + (signmask) --> X | signmask
@@ -924,8 +922,6 @@ Instruction *InstCombinerImpl::foldAddWithConstant(BinaryOperator &Add) {
     // X + (signmask) --> X ^ signmask
     return BinaryOperator::CreateXor(Op0, Op1);
   }
-#endif
-  // SyncVM local end
 
   // Is this add the last step in a convoluted sext?
   // add(zext(xor i16 X, -32768), -32768) --> sext X
@@ -1373,13 +1369,9 @@ Instruction *InstCombinerImpl::visitAdd(BinaryOperator &I) {
     }
   }
 
-  // SyncVM local begin
-#if 0
   // A+B --> A|B iff A and B have no bits set in common.
   if (haveNoCommonBitsSet(LHS, RHS, DL, &AC, &I, &DT))
     return BinaryOperator::CreateOr(LHS, RHS);
-#endif
-  // SyncVM local end
 
   // add (select X 0 (sub n A)) A  -->  select X A n
   {
