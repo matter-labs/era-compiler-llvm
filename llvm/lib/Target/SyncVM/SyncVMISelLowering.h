@@ -51,6 +51,8 @@ public:
   SDValue LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerCopyToReg(SDValue Op, SelectionDAG &DAG) const;
 
+  SDValue LowerSRA(SDValue Op, SelectionDAG &DAG) const;
+
   SDValue LowerBrccBr(SDValue Op, SDValue DestFalse, SDLoc DL,
                       SelectionDAG &DAG) const;
   SDValue LowerBrcondBr(SDValue Op, SDValue DestFalse, SDLoc DL,
