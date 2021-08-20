@@ -5552,13 +5552,9 @@ Instruction *InstCombiner::visitICmpInst(ICmpInst &I) {
     }
   }
 
-  // SyncVM local begin
-#if 0
   if (Op0->getType()->isIntOrIntVectorTy(1))
     if (Instruction *Res = canonicalizeICmpBool(I, Builder))
       return Res;
-#endif
-  // SyncVM local end
 
   if (Instruction *Res = canonicalizeCmpWithConstant(I))
     return Res;

@@ -171,8 +171,6 @@ LLVM_NODISCARD Value *Negator::visitImpl(Value *V, unsigned Depth) {
   case Instruction::LShr: {
     // Right-shift sign bit smear is negatible.
     const APInt *Op1Val;
-    // SyncVM local begin
-#if 0
     if (match(I->getOperand(1), m_APInt(Op1Val)) && *Op1Val == BitWidth - 1) {
       Value *BO = I->getOpcode() == Instruction::AShr
                       ? Builder.CreateLShr(I->getOperand(0), I->getOperand(1))
@@ -183,8 +181,6 @@ LLVM_NODISCARD Value *Negator::visitImpl(Value *V, unsigned Depth) {
       }
       return BO;
     }
-#endif
-    // SyncVM local end
     break;
   }
   case Instruction::SExt:

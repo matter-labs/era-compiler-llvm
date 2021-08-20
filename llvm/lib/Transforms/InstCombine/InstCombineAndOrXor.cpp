@@ -644,8 +644,6 @@ static Value *foldLogOpOfMaskedICmps(ICmpInst *LHS, ICmpInst *RHS, bool IsAnd,
     Mask = conjugateICmpMask(Mask);
   }
 
-// SyncVM local begin
-#if 0
   if (Mask & Mask_AllZeros) {
     // (icmp eq (A & B), 0) & (icmp eq (A & D), 0)
     // -> (icmp eq (A & (B|D)), 0)
@@ -671,8 +669,6 @@ static Value *foldLogOpOfMaskedICmps(ICmpInst *LHS, ICmpInst *RHS, bool IsAnd,
     Value *NewAnd2 = Builder.CreateAnd(A, NewAnd1);
     return Builder.CreateICmp(NewCC, NewAnd2, A);
   }
-#endif
-// SyncVM local end
 
   // Remaining cases assume at least that B and D are constant, and depend on
   // their actual values. This isn't strictly necessary, just a "handle the
@@ -1253,8 +1249,6 @@ Value *InstCombiner::foldAndOfICmps(ICmpInst *LHS, ICmpInst *RHS,
   if (!LHSC || !RHSC)
     return nullptr;
 
-// SyncVM local begin
-#if 0
   if (LHSC == RHSC && PredL == PredR) {
     // (icmp ult A, C) & (icmp ult B, C) --> (icmp ult (A|B), C)
     // where C is a power of 2 or
@@ -1265,8 +1259,6 @@ Value *InstCombiner::foldAndOfICmps(ICmpInst *LHS, ICmpInst *RHS,
       return Builder.CreateICmp(PredL, NewOr, LHSC);
     }
   }
-#endif
-// SyncVM local end
 
   // (trunc x) == C1 & (and x, CA) == C2 -> (and x, CA|CMAX) == C1|C2
   // where CMAX is the all ones value for the truncated type,
