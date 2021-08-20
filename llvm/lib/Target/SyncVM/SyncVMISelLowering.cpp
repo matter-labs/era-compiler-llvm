@@ -53,6 +53,9 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SELECT_CC, MVT::i256, Custom);
   setOperationAction(ISD::TRUNCATE, MVT::i64, Promote);
 
+  // SyncVM lacks of native support for signed operations.
+  setOperationAction(ISD::SRA, MVT::i256, Custom);
+
   // Dynamic stack allocation: use the default expansion.
 
   // setOperationAction(ISD::CopyToReg, MVT::Other, Custom);
@@ -397,7 +400,24 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
     return LowerSELECT_CC(Op, DAG);
   case ISD::CopyToReg:
     return LowerCopyToReg(Op, DAG);
+  case ISD::SRA:
+    return LowerSRA(Op, DAG);
   }
+}
+
+SDValue SyncVMTargetLowering::LowerSRA(SDValue Op, SelectionDAG &DAG) const {
+  auto DL = SDLoc(Op);
+  auto LHS = Op.getOperand(0);
+  auto RHS = Op.getOperand(1);
+  auto Zero = DAG.getConstant(0, DL, MVT::i256);
+  auto One = DAG.getConstant(APInt(256, -1, true), DL, MVT::i256);
+  auto Mask =
+      DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
+  auto Sign = DAG.getNode(ISD::AND, DL, MVT::i256, LHS, Mask);
+  auto Init = DAG.getSelectCC(DL, Sign, Mask, One, Zero, ISD::SETEQ);
+  Mask = DAG.getNode(ISD::SHL, DL, MVT::i256, Init, RHS);
+  auto Value = DAG.getNode(ISD::SRL, DL, MVT::i256, LHS, RHS);
+  return DAG.getNode(ISD::OR, DL, MVT::i256, Value, Mask);
 }
 
 SDValue SyncVMTargetLowering::LowerGlobalAddress(SDValue Op,
@@ -501,8 +521,7 @@ SDValue SyncVMTargetLowering::LowerBrccBr(SDValue Op, SDValue DestFalse,
   }
 
   if (LHS.getOpcode() == ISD::AND && CC == ISD::SETEQ &&
-      RHS.getOpcode() == ISD::Constant &&
-      cast<ConstantSDNode>(RHS)->isOne() &&
+      RHS.getOpcode() == ISD::Constant && cast<ConstantSDNode>(RHS)->isOne() &&
       LHS.getOperand(1).getOpcode() == ISD::Constant &&
       cast<ConstantSDNode>(LHS.getOperand(1))->isOne()) {
     SDValue LHSInner = LHS.getOperand(0);
