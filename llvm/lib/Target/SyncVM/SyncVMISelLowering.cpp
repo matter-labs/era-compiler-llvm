@@ -361,6 +361,12 @@ static SDValue EmitCMP(SDValue &LHS, SDValue &RHS, ISD::CondCode CC,
   assert(!LHS.getValueType().isFloatingPoint() &&
          "SyncVM doesn't support floats");
 
+  auto Mask = DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
+  auto Zero = DAG.getConstant(0, DL, MVT::i256);
+  auto SignLHS = DAG.getNode(ISD::AND, DL, MVT::i256, LHS, Mask);
+  auto SignRHS = DAG.getNode(ISD::AND, DL, MVT::i256, RHS, Mask);
+  auto SignXor = DAG.getNode(ISD::XOR, DL, MVT::i256, SignLHS, SignRHS);
+
   SyncVMCC::CondCodes TCC = SyncVMCC::COND_INVALID;
   switch (CC) {
   default:
@@ -383,6 +389,42 @@ static SDValue EmitCMP(SDValue &LHS, SDValue &RHS, ISD::CondCode CC,
   case ISD::SETUGE:
     TCC = SyncVMCC::COND_GE;
     break;
+  case ISD::SETGT: {
+    auto Ugt = DAG.getSelectCC(DL, LHS, RHS, Mask, Zero, ISD::SETUGT);
+    auto SignUlt =
+        DAG.getSelectCC(DL, SignLHS, SignRHS, Mask, Zero, ISD::SETULT);
+    LHS = DAG.getSelectCC(DL, SignXor, Mask, SignUlt, Ugt, ISD::SETEQ);
+    RHS = Zero;
+    TCC = SyncVMCC::COND_NE;
+    break;
+  }
+  case ISD::SETGE: {
+    auto Uge = DAG.getSelectCC(DL, LHS, RHS, Mask, Zero, ISD::SETUGE);
+    auto SignUlt =
+        DAG.getSelectCC(DL, SignLHS, SignRHS, Mask, Zero, ISD::SETULT);
+    LHS = DAG.getSelectCC(DL, SignXor, Mask, SignUlt, Uge, ISD::SETEQ);
+    RHS = Zero;
+    TCC = SyncVMCC::COND_NE;
+    break;
+  }
+  case ISD::SETLT: {
+    auto Ult = DAG.getSelectCC(DL, LHS, RHS, Mask, Zero, ISD::SETULT);
+    auto SignUgt =
+        DAG.getSelectCC(DL, SignLHS, SignRHS, Mask, Zero, ISD::SETUGT);
+    LHS = DAG.getSelectCC(DL, SignXor, Mask, SignUgt, Ult, ISD::SETEQ);
+    RHS = Zero;
+    TCC = SyncVMCC::COND_NE;
+    break;
+  }
+  case ISD::SETLE: {
+    auto Ule = DAG.getSelectCC(DL, LHS, RHS, Mask, Zero, ISD::SETULE);
+    auto SignUgt =
+        DAG.getSelectCC(DL, SignLHS, SignRHS, Mask, Zero, ISD::SETUGT);
+    LHS = DAG.getSelectCC(DL, SignXor, Mask, SignUgt, Ule, ISD::SETEQ);
+    RHS = Zero;
+    TCC = SyncVMCC::COND_NE;
+    break;
+  }
   }
 
   return DAG.getConstant(TCC, DL, MVT::i256);
@@ -417,8 +459,7 @@ SDValue SyncVMTargetLowering::LowerSRA(SDValue Op, SelectionDAG &DAG) const {
   auto RHS = Op.getOperand(1);
   auto Zero = DAG.getConstant(0, DL, MVT::i256);
   auto One = DAG.getConstant(APInt(256, -1, true), DL, MVT::i256);
-  auto Mask =
-      DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
+  auto Mask = DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
   auto Sign = DAG.getNode(ISD::AND, DL, MVT::i256, LHS, Mask);
   auto Init = DAG.getSelectCC(DL, Sign, Mask, One, Zero, ISD::SETEQ);
   Mask = DAG.getNode(ISD::SHL, DL, MVT::i256, Init, RHS);
@@ -430,11 +471,10 @@ SDValue SyncVMTargetLowering::LowerSDIV(SDValue Op, SelectionDAG &DAG) const {
   auto DL = SDLoc(Op);
   auto LHS = Op.getOperand(0);
   auto RHS = Op.getOperand(1);
-  auto Mask =
-      DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
+  auto Mask = DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
   auto SignLHS = DAG.getNode(ISD::AND, DL, MVT::i256, LHS, Mask);
   auto SignRHS = DAG.getNode(ISD::AND, DL, MVT::i256, RHS, Mask);
-  auto Sign= DAG.getNode(ISD::XOR, DL, MVT::i256, SignLHS, SignRHS);
+  auto Sign = DAG.getNode(ISD::XOR, DL, MVT::i256, SignLHS, SignRHS);
   auto Value = DAG.getNode(ISD::UDIV, DL, MVT::i256, LHS, RHS);
   return DAG.getNode(ISD::OR, DL, MVT::i256, Value, Sign);
 }
@@ -443,8 +483,7 @@ SDValue SyncVMTargetLowering::LowerSREM(SDValue Op, SelectionDAG &DAG) const {
   auto DL = SDLoc(Op);
   auto LHS = Op.getOperand(0);
   auto RHS = Op.getOperand(1);
-  auto Mask =
-      DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
+  auto Mask = DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
   auto Sign = DAG.getNode(ISD::AND, DL, MVT::i256, LHS, Mask);
   auto Value = DAG.getNode(ISD::UREM, DL, MVT::i256, LHS, RHS);
   return DAG.getNode(ISD::OR, DL, MVT::i256, Value, Sign);
@@ -575,6 +614,8 @@ SDValue SyncVMTargetLowering::LowerBrcondBr(SDValue Op, SDValue DestFalse,
   SDValue Cond = Op.getOperand(1);
   SDValue DestTrue = Op.getOperand(2);
   SDValue Zero = DAG.getConstant(0, DL, Cond.getValueType());
+
+
   // TODO: Code duplication.
   if (Cond.getOpcode() == ISD::INTRINSIC_W_CHAIN) {
     SDValue BrFlag = LowerBrFlag(Cond, Chain, DestTrue, DestFalse, DL, DAG);
