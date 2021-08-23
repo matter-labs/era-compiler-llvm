@@ -79,3 +79,31 @@ define i256 @remr(i256 %a, i256 %b) nounwind {
   %1 = srem i256 %a, %b
   ret i256 %1
 }
+
+; CHECK-LABEL: sgtr
+define i256 @sgtr(i256 %a, i256 %b) nounwind {
+  %1 = icmp sgt i256 %a, %b
+  %2 = select i1 %1, i256 42, i256 -1
+  ret i256 %2
+}
+
+; CHECK-LABEL: sltr
+define i256 @sltr(i256 %a, i256 %b) nounwind {
+  %1 = icmp slt i256 %a, %b
+  %2 = select i1 %1, i256 42, i256 -1
+  ret i256 %2
+}
+
+; CHECK-LABEL: sger
+define i256 @sger(i256 %a, i256 %b) nounwind {
+  %1 = icmp sge i256 %a, %b
+  %2 = select i1 %1, i256 42, i256 -1
+  ret i256 %2
+}
+
+; CHECK-LABEL: sler
+define i256 @sler(i256 %a, i256 %b) nounwind {
+  %1 = icmp sle i256 %a, %b
+  %2 = select i1 %1, i256 42, i256 -1
+  ret i256 %2
+}
