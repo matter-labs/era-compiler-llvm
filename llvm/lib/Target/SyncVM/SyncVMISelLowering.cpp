@@ -484,6 +484,7 @@ SDValue SyncVMTargetLowering::LowerSDIV(SDValue Op, SelectionDAG &DAG) const {
   auto Sign = DAG.getNode(ISD::XOR, DL, MVT::i256, SignLHS, SignRHS);
   auto Value = DAG.getNode(ISD::UDIV, DL, MVT::i256, LHS, RHS);
   auto Value2Compl = DAG.getNode(ISD::SUB, DL, MVT::i256, Mask, Value);
+  Value2Compl = DAG.getNode(ISD::OR, DL, MVT::i256, Value2Compl, Mask);
   return DAG.getSelectCC(DL, Sign, Mask, Value2Compl, Value, ISD::SETEQ);
 }
 
@@ -503,6 +504,7 @@ SDValue SyncVMTargetLowering::LowerSREM(SDValue Op, SelectionDAG &DAG) const {
   RHS = DAG.getSelectCC(DL, SignRHS, Mask, RHS2Compl, RHS, ISD::SETEQ);
   auto Value = DAG.getNode(ISD::UREM, DL, MVT::i256, LHS, RHS);
   auto Value2Compl = DAG.getNode(ISD::SUB, DL, MVT::i256, Mask, Value);
+  Value2Compl = DAG.getNode(ISD::OR, DL, MVT::i256, Value2Compl, Mask);
   return DAG.getSelectCC(DL, SignLHS, Mask, Value2Compl, Value, ISD::SETEQ);
 }
 
