@@ -57,25 +57,12 @@ define i256 @csra(i256 %size) nounwind {
 
 ; CHECK-LABEL: divr
 define i256 @divr(i256 %a, i256 %b) nounwind {
-; CHECK: div	r1, r2, r3, r0
-; CHECK: xor	r1, r2, r2
-; CHECK: sfll	#0, r4, r4
-; CHECK: sflh	#170141183460469231731687303715884105728, r4, r4
-; CHECK: and	r2, r4, r2
-; CHECK: or	r3, r2, r1
-; CHECK: ret
   %1 = sdiv i256 %a, %b
   ret i256 %1
 }
 
 ; CHECK-LABEL: remr
 define i256 @remr(i256 %a, i256 %b) nounwind {
-; CHECK: sfll	#0, r3, r3
-; CHECK: sflh	#170141183460469231731687303715884105728, r3, r3
-; CHECK: and	r1, r3, r3
-; CHECK: div	r1, r2, r0, r2
-; CHECK: or	r2, r3, r1
-; CHECK: ret
   %1 = srem i256 %a, %b
   ret i256 %1
 }
