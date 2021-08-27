@@ -114,10 +114,6 @@ Pass *llvm::createFunctionInliningPass(InlineParams &Params) {
 }
 
 bool SimpleInliner::runOnSCC(CallGraphSCC &SCC) {
-  // SyncVM local begin
-  // FIXME: inliner might result in invoking @llvm.syncvm.throw()
-  return false;
-  // SyncVM local begin
   TTIWP = &getAnalysis<TargetTransformInfoWrapperPass>();
   return LegacyInlinerBase::runOnSCC(SCC);
 }
