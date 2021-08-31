@@ -103,10 +103,16 @@ define void @set_storage() {
   ret void
 }
 
-; CHECK-LABEL: far_call
-define void @far_call() {
+; CHECK-LABEL: far_calls
+define void @far_calls() {
 ; CHECK: callf
   call void @llvm.syncvm.farcall(i256 42)
+; CHECK: callfd
+  call void @llvm.syncvm.delegatecall(i256 42)
+; CHECK: callfc
+  call void @llvm.syncvm.callcode(i256 42)
+; CHECK: callfs
+  call void @llvm.syncvm.staticcall(i256 42)
   ret void
 }
 
@@ -127,6 +133,9 @@ declare i256 @llvm.syncvm.getfromcontext(i256)
 declare void @llvm.syncvm.switchcontext()
 declare void @llvm.syncvm.setstorage(i256)
 declare void @llvm.syncvm.farcall(i256)
+declare void @llvm.syncvm.delegatecall(i256)
+declare void @llvm.syncvm.callcode(i256)
+declare void @llvm.syncvm.staticcall(i256)
 declare void @llvm.syncvm.throw()
 declare void @llvm.memcpy.p0i256.p0i256.i256(i256*, i256*, i256, i1)
 declare void @llvm.memcpy.p0i256.p2i256.i256(i256*, i256 addrspace(2)*, i256, i1)
