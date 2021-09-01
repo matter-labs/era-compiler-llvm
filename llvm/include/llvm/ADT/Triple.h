@@ -814,6 +814,13 @@ public:
     return Env == Triple::GNUX32 || Env == Triple::MuslX32;
   }
 
+  // SyncVM local begin
+  /// Tests whether the target is SyncVM.
+  bool isSyncVM() const {
+    return getArch() == Triple::syncvm;
+  }
+  // SyncVM local end
+
   /// Tests whether the target supports comdat
   bool supportsCOMDAT() const {
     return !(isOSBinFormatMachO() || isOSBinFormatXCOFF());

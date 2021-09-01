@@ -82,7 +82,6 @@ public:
   void addIRPasses() override;
   bool addInstSelector() override;
   void addPreRegAlloc() override;
-  void addPostRegAlloc() override;
   void addPreEmitPass() override;
 };
 } // namespace
@@ -107,11 +106,6 @@ bool SyncVMPassConfig::addInstSelector() {
 
 void SyncVMPassConfig::addPreRegAlloc() {
   addPass(createSyncVMDropUnusedRegistersPass());
-}
-
-void SyncVMPassConfig::addPostRegAlloc() {
-  // TODO: Fix the logic rather than disable the pass
-  disablePass(&BranchFolderPassID);
 }
 
 void SyncVMPassConfig::addPreEmitPass() {
