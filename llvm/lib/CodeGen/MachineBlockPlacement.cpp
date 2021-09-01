@@ -32,6 +32,9 @@
 #include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/Statistic.h"
+// SyncVM local begin
+#include "llvm/ADT/Triple.h"
+// SyncVM local end
 #include "llvm/Analysis/BlockFrequencyInfoImpl.h"
 #include "llvm/Analysis/ProfileSummaryInfo.h"
 #include "llvm/CodeGen/MachineBasicBlock.h"
@@ -573,6 +576,9 @@ INITIALIZE_PASS_DEPENDENCY(MachineBlockFrequencyInfo)
 INITIALIZE_PASS_DEPENDENCY(MachinePostDominatorTree)
 INITIALIZE_PASS_DEPENDENCY(MachineLoopInfo)
 INITIALIZE_PASS_DEPENDENCY(ProfileSummaryInfoWrapperPass)
+// SyncVM local begin
+INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
+// SyncVM local end
 INITIALIZE_PASS_END(MachineBlockPlacement, DEBUG_TYPE,
                     "Branch Probability Basic Block Placement", false, false)
 
@@ -3327,7 +3333,13 @@ bool MachineBlockPlacement::runOnMachineFunction(MachineFunction &MF) {
   if (MF.size() > 3 && EnableTailMerge) {
     unsigned TailMergeSize = TailDupSize + 1;
     BranchFolder BF(/*EnableTailMerge=*/true, /*CommonHoist=*/false, *MBFI,
-                    *MBPI, PSI, TailMergeSize);
+                    // SyncVM local begin
+                    *MBPI, PSI,
+                    getAnalysis<TargetPassConfig>()
+                        .getTM<TargetMachine>()
+                        .getTargetTriple(),
+                    // SyncVM local end
+                    TailMergeSize);
 
     if (BF.OptimizeFunction(MF, TII, MF.getSubtarget().getRegisterInfo(), MLI,
                             /*AfterPlacement=*/true)) {
@@ -3401,6 +3413,9 @@ public:
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<MachineBranchProbabilityInfo>();
     AU.addRequired<MachineBlockFrequencyInfo>();
+    // SyncVM local begin
+    AU.addRequired<TargetPassConfig>();
+    // SyncVM local end
     AU.setPreservesAll();
     MachineFunctionPass::getAnalysisUsage(AU);
   }

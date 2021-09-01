@@ -754,6 +754,13 @@ public:
     return getArch() == Triple::wasm32 || getArch() == Triple::wasm64;
   }
 
+  // SyncVM local begin
+  /// Tests whether the target is SyncVM.
+  bool isSyncVM() const {
+    return getArch() == Triple::syncvm;
+  }
+  // SyncVM local end
+
   /// Tests whether the target supports comdat
   bool supportsCOMDAT() const {
     return !(isOSBinFormatMachO() || isOSBinFormatXCOFF());

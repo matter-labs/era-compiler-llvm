@@ -11,6 +11,9 @@
 
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/SmallPtrSet.h"
+// SyncVM local begin
+#include "llvm/ADT/Triple.h"
+// SyncVM local end
 #include "llvm/CodeGen/LivePhysRegs.h"
 #include "llvm/CodeGen/MachineBasicBlock.h"
 #include "llvm/Support/Compiler.h"
@@ -37,6 +40,9 @@ class TargetRegisterInfo;
                           MBFIWrapper &FreqInfo,
                           const MachineBranchProbabilityInfo &ProbInfo,
                           ProfileSummaryInfo *PSI,
+                          // SyncVM local begin
+                          Triple T,
+                          // SyncVM local end
                           // Min tail length to merge. Defaults to commandline
                           // flag. Ignored for optsize.
                           unsigned MinTailLength = 0);
@@ -131,6 +137,9 @@ class TargetRegisterInfo;
     MBFIWrapper &MBBFreqInfo;
     const MachineBranchProbabilityInfo &MBPI;
     ProfileSummaryInfo *PSI;
+    // SyncVM local begin
+    Triple TargetTriple;
+    // SyncVM local end
 
     bool TailMergeBlocks(MachineFunction &MF);
     bool TryTailMergeBlocks(MachineBasicBlock* SuccBB,

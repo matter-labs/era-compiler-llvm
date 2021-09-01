@@ -40,9 +40,7 @@ unsigned SyncVMTTIImpl::getArithmeticInstrCost(
       Opcode, Ty, CostKind, Opd1Info, Opd2Info, Opd1PropInfo, Opd2PropInfo);
 
   switch (Opcode) {
-  case Instruction::LShr:
   case Instruction::AShr:
-  case Instruction::Shl:
     Cost = TargetTransformInfo::TCC_Expensive;
     break;
   }
