@@ -30,7 +30,6 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
         -DLLVM_TARGETS_TO_BUILD='X86' \
         -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD='SyncVM' \
-        -DLLVM_ENABLE_ASSERTIONS='On' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
         -DLLVM_BUILD_DOCS='Off' \
         -DLLVM_INCLUDE_DOCS='Off' \
@@ -57,7 +56,6 @@ elif [[ -f '/etc/arch-release' ]]; then
         -DCMAKE_CXX_COMPILER='clang++' \
         -DLLVM_TARGETS_TO_BUILD='X86' \
         -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD='SyncVM' \
-        -DLLVM_ENABLE_ASSERTIONS='On' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
         -DLLVM_USE_LINKER='lld' \
         -DLLVM_BUILD_DOCS='Off' \
@@ -86,7 +84,6 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         -DCMAKE_CXX_COMPILER='clang++-11' \
         -DLLVM_TARGETS_TO_BUILD='X86' \
         -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD='SyncVM' \
-        -DLLVM_ENABLE_ASSERTIONS='On' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
         -DLLVM_USE_LINKER='lld-11' \
         -DLLVM_BUILD_DOCS='Off' \
