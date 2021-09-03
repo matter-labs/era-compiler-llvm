@@ -416,3 +416,7 @@ def SC: SyncVMInstruction<0x17, (outs), (ins),
 def SETST: SyncVMInstruction<0x18, (outs), (ins GR256:$storage),
                            "setst", [(int_syncvm_setstorage GR256:$storage)]>;
 }
+
+let isCodeGenOnly = 1 in {
+  def LTFLAG : Pseudo<(outs Z256:$val), (ins), "#LTFLAG", [(set Z256:$val, (int_syncvm_ltflag))]>;
+}
