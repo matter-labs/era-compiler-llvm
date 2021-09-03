@@ -58,11 +58,17 @@ bool SyncVMDropUnusedRegisters::runOnMachineFunction(MachineFunction &MF) {
 
   Context = &MF.getFunction().getContext();
 
-  std::vector<MachineInstr *> Pseudos;
   for (MachineBasicBlock &MBB : MF)
-    for (MachineInstr &MI : MBB) {
+    for (auto MII = MBB.begin(); MII != MBB.end(); ++MII) {
+      MachineInstr &MI = *MII;
       if (MI.getOpcode() == SyncVM::POP) {
         MI.getOperand(0).setReg(SyncVM::R0);
+        Changed = true;
+      }
+      if (MI.getOpcode() == SyncVM::LTFLAG) {
+        --MII;
+        MI.eraseFromParent();
+        Changed = true;
       }
     }
 
