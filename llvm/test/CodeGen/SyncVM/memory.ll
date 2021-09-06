@@ -44,3 +44,13 @@ define i256 @load_from_parent_unaligned_offset(i256 %addr) nounwind {
   %2 = load i256, i256 addrspace(3)* %1
   ret i256 %2
 }
+
+; CHECK-LABEL: heap_sextload
+define i256 @heap_sextload(i8 addrspace(1)* align 256 %arg) nounwind {
+; CHECK: mov
+; CHECK: shl
+; CHECK: and
+  %1 = load i8, i8 addrspace(1)* %arg
+  %2 = sext i8 %1 to i256
+  ret i256 %2
+}
