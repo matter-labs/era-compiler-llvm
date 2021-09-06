@@ -58,10 +58,6 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SDIV, MVT::i256, Custom);
   setOperationAction(ISD::SREM, MVT::i256, Custom);
 
-  // Dynamic stack allocation: use the default expansion.
-
-  // setOperationAction(ISD::CopyToReg, MVT::Other, Custom);
-
   // Support of truncate, sext, zext
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i1, Expand);
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i8, Expand);
@@ -69,6 +65,10 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i32, Expand);
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i64, Expand);
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i128, Expand);
+
+  for (MVT VT : MVT::integer_valuetypes()) {
+    setLoadExtAction(ISD::SEXTLOAD, MVT::i256, VT, Custom);
+  }
 }
 
 //===----------------------------------------------------------------------===//
@@ -436,6 +436,8 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
   default:
     llvm_unreachable("unimplemented operation lowering");
     return SDValue();
+  case ISD::LOAD:
+    return LowerLOAD(Op, DAG);
   case ISD::GlobalAddress:
     return LowerGlobalAddress(Op, DAG);
   case ISD::BR:
@@ -451,6 +453,36 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
   case ISD::SREM:
     return LowerSREM(Op, DAG);
   }
+}
+
+SDValue SyncVMTargetLowering::LowerLOAD(SDValue Op,
+                                        SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  LoadSDNode *Load = cast<LoadSDNode>(Op);
+  if (Load->getExtensionType() != ISD::SEXTLOAD)
+    return {};
+  EVT MemVT = Load->getMemoryVT();
+  assert(MemVT.isScalarInteger() && "Unexpected type to load");
+  assert(Load->getAlignment() >= MemVT.getStoreSize());
+  if (MemVT.getSizeInBits() == 256)
+    return {};
+
+  SDValue BasePtr = Load->getBasePtr();
+  SDValue Chain = Load->getChain();
+  const MachinePointerInfo& PInfo = Load->getPointerInfo();
+  Align A = Load->getAlign();
+
+  SDValue MemVTNode = DAG.getValueType(MemVT);
+  Op = DAG.getLoad(MVT::i256, DL, Chain, BasePtr, PInfo, A);
+  SDValue Sext =
+      DAG.getNode(ISD::SIGN_EXTEND_INREG, DL, MVT::i256, Op, MemVTNode);
+
+  SDValue Ops[] = {
+      Sext,
+      Op.getValue(1)
+  };
+
+  return DAG.getMergeValues(Ops, DL);
 }
 
 SDValue SyncVMTargetLowering::LowerSRA(SDValue Op, SelectionDAG &DAG) const {
@@ -633,7 +665,6 @@ SDValue SyncVMTargetLowering::LowerBrcondBr(SDValue Op, SDValue DestFalse,
   SDValue Cond = Op.getOperand(1);
   SDValue DestTrue = Op.getOperand(2);
   SDValue Zero = DAG.getConstant(0, DL, Cond.getValueType());
-
 
   // TODO: Code duplication.
   if (Cond.getOpcode() == ISD::INTRINSIC_W_CHAIN) {
