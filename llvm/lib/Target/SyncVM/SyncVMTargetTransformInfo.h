@@ -64,6 +64,8 @@ public:
                                   unsigned SrcAlign, unsigned DestAlign) const {
     return IntegerType::get(Context, 256);
   }
+  // TODO: The value is copied from AMDGPU, needs to be configured.
+  unsigned getInliningThresholdMultiplier() const { return 11; }
 
   /// @}
 };
