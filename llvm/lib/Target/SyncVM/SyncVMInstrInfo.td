@@ -356,6 +356,12 @@ let isCall = 1,
                   "call\t$callee", [(SyncVMcall tglobaladdr:$callee)]>;
   def CALLF : SyncVMInstruction<0x45, (outs), (ins GR256:$call_config),
                                 "callf\t$call_config", [(int_syncvm_farcall GR256:$call_config)]>;
+  def CALLD : SyncVMInstruction<0x46, (outs), (ins GR256:$call_config),
+                                "callfd\t$call_config", [(int_syncvm_delegatecall GR256:$call_config)]>;
+  def CALLC : SyncVMInstruction<0x47, (outs), (ins GR256:$call_config),
+                                "callfc\t$call_config", [(int_syncvm_callcode GR256:$call_config)]>;
+  def CALLS : SyncVMInstruction<0x48, (outs), (ins GR256:$call_config),
+                                "callfs\t$call_config", [(int_syncvm_staticcall GR256:$call_config)]>;
 }
 
 let isTerminator = 1, isBranch = 1, isBarrier = 1, Uses = [Flags] in {
@@ -409,4 +415,8 @@ def SC: SyncVMInstruction<0x17, (outs), (ins),
                            "sc", [(int_syncvm_switchcontext)]>;
 def SETST: SyncVMInstruction<0x18, (outs), (ins GR256:$storage),
                            "setst", [(int_syncvm_setstorage GR256:$storage)]>;
+}
+
+let isCodeGenOnly = 1 in {
+  def LTFLAG : Pseudo<(outs Z256:$val), (ins), "#LTFLAG", [(set Z256:$val, (int_syncvm_ltflag))]>;
 }

@@ -34,6 +34,7 @@ namespace {
 class SyncVMEHPrepare : public FunctionPass {
   Function *ThrowF = nullptr;       // syncvm.throw() intrinsic
 
+  bool replaceCXAThrow(Function &F);
   bool prepareEHPads(Function &F);
   bool prepareThrows(Function &F);
 
@@ -89,8 +90,37 @@ static void eraseDeadBBsAndChildren(const Container &BBs, DomTreeUpdater *DTU) {
 bool SyncVMEHPrepare::runOnFunction(Function &F) {
   IsEHPadFunctionsSetUp = false;
   bool Changed = false;
+  Changed |= replaceCXAThrow(F);
   Changed |= prepareThrows(F);
   Changed |= prepareEHPads(F);
+  return Changed;
+}
+
+bool SyncVMEHPrepare::replaceCXAThrow(Function &F) {
+  bool Changed = false;
+  Module &M = *F.getParent();
+  ThrowF = Intrinsic::getDeclaration(&M, Intrinsic::syncvm_throw);
+  for (auto& BB : F)
+    for (auto II = BB.begin(); II != BB.end(); ++II) {
+      auto& Inst = *II;
+      auto *Call = dyn_cast<CallInst>(&Inst);
+      auto *Invoke = dyn_cast<InvokeInst>(&Inst);
+      if (Call || Invoke) {
+        auto CallSite = Call ? Call->getCalledOperand()
+                             : Invoke->getCalledOperand();
+        auto CSGV = dyn_cast<GlobalValue>(CallSite);
+        if (CSGV && CSGV->getGlobalIdentifier() == "__cxa_throw") {
+          IRBuilder<> Builder(&Inst);
+          CallInst *ThrowFCall = Builder.CreateCall(ThrowF, {});
+          Inst.replaceAllUsesWith(ThrowFCall);
+          ++II;
+          if (Invoke)
+            Builder.CreateUnreachable();
+          Inst.eraseFromParent();
+          Changed = true;
+        }
+      }
+    }
   return Changed;
 }
 

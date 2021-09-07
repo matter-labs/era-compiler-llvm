@@ -868,6 +868,16 @@ void SelectionDAGLegalize::LegalizeLoadOps(SDNode *Node) {
           Value = Res;
           Chain = Res.getValue(1);
         }
+      // SyncVM local begin
+      // TODO: investigate
+      DAG.ReplaceAllUsesOfValueWith(SDValue(Node, 0), Value);
+      DAG.ReplaceAllUsesOfValueWith(SDValue(Node, 1), Chain);
+      if (UpdatedNodes) {
+        UpdatedNodes->insert(Value.getNode());
+        UpdatedNodes->insert(Chain.getNode());
+      }
+      ReplacedNode(Node);
+      // SyncVM local end
       } else {
         // If this is an unaligned load and the target doesn't support it,
         // expand it.
@@ -954,6 +964,7 @@ void SelectionDAGLegalize::LegalizeLoadOps(SDNode *Node) {
 
   // Since loads produce two values, make sure to remember that we legalized
   // both of them.
+  // SyncVM local begin
 #if 0
   if (Chain.getNode() != Node) {
     assert(Value.getNode() != Node && "Load must be completely replaced");
@@ -966,6 +977,7 @@ void SelectionDAGLegalize::LegalizeLoadOps(SDNode *Node) {
     ReplacedNode(Node);
   }
 #endif
+  // SyncVM local end
 }
 
 /// Return a legal replacement for the given operation, with all legal operands.
