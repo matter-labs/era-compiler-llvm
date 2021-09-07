@@ -1,18 +1,19 @@
 name: Clang Tests
 
-on:
-  push:
-    branches:
-      - 'release/**'
-    paths:
-      - 'clang/**'
-      - 'llvm/**'
-      - '.github/workflows/clang-tests.yml'
-  pull_request:
-    paths:
-      - 'clang/**'
-      - 'llvm/**'
-      - '.github/workflows/clang-tests.yml'
+on: workflow_dispatch
+# on:
+#   push:
+#     branches:
+#       - 'release/**'
+#     paths:
+#       - 'clang/**'
+#       - 'llvm/**'
+#       - '.github/workflows/clang-tests.yml'
+#   pull_request:
+#     paths:
+#       - 'clang/**'
+#       - 'llvm/**'
+#       - '.github/workflows/clang-tests.yml'
 
 jobs:
   build_clang:

@@ -1,0 +1,169 @@
+name: LLVM back-end
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/llvm-back-end.yml'
+      - 'build.sh'
+
+jobs:
+  build_and_test_llvm_back_end:
+    name: test
+    runs-on: [self-hosted, CI-worker]
+
+    steps:
+    - uses: AutoModality/action-clean@v1.1.0
+    
+    - name: Checkout https://github.com/matter-labs/compiler-tester
+      uses: actions/checkout@v2
+      with:
+        repository: matter-labs/compiler-tester
+        #ref: main
+        ref: ms-update-cargo-config
+        submodules: recursive
+        token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
+        path: 'compiler-tester'
+        ssh-known-hosts: 'github.com'
+
+    # - name: checkout submodule
+    #   run: |
+    #     git submodule init
+    #     git submodule update
+    #   working-directory: compiler-tester
+
+    # - name: Checkout submodule ethereum/solidity
+    #   uses: actions/checkout@v2
+    #   with:
+    #     repository: ethereum/solidity
+    #     ref: "d7ddfcc6653c55cc47d0b6de9dafda0d566fed07"
+    #     path: 'compiler-tester/solidity'
+      
+
+    # - name: Checkout submodule matter-labs/compiler-tests
+    #   uses: actions/checkout@v2
+    #   with:
+    #     repository: matter-labs/compiler-tests
+    #     ref: "4a641c53b848e268723db02ca0ddf266ed4f6ab2"
+    #     path: 'compiler-tester/tests'
+
+    # - name: Checkout submodule compiler-common
+    #   uses: actions/checkout@v2
+    #   with:
+    #     repository: matter-labs/compiler-common
+    #     ref: "main"
+    #     path: 'compiler-tester/compiler_tester/compiler-common'
+
+    # DEBUG
+    # - run: |
+    #     ls -l compiler-tester/solidity
+    #     ls -l compiler-tester/tests
+    #     ls -l compiler-tester/compiler_tester/compiler-common
+
+    - name: Checkout https://github.com/matter-labs/compiler-llvm
+      uses: actions/checkout@v2
+      with:
+        path: compiler-llvm
+
+    - name: prepare
+      shell: bash
+      run: |
+        echo "DOCKER_RUNNER=docker-compose -f ${{github.workspace}}/compiler-llvm/infrastructure/docker-compose-runner.yml" >> $GITHUB_ENV
+        echo "DOCKER_RUN=docker-compose -f ${{github.workspace}}/compiler-llvm/infrastructure/docker-compose-runner.yml exec -T zk" >> $GITHUB_ENV
+    
+    - name: start-services
+      run: |
+        ${DOCKER_RUNNER} down
+        ${DOCKER_RUNNER} pull
+        ${DOCKER_RUNNER} up --build -d zk
+        ${DOCKER_RUNNER} exec -T zk sccache --start-server
+
+    #DEBUG
+    - run: ${DOCKER_RUN} pwd || true
+    - run: ${DOCKER_RUN} --project-directory='/usr/src/zksync/compiler-llvm' pwd || true
+    - run: ${DOCKER_RUN} --project-directory='./compiler-llvm' pwd || true
+    - run: ${DOCKER_RUN} --project-directory=compiler-llvm pwd || true
+    - run: ${DOCKER_RUN} -w /usr/src/zksync/compiler-llvm/ pwd || true
+    - run: ${DOCKER_RUN} -w ${WORKSPACE}/compiler-llvm/ pwd || true
+    
+    # WORKAROUND: should be in DockerFile
+    - run: |
+        ${DOCKER_RUN} apt install sudo wget
+        # ${DOCKER_RUN} wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+        # ${DOCKER_RUN} sudo apt-add-repository "deb http://apt.llvm.org/buster/ llvm-toolchain-buster-11 main"
+        # ${DOCKER_RUN} sudo apt-get --yes update
+        # ${DOCKER_RUN} sudo apt-get --yes install cmake clang-11 lld-11
+
+- name: Building the LLVM framework
+  run: |
+    chmod +x compiler-llvm/build.sh
+    ${DOCKER_RUN} sh -c "cd compiler-llvm && ./build.sh release"
+
+    - name: Downloading the Solidity compiler binaries
+      run: |
+        mkdir solc
+        wget 'https://github.com/ethereum/solc-bin/raw/gh-pages/linux-amd64/solc-linux-amd64-v0.8.0%2Bcommit.c7dfd78e' --output-document "solc/solc-0.8.0"
+        wget 'https://github.com/ethereum/solc-bin/raw/gh-pages/linux-amd64/solc-linux-amd64-v0.8.1%2Bcommit.df193b15' --output-document "solc/solc-0.8.1"
+        wget 'https://github.com/ethereum/solc-bin/raw/gh-pages/linux-amd64/solc-linux-amd64-v0.8.2%2Bcommit.661d1103' --output-document "solc/solc-0.8.2"
+        wget 'https://github.com/ethereum/solc-bin/raw/gh-pages/linux-amd64/solc-linux-amd64-v0.8.3%2Bcommit.8d00100c' --output-document "solc/solc-0.8.3"
+        wget 'https://github.com/ethereum/solc-bin/raw/gh-pages/linux-amd64/solc-linux-amd64-v0.8.4%2Bcommit.c7e474f2' --output-document "solc/solc-0.8.4"
+        wget 'https://github.com/ethereum/solc-bin/raw/gh-pages/linux-amd64/solc-linux-amd64-v0.8.5%2Bcommit.a4f2e591' --output-document "solc/solc-0.8.5"
+        wget 'https://github.com/ethereum/solc-bin/raw/gh-pages/linux-amd64/solc-linux-amd64-v0.8.6%2Bcommit.11564f7e' --output-document "solc/solc-0.8.6"
+        wget 'https://github.com/ethereum/solc-bin/raw/gh-pages/linux-amd64/solc-linux-amd64-v0.8.7%2Bcommit.e28d00a7' --output-document "solc/solc-0.8.7"
+        ${DOCKER_RUN} mkdir -pv ${HOME}/opt/solc
+        ${DOCKER_RUN} cp -R solc ${HOME}/opt
+    
+    #DEBUG
+    - run: ${DOCKER_RUN} sh -c PATH="${HOME}/opt/solc/:${PATH}" || true
+    - run: ${DOCKER_RUN} sh -c export PATH="${PATH}:${HOME}/opt/solc/" || true
+    - run: ${DOCKER_RUN} PATH="${HOME}/opt/solc/:${PATH}" || true
+    - run: ${DOCKER_RUN} echo ${PATH}
+    - run: ${DOCKER_RUN} env
+
+    #DEBUG
+    - run: ${DOCKER_RUN} ps x
+
+    # WORKAROUND: for fix cargo | should be in DockerFile
+    - run: ${DOCKER_RUN} sh -c "mkdir ~/.ssh && ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts"
+    - run: ${DOCKER_RUN} sh -c 'eval eval "$(ssh-agent -s)"'
+    - run: ${DOCKER_RUN} sh -c "ssh-add" || true
+    # - run: ${DOCKER_RUN} sudo apt-get --yes update
+    # - run: ${DOCKER_RUN} sudo apt-get --yes upgrade
+    # - run: ${DOCKER_RUN} sudo apt-get --yes install openssh-client
+    #DEBUG
+    - run: ${DOCKER_RUN} sh -c "ssh -vT git@github.com" || true
+
+    - run: ${DOCKER_RUN} sh -c "which git"
+    - run: ${DOCKER_RUN} sh -c "cd compiler-tester && \
+            /usr/bin/git config --global github.token ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}" || true
+
+    - run: |
+          cd compiler-tester
+          pwd 
+          git config --global github.token ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }} || true
+    
+    #git config --global github.user user
+
+    - name: test
+      run: |
+        pwd
+        git config --global github.token ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }} || true
+      working-directory: compiler-tester
+
+    - run: ${DOCKER_RUN} sh -c "cat compiler-tester/.gitconfig"
+    - run: cat compiler-tester/.gitconfig
+
+    - run: ${DOCKER_RUN} sh -c "cd compiler-tester && \
+          /usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION:\ basic ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}" || true
+    - run: ${DOCKER_RUN} sh -c "cd compiler-tester && cargo build --verbose"
+
+
+
+    #DEBUG
+    - run: ${DOCKER_RUN} ps x
+
+    # ssh_auth_sock <- system("echo $SSH_AUTH_SOCK", intern = TRUE)
+    # Sys.setenv(SSH_AUTH_SOCK = ssh_auth_sock)
+
+    - name: Building and running the compiler tester
+      run: |
+        ${DOCKER_RUN} sh -c "cd compiler-tester && ./run.sh"

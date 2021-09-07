@@ -18,6 +18,8 @@ case "${1}" in
         ;;
 esac
 
+HOST="${2:-self}"
+
 if [[ "$OSTYPE" == "darwin"* ]]; then
     brew update
     brew install cmake
@@ -68,11 +70,12 @@ elif [[ -f '/etc/arch-release' ]]; then
     cd "build-${DIRECTORY_SUFFIX}/"
     make -j "$(nproc)"
 elif [[ "$OSTYPE" == "linux-gnu" ]]; then
-    sudo apt --yes update
-    sudo apt --yes install \
-        cmake \
-        clang-11 \
-        lld-11
+    if [[ $HOST != "ci" ]]; then
+        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+        sudo apt-add-repository "deb http://apt.llvm.org/buster/ llvm-toolchain-buster-11 main"
+        sudo apt-get --yes update
+        sudo apt-get --yes install cmake clang-11 lld-11
+    fi
 
     cmake \
         -S 'llvm' \

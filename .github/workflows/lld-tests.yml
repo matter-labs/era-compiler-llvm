@@ -1,18 +1,19 @@
 name: LLD Tests
 
-on:
-  push:
-    branches:
-      - 'release/**'
-    paths:
-      - 'lld/**'
-      - 'llvm/**'
-      - '.github/workflows/lld-tests.yml'
-  pull_request:
-    paths:
-      - 'lld/**'
-      - 'llvm/**'
-      - '.github/workflows/lld-tests.yml'
+on: workflow_dispatch
+# on:
+#   push:
+#     branches:
+#       - 'release/**'
+#     paths:
+#       - 'lld/**'
+#       - 'llvm/**'
+#       - '.github/workflows/lld-tests.yml'
+#   pull_request:
+#     paths:
+#       - 'lld/**'
+#       - 'llvm/**'
+#       - '.github/workflows/lld-tests.yml'
 
 jobs:
   build_lld:

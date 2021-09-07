@@ -1,0 +1,18 @@
+version: '3.2'
+services:
+  zk:
+    # used docker - https://github.com/matter-labs/zksync-dev/blob/dev/docker/zk-environment/Dockerfile
+    image: "matterlabs/zk-environment:latest"
+    command: tail -f /dev/null
+    volumes:
+      - ${GITHUB_WORKSPACE}:/usr/src/zksync
+      - /usr/src/cache:/usr/src/cache
+      - /usr/src/keys:/usr/src/keys
+      # - ${SSH_AUTH_SOCK}:/ssh-agent
+    working_dir: /usr/src/zksync
+    environment:
+      - IN_DOCKER=true
+      - CACHE_DIR=/usr/src/cache
+      - SCCACHE_CACHE_SIZE=50g
+      - CI=1
+      # - SSH_AUTH_SOCK=/ssh-agent

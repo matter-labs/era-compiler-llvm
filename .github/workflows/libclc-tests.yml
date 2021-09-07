@@ -1,20 +1,21 @@
 name: libclc Tests
 
-on:
-  push:
-    branches:
-      - 'release/**'
-    paths:
-      - 'clang/**'
-      - 'llvm/**'
-      - 'libclc/**'
-      - '.github/workflows/libclc-tests.yml'
-  pull_request:
-    paths:
-      - 'clang/**'
-      - 'llvm/**'
-      - 'libclc/**'
-      - '.github/workflows/libclc-tests.yml'
+on: workflow_dispatch
+# on:
+#   push:
+#     branches:
+#       - 'release/**'
+#     paths:
+#       - 'clang/**'
+#       - 'llvm/**'
+#       - 'libclc/**'
+#       - '.github/workflows/libclc-tests.yml'
+#   pull_request:
+#     paths:
+#       - 'clang/**'
+#       - 'llvm/**'
+#       - 'libclc/**'
+#       - '.github/workflows/libclc-tests.yml'
 
 jobs:
   build_libclc:
