@@ -59,11 +59,24 @@ public:
       ArrayRef<const Value *> Args = ArrayRef<const Value *>(),
       const Instruction *CxtI = nullptr);
   unsigned getVectorInstrCost(unsigned Opcode, Type *Val, unsigned Index);
+
   Type *getMemcpyLoopLoweringType(LLVMContext &Context, Value *Length,
                                   unsigned SrcAddrSpace, unsigned DestAddrSpace,
                                   unsigned SrcAlign, unsigned DestAlign) const {
     return IntegerType::get(Context, 256);
   }
+
+  void getMemcpyLoopResidualLoweringType(SmallVectorImpl<Type *> &OpsOut,
+                                         LLVMContext &Context,
+                                         unsigned RemainingBytes,
+                                         unsigned SrcAddrSpace,
+                                         unsigned DestAddrSpace,
+                                         unsigned SrcAlign,
+                                         unsigned DestAlign) const {
+    assert(RemainingBytes < 32);
+    OpsOut.push_back(Type::getIntNTy(Context, RemainingBytes * 8));
+  }
+
   // TODO: The value is copied from AMDGPU, needs to be configured.
   unsigned getInliningThresholdMultiplier() const { return 11; }
 

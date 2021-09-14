@@ -7585,11 +7585,47 @@ TargetLowering::expandUnalignedLoad(LoadSDNode *LD, SelectionDAG &DAG) const {
   assert(LoadedVT.isInteger() && !LoadedVT.isVector() &&
          "Unaligned load of unsupported type.");
 
+  // SyncVM local begin
+  if (DAG.getTarget().getTargetTriple().isSyncVM()) {
+    unsigned NumBits = LoadedVT.getSizeInBits();
+    assert(NumBits == 256);
+    auto Rem =
+        DAG.getNode(ISD::UREM, dl, MVT::i256, Ptr,
+                    DAG.getConstant(APInt(256, 32, false), dl, MVT::i256));
+    auto Base1 = DAG.getNode(ISD::SUB, dl, MVT::i256, Ptr, Rem);
+    Rem = DAG.getNode(ISD::MUL, dl, MVT::i256, Rem,
+                      DAG.getConstant(APInt(256, 32, false), dl, MVT::i256));
+
+    auto Lo = DAG.getExtLoad(ISD::NON_EXTLOAD, dl, MVT::i256, Chain, Base1,
+                             LD->getPointerInfo(), MVT::i256, Align(32),
+                             LD->getMemOperand()->getFlags(), LD->getAAInfo());
+    auto LoChain = Lo.getValue(1);
+    Lo = DAG.getNode(ISD::SRL, dl, MVT::i256, Lo, Rem);
+
+    auto Base2 = DAG.getObjectPtrOffset(dl, Base1, 32);
+    auto Hi = DAG.getExtLoad(ISD::NON_EXTLOAD, dl, MVT::i256, Chain, Base2,
+                             LD->getPointerInfo(), MVT::i256, Align(32),
+                             LD->getMemOperand()->getFlags(), LD->getAAInfo());
+    auto HiChain = Hi.getValue(1);
+    auto Rem2 =
+        DAG.getNode(ISD::SUB, dl, MVT::i256,
+                    DAG.getConstant(APInt(256, 256, false), dl, MVT::i256),
+                    Rem);
+    Hi = DAG.getNode(ISD::SHL, dl, MVT::i256, Hi, Rem2);
+
+    auto Result = DAG.getNode(ISD::OR, dl, MVT::i256, Hi, Lo);
+
+    SDValue TF = DAG.getNode(ISD::TokenFactor, dl, MVT::Other, LoChain,
+                             HiChain);
+
+    return std::make_pair(Result, TF);
+  }
+  // SyncVM local end
   // Compute the new VT that is half the size of the old one.  This is an
   // integer MVT.
   unsigned NumBits = LoadedVT.getSizeInBits();
   EVT NewLoadedVT;
-  NewLoadedVT = EVT::getIntegerVT(*DAG.getContext(), NumBits/2);
+  NewLoadedVT = EVT::getIntegerVT(*DAG.getContext(), NumBits / 2);
   NumBits >>= 1;
 
   Align Alignment = LD->getOriginalAlign();
@@ -7603,9 +7639,9 @@ TargetLowering::expandUnalignedLoad(LoadSDNode *LD, SelectionDAG &DAG) const {
   // Load the value in two parts
   SDValue Lo, Hi;
   if (DAG.getDataLayout().isLittleEndian()) {
-    Lo = DAG.getExtLoad(ISD::ZEXTLOAD, dl, VT, Chain, Ptr, LD->getPointerInfo(),
-                        NewLoadedVT, Alignment, LD->getMemOperand()->getFlags(),
-                        LD->getAAInfo());
+    Lo = DAG.getExtLoad(ISD::ZEXTLOAD, dl, VT, Chain, Ptr,
+                        LD->getPointerInfo(), NewLoadedVT, Alignment,
+                        LD->getMemOperand()->getFlags(), LD->getAAInfo());
 
     Ptr = DAG.getObjectPtrOffset(dl, Ptr, TypeSize::Fixed(IncrementSize));
     Hi = DAG.getExtLoad(HiExtType, dl, VT, Chain, Ptr,
@@ -7614,8 +7650,8 @@ TargetLowering::expandUnalignedLoad(LoadSDNode *LD, SelectionDAG &DAG) const {
                         LD->getAAInfo());
   } else {
     Hi = DAG.getExtLoad(HiExtType, dl, VT, Chain, Ptr, LD->getPointerInfo(),
-                        NewLoadedVT, Alignment, LD->getMemOperand()->getFlags(),
-                        LD->getAAInfo());
+                        NewLoadedVT, Alignment,
+                        LD->getMemOperand()->getFlags(), LD->getAAInfo());
 
     Ptr = DAG.getObjectPtrOffset(dl, Ptr, TypeSize::Fixed(IncrementSize));
     Lo = DAG.getExtLoad(ISD::ZEXTLOAD, dl, VT, Chain, Ptr,
@@ -7625,14 +7661,13 @@ TargetLowering::expandUnalignedLoad(LoadSDNode *LD, SelectionDAG &DAG) const {
   }
 
   // aggregate the two parts
-  SDValue ShiftAmount =
-      DAG.getConstant(NumBits, dl, getShiftAmountTy(Hi.getValueType(),
-                                                    DAG.getDataLayout()));
+  SDValue ShiftAmount = DAG.getConstant(
+      NumBits, dl, getShiftAmountTy(Hi.getValueType(), DAG.getDataLayout()));
   SDValue Result = DAG.getNode(ISD::SHL, dl, VT, Hi, ShiftAmount);
   Result = DAG.getNode(ISD::OR, dl, VT, Result, Lo);
 
   SDValue TF = DAG.getNode(ISD::TokenFactor, dl, MVT::Other, Lo.getValue(1),
-                             Hi.getValue(1));
+                           Hi.getValue(1));
 
   return std::make_pair(Result, TF);
 }
@@ -7733,6 +7768,57 @@ SDValue TargetLowering::expandUnalignedStore(StoreSDNode *ST,
 
   assert(StoreMemVT.isInteger() && !StoreMemVT.isVector() &&
          "Unaligned store of unknown type.");
+
+  // SyncVM local begin
+  if (DAG.getTarget().getTargetTriple().isSyncVM()) {
+    unsigned NumBits = StoreMemVT.getSizeInBits();
+    assert(NumBits == 256);
+    auto Rem =
+        DAG.getNode(ISD::UREM, dl, MVT::i256, Ptr,
+                    DAG.getConstant(APInt(256, 32, false), dl, MVT::i256));
+    auto Base1 = DAG.getNode(ISD::SUB, dl, MVT::i256, Ptr, Rem);
+    Rem = DAG.getNode(ISD::MUL, dl, MVT::i256, Rem,
+                      DAG.getConstant(APInt(256, 32, false), dl, MVT::i256));
+    auto RemI =
+        DAG.getNode(ISD::SUB, dl, MVT::i256,
+                    DAG.getConstant(APInt(256, 256, false), dl, MVT::i256),
+                    Rem);
+
+    auto Lo = DAG.getExtLoad(ISD::NON_EXTLOAD, dl, MVT::i256, Chain, Base1,
+                             ST->getPointerInfo(), MVT::i256, Align(32),
+                             MachineMemOperand::MOLoad, ST->getAAInfo());
+    auto LoChain = Lo.getValue(1);
+    auto LoMaskLoad = DAG.getConstant(APInt(256, -1, false), dl, MVT::i256);
+    auto LoMaskStore = DAG.getNode(ISD::SRL, dl, MVT::i256, LoMaskLoad, RemI);
+    LoMaskLoad = DAG.getNode(ISD::SHL, dl, MVT::i256, LoMaskLoad, Rem);
+    Lo = DAG.getNode(ISD::AND, dl, MVT::i256, Lo, LoMaskLoad);
+    auto ValLo = DAG.getNode(ISD::SRL, dl, MVT::i256, Val, RemI);
+    ValLo = DAG.getNode(ISD::OR, dl, MVT::i256, ValLo, Lo);
+
+    auto StoreLo = DAG.getTruncStore(LoChain, dl, ValLo, Base1,
+                                     ST->getPointerInfo(), MVT::i256, Align(32),
+                                     ST->getMemOperand()->getFlags());
+
+    auto Base2 = DAG.getObjectPtrOffset(dl, Base1, 32);
+    auto Hi = DAG.getExtLoad(ISD::NON_EXTLOAD, dl, MVT::i256, Chain, Base2,
+                             ST->getPointerInfo(), MVT::i256, Align(32),
+                             MachineMemOperand::MOLoad, ST->getAAInfo());
+    auto HiChain = Hi.getValue(1);
+    Hi = DAG.getNode(ISD::AND, dl, MVT::i256, Hi, LoMaskStore);
+    auto ValHi = DAG.getNode(ISD::SHL, dl, MVT::i256, Val, Rem);
+    ValHi = DAG.getNode(ISD::OR, dl, MVT::i256, ValHi, Hi);
+
+    auto StoreHi = DAG.getTruncStore(HiChain, dl, ValHi, Base2,
+                                     ST->getPointerInfo(), MVT::i256, Align(32),
+                                     ST->getMemOperand()->getFlags());
+
+    SDValue TF = DAG.getNode(ISD::TokenFactor, dl, MVT::Other, StoreHi,
+                             StoreLo);
+
+    return TF;
+  }
+
+  // SyncVM local end
   // Get the half-size VT
   EVT NewStoredVT = StoreMemVT.getHalfSizedIntegerVT(*DAG.getContext());
   unsigned NumBits = NewStoredVT.getFixedSizeInBits();
