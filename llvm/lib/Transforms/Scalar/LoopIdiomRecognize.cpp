@@ -578,8 +578,13 @@ bool LoopIdiomRecognize::runOnLoopBlock(
   // Look for a single store or sets of stores with a common base, which can be
   // optimized into a memset (memset_pattern).  The latter most commonly happens
   // with structs and handunrolled loops.
+  // SyncVM local begin
+  // TODO: Support memset
+#if 0
   for (auto &SL : StoreRefsForMemset)
     MadeChange |= processLoopStores(SL.second, BECount, ForMemset::Yes);
+#endif
+  // SyncVM local end
 
   for (auto &SL : StoreRefsForMemsetPattern)
     MadeChange |= processLoopStores(SL.second, BECount, ForMemset::No);
@@ -588,6 +593,9 @@ bool LoopIdiomRecognize::runOnLoopBlock(
   for (auto &SI : StoreRefsForMemcpy)
     MadeChange |= processLoopStoreOfLoopLoad(SI, BECount);
 
+  // SyncVM local begin
+  // TODO: Support memset
+#if 0
   for (BasicBlock::iterator I = BB->begin(), E = BB->end(); I != E;) {
     Instruction *Inst = &*I++;
     // Look for memset instructions, which may be optimized to a larger memset.
@@ -604,6 +612,8 @@ bool LoopIdiomRecognize::runOnLoopBlock(
       continue;
     }
   }
+#endif
+  // SyncVM local end
 
   return MadeChange;
 }
