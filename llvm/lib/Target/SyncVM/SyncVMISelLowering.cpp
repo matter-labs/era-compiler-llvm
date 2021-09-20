@@ -455,8 +455,7 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
   }
 }
 
-SDValue SyncVMTargetLowering::LowerLOAD(SDValue Op,
-                                        SelectionDAG &DAG) const {
+SDValue SyncVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   SDLoc DL(Op);
   LoadSDNode *Load = cast<LoadSDNode>(Op);
   if (Load->getExtensionType() != ISD::SEXTLOAD)
@@ -469,7 +468,7 @@ SDValue SyncVMTargetLowering::LowerLOAD(SDValue Op,
 
   SDValue BasePtr = Load->getBasePtr();
   SDValue Chain = Load->getChain();
-  const MachinePointerInfo& PInfo = Load->getPointerInfo();
+  const MachinePointerInfo &PInfo = Load->getPointerInfo();
   Align A = Load->getAlign();
 
   SDValue MemVTNode = DAG.getValueType(MemVT);
@@ -477,10 +476,7 @@ SDValue SyncVMTargetLowering::LowerLOAD(SDValue Op,
   SDValue Sext =
       DAG.getNode(ISD::SIGN_EXTEND_INREG, DL, MVT::i256, Op, MemVTNode);
 
-  SDValue Ops[] = {
-      Sext,
-      Op.getValue(1)
-  };
+  SDValue Ops[] = {Sext, Op.getValue(1)};
 
   return DAG.getMergeValues(Ops, DL);
 }
@@ -494,7 +490,10 @@ SDValue SyncVMTargetLowering::LowerSRA(SDValue Op, SelectionDAG &DAG) const {
   auto Mask = DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
   auto Sign = DAG.getNode(ISD::AND, DL, MVT::i256, LHS, Mask);
   auto Init = DAG.getSelectCC(DL, Sign, Mask, One, Zero, ISD::SETEQ);
-  Mask = DAG.getNode(ISD::SHL, DL, MVT::i256, Init, RHS);
+  Mask = DAG.getNode(
+      ISD::SHL, DL, MVT::i256, Init,
+      DAG.getNode(ISD::SUB, DL, MVT::i256,
+                  DAG.getConstant(APInt(256, 256, false), DL, MVT::i256), RHS));
   auto Value = DAG.getNode(ISD::SRL, DL, MVT::i256, LHS, RHS);
   return DAG.getNode(ISD::OR, DL, MVT::i256, Value, Mask);
 }
