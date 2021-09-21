@@ -65,11 +65,6 @@ bool SyncVMDropUnusedRegisters::runOnMachineFunction(MachineFunction &MF) {
         MI.getOperand(0).setReg(SyncVM::R0);
         Changed = true;
       }
-      if (MI.getOpcode() == SyncVM::LTFLAG) {
-        --MII;
-        MI.eraseFromParent();
-        Changed = true;
-      }
     }
 
   LLVM_DEBUG(

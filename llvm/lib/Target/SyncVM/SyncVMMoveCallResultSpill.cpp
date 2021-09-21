@@ -78,7 +78,10 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
       continue;
 
     auto E = std::find_if(II, MBB.rend(), [](MachineInstr &MI) {
-      return MI.getOpcode() == SyncVM::CALL || MI.getOpcode() == SyncVM::CALLF;
+      return MI.getOpcode() == SyncVM::CALL ||
+             MI.getOpcode() == SyncVM::CALLF ||
+             MI.getOpcode() == SyncVM::CALLD ||
+             MI.getOpcode() == SyncVM::CALLC || MI.getOpcode() == SyncVM::CALLS;
     });
 
     if (E == MBB.rend())

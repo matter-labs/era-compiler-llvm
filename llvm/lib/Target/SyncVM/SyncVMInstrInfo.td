@@ -173,11 +173,16 @@ let mayLoad = 1 in {
 }
 }
 
-let isCodeGenOnly = 1, usesCustomInserter = 1 in
+let isCodeGenOnly = 1, usesCustomInserter = 1 in {
   def Select : Pseudo<(outs GR256:$dst), (ins GR256:$src, GR256:$src2, i256imm:$cc),
                        "# Select PSEUDO",
                        [(set GR256:$dst,
                           (SyncVMselectcc GR256:$src, GR256:$src2, imm:$cc))]>;
+
+  def SelectLT : Pseudo<(outs GR256:$dst), (ins),
+                       "# SelectLT PSEUDO",
+                       [(set GR256:$dst, (int_syncvm_ltflag))]>;
+}
 
 //===----------------------------------------------------------------------===//
 // The NoOperation instruction
@@ -415,8 +420,4 @@ def SC: SyncVMInstruction<0x17, (outs), (ins),
                            "sc", [(int_syncvm_switchcontext)]>;
 def SETST: SyncVMInstruction<0x18, (outs), (ins GR256:$storage),
                            "setst", [(int_syncvm_setstorage GR256:$storage)]>;
-}
-
-let isCodeGenOnly = 1 in {
-  def LTFLAG : Pseudo<(outs Z256:$val), (ins), "#LTFLAG", [(set Z256:$val, (int_syncvm_ltflag))]>;
 }
