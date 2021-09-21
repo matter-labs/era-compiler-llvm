@@ -722,11 +722,14 @@ SDValue SyncVMTargetLowering::LowerBrFlag(SDValue Cond, SDValue Chain,
 MachineBasicBlock *
 SyncVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                                                   MachineBasicBlock *BB) const {
+  MachineFunction *MF = MI.getParent()->getParent();
+  MachineRegisterInfo &RegInfo = MF->getRegInfo();
   unsigned Opc = MI.getOpcode();
   const TargetInstrInfo &TII = *BB->getParent()->getSubtarget().getInstrInfo();
   DebugLoc DL = MI.getDebugLoc();
 
-  assert(Opc == SyncVM::Select && "Unexpected instr type to insert");
+  assert((Opc == SyncVM::Select || Opc == SyncVM::SelectLT) &&
+         "Unexpected instr type to insert");
 
   // To "insert" a SELECT instruction, we actually have to insert the diamond
   // control-flow pattern.  The incoming instruction knows the destination vreg
@@ -748,43 +751,95 @@ SyncVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   MachineFunction *F = BB->getParent();
   MachineBasicBlock *copy0MBB = F->CreateMachineBasicBlock(LLVM_BB);
   MachineBasicBlock *copy1MBB = F->CreateMachineBasicBlock(LLVM_BB);
+  MachineBasicBlock *copy11MBB = nullptr;
   F->insert(I, copy0MBB);
   F->insert(I, copy1MBB);
+
+  Register VReg1;
+  if (Opc == SyncVM::SelectLT) {
+    VReg1 = RegInfo.createVirtualRegister(&SyncVM::GR256RegClass);
+    BuildMI(copy1MBB, DL, TII.get(SyncVM::CONST), VReg1)
+      .addImm(-1);
+    copy11MBB = F->CreateMachineBasicBlock(LLVM_BB);
+    F->insert(I, copy11MBB);
+    BuildMI(copy1MBB, DL, TII.get(SyncVM::JCC))
+        .addMBB(copy11MBB)
+        .addMBB(copy11MBB)
+        .addImm(SyncVMCC::COND_NONE);
+    copy1MBB->addSuccessor(copy11MBB);
+  }
+
   // Update machine-CFG edges by transferring all successors of the current
   // block to the new block which will contain the Phi node for the select.
-  copy1MBB->splice(copy1MBB->begin(), BB,
-                   std::next(MachineBasicBlock::iterator(MI)), BB->end());
-  copy1MBB->transferSuccessorsAndUpdatePHIs(BB);
+  if (!copy11MBB) {
+    copy1MBB->splice(copy1MBB->begin(), BB,
+                     std::next(MachineBasicBlock::iterator(MI)), BB->end());
+    copy1MBB->transferSuccessorsAndUpdatePHIs(BB);
+  } else {
+    copy11MBB->splice(copy11MBB->begin(), BB,
+                     std::next(MachineBasicBlock::iterator(MI)), BB->end());
+    copy11MBB->transferSuccessorsAndUpdatePHIs(BB);
+  }
+
   // Next, add the true and fallthrough blocks as its successors.
   BB->addSuccessor(copy0MBB);
   BB->addSuccessor(copy1MBB);
 
+  auto CC = (Opc == SyncVM::Select) ? MI.getOperand(3).getCImm()->getZExtValue()
+                                    : SyncVMCC::COND_LT;
+
   BuildMI(BB, DL, TII.get(SyncVM::JCC))
       .addMBB(copy1MBB)
       .addMBB(copy0MBB)
-      .addImm(MI.getOperand(3).getCImm()->getZExtValue());
+      .addImm(CC);
 
   //  copy0MBB:
   //   %FalseValue = ...
   //   # fallthrough to copy1MBB
   BB = copy0MBB;
-  BuildMI(BB, DL, TII.get(SyncVM::JCC))
-      .addMBB(copy1MBB)
-      .addMBB(copy1MBB)
-      .addImm(SyncVMCC::COND_NONE);
 
-  // Update machine-CFG edges
-  BB->addSuccessor(copy1MBB);
+  Register VReg2 = RegInfo.createVirtualRegister(&SyncVM::GR256RegClass);
+  BuildMI(BB, DL, TII.get(SyncVM::CONST), VReg2)
+    .addImm(0);
 
-  //  copy1MBB:
-  //   %Result = phi [ %FalseValue, copy0MBB ], [ %TrueValue, thisMBB ]
-  //  ...
-  BB = copy1MBB;
-  BuildMI(*BB, BB->begin(), DL, TII.get(SyncVM::PHI), MI.getOperand(0).getReg())
-      .addReg(MI.getOperand(2).getReg())
-      .addMBB(copy0MBB)
-      .addReg(MI.getOperand(1).getReg())
-      .addMBB(thisMBB);
+  if (!copy11MBB) {
+    BuildMI(BB, DL, TII.get(SyncVM::JCC))
+        .addMBB(copy1MBB)
+        .addMBB(copy1MBB)
+        .addImm(SyncVMCC::COND_NONE);
+    // Update machine-CFG edges
+    BB->addSuccessor(copy1MBB);
+    //  copy1MBB:
+    //   %Result = phi [ %FalseValue, copy0MBB ], [ %TrueValue, thisMBB ]
+    //  ...
+    BB = copy1MBB;
+  } else {
+    BuildMI(BB, DL, TII.get(SyncVM::JCC))
+        .addMBB(copy11MBB)
+        .addMBB(copy11MBB)
+        .addImm(SyncVMCC::COND_NONE);
+    BB->addSuccessor(copy11MBB);
+    //  copy1MBB:
+    //   %Result = phi [ %FalseValue, copy0MBB ], [ %TrueValue, thisMBB ]
+    //  ...
+    BB = copy11MBB;
+  }
+
+  if (Opc == SyncVM::Select) {
+    BuildMI(*BB, BB->begin(), DL, TII.get(SyncVM::PHI),
+            MI.getOperand(0).getReg())
+        .addReg(MI.getOperand(2).getReg())
+        .addMBB(copy0MBB)
+        .addReg(MI.getOperand(1).getReg())
+        .addMBB(thisMBB);
+  } else {
+    BuildMI(*BB, BB->begin(), DL, TII.get(SyncVM::PHI),
+            MI.getOperand(0).getReg())
+        .addReg(VReg2)
+        .addMBB(copy0MBB)
+        .addReg(VReg1)
+        .addMBB(copy1MBB);
+  }
 
   MI.eraseFromParent(); // The pseudo instruction is gone now.
   return BB;
