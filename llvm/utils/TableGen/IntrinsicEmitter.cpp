@@ -249,8 +249,8 @@ enum IIT_Info {
   IIT_BF16 = 48,
   IIT_STRUCT9 = 49,
   IIT_V256 = 50,
-  IIT_AMX  = 51
   // SyncVM local begin
+  IIT_AMX  = 51,
   IIT_I256 = 52
   // SyncVM local end
 };

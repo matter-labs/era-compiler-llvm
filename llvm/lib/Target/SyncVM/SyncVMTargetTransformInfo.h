@@ -48,8 +48,8 @@ public:
   /// @{
 
   unsigned getNumberOfRegisters(unsigned ClassID) const;
-  unsigned getRegisterBitWidth(bool Vector) const;
-  unsigned getArithmeticInstrCost(
+  TypeSize getRegisterBitWidth(bool Vector) const;
+  InstructionCost getArithmeticInstrCost(
       unsigned Opcode, Type *Ty,
       TTI::TargetCostKind CostKind = TTI::TCK_SizeAndLatency,
       TTI::OperandValueKind Opd1Info = TTI::OK_AnyValue,
@@ -58,7 +58,8 @@ public:
       TTI::OperandValueProperties Opd2PropInfo = TTI::OP_None,
       ArrayRef<const Value *> Args = ArrayRef<const Value *>(),
       const Instruction *CxtI = nullptr);
-  unsigned getVectorInstrCost(unsigned Opcode, Type *Val, unsigned Index);
+  InstructionCost getVectorInstrCost(unsigned Opcode, Type *Val,
+                                     unsigned Index);
 
   Type *getMemcpyLoopLoweringType(LLVMContext &Context, Value *Length,
                                   unsigned SrcAddrSpace, unsigned DestAddrSpace,
@@ -66,13 +67,10 @@ public:
     return IntegerType::get(Context, 256);
   }
 
-  void getMemcpyLoopResidualLoweringType(SmallVectorImpl<Type *> &OpsOut,
-                                         LLVMContext &Context,
-                                         unsigned RemainingBytes,
-                                         unsigned SrcAddrSpace,
-                                         unsigned DestAddrSpace,
-                                         unsigned SrcAlign,
-                                         unsigned DestAlign) const {
+  void getMemcpyLoopResidualLoweringType(
+      SmallVectorImpl<Type *> &OpsOut, LLVMContext &Context,
+      unsigned RemainingBytes, unsigned SrcAddrSpace, unsigned DestAddrSpace,
+      unsigned SrcAlign, unsigned DestAlign) const {
     assert(RemainingBytes < 32);
     OpsOut.push_back(Type::getIntNTy(Context, RemainingBytes * 8));
   }

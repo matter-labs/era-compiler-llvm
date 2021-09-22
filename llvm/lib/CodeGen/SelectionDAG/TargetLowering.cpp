@@ -7589,12 +7589,12 @@ TargetLowering::expandUnalignedLoad(LoadSDNode *LD, SelectionDAG &DAG) const {
   if (DAG.getTarget().getTargetTriple().isSyncVM()) {
     unsigned NumBits = LoadedVT.getSizeInBits();
     assert(NumBits == 256);
+    auto Const32 = DAG.getConstant(APInt(256, 32, false), dl, MVT::i256);
     auto Rem =
         DAG.getNode(ISD::UREM, dl, MVT::i256, Ptr,
                     DAG.getConstant(APInt(256, 32, false), dl, MVT::i256));
     auto Base1 = DAG.getNode(ISD::SUB, dl, MVT::i256, Ptr, Rem);
-    Rem = DAG.getNode(ISD::MUL, dl, MVT::i256, Rem,
-                      DAG.getConstant(APInt(256, 32, false), dl, MVT::i256));
+    Rem = DAG.getNode(ISD::MUL, dl, MVT::i256, Rem, Const32);
 
     auto Lo = DAG.getExtLoad(ISD::NON_EXTLOAD, dl, MVT::i256, Chain, Base1,
                              LD->getPointerInfo(), MVT::i256, Align(32),
@@ -7602,7 +7602,7 @@ TargetLowering::expandUnalignedLoad(LoadSDNode *LD, SelectionDAG &DAG) const {
     auto LoChain = Lo.getValue(1);
     Lo = DAG.getNode(ISD::SRL, dl, MVT::i256, Lo, Rem);
 
-    auto Base2 = DAG.getObjectPtrOffset(dl, Base1, 32);
+    auto Base2 = DAG.getObjectPtrOffset(dl, Base1, Const32);
     auto Hi = DAG.getExtLoad(ISD::NON_EXTLOAD, dl, MVT::i256, Chain, Base2,
                              LD->getPointerInfo(), MVT::i256, Align(32),
                              LD->getMemOperand()->getFlags(), LD->getAAInfo());
@@ -7773,12 +7773,10 @@ SDValue TargetLowering::expandUnalignedStore(StoreSDNode *ST,
   if (DAG.getTarget().getTargetTriple().isSyncVM()) {
     unsigned NumBits = StoreMemVT.getSizeInBits();
     assert(NumBits == 256);
-    auto Rem =
-        DAG.getNode(ISD::UREM, dl, MVT::i256, Ptr,
-                    DAG.getConstant(APInt(256, 32, false), dl, MVT::i256));
+    auto Const32 = DAG.getConstant(APInt(256, 32, false), dl, MVT::i256);
+    auto Rem = DAG.getNode(ISD::UREM, dl, MVT::i256, Ptr, Const32);
     auto Base1 = DAG.getNode(ISD::SUB, dl, MVT::i256, Ptr, Rem);
-    Rem = DAG.getNode(ISD::MUL, dl, MVT::i256, Rem,
-                      DAG.getConstant(APInt(256, 32, false), dl, MVT::i256));
+    Rem = DAG.getNode(ISD::MUL, dl, MVT::i256, Rem, Const32);
     auto RemI =
         DAG.getNode(ISD::SUB, dl, MVT::i256,
                     DAG.getConstant(APInt(256, 256, false), dl, MVT::i256),
@@ -7799,7 +7797,7 @@ SDValue TargetLowering::expandUnalignedStore(StoreSDNode *ST,
                                      ST->getPointerInfo(), MVT::i256, Align(32),
                                      ST->getMemOperand()->getFlags());
 
-    auto Base2 = DAG.getObjectPtrOffset(dl, Base1, 32);
+    auto Base2 = DAG.getObjectPtrOffset(dl, Base1, Const32);
     auto Hi = DAG.getExtLoad(ISD::NON_EXTLOAD, dl, MVT::i256, Chain, Base2,
                              ST->getPointerInfo(), MVT::i256, Align(32),
                              MachineMemOperand::MOLoad, ST->getAAInfo());

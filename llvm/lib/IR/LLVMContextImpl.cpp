@@ -28,7 +28,6 @@ static cl::opt<bool>
                           cl::init(false));
 
 LLVMContextImpl::LLVMContextImpl(LLVMContext &C)
-<<<<<<< HEAD
     : DiagHandler(std::make_unique<DiagnosticHandler>()),
       VoidTy(C, Type::VoidTyID), LabelTy(C, Type::LabelTyID),
       HalfTy(C, Type::HalfTyID), BFloatTy(C, Type::BFloatTyID),

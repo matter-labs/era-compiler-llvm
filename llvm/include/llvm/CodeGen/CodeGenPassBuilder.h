@@ -707,6 +707,11 @@ void CodeGenPassBuilder<Derived>::addPassesToHandleExceptions(
     addPass(WinEHPass(/*DemoteCatchSwitchPHIOnly=*/false));
     addPass(WasmEHPass());
     break;
+  // SyncVM local begin
+  case ExceptionHandling::SyncVM:
+    addPass(SyncVMEHPass());
+    break;
+  // SyncVM local end
   case ExceptionHandling::None:
     addPass(LowerInvokePass());
 

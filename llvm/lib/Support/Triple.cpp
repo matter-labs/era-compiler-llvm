@@ -1539,13 +1539,9 @@ Triple Triple::getBigEndianArchVariant() const {
   case Triple::x86_64:
   case Triple::xcore:
   case Triple::ve:
-<<<<<<< HEAD
-  case Triple::csky:
-=======
   // SyncVM local begin
   case Triple::syncvm:
   // SyncVM local end
->>>>>>> 42354370cc17 (Register syncvm target)
 
   // ARM is intentionally unsupported here, changing the architecture would
   // drop any arch suffixes.
