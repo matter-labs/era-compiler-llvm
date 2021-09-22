@@ -24,19 +24,19 @@ unsigned SyncVMTTIImpl::getNumberOfRegisters(unsigned ClassID) const {
   return Result;
 }
 
-unsigned SyncVMTTIImpl::getRegisterBitWidth(bool Vector) const {
+TypeSize SyncVMTTIImpl::getRegisterBitWidth(bool Vector) const {
   (void)Vector;
-  return 256;
+  return TypeSize::Fixed(256);
 }
 
-unsigned SyncVMTTIImpl::getArithmeticInstrCost(
+InstructionCost SyncVMTTIImpl::getArithmeticInstrCost(
     unsigned Opcode, Type *Ty, TTI::TargetCostKind CostKind,
     TTI::OperandValueKind Opd1Info, TTI::OperandValueKind Opd2Info,
     TTI::OperandValueProperties Opd1PropInfo,
     TTI::OperandValueProperties Opd2PropInfo, ArrayRef<const Value *> Args,
     const Instruction *CxtI) {
 
-  unsigned Cost = BasicTTIImplBase<SyncVMTTIImpl>::getArithmeticInstrCost(
+  auto Cost = BasicTTIImplBase<SyncVMTTIImpl>::getArithmeticInstrCost(
       Opcode, Ty, CostKind, Opd1Info, Opd2Info, Opd1PropInfo, Opd2PropInfo);
 
   switch (Opcode) {
@@ -47,8 +47,9 @@ unsigned SyncVMTTIImpl::getArithmeticInstrCost(
   return Cost;
 }
 
-unsigned SyncVMTTIImpl::getVectorInstrCost(unsigned Opcode, Type *Val,
-                                           unsigned Index) {
-  unsigned Cost = BasicTTIImplBase::getVectorInstrCost(Opcode, Val, Index);
+InstructionCost SyncVMTTIImpl::getVectorInstrCost(unsigned Opcode, Type *Val,
+                                                  unsigned Index) {
+  InstructionCost Cost =
+      BasicTTIImplBase::getVectorInstrCost(Opcode, Val, Index);
   return Cost + 25 * TargetTransformInfo::TCC_Expensive;
 }

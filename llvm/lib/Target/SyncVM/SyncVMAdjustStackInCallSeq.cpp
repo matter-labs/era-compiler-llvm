@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "SyncVM.h"
+#include <deque>
 
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"

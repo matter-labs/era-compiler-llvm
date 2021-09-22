@@ -559,7 +559,7 @@ void SelectionDAGLegalize::LegalizeStoreOps(SDNode *Node) {
                           ST->getOriginalAlign(), MMOFlags, AAInfo);
     ReplaceNode(SDValue(Node, 0), Result);
     // SyncVM local begin
-  } else if (!StVT.isVector() && !isPowerOf2_64(StWidth.getFixedSize()) ||
+  } else if ((!StVT.isVector() && !isPowerOf2_64(StWidth.getFixedSize())) ||
              (DAG.getTarget().getTargetTriple().isSyncVM() && StWidth != 256 &&
               ST->getOriginalAlign().value() % 32 != 0)) {
     if (DAG.getTarget().getTargetTriple().isSyncVM()) {
@@ -794,7 +794,7 @@ void SelectionDAGLegalize::LegalizeLoadOps(SDNode *Node) {
     Value = Result;
     Chain = Ch;
     // SyncVM local begin
-  } else if (!isPowerOf2_64(SrcWidth.getKnownMinSize() ||
+  } else if (!isPowerOf2_64(SrcWidth.getKnownMinSize()) ||
              (DAG.getTarget().getTargetTriple().isSyncVM() && SrcWidth != 256 &&
               LD->getOriginalAlign().value() % 32 != 0)) {
     if (DAG.getTarget().getTargetTriple().isSyncVM()) {

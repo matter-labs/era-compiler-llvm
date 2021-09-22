@@ -20,7 +20,7 @@ void SyncVMSubtarget::anchor() { }
 
 SyncVMSubtarget::SyncVMSubtarget(const Triple &TT, const std::string &CPU,
                                  const std::string &FS, const TargetMachine &TM)
-    : SyncVMGenSubtargetInfo(TT, CPU, FS),
+    : SyncVMGenSubtargetInfo(TT, CPU, /*TuneCPU*/ CPU, FS),
       FrameLowering(),
       InstrInfo(),
       TLInfo(TM, *this)
