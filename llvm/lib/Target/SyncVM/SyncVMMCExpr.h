@@ -8,6 +8,7 @@
 #ifndef SYNCVM_LIB_TARGET_TVM_TVMMVEXPR_H
 #define SYNCVM_LIB_TARGET_TVM_TVMMVEXPR_H
 
+#include "llvm/ADT/StringRef.h"
 #include "llvm/MC/MCExpr.h"
 
 namespace llvm {

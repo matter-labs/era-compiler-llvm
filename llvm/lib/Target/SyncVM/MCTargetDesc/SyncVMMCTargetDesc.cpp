@@ -54,7 +54,7 @@ static MCInstPrinter *createSyncVMMCInstPrinter(const Triple &T,
 
 static MCSubtargetInfo *
 createSyncVMMCSubtargetInfo(const Triple &TT, StringRef CPU, StringRef FS) {
-  return nullptr;
+  return createSyncVMMCSubtargetInfoImpl(TT, CPU, /*TuneCPU*/ CPU, FS);
 }
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTargetMC() {

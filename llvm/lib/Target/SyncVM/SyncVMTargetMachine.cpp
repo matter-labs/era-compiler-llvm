@@ -25,7 +25,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   RegisterTargetMachine<SyncVMTargetMachine> X(getTheSyncVMTarget());
   // TODO: optimize switch lowering
   auto &PR = *PassRegistry::getPassRegistry();
-  initializeLowerSwitchPass(PR);
+  initializeLowerSwitchLegacyPassPass(PR);
   initializeSyncVMCodegenPreparePass(PR);
   initializeSyncVMExpandPseudoPass(PR);
   initializeSyncVMLowerIntrinsicsPass(PR);

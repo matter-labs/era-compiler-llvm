@@ -1,3 +1,5 @@
+add_llvm_component_group(SyncVM)
+
 set(LLVM_TARGET_DEFINITIONS SyncVM.td)
 
 tablegen(LLVM SyncVMGenAsmMatcher.inc -gen-asm-matcher)
