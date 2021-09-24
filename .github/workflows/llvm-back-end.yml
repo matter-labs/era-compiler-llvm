@@ -78,25 +78,25 @@ jobs:
         ${DOCKER_RUNNER} exec -T zk sccache --start-server
 
     #DEBUG
-    - run: ${DOCKER_RUN} pwd || true
-    - run: ${DOCKER_RUN} --project-directory='/usr/src/zksync/compiler-llvm' pwd || true
-    - run: ${DOCKER_RUN} --project-directory='./compiler-llvm' pwd || true
-    - run: ${DOCKER_RUN} --project-directory=compiler-llvm pwd || true
-    - run: ${DOCKER_RUN} -w /usr/src/zksync/compiler-llvm/ pwd || true
-    - run: ${DOCKER_RUN} -w ${WORKSPACE}/compiler-llvm/ pwd || true
+    # - run: ${DOCKER_RUN} pwd || true
+    # - run: ${DOCKER_RUN} --project-directory='/usr/src/zksync/compiler-llvm' pwd || true
+    # - run: ${DOCKER_RUN} --project-directory='./compiler-llvm' pwd || true
+    # - run: ${DOCKER_RUN} --project-directory=compiler-llvm pwd || true
+    # - run: ${DOCKER_RUN} -w /usr/src/zksync/compiler-llvm/ pwd || true
+    # - run: ${DOCKER_RUN} -w ${WORKSPACE}/compiler-llvm/ pwd || true
     
     # WORKAROUND: should be in DockerFile
-    - run: |
-        ${DOCKER_RUN} apt install sudo wget
-        # ${DOCKER_RUN} wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-        # ${DOCKER_RUN} sudo apt-add-repository "deb http://apt.llvm.org/buster/ llvm-toolchain-buster-11 main"
-        # ${DOCKER_RUN} sudo apt-get --yes update
-        # ${DOCKER_RUN} sudo apt-get --yes install cmake clang-11 lld-11
+    # - run: |
+    #     ${DOCKER_RUN} apt install sudo wget
+    #     # ${DOCKER_RUN} wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+    #     # ${DOCKER_RUN} sudo apt-add-repository "deb http://apt.llvm.org/buster/ llvm-toolchain-buster-11 main"
+    #     # ${DOCKER_RUN} sudo apt-get --yes update
+    #     # ${DOCKER_RUN} sudo apt-get --yes install cmake clang-11 lld-11
 
-- name: Building the LLVM framework
-  run: |
-    chmod +x compiler-llvm/build.sh
-    ${DOCKER_RUN} sh -c "cd compiler-llvm && ./build.sh release"
+    - name: Building the LLVM framework
+      run: |
+        chmod +x compiler-llvm/build.sh
+        ${DOCKER_RUN} sh -c "cd compiler-llvm && ./build.sh release"
 
     - name: Downloading the Solidity compiler binaries
       run: |
@@ -112,25 +112,20 @@ jobs:
         ${DOCKER_RUN} mkdir -pv ${HOME}/opt/solc
         ${DOCKER_RUN} cp -R solc ${HOME}/opt
     
-    #DEBUG
-    - run: ${DOCKER_RUN} sh -c PATH="${HOME}/opt/solc/:${PATH}" || true
-    - run: ${DOCKER_RUN} sh -c export PATH="${PATH}:${HOME}/opt/solc/" || true
-    - run: ${DOCKER_RUN} PATH="${HOME}/opt/solc/:${PATH}" || true
-    - run: ${DOCKER_RUN} echo ${PATH}
-    - run: ${DOCKER_RUN} env
-
-    #DEBUG
-    - run: ${DOCKER_RUN} ps x
+    # #DEBUG
+    # - run: ${DOCKER_RUN} sh -c PATH="${HOME}/opt/solc/:${PATH}" || true
+    # - run: ${DOCKER_RUN} sh -c export PATH="${PATH}:${HOME}/opt/solc/" || true
+    # - run: ${DOCKER_RUN} PATH="${HOME}/opt/solc/:${PATH}" || true
+    # - run: ${DOCKER_RUN} echo ${PATH}
+    # - run: ${DOCKER_RUN} env
 
     # WORKAROUND: for fix cargo | should be in DockerFile
-    - run: ${DOCKER_RUN} sh -c "mkdir ~/.ssh && ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts"
-    - run: ${DOCKER_RUN} sh -c 'eval eval "$(ssh-agent -s)"'
-    - run: ${DOCKER_RUN} sh -c "ssh-add" || true
-    # - run: ${DOCKER_RUN} sudo apt-get --yes update
-    # - run: ${DOCKER_RUN} sudo apt-get --yes upgrade
+    # - run: ${DOCKER_RUN} sh -c "mkdir ~/.ssh && ssh-keyscan -t rsa github.com >> ~/.ssh/known_hosts"
+    # - run: ${DOCKER_RUN} sh -c 'eval eval "$(ssh-agent -s)"'
+    # - run: ${DOCKER_RUN} sh -c "ssh-add" || true
     # - run: ${DOCKER_RUN} sudo apt-get --yes install openssh-client
     #DEBUG
-    - run: ${DOCKER_RUN} sh -c "ssh -vT git@github.com" || true
+    # - run: ${DOCKER_RUN} sh -c "ssh -vT git@github.com" || true
 
     - run: ${DOCKER_RUN} sh -c "which git"
     - run: ${DOCKER_RUN} sh -c "cd compiler-tester && \
@@ -143,23 +138,18 @@ jobs:
     
     #git config --global github.user user
 
-    - name: test
-      run: |
-        pwd
-        git config --global github.token ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }} || true
-      working-directory: compiler-tester
+    # - name: test
+    #   run: |
+    #     pwd
+    #     git config --global github.token ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }} || true
+    #   working-directory: compiler-tester
 
-    - run: ${DOCKER_RUN} sh -c "cat compiler-tester/.gitconfig"
-    - run: cat compiler-tester/.gitconfig
+    # - run: ${DOCKER_RUN} sh -c "cat compiler-tester/.gitconfig"
+    # - run: cat compiler-tester/.gitconfig
 
-    - run: ${DOCKER_RUN} sh -c "cd compiler-tester && \
-          /usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION:\ basic ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}" || true
-    - run: ${DOCKER_RUN} sh -c "cd compiler-tester && cargo build --verbose"
-
-
-
-    #DEBUG
-    - run: ${DOCKER_RUN} ps x
+    # - run: ${DOCKER_RUN} sh -c "cd compiler-tester && \
+    #       /usr/bin/git config --local http.https://github.com/.extraheader AUTHORIZATION:\ basic ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}" || true
+    # - run: ${DOCKER_RUN} sh -c "cd compiler-tester && cargo build --verbose"
 
     # ssh_auth_sock <- system("echo $SSH_AUTH_SOCK", intern = TRUE)
     # Sys.setenv(SSH_AUTH_SOCK = ssh_auth_sock)
