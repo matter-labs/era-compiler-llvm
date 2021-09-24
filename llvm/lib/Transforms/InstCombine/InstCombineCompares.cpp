@@ -5879,13 +5879,8 @@ Instruction *InstCombinerImpl::visitICmpInst(ICmpInst &I) {
 // SyncVM local end
   }
 
-  // SyncVM local begin
-  // FIXME: support umulo
-#if 0
   if (Instruction *Res = foldICmpEquality(I))
     return Res;
-#endif
-  // SyncVM local end
 
   if (Instruction *Res = foldICmpOfUAddOv(I))
     return Res;
