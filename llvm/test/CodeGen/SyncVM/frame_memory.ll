@@ -22,6 +22,26 @@ define void @store_to_frame2(i256 %par) nounwind {
   ret void
 }
 
+; CHECK-LABEL: store_to_frame_select
+define void @store_to_frame_select(i256 %par, i1 %flag) nounwind {
+  %1 = alloca i256
+  %2 = alloca i256
+  %3 = select i1 %flag, i256* %1, i256*%2
+; CHECK:   sfll #0, r0, r4
+; CHECK:   sfll #32, r0, r3
+; CHECK:   sub r2, r0, r0
+; CHECK:   jne .LBB2_2, .LBB2_1
+; CHECK: .LBB2_1:
+; CHECK:   add r4, r0, r3
+; CHECK: .LBB2_2:
+; CHECK:   sfll #32, r2, r2
+; CHECK:   sflh #0, r2, r2
+; CHECK:   div r3, r2, r2, r0
+; CHECK:   mov r1, 1(sp-r2)
+  store i256 %par, i256* %3
+  ret void
+}
+
 ; CHECK-LABEL: load_from_frame
 define i256 @load_from_frame(i256 %par) nounwind {
   %1 = alloca i256
