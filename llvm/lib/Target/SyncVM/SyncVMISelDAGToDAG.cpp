@@ -128,11 +128,15 @@ SyncVMDAGToDAGISel::MergeAddr(const SyncVMISelAddressMode &LHS,
 /// specified addressing mode without any further recursion.
 bool SyncVMDAGToDAGISel::MatchAddressBase(SDValue N, SyncVMISelAddressMode &AM,
                                           bool IsStackAddr) {
-  // Is the base register already occupied?
   if ((!IsStackAddr && AM.BaseType != SyncVMISelAddressMode::RegBase) ||
       AM.Base.Reg.getNode()) {
     // If so, we cannot select it.
     return true;
+  }
+
+  if (IsStackAddr && (N->getOpcode() == SyncVMISD::SELECT_CC ||
+                      N->getOpcode() == ISD::UNDEF)) {
+    AM.BaseType = SyncVMISelAddressMode::StackRegBase;
   }
 
   // Default, generate it as a register.
