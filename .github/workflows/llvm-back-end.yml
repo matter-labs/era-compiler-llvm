@@ -1,0 +1,64 @@
+name: LLVM testing
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+jobs:
+  llvm_testing:
+    runs-on: [self-hosted, CI-worker]
+    steps:
+    - uses: AutoModality/action-clean@v1.1.0
+    - uses: webfactory/ssh-agent@v0.5.3
+      with:
+        ssh-private-key: ${{ secrets.SSH_PK_BOT }}
+    - name: prepare run 
+      run: |
+        echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
+        echo "COMPOSE_PROJECT_NAME=llvm_testing" >> $GITHUB_ENV
+        echo "DOCKER_CMD=docker-compose exec -T zk" >> $GITHUB_ENV
+
+    - name: Checkout https://github.com/matter-labs/compiler-tester
+      uses: actions/checkout@v2
+      with:
+        repository: matter-labs/compiler-tester
+        submodules: recursive
+        token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
+        path: 'compiler-tester'
+
+    - name: Checkout https://github.com/matter-labs/compiler-llvm
+      uses: actions/checkout@v2
+      with:
+        path: compiler-llvm
+
+    - name: start-services
+      run: |
+        docker-compose pull
+        docker-compose up -d zk
+      env:
+          SSH_PRIVATE_KEY: ${{secrets.SSH_PK_BOT}}
+
+    - name: Tuning a docker. Setting a ssh key.
+      run: |
+        ${DOCKER_CMD} sh -c 'mkdir -pv /root/.ssh'
+        ${DOCKER_CMD} sh -c 'echo "${SSH_PRIVATE_KEY}" > /root/.ssh/id_rsa'
+        ${DOCKER_CMD} sh -c 'chmod 400 /root/.ssh/id_rsa'
+        ${DOCKER_CMD} sh -c 'touch /root/.ssh/known_hosts'
+        ${DOCKER_CMD} sh -c 'ssh-keyscan github.com >> /root/.ssh/known_hosts'
+        ${DOCKER_CMD} sh -c 'env'
+
+    - name: Building the LLVM framework
+      run: |
+        chmod +x compiler-llvm/build.sh
+        # LLVM_VERSION is workaround. It should move to docker.
+        ${DOCKER_CMD} sh -c "cd compiler-llvm && LLVM_VERSION=13 ./build.sh release ci"
+
+    - name: Building and running the compiler tester
+      run: ${DOCKER_CMD} sh -c "cd compiler-tester && ./run.sh"
+
+    - name: Clearing workspace. Removing used and trash images
+      if: always()
+      run: |
+        # Removing trash images. This command isn't remove pulled work image.
+        docker image prune -f --all
+        docker-compose down --rmi local -v
