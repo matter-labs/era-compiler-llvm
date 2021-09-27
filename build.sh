@@ -19,8 +19,10 @@ case "${1}" in
 esac
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    brew update
-    brew install cmake
+    if [[ ! -v "${CI_RUNNING}" ]]; then
+        brew update
+        brew install cmake
+    fi
 
     cmake \
         -S 'llvm' \
@@ -41,10 +43,12 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     cd "build-${DIRECTORY_SUFFIX}/"
     make -j "$(sysctl -n hw.logicalcpu)"
 elif [[ -f '/etc/arch-release' ]]; then
-    sudo pacman --sync --refresh --sysupgrade --noconfirm \
-        cmake \
-	clang \
-	lld
+    if [[ ! -v "${CI_RUNNING}" ]]; then
+        sudo pacman --sync --refresh --sysupgrade --noconfirm \
+            cmake \
+            clang \
+            lld
+    fi
 
     cmake \
         -S 'llvm' \
@@ -68,11 +72,13 @@ elif [[ -f '/etc/arch-release' ]]; then
     cd "build-${DIRECTORY_SUFFIX}/"
     make -j "$(nproc)"
 elif [[ "$OSTYPE" == "linux-gnu" ]]; then
-    sudo apt --yes update
-    sudo apt --yes install \
-        cmake \
-        clang-11 \
-        lld-11
+    if [[ ! -v "${CI_RUNNING}" ]]; then
+        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add - && \
+        sudo apt-add-repository "deb http://apt.llvm.org/buster/ llvm-toolchain-buster-13 main" && \
+        sudo apt-get --yes update && \
+        sudo apt-get --yes install cmake clang-13 lld-13
+        export LLVM_VERSION='13'
+    fi
 
     cmake \
         -S 'llvm' \
@@ -80,19 +86,19 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         -G 'Unix Makefiles' \
         -DCMAKE_INSTALL_PREFIX="${HOME}/opt/llvm-${DIRECTORY_SUFFIX}/" \
         -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
-        -DCMAKE_C_COMPILER='clang-11' \
-        -DCMAKE_CXX_COMPILER='clang++-11' \
+        -DCMAKE_C_COMPILER="clang-${LLVM_VERSION}" \
+        -DCMAKE_CXX_COMPILER="clang++-${LLVM_VERSION}" \
         -DLLVM_TARGETS_TO_BUILD='X86' \
         -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD='SyncVM' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
-        -DLLVM_USE_LINKER='lld-11' \
+        -DLLVM_USE_LINKER="lld-${LLVM_VERSION}" \
         -DLLVM_BUILD_DOCS='Off' \
         -DLLVM_INCLUDE_DOCS='Off' \
         -DLLVM_ENABLE_DOXYGEN='Off' \
         -DLLVM_ENABLE_SPHINX='Off' \
         -DLLVM_ENABLE_OCAMLDOC='Off' \
         -DLLVM_ENABLE_BINDINGS='Off'
-
+    
     cd "build-${DIRECTORY_SUFFIX}/"
     make -j "$(nproc)"
 fi
