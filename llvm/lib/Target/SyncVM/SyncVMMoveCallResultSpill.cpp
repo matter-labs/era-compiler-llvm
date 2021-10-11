@@ -93,6 +93,7 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
     }
 
     auto *FalseMBB = Terminator.getOperand(1).getMBB();
+    auto *TrueMBB = Terminator.getOperand(0).getMBB();
     if (FalseMBB->pred_size() != 1) {
       DebugLoc DL = Terminator.getDebugLoc();
       MachineFunction *F = FalseMBB->getParent();
@@ -118,7 +119,9 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
     for (auto IIt = InstrToMove.begin(), IE = InstrToMove.end(); IIt != IE;
          ++IIt) {
       (*IIt)->removeFromParent();
+      auto NewMI = MF.CloneMachineInstr(*IIt);
       FalseMBB->insert(FalseMBB->begin(), *IIt);
+      TrueMBB->insert(TrueMBB->begin(), NewMI);
       Changed = true;
     }
   }
