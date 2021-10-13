@@ -42,21 +42,24 @@ INITIALIZE_PASS(SyncVMCodegenPrepare, "syncvm-codegen-prepare",
                 "Revert usopported instcombine changes", false, false)
 
 bool SyncVMCodegenPrepare::runOnFunction(Function &F) {
+  bool Changed = false;
   std::vector<Instruction *> Replaced;
   for (auto &BB : F)
-    for (auto &I : BB) {
+    for (auto II = BB.begin(); II != BB.end(); ++II) {
+      auto &I = *II;
       switch (I.getOpcode()) {
       default:
         break;
-      case Instruction::ICmp:
+      case Instruction::ICmp: {
         auto &Cmp = cast<ICmpInst>(I);
+        IRBuilder<> Builder(&I);
         // unsigned cmp is ok
         if (Cmp.isUnsigned())
           break;
         CmpInst::Predicate P = Cmp.getPredicate();
         auto *CmpVal = dyn_cast<ConstantInt>(I.getOperand(1));
-        if (CmpVal && (CmpVal->getValue().isNullValue()
-                       || CmpVal->getValue().isOneValue())) {
+        if (CmpVal && (CmpVal->getValue().isNullValue() ||
+                       CmpVal->getValue().isOneValue())) {
           unsigned NumBits = CmpVal->getType()->getIntegerBitWidth();
           APInt Val = APInt(NumBits, -1, true).lshr(1);
           if (P == CmpInst::ICMP_SLT)
@@ -65,7 +68,6 @@ bool SyncVMCodegenPrepare::runOnFunction(Function &F) {
             break;
 
           if (P == CmpInst::ICMP_UGT) {
-            IRBuilder<> Builder(&I);
             auto Val256 =
                 Builder.CreateZExt(Builder.getInt(Val), Builder.getIntNTy(256));
             auto Op256 =
@@ -73,20 +75,40 @@ bool SyncVMCodegenPrepare::runOnFunction(Function &F) {
             auto *NewCmp = Builder.CreateICmp(P, Op256, Val256);
             if (CmpVal->getValue().isOneValue()) {
               auto *Cmp0 =
-                Builder.CreateICmp(CmpInst::ICMP_EQ, Op256,
-                                   Builder.getInt(APInt(256, 0, false)));
+                  Builder.CreateICmp(CmpInst::ICMP_EQ, Op256,
+                                     Builder.getInt(APInt(256, 0, false)));
               NewCmp = Builder.CreateOr(NewCmp, Cmp0);
             }
             I.replaceAllUsesWith(NewCmp);
             Replaced.push_back(&I);
+            Changed = true;
           }
         }
         break;
       }
+      // SyncVM has different semantic for shifts:
+      // x SHL y == x shl (y % 256),
+      // x LSHR y == x lshr (y % 256)
+      // So lshr is to be replaced with:
+      // (y >= 256) ? 0 : x lshr y
+      case Instruction::LShr:
+      case Instruction::Shl: {
+        IRBuilder<> Builder(&BB, std::next(II));
+        unsigned Size = II->getType()->getIntegerBitWidth();
+        auto *Const0 = Builder.getInt(APInt(Size, 0, false));
+        auto *Const255 = Builder.getInt(APInt(Size, 255, false));
+        auto *Icmp = Builder.CreateICmpUGT(I.getOperand(1), Const255);
+        auto *Select = Builder.CreateSelect(Icmp, Const0, &I);
+        I.replaceUsesWithIf(Select,
+                            [Select](Use &U) { return U.getUser() != Select; });
+        Changed = true;
+        break;
+      }
+      }
     }
   for (auto *I : Replaced)
     I->eraseFromParent();
-  return !Replaced.empty();
+  return Changed;
 }
 
 FunctionPass *llvm::createSyncVMCodegenPreparePass() {
