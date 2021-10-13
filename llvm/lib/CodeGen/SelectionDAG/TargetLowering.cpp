@@ -7590,33 +7590,35 @@ TargetLowering::expandUnalignedLoad(LoadSDNode *LD, SelectionDAG &DAG) const {
     unsigned NumBits = LoadedVT.getSizeInBits();
     assert(NumBits == 256);
     auto Const32 = DAG.getConstant(APInt(256, 32, false), dl, MVT::i256);
-    auto Rem =
-        DAG.getNode(ISD::UREM, dl, MVT::i256, Ptr,
-                    DAG.getConstant(APInt(256, 32, false), dl, MVT::i256));
+    auto Const8 = DAG.getConstant(APInt(256, 8, false), dl, MVT::i256);
+    auto Zero = DAG.getConstant(APInt(256, 0, false), dl, MVT::i256);
+    auto Rem = DAG.getNode(ISD::UREM, dl, MVT::i256, Ptr, Const32);
     auto Base1 = DAG.getNode(ISD::SUB, dl, MVT::i256, Ptr, Rem);
-    Rem = DAG.getNode(ISD::MUL, dl, MVT::i256, Rem, Const32);
+    Rem = DAG.getNode(ISD::MUL, dl, MVT::i256, Rem, Const8);
 
-    auto Lo = DAG.getExtLoad(ISD::NON_EXTLOAD, dl, MVT::i256, Chain, Base1,
-                             LD->getPointerInfo(), MVT::i256, Align(32),
-                             LD->getMemOperand()->getFlags(), LD->getAAInfo());
-    auto LoChain = Lo.getValue(1);
-    Lo = DAG.getNode(ISD::SRL, dl, MVT::i256, Lo, Rem);
+    auto LoOrig = DAG.getExtLoad(
+        ISD::NON_EXTLOAD, dl, MVT::i256, Chain, Base1,
+        MachinePointerInfo(LD->getAddressSpace()), MVT::i256, Align(32),
+        LD->getMemOperand()->getFlags(), LD->getAAInfo());
+    auto LoChain = LoOrig.getValue(1);
+    auto Lo = DAG.getNode(ISD::SRL, dl, MVT::i256, LoOrig, Rem);
 
     auto Base2 = DAG.getObjectPtrOffset(dl, Base1, Const32);
     auto Hi = DAG.getExtLoad(ISD::NON_EXTLOAD, dl, MVT::i256, Chain, Base2,
-                             LD->getPointerInfo(), MVT::i256, Align(32),
+                             MachinePointerInfo(LD->getAddressSpace()),
+                             MVT::i256, Align(32),
                              LD->getMemOperand()->getFlags(), LD->getAAInfo());
     auto HiChain = Hi.getValue(1);
-    auto Rem2 =
-        DAG.getNode(ISD::SUB, dl, MVT::i256,
-                    DAG.getConstant(APInt(256, 256, false), dl, MVT::i256),
-                    Rem);
+    auto Rem2 = DAG.getNode(
+        ISD::SUB, dl, MVT::i256,
+        DAG.getConstant(APInt(256, 256, false), dl, MVT::i256), Rem);
     Hi = DAG.getNode(ISD::SHL, dl, MVT::i256, Hi, Rem2);
 
     auto Result = DAG.getNode(ISD::OR, dl, MVT::i256, Hi, Lo);
+    Result = DAG.getSelectCC(dl, Rem, Zero, LoOrig, Result, ISD::SETEQ);
 
-    SDValue TF = DAG.getNode(ISD::TokenFactor, dl, MVT::Other, LoChain,
-                             HiChain);
+    SDValue TF =
+        DAG.getNode(ISD::TokenFactor, dl, MVT::Other, LoChain, HiChain);
 
     return std::make_pair(Result, TF);
   }
@@ -7774,44 +7776,49 @@ SDValue TargetLowering::expandUnalignedStore(StoreSDNode *ST,
     unsigned NumBits = StoreMemVT.getSizeInBits();
     assert(NumBits == 256);
     auto Const32 = DAG.getConstant(APInt(256, 32, false), dl, MVT::i256);
+    auto Const8 = DAG.getConstant(APInt(256, 8, false), dl, MVT::i256);
+    auto Zero = DAG.getConstant(APInt(256, 0, false), dl, MVT::i256);
     auto Rem = DAG.getNode(ISD::UREM, dl, MVT::i256, Ptr, Const32);
     auto Base1 = DAG.getNode(ISD::SUB, dl, MVT::i256, Ptr, Rem);
-    Rem = DAG.getNode(ISD::MUL, dl, MVT::i256, Rem, Const32);
-    auto RemI =
-        DAG.getNode(ISD::SUB, dl, MVT::i256,
-                    DAG.getConstant(APInt(256, 256, false), dl, MVT::i256),
-                    Rem);
+    Rem = DAG.getNode(ISD::MUL, dl, MVT::i256, Rem, Const8);
+    auto RemI = DAG.getNode(
+        ISD::SUB, dl, MVT::i256,
+        DAG.getConstant(APInt(256, 256, false), dl, MVT::i256), Rem);
 
-    auto Lo = DAG.getExtLoad(ISD::NON_EXTLOAD, dl, MVT::i256, Chain, Base1,
-                             ST->getPointerInfo(), MVT::i256, Align(32),
-                             MachineMemOperand::MOLoad, ST->getAAInfo());
+    auto Lo =
+        DAG.getExtLoad(ISD::NON_EXTLOAD, dl, MVT::i256, Chain, Base1,
+                       MachinePointerInfo(ST->getAddressSpace()), MVT::i256,
+                       Align(32), MachineMemOperand::MOLoad, ST->getAAInfo());
     auto LoChain = Lo.getValue(1);
-    auto LoMaskLoad = DAG.getConstant(APInt(256, -1, false), dl, MVT::i256);
-    auto LoMaskStore = DAG.getNode(ISD::SRL, dl, MVT::i256, LoMaskLoad, RemI);
-    LoMaskLoad = DAG.getNode(ISD::SHL, dl, MVT::i256, LoMaskLoad, Rem);
+    auto LoMaskLoad = DAG.getConstant(APInt(256, -1, true), dl, MVT::i256);
+    auto LoMaskStore = DAG.getNode(ISD::SHL, dl, MVT::i256, LoMaskLoad, Rem);
+    LoMaskLoad = DAG.getNode(ISD::SRL, dl, MVT::i256, LoMaskLoad, RemI);
     Lo = DAG.getNode(ISD::AND, dl, MVT::i256, Lo, LoMaskLoad);
-    auto ValLo = DAG.getNode(ISD::SRL, dl, MVT::i256, Val, RemI);
+    auto ValLo = DAG.getNode(ISD::SHL, dl, MVT::i256, Val, Rem);
     ValLo = DAG.getNode(ISD::OR, dl, MVT::i256, ValLo, Lo);
+    ValLo = DAG.getSelectCC(dl, Rem, Zero, Val, ValLo, ISD::SETEQ);
 
-    auto StoreLo = DAG.getTruncStore(LoChain, dl, ValLo, Base1,
-                                     ST->getPointerInfo(), MVT::i256, Align(32),
-                                     ST->getMemOperand()->getFlags());
+    auto StoreLo = DAG.getTruncStore(
+        LoChain, dl, ValLo, Base1, MachinePointerInfo(ST->getAddressSpace()),
+        MVT::i256, Align(32), ST->getMemOperand()->getFlags());
 
     auto Base2 = DAG.getObjectPtrOffset(dl, Base1, Const32);
-    auto Hi = DAG.getExtLoad(ISD::NON_EXTLOAD, dl, MVT::i256, Chain, Base2,
-                             ST->getPointerInfo(), MVT::i256, Align(32),
-                             MachineMemOperand::MOLoad, ST->getAAInfo());
-    auto HiChain = Hi.getValue(1);
-    Hi = DAG.getNode(ISD::AND, dl, MVT::i256, Hi, LoMaskStore);
-    auto ValHi = DAG.getNode(ISD::SHL, dl, MVT::i256, Val, Rem);
+    auto HiOrig =
+        DAG.getExtLoad(ISD::NON_EXTLOAD, dl, MVT::i256, Chain, Base2,
+                       MachinePointerInfo(ST->getAddressSpace()), MVT::i256,
+                       Align(32), MachineMemOperand::MOLoad, ST->getAAInfo());
+    auto HiChain = HiOrig.getValue(1);
+    auto Hi = DAG.getNode(ISD::AND, dl, MVT::i256, HiOrig, LoMaskStore);
+    auto ValHi = DAG.getNode(ISD::SRL, dl, MVT::i256, Val, RemI);
     ValHi = DAG.getNode(ISD::OR, dl, MVT::i256, ValHi, Hi);
+    ValHi = DAG.getSelectCC(dl, Rem, Zero, HiOrig, ValHi, ISD::SETEQ);
 
-    auto StoreHi = DAG.getTruncStore(HiChain, dl, ValHi, Base2,
-                                     ST->getPointerInfo(), MVT::i256, Align(32),
-                                     ST->getMemOperand()->getFlags());
+    auto StoreHi = DAG.getTruncStore(
+        HiChain, dl, ValHi, Base2, MachinePointerInfo(ST->getAddressSpace()),
+        MVT::i256, Align(32), ST->getMemOperand()->getFlags());
 
-    SDValue TF = DAG.getNode(ISD::TokenFactor, dl, MVT::Other, StoreHi,
-                             StoreLo);
+    SDValue TF =
+        DAG.getNode(ISD::TokenFactor, dl, MVT::Other, StoreHi, StoreLo);
 
     return TF;
   }

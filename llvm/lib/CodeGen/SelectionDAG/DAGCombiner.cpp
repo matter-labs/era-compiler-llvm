@@ -4369,14 +4369,14 @@ SDValue DAGCombiner::visitUDIVLike(SDValue N0, SDValue N1, SDNode *N) {
 // TODO: Implement architecture / profitability check
 // TODO: produces mulhu, which is not currently supported by SyncVM
 // SyncVM local begin
-#if 0
+  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
   // fold (udiv x, c) -> alternate
   AttributeList Attr = DAG.getMachineFunction().getFunction().getAttributes();
   if (isConstantOrConstantVector(N1) &&
       !TLI.isIntDivCheap(N->getValueType(0), Attr))
     if (SDValue Op = BuildUDIV(N))
       return Op;
-#endif
+  }
 // SyncVM local end
 
   return SDValue();
@@ -5174,7 +5174,7 @@ SDValue DAGCombiner::visitANDLike(SDValue N0, SDValue N1, SDNode *N) {
     }
   }
 
-#if 0
+  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
   // Reduce bit extract of low half of an integer to the narrower type.
   // (and (srl i64:x, K), KMask) ->
   //   (i64 zero_extend (and (srl (i32 (trunc i64:x)), K)), KMask)
@@ -5223,7 +5223,7 @@ SDValue DAGCombiner::visitANDLike(SDValue N0, SDValue N1, SDNode *N) {
       }
     }
   }
-#endif
+  }
 
   return SDValue();
 }
@@ -5443,6 +5443,11 @@ bool DAGCombiner::SearchForAndLoads(SDNode *N,
 }
 
 bool DAGCombiner::BackwardsPropagateMask(SDNode *N) {
+  // SyncVM local begin
+  // TODO: Consider removing when non-i256 UMA works.
+  if (DAG.getTarget().getTargetTriple().isSyncVM())
+    return false;
+  // SyncVM local end
   auto *Mask = dyn_cast<ConstantSDNode>(N->getOperand(1));
   if (!Mask)
     return false;
@@ -8935,11 +8940,11 @@ SDValue DAGCombiner::visitSRL(SDNode *N) {
       return NewSRL;
 
   // SyncVM local change begin
-#if 0
+  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
   // Attempt to convert a srl of a load into a narrower zero-extending load.
   if (SDValue NarrowLoad = ReduceLoadWidth(N))
     return NarrowLoad;
-#endif
+  }
   // SyncVM local change end
 
   // Here is a common situation. We want to optimize:
@@ -11394,7 +11399,7 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
   // Unless (and (load x) cst) will match as a zextload already and has
   // additional users.
   // SyncVM local begin
-#if 0
+  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
   if ((N0.getOpcode() == ISD::AND || N0.getOpcode() == ISD::OR ||
        N0.getOpcode() == ISD::XOR) &&
       isa<LoadSDNode>(N0.getOperand(0)) &&
@@ -11448,7 +11453,7 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
       }
     }
   }
-#endif
+  }
   // SyncVM local end
 
   // fold (zext (and/or/xor (shl/shr (load x), cst), cst)) ->
@@ -12368,6 +12373,9 @@ SDValue DAGCombiner::visitTRUNCATE(SDNode *N) {
       return DAG.getNode(ISD::TRUNCATE, SDLoc(N), VT, Shorter);
   }
 
+// SyncVM local begin
+// TODO: Consider removing when non-i256 UMA works
+  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
   // fold (truncate (load x)) -> (smaller load x)
   // fold (truncate (srl (load x), c)) -> (smaller load (x+c/evtbits))
   if (!LegalTypes || TLI.isTypeDesirableForOp(N0.getOpcode(), VT)) {
@@ -12388,6 +12396,8 @@ SDValue DAGCombiner::visitTRUNCATE(SDNode *N) {
       }
     }
   }
+  }
+// SyncVM local end
 
   // fold (trunc (concat ... x ...)) -> (concat ..., (trunc x), ...)),
   // where ... are all 'undef'.
