@@ -363,7 +363,7 @@ def THROW : SyncVMInstruction<0x071, (outs), (ins), "throw", [(int_syncvm_throw)
 }
 
 let isCall = 1,
-    Defs = [R1, R2, R3, R4, R5, R6],
+    Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15],
     Uses = [SP] in {
   def CALL : Call<0x43, (outs), (ins i16imm:$callee),
                   "call\t$callee", [(SyncVMcall tglobaladdr:$callee)]>;

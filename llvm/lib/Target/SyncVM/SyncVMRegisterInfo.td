@@ -4,11 +4,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-class SyncVMRegister<bits<4> num, string n> : Register<n> {
-  field bits<4> Num = num;
+class SyncVMRegister<bits<5> num, string n> : Register<n> {
+  field bits<5> Num = num;
 
   let Namespace = "SyncVM";
-  let HWEncoding{3-0} = num;
+  let HWEncoding{4-0} = num;
 }
 
 
@@ -23,8 +23,19 @@ def R3 : SyncVMRegister<3, "r3">;
 def R4 : SyncVMRegister<4, "r4">;
 def R5 : SyncVMRegister<5, "r5">;
 def R6 : SyncVMRegister<6, "r6">;
+def R7 : SyncVMRegister<7, "r7">;
+def R8 : SyncVMRegister<8, "r8">;
+def R9 : SyncVMRegister<9, "r9">;
+def R10 : SyncVMRegister<10, "r10">;
+def R11 : SyncVMRegister<11, "r11">;
+def R12 : SyncVMRegister<12, "r12">;
+def R13 : SyncVMRegister<13, "r13">;
+def R14 : SyncVMRegister<14, "r14">;
+def R15 : SyncVMRegister<15, "r15">;
 
-def GR256 : RegisterClass<"SyncVM", [i256], 256, (add R1, R2, R3, R4, R5, R6)>;
+def GR256 : RegisterClass<"SyncVM", [i256], 256, (add R1, R2, R3, R4, R5, R6,
+                                                      R7, R8, R9, R10, R11,
+                                                      R12, R13, R14, R15)>;
 
 //===----------------------------------------------------------------------===//
 // Special registers
@@ -39,13 +50,13 @@ def GR256 : RegisterClass<"SyncVM", [i256], 256, (add R1, R2, R3, R4, R5, R6)>;
 def R0 : SyncVMRegister<0, "r0">;
 def Z256 : RegisterClass<"SyncVM", [i256], 256, (add R0)>;
 
-def PC : SyncVMRegister<6, "pc">;
-def SP : SyncVMRegister<7, "sp">;
+def PC : SyncVMRegister<16, "pc">;
+def SP : SyncVMRegister<17, "sp">;
 
 // Flags pseudo register is to model flags. SyncVM doesn't privide explicit
 // access to it, but it's needed to track impilicit def and use of flages in
 // codegen.
-def Flags : SyncVMRegister<8, "#BAD#">;
+def Flags : SyncVMRegister<18, "#BAD#">;
 
 let isAllocatable = 0 in
 def SPR256 : RegisterClass<"SyncVM", [i256], 256, (add PC, SP, Flags)>;
