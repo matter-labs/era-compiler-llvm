@@ -44,7 +44,7 @@ define i256* @caller() {
   %alloc = alloca i256
   %alloc2 = alloca i256
 ; CHECK: add #32, r{{[1-6]}}, r1
-  %v = call i256* @callee(i256* %alloc, i256 0, i256 0, i256 0, i256 0, i256 0, i256* %alloc2)
+  %v = call i256* @callee(i256* %alloc, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256* %alloc2)
 ; CHECK: pop #0, r0
 ; CHECK: sfll #340282366920938463463374607431768211424, r2, r2
 ; CHECK: sflh #340282366920938463463374607431768211455, r2, r2
@@ -53,7 +53,7 @@ define i256* @caller() {
   ret i256* %v
 }
 
-define i256* @callee(i256* %ptr, i256 %a1, i256 %a2, i256 %a3, i256 %a4, i256 %a5, i256* %ptr2) {
+define i256* @callee(i256* %ptr, i256 %a1, i256 %a2, i256 %a3, i256 %a4, i256 %a5, i256 %a6, i256 %a7, i256 %a8, i256 %a9, i256 %a10, i256 %a11, i256 %a12, i256 %a13, i256 %a14, i256* %ptr2) {
 ; CHECK: mov r2, 1(sp-r{{[1-6]}})
   store i256 %a1, i256* %ptr
 ; CHECK: mov r2, 1(sp-r{{[1-6]}})

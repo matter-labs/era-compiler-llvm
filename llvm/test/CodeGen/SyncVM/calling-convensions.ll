@@ -100,8 +100,8 @@ define i256 @caller_i128.ret(i256 %a1) nounwind {
   ret i256 %2
 }
 
-; CHECK-LABEL: call.sevenarg
-define i256 @call.sevenarg() nounwind {
+; CHECK-LABEL: call.onestack
+define i256 @call.onestack() nounwind {
 ; CHECK: sfll #0, r2, r2
 ; CHECK: sflh #0, r2, r2
 ; CHECK: push #0, r2
@@ -110,14 +110,23 @@ define i256 @call.sevenarg() nounwind {
 ; CHECK: add r2, r0, r4
 ; CHECK: add r2, r0, r5
 ; CHECK: add r2, r0, r6
-; CHECK: call sevenarg
+; CHECK: add r2, r0, r7
+; CHECK: add r2, r0, r8
+; CHECK: add r2, r0, r9
+; CHECK: add r2, r0, r10
+; CHECK: add r2, r0, r11
+; CHECK: add r2, r0, r12
+; CHECK: add r2, r0, r13
+; CHECK: add r2, r0, r14
+; CHECK: add r2, r0, r15
+; CHECK: call onestack
 ; CHECK: pop #0, r0
-  %1 = call i256 @sevenarg(i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0)
+  %1 = call i256 @onestack(i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0)
   ret i256 %1
 }
 
-; CHECK-LABEL: call.eightarg
-define i256 @call.eightarg() nounwind {
+; CHECK-LABEL: call.twostack
+define i256 @call.twostack() nounwind {
 ; CHECK: sfll #2, r2, r2
 ; CHECK: sflh #0, r2, r2
 ; CHECK: push #0, r2
@@ -131,26 +140,44 @@ define i256 @call.eightarg() nounwind {
 ; CHECK: add r2, r0, r4
 ; CHECK: add r2, r0, r5
 ; CHECK: add r2, r0, r6
-; CHECK: call eightarg
+; CHECK: add r2, r0, r7
+; CHECK: add r2, r0, r8
+; CHECK: add r2, r0, r9
+; CHECK: add r2, r0, r10
+; CHECK: add r2, r0, r11
+; CHECK: add r2, r0, r12
+; CHECK: add r2, r0, r13
+; CHECK: add r2, r0, r14
+; CHECK: add r2, r0, r15
+; CHECK: call twostack
 ; CHECK: pop #1, r0
-  %1 = call i256 @eightarg(i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 1, i256 2)
+  %1 = call i256 @twostack(i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 1, i256 2)
   ret i256 %1
 }
 
-; CHECK-LABEL: sum8
-define i256 @sum8(i256 %a1, i256 %a2, i256 %a3, i256 %a4, i256 %a5, i256 %a6, i256 %a7, i256 %a8) nounwind {
+; CHECK-LABEL: sum17
+define i256 @sum17(i256 %a1, i256 %a2, i256 %a3, i256 %a4, i256 %a5, i256 %a6, i256 %a7, i256 %a8, i256 %a9, i256 %a10, i256 %a11, i256 %a12, i256 %a13, i256 %a14, i256 %a15, i256 %a16, i256 %a17) nounwind {
   %1 = add i256 %a1, %a2
   %2 = add i256 %1, %a3
   %3 = add i256 %2, %a4
   %4 = add i256 %3, %a5
   %5 = add i256 %4, %a6
+  %6 = add i256 %5, %a7
+  %7 = add i256 %6, %a8
+  %8 = add i256 %7, %a9
+  %9 = add i256 %8, %a10
+  %10 = add i256 %9, %a11
+  %11 = add i256 %10, %a12
+  %12 = add i256 %11, %a13
+  %13 = add i256 %12, %a14
+  %14 = add i256 %13, %a15
 ; CHECK: mov 1(sp), r3
 ; CHECK: add r2, r3, r2
-  %6 = add i256 %5, %a7
+  %15 = add i256 %14, %a16
 ; CHECK: mov 2(sp), r3
 ; CHECK: add r2, r3, r1
-  %7 = add i256 %6, %a8
-  ret i256 %7
+  %16 = add i256 %15, %a17
+  ret i256 %16
 }
 
 ; CHECK-LABEL: checkcc
@@ -178,8 +205,8 @@ declare i128 @i128.ret(i256 %a1) nounwind
 declare i256 @onearg(i256 %a1) nounwind
 declare i256 @twoarg(i256 %a1, i256 %a2) nounwind
 declare i256 @threearg(i256 %a1, i256 %a2, i256 %a3) nounwind
-declare i256 @sevenarg(i256, i256, i256, i256, i256, i256, i256) nounwind
-declare i256 @eightarg(i256, i256, i256, i256, i256, i256, i256, i256) nounwind
+declare i256 @onestack(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256) nounwind
+declare i256 @twostack(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256) nounwind
 
 declare ccc void @ccc(i256 %a1) nounwind
 declare fastcc void @fastcc(i256 %a1) nounwind
