@@ -523,6 +523,7 @@ SDValue SyncVMTargetLowering::LowerSREM(SDValue Op, SelectionDAG &DAG) const {
   auto DL = SDLoc(Op);
   auto LHS = Op.getOperand(0);
   auto RHS = Op.getOperand(1);
+  auto Zero = DAG.getConstant(APInt(256, 0, false), DL, MVT::i256);
   auto Mask = DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
   auto Mask2 = DAG.getConstant(APInt(256, -1, true).lshr(1), DL, MVT::i256);
   auto SignLHS = DAG.getNode(ISD::AND, DL, MVT::i256, LHS, Mask);
@@ -536,7 +537,9 @@ SDValue SyncVMTargetLowering::LowerSREM(SDValue Op, SelectionDAG &DAG) const {
   auto Value = DAG.getNode(ISD::UREM, DL, MVT::i256, LHS, RHS);
   auto Value2Compl = DAG.getNode(ISD::SUB, DL, MVT::i256, Mask, Value);
   Value2Compl = DAG.getNode(ISD::OR, DL, MVT::i256, Value2Compl, Mask);
-  return DAG.getSelectCC(DL, SignLHS, Mask, Value2Compl, Value, ISD::SETEQ);
+  auto Result =
+      DAG.getSelectCC(DL, SignLHS, Mask, Value2Compl, Value, ISD::SETEQ);
+  return DAG.getSelectCC(DL, Value, Zero, Value, Result, ISD::SETEQ);
 }
 
 SDValue SyncVMTargetLowering::LowerGlobalAddress(SDValue Op,
@@ -758,8 +761,7 @@ SyncVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   Register VReg1;
   if (Opc == SyncVM::SelectLT) {
     VReg1 = RegInfo.createVirtualRegister(&SyncVM::GR256RegClass);
-    BuildMI(copy1MBB, DL, TII.get(SyncVM::CONST), VReg1)
-      .addImm(-1);
+    BuildMI(copy1MBB, DL, TII.get(SyncVM::CONST), VReg1).addImm(-1);
     copy11MBB = F->CreateMachineBasicBlock(LLVM_BB);
     F->insert(I, copy11MBB);
     BuildMI(copy1MBB, DL, TII.get(SyncVM::JCC))
@@ -777,7 +779,7 @@ SyncVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
     copy1MBB->transferSuccessorsAndUpdatePHIs(BB);
   } else {
     copy11MBB->splice(copy11MBB->begin(), BB,
-                     std::next(MachineBasicBlock::iterator(MI)), BB->end());
+                      std::next(MachineBasicBlock::iterator(MI)), BB->end());
     copy11MBB->transferSuccessorsAndUpdatePHIs(BB);
   }
 
@@ -799,8 +801,7 @@ SyncVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   BB = copy0MBB;
 
   Register VReg2 = RegInfo.createVirtualRegister(&SyncVM::GR256RegClass);
-  BuildMI(BB, DL, TII.get(SyncVM::CONST), VReg2)
-    .addImm(0);
+  BuildMI(BB, DL, TII.get(SyncVM::CONST), VReg2).addImm(0);
 
   if (!copy11MBB) {
     BuildMI(BB, DL, TII.get(SyncVM::JCC))
