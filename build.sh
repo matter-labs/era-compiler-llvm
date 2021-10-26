@@ -79,8 +79,6 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
             clang-11 \
             lld-11
         export LLVM_VERSION=11
-    else
-        export LLVM_VERSION=13
     fi
 
     cmake \
