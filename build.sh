@@ -73,11 +73,14 @@ elif [[ -f '/etc/arch-release' ]]; then
     make -j "$(nproc)"
 elif [[ "$OSTYPE" == "linux-gnu" ]]; then
     if [[ ! -v "${CI_RUNNING}" ]]; then
-        wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add - && \
-        sudo apt-add-repository "deb http://apt.llvm.org/buster/ llvm-toolchain-buster-13 main" && \
-        sudo apt-get --yes update && \
-        sudo apt-get --yes install cmake clang-13 lld-13
-        export LLVM_VERSION='13'
+        sudo apt --yes update
+        sudo apt --yes install \
+            cmake \
+            clang-11 \
+            lld-11
+        export LLVM_VERSION=11
+    else
+        export LLVM_VERSION=13
     fi
 
     cmake \
