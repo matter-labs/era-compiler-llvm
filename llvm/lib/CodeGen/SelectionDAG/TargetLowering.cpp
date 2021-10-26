@@ -7586,13 +7586,19 @@ TargetLowering::expandUnalignedLoad(LoadSDNode *LD, SelectionDAG &DAG) const {
          "Unaligned load of unsupported type.");
 
   // SyncVM local begin
-  if (DAG.getTarget().getTargetTriple().isSyncVM()) {
+  bool Aligned = false;
+  if (auto ConstPtr = dyn_cast<ConstantSDNode>(Ptr))
+    Aligned = ConstPtr->getAPIntValue().urem(32) == 0;
+  if (!Aligned && DAG.getTarget().getTargetTriple().isSyncVM()) {
     unsigned NumBits = LoadedVT.getSizeInBits();
     assert(NumBits == 256);
     auto Const32 = DAG.getConstant(APInt(256, 32, false), dl, MVT::i256);
     auto Const8 = DAG.getConstant(APInt(256, 8, false), dl, MVT::i256);
     auto Zero = DAG.getConstant(APInt(256, 0, false), dl, MVT::i256);
     auto Rem = DAG.getNode(ISD::UREM, dl, MVT::i256, Ptr, Const32);
+    auto RemI = DAG.getNode(
+        ISD::SUB, dl, MVT::i256,
+        DAG.getConstant(APInt(256, 256, false), dl, MVT::i256), Rem);
     auto Base1 = DAG.getNode(ISD::SUB, dl, MVT::i256, Ptr, Rem);
     Rem = DAG.getNode(ISD::MUL, dl, MVT::i256, Rem, Const8);
 
@@ -7609,10 +7615,7 @@ TargetLowering::expandUnalignedLoad(LoadSDNode *LD, SelectionDAG &DAG) const {
                              MVT::i256, Align(32),
                              LD->getMemOperand()->getFlags(), LD->getAAInfo());
     auto HiChain = Hi.getValue(1);
-    auto Rem2 = DAG.getNode(
-        ISD::SUB, dl, MVT::i256,
-        DAG.getConstant(APInt(256, 256, false), dl, MVT::i256), Rem);
-    Hi = DAG.getNode(ISD::SHL, dl, MVT::i256, Hi, Rem2);
+    Hi = DAG.getNode(ISD::SHL, dl, MVT::i256, Hi, RemI);
 
     auto Result = DAG.getNode(ISD::OR, dl, MVT::i256, Hi, Lo);
     Result = DAG.getSelectCC(dl, Rem, Zero, LoOrig, Result, ISD::SETEQ);
@@ -7772,7 +7775,10 @@ SDValue TargetLowering::expandUnalignedStore(StoreSDNode *ST,
          "Unaligned store of unknown type.");
 
   // SyncVM local begin
-  if (DAG.getTarget().getTargetTriple().isSyncVM()) {
+  bool Aligned = false;
+  if (auto ConstPtr = dyn_cast<ConstantSDNode>(Ptr))
+    Aligned = ConstPtr->getAPIntValue().urem(32) == 0;
+  if (!Aligned && DAG.getTarget().getTargetTriple().isSyncVM()) {
     unsigned NumBits = StoreMemVT.getSizeInBits();
     assert(NumBits == 256);
     auto Const32 = DAG.getConstant(APInt(256, 32, false), dl, MVT::i256);
@@ -7791,10 +7797,10 @@ SDValue TargetLowering::expandUnalignedStore(StoreSDNode *ST,
                        Align(32), MachineMemOperand::MOLoad, ST->getAAInfo());
     auto LoChain = Lo.getValue(1);
     auto LoMaskLoad = DAG.getConstant(APInt(256, -1, true), dl, MVT::i256);
-    auto LoMaskStore = DAG.getNode(ISD::SHL, dl, MVT::i256, LoMaskLoad, Rem);
-    LoMaskLoad = DAG.getNode(ISD::SRL, dl, MVT::i256, LoMaskLoad, RemI);
+    auto HiMaskLoad = DAG.getNode(ISD::SRL, dl, MVT::i256, LoMaskLoad, Rem);
+    LoMaskLoad = DAG.getNode(ISD::SHL, dl, MVT::i256, LoMaskLoad, RemI);
     Lo = DAG.getNode(ISD::AND, dl, MVT::i256, Lo, LoMaskLoad);
-    auto ValLo = DAG.getNode(ISD::SHL, dl, MVT::i256, Val, Rem);
+    auto ValLo = DAG.getNode(ISD::SRL, dl, MVT::i256, Val, Rem);
     ValLo = DAG.getNode(ISD::OR, dl, MVT::i256, ValLo, Lo);
     ValLo = DAG.getSelectCC(dl, Rem, Zero, Val, ValLo, ISD::SETEQ);
 
@@ -7808,8 +7814,8 @@ SDValue TargetLowering::expandUnalignedStore(StoreSDNode *ST,
                        MachinePointerInfo(ST->getAddressSpace()), MVT::i256,
                        Align(32), MachineMemOperand::MOLoad, ST->getAAInfo());
     auto HiChain = HiOrig.getValue(1);
-    auto Hi = DAG.getNode(ISD::AND, dl, MVT::i256, HiOrig, LoMaskStore);
-    auto ValHi = DAG.getNode(ISD::SRL, dl, MVT::i256, Val, RemI);
+    auto Hi = DAG.getNode(ISD::AND, dl, MVT::i256, HiOrig, HiMaskLoad);
+    auto ValHi = DAG.getNode(ISD::SHL, dl, MVT::i256, Val, RemI);
     ValHi = DAG.getNode(ISD::OR, dl, MVT::i256, ValHi, Hi);
     ValHi = DAG.getSelectCC(dl, Rem, Zero, HiOrig, ValHi, ISD::SETEQ);
 
