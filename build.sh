@@ -19,7 +19,7 @@ case "${1}" in
 esac
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    if [[ ! -v "${CI_RUNNING}" ]]; then
+    if [[ -z ${CI_RUNNING+x} ]]; then
         brew update
         brew install cmake
     fi
@@ -43,7 +43,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     cd "build-${DIRECTORY_SUFFIX}/"
     make -j "$(sysctl -n hw.logicalcpu)"
 elif [[ -f '/etc/arch-release' ]]; then
-    if [[ ! -v "${CI_RUNNING}" ]]; then
+    if [[ -z ${CI_RUNNING+x} ]]; then
         sudo pacman --sync --refresh --sysupgrade --noconfirm \
             cmake \
             clang \
@@ -72,7 +72,7 @@ elif [[ -f '/etc/arch-release' ]]; then
     cd "build-${DIRECTORY_SUFFIX}/"
     make -j "$(nproc)"
 elif [[ "$OSTYPE" == "linux-gnu" ]]; then
-    if [[ ! -v "${CI_RUNNING}" ]]; then
+    if [[ -z ${CI_RUNNING+x} ]]; then
         sudo apt --yes update
         sudo apt --yes install \
             cmake \
