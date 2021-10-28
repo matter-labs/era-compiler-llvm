@@ -513,9 +513,19 @@ void SelectionDAGLegalize::LegalizeStoreOps(SDNode *Node) {
       const DataLayout &DL = DAG.getDataLayout();
       if (!TLI.allowsMemoryAccessForAlignment(*DAG.getContext(), DL, MemVT,
                                               *ST->getMemOperand())) {
+        // SyncVM local begin
+        bool Aligned = false;
+        if (auto ConstPtr = dyn_cast<ConstantSDNode>(Ptr))
+          Aligned = ConstPtr->getAPIntValue().urem(32) == 0;
+        Aligned &= DAG.getTarget().getTargetTriple().isSyncVM();
+        if (!Aligned) {
+        // SyncVM local end
         LLVM_DEBUG(dbgs() << "Expanding unsupported unaligned store\n");
         SDValue Result = TLI.expandUnalignedStore(ST, DAG);
         ReplaceNode(SDValue(ST, 0), Result);
+        // SyncVM local begin
+        }
+        // SyncVM local end
       } else
         LLVM_DEBUG(dbgs() << "Legal store\n");
       break;
@@ -648,8 +658,18 @@ void SelectionDAGLegalize::LegalizeStoreOps(SDNode *Node) {
       // expand it.
       if (!TLI.allowsMemoryAccessForAlignment(*DAG.getContext(), DL, MemVT,
                                               *ST->getMemOperand())) {
+        // SyncVM local begin
+        bool Aligned = false;
+        if (auto ConstPtr = dyn_cast<ConstantSDNode>(Ptr))
+          Aligned = ConstPtr->getAPIntValue().urem(32) == 0;
+        Aligned &= DAG.getTarget().getTargetTriple().isSyncVM();
+        if (!Aligned) {
+        // SyncVM local end
         SDValue Result = TLI.expandUnalignedStore(ST, DAG);
         ReplaceNode(SDValue(ST, 0), Result);
+        // SyncVM local begin
+        }
+        // SyncVM local end
       }
       break;
     }
@@ -710,6 +730,13 @@ void SelectionDAGLegalize::LegalizeLoadOps(SDNode *Node) {
       // expand it.
       if (!TLI.allowsMemoryAccessForAlignment(*DAG.getContext(), DL, MemVT,
                                               *LD->getMemOperand())) {
+        // SyncVM local begin
+        bool Aligned = false;
+        if (auto ConstPtr = dyn_cast<ConstantSDNode>(Ptr))
+          Aligned = ConstPtr->getAPIntValue().urem(32) == 0;
+        Aligned &= DAG.getTarget().getTargetTriple().isSyncVM();
+        if (!Aligned)
+        // SyncVM local end
         std::tie(RVal, RChain) = TLI.expandUnalignedLoad(LD, DAG);
       }
       break;
@@ -909,6 +936,13 @@ void SelectionDAGLegalize::LegalizeLoadOps(SDNode *Node) {
         const DataLayout &DL = DAG.getDataLayout();
         if (!TLI.allowsMemoryAccess(*DAG.getContext(), DL, MemVT,
                                     *LD->getMemOperand())) {
+        // SyncVM local begin
+        bool Aligned = false;
+        if (auto ConstPtr = dyn_cast<ConstantSDNode>(Ptr))
+          Aligned = ConstPtr->getAPIntValue().urem(32) == 0;
+        Aligned &= DAG.getTarget().getTargetTriple().isSyncVM();
+        if (!Aligned)
+        // SyncVM local end
           std::tie(Value, Chain) = TLI.expandUnalignedLoad(LD, DAG);
         }
       }
