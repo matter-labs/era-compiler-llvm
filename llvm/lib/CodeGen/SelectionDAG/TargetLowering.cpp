@@ -7596,18 +7596,18 @@ TargetLowering::expandUnalignedLoad(LoadSDNode *LD, SelectionDAG &DAG) const {
     auto Const8 = DAG.getConstant(APInt(256, 8, false), dl, MVT::i256);
     auto Zero = DAG.getConstant(APInt(256, 0, false), dl, MVT::i256);
     auto Rem = DAG.getNode(ISD::UREM, dl, MVT::i256, Ptr, Const32);
+    auto Base1 = DAG.getNode(ISD::SUB, dl, MVT::i256, Ptr, Rem);
+    Rem = DAG.getNode(ISD::MUL, dl, MVT::i256, Rem, Const8);
     auto RemI = DAG.getNode(
         ISD::SUB, dl, MVT::i256,
         DAG.getConstant(APInt(256, 256, false), dl, MVT::i256), Rem);
-    auto Base1 = DAG.getNode(ISD::SUB, dl, MVT::i256, Ptr, Rem);
-    Rem = DAG.getNode(ISD::MUL, dl, MVT::i256, Rem, Const8);
 
     auto LoOrig = DAG.getExtLoad(
         ISD::NON_EXTLOAD, dl, MVT::i256, Chain, Base1,
         MachinePointerInfo(LD->getAddressSpace()), MVT::i256, Align(32),
         LD->getMemOperand()->getFlags(), LD->getAAInfo());
     auto LoChain = LoOrig.getValue(1);
-    auto Lo = DAG.getNode(ISD::SRL, dl, MVT::i256, LoOrig, Rem);
+    auto Lo = DAG.getNode(ISD::SHL, dl, MVT::i256, LoOrig, Rem);
 
     auto Base2 = DAG.getObjectPtrOffset(dl, Base1, Const32);
     auto Hi = DAG.getExtLoad(ISD::NON_EXTLOAD, dl, MVT::i256, Chain, Base2,
@@ -7615,7 +7615,7 @@ TargetLowering::expandUnalignedLoad(LoadSDNode *LD, SelectionDAG &DAG) const {
                              MVT::i256, Align(32),
                              LD->getMemOperand()->getFlags(), LD->getAAInfo());
     auto HiChain = Hi.getValue(1);
-    Hi = DAG.getNode(ISD::SHL, dl, MVT::i256, Hi, RemI);
+    Hi = DAG.getNode(ISD::SRL, dl, MVT::i256, Hi, RemI);
 
     auto Result = DAG.getNode(ISD::OR, dl, MVT::i256, Hi, Lo);
     Result = DAG.getSelectCC(dl, Rem, Zero, LoOrig, Result, ISD::SETEQ);
