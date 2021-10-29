@@ -8,6 +8,3 @@ services:
       - ${GITHUB_WORKSPACE}:/usr/src/zksync
     environment:
       - SSH_PRIVATE_KEY=${SSH_PRIVATE_KEY}
-      #workaround. should be in docker
-      - LLVM_VERSION=13
-      - CI_RUNNING=true

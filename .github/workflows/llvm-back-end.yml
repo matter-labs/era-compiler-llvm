@@ -69,7 +69,12 @@ jobs:
         make -j24 check-llvm-codegen-syncvm"
 
     - name: Testing. Building and running compiler tester.
+      id: compiler_tester_run
       run: ${DOCKER_CMD} sh -c "cd compiler-tester && ./run.sh"
+
+    - name: Testing. Running segfault.sh.
+      if: always() && steps.compiler_tester_run.outcome == 'failure'
+      run: ${DOCKER_CMD} sh -c "cd compiler-tester && ./segfault.sh"
 
     - name: Clearing workspace. Removing used and trash docker images.
       if: always()
