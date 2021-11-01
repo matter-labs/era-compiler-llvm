@@ -271,6 +271,12 @@ PointerType *Type::getInt64PtrTy(LLVMContext &C, unsigned AS) {
   return getInt64Ty(C)->getPointerTo(AS);
 }
 
+// SyncVM local begin
+PointerType *Type::getInt256PtrTy(LLVMContext &C, unsigned AS) {
+  return getInt256Ty(C)->getPointerTo(AS);
+}
+// SyncVM local end
+
 //===----------------------------------------------------------------------===//
 //                       IntegerType Implementation
 //===----------------------------------------------------------------------===//

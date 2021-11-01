@@ -26,6 +26,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   // TODO: optimize switch lowering
   auto &PR = *PassRegistry::getPassRegistry();
   initializeLowerSwitchLegacyPassPass(PR);
+  initializeSyncVMIndirectUMAPass(PR);
   initializeSyncVMCodegenPreparePass(PR);
   initializeSyncVMExpandPseudoPass(PR);
   initializeSyncVMLowerIntrinsicsPass(PR);
@@ -93,6 +94,7 @@ TargetPassConfig *SyncVMTargetMachine::createPassConfig(PassManagerBase &PM) {
 void SyncVMPassConfig::addIRPasses() {
   addPass(createLowerSwitchPass());
   addPass(createSyncVMLowerIntrinsicsPass());
+  addPass(createSyncVMIndirectUMAPass());
   addPass(createSyncVMCodegenPreparePass());
   addPass(createSyncVMAllocaHoistingPass());
 }

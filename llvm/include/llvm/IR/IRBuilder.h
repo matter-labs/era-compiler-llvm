@@ -527,6 +527,11 @@ public:
   /// Fetch the type representing a 128-bit integer.
   IntegerType *getInt128Ty() { return Type::getInt128Ty(Context); }
 
+  // SyncVM local begin
+  /// Fetch the type representing a 256-bit integer.
+  IntegerType *getInt256Ty() { return Type::getInt256Ty(Context); }
+  // SyncVM local end
+
   /// Fetch the type representing an N-bit integer.
   IntegerType *getIntNTy(unsigned N) {
     return Type::getIntNTy(Context, N);
