@@ -76,6 +76,16 @@ jobs:
       if: always() && steps.compiler_tester_run.outcome == 'failure'
       run: ${DOCKER_CMD} sh -c "cd compiler-tester && ./segfault.sh"
 
+    - name: Notify to Mattermost (on unsuccessful deploys)
+      if: failure() || cancelled()
+      uses: tferreira/matterfy@releases/v1
+      with:
+        type: ${{ job.status }}
+        job_name: '*LLVM testing is failed*'
+        icon_emoji: octocat
+        channel: 'compiler-llvm-ci'
+        url: ${{ secrets.MATTERMOST_WEBHOOK }}
+
     - name: Clearing workspace. Removing used and trash docker images.
       if: always()
       run: |
