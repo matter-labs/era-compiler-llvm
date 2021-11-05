@@ -106,22 +106,37 @@ void llvm::createMemCpyLoopKnownSize(Instruction *InsertBefore, Value *SrcAddr,
              "Division should have no Remainder!");
       // Cast source to operand type and load
       PointerType *SrcPtrType = PointerType::get(OpTy, SrcAS);
+      Value *SrcAddrInt =
+          RBuilder.CreatePtrToInt(SrcAddr, RBuilder.getInt256Ty());
+      SrcAddrInt = RBuilder.CreateNUWAdd(
+          SrcAddrInt, RBuilder.getInt(APInt(256, BytesCopied, false)));
+      SrcAddr = RBuilder.CreateIntToPtr(SrcAddrInt, SrcAddr->getType());
       Value *CastedSrc = SrcAddr->getType() == SrcPtrType
                              ? SrcAddr
                              : RBuilder.CreateBitCast(SrcAddr, SrcPtrType);
+      // TODO: The pass needs to be extracted as a SyncVM target-specific one.
+#if 0
       Value *SrcGEP = RBuilder.CreateInBoundsGEP(
           OpTy, CastedSrc, ConstantInt::get(TypeOfCopyLen, GepIndex));
-      Value *Load =
-          RBuilder.CreateAlignedLoad(OpTy, SrcGEP, PartSrcAlign, SrcIsVolatile);
+#endif
+      Value *Load = RBuilder.CreateAlignedLoad(OpTy, /*SrcGEP*/ CastedSrc,
+                                               PartSrcAlign, SrcIsVolatile);
 
       // Cast destination to operand type and store.
       PointerType *DstPtrType = PointerType::get(OpTy, DstAS);
+      Value *DstAddrInt = RBuilder.CreatePtrToInt(DstAddr, RBuilder.getInt256Ty());
+      DstAddrInt = RBuilder.CreateNUWAdd(
+          DstAddrInt, RBuilder.getInt(APInt(256, BytesCopied, false)));
+      DstAddr = RBuilder.CreateIntToPtr(DstAddrInt, DstAddr->getType());
       Value *CastedDst = DstAddr->getType() == DstPtrType
                              ? DstAddr
                              : RBuilder.CreateBitCast(DstAddr, DstPtrType);
+#if 0
       Value *DstGEP = RBuilder.CreateInBoundsGEP(
           OpTy, CastedDst, ConstantInt::get(TypeOfCopyLen, GepIndex));
-      RBuilder.CreateAlignedStore(Load, DstGEP, PartDstAlign, DstIsVolatile);
+#endif
+      RBuilder.CreateAlignedStore(Load, /*DstGEP*/ CastedDst, PartDstAlign,
+                                  DstIsVolatile);
 
       BytesCopied += OperandSize;
     }
