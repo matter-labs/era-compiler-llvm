@@ -207,10 +207,7 @@ void llvm::createMemCpyLoopUnknownSize(Instruction *InsertBefore,
       LoopBuilder.CreateAdd(LoopIndex, ConstantInt::get(CopyLenType, 1U));
   LoopIndex->addIncoming(NewIndex, LoopBB);
 
-  // SyncVM local begin
-  // TODO: Dirty hack
-  if (!LoopOpIsInt8 && LoopOpSize != 32) {
-    // SyncVM local end
+  if (!LoopOpIsInt8) {
     // Add in the
     Value *RuntimeResidual = PLBuilder.CreateURem(CopyLen, CILoopOpSize);
     Value *RuntimeBytesCopied = PLBuilder.CreateSub(CopyLen, RuntimeResidual);
@@ -244,6 +241,35 @@ void llvm::createMemCpyLoopUnknownSize(Instruction *InsertBefore,
 
     // Copy the residual with single byte load/store loop.
     IRBuilder<> ResBuilder(ResLoopBB);
+
+    Value *SrcAddrInt =
+        ResBuilder.CreatePtrToInt(SrcAddr, ResBuilder.getInt256Ty());
+    SrcAddrInt = ResBuilder.CreateNUWAdd(SrcAddrInt, RuntimeBytesCopied);
+    SrcAddr = ResBuilder.CreateIntToPtr(SrcAddrInt, SrcAddr->getType());
+    Load = ResBuilder.CreateAlignedLoad(LoopOpType, SrcAddr, PartSrcAlign,
+                                        SrcIsVolatile);
+    RuntimeResidual = ResBuilder.CreateMul(
+        ResBuilder.getInt(APInt(256, 8, false)), RuntimeResidual);
+    Value *RuntimeResidualI = ResBuilder.CreateSub(
+        ResBuilder.getInt(APInt(256, 256, false)), RuntimeResidual);
+    Value *LoadMask = ResBuilder.CreateShl(
+        ResBuilder.getInt(APInt(256, -1, true)), RuntimeResidualI);
+    Load = ResBuilder.CreateAnd(Load, LoadMask);
+
+    Value *DstAddrInt =
+        ResBuilder.CreatePtrToInt(DstAddr, ResBuilder.getInt256Ty());
+    DstAddrInt = ResBuilder.CreateNUWAdd(DstAddrInt, RuntimeBytesCopied);
+    DstAddr = ResBuilder.CreateIntToPtr(DstAddrInt, DstAddr->getType());
+    Value *Origin = ResBuilder.CreateAlignedLoad(LoopOpType, DstAddr,
+                                                 PartDstAlign, DstIsVolatile);
+    Value *OriginMask = ResBuilder.CreateLShr(
+        ResBuilder.getInt(APInt(256, -1, true)), RuntimeResidual);
+    Origin = ResBuilder.CreateAnd(Origin, OriginMask);
+    Load = ResBuilder.CreateOr(Load, Origin);
+    ResBuilder.CreateAlignedStore(Load, DstAddr, PartDstAlign, DstIsVolatile);
+    ResBuilder.CreateBr(PostLoopBB);
+
+#if 0
     PHINode *ResidualIndex =
         ResBuilder.CreatePHI(CopyLenType, 2, "residual-loop-index");
     ResidualIndex->addIncoming(Zero, ResHeaderBB);
@@ -269,6 +295,7 @@ void llvm::createMemCpyLoopUnknownSize(Instruction *InsertBefore,
     ResBuilder.CreateCondBr(
         ResBuilder.CreateICmpULT(ResNewIndex, RuntimeResidual), ResLoopBB,
         PostLoopBB);
+#endif
   } else {
     // In this case the loop operand type was a byte, and there is no need for a
     // residual loop to copy the remaining memory after the main loop.
