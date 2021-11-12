@@ -33,6 +33,7 @@ FunctionPass *createSyncVMISelDag(SyncVMTargetMachine &TM,
                                   CodeGenOpt::Level OptLevel);
 ModulePass   *createSyncVMLowerIntrinsicsPass();
 ModulePass   *createSyncVMIndirectUMAPass();
+ModulePass *createSyncVMIndirectExternalCallPass();
 FunctionPass *createSyncVMCodegenPreparePass();
 FunctionPass *createSyncVMExpandPseudoPass();
 FunctionPass *createSyncVMAllocaHoistingPass();
@@ -43,6 +44,7 @@ FunctionPass *createSyncVMAdjustStackInCallseqPass();
 
 void initializeSyncVMLowerIntrinsicsPass(PassRegistry &);
 void initializeSyncVMIndirectUMAPass(PassRegistry &);
+void initializeSyncVMIndirectExternalCallPass(PassRegistry &);
 void initializeSyncVMCodegenPreparePass(PassRegistry &);
 void initializeSyncVMExpandPseudoPass(PassRegistry &);
 void initializeSyncVMAllocaHoistingPass(PassRegistry &);

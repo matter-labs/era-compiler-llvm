@@ -4,7 +4,6 @@
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
-#include "llvm/IR/IntrinsicsHexagon.h"
 #include "llvm/Pass.h"
 #include "llvm/Transforms/Scalar.h"
 
@@ -13,11 +12,18 @@
 using namespace llvm;
 
 namespace llvm {
-FunctionPass *createIndirectUMA();
+ModulePass *createIndirectUMAPass();
 void initializeSyncVMIndirectUMAPass(PassRegistry &);
 } // namespace llvm
 
 namespace {
+/// Reduce the binary size by moving unaligned memory access (UMA) handling to
+/// a separate function and replace an UMA with its call.
+/// UMA is a very expensive operation in SyncVM, so to prevent code from being
+/// bloat, the pass creates a corresponding load function if a module has read
+/// access to addrspace(n) memory, where n belongs to 1..3. Note that UMA in
+/// stack is prohibited. For UMA store operations, the pass creates both load
+/// and store functions for each triggered address space.
 struct SyncVMIndirectUMA : public ModulePass {
 public:
   static char ID;
@@ -27,7 +33,7 @@ public:
   bool runOnModule(Module &M) override;
 
   StringRef getPassName() const override {
-    return "Revert usopported instcombine changes";
+    return "Wrap UMA in a function call";
   }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
@@ -43,7 +49,7 @@ static const std::string UMStoreFunName[3] = {
     "__unaligned_store_as1", "__unaligned_store_as2", "__unaligned_store_as3"};
 
 INITIALIZE_PASS(SyncVMIndirectUMA, "syncvm-indirectuma",
-                "Wrap an UMA into a fuction call", false, false)
+                "Wrap an UMA into a function call", false, false)
 
 bool SyncVMIndirectUMA::runOnModule(Module &M) {
   bool Changed = false;

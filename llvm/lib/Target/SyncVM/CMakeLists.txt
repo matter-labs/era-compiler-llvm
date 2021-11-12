@@ -27,6 +27,7 @@ add_llvm_target(SyncVMCodeGen
   SyncVMISelDAGToDAG.cpp
   SyncVMISelLowering.cpp
   SyncVMIndirectUMA.cpp
+  SyncVMIndirectExternalCall.cpp
   SyncVMCodegenPrepare.cpp
   SyncVMExpandPseudoInsts.cpp
   SyncVMAdjustSPBasedOffsets.cpp
