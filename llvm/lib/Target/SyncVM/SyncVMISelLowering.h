@@ -143,6 +143,13 @@ private:
                                   SelectionDAG &DAG) const override {
     return false;
   }
+
+  /// SyncVM does nit benefit from mulhs, so change BuildSDIV implementation
+  /// to preserve sdiv.
+  SDValue BuildSDIV(SDNode *N, SelectionDAG &DAG, bool IsAfterLegalization,
+                    SmallVectorImpl<SDNode *> &Created) const override {
+    return {};
+  }
 };
 } // namespace llvm
 
