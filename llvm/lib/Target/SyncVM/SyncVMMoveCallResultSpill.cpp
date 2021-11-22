@@ -92,10 +92,13 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
       InstrToMove.push_back(&*II++);
     }
 
-    auto *FalseMBB = Terminator.getOperand(1).getMBB();
-    auto *TrueMBB = Terminator.getOperand(0).getMBB();
+    MachineBasicBlock *FalseMBB = Terminator.getOperand(1).getMBB();
+    MachineBasicBlock *TrueMBB = Terminator.getOperand(0).getMBB();
+    DebugLoc DL = Terminator.getDebugLoc();
+
+    // If false sucessor has more than 1 predecessors, insert an empty BB in
+    // between to move instructions into.
     if (FalseMBB->pred_size() != 1) {
-      DebugLoc DL = Terminator.getDebugLoc();
       MachineFunction *F = FalseMBB->getParent();
       auto *NewMBB = F->CreateMachineBasicBlock();
       // The only place we can guarantee that fallthrough doesn't happen to the
@@ -106,15 +109,34 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
           .addMBB(FalseMBB)
           .addImm(SyncVMCC::COND_NONE);
       NewMBB->addSuccessor(FalseMBB);
-      BuildMI(&MBB, DL, TII->get(SyncVM::JCC))
-          .add(Terminator.getOperand(0))
-          .addMBB(NewMBB)
-          .add(Terminator.getOperand(2));
-      Terminator.eraseFromParent();
       MBB.removeSuccessor(FalseMBB);
       MBB.addSuccessor(NewMBB);
       FalseMBB = NewMBB;
     }
+
+    // If true sucessor has more than 1 predecessors, insert an empty BB in
+    // between to move instructions into.
+    if (TrueMBB->pred_size() != 1) {
+      MachineFunction *F = TrueMBB->getParent();
+      auto *NewMBB = F->CreateMachineBasicBlock();
+      // The only place we can guarantee that fallthrough doesn't happen to the
+      // newly created block.
+      F->insert(std::next(MBBIt), NewMBB);
+      BuildMI(NewMBB, DL, TII->get(SyncVM::JCC))
+          .addMBB(TrueMBB)
+          .addMBB(TrueMBB)
+          .addImm(SyncVMCC::COND_NONE);
+      NewMBB->addSuccessor(TrueMBB);
+      MBB.removeSuccessor(TrueMBB);
+      MBB.addSuccessor(NewMBB);
+      TrueMBB = NewMBB;
+    }
+
+    BuildMI(&MBB, DL, TII->get(SyncVM::JCC))
+        .addMBB(TrueMBB)
+        .addMBB(FalseMBB)
+        .add(Terminator.getOperand(2));
+    Terminator.eraseFromParent();
 
     for (auto IIt = InstrToMove.begin(), IE = InstrToMove.end(); IIt != IE;
          ++IIt) {
