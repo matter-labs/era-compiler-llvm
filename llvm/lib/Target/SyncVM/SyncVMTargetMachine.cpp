@@ -13,6 +13,7 @@
 #include "llvm/InitializePasses.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/Support/TargetRegistry.h"
+#include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/Utils.h"
 
 #include "SyncVM.h"
@@ -31,6 +32,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMCodegenPreparePass(PR);
   initializeSyncVMExpandPseudoPass(PR);
   initializeSyncVMLowerIntrinsicsPass(PR);
+  initializeSyncVMLinkRuntimePass(PR);
   initializeSyncVMAllocaHoistingPass(PR);
   initializeSyncVMDropUnusedRegistersPass(PR);
   initializeSyncVMAdjustSPBasedOffsetsPass(PR);
@@ -97,6 +99,8 @@ void SyncVMPassConfig::addIRPasses() {
   addPass(createSyncVMLowerIntrinsicsPass());
   addPass(createSyncVMIndirectUMAPass());
   addPass(createSyncVMIndirectExternalCallPass());
+  addPass(createSyncVMLinkRuntimePass());
+  addPass(createGlobalDCEPass());
   addPass(createSyncVMCodegenPreparePass());
   addPass(createSyncVMAllocaHoistingPass());
 }
