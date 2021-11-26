@@ -14,7 +14,13 @@ tablegen(LLVM SyncVMGenSubtargetInfo.inc -gen-subtarget)
 
 add_public_tablegen_target(SyncVMCommonTableGen)
 
+
+file(READ ${CMAKE_CURRENT_SOURCE_DIR}/syncvm-runtime.ll RT_CONTENT)
+set (RT_CONTENT "R\"(${RT_CONTENT})\"")
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/SyncVMRT.inc ${RT_CONTENT})
+
 add_llvm_target(SyncVMCodeGen
+  SyncVMCodegenPrepare.cpp
   SyncVMTargetMachine.cpp
   SyncVMSubtarget.cpp
   SyncVMRegisterInfo.cpp
@@ -28,15 +34,28 @@ add_llvm_target(SyncVMCodeGen
   SyncVMISelLowering.cpp
   SyncVMIndirectUMA.cpp
   SyncVMIndirectExternalCall.cpp
-  SyncVMCodegenPrepare.cpp
+  SyncVMLinkRuntime.cpp
+  SyncVMLowerIntrinsics.cpp
   SyncVMExpandPseudoInsts.cpp
   SyncVMAdjustSPBasedOffsets.cpp
-  SyncVMLowerIntrinsics.cpp
   SyncVMAllocaHoisting.cpp
   SyncVMTargetTransformInfo.cpp
   SyncVMDropUnusedRegisters.cpp
   SyncVMMoveCallResultSpill.cpp
   SyncVMAdjustStackInCallSeq.cpp
+
+  LINK_COMPONENTS
+  Analysis
+  AsmPrinter
+  CodeGen
+  Core
+  IPO
+  MC
+  Scalar
+  SelectionDAG
+  Support
+  Target
+  TransformUtils
 
   DEPENDS
   intrinsics_gen

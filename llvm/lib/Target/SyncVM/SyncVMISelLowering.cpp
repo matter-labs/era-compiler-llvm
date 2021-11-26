@@ -487,6 +487,7 @@ SDValue SyncVMTargetLowering::LowerSRA(SDValue Op, SelectionDAG &DAG) const {
   auto RHS = Op.getOperand(1);
   auto Zero = DAG.getConstant(0, DL, MVT::i256);
   auto One = DAG.getConstant(APInt(256, -1, true), DL, MVT::i256);
+  auto Const255 = DAG.getConstant(APInt(256, 255, true), DL, MVT::i256);
   auto Mask = DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
   auto Sign = DAG.getNode(ISD::AND, DL, MVT::i256, LHS, Mask);
   auto Init = DAG.getSelectCC(DL, Sign, Mask, One, Zero, ISD::SETEQ);
