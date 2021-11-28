@@ -496,7 +496,8 @@ SDValue SyncVMTargetLowering::LowerSRA(SDValue Op, SelectionDAG &DAG) const {
       DAG.getNode(ISD::SUB, DL, MVT::i256,
                   DAG.getConstant(APInt(256, 256, false), DL, MVT::i256), RHS));
   auto Value = DAG.getNode(ISD::SRL, DL, MVT::i256, LHS, RHS);
-  return DAG.getNode(ISD::OR, DL, MVT::i256, Value, Mask);
+  auto Shifted = DAG.getNode(ISD::OR, DL, MVT::i256, Value, Mask);
+  return DAG.getSelectCC(DL, RHS, Zero, LHS, Shifted, ISD::SETEQ);
 }
 
 SDValue SyncVMTargetLowering::LowerSDIV(SDValue Op, SelectionDAG &DAG) const {
