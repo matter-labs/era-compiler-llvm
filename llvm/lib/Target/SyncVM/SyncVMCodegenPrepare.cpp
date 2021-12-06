@@ -86,24 +86,6 @@ bool SyncVMCodegenPrepare::runOnFunction(Function &F) {
         }
         break;
       }
-      // SyncVM has different semantic for shifts:
-      // x SHL y == x shl (y % 256),
-      // x LSHR y == x lshr (y % 256)
-      // So lshr is to be replaced with:
-      // (y >= 256) ? 0 : x lshr y
-      case Instruction::LShr:
-      case Instruction::Shl: {
-        IRBuilder<> Builder(&BB, std::next(II));
-        unsigned Size = II->getType()->getIntegerBitWidth();
-        auto *Const0 = Builder.getInt(APInt(Size, 0, false));
-        auto *Const255 = Builder.getInt(APInt(Size, 255, false));
-        auto *Icmp = Builder.CreateICmpUGT(I.getOperand(1), Const255);
-        auto *Select = Builder.CreateSelect(Icmp, Const0, &I);
-        I.replaceUsesWithIf(Select,
-                            [Select](Use &U) { return U.getUser() != Select; });
-        Changed = true;
-        break;
-      }
       }
     }
   for (auto *I : Replaced)

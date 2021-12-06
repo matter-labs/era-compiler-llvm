@@ -205,6 +205,7 @@ IntegerType *Type::getInt64Ty(LLVMContext &C) { return &C.pImpl->Int64Ty; }
 IntegerType *Type::getInt128Ty(LLVMContext &C) { return &C.pImpl->Int128Ty; }
 // SyncVM local begin
 IntegerType *Type::getInt256Ty(LLVMContext &C) { return &C.pImpl->Int256Ty; }
+IntegerType *Type::getInt512Ty(LLVMContext &C) { return &C.pImpl->Int512Ty; }
 // SyncVM local end
 
 IntegerType *Type::getIntNTy(LLVMContext &C, unsigned N) {
