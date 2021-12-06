@@ -197,6 +197,14 @@ def NOOP : Empty< 0x00, "noop", [] >;
 let isCommutable = 1 in {
   def ADDrrr     : ArithmeticRRR<  0x01, "add", add >;
   def MULrrrz    : ArithmeticRRRZ< 0x03, "mul", mul >;
+  def MULrrrr    : SyncVMInstruction< 0xffe, (outs GR256:$o1, GR256:$o2),
+                                      (ins GR256:$i1, GR256:$i2),
+                                      "mul\t$i1, $i2, $o1, $o2",
+                                      [(set GR256:$o1, GR256:$o2, (umullohi GR256:$i1, GR256:$i2))]>;
+  def MULrrzr    : SyncVMInstruction< 0xffd, (outs GR256:$out),
+                                      (ins GR256:$i1, GR256:$i2),
+                                      "mul\t$i1, $i2, r0, $out",
+                                      [(set GR256:$out, (mulhu GR256:$i1, GR256:$i2))]>;
 }
 
 def SUBrrr     : ArithmeticRRR<  0x02, "sub", sub >;

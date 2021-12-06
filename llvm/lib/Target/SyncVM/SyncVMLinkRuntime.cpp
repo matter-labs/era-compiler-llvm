@@ -55,7 +55,7 @@ INITIALIZE_PASS(SyncVMLinkRuntime, "syncvm-link-runtime",
 
 const char *LL_DATA =
 #include "SyncVMRT.inc"
-    ;
+;
 
 bool SyncVMLinkRuntime::runOnModule(Module &M) {
   Linker L(M);
