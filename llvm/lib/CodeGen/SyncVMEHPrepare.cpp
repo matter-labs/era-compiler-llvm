@@ -32,9 +32,10 @@ using namespace llvm;
 
 namespace {
 class SyncVMEHPrepare : public FunctionPass {
-  Function *ThrowF = nullptr;       // syncvm.throw() intrinsic
+  Function *ThrowF = nullptr; // syncvm.throw() intrinsic
 
   bool replaceCXAThrow(Function &F);
+  bool replaceLPad(Function &F);
   bool prepareEHPads(Function &F);
   bool prepareThrows(Function &F);
 
@@ -57,11 +58,11 @@ public:
 } // end anonymous namespace
 
 char SyncVMEHPrepare::ID = 0;
-INITIALIZE_PASS_BEGIN(SyncVMEHPrepare, DEBUG_TYPE,
-                      "Prepare SyncVM exceptions", false, false)
+INITIALIZE_PASS_BEGIN(SyncVMEHPrepare, DEBUG_TYPE, "Prepare SyncVM exceptions",
+                      false, false)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
-INITIALIZE_PASS_END(SyncVMEHPrepare, DEBUG_TYPE,
-                    "Prepare SyncVM exceptions", false, false)
+INITIALIZE_PASS_END(SyncVMEHPrepare, DEBUG_TYPE, "Prepare SyncVM exceptions",
+                    false, false)
 
 FunctionPass *llvm::createSyncVMEHPass() { return new SyncVMEHPrepare(); }
 
@@ -69,9 +70,7 @@ void SyncVMEHPrepare::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.addRequired<DominatorTreeWrapperPass>();
 }
 
-bool SyncVMEHPrepare::doInitialization(Module &M) {
-  return false;
-}
+bool SyncVMEHPrepare::doInitialization(Module &M) { return false; }
 
 // Erase the specified BBs if the BB does not have any remaining predecessors,
 // and also all its dead children.
@@ -91,6 +90,7 @@ bool SyncVMEHPrepare::runOnFunction(Function &F) {
   IsEHPadFunctionsSetUp = false;
   bool Changed = false;
   Changed |= replaceCXAThrow(F);
+  Changed |= replaceLPad(F);
   Changed |= prepareThrows(F);
   Changed |= prepareEHPads(F);
   return Changed;
@@ -100,28 +100,44 @@ bool SyncVMEHPrepare::replaceCXAThrow(Function &F) {
   bool Changed = false;
   Module &M = *F.getParent();
   ThrowF = Intrinsic::getDeclaration(&M, Intrinsic::syncvm_throw);
-  for (auto& BB : F)
+  for (auto &BB : F)
     for (auto II = BB.begin(); II != BB.end(); ++II) {
-      auto& Inst = *II;
+      auto &Inst = *II;
       auto *Call = dyn_cast<CallInst>(&Inst);
       auto *Invoke = dyn_cast<InvokeInst>(&Inst);
       if (Call || Invoke) {
-        auto CallSite = Call ? Call->getCalledOperand()
-                             : Invoke->getCalledOperand();
+        auto CallSite =
+            Call ? Call->getCalledOperand() : Invoke->getCalledOperand();
         auto CSGV = dyn_cast<GlobalValue>(CallSite);
         if (CSGV && CSGV->getGlobalIdentifier() == "__cxa_throw") {
           IRBuilder<> Builder(&Inst);
-          CallInst *ThrowFCall = Builder.CreateCall(ThrowF, {});
-          Inst.replaceAllUsesWith(ThrowFCall);
+          if (Call) {
+            CallInst *ThrowFCall = Builder.CreateCall(ThrowF, {});
+            Inst.replaceAllUsesWith(ThrowFCall);
+          } else if (Invoke) {
+            Builder.CreateBr(Invoke->getUnwindDest());
+          }
           ++II;
-          if (Invoke)
-            Builder.CreateUnreachable();
           Inst.eraseFromParent();
           Changed = true;
         }
       }
     }
   return Changed;
+}
+
+bool SyncVMEHPrepare::replaceLPad(Function &F) {
+  std::vector<Instruction *> EraseInst;
+  for (auto &BB : F) {
+    if (BB.empty())
+      continue;
+    auto &Inst = BB.front();
+    if (isa<LandingPadInst>(Inst))
+      EraseInst.push_back(&Inst);
+  }
+  for (auto *EI : EraseInst)
+    EI->eraseFromParent();
+  return !EraseInst.empty();
 }
 
 bool SyncVMEHPrepare::prepareThrows(Function &F) {
