@@ -8939,13 +8939,13 @@ SDValue DAGCombiner::visitSRL(SDNode *N) {
     if (SDValue NewSRL = visitShiftByConstant(N))
       return NewSRL;
 
-  // SyncVM local change begin
+  // SyncVM local begin
   if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
   // Attempt to convert a srl of a load into a narrower zero-extending load.
   if (SDValue NarrowLoad = ReduceLoadWidth(N))
     return NarrowLoad;
   }
-  // SyncVM local change end
+  // SyncVM local end
 
   // Here is a common situation. We want to optimize:
   //
@@ -12374,7 +12374,6 @@ SDValue DAGCombiner::visitTRUNCATE(SDNode *N) {
   }
 
 // SyncVM local begin
-// TODO: Consider removing when non-i256 UMA works
   if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
   // fold (truncate (load x)) -> (smaller load x)
   // fold (truncate (srl (load x), c)) -> (smaller load (x+c/evtbits))
