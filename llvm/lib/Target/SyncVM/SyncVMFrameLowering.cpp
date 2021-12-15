@@ -97,7 +97,6 @@ MachineBasicBlock::iterator SyncVMFrameLowering::eliminateCallFramePseudoInstr(
     // If the stack pointer can be changed after prologue, turn the
     // adjcallstackup instruction into a 'sub SP, <amt>' and the
     // adjcallstackdown instruction into 'add SP, <amt>'
-    // TODO: consider using push / pop instead of sub + store / add
     MachineInstr &Old = *I;
     uint64_t Amount = TII.getFrameSize(Old);
     if (Amount != 0) {
