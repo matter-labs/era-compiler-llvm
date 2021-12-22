@@ -86,6 +86,9 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
+// SyncVM local begin
+#include "llvm/IR/IntrinsicsSyncVM.h"
+// SyncVM local end
 #include "llvm/IR/IntrinsicsWebAssembly.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Metadata.h"
@@ -4420,6 +4423,10 @@ void Verifier::visitInstruction(Instruction &I) {
               F->getIntrinsicID() == Intrinsic::experimental_patchpoint_void ||
               F->getIntrinsicID() == Intrinsic::experimental_patchpoint_i64 ||
               F->getIntrinsicID() == Intrinsic::experimental_gc_statepoint ||
+              // SyncVM local begin
+              F->getIntrinsicID() == Intrinsic::syncvm_sstore ||
+              F->getIntrinsicID() == Intrinsic::syncvm_throw ||
+              // SyncVM local end
               F->getIntrinsicID() == Intrinsic::wasm_rethrow,
           "Cannot invoke an intrinsic other than donothing, patchpoint, "
           "statepoint, coro_resume or coro_destroy",
