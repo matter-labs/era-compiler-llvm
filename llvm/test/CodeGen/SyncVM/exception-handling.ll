@@ -24,7 +24,7 @@ try.cont:
 }
 
 ; CHECK-LABEL: test2
-; CHECK:   call foo7
+; CHECK:   call foo16
 ; CHECK:   jlt .LBB1_1, .LBB1_2
 ; CHECK: .LBB1_2:
 ; CHECK:   pop #0, r0
@@ -33,7 +33,7 @@ try.cont:
 ; CHECK:   throw
 define void @test2(i32 %a) personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
 entry:
-  invoke void @foo7(i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 0, i32 0)
+  invoke void @foo16(i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 0, i32 0)
           to label %try.cont unwind label %lpad
 
 lpad:
@@ -55,7 +55,7 @@ entry:
   br i1 %cmp, label %try.cont, label %invokebb
 
 invokebb:
-  invoke void @foo7(i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a)
+  invoke void @foo16(i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a, i32 %a)
           to label %try.cont unwind label %lpad
 
 lpad:
@@ -67,7 +67,22 @@ try.cont:
   ret void
 }
 
+; CHECK-LABEL: invoke_sstore
+; CHECK: st
+; CHECK: ret
+define i256 @invoke_sstore() personality i8* bitcast (i32 (...)* @__gxx_personality_v0 to i8*) {
+entry:
+  invoke void @llvm.syncvm.sstore(i256 0, i256 0, i256 0)
+    to label %return unwind label %lpad
+return:
+  ret i256 0
+lpad:
+  %x = landingpad { i8*, i32 } catch i8* null
+  ret i256 42
+}
+
 declare void @foo(i32)
-declare void @foo7(i32, i32, i32, i32, i32, i32, i32)
+declare void @foo16(i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32)
 declare i32 @__gxx_personality_v0(...)
 declare void @llvm.syncvm.throw()
+declare void @llvm.syncvm.sstore(i256, i256, i256)

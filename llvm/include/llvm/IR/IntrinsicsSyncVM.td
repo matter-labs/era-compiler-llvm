@@ -29,7 +29,7 @@ def int_syncvm_getfromcontext: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrNo
 
 // Persistent memory access.
 def int_syncvm_setstorage: Intrinsic<[], [llvm_i256_ty], [IntrWriteMem]>;
-def int_syncvm_sstore: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], [IntrWriteMem]>;
+def int_syncvm_sstore: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], [IntrWriteMem, Throws]>;
 def int_syncvm_sload: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrReadMem]>;
 def int_syncvm_event: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], [IntrHasSideEffects]>;
 
