@@ -21,6 +21,7 @@ file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/SyncVMRT.inc ${RT_CONTENT})
 
 add_llvm_target(SyncVMCodeGen
   SyncVMCodegenPrepare.cpp
+  SyncVMExpandUMA.cpp
   SyncVMTargetMachine.cpp
   SyncVMSubtarget.cpp
   SyncVMRegisterInfo.cpp

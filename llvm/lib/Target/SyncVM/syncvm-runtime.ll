@@ -169,88 +169,6 @@ define i256 @__ulongrem(i256 %0, i256 %1, i256 %2) local_unnamed_addr #0 {
   ret i256 %.0
 }
 
-define i256 @__ulongrem2(i256 %dividend_lo, i256 %dividend_hi, i256 %divisor) #0 {
-entry:
-  %clz = call i256 @__clz(i256 %divisor)
-  %clzn = sub i256 256, %clz
-  %clzz = icmp eq i256 %clz, 0
-  br i1 %clzz, label %normalize, label %hiloop.ph
-normalize:
-  %divisor_alt = shl i256 %divisor, %clz
-  %dividend_hi.1 = shl i256 %dividend_hi, %clz
-  %dividend_lo.h = lshr i256 %dividend_lo, %clzn
-  %dividend_hi_alt = or i256 %dividend_hi.1, %dividend_lo.h
-  %dividend_lo_alt = shl i256 %dividend_lo, %clz 
-  br label %hiloop.ph
-hiloop.ph:
-  %divisor_n = phi i256 [%divisor_alt, %normalize], [%divisor, %entry]
-  %dividend_hi_n = phi i256 [%dividend_hi_alt, %normalize], [%dividend_hi, %entry]
-  %dividend_lo_n = phi i256 [%dividend_lo_alt, %normalize], [%dividend_lo, %entry]
-  %divisor.hi = lshr i256 %divisor_n, 128
-  %quot = udiv i256 %dividend_hi_n, %divisor.hi
-  %rem = urem i256 %dividend_hi_n, %divisor.hi
-  br label %hiloop.hdr
-hiloop.hdr:
-  %quot.m = phi i256 [%quot, %hiloop.ph], [%quot.b, %hiloop.body]
-  %rem.m = phi i256 [%rem, %hiloop.ph], [%rem.b, %hiloop.body]
-  %quot.shr = lshr i256 %quot.m, 128
-  %quot.lo = and i256 %quot.m, 340282366920938463463374607431768211456
-  %divisor.lo = and i256 %divisor_n, 340282366920938463463374607431768211456
-  %rem.shl = shl i256 %rem.m, 128 
-  %dividend.lh = lshr i256 %dividend_lo_n, 128
-  %rhs = or i256 %rem.shl, %dividend.lh
-  %lhs = mul i256 %quot.lo, %divisor.lo
-  %or.1 = icmp ne i256 %quot.shr, 0
-  %or.2 = icmp ugt i256 %lhs, %rhs
-  %cond = or i1 %or.1, %or.2
-  br i1 %cond, label %hiloop.body, label %hiloop.exit
-hiloop.body:
-  %quot.b = sub i256 %quot.m, 1
-  %rem.b = add i256 %divisor.hi, %rem.m
-  %rem.b.hi = lshr i256 %rem.b, 128
-  %exit.cond = icmp ne i256 %rem.b.hi, 0
-  br i1 %exit.cond, label %hiloop.exit, label %hiloop.hdr
-hiloop.exit:
-  %quot.pl = phi i256 [%quot.b, %hiloop.body], [%quot.m, %hiloop.hdr]
-  %quot.pll = and i256 %quot.pl, 340282366920938463463374607431768211456
-  %u.sub.rhs = mul i256 %quot.pll, %divisor_n
-  %dividend_hls = shl i256 %dividend_hi_n, 128
-  %dividend_loh = lshr i256 %dividend_lo_n, 128
-  %u.sub.lhs = or i256 %dividend_hls, %dividend_loh
-  %u = sub i256 %u.sub.lhs, %u.sub.rhs
-  %quot.new = udiv i256 %u, %divisor.hi
-  %rem.new = udiv i256 %u, %divisor.hi
-  br label %loloop.hdr
-loloop.hdr:
-  %quot.loloop = phi i256 [%quot.new, %hiloop.exit], [%quot.loloopb, %loloop.body]
-  %rem.loloop = phi i256 [%rem.new, %hiloop.exit], [%rem.loloopb, %loloop.body]
-  %quot.ll.lo = and i256 %quot.loloop, 340282366920938463463374607431768211456
-  %rem.ll.ls = shl i256 %rem.loloop, 128
-  %dividend.ll = and i256 %dividend_lo_n, 340282366920938463463374607431768211456
-  %gtrhs = or i256 %rem.ll.ls, %dividend.ll
-  %gtlhs = mul i256 %quot.ll.lo, %divisor.lo
-  %gt.ll = icmp ugt i256 %gtlhs, %gtrhs
-  %quot.ll.ls = shl i256 %quot.loloop, 128
-  %ne.ll = icmp ne i256 %quot.ll.ls, 0
-  %cond.ll = or i1 %ne.ll, %gt.ll
-  br i1 %cond.ll, label %loloop.body, label %loloop.exit
-loloop.body:
-  %quot.loloopb = sub i256 %quot.loloop, 1
-  %rem.loloopb = add i256 %rem.loloop, %divisor.hi
-  %rem.ll.cond = lshr i256 %rem.loloopb, 128
-  %cond.ll.exit = icmp ne i256 %rem.ll.cond, 0
-  br i1 %cond.ll.exit, label %loloop.exit, label %loloop.hdr
-loloop.exit:
-  %quot.pf = phi i256 [%quot.loloop, %loloop.hdr], [%quot.loloopb, %loloop.body]
-  %q0 = and i256 %quot.pf, 340282366920938463463374607431768211456
-  %res.sub.rhs = mul i256 %q0, %divisor_n
-  %res.or.2 = sub i256 %dividend.ll, %res.sub.rhs
-  %uls = shl i256 %u, 128
-  %res.ns = or i256 %uls, %res.or.2
-  %res = lshr i256 %res.ns, %clz
-  ret i256 %res
-}
-
 define i256 @__mulmod(i256 %arg1, i256 %arg2, i256 %modulo) #0 {
 entry:
   %cccond = icmp eq i256 %modulo, 0
@@ -275,6 +193,90 @@ slow:
   %prodh = trunc i512 %prodeh to i256
   %res = call i256 @__ulongrem(i256 %prodl, i256 %prodh, i256 %modulo)
   ret i256 %res
+}
+
+define i256 @__small_load_as0(i256 %addr, i256 %size_in_bits) {
+entry:
+  %offset_lead_bytes = urem i256 %addr, 32
+  %offset_lead_bits = mul nuw nsw i256 %offset_lead_bytes, 8
+  %base_int = sub i256 %addr, %offset_lead_bytes
+  %base_ptr = inttoptr i256 %base_int to i256*
+  %hival = load i256, i256* %base_ptr, align 32
+  %offset_size = add nuw nsw i256 %offset_lead_bits, %size_in_bits
+  %fits_cell = icmp ule i256 %offset_size, 256
+  %inv_size = sub i256 256, %size_in_bits
+  br i1 %fits_cell, label %one_cell, label %two_cells
+one_cell:
+  %offset_size_inv = sub nsw nuw i256 256, %offset_size
+  %val_shifted = lshr i256 %hival, %offset_size_inv
+  %mask_one = lshr i256 -1, %inv_size
+  %one_cell_res = and i256 %mask_one, %val_shifted
+  ret i256 %one_cell_res
+two_cells:
+  %hi_bits = sub nuw nsw i256 256, %offset_lead_bits
+  %lo_bits = sub nuw nsw i256 %size_in_bits, %hi_bits
+  %lo_bits_inv = sub nsw nuw i256 256, %lo_bits
+  %hival_shifted = shl i256 %hival, %lo_bits
+  %lo_base_int = add nsw nuw i256 %base_int, 32
+  %lo_base_ptr = inttoptr i256 %lo_base_int to i256*
+  %loval = load i256, i256* %lo_base_ptr, align 32
+  %loval_shifted = lshr i256 %loval, %lo_bits_inv
+  %valcomb = or i256 %loval_shifted, %hival_shifted
+  %size_in_bits_inv = sub i256 256, %size_in_bits
+  %mask_two = lshr i256 -1, %size_in_bits_inv
+  %two_cells_res = and i256 %mask_two, %valcomb
+  ret i256 %two_cells_res
+}
+
+define void @__small_store_as0(i256 %addr, i256 %size_in_bits, i256 %value) {
+entry:
+  %offset_lead_bytes = urem i256 %addr, 32
+  %offset_lead_bits = mul nuw nsw i256 %offset_lead_bytes, 8
+  %offset_lead_bits_inv = sub nsw nuw i256 256, %offset_lead_bits
+  %base_int = sub i256 %addr, %offset_lead_bytes
+  %base_ptr = inttoptr i256 %base_int to i256*
+  %hival_orig = load i256, i256* %base_ptr, align 32
+  %offset_size = add nuw nsw i256 %offset_lead_bits, %size_in_bits
+  %fits_cell = icmp ule i256 %offset_size, 256
+  %inv_size = sub i256 256, %size_in_bits
+  %mask_hi_common.1 = shl i256 -1, %offset_lead_bits_inv
+  %has_nlz = icmp eq i256 %offset_lead_bits, 0
+  %mask_hi_common = select i1 %has_nlz, i256 0, i256 %mask_hi_common.1
+  br i1 %fits_cell, label %one_cell, label %two_cells
+one_cell:
+  %trailing_onecell = sub i256 %offset_lead_bits_inv, %size_in_bits
+  %has_trailing_bits = icmp ugt i256 %trailing_onecell, 0
+  br i1 %has_trailing_bits, label %one_cell_trail, label %one_cell_common
+one_cell_trail:
+  %store_oc_shifted = shl i256 %value, %trailing_onecell
+  %trailing_onecell_inv = sub nsw nuw i256 256, %trailing_onecell
+  %mask_oc_lo = lshr i256 -1, %trailing_onecell_inv
+  %mask_oc_trail = or i256 %mask_hi_common, %mask_oc_lo
+  br label %one_cell_common
+one_cell_common:
+  %store_oc = phi i256 [%value, %one_cell], [%store_oc_shifted, %one_cell_trail]
+  %mask_oc = phi i256 [%mask_hi_common, %one_cell], [%mask_oc_trail, %one_cell_trail]
+  %orig_oc_masked = and i256 %mask_oc, %hival_orig
+  %store_oc.f = or i256 %orig_oc_masked, %store_oc
+  store i256 %store_oc.f, i256* %base_ptr
+  ret void
+two_cells:
+  %hi_orig = and i256 %hival_orig, %mask_hi_common
+  %bits_outstanding.1 = add nsw nuw i256 %size_in_bits, %offset_lead_bits
+  %bits_outstanding = sub nsw nuw i256 %bits_outstanding.1, 256
+  %bits_outstanding_inv = sub nsw nuw i256 256, %bits_outstanding.1
+  %hi_val_outstanding = lshr i256 %value, %bits_outstanding
+  %hi_store = or i256 %hi_val_outstanding, %hi_orig
+  store i256 %hi_store, i256* %base_ptr, align 32
+  %lo_base_int = add nsw nuw i256 %base_int, 32
+  %lo_base_ptr = inttoptr i256 %lo_base_int to i256*
+  %loval_orig = load i256, i256* %lo_base_ptr, align 32
+  %lo_store = shl i256 %value, %bits_outstanding_inv
+  %loval_mask = lshr i256 -1, %bits_outstanding
+  %loval_masked = and i256 %loval_mask, %loval_orig
+  %loval_store = or i256 %loval_masked, %lo_store
+  store i256 %loval_store, i256* %lo_base_ptr, align 32
+  ret void
 }
 
 declare {i256, i1} @llvm.uadd.with.overflow.i256(i256, i256)
