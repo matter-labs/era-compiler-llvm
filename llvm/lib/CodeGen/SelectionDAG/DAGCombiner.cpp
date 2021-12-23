@@ -11321,6 +11321,8 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
 
   // fold (zext (truncate x)) -> (and x, mask)
   if (N0.getOpcode() == ISD::TRUNCATE) {
+  // SyncVM local begin
+  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
     // fold (zext (truncate (load x))) -> (zext (smaller load x))
     // fold (zext (truncate (srl (load x), c))) -> (zext (smaller load (x+c/n)))
     if (SDValue NarrowLoad = ReduceLoadWidth(N0.getNode())) {
@@ -11332,6 +11334,8 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
       }
       return SDValue(N, 0); // Return N so it doesn't get rechecked!
     }
+    }
+    // SyncVM local end
 
     EVT SrcVT = N0.getOperand(0).getValueType();
     EVT MinVT = N0.getValueType();
@@ -11378,6 +11382,8 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
                        X, DAG.getConstant(Mask, DL, VT));
   }
 
+  // SyncVM local begin
+  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
   // Try to simplify (zext (load x)).
   if (SDValue foldedExt =
           tryToFoldExtOfLoad(DAG, *this, TLI, VT, LegalOperations, N, N0,
@@ -11398,8 +11404,6 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
   //      (and/or/xor (zextload x), (zext cst))
   // Unless (and (load x) cst) will match as a zextload already and has
   // additional users.
-  // SyncVM local begin
-  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
   if ((N0.getOpcode() == ISD::AND || N0.getOpcode() == ISD::OR ||
        N0.getOpcode() == ISD::XOR) &&
       isa<LoadSDNode>(N0.getOperand(0)) &&
