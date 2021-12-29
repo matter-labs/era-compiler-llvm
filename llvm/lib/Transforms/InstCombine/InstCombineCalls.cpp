@@ -135,11 +135,7 @@ Instruction *InstCombinerImpl::SimplifyAnyMemTransfer(AnyMemTransferInst *MI) {
   // If MemCpyInst length is 1/2/4/8 bytes then replace memcpy with
   // load/store.
   ConstantInt *MemOpLength = dyn_cast<ConstantInt>(MI->getLength());
-  // SyncVM local begin
-  // TODO: comments needs to be removed once load and stores regression for iN,
-  // N < 256 is fixed.
-  /*if (!MemOpLength)*/ return nullptr;
-  // SyncVM local end
+  if (!MemOpLength) return nullptr;
 
   // Source and destination pointer types are always "i8*" for intrinsic.  See
   // if the size is something we can handle with a single primitive load/store.
