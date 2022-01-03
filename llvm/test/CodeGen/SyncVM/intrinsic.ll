@@ -66,11 +66,12 @@ define void @sstore(i256 %val, i256 %dest) {
 
 ; CHECK-LABEL: sload
 define i256 @sload(i256 %dest) {
-; CHECK: ld r1, r2
+; CHECK-DAG: ld r1, r{{[0-9]}}
   %1 = call i256 @llvm.syncvm.sload(i256 %dest, i256 0)
-; CHECK: ld.e r1, r2
+; CHECK-DAG: ld.e r1, r{{[0-9]}}
   %2 = call i256 @llvm.syncvm.sload(i256 %dest, i256 1)
-  ret i256 %dest
+  %res = add i256 %1, %2
+  ret i256 %res
 }
 
 ; CHECK-LABEL: event
