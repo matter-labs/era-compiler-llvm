@@ -10,7 +10,7 @@ define i256 @farcallrc() nounwind {
   ret i256 %1
 }
 
-; CHECK-LABEL: __farcall
+; CHECK-LABEL: __farcall:
 ; CHECK: callf r1
 ; CHECK-NEXT: jlt
 
