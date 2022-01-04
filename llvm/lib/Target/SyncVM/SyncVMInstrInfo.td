@@ -49,7 +49,7 @@ def SyncVMpop : SDNode<"SyncVMISD::POP",   SDT_SyncVMPop,
                        [SDNPHasChain, SDNPInGlue, SDNPOutGlue]>;
 
 //===----------------------------------------------------------------------===//
-// MSP430 Operand Definitions.
+// SyncVM Operand Definitions.
 //===----------------------------------------------------------------------===//
 
 def imm128 : Operand<i256>, IntImmLeaf<i256, [{

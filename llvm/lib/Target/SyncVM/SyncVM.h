@@ -12,7 +12,7 @@
 #include "llvm/Target/TargetMachine.h"
 
 namespace SyncVMCC {
-// MSP430 specific condition code.
+// SyncVM specific condition code.
 enum CondCodes {
   COND_NONE = 0, // unconditional
   COND_E = 1,    // aka COND_Z
