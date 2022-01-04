@@ -75,7 +75,7 @@ jobs:
 
     - name: Testing. Building and running compiler tester.
       id: compiler_tester_run
-      run: ${DOCKER_CMD} sh -c "cd compiler-tester && ./run.sh"
+      run: ${DOCKER_CMD} sh -c "cd compiler-tester && ./run.sh info ${LLVM_BUILD_TYPE}"
 
     - name: Testing. Running segfault.sh.
       if: always() && steps.compiler_tester_run.outcome == 'failure'
