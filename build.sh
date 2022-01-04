@@ -35,6 +35,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
         -DLLVM_BUILD_DOCS='Off' \
         -DLLVM_INCLUDE_DOCS='Off' \
+        -DLLVM_ENABLE_ASSERTIONS='On' \
         -DLLVM_ENABLE_DOXYGEN='Off' \
         -DLLVM_ENABLE_SPHINX='Off' \
         -DLLVM_ENABLE_OCAMLDOC='Off' \
@@ -64,6 +65,7 @@ elif [[ -f '/etc/arch-release' ]]; then
         -DLLVM_USE_LINKER='lld' \
         -DLLVM_BUILD_DOCS='Off' \
         -DLLVM_INCLUDE_DOCS='Off' \
+        -DLLVM_ENABLE_ASSERTIONS='On' \
         -DLLVM_ENABLE_DOXYGEN='Off' \
         -DLLVM_ENABLE_SPHINX='Off' \
         -DLLVM_ENABLE_OCAMLDOC='Off' \
@@ -95,6 +97,7 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         -DLLVM_USE_LINKER="lld-${LLVM_VERSION}" \
         -DLLVM_BUILD_DOCS='Off' \
         -DLLVM_INCLUDE_DOCS='Off' \
+        -DLLVM_ENABLE_ASSERTIONS='On' \
         -DLLVM_ENABLE_DOXYGEN='Off' \
         -DLLVM_ENABLE_SPHINX='Off' \
         -DLLVM_ENABLE_OCAMLDOC='Off' \
