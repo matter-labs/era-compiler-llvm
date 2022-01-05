@@ -52,7 +52,11 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SELECT, MVT::i256, Expand);
   setOperationAction(ISD::SELECT_CC, MVT::i256, Custom);
   setOperationAction(ISD::TRUNCATE, MVT::i64, Promote);
+
+  setOperationAction(ISD::UDIV, MVT::i256, Expand);
+  setOperationAction(ISD::UREM, MVT::i256, Expand);
   setOperationAction(ISD::UMUL_LOHI, MVT::i256, Legal);
+  setOperationAction(ISD::UDIVREM, MVT::i256, Legal);
 
   // SyncVM lacks of native support for signed operations.
   setOperationAction(ISD::SRA, MVT::i256, Custom);
