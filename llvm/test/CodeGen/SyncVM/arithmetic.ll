@@ -41,8 +41,7 @@ define i256 @uremi256(i256 %par, i256 %p2) nounwind {
 ; CHECK-LABEL: udivremi256
 ; TODO: optimize to use a single div instruction
 define i256 @udivremi256(i256 %par, i256 %p2) nounwind {
-; CHECK: div r1, r2, r0, r3
-; CHECK: div r1, r2, r2, r0
+; CHECK: udivrem r1, r2, r2, r3
 ; CHECK: add r2, r3, r1
   %1 = udiv i256 %par, %p2
   %2 = urem i256 %par, %p2

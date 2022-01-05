@@ -390,6 +390,31 @@ void SyncVMDAGToDAGISel::Select(SDNode *Node) {
                           CurDAG->getTargetConstant(0, DL, MVT::i256)));
     return;
   }
+  case ISD::UDIVREM: {
+    // convert UDIVREM to UDIV or UREM if only one of the results are used
+    bool val0_used = Node->hasAnyUseOfValue(0);
+    bool val1_used = Node->hasAnyUseOfValue(1);
+
+    if (val0_used && !val1_used) {
+      auto udiv =
+          CurDAG->getMachineNode(SyncVM::DIVrrrz, DL, MVT::i256,
+                                 Node->getOperand(0), Node->getOperand(1));
+
+      ReplaceUses(SDValue(Node, 0), SDValue(udiv, 0));
+      CurDAG->RemoveDeadNode(Node);
+      return;
+    }
+
+    if (!val0_used && val1_used) {
+      auto urem =
+          CurDAG->getMachineNode(SyncVM::REMrrzr, DL, MVT::i256,
+                                 Node->getOperand(0), Node->getOperand(1));
+      ReplaceUses(SDValue(Node, 1), SDValue(urem, 0));
+      CurDAG->RemoveDeadNode(Node);
+      return;
+    }
+    break;
+  }
   }
 
   // Select the default instruction
@@ -403,3 +428,4 @@ FunctionPass *llvm::createSyncVMISelDag(SyncVMTargetMachine &TM,
                                         CodeGenOpt::Level OptLevel) {
   return new SyncVMDAGToDAGISel(TM, OptLevel);
 }
+//
