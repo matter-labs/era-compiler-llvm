@@ -306,7 +306,7 @@ def DIVrizr    : SyncVMInstruction< 0x04, (outs GR256:$out),
                                     "div\t$in1, #$in2, r0, $out",
                                     [(set GR256:$out, (urem GR256:$in1, imm128:$in2))]>;
 // TODO: needs logic in isel lowering to be generated
-def DIVREMrrrr : ArithmeticRRRR< 0x04, "udivrem", udivrem >;
+def DIVREMrrrr : ArithmeticRRRR< 0x04, "div", udivrem >;
 
 // Operations with memory and registers
 
