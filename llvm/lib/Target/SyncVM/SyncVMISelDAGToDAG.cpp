@@ -372,6 +372,37 @@ void SyncVMDAGToDAGISel::Select(SDNode *Node) {
     return;
   }
 
+  auto has_uses = [](SDNode *Node) {
+    bool val0_used = Node->hasAnyUseOfValue(0);
+    bool val1_used = Node->hasAnyUseOfValue(1);
+
+    return std::make_pair(val0_used, val1_used);
+  };
+
+  auto muldiv_expander = [&](SDNode *Node, uint32_t opcode1, uint32_t opcode2) {
+    auto uses = has_uses(Node);
+    bool val0_used = uses.first;
+    bool val1_used = uses.second;
+
+    if (val0_used && !val1_used) {
+      auto op1 = CurDAG->getMachineNode(
+          opcode1, DL, MVT::i256, Node->getOperand(0), Node->getOperand(1));
+
+      ReplaceUses(SDValue(Node, 0), SDValue(op1, 0));
+      CurDAG->RemoveDeadNode(Node);
+      return true;
+    }
+
+    if (!val0_used && val1_used) {
+      auto op2 = CurDAG->getMachineNode(
+          opcode2, DL, MVT::i256, Node->getOperand(0), Node->getOperand(1));
+      ReplaceUses(SDValue(Node, 1), SDValue(op2, 0));
+      CurDAG->RemoveDeadNode(Node);
+      return true;
+    }
+    return false;
+  };
+
   // Few custom selection stuff.
   switch (Node->getOpcode()) {
   default:
@@ -391,26 +422,15 @@ void SyncVMDAGToDAGISel::Select(SDNode *Node) {
     return;
   }
   case ISD::UDIVREM: {
-    // convert UDIVREM to UDIV or UREM if only one of the results are used
-    bool val0_used = Node->hasAnyUseOfValue(0);
-    bool val1_used = Node->hasAnyUseOfValue(1);
-
-    if (val0_used && !val1_used) {
-      auto udiv =
-          CurDAG->getMachineNode(SyncVM::DIVrrrz, DL, MVT::i256,
-                                 Node->getOperand(0), Node->getOperand(1));
-
-      ReplaceUses(SDValue(Node, 0), SDValue(udiv, 0));
-      CurDAG->RemoveDeadNode(Node);
+    // redirect unused variable to $r0
+    if (muldiv_expander(Node, SyncVM::DIVrrrz, SyncVM::REMrrzr)) {
       return;
     }
-
-    if (!val0_used && val1_used) {
-      auto urem =
-          CurDAG->getMachineNode(SyncVM::REMrrzr, DL, MVT::i256,
-                                 Node->getOperand(0), Node->getOperand(1));
-      ReplaceUses(SDValue(Node, 1), SDValue(urem, 0));
-      CurDAG->RemoveDeadNode(Node);
+    break;
+  }
+  case ISD::UMUL_LOHI: {
+    // redirect unused variable to $r0
+    if (muldiv_expander(Node, SyncVM::MULrrrz, SyncVM::MULrrzr)) {
       return;
     }
     break;

@@ -24,6 +24,13 @@ define i256 @muli256(i256 %par, i256 %p2) nounwind {
   ret i256 %1
 }
 
+; CHECK-LABEL: mullohii256
+define i256 @mullohii256(i256 %par, i256 %p2) nounwind {
+; CHECK: mul r1, r2, r1, r0
+  %1 = mul i256 %par, %p2
+  ret i256 %1
+}
+
 ; CHECK-LABEL: udivi256
 define i256 @udivi256(i256 %par, i256 %p2) nounwind {
 ; CHECK: div r1, r2, r1, r0
@@ -41,7 +48,7 @@ define i256 @uremi256(i256 %par, i256 %p2) nounwind {
 ; CHECK-LABEL: udivremi256
 ; TODO: optimize to use a single div instruction
 define i256 @udivremi256(i256 %par, i256 %p2) nounwind {
-; CHECK: udivrem r1, r2, r2, r3
+; CHECK: div r1, r2, r2, r3
 ; CHECK: add r2, r3, r1
   %1 = udiv i256 %par, %p2
   %2 = urem i256 %par, %p2
