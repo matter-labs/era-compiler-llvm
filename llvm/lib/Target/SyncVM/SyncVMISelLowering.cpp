@@ -53,10 +53,15 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SELECT_CC, MVT::i256, Custom);
   setOperationAction(ISD::TRUNCATE, MVT::i64, Promote);
 
+  // special handling of udiv/urem
   setOperationAction(ISD::UDIV, MVT::i256, Expand);
   setOperationAction(ISD::UREM, MVT::i256, Expand);
-  setOperationAction(ISD::UMUL_LOHI, MVT::i256, Legal);
   setOperationAction(ISD::UDIVREM, MVT::i256, Legal);
+
+  // special handling of umulxx
+  setOperationAction(ISD::MUL, MVT::i256, Expand);
+  setOperationAction(ISD::SMUL_LOHI, MVT::i256, Expand);
+  setOperationAction(ISD::UMUL_LOHI, MVT::i256, Legal);
 
   // SyncVM lacks of native support for signed operations.
   setOperationAction(ISD::SRA, MVT::i256, Custom);
@@ -253,13 +258,15 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   CallingConv::ID CallConv = CLI.CallConv;
   bool IsVarArg = CLI.IsVarArg;
   SmallVector<SDValue, 12> MemOpChains;
-  const Function* CalleeF = [&Callee, &DAG](){
+  const Function *CalleeF = [&Callee, &DAG]() {
     if (auto *GA = dyn_cast<GlobalAddressSDNode>(Callee))
       return cast<Function>(GA->getGlobal());
     else if (auto *ES = dyn_cast<ExternalSymbolSDNode>(Callee))
-      return cast<Function>(cast<GlobalAddressSDNode>(DAG.getSymbolFunctionGlobalAddress(Callee))->getGlobal());
+      return cast<Function>(
+          cast<GlobalAddressSDNode>(DAG.getSymbolFunctionGlobalAddress(Callee))
+              ->getGlobal());
     llvm_unreachable("Unexpected node for a call");
-    return (const Function*) nullptr;
+    return (const Function *)nullptr;
   }();
 
   // TODO: SyncVM target does not yet support tail call optimization.
