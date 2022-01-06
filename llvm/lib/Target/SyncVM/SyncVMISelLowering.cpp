@@ -79,6 +79,8 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   for (MVT VT : MVT::integer_valuetypes()) {
     setLoadExtAction(ISD::SEXTLOAD, MVT::i256, VT, Custom);
   }
+
+  setJumpIsExpensive(false);
 }
 
 //===----------------------------------------------------------------------===//

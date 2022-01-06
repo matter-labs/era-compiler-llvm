@@ -93,9 +93,48 @@ public:
   bool isZExtFree(EVT VT1, EVT VT2) const override { return false; }
   bool isZExtFree(SDValue Val, EVT VT2) const override { return false; }
 
+  bool isIntDivCheap(EVT VT, AttributeList Attr) const override { return true; }
+
   bool isLegalICmpImmediate(int64_t) const override { return false; }
   bool shouldAvoidTransformToShift(EVT VT, unsigned Amount) const override {
     return true;
+  }
+
+  /// Returns true if we should normalize
+  /// select(N0&N1, X, Y) => select(N0, select(N1, X, Y), Y) and
+  /// select(N0|N1, X, Y) => select(N0, select(N1, X, Y, Y)) if it is likely
+  /// that it saves us from materializing N0 and N1 in an integer register.
+  /// Targets that are able to perform and/or on flags should return false here.
+  bool shouldNormalizeToSelectSequence(LLVMContext &Context,
+                                       EVT VT) const override {
+    return false;
+  }
+
+  /// Use bitwise logic to make pairs of compares more efficient. For example:
+  /// and (seteq A, B), (seteq C, D) --> seteq (or (xor A, B), (xor C, D)), 0
+  /// This should be true when it takes more than one instruction to lower
+  /// setcc (cmp+set on x86 scalar), when bitwise ops are faster than logic on
+  /// condition bits (crand on PowerPC), and/or when reducing cmp+br is a win.
+  bool convertSetCCLogicToBitwiseLogic(EVT VT) const override { return true; }
+
+  /// There are two ways to clear extreme bits (either low or high):
+  /// Mask:    x &  (-1 << y)  (the instcombine canonical form)
+  /// Shifts:  x >> y << y
+  /// Return true if the variant with 2 variable shifts is preferred.
+  /// Return false if there is no preference.
+  bool shouldFoldMaskToVariableShiftPair(SDValue X) const override {
+    return true;
+  }
+
+  /// Return true if it is beneficial to convert a load of a constant to
+  /// just the constant itself.
+  bool shouldConvertConstantLoadToIntImm(const APInt &Imm,
+                                         Type *Ty) const override {
+    // 16-bit or smaller immediates can be loaded with 1 instruction
+    if (isInt<128>(Imm.getSExtValue()) || isInt<128>(Imm.getZExtValue())) {
+      return true;
+    }
+    return false;
   }
 
   MachineBasicBlock *
