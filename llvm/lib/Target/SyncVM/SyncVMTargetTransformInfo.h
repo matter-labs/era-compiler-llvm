@@ -42,6 +42,33 @@ public:
 
   TTI::PopcntSupportKind getPopcntSupport(unsigned TyWidth) const;
 
+  InstructionCost getIntImmCost(const APInt &Imm, Type *Ty,
+                                TTI::TargetCostKind CostKind);
+
+  bool hasDivRemOp(Type *DataType, bool IsSigned);
+
+  InstructionCost getCmpSelInstrCost(unsigned Opcode, Type *ValTy, Type *CondTy,
+                                     CmpInst::Predicate VecPred,
+                                     TTI::TargetCostKind CostKind,
+                                     const Instruction *I = nullptr);
+
+  InstructionCost getMemoryOpCost(unsigned Opcode, Type *Src,
+                                  MaybeAlign Alignment, unsigned AddressSpace,
+                                  TTI::TargetCostKind CostKind,
+                                  const Instruction *I = nullptr);
+
+  InstructionCost getIntrinsicInstrCost(const IntrinsicCostAttributes &ICA,
+                                        TTI::TargetCostKind CostKind);
+
+  bool allowsMisalignedMemoryAccesses(LLVMContext &Context, unsigned BitWidth,
+                                      unsigned AddressSpace = 0,
+                                      Align Alignment = Align(1),
+                                      bool *Fast = nullptr) const {
+    return true;
+  }
+
+  unsigned getAssumedAddrSpace(const Value *V) const;
+
   /// @}
 
   /// \name Vector TTI Implementations
