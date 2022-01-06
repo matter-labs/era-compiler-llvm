@@ -1,3 +1,4 @@
+; XFAIL: *
 ; RUN: llc < %s | FileCheck %s
 source_filename = "main"
 target datalayout = "E-p:256:256-i8:256:256:256-i256:256:256-S32-a:256:256"
