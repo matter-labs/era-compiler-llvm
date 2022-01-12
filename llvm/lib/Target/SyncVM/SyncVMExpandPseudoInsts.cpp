@@ -36,6 +36,7 @@ public:
 
 private:
   void expandConst(MachineInstr &MI) const;
+  void expandLoadConst(MachineInstr &MI) const;
   const TargetInstrInfo *TII;
   LLVMContext *Context;
 };
@@ -47,25 +48,160 @@ char SyncVMExpandPseudo::ID = 0;
 INITIALIZE_PASS(SyncVMExpandPseudo, DEBUG_TYPE, SYNCVM_EXPAND_PSEUDO_NAME,
                 false, false)
 
-#if 0
 void SyncVMExpandPseudo::expandConst(MachineInstr &MI) const {
   MachineOperand Constant = MI.getOperand(1);
   MachineOperand Reg = MI.getOperand(0);
   assert((Constant.isImm() || Constant.isCImm()) && "Unexpected operand type");
   const APInt &Val = Constant.isCImm() ? Constant.getCImm()->getValue()
                                        : APInt(256, Constant.getImm(), true);
-  APInt ValLo = Val.shl(128).lshr(128);
-  APInt ValHi = Val.lshr(128);
-  BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(SyncVM::SFLLir))
+  // big immediate or negative values are loaded from constant pool
+  assert(Val.isIntN(16) && !Val.isNegative());
+  BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(SyncVM::ADDirr))
       .add(Reg)
-      .addCImm(ConstantInt::get(*Context, ValLo))
-      .add(Reg);
-  BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(SyncVM::SFLHir))
-      .add(Reg)
-      .addCImm(ConstantInt::get(*Context, ValHi))
-      .add(Reg);
+      .addReg(SyncVM::R0)
+      .addCImm(ConstantInt::get(*Context, Val));
 }
-#endif
+
+void SyncVMExpandPseudo::expandLoadConst(MachineInstr &MI) const {
+  MachineOperand ConstantPool = MI.getOperand(1);
+  MachineOperand Reg = MI.getOperand(0);
+
+  auto can_combine = [] (MachineInstr &cur, MachineInstr &next) {
+    auto opcode = next.getOpcode(); 
+    switch (opcode) {
+      default:{
+        break;
+      }
+      // this handles commutative cases
+      case SyncVM::ADDrrr:
+      case SyncVM::ANDrrr:
+      case SyncVM::XORrrr:
+      case SyncVM::ORrrr: {
+        auto outReg = cur.getOperand(0).getReg();
+        if (next.getOperand(1).getReg() == outReg ||
+            next.getOperand(2).getReg() == outReg) {
+          return true;
+        }
+        break;
+      }
+    }
+    return false;
+  };
+
+  auto can_non_commute_combine = [](MachineInstr &cur, MachineInstr &next) {
+    auto opcode = next.getOpcode(); 
+    switch (opcode) {
+      default:{
+        break;
+      }
+      // this handles commutative cases
+      case SyncVM::SUBrrr:
+      case SyncVM::SHLrrr:
+      case SyncVM::SHRrrr:
+      case SyncVM::ROLrrr:
+      case SyncVM::RORrrr: {
+        auto outReg = cur.getOperand(0).getReg();
+        if (next.getOperand(1).getReg() == outReg ||
+            next.getOperand(2).getReg() == outReg) {
+          return true;
+        }
+        break;
+      }
+    }
+    return false;
+  };
+
+  auto get_crr_op = [] (auto opcode, bool reverse = false) {
+    switch (opcode) {
+      default: {
+        llvm_unreachable("wrong opcode");
+        break;
+      }
+      case SyncVM::ADDrrr: {
+        return SyncVM::ADDcrr;
+      }
+      case SyncVM::ANDrrr: {
+        return SyncVM::ANDcrr;
+      }
+      case SyncVM::XORrrr: {
+        return SyncVM::XORcrr;
+      }
+      case SyncVM::ORrrr: {
+        return SyncVM::ORcrr;
+      }
+      case SyncVM::SUBrrr: {
+        return reverse ? SyncVM::SUByrr : SyncVM::SUBcrr;
+      }
+      case SyncVM::SHLrrr: {
+        return reverse ? SyncVM::SHLyrr : SyncVM::SHLcrr;
+      }
+      case SyncVM::SHRrrr: {
+        return reverse ? SyncVM::SHRyrr : SyncVM::SHRcrr;
+      }
+      case SyncVM::ROLrrr: {
+        return reverse ? SyncVM::ROLyrr : SyncVM::ROLcrr;
+      }
+      case SyncVM::RORrrr: {
+        return reverse ? SyncVM::RORyrr : SyncVM::RORrrr;
+      }
+    }
+  };
+
+  // it is possible that we can merge two instructions, as long as we do not
+  // call a scheduler the materialization of a const will be followed by its
+  // use.
+  auto MBBI = std::next(MachineBasicBlock::iterator(MI));
+  auto outReg = MI.getOperand(0).getReg();
+  if (can_combine(MI, *MBBI)) {
+    auto opcode = MBBI->getOpcode();
+    auto other_op = get_crr_op(opcode);
+
+    auto outReg = MI.getOperand(0).getReg();
+    auto otherReg = MBBI->getOperand(1).getReg() == outReg
+                        ? MBBI->getOperand(2)
+                        : MBBI->getOperand(1);
+
+    BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(other_op))
+        .add(MBBI->getOperand(0))
+        .addImm(0)
+        .add(ConstantPool)
+        .add(otherReg);
+    MBBI->eraseFromParent();
+    return;
+  }
+
+  if (can_non_commute_combine(MI, *MBBI)) {
+    auto opcode = MBBI->getOpcode();
+
+    bool reverse;
+    MachineOperand * otherOpnd;
+    if (MBBI->getOperand(1).getReg() == outReg) {
+      reverse = false;
+      otherOpnd = &MBBI->getOperand(2);
+    } else {
+      assert(MBBI->getOperand(2).getReg() == outReg);
+      reverse = true;
+      otherOpnd = &MBBI->getOperand(1);
+    }
+    auto other_op = get_crr_op(opcode, reverse);
+
+    BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(other_op))
+        .add(MBBI->getOperand(0))
+        .addImm(0)
+        .add(ConstantPool)
+        .add(*otherOpnd);
+    MBBI->eraseFromParent();
+    return;
+  }
+
+  BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(SyncVM::ADDcrr))
+      .add(Reg)
+      .addImm(0)
+      .add(ConstantPool)
+      .addReg(SyncVM::R0)
+      .getInstr();
+}
+
 
 bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
   LLVM_DEBUG(
@@ -116,7 +252,10 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
   std::vector<MachineInstr *> PseudoInst;
   for (MachineBasicBlock &MBB : MF)
     for (MachineInstr &MI : MBB) {
-      if (MI.isPseudo() && Pseudos.count(MI.getOpcode())) {
+      if (!MI.isPseudo())
+        continue;
+
+      if (Pseudos.count(MI.getOpcode())) {
         // Expand SELxxx pseudo into mov + cmov
         unsigned Opc = MI.getOpcode();
         DebugLoc DL = MI.getDebugLoc();
@@ -172,6 +311,12 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
         for (unsigned i = DstArgPos; i < EndPos; ++i)
           CMov.add(MI.getOperand(i));
 
+        PseudoInst.push_back(&MI);
+      } else if (MI.getOpcode() == SyncVM::CONST) {
+        expandConst(MI);
+        PseudoInst.push_back(&MI);
+      } else if (MI.getOpcode() == SyncVM::LOADCONST) {
+        expandLoadConst(MI);
         PseudoInst.push_back(&MI);
       }
     }

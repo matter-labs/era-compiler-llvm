@@ -25,9 +25,7 @@ define i256 @srar(i256 %a, i256 %size) nounwind {
 
 ; CHECK-LABEL: csra
 define i256 @csra(i256 %size) nounwind {
-; CHECK: sfll	#42, r2, r2
-; CHECK: sflh	#0, r2, r2
-; CHECK: shr	r2, r1, r1
+; CHECK: shr	42, r1, r1
 ; CHECK: ret
   %1 = ashr i256 42, %size
   ret i256 %1

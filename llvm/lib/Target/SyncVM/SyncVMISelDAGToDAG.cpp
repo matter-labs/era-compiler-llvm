@@ -370,6 +370,20 @@ void SyncVMDAGToDAGISel::Select(SDNode *Node) {
   switch (Node->getOpcode()) {
   default:
     break;
+  case ISD::Constant: {
+    auto cn = cast<ConstantSDNode>(Node);
+    auto val = cn->getAPIntValue();
+
+    // if it cannot fit into the imm field of an instruction ... put it into pool
+    if (!val.isIntN(16) || val.isNegative()) {
+      MVT PtrVT = getTargetLowering()->getPointerTy(CurDAG->getDataLayout());
+      SDValue CP = CurDAG->getTargetConstantPool(cn->getConstantIntValue(), PtrVT);
+      auto lc = CurDAG->getMachineNode(SyncVM::LOADCONST, DL, MVT::i256, CP);
+      ReplaceNode(Node, lc);
+      return;
+    }
+    break;
+  }
   case ISD::FrameIndex: {
     assert(Node->getValueType(0) == MVT::i256);
     int FI = cast<FrameIndexSDNode>(Node)->getIndex();
