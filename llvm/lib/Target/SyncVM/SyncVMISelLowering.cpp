@@ -486,11 +486,14 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
 SDValue SyncVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   SDLoc DL(Op);
   LoadSDNode *Load = cast<LoadSDNode>(Op);
+
   if (Load->getExtensionType() != ISD::SEXTLOAD)
     return {};
+
   EVT MemVT = Load->getMemoryVT();
   assert(MemVT.isScalarInteger() && "Unexpected type to load");
   assert(Load->getAlignment() >= MemVT.getStoreSize());
+
   if (MemVT.getSizeInBits() == 256)
     return {};
 
