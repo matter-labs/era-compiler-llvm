@@ -158,6 +158,14 @@ def ADJCALLSTACKUP   : Pseudo<(outs), (ins i256imm:$amt1, i256imm:$amt2),
                               [(SyncVMcallseq_end timm:$amt1, timm:$amt2)]>;
 }
 
+let isReMaterializable = 1, hasSideEffects = 0, isPseudo = 1 in {
+def LOADCONST : Pseudo<(outs GR256:$val), (ins i256imm:$addr),
+                         "LOADCONST\t$addr, $val",
+                         [(set GR256:$val, (load tconstpool:$addr))]>;
+def CONST   : Pseudo< (outs GR256:$out), (ins i256imm:$val),
+                      "#pseudo#", [(set GR256:$out, imm:$val)] >;
+}
+
 let isCodeGenOnly = 1, Defs = [Flags], Uses = [SP] in {
 def ADDframe : Pseudo<(outs GR256:$dst), (ins i256imm:$base, i256imm:$offset),
                       "# ADDframe PSEUDO", []>;
@@ -720,9 +728,14 @@ def J: Jump<0x08, (outs), (ins jmptarget:$dst_true, jmptarget:$dst_false, GR256:
 // Constants materialization
 //===----------------------------------------------------------------------===//
 
-let isPseudo = 1 in
+let isReMaterializable = 1, hasSideEffects = 0, isPseudo = 1 in {
+def LOADCONST : Pseudo<(outs GR256:$val), (ins i256imm:$addr),
+                         "LOADCONST\t$addr, $val",
+                         [(set GR256:$val, (load tconstpool:$addr))]>;
 def CONST   : Pseudo< (outs GR256:$out), (ins i256imm:$val),
                       "#pseudo#", [(set GR256:$out, imm:$val)] >;
+}
+
 def SFLLir  : SyncVMInstruction< 0x050, (outs GR256:$out), (ins imm128:$val, GR256:$reg),
                                  "sfll\t#$val, $reg, $out", [] >;
 def SFLHir  : SyncVMInstruction< 0x051, (outs GR256:$out), (ins imm128:$val, GR256:$reg),
