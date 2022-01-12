@@ -36,6 +36,7 @@ public:
 
 private:
   void expandConst(MachineInstr &MI) const;
+  void expandLoadConst(MachineInstr &MI) const;
   const TargetInstrInfo *TII;
   LLVMContext *Context;
 };
@@ -47,25 +48,30 @@ char SyncVMExpandPseudo::ID = 0;
 INITIALIZE_PASS(SyncVMExpandPseudo, DEBUG_TYPE, SYNCVM_EXPAND_PSEUDO_NAME,
                 false, false)
 
-#if 0
 void SyncVMExpandPseudo::expandConst(MachineInstr &MI) const {
   MachineOperand Constant = MI.getOperand(1);
   MachineOperand Reg = MI.getOperand(0);
   assert((Constant.isImm() || Constant.isCImm()) && "Unexpected operand type");
   const APInt &Val = Constant.isCImm() ? Constant.getCImm()->getValue()
                                        : APInt(256, Constant.getImm(), true);
-  APInt ValLo = Val.shl(128).lshr(128);
-  APInt ValHi = Val.lshr(128);
-  BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(SyncVM::SFLLir))
+  // big immediate or negative values are loaded from constant pool
+  assert(Val.isIntN(16) && !Val.isNegative());
+  BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(SyncVM::ADDirr))
       .add(Reg)
-      .addCImm(ConstantInt::get(*Context, ValLo))
-      .add(Reg);
-  BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(SyncVM::SFLHir))
-      .add(Reg)
-      .addCImm(ConstantInt::get(*Context, ValHi))
-      .add(Reg);
+      .addReg(SyncVM::R0)
+      .addCImm(ConstantInt::get(*Context, Val));
 }
-#endif
+
+void SyncVMExpandPseudo::expandLoadConst(MachineInstr &MI) const {
+  MachineOperand ConstantPool = MI.getOperand(1);
+  MachineOperand Reg = MI.getOperand(0);
+
+  BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(SyncVM::ADDcrr))
+      .add(Reg)
+      .addImm(0)
+      .add(ConstantPool)
+      .addReg(SyncVM::R0);
+}
 
 bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
   LLVM_DEBUG(
@@ -116,7 +122,10 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
   std::vector<MachineInstr *> PseudoInst;
   for (MachineBasicBlock &MBB : MF)
     for (MachineInstr &MI : MBB) {
-      if (MI.isPseudo() && Pseudos.count(MI.getOpcode())) {
+      if (!MI.isPseudo())
+        continue;
+
+      if (Pseudos.count(MI.getOpcode())) {
         // Expand SELxxx pseudo into mov + cmov
         unsigned Opc = MI.getOpcode();
         DebugLoc DL = MI.getDebugLoc();
@@ -172,6 +181,12 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
         for (unsigned i = DstArgPos; i < EndPos; ++i)
           CMov.add(MI.getOperand(i));
 
+        PseudoInst.push_back(&MI);
+      } else if (MI.getOpcode() == SyncVM::CONST) {
+        expandConst(MI);
+        PseudoInst.push_back(&MI);
+      } else if (MI.getOpcode() == SyncVM::LOADCONST) {
+        expandLoadConst(MI);
         PseudoInst.push_back(&MI);
       }
     }
