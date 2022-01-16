@@ -8,7 +8,7 @@ target triple = "syncvm"
 ; CHECK-LABEL: brcond:
 define i256 @brcond(i256 %p1) nounwind {
 ; CHECK: and 1, r1, r1
-; CHECK: add 1, 0, r2
+; CHECK: add 1, 0, r1
 ; CHECK: sub! r1, r2, r1
 ; CHECK: jump.ne .BB0_2
   %1 = trunc i256 %p1 to i1
