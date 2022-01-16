@@ -614,6 +614,12 @@ let isReturn = 1, isTerminator = 1, isBarrier = 1  in
 def RET   : IRet<7, RFNone, "ret", [(SyncVMret)]>;
 let isTerminator = 1, isBarrier = 1, isTrap = 1 in
 def THROW : IRet<7, RFErr, "ret.err", [(int_syncvm_throw)]>;
+
+let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15],
+    Uses = [SP], isCall = 1 in {
+  def CALL : Pseudo<(outs), (ins i16imm:$callee),
+                  "call\t$callee", [(SyncVMcall tglobaladdr:$callee)]>;
+}
               /*
 def JCC: IJump<10, (outs), (ins jmptarget:$addrtrue, jmptarget:$addrfalse, GR256:$cond),
                "j$cond\t$dst_true, $dst_false",

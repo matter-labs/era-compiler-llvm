@@ -98,7 +98,7 @@ loop.exit:
 define i256 @cmpir(i256 %p1, i256 %p2) nounwind {
 ; TODO: CPR-447 should be subx 42, r1, r{{[0-9]}}
 ; CHECK: add 42, 0, r2
-; CHECK: sub r1, r2, r2
+; CHECK: sub r1, r2, r1
   %1 = icmp ugt i256 %p1, 42
   br i1 %1, label %l1, label %l2
 l1:
@@ -111,7 +111,7 @@ l2:
 define i256 @cmpcr(i256 %p1, i256 %p2) nounwind {
 ; TODO: CPR-447 should be subx code[val], r1, r{{[0-9]}}
 ; CHECK: add code[val], 0, r2
-; CHECK: sub r1, r2, r2
+; CHECK: sub r1, r2, r1
   %const = load i256, i256 addrspace(4)* @val
   %1 = icmp ugt i256 %p1, %const
   br i1 %1, label %l1, label %l2
@@ -126,7 +126,7 @@ define i256 @cmpsr(i256 %p1, i256 %p2) nounwind {
   %ptr = alloca i256
 ; TODO: CPR-447 should be subx stack-[1], r1, r{{[0-9]}}
 ; CHECK: add stack-[1], 0, r2
-; CHECK: sub r1, r2, r2
+; CHECK: sub r1, r2, r1
   %data = load i256, i256* %ptr
   %1 = icmp ugt i256 %p1, %data
   br i1 %1, label %l1, label %l2
@@ -140,7 +140,7 @@ l2:
 define i256 @cmpri(i256 %p1, i256 %p2) nounwind {
 ; TODO: CPR-447 should be sub 42, r1, r{{[0-9]}}
 ; CHECK: add 42, 0, r2
-; CHECK: sub r2, r1, r2
+; CHECK: sub r2, r1, r1
   %1 = icmp ugt i256 42, %p1
   br i1 %1, label %l1, label %l2
 l1:
@@ -153,7 +153,7 @@ l2:
 define i256 @cmprc(i256 %p1, i256 %p2) nounwind {
 ; TODO: CPR-447 should be sub code[val], r1, r{{[0-9]}}
 ; CHECK: add code[val], 0, r2
-; CHECK: sub r2, r1, r2
+; CHECK: sub r2, r1, r1
   %const = load i256, i256 addrspace(4)* @val
   %1 = icmp ugt i256 %const, %p1
   br i1 %1, label %l1, label %l2
@@ -168,7 +168,7 @@ define i256 @cmprs(i256 %p1, i256 %p2) nounwind {
   %ptr = alloca i256
 ; TODO: CPR-447 should be sub stack-[1], r1, r{{[0-9]}}
 ; CHECK: add stack-[1], 0, r2
-; CHECK: sub r2, r1, r2
+; CHECK: sub r2, r1, r1
   %data = load i256, i256* %ptr
   %1 = icmp ugt i256 %data, %p1
   br i1 %1, label %l1, label %l2
