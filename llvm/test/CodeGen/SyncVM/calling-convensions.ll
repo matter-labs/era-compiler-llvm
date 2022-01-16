@@ -50,7 +50,7 @@ define i256 @caller_argtypes(i1 %a1, i8 %a2, i16 %a3, i32 %a4, i64 %a5, i128 %a6
 define i256 @caller_i1.ret(i256 %a1) nounwind {
 ; CHECK: call	i1.ret
   %1 = call i1 @i1.ret(i256 %a1)
-; CHECK: and #1, r1, r1
+; CHECK: and 1, r1, r1
   %2 = zext i1 %1 to i256
   ret i256 %2
 }
@@ -59,7 +59,7 @@ define i256 @caller_i1.ret(i256 %a1) nounwind {
 define i256 @caller_i8.ret(i256 %a1) nounwind {
 ; CHECK: call	i8.ret
   %1 = call i8 @i8.ret(i256 %a1)
-; CHECK: and #255, r1, r1
+; CHECK: and 255, r1, r1
   %2 = zext i8 %1 to i256
   ret i256 %2
 }
@@ -68,7 +68,7 @@ define i256 @caller_i8.ret(i256 %a1) nounwind {
 define i256 @caller_i16.ret(i256 %a1) nounwind {
 ; CHECK: call	i16.ret
   %1 = call i16 @i16.ret(i256 %a1)
-; CHECK: and #65535, r1, r1
+; CHECK: and 65535, r1, r1
   %2 = zext i16 %1 to i256
   ret i256 %2
 }
@@ -77,7 +77,7 @@ define i256 @caller_i16.ret(i256 %a1) nounwind {
 define i256 @caller_i32.ret(i256 %a1) nounwind {
 ; CHECK: call	i32.ret
   %1 = call i32 @i32.ret(i256 %a1)
-; CHECK: and #4294967295, r1, r1
+; CHECK: and code[CPI{{[0-9]+}}_{{[0-9]+}}], r1, r1
   %2 = zext i32 %1 to i256
   ret i256 %2
 }
@@ -86,7 +86,7 @@ define i256 @caller_i32.ret(i256 %a1) nounwind {
 define i256 @caller_i64.ret(i256 %a1) nounwind {
 ; CHECK: call	i64.ret
   %1 = call i64 @i64.ret(i256 %a1)
-; CHECK: and #18446744073709551615, r1, r1
+; CHECK: and code[CPI{{[0-9]+}}_{{[0-9]+}}], r1, r1
   %2 = zext i64 %1 to i256
   ret i256 %2
 }
@@ -95,30 +95,29 @@ define i256 @caller_i64.ret(i256 %a1) nounwind {
 define i256 @caller_i128.ret(i256 %a1) nounwind {
 ; CHECK: call	i128.ret
   %1 = call i128 @i128.ret(i256 %a1)
-; CHECK: and #340282366920938463463374607431768211455, r1, r1
+; CHECK: and code[CPI{{[0-9]+}}_{{[0-9]+}}], r1, r1
   %2 = zext i128 %1 to i256
   ret i256 %2
 }
 
 ; CHECK-LABEL: call.onestack
 define i256 @call.onestack() nounwind {
-; CHECK: sfll #0, r2, r2
-; CHECK: sflh #0, r2, r2
-; CHECK: push #0, r2
-; CHECK: add r2, r0, r1
-; CHECK: add r2, r0, r3
-; CHECK: add r2, r0, r4
-; CHECK: add r2, r0, r5
-; CHECK: add r2, r0, r6
-; CHECK: add r2, r0, r7
-; CHECK: add r2, r0, r8
-; CHECK: add r2, r0, r9
-; CHECK: add r2, r0, r10
-; CHECK: add r2, r0, r11
-; CHECK: add r2, r0, r12
-; CHECK: add r2, r0, r13
-; CHECK: add r2, r0, r14
-; CHECK: add r2, r0, r15
+; CHECK: add 0, 0, r1
+; CHECK: push #0, r1
+; CHECK: add r1, r0, r2
+; CHECK: add r1, r0, r3
+; CHECK: add r1, r0, r4
+; CHECK: add r1, r0, r5
+; CHECK: add r1, r0, r6
+; CHECK: add r1, r0, r7
+; CHECK: add r1, r0, r8
+; CHECK: add r1, r0, r9
+; CHECK: add r1, r0, r10
+; CHECK: add r1, r0, r11
+; CHECK: add r1, r0, r12
+; CHECK: add r1, r0, r13
+; CHECK: add r1, r0, r14
+; CHECK: add r1, r0, r15
 ; CHECK: call onestack
 ; CHECK: pop #0, r0
   %1 = call i256 @onestack(i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0)
@@ -127,28 +126,25 @@ define i256 @call.onestack() nounwind {
 
 ; CHECK-LABEL: call.twostack
 define i256 @call.twostack() nounwind {
-; CHECK: sfll #2, r2, r2
-; CHECK: sflh #0, r2, r2
-; CHECK: push #0, r2
-; CHECK: sfll #1, r2, r2
-; CHECK: sflh #0, r2, r2
-; CHECK: push #0, r2
-; CHECK: sfll #0, r2, r2
-; CHECK: sflh #0, r2, r2
-; CHECK: add r2, r0, r1
-; CHECK: add r2, r0, r3
-; CHECK: add r2, r0, r4
-; CHECK: add r2, r0, r5
-; CHECK: add r2, r0, r6
-; CHECK: add r2, r0, r7
-; CHECK: add r2, r0, r8
-; CHECK: add r2, r0, r9
-; CHECK: add r2, r0, r10
-; CHECK: add r2, r0, r11
-; CHECK: add r2, r0, r12
-; CHECK: add r2, r0, r13
-; CHECK: add r2, r0, r14
-; CHECK: add r2, r0, r15
+; CHECK: add 2, 0, r1
+; CHECK: push #0, r1
+; CHECK: add 1, 0, r1
+; CHECK: push #0, r1
+; CHECK: add 0, 0, r1
+; CHECK: add r1, r0, r2
+; CHECK: add r1, r0, r3
+; CHECK: add r1, r0, r4
+; CHECK: add r1, r0, r5
+; CHECK: add r1, r0, r6
+; CHECK: add r1, r0, r7
+; CHECK: add r1, r0, r8
+; CHECK: add r1, r0, r9
+; CHECK: add r1, r0, r10
+; CHECK: add r1, r0, r11
+; CHECK: add r1, r0, r12
+; CHECK: add r1, r0, r13
+; CHECK: add r1, r0, r14
+; CHECK: add r1, r0, r15
 ; CHECK: call twostack
 ; CHECK: pop #1, r0
   %1 = call i256 @twostack(i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 1, i256 2)
@@ -171,11 +167,9 @@ define i256 @sum17(i256 %a1, i256 %a2, i256 %a3, i256 %a4, i256 %a5, i256 %a6, i
   %12 = add i256 %11, %a13
   %13 = add i256 %12, %a14
   %14 = add i256 %13, %a15
-; CHECK: mov 1(sp), r3
-; CHECK: add r2, r3, r2
+; CHECK: add stack-[1], r1, r1
   %15 = add i256 %14, %a16
-; CHECK: mov 2(sp), r3
-; CHECK: add r2, r3, r1
+; CHECK: add stack-[2], r1, r1
   %16 = add i256 %15, %a17
   ret i256 %16
 }
