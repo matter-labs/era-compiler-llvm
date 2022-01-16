@@ -28,7 +28,9 @@ SyncVMRegisterInfo::SyncVMRegisterInfo() : SyncVMGenRegisterInfo(0) {}
 
 const MCPhysReg *
 SyncVMRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
-  static const MCPhysReg CalleeSavedRegs[] = {0};
+  static const MCPhysReg CalleeSavedRegs[] = {
+      SyncVM::R9,  SyncVM::R10, SyncVM::R11, SyncVM::R12,
+      SyncVM::R13, SyncVM::R14, SyncVM::R15, 0};
   return CalleeSavedRegs;
 }
 
@@ -37,9 +39,6 @@ BitVector SyncVMRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   Reserved.set(SyncVM::SP);
   Reserved.set(SyncVM::Flags);
   Reserved.set(SyncVM::R0);
-  // FIXME: When a call result is move to a successor, CodeGen needs to count R1
-  // as live.
-  Reserved.set(SyncVM::R1);
   return Reserved;
 }
 

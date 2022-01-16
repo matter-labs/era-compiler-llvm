@@ -105,9 +105,17 @@ static bool CallingConvSupported(CallingConv::ID CallConv) {
 }
 
 bool SyncVMTargetLowering::CanLowerReturn(
-    CallingConv::ID /*CallConv*/, MachineFunction & /*MF*/, bool /*IsVarArg*/,
+    CallingConv::ID CallConv, MachineFunction & MF, bool IsVarArg,
     const SmallVectorImpl<ISD::OutputArg> &Outs,
-    LLVMContext & /*Context*/) const {
+    LLVMContext & Context) const {
+
+  SmallVector<CCValAssign, 1> RVLocs;
+  CCState CCInfo(CallConv, IsVarArg, MF, RVLocs, Context);
+
+  // cannot support return convention or is variadic?
+  if (!CCInfo.CheckReturn(Outs, RetCC_SYNCVM) || IsVarArg)
+    return false;
+  
   // SyncVM can't currently handle returning tuples.
   return Outs.size() <= 1;
 }

@@ -51,7 +51,7 @@ define i256 @or2(i256 %a, i256 %b) {
 define i256 @select_and(i1 %x, i1 %y, i256 %v) nounwind {
 ; TODO: For some reason `and` unrolls in additional control flow,
 ; which probably needs to be fixed
-; CHECK: sub r2, r0, r0
+; CHECK: sub r1, r0, r0
   %1 = and i1 %x, %y
   %2 = select i1 %1, i256 %v, i256 42
   ret i256 %2
@@ -61,7 +61,7 @@ define i256 @select_and(i1 %x, i1 %y, i256 %v) nounwind {
 define i256 @select_or(i1 %x, i1 %y, i256 %v) nounwind {
 ; TODO: For some reason `or` unrolls in additional control flow,
 ; which probably needs to be fixed
-; CHECK: sub r2, r0, r0
+; CHECK: sub r1, r0, r0
   %1 = or i1 %x, %y
   %2 = select i1 %1, i256 %v, i256 42
   ret i256 %2
@@ -69,8 +69,8 @@ define i256 @select_or(i1 %x, i1 %y, i256 %v) nounwind {
 
 ; CHECK-LABEL: select_xor
 define i256 @select_xor(i1 %x, i1 %y, i256 %v) nounwind {
-; CHECK: xor r1, r2, r2
-; CHECK: sub r2, r0, r0
+; CHECK: xor r1, r2, r1
+; CHECK: sub r1, r0, r0
   %1 = xor i1 %x, %y
   %2 = select i1 %1, i256 %v, i256 42
   ret i256 %2
