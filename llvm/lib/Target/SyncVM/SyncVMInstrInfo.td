@@ -52,6 +52,13 @@ def SyncVMpop : SDNode<"SyncVMISD::POP",   SDT_SyncVMPop,
 // SyncVM Operand Definitions.
 //===----------------------------------------------------------------------===//
 
+let OperandType = "OPERAND_IMMEDIATE" in
+def i256imm : Operand<i256>;
+
+def imm16 : Operand<i256>, IntImmLeaf<i256, [{
+  return APInt(256, 1, false).shl(16).ugt(Imm);
+}]> {}
+
 def imm128 : Operand<i256>, IntImmLeaf<i256, [{
   return APInt(256, 1, false).shl(128).ugt(Imm);
 }]> {}
@@ -83,20 +90,20 @@ def jmptarget : Operand<OtherVT>;
 // Address operands
 def memop : Operand<i256> {
   let PrintMethod = "printMemOperand";
-  let MIOperandInfo = (ops GR256, i256imm);
+  let MIOperandInfo = (ops GR256, i16imm);
 }
 
 def stackop : Operand<i256> {
   let PrintMethod = "printStackOperand";
-  let MIOperandInfo = (ops GR256, GR256, i256imm);
+  let MIOperandInfo = (ops GR256, GR256, i16imm);
 }
 
 //===----------------------------------------------------------------------===//
 // Complex Pattern Definitions.
 //===----------------------------------------------------------------------===//
 
-def memaddr   : ComplexPattern<iPTR, 2, "SelectMemAddr", [], []>;
-def stackaddr : ComplexPattern<iPTR, 3, "SelectStackAddr", [], []>;
+def memaddr      : ComplexPattern<iPTR, 2, "SelectMemAddr", [], []>;
+def stackaddr    : ComplexPattern<iPTR, 3, "SelectStackAddr", [], []>;
 def adjstackaddr : ComplexPattern<iPTR, 3, "SelectAdjStackAddr", [], []>;
 
 //===----------------------------------------------------------------------===//
@@ -106,8 +113,9 @@ def adjstackaddr : ComplexPattern<iPTR, 3, "SelectAdjStackAddr", [], []>;
 class AddressSpacesImpl {
   int Stack = 0;
   int Heap = 1;
-  int Parent = 2;
-  int Child = 3;
+  int CallData = 2;
+  int ReturnData = 3;
+  int Code = 4;
 }
 
 def AddrSpaces : AddressSpacesImpl;
@@ -116,12 +124,13 @@ class AddressSpaceList<list<int> AS> {
   list<int> AddrSpaces = AS;
 }
 
-def Address_stack  : AddressSpaceList<[ AddrSpaces.Stack ]>;
-def Address_heap   : AddressSpaceList<[ AddrSpaces.Heap ]>;
-def Address_parent : AddressSpaceList<[ AddrSpaces.Parent ]>;
-def Address_child  : AddressSpaceList<[ AddrSpaces.Child ]>;
+def Address_stack       : AddressSpaceList<[ AddrSpaces.Stack ]>;
+def Address_heap        : AddressSpaceList<[ AddrSpaces.Heap ]>;
+def Address_calldata    : AddressSpaceList<[ AddrSpaces.CallData ]>;
+def Address_returndata  : AddressSpaceList<[ AddrSpaces.ReturnData ]>;
+def Address_code        : AddressSpaceList<[ AddrSpaces.Code ]>;
 
-foreach as = [ "stack", "heap", "parent", "child" ] in {
+foreach as = [ "stack", "heap", "calldata", "returndata", "code" ] in {
 let AddressSpaces = !cast<AddressSpaceList>("Address_"#as).AddrSpaces in {
 def load_#as : PatFrag<(ops node:$ptr), (unindexedload node:$ptr)> {
   let IsLoad = 1;
@@ -153,25 +162,6 @@ let isCodeGenOnly = 1, Defs = [Flags], Uses = [SP] in {
 def ADDframe : Pseudo<(outs GR256:$dst), (ins i256imm:$base, i256imm:$offset),
                       "# ADDframe PSEUDO", []>;
 }
-let isCodeGenOnly = 1 in {
-// Since all stack addressing modes are SP based, SyncVM needs to insert PSEUDOs
-// to adjust for a callee frame size. AdjSPBasedOffsets pass is to replace
-// adjusted load and stores with their non-pseudo counterparts.
-def AdjSP : Pseudo<(outs GR256:$dst), (ins GR256:$base),
-                   "# AdjSP PSEUDO", []>;
-def AdjSPDown : Pseudo<(outs GR256:$dst), (ins GR256:$base),
-                       "# AdjSPDown PSEUDO", []>;
-let mayStore = 1 in {
-  def AdjMOVrs      : Pseudo< (outs), (ins GR256:$val, stackop:$dst),
-                              "# AdjMOVrs PSEUDO",
-                              [(store_stack GR256:$val, adjstackaddr:$dst)]>;
-}
-let mayLoad = 1 in {
-  def AdjMOVsr      : Pseudo< (outs GR256:$val), (ins stackop:$addr),
-                              "# AdjMOVsr PSEUDO",
-                              [(set GR256:$val, (load_stack adjstackaddr:$addr))]>;
-}
-}
 
 let isCodeGenOnly = 1, usesCustomInserter = 1 in {
   def Select : Pseudo<(outs GR256:$dst), (ins GR256:$src, GR256:$src2, i256imm:$cc),
@@ -184,15 +174,266 @@ let isCodeGenOnly = 1, usesCustomInserter = 1 in {
                        [(set GR256:$dst, (int_syncvm_ltflag))]>;
 }
 
+def NOOP : INop< 18, "noop", [] >;
+
+def zext256 : PatFrag<(ops node:$src), (zext (i256 node:$src))>;
+
+multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit commutes> {
+  let Defs = [Flags] in {
+  let isCommutable = commutes in {
+
+  def rrr : Irrr<opcode, 0, (outs GR256:$rd), (ins GR256:$rs1, GR256:$rs2),
+                 !strconcat(asmstring, "\t$rs1, $rs2, $rd"),
+                 [(set GR256:$rd, (node GR256:$rs1, GR256:$rs2)),
+                  (implicit Flags)]>;
+
+  let mayLoad = 1 in {
+  def crr : Icrr<opcode, 0, (outs GR256:$rd), (ins memop:$src1, GR256:$rs2),
+                 !strconcat(asmstring, "\tcode[$src1], $rs2, $rd"),
+                 [(set GR256:$rd, (node (load_code memaddr:$src1), GR256:$rs2)),
+                  (implicit Flags)]>;
+  def srr : Isrr<opcode, 0, (outs GR256:$rd), (ins stackop:$src1, GR256:$rs2),
+                 !strconcat(asmstring, "\tstack-[$src1], $rs2, $rd"),
+                 [(set GR256:$rd, (node (load_stack stackaddr:$src1), GR256:$rs2)),
+                  (implicit Flags)]>;
+  }
+  
+  let mayStore = 1 in {
+  def rrs : Irrs<opcode, 0, (outs), (ins GR256:$rs1, GR256:$rs2, stackop:$dst),
+                 !strconcat(asmstring, "\t$rs1, $rs2, stack-[$dst]"),
+                 [(store_stack (node GR256:$rs1, GR256:$rs2), stackaddr:$dst),
+                  (implicit Flags)]>;
+  }
+
+  let mayLoad = 1, mayStore = 1 in {
+  def crs : Icrs<opcode, 0, (outs), (ins memop:$src1, GR256:$rs2, stackop:$dst),
+                 !strconcat(asmstring, "\tcode[$src1], $rs2, stack-[$dst]"),
+                 [(store_stack (node (load_code memaddr:$src1), GR256:$rs2), stackaddr:$dst),
+                  (implicit Flags)]>;
+  def srs : Isrs<opcode, 0, (outs), (ins stackop:$src1, GR256:$rs2, stackop:$dst),
+                 !strconcat(asmstring, "\tstack-[$src1], $rs2, stack-[$dst]"),
+                 [(store_stack (node (load_stack stackaddr:$src1), GR256:$rs2), stackaddr:$dst),
+                  (implicit Flags)]>;
+  }
+  }
+  }
+}
+
+multiclass ArithICommutable<bits<8> opcode, string asmstring, SDPatternOperator node> {
+  let Defs = [Flags] in {
+  let isCommutable = 1 in {
+  def irr : Iirr<opcode, 0, (outs GR256:$rd), (ins GR256:$rs2, imm16:$imm),
+                 !strconcat(asmstring, "\t$imm, $rs2, $rd"),
+                 [(set GR256:$rd, (node GR256:$rs2, imm16:$imm)),
+                  (implicit Flags)]>;
+  let mayStore = 1 in {
+  def irs : Iirs<opcode, 0, (outs), (ins GR256:$rs2, imm16:$imm, stackop:$dst),
+                 !strconcat(asmstring, "\t$imm, $rs2, stack-[$dst]"),
+                 [(store_stack (node GR256:$rs2, imm16:$imm), stackaddr:$dst),
+                  (implicit Flags)]>;
+  }
+  }
+  }
+}
+
+multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperator node> {
+  let Defs = [Flags] in {
+  def irr : Iirr<opcode, 0, (outs GR256:$rd), (ins GR256:$rs2, imm16:$imm),
+                 !strconcat(asmstring, "\t$imm, $rs2, $rd"),
+                 [(set GR256:$rd, (node imm16:$imm, GR256:$rs2)),
+                  (implicit Flags)]>;
+  def xrr : Iirr<opcode, 1, (outs GR256:$rd), (ins GR256:$rs2, imm16:$imm),
+                 !strconcat(asmstring, ".s\t$imm, $rs2, $rd"),
+                 [(set GR256:$rd, (node GR256:$rs2, imm16:$imm)),
+                  (implicit Flags)]>;
+  let mayLoad = 1 in {
+  def yrr : Icrr<opcode, 1, (outs GR256:$rd), (ins memop:$src1, GR256:$rs2),
+                 !strconcat(asmstring, ".s\tcode[$src1], $rs2, $rd"),
+                 [(set GR256:$rd, (node GR256:$rs2, (load_code memaddr:$src1))),
+                  (implicit Flags)]>;
+  def zrr : Isrr<opcode, 1, (outs GR256:$rd), (ins stackop:$src1, GR256:$rs2),
+                 !strconcat(asmstring, ".s\tstack-[$src1], $rs2, $rd"),
+                 [(set GR256:$rd, (node GR256:$rs2, (load_stack stackaddr:$src1))),
+                  (implicit Flags)]>;
+  }
+  let mayStore = 1 in {
+  def xrs : Iirs<opcode, 1, (outs), (ins GR256:$rs2, imm16:$imm, stackop:$dst),
+                 !strconcat(asmstring, ".s\t$imm, $rs2, stack-[$dst]"),
+                 [(store_stack (node GR256:$rs2, imm16:$imm), stackaddr:$dst),
+                  (implicit Flags)]>;
+  def irs : Iirs<opcode, 0, (outs), (ins GR256:$rs2, imm16:$imm, stackop:$dst),
+                 !strconcat(asmstring, "\t$imm, $rs2, stack-[$dst]"),
+                 [(store_stack (node imm16:$imm, GR256:$rs2), stackaddr:$dst),
+                  (implicit Flags)]>;
+  let mayLoad = 1 in {
+  def yrs : Icrs<opcode, 1, (outs), (ins memop:$src1, GR256:$rs2, stackop:$dst),
+                 !strconcat(asmstring, ".s\tcode[$src1], $rs2, stack-[$dst]"),
+                 [(store_stack (node GR256:$rs2, (load_code memaddr:$src1)), stackaddr:$dst),
+                  (implicit Flags)]>;
+  def zrs : Isrs<opcode, 1, (outs), (ins stackop:$src1, GR256:$rs2, stackop:$dst),
+                 !strconcat(asmstring, ".s\tstack-[$src1], $rs2, stack-[$dst]"),
+                 [(store_stack (node GR256:$rs2, (load_stack stackaddr:$src1)), stackaddr:$dst),
+                  (implicit Flags)]>;
+  }
+  }
+  }
+}
+
+multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit commutes> {
+  let Defs = [Flags] in {
+  let isCommutable = commutes in {
+
+  def rrrr : Irrrr<opcode, 0, (outs GR256:$rd1, GR256:$rd2), (ins GR256:$rs1, GR256:$rs2),
+                   !strconcat(asmstring, "\t$rs1, $rs2, $rd1, $rd2"),
+                   [(set GR256:$rd1, GR256:$rd2, (node GR256:$rs1, GR256:$rs2)),
+                    (implicit Flags)]>;
+
+  let mayLoad = 1 in {
+  def crrr : Icrrr<opcode, 0, (outs GR256:$rd1, GR256:$rd2), (ins memop:$src1, GR256:$rs2),
+                  !strconcat(asmstring, "\tcode[$src1], $rs2, $rd1, $rd2"),
+                  [(set GR256:$rd1, GR256:$rd2, (node (load_code memaddr:$src1), GR256:$rs2)),
+                   (implicit Flags)]>;
+  def srrr : Isrrr<opcode, 0, (outs GR256:$rd1, GR256:$rd2), (ins stackop:$src1, GR256:$rs2),
+                  !strconcat(asmstring, "\tstack-[$src1], $rs2, $rd1, $rd2"),
+                  [(set GR256:$rd1, GR256:$rd2, (node (load_stack stackaddr:$src1), GR256:$rs2)),
+                   (implicit Flags)]>;
+  }
+
+  let mayStore = 1 in {
+  def rrsr : Irrsr<opcode, 0, (outs GR256:$rd2), (ins GR256:$rs1, GR256:$rs2, stackop:$dst),
+                   !strconcat(asmstring, "\t$rs1, $rs2, stack-[$dst], $rd2"), []>;
+  let mayLoad = 1 in {
+  def crsr : Icrsr<opcode, 0, (outs GR256:$rd2), (ins memop:$rs1, GR256:$rs2, stackop:$dst),
+                   !strconcat(asmstring, "\tcode[$rs1], $rs2, stack-[$dst], $rd2"), []>;
+  def srsr : Isrsr<opcode, 0, (outs GR256:$rd2), (ins stackop:$rs1, GR256:$rs2, stackop:$dst),
+                   !strconcat(asmstring, "\tstack[$rs1], $rs2, stack-[$dst], $rd2"), []>;
+  }
+  }
+  }
+  }
+}
+
+multiclass Arith2ICommutable<bits<8> opcode, string asmstring, SDPatternOperator node> {
+  let Defs = [Flags] in {
+  let isCommutable = 1 in {
+  def irrr : Iirrr<opcode, 0, (outs GR256:$rd1, GR256:$rd2), (ins GR256:$rs2, imm16:$imm),
+                   !strconcat(asmstring, "\t$imm, $rs2, $rd1, $rd2"),
+                   [(set GR256:$rd1, GR256:$rd2, (node GR256:$rs2, imm16:$imm)),
+                    (implicit Flags)]>;
+  let mayStore = 1 in
+  def irsr : Iirsr<opcode, 0, (outs GR256:$rd2), (ins GR256:$rs2, imm16:$imm, stackop:$dst),
+                   !strconcat(asmstring, "\t$imm, $rs2, stack-[$dst], $rd2"),
+                   []>;
+  }
+  }
+}
+
+multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOperator node> {
+  let Defs = [Flags] in {
+  def irrr : Iirrr<opcode, 0, (outs GR256:$rd1, GR256:$rd2), (ins GR256:$rs2, imm16:$imm),
+                   !strconcat(asmstring, "\t$imm, $rs2, $rd1, $rd2"),
+                   [(set GR256:$rd1, GR256:$rd2, (node imm16:$imm, GR256:$rs2)),
+                    (implicit Flags)]>;
+  def xrrr : Iirrr<opcode, 1, (outs GR256:$rd1, GR256:$rd2), (ins GR256:$rs2, imm16:$imm),
+                   !strconcat(asmstring, ".s\t$imm, $rs2, $rd1, $rd2"),
+                   [(set GR256:$rd1, GR256:$rd2, (node GR256:$rs2, imm16:$imm)),
+                    (implicit Flags)]>;
+  let mayLoad = 1 in {
+  def yrrr : Icrrr<opcode, 1, (outs GR256:$rd1, GR256:$rd2), (ins memop:$src1, GR256:$rs2),
+                   !strconcat(asmstring, ".s\tcode[$src1], $rs2, $rd1, $rd2"),
+                   [(set GR256:$rd1, GR256:$rd2, (node GR256:$rs2, (load_code memaddr:$src1))),
+                    (implicit Flags)]>;
+  def zrrr : Isrrr<opcode, 1, (outs GR256:$rd1, GR256:$rd2), (ins stackop:$src1, GR256:$rs2),
+                   !strconcat(asmstring, ".s\tstack-[$src1], $rs2, $rd1, $rd2"),
+                   [(set GR256:$rd1, GR256:$rd2, (node GR256:$rs2, (load_stack stackaddr:$src1))),
+                    (implicit Flags)]>;
+  }
+  let mayStore = 1 in {
+  def irsr : Iirsr<opcode, 0, (outs GR256:$rd2), (ins GR256:$rs2, imm16:$imm, stackop:$dst),
+                   !strconcat(asmstring, "\t$imm, $rs2, stack-[$dst], $rd2"), []>;
+  def xrsr : Iirsr<opcode, 1, (outs GR256:$rd2), (ins GR256:$rs2, imm16:$imm, stackop:$dst),
+                   !strconcat(asmstring, ".s\t$imm, $rs2, stack-[$dst], $rd2"), []>;
+  let mayLoad = 1 in {
+  def yrsr : Icrsr<opcode, 1, (outs GR256:$rd2), (ins memop:$src1, GR256:$rs2, stackop:$dst),
+                   !strconcat(asmstring, ".s\tcode[$src1], $rs2, stack-[$dst], $rd2"), []>;
+  def zrsr : Isrsr<opcode, 1, (outs GR256:$rd2), (ins stackop:$src1, GR256:$rs2, stackop:$dst),
+                   !strconcat(asmstring, ".s\tstack-[$src1], $rs2, stack-[$dst], $rd2"), []>;
+  }
+  }
+  }
+}
+
+defm ADD  : Arith<2,  "add", add, 1>;
+defm ADD  : ArithICommutable<2,  "add", add>;
+
+// MOVrs
+def : Pat<(store_stack GR256:$src, stackaddr:$dst),  (ADDirs GR256:$src, 0, stackaddr:$dst)>;
+
+defm SUB  : Arith<4,  "sub", sub, 0>;
+defm SUB  : ArithINonCommutable<4, "sub", sub>;
+defm MUL  : Arith2<6, "mul", umullohi, 1>;
+defm MUL  : Arith2ICommutable<6, "mul", umullohi>;
+defm DIV  : Arith2<8, "div", udivrem, 0>;
+defm DIV  : Arith2INonCommutable<8, "div", udivrem>;
+
+// FIXME: Wrong encoding
+// FIXME: Wrong flags
+defm AND  : Arith<33, "and", and, 1>;
+defm AND  : ArithICommutable<33, "and", and>;
+defm OR   : Arith<34, "or", or, 1>;
+defm OR   : ArithICommutable<34, "or", or>;
+defm XOR  : Arith<35, "xor", xor, 1>;
+defm XOR  : ArithICommutable<35, "xor", xor>;
+defm SHL  : Arith<36, "shl", shl, 0>;
+defm SHL  : ArithINonCommutable<36, "shl", shl>;
+defm SHR  : Arith<37, "shr", srl, 0>;
+defm SHR  : ArithINonCommutable<37, "shr", srl>;
+defm ROL  : Arith<38, "rol", rotl, 0>;
+defm ROL  : ArithINonCommutable<38, "rol", rotl>;
+defm ROR  : Arith<38, "ror", rotr, 0>;
+defm ROR  : ArithINonCommutable<38, "ror", rotr>;
+
+// TODO: should be mayStore.
+let hasSideEffects = 1, Defs = [SP, Flags], Uses = [SP] in
+def PUSH    : IForm < 39, SrcReg, DstReg, 0, (outs), (ins i256imm:$size, GR256:$val),
+                      "push\t#$size, $val",
+                      [(SyncVMpush timm:$size, GR256:$val)] >;
+
+let mayLoad = 1, hasSideEffects = 1, Defs = [SP, Flags], Uses = [SP] in
+def POP     : IForm < 40, SrcReg, DstReg, 0, (outs GR256:$val), (ins i256imm:$size),
+                      "pop\t#$size, $val",
+                      [(set GR256:$val, (SyncVMpop timm:$size))] >;
+
+
+//===----------------------------------------------------------------------===//
+// Control flow instructions
+//===----------------------------------------------------------------------===//
+let isTerminator = 1, isBranch = 1, isBarrier = 1, Uses = [Flags] in {
+def J: IJump<10, (ins jmptarget:$dst_true, jmptarget:$dst_false, cc:$cond),
+              "jump.$cond\t$dst_true, $dst_false",
+              [(SyncVMbrcc bb:$dst_true, bb:$dst_false, imm:$cond)]>;
+
+let isReturn = 1, isTerminator = 1, isBarrier = 1  in
+def RET   : IRet<7, RFNone, "ret", [(SyncVMret)]>;
+let isTerminator = 1, isBarrier = 1, isTrap = 1 in
+def THROW : IRet<7, RFErr, "ret.err", [(int_syncvm_throw)]>;
+              /*
+def JCC: IJump<10, (outs), (ins jmptarget:$addrtrue, jmptarget:$addrfalse, GR256:$cond),
+               "j$cond\t$dst_true, $dst_false",
+               [(SyncVMbrcc bb:$dst_true, bb:$dst_false, GR256:$cond)]>;
+               */
+}
+
+/*
 //===----------------------------------------------------------------------===//
 // The NoOperation instruction
 //===----------------------------------------------------------------------===//
 
-def NOOP : Empty< 0x00, "noop", [] >;
 
 //===----------------------------------------------------------------------===//
 // Arithmetic
 //===----------------------------------------------------------------------===//
+
 
 let isCommutable = 1 in {
   def ADDrrr     : ArithmeticRRR<  0x01, "add", add >;
@@ -426,4 +667,27 @@ def SC: SyncVMInstruction<0x17, (outs), (ins),
                            "sc", [(int_syncvm_switchcontext)]>;
 def SETST: SyncVMInstruction<0x18, (outs), (ins GR256:$storage),
                            "setst", [(int_syncvm_setstorage GR256:$storage)]>;
+}
+*/
+
+let isCodeGenOnly = 1 in {
+// Since all stack addressing modes are SP based, SyncVM needs to insert PSEUDOs
+// to adjust for a callee frame size. AdjSPBasedOffsets pass is to replace
+// adjusted load and stores with their non-pseudo counterparts.
+def AdjSP : Pseudo<(outs GR256:$dst), (ins GR256:$base),
+                   "# AdjSP PSEUDO", []>;
+def AdjSPDown : Pseudo<(outs GR256:$dst), (ins GR256:$base),
+                       "# AdjSPDown PSEUDO", []>;
+                       /*
+let mayStore = 1 in {
+  def AdjMOVrs      : Pseudo< (outs), (ins GR256:$val, stackop:$dst),
+                              "# AdjMOVrs PSEUDO",
+                              [(store_stack GR256:$val, stackaddr:$dst)]>;
+}
+let mayLoad = 1 in {
+  def AdjMOVsr      : Pseudo< (outs GR256:$val), (ins stackop:$addr),
+                              "# AdjMOVsr PSEUDO",
+                              [(set GR256:$val, (load_stack stackaddr:$addr))]>;
+}
+*/
 }

@@ -47,6 +47,7 @@ char SyncVMExpandPseudo::ID = 0;
 INITIALIZE_PASS(SyncVMExpandPseudo, DEBUG_TYPE, SYNCVM_EXPAND_PSEUDO_NAME,
                 false, false)
 
+#if 0
 void SyncVMExpandPseudo::expandConst(MachineInstr &MI) const {
   MachineOperand Constant = MI.getOperand(1);
   MachineOperand Reg = MI.getOperand(0);
@@ -64,6 +65,7 @@ void SyncVMExpandPseudo::expandConst(MachineInstr &MI) const {
       .addCImm(ConstantInt::get(*Context, ValHi))
       .add(Reg);
 }
+#endif
 
 bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
   LLVM_DEBUG(
@@ -79,12 +81,14 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
   for (MachineBasicBlock &MBB : MF)
     for (MachineInstr &MI : MBB) {
       if (MI.isPseudo()) {
+        /*
         switch (MI.getOpcode()) {
         case SyncVM::CONST:
           expandConst(MI);
           break;
         }
         Pseudos.push_back(&MI);
+        */
       }
     }
 

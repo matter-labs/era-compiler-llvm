@@ -270,12 +270,9 @@ bool SyncVMDAGToDAGISel::SelectMemAddr(SDValue N, SDValue &Base,
         cast<ConstantSDNode>(Reg.getOperand(1))->getSExtValue() == 32)
       AM.Base.Reg = Reg.getOperand(0);
     else {
-      auto ConstMaterialize = CurDAG->getMachineNode(
-          SyncVM::CONST, SDLoc(N), MVT::i256,
-          CurDAG->getTargetConstant(32, SDLoc(N), MVT::i256));
       auto AddrNode =
-          CurDAG->getMachineNode(SyncVM::DIVrrrz, SDLoc(N), MVT::i256,
-                                 AM.Base.Reg, SDValue(ConstMaterialize, 0));
+          CurDAG->getMachineNode(SyncVM::DIVxrrr, SDLoc(N), MVT::i256,
+                                 AM.Base.Reg, CurDAG->getTargetConstant(32, SDLoc(N), MVT::i256));
       AM.Base.Reg = SDValue(AddrNode, 0);
     }
   }
@@ -323,12 +320,9 @@ bool SyncVMDAGToDAGISel::SelectStackAddrCommon(SDValue N, SDValue &Base1,
         cast<ConstantSDNode>(Reg.getOperand(1))->getSExtValue() == 32)
       AM.Base.Reg = Reg.getOperand(0);
     else {
-      auto ConstMaterialize = CurDAG->getMachineNode(
-          SyncVM::CONST, SDLoc(N), MVT::i256,
-          CurDAG->getTargetConstant(32, SDLoc(N), MVT::i256));
       auto AddrNode =
-          CurDAG->getMachineNode(SyncVM::DIVrrrz, SDLoc(N), MVT::i256,
-                                 AM.Base.Reg, SDValue(ConstMaterialize, 0));
+          CurDAG->getMachineNode(SyncVM::DIVxrrr, SDLoc(N), MVT::i256,
+                                 AM.Base.Reg, CurDAG->getTargetConstant(32, SDLoc(N), MVT::i256));
       AM.Base.Reg = SDValue(AddrNode, 0);
     }
   }
@@ -421,6 +415,7 @@ void SyncVMDAGToDAGISel::Select(SDNode *Node) {
                           CurDAG->getTargetConstant(0, DL, MVT::i256)));
     return;
   }
+    /*
   case ISD::UDIVREM: {
     // redirect unused variable to $r0
     if (muldiv_expander(Node, SyncVM::DIVrrrz, SyncVM::REMrrzr)) {
@@ -435,6 +430,7 @@ void SyncVMDAGToDAGISel::Select(SDNode *Node) {
     }
     break;
   }
+  */
   }
 
   // Select the default instruction

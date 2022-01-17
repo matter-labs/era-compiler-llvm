@@ -508,7 +508,6 @@ SDValue SyncVMTargetLowering::LowerSRA(SDValue Op, SelectionDAG &DAG) const {
   auto RHS = Op.getOperand(1);
   auto Zero = DAG.getConstant(0, DL, MVT::i256);
   auto One = DAG.getConstant(APInt(256, -1, true), DL, MVT::i256);
-  auto Const255 = DAG.getConstant(APInt(256, 255, true), DL, MVT::i256);
   auto Mask = DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
   auto Sign = DAG.getNode(ISD::AND, DL, MVT::i256, LHS, Mask);
   auto Init = DAG.getSelectCC(DL, Sign, Mask, One, Zero, ISD::SETEQ);
@@ -784,10 +783,10 @@ SyncVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   Register VReg1;
   if (Opc == SyncVM::SelectLT) {
     VReg1 = RegInfo.createVirtualRegister(&SyncVM::GR256RegClass);
-    BuildMI(copy1MBB, DL, TII.get(SyncVM::CONST), VReg1).addImm(-1);
+    BuildMI(copy1MBB, DL, TII.get(SyncVM::ADDirr), VReg1).addImm(-1).addReg(SyncVM::R0);
     copy11MBB = F->CreateMachineBasicBlock(LLVM_BB);
     F->insert(I, copy11MBB);
-    BuildMI(copy1MBB, DL, TII.get(SyncVM::JCC))
+    BuildMI(copy1MBB, DL, TII.get(SyncVM::J))
         .addMBB(copy11MBB)
         .addMBB(copy11MBB)
         .addImm(SyncVMCC::COND_NONE);
@@ -813,7 +812,7 @@ SyncVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   auto CC = (Opc == SyncVM::Select) ? MI.getOperand(3).getCImm()->getZExtValue()
                                     : SyncVMCC::COND_LT;
 
-  BuildMI(BB, DL, TII.get(SyncVM::JCC))
+  BuildMI(BB, DL, TII.get(SyncVM::J))
       .addMBB(copy1MBB)
       .addMBB(copy0MBB)
       .addImm(CC);
@@ -824,10 +823,10 @@ SyncVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   BB = copy0MBB;
 
   Register VReg2 = RegInfo.createVirtualRegister(&SyncVM::GR256RegClass);
-  BuildMI(BB, DL, TII.get(SyncVM::CONST), VReg2).addImm(0);
+  BuildMI(BB, DL, TII.get(SyncVM::ADDirr), VReg2).addImm(0).addReg(SyncVM::R0);
 
   if (!copy11MBB) {
-    BuildMI(BB, DL, TII.get(SyncVM::JCC))
+    BuildMI(BB, DL, TII.get(SyncVM::J))
         .addMBB(copy1MBB)
         .addMBB(copy1MBB)
         .addImm(SyncVMCC::COND_NONE);
@@ -838,7 +837,7 @@ SyncVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
     //  ...
     BB = copy1MBB;
   } else {
-    BuildMI(BB, DL, TII.get(SyncVM::JCC))
+    BuildMI(BB, DL, TII.get(SyncVM::J))
         .addMBB(copy11MBB)
         .addMBB(copy11MBB)
         .addImm(SyncVMCC::COND_NONE);
