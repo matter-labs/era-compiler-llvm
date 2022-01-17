@@ -39,6 +39,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMAdjustSPBasedOffsetsPass(PR);
   initializeSyncVMMoveCallResultSpillPass(PR);
   initializeSyncVMAdjustStackInCallseqPass(PR);
+  initializeSyncVMPeepholePass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -96,6 +97,7 @@ TargetPassConfig *SyncVMTargetMachine::createPassConfig(PassManagerBase &PM) {
 }
 
 void SyncVMPassConfig::addIRPasses() {
+#if 0
   addPass(createLowerSwitchPass());
   addPass(createSyncVMLowerIntrinsicsPass());
   addPass(createSyncVMLinkRuntimePass());
@@ -103,6 +105,7 @@ void SyncVMPassConfig::addIRPasses() {
   addPass(createSyncVMIndirectUMAPass());
   addPass(createSyncVMIndirectExternalCallPass());
   addPass(createGlobalDCEPass());
+#endif
   addPass(createSyncVMCodegenPreparePass());
   addPass(createSyncVMAllocaHoistingPass());
 }
@@ -120,7 +123,8 @@ void SyncVMPassConfig::addPreRegAlloc() {
 
 void SyncVMPassConfig::addPreEmitPass() {
   addPass(createSyncVMAdjustSPBasedOffsetsPass());
-  addPass(createSyncVMExpandPseudoPass());
   addPass(createSyncVMMoveCallResultSpillPass());
   addPass(createSyncVMAdjustStackInCallseqPass());
+  addPass(createSyncVMExpandPseudoPass());
+  addPass(createSyncVMPeepholePass());
 }

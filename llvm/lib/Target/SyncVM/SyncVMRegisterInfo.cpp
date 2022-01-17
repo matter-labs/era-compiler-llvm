@@ -71,7 +71,7 @@ void SyncVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
   if (MI.getOpcode() == SyncVM::ADDframe) {
     const TargetInstrInfo &TII = *MF.getSubtarget().getInstrInfo();
-    MI.setDesc(TII.get(SyncVM::SFLLir));
+    MI.setDesc(TII.get(SyncVM::ADDrrr));
     MI.getOperand(1).ChangeToImmediate(Offset);
     MI.getOperand(2).ChangeToRegister(SyncVM::R0, false /* IsDef */);
     return;

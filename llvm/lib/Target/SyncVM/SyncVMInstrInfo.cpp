@@ -150,13 +150,13 @@ unsigned SyncVMInstrInfo::insertBranch(
   if (Cond.empty()) {
     // Unconditional branch?
     assert(!FBB && "Unconditional branch with multiple successors!");
-    BuildMI(&MBB, DL, get(SyncVM::JCC))
+    BuildMI(&MBB, DL, get(SyncVM::J))
         .addMBB(TBB)
         .addMBB(TBB)
         .addImm(SyncVMCC::COND_NONE);
   } else {
     // Conditional branch.
-    BuildMI(&MBB, DL, get(SyncVM::JCC))
+    BuildMI(&MBB, DL, get(SyncVM::J))
         .addMBB(TBB)
         .addMBB(FBB)
         .addImm(Cond[0].getImm());
@@ -182,8 +182,9 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
       MFI.getObjectAlign(FrameIdx));
 
   if (RC == &SyncVM::GR256RegClass)
-    BuildMI(MBB, MI, DL, get(SyncVM::MOVrs))
+    BuildMI(MBB, MI, DL, get(SyncVM::ADDrrs))
         .addReg(SrcReg, getKillRegState(isKill))
+        .addReg(SyncVM::R0)
         .addFrameIndex(FrameIdx)
         .addImm(0)
         .addImm(32)
@@ -208,8 +209,9 @@ void SyncVMInstrInfo::loadRegFromStackSlot(
       MFI.getObjectAlign(FrameIdx));
 
   if (RC == &SyncVM::GR256RegClass)
-    BuildMI(MBB, MI, DL, get(SyncVM::MOVsr))
+    BuildMI(MBB, MI, DL, get(SyncVM::ADDsrr))
         .addReg(DestReg, getDefRegState(true))
+        .addReg(SyncVM::R0)
         .addFrameIndex(FrameIdx)
         .addImm(0)
         .addImm(32)
@@ -222,7 +224,7 @@ void SyncVMInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                   MachineBasicBlock::iterator I,
                                   const DebugLoc &DL, MCRegister DestReg,
                                   MCRegister SrcReg, bool KillSrc) const {
-  BuildMI(MBB, I, DL, get(SyncVM::MOVrr), DestReg)
+  BuildMI(MBB, I, DL, get(SyncVM::ADDrrr), DestReg)
       .addReg(SrcReg, getKillRegState(KillSrc))
       .addReg(SyncVM::R0);
 }
@@ -231,5 +233,5 @@ void SyncVMInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
 /// instruction may be.  This returns the maximum number of bytes.
 ///
 unsigned SyncVMInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
-  return 256;
+  return 9;
 }

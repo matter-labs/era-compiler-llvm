@@ -14,13 +14,13 @@
 namespace SyncVMCC {
 // SyncVM specific condition code.
 enum CondCodes {
-  COND_NONE = 0, // unconditional
-  COND_E = 1,    // aka COND_Z
-  COND_LT = 2,
-  COND_LE = 3,
-  COND_GT = 4,
-  COND_GE = 5,
-  COND_NE = 6, // aka COND_NZ
+  COND_NONE = 0, /// unconditional
+  COND_E = 2,    /// EQ flag is set
+  COND_LT = 4,   /// LT flag is set
+  COND_GT = 8,   /// GT flag is set
+  COND_NE,
+  COND_LE,
+  COND_GE,
 
   COND_INVALID = -1
 };
@@ -39,13 +39,14 @@ ModulePass   *createSyncVMIndirectUMAPass();
 ModulePass   *createSyncVMIndirectExternalCallPass();
 ModulePass   *createSyncVMLowerIntrinsicsPass();
 ModulePass   *createSyncVMLinkRuntimePass();
+FunctionPass *createSyncVMAdjustStackInCallseqPass();
+FunctionPass *createSyncVMAdjustSPBasedOffsetsPass();
+FunctionPass *createSyncVMAllocaHoistingPass();
 FunctionPass *createSyncVMCodegenPreparePass();
 FunctionPass *createSyncVMExpandPseudoPass();
-FunctionPass *createSyncVMAllocaHoistingPass();
 FunctionPass *createSyncVMDropUnusedRegistersPass();
-FunctionPass *createSyncVMAdjustSPBasedOffsetsPass();
 FunctionPass *createSyncVMMoveCallResultSpillPass();
-FunctionPass *createSyncVMAdjustStackInCallseqPass();
+FunctionPass *createSyncVMPeepholePass();
 
 void initializeSyncVMExpandUMAPass(PassRegistry &);
 void initializeSyncVMIndirectUMAPass(PassRegistry &);
@@ -59,6 +60,7 @@ void initializeSyncVMDropUnusedRegistersPass(PassRegistry &);
 void initializeSyncVMAdjustSPBasedOffsetsPass(PassRegistry &);
 void initializeSyncVMMoveCallResultSpillPass(PassRegistry &);
 void initializeSyncVMAdjustStackInCallseqPass(PassRegistry &);
+void initializeSyncVMPeepholePass(PassRegistry &);
 
 } // end namespace llvm;
 

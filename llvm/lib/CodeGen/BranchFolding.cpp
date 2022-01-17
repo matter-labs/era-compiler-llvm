@@ -221,8 +221,11 @@ bool BranchFolder::OptimizeFunction(MachineFunction &MF,
     // block placement.
     if (!AfterBlockPlacement || MadeChangeThisIteration)
       MadeChangeThisIteration |= OptimizeBranches(MF);
+// FIXME: SyncVM
+#if 0
     if (EnableHoistCommonCode)
       MadeChangeThisIteration |= HoistCommonCode(MF);
+#endif
     MadeChange |= MadeChangeThisIteration;
   }
 

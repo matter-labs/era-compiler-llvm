@@ -59,6 +59,7 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
 
   bool Changed = false;
 
+#if 0
   for (auto MBBIt = MF.begin(); MBBIt != MF.end(); ++MBBIt) {
     MachineBasicBlock &MBB = *MBBIt;
     if (MBB.size() < 3)
@@ -150,6 +151,7 @@ bool SyncVMMoveCallResultSpill::runOnMachineFunction(MachineFunction &MF) {
 
   LLVM_DEBUG(
       dbgs() << "*******************************************************\n");
+#endif
   return Changed;
 }
 

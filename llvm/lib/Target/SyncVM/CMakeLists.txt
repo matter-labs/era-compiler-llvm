@@ -43,6 +43,7 @@ add_llvm_target(SyncVMCodeGen
   SyncVMDropUnusedRegisters.cpp
   SyncVMMoveCallResultSpill.cpp
   SyncVMAdjustStackInCallSeq.cpp
+  SyncVMPeephole.cpp
 
   LINK_COMPONENTS
   Analysis

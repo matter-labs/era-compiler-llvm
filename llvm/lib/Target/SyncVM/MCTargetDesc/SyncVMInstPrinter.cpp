@@ -54,22 +54,22 @@ void SyncVMInstPrinter::printCCOperand(const MCInst *MI, unsigned OpNo,
   default:
     llvm_unreachable("Unsupported CC code");
   case SyncVMCC::COND_E:
-    O << "e";
-    break;
-  case SyncVMCC::COND_NE:
-    O << "ne";
+    O << ".eq";
     break;
   case SyncVMCC::COND_LT:
-    O << "lt";
-    break;
-  case SyncVMCC::COND_LE:
-    O << "le";
+    O << ".lt";
     break;
   case SyncVMCC::COND_GT:
-    O << "gt";
+    O << ".gt";
+    break;
+  case SyncVMCC::COND_NE:
+    O << ".neq";
     break;
   case SyncVMCC::COND_GE:
-    O << "ge";
+    O << ".nlt";
+    break;
+  case SyncVMCC::COND_LE:
+    O << ".ngt";
     break;
   case SyncVMCC::COND_NONE:
     break;
@@ -131,8 +131,6 @@ void SyncVMInstPrinter::printStackOperand(const MCInst *MI, unsigned OpNo,
                              // are 256 bits wide.
   }
 
-  O << '(' << getRegisterName(Base1.getReg());
   if (Base2.isReg())
-    O << '-' << getRegisterName(Base2.getReg());
-  O << ")";
+    O << " + " << getRegisterName(Base2.getReg());
 }
