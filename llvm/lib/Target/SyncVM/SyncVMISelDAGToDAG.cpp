@@ -270,12 +270,9 @@ bool SyncVMDAGToDAGISel::SelectMemAddr(SDValue N, SDValue &Base,
         cast<ConstantSDNode>(Reg.getOperand(1))->getSExtValue() == 32)
       AM.Base.Reg = Reg.getOperand(0);
     else {
-      auto ConstMaterialize = CurDAG->getMachineNode(
-          SyncVM::CONST, SDLoc(N), MVT::i256,
-          CurDAG->getTargetConstant(32, SDLoc(N), MVT::i256));
       auto AddrNode =
-          CurDAG->getMachineNode(SyncVM::DIVrrrz, SDLoc(N), MVT::i256,
-                                 AM.Base.Reg, SDValue(ConstMaterialize, 0));
+          CurDAG->getMachineNode(SyncVM::DIVxrrr, SDLoc(N), MVT::i256,
+                                 AM.Base.Reg, CurDAG->getTargetConstant(32, SDLoc(N), MVT::i256));
       AM.Base.Reg = SDValue(AddrNode, 0);
     }
   }
@@ -323,12 +320,9 @@ bool SyncVMDAGToDAGISel::SelectStackAddrCommon(SDValue N, SDValue &Base1,
         cast<ConstantSDNode>(Reg.getOperand(1))->getSExtValue() == 32)
       AM.Base.Reg = Reg.getOperand(0);
     else {
-      auto ConstMaterialize = CurDAG->getMachineNode(
-          SyncVM::CONST, SDLoc(N), MVT::i256,
-          CurDAG->getTargetConstant(32, SDLoc(N), MVT::i256));
       auto AddrNode =
-          CurDAG->getMachineNode(SyncVM::DIVrrrz, SDLoc(N), MVT::i256,
-                                 AM.Base.Reg, SDValue(ConstMaterialize, 0));
+          CurDAG->getMachineNode(SyncVM::DIVxrrr, SDLoc(N), MVT::i256,
+                                 AM.Base.Reg, CurDAG->getTargetConstant(32, SDLoc(N), MVT::i256));
       AM.Base.Reg = SDValue(AddrNode, 0);
     }
   }
@@ -372,37 +366,6 @@ void SyncVMDAGToDAGISel::Select(SDNode *Node) {
     return;
   }
 
-  auto has_uses = [](SDNode *Node) {
-    bool val0_used = Node->hasAnyUseOfValue(0);
-    bool val1_used = Node->hasAnyUseOfValue(1);
-
-    return std::make_pair(val0_used, val1_used);
-  };
-
-  auto muldiv_expander = [&](SDNode *Node, uint32_t opcode1, uint32_t opcode2) {
-    auto uses = has_uses(Node);
-    bool val0_used = uses.first;
-    bool val1_used = uses.second;
-
-    if (val0_used && !val1_used) {
-      auto op1 = CurDAG->getMachineNode(
-          opcode1, DL, MVT::i256, Node->getOperand(0), Node->getOperand(1));
-
-      ReplaceUses(SDValue(Node, 0), SDValue(op1, 0));
-      CurDAG->RemoveDeadNode(Node);
-      return true;
-    }
-
-    if (!val0_used && val1_used) {
-      auto op2 = CurDAG->getMachineNode(
-          opcode2, DL, MVT::i256, Node->getOperand(0), Node->getOperand(1));
-      ReplaceUses(SDValue(Node, 1), SDValue(op2, 0));
-      CurDAG->RemoveDeadNode(Node);
-      return true;
-    }
-    return false;
-  };
-
   // Few custom selection stuff.
   switch (Node->getOpcode()) {
   default:
@@ -420,20 +383,6 @@ void SyncVMDAGToDAGISel::Select(SDNode *Node) {
                           SyncVM::ADDframe, DL, MVT::i256, TFI,
                           CurDAG->getTargetConstant(0, DL, MVT::i256)));
     return;
-  }
-  case ISD::UDIVREM: {
-    // redirect unused variable to $r0
-    if (muldiv_expander(Node, SyncVM::DIVrrrz, SyncVM::REMrrzr)) {
-      return;
-    }
-    break;
-  }
-  case ISD::UMUL_LOHI: {
-    // redirect unused variable to $r0
-    if (muldiv_expander(Node, SyncVM::MULrrrz, SyncVM::MULrrzr)) {
-      return;
-    }
-    break;
   }
   }
 

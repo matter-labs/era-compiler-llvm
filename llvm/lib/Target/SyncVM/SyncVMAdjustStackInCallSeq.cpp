@@ -95,7 +95,9 @@ bool SyncVMAdjustStackInCallseq::runOnMachineFunction(MachineFunction &MF) {
         // Overflows when reachin final pop, but it should not impact
         // the processing because no stack manipulations are expected after.
         Disp -= Num + 1;
-      } else if (Disp && (I->getOpcode() == SyncVM::MOVrs ||
+      }
+#if 0
+      else if (Disp && (I->getOpcode() == SyncVM::MOVrs ||
                           I->getOpcode() == SyncVM::MOVsr)) {
         auto Erace = I;
         I = BuildMI(*BB, I, I->getDebugLoc(), TII->get(I->getOpcode()))
@@ -106,6 +108,7 @@ bool SyncVMAdjustStackInCallseq::runOnMachineFunction(MachineFunction &MF) {
         Erace->eraseFromParent();
         Changed = true;
       }
+#endif
     }
     for (auto S : BB->successors())
       WorkList.push_back({S, Disp});

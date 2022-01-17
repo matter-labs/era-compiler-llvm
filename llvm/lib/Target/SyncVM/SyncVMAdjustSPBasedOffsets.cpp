@@ -65,14 +65,16 @@ bool SyncVMAdjustSPBasedOffsets::runOnMachineFunction(MachineFunction &MF) {
   Context = &MF.getFunction().getContext();
 
   std::vector<MachineInstr *> Pseudos;
+  /*
   for (MachineBasicBlock &MBB : MF) {
     for (auto MII = MBB.begin(), MIE = MBB.end(); MII != MIE; ++MII) {
       auto &MI = *MII;
       switch (MI.getOpcode()) {
       case SyncVM::AdjMOVsr: {
         unsigned Offset = MI.getOperand(3).getImm();
-        BuildMI(MBB, MI, MI.getDebugLoc(), TII->get(SyncVM::MOVsr))
+        BuildMI(MBB, MI, MI.getDebugLoc(), TII->get(SyncVM::ADDsrr))
             .add(MI.getOperand(0))
+            .addReg(SyncVM::R0)
             .add(MI.getOperand(1))
             .add(MI.getOperand(2))
             .addImm(Offset + Adjustment * 32);
@@ -81,8 +83,9 @@ bool SyncVMAdjustSPBasedOffsets::runOnMachineFunction(MachineFunction &MF) {
       }
       case SyncVM::AdjMOVrs: {
         unsigned Offset = MI.getOperand(3).getImm();
-        BuildMI(MBB, MI, MI.getDebugLoc(), TII->get(SyncVM::MOVrs))
+        BuildMI(MBB, MI, MI.getDebugLoc(), TII->get(SyncVM::ADDrrs))
             .add(MI.getOperand(0))
+            .addReg(SyncVM::R0)
             .add(MI.getOperand(1))
             .add(MI.getOperand(2))
             .addImm(Offset + Adjustment * 32);
@@ -98,7 +101,7 @@ bool SyncVMAdjustSPBasedOffsets::runOnMachineFunction(MachineFunction &MF) {
         break;
       }
       case SyncVM::AdjSPDown: {
-        BuildMI(MBB, MI, MI.getDebugLoc(), TII->get(SyncVM::SUBrir))
+        BuildMI(MBB, MI, MI.getDebugLoc(), TII->get(SyncVM::SUBirr))
             .add(MI.getOperand(0))
             .add(MI.getOperand(1))
             .addImm(Adjustment * 32);
@@ -108,6 +111,7 @@ bool SyncVMAdjustSPBasedOffsets::runOnMachineFunction(MachineFunction &MF) {
       }
     }
   }
+  */
 
   for (auto *MI : Pseudos)
     MI->eraseFromParent();

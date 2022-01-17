@@ -4,406 +4,365 @@
 //
 //===----------------------------------------------------------------------===//
 
-//===----------------------------------------------------------------------===//
-// Generic SyncVM instruction
-//===----------------------------------------------------------------------===//
+class SourceMode<bits<4> val> {
+  bits<4> Value = val;
+}
 
+def SrcNone     : SourceMode<0b0000>; // r0
+def SrcReg      : SourceMode<0b0001>; // r
+def SrcCode     : SourceMode<0b0010>; // m
+def SrcStack    : SourceMode<0b0100>; // m
+def SrcImm      : SourceMode<0b1000>; // i
+
+class DestMode<bits<4> val> {
+  bits<4> Value = val;
+}
+
+def DstNone     : DestMode<0b0000>;   // r0
+def DstReg      : DestMode<0b0001>;   // r
+def DstStack    : DestMode<0b0100>;   // m
+
+class RetFlags<bits<4> val> {
+  bits<4> Value = val;
+}
+
+def RFNone           : RetFlags<0b0000>;
+def RFErr            : RetFlags<0b0001>;
+def RFPanic          : RetFlags<0b0010>;
+def RFTransitRetData : RetFlags<0b0100>;
+
+// Generic SyncVM instruction
 class SyncVMInstruction<
-  bits<8> opcode,
   dag outs,
   dag ins,
+  int size,
   string asmstr,
   list<dag> pattern
 > : Instruction
 {
-  field bits<256> Inst;
-  field bits<256> SoftFail = 0;
+  field bits<72>        Inst;
+  field bits<72>        SoftFail = 0;
 
   let Namespace         = "SyncVM";
+  let DecoderNamespace  = "SyncVM";
   let AsmString         = asmstr;
-  let Size              = 32;
+  let Size              = size;
   let OutOperandList    = outs;
   let InOperandList     = ins;
   let Pattern           = pattern;
-
-  let Inst{255-248}     = opcode;
 }
 
-
-
-//===----------------------------------------------------------------------===//
-// An empty operation
-//===----------------------------------------------------------------------===//
-
-class Empty<
-  bits<8> opcode,
-  string asmstr,
-  list<dag> pattern
-> : SyncVMInstruction<
-  opcode,
-  (outs),
-  (ins),
-  asmstr,
-  pattern
-> {}
-
-
-
-//===----------------------------------------------------------------------===//
-// Binary operation with two source registers and one destination
-//===----------------------------------------------------------------------===//
-
-// The destination is populated with the result
-class ArithmeticRRR<
-  bits<8> opcode,
-  string name,
-  SDNode node
-> : SyncVMInstruction<
-  opcode,
-  (outs GR256:$dst),
-  (ins GR256:$src1, GR256:$src2),
-  !strconcat(name, "\t$src1, $src2, $dst"),
-  [(set i256:$dst, (node i256:$src1, i256:$src2))]
-> {
-  bits<4> src1;
-  bits<4> src2;
-  bits<4> dst;
-
-  let Inst{247-244} = src1;
-  let Inst{243-240} = src2;
-  let Inst{239-236} = dst;
-}
-
-// The destination disposes of its result
-class ArithmeticRRZ<
-  bits<8> opcode,
-  string name,
-  SDNode node
-> : SyncVMInstruction<
-  opcode,
-  (outs GR256:$dst),
-  (ins GR256:$src1, GR256:$src2),
-  !strconcat(name, "\t$src1, $src2, $dst"),
-  [(set i256:$dst, (node i256:$src1, i256:$src2))]
-> {
-  bits<4> src1;
-  bits<4> src2;
-  bits<4> dst;
-
-  let Inst{247-244} = src1;
-  let Inst{243-240} = src2;
-  let Inst{239-236} = dst;
-}
-
-// Arithmetic instruction with 0 as the second argument.
-// The purpose is primarially implement MOV via ADD rSrc, r0, rDst.
-class ArithmeticRZR<
-  bits<8> opcode,
-  string name,
-  SDNode node
-> : SyncVMInstruction<
-  opcode,
-  (outs GR256:$dst),
-  (ins GR256:$src, Z256:$z),
-  !strconcat(name, "\t$src, $z, $dst"),
-  [] // Doesn't make sense for LLVM, so it's only generated, not selected
-> {
-  bits<4> src;
-  bits<4> z;
-  bits<4> dst;
-
-  let Inst{247-244} = src;
-  let Inst{243-240} = z;
-  let Inst{239-236} = dst;
-}
-
-//===----------------------------------------------------------------------===//
-// Binary operation with two source registers and two destinations
-//===----------------------------------------------------------------------===//
-
-// Two destinations are populated with the result
-class ArithmeticRRRR<
-  bits<8> opcode,
-  string name,
-  SDNode node
-> : SyncVMInstruction<
-  opcode,
-  (outs GR256:$dst1, GR256:$dst2),
-  (ins GR256:$src1, GR256:$src2),
-  !strconcat(name, "\t$src1, $src2, $dst1, $dst2"),
-  [(set i256:$dst1, i256:$dst2, (node i256:$src1, i256:$src2))]
-> {
-  bits<4> src1;
-  bits<4> src2;
-  bits<4> dst1;
-  bits<4> dst2;
-
-  let Inst{247-244} = src1;
-  let Inst{243-240} = src2;
-  let Inst{239-236} = dst1;
-  let Inst{235-232} = dst2;
-}
-
-// The first destination disposes of its result
-class ArithmeticRRZR <
-  bits<8> opcode,
-  string name,
-  SDNode node
-> : SyncVMInstruction <
-  opcode,
-  (outs GR256:$dst),
-  (ins GR256:$src1, GR256:$src2),
-  !strconcat(name, "\t$src1, $src2, r0, $dst"),
-  [(set i256:$dst, (node i256:$src1, i256:$src2))]
-> {
-  bits<4> src1;
-  bits<4> src2;
-  bits<4> dst;
-
-  let Inst{247-244} = src1;
-  let Inst{243-240} = src2;
-  let Inst{239-236} = 0;
-  let Inst{235-232} = dst;
-}
-
-// The second destination disposes of its result
-class ArithmeticRRRZ <
-  bits<8> opcode,
-  string name,
-  SDNode node
-> : SyncVMInstruction <
-  opcode,
-  (outs GR256:$dst),
-  (ins GR256:$src1, GR256:$src2),
-  !strconcat(name, "\t$src1, $src2, $dst, r0"),
-  [(set i256:$dst, (node i256:$src1, i256:$src2))]
-> {
-  bits<4> src1;
-  bits<4> src2;
-  bits<4> dst;
-
-  let Inst{247-244} = src1;
-  let Inst{243-240} = src2;
-  let Inst{239-236} = dst;
-  let Inst{235-232} = 0;
-}
-
-
-//===----------------------------------------------------------------------===//
-// Immediate loading operation with one destination
-//===----------------------------------------------------------------------===//
-
-let OperandType = "OPERAND_IMMEDIATE" in
-def i256imm : Operand<i256>;
-
-class Immediate<
-  bits<8> opcode,
-  string name
-> : SyncVMInstruction<
-  opcode,
-  (outs GR256:$dst),
-  (ins i256imm:$imm),
-  !strconcat(name, "\t$imm, $dst"),
-  [(set i256:$dst, imm:$imm)]
-> {
-  bits<4>   dst;
-  bits<128> imm;
-  bit       is_high;
-
-  let Inst{247-244} = dst;
-  let Inst{243-116} = imm;
-  let Inst{115}     = is_high;
-}
-
-
-
-//===----------------------------------------------------------------------===//
-// Jump operation with one source
-//===----------------------------------------------------------------------===//
-
-class Jump<
-  bits<8> opcode,
+class IForm <
+  bits<8>  opcode,
+/*
+  bits<4>  reg_source1,
+  bits<4>  reg_source2,
+  bits<4>  reg_destination1,
+  bits<4>  reg_destination2,
+  bits<4>  mem_imm_handler_flags_src1,
+  bits<4>  mem_imm_handler_flags_dst1,
+  bits<4>  non_selector_flags,
+  bits<4>  table_based_non_selector_flags,
+  bits<16> const_src,
+  bits<16> const_dst,
+*/
+  SourceMode as,
+  DestMode ad,
+  bit swap_operands,
   dag outs,
   dag ins,
   string asmstr,
   list<dag> pattern
-> : SyncVMInstruction<
-  opcode,
-  outs,
-  ins,
-  asmstr,
-  pattern
-> {
-  // TODO: Encoding assumption
-  // SyncVMCC        | Z(E) | L | G
-  // UNCONDIONAL = 0 | 0    | 0 | 0
-  // EQ          = 1 | 1    | 0 | 0
-  // LT          = 2 | 0    | 1 | 0
-  // LE          = 3 | 1    | 1 | 0
-  // GT          = 4 | 0    | 0 | 1
-  // GE          = 5 | 1    | 0 | 1
-  // NE          = 6 | 0    | 1 | 1
-  bits<3>   flags;
-  bits<16>  if_dst;
-  bits<16>  else_dst;
-
-  let Inst{247-245} = flags;
-  let Inst{245-230} = if_dst;
-  let Inst{229-214} = else_dst;
+> : SyncVMInstruction<outs, ins, 9, asmstr, pattern>
+{
+  let Inst{64-71}       = opcode;
+  let Inst{44-47}       = as.Value;
+  let Inst{40-43}       = ad.Value;
+  let Inst{32}          = swap_operands;
+  /*
+  let Inst{60-63}       = reg_source1;
+  let Inst{56-59}       = reg_source2;
+  let Inst{52-55}       = reg_destination1;
+  let Inst{48-51}       = reg_destination2;
+  let Inst{44-47}       = mem_imm_handler_flags_src1;
+  let Inst{40-43}       = mem_imm_handler_flags_dst1;
+  let Inst{36-39}       = non_selector_flags;
+  let Inst{32-35}       = table_based_non_selector_flags;
+  let Inst{16-31}       = const_src;
+  let Inst{0-15}        = const_dst;
+  */
 }
 
+// Nop instruction
+class INop<bits<8> opcode, string asmstr, list<dag> pattern>
+  : IForm <opcode, SrcNone, DstNone, 0, (outs), (ins), asmstr, pattern > { }
 
-
-//===----------------------------------------------------------------------===//
-// Call/return operation with one source
-//===----------------------------------------------------------------------===//
-// TODO: Fix encoding
-class Call<
-  bits<8> opcode,
-  dag outs,
-  dag ins,
-  string asmstr,
-  list<dag> pattern
-> : SyncVMInstruction<
-  opcode,
-  outs,
-  ins,
-  asmstr,
-  pattern
-> {
-  bits<16>   address;
-//  bit       call_or_return;
-//  bit       external_or_local;
-//  bit       with_error;
-//  bits<1>   flags_space;
-
-  let Inst{247-232} = address;
-//  let Inst{243}     = call_or_return;
-//  let Inst{242}     = external_or_local;
-//  let Inst{241}     = with_error;
-//  let Inst{240-240} = flags_space;
+class IConditional<bits<8> opcode,
+                   dag outs,
+                   dag ins,
+                   string asmstr,
+                   list<dag> pattern>
+  : IForm <opcode, SrcReg, DstNone, 0, outs, ins, asmstr, pattern > {
+  bits<4> rs1;
+  bits<4> flags;
+  let Inst{60-63} = rs1;
+  let Inst{36-39} = flags;
 }
 
-
-
-//===----------------------------------------------------------------------===//
-// Memory operation with two sources
-//===----------------------------------------------------------------------===//
-
-class Memory<
-  bits<8> opcode,
-  dag outs,
-  dag ins,
-  string asmstr,
-  list<dag> pattern
-> : SyncVMInstruction<
-  opcode,
-  outs,
-  ins,
-  asmstr,
-  pattern
-> {
-  bits<4>   src1;
-  bits<4>   src2;
-  bits<4>   dst;
-  bit       read_or_write;
-  bit       force_stack;
-  bits<2>   memory_type;
-  bits<16>  offset;
-
-  let Inst{247-244} = src1;
-  let Inst{243-240} = src2;
-  let Inst{239}     = read_or_write;
-  let Inst{238}     = force_stack;
-  let Inst{237-236} = memory_type;
-  let Inst{235-220} = offset;
+class IJump<bits<8> opcode, dag ins, string asmstr, list<dag> pattern>
+  : IConditional <opcode, (outs), ins, asmstr, pattern> {
+  bits<16> addrtrue;
+  bits<16> addrfalse;
+  let Inst{16-31} = addrtrue;
+  let Inst{0-15}  = addrfalse;
 }
 
-
-
-//===----------------------------------------------------------------------===//
-// Storage operation with two sources and one destination
-//===----------------------------------------------------------------------===//
-
-class Storage<
-  bits<8> opcode,
-  dag outs,
-  dag ins,
-  string asmstr,
-  list<dag> pattern
-> : SyncVMInstruction<
-  opcode,
-  outs,
-  ins,
-  asmstr,
-  pattern
-> {
-  bits<4>   src1;
-  bits<4>   src2;
-  bits<4>   dst;
-  bit       read_or_write;
-  bits<3>   flags_space;
-
-  let Inst{247-244} = src1;
-  let Inst{243-240} = src2;
-  let Inst{239-236} = dst;
-  let Inst{235}     = read_or_write;
-  let Inst{234-232} = flags_space;
+class ICmov<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : IConditional< opcode, outs, ins, asmstr, pattern> {
+  bits<4> rs2;
+  bits<4> rd;
+  let Inst{56-59} = rs2;
+  let Inst{52-55} = rd;
+  let Inst{40-43} = DstReg.Value;
 }
 
-
-
-//===----------------------------------------------------------------------===//
-// Hash absorb operation with one source
-//===----------------------------------------------------------------------===//
-
-class HashAbsorb<
-  bits<8> opcode,
-  dag outs,
-  dag ins,
-  string asmstr,
-  list<dag> pattern
-> : SyncVMInstruction<
-  opcode,
-  outs,
-  ins,
-  asmstr,
-  pattern
-> {
-  bits<4>   src;
-  bit       reset;
-  bits<3>   flags_space;
-
-  let Inst{247-244} = src;
-  let Inst{243}     = reset;
-  let Inst{242-240} = flags_space;
+class IRet<bits<8> opcode, RetFlags flags, string asmstr, list<dag> pattern>
+  : IForm <opcode, SrcNone, DstNone, 0, (outs), (ins), asmstr, pattern > {
+  let Inst{36-39} = flags.Value;
 }
 
-
-
-//===----------------------------------------------------------------------===//
-// Hash output operation with one destination
-//===----------------------------------------------------------------------===//
-
-class HashOutput<
-  bits<8> opcode,
-  dag outs,
-  dag ins,
-  string asmstr,
-  list<dag> pattern
-> : SyncVMInstruction<
-  opcode,
-  outs,
-  ins,
-  asmstr,
-  pattern
-> {
-  bits<4>   dst;
-
-  let Inst{247-244} = dst;
+class Irrr<bits<8> opcode,
+           bit swap_operands,
+           dag outs,
+           dag ins,
+           string asmstr,
+           list<dag> pattern>
+  : IForm<opcode, SrcReg, DstReg, swap_operands, outs, ins, asmstr, pattern> {
+  bits<4> rs1;
+  bits<4> rs2;
+  bits<4> rd;
+  let Inst{60-63} = rs1;
+  let Inst{56-59} = rs2;
+  let Inst{52-55} = rd;
+  let Inst{48-51} = 0;
+  let Inst{32}    = swap_operands;
 }
 
+class Irrrr<bits<8> opcode,
+           bit swap_operands,
+           dag outs,
+           dag ins,
+           string asmstr,
+           list<dag> pattern>
+  : Irrr<opcode, swap_operands, outs, ins, asmstr, pattern> {
+  bits<4> rd2;
+  let Inst{48-51} = rd2;
+}
+
+class Iirr<bits<8> opcode,
+           bit swap_operands,
+           dag outs,
+           dag ins,
+           string asmstr,
+           list<dag> pattern>
+  : IForm<opcode, SrcImm, DstReg, swap_operands, outs, ins, asmstr, pattern> {
+  bits<16> imm;
+  bits<4>  rs2;
+  bits<4>  rd;
+  let Inst{56-59} = rs2;
+  let Inst{52-55} = rd;
+  let Inst{48-51} = 0;
+  let Inst{32}    = swap_operands;
+  let Inst{16-31} = imm;
+}
+
+class Iirrr<bits<8> opcode,
+           bit swap_operands,
+           dag outs,
+           dag ins,
+           string asmstr,
+           list<dag> pattern>
+  : Iirr<opcode, swap_operands, outs, ins, asmstr, pattern> {
+  bits<4> rd2;
+  let Inst{48-51} = rd2;
+}
+
+class Icrr<bits<8> opcode,
+           bit swap_operands,
+           dag outs,
+           dag ins,
+           string asmstr,
+           list<dag> pattern>
+  : IForm<opcode, SrcCode, DstReg, swap_operands, outs, ins, asmstr, pattern> {
+  bits<20> src1; // reg + imm
+  bits<4>  rs2;
+  bits<4>  rd;
+  let Inst{60-63} = src1{0-3};
+  let Inst{56-59} = rs2;
+  let Inst{52-55} = rd;
+  let Inst{48-51} = 0;
+  let Inst{32}    = swap_operands;
+  let Inst{16-31} = src1{4-19};
+}
+
+class Icrrr<bits<8> opcode,
+           bit swap_operands,
+           dag outs,
+           dag ins,
+           string asmstr,
+           list<dag> pattern>
+  : Icrr<opcode, swap_operands, outs, ins, asmstr, pattern> {
+  bits<4> rd2;
+  let Inst{48-51} = rd2;
+}
+
+class Isrr<bits<8> opcode,
+           bit swap_operands,
+           dag outs,
+           dag ins,
+           string asmstr,
+           list<dag> pattern>
+  : IForm<opcode, SrcStack, DstReg, swap_operands, outs, ins, asmstr, pattern> {
+  bits<20> src1; // reg [+ sp] + imm
+  bits<4>  rs2;
+  bits<4>  rd;
+  let Inst{60-63} = src1{0-3};
+  let Inst{56-59} = rs2;
+  let Inst{52-55} = rd;
+  let Inst{48-51} = 0;
+  let Inst{32}    = swap_operands;
+  let Inst{16-31} = src1{4-19};
+}
+
+class Isrrr<bits<8> opcode,
+           bit swap_operands,
+           dag outs,
+           dag ins,
+           string asmstr,
+           list<dag> pattern>
+  : Isrr<opcode, swap_operands, outs, ins, asmstr, pattern> {
+  bits<4> rd2;
+  let Inst{48-51} = rd2;
+}
+
+class Irrs<bits<8> opcode,
+           bit swap_operands,
+           dag outs,
+           dag ins,
+           string asmstr,
+           list<dag> pattern>
+  : IForm<opcode, SrcReg, DstStack, swap_operands, outs, ins, asmstr, pattern> {
+  bits<4>  rs1;
+  bits<4>  rs2;
+  bits<24> dst;
+  let Inst{60-63} = rs1;
+  let Inst{56-59} = rs2;
+  let Inst{52-55} = dst{0-3};
+  let Inst{48-51} = 0;
+  let Inst{32}    = swap_operands;
+  let Inst{0-15}  = dst{4-19};
+}
+
+class Irrsr<bits<8> opcode,
+           bit swap_operands,
+           dag outs,
+           dag ins,
+           string asmstr,
+           list<dag> pattern>
+  : Irrs<opcode, swap_operands, outs, ins, asmstr, pattern> {
+  bits<4> rd2;
+  let Inst{48-51} = rd2;
+}
+
+class Iirs<bits<8> opcode,
+           bit swap_operands,
+           dag outs,
+           dag ins,
+           string asmstr,
+           list<dag> pattern>
+  : IForm<opcode, SrcImm, DstStack, swap_operands, outs, ins, asmstr, pattern> {
+  bits<16> imm;
+  bits<4>  rs2;
+  bits<20> dst;
+  let Inst{56-59} = rs2;
+  let Inst{52-55} = dst{0-3};
+  let Inst{48-51} = 0;
+  let Inst{32}    = swap_operands;
+  let Inst{16-31} = imm;
+  let Inst{0-15}  = dst{4-19};
+}
+
+class Iirsr<bits<8> opcode,
+           bit swap_operands,
+           dag outs,
+           dag ins,
+           string asmstr,
+           list<dag> pattern>
+  : Iirs<opcode, swap_operands, outs, ins, asmstr, pattern> {
+  bits<4> rd2;
+  let Inst{48-51} = rd2;
+}
+
+class Icrs<bits<8> opcode,
+           bit swap_operands,
+           dag outs,
+           dag ins,
+           string asmstr,
+           list<dag> pattern>
+  : IForm<opcode, SrcCode, DstStack, swap_operands, outs, ins, asmstr, pattern> {
+  bits<20> src1; // reg + imm
+  bits<4>  rs2;
+  bits<20> dst;
+  let Inst{60-63} = src1{0-3};
+  let Inst{56-59} = rs2;
+  let Inst{52-55} = dst{0-3};
+  let Inst{48-51} = 0;
+  let Inst{32}    = swap_operands;
+  let Inst{16-31} = src1{4-19};
+  let Inst{0-15}  = dst{4-19};
+}
+
+class Icrsr<bits<8> opcode,
+           bit swap_operands,
+           dag outs,
+           dag ins,
+           string asmstr,
+           list<dag> pattern>
+  : Icrs<opcode, swap_operands, outs, ins, asmstr, pattern> {
+  bits<4> rd2;
+  let Inst{48-51} = rd2;
+}
+
+class Isrs<bits<8> opcode,
+           bit swap_operands,
+           dag outs,
+           dag ins,
+           string asmstr,
+           list<dag> pattern>
+  : IForm<opcode, SrcStack, DstStack, swap_operands, outs, ins, asmstr, pattern> {
+  bits<20> src1; // reg [+ sp] + imm
+  bits<4>  rs2;
+  bits<20> dst;
+  let Inst{60-63} = src1{0-3};
+  let Inst{56-59} = rs2;
+  let Inst{52-55} = dst{0-3};
+  let Inst{48-51} = 0;
+  let Inst{32}    = swap_operands;
+  let Inst{16-31} = src1{4-19};
+  let Inst{0-15}  = dst{4-19};
+}
+
+class Isrsr<bits<8> opcode,
+           bit swap_operands,
+           dag outs,
+           dag ins,
+           string asmstr,
+           list<dag> pattern>
+  : Isrs<opcode, swap_operands, outs, ins, asmstr, pattern> {
+  bits<4> rd2;
+  let Inst{48-51} = rd2;
+}
 
 // Pseudo instructions
 class Pseudo<dag outs, dag ins, string asmstr, list<dag> pattern>
-  : SyncVMInstruction< 0, outs, ins, asmstr, pattern>;
+  : SyncVMInstruction <outs, ins, 0, asmstr, pattern> {}
