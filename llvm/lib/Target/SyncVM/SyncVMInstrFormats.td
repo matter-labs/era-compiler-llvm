@@ -97,14 +97,33 @@ class IForm <
 class INop<bits<8> opcode, string asmstr, list<dag> pattern>
   : IForm <opcode, SrcNone, DstNone, 0, (outs), (ins), asmstr, pattern > { }
 
+class IConditional<bits<8> opcode,
+                   dag outs,
+                   dag ins,
+                   string asmstr,
+                   list<dag> pattern>
+  : IForm <opcode, SrcReg, DstNone, 0, outs, ins, asmstr, pattern > {
+  bits<4> rs1;
+  bits<4> flags;
+  let Inst{60-63} = rs1;
+  let Inst{36-39} = flags;
+}
+
 class IJump<bits<8> opcode, dag ins, string asmstr, list<dag> pattern>
-  : IForm <opcode, SrcNone, DstNone, 0, (outs), ins, asmstr, pattern> {
+  : IConditional <opcode, (outs), ins, asmstr, pattern> {
   bits<16> addrtrue;
   bits<16> addrfalse;
-  bits<4>  flags;
-  let Inst{36-39} = flags;
   let Inst{16-31} = addrtrue;
   let Inst{0-15}  = addrfalse;
+}
+
+class ICmov<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : IConditional< opcode, outs, ins, asmstr, pattern> {
+  bits<4> rs2;
+  bits<4> rd;
+  let Inst{56-59} = rs2;
+  let Inst{52-55} = rd;
+  let Inst{40-43} = DstReg.Value;
 }
 
 class IRet<bits<8> opcode, RetFlags flags, string asmstr, list<dag> pattern>

@@ -16,9 +16,10 @@ def SDT_SyncVMCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i256>, SDTCisVT<1, i256>]
 def SDT_SyncVMPush         : SDTypeProfile<0,  2, [SDTCisVT<0, i256>,
                                                    SDTCisVT<1, i256>]>;
 def SDT_SyncVMPop          : SDTypeProfile<1,  1, [SDTCisVT<0, i256>]>;
-def SDT_SyncVMBrCC         : SDTypeProfile<0,  3, [SDTCisVT<0, OtherVT>,
+def SDT_SyncVMBrCC         : SDTypeProfile<0,  4, [SDTCisVT<0, i256>,
                                                    SDTCisVT<1, OtherVT>,
-                                                   SDTCisVT<2, i256>]>;
+                                                   SDTCisVT<2, OtherVT>,
+                                                   SDTCisVT<3, i256>]>;
 def SDT_SyncVMSelectCC     : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
                                                   SDTCisSameAs<1, 2>,
                                                   SDTCisVT<3, i256>]>;
@@ -306,7 +307,7 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
   def crsr : Icrsr<opcode, 0, (outs GR256:$rd2), (ins memop:$rs1, GR256:$rs2, stackop:$dst),
                    !strconcat(asmstring, "\tcode[$rs1], $rs2, stack-[$dst], $rd2"), []>;
   def srsr : Isrsr<opcode, 0, (outs GR256:$rd2), (ins stackop:$rs1, GR256:$rs2, stackop:$dst),
-                   !strconcat(asmstring, "\tstack[$rs1], $rs2, stack-[$dst], $rd2"), []>;
+                   !strconcat(asmstring, "\tstack-[$rs1], $rs2, stack-[$dst], $rd2"), []>;
   }
   }
   }
@@ -404,14 +405,17 @@ def POP     : IForm < 40, SrcReg, DstReg, 0, (outs GR256:$val), (ins i256imm:$si
                       "pop\t#$size, $val",
                       [(set GR256:$val, (SyncVMpop timm:$size))] >;
 
+let Uses = [Flags] in
+def CMOV    : ICmov < 41, (outs GR256:$rd1), (ins GR256:$rs1, GR256:$rs2, cc:$flags),
+                      "cmov.$flags\t$rs1, rs2, $rd1", []>;
 
 //===----------------------------------------------------------------------===//
 // Control flow instructions
 //===----------------------------------------------------------------------===//
 let isTerminator = 1, isBranch = 1, isBarrier = 1, Uses = [Flags] in {
-def J: IJump<10, (ins jmptarget:$dst_true, jmptarget:$dst_false, cc:$cond),
-              "jump.$cond\t$dst_true, $dst_false",
-              [(SyncVMbrcc bb:$dst_true, bb:$dst_false, imm:$cond)]>;
+def J: IJump<10, (ins GR256:$rs1, jmptarget:$dst_true, jmptarget:$dst_false, cc:$flags),
+              "jump.$flags\t$rs1, $dst_true, $dst_false",
+              [(SyncVMbrcc GR256:$rs1, bb:$dst_true, bb:$dst_false, imm:$flags)]>;
 
 let isReturn = 1, isTerminator = 1, isBarrier = 1  in
 def RET   : IRet<7, RFNone, "ret", [(SyncVMret)]>;

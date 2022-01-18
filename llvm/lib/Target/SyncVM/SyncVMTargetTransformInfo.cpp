@@ -101,8 +101,6 @@ InstructionCost SyncVMTTIImpl::getCmpSelInstrCost(unsigned Opcode, Type *ValTy,
                                                   TTI::TargetCostKind CostKind,
                                                   const Instruction *I) {
 
-  InstructionCost selector_cost = TargetTransformInfo::TCC_Expensive;
-
   switch (Opcode) {
   case Instruction::ICmp: {
     if (I) {

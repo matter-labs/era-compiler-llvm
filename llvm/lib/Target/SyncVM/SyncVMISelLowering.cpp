@@ -60,6 +60,7 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
 
   // special handling of umulxx
   setOperationAction(ISD::MUL, MVT::i256, Expand);
+  setOperationAction(ISD::MULHU, MVT::i256, Expand);
   setOperationAction(ISD::SMUL_LOHI, MVT::i256, Expand);
   setOperationAction(ISD::UMUL_LOHI, MVT::i256, Legal);
 
@@ -393,10 +394,10 @@ static SDValue EmitCMP(SDValue &LHS, SDValue &RHS, ISD::CondCode CC,
   default:
     llvm_unreachable("Invalid integer condition!");
   case ISD::SETEQ:
-    TCC = SyncVMCC::COND_E; // aka COND_Z
+    TCC = SyncVMCC::COND_E;
     break;
   case ISD::SETNE:
-    TCC = SyncVMCC::COND_NE; // aka COND_NZ
+    TCC = SyncVMCC::COND_NE;
     break;
   case ISD::SETULT:
     TCC = SyncVMCC::COND_LT;

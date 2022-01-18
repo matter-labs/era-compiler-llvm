@@ -259,3 +259,155 @@ define void @divzrs(i256 %rs1) nounwind {
   store i256 %res, i256* %destptr
   ret void
 }
+
+; CHECK-LABEL: udivremrrrr
+define i256 @udivremrrrr(i256 %rs1, i256 %rs2) nounwind {
+; CHECK: div r1, r2, r[[REG1:[0-9]+]], r[[REG2:[0-9]+]]
+; CHECK: add r[[REG2]], r[[REG1]], r1
+  %res1 = urem i256 %rs1, %rs2
+  %res2 = udiv i256 %rs1, %rs2
+  %res = add i256 %res1, %res2
+  ret i256 %res
+}
+
+; CHECK-LABEL: udivremirrr
+define i256 @udivremirrr(i256 %rs1) nounwind {
+; CHECK: div 42, r1, r[[REG1:[0-9]+]], r[[REG2:[0-9]+]]
+; CHECK: add r[[REG2]], r[[REG1]], r1
+  %res1 = urem i256 42, %rs1
+  %res2 = udiv i256 42, %rs1
+  %res = add i256 %res1, %res2
+  ret i256 %res
+}
+
+; CHECK-LABEL: udivremxrrr
+define i256 @udivremxrrr(i256 %rs1) nounwind {
+; CHECK: div.s 42, r1, r[[REG1:[0-9]+]], r[[REG2:[0-9]+]]
+; CHECK: add r[[REG2]], r[[REG1]], r1
+  %res1 = urem i256 %rs1, 42
+  %res2 = udiv i256 %rs1, 42
+  %res = add i256 %res1, %res2
+  ret i256 %res
+}
+
+; CHECK-LABEL: udivremcrrr
+define i256 @udivremcrrr(i256 %rs1) nounwind {
+; CHECK: div code[val], r1, r[[REG1:[0-9]+]], r[[REG2:[0-9]+]]
+; CHECK: add r[[REG2]], r[[REG1]], r1
+  %val = load i256, i256 addrspace(4)* @val
+  %res1 = urem i256 %val, %rs1
+  %res2 = udiv i256 %val, %rs1
+  %res = add i256 %res1, %res2
+  ret i256 %res
+}
+
+; CHECK-LABEL: udivremyrrr
+define i256 @udivremyrrr(i256 %rs1) nounwind {
+; CHECK: div.s code[val], r1, r[[REG1:[0-9]+]], r[[REG2:[0-9]+]]
+; CHECK: add r[[REG2]], r[[REG1]], r1
+  %val = load i256, i256 addrspace(4)* @val
+  %res1 = urem i256 %rs1, %val
+  %res2 = udiv i256 %rs1, %val
+  %res = add i256 %res1, %res2
+  ret i256 %res
+}
+
+; CHECK-LABEL: udivremsrrr
+define i256 @udivremsrrr(i256 %rs1) nounwind {
+  %valptr = alloca i256
+; CHECK: div stack-[1], r1, r[[REG1:[0-9]+]], r[[REG2:[0-9]+]]
+; CHECK: add r[[REG2]], r[[REG1]], r1
+  %val = load i256, i256* %valptr
+  %res1 = urem i256 %val, %rs1
+  %res2 = udiv i256 %val, %rs1
+  %res = add i256 %res1, %res2
+  ret i256 %res
+}
+
+; CHECK-LABEL: udivremzrrr
+define i256 @udivremzrrr(i256 %rs1) nounwind {
+  %valptr = alloca i256
+; CHECK: div.s stack-[1], r1, r[[REG1:[0-9]+]], r[[REG2:[0-9]+]]
+; CHECK: add r[[REG2]], r[[REG1]], r1
+  %val = load i256, i256* %valptr
+  %res1 = urem i256 %rs1, %val
+  %res2 = udiv i256 %rs1, %val
+  %res = add i256 %res1, %res2
+  ret i256 %res
+}
+
+; CHECK-LABEL: udivremrrsr
+define i256 @udivremrrsr(i256 %rs1, i256 %rs2) nounwind {
+  %valptr = alloca i256
+  %res = udiv i256 %rs1, %rs2
+  %rem = urem i256 %rs1, %rs2
+; CHECK: div r1, r2, stack-[1], r1
+  store i256 %res, i256* %valptr
+  ret i256 %rem
+}
+
+; CHECK-LABEL: udivremirsr
+define i256 @udivremirsr(i256 %rs1) nounwind {
+  %valptr = alloca i256
+; CHECK: div 42, r1, stack-[1], r1
+  %res = udiv i256 42, %rs1
+  %rem = urem i256 42, %rs1
+  store i256 %res, i256* %valptr
+  ret i256 %rem
+}
+
+; CHECK-LABEL: udivremxrsr
+define i256 @udivremxrsr(i256 %rs1) nounwind {
+  %valptr = alloca i256
+; CHECK: div.s 42, r1, stack-[1], r1
+  %res = udiv i256 %rs1, 42
+  %rem = urem i256 %rs1, 42
+  store i256 %res, i256* %valptr
+  ret i256 %rem
+}
+
+; CHECK-LABEL: udivremcrsr
+define i256 @udivremcrsr(i256 %rs1) nounwind {
+  %valptr = alloca i256
+; CHECK: div code[val], r1, stack-[1], r1
+  %val = load i256, i256 addrspace(4)* @val
+  %res = udiv i256 %val, %rs1
+  %rem = urem i256 %val, %rs1
+  store i256 %res, i256* %valptr
+  ret i256 %rem
+}
+
+; CHECK-LABEL: udivremyrsr
+define i256 @udivremyrsr(i256 %rs1) nounwind {
+  %valptr = alloca i256
+; CHECK: div.s code[val], r1, stack-[1], r1
+  %val = load i256, i256 addrspace(4)* @val
+  %res = udiv i256 %rs1, %val
+  %rem = urem i256 %rs1, %val
+  store i256 %res, i256* %valptr
+  ret i256 %rem
+}
+
+; CHECK-LABEL: udivremsrsr
+define i256 @udivremsrsr(i256 %rs1) nounwind {
+  %valptr = alloca i256
+  %destptr = alloca i256
+; CHECK: div stack-[2], r1, stack-[1], r1
+  %val = load i256, i256* %valptr
+  %res = udiv i256 %val, %rs1
+  %rem = urem i256 %val, %rs1
+  store i256 %res, i256* %destptr
+  ret i256 %rem
+}
+
+; CHECK-LABEL: udivremzrsr
+define i256 @udivremzrsr(i256 %rs1) nounwind {
+  %valptr = alloca i256
+  %destptr = alloca i256
+; CHECK: div.s stack-[2], r1, stack-[1], r1
+  %val = load i256, i256* %valptr
+  %res = udiv i256 %rs1, %val
+  %rem = urem i256 %rs1, %val
+  store i256 %res, i256* %destptr
+  ret i256 %rem
+}
