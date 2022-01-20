@@ -21,3 +21,16 @@ define i256 @materialize_negative_imm(i256 %par) nounwind {
   ret i256 -1
 }
 
+; CHECK-LABEL: materialize_smallimm_in_operation
+define i256 @materialize_smallimm_in_operation(i256 %par) nounwind {
+  ; CHECK: add 42, r1, r1
+  %res = add i256 %par, 42
+  ret i256 %res
+}
+
+; CHECK-LABEL: materialize_bigimm_in_operation
+define i256 @materialize_bigimm_in_operation(i256 %par) nounwind {
+  ; CHECK: add code[CPI{{[0-9]}}_{{[0-9]}}], r1, r1
+  %res = add i256 %par, -42
+  ret i256 %res
+}
