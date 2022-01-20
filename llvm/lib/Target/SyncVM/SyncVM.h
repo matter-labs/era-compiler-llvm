@@ -15,13 +15,12 @@ namespace SyncVMCC {
 // SyncVM specific condition code.
 enum CondCodes {
   COND_NONE = 0, /// unconditional
-  COND_Z = 1,    /// rs1 == 0
   COND_E = 2,    /// EQ flag is set
   COND_LT = 4,   /// LT flag is set
   COND_GT = 8,   /// GT flag is set
-  COND_LE = 6,   /// LT | EQ
-  COND_GE = 10,  /// GT | EQ
-  COND_NE = 14,  /// GT | LT
+  COND_NE,
+  COND_LE,
+  COND_GE,
 
   COND_INVALID = -1
 };

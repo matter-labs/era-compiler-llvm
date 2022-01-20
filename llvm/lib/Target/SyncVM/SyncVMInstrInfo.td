@@ -16,10 +16,9 @@ def SDT_SyncVMCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i256>, SDTCisVT<1, i256>]
 def SDT_SyncVMPush         : SDTypeProfile<0,  2, [SDTCisVT<0, i256>,
                                                    SDTCisVT<1, i256>]>;
 def SDT_SyncVMPop          : SDTypeProfile<1,  1, [SDTCisVT<0, i256>]>;
-def SDT_SyncVMBrCC         : SDTypeProfile<0,  4, [SDTCisVT<0, i256>,
+def SDT_SyncVMBrCC         : SDTypeProfile<0,  3, [SDTCisVT<0, OtherVT>,
                                                    SDTCisVT<1, OtherVT>,
-                                                   SDTCisVT<2, OtherVT>,
-                                                   SDTCisVT<3, i256>]>;
+                                                   SDTCisVT<2, i256>]>;
 def SDT_SyncVMSelectCC     : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
                                                   SDTCisSameAs<1, 2>,
                                                   SDTCisVT<3, i256>]>;
@@ -37,7 +36,7 @@ def SyncVMbrcc   : SDNode<"SyncVMISD::BR_CC", SDT_SyncVMBrCC,
                     [SDNPHasChain, SDNPInGlue]>;
 def SyncVMselectcc: SDNode<"SyncVMISD::SELECT_CC", SDT_SyncVMSelectCC,
                            [SDNPInGlue]>;
-def SyncVMsub    : SDNode<"SyncVMISD::SUB", SDT_SyncVMBinary, [SDNPOutGlue]>;
+def SyncVMcmp    : SDNode<"SyncVMISD::CMP", SDT_SyncVMBinary, [SDNPOutGlue]>;
 def SyncVMcallseq_start :
                  SDNode<"ISD::CALLSEQ_START", SDT_SyncVMCallSeqStart,
                         [SDNPHasChain, SDNPOutGlue]>;
@@ -165,14 +164,22 @@ def ADDframe : Pseudo<(outs GR256:$dst), (ins i256imm:$base, i256imm:$offset),
 }
 
 let isCodeGenOnly = 1, usesCustomInserter = 1 in {
-  def Select : Pseudo<(outs GR256:$dst), (ins GR256:$src, GR256:$src2, i256imm:$cc),
-                       "# Select PSEUDO",
+  def SELrrr : Pseudo<(outs GR256:$dst), (ins GR256:$src, GR256:$src2, i256imm:$cc),
+                       "# SELrrr PSEUDO",
                        [(set GR256:$dst,
                           (SyncVMselectcc GR256:$src, GR256:$src2, imm:$cc))]>;
-
-  def SelectLT : Pseudo<(outs GR256:$dst), (ins),
-                       "# SelectLT PSEUDO",
-                       [(set GR256:$dst, (int_syncvm_ltflag))]>;
+  def SELirr : Pseudo<(outs GR256:$dst), (ins imm16:$src, GR256:$src2, i256imm:$cc),
+                       "# SELrrr PSEUDO",
+                       [(set GR256:$dst,
+                          (SyncVMselectcc imm16:$src, GR256:$src2, imm:$cc))]>;
+  def SELcrr : Pseudo<(outs GR256:$dst), (ins memop:$src, GR256:$src2, i256imm:$cc),
+                       "# SELrrr PSEUDO",
+                       [(set GR256:$dst,
+                          (SyncVMselectcc (load_code memaddr:$src), GR256:$src2, imm:$cc))]>;
+  def SELsrr : Pseudo<(outs GR256:$dst), (ins stackop:$src, GR256:$src2, i256imm:$cc),
+                       "# SELrrr PSEUDO",
+                       [(set GR256:$dst,
+                          (SyncVMselectcc (load_stack stackaddr:$src), GR256:$src2, imm:$cc))]>;
 }
 
 def NOOP : INop< 18, "noop", [] >;
@@ -367,11 +374,21 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
 defm ADD  : Arith<2,  "add", add, 1>;
 defm ADD  : ArithICommutable<2,  "add", add>;
 
-// MOVrs
-def : Pat<(store_stack GR256:$src, stackaddr:$dst),  (ADDirs GR256:$src, 0, stackaddr:$dst)>;
+// MOV patterns
+def : Pat<(store_stack (load_code memaddr:$src), stackaddr:$dst),  (ADDcrs memaddr:$src, 0, stackaddr:$dst)>;
+def : Pat<(store_stack (load_stack stackaddr:$src), stackaddr:$dst),  (ADDsrs stackaddr:$src, 0, stackaddr:$dst)>;
+def : Pat<(imm16:$val),  (ADDirr 0, imm16:$val)>;
+def : Pat<(load_code memaddr:$addr),  (ADDcrr memaddr:$addr, 0)>;
+def : Pat<(load_stack stackaddr:$addr),  (ADDsrr stackaddr:$addr, 0)>;
+def : Pat<(store_stack GR256:$src, stackaddr:$dst),  (ADDrrs GR256:$src, 0, stackaddr:$dst)>;
+def : Pat<(store_stack imm16:$src, stackaddr:$dst),  (ADDirs 0, imm16:$src, stackaddr:$dst)>;
 
 defm SUB  : Arith<4,  "sub", sub, 0>;
 defm SUB  : ArithINonCommutable<4, "sub", sub>;
+
+// SelecCC, BR_CC supplement
+def : Pat<(SyncVMcmp GR256:$lhs, GR256:$rhs), (SUBrrr GR256:$lhs, GR256:$rhs)>;
+
 defm MUL  : Arith2<6, "mul", umullohi, 1>;
 defm MUL  : Arith2ICommutable<6, "mul", umullohi>;
 defm DIV  : Arith2<8, "div", udivrem, 0>;
@@ -412,10 +429,10 @@ def CMOV    : ICmov < 41, (outs GR256:$rd1), (ins GR256:$rs1, GR256:$rs2, cc:$fl
 //===----------------------------------------------------------------------===//
 // Control flow instructions
 //===----------------------------------------------------------------------===//
-let isTerminator = 1, isBranch = 1, isBarrier = 1, Uses = [Flags] in {
-def J: IJump<10, (ins GR256:$rs1, jmptarget:$dst_true, jmptarget:$dst_false, cc:$flags),
-              "jump.$flags\t$rs1, $dst_true, $dst_false",
-              [(SyncVMbrcc GR256:$rs1, bb:$dst_true, bb:$dst_false, imm:$flags)]>;
+let isTerminator = 1, isBranch = 1, isBarrier = 1, Uses = [Flags] in
+def J: IJump<10, (ins jmptarget:$dst_true, jmptarget:$dst_false, cc:$flags),
+              "jump$flags\tr0, $dst_true, $dst_false",
+              [(SyncVMbrcc bb:$dst_true, bb:$dst_false, imm:$flags)]>;
 
 let isReturn = 1, isTerminator = 1, isBarrier = 1  in
 def RET   : IRet<7, RFNone, "ret", [(SyncVMret)]>;
@@ -426,106 +443,8 @@ def JCC: IJump<10, (outs), (ins jmptarget:$addrtrue, jmptarget:$addrfalse, GR256
                "j$cond\t$dst_true, $dst_false",
                [(SyncVMbrcc bb:$dst_true, bb:$dst_false, GR256:$cond)]>;
                */
-}
 
 /*
-//===----------------------------------------------------------------------===//
-// The NoOperation instruction
-//===----------------------------------------------------------------------===//
-
-
-//===----------------------------------------------------------------------===//
-// Arithmetic
-//===----------------------------------------------------------------------===//
-
-
-let isCommutable = 1 in {
-  def ADDrrr     : ArithmeticRRR<  0x01, "add", add >;
-  def MULrrrz    : ArithmeticRRRZ< 0x03, "mul", mul >;
-  def MULrrrr    : SyncVMInstruction< 0xffe, (outs GR256:$o1, GR256:$o2),
-                                      (ins GR256:$i1, GR256:$i2),
-                                      "mul\t$i1, $i2, $o1, $o2",
-                                      [(set GR256:$o1, GR256:$o2, (umullohi GR256:$i1, GR256:$i2))]>;
-  def MULrrzr    : SyncVMInstruction< 0xffd, (outs GR256:$out),
-                                      (ins GR256:$i1, GR256:$i2),
-                                      "mul\t$i1, $i2, r0, $out",
-                                      [(set GR256:$out, (mulhu GR256:$i1, GR256:$i2))]>;
-}
-
-def SUBrrr     : ArithmeticRRR<  0x02, "sub", sub >;
-def ADDirr     : SyncVMInstruction< 0x011, (outs GR256:$out),
-                                    (ins GR256:$in1, imm128:$in2),
-                                    "add\t#$in2, $in1, $out",
-                                    [(set GR256:$out, (add GR256:$in1, imm128:$in2))]>;
-def MULirr     : SyncVMInstruction< 0x011, (outs GR256:$out),
-                                    (ins GR256:$in1, imm128:$in2),
-                                    "mul\t#$in2, $in1, $out, r0",
-                                    [(set GR256:$out, (mul GR256:$in1, imm128:$in2))]>;
-def SUBrir     : SyncVMInstruction< 0x011, (outs GR256:$out),
-                                    (ins GR256:$in1, imm128:$in2),
-                                    "sub\t$in1, #$in2, $out",
-                                    [(set GR256:$out, (add GR256:$in1, imm128:$in2))]>;
-
-let isCommutable = 1 in {
-def ANDrrr     : SyncVMInstruction< 0xa00, (outs GR256:$out),
-                                    (ins GR256:$in1, GR256:$in2),
-                                    "and\t$in1, $in2, $out",
-                                    [(set GR256:$out, (and GR256:$in1, GR256:$in2))]>;
-def ANDirr     : SyncVMInstruction< 0xa01, (outs GR256:$out),
-                                    (ins GR256:$in1, imm128:$in2),
-                                    "and\t#$in2, $in1, $out",
-                                    [(set GR256:$out, (and GR256:$in1, imm128:$in2))]>;
-def ORrrr      : SyncVMInstruction< 0xa10, (outs GR256:$out),
-                                    (ins GR256:$in1, GR256:$in2),
-                                    "or\t$in1, $in2, $out",
-                                    [(set GR256:$out, (or GR256:$in1, GR256:$in2))]>;
-def ORirr      : SyncVMInstruction< 0xa11, (outs GR256:$out),
-                                    (ins GR256:$in1, imm128:$in2),
-                                    "or\t#$in2, $in1, $out",
-                                    [(set GR256:$out, (or GR256:$in1, imm128:$in2))]>;
-def XORrrr     : SyncVMInstruction< 0xa20, (outs GR256:$out),
-                                    (ins GR256:$in1, GR256:$in2),
-                                    "xor\t$in1, $in2, $out",
-                                    [(set GR256:$out, (xor GR256:$in1, GR256:$in2))]>;
-def XORirr     : SyncVMInstruction< 0xa21, (outs GR256:$out),
-                                    (ins GR256:$in1, imm128:$in2),
-                                    "xor\t#$in2, $in1, $out",
-                                    [(set GR256:$out, (xor GR256:$in1, imm128:$in2))]>;
-}
-
-def SHLrrr     : SyncVMInstruction< 0xa00, (outs GR256:$out),
-                                    (ins GR256:$in1, GR256:$in2),
-                                    "shl\t$in1, $in2, $out",
-                                    [(set GR256:$out, (shl GR256:$in1, GR256:$in2))]>;
-def SHLirr     : SyncVMInstruction< 0xa01, (outs GR256:$out),
-                                    (ins GR256:$in1, imm128:$in2),
-                                    "shl\t$in1, #$in2, $out",
-                                    [(set GR256:$out, (shl GR256:$in1, imm128:$in2))]>;
-def ROLrrr     : SyncVMInstruction< 0xa10, (outs GR256:$out),
-                                    (ins GR256:$in1, GR256:$in2),
-                                    "rol\t$in1, $in2, $out",
-                                    [(set GR256:$out, (rotl GR256:$in1, GR256:$in2))]>;
-def ROLirr     : SyncVMInstruction< 0xa11, (outs GR256:$out),
-                                    (ins GR256:$in1, imm128:$in2),
-                                    "rol\t$in1, #$in2, $out",
-                                    [(set GR256:$out, (rotl GR256:$in1, imm128:$in2))]>;
-def SHRrrr     : SyncVMInstruction< 0xa20, (outs GR256:$out),
-                                    (ins GR256:$in1, GR256:$in2),
-                                    "shr\t$in1, $in2, $out",
-                                    [(set GR256:$out, (srl GR256:$in1, GR256:$in2))]>;
-def SHRirr     : SyncVMInstruction< 0xa21, (outs GR256:$out),
-                                    (ins GR256:$in1, imm128:$in2),
-                                    "shr\t$in1, #$in2, $out",
-                                    [(set GR256:$out, (srl GR256:$in1, imm128:$in2))]>;
-def RORrrr     : SyncVMInstruction< 0xa31, (outs GR256:$out),
-                                    (ins GR256:$in1, GR256:$in2),
-                                    "ror\t$in1, $in2, $out",
-                                    [(set GR256:$out, (rotr GR256:$in1, GR256:$in2))]>;
-def RORirr     : SyncVMInstruction< 0xa32, (outs GR256:$out),
-                                    (ins GR256:$in1, imm128:$in2),
-                                    "ror\t$in1, $in2, $out",
-                                    [(set GR256:$out, (rotr GR256:$in1, imm128:$in2))]>;
-
 let Defs = [Flags], isTerminator = 1 in {
 def CMPrr   : SyncVMInstruction<  0x02, (outs),
                                   (ins GR256:$src1, GR256:$src2),

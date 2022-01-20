@@ -378,7 +378,9 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 //                      Other Lowerings
 //===----------------------------------------------------------------------===//
 
-static SDValue EmitCMP(SDValue &LHS, SDValue &RHS, ISD::CondCode CC,
+static SDValue EmitCMP(SDValue &LHS, SDValue &RHS,
+                       SDValue &LVal, SDValue &RVal,
+                       ISD::CondCode CC,
                        const SDLoc &DL, SelectionDAG &DAG) {
   assert(!LHS.getValueType().isFloatingPoint() &&
          "SyncVM doesn't support floats");
@@ -393,58 +395,62 @@ static SDValue EmitCMP(SDValue &LHS, SDValue &RHS, ISD::CondCode CC,
   switch (CC) {
   default:
     llvm_unreachable("Invalid integer condition!");
+  case ISD::SETNE:
+    std::swap(LVal, RVal);
+    LLVM_FALLTHROUGH;
   case ISD::SETEQ:
     TCC = SyncVMCC::COND_E;
     break;
-  case ISD::SETNE:
-    TCC = SyncVMCC::COND_NE;
-    break;
+  case ISD::SETUGE:
+    std::swap(LVal, RVal);
+    LLVM_FALLTHROUGH;
   case ISD::SETULT:
     TCC = SyncVMCC::COND_LT;
     break;
   case ISD::SETULE:
-    TCC = SyncVMCC::COND_LE;
-    break;
+    std::swap(LVal, RVal);
+    LLVM_FALLTHROUGH;
   case ISD::SETUGT:
     TCC = SyncVMCC::COND_GT;
     break;
-  case ISD::SETUGE:
-    TCC = SyncVMCC::COND_GE;
-    break;
   case ISD::SETGT: {
+    std::swap(LVal, RVal);
     auto Ugt = DAG.getSelectCC(DL, LHS, RHS, Mask, Zero, ISD::SETUGT);
     auto SignUlt =
         DAG.getSelectCC(DL, SignLHS, SignRHS, Mask, Zero, ISD::SETULT);
     LHS = DAG.getSelectCC(DL, SignXor, Mask, SignUlt, Ugt, ISD::SETEQ);
     RHS = Zero;
-    TCC = SyncVMCC::COND_NE;
+    TCC = SyncVMCC::COND_E;
     break;
   }
   case ISD::SETGE: {
+    std::swap(LVal, RVal);
     auto Uge = DAG.getSelectCC(DL, LHS, RHS, Mask, Zero, ISD::SETUGE);
     auto SignUlt =
         DAG.getSelectCC(DL, SignLHS, SignRHS, Mask, Zero, ISD::SETULT);
     LHS = DAG.getSelectCC(DL, SignXor, Mask, SignUlt, Uge, ISD::SETEQ);
     RHS = Zero;
-    TCC = SyncVMCC::COND_NE;
+    TCC = SyncVMCC::COND_E;
     break;
   }
   case ISD::SETLT: {
+    std::swap(LVal, RVal);
     auto Ult = DAG.getSelectCC(DL, LHS, RHS, Mask, Zero, ISD::SETULT);
     auto SignUgt =
         DAG.getSelectCC(DL, SignLHS, SignRHS, Mask, Zero, ISD::SETUGT);
     LHS = DAG.getSelectCC(DL, SignXor, Mask, SignUgt, Ult, ISD::SETEQ);
     RHS = Zero;
-    TCC = SyncVMCC::COND_NE;
+    TCC = SyncVMCC::COND_E;
     break;
   }
   case ISD::SETLE: {
+    std::swap(LVal, RVal);
     auto Ule = DAG.getSelectCC(DL, LHS, RHS, Mask, Zero, ISD::SETULE);
     auto SignUgt =
         DAG.getSelectCC(DL, SignLHS, SignRHS, Mask, Zero, ISD::SETUGT);
     LHS = DAG.getSelectCC(DL, SignXor, Mask, SignUgt, Ule, ISD::SETEQ);
     RHS = Zero;
-    TCC = SyncVMCC::COND_NE;
+    TCC = SyncVMCC::COND_E;
     break;
   }
   }
@@ -603,8 +609,8 @@ SDValue SyncVMTargetLowering::LowerSELECT_CC(SDValue Op,
   ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(4))->get();
   SDLoc DL(Op);
 
-  SDValue TargetCC = EmitCMP(LHS, RHS, CC, DL, DAG);
-  SDValue Cmp = DAG.getNode(SyncVMISD::SUB, DL, MVT::Glue, LHS, RHS);
+  SDValue TargetCC = EmitCMP(LHS, RHS, TrueV, FalseV, CC, DL, DAG);
+  SDValue Cmp = DAG.getNode(SyncVMISD::CMP, DL, MVT::Glue, LHS, RHS);
 
   SDVTList VTs = DAG.getVTList(Op.getValueType(), MVT::Glue);
   SDValue Ops[] = {TrueV, FalseV, TargetCC, Cmp};
@@ -643,43 +649,8 @@ SDValue SyncVMTargetLowering::LowerBrccBr(SDValue Op, SDValue DestFalse,
   SDValue RHS = Op.getOperand(3);
   SDValue DestTrue = Op.getOperand(4);
 
-  if (CC == ISD::SETNE) {
-    CC = ISD::SETEQ;
-    std::swap(DestFalse, DestTrue);
-  }
-
-  if (LHS.getOpcode() == ISD::AND && CC == ISD::SETEQ &&
-      RHS.getOpcode() == ISD::Constant &&
-      cast<ConstantSDNode>(RHS)->isNullValue() &&
-      LHS.getOperand(1).getOpcode() == ISD::Constant &&
-      cast<ConstantSDNode>(LHS.getOperand(1))->isOne()) {
-    SDValue LHSInner = LHS.getOperand(0);
-    if (LHSInner.getOpcode() == ISD::INTRINSIC_W_CHAIN) {
-      SDValue BrFlag =
-          LowerBrFlag(LHSInner, Chain, DestFalse, DestTrue, DL, DAG);
-      if (BrFlag)
-        return BrFlag;
-    } else if (LHSInner.getOpcode() == ISD::TRUNCATE) {
-      LHS = LHSInner.getOperand(0);
-      RHS = DAG.getConstant(0, DL, MVT::i256);
-    }
-  }
-
-  if (LHS.getOpcode() == ISD::AND && CC == ISD::SETEQ &&
-      RHS.getOpcode() == ISD::Constant && cast<ConstantSDNode>(RHS)->isOne() &&
-      LHS.getOperand(1).getOpcode() == ISD::Constant &&
-      cast<ConstantSDNode>(LHS.getOperand(1))->isOne()) {
-    SDValue LHSInner = LHS.getOperand(0);
-    if (LHSInner.getOpcode() == ISD::INTRINSIC_W_CHAIN) {
-      SDValue BrFlag =
-          LowerBrFlag(LHSInner, Chain, DestTrue, DestFalse, DL, DAG);
-      if (BrFlag)
-        return BrFlag;
-    }
-  }
-
-  SDValue TargetCC = EmitCMP(LHS, RHS, CC, DL, DAG);
-  SDValue Cmp = DAG.getNode(SyncVMISD::SUB, DL, MVT::Glue, LHS, RHS);
+  SDValue TargetCC = EmitCMP(LHS, RHS, DestTrue, DestFalse, CC, DL, DAG);
+  SDValue Cmp = DAG.getNode(SyncVMISD::CMP, DL, MVT::Glue, LHS, RHS);
   return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain, DestTrue,
                      DestFalse, TargetCC, Cmp);
 }
@@ -691,71 +662,23 @@ SDValue SyncVMTargetLowering::LowerBrcondBr(SDValue Op, SDValue DestFalse,
   SDValue DestTrue = Op.getOperand(2);
   SDValue Zero = DAG.getConstant(0, DL, Cond.getValueType());
 
-  // TODO: Code duplication.
-  if (Cond.getOpcode() == ISD::INTRINSIC_W_CHAIN) {
-    SDValue BrFlag = LowerBrFlag(Cond, Chain, DestTrue, DestFalse, DL, DAG);
-    if (BrFlag)
-      return BrFlag;
-  }
-
-  SDValue TargetCC = EmitCMP(Cond, Zero, ISD::SETNE, DL, DAG);
-  SDValue Cmp = DAG.getNode(SyncVMISD::SUB, DL, MVT::Glue, Cond, Zero);
+  SDValue TargetCC = EmitCMP(Cond, Zero, DestTrue, DestFalse, ISD::SETNE, DL, DAG);
+  SDValue Cmp = DAG.getNode(SyncVMISD::CMP, DL, MVT::Glue, Cond, Zero);
   return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain, DestTrue,
                      DestFalse, TargetCC, Cmp);
-}
-
-SDValue SyncVMTargetLowering::LowerBrFlag(SDValue Cond, SDValue Chain,
-                                          SDValue DestFalse, SDValue DestTrue,
-                                          SDLoc DL, SelectionDAG &DAG) const {
-  ISD::CondCode CC;
-  ConstantSDNode *CN = cast<ConstantSDNode>(Cond.getOperand(1));
-  Intrinsic::ID IntID = static_cast<Intrinsic::ID>(CN->getZExtValue());
-  switch (IntID) {
-  case Intrinsic::syncvm_gtflag:
-    CC = ISD::SETUGT;
-    break;
-  case Intrinsic::syncvm_ltflag:
-    CC = ISD::SETULT;
-    break;
-  case Intrinsic::syncvm_eqflag:
-    CC = ISD::SETEQ;
-    break;
-  }
-  if (IntID == Intrinsic::syncvm_gtflag || IntID == Intrinsic::syncvm_ltflag ||
-      IntID == Intrinsic::syncvm_eqflag) {
-    SDValue RHS = DAG.getConstant(0, DL, Cond.getValueType()),
-            LHS = DAG.getConstant(0, DL, Cond.getValueType());
-    SDValue TargetCC = EmitCMP(LHS, RHS, CC, DL, DAG);
-    if (Chain.getOpcode() != ISD::TokenFactor)
-      Chain = Chain.getOperand(0);
-    else {
-      std::vector<SDValue> Vals;
-      for (unsigned i = 0, e = Chain.getNumOperands(); i < e; ++i) {
-        SDValue Val = Chain.getOperand(i);
-        if (Val == Cond.getValue(1))
-          Vals.push_back(Val.getOperand(0));
-        else
-          Vals.push_back(Val);
-      }
-      Chain = DAG.getNode(ISD::TokenFactor, DL, MVT::Other, Vals);
-    }
-    return DAG.getNode(SyncVMISD::BR_CC, DL, MVT::Other, Chain, DestFalse,
-                       DestTrue, TargetCC, Cond.getValue(1));
-  }
-  return {};
 }
 
 MachineBasicBlock *
 SyncVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                                                   MachineBasicBlock *BB) const {
+  /*
   MachineFunction *MF = MI.getParent()->getParent();
   MachineRegisterInfo &RegInfo = MF->getRegInfo();
   unsigned Opc = MI.getOpcode();
   const TargetInstrInfo &TII = *BB->getParent()->getSubtarget().getInstrInfo();
   DebugLoc DL = MI.getDebugLoc();
 
-  assert((Opc == SyncVM::Select || Opc == SyncVM::SelectLT) &&
-         "Unexpected instr type to insert");
+  assert(Opc == SyncVM::Select && "Unexpected instr type to insert");
 
   // To "insert" a SELECT instruction, we actually have to insert the diamond
   // control-flow pattern.  The incoming instruction knows the destination vreg
@@ -782,17 +705,6 @@ SyncVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
   F->insert(I, copy1MBB);
 
   Register VReg1;
-  if (Opc == SyncVM::SelectLT) {
-    VReg1 = RegInfo.createVirtualRegister(&SyncVM::GR256RegClass);
-    BuildMI(copy1MBB, DL, TII.get(SyncVM::ADDirr), VReg1).addImm(-1).addReg(SyncVM::R0);
-    copy11MBB = F->CreateMachineBasicBlock(LLVM_BB);
-    F->insert(I, copy11MBB);
-    BuildMI(copy1MBB, DL, TII.get(SyncVM::J))
-        .addMBB(copy11MBB)
-        .addMBB(copy11MBB)
-        .addImm(SyncVMCC::COND_NONE);
-    copy1MBB->addSuccessor(copy11MBB);
-  }
 
   // Update machine-CFG edges by transferring all successors of the current
   // block to the new block which will contain the Phi node for the select.
@@ -867,6 +779,7 @@ SyncVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
 
   MI.eraseFromParent(); // The pseudo instruction is gone now.
   return BB;
+  */
 }
 
 const char *SyncVMTargetLowering::getTargetNodeName(unsigned Opcode) const {
