@@ -22,7 +22,7 @@ def SDT_SyncVMBrCC         : SDTypeProfile<0,  3, [SDTCisVT<0, OtherVT>,
 def SDT_SyncVMSelectCC     : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
                                                   SDTCisSameAs<1, 2>,
                                                   SDTCisVT<3, i256>]>;
-def SDT_SyncVMBinary       : SDTypeProfile<0,  2, [SDTCisSameAs<0, 1>]>;
+def SDT_SyncVMCmp          : SDTypeProfile<0, 2, []>;
 
 //===----------------------------------------------------------------------===//
 // SyncVM Specific Node Definitions.
@@ -36,7 +36,7 @@ def SyncVMbrcc   : SDNode<"SyncVMISD::BR_CC", SDT_SyncVMBrCC,
                     [SDNPHasChain, SDNPInGlue]>;
 def SyncVMselectcc: SDNode<"SyncVMISD::SELECT_CC", SDT_SyncVMSelectCC,
                            [SDNPInGlue]>;
-def SyncVMcmp    : SDNode<"SyncVMISD::CMP", SDT_SyncVMBinary, [SDNPOutGlue]>;
+def SyncVMcmp    : SDNode<"SyncVMISD::CMP", SDT_SyncVMCmp, [SDNPOutGlue]>;
 def SyncVMcallseq_start :
                  SDNode<"ISD::CALLSEQ_START", SDT_SyncVMCallSeqStart,
                         [SDNPHasChain, SDNPOutGlue]>;
@@ -163,24 +163,170 @@ def ADDframe : Pseudo<(outs GR256:$dst), (ins i256imm:$base, i256imm:$offset),
                       "# ADDframe PSEUDO", []>;
 }
 
-let isCodeGenOnly = 1, usesCustomInserter = 1 in {
+let isCodeGenOnly = 1, isPseudo = 1 in {
   def SELrrr : Pseudo<(outs GR256:$dst), (ins GR256:$src, GR256:$src2, i256imm:$cc),
                        "# SELrrr PSEUDO",
                        [(set GR256:$dst,
                           (SyncVMselectcc GR256:$src, GR256:$src2, imm:$cc))]>;
   def SELirr : Pseudo<(outs GR256:$dst), (ins imm16:$src, GR256:$src2, i256imm:$cc),
-                       "# SELrrr PSEUDO",
+                       "# SELirr PSEUDO",
                        [(set GR256:$dst,
                           (SyncVMselectcc imm16:$src, GR256:$src2, imm:$cc))]>;
+let mayLoad = 1 in {
   def SELcrr : Pseudo<(outs GR256:$dst), (ins memop:$src, GR256:$src2, i256imm:$cc),
-                       "# SELrrr PSEUDO",
+                       "# SELcrr PSEUDO",
                        [(set GR256:$dst,
                           (SyncVMselectcc (load_code memaddr:$src), GR256:$src2, imm:$cc))]>;
   def SELsrr : Pseudo<(outs GR256:$dst), (ins stackop:$src, GR256:$src2, i256imm:$cc),
-                       "# SELrrr PSEUDO",
+                       "# SELsrr PSEUDO",
                        [(set GR256:$dst,
                           (SyncVMselectcc (load_stack stackaddr:$src), GR256:$src2, imm:$cc))]>;
 }
+  def SELrir : Pseudo<(outs GR256:$dst), (ins GR256:$src, imm16:$src2, i256imm:$cc),
+                       "# SELrir PSEUDO",
+                       [(set GR256:$dst,
+                          (SyncVMselectcc GR256:$src, imm16:$src2, imm:$cc))]>;
+  def SELiir : Pseudo<(outs GR256:$dst), (ins imm16:$src, imm16:$src2, i256imm:$cc),
+                       "# SELiir PSEUDO",
+                       [(set GR256:$dst,
+                          (SyncVMselectcc imm16:$src, imm16:$src2, imm:$cc))]>;
+let mayLoad = 1 in {
+  def SELcir : Pseudo<(outs GR256:$dst), (ins memop:$src, imm16:$src2, i256imm:$cc),
+                       "# SELcir PSEUDO",
+                       [(set GR256:$dst,
+                          (SyncVMselectcc (load_code memaddr:$src), imm16:$src2, imm:$cc))]>;
+  def SELsir : Pseudo<(outs GR256:$dst), (ins stackop:$src, imm16:$src2, i256imm:$cc),
+                       "# SELsir PSEUDO",
+                       [(set GR256:$dst,
+                          (SyncVMselectcc (load_stack stackaddr:$src), imm16:$src2, imm:$cc))]>;
+  def SELrcr : Pseudo<(outs GR256:$dst), (ins GR256:$src, memop:$src2, i256imm:$cc),
+                       "# SELrcr PSEUDO",
+                       [(set GR256:$dst,
+                          (SyncVMselectcc GR256:$src, (load_code memaddr:$src2), imm:$cc))]>;
+  def SELicr : Pseudo<(outs GR256:$dst), (ins imm16:$src, memop:$src2, i256imm:$cc),
+                       "# SELicr PSEUDO",
+                       [(set GR256:$dst,
+                          (SyncVMselectcc imm16:$src, (load_code memaddr:$src2), imm:$cc))]>;
+  def SELccr : Pseudo<(outs GR256:$dst), (ins memop:$src, memop:$src2, i256imm:$cc),
+                       "# SELccr PSEUDO",
+                       [(set GR256:$dst,
+                          (SyncVMselectcc (load_code memaddr:$src), (load_code memaddr:$src2), imm:$cc))]>;
+  def SELscr : Pseudo<(outs GR256:$dst), (ins stackop:$src, memop:$src2, i256imm:$cc),
+                       "# SELscr PSEUDO",
+                       [(set GR256:$dst,
+                          (SyncVMselectcc (load_stack stackaddr:$src), (load_code memaddr:$src2), imm:$cc))]>;
+  def SELrsr : Pseudo<(outs GR256:$dst), (ins GR256:$src, stackop:$src2, i256imm:$cc),
+                       "# SELrsr PSEUDO",
+                       [(set GR256:$dst,
+                          (SyncVMselectcc GR256:$src, (load_stack stackaddr:$src2), imm:$cc))]>;
+  def SELisr : Pseudo<(outs GR256:$dst), (ins imm16:$src, stackop:$src2, i256imm:$cc),
+                       "# SELisr PSEUDO",
+                       [(set GR256:$dst,
+                          (SyncVMselectcc imm16:$src, (load_stack stackaddr:$src2), imm:$cc))]>;
+  def SELcsr : Pseudo<(outs GR256:$dst), (ins memop:$src, stackop:$src2, i256imm:$cc),
+                       "# SELcsr PSEUDO",
+                       [(set GR256:$dst,
+                          (SyncVMselectcc (load_code memaddr:$src), (load_stack stackaddr:$src2), imm:$cc))]>;
+  def SELssr : Pseudo<(outs GR256:$dst), (ins stackop:$src, stackop:$src2, i256imm:$cc),
+                       "# SELssr PSEUDO",
+                       [(set GR256:$dst,
+                          (SyncVMselectcc (load_stack stackaddr:$src), (load_stack stackaddr:$src2), imm:$cc))]>;
+}
+
+let mayStore = 1 in {
+  def SELrrs : Pseudo<(outs), (ins GR256:$src, GR256:$src2, i256imm:$cc, stackop:$dst),
+                       "# SELrrs PSEUDO",
+                       [(store_stack
+                          (SyncVMselectcc GR256:$src, GR256:$src2, imm:$cc),
+                          stackaddr:$dst)]>;
+  def SELirs : Pseudo<(outs), (ins imm16:$src, GR256:$src2, i256imm:$cc, stackop:$dst),
+                       "# SELirs PSEUDO",
+                       [(store_stack
+                          (SyncVMselectcc imm16:$src, GR256:$src2, imm:$cc),
+                          stackaddr:$dst)]>;
+let mayLoad = 1 in {
+  def SELcrs : Pseudo<(outs), (ins memop:$src, GR256:$src2, i256imm:$cc, stackop:$dst),
+                       "# SELcrs PSEUDO",
+                       [(store_stack
+                          (SyncVMselectcc (load_code memaddr:$src), GR256:$src2, imm:$cc),
+                          stackaddr:$dst)]>;
+  def SELsrs : Pseudo<(outs), (ins stackop:$src, GR256:$src2, i256imm:$cc, stackop:$dst),
+                       "# SELsrs PSEUDO",
+                       [(store_stack
+                          (SyncVMselectcc (load_stack stackaddr:$src), GR256:$src2, imm:$cc),
+                          stackaddr:$dst)]>;
+}
+  def SELris : Pseudo<(outs), (ins GR256:$src, imm16:$src2, i256imm:$cc, stackop:$dst),
+                       "# SELris PSEUDO",
+                       [(store_stack
+                          (SyncVMselectcc GR256:$src, imm16:$src2, imm:$cc),
+                          stackaddr:$dst)]>;
+  def SELiis : Pseudo<(outs), (ins imm16:$src, imm16:$src2, i256imm:$cc, stackop:$dst),
+                       "# SELiis PSEUDO",
+                       [(store_stack
+                          (SyncVMselectcc imm16:$src, imm16:$src2, imm:$cc),
+                          stackaddr:$dst)]>;
+let mayLoad = 1 in {
+  def SELcis : Pseudo<(outs), (ins memop:$src, imm16:$src2, i256imm:$cc, stackop:$dst),
+                       "# SELcis PSEUDO",
+                       [(store_stack
+                          (SyncVMselectcc (load_code memaddr:$src), imm16:$src2, imm:$cc),
+                          stackaddr:$dst)]>;
+  def SELsis : Pseudo<(outs), (ins stackop:$src, imm16:$src2, i256imm:$cc, stackop:$dst),
+                       "# SELsis PSEUDO",
+                       [(store_stack
+                          (SyncVMselectcc (load_stack stackaddr:$src), imm16:$src2, imm:$cc),
+                          stackaddr:$dst)]>;
+  def SELrcs : Pseudo<(outs), (ins GR256:$src, memop:$src2, i256imm:$cc, stackop:$dst),
+                       "# SELrcs PSEUDO",
+                       [(store_stack
+                          (SyncVMselectcc GR256:$src, (load_code memaddr:$src2), imm:$cc),
+                          stackaddr:$dst)]>;
+  def SELics : Pseudo<(outs), (ins imm16:$src, memop:$src2, i256imm:$cc, stackop:$dst),
+                       "# SELics PSEUDO",
+                       [(store_stack
+                          (SyncVMselectcc imm16:$src, (load_code memaddr:$src2), imm:$cc),
+                          stackaddr:$dst)]>;
+  def SELccs : Pseudo<(outs), (ins memop:$src, memop:$src2, i256imm:$cc, stackop:$dst),
+                       "# SELccs PSEUDO",
+                       [(store_stack
+                          (SyncVMselectcc (load_code memaddr:$src), (load_code memaddr:$src2), imm:$cc),
+                          stackaddr:$dst)]>;
+  def SELscs : Pseudo<(outs), (ins stackop:$src, memop:$src2, i256imm:$cc, stackop:$dst),
+                       "# SELscs PSEUDO",
+                       [(store_stack
+                          (SyncVMselectcc (load_stack stackaddr:$src), (load_code memaddr:$src2), imm:$cc),
+                          stackaddr:$dst)]>;
+  def SELrss : Pseudo<(outs), (ins GR256:$src, stackop:$src2, i256imm:$cc, stackop:$dst),
+                       "# SELrss PSEUDO",
+                       [(store_stack
+                          (SyncVMselectcc GR256:$src, (load_stack stackaddr:$src2), imm:$cc),
+                          stackaddr:$dst)]>;
+  def SELiss : Pseudo<(outs), (ins imm16:$src, stackop:$src2, i256imm:$cc, stackop:$dst),
+                       "# SELiss PSEUDO",
+                       [(store_stack
+                          (SyncVMselectcc imm16:$src, (load_stack stackaddr:$src2), imm:$cc),
+                          stackaddr:$dst)]>;
+  def SELcss : Pseudo<(outs), (ins memop:$src, stackop:$src2, i256imm:$cc, stackop:$dst),
+                       "# SELcss PSEUDO",
+                       [(store_stack
+                          (SyncVMselectcc (load_code memaddr:$src), (load_stack stackaddr:$src2), imm:$cc),
+                          stackaddr:$dst)]>;
+  def SELsss : Pseudo<(outs), (ins stackop:$src, stackop:$src2, i256imm:$cc, stackop:$dst),
+                       "# SELsss PSEUDO",
+                       [(store_stack
+                          (SyncVMselectcc (load_stack stackaddr:$src), (load_stack stackaddr:$src2), imm:$cc),
+                          stackaddr:$dst)]>;
+}
+}
+}
+
+def : Pat<(store_stack (load_stack(SyncVMselectcc stackaddr:$addr1, stackaddr:$addr2, imm:$cc)), stackaddr:$addr3),
+          (SELsss stackaddr:$addr1, stackaddr:$addr2, imm:$cc, stackaddr:$addr3)>;
+def : Pat<(load_stack(SyncVMselectcc stackaddr:$addr1, stackaddr:$addr2, imm:$cc)),
+          (SELssr stackaddr:$addr1, stackaddr:$addr2, imm:$cc)>;
+def : Pat<(load_code(SyncVMselectcc memaddr:$addr1, memaddr:$addr2, imm:$cc)),
+          (SELccr memaddr:$addr1, memaddr:$addr2, imm:$cc)>;
 
 def NOOP : INop< 18, "noop", [] >;
 
@@ -387,7 +533,14 @@ defm SUB  : Arith<4,  "sub", sub, 0>;
 defm SUB  : ArithINonCommutable<4, "sub", sub>;
 
 // SelecCC, BR_CC supplement
+// TODO: CPR-447 enable patterns
+// def : Pat<(SyncVMcmp i16imm:$lhs, GR256:$rhs), (SUBirr i16imm:$lhs, GR256:$rhs)>;
+// def : Pat<(SyncVMcmp GR256:$lhs, i16imm:$rhs), (SUBxrr i16imm:$rhs, GR256:$lhs)>;
 def : Pat<(SyncVMcmp GR256:$lhs, GR256:$rhs), (SUBrrr GR256:$lhs, GR256:$rhs)>;
+def : Pat<(SyncVMcmp (load_code memaddr:$lhs), GR256:$rhs), (SUBcrr memaddr:$lhs, GR256:$rhs)>;
+def : Pat<(SyncVMcmp GR256:$lhs, (load_code memaddr:$rhs)), (SUByrr memaddr:$rhs, GR256:$lhs)>;
+def : Pat<(SyncVMcmp (load_stack stackaddr:$lhs), GR256:$rhs), (SUBsrr stackaddr:$lhs, GR256:$rhs)>;
+def : Pat<(SyncVMcmp GR256:$lhs, (load_stack stackaddr:$rhs)), (SUBzrr stackaddr:$rhs, GR256:$lhs)>;
 
 defm MUL  : Arith2<6, "mul", umullohi, 1>;
 defm MUL  : Arith2ICommutable<6, "mul", umullohi>;
@@ -422,9 +575,24 @@ def POP     : IForm < 40, SrcReg, DstReg, 0, (outs GR256:$val), (ins i256imm:$si
                       "pop\t#$size, $val",
                       [(set GR256:$val, (SyncVMpop timm:$size))] >;
 
-let Uses = [Flags] in
-def CMOV    : ICmov < 41, (outs GR256:$rd1), (ins GR256:$rs1, GR256:$rs2, cc:$flags),
-                      "cmov.$flags\t$rs1, rs2, $rd1", []>;
+let Uses = [Flags] in {
+def CMOVrrr : IForm < 41, SrcReg, DstReg, 0, (outs GR256:$rd1), (ins GR256:$rs1, GR256:$rs2, cc:$flags),
+                      "cmov$flags\t$rs1, r0, $rd1", []>;
+def CMOVirr : IForm < 41, SrcImm, DstReg, 0, (outs GR256:$rd1), (ins imm16:$rs1, GR256:$rs2, cc:$flags),
+                      "cmov$flags\t$rs1, r0, $rd1", []>;
+def CMOVcrr : IForm < 41, SrcCode, DstReg, 0, (outs GR256:$rd1), (ins memop:$rs1, GR256:$rs2, cc:$flags),
+                      "cmov$flags\tcode[$rs1], r0, $rd1", []>;
+def CMOVsrr : IForm < 41, SrcStack, DstReg, 0, (outs GR256:$rd1), (ins stackop:$rs1, GR256:$rs2, cc:$flags),
+                      "cmov$flags\tstack-[$rs1], r0, $rd1", []>;
+def CMOVrrs : IForm < 41, SrcReg, DstStack, 0, (outs), (ins GR256:$rs1, GR256:$rs2, cc:$flags, stackop:$dst),
+                      "cmov$flags\t$rs1, r0, stack-[$dst]", []>;
+def CMOVirs : IForm < 41, SrcImm, DstStack, 0, (outs), (ins imm16:$rs1, GR256:$rs2, cc:$flags, stackop:$dst),
+                      "cmov$flags\t$rs1, r0, stack-[$dst]", []>;
+def CMOVcrs : IForm < 41, SrcCode, DstStack, 0, (outs), (ins memop:$rs1, GR256:$rs2, cc:$flags, stackop:$dst),
+                      "cmov$flags\tcode[$rs1], r0, stack-[$dst]", []>;
+def CMOVsrs : IForm < 41, SrcStack, DstStack, 0, (outs), (ins stackop:$rs1, GR256:$rs2, cc:$flags, stackop:$dst),
+                      "cmov$flags\tstack-[$rs1], r0, stack-[$dst]", []>;
+}
 
 //===----------------------------------------------------------------------===//
 // Control flow instructions

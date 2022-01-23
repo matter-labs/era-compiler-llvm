@@ -53,7 +53,9 @@ define void @movirs(i256 %rs1) nounwind {
 ; CHECK-LABEL: movcrs
 define void @movcrs() nounwind {
   %valptr = alloca i256
-; CHECK: add code[val], 0, stack-[1]
+; TODO: CPR-447 should be `add code[val], 0, stack-[1]`
+; CHECK: add code[val], 0, r2
+; CHECK: add r2, 0, stack-[1]
   %val = load i256, i256 addrspace(4)* @val
   store i256 %val, i256* %valptr
   ret void 
@@ -63,7 +65,9 @@ define void @movcrs() nounwind {
 define void @movsrs() nounwind {
   %valptr = alloca i256
   %destptr = alloca i256
-; CHECK: add stack-[2], 0, stack-[1]
+; TODO: CPR-447 should be `add stack-[2], 0, stack-[1]`
+; CHECK: stack-[2], 0, r2
+; CHECK: r2, 0, stack-[1]
   %val = load i256, i256* %valptr
   store i256 %val, i256* %destptr
   ret void

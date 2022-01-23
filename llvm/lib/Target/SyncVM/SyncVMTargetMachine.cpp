@@ -123,8 +123,8 @@ void SyncVMPassConfig::addPreRegAlloc() {
 
 void SyncVMPassConfig::addPreEmitPass() {
   addPass(createSyncVMAdjustSPBasedOffsetsPass());
-  addPass(createSyncVMExpandPseudoPass());
   addPass(createSyncVMMoveCallResultSpillPass());
   addPass(createSyncVMAdjustStackInCallseqPass());
+  addPass(createSyncVMExpandPseudoPass());
   addPass(createSyncVMPeepholePass());
 }
