@@ -16,7 +16,7 @@ entry:
 
 lpad:
   %0 = landingpad { i8*, i32 } catch i8* null
-  call void @llvm.syncvm.throw()
+  tail call void @__cxa_throw(i8* null, i8* null, i8* null)
   unreachable
 
 try.cont:
@@ -38,7 +38,7 @@ entry:
 
 lpad:
   %0 = landingpad { i8*, i32 } catch i8* null
-  call void @llvm.syncvm.throw()
+  tail call void @__cxa_throw(i8* null, i8* null, i8* null)
   unreachable
 
 try.cont:
@@ -60,7 +60,7 @@ invokebb:
 
 lpad:
   %0 = landingpad { i8*, i32 } catch i8* null
-  call void @llvm.syncvm.throw()
+  tail call void @__cxa_throw(i8* null, i8* null, i8* null)
   unreachable
 
 try.cont:
@@ -86,3 +86,5 @@ declare void @foo16(i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, i32, 
 declare i32 @__gxx_personality_v0(...)
 declare void @llvm.syncvm.throw()
 declare void @llvm.syncvm.sstore(i256, i256, i256)
+declare void @__cxa_throw(i8*, i8*, i8*) local_unnamed_addr #0
+

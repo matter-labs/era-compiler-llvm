@@ -40,6 +40,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMMoveCallResultSpillPass(PR);
   initializeSyncVMAdjustStackInCallseqPass(PR);
   initializeSyncVMPeepholePass(PR);
+  initializeSyncVMLowerInvokesPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -108,6 +109,7 @@ void SyncVMPassConfig::addIRPasses() {
 #endif
   addPass(createSyncVMCodegenPreparePass());
   addPass(createSyncVMAllocaHoistingPass());
+  addPass(createSyncVMLowerInvokesPass());
 }
 
 bool SyncVMPassConfig::addInstSelector() {
