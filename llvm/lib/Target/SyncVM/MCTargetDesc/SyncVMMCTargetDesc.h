@@ -17,10 +17,12 @@
 #include <memory>
 
 namespace llvm {
+class formatted_raw_ostream;
 class Target;
 class MCAsmBackend;
 class MCCodeEmitter;
 class MCInstrInfo;
+class MCInstPrinter;
 class MCSubtargetInfo;
 class MCRegisterInfo;
 class MCContext;
@@ -29,6 +31,12 @@ class MCObjectTargetWriter;
 class MCStreamer;
 class MCTargetStreamer;
 
+MCTargetStreamer *createSyncVMTargetAsmStreamer(MCStreamer &S,
+                                                formatted_raw_ostream &OS,
+                                                MCInstPrinter *InstPrint,
+                                                bool isVerboseAsm);
+MCTargetStreamer *createSyncVMObjectTargetStreamer(MCStreamer &S,
+                                                   const MCSubtargetInfo &STI);
 /// Creates a machine code emitter for SyncVM.
 MCCodeEmitter *createSyncVMMCCodeEmitter(const MCInstrInfo &MCII,
                                          MCContext &Ctx);
@@ -38,13 +46,13 @@ MCAsmBackend *createSyncVMMCAsmBackend(const Target &T,
                                        const MCRegisterInfo &MRI,
                                        const MCTargetOptions &Options);
 
-MCTargetStreamer *
-createSyncVMObjectTargetStreamer(MCStreamer &S, const MCSubtargetInfo &STI);
+MCTargetStreamer *createSyncVMObjectTargetStreamer(MCStreamer &S,
+                                                   const MCSubtargetInfo &STI);
 
 std::unique_ptr<MCObjectTargetWriter>
 createSyncVMELFObjectWriter(uint8_t OSABI);
 
-} // End llvm namespace
+} // namespace llvm
 
 // Defines symbolic names for SyncVM registers.
 // This defines a mapping from register name to register number.

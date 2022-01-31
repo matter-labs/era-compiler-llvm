@@ -1248,6 +1248,11 @@ void MCAsmStreamer::emitValueImpl(const MCExpr *Value, unsigned Size,
   case 8: Directive = MAI->getData64bitsDirective(); break;
   }
 
+  // SyncVM local begin
+  if (Size == 32)
+    Directive = ".cell";
+  // SyncVM local end
+
   if (!Directive) {
     int64_t IntValue;
     if (!Value->evaluateAsAbsolute(IntValue))

@@ -6,11 +6,13 @@
 //===----------------------------------------------------------------------===//
 
 #include "MCTargetDesc/SyncVMInstPrinter.h"
+#include "MCTargetDesc/SyncVMTargetStreamer.h"
 #include "SyncVM.h"
 #include "SyncVMInstrInfo.h"
 #include "SyncVMMCInstLower.h"
 #include "SyncVMTargetMachine.h"
 #include "TargetInfo/SyncVMTargetInfo.h"
+#include "llvm/ADT/DenseMap.h"
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/CodeGen/MachineConstantPool.h"
@@ -33,26 +35,28 @@ using namespace llvm;
 #define DEBUG_TYPE "asm-printer"
 
 namespace {
-  class SyncVMAsmPrinter : public AsmPrinter {
-  public:
-    SyncVMAsmPrinter(TargetMachine &TM, std::unique_ptr<MCStreamer> Streamer)
-        : AsmPrinter(TM, std::move(Streamer)) {}
+class SyncVMAsmPrinter : public AsmPrinter {
+public:
+  SyncVMAsmPrinter(TargetMachine &TM, std::unique_ptr<MCStreamer> Streamer)
+      : AsmPrinter(TM, std::move(Streamer)) {}
 
-    StringRef getPassName() const override { return "SyncVM Assembly Printer"; }
+  StringRef getPassName() const override { return "SyncVM Assembly Printer"; }
 
-    bool runOnMachineFunction(MachineFunction &MF) override;
+  bool runOnMachineFunction(MachineFunction &MF) override;
 
-    void PrintSymbolOperand(const MachineOperand &MO, raw_ostream &O) override;
-    void printOperand(const MachineInstr *MI, int OpNum,
-                      raw_ostream &O, const char* Modifier = nullptr);
-    bool PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
-                         const char *ExtraCode, raw_ostream &O) override;
-    bool PrintAsmMemoryOperand(const MachineInstr *MI, unsigned OpNo,
-                               const char *ExtraCode, raw_ostream &O) override;
-    void emitInstruction(const MachineInstr *MI) override;
-
-    void EmitInterruptVectorSection(MachineFunction &ISR);
-  };
+  void PrintSymbolOperand(const MachineOperand &MO, raw_ostream &O) override;
+  void printOperand(const MachineInstr *MI, int OpNum, raw_ostream &O,
+                    const char *Modifier = nullptr);
+  bool PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
+                       const char *ExtraCode, raw_ostream &O) override;
+  bool PrintAsmMemoryOperand(const MachineInstr *MI, unsigned OpNo,
+                             const char *ExtraCode, raw_ostream &O) override;
+  void emitInstruction(const MachineInstr *MI) override;
+  using AliasMapTy = DenseMap<uint64_t, SmallVector<const GlobalAlias *, 1>>;
+  void emitGlobalConstant(const DataLayout &DL, const Constant *CV,
+                          AliasMapTy *AliasList = nullptr) override;
+  void EmitInterruptVectorSection(MachineFunction &ISR);
+};
 } // end of anonymous namespace
 
 void SyncVMAsmPrinter::PrintSymbolOperand(const MachineOperand &MO,
@@ -116,6 +120,16 @@ bool SyncVMAsmPrinter::runOnMachineFunction(MachineFunction &MF) {
   SetupMachineFunction(MF);
   emitFunctionBody();
   return false;
+}
+
+void SyncVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
+                                          const Constant *CV,
+                                          AliasMapTy *AliasList) {
+  const ConstantInt *CI = cast<ConstantInt>(CV);
+  assert(CI->getBitWidth() == 256);
+  auto *Streamer =
+      static_cast<SyncVMTargetStreamer *>(OutStreamer->getTargetStreamer());
+  Streamer->emitGlobalConst(CI->getValue());
 }
 
 // Force static initialization.

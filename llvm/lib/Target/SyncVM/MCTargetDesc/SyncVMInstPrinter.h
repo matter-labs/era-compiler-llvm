@@ -33,12 +33,13 @@ private:
                     const char *Modifier = nullptr);
   void printPCRelImmOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
   void printCCOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
+  void printContextOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
   void printMemOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
   void printStackOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
   /// Print external address flag
   void printEAFOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
-  /// Print init flag
-  void printInitOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
+  /// Print first flag
+  void printFirstOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
 };
 }
 

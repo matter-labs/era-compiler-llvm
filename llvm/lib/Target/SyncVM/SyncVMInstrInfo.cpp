@@ -107,7 +107,7 @@ bool SyncVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
       return true;
 
     // Handle unconditional branches.
-    if (I->getOperand(0).getMBB() == I->getOperand(1).getMBB()) {
+    if (I->getOperand(1).getCImm()->getZExtValue() == 0) {
       if (!AllowModify) {
         TBB = I->getOperand(0).getMBB();
         break;
@@ -131,8 +131,37 @@ bool SyncVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
       continue;
     }
 
-    TBB = I->getOperand(0).getMBB();
-    FBB = I->getOperand(1).getMBB();
+    SyncVMCC::CondCodes BranchCode =
+      static_cast<SyncVMCC::CondCodes>(I->getOperand(1).getCImm()->getZExtValue());
+    if (BranchCode == SyncVMCC::COND_INVALID)
+      return true;  // Can't handle weird stuff.
+
+    // Working from the bottom, handle the first conditional branch.
+    if (Cond.empty()) {
+      FBB = TBB;
+      TBB = I->getOperand(0).getMBB();
+      LLVMContext &C = MBB.getParent()->getFunction().getContext();
+      auto CImmCC = ConstantInt::get(IntegerType::get(C, 256), BranchCode, false);
+      Cond.push_back(MachineOperand::CreateCImm(CImmCC));
+      continue;
+    }
+
+    // Handle subsequent conditional branches. Only handle the case where all
+    // conditional branches branch to the same destination.
+    assert(Cond.size() == 1);
+    assert(TBB);
+
+    // Only handle the case where all conditional branches branch to
+    // the same destination.
+    if (TBB != I->getOperand(0).getMBB())
+      return true;
+
+    SyncVMCC::CondCodes OldBranchCode = (SyncVMCC::CondCodes)Cond[0].getCImm()->getZExtValue();
+    // If the conditions are the same, we can leave them alone.
+    if (OldBranchCode == BranchCode)
+      continue;
+
+    return true;
   }
 
   return false;
@@ -182,13 +211,14 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
       MFI.getObjectAlign(FrameIdx));
 
   if (RC == &SyncVM::GR256RegClass)
-    BuildMI(MBB, MI, DL, get(SyncVM::ADDrrs))
+    BuildMI(MBB, MI, DL, get(SyncVM::ADDrrs_s))
         .addReg(SrcReg, getKillRegState(isKill))
         .addReg(SyncVM::R0)
         .addFrameIndex(FrameIdx)
         .addImm(0)
         .addImm(32)
-        .addMemOperand(MMO);
+        .addMemOperand(MMO)
+        .addImm(0);
   else
     llvm_unreachable("Cannot store this register to stack slot!");
 }
@@ -209,13 +239,14 @@ void SyncVMInstrInfo::loadRegFromStackSlot(
       MFI.getObjectAlign(FrameIdx));
 
   if (RC == &SyncVM::GR256RegClass)
-    BuildMI(MBB, MI, DL, get(SyncVM::ADDsrr))
+    BuildMI(MBB, MI, DL, get(SyncVM::ADDsrr_s))
         .addReg(DestReg, getDefRegState(true))
         .addReg(SyncVM::R0)
         .addFrameIndex(FrameIdx)
         .addImm(0)
         .addImm(32)
-        .addMemOperand(MMO);
+        .addMemOperand(MMO)
+        .addImm(0);
   else
     llvm_unreachable("Cannot store this register to stack slot!");
 }
@@ -224,14 +255,18 @@ void SyncVMInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                   MachineBasicBlock::iterator I,
                                   const DebugLoc &DL, MCRegister DestReg,
                                   MCRegister SrcReg, bool KillSrc) const {
-  BuildMI(MBB, I, DL, get(SyncVM::ADDrrr), DestReg)
+  BuildMI(MBB, I, DL, get(SyncVM::ADDrrr_s), DestReg)
       .addReg(SrcReg, getKillRegState(KillSrc))
-      .addReg(SyncVM::R0);
+      .addReg(SyncVM::R0)
+      .addImm(0);
 }
 
 /// GetInstSize - Return the number of bytes of code the specified
 /// instruction may be.  This returns the maximum number of bytes.
 ///
 unsigned SyncVMInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
-  return 9;
+  const MCInstrDesc &Desc = MI.getDesc();
+  if (Desc.getOpcode() == TargetOpcode::DBG_VALUE)
+    return 0;
+  return Desc.getSize();
 }

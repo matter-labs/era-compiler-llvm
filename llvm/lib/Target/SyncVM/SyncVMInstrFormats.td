@@ -4,23 +4,23 @@
 //
 //===----------------------------------------------------------------------===//
 
-class SourceMode<bits<4> val> {
-  bits<4> Value = val;
+class SourceMode<bits<2> val> {
+  bits<2> Value = val;
 }
 
-def SrcNone     : SourceMode<0b0000>; // r0
-def SrcReg      : SourceMode<0b0001>; // r
-def SrcCode     : SourceMode<0b0010>; // m
-def SrcStack    : SourceMode<0b0100>; // m
-def SrcImm      : SourceMode<0b1000>; // i
+def SrcNone     : SourceMode<0>; // r0
+def SrcReg      : SourceMode<0>; // r
+def SrcCode     : SourceMode<1>; // m
+def SrcStack    : SourceMode<2>; // m
+def SrcImm      : SourceMode<3>; // i
 
-class DestMode<bits<4> val> {
-  bits<4> Value = val;
+class DestMode<bit val> {
+  bit Value = val;
 }
 
-def DstNone     : DestMode<0b0000>;   // r0
-def DstReg      : DestMode<0b0001>;   // r
-def DstStack    : DestMode<0b0100>;   // m
+def DstNone     : DestMode<0>;   // r0
+def DstReg      : DestMode<0>;   // r
+def DstStack    : DestMode<1>;   // m
 
 class RetFlags<bits<4> val> {
   bits<4> Value = val;
@@ -54,313 +54,311 @@ class SyncVMInstruction<
 
 class IForm <
   bits<8>  opcode,
-/*
-  bits<4>  reg_source1,
-  bits<4>  reg_source2,
-  bits<4>  reg_destination1,
-  bits<4>  reg_destination2,
-  bits<4>  mem_imm_handler_flags_src1,
-  bits<4>  mem_imm_handler_flags_dst1,
-  bits<4>  non_selector_flags,
-  bits<4>  table_based_non_selector_flags,
-  bits<16> const_src,
-  bits<16> const_dst,
-*/
   SourceMode as,
   DestMode ad,
-  bit swap_operands,
   dag outs,
   dag ins,
   string asmstr,
   list<dag> pattern
 > : SyncVMInstruction<outs, ins, 9, asmstr, pattern>
 {
-  let Inst{64-71}       = opcode;
-  let Inst{44-47}       = as.Value;
-  let Inst{40-43}       = ad.Value;
-  let Inst{32}          = swap_operands;
-  /*
-  let Inst{60-63}       = reg_source1;
-  let Inst{56-59}       = reg_source2;
-  let Inst{52-55}       = reg_destination1;
-  let Inst{48-51}       = reg_destination2;
-  let Inst{44-47}       = mem_imm_handler_flags_src1;
-  let Inst{40-43}       = mem_imm_handler_flags_dst1;
-  let Inst{36-39}       = non_selector_flags;
-  let Inst{32-35}       = table_based_non_selector_flags;
-  let Inst{16-31}       = const_src;
-  let Inst{0-15}        = const_dst;
-  */
+  let Inst{37}    = ad.Value;
+  let Inst{38-39} = as.Value;
+  let Inst{40-43} = 0; /* dst1 */
+  let Inst{48-51} = 0; /* src1 */
+  let Inst{56-63} = opcode;
 }
 
-// Nop instruction
-class INop<bits<8> opcode, string asmstr, list<dag> pattern>
-  : IForm <opcode, SrcNone, DstNone, 0, (outs), (ins), asmstr, pattern > { }
+// FIXME: SP change is currently only allowed in NOPs.
+// It should be fixed in accordance with the spec.
+class INop<bits<8> opcode, dag ins, string asmstr, list<dag> pattern>
+  : IForm <opcode, SrcNone, DstNone, (outs), ins, asmstr, pattern > {
+  bits<16> sp_change;
+  let Inst{44-47} = 0;
+  let Inst{52-55} = 0;
+  let Inst{ 0-15} = sp_change;
+}
+
+class IRet<bits<8> opcode, RetFlags flags, string asmstr, list<dag> pattern>
+  : IForm <opcode, SrcNone, DstNone, (outs), (ins), asmstr, pattern > {
+  let Inst{32-35} = flags.Value;
+  let Inst{44-47} = 0;
+  let Inst{52-55} = 0;
+}
 
 class IConditional<bits<8> opcode,
+                   SourceMode as,
+                   DestMode ad,
                    dag outs,
                    dag ins,
                    string asmstr,
                    list<dag> pattern>
-  : IForm <opcode, SrcReg, DstNone, 0, outs, ins, asmstr, pattern > {
-  bits<4> rs1;
-  bits<4> flags;
-  let Inst{60-63} = rs1;
-  let Inst{36-39} = flags;
+  : IForm <opcode, as, ad, outs, ins, asmstr, pattern > {
+  bits<3> cc;
+  let Inst{33-35} = cc;
 }
 
 class IJump<bits<8> opcode, dag ins, string asmstr, list<dag> pattern>
-  : IConditional <opcode, (outs), ins, asmstr, pattern> {
-  bits<16> addrtrue;
-  bits<16> addrfalse;
-  let Inst{16-31} = addrtrue;
-  let Inst{0-15}  = addrfalse;
+  : IConditional <opcode, SrcNone, DstNone, (outs), ins, asmstr, pattern> {
+  bits<16> dest;
+  let Inst{16-31} = dest;
 }
 
-class ICmov<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-  : IConditional< opcode, outs, ins, asmstr, pattern> {
-  bits<4> rs2;
-  bits<4> rd;
-  let Inst{56-59} = rs2;
-  let Inst{52-55} = rd;
-  let Inst{40-43} = DstReg.Value;
+class IUMA<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : IConditional <opcode, SrcNone, DstNone, outs, ins, asmstr, pattern> {
+  bits<4> rs0;
+  bits<4> rs1;
+  bits<4> rd0;
+
+  let Inst{40-43} = rd0;
+  let Inst{48-51} = rs1;
+  let Inst{52-55} = rs0;
 }
 
-class IRet<bits<8> opcode, RetFlags flags, string asmstr, list<dag> pattern>
-  : IForm <opcode, SrcNone, DstNone, 0, (outs), (ins), asmstr, pattern > {
-  let Inst{36-39} = flags.Value;
+class IContextR<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : IConditional <opcode, SrcNone, DstReg, outs, ins, asmstr, pattern> {
+  bits<4> cop;
+  bits<4> rd0;
+  let Inst{40-43} = rd0;
+  let Inst{52-55} = cop;
+}
+
+class IContextS<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : IConditional <opcode, SrcNone, DstStack, outs, ins, asmstr, pattern> {
+  bits<4> cop;
+  bits<20> dst0;
+  let Inst{ 0-15} = dst0{4-19};
+  let Inst{44-47} = dst0{0-3};
+  let Inst{52-55} = cop;
+}
+
+class ILogR<bits<8> opcode, DestMode ad, dag outs, dag ins,
+            string asmstr, list<dag> pattern>
+  : IConditional <opcode, SrcReg, ad, outs, ins, asmstr, pattern> {
+  bit first;
+  bits<4> rs0;
+  bits<4> rs1;
+  let Inst{36} = first;
+  let Inst{48-51} = rs1;
+  let Inst{52-55} = rs0;
+}
+
+class ILogM<bits<8> opcode, SourceMode as, DestMode ad, dag outs, dag ins,
+            string asmstr, list<dag> pattern>
+  : IConditional <opcode, as, ad, outs, ins, asmstr, pattern> {
+  bit first;
+  bits<20> src0;
+  bits<4> rs1;
+  let Inst{16-31} = src0{4-19};
+  let Inst{36} = first;
+  let Inst{52-55} = src0{0-3};
+  let Inst{48-51} = rs1;
+}
+
+class ILogI<bits<8> opcode, DestMode ad, dag outs, dag ins,
+            string asmstr, list<dag> pattern>
+  : IConditional <opcode, SrcImm, ad, outs, ins, asmstr, pattern> {
+  bit first;
+  bits<16> imm;
+  bits<4> rs1;
+  let Inst{16-31} = imm;
+  let Inst{36} = first;
+  let Inst{48-51} = rs1;
+}
+
+class IBinary<bits<8> opcode,
+              SourceMode as,
+              DestMode ad,
+              bit swap_operands,
+              bit silent,
+              dag outs,
+              dag ins,
+              string asmstr,
+              list<dag> pattern>
+  : IConditional <opcode, as, ad, outs, ins, asmstr, pattern > {
+  bits<4> rs1;
+  let Inst{32} = swap_operands;
+  let Inst{36} = silent;
+  let Inst{48-51} = rs1;
+}
+
+class IBinaryR<bits<8> opcode,
+               SourceMode as,
+               bit swap_operands,
+               bit silent,
+               dag outs,
+               dag ins,
+               string asmstr,
+               list<dag> pattern>
+  : IBinary <opcode, as, DstReg, swap_operands, silent, outs, ins, asmstr, pattern > {
+  bits<4> rd0;
+  let Inst{40-43} = rd0;
+}
+
+class IBinaryS<bits<8> opcode,
+               SourceMode as,
+               bit swap_operands,
+               bit silent,
+               dag outs,
+               dag ins,
+               string asmstr,
+               list<dag> pattern>
+  : IBinary <opcode, as, DstStack, swap_operands, silent, outs, ins, asmstr, pattern > {
+  bits<20> dst0;
+  let Inst{44-47} = dst0{0-3};
+  let Inst{ 0-15} = dst0{4-19};
 }
 
 class Irrr<bits<8> opcode,
            bit swap_operands,
+           bit silent,
            dag outs,
            dag ins,
            string asmstr,
            list<dag> pattern>
-  : IForm<opcode, SrcReg, DstReg, swap_operands, outs, ins, asmstr, pattern> {
-  bits<4> rs1;
-  bits<4> rs2;
-  bits<4> rd;
-  let Inst{60-63} = rs1;
-  let Inst{56-59} = rs2;
-  let Inst{52-55} = rd;
-  let Inst{48-51} = 0;
-  let Inst{32}    = swap_operands;
+  : IBinaryR<opcode, SrcReg, swap_operands, silent, outs, ins, asmstr, pattern> {
+  bits<4> rs0;
+  let Inst{52-55} = rs0;
 }
 
 class Irrrr<bits<8> opcode,
-           bit swap_operands,
-           dag outs,
-           dag ins,
-           string asmstr,
-           list<dag> pattern>
-  : Irrr<opcode, swap_operands, outs, ins, asmstr, pattern> {
-  bits<4> rd2;
-  let Inst{48-51} = rd2;
+            bit swap_operands,
+            bit silent,
+            dag outs,
+            dag ins,
+            string asmstr,
+            list<dag> pattern>
+  : Irrr<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
+  bits<4> rd1;
+  let Inst{40-43} = rd1;
 }
 
 class Iirr<bits<8> opcode,
            bit swap_operands,
+           bit silent,
            dag outs,
            dag ins,
            string asmstr,
            list<dag> pattern>
-  : IForm<opcode, SrcImm, DstReg, swap_operands, outs, ins, asmstr, pattern> {
+  : IBinaryR<opcode, SrcImm, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<16> imm;
-  bits<4>  rs2;
-  bits<4>  rd;
-  let Inst{56-59} = rs2;
-  let Inst{52-55} = rd;
-  let Inst{48-51} = 0;
-  let Inst{32}    = swap_operands;
+  let Inst{52-55} = 0;
   let Inst{16-31} = imm;
 }
 
 class Iirrr<bits<8> opcode,
-           bit swap_operands,
-           dag outs,
-           dag ins,
-           string asmstr,
-           list<dag> pattern>
-  : Iirr<opcode, swap_operands, outs, ins, asmstr, pattern> {
-  bits<4> rd2;
-  let Inst{48-51} = rd2;
+            bit swap_operands,
+            bit silent,
+            dag outs,
+            dag ins,
+            string asmstr,
+            list<dag> pattern>
+  : Iirr<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
+  bits<4> rd1;
+  let Inst{40-43} = rd1;
 }
 
-class Icrr<bits<8> opcode,
+class Imrr<bits<8> opcode,
+           SourceMode as,
            bit swap_operands,
+           bit silent,
            dag outs,
            dag ins,
            string asmstr,
            list<dag> pattern>
-  : IForm<opcode, SrcCode, DstReg, swap_operands, outs, ins, asmstr, pattern> {
-  bits<20> src1; // reg + imm
-  bits<4>  rs2;
-  bits<4>  rd;
-  let Inst{60-63} = src1{0-3};
-  let Inst{56-59} = rs2;
-  let Inst{52-55} = rd;
-  let Inst{48-51} = 0;
-  let Inst{32}    = swap_operands;
-  let Inst{16-31} = src1{4-19};
+  : IBinaryR<opcode, as, swap_operands, silent, outs, ins, asmstr, pattern> {
+  bits<20> src0; // reg + imm
+  let Inst{52-55} = src0{0-3};
+  let Inst{16-31} = src0{4-19};
 }
 
-class Icrrr<bits<8> opcode,
-           bit swap_operands,
-           dag outs,
-           dag ins,
-           string asmstr,
-           list<dag> pattern>
-  : Icrr<opcode, swap_operands, outs, ins, asmstr, pattern> {
-  bits<4> rd2;
-  let Inst{48-51} = rd2;
-}
-
-class Isrr<bits<8> opcode,
-           bit swap_operands,
-           dag outs,
-           dag ins,
-           string asmstr,
-           list<dag> pattern>
-  : IForm<opcode, SrcStack, DstReg, swap_operands, outs, ins, asmstr, pattern> {
-  bits<20> src1; // reg [+ sp] + imm
-  bits<4>  rs2;
-  bits<4>  rd;
-  let Inst{60-63} = src1{0-3};
-  let Inst{56-59} = rs2;
-  let Inst{52-55} = rd;
-  let Inst{48-51} = 0;
-  let Inst{32}    = swap_operands;
-  let Inst{16-31} = src1{4-19};
-}
-
-class Isrrr<bits<8> opcode,
-           bit swap_operands,
-           dag outs,
-           dag ins,
-           string asmstr,
-           list<dag> pattern>
-  : Isrr<opcode, swap_operands, outs, ins, asmstr, pattern> {
-  bits<4> rd2;
-  let Inst{48-51} = rd2;
+class Imrrr<bits<8> opcode,
+            SourceMode as,
+            bit swap_operands,
+            bit silent,
+            dag outs,
+            dag ins,
+            string asmstr,
+            list<dag> pattern>
+  : Imrr<opcode, as, swap_operands, silent, outs, ins, asmstr, pattern> {
+  bits<4> rd1;
+  let Inst{40-43} = rd1;
 }
 
 class Irrs<bits<8> opcode,
            bit swap_operands,
+           bit silent,
            dag outs,
            dag ins,
            string asmstr,
            list<dag> pattern>
-  : IForm<opcode, SrcReg, DstStack, swap_operands, outs, ins, asmstr, pattern> {
-  bits<4>  rs1;
-  bits<4>  rs2;
-  bits<24> dst;
-  let Inst{60-63} = rs1;
-  let Inst{56-59} = rs2;
-  let Inst{52-55} = dst{0-3};
-  let Inst{48-51} = 0;
-  let Inst{32}    = swap_operands;
-  let Inst{0-15}  = dst{4-19};
+  : IBinaryS<opcode, SrcReg, swap_operands, silent, outs, ins, asmstr, pattern> {
+  bits<4>  rs0;
+  let Inst{52-55} = rs0;
 }
 
 class Irrsr<bits<8> opcode,
-           bit swap_operands,
-           dag outs,
-           dag ins,
-           string asmstr,
-           list<dag> pattern>
-  : Irrs<opcode, swap_operands, outs, ins, asmstr, pattern> {
-  bits<4> rd2;
-  let Inst{48-51} = rd2;
+            bit swap_operands,
+            bit silent,
+            dag outs,
+            dag ins,
+            string asmstr,
+            list<dag> pattern>
+  : Irrs<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
+  bits<4> rd1;
+  let Inst{40-43} = rd1;
 }
 
 class Iirs<bits<8> opcode,
            bit swap_operands,
+           bit silent,
            dag outs,
            dag ins,
            string asmstr,
            list<dag> pattern>
-  : IForm<opcode, SrcImm, DstStack, swap_operands, outs, ins, asmstr, pattern> {
+  : IBinaryS<opcode, SrcImm, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<16> imm;
-  bits<4>  rs2;
-  bits<20> dst;
-  let Inst{56-59} = rs2;
-  let Inst{52-55} = dst{0-3};
-  let Inst{48-51} = 0;
-  let Inst{32}    = swap_operands;
+  let Inst{52-55} = 0;
   let Inst{16-31} = imm;
-  let Inst{0-15}  = dst{4-19};
 }
 
 class Iirsr<bits<8> opcode,
-           bit swap_operands,
-           dag outs,
-           dag ins,
-           string asmstr,
-           list<dag> pattern>
-  : Iirs<opcode, swap_operands, outs, ins, asmstr, pattern> {
-  bits<4> rd2;
-  let Inst{48-51} = rd2;
+            bit swap_operands,
+            bit silent,
+            dag outs,
+            dag ins,
+            string asmstr,
+            list<dag> pattern>
+  : Iirs<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
+  bits<4> rd1;
+  let Inst{40-43} = rd1;
 }
 
-class Icrs<bits<8> opcode,
+class Imrs<bits<8> opcode,
+           SourceMode as,
            bit swap_operands,
+           bit silent,
            dag outs,
            dag ins,
            string asmstr,
            list<dag> pattern>
-  : IForm<opcode, SrcCode, DstStack, swap_operands, outs, ins, asmstr, pattern> {
-  bits<20> src1; // reg + imm
-  bits<4>  rs2;
-  bits<20> dst;
-  let Inst{60-63} = src1{0-3};
-  let Inst{56-59} = rs2;
-  let Inst{52-55} = dst{0-3};
-  let Inst{48-51} = 0;
-  let Inst{32}    = swap_operands;
-  let Inst{16-31} = src1{4-19};
-  let Inst{0-15}  = dst{4-19};
+  : IBinaryS<opcode, as, swap_operands, silent, outs, ins, asmstr, pattern> {
+  bits<20> src0; // reg + imm
+  let Inst{52-55} = src0{0-3};
+  let Inst{16-31} = src0{4-19};
 }
 
-class Icrsr<bits<8> opcode,
-           bit swap_operands,
-           dag outs,
-           dag ins,
-           string asmstr,
-           list<dag> pattern>
-  : Icrs<opcode, swap_operands, outs, ins, asmstr, pattern> {
-  bits<4> rd2;
-  let Inst{48-51} = rd2;
-}
-
-class Isrs<bits<8> opcode,
-           bit swap_operands,
-           dag outs,
-           dag ins,
-           string asmstr,
-           list<dag> pattern>
-  : IForm<opcode, SrcStack, DstStack, swap_operands, outs, ins, asmstr, pattern> {
-  bits<20> src1; // reg [+ sp] + imm
-  bits<4>  rs2;
-  bits<20> dst;
-  let Inst{60-63} = src1{0-3};
-  let Inst{56-59} = rs2;
-  let Inst{52-55} = dst{0-3};
-  let Inst{48-51} = 0;
-  let Inst{32}    = swap_operands;
-  let Inst{16-31} = src1{4-19};
-  let Inst{0-15}  = dst{4-19};
-}
-
-class Isrsr<bits<8> opcode,
-           bit swap_operands,
-           dag outs,
-           dag ins,
-           string asmstr,
-           list<dag> pattern>
-  : Isrs<opcode, swap_operands, outs, ins, asmstr, pattern> {
-  bits<4> rd2;
-  let Inst{48-51} = rd2;
+class Imrsr<bits<8> opcode,
+            SourceMode as,
+            bit swap_operands,
+            bit silent,
+            dag outs,
+            dag ins,
+            string asmstr,
+            list<dag> pattern>
+  : Imrs<opcode, as, swap_operands, silent, outs, ins, asmstr, pattern> {
+  bits<4> rd1;
+  let Inst{40-43} = rd1;
 }
 
 // Pseudo instructions

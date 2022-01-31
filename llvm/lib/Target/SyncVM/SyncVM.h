@@ -26,6 +26,31 @@ enum CondCodes {
 };
 } // namespace SyncVMCC
 
+namespace SyncVMAS {
+// SyncVM address spaces
+enum AddressSpaces {
+  AS_STACK = 0,
+  AS_HEAP = 1,
+  AS_CALLDATA = 2,
+  AS_RETDATA = 3,
+  AS_CODE = 4
+};
+} // namespace SyncVMAS
+
+namespace SyncVMCTX {
+// SyncVM context operands
+enum Context {
+  SELF_ADDR = 0,
+  CALLER = 1,
+  CODE_ADDR = 2,
+  META = 3,
+  TX_ORIGIN = 4,
+  COINBASE = 5,
+  ERGS_LEFT = 6,
+  SP = 7,
+};
+} // namespace SyncVMCTX
+
 namespace llvm {
 class SyncVMTargetMachine;
 class FunctionPass;
@@ -39,6 +64,7 @@ ModulePass   *createSyncVMIndirectUMAPass();
 ModulePass   *createSyncVMIndirectExternalCallPass();
 ModulePass   *createSyncVMLowerIntrinsicsPass();
 ModulePass   *createSyncVMLinkRuntimePass();
+FunctionPass *createSyncVMAddConditionsPass();
 FunctionPass *createSyncVMAdjustStackInCallseqPass();
 FunctionPass *createSyncVMAdjustSPBasedOffsetsPass();
 FunctionPass *createSyncVMAllocaHoistingPass();
@@ -52,6 +78,7 @@ void initializeSyncVMExpandUMAPass(PassRegistry &);
 void initializeSyncVMIndirectUMAPass(PassRegistry &);
 void initializeSyncVMIndirectExternalCallPass(PassRegistry &);
 void initializeSyncVMLowerIntrinsicsPass(PassRegistry &);
+void initializeSyncVMAddConditionsPass(PassRegistry &);
 void initializeSyncVMLinkRuntimePass(PassRegistry &);
 void initializeSyncVMCodegenPreparePass(PassRegistry &);
 void initializeSyncVMExpandPseudoPass(PassRegistry &);

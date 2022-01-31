@@ -47,7 +47,7 @@ public:
   const char *getTargetNodeName(unsigned Opcode) const override;
 
   SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
-  SDValue LowerBR(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerBR_CC(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerCopyToReg(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerLOAD(SDValue Op, SelectionDAG &DAG) const;
@@ -59,10 +59,6 @@ public:
   SDValue LowerConstant(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerConstantPool(SDValue Op, SelectionDAG &DAG) const;
 
-  SDValue LowerBrccBr(SDValue Op, SDValue DestFalse, SDLoc DL,
-                      SelectionDAG &DAG) const;
-  SDValue LowerBrcondBr(SDValue Op, SDValue DestFalse, SDLoc DL,
-                        SelectionDAG &DAG) const;
   SDValue LowerBrFlag(SDValue Cond, SDValue Chain, SDValue DestFalse,
                       SDValue DestTrue, SDLoc DL, SelectionDAG &DAG) const;
 
@@ -158,7 +154,9 @@ public:
                                       Align Alignment,
                                       MachineMemOperand::Flags Flags,
                                       bool *Fast) const override {
-    return false;
+    return AddrSpace == SyncVMAS::AS_HEAP ||
+           AddrSpace == SyncVMAS::AS_CALLDATA ||
+           AddrSpace == SyncVMAS::AS_RETDATA;
   }
 
 private:

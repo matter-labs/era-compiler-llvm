@@ -5,6 +5,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "SyncVMMCTargetDesc.h"
+#include "SyncVMTargetStreamer.h"
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCELFStreamer.h"
@@ -16,7 +17,7 @@ using namespace llvm;
 
 namespace llvm {
 
-class SyncVMTargetELFStreamer : public MCTargetStreamer {
+class SyncVMTargetELFStreamer : public SyncVMTargetStreamer {
 public:
   MCELFStreamer &getStreamer();
   SyncVMTargetELFStreamer(MCStreamer &S, const MCSubtargetInfo &STI);
@@ -25,20 +26,39 @@ public:
 // This part is for ELF object output.
 SyncVMTargetELFStreamer::SyncVMTargetELFStreamer(MCStreamer &S,
                                                  const MCSubtargetInfo &STI)
-    : MCTargetStreamer(S) {
+    : SyncVMTargetStreamer(S) {}
 
-}
+class SyncVMTargetAsmStreamer : public SyncVMTargetStreamer {
+public:
+  SyncVMTargetAsmStreamer(MCStreamer &S, formatted_raw_ostream &OS,
+                          MCInstPrinter &InstPrinter, bool VerboseAsm);
+};
+
+SyncVMTargetAsmStreamer::SyncVMTargetAsmStreamer(MCStreamer &S,
+                                                 formatted_raw_ostream &OS,
+                                                 MCInstPrinter &InstPrinter,
+                                                 bool VerboseAsm)
+    : SyncVMTargetStreamer(S) {}
 
 MCELFStreamer &SyncVMTargetELFStreamer::getStreamer() {
   return static_cast<MCELFStreamer &>(Streamer);
 }
+MCTargetStreamer *createSyncVMTargetAsmStreamer(MCStreamer &S,
+                                                formatted_raw_ostream &OS,
+                                                MCInstPrinter *InstPrint,
+                                                bool isVerboseAsm) {
+  return new SyncVMTargetAsmStreamer(S, OS, *InstPrint, isVerboseAsm);
+}
 
-MCTargetStreamer *
-createSyncVMObjectTargetStreamer(MCStreamer &S, const MCSubtargetInfo &STI) {
+MCTargetStreamer *createSyncVMNullTargetStreamer(MCStreamer &S) {
+  return new SyncVMTargetStreamer(S);
+}
+
+MCTargetStreamer *createSyncVMObjectTargetStreamer(MCStreamer &S,
+                                                   const MCSubtargetInfo &STI) {
   const Triple &TT = STI.getTargetTriple();
   if (TT.isOSBinFormatELF())
     return new SyncVMTargetELFStreamer(S, STI);
-  return nullptr;
+  return new SyncVMTargetStreamer(S);
 }
-
 } // namespace llvm

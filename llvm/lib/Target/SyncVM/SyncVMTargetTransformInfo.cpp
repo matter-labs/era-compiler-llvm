@@ -142,19 +142,19 @@ InstructionCost SyncVMTTIImpl::getMemoryOpCost(unsigned Opcode, Type *Src,
                                                const Instruction *I) {
   auto alignment_value = Alignment.valueOrOne().value();
   switch (AddressSpace) {
-  case 0: {
+  case SyncVMAS::AS_STACK:
+  case SyncVMAS::AS_CODE: {
     if ((alignment_value % 32) > 0) {
       // Estimate of the call to runtime function `__unaligned_store/load`
       return TargetTransformInfo::TCC_Expensive * 10;
     }
     break;
   }
-  case 1:
-  case 2:
-  case 3: {
+  case SyncVMAS::AS_HEAP:
+  case SyncVMAS::AS_CALLDATA:
+  case SyncVMAS::AS_RETDATA: {
     if ((alignment_value % 32) > 0) {
-      // unaligned accesses needs expanding to a snippet
-      return TargetTransformInfo::TCC_Expensive;
+      return TargetTransformInfo::TCC_Basic * 2;
     }
   }
   }

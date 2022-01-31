@@ -57,15 +57,25 @@ createSyncVMMCSubtargetInfo(const Triple &TT, StringRef CPU, StringRef FS) {
   return createSyncVMMCSubtargetInfoImpl(TT, CPU, /*TuneCPU*/ CPU, FS);
 }
 
+static MCAsmInfo *createARMMCAsmInfo(const MCRegisterInfo &MRI,
+                                     const Triple &TheTriple,
+                                     const MCTargetOptions &Options) {
+  MCAsmInfo *MAI;
+  MAI = new SyncVMMCAsmInfo(TheTriple);
+  return MAI;
+}
+
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTargetMC() {
   Target &T = getTheSyncVMTarget();
 
-  RegisterMCAsmInfo<SyncVMMCAsmInfo> X(T);
+  RegisterMCAsmInfoFn X(T, createARMMCAsmInfo);
   TargetRegistry::RegisterMCInstrInfo(T, createSyncVMMCInstrInfo);
   TargetRegistry::RegisterMCRegInfo(T, createSyncVMMCRegisterInfo);
   TargetRegistry::RegisterMCSubtargetInfo(T, createSyncVMMCSubtargetInfo);
   TargetRegistry::RegisterMCInstPrinter(T, createSyncVMMCInstPrinter);
   TargetRegistry::RegisterMCCodeEmitter(T, createSyncVMMCCodeEmitter);
   TargetRegistry::RegisterMCAsmBackend(T, createSyncVMMCAsmBackend);
-  TargetRegistry::RegisterObjectTargetStreamer(T, createSyncVMObjectTargetStreamer);
+  TargetRegistry::RegisterObjectTargetStreamer(
+      T, createSyncVMObjectTargetStreamer);
+  TargetRegistry::RegisterAsmTargetStreamer(T, createSyncVMTargetAsmStreamer);
 }

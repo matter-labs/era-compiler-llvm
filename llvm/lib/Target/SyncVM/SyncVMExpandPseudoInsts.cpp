@@ -56,10 +56,11 @@ void SyncVMExpandPseudo::expandConst(MachineInstr &MI) const {
                                        : APInt(256, Constant.getImm(), true);
   // big immediate or negative values are loaded from constant pool
   assert(Val.isIntN(16) && !Val.isNegative());
-  BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(SyncVM::ADDirr))
+  BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(SyncVM::ADDirr_s))
       .add(Reg)
       .addReg(SyncVM::R0)
-      .addCImm(ConstantInt::get(*Context, Val));
+      .addCImm(ConstantInt::get(*Context, Val))
+      .addImm(0);
 }
 
 void SyncVMExpandPseudo::expandLoadConst(MachineInstr &MI) const {
@@ -73,10 +74,10 @@ void SyncVMExpandPseudo::expandLoadConst(MachineInstr &MI) const {
         break;
       }
       // this handles commutative cases
-      case SyncVM::ADDrrr:
-      case SyncVM::ANDrrr:
-      case SyncVM::XORrrr:
-      case SyncVM::ORrrr: {
+      case SyncVM::ADDrrr_s:
+      case SyncVM::ANDrrr_s:
+      case SyncVM::XORrrr_s:
+      case SyncVM::ORrrr_s: {
         auto outReg = cur.getOperand(0).getReg();
         if (next.getOperand(1).getReg() == outReg ||
             next.getOperand(2).getReg() == outReg) {
@@ -95,11 +96,11 @@ void SyncVMExpandPseudo::expandLoadConst(MachineInstr &MI) const {
         break;
       }
       // this handles commutative cases
-      case SyncVM::SUBrrr:
-      case SyncVM::SHLrrr:
-      case SyncVM::SHRrrr:
-      case SyncVM::ROLrrr:
-      case SyncVM::RORrrr: {
+      case SyncVM::SUBrrr_s:
+      case SyncVM::SHLrrr_s:
+      case SyncVM::SHRrrr_s:
+      case SyncVM::ROLrrr_s:
+      case SyncVM::RORrrr_s: {
         auto outReg = cur.getOperand(0).getReg();
         if (next.getOperand(1).getReg() == outReg ||
             next.getOperand(2).getReg() == outReg) {
@@ -117,32 +118,32 @@ void SyncVMExpandPseudo::expandLoadConst(MachineInstr &MI) const {
         llvm_unreachable("wrong opcode");
         break;
       }
-      case SyncVM::ADDrrr: {
-        return SyncVM::ADDcrr;
+      case SyncVM::ADDrrr_s: {
+        return SyncVM::ADDcrr_s;
       }
-      case SyncVM::ANDrrr: {
-        return SyncVM::ANDcrr;
+      case SyncVM::ANDrrr_s: {
+        return SyncVM::ANDcrr_s;
       }
-      case SyncVM::XORrrr: {
-        return SyncVM::XORcrr;
+      case SyncVM::XORrrr_s: {
+        return SyncVM::XORcrr_s;
       }
-      case SyncVM::ORrrr: {
-        return SyncVM::ORcrr;
+      case SyncVM::ORrrr_s: {
+        return SyncVM::ORcrr_s;
       }
-      case SyncVM::SUBrrr: {
-        return reverse ? SyncVM::SUByrr : SyncVM::SUBcrr;
+      case SyncVM::SUBrrr_s: {
+        return reverse ? SyncVM::SUByrr_s : SyncVM::SUBcrr_s;
       }
-      case SyncVM::SHLrrr: {
-        return reverse ? SyncVM::SHLyrr : SyncVM::SHLcrr;
+      case SyncVM::SHLrrr_s: {
+        return reverse ? SyncVM::SHLyrr_s : SyncVM::SHLcrr_s;
       }
-      case SyncVM::SHRrrr: {
-        return reverse ? SyncVM::SHRyrr : SyncVM::SHRcrr;
+      case SyncVM::SHRrrr_s: {
+        return reverse ? SyncVM::SHRyrr_s : SyncVM::SHRcrr_s;
       }
-      case SyncVM::ROLrrr: {
-        return reverse ? SyncVM::ROLyrr : SyncVM::ROLcrr;
+      case SyncVM::ROLrrr_s: {
+        return reverse ? SyncVM::ROLyrr_s : SyncVM::ROLcrr_s;
       }
-      case SyncVM::RORrrr: {
-        return reverse ? SyncVM::RORyrr : SyncVM::RORrrr;
+      case SyncVM::RORrrr_s: {
+        return reverse ? SyncVM::RORyrr_s : SyncVM::RORrrr_s;
       }
     }
   };
@@ -194,11 +195,12 @@ void SyncVMExpandPseudo::expandLoadConst(MachineInstr &MI) const {
     return;
   }
 
-  BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(SyncVM::ADDcrr))
+  BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(SyncVM::ADDcrr_s))
       .add(Reg)
       .addImm(0)
       .add(ConstantPool)
       .addReg(SyncVM::R0)
+      .addImm(0)
       .getInstr();
 }
 
@@ -209,39 +211,39 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
              << "********** Function: " << MF.getName() << '\n');
   // pseudo opcode -> mov opcode, cmov opcode, #args src0, #args src1, #args dst
   DenseMap<unsigned, std::vector<unsigned>> Pseudos{
-      {SyncVM::SELrrr, {SyncVM::CMOVrrr, SyncVM::CMOVrrr, 1, 1, 0}},
-      {SyncVM::SELirr, {SyncVM::CMOVirr, SyncVM::CMOVrrr, 1, 1, 0}},
-      {SyncVM::SELcrr, {SyncVM::CMOVcrr, SyncVM::CMOVrrr, 2, 1, 0}},
-      {SyncVM::SELsrr, {SyncVM::CMOVsrr, SyncVM::CMOVrrr, 3, 1, 0}},
-      {SyncVM::SELrir, {SyncVM::CMOVrrr, SyncVM::CMOVirr, 1, 1, 0}},
-      {SyncVM::SELiir, {SyncVM::CMOVirr, SyncVM::CMOVirr, 1, 1, 0}},
-      {SyncVM::SELcir, {SyncVM::CMOVcrr, SyncVM::CMOVirr, 2, 1, 0}},
-      {SyncVM::SELsir, {SyncVM::CMOVsrr, SyncVM::CMOVirr, 3, 1, 0}},
-      {SyncVM::SELrcr, {SyncVM::CMOVrrr, SyncVM::CMOVcrr, 1, 2, 0}},
-      {SyncVM::SELicr, {SyncVM::CMOVirr, SyncVM::CMOVcrr, 1, 2, 0}},
-      {SyncVM::SELccr, {SyncVM::CMOVcrr, SyncVM::CMOVcrr, 2, 2, 0}},
-      {SyncVM::SELscr, {SyncVM::CMOVsrr, SyncVM::CMOVcrr, 3, 2, 0}},
-      {SyncVM::SELrsr, {SyncVM::CMOVrrr, SyncVM::CMOVsrr, 1, 3, 0}},
-      {SyncVM::SELisr, {SyncVM::CMOVirr, SyncVM::CMOVsrr, 1, 3, 0}},
-      {SyncVM::SELcsr, {SyncVM::CMOVcrr, SyncVM::CMOVsrr, 2, 3, 0}},
-      {SyncVM::SELssr, {SyncVM::CMOVsrr, SyncVM::CMOVsrr, 3, 3, 0}},
+      {SyncVM::SELrrr, {SyncVM::ADDrrr_s, SyncVM::ADDrrr_s, 1, 1, 0}},
+      {SyncVM::SELirr, {SyncVM::ADDirr_s, SyncVM::ADDrrr_s, 1, 1, 0}},
+      {SyncVM::SELcrr, {SyncVM::ADDcrr_s, SyncVM::ADDrrr_s, 2, 1, 0}},
+      {SyncVM::SELsrr, {SyncVM::ADDsrr_s, SyncVM::ADDrrr_s, 3, 1, 0}},
+      {SyncVM::SELrir, {SyncVM::ADDrrr_s, SyncVM::ADDirr_s, 1, 1, 0}},
+      {SyncVM::SELiir, {SyncVM::ADDirr_s, SyncVM::ADDirr_s, 1, 1, 0}},
+      {SyncVM::SELcir, {SyncVM::ADDcrr_s, SyncVM::ADDirr_s, 2, 1, 0}},
+      {SyncVM::SELsir, {SyncVM::ADDsrr_s, SyncVM::ADDirr_s, 3, 1, 0}},
+      {SyncVM::SELrcr, {SyncVM::ADDrrr_s, SyncVM::ADDcrr_s, 1, 2, 0}},
+      {SyncVM::SELicr, {SyncVM::ADDirr_s, SyncVM::ADDcrr_s, 1, 2, 0}},
+      {SyncVM::SELccr, {SyncVM::ADDcrr_s, SyncVM::ADDcrr_s, 2, 2, 0}},
+      {SyncVM::SELscr, {SyncVM::ADDsrr_s, SyncVM::ADDcrr_s, 3, 2, 0}},
+      {SyncVM::SELrsr, {SyncVM::ADDrrr_s, SyncVM::ADDsrr_s, 1, 3, 0}},
+      {SyncVM::SELisr, {SyncVM::ADDirr_s, SyncVM::ADDsrr_s, 1, 3, 0}},
+      {SyncVM::SELcsr, {SyncVM::ADDcrr_s, SyncVM::ADDsrr_s, 2, 3, 0}},
+      {SyncVM::SELssr, {SyncVM::ADDsrr_s, SyncVM::ADDsrr_s, 3, 3, 0}},
 
-      {SyncVM::SELrrs, {SyncVM::CMOVrrs, SyncVM::CMOVrrs, 1, 1, 3}},
-      {SyncVM::SELirs, {SyncVM::CMOVirs, SyncVM::CMOVrrs, 1, 1, 3}},
-      {SyncVM::SELcrs, {SyncVM::CMOVcrs, SyncVM::CMOVrrs, 2, 1, 3}},
-      {SyncVM::SELsrs, {SyncVM::CMOVsrs, SyncVM::CMOVrrs, 3, 1, 3}},
-      {SyncVM::SELris, {SyncVM::CMOVrrs, SyncVM::CMOVirs, 1, 1, 3}},
-      {SyncVM::SELiis, {SyncVM::CMOVirs, SyncVM::CMOVirs, 1, 1, 3}},
-      {SyncVM::SELcis, {SyncVM::CMOVcrs, SyncVM::CMOVirs, 2, 1, 3}},
-      {SyncVM::SELsis, {SyncVM::CMOVsrs, SyncVM::CMOVirs, 3, 1, 3}},
-      {SyncVM::SELrcs, {SyncVM::CMOVrrs, SyncVM::CMOVcrs, 1, 2, 3}},
-      {SyncVM::SELics, {SyncVM::CMOVirs, SyncVM::CMOVcrs, 1, 2, 3}},
-      {SyncVM::SELccs, {SyncVM::CMOVcrs, SyncVM::CMOVcrs, 2, 2, 3}},
-      {SyncVM::SELscs, {SyncVM::CMOVsrs, SyncVM::CMOVcrs, 3, 2, 3}},
-      {SyncVM::SELrss, {SyncVM::CMOVrrs, SyncVM::CMOVsrs, 1, 3, 3}},
-      {SyncVM::SELiss, {SyncVM::CMOVirs, SyncVM::CMOVsrs, 1, 3, 3}},
-      {SyncVM::SELcss, {SyncVM::CMOVcrs, SyncVM::CMOVsrs, 2, 3, 3}},
-      {SyncVM::SELsss, {SyncVM::CMOVsrs, SyncVM::CMOVsrs, 3, 3, 3}},
+      {SyncVM::SELrrs, {SyncVM::ADDrrs_s, SyncVM::ADDrrs_s, 1, 1, 3}},
+      {SyncVM::SELirs, {SyncVM::ADDirs_s, SyncVM::ADDrrs_s, 1, 1, 3}},
+      {SyncVM::SELcrs, {SyncVM::ADDcrs_s, SyncVM::ADDrrs_s, 2, 1, 3}},
+      {SyncVM::SELsrs, {SyncVM::ADDsrs_s, SyncVM::ADDrrs_s, 3, 1, 3}},
+      {SyncVM::SELris, {SyncVM::ADDrrs_s, SyncVM::ADDirs_s, 1, 1, 3}},
+      {SyncVM::SELiis, {SyncVM::ADDirs_s, SyncVM::ADDirs_s, 1, 1, 3}},
+      {SyncVM::SELcis, {SyncVM::ADDcrs_s, SyncVM::ADDirs_s, 2, 1, 3}},
+      {SyncVM::SELsis, {SyncVM::ADDsrs_s, SyncVM::ADDirs_s, 3, 1, 3}},
+      {SyncVM::SELrcs, {SyncVM::ADDrrs_s, SyncVM::ADDcrs_s, 1, 2, 3}},
+      {SyncVM::SELics, {SyncVM::ADDirs_s, SyncVM::ADDcrs_s, 1, 2, 3}},
+      {SyncVM::SELccs, {SyncVM::ADDcrs_s, SyncVM::ADDcrs_s, 2, 2, 3}},
+      {SyncVM::SELscs, {SyncVM::ADDsrs_s, SyncVM::ADDcrs_s, 3, 2, 3}},
+      {SyncVM::SELrss, {SyncVM::ADDrrs_s, SyncVM::ADDsrs_s, 1, 3, 3}},
+      {SyncVM::SELiss, {SyncVM::ADDirs_s, SyncVM::ADDsrs_s, 1, 3, 3}},
+      {SyncVM::SELcss, {SyncVM::ADDcrs_s, SyncVM::ADDsrs_s, 2, 3, 3}},
+      {SyncVM::SELsss, {SyncVM::ADDsrs_s, SyncVM::ADDsrs_s, 3, 3, 3}},
   };
 
   TII = MF.getSubtarget<SyncVMSubtarget>().getInstrInfo();

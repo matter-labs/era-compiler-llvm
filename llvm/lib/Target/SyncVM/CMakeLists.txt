@@ -19,6 +19,7 @@ set (RT_CONTENT "R\"(${RT_CONTENT})\"")
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/SyncVMRT.inc ${RT_CONTENT})
 
 add_llvm_target(SyncVMCodeGen
+  SyncVMAddConditions.cpp
   SyncVMCodegenPrepare.cpp
   SyncVMExpandUMA.cpp
   SyncVMTargetMachine.cpp
