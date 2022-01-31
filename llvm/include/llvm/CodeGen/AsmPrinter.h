@@ -438,7 +438,9 @@ public:
   virtual const MCExpr *lowerConstant(const Constant *CV);
 
   /// Print a general LLVM constant to the .s file.
-  void emitGlobalConstant(const DataLayout &DL, const Constant *CV);
+  /// SyncVM local begin
+  void virtual emitGlobalConstant(const DataLayout &DL, const Constant *CV);
+  /// SyncVM local end
 
   /// Unnamed constant global variables solely contaning a pointer to
   /// another globals variable act like a global variable "proxy", or GOT

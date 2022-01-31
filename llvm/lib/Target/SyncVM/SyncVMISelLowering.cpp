@@ -46,7 +46,7 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setStackPointerRegisterToSaveRestore(SyncVM::SP);
 
   setOperationAction(ISD::GlobalAddress, MVT::i256, Custom);
-  setOperationAction(ISD::BR, MVT::Other, Custom);
+  setOperationAction(ISD::BR_CC, MVT::i256, Custom);
   setOperationAction(ISD::BRCOND, MVT::Other, Expand);
   setOperationAction(ISD::SETCC, MVT::i256, Expand);
   setOperationAction(ISD::SELECT, MVT::i256, Expand);
@@ -379,7 +379,6 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 //===----------------------------------------------------------------------===//
 
 static SDValue EmitCMP(SDValue &LHS, SDValue &RHS,
-                       SDValue &LVal, SDValue &RVal,
                        ISD::CondCode CC,
                        const SDLoc &DL, SelectionDAG &DAG) {
   assert(!LHS.getValueType().isFloatingPoint() &&
@@ -396,61 +395,57 @@ static SDValue EmitCMP(SDValue &LHS, SDValue &RHS,
   default:
     llvm_unreachable("Invalid integer condition!");
   case ISD::SETNE:
-    std::swap(LVal, RVal);
-    LLVM_FALLTHROUGH;
+    TCC = SyncVMCC::COND_NE;
+    break;
   case ISD::SETEQ:
     TCC = SyncVMCC::COND_E;
     break;
   case ISD::SETUGE:
-    std::swap(LVal, RVal);
-    LLVM_FALLTHROUGH;
+    TCC = SyncVMCC::COND_GE;
+    break;
   case ISD::SETULT:
     TCC = SyncVMCC::COND_LT;
     break;
   case ISD::SETULE:
-    std::swap(LVal, RVal);
-    LLVM_FALLTHROUGH;
+    TCC = SyncVMCC::COND_LE;
+    break;
   case ISD::SETUGT:
     TCC = SyncVMCC::COND_GT;
     break;
   case ISD::SETGT: {
-    std::swap(LVal, RVal);
     auto Ugt = DAG.getSelectCC(DL, LHS, RHS, Mask, Zero, ISD::SETUGT);
     auto SignUlt =
         DAG.getSelectCC(DL, SignLHS, SignRHS, Mask, Zero, ISD::SETULT);
     LHS = DAG.getSelectCC(DL, SignXor, Mask, SignUlt, Ugt, ISD::SETEQ);
     RHS = Zero;
-    TCC = SyncVMCC::COND_E;
+    TCC = SyncVMCC::COND_NE;
     break;
   }
   case ISD::SETGE: {
-    std::swap(LVal, RVal);
     auto Uge = DAG.getSelectCC(DL, LHS, RHS, Mask, Zero, ISD::SETUGE);
     auto SignUlt =
         DAG.getSelectCC(DL, SignLHS, SignRHS, Mask, Zero, ISD::SETULT);
     LHS = DAG.getSelectCC(DL, SignXor, Mask, SignUlt, Uge, ISD::SETEQ);
     RHS = Zero;
-    TCC = SyncVMCC::COND_E;
+    TCC = SyncVMCC::COND_NE;
     break;
   }
   case ISD::SETLT: {
-    std::swap(LVal, RVal);
     auto Ult = DAG.getSelectCC(DL, LHS, RHS, Mask, Zero, ISD::SETULT);
     auto SignUgt =
         DAG.getSelectCC(DL, SignLHS, SignRHS, Mask, Zero, ISD::SETUGT);
     LHS = DAG.getSelectCC(DL, SignXor, Mask, SignUgt, Ult, ISD::SETEQ);
     RHS = Zero;
-    TCC = SyncVMCC::COND_E;
+    TCC = SyncVMCC::COND_NE;
     break;
   }
   case ISD::SETLE: {
-    std::swap(LVal, RVal);
     auto Ule = DAG.getSelectCC(DL, LHS, RHS, Mask, Zero, ISD::SETULE);
     auto SignUgt =
         DAG.getSelectCC(DL, SignLHS, SignRHS, Mask, Zero, ISD::SETUGT);
     LHS = DAG.getSelectCC(DL, SignXor, Mask, SignUgt, Ule, ISD::SETEQ);
     RHS = Zero;
-    TCC = SyncVMCC::COND_E;
+    TCC = SyncVMCC::COND_NE;
     break;
   }
   }
@@ -468,8 +463,8 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
     return LowerLOAD(Op, DAG);
   case ISD::GlobalAddress:
     return LowerGlobalAddress(Op, DAG);
-  case ISD::BR:
-    return LowerBR(Op, DAG);
+  case ISD::BR_CC:
+    return LowerBR_CC(Op, DAG);
   case ISD::SELECT_CC:
     return LowerSELECT_CC(Op, DAG);
   case ISD::CopyToReg:
@@ -585,22 +580,19 @@ SDValue SyncVMTargetLowering::LowerGlobalAddress(SDValue Op,
   return Result;
 }
 
-SDValue SyncVMTargetLowering::LowerBR(SDValue Op, SelectionDAG &DAG) const {
-  SDLoc DL(Op);
+SDValue SyncVMTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
   SDValue Chain = Op.getOperand(0);
-  SDValue DestFalse = Op.getOperand(1);
-  switch (Chain.getOpcode()) {
-  default: {
-    SDValue UnconditionalCC =
-        DAG.getConstant(SyncVMCC::COND_NONE, DL, MVT::i256);
-    return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain,
-                       DestFalse, DestFalse, UnconditionalCC);
-  }
-  case ISD::BR_CC:
-    return LowerBrccBr(Chain, DestFalse, DL, DAG);
-  case ISD::BRCOND:
-    return LowerBrcondBr(Chain, DestFalse, DL, DAG);
-  }
+  ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(1))->get();
+  SDValue LHS   = Op.getOperand(2);
+  SDValue RHS   = Op.getOperand(3);
+  SDValue Dest  = Op.getOperand(4);
+  SDLoc DL  (Op);
+
+  SDValue TargetCC = EmitCMP(LHS, RHS, CC, DL, DAG);
+  SDValue Cmp = DAG.getNode(SyncVMISD::CMP, DL, MVT::Glue, LHS, RHS);
+  return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain, Dest,
+                     TargetCC, Cmp);
+
 }
 
 SDValue SyncVMTargetLowering::LowerSELECT_CC(SDValue Op,
@@ -612,7 +604,7 @@ SDValue SyncVMTargetLowering::LowerSELECT_CC(SDValue Op,
   ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(4))->get();
   SDLoc DL(Op);
 
-  SDValue TargetCC = EmitCMP(LHS, RHS, TrueV, FalseV, CC, DL, DAG);
+  SDValue TargetCC = EmitCMP(LHS, RHS, CC, DL, DAG);
   SDValue Cmp = DAG.getNode(SyncVMISD::CMP, DL, MVT::Glue, LHS, RHS);
 
   SDVTList VTs = DAG.getVTList(Op.getValueType(), MVT::Glue);
@@ -642,33 +634,6 @@ SDValue SyncVMTargetLowering::LowerCopyToReg(SDValue Op,
   }
 
   return SDValue();
-}
-
-SDValue SyncVMTargetLowering::LowerBrccBr(SDValue Op, SDValue DestFalse,
-                                          SDLoc DL, SelectionDAG &DAG) const {
-  SDValue Chain = Op.getOperand(0);
-  ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(1))->get();
-  SDValue LHS = Op.getOperand(2);
-  SDValue RHS = Op.getOperand(3);
-  SDValue DestTrue = Op.getOperand(4);
-
-  SDValue TargetCC = EmitCMP(LHS, RHS, DestTrue, DestFalse, CC, DL, DAG);
-  SDValue Cmp = DAG.getNode(SyncVMISD::CMP, DL, MVT::Glue, LHS, RHS);
-  return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain, DestTrue,
-                     DestFalse, TargetCC, Cmp);
-}
-
-SDValue SyncVMTargetLowering::LowerBrcondBr(SDValue Op, SDValue DestFalse,
-                                            SDLoc DL, SelectionDAG &DAG) const {
-  SDValue Chain = Op.getOperand(0);
-  SDValue Cond = Op.getOperand(1);
-  SDValue DestTrue = Op.getOperand(2);
-  SDValue Zero = DAG.getConstant(0, DL, Cond.getValueType());
-
-  SDValue TargetCC = EmitCMP(Cond, Zero, DestTrue, DestFalse, ISD::SETNE, DL, DAG);
-  SDValue Cmp = DAG.getNode(SyncVMISD::CMP, DL, MVT::Glue, Cond, Zero);
-  return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain, DestTrue,
-                     DestFalse, TargetCC, Cmp);
 }
 
 MachineBasicBlock *
