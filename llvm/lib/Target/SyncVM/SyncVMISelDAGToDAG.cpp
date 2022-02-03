@@ -409,6 +409,50 @@ void SyncVMDAGToDAGISel::Select(SDNode *Node) {
                           CurDAG->getTargetConstant(0, DL, MVT::i256)));
     return;
   }
+  case ISD::LOAD: {
+    // select global variable with offset
+    const LoadSDNode *LD = cast<LoadSDNode>(Node);
+    auto basesd = LD->getBasePtr();
+    auto base = basesd.getNode();
+    auto offset = LD->getOffset();
+
+    if (isa<GlobalAddressSDNode>(base)) {
+      auto* GA = cast<GlobalAddressSDNode>(base);
+
+      assert(offset.isUndef() && "Please implement offset");
+
+      // TODO: we should support indexed loading but at this moment offset is undef.. needs investigation.
+      std::vector<SDValue> Ops;
+      Ops.push_back(basesd);
+      Ops.push_back(LD->getChain());
+
+      // TODO: update this:
+      auto lc = CurDAG->getMachineNode(SyncVM::LOADCONST, DL, MVT::i256, makeArrayRef(Ops));
+      ReplaceNode(Node, lc);
+      return;
+    }
+    break;
+  }
+  case ISD::STORE: {
+    const StoreSDNode *SD = cast<StoreSDNode>(Node);
+    auto basesd = SD->getBasePtr();
+    auto offset = SD->getOffset();
+
+    assert (offset.isUndef() && "Please implement offset");
+
+    if (isa<GlobalAddressSDNode>(basesd.getNode())) {
+      auto r0 = CurDAG->getRegister(SyncVM::R0, MVT::i256);
+      std::vector<SDValue> Ops {SD->getValue(), basesd, SD->getChain()};
+
+      // TODO: update this:
+      auto sc = CurDAG->getMachineNode(SyncVM::STORECONST, DL, MVT::Other, makeArrayRef(Ops));
+      ReplaceNode(Node, sc);
+      return;
+    }
+
+
+    break;
+  }
   }
 
   // Select the default instruction

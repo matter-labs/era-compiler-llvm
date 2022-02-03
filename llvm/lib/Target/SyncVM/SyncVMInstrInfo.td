@@ -176,6 +176,11 @@ def ADJCALLSTACKUP   : Pseudo<(outs), (ins i256imm:$amt1, i256imm:$amt2),
                               [(SyncVMcallseq_end timm:$amt1, timm:$amt2)]>;
 }
 
+let mayStore = 1, isPseudo = 1 in {
+def STORECONST : Pseudo<(outs), (ins i256imm:$addr, GR256:$val),
+                         "STORECONST\t$val, $addr", [/*TODO*/]>;
+}
+
 let isCodeGenOnly = 1, Defs = [Flags], Uses = [SP] in {
 def ADDframe : Pseudo<(outs GR256:$dst), (ins i256imm:$base, i256imm:$offset),
                       "# ADDframe PSEUDO", []>;
@@ -811,6 +816,11 @@ let isReturn = 1, isTerminator = 1, isBarrier = 1  in
 def RET   : IRet<7, RFNone, "ret", [(SyncVMret)]>;
 let isTerminator = 1, isBarrier = 1, isTrap = 1 in
 def THROW : IRet<7, RFErr, "ret.err", [(int_syncvm_throw)]>;
+
+let Defs = [R9, R10, R11, R12, R13, R14, R15], Uses = [SP], isCall = 1 in {
+  def CALL : Pseudo<(outs), (ins i16imm:$callee),
+                  "call\t$callee", [(SyncVMcall tglobaladdr:$callee)]>;
+}
 
 //===----------------------------------------------------------------------===//
 // Constants materialization
