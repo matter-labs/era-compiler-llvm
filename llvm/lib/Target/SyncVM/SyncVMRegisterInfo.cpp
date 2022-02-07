@@ -28,7 +28,9 @@ SyncVMRegisterInfo::SyncVMRegisterInfo() : SyncVMGenRegisterInfo(0) {}
 
 const MCPhysReg *
 SyncVMRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
-  static const MCPhysReg CalleeSavedRegs[] = {0};
+  static const MCPhysReg CalleeSavedRegs[] = {
+      SyncVM::R9,  SyncVM::R10, SyncVM::R11, SyncVM::R12,
+      SyncVM::R13, SyncVM::R14, SyncVM::R15, 0};
   return CalleeSavedRegs;
 }
 
