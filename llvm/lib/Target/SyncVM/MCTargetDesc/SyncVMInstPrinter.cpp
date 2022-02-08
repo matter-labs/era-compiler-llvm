@@ -63,13 +63,13 @@ void SyncVMInstPrinter::printCCOperand(const MCInst *MI, unsigned OpNo,
     O << ".gt";
     break;
   case SyncVMCC::COND_NE:
-    O << ".neq";
+    O << ".ne";
     break;
   case SyncVMCC::COND_GE:
-    O << ".nlt";
+    O << ".ge";
     break;
   case SyncVMCC::COND_LE:
-    O << ".ngt";
+    O << ".le";
     break;
   case SyncVMCC::COND_NONE:
     break;

@@ -28,7 +28,7 @@ define i256 @subxrr(i256 %rs1) nounwind {
 
 ; CHECK-LABEL: subcrr
 define i256 @subcrr(i256 %rs1) nounwind {
-; CHECK: sub code[val], r1, r1
+; CHECK: sub @val[0], r1, r1
   %val = load i256, i256 addrspace(4)* @val
   %res = sub i256 %val, %rs1
   ret i256 %res
@@ -36,7 +36,7 @@ define i256 @subcrr(i256 %rs1) nounwind {
 
 ; CHECK-LABEL: subyrr
 define i256 @subyrr(i256 %rs1) nounwind {
-; CHECK: sub.s code[val], r1, r1
+; CHECK: sub.s @val[0], r1, r1
   %val = load i256, i256 addrspace(4)* @val
   %res = sub i256 %rs1, %val
   ret i256 %res
@@ -90,7 +90,7 @@ define void @subxrs(i256 %rs1) nounwind {
 ; CHECK-LABEL: subcrs
 define void @subcrs(i256 %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: sub code[val], r1, stack-[1]
+; CHECK: sub @val[0], r1, stack-[1]
   %val = load i256, i256 addrspace(4)* @val
   %res = sub i256 %val, %rs1
   store i256 %res, i256* %valptr
@@ -100,7 +100,7 @@ define void @subcrs(i256 %rs1) nounwind {
 ; CHECK-LABEL: subyrs
 define void @subyrs(i256 %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: sub.s code[val], r1, stack-[1]
+; CHECK: sub.s @val[0], r1, stack-[1]
   %val = load i256, i256 addrspace(4)* @val
   %res = sub i256 %rs1, %val
   store i256 %res, i256* %valptr

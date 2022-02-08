@@ -55,18 +55,34 @@ bool SyncVMPeephole::runOnMachineFunction(MachineFunction &MF) {
   bool Changed = false;
 
   DenseMap<unsigned, unsigned> Mapping = {
-      {SyncVM::MULrrrr, SyncVM::MULrrsr}, {SyncVM::MULirrr, SyncVM::MULirsr},
-      {SyncVM::MULcrrr, SyncVM::MULcrsr}, {SyncVM::MULsrrr, SyncVM::MULsrsr},
-      {SyncVM::DIVrrrr, SyncVM::DIVrrsr}, {SyncVM::DIVirrr, SyncVM::DIVirsr},
-      {SyncVM::DIVxrrr, SyncVM::DIVxrsr}, {SyncVM::DIVcrrr, SyncVM::DIVcrsr},
-      {SyncVM::DIVyrrr, SyncVM::DIVyrsr}, {SyncVM::DIVsrrr, SyncVM::DIVsrsr},
-      {SyncVM::DIVzrrr, SyncVM::DIVzrsr}};
+      {SyncVM::MULrrrr_s, SyncVM::MULrrsr_s},
+      {SyncVM::MULirrr_s, SyncVM::MULirsr_s},
+      {SyncVM::MULcrrr_s, SyncVM::MULcrsr_s},
+      {SyncVM::MULsrrr_s, SyncVM::MULsrsr_s},
+      {SyncVM::DIVrrrr_s, SyncVM::DIVrrsr_s},
+      {SyncVM::DIVirrr_s, SyncVM::DIVirsr_s},
+      {SyncVM::DIVxrrr_s, SyncVM::DIVxrsr_s},
+      {SyncVM::DIVcrrr_s, SyncVM::DIVcrsr_s},
+      {SyncVM::DIVyrrr_s, SyncVM::DIVyrsr_s},
+      {SyncVM::DIVsrrr_s, SyncVM::DIVsrsr_s},
+      {SyncVM::DIVzrrr_s, SyncVM::DIVzrsr_s},
+      {SyncVM::MULrrrr_v, SyncVM::MULrrsr_v},
+      {SyncVM::MULirrr_v, SyncVM::MULirsr_v},
+      {SyncVM::MULcrrr_v, SyncVM::MULcrsr_v},
+      {SyncVM::MULsrrr_v, SyncVM::MULsrsr_v},
+      {SyncVM::DIVrrrr_v, SyncVM::DIVrrsr_v},
+      {SyncVM::DIVirrr_v, SyncVM::DIVirsr_v},
+      {SyncVM::DIVxrrr_v, SyncVM::DIVxrsr_v},
+      {SyncVM::DIVcrrr_v, SyncVM::DIVcrsr_v},
+      {SyncVM::DIVyrrr_v, SyncVM::DIVyrsr_v},
+      {SyncVM::DIVsrrr_v, SyncVM::DIVsrsr_v},
+      {SyncVM::DIVzrrr_v, SyncVM::DIVzrsr_v}};
 
   for (MachineBasicBlock &MBB : MF)
     for (auto MI = MBB.begin(); MI != MBB.end(); ++MI) {
       if (Mapping.count(MI->getOpcode())) {
         auto StoreI = std::next(MI);
-        if (StoreI->getOpcode() != SyncVM::ADDirs ||
+        if (StoreI->getOpcode() != SyncVM::ADDirs_s ||
             StoreI->getOperand(0).getReg() != MI->getOperand(0).getReg())
           continue;
         DebugLoc DL = MI->getDebugLoc();

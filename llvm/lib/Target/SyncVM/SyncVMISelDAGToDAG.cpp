@@ -237,6 +237,8 @@ bool SyncVMDAGToDAGISel::SelectMemAddr(SDValue N, SDValue &Base,
                                        SDValue &Disp) {
   SyncVMISelAddressMode AM;
 
+  auto Zero = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
+
   if (MatchAddress(N, AM, false /* IsStackAddr */)) {
     LLVM_DEBUG(errs() << "Failed to match address.");
     return false;
@@ -250,8 +252,8 @@ bool SyncVMDAGToDAGISel::SelectMemAddr(SDValue N, SDValue &Base,
     if (AM.Base.Reg.getNode()) {
       auto AddToReg =
           CurDAG->getTargetConstant(AM.Disp % 32, SDLoc(N), MVT::i256);
-      auto AddrNode = CurDAG->getMachineNode(SyncVM::ADDirr, SDLoc(N),
-                                             MVT::i256, AM.Base.Reg, AddToReg);
+      auto AddrNode = CurDAG->getMachineNode(
+          SyncVM::ADDirr_s, SDLoc(N), MVT::i256, AM.Base.Reg, AddToReg, Zero);
       AM.Base.Reg = SDValue(AddrNode, 0);
     }
     AM.Disp -= AM.Disp % 32;
@@ -270,9 +272,9 @@ bool SyncVMDAGToDAGISel::SelectMemAddr(SDValue N, SDValue &Base,
         cast<ConstantSDNode>(Reg.getOperand(1))->getSExtValue() == 32)
       AM.Base.Reg = Reg.getOperand(0);
     else {
-      auto AddrNode =
-          CurDAG->getMachineNode(SyncVM::DIVxrrr, SDLoc(N), MVT::i256,
-                                 AM.Base.Reg, CurDAG->getTargetConstant(32, SDLoc(N), MVT::i256));
+      auto AddrNode = CurDAG->getMachineNode(
+          SyncVM::DIVxrrr_s, SDLoc(N), MVT::i256, AM.Base.Reg,
+          CurDAG->getTargetConstant(32, SDLoc(N), MVT::i256), Zero);
       AM.Base.Reg = SDValue(AddrNode, 0);
     }
   }
@@ -320,9 +322,10 @@ bool SyncVMDAGToDAGISel::SelectStackAddrCommon(SDValue N, SDValue &Base1,
         cast<ConstantSDNode>(Reg.getOperand(1))->getSExtValue() == 32)
       AM.Base.Reg = Reg.getOperand(0);
     else {
-      auto AddrNode =
-          CurDAG->getMachineNode(SyncVM::DIVxrrr, SDLoc(N), MVT::i256,
-                                 AM.Base.Reg, CurDAG->getTargetConstant(32, SDLoc(N), MVT::i256));
+      auto AddrNode = CurDAG->getMachineNode(
+          SyncVM::DIVxrrr_s, SDLoc(N), MVT::i256, AM.Base.Reg,
+          CurDAG->getTargetConstant(32, SDLoc(N), MVT::i256),
+          CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256));
       AM.Base.Reg = SDValue(AddrNode, 0);
     }
   }
@@ -374,10 +377,12 @@ void SyncVMDAGToDAGISel::Select(SDNode *Node) {
     auto cn = cast<ConstantSDNode>(Node);
     auto val = cn->getAPIntValue();
 
-    // if it cannot fit into the imm field of an instruction ... put it into pool
+    // if it cannot fit into the imm field of an instruction ... put it into
+    // pool
     if (!val.isIntN(16) || val.isNegative()) {
       MVT PtrVT = getTargetLowering()->getPointerTy(CurDAG->getDataLayout());
-      SDValue CP = CurDAG->getTargetConstantPool(cn->getConstantIntValue(), PtrVT);
+      SDValue CP =
+          CurDAG->getTargetConstantPool(cn->getConstantIntValue(), PtrVT);
       auto lc = CurDAG->getMachineNode(SyncVM::LOADCONST, DL, MVT::i256, CP);
       ReplaceNode(Node, lc);
       return;
