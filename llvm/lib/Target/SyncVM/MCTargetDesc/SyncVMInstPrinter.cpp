@@ -76,6 +76,40 @@ void SyncVMInstPrinter::printCCOperand(const MCInst *MI, unsigned OpNo,
   }
 }
 
+void SyncVMInstPrinter::printContextOperand(const MCInst *MI, unsigned OpNo,
+                                            raw_ostream &O) {
+  unsigned COp = MI->getOperand(OpNo).getImm();
+
+  switch (COp) {
+  default:
+    llvm_unreachable("Unsupported Context parameter");
+  case SyncVMCTX::SELF_ADDR:
+    O << ".self_address";
+    break;
+  case SyncVMCTX::CALLER:
+    O << ".caller";
+    break;
+  case SyncVMCTX::CODE_ADDR:
+    O << ".code_address";
+    break;
+  case SyncVMCTX::META:
+    O << ".meta";
+    break;
+  case SyncVMCTX::TX_ORIGIN:
+    O << ".tx_origin";
+    break;
+  case SyncVMCTX::ERGS_LEFT:
+    O << ".ergs_left";
+    break;
+  case SyncVMCTX::SP:
+    O << ".sp";
+    break;
+  case SyncVMCTX::COINBASE:
+    O << ".coinbase";
+    break;
+  }
+}
+
 void SyncVMInstPrinter::printEAFOperand(const MCInst *MI, unsigned OpNo,
                                         raw_ostream &O) {
   const MCOperand &EAF = MI->getOperand(OpNo);

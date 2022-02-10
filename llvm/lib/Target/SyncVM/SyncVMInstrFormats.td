@@ -104,6 +104,34 @@ class IJump<bits<8> opcode, dag ins, string asmstr, list<dag> pattern>
   let Inst{16-31} = dest;
 }
 
+class IUMA<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : IConditional <opcode, SrcNone, DstNone, outs, ins, asmstr, pattern> {
+  bits<4> rs0;
+  bits<4> rs1;
+  bits<4> rd0;
+
+  let Inst{40-43} = rd0;
+  let Inst{48-51} = rs1;
+  let Inst{52-55} = rs0;
+}
+
+class IContextR<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : IConditional <opcode, SrcNone, DstReg, outs, ins, asmstr, pattern> {
+  bits<4> cop;
+  bits<4> rd0;
+  let Inst{40-43} = rd0;
+  let Inst{52-55} = cop;
+}
+
+class IContextS<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : IConditional <opcode, SrcNone, DstStack, outs, ins, asmstr, pattern> {
+  bits<4> cop;
+  bits<20> dst0;
+  let Inst{ 0-15} = dst0{4-19};
+  let Inst{44-47} = dst0{0-3};
+  let Inst{52-55} = cop;
+}
+
 class IBinary<bits<8> opcode,
               SourceMode as,
               DestMode ad,

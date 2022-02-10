@@ -154,7 +154,9 @@ public:
                                       Align Alignment,
                                       MachineMemOperand::Flags Flags,
                                       bool *Fast) const override {
-    return false;
+    return AddrSpace == SyncVMAS::AS_HEAP ||
+           AddrSpace == SyncVMAS::AS_CALLDATA ||
+           AddrSpace == SyncVMAS::AS_RETDATA;
   }
 
 private:

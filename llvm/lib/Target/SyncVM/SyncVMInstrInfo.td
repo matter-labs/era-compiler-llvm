@@ -84,6 +84,18 @@ def cc : Operand<i256> {
   //let EncoderMethod = "getCCOpValue";
 }
 
+def context_op : Operand<i256>, IntImmLeaf<i256, [{
+  return Imm.getZExtValue() < 6;
+}]> {
+  let PrintMethod = "printContextOperand";
+}
+
+def context_se_op : Operand<i256>, IntImmLeaf<i256, [{
+  return Imm.getZExtValue() >= 6 && Imm.getZExtValue() < 8;
+}]> {
+  let PrintMethod = "printContextOperand";
+}
+
 def jmptarget : Operand<OtherVT>;
 
 // Address operands
@@ -101,6 +113,7 @@ def stackop : Operand<i256> {
 // Complex Pattern Definitions.
 //===----------------------------------------------------------------------===//
 
+def inreg_memaddr: ComplexPattern<iPTR, 1, "SelectInRegMemAddr", [], []>;
 def memaddr      : ComplexPattern<iPTR, 2, "SelectMemAddr", [], []>;
 def stackaddr    : ComplexPattern<iPTR, 3, "SelectStackAddr", [], []>;
 def adjstackaddr : ComplexPattern<iPTR, 3, "SelectAdjStackAddr", [], []>;
@@ -711,7 +724,7 @@ def : Pat<(imm16:$val),  (ADDirr_p imm16:$val, 0)>;
 def : Pat<(load_code memaddr:$addr),  (ADDcrr_p memaddr:$addr, 0)>;
 def : Pat<(load_stack stackaddr:$addr),  (ADDsrr_p stackaddr:$addr, 0)>;
 def : Pat<(store_stack GR256:$src, stackaddr:$dst),  (ADDrrs_p GR256:$src, 0, stackaddr:$dst)>;
-def : Pat<(store_stack imm16:$src, stackaddr:$dst),  (ADDirs_p 0, imm16:$src, stackaddr:$dst)>;
+def : Pat<(store_stack imm16:$src, stackaddr:$dst),  (ADDirs_p imm16:$src, 0, stackaddr:$dst)>;
 
 defm SUB  : Arith<4,  "sub", sub, 0>;
 defm SUB  : ArithINonCommutable<4, "sub", sub>;
@@ -760,6 +773,27 @@ def POP     : IForm < 40, SrcNone, DstNone, (outs GR256:$val), (ins i256imm:$siz
                       [(set GR256:$val, (SyncVMpop timm:$size))] >;
 
 //===----------------------------------------------------------------------===//
+// Memory operations
+//===----------------------------------------------------------------------===//
+
+let mayLoad = 1 in {
+def LDH : IUMA < 41, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
+                 "uma.heap_read$cc\t$rs0, r0, $rd0", []>;
+def LDC : IUMA < 42, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
+                 "uma.calldata_read$cc\t$rs0, r0, $rd0", []>;
+def LDR : IUMA < 43, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
+                 "uma.returndata_read$cc\t$rs0, r0, $rd0", []>;
+}
+def     : Pat<(load_heap inreg_memaddr:$rs0), (LDH inreg_memaddr:$rs0, 0)>;
+def     : Pat<(load_calldata inreg_memaddr:$rs0), (LDC inreg_memaddr:$rs0, 0)>;
+def     : Pat<(load_returndata inreg_memaddr:$rs0), (LDR inreg_memaddr:$rs0, 0)>;
+let mayStore = 1 in
+def STH : IUMA < 44, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
+                 "uma.heap_write$cc\t$rs0, $rs1, r0", []>;
+def     : Pat<(store_heap GR256:$rs1, inreg_memaddr:$rs0),
+              (STH inreg_memaddr:$rs0, $rs1, 0)>;
+
+//===----------------------------------------------------------------------===//
 // Control flow instructions
 //===----------------------------------------------------------------------===//
 let isTerminator = 1, isBranch = 1, isBarrier = 1, Uses = [Flags] in
@@ -784,26 +818,27 @@ def CONST   : Pseudo< (outs GR256:$out), (ins i256imm:$val),
                       "#pseudo#", [(set GR256:$out, imm:$val)] >;
 }
 
-/*
 //===----------------------------------------------------------------------===//
 // Intrinsics lowering
 //===----------------------------------------------------------------------===//
 
-def HABS: SyncVMInstruction<0x13, (outs), (ins GR256:$val),
-                            "habs\t$val", [(int_syncvm_habs GR256:$val)]>;
-def HABSR: SyncVMInstruction<0x14, (outs), (ins GR256:$val),
-                             "habsr\t$val", [(int_syncvm_habsr GR256:$val)]>;
-def HOUT: SyncVMInstruction<0x15, (outs GR256:$out), (ins),
-                            "hout\t$out", [(set GR256:$out, (int_syncvm_hout))]>;
+def CTXr : IContextR<45, (outs GR256:$rd0), (ins context_op:$cop, cc:$cc),
+                     "context$cop$cc\t$rd0", []>;
+def CTXs : IContextR<46, (outs), (ins stackop:$dst0, context_op:$cop, cc:$cc),
+                     "context$cop$cc\tstack-[$dst0]", []>;
 let hasSideEffects = 1 in {
-def CTX: SyncVMInstruction<0x16, (outs GR256:$out), (ins i256imm:$val),
-                           "ctx\t#$val, $out", [(set GR256:$out, (int_syncvm_getfromcontext imm:$val))]>;
-def SC: SyncVMInstruction<0x17, (outs), (ins),
-                           "sc", [(int_syncvm_switchcontext)]>;
-def SETST: SyncVMInstruction<0x18, (outs), (ins GR256:$storage),
-                           "setst", [(int_syncvm_setstorage GR256:$storage)]>;
+def CTXr_se : IContextR<45, (outs GR256:$rd0), (ins context_se_op:$cop, cc:$cc),
+                        "context$cop$cc\t$rd0", []>;
+def CTXs_se : IContextR<46, (outs), (ins stackop:$dst0, context_se_op:$cop, cc:$cc),
+                        "context$cop$cc\tstack-[$dst0]", []>;
 }
-*/
+
+def : Pat<(int_syncvm_context context_op:$cop), (CTXr context_op:$cop, 0)>;
+def : Pat<(int_syncvm_ergsleft), (CTXr_se 6, 0)>;
+def : Pat<(store_stack (int_syncvm_context context_op:$cop), stackaddr:$dst0),
+          (CTXs stackaddr:$dst0, $cop, 0)>;
+def : Pat<(store_stack (int_syncvm_ergsleft), stackaddr:$dst0),
+          (CTXs_se stackaddr:$dst0, 6, 0)>;
 
 let isCodeGenOnly = 1 in {
 // Since all stack addressing modes are SP based, SyncVM needs to insert PSEUDOs
