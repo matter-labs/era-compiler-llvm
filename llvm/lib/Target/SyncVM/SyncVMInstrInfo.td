@@ -824,19 +824,19 @@ def CONST   : Pseudo< (outs GR256:$out), (ins i256imm:$val),
 
 def CTXr : IContextR<45, (outs GR256:$rd0), (ins context_op:$cop, cc:$cc),
                      "context$cop$cc\t$rd0", []>;
-def CTXs : IContextR<46, (outs), (ins stackop:$dst0, context_op:$cop, cc:$cc),
+def CTXs : IContextS<46, (outs), (ins stackop:$dst0, context_op:$cop, cc:$cc),
                      "context$cop$cc\tstack-[$dst0]", []>;
 let hasSideEffects = 1 in {
 def CTXr_se : IContextR<45, (outs GR256:$rd0), (ins context_se_op:$cop, cc:$cc),
                         "context$cop$cc\t$rd0", []>;
-def CTXs_se : IContextR<46, (outs), (ins stackop:$dst0, context_se_op:$cop, cc:$cc),
+def CTXs_se : IContextS<46, (outs), (ins stackop:$dst0, context_se_op:$cop, cc:$cc),
                         "context$cop$cc\tstack-[$dst0]", []>;
 }
 
 def : Pat<(int_syncvm_context context_op:$cop), (CTXr context_op:$cop, 0)>;
 def : Pat<(int_syncvm_ergsleft), (CTXr_se 6, 0)>;
 def : Pat<(store_stack (int_syncvm_context context_op:$cop), stackaddr:$dst0),
-          (CTXs stackaddr:$dst0, $cop, 0)>;
+          (CTXs stackaddr:$dst0, context_op:$cop, 0)>;
 def : Pat<(store_stack (int_syncvm_ergsleft), stackaddr:$dst0),
           (CTXs_se stackaddr:$dst0, 6, 0)>;
 
