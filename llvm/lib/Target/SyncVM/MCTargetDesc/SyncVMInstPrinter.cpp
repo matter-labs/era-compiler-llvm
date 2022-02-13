@@ -120,12 +120,12 @@ void SyncVMInstPrinter::printEAFOperand(const MCInst *MI, unsigned OpNo,
   }
 }
 
-void SyncVMInstPrinter::printInitOperand(const MCInst *MI, unsigned OpNo,
-                                         raw_ostream &O) {
+void SyncVMInstPrinter::printFirstOperand(const MCInst *MI, unsigned OpNo,
+                                          raw_ostream &O) {
   const MCOperand &EAF = MI->getOperand(OpNo);
   assert(EAF.isImm() && "Expected immediate in init field");
   if (EAF.getImm() == 1) {
-    O << ".i";
+    O << ".first";
   }
 }
 

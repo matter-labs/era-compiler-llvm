@@ -38,8 +38,8 @@ private:
   void printStackOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
   /// Print external address flag
   void printEAFOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
-  /// Print init flag
-  void printInitOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
+  /// Print first flag
+  void printFirstOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
 };
 }
 

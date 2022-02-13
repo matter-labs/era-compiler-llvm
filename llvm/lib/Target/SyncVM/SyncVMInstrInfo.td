@@ -96,6 +96,12 @@ def context_se_op : Operand<i256>, IntImmLeaf<i256, [{
   let PrintMethod = "printContextOperand";
 }
 
+def first_op : Operand<i256>, IntImmLeaf<i256, [{
+  return Imm.getZExtValue() < 2;
+}]> {
+  let PrintMethod = "printFirstOperand";
+}
+
 def jmptarget : Operand<OtherVT>;
 
 // Address operands
@@ -839,6 +845,177 @@ def : Pat<(store_stack (int_syncvm_context context_op:$cop), stackaddr:$dst0),
           (CTXs stackaddr:$dst0, context_op:$cop, 0)>;
 def : Pat<(store_stack (int_syncvm_ergsleft), stackaddr:$dst0),
           (CTXs_se stackaddr:$dst0, 6, 0)>;
+
+def SLDrr : ILogR<47, DstReg, (outs GR256:$rd0), (ins GR256:$rs0, first_op:$first, cc:$cc),
+                  "sload$first$cc\t$rs0, $rd0", []> {
+  bits<4> rd0;
+  let rs1 = 0;
+  let Inst{40-43} = rd0;
+}
+def SLDir : ILogI<47, DstReg, (outs GR256:$rd0), (ins imm16:$imm, first_op:$first, cc:$cc),
+                  "sload$first$cc\t$imm, $rd0", []> {
+  bits<4> rd0;
+  let rs1 = 0;
+  let Inst{40-43} = rd0;
+}
+let mayLoad = 1 in {
+def SLDcr : ILogM<47, SrcCode, DstReg, (outs GR256:$rd0), (ins memop:$src0, first_op:$first, cc:$cc),
+                  "sload$first$cc\t@$src0[0], $rd0", []> {
+  bits<4> rd0;
+  let rs1 = 0;
+  let Inst{40-43} = rd0;
+}
+def SLDsr : ILogM<47, SrcStack, DstReg, (outs GR256:$rd0), (ins stackop:$src0, first_op:$first, cc:$cc),
+                  "sload$first$cc\tstack-[$src0], $rd0", []> {
+  bits<4> rd0;
+  let rs1 = 0;
+  let Inst{40-43} = rd0;
+}
+}
+
+let mayStore = 1 in {
+def SLDrs : ILogR<47, DstStack, (outs), (ins GR256:$rs0, first_op:$first, stackop:$dst0, cc:$cc),
+                  "sload$first$cc\t$rs0, stack-[$dst0]", []> {
+  bits<20> dst0;
+  let rs1 = 0;
+  let Inst{0-15} = dst0{4-19};
+  let Inst{40-43} = dst0{0-3};
+}
+def SLDis : ILogI<47, DstStack, (outs), (ins imm16:$imm, first_op:$first, stackop:$dst0, cc:$cc),
+                  "sload$first$cc\t$imm, stack-[$dst0]", []> {
+  bits<20> dst0;
+  let rs1 = 0;
+  let Inst{0-15} = dst0{4-19};
+  let Inst{40-43} = dst0{0-3};
+}
+let mayLoad = 1 in {
+def SLDcs : ILogM<47, SrcCode, DstStack, (outs), (ins memop:$src0, first_op:$first, stackop:$dst0, cc:$cc),
+                  "sload$first$cc\t@$src0[0], stack-[$dst0]", []> {
+  bits<20> dst0;
+  let rs1 = 0;
+  let Inst{0-15} = dst0{4-19};
+  let Inst{40-43} = dst0{0-3};
+}
+def SLDss : ILogM<47, SrcStack, DstStack, (outs), (ins stackop:$src0, first_op:$first, stackop:$dst0, cc:$cc),
+                  "sload$first$cc\tstack-[$src0], stack-[$dst0]", []> {
+  bits<20> dst0;
+  let rs1 = 0;
+  let Inst{0-15} = dst0{4-19};
+  let Inst{40-43} = dst0{0-3};
+}
+}
+}
+
+def : Pat<(int_syncvm_sload GR256:$rs0, first_op:$first), (SLDrr GR256:$rs0, first_op:$first, 0)>;
+def : Pat<(int_syncvm_sload imm16:$imm, first_op:$first), (SLDir imm16:$imm, first_op:$first, 0)>;
+def : Pat<(int_syncvm_sload (load_code memaddr:$src0), first_op:$first),
+          (SLDcr memaddr:$src0, first_op:$first, 0)>;
+def : Pat<(int_syncvm_sload (load_stack stackaddr:$src0), first_op:$first),
+          (SLDsr stackaddr:$src0, first_op:$first, 0)>;
+def : Pat<(store_stack (int_syncvm_sload GR256:$rs0, first_op:$first), stackaddr:$dst0),
+          (SLDrs GR256:$rs0, first_op:$first, stackaddr:$dst0, 0)>;
+def : Pat<(store_stack(int_syncvm_sload imm16:$imm, first_op:$first), stackaddr:$dst0),
+          (SLDis imm16:$imm, first_op:$first, stackaddr:$dst0, 0)>;
+def : Pat<(store_stack(int_syncvm_sload (load_code memaddr:$src0), first_op:$first), stackaddr:$dst0),
+          (SLDcs memaddr:$src0, first_op:$first, stackaddr:$dst0, 0)>;
+def : Pat<(store_stack(int_syncvm_sload (load_stack stackaddr:$src0), first_op:$first), stackaddr:$dst0),
+          (SLDss stackaddr:$src0, first_op:$first, stackaddr:$dst0, 0)>;
+
+let hasSideEffects = 1 in {
+def SSTr : ILogR<48, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first, cc:$cc),
+                 "sstore$first$cc\t$rs0, $rs1", []>;
+def SSTi : ILogI<48, DstNone, (outs), (ins imm16:$imm, GR256:$rs1, first_op:$first, cc:$cc),
+                 "sstore$first$cc\t$imm, $rs1", []>;
+let mayLoad = 1 in {
+def SSTc : ILogM<48, SrcCode, DstNone, (outs), (ins memop:$src0, GR256:$rs1, first_op:$first, cc:$cc),
+                 "sstore$first$cc\t@$src0[0], $rs1", []>;
+def SSTs : ILogM<48, SrcStack, DstNone, (outs), (ins memop:$src0, GR256:$rs1, first_op:$first, cc:$cc),
+                 "sstore$first$cc\tstack-[$src0], $rs1", []>;
+}
+}
+
+def : Pat<(int_syncvm_sstore GR256:$rs0, GR256:$rs1, first_op:$first),
+          (SSTr GR256:$rs0, GR256:$rs1, first_op:$first, 0)>;
+def : Pat<(int_syncvm_sstore imm16:$imm, GR256:$rs1, first_op:$first),
+          (SSTi imm16:$imm, GR256:$rs1, first_op:$first, 0)>;
+def : Pat<(int_syncvm_sstore (load_code memaddr:$src0), GR256:$rs1, first_op:$first),
+          (SSTc memaddr:$src0, GR256:$rs1, first_op:$first, 0)>;
+def : Pat<(int_syncvm_sstore (load_stack stackaddr:$src0), GR256:$rs1, first_op:$first),
+          (SSTs stackaddr:$src0, GR256:$rs1, first_op:$first, 0)>;
+
+let hasSideEffects = 1 in {
+def L1r : ILogR<49, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first, cc:$cc),
+                 "to_l1$first$cc\t$rs0, $rs1", []>;
+def L1i : ILogI<49, DstNone, (outs), (ins imm16:$imm, GR256:$rs1, first_op:$first, cc:$cc),
+                 "to_l1$first$cc\t$imm, $rs1", []>;
+let mayLoad = 1 in {
+def L1c : ILogM<49, SrcCode, DstNone, (outs), (ins memop:$src0, GR256:$rs1, first_op:$first, cc:$cc),
+                 "to_l1$first$cc\t@$src0[0], $rs1", []>;
+def L1s : ILogM<49, SrcStack, DstNone, (outs), (ins memop:$src0, GR256:$rs1, first_op:$first, cc:$cc),
+                 "to_l1$first$cc\tstack-[$src0], $rs1", []>;
+}
+}
+
+def : Pat<(int_syncvm_tol1 GR256:$rs0, GR256:$rs1, first_op:$first),
+          (L1r GR256:$rs0, GR256:$rs1, first_op:$first, 0)>;
+def : Pat<(int_syncvm_tol1 imm16:$imm, GR256:$rs1, first_op:$first),
+          (L1i imm16:$imm, GR256:$rs1, first_op:$first, 0)>;
+def : Pat<(int_syncvm_tol1 (load_code memaddr:$src0), GR256:$rs1, first_op:$first),
+          (L1c memaddr:$src0, GR256:$rs1, first_op:$first, 0)>;
+def : Pat<(int_syncvm_tol1 (load_stack stackaddr:$src0), GR256:$rs1, first_op:$first),
+          (L1s stackaddr:$src0, GR256:$rs1, first_op:$first, 0)>;
+
+let hasSideEffects = 1 in {
+def EVTr : ILogR<50, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first, cc:$cc),
+                 "event$first$cc\t$rs0, $rs1", []>;
+def EVTi : ILogI<50, DstNone, (outs), (ins imm16:$imm, GR256:$rs1, first_op:$first, cc:$cc),
+                 "event$first$cc\t$imm, $rs1", []>;
+let mayLoad = 1 in {
+def EVTc : ILogM<50, SrcCode, DstNone, (outs), (ins memop:$src0, GR256:$rs1, first_op:$first, cc:$cc),
+                 "event$first$cc\t@$src0[0], $rs1", []>;
+def EVTs : ILogM<50, SrcStack, DstNone, (outs), (ins memop:$src0, GR256:$rs1, first_op:$first, cc:$cc),
+                 "event$first$cc\tstack-[$src0], $rs1", []>;
+}
+}
+
+def : Pat<(int_syncvm_event GR256:$rs0, GR256:$rs1, first_op:$first),
+          (EVTr GR256:$rs0, GR256:$rs1, first_op:$first, 0)>;
+def : Pat<(int_syncvm_event imm16:$imm, GR256:$rs1, first_op:$first),
+          (EVTi imm16:$imm, GR256:$rs1, first_op:$first, 0)>;
+def : Pat<(int_syncvm_event (load_code memaddr:$src0), GR256:$rs1, first_op:$first),
+          (EVTc memaddr:$src0, GR256:$rs1, first_op:$first, 0)>;
+def : Pat<(int_syncvm_event (load_stack stackaddr:$src0), GR256:$rs1, first_op:$first),
+          (EVTs stackaddr:$src0, GR256:$rs1, first_op:$first, 0)>;
+
+let hasSideEffects = 1 in {
+def PCOMPr : ILogR<51, DstNone, (outs), (ins GR256:$rs0, first_op:$first, cc:$cc),
+                 "precompile$first$cc\t$rs0", []> {
+  let rs1 = 0;
+}
+def PCOMPi : ILogI<51, DstNone, (outs), (ins imm16:$imm, first_op:$first, cc:$cc),
+                 "precompile$first$cc\t$imm", []> {
+  let rs1 = 0;
+}
+let mayLoad = 1 in {
+def PCOMPc : ILogM<51, SrcCode, DstNone, (outs), (ins memop:$src0, first_op:$first, cc:$cc),
+                 "precompile$first$cc\t@$src0[0]", []> {
+  let rs1 = 0;
+}
+def PCOMPs : ILogM<51, SrcStack, DstNone, (outs), (ins memop:$src0, first_op:$first, cc:$cc),
+                 "precompile$first$cc\tstack-[$src0]", []> {
+  let rs1 = 0;
+}
+}
+}
+
+def : Pat<(int_syncvm_precompile GR256:$rs0, first_op:$first),
+          (PCOMPr GR256:$rs0, first_op:$first, 0)>;
+def : Pat<(int_syncvm_precompile imm16:$imm, first_op:$first),
+          (PCOMPi imm16:$imm, first_op:$first, 0)>;
+def : Pat<(int_syncvm_precompile (load_code memaddr:$src0), first_op:$first),
+          (PCOMPc memaddr:$src0, first_op:$first, 0)>;
+def : Pat<(int_syncvm_precompile (load_stack stackaddr:$src0), first_op:$first),
+          (PCOMPs stackaddr:$src0, first_op:$first, 0)>;
 
 let isCodeGenOnly = 1 in {
 // Since all stack addressing modes are SP based, SyncVM needs to insert PSEUDOs
