@@ -1,0 +1,126 @@
+//===---------------- SyncVMRebuildCall.cpp - Rebuild Call Pass ----------===//
+//
+/// \file
+/// Implement the pass to build a valid CALL instruction.
+//
+//
+//===----------------------------------------------------------------------===//
+
+#include "SyncVM.h"
+
+#include "llvm/CodeGen/MachineFunctionPass.h"
+#include "llvm/CodeGen/MachineInstrBuilder.h"
+#include "llvm/CodeGen/TargetInstrInfo.h"
+#include "llvm/Support/Debug.h"
+
+#include "SyncVMSubtarget.h"
+
+using namespace llvm;
+
+#define DEBUG_TYPE "syncvm-rebuildcall"
+#define SYNCVM_REBUILDCALL "SyncVM Rebuild CALL"
+
+namespace {
+
+class SyncVMRebuildCall : public MachineFunctionPass {
+public:
+  static char ID;
+  SyncVMRebuildCall() : MachineFunctionPass(ID) {}
+
+  const TargetRegisterInfo *TRI;
+
+  bool runOnMachineFunction(MachineFunction &Fn) override;
+
+  StringRef getPassName() const override { return SYNCVM_REBUILDCALL; }
+
+private:
+  const TargetInstrInfo *TII;
+  LLVMContext *Context;
+
+  MachineInstr* getFollowedByGtFlag(MachineInstr* MI) const;
+};
+
+char SyncVMRebuildCall::ID = 0;
+
+} // namespace
+
+INITIALIZE_PASS(SyncVMRebuildCall, DEBUG_TYPE, SYNCVM_REBUILDCALL, false, false)
+
+MachineInstr* SyncVMRebuildCall::getFollowedByGtFlag(MachineInstr* MI) const {
+  MachineBasicBlock* MBB = MI->getParent();
+  auto MBBI = std::next(MachineBasicBlock::iterator(MI));
+  for (; MBBI != MBB->end(); ++MBBI) {
+    // call followed by another call
+    if (MBBI->getOpcode() == SyncVM::CALL) {
+      return nullptr;
+    }
+    if (MBBI->isTerminator()) {
+      return nullptr;
+    }
+    if (MBBI->getOpcode() == SyncVM::GtFlag) {
+      return &*MBBI;
+    }
+  }
+  return nullptr;
+}
+
+bool SyncVMRebuildCall::runOnMachineFunction(MachineFunction &MF) {
+  LLVM_DEBUG(dbgs() << "********** SyncVM Rebuild Calls **********\n"
+                    << "********** Function: " << MF.getName() << '\n');
+
+  TII = MF.getSubtarget<SyncVMSubtarget>().getInstrInfo();
+  assert(TII && "TargetInstrInfo must be a valid object");
+
+  Context = &MF.getFunction().getContext();
+
+  std::vector<MachineInstr*> ToBeErased;
+
+  bool Changed = false;
+
+  // Iterate over instructions, find call instructions and subsequent GtFlag
+  for (MachineBasicBlock &MBB : MF)
+    for (auto MI = MBB.begin(); MI != MBB.end(); ++MI) {
+      
+      if (MI->getOpcode() == SyncVM::CALL) {
+        MachineInstr *gtflag = getFollowedByGtFlag(&*MI);
+        if (gtflag != nullptr) {
+          LLVM_DEBUG(dbgs() << "Instruction followed by GtFlag:"; MI->dump(); dbgs() << "\n";);
+          LLVM_DEBUG(dbgs() << "GtFlag Instruction:"; gtflag->dump(); dbgs() << "\n";);
+
+          // find the branch folder
+          // lialan: fragile connection between gtflag and the following J. should better model
+          // the connection.
+          auto JI = std::next(MachineBasicBlock::iterator(gtflag));
+          assert(JI->getOpcode() == SyncVM::J);
+
+          // Get the landing pad branching:
+          MachineOperand& eh_label = JI->getOperand(0);
+          MachineOperand& cc = JI->getOperand(1);
+          assert(cc.isImm() && cc.getImm() != 0);
+
+          // rebuild Call instruction
+          BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(SyncVM::CALL))
+              .add(MI->getOperand(0))
+              .add(eh_label);
+
+          // delete unneeded instructions:
+          ToBeErased.push_back(&*MI);
+          ToBeErased.push_back(gtflag);
+          ToBeErased.push_back(&*JI);
+
+        } else {
+          LLVM_DEBUG(dbgs() << "Not followed by GtFlag, skipping:"; MI->dump());
+        }
+      }
+    }
+
+
+
+  for (auto* I : ToBeErased) {
+    I->eraseFromParent();
+  }
+
+  return Changed;
+}
+
+FunctionPass *llvm::createSyncVMRebuildCallPass() { return new SyncVMRebuildCall(); }

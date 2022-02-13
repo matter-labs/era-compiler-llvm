@@ -46,6 +46,7 @@ add_llvm_target(SyncVMCodeGen
   SyncVMMoveCallResultSpill.cpp
   SyncVMAdjustStackInCallSeq.cpp
   SyncVMPeephole.cpp
+  SyncVMRebuildCall.cpp
   SyncVMLowerInvokes.cpp
 
   LINK_COMPONENTS

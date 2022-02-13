@@ -10,6 +10,7 @@ include "SyncVMInstrFormats.td"
 // Type Profiles.
 //===----------------------------------------------------------------------===//
 def SDT_SyncVMCall         : SDTypeProfile<0, -1, [SDTCisPtrTy<0>]>;
+def SDT_SyncVMException    : SDTypeProfile<0, 0, []>;
 def SDT_SyncVMCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i256>,
                                              SDTCisVT<1, i256>]>;
 def SDT_SyncVMCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i256>, SDTCisVT<1, i256>]>;
@@ -46,6 +47,8 @@ def SyncVMpush : SDNode<"SyncVMISD::PUSH", SDT_SyncVMPush,
                         [SDNPHasChain, SDNPInGlue, SDNPOutGlue]>;
 def SyncVMpop : SDNode<"SyncVMISD::POP",   SDT_SyncVMPop,
                        [SDNPHasChain, SDNPInGlue, SDNPOutGlue]>;
+def SyncVMexception : SDNode<"SyncVMISD::EXCEPTION", SDT_SyncVMException,
+                    [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue]>;
 
 //===----------------------------------------------------------------------===//
 // SyncVM Operand Definitions.
@@ -184,6 +187,13 @@ def STORECONST : Pseudo<(outs), (ins i256imm:$addr, GR256:$val),
 let isCodeGenOnly = 1, Defs = [Flags], Uses = [SP] in {
 def ADDframe : Pseudo<(outs GR256:$dst), (ins i256imm:$base, i256imm:$offset),
                       "# ADDframe PSEUDO", []>;
+}
+
+let Uses = [Flags] in {
+def GtFlag : Pseudo<(outs GR256:$dst), (ins),
+                     "#PseudoGtFlag\t$dst", []>;
+// attach it to Call to indicate the call has an exception handling
+def HasEH : Pseudo<(outs), (ins), "#PseudoHasEH\t", []>;
 }
 
 let isCodeGenOnly = 1, isPseudo = 1 in {
@@ -813,14 +823,19 @@ def J: IJump<10, (ins jmptarget:$dest, cc:$cc), "jump$cc\t$dest",
 def : Pat<(br bb:$dst), (J bb:$dst, 0)>;
 
 let isReturn = 1, isTerminator = 1, isBarrier = 1  in
-def RET   : IRet<7, RFNone, "ret", [(SyncVMret)]>;
-let isTerminator = 1, isBarrier = 1, isTrap = 1 in
-def THROW : IRet<7, RFErr, "ret.err", [(int_syncvm_throw)]>;
+def RET   : IRet<7, RFNone, "ret.ok", [(SyncVMret)]>;
 
-let Defs = [R9, R10, R11, R12, R13, R14, R15], Uses = [SP], isCall = 1 in {
-  def CALL : Pseudo<(outs), (ins i16imm:$callee),
-                  "call\t$callee", [(SyncVMcall tglobaladdr:$callee)]>;
+let isTerminator = 1, isBarrier = 1, isTrap = 1 in {
+def REVERT : IRet<7, RFErr, "ret.err", [(int_syncvm_throw)]>;
+def PANIC : IRet<7, RFPanic, "ret.panic", [(int_syncvm_throw_panic)]>;
 }
+
+let Defs = [R9, R10, R11, R12, R13, R14, R15, Flags], Uses = [SP], isCall = 1 in {
+  def CALL : Pseudo<(outs), (ins i16imm:$callee, i16imm:$eh_label),
+                  "call\t$callee, $eh_label", []>;
+}
+
+def : Pat<(SyncVMcall tglobaladdr:$callee), (CALL $callee, 0)>;
 
 //===----------------------------------------------------------------------===//
 // Constants materialization
@@ -1047,4 +1062,12 @@ let mayLoad = 1 in {
                               [(set GR256:$val, (load_stack stackaddr:$addr))]>;
 }
 */
+
 }
+
+// Note: this is somewhat hacky:
+// use this to match pseudo intrinsic to a flag pseudo instruction
+// to get the `gt` flag and retain the control flow correctness.
+// Afterwards, a pass is used to extract the GtFlag's uses (EH branch) and 
+// combine it with the preceding call instruction.
+def : Pat<(SyncVMcmp (int_syncvm_gtflag), 0), (GtFlag)>;

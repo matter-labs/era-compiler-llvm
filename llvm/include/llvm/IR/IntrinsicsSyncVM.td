@@ -32,8 +32,12 @@ def int_syncvm_precompile: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty], [IntrHasS
 
 // Return with error.
 def int_syncvm_throw: Intrinsic<[], [], [Throws, IntrNoReturn]>;
+def int_syncvm_throw_panic: Intrinsic<[], [], [Throws, IntrNoReturn]>;
 
 // Access to flags.
+// Keep these intrinsics because we do not have an instruction to bring status flag values to 
+// general purpose registers but sometimes we need status. These intrinsics could serve as 
+// place holders in LLVM IR.
 def int_syncvm_getif : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty],
                                  [IntrNoMem]>;
 def int_syncvm_gtflag: Intrinsic<[llvm_i256_ty], [], [IntrHasSideEffects]>;

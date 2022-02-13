@@ -32,6 +32,7 @@
 #include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
+#include "llvm/IR/IntrinsicsSyncVM.h"
 
 using namespace llvm;
 
@@ -39,7 +40,6 @@ using namespace llvm;
 
 namespace {
 class SyncVMLowerInvokes final : public ModulePass {
-  GlobalVariable *ThrewGV = nullptr;
 
   StringRef getPassName() const override {
     return "SyncVM Lower Invokes";
@@ -67,44 +67,13 @@ ModulePass *llvm::createSyncVMLowerInvokesPass() {
   return new SyncVMLowerInvokes();
 }
 
-// Get a global variable with the given name. If it doesn't exist declare it,
-// which will generate an import and assume that it will exist at link time.
-static GlobalVariable *getGlobalVariable(Module &M, Type *Ty,
-                                         SyncVMTargetMachine &TM,
-                                         const char *Name) {
-  Constant* GVConstant = M.getOrInsertGlobal(Name, Ty);
-  GlobalVariable *GV = dyn_cast<GlobalVariable>(GVConstant);
-  if (!GV)
-    report_fatal_error(Twine("unable to create global: ") + Name);
-
-  // we are not going to be multi-threaded so not going to use atomic
-  /*
-  // If the target supports TLS, make this variable thread-local. We can't just
-  // unconditionally make it thread-local and depend on
-  // CoalesceFeaturesAndStripAtomics to downgrade it, because stripping TLS has
-  // the side effect of disallowing the object from being linked into a
-  // shared-memory module, which we don't want to be responsible for.
-  auto *Subtarget = TM.getSubtargetImpl();
-  auto TLS = Subtarget->hasAtomics() && Subtarget->hasBulkMemory()
-                 ? GlobalValue::LocalExecTLSModel
-                 : GlobalValue::NotThreadLocal;
-  GV->setThreadLocalMode(TLS);
-  */
-  return GV;
-}
-
-static Type *getAddrIntType(Module *M) {
-  IRBuilder<> IRB(M->getContext());
-  return IRB.getIntNTy(M->getDataLayout().getPointerSizeInBits());
-}
-
 static Value *getAddrSizeInt(Module *M, uint64_t C) {
   IRBuilder<> IRB(M->getContext());
   return IRB.getIntN(M->getDataLayout().getPointerSizeInBits(), C);
 }
 
 bool SyncVMLowerInvokes::runOnModule(Module &M) {
-  LLVM_DEBUG(dbgs() << "********** Lower Emscripten EH & SjLj **********\n");
+  LLVM_DEBUG(dbgs() << "********** Lower `InvokeInst`s **********\n");
 
   LLVMContext &C = M.getContext();
   IRBuilder<> IRB(C);
@@ -112,15 +81,6 @@ bool SyncVMLowerInvokes::runOnModule(Module &M) {
 
   auto *TPC = getAnalysisIfAvailable<TargetPassConfig>();
   assert(TPC && "Expected a TargetPassConfig");
-  auto &TM = TPC->getTM<SyncVMTargetMachine>();
-
-  // Declare (or get) global variables __THREW__
-  // which are used in common for both
-  // exception handling and setjmp/longjmp handling
-  ThrewGV = getGlobalVariable(M, getAddrIntType(&M), TM, "__THREW__");
-
-  Constant* zero = IRB.getInt(APInt(256, 0));
-  ThrewGV->setInitializer(zero);
 
   bool Changed = false;
 
@@ -144,10 +104,11 @@ bool SyncVMLowerInvokes::runEHOnFunction(Function &F) {
   SmallVector<Instruction *, 64> ToErase;
   SmallPtrSet<LandingPadInst *, 32> LandingPads;
 
+  Function *ThrowF = Intrinsic::getDeclaration(&M, Intrinsic::syncvm_throw_panic);
+
   // This loop will replace InvokeInsts and emit:
-  // %__THREW__ = 0
   // target(args) ; call target 
-  // brcond (__THREW__ == 1) %lpad, %normal
+  // brcond (if Overflow) %lpad
   // ...
 
   for (BasicBlock &BB : F) {
@@ -162,39 +123,39 @@ bool SyncVMLowerInvokes::runEHOnFunction(Function &F) {
 
     // if we are invoking __cxa_throw, we will generate a different pattern:
     // invoke __cxa_throw 
-    // turn this function to simply:
-    // %__THREW__ = 1
-    // br label %catch
-    // we know normal path is actually unreachable
+    // make this to emit: `ret.panic`
     {
       const Function *Callee = II->getCalledFunction();
       assert(Callee && "InvokeInst must have a callee function");
       if (isThrowFunction(Callee)) {
-        IRB.CreateStore(getAddrSizeInt(&M, 1), ThrewGV);
-        IRB.CreateBr(II->getUnwindDest());
+        CallInst *ThrowFCall = IRB.CreateCall(ThrowF, {});
+        ThrowFCall->setTailCall();
         continue;
       }
     }
 
-    LandingPads.insert(II->getLandingPadInst());
+    II->getLandingPadInst()->eraseFromParent();
 
     // change InvokeInst to CallInst
     // TODO: Call should be before Invoke because Invoke is a teminator
     std::vector<Value*> operands(II->arg_begin(), II->arg_end());
     IRB.CreateCall(II->getFunctionType(), II->getCalledOperand(), operands);
 
-    // emit
-    Value *Threw =
-      IRB.CreateLoad(getAddrIntType(&M), ThrewGV, ThrewGV->getName() + ".val");
-    Value *CmpEqOne =
-        IRB.CreateICmpEQ(Threw, getAddrSizeInt(&M, 0), "cmp.threw_value");
-    IRB.CreateCondBr(CmpEqOne, II->getNormalDest(), II->getUnwindDest());
-
+    // emit:
+    // ```
+    // gt_val = call int_syncvm_gtflag
+    // %cmp = icmp gt_val 0
+    // brcond gt %cmp, %normal, %catch
+    // ```
+    // immediate after the call
+    Function* GtFlagFunction = Intrinsic::getDeclaration(&M, Intrinsic::syncvm_gtflag);
+    CallInst* GTFlag = IRB.CreateCall(GtFlagFunction, {});
+    Value *CmpEqZero =
+        IRB.CreateICmpEQ(GTFlag, getAddrSizeInt(&M, 0), "cmp.GT_flag");
+    IRB.CreateCondBr(CmpEqZero, II->getNormalDest(), II->getUnwindDest());
   }
 
-  // This loop will find all `__cxa_throw` calls and replace with:
-  // __THREW__ = 1
-  // ret
+  // This loop will find all `__cxa_throw` calls and replace with: `ret.panic`
   for (BasicBlock &BB : F) {
     for (auto & I : BB) {
       auto *CI = dyn_cast<CallInst>(&I);
@@ -207,36 +168,21 @@ bool SyncVMLowerInvokes::runEHOnFunction(Function &F) {
       } 
 
       // remove the subsequent unreachable inst.
+      /*
       Instruction *nextInst = CI->getNextNode();
       UnreachableInst* unreachable = dyn_cast<UnreachableInst>(nextInst);
       assert(unreachable);
       ToErase.push_back(unreachable);
+      */
 
       IRB.SetInsertPoint(CI);
 
-      IRB.CreateStore(getAddrSizeInt(&M, 1), ThrewGV);
-
-      // find the function's return type
-      Type * retty = F.getReturnType();
-
-      // TODO: add more things to return value
-      assert(retty == Type::getVoidTy(C));
-
-      IRB.CreateRet(nullptr);
+      CallInst * t= IRB.CreateCall(ThrowF, {});
+      t->setTailCall();
 
       ToErase.push_back(CI);
     }
   }
-
-  // convert LandingPads into reset `__THREW__` = 0
-  for (LandingPadInst * LPI : LandingPads) {
-    IRB.SetInsertPoint(LPI);
-    IRB.CreateStore(getAddrSizeInt(&M, 0), ThrewGV);
-    LPI->eraseFromParent();
-  }
-
-  
-  // delete landing pads because 
 
   // Erase everything we no longer need in this function
   for (Instruction *I : ToErase)

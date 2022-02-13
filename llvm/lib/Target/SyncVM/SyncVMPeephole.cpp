@@ -52,6 +52,8 @@ bool SyncVMPeephole::runOnMachineFunction(MachineFunction &MF) {
 
   Context = &MF.getFunction().getContext();
 
+  std::vector<MachineInstr*> ToBeErased;
+
   bool Changed = false;
 
   DenseMap<unsigned, unsigned> Mapping = {
@@ -98,6 +100,23 @@ bool SyncVMPeephole::runOnMachineFunction(MachineFunction &MF) {
         Changed = true;
       }
     }
+
+  for (MachineBasicBlock &MBB : MF)
+    for (auto MI = MBB.begin(); MI != MBB.end(); ++MI) {
+      
+      // REMOVE: NOOP 0
+      if (MI->getOpcode() == SyncVM::NOOP) {
+        if (MI->getOperand(0).getCImm()->getZExtValue() == 0) {
+          ToBeErased.push_back(&*MI);
+          Changed = true;
+        }
+      }
+    }
+
+  for (auto* I : ToBeErased) {
+    I->eraseFromParent();
+  }
+
   return Changed;
 }
 
