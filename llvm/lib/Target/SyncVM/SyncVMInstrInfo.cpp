@@ -27,6 +27,17 @@ SyncVMInstrInfo::SyncVMInstrInfo()
     : SyncVMGenInstrInfo(SyncVM::ADJCALLSTACKDOWN, SyncVM::ADJCALLSTACKUP),
       RI() {}
 
+static int64_t getCC(const MachineOperand &cond) {
+  if (cond.isImm()) {
+    return cond.getImm();
+  }
+  if (cond.isCImm()) {
+    int64_t imm = cond.getCImm()->getZExtValue();
+    return imm;
+  }
+  llvm_unreachable ("Invalid CC type.");
+}
+
 unsigned SyncVMInstrInfo::removeBranch(MachineBasicBlock &MBB,
                                        int *BytesRemoved) const {
   assert(!BytesRemoved && "code size not handled");
@@ -40,22 +51,23 @@ unsigned SyncVMInstrInfo::removeBranch(MachineBasicBlock &MBB,
       continue;
     if (!I->isBranch())
       break;
-    assert(I->getOperand(0).getMBB() == I->getOperand(1).getMBB() &&
-           "removing non-falling-through branch");
+    if (I->getOpcode() != SyncVM::J) {
+      break;
+    }
     // Remove the branch.
     I->eraseFromParent();
     I = MBB.end();
     ++Count;
   }
 
-  return 0;
+  return Count;
 }
 
 bool SyncVMInstrInfo::reverseBranchCondition(
     SmallVectorImpl<MachineOperand> &Cond) const {
   assert(Cond.size() == 1 && "Invalid Xbranch condition!");
 
-  SyncVMCC::CondCodes CC = static_cast<SyncVMCC::CondCodes>(Cond[0].getImm());
+  SyncVMCC::CondCodes CC = static_cast<SyncVMCC::CondCodes>(getCC(Cond[0]));
 
   switch (CC) {
   default:
@@ -80,7 +92,8 @@ bool SyncVMInstrInfo::reverseBranchCondition(
     break;
   }
 
-  Cond[0].setImm(CC);
+  Cond.pop_back();
+  Cond.push_back(MachineOperand::CreateImm(CC));
   return false;
 }
 
@@ -108,7 +121,7 @@ bool SyncVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
       return true;
 
     // Handle unconditional branches.
-    if (I->getOperand(1).getCImm()->getZExtValue() == 0) {
+    if (getCC(I->getOperand(1)) == 0) {
       if (!AllowModify) {
         TBB = I->getOperand(0).getMBB();
         break;
@@ -133,7 +146,7 @@ bool SyncVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
     }
 
     SyncVMCC::CondCodes BranchCode =
-      static_cast<SyncVMCC::CondCodes>(I->getOperand(1).getCImm()->getZExtValue());
+      static_cast<SyncVMCC::CondCodes>(getCC(I->getOperand(1)));
     if (BranchCode == SyncVMCC::COND_INVALID)
       return true;  // Can't handle weird stuff.
 
@@ -177,22 +190,27 @@ unsigned SyncVMInstrInfo::insertBranch(
          "SyncVM branch conditions have one component!");
   assert(!BytesAdded && "code size not handled");
 
+  unsigned Count = 0;
   if (Cond.empty()) {
     // Unconditional branch?
     assert(!FBB && "Unconditional branch with multiple successors!");
     BuildMI(&MBB, DL, get(SyncVM::J))
         .addMBB(TBB)
-        .addMBB(TBB)
         .addImm(SyncVMCC::COND_NONE);
-  } else {
-    // Conditional branch.
-    BuildMI(&MBB, DL, get(SyncVM::J))
-        .addMBB(TBB)
-        .addMBB(FBB)
-        .addImm(Cond[0].getImm());
+    return 1;
+  } 
+
+  // Conditional branch.
+  BuildMI(&MBB, DL, get(SyncVM::J)).addMBB(TBB).addImm(getCC(Cond[0]));
+  ++Count;
+
+  if (FBB) {
+    // Two-way Conditional branch. Insert the second branch.
+    BuildMI(&MBB, DL, get(SyncVM::J)).addMBB(FBB).addImm(SyncVMCC::COND_NONE);
+    ++Count;
   }
 
-  return 1;
+  return Count;
 }
 void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
                                           MachineBasicBlock::iterator MI,
