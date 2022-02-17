@@ -830,12 +830,14 @@ def REVERT : IRet<7, RFErr, "ret.err", [(int_syncvm_throw)]>;
 def PANIC : IRet<7, RFPanic, "ret.panic", [(int_syncvm_throw_panic)]>;
 }
 
-let Defs = [R9, R10, R11, R12, R13, R14, R15, Flags], Uses = [SP], isCall = 1 in {
-  def CALL : Pseudo<(outs), (ins i16imm:$callee, i16imm:$eh_label),
-                  "call\t$callee, $eh_label", []>;
+let Defs = [Flags], Uses = [SP], isCall = 1 in {
+def FAR_CALL  : ICall<8, CFNormal, (ins GR256:$in1, GR256:$in2, i256imm:$eh_label),
+                "far_call\t$in1, $in2, $eh_label", [(int_syncvm_farcall GR256:$in1, GR256:$in2, imm:$eh_label)]>;
+def NEAR_CALL : ICall<8, CFNormal, (ins GR256:$in1, i256imm:$jump_label, i256imm:$eh_label),
+                "near_call\t$in1, $jump_label, $eh_label", []>;
 }
 
-def : Pat<(SyncVMcall tglobaladdr:$callee), (CALL $callee, 0)>;
+def : Pat<(SyncVMcall tglobaladdr:$callee), (NEAR_CALL 0, $callee, 0)>;
 
 //===----------------------------------------------------------------------===//
 // Constants materialization

@@ -106,11 +106,7 @@ bool SyncVMLowerInvokes::runEHOnFunction(Function &F) {
 
   Function *ThrowF = Intrinsic::getDeclaration(&M, Intrinsic::syncvm_throw_panic);
 
-  // This loop will replace InvokeInsts and emit:
-  // target(args) ; call target 
-  // brcond (if Overflow) %lpad
-  // ...
-
+  // This loop will replace InvokeInsts:
   for (BasicBlock &BB : F) {
     auto *II = dyn_cast<InvokeInst>(BB.getTerminator());
     if (!II)
@@ -122,8 +118,8 @@ bool SyncVMLowerInvokes::runEHOnFunction(Function &F) {
     IRB.SetInsertPoint(II);
 
     // if we are invoking __cxa_throw, we will generate a different pattern:
-    // invoke __cxa_throw 
-    // make this to emit: `ret.panic`
+    // call __cxa_throw 
+    // which will emit instruction: `ret.panic`
     {
       const Function *Callee = II->getCalledFunction();
       assert(Callee && "InvokeInst must have a callee function");

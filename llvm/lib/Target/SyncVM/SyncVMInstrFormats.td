@@ -31,6 +31,13 @@ def RFErr            : RetFlags<0b0001>;
 def RFPanic          : RetFlags<0b0010>;
 def RFTransitRetData : RetFlags<0b0100>;
 
+class CallFlags<bits<4> val> {
+  bits<4> Value = val;
+}
+def CFNormal         : CallFlags<0b0000>;
+def CFDelegate       : CallFlags<0b0001>;
+def CFMimic          : CallFlags<0b0010>;
+
 // Generic SyncVM instruction
 class SyncVMInstruction<
   dag outs,
@@ -81,6 +88,13 @@ class INop<bits<8> opcode, dag ins, string asmstr, list<dag> pattern>
 
 class IRet<bits<8> opcode, RetFlags flags, string asmstr, list<dag> pattern>
   : IForm <opcode, SrcNone, DstNone, (outs), (ins), asmstr, pattern > {
+  let Inst{32-35} = flags.Value;
+  let Inst{44-47} = 0;
+  let Inst{52-55} = 0;
+}
+
+class ICall<bits<8> opcode, CallFlags flags, dag ins, string asmstr, list<dag> pattern>
+  : IForm <opcode, SrcNone, DstNone, (outs), ins, asmstr, pattern > {
   let Inst{32-35} = flags.Value;
   let Inst{44-47} = 0;
   let Inst{52-55} = 0;

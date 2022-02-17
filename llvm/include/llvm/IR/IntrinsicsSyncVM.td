@@ -8,10 +8,10 @@
 let TargetPrefix = "syncvm" in {
 
 // Calls of an external contract.
-def int_syncvm_farcall: Intrinsic<[], [llvm_i256_ty], []>;
-def int_syncvm_delegatecall: Intrinsic<[], [llvm_i256_ty], []>;
-def int_syncvm_callcode: Intrinsic<[], [llvm_i256_ty], []>;
-def int_syncvm_staticcall: Intrinsic<[], [llvm_i256_ty], []>;
+def int_syncvm_farcall: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], []>;
+def int_syncvm_delegatecall: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], []>;
+def int_syncvm_callcode: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], []>;
+def int_syncvm_staticcall: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], []>;
 def int_syncvm_farcall_rc: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], []>;
 def int_syncvm_delegatecall_rc: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], []>;
 def int_syncvm_callcode_rc: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], []>;

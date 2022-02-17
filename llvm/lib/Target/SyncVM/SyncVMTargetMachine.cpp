@@ -105,9 +105,9 @@ void SyncVMPassConfig::addIRPasses() {
   addPass(createSyncVMLinkRuntimePass());
   addPass(createSyncVMExpandUMAPass());
   addPass(createSyncVMIndirectUMAPass());
-  addPass(createSyncVMIndirectExternalCallPass());
   addPass(createGlobalDCEPass());
 #endif
+  addPass(createSyncVMIndirectExternalCallPass());
   addPass(createSyncVMCodegenPreparePass());
   addPass(createSyncVMAllocaHoistingPass());
   addPass(createSyncVMLowerInvokesPass());

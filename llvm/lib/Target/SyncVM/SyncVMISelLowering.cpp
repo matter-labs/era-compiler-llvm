@@ -269,6 +269,7 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   CallingConv::ID CallConv = CLI.CallConv;
   bool IsVarArg = CLI.IsVarArg;
   SmallVector<SDValue, 12> MemOpChains;
+  
   const Function *CalleeF = [&Callee, &DAG]() {
     if (auto *GA = dyn_cast<GlobalAddressSDNode>(Callee))
       return cast<Function>(GA->getGlobal());
@@ -343,7 +344,9 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   if (InFlag.getNode())
     Ops.push_back(InFlag);
 
-  Chain = DAG.getNode(SyncVMISD::CALL, DL, NodeTys, Ops);
+  auto opcode = SyncVMISD::CALL;
+
+  Chain = DAG.getNode(opcode, DL, NodeTys, Ops);
   InFlag = Chain.getValue(1);
 
   if (NumMemOps) {

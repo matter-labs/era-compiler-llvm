@@ -99,11 +99,20 @@ Function *SyncVMIndirectExternalCall::getOrCreateIntrinsicWrapper(unsigned ID,
     auto *EHBB = BasicBlock::Create(C, "eh-bb", Result);
     IRBuilder<> Builder(Entry);
     auto *FarCallFn = Intrinsic::getDeclaration(&M, IntrinsicID);
-    auto *LTFlagFn = Intrinsic::getDeclaration(&M, Intrinsic::syncvm_ltflag);
-    Builder.CreateCall(FarCallFn, {Result->getArg(0)});
-    Value *ErrorCode = Builder.CreateCall(LTFlagFn, {});
-    ErrorCode = Builder.CreateTrunc(ErrorCode, Builder.getInt1Ty());
-    Builder.CreateCondBr(ErrorCode, EHBB, SuccessBB);
+
+    Function* GtFlagFunction = Intrinsic::getDeclaration(&M, Intrinsic::syncvm_gtflag);
+
+    // In spec 1.2 a far call has 3 elements:
+    // the callee contract, ergs, and the exception handling label.
+    // To handle EH label, we put imm 0 here as placeholder and at post-ISEL
+    // time replace it with actual BB value.
+    auto zero = Builder.getIntN(256, 0);
+    Builder.CreateCall(FarCallFn, {Result->getArg(0), zero, zero});
+
+    Value *GtFlag = Builder.CreateCall(GtFlagFunction, {});
+    Value *CmpEqZero = Builder.CreateICmpEQ(GtFlag, zero, "cmp.GT_flag");
+    Builder.CreateCondBr(CmpEqZero, EHBB, SuccessBB);
+
     Builder.SetInsertPoint(EHBB);
     Builder.CreateRet(Builder.getInt(APInt(256, 0, false)));
     Builder.SetInsertPoint(SuccessBB);

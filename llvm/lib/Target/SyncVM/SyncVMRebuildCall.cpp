@@ -51,7 +51,7 @@ MachineInstr* SyncVMRebuildCall::getFollowedByGtFlag(MachineInstr* MI) const {
   auto MBBI = std::next(MachineBasicBlock::iterator(MI));
   for (; MBBI != MBB->end(); ++MBBI) {
     // call followed by another call
-    if (MBBI->getOpcode() == SyncVM::CALL) {
+    if (MBBI->getOpcode() == SyncVM::NEAR_CALL) {
       return nullptr;
     }
     if (MBBI->isTerminator()) {
@@ -77,11 +77,21 @@ bool SyncVMRebuildCall::runOnMachineFunction(MachineFunction &MF) {
 
   bool Changed = false;
 
+  auto isTargetInstruction = [&](unsigned opcode) {
+    switch (opcode) {
+      case SyncVM::NEAR_CALL:
+      case SyncVM::FAR_CALL:
+        return true;
+      default:
+        return false;
+    }
+  };
+
   // Iterate over instructions, find call instructions and subsequent GtFlag
   for (MachineBasicBlock &MBB : MF)
     for (auto MI = MBB.begin(); MI != MBB.end(); ++MI) {
-      
-      if (MI->getOpcode() == SyncVM::CALL) {
+      unsigned opcode = MI->getOpcode(); 
+      if (isTargetInstruction(opcode)) {
         MachineInstr *gtflag = getFollowedByGtFlag(&*MI);
         if (gtflag != nullptr) {
           LLVM_DEBUG(dbgs() << "Instruction followed by GtFlag:"; MI->dump(); dbgs() << "\n";);
@@ -96,11 +106,14 @@ bool SyncVMRebuildCall::runOnMachineFunction(MachineFunction &MF) {
           // Get the landing pad branching:
           MachineOperand& eh_label = JI->getOperand(0);
           MachineOperand& cc = JI->getOperand(1);
-          assert(cc.isImm() && cc.getImm() != 0);
+          // must be a GT test
+          assert((cc.isImm() && cc.getImm() != 0) ||
+                 (cc.isCImm() && !cc.getCImm()->isZero()));
 
           // rebuild Call instruction
-          BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(SyncVM::CALL))
+          BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(opcode))
               .add(MI->getOperand(0))
+              .add(MI->getOperand(1))
               .add(eh_label);
 
           // delete unneeded instructions:
