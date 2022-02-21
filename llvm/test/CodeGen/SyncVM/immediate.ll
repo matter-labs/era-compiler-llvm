@@ -11,13 +11,13 @@ define i256 @materialize_small_imm() nounwind {
 
 ; CHECK-LABEL: materialize_big_imm
 define i256 @materialize_big_imm() nounwind {
-  ; CHECK: add code[CPI{{[0-9]}}_0], r0, r1
+  ; CHECK: add @CPI{{[0-9]}}_0[0], r0, r1
   ret i256 65536
 }
 
 ; CHECK-LABEL: materialize_negative_imm
 define i256 @materialize_negative_imm(i256 %par) nounwind {
-  ; CHECK: add code[CPI{{[0-9]}}_{{[0-9]}}], r0, r1
+  ; CHECK: add @CPI{{[0-9]}}_{{[0-9]}}[0], r0, r1
   ret i256 -1
 }
 
@@ -30,42 +30,42 @@ define i256 @materialize_smallimm_in_operation(i256 %par) nounwind {
 
 ; CHECK-LABEL: materialize_bigimm_in_operation
 define i256 @materialize_bigimm_in_operation(i256 %par) nounwind {
-  ; CHECK: add code[CPI{{[0-9]}}_{{[0-9]}}], r1, r1
+  ; CHECK: add @CPI{{[0-9]}}_{{[0-9]}}[0], r1, r1
   %res = add i256 %par, -42
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_in_operation_2
 define i256 @materialize_bigimm_in_operation_2(i256 %par) nounwind {
-  ; CHECK: add code[CPI{{[0-9]}}_{{[0-9]}}], r1, r1
+  ; CHECK: add @CPI{{[0-9]}}_{{[0-9]}}[0], r1, r1
   %res = add i256 -42, %par
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_in_and_operation
 define i256 @materialize_bigimm_in_and_operation(i256 %par) nounwind {
-  ; CHECK: and code[CPI{{[0-9]}}_{{[0-9]}}], r1, r1
+  ; CHECK: and @CPI{{[0-9]}}_{{[0-9]}}[0], r1, r1
   %res = and i256 %par, -42
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_in_xor_operation
 define i256 @materialize_bigimm_in_xor_operation(i256 %par) nounwind {
-  ; CHECK: xor code[CPI{{[0-9]}}_{{[0-9]}}], r1, r1
+  ; CHECK: xor @CPI{{[0-9]}}_{{[0-9]}}[0], r1, r1
   %res = xor i256 -42, %par
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_in_sub_operation
 define i256 @materialize_bigimm_in_sub_operation(i256 %par) nounwind {
-  ; CHECK: sub.s code[CPI{{[0-9]}}_{{[0-9]}}], r1, r1
+  ; CHECK: sub.s @CPI{{[0-9]}}_{{[0-9]}}[0], r1, r1
   %res = sub i256 %par, -42
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_in_sub_operation_2
 define i256 @materialize_bigimm_in_sub_operation_2(i256 %par) nounwind {
-  ; CHECK: sub code[CPI{{[0-9]}}_{{[0-9]}}], r1, r1
+  ; CHECK: sub @CPI{{[0-9]}}_{{[0-9]}}[0], r1, r1
   %res = sub i256 -42, %par
   ret i256 %res
 }

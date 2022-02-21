@@ -35,10 +35,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMLowerIntrinsicsPass(PR);
   initializeSyncVMLinkRuntimePass(PR);
   initializeSyncVMAllocaHoistingPass(PR);
-  initializeSyncVMDropUnusedRegistersPass(PR);
-  initializeSyncVMAdjustSPBasedOffsetsPass(PR);
   initializeSyncVMMoveCallResultSpillPass(PR);
-  initializeSyncVMAdjustStackInCallseqPass(PR);
   initializeSyncVMPeepholePass(PR);
 }
 
@@ -118,13 +115,11 @@ bool SyncVMPassConfig::addInstSelector() {
 }
 
 void SyncVMPassConfig::addPreRegAlloc() {
-  addPass(createSyncVMDropUnusedRegistersPass());
+  addPass(createSyncVMAddConditionsPass());
 }
 
 void SyncVMPassConfig::addPreEmitPass() {
-  addPass(createSyncVMAdjustSPBasedOffsetsPass());
   addPass(createSyncVMMoveCallResultSpillPass());
-  addPass(createSyncVMAdjustStackInCallseqPass());
   addPass(createSyncVMExpandPseudoPass());
   addPass(createSyncVMPeepholePass());
 }

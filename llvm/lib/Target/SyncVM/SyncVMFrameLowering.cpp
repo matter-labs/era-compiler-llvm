@@ -46,9 +46,7 @@ void SyncVMFrameLowering::emitPrologue(MachineFunction &MF,
 
   // TODO: Handle callee saved registers once support them
   if (NumCells)
-    BuildMI(MBB, MBBI, DL, TII.get(SyncVM::PUSH))
-        .addImm(NumCells - 1)
-        .addReg(SyncVM::R0);
+    BuildMI(MBB, MBBI, DL, TII.get(SyncVM::NOPSP)).addImm(NumCells).addImm(0);
 }
 
 void SyncVMFrameLowering::emitEpilogue(MachineFunction &MF,
@@ -71,8 +69,7 @@ void SyncVMFrameLowering::emitEpilogue(MachineFunction &MF,
   // TODO: Handle callee saved registers once support them
   // adjust stack pointer back: SP += numbytes
   if (NumCells)
-    BuildMI(MBB, MBBI, DL, TII.get(SyncVM::POP), SyncVM::R0)
-        .addImm(NumCells - 1);
+    BuildMI(MBB, MBBI, DL, TII.get(SyncVM::NOPSP)).addImm(-NumCells).addImm(0);
 }
 
 // FIXME: Can we eleminate these in favour of generic code?
@@ -107,15 +104,17 @@ MachineBasicBlock::iterator SyncVMFrameLowering::eliminateCallFramePseudoInstr(
 
       MachineInstr *New = nullptr;
       if (Old.getOpcode() == TII.getCallFrameSetupOpcode()) {
-        New = BuildMI(MF, Old.getDebugLoc(), TII.get(SyncVM::PUSH))
-                  .addImm(Amount);
+        New = BuildMI(MF, Old.getDebugLoc(), TII.get(SyncVM::NOPSP))
+                  .addImm(Amount)
+                  .addImm(0);
       } else {
         assert(Old.getOpcode() == TII.getCallFrameDestroyOpcode());
         // factor out the amount the callee already popped.
         Amount -= TII.getFramePoppedByCallee(Old);
         if (Amount)
-          New = BuildMI(MF, Old.getDebugLoc(), TII.get(SyncVM::POP))
-                    .addImm(Amount);
+          New = BuildMI(MF, Old.getDebugLoc(), TII.get(SyncVM::NOPSP))
+                    .addImm(-Amount)
+                    .addImm(0);
       }
 
       if (New) {
@@ -131,8 +130,9 @@ MachineBasicBlock::iterator SyncVMFrameLowering::eliminateCallFramePseudoInstr(
     // something off the stack pointer, add it back.
     if (uint64_t CalleeAmt = TII.getFramePoppedByCallee(*I)) {
       MachineInstr &Old = *I;
-      MachineInstr *New = BuildMI(MF, Old.getDebugLoc(), TII.get(SyncVM::PUSH))
-                              .addImm(CalleeAmt);
+      MachineInstr *New = BuildMI(MF, Old.getDebugLoc(), TII.get(SyncVM::NOPSP))
+                              .addImm(CalleeAmt)
+                              .addImm(0);
       // The SRW implicit def is dead.
       New->getOperand(3).setIsDead();
 

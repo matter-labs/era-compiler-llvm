@@ -28,7 +28,7 @@ define i256 @shrxrr(i256 %rs1) nounwind {
 
 ; CHECK-LABEL: shrcrr
 define i256 @shrcrr(i256 %rs1) nounwind {
-; CHECK: shr code[val], r1, r1
+; CHECK: shr @val[0], r1, r1
   %val = load i256, i256 addrspace(4)* @val
   %res = lshr i256 %val, %rs1
   ret i256 %res
@@ -36,7 +36,7 @@ define i256 @shrcrr(i256 %rs1) nounwind {
 
 ; CHECK-LABEL: shryrr
 define i256 @shryrr(i256 %rs1) nounwind {
-; CHECK: shr.s code[val], r1, r1
+; CHECK: shr.s @val[0], r1, r1
   %val = load i256, i256 addrspace(4)* @val
   %res = lshr i256 %rs1, %val
   ret i256 %res
@@ -90,21 +90,21 @@ define void @shrxrs(i256 %rs1) nounwind {
 ; CHECK-LABEL: shrcrs
 define void @shrcrs(i256 %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: shr code[val], r1, stack-[1]
+; CHECK: shr @val[0], r1, stack-[1]
   %val = load i256, i256 addrspace(4)* @val
   %res = lshr i256 %val, %rs1
   store i256 %res, i256* %valptr
-  ret void 
+  ret void
 }
 
 ; CHECK-LABEL: shryrs
 define void @shryrs(i256 %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: shr.s code[val], r1, stack-[1]
+; CHECK: shr.s @val[0], r1, stack-[1]
   %val = load i256, i256 addrspace(4)* @val
   %res = lshr i256 %rs1, %val
   store i256 %res, i256* %valptr
-  ret void 
+  ret void
 }
 
 ; CHECK-LABEL: shrsrs

@@ -28,7 +28,7 @@ define i256 @remxrr(i256 %rs1) nounwind {
 
 ; CHECK-LABEL: remcrr
 define i256 @remcrr(i256 %rs1) nounwind {
-; CHECK: div code[val], r1, r{{[0-9]+}}, r1
+; CHECK: div @val[0], r1, r{{[0-9]+}}, r1
   %val = load i256, i256 addrspace(4)* @val
   %res = urem i256 %val, %rs1
   ret i256 %res
@@ -36,7 +36,7 @@ define i256 @remcrr(i256 %rs1) nounwind {
 
 ; CHECK-LABEL: remyrr
 define i256 @remyrr(i256 %rs1) nounwind {
-; CHECK: div.s code[val], r1, r{{[0-9]+}}, r1
+; CHECK: div.s @val[0], r1, r{{[0-9]+}}, r1
   %val = load i256, i256 addrspace(4)* @val
   %res = urem i256 %rs1, %val
   ret i256 %res
@@ -65,7 +65,7 @@ define void @remrrs(i256 %rs1, i256 %rs2) nounwind {
   %valptr = alloca i256
   %res = urem i256 %rs1, %rs2
 ; CHECK: div r1, r2, r{{[0-9]+}}, r[[REG:[0-9]+]]
-; CHECK: add 0, r[[REG]], stack-[1] 
+; CHECK: add r[[REG]], r0, stack-[1]
   store i256 %res, i256* %valptr
   ret void
 }
@@ -74,7 +74,7 @@ define void @remrrs(i256 %rs1, i256 %rs2) nounwind {
 define void @remirs(i256 %rs1) nounwind {
   %valptr = alloca i256
 ; CHECK: div 42, r1, r{{[0-9]+}}, r[[REG:[0-9]+]]
-; CHECK: add 0, r[[REG]], stack-[1] 
+; CHECK: add r[[REG]], r0, stack-[1]
   %res = urem i256 42, %rs1
   store i256 %res, i256* %valptr
   ret void
@@ -84,7 +84,7 @@ define void @remirs(i256 %rs1) nounwind {
 define void @remxrs(i256 %rs1) nounwind {
   %valptr = alloca i256
 ; CHECK: div.s 42, r1, r{{[0-9]+}}, r[[REG:[0-9]+]]
-; CHECK: add 0, r[[REG]], stack-[1] 
+; CHECK: add r[[REG]], r0, stack-[1]
   %res = urem i256 %rs1, 42
   store i256 %res, i256* %valptr
   ret void
@@ -93,8 +93,8 @@ define void @remxrs(i256 %rs1) nounwind {
 ; CHECK-LABEL: remcrs
 define void @remcrs(i256 %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: div code[val], r1, r{{[0-9]+}}, r[[REG:[0-9]+]]
-; CHECK: add 0, r[[REG]], stack-[1] 
+; CHECK: div @val[0], r1, r{{[0-9]+}}, r[[REG:[0-9]+]]
+; CHECK: add r[[REG]], r0, stack-[1]
   %val = load i256, i256 addrspace(4)* @val
   %res = urem i256 %val, %rs1
   store i256 %res, i256* %valptr
@@ -104,8 +104,8 @@ define void @remcrs(i256 %rs1) nounwind {
 ; CHECK-LABEL: remyrs
 define void @remyrs(i256 %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: div.s code[val], r1, r{{[0-9]+}}, r[[REG:[0-9]+]]
-; CHECK: add 0, r[[REG]], stack-[1] 
+; CHECK: div.s @val[0], r1, r{{[0-9]+}}, r[[REG:[0-9]+]]
+; CHECK: add r[[REG]], r0, stack-[1]
   %val = load i256, i256 addrspace(4)* @val
   %res = urem i256 %rs1, %val
   store i256 %res, i256* %valptr
@@ -117,7 +117,7 @@ define void @remsrs(i256 %rs1) nounwind {
   %valptr = alloca i256
   %destptr = alloca i256
 ; CHECK: div stack-[2], r1, r{{[0-9]+}}, r[[REG:[0-9]+]]
-; CHECK: add 0, r[[REG]], stack-[1] 
+; CHECK: add r[[REG]], r0, stack-[1]
   %val = load i256, i256* %valptr
   %res = urem i256 %val, %rs1
   store i256 %res, i256* %destptr
@@ -129,7 +129,7 @@ define void @remzrs(i256 %rs1) nounwind {
   %valptr = alloca i256
   %destptr = alloca i256
 ; CHECK: div.s stack-[2], r1, r{{[0-9]+}}, r[[REG:[0-9]+]]
-; CHECK: add 0, r[[REG]], stack-[1] 
+; CHECK: add r[[REG]], r0, stack-[1]
   %val = load i256, i256* %valptr
   %res = urem i256 %rs1, %val
   store i256 %res, i256* %destptr
@@ -159,7 +159,7 @@ define i256 @divxrr(i256 %rs1) nounwind {
 
 ; CHECK-LABEL: divcrr
 define i256 @divcrr(i256 %rs1) nounwind {
-; CHECK: div code[val], r1, r1, r{{[0-9]+}}
+; CHECK: div @val[0], r1, r1, r{{[0-9]+}}
   %val = load i256, i256 addrspace(4)* @val
   %res = udiv i256 %val, %rs1
   ret i256 %res
@@ -167,7 +167,7 @@ define i256 @divcrr(i256 %rs1) nounwind {
 
 ; CHECK-LABEL: divyrr
 define i256 @divyrr(i256 %rs1) nounwind {
-; CHECK: div.s code[val], r1, r1, r{{[0-9]+}}
+; CHECK: div.s @val[0], r1, r1, r{{[0-9]+}}
   %val = load i256, i256 addrspace(4)* @val
   %res = udiv i256 %rs1, %val
   ret i256 %res
@@ -195,7 +195,7 @@ define i256 @divzrr(i256 %rs1) nounwind {
 define void @divrrs(i256 %rs1, i256 %rs2) nounwind {
   %valptr = alloca i256
   %res = udiv i256 %rs1, %rs2
-; CHECK: div r1, r2, stack-[1], r{{[0-9]+}}
+; TODO: div r1, r2, stack-[1], r{{[0-9]+}}
   store i256 %res, i256* %valptr
   ret void
 }
@@ -203,7 +203,7 @@ define void @divrrs(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: divirs
 define void @divirs(i256 %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: div 42, r1, stack-[1], r{{[0-9]+}}
+; TODO: div 42, r1, stack-[1], r{{[0-9]+}}
   %res = udiv i256 42, %rs1
   store i256 %res, i256* %valptr
   ret void
@@ -212,7 +212,7 @@ define void @divirs(i256 %rs1) nounwind {
 ; CHECK-LABEL: divxrs
 define void @divxrs(i256 %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: div.s 42, r1, stack-[1], r{{[0-9]+}}
+; TODO: div.s 42, r1, stack-[1], r{{[0-9]+}}
   %res = udiv i256 %rs1, 42
   store i256 %res, i256* %valptr
   ret void
@@ -221,7 +221,7 @@ define void @divxrs(i256 %rs1) nounwind {
 ; CHECK-LABEL: divcrs
 define void @divcrs(i256 %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: div code[val], r1, stack-[1], r{{[0-9]+}}
+; TODO: div @val[0], r1, stack-[1], r{{[0-9]+}}
   %val = load i256, i256 addrspace(4)* @val
   %res = udiv i256 %val, %rs1
   store i256 %res, i256* %valptr
@@ -231,7 +231,7 @@ define void @divcrs(i256 %rs1) nounwind {
 ; CHECK-LABEL: divyrs
 define void @divyrs(i256 %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: div.s code[val], r1, stack-[1], r{{[0-9]+}}
+; TODO: div.s @val[0], r1, stack-[1], r{{[0-9]+}}
   %val = load i256, i256 addrspace(4)* @val
   %res = udiv i256 %rs1, %val
   store i256 %res, i256* %valptr
@@ -242,7 +242,7 @@ define void @divyrs(i256 %rs1) nounwind {
 define void @divsrs(i256 %rs1) nounwind {
   %valptr = alloca i256
   %destptr = alloca i256
-; CHECK: div stack-[2], r1, stack-[1], r{{[0-9]+}}
+; TODO: div stack-[2], r1, stack-[1], r{{[0-9]+}}
   %val = load i256, i256* %valptr
   %res = udiv i256 %val, %rs1
   store i256 %res, i256* %destptr
@@ -253,7 +253,7 @@ define void @divsrs(i256 %rs1) nounwind {
 define void @divzrs(i256 %rs1) nounwind {
   %valptr = alloca i256
   %destptr = alloca i256
-; CHECK: div.s stack-[2], r1, stack-[1], r{{[0-9]+}}
+; TODO: div.s stack-[2], r1, stack-[1], r{{[0-9]+}}
   %val = load i256, i256* %valptr
   %res = udiv i256 %rs1, %val
   store i256 %res, i256* %destptr
@@ -292,7 +292,7 @@ define i256 @udivremxrrr(i256 %rs1) nounwind {
 
 ; CHECK-LABEL: udivremcrrr
 define i256 @udivremcrrr(i256 %rs1) nounwind {
-; CHECK: div code[val], r1, r[[REG1:[0-9]+]], r[[REG2:[0-9]+]]
+; CHECK: div @val[0], r1, r[[REG1:[0-9]+]], r[[REG2:[0-9]+]]
 ; CHECK: add r[[REG2]], r[[REG1]], r1
   %val = load i256, i256 addrspace(4)* @val
   %res1 = urem i256 %val, %rs1
@@ -303,7 +303,7 @@ define i256 @udivremcrrr(i256 %rs1) nounwind {
 
 ; CHECK-LABEL: udivremyrrr
 define i256 @udivremyrrr(i256 %rs1) nounwind {
-; CHECK: div.s code[val], r1, r[[REG1:[0-9]+]], r[[REG2:[0-9]+]]
+; CHECK: div.s @val[0], r1, r[[REG1:[0-9]+]], r[[REG2:[0-9]+]]
 ; CHECK: add r[[REG2]], r[[REG1]], r1
   %val = load i256, i256 addrspace(4)* @val
   %res1 = urem i256 %rs1, %val
@@ -341,7 +341,7 @@ define i256 @udivremrrsr(i256 %rs1, i256 %rs2) nounwind {
   %valptr = alloca i256
   %res = udiv i256 %rs1, %rs2
   %rem = urem i256 %rs1, %rs2
-; CHECK: div r1, r2, stack-[1], r1
+; TODO: div r1, r2, stack-[1], r1
   store i256 %res, i256* %valptr
   ret i256 %rem
 }
@@ -349,7 +349,7 @@ define i256 @udivremrrsr(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: udivremirsr
 define i256 @udivremirsr(i256 %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: div 42, r1, stack-[1], r1
+; TODO: div 42, r1, stack-[1], r1
   %res = udiv i256 42, %rs1
   %rem = urem i256 42, %rs1
   store i256 %res, i256* %valptr
@@ -359,7 +359,7 @@ define i256 @udivremirsr(i256 %rs1) nounwind {
 ; CHECK-LABEL: udivremxrsr
 define i256 @udivremxrsr(i256 %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: div.s 42, r1, stack-[1], r1
+; TODO: div.s 42, r1, stack-[1], r1
   %res = udiv i256 %rs1, 42
   %rem = urem i256 %rs1, 42
   store i256 %res, i256* %valptr
@@ -369,7 +369,7 @@ define i256 @udivremxrsr(i256 %rs1) nounwind {
 ; CHECK-LABEL: udivremcrsr
 define i256 @udivremcrsr(i256 %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: div code[val], r1, stack-[1], r1
+; TODO: div @val[0], r1, stack-[1], r1
   %val = load i256, i256 addrspace(4)* @val
   %res = udiv i256 %val, %rs1
   %rem = urem i256 %val, %rs1
@@ -380,7 +380,7 @@ define i256 @udivremcrsr(i256 %rs1) nounwind {
 ; CHECK-LABEL: udivremyrsr
 define i256 @udivremyrsr(i256 %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: div.s code[val], r1, stack-[1], r1
+; TODO: div.s @val[0], r1, stack-[1], r1
   %val = load i256, i256 addrspace(4)* @val
   %res = udiv i256 %rs1, %val
   %rem = urem i256 %rs1, %val
@@ -392,7 +392,7 @@ define i256 @udivremyrsr(i256 %rs1) nounwind {
 define i256 @udivremsrsr(i256 %rs1) nounwind {
   %valptr = alloca i256
   %destptr = alloca i256
-; CHECK: div stack-[2], r1, stack-[1], r1
+; TODO: div stack-[2], r1, stack-[1], r1
   %val = load i256, i256* %valptr
   %res = udiv i256 %val, %rs1
   %rem = urem i256 %val, %rs1
@@ -404,7 +404,7 @@ define i256 @udivremsrsr(i256 %rs1) nounwind {
 define i256 @udivremzrsr(i256 %rs1) nounwind {
   %valptr = alloca i256
   %destptr = alloca i256
-; CHECK: div.s stack-[2], r1, stack-[1], r1
+; TODO: div.s stack-[2], r1, stack-[1], r1
   %val = load i256, i256* %valptr
   %res = udiv i256 %rs1, %val
   %rem = urem i256 %rs1, %val

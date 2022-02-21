@@ -154,7 +154,10 @@ void SyncVMInstPrinter::printStackOperand(const MCInst *MI, unsigned OpNo,
   const MCOperand &Base2 = MI->getOperand(OpNo + 1);
   const MCOperand &Disp = MI->getOperand(OpNo + 2);
 
-  assert(Base1.isReg() && "Expected SP register");
+  O << "stack";
+  if (Base1.isReg())
+    O << "-";
+  O << "[";
 
   // Print displacement first
   if (Disp.isExpr()) {
@@ -167,4 +170,16 @@ void SyncVMInstPrinter::printStackOperand(const MCInst *MI, unsigned OpNo,
 
   if (Base2.isReg())
     O << " + " << getRegisterName(Base2.getReg());
+  O << "]";
+}
+
+void SyncVMInstPrinter::printSPAdvanceOperand(const MCInst *MI, unsigned OpNo,
+                                              raw_ostream &O) {
+  const MCOperand &Val = MI->getOperand(OpNo);
+  int Advance = Val.getImm();
+  assert(Advance != 0);
+
+  O << "stack";
+  O << ((Advance < 0) ? "-" : "+");
+  O << "=[" << std::abs(Advance) << "]";
 }
