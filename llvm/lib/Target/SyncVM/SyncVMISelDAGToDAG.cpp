@@ -37,7 +37,6 @@ struct SyncVMISelAddressMode {
 
   int64_t Disp = 0;
   const GlobalValue *GV = nullptr;
-  bool NeedsAdjustment = false;
 
   bool isDefault() const {
     return !BaseType && !Base.Reg.getNode() && !Base.FrameIndex && !Disp && !GV;
@@ -148,14 +147,6 @@ bool SyncVMDAGToDAGISel::MatchAddressBase(SDValue N, SyncVMISelAddressMode &AM,
 bool SyncVMDAGToDAGISel::MatchAddress(SDValue N, SyncVMISelAddressMode &AM,
                                       bool IsStackAddr) {
   LLVM_DEBUG(errs() << "MatchAddress: "; AM.dump());
-
-  if (N.isMachineOpcode() && N.getMachineOpcode() == SyncVM::AdjSP) {
-    assert(IsStackAddr && "Unexpected AdjSP in non-stack addressing");
-    // The offset is in a register, no frame index involved
-    AM.BaseType = SyncVMISelAddressMode::StackRegBase;
-    AM.NeedsAdjustment = true;
-    return MatchAddressBase(N.getOperand(0), AM, IsStackAddr);
-  }
 
   switch (N.getOpcode()) {
   default: {
@@ -303,19 +294,15 @@ bool SyncVMDAGToDAGISel::SelectStackAddrCommon(SDValue N, SDValue &Base1,
                                                SDValue &Base2, SDValue &Disp,
                                                bool IsAdjusted) {
   SyncVMISelAddressMode AM;
+  bool UseSP = false;
 
   if (MatchAddress(N, AM, true /* IsStackAddr */)) {
-    LLVM_DEBUG(errs() << "Failed to match address.");
-    return false;
+    AM = SyncVMISelAddressMode();
+    if (MatchAddress(N, AM, false))
+      return false;
   } else {
-    LLVM_DEBUG(errs() << "Matched: "; AM.dump());
+    UseSP = true;
   }
-
-  if (!AM.isOnStack())
-    return false;
-
-  if (AM.NeedsAdjustment != IsAdjusted)
-    return false;
 
   // TODO: Hack (constant is used to designate immediate addressing mode),
   // redesign.
@@ -328,19 +315,23 @@ bool SyncVMDAGToDAGISel::SelectStackAddrCommon(SDValue N, SDValue &Base1,
         cast<ConstantSDNode>(Reg.getOperand(1))->getSExtValue() == 32)
       AM.Base.Reg = Reg.getOperand(0);
     else {
+      const EVT DivType[] = {MVT::i256, MVT::i256};
       auto AddrNode = CurDAG->getMachineNode(
-          SyncVM::DIVxrrr_s, SDLoc(N), MVT::i256, AM.Base.Reg,
-          CurDAG->getTargetConstant(32, SDLoc(N), MVT::i256),
-          CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256));
+          SyncVM::DIVxrrr_p, SDLoc(N), DivType,
+          {CurDAG->getTargetConstant(32, SDLoc(N), MVT::i256), AM.Base.Reg});
       AM.Base.Reg = SDValue(AddrNode, 0);
     }
   }
 
-  Base1 = (AM.BaseType == SyncVMISelAddressMode::FrameIndexBase)
-              ? CurDAG->getTargetFrameIndex(
-                    AM.Base.FrameIndex,
-                    getTargetLowering()->getPointerTy(CurDAG->getDataLayout()))
-              : CurDAG->getRegister(SyncVM::SP, MVT::i256);
+  if (UseSP) {
+    Base1 = (AM.BaseType == SyncVMISelAddressMode::FrameIndexBase)
+                ? CurDAG->getTargetFrameIndex(AM.Base.FrameIndex,
+                                              getTargetLowering()->getPointerTy(
+                                                  CurDAG->getDataLayout()))
+                : CurDAG->getRegister(SyncVM::SP, MVT::i256);
+  } else {
+    Base1 = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
+  }
   Base2 = AM.Base.Reg;
 
   // 1(sp) is the index of the 1st element on the stack rather than 0(sp).

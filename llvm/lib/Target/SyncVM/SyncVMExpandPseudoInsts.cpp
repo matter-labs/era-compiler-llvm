@@ -166,7 +166,8 @@ void SyncVMExpandPseudo::expandLoadConst(MachineInstr &MI) const {
         .add(MBBI->getOperand(0))
         .addImm(0)
         .add(ConstantPool)
-        .add(otherReg);
+        .add(otherReg)
+        .addImm(0);
     MBBI->eraseFromParent();
     return;
   }
@@ -190,7 +191,8 @@ void SyncVMExpandPseudo::expandLoadConst(MachineInstr &MI) const {
         .add(MBBI->getOperand(0))
         .addImm(0)
         .add(ConstantPool)
-        .add(*otherOpnd);
+        .add(*otherOpnd)
+        .addImm(0);
     MBBI->eraseFromParent();
     return;
   }
@@ -288,11 +290,11 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
             Mov.add(MI.getOperand(i));
           // r0 -> MOV src1
           Mov.addReg(SyncVM::R0);
-          // COND_NONE -> MOV cc
-          Mov.addImm(SyncVMCC::COND_NONE);
           // SEL dst -> MOV dst
           for (unsigned i = DstArgPos; i < EndPos; ++i)
             Mov.add(MI.getOperand(i));
+          // COND_NONE -> MOV cc
+          Mov.addImm(SyncVMCC::COND_NONE);
         }
 
         // condtional mov
@@ -307,11 +309,11 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
           CMov.add(MI.getOperand(i));
         // r0 -> CMOV src1
         CMov.addReg(SyncVM::R0);
-        // SEL cc -> CMOV cc
-        CMov.add(MI.getOperand(CCPos));
         // SEL dst -> CMOV dst
         for (unsigned i = DstArgPos; i < EndPos; ++i)
           CMov.add(MI.getOperand(i));
+        // SEL cc -> CMOV cc
+        CMov.add(MI.getOperand(CCPos));
 
         PseudoInst.push_back(&MI);
       } else if (MI.getOpcode() == SyncVM::CONST) {

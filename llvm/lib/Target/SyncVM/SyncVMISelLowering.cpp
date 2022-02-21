@@ -105,9 +105,8 @@ static bool CallingConvSupported(CallingConv::ID CallConv) {
 }
 
 bool SyncVMTargetLowering::CanLowerReturn(
-    CallingConv::ID CallConv, MachineFunction & MF, bool IsVarArg,
-    const SmallVectorImpl<ISD::OutputArg> &Outs,
-    LLVMContext & Context) const {
+    CallingConv::ID CallConv, MachineFunction &MF, bool IsVarArg,
+    const SmallVectorImpl<ISD::OutputArg> &Outs, LLVMContext &Context) const {
 
   SmallVector<CCValAssign, 1> RVLocs;
   CCState CCInfo(CallConv, IsVarArg, MF, RVLocs, Context);
@@ -115,7 +114,7 @@ bool SyncVMTargetLowering::CanLowerReturn(
   // cannot support return convention or is variadic?
   if (!CCInfo.CheckReturn(Outs, RetCC_SYNCVM) || IsVarArg)
     return false;
-  
+
   // SyncVM can't currently handle returning tuples.
   return Outs.size() <= 1;
 }
@@ -149,15 +148,11 @@ SyncVMTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                  *DAG.getContext());
   CCInfo.AnalyzeReturn(Outs, CC_SYNCVM);
   SmallVector<SDValue, 4> RetOps(1, Chain);
-  MachineFunction &MF = DAG.getMachineFunction();
-  auto *Ty = MF.getFunction().getReturnType();
 
   if (!RVLocs.empty()) {
     SDValue Flag;
     CCValAssign &VA = RVLocs[0];
     SDValue V = OutVals[0];
-    if (Ty->isPointerTy() && Ty->getPointerAddressSpace() == 0)
-      V = SDValue(DAG.getMachineNode(SyncVM::AdjSPDown, DL, MVT::i256, V), 0);
     Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), V, Flag);
     // Guarantee that all emitted copies are stuck together,
     // avoiding something bad.
@@ -214,15 +209,6 @@ SDValue SyncVMTargetLowering::LowerFormalArguments(
       RegInfo.addLiveIn(VA.getLocReg(), VReg);
       SDValue ArgValue = DAG.getCopyFromReg(Chain, DL, VReg, VA.getLocVT());
       ArgValue = DAG.getNode(ISD::TRUNCATE, DL, VA.getValVT(), ArgValue);
-      if (Ins[InIdx].isOrigArg()) {
-        unsigned Idx = Ins[InIdx].getOrigArgIndex();
-        Type *T = MF.getFunction().getArg(Idx)->getType();
-        if (T->isPointerTy() && T->getPointerAddressSpace() == 0) {
-          auto AdjSPNode =
-              DAG.getMachineNode(SyncVM::AdjSP, DL, MVT::i256, ArgValue);
-          ArgValue = SDValue(AdjSPNode, 0);
-        }
-      }
       InVals.push_back(ArgValue);
     } else {
       // Sanity check
@@ -238,15 +224,6 @@ SDValue SyncVMTargetLowering::LowerFormalArguments(
       SDValue InVal = DAG.getLoad(
           VA.getLocVT(), DL, Chain, FIN,
           MachinePointerInfo::getFixedStack(DAG.getMachineFunction(), FI));
-      if (Ins[InIdx].isOrigArg()) {
-        unsigned Idx = Ins[InIdx].getOrigArgIndex();
-        Type *T = MF.getFunction().getArg(Idx)->getType();
-        if (T->isPointerTy() && T->getPointerAddressSpace() == 0) {
-          auto AdjSPNode =
-              DAG.getMachineNode(SyncVM::AdjSP, DL, MVT::i256, InVal);
-          InVal = SDValue(AdjSPNode, 0);
-        }
-      }
       InVals.push_back(InVal);
     }
     ++InIdx;
@@ -268,17 +245,6 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   bool &IsTailCall = CLI.IsTailCall;
   CallingConv::ID CallConv = CLI.CallConv;
   bool IsVarArg = CLI.IsVarArg;
-  SmallVector<SDValue, 12> MemOpChains;
-  const Function *CalleeF = [&Callee, &DAG]() {
-    if (auto *GA = dyn_cast<GlobalAddressSDNode>(Callee))
-      return cast<Function>(GA->getGlobal());
-    else if (auto *ES = dyn_cast<ExternalSymbolSDNode>(Callee))
-      return cast<Function>(
-          cast<GlobalAddressSDNode>(DAG.getSymbolFunctionGlobalAddress(Callee))
-              ->getGlobal());
-    llvm_unreachable("Unexpected node for a call");
-    return (const Function *)nullptr;
-  }();
 
   // TODO: SyncVM target does not yet support tail call optimization.
   IsTailCall = false;
@@ -291,37 +257,40 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
                  *DAG.getContext());
   CCInfo.AnalyzeCallOperands(Outs, CC_SYNCVM);
 
-  unsigned NumMemOps =
-      std::count_if(std::begin(ArgLocs), std::end(ArgLocs),
-                    [](const CCValAssign &VA) { return !VA.isRegLoc(); });
+  // Get a count of how many bytes are to be pushed on the stack.
+  unsigned NumBytes = CCInfo.getNextStackOffset();
+
+  Chain = DAG.getCALLSEQ_START(Chain, NumBytes, 0, DL);
+
+  SmallVector<std::pair<unsigned, SDValue>, 4> RegsToPass;
+  SmallVector<SDValue, 12> MemOpChains;
+  SDValue Zero = DAG.getTargetConstant(0, DL, MVT::i256);
+  SDValue SPCtx = DAG.getTargetConstant(7, DL, MVT::i256);
+  MachineSDNode *StackPtr =
+      DAG.getMachineNode(SyncVM::CTXr, DL, MVT::i256, SPCtx, Zero);
+
   SDValue InFlag;
-
-  std::vector<SDValue> OutValsAdj;
-  OutValsAdj.reserve(OutVals.size());
-
-  for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
-    unsigned Idx = Outs[i].OrigArgIndex;
-    Type *T = CalleeF->getArg(Idx)->getType();
-    if (NumMemOps && T->isPointerTy() && T->getPointerAddressSpace() == 0)
-      OutValsAdj.push_back(
-          DAG.getNode(ISD::ADD, DL, MVT::i256, OutVals[i],
-                      DAG.getConstant(NumMemOps * 32, DL, MVT::i256)));
-    else
-      OutValsAdj.push_back(OutVals[i]);
-  }
 
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
     unsigned revI = e - i - 1;
-    if (!ArgLocs[revI].isRegLoc()) {
-      Chain = DAG.getNode(SyncVMISD::PUSH, DL, MVT::Other, Chain,
-                          DAG.getTargetConstant(0, DL, MVT::i256),
-                          OutValsAdj[revI]);
+    auto VA = ArgLocs[revI];
+    if (!VA.isRegLoc()) {
+      SDValue PtrOff =
+          DAG.getNode(ISD::ADD, DL, MVT::i256, SDValue(StackPtr, 0),
+                      DAG.getConstant(VA.getLocMemOffset(), DL, MVT::i256));
+      MemOpChains.push_back(
+          DAG.getStore(Chain, DL, OutVals[i], PtrOff, MachinePointerInfo()));
     }
   }
 
+  // Transform all store nodes into one single node because all store nodes are
+  // independent of each other.
+  if (!MemOpChains.empty())
+    Chain = DAG.getNode(ISD::TokenFactor, DL, MVT::Other, MemOpChains);
+
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
     if (ArgLocs[i].isRegLoc()) {
-      Chain = DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), OutValsAdj[i],
+      Chain = DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), OutVals[i],
                                InFlag);
       InFlag = Chain.getValue(1);
     }
@@ -346,10 +315,11 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   Chain = DAG.getNode(SyncVMISD::CALL, DL, NodeTys, Ops);
   InFlag = Chain.getValue(1);
 
-  if (NumMemOps) {
-    Chain = DAG.getNode(SyncVMISD::POP, DL, MVT::Other, Chain,
-                        DAG.getTargetConstant(NumMemOps - 1, DL, MVT::i256));
-  }
+  // Create the CALLSEQ_END node.
+  Chain =
+      DAG.getCALLSEQ_END(Chain, DAG.getConstant(NumBytes, DL, MVT::i256, true),
+                         DAG.getConstant(0, DL, MVT::i256, true), InFlag, DL);
+  InFlag = Chain.getValue(1);
 
   SmallVector<CCValAssign, 16> RVLocs;
   CCState RetCCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), RVLocs,
@@ -370,12 +340,6 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
       InFlag = Val.getValue(2);
       CopiedRegs[RVLocs[i].getLocReg()] = Val;
     }
-    Type *T = CalleeF->getReturnType();
-    if (NumMemOps && T->isPointerTy() && T->getPointerAddressSpace() == 0 &&
-        i == 0) {
-      Val = DAG.getNode(ISD::SUB, DL, MVT::i256, Val,
-                        DAG.getConstant(NumMemOps * 32, DL, MVT::i256));
-    }
     InVals.push_back(Val);
   }
 
@@ -386,8 +350,7 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 //                      Other Lowerings
 //===----------------------------------------------------------------------===//
 
-static SDValue EmitCMP(SDValue &LHS, SDValue &RHS,
-                       ISD::CondCode CC,
+static SDValue EmitCMP(SDValue &LHS, SDValue &RHS, ISD::CondCode CC,
                        const SDLoc &DL, SelectionDAG &DAG) {
   assert(!LHS.getValueType().isFloatingPoint() &&
          "SyncVM doesn't support floats");
@@ -591,16 +554,15 @@ SDValue SyncVMTargetLowering::LowerGlobalAddress(SDValue Op,
 SDValue SyncVMTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
   SDValue Chain = Op.getOperand(0);
   ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(1))->get();
-  SDValue LHS   = Op.getOperand(2);
-  SDValue RHS   = Op.getOperand(3);
-  SDValue Dest  = Op.getOperand(4);
-  SDLoc DL  (Op);
+  SDValue LHS = Op.getOperand(2);
+  SDValue RHS = Op.getOperand(3);
+  SDValue Dest = Op.getOperand(4);
+  SDLoc DL(Op);
 
   SDValue TargetCC = EmitCMP(LHS, RHS, CC, DL, DAG);
   SDValue Cmp = DAG.getNode(SyncVMISD::CMP, DL, MVT::Glue, LHS, RHS);
   return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain, Dest,
                      TargetCC, Cmp);
-
 }
 
 SDValue SyncVMTargetLowering::LowerSELECT_CC(SDValue Op,

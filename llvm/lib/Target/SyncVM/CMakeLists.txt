@@ -38,12 +38,9 @@ add_llvm_target(SyncVMCodeGen
   SyncVMLinkRuntime.cpp
   SyncVMLowerIntrinsics.cpp
   SyncVMExpandPseudoInsts.cpp
-  SyncVMAdjustSPBasedOffsets.cpp
   SyncVMAllocaHoisting.cpp
   SyncVMTargetTransformInfo.cpp
-  SyncVMDropUnusedRegisters.cpp
   SyncVMMoveCallResultSpill.cpp
-  SyncVMAdjustStackInCallSeq.cpp
   SyncVMPeephole.cpp
 
   LINK_COMPONENTS

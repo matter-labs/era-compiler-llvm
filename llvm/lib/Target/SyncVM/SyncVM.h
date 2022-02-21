@@ -65,12 +65,9 @@ ModulePass   *createSyncVMIndirectExternalCallPass();
 ModulePass   *createSyncVMLowerIntrinsicsPass();
 ModulePass   *createSyncVMLinkRuntimePass();
 FunctionPass *createSyncVMAddConditionsPass();
-FunctionPass *createSyncVMAdjustStackInCallseqPass();
-FunctionPass *createSyncVMAdjustSPBasedOffsetsPass();
 FunctionPass *createSyncVMAllocaHoistingPass();
 FunctionPass *createSyncVMCodegenPreparePass();
 FunctionPass *createSyncVMExpandPseudoPass();
-FunctionPass *createSyncVMDropUnusedRegistersPass();
 FunctionPass *createSyncVMMoveCallResultSpillPass();
 FunctionPass *createSyncVMPeepholePass();
 
@@ -83,10 +80,7 @@ void initializeSyncVMLinkRuntimePass(PassRegistry &);
 void initializeSyncVMCodegenPreparePass(PassRegistry &);
 void initializeSyncVMExpandPseudoPass(PassRegistry &);
 void initializeSyncVMAllocaHoistingPass(PassRegistry &);
-void initializeSyncVMDropUnusedRegistersPass(PassRegistry &);
-void initializeSyncVMAdjustSPBasedOffsetsPass(PassRegistry &);
 void initializeSyncVMMoveCallResultSpillPass(PassRegistry &);
-void initializeSyncVMAdjustStackInCallseqPass(PassRegistry &);
 void initializeSyncVMPeepholePass(PassRegistry &);
 
 } // end namespace llvm;

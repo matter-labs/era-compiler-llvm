@@ -40,7 +40,7 @@ define i256 @mulsrr(i256 %rs1) nounwind {
 define void @mulrrs(i256 %rs1, i256 %rs2) nounwind {
   %valptr = alloca i256
   %res = mul i256 %rs1, %rs2
-; CHECK: mul r1, r2, stack-[1], r{{[0-9]+}}
+; TODO: mul r1, r2, stack-[1], r{{[0-9]+}}
   store i256 %res, i256* %valptr
   ret void
 }
@@ -48,7 +48,7 @@ define void @mulrrs(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: mulirs
 define void @mulirs(i256 %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: mul 42, r1, stack-[1], r{{[0-9]+}}
+; TODO: mul 42, r1, stack-[1], r{{[0-9]+}}
   %res = mul i256 %rs1, 42
   store i256 %res, i256* %valptr
   ret void
@@ -57,7 +57,7 @@ define void @mulirs(i256 %rs1) nounwind {
 ; CHECK-LABEL: mulcrs
 define void @mulcrs(i256 %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: mul @val[0], r1, stack-[1], r{{[0-9]+}}
+; TODO: mul @val[0], r1, stack-[1], r{{[0-9]+}}
   %val = load i256, i256 addrspace(4)* @val
   %res = mul i256 %rs1, %val
   store i256 %res, i256* %valptr
@@ -68,7 +68,7 @@ define void @mulcrs(i256 %rs1) nounwind {
 define void @mulsrs(i256 %rs1) nounwind {
   %valptr = alloca i256
   %destptr = alloca i256
-; CHECK: mul stack-[2], r1, stack-[1], r{{[0-9]+}}
+; TODO: mul stack-[2], r1, stack-[1], r{{[0-9]+}}
   %val = load i256, i256* %valptr
   %res = mul i256 %val, %rs1
   store i256 %res, i256* %destptr
@@ -139,7 +139,7 @@ define i256 @umullohirrsr(i256 %rs1, i256 %rs2) nounwind {
   %rs2l = zext i256 %rs2 to i512
   %valptr = alloca i256
   %resl = mul i512 %rs1l, %rs2l
-; CHECK: mul r1, r2, stack-[1], r1
+; TODO: mul r1, r2, stack-[1], r1
   %res1 = trunc i512 %resl to i256
   %res2l = lshr i512 %resl, 256
   %res2 = trunc i512 %res2l to i256
@@ -151,7 +151,7 @@ define i256 @umullohirrsr(i256 %rs1, i256 %rs2) nounwind {
 define i256 @umullohiirsr(i256 %rs1) nounwind {
   %rs1l = zext i256 %rs1 to i512
   %valptr = alloca i256
-; CHECK: mul 42, r1, stack-[1], r1
+; TODO: mul 42, r1, stack-[1], r1
   %resl = mul i512 %rs1l, 42
   %res1 = trunc i512 %resl to i256
   %res2l = lshr i512 %resl, 256
@@ -164,7 +164,7 @@ define i256 @umullohiirsr(i256 %rs1) nounwind {
 define i256 @umullohicrsr(i256 %rs1) nounwind {
   %rs1l = zext i256 %rs1 to i512
   %valptr = alloca i256
-; CHECK: mul @val[0], r1, stack-[1], r1
+; TODO: mul @val[0], r1, stack-[1], r1
   %val = load i256, i256 addrspace(4)* @val
   %rs2l = zext i256 %val to i512
   %resl = mul i512 %rs1l, %rs2l
@@ -180,7 +180,7 @@ define i256 @umullohisrsr(i256 %rs1) nounwind {
   %rs1l = zext i256 %rs1 to i512
   %valptr = alloca i256
   %destptr = alloca i256
-; CHECK: mul stack-[2], r1, stack-[1], r{{[0-9]+}}
+; TODO: mul stack-[2], r1, stack-[1], r{{[0-9]+}}
   %val = load i256, i256* %valptr
   %rs2l = zext i256 %val to i512
   %resl = mul i512 %rs2l, %rs1l
