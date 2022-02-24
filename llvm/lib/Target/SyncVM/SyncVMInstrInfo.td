@@ -192,6 +192,8 @@ def ADDframe : Pseudo<(outs GR256:$dst), (ins i256imm:$base, i256imm:$offset),
 let Uses = [Flags] in {
 def GtFlag : Pseudo<(outs GR256:$dst), (ins),
                      "#PseudoGtFlag\t$dst", []>;
+def LtFlag : Pseudo<(outs GR256:$dst), (ins),
+                     "#PseudoLtFlag\t$dst", []>;
 // attach it to Call to indicate the call has an exception handling
 def HasEH : Pseudo<(outs), (ins), "#PseudoHasEH\t", []>;
 }
@@ -1073,3 +1075,4 @@ let mayLoad = 1 in {
 // Afterwards, a pass is used to extract the GtFlag's uses (EH branch) and 
 // combine it with the preceding call instruction.
 def : Pat<(SyncVMcmp (int_syncvm_gtflag), 0), (GtFlag)>;
+def : Pat<(and (int_syncvm_ltflag), 1), (LtFlag)>;

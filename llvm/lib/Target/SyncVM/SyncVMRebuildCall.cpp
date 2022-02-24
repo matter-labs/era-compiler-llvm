@@ -37,7 +37,7 @@ private:
   const TargetInstrInfo *TII;
   LLVMContext *Context;
 
-  MachineInstr* getFollowedByGtFlag(MachineInstr* MI) const;
+  MachineInstr* getFollowedByFlagInst(MachineInstr* MI) const;
 };
 
 char SyncVMRebuildCall::ID = 0;
@@ -46,7 +46,7 @@ char SyncVMRebuildCall::ID = 0;
 
 INITIALIZE_PASS(SyncVMRebuildCall, DEBUG_TYPE, SYNCVM_REBUILDCALL, false, false)
 
-MachineInstr* SyncVMRebuildCall::getFollowedByGtFlag(MachineInstr* MI) const {
+MachineInstr* SyncVMRebuildCall::getFollowedByFlagInst(MachineInstr* MI) const {
   MachineBasicBlock* MBB = MI->getParent();
   auto MBBI = std::next(MachineBasicBlock::iterator(MI));
   for (; MBBI != MBB->end(); ++MBBI) {
@@ -57,7 +57,8 @@ MachineInstr* SyncVMRebuildCall::getFollowedByGtFlag(MachineInstr* MI) const {
     if (MBBI->isTerminator()) {
       return nullptr;
     }
-    if (MBBI->getOpcode() == SyncVM::GtFlag) {
+    if (MBBI->getOpcode() == SyncVM::GtFlag ||
+        MBBI->getOpcode() == SyncVM::LtFlag) {
       return &*MBBI;
     }
   }
@@ -92,15 +93,15 @@ bool SyncVMRebuildCall::runOnMachineFunction(MachineFunction &MF) {
     for (auto MI = MBB.begin(); MI != MBB.end(); ++MI) {
       unsigned opcode = MI->getOpcode(); 
       if (isTargetInstruction(opcode)) {
-        MachineInstr *gtflag = getFollowedByGtFlag(&*MI);
-        if (gtflag != nullptr) {
-          LLVM_DEBUG(dbgs() << "Instruction followed by GtFlag:"; MI->dump(); dbgs() << "\n";);
-          LLVM_DEBUG(dbgs() << "GtFlag Instruction:"; gtflag->dump(); dbgs() << "\n";);
+        MachineInstr *flag = getFollowedByFlagInst(&*MI);
+        if (flag != nullptr) {
+          LLVM_DEBUG(dbgs() << "Instruction followed by Flag:"; MI->dump(); dbgs() << "\n";);
+          LLVM_DEBUG(dbgs() << "Flag Instruction:"; flag->dump(); dbgs() << "\n";);
 
           // find the branch folder
-          // lialan: fragile connection between gtflag and the following J. should better model
+          // lialan: fragile connection between flag and the following J. should better model
           // the connection.
-          auto JI = std::next(MachineBasicBlock::iterator(gtflag));
+          auto JI = std::next(MachineBasicBlock::iterator(flag));
           assert(JI->getOpcode() == SyncVM::J);
 
           // Get the landing pad branching:
@@ -118,11 +119,11 @@ bool SyncVMRebuildCall::runOnMachineFunction(MachineFunction &MF) {
 
           // delete unneeded instructions:
           ToBeErased.push_back(&*MI);
-          ToBeErased.push_back(gtflag);
+          ToBeErased.push_back(flag);
           ToBeErased.push_back(&*JI);
 
         } else {
-          LLVM_DEBUG(dbgs() << "Not followed by GtFlag, skipping:"; MI->dump());
+          LLVM_DEBUG(dbgs() << "Not followed by Flag, skipping:"; MI->dump());
         }
       }
     }
