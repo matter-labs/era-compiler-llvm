@@ -1215,7 +1215,7 @@ bool BranchFolder::OptimizeBranches(MachineFunction &MF) {
   for (MachineFunction::iterator I = std::next(MF.begin()), E = MF.end();
        I != E; ) {
     MachineBasicBlock *MBB = &*I++;
-    MadeChange |= OptimizeBlock(MBB);
+    //MadeChange |= OptimizeBlock(MBB);
 
     // If it is dead, remove it.
     if (MBB->pred_empty()) {

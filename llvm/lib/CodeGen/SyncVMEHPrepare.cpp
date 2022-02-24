@@ -116,6 +116,7 @@ bool SyncVMEHPrepare::doInitialization(Module &M) {
 bool SyncVMEHPrepare::runOnFunction(Function &F) {
   bool Changed = false;
   Changed |= replaceCXAThrow(F);
+  return Changed;
   Changed |= prepareThrows(F);
   Changed |= replaceInvokeIntrinsic(F);
   Changed |= replaceInvokeFunction(F);

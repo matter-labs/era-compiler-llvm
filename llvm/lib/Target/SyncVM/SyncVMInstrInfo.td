@@ -10,6 +10,7 @@ include "SyncVMInstrFormats.td"
 // Type Profiles.
 //===----------------------------------------------------------------------===//
 def SDT_SyncVMCall         : SDTypeProfile<0, -1, [SDTCisPtrTy<0>]>;
+def SDT_SyncVMInvoke       : SDTypeProfile<0, -1, [SDTCisPtrTy<0>]>;
 def SDT_SyncVMCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i256>,
                                              SDTCisVT<1, i256>]>;
 def SDT_SyncVMCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i256>, SDTCisVT<1, i256>]>;
@@ -28,6 +29,8 @@ def SDT_SyncVMCmp          : SDTypeProfile<0, 2, []>;
 def SyncVMret    : SDNode<"SyncVMISD::RET", SDTNone,
                     [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
 def SyncVMcall   : SDNode<"SyncVMISD::CALL", SDT_SyncVMCall,
+                    [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
+def SyncVMinvoke : SDNode<"SyncVMISD::INVOKE", SDT_SyncVMInvoke,
                     [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
 def SyncVMbrcc   : SDNode<"SyncVMISD::BR_CC", SDT_SyncVMBrCC,
                     [SDNPHasChain, SDNPInGlue]>;
@@ -783,14 +786,14 @@ def LDC : IUMA < 42, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
 def LDR : IUMA < 43, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
                  "uma.returndata_read$cc\t$rs0, r0, $rd0", []>;
 }
-def     : Pat<(load_heap inreg_memaddr:$rs0), (LDH inreg_memaddr:$rs0, 0)>;
-def     : Pat<(load_calldata inreg_memaddr:$rs0), (LDC inreg_memaddr:$rs0, 0)>;
-def     : Pat<(load_returndata inreg_memaddr:$rs0), (LDR inreg_memaddr:$rs0, 0)>;
+def     : Pat<(load_heap GR256:$rs0), (LDH GR256:$rs0, 0)>;
+def     : Pat<(load_calldata GR256:$rs0), (LDC GR256:$rs0, 0)>;
+def     : Pat<(load_returndata GR256:$rs0), (LDR GR256:$rs0, 0)>;
 let mayStore = 1 in
 def STH : IUMA < 44, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
                  "uma.heap_write$cc\t$rs0, $rs1, r0", []>;
-def     : Pat<(store_heap GR256:$rs1, inreg_memaddr:$rs0),
-              (STH inreg_memaddr:$rs0, $rs1, 0)>;
+def     : Pat<(store_heap GR256:$rs1, GR256:$rs0),
+              (STH GR256:$rs0, $rs1, 0)>;
 
 //===----------------------------------------------------------------------===//
 // Control flow instructions
@@ -803,7 +806,7 @@ def : Pat<(br bb:$dst), (J bb:$dst, 0)>;
 let isReturn = 1, isTerminator = 1, isBarrier = 1  in
 def RET   : IRet<7, RFNone, "ret", [(SyncVMret)]>;
 let isTerminator = 1, isBarrier = 1, isTrap = 1 in
-def THROW : IRet<7, RFErr, "ret.err", [(int_syncvm_throw)]>;
+def THROW : IRet<7, RFErr, "ret.panic r0", [(int_syncvm_throw)]>;
 
 //===----------------------------------------------------------------------===//
 // Constants materialization
@@ -1013,4 +1016,7 @@ def : Pat<(int_syncvm_precompile (load_stack stackaddr:$src0), first_op:$first),
 let Defs = [R1, R9, R10, R11, R12, R13, R14, R15], Uses = [SP], isCall = 1 in {
    def CALL : Pseudo<(outs), (ins imm16:$callee),
                    "call\t@$callee", [(SyncVMcall tglobaladdr:$callee)]>;
+   let isTerminator = 1 in
+   def INVOKE : Pseudo<(outs), (ins imm16:$callee, jmptarget:$unwind),
+                   "call\t@$callee, @$unwind", [(SyncVMinvoke tglobaladdr:$callee, bb:$unwind)]>;
 }

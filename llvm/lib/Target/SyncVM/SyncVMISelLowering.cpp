@@ -301,6 +301,8 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   SmallVector<SDValue, 8> Ops;
   Ops.push_back(Chain);
   Ops.push_back(Callee);
+  if (isa<InvokeInst>(CLI.CB))
+    Ops.push_back(CLI.UnwindBB);
 
   // Add argument registers to the end of the list so that they are
   // known live into the call.
@@ -312,7 +314,10 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   if (InFlag.getNode())
     Ops.push_back(InFlag);
 
-  Chain = DAG.getNode(SyncVMISD::CALL, DL, NodeTys, Ops);
+  if (auto* Invoke = dyn_cast_or_null<InvokeInst>(CLI.CB))
+    Chain = DAG.getNode(SyncVMISD::INVOKE, DL, NodeTys, Ops);
+  else 
+    Chain = DAG.getNode(SyncVMISD::CALL, DL, NodeTys, Ops);
   InFlag = Chain.getValue(1);
 
   // Create the CALLSEQ_END node.
