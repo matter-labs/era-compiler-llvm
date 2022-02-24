@@ -223,6 +223,7 @@ bool SyncVMDAGToDAGISel::MatchAddress(SDValue N, SyncVMISelAddressMode &AM,
 }
 
 bool SyncVMDAGToDAGISel::SelectInRegMemAddr(SDValue N, SDValue &Base) {
+  outs() << "Select inmem\n";
   Base = N;
   return true;
 }

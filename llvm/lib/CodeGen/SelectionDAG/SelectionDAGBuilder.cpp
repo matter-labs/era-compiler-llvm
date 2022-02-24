@@ -7707,6 +7707,10 @@ SelectionDAGBuilder::lowerInvokable(TargetLowering::CallLoweringInfo &CLI,
     (void)getRoot();
     DAG.setRoot(lowerStartEH(getControlRoot(), EHPadBB, BeginLabel));
     CLI.setChain(getRoot());
+    // SyncVM local begin
+    MachineBasicBlock *UnwindBB = FuncInfo.MBBMap[EHPadBB];
+    CLI.UnwindBB = DAG.getBasicBlock(UnwindBB);
+    // SyncVM local end
   }
 
   const TargetLowering &TLI = DAG.getTargetLoweringInfo();
