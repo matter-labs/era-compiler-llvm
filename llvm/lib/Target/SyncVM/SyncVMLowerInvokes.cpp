@@ -130,12 +130,17 @@ bool SyncVMLowerInvokes::runEHOnFunction(Function &F) {
       }
     }
 
-    II->getLandingPadInst()->eraseFromParent();
+    //II->getLandingPadInst()->eraseFromParent();
 
     // change InvokeInst to CallInst
     // TODO: Call should be before Invoke because Invoke is a teminator
     std::vector<Value*> operands(II->arg_begin(), II->arg_end());
-    IRB.CreateCall(II->getFunctionType(), II->getCalledOperand(), operands);
+    auto* call_ret = IRB.CreateCall(II->getFunctionType(), II->getCalledOperand(), operands);
+
+    // TODO: properly replace the invoke: if the invoke returns some value, we should replace it.
+    if (!II->uses().empty()) {
+      II->replaceAllUsesWith(call_ret);
+    }
 
     // emit:
     // ```
