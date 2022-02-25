@@ -67,84 +67,84 @@ void SyncVMExpandPseudo::expandLoadConst(MachineInstr &MI) const {
   MachineOperand ConstantPool = MI.getOperand(1);
   MachineOperand Reg = MI.getOperand(0);
 
-  auto can_combine = [] (MachineInstr &cur, MachineInstr &next) {
-    auto opcode = next.getOpcode(); 
+  auto can_combine = [](MachineInstr &cur, MachineInstr &next) {
+    auto opcode = next.getOpcode();
     switch (opcode) {
-      default:{
-        break;
+    default: {
+      break;
+    }
+    // this handles commutative cases
+    case SyncVM::ADDrrr_s:
+    case SyncVM::ANDrrr_s:
+    case SyncVM::XORrrr_s:
+    case SyncVM::ORrrr_s: {
+      auto outReg = cur.getOperand(0).getReg();
+      if (next.getOperand(1).getReg() == outReg ||
+          next.getOperand(2).getReg() == outReg) {
+        return true;
       }
-      // this handles commutative cases
-      case SyncVM::ADDrrr_s:
-      case SyncVM::ANDrrr_s:
-      case SyncVM::XORrrr_s:
-      case SyncVM::ORrrr_s: {
-        auto outReg = cur.getOperand(0).getReg();
-        if (next.getOperand(1).getReg() == outReg ||
-            next.getOperand(2).getReg() == outReg) {
-          return true;
-        }
-        break;
-      }
+      break;
+    }
     }
     return false;
   };
 
   auto can_non_commute_combine = [](MachineInstr &cur, MachineInstr &next) {
-    auto opcode = next.getOpcode(); 
+    auto opcode = next.getOpcode();
     switch (opcode) {
-      default:{
-        break;
+    default: {
+      break;
+    }
+    // this handles commutative cases
+    case SyncVM::SUBrrr_s:
+    case SyncVM::SHLrrr_s:
+    case SyncVM::SHRrrr_s:
+    case SyncVM::ROLrrr_s:
+    case SyncVM::RORrrr_s: {
+      auto outReg = cur.getOperand(0).getReg();
+      if (next.getOperand(1).getReg() == outReg ||
+          next.getOperand(2).getReg() == outReg) {
+        return true;
       }
-      // this handles commutative cases
-      case SyncVM::SUBrrr_s:
-      case SyncVM::SHLrrr_s:
-      case SyncVM::SHRrrr_s:
-      case SyncVM::ROLrrr_s:
-      case SyncVM::RORrrr_s: {
-        auto outReg = cur.getOperand(0).getReg();
-        if (next.getOperand(1).getReg() == outReg ||
-            next.getOperand(2).getReg() == outReg) {
-          return true;
-        }
-        break;
-      }
+      break;
+    }
     }
     return false;
   };
 
-  auto get_crr_op = [] (auto opcode, bool reverse = false) {
+  auto get_crr_op = [](auto opcode, bool reverse = false) {
     switch (opcode) {
-      default: {
-        llvm_unreachable("wrong opcode");
-        break;
-      }
-      case SyncVM::ADDrrr_s: {
-        return SyncVM::ADDcrr_s;
-      }
-      case SyncVM::ANDrrr_s: {
-        return SyncVM::ANDcrr_s;
-      }
-      case SyncVM::XORrrr_s: {
-        return SyncVM::XORcrr_s;
-      }
-      case SyncVM::ORrrr_s: {
-        return SyncVM::ORcrr_s;
-      }
-      case SyncVM::SUBrrr_s: {
-        return reverse ? SyncVM::SUByrr_s : SyncVM::SUBcrr_s;
-      }
-      case SyncVM::SHLrrr_s: {
-        return reverse ? SyncVM::SHLyrr_s : SyncVM::SHLcrr_s;
-      }
-      case SyncVM::SHRrrr_s: {
-        return reverse ? SyncVM::SHRyrr_s : SyncVM::SHRcrr_s;
-      }
-      case SyncVM::ROLrrr_s: {
-        return reverse ? SyncVM::ROLyrr_s : SyncVM::ROLcrr_s;
-      }
-      case SyncVM::RORrrr_s: {
-        return reverse ? SyncVM::RORyrr_s : SyncVM::RORrrr_s;
-      }
+    default: {
+      llvm_unreachable("wrong opcode");
+      break;
+    }
+    case SyncVM::ADDrrr_s: {
+      return SyncVM::ADDcrr_s;
+    }
+    case SyncVM::ANDrrr_s: {
+      return SyncVM::ANDcrr_s;
+    }
+    case SyncVM::XORrrr_s: {
+      return SyncVM::XORcrr_s;
+    }
+    case SyncVM::ORrrr_s: {
+      return SyncVM::ORcrr_s;
+    }
+    case SyncVM::SUBrrr_s: {
+      return reverse ? SyncVM::SUByrr_s : SyncVM::SUBcrr_s;
+    }
+    case SyncVM::SHLrrr_s: {
+      return reverse ? SyncVM::SHLyrr_s : SyncVM::SHLcrr_s;
+    }
+    case SyncVM::SHRrrr_s: {
+      return reverse ? SyncVM::SHRyrr_s : SyncVM::SHRcrr_s;
+    }
+    case SyncVM::ROLrrr_s: {
+      return reverse ? SyncVM::ROLyrr_s : SyncVM::ROLcrr_s;
+    }
+    case SyncVM::RORrrr_s: {
+      return reverse ? SyncVM::RORyrr_s : SyncVM::RORrrr_s;
+    }
     }
   };
 
@@ -176,7 +176,7 @@ void SyncVMExpandPseudo::expandLoadConst(MachineInstr &MI) const {
     auto opcode = MBBI->getOpcode();
 
     bool reverse;
-    MachineOperand * otherOpnd;
+    MachineOperand *otherOpnd;
     if (MBBI->getOperand(1).getReg() == outReg) {
       reverse = false;
       otherOpnd = &MBBI->getOperand(2);
@@ -205,7 +205,6 @@ void SyncVMExpandPseudo::expandLoadConst(MachineInstr &MI) const {
       .addImm(0)
       .getInstr();
 }
-
 
 bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
   LLVM_DEBUG(
@@ -259,25 +258,36 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
       if (!MI.isPseudo())
         continue;
 
+      if (MI.getOpcode() == SyncVM::INVOKE) {
+        // convert INVOKE to an actual call
+        BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
+                TII->get(SyncVM::NEAR_CALL))
+            .addReg(SyncVM::R0)
+            .add(MI.getOperand(0))
+            .add(MI.getOperand(1));
+        PseudoInst.push_back(&MI);
+        continue;
+      }
+
       if (Pseudos.count(MI.getOpcode())) {
         // Expand SELxxx pseudo into mov + cmov
         unsigned Opc = MI.getOpcode();
         DebugLoc DL = MI.getDebugLoc();
 
         assert(Pseudos.count(Opc) && "Unexpected instr type to insert");
-        unsigned NumDefs    = MI.getNumDefs();
-        unsigned MovOpc     = Pseudos[Opc][1];
-        unsigned CMovOpc    = Pseudos[Opc][0];
+        unsigned NumDefs = MI.getNumDefs();
+        unsigned MovOpc = Pseudos[Opc][1];
+        unsigned CMovOpc = Pseudos[Opc][0];
         unsigned Src0ArgPos = NumDefs;
         unsigned Src1ArgPos = NumDefs + Pseudos[Opc][2];
-        unsigned CCPos      = Src1ArgPos + Pseudos[Opc][3];
-        unsigned DstArgPos  = CCPos + 1;
-        unsigned EndPos     = DstArgPos + Pseudos[Opc][4];
+        unsigned CCPos = Src1ArgPos + Pseudos[Opc][3];
+        unsigned DstArgPos = CCPos + 1;
+        unsigned EndPos = DstArgPos + Pseudos[Opc][4];
 
         // Avoid mov rN, rN
-        if (NumDefs != 1 || CCPos - Src1ArgPos != 1
-            || !MI.getOperand(Src1ArgPos).isReg()
-            || MI.getOperand(0).getReg() != MI.getOperand(Src1ArgPos).getReg()) {
+        if (NumDefs != 1 || CCPos - Src1ArgPos != 1 ||
+            !MI.getOperand(Src1ArgPos).isReg() ||
+            MI.getOperand(0).getReg() != MI.getOperand(Src1ArgPos).getReg()) {
           // unconditional mov
           auto Mov = [&]() {
             if (NumDefs)
@@ -321,6 +331,33 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
         PseudoInst.push_back(&MI);
       } else if (MI.getOpcode() == SyncVM::LOADCONST) {
         expandLoadConst(MI);
+        PseudoInst.push_back(&MI);
+      }
+    }
+
+  // Handle calls
+  for (MachineBasicBlock &MBB : MF)
+    for (MachineInstr &MI : MBB) {
+      if (MI.getOpcode() == SyncVM::INVOKE) {
+        // convert INVOKE to an actual near_call
+        BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
+                TII->get(SyncVM::NEAR_CALL))
+            .addReg(SyncVM::R0)
+            .add(MI.getOperand(0))
+            .add(MI.getOperand(1));
+        PseudoInst.push_back(&MI);
+      } else if (MI.getOpcode() == SyncVM::CALL) {
+        // One of the problem: the backend cannot restrict frontend to not emit
+        // calls (Should we reinforce it?) so this route is needed.
+        // If a call is generated, it is incomplete as it misses EH label info,
+        // pad 0 instead.
+        BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
+                TII->get(SyncVM::NEAR_CALL))
+            .addReg(SyncVM::R0)
+            .add(MI.getOperand(0))
+            .addExternalSymbol(
+                "DEFAULT_UNWIND"); // Linker inserts a basic block
+                                   // which bubbles up the exception.
         PseudoInst.push_back(&MI);
       }
     }
