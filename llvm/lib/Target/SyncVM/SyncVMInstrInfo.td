@@ -1015,8 +1015,13 @@ def : Pat<(int_syncvm_precompile (load_stack stackaddr:$src0), first_op:$first),
 
 let Defs = [R1, R9, R10, R11, R12, R13, R14, R15], Uses = [SP], isCall = 1 in {
    def CALL : Pseudo<(outs), (ins imm16:$callee),
-                   "call\t@$callee", [(SyncVMcall tglobaladdr:$callee)]>;
+                   "CALL\t0, @$callee", [(SyncVMcall tglobaladdr:$callee)]>;
    let isTerminator = 1 in
    def INVOKE : Pseudo<(outs), (ins imm16:$callee, jmptarget:$unwind),
-                   "call\t@$callee, @$unwind", [(SyncVMinvoke tglobaladdr:$callee, bb:$unwind)]>;
+                   "INVOKE\tr0, @$callee, @$unwind", [(SyncVMinvoke tglobaladdr:$callee, bb:$unwind)]>;
+
+    def FAR_CALL  : ICall<8, CFNormal, (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
+                   "far_call\t$in1, @$callee, @$unwind", []>;
+    def NEAR_CALL : ICall<8, CFNormal, (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
+                   "near_call\t$in1, @$callee, @$unwind", []>;
 }

@@ -189,6 +189,7 @@ unsigned SyncVMInstrInfo::insertBranch(
     BuildMI(&MBB, DL, get(SyncVM::J))
         .addMBB(TBB)
         .addImm(SyncVMCC::COND_NONE);
+    return 1;
   }
   // Conditional branch.
   unsigned Count = 0;
