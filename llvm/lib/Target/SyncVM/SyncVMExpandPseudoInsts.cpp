@@ -259,6 +259,17 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
       if (!MI.isPseudo())
         continue;
 
+      if (MI.getOpcode() == SyncVM::INVOKE) {
+        // convert INVOKE to an actual call
+        BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
+                TII->get(SyncVM::NEAR_CALL))
+            .addReg(SyncVM::R0)
+            .add(MI.getOperand(0))
+            .add(MI.getOperand(1));
+        PseudoInst.push_back(&MI);
+        continue;
+      }
+
       if (Pseudos.count(MI.getOpcode())) {
         // Expand SELxxx pseudo into mov + cmov
         unsigned Opc = MI.getOpcode();
@@ -321,6 +332,31 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
         PseudoInst.push_back(&MI);
       } else if (MI.getOpcode() == SyncVM::LOADCONST) {
         expandLoadConst(MI);
+        PseudoInst.push_back(&MI);
+      }
+    }
+
+  // Handle calls
+  for (MachineBasicBlock &MBB : MF)
+    for (MachineInstr &MI : MBB) {
+      if (MI.getOpcode() == SyncVM::INVOKE) {
+        // convert INVOKE to an actual near_call
+        BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
+                TII->get(SyncVM::NEAR_CALL))
+            .addReg(SyncVM::R0)
+            .add(MI.getOperand(0))
+            .add(MI.getOperand(1));
+        PseudoInst.push_back(&MI);
+      } else if (MI.getOpcode() == SyncVM::CALL) {
+        // One of the problem: the backend cannot restrict frontend to not emit
+        // calls (Should we reinforce it?) so this route is needed.
+        // If a call is generated, it is incomplete as it misses EH label info,
+        // pad 0 instead.
+        BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
+                TII->get(SyncVM::NEAR_CALL))
+            .addReg(SyncVM::R0)
+            .add(MI.getOperand(0))
+            .addImm(0); // insert zero as EH label 
         PseudoInst.push_back(&MI);
       }
     }

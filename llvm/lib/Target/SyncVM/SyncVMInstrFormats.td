@@ -364,3 +364,17 @@ class Imrsr<bits<8> opcode,
 // Pseudo instructions
 class Pseudo<dag outs, dag ins, string asmstr, list<dag> pattern>
   : SyncVMInstruction <outs, ins, 0, asmstr, pattern> {}
+
+class CallFlags<bits<4> val> {
+  bits<4> Value = val;
+}
+def CFNormal         : CallFlags<0b0000>;
+def CFDelegate       : CallFlags<0b0001>;
+def CFMimic          : CallFlags<0b0010>;
+
+class ICall<bits<8> opcode, CallFlags flags, dag ins, string asmstr, list<dag> pattern>
+  : IForm <opcode, SrcNone, DstNone, (outs), ins, asmstr, pattern > {
+  let Inst{32-35} = flags.Value;
+  let Inst{44-47} = 0;
+  let Inst{52-55} = 0;
+}
