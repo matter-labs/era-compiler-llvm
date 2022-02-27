@@ -33,7 +33,6 @@ add_llvm_target(SyncVMCodeGen
   SyncVMFrameLowering.cpp
   SyncVMISelDAGToDAG.cpp
   SyncVMISelLowering.cpp
-  SyncVMIndirectUMA.cpp
   SyncVMIndirectExternalCall.cpp
   SyncVMLinkRuntime.cpp
   SyncVMLowerIntrinsics.cpp
