@@ -30,12 +30,14 @@
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/Target/TargetLoweringObjectFile.h"
 using namespace llvm;
 
 #define DEBUG_TYPE "asm-printer"
 
 namespace {
 class SyncVMAsmPrinter : public AsmPrinter {
+  std::vector<std::pair<MCSymbol*, const Constant*>> ConstantPool;
 public:
   SyncVMAsmPrinter(TargetMachine &TM, std::unique_ptr<MCStreamer> Streamer)
       : AsmPrinter(TM, std::move(Streamer)) {}
@@ -56,6 +58,10 @@ public:
   void emitGlobalConstant(const DataLayout &DL, const Constant *CV,
                           AliasMapTy *AliasList = nullptr) override;
   void EmitInterruptVectorSection(MachineFunction &ISR);
+
+  void emitConstantPool() override;
+  void emitEndOfAsmFile	(Module &) override;
+
 };
 } // end of anonymous namespace
 
@@ -120,6 +126,35 @@ bool SyncVMAsmPrinter::runOnMachineFunction(MachineFunction &MF) {
   SetupMachineFunction(MF);
   emitFunctionBody();
   return false;
+}
+
+void SyncVMAsmPrinter::emitEndOfAsmFile(Module &) {
+  MCSection *ReadOnlySection =
+    OutContext.getELFSection(".rodata", ELF::SHT_PROGBITS, ELF::SHF_ALLOC);
+
+  OutStreamer->switchSection(ReadOnlySection);
+
+  for (auto & pair : ConstantPool) {
+    OutStreamer->emitLabel(pair.first);
+    emitGlobalConstant(getDataLayout(), pair.second);
+  }
+}
+
+void SyncVMAsmPrinter::emitConstantPool() {
+  // use a custom constant pool emitter
+  const MachineConstantPool *MCP = MF->getConstantPool();
+  const std::vector<MachineConstantPoolEntry> &CP = MCP->getConstants();
+  if (CP.empty()) return;
+
+  // Iterate over current function's constant pool and save the emit info,
+  // and print the saved info at the very end.
+  for (unsigned i = 0, e = CP.size(); i != e; ++i) {
+    const MachineConstantPoolEntry &CPE = CP[i];
+    const Constant *C = CPE.Val.ConstVal;
+
+    MCSymbol *Sym = GetCPISymbol(i);
+    ConstantPool.emplace_back(std::make_pair(Sym, C));
+  }
 }
 
 void SyncVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
