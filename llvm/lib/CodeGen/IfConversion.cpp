@@ -18,9 +18,6 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/SparseSet.h"
 #include "llvm/ADT/Statistic.h"
-// SyncVM local begin
-#include "llvm/ADT/Triple.h"
-// SyncVM local end
 #include "llvm/ADT/iterator_range.h"
 #include "llvm/Analysis/ProfileSummaryInfo.h"
 #include "llvm/CodeGen/LivePhysRegs.h"
@@ -37,9 +34,6 @@
 #include "llvm/CodeGen/MBFIWrapper.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
 #include "llvm/CodeGen/TargetLowering.h"
-// SyncVM local begin
-#include "llvm/CodeGen/TargetPassConfig.h"
-// SyncVM local end
 #include "llvm/CodeGen/TargetRegisterInfo.h"
 #include "llvm/CodeGen/TargetSchedule.h"
 #include "llvm/CodeGen/TargetSubtargetInfo.h"
@@ -53,9 +47,6 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
-// SyncVM local begin
-#include "llvm/Target/TargetMachine.h"
-// SyncVM local end
 #include <algorithm>
 #include <cassert>
 #include <functional>
@@ -225,9 +216,6 @@ namespace {
       AU.addRequired<MachineBlockFrequencyInfo>();
       AU.addRequired<MachineBranchProbabilityInfo>();
       AU.addRequired<ProfileSummaryInfoWrapperPass>();
-      // SyncVM local begin
-      AU.addRequired<TargetPassConfig>();
-      // SyncVM local end
       MachineFunctionPass::getAnalysisUsage(AU);
     }
 
@@ -450,9 +438,6 @@ char &llvm::IfConverterID = IfConverter::ID;
 INITIALIZE_PASS_BEGIN(IfConverter, DEBUG_TYPE, "If Converter", false, false)
 INITIALIZE_PASS_DEPENDENCY(MachineBranchProbabilityInfo)
 INITIALIZE_PASS_DEPENDENCY(ProfileSummaryInfoWrapperPass)
-// SyncVM local begin
-INITIALIZE_PASS_DEPENDENCY(TargetPassConfig)
-// SyncVM local end
 INITIALIZE_PASS_END(IfConverter, DEBUG_TYPE, "If Converter", false, false)
 
 bool IfConverter::runOnMachineFunction(MachineFunction &MF) {
@@ -469,10 +454,6 @@ bool IfConverter::runOnMachineFunction(MachineFunction &MF) {
       &getAnalysis<ProfileSummaryInfoWrapperPass>().getPSI();
   MRI = &MF.getRegInfo();
   SchedModel.init(&ST);
-  // SyncVM local begin
-  auto T =
-      getAnalysis<TargetPassConfig>().getTM<TargetMachine>().getTargetTriple();
-  // SyncVM local end
 
   if (!TII) return false;
 
@@ -481,9 +462,7 @@ bool IfConverter::runOnMachineFunction(MachineFunction &MF) {
   bool BFChange = false;
   if (!PreRegAlloc) {
     // Tail merge tend to expose more if-conversion opportunities.
-    // SyncVM local begin
-    BranchFolder BF(true, false, MBFI, *MBPI, PSI, T);
-    // SyncVM local end
+    BranchFolder BF(true, false, MBFI, *MBPI, PSI);
     BFChange = BF.OptimizeFunction(MF, TII, ST.getRegisterInfo());
   }
 
@@ -622,9 +601,7 @@ bool IfConverter::runOnMachineFunction(MachineFunction &MF) {
   BBAnalysis.clear();
 
   if (MadeChange && IfCvtBranchFold) {
-    // SyncVM local begin
-    BranchFolder BF(false, false, MBFI, *MBPI, PSI, T);
-    // SyncVM local end
+    BranchFolder BF(false, false, MBFI, *MBPI, PSI);
     BF.OptimizeFunction(MF, TII, MF.getSubtarget().getRegisterInfo());
   }
 
