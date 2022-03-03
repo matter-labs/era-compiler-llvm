@@ -129,12 +129,7 @@ bool BranchFolderPass::runOnMachineFunction(MachineFunction &MF) {
       getAnalysis<MachineBlockFrequencyInfo>());
   BranchFolder Folder(EnableTailMerge, /*CommonHoist=*/true, MBBFreqInfo,
                       getAnalysis<MachineBranchProbabilityInfo>(),
-                      // SyncVM local begin
-                      &getAnalysis<ProfileSummaryInfoWrapperPass>().getPSI(),
-                      getAnalysis<TargetPassConfig>()
-                        .getTM<TargetMachine>()
-                        .getTargetTriple());
-                      // SyncVM local end
+                      &getAnalysis<ProfileSummaryInfoWrapperPass>().getPSI());
   return Folder.OptimizeFunction(MF, MF.getSubtarget().getInstrInfo(),
                                  MF.getSubtarget().getRegisterInfo());
 }
@@ -143,14 +138,9 @@ BranchFolder::BranchFolder(bool DefaultEnableTailMerge, bool CommonHoist,
                            MBFIWrapper &FreqInfo,
                            const MachineBranchProbabilityInfo &ProbInfo,
                            ProfileSummaryInfo *PSI,
-                           // SyncVM local begin
-                           Triple T,
-                           // SyncVM local end
                            unsigned MinTailLength)
     : EnableHoistCommonCode(CommonHoist), MinCommonTailLength(MinTailLength),
-    //SyncVM local begin
-      MBBFreqInfo(FreqInfo), MBPI(ProbInfo), PSI(PSI), TargetTriple(T) {
-    //SyncVM local end
+      MBBFreqInfo(FreqInfo), MBPI(ProbInfo), PSI(PSI) {
   if (MinCommonTailLength == 0)
     MinCommonTailLength = TailMergeSize;
   switch (FlagEnableTailMerge) {
@@ -217,11 +207,8 @@ bool BranchFolder::OptimizeFunction(MachineFunction &MF,
     // block placement.
     if (!AfterBlockPlacement || MadeChangeThisIteration)
       MadeChangeThisIteration |= OptimizeBranches(MF);
-// FIXME: SyncVM
-#if 0
     if (EnableHoistCommonCode)
       MadeChangeThisIteration |= HoistCommonCode(MF);
-#endif
     MadeChange |= MadeChangeThisIteration;
   }
 
@@ -1442,17 +1429,12 @@ ReoptimizeBlock:
 
     // If the previous branch *only* branches to *this* block (conditional or
     // not) remove the branch.
-    // SyncVM local begin
-    if (PriorTBB == MBB && (!PriorFBB || PriorFBB == PriorTBB)) {
-    // SyncVM local end
+    if (PriorTBB == MBB && !PriorFBB) {
       TII->removeBranch(PrevBB);
       MadeChange = true;
       ++NumBranchOpts;
       goto ReoptimizeBlock;
     }
-
-// SyncVM local begin
-    if (!TargetTriple.isSyncVM()) {
 
     // If the prior block branches somewhere else on the condition and here if
     // the condition is false, remove the uncond second branch.
@@ -1479,9 +1461,6 @@ ReoptimizeBlock:
         goto ReoptimizeBlock;
       }
     }
-
-    }
-    // SyncVM local end
 
     // If this block has no successors (e.g. it is a return block or ends with
     // a call to a no-return function like abort or __cxa_throw) and if the pred
