@@ -5,14 +5,14 @@ target triple = "syncvm"
 
 ; CHECK-LABEL: caller1
 define i256 @caller1(i256 %a1) nounwind {
-; CHECK: call @onearg
+; CHECK: near_call r0, @onearg
   %1 = call i256 @onearg(i256 %a1)
   ret i256 %1
 }
 
 ; CHECK-LABEL: caller2
 define i256 @caller2(i256 %a1, i256 %a2) nounwind {
-; CHECK: call @twoarg
+; CHECK: near_call r0, @twoarg
   %1 = call i256 @twoarg(i256 %a1, i256 %a2)
   ret i256 %1
 }
@@ -22,14 +22,14 @@ define i256 @caller2.swp(i256 %a1, i256 %a2) nounwind {
 ; CHECK: add	r1, r0, r3
 ; CHECK: add	r2, r0, r1
 ; CHECK: add	r3, r0, r2
-; CHECK: call @twoarg
+; CHECK: near_call r0, @twoarg
   %1 = call i256 @twoarg(i256 %a2, i256 %a1)
   ret i256 %1
 }
 
 ; CHECK-LABEL: caller3
 define i256 @caller3(i256 %a1, i256 %a2, i256 %a3) nounwind {
-; CHECK: call @threearg
+; CHECK: call r0, @threearg
   %1 = call i256 @threearg(i256 %a1, i256 %a2, i256 %a3)
   ret i256 %1
 }
@@ -48,7 +48,7 @@ define i256 @caller_argtypes(i1 %a1, i8 %a2, i16 %a3, i32 %a4, i64 %a5, i128 %a6
 
 ; CHECK: @caller_i1.ret
 define i256 @caller_i1.ret(i256 %a1) nounwind {
-; CHECK: call	@i1.ret
+; CHECK: near_call r0, @i1.ret
   %1 = call i1 @i1.ret(i256 %a1)
 ; CHECK: and 1, r1, r1
   %2 = zext i1 %1 to i256
@@ -57,7 +57,7 @@ define i256 @caller_i1.ret(i256 %a1) nounwind {
 
 ; CHECK: @caller_i8.ret
 define i256 @caller_i8.ret(i256 %a1) nounwind {
-; CHECK: call	@i8.ret
+; CHECK: near_call r0, @i8.ret
   %1 = call i8 @i8.ret(i256 %a1)
 ; CHECK: and 255, r1, r1
   %2 = zext i8 %1 to i256
@@ -66,7 +66,7 @@ define i256 @caller_i8.ret(i256 %a1) nounwind {
 
 ; CHECK: @caller_i16.ret
 define i256 @caller_i16.ret(i256 %a1) nounwind {
-; CHECK: call	@i16.ret
+; CHECK: near_call r0, @i16.ret
   %1 = call i16 @i16.ret(i256 %a1)
 ; CHECK: and 65535, r1, r1
   %2 = zext i16 %1 to i256
@@ -75,7 +75,7 @@ define i256 @caller_i16.ret(i256 %a1) nounwind {
 
 ; CHECK: @caller_i32.ret
 define i256 @caller_i32.ret(i256 %a1) nounwind {
-; CHECK: call	@i32.ret
+; CHECK: near_call r0, @i32.ret
   %1 = call i32 @i32.ret(i256 %a1)
   %2 = zext i32 %1 to i256
   ret i256 %2
@@ -83,7 +83,7 @@ define i256 @caller_i32.ret(i256 %a1) nounwind {
 
 ; CHECK: @caller_i64.ret
 define i256 @caller_i64.ret(i256 %a1) nounwind {
-; CHECK: call	@i64.ret
+; CHECK: near_call r0, @i64.ret
   %1 = call i64 @i64.ret(i256 %a1)
   %2 = zext i64 %1 to i256
   ret i256 %2
@@ -91,7 +91,7 @@ define i256 @caller_i64.ret(i256 %a1) nounwind {
 
 ; CHECK: @caller_i128.ret
 define i256 @caller_i128.ret(i256 %a1) nounwind {
-; CHECK: call	@i128.ret
+; CHECK: near_call r0, @i128.ret
   %1 = call i128 @i128.ret(i256 %a1)
   %2 = zext i128 %1 to i256
   ret i256 %2
@@ -100,7 +100,7 @@ define i256 @caller_i128.ret(i256 %a1) nounwind {
 ; CHECK-LABEL: call.onestack
 define i256 @call.onestack() nounwind {
 ; TODO: Check calling conventions onse callee-saved and caller-saver registers defined
-; CHECK: call @onestack
+; CHECK: near_call r0, @onestack
   %1 = call i256 @onestack(i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0)
   ret i256 %1
 }
@@ -108,7 +108,7 @@ define i256 @call.onestack() nounwind {
 ; CHECK-LABEL: call.twostack
 define i256 @call.twostack() nounwind {
 ; TODO: Check calling conventions onse callee-saved and caller-saver registers defined
-; CHECK: call @twostack
+; CHECK: near_call r0, @twostack
   %1 = call i256 @twostack(i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 1, i256 2)
   ret i256 %1
 }
@@ -137,11 +137,11 @@ define i256 @sum17(i256 %a1, i256 %a2, i256 %a3, i256 %a4, i256 %a5, i256 %a6, i
 
 ; CHECK-LABEL: checkcc
 define void @checkcc(i256 %arg) nounwind {
-; CHECK: call @ccc
+; CHECK: near_call r0, @ccc
   call void @ccc(i256 %arg)
-; CHECK: call @fastcc
+; CHECK: near_call r0, @fastcc
   call void @fastcc(i256 %arg)
-; CHECK: call @coldcc
+; CHECK: near_call r0, @coldcc
   call void @coldcc(i256 %arg)
   ret void
 }
