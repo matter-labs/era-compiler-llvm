@@ -806,7 +806,7 @@ def : Pat<(br bb:$dst), (J bb:$dst, 0)>;
 let isReturn = 1, isTerminator = 1, isBarrier = 1  in
 def RET   : IRet<7, RFNone, "ret", [(SyncVMret)]>;
 let isTerminator = 1, isBarrier = 1, isTrap = 1 in
-def THROW : IRet<7, RFErr, "ret.panic r0", [(int_syncvm_throw)]>;
+def THROW : IRet<7, RFErr, "revert", [(int_syncvm_throw)]>;
 
 //===----------------------------------------------------------------------===//
 // Constants materialization
