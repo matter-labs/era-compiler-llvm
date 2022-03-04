@@ -143,29 +143,6 @@ class ILogR<bits<8> opcode, DestMode ad, dag outs, dag ins,
   let Inst{52-55} = rs0;
 }
 
-class ILogM<bits<8> opcode, SourceMode as, DestMode ad, dag outs, dag ins,
-            string asmstr, list<dag> pattern>
-  : IConditional <opcode, as, ad, outs, ins, asmstr, pattern> {
-  bit first;
-  bits<20> src0;
-  bits<4> rs1;
-  let Inst{16-31} = src0{4-19};
-  let Inst{36} = first;
-  let Inst{52-55} = src0{0-3};
-  let Inst{48-51} = rs1;
-}
-
-class ILogI<bits<8> opcode, DestMode ad, dag outs, dag ins,
-            string asmstr, list<dag> pattern>
-  : IConditional <opcode, SrcImm, ad, outs, ins, asmstr, pattern> {
-  bit first;
-  bits<16> imm;
-  bits<4> rs1;
-  let Inst{16-31} = imm;
-  let Inst{36} = first;
-  let Inst{48-51} = rs1;
-}
-
 class IBinary<bits<8> opcode,
               SourceMode as,
               DestMode ad,
