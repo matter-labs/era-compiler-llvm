@@ -209,7 +209,6 @@ add_llvm_component_library(LLVMCodeGen
   StackSlotColoring.cpp
   SwiftErrorValueTracking.cpp
   SwitchLoweringUtils.cpp
-  SyncVMEHPrepare.cpp
   TailDuplication.cpp
   TailDuplicator.cpp
   TargetFrameLoweringImpl.cpp

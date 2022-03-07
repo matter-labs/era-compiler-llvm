@@ -79,8 +79,8 @@ class INop<bits<8> opcode, dag ins, string asmstr, list<dag> pattern>
   let Inst{ 0-15} = sp_change;
 }
 
-class IRet<bits<8> opcode, RetFlags flags, string asmstr, list<dag> pattern>
-  : IForm <opcode, SrcNone, DstNone, (outs), (ins), asmstr, pattern > {
+class IRet<bits<8> opcode, RetFlags flags, dag ins, string asmstr, list<dag> pattern>
+  : IForm <opcode, SrcNone, DstNone, (outs), ins, asmstr, pattern > {
   let Inst{32-35} = flags.Value;
   let Inst{44-47} = 0;
   let Inst{52-55} = 0;

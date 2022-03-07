@@ -56,6 +56,8 @@ public:
   SDValue LowerSDIV(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSREM(SDValue Op, SelectionDAG &DAG) const;
 
+  SDValue LowerINTRINSIC_VOID(SDValue Op, SelectionDAG &DAG) const;
+
   SDValue LowerConstant(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerConstantPool(SDValue Op, SelectionDAG &DAG) const;
 
