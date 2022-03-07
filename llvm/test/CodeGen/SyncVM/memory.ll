@@ -4,22 +4,6 @@
 target datalayout = "E-p:256:256-i8:256:256:256-i256:256:256-S32-a:256:256"
 target triple = "syncvm"
 
-; CHECK-LABEL: store_to_parent
-define void @store_to_parent(i256 %par) nounwind {
-  %1 = inttoptr i256 0 to i256 addrspace(2)*
-; CHECK: mov.p r1, 0
-  store i256 %par, i256 addrspace(2)* %1
-  ret void
-}
-
-; CHECK-LABEL: store_to_child
-define void @store_to_child(i256 %par) nounwind {
-  %1 = inttoptr i256 0 to i256 addrspace(3)*
-; CHECK: mov.c r1, 0
-  store i256 %par, i256 addrspace(3)* %1
-  ret void
-}
-
 ; CHECK-LABEL: store_to_childu
 define void @store_to_childu(i256 %addr, i256 %par) nounwind {
   %1 = inttoptr i256 %addr to i256 addrspace(1)*
