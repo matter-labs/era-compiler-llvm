@@ -13,7 +13,8 @@ def SDT_SyncVMCall         : SDTypeProfile<0, -1, [SDTCisPtrTy<0>]>;
 def SDT_SyncVMInvoke       : SDTypeProfile<0, -1, [SDTCisPtrTy<0>]>;
 def SDT_SyncVMCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i256>,
                                              SDTCisVT<1, i256>]>;
-def SDT_SyncVMCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i256>, SDTCisVT<1, i256>]>;
+def SDT_SyncVMCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i256>,
+                                           SDTCisVT<1, i256>]>;
 def SDT_SyncVMChangeSP     : SDTypeProfile<0,  1, [SDTCisVT<0, i256>]>;
 def SDT_SyncVMBrCC         : SDTypeProfile<0,  2, [SDTCisVT<0, OtherVT>,
                                                    SDTCisVT<1, i256>]>;
@@ -21,6 +22,7 @@ def SDT_SyncVMSelectCC     : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
                                                   SDTCisSameAs<1, 2>,
                                                   SDTCisVT<3, i256>]>;
 def SDT_SyncVMCmp          : SDTypeProfile<0, 2, []>;
+def SDT_SyncVMThrow        : SDTypeProfile<0, 1, [SDTCisVT<0, i256>]>;
 
 //===----------------------------------------------------------------------===//
 // SyncVM Specific Node Definitions.
@@ -45,6 +47,8 @@ def SyncVMcallseq_end :
                         [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
 def SyncVMchange_sp : SDNode<"SyncVMISD::CHANGE_SP", SDT_SyncVMChangeSP,
                              [SDNPHasChain, SDNPInGlue, SDNPOutGlue]>;
+def SyncVMthrow : SDNode<"SyncVMISD::THROW", SDT_SyncVMThrow,
+                         [SDNPHasChain, SDNPInGlue]>;
 
 //===----------------------------------------------------------------------===//
 // SyncVM Operand Definitions.
@@ -804,9 +808,10 @@ def J: IJump<10, (ins jmptarget:$dest, cc:$cc), "jump$cc\t@$dest",
 def : Pat<(br bb:$dst), (J bb:$dst, 0)>;
 
 let isReturn = 1, isTerminator = 1, isBarrier = 1  in
-def RET   : IRet<7, RFNone, "ret", [(SyncVMret)]>;
+def RET   : IRet<7, RFNone, (ins), "ret", [(SyncVMret)]>;
 let isTerminator = 1, isBarrier = 1, isTrap = 1 in
-def THROW : IRet<7, RFErr, "revert", [(int_syncvm_throw)]>;
+def THROW : IRet<7, RFErr, (ins GR256:$rs0), "revert",
+                 [(SyncVMthrow GR256:$rs0)]>;
 
 //===----------------------------------------------------------------------===//
 // Constants materialization
@@ -826,21 +831,13 @@ def CONST   : Pseudo< (outs GR256:$out), (ins i256imm:$val),
 
 def CTXr : IContextR<45, (outs GR256:$rd0), (ins context_op:$cop, cc:$cc),
                      "context$cop$cc\t$rd0", []>;
-def CTXs : IContextS<46, (outs), (ins stackop:$dst0, context_op:$cop, cc:$cc),
-                     "context$cop$cc\t$dst0", []>;
 let hasSideEffects = 1 in {
 def CTXr_se : IContextR<45, (outs GR256:$rd0), (ins context_se_op:$cop, cc:$cc),
                         "context$cop$cc\t$rd0", []>;
-def CTXs_se : IContextS<46, (outs), (ins stackop:$dst0, context_se_op:$cop, cc:$cc),
-                        "context$cop$cc\t$dst0", []>;
 }
 
 def : Pat<(int_syncvm_context context_op:$cop), (CTXr context_op:$cop, 0)>;
 def : Pat<(int_syncvm_ergsleft), (CTXr_se 6, 0)>;
-def : Pat<(store_stack (int_syncvm_context context_op:$cop), stackaddr:$dst0),
-          (CTXs stackaddr:$dst0, context_op:$cop, 0)>;
-def : Pat<(store_stack (int_syncvm_ergsleft), stackaddr:$dst0),
-          (CTXs_se stackaddr:$dst0, 6, 0)>;
 
 def SLDrr : ILogR<47, DstReg, (outs GR256:$rd0), (ins GR256:$rs0, first_op:$first, cc:$cc),
                   "sload$first$cc\t$rs0, $rd0", []> {

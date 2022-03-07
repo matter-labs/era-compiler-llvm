@@ -279,8 +279,15 @@ two_cells:
   ret void
 }
 
+define void @__cxa_throw(i8* %addr, i8*, i8*) {
+  %addrval = ptrtoint i8* %addr to i256
+  call void @llvm.syncvm.throw(i256 %addrval)
+  unreachable
+}
+
 declare {i256, i1} @llvm.uadd.with.overflow.i256(i256, i256)
 declare void @llvm.syncvm.sstore(i256, i256, i256)
+declare void @llvm.syncvm.throw(i256)
 
 attributes #0 = { nounwind readnone }
 attributes #1 = { mustprogress nounwind readnone willreturn }

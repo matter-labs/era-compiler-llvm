@@ -430,9 +430,6 @@ void initializeStripNonDebugSymbolsPass(PassRegistry&);
 void initializeStripNonLineTableDebugLegacyPassPass(PassRegistry &);
 void initializeStripSymbolsPass(PassRegistry&);
 void initializeStructurizeCFGLegacyPassPass(PassRegistry &);
-// SyncVM local begin
-void initializeSyncVMEHPreparePass(PassRegistry&);
-// SyncVM local end
 void initializeTailCallElimPass(PassRegistry&);
 void initializeTailDuplicatePass(PassRegistry&);
 void initializeTargetLibraryInfoWrapperPassPass(PassRegistry&);

@@ -927,11 +927,7 @@ void TargetPassConfig::addPassesToHandleExceptions() {
     break;
   // SyncVM local begin
   case ExceptionHandling::SyncVM:
-    // Wasm EH uses Windows EH instructions, but it does not need to demote PHIs
-    // on catchpads and cleanuppads because it does not outline them into
-    // funclets. Catchswitch blocks are not lowered in SelectionDAG, so we
-    // should remove PHIs there.
-    addPass(createSyncVMEHPass());
+    // SyncVM selects invokes directly. No special handling is required.
     break;
   // SyncVM local end
   case ExceptionHandling::None:

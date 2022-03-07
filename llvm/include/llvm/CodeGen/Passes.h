@@ -375,12 +375,6 @@ namespace llvm {
   /// WebAssembly's exception handling scheme.
   FunctionPass *createWasmEHPass();
 
-  // SyncVM local begin
-  /// createSyncVMEHPass - This pass adapts exception handling code to use
-  /// SyncVM's exception handling scheme.
-  FunctionPass *createSyncVMEHPass();
-  // SyncVM local end
-
   /// LocalStackSlotAllocation - This pass assigns local frame indices to stack
   /// slots relative to one another and allocates base registers to access them
   /// when it is estimated by the target to be out of range of normal frame

@@ -77,6 +77,9 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i64, Expand);
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i128, Expand);
 
+  // Intrinsics lowering
+  setOperationAction(ISD::INTRINSIC_VOID, MVT::Other, Custom);
+
   for (MVT VT : MVT::integer_valuetypes()) {
     setLoadExtAction(ISD::SEXTLOAD, MVT::i256, VT, Custom);
   }
@@ -314,9 +317,9 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   if (InFlag.getNode())
     Ops.push_back(InFlag);
 
-  if (auto* Invoke = dyn_cast_or_null<InvokeInst>(CLI.CB))
+  if (auto *Invoke = dyn_cast_or_null<InvokeInst>(CLI.CB))
     Chain = DAG.getNode(SyncVMISD::INVOKE, DL, NodeTys, Ops);
-  else 
+  else
     Chain = DAG.getNode(SyncVMISD::CALL, DL, NodeTys, Ops);
   InFlag = Chain.getValue(1);
 
@@ -451,6 +454,8 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
     return LowerSDIV(Op, DAG);
   case ISD::SREM:
     return LowerSREM(Op, DAG);
+  case ISD::INTRINSIC_VOID:
+    return LowerINTRINSIC_VOID(Op, DAG);
   }
 }
 
@@ -616,6 +621,21 @@ SyncVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                                                   MachineBasicBlock *BB) const {
   llvm_unreachable("No instruction require custom inserter");
   return nullptr;
+}
+
+SDValue SyncVMTargetLowering::LowerINTRINSIC_VOID(SDValue Op,
+                                                  SelectionDAG &DAG) const {
+  unsigned IntNo =
+      cast<ConstantSDNode>(
+          Op.getOperand(Op.getOperand(0).getValueType() == MVT::Other))
+          ->getZExtValue();
+  if (IntNo != Intrinsic::syncvm_throw)
+    return {};
+  SDLoc DL(Op);
+  auto CTR =
+      DAG.getCopyToReg(Op.getOperand(0), DL, SyncVM::R1, Op.getOperand(2));
+  return DAG.getNode(SyncVMISD::THROW, DL, MVT::Other, CTR,
+                                    DAG.getRegister(SyncVM::R1, MVT::i256));
 }
 
 const char *SyncVMTargetLowering::getTargetNodeName(unsigned Opcode) const {
