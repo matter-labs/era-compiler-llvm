@@ -140,10 +140,14 @@ bool SyncVMEHPrepare::replaceCXAThrow(Function &F) {
         if (CSGV && CSGV->getGlobalIdentifier() == "__cxa_throw") {
           IRBuilder<> Builder(&Inst);
           if (Call) {
-            CallInst *ThrowFCall = Builder.CreateCall(ThrowF, {});
+            auto Op = Builder.CreatePtrToInt(Call->getOperand(0),
+                                             Builder.getInt256Ty());
+            CallInst *ThrowFCall =
+                Builder.CreateCall(ThrowF, {Op});
             Inst.replaceAllUsesWith(ThrowFCall);
           } else if (Invoke) {
             Builder.CreateBr(Invoke->getUnwindDest());
+            Invoke->getUnwindDest()->front().eraseFromParent();
           }
           ++II;
           Inst.eraseFromParent();
