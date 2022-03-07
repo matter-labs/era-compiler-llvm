@@ -31,39 +31,6 @@ define i256 @contextr() {
   ret i256 %13
 }
 
-; CHECK-LABEL: contexts
-define void @contexts() {
-; CHECK-DAG: context.caller stack-[6]
-; CHECK-DAG: context.self_address stack-[7]
-; CHECK-DAG: context.code_address stack-[5]
-; CHECK-DAG: context.meta stack-[4]
-; CHECK-DAG: context.tx_origin stack-[3]
-; CHECK-DAG: context.coinbase stack-[2]
-; CHECK-DAG: context.ergs_left stack-[1]
-  %ptr1 = alloca i256
-  %ptr2 = alloca i256
-  %ptr3 = alloca i256
-  %ptr4 = alloca i256
-  %ptr5 = alloca i256
-  %ptr6 = alloca i256
-  %ptr7 = alloca i256
-  %1 = call i256 @llvm.syncvm.context(i256 0)
-  %2 = call i256 @llvm.syncvm.context(i256 1)
-  %3 = call i256 @llvm.syncvm.context(i256 2)
-  %4 = call i256 @llvm.syncvm.context(i256 3)
-  %5 = call i256 @llvm.syncvm.context(i256 4)
-  %6 = call i256 @llvm.syncvm.context(i256 5)
-  %7 = call i256 @llvm.syncvm.ergsleft()
-  store i256 %1, i256* %ptr1, align 32
-  store i256 %2, i256* %ptr2, align 32
-  store i256 %3, i256* %ptr3, align 32
-  store i256 %4, i256* %ptr4, align 32
-  store i256 %5, i256* %ptr5, align 32
-  store i256 %6, i256* %ptr6, align 32
-  store i256 %7, i256* %ptr7, align 32
-  ret void
-}
-
 ; CHECK-LABEL: sload_rr
 define i256 @sload_rr(i256 %val) {
 ; CHECK-DAG: sload r1, r{{[0-9]+}}
@@ -110,6 +77,13 @@ define void @precompile_r(i256 %key) {
   ret void
 }
 
+; CHECK-LABEL: throw
+define void @throw(i256 %val) {
+; CHECK: revert
+  call void @llvm.syncvm.throw(i256 %val)
+  ret void
+}
+
 declare i256 @llvm.syncvm.context(i256)
 declare i256 @llvm.syncvm.ergsleft()
 declare i256 @llvm.syncvm.sload(i256, i256)
@@ -117,3 +91,4 @@ declare void @llvm.syncvm.sstore(i256, i256, i256)
 declare void @llvm.syncvm.tol1(i256, i256, i256)
 declare void @llvm.syncvm.event(i256, i256, i256)
 declare void @llvm.syncvm.precompile(i256, i256)
+declare void @llvm.syncvm.throw(i256)

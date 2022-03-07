@@ -31,7 +31,7 @@ def int_syncvm_tol1: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], [
 def int_syncvm_precompile: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty], [IntrHasSideEffects]>;
 
 // Return with error.
-def int_syncvm_throw: Intrinsic<[], [], [Throws, IntrNoReturn]>;
+def int_syncvm_throw: Intrinsic<[], [llvm_i256_ty], [Throws, IntrNoReturn]>;
 
 // Access to flags.
 def int_syncvm_getif : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty],
