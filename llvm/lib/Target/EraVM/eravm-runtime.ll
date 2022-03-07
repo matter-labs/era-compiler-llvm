@@ -274,6 +274,12 @@ two_cells:
   ret void
 }
 
+define void @__cxa_throw(i8* %addr, i8*, i8*) {
+  %addrval = ptrtoint i8* %addr to i256
+  call void @llvm.eravm.throw(i256 %addrval)
+  unreachable
+}
+
 define i256 @__signextend(i256 %numbyte, i256 %value) #1 {
   %numbit_byte = mul nuw nsw i256 %numbyte, 8
   %numbit = add nsw nuw i256 %numbit_byte, 7
@@ -290,6 +296,7 @@ define i256 @__signextend(i256 %numbyte, i256 %value) #1 {
 }
 
 declare {i256, i1} @llvm.uadd.with.overflow.i256(i256, i256)
+declare void @llvm.eravm.throw(i256)
 
 attributes #0 = { nounwind readnone }
 attributes #1 = { mustprogress nounwind readnone willreturn }

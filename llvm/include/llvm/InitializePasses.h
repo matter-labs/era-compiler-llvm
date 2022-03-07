@@ -321,9 +321,6 @@ void initializeStraightLineStrengthReduceLegacyPassPass(PassRegistry &);
 void initializeStripDebugMachineModulePass(PassRegistry &);
 void initializeStripGCRelocatesLegacyPass(PassRegistry &);
 void initializeStructurizeCFGLegacyPassPass(PassRegistry &);
-// EraVM local begin
-void initializeEraVMEHPreparePass(PassRegistry&);
-// EraVM local end
 void initializeTailCallElimPass(PassRegistry&);
 void initializeTailDuplicatePass(PassRegistry&);
 void initializeTargetLibraryInfoWrapperPassPass(PassRegistry&);

@@ -128,9 +128,6 @@ void llvm::initializeCodeGen(PassRegistry &Registry) {
   initializeStackProtectorPass(Registry);
   initializeStackSlotColoringPass(Registry);
   initializeStripDebugMachineModulePass(Registry);
-  // EraVM local begin
-  initializeEraVMEHPreparePass(Registry);
-  // EraVM local end
   initializeTailDuplicatePass(Registry);
   initializeTargetPassConfigPass(Registry);
   initializeTwoAddressInstructionPassPass(Registry);

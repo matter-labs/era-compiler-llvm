@@ -83,6 +83,9 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i64, Expand);
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i128, Expand);
 
+  // Intrinsics lowering
+  setOperationAction(ISD::INTRINSIC_VOID, MVT::Other, Custom);
+
   for (MVT VT : MVT::integer_valuetypes()) {
     setLoadExtAction(ISD::SEXTLOAD, MVT::i256, VT, Custom);
   }
@@ -444,6 +447,7 @@ SDValue EraVMTargetLowering::LowerOperation(SDValue Op,
   case ISD::SRA:                return LowerSRA(Op, DAG);
   case ISD::SDIV:               return LowerSDIV(Op, DAG);
   case ISD::SREM:               return LowerSREM(Op, DAG);
+  case ISD::INTRINSIC_VOID:     return LowerINTRINSIC_VOID(Op, DAG);
   default:
     llvm_unreachable("unimplemented operation lowering");
   }
@@ -647,6 +651,21 @@ EraVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                                                  MachineBasicBlock *BB) const {
   llvm_unreachable("No instruction require custom inserter");
   return nullptr;
+}
+
+SDValue EraVMTargetLowering::LowerINTRINSIC_VOID(SDValue Op,
+                                                 SelectionDAG &DAG) const {
+  unsigned IntNo =
+      cast<ConstantSDNode>(
+          Op.getOperand(Op.getOperand(0).getValueType() == MVT::Other))
+          ->getZExtValue();
+  if (IntNo != Intrinsic::eravm_throw)
+    return {};
+  SDLoc DL(Op);
+  auto CTR =
+      DAG.getCopyToReg(Op.getOperand(0), DL, EraVM::R1, Op.getOperand(2));
+  return DAG.getNode(EraVMISD::THROW, DL, MVT::Other, CTR,
+                     DAG.getRegister(EraVM::R1, MVT::i256));
 }
 
 const char *EraVMTargetLowering::getTargetNodeName(unsigned Opcode) const {

@@ -28,6 +28,7 @@ def SDT_EraVMSelectCC     : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
                                                   SDTCisSameAs<1, 2>,
                                                   SDTCisVT<3, i256>]>;
 def SDT_EraVMCmp          : SDTypeProfile<0, 2, []>;
+def SDT_EraVMThrow        : SDTypeProfile<0, 1, [SDTCisVT<0, i256>]>;
 
 //===----------------------------------------------------------------------===//
 // EraVM Specific Node Definitions.
@@ -52,6 +53,8 @@ def EraVMcallseq_end :
                         [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
 def EraVMchange_sp : SDNode<"EraVMISD::CHANGE_SP", SDT_EraVMChangeSP,
                              [SDNPHasChain, SDNPInGlue, SDNPOutGlue]>;
+def EraVMthrow : SDNode<"EraVMISD::THROW", SDT_EraVMThrow,
+                         [SDNPHasChain, SDNPInGlue]>;
 
 //===----------------------------------------------------------------------===//
 // EraVM Operand Definitions.
@@ -801,9 +804,10 @@ def J: IJump<10, (ins jmptarget:$dest, cc:$cc), "jump$cc\t@$dest",
 def : Pat<(br bb:$dst), (J bb:$dst, 0)>;
 
 let isReturn = 1, isTerminator = 1, isBarrier = 1  in
-def RET   : IRet<7, RFNone, "ret", [(EraVMret)]>;
+def RET   : IRet<7, RFNone, (ins), "ret", [(EraVMret)]>;
 let isTerminator = 1, isBarrier = 1, isTrap = 1 in
-def THROW : IRet<7, RFErr, "revert", [(int_eravm_throw)]>;
+def THROW : IRet<7, RFErr, (ins GR256:$rs0), "revert",
+                 [(EraVMthrow GR256:$rs0)]>;
 
 //===----------------------------------------------------------------------===//
 // Constants materialization
@@ -823,21 +827,13 @@ def CONST   : Pseudo< (outs GR256:$out), (ins i256imm:$val),
 
 def CTXr : IContextR<45, (outs GR256:$rd0), (ins context_op:$cop, cc:$cc),
                      "context$cop$cc\t$rd0", []>;
-def CTXs : IContextS<46, (outs), (ins stackop:$dst0, context_op:$cop, cc:$cc),
-                     "context$cop$cc\t$dst0", []>;
 let hasSideEffects = 1 in {
 def CTXr_se : IContextR<46, (outs GR256:$rd0), (ins context_se_op:$cop, cc:$cc),
                         "context$cop$cc\t$rd0", []>;
-def CTXs_se : IContextS<46, (outs), (ins stackop:$dst0, context_se_op:$cop, cc:$cc),
-                        "context$cop$cc\t$dst0", []>;
 }
 
 def : Pat<(int_eravm_context context_op:$cop), (CTXr context_op:$cop, 0)>;
 def : Pat<(int_eravm_ergsleft), (CTXr_se 6, 0)>;
-def : Pat<(store_stack (int_eravm_context context_op:$cop), stackaddr:$dst0),
-          (CTXs stackaddr:$dst0, context_op:$cop, 0)>;
-def : Pat<(store_stack (int_eravm_ergsleft), stackaddr:$dst0),
-          (CTXs_se stackaddr:$dst0, 6, 0)>;
 
 def SLDrr : ILogR<47, DstReg, (outs GR256:$rd0), (ins GR256:$rs0, first_op:$first, cc:$cc),
                   "sload$first$cc\t$rs0, $rd0", []> {
