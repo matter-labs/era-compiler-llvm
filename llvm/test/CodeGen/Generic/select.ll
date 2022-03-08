@@ -1,5 +1,4 @@
 ; RUN: llc < %s
-; XFAIL: target=eravm{{.*}}
 
 %Domain = type { ptr, i32, ptr, i32, i32, ptr, ptr }
 @AConst = constant i32 123              ; <ptr> [#uses=1]

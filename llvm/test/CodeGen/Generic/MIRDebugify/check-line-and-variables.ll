@@ -1,5 +1,4 @@
 ; RUN: llc -debugify-check-and-strip-all-safe -o - %s 2>&1 | FileCheck %s
-; XFAIL: target=eravm{{.*}}
 
 ; ModuleID = 'main.c'
 source_filename = "main.c"
