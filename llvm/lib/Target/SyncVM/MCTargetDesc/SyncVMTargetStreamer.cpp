@@ -26,7 +26,10 @@ SyncVMTargetStreamer::SyncVMTargetStreamer(MCStreamer &S)
 SyncVMTargetStreamer::~SyncVMTargetStreamer() = default;
 
 void SyncVMTargetStreamer::emitGlobalConst(APInt Value) {
-  assert(Value.getBitWidth() == 256 && "Unsupported global const");
+  if (Value.getBitWidth() < 256) {
+    // align by 256 bit
+    Value = Value.sext(256);
+  }
   SmallString<86> Str;
   raw_svector_ostream OS(Str);
   OS << "\t.cell " << Value;
