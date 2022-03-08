@@ -156,10 +156,66 @@ void SyncVMAsmPrinter::emitConstantPool() {
 
 void SyncVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
                                           const Constant *CV) {
-  const ConstantInt *CI = cast<ConstantInt>(CV);
-  assert(CI->getBitWidth() == 256);
   auto *Streamer =
       static_cast<SyncVMTargetStreamer *>(OutStreamer->getTargetStreamer());
+
+  if (const ConstantArray *CVA = dyn_cast<ConstantArray>(CV)) {
+    auto aty = CVA->getType();
+    uint64_t elem_size = aty->getNumElements();
+    Type* elem_type = aty->getElementType();
+    // For now only support integer types.
+    assert(elem_type->isIntegerTy(256));
+
+    for (uint64_t i = 0; i < elem_size; ++i) {
+      Constant* C = CVA->getAggregateElement(i);
+      ConstantInt *CI = cast<ConstantInt>(C);
+      assert(CI && CI->getBitWidth() == 256);
+      Streamer->emitGlobalConst(CI->getValue());
+    }
+    return;
+  }
+
+  if (const ConstantDataSequential *CDS = dyn_cast<ConstantDataSequential>(CV)) {
+    size_t elem_size = CDS->getNumElements();
+    size_t elem_ty_size = CDS->getElementByteSize();
+    assert(elem_ty_size <= 256);
+
+    for (size_t i = 0; i < elem_size; ++i) {
+      APInt val = CDS->getElementAsAPInt(i);
+      Streamer->emitGlobalConst(val);
+    }
+    return;
+  }
+
+  if (const ConstantStruct *CVS = dyn_cast<ConstantStruct>(CV)) {
+    StructType* sty = CVS->getType();
+    assert(!sty->isPacked());
+    uint64_t elem_size = sty->getNumElements();
+
+    for (uint64_t i = 0; i < elem_size; ++i) {
+      Type* ty = sty->getTypeAtIndex(i);
+      assert(ty->isIntegerTy() && ty->getIntegerBitWidth() <= 256);
+      Constant* C = CVS->getAggregateElement(i);
+      const ConstantInt *CI = cast<ConstantInt>(C);
+      Streamer->emitGlobalConst(CI->getValue());
+    }
+
+    return;
+  }
+
+  if (const ConstantVector *V = dyn_cast<ConstantVector>(CV)) {
+    assert(false);
+    return;
+  }
+
+  if (const ConstantExpr *CE = dyn_cast<ConstantExpr>(CV)) { 
+    printf("ConstantExpr for type\n");
+    return;
+  }
+
+
+  const ConstantInt *CI = cast<ConstantInt>(CV);
+  assert(CI->getBitWidth() == 256);
   Streamer->emitGlobalConst(CI->getValue());
 }
 
