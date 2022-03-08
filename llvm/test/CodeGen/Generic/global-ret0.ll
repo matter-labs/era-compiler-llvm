@@ -1,5 +1,4 @@
 ; RUN: llc < %s
-; XFAIL: target=eravm{{.*}}
 
 @g = global i32 0               ; <ptr> [#uses=1]
 

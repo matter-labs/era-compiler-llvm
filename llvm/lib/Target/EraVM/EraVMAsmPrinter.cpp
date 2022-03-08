@@ -111,9 +111,62 @@ void EraVMAsmPrinter::emitConstantPool() {
 void EraVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
                                          const Constant *CV,
                                          AliasMapTy *AliasList) {
-  const ConstantInt *CI = cast<ConstantInt>(CV);
   auto *Streamer =
       static_cast<EraVMTargetStreamer *>(OutStreamer->getTargetStreamer());
+
+  if (const auto *CVA = dyn_cast<ConstantArray>(CV)) {
+    auto *aty = CVA->getType();
+    uint64_t elem_size = aty->getNumElements();
+    // For now only support integer types.
+    assert(aty->getElementType()->isIntegerTy(256));
+
+    for (uint64_t i = 0; i < elem_size; ++i) {
+      Constant *C = CVA->getAggregateElement(i);
+      auto *CI = cast<ConstantInt>(C);
+      assert(CI && CI->getBitWidth() == 256);
+      Streamer->emitGlobalConst(CI->getValue());
+    }
+    return;
+  }
+
+  if (const auto *CDS = dyn_cast<ConstantDataSequential>(CV)) {
+    size_t elem_size = CDS->getNumElements();
+    assert(CDS->getElementByteSize() <= 256);
+
+    for (size_t i = 0; i < elem_size; ++i) {
+      APInt val = CDS->getElementAsAPInt(i);
+      Streamer->emitGlobalConst(val);
+    }
+    return;
+  }
+
+  if (const auto *CVS = dyn_cast<ConstantStruct>(CV)) {
+    StructType *sty = CVS->getType();
+    assert(!sty->isPacked());
+    uint64_t elem_size = sty->getNumElements();
+
+    for (uint64_t i = 0; i < elem_size; ++i) {
+      assert(sty->getTypeAtIndex(i) &&
+             sty->getTypeAtIndex(i)->getIntegerBitWidth() <= 256);
+      Constant *C = CVS->getAggregateElement(i);
+      // TODO: CPR-920 support operators.
+      const ConstantInt *CI = cast<ConstantInt>(C);
+      Streamer->emitGlobalConst(CI->getValue());
+    }
+
+    return;
+  }
+
+  if (const auto *V = dyn_cast<ConstantVector>(CV)) {
+    assert(false);
+    return;
+  }
+
+  if (const auto *CE = dyn_cast<ConstantExpr>(CV)) {
+    return;
+  }
+
+  const auto *CI = cast<ConstantInt>(CV);
   Streamer->emitGlobalConst(CI->getValue());
 }
 
