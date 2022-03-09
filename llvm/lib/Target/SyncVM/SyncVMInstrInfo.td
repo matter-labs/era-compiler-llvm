@@ -832,7 +832,7 @@ def CONST   : Pseudo< (outs GR256:$out), (ins i256imm:$val),
 def CTXr : IContextR<45, (outs GR256:$rd0), (ins context_op:$cop, cc:$cc),
                      "context$cop$cc\t$rd0", []>;
 let hasSideEffects = 1 in {
-def CTXr_se : IContextR<45, (outs GR256:$rd0), (ins context_se_op:$cop, cc:$cc),
+def CTXr_se : IContextR<46, (outs GR256:$rd0), (ins context_se_op:$cop, cc:$cc),
                         "context$cop$cc\t$rd0", []>;
 }
 
@@ -888,6 +888,6 @@ let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15],
 
     def FAR_CALL  : ICall<8, CFNormal, (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
                    "far_call\t$in1, @$callee, @$unwind", []>;
-    def NEAR_CALL : ICall<8, CFNormal, (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
+    def NEAR_CALL : ICall<9, CFNormal, (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
                    "near_call\t$in1, @$callee, @$unwind", []>;
 }
