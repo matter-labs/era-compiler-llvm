@@ -194,7 +194,8 @@ unsigned SyncVMInstrInfo::insertBranch(
   }
   // Conditional branch.
   unsigned Count = 0;
-  BuildMI(&MBB, DL, get(SyncVM::J)).addMBB(TBB).addImm(Cond[0].getImm());
+  auto cond_code = getImmOrCImm(Cond[0]);
+  BuildMI(&MBB, DL, get(SyncVM::J)).addMBB(TBB).addImm(cond_code);
   ++Count;
 
   if (FBB) {
