@@ -1,11 +1,6 @@
 target datalayout = "E-p:256:256-i8:256:256:256-i256:256:256-S32-a:256:256"
 target triple = "syncvm"
 
-define void @__sstore(i256 %arg1, i256 %arg2, i256 %arg3) {
-  call void @llvm.syncvm.sstore(i256 %arg1, i256 %arg2, i256 %arg3)
-  ret void
-}
-
 define i256 @__addmod(i256 %arg1, i256 %arg2, i256 %modulo) #0 {
 entry:
   %is_zero = icmp eq i256 %modulo, 0
@@ -286,7 +281,6 @@ define void @__cxa_throw(i8* %addr, i8*, i8*) {
 }
 
 declare {i256, i1} @llvm.uadd.with.overflow.i256(i256, i256)
-declare void @llvm.syncvm.sstore(i256, i256, i256)
 declare void @llvm.syncvm.throw(i256)
 
 attributes #0 = { nounwind readnone }

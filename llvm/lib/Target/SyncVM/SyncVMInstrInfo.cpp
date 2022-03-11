@@ -228,10 +228,10 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
         .addReg(SrcReg, getKillRegState(isKill))
         .addReg(SyncVM::R0)
         .addFrameIndex(FrameIdx)
-        .addImm(0)
         .addImm(32)
-        .addMemOperand(MMO)
-        .addImm(0);
+        .addImm(0)
+        .addImm(0)
+        .addMemOperand(MMO);
   else
     llvm_unreachable("Cannot store this register to stack slot!");
 }
@@ -254,12 +254,12 @@ void SyncVMInstrInfo::loadRegFromStackSlot(
   if (RC == &SyncVM::GR256RegClass)
     BuildMI(MBB, MI, DL, get(SyncVM::ADDsrr_s))
         .addReg(DestReg, getDefRegState(true))
-        .addReg(SyncVM::R0)
         .addFrameIndex(FrameIdx)
-        .addImm(0)
         .addImm(32)
-        .addMemOperand(MMO)
-        .addImm(0);
+        .addImm(0)
+        .addImm(0)
+        .addImm(0)
+        .addMemOperand(MMO);
   else
     llvm_unreachable("Cannot store this register to stack slot!");
 }

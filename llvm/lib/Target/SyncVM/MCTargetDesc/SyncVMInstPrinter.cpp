@@ -159,6 +159,9 @@ void SyncVMInstPrinter::printStackOperand(const MCInst *MI, unsigned OpNo,
     O << "-";
   O << "[";
 
+  if (Base2.isReg())
+    O << getRegisterName(Base2.getReg()) << " + ";
+
   // Print displacement first
   if (Disp.isExpr()) {
     Disp.getExpr()->print(O, &MAI);
@@ -168,8 +171,6 @@ void SyncVMInstPrinter::printStackOperand(const MCInst *MI, unsigned OpNo,
                              // are 256 bits wide.
   }
 
-  if (Base2.isReg())
-    O << " + " << getRegisterName(Base2.getReg());
   O << "]";
 }
 
