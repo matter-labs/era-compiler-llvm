@@ -348,15 +348,10 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
             .add(MI.getOperand(1));
         PseudoInst.push_back(&MI);
       } else if (MI.getOpcode() == SyncVM::CALL) {
-        // One of the problem: the backend cannot restrict frontend to not emit
-        // calls (Should we reinforce it?) so this route is needed.
-        // If a call is generated, it is incomplete as it misses EH label info,
-        // pad 0 instead.
-        BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
-                TII->get(SyncVM::NEAR_CALL))
-            .addReg(SyncVM::R0)
-            .add(MI.getOperand(0))
-            .addImm(0); // insert zero as EH label 
+        // This is special case where we expect callee to throw no except.
+        // using a `call @dst` in this case.
+        BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(SyncVM::CALL))
+            .add(MI.getOperand(0));
         PseudoInst.push_back(&MI);
       }
     }

@@ -880,14 +880,15 @@ def : Pat<(int_syncvm_precompile GR256:$rs0, first_op:$first),
 
 let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15],
     Uses = [SP], isCall = 1 in {
-   def CALL : Pseudo<(outs), (ins imm16:$callee),
-                   "CALL\t0, @$callee", [(SyncVMcall tglobaladdr:$callee)]>;
    let isTerminator = 1 in
    def INVOKE : Pseudo<(outs), (ins imm16:$callee, jmptarget:$unwind),
-                   "INVOKE\tr0, @$callee, @$unwind", [(SyncVMinvoke tglobaladdr:$callee, bb:$unwind)]>;
+                   "invoke\tr0, @$callee, @$unwind", [(SyncVMinvoke tglobaladdr:$callee, bb:$unwind)]>;
 
     def FAR_CALL  : ICall<8, CFNormal, (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
                    "far_call\t$in1, @$callee, @$unwind", []>;
     def NEAR_CALL : ICall<8, CFNormal, (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
                    "near_call\t$in1, @$callee, @$unwind", []>;
+    // this is a short form of `near_call` where $in1 is r0 and there is no $unwind branch
+    def CALL : Pseudo<(outs), (ins imm16:$callee),
+                   "call\t@$callee", [(SyncVMcall tglobaladdr:$callee)]>;
 }
