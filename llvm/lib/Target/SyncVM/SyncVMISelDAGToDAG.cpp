@@ -295,14 +295,12 @@ bool SyncVMDAGToDAGISel::SelectStackAddrCommon(SDValue N, SDValue &Base1,
                                                SDValue &Base2, SDValue &Disp,
                                                bool IsAdjusted) {
   SyncVMISelAddressMode AM;
-  bool UseSP = false;
 
   if (MatchAddress(N, AM, true /* IsStackAddr */)) {
     AM = SyncVMISelAddressMode();
-    if (MatchAddress(N, AM, false))
+    if (MatchAddress(N, AM, false)) {
       return false;
-  } else {
-    UseSP = true;
+    }
   }
 
   // TODO: Hack (constant is used to designate immediate addressing mode),
@@ -324,15 +322,7 @@ bool SyncVMDAGToDAGISel::SelectStackAddrCommon(SDValue N, SDValue &Base1,
     }
   }
 
-  if (UseSP) {
-    Base1 = (AM.BaseType == SyncVMISelAddressMode::FrameIndexBase)
-                ? CurDAG->getTargetFrameIndex(AM.Base.FrameIndex,
-                                              getTargetLowering()->getPointerTy(
-                                                  CurDAG->getDataLayout()))
-                : CurDAG->getRegister(SyncVM::SP, MVT::i256);
-  } else {
-    Base1 = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
-  }
+  Base1 = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
   Base2 = AM.Base.Reg;
 
   // 1(sp) is the index of the 1st element on the stack rather than 0(sp).
