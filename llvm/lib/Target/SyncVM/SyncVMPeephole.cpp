@@ -82,6 +82,9 @@ bool SyncVMPeephole::runOnMachineFunction(MachineFunction &MF) {
     for (auto MI = MBB.begin(); MI != MBB.end(); ++MI) {
       if (Mapping.count(MI->getOpcode())) {
         auto StoreI = std::next(MI);
+        if (StoreI == MBB.end()) {
+          continue;
+        }
         if (StoreI->getOpcode() != SyncVM::ADDirs_s ||
             StoreI->getOperand(0).getReg() != MI->getOperand(0).getReg())
           continue;
