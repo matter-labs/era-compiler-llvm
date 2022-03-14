@@ -190,7 +190,7 @@ def ADDframe : Pseudo<(outs GR256:$dst), (ins i256imm:$base, i256imm:$offset),
                       "# ADDframe PSEUDO", []>;
 }
 
-let isCodeGenOnly = 1, isPseudo = 1 in {
+let isCodeGenOnly = 1, isPseudo = 1, Uses = [Flags] in {
   def SELrrr : Pseudo<(outs GR256:$dst), (ins GR256:$src, GR256:$src2, i256imm:$cc),
                        "# SELrrr PSEUDO",
                        [(set GR256:$dst,
