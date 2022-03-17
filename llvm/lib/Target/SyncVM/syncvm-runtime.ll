@@ -1,6 +1,12 @@
 target datalayout = "E-p:256:256-i8:256:256:256-i256:256:256-S32-a:256:256"
 target triple = "syncvm"
 
+define void @__sstore(i256 %in1, i256 %in2, i256 %out1) #0 {
+entry:
+  call @llvm.syncvm.sstore(i256 %in1, i256 %in2, i256 %out1)
+}
+
+
 define i256 @__addmod(i256 %arg1, i256 %arg2, i256 %modulo) #0 {
 entry:
   %is_zero = icmp eq i256 %modulo, 0

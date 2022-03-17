@@ -852,7 +852,7 @@ let hasSideEffects = 1 in
   def SSTr : ILogR<48, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first, cc:$cc),
       "sstore$first$cc\t$rs0, $rs1", []>;
 
-def : Pat<(int_syncvm_sstore GR256:$rs0, GR256:$rs1, first_op:$first),
+def : Pat<(int_syncvm_sstore_internal GR256:$rs0, GR256:$rs1, first_op:$first),
           (SSTr GR256:$rs0, GR256:$rs1, first_op:$first, 0)>;
 
 let hasSideEffects = 1 in

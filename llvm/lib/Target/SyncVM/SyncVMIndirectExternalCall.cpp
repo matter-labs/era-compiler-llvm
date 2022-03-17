@@ -42,6 +42,7 @@ public:
 
 private:
   Function *getOrCreateIntrinsicWrapper(unsigned ID, Module &M);
+  Function *getSSTOREFunction(Module &M);
 };
 } // namespace
 
@@ -53,83 +54,45 @@ INITIALIZE_PASS(SyncVMIndirectExternalCall, "syncvm-indirect-external-call",
                 "Wrap an external call into a fuction call", false, false)
 
 bool SyncVMIndirectExternalCall::runOnModule(Module &M) {
-  std::vector<Instruction *> Replaced;
+  bool changed = false;
   std::vector<IntrinsicInst *> Calls[4];
   for (auto &F : M)
     for (auto &BB : F)
       for (auto &I : BB) {
-        if (auto *Call = dyn_cast<IntrinsicInst>(&I)) {
-
-          Intrinsic::ID ID = Call->getIntrinsicID();
+        if (auto *II = dyn_cast<InvokeInst>(&I)) {
+          Intrinsic::ID ID = II->getIntrinsicID();
           switch (ID) {
           default:
             continue;
-          case Intrinsic::syncvm_farcall_rc:
-          case Intrinsic::syncvm_delegatecall_rc:
-          case Intrinsic::syncvm_callcode_rc:
-          case Intrinsic::syncvm_staticcall_rc: {
-            Function *Replacement = getOrCreateIntrinsicWrapper(ID, M);
-            IRBuilder<> Builder(&I);
-            Value *Result = Builder.CreateCall(Replacement, {I.getOperand(0)});
-            I.replaceAllUsesWith(Result);
-            Replaced.push_back(&I);
+          case Intrinsic::syncvm_sstore: {
+            // redirect the invoke to the wrapper function so we can keep the unwind label.
+            Function *Replacement = getSSTOREFunction(M);
+            II->setCalledFunction(Replacement);
+            changed = true;
+            break;
           }
           }
+
         }
       }
-  for (Instruction *I : Replaced)
-    I->eraseFromParent();
 
-  return !Replaced.empty();
+  return changed;
 }
 
-Function *SyncVMIndirectExternalCall::getOrCreateIntrinsicWrapper(unsigned ID,
-                                                                  Module &M) {
+Function* SyncVMIndirectExternalCall::getSSTOREFunction(Module &M) {
   LLVMContext &C = M.getContext();
   Type *Int256Ty = Type::getInt256Ty(C);
-  auto getOrCreateFunction = [&M, &C, Int256Ty](const std::string &Name,
-                                                unsigned IntrinsicID) {
-    Function *Result = M.getFunction(Name);
-    if (Result)
-      return Result;
-    M.getOrInsertFunction(Name, FunctionType::get(Int256Ty, {Int256Ty}, false));
-    Result = M.getFunction(Name);
-    auto *Entry = BasicBlock::Create(C, "entry", Result);
-    auto *SuccessBB = BasicBlock::Create(C, "success-bb", Result);
-    auto *EHBB = BasicBlock::Create(C, "eh-bb", Result);
-    IRBuilder<> Builder(Entry);
-    auto *FarCallFn = Intrinsic::getDeclaration(&M, IntrinsicID);
-    auto *LTFlagFn = Intrinsic::getDeclaration(&M, Intrinsic::syncvm_ltflag);
-    Builder.CreateCall(FarCallFn, {Result->getArg(0)});
-    Value *ErrorCode = Builder.CreateCall(LTFlagFn, {});
-    ErrorCode = Builder.CreateTrunc(ErrorCode, Builder.getInt1Ty());
-    Builder.CreateCondBr(ErrorCode, EHBB, SuccessBB);
-    Builder.SetInsertPoint(EHBB);
-    Builder.CreateRet(Builder.getInt(APInt(256, 0, false)));
-    Builder.SetInsertPoint(SuccessBB);
-    Builder.CreateRet(Builder.getInt(APInt(256, 1, false)));
+  Type *VoidTy = Type::getVoidTy(C);
+
+  auto name = "__sstore";
+
+  Function *Result = M.getFunction(name);
+  if (Result)
     return Result;
-  };
-  Function *Result = nullptr;
-  switch (ID) {
-  default:
-    llvm_unreachable("Unrecognized intrinsic");
-    break;
-  case Intrinsic::syncvm_farcall_rc:
-    Result = getOrCreateFunction(WrapperNames[0], Intrinsic::syncvm_farcall);
-    break;
-  case Intrinsic::syncvm_delegatecall_rc:
-    Result =
-        getOrCreateFunction(WrapperNames[1], Intrinsic::syncvm_delegatecall);
-    break;
-  case Intrinsic::syncvm_callcode_rc:
-    Result = getOrCreateFunction(WrapperNames[2], Intrinsic::syncvm_callcode);
-    break;
-  case Intrinsic::syncvm_staticcall_rc:
-    Result = getOrCreateFunction(WrapperNames[3], Intrinsic::syncvm_staticcall);
-    break;
-  }
-  assert(Result && "Result must be set at this point");
+
+  M.getOrInsertFunction(name, FunctionType::get(VoidTy, {Int256Ty, Int256Ty, Int256Ty}, false));
+  Result = M.getFunction(name);
+  assert(Result);
   return Result;
 }
 
