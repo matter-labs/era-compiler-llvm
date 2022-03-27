@@ -84,6 +84,57 @@ define void @throw(i256 %val) {
   ret void
 }
 
+; CHECK-LABEL: ifeqrr
+define i256 @ifeqrr(i256 %x, i256 %y) {
+  ; CHECK: add r2, r0, r2
+  ; CHECK: add.eq r1, r0, r2
+  ; CHECK: add r2, r0, r1
+  %res = call i256 @llvm.syncvm.ifeq(i256 %x, i256 %y)
+  ret i256 %res
+}
+
+; CHECK-LABEL: ifeqii
+define i256 @ifeqii() {
+  ; CHECK: add 42, r0, r1
+  ; CHECK: add.eq 0, r0, r1
+  %res = call i256 @llvm.syncvm.ifeq(i256 0, i256 42)
+  ret i256 %res
+}
+
+; CHECK-LABEL: ifltrr
+define i256 @ifltrr(i256 %x, i256 %y) {
+  ; CHECK: add r2, r0, r2
+  ; CHECK: add.lt r1, r0, r2
+  ; CHECK: add r2, r0, r1
+  %res = call i256 @llvm.syncvm.iflt(i256 %x, i256 %y)
+  ret i256 %res
+}
+
+; CHECK-LABEL: ifltii
+define i256 @ifltii() {
+  ; CHECK: add 42, r0, r1
+  ; CHECK: add.lt 0, r0, r1
+  %res = call i256 @llvm.syncvm.iflt(i256 0, i256 42)
+  ret i256 %res
+}
+
+; CHECK-LABEL: ifgtrr
+define i256 @ifgtrr(i256 %x, i256 %y) {
+  ; CHECK: add r2, r0, r2
+  ; CHECK: add.gt r1, r0, r2
+  ; CHECK: add r2, r0, r1
+  %res = call i256 @llvm.syncvm.ifgt(i256 %x, i256 %y)
+  ret i256 %res
+}
+
+; CHECK-LABEL: ifgtii
+define i256 @ifgtii() {
+  ; CHECK: add 42, r0, r1
+  ; CHECK: add.gt 0, r0, r1
+  %res = call i256 @llvm.syncvm.ifgt(i256 0, i256 42)
+  ret i256 %res
+}
+
 declare i256 @llvm.syncvm.context(i256)
 declare i256 @llvm.syncvm.ergsleft()
 declare i256 @llvm.syncvm.sload(i256, i256)
@@ -92,3 +143,6 @@ declare void @llvm.syncvm.tol1(i256, i256, i256)
 declare void @llvm.syncvm.event(i256, i256, i256)
 declare void @llvm.syncvm.precompile(i256, i256)
 declare void @llvm.syncvm.throw(i256)
+declare i256 @llvm.syncvm.ifeq(i256, i256)
+declare i256 @llvm.syncvm.iflt(i256, i256)
+declare i256 @llvm.syncvm.ifgt(i256, i256)

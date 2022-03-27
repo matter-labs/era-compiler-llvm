@@ -23,6 +23,8 @@ add_llvm_target(SyncVMCodeGen
   SyncVMAddConditions.cpp
   SyncVMCodegenPrepare.cpp
   SyncVMExpandUMA.cpp
+  SyncVMExpandPseudoInsts.cpp
+  SyncVMExpandSelect.cpp
   SyncVMTargetMachine.cpp
   SyncVMSubtarget.cpp
   SyncVMRegisterInfo.cpp
@@ -38,7 +40,6 @@ add_llvm_target(SyncVMCodeGen
   SyncVMIndirectExternalCall.cpp
   SyncVMLinkRuntime.cpp
   SyncVMLowerIntrinsics.cpp
-  SyncVMExpandPseudoInsts.cpp
   SyncVMAllocaHoisting.cpp
   SyncVMTargetTransformInfo.cpp
   SyncVMMoveCallResultSpill.cpp
