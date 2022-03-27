@@ -39,10 +39,7 @@ def int_eravm_precompile: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty], [IntrHasSi
 def int_eravm_throw: Intrinsic<[], [llvm_i256_ty], [Throws, IntrNoReturn]>;
 
 // Access to flags.
-def int_eravm_getif : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty],
-                                 [IntrNoMem]>;
-def int_eravm_gtflag: Intrinsic<[llvm_i256_ty], [], [IntrHasSideEffects]>;
-def int_eravm_ltflag: Intrinsic<[llvm_i256_ty], [], [IntrHasSideEffects]>;
-def int_eravm_eqflag: Intrinsic<[llvm_i256_ty], [], [IntrHasSideEffects]>;
-
+def int_eravm_iflt  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
+def int_eravm_ifgt  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
+def int_eravm_ifeq  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
 }

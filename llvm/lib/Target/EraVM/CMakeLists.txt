@@ -42,6 +42,7 @@ add_llvm_target(EraVMCodeGen
   EraVMAsmPrinter.cpp
   EraVMCodegenPrepare.cpp
   EraVMExpandPseudoInsts.cpp
+  EraVMExpandSelect.cpp
   EraVMExpandUMA.cpp
   EraVMFrameLowering.cpp
   EraVMISelDAGToDAG.cpp

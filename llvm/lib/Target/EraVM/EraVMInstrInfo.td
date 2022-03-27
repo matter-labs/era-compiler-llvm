@@ -361,6 +361,15 @@ def : Pat<(load_stack(EraVMselectcc stackaddr:$addr1, stackaddr:$addr2, imm:$cc)
 def : Pat<(load_code(EraVMselectcc memaddr:$addr1, memaddr:$addr2, imm:$cc)),
           (SELccr memaddr:$addr1, memaddr:$addr2, imm:$cc)>;
 
+// TODO: stack and code forms
+def : Pat<(int_eravm_ifeq GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, 2 /*COND_LT*/)>;
+def : Pat<(int_eravm_iflt GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, 4 /*COND_LT*/)>;
+def : Pat<(int_eravm_ifgt GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, 8 /*COND_LT*/)>;
+
+def : Pat<(int_eravm_ifeq imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, 2 /*COND_LT*/)>;
+def : Pat<(int_eravm_iflt imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, 4 /*COND_LT*/)>;
+def : Pat<(int_eravm_ifgt imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, 8 /*COND_LT*/)>;
+
 let hasSideEffects = 1, Defs = [SP, Flags], Uses = [SP] in
 def NOPSP : INop< 18, (ins spadv_op:$sp_change, cc:$cc), "nop$cc\t$sp_change", [] >;
 def : Pat<(EraVMchange_sp spadv_op:$size), (NOPSP spadv_op:$size, 0)>;

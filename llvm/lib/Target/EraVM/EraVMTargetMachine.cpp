@@ -39,6 +39,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMIndirectExternalCallPass(PR);
   initializeEraVMCodegenPreparePass(PR);
   initializeEraVMExpandPseudoPass(PR);
+  initializeEraVMExpandSelectPass(PR);
   initializeEraVMLowerIntrinsicsPass(PR);
   initializeEraVMLinkRuntimePass(PR);
   initializeEraVMAllocaHoistingPass(PR);
@@ -93,6 +94,8 @@ public:
   void addIRPasses() override;
   bool addInstSelector() override;
   void addPreRegAlloc() override;
+  void addFastRegAlloc() override;
+  void addOptimizedRegAlloc() override;
   void addPreEmitPass() override;
 };
 } // namespace
@@ -132,6 +135,37 @@ bool EraVMPassConfig::addInstSelector() {
 
 void EraVMPassConfig::addPreRegAlloc() {
   addPass(createEraVMAddConditionsPass());
+}
+
+void EraVMPassConfig::addFastRegAlloc() {
+  addPass(createEraVMExpandSelectPass());
+  TargetPassConfig::addFastRegAlloc();
+}
+
+// Copy of TargetPassConfig::addOptimizedRegAlloc plus expand pseudos.
+void EraVMPassConfig::addOptimizedRegAlloc() {
+  addPass(&DetectDeadLanesID);
+  addPass(&ProcessImplicitDefsID);
+  addPass(&UnreachableMachineBlockElimID);
+  addPass(&LiveVariablesID);
+
+  addPass(&MachineLoopInfoID);
+  addPass(&PHIEliminationID);
+
+  // Live variables require SSA-form, so run pseudo expansion right after it.
+  addPass(createEraVMExpandSelectPass());
+
+  addPass(&TwoAddressInstructionPassID);
+  addPass(&RegisterCoalescerID);
+  addPass(&RenameIndependentSubregsID);
+  addPass(&MachineSchedulerID);
+
+  if (addRegAssignAndRewriteOptimized()) {
+    addPass(&StackSlotColoringID);
+    addPostRewrite();
+    addPass(&MachineCopyPropagationID);
+    addPass(&MachineLICMID);
+  }
 }
 
 void EraVMPassConfig::addPreEmitPass() {
