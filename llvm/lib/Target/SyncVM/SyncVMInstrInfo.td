@@ -355,6 +355,15 @@ def : Pat<(load_stack(SyncVMselectcc stackaddr:$addr1, stackaddr:$addr2, imm:$cc
 def : Pat<(load_code(SyncVMselectcc memaddr:$addr1, memaddr:$addr2, imm:$cc)),
           (SELccr memaddr:$addr1, memaddr:$addr2, imm:$cc)>;
 
+// TODO: stack and code forms
+def : Pat<(int_syncvm_ifeq GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, 2 /*COND_LT*/)>;
+def : Pat<(int_syncvm_iflt GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, 4 /*COND_LT*/)>;
+def : Pat<(int_syncvm_ifgt GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, 8 /*COND_LT*/)>;
+
+def : Pat<(int_syncvm_ifeq imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, 2 /*COND_LT*/)>;
+def : Pat<(int_syncvm_iflt imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, 4 /*COND_LT*/)>;
+def : Pat<(int_syncvm_ifgt imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, 8 /*COND_LT*/)>;
+
 let hasSideEffects = 1, Defs = [SP, Flags], Uses = [SP] in
 def NOPSP : INop< 18, (ins spadv_op:$sp_advance, cc:$cc), "nop$cc\t$sp_advance", [] >;
 def : Pat<(SyncVMchange_sp spadv_op:$size), (NOPSP spadv_op:$size, 0)>;

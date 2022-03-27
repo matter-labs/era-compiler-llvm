@@ -85,6 +85,7 @@ bool SyncVMIndirectExternalCall::runOnModule(Module &M) {
 
 Function *SyncVMIndirectExternalCall::getOrCreateIntrinsicWrapper(unsigned ID,
                                                                   Module &M) {
+#if 0
   LLVMContext &C = M.getContext();
   Type *Int256Ty = Type::getInt256Ty(C);
   auto getOrCreateFunction = [&M, &C, Int256Ty](const std::string &Name,
@@ -131,6 +132,8 @@ Function *SyncVMIndirectExternalCall::getOrCreateIntrinsicWrapper(unsigned ID,
   }
   assert(Result && "Result must be set at this point");
   return Result;
+#endif
+  return {};
 }
 
 ModulePass *llvm::createSyncVMIndirectExternalCallPass() {

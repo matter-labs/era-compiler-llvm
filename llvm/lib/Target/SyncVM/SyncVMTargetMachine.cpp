@@ -32,6 +32,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMIndirectExternalCallPass(PR);
   initializeSyncVMCodegenPreparePass(PR);
   initializeSyncVMExpandPseudoPass(PR);
+  initializeSyncVMExpandSelectPass(PR);
   initializeSyncVMLowerIntrinsicsPass(PR);
   initializeSyncVMLinkRuntimePass(PR);
   initializeSyncVMAllocaHoistingPass(PR);
@@ -60,8 +61,8 @@ SyncVMTargetMachine::SyncVMTargetMachine(const Target &T, const Triple &TT,
                         getEffectiveCodeModel(CM, CodeModel::Small), OL),
       TLOF(std::make_unique<TargetLoweringObjectFileELF>()),
       Subtarget(TT, std::string(CPU), std::string(FS), *this) {
-    setRequiresStructuredCFG(true);
-    initAsmInfo();
+  setRequiresStructuredCFG(true);
+  initAsmInfo();
 }
 
 SyncVMTargetMachine::~SyncVMTargetMachine() {}
@@ -85,6 +86,8 @@ public:
   void addIRPasses() override;
   bool addInstSelector() override;
   void addPreRegAlloc() override;
+  void addFastRegAlloc() override;
+  void addOptimizedRegAlloc() override;
   void addPreEmitPass() override;
 };
 } // namespace
@@ -116,6 +119,36 @@ bool SyncVMPassConfig::addInstSelector() {
 
 void SyncVMPassConfig::addPreRegAlloc() {
   addPass(createSyncVMAddConditionsPass());
+}
+
+void SyncVMPassConfig::addFastRegAlloc() {
+  addPass(createSyncVMExpandSelectPass());
+  TargetPassConfig::addFastRegAlloc();
+}
+
+// Copy of TargetPassConfig::addOptimizedRegAlloc plus expand pseudos.
+void SyncVMPassConfig::addOptimizedRegAlloc() {
+  addPass(&DetectDeadLanesID, false);
+  addPass(&ProcessImplicitDefsID, false);
+  addPass(&UnreachableMachineBlockElimID, false);
+  addPass(&LiveVariablesID, false);
+
+  // Live variables require SSA-form, so run pseudo expansion right after it.
+  addPass(createSyncVMExpandSelectPass());
+
+  addPass(&MachineLoopInfoID, false);
+  addPass(&PHIEliminationID, false);
+  addPass(&TwoAddressInstructionPassID, false);
+  addPass(&RegisterCoalescerID);
+  addPass(&RenameIndependentSubregsID);
+  addPass(&MachineSchedulerID);
+
+  if (addRegAssignAndRewriteOptimized()) {
+    addPass(&StackSlotColoringID);
+    addPostRewrite();
+    addPass(&MachineCopyPropagationID);
+    addPass(&MachineLICMID);
+  }
 }
 
 void SyncVMPassConfig::addPreEmitPass() {

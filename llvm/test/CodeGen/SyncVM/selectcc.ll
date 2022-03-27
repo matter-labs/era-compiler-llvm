@@ -11,8 +11,9 @@ define i256 @selopt(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp ne i256 %v3, %v4
   ; TODO: should be resolved in one add
+  ; CHECK: add r2, r0, r2
+  ; CHECK: add.ne r1, r0, r2
   ; CHECK: add r2, r0, r1
-  ; CHECK: add.ne r1, r0, r1
   %2 = select i1 %1, i256 %v1, i256 %v2
   ret i256 %2
 }
@@ -22,8 +23,9 @@ define i256 @selrrr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp eq i256 %v3, %v4
   ; TODO: convert to add.ne if VM support
+  ; CHECK: add r2, r0, r2
+  ; CHECK: add.eq r1, r0, r2
   ; CHECK: add r2, r0, r1
-  ; CHECK: add.eq r1, r0, r1
   %2 = select i1 %1, i256 %v1, i256 %v2
   ret i256 %2
 }
@@ -65,8 +67,9 @@ define i256 @selsrr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define i256 @selrir(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp ult i256 %v3, %v4
-  ; CHECK: add 42, r0, r1
-  ; CHECK: add.lt r1, r0, r1
+  ; CHECK: add 42, r0, r2
+  ; CHECK: add.lt r1, r0, r2
+  ; CHECK: add r2, r0, r1
   %2 = select i1 %1, i256 %v1, i256 42
   ret i256 %2
 }
@@ -109,8 +112,9 @@ define i256 @selrcr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp ult i256 %v3, %v4
   %const = load i256, i256 addrspace(4)* @val
-  ; CHECK: add @val[0], r0, r1
-  ; CHECK: add.lt r1, r0, r1
+  ; CHECK: add @val[0], r0, r2
+  ; CHECK: add.lt r1, r0, r2
+  ; CHECK: add r2, r0, r1
   %2 = select i1 %1, i256 %v1, i256 %const
   ret i256 %2
 }
@@ -157,8 +161,9 @@ define i256 @selrsr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp ult i256 %v3, %v4
   %val = load i256, i256* %data
-  ; CHECK: add stack-[1], r0, r1
-  ; CHECK: add.lt r1, r0, r1
+  ; CHECK: add stack-[1], r0, r2
+  ; CHECK: add.lt r1, r0, r2
+  ; CHECK: add r2, r0, r1
   %2 = select i1 %1, i256 %v1, i256 %val
   ret i256 %2
 }
