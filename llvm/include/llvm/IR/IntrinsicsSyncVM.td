@@ -34,10 +34,7 @@ def int_syncvm_precompile: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty], [IntrHasS
 def int_syncvm_throw: Intrinsic<[], [llvm_i256_ty], [Throws, IntrNoReturn]>;
 
 // Access to flags.
-def int_syncvm_getif : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty],
-                                 [IntrNoMem]>;
-def int_syncvm_gtflag: Intrinsic<[llvm_i256_ty], [], [IntrHasSideEffects]>;
-def int_syncvm_ltflag: Intrinsic<[llvm_i256_ty], [], [IntrHasSideEffects]>;
-def int_syncvm_eqflag: Intrinsic<[llvm_i256_ty], [], [IntrHasSideEffects]>;
-
+def int_syncvm_iflt  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
+def int_syncvm_ifgt  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
+def int_syncvm_ifeq  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
 }

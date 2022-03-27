@@ -68,6 +68,7 @@ FunctionPass *createSyncVMAddConditionsPass();
 FunctionPass *createSyncVMAllocaHoistingPass();
 FunctionPass *createSyncVMCodegenPreparePass();
 FunctionPass *createSyncVMExpandPseudoPass();
+FunctionPass *createSyncVMExpandSelectPass();
 FunctionPass *createSyncVMMoveCallResultSpillPass();
 FunctionPass *createSyncVMPeepholePass();
 
@@ -79,6 +80,7 @@ void initializeSyncVMAddConditionsPass(PassRegistry &);
 void initializeSyncVMLinkRuntimePass(PassRegistry &);
 void initializeSyncVMCodegenPreparePass(PassRegistry &);
 void initializeSyncVMExpandPseudoPass(PassRegistry &);
+void initializeSyncVMExpandSelectPass(PassRegistry &);
 void initializeSyncVMAllocaHoistingPass(PassRegistry &);
 void initializeSyncVMMoveCallResultSpillPass(PassRegistry &);
 void initializeSyncVMPeepholePass(PassRegistry &);
