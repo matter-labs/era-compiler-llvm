@@ -4688,6 +4688,7 @@ void Verifier::visitInstruction(Instruction &I) {
                 // SyncVM local begin
                 F->getIntrinsicID() == Intrinsic::syncvm_sstore ||
                 F->getIntrinsicID() == Intrinsic::syncvm_throw ||
+                F->getIntrinsicID() == Intrinsic::syncvm_farcall ||
                 // SyncVM local end
                 IsAttachedCallOperand(F, CBI, i),
             "Cannot invoke an intrinsic other than donothing, patchpoint, "

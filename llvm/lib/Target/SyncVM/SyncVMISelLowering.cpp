@@ -249,6 +249,21 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   CallingConv::ID CallConv = CLI.CallConv;
   bool IsVarArg = CLI.IsVarArg;
 
+  if (auto GA = dyn_cast<GlobalAddressSDNode>(Callee.getNode())) {
+    if (GA->getGlobal()->getName() == "__farcall_int") {
+      SmallVector<SDValue, 8> Ops;
+      Ops.push_back(Chain);
+      Ops.push_back(OutVals[0]);
+      Ops.push_back(OutVals[1]);
+      Ops.push_back(CLI.UnwindBB);
+      SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
+      Chain = DAG.getNode(SyncVMISD::FARCALL, DL, NodeTys, Ops);
+      InVals.push_back(DAG.getCopyFromReg(Chain, DL, SyncVM::R1,
+                       MVT::i256, Chain.getValue(1)));
+      return Chain;
+    }
+  }
+
   // TODO: SyncVM target does not yet support tail call optimization.
   IsTailCall = false;
 

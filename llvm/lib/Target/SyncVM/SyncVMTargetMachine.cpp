@@ -128,18 +128,18 @@ void SyncVMPassConfig::addFastRegAlloc() {
 
 // Copy of TargetPassConfig::addOptimizedRegAlloc plus expand pseudos.
 void SyncVMPassConfig::addOptimizedRegAlloc() {
-  addPass(&DetectDeadLanesID, false);
-  addPass(&ProcessImplicitDefsID, false);
-  addPass(&UnreachableMachineBlockElimID, false);
-  addPass(&LiveVariablesID, false);
+  addPass(&DetectDeadLanesID);
+  addPass(&ProcessImplicitDefsID);
+  addPass(&UnreachableMachineBlockElimID);
+  addPass(&LiveVariablesID);
 
-  addPass(&MachineLoopInfoID, false);
-  addPass(&PHIEliminationID, false);
+  addPass(&MachineLoopInfoID);
+  addPass(&PHIEliminationID);
 
   // Live variables require SSA-form, so run pseudo expansion right after it.
   addPass(createSyncVMExpandSelectPass());
 
-  addPass(&TwoAddressInstructionPassID, false);
+  addPass(&TwoAddressInstructionPassID);
   addPass(&RegisterCoalescerID);
   addPass(&RenameIndependentSubregsID);
   addPass(&MachineSchedulerID);

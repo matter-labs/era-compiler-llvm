@@ -11,6 +11,7 @@ include "SyncVMInstrFormats.td"
 //===----------------------------------------------------------------------===//
 def SDT_SyncVMCall         : SDTypeProfile<0, -1, [SDTCisPtrTy<0>]>;
 def SDT_SyncVMInvoke       : SDTypeProfile<0, -1, [SDTCisPtrTy<0>]>;
+def SDT_SyncVMFarCall      : SDTypeProfile<0, -1, []>;
 def SDT_SyncVMCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i256>,
                                              SDTCisVT<1, i256>]>;
 def SDT_SyncVMCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i256>,
@@ -33,6 +34,8 @@ def SyncVMret    : SDNode<"SyncVMISD::RET", SDTNone,
 def SyncVMcall   : SDNode<"SyncVMISD::CALL", SDT_SyncVMCall,
                     [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
 def SyncVMinvoke : SDNode<"SyncVMISD::INVOKE", SDT_SyncVMInvoke,
+                    [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
+def SyncVMfarcall: SDNode<"SyncVMISD::FARCALL", SDT_SyncVMFarCall,
                     [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
 def SyncVMbrcc   : SDNode<"SyncVMISD::BR_CC", SDT_SyncVMBrCC,
                     [SDNPHasChain, SDNPInGlue]>;
@@ -848,21 +851,21 @@ def CTXr_se : IContextR<46, (outs GR256:$rd0), (ins context_se_op:$cop, cc:$cc),
 def : Pat<(int_syncvm_context context_op:$cop), (CTXr context_op:$cop, 0)>;
 def : Pat<(int_syncvm_ergsleft), (CTXr_se 6, 0)>;
 
-def SLDrr : ILogR<47, DstReg, (outs GR256:$rd0), (ins GR256:$rs0, first_op:$first, cc:$cc),
-                  "sload$first$cc\t$rs0, $rd0", []> {
+def SLDrr : ILogR<47, DstReg, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
+                  "sload$cc\t$rs0, $rd0", []> {
   bits<4> rd0;
   let rs1 = 0;
   let Inst{40-43} = rd0;
 }
 
-def : Pat<(int_syncvm_sload GR256:$rs0, first_op:$first), (SLDrr GR256:$rs0, first_op:$first, 0)>;
+def : Pat<(int_syncvm_sload GR256:$rs0), (SLDrr GR256:$rs0, 0)>;
 
 let hasSideEffects = 1 in
-  def SSTr : ILogR<48, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first, cc:$cc),
-      "sstore$first$cc\t$rs0, $rs1", []>;
+  def SSTr : ILogR<48, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
+      "sstore$cc\t$rs0, $rs1", []>;
 
-def : Pat<(int_syncvm_sstore GR256:$rs0, GR256:$rs1, first_op:$first),
-          (SSTr GR256:$rs0, GR256:$rs1, first_op:$first, 0)>;
+def : Pat<(int_syncvm_sstore GR256:$rs0, GR256:$rs1),
+          (SSTr GR256:$rs0, GR256:$rs1, 0)>;
 
 let hasSideEffects = 1 in
 def L1r : ILogR<49, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first, cc:$cc),
@@ -879,13 +882,13 @@ def : Pat<(int_syncvm_event GR256:$rs0, GR256:$rs1, first_op:$first),
           (EVTr GR256:$rs0, GR256:$rs1, first_op:$first, 0)>;
 
 let hasSideEffects = 1 in
-def PCOMPr : ILogR<51, DstNone, (outs), (ins GR256:$rs0, first_op:$first, cc:$cc),
-                 "precompile$first$cc\t$rs0", []> {
+def PCOMPr : ILogR<51, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
+                 "precompile$cc\t$rs0, $rs1", []> {
   let rs1 = 0;
 }
 
-def : Pat<(int_syncvm_precompile GR256:$rs0, first_op:$first),
-          (PCOMPr GR256:$rs0, first_op:$first, 0)>;
+def : Pat<(int_syncvm_precompile GR256:$rs0, GR256:$rs1),
+          (PCOMPr GR256:$rs0, GR256:$rs1, 0)>;
 
 let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15],
     Uses = [SP], isCall = 1 in {
@@ -895,8 +898,10 @@ let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15],
    def INVOKE : Pseudo<(outs), (ins imm16:$callee, jmptarget:$unwind),
                    "INVOKE\tr0, @$callee, @$unwind", [(SyncVMinvoke tglobaladdr:$callee, bb:$unwind)]>;
 
-    def FAR_CALL  : ICall<8, CFNormal, (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
-                   "far_call\t$in1, @$callee, @$unwind", []>;
     def NEAR_CALL : ICall<9, CFNormal, (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
                    "near_call\t$in1, @$callee, @$unwind", []>;
 }
+
+let isTerminator = 1 in
+def FAR_CALL  : ICall<8, CFNormal, (ins GR256:$abi, GR256:$address, jmptarget:$unwind),
+               "far_call\t$abi, $address, @$unwind", [(SyncVMfarcall GR256:$abi, GR256:$address, bb:$unwind)]>;
