@@ -295,8 +295,51 @@ define i256 @__signextend(i256 %numbyte, i256 %value) #1 {
   ret i256 %result
 }
 
+define {i256, i1}* @__farcall(i256 %abi_params, i256 %address, {i256, i1}* %in_res) personality i32 ()* @__personality {
+entry:
+  %in_res_result_ptr = getelementptr {i256, i1}, {i256, i1}* %in_res, i32 0, i32 0
+  %in_res_flag_ptr = getelementptr {i256, i1}, {i256, i1}* %in_res, i32 0, i32 1
+  %invoke_res = invoke i256 @__farcall_int(i256 %abi_params, i256 %address)
+    to label %ok unwind label %err
+ok:
+  store i256 %invoke_res, i256* %in_res_result_ptr
+  store i1 1, i1* %in_res_flag_ptr
+  ret {i256, i1}* %in_res
+
+err:
+  %res.2 = landingpad {i256, i256} cleanup
+  %res = extractvalue {i256, i256} %res.2, 0
+  %flag = call i256 @llvm.syncvm.iflt(i256 1, i256 0)
+  %is_set = trunc i256 %flag to i1
+  br i1 %is_set, label %revert, label %err_ok
+
+revert:
+  call void @llvm.syncvm.throw(i256 %res)
+  unreachable
+
+err_ok:
+  store i256 %res, i256* %in_res_result_ptr
+  store i1 0, i1* %in_res_flag_ptr
+  ret {i256, i1}* %in_res
+}
+
+define void @__sstore(i256 %val, i256 %key) {
+  call void @llvm.syncvm.sstore(i256 %key, i256 %val)
+  ret void
+}
+
+define i256 @__sload(i256 %key) {
+  %res = call i256 @llvm.syncvm.sload(i256 %key)
+  ret i256 %res
+}
+
 declare {i256, i1} @llvm.uadd.with.overflow.i256(i256, i256)
 declare void @llvm.syncvm.throw(i256)
+declare void @llvm.syncvm.sstore(i256 %key, i256 %val)
+declare i256 @llvm.syncvm.sload(i256 %key)
+declare i256 @llvm.syncvm.iflt(i256, i256)
+declare i256 @__farcall_int(i256, i256)
+declare i32 @__personality()
 
 attributes #0 = { nounwind readnone }
 attributes #1 = { mustprogress nounwind readnone willreturn }
