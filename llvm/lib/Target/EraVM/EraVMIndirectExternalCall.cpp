@@ -53,6 +53,7 @@ INITIALIZE_PASS(EraVMIndirectExternalCall, "eravm-indirect-external-call",
                 "Wrap an external call into a fuction call", false, false)
 
 bool EraVMIndirectExternalCall::runOnModule(Module &M) {
+#if 0
   std::vector<Instruction *> Replaced;
   std::vector<IntrinsicInst *> Calls[4];
   for (auto &F : M)
@@ -81,6 +82,8 @@ bool EraVMIndirectExternalCall::runOnModule(Module &M) {
     I->eraseFromParent();
 
   return !Replaced.empty();
+#endif
+  return {};
 }
 
 Function *EraVMIndirectExternalCall::getOrCreateIntrinsicWrapper(unsigned ID,
