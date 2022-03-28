@@ -53,6 +53,7 @@ INITIALIZE_PASS(SyncVMIndirectExternalCall, "syncvm-indirect-external-call",
                 "Wrap an external call into a fuction call", false, false)
 
 bool SyncVMIndirectExternalCall::runOnModule(Module &M) {
+#if 0
   std::vector<Instruction *> Replaced;
   std::vector<IntrinsicInst *> Calls[4];
   for (auto &F : M)
@@ -81,6 +82,8 @@ bool SyncVMIndirectExternalCall::runOnModule(Module &M) {
     I->eraseFromParent();
 
   return !Replaced.empty();
+#endif
+  return {};
 }
 
 Function *SyncVMIndirectExternalCall::getOrCreateIntrinsicWrapper(unsigned ID,

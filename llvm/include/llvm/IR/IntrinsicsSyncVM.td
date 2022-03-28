@@ -8,14 +8,11 @@
 let TargetPrefix = "syncvm" in {
 
 // Calls of an external contract.
-def int_syncvm_farcall: Intrinsic<[], [llvm_i256_ty], []>;
-def int_syncvm_delegatecall: Intrinsic<[], [llvm_i256_ty], []>;
-def int_syncvm_callcode: Intrinsic<[], [llvm_i256_ty], []>;
-def int_syncvm_staticcall: Intrinsic<[], [llvm_i256_ty], []>;
-def int_syncvm_farcall_rc: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], []>;
-def int_syncvm_delegatecall_rc: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], []>;
-def int_syncvm_callcode_rc: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], []>;
-def int_syncvm_staticcall_rc: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], []>;
+def int_syncvm_farcall: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], []>;
+def int_syncvm_delegatecall: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], []>;
+def int_syncvm_callcode: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], []>;
+def int_syncvm_staticcall: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], []>;
+def int_syncvm_mimiccall: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], []>;
 
 // Get value from the context.
 // Both intrinsics map to `context` instructions, but to differentiate side effects,
@@ -24,8 +21,8 @@ def int_syncvm_context: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrNoMem]>;
 def int_syncvm_ergsleft: Intrinsic<[llvm_i256_ty], [], []>;
 
 // Persistent memory access.
-def int_syncvm_sstore: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], [IntrWriteMem, Throws]>;
-def int_syncvm_sload: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrReadMem]>;
+def int_syncvm_sstore: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty], [IntrWriteMem, Throws]>;
+def int_syncvm_sload: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrReadMem]>;
 def int_syncvm_event: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], [IntrHasSideEffects]>;
 def int_syncvm_tol1: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], [IntrHasSideEffects]>;
 def int_syncvm_precompile: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty], [IntrHasSideEffects]>;

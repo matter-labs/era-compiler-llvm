@@ -33,20 +33,15 @@ define i256 @contextr() {
 
 ; CHECK-LABEL: sload_rr
 define i256 @sload_rr(i256 %val) {
-; CHECK-DAG: sload r1, r{{[0-9]+}}
-; CHECK-DAG: sload.first r1, r{{[0-9]+}}
-  %1 = call i256 @llvm.syncvm.sload(i256 %val, i256 0)
-  %2 = call i256 @llvm.syncvm.sload(i256 %val, i256 1)
-  %3 = add i256 %2, %1
-  ret i256 %3
+; CHECK: sload r1, r{{[0-9]+}}
+  %1 = call i256 @llvm.syncvm.sload(i256 %val)
+  ret i256 %1
 }
 
 ; CHECK-LABEL: sstore_r
 define void @sstore_r(i256 %key, i256 %val) {
 ; CHECK: sstore r1, r2
-; CHECK: sstore.first r1, r2
-  call void @llvm.syncvm.sstore(i256 %key, i256 %val, i256 0)
-  call void @llvm.syncvm.sstore(i256 %key, i256 %val, i256 1)
+  call void @llvm.syncvm.sstore(i256 %key, i256 %val)
   ret void
 }
 
@@ -68,12 +63,10 @@ define void @event_r(i256 %key, i256 %val) {
   ret void
 }
 
-; CHECK-LABEL: precompile_r
-define void @precompile_r(i256 %key) {
-; CHECK: precompile r1
-; CHECK: precompile.first r1
-  call void @llvm.syncvm.precompile(i256 %key, i256 0)
-  call void @llvm.syncvm.precompile(i256 %key, i256 1)
+; CHECK-LABEL: precompile_rr
+define void @precompile_rr(i256 %key, i256 %ergs) {
+; CHECK: precompile r1, r2
+  call void @llvm.syncvm.precompile(i256 %key, i256 %ergs)
   ret void
 }
 
@@ -135,10 +128,15 @@ define i256 @ifgtii() {
   ret i256 %res
 }
 
+define void @invoke.farcall({i256, i1}* %res) {
+  call {i256, i1}* @__farcall(i256 0, i256 0, {i256, i1}* %res)
+  ret void
+}
+
 declare i256 @llvm.syncvm.context(i256)
 declare i256 @llvm.syncvm.ergsleft()
-declare i256 @llvm.syncvm.sload(i256, i256)
-declare void @llvm.syncvm.sstore(i256, i256, i256)
+declare i256 @llvm.syncvm.sload(i256)
+declare void @llvm.syncvm.sstore(i256, i256)
 declare void @llvm.syncvm.tol1(i256, i256, i256)
 declare void @llvm.syncvm.event(i256, i256, i256)
 declare void @llvm.syncvm.precompile(i256, i256)
@@ -146,3 +144,5 @@ declare void @llvm.syncvm.throw(i256)
 declare i256 @llvm.syncvm.ifeq(i256, i256)
 declare i256 @llvm.syncvm.iflt(i256, i256)
 declare i256 @llvm.syncvm.ifgt(i256, i256)
+
+declare {i256, i1}* @__farcall(i256, i256, {i256, i1}*)

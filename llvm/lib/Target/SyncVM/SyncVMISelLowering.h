@@ -161,6 +161,13 @@ public:
            AddrSpace == SyncVMAS::AS_RETDATA;
   }
 
+  /// If a physical register, this returns the register that receives the
+  /// exception address on entry to an EH pad.
+  Register
+  getExceptionPointerRegister(const Constant *PersonalityFn) const override {
+    return SyncVM::R1;
+  }
+
 private:
   SDValue LowerFormalArguments(SDValue Chain, CallingConv::ID CallConv,
                                bool isVarArg,
