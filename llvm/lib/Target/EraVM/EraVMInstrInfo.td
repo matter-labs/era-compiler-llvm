@@ -17,6 +17,7 @@ include "EraVMInstrFormats.td"
 //===----------------------------------------------------------------------===//
 def SDT_EraVMCall         : SDTypeProfile<0, -1, [SDTCisPtrTy<0>]>;
 def SDT_EraVMInvoke       : SDTypeProfile<0, -1, [SDTCisPtrTy<0>]>;
+def SDT_EraVMFarCall      : SDTypeProfile<0, -1, []>;
 def SDT_EraVMCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i256>,
                                              SDTCisVT<1, i256>]>;
 def SDT_EraVMCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i256>,
@@ -39,6 +40,8 @@ def EraVMret    : SDNode<"EraVMISD::RET", SDTNone,
 def EraVMcall   : SDNode<"EraVMISD::CALL", SDT_EraVMCall,
                     [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
 def EraVMinvoke : SDNode<"EraVMISD::INVOKE", SDT_EraVMInvoke,
+                    [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
+def EraVMfarcall: SDNode<"EraVMISD::FARCALL", SDT_EraVMFarCall,
                     [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
 def EraVMbrcc   : SDNode<"EraVMISD::BR_CC", SDT_EraVMBrCC,
                     [SDNPHasChain, SDNPInGlue]>;
@@ -754,21 +757,22 @@ def CTXr_se : IContextR<46, (outs GR256:$rd0), (ins context_se_op:$cop, cc:$cc),
 def : Pat<(int_eravm_context context_op:$cop), (CTXr context_op:$cop, 0)>;
 def : Pat<(int_eravm_ergsleft), (CTXr_se 6, 0)>;
 
-def SLDrr : ILogR<47, DstReg, (outs GR256:$rd0), (ins GR256:$rs0, first_op:$first, cc:$cc),
-                  "sload$first$cc\t$rs0, $rd0", []> {
+let first = 0 in
+def SLDrr : ILogR<47, DstReg, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
+                  "sload$cc\t$rs0, $rd0", []> {
   bits<4> rd0;
   let rs1 = 0;
   let Inst{40-43} = rd0;
 }
 
-def : Pat<(int_eravm_sload GR256:$rs0, first_op:$first), (SLDrr GR256:$rs0, first_op:$first, 0)>;
+def : Pat<(int_eravm_sload GR256:$rs0), (SLDrr GR256:$rs0, 0)>;
 
-let hasSideEffects = 1 in
-  def SSTr : ILogR<48, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first, cc:$cc),
-      "sstore$first$cc\t$rs0, $rs1", []>;
+let hasSideEffects = 1, first = 0 in
+  def SSTr : ILogR<48, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
+      "sstore$cc\t$rs0, $rs1", []>;
 
-def : Pat<(int_eravm_sstore GR256:$rs0, GR256:$rs1, first_op:$first),
-          (SSTr GR256:$rs0, GR256:$rs1, first_op:$first, 0)>;
+def : Pat<(int_eravm_sstore GR256:$rs0, GR256:$rs1),
+          (SSTr GR256:$rs0, GR256:$rs1, 0)>;
 
 let hasSideEffects = 1 in
 def L1r : ILogR<49, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first, cc:$cc),
@@ -784,14 +788,14 @@ def EVTr : ILogR<50, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$fir
 def : Pat<(int_eravm_event GR256:$rs0, GR256:$rs1, first_op:$first),
           (EVTr GR256:$rs0, GR256:$rs1, first_op:$first, 0)>;
 
-let hasSideEffects = 1 in
-def PCOMPr : ILogR<51, DstNone, (outs), (ins GR256:$rs0, first_op:$first, cc:$cc),
-                 "precompile$first$cc\t$rs0", []> {
+let hasSideEffects = 1, first = 0 in
+def PCOMPr : ILogR<51, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
+                 "precompile$cc\t$rs0, $rs1", []> {
   let rs1 = 0;
 }
 
-def : Pat<(int_eravm_precompile GR256:$rs0, first_op:$first),
-          (PCOMPr GR256:$rs0, first_op:$first, 0)>;
+def : Pat<(int_eravm_precompile GR256:$rs0, GR256:$rs1),
+          (PCOMPr GR256:$rs0, GR256:$rs1, 0)>;
 
 let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15],
     Uses = [SP], isCall = 1 in {
@@ -800,9 +804,10 @@ let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15],
    def INVOKE : Pseudo<(outs), (ins imm16:$callee, jmptarget:$unwind),
                    "INVOKE\tr0, @$callee, @$unwind", [(EraVMinvoke tglobaladdr:$callee, bb:$unwind)]>;
 
-    def FAR_CALL  : ICall<8, CFNormal, (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
-                   "far_call\t$in1, @$callee, @$unwind", []>;
     def NEAR_CALL : ICall<9, CFNormal, (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
                    "near_call\t$in1, @$callee, @$unwind", []>;
 }
 
+let isTerminator = 1 in
+def FAR_CALL  : ICall<8, CFNormal, (ins GR256:$abi, GR256:$address, jmptarget:$unwind),
+               "far_call\t$abi, $address, @$unwind", [(EraVMfarcall GR256:$abi, GR256:$address, bb:$unwind)]>;

@@ -5126,6 +5126,7 @@ void Verifier::visitInstruction(Instruction &I) {
                 // EraVM local begin
                 F->getIntrinsicID() == Intrinsic::eravm_sstore ||
                 F->getIntrinsicID() == Intrinsic::eravm_throw ||
+                F->getIntrinsicID() == Intrinsic::eravm_farcall ||
                 // EraVM local end
                 IsAttachedCallOperand(F, CBI, i),
             "Cannot invoke an intrinsic other than donothing, patchpoint, "

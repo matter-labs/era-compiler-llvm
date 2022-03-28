@@ -13,14 +13,11 @@
 let TargetPrefix = "eravm" in {
 
 // Calls of an external contract.
-def int_eravm_farcall: Intrinsic<[], [llvm_i256_ty], []>;
-def int_eravm_delegatecall: Intrinsic<[], [llvm_i256_ty], []>;
-def int_eravm_callcode: Intrinsic<[], [llvm_i256_ty], []>;
-def int_eravm_staticcall: Intrinsic<[], [llvm_i256_ty], []>;
-def int_eravm_farcall_rc: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], []>;
-def int_eravm_delegatecall_rc: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], []>;
-def int_eravm_callcode_rc: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], []>;
-def int_eravm_staticcall_rc: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], []>;
+def int_eravm_farcall: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], []>;
+def int_eravm_delegatecall: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], []>;
+def int_eravm_callcode: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], []>;
+def int_eravm_staticcall: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], []>;
+def int_eravm_mimiccall: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], []>;
 
 // Get value from the context.
 // Both intrinsics map to `context` instructions, but to differentiate side effects,
@@ -29,8 +26,8 @@ def int_eravm_context: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrNoMem]>;
 def int_eravm_ergsleft: Intrinsic<[llvm_i256_ty], [], []>;
 
 // Persistent memory access.
-def int_eravm_sstore: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], [IntrWriteMem, Throws]>;
-def int_eravm_sload: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrReadMem]>;
+def int_eravm_sstore: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty], [IntrWriteMem, Throws]>;
+def int_eravm_sload: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrReadMem]>;
 def int_eravm_event: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], [IntrHasSideEffects]>;
 def int_eravm_tol1: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], [IntrHasSideEffects]>;
 def int_eravm_precompile: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty], [IntrHasSideEffects]>;
