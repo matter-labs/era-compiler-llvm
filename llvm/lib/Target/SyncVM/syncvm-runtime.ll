@@ -280,6 +280,21 @@ define void @__cxa_throw(i8* %addr, i8*, i8*) {
   unreachable
 }
 
+define i256 @__signextend(i256 %numbyte, i256 %value) #1 {
+  %numbit_byte = mul nuw nsw i256 %numbyte, 8
+  %numbit = add nsw nuw i256 %numbit_byte, 7
+  %numbit_inv = sub i256 256, %numbit
+  %signmask = shl i256 1, %numbit
+  %valmask = lshr i256 -1, %numbit_inv
+  %ext1 = shl i256 -1, %numbit
+  %signv = and i256 %signmask, %value
+  %sign = icmp ne i256 %signv, 0
+  %valclean = and i256 %value, %valmask
+  %sext = select i1 %sign, i256 %ext1, i256 0
+  %result = or i256 %sext, %valclean
+  ret i256 %result
+}
+
 declare {i256, i1} @llvm.uadd.with.overflow.i256(i256, i256)
 declare void @llvm.syncvm.throw(i256)
 
