@@ -3293,6 +3293,7 @@ void MachineBlockPlacement::initDupThreshold() {
 }
 
 bool MachineBlockPlacement::runOnMachineFunction(MachineFunction &MF) {
+  return false;
   if (skipFunction(MF.getFunction()))
     return false;
 
