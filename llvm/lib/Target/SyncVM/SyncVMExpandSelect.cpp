@@ -130,8 +130,9 @@ bool SyncVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
           // r0 -> MOV src1
           Mov.addReg(SyncVM::R0);
           // SEL dst -> MOV dst
-          for (unsigned i = DstArgPos; i < EndPos; ++i)
+          for (unsigned i = DstArgPos; i < EndPos; ++i) {
             Mov.add(MI.getOperand(i));
+          }
           // COND_NONE -> MOV cc
           Mov.addImm(SyncVMCC::COND_NONE);
         }
@@ -143,14 +144,17 @@ bool SyncVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
                            MI.getOperand(0).getReg());
           return BuildMI(MBB, &MI, DL, TII->get(CMovOpc));
         }();
+        // early clobber the definition:
+        CMov->getOperand(0).setIsEarlyClobber(true);
         // SEL src0 -> CMOV src0
         for (unsigned i = Src0ArgPos; i < Src1ArgPos; ++i)
           CMov.add(MI.getOperand(i));
         // r0 -> CMOV src1
         CMov.addReg(SyncVM::R0);
         // SEL dst -> CMOV dst
-        for (unsigned i = DstArgPos; i < EndPos; ++i)
+        for (unsigned i = DstArgPos; i < EndPos; ++i) {
           CMov.add(MI.getOperand(i));
+        }
         // SEL cc -> CMOV cc
         CMov.add(MI.getOperand(CCPos));
 
