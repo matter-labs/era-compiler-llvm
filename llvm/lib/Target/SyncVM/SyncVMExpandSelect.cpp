@@ -145,7 +145,9 @@ bool SyncVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
           return BuildMI(MBB, &MI, DL, TII->get(CMovOpc));
         }();
         // early clobber the definition:
-        CMov->getOperand(0).setIsEarlyClobber(true);
+        if (NumDefs) {
+          CMov->getOperand(0).setIsEarlyClobber(true);
+        }
         // SEL src0 -> CMOV src0
         for (unsigned i = Src0ArgPos; i < Src1ArgPos; ++i)
           CMov.add(MI.getOperand(i));
