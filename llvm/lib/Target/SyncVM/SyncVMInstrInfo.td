@@ -37,6 +37,8 @@ def SyncVMinvoke : SDNode<"SyncVMISD::INVOKE", SDT_SyncVMInvoke,
                     [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
 def SyncVMfarcall: SDNode<"SyncVMISD::FARCALL", SDT_SyncVMFarCall,
                     [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
+def SyncVMstaticcall: SDNode<"SyncVMISD::STATICCALL", SDT_SyncVMFarCall,
+                    [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
 def SyncVMbrcc   : SDNode<"SyncVMISD::BR_CC", SDT_SyncVMBrCC,
                     [SDNPHasChain, SDNPInGlue]>;
 def SyncVMselectcc: SDNode<"SyncVMISD::SELECT_CC", SDT_SyncVMSelectCC,
@@ -902,6 +904,9 @@ let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15],
                    "near_call\t$in1, @$callee, @$unwind", []>;
 }
 
-let isTerminator = 1 in
+let isTerminator = 1 in {
 def FAR_CALL  : ICall<8, CFNormal, (ins GR256:$abi, GR256:$address, jmptarget:$unwind),
                "far_call\t$abi, $address, @$unwind", [(SyncVMfarcall GR256:$abi, GR256:$address, bb:$unwind)]>;
+def STATIC_CALL  : ICall<10, CFNormal, (ins GR256:$abi, GR256:$address, jmptarget:$unwind),
+               "far_call.static\t$abi, $address, @$unwind", [(SyncVMstaticcall GR256:$abi, GR256:$address, bb:$unwind)]>;
+}
