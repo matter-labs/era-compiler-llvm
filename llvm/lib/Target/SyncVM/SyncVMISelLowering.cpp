@@ -250,14 +250,30 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   bool IsVarArg = CLI.IsVarArg;
 
   if (auto GA = dyn_cast<GlobalAddressSDNode>(Callee.getNode())) {
-    if (GA->getGlobal()->getName() == "__farcall_int") {
+    auto farcall_pair = [&] () {
+      if (GA->getGlobal()->getName() == "__farcall_int") {
+        return std::make_pair<uint64_t, bool>(SyncVMISD::FARCALL, true);
+      } 
+      if (GA->getGlobal()->getName() == "__staticcall_int") {
+        return std::make_pair<uint64_t, bool>(SyncVMISD::STATICCALL, true);
+      }
+      if (GA->getGlobal()->getName() == "__delegatecall_int") {
+        return std::make_pair<uint64_t, bool>(SyncVMISD::DELEGATECALL, true);
+      }
+      return  std::make_pair<uint64_t, bool>(0, false);
+    } ();
+
+    auto farcall_opc = farcall_pair.first;
+    bool is_farcall = farcall_pair.second;
+
+    if (is_farcall) {
       SmallVector<SDValue, 8> Ops;
       Ops.push_back(Chain);
       Ops.push_back(OutVals[0]);
       Ops.push_back(OutVals[1]);
       Ops.push_back(CLI.UnwindBB);
       SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
-      Chain = DAG.getNode(SyncVMISD::FARCALL, DL, NodeTys, Ops);
+      Chain = DAG.getNode(farcall_opc, DL, NodeTys, Ops);
       InVals.push_back(DAG.getCopyFromReg(Chain, DL, SyncVM::R1,
                        MVT::i256, Chain.getValue(1)));
       return Chain;
