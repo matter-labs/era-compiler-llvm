@@ -43,6 +43,12 @@ def EraVMinvoke : SDNode<"EraVMISD::INVOKE", SDT_EraVMInvoke,
                     [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
 def EraVMfarcall: SDNode<"EraVMISD::FARCALL", SDT_EraVMFarCall,
                     [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
+def EraVMstaticcall: SDNode<"EraVMISD::STATICCALL", SDT_EraVMFarCall,
+                    [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
+def EraVMdelegatecall: SDNode<"EraVMISD::DELEGATECALL", SDT_EraVMFarCall,
+                    [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
+def EraVMmimiccall: SDNode<"EraVMISD::MIMICCALL", SDT_EraVMFarCall,
+                    [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
 def EraVMbrcc   : SDNode<"EraVMISD::BR_CC", SDT_EraVMBrCC,
                     [SDNPHasChain, SDNPInGlue]>;
 def EraVMselectcc: SDNode<"EraVMISD::SELECT_CC", SDT_EraVMSelectCC,
@@ -808,6 +814,14 @@ let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15],
                    "near_call\t$in1, @$callee, @$unwind", []>;
 }
 
-let isTerminator = 1 in
+let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15],
+    isCall = 1, isTerminator = 1 in {
 def FAR_CALL  : ICall<8, CFNormal, (ins GR256:$abi, GR256:$address, jmptarget:$unwind),
                "far_call\t$abi, $address, @$unwind", [(EraVMfarcall GR256:$abi, GR256:$address, bb:$unwind)]>;
+def STATIC_CALL  : ICall<10, CFNormal, (ins GR256:$abi, GR256:$address, jmptarget:$unwind),
+               "far_call.static\t$abi, $address, @$unwind", [(EraVMstaticcall GR256:$abi, GR256:$address, bb:$unwind)]>;
+def DELEGATE_CALL  : ICall<11, CFDelegate, (ins GR256:$abi, GR256:$address, jmptarget:$unwind),
+               "far_call.delegate\t$abi, $address, @$unwind", [(EraVMdelegatecall GR256:$abi, GR256:$address, bb:$unwind)]>;
+def MIMIC_CALL  : ICall<12, CFMimic, (ins GR256:$abi, GR256:$address, GR256:$mimic, jmptarget:$unwind),
+               "far_call.mimic\t$abi, $address, @$unwind", [(EraVMmimiccall GR256:$abi, GR256:$address, GR256:$mimic, bb:$unwind)]>;
+}
