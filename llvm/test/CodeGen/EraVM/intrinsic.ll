@@ -9,11 +9,11 @@ target triple = "eravm"
 ; CHECK-LABEL: contextr
 define i256 @contextr() {
 ; CHECK-DAG: context.caller r{{[0-9]+}}
-; CHECK-DAG: context.self_address r{{[0-9]+}}
-; CHECK-DAG: context.code_address r{{[0-9]+}}
+; CHECK-DAG: context.this r{{[0-9]+}}
+; CHECK-DAG: context.code_source r{{[0-9]+}}
 ; CHECK-DAG: context.meta r{{[0-9]+}}
 ; CHECK-DAG: context.tx_origin r{{[0-9]+}}
-; CHECK-DAG: context.coinbase r{{[0-9]+}}
+; CHECK-DAG: add 1, r0, r{{[0-9]+}}
 ; CHECK-DAG: context.ergs_left r{{[0-9]+}}
   %1 = call i256 @llvm.eravm.context(i256 0)
   %2 = call i256 @llvm.eravm.context(i256 1)
@@ -64,10 +64,10 @@ define void @event_r(i256 %key, i256 %val) {
 }
 
 ; CHECK-LABEL: precompile_rr
-define void @precompile_rr(i256 %key, i256 %ergs) {
+define i256 @precompile_rr(i256 %key, i256 %ergs) {
 ; CHECK: precompile r1, r2
-  call void @llvm.eravm.precompile(i256 %key, i256 %ergs)
-  ret void
+  %res = call i256 @llvm.eravm.precompile(i256 %key, i256 %ergs)
+  ret i256 %res
 }
 
 ; CHECK-LABEL: throw
@@ -133,7 +133,7 @@ declare i256 @llvm.eravm.sload(i256)
 declare void @llvm.eravm.sstore(i256, i256)
 declare void @llvm.eravm.tol1(i256, i256, i256)
 declare void @llvm.eravm.event(i256, i256, i256)
-declare void @llvm.eravm.precompile(i256, i256)
+declare i256 @llvm.eravm.precompile(i256, i256)
 declare void @llvm.eravm.throw(i256)
 declare i256 @llvm.eravm.ifeq(i256, i256)
 declare i256 @llvm.eravm.iflt(i256, i256)

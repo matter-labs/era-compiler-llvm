@@ -98,7 +98,7 @@ def cc : Operand<i256> {
 }
 
 def context_op : Operand<i256>, IntImmLeaf<i256, [{
-  return Imm.getZExtValue() < 6;
+  return Imm.getZExtValue() < 5;
 }]> {
   let PrintMethod = "printContextOperand";
 }
@@ -762,6 +762,7 @@ def CTXr_se : IContextR<46, (outs GR256:$rd0), (ins context_se_op:$cop, cc:$cc),
 
 def : Pat<(int_eravm_context context_op:$cop), (CTXr context_op:$cop, 0)>;
 def : Pat<(int_eravm_ergsleft), (CTXr_se 6, 0)>;
+def : Pat<(int_eravm_context 5), (ADDirr_p 1, R0)>;
 
 let first = 0 in
 def SLDrr : ILogR<47, DstReg, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
@@ -795,8 +796,8 @@ def : Pat<(int_eravm_event GR256:$rs0, GR256:$rs1, first_op:$first),
           (EVTr GR256:$rs0, GR256:$rs1, first_op:$first, 0)>;
 
 let hasSideEffects = 1, first = 0 in
-def PCOMPr : ILogR<51, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
-                 "precompile$cc\t$rs0, $rs1", []> {
+def PCOMPr : ILogR<51, DstNone, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
+                 "precompile$cc\t$rs0, $rs1, $rd0", []> {
   let rs1 = 0;
 }
 

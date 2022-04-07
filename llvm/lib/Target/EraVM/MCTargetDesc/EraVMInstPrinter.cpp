@@ -89,14 +89,14 @@ void EraVMInstPrinter::printContextOperand(const MCInst *MI, unsigned OpNo,
   switch (COp) {
   default:
     llvm_unreachable("Unsupported Context parameter");
-  case EraVMCTX::SELF_ADDR:
-    O << ".self_address";
+  case EraVMCTX::THIS:
+    O << ".this";
     break;
   case EraVMCTX::CALLER:
     O << ".caller";
     break;
-  case EraVMCTX::CODE_ADDR:
-    O << ".code_address";
+  case EraVMCTX::CODE_SOURCE:
+    O << ".code_source";
     break;
   case EraVMCTX::META:
     O << ".meta";
