@@ -29,6 +29,8 @@ def int_syncvm_precompile: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty], [IntrHasS
 
 // Return with error.
 def int_syncvm_throw: Intrinsic<[], [llvm_i256_ty], [Throws, IntrNoReturn]>;
+def int_syncvm_return: Intrinsic<[], [llvm_i256_ty], [IntrNoReturn]>;
+def int_syncvm_revert: Intrinsic<[], [llvm_i256_ty], [IntrNoReturn]>;
 
 // Access to flags.
 def int_syncvm_iflt  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
