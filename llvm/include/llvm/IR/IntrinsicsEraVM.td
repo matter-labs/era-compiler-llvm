@@ -34,6 +34,8 @@ def int_eravm_precompile: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty]
 
 // Return with error.
 def int_eravm_throw: Intrinsic<[], [llvm_i256_ty], [Throws, IntrNoReturn]>;
+def int_eravm_return: Intrinsic<[], [llvm_i256_ty], [IntrNoReturn]>;
+def int_eravm_revert: Intrinsic<[], [llvm_i256_ty], [IntrNoReturn]>;
 
 // Access to flags.
 def int_eravm_iflt  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
