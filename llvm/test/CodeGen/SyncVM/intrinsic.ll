@@ -13,7 +13,7 @@ define i256 @contextr() {
 ; CHECK-DAG: context.code_address r{{[0-9]+}}
 ; CHECK-DAG: context.meta r{{[0-9]+}}
 ; CHECK-DAG: context.tx_origin r{{[0-9]+}}
-; CHECK-DAG: context.coinbase r{{[0-9]+}}
+; CHECK-DAG: add 1, r0, r{{[0-9]+}}
 ; CHECK-DAG: context.ergs_left r{{[0-9]+}}
   %1 = call i256 @llvm.syncvm.context(i256 0)
   %2 = call i256 @llvm.syncvm.context(i256 1)
