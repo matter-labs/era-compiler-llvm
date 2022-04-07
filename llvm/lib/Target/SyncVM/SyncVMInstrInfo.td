@@ -54,6 +54,10 @@ def SyncVMchange_sp : SDNode<"SyncVMISD::CHANGE_SP", SDT_SyncVMChangeSP,
                              [SDNPHasChain, SDNPInGlue, SDNPOutGlue]>;
 def SyncVMthrow : SDNode<"SyncVMISD::THROW", SDT_SyncVMThrow,
                          [SDNPHasChain, SDNPInGlue]>;
+def SyncVMreturn : SDNode<"SyncVMISD::RETURN", SDT_SyncVMThrow,
+                         [SDNPHasChain, SDNPInGlue]>;
+def SyncVMrevert : SDNode<"SyncVMISD::REVERT", SDT_SyncVMThrow,
+                         [SDNPHasChain, SDNPInGlue]>;
 
 //===----------------------------------------------------------------------===//
 // SyncVM Operand Definitions.
@@ -826,6 +830,12 @@ def RET   : IRet<7, RFNone, (ins), "ret", [(SyncVMret)]>;
 let isTerminator = 1, isBarrier = 1, isTrap = 1 in
 def THROW : IRet<7, RFErr, (ins GR256:$rs0), "revert",
                  [(SyncVMthrow GR256:$rs0)]>;
+let isTerminator = 1, isBarrier = 1 in {
+def RETURN : IRet<52, RFErr, (ins GR256:$rs0), "ret.ok.to_label\t$rs0, @DEFAULT_FAR_RETURN",
+                  [(SyncVMreturn GR256:$rs0)]>;
+def REVERT : IRet<53, RFErr, (ins GR256:$rs0), "ret.revert.to_label\t$rs0, @DEFAULT_FAR_REVERT",
+                  [(SyncVMrevert GR256:$rs0)]>;
+}
 
 //===----------------------------------------------------------------------===//
 // Constants materialization
