@@ -64,6 +64,10 @@ def EraVMchange_sp : SDNode<"EraVMISD::CHANGE_SP", SDT_EraVMChangeSP,
                              [SDNPHasChain, SDNPInGlue, SDNPOutGlue]>;
 def EraVMthrow : SDNode<"EraVMISD::THROW", SDT_EraVMThrow,
                          [SDNPHasChain, SDNPInGlue]>;
+def EraVMreturn : SDNode<"EraVMISD::RETURN", SDT_EraVMThrow,
+                         [SDNPHasChain, SDNPInGlue]>;
+def EraVMrevert : SDNode<"EraVMISD::REVERT", SDT_EraVMThrow,
+                         [SDNPHasChain, SDNPInGlue]>;
 
 //===----------------------------------------------------------------------===//
 // EraVM Operand Definitions.
@@ -736,6 +740,12 @@ def RET   : IRet<7, RFNone, (ins), "ret", [(EraVMret)]>;
 let isTerminator = 1, isBarrier = 1, isTrap = 1 in
 def THROW : IRet<7, RFErr, (ins GR256:$rs0), "revert",
                  [(EraVMthrow GR256:$rs0)]>;
+let isTerminator = 1, isBarrier = 1 in {
+def RETURN : IRet<52, RFErr, (ins GR256:$rs0), "ret.ok.to_label\t$rs0, @DEFAULT_FAR_RETURN",
+                  [(EraVMreturn GR256:$rs0)]>;
+def REVERT : IRet<53, RFErr, (ins GR256:$rs0), "ret.revert.to_label\t$rs0, @DEFAULT_FAR_REVERT",
+                  [(EraVMrevert GR256:$rs0)]>;
+}
 
 //===----------------------------------------------------------------------===//
 // Constants materialization

@@ -669,13 +669,26 @@ SDValue EraVMTargetLowering::LowerINTRINSIC_VOID(SDValue Op,
       cast<ConstantSDNode>(
           Op.getOperand(Op.getOperand(0).getValueType() == MVT::Other))
           ->getZExtValue();
-  if (IntNo != Intrinsic::eravm_throw)
+  if (IntNo != Intrinsic::eravm_throw && IntNo != Intrinsic::eravm_return &&
+      IntNo != Intrinsic::eravm_revert)
     return {};
   SDLoc DL(Op);
   auto CTR =
       DAG.getCopyToReg(Op.getOperand(0), DL, EraVM::R1, Op.getOperand(2));
-  return DAG.getNode(EraVMISD::THROW, DL, MVT::Other, CTR,
-                     DAG.getRegister(EraVM::R1, MVT::i256));
+  switch (IntNo) {
+  default:
+    llvm_unreachable("Unexpected intrinsic");
+    return {};
+  case Intrinsic::eravm_throw:
+    return DAG.getNode(EraVMISD::THROW, DL, MVT::Other, CTR,
+                       DAG.getRegister(EraVM::R1, MVT::i256));
+  case Intrinsic::eravm_return:
+    return DAG.getNode(EraVMISD::RETURN, DL, MVT::Other, CTR,
+                       DAG.getRegister(EraVM::R1, MVT::i256));
+  case Intrinsic::eravm_revert:
+    return DAG.getNode(EraVMISD::REVERT, DL, MVT::Other, CTR,
+                       DAG.getRegister(EraVM::R1, MVT::i256));
+  }
 }
 
 const char *EraVMTargetLowering::getTargetNodeName(unsigned Opcode) const {

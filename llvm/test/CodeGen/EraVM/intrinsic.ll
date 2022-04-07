@@ -77,6 +77,22 @@ define void @throw(i256 %val) {
   ret void
 }
 
+; CHECK-LABEL: far_return
+define void @far_return(i256 %x, i256 %val) {
+; CHECK: add r2, r0, r1
+; CHECK: ret.ok.to_label r1, @DEFAULT_FAR_RETURN
+  call void @llvm.eravm.return(i256 %val)
+  unreachable
+}
+
+; CHECK-LABEL: far_revert
+define void @far_revert(i256 %x, i256 %val) {
+; CHECK: add r2, r0, r1
+; CHECK: ret.revert.to_label r1, @DEFAULT_FAR_REVERT
+  call void @llvm.eravm.revert(i256 %val)
+  unreachable
+}
+
 ; CHECK-LABEL: ifeqrr
 define i256 @ifeqrr(i256 %x, i256 %y) {
   ; CHECK: add.ne r2, r0, r1
@@ -135,6 +151,8 @@ declare void @llvm.eravm.tol1(i256, i256, i256)
 declare void @llvm.eravm.event(i256, i256, i256)
 declare i256 @llvm.eravm.precompile(i256, i256)
 declare void @llvm.eravm.throw(i256)
+declare void @llvm.eravm.return(i256)
+declare void @llvm.eravm.revert(i256)
 declare i256 @llvm.eravm.ifeq(i256, i256)
 declare i256 @llvm.eravm.iflt(i256, i256)
 declare i256 @llvm.eravm.ifgt(i256, i256)
