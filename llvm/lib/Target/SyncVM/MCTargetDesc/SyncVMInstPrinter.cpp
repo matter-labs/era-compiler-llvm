@@ -83,8 +83,8 @@ void SyncVMInstPrinter::printContextOperand(const MCInst *MI, unsigned OpNo,
   switch (COp) {
   default:
     llvm_unreachable("Unsupported Context parameter");
-  case SyncVMCTX::SELF_ADDR:
-    O << ".self_address";
+  case SyncVMCTX::THIS:
+    O << ".this";
     break;
   case SyncVMCTX::CALLER:
     O << ".caller";

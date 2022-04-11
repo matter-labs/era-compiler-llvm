@@ -9,7 +9,7 @@ target triple = "syncvm"
 ; CHECK-LABEL: contextr
 define i256 @contextr() {
 ; CHECK-DAG: context.caller r{{[0-9]+}}
-; CHECK-DAG: context.self_address r{{[0-9]+}}
+; CHECK-DAG: context.this r{{[0-9]+}}
 ; CHECK-DAG: context.code_address r{{[0-9]+}}
 ; CHECK-DAG: context.meta r{{[0-9]+}}
 ; CHECK-DAG: context.tx_origin r{{[0-9]+}}

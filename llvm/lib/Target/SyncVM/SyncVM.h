@@ -40,7 +40,7 @@ enum AddressSpaces {
 namespace SyncVMCTX {
 // SyncVM context operands
 enum Context {
-  SELF_ADDR = 0,
+  THIS = 0,
   CALLER = 1,
   CODE_ADDR = 2,
   META = 3,
