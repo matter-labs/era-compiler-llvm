@@ -119,6 +119,7 @@ bool SyncVMPassConfig::addInstSelector() {
 
 void SyncVMPassConfig::addPreRegAlloc() {
   addPass(createSyncVMAddConditionsPass());
+  addPass(createSyncVMBytesToCellsPass());
 }
 
 void SyncVMPassConfig::addFastRegAlloc() {

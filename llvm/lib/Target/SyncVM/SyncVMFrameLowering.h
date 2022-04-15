@@ -16,7 +16,7 @@ protected:
 
 public:
   explicit SyncVMFrameLowering()
-      : TargetFrameLowering(TargetFrameLowering::StackGrowsDown, Align(32), 0,
+      : TargetFrameLowering(TargetFrameLowering::StackGrowsUp, Align(32), 0,
                             Align(32)) {}
 
   /// emitProlog/emitEpilog - These methods insert prolog and epilog code into

@@ -64,8 +64,7 @@ void SyncVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
   auto BasePtr = SyncVM::SP;
   int Offset = MF.getFrameInfo().getObjectOffset(FrameIndex);
-
-  Offset += MF.getFrameInfo().getStackSize();
+  Offset -= MF.getFrameInfo().getStackSize();
 
   if (MI.getOpcode() == SyncVM::ADDframe) {
     auto SPInst = BuildMI(MBB, II, DL, TII.get(SyncVM::CTXr_se))
@@ -73,15 +72,33 @@ void SyncVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
                       .addImm(SyncVMCTX::SP)
                       .addImm(SyncVMCC::COND_NONE)
                       .getInstr();
-    MI.setDesc(TII.get(SyncVM::ADDrrr_s));
-    MI.getOperand(1).ChangeToImmediate(Offset / 32);
-    MI.getOperand(2).ChangeToRegister(SPInst->getOperand(0).getReg(),
-                                      false /* IsDef */);
-    MI.addOperand(MachineOperand::CreateImm(SyncVMCC::COND_NONE));
+    if (Offset < 0)
+      SPInst = BuildMI(MBB, II, DL, TII.get(SyncVM::SUBxrr_s))
+                   .addDef(MI.getOperand(0).getReg())
+                   .addImm(- Offset /32)
+                   .add(SPInst->getOperand(0))
+                   .addImm(SyncVMCC::COND_NONE)
+                   .getInstr();
+    else
+      SPInst = BuildMI(MBB, II, DL, TII.get(SyncVM::ADDirr_s))
+                   .addDef(MI.getOperand(0).getReg())
+                   .addImm(Offset /32)
+                   .add(SPInst->getOperand(0))
+                   .addImm(SyncVMCC::COND_NONE)
+                   .getInstr();
+    BuildMI(MBB, II, DL, TII.get(SyncVM::MULirrr_s))
+        .addDef(MI.getOperand(0).getReg())
+        .addDef(SyncVM::R0)
+        .addImm(32)
+        .add(SPInst->getOperand(0))
+        .addImm(SyncVMCC::COND_NONE);
+    MI.eraseFromParent();
     return;
   }
 
+
   // Fold imm into offset
+  Offset /= 32;
   Offset += MI.getOperand(FIOperandNum + 2).getImm();
 
   MI.getOperand(FIOperandNum).ChangeToRegister(BasePtr, false);

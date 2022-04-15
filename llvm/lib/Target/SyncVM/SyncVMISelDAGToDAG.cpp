@@ -263,20 +263,6 @@ bool SyncVMDAGToDAGISel::SelectMemAddr(SDValue N, SDValue &Base,
   if (!AM.Base.Reg.getNode())
     AM.Base.Reg = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
 
-  if (AM.Base.Reg.getOpcode() != ISD::TargetConstant) {
-    SDValue &Reg = AM.Base.Reg;
-    if (Reg.getOpcode() == ISD::MUL &&
-        Reg.getOperand(1).getOpcode() == ISD::Constant &&
-        cast<ConstantSDNode>(Reg.getOperand(1))->getSExtValue() == 32)
-      AM.Base.Reg = Reg.getOperand(0);
-    else {
-      auto AddrNode = CurDAG->getMachineNode(
-          SyncVM::DIVxrrr_s, SDLoc(N), MVT::i256, AM.Base.Reg,
-          CurDAG->getTargetConstant(32, SDLoc(N), MVT::i256), Zero);
-      AM.Base.Reg = SDValue(AddrNode, 0);
-    }
-  }
-
   Base = AM.Base.Reg;
 
   if (AM.GV)
@@ -309,34 +295,23 @@ bool SyncVMDAGToDAGISel::SelectStackAddrCommon(SDValue N, SDValue &Base1,
   // redesign.
   if (!AM.Base.Reg.getNode())
     AM.Base.Reg = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
-  if (AM.Base.Reg.getOpcode() != ISD::TargetConstant) {
-    SDValue &Reg = AM.Base.Reg;
-    if (Reg.getOpcode() == ISD::MUL &&
-        Reg.getOperand(1).getOpcode() == ISD::Constant &&
-        cast<ConstantSDNode>(Reg.getOperand(1))->getSExtValue() == 32)
-      AM.Base.Reg = Reg.getOperand(0);
-    else {
-      const EVT DivType[] = {MVT::i256, MVT::i256};
-      auto AddrNode = CurDAG->getMachineNode(
-          SyncVM::DIVxrrr_p, SDLoc(N), DivType,
-          {CurDAG->getTargetConstant(32, SDLoc(N), MVT::i256), AM.Base.Reg});
-      AM.Base.Reg = SDValue(AddrNode, 0);
-    }
-  }
 
   if (UseSP) {
     Base1 = (AM.BaseType == SyncVMISelAddressMode::FrameIndexBase)
                 ? CurDAG->getTargetFrameIndex(AM.Base.FrameIndex,
                                               getTargetLowering()->getPointerTy(
                                                   CurDAG->getDataLayout()))
-                : CurDAG->getRegister(SyncVM::SP, MVT::i256);
+                : Base1 = CurDAG->getTargetConstant(
+                      0, SDLoc(N),
+                      MVT::i256); // CurDAG->getRegister(SyncVM::SP, MVT::i256);
   } else {
     Base1 = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
   }
   Base2 = AM.Base.Reg;
 
   // 1(sp) is the index of the 1st element on the stack rather than 0(sp).
-  AM.Disp += 32;
+  if (AM.BaseType == SyncVMISelAddressMode::FrameIndexBase)
+    AM.Disp = AM.Disp;
 
   if (AM.GV)
     Disp = CurDAG->getTargetGlobalAddress(AM.GV, SDLoc(N), MVT::i256, AM.Disp,
