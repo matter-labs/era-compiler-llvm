@@ -75,6 +75,7 @@ ModulePass *createEraVMLowerIntrinsicsPass();
 ModulePass *createEraVMLinkRuntimePass();
 FunctionPass *createEraVMAddConditionsPass();
 FunctionPass *createEraVMAllocaHoistingPass();
+FunctionPass *createEraVMBytesToCellsPass();
 FunctionPass *createEraVMCodegenPreparePass();
 FunctionPass *createEraVMExpandPseudoPass();
 FunctionPass *createEraVMExpandSelectPass();
@@ -83,11 +84,12 @@ FunctionPass *createEraVMAdjustStackInCallseqPass();
 
 void initializeEraVMLowerIntrinsicsPass(PassRegistry &);
 void initializeEraVMAddConditionsPass(PassRegistry &);
+void initializeEraVMAllocaHoistingPass(PassRegistry &);
+void initializeEraVMBytesToCellsPass(PassRegistry &);
 void initializeEraVMLinkRuntimePass(PassRegistry &);
 void initializeEraVMCodegenPreparePass(PassRegistry &);
 void initializeEraVMExpandPseudoPass(PassRegistry &);
 void initializeEraVMExpandSelectPass(PassRegistry &);
-void initializeEraVMAllocaHoistingPass(PassRegistry &);
 void initializeEraVMMoveCallResultSpillPass(PassRegistry &);
 void initializeEraVMDAGToDAGISelLegacyPass(PassRegistry &);
 

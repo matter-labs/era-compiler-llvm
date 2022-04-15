@@ -70,8 +70,7 @@ bool EraVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
   auto BasePtr = EraVM::SP;
   int Offset = MF.getFrameInfo().getObjectOffset(FrameIndex);
-
-  Offset += MF.getFrameInfo().getStackSize();
+  Offset -= MF.getFrameInfo().getStackSize();
 
   if (MI.getOpcode() == EraVM::ADDframe) {
     auto *SPInst = BuildMI(MBB, II, DL, TII.get(EraVM::CTXr_se))
@@ -79,15 +78,32 @@ bool EraVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
                        .addImm(EraVMCTX::SP)
                        .addImm(EraVMCC::COND_NONE)
                        .getInstr();
-    MI.setDesc(TII.get(EraVM::ADDrrr_s));
-    MI.getOperand(1).ChangeToImmediate(Offset / 32);
-    MI.getOperand(2).ChangeToRegister(SPInst->getOperand(0).getReg(),
-                                      false /* IsDef */);
-    MI.addOperand(MachineOperand::CreateImm(EraVMCC::COND_NONE));
-    return false;
+    if (Offset < 0)
+      SPInst = BuildMI(MBB, II, DL, TII.get(EraVM::SUBxrr_s))
+                   .addDef(MI.getOperand(0).getReg())
+                   .addImm(-Offset / 32)
+                   .add(SPInst->getOperand(0))
+                   .addImm(EraVMCC::COND_NONE)
+                   .getInstr();
+    else
+      SPInst = BuildMI(MBB, II, DL, TII.get(EraVM::ADDirr_s))
+                   .addDef(MI.getOperand(0).getReg())
+                   .addImm(Offset / 32)
+                   .add(SPInst->getOperand(0))
+                   .addImm(EraVMCC::COND_NONE)
+                   .getInstr();
+    BuildMI(MBB, II, DL, TII.get(EraVM::MULirrr_s))
+        .addDef(MI.getOperand(0).getReg())
+        .addDef(EraVM::R0)
+        .addImm(32)
+        .add(SPInst->getOperand(0))
+        .addImm(EraVMCC::COND_NONE);
+    MI.eraseFromParent();
+    return true;
   }
 
   // Fold imm into offset
+  Offset /= 32;
   Offset += MI.getOperand(FIOperandNum + 2).getImm();
 
   MI.getOperand(FIOperandNum).ChangeToRegister(BasePtr, false);
