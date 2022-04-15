@@ -135,6 +135,7 @@ bool EraVMPassConfig::addInstSelector() {
 
 void EraVMPassConfig::addPreRegAlloc() {
   addPass(createEraVMAddConditionsPass());
+  addPass(createEraVMBytesToCellsPass());
 }
 
 void EraVMPassConfig::addFastRegAlloc() {
