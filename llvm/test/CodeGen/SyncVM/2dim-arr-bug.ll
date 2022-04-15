@@ -22,7 +22,7 @@ body8:                                            ; preds = %condition7
   %j16 = load i8, i8 addrspace(1)* undef, align 32
   %2 = zext i8 %j16 to i256
   %3 = getelementptr [4 x i256], [4 x i256]* %1, i256 0, i256 %2
-; CHECK: add 0, r0, stack-[r{{[0-9]+}} + 1]
+; CHECK: add 0, r0, stack[r{{[0-9]+}} - 0]
   store i256 0, i256* %3, align 32
   unreachable
 

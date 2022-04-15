@@ -82,19 +82,21 @@ bool SyncVMPeephole::runOnMachineFunction(MachineFunction &MF) {
     for (auto MI = MBB.begin(); MI != MBB.end(); ++MI) {
       if (Mapping.count(MI->getOpcode())) {
         auto StoreI = std::next(MI);
-        if (StoreI == MBB.end()) {
-          continue;
-        }
-        if (StoreI->getOpcode() != SyncVM::ADDirs_s ||
-            StoreI->getOperand(0).getReg() != MI->getOperand(0).getReg())
+        if (StoreI == MBB.end() || StoreI->getOpcode() != SyncVM::ADDrrs_s ||
+            StoreI->getOperand(0).getReg() != MI->getOperand(0).getReg() ||
+            // CC must be equals
+            StoreI->getOperand(StoreI->getNumOperands() - 1).getImm() !=
+                MI->getOperand(MI->getNumOperands() - 1).getImm())
           continue;
         DebugLoc DL = MI->getDebugLoc();
 
         auto NewMI = BuildMI(MBB, MI, DL, TII->get(Mapping[MI->getOpcode()]));
-        for (unsigned i = 1, e = MI->getNumOperands(); i < e; ++i)
+        NewMI.addDef(MI->getOperand(1).getReg());
+        for (unsigned i = 2, e = MI->getNumOperands() - 1; i < e; ++i)
           NewMI.add(MI->getOperand(i));
         for (unsigned i = 2; i < 5; ++i)
           NewMI.add(StoreI->getOperand(i));
+        NewMI.add(MI->getOperand(MI->getNumOperands() - 1));
         StoreI->eraseFromParent();
         MI->eraseFromParent();
         MI = NewMI;
