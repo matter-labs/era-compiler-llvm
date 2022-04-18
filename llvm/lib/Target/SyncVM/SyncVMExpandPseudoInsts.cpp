@@ -154,7 +154,11 @@ void SyncVMExpandPseudo::expandLoadConst(MachineInstr &MI) const {
   // use.
   auto MBBI = std::next(MachineBasicBlock::iterator(MI));
   auto outReg = MI.getOperand(0).getReg();
-  if (can_combine(MI, *MBBI)) {
+  
+  // We temporarily disabled combining because it will introduce
+  // a bug: when combining, we lose the MI's def, and when there are 
+  // other uses of the def, we result wrong program.
+  if (false && can_combine(MI, *MBBI)) {
     auto opcode = MBBI->getOpcode();
     auto other_op = get_crr_op(opcode);
 
@@ -173,7 +177,7 @@ void SyncVMExpandPseudo::expandLoadConst(MachineInstr &MI) const {
     return;
   }
 
-  if (can_non_commute_combine(MI, *MBBI)) {
+  if (false && can_non_commute_combine(MI, *MBBI)) {
     auto opcode = MBBI->getOpcode();
 
     bool reverse;
