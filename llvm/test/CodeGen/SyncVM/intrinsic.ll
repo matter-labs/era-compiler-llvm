@@ -10,7 +10,7 @@ target triple = "syncvm"
 define i256 @contextr() {
 ; CHECK-DAG: context.caller r{{[0-9]+}}
 ; CHECK-DAG: context.this r{{[0-9]+}}
-; CHECK-DAG: context.code_address r{{[0-9]+}}
+; CHECK-DAG: context.code_source r{{[0-9]+}}
 ; CHECK-DAG: context.meta r{{[0-9]+}}
 ; CHECK-DAG: context.tx_origin r{{[0-9]+}}
 ; CHECK-DAG: add 1, r0, r{{[0-9]+}}
@@ -64,10 +64,10 @@ define void @event_r(i256 %key, i256 %val) {
 }
 
 ; CHECK-LABEL: precompile_rr
-define void @precompile_rr(i256 %key, i256 %ergs) {
+define i256 @precompile_rr(i256 %key, i256 %ergs) {
 ; CHECK: precompile r1, r2
-  call void @llvm.syncvm.precompile(i256 %key, i256 %ergs)
-  ret void
+  %res = call i256 @llvm.syncvm.precompile(i256 %key, i256 %ergs)
+  ret i256 %res
 }
 
 ; CHECK-LABEL: throw
@@ -155,7 +155,7 @@ declare i256 @llvm.syncvm.sload(i256)
 declare void @llvm.syncvm.sstore(i256, i256)
 declare void @llvm.syncvm.tol1(i256, i256, i256)
 declare void @llvm.syncvm.event(i256, i256, i256)
-declare void @llvm.syncvm.precompile(i256, i256)
+declare i256 @llvm.syncvm.precompile(i256, i256)
 declare void @llvm.syncvm.throw(i256)
 declare void @llvm.syncvm.return(i256)
 declare void @llvm.syncvm.revert(i256)

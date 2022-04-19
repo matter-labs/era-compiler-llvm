@@ -895,8 +895,8 @@ def : Pat<(int_syncvm_event GR256:$rs0, GR256:$rs1, first_op:$first),
           (EVTr GR256:$rs0, GR256:$rs1, first_op:$first, 0)>;
 
 let hasSideEffects = 1 in
-def PCOMPr : ILogR<51, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
-                 "precompile$cc\t$rs0, $rs1", []> {
+def PCOMPr : ILogR<51, DstNone, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
+                 "precompile$cc\t$rs0, $rs1, $rd0", []> {
   let rs1 = 0;
 }
 
