@@ -42,7 +42,7 @@ namespace SyncVMCTX {
 enum Context {
   THIS = 0,
   CALLER = 1,
-  CODE_ADDR = 2,
+  CODE_SOURCE = 2,
   META = 3,
   TX_ORIGIN = 4,
   COINBASE = 5,

@@ -25,7 +25,7 @@ def int_syncvm_sstore: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty], [IntrWriteMem
 def int_syncvm_sload: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrReadMem]>;
 def int_syncvm_event: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], [IntrHasSideEffects]>;
 def int_syncvm_tol1: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], [IntrHasSideEffects]>;
-def int_syncvm_precompile: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty], [IntrHasSideEffects]>;
+def int_syncvm_precompile: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrHasSideEffects]>;
 
 // Return with error.
 def int_syncvm_throw: Intrinsic<[], [llvm_i256_ty], [Throws, IntrNoReturn]>;

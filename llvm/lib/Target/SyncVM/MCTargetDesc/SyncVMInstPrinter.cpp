@@ -89,8 +89,8 @@ void SyncVMInstPrinter::printContextOperand(const MCInst *MI, unsigned OpNo,
   case SyncVMCTX::CALLER:
     O << ".caller";
     break;
-  case SyncVMCTX::CODE_ADDR:
-    O << ".code_address";
+  case SyncVMCTX::CODE_SOURCE:
+    O << ".code_source";
     break;
   case SyncVMCTX::META:
     O << ".meta";
