@@ -770,9 +770,12 @@ def CTXr_se : IContextR<46, (outs GR256:$rd0), (ins context_se_op:$cop, cc:$cc),
                         "context$cop$cc\t$rd0", []>;
 }
 
-def : Pat<(int_eravm_context context_op:$cop), (CTXr context_op:$cop, 0)>;
+def : Pat<(int_eravm_this), (CTXr 0, 0)>;
+def : Pat<(int_eravm_caller), (CTXr 1, 0)>;
+def : Pat<(int_eravm_codesource), (CTXr 2, 0)>;
+def : Pat<(int_eravm_meta), (CTXr 3, 0)>;
+def : Pat<(int_eravm_txorigin), (CTXr 4, 0)>;
 def : Pat<(int_eravm_ergsleft), (CTXr_se 6, 0)>;
-def : Pat<(int_eravm_context 5), (ADDirr_p 1, R0)>;
 
 let first = 0 in
 def SLDrr : ILogR<47, DstReg, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),

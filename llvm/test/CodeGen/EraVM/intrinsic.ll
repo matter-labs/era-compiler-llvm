@@ -6,29 +6,40 @@ target triple = "eravm"
 @val = addrspace(4) global i256 42
 @val2 = addrspace(4) global i256 43
 
-; CHECK-LABEL: contextr
-define i256 @contextr() {
-; CHECK-DAG: context.caller r{{[0-9]+}}
-; CHECK-DAG: context.this r{{[0-9]+}}
-; CHECK-DAG: context.code_source r{{[0-9]+}}
-; CHECK-DAG: context.meta r{{[0-9]+}}
-; CHECK-DAG: context.tx_origin r{{[0-9]+}}
-; CHECK-DAG: add 1, r0, r{{[0-9]+}}
-; CHECK-DAG: context.ergs_left r{{[0-9]+}}
-  %1 = call i256 @llvm.eravm.context(i256 0)
-  %2 = call i256 @llvm.eravm.context(i256 1)
-  %3 = call i256 @llvm.eravm.context(i256 2)
-  %4 = call i256 @llvm.eravm.context(i256 3)
-  %5 = call i256 @llvm.eravm.context(i256 4)
-  %6 = call i256 @llvm.eravm.context(i256 5)
-  %7 = call i256 @llvm.eravm.ergsleft()
-  %8 = add i256 %1, %2
-  %9 = add i256 %8, %3
-  %10 = add i256 %9, %4
-  %11 = add i256 %10, %5
-  %12 = add i256 %11, %6
-  %13 = add i256 %12, %7
-  ret i256 %13
+; CHECK-LABEL: thisr
+define i256 @thisr() {
+  %res = call i256 @llvm.eravm.this()
+  ret i256 %res
+}
+
+; CHECK-LABEL: callerr
+define i256 @callerr() {
+  %res = call i256 @llvm.eravm.caller()
+  ret i256 %res
+}
+
+; CHECK-LABEL: codesourcer
+define i256 @codesourcer() {
+  %res = call i256 @llvm.eravm.codesource()
+  ret i256 %res
+}
+
+; CHECK-LABEL: metar
+define i256 @metar() {
+  %res = call i256 @llvm.eravm.meta()
+  ret i256 %res
+}
+
+; CHECK-LABEL: txoriginr
+define i256 @txoriginr() {
+  %res = call i256 @llvm.eravm.txorigin()
+  ret i256 %res
+}
+
+; CHECK-LABEL: ergsleftr
+define i256 @ergsleftr() {
+  %res = call i256 @llvm.eravm.ergsleft()
+  ret i256 %res
 }
 
 ; CHECK-LABEL: sload_rr
@@ -143,7 +154,11 @@ define void @invoke.farcall({i256, i1}* %res) {
   ret void
 }
 
-declare i256 @llvm.eravm.context(i256)
+declare i256 @llvm.eravm.this()
+declare i256 @llvm.eravm.caller()
+declare i256 @llvm.eravm.codesource()
+declare i256 @llvm.eravm.meta()
+declare i256 @llvm.eravm.txorigin()
 declare i256 @llvm.eravm.ergsleft()
 declare i256 @llvm.eravm.sload(i256)
 declare void @llvm.eravm.sstore(i256, i256)

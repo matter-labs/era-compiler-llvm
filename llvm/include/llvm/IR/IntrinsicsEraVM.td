@@ -20,9 +20,11 @@ def int_eravm_staticcall: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty]
 def int_eravm_mimiccall: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], []>;
 
 // Get value from the context.
-// Both intrinsics map to `context` instructions, but to differentiate side effects,
-// context should not be used to get `ergs_left`
-def int_eravm_context: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrNoMem]>;
+def int_eravm_this: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_eravm_caller: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_eravm_codesource: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_eravm_meta: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_eravm_txorigin: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
 def int_eravm_ergsleft: Intrinsic<[llvm_i256_ty], [], []>;
 
 // Persistent memory access.
