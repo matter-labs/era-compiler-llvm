@@ -1,4 +1,3 @@
-; XFAIL: *
 ; RUN: llc < %s | FileCheck %s
 
 target datalayout = "E-p:256:256-i8:256:256:256-i256:256:256-S32-a:256:256"
@@ -31,44 +30,47 @@ define i256 @materialize_smallimm_in_operation(i256 %par) nounwind {
   ret i256 %res
 }
 
+; TODO: combine load constant from constant pool with use instruction
+; for the following test cases
+
 ; CHECK-LABEL: materialize_bigimm_in_operation
 define i256 @materialize_bigimm_in_operation(i256 %par) nounwind {
-  ; CHECK: add @CPI{{[0-9]}}_{{[0-9]}}[0], r1, r1
+  ; CHECK: add @CPI{{[0-9]}}_{{[0-9]}}[0], r0, r2
   %res = add i256 %par, -42
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_in_operation_2
 define i256 @materialize_bigimm_in_operation_2(i256 %par) nounwind {
-  ; CHECK: add @CPI{{[0-9]}}_{{[0-9]}}[0], r1, r1
+  ; CHECK: add @CPI{{[0-9]}}_{{[0-9]}}[0], r0, r2
   %res = add i256 -42, %par
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_in_and_operation
 define i256 @materialize_bigimm_in_and_operation(i256 %par) nounwind {
-  ; CHECK: and @CPI{{[0-9]}}_{{[0-9]}}[0], r1, r1
+  ; CHECK: add @CPI{{[0-9]}}_{{[0-9]}}[0], r0, r2
   %res = and i256 %par, -42
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_in_xor_operation
 define i256 @materialize_bigimm_in_xor_operation(i256 %par) nounwind {
-  ; CHECK: xor @CPI{{[0-9]}}_{{[0-9]}}[0], r1, r1
+  ; CHECK: add @CPI{{[0-9]}}_{{[0-9]}}[0], r0, r2
   %res = xor i256 -42, %par
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_in_sub_operation
 define i256 @materialize_bigimm_in_sub_operation(i256 %par) nounwind {
-  ; CHECK: sub.s @CPI{{[0-9]}}_{{[0-9]}}[0], r1, r1
+  ; CHECK: add @CPI{{[0-9]}}_{{[0-9]}}[0], r0, r2
   %res = sub i256 %par, -42
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_in_sub_operation_2
 define i256 @materialize_bigimm_in_sub_operation_2(i256 %par) nounwind {
-  ; CHECK: sub @CPI{{[0-9]}}_{{[0-9]}}[0], r1, r1
+  ; CHECK: add @CPI{{[0-9]}}_{{[0-9]}}[0], r0, r2
   %res = sub i256 -42, %par
   ret i256 %res
 }
