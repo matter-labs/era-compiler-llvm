@@ -15,9 +15,11 @@ def int_syncvm_staticcall: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty
 def int_syncvm_mimiccall: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], []>;
 
 // Get value from the context.
-// Both intrinsics map to `context` instructions, but to differentiate side effects,
-// context should not be used to get `ergs_left`
-def int_syncvm_context: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrNoMem]>;
+def int_syncvm_this: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_syncvm_caller: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_syncvm_codesource: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_syncvm_meta: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_syncvm_txorigin: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
 def int_syncvm_ergsleft: Intrinsic<[llvm_i256_ty], [], []>;
 
 // Persistent memory access.
