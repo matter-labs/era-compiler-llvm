@@ -9,6 +9,8 @@
 #define LLVM_LIB_TARGET_SYNCVM_SYNCVM_H
 
 #include "MCTargetDesc/SyncVMMCTargetDesc.h"
+#include "llvm/CodeGen/MachineOperand.h"
+#include "llvm/IR/Constants.h"
 #include "llvm/Target/TargetMachine.h"
 
 namespace SyncVMCC {
@@ -50,6 +52,10 @@ enum Context {
   SP = 7,
 };
 } // namespace SyncVMCTX
+
+inline unsigned getImmOrCImm(const llvm::MachineOperand &MO) {
+  return MO.isImm() ? MO.getImm() : MO.getCImm()->getZExtValue();
+}
 
 namespace llvm {
 class SyncVMTargetMachine;

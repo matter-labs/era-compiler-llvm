@@ -27,12 +27,6 @@ SyncVMInstrInfo::SyncVMInstrInfo()
     : SyncVMGenInstrInfo(SyncVM::ADJCALLSTACKDOWN, SyncVM::ADJCALLSTACKUP),
       RI() {}
 
-static unsigned getImmOrCImm(const MachineOperand &MO) {
-  return MO.isImm()
-    ? MO.getImm()
-    : MO.getCImm()->getZExtValue();
-}
-
 unsigned SyncVMInstrInfo::removeBranch(MachineBasicBlock &MBB,
                                        int *BytesRemoved) const {
   assert(!BytesRemoved && "code size not handled");

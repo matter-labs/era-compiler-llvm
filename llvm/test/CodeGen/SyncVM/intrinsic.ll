@@ -106,9 +106,7 @@ define void @far_revert(i256 %x, i256 %val) {
 
 ; CHECK-LABEL: ifeqrr
 define i256 @ifeqrr(i256 %x, i256 %y) {
-  ; CHECK: add r2, r0, r2
-  ; CHECK: add.eq r1, r0, r2
-  ; CHECK: add r2, r0, r1
+  ; CHECK: add.ne r2, r0, r1
   %res = call i256 @llvm.syncvm.ifeq(i256 %x, i256 %y)
   ret i256 %res
 }
@@ -123,9 +121,7 @@ define i256 @ifeqii() {
 
 ; CHECK-LABEL: ifltrr
 define i256 @ifltrr(i256 %x, i256 %y) {
-  ; CHECK: add r2, r0, r2
-  ; CHECK: add.lt r1, r0, r2
-  ; CHECK: add r2, r0, r1
+  ; CHECK: add.ge r2, r0, r1
   %res = call i256 @llvm.syncvm.iflt(i256 %x, i256 %y)
   ret i256 %res
 }
@@ -140,9 +136,7 @@ define i256 @ifltii() {
 
 ; CHECK-LABEL: ifgtrr
 define i256 @ifgtrr(i256 %x, i256 %y) {
-  ; CHECK: add r2, r0, r2
-  ; CHECK: add.gt r1, r0, r2
-  ; CHECK: add r2, r0, r1
+  ; CHECK: add.le r2, r0, r1
   %res = call i256 @llvm.syncvm.ifgt(i256 %x, i256 %y)
   ret i256 %res
 }

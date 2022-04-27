@@ -86,8 +86,6 @@ public:
   void addIRPasses() override;
   bool addInstSelector() override;
   void addPreRegAlloc() override;
-  void addFastRegAlloc() override;
-  void addOptimizedRegAlloc() override;
   void addPreEmitPass() override;
 };
 } // namespace
@@ -122,39 +120,9 @@ void SyncVMPassConfig::addPreRegAlloc() {
   addPass(createSyncVMBytesToCellsPass());
 }
 
-void SyncVMPassConfig::addFastRegAlloc() {
-  addPass(createSyncVMExpandSelectPass());
-  TargetPassConfig::addFastRegAlloc();
-}
-
-// Copy of TargetPassConfig::addOptimizedRegAlloc plus expand pseudos.
-void SyncVMPassConfig::addOptimizedRegAlloc() {
-  addPass(&DetectDeadLanesID, false);
-  addPass(&ProcessImplicitDefsID, false);
-  addPass(&UnreachableMachineBlockElimID, false);
-  addPass(&LiveVariablesID, false);
-
-  addPass(&MachineLoopInfoID, false);
-  addPass(&PHIEliminationID, false);
-
-  // Live variables require SSA-form, so run pseudo expansion right after it.
-  addPass(createSyncVMExpandSelectPass());
-
-  addPass(&TwoAddressInstructionPassID, false);
-  addPass(&RegisterCoalescerID);
-  addPass(&RenameIndependentSubregsID);
-  addPass(&MachineSchedulerID);
-
-  if (addRegAssignAndRewriteOptimized()) {
-    addPass(&StackSlotColoringID);
-    addPostRewrite();
-    addPass(&MachineCopyPropagationID);
-    addPass(&MachineLICMID);
-  }
-}
-
 void SyncVMPassConfig::addPreEmitPass() {
   addPass(createSyncVMMoveCallResultSpillPass());
+  addPass(createSyncVMExpandSelectPass());
   addPass(createSyncVMExpandPseudoPass());
   addPass(createSyncVMPeepholePass());
 }
