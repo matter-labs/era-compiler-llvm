@@ -50,7 +50,7 @@ INITIALIZE_PASS(EraVMExpandSelect, DEBUG_TYPE, ERAVM_EXPAND_SELECT_NAME, false,
 
 bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
   LLVM_DEBUG(
-      dbgs() << "********** EraVM EXPAND PSEUDO INSTRUCTIONS **********\n"
+      dbgs() << "********** EraVM EXPAND SELECT INSTRUCTIONS **********\n"
              << "********** Function: " << MF.getName() << '\n');
   // pseudo opcode -> mov opcode, cmov opcode, #args src0, #args src1, #args dst
   DenseMap<unsigned, std::vector<unsigned>> Pseudos{
@@ -89,6 +89,22 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
       {EraVM::SELsss, {EraVM::ADDsrs_s, EraVM::ADDsrs_s, 3, 3, 3}},
   };
 
+  DenseMap<unsigned, unsigned> Inverse{
+      {EraVM::SELrrr, EraVM::SELrrr},
+      {EraVM::SELrir, EraVM::SELirr},
+      {EraVM::SELrcr, EraVM::SELcrr},
+      {EraVM::SELrsr, EraVM::SELsrr},
+  };
+
+  DenseMap<unsigned, unsigned> InverseCond{
+      {EraVMCC::COND_E, EraVMCC::COND_NE},
+      {EraVMCC::COND_NE, EraVMCC::COND_E},
+      {EraVMCC::COND_LT, EraVMCC::COND_GE},
+      {EraVMCC::COND_LE, EraVMCC::COND_GT},
+      {EraVMCC::COND_GT, EraVMCC::COND_LE},
+      {EraVMCC::COND_GE, EraVMCC::COND_LT},
+  };
+
   TII = MF.getSubtarget<EraVMSubtarget>().getInstrInfo();
   assert(TII && "TargetInstrInfo must be a valid object");
 
@@ -107,60 +123,48 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
 
         assert(Pseudos.count(Opc) && "Unexpected instr type to insert");
         unsigned NumDefs = MI.getNumDefs();
-        unsigned MovOpc = Pseudos[Opc][1];
-        unsigned CMovOpc = Pseudos[Opc][0];
         unsigned Src0ArgPos = NumDefs;
         unsigned Src1ArgPos = NumDefs + Pseudos[Opc][2];
         unsigned CCPos = Src1ArgPos + Pseudos[Opc][3];
         unsigned DstArgPos = CCPos + 1;
         unsigned EndPos = DstArgPos + Pseudos[Opc][4];
 
-        // Avoid mov rN, rN
-        if (NumDefs != 1 || CCPos - Src1ArgPos != 1 ||
-            !MI.getOperand(Src1ArgPos).isReg() ||
-            MI.getOperand(0).getReg() != MI.getOperand(Src1ArgPos).getReg()) {
-          // unconditional mov
+        bool ShouldInverse =
+            Inverse.count(Opc) != 0u &&
+            MI.getOperand(0).getReg() == MI.getOperand(Src0ArgPos).getReg();
+
+        auto buildMOV = [&](unsigned OpNo, unsigned CC) {
+          unsigned ArgPos = (OpNo == 0) ? Src0ArgPos : Src1ArgPos;
+          unsigned NextPos = (OpNo == 0) ? Src1ArgPos : CCPos;
+          bool IsReg = (NextPos - ArgPos == 1) && MI.getOperand(ArgPos).isReg();
+          unsigned MovOpc = Pseudos[Opc][OpNo];
+          // Avoid unconditional mov rN, rN
+          if (CC == EraVMCC::COND_NONE && NumDefs && IsReg &&
+              MI.getOperand(ArgPos).getReg() == MI.getOperand(0).getReg())
+            return;
           auto Mov = [&]() {
             if (NumDefs)
               return BuildMI(MBB, &MI, DL, TII->get(MovOpc),
                              MI.getOperand(0).getReg());
             return BuildMI(MBB, &MI, DL, TII->get(MovOpc));
           }();
-          // SEL src1 -> MOV src0
-          for (unsigned i = Src1ArgPos; i < CCPos; ++i)
+          for (unsigned i = ArgPos; i < NextPos; ++i)
             Mov.add(MI.getOperand(i));
-          // r0 -> MOV src1
           Mov.addReg(EraVM::R0);
-          // SEL dst -> MOV dst
           for (unsigned i = DstArgPos; i < EndPos; ++i) {
             Mov.add(MI.getOperand(i));
           }
-          // COND_NONE -> MOV cc
-          Mov.addImm(EraVMCC::COND_NONE);
-        }
+          Mov.addImm(CC);
+          return;
+        };
 
-        // condtional mov
-        auto CMov = [&]() {
-          if (NumDefs)
-            return BuildMI(MBB, &MI, DL, TII->get(CMovOpc),
-                           MI.getOperand(0).getReg());
-          return BuildMI(MBB, &MI, DL, TII->get(CMovOpc));
-        }();
-        // early clobber the definition:
-        if (NumDefs) {
-          CMov->getOperand(0).setIsEarlyClobber(true);
+        if (ShouldInverse) {
+          buildMOV(0, EraVMCC::COND_NONE);
+          buildMOV(1, InverseCond[getImmOrCImm(MI.getOperand(CCPos))]);
+        } else {
+          buildMOV(1, EraVMCC::COND_NONE);
+          buildMOV(0, getImmOrCImm(MI.getOperand(CCPos)));
         }
-        // SEL src0 -> CMOV src0
-        for (unsigned i = Src0ArgPos; i < Src1ArgPos; ++i)
-          CMov.add(MI.getOperand(i));
-        // r0 -> CMOV src1
-        CMov.addReg(EraVM::R0);
-        // SEL dst -> CMOV dst
-        for (unsigned i = DstArgPos; i < EndPos; ++i) {
-          CMov.add(MI.getOperand(i));
-        }
-        // SEL cc -> CMOV cc
-        CMov.add(MI.getOperand(CCPos));
 
         PseudoInst.push_back(&MI);
       }
