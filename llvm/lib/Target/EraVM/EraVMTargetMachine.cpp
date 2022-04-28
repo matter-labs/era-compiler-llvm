@@ -140,5 +140,7 @@ void EraVMPassConfig::addPreEmitPass() {
   addPass(createEraVMMoveCallResultSpillPass());
   addPass(createEraVMExpandSelectPass());
   addPass(createEraVMExpandPseudoPass());
-  addPass(createEraVMPeepholePass());
+  // TODO: The pass combines store with MULxxrr, DIVxxrr regardles of whether
+  // the destination register has one use. Should be fixed and reenabled.
+  // addPass(createEraVMPeepholePass());
 }
