@@ -71,6 +71,7 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
       {EraVM::SELcsr, {EraVM::ADDcrr_s, EraVM::ADDsrr_s, 2, 3, 0}},
       {EraVM::SELssr, {EraVM::ADDsrr_s, EraVM::ADDsrr_s, 3, 3, 0}},
 
+      /*
       {EraVM::SELrrs, {EraVM::ADDrrs_s, EraVM::ADDrrs_s, 1, 1, 3}},
       {EraVM::SELirs, {EraVM::ADDirs_s, EraVM::ADDrrs_s, 1, 1, 3}},
       {EraVM::SELcrs, {EraVM::ADDcrs_s, EraVM::ADDrrs_s, 2, 1, 3}},
@@ -87,6 +88,7 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
       {EraVM::SELiss, {EraVM::ADDirs_s, EraVM::ADDsrs_s, 1, 3, 3}},
       {EraVM::SELcss, {EraVM::ADDcrs_s, EraVM::ADDsrs_s, 2, 3, 3}},
       {EraVM::SELsss, {EraVM::ADDsrs_s, EraVM::ADDsrs_s, 3, 3, 3}},
+      */
   };
 
   DenseMap<unsigned, unsigned> Inverse{

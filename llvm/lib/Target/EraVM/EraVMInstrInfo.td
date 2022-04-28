@@ -279,6 +279,10 @@ let mayLoad = 1 in {
                           (EraVMselectcc (load_stack stackaddr:$src), (load_stack stackaddr:$src2), imm:$cc))]>;
 }
 
+// TODO: restore
+// In case Select result is used both in register and stored in stack,
+// two nodes are to be glued with comparison SUB and schedulling fails.
+/*
 let mayStore = 1 in {
   def SELrrs : Pseudo<(outs), (ins GR256:$src, GR256:$src2, i256imm:$cc, stackop:$dst),
                        "# SELrrs PSEUDO",
@@ -365,10 +369,13 @@ let mayLoad = 1 in {
                           stackaddr:$dst)]>;
 }
 }
+*/
 }
 
+/*
 def : Pat<(store_stack (load_stack(EraVMselectcc stackaddr:$addr1, stackaddr:$addr2, imm:$cc)), stackaddr:$addr3),
           (SELsss stackaddr:$addr1, stackaddr:$addr2, imm:$cc, stackaddr:$addr3)>;
+          */
 def : Pat<(load_stack(EraVMselectcc stackaddr:$addr1, stackaddr:$addr2, imm:$cc)),
           (SELssr stackaddr:$addr1, stackaddr:$addr2, imm:$cc)>;
 def : Pat<(load_code(EraVMselectcc memaddr:$addr1, memaddr:$addr2, imm:$cc)),
