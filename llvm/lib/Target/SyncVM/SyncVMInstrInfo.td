@@ -39,6 +39,8 @@ def SyncVMfarcall: SDNode<"SyncVMISD::FARCALL", SDT_SyncVMFarCall,
                     [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
 def SyncVMstaticcall: SDNode<"SyncVMISD::STATICCALL", SDT_SyncVMFarCall,
                     [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
+def SyncVMdelegatecall: SDNode<"SyncVMISD::DELEGATECALL", SDT_SyncVMFarCall,
+                    [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
 def SyncVMbrcc   : SDNode<"SyncVMISD::BR_CC", SDT_SyncVMBrCC,
                     [SDNPHasChain, SDNPInGlue]>;
 def SyncVMselectcc: SDNode<"SyncVMISD::SELECT_CC", SDT_SyncVMSelectCC,
@@ -924,4 +926,6 @@ def FAR_CALL  : ICall<8, CFNormal, (ins GR256:$abi, GR256:$address, jmptarget:$u
                "far_call\t$abi, $address, @$unwind", [(SyncVMfarcall GR256:$abi, GR256:$address, bb:$unwind)]>;
 def STATIC_CALL  : ICall<10, CFNormal, (ins GR256:$abi, GR256:$address, jmptarget:$unwind),
                "far_call.static\t$abi, $address, @$unwind", [(SyncVMstaticcall GR256:$abi, GR256:$address, bb:$unwind)]>;
+def DELEGATE_CALL  : ICall<11, CFDelegate, (ins GR256:$abi, GR256:$address, jmptarget:$unwind),
+               "far_call.delegate\t$abi, $address, @$unwind", [(SyncVMdelegatecall GR256:$abi, GR256:$address, bb:$unwind)]>;
 }
