@@ -260,6 +260,9 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
       if (GA->getGlobal()->getName() == "__delegatecall_int") {
         return std::make_pair<uint64_t, bool>(SyncVMISD::DELEGATECALL, true);
       }
+      if (GA->getGlobal()->getName() == "__mimiccall_int") {
+        return std::make_pair<uint64_t, bool>(SyncVMISD::MIMICCALL, true);
+      }
       return std::make_pair<uint64_t, bool>(0, false);
     }();
 
@@ -267,6 +270,8 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
     bool is_farcall = farcall_pair.second;
 
     if (is_farcall) {
+      if (farcall_opc == SyncVMISD::MIMICCALL)
+        Chain = DAG.getCopyToReg(Chain, DL, SyncVM::R3, OutVals[2], SDValue());
       SmallVector<SDValue, 8> Ops;
       Ops.push_back(Chain);
       Ops.push_back(OutVals[0]);
