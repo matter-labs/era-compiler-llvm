@@ -312,21 +312,24 @@ SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   SmallVector<std::pair<unsigned, SDValue>, 4> RegsToPass;
   SmallVector<SDValue, 12> MemOpChains;
   SDValue Zero = DAG.getTargetConstant(0, DL, MVT::i256);
-  SDValue SPCtx = DAG.getTargetConstant(7, DL, MVT::i256);
-  MachineSDNode *StackPtr =
-      DAG.getMachineNode(EraVM::CTXr, DL, MVT::i256, SPCtx, Zero);
+  SDValue SPCtx = DAG.getTargetConstant(EraVMCTX::SP, DL, MVT::i256);
 
   SDValue InFlag;
 
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
-    unsigned revI = e - i - 1;
-    auto VA = ArgLocs[revI];
+    auto VA = ArgLocs[i];
     if (!VA.isRegLoc()) {
-      SDValue PtrOff =
-          DAG.getNode(ISD::ADD, DL, MVT::i256, SDValue(StackPtr, 0),
-                      DAG.getConstant(VA.getLocMemOffset(), DL, MVT::i256));
-      MemOpChains.push_back(
-          DAG.getStore(Chain, DL, OutVals[i], PtrOff, MachinePointerInfo()));
+      assert(VA.isMemLoc());
+      SDNode *StackPtr =
+          DAG.getMachineNode(EraVM::CTXr, DL, MVT::i256, SPCtx, Zero);
+
+      SDValue offset =
+          DAG.getConstant(VA.getLocMemOffset() / 32, DL, MVT::i256);
+
+      SDValue StackLocation =
+          DAG.getNode(ISD::ADD, DL, MVT::i256, SDValue(StackPtr, 0), offset);
+      MemOpChains.push_back(DAG.getStore(Chain, DL, OutVals[i], StackLocation,
+                                         MachinePointerInfo()));
     }
   }
 

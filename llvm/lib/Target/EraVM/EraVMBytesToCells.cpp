@@ -114,6 +114,8 @@ bool EraVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
   LLVM_DEBUG(dbgs() << "********** EraVM convert bytes to cells **********\n"
                     << "********** Function: " << MF.getName() << '\n');
 
+  MachineRegisterInfo &RegInfo = MF.getRegInfo();
+
   bool Changed = false;
 
   TII = MF.getSubtarget<EraVMSubtarget>().getInstrInfo();
@@ -123,6 +125,7 @@ bool EraVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
     for (auto &MI : BB) {
       if (!mayHaveStackOperands(MI))
         continue;
+
       auto ConvertMI = [&](unsigned OpNum) {
         unsigned Op0Start = opStart(MI, OpNum);
         MachineOperand &MO0Reg = MI.getOperand(Op0Start + 1);
@@ -141,10 +144,32 @@ bool EraVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
         if (Const.isImm() || Const.isCImm())
           Const.ChangeToImmediate(getImmOrCImm(Const) / 32);
       };
+
+      auto isFrameIndexAddressing = [&](MachineInstr &MI, unsigned OpNum) {
+        MachineOperand MO = MI.getOperand(MI.getNumOperands() - 3);
+        if (MO.isReg()) {
+          // specifically match frame indexing addressing mode
+          // TODO: we should revamp the stack addressing in the backend, it is
+          // not pretty as of now.
+          Register reg = MO.getReg();
+          assert(reg.isVirtual());
+          assert(RegInfo.isSSA());
+          MachineInstr *defMI = RegInfo.getVRegDef(reg);
+          if (defMI->getOpcode() == EraVM::CTXr) {
+            return true;
+          }
+        }
+
+        return false;
+      };
+
       for (unsigned OpNo = 0; OpNo < 3; ++OpNo)
         if (isStackOp(MI, OpNo)) {
-          ConvertMI(OpNo);
-          Changed = true;
+          // avoid handling frame index addressing
+          if (!isFrameIndexAddressing(MI, OpNo)) {
+            ConvertMI(OpNo);
+            Changed = true;
+          }
         }
     }
   LLVM_DEBUG(
