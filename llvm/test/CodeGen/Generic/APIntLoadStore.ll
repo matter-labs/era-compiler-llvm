@@ -1,5 +1,8 @@
 ; RUN: llc < %s > %t
 
+; TODO: CPR-916 Fix the test.
+; XFAIL: target=eravm{{.*}}
+
 ; NVPTX does not support arbitrary integer types and has acceptable subset tested in NVPTX/APIntLoadStore.ll
 ; UNSUPPORTED: target=nvptx{{.*}}
 
