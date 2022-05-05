@@ -51,7 +51,6 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SETCC, MVT::i256, Expand);
   setOperationAction(ISD::SELECT, MVT::i256, Expand);
   setOperationAction(ISD::SELECT_CC, MVT::i256, Custom);
-  setOperationAction(ISD::TRUNCATE, MVT::i64, Promote);
 
   // special handling of udiv/urem
   setOperationAction(ISD::UDIV, MVT::i256, Expand);
@@ -82,7 +81,21 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
 
   for (MVT VT : MVT::integer_valuetypes()) {
     setLoadExtAction(ISD::SEXTLOAD, MVT::i256, VT, Custom);
+    setLoadExtAction(ISD::ZEXTLOAD, MVT::i256, VT, Custom);
+    setLoadExtAction(ISD::EXTLOAD, MVT::i256, VT, Custom);
   }
+
+  for (MVT VT : {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}) {
+    setOperationAction(ISD::LOAD,  VT, Custom);
+    setOperationAction(ISD::STORE, VT, Custom);
+  
+    setTruncStoreAction(MVT::i256, VT, Expand);
+  }
+
+  setOperationAction(ISD::STORE, MVT::i256, Custom);
+
+  setOperationAction(ISD::ZERO_EXTEND, MVT::i256, Custom);
+  setOperationAction(ISD::ANY_EXTEND, MVT::i256, Custom);
 
   setJumpIsExpensive(false);
 }
@@ -476,8 +489,14 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
   default:
     llvm_unreachable("unimplemented operation lowering");
     return SDValue();
+  case ISD::STORE:
+    return LowerSTORE(Op, DAG);
   case ISD::LOAD:
     return LowerLOAD(Op, DAG);
+  case ISD::ZERO_EXTEND:
+    return LowerZERO_EXTEND(Op, DAG);
+  case ISD::ANY_EXTEND:
+    return LowerANY_EXTEND(Op, DAG);
   case ISD::GlobalAddress:
     return LowerGlobalAddress(Op, DAG);
   case ISD::BR_CC:
@@ -497,32 +516,95 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
   }
 }
 
+SDValue SyncVMTargetLowering::LowerANY_EXTEND(SDValue Op, SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  SDValue extending_value = Op.getOperand(0);
+  if (extending_value.getValueSizeInBits() == 256) {
+    return extending_value;
+  }
+  return {};
+}
+
+SDValue SyncVMTargetLowering::LowerZERO_EXTEND(SDValue Op, SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  SDValue extending_value = Op.getOperand(0);
+  if (extending_value.getValueSizeInBits() == 256) {
+    return extending_value;
+  }
+  return {};
+}
+
+SDValue SyncVMTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  StoreSDNode *Store = cast<StoreSDNode>(Op);
+
+  SDValue BasePtr = Store->getBasePtr();
+  SDValue Chain = Store->getChain();
+  const MachinePointerInfo &PInfo = Store->getPointerInfo();
+
+  // for now only handle cases where alignment == 1
+  // only handle unindexed store
+  assert(Store->getAddressingMode() == ISD::UNINDEXED);
+
+  EVT MemVT = Store->getMemoryVT();
+  unsigned MemVTSize = MemVT.getSizeInBits();
+  assert(MemVT.isScalarInteger() && "Unexpected type to store");
+  if (MemVTSize == 256) {
+    return {};
+  }
+  assert(MemVTSize < 256 && "Only handle smaller sized store");
+
+  LLVM_DEBUG(errs() << "Special handling STORE node:\n"; Op.dump(&DAG));
+
+  // We don't have store of smaller data types, so a snippet of code is needed to represent small stores
+
+  // small store is implemented as follows:
+  // 1. R = load 256 bits starting from the pointer
+  // 2. r <<< n bits; r >>> n bits; to clear top bits
+  // 3. V <<< 256 - n bits;
+  // 4. R = AND R, V
+  // 5. STORE i256 R 
+
+  SDValue OriginalValue = DAG.getLoad(MVT::i256, DL, Chain, BasePtr, PInfo, Store->getAlign());
+  SDValue SHL = DAG.getNode(ISD::SHL, DL, MVT::i256, OriginalValue,
+                            DAG.getConstant(MemVTSize, DL, MVT::i256));
+  SDValue SRL = DAG.getNode(ISD::SRL, DL, MVT::i256, SHL,
+                            DAG.getConstant(MemVTSize, DL, MVT::i256));
+
+  SDValue ZeroExtendedValue = DAG.getNode(ISD::ZERO_EXTEND, DL, MVT::i256, Store->getValue());
+
+  SDValue StoreValue = DAG.getNode(ISD::SHL, DL, MVT::i256, ZeroExtendedValue,
+                                   DAG.getConstant(256 - MemVTSize, DL, MVT::i256));
+  SDValue OR = DAG.getNode(ISD::OR, DL, MVT::i256, StoreValue, SRL);
+  SDValue FinalStore =
+      DAG.getStore(Chain, DL, OR, BasePtr, PInfo);
+
+  return FinalStore;
+}
+
 SDValue SyncVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   SDLoc DL(Op);
   LoadSDNode *Load = cast<LoadSDNode>(Op);
 
-  if (Load->getExtensionType() != ISD::SEXTLOAD)
-    return {};
-
-  EVT MemVT = Load->getMemoryVT();
-  assert(MemVT.isScalarInteger() && "Unexpected type to load");
-  assert(Load->getAlignment() >= MemVT.getStoreSize());
-
-  if (MemVT.getSizeInBits() == 256)
-    return {};
-
   SDValue BasePtr = Load->getBasePtr();
   SDValue Chain = Load->getChain();
   const MachinePointerInfo &PInfo = Load->getPointerInfo();
-  Align A = Load->getAlign();
 
-  SDValue MemVTNode = DAG.getValueType(MemVT);
-  Op = DAG.getLoad(MVT::i256, DL, Chain, BasePtr, PInfo, A);
-  SDValue Sext =
-      DAG.getNode(ISD::SIGN_EXTEND_INREG, DL, MVT::i256, Op, MemVTNode);
+  EVT MemVT = Load->getMemoryVT();
+  unsigned MemVTSize = MemVT.getSizeInBits();
+  assert(MemVT.isScalarInteger() && "Unexpected type to load");
+  assert(MemVTSize < 256 && "Only handle smaller sized load");
 
-  SDValue Ops[] = {Sext, Op.getValue(1)};
+  LLVM_DEBUG(errs() << "Special handling LOAD node:\n"; Op.dump(&DAG));
 
+  Op = DAG.getLoad(MVT::i256, DL, Chain, BasePtr, PInfo, Load->getAlign());
+  
+  // right-shifting:
+  unsigned SRLValue = 256 - MemVTSize;
+  SDValue SHR = DAG.getNode(ISD::SRL, DL, MVT::i256, Op,
+                            DAG.getConstant(SRLValue, DL, MVT::i256));
+
+  SDValue Ops[] = {SHR, Op.getValue(1)};
   return DAG.getMergeValues(Ops, DL);
 }
 
@@ -687,6 +769,12 @@ SDValue SyncVMTargetLowering::LowerINTRINSIC_VOID(SDValue Op,
     return DAG.getNode(SyncVMISD::REVERT, DL, MVT::Other, CTR,
                        DAG.getRegister(SyncVM::R1, MVT::i256));
   }
+}
+
+void SyncVMTargetLowering::ReplaceNodeResults(SDNode *N,
+                                              SmallVectorImpl<SDValue> &Results,
+                                              SelectionDAG &DAG) const {
+  LowerOperationWrapper(N, Results, DAG);
 }
 
 const char *SyncVMTargetLowering::getTargetNodeName(unsigned Opcode) const {

@@ -51,6 +51,9 @@ public:
   SDValue LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerCopyToReg(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerLOAD(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerSTORE(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerZERO_EXTEND(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerANY_EXTEND(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue LowerSRA(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSDIV(SDValue Op, SelectionDAG &DAG) const;
@@ -199,6 +202,9 @@ private:
                     SmallVectorImpl<SDNode *> &Created) const override {
     return {};
   }
+
+  void ReplaceNodeResults(SDNode *N, SmallVectorImpl<SDValue> &Results,
+                          SelectionDAG &DAG) const override;
 };
 } // namespace llvm
 
