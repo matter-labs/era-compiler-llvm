@@ -358,6 +358,16 @@ void EraVMDAGToDAGISel::Select(SDNode *Node) {
                           CurDAG->getTargetConstant(0, DL, MVT::i256)));
     return;
   }
+  case ISD::ZERO_EXTEND: {
+    MVT outSize = Node->getSimpleValueType(0);
+    MVT inSize = Node->getOperand(0)->getSimpleValueType(0);
+
+    if (outSize == inSize) {
+      // just ignore the selection of ZERO_EXTEND
+      ReplaceNode(Node, Node->getOperand(0).getNode());
+      return;
+    }
+  }
   }
 
   // Select the default instruction
