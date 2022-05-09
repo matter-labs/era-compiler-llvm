@@ -604,7 +604,9 @@ SDValue SyncVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   SDValue SHR = DAG.getNode(ISD::SRL, DL, MVT::i256, Op,
                             DAG.getConstant(SRLValue, DL, MVT::i256));
 
-  SDValue Ops[] = {SHR, Op.getValue(1)};
+  SDValue TRUNCATE = DAG.getNode(ISD::TRUNCATE, DL, Load->getMemoryVT(), SHR);
+
+  SDValue Ops[] = {TRUNCATE, Op.getValue(1)};
   return DAG.getMergeValues(Ops, DL);
 }
 
