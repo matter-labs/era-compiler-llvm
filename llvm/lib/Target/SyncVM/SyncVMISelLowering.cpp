@@ -321,8 +321,24 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 
   SDValue InFlag;
 
+  // find if the first argument is ABI DATA:
+
+  bool takes_ABI_DATA = [&] {
+    const CallBase* callbase = CLI.CB;
+    assert(callbase);
+    if (callbase->arg_size() > 0 && callbase->paramHasAttr(0, Attribute::ZkSync01AbiData)) {
+      return true;
+    } else {
+      return false;
+    }
+  }();
+
+  SDValue AbiData = takes_ABI_DATA ? DAG.getRegister(SyncVM::R15, MVT::i256)
+                                   : DAG.getRegister(SyncVM::R0, MVT::i256);
+
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
     auto VA = ArgLocs[i];
+
     if (!VA.isRegLoc()) {
       assert(VA.isMemLoc());
       SDNode *StackPtr =
@@ -344,6 +360,10 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
     if (ArgLocs[i].isRegLoc()) {
+      if (i == 0 && takes_ABI_DATA) {
+        Chain = DAG.getCopyToReg(Chain, DL, SyncVM::R15, OutVals[i], InFlag);
+        continue;
+      }
       Chain = DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), OutVals[i],
                                InFlag);
       InFlag = Chain.getValue(1);
@@ -354,6 +374,7 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
   SmallVector<SDValue, 8> Ops;
   Ops.push_back(Chain);
+  Ops.push_back(AbiData);
   Ops.push_back(Callee);
   if (isa<InvokeInst>(CLI.CB))
     Ops.push_back(CLI.UnwindBB);
@@ -368,10 +389,11 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   if (InFlag.getNode())
     Ops.push_back(InFlag);
 
-  if (auto *Invoke = dyn_cast_or_null<InvokeInst>(CLI.CB))
+  if (auto *Invoke = dyn_cast_or_null<InvokeInst>(CLI.CB)) {
     Chain = DAG.getNode(SyncVMISD::INVOKE, DL, NodeTys, Ops);
-  else
+  } else {
     Chain = DAG.getNode(SyncVMISD::CALL, DL, NodeTys, Ops);
+  }
   InFlag = Chain.getValue(1);
 
   // Create the CALLSEQ_END node.

@@ -106,6 +106,10 @@ class CCIfPtrAddrSpace<int AS, CCAction A>
 /// pointer type in some address-space.
 class CCIfPtr<CCAction A> : CCIf<"ArgFlags.isPointer()", A> {}
 
+/// CCIfZkSync01AbiData - if the argument is the ABI_DATA field
+/// Only appear in SyncVM
+class CCIfZkSync01AbiData<CCAction A> : CCIf<"ArgFlags.isZkSync01AbiData()", A> {}
+
 /// CCAssignToReg - This action matches if there is a register in the specified
 /// list that is still available.  If so, it assigns the value to the first
 /// available register and succeeds.

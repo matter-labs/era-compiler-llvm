@@ -58,6 +58,9 @@ addFlagsUsingAttrFn(ISD::ArgFlagsTy &Flags,
     Flags.setSwiftAsync();
   if (AttrFn(Attribute::SwiftError))
     Flags.setSwiftError();
+  // SyncVM-specific
+  if (AttrFn(Attribute::ZkSync01AbiData))
+    Flags.setZkSync01AbiData();
 }
 
 ISD::ArgFlagsTy CallLowering::getAttributesForArgIdx(const CallBase &Call,

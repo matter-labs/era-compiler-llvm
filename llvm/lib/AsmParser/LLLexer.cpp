@@ -707,6 +707,7 @@ lltok::Kind LLLexer::LexIdentifier() {
   KEYWORD(immarg);
   KEYWORD(byref);
   KEYWORD(mustprogress);
+  KEYWORD(zksync_01_abi_data);
 
   KEYWORD(type);
   KEYWORD(opaque);

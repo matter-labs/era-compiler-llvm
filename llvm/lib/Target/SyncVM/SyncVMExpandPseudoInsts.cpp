@@ -229,11 +229,12 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
 
       if (MI.getOpcode() == SyncVM::INVOKE) {
         // convert INVOKE to an actual call
+        Register ABIReg = MI.getOperand(0).getReg();
         BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
                 TII->get(SyncVM::NEAR_CALL))
-            .addReg(SyncVM::R0)
-            .add(MI.getOperand(0))
-            .add(MI.getOperand(1));
+            .addReg(ABIReg)
+            .add(MI.getOperand(1))
+            .add(MI.getOperand(2));
         PseudoInst.push_back(&MI);
         continue;
       }
@@ -252,11 +253,12 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
     for (MachineInstr &MI : MBB) {
       if (MI.getOpcode() == SyncVM::INVOKE) {
         // convert INVOKE to an actual near_call
+        Register ABIReg = MI.getOperand(0).getReg();
         BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
                 TII->get(SyncVM::NEAR_CALL))
-            .addReg(SyncVM::R0)
-            .add(MI.getOperand(0))
-            .add(MI.getOperand(1));
+            .addReg(ABIReg)
+            .add(MI.getOperand(1))
+            .add(MI.getOperand(2));
         PseudoInst.push_back(&MI);
       } else if (MI.getOpcode() == SyncVM::CALL) {
         // Special handling of calling to __cxa_throw.
@@ -264,7 +266,7 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
         // local frame with unwind path of `DEFAULT_UNWIND`, which will turn
         // our prepared THROW into a PANIC. This will cause values in registers
         // not propagated back to upper level, causing lost of returndata 
-        auto *func_opnd = MI.getOperand(0).getGlobal();
+        auto *func_opnd = MI.getOperand(1).getGlobal();
         auto func_name = func_opnd->getName();
         if (func_name == "__cxa_throw") {
           BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
@@ -274,10 +276,11 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
           // calls (Should we reinforce it?) so this route is needed.
           // If a call is generated, it is incomplete as it misses EH label info,
           // pad 0 instead.
+          Register ABIReg = MI.getOperand(0).getReg();
           BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
                   TII->get(SyncVM::NEAR_CALL))
-              .addReg(SyncVM::R0)
-              .add(MI.getOperand(0))
+              .addReg(ABIReg)
+              .add(MI.getOperand(1))
               .addExternalSymbol(
                   "DEFAULT_UNWIND"); // Linker inserts a basic block
                                      // which bubbles up the exception.

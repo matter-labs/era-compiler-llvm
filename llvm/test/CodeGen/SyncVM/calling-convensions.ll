@@ -27,10 +27,27 @@ define i256 @caller2.swp(i256 %a1, i256 %a2) nounwind {
   ret i256 %1
 }
 
+; CHECK-LABEL: caller2.swp_abi_data
+define i256 @caller2.swp_abi_data(i256 zksync_01_abi_data %abi_data, i256 %a1, i256 %a2) nounwind {
+; CHECK: add	r1, r0, r3
+; CHECK: add	r2, r0, r1
+; CHECK: add	r3, r0, r2
+; CHECK: near_call r0, @twoarg
+  %1 = call i256 @twoarg(i256 %a2, i256 %a1)
+  ret i256 %1
+}
+
 ; CHECK-LABEL: caller3
 define i256 @caller3(i256 %a1, i256 %a2, i256 %a3) nounwind {
 ; CHECK: call r0, @threearg
   %1 = call i256 @threearg(i256 %a1, i256 %a2, i256 %a3)
+  ret i256 %1
+}
+
+; CHECK-LABEL: caller3_abi_data
+define i256 @caller3_abi_data(i256 %a1, i256 %a2, i256 %a3) nounwind {
+; CHECK: call r15, @threearg_abi_data
+  %1 = call i256 @threearg_abi_data(i256 zksync_01_abi_data 555, i256 %a1, i256 %a2, i256 %a3)
   ret i256 %1
 }
 
@@ -101,6 +118,7 @@ define i256 @caller_i128.ret(i256 %a1) nounwind {
 define i256 @call.onestack() nounwind {
 ; TODO: Check calling conventions onse callee-saved and caller-saver registers defined
 ; CHECK: context.sp r1
+; CHECK: add 0, r0, stack[r1 + 1]
 ; CHECK: add 0, r0, stack[r1 - 0]
 ; CHECK: add 0, r0, r1
 ; CHECK: add r1, r0, r2
@@ -116,7 +134,6 @@ define i256 @call.onestack() nounwind {
 ; CHECK: add r1, r0, r12
 ; CHECK: add r1, r0, r13
 ; CHECK: add r1, r0, r14
-; CHECK: add r1, r0, r15
 ; CHECK: near_call r0, @onestack
   %1 = call i256 @onestack(i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0)
   ret i256 %1
@@ -126,8 +143,9 @@ define i256 @call.onestack() nounwind {
 define i256 @call.twostack() nounwind {
 ; TODO: Check calling conventions onse callee-saved and caller-saver registers defined
 ; CHECK: context.sp      r1
-; CHECK: add 2, r0, stack[r1 + 1]
-; CHECK: add 1, r0, stack[r1 - 0]
+; CHECK: add 2, r0, stack[r1 + 2]
+; CHECK: add 1, r0, stack[r1 + 1]
+; CHECK: add 0, r0, stack[r1 - 0]
 ; CHECK: add 0, r0, r1
 ; CHECK: add r1, r0, r2
 ; CHECK: add r1, r0, r3
@@ -142,7 +160,6 @@ define i256 @call.twostack() nounwind {
 ; CHECK: add r1, r0, r12
 ; CHECK: add r1, r0, r13
 ; CHECK: add r1, r0, r14
-; CHECK: add r1, r0, r15
 ; CHECK: near_call r0, @twostack
   %1 = call i256 @twostack(i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 1, i256 2)
   ret i256 %1
@@ -150,6 +167,30 @@ define i256 @call.twostack() nounwind {
 
 ; CHECK-LABEL: sum17
 define i256 @sum17(i256 %a1, i256 %a2, i256 %a3, i256 %a4, i256 %a5, i256 %a6, i256 %a7, i256 %a8, i256 %a9, i256 %a10, i256 %a11, i256 %a12, i256 %a13, i256 %a14, i256 %a15, i256 %a16, i256 %a17) nounwind {
+; TODO: Check calling conventions onse callee-saved and caller-saver registers defined
+  %1 = add i256 %a1, %a2
+  %2 = add i256 %1, %a3
+  %3 = add i256 %2, %a4
+  %4 = add i256 %3, %a5
+  %5 = add i256 %4, %a6
+  %6 = add i256 %5, %a7
+  %7 = add i256 %6, %a8
+  %8 = add i256 %7, %a9
+  %9 = add i256 %8, %a10
+  %10 = add i256 %9, %a11
+  %11 = add i256 %10, %a12
+  %12 = add i256 %11, %a13
+  %13 = add i256 %12, %a14
+  %14 = add i256 %13, %a15
+;CHECK: add stack-[2], r1, r1
+;CHECK: add stack-[1], r1, r1
+  %15 = add i256 %14, %a16
+  %16 = add i256 %15, %a17
+  ret i256 %16
+}
+
+; CHECK-LABEL: sum17_with_abi_data
+define i256 @sum17_with_abi_data(i256 zksync_01_abi_data %abi_data, i256 %a1, i256 %a2, i256 %a3, i256 %a4, i256 %a5, i256 %a6, i256 %a7, i256 %a8, i256 %a9, i256 %a10, i256 %a11, i256 %a12, i256 %a13, i256 %a14, i256 %a15, i256 %a16, i256 %a17) nounwind {
 ; TODO: Check calling conventions onse callee-saved and caller-saver registers defined
   %1 = add i256 %a1, %a2
   %2 = add i256 %1, %a3
@@ -200,6 +241,7 @@ declare i128 @i128.ret(i256 %a1) nounwind
 declare i256 @onearg(i256 %a1) nounwind
 declare i256 @twoarg(i256 %a1, i256 %a2) nounwind
 declare i256 @threearg(i256 %a1, i256 %a2, i256 %a3) nounwind
+declare i256 @threearg_abi_data(i256 zksync_01_abi_data %abi_data, i256 %a1, i256 %a2, i256 %a3) nounwind
 declare i256 @onestack(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256) nounwind
 declare i256 @twostack(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256) nounwind
 
