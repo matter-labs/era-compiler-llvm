@@ -282,13 +282,18 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
     auto farcall_opc = farcall_pair.first;
     bool is_farcall = farcall_pair.second;
 
+    bool is_mimic = farcall_opc == SyncVMISD::MIMICCALL;
+
     if (is_farcall) {
-      if (farcall_opc == SyncVMISD::MIMICCALL)
+      if (is_mimic)
         Chain = DAG.getCopyToReg(Chain, DL, SyncVM::R3, OutVals[2], SDValue());
       SmallVector<SDValue, 8> Ops;
       Ops.push_back(Chain);
       Ops.push_back(OutVals[0]);
       Ops.push_back(OutVals[1]);
+      if (is_mimic) {
+        Ops.push_back(OutVals[2]);
+      }
       Ops.push_back(CLI.UnwindBB);
       SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
       Chain = DAG.getNode(farcall_opc, DL, NodeTys, Ops);
