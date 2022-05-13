@@ -1161,7 +1161,10 @@ PassBuilder::buildModuleSimplificationPipeline(OptimizationLevel Level,
 
   // Remove any dead arguments exposed by cleanups and constant folding
   // globals.
-  MPM.addPass(DeadArgumentEliminationPass());
+  // SyncVM local begin
+  // TODO: restore
+  // MPM.addPass(DeadArgumentEliminationPass());
+  // SyncVM local end
 
   // Create a small function pass pipeline to cleanup after all the global
   // optimizations.
@@ -1759,7 +1762,10 @@ PassBuilder::buildLTODefaultPipeline(OptimizationLevel Level,
   MPM.addPass(ConstantMergePass());
 
   // Remove unused arguments from functions.
-  MPM.addPass(DeadArgumentEliminationPass());
+  // SyncVM local begin
+  // TODO: restore
+  // MPM.addPass(DeadArgumentEliminationPass());
+  // SyncVM local end
 
   // Reduce the code after globalopt and ipsccp.  Both can open up significant
   // simplification opportunities, and both can propagate functions through

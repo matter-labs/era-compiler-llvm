@@ -75,6 +75,10 @@ namespace {
     }
 
     bool runOnModule(Module &M) override {
+      // SyncVM local begin
+      // TODO: restore
+      return false;
+      // SyncVM local end
       if (skipModule(M))
         return false;
       DeadArgumentEliminationPass DAEP(ShouldHackArguments());
@@ -1088,6 +1092,10 @@ bool DeadArgumentEliminationPass::RemoveDeadStuffFromFunction(Function *F) {
 PreservedAnalyses DeadArgumentEliminationPass::run(Module &M,
                                                    ModuleAnalysisManager &) {
   bool Changed = false;
+  // SyncVM local begin
+  // TODO: restore
+  return PreservedAnalyses::all();
+  // SyncVM local end
 
   // First pass: Do a simple check to see if any functions can have their "..."
   // removed.  We can do this if they never call va_start.  This loop cannot be
