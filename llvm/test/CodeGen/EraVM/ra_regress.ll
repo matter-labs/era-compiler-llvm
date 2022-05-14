@@ -10,18 +10,17 @@ define i256 @test_length(i256 %arg1) {
 ; CHECK-LABEL: test_length:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    add 36, r0, r2
-; CHECK-NEXT:    add @CPI0_0[0], r0, r5
+; CHECK-NEXT:    add @CPI0_0[0], r0, r4
 ; CHECK-NEXT:    sub! r1, r2, r2
-; CHECK-NEXT:    add 0, r0, r3
-; CHECK-NEXT:    add.lt r5, r0, r3
-; CHECK-NEXT:    and r1, r5, r4
 ; CHECK-NEXT:    add 0, r0, r2
-; CHECK-NEXT:    sub! r4, r2, r1
+; CHECK-NEXT:    add.lt r4, r0, r2
+; CHECK-NEXT:    and r1, r4, r3
+; CHECK-NEXT:    sub! r3, r0, r1
 ; CHECK-NEXT:    add 0, r0, r1
-; CHECK-NEXT:    add.gt r5, r0, r1
-; CHECK-NEXT:    sub! r4, r5, r4
-; CHECK-NEXT:    add.ne r3, r0, r1
-; CHECK-NEXT:    sub! r1, r2, r1
+; CHECK-NEXT:    add.gt r4, r0, r1
+; CHECK-NEXT:    sub! r3, r4, r3
+; CHECK-NEXT:    add.ne r2, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r1
 ; CHECK-NEXT:    add 0, r0, r1
 ; CHECK-NEXT:    add.ne 1, r0, r1
 ; CHECK-NEXT:    and 1, r1, r1

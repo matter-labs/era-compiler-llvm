@@ -100,6 +100,15 @@ define i256 @materialize_bigimm_in_sub_operation_2(i256 %par) nounwind {
   %res = sub i256 -42, %par
   ret i256 %res
 }
+
+define i256 @materialize_zero() nounwind {
+; CHECK-LABEL: materialize_zero:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    add r0, r0, r1
+; CHECK-NEXT:    ret
+  ret i256 0
+}
+
 ; The follow checks constant pool emitting
 
 ; CHECK-LABEL: .rodata
