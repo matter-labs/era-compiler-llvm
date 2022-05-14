@@ -404,9 +404,9 @@ bool SyncVMDAGToDAGISel::SelectStackDIV(StoreSDNode *store) {
     {0b01000000, {SyncVM::DIVsrsr_s, false}},
     {0b00010000, {SyncVM::DIVcrsr_s, false}},
 
-    {0b00001000, {SyncVM::DIVxrsr_s, true}},
-    {0b00000100, {SyncVM::DIVzrsr_s, true}},
-    {0b00000001, {SyncVM::DIVyrsr_s, true}},
+    //{0b00001000, {SyncVM::DIVxrsr_s, true}},
+    //{0b00000100, {SyncVM::DIVzrsr_s, true}},
+    //{0b00000001, {SyncVM::DIVyrsr_s, true}},
   };
   return SelectStackOperation(store, ISD::UDIVREM, Mapping);
 }
@@ -420,9 +420,9 @@ bool SyncVMDAGToDAGISel::SelectStackMUL(StoreSDNode *store) {
     {0b01000000, {SyncVM::MULsrsr_s, false}},
     {0b00010000, {SyncVM::MULcrsr_s, false}},
 
-    {0b00001000, {SyncVM::MULirsr_s, true}},
-    {0b00000100, {SyncVM::MULsrsr_s, true}},
-    {0b00000001, {SyncVM::MULcrsr_s, true}},
+    //{0b00001000, {SyncVM::MULirsr_s, true}},
+    //{0b00000100, {SyncVM::MULsrsr_s, true}},
+    //{0b00000001, {SyncVM::MULcrsr_s, true}},
   };
   return SelectStackOperation(store, ISD::UMUL_LOHI, Mapping);
 }
@@ -446,6 +446,7 @@ bool SyncVMDAGToDAGISel::SelectStackOperation(StoreSDNode *store,
   SDValue opnd1 = value->getOperand(0);
   SDValue opnd2 = value->getOperand(1);
 
+
   auto getOpndEncoding = [](SDValue opnd) {
     uint8_t encoding =
         (isSmallConstant(opnd) ? 0b1000 : 0) |
@@ -461,9 +462,18 @@ bool SyncVMDAGToDAGISel::SelectStackOperation(StoreSDNode *store,
   if (Mapping.count(encoding) == 0) {
     return false;
   }
+
+  // cannot handle heap addressing
+  if (isLoadFrom<SyncVMAS::AS_HEAP>(opnd1) || isLoadFrom<SyncVMAS::AS_HEAP>(opnd2)) {
+    return false;
+  }
+
+
   auto map = Mapping.lookup(encoding);
   auto opcode = map.first;
   bool flip = map.second;
+
+  LLVM_DEBUG(dbgs() << "Converting to stack operator, flip: "<< flip << ".\n");
 
   SDLoc DL(store);
 
@@ -482,14 +492,15 @@ bool SyncVMDAGToDAGISel::SelectStackOperation(StoreSDNode *store,
       ops.push_back(Base1);
       ops.push_back(Base2);
       ops.push_back(Disp);
-    } else if (isLoadFrom<SyncVMAS::AS_CODE>(opnd) ||
-        isLoadFrom<SyncVMAS::AS_HEAP>(opnd)) {
+    } else if (isLoadFrom<SyncVMAS::AS_CODE>(opnd)) {
       SDValue Base1, Disp;
       LoadSDNode* load = cast<LoadSDNode>(opnd);
       bool successful = SelectMemAddr(load->getBasePtr(), Base1, Disp);
       assert(successful);
       ops.push_back(Base1);
       ops.push_back(Disp);
+    } else if (isLoadFrom<SyncVMAS::AS_HEAP>(opnd)) {
+      llvm_unreachable("Does not support heap addressing.");
     } else {
       ops.push_back(opnd);
     }
@@ -504,11 +515,17 @@ bool SyncVMDAGToDAGISel::SelectStackOperation(StoreSDNode *store,
     push_opnd(ops_vec, opnd2);
   }
 
+  // push stack address
   SDValue Base1, Base2, Disp;
   bool successful = SelectStackAddr(store->getBasePtr(), Base1, Base2, Disp);
+  if (!successful) {
+    return false;
+  }
   ops_vec.push_back(Base1);
   ops_vec.push_back(Base2);
   ops_vec.push_back(Disp);
+
+  // push cc NONE
   ops_vec.push_back(CurDAG->getTargetConstant(0, DL, MVT::i256));
 
   MachineRegisterInfo &RI = MF->getRegInfo();
@@ -517,7 +534,6 @@ bool SyncVMDAGToDAGISel::SelectStackOperation(StoreSDNode *store,
   auto ops = llvm::makeArrayRef(ops_vec);
 
   SDNode *ResNode = CurDAG->getMachineNode(opcode, DL, MVT::i256, ops);
-  CurDAG->setNodeMemRefs(cast<MachineSDNode>(ResNode), {store->getMemOperand()});
   
   SDValue copyToReg = CurDAG->getCopyToReg(chain, DL, VReg, SDValue(ResNode, 0));
   ReplaceNode(store, copyToReg.getNode());

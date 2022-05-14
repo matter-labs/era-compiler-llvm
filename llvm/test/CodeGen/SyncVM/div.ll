@@ -253,7 +253,7 @@ define void @divsrs(i256 %rs1) nounwind {
 define void @divzrs(i256 %rs1) nounwind {
   %valptr = alloca i256
   %destptr = alloca i256
-; CHECK: div.s stack-[2], r1, stack-[1], r{{[0-9]+}}
+; TODO: div.s stack-[2], r1, stack-[1], r{{[0-9]+}}
   %val = load i256, i256* %valptr
   %res = udiv i256 %rs1, %val
   store i256 %res, i256* %destptr
@@ -404,7 +404,7 @@ define i256 @udivremsrsr(i256 %rs1) nounwind {
 define i256 @udivremzrsr(i256 %rs1) nounwind {
   %valptr = alloca i256
   %destptr = alloca i256
-; CHECK: div.s stack-[2], r1, stack-[1], r1
+; TODO: div.s stack-[2], r1, stack-[1], r1
   %val = load i256, i256* %valptr
   %res = udiv i256 %rs1, %val
   %rem = urem i256 %rs1, %val

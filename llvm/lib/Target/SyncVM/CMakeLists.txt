@@ -44,7 +44,6 @@ add_llvm_target(SyncVMCodeGen
   SyncVMAllocaHoisting.cpp
   SyncVMTargetTransformInfo.cpp
   SyncVMMoveCallResultSpill.cpp
-  SyncVMPeephole.cpp
 
   LINK_COMPONENTS
   Analysis

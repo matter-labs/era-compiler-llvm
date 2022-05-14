@@ -37,7 +37,6 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMLinkRuntimePass(PR);
   initializeSyncVMAllocaHoistingPass(PR);
   initializeSyncVMMoveCallResultSpillPass(PR);
-  initializeSyncVMPeepholePass(PR);
 }
 
 static std::string computeDataLayout() {
