@@ -350,6 +350,14 @@ void SyncVMDAGToDAGISel::Select(SDNode *Node) {
     auto cn = cast<ConstantSDNode>(Node);
     auto val = cn->getAPIntValue();
 
+    // if it is loading zero value, just select R0 to save its materialization
+    // in another register
+    if (val == 0) {
+      auto R0 = CurDAG->getRegister(SyncVM::R0, MVT::i256);
+      ReplaceNode(Node, R0.getNode());
+      return;
+    }
+
     // if it cannot fit into the imm field of an instruction ... put it into
     // pool
     if (!val.isIntN(16) || val.isNegative()) {
