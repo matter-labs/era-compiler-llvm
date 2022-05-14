@@ -36,7 +36,18 @@ using namespace llvm;
 
 namespace {
 class SyncVMAsmPrinter : public AsmPrinter {
-  std::vector<std::pair<MCSymbol*, const Constant*>> ConstantPool;
+
+  // In a compiled machine module, there might be multiple instances of a
+  // same constant values (across different compiled functions), however,
+  // emitting only 1 is enough for the assembly because it is global.
+
+  // Notice that constants are interned internally in LLVM, so we mantain a
+  // multimap <constant -> Symbol> to record and combine same contants with
+  // diferent symbols. when we walk through the MCInst format.
+  using ConstantPoolMapType = std::multimap<const Constant *, MCSymbol *>;
+  std::set<const Constant *> UniqueConstants;
+  ConstantPoolMapType ConstantPoolMap;
+
 public:
   SyncVMAsmPrinter(TargetMachine &TM, std::unique_ptr<MCStreamer> Streamer)
       : AsmPrinter(TM, std::move(Streamer)) {}
@@ -57,8 +68,7 @@ public:
   void EmitInterruptVectorSection(MachineFunction &ISR);
 
   void emitConstantPool() override;
-  void emitEndOfAsmFile	(Module &) override;
-
+  void emitEndOfAsmFile(Module &) override;
 };
 } // end of anonymous namespace
 
@@ -127,13 +137,20 @@ bool SyncVMAsmPrinter::runOnMachineFunction(MachineFunction &MF) {
 
 void SyncVMAsmPrinter::emitEndOfAsmFile(Module &) {
   MCSection *ReadOnlySection =
-    OutContext.getELFSection(".rodata", ELF::SHT_PROGBITS, ELF::SHF_ALLOC);
+      OutContext.getELFSection(".rodata", ELF::SHT_PROGBITS, ELF::SHF_ALLOC);
 
   OutStreamer->SwitchSection(ReadOnlySection);
 
-  for (auto & pair : ConstantPool) {
-    OutStreamer->emitLabel(pair.first);
-    emitGlobalConstant(getDataLayout(), pair.second);
+  // combine labels pointing to same constants
+  for (const Constant *C : UniqueConstants) {
+    auto labels = ConstantPoolMap.equal_range(C);
+    // first print symbols
+    for (ConstantPoolMapType::iterator it = labels.first; it != labels.second;
+         ++it) {
+      OutStreamer->emitLabel(it->second);
+    }
+    // then print constant:
+    emitGlobalConstant(getDataLayout(), C);
   }
 }
 
@@ -141,7 +158,8 @@ void SyncVMAsmPrinter::emitConstantPool() {
   // use a custom constant pool emitter
   const MachineConstantPool *MCP = MF->getConstantPool();
   const std::vector<MachineConstantPoolEntry> &CP = MCP->getConstants();
-  if (CP.empty()) return;
+  if (CP.empty())
+    return;
 
   // Iterate over current function's constant pool and save the emit info,
   // and print the saved info at the very end.
@@ -150,7 +168,9 @@ void SyncVMAsmPrinter::emitConstantPool() {
     const Constant *C = CPE.Val.ConstVal;
 
     MCSymbol *Sym = GetCPISymbol(i);
-    ConstantPool.emplace_back(std::make_pair(Sym, C));
+
+    UniqueConstants.insert(C);
+    ConstantPoolMap.insert(std::make_pair(C, Sym));
   }
 }
 
@@ -162,12 +182,12 @@ void SyncVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
   if (const ConstantArray *CVA = dyn_cast<ConstantArray>(CV)) {
     auto aty = CVA->getType();
     uint64_t elem_size = aty->getNumElements();
-    Type* elem_type = aty->getElementType();
+    Type *elem_type = aty->getElementType();
     // For now only support integer types.
     assert(elem_type->isIntegerTy(256));
 
     for (uint64_t i = 0; i < elem_size; ++i) {
-      Constant* C = CVA->getAggregateElement(i);
+      Constant *C = CVA->getAggregateElement(i);
       ConstantInt *CI = cast<ConstantInt>(C);
       assert(CI && CI->getBitWidth() == 256);
       Streamer->emitGlobalConst(CI->getValue());
@@ -175,7 +195,8 @@ void SyncVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
     return;
   }
 
-  if (const ConstantDataSequential *CDS = dyn_cast<ConstantDataSequential>(CV)) {
+  if (const ConstantDataSequential *CDS =
+          dyn_cast<ConstantDataSequential>(CV)) {
     size_t elem_size = CDS->getNumElements();
     size_t elem_ty_size = CDS->getElementByteSize();
     assert(elem_ty_size <= 256);
@@ -188,14 +209,14 @@ void SyncVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
   }
 
   if (const ConstantStruct *CVS = dyn_cast<ConstantStruct>(CV)) {
-    StructType* sty = CVS->getType();
+    StructType *sty = CVS->getType();
     assert(!sty->isPacked());
     uint64_t elem_size = sty->getNumElements();
 
     for (uint64_t i = 0; i < elem_size; ++i) {
-      Type* ty = sty->getTypeAtIndex(i);
+      Type *ty = sty->getTypeAtIndex(i);
       assert(ty->isIntegerTy() && ty->getIntegerBitWidth() <= 256);
-      Constant* C = CVS->getAggregateElement(i);
+      Constant *C = CVS->getAggregateElement(i);
       const ConstantInt *CI = cast<ConstantInt>(C);
       Streamer->emitGlobalConst(CI->getValue());
     }
@@ -208,11 +229,10 @@ void SyncVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
     return;
   }
 
-  if (const ConstantExpr *CE = dyn_cast<ConstantExpr>(CV)) { 
+  if (const ConstantExpr *CE = dyn_cast<ConstantExpr>(CV)) {
     printf("ConstantExpr for type\n");
     return;
   }
-
 
   const ConstantInt *CI = cast<ConstantInt>(CV);
   assert(CI->getBitWidth() == 256);
