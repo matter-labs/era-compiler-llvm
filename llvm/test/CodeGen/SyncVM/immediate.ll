@@ -5,6 +5,12 @@ target triple = "syncvm"
 
 ; CHECK-LABEL: .text
 
+; CHECK-LABEL: materialize_zero
+define i256 @materialize_zero() nounwind {
+  ; CHECK: add r0, r0, r1
+  ret i256 0
+}
+
 ; CHECK-LABEL: materialize_small_imm
 define i256 @materialize_small_imm() nounwind {
   ; CHECK: add 65535, r0, r1
@@ -70,7 +76,7 @@ define i256 @materialize_bigimm_in_sub_operation(i256 %par) nounwind {
 
 ; CHECK-LABEL: materialize_bigimm_in_sub_operation_2
 define i256 @materialize_bigimm_in_sub_operation_2(i256 %par) nounwind {
-  ; CHECK: add @CPI{{[0-9]}}_{{[0-9]}}[0], r0, r2
+  ; CHECK: add @CPI{{[0-9]*}}_{{[0-9]}}[0], r0, r2
   %res = sub i256 -42, %par
   ret i256 %res
 }
@@ -79,34 +85,34 @@ define i256 @materialize_bigimm_in_sub_operation_2(i256 %par) nounwind {
 ; CHECK-LABEL: .rodata
 
 ; materialize_big_imm
-; CHECK-LABEL: CPI1_0:
+; CHECK-LABEL: CPI2_0:
 ; CHECK: .cell 65536
 
 ; materialize_negative_imm
-; CHECK-LABEL: CPI2_0:
+; CHECK-LABEL: CPI3_0:
 ; CHECK: .cell -1
 
 ; materialize_bigimm_in_operation
-; CHECK-LABEL: CPI4_0:
-; CHECK: .cell -42
-
-; materialize_bigimm_in_operation_2
 ; CHECK-LABEL: CPI5_0:
 ; CHECK: .cell -42
 
-; materialize_bigimm_in_and_operation
+; materialize_bigimm_in_operation_2
 ; CHECK-LABEL: CPI6_0:
 ; CHECK: .cell -42
 
-; materialize_bigimm_in_xor_operation
+; materialize_bigimm_in_and_operation
 ; CHECK-LABEL: CPI7_0:
 ; CHECK: .cell -42
 
-; materialize_bigimm_in_sub_operation
+; materialize_bigimm_in_xor_operation
 ; CHECK-LABEL: CPI8_0:
 ; CHECK: .cell -42
 
-; materialize_bigimm_in_sub_operation_2
+; materialize_bigimm_in_sub_operation
 ; CHECK-LABEL: CPI9_0:
+; CHECK: .cell -42
+
+; materialize_bigimm_in_sub_operation_2
+; CHECK-LABEL: CPI10_0:
 ; CHECK: .cell -42
 
