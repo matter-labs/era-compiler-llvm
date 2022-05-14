@@ -15,7 +15,7 @@ entry:
 catch:                                            ; preds = %entry
   %landing = landingpad { i8*, i32 }
           catch i8* null
-  ; CHECK: add 0, r0, r1
+  ; CHECK: add r0, r0, r1
   ; CHECK: revert
   call void @__cxa_throw(i8* null, i8* null, i8* null)
   unreachable
@@ -36,7 +36,7 @@ entry:
   br i1 %3, label %throw, label %join
 
 throw:                                            ; preds = %entry
-  ; CHECK: add 0, r0, r1
+  ; CHECK: add r0, r0, r1
   ; CHECK: revert
   call void @__cxa_throw(i8* null, i8* null, i8* null)
   unreachable
