@@ -80,39 +80,37 @@ define i256 @materialize_bigimm_in_sub_operation_2(i256 %par) nounwind {
   %res = sub i256 -42, %par
   ret i256 %res
 }
+
+; CHECK-LABEL: materialize_bigimm_1
+define i256 @materialize_bigimm_1(i256 %par) nounwind {
+  %res = sub i256 12345678901234567890, %par
+  ret i256 %res
+}
+
+; CHECK-LABEL: materialize_bigimm_2
+define i256 @materialize_bigimm_2(i256 %par) nounwind {
+  %res = sub i256 12345678901234567890, %par
+  ret i256 %res
+}
+
 ; The follow checks constant pool emitting
 
 ; CHECK-LABEL: .rodata
 
-; materialize_big_imm
-; CHECK-LABEL: CPI2_0:
-; CHECK: .cell 65536
-
 ; materialize_negative_imm
 ; CHECK-LABEL: CPI3_0:
-; CHECK: .cell -1
+; CHECK-NEXT: .cell -1
 
 ; materialize_bigimm_in_operation
-; CHECK-LABEL: CPI5_0:
-; CHECK: .cell -42
+; CHECK-NEXT: CPI5_0:
+; CHECK-NEXT: CPI6_0:
+; CHECK-NEXT: CPI7_0:
+; CHECK-NEXT: CPI8_0:
+; CHECK-NEXT: CPI9_0:
+; CHECK-NEXT: CPI10_0:
+; CHECK-NEXT: .cell -42
 
-; materialize_bigimm_in_operation_2
-; CHECK-LABEL: CPI6_0:
-; CHECK: .cell -42
-
-; materialize_bigimm_in_and_operation
-; CHECK-LABEL: CPI7_0:
-; CHECK: .cell -42
-
-; materialize_bigimm_in_xor_operation
-; CHECK-LABEL: CPI8_0:
-; CHECK: .cell -42
-
-; materialize_bigimm_in_sub_operation
-; CHECK-LABEL: CPI9_0:
-; CHECK: .cell -42
-
-; materialize_bigimm_in_sub_operation_2
-; CHECK-LABEL: CPI10_0:
-; CHECK: .cell -42
-
+; constants with same value but from different functions share a single slot
+; CHECK-LABEL: CPI11_0:
+; CHECK-NEXT: CPI12_0:
+; CHECK-NEXT: .cell 12345678901234567890
