@@ -290,47 +290,48 @@ define i256 @caller_i128.retabi(i256 %a1) nounwind {
 
 ; CHECK-LABEL: call.onestack
 define i256 @call.onestack() nounwind {
+; TODO: Check calling conventions onse callee-saved and caller-saver registers defined
 ; CHECK: context.sp r1
 ; CHECK: add 0, r0, stack[r1 - 0]
-; CHECK: add 0, r0, r1
-; CHECK: add r1, r0, r2
-; CHECK: add r1, r0, r3
-; CHECK: add r1, r0, r4
-; CHECK: add r1, r0, r5
-; CHECK: add r1, r0, r6
-; CHECK: add r1, r0, r7
-; CHECK: add r1, r0, r8
-; CHECK: add r1, r0, r9
-; CHECK: add r1, r0, r10
-; CHECK: add r1, r0, r11
-; CHECK: add r1, r0, r12
-; CHECK: add r1, r0, r13
-; CHECK: add r1, r0, r14
-; CHECK: near_call r0, @onestack, @DEFAULT_UNWIND
+; CHECK: add r0, r0, r1
+; CHECK: add r0, r0, r2
+; CHECK: add r0, r0, r3
+; CHECK: add r0, r0, r4
+; CHECK: add r0, r0, r5
+; CHECK: add r0, r0, r6
+; CHECK: add r0, r0, r7
+; CHECK: add r0, r0, r8
+; CHECK: add r0, r0, r9
+; CHECK: add r0, r0, r10
+; CHECK: add r0, r0, r11
+; CHECK: add r0, r0, r12
+; CHECK: add r0, r0, r13
+; CHECK: add r0, r0, r14
+; CHECK: near_call r0, @onestack
   %1 = call i256 @onestack(i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0)
   ret i256 %1
 }
+
 
 ; CHECK-LABEL: call.onestackabi
 define i256 @call.onestackabi() nounwind {
   %ptr = bitcast i256(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)* @onestack to i256*
 ; CHECK: context.sp r1
 ; CHECK: add 0, r0, stack[r1 - 0]
-; CHECK: add 0, r0, r1
 ; CHECK: add 42, r0, r15
-; CHECK: add r1, r0, r2
-; CHECK: add r1, r0, r3
-; CHECK: add r1, r0, r4
-; CHECK: add r1, r0, r5
-; CHECK: add r1, r0, r6
-; CHECK: add r1, r0, r7
-; CHECK: add r1, r0, r8
-; CHECK: add r1, r0, r9
-; CHECK: add r1, r0, r10
-; CHECK: add r1, r0, r11
-; CHECK: add r1, r0, r12
-; CHECK: add r1, r0, r13
-; CHECK: add r1, r0, r14
+; CHECK: add r0, r0, r2
+; CHECK: add r0, r0, r3
+; CHECK: add r0, r0, r4
+; CHECK: add r0, r0, r5
+; CHECK: add r0, r0, r6
+; CHECK: add r0, r0, r7
+; CHECK: add r0, r0, r8
+; CHECK: add r0, r0, r9
+; CHECK: add r0, r0, r10
+; CHECK: add r0, r0, r11
+; CHECK: add r0, r0, r12
+; CHECK: add r0, r0, r13
+; CHECK: add r0, r0, r14
 ; CHECK: near_call r15, @onestack, @DEFAULT_UNWIND
   %1 = call i256(i256*, i256, ...) @llvm.syncvm.nearcall(i256* %ptr, i256 42, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0)
   ret i256 %1
@@ -342,21 +343,20 @@ define i256 @call.twostackabi() nounwind {
 ; CHECK: context.sp      r1
 ; CHECK: add 2, r0, stack[r1 + 1]
 ; CHECK: add 1, r0, stack[r1 - 0]
-; CHECK: add 0, r0, r1
 ; CHECK: add 42, r0, r15
-; CHECK: add r1, r0, r2
-; CHECK: add r1, r0, r3
-; CHECK: add r1, r0, r4
-; CHECK: add r1, r0, r5
-; CHECK: add r1, r0, r6
-; CHECK: add r1, r0, r7
-; CHECK: add r1, r0, r8
-; CHECK: add r1, r0, r9
-; CHECK: add r1, r0, r10
-; CHECK: add r1, r0, r11
-; CHECK: add r1, r0, r12
-; CHECK: add r1, r0, r13
-; CHECK: add r1, r0, r14
+; CHECK: add r0, r0, r2
+; CHECK: add r0, r0, r3
+; CHECK: add r0, r0, r4
+; CHECK: add r0, r0, r5
+; CHECK: add r0, r0, r6
+; CHECK: add r0, r0, r7
+; CHECK: add r0, r0, r8
+; CHECK: add r0, r0, r9
+; CHECK: add r0, r0, r10
+; CHECK: add r0, r0, r11
+; CHECK: add r0, r0, r12
+; CHECK: add r0, r0, r13
+; CHECK: add r0, r0, r14
 ; CHECK: near_call r15, @twostack, @DEFAULT_UNWIND
   %1 = call i256(i256*, i256, ...) @llvm.syncvm.nearcall(i256* %ptr, i256 42, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 1, i256 2)
   ret i256 %1
