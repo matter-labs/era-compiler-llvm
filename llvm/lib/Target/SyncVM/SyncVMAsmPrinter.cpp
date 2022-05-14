@@ -37,7 +37,16 @@ using namespace llvm;
 
 namespace {
 class SyncVMAsmPrinter : public AsmPrinter {
-  std::vector<std::pair<MCSymbol *, const Constant *>> ConstantPool;
+  // In a compiled machine module, there might be multiple instances of a
+  // same constant values (across different compiled functions), however,
+  // emitting only 1 is enough for the assembly because it is global.
+
+  // Notice that constants are interned internally in LLVM, so we mantain a
+  // multimap <constant -> Symbol> to record and combine same contants with
+  // diferent symbols. when we walk through the MCInst format.
+  using ConstantPoolMapType = std::multimap<const Constant *, MCSymbol *>;
+  std::set<const Constant *> UniqueConstants;
+  ConstantPoolMapType ConstantPoolMap;
 
 public:
   SyncVMAsmPrinter(TargetMachine &TM, std::unique_ptr<MCStreamer> Streamer)
@@ -134,9 +143,16 @@ void SyncVMAsmPrinter::emitEndOfAsmFile(Module &) {
 
   OutStreamer->switchSection(ReadOnlySection);
 
-  for (auto &pair : ConstantPool) {
-    OutStreamer->emitLabel(pair.first);
-    emitGlobalConstant(getDataLayout(), pair.second);
+  // combine labels pointing to same constants
+  for (const Constant *C : UniqueConstants) {
+    auto labels = ConstantPoolMap.equal_range(C);
+    // first print symbols
+    for (ConstantPoolMapType::iterator it = labels.first; it != labels.second;
+         ++it) {
+      OutStreamer->emitLabel(it->second);
+    }
+    // then print constant:
+    emitGlobalConstant(getDataLayout(), C);
   }
 }
 
@@ -154,7 +170,9 @@ void SyncVMAsmPrinter::emitConstantPool() {
     const Constant *C = CPE.Val.ConstVal;
 
     MCSymbol *Sym = GetCPISymbol(i);
-    ConstantPool.emplace_back(std::make_pair(Sym, C));
+
+    UniqueConstants.insert(C);
+    ConstantPoolMap.insert(std::make_pair(C, Sym));
   }
 }
 
