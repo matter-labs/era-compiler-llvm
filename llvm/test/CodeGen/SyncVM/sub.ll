@@ -26,6 +26,13 @@ define i256 @subxrr(i256 %rs1) nounwind {
   ret i256 %res
 }
 
+; CHECK-LABEL: sub2add
+define i256 @sub2add(i256 %rs1) nounwind {
+; CHECK: add 42, r1, r1
+  %res = sub i256 %rs1, -42
+  ret i256 %res
+}
+
 ; CHECK-LABEL: subcrr
 define i256 @subcrr(i256 %rs1) nounwind {
 ; CHECK: sub @val[0], r1, r1
