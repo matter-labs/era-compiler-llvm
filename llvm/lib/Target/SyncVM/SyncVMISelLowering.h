@@ -205,6 +205,10 @@ private:
 
   void ReplaceNodeResults(SDNode *N, SmallVectorImpl<SDValue> &Results,
                           SelectionDAG &DAG) const override;
+
+  SDValue PerformDAGCombine(SDNode *N, DAGCombinerInfo &DCI) const override;
+  SDValue combineADD(SDNode *N, DAGCombinerInfo &DCI) const;
+  SDValue combineSUB(SDNode *N, DAGCombinerInfo &DCI) const;
 };
 } // namespace llvm
 

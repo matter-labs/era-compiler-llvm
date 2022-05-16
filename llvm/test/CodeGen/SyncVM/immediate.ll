@@ -25,8 +25,14 @@ define i256 @materialize_big_imm() nounwind {
 
 ; CHECK-LABEL: materialize_negative_imm
 define i256 @materialize_negative_imm(i256 %par) nounwind {
-  ; CHECK: add @CPI{{[0-9]}}_{{[0-9]}}[0], r0, r1
+  ; CHECK: sub.s 1, r0, r1
   ret i256 -1
+}
+
+; CHECK-LABEL: materialize_negative_imm_2
+define i256 @materialize_negative_imm_2(i256 %par) nounwind {
+  ; CHECK: sub.s 32767, r0, r1
+  ret i256 -32767
 }
 
 ; CHECK-LABEL: materialize_smallimm_in_operation
@@ -39,44 +45,44 @@ define i256 @materialize_smallimm_in_operation(i256 %par) nounwind {
 ; TODO: combine load constant from constant pool with use instruction
 ; for the following test cases
 
-; CHECK-LABEL: materialize_bigimm_in_operation
-define i256 @materialize_bigimm_in_operation(i256 %par) nounwind {
-  ; CHECK: add @CPI{{[0-9]}}_{{[0-9]}}[0], r0, r2
+; CHECK-LABEL: materialize_small_negimm_in_operation
+define i256 @materialize_small_negimm_in_operation(i256 %par) nounwind {
+  ; CHECK: sub.s 42, r1, r1
   %res = add i256 %par, -42
   ret i256 %res
 }
 
-; CHECK-LABEL: materialize_bigimm_in_operation_2
-define i256 @materialize_bigimm_in_operation_2(i256 %par) nounwind {
-  ; CHECK: add @CPI{{[0-9]}}_{{[0-9]}}[0], r0, r2
+; CHECK-LABEL: materialize_small_negimm_in_operation_2
+define i256 @materialize_small_negimm_in_operation_2(i256 %par) nounwind {
+  ; CHECK: sub.s 42, r1, r1
   %res = add i256 -42, %par
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_in_and_operation
 define i256 @materialize_bigimm_in_and_operation(i256 %par) nounwind {
-  ; CHECK: add @CPI{{[0-9]}}_{{[0-9]}}[0], r0, r2
+  ; CHECK: sub.s 42, r0, r2
   %res = and i256 %par, -42
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_in_xor_operation
 define i256 @materialize_bigimm_in_xor_operation(i256 %par) nounwind {
-  ; CHECK: add @CPI{{[0-9]}}_{{[0-9]}}[0], r0, r2
+  ; CHECK: sub.s 42, r0, r2
   %res = xor i256 -42, %par
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_in_sub_operation
 define i256 @materialize_bigimm_in_sub_operation(i256 %par) nounwind {
-  ; CHECK: add @CPI{{[0-9]}}_{{[0-9]}}[0], r0, r2
+  ; CHECK: add 42, r1, r1
   %res = sub i256 %par, -42
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_in_sub_operation_2
 define i256 @materialize_bigimm_in_sub_operation_2(i256 %par) nounwind {
-  ; CHECK: add @CPI{{[0-9]*}}_{{[0-9]}}[0], r0, r2
+  ; CHECK: sub.s 42, r0, r2
   %res = sub i256 -42, %par
   ret i256 %res
 }
@@ -97,20 +103,7 @@ define i256 @materialize_bigimm_2(i256 %par) nounwind {
 
 ; CHECK-LABEL: .rodata
 
-; materialize_negative_imm
-; CHECK-LABEL: CPI3_0:
-; CHECK-NEXT: .cell -1
+; materialize_big_imm
+; CHECK-LABEL: CPI2_0:
+; CHECK: .cell 65536
 
-; materialize_bigimm_in_operation
-; CHECK-NEXT: CPI5_0:
-; CHECK-NEXT: CPI6_0:
-; CHECK-NEXT: CPI7_0:
-; CHECK-NEXT: CPI8_0:
-; CHECK-NEXT: CPI9_0:
-; CHECK-NEXT: CPI10_0:
-; CHECK-NEXT: .cell -42
-
-; constants with same value but from different functions share a single slot
-; CHECK-LABEL: CPI11_0:
-; CHECK-NEXT: CPI12_0:
-; CHECK-NEXT: .cell 12345678901234567890
