@@ -29,7 +29,9 @@ def CC_SYNCVM : CallingConv<[
   // Do not assign register for variables marked as ABI DATA
   CCIfZkSync01AbiData<CCAssignToReg<[R15]>>,
 
-  // For now, reserve R15 for ABI data passing
+  // SyncVM doesn't have callee saved registers at the moment,
+  // so use all register but R15 to pass arguments.
+  // R15 is reserved for abi data parameter.
   CCAssignToReg<[R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14]>,
   CCAssignToStack<32, 1>,
 ]>;
