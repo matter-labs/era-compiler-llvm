@@ -25,9 +25,17 @@ define i256 @materialize_big_imm() nounwind {
 define i256 @materialize_negative_imm(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_negative_imm:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add @CPI2_0[0], r0, r1
+; CHECK-NEXT:    sub.s 1, r0, r1
 ; CHECK-NEXT:    ret
   ret i256 -1
+}
+
+define i256 @materialize_negative_imm_2(i256 %par) nounwind {
+; CHECK-LABEL: materialize_negative_imm_2:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    sub.s 32767, r0, r1
+; CHECK-NEXT:    ret
+  ret i256 -32767
 }
 
 define i256 @materialize_smallimm_in_operation(i256 %par) nounwind {
@@ -42,8 +50,7 @@ define i256 @materialize_smallimm_in_operation(i256 %par) nounwind {
 define i256 @materialize_bigimm_in_operation(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_bigimm_in_operation:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add @CPI4_0[0], r0, r2
-; CHECK-NEXT:    add r1, r2, r1
+; CHECK-NEXT:    sub.s 42, r1, r1
 ; CHECK-NEXT:    ret
   %res = add i256 %par, -42
   ret i256 %res
@@ -52,8 +59,7 @@ define i256 @materialize_bigimm_in_operation(i256 %par) nounwind {
 define i256 @materialize_bigimm_in_operation_2(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_bigimm_in_operation_2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add @CPI5_0[0], r0, r2
-; CHECK-NEXT:    add r1, r2, r1
+; CHECK-NEXT:    sub.s 42, r1, r1
 ; CHECK-NEXT:    ret
   %res = add i256 -42, %par
   ret i256 %res
@@ -63,7 +69,7 @@ define i256 @materialize_bigimm_in_and_operation(i256 %par) nounwind {
 ; TODO: CPR-1365 Consider to trade size for cycles in O3 / hot code
 ; CHECK-LABEL: materialize_bigimm_in_and_operation:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add @CPI6_0[0], r0, r2
+; CHECK-NEXT:    sub.s 42, r0, r2
 ; CHECK-NEXT:    and r1, r2, r1
 ; CHECK-NEXT:    ret
   %res = and i256 %par, -42
@@ -74,7 +80,7 @@ define i256 @materialize_bigimm_in_xor_operation(i256 %par) nounwind {
 ; TODO: CPR-1365 Consider to trade size for cycles in O3 / hot code
 ; CHECK-LABEL: materialize_bigimm_in_xor_operation:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add @CPI7_0[0], r0, r2
+; CHECK-NEXT:    sub.s 42, r0, r2
 ; CHECK-NEXT:    xor r1, r2, r1
 ; CHECK-NEXT:    ret
   %res = xor i256 -42, %par
@@ -84,8 +90,7 @@ define i256 @materialize_bigimm_in_xor_operation(i256 %par) nounwind {
 define i256 @materialize_bigimm_in_sub_operation(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_bigimm_in_sub_operation:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add @CPI8_0[0], r0, r2
-; CHECK-NEXT:    sub r1, r2, r1
+; CHECK-NEXT:    add 42, r1, r1
 ; CHECK-NEXT:    ret
   %res = sub i256 %par, -42
   ret i256 %res
@@ -94,7 +99,7 @@ define i256 @materialize_bigimm_in_sub_operation(i256 %par) nounwind {
 define i256 @materialize_bigimm_in_sub_operation_2(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_bigimm_in_sub_operation_2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add @CPI9_0[0], r0, r2
+; CHECK-NEXT:    sub.s 42, r0, r2
 ; CHECK-NEXT:    sub r2, r1, r1
 ; CHECK-NEXT:    ret
   %res = sub i256 -42, %par
@@ -112,7 +117,7 @@ define i256 @materialize_zero() nounwind {
 define i256 @materialize_bigimm_1(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_bigimm_1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add @CPI11_0[0], r0, r2
+; CHECK-NEXT:    add @CPI12_0[0], r0, r2
 ; CHECK-NEXT:    sub r2, r1, r1
 ; CHECK-NEXT:    ret
   %res = sub i256 12345678901234567890, %par
@@ -122,7 +127,7 @@ define i256 @materialize_bigimm_1(i256 %par) nounwind {
 define i256 @materialize_bigimm_2(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_bigimm_2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add @CPI12_0[0], r0, r2
+; CHECK-NEXT:    add @CPI13_0[0], r0, r2
 ; CHECK-NEXT:    sub r2, r1, r1
 ; CHECK-NEXT:    ret
   %res = sub i256 12345678901234567890, %par
@@ -137,20 +142,7 @@ define i256 @materialize_bigimm_2(i256 %par) nounwind {
 ; CHECK-LABEL: CPI1_0:
 ; CHECK: .cell 65536
 
-; materialize_negative_imm
-; CHECK-LABEL: CPI2_0:
-; CHECK-NEXT: .cell -1
-
-; materialize_bigimm_in_operation
-; CHECK-NEXT: CPI4_0:
-; CHECK-NEXT: CPI5_0:
-; CHECK-NEXT: CPI6_0:
-; CHECK-NEXT: CPI7_0:
-; CHECK-NEXT: CPI8_0:
-; CHECK-NEXT: CPI9_0:
-; CHECK-NEXT: .cell -42
-
 ; constants with same value but from different functions share a single slot
-; CHECK-LABEL: CPI11_0:
-; CHECK-NEXT: CPI12_0:
+; CHECK-LABEL: CPI12_0:
+; CHECK-NEXT: CPI13_0:
 ; CHECK-NEXT: .cell 12345678901234567890
