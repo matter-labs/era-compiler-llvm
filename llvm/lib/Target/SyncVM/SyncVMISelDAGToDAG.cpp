@@ -97,6 +97,19 @@ private:
                           SDValue &Disp);
   bool SelectStackAddrCommon(SDValue Addr, SDValue &Base1, SDValue &Base2,
                              SDValue &Disp, bool IsAdjusted);
+  // select load from stack address
+  bool SelectSTACKLOAD(SDValue UMUL, SDValue &LOAD);
+
+  // select if the addressing is done by single register.
+  bool SelectStackAddrReg(SDValue UMUL, SDValue &Reg);
+
+  bool SelectStackDIV(StoreSDNode* store);
+  bool SelectStackMUL(StoreSDNode* store);
+  using MapType = DenseMap<uint8_t, std::pair<unsigned, bool>>;
+
+  bool SelectStackOperation(StoreSDNode *store, unsigned Operator,
+                            const MapType &Mapping);
+
   SyncVMISelAddressMode MergeAddr(const SyncVMISelAddressMode &LHS,
                                   const SyncVMISelAddressMode &RHS, SDLoc DL);
 };
@@ -332,6 +345,188 @@ bool SyncVMDAGToDAGISel::SelectAdjStackAddr(SDValue N, SDValue &Base1,
   return SelectStackAddrCommon(N, Base1, Base2, Disp, true);
 }
 
+bool SyncVMDAGToDAGISel::SelectSTACKLOAD(SDValue N, SDValue &LOAD) {
+  if (N->getOpcode() != ISD::LOAD) {
+    return false;
+  }
+  auto opnd1 = N->getOperand(1);
+  if (opnd1->getOpcode() == ISD::FrameIndex) {
+    LOAD.setNode(opnd1.getNode());
+    return true;
+  }
+  return false;
+}
+
+bool SyncVMDAGToDAGISel::SelectStackAddrReg(SDValue N, SDValue &LOAD) {
+  SyncVMISelAddressMode AM;
+  if (MatchAddress(N, AM, true /* IsStackAddr */)) {
+    AM = SyncVMISelAddressMode();
+    if (MatchAddress(N, AM, false))
+      return false;
+  }
+  return false;
+}
+
+static bool isSmallConstant(SDValue Node) {
+  if (!isa<ConstantSDNode>(Node)) {
+    return false;
+  }
+  auto sdnode = cast<ConstantSDNode>(Node);
+  APInt val = sdnode->getAPIntValue();
+  // TODO: remove negative restriction
+  if (!val.isSignedIntN(16) || val.isNegative()) {
+    return false;
+  }
+  return true;
+}
+
+template<unsigned AS>
+static bool isLoadFrom(SDValue Node) {
+  if (Node->getOpcode() != ISD::LOAD) {
+    return false;
+  }
+
+  LoadSDNode* SDNode = cast<LoadSDNode>(Node);
+  if (SDNode->getAddressSpace() != AS) {
+    return false;
+  }
+
+  return true;
+}
+
+
+bool SyncVMDAGToDAGISel::SelectStackDIV(StoreSDNode *store) {
+  // encoding: isImm? isLoadFromStack? isLoadFromHeap? isLoadFromCode?
+  DenseMap<uint8_t, std::pair<unsigned, bool>> Mapping = {
+    {0b00000000, {SyncVM::DIVrrsr_s, false}},
+
+    {0b10000000, {SyncVM::DIVirsr_s, false}},
+    {0b01000000, {SyncVM::DIVsrsr_s, false}},
+    {0b00010000, {SyncVM::DIVcrsr_s, false}},
+
+    {0b00001000, {SyncVM::DIVxrsr_s, true}},
+    {0b00000100, {SyncVM::DIVzrsr_s, true}},
+    {0b00000001, {SyncVM::DIVyrsr_s, true}},
+  };
+  return SelectStackOperation(store, ISD::UDIVREM, Mapping);
+}
+
+bool SyncVMDAGToDAGISel::SelectStackMUL(StoreSDNode *store) {
+  // encoding: isImm? isLoadFromStack? isLoadFromHeap? isLoadFromCode?
+  DenseMap<uint8_t, std::pair<unsigned, bool>> Mapping = {
+    {0b00000000, {SyncVM::MULrrsr_s, false}},
+
+    {0b10000000, {SyncVM::MULirsr_s, false}},
+    {0b01000000, {SyncVM::MULsrsr_s, false}},
+    {0b00010000, {SyncVM::MULcrsr_s, false}},
+
+    {0b00001000, {SyncVM::MULirsr_s, true}},
+    {0b00000100, {SyncVM::MULsrsr_s, true}},
+    {0b00000001, {SyncVM::MULcrsr_s, true}},
+  };
+  return SelectStackOperation(store, ISD::UMUL_LOHI, Mapping);
+}
+
+bool SyncVMDAGToDAGISel::SelectStackOperation(StoreSDNode *store,
+                                              unsigned Operator,
+                                              const MapType &Mapping) {
+  SDValue value = store->getValue();
+  if (value->getOpcode() != Operator) {
+    return false;
+  }
+
+  // we have to make sure we are saving the dividend rather than the remainder.
+  if (value.getResNo() != 0)  {
+    return false;
+  }
+
+  SDValue chain = store->getChain();
+
+  // depending on the operand types of UDIVREM, emit different DIV instructions
+  SDValue opnd1 = value->getOperand(0);
+  SDValue opnd2 = value->getOperand(1);
+
+  auto getOpndEncoding = [](SDValue opnd) {
+    uint8_t encoding =
+        (isSmallConstant(opnd) ? 0b1000 : 0) |
+        (isLoadFrom<SyncVMAS::AS_STACK>(opnd) ? 0b0100 : 0) |
+        //(isLoadFrom<SyncVMAS::AS_HEAP>(opnd) ? 0b0010 : 0) |
+        (isLoadFrom<SyncVMAS::AS_CODE>(opnd) ? 0b0001 : 0);
+    return encoding;
+  };
+
+  uint8_t encoding =
+    (getOpndEncoding(opnd1) << 4) | getOpndEncoding(opnd2);
+
+  if (Mapping.count(encoding) == 0) {
+    return false;
+  }
+  auto map = Mapping.lookup(encoding);
+  auto opcode = map.first;
+  bool flip = map.second;
+
+  SDLoc DL(store);
+
+  auto push_opnd = [&](SmallVector<SDValue, 8> &ops, SDValue &opnd) {
+    if (isSmallConstant(opnd)) {
+      opnd = CurDAG->getTargetConstant(
+          cast<ConstantSDNode>(opnd.getNode())->getAPIntValue().getSExtValue(),
+          DL, MVT::i256);
+      ops.push_back(opnd);
+    } else if (isLoadFrom<SyncVMAS::AS_STACK>(opnd)) {
+      SDValue Base1, Base2, Disp;
+      LoadSDNode* load = cast<LoadSDNode>(opnd);
+      bool successful =
+          SelectStackAddr(load->getBasePtr(), Base1, Base2, Disp);
+      assert(successful);
+      ops.push_back(Base1);
+      ops.push_back(Base2);
+      ops.push_back(Disp);
+    } else if (isLoadFrom<SyncVMAS::AS_CODE>(opnd) ||
+        isLoadFrom<SyncVMAS::AS_HEAP>(opnd)) {
+      SDValue Base1, Disp;
+      LoadSDNode* load = cast<LoadSDNode>(opnd);
+      bool successful = SelectMemAddr(load->getBasePtr(), Base1, Disp);
+      assert(successful);
+      ops.push_back(Base1);
+      ops.push_back(Disp);
+    } else {
+      ops.push_back(opnd);
+    }
+  };
+
+  SmallVector<SDValue, 8> ops_vec;
+  if (flip) {
+    push_opnd(ops_vec, opnd2);
+    push_opnd(ops_vec, opnd1);
+  } else {
+    push_opnd(ops_vec, opnd1);
+    push_opnd(ops_vec, opnd2);
+  }
+
+  SDValue Base1, Base2, Disp;
+  bool successful = SelectStackAddr(store->getBasePtr(), Base1, Base2, Disp);
+  ops_vec.push_back(Base1);
+  ops_vec.push_back(Base2);
+  ops_vec.push_back(Disp);
+  ops_vec.push_back(CurDAG->getTargetConstant(0, DL, MVT::i256));
+
+  MachineRegisterInfo &RI = MF->getRegInfo();
+  Register VReg = RI.createVirtualRegister(&SyncVM::GR256RegClass);
+
+  auto ops = llvm::makeArrayRef(ops_vec);
+
+  SDNode *ResNode = CurDAG->getMachineNode(opcode, DL, MVT::i256, ops);
+  CurDAG->setNodeMemRefs(cast<MachineSDNode>(ResNode), {store->getMemOperand()});
+  
+  SDValue copyToReg = CurDAG->getCopyToReg(chain, DL, VReg, SDValue(ResNode, 0));
+  ReplaceNode(store, copyToReg.getNode());
+
+  // divert the remainder to the register
+  ReplaceUses(value.getValue(1), CurDAG->getRegister(VReg, MVT::i256));
+  return true;
+}
+
 void SyncVMDAGToDAGISel::Select(SDNode *Node) {
   SDLoc DL(Node);
 
@@ -404,6 +599,23 @@ void SyncVMDAGToDAGISel::Select(SDNode *Node) {
       ReplaceNode(Node, Node->getOperand(0).getNode());
       return;
     }
+    break;
+  }
+  case ISD::STORE: {
+    // Match patterns like:
+    // (store_stack (udivrem GR256:$src1, GR256:$src2):1, stackaddr:$dst1)
+    if (ISD::isUNINDEXEDStore(Node)) {
+      StoreSDNode* SDNode = cast<StoreSDNode>(Node);
+      if (SDNode->getAddressSpace() == SyncVMAS::AS_STACK) {
+        if (SelectStackDIV(SDNode)) {
+          return;
+        }
+        if (SelectStackMUL(SDNode)) {
+          return;
+        }
+      }
+    }
+    break;
   }
   }
 

@@ -124,7 +124,4 @@ void SyncVMPassConfig::addPreEmitPass() {
   addPass(createSyncVMMoveCallResultSpillPass());
   addPass(createSyncVMExpandSelectPass());
   addPass(createSyncVMExpandPseudoPass());
-  // TODO: The pass combines store with MULxxrr, DIVxxrr regardles of whether
-  // the destination register has one use. Should be fixed and reenabled.
-  // addPass(createSyncVMPeepholePass());
 }

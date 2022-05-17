@@ -622,6 +622,7 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
   def rrrr_p : Pseudo<(outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, GR256:$rs1),
                       !strconcat(asmstring, "\t$rs0, $rs1, $rd0, $rd1"),
                       [(set GR256:$rd0, GR256:$rd1, (node GR256:$rs0, GR256:$rs1))]>;
+
   def rrrr_s : Irrrr<opcode, 0, 1,
                      (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
                      !strconcat(asmstring, "$cc\t$rs0, $rs1, $rd0, $rd1"), []>;
@@ -811,6 +812,7 @@ def : Pat<(SyncVMcmp GR256:$lhs, (load_stack stackaddr:$rhs)), (SUBzrr_v stackad
 
 defm MUL  : Arith2<6, "mul", umullohi, 1>;
 defm MUL  : Arith2ICommutable<6, "mul", umullohi>;
+
 defm DIV  : Arith2<8, "div", udivrem, 0>;
 defm DIV  : Arith2INonCommutable<8, "div", udivrem>;
 
