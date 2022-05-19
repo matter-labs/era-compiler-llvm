@@ -88,30 +88,31 @@ jobs:
       if: ${{ (env.LLVM_BUILD_TYPE == 'release') && (env.USE_BUILD_CACHE == 'true') }}
       run: cp -R ~/llvm_build_${LLVM_BUILD_TYPE}_cache ${{github.workspace}}/compiler-llvm/build-${LLVM_BUILD_TYPE}
 
-    - name: Testing. Installing deps for building LLVM framework.
-      run: |
-        ${DOCKER_CMD} sh -c \
-        "apt update && \
-        apt install software-properties-common -y && \
-        add-apt-repository ppa:deadsnakes/ppa -y && \
-        apt install python3.9 python3.9-dev python3.9-distutils -y"
+    # - name: Testing. Installing deps for building LLVM framework.
+    #   run: |
+    #     ${DOCKER_CMD} sh -c \
+    #     "apt update && \
+    #     apt install software-properties-common -y && \
+    #     add-apt-repository ppa:deadsnakes/ppa -y && \
+    #     apt install python3.9 python3.9-dev python3.9-distutils -y"
 
-    - name: Testing. Building LLVM framework.
-      run: |
-        chmod +x compiler-llvm/build.sh
-        ${DOCKER_CMD} sh -c "cd compiler-llvm && \
-        ./build.sh ${LLVM_BUILD_TYPE}"
+    # - name: Testing. Building LLVM framework.
+    #   run: |
+    #     chmod +x compiler-llvm/build.sh
+    #     ${DOCKER_CMD} sh -c "cd compiler-llvm && \
+    #     ./build.sh ${LLVM_BUILD_TYPE}"
 
-    - name: Testing. Running regression LLVM tests.
-      run: ${DOCKER_CMD} sh -c "
-        cd compiler-llvm/build-${LLVM_BUILD_TYPE} &&
-        make -j24 check-llvm-codegen-syncvm"
+    # - name: Testing. Running regression LLVM tests.
+    #   run: ${DOCKER_CMD} sh -c "
+    #     cd compiler-llvm/build-${LLVM_BUILD_TYPE} &&
+    #     make -j24 check-llvm-codegen-syncvm"
 
     - name: Testing. Building and running compiler tester.
       id: compiler_tester_run
       run: |
         ${DOCKER_CMD} sh -c "cd compiler-tester && \
         git config --global url."${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@https://github.com/".insteadOf ssh://git@github.com/ && \
+        git config --global url."${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@https://github.com/".insteadOf https://github.com/ && \
         ./run.sh info ${LLVM_BUILD_TYPE}"
 
     - name: Testing. Running segfault.sh.
