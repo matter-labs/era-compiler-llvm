@@ -88,6 +88,15 @@ jobs:
       if: ${{ (env.LLVM_BUILD_TYPE == 'release') && (env.USE_BUILD_CACHE == 'true') }}
       run: cp -R ~/llvm_build_${LLVM_BUILD_TYPE}_cache ${{github.workspace}}/compiler-llvm/build-${LLVM_BUILD_TYPE}
 
+    - name: Testing. Installing deps for building LLVM framework.
+      run: |
+        ${DOCKER_CMD} sh -c \
+        "apt update && \
+        apt install software-properties-common -y && \
+        add-apt-repository ppa:deadsnakes/ppa && \
+        add-apt-repository ppa:deadsnakes/ppa" && \
+        apt install python3.9 -y
+
     - name: Testing. Building LLVM framework.
       run: |
         chmod +x compiler-llvm/build.sh

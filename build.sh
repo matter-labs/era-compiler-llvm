@@ -102,7 +102,7 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         -DLLVM_ENABLE_SPHINX='Off' \
         -DLLVM_ENABLE_OCAMLDOC='Off' \
         -DLLVM_ENABLE_BINDINGS='Off'
-    
+
     cd "build-${DIRECTORY_SUFFIX}/"
     make -j "$(nproc)"
 fi
