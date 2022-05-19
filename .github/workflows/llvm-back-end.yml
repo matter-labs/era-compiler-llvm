@@ -100,7 +100,7 @@ jobs:
       run: |
         chmod +x compiler-llvm/build.sh
         ${DOCKER_CMD} sh -c "cd compiler-llvm && \
-        export PYTHON_EXECUTABLE=/usr/bin/python3.9 && \
+        python --version && \
         ./build.sh ${LLVM_BUILD_TYPE}"
 
     - name: Testing. Running regression LLVM tests.
