@@ -38,7 +38,7 @@ jobs:
       run: |
         rm -rf ~/llvm_build_release_cache
         mv ${{github.workspace}}/compiler-llvm/build-release ~/llvm_build_release_cache
-    
+
     - name: Notify to Mattermost (on unsuccessful deploys)
       if: failure() || cancelled()
       uses: tferreira/matterfy@releases/v1
