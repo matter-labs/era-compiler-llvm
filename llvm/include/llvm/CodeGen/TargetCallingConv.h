@@ -52,11 +52,8 @@ namespace ISD {
     unsigned IsInConsecutiveRegs : 1;
     unsigned IsCopyElisionCandidate : 1; ///< Argument copy elision candidate
     unsigned IsPointer : 1;
-    // SyncVM-specific
-    unsigned IsZkSync01AbiData : 1;
 
-    // SyncVM: steal 1 bit
-    unsigned ByValOrByRefSize: 31; ///< Byval or byref struct size
+    unsigned ByValOrByRefSize; ///< Byval or byref struct size
 
     unsigned PointerAddrSpace; ///< Address space of pointer argument
 
@@ -68,7 +65,7 @@ namespace ISD {
           IsSwiftError(0), IsCFGuardTarget(0), IsHva(0), IsHvaStart(0),
           IsSecArgPass(0), MemAlign(0), OrigAlign(0),
           IsInConsecutiveRegsLast(0), IsInConsecutiveRegs(0),
-          IsCopyElisionCandidate(0), IsPointer(0), IsZkSync01AbiData(0), ByValOrByRefSize(0),
+          IsCopyElisionCandidate(0), IsPointer(0), ByValOrByRefSize(0),
           PointerAddrSpace(0) {
       static_assert(sizeof(*this) == 3 * sizeof(unsigned), "flags are too big");
     }
@@ -143,10 +140,6 @@ namespace ISD {
 
     bool isPointer()  const { return IsPointer; }
     void setPointer() { IsPointer = 1; }
-
-    // SyncVM
-    bool isZkSync01AbiData() const { return IsZkSync01AbiData; }
-    void setZkSync01AbiData() { IsZkSync01AbiData = 1; }
 
     Align getNonZeroMemAlign() const {
       return decodeMaybeAlign(MemAlign).valueOrOne();

@@ -269,9 +269,6 @@ def SwiftSelf : EnumAttr<"swiftself", [ParamAttr]>;
 /// Argument is swift async context.
 def SwiftAsync : EnumAttr<"swiftasync", [ParamAttr]>;
 
-/// Argument is of ABI DATA value in SyncVM
-def ZkSync01AbiData : EnumAttr<"zksync_01_abi_data", [ParamAttr]>;
-
 /// Function must be in a unwind table.
 def UWTable : EnumAttr<"uwtable", [FnAttr]>;
 

@@ -416,7 +416,6 @@ declare void  @onearg.void(i256 %a1) nounwind
 declare i256* @onearg.i256p(i256 %a1) nounwind
 declare i256  @twoarg(i256 %a1, i256 %a2) nounwind
 declare i256  @threearg(i256 %a1, i256 %a2, i256 %a3) nounwind
-declare i256  @threearg_abi_data(i256 zksync_01_abi_data %abi_data, i256 %a1, i256 %a2, i256 %a3) nounwind
 declare i256  @onestack(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256) nounwind
 declare i256  @twostack(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256) nounwind
 

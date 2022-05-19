@@ -118,8 +118,6 @@ void TargetLoweringBase::ArgListEntry::setAttributes(const CallBase *Call,
   IsSwiftSelf = Call->paramHasAttr(ArgIdx, Attribute::SwiftSelf);
   IsSwiftAsync = Call->paramHasAttr(ArgIdx, Attribute::SwiftAsync);
   IsSwiftError = Call->paramHasAttr(ArgIdx, Attribute::SwiftError);
-  // SyncVM
-  IsZkSync01AbiData = Call->paramHasAttr(ArgIdx, Attribute::ZkSync01AbiData);
 
   Alignment = Call->getParamStackAlign(ArgIdx);
   IndirectType = nullptr;

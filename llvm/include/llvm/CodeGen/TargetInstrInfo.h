@@ -234,16 +234,9 @@ public:
   /// prior to the pair.
   int64_t getFrameTotalSize(const MachineInstr &I) const {
     if (isFrameSetup(I)) {
-      // SyncVM update
-      if (I.getOperand(1).isImm()) {
-        assert(I.getOperand(1).getImm() >= 0 &&
+      assert(I.getOperand(1).getImm() >= 0 &&
              "Frame size must not be negative");
-        return getFrameSize(I) + I.getOperand(1).getImm();
-      } else {
-        assert(!I.getOperand(1).getCImm()->getValue().isNegative() &&
-             "Frame size must not be negative");
-        return getFrameSize(I) + I.getOperand(1).getCImm()->getValue().getSExtValue();
-      }
+      return getFrameSize(I) + I.getOperand(1).getImm();
     }
     return getFrameSize(I);
   }

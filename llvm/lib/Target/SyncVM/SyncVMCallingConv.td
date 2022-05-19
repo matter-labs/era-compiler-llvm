@@ -26,9 +26,6 @@ def CC_SYNCVM : CallingConv<[
   // promote all integer types to i256
   CCIfType<[i1, i8, i16, i32, i64, i128], CCPromoteToType<i256>>,
 
-  // Do not assign register for variables marked as ABI DATA
-  CCIfZkSync01AbiData<CCAssignToReg<[R15]>>,
-
   // SyncVM doesn't have callee saved registers at the moment,
   // so use all register but R15 to pass arguments.
   // R15 is reserved for abi data parameter.

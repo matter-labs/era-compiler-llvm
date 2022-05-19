@@ -289,8 +289,6 @@ public:
     bool IsSwiftAsync : 1;
     bool IsSwiftError : 1;
     bool IsCFGuardTarget : 1;
-    // SyncVM
-    bool IsZkSync01AbiData : 1;
     MaybeAlign Alignment = None;
     Type *IndirectType = nullptr;
 
@@ -298,8 +296,7 @@ public:
         : IsSExt(false), IsZExt(false), IsInReg(false), IsSRet(false),
           IsNest(false), IsByVal(false), IsByRef(false), IsInAlloca(false),
           IsPreallocated(false), IsReturned(false), IsSwiftSelf(false),
-          IsSwiftAsync(false), IsSwiftError(false), IsCFGuardTarget(false),
-          IsZkSync01AbiData(false) {}
+          IsSwiftAsync(false), IsSwiftError(false), IsCFGuardTarget(false) {}
 
     void setAttributes(const CallBase *Call, unsigned ArgIdx);
   };

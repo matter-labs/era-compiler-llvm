@@ -9486,8 +9486,6 @@ TargetLowering::LowerCallTo(TargetLowering::CallLoweringInfo &CLI) const {
     Entry.IsSwiftAsync = false;
     Entry.IsSwiftError = false;
     Entry.IsCFGuardTarget = false;
-    // SyncVM
-    Entry.IsZkSync01AbiData = false;
 
     Entry.Alignment = Alignment;
     CLI.getArgs().insert(CLI.getArgs().begin(), Entry);
@@ -9610,9 +9608,6 @@ TargetLowering::LowerCallTo(TargetLowering::CallLoweringInfo &CLI) const {
         Flags.setByVal();
       if (Args[i].IsByRef)
         Flags.setByRef();
-      // SyncVM
-      if (Args[i].IsZkSync01AbiData)
-        Flags.setZkSync01AbiData();
       if (Args[i].IsPreallocated) {
         Flags.setPreallocated();
         // Set the byval flag for CCAssignFn callbacks that don't know about
@@ -10214,10 +10209,6 @@ void SelectionDAGISel::LowerArguments(const Function &F) {
         Flags.setCopyElisionCandidate();
       if (Arg.hasAttribute(Attribute::Returned))
         Flags.setReturned();
-
-      // SyncVM
-      if (Arg.hasAttribute(Attribute::ZkSync01AbiData))
-        Flags.setZkSync01AbiData();
 
       MVT RegisterVT = TLI->getRegisterTypeForCallingConv(
           *CurDAG->getContext(), F.getCallingConv(), VT);
