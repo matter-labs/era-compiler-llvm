@@ -39,7 +39,10 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         -DLLVM_ENABLE_DOXYGEN='Off' \
         -DLLVM_ENABLE_SPHINX='Off' \
         -DLLVM_ENABLE_OCAMLDOC='Off' \
-        -DLLVM_ENABLE_BINDINGS='Off'
+        -DLLVM_ENABLE_BINDINGS='Off' \
+        -DPYTHON_INCLUDE_DIR=$(python -c "from distutils.sysconfig import get_python_inc; print(get_python_inc())")  \
+        -DPYTHON_LIBRARY=$(python -c "import distutils.sysconfig as sysconfig; print(sysconfig.get_config_var('LIBDIR'))") \
+        -DPYTHON_EXECUTABLE:FILEPATH=`which python`
 
     cd "build-${DIRECTORY_SUFFIX}/"
     make -j "$(sysctl -n hw.logicalcpu)"
