@@ -59,7 +59,7 @@ jobs:
       uses: actions/checkout@v2
       with:
         repository: matter-labs/compiler-tester
-        ref: env.COMPILER_BRANCH_NAME
+        ref: ${{ env.COMPILER_BRANCH_NAME }}
         submodules: recursive
         token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
         path: 'compiler-tester'
