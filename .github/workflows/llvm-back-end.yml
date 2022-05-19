@@ -109,7 +109,10 @@ jobs:
 
     - name: Testing. Building and running compiler tester.
       id: compiler_tester_run
-      run: ${DOCKER_CMD} sh -c "cd compiler-tester && ./run.sh info ${LLVM_BUILD_TYPE}"
+      run: |
+        ${DOCKER_CMD} sh -c "cd compiler-tester && \
+        git config --global url."${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@https://github.com/".insteadOf ssh://git@github.com/ && \
+        ./run.sh info ${LLVM_BUILD_TYPE}"
 
     - name: Testing. Running segfault.sh.
       if: always() && steps.compiler_tester_run.outcome == 'failure'
