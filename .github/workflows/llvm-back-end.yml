@@ -3,7 +3,8 @@ name: LLVM testing
 on:
   pull_request:
     branches:
-        - main
+      - main
+      - dev-1.1
   workflow_dispatch:
     inputs:
       llvm_build_type:
@@ -17,7 +18,7 @@ on:
 
 jobs:
   llvm_testing:
-    runs-on: [self-hosted, CI-worker]
+    runs-on: [self-hosted, compiler]
     steps:
     - uses: AutoModality/action-clean@v1.1.0
     - uses: webfactory/ssh-agent@v0.5.3
@@ -27,14 +28,38 @@ jobs:
       run: |
         echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
         echo "COMPOSE_PROJECT_NAME=llvm_testing" >> $GITHUB_ENV
-        echo "DOCKER_CMD=docker-compose exec -T zk" >> $GITHUB_ENV
+        echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
         echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release'}}" >> $GITHUB_ENV
         echo "USE_BUILD_CACHE=${{ github.event.inputs.use_build_cache || 'true'}}" >> $GITHUB_ENV
+
+    - name: Get branch name (merge)
+      if: github.event_name != 'pull_request'
+      shell: bash
+      run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
+
+    - name: Get branch name (pull request)
+      if: github.event_name == 'pull_request'
+      shell: bash
+      run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
+
+    - name: Set compiler-tester branch depending on current branch
+      if: github.event_name == 'pull_request'
+      shell: bash
+      run: |
+        if [[ "${BRANCH_NAME}" == "main" ]]; then
+          echo "COMPILER_BRANCH_NAME=main" >> $GITHUB_ENV
+        elif [[ "${BRANCH_NAME}" == "dev-1.1" ]]; then
+          echo "COMPILER_BRANCH_NAME=vm1.1" >> $GITHUB_ENV
+        else
+          echo "Cannot map current branch to compiler-tester branch"
+          exit 1
+        fi
 
     - name: Preparing workspace. Checkout compiler-tester repository.
       uses: actions/checkout@v2
       with:
         repository: matter-labs/compiler-tester
+        ref: ${{ env.COMPILER_BRANCH_NAME }}
         submodules: recursive
         token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
         path: 'compiler-tester'
@@ -46,8 +71,8 @@ jobs:
 
     - name: Preparing workspace. Start docker.
       run: |
-        docker-compose pull
-        docker-compose up -d zk
+        docker compose pull
+        docker compose up -d zk
       env:
           SSH_PRIVATE_KEY: ${{secrets.SSH_PK_BOT}}
 
@@ -61,12 +86,23 @@ jobs:
 
     - name: Preparing workspace. Getting llvm release build cache.
       if: ${{ (env.LLVM_BUILD_TYPE == 'release') && (env.USE_BUILD_CACHE == 'true') }}
-      run: cp -R ~/llvm_build_${LLVM_BUILD_TYPE}_cache ${{github.workspace}}/compiler-llvm/build-${LLVM_BUILD_TYPE}
+      run: |
+        mkdir -p ~/llvm_build_${LLVM_BUILD_TYPE}_cache
+        cp -R ~/llvm_build_${LLVM_BUILD_TYPE}_cache ${{github.workspace}}/compiler-llvm/build-${LLVM_BUILD_TYPE}
+
+    - name: Testing. Installing deps for building LLVM framework.
+      run: |
+        ${DOCKER_CMD} sh -c \
+        "apt update && \
+        apt install software-properties-common -y && \
+        add-apt-repository ppa:deadsnakes/ppa -y && \
+        apt install python3.9 python3.9-dev python3.9-distutils -y"
 
     - name: Testing. Building LLVM framework.
       run: |
         chmod +x compiler-llvm/build.sh
-        ${DOCKER_CMD} sh -c "cd compiler-llvm && ./build.sh ${LLVM_BUILD_TYPE}"
+        ${DOCKER_CMD} sh -c "cd compiler-llvm && \
+        ./build.sh ${LLVM_BUILD_TYPE}"
 
     - name: Testing. Running regression LLVM tests.
       run: ${DOCKER_CMD} sh -c "
@@ -75,7 +111,11 @@ jobs:
 
     - name: Testing. Building and running compiler tester.
       id: compiler_tester_run
-      run: ${DOCKER_CMD} sh -c "cd compiler-tester && ./run.sh info ${LLVM_BUILD_TYPE}"
+      run: |
+        ${DOCKER_CMD} sh -c "cd compiler-tester && \
+        git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
+        git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
+        ./run.sh info ${LLVM_BUILD_TYPE}"
 
     - name: Testing. Running segfault.sh.
       if: always() && steps.compiler_tester_run.outcome == 'failure'
@@ -96,4 +136,4 @@ jobs:
       run: |
         # Removing trash images. This command isn't remove pulled work image.
         docker image prune -f --all
-        docker-compose down --rmi local -v
+        docker compose down --rmi local -v
