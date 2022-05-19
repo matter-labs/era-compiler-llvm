@@ -102,8 +102,8 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         -DLLVM_ENABLE_SPHINX='Off' \
         -DLLVM_ENABLE_OCAMLDOC='Off' \
         -DLLVM_ENABLE_BINDINGS='Off' \
-        -DPYTHON_INCLUDE_DIR=$(python3 -c "from distutils.sysconfig import get_python_inc; print(get_python_inc())")  \
-        -DPYTHON_LIBRARY=$(python3 -c "import distutils.sysconfig as sysconfig; print(sysconfig.get_config_var('LIBDIR'))") \
+        -DPYTHON_INCLUDE_DIR=`python3 -c "from distutils.sysconfig import get_python_inc; print(get_python_inc())"` \
+        -DPYTHON_LIBRARY=`python3 -c "import distutils.sysconfig as sysconfig; print(sysconfig.get_config_var('LIBDIR'))"` \
         -DPYTHON_EXECUTABLE:FILEPATH=`which python3`
 
     cd "build-${DIRECTORY_SUFFIX}/"
