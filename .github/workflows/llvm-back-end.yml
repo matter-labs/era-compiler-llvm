@@ -94,12 +94,14 @@ jobs:
         "apt update && \
         apt install software-properties-common -y && \
         add-apt-repository ppa:deadsnakes/ppa -y && \
-        apt install python3.7 -y"
+        apt install python3.9 -y"
 
     - name: Testing. Building LLVM framework.
       run: |
         chmod +x compiler-llvm/build.sh
-        ${DOCKER_CMD} sh -c "cd compiler-llvm && ./build.sh ${LLVM_BUILD_TYPE}"
+        ${DOCKER_CMD} sh -c "cd compiler-llvm && \
+        export PYTHON_EXECUTABLE=/usr/bin/python3.9 && \
+        ./build.sh ${LLVM_BUILD_TYPE}"
 
     - name: Testing. Running regression LLVM tests.
       run: ${DOCKER_CMD} sh -c "
