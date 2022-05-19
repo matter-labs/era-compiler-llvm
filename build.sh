@@ -101,8 +101,9 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         -DLLVM_ENABLE_DOXYGEN='Off' \
         -DLLVM_ENABLE_SPHINX='Off' \
         -DLLVM_ENABLE_OCAMLDOC='Off' \
-        -DLLVM_ENABLE_BINDINGS='Off'
-    
+        -DLLVM_ENABLE_BINDINGS='Off' \
+        -DPython3_EXECUTABLE=`which python3`
+
     cd "build-${DIRECTORY_SUFFIX}/"
     make -j "$(nproc)"
 fi
