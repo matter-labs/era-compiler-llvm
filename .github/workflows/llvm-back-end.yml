@@ -64,17 +64,17 @@ jobs:
         token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
         path: 'compiler-tester'
 
-    - name: Preparing workspace. Checkout compiler-llvm repository.
-      uses: actions/checkout@v2
-      with:
-        path: compiler-llvm
+    # - name: Preparing workspace. Checkout compiler-llvm repository.
+    #   uses: actions/checkout@v2
+    #   with:
+    #     path: compiler-llvm
 
-    - name: Preparing workspace. Start docker.
-      run: |
-        docker-compose pull
-        docker-compose up -d zk
-      env:
-          SSH_PRIVATE_KEY: ${{secrets.SSH_PK_BOT}}
+    # - name: Preparing workspace. Start docker.
+    #   run: |
+    #     docker-compose pull
+    #     docker-compose up -d zk
+    #   env:
+    #       SSH_PRIVATE_KEY: ${{secrets.SSH_PK_BOT}}
 
     - name: Preparing workspace. Setting docker ssh key.
       run: |
@@ -112,7 +112,7 @@ jobs:
       run: |
         ${DOCKER_CMD} sh -c "cd compiler-tester && \
         git config --global url."${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@https://github.com/".insteadOf ssh://git@github.com/ && \
-        git config --global url."${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@https://github.com/".insteadOf https://github.com/ && \
+        git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
         ./run.sh info ${LLVM_BUILD_TYPE}"
 
     - name: Testing. Running segfault.sh.
