@@ -111,7 +111,7 @@ jobs:
       id: compiler_tester_run
       run: |
         ${DOCKER_CMD} sh -c "cd compiler-tester && \
-        git config --global url."${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@https://github.com/".insteadOf ssh://git@github.com/ && \
+        git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
         git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
         ./run.sh info ${LLVM_BUILD_TYPE}"
 
