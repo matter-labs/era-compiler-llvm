@@ -3,7 +3,8 @@ name: LLVM testing
 on:
   pull_request:
     branches:
-        - main
+      - main
+      - dev-1.1
   workflow_dispatch:
     inputs:
       llvm_build_type:
@@ -31,10 +32,34 @@ jobs:
         echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release'}}" >> $GITHUB_ENV
         echo "USE_BUILD_CACHE=${{ github.event.inputs.use_build_cache || 'true'}}" >> $GITHUB_ENV
 
+    - name: Get branch name (merge)
+      if: github.event_name != 'pull_request'
+      shell: bash
+      run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
+
+    - name: Get branch name (pull request)
+      if: github.event_name == 'pull_request'
+      shell: bash
+      run: echo "BRANCH_NAME=$(echo ${GITHUB_HEAD_REF} | tr / -)" >> $GITHUB_ENV
+
+    - name: Set compiler-tester branch depending on current branch
+      if: github.event_name == 'pull_request'
+      shell: bash
+      run: |
+        if [[ "${BRANCH_NAME}" == "main" ]]; then
+          echo "COMPILER_BRANCH_NAME=main" >> $GITHUB_ENV
+        elif [[ "${BRANCH_NAME}" == "dev-1.1" ]]; then
+          echo "COMPILER_BRANCH_NAME=vm1.1" >> $GITHUB_ENV
+        else
+          echo "Cannot map current branch to compiler-tester branch"
+          exit 1
+        fi
+
     - name: Preparing workspace. Checkout compiler-tester repository.
       uses: actions/checkout@v2
       with:
         repository: matter-labs/compiler-tester
+        ref: env.COMPILER_BRANCH_NAME
         submodules: recursive
         token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
         path: 'compiler-tester'
