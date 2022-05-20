@@ -76,7 +76,7 @@ jobs:
         set -x
         cd compiler-llvm
         git status
-        git checkout "${BRANCH_NAME}"
+        git switch "${BRANCH_NAME}"
         git pull
         git status
         git checkout "${GITHUB_HEAD_REF}"
