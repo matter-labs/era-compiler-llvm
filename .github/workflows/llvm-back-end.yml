@@ -68,7 +68,6 @@ jobs:
       uses: actions/checkout@v2
       with:
         path: compiler-llvm
-        fetch-depth: 0
 
     - name: Preparing workspace. Pre-merging target branch of compiler-llvm repository (pull request)
       if: github.event_name == 'pull_request'
@@ -77,7 +76,7 @@ jobs:
         set -x
         cd compiler-llvm
         git status
-        git pull origin/"${BRANCH_NAME}"
+        git pull origin "${BRANCH_NAME}"
         git status
         git merge origin/dev-1.1
         git status
