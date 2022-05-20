@@ -87,7 +87,9 @@ jobs:
 
     - name: Preparing workspace. Getting llvm release build cache.
       if: ${{ (env.LLVM_BUILD_TYPE == 'release') && (env.USE_BUILD_CACHE == 'true') }}
-      run: cp -R ~/llvm_build_${LLVM_BUILD_TYPE}_cache ${{github.workspace}}/compiler-llvm/build-${LLVM_BUILD_TYPE}
+      run: |
+        mkdir -p ~/llvm_build_${LLVM_BUILD_TYPE}_cache
+        cp -R ~/llvm_build_${LLVM_BUILD_TYPE}_cache ${{github.workspace}}/compiler-llvm/build-${LLVM_BUILD_TYPE}
 
     - name: Testing. Installing deps for building LLVM framework.
       run: |
