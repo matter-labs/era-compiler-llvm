@@ -40,7 +40,7 @@ jobs:
     - name: Get branch name (pull request)
       if: github.event_name == 'pull_request'
       shell: bash
-      run: echo "BRANCH_NAME=$(echo ${GITHUB_HEAD_REF} | tr / -)" >> $GITHUB_ENV
+      run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
 
     - name: Set compiler-tester branch depending on current branch
       if: github.event_name == 'pull_request'
@@ -59,7 +59,7 @@ jobs:
       uses: actions/checkout@v2
       with:
         repository: matter-labs/compiler-tester
-        ref: env.COMPILER_BRANCH_NAME
+        ref: ${{ env.COMPILER_BRANCH_NAME }}
         submodules: recursive
         token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
         path: 'compiler-tester'
@@ -88,10 +88,19 @@ jobs:
       if: ${{ (env.LLVM_BUILD_TYPE == 'release') && (env.USE_BUILD_CACHE == 'true') }}
       run: cp -R ~/llvm_build_${LLVM_BUILD_TYPE}_cache ${{github.workspace}}/compiler-llvm/build-${LLVM_BUILD_TYPE}
 
+    - name: Testing. Installing deps for building LLVM framework.
+      run: |
+        ${DOCKER_CMD} sh -c \
+        "apt update && \
+        apt install software-properties-common -y && \
+        add-apt-repository ppa:deadsnakes/ppa -y && \
+        apt install python3.9 python3.9-dev python3.9-distutils -y"
+
     - name: Testing. Building LLVM framework.
       run: |
         chmod +x compiler-llvm/build.sh
-        ${DOCKER_CMD} sh -c "cd compiler-llvm && ./build.sh ${LLVM_BUILD_TYPE}"
+        ${DOCKER_CMD} sh -c "cd compiler-llvm && \
+        ./build.sh ${LLVM_BUILD_TYPE}"
 
     - name: Testing. Running regression LLVM tests.
       run: ${DOCKER_CMD} sh -c "
@@ -100,7 +109,11 @@ jobs:
 
     - name: Testing. Building and running compiler tester.
       id: compiler_tester_run
-      run: ${DOCKER_CMD} sh -c "cd compiler-tester && ./run.sh info ${LLVM_BUILD_TYPE}"
+      run: |
+        ${DOCKER_CMD} sh -c "cd compiler-tester && \
+        git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
+        git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
+        ./run.sh info ${LLVM_BUILD_TYPE}"
 
     - name: Testing. Running segfault.sh.
       if: always() && steps.compiler_tester_run.outcome == 'failure'
