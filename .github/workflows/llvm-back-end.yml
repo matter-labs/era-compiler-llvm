@@ -77,8 +77,9 @@ jobs:
         set -x
         cd compiler-llvm
         git status
-        git pull origin "${BRANCH_NAME}"
-        git merge "${BRANCH_NAME}"
+        git pull origin/"${BRANCH_NAME}"
+        git status
+        git merge origin/dev-1.1
         git status
 
     - name: Preparing workspace. Start docker.
