@@ -77,6 +77,7 @@ jobs:
         set -x
         cd compiler-llvm
         git status
+        git pull origin "${BRANCH_NAME}"
         git merge "${BRANCH_NAME}"
         git status
 
