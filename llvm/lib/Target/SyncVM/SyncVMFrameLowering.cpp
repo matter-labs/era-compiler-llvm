@@ -40,7 +40,7 @@ void SyncVMFrameLowering::emitPrologue(MachineFunction &MF,
   DebugLoc DL = MBBI != MBB.end() ? MBBI->getDebugLoc() : DebugLoc();
 
   // Get the number of bytes to allocate from the FrameInfo.
-  uint64_t StackSize = MFI.getStackSize();
+  uint64_t StackSize = MFI.getStackSize() - MFI.getMaxCallFrameSize();
 
   uint64_t NumCells = (StackSize - SyncVMFI->getCalleeSavedFrameSize()) / 32;
 
@@ -60,7 +60,7 @@ void SyncVMFrameLowering::emitEpilogue(MachineFunction &MF,
   DebugLoc DL = MBBI->getDebugLoc();
 
   // Get the number of bytes to allocate from the FrameInfo
-  uint64_t StackSize = MFI.getStackSize();
+  uint64_t StackSize = MFI.getStackSize() - MFI.getMaxCallFrameSize();
   unsigned CSSize = SyncVMFI->getCalleeSavedFrameSize();
   uint64_t NumCells = (StackSize - CSSize) / 32;
 
