@@ -291,6 +291,7 @@ define i256 @caller_i128.retabi(i256 %a1) nounwind {
 ; CHECK-LABEL: call.onestack
 define i256 @call.onestack() nounwind {
 ; TODO: Check calling conventions onse callee-saved and caller-saver registers defined
+; CHECK-NOT: nop stack+=[{0-9}]
 ; CHECK: context.sp r1
 ; CHECK: add 0, r0, stack[r1 - 0]
 ; CHECK: add r0, r0, r1
@@ -309,6 +310,7 @@ define i256 @call.onestack() nounwind {
 ; CHECK: add r0, r0, r14
 ; CHECK: near_call r0, @onestack
   %1 = call i256 @onestack(i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0)
+; CHECK-NOT: nop stack-=[{0-9}]
   ret i256 %1
 }
 
@@ -316,6 +318,7 @@ define i256 @call.onestack() nounwind {
 ; CHECK-LABEL: call.onestackabi
 define i256 @call.onestackabi() nounwind {
   %ptr = bitcast i256(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)* @onestack to i256*
+; CHECK-NOT: nop stack+=[{0-9}]
 ; CHECK: context.sp r1
 ; CHECK: add 0, r0, stack[r1 - 0]
 ; CHECK: add 42, r0, r15
@@ -334,6 +337,7 @@ define i256 @call.onestackabi() nounwind {
 ; CHECK: add r0, r0, r14
 ; CHECK: near_call r15, @onestack, @DEFAULT_UNWIND
   %1 = call i256(i256*, i256, ...) @llvm.syncvm.nearcall(i256* %ptr, i256 42, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0)
+; CHECK-NOT: nop stack-=[{0-9}]
   ret i256 %1
 }
 
