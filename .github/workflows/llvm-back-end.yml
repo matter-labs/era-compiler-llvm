@@ -76,11 +76,9 @@ jobs:
         set -x
         cd compiler-llvm
         git status
-        git switch "${BRANCH_NAME}"
-        git pull
+        git pull origin "${BRANCH_NAME}"
         git status
         git checkout "${GITHUB_HEAD_REF}"
-        git merge "${BRANCH_NAME}" --no-edit
         git status
 
     - name: Preparing workspace. Start docker.
