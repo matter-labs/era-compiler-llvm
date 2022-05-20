@@ -75,10 +75,6 @@ jobs:
       run: |
         cd compiler-llvm
         git status
-        git pull
-        git checkout "${BRANCH_NAME}"
-        git status
-        git checkout "${GITHUB_HEAD_REF}"
         git merge "${BRANCH_NAME}" --no-edit
         git status
 
