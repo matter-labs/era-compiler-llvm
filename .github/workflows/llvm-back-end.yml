@@ -69,19 +69,13 @@ jobs:
       with:
         path: compiler-llvm
 
-    - name: Preparing workspace. Pre-merging target branch of compiler-llvm repository (pull request)
+    - name: Preparing workspace. Pre-merging target branch of compiler-llvm repository (pull request)\
       if: github.event_name == 'pull_request'
-      shell: bash
-      run: |
-        set -x
-        cd compiler-llvm
-        git status
-        git pull
-        git checkout "${BRANCH_NAME}"
-        git status
-        git checkout "${GITHUB_HEAD_REF}"
-        git merge "${BRANCH_NAME}" --no-edit
-        git status
+      uses: devmasx/merge-branch@master
+      with:
+        type: now
+        target_branch: ${{ env.BRANCH_NAME }}
+        github_token: ${{ github.token }}
 
     - name: Preparing workspace. Start docker.
       run: |
