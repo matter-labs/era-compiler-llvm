@@ -28,7 +28,7 @@ jobs:
       run: |
         echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
         echo "COMPOSE_PROJECT_NAME=llvm_testing" >> $GITHUB_ENV
-        echo "DOCKER_CMD=docker-compose exec -T zk" >> $GITHUB_ENV
+        echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
         echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release'}}" >> $GITHUB_ENV
         echo "USE_BUILD_CACHE=${{ github.event.inputs.use_build_cache || 'true'}}" >> $GITHUB_ENV
 
@@ -71,8 +71,8 @@ jobs:
 
     - name: Preparing workspace. Start docker.
       run: |
-        docker-compose pull
-        docker-compose up -d zk
+        docker compose pull
+        docker compose up -d zk
       env:
           SSH_PRIVATE_KEY: ${{secrets.SSH_PK_BOT}}
 
@@ -86,7 +86,9 @@ jobs:
 
     - name: Preparing workspace. Getting llvm release build cache.
       if: ${{ (env.LLVM_BUILD_TYPE == 'release') && (env.USE_BUILD_CACHE == 'true') }}
-      run: cp -R ~/llvm_build_${LLVM_BUILD_TYPE}_cache ${{github.workspace}}/compiler-llvm/build-${LLVM_BUILD_TYPE}
+      run: |
+        mkdir -p ~/llvm_build_${LLVM_BUILD_TYPE}_cache
+        cp -R ~/llvm_build_${LLVM_BUILD_TYPE}_cache ${{github.workspace}}/compiler-llvm/build-${LLVM_BUILD_TYPE}
 
     - name: Testing. Installing deps for building LLVM framework.
       run: |
@@ -134,4 +136,4 @@ jobs:
       run: |
         # Removing trash images. This command isn't remove pulled work image.
         docker image prune -f --all
-        docker-compose down --rmi local -v
+        docker compose down --rmi local -v

@@ -17,7 +17,7 @@ jobs:
       run: |
         echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
         echo "COMPOSE_PROJECT_NAME=llvm_testing" >> $GITHUB_ENV
-        echo "DOCKER_CMD=docker-compose exec -T zk" >> $GITHUB_ENV
+        echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
 
     - name: Preparing workspace. Checkout compiler-llvm repository.
       uses: actions/checkout@v2
@@ -26,8 +26,8 @@ jobs:
 
     - name: Preparing workspace. Start docker.
       run: |
-        docker-compose pull
-        docker-compose up -d zk
+        docker compose pull
+        docker compose up -d zk
 
     - name: Testing. Building LLVM framework.
       run: |
@@ -54,4 +54,4 @@ jobs:
       run: |
         # Removing trash images. This command isn't remove pulled work image.
         docker image prune -f --all
-        docker-compose down --rmi local -v
+        docker compose down --rmi local -v
