@@ -11,10 +11,6 @@ on:
         description: 'Write llvm build type. Variables: release, debug'
         required: true
         default: 'release'
-      use_build_cache:
-        description: "Use llvm release build cache (debug build haven't cache). Variables: true, false"
-        required: true
-        default: 'true'
 
 jobs:
   llvm_testing:
@@ -30,7 +26,28 @@ jobs:
         echo "COMPOSE_PROJECT_NAME=llvm_testing" >> $GITHUB_ENV
         echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
         echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release'}}" >> $GITHUB_ENV
-        echo "USE_BUILD_CACHE=${{ github.event.inputs.use_build_cache || 'true'}}" >> $GITHUB_ENV
+
+    - name: Get branch name (merge)
+      if: github.event_name != 'pull_request'
+      shell: bash
+      run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
+
+    - name: Get branch name (pull request)
+      if: github.event_name == 'pull_request'
+      shell: bash
+      run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
+
+    - name: Set compiler-tester branch depending on current branch
+      shell: bash
+      run: |
+        if [[ "${BRANCH_NAME}" == "main" ]]; then
+          echo "COMPILER_BRANCH_NAME=main" >> $GITHUB_ENV
+        elif [[ "${BRANCH_NAME}" == "dev-1.1" ]]; then
+          echo "COMPILER_BRANCH_NAME=vm1.1" >> $GITHUB_ENV
+        else
+          echo "Cannot map current branch to compiler-tester branch"
+          exit 1
+        fi
 
     - name: Get branch name (merge)
       if: github.event_name != 'pull_request'
@@ -82,12 +99,6 @@ jobs:
         ${DOCKER_CMD} sh -c 'chmod 400 /root/.ssh/id_rsa'
         ${DOCKER_CMD} sh -c 'touch /root/.ssh/known_hosts'
         ${DOCKER_CMD} sh -c 'ssh-keyscan github.com >> /root/.ssh/known_hosts'
-
-    - name: Preparing workspace. Getting llvm release build cache.
-      if: ${{ (env.LLVM_BUILD_TYPE == 'release') && (env.USE_BUILD_CACHE == 'true') }}
-      run: |
-        mkdir -p ~/llvm_build_${LLVM_BUILD_TYPE}_cache
-        cp -R ~/llvm_build_${LLVM_BUILD_TYPE}_cache ${{github.workspace}}/compiler-llvm/build-${LLVM_BUILD_TYPE}
 
     - name: Testing. Installing deps for building LLVM framework.
       run: |
