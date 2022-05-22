@@ -77,6 +77,9 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/IntrinsicsAArch64.h"
+// SyncVM local begin
+#include "llvm/IR/IntrinsicsSyncVM.h"
+// SyncVM local end
 #include "llvm/IR/IntrinsicsWebAssembly.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Metadata.h"
@@ -2916,7 +2919,12 @@ void SelectionDAGBuilder::visitInvoke(const InvokeInst &I) {
       DAG.setRoot(DAG.getNode(ISD::INTRINSIC_VOID, getCurSDLoc(), VTs, Ops));
       break;
     }
+    // SyncVM local begin
+    case Intrinsic::syncvm_nearcall:
+      LowerSyncVMNearCall(cast<CallBase>(I), EHPadBB);
+      break;
     }
+    // SyncVM local end
   } else if (I.countOperandBundlesOfType(LLVMContext::OB_deopt)) {
     // Currently we do not lower any intrinsic calls with deopt operand bundles.
     // Eventually we will support lowering the @llvm.experimental.deoptimize
@@ -6872,6 +6880,11 @@ void SelectionDAGBuilder::visitIntrinsicCall(const CallInst &I,
   case Intrinsic::experimental_gc_statepoint:
     LowerStatepoint(cast<GCStatepointInst>(I));
     return;
+  // SyncVM local begin
+  case Intrinsic::syncvm_nearcall:
+    LowerSyncVMNearCall(cast<CallBase>(I));
+    return;
+  // SyncVM local end
   case Intrinsic::experimental_gc_result:
     visitGCResult(cast<GCResultInst>(I));
     return;
@@ -9473,8 +9486,6 @@ TargetLowering::LowerCallTo(TargetLowering::CallLoweringInfo &CLI) const {
     Entry.IsSwiftAsync = false;
     Entry.IsSwiftError = false;
     Entry.IsCFGuardTarget = false;
-    // SyncVM
-    Entry.IsZkSync01AbiData = false;
 
     Entry.Alignment = Alignment;
     CLI.getArgs().insert(CLI.getArgs().begin(), Entry);
@@ -9597,9 +9608,6 @@ TargetLowering::LowerCallTo(TargetLowering::CallLoweringInfo &CLI) const {
         Flags.setByVal();
       if (Args[i].IsByRef)
         Flags.setByRef();
-      // SyncVM
-      if (Args[i].IsZkSync01AbiData)
-        Flags.setZkSync01AbiData();
       if (Args[i].IsPreallocated) {
         Flags.setPreallocated();
         // Set the byval flag for CCAssignFn callbacks that don't know about
@@ -10201,10 +10209,6 @@ void SelectionDAGISel::LowerArguments(const Function &F) {
         Flags.setCopyElisionCandidate();
       if (Arg.hasAttribute(Attribute::Returned))
         Flags.setReturned();
-
-      // SyncVM
-      if (Arg.hasAttribute(Attribute::ZkSync01AbiData))
-        Flags.setZkSync01AbiData();
 
       MVT RegisterVT = TLI->getRegisterTypeForCallingConv(
           *CurDAG->getContext(), F.getCallingConv(), VT);

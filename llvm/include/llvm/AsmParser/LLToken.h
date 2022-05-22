@@ -251,7 +251,6 @@ enum Kind {
   kw_immarg,
   kw_byref,
   kw_mustprogress,
-  kw_zksync_01_abi_data,
 
   kw_type,
   kw_opaque,

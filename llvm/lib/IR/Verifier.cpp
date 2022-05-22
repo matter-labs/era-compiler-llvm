@@ -88,6 +88,7 @@
 #include "llvm/IR/Intrinsics.h"
 // SyncVM local begin
 #include "llvm/IR/IntrinsicsSyncVM.h"
+#include "llvm/IR/Operator.h"
 // SyncVM local end
 #include "llvm/IR/IntrinsicsWebAssembly.h"
 #include "llvm/IR/LLVMContext.h"
@@ -4427,6 +4428,7 @@ void Verifier::visitInstruction(Instruction &I) {
               F->getIntrinsicID() == Intrinsic::syncvm_sstore ||
               F->getIntrinsicID() == Intrinsic::syncvm_throw ||
               F->getIntrinsicID() == Intrinsic::syncvm_farcall ||
+              F->getIntrinsicID() == Intrinsic::syncvm_nearcall ||
               // SyncVM local end
               F->getIntrinsicID() == Intrinsic::wasm_rethrow,
           "Cannot invoke an intrinsic other than donothing, patchpoint, "
@@ -4829,6 +4831,42 @@ void Verifier::visitIntrinsicCall(Intrinsic::ID ID, CallBase &Call) {
     Assert(isa<AllocaInst>(Call.getArgOperand(1)->stripPointerCasts()),
            "llvm.stackprotector parameter #2 must resolve to an alloca.", Call);
     break;
+  // SyncVM local begin
+  case Intrinsic::syncvm_nearcall: {
+    auto *CalleeBitcast = dyn_cast<BitCastInst>(Call.getOperand(0));
+    auto *CalleeBitcastOp = dyn_cast<BitCastOperator>(Call.getOperand(0));
+    Assert(CalleeBitcast || CalleeBitcastOp,
+           "llvm.syncvm.nearcall parameter #1 must be a statically known "
+           "function pointer bitcasted to i256*",
+           Call);
+    Function *CalleeFunction = [CalleeBitcast, CalleeBitcastOp]() {
+      if (CalleeBitcast)
+        return dyn_cast<Function>(CalleeBitcast->getOperand(0));
+      return dyn_cast<Function>(CalleeBitcastOp->getOperand(0));
+    }();
+    Assert(CalleeFunction,
+           "llvm.syncvm.nearcall parameter #1 must be a statically known "
+           "function pointer bitcasted to i256*",
+           Call);
+    // SyncVM does not support vararg functions.
+    Assert(isa<CallInst>(Call) &&
+                   // call args + callee ptr + abi data + intrinsic id
+                   CalleeFunction->arg_size() + 3 == Call.getNumOperands() ||
+               // call args + callee ptr + abi data + success bb + unwind bb +
+               // intrinsic id
+               CalleeFunction->arg_size() + 5 == Call.getNumOperands(),
+           "llvm.syncvm.nearcall parameters number should be equal to the "
+           "number of the callee parameters plus 2 (the callee and abi data)",
+           Call);
+    for (unsigned i = 0, e = CalleeFunction->arg_size(); i < e; ++i)
+      Assert(CalleeFunction->getArg(i)->getType() ==
+                 Call.getOperand(i + 2)->getType(),
+             "llvm.syncvm.nearcall paramater #" + itostr(i + 3) +
+                 " doesn't type match the callee parameter #" + itostr(i + 1),
+             Call);
+    break;
+  }
+  // SyncVM local end
   case Intrinsic::localescape: {
     BasicBlock *BB = Call.getParent();
     Assert(BB == &BB->getParent()->front(),
