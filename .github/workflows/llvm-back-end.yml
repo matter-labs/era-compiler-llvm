@@ -104,11 +104,11 @@ jobs:
         git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
         git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
         export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${LLVM_BUILD_TYPE}/ && \
-        cargo run --verbose --release --bin compiler-tester && \
+        cargo run --verbose --release --bin compiler-tester"
         compiler_exit_code=$?
-        if [ \"${compiler_exit_code}\" -gt \"1\" ]; then
-          echo \"RUN_SEGFAULT_STEP=true\" >> $GITHUB_ENV
-        fi"
+        if [ "${compiler_exit_code}" -gt "1" ]; then
+          echo "RUN_SEGFAULT_STEP=true" >> $GITHUB_ENV
+        fi
 
     - name: Testing. Running segfault.sh.
       if: always() && steps.compiler_tester_run.outcome == 'failure' && env.RUN_SEGFAULT_STEP == 'true'
