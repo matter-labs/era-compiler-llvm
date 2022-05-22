@@ -103,10 +103,10 @@ jobs:
         ${DOCKER_CMD} sh -c "cd compiler-tester && \
         git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
         git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
-        export LLVM_SYS_130_PREFIX="${HOME}/opt/llvm-${LLVM_BUILD_TYPE}/ && \
+        export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${LLVM_BUILD_TYPE}/ && \
         cargo run --verbose --release --bin compiler-tester && \
         compiler_exit_code=$?
-        if [ "${compiler_exit_code}" -gt "1" ]; then
+        if [ \"${compiler_exit_code}\" -gt \"1\" ]; then
           echo \"RUN_SEGFAULT_STEP=true\" >> $GITHUB_ENV
         fi"
 
