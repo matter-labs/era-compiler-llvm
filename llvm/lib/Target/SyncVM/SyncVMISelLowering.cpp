@@ -75,6 +75,7 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i32, Expand);
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i64, Expand);
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i128, Expand);
+  setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i256, Expand);
 
   // Intrinsics lowering
   setOperationAction(ISD::INTRINSIC_VOID, MVT::Other, Custom);
