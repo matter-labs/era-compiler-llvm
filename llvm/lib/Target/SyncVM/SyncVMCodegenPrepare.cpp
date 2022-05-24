@@ -43,6 +43,8 @@ INITIALIZE_PASS(SyncVMCodegenPrepare, "syncvm-codegen-prepare",
 
 bool SyncVMCodegenPrepare::runOnFunction(Function &F) {
   bool Changed = false;
+  Module *M = F.getParent();
+  Type *Int256Ty = Type::getInt256Ty(M->getContext());
   std::vector<Instruction *> Replaced;
   for (auto &BB : F)
     for (auto II = BB.begin(); II != BB.end(); ++II) {
@@ -53,9 +55,10 @@ bool SyncVMCodegenPrepare::runOnFunction(Function &F) {
       case Instruction::ICmp: {
         auto &Cmp = cast<ICmpInst>(I);
         IRBuilder<> Builder(&I);
-        // unsigned cmp is ok
+        // An unsigned icmp is ok.
         if (Cmp.isUnsigned())
           break;
+        // A signed icmp needs to be transformed into unsigned.
         CmpInst::Predicate P = Cmp.getPredicate();
         auto *CmpVal = dyn_cast<ConstantInt>(I.getOperand(1));
         if (CmpVal && (CmpVal->getValue().isNullValue() ||
@@ -68,10 +71,8 @@ bool SyncVMCodegenPrepare::runOnFunction(Function &F) {
             break;
 
           if (P == CmpInst::ICMP_UGT) {
-            auto Val256 =
-                Builder.CreateZExt(Builder.getInt(Val), Builder.getIntNTy(256));
-            auto Op256 =
-                Builder.CreateZExt(I.getOperand(0), Builder.getIntNTy(256));
+            auto Val256 = Builder.CreateZExt(Builder.getInt(Val), Int256Ty);
+            auto Op256 = Builder.CreateZExt(I.getOperand(0), Int256Ty);
             auto *NewCmp = Builder.CreateICmp(P, Op256, Val256);
             if (CmpVal->getValue().isOneValue()) {
               auto *Cmp0 =

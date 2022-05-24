@@ -487,7 +487,10 @@ Instruction *MemCpyOptPass::tryMergingIntoMemset(Instruction *StartInst,
     if (Range.TheStores.size() == 1) continue;
 
     // If it is profitable to lower this range to memset, do so now.
-    if (!Range.isProfitableToUseMemset(DL))
+    // FIXME: Will be removed in the upcoming patch
+    // SyncVM local begin
+    //if (!Range.isProfitableToUseMemset(DL))
+    // SyncVM local end
       continue;
 
     // Otherwise, we do want to transform this!  Create a new memset.
@@ -1791,10 +1794,7 @@ bool MemCpyOptPass::runImpl(Function &F, MemoryDependenceResults *MD_,
 
 /// This is the main transformation entry point for a function.
 bool MemCpyOptLegacyPass::runOnFunction(Function &F) {
-  // TODO: The pass should only be skipped for SyncVM.
-  // SyncVM local begin
-  if (true || skipFunction(F))
-  // SyncVM local end
+  if (skipFunction(F))
     return false;
 
   auto *MDWP = !EnableMemorySSA

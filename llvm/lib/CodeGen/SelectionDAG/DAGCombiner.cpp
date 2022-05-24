@@ -11048,6 +11048,9 @@ SDValue DAGCombiner::visitSIGN_EXTEND(SDNode *N) {
     return DAG.getNode(ISD::SIGN_EXTEND, DL, VT, N0.getOperand(0));
 
   if (N0.getOpcode() == ISD::TRUNCATE) {
+  // SyncVM local begin
+  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
+  // SyncVM local end
     // fold (sext (truncate (load x))) -> (sext (smaller load x))
     // fold (sext (truncate (srl (load x), c))) -> (sext (smaller load (x+c/n)))
     if (SDValue NarrowLoad = ReduceLoadWidth(N0.getNode())) {
@@ -11096,6 +11099,9 @@ SDValue DAGCombiner::visitSIGN_EXTEND(SDNode *N) {
                          DAG.getValueType(N0.getValueType()));
     }
   }
+  // SyncVM local begin
+  }
+  // SyncVM local end
 
   // Try to simplify (sext (load x)).
   if (SDValue foldedExt =
@@ -11314,6 +11320,7 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
   if (N0.getOpcode() == ISD::TRUNCATE) {
   // SyncVM local begin
   if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
+  // SyncVM local end
     // fold (zext (truncate (load x))) -> (zext (smaller load x))
     // fold (zext (truncate (srl (load x), c))) -> (zext (smaller load (x+c/n)))
     if (SDValue NarrowLoad = ReduceLoadWidth(N0.getNode())) {
@@ -11325,8 +11332,6 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
       }
       return SDValue(N, 0); // Return N so it doesn't get rechecked!
     }
-    }
-    // SyncVM local end
 
     EVT SrcVT = N0.getOperand(0).getValueType();
     EVT MinVT = N0.getValueType();
@@ -11356,6 +11361,9 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
       return And;
     }
   }
+  // SyncVM local begin
+  }
+  // SyncVM local end
 
   // Fold (zext (and (trunc x), cst)) -> (and x, cst),
   // if either of the casts is not free.
@@ -11375,6 +11383,7 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
 
   // SyncVM local begin
   if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
+  // SyncVM local end
   // Try to simplify (zext (load x)).
   if (SDValue foldedExt =
           tryToFoldExtOfLoad(DAG, *this, TLI, VT, LegalOperations, N, N0,
@@ -11448,6 +11457,7 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
       }
     }
   }
+  // SyncVM local begin
   }
   // SyncVM local end
 
@@ -11565,6 +11575,9 @@ SDValue DAGCombiner::visitANY_EXTEND(SDNode *N) {
   // fold (aext (truncate (load x))) -> (aext (smaller load x))
   // fold (aext (truncate (srl (load x), c))) -> (aext (small load (x+c/n)))
   if (N0.getOpcode() == ISD::TRUNCATE) {
+  // SyncVM local begin
+  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
+  // SyncVM local end
     if (SDValue NarrowLoad = ReduceLoadWidth(N0.getNode())) {
       SDNode *oye = N0.getOperand(0).getNode();
       if (NarrowLoad.getNode() != N0.getNode()) {
@@ -11574,6 +11587,9 @@ SDValue DAGCombiner::visitANY_EXTEND(SDNode *N) {
       }
       return SDValue(N, 0);   // Return N so it doesn't get rechecked!
     }
+  // SyncVM local begin
+  }
+  // SyncVM local end
   }
 
   // fold (aext (truncate x))
@@ -12082,6 +12098,9 @@ SDValue DAGCombiner::visitSIGN_EXTEND_INREG(SDNode *N) {
   if (SimplifyDemandedBits(SDValue(N, 0)))
     return SDValue(N, 0);
 
+  // SyncVM local begin
+  if (!DAG.getTarget().getTargetTriple().isSyncVM())
+  // SyncVM local end
   // fold (sext_in_reg (load x)) -> (smaller sextload x)
   // fold (sext_in_reg (srl (load x), c)) -> (smaller sextload (x+c/evtbits))
   if (SDValue NarrowLoad = ReduceLoadWidth(N))
@@ -12368,7 +12387,7 @@ SDValue DAGCombiner::visitTRUNCATE(SDNode *N) {
       return DAG.getNode(ISD::TRUNCATE, SDLoc(N), VT, Shorter);
   }
 
-// SyncVM local begin
+  // SyncVM local begin
   if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
   // fold (truncate (load x)) -> (smaller load x)
   // fold (truncate (srl (load x), c)) -> (smaller load (x+c/evtbits))

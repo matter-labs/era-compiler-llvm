@@ -223,7 +223,7 @@ two_cells:
   ret i256 %two_cells_res
 }
 
-define void @__small_store_as0(i256 %addr, i256 %size_in_bits, i256 %value) {
+define void @__small_store_as0(i256 %addr, i256 %size_in_bits, i256 %value) #2 {
 entry:
   %offset_lead_bytes = urem i256 %addr, 32
   %offset_lead_bits = mul nuw nsw i256 %offset_lead_bytes, 8
@@ -421,8 +421,7 @@ define void @__small_store_as1(i256 %addr.i, i256 %value, i256 %size_in_bits) no
   %addr = inttoptr i256 %addr.i to i256 addrspace(1)*
   %sizeinv = sub nsw nuw i256 256, %size_in_bits
   %maskload = lshr i256 -1, %size_in_bits
-  %maskval = shl i256 -1, %sizeinv
-  %val.m = and i256 %value, %maskval
+  %val.m = shl i256 %value, %sizeinv
   %oldval = load i256, i256 addrspace(1)* %addr, align 1
   %oldval.m = and i256 %oldval, %maskload
   %val.f = or i256 %val.m, %oldval.m
@@ -453,6 +452,60 @@ copybytes:
   ret void
 }
 
+define i256 @__unaligned_load_as0(i256 %addr) #2 {
+entry:
+  %addr_offset_bytes = urem i256 %addr, 32
+  %addr_offset_bits = mul nsw nuw i256 %addr_offset_bytes, 8
+  %is_aligned = icmp eq i256 %addr_offset_bytes, 0
+  br i1 %is_aligned, label %aligned, label %unaligned
+aligned:
+  %addr.aligned = inttoptr i256 %addr to i256*
+  %res.aligned = load i256, i256* %addr.aligned, align 32
+  ret i256 %res.aligned
+unaligned:
+  %base_hi = sub nsw nuw i256 %addr, %addr_offset_bytes
+  %base_hi.ptr = inttoptr i256 %base_hi to i256*
+  %addr_offset_bits_inv = sub nsw nuw i256 256, %addr_offset_bits
+  %hi = load i256, i256* %base_hi.ptr, align 32
+  %hi.shifted = shl i256 %hi, %addr_offset_bits
+  %base_lo = add nsw nuw i256 %base_hi, 32
+  %base_lo.ptr = inttoptr i256 %base_lo to i256*
+  %lo = load i256, i256* %base_lo.ptr, align 32
+  %lo.shifted = lshr i256 %lo, %addr_offset_bits_inv
+  %res.unaligned = or i256 %hi.shifted, %lo.shifted
+  ret i256 %res.unaligned
+}
+
+define void @__unaligned_store_as0(i256 %addr, i256 %val) #2 {
+entry:
+  %addr_offset_bytes = urem i256 %addr, 32
+  %addr_offset_bits = mul nsw nuw i256 %addr_offset_bytes, 8
+  %is_aligned = icmp eq i256 %addr_offset_bytes, 0
+  br i1 %is_aligned, label %aligned, label %unaligned
+aligned:
+  %addr.ptr = inttoptr i256 %addr to i256*
+  store i256 %val, i256* %addr.ptr
+  ret void
+unaligned:
+  %base_hi = sub nsw nuw i256 %addr, %addr_offset_bytes
+  %base_hi.ptr = inttoptr i256 %base_hi to i256*
+  %addr_offset_bits_inv = sub nsw nuw i256 256, %addr_offset_bits
+  %orig_hi = load i256, i256* %base_hi.ptr, align 32
+  %mask_lo = lshr i256 -1, %addr_offset_bits
+  %mask_hi = shl i256 -1, %addr_offset_bits_inv
+  %orig_hi.and = and i256 %mask_hi, %orig_hi
+  %val.hi = lshr i256 %val, %addr_offset_bits
+  %hi = or i256 %val.hi, %orig_hi.and
+  store i256 %hi, i256* %base_hi.ptr, align 32
+  %base_lo = add nsw nuw i256 %base_hi, 32
+  %base_lo.ptr = inttoptr i256 %base_lo to i256*
+  %orig_lo = load i256, i256* %base_lo.ptr, align 32
+  %orig_lo.and = and i256 %orig_lo, %mask_lo
+  %val.lo = shl i256 %val, %addr_offset_bits_inv
+  %lo = or i256 %val.lo, %orig_lo.and
+  store i256 %lo, i256* %base_lo.ptr, align 32
+  ret void
+}
 declare {i256, i1} @llvm.uadd.with.overflow.i256(i256, i256)
 declare void @llvm.syncvm.throw(i256)
 declare void @llvm.syncvm.sstore(i256 %key, i256 %val)
@@ -466,3 +519,4 @@ declare i32 @__personality()
 
 attributes #0 = { nounwind readnone }
 attributes #1 = { mustprogress nounwind readnone willreturn }
+attributes #2 = { mustprogress nounwind willreturn }
