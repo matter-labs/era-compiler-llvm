@@ -11,6 +11,10 @@ on:
         description: 'Write llvm build type. Variables: release, debug'
         required: true
         default: 'release'
+      compiler_tester_branch:
+        description: 'Input an upstream compiler-tester repo branch to use'
+        required: true
+        default: 'main'
 
 jobs:
   llvm_testing:
@@ -27,33 +31,35 @@ jobs:
         echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
         echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release'}}" >> $GITHUB_ENV
 
-    - name: Get branch name (merge)
-      if: github.event_name != 'pull_request'
-      shell: bash
-      run: echo "BRANCH_NAME=$(echo ${GITHUB_REF#refs/heads/} | tr / -)" >> $GITHUB_ENV
-
     - name: Get branch name (pull request)
       if: github.event_name == 'pull_request'
       shell: bash
       run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
 
-    - name: Set compiler-tester branch depending on current branch
+    - name: Set compiler-tester branch depending on current branch (pull request)
+      if: github.event_name == 'pull_request'
       shell: bash
       run: |
         if [[ "${BRANCH_NAME}" == "main" ]]; then
-          echo "COMPILER_BRANCH_NAME=main" >> $GITHUB_ENV
+          echo "COMPILER_TESTER_BRANCH_NAME=main" >> $GITHUB_ENV
         elif [[ "${BRANCH_NAME}" == "dev-1.1" ]]; then
-          echo "COMPILER_BRANCH_NAME=vm1.1" >> $GITHUB_ENV
+          echo "COMPILER_TESTER_BRANCH_NAME=vm1.1" >> $GITHUB_ENV
         else
           echo "Cannot map current branch to compiler-tester branch"
           exit 1
         fi
 
+    - name: Set compiler-tester branch from manual input (workflow dispatch)
+      if: github.event_name == 'workflow_dispatch'
+      shell: bash
+      run: |
+        echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch }}" >> $GITHUB_ENV
+
     - name: Preparing workspace. Checkout compiler-tester repository.
       uses: actions/checkout@v2
       with:
         repository: matter-labs/compiler-tester
-        ref: ${{ env.COMPILER_BRANCH_NAME }}
+        ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
         submodules: recursive
         token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
         path: 'compiler-tester'
