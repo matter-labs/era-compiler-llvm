@@ -36,14 +36,16 @@ public:
     assert(isStaticallyExpandable());
     return Address.urem(32);
   }
-  unsigned leadingZeroBits() const { return leadingZeroBytes() * 8; }
-  unsigned trailingZeroBytes() const {
-    assert(isStaticallyExpandable());
-    return 31 - (Address + Size - 1).urem(32);
-  }
-  unsigned trailingZeroBits() const { return trailingZeroBytes() * 8; }
   bool fitsOneCell() const {
-    return Address.udiv(32) == (Address + Size - 1).udiv(32);
+    APInt AddressInBits = Address * 8;
+    return AddressInBits.udiv(256) == (AddressInBits + Size - 1).udiv(256);
+  }
+  unsigned leadingZeroBits() const { return leadingZeroBytes() * 8; }
+  unsigned trailingZeroBits() const {
+    if (fitsOneCell())
+      return 256 - leadingZeroBits() - Size;
+    else
+      return 512 - leadingZeroBits() - Size;
   }
   APInt baseAddress() const { return Address - Address.urem(32); }
   Value *addressVal() const { return AddressVal; }
@@ -71,10 +73,11 @@ MemoryOperation::MemoryOperation(Instruction *I) {
   Size = T->getIntegerBitWidth();
   assert(Size <= 256 &&
          "Load and store of more than 256 wide integers is not supported");
-  if (auto *AddressConst = dyn_cast<ConstantInt>(AddressVal)) {
-    HasStaticAddress = true;
-    Address = AddressConst->getValue();
-  }
+  if (auto *AddressIPtr = dyn_cast<IntToPtrInst>(AddressVal))
+    if (auto AddressConst = dyn_cast<ConstantInt>(AddressIPtr->getOperand(0))) {
+      HasStaticAddress = true;
+      Address = AddressConst->getValue();
+    }
 }
 
 /// SyncVM only support i256 loads and stores aligned by 32 bytes.
@@ -103,31 +106,43 @@ private:
   LLVMContext *C;
   Module *Mod;
   Type *Int256Ty;
-  Function *LoadFunctions[4] = {nullptr, nullptr, nullptr, nullptr};
-  Function *StoreFunctions[4] = {nullptr, nullptr, nullptr, nullptr};
+  Function *SmallLoadFunctions[4] = {nullptr, nullptr, nullptr, nullptr};
+  Function *SmallStoreFunctions[4] = {nullptr, nullptr, nullptr, nullptr};
+  Function *UnalignedLoadFunctions[4] = {nullptr, nullptr, nullptr, nullptr};
+  Function *UnalignedStoreFunctions[4] = {nullptr, nullptr, nullptr, nullptr};
+  /// Walk through \par F and replaces all addresses with the same ones, but in
+  /// different address space.
+  void replacePtrAs(Function &F, Type *PtrAsTy);
   Value *generateSmallLoadKnownAddr(const MemoryOperation &MO,
                                     IRBuilder<> &Builder);
   Value *generateSmallLoadUnknownAddr(const MemoryOperation &MO,
                                       IRBuilder<> &Builder);
   void expandSmallLoad(LoadInst *LI);
+  Value *generateUnalignedLoadKnownAddr(const MemoryOperation &MO,
+                                        IRBuilder<> &Builder);
+  Value *generateUnalignedLoadUnknownAddr(const MemoryOperation &MO,
+                                          IRBuilder<> &Builder);
+  void expandUnalignedLoad(LoadInst *LI);
   void generateSmallStoreKnownAddr(const MemoryOperation &MO,
                                    IRBuilder<> &Builder);
   void generateSmallStoreUnknownAddr(const MemoryOperation &MO,
                                      IRBuilder<> &Builder);
   void expandSmallStore(StoreInst *SI);
-  void expandUnalignedLoad(LoadInst *LI);
+  void generateUnalignedStoreKnownAddr(const MemoryOperation &MO,
+                                       IRBuilder<> &Builder);
+  void generateUnalignedStoreUnknownAddr(const MemoryOperation &MO,
+                                         IRBuilder<> &Builder);
   void expandUnalignedStore(StoreInst *SI);
   void expandMemcpy(MemCpyInst *Mcpy);
 };
 } // namespace
 
 char SyncVMExpandUMA::ID = 0;
-static const std::string UMLoadFunName[3] = {
-    "__unaligned_load_as1", "__unaligned_load_as2", "__unaligned_load_as3"};
-static const std::string UMStoreFunName[3] = {
-    "__unaligned_store_as1", "__unaligned_store_as2", "__unaligned_store_as3"};
 std::string SmallLoadFuncName = "__small_load_as0";
-std::string SmallStoreFuncName = "__small_store_as0";
+std::string SmallStoreFuncNames[4] = {"__small_store_as0", "__small_store_as1",
+                                      "__small_store_as1", "__small_store_as2"};
+std::string UnalignedLoadFuncName = "__unaligned_load_as0";
+std::string UnalignedStoreFuncName = "__unaligned_store_as0";
 
 INITIALIZE_PASS(SyncVMExpandUMA, "syncvm-expanduma",
                 "Expand unaligned and non-256 bits wide memory operations",
@@ -139,12 +154,17 @@ Value *SyncVMExpandUMA::generateSmallLoadKnownAddr(const MemoryOperation &MO,
   Value *HiAddr = Builder.CreateIntToPtr(HiAddrInt, MO.pointerType(*C));
   Value *Val = Builder.CreateAlignedLoad(Int256Ty, HiAddr, Align(32));
   if (MO.fitsOneCell()) {
-    Val = Builder.CreateLShr(Val, MO.trailingZeroBits());
-    Value *OneCellMask = Builder.getInt(
-        APInt(256, -1, true).lshr(MO.leadingZeroBits() + MO.leadingZeroBits()));
+    if (MO.trailingZeroBits())
+      Val = Builder.CreateLShr(Val, MO.trailingZeroBits());
+    Value *OneCellMask =
+        Builder.getInt(APInt(256, -1, true).lshr(256 - MO.size()));
     return Builder.CreateAnd(Val, OneCellMask);
   }
-  Val = Builder.CreateShl(Val, 256 - MO.trailingZeroBits());
+
+  unsigned BitsFirstCell = 256 - MO.leadingZeroBits();
+  unsigned BitsSecondCell = MO.size() - BitsFirstCell;
+
+  Val = Builder.CreateShl(Val, BitsSecondCell);
   Value *LoAddrInt = Builder.getInt(MO.baseAddress() + 32);
   Value *LoAddr = Builder.CreateIntToPtr(LoAddrInt, MO.pointerType(*C));
   Value *LoVal = Builder.CreateAlignedLoad(Int256Ty, LoAddr, Align(32));
@@ -158,30 +178,17 @@ Value *SyncVMExpandUMA::generateSmallLoadKnownAddr(const MemoryOperation &MO,
 Value *SyncVMExpandUMA::generateSmallLoadUnknownAddr(const MemoryOperation &MO,
                                                      IRBuilder<> &Builder) {
   unsigned AS = MO.addrspace();
-  if (!LoadFunctions[AS]) {
-    ValueToValueMapTy VMap;
-    LoadFunctions[AS] = CloneFunction(LoadFunctions[0], VMap);
-    Function &F = *LoadFunctions[AS];
-    for (BasicBlock &BB : F)
-      for (auto I = BB.begin(), E = BB.end(); I != E; ++I) {
-        auto *Load = dyn_cast<LoadInst>(I);
-        if (!Load)
-          continue;
-        Value *MemOperand = Load->getPointerOperand();
-        IRBuilder<> FuncBuilder(Load);
-        Value *NewMemOp = FuncBuilder.CreateIntToPtr(
-            cast<IntToPtrInst>(MemOperand)->getOperand(0), MO.pointerType(*C));
-        Value *NewLoad =
-            FuncBuilder.CreateAlignedLoad(Int256Ty, NewMemOp, Align(32));
-        ++I;
-        Load->replaceAllUsesWith(NewLoad);
-        Load->eraseFromParent();
-        if (MemOperand->hasNUses(0))
-          cast<IntToPtrInst>(MemOperand)->eraseFromParent();
-      }
+  if (AS != SyncVMAS::AS_STACK) {
+    auto *LoadPtrTy = Int256Ty->getPointerTo(AS);
+    Value *PtrCasted = Builder.CreateBitCast(MO.addressVal(), LoadPtrTy);
+    Value *Result = Builder.CreateAlignedLoad(Int256Ty, PtrCasted, Align(1));
+    auto ShiftAmount = APInt(256, 256 - MO.size(), false);
+    return Builder.CreateLShr(Result, Builder.getInt(ShiftAmount));
   }
-  assert(LoadFunctions[AS] && "Function have to be defined by this moment");
-  Function *F = LoadFunctions[AS];
+  assert(AS == SyncVMAS::AS_STACK && "Only stack address space is expected");
+  assert(SmallLoadFunctions[AS] &&
+         "Function have to be defined by this moment");
+  Function *F = SmallLoadFunctions[AS];
   Value *AddrInt = Builder.CreatePtrToInt(MO.addressVal(), Int256Ty);
   return Builder.CreateCall(
       F->getFunctionType(), F,
@@ -192,11 +199,48 @@ void SyncVMExpandUMA::expandSmallLoad(LoadInst *LI) {
   MemoryOperation MO(LI);
   IRBuilder<> Builder(LI);
   Value *NewLoad = nullptr;
-  if (MO.isStaticallyExpandable())
+  if (MO.addrspace() == SyncVMAS::AS_STACK && MO.isStaticallyExpandable())
     NewLoad = generateSmallLoadKnownAddr(MO, Builder);
   else
     NewLoad = generateSmallLoadUnknownAddr(MO, Builder);
   NewLoad = Builder.CreateTrunc(NewLoad, Builder.getIntNTy(MO.size()));
+  LI->replaceAllUsesWith(NewLoad);
+}
+
+Value *
+SyncVMExpandUMA::generateUnalignedLoadKnownAddr(const MemoryOperation &MO,
+                                                IRBuilder<> &Builder) {
+  if (MO.leadingZeroBytes() == 0u)
+    return Builder.CreateAlignedLoad(Int256Ty, MO.addressVal(), Align(32));
+  Value *HiAddrInt = Builder.getInt(MO.baseAddress());
+  Value *HiAddr = Builder.CreateIntToPtr(HiAddrInt, MO.pointerType(*C));
+  Value *Val = Builder.CreateAlignedLoad(Int256Ty, HiAddr, Align(32));
+  Val = Builder.CreateShl(Val, 256 - MO.trailingZeroBits());
+  Value *LoAddrInt = Builder.getInt(MO.baseAddress() + 32);
+  Value *LoAddr = Builder.CreateIntToPtr(LoAddrInt, MO.pointerType(*C));
+  Value *LoVal = Builder.CreateAlignedLoad(Int256Ty, LoAddr, Align(32));
+  LoVal = Builder.CreateLShr(LoVal, MO.trailingZeroBits());
+  return Builder.CreateOr(Val, LoVal);
+}
+
+Value *
+SyncVMExpandUMA::generateUnalignedLoadUnknownAddr(const MemoryOperation &MO,
+                                                  IRBuilder<> &Builder) {
+  unsigned AS = MO.addrspace();
+  assert(AS == SyncVMAS::AS_STACK && "Only stack address space is expected");
+  Function *F = UnalignedLoadFunctions[AS];
+  Value *AddrInt = Builder.CreatePtrToInt(MO.addressVal(), Int256Ty);
+  return Builder.CreateCall(F->getFunctionType(), F, {AddrInt});
+}
+
+void SyncVMExpandUMA::expandUnalignedLoad(LoadInst *LI) {
+  MemoryOperation MO(LI);
+  IRBuilder<> Builder(LI);
+  Value *NewLoad = nullptr;
+  if (MO.isStaticallyExpandable())
+    NewLoad = generateUnalignedLoadKnownAddr(MO, Builder);
+  else
+    NewLoad = generateUnalignedLoadUnknownAddr(MO, Builder);
   LI->replaceAllUsesWith(NewLoad);
 }
 
@@ -205,6 +249,7 @@ void SyncVMExpandUMA::generateSmallStoreKnownAddr(const MemoryOperation &MO,
   Value *HiAddrInt = Builder.getInt(MO.baseAddress());
   Value *HiAddr = Builder.CreateIntToPtr(HiAddrInt, MO.pointerType(*C));
   Value *StoreVal = MO.storeVal();
+  StoreVal = Builder.CreateZExt(StoreVal, Int256Ty);
   Value *OrigVal = Builder.CreateAlignedLoad(Int256Ty, HiAddr, Align(32));
   auto MaskOneCell = APInt(256, -1, true).shl(256 - MO.leadingZeroBits());
   if (MO.fitsOneCell()) {
@@ -218,9 +263,12 @@ void SyncVMExpandUMA::generateSmallStoreKnownAddr(const MemoryOperation &MO,
     Builder.CreateAlignedStore(StoreVal, HiAddr, Align(32));
     return;
   }
+
+  unsigned BitsFirstCell = 256 - MO.leadingZeroBits();
+  unsigned BitsSecondCell = MO.size() - BitsFirstCell;
+
   OrigVal = Builder.CreateAnd(OrigVal, Builder.getInt(MaskOneCell));
-  auto StoreValHi =
-      Builder.CreateLShr(StoreVal, MO.size() + MO.leadingZeroBits() - 256);
+  auto StoreValHi = Builder.CreateLShr(StoreVal, BitsSecondCell);
   StoreValHi = Builder.CreateOr(OrigVal, StoreValHi);
   Builder.CreateAlignedStore(StoreValHi, HiAddr, Align(32));
 
@@ -238,45 +286,12 @@ void SyncVMExpandUMA::generateSmallStoreKnownAddr(const MemoryOperation &MO,
 void SyncVMExpandUMA::generateSmallStoreUnknownAddr(const MemoryOperation &MO,
                                                     IRBuilder<> &Builder) {
   unsigned AS = MO.addrspace();
-  if (!StoreFunctions[AS]) {
-    ValueToValueMapTy VMap;
-    StoreFunctions[AS] = CloneFunction(StoreFunctions[0], VMap);
-    Function &F = *StoreFunctions[AS];
-    for (BasicBlock &BB : F)
-      for (auto I = BB.begin(), E = BB.end(); I != E; ++I) {
-        if (auto *Store = dyn_cast<StoreInst>(I)) {
-          Value *MemOperand = Store->getPointerOperand();
-          Value *StoreVal = Store->getValueOperand();
-          IRBuilder<> FuncBuilder(Store);
-          Value *NewMemOp = FuncBuilder.CreateIntToPtr(
-              cast<IntToPtrInst>(MemOperand)->getOperand(0), MO.pointerType(*C));
-          FuncBuilder.CreateAlignedStore(StoreVal, NewMemOp, Align(32));
-          ++I;
-          Store->eraseFromParent();
-          if (MemOperand->hasNUses(0))
-            cast<IntToPtrInst>(MemOperand)->eraseFromParent();
-        } else if (auto *Load = dyn_cast<LoadInst>(I)) {
-          Value *MemOperand = Load->getPointerOperand();
-          IRBuilder<> FuncBuilder(Load);
-          Value *NewMemOp = FuncBuilder.CreateIntToPtr(
-              cast<IntToPtrInst>(MemOperand)->getOperand(0), MO.pointerType(*C));
-          Value *NewLoad =
-              FuncBuilder.CreateAlignedLoad(Int256Ty, NewMemOp, Align(32));
-          ++I;
-          Load->replaceAllUsesWith(NewLoad);
-          Load->eraseFromParent();
-          if (MemOperand->hasNUses(0))
-            cast<IntToPtrInst>(MemOperand)->eraseFromParent();
-        }
-      }
-  }
-  assert(StoreFunctions[AS] && "Function have to be defined by this moment");
-  Function *F = StoreFunctions[AS];
+  Function *F = SmallStoreFunctions[AS];
   Value *AddrInt = Builder.CreatePtrToInt(MO.addressVal(), Int256Ty);
   Value *ExtVal = Builder.CreateZExt(MO.storeVal(), Int256Ty);
   Builder.CreateCall(
       F->getFunctionType(), F,
-      {AddrInt, Builder.getInt(APInt(256, MO.size(), false)), ExtVal});
+      {AddrInt, ExtVal, Builder.getInt(APInt(256, MO.size(), false))});
 }
 
 void SyncVMExpandUMA::expandSmallStore(StoreInst *SI) {
@@ -288,13 +303,65 @@ void SyncVMExpandUMA::expandSmallStore(StoreInst *SI) {
     generateSmallStoreUnknownAddr(MO, Builder);
 }
 
+void SyncVMExpandUMA::generateUnalignedStoreKnownAddr(const MemoryOperation &MO,
+                                                      IRBuilder<> &Builder) {
+  if (MO.leadingZeroBytes() == 0u) {
+    Builder.CreateAlignedStore(MO.storeVal(), MO.addressVal(), Align(32));
+    return;
+  }
+
+  Value *HiAddrInt = Builder.getInt(MO.baseAddress());
+  Value *HiAddr = Builder.CreateIntToPtr(HiAddrInt, MO.pointerType(*C));
+  Value *StoreVal = MO.storeVal();
+  Value *OrigVal = Builder.CreateAlignedLoad(Int256Ty, HiAddr, Align(32));
+  auto MaskOneCell = APInt(256, -1, true).shl(256 - MO.leadingZeroBits());
+
+  OrigVal = Builder.CreateAnd(OrigVal, Builder.getInt(MaskOneCell));
+  auto StoreValHi =
+      Builder.CreateLShr(StoreVal, MO.size() + MO.leadingZeroBits() - 256);
+  StoreValHi = Builder.CreateOr(OrigVal, StoreValHi);
+  Builder.CreateAlignedStore(StoreValHi, HiAddr, Align(32));
+
+  Value *LoAddrInt = Builder.getInt(MO.baseAddress() + 32);
+  Value *LoAddr = Builder.CreateIntToPtr(LoAddrInt, MO.pointerType(*C));
+  OrigVal = Builder.CreateAlignedLoad(Int256Ty, LoAddr, Align(32));
+  StoreVal = Builder.CreateShl(StoreVal, MO.trailingZeroBits());
+  OrigVal = Builder.CreateAnd(
+      OrigVal,
+      Builder.getInt(APInt(256, -1, true).lshr(256 - MO.trailingZeroBits())));
+  StoreVal = Builder.CreateOr(OrigVal, StoreVal);
+  Builder.CreateAlignedStore(StoreVal, LoAddr, Align(32));
+}
+
+void SyncVMExpandUMA::generateUnalignedStoreUnknownAddr(
+    const MemoryOperation &MO, IRBuilder<> &Builder) {
+  unsigned AS = MO.addrspace();
+  Function *F = UnalignedStoreFunctions[AS];
+  Value *AddrInt = Builder.CreatePtrToInt(MO.addressVal(), Int256Ty);
+  Builder.CreateCall(F->getFunctionType(), F, {AddrInt, MO.storeVal()});
+}
+
+void SyncVMExpandUMA::expandUnalignedStore(StoreInst *SI) {
+  MemoryOperation MO(SI);
+  IRBuilder<> Builder(SI);
+  if (MO.isStaticallyExpandable())
+    generateUnalignedStoreKnownAddr(MO, Builder);
+  else
+    generateUnalignedStoreUnknownAddr(MO, Builder);
+}
+
 bool SyncVMExpandUMA::runOnModule(Module &M) {
   Mod = &M;
   C = &M.getContext();
   Int256Ty = Type::getInt256Ty(*C);
-  LoadFunctions[0] = M.getFunction(SmallLoadFuncName);
-  StoreFunctions[0] = M.getFunction(SmallStoreFuncName);
-  assert(LoadFunctions[0] && StoreFunctions[0]);
+  SmallLoadFunctions[0] = M.getFunction(SmallLoadFuncName);
+  for (unsigned i = 0; i < 4; ++i)
+    SmallStoreFunctions[i] = M.getFunction(SmallStoreFuncNames[i]);
+  UnalignedLoadFunctions[0] = M.getFunction(UnalignedLoadFuncName);
+  UnalignedStoreFunctions[0] = M.getFunction(UnalignedStoreFuncName);
+  assert(SmallLoadFunctions[0] && SmallStoreFunctions[0] &&
+         UnalignedLoadFunctions[0] && UnalignedStoreFunctions[0] &&
+         "Runtime is broken");
   std::vector<Instruction *> Erase;
   for (Function &F : M)
     for (BasicBlock &BB : F)
@@ -305,12 +372,20 @@ bool SyncVMExpandUMA::runOnModule(Module &M) {
           if (ElTy->isIntegerTy() && ElTy->getIntegerBitWidth() != 256) {
             expandSmallLoad(LI);
             Erase.push_back(LI);
+          } else if (LI->getPointerAddressSpace() == SyncVMAS::AS_STACK &&
+                     LI->getAlignment() % 32) {
+            expandUnalignedLoad(LI);
+            Erase.push_back(LI);
           }
         } else if (auto *SI = dyn_cast<StoreInst>(&I)) {
           Type *ElTy =
               cast<PointerType>(SI->getPointerOperandType())->getElementType();
           if (ElTy->isIntegerTy() && ElTy->getIntegerBitWidth() != 256) {
             expandSmallStore(SI);
+            Erase.push_back(SI);
+          } else if (SI->getPointerAddressSpace() == SyncVMAS::AS_STACK &&
+                     SI->getAlignment() % 32) {
+            expandUnalignedStore(SI);
             Erase.push_back(SI);
           }
         }

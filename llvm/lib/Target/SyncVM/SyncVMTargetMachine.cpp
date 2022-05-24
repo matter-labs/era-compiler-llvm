@@ -98,13 +98,13 @@ void SyncVMPassConfig::addIRPasses() {
   addPass(createLowerSwitchPass());
   addPass(createSyncVMLowerIntrinsicsPass());
   addPass(createSyncVMLinkRuntimePass());
+  addPass(createSyncVMCodegenPreparePass());
+  addPass(createSyncVMExpandUMAPass());
   addPass(createGlobalDCEPass());
 #if 0
-  addPass(createSyncVMExpandUMAPass());
   addPass(createSyncVMIndirectUMAPass());
   addPass(createSyncVMIndirectExternalCallPass());
 #endif
-  addPass(createSyncVMCodegenPreparePass());
   addPass(createSyncVMAllocaHoistingPass());
 }
 
