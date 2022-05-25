@@ -54,7 +54,7 @@ bool SyncVMInstrInfo::reverseBranchCondition(
   assert(Cond.size() == 1 && "Invalid Xbranch condition!");
 
   SyncVMCC::CondCodes CC = static_cast<SyncVMCC::CondCodes>(
-    Cond[0].isImm() ? Cond[0].getImm() : Cond[0].getCImm()->getZExtValue());
+      Cond[0].isImm() ? Cond[0].getImm() : Cond[0].getCImm()->getZExtValue());
 
   switch (CC) {
   default:
@@ -109,41 +109,40 @@ bool SyncVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
 
     // Handle unconditional branches.
     if (getImmOrCImm(I->getOperand(1)) == 0) {
-      if (!AllowModify) {
-        TBB = I->getOperand(0).getMBB();
-        break;
-      }
-
-      // If the block has any instructions after a JMP, delete them.
-      while (std::next(I) != MBB.end())
-        std::next(I)->eraseFromParent();
-      Cond.clear();
-      FBB = nullptr;
-
-      // Delete the JMP if it's equivalent to a fall-through.
-      if (MBB.isLayoutSuccessor(I->getOperand(0).getMBB())) {
-        TBB = nullptr;
-        I->eraseFromParent();
-        I = MBB.end();
-        continue;
-      }
-
-      // TBB is used to indicate the unconditinal destination.
+      // TBB is used to indicate the unconditional destination.
       TBB = I->getOperand(0).getMBB();
+
+      if (AllowModify) {
+        // If the block has any instructions after a JMP, delete them.
+        while (std::next(I) != MBB.end())
+          std::next(I)->eraseFromParent();
+        Cond.clear();
+        FBB = nullptr;
+
+        // Delete the JMP if it's equivalent to a fall-through.
+        if (MBB.isLayoutSuccessor(I->getOperand(0).getMBB())) {
+          TBB = nullptr;
+          I->eraseFromParent();
+          I = MBB.end();
+          continue;
+        }
+      }
+
       continue;
     }
 
     SyncVMCC::CondCodes BranchCode =
-      static_cast<SyncVMCC::CondCodes>(getImmOrCImm(I->getOperand(1)));
+        static_cast<SyncVMCC::CondCodes>(getImmOrCImm(I->getOperand(1)));
     if (BranchCode == SyncVMCC::COND_INVALID)
-      return true;  // Can't handle weird stuff.
+      return true; // Can't handle weird stuff.
 
     // Working from the bottom, handle the first conditional branch.
     if (Cond.empty()) {
       FBB = TBB;
       TBB = I->getOperand(0).getMBB();
       LLVMContext &C = MBB.getParent()->getFunction().getContext();
-      auto CImmCC = ConstantInt::get(IntegerType::get(C, 256), BranchCode, false);
+      auto CImmCC =
+          ConstantInt::get(IntegerType::get(C, 256), BranchCode, false);
       Cond.push_back(MachineOperand::CreateCImm(CImmCC));
       continue;
     }
@@ -158,7 +157,8 @@ bool SyncVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
     if (TBB != I->getOperand(0).getMBB())
       return true;
 
-    SyncVMCC::CondCodes OldBranchCode = (SyncVMCC::CondCodes)Cond[0].getCImm()->getZExtValue();
+    SyncVMCC::CondCodes OldBranchCode =
+        (SyncVMCC::CondCodes)Cond[0].getCImm()->getZExtValue();
     // If the conditions are the same, we can leave them alone.
     if (OldBranchCode == BranchCode)
       continue;
@@ -181,9 +181,7 @@ unsigned SyncVMInstrInfo::insertBranch(
   if (Cond.empty()) {
     // Unconditional branch?
     assert(!FBB && "Unconditional branch with multiple successors!");
-    BuildMI(&MBB, DL, get(SyncVM::J))
-        .addMBB(TBB)
-        .addImm(SyncVMCC::COND_NONE);
+    BuildMI(&MBB, DL, get(SyncVM::J)).addMBB(TBB).addImm(SyncVMCC::COND_NONE);
     return 1;
   }
   // Conditional branch.
