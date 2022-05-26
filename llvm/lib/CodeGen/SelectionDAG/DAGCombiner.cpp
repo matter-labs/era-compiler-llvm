@@ -11226,11 +11226,8 @@ SDValue DAGCombiner::visitSETCC(SDNode *N) {
       return DAG.getFreeze(DAG.getSetCC(SDLoc(N), VT, N0, N1, Cond));
   }
 
-  // SyncVM local begin
-  // FIXME
-  SDValue Combined = {}; /* SimplifySetCC(VT, N->getOperand(0), N->getOperand(1), Cond,
-                                   SDLoc(N), !PreferSetCC); */
-  // SyncVM local end
+  SDValue Combined = SimplifySetCC(VT, N->getOperand(0), N->getOperand(1), Cond,
+                                   SDLoc(N), !PreferSetCC);
 
   if (!Combined)
     return SDValue();
@@ -16192,11 +16189,9 @@ SDValue DAGCombiner::visitBR_CC(SDNode *N) {
   // MachineBasicBlock CFG, which is awkward.
 
   // Use SimplifySetCC to simplify SETCC's.
-  // SyncVM local begin
-  SDValue Simp = {}; /*SimplifySetCC(getSetCCResultType(CondLHS.getValueType()),
+  SDValue Simp = SimplifySetCC(getSetCCResultType(CondLHS.getValueType()),
                                CondLHS, CondRHS, CC->get(), SDLoc(N),
-                               false); */
-  // SyncVM local end
+                               false);
   if (Simp.getNode()) AddToWorklist(Simp.getNode());
 
   // fold to a simpler setcc
