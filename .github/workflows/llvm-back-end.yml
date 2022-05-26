@@ -86,31 +86,31 @@ jobs:
 
     - name: Testing. Installing deps for building LLVM framework.
       run: |
-        ${DOCKER_CMD} sh -c \
-        "apt update && \
+        ${DOCKER_CMD} sh -c '
+        apt update && \
         apt install software-properties-common -y && \
         add-apt-repository ppa:deadsnakes/ppa -y && \
-        apt install python3.9 python3.9-dev python3.9-distutils -y"
+        apt install python3.9 python3.9-dev python3.9-distutils -y'
 
     - name: Testing. Building LLVM framework.
       run: |
         chmod +x compiler-llvm/build.sh
-        ${DOCKER_CMD} sh -c "cd compiler-llvm && \
-        ./build.sh ${{ env.LLVM_BUILD_TYPE }}"
+        ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
+        ./build.sh ${{ env.LLVM_BUILD_TYPE }}'
 
     - name: Testing. Running regression LLVM tests.
-      run: ${DOCKER_CMD} sh -c "
-        cd compiler-llvm/build-${{ env.LLVM_BUILD_TYPE }} &&
-        make -j24 check-llvm-codegen-syncvm"
+      run: ${DOCKER_CMD} sh -c '
+        make -j24 check-llvm-codegen-syncvm'
 
     - name: Testing. Building and running compiler tester.
       id: compiler_tester_run
       run: |
-        ${DOCKER_CMD} sh -c "cd compiler-tester && \
+        ${DOCKER_CMD} sh -c '
+        cd compiler-tester && \
         git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
         git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
         export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-        cargo run --verbose --release --bin compiler-tester"
+        cargo run --verbose --release --bin compiler-tester'
         compiler_exit_code=$?
         if [ "${compiler_exit_code}" -gt "1" ]; then
           echo "RUN_SEGFAULT_STEP=true" >> $GITHUB_ENV
@@ -118,7 +118,7 @@ jobs:
 
     - name: Testing. Running segfault.sh.
       if: always() && steps.compiler_tester_run.outcome == 'failure' && env.RUN_SEGFAULT_STEP == 'true'
-      run: ${DOCKER_CMD} sh -c "cd compiler-tester && ./segfault.sh"
+      run: ${DOCKER_CMD} sh -c 'cd compiler-tester && ./segfault.sh'
 
     - name: Notify to Mattermost (on unsuccessful deploys)
       if: failure() || cancelled()
