@@ -18,7 +18,7 @@ on:
 
 jobs:
   llvm_testing:
-    runs-on: [self-hosted, compiler]
+    runs-on: [self-hosted, ax161]
     steps:
     - uses: AutoModality/action-clean@v1.1.0
     - uses: webfactory/ssh-agent@v0.5.3
@@ -55,14 +55,14 @@ jobs:
       run: |
         echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch }}" >> $GITHUB_ENV
 
-    - name: Preparing workspace. Checkout compiler-tester repository.
-      uses: actions/checkout@v2
-      with:
-        repository: matter-labs/compiler-tester
-        ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
-        submodules: recursive
-        token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
-        path: 'compiler-tester'
+    # - name: Preparing workspace. Checkout compiler-tester repository.
+    #   uses: actions/checkout@v2
+    #   with:
+    #     repository: matter-labs/compiler-tester
+    #     ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
+    #     submodules: recursive
+    #     token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
+    #     path: 'compiler-tester'
 
     - name: Preparing workspace. Checkout compiler-llvm repository.
       uses: actions/checkout@v2
@@ -96,6 +96,9 @@ jobs:
       run: |
         chmod +x compiler-llvm/build.sh
         ${DOCKER_CMD} sh -c "cd compiler-llvm && \
+        ls -la && \
+        echo "Echoing home:" && \
+        echo $HOME && \
         ./build.sh ${LLVM_BUILD_TYPE}"
 
     - name: Testing. Running regression LLVM tests.
@@ -109,7 +112,12 @@ jobs:
         ${DOCKER_CMD} sh -c "cd compiler-tester && \
         git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
         git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
+        echo "Echoing home:" && \
+        echo $HOME && \
         export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${LLVM_BUILD_TYPE}/ && \
+        echo "Echoing LLVM_SYS_130_PREFIX:" && \
+        echo $LLVM_SYS_130_PREFIX && \
+        ls -la & \
         cargo run --verbose --release --bin compiler-tester"
         compiler_exit_code=$?
         if [ "${compiler_exit_code}" -gt "1" ]; then
