@@ -117,7 +117,7 @@ jobs:
         export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${LLVM_BUILD_TYPE}/ && \
         echo "Echoing LLVM_SYS_130_PREFIX:" && \
         echo $LLVM_SYS_130_PREFIX && \
-        ls -la & \
+        ls -la && \
         cargo run --verbose --release --bin compiler-tester'
         compiler_exit_code=$?
         if [ "${compiler_exit_code}" -gt "1" ]; then
