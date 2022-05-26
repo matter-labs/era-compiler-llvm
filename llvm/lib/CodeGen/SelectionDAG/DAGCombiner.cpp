@@ -3279,14 +3279,9 @@ SDValue DAGCombiner::visitSUB(SDNode *N) {
 
   ConstantSDNode *N1C = getAsNonOpaqueConstant(N1);
 
-  // SyncVM local begin
-  // TODO: Better to do it on ISel.
-  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
-  // fold (sub x, c) -> (add x, -c)
   if (N1C) {
     return DAG.getNode(ISD::ADD, DL, VT, N0,
                        DAG.getConstant(-N1C->getAPIntValue(), DL, VT));
-  }
   }
 
   if (isNullOrNullSplat(N0)) {
