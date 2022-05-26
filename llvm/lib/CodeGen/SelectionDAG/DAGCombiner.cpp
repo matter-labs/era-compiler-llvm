@@ -12325,17 +12325,11 @@ SDValue DAGCombiner::visitSETCC(SDNode *N) {
   bool PreferSetCC =
       N->hasOneUse() && N->use_begin()->getOpcode() == ISD::BRCOND;
 
-  // EraVM local begin
-  // FIXME
-#if 0
   ISD::CondCode Cond = cast<CondCodeSDNode>(N->getOperand(2))->get();
   EVT VT = N->getValueType(0);
 
   SDValue Combined = SimplifySetCC(VT, N->getOperand(0), N->getOperand(1), Cond,
                                    SDLoc(N), !PreferSetCC);
-#endif
-  SDValue Combined = {};
-  // EraVM local end
 
   if (!Combined)
     return SDValue();
@@ -17625,11 +17619,9 @@ SDValue DAGCombiner::visitBR_CC(SDNode *N) {
   // MachineBasicBlock CFG, which is awkward.
 
   // Use SimplifySetCC to simplify SETCC's.
-  // EraVM local begin
-  SDValue Simp = {}; /*SimplifySetCC(getSetCCResultType(CondLHS.getValueType()),
+  SDValue Simp = SimplifySetCC(getSetCCResultType(CondLHS.getValueType()),
                                CondLHS, CondRHS, CC->get(), SDLoc(N),
-                               false); */
-  // EraVM local end
+                               false);
   if (Simp.getNode()) AddToWorklist(Simp.getNode());
 
   // fold to a simpler setcc
