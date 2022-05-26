@@ -74,6 +74,10 @@ def imm16 : Operand<i256>, IntImmLeaf<i256, [{
   return APInt(256, 1, false).shl(16).ugt(Imm);
 }]> {}
 
+def neg_imm16 : Operand<i256>, IntImmLeaf<i256, [{
+  return Imm.isNegative() && Imm.isSignedIntN(16);
+}]> {}
+
 def imm128 : Operand<i256>, IntImmLeaf<i256, [{
   return APInt(256, 1, false).shl(128).ugt(Imm);
 }]> {}
@@ -136,6 +140,17 @@ def stackop : Operand<i256> {
   let PrintMethod = "printStackOperand";
   let MIOperandInfo = (ops GR256, GR256, i16imm);
 }
+
+//===----------------------------------------------------------------------===//
+// Custom DAG Selection Operations.
+//===----------------------------------------------------------------------===//
+
+def negate_imm : SDNodeXForm<imm, [{
+  auto& neg = N->getAPIntValue();
+  APInt pos = neg;
+  pos.negate();
+  return CurDAG->getTargetConstant(pos, SDLoc(N), MVT::i256);
+}]>;
 
 //===----------------------------------------------------------------------===//
 // Complex Pattern Definitions.
@@ -944,3 +959,8 @@ def DELEGATE_CALL  : ICall<11, CFDelegate, (ins GR256:$abi, GR256:$address, jmpt
 def MIMIC_CALL  : ICall<12, CFMimic, (ins GR256:$abi, GR256:$address, GR256:$mimic, jmptarget:$unwind),
                "far_call.mimic\t$abi, $address, @$unwind", [(SyncVMmimiccall GR256:$abi, GR256:$address, GR256:$mimic, bb:$unwind)]>;
 }
+
+def : Pat<(store_stack (add GR256:$rs0, neg_imm16:$imm), stackaddr:$dst0),
+          (SUBxrs_p (negate_imm imm:$imm), GR256:$rs0, stackaddr:$dst0)>;
+def : Pat<(sub GR256:$rs0, neg_imm16:$imm), (ADDirr_p (negate_imm imm:$imm), GR256:$rs0)>;
+def : Pat<(add GR256:$rs0, neg_imm16:$imm), (SUBxrr_p (negate_imm imm:$imm), GR256:$rs0)>;
