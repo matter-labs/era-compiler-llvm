@@ -98,10 +98,6 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::ANY_EXTEND, MVT::i256, Custom);
 
   setJumpIsExpensive(false);
-
-  // Custom DAG combiner:
-  setTargetDAGCombine(ISD::SUB);
-  setTargetDAGCombine(ISD::ADD);
 }
 
 //===----------------------------------------------------------------------===//
@@ -824,62 +820,6 @@ SDValue SyncVMTargetLowering::PerformDAGCombine(SDNode *N,
   switch (N->getOpcode()) {
   default:
     break;
-  case ISD::ADD:
-    return combineADD(N, DCI);
-  case ISD::SUB:
-    return combineSUB(N, DCI);
-  }
-  return SDValue();
-}
-
-SDValue SyncVMTargetLowering::combineSUB(SDNode *N,
-                                         DAGCombinerInfo &DCI) const {
-  // fold (sub x, small_negative) -> (add x, abs(small_negative))
-  SelectionDAG &DAG = DCI.DAG;
-  SDValue N0 = N->getOperand(0);
-  SDValue N1 = N->getOperand(1);
-
-  ConstantSDNode *N1C = dyn_cast<ConstantSDNode>(N1);
-  if (!N1C || N1C->isOpaque())
-    return SDValue();
-
-  auto n1cval = N1C->getAPIntValue();
-  if (n1cval.isNegative() && n1cval.isSignedIntN(16)) {
-    SDLoc DL(N);
-    EVT VT = N->getValueType(0);
-    return DAG.getNode(ISD::ADD, DL, VT, N0,
-                       DAG.getConstant(-n1cval, DL, N1->getValueType(0)));
-  }
-  return SDValue();
-}
-
-SDValue SyncVMTargetLowering::combineADD(SDNode *N,
-                                         DAGCombinerInfo &DCI) const {
-  // fold (add x, small_negative) -> (sub x, abs(small_negative))
-  SelectionDAG &DAG = DCI.DAG;
-  SDValue N0 = N->getOperand(0);
-  SDValue N1 = N->getOperand(1);
-
-  SDLoc DL(N);
-  EVT VT = N->getValueType(0);
-
-  auto isSmallNegative = [](SDValue N) {
-    ConstantSDNode *C = dyn_cast<ConstantSDNode>(N);
-    if (C && !C->isOpaque()) {
-      APInt val = C->getAPIntValue();
-      if (val.isNegative() && val.isSignedIntN(16)) {
-        return std::make_pair<bool, APInt>(true, std::move(val));
-      }
-    }
-    return std::make_pair<bool, APInt>(false, APInt::getNullValue(256));
-  };
-
-  // Commutative DAG NODES have immediate values in RHS
-  auto n1res = isSmallNegative(N1);
-  if (n1res.first) {
-    return DAG.getNode(
-        ISD::SUB, DL, VT, N0,
-        DAG.getConstant(n1res.second.abs(), DL, N0->getValueType(0)));
   }
   return SDValue();
 }
