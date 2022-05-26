@@ -4940,18 +4940,12 @@ SDValue DAGCombiner::visitUDIVLike(SDValue N0, SDValue N1, SDNode *N) {
     }
   }
 
-// TODO: Implement architecture / profitability check
-// TODO: produces mulhu, which is not currently supported by EraVM
-// EraVM local begin
-  if (!DAG.getTarget().getTargetTriple().isEraVM()) {
   // fold (udiv x, c) -> alternate
   AttributeList Attr = DAG.getMachineFunction().getFunction().getAttributes();
   if (isConstantOrConstantVector(N1) &&
       !TLI.isIntDivCheap(N->getValueType(0), Attr))
     if (SDValue Op = BuildUDIV(N))
       return Op;
-  }
-// EraVM local end
 
   return SDValue();
 }
