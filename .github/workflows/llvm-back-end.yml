@@ -55,14 +55,14 @@ jobs:
       run: |
         echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch }}" >> $GITHUB_ENV
 
-    # - name: Preparing workspace. Checkout compiler-tester repository.
-    #   uses: actions/checkout@v2
-    #   with:
-    #     repository: matter-labs/compiler-tester
-    #     ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
-    #     submodules: recursive
-    #     token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
-    #     path: 'compiler-tester'
+    - name: Preparing workspace. Checkout compiler-tester repository.
+      uses: actions/checkout@v2
+      with:
+        repository: matter-labs/compiler-tester
+        ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
+        submodules: recursive
+        token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
+        path: 'compiler-tester'
 
     - name: Preparing workspace. Checkout compiler-llvm repository.
       uses: actions/checkout@v2
