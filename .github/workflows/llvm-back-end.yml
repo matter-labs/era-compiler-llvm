@@ -63,13 +63,12 @@ jobs:
       - name: Preparing workspace. Ugly compiler-tester submodules update with HTTPS clone enforcement.
         run: |
           cd ./compiler-tester
-          git config --local url."https://github.com/".insteadOf ssh://git@github.com/
+          git config --local url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
           git config --local url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/
           git submodule foreach --recursive \
-            'git config --local url."https://github.com/".insteadOf ssh://git@github.com/"'
+            'git config --local url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/"'
           git submodule foreach --recursive \
             'git config --local url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/"'
-          cat ./.gitconfig
           git submodule update --init --recursive
 
       - name: Preparing workspace. Checkout compiler-llvm repository.
