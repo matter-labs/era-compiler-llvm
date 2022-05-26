@@ -4366,18 +4366,12 @@ SDValue DAGCombiner::visitUDIVLike(SDValue N0, SDValue N1, SDNode *N) {
     }
   }
 
-// TODO: Implement architecture / profitability check
-// TODO: produces mulhu, which is not currently supported by SyncVM
-// SyncVM local begin
-  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
   // fold (udiv x, c) -> alternate
   AttributeList Attr = DAG.getMachineFunction().getFunction().getAttributes();
   if (isConstantOrConstantVector(N1) &&
       !TLI.isIntDivCheap(N->getValueType(0), Attr))
     if (SDValue Op = BuildUDIV(N))
       return Op;
-  }
-// SyncVM local end
 
   return SDValue();
 }
@@ -5443,7 +5437,11 @@ bool DAGCombiner::SearchForAndLoads(SDNode *N,
 }
 
 bool DAGCombiner::BackwardsPropagateMask(SDNode *N) {
- return false;
+  // SyncVM local begin
+  // TODO: Consider removing when non-i256 UMA works.
+  if (DAG.getTarget().getTargetTriple().isSyncVM())
+    return false;
+  // SyncVM local end
   auto *Mask = dyn_cast<ConstantSDNode>(N->getOperand(1));
   if (!Mask)
     return false;
