@@ -99,6 +99,9 @@ jobs:
         ls -la && \
         echo "Echoing home:" && \
         echo $HOME && \
+        echo "Echoing LLVM_BUILD_TYPE:" && \
+        echo ${LLVM_BUILD_TYPE} && \
+        echo $LLVM_BUILD_TYPE && \
         ./build.sh ${LLVM_BUILD_TYPE}'
 
     # - name: Testing. Running regression LLVM tests.
