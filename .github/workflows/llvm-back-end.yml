@@ -8,124 +8,128 @@ on:
   workflow_dispatch:
     inputs:
       llvm_build_type:
-        description: 'Write llvm build type. Variables: release, debug'
+        description: "Write llvm build type. Variables: release, debug"
         required: true
-        default: 'release'
+        default: "release"
       compiler_tester_branch:
-        description: 'Input an upstream compiler-tester repo branch to use'
+        description: "Input an upstream compiler-tester repo branch to use"
         required: true
-        default: 'main'
+        default: "main"
 
 jobs:
   llvm_testing:
     runs-on: [self-hosted, ax161]
     steps:
-    - uses: AutoModality/action-clean@v1.1.0
-    - name: Preparing workspace. Setting environment.
-      run: |
-        echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
-        echo "COMPOSE_PROJECT_NAME=llvm_testing" >> $GITHUB_ENV
-        echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
-        echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release'}}" >> $GITHUB_ENV
+      - uses: AutoModality/action-clean@v1.1.0
+      - name: Preparing workspace. Setting environment.
+        run: |
+          echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
+          echo "COMPOSE_PROJECT_NAME=llvm_testing" >> $GITHUB_ENV
+          echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
+          echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release'}}" >> $GITHUB_ENV
 
-    - name: Get branch name (pull request)
-      if: github.event_name == 'pull_request'
-      shell: bash
-      run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
+      - name: Get branch name (pull request)
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
 
-    - name: Set compiler-tester branch depending on current branch (pull request)
-      if: github.event_name == 'pull_request'
-      shell: bash
-      run: |
-        if [[ "${BRANCH_NAME}" == "main" ]]; then
-          echo "COMPILER_TESTER_BRANCH_NAME=main" >> $GITHUB_ENV
-        elif [[ "${BRANCH_NAME}" == "dev-1.1" ]]; then
-          echo "COMPILER_TESTER_BRANCH_NAME=vm1.1" >> $GITHUB_ENV
-        else
-          echo "Cannot map current branch to compiler-tester branch"
-          exit 1
-        fi
+      - name: Set compiler-tester branch depending on current branch (pull request)
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          if [[ "${BRANCH_NAME}" == "main" ]]; then
+            echo "COMPILER_TESTER_BRANCH_NAME=main" >> $GITHUB_ENV
+          elif [[ "${BRANCH_NAME}" == "dev-1.1" ]]; then
+            echo "COMPILER_TESTER_BRANCH_NAME=vm1.1" >> $GITHUB_ENV
+          else
+            echo "Cannot map current branch to compiler-tester branch"
+            exit 1
+          fi
 
-    - name: Set compiler-tester branch from manual input (workflow dispatch)
-      if: github.event_name == 'workflow_dispatch'
-      shell: bash
-      run: |
-        echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch }}" >> $GITHUB_ENV
+      - name: Set compiler-tester branch from manual input (workflow dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch }}" >> $GITHUB_ENV
 
-    - name: Preparing workspace. Checkout compiler-tester repository.
-      uses: actions/checkout@v2
-      with:
-        repository: matter-labs/compiler-tester
-        ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
-        token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
-        path: 'compiler-tester'
+      - name: Preparing workspace. Checkout compiler-tester repository.
+        uses: actions/checkout@v2
+        with:
+          repository: matter-labs/compiler-tester
+          ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
+          token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
+          path: "compiler-tester"
 
-    - name: Preparing workspace. Ugly compiler-tester submodules update with HTTPS clone enforcement.
-      run: |
-        cd ./compiler-tester
-        git config --global url."https://github.com/".insteadOf ssh://git@github.com/
-        git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/
-        git submodule update --init --recursive
+      - name: Preparing workspace. Ugly compiler-tester submodules update with HTTPS clone enforcement.
+        run: |
+          cd ./compiler-tester
+          git config --local url."https://github.com/".insteadOf ssh://git@github.com/
+          git config --local url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/
+          git submodule foreach --recursive \
+            'git config --local url."https://github.com/".insteadOf ssh://git@github.com/"'
+          git submodule foreach --recursive \
+            'git config --local url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/"'
+          git submodule update --init --recursive
 
-    - name: Preparing workspace. Checkout compiler-llvm repository.
-      uses: actions/checkout@v2
-      with:
-        path: compiler-llvm
+      - name: Preparing workspace. Checkout compiler-llvm repository.
+        uses: actions/checkout@v2
+        with:
+          path: compiler-llvm
 
-    - name: Preparing workspace. Start docker.
-      run: |
-        docker compose pull
-        docker compose up -d zk
+      - name: Preparing workspace. Start docker.
+        run: |
+          docker compose pull
+          docker compose up -d zk
 
-    - name: Testing. Installing deps for building LLVM framework.
-      run: |
-        ${DOCKER_CMD} sh -c \
-        "apt update && \
-        apt install software-properties-common -y && \
-        add-apt-repository ppa:deadsnakes/ppa -y && \
-        apt install python3.9 python3.9-dev python3.9-distutils -y"
+      - name: Testing. Installing deps for building LLVM framework.
+        run: |
+          ${DOCKER_CMD} sh -c \
+          "apt update && \
+          apt install software-properties-common -y && \
+          add-apt-repository ppa:deadsnakes/ppa -y && \
+          apt install python3.9 python3.9-dev python3.9-distutils -y"
 
-    - name: Testing. Building LLVM framework.
-      run: |
-        chmod +x compiler-llvm/build.sh
-        ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
-        ./build.sh ${{ env.LLVM_BUILD_TYPE }}'
+      - name: Testing. Building LLVM framework.
+        run: |
+          chmod +x compiler-llvm/build.sh
+          ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
+          ./build.sh ${{ env.LLVM_BUILD_TYPE }}'
 
-    - name: Testing. Running regression LLVM tests.
-      run: ${DOCKER_CMD} sh -c "
-        cd compiler-llvm/build-${{ env.LLVM_BUILD_TYPE }} &&
-        make -j24 check-llvm-codegen-syncvm"
+      - name: Testing. Running regression LLVM tests.
+        run: ${DOCKER_CMD} sh -c "
+          cd compiler-llvm/build-${{ env.LLVM_BUILD_TYPE }} &&
+          make -j24 check-llvm-codegen-syncvm"
 
-    - name: Testing. Building and running compiler tester.
-      id: compiler_tester_run
-      run: |
-        ${DOCKER_CMD} sh -c 'cd compiler-tester && \
-        git config --global url."https://github.com/".insteadOf ssh://git@github.com/ && \
-        git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
-        export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-        cargo run --verbose --release --bin compiler-tester'
-        compiler_exit_code=$?
-        if [ "${compiler_exit_code}" -gt "1" ]; then
-          echo "RUN_SEGFAULT_STEP=true" >> $GITHUB_ENV
-        fi
+      - name: Testing. Building and running compiler tester.
+        id: compiler_tester_run
+        run: |
+          ${DOCKER_CMD} sh -c 'cd compiler-tester && \
+          git config --global url."https://github.com/".insteadOf ssh://git@github.com/ && \
+          git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
+          export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
+          cargo run --verbose --release --bin compiler-tester'
+          compiler_exit_code=$?
+          if [ "${compiler_exit_code}" -gt "1" ]; then
+            echo "RUN_SEGFAULT_STEP=true" >> $GITHUB_ENV
+          fi
 
-    - name: Testing. Running segfault.sh.
-      if: always() && steps.compiler_tester_run.outcome == 'failure' && env.RUN_SEGFAULT_STEP == 'true'
-      run: ${DOCKER_CMD} sh -c "cd compiler-tester && ./segfault.sh"
+      - name: Testing. Running segfault.sh.
+        if: always() && steps.compiler_tester_run.outcome == 'failure' && env.RUN_SEGFAULT_STEP == 'true'
+        run: ${DOCKER_CMD} sh -c "cd compiler-tester && ./segfault.sh"
 
-    - name: Notify to Mattermost (on unsuccessful deploys)
-      if: failure() || cancelled()
-      uses: tferreira/matterfy@releases/v1
-      with:
-        type: ${{ job.status }}
-        job_name: '*LLVM testing is failed*'
-        icon_emoji: octocat
-        channel: 'compiler-llvm-ci'
-        url: ${{ secrets.MATTERMOST_WEBHOOK }}
+      - name: Notify to Mattermost (on unsuccessful deploys)
+        if: failure() || cancelled()
+        uses: tferreira/matterfy@releases/v1
+        with:
+          type: ${{ job.status }}
+          job_name: "*LLVM testing is failed*"
+          icon_emoji: octocat
+          channel: "compiler-llvm-ci"
+          url: ${{ secrets.MATTERMOST_WEBHOOK }}
 
-    - name: Clearing workspace. Removing used and trash docker images.
-      if: always()
-      run: |
-        # Removing trash images. This command isn't remove pulled work image.
-        docker image prune -f --all
-        docker compose down --rmi local -v
+      - name: Clearing workspace. Removing used and trash docker images.
+        if: always()
+        run: |
+          # Removing trash images. This command isn't remove pulled work image.
+          docker image prune -f --all
+          docker compose down --rmi local -v
