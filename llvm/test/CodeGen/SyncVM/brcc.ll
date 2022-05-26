@@ -97,9 +97,10 @@ loop.exit:
 ; CHECK-LABEL: cmpir
 define i256 @cmpir(i256 %p1, i256 %p2) nounwind {
 ; TODO: CPR-447 should be subx 42, r1, r{{[0-9]}}
-; CHECK: add 42, r0, r2
-; CHECK: sub! r1, r2, r{{[0-9]+}}
+; CHECK: add 43, r0, r2
+; CHECK: sub! r1, r2, r1
   %1 = icmp ugt i256 %p1, 42
+; CHECK: jump.lt
   br i1 %1, label %l1, label %l2
 l1:
   ret i256 42
@@ -139,9 +140,10 @@ l2:
 ; CHECK-LABEL: cmpri
 define i256 @cmpri(i256 %p1, i256 %p2) nounwind {
 ; TODO: CPR-447 should be sub 42, r1, r{{[0-9]}}
-; CHECK: add 42, r0, r2
-; CHECK: sub! r2, r1, r{{[0-9]+}}
+; CHECK: add 41, r0, r2
+; CHECK: sub! r1, r2, r1
   %1 = icmp ugt i256 42, %p1
+; CHECK: jump.gt
   br i1 %1, label %l1, label %l2
 l1:
   ret i256 42
