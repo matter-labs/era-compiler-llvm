@@ -96,20 +96,20 @@ jobs:
       run: |
         chmod +x compiler-llvm/build.sh
         ${DOCKER_CMD} sh -c "cd compiler-llvm && \
-        ./build.sh ${LLVM_BUILD_TYPE}"
+        ./build.sh ${{ env.LLVM_BUILD_TYPE }}"
 
     - name: Testing. Running regression LLVM tests.
       run: ${DOCKER_CMD} sh -c "
-        cd compiler-llvm/build-${LLVM_BUILD_TYPE} &&
+        cd compiler-llvm/build-${{ env.LLVM_BUILD_TYPE }} &&
         make -j24 check-llvm-codegen-syncvm"
 
     - name: Testing. Building and running compiler tester.
       id: compiler_tester_run
       run: |
         ${DOCKER_CMD} sh -c "cd compiler-tester && \
-        git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
+        git config --global url."https://github.com/".insteadOf ssh://git@github.com/ && \
         git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
-        export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${LLVM_BUILD_TYPE}/ && \
+        export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
         cargo run --verbose --release --bin compiler-tester"
         compiler_exit_code=$?
         if [ "${compiler_exit_code}" -gt "1" ]; then
