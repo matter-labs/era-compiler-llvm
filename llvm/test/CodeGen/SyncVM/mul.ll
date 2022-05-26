@@ -190,3 +190,39 @@ define i256 @umullohisrsr(i256 %rs1) nounwind {
   store i256 %res1, i256* %destptr
   ret i256 %res2
 }
+
+; CHECK-LABEL: mulhs
+define i256 @mulhs (i256 %a, i256 %b) nounwind {
+; just to check that we support expanding mulhs
+  %1 = sext i256 %a to i512
+  %2 = sext i256 %b to i512
+  %3 = mul i512 %1, %2
+  %4 = lshr i512 %3, 256
+  %5 = trunc i512 %4 to i256
+  ret i256 %5
+}
+
+; CHECK-LABEL: mulhu
+define i256 @mulhu (i256 %a, i256 %b) nounwind {
+  %1 = zext i256 %a to i512
+  %2 = zext i256 %b to i512
+  %3 = mul i512 %1, %2
+  %4 = lshr i512 %3, 256
+  %5 = trunc i512 %4 to i256
+; MULHU expands into UMUL_LOHI
+; CHECK: mul r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}
+  ret i256 %5
+}
+
+; CHECK-LABEL: mulhu_imm
+define i256 @mulhu_imm (i256 %a) nounwind {
+  %1 = zext i256 %a to i512
+  %2 = mul i512 %1, 12345
+; TODO: Enable this when stack instruction is generated, as well as
+; stack and calldata addressing flavor tests
+; TODO: mul 12345, r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}
+  %3 = lshr i512 %2, 256
+  %4 = trunc i512 %3 to i256
+  ret i256 %4
+}
+
