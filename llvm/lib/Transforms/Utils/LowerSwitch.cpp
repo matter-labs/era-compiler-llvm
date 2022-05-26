@@ -322,15 +322,23 @@ unsigned Clusterify(CaseVector &Cases, SwitchInst *SI) {
   if (Cases.size() >= 2) {
     CaseItr I = Cases.begin();
     for (CaseItr J = std::next(I), E = Cases.end(); J != E; ++J) {
-      int64_t nextValue = J->Low->getSExtValue();
-      int64_t currentValue = I->High->getSExtValue();
+      // SyncVM begin
+      //int64_t nextValue = J->Low->getSExtValue();
+      //int64_t currentValue = I->High->getSExtValue();
+      APInt nextValue = J->Low->getValue();
+      APInt currentValue = I->High->getValue();
+      //  SyncVM end
       BasicBlock* nextBB = J->BB;
       BasicBlock* currentBB = I->BB;
 
       // If the two neighboring cases go to the same destination, merge them
       // into a single case.
-      assert(nextValue > currentValue && "Cases should be strictly ascending");
-      if ((nextValue == currentValue + 1) && (currentBB == nextBB)) {
+      // SyncVM begin
+      //assert(nextValue > currentValue && "Cases should be strictly ascending");
+      assert(nextValue.sgt(currentValue) && "Cases should be strictly ascending");
+      //if ((nextValue == currentValue + 1) && (currentBB == nextBB)) {
+      if ((nextValue.eq(currentValue + 1)) && (currentBB == nextBB)) {
+      // SyncVM end
         I->High = J->High;
         // FIXME: Combine branch weights.
       } else if (++I != J) {
