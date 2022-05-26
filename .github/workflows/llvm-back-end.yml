@@ -101,10 +101,10 @@ jobs:
         echo $HOME && \
         ./build.sh ${LLVM_BUILD_TYPE}"
 
-    - name: Testing. Running regression LLVM tests.
-      run: ${DOCKER_CMD} sh -c "
-        cd compiler-llvm/build-${LLVM_BUILD_TYPE} &&
-        make -j24 check-llvm-codegen-syncvm"
+    # - name: Testing. Running regression LLVM tests.
+    #   run: ${DOCKER_CMD} sh -c "
+    #     cd compiler-llvm/build-${LLVM_BUILD_TYPE} &&
+    #     make -j24 check-llvm-codegen-syncvm"
 
     - name: Testing. Building and running compiler tester.
       id: compiler_tester_run
