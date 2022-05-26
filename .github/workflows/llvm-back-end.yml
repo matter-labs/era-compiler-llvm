@@ -57,9 +57,15 @@ jobs:
       with:
         repository: matter-labs/compiler-tester
         ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
-        submodules: recursive
         token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
         path: 'compiler-tester'
+
+    - name: Preparing workspace. Ugly compiler-tester submodules update with HTTPS clone enforcement.
+      run: |
+        cd ./compiler-tester
+        git config --global url."https://github.com/".insteadOf ssh://git@github.com/
+        git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/
+        git submodule update --init --recursive
 
     - name: Preparing workspace. Checkout compiler-llvm repository.
       uses: actions/checkout@v2
