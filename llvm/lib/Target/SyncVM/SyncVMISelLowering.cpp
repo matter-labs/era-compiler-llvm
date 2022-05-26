@@ -63,6 +63,9 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SMUL_LOHI, MVT::i256, Expand);
   setOperationAction(ISD::UMUL_LOHI, MVT::i256, Legal);
 
+  setOperationAction(ISD::MULHS, MVT::i256, Expand);
+  setOperationAction(ISD::MULHU, MVT::i256, Expand);
+
   // SyncVM lacks of native support for signed operations.
   setOperationAction(ISD::SRA, MVT::i256, Custom);
   setOperationAction(ISD::SDIV, MVT::i256, Custom);

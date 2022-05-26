@@ -135,3 +135,11 @@ define void @subzrs(i256 %rs1) nounwind {
   store i256 %res, i256* %destptr
   ret void
 }
+
+; CHECK-LABEL: sub_small_int
+define i256 @sub_small_int(i256 %rs1) nounwind {
+  %res = sub i256 %rs1, 65535
+; CHECK: sub.s   65535, r1, r1
+  ret i256 %res
+}
+

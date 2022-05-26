@@ -75,7 +75,7 @@ def imm16 : Operand<i256>, IntImmLeaf<i256, [{
 }]> {}
 
 def neg_imm16 : Operand<i256>, IntImmLeaf<i256, [{
-  return Imm.isNegative() && Imm.isSignedIntN(16);
+  return Imm.isNegative() && Imm.abs().isIntN(16);
 }]> {}
 
 def imm128 : Operand<i256>, IntImmLeaf<i256, [{
