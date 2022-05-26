@@ -107,7 +107,7 @@ jobs:
       id: compiler_tester_run
       run: |
         ${DOCKER_CMD} sh -c "cd compiler-tester && \
-        git config --global url.https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
+        git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
         export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
         cargo run --verbose --release --bin compiler-tester"
         compiler_exit_code=$?
