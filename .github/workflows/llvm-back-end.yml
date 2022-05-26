@@ -21,9 +21,6 @@ jobs:
     runs-on: [self-hosted, ax161]
     steps:
     - uses: AutoModality/action-clean@v1.1.0
-    - uses: webfactory/ssh-agent@v0.5.3
-      with:
-        ssh-private-key: ${{ secrets.SSH_PK_BOT }}
     - name: Preparing workspace. Setting environment.
       run: |
         echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
@@ -73,16 +70,6 @@ jobs:
       run: |
         docker compose pull
         docker compose up -d zk
-      env:
-          SSH_PRIVATE_KEY: ${{secrets.SSH_PK_BOT}}
-
-    - name: Preparing workspace. Setting docker ssh key.
-      run: |
-        ${DOCKER_CMD} sh -c 'mkdir -pv /root/.ssh'
-        ${DOCKER_CMD} sh -c 'echo "${SSH_PRIVATE_KEY}" > /root/.ssh/id_rsa'
-        ${DOCKER_CMD} sh -c 'chmod 400 /root/.ssh/id_rsa'
-        ${DOCKER_CMD} sh -c 'touch /root/.ssh/known_hosts'
-        ${DOCKER_CMD} sh -c 'ssh-keyscan github.com >> /root/.ssh/known_hosts'
 
     - name: Testing. Installing deps for building LLVM framework.
       run: |
@@ -96,31 +83,20 @@ jobs:
       run: |
         chmod +x compiler-llvm/build.sh
         ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
-        ls -la && \
-        echo "Echoing home:" && \
-        echo $HOME && \
-        echo "Echoing LLVM_BUILD_TYPE:" && \
-        echo ${LLVM_BUILD_TYPE} && \
-        echo $LLVM_BUILD_TYPE && \
-        ./build.sh ${LLVM_BUILD_TYPE}'
+        ./build.sh ${{ env.LLVM_BUILD_TYPE }}'
 
-    # - name: Testing. Running regression LLVM tests.
-    #   run: ${DOCKER_CMD} sh -c "
-    #     cd compiler-llvm/build-${LLVM_BUILD_TYPE} &&
-    #     make -j24 check-llvm-codegen-syncvm"
+    - name: Testing. Running regression LLVM tests.
+      run: ${DOCKER_CMD} sh -c "
+        cd compiler-llvm/build-${{ env.LLVM_BUILD_TYPE }} &&
+        make -j24 check-llvm-codegen-syncvm"
 
     - name: Testing. Building and running compiler tester.
       id: compiler_tester_run
       run: |
         ${DOCKER_CMD} sh -c 'cd compiler-tester && \
-        git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
+        git config --global url."https://github.com/".insteadOf ssh://git@github.com/ && \
         git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
-        echo "Echoing home:" && \
-        echo $HOME && \
         export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-        echo "Echoing LLVM_SYS_130_PREFIX:" && \
-        echo $LLVM_SYS_130_PREFIX && \
-        ls -la && \
         cargo run --verbose --release --bin compiler-tester'
         compiler_exit_code=$?
         if [ "${compiler_exit_code}" -gt "1" ]; then
