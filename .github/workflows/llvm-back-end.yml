@@ -117,7 +117,7 @@ jobs:
         git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
         echo "Echoing home:" && \
         echo $HOME && \
-        export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${LLVM_BUILD_TYPE}/ && \
+        export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
         echo "Echoing LLVM_SYS_130_PREFIX:" && \
         echo $LLVM_SYS_130_PREFIX && \
         ls -la && \
