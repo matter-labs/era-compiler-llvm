@@ -93,7 +93,7 @@ jobs:
       - name: Testing. Building LLVM framework candidate.
         run: |
           chmod +x compiler-llvm/build.sh
-          ${DOCKER_CMD} sh -c 'cd compiler-llvm-candidate && \
+          ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
           ./build.sh ${{ env.LLVM_BUILD_TYPE }}'
 
       - name: Testing. Benchmarking  LLVM framework candidate.
