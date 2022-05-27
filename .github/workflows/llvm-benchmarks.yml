@@ -78,6 +78,7 @@ jobs:
       - name: Preparing workspace. Start Docker container for candidate.
         run: |
           cd ./compiler-llvm-candidate/infra
+          ls -la
           docker compose pull
           docker compose up -d zk
         env:
