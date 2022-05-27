@@ -5,16 +5,16 @@ on:
     branches:
       - main
       - dev-1.1
-  workflow_dispatch:
-    inputs:
-      llvm_build_type:
-        description: "Write llvm build type. Variables: release, debug"
-        required: true
-        default: "release"
-      compiler_tester_branch:
-        description: "Input an upstream compiler-tester repo branch to use"
-        required: true
-        default: "main"
+  # workflow_dispatch:
+  #   inputs:
+  #     llvm_build_type:
+  #       description: "Write llvm build type. Variables: release, debug"
+  #       required: true
+  #       default: "release"
+  #     compiler_tester_branch:
+  #       description: "Input an upstream compiler-tester repo branch to use"
+  #       required: true
+  #       default: "main"
 
 jobs:
   llvm_benchmarks_candidate:
