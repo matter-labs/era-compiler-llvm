@@ -212,6 +212,7 @@ jobs:
 
   llvm_benchmarks_analysis:
     runs-on: [self-hosted, compiler]
+    needs: [llvm_benchmarks_candidate, llvm_benchmarks_reference]
     steps:
       - uses: AutoModality/action-clean@v1
       - uses: webfactory/ssh-agent@v0.5.3
