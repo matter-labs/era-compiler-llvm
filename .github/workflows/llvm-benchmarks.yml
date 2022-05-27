@@ -77,9 +77,7 @@ jobs:
 
       - name: Preparing workspace. Start Docker container for candidate.
         run: |
-          ls -la
-          cd ./compiler-llvm-candidate
-          ls -la
+          cd ./compiler-llvm-candidate/infra
           docker compose pull
           docker compose up -d zk
         env:
@@ -156,6 +154,6 @@ jobs:
         if: always()
         run: |
           # Removing trash images. This command isn't remove pulled work image.
-          cd ./compiler-llvm-candidate
+          cd ./compiler-llvm-candidate/infra
           docker image prune -f --all
           docker compose down --rmi local -v
