@@ -76,8 +76,8 @@ jobs:
       #     ref: ${{ env.BRANCH_NAME }}
 
       - name: Preparing workspace. Start Docker container for candidate.
-        working-directory: ./compiler-llvm-candidate
         run: |
+          cd ./compiler-llvm-candidate
           docker compose pull
           docker compose up -d zk
         env:
@@ -152,8 +152,8 @@ jobs:
 
       - name: Clearing workspace. Removing used and trash docker images.
         if: always()
-        working-directory: ./compiler-llvm-candidate
         run: |
           # Removing trash images. This command isn't remove pulled work image.
+          cd ./compiler-llvm-candidate
           docker image prune -f --all
           docker compose down --rmi local -v
