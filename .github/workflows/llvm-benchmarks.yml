@@ -291,6 +291,11 @@ jobs:
           name: compiler-llvm-candidate-benchmark
           path: compiler-tester
 
+      - uses: actions/download-artifact@master
+        with:
+          name: compiler-llvm-reference-benchmark
+          path: compiler-tester
+
       - name: Testing. Comparing LLVM framework results.
         id: compiler_tester_run
         run: |
