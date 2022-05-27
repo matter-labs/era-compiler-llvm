@@ -107,6 +107,11 @@ jobs:
           name: compiler-llvm-candidate-benchmark
           path: compiler-tester/candidate.json
 
+      - uses: actions/upload-artifact@v3
+        with:
+          name: compiler-llvm-docker-compose
+          path: ${{ env.COMPOSE_FILE }}
+
       - name: Clearing workspace. Removing used and trash docker images.
         if: always()
         run: |
@@ -220,7 +225,8 @@ jobs:
           ssh-private-key: ${{ secrets.SSH_PK_BOT }}
       - name: Preparing workspace. Setting environment.
         run: |
-          echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
+          echo "COMPOSE_FILE_DIR=${{github.workspace}}/compiler-llvm/infra" >> $GITHUB_ENV
+          echo "COMPOSE_FILE=${COMPOSE_FILE_DIR}/docker-compose.yml" >> $GITHUB_ENV
           echo "COMPOSE_PROJECT_NAME=llvm_benchmarks_analysis" >> $GITHUB_ENV
           echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
 
@@ -257,6 +263,11 @@ jobs:
           token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
           path: "compiler-tester"
 
+      - uses: actions/download-artifact@master
+        with:
+          name: compiler-llvm-candidate-reference
+          path: ${{ env.COMPOSE_FILE_DIR }}
+
       - name: Preparing workspace. Start Docker container for reference.
         run: |
           docker compose pull
@@ -275,11 +286,6 @@ jobs:
       - uses: actions/download-artifact@master
         with:
           name: compiler-llvm-candidate-benchmark
-          path: compiler-tester
-
-      - uses: actions/download-artifact@master
-        with:
-          name: compiler-llvm-candidate-reference
           path: compiler-tester
 
       - name: Testing. Comparing LLVM framework results.
