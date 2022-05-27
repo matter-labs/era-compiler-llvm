@@ -41,11 +41,16 @@ class SyncVMAsmPrinter : public AsmPrinter {
   // same constant values (across different compiled functions), however,
   // emitting only 1 is enough for the assembly because it is global.
 
-  // Notice that constants are interned internally in LLVM, so we mantain a
-  // multimap <constant -> Symbol> to record and combine same contants with
-  // diferent symbols. when we walk through the MCInst format.
-  using ConstantPoolMapType = std::multimap<const Constant *, MCSymbol *>;
-  std::set<const Constant *> UniqueConstants;
+  // Notice that constants are interned internally in LLVM, so we maintain a
+  // map <constant -> SymbolList> to record and combine same constants with
+  // different symbols. when we walk through the MCInst format.
+  // To keep the order and maintain determinism, we actually use std::vector
+  // so when emitting constants, the one that got inserted first will be printed
+  // first
+
+  using ConstantPoolMapType =
+      std::map<const Constant *, std::vector<MCSymbol *>>;
+  std::vector<const Constant *> UniqueConstants;
   ConstantPoolMapType ConstantPoolMap;
 
 public:
@@ -143,11 +148,10 @@ void SyncVMAsmPrinter::emitEndOfAsmFile(Module &) {
 
   // combine labels pointing to same constants
   for (const Constant *C : UniqueConstants) {
-    auto labels = ConstantPoolMap.equal_range(C);
-    // first print symbols
-    for (ConstantPoolMapType::iterator it = labels.first; it != labels.second;
-         ++it) {
-      OutStreamer->emitLabel(it->second);
+    std::vector<MCSymbol *> symbols = ConstantPoolMap[C];
+
+    for (auto symbol : symbols) {
+      OutStreamer->emitLabel(symbol);
     }
     // then print constant:
     emitGlobalConstant(getDataLayout(), C);
@@ -169,8 +173,18 @@ void SyncVMAsmPrinter::emitConstantPool() {
 
     MCSymbol *Sym = GetCPISymbol(i);
 
-    UniqueConstants.insert(C);
-    ConstantPoolMap.insert(std::make_pair(C, Sym));
+    // Insert the symbol to constant pool map
+    auto result = std::find(UniqueConstants.begin(), UniqueConstants.end(), C);
+    if (result == UniqueConstants.end()) {
+      std::vector<MCSymbol *> symbol_vector;
+      symbol_vector.push_back(Sym);
+      ConstantPoolMap.insert({C, std::move(symbol_vector)});
+      UniqueConstants.push_back(C);
+    } else {
+      auto m = ConstantPoolMap.find(C);
+      assert(m != ConstantPoolMap.end());
+      m->second.push_back(Sym);
+    }
   }
 }
 
