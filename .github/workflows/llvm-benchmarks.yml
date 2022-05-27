@@ -81,7 +81,7 @@ jobs:
           docker compose pull
           docker compose up -d zk
         env:
-          SSH_PRIVATE_KEY: ${{secrets.SSH_PK_BOT}}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PK_BOT }}
 
       - name: Preparing workspace. Setting docker ssh key.
         run: |
