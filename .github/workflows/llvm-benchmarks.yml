@@ -265,7 +265,7 @@ jobs:
 
       - uses: actions/download-artifact@master
         with:
-          name: compiler-llvm-candidate-reference
+          name: compiler-llvm-docker-compose
           path: ${{ env.COMPOSE_FILE_DIR }}
 
       - name: Preparing workspace. Start Docker container for reference.
