@@ -100,7 +100,7 @@ jobs:
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
           export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-          cargo run --release --bin compiler-tester -- -v --filter=${{ env.LLVM_BENCHMARK_FILTER }} --domain=${{ env.LLVM_BENCHMARK_DOMAIN }} --benchmark=candidate.json'
+          cargo run --release --bin compiler-tester -- --filter=${{ env.LLVM_BENCHMARK_FILTER }} --domain=${{ env.LLVM_BENCHMARK_DOMAIN }} --benchmark=candidate.json'
 
       - uses: actions/upload-artifact@v3
         with:
@@ -197,7 +197,7 @@ jobs:
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
           export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-          cargo run --release --bin compiler-tester -- -v --filter=${{ env.LLVM_BENCHMARK_DOMAIN }} --domain=${{ env.LLVM_BENCHMARK_DOMAIN }} --benchmark=reference.json'
+          cargo run --release --bin compiler-tester -- --filter=${{ env.LLVM_BENCHMARK_DOMAIN }} --domain=${{ env.LLVM_BENCHMARK_DOMAIN }} --benchmark=reference.json'
 
       - uses: actions/upload-artifact@v3
         with:
