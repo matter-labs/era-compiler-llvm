@@ -226,9 +226,6 @@ jobs:
       - name: Preparing workspace. Setting environment 1.
         run: |
           echo "COMPOSE_FILE_DIR=${{ github.workspace }}/compiler-llvm/infra" >> $GITHUB_ENV
-          echo "COMPOSE_FILE=${{ env.COMPOSE_FILE_DIR }}/docker-compose.yml" >> $GITHUB_ENV
-          echo "COMPOSE_PROJECT_NAME=llvm_benchmarks_analysis" >> $GITHUB_ENV
-          echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
 
       - name: Preparing workspace. Setting environment 2.
         run: |
