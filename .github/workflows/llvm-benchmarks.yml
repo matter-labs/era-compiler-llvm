@@ -74,7 +74,7 @@ jobs:
       - name: Preparing workspace. Start Docker container for candidate.
         run: |
           docker compose pull
-          docker compose up -d zk_candidate
+          docker compose up -d zk
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PK_BOT }}
 
@@ -171,7 +171,7 @@ jobs:
       - name: Preparing workspace. Start Docker container for reference.
         run: |
           docker compose pull
-          docker compose up -d zk_reference
+          docker compose up -d zk
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PK_BOT }}
 
@@ -260,7 +260,7 @@ jobs:
       - name: Preparing workspace. Start Docker container for reference.
         run: |
           docker compose pull
-          docker compose up -d zk_analysis
+          docker compose up -d zk
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PK_BOT }}
 
