@@ -307,6 +307,7 @@ jobs:
           cargo run --release --bin benchmark-analyzer -- --reference reference.json --candidate candidate.json --output-file result.txt'
 
       - name: Testing. Posting LLVM framework results.
+        run: |
           echo "Benchmark results:" >> $GITHUB_STEP_SUMMARY
           echo "```" >> $GITHUB_STEP_SUMMARY
           cat ./compiler-tester/result.txt >> $GITHUB_STEP_SUMMARY
