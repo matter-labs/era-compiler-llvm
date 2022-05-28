@@ -304,7 +304,8 @@ jobs:
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
           export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-          cargo run --release --bin benchmark-analyzer -- --reference reference.json --candidate candidate.json'
+          cargo run --release --bin benchmark-analyzer -- --reference reference.json --candidate candidate.json --output-file result.txt'
+          cat ./compiler-tester/result.txt >> $GITHUB_STEP_SUMMARY
 
       - name: Clearing workspace. Removing used and trash docker images.
         if: always()
