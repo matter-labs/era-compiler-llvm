@@ -308,12 +308,10 @@ jobs:
 
       - name: Testing. Posting LLVM framework results.
         run: |
-          set -x
           printf "Benchmark results:\n" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           cat ./compiler-tester/result.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          echo $GITHUB_STEP_SUMMARY
 
       - name: Clearing workspace. Removing used and trash docker images.
         if: always()
