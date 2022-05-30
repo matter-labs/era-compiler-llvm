@@ -115,11 +115,11 @@ jobs:
         run: ${DOCKER_CMD} sh -c 'cd compiler-tester && ./segfault.sh'
 
       - name: Notify to Mattermost (on unsuccessful deploys)
-        if: failure() || cancelled()
+        if: always()
         uses: tferreira/matterfy@releases/v1
         with:
           type: ${{ job.status }}
-          job_name: "*LLVM testing is failed*"
+          job_name: "*LLVM testing is*"
           icon_emoji: octocat
           channel: "compiler-llvm-ci"
           url: ${{ secrets.MATTERMOST_WEBHOOK }}
