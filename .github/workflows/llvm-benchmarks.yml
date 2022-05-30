@@ -5,16 +5,32 @@ on:
     branches:
       - main
       - dev-1.1
-  # workflow_dispatch:
-  #   inputs:
-  #     llvm_build_type:
-  #       description: "Write llvm build type. Variables: release, debug"
-  #       required: true
-  #       default: "release"
-  #     compiler_tester_branch:
-  #       description: "Input an upstream compiler-tester repo branch to use"
-  #       required: true
-  #       default: "main"
+  workflow_dispatch:
+    inputs:
+      llvm_build_type:
+        description: "Input LLVM build type. Variables: release, debug"
+        required: true
+        default: "release"
+      compiler_tester_branch:
+        description: "Input an upstream compiler-tester repo branch to use"
+        required: true
+        default: "main"
+      compiler_llvm_reference_branch:
+        description: "Input an upstream compiler-llvm repo branch to use as a benchmark reference"
+        required: true
+        default: "main"
+      compiler_llvm_candidate_branch:
+        description: "Input an upstream compiler-llvm repo branch to use as a benchmark candidate"
+        required: true
+        default: "dev-1.1"
+      compiler_llvm_benchmark_domain:
+        description: "Input domain for compiler-llvm benchmarks"
+        required: true
+        default: "Y+M3I+B3"
+      compiler_llvm_benchmark_filter:
+        description: "Input filter for compiler-llvm benchmarks"
+        required: true
+        default: "tests/solidity/complex/defi/"
 
 jobs:
   llvm_benchmarks_candidate:
@@ -30,8 +46,8 @@ jobs:
           echo "COMPOSE_PROJECT_NAME=llvm_benchmarks_candidate" >> $GITHUB_ENV
           echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release'}}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_DOMAIN='Y+M3I+B3'}}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_FILTER='tests/solidity/complex/defi/'}}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || 'Y+M3I+B3'}}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_domain || 'tests/solidity/complex/defi/'}}" >> $GITHUB_ENV
 
       - name: Get branch name (pull request)
         if: github.event_name == 'pull_request'
@@ -51,13 +67,14 @@ jobs:
             exit 1
           fi
 
-      - name: Set compiler-tester branch from manual input (workflow dispatch)
+      - name: Set branch names from manual input (workflow dispatch)
         if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch }}" >> $GITHUB_ENV
+          echo "COMPILER_LLVM_CANDIDATE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_candidate_branch }}" >> $GITHUB_ENV
 
-      - name: Preparing workspace. Checkout compiler-tester repository.
+      - name: Preparing workspace. Checkout compiler-tester repository
         uses: actions/checkout@v2
         with:
           repository: matter-labs/compiler-tester
@@ -66,10 +83,18 @@ jobs:
           token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
           path: "compiler-tester"
 
-      - name: Preparing workspace. Checkout compiler-llvm candidate.
+      - name: Preparing workspace. Checkout compiler-llvm candidate (pull request)
+        if: github.event_name == 'pull_request'
         uses: actions/checkout@v2
         with:
           path: compiler-llvm
+
+      - name: Preparing workspace. Checkout compiler-llvm candidate (workflow dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v2
+        with:
+          path: compiler-llvm
+          ref: ${{ env.COMPILER_LLVM_CANDIDATE_BRANCH_NAME }}
 
       - name: Preparing workspace. Start Docker container for candidate.
         run: |
@@ -131,8 +156,8 @@ jobs:
           echo "COMPOSE_PROJECT_NAME=llvm_benchmarks_reference" >> $GITHUB_ENV
           echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release'}}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_DOMAIN='Y+M3I+B3'}}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_FILTER='tests/solidity/complex/defi/'}}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || 'Y+M3I+B3'}}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_domain || 'tests/solidity/complex/defi/'}}" >> $GITHUB_ENV
 
       - name: Get branch name (pull request)
         if: github.event_name == 'pull_request'
@@ -152,11 +177,12 @@ jobs:
             exit 1
           fi
 
-      - name: Set compiler-tester branch from manual input (workflow dispatch)
+      - name: Set branch names from manual input (workflow dispatch)
         if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch }}" >> $GITHUB_ENV
+          echo "COMPILER_LLVM_REFERENCE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_reference_branch }}" >> $GITHUB_ENV
 
       - name: Preparing workspace. Checkout compiler-tester repository.
         uses: actions/checkout@v2
@@ -167,11 +193,19 @@ jobs:
           token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
           path: "compiler-tester"
 
-      - name: Preparing workspace. Checkout compiler-llvm reference.
+      - name: Preparing workspace. Checkout compiler-llvm reference (pull request)
+        if: github.event_name == 'pull_request'
         uses: actions/checkout@v2
         with:
           path: compiler-llvm
           ref: ${{ env.BRANCH_NAME }}
+
+      - name: Preparing workspace. Checkout compiler-llvm reference (workflow dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v2
+        with:
+          path: compiler-llvm
+          ref: ${{ env.COMPILER_LLVM_REFERENCE_BRANCH_NAME }}
 
       - name: Preparing workspace. Start Docker container for reference.
         run: |
