@@ -347,6 +347,16 @@ jobs:
           cat ./compiler-tester/result.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
+      - name: Notify to Mattermost (on unsuccessful deploys)
+        if: always()
+        uses: tferreira/matterfy@releases/v1
+        with:
+          type: ${{ job.status }}
+          job_name: "*LLVM benchmarking*"
+          icon_emoji: octocat
+          channel: "compiler-llvm-ci"
+          url: ${{ secrets.MATTERMOST_WEBHOOK }}
+
       - name: Clearing workspace. Removing used and trash docker images.
         if: always()
         run: |
