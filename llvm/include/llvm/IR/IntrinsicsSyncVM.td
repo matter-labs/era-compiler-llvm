@@ -22,6 +22,8 @@ def int_syncvm_codesource: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
 def int_syncvm_meta: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
 def int_syncvm_txorigin: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
 def int_syncvm_ergsleft: Intrinsic<[llvm_i256_ty], [], []>;
+def int_syncvm_getu128: Intrinsic<[llvm_i256_ty], [], []>;
+def int_syncvm_setu128: Intrinsic<[], [llvm_i256_ty], []>;
 
 // Persistent memory access.
 def int_syncvm_sstore: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty], [IntrWriteMem, Throws]>;

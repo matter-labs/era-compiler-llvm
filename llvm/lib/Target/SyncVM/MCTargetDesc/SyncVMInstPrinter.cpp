@@ -107,6 +107,12 @@ void SyncVMInstPrinter::printContextOperand(const MCInst *MI, unsigned OpNo,
   case SyncVMCTX::COINBASE:
     O << ".coinbase";
     break;
+  case SyncVMCTX::GET_U128:
+    O << ".get_context_u128";
+    break;
+  case SyncVMCTX::SET_U128:
+    O << ".set_context_u128";
+    break;
   }
 }
 
