@@ -27,6 +27,10 @@ def int_eravm_codesource: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
 def int_eravm_meta: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
 def int_eravm_txorigin: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
 def int_eravm_ergsleft: Intrinsic<[llvm_i256_ty], [], []>;
+def int_eravm_getu128: Intrinsic<[llvm_i256_ty], [], []>;
+def int_eravm_setu128: Intrinsic<[], [llvm_i256_ty], []>;
+def int_eravm_inctx: Intrinsic<[], [], []>;
+def int_eravm_setpubdataprice: Intrinsic<[], [llvm_i256_ty], []>;
 
 // Persistent memory access.
 def int_eravm_sstore: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty], [IntrWriteMem, Throws]>;
