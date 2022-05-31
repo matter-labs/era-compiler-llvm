@@ -8,38 +8,72 @@ target triple = "eravm"
 
 ; CHECK-LABEL: thisr
 define i256 @thisr() {
+; CHECK: context.this r1
   %res = call i256 @llvm.eravm.this()
   ret i256 %res
 }
 
 ; CHECK-LABEL: callerr
 define i256 @callerr() {
+; CHECK: context.caller r1
   %res = call i256 @llvm.eravm.caller()
   ret i256 %res
 }
 
 ; CHECK-LABEL: codesourcer
 define i256 @codesourcer() {
+; CHECK: context.code_source r1
   %res = call i256 @llvm.eravm.codesource()
   ret i256 %res
 }
 
 ; CHECK-LABEL: metar
 define i256 @metar() {
+; CHECK: context.meta r1
   %res = call i256 @llvm.eravm.meta()
   ret i256 %res
 }
 
 ; CHECK-LABEL: txoriginr
 define i256 @txoriginr() {
+; CHECK: context.tx_origin r1
   %res = call i256 @llvm.eravm.txorigin()
   ret i256 %res
 }
 
 ; CHECK-LABEL: ergsleftr
 define i256 @ergsleftr() {
+; CHECK: context.ergs_left r1
   %res = call i256 @llvm.eravm.ergsleft()
   ret i256 %res
+}
+
+; CHECK-LABEL: getu128
+define i256 @getu128() {
+; CHECK: context.get_context_u128 r1
+  %res = call i256 @llvm.eravm.getu128()
+  ret i256 %res
+}
+
+; CHECK-LABEL: setu128
+define void @setu128(i256 %val) {
+; CHECK: context.set_context_u128 r1
+  call void @llvm.eravm.setu128(i256 %val)
+  ret void
+}
+
+; CHECK-LABEL: inctx
+define void @inctx() {
+; CHECK: context.inc_tx_num
+  call void @llvm.eravm.inctx()
+  ret void
+}
+
+; CHECK-LABEL: setprice
+define void @setprice(i256 %p) {
+; CHECK: context.set_ergs_per_pubdata
+  call void @llvm.eravm.setpubdataprice(i256 %p)
+  ret void
 }
 
 ; CHECK-LABEL: sload_rr
@@ -160,6 +194,10 @@ declare i256 @llvm.eravm.codesource()
 declare i256 @llvm.eravm.meta()
 declare i256 @llvm.eravm.txorigin()
 declare i256 @llvm.eravm.ergsleft()
+declare i256 @llvm.eravm.getu128()
+declare void @llvm.eravm.setu128(i256)
+declare void @llvm.eravm.inctx()
+declare void @llvm.eravm.setpubdataprice(i256)
 declare i256 @llvm.eravm.sload(i256)
 declare void @llvm.eravm.sstore(i256, i256)
 declare void @llvm.eravm.tol1(i256, i256, i256)

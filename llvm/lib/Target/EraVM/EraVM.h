@@ -56,6 +56,10 @@ enum Context {
   COINBASE = 5,
   ERGS_LEFT = 6,
   SP = 7,
+  GET_U128 = 8,
+  SET_U128 = 9,
+  INC_CTX = 10,
+  SET_PUBDATAPRICE = 11,
 };
 } // namespace EraVMCTX
 

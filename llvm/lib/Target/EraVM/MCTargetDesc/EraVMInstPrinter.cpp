@@ -113,6 +113,18 @@ void EraVMInstPrinter::printContextOperand(const MCInst *MI, unsigned OpNo,
   case EraVMCTX::COINBASE:
     O << ".coinbase";
     break;
+  case EraVMCTX::GET_U128:
+    O << ".get_context_u128";
+    break;
+  case EraVMCTX::SET_U128:
+    O << ".set_context_u128";
+    break;
+  case EraVMCTX::INC_CTX:
+    O << ".inc_tx_num";
+    break;
+  case EraVMCTX::SET_PUBDATAPRICE:
+    O << ".set_ergs_per_pubdata";
+    break;
   }
 }
 

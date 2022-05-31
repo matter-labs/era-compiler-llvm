@@ -768,6 +768,12 @@ def CTXr : IContextR<45, (outs GR256:$rd0), (ins context_op:$cop, cc:$cc),
 let hasSideEffects = 1 in {
 def CTXr_se : IContextR<46, (outs GR256:$rd0), (ins context_se_op:$cop, cc:$cc),
                         "context$cop$cc\t$rd0", []>;
+let rd0 = 0 in
+def CTXr_set : IContextR<52, (outs), (ins GR256:$rs0, context_se_op:$cop, cc:$cc),
+                         "context$cop$cc\t$rs0", []>;
+let rd0 = 0 in
+def CTXr_se0 : IContextR<152, (outs), (ins context_se_op:$cop, cc:$cc),
+                         "context$cop$cc", []>;
 }
 
 def : Pat<(int_eravm_this), (CTXr 0, 0)>;
@@ -776,6 +782,10 @@ def : Pat<(int_eravm_codesource), (CTXr 2, 0)>;
 def : Pat<(int_eravm_meta), (CTXr 3, 0)>;
 def : Pat<(int_eravm_txorigin), (CTXr 4, 0)>;
 def : Pat<(int_eravm_ergsleft), (CTXr_se 6, 0)>;
+def : Pat<(int_eravm_getu128), (CTXr_se 8, 0)>;
+def : Pat<(int_eravm_setu128 GR256:$rs0), (CTXr_set GR256:$rs0, 9, 0)>;
+def : Pat<(int_eravm_inctx), (CTXr_se0 10, 0)>;
+def : Pat<(int_eravm_setpubdataprice GR256:$rs0), (CTXr_set GR256:$rs0, 11, 0)>;
 
 let first = 0 in
 def SLDrr : ILogR<47, DstReg, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
