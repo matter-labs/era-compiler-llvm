@@ -36,6 +36,14 @@ jobs:
   llvm_benchmarks_candidate:
     runs-on: [self-hosted, compiler]
     steps:
+      - name: Testing. Posting LLVM framework results.
+        run: |
+          printf "Benchmark results:\n" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo $GITHUB_STEP_SUMMARY
+          SUMMARY=$(cat $GITHUB_STEP_SUMMARY)
+          echo "SUMMARY=$SUMMARY" >> $GITHUB_ENV
       - name: Testing. Posting LLVM framework results to PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v6
@@ -46,7 +54,7 @@ jobs:
               issue_number: context.issue.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: 'hello world'
+              body: '${{ env.SUMMARY }}'
             })
 #       - uses: AutoModality/action-clean@v1
 #       - uses: webfactory/ssh-agent@v0.5.3
