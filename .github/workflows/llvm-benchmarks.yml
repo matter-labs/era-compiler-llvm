@@ -347,7 +347,20 @@ jobs:
           cat ./compiler-tester/result.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
 
-      - name: Notify to Mattermost (on unsuccessful deploys)
+      - name: Testing. Posting LLVM framework results to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '${{ env.$GITHUB_STEP_SUMMARY }}'
+            })
+
+      - name: Notify to Mattermost
         if: always()
         uses: tferreira/matterfy@releases/v1
         with:
