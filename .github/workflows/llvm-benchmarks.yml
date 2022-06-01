@@ -36,26 +36,14 @@ jobs:
   llvm_benchmarks_candidate:
     runs-on: [self-hosted, compiler]
     steps:
-      - name: Testing. Posting LLVM framework results.
-        run: |
-
-          echo 'SUMMARY<<EOF' >> $GITHUB_ENV
-          printf "Benchmark results:\n" >> $GITHUB_ENV
-          echo '```' >> $GITHUB_ENV
-          echo '```' >> $GITHUB_ENV
-          echo 'EOF' >> $GITHUB_ENV
-      - name: Testing. Posting LLVM framework results to PR
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v6
+      - run: mkdir -p output/
+      - run: echo "This is fancy a comment" > output/results.txt
+      - name: comment PR
+        uses: machine-learning-apps/pr-comment@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
         with:
-          github-token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: '${{ env.SUMMARY }}'
-            })
+          path: output/results.txt
 #       - uses: AutoModality/action-clean@v1
 #       - uses: webfactory/ssh-agent@v0.5.3
 #         with:
