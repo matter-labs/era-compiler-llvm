@@ -38,13 +38,12 @@ jobs:
     steps:
       - name: Testing. Posting LLVM framework results.
         run: |
-          set -x
-          printf "Benchmark results:\n" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo $GITHUB_STEP_SUMMARY
-          SUMMARY=$(cat $GITHUB_STEP_SUMMARY)
-          echo "SUMMARY=$SUMMARY" >> $GITHUB_ENV
+
+          echo 'SUMMARY<<EOF' >> $GITHUB_ENV
+          printf "Benchmark results:\n" >> $GITHUB_ENV
+          echo '```' >> $GITHUB_ENV
+          echo '```' >> $GITHUB_ENV
+          echo 'EOF' >> $GITHUB_ENV
       - name: Testing. Posting LLVM framework results to PR
         if: github.event_name == 'pull_request'
         uses: actions/github-script@v6
