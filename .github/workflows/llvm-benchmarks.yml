@@ -353,7 +353,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
         with:
-          path: ${{ env.GITHUB_STEP_SUMMARY }}
+          path: compiler-tester/result.txt
 
       - name: Notify to Mattermost
         if: always()
