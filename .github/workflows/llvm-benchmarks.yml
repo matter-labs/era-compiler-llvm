@@ -38,6 +38,7 @@ jobs:
     steps:
       - name: Testing. Posting LLVM framework results.
         run: |
+          set -x
           printf "Benchmark results:\n" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
