@@ -346,6 +346,7 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           cat ./compiler-tester/result.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+          cat $GITHUB_STEP_SUMMARY > ./compiler-tester/result.txt
 
       - name: Testing. Posting LLVM benchmark results to PR comment.
         if: github.event_name == 'pull_request'
