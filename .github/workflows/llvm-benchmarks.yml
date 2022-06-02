@@ -340,14 +340,23 @@ jobs:
           export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
           cargo run --release --bin benchmark-analyzer -- --reference reference.json --candidate candidate.json --output-file result.txt'
 
-      - name: Testing. Posting LLVM framework results.
+      - name: Testing. Posting LLVM benchmark results to step summary.
         run: |
           printf "Benchmark results:\n" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
           cat ./compiler-tester/result.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+          cat $GITHUB_STEP_SUMMARY > ./compiler-tester/result.txt
 
-      - name: Notify to Mattermost (on unsuccessful deploys)
+      - name: Testing. Posting LLVM benchmark results to PR comment.
+        if: github.event_name == 'pull_request'
+        uses: machine-learning-apps/pr-comment@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
+        with:
+          path: compiler-tester/result.txt
+
+      - name: Notify to Mattermost
         if: always()
         uses: tferreira/matterfy@releases/v1
         with:
