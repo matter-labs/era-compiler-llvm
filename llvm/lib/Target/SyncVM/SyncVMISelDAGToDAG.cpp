@@ -24,7 +24,7 @@
 #include "llvm/Support/raw_ostream.h"
 using namespace llvm;
 
-#define DEBUG_TYPE "syncvm-isel"
+#define DEBUG_TYPE "isel"
 
 namespace {
 struct SyncVMISelAddressMode {
@@ -404,9 +404,9 @@ bool SyncVMDAGToDAGISel::SelectStackDIV(StoreSDNode *store) {
     {0b01000000, {SyncVM::DIVsrsr_s, false}},
     {0b00010000, {SyncVM::DIVcrsr_s, false}},
 
-    //{0b00001000, {SyncVM::DIVxrsr_s, true}},
-    //{0b00000100, {SyncVM::DIVzrsr_s, true}},
-    //{0b00000001, {SyncVM::DIVyrsr_s, true}},
+    {0b00001000, {SyncVM::DIVxrsr_s, true}},
+    {0b00000100, {SyncVM::DIVzrsr_s, true}},
+    {0b00000001, {SyncVM::DIVyrsr_s, true}},
   };
   return SelectStackOperation(store, ISD::UDIVREM, Mapping);
 }
@@ -418,11 +418,12 @@ bool SyncVMDAGToDAGISel::SelectStackMUL(StoreSDNode *store) {
 
     {0b10000000, {SyncVM::MULirsr_s, false}},
     {0b01000000, {SyncVM::MULsrsr_s, false}},
+    
     {0b00010000, {SyncVM::MULcrsr_s, false}},
 
-    //{0b00001000, {SyncVM::MULirsr_s, true}},
-    //{0b00000100, {SyncVM::MULsrsr_s, true}},
-    //{0b00000001, {SyncVM::MULcrsr_s, true}},
+    {0b00001000, {SyncVM::MULirsr_s, true}},
+    {0b00000100, {SyncVM::MULsrsr_s, true}},
+    {0b00000001, {SyncVM::MULcrsr_s, true}},
   };
   return SelectStackOperation(store, ISD::UMUL_LOHI, Mapping);
 }
@@ -430,13 +431,29 @@ bool SyncVMDAGToDAGISel::SelectStackMUL(StoreSDNode *store) {
 bool SyncVMDAGToDAGISel::SelectStackOperation(StoreSDNode *store,
                                               unsigned Operator,
                                               const MapType &Mapping) {
+  // cannot do truncating stores
+  if (store->isTruncatingStore()) {
+    LLVM_DEBUG(dbgs() << "Cannot handle truncating stores\n");
+    return false;
+  }
   SDValue value = store->getValue();
+
+  /*
+  // we cannot combine if the value is being used elsewhere.
+  if (value->use_size() != 1) {
+    LLVM_DEBUG(dbgs() << "Cannot handle multiple uses\n");
+    return false;
+  }
+  */
+
   if (value->getOpcode() != Operator) {
+    LLVM_DEBUG(dbgs() << "value is not MULTIPLICATION or DIVISION\n");
     return false;
   }
 
-  // we have to make sure we are saving the dividend rather than the remainder.
-  if (value.getResNo() != 0)  {
+  if (value.getResNo() != 0) {
+    LLVM_DEBUG(
+        dbgs() << "store is not referring to the second result, bail out\n");
     return false;
   }
 
@@ -451,7 +468,6 @@ bool SyncVMDAGToDAGISel::SelectStackOperation(StoreSDNode *store,
     uint8_t encoding =
         (isSmallConstant(opnd) ? 0b1000 : 0) |
         (isLoadFrom<SyncVMAS::AS_STACK>(opnd) ? 0b0100 : 0) |
-        //(isLoadFrom<SyncVMAS::AS_HEAP>(opnd) ? 0b0010 : 0) |
         (isLoadFrom<SyncVMAS::AS_CODE>(opnd) ? 0b0001 : 0);
     return encoding;
   };
@@ -460,14 +476,15 @@ bool SyncVMDAGToDAGISel::SelectStackOperation(StoreSDNode *store,
     (getOpndEncoding(opnd1) << 4) | getOpndEncoding(opnd2);
 
   if (Mapping.count(encoding) == 0) {
+    LLVM_DEBUG(dbgs() << "ISEL cannot find appropriate instruction\n");
     return false;
   }
 
   // cannot handle heap addressing
   if (isLoadFrom<SyncVMAS::AS_HEAP>(opnd1) || isLoadFrom<SyncVMAS::AS_HEAP>(opnd2)) {
+    LLVM_DEBUG(dbgs() << "Cannot handle load from HEAP\n");
     return false;
   }
-
 
   auto map = Mapping.lookup(encoding);
   auto opcode = map.first;
@@ -518,9 +535,7 @@ bool SyncVMDAGToDAGISel::SelectStackOperation(StoreSDNode *store,
   // push stack address
   SDValue Base1, Base2, Disp;
   bool successful = SelectStackAddr(store->getBasePtr(), Base1, Base2, Disp);
-  if (!successful) {
-    return false;
-  }
+  assert(successful);
   ops_vec.push_back(Base1);
   ops_vec.push_back(Base2);
   ops_vec.push_back(Disp);
@@ -534,11 +549,20 @@ bool SyncVMDAGToDAGISel::SelectStackOperation(StoreSDNode *store,
   auto ops = llvm::makeArrayRef(ops_vec);
 
   SDNode *ResNode = CurDAG->getMachineNode(opcode, DL, MVT::i256, ops);
+
+  SmallVector<SDValue, 12> ChainedOps;
+
   
   SDValue copyToReg = CurDAG->getCopyToReg(chain, DL, VReg, SDValue(ResNode, 0));
-  ReplaceNode(store, copyToReg.getNode());
+  ChainedOps.push_back(SDValue(ResNode, 0));
+  ChainedOps.push_back(copyToReg);
+  ChainedOps.push_back(chain);
 
-  // divert the remainder to the register
+  SDValue new_chain = CurDAG->getNode(ISD::TokenFactor, DL, MVT::Other, ChainedOps);
+
+  ReplaceNode(store, new_chain.getNode());
+
+
   ReplaceUses(value.getValue(1), CurDAG->getRegister(VReg, MVT::i256));
   return true;
 }

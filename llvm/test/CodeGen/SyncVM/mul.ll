@@ -218,9 +218,7 @@ define i256 @mulhu (i256 %a, i256 %b) nounwind {
 define i256 @mulhu_imm (i256 %a) nounwind {
   %1 = zext i256 %a to i512
   %2 = mul i512 %1, 12345
-; TODO: Enable this when stack instruction is generated, as well as
-; stack and calldata addressing flavor tests
-; TODO: mul 12345, r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}
+; CHECK: mul 12345, r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}
   %3 = lshr i512 %2, 256
   %4 = trunc i512 %3 to i256
   ret i256 %4
