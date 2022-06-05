@@ -96,8 +96,8 @@ TargetPassConfig *SyncVMTargetMachine::createPassConfig(PassManagerBase &PM) {
 
 void SyncVMPassConfig::addIRPasses() {
   addPass(createLowerSwitchPass());
-  addPass(createSyncVMLowerIntrinsicsPass());
   addPass(createSyncVMLinkRuntimePass());
+  addPass(createSyncVMLowerIntrinsicsPass());
   addPass(createSyncVMCodegenPreparePass());
   addPass(createSyncVMExpandUMAPass());
   addPass(createGlobalDCEPass());

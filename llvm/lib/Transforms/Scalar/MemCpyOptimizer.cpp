@@ -489,7 +489,7 @@ Instruction *MemCpyOptPass::tryMergingIntoMemset(Instruction *StartInst,
     // If it is profitable to lower this range to memset, do so now.
     // FIXME: Will be removed in the upcoming patch
     // SyncVM local begin
-    //if (!Range.isProfitableToUseMemset(DL))
+    if (!Range.isProfitableToUseMemset(DL))
     // SyncVM local end
       continue;
 

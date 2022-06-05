@@ -133,7 +133,6 @@ private:
   void generateUnalignedStoreUnknownAddr(const MemoryOperation &MO,
                                          IRBuilder<> &Builder);
   void expandUnalignedStore(StoreInst *SI);
-  void expandMemcpy(MemCpyInst *Mcpy);
 };
 } // namespace
 

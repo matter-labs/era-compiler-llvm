@@ -8,9 +8,9 @@
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
-#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
@@ -43,10 +43,10 @@ INITIALIZE_PASS(SyncVMLowerIntrinsics, DEBUG_TYPE, "Lower intrinsics", false,
                 false)
 
 static void createMemCpyLoopKnownSize(Instruction *InsertBefore, Value *SrcAddr,
-                                     Value *DstAddr, ConstantInt *CopyLen,
-                                     Align SrcAlign, Align DstAlign,
-                                     bool SrcIsVolatile, bool DstIsVolatile,
-                                     const TargetTransformInfo &TTI) {
+                                      Value *DstAddr, ConstantInt *CopyLen,
+                                      Align SrcAlign, Align DstAlign,
+                                      bool SrcIsVolatile, bool DstIsVolatile,
+                                      const TargetTransformInfo &TTI) {
   // No need to expand zero length copies.
   if (CopyLen->isZero())
     return;
@@ -94,8 +94,8 @@ static void createMemCpyLoopKnownSize(Instruction *InsertBefore, Value *SrcAddr,
     PHINode *LoopIndex = LoopBuilder.CreatePHI(TypeOfCopyLen, 2, "loop-index");
     LoopIndex->addIncoming(ConstantInt::get(TypeOfCopyLen, 0U), PreLoopBB);
     // Loop Body
-    Value *Offset =
-        LoopBuilder.CreateMul(LoopBuilder.getInt(APInt(256, 32, false)), LoopIndex);
+    Value *Offset = LoopBuilder.CreateMul(
+        LoopBuilder.getInt(APInt(256, 32, false)), LoopIndex);
     Value *SrcGEP =
         LoopBuilder.CreatePtrToInt(SrcAddr, LoopBuilder.getInt256Ty());
     SrcGEP = LoopBuilder.CreateAdd(SrcGEP, Offset);
@@ -158,11 +158,11 @@ static void createMemCpyLoopKnownSize(Instruction *InsertBefore, Value *SrcAddr,
 }
 
 static void createMemCpyLoopUnknownSize(Instruction *InsertBefore,
-                                       Value *SrcAddr, Value *DstAddr,
-                                       Value *CopyLen, Align SrcAlign,
-                                       Align DstAlign, bool SrcIsVolatile,
-                                       bool DstIsVolatile,
-                                       const TargetTransformInfo &TTI) {
+                                        Value *SrcAddr, Value *DstAddr,
+                                        Value *CopyLen, Align SrcAlign,
+                                        Align DstAlign, bool SrcIsVolatile,
+                                        bool DstIsVolatile,
+                                        const TargetTransformInfo &TTI) {
   BasicBlock *PreLoopBB = InsertBefore->getParent();
   BasicBlock *PostLoopBB =
       PreLoopBB->splitBasicBlock(InsertBefore, "post-loop-memcpy-expansion");
@@ -196,9 +196,8 @@ static void createMemCpyLoopUnknownSize(Instruction *InsertBefore,
   Type *Int8Type = Type::getInt8Ty(Ctx);
   bool LoopOpIsInt8 = LoopOpType == Int8Type;
   ConstantInt *CILoopOpSize = ConstantInt::get(ILengthType, LoopOpSize);
-  Value *RuntimeLoopCount = LoopOpIsInt8 ?
-                            CopyLen :
-                            PLBuilder.CreateUDiv(CopyLen, CILoopOpSize);
+  Value *RuntimeLoopCount =
+      LoopOpIsInt8 ? CopyLen : PLBuilder.CreateUDiv(CopyLen, CILoopOpSize);
   BasicBlock *LoopBB =
       BasicBlock::Create(Ctx, "loop-memcpy-expansion", ParentFunc, PostLoopBB);
   IRBuilder<> LoopBuilder(LoopBB);
@@ -209,8 +208,8 @@ static void createMemCpyLoopUnknownSize(Instruction *InsertBefore,
   PHINode *LoopIndex = LoopBuilder.CreatePHI(CopyLenType, 2, "loop-index");
   LoopIndex->addIncoming(ConstantInt::get(CopyLenType, 0U), PreLoopBB);
 
-  Value *Offset =
-      LoopBuilder.CreateMul(LoopBuilder.getInt(APInt(256, 32, false)), LoopIndex);
+  Value *Offset = LoopBuilder.CreateMul(
+      LoopBuilder.getInt(APInt(256, 32, false)), LoopIndex);
   Value *SrcGEP =
       LoopBuilder.CreatePtrToInt(SrcAddr, LoopBuilder.getInt256Ty());
   SrcGEP = LoopBuilder.CreateAdd(SrcGEP, Offset);
@@ -233,9 +232,8 @@ static void createMemCpyLoopUnknownSize(Instruction *InsertBefore,
     Value *RuntimeBytesCopied = PLBuilder.CreateSub(CopyLen, RuntimeResidual);
 
     // Loop body for the residual copy.
-    BasicBlock *ResLoopBB = BasicBlock::Create(Ctx, "loop-memcpy-residual",
-                                               PreLoopBB->getParent(),
-                                               PostLoopBB);
+    BasicBlock *ResLoopBB = BasicBlock::Create(
+        Ctx, "loop-memcpy-residual", PreLoopBB->getParent(), PostLoopBB);
     // Residual loop header.
     BasicBlock *ResHeaderBB = BasicBlock::Create(
         Ctx, "loop-memcpy-residual-header", PreLoopBB->getParent(), nullptr);
@@ -342,11 +340,10 @@ static void createMemMoveLoop(Instruction *InsertBefore, Value *SrcAddr,
   // SplitBlockAndInsertIfThenElse conveniently creates the basic if-then-else
   // structure. Its block terminators (unconditional branches) are replaced by
   // the appropriate conditional branches when the loop is built.
-  ICmpInst *PtrCompare = new ICmpInst(InsertBefore, ICmpInst::ICMP_ULT,
-                                      SrcAddr, DstAddr, "compare_src_dst");
+  ICmpInst *PtrCompare = new ICmpInst(InsertBefore, ICmpInst::ICMP_ULT, SrcAddr,
+                                      DstAddr, "compare_src_dst");
   Instruction *ThenTerm, *ElseTerm;
-  SplitBlockAndInsertIfThenElse(PtrCompare, InsertBefore, &ThenTerm,
-                                &ElseTerm);
+  SplitBlockAndInsertIfThenElse(PtrCompare, InsertBefore, &ThenTerm, &ElseTerm);
 
   // Each part of the function consists of two blocks:
   //   copy_backwards:        used to skip the loop when n == 0
@@ -371,8 +368,8 @@ static void createMemMoveLoop(Instruction *InsertBefore, Value *SrcAddr,
                    ConstantInt::get(TypeOfCopyLen, 0), "compare_n_to_0");
 
   // Copying backwards.
-  BasicBlock *LoopBB =
-    BasicBlock::Create(F->getContext(), "copy_backwards_loop", F, CopyForwardBB);
+  BasicBlock *LoopBB = BasicBlock::Create(
+      F->getContext(), "copy_backwards_loop", F, CopyForwardBB);
   IRBuilder<> LoopBuilder(LoopBB);
   PHINode *LoopPhi = LoopBuilder.CreatePHI(TypeOfCopyLen, 0);
   Value *IndexPtr = LoopBuilder.CreateSub(
@@ -393,7 +390,7 @@ static void createMemMoveLoop(Instruction *InsertBefore, Value *SrcAddr,
 
   // Copying forward.
   BasicBlock *FwdLoopBB =
-    BasicBlock::Create(F->getContext(), "copy_forward_loop", F, ExitBB);
+      BasicBlock::Create(F->getContext(), "copy_forward_loop", F, ExitBB);
   IRBuilder<> FwdLoopBuilder(FwdLoopBB);
   PHINode *FwdCopyPhi = FwdLoopBuilder.CreatePHI(TypeOfCopyLen, 0, "index_ptr");
   Value *SrcGEP = FwdLoopBuilder.CreateInBoundsGEP(EltTy, SrcAddr, FwdCopyPhi);
@@ -415,49 +412,77 @@ static void createMemMoveLoop(Instruction *InsertBefore, Value *SrcAddr,
 static void createMemSetLoop(Instruction *InsertBefore, Value *DstAddr,
                              Value *CopyLen, Value *SetValue, Align DstAlign,
                              bool IsVolatile) {
-  Type *TypeOfCopyLen = CopyLen->getType();
-  BasicBlock *OrigBB = InsertBefore->getParent();
-  Function *F = OrigBB->getParent();
-  const DataLayout &DL = F->getParent()->getDataLayout();
-  BasicBlock *NewBB =
-      OrigBB->splitBasicBlock(InsertBefore, "split");
-  BasicBlock *LoopBB
-    = BasicBlock::Create(F->getContext(), "loadstoreloop", F, NewBB);
+  Module *M = InsertBefore->getModule();
+  IRBuilder<> Builder(InsertBefore);
+  Value *SetValueI256 = [SetValue, &Builder] {
+    std::vector<unsigned> ShiftAmounts = {8, 16, 32, 64, 128};
+    if (auto *CVal = dyn_cast<ConstantInt>(SetValue)) {
+      APInt ValInt = APInt(256, CVal->getValue().getZExtValue(), false);
+      for (unsigned ShiftAmount : ShiftAmounts)
+        ValInt = ValInt.shl(ShiftAmount) | ValInt;
+      return static_cast<Value *>(Builder.getInt(ValInt));
+    }
+    Value *Result = Builder.CreateZExt(SetValue, Builder.getInt256Ty());
+    Value *Prev = Result;
+    for (unsigned ShiftAmount : ShiftAmounts) {
+      Result = Builder.CreateShl(Result, ShiftAmount);
+      Prev = Result = Builder.CreateOr(Result, Prev);
+    }
+    return Result;
+  }();
+  unsigned AS = cast<PointerType>(DstAddr->getType())->getAddressSpace();
+  Value *CopyLenI256 = Builder.CreateZExt(CopyLen, Builder.getInt256Ty());
+  assert(AS <= SyncVMAS::AS_HEAP &&
+         "Memset is unsupported for calldata and returndata");
+  if (AS == SyncVMAS::AS_HEAP) {
+    Value *AddrP256 = Builder.CreateBitCast(
+        DstAddr, Builder.getInt256Ty()->getPointerTo(SyncVMAS::AS_HEAP));
+    Function *Memset = M->getFunction("__memset_uma_as1");
+    Builder.CreateCall(Memset, {AddrP256, SetValueI256, CopyLenI256});
+  } else if (AS == SyncVMAS::AS_STACK) {
+    Function *Memset = M->getFunction("__memset_as0");
+    if (DstAlign.value() % 32) {
+      Value *AddrI256 = Builder.CreatePtrToInt(DstAddr, Builder.getInt256Ty());
+      Value *Peel = Builder.CreateURem(AddrI256, Builder.getIntN(256, 32));
+      Value *Lt = Builder.CreateICmpULT(Peel, CopyLenI256);
+      Peel = Builder.CreateSelect(Lt, Peel, CopyLenI256);
+      Instruction *Cmp = cast<Instruction>(
+          Builder.CreateICmpEQ(Peel, Builder.getIntN(256, 0)));
+      BasicBlock *OrigBB = InsertBefore->getParent();
+      BasicBlock *ContBB =
+          InsertBefore->getParent()->splitBasicBlock(InsertBefore, "memset-split");
+      BasicBlock *SmallStoreBB = BasicBlock::Create(
+          M->getContext(), "smallstore", InsertBefore->getFunction(), ContBB);
+      std::prev(OrigBB->end())->eraseFromParent();
+      Builder.SetInsertPoint(OrigBB, OrigBB->end());
+      Builder.CreateCondBr(Cmp, ContBB, SmallStoreBB);
 
-  IRBuilder<> Builder(OrigBB->getTerminator());
+      IRBuilder<> SmallStoreBuilder(SmallStoreBB);
+      Function *SmallStore = M->getFunction("__small_store_as0");
+      Value *PeelBits = SmallStoreBuilder.CreateMul(
+          Peel, SmallStoreBuilder.getIntN(256, 8), "peel-bits", true, true);
+      Value *ShiftPeelVal = SmallStoreBuilder.CreateSub(
+          SmallStoreBuilder.getIntN(256, 256), PeelBits, "shift-peel", true, true);
+      Value *PeelVal = SmallStoreBuilder.CreateLShr(SetValueI256, ShiftPeelVal);
+      SmallStoreBuilder.CreateCall(SmallStore, {AddrI256, PeelVal, PeelBits});
+      SmallStoreBuilder.CreateBr(ContBB);
 
-  // Cast pointer to the type of value getting stored
-  unsigned dstAS = cast<PointerType>(DstAddr->getType())->getAddressSpace();
-  DstAddr = Builder.CreateBitCast(DstAddr,
-                                  PointerType::get(SetValue->getType(), dstAS));
-
-  Builder.CreateCondBr(
-      Builder.CreateICmpEQ(ConstantInt::get(TypeOfCopyLen, 0), CopyLen), NewBB,
-      LoopBB);
-  OrigBB->getTerminator()->eraseFromParent();
-
-  unsigned PartSize = DL.getTypeStoreSize(SetValue->getType());
-  Align PartAlign(commonAlignment(DstAlign, PartSize));
-
-  IRBuilder<> LoopBuilder(LoopBB);
-  PHINode *LoopIndex = LoopBuilder.CreatePHI(TypeOfCopyLen, 0);
-  LoopIndex->addIncoming(ConstantInt::get(TypeOfCopyLen, 0), OrigBB);
-
-  LoopBuilder.CreateAlignedStore(
-      SetValue,
-      LoopBuilder.CreateInBoundsGEP(SetValue->getType(), DstAddr, LoopIndex),
-      PartAlign, IsVolatile);
-
-  Value *NewIndex =
-      LoopBuilder.CreateAdd(LoopIndex, ConstantInt::get(TypeOfCopyLen, 1));
-  LoopIndex->addIncoming(NewIndex, LoopBB);
-
-  LoopBuilder.CreateCondBr(LoopBuilder.CreateICmpULT(NewIndex, CopyLen), LoopBB,
-                           NewBB);
+      Builder.SetInsertPoint(ContBB, ContBB->begin());
+      Value *CopyLenRem =
+          Builder.CreateSub(CopyLenI256, Peel, "rembytes", true, true);
+      AddrI256 = Builder.CreateAdd(AddrI256, Peel, "memset-addr", true, true);
+      Value *AddrP256 = Builder.CreateIntToPtr(
+          AddrI256, Builder.getInt256Ty()->getPointerTo(SyncVMAS::AS_STACK));
+      Builder.CreateCall(Memset, {AddrP256, SetValueI256, CopyLenRem});
+    } else {
+      Value *AddrP256 = Builder.CreateBitCast(
+          DstAddr, Builder.getInt256Ty()->getPointerTo(SyncVMAS::AS_STACK));
+      Builder.CreateCall(Memset, {AddrP256, SetValueI256, CopyLenI256});
+    }
+  }
 }
 
-void expandMemCpyAsLoop(MemCpyInst *Memcpy,
-                              const TargetTransformInfo &TTI) {
+void expandMemCpyAsLoop(MemCpyInst *Memcpy, const TargetTransformInfo &TTI) {
   if (ConstantInt *CI = dyn_cast<ConstantInt>(Memcpy->getLength())) {
     createMemCpyLoopKnownSize(
         /* InsertBefore */ Memcpy,
@@ -484,6 +509,7 @@ void expandMemCpyAsLoop(MemCpyInst *Memcpy,
 }
 
 void expandMemMoveAsLoop(MemMoveInst *Memmove) {
+  assert(false);
   createMemMoveLoop(/* InsertBefore */ Memmove,
                     /* SrcAddr */ Memmove->getRawSource(),
                     /* DstAddr */ Memmove->getRawDest(),

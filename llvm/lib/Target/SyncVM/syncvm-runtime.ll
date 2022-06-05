@@ -452,6 +452,29 @@ copybytes:
   ret void
 }
 
+define void @__memset_as0(i256* align 32 %dest, i256 %val, i256 %size) nounwind {
+entry:
+  %numcells = udiv i256 %size, 32
+  %hascells = icmp ugt i256 %numcells, 0
+  %dest.int = ptrtoint i256* %dest to i256
+  br i1 %hascells, label %copycells, label %copybytes
+copycells:
+  %cellsrem = phi i256 [%numcells, %entry], [%cellsrem.next, %copycells]
+  %currentdest.int = phi i256 [%dest.int, %entry], [%currentdest.inext, %copycells]
+  %currentdest = inttoptr i256 %currentdest.int to i256*
+  store i256 %val, i256* %currentdest, align 32
+  %currentdest.inext = add nsw nuw i256 %currentdest.int, 32
+  %cellsrem.next = sub nsw nuw i256 %cellsrem, 1
+  %continue = icmp ne i256 %cellsrem.next, 0
+  br i1 %continue, label %copycells, label %copybytes
+copybytes:
+  %addr.int = phi i256 [%dest.int, %entry], [%currentdest.inext, %copycells]
+  %rembytes = urem i256 %size, 32
+  %rembits = mul nsw nuw i256 %rembytes, 8
+  call void @__small_store_as0(i256 %addr.int, i256 %val, i256 %rembits)
+  ret void
+}
+
 define i256 @__unaligned_load_as0(i256 %addr) #2 {
 entry:
   %addr_offset_bytes = urem i256 %addr, 32
