@@ -106,6 +106,7 @@ void SyncVMPassConfig::addIRPasses() {
 #endif
   addPass(createSyncVMCodegenPreparePass());
   addPass(createSyncVMAllocaHoistingPass());
+  TargetPassConfig::addIRPasses();
 }
 
 bool SyncVMPassConfig::addInstSelector() {
