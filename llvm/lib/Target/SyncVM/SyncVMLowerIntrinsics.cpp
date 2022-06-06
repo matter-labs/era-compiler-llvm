@@ -449,8 +449,8 @@ static void createMemSetLoop(Instruction *InsertBefore, Value *DstAddr,
       Instruction *Cmp = cast<Instruction>(
           Builder.CreateICmpEQ(Peel, Builder.getIntN(256, 0)));
       BasicBlock *OrigBB = InsertBefore->getParent();
-      BasicBlock *ContBB =
-          InsertBefore->getParent()->splitBasicBlock(InsertBefore, "memset-split");
+      BasicBlock *ContBB = InsertBefore->getParent()->splitBasicBlock(
+          InsertBefore, "memset-split");
       BasicBlock *SmallStoreBB = BasicBlock::Create(
           M->getContext(), "smallstore", InsertBefore->getFunction(), ContBB);
       std::prev(OrigBB->end())->eraseFromParent();
@@ -461,8 +461,9 @@ static void createMemSetLoop(Instruction *InsertBefore, Value *DstAddr,
       Function *SmallStore = M->getFunction("__small_store_as0");
       Value *PeelBits = SmallStoreBuilder.CreateMul(
           Peel, SmallStoreBuilder.getIntN(256, 8), "peel-bits", true, true);
-      Value *ShiftPeelVal = SmallStoreBuilder.CreateSub(
-          SmallStoreBuilder.getIntN(256, 256), PeelBits, "shift-peel", true, true);
+      Value *ShiftPeelVal =
+          SmallStoreBuilder.CreateSub(SmallStoreBuilder.getIntN(256, 256),
+                                      PeelBits, "shift-peel", true, true);
       Value *PeelVal = SmallStoreBuilder.CreateLShr(SetValueI256, ShiftPeelVal);
       SmallStoreBuilder.CreateCall(SmallStore, {AddrI256, PeelVal, PeelBits});
       SmallStoreBuilder.CreateBr(ContBB);
