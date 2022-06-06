@@ -26,11 +26,11 @@ on:
       compiler_llvm_benchmark_domain:
         description: "Input domain for compiler-llvm benchmarks"
         required: true
-        default: "Y+M3I+B3"
+        default: "+M3I+B3"
       compiler_llvm_benchmark_filter:
         description: "Input filter for compiler-llvm benchmarks"
         required: true
-        default: "tests/solidity/complex/defi/"
+        default: ""
 
 jobs:
   llvm_benchmarks_candidate:
