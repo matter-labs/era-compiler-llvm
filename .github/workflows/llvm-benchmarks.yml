@@ -46,8 +46,8 @@ jobs:
           echo "COMPOSE_PROJECT_NAME=llvm_benchmarks_candidate" >> $GITHUB_ENV
           echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release'}}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || 'Y+M3I+B3'}}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_domain || 'tests/solidity/complex/defi/'}}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '+M3I+B3'}}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_domain || ''}}" >> $GITHUB_ENV
 
       - name: Get branch name (pull request)
         if: github.event_name == 'pull_request'
@@ -156,8 +156,8 @@ jobs:
           echo "COMPOSE_PROJECT_NAME=llvm_benchmarks_reference" >> $GITHUB_ENV
           echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release'}}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || 'Y+M3I+B3'}}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_domain || 'tests/solidity/complex/defi/'}}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '+M3I+B3'}}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_domain || ''}}" >> $GITHUB_ENV
 
       - name: Get branch name (pull request)
         if: github.event_name == 'pull_request'
@@ -236,7 +236,7 @@ jobs:
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
           export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-          cargo run --release --bin compiler-tester -- --filter=${{ env.LLVM_BENCHMARK_DOMAIN }} --domain=${{ env.LLVM_BENCHMARK_DOMAIN }} --benchmark=reference.json'
+          cargo run --release --bin compiler-tester -- --filter=${{ env.LLVM_BENCHMARK_FILTER }} --domain=${{ env.LLVM_BENCHMARK_DOMAIN }} --benchmark=reference.json'
 
       - uses: actions/upload-artifact@v3
         with:
