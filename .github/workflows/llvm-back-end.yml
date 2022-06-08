@@ -20,11 +20,13 @@ jobs:
   llvm_testing:
     runs-on: [self-hosted, compiler]
     steps:
-    - uses: actions/checkout@v2
-    - name: Slack Notification
-      uses: rtCamp/action-slack-notify@v2
-      env:
-        SLACK_WEBHOOK: ${{ secrets.MATTERMOST_WEBHOOK }}
+      - uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,message,commit,author,action,eventName,ref,workflow,job,took,pullRequest # selectable (default: repo,message)
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.MATTERMOST_WEBHOOK }} # required
+        if: always() # Pick up events even if the job fails or is canceled.
     # steps:
     #   - uses: AutoModality/action-clean@v1.1.0
     #   - uses: webfactory/ssh-agent@v0.5.3
