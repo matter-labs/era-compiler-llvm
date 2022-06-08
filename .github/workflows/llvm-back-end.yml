@@ -20,12 +20,11 @@ jobs:
   llvm_testing:
     runs-on: [self-hosted, compiler]
     steps:
-    - name: Create the Mattermost Message
-      run: |
-        echo "{\"text\":\"testing github action :tada:, status: ${{ job.status }}, job url <${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}> \"}" > mattermost.json
-    - uses: mattermost/action-mattermost-notify@master
+    - uses: actions/checkout@v2
+    - name: Slack Notification
+      uses: rtCamp/action-slack-notify@v2
       env:
-        MATTERMOST_WEBHOOK_URL: ${{ secrets.MATTERMOST_WEBHOOK }}
+        SLACK_WEBHOOK: ${{ secrets.MATTERMOST_WEBHOOK }}
     # steps:
     #   - uses: AutoModality/action-clean@v1.1.0
     #   - uses: webfactory/ssh-agent@v0.5.3
