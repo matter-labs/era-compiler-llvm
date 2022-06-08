@@ -4200,8 +4200,17 @@ Instruction *InstCombinerImpl::foldICmpBinOp(ICmpInst &I,
     }
   }
 
+  // SyncVM local begin
+  // At this moment SyncVM sees a regression over folding umul
+  Triple TT(I.getFunction()->getParent()->getTargetTriple());
+  if (!TT.isSyncVM()) {
+  // SyncVM local end
   if (Value *V = foldUnsignedMultiplicationOverflowCheck(I))
     return replaceInstUsesWith(I, V);
+  // SyncVM local begin
+  }
+  // SyncVM local end
+
 
   if (Value *V = foldICmpWithLowBitMaskedVal(I, Builder))
     return replaceInstUsesWith(I, V);
