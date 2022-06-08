@@ -227,12 +227,26 @@ SDValue EraVMTargetLowering::LowerFormalArguments(
                  *DAG.getContext());
   CCInfo.AnalyzeArguments(Ins, CC_ERAVM);
 
+  unsigned InIdx = 0;
   for (CCValAssign &VA : ArgLocs) {
     if (VA.isRegLoc()) {
       Register VReg = RegInfo.createVirtualRegister(&EraVM::GR256RegClass);
       RegInfo.addLiveIn(VA.getLocReg(), VReg);
       SDValue ArgValue = DAG.getCopyFromReg(Chain, DL, VReg, VA.getLocVT());
-      ArgValue = DAG.getNode(ISD::TRUNCATE, DL, VA.getValVT(), ArgValue);
+
+      // insert AssertZext if we are loading smaller types
+      const ISD::InputArg &arg = Ins[InIdx];
+
+      if (arg.ArgVT.isScalarInteger()) {
+        unsigned bitwidth = arg.ArgVT.getSizeInBits();
+        if (bitwidth < 256) {
+          auto int_type = EVT::getIntegerVT(*DAG.getContext(), bitwidth);
+          ArgValue =
+              DAG.getNode(ISD::AssertZext, DL, arg.VT, ArgValue.getValue(0),
+                          DAG.getValueType(int_type));
+        }
+      }
+
       InVals.push_back(ArgValue);
     } else {
       // Sanity check
@@ -250,6 +264,7 @@ SDValue EraVMTargetLowering::LowerFormalArguments(
           MachinePointerInfo::getFixedStack(DAG.getMachineFunction(), FI));
       InVals.push_back(InVal);
     }
+    ++InIdx;
   }
 
   return Chain;
@@ -420,6 +435,17 @@ SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
                                RVLoc.getValVT(), InFlag);
       Chain = Val.getValue(1);
       InFlag = Val.getValue(2);
+      // if the return type is of integer type, and the size is smaller than
+      // 256, insert assert zext:
+      llvm::Type *retTy = CLI.RetTy;
+      if (retTy->isIntegerTy()) {
+        unsigned bitwidth = retTy->getIntegerBitWidth();
+        if (bitwidth < 256) {
+          auto int_type = EVT::getIntegerVT(*DAG.getContext(), bitwidth);
+          Val = DAG.getNode(ISD::AssertZext, DL, MVT::i256, Val.getValue(0),
+                            DAG.getValueType(int_type));
+        }
+      }
       CopiedRegs[RVLoc.getLocReg()] = Val;
     }
     InVals.push_back(Val);
