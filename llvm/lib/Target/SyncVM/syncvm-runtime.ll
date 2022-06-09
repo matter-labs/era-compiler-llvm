@@ -448,8 +448,13 @@ copycells:
 copybytes:
   %addr.int = phi i256 [%dest.int, %entry], [%currentdest.inext, %copycells]
   %rembytes = urem i256 %size, 32
+  %need.residual.copy = icmp ne i256 %rembytes, 0
+  br i1 %need.residual.copy, label %residual, label %return
+residual:
   %rembits = mul nsw nuw i256 %rembytes, 8
   call void @__small_store_as1(i256 %addr.int, i256 %val, i256 %rembits)
+  ret void
+return:
   ret void
 }
 
