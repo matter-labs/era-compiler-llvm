@@ -102,6 +102,10 @@ void SyncVMAsmPrinter::printOperand(const MachineInstr *MI, int OpNum,
   case MachineOperand::MO_GlobalAddress:
     PrintSymbolOperand(MO, O);
     return;
+  case MachineOperand::MO_JumpTableIndex:
+    O << MAI->getPrivateGlobalPrefix() << "JTI" << getFunctionNumber() << '_'
+      << MO.getIndex();
+    break;
   }
 }
 

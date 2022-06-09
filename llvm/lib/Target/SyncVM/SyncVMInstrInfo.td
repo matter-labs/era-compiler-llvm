@@ -19,6 +19,8 @@ def SDT_SyncVMCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i256>,
 def SDT_SyncVMChangeSP     : SDTypeProfile<0,  1, [SDTCisVT<0, i256>]>;
 def SDT_SyncVMBrCC         : SDTypeProfile<0,  2, [SDTCisVT<0, OtherVT>,
                                                    SDTCisVT<1, i256>]>;
+def SDT_SyncVMBrJT         : SDTypeProfile<0,  2, [SDTCisVT<0, OtherVT>,
+                                                   SDTCisVT<1, i256>]>;
 def SDT_SyncVMSelectCC     : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
                                                   SDTCisSameAs<1, 2>,
                                                   SDTCisVT<3, i256>]>;
@@ -44,6 +46,8 @@ def SyncVMdelegatecall: SDNode<"SyncVMISD::DELEGATECALL", SDT_SyncVMFarCall,
 def SyncVMmimiccall: SDNode<"SyncVMISD::MIMICCALL", SDT_SyncVMFarCall,
                     [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
 def SyncVMbrcc   : SDNode<"SyncVMISD::BR_CC", SDT_SyncVMBrCC,
+                    [SDNPHasChain, SDNPInGlue]>;
+def SyncVMbrjt   : SDNode<"SyncVMISD::BR_JT", SDT_SyncVMBrJT,
                     [SDNPHasChain, SDNPInGlue]>;
 def SyncVMselectcc: SDNode<"SyncVMISD::SELECT_CC", SDT_SyncVMSelectCC,
                            [SDNPInGlue]>;
@@ -850,6 +854,9 @@ let isTerminator = 1, isBranch = 1, isBarrier = 1, Uses = [Flags] in
 def J: IJump<10, (ins jmptarget:$dest, cc:$cc), "jump$cc\t@$dest",
              [(SyncVMbrcc bb:$dest, imm:$cc)]>;
 def : Pat<(br bb:$dst), (J bb:$dst, 0)>;
+
+let isTerminator = 1, isBranch = 1, isBarrier = 1 in
+def JBTr: IJump<54, (ins jmptarget:$jt, GR256:$reg), "jump\tcode[@$jt + $reg]", [(SyncVMbrjt tjumptable:$jt, GR256:$reg)]>;
 
 let isReturn = 1, isTerminator = 1, isBarrier = 1  in
 def RET   : IRet<7, RFNone, (ins), "ret", [(SyncVMret)]>;

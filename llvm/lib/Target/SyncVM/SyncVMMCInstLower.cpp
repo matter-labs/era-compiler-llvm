@@ -26,72 +26,75 @@
 
 using namespace llvm;
 
-MCSymbol *SyncVMMCInstLower::
-GetGlobalAddressSymbol(const MachineOperand &MO) const {
+MCSymbol *
+SyncVMMCInstLower::GetGlobalAddressSymbol(const MachineOperand &MO) const {
   switch (MO.getTargetFlags()) {
-  default: llvm_unreachable("Unknown target flag on GV operand");
-  case 0: break;
+  default:
+    llvm_unreachable("Unknown target flag on GV operand");
+  case 0:
+    break;
   }
 
   return Printer.getSymbol(MO.getGlobal());
 }
 
-MCSymbol *SyncVMMCInstLower::
-GetExternalSymbolSymbol(const MachineOperand &MO) const {
+MCSymbol *
+SyncVMMCInstLower::GetExternalSymbolSymbol(const MachineOperand &MO) const {
   switch (MO.getTargetFlags()) {
-  default: llvm_unreachable("Unknown target flag on GV operand");
-  case 0: break;
+  default:
+    llvm_unreachable("Unknown target flag on GV operand");
+  case 0:
+    break;
   }
 
   return Printer.GetExternalSymbolSymbol(MO.getSymbolName());
 }
 
-MCSymbol *SyncVMMCInstLower::
-GetJumpTableSymbol(const MachineOperand &MO) const {
+MCSymbol *
+SyncVMMCInstLower::GetJumpTableSymbol(const MachineOperand &MO) const {
   const DataLayout &DL = Printer.getDataLayout();
   SmallString<256> Name;
-  raw_svector_ostream(Name) << DL.getPrivateGlobalPrefix() << "JTI"
-                            << Printer.getFunctionNumber() << '_'
-                            << MO.getIndex();
+  raw_svector_ostream(Name)
+      << DL.getPrivateGlobalPrefix() << "JTI" << Printer.getFunctionNumber()
+      << '_' << MO.getIndex();
+
+  // Create a symbol for the name.
+  return Ctx.getOrCreateSymbol(Name);
+}
+
+MCSymbol *
+SyncVMMCInstLower::GetConstantPoolIndexSymbol(const MachineOperand &MO) const {
+  const DataLayout &DL = Printer.getDataLayout();
+  SmallString<256> Name;
+  raw_svector_ostream(Name)
+      << DL.getPrivateGlobalPrefix() << "CPI" << Printer.getFunctionNumber()
+      << '_' << MO.getIndex();
 
   switch (MO.getTargetFlags()) {
-  default: llvm_unreachable("Unknown target flag on GV operand");
-  case 0: break;
+  default:
+    llvm_unreachable("Unknown target flag on GV operand");
+  case 0:
+    break;
   }
 
   // Create a symbol for the name.
   return Ctx.getOrCreateSymbol(Name);
 }
 
-MCSymbol *SyncVMMCInstLower::
-GetConstantPoolIndexSymbol(const MachineOperand &MO) const {
-  const DataLayout &DL = Printer.getDataLayout();
-  SmallString<256> Name;
-  raw_svector_ostream(Name) << DL.getPrivateGlobalPrefix() << "CPI"
-                            << Printer.getFunctionNumber() << '_'
-                            << MO.getIndex();
-
+MCSymbol *
+SyncVMMCInstLower::GetBlockAddressSymbol(const MachineOperand &MO) const {
   switch (MO.getTargetFlags()) {
-  default: llvm_unreachable("Unknown target flag on GV operand");
-  case 0: break;
-  }
-
-  // Create a symbol for the name.
-  return Ctx.getOrCreateSymbol(Name);
-}
-
-MCSymbol *SyncVMMCInstLower::
-GetBlockAddressSymbol(const MachineOperand &MO) const {
-  switch (MO.getTargetFlags()) {
-  default: llvm_unreachable("Unknown target flag on GV operand");
-  case 0: break;
+  default:
+    llvm_unreachable("Unknown target flag on GV operand");
+  case 0:
+    break;
   }
 
   return Printer.GetBlockAddressSymbol(MO.getBlockAddress());
 }
 
-MCOperand SyncVMMCInstLower::
-LowerSymbolOperand(const MachineOperand &MO, MCSymbol *Sym) const {
+MCOperand SyncVMMCInstLower::LowerSymbolOperand(const MachineOperand &MO,
+                                                MCSymbol *Sym) const {
   const MCExpr *Expr = MCSymbolRefExpr::create(Sym, Ctx);
 
   switch (MO.getTargetFlags()) {
@@ -101,7 +104,7 @@ LowerSymbolOperand(const MachineOperand &MO, MCSymbol *Sym) const {
     break;
   }
 
-  if (MO.getOffset())
+  if (!MO.isJTI() && MO.getOffset())
     Expr = MCBinaryExpr::createAdd(
         Expr, MCConstantExpr::create(MO.getOffset(), Ctx), Ctx);
   return MCOperand::createExpr(Expr);
@@ -123,7 +126,8 @@ void SyncVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) const {
       llvm_unreachable("unknown operand type");
     case MachineOperand::MO_Register:
       // Ignore all implicit register operands.
-      if (MO.isImplicit()) continue;
+      if (MO.isImplicit())
+        continue;
       MCOp = MCOperand::createReg(MO.getReg());
       break;
     case MachineOperand::MO_Immediate:
@@ -144,8 +148,8 @@ void SyncVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) const {
       break;
 
     case MachineOperand::MO_MachineBasicBlock:
-      MCOp = MCOperand::createExpr(MCSymbolRefExpr::create(
-                         MO.getMBB()->getSymbol(), Ctx));
+      MCOp = MCOperand::createExpr(
+          MCSymbolRefExpr::create(MO.getMBB()->getSymbol(), Ctx));
       break;
     case MachineOperand::MO_GlobalAddress:
       MCOp = LowerSymbolOperand(MO, GetGlobalAddressSymbol(MO));

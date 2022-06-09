@@ -47,6 +47,7 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
 
   setOperationAction(ISD::GlobalAddress, MVT::i256, Custom);
   setOperationAction(ISD::BR_CC, MVT::i256, Custom);
+  setOperationAction(ISD::BR_JT, MVT::Other, Custom);
   setOperationAction(ISD::BRCOND, MVT::Other, Expand);
   setOperationAction(ISD::SETCC, MVT::i256, Expand);
   setOperationAction(ISD::SELECT, MVT::i256, Expand);
@@ -101,6 +102,7 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::ANY_EXTEND, MVT::i256, Custom);
 
   setJumpIsExpensive(false);
+  setMinimumJumpTableEntries(4);
 }
 
 //===----------------------------------------------------------------------===//
@@ -545,6 +547,8 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
     return LowerGlobalAddress(Op, DAG);
   case ISD::BR_CC:
     return LowerBR_CC(Op, DAG);
+  case ISD::BR_JT:
+    return LowerBR_JT(Op, DAG);
   case ISD::SELECT_CC:
     return LowerSELECT_CC(Op, DAG);
   case ISD::CopyToReg:
@@ -730,6 +734,17 @@ SDValue SyncVMTargetLowering::LowerGlobalAddress(SDValue Op,
   // Create the TargetGlobalAddress node, folding in the constant offset.
   SDValue Result = DAG.getTargetGlobalAddress(GV, SDLoc(Op), PtrVT, Offset);
   return Result;
+}
+
+SDValue SyncVMTargetLowering::LowerBR_JT(SDValue Op, SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  auto Chain = Op.getOperand(0);
+  auto *JT = cast<JumpTableSDNode>(Op.getOperand(1));
+  auto Record = Op.getOperand(2);
+
+  SDValue JTPtr =
+      DAG.getTargetJumpTable(JT->getIndex(), getPointerTy(DAG.getDataLayout()));
+  return DAG.getNode(SyncVMISD::BR_JT, DL, MVT::Other, Chain, JTPtr, Record);
 }
 
 SDValue SyncVMTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {

@@ -84,6 +84,16 @@ bool SyncVMInstrInfo::reverseBranchCondition(
   return false;
 }
 
+// The analyzeBranch function is used to examine conditional instructions and
+// remove unnecessary instructions. This method is used by BranchFolder and
+// IfConverter machine function passes to improve the CFG.
+// - TrueBlock is set to the destination if condition evaluates true (it is the
+//   nullptr if the destination is the fall-through branch);
+// - FalseBlock is set to the destination if condition evaluates to false (it
+//   is the nullptr if the branch is unconditional);
+// - condition is populated with machine operands needed to generate the branch
+//   to insert in insertBranch;
+// Returns: false if branch could successfully be analyzed.
 bool SyncVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
                                     MachineBasicBlock *&TBB,
                                     MachineBasicBlock *&FBB,
@@ -104,7 +114,7 @@ bool SyncVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
 
     // A terminator that isn't a branch can't easily be handled
     // by this analysis.
-    if (!I->isBranch())
+    if (!I->isBranch() || I->getOpcode() == SyncVM::JBTr)
       return true;
 
     // Handle unconditional branches.
