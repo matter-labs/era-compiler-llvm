@@ -1,373 +1,371 @@
-# name: LLVM benchmarks
+name: LLVM benchmarks
 
-# on:
-#   pull_request:
-#     branches:
-#       - main
-#       - dev-1.1
-#   workflow_dispatch:
-#     inputs:
-#       llvm_build_type:
-#         description: "Input LLVM build type. Variables: release, debug"
-#         required: true
-#         default: "release"
-#       compiler_tester_branch:
-#         description: "Input an upstream compiler-tester repo branch to use"
-#         required: true
-#         default: "main"
-#       compiler_llvm_reference_branch:
-#         description: "Input an upstream compiler-llvm repo branch to use as a benchmark reference"
-#         required: true
-#         default: "main"
-#       compiler_llvm_candidate_branch:
-#         description: "Input an upstream compiler-llvm repo branch to use as a benchmark candidate"
-#         required: true
-#         default: "main"
-#       compiler_llvm_benchmark_domain:
-#         description: "Input domain for compiler-llvm benchmarks"
-#         required: true
-#         default: "+M3I+B3"
-#       compiler_llvm_benchmark_filter:
-#         description: "Input filter for compiler-llvm benchmarks"
-#         required: true
-#         default: ""
+on:
+  pull_request:
+    branches:
+      - main
+      - dev-1.1
+  workflow_dispatch:
+    inputs:
+      llvm_build_type:
+        description: "Input LLVM build type. Variables: release, debug"
+        required: true
+        default: "release"
+      compiler_tester_branch:
+        description: "Input an upstream compiler-tester repo branch to use"
+        required: true
+        default: "main"
+      compiler_llvm_reference_branch:
+        description: "Input an upstream compiler-llvm repo branch to use as a benchmark reference"
+        required: true
+        default: "main"
+      compiler_llvm_candidate_branch:
+        description: "Input an upstream compiler-llvm repo branch to use as a benchmark candidate"
+        required: true
+        default: "main"
+      compiler_llvm_benchmark_domain:
+        description: "Input domain for compiler-llvm benchmarks"
+        required: true
+        default: "+M3I+B3"
+      compiler_llvm_benchmark_filter:
+        description: "Input filter for compiler-llvm benchmarks"
+        required: true
+        default: ""
 
-# jobs:
-#   llvm_benchmarks_candidate:
-#     runs-on: [self-hosted, compiler]
-#     steps:
-#       - uses: AutoModality/action-clean@v1
-#       - uses: webfactory/ssh-agent@v0.5.3
-#         with:
-#           ssh-private-key: ${{ secrets.SSH_PK_BOT }}
-#       - name: Preparing workspace. Setting environment.
-#         run: |
-#           echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
-#           echo "COMPOSE_PROJECT_NAME=llvm_benchmarks_candidate" >> $GITHUB_ENV
-#           echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
-#           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release'}}" >> $GITHUB_ENV
-#           echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '+M3I+B3'}}" >> $GITHUB_ENV
-#           echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_domain || ''}}" >> $GITHUB_ENV
+jobs:
+  llvm_benchmarks_candidate:
+    runs-on: [self-hosted, compiler]
+    steps:
+      - uses: AutoModality/action-clean@v1
+      - uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PK_BOT }}
+      - name: Preparing workspace. Setting environment.
+        run: |
+          echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
+          echo "COMPOSE_PROJECT_NAME=llvm_benchmarks_candidate" >> $GITHUB_ENV
+          echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
+          echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release'}}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '+M3I+B3'}}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_domain || ''}}" >> $GITHUB_ENV
 
-#       - name: Get branch name (pull request)
-#         if: github.event_name == 'pull_request'
-#         shell: bash
-#         run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
+      - name: Get branch name (pull request)
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
 
-#       - name: Set compiler-tester branch depending on current branch (pull request)
-#         if: github.event_name == 'pull_request'
-#         shell: bash
-#         run: |
-#           if [[ "${BRANCH_NAME}" == "main" ]]; then
-#             echo "COMPILER_TESTER_BRANCH_NAME=main" >> $GITHUB_ENV
-#           elif [[ "${BRANCH_NAME}" == "dev-1.1" ]]; then
-#             echo "COMPILER_TESTER_BRANCH_NAME=vm1.1" >> $GITHUB_ENV
-#           else
-#             echo "Cannot map current branch to compiler-tester branch"
-#             exit 1
-#           fi
+      - name: Set compiler-tester branch depending on current branch (pull request)
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          if [[ "${BRANCH_NAME}" == "main" ]]; then
+            echo "COMPILER_TESTER_BRANCH_NAME=main" >> $GITHUB_ENV
+          elif [[ "${BRANCH_NAME}" == "dev-1.1" ]]; then
+            echo "COMPILER_TESTER_BRANCH_NAME=vm1.1" >> $GITHUB_ENV
+          else
+            echo "Cannot map current branch to compiler-tester branch"
+            exit 1
+          fi
 
-#       - name: Set branch names from manual input (workflow dispatch)
-#         if: github.event_name == 'workflow_dispatch'
-#         shell: bash
-#         run: |
-#           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch }}" >> $GITHUB_ENV
-#           echo "COMPILER_LLVM_CANDIDATE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_candidate_branch }}" >> $GITHUB_ENV
+      - name: Set branch names from manual input (workflow dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch }}" >> $GITHUB_ENV
+          echo "COMPILER_LLVM_CANDIDATE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_candidate_branch }}" >> $GITHUB_ENV
 
-#       - name: Preparing workspace. Checkout compiler-tester repository
-#         uses: actions/checkout@v2
-#         with:
-#           repository: matter-labs/compiler-tester
-#           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
-#           submodules: recursive
-#           token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
-#           path: "compiler-tester"
+      - name: Preparing workspace. Checkout compiler-tester repository
+        uses: actions/checkout@v2
+        with:
+          repository: matter-labs/compiler-tester
+          ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
+          submodules: recursive
+          token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
+          path: "compiler-tester"
 
-#       - name: Preparing workspace. Checkout compiler-llvm candidate (pull request)
-#         if: github.event_name == 'pull_request'
-#         uses: actions/checkout@v2
-#         with:
-#           path: compiler-llvm
+      - name: Preparing workspace. Checkout compiler-llvm candidate (pull request)
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v2
+        with:
+          path: compiler-llvm
 
-#       - name: Preparing workspace. Checkout compiler-llvm candidate (workflow dispatch)
-#         if: github.event_name == 'workflow_dispatch'
-#         uses: actions/checkout@v2
-#         with:
-#           path: compiler-llvm
-#           ref: ${{ env.COMPILER_LLVM_CANDIDATE_BRANCH_NAME }}
+      - name: Preparing workspace. Checkout compiler-llvm candidate (workflow dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v2
+        with:
+          path: compiler-llvm
+          ref: ${{ env.COMPILER_LLVM_CANDIDATE_BRANCH_NAME }}
 
-#       - name: Preparing workspace. Start Docker container for candidate.
-#         run: |
-#           docker compose pull
-#           docker compose up -d zk
-#         env:
-#           SSH_PRIVATE_KEY: ${{ secrets.SSH_PK_BOT }}
+      - name: Preparing workspace. Start Docker container for candidate.
+        run: |
+          docker compose pull
+          docker compose up -d zk
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PK_BOT }}
 
-#       - name: Preparing workspace. Setting docker ssh key.
-#         run: |
-#           ${DOCKER_CMD} sh -c 'mkdir -pv /root/.ssh'
-#           ${DOCKER_CMD} sh -c 'echo "${SSH_PRIVATE_KEY}" > /root/.ssh/id_rsa'
-#           ${DOCKER_CMD} sh -c 'chmod 400 /root/.ssh/id_rsa'
-#           ${DOCKER_CMD} sh -c 'touch /root/.ssh/known_hosts'
-#           ${DOCKER_CMD} sh -c 'ssh-keyscan github.com >> /root/.ssh/known_hosts'
+      - name: Preparing workspace. Setting docker ssh key.
+        run: |
+          ${DOCKER_CMD} sh -c 'mkdir -pv /root/.ssh'
+          ${DOCKER_CMD} sh -c 'echo "${SSH_PRIVATE_KEY}" > /root/.ssh/id_rsa'
+          ${DOCKER_CMD} sh -c 'chmod 400 /root/.ssh/id_rsa'
+          ${DOCKER_CMD} sh -c 'touch /root/.ssh/known_hosts'
+          ${DOCKER_CMD} sh -c 'ssh-keyscan github.com >> /root/.ssh/known_hosts'
 
-#       - name: Testing. Building LLVM framework candidate.
-#         run: |
-#           chmod +x compiler-llvm/build.sh
-#           ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
-#           ./build.sh ${{ env.LLVM_BUILD_TYPE }}'
+      - name: Testing. Building LLVM framework candidate.
+        run: |
+          chmod +x compiler-llvm/build.sh
+          ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
+          ./build.sh ${{ env.LLVM_BUILD_TYPE }}'
 
-#       - name: Testing. Benchmarking  LLVM framework candidate.
-#         id: compiler_tester_run
-#         run: |
-#           ${DOCKER_CMD} sh -c '
-#           cd compiler-tester && \
-#           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
-#           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
-#           export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-#           cargo run --release --bin compiler-tester -- --filter=${{ env.LLVM_BENCHMARK_FILTER }} --domain=${{ env.LLVM_BENCHMARK_DOMAIN }} --benchmark=candidate.json'
+      - name: Testing. Benchmarking  LLVM framework candidate.
+        id: compiler_tester_run
+        run: |
+          ${DOCKER_CMD} sh -c '
+          cd compiler-tester && \
+          git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
+          git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
+          export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
+          cargo run --release --bin compiler-tester -- --filter=${{ env.LLVM_BENCHMARK_FILTER }} --domain=${{ env.LLVM_BENCHMARK_DOMAIN }} --benchmark=candidate.json'
 
-#       - uses: actions/upload-artifact@v3
-#         with:
-#           name: compiler-llvm-candidate-benchmark
-#           path: compiler-tester/candidate.json
+      - uses: actions/upload-artifact@v3
+        with:
+          name: compiler-llvm-candidate-benchmark
+          path: compiler-tester/candidate.json
 
-#       - uses: actions/upload-artifact@v3
-#         with:
-#           name: compiler-llvm-docker-compose
-#           path: ${{ env.COMPOSE_FILE }}
+      - uses: actions/upload-artifact@v3
+        with:
+          name: compiler-llvm-docker-compose
+          path: ${{ env.COMPOSE_FILE }}
 
-#       - name: Clearing workspace. Removing used and trash docker images.
-#         if: always()
-#         run: |
-#           docker image prune -f --all
-#           docker compose down --rmi local -v
+      - name: Clearing workspace. Removing used and trash docker images.
+        if: always()
+        run: |
+          docker image prune -f --all
+          docker compose down --rmi local -v
 
-#   llvm_benchmarks_reference:
-#     runs-on: [self-hosted, compiler]
-#     steps:
-#       - uses: AutoModality/action-clean@v1
-#       - uses: webfactory/ssh-agent@v0.5.3
-#         with:
-#           ssh-private-key: ${{ secrets.SSH_PK_BOT }}
-#       - name: Preparing workspace. Setting environment.
-#         run: |
-#           echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
-#           echo "COMPOSE_PROJECT_NAME=llvm_benchmarks_reference" >> $GITHUB_ENV
-#           echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
-#           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release'}}" >> $GITHUB_ENV
-#           echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '+M3I+B3'}}" >> $GITHUB_ENV
-#           echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_domain || ''}}" >> $GITHUB_ENV
+  llvm_benchmarks_reference:
+    runs-on: [self-hosted, compiler]
+    steps:
+      - uses: AutoModality/action-clean@v1
+      - uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PK_BOT }}
+      - name: Preparing workspace. Setting environment.
+        run: |
+          echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
+          echo "COMPOSE_PROJECT_NAME=llvm_benchmarks_reference" >> $GITHUB_ENV
+          echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
+          echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release'}}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '+M3I+B3'}}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_domain || ''}}" >> $GITHUB_ENV
 
-#       - name: Get branch name (pull request)
-#         if: github.event_name == 'pull_request'
-#         shell: bash
-#         run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
+      - name: Get branch name (pull request)
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
 
-#       - name: Set compiler-tester branch depending on current branch (pull request)
-#         if: github.event_name == 'pull_request'
-#         shell: bash
-#         run: |
-#           if [[ "${BRANCH_NAME}" == "main" ]]; then
-#             echo "COMPILER_TESTER_BRANCH_NAME=main" >> $GITHUB_ENV
-#           elif [[ "${BRANCH_NAME}" == "dev-1.1" ]]; then
-#             echo "COMPILER_TESTER_BRANCH_NAME=vm1.1" >> $GITHUB_ENV
-#           else
-#             echo "Cannot map current branch to compiler-tester branch"
-#             exit 1
-#           fi
+      - name: Set compiler-tester branch depending on current branch (pull request)
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          if [[ "${BRANCH_NAME}" == "main" ]]; then
+            echo "COMPILER_TESTER_BRANCH_NAME=main" >> $GITHUB_ENV
+          elif [[ "${BRANCH_NAME}" == "dev-1.1" ]]; then
+            echo "COMPILER_TESTER_BRANCH_NAME=vm1.1" >> $GITHUB_ENV
+          else
+            echo "Cannot map current branch to compiler-tester branch"
+            exit 1
+          fi
 
-#       - name: Set branch names from manual input (workflow dispatch)
-#         if: github.event_name == 'workflow_dispatch'
-#         shell: bash
-#         run: |
-#           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch }}" >> $GITHUB_ENV
-#           echo "COMPILER_LLVM_REFERENCE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_reference_branch }}" >> $GITHUB_ENV
+      - name: Set branch names from manual input (workflow dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch }}" >> $GITHUB_ENV
+          echo "COMPILER_LLVM_REFERENCE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_reference_branch }}" >> $GITHUB_ENV
 
-#       - name: Preparing workspace. Checkout compiler-tester repository.
-#         uses: actions/checkout@v2
-#         with:
-#           repository: matter-labs/compiler-tester
-#           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
-#           submodules: recursive
-#           token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
-#           path: "compiler-tester"
+      - name: Preparing workspace. Checkout compiler-tester repository.
+        uses: actions/checkout@v2
+        with:
+          repository: matter-labs/compiler-tester
+          ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
+          submodules: recursive
+          token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
+          path: "compiler-tester"
 
-#       - name: Preparing workspace. Checkout compiler-llvm reference (pull request)
-#         if: github.event_name == 'pull_request'
-#         uses: actions/checkout@v2
-#         with:
-#           path: compiler-llvm
-#           ref: ${{ env.BRANCH_NAME }}
+      - name: Preparing workspace. Checkout compiler-llvm reference (pull request)
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v2
+        with:
+          path: compiler-llvm
+          ref: ${{ env.BRANCH_NAME }}
 
-#       - name: Preparing workspace. Checkout compiler-llvm reference (workflow dispatch)
-#         if: github.event_name == 'workflow_dispatch'
-#         uses: actions/checkout@v2
-#         with:
-#           path: compiler-llvm
-#           ref: ${{ env.COMPILER_LLVM_REFERENCE_BRANCH_NAME }}
+      - name: Preparing workspace. Checkout compiler-llvm reference (workflow dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/checkout@v2
+        with:
+          path: compiler-llvm
+          ref: ${{ env.COMPILER_LLVM_REFERENCE_BRANCH_NAME }}
 
-#       - name: Preparing workspace. Start Docker container for reference.
-#         run: |
-#           docker compose pull
-#           docker compose up -d zk
-#         env:
-#           SSH_PRIVATE_KEY: ${{ secrets.SSH_PK_BOT }}
+      - name: Preparing workspace. Start Docker container for reference.
+        run: |
+          docker compose pull
+          docker compose up -d zk
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PK_BOT }}
 
-#       - name: Preparing workspace. Setting docker ssh key.
-#         run: |
-#           ${DOCKER_CMD} sh -c 'mkdir -pv /root/.ssh'
-#           ${DOCKER_CMD} sh -c 'echo "${SSH_PRIVATE_KEY}" > /root/.ssh/id_rsa'
-#           ${DOCKER_CMD} sh -c 'chmod 400 /root/.ssh/id_rsa'
-#           ${DOCKER_CMD} sh -c 'touch /root/.ssh/known_hosts'
-#           ${DOCKER_CMD} sh -c 'ssh-keyscan github.com >> /root/.ssh/known_hosts'
+      - name: Preparing workspace. Setting docker ssh key.
+        run: |
+          ${DOCKER_CMD} sh -c 'mkdir -pv /root/.ssh'
+          ${DOCKER_CMD} sh -c 'echo "${SSH_PRIVATE_KEY}" > /root/.ssh/id_rsa'
+          ${DOCKER_CMD} sh -c 'chmod 400 /root/.ssh/id_rsa'
+          ${DOCKER_CMD} sh -c 'touch /root/.ssh/known_hosts'
+          ${DOCKER_CMD} sh -c 'ssh-keyscan github.com >> /root/.ssh/known_hosts'
 
-#       - name: Testing. Building LLVM framework reference.
-#         run: |
-#           chmod +x compiler-llvm/build.sh
-#           ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
-#           ./build.sh ${{ env.LLVM_BUILD_TYPE }}'
+      - name: Testing. Building LLVM framework reference.
+        run: |
+          chmod +x compiler-llvm/build.sh
+          ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
+          ./build.sh ${{ env.LLVM_BUILD_TYPE }}'
 
-#       - name: Testing. Benchmarking  LLVM framework reference.
-#         id: compiler_tester_run
-#         run: |
-#           ${DOCKER_CMD} sh -c '
-#           cd compiler-tester && \
-#           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
-#           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
-#           export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-#           cargo run --release --bin compiler-tester -- --filter=${{ env.LLVM_BENCHMARK_FILTER }} --domain=${{ env.LLVM_BENCHMARK_DOMAIN }} --benchmark=reference.json'
+      - name: Testing. Benchmarking  LLVM framework reference.
+        id: compiler_tester_run
+        run: |
+          ${DOCKER_CMD} sh -c '
+          cd compiler-tester && \
+          git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
+          git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
+          export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
+          cargo run --release --bin compiler-tester -- --filter=${{ env.LLVM_BENCHMARK_FILTER }} --domain=${{ env.LLVM_BENCHMARK_DOMAIN }} --benchmark=reference.json'
 
-#       - uses: actions/upload-artifact@v3
-#         with:
-#           name: compiler-llvm-reference-benchmark
-#           path: compiler-tester/reference.json
+      - uses: actions/upload-artifact@v3
+        with:
+          name: compiler-llvm-reference-benchmark
+          path: compiler-tester/reference.json
 
-#       - name: Clearing workspace. Removing used and trash docker images.
-#         if: always()
-#         run: |
-#           docker image prune -f --all
-#           docker compose down --rmi local -v
+      - name: Clearing workspace. Removing used and trash docker images.
+        if: always()
+        run: |
+          docker image prune -f --all
+          docker compose down --rmi local -v
 
-#   llvm_benchmarks_analysis:
-#     runs-on: [self-hosted, compiler]
-#     needs: [llvm_benchmarks_candidate, llvm_benchmarks_reference]
-#     steps:
-#       - uses: AutoModality/action-clean@v1
-#       - uses: webfactory/ssh-agent@v0.5.3
-#         with:
-#           ssh-private-key: ${{ secrets.SSH_PK_BOT }}
-#       - name: Preparing workspace. Setting environment 1.
-#         run: |
-#           echo "COMPOSE_FILE_DIR=${{ github.workspace }}/compiler-llvm/infra" >> $GITHUB_ENV
+  llvm_benchmarks_analysis:
+    runs-on: [self-hosted, compiler]
+    needs: [llvm_benchmarks_candidate, llvm_benchmarks_reference]
+    steps:
+      - uses: AutoModality/action-clean@v1
+      - uses: webfactory/ssh-agent@v0.5.3
+        with:
+          ssh-private-key: ${{ secrets.SSH_PK_BOT }}
+      - name: Preparing workspace. Setting environment 1.
+        run: |
+          echo "COMPOSE_FILE_DIR=${{ github.workspace }}/compiler-llvm/infra" >> $GITHUB_ENV
 
-#       - name: Preparing workspace. Setting environment 2.
-#         run: |
-#           echo "COMPOSE_FILE=${COMPOSE_FILE_DIR}/docker-compose.yml" >> $GITHUB_ENV
-#           echo "COMPOSE_PROJECT_NAME=llvm_benchmarks_analysis" >> $GITHUB_ENV
-#           echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
+      - name: Preparing workspace. Setting environment 2.
+        run: |
+          echo "COMPOSE_FILE=${COMPOSE_FILE_DIR}/docker-compose.yml" >> $GITHUB_ENV
+          echo "COMPOSE_PROJECT_NAME=llvm_benchmarks_analysis" >> $GITHUB_ENV
+          echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
 
-#       - name: Get branch name (pull request)
-#         if: github.event_name == 'pull_request'
-#         shell: bash
-#         run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
+      - name: Get branch name (pull request)
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
 
-#       - name: Set compiler-tester branch depending on current branch (pull request)
-#         if: github.event_name == 'pull_request'
-#         shell: bash
-#         run: |
-#           if [[ "${BRANCH_NAME}" == "main" ]]; then
-#             echo "COMPILER_TESTER_BRANCH_NAME=main" >> $GITHUB_ENV
-#           elif [[ "${BRANCH_NAME}" == "dev-1.1" ]]; then
-#             echo "COMPILER_TESTER_BRANCH_NAME=vm1.1" >> $GITHUB_ENV
-#           else
-#             echo "Cannot map current branch to compiler-tester branch"
-#             exit 1
-#           fi
+      - name: Set compiler-tester branch depending on current branch (pull request)
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          if [[ "${BRANCH_NAME}" == "main" ]]; then
+            echo "COMPILER_TESTER_BRANCH_NAME=main" >> $GITHUB_ENV
+          elif [[ "${BRANCH_NAME}" == "dev-1.1" ]]; then
+            echo "COMPILER_TESTER_BRANCH_NAME=vm1.1" >> $GITHUB_ENV
+          else
+            echo "Cannot map current branch to compiler-tester branch"
+            exit 1
+          fi
 
-#       - name: Set compiler-tester branch from manual input (workflow dispatch)
-#         if: github.event_name == 'workflow_dispatch'
-#         shell: bash
-#         run: |
-#           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch }}" >> $GITHUB_ENV
+      - name: Set compiler-tester branch from manual input (workflow dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch }}" >> $GITHUB_ENV
 
-#       - name: Preparing workspace. Checkout compiler-tester repository.
-#         uses: actions/checkout@v2
-#         with:
-#           repository: matter-labs/compiler-tester
-#           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
-#           submodules: recursive
-#           token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
-#           path: "compiler-tester"
+      - name: Preparing workspace. Checkout compiler-tester repository.
+        uses: actions/checkout@v2
+        with:
+          repository: matter-labs/compiler-tester
+          ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
+          submodules: recursive
+          token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
+          path: "compiler-tester"
 
-#       - uses: actions/download-artifact@master
-#         with:
-#           name: compiler-llvm-docker-compose
-#           path: ${{ env.COMPOSE_FILE_DIR }}
+      - uses: actions/download-artifact@master
+        with:
+          name: compiler-llvm-docker-compose
+          path: ${{ env.COMPOSE_FILE_DIR }}
 
-#       - name: Preparing workspace. Start Docker container for reference.
-#         run: |
-#           docker compose pull
-#           docker compose up -d zk
-#         env:
-#           SSH_PRIVATE_KEY: ${{ secrets.SSH_PK_BOT }}
+      - name: Preparing workspace. Start Docker container for reference.
+        run: |
+          docker compose pull
+          docker compose up -d zk
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PK_BOT }}
 
-#       - name: Preparing workspace. Setting docker ssh key.
-#         run: |
-#           ${DOCKER_CMD} sh -c 'mkdir -pv /root/.ssh'
-#           ${DOCKER_CMD} sh -c 'echo "${SSH_PRIVATE_KEY}" > /root/.ssh/id_rsa'
-#           ${DOCKER_CMD} sh -c 'chmod 400 /root/.ssh/id_rsa'
-#           ${DOCKER_CMD} sh -c 'touch /root/.ssh/known_hosts'
-#           ${DOCKER_CMD} sh -c 'ssh-keyscan github.com >> /root/.ssh/known_hosts'
+      - name: Preparing workspace. Setting docker ssh key.
+        run: |
+          ${DOCKER_CMD} sh -c 'mkdir -pv /root/.ssh'
+          ${DOCKER_CMD} sh -c 'echo "${SSH_PRIVATE_KEY}" > /root/.ssh/id_rsa'
+          ${DOCKER_CMD} sh -c 'chmod 400 /root/.ssh/id_rsa'
+          ${DOCKER_CMD} sh -c 'touch /root/.ssh/known_hosts'
+          ${DOCKER_CMD} sh -c 'ssh-keyscan github.com >> /root/.ssh/known_hosts'
 
-#       - uses: actions/download-artifact@master
-#         with:
-#           name: compiler-llvm-candidate-benchmark
-#           path: compiler-tester
+      - uses: actions/download-artifact@master
+        with:
+          name: compiler-llvm-candidate-benchmark
+          path: compiler-tester
 
-#       - uses: actions/download-artifact@master
-#         with:
-#           name: compiler-llvm-reference-benchmark
-#           path: compiler-tester
+      - uses: actions/download-artifact@master
+        with:
+          name: compiler-llvm-reference-benchmark
+          path: compiler-tester
 
-#       - name: Testing. Comparing LLVM framework results.
-#         id: compiler_tester_run
-#         run: |
-#           ${DOCKER_CMD} sh -c '
-#           cd compiler-tester && \
-#           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
-#           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
-#           export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-#           cargo run --release --bin benchmark-analyzer -- --reference reference.json --candidate candidate.json --output-file result.txt'
+      - name: Testing. Comparing LLVM framework results.
+        id: compiler_tester_run
+        run: |
+          ${DOCKER_CMD} sh -c '
+          cd compiler-tester && \
+          git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
+          git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
+          export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
+          cargo run --release --bin benchmark-analyzer -- --reference reference.json --candidate candidate.json --output-file result.txt'
 
-#       - name: Testing. Posting LLVM benchmark results to step summary.
-#         run: |
-#           printf "Benchmark results:\n" >> $GITHUB_STEP_SUMMARY
-#           echo '```' >> $GITHUB_STEP_SUMMARY
-#           cat ./compiler-tester/result.txt >> $GITHUB_STEP_SUMMARY
-#           echo '```' >> $GITHUB_STEP_SUMMARY
-#           cat $GITHUB_STEP_SUMMARY > ./compiler-tester/result.txt
+      - name: Testing. Posting LLVM benchmark results to step summary.
+        run: |
+          printf "Benchmark results:\n" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat ./compiler-tester/result.txt >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          cat $GITHUB_STEP_SUMMARY > ./compiler-tester/result.txt
 
-#       - name: Testing. Posting LLVM benchmark results to PR comment.
-#         if: github.event_name == 'pull_request'
-#         uses: machine-learning-apps/pr-comment@master
-#         env:
-#           GITHUB_TOKEN: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
-#         with:
-#           path: compiler-tester/result.txt
+      - name: Testing. Posting LLVM benchmark results to PR comment.
+        if: github.event_name == 'pull_request'
+        uses: machine-learning-apps/pr-comment@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
+        with:
+          path: compiler-tester/result.txt
 
-#       - name: Notify to Mattermost
-#         if: always()
-#         uses: tferreira/matterfy@releases/v1
-#         with:
-#           type: ${{ job.status }}
-#           job_name: "*LLVM benchmarking*"
-#           icon_emoji: octocat
-#           channel: "compiler-llvm-ci"
-#           url: ${{ secrets.MATTERMOST_WEBHOOK }}
+      - uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,commit,author,action,eventName,ref,workflow,job,took,pullRequest # selectable (default: repo,message)
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.MATTERMOST_WEBHOOK }} # required
+        if: always() # Pick up events even if the job fails or is canceled.
 
-#       - name: Clearing workspace. Removing used and trash docker images.
-#         if: always()
-#         run: |
-#           docker image prune -f --all
-#           docker compose down --rmi local -v
+      - name: Clearing workspace. Removing used and trash docker images.
+        if: always()
+        run: |
+          docker image prune -f --all
+          docker compose down --rmi local -v
