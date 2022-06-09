@@ -114,15 +114,13 @@ jobs:
         if: always() && steps.compiler_tester_run.outcome == 'failure' && env.RUN_SEGFAULT_STEP == 'true'
         run: ${DOCKER_CMD} sh -c 'cd compiler-tester && ./segfault.sh'
 
-      - name: Notify to Mattermost (on unsuccessful deploys)
-        if: always()
-        uses: tferreira/matterfy@releases/v1
+      - uses: 8398a7/action-slack@v3
         with:
-          type: ${{ job.status }}
-          job_name: "*LLVM testing is*"
-          icon_emoji: octocat
-          channel: "compiler-llvm-ci"
-          url: ${{ secrets.MATTERMOST_WEBHOOK }}
+          status: ${{ job.status }}
+          fields: repo,commit,author,action,eventName,ref,workflow,job,took,pullRequest # selectable (default: repo,message)
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.MATTERMOST_WEBHOOK }} # required
+        if: always() # Pick up events even if the job fails or is canceled.
 
       - name: Clearing workspace. Removing used and trash docker images.
         if: always()
