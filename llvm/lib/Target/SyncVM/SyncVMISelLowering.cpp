@@ -102,6 +102,7 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setTargetDAGCombine(ISD::ZERO_EXTEND);
 
   setJumpIsExpensive(false);
+  setMaximumJumpTableSize(0);
 }
 
 //===----------------------------------------------------------------------===//
