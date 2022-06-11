@@ -140,6 +140,12 @@ void SyncVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
   const MCOperand &Base = MI->getOperand(OpNo);
   const MCOperand &Disp = MI->getOperand(OpNo + 1);
 
+  // print constant pool memory
+  if (Base.isExpr()) {
+    Base.getExpr()->print(O, &MAI);
+    return;
+  }
+
   // Print displacement first
   if (Disp.isExpr()) {
     Disp.getExpr()->print(O, &MAI);
