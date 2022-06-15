@@ -495,7 +495,7 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
   }
 }
 
-multiclass ArithICommutable<bits<8> opcode, string asmstring, SDPatternOperator node> {
+multiclass ArithICommutable<bits<8> opcode, string asmstring, SDPatternOperator node> : Arith<opcode, asmstring, node, 1>{
   let isCommutable = 1 in {
   let isPseudo = 1, isCodeGenOnly = 1 in
   def irr_p : Pseudo<(outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
@@ -524,7 +524,7 @@ multiclass ArithICommutable<bits<8> opcode, string asmstring, SDPatternOperator 
   }
 }
 
-multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperator node> {
+multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperator node> : Arith<opcode, asmstring, node, 0> {
   let isPseudo = 1, isCodeGenOnly = 1 in {
   def irr_p : Pseudo<(outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
                      !strconcat(asmstring, "\t$imm, $rs1, $rd0"),
@@ -683,7 +683,8 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
   }
 }
 
-multiclass Arith2ICommutable<bits<8> opcode, string asmstring, SDPatternOperator node> {
+multiclass Arith2ICommutable<bits<8> opcode, string asmstring, SDPatternOperator node>
+         : Arith2<opcode, asmstring, node, 1> {
   let isCommutable = 1 in {
   let isPseudo = 1, isCodeGenOnly = 1 in
   def irrr_p : Pseudo<(outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1),
@@ -708,7 +709,8 @@ multiclass Arith2ICommutable<bits<8> opcode, string asmstring, SDPatternOperator
   }
 }
 
-multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOperator node> {
+multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOperator node>
+         : Arith2<opcode, asmstring, node, 0> {
   let isPseudo = 1, isCodeGenOnly = 1 in {
   def irrr_p : Pseudo<(outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1),
                        !strconcat(asmstring, "\t$imm, $rs1, $rd0, $rd1"),
@@ -784,8 +786,8 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
   }
 }
 
-defm ADD  : Arith<2,  "add", add, 1>;
 defm ADD  : ArithICommutable<2,  "add", add>;
+defm SUB  : ArithINonCommutable<4, "sub", sub>;
 
 // MOV patterns
 def : Pat<(store_stack (load_code memaddr:$src), stackaddr:$dst),  (ADDcrs_p memaddr:$src, R0, stackaddr:$dst)>;
@@ -795,9 +797,6 @@ def : Pat<(load_code memaddr:$addr),  (ADDcrr_p memaddr:$addr, R0)>;
 def : Pat<(load_stack stackaddr:$addr),  (ADDsrr_p stackaddr:$addr, R0)>;
 def : Pat<(store_stack GR256:$src, stackaddr:$dst),  (ADDrrs_p GR256:$src, R0, stackaddr:$dst)>;
 def : Pat<(store_stack imm16:$src, stackaddr:$dst),  (ADDirs_p imm16:$src, R0, stackaddr:$dst)>;
-
-defm SUB  : Arith<4,  "sub", sub, 0>;
-defm SUB  : ArithINonCommutable<4, "sub", sub>;
 
 // SelecCC, BR_CC supplement
 def : Pat<(SyncVMcmp GR256:$lhs, GR256:$rhs), (SUBrrr_v GR256:$lhs, GR256:$rhs, 0)>;
@@ -809,26 +808,17 @@ def : Pat<(SyncVMcmp GR256:$lhs, (load_code memaddr:$rhs)), (SUByrr_v memaddr:$r
 def : Pat<(SyncVMcmp (load_stack stackaddr:$lhs), GR256:$rhs), (SUBsrr_v stackaddr:$lhs, GR256:$rhs, 0)>;
 def : Pat<(SyncVMcmp GR256:$lhs, (load_stack stackaddr:$rhs)), (SUBzrr_v stackaddr:$rhs, GR256:$lhs, 0)>;
 
-defm MUL  : Arith2<6, "mul", umullohi, 1>;
 defm MUL  : Arith2ICommutable<6, "mul", umullohi>;
-defm DIV  : Arith2<8, "div", udivrem, 0>;
 defm DIV  : Arith2INonCommutable<8, "div", udivrem>;
 
 // FIXME: Wrong encoding
 // FIXME: Wrong flags
-defm AND  : Arith<33, "and", and, 1>;
 defm AND  : ArithICommutable<33, "and", and>;
-defm OR   : Arith<34, "or", or, 1>;
 defm OR   : ArithICommutable<34, "or", or>;
-defm XOR  : Arith<35, "xor", xor, 1>;
 defm XOR  : ArithICommutable<35, "xor", xor>;
-defm SHL  : Arith<36, "shl", shl, 0>;
 defm SHL  : ArithINonCommutable<36, "shl", shl>;
-defm SHR  : Arith<37, "shr", srl, 0>;
 defm SHR  : ArithINonCommutable<37, "shr", srl>;
-defm ROL  : Arith<38, "rol", rotl, 0>;
 defm ROL  : ArithINonCommutable<38, "rol", rotl>;
-defm ROR  : Arith<39, "ror", rotr, 0>;
 defm ROR  : ArithINonCommutable<39, "ror", rotr>;
 
 //===----------------------------------------------------------------------===//
