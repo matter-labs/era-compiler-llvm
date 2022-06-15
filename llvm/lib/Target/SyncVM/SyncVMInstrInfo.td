@@ -501,6 +501,7 @@ multiclass ArithICommutable<bits<8> opcode, string asmstring, SDPatternOperator 
   def irr_p : Pseudo<(outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
                      !strconcat(asmstring, "\t$imm, $rs1, $rd0"),
                      [(set GR256:$rd0, (node GR256:$rs1, imm16:$imm))]>;
+
   def irr_s : Iirr<opcode, 0, 1,
                    (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, "$cc\t$imm, $rs1, $rd0"), []>;
@@ -521,7 +522,14 @@ multiclass ArithICommutable<bits<8> opcode, string asmstring, SDPatternOperator 
                    (outs), (ins imm16:$imm, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, "$cc!\t$imm, $rs1, $dst0"), []>;
   }
-  }
+  } // end isCommutable = 1
+
+  // commutative: irr_p -> crr_p
+  def : Pat<(node GR256:$rs1, large_imm:$imm),
+            (!cast<Instruction>(NAME # crr_p) (constant_pool imm:$imm), 0, GR256:$rs1)>;
+  // commutative: irs_p -> crs_p
+  def : Pat<(store_stack (node GR256:$rs1, large_imm:$imm), stackaddr:$dst0),
+            (!cast<Instruction>(NAME # crs_p) (constant_pool imm:$imm), 0, GR256:$rs1, stackaddr:$dst0)>;
 }
 
 multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperator node> : Arith<opcode, asmstring, node, 0> {
@@ -533,6 +541,7 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
                      !strconcat(asmstring, ".s\t$imm, $rs1, $rd0"),
                      [(set GR256:$rd0, (node GR256:$rs1, imm16:$imm))]>;
   }
+  
   foreach swap = ["i", "x"] in
   def swap#rr_s : Iirr<opcode, !if(!eq(swap, "i"), 0, 1), 1,
                        (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1, cc:$cc),
@@ -613,6 +622,23 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
                    !strconcat(asmstring, ".s$cc!\t$src0, $rs1, $dst0"), []>;
   }
   }
+
+  // non-commutative: irr_p -> crr_p
+  def : Pat<(node GR256:$rs1, large_imm:$imm),
+            (!cast<Instruction>(NAME # crr_p) (constant_pool imm:$imm), 0, GR256:$rs1)>;
+
+  // xrr_p -> yrr_p
+  def : Pat<(node GR256:$rs1, large_imm:$imm),
+            (!cast<Instruction>(NAME # yrr_p) (constant_pool imm:$imm), 0, GR256:$rs1)>;
+
+  // non-commutative: irs_p -> crs_p
+  def : Pat<(store_stack (node GR256:$rs1, large_imm:$imm), stackaddr:$dst0),
+            (!cast<Instruction>(NAME # crs_p) (constant_pool imm:$imm), 0, GR256:$rs1, stackaddr:$dst0)>;
+
+  // xrs_p -> yrs_p
+  def : Pat<(store_stack (node GR256:$rs1, large_imm:$imm), stackaddr:$dst0),
+            (!cast<Instruction>(NAME # yrs_p) (constant_pool imm:$imm), 0, GR256:$rs1, stackaddr:$dst0)>;
+
 }
 
 multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit commutes> {
@@ -707,6 +733,10 @@ multiclass Arith2ICommutable<bits<8> opcode, string asmstring, SDPatternOperator
                      !strconcat(asmstring, "$cc!\t$imm, $rs1, $dst0, $rd1"), []>;
   }
   }
+
+  // commutative: rrrr_p -> crrr_p
+  def : Pat<(node GR256:$rs1, large_imm:$imm), 
+            (!cast<Instruction>(NAME # crrr_p) (constant_pool imm:$imm), 0, GR256:$rs1)>;
 }
 
 multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOperator node>
@@ -784,6 +814,12 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
                      !strconcat(asmstring, ".s$cc!\t$src0, $rs1, $dst0, $rd0"), []>;
   }
   }
+
+  // non-commutative:
+  def : Pat<(node large_imm:$imm, GR256:$rs1), 
+            (!cast<Instruction>(NAME # crrr_p) (constant_pool imm:$imm), 0, GR256:$rs1)>;
+  def : Pat<(node GR256:$rs1, large_imm:$imm), 
+            (!cast<Instruction>(NAME # yrrr_p) (constant_pool imm:$imm), 0, GR256:$rs1)>;
 }
 
 defm ADD  : ArithICommutable<2,  "add", add>;
