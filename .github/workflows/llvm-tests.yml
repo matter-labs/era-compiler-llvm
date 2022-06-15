@@ -1,4 +1,4 @@
-name: LLVM Tests
+name: LLVM unit testing
 
 on:
   workflow_dispatch:

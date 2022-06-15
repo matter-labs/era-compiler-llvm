@@ -1,4 +1,4 @@
-name: LLVM testing
+name: Compiler integration testing
 
 on:
   pull_request:
@@ -14,10 +14,14 @@ on:
       compiler_tester_branch:
         description: "Input an upstream compiler-tester repo branch to use"
         required: true
-        default: "main"
+        default: "vm1.1"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  llvm_testing:
+  default:
     runs-on: [self-hosted, compiler]
     steps:
       - uses: AutoModality/action-clean@v1.1.0
@@ -29,7 +33,7 @@ jobs:
           echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
           echo "COMPOSE_PROJECT_NAME=llvm_testing" >> $GITHUB_ENV
           echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
-          echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release'}}" >> $GITHUB_ENV
+          echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
 
       - name: Get branch name (pull request)
         if: github.event_name == 'pull_request'

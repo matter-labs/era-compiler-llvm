@@ -1,4 +1,4 @@
-name: LLVM benchmarks
+name: Compiler benchmarking
 
 on:
   pull_request:
@@ -11,29 +11,37 @@ on:
         description: "Input LLVM build type. Variables: release, debug"
         required: true
         default: "release"
-      compiler_tester_branch:
-        description: "Input an upstream compiler-tester repo branch to use"
+      compiler_tester_reference_branch:
+        description: "Input an upstream compiler-tester repo branch to use as a benchmark reference"
         required: true
-        default: "main"
+        default: "vm1.1"
+      compiler_tester_candidate_branch:
+        description: "Input an upstream compiler-tester repo branch to use as a benchmark candidate"
+        required: true
+        default: "vm1.1"
       compiler_llvm_reference_branch:
         description: "Input an upstream compiler-llvm repo branch to use as a benchmark reference"
         required: true
-        default: "main"
+        default: "dev-1.1"
       compiler_llvm_candidate_branch:
         description: "Input an upstream compiler-llvm repo branch to use as a benchmark candidate"
         required: true
-        default: "main"
+        default: "dev-1.1"
       compiler_llvm_benchmark_domain:
         description: "Input domain for compiler-llvm benchmarks"
-        required: true
+        required: false
         default: "+M^I+B3"
       compiler_llvm_benchmark_filter:
         description: "Input filter for compiler-llvm benchmarks"
-        required: true
+        required: false
         default: ""
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  llvm_benchmarks_candidate:
+  candidate:
     runs-on: [self-hosted, compiler]
     steps:
       - uses: AutoModality/action-clean@v1
@@ -43,11 +51,11 @@ jobs:
       - name: Preparing workspace. Setting environment.
         run: |
           echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
-          echo "COMPOSE_PROJECT_NAME=llvm_benchmarks_candidate" >> $GITHUB_ENV
+          echo "COMPOSE_PROJECT_NAME=candidate" >> $GITHUB_ENV
           echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
-          echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release'}}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '+M^I+B3'}}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_domain || ''}}" >> $GITHUB_ENV
+          echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '+M^I+B3' }}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_filter || '' }}" >> $GITHUB_ENV
 
       - name: Get branch name (pull request)
         if: github.event_name == 'pull_request'
@@ -71,7 +79,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
-          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch }}" >> $GITHUB_ENV
+          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_candidate_branch }}" >> $GITHUB_ENV
           echo "COMPILER_LLVM_CANDIDATE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_candidate_branch }}" >> $GITHUB_ENV
 
       - name: Preparing workspace. Checkout compiler-tester repository
@@ -143,7 +151,7 @@ jobs:
           docker image prune -f --all
           docker compose down --rmi local -v
 
-  llvm_benchmarks_reference:
+  reference:
     runs-on: [self-hosted, compiler]
     steps:
       - uses: AutoModality/action-clean@v1
@@ -153,11 +161,11 @@ jobs:
       - name: Preparing workspace. Setting environment.
         run: |
           echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
-          echo "COMPOSE_PROJECT_NAME=llvm_benchmarks_reference" >> $GITHUB_ENV
+          echo "COMPOSE_PROJECT_NAME=reference" >> $GITHUB_ENV
           echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
-          echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release'}}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '+M^I+B3'}}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_domain || ''}}" >> $GITHUB_ENV
+          echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '+M^I+B3' }}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_filter || '' }}" >> $GITHUB_ENV
 
       - name: Get branch name (pull request)
         if: github.event_name == 'pull_request'
@@ -181,7 +189,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
-          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch }}" >> $GITHUB_ENV
+          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_reference_branch }}" >> $GITHUB_ENV
           echo "COMPILER_LLVM_REFERENCE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_reference_branch }}" >> $GITHUB_ENV
 
       - name: Preparing workspace. Checkout compiler-tester repository.
@@ -249,9 +257,9 @@ jobs:
           docker image prune -f --all
           docker compose down --rmi local -v
 
-  llvm_benchmarks_analysis:
+  analysis:
     runs-on: [self-hosted, compiler]
-    needs: [llvm_benchmarks_candidate, llvm_benchmarks_reference]
+    needs: [candidate, reference]
     steps:
       - uses: AutoModality/action-clean@v1
       - uses: webfactory/ssh-agent@v0.5.3
@@ -264,7 +272,7 @@ jobs:
       - name: Preparing workspace. Setting environment 2.
         run: |
           echo "COMPOSE_FILE=${COMPOSE_FILE_DIR}/docker-compose.yml" >> $GITHUB_ENV
-          echo "COMPOSE_PROJECT_NAME=llvm_benchmarks_analysis" >> $GITHUB_ENV
+          echo "COMPOSE_PROJECT_NAME=analysis" >> $GITHUB_ENV
           echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
 
       - name: Get branch name (pull request)
@@ -289,7 +297,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
-          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch }}" >> $GITHUB_ENV
+          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_candidate_branch }}" >> $GITHUB_ENV
 
       - name: Preparing workspace. Checkout compiler-tester repository.
         uses: actions/checkout@v2
