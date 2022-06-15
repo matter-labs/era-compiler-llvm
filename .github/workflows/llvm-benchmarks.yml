@@ -11,7 +11,11 @@ on:
         description: "Input LLVM build type. Variables: release, debug"
         required: true
         default: "release"
-      compiler_tester_branch:
+      compiler_tester_reference_branch:
+        description: "Input an upstream compiler-tester repo branch to use"
+        required: true
+        default: "main"
+      compiler_tester_candidate_branch:
         description: "Input an upstream compiler-tester repo branch to use"
         required: true
         default: "main"
@@ -71,7 +75,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
-          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch }}" >> $GITHUB_ENV
+          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_candidate_branch }}" >> $GITHUB_ENV
           echo "COMPILER_LLVM_CANDIDATE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_candidate_branch }}" >> $GITHUB_ENV
 
       - name: Preparing workspace. Checkout compiler-tester repository
@@ -181,7 +185,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
-          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch }}" >> $GITHUB_ENV
+          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_reference_branch }}" >> $GITHUB_ENV
           echo "COMPILER_LLVM_REFERENCE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_reference_branch }}" >> $GITHUB_ENV
 
       - name: Preparing workspace. Checkout compiler-tester repository.
@@ -289,7 +293,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
-          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch }}" >> $GITHUB_ENV
+          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_candidate_branch }}" >> $GITHUB_ENV
 
       - name: Preparing workspace. Checkout compiler-tester repository.
         uses: actions/checkout@v2
