@@ -121,6 +121,7 @@ void SyncVMPassConfig::addPreRegAlloc() {
 }
 
 void SyncVMPassConfig::addPreEmitPass() {
+  addPass(&MachineCSEID);
   addPass(createSyncVMMoveCallResultSpillPass());
   addPass(createSyncVMExpandSelectPass());
   addPass(createSyncVMExpandPseudoPass());
