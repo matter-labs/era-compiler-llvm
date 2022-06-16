@@ -78,6 +78,10 @@ def neg_imm16 : Operand<i256>, IntImmLeaf<i256, [{
   return Imm.isNegative() && Imm.abs().isIntN(16);
 }]> {}
 
+def large_imm : Operand<i256>, IntImmLeaf<i256, [{
+  return !Imm.abs().isIntN(16) && Imm.isIntN(256);
+}]> {}
+
 def imm128 : Operand<i256>, IntImmLeaf<i256, [{
   return APInt(256, 1, false).shl(128).ugt(Imm);
 }]> {}
@@ -150,6 +154,11 @@ def negate_imm : SDNodeXForm<imm, [{
   APInt pos = neg;
   pos.negate();
   return CurDAG->getTargetConstant(pos, SDLoc(N), MVT::i256);
+}]>;
+
+def constant_pool : SDNodeXForm<imm, [{
+  MVT PtrVT = getTargetLowering()->getPointerTy(CurDAG->getDataLayout());
+  return CurDAG->getTargetConstantPool(N->getConstantIntValue(), PtrVT);
 }]>;
 
 //===----------------------------------------------------------------------===//
@@ -791,10 +800,10 @@ defm SUB  : Arith<4,  "sub", sub, 0>;
 defm SUB  : ArithINonCommutable<4, "sub", sub>;
 
 // SelecCC, BR_CC supplement
-// TODO: CPR-447 enable patterns
-// def : Pat<(SyncVMcmp i16imm:$lhs, GR256:$rhs), (SUBirr i16imm:$lhs, GR256:$rhs)>;
-// def : Pat<(SyncVMcmp GR256:$lhs, i16imm:$rhs), (SUBxrr i16imm:$rhs, GR256:$lhs)>;
 def : Pat<(SyncVMcmp GR256:$lhs, GR256:$rhs), (SUBrrr_v GR256:$lhs, GR256:$rhs, 0)>;
+def : Pat<(SyncVMcmp GR256:$lhs, imm16:$rhs), (SUBxrr_v imm:$rhs, GR256:$lhs, 0)>;
+def : Pat<(SyncVMcmp GR256:$lhs, large_imm:$rhs), (SUByrr_v (constant_pool imm:$rhs), 0, GR256:$lhs, 0)>;
+
 def : Pat<(SyncVMcmp (load_code memaddr:$lhs), GR256:$rhs), (SUBcrr_v memaddr:$lhs, GR256:$rhs, 0)>;
 def : Pat<(SyncVMcmp GR256:$lhs, (load_code memaddr:$rhs)), (SUByrr_v memaddr:$rhs, GR256:$lhs, 0)>;
 def : Pat<(SyncVMcmp (load_stack stackaddr:$lhs), GR256:$rhs), (SUBsrr_v stackaddr:$lhs, GR256:$rhs, 0)>;
