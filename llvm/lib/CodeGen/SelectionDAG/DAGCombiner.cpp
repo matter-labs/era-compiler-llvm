@@ -3279,14 +3279,10 @@ SDValue DAGCombiner::visitSUB(SDNode *N) {
 
   ConstantSDNode *N1C = getAsNonOpaqueConstant(N1);
 
-  // SyncVM local begin
-  // TODO: Better to do it on ISel.
-  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
   // fold (sub x, c) -> (add x, -c)
   if (N1C) {
     return DAG.getNode(ISD::ADD, DL, VT, N0,
                        DAG.getConstant(-N1C->getAPIntValue(), DL, VT));
-  }
   }
 
   if (isNullOrNullSplat(N0)) {
@@ -4370,18 +4366,12 @@ SDValue DAGCombiner::visitUDIVLike(SDValue N0, SDValue N1, SDNode *N) {
     }
   }
 
-// TODO: Implement architecture / profitability check
-// TODO: produces mulhu, which is not currently supported by SyncVM
-// SyncVM local begin
-  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
   // fold (udiv x, c) -> alternate
   AttributeList Attr = DAG.getMachineFunction().getFunction().getAttributes();
   if (isConstantOrConstantVector(N1) &&
       !TLI.isIntDivCheap(N->getValueType(0), Attr))
     if (SDValue Op = BuildUDIV(N))
       return Op;
-  }
-// SyncVM local end
 
   return SDValue();
 }

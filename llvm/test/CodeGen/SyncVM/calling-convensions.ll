@@ -193,7 +193,7 @@ define i256 @caller_argtypes(i1 %a1, i8 %a2, i16 %a3, i32 %a4, i64 %a5, i128 %a6
 define i256 @caller_i1.ret(i256 %a1) nounwind {
 ; CHECK: near_call r0, @i1.ret, @DEFAULT_UNWIND
   %1 = call i1 @i1.ret(i256 %a1)
-; CHECK: and 1, r1, r1
+; CHECK-NOT: and 1, r1, r1
   %2 = zext i1 %1 to i256
   ret i256 %2
 }
@@ -210,7 +210,7 @@ define i256 @caller_i1.retabi(i256 %a1) nounwind {
 define i256 @caller_i8.ret(i256 %a1) nounwind {
 ; CHECK: near_call r0, @i8.ret, @DEFAULT_UNWIND
   %1 = call i8 @i8.ret(i256 %a1)
-; CHECK: and 255, r1, r1
+; CHECK-NOT: and 255, r1, r1
   %2 = zext i8 %1 to i256
   ret i256 %2
 }
@@ -227,7 +227,7 @@ define i256 @caller_i8.retabi(i256 %a1) nounwind {
 define i256 @caller_i16.ret(i256 %a1) nounwind {
 ; CHECK: near_call r0, @i16.ret, @DEFAULT_UNWIND
   %1 = call i16 @i16.ret(i256 %a1)
-; CHECK: and 65535, r1, r1
+; CHECK-NOT: and 65535, r1, r1
   %2 = zext i16 %1 to i256
   ret i256 %2
 }
@@ -399,6 +399,36 @@ define void @checkcc(i256 %arg) nounwind {
 ; CHECK: near_call r0, @coldcc, @DEFAULT_UNWIND
   call void @coldcc(i256 %arg)
   ret void
+}
+
+; CHECK-LABEL: @callee_small_argtypes
+define i256 @callee_small_argtypes(i1 %a1, i2 %a2, i8 %a8, i16 %a16, i32 %a32, i64 %a64, i128 %a128, i256 %a256, i42 %a42) nounwind {
+  %a1_ = zext i1 %a1 to i256
+; CHECK-NOT: and 1, r{{[0-9]+}}, r{{[0-9]+}}
+; CHECK-NOT: and 3, r{{[0-9]+}}, r{{[0-9]+}}
+; CHECK-NOT: and 255, r{{[0-9]+}}, r{{[0-9]+}}
+; CHECK-NOT: and 65535, r{{[0-9]+}}, r{{[0-9]+}}
+; CHECK-NOT: and r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}
+; CHECK-NOT: and r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}
+  %a8_ = zext i8 %a8 to i256
+  %a16_ = zext i16 %a16 to i256
+  %a32_ = zext i32 %a32 to i256
+  %a64_ = zext i64 %a64 to i256
+  %a128_ = zext i128 %a128 to i256
+
+; non simple types
+  %a2_ = zext i2 %a2 to i256
+  %a42_ = zext i42 %a42 to i256
+
+  %x0 = add i256 %a1_, %a2_
+  %x1 = add i256 %x0, %a8_
+  %x2 = add i256 %x1, %a16_
+  %x3 = add i256 %x2, %a32_
+  %x4 = add i256 %x3, %a64_
+  %x5 = add i256 %x4, %a128_
+  %x6 = add i256 %x5, %a256
+  %x7 = add i256 %x6, %a42_
+  ret i256 %x7
 }
 
 declare i256 @i1.arg(i1 %a1) nounwind

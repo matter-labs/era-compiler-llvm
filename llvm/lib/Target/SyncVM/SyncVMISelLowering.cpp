@@ -63,6 +63,9 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SMUL_LOHI, MVT::i256, Expand);
   setOperationAction(ISD::UMUL_LOHI, MVT::i256, Legal);
 
+  setOperationAction(ISD::MULHS, MVT::i256, Expand);
+  setOperationAction(ISD::MULHU, MVT::i256, Expand);
+
   // SyncVM lacks of native support for signed operations.
   setOperationAction(ISD::SRA, MVT::i256, Custom);
   setOperationAction(ISD::SDIV, MVT::i256, Custom);
@@ -99,10 +102,6 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::ANY_EXTEND, MVT::i256, Custom);
 
   setJumpIsExpensive(false);
-
-  // Custom DAG combiner:
-  setTargetDAGCombine(ISD::SUB);
-  setTargetDAGCombine(ISD::ADD);
 }
 
 //===----------------------------------------------------------------------===//
@@ -229,7 +228,20 @@ SDValue SyncVMTargetLowering::LowerFormalArguments(
       Register VReg = RegInfo.createVirtualRegister(&SyncVM::GR256RegClass);
       RegInfo.addLiveIn(VA.getLocReg(), VReg);
       SDValue ArgValue = DAG.getCopyFromReg(Chain, DL, VReg, VA.getLocVT());
-      ArgValue = DAG.getNode(ISD::TRUNCATE, DL, VA.getValVT(), ArgValue);
+
+      // insert AssertZext if we are loading smaller types
+      const ISD::InputArg &arg = Ins[InIdx];
+
+      if (arg.ArgVT.isScalarInteger()) {
+        unsigned bitwidth = arg.ArgVT.getSizeInBits();
+        if (bitwidth < 256) {
+          auto int_type = EVT::getIntegerVT(*DAG.getContext(), bitwidth);
+          ArgValue =
+              DAG.getNode(ISD::AssertZext, DL, arg.VT, ArgValue.getValue(0),
+                          DAG.getValueType(int_type));
+        }
+      }
+
       InVals.push_back(ArgValue);
     } else {
       // Sanity check
@@ -419,6 +431,17 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
                                RVLocs[i].getValVT(), InFlag);
       Chain = Val.getValue(1);
       InFlag = Val.getValue(2);
+      // if the return type is of integer type, and the size is smaller than
+      // 256, insert assert zext:
+      llvm::Type *retTy = CLI.RetTy;
+      if (retTy->isIntegerTy()) {
+        unsigned bitwidth = retTy->getIntegerBitWidth();
+        if (bitwidth < 256) {
+          auto int_type = EVT::getIntegerVT(*DAG.getContext(), bitwidth);
+          Val = DAG.getNode(ISD::AssertZext, DL, MVT::i256, Val.getValue(0),
+                            DAG.getValueType(int_type));
+        }
+      }
       CopiedRegs[RVLocs[i].getLocReg()] = Val;
     }
     InVals.push_back(Val);
@@ -825,62 +848,6 @@ SDValue SyncVMTargetLowering::PerformDAGCombine(SDNode *N,
   switch (N->getOpcode()) {
   default:
     break;
-  case ISD::ADD:
-    return combineADD(N, DCI);
-  case ISD::SUB:
-    return combineSUB(N, DCI);
-  }
-  return SDValue();
-}
-
-SDValue SyncVMTargetLowering::combineSUB(SDNode *N,
-                                         DAGCombinerInfo &DCI) const {
-  // fold (sub x, small_negative) -> (add x, abs(small_negative))
-  SelectionDAG &DAG = DCI.DAG;
-  SDValue N0 = N->getOperand(0);
-  SDValue N1 = N->getOperand(1);
-
-  ConstantSDNode *N1C = dyn_cast<ConstantSDNode>(N1);
-  if (!N1C || N1C->isOpaque())
-    return SDValue();
-
-  auto n1cval = N1C->getAPIntValue();
-  if (n1cval.isNegative() && n1cval.isSignedIntN(16)) {
-    SDLoc DL(N);
-    EVT VT = N->getValueType(0);
-    return DAG.getNode(ISD::ADD, DL, VT, N0,
-                       DAG.getConstant(-n1cval, DL, N1->getValueType(0)));
-  }
-  return SDValue();
-}
-
-SDValue SyncVMTargetLowering::combineADD(SDNode *N,
-                                         DAGCombinerInfo &DCI) const {
-  // fold (add x, small_negative) -> (sub x, abs(small_negative))
-  SelectionDAG &DAG = DCI.DAG;
-  SDValue N0 = N->getOperand(0);
-  SDValue N1 = N->getOperand(1);
-
-  SDLoc DL(N);
-  EVT VT = N->getValueType(0);
-
-  auto isSmallNegative = [](SDValue N) {
-    ConstantSDNode *C = dyn_cast<ConstantSDNode>(N);
-    if (C && !C->isOpaque()) {
-      APInt val = C->getAPIntValue();
-      if (val.isNegative() && val.isSignedIntN(16)) {
-        return std::make_pair<bool, APInt>(true, std::move(val));
-      }
-    }
-    return std::make_pair<bool, APInt>(false, APInt::getNullValue(256));
-  };
-
-  // Commutative DAG NODES have immediate values in RHS
-  auto n1res = isSmallNegative(N1);
-  if (n1res.first) {
-    return DAG.getNode(
-        ISD::SUB, DL, VT, N0,
-        DAG.getConstant(n1res.second.abs(), DL, N0->getValueType(0)));
   }
   return SDValue();
 }

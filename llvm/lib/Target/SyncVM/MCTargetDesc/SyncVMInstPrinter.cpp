@@ -107,6 +107,12 @@ void SyncVMInstPrinter::printContextOperand(const MCInst *MI, unsigned OpNo,
   case SyncVMCTX::COINBASE:
     O << ".coinbase";
     break;
+  case SyncVMCTX::GET_U128:
+    O << ".get_context_u128";
+    break;
+  case SyncVMCTX::SET_U128:
+    O << ".set_context_u128";
+    break;
   }
 }
 
@@ -133,6 +139,12 @@ void SyncVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
                                         raw_ostream &O) {
   const MCOperand &Base = MI->getOperand(OpNo);
   const MCOperand &Disp = MI->getOperand(OpNo + 1);
+
+  // print constant pool memory
+  if (Base.isExpr()) {
+    Base.getExpr()->print(O, &MAI);
+    return;
+  }
 
   // Print displacement first
   if (Disp.isExpr()) {

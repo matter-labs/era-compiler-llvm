@@ -74,6 +74,14 @@ def imm16 : Operand<i256>, IntImmLeaf<i256, [{
   return APInt(256, 1, false).shl(16).ugt(Imm);
 }]> {}
 
+def neg_imm16 : Operand<i256>, IntImmLeaf<i256, [{
+  return Imm.isNegative() && Imm.abs().isIntN(16);
+}]> {}
+
+def large_imm : Operand<i256>, IntImmLeaf<i256, [{
+  return !Imm.abs().isIntN(16) && Imm.isIntN(256);
+}]> {}
+
 def imm128 : Operand<i256>, IntImmLeaf<i256, [{
   return APInt(256, 1, false).shl(128).ugt(Imm);
 }]> {}
@@ -136,6 +144,22 @@ def stackop : Operand<i256> {
   let PrintMethod = "printStackOperand";
   let MIOperandInfo = (ops GR256, GR256, i16imm);
 }
+
+//===----------------------------------------------------------------------===//
+// Custom DAG Selection Operations.
+//===----------------------------------------------------------------------===//
+
+def negate_imm : SDNodeXForm<imm, [{
+  auto& neg = N->getAPIntValue();
+  APInt pos = neg;
+  pos.negate();
+  return CurDAG->getTargetConstant(pos, SDLoc(N), MVT::i256);
+}]>;
+
+def constant_pool : SDNodeXForm<imm, [{
+  MVT PtrVT = getTargetLowering()->getPointerTy(CurDAG->getDataLayout());
+  return CurDAG->getTargetConstantPool(N->getConstantIntValue(), PtrVT);
+}]>;
 
 //===----------------------------------------------------------------------===//
 // Complex Pattern Definitions.
@@ -776,10 +800,10 @@ defm SUB  : Arith<4,  "sub", sub, 0>;
 defm SUB  : ArithINonCommutable<4, "sub", sub>;
 
 // SelecCC, BR_CC supplement
-// TODO: CPR-447 enable patterns
-// def : Pat<(SyncVMcmp i16imm:$lhs, GR256:$rhs), (SUBirr i16imm:$lhs, GR256:$rhs)>;
-// def : Pat<(SyncVMcmp GR256:$lhs, i16imm:$rhs), (SUBxrr i16imm:$rhs, GR256:$lhs)>;
 def : Pat<(SyncVMcmp GR256:$lhs, GR256:$rhs), (SUBrrr_v GR256:$lhs, GR256:$rhs, 0)>;
+def : Pat<(SyncVMcmp GR256:$lhs, imm16:$rhs), (SUBxrr_v imm:$rhs, GR256:$lhs, 0)>;
+def : Pat<(SyncVMcmp GR256:$lhs, large_imm:$rhs), (SUByrr_v (constant_pool imm:$rhs), 0, GR256:$lhs, 0)>;
+
 def : Pat<(SyncVMcmp (load_code memaddr:$lhs), GR256:$rhs), (SUBcrr_v memaddr:$lhs, GR256:$rhs, 0)>;
 def : Pat<(SyncVMcmp GR256:$lhs, (load_code memaddr:$rhs)), (SUByrr_v memaddr:$rhs, GR256:$lhs, 0)>;
 def : Pat<(SyncVMcmp (load_stack stackaddr:$lhs), GR256:$rhs), (SUBsrr_v stackaddr:$lhs, GR256:$rhs, 0)>;
@@ -869,6 +893,8 @@ def CTXr : IContextR<45, (outs GR256:$rd0), (ins context_op:$cop, cc:$cc),
 let hasSideEffects = 1 in {
 def CTXr_se : IContextR<46, (outs GR256:$rd0), (ins context_se_op:$cop, cc:$cc),
                         "context$cop$cc\t$rd0", []>;
+def CTXr_set : IContextR<52, (outs), (ins GR256:$rs0, context_se_op:$cop, cc:$cc),
+                         "context$cop$cc\t$rs0", []>;
 }
 
 def : Pat<(int_syncvm_this), (CTXr 0, 0)>;
@@ -877,6 +903,8 @@ def : Pat<(int_syncvm_codesource), (CTXr 2, 0)>;
 def : Pat<(int_syncvm_meta), (CTXr 3, 0)>;
 def : Pat<(int_syncvm_txorigin), (CTXr 4, 0)>;
 def : Pat<(int_syncvm_ergsleft), (CTXr_se 6, 0)>;
+def : Pat<(int_syncvm_getu128), (CTXr_se 8, 0)>;
+def : Pat<(int_syncvm_setu128 GR256:$rs0), (CTXr_set GR256:$rs0, 9, 0)>;
 
 def SLDrr : ILogR<47, DstReg, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
                   "sload$cc\t$rs0, $rd0", []> {
@@ -940,3 +968,8 @@ def DELEGATE_CALL  : ICall<11, CFDelegate, (ins GR256:$abi, GR256:$address, jmpt
 def MIMIC_CALL  : ICall<12, CFMimic, (ins GR256:$abi, GR256:$address, GR256:$mimic, jmptarget:$unwind),
                "far_call.mimic\t$abi, $address, @$unwind", [(SyncVMmimiccall GR256:$abi, GR256:$address, GR256:$mimic, bb:$unwind)]>;
 }
+
+def : Pat<(store_stack (add GR256:$rs0, neg_imm16:$imm), stackaddr:$dst0),
+          (SUBxrs_p (negate_imm imm:$imm), GR256:$rs0, stackaddr:$dst0)>;
+def : Pat<(sub GR256:$rs0, neg_imm16:$imm), (ADDirr_p (negate_imm imm:$imm), GR256:$rs0)>;
+def : Pat<(add GR256:$rs0, neg_imm16:$imm), (SUBxrr_p (negate_imm imm:$imm), GR256:$rs0)>;

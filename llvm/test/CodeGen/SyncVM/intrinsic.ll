@@ -8,38 +8,58 @@ target triple = "syncvm"
 
 ; CHECK-LABEL: thisr
 define i256 @thisr() {
+; CHECK: context.this r1
   %res = call i256 @llvm.syncvm.this()
   ret i256 %res
 }
 
 ; CHECK-LABEL: callerr
 define i256 @callerr() {
+; CHECK: context.caller r1
   %res = call i256 @llvm.syncvm.caller()
   ret i256 %res
 }
 
 ; CHECK-LABEL: codesourcer
 define i256 @codesourcer() {
+; CHECK: context.code_source r1
   %res = call i256 @llvm.syncvm.codesource()
   ret i256 %res
 }
 
 ; CHECK-LABEL: metar
 define i256 @metar() {
+; CHECK: context.meta r1
   %res = call i256 @llvm.syncvm.meta()
   ret i256 %res
 }
 
 ; CHECK-LABEL: txoriginr
 define i256 @txoriginr() {
+; CHECK: context.tx_origin r1
   %res = call i256 @llvm.syncvm.txorigin()
   ret i256 %res
 }
 
 ; CHECK-LABEL: ergsleftr
 define i256 @ergsleftr() {
+; CHECK: context.ergs_left r1
   %res = call i256 @llvm.syncvm.ergsleft()
   ret i256 %res
+}
+
+; CHECK-LABEL: getu128
+define i256 @getu128() {
+; CHECK: context.get_context_u128 r1
+  %res = call i256 @llvm.syncvm.getu128()
+  ret i256 %res
+}
+
+; CHECK-LABEL: setu128
+define void @setu128(i256 %val) {
+; CHECK: context.set_context_u128 r1
+  call void @llvm.syncvm.setu128(i256 %val)
+  ret void
 }
 
 ; CHECK-LABEL: sload_rr
@@ -160,6 +180,8 @@ declare i256 @llvm.syncvm.codesource()
 declare i256 @llvm.syncvm.meta()
 declare i256 @llvm.syncvm.txorigin()
 declare i256 @llvm.syncvm.ergsleft()
+declare i256 @llvm.syncvm.getu128()
+declare void @llvm.syncvm.setu128(i256)
 declare i256 @llvm.syncvm.sload(i256)
 declare void @llvm.syncvm.sstore(i256, i256)
 declare void @llvm.syncvm.tol1(i256, i256, i256)
