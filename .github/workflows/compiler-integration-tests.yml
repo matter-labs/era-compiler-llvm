@@ -17,7 +17,7 @@ on:
         default: "dev-1.1"
 
 jobs:
-  llvm_testing:
+  default:
     runs-on: [self-hosted, compiler]
     steps:
       - uses: AutoModality/action-clean@v1.1.0
