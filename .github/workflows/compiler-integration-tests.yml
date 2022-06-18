@@ -16,6 +16,10 @@ on:
         required: true
         default: "dev-1.1"
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   default:
     runs-on: [self-hosted, compiler]
