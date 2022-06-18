@@ -1,4 +1,4 @@
-name: LLVM benchmarks
+name: Compiler benchmarking
 
 on:
   pull_request:
@@ -14,26 +14,26 @@ on:
       compiler_tester_reference_branch:
         description: "Input an upstream compiler-tester repo branch to use as a benchmark reference"
         required: true
-        default: "main"
+        default: "dev-1.1"
       compiler_tester_candidate_branch:
         description: "Input an upstream compiler-tester repo branch to use as a benchmark candidate"
         required: true
-        default: "main"
+        default: "dev-1.1"
       compiler_llvm_reference_branch:
         description: "Input an upstream compiler-llvm repo branch to use as a benchmark reference"
         required: true
-        default: "main"
+        default: "dev-1.1"
       compiler_llvm_candidate_branch:
         description: "Input an upstream compiler-llvm repo branch to use as a benchmark candidate"
         required: true
-        default: "main"
+        default: "dev-1.1"
       compiler_llvm_benchmark_domain:
         description: "Input domain for compiler-llvm benchmarks"
-        required: true
+        required: false
         default: "+M^I+B3"
       compiler_llvm_benchmark_filter:
         description: "Input filter for compiler-llvm benchmarks"
-        required: true
+        required: false
         default: ""
 
 jobs:
@@ -49,9 +49,9 @@ jobs:
           echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
           echo "COMPOSE_PROJECT_NAME=llvm_benchmarks_candidate" >> $GITHUB_ENV
           echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
-          echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release'}}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '+M^I+B3'}}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_filter || ''}}" >> $GITHUB_ENV
+          echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '' }}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_filter || '' }}" >> $GITHUB_ENV
 
       - name: Get branch name (pull request)
         if: github.event_name == 'pull_request'
@@ -159,9 +159,9 @@ jobs:
           echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
           echo "COMPOSE_PROJECT_NAME=llvm_benchmarks_reference" >> $GITHUB_ENV
           echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
-          echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release'}}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '+M^I+B3'}}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_filter || ''}}" >> $GITHUB_ENV
+          echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '' }}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_filter || '' }}" >> $GITHUB_ENV
 
       - name: Get branch name (pull request)
         if: github.event_name == 'pull_request'
