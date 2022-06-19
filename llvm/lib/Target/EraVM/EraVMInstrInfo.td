@@ -324,7 +324,7 @@ def : Pat<(EraVMchange_sp spadv_op:$size), (NOPSP spadv_op:$size, 0)>;
 def zext256 : PatFrag<(ops node:$src), (zext (i256 node:$src))>;
 
 multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit commutes> {
-  let isCommutable = commutes in {
+  let BaseOpcode = asmstring, isCommutable = commutes in {
 
   let isPseudo = 1, isCodeGenOnly = 1 in
   def rrr_p : Pseudo<(outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
@@ -333,7 +333,7 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
   def rrr_s : Irrr<opcode, 0, 1,
                    (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, "$cc\t$rs0, $rs1, $rd0"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def rrr_v : Irrr<opcode, 0, 0,
                    (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, "$cc!\t$rs0, $rs1, $rd0"), []>;
@@ -346,7 +346,7 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
   def crr_s : Imrr<opcode, SrcCode, 0, 1,
                    (outs GR256:$rd0), (ins memop:$src0, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, "$cc\t@$src0[0], $rs1, $rd0"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def crr_v : Imrr<opcode, SrcCode, 0, 0,
                    (outs GR256:$rd0), (ins memop:$src0, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, "$cc!\t@$src0[0], $rs1, $rd0"), []>;
@@ -357,7 +357,7 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
   def srr_s : Imrr<opcode, SrcStack, 0, 1,
                    (outs GR256:$rd0), (ins stackop:$src0, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, "$cc\t$src0, $rs1, $rd0"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def srr_v : Imrr<opcode, SrcStack, 0, 0,
                    (outs GR256:$rd0), (ins stackop:$src0, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, "$cc!\t$src0, $rs1, $rd0"), []>;
@@ -371,7 +371,7 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
   def rrs_s : Irrs<opcode, 0, 1,
                    (outs), (ins GR256:$rs0, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, "$cc\t$rs0, $rs1, $dst0"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def rrs_v : Irrs<opcode, 0, 0,
                    (outs), (ins GR256:$rs0, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, "$cc!\t$rs0, $rs1, $dst0"), []>;
@@ -385,7 +385,7 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
   def crs_s : Imrs<opcode, SrcCode, 0, 1,
                    (outs), (ins memop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, "$cc\t@$src0[0], $rs1, $dst0"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def crs_v : Imrs<opcode, SrcCode, 0, 0,
                    (outs), (ins memop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, "$cc!\t@$src0[0], $rs1, $dst0"), []>;
@@ -396,7 +396,7 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
   def srs_s : Imrs<opcode, SrcStack, 0, 1,
                    (outs), (ins stackop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, "$cc\t$src0, $rs1, $dst0"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def srs_v : Imrs<opcode, SrcStack, 0, 0,
                    (outs), (ins stackop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, "$cc!\t$src0, $rs1, $dst0"), []>;
@@ -405,7 +405,7 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
 }
 
 multiclass ArithICommutable<bits<8> opcode, string asmstring, SDPatternOperator node> : Arith<opcode, asmstring, node, 1>{
-  let isCommutable = 1 in {
+  let BaseOpcode = asmstring, isCommutable = 1 in {
   let isPseudo = 1, isCodeGenOnly = 1 in
   def irr_p : Pseudo<(outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
                      !strconcat(asmstring, "\t$imm, $rs1, $rd0"),
@@ -414,7 +414,7 @@ multiclass ArithICommutable<bits<8> opcode, string asmstring, SDPatternOperator 
   def irr_s : Iirr<opcode, 0, 1,
                    (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, "$cc\t$imm, $rs1, $rd0"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def irr_v : Iirr<opcode, 0, 0,
                    (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, "$cc!\t$imm, $rs1, $rd0"), []>;
@@ -426,7 +426,7 @@ multiclass ArithICommutable<bits<8> opcode, string asmstring, SDPatternOperator 
   def irs_s : Iirs<opcode, 0, 1,
                    (outs), (ins imm16:$imm, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, "$cc\t$imm, $rs1, $dst0"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def irs_v : Iirs<opcode, 0, 0,
                    (outs), (ins imm16:$imm, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, "$cc!\t$imm, $rs1, $dst0"), []>;
@@ -442,6 +442,7 @@ multiclass ArithICommutable<bits<8> opcode, string asmstring, SDPatternOperator 
 }
 
 multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperator node> : Arith<opcode, asmstring, node, 0> {
+  let BaseOpcode = asmstring in {
   let isPseudo = 1, isCodeGenOnly = 1 in {
   def irr_p : Pseudo<(outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
                      !strconcat(asmstring, "\t$imm, $rs1, $rd0"),
@@ -457,7 +458,7 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
                        !strconcat(!strconcat(asmstring, !if(!eq(swap, "i"), "", ".s")),
                                   "$cc\t$imm, $rs1, $rd0"), []>;
   foreach swap = ["i", "x"] in
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def swap#rr_v : Iirr<opcode, !if(!eq(swap, "i"), 0, 1), 0,
                        (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1, cc:$cc),
                        !strconcat(!strconcat(asmstring, !if(!eq(swap, "i"), "", ".s")),
@@ -470,7 +471,7 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
   def yrr_s : Imrr<opcode, SrcCode, 1, 1,
                    (outs GR256:$rd0), (ins memop:$src0, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, ".s$cc\t@$src0[0], $rs1, $rd0"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def yrr_v : Imrr<opcode, SrcCode, 1, 0,
                    (outs GR256:$rd0), (ins memop:$src0, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, ".s$cc!\t@$src0[0], $rs1, $rd0"), []>;
@@ -481,7 +482,7 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
   def zrr_s : Imrr<opcode, SrcStack, 1, 1,
                    (outs GR256:$rd0), (ins stackop:$src0, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, ".s$cc\t$src0, $rs1, $rd0"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def zrr_v : Imrr<opcode, SrcStack, 1, 0,
                    (outs GR256:$rd0), (ins stackop:$src0, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, ".s$cc!\t$src0, $rs1, $rd0"), []>;
@@ -501,7 +502,7 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
                        !strconcat(!strconcat(asmstring, !if(!eq(swap, "i"), "", ".s")),
                                   "$cc\t$imm, $rs1, $dst0"), []>;
   foreach swap = ["i", "x"] in
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def swap#rs_v : Iirs<opcode, !if(!eq(swap, "i"), 0, 1), 0,
                        (outs), (ins imm16:$imm, GR256:$rs1, GR256:$dst0, cc:$cc),
                        !strconcat(!strconcat(asmstring, !if(!eq(swap, "i"), "", ".s")),
@@ -514,7 +515,7 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
   def yrs_s : Imrs<opcode, SrcCode, 1, 1,
                    (outs), (ins memop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, ".s$cc\t@$src0[0], $rs1, $dst0"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def yrs_v : Imrs<opcode, SrcCode, 1, 0,
                    (outs), (ins memop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, ".s$cc!\t@$src0[0], $rs1, $dst0"), []>;
@@ -525,10 +526,11 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
   def zrs_s : Imrs<opcode, SrcStack, 1, 1,
                    (outs), (ins stackop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, ".s$cc\t$src0, $rs1, $dst0"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def zrs_v : Imrs<opcode, SrcStack, 1, 0,
                    (outs), (ins stackop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, ".s$cc!\t$src0, $rs1, $dst0"), []>;
+  }
   }
   }
 
@@ -560,7 +562,7 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
   def rrrr_s : Irrrr<opcode, 0, 1,
                      (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
                      !strconcat(asmstring, "$cc\t$rs0, $rs1, $rd0, $rd1"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def rrrr_v : Irrrr<opcode, 0, 0,
                      (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
                      !strconcat(asmstring, "$cc!\t$rs0, $rs1, $rd0, $rd1"), []>;
@@ -573,7 +575,7 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
   def crrr_s : Imrrr<opcode, SrcCode, 0, 1,
                      (outs GR256:$rd0, GR256:$rd1), (ins memop:$src0, GR256:$rs1, cc:$cc),
                      !strconcat(asmstring, "$cc\t@$src0[0], $rs1, $rd0, $rd1"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def crrr_v : Imrrr<opcode, SrcCode, 0, 0,
                      (outs GR256:$rd0, GR256:$rd1), (ins memop:$src0, GR256:$rs1, cc:$cc),
                      !strconcat(asmstring, "$cc!\t@$src0[0], $rs1, $rd0, $rd1"), []>;
@@ -584,7 +586,7 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
   def srrr_s : Imrrr<opcode, SrcStack, 0, 1,
                      (outs GR256:$rd0, GR256:$rd1), (ins stackop:$src0, GR256:$rs1, cc:$cc),
                      !strconcat(asmstring, "$cc\t$src0, $rs1, $rd0, $rd1"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def srrr_v : Imrrr<opcode, SrcStack, 0, 0,
                      (outs GR256:$rd0, GR256:$rd1), (ins stackop:$src0, GR256:$rs1, cc:$cc),
                      !strconcat(asmstring, "$cc!\t$src0, $rs1, $rd0, $rd1"), []>;
@@ -594,7 +596,7 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
   def rrsr_s : Irrsr<opcode, 0, 1,
                      (outs GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, stackop:$dst0, cc:$cc),
                      !strconcat(asmstring, "$cc\t$rs0, $rs1, $dst0, $rd1"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def rrsr_v : Irrsr<opcode, 0, 0,
                      (outs GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, stackop:$dst0, cc:$cc),
                      !strconcat(asmstring, "$cc!\t$rs0, $rs1, $dst0, $rd1"), []>;
@@ -602,14 +604,14 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
   def crsr_s : Imrsr<opcode, SrcCode, 0, 1,
                      (outs GR256:$rd1), (ins memop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                      !strconcat(asmstring, "$cc\t@$src0[0], $rs1, $dst0, $rd1"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def crsr_v : Imrsr<opcode, SrcCode, 0, 0,
                      (outs GR256:$rd1), (ins memop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                      !strconcat(asmstring, "$cc!\t@$src0[0], $rs1, $dst0, $rd1"), []>;
   def srsr_s : Imrsr<opcode, SrcStack, 0, 1,
                      (outs GR256:$rd1), (ins stackop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                      !strconcat(asmstring, "$cc\t$src0, $rs1, $dst0, $rd1"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def srsr_v : Imrsr<opcode, SrcStack, 0, 0,
                      (outs GR256:$rd1), (ins stackop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                      !strconcat(asmstring, "$cc!\t$src0, $rs1, $dst0, $rd1"), []>;
@@ -628,7 +630,7 @@ multiclass Arith2ICommutable<bits<8> opcode, string asmstring, SDPatternOperator
   def irrr_s : Iirrr<opcode, 0, 1,
                      (outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1, cc:$cc),
                      !strconcat(asmstring, "$cc\t$imm, $rs1, $rd0, $rd1"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def irrr_v : Iirrr<opcode, 0, 0,
                      (outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1, cc:$cc),
                      !strconcat(asmstring, "$cc!\t$imm, $rs1, $rd0, $rd1"), []>;
@@ -636,7 +638,7 @@ multiclass Arith2ICommutable<bits<8> opcode, string asmstring, SDPatternOperator
   def irsr_s : Iirsr<opcode, 0, 1,
                      (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackop:$dst0, cc:$cc),
                      !strconcat(asmstring, "$cc\t$imm, $rs1, $dst0, $rd1"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def irsr_v : Iirsr<opcode, 0, 0,
                      (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackop:$dst0, cc:$cc),
                      !strconcat(asmstring, "$cc!\t$imm, $rs1, $dst0, $rd1"), []>;
@@ -664,7 +666,7 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
                        !strconcat(!strconcat(asmstring, !if(!eq(swap, "i"), "", ".s")),
                                   "$cc\t$imm, $rs1, $rd0, $rd1"), []>;
   foreach swap = ["i", "x"] in
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def swap#rrr_v : Iirrr<opcode, !if(!eq(swap, "i"), 0, 1), 0,
                        (outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1, cc:$cc),
                        !strconcat(!strconcat(asmstring, !if(!eq(swap, "i"), "", ".s")),
@@ -678,7 +680,7 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
   def yrrr_s : Imrrr<opcode, SrcCode, 1, 1,
                      (outs GR256:$rd0, GR256:$rd1), (ins memop:$src0, GR256:$rs1, cc:$cc),
                      !strconcat(asmstring, ".s$cc\t@$src0[0], $rs1, $rd0, $rd1"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def yrrr_v : Imrrr<opcode, SrcCode, 1, 0,
                      (outs GR256:$rd0, GR256:$rd1), (ins memop:$src0, GR256:$rs1, cc:$cc),
                      !strconcat(asmstring, ".s$cc!\t@$src0[0], $rs1, $rd0, $rd1"), []>;
@@ -689,7 +691,7 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
   def zrrr_s : Imrrr<opcode, SrcStack, 1, 1,
                      (outs GR256:$rd0, GR256:$rd1), (ins stackop:$src0, GR256:$rs1, cc:$cc),
                      !strconcat(asmstring, ".s$cc\t$src0, $rs1, $rd0, $rd1"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def zrrr_v : Imrrr<opcode, SrcStack, 1, 0,
                    (outs GR256:$rd0, GR256:$rd1), (ins stackop:$src0, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, ".s$cc!\t$src0, $rs1, $rd0, $rd1"), []>;
@@ -701,7 +703,7 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
                          !strconcat(!strconcat(asmstring, !if(!eq(swap, "i"), "", ".s")),
                                     "$cc\t$imm, $rs1, $dst0, $rd1"), []>;
   foreach swap = ["i", "x"] in
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def swap#rsr_v : Iirsr<opcode, !if(!eq(swap, "i"), 0, 1), 0,
                          (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, GR256:$dst0, cc:$cc),
                          !strconcat(!strconcat(asmstring, !if(!eq(swap, "i"), "", ".s")),
@@ -710,14 +712,14 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
   def yrsr_s : Imrsr<opcode, SrcCode, 1, 1,
                      (outs GR256:$rd1), (ins memop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                      !strconcat(asmstring, ".s$cc\t@$src0[0], $rs1, $dst0, $rd1"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def yrsr_v : Imrsr<opcode, SrcCode, 1, 0,
                      (outs GR256:$rd1), (ins memop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                      !strconcat(asmstring, ".s$cc!\t@$src0[0], $rs1, $dst0, $rd1"), []>;
   def zrsr_s : Imrsr<opcode, SrcStack, 1, 1,
                      (outs GR256:$rd1), (ins stackop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                      !strconcat(asmstring, ".s$cc\t$src0, $rs1, $dst0, $rd1"), []>;
-  let Defs = [Flags] in
+  let Defs = [Flags], FlagSetting = 1 in
   def zrsr_v : Imrsr<opcode, SrcStack, 1, 0,
                      (outs GR256:$rd1), (ins stackop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                      !strconcat(asmstring, ".s$cc!\t$src0, $rs1, $dst0, $rd1"), []>;
