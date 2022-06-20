@@ -14,11 +14,11 @@ on:
       compiler_tester_reference_branch:
         description: "Input an upstream compiler-tester repo branch to use as a benchmark reference"
         required: true
-        default: "dev-1.1"
+        default: "vm1.1"
       compiler_tester_candidate_branch:
         description: "Input an upstream compiler-tester repo branch to use as a benchmark candidate"
         required: true
-        default: "dev-1.1"
+        default: "vm1.1"
       compiler_llvm_reference_branch:
         description: "Input an upstream compiler-llvm repo branch to use as a benchmark reference"
         required: true
