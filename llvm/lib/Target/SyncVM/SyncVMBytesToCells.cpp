@@ -8,6 +8,7 @@
 
 #include "SyncVM.h"
 
+#include "llvm/ADT/Statistic.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
@@ -19,6 +20,13 @@ using namespace llvm;
 
 #define DEBUG_TYPE "syncvm-bytes-to-cells"
 #define SYNCVM_BYTES_TO_CELLS_NAME "SyncVM bytes to cells"
+
+static cl::opt<bool>
+    EarlyBytesToCells("early-bytes-to-cells-conversion", cl::init(false),
+                      cl::Hidden,
+                      cl::desc("Converts bytes to cells after the definition"));
+
+STATISTIC(NumBytesToCells, "Number of bytes to cells convertions gone");
 
 namespace {
 
@@ -103,63 +111,80 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
                     << "********** Function: " << MF.getName() << '\n');
 
   MachineRegisterInfo &RegInfo = MF.getRegInfo();
+  assert(RegInfo.isSSA() && "The pass is supposed to be run on SSA form MIR");
 
   bool Changed = false;
-
   TII = MF.getSubtarget<SyncVMSubtarget>().getInstrInfo();
   auto &MRI = MF.getRegInfo();
   assert(TII && "TargetInstrInfo must be a valid object");
-  for (auto &BB : MF)
+  DenseMap<Register, Register> BytesToCellsRegs{};
+
+  for (auto &BB : MF) {
     for (auto II = BB.begin(); II != BB.end(); ++II) {
       MachineInstr &MI = *II;
       if (!mayHaveStackOperands(MI))
         continue;
-
       auto ConvertMI = [&](unsigned OpNum) {
         unsigned Op0Start = opStart(MI, OpNum);
         MachineOperand &MO0Reg = MI.getOperand(Op0Start + 1);
         if (MO0Reg.isReg()) {
-          Register NewVR = MRI.createVirtualRegister(&SyncVM::GR256RegClass);
-          BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
-                  TII->get(SyncVM::DIVxrrr_s))
-              .addDef(NewVR)
-              .addDef(SyncVM::R0)
-              .addImm(32)
-              .add(MO0Reg)
-              .addImm(SyncVMCC::COND_NONE);
+          Register Reg = MO0Reg.getReg();
+          assert(Reg.isVirtual() && "Physical registers are not expected");
+          MachineInstr *DefMI = RegInfo.getVRegDef(Reg);
+          if (DefMI->getOpcode() == SyncVM::CTXr)
+            // context.sp is already in cells.
+            return;
+          Register NewVR;
+          if (BytesToCellsRegs.count(Reg) == 1) {
+            // Already converted, use value from the cache.
+            NewVR = BytesToCellsRegs[Reg];
+            ++NumBytesToCells;
+          } else {
+            NewVR = MRI.createVirtualRegister(&SyncVM::GR256RegClass);
+            MachineBasicBlock *DefBB = [DefMI, &MI]() {
+              if (EarlyBytesToCells)
+                return DefMI->getParent();
+              else
+                return MI.getParent();
+            }();
+            auto DefIt = [DefBB, DefMI, &MI]() {
+              if (!EarlyBytesToCells)
+                return find_if(*DefBB, [&MI](const MachineInstr &CurrentMI) {
+                  return &MI == &CurrentMI;
+                });
+              if (!DefMI->isPHI())
+                return std::next(
+                    find_if(*DefBB, [DefMI](const MachineInstr &CurrentMI) {
+                      return DefMI == &CurrentMI;
+                    }));
+              return DefBB->getFirstNonPHI();
+            }();
+            assert(DefIt->getParent() == DefBB);
+            BuildMI(*DefBB, DefIt, MI.getDebugLoc(),
+                    TII->get(SyncVM::DIVxrrr_s))
+                .addDef(NewVR)
+                .addDef(SyncVM::R0)
+                .addImm(32)
+                .addReg(Reg)
+                .addImm(SyncVMCC::COND_NONE);
+            BytesToCellsRegs[Reg] = NewVR;
+          }
           MO0Reg.ChangeToRegister(NewVR, false);
         }
         MachineOperand &Const = MI.getOperand(Op0Start + 2);
         Const.ChangeToImmediate(Const.getImm() / 32);
       };
-
-      auto isFrameIndexAddressing = [&](MachineInstr& MI, unsigned OpNum) {
-        MachineOperand MO = MI.getOperand(MI.getNumOperands() - 3);
-        if (MO.isReg()) {
-          // specifically match frame indexing addressing mode
-          // TODO: we should revamp the stack addressing in the backend, it is not
-          // pretty as of now.
-          Register reg = MO.getReg();
-          assert(reg.isVirtual ());
-          assert(RegInfo.isSSA());
-          MachineInstr* defMI = RegInfo.getVRegDef(reg);
-          if (defMI->getOpcode() == SyncVM::CTXr) {
-            return true;
-          }
-        }
-
-        return false;
-      };
-
       for (unsigned OpNo = 0; OpNo < 3; ++OpNo)
         if (isStackOp(MI, OpNo)) {
           // avoid handling frame index addressing
-          if (!isFrameIndexAddressing(MI, OpNo)) {
-            ConvertMI(OpNo);
-            Changed = true;
-          }
+          ConvertMI(OpNo);
+          Changed = true;
         }
     }
+    if (!EarlyBytesToCells)
+      BytesToCellsRegs.clear();
+  }
+
   LLVM_DEBUG(
       dbgs() << "*******************************************************\n");
   return Changed;

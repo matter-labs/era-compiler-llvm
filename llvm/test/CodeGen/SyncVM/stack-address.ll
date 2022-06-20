@@ -1,4 +1,5 @@
 ; RUN: llc < %s | FileCheck %s
+; RUN: llc --early-bytes-to-cells-conversion < %s | FileCheck %s --check-prefix=EARLY-BTC
 
 target datalayout = "E-p:256:256-i8:256:256:256-i256:256:256-S32-a:256:256"
 target triple = "syncvm"
@@ -24,22 +25,31 @@ define void @alloca(i256 %a1, i256 %a2, i256 %a3, i256 %a4) nounwind {
 
 ; CHECK-LABEL: stack.obj.accessing
 define i256 @stack.obj.accessing(i256* %ptr.i256, [4 x i256]* %ptr.arr, i256* %ptr.elem) {
+entry:
   %gep0 = getelementptr [4 x i256], [4 x i256]* %ptr.arr, i256 0, i256 0
   %gep1 = getelementptr [4 x i256], [4 x i256]* %ptr.arr, i256 0, i256 1
   %gep2 = getelementptr [4 x i256], [4 x i256]* %ptr.arr, i256 0, i256 2
   %gep3 = getelementptr [4 x i256], [4 x i256]* %ptr.arr, i256 0, i256 3
-; CHECK: div.s 32, r2, r4, r0
-; CHECK: add stack[r4 - 0], r0, r4
-; CHECK: div.s 32, r1, r1, r0
-; CHECK: add stack[r1 - 0], r4, r1
-; CHECK: div.s 32, r2, r4, r0
-; CHECK: add stack[r4 + 1], r1, r1
-; CHECK: div.s 32, r2, r4, r0
-; CHECK: add stack[r4 + 2], r1, r1
-; CHECK: div.s 32, r2, r2, r0
-; CHECK: add stack[r2 + 3], r1, r1
-; CHECK: div.s 32, r3, r2, r0
-; CHECK: add stack[r2 - 0], r1, r1
+; EARLY-BTC: div.s 32, r3, r{{[0-9]*}}, r0
+; EARLY-BTC: div.s 32, r2, r{{[0-9]*}}, r0
+; EARLY-BTC: div.s 32, r1, r{{[0-9]*}}, r0
+; EARLY-BTC: jump.eq @.BB1_2
+  %x = icmp eq i256* %ptr.i256, null
+  br i1 %x, label %fail, label %bb
+bb:
+; CHECK: jump.eq @.BB1_2
+; CHECK: div.s 32, r2, r{{[0-9]*}}, r0
+; CHECK: add stack[r{{[0-9]*}} - 0], r0, r{{[0-9]+}}
+; CHECK: add stack[r{{[0-9]*}} - 0], r{{[0-9]}}, r{{[0-9]+}}
+; CHECK: add stack[r{{[0-9]*}} - 0], r{{[0-9]}}, r{{[0-9]+}}
+; CHECK: add stack[r{{[0-9]*}} - 0], r{{[0-9]}}, r{{[0-9]+}}
+; CHECK: add stack[r{{[0-9]*}} - 0], r{{[0-9]}}, r{{[0-9]+}}
+; CHECK: add stack[r{{[0-9]*}} - 0], r{{[0-9]}}, r{{[0-9]+}}
+; TODO: add stack[r{{[0-9]*}} - 0], r4, r{{[0-9]+}}
+; TODO: add stack[r{{[0-9]*}} + 1], r1, r{{[0-9]+}}
+; TODO: add stack[r{{[0-9]*}} + 2], r1, r{{[0-9]+}}
+; TODO: add stack[r{{[0-9]*}} + 3], r1, r{{[0-9]+}}
+; TODO: add stack[r{{[0-9]*}} - 0], r1, r{{[0-9]+}}
   %v1 = load i256, i256* %ptr.i256
   %v2 = load i256, i256* %gep0
   %v3 = load i256, i256* %gep1
@@ -52,6 +62,8 @@ define i256 @stack.obj.accessing(i256* %ptr.i256, [4 x i256]* %ptr.arr, i256* %p
   %sum3 = add i256 %sum2, %v5
   %sum4 = add i256 %sum3, %v6
   ret i256 %sum4
+fail:
+  ret i256 0
 }
 
 ; CHECK-LABEL: stack.obj.passing
