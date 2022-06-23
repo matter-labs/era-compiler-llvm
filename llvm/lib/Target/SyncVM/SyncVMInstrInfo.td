@@ -173,6 +173,9 @@ def memaddr      : ComplexPattern<iPTR, 2, "SelectMemAddr", [], []>;
 def stackaddr    : ComplexPattern<iPTR, 3, "SelectStackAddr", [], []>;
 def adjstackaddr : ComplexPattern<iPTR, 3, "SelectAdjStackAddr", [], []>;
 
+def load_from_mem   : ComplexPattern<i256, 2, "SelectLoadFromMem", [], []>;
+def load_from_stack : ComplexPattern<i256, 3, "SelectLoadFromStack", [], []>;
+
 //===----------------------------------------------------------------------===//
 // Pattern Fragments Definitions.
 //===----------------------------------------------------------------------===//
@@ -928,8 +931,8 @@ defm ADD  : ArithICommutable<2,  "add", add>;
 defm SUB  : ArithINonCommutable<4, "sub", sub>;
 
 // MOV patterns
-def : Pat<(store_stack (load_code memaddr:$src), stackaddr:$dst),  (ADDcrs_p memaddr:$src, R0, stackaddr:$dst)>;
-def : Pat<(store_stack (load_stack stackaddr:$src), stackaddr:$dst),  (ADDsrs_p stackaddr:$src, R0, stackaddr:$dst)>;
+def : Pat<(store_stack load_from_mem:$src, stackaddr:$dst),  (ADDcrs_p load_from_mem:$src, R0, stackaddr:$dst)>;
+def : Pat<(store_stack load_from_stack:$src, stackaddr:$dst),  (ADDsrs_p stackaddr:$src, R0, stackaddr:$dst)>;
 def : Pat<(imm16:$val),  (ADDirr_p imm16:$val, R0)>;
 def : Pat<(load_code memaddr:$addr),  (ADDcrr_p memaddr:$addr, R0)>;
 def : Pat<(load_stack stackaddr:$addr),  (ADDsrr_p stackaddr:$addr, R0)>;
