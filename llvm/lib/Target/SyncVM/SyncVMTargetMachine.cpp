@@ -41,6 +41,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMAllocaHoistingPass(PR);
   initializeSyncVMPeepholePass(PR);
   initializeSyncVMCombineFlagSettingPass(PR);
+  initializeSyncVMPreRAPeepholePass(PR);
   initializeSyncVMStackAddressConstantPropagationPass(PR);
 }
 
@@ -131,18 +132,17 @@ void SyncVMPassConfig::addPreRegAlloc() {
   addPass(createSyncVMAddConditionsPass());
   addPass(createSyncVMStackAddressConstantPropagationPass());
   addPass(createSyncVMBytesToCellsPass());
-  if (TM->getOptLevel() != CodeGenOpt::None)
+  if (TM->getOptLevel() != CodeGenOpt::None) {
     // The pass combines sub.s! 0, x, y with x definition. It assumes only one
     // usage of every definition of Flags. This is guaranteed by the selection
     // DAG. Every pass that break this assumption is expected to be sequenced
     // after SyncVMCombineFlagSetting.
     addPass(createSyncVMCombineFlagSettingPass());
+    addPass(createSyncVMPreRAPeepholePass());
+  }
 }
 
 void SyncVMPassConfig::addPreEmitPass() {
   addPass(createSyncVMExpandSelectPass());
   addPass(createSyncVMExpandPseudoPass());
-  // TODO: The pass combines store with MULxxrr, DIVxxrr regardles of whether
-  // the destination register has one use. Should be fixed and reenabled.
-  addPass(createSyncVMPeepholePass());
 }
