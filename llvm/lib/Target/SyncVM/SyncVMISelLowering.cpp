@@ -91,7 +91,6 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   for (MVT VT : {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}) {
     setOperationAction(ISD::LOAD, VT, Custom);
     setOperationAction(ISD::STORE, VT, Custom);
-
     setTruncStoreAction(MVT::i256, VT, Expand);
   }
 
@@ -99,6 +98,8 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
 
   setOperationAction(ISD::ZERO_EXTEND, MVT::i256, Custom);
   setOperationAction(ISD::ANY_EXTEND, MVT::i256, Custom);
+
+  setTargetDAGCombine(ISD::ZERO_EXTEND);
 
   setJumpIsExpensive(false);
 }
@@ -574,8 +575,13 @@ SDValue SyncVMTargetLowering::LowerZERO_EXTEND(SDValue Op,
                                                SelectionDAG &DAG) const {
   SDLoc DL(Op);
   SDValue extending_value = Op.getOperand(0);
-  if (extending_value.getValueSizeInBits() == 256) {
+  if (extending_value.getValueType() == Op.getValueType()) {
     return extending_value;
+  } else {
+    // eliminate zext
+    SDValue new_value = DAG.getNode(extending_value->getOpcode(), DL,
+                                    Op.getValueType(), extending_value->ops());
+    return new_value;
   }
   return {};
 }
@@ -844,9 +850,23 @@ const char *SyncVMTargetLowering::getTargetNodeName(unsigned Opcode) const {
 
 SDValue SyncVMTargetLowering::PerformDAGCombine(SDNode *N,
                                                 DAGCombinerInfo &DCI) const {
+  SelectionDAG &DAG = DCI.DAG;
+
+  SDValue val;
   switch (N->getOpcode()) {
   default:
     break;
+  case ISD::ZERO_EXTEND: {
+    SDLoc DL(N);
+    SDValue extending_value = N->getOperand(0);
+    // combine with SETCC
+    if (extending_value->getOpcode() != ISD::SETCC) {
+      return val;
+    }
+    val = DAG.getNode(extending_value->getOpcode(), DL, N->getValueType(0),
+                      extending_value->ops());
+    break;
   }
-  return SDValue();
+  }
+  return val;
 }
