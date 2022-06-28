@@ -14,7 +14,7 @@ define i256 @test_length(i256 %arg1) {
 ; CHECK-NEXT:    sub.s! 36, r3, r2
 ; CHECK-NEXT:    add 0, r0, r2
 ; CHECK-NEXT:    add.lt r1, r0, r2
-; CHECK-NEXT:    and r3, r1, r3
+; CHECK-NEXT:    and @CPI0_0[0], r3, r3
 ; CHECK-NEXT:    sub.s! 0, r3, r4
 ; CHECK-NEXT:    add.le 0, r0, r1
 ; CHECK-NEXT:    sub.s! @CPI0_0[0], r3, r3
@@ -22,7 +22,6 @@ define i256 @test_length(i256 %arg1) {
 ; CHECK-NEXT:    sub.s! 0, r1, r1
 ; CHECK-NEXT:    add 0, r0, r1
 ; CHECK-NEXT:    add.ne 1, r0, r1
-; CHECK-NEXT:    and 1, r1, r1
 ; CHECK-NEXT:    ret
 entry:
   %comparison_result24 = icmp slt i256 35, %arg1
