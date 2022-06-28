@@ -22,7 +22,7 @@ entry:
 ; CHECK:      sub.s!  0, r{{[0-9]+}}, r{{[[0-9]+}}
 ; CHECK-NEXT: add     0, r{{[0-9]+}}, r{{[[0-9]+}}
 ; CHECK-NEXT: add.ne  1, r{{[0-9]+}}, r{{[[0-9]+}}
-; CHECK-NEXT: and     1, r{{[0-9]+}}, r{{[[0-9]+}}
+; CHECK-NOT:  and     1, r{{[0-9]+}}, r{{[[0-9]+}}
   %if_condition_compared28 = icmp ne i256 %comparison_result_extended27, 0
   %ret_value = zext i1 %if_condition_compared28 to i256
   ret i256 %ret_value
