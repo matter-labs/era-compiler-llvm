@@ -5,4 +5,7 @@ add_llvm_component_library(LLVMSyncVMDisassembler
     MC
     MCDisassembler
     Support
+
+  ADD_TO_COMPONENT
+  SyncVM
 )
