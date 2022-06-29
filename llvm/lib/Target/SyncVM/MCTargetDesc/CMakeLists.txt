@@ -7,4 +7,7 @@ add_llvm_component_library(LLVMSyncVMDesc
   SyncVMMCCodeEmitter.cpp
   SyncVMMCTargetDesc.cpp
   SyncVMTargetStreamer.cpp
+
+  ADD_TO_COMPONENT
+  SyncVM
   )

@@ -381,6 +381,9 @@ set(LLVM_ALL_TARGETS
   Sparc
   SystemZ
   VE
+# SyncVM local begin
+  SyncVM
+# SyncVM local end
   WebAssembly
   X86
   XCore
