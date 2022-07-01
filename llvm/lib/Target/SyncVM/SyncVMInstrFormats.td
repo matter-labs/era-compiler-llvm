@@ -10,8 +10,9 @@
 //===----------------------------------------------------------------------===//
 
 class PredRel;
-class FlagRel : PredRel; // map: `_s` -> `_v`
-class AddrModeRel : PredRel; // generic map of addressing mode
+class PseudoRel; // map: `_p` -> `_s`
+class FlagRel; // map: `_s` -> `_v`
+class AddrModeRel; // generic map of addressing mode
 
 // The addressing mode can be categorized into operand addressing and destination addressing
 // OperandAddrMode:
@@ -43,20 +44,28 @@ def ToStackReg     : DestAddrModeValue<4>;
 // instruction (`_v`)
 //
 
+def getPseudoMapOpcode : InstrMapping {
+  let FilterClass = "PseudoRel";
+  let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode", "ReverseOperand"];
+  let ColFields = ["IsPseudoArith"];
+  let KeyCol = ["1"];
+  let ValueCols = [["0"]];
+}
+
 def getFlagSettingOpcode : InstrMapping {
-  let FilterClass = "PredRel";
-  let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode"];
+  let FilterClass = "FlagRel";
+  let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode", "ReverseOperand"];
   let ColFields = ["FlagSetting"];
-  let KeyCol = ["0"];
-  let ValueCols = [["1"]];
+  let KeyCol = ["1"];
+  let ValueCols = [["0"]];
 }
 
 def getNonFlagSettingOpcode : InstrMapping {
   let FilterClass = "PredRel";
-  let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode"];
+  let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode", "ReverseOperand"];
   let ColFields = ["FlagSetting"];
-  let KeyCol = ["1"];
-  let ValueCols = [["0"]];
+  let KeyCol = ["0"];
+  let ValueCols = [["1"]];
 }
 
 //===----------------------------------------------------------------------===//
@@ -215,8 +224,9 @@ class IBinary<bits<8> opcode,
   : IConditional <opcode, as, ad, outs, ins, asmstr, pattern >, PredRel {
   bits<4> rs1;
   string BaseOpcode;
-  bits<1> FlagSetting = 0;
-  bits<1> IsPseudo = 0;
+  bit FlagSetting = silent;
+  bit ReverseOperand = swap_operands;
+  bit IsPseudoArith = 0;
   bits<3> OperandAddrMode = OpndAddrNotSet.Value;
   bits<3> DestAddrMode = DestAddrNotSet.Value;
   let Inst{32} = swap_operands;
@@ -321,6 +331,21 @@ class Imrr<bits<8> opcode,
   let Inst{16-31} = src0{4-19};
 }
 
+class Isrr<bits<8> opcode,
+           SourceMode as,
+           bit swap_operands,
+           bit silent,
+           dag outs,
+           dag ins,
+           string asmstr,
+           list<dag> pattern>
+  : IBinaryR<opcode, as, swap_operands, silent, outs, ins, asmstr, pattern> {
+  bits<20> src0; // reg + imm
+  let OperandAddrMode = OpndSR.Value;
+  let Inst{52-55} = src0{0-3};
+  let Inst{16-31} = src0{4-19};
+}
+
 class Imrrr<bits<8> opcode,
             SourceMode as,
             bit swap_operands,
@@ -330,6 +355,21 @@ class Imrrr<bits<8> opcode,
             string asmstr,
             list<dag> pattern>
   : Imrr<opcode, as, swap_operands, silent, outs, ins, asmstr, pattern> {
+  bits<4> rd1;
+  let DestAddrMode = ToRegReg.Value;
+  let OperandAddrMode = OpndCR.Value;
+  let Inst{40-43} = rd1;
+}
+
+class Isrrr<bits<8> opcode,
+            SourceMode as,
+            bit swap_operands,
+            bit silent,
+            dag outs,
+            dag ins,
+            string asmstr,
+            list<dag> pattern>
+  : Isrr<opcode, as, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rd1;
   let DestAddrMode = ToRegReg.Value;
   let Inst{40-43} = rd1;
@@ -403,6 +443,21 @@ class Imrs<bits<8> opcode,
   let Inst{16-31} = src0{4-19};
 }
 
+class Isrs<bits<8> opcode,
+           SourceMode as,
+           bit swap_operands,
+           bit silent,
+           dag outs,
+           dag ins,
+           string asmstr,
+           list<dag> pattern>
+  : IBinaryS<opcode, as, swap_operands, silent, outs, ins, asmstr, pattern> {
+  bits<20> src0; // reg + imm
+  let OperandAddrMode = OpndSR.Value;
+  let Inst{52-55} = src0{0-3};
+  let Inst{16-31} = src0{4-19};
+}
+
 class Imrsr<bits<8> opcode,
             SourceMode as,
             bit swap_operands,
@@ -417,13 +472,27 @@ class Imrsr<bits<8> opcode,
   let Inst{40-43} = rd1;
 }
 
+class Isrsr<bits<8> opcode,
+            SourceMode as,
+            bit swap_operands,
+            bit silent,
+            dag outs,
+            dag ins,
+            string asmstr,
+            list<dag> pattern>
+  : Isrs<opcode, as, swap_operands, silent, outs, ins, asmstr, pattern> {
+  bits<4> rd1;
+  let DestAddrMode = ToStackReg.Value;
+  let Inst{40-43} = rd1;
+}
+
 // Pseudo instructions
 class Pseudo<dag outs, dag ins, string asmstr, list<dag> pattern>
-  : SyncVMInstruction <outs, ins, 0, asmstr, pattern>, PredRel {
+  : SyncVMInstruction <outs, ins, 0, asmstr, pattern>, PseudoRel {
   string BaseOpcode;
-  bits<1> FlagSetting = 0;
-  bits<1> IsPseudo = 1;
-  // TODO: this should be combined into
+  bit FlagSetting = 0;
+  bit IsPseudoArith = 1;
+  bit ReverseOperand = 0;
   bits<3> OperandAddrMode = OpndAddrNotSet.Value;
   bits<3> DestAddrMode = DestAddrNotSet.Value;
 }
