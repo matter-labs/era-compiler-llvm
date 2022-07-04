@@ -59,6 +59,9 @@ add_llvm_target(SyncVMCodeGen
   Target
   TransformUtils
 
+  ADD_TO_COMPONENT
+  SyncVM
+
   DEPENDS
   intrinsics_gen
   )
