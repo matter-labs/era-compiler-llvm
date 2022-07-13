@@ -59,6 +59,7 @@ add_llvm_target(EraVMCodeGen
   EraVMMoveCallResultSpill.cpp
   EraVMPeephole.cpp
   EraVMRegisterInfo.cpp
+  EraVMStackAddressConstantPropagation.cpp
   EraVMSubtarget.cpp
   EraVMTargetMachine.cpp
   EraVMTargetTransformInfo.cpp
