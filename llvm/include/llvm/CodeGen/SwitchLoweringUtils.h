@@ -87,7 +87,9 @@ using CaseClusterVector = std::vector<CaseCluster>;
 using CaseClusterIt = CaseClusterVector::iterator;
 
 /// Sort Clusters and merge adjacent cases.
-void sortAndRangeify(CaseClusterVector &Clusters);
+// SyncVM local begin
+void sortAndRangeify(CaseClusterVector &Clusters, bool isUseUlt = false);
+// SyncVM local end
 
 struct CaseBits {
   uint64_t Mask = 0;

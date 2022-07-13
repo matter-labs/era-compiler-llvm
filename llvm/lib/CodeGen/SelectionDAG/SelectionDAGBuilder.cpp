@@ -10830,6 +10830,9 @@ void SelectionDAGBuilder::lowerWorkItem(SwitchWorkListItem W, Value *Cond,
   }
 
   if (TM.getOptLevel() != CodeGenOpt::None) {
+    // SyncVM local begin
+    if (!TM.getTargetTriple().isSyncVM()) {
+    // SyncVM local end
     // Here, we order cases by probability so the most likely case will be
     // checked first. However, two clusters can have the same probability in
     // which case their relative ordering is non-deterministic. So we use Low
@@ -10840,6 +10843,18 @@ void SelectionDAGBuilder::lowerWorkItem(SwitchWorkListItem W, Value *Cond,
              a.Prob > b.Prob :
              a.Low->getValue().slt(b.Low->getValue());
     });
+    // SyncVM local begin
+    } else {
+    // SyncVM local end
+    llvm::sort(W.FirstCluster, W.LastCluster + 1,
+               [](const CaseCluster &a, const CaseCluster &b) {
+      return a.Prob != b.Prob ?
+             a.Prob > b.Prob :
+             a.Low->getValue().slt(b.Low->getValue());
+    });
+    // SyncVM local begin
+    }
+    // SyncVM local end
 
     // Rearrange the case blocks so that the last one falls through if possible
     // without changing the order of probabilities.
@@ -11000,8 +11015,14 @@ unsigned SelectionDAGBuilder::caseClusterRank(const CaseCluster &CC,
     if (X.Prob != CC.Prob)
       return X.Prob > CC.Prob;
 
+    // SyncVM local begin
+    if (!TM.getTargetTriple().isSyncVM())
+    // SyncVM local end
     // Ties are broken by comparing the case value.
     return X.Low->getValue().slt(CC.Low->getValue());
+    // SyncVM local begin
+    return X.Low->getValue().ult(CC.Low->getValue());
+    // SyncVM local end
   });
 }
 
@@ -11009,8 +11030,15 @@ void SelectionDAGBuilder::splitWorkItem(SwitchWorkList &WorkList,
                                         const SwitchWorkListItem &W,
                                         Value *Cond,
                                         MachineBasicBlock *SwitchMBB) {
+  // SyncVM local begin
+  if (!TM.getTargetTriple().isSyncVM())
+  // SyncVM local end
   assert(W.FirstCluster->Low->getValue().slt(W.LastCluster->Low->getValue()) &&
          "Clusters not sorted?");
+  // SyncVM local begin
+  assert(W.FirstCluster->Low->getValue().ult(W.LastCluster->Low->getValue()) &&
+         "Clusters not sorted?");
+  // SyncVM local end
 
   assert(W.LastCluster - W.FirstCluster + 1 >= 2 && "Too small to split!");
 
@@ -11129,7 +11157,10 @@ void SelectionDAGBuilder::splitWorkItem(SwitchWorkList &WorkList,
   }
 
   // Create the CaseBlock record that will be used to lower the branch.
-  CaseBlock CB(ISD::SETLT, Cond, Pivot, nullptr, LeftMBB, RightMBB, W.MBB,
+  // SyncVM local begin
+  CaseBlock CB(TM.getTargetTriple().isSyncVM() ? ISD::SETULT : ISD::SETLT,
+               Cond, Pivot, nullptr, LeftMBB, RightMBB, W.MBB,
+  // SyncVM local end
                getCurSDLoc(), LeftProb, RightProb);
 
   if (W.MBB == SwitchMBB)
@@ -11228,7 +11259,7 @@ void SelectionDAGBuilder::visitSwitch(const SwitchInst &SI) {
   // Cluster adjacent cases with the same destination. We do this at all
   // optimization levels because it's cheap to do and will make codegen faster
   // if there are many clusters.
-  sortAndRangeify(Clusters);
+  sortAndRangeify(Clusters, TM.getTargetTriple().isSyncVM());
 
   // The branch probablity of the peeled case.
   BranchProbability PeeledCaseProb = BranchProbability::getZero();
