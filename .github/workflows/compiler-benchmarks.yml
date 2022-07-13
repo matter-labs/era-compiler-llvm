@@ -111,6 +111,10 @@ jobs:
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PK_BOT }}
 
+      - name: Preparing workspace. Installing additional packages.
+        run: |
+          ${DOCKER_CMD} sh -c 'apt install -y ninja-build'
+
       - name: Preparing workspace. Setting docker ssh key.
         run: |
           ${DOCKER_CMD} sh -c 'mkdir -pv /root/.ssh'
@@ -133,7 +137,7 @@ jobs:
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
           export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-          cargo run --release --bin compiler-tester -- --filter=${{ env.LLVM_BENCHMARK_FILTER }} --domain=${{ env.LLVM_BENCHMARK_DOMAIN }} --benchmark=candidate.json'
+          cargo run --release --target x86_64-unknown-linux-musl --bin compiler-tester -- --filter=${{ env.LLVM_BENCHMARK_FILTER }} --domain=${{ env.LLVM_BENCHMARK_DOMAIN }} --benchmark=candidate.json'
 
       - uses: actions/upload-artifact@v3
         with:
