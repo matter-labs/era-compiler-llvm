@@ -19,6 +19,15 @@ class SyncVMInstrInfo : public SyncVMGenInstrInfo {
   const SyncVMRegisterInfo RI;
   virtual void anchor();
 public:
+
+  enum GenericInstruction {
+    Unsupported = 0,
+    ADD,
+    SUB,
+    MUL,
+    DIV,
+  };
+
   explicit SyncVMInstrInfo();
 
   /// getRegisterInfo - TargetInstrInfo is a superset of MRegister info.  As
@@ -63,6 +72,19 @@ public:
   int64_t getFramePoppedByCallee(const MachineInstr &I) const {
     return 0;
   }
+
+  // Properties and mappings
+  bool hasRROperandAddressingMode(const MachineInstr& MI) const;
+  bool hasRIOperandAddressingMode(const MachineInstr& MI) const;
+  bool hasRXOperandAddressingMode(const MachineInstr& MI) const;
+  bool hasRSOperandAddressingMode(const MachineInstr& MI) const;
+  bool hasTwoOuts(const MachineInstr& MI) const;
+  bool isAdd(const MachineInstr &MI) const;
+  bool isSub(const MachineInstr &MI) const;
+  bool isMul(const MachineInstr &MI) const;
+  bool isDiv(const MachineInstr &MI) const;
+  bool isSilent(const MachineInstr &MI) const;
+  GenericInstruction genericInstructionFor(const MachineInstr &MI) const;
 };
 
 }
