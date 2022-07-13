@@ -99,12 +99,6 @@ jobs:
           ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
           ./build.sh ${{ env.LLVM_BUILD_TYPE }}'
 
-      - name: Testing. Running regression LLVM tests.
-        run: |
-          ${DOCKER_CMD} sh -c '
-          cd compiler-llvm/build-target && \
-          ninja check-llvm-codegen-syncvm'
-
       - name: Testing. Building and running compiler tester.
         id: compiler_tester_run
         run: |

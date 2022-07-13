@@ -111,4 +111,4 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
     make -j "$(nproc)"
 fi
 
-sudo make install
+make install

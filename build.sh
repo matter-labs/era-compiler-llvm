@@ -137,7 +137,9 @@ cmake './llvm' \
   -DCMAKE_EXE_LINKER_FLAGS='-fuse-ld=lld -static' \
   -DLLVM_TARGETS_TO_BUILD='SyncVM' \
   -DLLVM_BUILD_DOCS='Off' \
+  -DLLVM_BUILD_TESTS='Off' \
   -DLLVM_INCLUDE_DOCS='Off' \
+  -DLLVM_INCLUDE_TESTS='Off' \
   -DLLVM_ENABLE_PROJECTS='llvm' \
   -DLLVM_ENABLE_ASSERTIONS='Off' \
   -DLLVM_ENABLE_DOXYGEN='Off' \
