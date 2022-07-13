@@ -85,6 +85,7 @@ FunctionPass *createEraVMExpandPseudoPass();
 FunctionPass *createEraVMExpandSelectPass();
 FunctionPass *createEraVMMoveCallResultSpillPass();
 FunctionPass *createEraVMAdjustStackInCallseqPass();
+FunctionPass *createEraVMStackAddressConstantPropagationPass();
 
 void initializeEraVMLowerIntrinsicsPass(PassRegistry &);
 void initializeEraVMAddConditionsPass(PassRegistry &);
@@ -96,6 +97,7 @@ void initializeEraVMExpandPseudoPass(PassRegistry &);
 void initializeEraVMExpandSelectPass(PassRegistry &);
 void initializeEraVMMoveCallResultSpillPass(PassRegistry &);
 void initializeEraVMDAGToDAGISelLegacyPass(PassRegistry &);
+void initializeEraVMStackAddressConstantPropagationPass(PassRegistry &);
 
 } // namespace llvm
 

@@ -277,3 +277,65 @@ unsigned EraVMInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
     return 0;
   return Desc.getSize();
 }
+
+bool EraVMInstrInfo::isAdd(const MachineInstr &MI) const {
+  StringRef Mnemonic = getName(MI.getOpcode());
+  return Mnemonic.starts_with("ADD");
+}
+
+bool EraVMInstrInfo::isSub(const MachineInstr &MI) const {
+  StringRef Mnemonic = getName(MI.getOpcode());
+  return Mnemonic.starts_with("SUB");
+}
+
+bool EraVMInstrInfo::isMul(const MachineInstr &MI) const {
+  StringRef Mnemonic = getName(MI.getOpcode());
+  return Mnemonic.starts_with("MUL");
+}
+
+bool EraVMInstrInfo::isDiv(const MachineInstr &MI) const {
+  StringRef Mnemonic = getName(MI.getOpcode());
+  return Mnemonic.starts_with("DIV");
+}
+
+bool EraVMInstrInfo::isSilent(const MachineInstr &MI) const {
+  StringRef Mnemonic = getName(MI.getOpcode());
+  return Mnemonic.ends_with("s");
+}
+
+EraVMInstrInfo::GenericInstruction
+EraVMInstrInfo::genericInstructionFor(const MachineInstr &MI) const {
+  if (isAdd(MI))
+    return ADD;
+  if (isSub(MI))
+    return SUB;
+  if (isMul(MI))
+    return MUL;
+  if (isDiv(MI))
+    return DIV;
+  return Unsupported;
+}
+
+bool EraVMInstrInfo::hasRIOperandAddressingMode(const MachineInstr &MI) const {
+  StringRef Mnemonic = getName(MI.getOpcode());
+  return find(Mnemonic, 'i') != Mnemonic.end();
+}
+
+bool EraVMInstrInfo::hasRXOperandAddressingMode(const MachineInstr &MI) const {
+  StringRef Mnemonic = getName(MI.getOpcode());
+  return find(Mnemonic, 'x') != Mnemonic.end();
+}
+
+bool EraVMInstrInfo::hasRSOperandAddressingMode(const MachineInstr &MI) const {
+  StringRef Mnemonic = getName(MI.getOpcode());
+  auto LCIt = find_if<StringRef, int(int)>(std::move(Mnemonic), std::islower);
+
+  return LCIt != Mnemonic.end() && (*LCIt == 's' || *LCIt == 'y');
+}
+
+bool EraVMInstrInfo::hasRROperandAddressingMode(const MachineInstr &MI) const {
+  StringRef Mnemonic = getName(MI.getOpcode());
+  auto LCIt = find_if<StringRef, int(int)>(std::move(Mnemonic), std::islower);
+
+  return LCIt != Mnemonic.end() && *LCIt == 'r' && *std::next(LCIt) == 'r';
+}

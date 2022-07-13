@@ -42,6 +42,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMAllocaHoistingPass(PR);
   initializeEraVMMoveCallResultSpillPass(PR);
   initializeEraVMDAGToDAGISelLegacyPass(PR);
+  initializeEraVMStackAddressConstantPropagationPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -123,6 +124,7 @@ bool EraVMPassConfig::addInstSelector() {
 
 void EraVMPassConfig::addPreRegAlloc() {
   addPass(createEraVMAddConditionsPass());
+  addPass(createEraVMStackAddressConstantPropagationPass());
   addPass(createEraVMBytesToCellsPass());
 }
 
