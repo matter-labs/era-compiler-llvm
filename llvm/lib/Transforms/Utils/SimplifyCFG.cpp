@@ -6830,7 +6830,7 @@ bool SimplifyCFGOpt::simplifyCondBranch(BranchInst *BI, IRBuilder<> &Builder) {
 
   // Conditional branch
   // SyncVM local begin
-#if 0
+   #if 0
   if (isValueEqualityComparison(BI)) {
     // If we only have one predecessor, and if it is a branch on this value,
     // see if that predecessor totally determines the outcome of this
