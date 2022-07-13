@@ -38,6 +38,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMAllocaHoistingPass(PR);
   initializeSyncVMMoveCallResultSpillPass(PR);
   initializeSyncVMPeepholePass(PR);
+  initializeSyncVMStackAddressConstantPropagationPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -95,7 +96,6 @@ TargetPassConfig *SyncVMTargetMachine::createPassConfig(PassManagerBase &PM) {
 }
 
 void SyncVMPassConfig::addIRPasses() {
-  addPass(createLowerSwitchPass());
   addPass(createSyncVMLowerIntrinsicsPass());
   addPass(createSyncVMLinkRuntimePass());
   addPass(createGlobalDCEPass());
@@ -106,6 +106,7 @@ void SyncVMPassConfig::addIRPasses() {
 #endif
   addPass(createSyncVMCodegenPreparePass());
   addPass(createSyncVMAllocaHoistingPass());
+  TargetPassConfig::addIRPasses();
 }
 
 bool SyncVMPassConfig::addInstSelector() {
@@ -117,6 +118,7 @@ bool SyncVMPassConfig::addInstSelector() {
 
 void SyncVMPassConfig::addPreRegAlloc() {
   addPass(createSyncVMAddConditionsPass());
+  addPass(createSyncVMStackAddressConstantPropagationPass());
   addPass(createSyncVMBytesToCellsPass());
 }
 
