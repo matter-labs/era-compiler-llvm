@@ -38,18 +38,14 @@ entry:
   br i1 %x, label %fail, label %bb
 bb:
 ; CHECK: jump.eq @.BB1_2
-; CHECK: div.s 32, r2, r{{[0-9]*}}, r0
-; CHECK: add stack[r{{[0-9]*}} - 0], r0, r{{[0-9]+}}
-; CHECK: add stack[r{{[0-9]*}} - 0], r{{[0-9]}}, r{{[0-9]+}}
-; CHECK: add stack[r{{[0-9]*}} - 0], r{{[0-9]}}, r{{[0-9]+}}
-; CHECK: add stack[r{{[0-9]*}} - 0], r{{[0-9]}}, r{{[0-9]+}}
-; CHECK: add stack[r{{[0-9]*}} - 0], r{{[0-9]}}, r{{[0-9]+}}
-; CHECK: add stack[r{{[0-9]*}} - 0], r{{[0-9]}}, r{{[0-9]+}}
-; TODO: add stack[r{{[0-9]*}} - 0], r4, r{{[0-9]+}}
-; TODO: add stack[r{{[0-9]*}} + 1], r1, r{{[0-9]+}}
-; TODO: add stack[r{{[0-9]*}} + 2], r1, r{{[0-9]+}}
-; TODO: add stack[r{{[0-9]*}} + 3], r1, r{{[0-9]+}}
-; TODO: add stack[r{{[0-9]*}} - 0], r1, r{{[0-9]+}}
+; CHECK: add stack[r2 - 0], r0, r{{[0-9]*}}
+; CHECK: div.s 32, r1, r1, r0
+; CHECK: add stack[r1 - 0], r4, r1
+; CHECK: add stack[r2 + 1], r1, r1
+; CHECK: add stack[r2 + 2], r1, r1
+; CHECK: add stack[r2 + 3], r1, r1
+; CHECK: div.s 32, r3, r2, r0
+; CHECK: add stack[r2 - 0], r1, r1
   %v1 = load i256, i256* %ptr.i256
   %v2 = load i256, i256* %gep0
   %v3 = load i256, i256* %gep1
