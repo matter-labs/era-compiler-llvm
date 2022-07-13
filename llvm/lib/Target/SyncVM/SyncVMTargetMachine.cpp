@@ -38,6 +38,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMAllocaHoistingPass(PR);
   initializeSyncVMMoveCallResultSpillPass(PR);
   initializeSyncVMPeepholePass(PR);
+  initializeSyncVMStackAddressConstantPropagationPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -117,6 +118,7 @@ bool SyncVMPassConfig::addInstSelector() {
 
 void SyncVMPassConfig::addPreRegAlloc() {
   addPass(createSyncVMAddConditionsPass());
+  addPass(createSyncVMStackAddressConstantPropagationPass());
   addPass(createSyncVMBytesToCellsPass());
 }
 

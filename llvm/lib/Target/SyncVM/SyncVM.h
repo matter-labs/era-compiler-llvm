@@ -77,6 +77,7 @@ FunctionPass *createSyncVMExpandPseudoPass();
 FunctionPass *createSyncVMExpandSelectPass();
 FunctionPass *createSyncVMMoveCallResultSpillPass();
 FunctionPass *createSyncVMPeepholePass();
+FunctionPass *createSyncVMStackAddressConstantPropagationPass();
 
 void initializeSyncVMExpandUMAPass(PassRegistry &);
 void initializeSyncVMIndirectUMAPass(PassRegistry &);
@@ -91,6 +92,7 @@ void initializeSyncVMExpandPseudoPass(PassRegistry &);
 void initializeSyncVMExpandSelectPass(PassRegistry &);
 void initializeSyncVMMoveCallResultSpillPass(PassRegistry &);
 void initializeSyncVMPeepholePass(PassRegistry &);
+void initializeSyncVMStackAddressConstantPropagationPass(PassRegistry &);
 
 } // end namespace llvm;
 
