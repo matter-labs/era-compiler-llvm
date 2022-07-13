@@ -3,7 +3,6 @@
 ; Hexagon runs passes that renumber the basic blocks, causing this test
 ; to fail.
 ; XFAIL: target=hexagon-{{.*}}
-; XFAIL: target=eravm{{.*}}
 
 declare void @foo()
 

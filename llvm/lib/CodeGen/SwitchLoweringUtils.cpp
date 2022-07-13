@@ -55,7 +55,14 @@ void SwitchCG::SwitchLowering::findJumpTables(CaseClusterVector &Clusters,
   for (CaseCluster &C : Clusters)
     assert(C.Kind == CC_Range);
   for (unsigned i = 1, e = Clusters.size(); i < e; ++i)
+    // EraVM local begin
+    if (!TM->getTargetTriple().isEraVM())
+    // EraVM local end
     assert(Clusters[i - 1].High->getValue().slt(Clusters[i].Low->getValue()));
+    // EraVM local begin
+    else
+    assert(Clusters[i - 1].High->getValue().ult(Clusters[i].Low->getValue()));
+    // EraVM local end
 #endif
 
   assert(TLI && "TLI not set!");
@@ -215,7 +222,14 @@ bool SwitchCG::SwitchLowering::buildJumpTable(const CaseClusterVector &Clusters,
     if (I != First) {
       // Fill the gap between this and the previous cluster.
       const APInt &PreviousHigh = Clusters[I - 1].High->getValue();
+      // EraVM local begin
+      if (!TM->getTargetTriple().isEraVM())
+      // EraVM local end
       assert(PreviousHigh.slt(Low));
+      // EraVM local begin
+      else
+      assert(PreviousHigh.ult(Low));
+      // EraVM local end
       uint64_t Gap = (Low - PreviousHigh).getLimitedValue() - 1;
       for (uint64_t J = 0; J < Gap; J++)
         Table.push_back(DefaultMBB);
@@ -277,7 +291,14 @@ void SwitchCG::SwitchLowering::findBitTestClusters(CaseClusterVector &Clusters,
   for (const CaseCluster &C : Clusters)
     assert(C.Kind == CC_Range || C.Kind == CC_JumpTable);
   for (unsigned i = 1; i < Clusters.size(); ++i)
+    // EraVM local begin
+    if (!TM->getTargetTriple().isEraVM())
+    // EraVM local end
     assert(Clusters[i-1].High->getValue().slt(Clusters[i].Low->getValue()));
+    // EraVM local begin
+    else
+    assert(Clusters[i-1].High->getValue().ult(Clusters[i].Low->getValue()));
+    // EraVM local end
 #endif
 
   // The algorithm below is not suitable for -O0.
@@ -383,7 +404,14 @@ bool SwitchCG::SwitchLowering::buildBitTests(CaseClusterVector &Clusters,
 
   APInt Low = Clusters[First].Low->getValue();
   APInt High = Clusters[Last].High->getValue();
+  // EraVM local begin
+  if (!TM->getTargetTriple().isEraVM())
+  // EraVM local end
   assert(Low.slt(High));
+  // EraVM local begin
+  else
+  assert(Low.ult(High));
+  // EraVM local end
 
   if (!TLI->isSuitableForBitTests(NumDests, NumCmps, Low, High, *DL))
     return false;
@@ -405,7 +433,11 @@ bool SwitchCG::SwitchLowering::buildBitTests(CaseClusterVector &Clusters,
     }
   }
 
-  if (Low.isStrictlyPositive() && High.slt(BitWidth)) {
+  // EraVM local begin
+  if (Low.isStrictlyPositive() &&
+      (TM->getTargetTriple().isEraVM() ? High.ult(BitWidth)
+                                       : High.slt(BitWidth))) {
+    // EraVM local end
     // Optimize the case where all the case values fit in a word without having
     // to subtract minValue. In this case, we can optimize away the subtraction.
     LowBound = APInt::getZero(Low.getBitWidth());
@@ -464,14 +496,21 @@ bool SwitchCG::SwitchLowering::buildBitTests(CaseClusterVector &Clusters,
   return true;
 }
 
-void SwitchCG::sortAndRangeify(CaseClusterVector &Clusters) {
+// EraVM local begin
+void SwitchCG::sortAndRangeify(CaseClusterVector &Clusters, bool isUseUlt) {
+// EraVM local end
 #ifndef NDEBUG
   for (const CaseCluster &CC : Clusters)
     assert(CC.Low == CC.High && "Input clusters must be single-case");
 #endif
 
+  if (!isUseUlt)
   llvm::sort(Clusters, [](const CaseCluster &a, const CaseCluster &b) {
     return a.Low->getValue().slt(b.Low->getValue());
+  });
+  else
+  llvm::sort(Clusters, [](const CaseCluster &a, const CaseCluster &b) {
+    return a.Low->getValue().ult(b.Low->getValue());
   });
 
   // Merge adjacent clusters with the same destination.
@@ -504,7 +543,14 @@ unsigned SwitchCG::SwitchLowering::caseClusterRank(const CaseCluster &CC,
       return X.Prob > CC.Prob;
 
     // Ties are broken by comparing the case value.
+    // EraVM local begin
+    if (!TM->getTargetTriple().isEraVM())
+    // EraVM local end
+    // Ties are broken by comparing the case value.
     return X.Low->getValue().slt(CC.Low->getValue());
+    // EraVM local begin
+    return X.Low->getValue().ult(CC.Low->getValue());
+    // EraVM local end
   });
 }
 

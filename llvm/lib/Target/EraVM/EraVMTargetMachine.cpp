@@ -106,7 +106,6 @@ MachineFunctionInfo *EraVMTargetMachine::createMachineFunctionInfo(
 }
 
 void EraVMPassConfig::addIRPasses() {
-  addPass(createLowerSwitchPass());
   addPass(createEraVMLowerIntrinsicsPass());
   addPass(createEraVMLinkRuntimePass());
   addPass(createGlobalDCEPass());
