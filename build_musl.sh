@@ -6,16 +6,16 @@ ROOT_DIR="${PWD}"
 
 MUSL_NAME='musl-1.2.3'
 MUSL_BUILD="${ROOT_DIR}/${MUSL_NAME}/build/"
-MUSL_INSTALL="${HOME}/opt/musl/"
+MUSL_INSTALL='/opt/musl/'
 
 CRT_BUILD="${ROOT_DIR}/build-crt/"
-CRT_INSTALL="${ROOT_DIR}/opt/crt-musl/"
+CRT_INSTALL='/opt/crt-musl/'
 
 HOST_BUILD="${ROOT_DIR}/build-host/"
-HOST_INSTALL="${HOME}/opt/llvm-musl-host/"
+HOST_INSTALL='/opt/llvm-musl-host/'
 
 TARGET_BUILD="${ROOT_DIR}/build-target/"
-TARGET_INSTALL="${HOME}/opt/llvm-release/"
+TARGET_INSTALL='/opt/llvm-release/'
 
 
 

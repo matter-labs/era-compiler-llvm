@@ -32,6 +32,7 @@ jobs:
         run: |
           echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
           echo "COMPOSE_PROJECT_NAME=llvm_testing" >> $GITHUB_ENV
+          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch || 'vm1.1' }}" >> $GITHUB_ENV
           echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
 
@@ -40,24 +41,14 @@ jobs:
         shell: bash
         run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
 
-      - name: Set compiler-tester branch depending on current branch (pull request)
-        if: github.event_name == 'pull_request'
+      - name: Set the compiler-tester filter depending on the base branch
         shell: bash
         run: |
-          if [[ "${BRANCH_NAME}" == "main" ]]; then
-            echo "COMPILER_TESTER_BRANCH_NAME=main" >> $GITHUB_ENV
-          elif [[ "${BRANCH_NAME}" == "dev-1.1" ]]; then
-            echo "COMPILER_TESTER_BRANCH_NAME=vm1.1" >> $GITHUB_ENV
+          if [[ "${BRANCH_NAME}" == "dev-1.1" ]]; then
+            echo "COMPILER_TESTER_DOMAIN='+M^I+B3'" >> $GITHUB_ENV
           else
-            echo "Cannot map current branch to compiler-tester branch"
-            exit 1
+            echo "COMPILER_TESTER_DOMAIN=''" >> $GITHUB_ENV
           fi
-
-      - name: Set compiler-tester branch from manual input (workflow dispatch)
-        if: github.event_name == 'workflow_dispatch'
-        shell: bash
-        run: |
-          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch }}" >> $GITHUB_ENV
 
       - name: Preparing workspace. Checkout compiler-tester repository.
         uses: actions/checkout@v2
@@ -95,9 +86,9 @@ jobs:
 
       - name: Testing. Building LLVM framework.
         run: |
-          chmod +x compiler-llvm/build.sh
+          chmod +x compiler-llvm/build_musl.sh
           ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
-          ./build.sh ${{ env.LLVM_BUILD_TYPE }}'
+          ./build_musl.sh ${{ env.LLVM_BUILD_TYPE }}'
 
       - name: Testing. Building and running compiler tester.
         id: compiler_tester_run
@@ -106,8 +97,8 @@ jobs:
           cd compiler-tester && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
-          export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-          cargo run --release --target x86_64-unknown-linux-musl --bin compiler-tester'
+          export LLVM_SYS_130_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
+          cargo run --release --target x86_64-unknown-linux-musl --bin compiler-tester -- --domain=${{ env.COMPILER_TESTER_DOMAIN }}'
           compiler_exit_code=$?
           if [ "${compiler_exit_code}" -gt "1" ]; then
             echo "RUN_SEGFAULT_STEP=true" >> $GITHUB_ENV
