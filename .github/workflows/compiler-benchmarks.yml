@@ -56,31 +56,13 @@ jobs:
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '+M^I+B3' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_filter || '' }}" >> $GITHUB_ENV
+          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_candidate_branch || 'vm1.1' }}" >> $GITHUB_ENV
+          echo "COMPILER_LLVM_CANDIDATE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_candidate_branch }}" >> $GITHUB_ENV
 
       - name: Get branch name (pull request)
         if: github.event_name == 'pull_request'
         shell: bash
         run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
-
-      - name: Set compiler-tester branch depending on current branch (pull request)
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          if [[ "${BRANCH_NAME}" == "main" ]]; then
-            echo "COMPILER_TESTER_BRANCH_NAME=main" >> $GITHUB_ENV
-          elif [[ "${BRANCH_NAME}" == "dev-1.1" ]]; then
-            echo "COMPILER_TESTER_BRANCH_NAME=vm1.1" >> $GITHUB_ENV
-          else
-            echo "Cannot map current branch to compiler-tester branch"
-            exit 1
-          fi
-
-      - name: Set branch names from manual input (workflow dispatch)
-        if: github.event_name == 'workflow_dispatch'
-        shell: bash
-        run: |
-          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_candidate_branch }}" >> $GITHUB_ENV
-          echo "COMPILER_LLVM_CANDIDATE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_candidate_branch }}" >> $GITHUB_ENV
 
       - name: Preparing workspace. Checkout compiler-tester repository
         uses: actions/checkout@v2
@@ -126,9 +108,9 @@ jobs:
 
       - name: Testing. Building LLVM framework candidate.
         run: |
-          chmod +x compiler-llvm/build.sh
+          chmod +x compiler-llvm/build_musl.sh
           ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
-          ./build.sh ${{ env.LLVM_BUILD_TYPE }}'
+          ./build_musl.sh ${{ env.LLVM_BUILD_TYPE }}'
 
       - name: Testing. Benchmarking  LLVM framework candidate.
         id: compiler_tester_run
@@ -137,7 +119,7 @@ jobs:
           cd compiler-tester && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
-          export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
+          export LLVM_SYS_130_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
           cargo run --release --target x86_64-unknown-linux-musl --bin compiler-tester -- --filter=${{ env.LLVM_BENCHMARK_FILTER }} --domain=${{ env.LLVM_BENCHMARK_DOMAIN }} --benchmark=candidate.json'
 
       - uses: actions/upload-artifact@v3
@@ -171,31 +153,13 @@ jobs:
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '+M^I+B3' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_filter || '' }}" >> $GITHUB_ENV
+          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_reference_branch || 'vm1.1' }}" >> $GITHUB_ENV
+          echo "COMPILER_LLVM_CANDIDATE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_reference_branch }}" >> $GITHUB_ENV
 
       - name: Get branch name (pull request)
         if: github.event_name == 'pull_request'
         shell: bash
         run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
-
-      - name: Set compiler-tester branch depending on current branch (pull request)
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: |
-          if [[ "${BRANCH_NAME}" == "main" ]]; then
-            echo "COMPILER_TESTER_BRANCH_NAME=main" >> $GITHUB_ENV
-          elif [[ "${BRANCH_NAME}" == "dev-1.1" ]]; then
-            echo "COMPILER_TESTER_BRANCH_NAME=vm1.1" >> $GITHUB_ENV
-          else
-            echo "Cannot map current branch to compiler-tester branch"
-            exit 1
-          fi
-
-      - name: Set branch names from manual input (workflow dispatch)
-        if: github.event_name == 'workflow_dispatch'
-        shell: bash
-        run: |
-          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_reference_branch }}" >> $GITHUB_ENV
-          echo "COMPILER_LLVM_REFERENCE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_reference_branch }}" >> $GITHUB_ENV
 
       - name: Preparing workspace. Checkout compiler-tester repository.
         uses: actions/checkout@v2
@@ -237,9 +201,9 @@ jobs:
 
       - name: Testing. Building LLVM framework reference.
         run: |
-          chmod +x compiler-llvm/build.sh
+          chmod +x compiler-llvm/build_musl.sh
           ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
-          ./build.sh ${{ env.LLVM_BUILD_TYPE }}'
+          ./build_musl.sh ${{ env.LLVM_BUILD_TYPE }}'
 
       - name: Testing. Benchmarking  LLVM framework reference.
         id: compiler_tester_run
@@ -248,7 +212,7 @@ jobs:
           cd compiler-tester && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
-          export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
+          export LLVM_SYS_130_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
           cargo run --release --bin compiler-tester -- --filter=${{ env.LLVM_BENCHMARK_FILTER }} --domain=${{ env.LLVM_BENCHMARK_DOMAIN }} --benchmark=reference.json'
 
       - uses: actions/upload-artifact@v3
@@ -289,14 +253,7 @@ jobs:
         if: github.event_name == 'pull_request'
         shell: bash
         run: |
-          if [[ "${BRANCH_NAME}" == "main" ]]; then
-            echo "COMPILER_TESTER_BRANCH_NAME=main" >> $GITHUB_ENV
-          elif [[ "${BRANCH_NAME}" == "dev-1.1" ]]; then
-            echo "COMPILER_TESTER_BRANCH_NAME=vm1.1" >> $GITHUB_ENV
-          else
-            echo "Cannot map current branch to compiler-tester branch"
-            exit 1
-          fi
+          echo "COMPILER_TESTER_BRANCH_NAME=vm1.1" >> $GITHUB_ENV
 
       - name: Set compiler-tester branch from manual input (workflow dispatch)
         if: github.event_name == 'workflow_dispatch'
@@ -350,7 +307,7 @@ jobs:
           cd compiler-tester && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
-          export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
+          export LLVM_SYS_130_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
           cargo run --release --bin benchmark-analyzer -- --reference reference.json --candidate candidate.json --output-file result.txt'
 
       - name: Testing. Posting LLVM benchmark results to step summary.
