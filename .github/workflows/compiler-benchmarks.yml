@@ -108,9 +108,9 @@ jobs:
 
       - name: Testing. Building LLVM framework candidate.
         run: |
-          chmod +x compiler-llvm/build.sh
+          chmod +x compiler-llvm/build_musl.sh
           ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
-          ./build.sh ${{ env.LLVM_BUILD_TYPE }}'
+          ./build_musl.sh ${{ env.LLVM_BUILD_TYPE }}'
 
       - name: Testing. Benchmarking  LLVM framework candidate.
         id: compiler_tester_run
@@ -119,7 +119,7 @@ jobs:
           cd compiler-tester && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
-          export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
+          export LLVM_SYS_130_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
           cargo run --release --target x86_64-unknown-linux-musl --bin compiler-tester -- --filter=${{ env.LLVM_BENCHMARK_FILTER }} --domain=${{ env.LLVM_BENCHMARK_DOMAIN }} --benchmark=candidate.json'
 
       - uses: actions/upload-artifact@v3
@@ -201,9 +201,9 @@ jobs:
 
       - name: Testing. Building LLVM framework reference.
         run: |
-          chmod +x compiler-llvm/build.sh
+          chmod +x compiler-llvm/build_musl.sh
           ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
-          ./build.sh ${{ env.LLVM_BUILD_TYPE }}'
+          ./build_musl.sh ${{ env.LLVM_BUILD_TYPE }}'
 
       - name: Testing. Benchmarking  LLVM framework reference.
         id: compiler_tester_run
@@ -212,7 +212,7 @@ jobs:
           cd compiler-tester && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
-          export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
+          export LLVM_SYS_130_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
           cargo run --release --bin compiler-tester -- --filter=${{ env.LLVM_BENCHMARK_FILTER }} --domain=${{ env.LLVM_BENCHMARK_DOMAIN }} --benchmark=reference.json'
 
       - uses: actions/upload-artifact@v3
@@ -307,7 +307,7 @@ jobs:
           cd compiler-tester && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
-          export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
+          export LLVM_SYS_130_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
           cargo run --release --bin benchmark-analyzer -- --reference reference.json --candidate candidate.json --output-file result.txt'
 
       - name: Testing. Posting LLVM benchmark results to step summary.

@@ -86,9 +86,9 @@ jobs:
 
       - name: Testing. Building LLVM framework.
         run: |
-          chmod +x compiler-llvm/build.sh
+          chmod +x compiler-llvm/build_musl.sh
           ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
-          ./build.sh ${{ env.LLVM_BUILD_TYPE }}'
+          ./build_musl.sh ${{ env.LLVM_BUILD_TYPE }}'
 
       - name: Testing. Building and running compiler tester.
         id: compiler_tester_run
@@ -97,7 +97,7 @@ jobs:
           cd compiler-tester && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
-          export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
+          export LLVM_SYS_130_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
           cargo run --release --target x86_64-unknown-linux-musl --bin compiler-tester -- --domain=${{ env.COMPILER_TESTER_DOMAIN }}'
           compiler_exit_code=$?
           if [ "${compiler_exit_code}" -gt "1" ]; then
