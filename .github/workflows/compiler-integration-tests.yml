@@ -80,6 +80,11 @@ jobs:
         env:
           SSH_PRIVATE_KEY: ${{secrets.SSH_PK_BOT}}
 
+      - name: Preparing workspace. Installing additional packages.
+        run: |
+          ${DOCKER_CMD} sh -c 'apt install -y ninja-build musl musl-tools'
+          ${DOCKER_CMD} sh -c 'rustup target add x86_64-unknown-linux-musl'
+
       - name: Preparing workspace. Setting docker ssh key.
         run: |
           ${DOCKER_CMD} sh -c 'mkdir -pv /root/.ssh'
@@ -94,12 +99,6 @@ jobs:
           ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
           ./build.sh ${{ env.LLVM_BUILD_TYPE }}'
 
-      - name: Testing. Running regression LLVM tests.
-        run: |
-          ${DOCKER_CMD} sh -c '
-          cd compiler-llvm/build-${{ env.LLVM_BUILD_TYPE }} && \
-          make -j24 check-llvm-codegen-syncvm'
-
       - name: Testing. Building and running compiler tester.
         id: compiler_tester_run
         run: |
@@ -108,7 +107,7 @@ jobs:
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
           export LLVM_SYS_130_PREFIX=${HOME}/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-          cargo run --verbose --release --bin compiler-tester'
+          cargo run --release --target x86_64-unknown-linux-musl --bin compiler-tester'
           compiler_exit_code=$?
           if [ "${compiler_exit_code}" -gt "1" ]; then
             echo "RUN_SEGFAULT_STEP=true" >> $GITHUB_ENV
