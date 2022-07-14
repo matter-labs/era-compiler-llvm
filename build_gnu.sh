@@ -1,22 +1,11 @@
 #!/usr/bin/env bash
 
-set -Cex
+set -ex
 
-# Target build: 'debug' | 'release'
-case "${1}" in
-    debug)
-        export DIRECTORY_SUFFIX='debug'
-        export BUILD_TYPE='Debug'
-        ;;
-    release)
-        export DIRECTORY_SUFFIX='release'
-        export BUILD_TYPE='Release'
-        ;;
-    *)
-        export DIRECTORY_SUFFIX='release'
-        export BUILD_TYPE='Release'
-        ;;
-esac
+ROOT_DIR="${PWD}"
+
+TARGET_BUILD="${ROOT_DIR}/build-target/"
+TARGET_INSTALL='/opt/llvm-release/'
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
     if [[ -z ${CI_RUNNING+x} ]]; then
@@ -26,86 +15,82 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
 
     cmake \
         -S 'llvm' \
-        -B "build-${DIRECTORY_SUFFIX}/" \
+        -B "${TARGET_BUILD}" \
         -G 'Unix Makefiles' \
-        -DCMAKE_INSTALL_PREFIX="${HOME}/opt/llvm-${DIRECTORY_SUFFIX}/" \
-        -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
-        -DLLVM_TARGETS_TO_BUILD='X86' \
-        -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD='SyncVM' \
+        -DCMAKE_INSTALL_PREFIX="${TARGET_INSTALL}" \
+        -DCMAKE_BUILD_TYPE='Release' \
+        -DLLVM_TARGETS_TO_BUILD='SyncVM' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
         -DLLVM_BUILD_DOCS='Off' \
+        -DLLVM_BUILD_TESTS='Off' \
         -DLLVM_INCLUDE_DOCS='Off' \
-        -DLLVM_ENABLE_ASSERTIONS='On' \
+        -DLLVM_INCLUDE_TESTS='Off' \
+        -DLLVM_ENABLE_ASSERTIONS='Off' \
         -DLLVM_ENABLE_DOXYGEN='Off' \
         -DLLVM_ENABLE_SPHINX='Off' \
         -DLLVM_ENABLE_OCAMLDOC='Off' \
         -DLLVM_ENABLE_BINDINGS='Off'
-
-    cd "build-${DIRECTORY_SUFFIX}/"
-    make -j "$(sysctl -n hw.logicalcpu)"
 elif [[ -f '/etc/arch-release' ]]; then
     if [[ -z ${CI_RUNNING+x} ]]; then
         sudo pacman --sync --refresh --sysupgrade --noconfirm \
             cmake \
             clang \
-            lld
+            lld \
+            ninja
     fi
 
     cmake \
         -S 'llvm' \
-        -B "build-${DIRECTORY_SUFFIX}/" \
-        -G 'Unix Makefiles' \
-        -DCMAKE_INSTALL_PREFIX="${HOME}/opt/llvm-${DIRECTORY_SUFFIX}/" \
-        -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
+        -B "${TARGET_BUILD}" \
+        -G 'Ninja' \
+        -DCMAKE_INSTALL_PREFIX="${TARGET_INSTALL}" \
+        -DCMAKE_BUILD_TYPE='Release' \
         -DCMAKE_C_COMPILER='clang' \
         -DCMAKE_CXX_COMPILER='clang++' \
-        -DLLVM_TARGETS_TO_BUILD='X86' \
-        -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD='SyncVM' \
+        -DLLVM_TARGETS_TO_BUILD='SyncVM' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
         -DLLVM_USE_LINKER='lld' \
         -DLLVM_BUILD_DOCS='Off' \
+        -DLLVM_BUILD_TESTS='Off' \
         -DLLVM_INCLUDE_DOCS='Off' \
-        -DLLVM_ENABLE_ASSERTIONS='On' \
+        -DLLVM_INCLUDE_TESTS='Off' \
+        -DLLVM_ENABLE_ASSERTIONS='Off' \
         -DLLVM_ENABLE_DOXYGEN='Off' \
         -DLLVM_ENABLE_SPHINX='Off' \
         -DLLVM_ENABLE_OCAMLDOC='Off' \
         -DLLVM_ENABLE_BINDINGS='Off'
-
-    cd "build-${DIRECTORY_SUFFIX}/"
-    make -j "$(nproc)"
 elif [[ "$OSTYPE" == "linux-gnu" ]]; then
     if [[ -z ${CI_RUNNING+x} ]]; then
         sudo apt --yes update
         sudo apt --yes install \
             cmake \
             clang-11 \
-            lld-11
+            lld-11 \
+            ninja-build
         export LLVM_VERSION=11
     fi
 
     cmake \
         -S 'llvm' \
-        -B "build-${DIRECTORY_SUFFIX}/" \
-        -G 'Unix Makefiles' \
-        -DCMAKE_INSTALL_PREFIX="${HOME}/opt/llvm-${DIRECTORY_SUFFIX}/" \
-        -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
+        -B "${TARGET_BUILD}" \
+        -G 'Ninja' \
+        -DCMAKE_INSTALL_PREFIX="${TARGET_INSTALL}" \
+        -DCMAKE_BUILD_TYPE='Release' \
         -DCMAKE_C_COMPILER="clang-${LLVM_VERSION}" \
         -DCMAKE_CXX_COMPILER="clang++-${LLVM_VERSION}" \
-        -DLLVM_TARGETS_TO_BUILD='X86' \
-        -DLLVM_EXPERIMENTAL_TARGETS_TO_BUILD='SyncVM' \
+        -DLLVM_TARGETS_TO_BUILD='SyncVM' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
         -DLLVM_USE_LINKER="lld-${LLVM_VERSION}" \
         -DLLVM_BUILD_DOCS='Off' \
+        -DLLVM_BUILD_TESTS='Off' \
         -DLLVM_INCLUDE_DOCS='Off' \
-        -DLLVM_ENABLE_ASSERTIONS='On' \
+        -DLLVM_INCLUDE_TESTS='Off' \
+        -DLLVM_ENABLE_ASSERTIONS='Off' \
         -DLLVM_ENABLE_DOXYGEN='Off' \
         -DLLVM_ENABLE_SPHINX='Off' \
         -DLLVM_ENABLE_OCAMLDOC='Off' \
         -DLLVM_ENABLE_BINDINGS='Off' \
-        -DPython3_EXECUTABLE=`which python3`
-
-    cd "build-${DIRECTORY_SUFFIX}/"
-    make -j "$(nproc)"
+        -DPython3_EXECUTABLE="$(which python3)"
 fi
 
-sudo make install
+ninja -C "${TARGET_BUILD}" install
