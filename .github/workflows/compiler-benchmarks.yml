@@ -191,6 +191,11 @@ jobs:
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PK_BOT }}
 
+      - name: Preparing workspace. Installing additional packages.
+        run: |
+          ${DOCKER_CMD} sh -c 'apt install -y ninja-build musl musl-tools'
+          ${DOCKER_CMD} sh -c 'rustup target add x86_64-unknown-linux-musl'
+
       - name: Preparing workspace. Setting docker ssh key.
         run: |
           ${DOCKER_CMD} sh -c 'mkdir -pv /root/.ssh'
@@ -281,6 +286,11 @@ jobs:
           docker compose up -d zk
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PK_BOT }}
+
+      - name: Preparing workspace. Installing additional packages.
+        run: |
+          ${DOCKER_CMD} sh -c 'apt install -y ninja-build musl musl-tools'
+          ${DOCKER_CMD} sh -c 'rustup target add x86_64-unknown-linux-musl'
 
       - name: Preparing workspace. Setting docker ssh key.
         run: |
