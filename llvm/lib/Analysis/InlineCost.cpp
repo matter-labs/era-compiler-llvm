@@ -50,7 +50,7 @@ using namespace llvm;
 STATISTIC(NumCallsAnalyzed, "Number of call sites analyzed");
 
 static cl::opt<int>
-    DefaultThreshold("inlinedefault-threshold", cl::Hidden, cl::init(225),
+    DefaultThreshold("inlinedefault-threshold", cl::Hidden, cl::init(2250),
                      cl::ZeroOrMore,
                      cl::desc("Default amount of inlining to perform"));
 
@@ -59,16 +59,16 @@ static cl::opt<bool> PrintInstructionComments(
     cl::desc("Prints comments for instruction based on inline cost analysis"));
 
 static cl::opt<int> InlineThreshold(
-    "inline-threshold", cl::Hidden, cl::init(225), cl::ZeroOrMore,
+    "inline-threshold", cl::Hidden, cl::init(2250), cl::ZeroOrMore,
     cl::desc("Control the amount of inlining to perform (default = 225)"));
 
 static cl::opt<int> HintThreshold(
-    "inlinehint-threshold", cl::Hidden, cl::init(325), cl::ZeroOrMore,
+    "inlinehint-threshold", cl::Hidden, cl::init(3250), cl::ZeroOrMore,
     cl::desc("Threshold for inlining functions with inline hint"));
 
 static cl::opt<int>
     ColdCallSiteThreshold("inline-cold-callsite-threshold", cl::Hidden,
-                          cl::init(45), cl::ZeroOrMore,
+                          cl::init(450), cl::ZeroOrMore,
                           cl::desc("Threshold for inlining cold callsites"));
 
 static cl::opt<bool> InlineEnableCostBenefitAnalysis(
@@ -80,7 +80,7 @@ static cl::opt<int> InlineSavingsMultiplier(
     cl::desc("Multiplier to multiply cycle savings by during inlining"));
 
 static cl::opt<int>
-    InlineSizeAllowance("inline-size-allowance", cl::Hidden, cl::init(100),
+    InlineSizeAllowance("inline-size-allowance", cl::Hidden, cl::init(1000),
                         cl::ZeroOrMore,
                         cl::desc("The maximum size of a callee that get's "
                                  "inlined without sufficient cycle savings"));
