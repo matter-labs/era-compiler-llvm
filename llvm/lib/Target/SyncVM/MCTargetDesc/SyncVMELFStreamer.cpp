@@ -29,10 +29,6 @@ SyncVMTargetELFStreamer::SyncVMTargetELFStreamer(MCStreamer &S,
     : SyncVMTargetStreamer(S) {}
 
 class SyncVMTargetAsmStreamer : public SyncVMTargetStreamer {
-  formatted_raw_ostream &OS;
-  MCInstPrinter &InstPrinter;
-  bool IsVerboseAsm;
-
 public:
   SyncVMTargetAsmStreamer(MCStreamer &S, formatted_raw_ostream &OS,
                           MCInstPrinter &InstPrinter, bool VerboseAsm);
@@ -42,8 +38,7 @@ SyncVMTargetAsmStreamer::SyncVMTargetAsmStreamer(MCStreamer &S,
                                                  formatted_raw_ostream &OS,
                                                  MCInstPrinter &InstPrinter,
                                                  bool VerboseAsm)
-    : SyncVMTargetStreamer(S), OS(OS), InstPrinter(InstPrinter),
-      IsVerboseAsm(VerboseAsm) {}
+    : SyncVMTargetStreamer(S) {}
 
 MCELFStreamer &SyncVMTargetELFStreamer::getStreamer() {
   return static_cast<MCELFStreamer &>(Streamer);

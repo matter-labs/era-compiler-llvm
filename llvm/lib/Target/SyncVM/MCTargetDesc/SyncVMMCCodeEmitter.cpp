@@ -27,9 +27,6 @@
 namespace llvm {
 
 class SyncVMMCCodeEmitter : public MCCodeEmitter {
-  MCContext &Ctx;
-  MCInstrInfo const &MCII;
-
   // Offset keeps track of current word number being emitted
   // inside a particular instruction.
   mutable unsigned Offset;
@@ -43,8 +40,7 @@ class SyncVMMCCodeEmitter : public MCCodeEmitter {
                                  const MCSubtargetInfo &STI) const;
 
 public:
-  SyncVMMCCodeEmitter(MCContext &ctx, MCInstrInfo const &MCII)
-      : Ctx(ctx), MCII(MCII) {}
+  SyncVMMCCodeEmitter(MCContext &ctx, MCInstrInfo const &MCII) {}
 
   unsigned getMachineOpValue(const MCInst &MI,
                              const MCOperand &MO,
