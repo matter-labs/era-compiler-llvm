@@ -11278,6 +11278,12 @@ void SelectionDAGBuilder::visitSwitch(const SwitchInst &SI) {
     return;
   }
 
+  // SyncVM local begin
+  // TODO: CPR-688 SyncVM can build jump tables, though the constants are 4
+  // times as expensive as instructions in terms of code size. For hot pieces of
+  // code it still makes sense.
+  if (!TM.getTargetTriple().isSyncVM())
+  // SyncVM local end
   SL->findJumpTables(Clusters, &SI, DefaultMBB, DAG.getPSI(), DAG.getBFI());
   SL->findBitTestClusters(Clusters, &SI);
 
