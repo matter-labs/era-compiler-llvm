@@ -113,13 +113,8 @@ MachineFunctionInfo *EraVMTargetMachine::createMachineFunctionInfo(
 void EraVMPassConfig::addIRPasses() {
   addPass(createEraVMLowerIntrinsicsPass());
   addPass(createEraVMLinkRuntimePass());
-  addPass(createGlobalDCEPass());
-#if 0
-  addPass(createEraVMExpandUMAPass());
-  addPass(createEraVMIndirectUMAPass());
-  addPass(createEraVMIndirectExternalCallPass());
-#endif
   addPass(createEraVMCodegenPreparePass());
+  addPass(createGlobalDCEPass());
   addPass(createEraVMAllocaHoistingPass());
   TargetPassConfig::addIRPasses();
 }
