@@ -6,6 +6,22 @@ target triple = "syncvm"
 @val = addrspace(4) global i256 42
 @val2 = addrspace(4) global i256 43
 
+; CHECK-LABEL: stacksave
+define i8* @stacksave() {
+  %res = call i8* @llvm.stacksave()
+; CHECK: context.sp r1
+  ret i8* %res
+}
+
+; CHECK-LABEL: stackrestore
+define void @stackrestore(i8* %ptr) {
+; CHECK: context.sp r2
+; CHECK-NEXT: sub r1, r2, r1
+; CHECK-NEXT: nop stack+=[r1]
+  call void @llvm.stackrestore(i8* %ptr)
+  ret void
+}
+
 ; CHECK-LABEL: thisr
 define i256 @thisr() {
 ; CHECK: context.this r1
@@ -173,6 +189,9 @@ define void @invoke.farcall({i256, i1}* %res) {
   call {i256, i1}* @__farcall(i256 0, i256 0, {i256, i1}* %res)
   ret void
 }
+
+declare i8* @llvm.stacksave()
+declare void @llvm.stackrestore(i8*)
 
 declare i256 @llvm.syncvm.this()
 declare i256 @llvm.syncvm.caller()

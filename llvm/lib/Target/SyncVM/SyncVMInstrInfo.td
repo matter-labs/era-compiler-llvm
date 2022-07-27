@@ -17,6 +17,7 @@ def SDT_SyncVMCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i256>,
 def SDT_SyncVMCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i256>,
                                            SDTCisVT<1, i256>]>;
 def SDT_SyncVMChangeSP     : SDTypeProfile<0,  1, [SDTCisVT<0, i256>]>;
+def SDT_SyncVMGetSP        : SDTypeProfile<1,  0, []>;
 def SDT_SyncVMBrCC         : SDTypeProfile<0,  2, [SDTCisVT<0, OtherVT>,
                                                    SDTCisVT<1, i256>]>;
 def SDT_SyncVMSelectCC     : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
@@ -54,8 +55,10 @@ def SyncVMcallseq_start :
 def SyncVMcallseq_end :
                  SDNode<"ISD::CALLSEQ_END",   SDT_SyncVMCallSeqEnd,
                         [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
+def SyncVMget_sp : SDNode<"SyncVMISD::GET_SP", SDT_SyncVMGetSP,
+                          [SDNPHasChain]>;
 def SyncVMchange_sp : SDNode<"SyncVMISD::CHANGE_SP", SDT_SyncVMChangeSP,
-                             [SDNPHasChain, SDNPInGlue, SDNPOutGlue]>;
+                             [SDNPHasChain]>;
 def SyncVMthrow : SDNode<"SyncVMISD::THROW", SDT_SyncVMThrow,
                          [SDNPHasChain, SDNPInGlue]>;
 def SyncVMreturn : SDNode<"SyncVMISD::RETURN", SDT_SyncVMThrow,
@@ -408,9 +411,12 @@ def : Pat<(int_syncvm_ifeq imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16
 def : Pat<(int_syncvm_iflt imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, 4 /*COND_LT*/)>;
 def : Pat<(int_syncvm_ifgt imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, 8 /*COND_LT*/)>;
 
-let hasSideEffects = 1, Defs = [SP, Flags], Uses = [SP] in
+let hasSideEffects = 1, Defs = [SP], Uses = [SP] in {
 def NOPSP : INop< 18, (ins spadv_op:$sp_advance, cc:$cc), "nop$cc\t$sp_advance", [] >;
+def NOPSPr : INop< 181, (ins GR256:$sp_advance, cc:$cc), "nop$cc\tstack+=[$sp_advance]", [] >;
+}
 def : Pat<(SyncVMchange_sp spadv_op:$size), (NOPSP spadv_op:$size, 0)>;
+def : Pat<(SyncVMchange_sp GR256:$size), (NOPSPr GR256:$size, 0)>;
 
 def zext256 : PatFrag<(ops node:$src), (zext (i256 node:$src))>;
 
@@ -1025,6 +1031,7 @@ def : Pat<(int_syncvm_codesource), (CTXr 2, 0)>;
 def : Pat<(int_syncvm_meta), (CTXr 3, 0)>;
 def : Pat<(int_syncvm_txorigin), (CTXr 4, 0)>;
 def : Pat<(int_syncvm_ergsleft), (CTXr_se 6, 0)>;
+def : Pat<(SyncVMget_sp), (CTXr_se 7, 0)>;
 def : Pat<(int_syncvm_getu128), (CTXr_se 8, 0)>;
 def : Pat<(int_syncvm_setu128 GR256:$rs0), (CTXr_set GR256:$rs0, 9, 0)>;
 
