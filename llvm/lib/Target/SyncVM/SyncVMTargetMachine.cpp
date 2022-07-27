@@ -98,13 +98,8 @@ TargetPassConfig *SyncVMTargetMachine::createPassConfig(PassManagerBase &PM) {
 void SyncVMPassConfig::addIRPasses() {
   addPass(createSyncVMLowerIntrinsicsPass());
   addPass(createSyncVMLinkRuntimePass());
-  addPass(createGlobalDCEPass());
-#if 0
-  addPass(createSyncVMExpandUMAPass());
-  addPass(createSyncVMIndirectUMAPass());
-  addPass(createSyncVMIndirectExternalCallPass());
-#endif
   addPass(createSyncVMCodegenPreparePass());
+  addPass(createGlobalDCEPass());
   addPass(createSyncVMAllocaHoistingPass());
   TargetPassConfig::addIRPasses();
 }
