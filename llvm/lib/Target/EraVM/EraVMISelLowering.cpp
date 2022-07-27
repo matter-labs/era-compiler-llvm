@@ -85,6 +85,9 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i64, Expand);
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i128, Expand);
 
+  setOperationAction(ISD::STACKSAVE, MVT::Other, Custom);
+  setOperationAction(ISD::STACKRESTORE, MVT::Other, Custom);
+
   // Intrinsics lowering
   setOperationAction(ISD::INTRINSIC_VOID, MVT::Other, Custom);
 
@@ -549,6 +552,8 @@ SDValue EraVMTargetLowering::LowerOperation(SDValue Op,
   case ISD::SDIV:               return LowerSDIV(Op, DAG);
   case ISD::SREM:               return LowerSREM(Op, DAG);
   case ISD::INTRINSIC_VOID:     return LowerINTRINSIC_VOID(Op, DAG);
+  case ISD::STACKSAVE:          return LowerSTACKSAVE(Op, DAG);
+  case ISD::STACKRESTORE:       return LowerSTACKRESTORE(Op, DAG);
   default:
     llvm_unreachable("unimplemented operation lowering");
   }
@@ -828,6 +833,24 @@ SDValue EraVMTargetLowering::LowerINTRINSIC_VOID(SDValue Op,
     return DAG.getNode(EraVMISD::REVERT, DL, MVT::Other, CTR,
                        DAG.getRegister(EraVM::R1, MVT::i256));
   }
+}
+
+SDValue EraVMTargetLowering::LowerSTACKSAVE(SDValue Op,
+                                            SelectionDAG &DAG) const {
+  SDVTList RetTys = DAG.getVTList(MVT::i256, MVT::Other);
+  return DAG.getNode(EraVMISD::GET_SP, SDLoc(Op), RetTys, Op.getOperand(0));
+}
+
+SDValue EraVMTargetLowering::LowerSTACKRESTORE(SDValue Op,
+                                               SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  SDVTList GetSPTys = DAG.getVTList(MVT::i256, MVT::Other);
+  SDValue CurrentSP =
+      DAG.getNode(EraVMISD::GET_SP, DL, GetSPTys, Op.getOperand(0));
+  SDValue SPDelta =
+      DAG.getNode(ISD::SUB, DL, MVT::i256, Op.getOperand(1), CurrentSP);
+  return DAG.getNode(EraVMISD::CHANGE_SP, DL, MVT::Other, CurrentSP.getValue(1),
+                     SPDelta);
 }
 
 void EraVMTargetLowering::ReplaceNodeResults(SDNode *N,

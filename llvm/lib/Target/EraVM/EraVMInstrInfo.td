@@ -23,6 +23,7 @@ def SDT_EraVMCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i256>,
 def SDT_EraVMCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i256>,
                                            SDTCisVT<1, i256>]>;
 def SDT_EraVMChangeSP     : SDTypeProfile<0,  1, [SDTCisVT<0, i256>]>;
+def SDT_EraVMGetSP        : SDTypeProfile<1,  0, []>;
 def SDT_EraVMBrCC         : SDTypeProfile<0,  2, [SDTCisVT<0, OtherVT>,
                                                    SDTCisVT<1, i256>]>;
 def SDT_EraVMSelectCC     : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
@@ -60,8 +61,10 @@ def EraVMcallseq_start :
 def EraVMcallseq_end :
                  SDNode<"ISD::CALLSEQ_END",   SDT_EraVMCallSeqEnd,
                         [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
+def EraVMget_sp : SDNode<"EraVMISD::GET_SP", SDT_EraVMGetSP,
+                          [SDNPHasChain]>;
 def EraVMchange_sp : SDNode<"EraVMISD::CHANGE_SP", SDT_EraVMChangeSP,
-                             [SDNPHasChain, SDNPInGlue, SDNPOutGlue]>;
+                             [SDNPHasChain]>;
 def EraVMthrow : SDNode<"EraVMISD::THROW", SDT_EraVMThrow,
                          [SDNPHasChain, SDNPInGlue]>;
 def EraVMreturn : SDNode<"EraVMISD::RETURN", SDT_EraVMThrow,
@@ -317,9 +320,12 @@ def : Pat<(int_eravm_ifeq imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:
 def : Pat<(int_eravm_iflt imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, 4 /*COND_LT*/)>;
 def : Pat<(int_eravm_ifgt imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, 8 /*COND_GT*/)>;
 
-let hasSideEffects = 1, Defs = [SP, Flags], Uses = [SP] in
+let hasSideEffects = 1, Defs = [SP], Uses = [SP] in {
 def NOPSP : INop< 18, (ins spadv_op:$sp_change, cc:$cc), "nop$cc\t$sp_change", [] >;
+def NOPSPr : INop< 181, (ins GR256:$sp_change, cc:$cc), "nop$cc\tstack+=[$sp_change]", [] >;
+}
 def : Pat<(EraVMchange_sp spadv_op:$size), (NOPSP spadv_op:$size, 0)>;
+def : Pat<(EraVMchange_sp GR256:$size), (NOPSPr GR256:$size, 0)>;
 
 def zext256 : PatFrag<(ops node:$src), (zext (i256 node:$src))>;
 
@@ -938,6 +944,7 @@ def : Pat<(int_eravm_codesource), (CTXr 2, 0)>;
 def : Pat<(int_eravm_meta), (CTXr 3, 0)>;
 def : Pat<(int_eravm_txorigin), (CTXr 4, 0)>;
 def : Pat<(int_eravm_ergsleft), (CTXr_se 6, 0)>;
+def : Pat<(EraVMget_sp), (CTXr_se 7, 0)>;
 def : Pat<(int_eravm_getu128), (CTXr_se 8, 0)>;
 def : Pat<(int_eravm_setu128 GR256:$rs0), (CTXr_set GR256:$rs0, 9, 0)>;
 def : Pat<(int_eravm_inctx), (CTXr_se0 10, 0)>;
