@@ -90,6 +90,9 @@ void llvm::initializeScalarOpts(PassRegistry &Registry) {
   initializeMemCpyOptLegacyPassPass(Registry);
   initializeMergeICmpsLegacyPassPass(Registry);
   initializeMergedLoadStoreMotionLegacyPassPass(Registry);
+  // SyncVM local begin
+  initializeMergeSimilarBBPassPass(Registry);
+  // SyncVM local end
   initializeNaryReassociateLegacyPassPass(Registry);
   initializePartiallyInlineLibCallsLegacyPassPass(Registry);
   initializeReassociateLegacyPassPass(Registry);
@@ -306,3 +309,9 @@ void LLVMAddLowerExpectIntrinsicPass(LLVMPassManagerRef PM) {
 void LLVMAddUnifyFunctionExitNodesPass(LLVMPassManagerRef PM) {
   unwrap(PM)->add(createUnifyFunctionExitNodesPass());
 }
+
+// SyncVM local begin
+void LLVMMergeSimilarBBPass(LLVMPassManagerRef PM) {
+  unwrap(PM)->add(createMergeSimilarBBPass());
+}
+// SyncVM local end

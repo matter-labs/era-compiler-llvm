@@ -562,6 +562,14 @@ FunctionPass *createInstSimplifyLegacyPass();
 // and scatter intrinsics with scalar code when target doesn't support them.
 //
 FunctionPass *createScalarizeMaskedMemIntrinLegacyPass();
+
+// SyncVM local begin
+//===----------------------------------------------------------------------===//
+//
+// createMergeSimilarBBPass - Merge similar basic blocks into one.
+//
+FunctionPass *createMergeSimilarBBPass();
+// SyncVM local end
 } // End llvm namespace
 
 #endif
