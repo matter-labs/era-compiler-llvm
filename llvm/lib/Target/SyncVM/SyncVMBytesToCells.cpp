@@ -172,7 +172,7 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
           MO0Reg.ChangeToRegister(NewVR, false);
         }
         MachineOperand &Const = MI.getOperand(Op0Start + 2);
-        Const.ChangeToImmediate(Const.getImm() / 32);
+        Const.ChangeToImmediate(getImmOrCImm(Const) / 32);
       };
       for (unsigned OpNo = 0; OpNo < 3; ++OpNo)
         if (isStackOp(MI, OpNo)) {
