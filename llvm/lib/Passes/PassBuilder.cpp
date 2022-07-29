@@ -1266,7 +1266,9 @@ void PassBuilder::addVectorPasses(OptimizationLevel Level,
   // before SLP vectorization.
   FPM.addPass(SimplifyCFGPass(SimplifyCFGOptions()
                                   .forwardSwitchCondToPhi(true)
-                                  .convertSwitchToLookupTable(true)
+                                  // SyncVM local begin
+                                  .convertSwitchToLookupTable(false)
+                                  // SyncVM local begin
                                   .needCanonicalLoops(false)
                                   .hoistCommonInsts(true)
                                   .sinkCommonInsts(true)));
