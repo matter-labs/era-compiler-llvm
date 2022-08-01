@@ -592,7 +592,9 @@ void PassManagerBuilder::addVectorPasses(legacy::PassManagerBase &PM,
   // before SLP vectorization.
   PM.add(createCFGSimplificationPass(SimplifyCFGOptions()
                                          .forwardSwitchCondToPhi(true)
-                                         .convertSwitchToLookupTable(true)
+                                         // SyncVM local begin
+                                         .convertSwitchToLookupTable(false)
+                                         // SyncVM local end
                                          .needCanonicalLoops(false)
                                          .hoistCommonInsts(true)
                                          .sinkCommonInsts(true)));

@@ -86,6 +86,34 @@ bool SyncVMCodegenPrepare::runOnFunction(Function &F) {
         }
         break;
       }
+      case Instruction::Call: {
+        // TODO: Link the runtime earlier instead of specifying cryptic
+        // knowledge here.
+        auto &Call = cast<CallInst>(I);
+        Function *Callee = Call.getCalledFunction();
+        if (!Callee && isa<BitCastOperator>(Call.getCalledOperand()))
+          Callee = dyn_cast<Function>(
+              cast<BitCastOperator>(Call.getCalledOperand())->getOperand(0));
+        if (Callee && Callee->hasName()) {
+          if (Callee->getName() == "__memset_uma_as1" &&
+              isa<ConstantInt>(Call.getOperand(2)) &&
+              (cast<ConstantInt>(Call.getOperand(2))->isZero())) {
+            Changed = true;
+            Replaced.push_back(&I);
+          } else if (Callee->getName() == "__small_store_as1" &&
+                     isa<ConstantInt>(Call.getOperand(2)) &&
+                     (cast<ConstantInt>(Call.getOperand(2))->isZero())) {
+            Changed = true;
+            Replaced.push_back(&I);
+          } else if (Callee->getName() == "__small_store_as0" &&
+                     isa<ConstantInt>(Call.getOperand(1)) &&
+                     (cast<ConstantInt>(Call.getOperand(1))->isZero())) {
+            Changed = true;
+            Replaced.push_back(&I);
+          }
+        }
+        break;
+      }
       }
     }
   for (auto *I : Replaced)
