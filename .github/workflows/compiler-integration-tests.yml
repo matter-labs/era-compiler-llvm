@@ -45,7 +45,7 @@ jobs:
         shell: bash
         run: |
           if [[ "${BRANCH_NAME}" == "dev-1.1" ]]; then
-            echo "COMPILER_TESTER_DOMAIN='+M^I+B3'" >> $GITHUB_ENV
+            echo "COMPILER_TESTER_DOMAIN=''" >> $GITHUB_ENV
           else
             echo "COMPILER_TESTER_DOMAIN=''" >> $GITHUB_ENV
           fi
@@ -86,9 +86,9 @@ jobs:
 
       - name: Testing. Building LLVM framework.
         run: |
-          chmod +x compiler-llvm/build_musl.sh
+          chmod +x compiler-llvm/build_gnu.sh
           ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
-          ./build_musl.sh ${{ env.LLVM_BUILD_TYPE }}'
+          ./build_gnu.sh ${{ env.LLVM_BUILD_TYPE }}'
 
       - name: Testing. Building and running compiler tester.
         id: compiler_tester_run
@@ -98,7 +98,7 @@ jobs:
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
           export LLVM_SYS_130_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-          cargo run --release --target x86_64-unknown-linux-musl --bin compiler-tester -- --domain=${{ env.COMPILER_TESTER_DOMAIN }}'
+          cargo run --release --bin compiler-tester -- --domain=${{ env.COMPILER_TESTER_DOMAIN }}'
           compiler_exit_code=$?
           if [ "${compiler_exit_code}" -gt "1" ]; then
             echo "RUN_SEGFAULT_STEP=true" >> $GITHUB_ENV
