@@ -42,7 +42,7 @@ concurrency:
 
 jobs:
   candidate:
-    runs-on: [self-hosted, compiler]
+    runs-on: [self-hosted, ci-runner-compiler]
     steps:
       - uses: AutoModality/action-clean@v1
       - uses: webfactory/ssh-agent@v0.5.3
@@ -52,7 +52,7 @@ jobs:
         run: |
           echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
           echo "COMPOSE_PROJECT_NAME=candidate" >> $GITHUB_ENV
-          echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
+          echo "DOCKER_CMD=docker-compose exec -T zk" >> $GITHUB_ENV
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '+M^I+B3' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_filter || '' }}" >> $GITHUB_ENV
@@ -88,8 +88,8 @@ jobs:
 
       - name: Preparing workspace. Start Docker container for candidate.
         run: |
-          docker compose pull
-          docker compose up -d zk
+          docker-compose pull
+          docker-compose up -d zk
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PK_BOT }}
 
@@ -136,10 +136,10 @@ jobs:
         if: always()
         run: |
           docker image prune -f --all
-          docker compose down --rmi local -v
+          docker-compose down --rmi local -v
 
   reference:
-    runs-on: [self-hosted, compiler]
+    runs-on: [self-hosted, ci-runner-compiler]
     steps:
       - uses: AutoModality/action-clean@v1
       - uses: webfactory/ssh-agent@v0.5.3
@@ -149,7 +149,7 @@ jobs:
         run: |
           echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
           echo "COMPOSE_PROJECT_NAME=reference" >> $GITHUB_ENV
-          echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
+          echo "DOCKER_CMD=docker-compose exec -T zk" >> $GITHUB_ENV
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '+M^I+B3' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_filter || '' }}" >> $GITHUB_ENV
@@ -186,8 +186,8 @@ jobs:
 
       - name: Preparing workspace. Start Docker container for reference.
         run: |
-          docker compose pull
-          docker compose up -d zk
+          docker-compose pull
+          docker-compose up -d zk
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PK_BOT }}
 
@@ -229,10 +229,10 @@ jobs:
         if: always()
         run: |
           docker image prune -f --all
-          docker compose down --rmi local -v
+          docker-compose down --rmi local -v
 
   analysis:
-    runs-on: [self-hosted, compiler]
+    runs-on: [self-hosted, ci-runner-compiler]
     needs: [candidate, reference]
     steps:
       - uses: AutoModality/action-clean@v1
@@ -247,7 +247,7 @@ jobs:
         run: |
           echo "COMPOSE_FILE=${COMPOSE_FILE_DIR}/docker-compose.yml" >> $GITHUB_ENV
           echo "COMPOSE_PROJECT_NAME=analysis" >> $GITHUB_ENV
-          echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
+          echo "DOCKER_CMD=docker-compose exec -T zk" >> $GITHUB_ENV
 
       - name: Get branch name (pull request)
         if: github.event_name == 'pull_request'
@@ -282,8 +282,8 @@ jobs:
 
       - name: Preparing workspace. Start Docker container for reference.
         run: |
-          docker compose pull
-          docker compose up -d zk
+          docker-compose pull
+          docker-compose up -d zk
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PK_BOT }}
 
@@ -326,26 +326,25 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           cat ./compiler-tester/result.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          cat $GITHUB_STEP_SUMMARY > ./compiler-tester/result.txt
 
       - name: Testing. Posting LLVM benchmark results to PR comment.
         if: github.event_name == 'pull_request'
-        uses: machine-learning-apps/pr-comment@master
-        env:
-          GITHUB_TOKEN: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
+        uses: thollander/actions-comment-pull-request@v1
         with:
-          path: compiler-tester/result.txt
+          message: |
+            ${{ env.GITHUB_STEP_SUMMARY }}
+          GITHUB_TOKEN: ${{ secrets.COMPILER_CI_CLONE_HTTPS_TOKEN }}
 
-      - uses: 8398a7/action-slack@v3
-        with:
-          status: ${{ job.status }}
-          fields: repo,commit,author,action,eventName,ref,workflow,job,took,pullRequest # selectable (default: repo,message)
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.MATTERMOST_WEBHOOK }} # required
-        if: always() # Pick up events even if the job fails or is canceled.
+      #- uses: 8398a7/action-slack@v3
+      #  with:
+      #    status: ${{ job.status }}
+      #    fields: repo,commit,author,action,eventName,ref,workflow,job,took,pullRequest # selectable (default: repo,message)
+      #  env:
+      #    SLACK_WEBHOOK_URL: ${{ secrets.MATTERMOST_WEBHOOK }} # required
+      #  if: always() # Pick up events even if the job fails or is canceled.
 
       - name: Clearing workspace. Removing used and trash docker images.
         if: always()
         run: |
           docker image prune -f --all
-          docker compose down --rmi local -v
+          docker-compose down --rmi local -v
