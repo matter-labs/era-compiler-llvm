@@ -326,14 +326,15 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           cat ./compiler-tester/result.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
+          cat $GITHUB_STEP_SUMMARY > /tmp/result.txt
 
       - name: Testing. Posting LLVM benchmark results to PR comment.
         if: github.event_name == 'pull_request'
-        uses: thollander/actions-comment-pull-request@v1
+        uses: machine-learning-apps/pr-comment@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
         with:
-          message: |
-            ${{ env.GITHUB_STEP_SUMMARY }}
-          GITHUB_TOKEN: ${{ secrets.COMPILER_CI_CLONE_HTTPS_TOKEN }}
+          path: /tmp/result.txt
 
       #- uses: 8398a7/action-slack@v3
       #  with:
