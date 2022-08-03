@@ -17,6 +17,9 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         -S 'llvm' \
         -B "${TARGET_BUILD}" \
         -G 'Unix Makefiles' \
+        -DPACKAGE_VENDOR='Matter Labs' \
+        -DCLANG_VENDOR='Matter Labs' \
+        -DCLANG_REPOSITORY_STRING='origin' \
         -DCMAKE_INSTALL_PREFIX="${TARGET_INSTALL}" \
         -DCMAKE_BUILD_TYPE='Release' \
         -DLLVM_TARGETS_TO_BUILD='SyncVM' \
@@ -43,6 +46,9 @@ elif [[ -f '/etc/arch-release' ]]; then
         -S 'llvm' \
         -B "${TARGET_BUILD}" \
         -G 'Ninja' \
+        -DPACKAGE_VENDOR='Matter Labs' \
+        -DCLANG_VENDOR='Matter Labs' \
+        -DCLANG_REPOSITORY_STRING='origin' \
         -DCMAKE_INSTALL_PREFIX="${TARGET_INSTALL}" \
         -DCMAKE_BUILD_TYPE='Release' \
         -DCMAKE_C_COMPILER='clang' \
@@ -74,6 +80,9 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         -S 'llvm' \
         -B "${TARGET_BUILD}" \
         -G 'Ninja' \
+        -DPACKAGE_VENDOR='Matter Labs' \
+        -DCLANG_VENDOR='Matter Labs' \
+        -DCLANG_REPOSITORY_STRING='origin' \
         -DCMAKE_INSTALL_PREFIX="${TARGET_INSTALL}" \
         -DCMAKE_BUILD_TYPE='Release' \
         -DCMAKE_C_COMPILER="clang-${LLVM_VERSION}" \
