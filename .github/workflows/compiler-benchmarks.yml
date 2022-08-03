@@ -337,13 +337,13 @@ jobs:
         with:
           path: ./compiler-tester/result.txt
 
-      #- uses: 8398a7/action-slack@v3
-      #  with:
-      #    status: ${{ job.status }}
-      #    fields: repo,commit,author,action,eventName,ref,workflow,job,took,pullRequest # selectable (default: repo,message)
-      #  env:
-      #    SLACK_WEBHOOK_URL: ${{ secrets.MATTERMOST_WEBHOOK }} # required
-      #  if: always() # Pick up events even if the job fails or is canceled.
+      - uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          fields: repo,commit,author,action,eventName,ref,workflow,job,took,pullRequest # selectable (default: repo,message)
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.MATTERMOST_WEBHOOK }} # required
+        if: always() # Pick up events even if the job fails or is canceled.
 
       - name: Clearing workspace. Removing used and trash docker images.
         if: always()
