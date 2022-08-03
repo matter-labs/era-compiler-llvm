@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   default:
-    runs-on: [self-hosted, compiler]
+    runs-on: [self-hosted, ci-runner-compiler]
     steps:
       - uses: AutoModality/action-clean@v1.1.0
       - uses: webfactory/ssh-agent@v0.5.3
@@ -33,7 +33,7 @@ jobs:
           echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
           echo "COMPOSE_PROJECT_NAME=llvm_testing" >> $GITHUB_ENV
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch || 'vm1.1' }}" >> $GITHUB_ENV
-          echo "DOCKER_CMD=docker compose exec -T zk" >> $GITHUB_ENV
+          echo "DOCKER_CMD=docker-compose exec -T zk" >> $GITHUB_ENV
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
 
       - name: Get branch name (pull request)
@@ -66,8 +66,8 @@ jobs:
 
       - name: Preparing workspace. Start docker.
         run: |
-          docker compose pull
-          docker compose up -d zk
+          docker-compose pull
+          docker-compose up -d zk
         env:
           SSH_PRIVATE_KEY: ${{secrets.SSH_PK_BOT}}
 
@@ -121,4 +121,4 @@ jobs:
         run: |
           # Removing trash images. This command isn't remove pulled work image.
           docker image prune -f --all
-          docker compose down --rmi local -v
+          docker-compose down --rmi local -v
