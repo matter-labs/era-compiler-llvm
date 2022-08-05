@@ -159,8 +159,8 @@ public:
                                       Align Alignment,
                                       MachineMemOperand::Flags Flags,
                                       unsigned *Fast) const override {
-    return AddrSpace == EraVMAS::AS_HEAP || AddrSpace == EraVMAS::AS_CALLDATA ||
-           AddrSpace == EraVMAS::AS_RETDATA;
+    return AddrSpace == EraVMAS::AS_HEAP || AddrSpace == EraVMAS::AS_HEAP_AUX ||
+           AddrSpace == EraVMAS::AS_GENERIC;
   }
 
   /// If a physical register, this returns the register that receives the
