@@ -430,6 +430,19 @@ define void @__small_store_as1(i256 %addr.i, i256 %value, i256 %size_in_bits) no
   ret void
 }
 
+define void @__small_store_as2(i256 %addr.i, i256 %value, i256 %size_in_bits) nounwind {
+  %addr = inttoptr i256 %addr.i to i256 addrspace(2)*
+  %sizeinv = sub nsw nuw i256 256, %size_in_bits
+  %maskload = lshr i256 -1, %size_in_bits
+  %maskval = shl i256 -1, %sizeinv
+  %val.m = and i256 %value, %maskval
+  %oldval = load i256, i256 addrspace(2)* %addr, align 1
+  %oldval.m = and i256 %oldval, %maskload
+  %val.f = or i256 %val.m, %oldval.m
+  store i256 %val.f, i256 addrspace(2)* %addr, align 1
+  ret void
+}
+
 define void @__memset_uma_as1(i256 addrspace(1)* %dest, i256 %val, i256 %size) nounwind {
 entry:
   %numcells = udiv i256 %size, 32
@@ -453,6 +466,34 @@ copybytes:
 residual:
   %rembits = mul nsw nuw i256 %rembytes, 8
   call void @__small_store_as1(i256 %addr.int, i256 %val, i256 %rembits)
+  ret void
+return:
+  ret void
+}
+
+define void @__memset_uma_as2(i256 addrspace(2)* %dest, i256 %val, i256 %size) nounwind {
+entry:
+  %numcells = udiv i256 %size, 32
+  %hascells = icmp ugt i256 %numcells, 0
+  %dest.int = ptrtoint i256 addrspace(2)* %dest to i256
+  br i1 %hascells, label %copycells, label %copybytes
+copycells:
+  %cellsrem = phi i256 [%numcells, %entry], [%cellsrem.next, %copycells]
+  %currentdest.int = phi i256 [%dest.int, %entry], [%currentdest.inext, %copycells]
+  %currentdest = inttoptr i256 %currentdest.int to i256 addrspace(2)*
+  store i256 %val, i256 addrspace(2)* %currentdest, align 1
+  %currentdest.inext = add nsw nuw i256 %currentdest.int, 32
+  %cellsrem.next = sub nsw nuw i256 %cellsrem, 1
+  %continue = icmp ne i256 %cellsrem.next, 0
+  br i1 %continue, label %copycells, label %copybytes
+copybytes:
+  %addr.int = phi i256 [%dest.int, %entry], [%currentdest.inext, %copycells]
+  %rembytes = urem i256 %size, 32
+  %need.residual.copy = icmp ne i256 %rembytes, 0
+  br i1 %need.residual.copy, label %residual, label %return
+residual:
+  %rembits = mul nsw nuw i256 %rembytes, 8
+  call void @__small_store_as2(i256 %addr.int, i256 %val, i256 %rembits)
   ret void
 return:
   ret void
