@@ -295,116 +295,80 @@ define i256 @__signextend(i256 %numbyte, i256 %value) #1 {
   ret i256 %result
 }
 
-define {i256, i1}* @__farcall(i256 %abi_params, i256 %address, {i256, i1}* %in_res) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1}* @__farcall(i256 %abi_params, i256 %address, {i8 addrspace(3)*, i1}* %in_res) personality i32 ()* @__personality {
 entry:
-  %in_res_result_ptr = getelementptr {i256, i1}, {i256, i1}* %in_res, i32 0, i32 0
-  %in_res_flag_ptr = getelementptr {i256, i1}, {i256, i1}* %in_res, i32 0, i32 1
-  %invoke_res = invoke i256 @__farcall_int(i256 %abi_params, i256 %address)
+  %in_res_result_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 0
+  %in_res_flag_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 1
+  %invoke_res = invoke i8 addrspace(3)* @__farcall_int(i256 %abi_params, i256 %address)
     to label %ok unwind label %err
 ok:
-  store i256 %invoke_res, i256* %in_res_result_ptr
+  store i8 addrspace(3)* %invoke_res, i8 addrspace(3)** %in_res_result_ptr
   store i1 1, i1* %in_res_flag_ptr
-  ret {i256, i1}* %in_res
+  ret {i8 addrspace(3)*, i1}* %in_res
 
 err:
-  %res.2 = landingpad {i256, i256} cleanup
-  %res = extractvalue {i256, i256} %res.2, 0
-  %flag = call i256 @llvm.syncvm.iflt(i256 1, i256 0)
-  %is_set = trunc i256 %flag to i1
-  br i1 %is_set, label %revert, label %err_ok
-
-revert:
-  call void @llvm.syncvm.throw(i256 %res)
-  unreachable
-
-err_ok:
-  store i256 %res, i256* %in_res_result_ptr
+  %res.2 = landingpad {i8 addrspace(3)*, i256} cleanup
+  %res = extractvalue {i8 addrspace(3)*, i256} %res.2, 0
+  store i8 addrspace(3)* %res, i8 addrspace(3)** %in_res_result_ptr
   store i1 0, i1* %in_res_flag_ptr
-  ret {i256, i1}* %in_res
+  ret {i8 addrspace(3)*, i1}* %in_res
 }
 
-define {i256, i1}* @__staticcall(i256 %abi_params, i256 %address, {i256, i1}* %in_res) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1}* @__staticcall(i256 %abi_params, i256 %address, {i8 addrspace(3)*, i1}* %in_res) personality i32 ()* @__personality {
 entry:
-  %in_res_result_ptr = getelementptr {i256, i1}, {i256, i1}* %in_res, i32 0, i32 0
-  %in_res_flag_ptr = getelementptr {i256, i1}, {i256, i1}* %in_res, i32 0, i32 1
-  %invoke_res = invoke i256 @__staticcall_int(i256 %abi_params, i256 %address)
+  %in_res_result_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 0
+  %in_res_flag_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 1
+  %invoke_res = invoke i8 addrspace(3)* @__staticcall_int(i256 %abi_params, i256 %address)
     to label %ok unwind label %err
 ok:
-  store i256 %invoke_res, i256* %in_res_result_ptr
+  store i8 addrspace(3)* %invoke_res, i8 addrspace(3)** %in_res_result_ptr
   store i1 1, i1* %in_res_flag_ptr
-  ret {i256, i1}* %in_res
+  ret {i8 addrspace(3)*, i1}* %in_res
 
 err:
-  %res.2 = landingpad {i256, i256} cleanup
-  %res = extractvalue {i256, i256} %res.2, 0
-  %flag = call i256 @llvm.syncvm.iflt(i256 1, i256 0)
-  %is_set = trunc i256 %flag to i1
-  br i1 %is_set, label %revert, label %err_ok
-
-revert:
-  call void @llvm.syncvm.throw(i256 %res)
-  unreachable
-
-err_ok:
-  store i256 %res, i256* %in_res_result_ptr
+  %res.2 = landingpad {i8 addrspace(3)*, i256} cleanup
+  %res = extractvalue {i8 addrspace(3)*, i256} %res.2, 0
+  store i8 addrspace(3)* %res, i8 addrspace(3)** %in_res_result_ptr
   store i1 0, i1* %in_res_flag_ptr
-  ret {i256, i1}* %in_res
+  ret {i8 addrspace(3)*, i1}* %in_res
 }
 
-define {i256, i1}* @__delegatecall(i256 %abi_params, i256 %address, {i256, i1}* %in_res) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1}* @__delegatecall(i256 %abi_params, i256 %address, {i8 addrspace(3)*, i1}* %in_res) personality i32 ()* @__personality {
 entry:
-  %in_res_result_ptr = getelementptr {i256, i1}, {i256, i1}* %in_res, i32 0, i32 0
-  %in_res_flag_ptr = getelementptr {i256, i1}, {i256, i1}* %in_res, i32 0, i32 1
-  %invoke_res = invoke i256 @__delegatecall_int(i256 %abi_params, i256 %address)
+  %in_res_result_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 0
+  %in_res_flag_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 1
+  %invoke_res = invoke i8 addrspace(3)* @__delegatecall_int(i256 %abi_params, i256 %address)
     to label %ok unwind label %err
 ok:
-  store i256 %invoke_res, i256* %in_res_result_ptr
+  store i8 addrspace(3)* %invoke_res, i8 addrspace(3)** %in_res_result_ptr
   store i1 1, i1* %in_res_flag_ptr
-  ret {i256, i1}* %in_res
+  ret {i8 addrspace(3)*, i1}* %in_res
 
 err:
-  %res.2 = landingpad {i256, i256} cleanup
-  %res = extractvalue {i256, i256} %res.2, 0
-  %flag = call i256 @llvm.syncvm.iflt(i256 1, i256 0)
-  %is_set = trunc i256 %flag to i1
-  br i1 %is_set, label %revert, label %err_ok
-
-revert:
-  call void @llvm.syncvm.throw(i256 %res)
-  unreachable
-
-err_ok:
-  store i256 %res, i256* %in_res_result_ptr
+  %res.2 = landingpad {i8 addrspace(3)*, i256} cleanup
+  %res = extractvalue {i8 addrspace(3)*, i256} %res.2, 0
+  store i8 addrspace(3)* %res, i8 addrspace(3)** %in_res_result_ptr
   store i1 0, i1* %in_res_flag_ptr
-  ret {i256, i1}* %in_res
+  ret {i8 addrspace(3)*, i1}* %in_res
 }
 
-define {i256, i1}* @__mimiccall(i256 %abi_params, i256 %address, i256 %mimic, {i256, i1}* %in_res) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1}* @__mimiccall(i256 %abi_params, i256 %address, i256 %mimic, {i8 addrspace(3)*, i1}* %in_res) personality i32 ()* @__personality {
 entry:
-  %in_res_result_ptr = getelementptr {i256, i1}, {i256, i1}* %in_res, i32 0, i32 0
-  %in_res_flag_ptr = getelementptr {i256, i1}, {i256, i1}* %in_res, i32 0, i32 1
-  %invoke_res = invoke i256 @__mimiccall_int(i256 %abi_params, i256 %address, i256 %mimic)
+  %in_res_result_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 0
+  %in_res_flag_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 1
+  %invoke_res = invoke i8 addrspace(3)* @__mimiccall_int(i256 %abi_params, i256 %address, i256 %mimic)
     to label %ok unwind label %err
 ok:
-  store i256 %invoke_res, i256* %in_res_result_ptr
+  store i8 addrspace(3)* %invoke_res, i8 addrspace(3)** %in_res_result_ptr
   store i1 1, i1* %in_res_flag_ptr
-  ret {i256, i1}* %in_res
+  ret {i8 addrspace(3)*, i1}* %in_res
 
 err:
-  %res.2 = landingpad {i256, i256} cleanup
-  %res = extractvalue {i256, i256} %res.2, 0
-  %flag = call i256 @llvm.syncvm.iflt(i256 1, i256 0)
-  %is_set = trunc i256 %flag to i1
-  br i1 %is_set, label %revert, label %err_ok
-
-revert:
-  call void @llvm.syncvm.throw(i256 %res)
-  unreachable
-
-err_ok:
-  store i256 %res, i256* %in_res_result_ptr
+  %res.2 = landingpad {i8 addrspace(3)*, i256} cleanup
+  %res = extractvalue {i8 addrspace(3)*, i256} %res.2, 0
+  store i8 addrspace(3)* %res, i8 addrspace(3)** %in_res_result_ptr
   store i1 0, i1* %in_res_flag_ptr
-  ret {i256, i1}* %in_res
+  ret {i8 addrspace(3)*, i1}* %in_res
 }
 
 define void @__sstore(i256 %val, i256 %key) {
@@ -427,6 +391,19 @@ define void @__small_store_as1(i256 %addr.i, i256 %value, i256 %size_in_bits) no
   %oldval.m = and i256 %oldval, %maskload
   %val.f = or i256 %val.m, %oldval.m
   store i256 %val.f, i256 addrspace(1)* %addr, align 1
+  ret void
+}
+
+define void @__small_store_as2(i256 %addr.i, i256 %value, i256 %size_in_bits) nounwind {
+  %addr = inttoptr i256 %addr.i to i256 addrspace(2)*
+  %sizeinv = sub nsw nuw i256 256, %size_in_bits
+  %maskload = lshr i256 -1, %size_in_bits
+  %maskval = shl i256 -1, %sizeinv
+  %val.m = and i256 %value, %maskval
+  %oldval = load i256, i256 addrspace(2)* %addr, align 1
+  %oldval.m = and i256 %oldval, %maskload
+  %val.f = or i256 %val.m, %oldval.m
+  store i256 %val.f, i256 addrspace(2)* %addr, align 1
   ret void
 }
 
@@ -458,15 +435,43 @@ return:
   ret void
 }
 
+define void @__memset_uma_as2(i256 addrspace(2)* %dest, i256 %val, i256 %size) nounwind {
+entry:
+  %numcells = udiv i256 %size, 32
+  %hascells = icmp ugt i256 %numcells, 0
+  %dest.int = ptrtoint i256 addrspace(2)* %dest to i256
+  br i1 %hascells, label %copycells, label %copybytes
+copycells:
+  %cellsrem = phi i256 [%numcells, %entry], [%cellsrem.next, %copycells]
+  %currentdest.int = phi i256 [%dest.int, %entry], [%currentdest.inext, %copycells]
+  %currentdest = inttoptr i256 %currentdest.int to i256 addrspace(2)*
+  store i256 %val, i256 addrspace(2)* %currentdest, align 1
+  %currentdest.inext = add nsw nuw i256 %currentdest.int, 32
+  %cellsrem.next = sub nsw nuw i256 %cellsrem, 1
+  %continue = icmp ne i256 %cellsrem.next, 0
+  br i1 %continue, label %copycells, label %copybytes
+copybytes:
+  %addr.int = phi i256 [%dest.int, %entry], [%currentdest.inext, %copycells]
+  %rembytes = urem i256 %size, 32
+  %need.residual.copy = icmp ne i256 %rembytes, 0
+  br i1 %need.residual.copy, label %residual, label %return
+residual:
+  %rembits = mul nsw nuw i256 %rembytes, 8
+  call void @__small_store_as2(i256 %addr.int, i256 %val, i256 %rembits)
+  ret void
+return:
+  ret void
+}
+
 declare {i256, i1} @llvm.uadd.with.overflow.i256(i256, i256)
 declare void @llvm.syncvm.throw(i256)
 declare void @llvm.syncvm.sstore(i256 %key, i256 %val)
 declare i256 @llvm.syncvm.sload(i256 %key)
 declare i256 @llvm.syncvm.iflt(i256, i256)
-declare i256 @__farcall_int(i256, i256)
-declare i256 @__staticcall_int(i256, i256)
-declare i256 @__delegatecall_int(i256, i256)
-declare i256 @__mimiccall_int(i256, i256, i256)
+declare i8 addrspace(3)* @__farcall_int(i256, i256)
+declare i8 addrspace(3)* @__staticcall_int(i256, i256)
+declare i8 addrspace(3)* @__delegatecall_int(i256, i256)
+declare i8 addrspace(3)* @__mimiccall_int(i256, i256, i256)
 declare i32 @__personality()
 
 attributes #0 = { nounwind readnone }
