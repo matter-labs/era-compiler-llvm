@@ -40,21 +40,17 @@ Non-comprehensive list of changes in this release
 Update on required toolchains to build LLVM
 -------------------------------------------
 
-With LLVM 15.x we will raise the version requirements of the toolchain used
-to build LLVM. The new requirements are as follows:
+LLVM is now built with C++17 by default. This means C++17 can be used in
+the code base.
+
+The previous "soft" toolchain requirements have now been changed to "hard".
+This means that the the following versions are now required to build LLVM
+and there is no way to suppress this error.
 
 * GCC >= 7.1
 * Clang >= 5.0
 * Apple Clang >= 9.3
 * Visual Studio 2019 >= 16.7
-
-In LLVM 15.x these requirements will be "soft" requirements and the version
-check can be skipped by passing ``-DLLVM_TEMPORARILY_ALLOW_OLD_TOOLCHAIN=ON``
-to CMake.
-
-With the release of LLVM 16.x these requirements will be hard and LLVM developers
-can start using C++17 features, making it impossible to build with older
-versions of these toolchains.
 
 Changes to the LLVM IR
 ----------------------
