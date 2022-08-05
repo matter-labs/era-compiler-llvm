@@ -100,7 +100,17 @@ bool SyncVMCodegenPrepare::runOnFunction(Function &F) {
               (cast<ConstantInt>(Call.getOperand(2))->isZero())) {
             Changed = true;
             Replaced.push_back(&I);
+          } else if (Callee->getName() == "__memset_uma_as2" &&
+              isa<ConstantInt>(Call.getOperand(2)) &&
+              (cast<ConstantInt>(Call.getOperand(2))->isZero())) {
+            Changed = true;
+            Replaced.push_back(&I);
           } else if (Callee->getName() == "__small_store_as1" &&
+                     isa<ConstantInt>(Call.getOperand(2)) &&
+                     (cast<ConstantInt>(Call.getOperand(2))->isZero())) {
+            Changed = true;
+            Replaced.push_back(&I);
+          } else if (Callee->getName() == "__small_store_as2" &&
                      isa<ConstantInt>(Call.getOperand(2)) &&
                      (cast<ConstantInt>(Call.getOperand(2))->isZero())) {
             Changed = true;

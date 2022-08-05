@@ -180,8 +180,8 @@ def adjstackaddr : ComplexPattern<iPTR, 3, "SelectAdjStackAddr", [], []>;
 class AddressSpacesImpl {
   int Stack = 0;
   int Heap = 1;
-  int CallData = 2;
-  int ReturnData = 3;
+  int HeapAux = 2;
+  int Generic = 3;
   int Code = 4;
 }
 
@@ -191,13 +191,13 @@ class AddressSpaceList<list<int> AS> {
   list<int> AddrSpaces = AS;
 }
 
-def Address_stack       : AddressSpaceList<[ AddrSpaces.Stack ]>;
-def Address_heap        : AddressSpaceList<[ AddrSpaces.Heap ]>;
-def Address_calldata    : AddressSpaceList<[ AddrSpaces.CallData ]>;
-def Address_returndata  : AddressSpaceList<[ AddrSpaces.ReturnData ]>;
-def Address_code        : AddressSpaceList<[ AddrSpaces.Code ]>;
+def Address_stack         : AddressSpaceList<[ AddrSpaces.Stack ]>;
+def Address_heap          : AddressSpaceList<[ AddrSpaces.Heap ]>;
+def Address_heapaux       : AddressSpaceList<[ AddrSpaces.HeapAux ]>;
+def Address_generic       : AddressSpaceList<[ AddrSpaces.Generic ]>;
+def Address_code          : AddressSpaceList<[ AddrSpaces.Code ]>;
 
-foreach as = [ "stack", "heap", "calldata", "returndata", "code" ] in {
+foreach as = [ "stack", "heap", "heapaux", "generic", "code" ] in {
 let AddressSpaces = !cast<AddressSpaceList>("Address_"#as).AddrSpaces in {
 def load_#as : PatFrag<(ops node:$ptr), (unindexedload node:$ptr)> {
   let IsLoad = 1;
@@ -964,21 +964,27 @@ defm ROR  : ArithINonCommutable<39, "ror", rotr>;
 //===----------------------------------------------------------------------===//
 
 let mayLoad = 1 in {
-def LDH : IUMA < 41, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
-                 "uma.heap_read$cc\t$rs0, r0, $rd0", []>;
-def LDC : IUMA < 42, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
-                 "uma.calldata_read$cc\t$rs0, r0, $rd0", []>;
-def LDR : IUMA < 43, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
-                 "uma.returndata_read$cc\t$rs0, r0, $rd0", []>;
+def LD1  : IUMA < 41, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
+                  "ld.1$cc\t$rs0, $rd0", []>;
+def LD2  : IUMA < 42, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
+                  "ld.2$cc\t$rs0, $rd0", []>;
+def LD   : IUMA < 43, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
+                  "ld$cc\t$rs0, $rd0", []>;
 }
-def     : Pat<(load_heap GR256:$rs0), (LDH GR256:$rs0, 0)>;
-def     : Pat<(load_calldata GR256:$rs0), (LDC GR256:$rs0, 0)>;
-def     : Pat<(load_returndata GR256:$rs0), (LDR GR256:$rs0, 0)>;
-let mayStore = 1 in
-def STH : IUMA < 44, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
-                 "uma.heap_write$cc\t$rs0, $rs1, r0", []>;
+def     : Pat<(load_heap GR256:$rs0), (LD1 GR256:$rs0, 0)>;
+def     : Pat<(load_heapaux GR256:$rs0), (LD2 GR256:$rs0, 0)>;
+def     : Pat<(load_generic GR256:$rs0), (LD GR256:$rs0, 0)>;
+
+let mayStore = 1 in {
+def ST1  : IUMA < 44, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
+                  "st.1$cc\t$rs0, $rs1", []>;
+def ST2  : IUMA < 54, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
+                  "st.2$cc\t$rs0, $rs1", []>;
+}
 def     : Pat<(store_heap GR256:$rs1, GR256:$rs0),
-              (STH GR256:$rs0, $rs1, 0)>;
+              (ST1 GR256:$rs0, $rs1, 0)>;
+def     : Pat<(store_heapaux GR256:$rs1, GR256:$rs0),
+              (ST2 GR256:$rs0, $rs1, 0)>;
 
 //===----------------------------------------------------------------------===//
 // Control flow instructions

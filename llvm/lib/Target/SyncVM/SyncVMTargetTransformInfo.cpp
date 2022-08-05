@@ -151,8 +151,8 @@ InstructionCost SyncVMTTIImpl::getMemoryOpCost(unsigned Opcode, Type *Src,
     break;
   }
   case SyncVMAS::AS_HEAP:
-  case SyncVMAS::AS_CALLDATA:
-  case SyncVMAS::AS_RETDATA: {
+  case SyncVMAS::AS_HEAP_AUX:
+  case SyncVMAS::AS_GENERIC: {
     if ((alignment_value % 32) > 0) {
       return TargetTransformInfo::TCC_Basic * 2;
     }
