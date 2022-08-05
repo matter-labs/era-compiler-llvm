@@ -101,19 +101,15 @@ bool EraVMCodegenPrepare::runOnFunction(Function &F) {
           Callee = dyn_cast<Function>(
               cast<BitCastOperator>(Call.getCalledOperand())->getOperand(0));
         if (Callee && Callee->hasName()) {
-          if (Callee->getName() == "__memset_uma_as1" &&
-              isa<ConstantInt>(Call.getOperand(2)) &&
-              (cast<ConstantInt>(Call.getOperand(2))->isZero())) {
-            Changed = true;
-            Replaced.push_back(&I);
-          } else if (Callee->getName() == "__small_store_as1" &&
-                     isa<ConstantInt>(Call.getOperand(2)) &&
-                     (cast<ConstantInt>(Call.getOperand(2))->isZero())) {
-            Changed = true;
-            Replaced.push_back(&I);
-          } else if (Callee->getName() == "__small_store_as0" &&
-                     isa<ConstantInt>(Call.getOperand(1)) &&
-                     (cast<ConstantInt>(Call.getOperand(1))->isZero())) {
+          auto IsOpNZeroConst = [&Call](unsigned N) {
+            return isa<ConstantInt>(Call.getOperand(N)) &&
+                   cast<ConstantInt>(Call.getOperand(N))->isZero();
+          };
+          if ((Callee->getName() == "__memset_uma_as1" && IsOpNZeroConst(2)) ||
+              (Callee->getName() == "__memset_uma_as2" && IsOpNZeroConst(2)) ||
+              (Callee->getName() == "__small_store_as1" && IsOpNZeroConst(2)) ||
+              (Callee->getName() == "__small_store_as2" && IsOpNZeroConst(2)) ||
+              (Callee->getName() == "__small_store_as0" && IsOpNZeroConst(1))) {
             Changed = true;
             Replaced.push_back(&I);
           }

@@ -39,9 +39,9 @@ namespace EraVMAS {
 enum AddressSpaces {
   AS_STACK = 0,
   AS_HEAP = 1,
-  AS_CALLDATA = 2,
-  AS_RETDATA = 3,
-  AS_CODE = 4
+  AS_HEAP_AUX = 2,
+  AS_GENERIC = 3,
+  AS_CODE = 4,
 };
 } // namespace EraVMAS
 

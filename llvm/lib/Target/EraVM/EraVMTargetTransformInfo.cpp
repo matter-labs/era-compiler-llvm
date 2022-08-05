@@ -156,8 +156,8 @@ InstructionCost EraVMTTIImpl::getMemoryOpCost(unsigned Opcode, Type *Src,
     break;
   }
   case EraVMAS::AS_HEAP:
-  case EraVMAS::AS_CALLDATA:
-  case EraVMAS::AS_RETDATA: {
+  case EraVMAS::AS_HEAP_AUX:
+  case EraVMAS::AS_GENERIC: {
     if ((AlignmentValue % 32) > 0)
       return TargetTransformInfo::TCC_Basic * 2;
   }
