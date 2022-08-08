@@ -22,7 +22,7 @@ concurrency:
 
 jobs:
   default:
-    runs-on: [self-hosted, ci-runner-compiler]
+    runs-on: [self-hosted, compiler-runner, hetzner]
     steps:
       - uses: AutoModality/action-clean@v1.1.0
       - uses: webfactory/ssh-agent@v0.5.3
