@@ -44,6 +44,9 @@ sed -i 's/asm-generic/asm/' "${types_h}"
 cmake './llvm' \
   -B "${CRT_BUILD}" \
   -G 'Ninja' \
+  -DPACKAGE_VENDOR='Matter Labs' \
+  -DCLANG_VENDOR='Matter Labs' \
+  -DCLANG_REPOSITORY_STRING='origin' \
   -DCMAKE_C_COMPILER='clang' \
   -DCMAKE_CXX_COMPILER='clang++' \
   -DCMAKE_INSTALL_PREFIX="${CRT_INSTALL}" \
@@ -77,6 +80,9 @@ ninja -C "${CRT_BUILD}" install-crt
 cmake './llvm' \
   -B "${HOST_BUILD}" \
   -G 'Ninja' \
+  -DPACKAGE_VENDOR='Matter Labs' \
+  -DCLANG_VENDOR='Matter Labs' \
+  -DCLANG_REPOSITORY_STRING='origin' \
   -DDEFAULT_SYSROOT="${MUSL_INSTALL}" \
   -DBUILD_SHARED_LIBS='Off' \
   -DCMAKE_C_COMPILER='clang' \
@@ -128,6 +134,9 @@ ninja -C "${HOST_BUILD}" install
 cmake './llvm' \
   -B "${TARGET_BUILD}" \
   -G 'Ninja' \
+  -DPACKAGE_VENDOR='Matter Labs' \
+  -DCLANG_VENDOR='Matter Labs' \
+  -DCLANG_REPOSITORY_STRING='origin' \
   -DBUILD_SHARED_LIBS='Off' \
   -DCMAKE_C_COMPILER="${HOST_INSTALL}/bin/clang" \
   -DCMAKE_CXX_COMPILER="${HOST_INSTALL}/bin/clang++" \
