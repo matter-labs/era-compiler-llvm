@@ -32,6 +32,9 @@ def SDT_EraVMSelectCC     : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
 def SDT_EraVMCmp          : SDTypeProfile<0, 2, []>;
 def SDT_EraVMThrow        : SDTypeProfile<0, 1, [SDTCisVT<0, i256>]>;
 
+def SDT_EraVMPtrPack      : SDTypeProfile<1, 2, [SDTCisPtrTy<0>, SDTCisVT<1, i256>]>;
+def SDT_EraVMPtrAdd       : SDTypeProfile<1, 2, [SDTCisPtrTy<0>, SDTCisVT<1, i256>]>;
+
 //===----------------------------------------------------------------------===//
 // EraVM Specific Node Definitions.
 //===----------------------------------------------------------------------===//
@@ -71,6 +74,9 @@ def EraVMreturn : SDNode<"EraVMISD::RETURN", SDT_EraVMThrow,
                          [SDNPHasChain, SDNPInGlue]>;
 def EraVMrevert : SDNode<"EraVMISD::REVERT", SDT_EraVMThrow,
                          [SDNPHasChain, SDNPInGlue]>;
+
+def EraVMPtrPack : SDNode<"EraVMISD::PTR_PACK", SDT_EraVMPtrPack, []>;
+def EraVMPtrAdd : SDNode<"EraVMISD::PTR_ADD", SDT_EraVMPtrAdd, []>;
 
 //===----------------------------------------------------------------------===//
 // EraVM Operand Definitions.
@@ -836,6 +842,14 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
 defm ADD  : ArithICommutable<2,  "add", add>;
 defm SUB  : ArithINonCommutable<4, "sub", sub>;
 
+
+// pointer arithmetic
+def PTR_PACK : Pseudo<(outs GR256:$out),
+                      (ins GR256:$ptr, GR256:$rs2),
+                      "ptr.pack\t $ptr, $rs2",
+                      [(set GR256:$out, (EraVMPtrPack GR256:$ptr, GR256:$rs2))]>;
+defm PTR_ADD  : ArithINonCommutable<9, "ptr.add", EraVMPtrAdd>;
+
 // MOV patterns
 def : Pat<(store_stack (load_code memaddr:$src), stackaddr:$dst),  (ADDcrs_p memaddr:$src, R0, stackaddr:$dst)>;
 def : Pat<(store_stack (load_stack stackaddr:$src), stackaddr:$dst),  (ADDsrs_p stackaddr:$src, R0, stackaddr:$dst)>;
@@ -963,7 +977,9 @@ def SLDrr : ILogR<47, DstReg, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
   let rs1 = 0;
   let Inst{40-43} = rd0;
 }
-
+//===----------------------------------------------------------------------===//
+// Fat Pointer
+//===----------------------------------------------------------------------===//
 def : Pat<(int_eravm_sload GR256:$rs0), (SLDrr GR256:$rs0, 0)>;
 
 let hasSideEffects = 1, first = 0 in

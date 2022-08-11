@@ -13,12 +13,19 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/Module.h"
 #include "llvm/Pass.h"
 #include "llvm/Transforms/Scalar.h"
+
+#include "llvm/IR/DataLayout.h"
+#include "llvm/IR/GetElementPtrTypeIterator.h"
+#include "llvm/IR/IntrinsicsEraVM.h"
 
 #include "EraVM.h"
 
 using namespace llvm;
+
+#define DEBUG_TYPE "eravm-codegen-prepare"
 
 namespace llvm {
 FunctionPass *createEraVMCodegenPrepare();
@@ -33,8 +40,10 @@ public:
   }
   bool runOnFunction(Function &F) override;
 
+  bool convertPointerArithmetics(Function &F);
+
   StringRef getPassName() const override {
-    return "Revert usopported instcombine changes";
+    return "Final transformations before code generation";
   }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
@@ -46,10 +55,11 @@ public:
 char EraVMCodegenPrepare::ID = 0;
 
 INITIALIZE_PASS(EraVMCodegenPrepare, "eravm-codegen-prepare",
-                "Revert usopported instcombine changes", false, false)
+                "Final transformations before code generation", false, false)
 
 bool EraVMCodegenPrepare::runOnFunction(Function &F) {
   bool Changed = false;
+
   std::vector<Instruction *> Replaced;
   for (auto &BB : F)
     for (auto &I : BB) {
@@ -120,7 +130,69 @@ bool EraVMCodegenPrepare::runOnFunction(Function &F) {
     }
   for (auto *I : Replaced)
     I->eraseFromParent();
+
+  // convert pointer arithmetics to intrinsics
+  Changed |= convertPointerArithmetics(F);
   return Changed;
+}
+
+bool EraVMCodegenPrepare::convertPointerArithmetics(Function &F) {
+  const DataLayout *DL = &F.getParent()->getDataLayout();
+  auto computeOffset = [&](GetElementPtrInst *GEP, IRBuilder<> &Builder) {
+    Value *TmpOffset = Builder.getIntN(256, 0);
+    APInt Offset(256, 0);
+    if (GEP->accumulateConstantOffset(*DL, Offset)) {
+      // the 32 here is the word length for zkEVM
+      TmpOffset = Builder.getIntN(256, Offset.getZExtValue());
+    } else {
+      for (gep_type_iterator GTI = gep_type_begin(GEP), E = gep_type_end(GEP);
+           GTI != E; ++GTI) {
+        Value *Op = GTI.getOperand();
+        uint64_t S = DL->getTypeAllocSize(GTI.getIndexedType());
+
+        // rely on folding down the pipeline to fold it.
+        Value *Rhs = Builder.CreateMul(Builder.getIntN(256, S), Op);
+        TmpOffset = Builder.CreateAdd(TmpOffset, Rhs);
+      }
+    }
+    assert(TmpOffset != nullptr);
+    return TmpOffset;
+  };
+
+  std::vector<Instruction *> Replaced;
+
+  // look for GEP and convert them to PTR_ADD
+  for (auto &BB : F) {
+    for (auto &I : BB) {
+      if (auto *GEP = dyn_cast<GetElementPtrInst>(&I)) {
+        // Address Space must be return data address space
+        if (GEP->getPointerAddressSpace() != EraVMAS::AS_GENERIC)
+          continue;
+
+        Value *Base = GEP->getOperand(0);
+
+        IRBuilder<> Builder(&I);
+        Value *Offset = computeOffset(GEP, Builder);
+        Base = Builder.CreateBitCast(Base, Builder.getPtrTy(3));
+
+        auto *PtrAdd =
+            Intrinsic::getDeclaration(F.getParent(), Intrinsic::eravm_ptr_add);
+
+        Value *NewI = Builder.CreateCall(PtrAdd, {Base, Offset});
+        NewI = Builder.CreateBitCast(NewI, GEP->getType());
+
+        LLVM_DEBUG(dbgs() << "    Converted GEP:"; GEP->dump();
+                   dbgs() << "    to: "; NewI->dump());
+        GEP->replaceAllUsesWith(NewI);
+        Replaced.push_back(GEP);
+      }
+    }
+  }
+
+  for (Instruction *I : Replaced)
+    I->eraseFromParent();
+
+  return !Replaced.empty();
 }
 
 FunctionPass *llvm::createEraVMCodegenPreparePass() {
