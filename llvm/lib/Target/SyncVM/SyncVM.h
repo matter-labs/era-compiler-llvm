@@ -67,7 +67,6 @@ class PassRegistry;
 
 FunctionPass *createSyncVMISelDag(SyncVMTargetMachine &TM,
                                   CodeGenOpt::Level OptLevel);
-ModulePass   *createSyncVMElideCalldataCopyPass();
 ModulePass   *createSyncVMExpandUMAPass();
 ModulePass   *createSyncVMIndirectUMAPass();
 ModulePass   *createSyncVMIndirectExternalCallPass();
@@ -83,7 +82,6 @@ FunctionPass *createSyncVMMoveCallResultSpillPass();
 FunctionPass *createSyncVMPeepholePass();
 FunctionPass *createSyncVMStackAddressConstantPropagationPass();
 
-void initializeSyncVMElideCalldataCopyPass(PassRegistry &);
 void initializeSyncVMExpandUMAPass(PassRegistry &);
 void initializeSyncVMIndirectUMAPass(PassRegistry &);
 void initializeSyncVMIndirectExternalCallPass(PassRegistry &);

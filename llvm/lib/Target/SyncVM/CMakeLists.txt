@@ -22,7 +22,6 @@ add_llvm_target(SyncVMCodeGen
   SyncVMAddConditions.cpp
   SyncVMBytesToCells.cpp
   SyncVMCodegenPrepare.cpp
-  SyncVMElideCalldataCopy.cpp
   SyncVMExpandUMA.cpp
   SyncVMExpandPseudoInsts.cpp
   SyncVMExpandSelect.cpp
