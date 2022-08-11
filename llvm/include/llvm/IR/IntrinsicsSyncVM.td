@@ -41,4 +41,8 @@ def int_syncvm_revert: Intrinsic<[], [llvm_i256_ty], [IntrNoReturn]>;
 def int_syncvm_iflt  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
 def int_syncvm_ifgt  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
 def int_syncvm_ifeq  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
+
+// Pointer arithmetics
+def int_syncvm_ptr_pack : Intrinsic<[LLVMQualPointerType<llvm_i8_ty, 3>], [llvm_any_ty, llvm_i256_ty], [IntrNoMem]>;
+def int_syncvm_ptr_add : Intrinsic<[LLVMQualPointerType<llvm_i8_ty, 3>], [LLVMQualPointerType<llvm_i8_ty, 3>, llvm_i256_ty], [IntrNoMem]>;
 }
