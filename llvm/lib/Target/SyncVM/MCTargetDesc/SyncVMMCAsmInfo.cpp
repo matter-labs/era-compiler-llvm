@@ -22,10 +22,10 @@ SyncVMMCAsmInfo::SyncVMMCAsmInfo(const Triple &TheTriple) {
   HasFunctionAlignment = false;
   HasDotTypeDotSizeDirective = false;
   HasFourStringsDotFile = false;
-  // GlobalDirective = nullptr;
   PrivateGlobalPrefix = ".";
   PrivateLabelPrefix = ".";
   AlignmentIsInBytes = true;
+  PrependSymbolRefWithAt = true;
 
   CommentString = ";";
 
