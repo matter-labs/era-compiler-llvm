@@ -620,6 +620,10 @@ getELFSectionNameForGlobal(const GlobalObject *GO, SectionKind Kind,
   } else if (Kind.isMergeableConst()) {
     Name = ".rodata.cst";
     Name += utostr(EntrySize);
+  // SyncVM local begin
+  } else if (TM.getTargetTriple().isSyncVM() && Kind.isBSS()) {
+    Name = ".data";
+  // SyncVM local end
   } else {
     Name = getSectionPrefixForGlobal(Kind);
   }
