@@ -478,6 +478,11 @@ protected:
   /// For example, foo(plt) instead of foo@plt.  Defaults to false.
   bool UseParensForSymbolVariant = false;
 
+  // SyncVM local begin
+  /// True if target uses @symbol syntax.
+  bool PrependSymbolRefWithAt = false;
+  // SyncVM local end
+
   /// True if the target supports flags in ".loc" directive, false if only
   /// location is allowed.
   bool SupportsExtendedDwarfLocDirective = true;
@@ -788,6 +793,9 @@ public:
   bool doDwarfFDESymbolsUseAbsDiff() const { return DwarfFDESymbolsUseAbsDiff; }
   bool useDwarfRegNumForCFI() const { return DwarfRegNumForCFI; }
   bool useParensForSymbolVariant() const { return UseParensForSymbolVariant; }
+  // SyncVM local begin
+  bool prependSymbolRefWithAt() const { return PrependSymbolRefWithAt; }
+  // SyncVM local end
   bool supportsExtendedDwarfLocDirective() const {
     return SupportsExtendedDwarfLocDirective;
   }

@@ -72,6 +72,8 @@ void MCExpr::print(raw_ostream &OS, const MCAsmInfo *MAI, bool InParens) const {
     return;
   }
   case MCExpr::SymbolRef: {
+    if (MAI->prependSymbolRefWithAt())
+      OS << '@';
     const MCSymbolRefExpr &SRE = cast<MCSymbolRefExpr>(*this);
     const MCSymbol &Sym = SRE.getSymbol();
     // Parenthesize names that start with $ so that they don't look like
