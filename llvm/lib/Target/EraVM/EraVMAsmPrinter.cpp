@@ -198,8 +198,12 @@ void EraVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
     return;
   }
 
-  const auto *CI = cast<ConstantInt>(CV);
-  Streamer->emitGlobalConst(CI->getValue());
+  if (const auto *CI = dyn_cast<ConstantInt>(CV)) {
+    Streamer->emitGlobalConst(CI->getValue());
+    return;
+  }
+
+  AsmPrinter::emitGlobalConstant(DL, CV);
 }
 
 // Force static initialization.

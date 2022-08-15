@@ -1334,7 +1334,13 @@ void MCAsmStreamer::emitIntValueInHexWithPadding(uint64_t Value,
 
 void MCAsmStreamer::emitValueImpl(const MCExpr *Value, unsigned Size,
                                   SMLoc Loc) {
+  // EraVM local begin
+#if 0
+  // EraVM local end
   assert(Size <= 8 && "Invalid size");
+  // EraVM local begin
+#endif
+  // EraVM local end
   assert(getCurrentSectionOnly() &&
          "Cannot emit contents before setting section!");
   const char *Directive = nullptr;
@@ -1348,7 +1354,7 @@ void MCAsmStreamer::emitValueImpl(const MCExpr *Value, unsigned Size,
 
   // EraVM local begin
   if (Size == 32)
-    Directive = ".cell";
+    Directive = ".cell\t";
   // EraVM local end
 
   if (!Directive) {

@@ -652,6 +652,10 @@ getELFSectionNameForGlobal(const GlobalObject *GO, SectionKind Kind,
   } else if (Kind.isMergeableConst()) {
     Name += ".cst";
     Name += utostr(EntrySize);
+  // EraVM local begin
+  } else if (TM.getTargetTriple().isEraVM() && Kind.isBSS()) {
+    Name = ".data";
+  // EraVM local end
   }
 
   bool HasPrefix = false;

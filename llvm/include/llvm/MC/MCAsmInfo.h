@@ -495,6 +495,11 @@ protected:
   /// '$' character to distinguish them from absolute names.
   bool UseParensForDollarSignNames = true;
 
+  // EraVM local begin
+  /// True if target uses @symbol syntax.
+  bool PrependSymbolRefWithAt = false;
+  // EraVM local end
+
   /// True if the target supports flags in ".loc" directive, false if only
   /// location is allowed.
   bool SupportsExtendedDwarfLocDirective = true;
@@ -806,6 +811,9 @@ public:
   bool useParensForDollarSignNames() const {
     return UseParensForDollarSignNames;
   }
+  // EraVM local begin
+  bool prependSymbolRefWithAt() const { return PrependSymbolRefWithAt; }
+  // EraVM local end
   bool supportsExtendedDwarfLocDirective() const {
     return SupportsExtendedDwarfLocDirective;
   }
