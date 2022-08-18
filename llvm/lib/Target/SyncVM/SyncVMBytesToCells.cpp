@@ -65,7 +65,8 @@ static const char Immediate = 'i';
 static const char ImmediateR = 'x';
 static const std::vector<std::string> BinaryIO = {"MUL", "DIV"};
 static const std::vector<std::string> BinaryI = {
-    "ADD", "SUB", "AND", "OR", "XOR", "SHL", "SHR", "ROL", "ROR"};
+    "PTR_ADD", "PTR_SUB", "PTR_PACK", "ADD", "SUB", "AND",
+    "OR",      "XOR",     "SHL",      "SHR", "ROL", "ROR"};
 
 bool SyncVMBytesToCells::mayHaveStackOperands(const MachineInstr &MI) {
   StringRef InstName = TII->getName(MI.getOpcode());
