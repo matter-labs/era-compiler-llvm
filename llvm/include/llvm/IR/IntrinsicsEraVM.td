@@ -50,6 +50,7 @@ def int_eravm_ifgt  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [I
 def int_eravm_ifeq  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
 
 // Pointer arithmetics
-def int_eravm_ptr_pack : Intrinsic<[LLVMQualPointerType<3>], [llvm_any_ty, llvm_i256_ty], [IntrNoMem]>;
+def int_eravm_ptr_pack : Intrinsic<[LLVMQualPointerType<3>], [LLVMQualPointerType<3>, llvm_i256_ty], [IntrNoMem]>;
+def int_eravm_ptr_shrink : Intrinsic<[LLVMQualPointerType<3>], [LLVMQualPointerType<3>, llvm_i256_ty], [IntrNoMem]>;
 def int_eravm_ptr_add : Intrinsic<[LLVMQualPointerType<3>], [LLVMQualPointerType<3>, llvm_i256_ty], [IntrNoMem]>;
 }

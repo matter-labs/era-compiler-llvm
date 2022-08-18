@@ -43,10 +43,10 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMLowerIntrinsicsPass(PR);
   initializeEraVMLinkRuntimePass(PR);
   initializeEraVMAllocaHoistingPass(PR);
-  initializeEraVMMoveCallResultSpillPass(PR);
-  initializeEraVMDAGToDAGISelPass(PR);
   initializeEraVMPeepholePass(PR);
+  initializeEraVMPropagateGenericPointersPass(PR);
   initializeEraVMStackAddressConstantPropagationPass(PR);
+  initializeEraVMDAGToDAGISelPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -133,7 +133,7 @@ void EraVMPassConfig::addPreRegAlloc() {
 }
 
 void EraVMPassConfig::addPreEmitPass() {
-  addPass(createEraVMMoveCallResultSpillPass());
+  addPass(createEraVMPropagateGenericPointersPass());
   addPass(createEraVMExpandSelectPass());
   addPass(createEraVMExpandPseudoPass());
   // TODO: The pass combines store with MULxxrr, DIVxxrr regardles of whether
