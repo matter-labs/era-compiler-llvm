@@ -1,8 +1,10 @@
 ; RUN: llc < %s | FileCheck %s
 ; RUN: llc --early-bytes-to-cells-conversion < %s | FileCheck %s --check-prefix=EARLY-BTC
 
-target datalayout = "E-p:256:256-i8:256:256:256-i256:256:256-S32-a:256:256"
+target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "syncvm"
+
+@fatptr = global i8 addrspace(3)* null
 
 ; CHECK-LABEL: alloca
 define void @alloca(i256 %a1, i256 %a2, i256 %a3, i256 %a4) nounwind {
@@ -86,3 +88,22 @@ define i256 @stack.obj.passing() {
   ret i256 %res
 }
 
+; CHECK-LABEL: load_fat_ptr
+define void @load_fat_ptr(i8 addrspace(3)** %ptr) {
+; TODO: should be ptr.add stack[r1 - 0], r0, stack[@fatptr]
+; CHECK: ptr.add stack[r1 - 0], r0, r1
+; CHECK: ptr.add r1, r0, stack[@fatptr]
+  %val = load i8 addrspace(3)*, i8 addrspace(3)** %ptr, align 32
+  store i8 addrspace(3)* %val, i8 addrspace(3)** @fatptr
+  ret void
+}
+
+; CHECK-LABEL: store_fat_ptr
+define void @store_fat_ptr(i8 addrspace(3)** %ptr) {
+; TODO: should be ptr.add stack[r1 - 0], r0, stack[@fatptr]
+; CHECK: ptr.add stack[r1 - 0], r0, r1
+; CHECK: ptr.add r1, r0, stack[@fatptr]
+  %val = load i8 addrspace(3)*, i8 addrspace(3)** @fatptr, align 32
+  store i8 addrspace(3)* %val, i8 addrspace(3)** %ptr
+  ret void
+}

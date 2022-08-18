@@ -197,6 +197,24 @@ unsigned SyncVMInstrInfo::insertBranch(
   return Count;
 }
 
+static bool isDefinedAsFatPtr(const MachineInstr &MI,
+                              const SyncVMInstrInfo &TII,
+                              const MachineRegisterInfo &MRI) {
+  // FIXME: For some reason loops of COPY definition sometimes appear. It needs
+  // further investigation.
+  static DenseSet<const MachineInstr *> Visited;
+  if (!Visited.count(&MI) && MI.getOpcode() == TargetOpcode::COPY) {
+    Visited.insert(&MI);
+    Register MOReg = MI.getOperand(1).getReg();
+    if (const MachineInstr *MI = MRI.getUniqueVRegDef(MOReg))
+      return isDefinedAsFatPtr(*MI, TII, MRI);
+    return false;
+  }
+  if (TII.getName(MI.getOpcode()).startswith("PTR_"))
+    return true;
+  return false;
+}
+
 void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
                                           MachineBasicBlock::iterator MI,
                                           Register SrcReg, bool isKill,
@@ -207,6 +225,8 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
   if (MI != MBB.end())
     DL = MI->getDebugLoc();
   MachineFunction &MF = *MBB.getParent();
+  auto *TII = MF.getSubtarget<SyncVMSubtarget>().getInstrInfo();
+  MachineRegisterInfo &MRI = MF.getRegInfo();
   MachineFrameInfo &MFI = MF.getFrameInfo();
 
   MachineMemOperand *MMO = MF.getMachineMemOperand(
@@ -214,17 +234,32 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
       MachineMemOperand::MOStore, MFI.getObjectSize(FrameIdx),
       MFI.getObjectAlign(FrameIdx));
 
-  if (RC == &SyncVM::GR256RegClass)
-    BuildMI(MBB, MI, DL, get(SyncVM::ADDrrs_s))
-        .addReg(SrcReg, getKillRegState(isKill))
-        .addReg(SyncVM::R0)
-        .addFrameIndex(FrameIdx)
-        .addImm(32)
-        .addImm(0)
-        .addImm(0)
-        .addMemOperand(MMO);
-  else
+  if (RC == &SyncVM::GR256RegClass) {
+    MachineInstr *Def = MRI.getUniqueVRegDef(SrcReg);
+    if (Def && isDefinedAsFatPtr(*Def, *TII, MRI)) {
+      BuildMI(MBB, MI, DL, get(SyncVM::PTR_ADDrrs_s))
+          .addReg(SrcReg, getKillRegState(isKill))
+          .addReg(SyncVM::R0)
+          .addFrameIndex(FrameIdx)
+          .addImm(32)
+          .addImm(0)
+          .addImm(0)
+          .addMemOperand(MMO);
+      FatPointerSlots.insert(FrameIdx);
+    } else {
+      BuildMI(MBB, MI, DL, get(SyncVM::ADDrrs_s))
+          .addReg(SrcReg, getKillRegState(isKill))
+          .addReg(SyncVM::R0)
+          .addFrameIndex(FrameIdx)
+          .addImm(32)
+          .addImm(0)
+          .addImm(0)
+          .addMemOperand(MMO);
+      FatPointerSlots.erase(FrameIdx);
+    }
+  } else {
     llvm_unreachable("Cannot store this register to stack slot!");
+  }
 }
 
 void SyncVMInstrInfo::loadRegFromStackSlot(
@@ -242,17 +277,28 @@ void SyncVMInstrInfo::loadRegFromStackSlot(
       MachineMemOperand::MOLoad, MFI.getObjectSize(FrameIdx),
       MFI.getObjectAlign(FrameIdx));
 
-  if (RC == &SyncVM::GR256RegClass)
-    BuildMI(MBB, MI, DL, get(SyncVM::ADDsrr_s))
-        .addReg(DestReg, getDefRegState(true))
-        .addFrameIndex(FrameIdx)
-        .addImm(32)
-        .addImm(0)
-        .addImm(0)
-        .addImm(0)
-        .addMemOperand(MMO);
-  else
+  if (RC == &SyncVM::GR256RegClass) {
+    if (!FatPointerSlots.count(FrameIdx))
+      BuildMI(MBB, MI, DL, get(SyncVM::ADDsrr_s))
+          .addReg(DestReg, getDefRegState(true))
+          .addFrameIndex(FrameIdx)
+          .addImm(32)
+          .addImm(0)
+          .addImm(0)
+          .addImm(0)
+          .addMemOperand(MMO);
+    else
+      BuildMI(MBB, MI, DL, get(SyncVM::PTR_ADDsrr_s))
+          .addReg(DestReg, getDefRegState(true))
+          .addFrameIndex(FrameIdx)
+          .addImm(32)
+          .addImm(0)
+          .addImm(0)
+          .addImm(0)
+          .addMemOperand(MMO);
+  } else {
     llvm_unreachable("Cannot store this register to stack slot!");
+  }
 }
 
 void SyncVMInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
@@ -293,6 +339,18 @@ bool SyncVMInstrInfo::isMul(const MachineInstr &MI) const {
 bool SyncVMInstrInfo::isDiv(const MachineInstr &MI) const {
   StringRef Mnemonic = getName(MI.getOpcode());
   return Mnemonic.startswith("DIV");
+}
+
+bool SyncVMInstrInfo::isPtr(const MachineInstr &MI) const {
+  StringRef Mnemonic = getName(MI.getOpcode());
+  return Mnemonic.startswith("PTR");
+}
+
+bool SyncVMInstrInfo::isNull(const MachineInstr &MI) const {
+  return isAdd(MI) && hasRROperandAddressingMode(MI)
+         && MI.getNumDefs() == 1u
+         && MI.getOperand(1).getReg() == SyncVM::R0
+         && MI.getOperand(2).getReg() == SyncVM::R0;
 }
 
 bool SyncVMInstrInfo::isSilent(const MachineInstr &MI) const {
