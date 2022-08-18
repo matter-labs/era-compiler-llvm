@@ -99,6 +99,7 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   }
 
   setOperationAction(ISD::STORE, MVT::i256, Custom);
+  setOperationAction(ISD::LOAD, MVT::i256, Custom);
 
   setOperationAction(ISD::ZERO_EXTEND, MVT::i256, Custom);
   setOperationAction(ISD::ANY_EXTEND, MVT::i256, Custom);
@@ -605,6 +606,43 @@ SDValue SyncVMTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
   SDValue Chain = Store->getChain();
   const MachinePointerInfo &PInfo = Store->getPointerInfo();
 
+  const MachineMemOperand *MemOp = Store->getMemOperand();
+  auto *MemVal = [MemOp]() {
+    if (!MemOp)
+      return (const Value *)nullptr;
+    return MemOp->getValue();
+  }();
+
+  // Generic (fat) pointers need to be stored via ptr.add instead of add.
+  if (MemVal && Store->getAddressSpace() == SyncVMAS::AS_STACK &&
+      cast<PointerType>(MemVal->getType())->getElementType()->isPointerTy() &&
+      cast<PointerType>(MemVal->getType())
+              ->getElementType()
+              ->getPointerAddressSpace() == SyncVMAS::AS_GENERIC) {
+    auto Zero = DAG.getTargetConstant(0, DL, MVT::i256);
+    // TODO: Something like SelectAddress is here, need to be reconsidered.
+    if (isa<GlobalAddressSDNode>(BasePtr))
+      return SDValue(DAG.getMachineNode(SyncVM::PTR_ADDrrs_p, DL, MVT::Other,
+                                        {Store->getValue(),
+                                         DAG.getRegister(SyncVM::R0, MVT::i256),
+                                         Zero, Zero, BasePtr}),
+                     0);
+    if (auto *FI = dyn_cast<FrameIndexSDNode>(BasePtr))
+      return SDValue(
+          DAG.getMachineNode(
+              SyncVM::PTR_ADDrrs_p, DL, MVT::Other,
+              {Store->getValue(), DAG.getRegister(SyncVM::R0, MVT::i256),
+               DAG.getTargetFrameIndex(FI->getIndex(),
+                                       getPointerTy(DAG.getDataLayout())),
+               Zero, Zero}),
+          0);
+    return SDValue(DAG.getMachineNode(SyncVM::PTR_ADDrrs_p, DL, MVT::Other,
+                                      {Store->getValue(),
+                                       DAG.getRegister(SyncVM::R0, MVT::i256),
+                                       Zero, BasePtr, Zero}),
+                   0);
+  }
+
   // for now only handle cases where alignment == 1
   // only handle unindexed store
   assert(Store->getAddressingMode() == ISD::UNINDEXED);
@@ -656,8 +694,51 @@ SDValue SyncVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   SDValue Chain = Load->getChain();
   const MachinePointerInfo &PInfo = Load->getPointerInfo();
 
+  const MachineMemOperand *MemOp = Load->getMemOperand();
+  auto *MemVal = [MemOp]() {
+    if (!MemOp)
+      return (const Value *)nullptr;
+    return MemOp->getValue();
+  }();
+
+  // Generic (fat) pointers need to be loaded via ptr.add instead of add.
+  if (MemVal && Load->getAddressSpace() == SyncVMAS::AS_STACK &&
+      cast<PointerType>(MemVal->getType())->getElementType()->isPointerTy() &&
+      cast<PointerType>(MemVal->getType())
+              ->getElementType()
+              ->getPointerAddressSpace() == SyncVMAS::AS_GENERIC) {
+    auto Zero = DAG.getTargetConstant(0, DL, MVT::i64);
+    SDVTList RetTys = DAG.getVTList(MVT::i256, MVT::Other);
+    // TODO: Something like SelectAddress is here, need to be reconsidered.
+    /*
+    MemVal->dump();
+    Op.dump();
+    BasePtr.dump();
+    */
+    if (isa<GlobalAddressSDNode>(BasePtr))
+      return SDValue(
+          DAG.getMachineNode(
+              SyncVM::PTR_ADDsrr_p, DL, RetTys,
+              {Zero, Zero, BasePtr, DAG.getRegister(SyncVM::R0, MVT::i256)}),
+          0);
+    if (auto *FI = dyn_cast<FrameIndexSDNode>(BasePtr))
+      return SDValue(
+          DAG.getMachineNode(
+              SyncVM::PTR_ADDsrr_p, DL, RetTys,
+              {DAG.getTargetFrameIndex(FI->getIndex(),
+                                       getPointerTy(DAG.getDataLayout())),
+               Zero, Zero, DAG.getRegister(SyncVM::R0, MVT::i256)}),
+          0);
+    return SDValue(DAG.getMachineNode(SyncVM::PTR_ADDsrr_p, DL, RetTys,
+                                      {Zero, BasePtr, Zero,
+                                       DAG.getRegister(SyncVM::R0, MVT::i256)}),
+                   0);
+  }
+
   EVT MemVT = Load->getMemoryVT();
   unsigned MemVTSize = MemVT.getSizeInBits();
+  if (MemVTSize == 256)
+    return {};
   assert(MemVT.isScalarInteger() && "Unexpected type to load");
   assert(MemVTSize < 256 && "Only handle smaller sized load");
 
