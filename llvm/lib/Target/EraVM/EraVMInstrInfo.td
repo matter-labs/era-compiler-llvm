@@ -32,9 +32,6 @@ def SDT_EraVMSelectCC     : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
 def SDT_EraVMCmp          : SDTypeProfile<0, 2, []>;
 def SDT_EraVMThrow        : SDTypeProfile<0, 1, [SDTCisVT<0, i256>]>;
 
-def SDT_EraVMPtrPack      : SDTypeProfile<1, 2, [SDTCisPtrTy<0>, SDTCisVT<1, i256>]>;
-def SDT_EraVMPtrAdd       : SDTypeProfile<1, 2, [SDTCisPtrTy<0>, SDTCisVT<1, i256>]>;
-
 //===----------------------------------------------------------------------===//
 // EraVM Specific Node Definitions.
 //===----------------------------------------------------------------------===//
@@ -74,9 +71,6 @@ def EraVMreturn : SDNode<"EraVMISD::RETURN", SDT_EraVMThrow,
                          [SDNPHasChain, SDNPInGlue]>;
 def EraVMrevert : SDNode<"EraVMISD::REVERT", SDT_EraVMThrow,
                          [SDNPHasChain, SDNPInGlue]>;
-
-def EraVMPtrPack : SDNode<"EraVMISD::PTR_PACK", SDT_EraVMPtrPack, []>;
-def EraVMPtrAdd : SDNode<"EraVMISD::PTR_ADD", SDT_EraVMPtrAdd, []>;
 
 //===----------------------------------------------------------------------===//
 // EraVM Operand Definitions.
@@ -844,11 +838,9 @@ defm SUB  : ArithINonCommutable<4, "sub", sub>;
 
 
 // pointer arithmetic
-def PTR_PACK : Pseudo<(outs GR256:$out),
-                      (ins GR256:$ptr, GR256:$rs2),
-                      "ptr.pack\t $ptr, $rs2",
-                      [(set GR256:$out, (EraVMPtrPack GR256:$ptr, GR256:$rs2))]>;
-defm PTR_ADD  : ArithINonCommutable<9, "ptr.add", EraVMPtrAdd>;
+defm PTR_PACK   : ArithINonCommutable<160, "ptr.pack", int_eravm_ptr_pack>;
+defm PTR_SHRINK : ArithINonCommutable<161, "ptr.shrink", int_eravm_ptr_shrink>;
+defm PTR_ADD    : ArithINonCommutable<9, "ptr.add", int_eravm_ptr_add>;
 
 // MOV patterns
 def : Pat<(store_stack (load_code memaddr:$src), stackaddr:$dst),  (ADDcrs_p memaddr:$src, R0, stackaddr:$dst)>;

@@ -90,7 +90,6 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
 
   // Intrinsics lowering
   setOperationAction(ISD::INTRINSIC_VOID, MVT::Other, Custom);
-  setOperationAction(ISD::INTRINSIC_WO_CHAIN, MVT::Other, Custom);
 
   for (MVT VT : MVT::integer_valuetypes()) {
     setLoadExtAction(ISD::SEXTLOAD, MVT::i256, VT, Custom);
@@ -99,6 +98,7 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
   }
 
   setOperationAction(ISD::STORE, MVT::i256, Custom);
+  setOperationAction(ISD::LOAD, MVT::i256, Custom);
 
   setOperationAction(ISD::ZERO_EXTEND, MVT::i256, Custom);
   setOperationAction(ISD::ANY_EXTEND, MVT::i256, Custom);
@@ -547,7 +547,6 @@ SDValue EraVMTargetLowering::LowerOperation(SDValue Op,
   case ISD::SDIV:               return LowerSDIV(Op, DAG);
   case ISD::SREM:               return LowerSREM(Op, DAG);
   case ISD::INTRINSIC_VOID:     return LowerINTRINSIC_VOID(Op, DAG);
-  case ISD::INTRINSIC_WO_CHAIN: return LowerINTRINSIC_WO_CHAIN(Op, DAG);
   case ISD::STACKSAVE:          return LowerSTACKSAVE(Op, DAG);
   case ISD::STACKRESTORE:       return LowerSTACKRESTORE(Op, DAG);
   default:
@@ -643,6 +642,8 @@ SDValue EraVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   EVT MemVT = Load->getMemoryVT();
   EVT OpVT = Op->getValueType(0);
   unsigned MemVTSize = MemVT.getSizeInBits();
+  if (MemVTSize == 256)
+    return {};
   assert(MemVT.isScalarInteger() && "Unexpected type to load");
   assert(MemVTSize < 256 && "Only handle smaller sized load");
 
@@ -800,25 +801,6 @@ SDValue EraVMTargetLowering::LowerSELECT_CC(SDValue Op,
   std::array Ops = {TrueV, FalseV, TargetCC, Cmp};
 
   return DAG.getNode(EraVMISD::SELECT_CC, DL, VTs, Ops);
-}
-
-SDValue EraVMTargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
-                                                     SelectionDAG &DAG) const {
-  unsigned IntNo =
-      cast<ConstantSDNode>(
-          Op.getOperand(Op.getOperand(0).getValueType() == MVT::Other))
-          ->getZExtValue();
-  if (IntNo == Intrinsic::eravm_ptr_add) {
-    LLVM_DEBUG(dbgs() << "LowerINTRINSIC_WO_CHAIN matched: ptr.add\n");
-    return DAG.getNode(EraVMISD::PTR_ADD, SDLoc(Op), Op.getValueType(),
-                       Op.getOperand(1), Op.getOperand(2));
-  } else if (IntNo == Intrinsic::eravm_ptr_pack) {
-    LLVM_DEBUG(dbgs() << "LowerINTRINSIC_WO_CHAIN matched: ptr.pack\n");
-    return DAG.getNode(EraVMISD::PTR_PACK, SDLoc(Op), Op.getValueType(),
-                       Op.getOperand(1), Op.getOperand(2));
-  } else {
-    return SDValue();
-  }
 }
 
 SDValue EraVMTargetLowering::LowerINTRINSIC_VOID(SDValue Op,

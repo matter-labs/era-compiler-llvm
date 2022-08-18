@@ -83,8 +83,7 @@ FunctionPass *createEraVMBytesToCellsPass();
 FunctionPass *createEraVMCodegenPreparePass();
 FunctionPass *createEraVMExpandPseudoPass();
 FunctionPass *createEraVMExpandSelectPass();
-FunctionPass *createEraVMMoveCallResultSpillPass();
-FunctionPass *createEraVMAdjustStackInCallseqPass();
+FunctionPass *createEraVMPropagateGenericPointersPass();
 FunctionPass *createEraVMStackAddressConstantPropagationPass();
 
 void initializeEraVMLowerIntrinsicsPass(PassRegistry &);
@@ -95,9 +94,9 @@ void initializeEraVMLinkRuntimePass(PassRegistry &);
 void initializeEraVMCodegenPreparePass(PassRegistry &);
 void initializeEraVMExpandPseudoPass(PassRegistry &);
 void initializeEraVMExpandSelectPass(PassRegistry &);
-void initializeEraVMMoveCallResultSpillPass(PassRegistry &);
-void initializeEraVMDAGToDAGISelLegacyPass(PassRegistry &);
+void initializeEraVMPropagateGenericPointersPass(PassRegistry &);
 void initializeEraVMStackAddressConstantPropagationPass(PassRegistry &);
+void initializeEraVMDAGToDAGISelLegacyPass(PassRegistry &);
 
 } // namespace llvm
 

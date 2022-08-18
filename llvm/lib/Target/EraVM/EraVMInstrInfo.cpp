@@ -200,6 +200,23 @@ unsigned EraVMInstrInfo::insertBranch(
   return Count;
 }
 
+static bool isDefinedAsFatPtr(const MachineInstr &MI, const EraVMInstrInfo &TII,
+                              const MachineRegisterInfo &MRI) {
+  // FIXME: For some reason loops of COPY definition sometimes appear. It needs
+  // further investigation.
+  static DenseSet<const MachineInstr *> Visited;
+  if (!Visited.count(&MI) && MI.getOpcode() == TargetOpcode::COPY) {
+    Visited.insert(&MI);
+    Register MOReg = MI.getOperand(1).getReg();
+    if (const MachineInstr *MI = MRI.getUniqueVRegDef(MOReg))
+      return isDefinedAsFatPtr(*MI, TII, MRI);
+    return false;
+  }
+  if (TII.getName(MI.getOpcode()).starts_with("PTR_"))
+    return true;
+  return false;
+}
+
 void EraVMInstrInfo::storeRegToStackSlot(
     MachineBasicBlock &MBB, MachineBasicBlock::iterator MI, Register SrcReg,
     bool isKill, int FrameIndex, const TargetRegisterClass *RC,
@@ -208,6 +225,8 @@ void EraVMInstrInfo::storeRegToStackSlot(
   if (MI != MBB.end())
     DL = MI->getDebugLoc();
   MachineFunction &MF = *MBB.getParent();
+  auto *TII = MF.getSubtarget<EraVMSubtarget>().getInstrInfo();
+  MachineRegisterInfo &MRI = MF.getRegInfo();
   MachineFrameInfo &MFI = MF.getFrameInfo();
 
   MachineMemOperand *MMO = MF.getMachineMemOperand(
@@ -215,17 +234,32 @@ void EraVMInstrInfo::storeRegToStackSlot(
       MachineMemOperand::MOStore, MFI.getObjectSize(FrameIndex),
       MFI.getObjectAlign(FrameIndex));
 
-  if (RC == &EraVM::GR256RegClass)
-    BuildMI(MBB, MI, DL, get(EraVM::ADDrrs_s))
-        .addReg(SrcReg, getKillRegState(isKill))
-        .addReg(EraVM::R0)
-        .addFrameIndex(FrameIndex)
-        .addImm(32)
-        .addImm(0)
-        .addImm(0)
-        .addMemOperand(MMO);
-  else
+  if (RC == &EraVM::GR256RegClass) {
+    MachineInstr *Def = MRI.getUniqueVRegDef(SrcReg);
+    if (Def && isDefinedAsFatPtr(*Def, *TII, MRI)) {
+      BuildMI(MBB, MI, DL, get(EraVM::PTR_ADDrrs_s))
+          .addReg(SrcReg, getKillRegState(isKill))
+          .addReg(EraVM::R0)
+          .addFrameIndex(FrameIndex)
+          .addImm(32)
+          .addImm(0)
+          .addImm(0)
+          .addMemOperand(MMO);
+      FatPointerSlots.insert(FrameIndex);
+    } else {
+      BuildMI(MBB, MI, DL, get(EraVM::ADDrrs_s))
+          .addReg(SrcReg, getKillRegState(isKill))
+          .addReg(EraVM::R0)
+          .addFrameIndex(FrameIndex)
+          .addImm(32)
+          .addImm(0)
+          .addImm(0)
+          .addMemOperand(MMO);
+      FatPointerSlots.erase(FrameIndex);
+    }
+  } else {
     llvm_unreachable("Cannot store this register to stack slot!");
+  }
 }
 
 void EraVMInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
@@ -245,17 +279,28 @@ void EraVMInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
       MachineMemOperand::MOLoad, MFI.getObjectSize(FrameIndex),
       MFI.getObjectAlign(FrameIndex));
 
-  if (RC == &EraVM::GR256RegClass)
-    BuildMI(MBB, MI, DL, get(EraVM::ADDsrr_s))
-        .addReg(DestReg, getDefRegState(true))
-        .addFrameIndex(FrameIndex)
-        .addImm(32)
-        .addImm(0)
-        .addImm(0)
-        .addImm(0)
-        .addMemOperand(MMO);
-  else
+  if (RC == &EraVM::GR256RegClass) {
+    if (!FatPointerSlots.count(FrameIndex))
+      BuildMI(MBB, MI, DL, get(EraVM::ADDsrr_s))
+          .addReg(DestReg, getDefRegState(true))
+          .addFrameIndex(FrameIndex)
+          .addImm(32)
+          .addImm(0)
+          .addImm(0)
+          .addImm(0)
+          .addMemOperand(MMO);
+    else
+      BuildMI(MBB, MI, DL, get(EraVM::PTR_ADDsrr_s))
+          .addReg(DestReg, getDefRegState(true))
+          .addFrameIndex(FrameIndex)
+          .addImm(32)
+          .addImm(0)
+          .addImm(0)
+          .addImm(0)
+          .addMemOperand(MMO);
+  } else {
     llvm_unreachable("Cannot store this register to stack slot!");
+  }
 }
 
 void EraVMInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
@@ -296,6 +341,17 @@ bool EraVMInstrInfo::isMul(const MachineInstr &MI) const {
 bool EraVMInstrInfo::isDiv(const MachineInstr &MI) const {
   StringRef Mnemonic = getName(MI.getOpcode());
   return Mnemonic.starts_with("DIV");
+}
+
+bool EraVMInstrInfo::isPtr(const MachineInstr &MI) const {
+  StringRef Mnemonic = getName(MI.getOpcode());
+  return Mnemonic.starts_with("PTR");
+}
+
+bool EraVMInstrInfo::isNull(const MachineInstr &MI) const {
+  return isAdd(MI) && hasRROperandAddressingMode(MI) && MI.getNumDefs() == 1u &&
+         MI.getOperand(1).getReg() == EraVM::R0 &&
+         MI.getOperand(2).getReg() == EraVM::R0;
 }
 
 bool EraVMInstrInfo::isSilent(const MachineInstr &MI) const {
