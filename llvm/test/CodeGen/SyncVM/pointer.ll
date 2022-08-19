@@ -28,5 +28,13 @@ define i8 addrspace(3) * @ptr_pack(i8 addrspace(3) * %ptr) #0 {
   ret i8 addrspace(3) * %ptr2;
 }
 
-declare i8 addrspace(3) * @llvm.syncvm.ptr.pack(i8 addrspace(3) *, i256)
+; Test for pointer arithmetic emitting
+define i8 addrspace(3) * @ptr_sub(i8 addrspace(3) * %ptr) #0 {
+  ; CHECK: ptr.sub.s 1234, r1, r1
+  %ptr2 = call i8 addrspace(3) *(i8 addrspace(3) *, i256) @llvm.syncvm.ptr.sub(i8 addrspace(3) * %ptr, i256 1234);
+  ret i8 addrspace(3) * %ptr2;
+}
 
+
+declare i8 addrspace(3) * @llvm.syncvm.ptr.pack(i8 addrspace(3) *, i256)
+declare i8 addrspace(3) * @llvm.syncvm.ptr.sub(i8 addrspace(3) *, i256)

@@ -26,8 +26,7 @@ def SDT_SyncVMSelectCC     : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
 def SDT_SyncVMCmp          : SDTypeProfile<0, 2, []>;
 def SDT_SyncVMThrow        : SDTypeProfile<0, 1, [SDTCisVT<0, i256>]>;
 
-def SDT_SyncVMPtrPack      : SDTypeProfile<1, 2, [SDTCisPtrTy<0>, SDTCisVT<1, i256>]>;
-def SDT_SyncVMPtrAdd       : SDTypeProfile<1, 2, [SDTCisPtrTy<0>, SDTCisVT<1, i256>]>;
+def SDT_SyncVMPtrArithmetics : SDTypeProfile<1, 2, [SDTCisPtrTy<0>, SDTCisVT<1, i256>]>;
 
 //===----------------------------------------------------------------------===//
 // SyncVM Specific Node Definitions.
@@ -69,8 +68,9 @@ def SyncVMreturn : SDNode<"SyncVMISD::RETURN", SDT_SyncVMThrow,
 def SyncVMrevert : SDNode<"SyncVMISD::REVERT", SDT_SyncVMThrow,
                          [SDNPHasChain, SDNPInGlue]>;
 
-def SyncVMPtrPack : SDNode<"SyncVMISD::PTR_PACK", SDT_SyncVMPtrPack, []>;
-def SyncVMPtrAdd : SDNode<"SyncVMISD::PTR_ADD", SDT_SyncVMPtrAdd, []>;
+def SyncVMPtrPack : SDNode<"SyncVMISD::PTR_PACK", SDT_SyncVMPtrArithmetics, []>;
+def SyncVMPtrAdd  : SDNode<"SyncVMISD::PTR_ADD", SDT_SyncVMPtrArithmetics, []>;
+def SyncVMPtrSub  : SDNode<"SyncVMISD::PTR_SUB", SDT_SyncVMPtrArithmetics, []>;
 
 //===----------------------------------------------------------------------===//
 // SyncVM Operand Definitions.
@@ -940,6 +940,7 @@ def PTR_PACK : Pseudo<(outs GR256:$out),
                       "ptr.pack\t $ptr, $rs2",
                       [(set GR256:$out, (SyncVMPtrPack GR256:$ptr, GR256:$rs2))]>;
 defm PTR_ADD  : ArithINonCommutable<9, "ptr.add", SyncVMPtrAdd>;
+defm PTR_SUB  : ArithINonCommutable<10, "ptr.sub", SyncVMPtrSub>;
 
 // MOV patterns
 def : Pat<(store_stack (load_code memaddr:$src), stackaddr:$dst),  (ADDcrs_p memaddr:$src, R0, stackaddr:$dst)>;

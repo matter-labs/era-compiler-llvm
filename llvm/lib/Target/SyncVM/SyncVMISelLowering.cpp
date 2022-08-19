@@ -878,6 +878,10 @@ SDValue SyncVMTargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
     LLVM_DEBUG(dbgs() << "LowerINTRINSIC_WO_CHAIN matched: ptr.add\n");
     return DAG.getNode(SyncVMISD::PTR_ADD, SDLoc(Op), Op.getValueType(),
                        Op.getOperand(1), Op.getOperand(2));
+  } else if (IntNo == Intrinsic::syncvm_ptr_sub) {
+    LLVM_DEBUG(dbgs() << "LowerINTRINSIC_WO_CHAIN matched: ptr.add\n");
+    return DAG.getNode(SyncVMISD::PTR_SUB, SDLoc(Op), Op.getValueType(),
+                       Op.getOperand(1), Op.getOperand(2));
   } else if (IntNo == Intrinsic::syncvm_ptr_pack) {
     LLVM_DEBUG(dbgs() << "LowerINTRINSIC_WO_CHAIN matched: ptr.pack\n");
     return DAG.getNode(SyncVMISD::PTR_PACK, SDLoc(Op), Op.getValueType(),
