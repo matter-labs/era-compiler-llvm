@@ -66,26 +66,12 @@ void llvm::createMemCpyLoopKnownSize(Instruction *InsertBefore, Value *SrcAddr,
     PHINode *LoopIndex = LoopBuilder.CreatePHI(TypeOfCopyLen, 2, "loop-index");
     LoopIndex->addIncoming(ConstantInt::get(TypeOfCopyLen, 0U), PreLoopBB);
     // Loop Body
-    Value *Offset =
-        LoopBuilder.CreateMul(LoopBuilder.getInt(APInt(256, 32, false)), LoopIndex);
-    Value *SrcGEP =
-        LoopBuilder.CreatePtrToInt(SrcAddr, LoopBuilder.getInt256Ty());
-    SrcGEP = LoopBuilder.CreateAdd(SrcGEP, Offset);
-    SrcGEP = LoopBuilder.CreateIntToPtr(SrcGEP, SrcAddr->getType());
-#if 0
     Value *SrcGEP =
         LoopBuilder.CreateInBoundsGEP(LoopOpType, SrcAddr, LoopIndex);
-#endif
     Value *Load = LoopBuilder.CreateAlignedLoad(LoopOpType, SrcGEP,
                                                 PartSrcAlign, SrcIsVolatile);
-#if 0
     Value *DstGEP =
         LoopBuilder.CreateInBoundsGEP(LoopOpType, DstAddr, LoopIndex);
-#endif
-    Value *DstGEP =
-        LoopBuilder.CreatePtrToInt(DstAddr, LoopBuilder.getInt256Ty());
-    DstGEP = LoopBuilder.CreateAdd(DstGEP, Offset);
-    DstGEP = LoopBuilder.CreateIntToPtr(DstGEP, DstAddr->getType());
     LoopBuilder.CreateAlignedStore(Load, DstGEP, PartDstAlign, DstIsVolatile);
 
     Value *NewIndex =
@@ -242,24 +228,10 @@ void llvm::createMemCpyLoopUnknownSize(Instruction *InsertBefore,
   PHINode *LoopIndex = LoopBuilder.CreatePHI(CopyLenType, 2, "loop-index");
   LoopIndex->addIncoming(ConstantInt::get(CopyLenType, 0U), PreLoopBB);
 
-#if 0
   Value *SrcGEP = LoopBuilder.CreateInBoundsGEP(LoopOpType, SrcAddr, LoopIndex);
-#endif
-  Value *Offset =
-      LoopBuilder.CreateMul(LoopBuilder.getInt(APInt(256, 32, false)), LoopIndex);
-  Value *SrcGEP =
-      LoopBuilder.CreatePtrToInt(SrcAddr, LoopBuilder.getInt256Ty());
-  SrcGEP = LoopBuilder.CreateAdd(SrcGEP, Offset);
-  SrcGEP = LoopBuilder.CreateIntToPtr(SrcGEP, SrcAddr->getType());
   Value *Load = LoopBuilder.CreateAlignedLoad(LoopOpType, SrcGEP, PartSrcAlign,
                                               SrcIsVolatile);
-#if 0
   Value *DstGEP = LoopBuilder.CreateInBoundsGEP(LoopOpType, DstAddr, LoopIndex);
-#endif
-  Value *DstGEP =
-      LoopBuilder.CreatePtrToInt(DstAddr, LoopBuilder.getInt256Ty());
-  DstGEP = LoopBuilder.CreateAdd(DstGEP, Offset);
-  DstGEP = LoopBuilder.CreateIntToPtr(DstGEP, DstAddr->getType());
   LoopBuilder.CreateAlignedStore(Load, DstGEP, PartDstAlign, DstIsVolatile);
 
   Value *NewIndex =
