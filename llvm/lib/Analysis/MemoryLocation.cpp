@@ -14,6 +14,9 @@
 #include "llvm/IR/IntrinsicsARM.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
+// EraVM local begin
+#include "llvm/TargetParser/Triple.h"
+// EraVM local end
 #include <optional>
 using namespace llvm;
 
@@ -166,6 +169,33 @@ MemoryLocation MemoryLocation::getForArgument(const CallBase *Call,
   // We may be able to produce an exact size for known intrinsics.
   if (const IntrinsicInst *II = dyn_cast<IntrinsicInst>(Call)) {
     const DataLayout &DL = II->getDataLayout();
+
+    // EraVM local begin
+    // check if the length is within i64 range. If not, return imprecise
+    // location
+    auto T = Call->getModule()->getTargetTriple();
+    if (Triple(T).isEraVM()) {
+      switch (II->getIntrinsicID()) {
+      case Intrinsic::memcpy:
+      case Intrinsic::memcpy_inline:
+      case Intrinsic::memmove:
+      case Intrinsic::memset:
+        if (ConstantInt *LenCI = dyn_cast<ConstantInt>(II->getArgOperand(2)))
+          if (LenCI->getValue().getActiveBits() > 64) {
+            return MemoryLocation::getBeforeOrAfter(Call->getArgOperand(ArgIdx),
+                                                    AATags);
+          }
+        break;
+      case Intrinsic::lifetime_start:
+      case Intrinsic::lifetime_end:
+        // it is okay to have lifetime intrinsic
+        break;
+      default:
+        llvm_unreachable("Unexpected intrinsic for EraVM target");
+        break;
+      }
+    }
+    // EraVM local end
 
     switch (II->getIntrinsicID()) {
     default:
