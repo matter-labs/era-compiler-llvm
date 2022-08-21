@@ -66,26 +66,12 @@ void llvm::createMemCpyLoopKnownSize(Instruction *InsertBefore, Value *SrcAddr,
     PHINode *LoopIndex = LoopBuilder.CreatePHI(TypeOfCopyLen, 2, "loop-index");
     LoopIndex->addIncoming(ConstantInt::get(TypeOfCopyLen, 0U), PreLoopBB);
     // Loop Body
-    Value *Offset =
-        LoopBuilder.CreateMul(LoopBuilder.getInt(APInt(256, 32, false)), LoopIndex);
-    Value *SrcGEP =
-        LoopBuilder.CreatePtrToInt(SrcAddr, LoopBuilder.getInt256Ty());
-    SrcGEP = LoopBuilder.CreateAdd(SrcGEP, Offset);
-    SrcGEP = LoopBuilder.CreateIntToPtr(SrcGEP, SrcAddr->getType());
-#if 0
     Value *SrcGEP =
         LoopBuilder.CreateInBoundsGEP(LoopOpType, SrcAddr, LoopIndex);
-#endif
     Value *Load = LoopBuilder.CreateAlignedLoad(LoopOpType, SrcGEP,
                                                 PartSrcAlign, SrcIsVolatile);
-#if 0
     Value *DstGEP =
         LoopBuilder.CreateInBoundsGEP(LoopOpType, DstAddr, LoopIndex);
-#endif
-    Value *DstGEP =
-        LoopBuilder.CreatePtrToInt(DstAddr, LoopBuilder.getInt256Ty());
-    DstGEP = LoopBuilder.CreateAdd(DstGEP, Offset);
-    DstGEP = LoopBuilder.CreateIntToPtr(DstGEP, DstAddr->getType());
     LoopBuilder.CreateAlignedStore(Load, DstGEP, PartDstAlign, DstIsVolatile);
 
     Value *NewIndex =
@@ -104,35 +90,6 @@ void llvm::createMemCpyLoopKnownSize(Instruction *InsertBefore, Value *SrcAddr,
     IRBuilder<> RBuilder(PostLoopBB ? PostLoopBB->getFirstNonPHI()
                                     : InsertBefore);
 
-    Value *SrcAddrInt =
-        RBuilder.CreatePtrToInt(SrcAddr, RBuilder.getInt256Ty());
-    SrcAddrInt = RBuilder.CreateNUWAdd(
-        SrcAddrInt, RBuilder.getInt(APInt(256, BytesCopied, false)));
-    SrcAddr = RBuilder.CreateIntToPtr(SrcAddrInt, SrcAddr->getType());
-    Value *Load = RBuilder.CreateAlignedLoad(LoopOpType, SrcAddr, SrcAlign,
-                                             SrcIsVolatile);
-    Value *RuntimeResidual =
-        RBuilder.getInt(APInt(256, 8 * RemainingBytes, false));
-    Value *RuntimeResidualI =
-        RBuilder.getInt(APInt(256, 256 - 8 * RemainingBytes, false));
-    Value *LoadMask = RBuilder.CreateShl(RBuilder.getInt(APInt(256, -1, true)),
-                                         RuntimeResidualI);
-    Load = RBuilder.CreateAnd(Load, LoadMask);
-
-    Value *DstAddrInt =
-        RBuilder.CreatePtrToInt(DstAddr, RBuilder.getInt256Ty());
-    DstAddrInt = RBuilder.CreateNUWAdd(
-        DstAddrInt, RBuilder.getInt(APInt(256, BytesCopied, false)));
-    DstAddr = RBuilder.CreateIntToPtr(DstAddrInt, DstAddr->getType());
-    Value *Origin = RBuilder.CreateAlignedLoad(LoopOpType, DstAddr, DstAlign,
-                                               DstIsVolatile);
-    Value *OriginMask = RBuilder.CreateLShr(
-        RBuilder.getInt(APInt(256, -1, true)), RuntimeResidual);
-    Origin = RBuilder.CreateAnd(Origin, OriginMask);
-    Load = RBuilder.CreateOr(Load, Origin);
-    RBuilder.CreateAlignedStore(Load, DstAddr, DstAlign, DstIsVolatile);
-    BytesCopied += RemainingBytes;
-#if 0
     SmallVector<Type *, 5> RemainingOps;
     TTI.getMemcpyLoopResidualLoweringType(RemainingOps, Ctx, RemainingBytes,
                                           SrcAS, DstAS, SrcAlign.value(),
@@ -149,42 +106,25 @@ void llvm::createMemCpyLoopKnownSize(Instruction *InsertBefore, Value *SrcAddr,
              "Division should have no Remainder!");
       // Cast source to operand type and load
       PointerType *SrcPtrType = PointerType::get(OpTy, SrcAS);
-      Value *SrcAddrInt =
-          RBuilder.CreatePtrToInt(SrcAddr, RBuilder.getInt256Ty());
-      SrcAddrInt = RBuilder.CreateNUWAdd(
-          SrcAddrInt, RBuilder.getInt(APInt(256, BytesCopied, false)));
-      SrcAddr = RBuilder.CreateIntToPtr(SrcAddrInt, SrcAddr->getType());
       Value *CastedSrc = SrcAddr->getType() == SrcPtrType
                              ? SrcAddr
                              : RBuilder.CreateBitCast(SrcAddr, SrcPtrType);
-      // TODO: The pass needs to be extracted as a SyncVM target-specific one.
-#if 0
       Value *SrcGEP = RBuilder.CreateInBoundsGEP(
           OpTy, CastedSrc, ConstantInt::get(TypeOfCopyLen, GepIndex));
-#endif
-      Value *Load = RBuilder.CreateAlignedLoad(OpTy, /*SrcGEP*/ CastedSrc,
-                                               PartSrcAlign, SrcIsVolatile);
-      Load->dump();
+      Value *Load =
+          RBuilder.CreateAlignedLoad(OpTy, SrcGEP, PartSrcAlign, SrcIsVolatile);
 
       // Cast destination to operand type and store.
       PointerType *DstPtrType = PointerType::get(OpTy, DstAS);
-      Value *DstAddrInt = RBuilder.CreatePtrToInt(DstAddr, RBuilder.getInt256Ty());
-      DstAddrInt = RBuilder.CreateNUWAdd(
-          DstAddrInt, RBuilder.getInt(APInt(256, BytesCopied, false)));
-      DstAddr = RBuilder.CreateIntToPtr(DstAddrInt, DstAddr->getType());
       Value *CastedDst = DstAddr->getType() == DstPtrType
                              ? DstAddr
                              : RBuilder.CreateBitCast(DstAddr, DstPtrType);
-#if 0
       Value *DstGEP = RBuilder.CreateInBoundsGEP(
           OpTy, CastedDst, ConstantInt::get(TypeOfCopyLen, GepIndex));
-#endif
-      RBuilder.CreateAlignedStore(Load, /*DstGEP*/ CastedDst, PartDstAlign,
-                                  DstIsVolatile);
+      RBuilder.CreateAlignedStore(Load, DstGEP, PartDstAlign, DstIsVolatile);
 
       BytesCopied += OperandSize;
     }
-#endif
   }
   assert(BytesCopied == CopyLen->getZExtValue() &&
          "Bytes copied should match size in the call!");
@@ -242,24 +182,10 @@ void llvm::createMemCpyLoopUnknownSize(Instruction *InsertBefore,
   PHINode *LoopIndex = LoopBuilder.CreatePHI(CopyLenType, 2, "loop-index");
   LoopIndex->addIncoming(ConstantInt::get(CopyLenType, 0U), PreLoopBB);
 
-#if 0
   Value *SrcGEP = LoopBuilder.CreateInBoundsGEP(LoopOpType, SrcAddr, LoopIndex);
-#endif
-  Value *Offset =
-      LoopBuilder.CreateMul(LoopBuilder.getInt(APInt(256, 32, false)), LoopIndex);
-  Value *SrcGEP =
-      LoopBuilder.CreatePtrToInt(SrcAddr, LoopBuilder.getInt256Ty());
-  SrcGEP = LoopBuilder.CreateAdd(SrcGEP, Offset);
-  SrcGEP = LoopBuilder.CreateIntToPtr(SrcGEP, SrcAddr->getType());
   Value *Load = LoopBuilder.CreateAlignedLoad(LoopOpType, SrcGEP, PartSrcAlign,
                                               SrcIsVolatile);
-#if 0
   Value *DstGEP = LoopBuilder.CreateInBoundsGEP(LoopOpType, DstAddr, LoopIndex);
-#endif
-  Value *DstGEP =
-      LoopBuilder.CreatePtrToInt(DstAddr, LoopBuilder.getInt256Ty());
-  DstGEP = LoopBuilder.CreateAdd(DstGEP, Offset);
-  DstGEP = LoopBuilder.CreateIntToPtr(DstGEP, DstAddr->getType());
   LoopBuilder.CreateAlignedStore(Load, DstGEP, PartDstAlign, DstIsVolatile);
 
   Value *NewIndex =
@@ -267,9 +193,9 @@ void llvm::createMemCpyLoopUnknownSize(Instruction *InsertBefore,
   LoopIndex->addIncoming(NewIndex, LoopBB);
 
   if (!LoopOpIsInt8) {
-    // Add in the
-    Value *RuntimeResidual = PLBuilder.CreateURem(CopyLen, CILoopOpSize);
-    Value *RuntimeBytesCopied = PLBuilder.CreateSub(CopyLen, RuntimeResidual);
+   // Add in the
+   Value *RuntimeResidual = PLBuilder.CreateURem(CopyLen, CILoopOpSize);
+   Value *RuntimeBytesCopied = PLBuilder.CreateSub(CopyLen, RuntimeResidual);
 
     // Loop body for the residual copy.
     BasicBlock *ResLoopBB = BasicBlock::Create(Ctx, "loop-memcpy-residual",
@@ -300,35 +226,6 @@ void llvm::createMemCpyLoopUnknownSize(Instruction *InsertBefore,
 
     // Copy the residual with single byte load/store loop.
     IRBuilder<> ResBuilder(ResLoopBB);
-
-    Value *SrcAddrInt =
-        ResBuilder.CreatePtrToInt(SrcAddr, ResBuilder.getInt256Ty());
-    SrcAddrInt = ResBuilder.CreateNUWAdd(SrcAddrInt, RuntimeBytesCopied);
-    SrcAddr = ResBuilder.CreateIntToPtr(SrcAddrInt, SrcAddr->getType());
-    Load = ResBuilder.CreateAlignedLoad(LoopOpType, SrcAddr, PartSrcAlign,
-                                        SrcIsVolatile);
-    RuntimeResidual = ResBuilder.CreateMul(
-        ResBuilder.getInt(APInt(256, 8, false)), RuntimeResidual);
-    Value *RuntimeResidualI = ResBuilder.CreateSub(
-        ResBuilder.getInt(APInt(256, 256, false)), RuntimeResidual);
-    Value *LoadMask = ResBuilder.CreateShl(
-        ResBuilder.getInt(APInt(256, -1, true)), RuntimeResidualI);
-    Load = ResBuilder.CreateAnd(Load, LoadMask);
-
-    Value *DstAddrInt =
-        ResBuilder.CreatePtrToInt(DstAddr, ResBuilder.getInt256Ty());
-    DstAddrInt = ResBuilder.CreateNUWAdd(DstAddrInt, RuntimeBytesCopied);
-    DstAddr = ResBuilder.CreateIntToPtr(DstAddrInt, DstAddr->getType());
-    Value *Origin = ResBuilder.CreateAlignedLoad(LoopOpType, DstAddr,
-                                                 PartDstAlign, DstIsVolatile);
-    Value *OriginMask = ResBuilder.CreateLShr(
-        ResBuilder.getInt(APInt(256, -1, true)), RuntimeResidual);
-    Origin = ResBuilder.CreateAnd(Origin, OriginMask);
-    Load = ResBuilder.CreateOr(Load, Origin);
-    ResBuilder.CreateAlignedStore(Load, DstAddr, PartDstAlign, DstIsVolatile);
-    ResBuilder.CreateBr(PostLoopBB);
-
-#if 0
     PHINode *ResidualIndex =
         ResBuilder.CreatePHI(CopyLenType, 2, "residual-loop-index");
     ResidualIndex->addIncoming(Zero, ResHeaderBB);
@@ -354,7 +251,6 @@ void llvm::createMemCpyLoopUnknownSize(Instruction *InsertBefore,
     ResBuilder.CreateCondBr(
         ResBuilder.CreateICmpULT(ResNewIndex, RuntimeResidual), ResLoopBB,
         PostLoopBB);
-#endif
   } else {
     // In this case the loop operand type was a byte, and there is no need for a
     // residual loop to copy the remaining memory after the main loop.
