@@ -34,8 +34,7 @@ public:
   bool convertPointerArithmetics(Function &F);
 
   StringRef getPassName() const override {
-    return "1. Revert unsupported instcombine changes.\n"
-           "2. Convert pointer arithmetic to pointer offset.\n";
+    return "Final transformations before code generation";
   }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
@@ -176,16 +175,17 @@ bool SyncVMCodegenPrepare::convertPointerArithmetics(Function &F) {
         if (GEP->getPointerAddressSpace() != SyncVMAS::AS_GENERIC)
           continue;
 
-        auto *Base = GEP->getOperand(0);
+        Value *Base = GEP->getOperand(0);
 
         IRBuilder<> Builder(&I);
         Value *Offset = computeOffset(GEP, Builder);
-        llvm::SmallVector<Value *> Args = {Base, Offset};
+        Base = Builder.CreateBitCast(Base, Builder.getInt8PtrTy(3));
 
         auto *PtrAdd =
             Intrinsic::getDeclaration(F.getParent(), Intrinsic::syncvm_ptr_add);
 
-        auto *NewI = Builder.CreateCall(PtrAdd, llvm::makeArrayRef(Args));
+        Value *NewI = Builder.CreateCall(PtrAdd, {Base, Offset});
+        NewI = Builder.CreateBitCast(NewI, GEP->getType());
 
         LLVM_DEBUG(dbgs() << "    Converted GEP:"; GEP->dump();
                    dbgs() << "    to: "; NewI->dump());
