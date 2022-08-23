@@ -630,7 +630,7 @@ SDValue SyncVMTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
     return SDValue(DAG.getMachineNode(SyncVM::PTR_ADDrrs_p, DL, MVT::Other,
                                       {Store->getValue(),
                                        DAG.getRegister(SyncVM::R0, MVT::i256),
-                                       BasePtr, Zero, Zero}),
+                                       Zero, BasePtr, Zero}),
                    0);
   }
 
@@ -707,7 +707,7 @@ SDValue SyncVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
                                          DAG.getRegister(SyncVM::R0, MVT::i256)}),
                      0);
     return SDValue(DAG.getMachineNode(SyncVM::PTR_ADDsrr_p, DL, RetTys,
-                                      {BasePtr, Zero, Zero,
+                                      {Zero, BasePtr, Zero,
                                        DAG.getRegister(SyncVM::R0, MVT::i256)}),
                    0);
   }
