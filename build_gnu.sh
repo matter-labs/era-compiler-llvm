@@ -16,7 +16,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     cmake \
         -S 'llvm' \
         -B "${TARGET_BUILD}" \
-        -G 'Unix Makefiles' \
+        -G 'Ninja' \
         -DPACKAGE_VENDOR='Matter Labs' \
         -DCLANG_VENDOR='Matter Labs' \
         -DCLANG_REPOSITORY_STRING='origin' \
@@ -102,4 +102,8 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         -DPython3_EXECUTABLE="$(which python3)"
 fi
 
-ninja -C "${TARGET_BUILD}" install
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    sudo ninja -C "${TARGET_BUILD}" install
+else
+    ninja -C "${TARGET_BUILD}" install
+fi
