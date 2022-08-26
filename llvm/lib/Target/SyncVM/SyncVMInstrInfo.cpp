@@ -198,6 +198,18 @@ unsigned SyncVMInstrInfo::insertBranch(
   return Count;
 }
 
+static bool isFatPtrValue(const MachineInstr& MI, const SyncVMInstrInfo& TII, const MachineRegisterInfo &MRI) {
+  if (MI.getOpcode() == TargetOpcode::COPY) {
+    Register MOReg = MI.getOperand(1).getReg();
+    if (const MachineInstr *MI = MRI.getUniqueVRegDef(MOReg))
+      return isFatPtrValue(*MI, TII, MRI);
+    return false;
+  }
+  if (TII.getName(MI.getOpcode()).startswith("PTR_"))
+    return true;
+  return false;
+}
+
 void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
                                           MachineBasicBlock::iterator MI,
                                           Register SrcReg, bool isKill,
@@ -208,6 +220,8 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
   if (MI != MBB.end())
     DL = MI->getDebugLoc();
   MachineFunction &MF = *MBB.getParent();
+  auto *TII = MF.getSubtarget<SyncVMSubtarget>().getInstrInfo();
+  MachineRegisterInfo &MRI = MF.getRegInfo();
   MachineFrameInfo &MFI = MF.getFrameInfo();
 
   MachineMemOperand *MMO = MF.getMachineMemOperand(
@@ -215,17 +229,28 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
       MachineMemOperand::MOStore, MFI.getObjectSize(FrameIdx),
       MFI.getObjectAlign(FrameIdx));
 
-  if (RC == &SyncVM::GR256RegClass)
-    BuildMI(MBB, MI, DL, get(SyncVM::ADDrrs_s))
-        .addReg(SrcReg, getKillRegState(isKill))
-        .addReg(SyncVM::R0)
-        .addFrameIndex(FrameIdx)
-        .addImm(32)
-        .addImm(0)
-        .addImm(0)
-        .addMemOperand(MMO);
-  else
+  if (RC == &SyncVM::GR256RegClass) {
+    if (MI != MBB.end() && !isFatPtrValue(*MI, *TII, MRI))
+      BuildMI(MBB, MI, DL, get(SyncVM::ADDrrs_s))
+          .addReg(SrcReg, getKillRegState(isKill))
+          .addReg(SyncVM::R0)
+          .addFrameIndex(FrameIdx)
+          .addImm(32)
+          .addImm(0)
+          .addImm(0)
+          .addMemOperand(MMO);
+    else
+      BuildMI(MBB, MI, DL, get(SyncVM::PTR_ADDrrs_s))
+          .addReg(SrcReg, getKillRegState(isKill))
+          .addReg(SyncVM::R0)
+          .addFrameIndex(FrameIdx)
+          .addImm(32)
+          .addImm(0)
+          .addImm(0)
+          .addMemOperand(MMO);
+  } else {
     llvm_unreachable("Cannot store this register to stack slot!");
+  }
 }
 
 void SyncVMInstrInfo::loadRegFromStackSlot(
@@ -236,6 +261,8 @@ void SyncVMInstrInfo::loadRegFromStackSlot(
   if (MI != MBB.end())
     DL = MI->getDebugLoc();
   MachineFunction &MF = *MBB.getParent();
+  auto *TII = MF.getSubtarget<SyncVMSubtarget>().getInstrInfo();
+  MachineRegisterInfo &MRI = MF.getRegInfo();
   MachineFrameInfo &MFI = MF.getFrameInfo();
 
   MachineMemOperand *MMO = MF.getMachineMemOperand(
@@ -243,27 +270,47 @@ void SyncVMInstrInfo::loadRegFromStackSlot(
       MachineMemOperand::MOLoad, MFI.getObjectSize(FrameIdx),
       MFI.getObjectAlign(FrameIdx));
 
-  if (RC == &SyncVM::GR256RegClass)
-    BuildMI(MBB, MI, DL, get(SyncVM::ADDsrr_s))
-        .addReg(DestReg, getDefRegState(true))
-        .addFrameIndex(FrameIdx)
-        .addImm(32)
-        .addImm(0)
-        .addImm(0)
-        .addImm(0)
-        .addMemOperand(MMO);
-  else
+  if (RC == &SyncVM::GR256RegClass) {
+    if (!isFatPtrValue(*MI, *TII, MRI))
+      BuildMI(MBB, MI, DL, get(SyncVM::ADDsrr_s))
+          .addReg(DestReg, getDefRegState(true))
+          .addFrameIndex(FrameIdx)
+          .addImm(32)
+          .addImm(0)
+          .addImm(0)
+          .addImm(0)
+          .addMemOperand(MMO);
+    else
+      BuildMI(MBB, MI, DL, get(SyncVM::PTR_ADDsrr_s))
+          .addReg(DestReg, getDefRegState(true))
+          .addFrameIndex(FrameIdx)
+          .addImm(32)
+          .addImm(0)
+          .addImm(0)
+          .addImm(0)
+          .addMemOperand(MMO);
+  } else {
     llvm_unreachable("Cannot store this register to stack slot!");
+  }
 }
 
 void SyncVMInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                   MachineBasicBlock::iterator I,
                                   const DebugLoc &DL, MCRegister DestReg,
                                   MCRegister SrcReg, bool KillSrc) const {
-  BuildMI(MBB, I, DL, get(SyncVM::ADDrrr_s), DestReg)
-      .addReg(SrcReg, getKillRegState(KillSrc))
-      .addReg(SyncVM::R0)
-      .addImm(0);
+  MachineFunction &MF = *MBB.getParent();
+  auto *TII = MF.getSubtarget<SyncVMSubtarget>().getInstrInfo();
+  MachineRegisterInfo &MRI = MF.getRegInfo();
+  if (!isFatPtrValue(*I, *TII, MRI))
+    BuildMI(MBB, I, DL, get(SyncVM::ADDrrr_s), DestReg)
+        .addReg(SrcReg, getKillRegState(KillSrc))
+        .addReg(SyncVM::R0)
+        .addImm(0);
+  else
+    BuildMI(MBB, I, DL, get(SyncVM::PTR_ADDrrr_s), DestReg)
+        .addReg(SrcReg, getKillRegState(KillSrc))
+        .addReg(SyncVM::R0)
+        .addImm(0);
 }
 
 /// GetInstSize - Return the number of bytes of code the specified

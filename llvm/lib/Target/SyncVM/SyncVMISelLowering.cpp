@@ -627,6 +627,12 @@ SDValue SyncVMTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
                                          DAG.getRegister(SyncVM::R0, MVT::i256),
                                          Zero, Zero, BasePtr}),
                      0);
+    if (auto *FI = dyn_cast<FrameIndexSDNode>(BasePtr))
+      return SDValue(DAG.getMachineNode(SyncVM::PTR_ADDrrs_p, DL, MVT::Other,
+                                        {Store->getValue(),
+                                         DAG.getRegister(SyncVM::R0, MVT::i256),
+                                         DAG.getTargetFrameIndex(FI->getIndex(), getPointerTy(DAG.getDataLayout())), Zero, Zero}),
+                     0);
     return SDValue(DAG.getMachineNode(SyncVM::PTR_ADDrrs_p, DL, MVT::Other,
                                       {Store->getValue(),
                                        DAG.getRegister(SyncVM::R0, MVT::i256),
@@ -698,12 +704,22 @@ SDValue SyncVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
       cast<PointerType>(MemVal->getType())
               ->getElementType()
               ->getPointerAddressSpace() == SyncVMAS::AS_GENERIC) {
-    auto Zero = DAG.getTargetConstant(0, DL, MVT::i256);
+    auto Zero = DAG.getTargetConstant(0, DL, MVT::i64);
     SDVTList RetTys = DAG.getVTList(MVT::i256, MVT::Other);
     // TODO: Something like SelectAddress is here, need to be reconsidered.
+    /*
+    MemVal->dump();
+    Op.dump();
+    BasePtr.dump();
+    */
     if (isa<GlobalAddressSDNode>(BasePtr))
       return SDValue(DAG.getMachineNode(SyncVM::PTR_ADDsrr_p, DL, RetTys,
                                         {Zero, Zero, BasePtr,
+                                         DAG.getRegister(SyncVM::R0, MVT::i256)}),
+                     0);
+    if (auto *FI = dyn_cast<FrameIndexSDNode>(BasePtr))
+      return SDValue(DAG.getMachineNode(SyncVM::PTR_ADDsrr_p, DL, RetTys,
+                                        {DAG.getTargetFrameIndex(FI->getIndex(), getPointerTy(DAG.getDataLayout())), Zero, Zero,
                                          DAG.getRegister(SyncVM::R0, MVT::i256)}),
                      0);
     return SDValue(DAG.getMachineNode(SyncVM::PTR_ADDsrr_p, DL, RetTys,
