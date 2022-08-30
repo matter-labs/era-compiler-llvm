@@ -196,6 +196,9 @@ def memaddr      : ComplexPattern<iPTR, 2, "SelectMemAddr", [], []>;
 def stackaddr    : ComplexPattern<iPTR, 3, "SelectStackAddr", [], []>;
 def adjstackaddr : ComplexPattern<iPTR, 3, "SelectAdjStackAddr", [], []>;
 
+def load_from_mem   : ComplexPattern<i256, 2, "SelectLoadFromMem", [], []>;
+def load_from_stack : ComplexPattern<i256, 3, "SelectLoadFromStack", [], []>;
+
 //===----------------------------------------------------------------------===//
 // Pattern Fragments Definitions.
 //===----------------------------------------------------------------------===//
@@ -952,7 +955,7 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
   let isPseudo = 1, isCodeGenOnly = 1 in
   def srrr_p : Pseudo<(outs GR256:$rd0, GR256:$rd1), (ins stackop:$src0, GR256:$rs1),
                       !strconcat(asmstring, "\t$src0, $rs1, $rd0, $rd1"),
-                      [(set GR256:$rd0, GR256:$rd1, (node (load_stack stackaddr:$src0), GR256:$rs1))]> {
+                      [(set GR256:$rd0, GR256:$rd1, (node load_from_stack:$src0, GR256:$rs1))]> {
                         let DestAddrMode = ToRegReg.Value;
                         let OperandAddrMode = OpndSR.Value;
                       }
