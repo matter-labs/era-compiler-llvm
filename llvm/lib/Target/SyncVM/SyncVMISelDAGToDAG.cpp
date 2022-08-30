@@ -99,6 +99,29 @@ private:
                              SDValue &Disp, bool IsAdjusted);
   SyncVMISelAddressMode MergeAddr(const SyncVMISelAddressMode &LHS,
                                   const SyncVMISelAddressMode &RHS, SDLoc DL);
+
+  bool SelectLoadFromStack(SDValue N, SDValue &Base1, SDValue &Base2,
+                           SDValue &Disp) {
+    if (!N.hasOneUse() || !isa<LoadSDNode>(N)) {
+      return false;
+    }
+    LoadSDNode *Load = cast<LoadSDNode>(N);
+    if (Load->getAddressSpace() != SyncVMAS::AS_STACK || !Load->isUnindexed()) {
+      return false;
+    }
+    return SelectStackAddr(Load->getBasePtr(), Base1, Base2, Disp);
+  }
+
+  bool SelectLoadFromMem(SDValue N, SDValue &Base, SDValue &Disp) {
+    if (!N.hasOneUse() || !isa<LoadSDNode>(N)) {
+      return false;
+    }
+    LoadSDNode *Load = cast<LoadSDNode>(N);
+    if (Load->getAddressSpace() != SyncVMAS::AS_CODE || !Load->isUnindexed()) {
+      return false;
+    }
+    return SelectMemAddr(Load->getBasePtr(), Base, Disp);
+  }
 };
 } // end anonymous namespace
 
