@@ -198,16 +198,34 @@ unsigned SyncVMInstrInfo::insertBranch(
   return Count;
 }
 
-static bool isFatPtrValue(const MachineInstr& MI, const SyncVMInstrInfo& TII, const MachineRegisterInfo &MRI) {
+static bool isDefinedAsFatPtr(const MachineInstr& MI, const SyncVMInstrInfo& TII, const MachineRegisterInfo &MRI) {
   if (MI.getOpcode() == TargetOpcode::COPY) {
     Register MOReg = MI.getOperand(1).getReg();
     if (const MachineInstr *MI = MRI.getUniqueVRegDef(MOReg))
-      return isFatPtrValue(*MI, TII, MRI);
+      return isDefinedAsFatPtr(*MI, TII, MRI);
     return false;
   }
   if (TII.getName(MI.getOpcode()).startswith("PTR_"))
     return true;
   return false;
+}
+
+static bool isUsedAsFatPtr(Register Reg, const SyncVMInstrInfo& TII, const MachineRegisterInfo &MRI) {
+  bool Result = false;
+  static std::vector<Register> Visited {};
+  Visited.push_back(Reg);
+  for (auto I = MRI.use_nodbg_begin(Reg), E = MRI.use_nodbg_end(); I != E; ++I) {
+    MachineInstr *User = I->getParent();
+    if (I->getParent()->getOpcode() == TargetOpcode::COPY) {
+      Register CopyDef = User->getOperand(0).getReg();
+      if (find(Visited, CopyDef) != Visited.end())
+        Result |= isUsedAsFatPtr(User->getOperand(0).getReg(), TII, MRI);
+    }
+    if (TII.getName(User->getOpcode()).startswith("PTR_") && User->getOperand(User->getNumDefs()).isReg()
+        && User->getOperand(User->getNumDefs()).getReg() == Reg)
+      return true;
+  }
+  return Result;
 }
 
 void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
@@ -230,8 +248,9 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
       MFI.getObjectAlign(FrameIdx));
 
   if (RC == &SyncVM::GR256RegClass) {
-    if (MI != MBB.end() && !isFatPtrValue(*MI, *TII, MRI))
-      BuildMI(MBB, MI, DL, get(SyncVM::ADDrrs_s))
+    MachineInstr *Def = MRI.getUniqueVRegDef(SrcReg);
+    if (Def && isDefinedAsFatPtr(*Def, *TII, MRI))
+      BuildMI(MBB, MI, DL, get(SyncVM::PTR_ADDrrs_s))
           .addReg(SrcReg, getKillRegState(isKill))
           .addReg(SyncVM::R0)
           .addFrameIndex(FrameIdx)
@@ -240,7 +259,7 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
           .addImm(0)
           .addMemOperand(MMO);
     else
-      BuildMI(MBB, MI, DL, get(SyncVM::PTR_ADDrrs_s))
+      BuildMI(MBB, MI, DL, get(SyncVM::ADDrrs_s))
           .addReg(SrcReg, getKillRegState(isKill))
           .addReg(SyncVM::R0)
           .addFrameIndex(FrameIdx)
@@ -271,7 +290,7 @@ void SyncVMInstrInfo::loadRegFromStackSlot(
       MFI.getObjectAlign(FrameIdx));
 
   if (RC == &SyncVM::GR256RegClass) {
-    if (!isFatPtrValue(*MI, *TII, MRI))
+    if (!isUsedAsFatPtr(DestReg, *TII, MRI))
       BuildMI(MBB, MI, DL, get(SyncVM::ADDsrr_s))
           .addReg(DestReg, getDefRegState(true))
           .addFrameIndex(FrameIdx)
@@ -301,13 +320,14 @@ void SyncVMInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
   MachineFunction &MF = *MBB.getParent();
   auto *TII = MF.getSubtarget<SyncVMSubtarget>().getInstrInfo();
   MachineRegisterInfo &MRI = MF.getRegInfo();
-  if (!isFatPtrValue(*I, *TII, MRI))
-    BuildMI(MBB, I, DL, get(SyncVM::ADDrrr_s), DestReg)
+  MachineInstr *Def = MRI.getUniqueVRegDef(SrcReg);
+  if (Def && isDefinedAsFatPtr(*Def, *TII, MRI))
+    BuildMI(MBB, I, DL, get(SyncVM::PTR_ADDrrr_s), DestReg)
         .addReg(SrcReg, getKillRegState(KillSrc))
         .addReg(SyncVM::R0)
         .addImm(0);
   else
-    BuildMI(MBB, I, DL, get(SyncVM::PTR_ADDrrr_s), DestReg)
+    BuildMI(MBB, I, DL, get(SyncVM::ADDrrr_s), DestReg)
         .addReg(SrcReg, getKillRegState(KillSrc))
         .addReg(SyncVM::R0)
         .addImm(0);
