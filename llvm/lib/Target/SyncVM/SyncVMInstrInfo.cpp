@@ -211,21 +211,13 @@ static bool isDefinedAsFatPtr(const MachineInstr& MI, const SyncVMInstrInfo& TII
 }
 
 static bool isUsedAsFatPtr(Register Reg, const SyncVMInstrInfo& TII, const MachineRegisterInfo &MRI) {
-  bool Result = false;
-  static std::vector<Register> Visited {};
-  Visited.push_back(Reg);
   for (auto I = MRI.use_nodbg_begin(Reg), E = MRI.use_nodbg_end(); I != E; ++I) {
     MachineInstr *User = I->getParent();
-    if (I->getParent()->getOpcode() == TargetOpcode::COPY) {
-      Register CopyDef = User->getOperand(0).getReg();
-      if (find(Visited, CopyDef) != Visited.end())
-        Result |= isUsedAsFatPtr(User->getOperand(0).getReg(), TII, MRI);
-    }
     if (TII.getName(User->getOpcode()).startswith("PTR_") && User->getOperand(User->getNumDefs()).isReg()
         && User->getOperand(User->getNumDefs()).getReg() == Reg)
       return true;
   }
-  return Result;
+  return false;
 }
 
 void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
