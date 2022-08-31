@@ -85,6 +85,8 @@ public:
   bool isDiv(const MachineInstr &MI) const;
   bool isSilent(const MachineInstr &MI) const;
   GenericInstruction genericInstructionFor(const MachineInstr &MI) const;
+private:
+  mutable DenseSet<int> FatPointerSlots;
 };
 
 }

@@ -210,16 +210,6 @@ static bool isDefinedAsFatPtr(const MachineInstr& MI, const SyncVMInstrInfo& TII
   return false;
 }
 
-static bool isUsedAsFatPtr(Register Reg, const SyncVMInstrInfo& TII, const MachineRegisterInfo &MRI) {
-  for (auto I = MRI.use_nodbg_begin(Reg), E = MRI.use_nodbg_end(); I != E; ++I) {
-    MachineInstr *User = I->getParent();
-    if (TII.getName(User->getOpcode()).startswith("PTR_") && User->getOperand(User->getNumDefs()).isReg()
-        && User->getOperand(User->getNumDefs()).getReg() == Reg)
-      return true;
-  }
-  return false;
-}
-
 void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
                                           MachineBasicBlock::iterator MI,
                                           Register SrcReg, bool isKill,
@@ -241,7 +231,7 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
 
   if (RC == &SyncVM::GR256RegClass) {
     MachineInstr *Def = MRI.getUniqueVRegDef(SrcReg);
-    if (Def && isDefinedAsFatPtr(*Def, *TII, MRI))
+    if (Def && isDefinedAsFatPtr(*Def, *TII, MRI)) {
       BuildMI(MBB, MI, DL, get(SyncVM::PTR_ADDrrs_s))
           .addReg(SrcReg, getKillRegState(isKill))
           .addReg(SyncVM::R0)
@@ -250,7 +240,8 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
           .addImm(0)
           .addImm(0)
           .addMemOperand(MMO);
-    else
+      FatPointerSlots.insert(FrameIdx);
+    } else {
       BuildMI(MBB, MI, DL, get(SyncVM::ADDrrs_s))
           .addReg(SrcReg, getKillRegState(isKill))
           .addReg(SyncVM::R0)
@@ -259,6 +250,8 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
           .addImm(0)
           .addImm(0)
           .addMemOperand(MMO);
+      FatPointerSlots.erase(FrameIdx);
+    }
   } else {
     llvm_unreachable("Cannot store this register to stack slot!");
   }
@@ -272,8 +265,6 @@ void SyncVMInstrInfo::loadRegFromStackSlot(
   if (MI != MBB.end())
     DL = MI->getDebugLoc();
   MachineFunction &MF = *MBB.getParent();
-  auto *TII = MF.getSubtarget<SyncVMSubtarget>().getInstrInfo();
-  MachineRegisterInfo &MRI = MF.getRegInfo();
   MachineFrameInfo &MFI = MF.getFrameInfo();
 
   MachineMemOperand *MMO = MF.getMachineMemOperand(
@@ -282,7 +273,7 @@ void SyncVMInstrInfo::loadRegFromStackSlot(
       MFI.getObjectAlign(FrameIdx));
 
   if (RC == &SyncVM::GR256RegClass) {
-    if (!isUsedAsFatPtr(DestReg, *TII, MRI))
+    if (!FatPointerSlots.count(FrameIdx))
       BuildMI(MBB, MI, DL, get(SyncVM::ADDsrr_s))
           .addReg(DestReg, getDefRegState(true))
           .addFrameIndex(FrameIdx)
