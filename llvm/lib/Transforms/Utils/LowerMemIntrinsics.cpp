@@ -236,7 +236,10 @@ void llvm::createMemCpyLoopUnknownSize(Instruction *InsertBefore,
   PHINode *LoopIndex = LoopBuilder.CreatePHI(CopyLenType, 2, "loop-index");
   LoopIndex->addIncoming(ConstantInt::get(CopyLenType, 0U), PreLoopBB);
 
-  Value *SrcGEP = LoopBuilder.CreateInBoundsGEP(LoopOpType, SrcAddr, LoopIndex);
+  Value *OffsetValue = LoopBuilder.CreateShl(
+      LoopIndex, ConstantInt::get(CopyLenType, Log2_32(LoopOpSize)));
+
+  Value *SrcGEP = LoopBuilder.CreateInBoundsGEP(LoopOpType, SrcAddr, OffsetValue);
   Value *Load = LoopBuilder.CreateAlignedLoad(LoopOpType, SrcGEP, PartSrcAlign,
                                               SrcIsVolatile);
   Value *DstGEP = LoopBuilder.CreateInBoundsGEP(LoopOpType, DstAddr, LoopIndex);
