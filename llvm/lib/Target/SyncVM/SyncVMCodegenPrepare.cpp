@@ -146,10 +146,11 @@ bool SyncVMCodegenPrepare::convertPointerArithmetics(Function &F) {
   const DataLayout *DL = &F.getParent()->getDataLayout();
   auto computeOffset = [&](GetElementPtrInst *GEP, IRBuilder<> &Builder) {
     Value *TmpOffset = Builder.getIntN(256, 0);
+    //unsigned Size = cast<PointerType>(GEP->getType())->getElementType()->getScalarSizeInBits() / 8;
     APInt Offset(256, 0);
     if (GEP->accumulateConstantOffset(*DL, Offset)) {
       // the 32 here is the word length for zkEVM
-      TmpOffset = Builder.getIntN(256, Offset.getZExtValue() / 32);
+      TmpOffset = Builder.getIntN(256, Offset.getZExtValue());
     } else {
       for (gep_type_iterator GTI = gep_type_begin(GEP), E = gep_type_end(GEP);
            GTI != E; ++GTI) {
@@ -157,7 +158,7 @@ bool SyncVMCodegenPrepare::convertPointerArithmetics(Function &F) {
         uint64_t S = DL->getTypeAllocSize(GTI.getIndexedType());
 
         // rely on folding down the pipeline to fold it.
-        Value *Rhs = Builder.CreateMul(Builder.getIntN(256, S / 32), Op);
+        Value *Rhs = Builder.CreateMul(Builder.getIntN(256, S), Op);
         TmpOffset = Builder.CreateAdd(TmpOffset, Rhs);
       }
     }
