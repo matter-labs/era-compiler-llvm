@@ -66,11 +66,8 @@ void llvm::createMemCpyLoopKnownSize(Instruction *InsertBefore, Value *SrcAddr,
     PHINode *LoopIndex = LoopBuilder.CreatePHI(TypeOfCopyLen, 2, "loop-index");
     LoopIndex->addIncoming(ConstantInt::get(TypeOfCopyLen, 0U), PreLoopBB);
     // Loop Body
-    Value *OffsetValue = LoopBuilder.CreateShl(LoopIndex,
-                                             ConstantInt::get(TypeOfCopyLen,
-                                                              Log2_32(LoopOpSize)));
     Value *SrcGEP =
-        LoopBuilder.CreateInBoundsGEP(LoopOpType, SrcAddr, OffsetValue);
+        LoopBuilder.CreateInBoundsGEP(LoopOpType, SrcAddr, LoopIndex);
     Value *Load = LoopBuilder.CreateAlignedLoad(LoopOpType, SrcGEP,
                                                 PartSrcAlign, SrcIsVolatile);
     Value *DstGEP =
