@@ -691,25 +691,51 @@ SDValue SyncVMTargetLowering::LowerSRA(SDValue Op, SelectionDAG &DAG) const {
   return DAG.getSelectCC(DL, RHS, Zero, LHS, Shifted, ISD::SETEQ);
 }
 
+/// Lower sdiv to udiv and bitwise operations
+/// sign.x, val.x = udiv! x, 0x80..00
+/// val.x = sub.neq 0x80..00, val.x; abs of 2's complement
+/// sign.y, val.y = udiv! y, 0x80..00
+/// val.y = sub.neq 0x80..00, val.y; abs of 2's complement
+/// sign = xor sign.x, sign.y
+/// sign = shl sign, 255
+/// val = udiv! val.x, val.y
+/// val = sign ? sign - val : sign
+/// val = mov.eq 0
 SDValue SyncVMTargetLowering::LowerSDIV(SDValue Op, SelectionDAG &DAG) const {
   auto DL = SDLoc(Op);
-  auto LHS = Op.getOperand(0);
-  auto RHS = Op.getOperand(1);
-  auto Mask = DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
-  auto Mask2 = DAG.getConstant(APInt(256, -1, true).lshr(1), DL, MVT::i256);
-  auto SignLHS = DAG.getNode(ISD::AND, DL, MVT::i256, LHS, Mask);
-  auto SignRHS = DAG.getNode(ISD::AND, DL, MVT::i256, RHS, Mask);
-  LHS = DAG.getNode(ISD::AND, DL, MVT::i256, LHS, Mask2);
-  RHS = DAG.getNode(ISD::AND, DL, MVT::i256, RHS, Mask2);
-  auto LHS2Compl = DAG.getNode(ISD::SUB, DL, MVT::i256, Mask, LHS);
-  LHS = DAG.getSelectCC(DL, SignLHS, Mask, LHS2Compl, LHS, ISD::SETEQ);
-  auto RHS2Compl = DAG.getNode(ISD::SUB, DL, MVT::i256, Mask, RHS);
-  RHS = DAG.getSelectCC(DL, SignRHS, Mask, RHS2Compl, RHS, ISD::SETEQ);
-  auto Sign = DAG.getNode(ISD::XOR, DL, MVT::i256, SignLHS, SignRHS);
-  auto Value = DAG.getNode(ISD::UDIV, DL, MVT::i256, LHS, RHS);
-  auto Value2Compl = DAG.getNode(ISD::SUB, DL, MVT::i256, Mask, Value);
-  Value2Compl = DAG.getNode(ISD::OR, DL, MVT::i256, Value2Compl, Mask);
-  return DAG.getSelectCC(DL, Sign, Mask, Value2Compl, Value, ISD::SETEQ);
+  SDValue LHS = Op.getOperand(0);
+  SDValue RHS = Op.getOperand(1);
+  SDValue Zero = DAG.getConstant(APInt(256, 0, false), DL, MVT::i256);
+  SDValue Const255 = DAG.getConstant(APInt(256, 255, false), DL, MVT::i256);
+  SDValue MaskSign =
+      DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
+
+  SDValue UDivDividend =
+      DAG.getNode(ISD::UDIVREM, DL, {MVT::i256, MVT::i256}, {LHS, MaskSign});
+  SDValue DividendVal = DAG.getSelectCC(
+      DL, UDivDividend, Zero,
+      DAG.getNode(ISD::SUB, DL, MVT::i256, MaskSign, UDivDividend.getValue(1)),
+      UDivDividend.getValue(1), ISD::SETNE);
+  SDValue UDivDivisor =
+      DAG.getNode(ISD::UDIVREM, DL, {MVT::i256, MVT::i256}, {RHS, MaskSign});
+  SDValue DivisorVal = DAG.getSelectCC(
+      DL, UDivDivisor, Zero,
+      DAG.getNode(ISD::SUB, DL, MVT::i256, MaskSign, UDivDivisor.getValue(1)),
+      UDivDivisor.getValue(1), ISD::SETNE);
+  SDValue Sign = DAG.getNode(
+      ISD::SHL, DL, MVT::i256,
+      DAG.getNode(ISD::XOR, DL, MVT::i256, UDivDividend, UDivDivisor),
+      Const255);
+  SDValue Result =
+      DAG.getNode(ISD::UDIV, DL, MVT::i256, DividendVal, DivisorVal);
+  return DAG.getSelectCC(
+      DL, Result, Zero, Result,
+      DAG.getSelectCC(
+          DL, Sign, Zero, Result,
+          DAG.getNode(ISD::OR, DL, MVT::i256,
+                      DAG.getNode(ISD::SUB, DL, MVT::i256, Sign, Result), Sign),
+          ISD::SETEQ),
+      ISD::SETEQ);
 }
 
 SDValue SyncVMTargetLowering::LowerSREM(SDValue Op, SelectionDAG &DAG) const {
