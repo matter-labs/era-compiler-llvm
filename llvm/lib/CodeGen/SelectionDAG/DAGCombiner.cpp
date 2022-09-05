@@ -10724,13 +10724,9 @@ SDValue DAGCombiner::visitSRL(SDNode *N) {
     if (SDValue NewSRL = visitShiftByConstant(N))
       return NewSRL;
 
-  // EraVM local begin
-  if (!DAG.getTarget().getTargetTriple().isEraVM()) {
   // Attempt to convert a srl of a load into a narrower zero-extending load.
   if (SDValue NarrowLoad = reduceLoadWidth(N))
     return NarrowLoad;
-  }
-  // EraVM local end
 
   // Here is a common situation. We want to optimize:
   //
@@ -13296,6 +13292,11 @@ static SDValue tryToFoldExtOfLoad(SelectionDAG &DAG, DAGCombiner &Combiner,
   if (!ISD::isNON_EXTLoad(N0.getNode()) || !ISD::isUNINDEXEDLoad(N0.getNode()))
     return {};
 
+  // EraVM local begin
+  if (DAG.getTarget().getTargetTriple().isEraVM())
+    return {};
+  // EraVM local end
+
   // If this is zext nneg, see if it would make sense to treat it as a sext.
   if (NonNegZExt) {
     assert(ExtLoadType == ISD::ZEXTLOAD && ExtOpc == ISD::ZERO_EXTEND &&
@@ -13896,8 +13897,6 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
 
   // fold (zext (truncate x)) -> (and x, mask)
   if (N0.getOpcode() == ISD::TRUNCATE) {
-  // EraVM local begin
-  if (!DAG.getTarget().getTargetTriple().isEraVM()) {
     // fold (zext (truncate (load x))) -> (zext (smaller load x))
     // fold (zext (truncate (srl (load x), c))) -> (zext (smaller load (x+c/n)))
     if (SDValue NarrowLoad = reduceLoadWidth(N0.getNode())) {
@@ -13909,8 +13908,6 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
       }
       return SDValue(N, 0); // Return N so it doesn't get rechecked!
     }
-    }
-    // EraVM local end
 
     EVT SrcVT = N0.getOperand(0).getValueType();
     EVT MinVT = N0.getValueType();
@@ -13981,8 +13978,6 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
                        X, DAG.getConstant(Mask, DL, VT));
   }
 
-  // EraVM local begin
-  if (!DAG.getTarget().getTargetTriple().isEraVM()) {
   // Try to simplify (zext (load x)).
   if (SDValue foldedExt = tryToFoldExtOfLoad(
           DAG, *this, TLI, VT, LegalOperations, N, N0, ISD::ZEXTLOAD,
@@ -14059,8 +14054,6 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
       }
     }
   }
-  }
-  // EraVM local end
 
   // fold (zext (and/or/xor (shl/shr (load x), cst), cst)) ->
   //      (and/or/xor (shl/shr (zextload x), (zext cst)), (zext cst))
@@ -15110,8 +15103,6 @@ SDValue DAGCombiner::visitTRUNCATE(SDNode *N) {
     }
   }
 
-// EraVM local begin
-  if (!DAG.getTarget().getTargetTriple().isEraVM()) {
   // fold (truncate (load x)) -> (smaller load x)
   // fold (truncate (srl (load x), c)) -> (smaller load (x+c/evtbits))
   if (!LegalTypes || TLI.isTypeDesirableForOp(N0.getOpcode(), VT)) {
@@ -15131,8 +15122,6 @@ SDValue DAGCombiner::visitTRUNCATE(SDNode *N) {
       }
     }
   }
-  }
-// EraVM local end
 
   // fold (trunc (concat ... x ...)) -> (concat ..., (trunc x), ...)),
   // where ... are all 'undef'.

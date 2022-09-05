@@ -170,6 +170,13 @@ public:
     return EraVM::R1;
   }
 
+  // MVT::i256 is the only legal type, so DAG combiner should never reduce
+  // loads.
+  bool shouldReduceLoadWidth(SDNode *Load, ISD::LoadExtType ExtTy,
+                             EVT NewVT) const override {
+    return false;
+  }
+
 private:
   SDValue LowerFormalArguments(SDValue Chain, CallingConv::ID CallConv,
                                bool isVarArg,
