@@ -8935,9 +8935,11 @@ SDValue DAGCombiner::visitSRL(SDNode *N) {
 
   // SyncVM local begin
   if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
+  // SyncVM local end
   // Attempt to convert a srl of a load into a narrower zero-extending load.
   if (SDValue NarrowLoad = ReduceLoadWidth(N))
     return NarrowLoad;
+  // SyncVM local begin
   }
   // SyncVM local end
 
@@ -12084,8 +12086,14 @@ SDValue DAGCombiner::visitSIGN_EXTEND_INREG(SDNode *N) {
 
   // fold (sext_in_reg (load x)) -> (smaller sextload x)
   // fold (sext_in_reg (srl (load x), c)) -> (smaller sextload (x+c/evtbits))
+  // SyncVM local begin
+  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
+  // SyncVM local end
   if (SDValue NarrowLoad = ReduceLoadWidth(N))
     return NarrowLoad;
+  // SyncVM local begin
+  }
+  // SyncVM local end
 
   // fold (sext_in_reg (srl X, 24), i8) -> (sra X, 24)
   // fold (sext_in_reg (srl X, 23), i8) -> (sra X, 23) iff possible.
