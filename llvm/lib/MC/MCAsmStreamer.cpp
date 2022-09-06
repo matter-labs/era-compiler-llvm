@@ -1206,7 +1206,7 @@ void MCAsmStreamer::emitIntValueInHexWithPadding(uint64_t Value,
 
 void MCAsmStreamer::emitValueImpl(const MCExpr *Value, unsigned Size,
                                   SMLoc Loc) {
-  assert(Size <= 8 && "Invalid size");
+  //assert(Size <= 8 && "Invalid size");
   assert(getCurrentSectionOnly() &&
          "Cannot emit contents before setting section!");
   const char *Directive = nullptr;
@@ -1220,7 +1220,7 @@ void MCAsmStreamer::emitValueImpl(const MCExpr *Value, unsigned Size,
 
   // SyncVM local begin
   if (Size == 32)
-    Directive = ".cell";
+    Directive = ".cell\t";
   // SyncVM local end
 
   if (!Directive) {

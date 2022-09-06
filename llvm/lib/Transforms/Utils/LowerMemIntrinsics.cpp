@@ -66,26 +66,12 @@ void llvm::createMemCpyLoopKnownSize(Instruction *InsertBefore, Value *SrcAddr,
     PHINode *LoopIndex = LoopBuilder.CreatePHI(TypeOfCopyLen, 2, "loop-index");
     LoopIndex->addIncoming(ConstantInt::get(TypeOfCopyLen, 0U), PreLoopBB);
     // Loop Body
-    Value *Offset =
-        LoopBuilder.CreateMul(LoopBuilder.getInt(APInt(256, 32, false)), LoopIndex);
-    Value *SrcGEP =
-        LoopBuilder.CreatePtrToInt(SrcAddr, LoopBuilder.getInt256Ty());
-    SrcGEP = LoopBuilder.CreateAdd(SrcGEP, Offset);
-    SrcGEP = LoopBuilder.CreateIntToPtr(SrcGEP, SrcAddr->getType());
-#if 0
     Value *SrcGEP =
         LoopBuilder.CreateInBoundsGEP(LoopOpType, SrcAddr, LoopIndex);
-#endif
     Value *Load = LoopBuilder.CreateAlignedLoad(LoopOpType, SrcGEP,
                                                 PartSrcAlign, SrcIsVolatile);
-#if 0
     Value *DstGEP =
         LoopBuilder.CreateInBoundsGEP(LoopOpType, DstAddr, LoopIndex);
-#endif
-    Value *DstGEP =
-        LoopBuilder.CreatePtrToInt(DstAddr, LoopBuilder.getInt256Ty());
-    DstGEP = LoopBuilder.CreateAdd(DstGEP, Offset);
-    DstGEP = LoopBuilder.CreateIntToPtr(DstGEP, DstAddr->getType());
     LoopBuilder.CreateAlignedStore(Load, DstGEP, PartDstAlign, DstIsVolatile);
 
     Value *NewIndex =
@@ -103,12 +89,14 @@ void llvm::createMemCpyLoopKnownSize(Instruction *InsertBefore, Value *SrcAddr,
   if (RemainingBytes) {
     IRBuilder<> RBuilder(PostLoopBB ? PostLoopBB->getFirstNonPHI()
                                     : InsertBefore);
+    uint64_t GepIndex = BytesCopied / 32;
+    SrcAddr = RBuilder.CreateInBoundsGEP(LoopOpType, SrcAddr, RBuilder.getInt(APInt(256, GepIndex, true)));
 
-    Value *SrcAddrInt =
+/*    Value *SrcAddrInt =
         RBuilder.CreatePtrToInt(SrcAddr, RBuilder.getInt256Ty());
     SrcAddrInt = RBuilder.CreateNUWAdd(
         SrcAddrInt, RBuilder.getInt(APInt(256, BytesCopied, false)));
-    SrcAddr = RBuilder.CreateIntToPtr(SrcAddrInt, SrcAddr->getType());
+    SrcAddr = RBuilder.CreateIntToPtr(SrcAddrInt, SrcAddr->getType()); */
     Value *Load = RBuilder.CreateAlignedLoad(LoopOpType, SrcAddr, SrcAlign,
                                              SrcIsVolatile);
     Value *RuntimeResidual =
@@ -119,11 +107,14 @@ void llvm::createMemCpyLoopKnownSize(Instruction *InsertBefore, Value *SrcAddr,
                                          RuntimeResidualI);
     Load = RBuilder.CreateAnd(Load, LoadMask);
 
-    Value *DstAddrInt =
+    DstAddr = RBuilder.CreateInBoundsGEP(LoopOpType, DstAddr, RBuilder.getInt(APInt(256, GepIndex, true)));
+/*    Value *DstAddrInt =
         RBuilder.CreatePtrToInt(DstAddr, RBuilder.getInt256Ty());
     DstAddrInt = RBuilder.CreateNUWAdd(
         DstAddrInt, RBuilder.getInt(APInt(256, BytesCopied, false)));
-    DstAddr = RBuilder.CreateIntToPtr(DstAddrInt, DstAddr->getType());
+    DstAddr = RBuilder.CreateIntToPtr(DstAddrInt, DstAddr->getType()); */
+
+
     Value *Origin = RBuilder.CreateAlignedLoad(LoopOpType, DstAddr, DstAlign,
                                                DstIsVolatile);
     Value *OriginMask = RBuilder.CreateLShr(
@@ -242,24 +233,10 @@ void llvm::createMemCpyLoopUnknownSize(Instruction *InsertBefore,
   PHINode *LoopIndex = LoopBuilder.CreatePHI(CopyLenType, 2, "loop-index");
   LoopIndex->addIncoming(ConstantInt::get(CopyLenType, 0U), PreLoopBB);
 
-#if 0
   Value *SrcGEP = LoopBuilder.CreateInBoundsGEP(LoopOpType, SrcAddr, LoopIndex);
-#endif
-  Value *Offset =
-      LoopBuilder.CreateMul(LoopBuilder.getInt(APInt(256, 32, false)), LoopIndex);
-  Value *SrcGEP =
-      LoopBuilder.CreatePtrToInt(SrcAddr, LoopBuilder.getInt256Ty());
-  SrcGEP = LoopBuilder.CreateAdd(SrcGEP, Offset);
-  SrcGEP = LoopBuilder.CreateIntToPtr(SrcGEP, SrcAddr->getType());
   Value *Load = LoopBuilder.CreateAlignedLoad(LoopOpType, SrcGEP, PartSrcAlign,
                                               SrcIsVolatile);
-#if 0
   Value *DstGEP = LoopBuilder.CreateInBoundsGEP(LoopOpType, DstAddr, LoopIndex);
-#endif
-  Value *DstGEP =
-      LoopBuilder.CreatePtrToInt(DstAddr, LoopBuilder.getInt256Ty());
-  DstGEP = LoopBuilder.CreateAdd(DstGEP, Offset);
-  DstGEP = LoopBuilder.CreateIntToPtr(DstGEP, DstAddr->getType());
   LoopBuilder.CreateAlignedStore(Load, DstGEP, PartDstAlign, DstIsVolatile);
 
   Value *NewIndex =
@@ -272,12 +249,12 @@ void llvm::createMemCpyLoopUnknownSize(Instruction *InsertBefore,
     Value *RuntimeBytesCopied = PLBuilder.CreateSub(CopyLen, RuntimeResidual);
 
     // Loop body for the residual copy.
-    BasicBlock *ResLoopBB = BasicBlock::Create(Ctx, "loop-memcpy-residual",
+    BasicBlock *ResLoopBB = BasicBlock::Create(Ctx, "memcpy-residual",
                                                PreLoopBB->getParent(),
                                                PostLoopBB);
     // Residual loop header.
     BasicBlock *ResHeaderBB = BasicBlock::Create(
-        Ctx, "loop-memcpy-residual-header", PreLoopBB->getParent(), nullptr);
+        Ctx, "memcpy-residual-header", PreLoopBB->getParent(), nullptr);
 
     // Need to update the pre-loop basic block to branch to the correct place.
     // branch to the main loop if the count is non-zero, branch to the residual
@@ -295,16 +272,24 @@ void llvm::createMemCpyLoopUnknownSize(Instruction *InsertBefore,
 
     // Determine if we need to branch to the residual loop or bypass it.
     IRBuilder<> RHBuilder(ResHeaderBB);
+    PHINode *ResidualIndex =
+        RHBuilder.CreatePHI(CopyLenType, 2, "residual-loop-index");
+    ResidualIndex->addIncoming(Zero, PreLoopBB);
+    ResidualIndex->addIncoming(NewIndex, LoopBB);
+    
     RHBuilder.CreateCondBr(RHBuilder.CreateICmpNE(RuntimeResidual, Zero),
                            ResLoopBB, PostLoopBB);
 
     // Copy the residual with single byte load/store loop.
     IRBuilder<> ResBuilder(ResLoopBB);
 
+    /*
     Value *SrcAddrInt =
         ResBuilder.CreatePtrToInt(SrcAddr, ResBuilder.getInt256Ty());
     SrcAddrInt = ResBuilder.CreateNUWAdd(SrcAddrInt, RuntimeBytesCopied);
     SrcAddr = ResBuilder.CreateIntToPtr(SrcAddrInt, SrcAddr->getType());
+    */
+    SrcAddr = ResBuilder.CreateInBoundsGEP(LoopOpType, SrcAddr, ResidualIndex);
     Load = ResBuilder.CreateAlignedLoad(LoopOpType, SrcAddr, PartSrcAlign,
                                         SrcIsVolatile);
     RuntimeResidual = ResBuilder.CreateMul(
@@ -315,10 +300,13 @@ void llvm::createMemCpyLoopUnknownSize(Instruction *InsertBefore,
         ResBuilder.getInt(APInt(256, -1, true)), RuntimeResidualI);
     Load = ResBuilder.CreateAnd(Load, LoadMask);
 
+    /*
     Value *DstAddrInt =
         ResBuilder.CreatePtrToInt(DstAddr, ResBuilder.getInt256Ty());
     DstAddrInt = ResBuilder.CreateNUWAdd(DstAddrInt, RuntimeBytesCopied);
     DstAddr = ResBuilder.CreateIntToPtr(DstAddrInt, DstAddr->getType());
+    */
+    DstAddr = ResBuilder.CreateInBoundsGEP(LoopOpType, DstAddr, ResidualIndex);
     Value *Origin = ResBuilder.CreateAlignedLoad(LoopOpType, DstAddr,
                                                  PartDstAlign, DstIsVolatile);
     Value *OriginMask = ResBuilder.CreateLShr(

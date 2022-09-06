@@ -65,7 +65,7 @@ static const char Immediate = 'i';
 static const char ImmediateR = 'x';
 static const std::vector<std::string> BinaryIO = {"MUL", "DIV"};
 static const std::vector<std::string> BinaryI = {
-    "ADD", "SUB", "AND", "OR", "XOR", "SHL", "SHR", "ROL", "ROR"};
+    "PTR_ADD", "PTR_SUB", "PTR_PACK", "ADD", "SUB", "AND", "OR", "XOR", "SHL", "SHR", "ROL", "ROR"};
 
 bool SyncVMBytesToCells::mayHaveStackOperands(const MachineInstr &MI) {
   StringRef InstName = TII->getName(MI.getOpcode());
@@ -172,7 +172,8 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
           MO0Reg.ChangeToRegister(NewVR, false);
         }
         MachineOperand &Const = MI.getOperand(Op0Start + 2);
-        Const.ChangeToImmediate(getImmOrCImm(Const) / 32);
+        if (Const.isImm() || Const.isCImm())
+          Const.ChangeToImmediate(getImmOrCImm(Const) / 32);
       };
       for (unsigned OpNo = 0; OpNo < 3; ++OpNo)
         if (isStackOp(MI, OpNo)) {

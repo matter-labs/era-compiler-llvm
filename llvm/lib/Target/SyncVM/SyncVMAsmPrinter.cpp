@@ -248,9 +248,13 @@ void SyncVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
     return;
   }
 
-  const ConstantInt *CI = cast<ConstantInt>(CV);
-  assert(CI->getBitWidth() == 256);
-  Streamer->emitGlobalConst(CI->getValue());
+  if (const ConstantInt *CI = dyn_cast<ConstantInt>(CV)) {
+    assert(CI->getBitWidth() == 256);
+    Streamer->emitGlobalConst(CI->getValue());
+    return;
+  }
+
+  AsmPrinter::emitGlobalConstant(DL, CV);
 }
 
 // Force static initialization.

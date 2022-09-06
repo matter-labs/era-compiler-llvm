@@ -27,7 +27,6 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   // TODO: optimize switch lowering
   auto &PR = *PassRegistry::getPassRegistry();
   initializeLowerSwitchLegacyPassPass(PR);
-  initializeSyncVMElideCalldataCopyPass(PR);
   initializeSyncVMExpandUMAPass(PR);
   initializeSyncVMIndirectUMAPass(PR);
   initializeSyncVMIndirectExternalCallPass(PR);
@@ -43,7 +42,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
 }
 
 static std::string computeDataLayout() {
-  return "E-p:256:256-i8:256:256:256-i256:256:256-S32-a:256:256";
+  return "E-p:256:256-i256:256:256-S32";
 }
 
 static Reloc::Model getEffectiveRelocModel(Optional<Reloc::Model> RM) {
@@ -97,7 +96,6 @@ TargetPassConfig *SyncVMTargetMachine::createPassConfig(PassManagerBase &PM) {
 }
 
 void SyncVMPassConfig::addIRPasses() {
-  addPass(createSyncVMElideCalldataCopyPass());
   addPass(createSyncVMLowerIntrinsicsPass());
   addPass(createSyncVMLinkRuntimePass());
   addPass(createSyncVMCodegenPreparePass());
