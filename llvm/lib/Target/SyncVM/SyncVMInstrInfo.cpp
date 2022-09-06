@@ -199,7 +199,10 @@ unsigned SyncVMInstrInfo::insertBranch(
 }
 
 static bool isDefinedAsFatPtr(const MachineInstr& MI, const SyncVMInstrInfo& TII, const MachineRegisterInfo &MRI) {
-  if (MI.getOpcode() == TargetOpcode::COPY) {
+  // FIXME: For some reason loops of COPY definition sometimes appear. It needs further investigation.
+  static DenseSet<const MachineInstr*> Visited;
+  if (!Visited.count(&MI) && MI.getOpcode() == TargetOpcode::COPY) {
+    Visited.insert(&MI);
     Register MOReg = MI.getOperand(1).getReg();
     if (const MachineInstr *MI = MRI.getUniqueVRegDef(MOReg))
       return isDefinedAsFatPtr(*MI, TII, MRI);
