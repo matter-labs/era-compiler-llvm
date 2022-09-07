@@ -4213,11 +4213,17 @@ SDValue DAGCombiner::useDivRem(SDNode *Node) {
   unsigned OtherOpcode = 0;
   if ((Opcode == ISD::SDIV) || (Opcode == ISD::UDIV)) {
     OtherOpcode = isSigned ? ISD::SREM : ISD::UREM;
-    if (TLI.isOperationLegalOrCustom(Opcode, VT))
+    // SyncVM local begin
+    if (!DAG.getTarget().getTargetTriple().isSyncVM() &&
+        TLI.isOperationLegalOrCustom(Opcode, VT))
+      // SyncVM local end
       return SDValue();
   } else {
     OtherOpcode = isSigned ? ISD::SDIV : ISD::UDIV;
-    if (TLI.isOperationLegalOrCustom(OtherOpcode, VT))
+    // SyncVM local begin
+    if (!DAG.getTarget().getTargetTriple().isSyncVM() &&
+        TLI.isOperationLegalOrCustom(OtherOpcode, VT))
+      // SyncVM local end
       return SDValue();
   }
 
