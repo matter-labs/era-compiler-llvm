@@ -4616,11 +4616,17 @@ SDValue DAGCombiner::useDivRem(SDNode *Node) {
   unsigned OtherOpcode = 0;
   if ((Opcode == ISD::SDIV) || (Opcode == ISD::UDIV)) {
     OtherOpcode = isSigned ? ISD::SREM : ISD::UREM;
-    if (TLI.isOperationLegalOrCustom(Opcode, VT))
+    // EraVM local begin
+    if (!DAG.getTarget().getTargetTriple().isEraVM() &&
+        TLI.isOperationLegalOrCustom(Opcode, VT))
+      // EraVM local end
       return SDValue();
   } else {
     OtherOpcode = isSigned ? ISD::SDIV : ISD::UDIV;
-    if (TLI.isOperationLegalOrCustom(OtherOpcode, VT))
+    // EraVM local begin
+    if (!DAG.getTarget().getTargetTriple().isEraVM() &&
+        TLI.isOperationLegalOrCustom(OtherOpcode, VT))
+      // EraVM local end
       return SDValue();
   }
 

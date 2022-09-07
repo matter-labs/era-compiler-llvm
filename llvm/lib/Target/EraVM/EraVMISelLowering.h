@@ -65,6 +65,7 @@ public:
   SDValue LowerSRA(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSDIV(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSREM(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerSDIVREM(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue LowerINTRINSIC_VOID(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerINTRINSIC_WO_CHAIN(SDValue Op, SelectionDAG &DAG) const;

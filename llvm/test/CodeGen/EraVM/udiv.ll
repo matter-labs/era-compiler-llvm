@@ -1,49 +1,49 @@
 ; RUN: llc < %s | FileCheck %s
 
-target datalayout = "E-p:256:256-i8:256:256:256-i256:256:256-S32-a:256:256"
+target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm"
 
 @val = addrspace(4) global i256 42
 
-; CHECK-LABEL: remrrr
-define i256 @remrrr(i256 %rs1, i256 %rs2) nounwind {
+; CHECK-LABEL: uremrrr
+define i256 @uremrrr(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK: div r1, r2, r{{[0-9]+}}, r1
   %res = urem i256 %rs1, %rs2
   ret i256 %res
 }
 
-; CHECK-LABEL: remirr
-define i256 @remirr(i256 %rs1) nounwind {
+; CHECK-LABEL: uremirr
+define i256 @uremirr(i256 %rs1) nounwind {
 ; CHECK: div 42, r1, r{{[0-9]+}}, r1
   %res = urem i256 42, %rs1
   ret i256 %res
 }
 
-; CHECK-LABEL: remxrr
-define i256 @remxrr(i256 %rs1) nounwind {
+; CHECK-LABEL: uremxrr
+define i256 @uremxrr(i256 %rs1) nounwind {
 ; CHECK: div.s 42, r1, r{{[0-9]+}}, r1
   %res = urem i256 %rs1, 42
   ret i256 %res
 }
 
-; CHECK-LABEL: remcrr
-define i256 @remcrr(i256 %rs1) nounwind {
+; CHECK-LABEL: uremcrr
+define i256 @uremcrr(i256 %rs1) nounwind {
 ; CHECK: div @val[0], r1, r{{[0-9]+}}, r1
   %val = load i256, i256 addrspace(4)* @val
   %res = urem i256 %val, %rs1
   ret i256 %res
 }
 
-; CHECK-LABEL: remyrr
-define i256 @remyrr(i256 %rs1) nounwind {
+; CHECK-LABEL: uremyrr
+define i256 @uremyrr(i256 %rs1) nounwind {
 ; CHECK: div.s @val[0], r1, r{{[0-9]+}}, r1
   %val = load i256, i256 addrspace(4)* @val
   %res = urem i256 %rs1, %val
   ret i256 %res
 }
 
-; CHECK-LABEL: remsrr
-define i256 @remsrr(i256 %rs1) nounwind {
+; CHECK-LABEL: uremsrr
+define i256 @uremsrr(i256 %rs1) nounwind {
   %valptr = alloca i256
 ; CHECK: div stack-[1], r1, r{{[0-9]+}}, r1
   %val = load i256, i256* %valptr
@@ -51,8 +51,8 @@ define i256 @remsrr(i256 %rs1) nounwind {
   ret i256 %res
 }
 
-; CHECK-LABEL: remzrr
-define i256 @remzrr(i256 %rs1) nounwind {
+; CHECK-LABEL: uremzrr
+define i256 @uremzrr(i256 %rs1) nounwind {
   %valptr = alloca i256
 ; CHECK: div.s stack-[1], r1, r{{[0-9]+}}, r1
   %val = load i256, i256* %valptr
@@ -60,8 +60,8 @@ define i256 @remzrr(i256 %rs1) nounwind {
   ret i256 %res
 }
 
-; CHECK-LABEL: remrrs
-define void @remrrs(i256 %rs1, i256 %rs2) nounwind {
+; CHECK-LABEL: uremrrs
+define void @uremrrs(i256 %rs1, i256 %rs2) nounwind {
   %valptr = alloca i256
   %res = urem i256 %rs1, %rs2
 ; CHECK: div r1, r2, r{{[0-9]+}}, r[[REG:[0-9]+]]
@@ -70,8 +70,8 @@ define void @remrrs(i256 %rs1, i256 %rs2) nounwind {
   ret void
 }
 
-; CHECK-LABEL: remirs
-define void @remirs(i256 %rs1) nounwind {
+; CHECK-LABEL: uremirs
+define void @uremirs(i256 %rs1) nounwind {
   %valptr = alloca i256
 ; CHECK: div 42, r1, r{{[0-9]+}}, r[[REG:[0-9]+]]
 ; CHECK: add r[[REG]], r0, stack-[1]
@@ -80,8 +80,8 @@ define void @remirs(i256 %rs1) nounwind {
   ret void
 }
 
-; CHECK-LABEL: remxrs
-define void @remxrs(i256 %rs1) nounwind {
+; CHECK-LABEL: uremxrs
+define void @uremxrs(i256 %rs1) nounwind {
   %valptr = alloca i256
 ; CHECK: div.s 42, r1, r{{[0-9]+}}, r[[REG:[0-9]+]]
 ; CHECK: add r[[REG]], r0, stack-[1]
@@ -90,8 +90,8 @@ define void @remxrs(i256 %rs1) nounwind {
   ret void
 }
 
-; CHECK-LABEL: remcrs
-define void @remcrs(i256 %rs1) nounwind {
+; CHECK-LABEL: uremcrs
+define void @uremcrs(i256 %rs1) nounwind {
   %valptr = alloca i256
 ; CHECK: div @val[0], r1, r{{[0-9]+}}, r[[REG:[0-9]+]]
 ; CHECK: add r[[REG]], r0, stack-[1]
@@ -101,8 +101,8 @@ define void @remcrs(i256 %rs1) nounwind {
   ret void
 }
 
-; CHECK-LABEL: remyrs
-define void @remyrs(i256 %rs1) nounwind {
+; CHECK-LABEL: uremyrs
+define void @uremyrs(i256 %rs1) nounwind {
   %valptr = alloca i256
 ; CHECK: div.s @val[0], r1, r{{[0-9]+}}, r[[REG:[0-9]+]]
 ; CHECK: add r[[REG]], r0, stack-[1]
@@ -112,8 +112,8 @@ define void @remyrs(i256 %rs1) nounwind {
   ret void
 }
 
-; CHECK-LABEL: remsrs
-define void @remsrs(i256 %rs1) nounwind {
+; CHECK-LABEL: uremsrs
+define void @uremsrs(i256 %rs1) nounwind {
   %valptr = alloca i256
   %destptr = alloca i256
 ; CHECK: div stack-[2], r1, r{{[0-9]+}}, r[[REG:[0-9]+]]
@@ -124,8 +124,8 @@ define void @remsrs(i256 %rs1) nounwind {
   ret void
 }
 
-; CHECK-LABEL: remzrs
-define void @remzrs(i256 %rs1) nounwind {
+; CHECK-LABEL: uremzrs
+define void @uremzrs(i256 %rs1) nounwind {
   %valptr = alloca i256
   %destptr = alloca i256
 ; CHECK: div.s stack-[2], r1, r{{[0-9]+}}, r[[REG:[0-9]+]]
@@ -136,45 +136,45 @@ define void @remzrs(i256 %rs1) nounwind {
   ret void
 }
 
-; CHECK-LABEL: divrrr
-define i256 @divrrr(i256 %rs1, i256 %rs2) nounwind {
+; CHECK-LABEL: udivrrr
+define i256 @udivrrr(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK: div r1, r2, r1, r{{[0-9]+}}
   %res = udiv i256 %rs1, %rs2
   ret i256 %res
 }
 
-; CHECK-LABEL: divirr
-define i256 @divirr(i256 %rs1) nounwind {
+; CHECK-LABEL: udivirr
+define i256 @udivirr(i256 %rs1) nounwind {
 ; CHECK: div 42, r1, r1, r{{[0-9]+}}
   %res = udiv i256 42, %rs1
   ret i256 %res
 }
 
-; CHECK-LABEL: divxrr
-define i256 @divxrr(i256 %rs1) nounwind {
+; CHECK-LABEL: udivxrr
+define i256 @udivxrr(i256 %rs1) nounwind {
 ; CHECK: div.s 42, r1, r1, r{{[0-9]+}}
   %res = udiv i256 %rs1, 42
   ret i256 %res
 }
 
-; CHECK-LABEL: divcrr
-define i256 @divcrr(i256 %rs1) nounwind {
+; CHECK-LABEL: udivcrr
+define i256 @udivcrr(i256 %rs1) nounwind {
 ; CHECK: div @val[0], r1, r1, r{{[0-9]+}}
   %val = load i256, i256 addrspace(4)* @val
   %res = udiv i256 %val, %rs1
   ret i256 %res
 }
 
-; CHECK-LABEL: divyrr
-define i256 @divyrr(i256 %rs1) nounwind {
+; CHECK-LABEL: udivyrr
+define i256 @udivyrr(i256 %rs1) nounwind {
 ; CHECK: div.s @val[0], r1, r1, r{{[0-9]+}}
   %val = load i256, i256 addrspace(4)* @val
   %res = udiv i256 %rs1, %val
   ret i256 %res
 }
 
-; CHECK-LABEL: divsrr
-define i256 @divsrr(i256 %rs1) nounwind {
+; CHECK-LABEL: udivsrr
+define i256 @udivsrr(i256 %rs1) nounwind {
   %valptr = alloca i256
 ; CHECK: div stack-[1], r1, r1, r{{[0-9]+}}
   %val = load i256, i256* %valptr
@@ -182,8 +182,8 @@ define i256 @divsrr(i256 %rs1) nounwind {
   ret i256 %res
 }
 
-; CHECK-LABEL: divzrr
-define i256 @divzrr(i256 %rs1) nounwind {
+; CHECK-LABEL: udivzrr
+define i256 @udivzrr(i256 %rs1) nounwind {
   %valptr = alloca i256
 ; CHECK: div.s stack-[1], r1, r1, r{{[0-9]+}}
   %val = load i256, i256* %valptr
@@ -191,8 +191,8 @@ define i256 @divzrr(i256 %rs1) nounwind {
   ret i256 %res
 }
 
-; CHECK-LABEL: divrrs
-define void @divrrs(i256 %rs1, i256 %rs2) nounwind {
+; CHECK-LABEL: udivrrs
+define void @udivrrs(i256 %rs1, i256 %rs2) nounwind {
   %valptr = alloca i256
   %res = udiv i256 %rs1, %rs2
 ; CHECK: div r1, r2, stack-[1], r{{[0-9]+}}
@@ -200,8 +200,8 @@ define void @divrrs(i256 %rs1, i256 %rs2) nounwind {
   ret void
 }
 
-; CHECK-LABEL: divirs
-define void @divirs(i256 %rs1) nounwind {
+; CHECK-LABEL: udivirs
+define void @udivirs(i256 %rs1) nounwind {
   %valptr = alloca i256
 ; CHECK: div 42, r1, stack-[1], r{{[0-9]+}}
   %res = udiv i256 42, %rs1
@@ -209,8 +209,8 @@ define void @divirs(i256 %rs1) nounwind {
   ret void
 }
 
-; CHECK-LABEL: divxrs
-define void @divxrs(i256 %rs1) nounwind {
+; CHECK-LABEL: udivxrs
+define void @udivxrs(i256 %rs1) nounwind {
   %valptr = alloca i256
 ; CHECK: div.s 42, r1, stack-[1], r{{[0-9]+}}
   %res = udiv i256 %rs1, 42
@@ -218,8 +218,8 @@ define void @divxrs(i256 %rs1) nounwind {
   ret void
 }
 
-; CHECK-LABEL: divcrs
-define void @divcrs(i256 %rs1) nounwind {
+; CHECK-LABEL: udivcrs
+define void @udivcrs(i256 %rs1) nounwind {
   %valptr = alloca i256
 ; CHECK: div @val[0], r1, stack-[1], r{{[0-9]+}}
   %val = load i256, i256 addrspace(4)* @val
@@ -228,8 +228,8 @@ define void @divcrs(i256 %rs1) nounwind {
   ret void
 }
 
-; CHECK-LABEL: divyrs
-define void @divyrs(i256 %rs1) nounwind {
+; CHECK-LABEL: udivyrs
+define void @udivyrs(i256 %rs1) nounwind {
   %valptr = alloca i256
 ; CHECK: div.s @val[0], r1, stack-[1], r{{[0-9]+}}
   %val = load i256, i256 addrspace(4)* @val
@@ -238,8 +238,8 @@ define void @divyrs(i256 %rs1) nounwind {
   ret void
 }
 
-; CHECK-LABEL: divsrs
-define void @divsrs(i256 %rs1) nounwind {
+; CHECK-LABEL: udivsrs
+define void @udivsrs(i256 %rs1) nounwind {
   %valptr = alloca i256
   %destptr = alloca i256
 ; CHECK: div stack-[2], r1, stack-[1], r{{[0-9]+}}
@@ -249,8 +249,8 @@ define void @divsrs(i256 %rs1) nounwind {
   ret void
 }
 
-; CHECK-LABEL: divzrs
-define void @divzrs(i256 %rs1) nounwind {
+; CHECK-LABEL: udivzrs
+define void @udivzrs(i256 %rs1) nounwind {
   %valptr = alloca i256
   %destptr = alloca i256
 ; CHECK: div.s stack-[2], r1, stack-[1], r{{[0-9]+}}
