@@ -119,6 +119,7 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
           ISD::SRA,
           ISD::SDIV,
           ISD::SREM,
+          ISD::SDIVREM,
           ISD::STORE,
           ISD::LOAD,
           ISD::ZERO_EXTEND,
@@ -678,6 +679,7 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
   case ISD::SRA:                return LowerSRA(Op, DAG);
   case ISD::SDIV:               return LowerSDIV(Op, DAG);
   case ISD::SREM:               return LowerSREM(Op, DAG);
+  case ISD::SDIVREM:            return LowerSDIVREM(Op, DAG);
   case ISD::INTRINSIC_VOID:     return LowerINTRINSIC_VOID(Op, DAG);
   case ISD::INTRINSIC_WO_CHAIN: return LowerINTRINSIC_WO_CHAIN(Op, DAG);
   case ISD::STACKSAVE:          return LowerSTACKSAVE(Op, DAG);
@@ -815,7 +817,47 @@ SDValue SyncVMTargetLowering::LowerSRA(SDValue Op, SelectionDAG &DAG) const {
   return DAG.getSelectCC(DL, RHS, Zero, LHS, Shifted, ISD::SETEQ);
 }
 
-/// Lower sdiv to udiv and bitwise operations
+struct SignedDivisionLowerResult {
+  SDValue UDivDividend;
+  SDValue UDivDivisor;
+  SDValue Result;
+};
+
+// extract the signs from LHS and RHS, and apply an
+// operation (passed in Opcode) on LHS, RHS. Return all the three values for
+// subsequent computation. It exists because it is a common part for sdiv, srem,
+// sdivrem.
+static SignedDivisionLowerResult
+lowerCommonSDIVREMOperations(SDValue Op, SelectionDAG &DAG, int Opcode) {
+  auto DL = SDLoc(Op);
+
+  SDValue LHS = Op.getOperand(0);
+  SDValue RHS = Op.getOperand(1);
+  SDValue Zero = DAG.getConstant(APInt(256, 0, false), DL, MVT::i256);
+  SDValue MaskSign =
+      DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
+
+  SDValue UDivDividend =
+      DAG.getNode(ISD::UDIVREM, DL, {MVT::i256, MVT::i256}, {LHS, MaskSign});
+  SDValue DividendVal = DAG.getSelectCC(
+      DL, UDivDividend, Zero,
+      DAG.getNode(ISD::SUB, DL, MVT::i256, MaskSign, UDivDividend.getValue(1)),
+      UDivDividend.getValue(1), ISD::SETNE);
+  SDValue UDivDivisor =
+      DAG.getNode(ISD::UDIVREM, DL, {MVT::i256, MVT::i256}, {RHS, MaskSign});
+  SDValue DivisorVal = DAG.getSelectCC(
+      DL, UDivDivisor, Zero,
+      DAG.getNode(ISD::SUB, DL, MVT::i256, MaskSign, UDivDivisor.getValue(1)),
+      UDivDivisor.getValue(1), ISD::SETNE);
+
+  SDVTList VTs = DAG.getVTList(MVT::i256, MVT::i256);
+  SDValue Result = DAG.getNode(Opcode, DL, VTs, DividendVal, DivisorVal);
+  return {UDivDividend, UDivDivisor, Result};
+}
+
+/// \brief Lower sdiv to udiv and bitwise operations
+/// A signed division is expanded as follows:
+///
 /// sign.x, val.x = udiv! x, 0x80..00
 /// val.x = sub.neq 0x80..00, val.x; abs of 2's complement
 /// sign.y, val.y = udiv! y, 0x80..00
@@ -827,31 +869,16 @@ SDValue SyncVMTargetLowering::LowerSRA(SDValue Op, SelectionDAG &DAG) const {
 /// val = mov.eq 0
 SDValue SyncVMTargetLowering::LowerSDIV(SDValue Op, SelectionDAG &DAG) const {
   auto DL = SDLoc(Op);
-  SDValue LHS = Op.getOperand(0);
-  SDValue RHS = Op.getOperand(1);
+
   SDValue Zero = DAG.getConstant(APInt(256, 0, false), DL, MVT::i256);
   SDValue Const255 = DAG.getConstant(APInt(256, 255, false), DL, MVT::i256);
-  SDValue MaskSign =
-      DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
+  auto [UDivDividend, UDivDivisor, Result] =
+      lowerCommonSDIVREMOperations(Op, DAG, ISD::UDIV);
 
-  SDValue UDivDividend =
-      DAG.getNode(ISD::UDIVREM, DL, {MVT::i256, MVT::i256}, {LHS, MaskSign});
-  SDValue DividendVal = DAG.getSelectCC(
-      DL, UDivDividend, Zero,
-      DAG.getNode(ISD::SUB, DL, MVT::i256, MaskSign, UDivDividend.getValue(1)),
-      UDivDividend.getValue(1), ISD::SETNE);
-  SDValue UDivDivisor =
-      DAG.getNode(ISD::UDIVREM, DL, {MVT::i256, MVT::i256}, {RHS, MaskSign});
-  SDValue DivisorVal = DAG.getSelectCC(
-      DL, UDivDivisor, Zero,
-      DAG.getNode(ISD::SUB, DL, MVT::i256, MaskSign, UDivDivisor.getValue(1)),
-      UDivDivisor.getValue(1), ISD::SETNE);
   SDValue Sign = DAG.getNode(
       ISD::SHL, DL, MVT::i256,
       DAG.getNode(ISD::XOR, DL, MVT::i256, UDivDividend, UDivDivisor),
       Const255);
-  SDValue Result =
-      DAG.getNode(ISD::UDIV, DL, MVT::i256, DividendVal, DivisorVal);
   return DAG.getSelectCC(
       DL, Result, Zero, Result,
       DAG.getSelectCC(
@@ -862,33 +889,62 @@ SDValue SyncVMTargetLowering::LowerSDIV(SDValue Op, SelectionDAG &DAG) const {
       ISD::SETEQ);
 }
 
+SDValue SyncVMTargetLowering::LowerSDIVREM(SDValue Op,
+                                           SelectionDAG &DAG) const {
+  auto DL = SDLoc(Op);
+  SDValue LHS = Op.getOperand(0);
+  SDValue Zero = DAG.getConstant(APInt(256, 0, false), DL, MVT::i256);
+  SDValue Const255 = DAG.getConstant(APInt(256, 255, false), DL, MVT::i256);
+  SDValue MaskSign =
+      DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
+
+  auto [UDivDividend, UDivDivisor, QuotientAndRemainder] =
+      lowerCommonSDIVREMOperations(Op, DAG, ISD::UDIVREM);
+
+  // Quotient
+  SDValue QuotientResult = QuotientAndRemainder.getValue(0);
+  SDValue QuotientSign = DAG.getNode(
+      ISD::SHL, DL, MVT::i256,
+      DAG.getNode(ISD::XOR, DL, MVT::i256, UDivDividend, UDivDivisor),
+      Const255);
+  SDValue Quotient = DAG.getSelectCC(
+      DL, QuotientResult, Zero, QuotientResult,
+      DAG.getSelectCC(DL, QuotientSign, Zero, QuotientResult,
+                      DAG.getNode(ISD::OR, DL, MVT::i256,
+                                  DAG.getNode(ISD::SUB, DL, MVT::i256,
+                                              QuotientSign, QuotientResult),
+                                  QuotientSign),
+                      ISD::SETEQ),
+      ISD::SETEQ);
+
+  // Remainder
+  SDValue RemainderSign = DAG.getNode(ISD::AND, DL, MVT::i256, LHS, MaskSign);
+  SDValue RemainderResult = QuotientAndRemainder.getValue(1);
+
+  SDValue SubSRem = DAG.getNode(ISD::SUB, DL, MVT::i256, Zero, RemainderResult);
+  SDValue SRem = DAG.getSelectCC(DL, RemainderSign, Zero, RemainderResult,
+                                 SubSRem, ISD::SETEQ);
+  SDValue Remainder = DAG.getSelectCC(DL, RemainderResult, Zero,
+                                      RemainderResult, SRem, ISD::SETEQ);
+
+  return DAG.getNode(ISD::MERGE_VALUES, DL, {MVT::i256, MVT::i256},
+                     {Quotient, Remainder});
+}
+
 // Lower SREM to unsigned operators.
 // * remainder's sign is same as dividend's sign.
 SDValue SyncVMTargetLowering::LowerSREM(SDValue Op, SelectionDAG &DAG) const {
   auto DL = SDLoc(Op);
   SDValue LHS = Op.getOperand(0);
-  SDValue RHS = Op.getOperand(1);
   SDValue Zero = DAG.getConstant(APInt(256, 0, false), DL, MVT::i256);
   SDValue MaskSign =
       DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
 
-  SDValue UDivDividend =
-      DAG.getNode(ISD::UDIVREM, DL, {MVT::i256, MVT::i256}, {LHS, MaskSign});
-  SDValue DividendVal = DAG.getSelectCC(
-      DL, UDivDividend, Zero,
-      DAG.getNode(ISD::SUB, DL, MVT::i256, MaskSign, UDivDividend.getValue(1)),
-      UDivDividend.getValue(1), ISD::SETNE);
-  SDValue UDivDivisor =
-      DAG.getNode(ISD::UDIVREM, DL, {MVT::i256, MVT::i256}, {RHS, MaskSign});
-  SDValue DivisorVal = DAG.getSelectCC(
-      DL, UDivDivisor, Zero,
-      DAG.getNode(ISD::SUB, DL, MVT::i256, MaskSign, UDivDivisor.getValue(1)),
-      UDivDivisor.getValue(1), ISD::SETNE);
+  auto LoweredResults = lowerCommonSDIVREMOperations(Op, DAG, ISD::UREM);
+
+  SDValue Result = LoweredResults.Result;
 
   SDValue Sign = DAG.getNode(ISD::AND, DL, MVT::i256, LHS, MaskSign);
-
-  SDValue Result =
-      DAG.getNode(ISD::UREM, DL, MVT::i256, DividendVal, DivisorVal);
 
   SDValue SubSRem = DAG.getNode(ISD::SUB, DL, MVT::i256, Zero, Result);
   SDValue SRem = DAG.getSelectCC(DL, Sign, Zero, Result, SubSRem, ISD::SETEQ);
@@ -1209,7 +1265,7 @@ SDValue SyncVMTargetLowering::PerformDAGCombine(SDNode *N,
                                                 DAGCombinerInfo &DCI) const {
   SelectionDAG &DAG = DCI.DAG;
 
-  SDValue val;
+  SDValue Val;
   switch (N->getOpcode()) {
   default:
     break;
@@ -1218,14 +1274,14 @@ SDValue SyncVMTargetLowering::PerformDAGCombine(SDNode *N,
     SDValue extending_value = N->getOperand(0);
     // combine with SETCC
     if (extending_value->getOpcode() != ISD::SETCC) {
-      return val;
+      return Val;
     }
-    val = DAG.getNode(extending_value->getOpcode(), DL, N->getValueType(0),
+    Val = DAG.getNode(extending_value->getOpcode(), DL, N->getValueType(0),
                       extending_value->ops());
     break;
   }
   }
-  return val;
+  return Val;
 }
 
 Register
