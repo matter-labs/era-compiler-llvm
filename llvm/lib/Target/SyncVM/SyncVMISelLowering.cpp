@@ -84,6 +84,7 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
 
   // Intrinsics lowering
   setOperationAction(ISD::INTRINSIC_VOID, MVT::Other, Custom);
+  setOperationAction(ISD::INTRINSIC_WO_CHAIN, MVT::Other, Custom);
 
   for (MVT VT : MVT::integer_valuetypes()) {
     setLoadExtAction(ISD::SEXTLOAD, MVT::i256, VT, Custom);
@@ -98,6 +99,7 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   }
 
   setOperationAction(ISD::STORE, MVT::i256, Custom);
+  setOperationAction(ISD::LOAD, MVT::i256, Custom);
 
   setOperationAction(ISD::ZERO_EXTEND, MVT::i256, Custom);
   setOperationAction(ISD::ANY_EXTEND, MVT::i256, Custom);
@@ -562,6 +564,8 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
     return LowerSREM(Op, DAG);
   case ISD::INTRINSIC_VOID:
     return LowerINTRINSIC_VOID(Op, DAG);
+  case ISD::INTRINSIC_WO_CHAIN:
+    return LowerINTRINSIC_WO_CHAIN(Op, DAG);
   case ISD::STACKSAVE:
     return LowerSTACKSAVE(Op, DAG);
   case ISD::STACKRESTORE:
@@ -601,6 +605,43 @@ SDValue SyncVMTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
   SDValue BasePtr = Store->getBasePtr();
   SDValue Chain = Store->getChain();
   const MachinePointerInfo &PInfo = Store->getPointerInfo();
+
+  const MachineMemOperand *MemOp = Store->getMemOperand();
+  auto *MemVal = [MemOp]() {
+    if (!MemOp)
+      return (const Value *)nullptr;
+    return MemOp->getValue();
+  }();
+
+  // Generic (fat) pointers need to be stored via ptr.add instead of add.
+  if (MemVal && Store->getAddressSpace() == SyncVMAS::AS_STACK &&
+      cast<PointerType>(MemVal->getType())->getElementType()->isPointerTy() &&
+      cast<PointerType>(MemVal->getType())
+              ->getElementType()
+              ->getPointerAddressSpace() == SyncVMAS::AS_GENERIC) {
+    auto Zero = DAG.getTargetConstant(0, DL, MVT::i256);
+    // TODO: Something like SelectAddress is here, need to be reconsidered.
+    if (isa<GlobalAddressSDNode>(BasePtr))
+      return SDValue(DAG.getMachineNode(SyncVM::PTR_ADDrrs_p, DL, MVT::Other,
+                                        {Store->getValue(),
+                                         DAG.getRegister(SyncVM::R0, MVT::i256),
+                                         Zero, Zero, BasePtr}),
+                     0);
+    if (auto *FI = dyn_cast<FrameIndexSDNode>(BasePtr))
+      return SDValue(
+          DAG.getMachineNode(
+              SyncVM::PTR_ADDrrs_p, DL, MVT::Other,
+              {Store->getValue(), DAG.getRegister(SyncVM::R0, MVT::i256),
+               DAG.getTargetFrameIndex(FI->getIndex(),
+                                       getPointerTy(DAG.getDataLayout())),
+               Zero, Zero}),
+          0);
+    return SDValue(DAG.getMachineNode(SyncVM::PTR_ADDrrs_p, DL, MVT::Other,
+                                      {Store->getValue(),
+                                       DAG.getRegister(SyncVM::R0, MVT::i256),
+                                       Zero, BasePtr, Zero}),
+                   0);
+  }
 
   // for now only handle cases where alignment == 1
   // only handle unindexed store
@@ -653,8 +694,51 @@ SDValue SyncVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   SDValue Chain = Load->getChain();
   const MachinePointerInfo &PInfo = Load->getPointerInfo();
 
+  const MachineMemOperand *MemOp = Load->getMemOperand();
+  auto *MemVal = [MemOp]() {
+    if (!MemOp)
+      return (const Value *)nullptr;
+    return MemOp->getValue();
+  }();
+
+  // Generic (fat) pointers need to be loaded via ptr.add instead of add.
+  if (MemVal && Load->getAddressSpace() == SyncVMAS::AS_STACK &&
+      cast<PointerType>(MemVal->getType())->getElementType()->isPointerTy() &&
+      cast<PointerType>(MemVal->getType())
+              ->getElementType()
+              ->getPointerAddressSpace() == SyncVMAS::AS_GENERIC) {
+    auto Zero = DAG.getTargetConstant(0, DL, MVT::i64);
+    SDVTList RetTys = DAG.getVTList(MVT::i256, MVT::Other);
+    // TODO: Something like SelectAddress is here, need to be reconsidered.
+    /*
+    MemVal->dump();
+    Op.dump();
+    BasePtr.dump();
+    */
+    if (isa<GlobalAddressSDNode>(BasePtr))
+      return SDValue(
+          DAG.getMachineNode(
+              SyncVM::PTR_ADDsrr_p, DL, RetTys,
+              {Zero, Zero, BasePtr, DAG.getRegister(SyncVM::R0, MVT::i256)}),
+          0);
+    if (auto *FI = dyn_cast<FrameIndexSDNode>(BasePtr))
+      return SDValue(
+          DAG.getMachineNode(
+              SyncVM::PTR_ADDsrr_p, DL, RetTys,
+              {DAG.getTargetFrameIndex(FI->getIndex(),
+                                       getPointerTy(DAG.getDataLayout())),
+               Zero, Zero, DAG.getRegister(SyncVM::R0, MVT::i256)}),
+          0);
+    return SDValue(DAG.getMachineNode(SyncVM::PTR_ADDsrr_p, DL, RetTys,
+                                      {Zero, BasePtr, Zero,
+                                       DAG.getRegister(SyncVM::R0, MVT::i256)}),
+                   0);
+  }
+
   EVT MemVT = Load->getMemoryVT();
   unsigned MemVTSize = MemVT.getSizeInBits();
+  if (MemVTSize == 256)
+    return {};
   assert(MemVT.isScalarInteger() && "Unexpected type to load");
   assert(MemVTSize < 256 && "Only handle smaller sized load");
 
@@ -691,48 +775,85 @@ SDValue SyncVMTargetLowering::LowerSRA(SDValue Op, SelectionDAG &DAG) const {
   return DAG.getSelectCC(DL, RHS, Zero, LHS, Shifted, ISD::SETEQ);
 }
 
+/// Lower sdiv to udiv and bitwise operations
+/// sign.x, val.x = udiv! x, 0x80..00
+/// val.x = sub.neq 0x80..00, val.x; abs of 2's complement
+/// sign.y, val.y = udiv! y, 0x80..00
+/// val.y = sub.neq 0x80..00, val.y; abs of 2's complement
+/// sign = xor sign.x, sign.y
+/// sign = shl sign, 255
+/// val = udiv! val.x, val.y
+/// val = sign ? sign - val : sign
+/// val = mov.eq 0
 SDValue SyncVMTargetLowering::LowerSDIV(SDValue Op, SelectionDAG &DAG) const {
   auto DL = SDLoc(Op);
-  auto LHS = Op.getOperand(0);
-  auto RHS = Op.getOperand(1);
-  auto Mask = DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
-  auto Mask2 = DAG.getConstant(APInt(256, -1, true).lshr(1), DL, MVT::i256);
-  auto SignLHS = DAG.getNode(ISD::AND, DL, MVT::i256, LHS, Mask);
-  auto SignRHS = DAG.getNode(ISD::AND, DL, MVT::i256, RHS, Mask);
-  LHS = DAG.getNode(ISD::AND, DL, MVT::i256, LHS, Mask2);
-  RHS = DAG.getNode(ISD::AND, DL, MVT::i256, RHS, Mask2);
-  auto LHS2Compl = DAG.getNode(ISD::SUB, DL, MVT::i256, Mask, LHS);
-  LHS = DAG.getSelectCC(DL, SignLHS, Mask, LHS2Compl, LHS, ISD::SETEQ);
-  auto RHS2Compl = DAG.getNode(ISD::SUB, DL, MVT::i256, Mask, RHS);
-  RHS = DAG.getSelectCC(DL, SignRHS, Mask, RHS2Compl, RHS, ISD::SETEQ);
-  auto Sign = DAG.getNode(ISD::XOR, DL, MVT::i256, SignLHS, SignRHS);
-  auto Value = DAG.getNode(ISD::UDIV, DL, MVT::i256, LHS, RHS);
-  auto Value2Compl = DAG.getNode(ISD::SUB, DL, MVT::i256, Mask, Value);
-  Value2Compl = DAG.getNode(ISD::OR, DL, MVT::i256, Value2Compl, Mask);
-  return DAG.getSelectCC(DL, Sign, Mask, Value2Compl, Value, ISD::SETEQ);
+  SDValue LHS = Op.getOperand(0);
+  SDValue RHS = Op.getOperand(1);
+  SDValue Zero = DAG.getConstant(APInt(256, 0, false), DL, MVT::i256);
+  SDValue Const255 = DAG.getConstant(APInt(256, 255, false), DL, MVT::i256);
+  SDValue MaskSign =
+      DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
+
+  SDValue UDivDividend =
+      DAG.getNode(ISD::UDIVREM, DL, {MVT::i256, MVT::i256}, {LHS, MaskSign});
+  SDValue DividendVal = DAG.getSelectCC(
+      DL, UDivDividend, Zero,
+      DAG.getNode(ISD::SUB, DL, MVT::i256, MaskSign, UDivDividend.getValue(1)),
+      UDivDividend.getValue(1), ISD::SETNE);
+  SDValue UDivDivisor =
+      DAG.getNode(ISD::UDIVREM, DL, {MVT::i256, MVT::i256}, {RHS, MaskSign});
+  SDValue DivisorVal = DAG.getSelectCC(
+      DL, UDivDivisor, Zero,
+      DAG.getNode(ISD::SUB, DL, MVT::i256, MaskSign, UDivDivisor.getValue(1)),
+      UDivDivisor.getValue(1), ISD::SETNE);
+  SDValue Sign = DAG.getNode(
+      ISD::SHL, DL, MVT::i256,
+      DAG.getNode(ISD::XOR, DL, MVT::i256, UDivDividend, UDivDivisor),
+      Const255);
+  SDValue Result =
+      DAG.getNode(ISD::UDIV, DL, MVT::i256, DividendVal, DivisorVal);
+  return DAG.getSelectCC(
+      DL, Result, Zero, Result,
+      DAG.getSelectCC(
+          DL, Sign, Zero, Result,
+          DAG.getNode(ISD::OR, DL, MVT::i256,
+                      DAG.getNode(ISD::SUB, DL, MVT::i256, Sign, Result), Sign),
+          ISD::SETEQ),
+      ISD::SETEQ);
 }
 
+// Lower SREM to unsigned operators.
+// * remainder's sign is same as dividend's sign.
 SDValue SyncVMTargetLowering::LowerSREM(SDValue Op, SelectionDAG &DAG) const {
   auto DL = SDLoc(Op);
-  auto LHS = Op.getOperand(0);
-  auto RHS = Op.getOperand(1);
-  auto Zero = DAG.getConstant(APInt(256, 0, false), DL, MVT::i256);
-  auto Mask = DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
-  auto Mask2 = DAG.getConstant(APInt(256, -1, true).lshr(1), DL, MVT::i256);
-  auto SignLHS = DAG.getNode(ISD::AND, DL, MVT::i256, LHS, Mask);
-  auto SignRHS = DAG.getNode(ISD::AND, DL, MVT::i256, RHS, Mask);
-  LHS = DAG.getNode(ISD::AND, DL, MVT::i256, LHS, Mask2);
-  RHS = DAG.getNode(ISD::AND, DL, MVT::i256, RHS, Mask2);
-  auto LHS2Compl = DAG.getNode(ISD::SUB, DL, MVT::i256, Mask, LHS);
-  LHS = DAG.getSelectCC(DL, SignLHS, Mask, LHS2Compl, LHS, ISD::SETEQ);
-  auto RHS2Compl = DAG.getNode(ISD::SUB, DL, MVT::i256, Mask, RHS);
-  RHS = DAG.getSelectCC(DL, SignRHS, Mask, RHS2Compl, RHS, ISD::SETEQ);
-  auto Value = DAG.getNode(ISD::UREM, DL, MVT::i256, LHS, RHS);
-  auto Value2Compl = DAG.getNode(ISD::SUB, DL, MVT::i256, Mask, Value);
-  Value2Compl = DAG.getNode(ISD::OR, DL, MVT::i256, Value2Compl, Mask);
-  auto Result =
-      DAG.getSelectCC(DL, SignLHS, Mask, Value2Compl, Value, ISD::SETEQ);
-  return DAG.getSelectCC(DL, Value, Zero, Value, Result, ISD::SETEQ);
+  SDValue LHS = Op.getOperand(0);
+  SDValue RHS = Op.getOperand(1);
+  SDValue Zero = DAG.getConstant(APInt(256, 0, false), DL, MVT::i256);
+  SDValue Const255 = DAG.getConstant(APInt(256, 255, false), DL, MVT::i256);
+  SDValue MaskSign =
+      DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
+
+  SDValue UDivDividend =
+      DAG.getNode(ISD::UDIVREM, DL, {MVT::i256, MVT::i256}, {LHS, MaskSign});
+  SDValue DividendVal = DAG.getSelectCC(
+      DL, UDivDividend, Zero,
+      DAG.getNode(ISD::SUB, DL, MVT::i256, MaskSign, UDivDividend.getValue(1)),
+      UDivDividend.getValue(1), ISD::SETNE);
+  SDValue UDivDivisor =
+      DAG.getNode(ISD::UDIVREM, DL, {MVT::i256, MVT::i256}, {RHS, MaskSign});
+  SDValue DivisorVal = DAG.getSelectCC(
+      DL, UDivDivisor, Zero,
+      DAG.getNode(ISD::SUB, DL, MVT::i256, MaskSign, UDivDivisor.getValue(1)),
+      UDivDivisor.getValue(1), ISD::SETNE);
+
+  SDValue Sign = DAG.getNode(ISD::AND, DL, MVT::i256, LHS, MaskSign);
+
+  SDValue Result =
+      DAG.getNode(ISD::UREM, DL, MVT::i256, DividendVal, DivisorVal);
+    
+  SDValue SubSRem = DAG.getNode(ISD::SUB, DL, MVT::i256, Zero, Result);
+  SDValue SRem = DAG.getSelectCC(DL, Sign, Zero, Result, SubSRem, ISD::SETEQ);
+  return DAG.getSelectCC(DL, Result, Zero, Result, SRem, ISD::SETEQ);
 }
 
 SDValue SyncVMTargetLowering::LowerGlobalAddress(SDValue Op,
@@ -806,6 +927,24 @@ SyncVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                                                   MachineBasicBlock *BB) const {
   llvm_unreachable("No instruction require custom inserter");
   return nullptr;
+}
+SDValue SyncVMTargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
+                                                      SelectionDAG &DAG) const {
+  unsigned IntNo =
+      cast<ConstantSDNode>(
+          Op.getOperand(Op.getOperand(0).getValueType() == MVT::Other))
+          ->getZExtValue();
+  if (IntNo == Intrinsic::syncvm_ptr_add) {
+    LLVM_DEBUG(dbgs() << "LowerINTRINSIC_WO_CHAIN matched: ptr.add\n");
+    return DAG.getNode(SyncVMISD::PTR_ADD, SDLoc(Op), Op.getValueType(),
+                       Op.getOperand(1), Op.getOperand(2));
+  } else if (IntNo == Intrinsic::syncvm_ptr_pack) {
+    LLVM_DEBUG(dbgs() << "LowerINTRINSIC_WO_CHAIN matched: ptr.pack\n");
+    return DAG.getNode(SyncVMISD::PTR_PACK, SDLoc(Op), Op.getValueType(),
+                       Op.getOperand(1), Op.getOperand(2));
+  } else {
+    return SDValue();
+  }
 }
 
 SDValue SyncVMTargetLowering::LowerINTRINSIC_VOID(SDValue Op,

@@ -60,6 +60,7 @@ public:
   SDValue LowerSREM(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue LowerINTRINSIC_VOID(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerINTRINSIC_WO_CHAIN(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSTACKSAVE(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSTACKRESTORE(SDValue Op, SelectionDAG &DAG) const;
 
@@ -162,8 +163,8 @@ public:
                                       MachineMemOperand::Flags Flags,
                                       bool *Fast) const override {
     return AddrSpace == SyncVMAS::AS_HEAP ||
-           AddrSpace == SyncVMAS::AS_CALLDATA ||
-           AddrSpace == SyncVMAS::AS_RETDATA;
+           AddrSpace == SyncVMAS::AS_HEAP_AUX ||
+           AddrSpace == SyncVMAS::AS_GENERIC;
   }
 
   /// If a physical register, this returns the register that receives the
