@@ -3,8 +3,7 @@ name: Compiler integration testing
 on:
   pull_request:
     branches:
-      - main
-      - dev-1.1
+      - dev-1.2
   workflow_dispatch:
     inputs:
       llvm_build_type:
@@ -14,7 +13,7 @@ on:
       compiler_tester_branch:
         description: "Input an upstream compiler-tester repo branch to use"
         required: true
-        default: "vm1.1"
+        default: "vm1.2"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -32,7 +31,7 @@ jobs:
         run: |
           echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
           echo "COMPOSE_PROJECT_NAME=llvm_testing" >> $GITHUB_ENV
-          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch || 'vm1.1' }}" >> $GITHUB_ENV
+          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch || 'vm1.2' }}" >> $GITHUB_ENV
           echo "DOCKER_CMD=docker-compose exec -T zk" >> $GITHUB_ENV
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
 
@@ -44,7 +43,7 @@ jobs:
       - name: Set the compiler-tester filter depending on the base branch
         shell: bash
         run: |
-          if [[ "${BRANCH_NAME}" == "dev-1.1" ]]; then
+          if [[ "${BRANCH_NAME}" == "dev-1.2" ]]; then
             echo "COMPILER_TESTER_DOMAIN=''" >> $GITHUB_ENV
           else
             echo "COMPILER_TESTER_DOMAIN=''" >> $GITHUB_ENV
