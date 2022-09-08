@@ -16,7 +16,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     cmake \
         -S 'llvm' \
         -B "${TARGET_BUILD}" \
-        -G 'Unix Makefiles' \
+        -G 'Ninja' \
         -DPACKAGE_VENDOR='Matter Labs' \
         -DCLANG_VENDOR='Matter Labs' \
         -DCLANG_REPOSITORY_STRING='origin' \
@@ -24,15 +24,17 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         -DCMAKE_BUILD_TYPE='Release' \
         -DLLVM_TARGETS_TO_BUILD='SyncVM' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
-        -DLLVM_BUILD_DOCS='Off' \
         -DLLVM_BUILD_TESTS='Off' \
+        -DLLVM_BUILD_DOCS='Off' \
         -DLLVM_INCLUDE_DOCS='Off' \
         -DLLVM_INCLUDE_TESTS='Off' \
         -DLLVM_ENABLE_ASSERTIONS='Off' \
+        -DLLVM_ENABLE_TERMINFO='Off' \
         -DLLVM_ENABLE_DOXYGEN='Off' \
         -DLLVM_ENABLE_SPHINX='Off' \
         -DLLVM_ENABLE_OCAMLDOC='Off' \
-        -DLLVM_ENABLE_BINDINGS='Off'
+        -DLLVM_ENABLE_BINDINGS='Off' \
+        -DCMAKE_OSX_DEPLOYMENT_TARGET='10.9'
 elif [[ -f '/etc/arch-release' ]]; then
     if [[ -z ${CI_RUNNING+x} ]]; then
         sudo pacman --sync --refresh --sysupgrade --noconfirm \
@@ -56,11 +58,12 @@ elif [[ -f '/etc/arch-release' ]]; then
         -DLLVM_TARGETS_TO_BUILD='SyncVM' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
         -DLLVM_USE_LINKER='lld' \
-        -DLLVM_BUILD_DOCS='Off' \
         -DLLVM_BUILD_TESTS='Off' \
+        -DLLVM_BUILD_DOCS='Off' \
         -DLLVM_INCLUDE_DOCS='Off' \
         -DLLVM_INCLUDE_TESTS='Off' \
         -DLLVM_ENABLE_ASSERTIONS='Off' \
+        -DLLVM_ENABLE_TERMINFO='Off' \
         -DLLVM_ENABLE_DOXYGEN='Off' \
         -DLLVM_ENABLE_SPHINX='Off' \
         -DLLVM_ENABLE_OCAMLDOC='Off' \
@@ -90,11 +93,12 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         -DLLVM_TARGETS_TO_BUILD='SyncVM' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
         -DLLVM_USE_LINKER="lld-${LLVM_VERSION}" \
-        -DLLVM_BUILD_DOCS='Off' \
         -DLLVM_BUILD_TESTS='Off' \
+        -DLLVM_BUILD_DOCS='Off' \
         -DLLVM_INCLUDE_DOCS='Off' \
         -DLLVM_INCLUDE_TESTS='Off' \
         -DLLVM_ENABLE_ASSERTIONS='Off' \
+        -DLLVM_ENABLE_TERMINFO='Off' \
         -DLLVM_ENABLE_DOXYGEN='Off' \
         -DLLVM_ENABLE_SPHINX='Off' \
         -DLLVM_ENABLE_OCAMLDOC='Off' \
@@ -102,4 +106,8 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         -DPython3_EXECUTABLE="$(which python3)"
 fi
 
-ninja -C "${TARGET_BUILD}" install
+if [[ "$OSTYPE" == "darwin"* ]]; then
+    sudo ninja -C "${TARGET_BUILD}" install
+else
+    ninja -C "${TARGET_BUILD}" install
+fi

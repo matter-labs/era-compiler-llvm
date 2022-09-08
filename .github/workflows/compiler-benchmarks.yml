@@ -3,8 +3,7 @@ name: Compiler benchmarking
 on:
   pull_request:
     branches:
-      - main
-      - dev-1.1
+      - dev-1.2
   workflow_dispatch:
     inputs:
       llvm_build_type:
@@ -14,19 +13,19 @@ on:
       compiler_tester_reference_branch:
         description: "Input an upstream compiler-tester repo branch to use as a benchmark reference"
         required: true
-        default: "vm1.1"
+        default: "vm1.2"
       compiler_tester_candidate_branch:
         description: "Input an upstream compiler-tester repo branch to use as a benchmark candidate"
         required: true
-        default: "vm1.1"
+        default: "vm1.2"
       compiler_llvm_reference_branch:
         description: "Input an upstream compiler-llvm repo branch to use as a benchmark reference"
         required: true
-        default: "dev-1.1"
+        default: "dev-1.2"
       compiler_llvm_candidate_branch:
         description: "Input an upstream compiler-llvm repo branch to use as a benchmark candidate"
         required: true
-        default: "dev-1.1"
+        default: "dev-1.2"
       compiler_llvm_benchmark_domain:
         description: "Input domain for compiler-llvm benchmarks"
         required: false
@@ -56,7 +55,7 @@ jobs:
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '+M^I+B3' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_filter || '' }}" >> $GITHUB_ENV
-          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_candidate_branch || 'vm1.1' }}" >> $GITHUB_ENV
+          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_candidate_branch || 'vm1.2' }}" >> $GITHUB_ENV
           echo "COMPILER_LLVM_CANDIDATE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_candidate_branch }}" >> $GITHUB_ENV
 
       - name: Get branch name (pull request)
@@ -153,7 +152,7 @@ jobs:
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '+M^I+B3' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_filter || '' }}" >> $GITHUB_ENV
-          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_reference_branch || 'vm1.1' }}" >> $GITHUB_ENV
+          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_reference_branch || 'vm1.2' }}" >> $GITHUB_ENV
           echo "COMPILER_LLVM_CANDIDATE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_reference_branch }}" >> $GITHUB_ENV
 
       - name: Get branch name (pull request)
@@ -258,7 +257,7 @@ jobs:
         if: github.event_name == 'pull_request'
         shell: bash
         run: |
-          echo "COMPILER_TESTER_BRANCH_NAME=vm1.1" >> $GITHUB_ENV
+          echo "COMPILER_TESTER_BRANCH_NAME=vm1.2" >> $GITHUB_ENV
 
       - name: Set compiler-tester branch from manual input (workflow dispatch)
         if: github.event_name == 'workflow_dispatch'
