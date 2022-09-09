@@ -52,6 +52,8 @@ enum Context {
   SP = 7,
   GET_U128 = 8,
   SET_U128 = 9,
+  INC_CTX = 10,
+  SET_PUBDATAPRICE = 11,
 };
 } // namespace SyncVMCTX
 

@@ -78,6 +78,20 @@ define void @setu128(i256 %val) {
   ret void
 }
 
+; CHECK-LABEL: inctx
+define void @inctx() {
+; CHECK: context.inc_tx_num
+  call void @llvm.syncvm.inctx()
+  ret void
+}
+
+; CHECK-LABEL: setprice
+define void @setprice(i256 %p) {
+; CHECK: context.set_ergs_per_pubdata
+  call void @llvm.syncvm.setpubdataprice(i256 %p)
+  ret void
+}
+
 ; CHECK-LABEL: sload_rr
 define i256 @sload_rr(i256 %val) {
 ; CHECK: sload r1, r{{[0-9]+}}
@@ -201,6 +215,8 @@ declare i256 @llvm.syncvm.txorigin()
 declare i256 @llvm.syncvm.ergsleft()
 declare i256 @llvm.syncvm.getu128()
 declare void @llvm.syncvm.setu128(i256)
+declare void @llvm.syncvm.inctx()
+declare void @llvm.syncvm.setpubdataprice(i256)
 declare i256 @llvm.syncvm.sload(i256)
 declare void @llvm.syncvm.sstore(i256, i256)
 declare void @llvm.syncvm.tol1(i256, i256, i256)
