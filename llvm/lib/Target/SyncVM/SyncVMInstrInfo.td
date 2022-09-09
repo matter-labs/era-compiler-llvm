@@ -1054,6 +1054,8 @@ def : Pat<(int_syncvm_ergsleft), (CTXr_se 6, 0)>;
 def : Pat<(SyncVMget_sp), (CTXr_se 7, 0)>;
 def : Pat<(int_syncvm_getu128), (CTXr_se 8, 0)>;
 def : Pat<(int_syncvm_setu128 GR256:$rs0), (CTXr_set GR256:$rs0, 9, 0)>;
+def : Pat<(int_syncvm_inctx), (CTXr_se 10, 0)>;
+def : Pat<(int_syncvm_setpubdataprice GR256:$rs0), (CTXr_set GR256:$rs0, 11, 0)>;
 
 def SLDrr : ILogR<47, DstReg, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
                   "sload$cc\t$rs0, $rd0", []> {

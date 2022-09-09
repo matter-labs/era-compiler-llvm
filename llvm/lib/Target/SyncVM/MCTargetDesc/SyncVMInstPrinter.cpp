@@ -113,6 +113,12 @@ void SyncVMInstPrinter::printContextOperand(const MCInst *MI, unsigned OpNo,
   case SyncVMCTX::SET_U128:
     O << ".set_context_u128";
     break;
+  case SyncVMCTX::INC_CTX:
+    O << ".inc_tx_num";
+    break;
+  case SyncVMCTX::SET_PUBDATAPRICE:
+    O << ".set_ergs_per_pubdata";
+    break;
   }
 }
 
