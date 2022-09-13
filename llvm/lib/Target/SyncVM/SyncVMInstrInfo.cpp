@@ -306,20 +306,10 @@ void SyncVMInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                   MachineBasicBlock::iterator I,
                                   const DebugLoc &DL, MCRegister DestReg,
                                   MCRegister SrcReg, bool KillSrc) const {
-  MachineFunction &MF = *MBB.getParent();
-  auto *TII = MF.getSubtarget<SyncVMSubtarget>().getInstrInfo();
-  MachineRegisterInfo &MRI = MF.getRegInfo();
-  MachineInstr *Def = MRI.getUniqueVRegDef(SrcReg);
-  if (Def && isDefinedAsFatPtr(*Def, *TII, MRI))
-    BuildMI(MBB, I, DL, get(SyncVM::PTR_ADDrrr_s), DestReg)
-        .addReg(SrcReg, getKillRegState(KillSrc))
-        .addReg(SyncVM::R0)
-        .addImm(0);
-  else
-    BuildMI(MBB, I, DL, get(SyncVM::ADDrrr_s), DestReg)
-        .addReg(SrcReg, getKillRegState(KillSrc))
-        .addReg(SyncVM::R0)
-        .addImm(0);
+  BuildMI(MBB, I, DL, get(SyncVM::ADDrrr_s), DestReg)
+      .addReg(SrcReg, getKillRegState(KillSrc))
+      .addReg(SyncVM::R0)
+      .addImm(0);
 }
 
 /// GetInstSize - Return the number of bytes of code the specified
@@ -350,6 +340,18 @@ bool SyncVMInstrInfo::isMul(const MachineInstr &MI) const {
 bool SyncVMInstrInfo::isDiv(const MachineInstr &MI) const {
   StringRef Mnemonic = getName(MI.getOpcode());
   return Mnemonic.startswith("DIV");
+}
+
+bool SyncVMInstrInfo::isPtr(const MachineInstr &MI) const {
+  StringRef Mnemonic = getName(MI.getOpcode());
+  return Mnemonic.startswith("PTR");
+}
+
+bool SyncVMInstrInfo::isNull(const MachineInstr &MI) const {
+  return isAdd(MI) && hasRROperandAddressingMode(MI)
+         && MI.getNumDefs() == 1u
+         && MI.getOperand(1).getReg() == SyncVM::R0
+         && MI.getOperand(2).getReg() == SyncVM::R0;
 }
 
 bool SyncVMInstrInfo::isSilent(const MachineInstr &MI) const {

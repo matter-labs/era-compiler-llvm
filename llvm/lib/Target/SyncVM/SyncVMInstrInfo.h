@@ -83,6 +83,10 @@ public:
   bool isSub(const MachineInstr &MI) const;
   bool isMul(const MachineInstr &MI) const;
   bool isDiv(const MachineInstr &MI) const;
+  /// ptr.add, ptr.sub or ptr.pack
+  bool isPtr(const MachineInstr &MI) const;
+  /// A zero materializing add
+  bool isNull(const MachineInstr &MI) const;
   bool isSilent(const MachineInstr &MI) const;
   GenericInstruction genericInstructionFor(const MachineInstr &MI) const;
 
