@@ -199,8 +199,15 @@ define i256 @ifgtii() {
   ret i256 %res
 }
 
+; CHECK-LABEL: invoke.farcall
 define void @invoke.farcall({i256, i1}* %res) {
   call {i256, i1}* @__farcall(i256 0, i256 0, {i256, i1}* %res)
+  ret void
+}
+
+; CHECK-LABEL: invoke.systemcall
+define void @invoke.systemcall({i256, i1}* %res) {
+  call {i256, i1}* @__systemcall(i256 0, i256 1, i256 2, i256 3, {i256, i1}* %res)
   ret void
 }
 
@@ -230,3 +237,4 @@ declare i256 @llvm.syncvm.iflt(i256, i256)
 declare i256 @llvm.syncvm.ifgt(i256, i256)
 
 declare {i256, i1}* @__farcall(i256, i256, {i256, i1}*)
+declare {i256, i1}* @__systemcall(i256, i256, i256, i256, {i256, i1}*)
