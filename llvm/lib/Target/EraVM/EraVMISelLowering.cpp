@@ -284,37 +284,24 @@ SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   bool IsVarArg = CLI.IsVarArg;
 
   if (auto *GA = dyn_cast<GlobalAddressSDNode>(Callee.getNode())) {
-    auto farcall_pair = [&]() {
-      if (GA->getGlobal()->getName() == "__farcall_int") {
-        return std::make_pair<uint64_t, bool>(EraVMISD::FARCALL, true);
-      }
-      if (GA->getGlobal()->getName() == "__staticcall_int") {
-        return std::make_pair<uint64_t, bool>(EraVMISD::STATICCALL, true);
-      }
-      if (GA->getGlobal()->getName() == "__delegatecall_int") {
-        return std::make_pair<uint64_t, bool>(EraVMISD::DELEGATECALL, true);
-      }
-      if (GA->getGlobal()->getName() == "__mimiccall_int") {
-        return std::make_pair<uint64_t, bool>(EraVMISD::MIMICCALL, true);
-      }
-      return std::make_pair<uint64_t, bool>(0, false);
-    }();
-
-    auto farcall_opc = farcall_pair.first;
-    bool is_farcall = farcall_pair.second;
+    uint64_t farcall_opc =
+        StringSwitch<uint64_t>(GA->getGlobal()->getName())
+            .Case("__farcall_int", EraVMISD::FARCALL)
+            .Case("__farcall_int_l", EraVMISD::FARCALL)
+            .Case("__staticcall_int", EraVMISD::STATICCALL)
+            .Case("__delegatecall_int", EraVMISD::DELEGATECALL)
+            .Case("__delegatecall_int_l", EraVMISD::DELEGATECALL)
+            .Case("__mimiccall_int", EraVMISD::MIMICCALL)
+            .Default(0);
 
     bool is_mimic = farcall_opc == EraVMISD::MIMICCALL;
 
-    if (is_farcall) {
+    if (farcall_opc) {
       if (is_mimic)
         Chain = DAG.getCopyToReg(Chain, DL, EraVM::R3, OutVals[2], SDValue());
       SmallVector<SDValue, 8> Ops;
       Ops.push_back(Chain);
-      Ops.push_back(OutVals[0]);
-      Ops.push_back(OutVals[1]);
-      if (is_mimic) {
-        Ops.push_back(OutVals[2]);
-      }
+      Ops.insert(Ops.end(), OutVals.begin(), OutVals.end());
       Ops.push_back(CLI.UnwindBB);
       SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
       Chain = DAG.getNode(farcall_opc, DL, NodeTys, Ops);
