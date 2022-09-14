@@ -1114,10 +1114,14 @@ let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15],
     isCall = 1, isTerminator = 1 in {
 def FAR_CALL  : ICall<8, CFNormal, (ins GR256:$abi, GR256:$address, jmptarget:$unwind),
                "far_call\t$abi, $address, $unwind", [(SyncVMfarcall GR256:$abi, GR256:$address, bb:$unwind)]>;
+def FAR_CALLL  : ICall<80, CFNormal, (ins GR256:$abi, GR256:$address, GR256:$op1, GR256:$op2, jmptarget:$unwind),
+               "far_call\t$abi, $address, $unwind", [(SyncVMfarcall GR256:$abi, GR256:$address, GR256:$op1, GR256:$op2, bb:$unwind)]>;
 def STATIC_CALL  : ICall<10, CFNormal, (ins GR256:$abi, GR256:$address, jmptarget:$unwind),
                "far_call.static\t$abi, $address, $unwind", [(SyncVMstaticcall GR256:$abi, GR256:$address, bb:$unwind)]>;
 def DELEGATE_CALL  : ICall<11, CFDelegate, (ins GR256:$abi, GR256:$address, jmptarget:$unwind),
                "far_call.delegate\t$abi, $address, $unwind", [(SyncVMdelegatecall GR256:$abi, GR256:$address, bb:$unwind)]>;
+def DELEGATE_CALLL  : ICall<110, CFDelegate, (ins GR256:$abi, GR256:$address, GR256:$op1, GR256:$op2, jmptarget:$unwind),
+               "far_call.delegate\t$abi, $address, $unwind", [(SyncVMdelegatecall GR256:$abi, GR256:$address, GR256:$op1, GR256:$op2, bb:$unwind)]>;
 def MIMIC_CALL  : ICall<12, CFMimic, (ins GR256:$abi, GR256:$address, GR256:$mimic, jmptarget:$unwind),
                "far_call.mimic\t$abi, $address, $unwind", [(SyncVMmimiccall GR256:$abi, GR256:$address, GR256:$mimic, bb:$unwind)]>;
 }
