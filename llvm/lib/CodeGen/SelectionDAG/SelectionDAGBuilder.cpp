@@ -9722,7 +9722,9 @@ TargetLowering::LowerCallTo(TargetLowering::CallLoweringInfo &CLI) const {
          "LowerCall didn't return a valid chain!");
   assert((!CLI.IsTailCall || InVals.empty()) &&
          "LowerCall emitted a return value for a tail call!");
-  assert((CLI.IsTailCall || InVals.size() == CLI.Ins.size()) &&
+  // SyncVM local begin
+  assert((CLI.IsTailCall || CLI.IsVarArg || InVals.size() == CLI.Ins.size()) &&
+  // SyncVM local end
          "LowerCall didn't emit the correct number of values!");
 
   // For a tail call, the return value is merely live-out and there aren't
