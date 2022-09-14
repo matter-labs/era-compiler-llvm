@@ -4299,6 +4299,10 @@ SDValue TargetLowering::SimplifySetCC(EVT VT, SDValue N0, SDValue N1,
       }
     }
 
+    // SyncVM local begin
+    // Load narrowing is not profiable for SyncVM
+    if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
+    // SyncVM local end
     // If the LHS is '(and load, const)', the RHS is 0, the test is for
     // equality or unsigned, and all 1 bits of the const are in the same
     // partial word, see if we can shorten the load.
@@ -4356,6 +4360,9 @@ SDValue TargetLowering::SimplifySetCC(EVT VT, SDValue N0, SDValue N1,
         }
       }
     }
+    // SyncVM local begin
+    }
+    // SyncVM local end
 
     // If the LHS is a ZERO_EXTEND, perform the comparison on the input.
     if (N0.getOpcode() == ISD::ZERO_EXTEND) {
