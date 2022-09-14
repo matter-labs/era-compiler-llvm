@@ -36,8 +36,8 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMLowerIntrinsicsPass(PR);
   initializeSyncVMLinkRuntimePass(PR);
   initializeSyncVMAllocaHoistingPass(PR);
-  initializeSyncVMMoveCallResultSpillPass(PR);
   initializeSyncVMPeepholePass(PR);
+  initializeSyncVMPropagateGenericPointersPass(PR);
   initializeSyncVMStackAddressConstantPropagationPass(PR);
 }
 
@@ -118,7 +118,7 @@ void SyncVMPassConfig::addPreRegAlloc() {
 }
 
 void SyncVMPassConfig::addPreEmitPass() {
-  addPass(createSyncVMMoveCallResultSpillPass());
+  addPass(createSyncVMPropagateGenericPointersPass());
   addPass(createSyncVMExpandSelectPass());
   addPass(createSyncVMExpandPseudoPass());
   // TODO: The pass combines store with MULxxrr, DIVxxrr regardles of whether

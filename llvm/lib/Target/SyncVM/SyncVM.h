@@ -77,8 +77,8 @@ FunctionPass *createSyncVMBytesToCellsPass();
 FunctionPass *createSyncVMCodegenPreparePass();
 FunctionPass *createSyncVMExpandPseudoPass();
 FunctionPass *createSyncVMExpandSelectPass();
-FunctionPass *createSyncVMMoveCallResultSpillPass();
 FunctionPass *createSyncVMPeepholePass();
+FunctionPass *createSyncVMPropagateGenericPointersPass();
 FunctionPass *createSyncVMStackAddressConstantPropagationPass();
 
 void initializeSyncVMExpandUMAPass(PassRegistry &);
@@ -92,8 +92,8 @@ void initializeSyncVMLinkRuntimePass(PassRegistry &);
 void initializeSyncVMCodegenPreparePass(PassRegistry &);
 void initializeSyncVMExpandPseudoPass(PassRegistry &);
 void initializeSyncVMExpandSelectPass(PassRegistry &);
-void initializeSyncVMMoveCallResultSpillPass(PassRegistry &);
 void initializeSyncVMPeepholePass(PassRegistry &);
+void initializeSyncVMPropagateGenericPointersPass(PassRegistry &);
 void initializeSyncVMStackAddressConstantPropagationPass(PassRegistry &);
 
 } // end namespace llvm;
