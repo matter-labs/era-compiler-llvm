@@ -299,7 +299,7 @@ define {i8 addrspace(3)*, i1}* @__farcall(i256 %abi_params, i256 %address, {i8 a
 entry:
   %in_res_result_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 0
   %in_res_flag_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 1
-  %invoke_res = invoke i8 addrspace(3)* @__farcall_int(i256 %abi_params, i256 %address)
+  %invoke_res = invoke i8 addrspace(3)*(i256, i256, ...) @__farcall_int(i256 %abi_params, i256 %address)
     to label %ok unwind label %err
 ok:
   store i8 addrspace(3)* %invoke_res, i8 addrspace(3)** %in_res_result_ptr
@@ -337,7 +337,7 @@ define {i8 addrspace(3)*, i1}* @__delegatecall(i256 %abi_params, i256 %address, 
 entry:
   %in_res_result_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 0
   %in_res_flag_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 1
-  %invoke_res = invoke i8 addrspace(3)* @__delegatecall_int(i256 %abi_params, i256 %address)
+  %invoke_res = invoke i8 addrspace(3)*(i256, i256, ...) @__delegatecall_int(i256 %abi_params, i256 %address)
     to label %ok unwind label %err
 ok:
   store i8 addrspace(3)* %invoke_res, i8 addrspace(3)** %in_res_result_ptr
@@ -375,7 +375,7 @@ define {i8 addrspace(3)*, i1}* @__systemcall(i256 %abi_params, i256 %address, i2
 entry:
   %in_res_result_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 0
   %in_res_flag_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 1
-  %invoke_res = invoke i8 addrspace(3)* @__farcall_int(i256 %abi_params, i256 %address)
+  %invoke_res = invoke i8 addrspace(3)*(i256, i256, ...) @__farcall_int(i256 %abi_params, i256 %address, i256 %p0, i256 %p1)
     to label %ok unwind label %err
 ok:
   store i8 addrspace(3)* %invoke_res, i8 addrspace(3)** %in_res_result_ptr
@@ -394,7 +394,7 @@ define {i8 addrspace(3)*, i1}* @__systemdelegatecall(i256 %abi_params, i256 %add
 entry:
   %in_res_result_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 0
   %in_res_flag_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 1
-  %invoke_res = invoke i8 addrspace(3)* @__delegatecall_int(i256 %abi_params, i256 %address)
+  %invoke_res = invoke i8 addrspace(3)*(i256, i256, ...) @__delegatecall_int(i256 %abi_params, i256 %address, i256 %p0, i256 %p1)
     to label %ok unwind label %err
 ok:
   store i8 addrspace(3)* %invoke_res, i8 addrspace(3)** %in_res_result_ptr
@@ -506,9 +506,9 @@ declare void @llvm.syncvm.throw(i256)
 declare void @llvm.syncvm.sstore(i256 %key, i256 %val)
 declare i256 @llvm.syncvm.sload(i256 %key)
 declare i256 @llvm.syncvm.iflt(i256, i256)
-declare i8 addrspace(3)* @__farcall_int(i256, i256)
+declare i8 addrspace(3)* @__farcall_int(i256, i256, ...)
 declare i8 addrspace(3)* @__staticcall_int(i256, i256)
-declare i8 addrspace(3)* @__delegatecall_int(i256, i256)
+declare i8 addrspace(3)* @__delegatecall_int(i256, i256, ...)
 declare i8 addrspace(3)* @__mimiccall_int(i256, i256, i256)
 declare i32 @__personality()
 
