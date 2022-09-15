@@ -1043,6 +1043,8 @@ def CTXr_se : IContextR<46, (outs GR256:$rd0), (ins context_se_op:$cop, cc:$cc),
                         "context$cop$cc\t$rd0", []>;
 def CTXr_set : IContextR<52, (outs), (ins GR256:$rs0, context_se_op:$cop, cc:$cc),
                          "context$cop$cc\t$rs0", []>;
+def CTXr_se0 : IContextR<152, (outs), (ins context_se_op:$cop, cc:$cc),
+                         "context$cop$cc", []>;
 }
 
 def : Pat<(int_syncvm_this), (CTXr 0, 0)>;
@@ -1054,7 +1056,7 @@ def : Pat<(int_syncvm_ergsleft), (CTXr_se 6, 0)>;
 def : Pat<(SyncVMget_sp), (CTXr_se 7, 0)>;
 def : Pat<(int_syncvm_getu128), (CTXr_se 8, 0)>;
 def : Pat<(int_syncvm_setu128 GR256:$rs0), (CTXr_set GR256:$rs0, 9, 0)>;
-def : Pat<(int_syncvm_inctx), (CTXr_se 10, 0)>;
+def : Pat<(int_syncvm_inctx), (CTXr_se0 10, 0)>;
 def : Pat<(int_syncvm_setpubdataprice GR256:$rs0), (CTXr_set GR256:$rs0, 11, 0)>;
 
 def SLDrr : ILogR<47, DstReg, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
