@@ -105,7 +105,6 @@ void SyncVMPassConfig::addIRPasses() {
 }
 
 bool SyncVMPassConfig::addInstSelector() {
-  (void)TargetPassConfig::addInstSelector();
   // Install an instruction selector.
   addPass(createSyncVMISelDag(getSyncVMTargetMachine(), getOptLevel()));
   return false;
