@@ -289,9 +289,11 @@ SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
             .Case("__farcall_int", EraVMISD::FARCALL)
             .Case("__farcall_int_l", EraVMISD::FARCALL)
             .Case("__staticcall_int", EraVMISD::STATICCALL)
+            .Case("__staticcall_int_l", EraVMISD::STATICCALL)
             .Case("__delegatecall_int", EraVMISD::DELEGATECALL)
             .Case("__delegatecall_int_l", EraVMISD::DELEGATECALL)
             .Case("__mimiccall_int", EraVMISD::MIMICCALL)
+            .Case("__mimiccall_int_l", EraVMISD::MIMICCALL)
             .Default(0);
 
     bool is_mimic = farcall_opc == EraVMISD::MIMICCALL;

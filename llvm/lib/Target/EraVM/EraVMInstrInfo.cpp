@@ -433,9 +433,11 @@ bool EraVMInstrInfo::isFarCall(const MachineInstr &MI) const {
   case EraVM::FAR_CALL:
   case EraVM::FAR_CALLL:
   case EraVM::STATIC_CALL:
+  case EraVM::STATIC_CALLL:
   case EraVM::DELEGATE_CALL:
   case EraVM::DELEGATE_CALLL:
   case EraVM::MIMIC_CALL:
+  case EraVM::MIMIC_CALLL:
     return true;
   }
   return false;
