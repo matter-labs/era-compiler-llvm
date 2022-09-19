@@ -431,6 +431,21 @@ define i256 @callee_small_argtypes(i1 %a1, i2 %a2, i8 %a8, i16 %a16, i32 %a32, i
   ret i256 %x7
 }
 
+; CHECK-LABEL: fat.ptr.arg
+define void @fat.ptr.arg(i256 addrspace(3)* %ptr) {
+  %slot = alloca i256 addrspace(3)*
+  ; CHECK: ptr.add r1, r0, stack-[1]
+  store i256 addrspace(3)* %ptr, i256 addrspace(3)** %slot
+  ret void
+}
+
+; CHECK-LABEL: fat.ptr.call
+define void @fat.ptr.call(i256 %a1, i256 addrspace(3)* %ptr) {
+  ; CHECK: add r2, r0, r1
+  call void @fat.ptr.arg(i256 addrspace(3)* %ptr)
+  ret void
+}
+
 declare i256 @i1.arg(i1 %a1) nounwind
 declare i256 @i8.arg(i8 %a1) nounwind
 declare i256 @i16.arg(i16 %a1) nounwind

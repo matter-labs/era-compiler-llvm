@@ -68,10 +68,25 @@ bool SyncVMPropagateGenericPointers::canTransform(MachineInstr &MI) {
     return false;
   SmallPtrSet<MachineInstr *, 4> ReachingDefs{};
   RDA->getGlobalReachingDefs(&MI, MI.getOperand(1).getReg(), ReachingDefs);
-  return !ReachingDefs.empty() &&
-         llvm::all_of(ReachingDefs, [this](const MachineInstr *MI) {
-           return TII->isPtr(*MI) || TII->isNull(*MI);
-         });
+  // If the register is not defined iside the function, it must be its argument
+  // or 0.
+  if (ReachingDefs.empty()) {
+    Register Arg = MI.getOperand(1).getReg();
+    if (Arg == SyncVM::R0)
+      return false;
+    // FIXME: At the moment FE doesn't pass aggregates by value, so the number
+    // of the register must be equal to its position in the argument list.
+    unsigned ArgNo = Arg - SyncVM::R0 - 1;
+    auto *FTy = MI.getParent()->getParent()->getFunction().getFunctionType();
+    assert(FTy->getFunctionNumParams() > ArgNo);
+    auto *ArgTy = dyn_cast<PointerType>(FTy->getParamType(ArgNo));
+    if (ArgTy && ArgTy->getAddressSpace() == SyncVMAS::AS_GENERIC)
+      return true;
+    return false;
+  }
+  return llvm::all_of(ReachingDefs, [this](const MachineInstr *MI) {
+    return TII->isPtr(*MI) || TII->isNull(*MI);
+  });
 }
 
 bool SyncVMPropagateGenericPointers::runOnMachineFunction(MachineFunction &MF) {

@@ -1120,12 +1120,16 @@ def FAR_CALLL  : ICall<80, CFNormal, (ins GR256:$abi, GR256:$address, GR256:$op1
                "far_call\t$abi, $address, $unwind", [(SyncVMfarcall GR256:$abi, GR256:$address, GR256:$op1, GR256:$op2, bb:$unwind)]>;
 def STATIC_CALL  : ICall<10, CFNormal, (ins GR256:$abi, GR256:$address, jmptarget:$unwind),
                "far_call.static\t$abi, $address, $unwind", [(SyncVMstaticcall GR256:$abi, GR256:$address, bb:$unwind)]>;
+def STATIC_CALLL  : ICall<100, CFNormal, (ins GR256:$abi, GR256:$address, GR256:$op1, GR256:$op2, jmptarget:$unwind),
+               "far_call.static\t$abi, $address, $unwind", [(SyncVMstaticcall GR256:$abi, GR256:$address, GR256:$op1, GR256:$op2, bb:$unwind)]>;
 def DELEGATE_CALL  : ICall<11, CFDelegate, (ins GR256:$abi, GR256:$address, jmptarget:$unwind),
                "far_call.delegate\t$abi, $address, $unwind", [(SyncVMdelegatecall GR256:$abi, GR256:$address, bb:$unwind)]>;
 def DELEGATE_CALLL  : ICall<110, CFDelegate, (ins GR256:$abi, GR256:$address, GR256:$op1, GR256:$op2, jmptarget:$unwind),
                "far_call.delegate\t$abi, $address, $unwind", [(SyncVMdelegatecall GR256:$abi, GR256:$address, GR256:$op1, GR256:$op2, bb:$unwind)]>;
 def MIMIC_CALL  : ICall<12, CFMimic, (ins GR256:$abi, GR256:$address, GR256:$mimic, jmptarget:$unwind),
                "far_call.mimic\t$abi, $address, $unwind", [(SyncVMmimiccall GR256:$abi, GR256:$address, GR256:$mimic, bb:$unwind)]>;
+def MIMIC_CALLL  : ICall<120, CFMimic, (ins GR256:$abi, GR256:$address, GR256:$op1, GR256:$op2, GR256:$mimic, jmptarget:$unwind),
+               "far_call.mimic\t$abi, $address, $unwind", [(SyncVMmimiccall GR256:$abi, GR256:$address, GR256:$op1, GR256:$op2, GR256:$mimic, bb:$unwind)]>;
 }
 
 def : Pat<(store_stack (add GR256:$rs0, neg_imm16:$imm), stackaddr:$dst0),
