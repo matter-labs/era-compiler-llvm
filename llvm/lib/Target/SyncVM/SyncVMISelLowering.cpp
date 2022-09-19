@@ -290,9 +290,11 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
       .Case("__farcall_int", SyncVMISD::FARCALL)
       .Case("__farcall_int_l", SyncVMISD::FARCALL)
       .Case("__staticcall_int", SyncVMISD::STATICCALL)
+      .Case("__staticcall_int_l", SyncVMISD::STATICCALL)
       .Case("__delegatecall_int", SyncVMISD::DELEGATECALL)
       .Case("__delegatecall_int_l", SyncVMISD::DELEGATECALL)
       .Case("__mimiccall_int", SyncVMISD::MIMICCALL)
+      .Case("__mimiccall_int_l", SyncVMISD::MIMICCALL)
       .Default(0);
 
     bool is_mimic = farcall_opc == SyncVMISD::MIMICCALL;

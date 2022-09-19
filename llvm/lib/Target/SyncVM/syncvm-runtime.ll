@@ -371,7 +371,7 @@ err:
   ret {i8 addrspace(3)*, i1}* %in_res
 }
 
-define {i8 addrspace(3)*, i1}* @__systemcall(i256 %abi_params, i256 %address, i256 %p0, i256 %p1, {i8 addrspace(3)*, i1}* %in_res) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1}* @__system_call(i256 %abi_params, i256 %address, i256 %p0, i256 %p1, {i8 addrspace(3)*, i1}* %in_res) personality i32 ()* @__personality {
 entry:
   %in_res_result_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 0
   %in_res_flag_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 1
@@ -390,7 +390,26 @@ err:
   ret {i8 addrspace(3)*, i1}* %in_res
 }
 
-define {i8 addrspace(3)*, i1}* @__systemdelegatecall(i256 %abi_params, i256 %address, i256 %p0, i256 %p1, {i8 addrspace(3)*, i1}* %in_res) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1}* @__system_staticcall(i256 %abi_params, i256 %address, i256 %p0, i256 %p1, {i8 addrspace(3)*, i1}* %in_res) personality i32 ()* @__personality {
+entry:
+  %in_res_result_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 0
+  %in_res_flag_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 1
+  %invoke_res = invoke i8 addrspace(3)* @__staticcall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1)
+    to label %ok unwind label %err
+ok:
+  store i8 addrspace(3)* %invoke_res, i8 addrspace(3)** %in_res_result_ptr
+  store i1 1, i1* %in_res_flag_ptr
+  ret {i8 addrspace(3)*, i1}* %in_res
+
+err:
+  %res.2 = landingpad {i8 addrspace(3)*, i256} cleanup
+  %res = extractvalue {i8 addrspace(3)*, i256} %res.2, 0
+  store i8 addrspace(3)* %res, i8 addrspace(3)** %in_res_result_ptr
+  store i1 0, i1* %in_res_flag_ptr
+  ret {i8 addrspace(3)*, i1}* %in_res
+}
+
+define {i8 addrspace(3)*, i1}* @__system_delegatecall(i256 %abi_params, i256 %address, i256 %p0, i256 %p1, {i8 addrspace(3)*, i1}* %in_res) personality i32 ()* @__personality {
 entry:
   %in_res_result_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 0
   %in_res_flag_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 1
@@ -409,6 +428,184 @@ err:
   ret {i8 addrspace(3)*, i1}* %in_res
 }
 
+define {i8 addrspace(3)*, i1}* @__system_mimiccall(i256 %abi_params, i256 %address, i256 %p0, i256 %p1, i256 %mimic, {i8 addrspace(3)*, i1}* %in_res) personality i32 ()* @__personality {
+entry:
+  %in_res_result_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 0
+  %in_res_flag_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 1
+  %invoke_res = invoke i8 addrspace(3)* @__mimiccall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1, i256 %mimic)
+    to label %ok unwind label %err
+ok:
+  store i8 addrspace(3)* %invoke_res, i8 addrspace(3)** %in_res_result_ptr
+  store i1 1, i1* %in_res_flag_ptr
+  ret {i8 addrspace(3)*, i1}* %in_res
+
+err:
+  %res.2 = landingpad {i8 addrspace(3)*, i256} cleanup
+  %res = extractvalue {i8 addrspace(3)*, i256} %res.2, 0
+  store i8 addrspace(3)* %res, i8 addrspace(3)** %in_res_result_ptr
+  store i1 0, i1* %in_res_flag_ptr
+  ret {i8 addrspace(3)*, i1}* %in_res
+}
+
+define {i8 addrspace(3)*, i1}* @__farcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, {i8 addrspace(3)*, i1}* %in_res) personality i32 ()* @__personality {
+entry:
+  %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
+  %in_res_result_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 0
+  %in_res_flag_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 1
+  %invoke_res = invoke i8 addrspace(3)* @__farcall_int(i256 %abi_params, i256 %address)
+    to label %ok unwind label %err
+ok:
+  store i8 addrspace(3)* %invoke_res, i8 addrspace(3)** %in_res_result_ptr
+  store i1 1, i1* %in_res_flag_ptr
+  ret {i8 addrspace(3)*, i1}* %in_res
+
+err:
+  %res.2 = landingpad {i8 addrspace(3)*, i256} cleanup
+  %res = extractvalue {i8 addrspace(3)*, i256} %res.2, 0
+  store i8 addrspace(3)* %res, i8 addrspace(3)** %in_res_result_ptr
+  store i1 0, i1* %in_res_flag_ptr
+  ret {i8 addrspace(3)*, i1}* %in_res
+}
+
+define {i8 addrspace(3)*, i1}* @__staticcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, {i8 addrspace(3)*, i1}* %in_res) personality i32 ()* @__personality {
+entry:
+  %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
+  %in_res_result_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 0
+  %in_res_flag_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 1
+  %invoke_res = invoke i8 addrspace(3)* @__staticcall_int(i256 %abi_params, i256 %address)
+    to label %ok unwind label %err
+ok:
+  store i8 addrspace(3)* %invoke_res, i8 addrspace(3)** %in_res_result_ptr
+  store i1 1, i1* %in_res_flag_ptr
+  ret {i8 addrspace(3)*, i1}* %in_res
+
+err:
+  %res.2 = landingpad {i8 addrspace(3)*, i256} cleanup
+  %res = extractvalue {i8 addrspace(3)*, i256} %res.2, 0
+  store i8 addrspace(3)* %res, i8 addrspace(3)** %in_res_result_ptr
+  store i1 0, i1* %in_res_flag_ptr
+  ret {i8 addrspace(3)*, i1}* %in_res
+}
+
+define {i8 addrspace(3)*, i1}* @__delegatecall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, {i8 addrspace(3)*, i1}* %in_res) personality i32 ()* @__personality {
+entry:
+  %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
+  %in_res_result_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 0
+  %in_res_flag_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 1
+  %invoke_res = invoke i8 addrspace(3)* @__delegatecall_int(i256 %abi_params, i256 %address)
+    to label %ok unwind label %err
+ok:
+  store i8 addrspace(3)* %invoke_res, i8 addrspace(3)** %in_res_result_ptr
+  store i1 1, i1* %in_res_flag_ptr
+  ret {i8 addrspace(3)*, i1}* %in_res
+
+err:
+  %res.2 = landingpad {i8 addrspace(3)*, i256} cleanup
+  %res = extractvalue {i8 addrspace(3)*, i256} %res.2, 0
+  store i8 addrspace(3)* %res, i8 addrspace(3)** %in_res_result_ptr
+  store i1 0, i1* %in_res_flag_ptr
+  ret {i8 addrspace(3)*, i1}* %in_res
+}
+
+define {i8 addrspace(3)*, i1}* @__mimiccall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %mimic, {i8 addrspace(3)*, i1}* %in_res) personality i32 ()* @__personality {
+entry:
+  %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
+  %in_res_result_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 0
+  %in_res_flag_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 1
+  %invoke_res = invoke i8 addrspace(3)* @__mimiccall_int(i256 %abi_params, i256 %address, i256 %mimic)
+    to label %ok unwind label %err
+ok:
+  store i8 addrspace(3)* %invoke_res, i8 addrspace(3)** %in_res_result_ptr
+  store i1 1, i1* %in_res_flag_ptr
+  ret {i8 addrspace(3)*, i1}* %in_res
+
+err:
+  %res.2 = landingpad {i8 addrspace(3)*, i256} cleanup
+  %res = extractvalue {i8 addrspace(3)*, i256} %res.2, 0
+  store i8 addrspace(3)* %res, i8 addrspace(3)** %in_res_result_ptr
+  store i1 0, i1* %in_res_flag_ptr
+  ret {i8 addrspace(3)*, i1}* %in_res
+}
+
+define {i8 addrspace(3)*, i1}* @__system_call_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p0, i256 %p1, {i8 addrspace(3)*, i1}* %in_res) personality i32 ()* @__personality {
+entry:
+  %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
+  %in_res_result_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 0
+  %in_res_flag_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 1
+  %invoke_res = invoke i8 addrspace(3)* @__farcall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1)
+    to label %ok unwind label %err
+ok:
+  store i8 addrspace(3)* %invoke_res, i8 addrspace(3)** %in_res_result_ptr
+  store i1 1, i1* %in_res_flag_ptr
+  ret {i8 addrspace(3)*, i1}* %in_res
+
+err:
+  %res.2 = landingpad {i8 addrspace(3)*, i256} cleanup
+  %res = extractvalue {i8 addrspace(3)*, i256} %res.2, 0
+  store i8 addrspace(3)* %res, i8 addrspace(3)** %in_res_result_ptr
+  store i1 0, i1* %in_res_flag_ptr
+  ret {i8 addrspace(3)*, i1}* %in_res
+}
+
+define {i8 addrspace(3)*, i1}* @__system_staticcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p0, i256 %p1, {i8 addrspace(3)*, i1}* %in_res) personality i32 ()* @__personality {
+entry:
+  %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
+  %in_res_result_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 0
+  %in_res_flag_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 1
+  %invoke_res = invoke i8 addrspace(3)* @__staticcall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1)
+    to label %ok unwind label %err
+ok:
+  store i8 addrspace(3)* %invoke_res, i8 addrspace(3)** %in_res_result_ptr
+  store i1 1, i1* %in_res_flag_ptr
+  ret {i8 addrspace(3)*, i1}* %in_res
+
+err:
+  %res.2 = landingpad {i8 addrspace(3)*, i256} cleanup
+  %res = extractvalue {i8 addrspace(3)*, i256} %res.2, 0
+  store i8 addrspace(3)* %res, i8 addrspace(3)** %in_res_result_ptr
+  store i1 0, i1* %in_res_flag_ptr
+  ret {i8 addrspace(3)*, i1}* %in_res
+}
+
+define {i8 addrspace(3)*, i1}* @__system_delegatecall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p0, i256 %p1, {i8 addrspace(3)*, i1}* %in_res) personality i32 ()* @__personality {
+entry:
+  %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
+  %in_res_result_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 0
+  %in_res_flag_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 1
+  %invoke_res = invoke i8 addrspace(3)* @__delegatecall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1)
+    to label %ok unwind label %err
+ok:
+  store i8 addrspace(3)* %invoke_res, i8 addrspace(3)** %in_res_result_ptr
+  store i1 1, i1* %in_res_flag_ptr
+  ret {i8 addrspace(3)*, i1}* %in_res
+
+err:
+  %res.2 = landingpad {i8 addrspace(3)*, i256} cleanup
+  %res = extractvalue {i8 addrspace(3)*, i256} %res.2, 0
+  store i8 addrspace(3)* %res, i8 addrspace(3)** %in_res_result_ptr
+  store i1 0, i1* %in_res_flag_ptr
+  ret {i8 addrspace(3)*, i1}* %in_res
+}
+
+define {i8 addrspace(3)*, i1}* @__system_mimiccall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p0, i256 %p1, i256 %mimic, {i8 addrspace(3)*, i1}* %in_res) personality i32 ()* @__personality {
+entry:
+  %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
+  %in_res_result_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 0
+  %in_res_flag_ptr = getelementptr {i8 addrspace(3)*, i1}, {i8 addrspace(3)*, i1}* %in_res, i32 0, i32 1
+  %invoke_res = invoke i8 addrspace(3)* @__mimiccall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1, i256 %mimic)
+    to label %ok unwind label %err
+ok:
+  store i8 addrspace(3)* %invoke_res, i8 addrspace(3)** %in_res_result_ptr
+  store i1 1, i1* %in_res_flag_ptr
+  ret {i8 addrspace(3)*, i1}* %in_res
+
+err:
+  %res.2 = landingpad {i8 addrspace(3)*, i256} cleanup
+  %res = extractvalue {i8 addrspace(3)*, i256} %res.2, 0
+  store i8 addrspace(3)* %res, i8 addrspace(3)** %in_res_result_ptr
+  store i1 0, i1* %in_res_flag_ptr
+  ret {i8 addrspace(3)*, i1}* %in_res
+}
 define void @__sstore(i256 %val, i256 %key) {
   call void @llvm.syncvm.sstore(i256 %key, i256 %val)
   ret void
@@ -509,9 +706,11 @@ declare i256 @llvm.syncvm.iflt(i256, i256)
 declare i8 addrspace(3)* @__farcall_int(i256, i256)
 declare i8 addrspace(3)* @__farcall_int_l(i256, i256, i256, i256)
 declare i8 addrspace(3)* @__staticcall_int(i256, i256)
+declare i8 addrspace(3)* @__staticcall_int_l(i256, i256, i256, i256)
 declare i8 addrspace(3)* @__delegatecall_int(i256, i256)
 declare i8 addrspace(3)* @__delegatecall_int_l(i256, i256, i256, i256)
 declare i8 addrspace(3)* @__mimiccall_int(i256, i256, i256)
+declare i8 addrspace(3)* @__mimiccall_int_l(i256, i256, i256, i256, i256)
 declare i32 @__personality()
 
 attributes #0 = { nounwind readnone }
