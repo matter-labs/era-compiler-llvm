@@ -68,12 +68,27 @@ bool EraVMPropagateGenericPointers::canTransform(MachineInstr &MI) {
     return false;
   SmallPtrSet<MachineInstr *, 4> ReachingDefs{};
   RDA->getGlobalReachingDefs(&MI, MI.getOperand(1).getReg(), ReachingDefs);
+  // If the register is not defined inside the function, it must be its argument
+  // or 0.
+  if (ReachingDefs.empty()) {
+    Register Arg = MI.getOperand(1).getReg();
+    if (Arg == EraVM::R0)
+      return false;
+    // FIXME: At the moment FE doesn't pass aggregates by value, so the number
+    // of the register must be equal to its position in the argument list.
+    unsigned ArgNo = Arg - EraVM::R0 - 1;
+    auto *FTy = MI.getParent()->getParent()->getFunction().getFunctionType();
+    assert(FTy->getFunctionNumParams() > ArgNo);
+    auto *ArgTy = dyn_cast<PointerType>(FTy->getParamType(ArgNo));
+    if (ArgTy && ArgTy->getAddressSpace() == EraVMAS::AS_GENERIC)
+      return true;
+    return false;
+  }
 
   if (llvm::all_of(ReachingDefs,
                    [this](const MachineInstr *MI) { return TII->isNull(*MI); }))
     return false;
-  return !ReachingDefs.empty() &&
-         llvm::all_of(ReachingDefs, [this](const MachineInstr *MI) {
+  return llvm::all_of(ReachingDefs, [this](const MachineInstr *MI) {
            return TII->isPtr(*MI) || TII->isNull(*MI);
          });
 }
