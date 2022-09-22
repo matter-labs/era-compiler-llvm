@@ -84,7 +84,6 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
 
   // Intrinsics lowering
   setOperationAction(ISD::INTRINSIC_VOID, MVT::Other, Custom);
-  setOperationAction(ISD::INTRINSIC_WO_CHAIN, MVT::Other, Custom);
 
   for (MVT VT : MVT::integer_valuetypes()) {
     setLoadExtAction(ISD::SEXTLOAD, MVT::i256, VT, Custom);
@@ -552,8 +551,6 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
     return LowerSREM(Op, DAG);
   case ISD::INTRINSIC_VOID:
     return LowerINTRINSIC_VOID(Op, DAG);
-  case ISD::INTRINSIC_WO_CHAIN:
-    return LowerINTRINSIC_WO_CHAIN(Op, DAG);
   case ISD::STACKSAVE:
     return LowerSTACKSAVE(Op, DAG);
   case ISD::STACKRESTORE:
@@ -622,12 +619,12 @@ SDValue SyncVMTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
               {Store->getValue(), DAG.getRegister(SyncVM::R0, MVT::i256),
                DAG.getTargetFrameIndex(FI->getIndex(),
                                        getPointerTy(DAG.getDataLayout())),
-               Zero, Zero}),
+               Zero, Zero, Chain}),
           0);
     return SDValue(DAG.getMachineNode(SyncVM::PTR_ADDrrs_p, DL, MVT::Other,
                                       {Store->getValue(),
                                        DAG.getRegister(SyncVM::R0, MVT::i256),
-                                       Zero, BasePtr, Zero}),
+                                       Zero, BasePtr, Zero, Chain}),
                    0);
   }
 
@@ -698,16 +695,11 @@ SDValue SyncVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
     auto Zero = DAG.getTargetConstant(0, DL, MVT::i64);
     SDVTList RetTys = DAG.getVTList(MVT::i256, MVT::Other);
     // TODO: Something like SelectAddress is here, need to be reconsidered.
-    /*
-    MemVal->dump();
-    Op.dump();
-    BasePtr.dump();
-    */
     if (isa<GlobalAddressSDNode>(BasePtr))
       return SDValue(
-          DAG.getMachineNode(
-              SyncVM::PTR_ADDsrr_p, DL, RetTys,
-              {Zero, Zero, BasePtr, DAG.getRegister(SyncVM::R0, MVT::i256)}),
+          DAG.getMachineNode(SyncVM::PTR_ADDsrr_p, DL, RetTys,
+                             {Zero, Zero, BasePtr,
+                              DAG.getRegister(SyncVM::R0, MVT::i256), Chain}),
           0);
     if (auto *FI = dyn_cast<FrameIndexSDNode>(BasePtr))
       return SDValue(
@@ -715,7 +707,7 @@ SDValue SyncVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
               SyncVM::PTR_ADDsrr_p, DL, RetTys,
               {DAG.getTargetFrameIndex(FI->getIndex(),
                                        getPointerTy(DAG.getDataLayout())),
-               Zero, Zero, DAG.getRegister(SyncVM::R0, MVT::i256)}),
+               Zero, Zero, DAG.getRegister(SyncVM::R0, MVT::i256), Chain}),
           0);
     return SDValue(DAG.getMachineNode(SyncVM::PTR_ADDsrr_p, DL, RetTys,
                                       {Zero, BasePtr, Zero,
@@ -915,24 +907,6 @@ SyncVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                                                   MachineBasicBlock *BB) const {
   llvm_unreachable("No instruction require custom inserter");
   return nullptr;
-}
-SDValue SyncVMTargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
-                                                      SelectionDAG &DAG) const {
-  unsigned IntNo =
-      cast<ConstantSDNode>(
-          Op.getOperand(Op.getOperand(0).getValueType() == MVT::Other))
-          ->getZExtValue();
-  if (IntNo == Intrinsic::syncvm_ptr_add) {
-    LLVM_DEBUG(dbgs() << "LowerINTRINSIC_WO_CHAIN matched: ptr.add\n");
-    return DAG.getNode(SyncVMISD::PTR_ADD, SDLoc(Op), Op.getValueType(),
-                       Op.getOperand(1), Op.getOperand(2));
-  } else if (IntNo == Intrinsic::syncvm_ptr_pack) {
-    LLVM_DEBUG(dbgs() << "LowerINTRINSIC_WO_CHAIN matched: ptr.pack\n");
-    return DAG.getNode(SyncVMISD::PTR_PACK, SDLoc(Op), Op.getValueType(),
-                       Op.getOperand(1), Op.getOperand(2));
-  } else {
-    return SDValue();
-  }
 }
 
 SDValue SyncVMTargetLowering::LowerINTRINSIC_VOID(SDValue Op,
