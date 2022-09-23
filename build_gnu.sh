@@ -28,11 +28,13 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         -DLLVM_BUILD_DOCS='Off' \
         -DLLVM_INCLUDE_DOCS='Off' \
         -DLLVM_INCLUDE_TESTS='Off' \
-        -DLLVM_ENABLE_ASSERTIONS='Off' \
+        -DLLVM_ENABLE_ASSERTIONS='On' \
         -DLLVM_ENABLE_TERMINFO='Off' \
         -DLLVM_ENABLE_DOXYGEN='Off' \
         -DLLVM_ENABLE_SPHINX='Off' \
         -DLLVM_ENABLE_OCAMLDOC='Off' \
+        -DLLVM_ENABLE_ZLIB='Off' \
+        -DLLVM_ENABLE_LIBXML2='Off' \
         -DLLVM_ENABLE_BINDINGS='Off' \
         -DCMAKE_OSX_DEPLOYMENT_TARGET='10.9'
 elif [[ -f '/etc/arch-release' ]]; then
@@ -62,11 +64,13 @@ elif [[ -f '/etc/arch-release' ]]; then
         -DLLVM_BUILD_DOCS='Off' \
         -DLLVM_INCLUDE_DOCS='Off' \
         -DLLVM_INCLUDE_TESTS='Off' \
-        -DLLVM_ENABLE_ASSERTIONS='Off' \
+        -DLLVM_ENABLE_ASSERTIONS='On' \
         -DLLVM_ENABLE_TERMINFO='Off' \
         -DLLVM_ENABLE_DOXYGEN='Off' \
         -DLLVM_ENABLE_SPHINX='Off' \
         -DLLVM_ENABLE_OCAMLDOC='Off' \
+        -DLLVM_ENABLE_ZLIB='Off' \
+        -DLLVM_ENABLE_LIBXML2='Off' \
         -DLLVM_ENABLE_BINDINGS='Off'
 elif [[ "$OSTYPE" == "linux-gnu" ]]; then
     if [[ -z ${CI_RUNNING+x} ]]; then
@@ -97,11 +101,13 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         -DLLVM_BUILD_DOCS='Off' \
         -DLLVM_INCLUDE_DOCS='Off' \
         -DLLVM_INCLUDE_TESTS='Off' \
-        -DLLVM_ENABLE_ASSERTIONS='Off' \
+        -DLLVM_ENABLE_ASSERTIONS='On' \
         -DLLVM_ENABLE_TERMINFO='Off' \
         -DLLVM_ENABLE_DOXYGEN='Off' \
         -DLLVM_ENABLE_SPHINX='Off' \
         -DLLVM_ENABLE_OCAMLDOC='Off' \
+        -DLLVM_ENABLE_ZLIB='Off' \
+        -DLLVM_ENABLE_LIBXML2='Off' \
         -DLLVM_ENABLE_BINDINGS='Off' \
         -DPython3_EXECUTABLE="$(which python3)"
 fi
