@@ -235,9 +235,22 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
       MachineMemOperand::MOStore, MFI.getObjectSize(FrameIdx),
       MFI.getObjectAlign(FrameIdx));
 
+  auto phyRegFromCall = [&](Register Reg) {
+    if (Reg != SyncVM::R1) return false;
+    // traverse backward to the beginning of the block
+    auto I = MI.getInstrIterator();
+    while (I != MBB.begin()) {
+      if (I->isCall()) {
+        return true;
+      }
+      --I;
+    }
+    return false;
+  };
+
   if (RC == &SyncVM::GR256RegClass) {
     MachineInstr *Def = MRI.getUniqueVRegDef(SrcReg);
-    if (Def && isDefinedAsFatPtr(*Def, *TII, MRI)) {
+    if ((Def && isDefinedAsFatPtr(*Def, *TII, MRI)) || phyRegFromCall(SrcReg)) {
       BuildMI(MBB, MI, DL, get(SyncVM::PTR_ADDrrs_s))
           .addReg(SrcReg, getKillRegState(isKill))
           .addReg(SyncVM::R0)
