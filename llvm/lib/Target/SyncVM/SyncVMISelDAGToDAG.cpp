@@ -403,6 +403,7 @@ void SyncVMDAGToDAGISel::Select(SDNode *Node) {
       ReplaceNode(Node, Node->getOperand(0).getNode());
       return;
     }
+    break;
   }
   }
 

@@ -15,6 +15,7 @@
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/IR/Function.h"
+#include "llvm/MC/MCContext.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/TargetRegistry.h"
 
@@ -201,25 +202,6 @@ unsigned SyncVMInstrInfo::insertBranch(
   return Count;
 }
 
-static bool isDefinedAsFatPtr(const MachineInstr &MI,
-                              const SyncVMInstrInfo &TII,
-                              const MachineRegisterInfo &MRI) {
-  // FIXME: For some reason loops of COPY definition sometimes appear. It needs
-  // further investigation.
-  static DenseSet<const MachineInstr *> Visited;
-  if (!Visited.count(&MI) && MI.getOpcode() == TargetOpcode::COPY) {
-    Visited.insert(&MI);
-    Register MOReg = MI.getOperand(1).getReg();
-    if (const MachineInstr *MI = MRI.getUniqueVRegDef(MOReg)) {
-      return isDefinedAsFatPtr(*MI, TII, MRI);
-    }
-    return false;
-  }
-  if (TII.getName(MI.getOpcode()).startswith("PTR_"))
-    return true;
-  return false;
-}
-
 void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
                                           MachineBasicBlock::iterator MI,
                                           Register SrcReg, bool isKill,
@@ -240,75 +222,23 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
       MFI.getObjectAlign(FrameIdx));
 
   if (RC == &SyncVM::GR256RegClass) {
-    MachineInstr *Def = MRI.getUniqueVRegDef(SrcReg);
-    // TODO: This code should go off once MVT::fatptr is properly supported
-    // R1 needs special threatment because far calls produce fat pointer in R1.
-    bool IsFatPtrInPhysReg = false;
-    if (!Def && SrcReg == SyncVM::R1) {
-      auto findSrcRegDef = [SrcReg](const MachineInstr &Inst) {
-        return Inst.isCall() ||
-               any_of(Inst.defs(), [SrcReg](const MachineOperand &MO) {
-                 return MO.getReg() == SrcReg;
-               });
-      };
-
-      // Look for the closest definition in MBB.
-      auto DefI =
-          std::find_if(std::make_reverse_iterator(MI),
-                       std::make_reverse_iterator(MBB.begin()), findSrcRegDef);
-      if (DefI != std::make_reverse_iterator(MBB.begin()))
-        IsFatPtrInPhysReg = isFarCall(*DefI);
-      // If not found check predecessors.
-      // It's not expected to have a fatptr from one branch, and i256 from
-      // another, so it's ok to find the very first definition using dfs. Loops
-      // are an issue, so track visited BBs to not to continue ad infinum.
-      if (!IsFatPtrInPhysReg) {
-        const MachineBasicBlock &Entry = MBB.getParent()->front();
-        DenseSet<const MachineBasicBlock *> Visited{&MBB};
-        std::deque<const MachineBasicBlock *> WorkList(MBB.pred_begin(),
-                                                       MBB.pred_end());
-        while (!WorkList.empty()) {
-          const MachineBasicBlock &CurrBB = *WorkList.front();
-          if (Visited.count(&CurrBB)) {
-            WorkList.pop_front();
-            continue;
-          }
-          Visited.insert(&CurrBB);
-          // Look for the closest definition of R1.
-          auto DefI = std::find_if(MBB.rbegin(), MBB.rend(), findSrcRegDef);
-          if (DefI != MBB.rend()) {
-            IsFatPtrInPhysReg = isFarCall(*DefI);
-            break;
-          }
-          // TODO: If this code persist for a reson, handle calling conventions
-          // here.
-          if (IsFatPtrInPhysReg || &CurrBB == &Entry)
-            break;
-          WorkList.pop_front();
-          WorkList.insert(WorkList.begin(), CurrBB.pred_begin(),
-                          CurrBB.pred_end());
-        }
-      }
-    }
-    if (IsFatPtrInPhysReg || (Def && isDefinedAsFatPtr(*Def, *TII, MRI))) {
-      BuildMI(MBB, MI, DL, get(SyncVM::PTR_ADDrrs_s))
-          .addReg(SrcReg, getKillRegState(isKill))
-          .addReg(SyncVM::R0)
-          .addFrameIndex(FrameIdx)
-          .addImm(32)
-          .addImm(0)
-          .addImm(0)
-          .addMemOperand(MMO);
-    } else {
-      BuildMI(MBB, MI, DL, get(SyncVM::ADDrrs_s))
-          .addReg(SrcReg, getKillRegState(isKill))
-          .addReg(SyncVM::R0)
-          .addFrameIndex(FrameIdx)
-          .addImm(32)
-          .addImm(0)
-          .addImm(0)
-          .addMemOperand(MMO);
-    }
+    BuildMI(MBB, MI, DL, get(SyncVM::ADDrrs_s))
+        .addReg(SrcReg, getKillRegState(isKill))
+        .addReg(SyncVM::R0)
+        .addFrameIndex(FrameIdx)
+        .addImm(32)
+        .addImm(0)
+        .addImm(0)
+        .addMemOperand(MMO);
+  } else if (RC == &SyncVM::GRPTRRegClass) {
+    BuildMI(MBB, MI, DL, get(SyncVM::PTR_ADDrrs_s))
+        .addReg(SrcReg, getKillRegState(isKill))
+        .addReg(SyncVM::R0)
+        .addFrameIndex(FrameIdx)
+        .addImm(32)
+        .addImm(0)
+        .addImm(0)
+        .addMemOperand(MMO);
   } else {
     llvm_unreachable("Cannot store this register to stack slot!");
   }
@@ -330,78 +260,23 @@ void SyncVMInstrInfo::loadRegFromStackSlot(
       MFI.getObjectAlign(FrameIdx));
 
   if (RC == &SyncVM::GR256RegClass) {
-    // TODO: This code should go off once MVT::fatptr is properly supported
-    // R1 needs special threatment because far calls produce fat pointer in R1.
-    bool IsFatPtrInFrameIndex = false;
-    auto findFrameIndexDef = [FrameIdx](const MachineInstr &Inst) {
-      if (Inst.getOpcode() != SyncVM::ADDrrs_s &&
-          Inst.getOpcode() != SyncVM::PTR_ADDrrs_s)
-        return false;
-      return Inst.getOperand(2).isFI() &&
-             Inst.getOperand(2).getIndex() == FrameIdx &&
-             Inst.getOperand(1).isReg() &&
-             Inst.getOperand(1).getReg() == SyncVM::R0 &&
-             Inst.getOperand(3).isImm() && Inst.getOperand(3).getImm() == 32 &&
-             Inst.getOperand(4).isImm() && Inst.getOperand(4).getImm() == 0 &&
-             Inst.getOperand(5).isImm() && Inst.getOperand(5).getImm() == 0;
-    };
-
-    // Look for the closest definition in MBB.
-    auto DefI = std::find_if(std::make_reverse_iterator(MI),
-                             std::make_reverse_iterator(MBB.begin()),
-                             findFrameIndexDef);
-    if (DefI != std::make_reverse_iterator(MBB.begin()))
-      IsFatPtrInFrameIndex = DefI->getOpcode() == SyncVM::PTR_ADDrrs_s;
-    // If not found check predecessors.
-    // It's not expected to have a fatptr from one branch, and i256 from
-    // another, so it's ok to find the very first definition using dfs. Loops
-    // are an issue, so track visited BBs to not to continue ad infinum.
-    if (!IsFatPtrInFrameIndex) {
-      const MachineBasicBlock &Entry = MBB.getParent()->front();
-      DenseSet<const MachineBasicBlock *> Visited{&MBB};
-      std::deque<const MachineBasicBlock *> WorkList(MBB.pred_begin(),
-                                                     MBB.pred_end());
-      while (!WorkList.empty()) {
-        const MachineBasicBlock &CurrBB = *WorkList.front();
-        if (Visited.count(&CurrBB)) {
-          WorkList.pop_front();
-          continue;
-        }
-        Visited.insert(&CurrBB);
-        // Look for the closest definition of R1.
-        auto DefI =
-            std::find_if(CurrBB.rbegin(), CurrBB.rend(), findFrameIndexDef);
-        if (DefI != CurrBB.rend()) {
-          IsFatPtrInFrameIndex = DefI->getOpcode() == SyncVM::PTR_ADDrrs_s;
-          break;
-        }
-        // TODO: If this code persist for a reson, handle calling conventions
-        // here.
-        if (IsFatPtrInFrameIndex || &CurrBB == &Entry)
-          break;
-        WorkList.pop_front();
-        WorkList.insert(WorkList.begin(), CurrBB.pred_begin(),
-                        CurrBB.pred_end());
-      }
-    }
-    if (!IsFatPtrInFrameIndex)
-      BuildMI(MBB, MI, DL, get(SyncVM::ADDsrr_s))
-          .addReg(DestReg, getDefRegState(true))
-          .addFrameIndex(FrameIdx)
-          .addImm(32)
-          .addImm(0)
-          .addImm(0)
-          .addImm(0)
-          .addMemOperand(MMO);
-    else
-      BuildMI(MBB, MI, DL, get(SyncVM::PTR_ADDsrr_s))
-          .addReg(DestReg, getDefRegState(true))
-          .addFrameIndex(FrameIdx)
-          .addImm(32)
-          .addImm(0)
-          .addImm(0)
-          .addImm(0)
-          .addMemOperand(MMO);
+    BuildMI(MBB, MI, DL, get(SyncVM::ADDsrr_s))
+        .addReg(DestReg, getDefRegState(true))
+        .addFrameIndex(FrameIdx)
+        .addImm(32)
+        .addImm(0)
+        .addImm(0)
+        .addImm(0)
+        .addMemOperand(MMO);
+  } else if (RC == &SyncVM::GRPTRRegClass) {
+    BuildMI(MBB, MI, DL, get(SyncVM::PTR_ADDsrr_s))
+        .addReg(DestReg, getDefRegState(true))
+        .addFrameIndex(FrameIdx)
+        .addImm(32)
+        .addImm(0)
+        .addImm(0)
+        .addImm(0)
+        .addMemOperand(MMO);
   } else {
     llvm_unreachable("Cannot store this register to stack slot!");
   }
@@ -411,7 +286,11 @@ void SyncVMInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                   MachineBasicBlock::iterator I,
                                   const DebugLoc &DL, MCRegister DestReg,
                                   MCRegister SrcReg, bool KillSrc) const {
-  BuildMI(MBB, I, DL, get(SyncVM::ADDrrr_s), DestReg)
+  unsigned opcode = I->getFlag(MachineInstr::MIFlag::IsFatPtr)
+                        ? SyncVM::PTR_ADDrrr_s
+                        : SyncVM::ADDrrr_s;
+
+  BuildMI(MBB, I, DL, get(opcode), DestReg)
       .addReg(SrcReg, getKillRegState(KillSrc))
       .addReg(SyncVM::R0)
       .addImm(0);
@@ -513,4 +392,26 @@ bool SyncVMInstrInfo::hasRROperandAddressingMode(const MachineInstr &MI) const {
   auto LCIt = find_if<StringRef, int(int)>(std::move(Mnemonic), std::islower);
 
   return LCIt != Mnemonic.end() && *LCIt == 'r' && *std::next(LCIt) == 'r';
+}
+
+// So far the only place we found that needs additional tagging to keep fatptr semantics
+// is the COPY instruction, so at the moment we only tag COPY instructions.
+void SyncVMInstrInfo::tagFatPointerCopy(MachineInstr &MI) const {
+  if (!MI.isCopy())
+    return;
+
+  Register DstReg = MI.getOperand(0).getReg();
+
+  if (!DstReg.isVirtual()) {
+    return;
+  }
+
+  // look up to see if registers are fat pointers
+  const TargetRegisterClass *RC =
+      MI.getParent()->getParent()->getRegInfo().getRegClass(DstReg);
+  if (RC->getID() != llvm::SyncVM::GRPTRRegClassID) {
+    return;
+  }
+
+  MI.setFlag(MachineInstr::MIFlag::IsFatPtr);
 }

@@ -200,6 +200,10 @@ class VirtRegRewriter : public MachineFunctionPass {
   void expandCopyBundle(MachineInstr &MI) const;
   bool subRegLiveThrough(const MachineInstr &MI, MCRegister SuperPhysReg) const;
 
+  // SyncVM local begin
+  void handleFatPointer(MachineInstr &MI);
+  // SyncVM local end
+
 public:
   static char ID;
   VirtRegRewriter(bool ClearVirtRegs_ = true) :
@@ -404,6 +408,15 @@ bool VirtRegRewriter::readsUndefSubreg(const MachineOperand &MO) const {
   return true;
 }
 
+// SyncVM local begin
+void VirtRegRewriter::handleFatPointer(MachineInstr &MI) {
+  if (!MI.isCopy())  {
+    return;
+  }
+  TII->tagFatPointerCopy(MI);
+}
+// SyncVM localend
+
 void VirtRegRewriter::handleIdentityCopy(MachineInstr &MI) {
   if (!MI.isIdentityCopy())
     return;
@@ -545,6 +558,10 @@ void VirtRegRewriter::rewrite() {
            MII = MBBI->instr_begin(), MIE = MBBI->instr_end(); MII != MIE;) {
       MachineInstr *MI = &*MII;
       ++MII;
+
+      // SyncVM local begin
+      handleFatPointer(*MI);
+      // SyncVM local end
 
       for (MachineInstr::mop_iterator MOI = MI->operands_begin(),
            MOE = MI->operands_end(); MOI != MOE; ++MOI) {

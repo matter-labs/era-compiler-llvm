@@ -37,7 +37,6 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMLinkRuntimePass(PR);
   initializeSyncVMAllocaHoistingPass(PR);
   initializeSyncVMPeepholePass(PR);
-  initializeSyncVMPropagateGenericPointersPass(PR);
   initializeSyncVMStackAddressConstantPropagationPass(PR);
 }
 
@@ -118,10 +117,9 @@ void SyncVMPassConfig::addPreRegAlloc() {
 }
 
 void SyncVMPassConfig::addPreEmitPass() {
-  addPass(createSyncVMPropagateGenericPointersPass());
   addPass(createSyncVMExpandSelectPass());
   addPass(createSyncVMExpandPseudoPass());
   // TODO: The pass combines store with MULxxrr, DIVxxrr regardles of whether
   // the destination register has one use. Should be fixed and reenabled.
-  // addPass(createSyncVMPeepholePass());
+  addPass(createSyncVMPeepholePass());
 }

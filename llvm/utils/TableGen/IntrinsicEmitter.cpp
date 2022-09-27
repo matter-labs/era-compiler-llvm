@@ -251,7 +251,8 @@ enum IIT_Info {
   IIT_V256 = 50,
   // SyncVM local begin
   IIT_AMX  = 51,
-  IIT_I256 = 52
+  IIT_I256 = 52,
+  IIT_FATPTR = 53,
   // SyncVM local end
 };
 
@@ -288,6 +289,9 @@ static void EncodeFixedValueType(MVT::SimpleValueType VT,
   case MVT::Other: return Sig.push_back(IIT_EMPTYSTRUCT);
   // MVT::isVoid is used to represent varargs here.
   case MVT::isVoid: return Sig.push_back(IIT_VARARG);
+  // SyncVM local begin
+  case MVT::fatptr: return Sig.push_back(IIT_FATPTR);
+  // SyncVM local end
   }
 }
 

@@ -62,6 +62,7 @@ public:
   SDValue LowerINTRINSIC_VOID(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSTACKSAVE(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSTACKRESTORE(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerCopyFromReg(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue LowerConstant(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerConstantPool(SDValue Op, SelectionDAG &DAG) const;
@@ -218,6 +219,18 @@ private:
   SDValue PerformDAGCombine(SDNode *N, DAGCombinerInfo &DCI) const override;
   SDValue combineADD(SDNode *N, DAGCombinerInfo &DCI) const;
   SDValue combineSUB(SDNode *N, DAGCombinerInfo &DCI) const;
+
+  MVT getPointerTy(const DataLayout &DL, uint32_t AS = 0) const override {
+    if (AS == SyncVMAS::AS_GENERIC)
+      return MVT::fatptr;
+    return TargetLowering::getPointerTy(DL, AS);
+  }
+
+  MVT getPointerMemTy(const DataLayout &DL, uint32_t AS = 0) const override {
+    if (AS == SyncVMAS::AS_GENERIC)
+      return MVT::fatptr;
+    return TargetLowering::getPointerTy(DL, AS);
+  }
 };
 } // namespace llvm
 
