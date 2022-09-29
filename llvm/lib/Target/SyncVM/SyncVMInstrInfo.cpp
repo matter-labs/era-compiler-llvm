@@ -5,6 +5,9 @@
 //===----------------------------------------------------------------------===//
 
 #include "SyncVMInstrInfo.h"
+
+#include <deque>
+
 #include "SyncVM.h"
 #include "SyncVMMachineFunctionInfo.h"
 #include "SyncVMTargetMachine.h"
@@ -207,8 +210,9 @@ static bool isDefinedAsFatPtr(const MachineInstr &MI,
   if (!Visited.count(&MI) && MI.getOpcode() == TargetOpcode::COPY) {
     Visited.insert(&MI);
     Register MOReg = MI.getOperand(1).getReg();
-    if (const MachineInstr *MI = MRI.getUniqueVRegDef(MOReg))
+    if (const MachineInstr *MI = MRI.getUniqueVRegDef(MOReg)) {
       return isDefinedAsFatPtr(*MI, TII, MRI);
+    }
     return false;
   }
   if (TII.getName(MI.getOpcode()).startswith("PTR_"))
@@ -237,7 +241,56 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
 
   if (RC == &SyncVM::GR256RegClass) {
     MachineInstr *Def = MRI.getUniqueVRegDef(SrcReg);
-    if (Def && isDefinedAsFatPtr(*Def, *TII, MRI)) {
+    // TODO: This code should go off once MVT::fatptr is properly supported
+    // R1 needs special threatment because far calls produce fat pointer in R1.
+    bool IsFatPtrInPhysReg = false;
+    if (!Def && SrcReg == SyncVM::R1) {
+      // Look for the closest definition in MBB.
+      for (auto I = std::find_if(
+                    MBB.rbegin(), MBB.rend(),
+                    [MI](const MachineInstr &Other) { return &*MI == &Other; }),
+                E = MBB.rend();
+           I != E; ++I) {
+        auto DefI =
+            std::find(MRI.def_instr_begin(SrcReg), MRI.def_instr_end(), I);
+        if (DefI != MRI.def_instr_end()) {
+          IsFatPtrInPhysReg = isFarCall(*DefI);
+          break;
+        }
+      }
+      // If not found check predecessors.
+      // It's not expected to have a fatptr from one branch, and i256 from another,
+      // so it's ok to find the very first definition using dfs.
+      // Loops are an issue, so track visited BBs to not to continue ad infinum.
+      if (!IsFatPtrInPhysReg) {
+        const MachineBasicBlock& Entry = MBB.getParent()->front();
+        DenseSet<const MachineBasicBlock *> Visited {&MBB};
+        std::deque<const MachineBasicBlock*> WorkList(MBB.pred_begin(), MBB.pred_end());
+        while(!WorkList.empty()) {
+          const MachineBasicBlock& CurrBB = *WorkList.front();
+          if (Visited.count(&CurrBB)) {
+            WorkList.pop_front();
+            continue;
+          }
+          Visited.insert(&CurrBB);
+          // Look for the closest definition of R1.
+          for (auto I = CurrBB.rbegin(), E = CurrBB.rend(); I != E; ++I) {
+            auto DefI =
+                std::find(MRI.def_instr_begin(SrcReg), MRI.def_instr_end(), I);
+            if (DefI != MRI.def_instr_end()) {
+              IsFatPtrInPhysReg = isFarCall(*DefI);
+              break;
+            }
+          }
+          // TODO: If this code persist for a reson, handle calling conventions here.
+          if (IsFatPtrInPhysReg || &CurrBB == &Entry)
+            break;
+          WorkList.pop_front();
+          WorkList.insert(WorkList.begin(), CurrBB.pred_begin(), CurrBB.pred_end());
+        }
+      }
+    }
+    if (IsFatPtrInPhysReg || (Def && isDefinedAsFatPtr(*Def, *TII, MRI))) {
       BuildMI(MBB, MI, DL, get(SyncVM::PTR_ADDrrs_s))
           .addReg(SrcReg, getKillRegState(isKill))
           .addReg(SyncVM::R0)
@@ -322,6 +375,21 @@ unsigned SyncVMInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
   return Desc.getSize();
 }
 
+bool SyncVMInstrInfo::isFarCall(const MachineInstr &MI) const {
+  switch (MI.getOpcode()) {
+  case SyncVM::FAR_CALL:
+  case SyncVM::FAR_CALLL:
+  case SyncVM::STATIC_CALL:
+  case SyncVM::STATIC_CALLL:
+  case SyncVM::DELEGATE_CALL:
+  case SyncVM::DELEGATE_CALLL:
+  case SyncVM::MIMIC_CALL:
+  case SyncVM::MIMIC_CALLL:
+    return true;
+  }
+  return false;
+}
+
 bool SyncVMInstrInfo::isAdd(const MachineInstr &MI) const {
   StringRef Mnemonic = getName(MI.getOpcode());
   return Mnemonic.startswith("ADD");
@@ -348,10 +416,9 @@ bool SyncVMInstrInfo::isPtr(const MachineInstr &MI) const {
 }
 
 bool SyncVMInstrInfo::isNull(const MachineInstr &MI) const {
-  return isAdd(MI) && hasRROperandAddressingMode(MI)
-         && MI.getNumDefs() == 1u
-         && MI.getOperand(1).getReg() == SyncVM::R0
-         && MI.getOperand(2).getReg() == SyncVM::R0;
+  return isAdd(MI) && hasRROperandAddressingMode(MI) && MI.getNumDefs() == 1u &&
+         MI.getOperand(1).getReg() == SyncVM::R0 &&
+         MI.getOperand(2).getReg() == SyncVM::R0;
 }
 
 bool SyncVMInstrInfo::isSilent(const MachineInstr &MI) const {

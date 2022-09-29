@@ -74,6 +74,7 @@ public:
   }
 
   // Properties and mappings
+  bool isFarCall(const MachineInstr& MI) const;
   bool hasRROperandAddressingMode(const MachineInstr& MI) const;
   bool hasRIOperandAddressingMode(const MachineInstr& MI) const;
   bool hasRXOperandAddressingMode(const MachineInstr& MI) const;
