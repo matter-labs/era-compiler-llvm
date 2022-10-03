@@ -32,17 +32,13 @@ void SyncVMFrameLowering::emitPrologue(MachineFunction &MF,
                                        MachineBasicBlock &MBB) const {
   assert(&MF.front() == &MBB && "Shrink-wrapping not yet supported");
   MachineFrameInfo &MFI = MF.getFrameInfo();
-  SyncVMMachineFunctionInfo *SyncVMFI = MF.getInfo<SyncVMMachineFunctionInfo>();
   const SyncVMInstrInfo &TII =
       *static_cast<const SyncVMInstrInfo *>(MF.getSubtarget().getInstrInfo());
 
   MachineBasicBlock::iterator MBBI = MBB.begin();
   DebugLoc DL = MBBI != MBB.end() ? MBBI->getDebugLoc() : DebugLoc();
 
-  // Get the number of bytes to allocate from the FrameInfo.
-  uint64_t StackSize = MFI.getStackSize() - MFI.getMaxCallFrameSize();
-
-  uint64_t NumCells = (StackSize - SyncVMFI->getCalleeSavedFrameSize()) / 32;
+  uint64_t NumCells = MFI.getStackSize() / 32;
 
   // TODO: Handle callee saved registers once support them
   if (NumCells)
@@ -52,17 +48,13 @@ void SyncVMFrameLowering::emitPrologue(MachineFunction &MF,
 void SyncVMFrameLowering::emitEpilogue(MachineFunction &MF,
                                        MachineBasicBlock &MBB) const {
   const MachineFrameInfo &MFI = MF.getFrameInfo();
-  SyncVMMachineFunctionInfo *SyncVMFI = MF.getInfo<SyncVMMachineFunctionInfo>();
   const SyncVMInstrInfo &TII =
       *static_cast<const SyncVMInstrInfo *>(MF.getSubtarget().getInstrInfo());
 
   MachineBasicBlock::iterator MBBI = MBB.getLastNonDebugInstr();
   DebugLoc DL = MBBI->getDebugLoc();
 
-  // Get the number of bytes to allocate from the FrameInfo
-  uint64_t StackSize = MFI.getStackSize() - MFI.getMaxCallFrameSize();
-  unsigned CSSize = SyncVMFI->getCalleeSavedFrameSize();
-  uint64_t NumCells = (StackSize - CSSize) / 32;
+  uint64_t NumCells = MFI.getStackSize() / 32;
 
   DL = MBBI->getDebugLoc();
 
