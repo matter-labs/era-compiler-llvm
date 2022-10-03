@@ -18,8 +18,8 @@ namespace llvm {
 class SyncVMInstrInfo : public SyncVMGenInstrInfo {
   const SyncVMRegisterInfo RI;
   virtual void anchor();
-public:
 
+public:
   enum GenericInstruction {
     Unsupported = 0,
     ADD,
@@ -41,15 +41,13 @@ public:
                    bool KillSrc) const override;
 
   void storeRegToStackSlot(MachineBasicBlock &MBB,
-                           MachineBasicBlock::iterator MI,
-                           Register SrcReg, bool isKill,
-                           int FrameIndex,
+                           MachineBasicBlock::iterator MI, Register SrcReg,
+                           bool isKill, int FrameIndex,
                            const TargetRegisterClass *RC,
                            const TargetRegisterInfo *TRI) const override;
   void loadRegFromStackSlot(MachineBasicBlock &MBB,
-                            MachineBasicBlock::iterator MI,
-                            Register DestReg, int FrameIdx,
-                            const TargetRegisterClass *RC,
+                            MachineBasicBlock::iterator MI, Register DestReg,
+                            int FrameIdx, const TargetRegisterClass *RC,
                             const TargetRegisterInfo *TRI) const override;
 
   unsigned getInstSizeInBytes(const MachineInstr &MI) const override;
@@ -69,17 +67,15 @@ public:
                         const DebugLoc &DL,
                         int *BytesAdded = nullptr) const override;
 
-  int64_t getFramePoppedByCallee(const MachineInstr &I) const {
-    return 0;
-  }
+  int64_t getFramePoppedByCallee(const MachineInstr &I) const { return 0; }
 
   // Properties and mappings
-  bool isFarCall(const MachineInstr& MI) const;
-  bool hasRROperandAddressingMode(const MachineInstr& MI) const;
-  bool hasRIOperandAddressingMode(const MachineInstr& MI) const;
-  bool hasRXOperandAddressingMode(const MachineInstr& MI) const;
-  bool hasRSOperandAddressingMode(const MachineInstr& MI) const;
-  bool hasTwoOuts(const MachineInstr& MI) const;
+  bool isFarCall(const MachineInstr &MI) const;
+  bool hasRROperandAddressingMode(const MachineInstr &MI) const;
+  bool hasRIOperandAddressingMode(const MachineInstr &MI) const;
+  bool hasRXOperandAddressingMode(const MachineInstr &MI) const;
+  bool hasRSOperandAddressingMode(const MachineInstr &MI) const;
+  bool hasTwoOuts(const MachineInstr &MI) const;
   bool isAdd(const MachineInstr &MI) const;
   bool isSub(const MachineInstr &MI) const;
   bool isMul(const MachineInstr &MI) const;
@@ -90,11 +86,8 @@ public:
   bool isNull(const MachineInstr &MI) const;
   bool isSilent(const MachineInstr &MI) const;
   GenericInstruction genericInstructionFor(const MachineInstr &MI) const;
-
-private:
-  mutable DenseSet<int> FatPointerSlots;
 };
 
-}
+} // namespace llvm
 
 #endif

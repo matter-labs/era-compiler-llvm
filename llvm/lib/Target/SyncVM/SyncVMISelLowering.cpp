@@ -811,7 +811,6 @@ SDValue SyncVMTargetLowering::LowerSREM(SDValue Op, SelectionDAG &DAG) const {
   SDValue LHS = Op.getOperand(0);
   SDValue RHS = Op.getOperand(1);
   SDValue Zero = DAG.getConstant(APInt(256, 0, false), DL, MVT::i256);
-  SDValue Const255 = DAG.getConstant(APInt(256, 255, false), DL, MVT::i256);
   SDValue MaskSign =
       DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
 

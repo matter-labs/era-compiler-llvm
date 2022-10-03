@@ -245,48 +245,48 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
     // R1 needs special threatment because far calls produce fat pointer in R1.
     bool IsFatPtrInPhysReg = false;
     if (!Def && SrcReg == SyncVM::R1) {
+      auto findSrcRegDef = [SrcReg](const MachineInstr &Inst) {
+        return Inst.isCall() ||
+               any_of(Inst.defs(), [SrcReg](const MachineOperand &MO) {
+                 return MO.getReg() == SrcReg;
+               });
+      };
+
       // Look for the closest definition in MBB.
-      for (auto I = std::find_if(
-                    MBB.rbegin(), MBB.rend(),
-                    [MI](const MachineInstr &Other) { return &*MI == &Other; }),
-                E = MBB.rend();
-           I != E; ++I) {
-        auto DefI =
-            std::find(MRI.def_instr_begin(SrcReg), MRI.def_instr_end(), I);
-        if (DefI != MRI.def_instr_end()) {
-          IsFatPtrInPhysReg = isFarCall(*DefI);
-          break;
-        }
-      }
+      auto DefI =
+          std::find_if(std::make_reverse_iterator(MI),
+                       std::make_reverse_iterator(MBB.begin()), findSrcRegDef);
+      if (DefI != std::make_reverse_iterator(MBB.begin()))
+        IsFatPtrInPhysReg = isFarCall(*DefI);
       // If not found check predecessors.
-      // It's not expected to have a fatptr from one branch, and i256 from another,
-      // so it's ok to find the very first definition using dfs.
-      // Loops are an issue, so track visited BBs to not to continue ad infinum.
+      // It's not expected to have a fatptr from one branch, and i256 from
+      // another, so it's ok to find the very first definition using dfs. Loops
+      // are an issue, so track visited BBs to not to continue ad infinum.
       if (!IsFatPtrInPhysReg) {
-        const MachineBasicBlock& Entry = MBB.getParent()->front();
-        DenseSet<const MachineBasicBlock *> Visited {&MBB};
-        std::deque<const MachineBasicBlock*> WorkList(MBB.pred_begin(), MBB.pred_end());
-        while(!WorkList.empty()) {
-          const MachineBasicBlock& CurrBB = *WorkList.front();
+        const MachineBasicBlock &Entry = MBB.getParent()->front();
+        DenseSet<const MachineBasicBlock *> Visited{&MBB};
+        std::deque<const MachineBasicBlock *> WorkList(MBB.pred_begin(),
+                                                       MBB.pred_end());
+        while (!WorkList.empty()) {
+          const MachineBasicBlock &CurrBB = *WorkList.front();
           if (Visited.count(&CurrBB)) {
             WorkList.pop_front();
             continue;
           }
           Visited.insert(&CurrBB);
           // Look for the closest definition of R1.
-          for (auto I = CurrBB.rbegin(), E = CurrBB.rend(); I != E; ++I) {
-            auto DefI =
-                std::find(MRI.def_instr_begin(SrcReg), MRI.def_instr_end(), I);
-            if (DefI != MRI.def_instr_end()) {
-              IsFatPtrInPhysReg = isFarCall(*DefI);
-              break;
-            }
+          auto DefI = std::find_if(MBB.rbegin(), MBB.rend(), findSrcRegDef);
+          if (DefI != MBB.rend()) {
+            IsFatPtrInPhysReg = isFarCall(*DefI);
+            break;
           }
-          // TODO: If this code persist for a reson, handle calling conventions here.
+          // TODO: If this code persist for a reson, handle calling conventions
+          // here.
           if (IsFatPtrInPhysReg || &CurrBB == &Entry)
             break;
           WorkList.pop_front();
-          WorkList.insert(WorkList.begin(), CurrBB.pred_begin(), CurrBB.pred_end());
+          WorkList.insert(WorkList.begin(), CurrBB.pred_begin(),
+                          CurrBB.pred_end());
         }
       }
     }
@@ -299,7 +299,6 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
           .addImm(0)
           .addImm(0)
           .addMemOperand(MMO);
-      FatPointerSlots.insert(FrameIdx);
     } else {
       BuildMI(MBB, MI, DL, get(SyncVM::ADDrrs_s))
           .addReg(SrcReg, getKillRegState(isKill))
@@ -309,7 +308,6 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
           .addImm(0)
           .addImm(0)
           .addMemOperand(MMO);
-      FatPointerSlots.erase(FrameIdx);
     }
   } else {
     llvm_unreachable("Cannot store this register to stack slot!");
@@ -332,7 +330,61 @@ void SyncVMInstrInfo::loadRegFromStackSlot(
       MFI.getObjectAlign(FrameIdx));
 
   if (RC == &SyncVM::GR256RegClass) {
-    if (!FatPointerSlots.count(FrameIdx))
+    // TODO: This code should go off once MVT::fatptr is properly supported
+    // R1 needs special threatment because far calls produce fat pointer in R1.
+    bool IsFatPtrInFrameIndex = false;
+    auto findFrameIndexDef = [FrameIdx](const MachineInstr &Inst) {
+      if (Inst.getOpcode() != SyncVM::ADDrrs_s &&
+          Inst.getOpcode() != SyncVM::PTR_ADDrrs_s)
+        return false;
+      return Inst.getOperand(2).isFI() &&
+             Inst.getOperand(2).getIndex() == FrameIdx &&
+             Inst.getOperand(1).isReg() &&
+             Inst.getOperand(1).getReg() == SyncVM::R0 &&
+             Inst.getOperand(3).isImm() && Inst.getOperand(3).getImm() == 32 &&
+             Inst.getOperand(4).isImm() && Inst.getOperand(4).getImm() == 0 &&
+             Inst.getOperand(5).isImm() && Inst.getOperand(5).getImm() == 0;
+    };
+
+    // Look for the closest definition in MBB.
+    auto DefI = std::find_if(std::make_reverse_iterator(MI),
+                             std::make_reverse_iterator(MBB.begin()),
+                             findFrameIndexDef);
+    if (DefI != std::make_reverse_iterator(MBB.begin()))
+      IsFatPtrInFrameIndex = DefI->getOpcode() == SyncVM::PTR_ADDrrs_s;
+    // If not found check predecessors.
+    // It's not expected to have a fatptr from one branch, and i256 from
+    // another, so it's ok to find the very first definition using dfs. Loops
+    // are an issue, so track visited BBs to not to continue ad infinum.
+    if (!IsFatPtrInFrameIndex) {
+      const MachineBasicBlock &Entry = MBB.getParent()->front();
+      DenseSet<const MachineBasicBlock *> Visited{&MBB};
+      std::deque<const MachineBasicBlock *> WorkList(MBB.pred_begin(),
+                                                     MBB.pred_end());
+      while (!WorkList.empty()) {
+        const MachineBasicBlock &CurrBB = *WorkList.front();
+        if (Visited.count(&CurrBB)) {
+          WorkList.pop_front();
+          continue;
+        }
+        Visited.insert(&CurrBB);
+        // Look for the closest definition of R1.
+        auto DefI =
+            std::find_if(CurrBB.rbegin(), CurrBB.rend(), findFrameIndexDef);
+        if (DefI != CurrBB.rend()) {
+          IsFatPtrInFrameIndex = DefI->getOpcode() == SyncVM::PTR_ADDrrs_s;
+          break;
+        }
+        // TODO: If this code persist for a reson, handle calling conventions
+        // here.
+        if (IsFatPtrInFrameIndex || &CurrBB == &Entry)
+          break;
+        WorkList.pop_front();
+        WorkList.insert(WorkList.begin(), CurrBB.pred_begin(),
+                        CurrBB.pred_end());
+      }
+    }
+    if (!IsFatPtrInFrameIndex)
       BuildMI(MBB, MI, DL, get(SyncVM::ADDsrr_s))
           .addReg(DestReg, getDefRegState(true))
           .addFrameIndex(FrameIdx)
