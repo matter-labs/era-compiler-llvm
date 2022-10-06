@@ -8,10 +8,6 @@ TARGET_BUILD="${ROOT_DIR}/build-target/"
 TARGET_INSTALL='/opt/llvm-release/'
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-    if [[ -z ${CI_RUNNING+x} ]]; then
-        brew update
-        brew install cmake
-    fi
 
     cmake \
         -S 'llvm' \
