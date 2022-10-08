@@ -79,6 +79,7 @@ public:
   int64_t getFramePoppedByCallee(const MachineInstr &I) const { return 0; }
 
   // Properties and mappings
+  bool isFarCall(const MachineInstr &MI) const;
   bool hasRROperandAddressingMode(const MachineInstr &MI) const;
   bool hasRIOperandAddressingMode(const MachineInstr &MI) const;
   bool hasRXOperandAddressingMode(const MachineInstr &MI) const;
@@ -94,9 +95,6 @@ public:
   bool isNull(const MachineInstr &MI) const;
   bool isSilent(const MachineInstr &MI) const;
   GenericInstruction genericInstructionFor(const MachineInstr &MI) const;
-
-private:
-  mutable DenseSet<int> FatPointerSlots;
 };
 
 } // namespace llvm

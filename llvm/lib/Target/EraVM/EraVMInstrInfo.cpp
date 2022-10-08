@@ -11,6 +11,9 @@
 //===----------------------------------------------------------------------===//
 
 #include "EraVMInstrInfo.h"
+
+#include <deque>
+
 #include "EraVM.h"
 #include "EraVMMachineFunctionInfo.h"
 #include "EraVMTargetMachine.h"
@@ -208,8 +211,9 @@ static bool isDefinedAsFatPtr(const MachineInstr &MI, const EraVMInstrInfo &TII,
   if (!Visited.count(&MI) && MI.getOpcode() == TargetOpcode::COPY) {
     Visited.insert(&MI);
     Register MOReg = MI.getOperand(1).getReg();
-    if (const MachineInstr *MI = MRI.getUniqueVRegDef(MOReg))
+    if (const MachineInstr *MI = MRI.getUniqueVRegDef(MOReg)) {
       return isDefinedAsFatPtr(*MI, TII, MRI);
+    }
     return false;
   }
   if (TII.getName(MI.getOpcode()).starts_with("PTR_"))
@@ -236,7 +240,56 @@ void EraVMInstrInfo::storeRegToStackSlot(
 
   if (RC == &EraVM::GR256RegClass) {
     MachineInstr *Def = MRI.getUniqueVRegDef(SrcReg);
-    if (Def && isDefinedAsFatPtr(*Def, *TII, MRI)) {
+    // TODO: This code should go off once MVT::fatptr is properly supported
+    // R1 needs special threatment because far calls produce fat pointer in R1.
+    bool IsFatPtrInPhysReg = false;
+    if (!Def && SrcReg == EraVM::R1) {
+      auto findSrcRegDef = [SrcReg](const MachineInstr &Inst) {
+        return Inst.isCall() ||
+               any_of(Inst.defs(), [SrcReg](const MachineOperand &MO) {
+                 return MO.getReg() == SrcReg;
+               });
+      };
+
+      // Look for the closest definition in MBB.
+      auto DefI =
+          std::find_if(std::make_reverse_iterator(MI),
+                       std::make_reverse_iterator(MBB.begin()), findSrcRegDef);
+      if (DefI != std::make_reverse_iterator(MBB.begin()))
+        IsFatPtrInPhysReg = isFarCall(*DefI);
+      // If not found check predecessors.
+      // It's not expected to have a fatptr from one branch, and i256 from
+      // another, so it's ok to find the very first definition using dfs. Loops
+      // are an issue, so track visited BBs to not to continue ad infinum.
+      if (!IsFatPtrInPhysReg) {
+        const MachineBasicBlock &Entry = MBB.getParent()->front();
+        DenseSet<const MachineBasicBlock *> Visited{&MBB};
+        std::deque<const MachineBasicBlock *> WorkList(MBB.pred_begin(),
+                                                       MBB.pred_end());
+        while (!WorkList.empty()) {
+          const MachineBasicBlock &CurrBB = *WorkList.front();
+          if (Visited.count(&CurrBB)) {
+            WorkList.pop_front();
+            continue;
+          }
+          Visited.insert(&CurrBB);
+          // Look for the closest definition of R1.
+          auto DefI = std::find_if(MBB.rbegin(), MBB.rend(), findSrcRegDef);
+          if (DefI != MBB.rend()) {
+            IsFatPtrInPhysReg = isFarCall(*DefI);
+            break;
+          }
+          // TODO: If this code persist for a reson, handle calling conventions
+          // here.
+          if (IsFatPtrInPhysReg || &CurrBB == &Entry)
+            break;
+          WorkList.pop_front();
+          WorkList.insert(WorkList.begin(), CurrBB.pred_begin(),
+                          CurrBB.pred_end());
+        }
+      }
+    }
+    if (IsFatPtrInPhysReg || (Def && isDefinedAsFatPtr(*Def, *TII, MRI))) {
       BuildMI(MBB, MI, DL, get(EraVM::PTR_ADDrrs_s))
           .addReg(SrcReg, getKillRegState(isKill))
           .addReg(EraVM::R0)
@@ -245,7 +298,6 @@ void EraVMInstrInfo::storeRegToStackSlot(
           .addImm(0)
           .addImm(0)
           .addMemOperand(MMO);
-      FatPointerSlots.insert(FrameIndex);
     } else {
       BuildMI(MBB, MI, DL, get(EraVM::ADDrrs_s))
           .addReg(SrcReg, getKillRegState(isKill))
@@ -255,7 +307,6 @@ void EraVMInstrInfo::storeRegToStackSlot(
           .addImm(0)
           .addImm(0)
           .addMemOperand(MMO);
-      FatPointerSlots.erase(FrameIndex);
     }
   } else {
     llvm_unreachable("Cannot store this register to stack slot!");
@@ -280,7 +331,61 @@ void EraVMInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
       MFI.getObjectAlign(FrameIndex));
 
   if (RC == &EraVM::GR256RegClass) {
-    if (!FatPointerSlots.count(FrameIndex))
+    // TODO: This code should go off once MVT::fatptr is properly supported
+    // R1 needs special threatment because far calls produce fat pointer in R1.
+    bool IsFatPtrInFrameIndex = false;
+    auto findFrameIndexDef = [FrameIndex](const MachineInstr &Inst) {
+      if (Inst.getOpcode() != EraVM::ADDrrs_s &&
+          Inst.getOpcode() != EraVM::PTR_ADDrrs_s)
+        return false;
+      return Inst.getOperand(2).isFI() &&
+             Inst.getOperand(2).getIndex() == FrameIndex &&
+             Inst.getOperand(1).isReg() &&
+             Inst.getOperand(1).getReg() == EraVM::R0 &&
+             Inst.getOperand(3).isImm() && Inst.getOperand(3).getImm() == 32 &&
+             Inst.getOperand(4).isImm() && Inst.getOperand(4).getImm() == 0 &&
+             Inst.getOperand(5).isImm() && Inst.getOperand(5).getImm() == 0;
+    };
+
+    // Look for the closest definition in MBB.
+    auto DefI = std::find_if(std::make_reverse_iterator(MI),
+                             std::make_reverse_iterator(MBB.begin()),
+                             findFrameIndexDef);
+    if (DefI != std::make_reverse_iterator(MBB.begin()))
+      IsFatPtrInFrameIndex = DefI->getOpcode() == EraVM::PTR_ADDrrs_s;
+    // If not found check predecessors.
+    // It's not expected to have a fatptr from one branch, and i256 from
+    // another, so it's ok to find the very first definition using dfs. Loops
+    // are an issue, so track visited BBs to not to continue ad infinum.
+    if (!IsFatPtrInFrameIndex) {
+      const MachineBasicBlock &Entry = MBB.getParent()->front();
+      DenseSet<const MachineBasicBlock *> Visited{&MBB};
+      std::deque<const MachineBasicBlock *> WorkList(MBB.pred_begin(),
+                                                     MBB.pred_end());
+      while (!WorkList.empty()) {
+        const MachineBasicBlock &CurrBB = *WorkList.front();
+        if (Visited.count(&CurrBB)) {
+          WorkList.pop_front();
+          continue;
+        }
+        Visited.insert(&CurrBB);
+        // Look for the closest definition of R1.
+        auto DefI =
+            std::find_if(CurrBB.rbegin(), CurrBB.rend(), findFrameIndexDef);
+        if (DefI != CurrBB.rend()) {
+          IsFatPtrInFrameIndex = DefI->getOpcode() == EraVM::PTR_ADDrrs_s;
+          break;
+        }
+        // TODO: If this code persist for a reson, handle calling conventions
+        // here.
+        if (IsFatPtrInFrameIndex || &CurrBB == &Entry)
+          break;
+        WorkList.pop_front();
+        WorkList.insert(WorkList.begin(), CurrBB.pred_begin(),
+                        CurrBB.pred_end());
+      }
+    }
+    if (!IsFatPtrInFrameIndex)
       BuildMI(MBB, MI, DL, get(EraVM::ADDsrr_s))
           .addReg(DestReg, getDefRegState(true))
           .addFrameIndex(FrameIndex)
@@ -323,6 +428,19 @@ unsigned EraVMInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
   return Desc.getSize();
 }
 
+bool EraVMInstrInfo::isFarCall(const MachineInstr &MI) const {
+  switch (MI.getOpcode()) {
+  case EraVM::FAR_CALL:
+  case EraVM::FAR_CALLL:
+  case EraVM::STATIC_CALL:
+  case EraVM::DELEGATE_CALL:
+  case EraVM::DELEGATE_CALLL:
+  case EraVM::MIMIC_CALL:
+    return true;
+  }
+  return false;
+}
+
 bool EraVMInstrInfo::isAdd(const MachineInstr &MI) const {
   StringRef Mnemonic = getName(MI.getOpcode());
   return Mnemonic.starts_with("ADD");
@@ -349,7 +467,7 @@ bool EraVMInstrInfo::isPtr(const MachineInstr &MI) const {
 }
 
 bool EraVMInstrInfo::isNull(const MachineInstr &MI) const {
-  return isAdd(MI) && hasRROperandAddressingMode(MI) && MI.getNumDefs() == 1u &&
+  return isAdd(MI) && hasRROperandAddressingMode(MI) && MI.getNumDefs() == 1U &&
          MI.getOperand(1).getReg() == EraVM::R0 &&
          MI.getOperand(2).getReg() == EraVM::R0;
 }

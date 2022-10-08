@@ -210,7 +210,6 @@ bool EraVMDAGToDAGISel::MatchAddress(SDValue N, EraVMISelAddressMode &AM,
 }
 
 bool EraVMDAGToDAGISel::SelectInRegMemAddr(SDValue N, SDValue &Base) {
-  outs() << "Select inmem\n";
   Base = N;
   return true;
 }
