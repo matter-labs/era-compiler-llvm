@@ -285,16 +285,17 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   bool IsVarArg = CLI.IsVarArg;
 
   if (auto GA = dyn_cast<GlobalAddressSDNode>(Callee.getNode())) {
-    uint64_t farcall_opc = StringSwitch<uint64_t>(GA->getGlobal()->getName())
-      .Case("__farcall_int", SyncVMISD::FARCALL)
-      .Case("__farcall_int_l", SyncVMISD::FARCALL)
-      .Case("__staticcall_int", SyncVMISD::STATICCALL)
-      .Case("__staticcall_int_l", SyncVMISD::STATICCALL)
-      .Case("__delegatecall_int", SyncVMISD::DELEGATECALL)
-      .Case("__delegatecall_int_l", SyncVMISD::DELEGATECALL)
-      .Case("__mimiccall_int", SyncVMISD::MIMICCALL)
-      .Case("__mimiccall_int_l", SyncVMISD::MIMICCALL)
-      .Default(0);
+    uint64_t farcall_opc =
+        StringSwitch<uint64_t>(GA->getGlobal()->getName())
+            .Case("__farcall_int", SyncVMISD::FARCALL)
+            .Case("__farcall_int_l", SyncVMISD::FARCALL)
+            .Case("__staticcall_int", SyncVMISD::STATICCALL)
+            .Case("__staticcall_int_l", SyncVMISD::STATICCALL)
+            .Case("__delegatecall_int", SyncVMISD::DELEGATECALL)
+            .Case("__delegatecall_int_l", SyncVMISD::DELEGATECALL)
+            .Case("__mimiccall_int", SyncVMISD::MIMICCALL)
+            .Case("__mimiccall_int_l", SyncVMISD::MIMICCALL)
+            .Default(0);
 
     bool is_mimic = farcall_opc == SyncVMISD::MIMICCALL;
 
@@ -610,7 +611,7 @@ SDValue SyncVMTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
       return SDValue(DAG.getMachineNode(SyncVM::PTR_ADDrrs_p, DL, MVT::Other,
                                         {Store->getValue(),
                                          DAG.getRegister(SyncVM::R0, MVT::i256),
-                                         Zero, Zero, BasePtr}),
+                                         Zero, Zero, BasePtr, Chain}),
                      0);
     if (auto *FI = dyn_cast<FrameIndexSDNode>(BasePtr))
       return SDValue(
@@ -709,10 +710,11 @@ SDValue SyncVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
                                        getPointerTy(DAG.getDataLayout())),
                Zero, Zero, DAG.getRegister(SyncVM::R0, MVT::i256), Chain}),
           0);
-    return SDValue(DAG.getMachineNode(SyncVM::PTR_ADDsrr_p, DL, RetTys,
-                                      {Zero, BasePtr, Zero,
-                                       DAG.getRegister(SyncVM::R0, MVT::i256)}),
-                   0);
+    return SDValue(
+        DAG.getMachineNode(SyncVM::PTR_ADDsrr_p, DL, RetTys,
+                           {Zero, BasePtr, Zero,
+                            DAG.getRegister(SyncVM::R0, MVT::i256), Chain}),
+        0);
   }
 
   EVT MemVT = Load->getMemoryVT();
@@ -809,7 +811,6 @@ SDValue SyncVMTargetLowering::LowerSREM(SDValue Op, SelectionDAG &DAG) const {
   SDValue LHS = Op.getOperand(0);
   SDValue RHS = Op.getOperand(1);
   SDValue Zero = DAG.getConstant(APInt(256, 0, false), DL, MVT::i256);
-  SDValue Const255 = DAG.getConstant(APInt(256, 255, false), DL, MVT::i256);
   SDValue MaskSign =
       DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
 
@@ -830,7 +831,7 @@ SDValue SyncVMTargetLowering::LowerSREM(SDValue Op, SelectionDAG &DAG) const {
 
   SDValue Result =
       DAG.getNode(ISD::UREM, DL, MVT::i256, DividendVal, DivisorVal);
-    
+
   SDValue SubSRem = DAG.getNode(ISD::SUB, DL, MVT::i256, Zero, Result);
   SDValue SRem = DAG.getSelectCC(DL, Sign, Zero, Result, SubSRem, ISD::SETEQ);
   return DAG.getSelectCC(DL, Result, Zero, Result, SRem, ISD::SETEQ);
