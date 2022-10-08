@@ -68,6 +68,10 @@ bool EraVMPropagateGenericPointers::canTransform(MachineInstr &MI) {
     return false;
   SmallPtrSet<MachineInstr *, 4> ReachingDefs{};
   RDA->getGlobalReachingDefs(&MI, MI.getOperand(1).getReg(), ReachingDefs);
+
+  if (llvm::all_of(ReachingDefs,
+                   [this](const MachineInstr *MI) { return TII->isNull(*MI); }))
+    return false;
   return !ReachingDefs.empty() &&
          llvm::all_of(ReachingDefs, [this](const MachineInstr *MI) {
            return TII->isPtr(*MI) || TII->isNull(*MI);

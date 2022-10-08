@@ -37,18 +37,13 @@ void EraVMFrameLowering::emitPrologue(MachineFunction &MF,
                                       MachineBasicBlock &MBB) const {
   assert(&MF.front() == &MBB && "Shrink-wrapping not yet supported");
   MachineFrameInfo &MFI = MF.getFrameInfo();
-  EraVMMachineFunctionInfo *EraVMFI = MF.getInfo<EraVMMachineFunctionInfo>();
-  assert(EraVMFI);
   const EraVMInstrInfo &TII =
       *static_cast<const EraVMInstrInfo *>(MF.getSubtarget().getInstrInfo());
 
   MachineBasicBlock::iterator MBBI = MBB.begin();
   DebugLoc DL = MBBI != MBB.end() ? MBBI->getDebugLoc() : DebugLoc();
 
-  // Get the number of bytes to allocate from the FrameInfo.
-  uint64_t StackSize = MFI.getStackSize();
-
-  uint64_t NumCells = (StackSize - EraVMFI->getCalleeSavedFrameSize()) / 32;
+  uint64_t NumCells = MFI.getStackSize() / 32;
 
   // TODO: Handle callee saved registers once support them
   if (NumCells)
@@ -58,17 +53,13 @@ void EraVMFrameLowering::emitPrologue(MachineFunction &MF,
 void EraVMFrameLowering::emitEpilogue(MachineFunction &MF,
                                       MachineBasicBlock &MBB) const {
   const MachineFrameInfo &MFI = MF.getFrameInfo();
-  EraVMMachineFunctionInfo *EraVMFI = MF.getInfo<EraVMMachineFunctionInfo>();
   const EraVMInstrInfo &TII =
       *static_cast<const EraVMInstrInfo *>(MF.getSubtarget().getInstrInfo());
 
   MachineBasicBlock::iterator MBBI = MBB.getLastNonDebugInstr();
   DebugLoc DL = MBBI->getDebugLoc();
 
-  // Get the number of bytes to allocate from the FrameInfo
-  uint64_t StackSize = MFI.getStackSize();
-  unsigned CSSize = EraVMFI->getCalleeSavedFrameSize();
-  uint64_t NumCells = (StackSize - CSSize) / 32;
+  uint64_t NumCells = MFI.getStackSize() / 32;
 
   DL = MBBI->getDebugLoc();
 
