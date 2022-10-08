@@ -84,6 +84,9 @@ bool SyncVMPropagateGenericPointers::canTransform(MachineInstr &MI) {
       return true;
     return false;
   }
+  if (llvm::all_of(ReachingDefs,
+                   [this](const MachineInstr *MI) { return TII->isNull(*MI); }))
+    return false;
   return llvm::all_of(ReachingDefs, [this](const MachineInstr *MI) {
     return TII->isPtr(*MI) || TII->isNull(*MI);
   });
