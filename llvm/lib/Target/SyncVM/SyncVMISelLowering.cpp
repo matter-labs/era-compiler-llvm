@@ -71,13 +71,13 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::SDIV, MVT::i256, Custom);
   setOperationAction(ISD::SREM, MVT::i256, Custom);
 
-  // Support of truncate, sext, zext
-  setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i1, Expand);
-  setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i8, Expand);
-  setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i16, Expand);
-  setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i32, Expand);
-  setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i64, Expand);
-  setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i128, Expand);
+  for (MVT VT : {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}) {
+    setOperationAction(ISD::SIGN_EXTEND_INREG, VT, Expand);
+    setOperationAction(ISD::LOAD, VT, Custom);
+    setOperationAction(ISD::STORE, VT, Custom);
+    setTruncStoreAction(MVT::i256, VT, Expand);
+    setOperationAction(ISD::MERGE_VALUES, VT, Promote);
+  }
 
   setOperationAction(ISD::STACKSAVE, MVT::Other, Custom);
   setOperationAction(ISD::STACKRESTORE, MVT::Other, Custom);
@@ -89,12 +89,6 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
     setLoadExtAction(ISD::SEXTLOAD, MVT::i256, VT, Custom);
     setLoadExtAction(ISD::ZEXTLOAD, MVT::i256, VT, Custom);
     setLoadExtAction(ISD::EXTLOAD, MVT::i256, VT, Custom);
-  }
-
-  for (MVT VT : {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}) {
-    setOperationAction(ISD::LOAD, VT, Custom);
-    setOperationAction(ISD::STORE, VT, Custom);
-    setTruncStoreAction(MVT::i256, VT, Expand);
   }
 
   setOperationAction(ISD::STORE, MVT::i256, Custom);
@@ -718,6 +712,7 @@ SDValue SyncVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   }
 
   EVT MemVT = Load->getMemoryVT();
+  EVT OpVT = Op->getValueType(0);
   unsigned MemVTSize = MemVT.getSizeInBits();
   if (MemVTSize == 256)
     return {};
@@ -732,8 +727,7 @@ SDValue SyncVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   unsigned SRLValue = 256 - MemVTSize;
   SDValue SHR = DAG.getNode(ISD::SRL, DL, MVT::i256, Op,
                             DAG.getConstant(SRLValue, DL, MVT::i256));
-
-  SDValue TRUNCATE = DAG.getNode(ISD::TRUNCATE, DL, Load->getMemoryVT(), SHR);
+  SDValue TRUNCATE = DAG.getNode(ISD::TRUNCATE, DL, OpVT, SHR);
 
   SDValue Ops[] = {TRUNCATE, Op.getValue(1)};
   return DAG.getMergeValues(Ops, DL);
