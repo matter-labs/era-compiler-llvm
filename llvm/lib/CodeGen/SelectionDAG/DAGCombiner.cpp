@@ -5866,11 +5866,6 @@ bool DAGCombiner::SearchForAndLoads(SDNode *N,
 }
 
 bool DAGCombiner::BackwardsPropagateMask(SDNode *N) {
-  // SyncVM local begin
-  // TODO: Consider removing when non-i256 UMA works.
-  if (DAG.getTarget().getTargetTriple().isSyncVM())
-    return false;
-  // SyncVM local end
   auto *Mask = dyn_cast<ConstantSDNode>(N->getOperand(1));
   if (!Mask)
     return false;
@@ -9663,15 +9658,9 @@ SDValue DAGCombiner::visitSRL(SDNode *N) {
     if (SDValue NewSRL = visitShiftByConstant(N))
       return NewSRL;
 
-  // SyncVM local begin
-  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
-  // SyncVM local end
   // Attempt to convert a srl of a load into a narrower zero-extending load.
   if (SDValue NarrowLoad = reduceLoadWidth(N))
     return NarrowLoad;
-  // SyncVM local begin
-  }
-  // SyncVM local end
 
   // Here is a common situation. We want to optimize:
   //
@@ -11761,6 +11750,9 @@ static SDValue tryToFoldExtOfLoad(SelectionDAG &DAG, DAGCombiner &Combiner,
   // isVectorLoadExtDesirable().
   if (!ISD::isNON_EXTLoad(N0.getNode()) ||
       !ISD::isUNINDEXEDLoad(N0.getNode()) ||
+      // SyncVM local begin
+      DAG.getTarget().getTargetTriple().isSyncVM() ||
+      // SyncVM local end
       ((LegalOperations || VT.isFixedLengthVector() ||
         !cast<LoadSDNode>(N0)->isSimple()) &&
        !TLI.isLoadExtLegal(ExtLoadType, VT, N0.getValueType())))
@@ -12269,8 +12261,6 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
 
   // fold (zext (truncate x)) -> (and x, mask)
   if (N0.getOpcode() == ISD::TRUNCATE) {
-  // SyncVM local begin
-  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
     // fold (zext (truncate (load x))) -> (zext (smaller load x))
     // fold (zext (truncate (srl (load x), c))) -> (zext (smaller load (x+c/n)))
     if (SDValue NarrowLoad = reduceLoadWidth(N0.getNode())) {
@@ -12282,8 +12272,6 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
       }
       return SDValue(N, 0); // Return N so it doesn't get rechecked!
     }
-    }
-    // SyncVM local end
 
     EVT SrcVT = N0.getOperand(0).getValueType();
     EVT MinVT = N0.getValueType();
@@ -12330,8 +12318,6 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
                        X, DAG.getConstant(Mask, DL, VT));
   }
 
-  // SyncVM local begin
-  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
   // Try to simplify (zext (load x)).
   if (SDValue foldedExt =
           tryToFoldExtOfLoad(DAG, *this, TLI, VT, LegalOperations, N, N0,
@@ -12405,8 +12391,6 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
       }
     }
   }
-  }
-  // SyncVM local end
 
   // fold (zext (and/or/xor (shl/shr (load x), cst), cst)) ->
   //      (and/or/xor (shl/shr (zextload x), (zext cst)), (zext cst))
@@ -13072,14 +13056,8 @@ SDValue DAGCombiner::visitSIGN_EXTEND_INREG(SDNode *N) {
 
   // fold (sext_in_reg (load x)) -> (smaller sextload x)
   // fold (sext_in_reg (srl (load x), c)) -> (smaller sextload (x+c/evtbits))
-  // SyncVM local begin
-  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
-  // SyncVM local end
   if (SDValue NarrowLoad = reduceLoadWidth(N))
     return NarrowLoad;
-  // SyncVM local begin
-  }
-  // SyncVM local end
 
   // fold (sext_in_reg (srl X, 24), i8) -> (sra X, 24)
   // fold (sext_in_reg (srl X, 23), i8) -> (sra X, 23) iff possible.
@@ -13363,8 +13341,6 @@ SDValue DAGCombiner::visitTRUNCATE(SDNode *N) {
     }
   }
 
-// SyncVM local begin
-  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
   // fold (truncate (load x)) -> (smaller load x)
   // fold (truncate (srl (load x), c)) -> (smaller load (x+c/evtbits))
   if (!LegalTypes || TLI.isTypeDesirableForOp(N0.getOpcode(), VT)) {
@@ -13385,8 +13361,6 @@ SDValue DAGCombiner::visitTRUNCATE(SDNode *N) {
       }
     }
   }
-  }
-// SyncVM local end
 
   // fold (trunc (concat ... x ...)) -> (concat ..., (trunc x), ...)),
   // where ... are all 'undef'.
