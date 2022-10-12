@@ -56,6 +56,7 @@ add_llvm_component_library(LLVMScalarOpts
   MemCpyOptimizer.cpp
   MergeICmps.cpp
   MergedLoadStoreMotion.cpp
+  MergeSimilarBB.cpp
   NaryReassociate.cpp
   NewGVN.cpp
   PartiallyInlineLibCalls.cpp

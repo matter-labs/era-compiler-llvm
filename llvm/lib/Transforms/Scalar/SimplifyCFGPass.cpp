@@ -77,7 +77,6 @@ static cl::opt<bool> UserSinkCommonInsts(
     "sink-common-insts", cl::Hidden, cl::init(false),
     cl::desc("Sink common instructions (default = false)"));
 
-
 STATISTIC(NumSimpl, "Number of blocks simplified");
 
 static bool
