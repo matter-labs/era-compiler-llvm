@@ -446,6 +446,34 @@ define void @fat.ptr.call(i256 %a1, i256 addrspace(3)* %ptr) {
   ret void
 }
 
+; CHECK-LABEL: tworet
+define {i256, i256} @tworet(i256 %x1, i256 %x2, i256 %x3, i256 %x4) {
+  %r1 = add i256 %x1, %x2
+  %r2 = add i256 %x3, %x4
+  %res.t = insertvalue {i256, i256} undef, i256 %r1, 0
+  %res = insertvalue {i256, i256} %res.t, i256 %r2, 1
+  ; CHECK: add r1, r2, r1
+  ; CHECK: add r3, r4, r2
+  ret {i256, i256} %res
+}
+
+; CHECK-LABEL: tworet.call
+define i256 @tworet.call() {
+  ; CHECK: near_call r0, @tworet, @DEFAULT_UNWIND
+  %res = call {i256, i256} @tworet(i256 0, i256 1, i256 2, i256 3)
+  %x1 = extractvalue {i256, i256} %res, 0
+  %x2 = extractvalue {i256, i256} %res, 1
+  %x3 = add i256 %x1, %x2
+  ; CHECK: add r1, r2, r1
+  ret i256 %x3
+}
+
+; TODO: enable after MVT::fatptr is introduced
+;define {i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256} @toomanyret(i256 %arg1) {
+;  %x = call i256 @onearg(i256 %arg1)
+;  unreachable
+;}
+
 declare i256 @i1.arg(i1 %a1) nounwind
 declare i256 @i8.arg(i8 %a1) nounwind
 declare i256 @i16.arg(i16 %a1) nounwind
