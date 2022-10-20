@@ -127,6 +127,10 @@ bool SyncVMTargetLowering::CanLowerReturn(
     CallingConv::ID CallConv, MachineFunction &MF, bool IsVarArg,
     const SmallVectorImpl<ISD::OutputArg> &Outs, LLVMContext &Context) const {
 
+  MachineRegisterInfo &RegInfo = MF.getRegInfo();
+  if (Outs.size() >= SyncVM::GR256RegClass.getNumRegs() - 1)
+    return false;
+
   SmallVector<CCValAssign, 1> RVLocs;
   CCState CCInfo(CallConv, IsVarArg, MF, RVLocs, Context);
 
@@ -134,8 +138,7 @@ bool SyncVMTargetLowering::CanLowerReturn(
   if (!CCInfo.CheckReturn(Outs, RetCC_SYNCVM) || IsVarArg)
     return false;
 
-  // SyncVM can't currently handle returning tuples.
-  return Outs.size() <= 1;
+  return true;
 }
 
 SDValue
@@ -144,7 +147,6 @@ SyncVMTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                                   const SmallVectorImpl<ISD::OutputArg> &Outs,
                                   const SmallVectorImpl<SDValue> &OutVals,
                                   const SDLoc &DL, SelectionDAG &DAG) const {
-  assert(Outs.size() <= 1 && "SyncVM can only return up to one value");
   if (!CallingConvSupported(CallConv))
     fail(DL, DAG, "SyncVM doesn't support non-C calling conventions");
 
@@ -167,23 +169,26 @@ SyncVMTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                  *DAG.getContext());
   CCInfo.AnalyzeReturn(Outs, CC_SYNCVM);
   SmallVector<SDValue, 4> RetOps(1, Chain);
+  SDValue Flag;
 
-  if (!RVLocs.empty()) {
-    SDValue Flag;
-    CCValAssign &VA = RVLocs[0];
-    SDValue V = OutVals[0];
-    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), V, Flag);
+  for (unsigned i = 0, e = RVLocs.size(); i < e; ++i) {
+    CCValAssign &VA = RVLocs[i];
+    assert(VA.isRegLoc() && "Can only return in registers!");
+
+    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(),
+                             OutVals[i], Flag);
+
     // Guarantee that all emitted copies are stuck together,
     // avoiding something bad.
     Flag = Chain.getValue(1);
     RetOps.push_back(DAG.getRegister(VA.getLocReg(), VA.getLocVT()));
-
-    RetOps[0] = Chain; // Update chain.
-
-    // Add the flag if we have it.
-    if (Flag.getNode())
-      RetOps.push_back(Flag);
   }
+
+  RetOps[0] = Chain;  // Update chain.
+
+  // Add the flag if we have it.
+  if (Flag.getNode())
+    RetOps.push_back(Flag);
 
   return DAG.getNode(SyncVMISD::RET, DL, MVT::Other, RetOps);
 }
