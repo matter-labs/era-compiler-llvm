@@ -1,7 +1,8 @@
-//===---------------- SyncVMPreRAPeephole.cpp - Peephole optimization ----------===//
+//===------ SyncVMPreRAPeephole.cpp - Peephole optimization ---------------===//
 //
 /// \file
-/// Implement peephole optimization pass
+/// Pre-RA optimization pass. This pass contains multiple small scale
+/// optimizations that utilizes Use-Def chain.
 //
 //===----------------------------------------------------------------------===//
 
@@ -17,7 +18,7 @@
 using namespace llvm;
 
 #define DEBUG_TYPE "syncvm-prera-peephole"
-#define SYNCVM_PRERA_PEEPHOLE "SyncVM pre-RA peephole optimization"
+#define SYNCVM_PRERA_PEEPHOLE "SyncVM pre-RA peephole optimizations"
 
 namespace {
 
@@ -31,7 +32,7 @@ public:
   bool runOnMachineFunction(MachineFunction &Fn) override;
 
   bool combineStackToStackMoves(MachineFunction &);
-  bool combineStoreToStack(MachineFunction &);
+  bool eliminateTrivialMove(MachineFunction &);
 
   StringRef getPassName() const override { return SYNCVM_PRERA_PEEPHOLE; }
 
@@ -47,7 +48,8 @@ char SyncVMPreRAPeephole::ID = 0;
 
 } // namespace
 
-INITIALIZE_PASS(SyncVMPreRAPeephole, DEBUG_TYPE, SYNCVM_PRERA_PEEPHOLE, false, false)
+INITIALIZE_PASS(SyncVMPreRAPeephole, DEBUG_TYPE, SYNCVM_PRERA_PEEPHOLE, false,
+                false)
 
 bool SyncVMPreRAPeephole::isMoveRegToStack(MachineInstr &MI) const {
   return MI.getOpcode() == SyncVM::ADDrrs_s &&
@@ -65,16 +67,28 @@ bool SyncVMPreRAPeephole::isMoveRegToStack(MachineInstr &MI) const {
 // add @val[0], r0, stack-[1]
 //
 // with condition that %reg has only one use, which is the 2nd add instruction.
+//
+// We are doing it post-ISEL because tablegen-based ISEL is not able to emit
+// stack-reg-stack addressing instruction. The reason is unknown yet.
 bool SyncVMPreRAPeephole::combineStackToStackMoves(MachineFunction &MF) {
-  auto isMoveStackToReg = [](MachineInstr &MI) {
-    return MI.getOpcode() == SyncVM::ADDsrr_s &&
-           MI.getOperand(4).getReg() == SyncVM::R0 &&
-           getImmOrCImm(MI.getOperand(MI.getNumOperands() - 1)) == 0;
+  // Checks if CC is unconditional
+  auto isUnconditional = [](const MachineInstr &MI) {
+    return getImmOrCImm(MI.getOperand(MI.getNumOperands() - 1)) ==
+           SyncVMCC::COND_NONE;
   };
-  auto isMoveCodeToReg = [](MachineInstr &MI) {
+  auto isMoveRegToStack = [&](MachineInstr &MI) {
+    return (MI.getOpcode() == SyncVM::ADDrrs_s ||
+            MI.getOpcode() == SyncVM::PTR_ADDrrs_s) &&
+           MI.getOperand(1).getReg() == SyncVM::R0 && isUnconditional(MI);
+  };
+  auto isMoveStackToReg = [&](MachineInstr &MI) {
+    return (MI.getOpcode() == SyncVM::ADDsrr_s ||
+            MI.getOpcode() == SyncVM::PTR_ADDsrr_s) &&
+           MI.getOperand(4).getReg() == SyncVM::R0 && isUnconditional(MI);
+  };
+  auto isMoveCodeToReg = [&](MachineInstr &MI) {
     return MI.getOpcode() == SyncVM::ADDcrr_s &&
-           MI.getOperand(3).getReg() == SyncVM::R0 &&
-           getImmOrCImm(MI.getOperand(MI.getNumOperands() - 1)) == 0;
+           MI.getOperand(3).getReg() == SyncVM::R0 && isUnconditional(MI);
   };
 
   std::vector<MachineInstr *> ToRemove;
@@ -86,11 +100,16 @@ bool SyncVMPreRAPeephole::combineStackToStackMoves(MachineFunction &MF) {
       if (isMoveCode || isMoveStack) {
         LLVM_DEBUG(dbgs() << " . Found Move to Reg instruction: "; MI->dump());
         auto reg = MI->getOperand(0).getReg();
+        // TODO: CPR-895 relax this condition
         // can only have one use
-        if (!MRI->hasOneUse(reg)) {
+        if (!MRI->hasOneNonDBGUse(reg)) {
           continue;
         }
         auto UseMI = MRI->use_nodbg_instructions(reg).begin();
+
+        // TODO: CPR-895: currently between use and def, there should not be an
+        // instruction that reads/writes the target stackop. However this
+        // constraint can be relaxed.
         if (std::next(MI) != &*UseMI) {
           // if we combine non-adjacent instructions, we could hit bugs.
           // Consider this example:
@@ -100,7 +119,12 @@ bool SyncVMPreRAPeephole::combineStackToStackMoves(MachineFunction &MF) {
            add     r2, r0, stack-[9]
            add     r1, r0, stack-[11]
           */
-          // the program will be incorrect in this case
+          // if we combine the 1st and the 3rd, as well as the 2nd and 4th
+          // instruction, we will emit incorrect code:
+          /*
+           add stack-[9], r0, stack-[11]
+           add stack-[11], r0, stack-[9]
+          */
           LLVM_DEBUG(
               dbgs()
               << " . Use is not the exact following instruction. Must bail.\n");
@@ -112,8 +136,11 @@ bool SyncVMPreRAPeephole::combineStackToStackMoves(MachineFunction &MF) {
         LLVM_DEBUG(
             dbgs() << "   Found its use is a Move to Stack instruction: ";
             UseMI->dump());
+        
+        bool isFatPtrOp = MI->getOpcode() == SyncVM::PTR_ADDsrr_s;
         // now we can combine the two
         int opcode = isMoveCode ? SyncVM::ADDcrs_s : SyncVM::ADDsrs_s;
+        opcode = isFatPtrOp ? SyncVM::PTR_ADDsrs_s : opcode;
         auto NewMI =
             BuildMI(MBB, *UseMI, UseMI->getDebugLoc(), TII->get(opcode));
         if (isMoveCode) {
@@ -140,75 +167,29 @@ bool SyncVMPreRAPeephole::combineStackToStackMoves(MachineFunction &MF) {
   return ToRemove.size() > 0;
 }
 
-bool SyncVMPreRAPeephole::combineStoreToStack(MachineFunction &MF) {
-  std::vector<MachineInstr *> ToRemove;
-  DenseMap<unsigned, unsigned> Mapping = {
-      {SyncVM::MULrrrr_s, SyncVM::MULrrsr_s},
-      {SyncVM::MULirrr_s, SyncVM::MULirsr_s},
-      {SyncVM::MULcrrr_s, SyncVM::MULcrsr_s},
-      {SyncVM::MULsrrr_s, SyncVM::MULsrsr_s},
-      {SyncVM::DIVrrrr_s, SyncVM::DIVrrsr_s},
-      {SyncVM::DIVirrr_s, SyncVM::DIVirsr_s},
-      {SyncVM::DIVxrrr_s, SyncVM::DIVxrsr_s},
-      {SyncVM::DIVcrrr_s, SyncVM::DIVcrsr_s},
-      {SyncVM::DIVyrrr_s, SyncVM::DIVyrsr_s},
-      {SyncVM::DIVsrrr_s, SyncVM::DIVsrsr_s},
-      {SyncVM::DIVzrrr_s, SyncVM::DIVzrsr_s},
-      {SyncVM::MULrrrr_v, SyncVM::MULrrsr_v},
-      {SyncVM::MULirrr_v, SyncVM::MULirsr_v},
-      {SyncVM::MULcrrr_v, SyncVM::MULcrsr_v},
-      {SyncVM::MULsrrr_v, SyncVM::MULsrsr_v},
-      {SyncVM::DIVrrrr_v, SyncVM::DIVrrsr_v},
-      {SyncVM::DIVirrr_v, SyncVM::DIVirsr_v},
-      {SyncVM::DIVxrrr_v, SyncVM::DIVxrsr_v},
-      {SyncVM::DIVcrrr_v, SyncVM::DIVcrsr_v},
-      {SyncVM::DIVyrrr_v, SyncVM::DIVyrsr_v},
-      {SyncVM::DIVsrrr_v, SyncVM::DIVsrsr_v},
-      {SyncVM::DIVzrrr_v, SyncVM::DIVzrsr_v}};
+bool SyncVMPreRAPeephole::eliminateTrivialMove(MachineFunction &MF) {
+  std::vector<MachineInstr *> ToErase;
 
+  // This is to try to eliminate unhandled expansion of PTR_TO_INT instruction
   for (MachineBasicBlock &MBB : MF)
     for (auto MI = MBB.begin(); MI != MBB.end(); ++MI) {
-      if (Mapping.count(MI->getOpcode())) {
-        auto StoreI = std::next(MI);
-        if (!isMoveRegToStack(*StoreI)) {
-          continue;
+      // eliminate ADDrrr_s if possible
+      if (MI->getOpcode() == SyncVM::PTR_ADDrrr_s) {
+        if (MI->getOperand(0).getReg() == MI->getOperand(1).getReg() &&
+            MI->getOperand(2).getReg() == SyncVM::R0) {
+          LLVM_DEBUG(dbgs() << "eliminated ADDrrr_s: "; MI->dump();
+                     dbgs() << '\n');
+          ToErase.push_back(&*MI);
         }
-        auto reg = MI->getOperand(0).getReg();
-        if (!MRI->hasOneUse(reg)) {
-          continue;
-        }
-        auto UseMI = MRI->use_nodbg_instructions(reg).begin();
-        if (StoreI != &*UseMI || StoreI->getOperand(0).getReg() != reg) {
-          continue;
-        }
-        LLVM_DEBUG(dbgs() << "Found candidate for combining: "; MI->dump();
-                   StoreI->dump());
-        DebugLoc DL = MI->getDebugLoc();
-
-        auto NewMI =
-            BuildMI(MBB, StoreI, DL, TII->get(Mapping[MI->getOpcode()]));
-        NewMI.addDef(MI->getOperand(1).getReg());
-        for (unsigned i = 2, e = MI->getNumOperands() - 1; i < e; ++i)
-          NewMI.add(MI->getOperand(i));
-        for (unsigned i = 2; i < 5; ++i)
-          NewMI.add(StoreI->getOperand(i));
-        NewMI.add(MI->getOperand(MI->getNumOperands() - 1));
-
-        LLVM_DEBUG(dbgs() << "  Combined to: "; NewMI->dump());
-
-        ToRemove.push_back(&*MI);
-        ToRemove.push_back(&*StoreI);
       }
     }
-
-  for (auto MI : ToRemove) {
+  for (auto MI : ToErase)
     MI->eraseFromParent();
-  }
-  return ToRemove.size() > 0;
+  return ToErase.size() != 0;
 }
 
 bool SyncVMPreRAPeephole::runOnMachineFunction(MachineFunction &MF) {
-  LLVM_DEBUG(dbgs() << "********** SyncVM Peephole **********\n"
+  LLVM_DEBUG(dbgs() << "********** SyncVM PreRA Peephole **********\n"
                     << "********** Function: " << MF.getName() << '\n');
 
   TII = MF.getSubtarget<SyncVMSubtarget>().getInstrInfo();
@@ -223,8 +204,10 @@ bool SyncVMPreRAPeephole::runOnMachineFunction(MachineFunction &MF) {
   bool Changed = false;
 
   Changed = combineStackToStackMoves(MF);
-  //Changed = combineStoreToStack(MF);
+  Changed |= eliminateTrivialMove(MF);
   return Changed;
 }
 
-FunctionPass *llvm::createSyncVMPreRAPeepholePass() { return new SyncVMPreRAPeephole(); }
+FunctionPass *llvm::createSyncVMPreRAPeepholePass() {
+  return new SyncVMPreRAPeephole();
+}

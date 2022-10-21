@@ -39,7 +39,6 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMLowerIntrinsicsPass(PR);
   initializeSyncVMLinkRuntimePass(PR);
   initializeSyncVMAllocaHoistingPass(PR);
-  initializeSyncVMPeepholePass(PR);
   initializeSyncVMCombineFlagSettingPass(PR);
   initializeSyncVMPreRAPeepholePass(PR);
   initializeSyncVMStackAddressConstantPropagationPass(PR);

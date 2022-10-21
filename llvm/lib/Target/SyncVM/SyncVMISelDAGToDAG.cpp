@@ -97,7 +97,6 @@ private:
                           SDValue &Disp);
   bool SelectStackAddrCommon(SDValue Addr, SDValue &Base1, SDValue &Base2,
                              SDValue &Disp, bool IsAdjusted);
-
   SyncVMISelAddressMode MergeAddr(const SyncVMISelAddressMode &LHS,
                                   const SyncVMISelAddressMode &RHS, SDLoc DL);
 };

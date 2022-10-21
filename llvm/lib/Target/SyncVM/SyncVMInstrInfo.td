@@ -901,6 +901,15 @@ multiclass PtrInstr<bits<8> opcode, string asmstring, SDPatternOperator node> {
                    (outs), (ins stackop:$src0, GRPTR:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, ".s$cc!\t$src0, $rs1, $dst0"), []>, FlagRel;
   }
+
+  def srs_s : Isrs<opcode, SrcStack, 0, 1,
+                   (outs), (ins stackop:$src0, GRPTR:$rs1, stackop:$dst0, cc:$cc),
+                   !strconcat(asmstring, "$cc\t$src0, $rs1, $dst0"), []>, PseudoRel, FlagRel;
+
+  let Defs = [Flags] in
+  def srs_v : Isrs<opcode, SrcStack, 0, 0,
+                   (outs), (ins stackop:$src0, GRPTR:$rs1, stackop:$dst0, cc:$cc),
+                   !strconcat(asmstring, "$cc!\t$src0, $rs1, $dst0"), []>, FlagRel;
   }
   }
 
