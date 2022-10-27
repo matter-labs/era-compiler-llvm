@@ -3055,7 +3055,10 @@ void SelectionDAGBuilder::visitLandingPad(const LandingPadInst &LP) {
   if (FuncInfo.ExceptionPointerVirtReg) {
     // SyncVM local begin
     if (ValueVTs[0] == MVT::fatptr) {
-      Ops[0] = DAG.getCopyFromReg(DAG.getEntryNode(), dl, FuncInfo.ExceptionPointerVirtReg, ValueVTs[0]);
+      // SyncVM-specific EH convention: $r1 contains exception pointer
+      Ops[0] = DAG.getRegister(
+          TLI.getRegisterByName("r1", LLT(), DAG.getMachineFunction()),
+          ValueVTs[0]);
     } else {
     // SyncVM local end
     Ops[0] = DAG.getZExtOrTrunc(

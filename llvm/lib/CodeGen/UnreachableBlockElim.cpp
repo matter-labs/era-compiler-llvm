@@ -182,9 +182,11 @@ bool UnreachableMachineBlockElim::runOnMachineFunction(MachineFunction &F) {
             // insert a COPY instead of simply replacing the output
             // with the input.
             const TargetInstrInfo *TII = F.getSubtarget().getInstrInfo();
-            BuildMI(BB, BB.getFirstNonPHI(), phi->getDebugLoc(),
-                    TII->get(TargetOpcode::COPY), OutputReg)
+            // SyncVM local begin
+            BuildCOPY(*BB, BB->getFirstNonPHI(), phi->getDebugLoc(), TII,
+                      OutputReg)
                 .addReg(InputReg, getRegState(Input), InputSub);
+            // SyncVM local end
           }
           phi++->eraseFromParent();
         }

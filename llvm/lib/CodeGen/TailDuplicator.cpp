@@ -444,9 +444,10 @@ void TailDuplicator::duplicateInstruction(
             if (NewRC == nullptr)
               NewRC = OrigRC;
             Register NewReg = MRI->createVirtualRegister(NewRC);
-            BuildMI(*PredBB, NewMI, NewMI.getDebugLoc(),
-                    TII->get(TargetOpcode::COPY), NewReg)
+            // SyncVM local begin
+            BuildCOPY(*PredBB, NewMI, NewMI.getDebugLoc(), TII, NewReg)
                 .addReg(VI->second.Reg, 0, VI->second.SubReg);
+            // SyncVM local end
             LocalVRMap.erase(VI);
             LocalVRMap.insert(std::make_pair(Reg, RegSubRegPair(NewReg, 0)));
             MO.setReg(NewReg);
@@ -1031,10 +1032,14 @@ void TailDuplicator::appendCopies(MachineBasicBlock *MBB,
       SmallVectorImpl<std::pair<Register, RegSubRegPair>> &CopyInfos,
       SmallVectorImpl<MachineInstr*> &Copies) {
   MachineBasicBlock::iterator Loc = MBB->getFirstTerminator();
-  const MCInstrDesc &CopyD = TII->get(TargetOpcode::COPY);
+  // SyncVM local begin
+  //const MCInstrDesc &CopyD = TII->get(TargetOpcode::COPY);
+  // SyncVM local end
   for (auto &CI : CopyInfos) {
-    auto C = BuildMI(*MBB, Loc, DebugLoc(), CopyD, CI.first)
-                .addReg(CI.second.Reg, 0, CI.second.SubReg);
+    // SyncVM local begin
+    auto C = BuildCOPY(*MBB, Loc, DebugLoc(), TII, CI.first)
+                 .addReg(CI.second.Reg, 0, CI.second.SubReg);
+    // SyncVM local end
     Copies.push_back(C);
   }
 }

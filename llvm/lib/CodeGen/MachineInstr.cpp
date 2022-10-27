@@ -2324,3 +2324,20 @@ unsigned MachineInstr::getDebugInstrNum(MachineFunction &MF) {
     DebugInstrNum = MF.getNewDebugInstrNum();
   return DebugInstrNum;
 }
+
+// SyncVM local begin
+MachineInstrBuilder llvm::BuildCOPY(MachineBasicBlock &BB,
+                                    MachineBasicBlock::iterator I,
+                                    const DebugLoc &DL,
+                                    const TargetInstrInfo *TII,
+                                    Register DestReg) {
+  MachineInstrBuilder MIB =
+      BuildMI(BB, I, DL, TII->get(TargetOpcode::COPY), DestReg);
+  // get triple
+  Triple triple = Triple(BB.getParent()->getTarget().getTargetTriple());
+  if (triple.isSyncVM()) {
+    TII->tagFatPointerCopy(*MIB);
+  }
+  return MIB;
+}
+// SyncVM local end
