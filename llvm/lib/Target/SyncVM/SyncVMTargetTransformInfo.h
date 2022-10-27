@@ -104,6 +104,8 @@ public:
 
   // TODO: The value is copied from AMDGPU, needs to be configured.
   unsigned getInliningThresholdMultiplier() const { return 11; }
+  // SyncVM doesn't support vector instructions.
+  int getInlinerVectorBonusPercent() { return 0; }
 
   /// @}
 };
