@@ -235,7 +235,9 @@ SDValue SyncVMTargetLowering::LowerFormalArguments(
   unsigned InIdx = 0;
   for (CCValAssign &VA : ArgLocs) {
     if (VA.isRegLoc()) {
-      Register VReg = RegInfo.createVirtualRegister(&SyncVM::GR256RegClass);
+      auto *RC = VA.getValVT() == MVT::fatptr ? &SyncVM::GRPTRRegClass
+                                              : &SyncVM::GR256RegClass;
+      Register VReg = RegInfo.createVirtualRegister(RC);
       RegInfo.addLiveIn(VA.getLocReg(), VReg);
       SDValue ArgValue = DAG.getCopyFromReg(Chain, DL, VReg, VA.getLocVT());
 
@@ -946,4 +948,17 @@ SDValue SyncVMTargetLowering::PerformDAGCombine(SDNode *N,
   }
   }
   return val;
+}
+
+Register SyncVMTargetLowering::getRegisterByName(const char *RegName, LLT VT,
+                                              const MachineFunction &MF) const {
+  Register Reg = StringSwitch<unsigned>(RegName)
+                     .Case("r0", SyncVM::R0)
+                     .Case("r1", SyncVM::R1)
+                     .Default(0);
+  if (Reg)
+    return Reg;
+
+  report_fatal_error(
+      Twine("Invalid register name \"" + StringRef(RegName) + "\"."));
 }

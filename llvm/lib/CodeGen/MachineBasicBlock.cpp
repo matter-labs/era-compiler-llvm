@@ -623,8 +623,10 @@ MachineBasicBlock::addLiveIn(MCRegister PhysReg, const TargetRegisterClass *RC) 
 
   // No luck, create a virtual register.
   Register VirtReg = MRI.createVirtualRegister(RC);
-  BuildMI(*this, I, DebugLoc(), TII.get(TargetOpcode::COPY), VirtReg)
-    .addReg(PhysReg, RegState::Kill);
+  // SyncVM local begin
+  BuildCOPY(*this, I, DebugLoc(), &TII, VirtReg)
+      .addReg(PhysReg, RegState::Kill);
+  // SyncVM local end
   if (!LiveIn)
     addLiveIn(PhysReg);
   return VirtReg;
