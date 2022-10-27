@@ -1406,8 +1406,10 @@ TwoAddressInstructionPass::processTiedPairs(MachineInstr *MI,
 #endif
 
     // Emit a copy.
-    MachineInstrBuilder MIB = BuildMI(*MI->getParent(), MI, MI->getDebugLoc(),
-                                      TII->get(TargetOpcode::COPY), RegA);
+    // SyncVM local begin
+    MachineInstrBuilder MIB =
+        BuildCOPY(*MI->getParent(), MI, MI->getDebugLoc(), TII, RegA);
+    // SyncVM local end
     // If this operand is folding a truncation, the truncation now moves to the
     // copy so that the register classes remain valid for the operands.
     MIB.addReg(RegB, 0, SubRegB);
@@ -1696,7 +1698,9 @@ eliminateRegSequence(MachineBasicBlock::iterator &MBBI) {
                                    TII->get(TargetOpcode::COPY))
                                .addReg(DstReg, RegState::Define, SubIdx)
                                .add(UseMO);
-
+    // SyncVM local begin
+    TII->tagFatPointerCopy(*CopyMI);
+    // SyncVM local end
     // The first def needs an undef flag because there is no live register
     // before it.
     if (!DefEmitted) {

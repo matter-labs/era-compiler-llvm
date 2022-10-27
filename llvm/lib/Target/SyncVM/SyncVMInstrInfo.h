@@ -87,7 +87,7 @@ public:
   bool isSilent(const MachineInstr &MI) const;
   GenericInstruction genericInstructionFor(const MachineInstr &MI) const;
 
-  void tagFatPointerCopy(MachineInstr &MI) const override;
+  void tagFatPointerCopy(MachineInstr &) const override;
 };
 
 } // namespace llvm

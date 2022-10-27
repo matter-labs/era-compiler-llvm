@@ -231,6 +231,9 @@ private:
       return MVT::fatptr;
     return TargetLowering::getPointerTy(DL, AS);
   }
+
+  Register getRegisterByName(const char *RegName, LLT VT,
+                             const MachineFunction &MF) const override;
 };
 } // namespace llvm
 
