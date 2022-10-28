@@ -114,6 +114,11 @@ public:
                              // (e.g. branch folding) should skip
                              // this instruction.
     Unpredictable = 1 << 16, // Instruction with unpredictable condition.
+    // EraVM local begin
+    IsFatPtr     = 1 << 17,             // Instruction is fat pointer related
+                                        // This is used for RegAlloc to emit different
+                                        // instructions for COPY
+    // EraVM local end
   };
 
 private:

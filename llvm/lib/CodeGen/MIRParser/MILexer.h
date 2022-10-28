@@ -136,6 +136,10 @@ struct MIToken {
     kw_ir_block_address_taken,
     kw_machine_block_address_taken,
 
+    // EraVM local begin
+    kw_isfatptr,
+    // EraVM local end
+
     // Metadata types.
     kw_distinct,
 

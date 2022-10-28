@@ -321,6 +321,7 @@ def IIT_I4 : IIT_Int<4, 58>;
 def IIT_AARCH64_SVCOUNT : IIT_VT<aarch64svcount, 59>;
 // EraVM local begin
 def IIT_I256 : IIT_Int<256, 60>;
+def IIT_FATPTR : IIT_Base<61>;
 // EraVM local end
 }
 
@@ -487,6 +488,7 @@ def llvm_i128_ty       : LLVMType<i128>;
 // EraVM local begin
 def llvm_i256_ty       : LLVMType<i256>;
 def llvm_i512_ty       : LLVMType<i512>;
+def llvm_fatptr_ty     : LLVMType<fatptr>;
 // EraVM local end
 def llvm_half_ty       : LLVMType<f16>;
 def llvm_bfloat_ty     : LLVMType<bf16>;

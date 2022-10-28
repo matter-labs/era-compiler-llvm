@@ -1,4 +1,3 @@
-; XFAIL: *
 ; RUN: llc < %s | FileCheck %s
 ; RUN: llc --early-bytes-to-cells-conversion < %s | FileCheck %s --check-prefix=EARLY-BTC
 

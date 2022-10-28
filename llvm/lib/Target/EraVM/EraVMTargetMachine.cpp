@@ -44,7 +44,6 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMLinkRuntimePass(PR);
   initializeEraVMAllocaHoistingPass(PR);
   initializeEraVMPeepholePass(PR);
-  initializeEraVMPropagateGenericPointersPass(PR);
   initializeEraVMStackAddressConstantPropagationPass(PR);
   initializeEraVMDAGToDAGISelPass(PR);
 }
@@ -133,10 +132,9 @@ void EraVMPassConfig::addPreRegAlloc() {
 }
 
 void EraVMPassConfig::addPreEmitPass() {
-  addPass(createEraVMPropagateGenericPointersPass());
   addPass(createEraVMExpandSelectPass());
   addPass(createEraVMExpandPseudoPass());
   // TODO: The pass combines store with MULxxrr, DIVxxrr regardles of whether
   // the destination register has one use. Should be fixed and reenabled.
-  // addPass(createEraVMPeepholePass());
+  addPass(createEraVMPeepholePass());
 }

@@ -1676,6 +1676,10 @@ void MachineInstr::print(raw_ostream &OS, ModuleSlotTracker &MST,
     OS << "nofpexcept ";
   if (getFlag(MachineInstr::NoMerge))
     OS << "nomerge ";
+  // EraVM local begin
+  if (getFlag(MachineInstr::IsFatPtr))
+    OS << "fatptr ";
+  // EraVM local end
 
   // Print the opcode name.
   if (TII)
@@ -2391,6 +2395,23 @@ unsigned MachineInstr::getDebugInstrNum(MachineFunction &MF) {
     DebugInstrNum = MF.getNewDebugInstrNum();
   return DebugInstrNum;
 }
+
+// EraVM local begin
+MachineInstrBuilder llvm::BuildCOPY(MachineBasicBlock &BB,
+                                    MachineBasicBlock::iterator I,
+                                    const DebugLoc &DL,
+                                    const TargetInstrInfo *TII,
+                                    Register DestReg) {
+  MachineInstrBuilder MIB =
+      BuildMI(BB, I, DL, TII->get(TargetOpcode::COPY), DestReg);
+  // get triple
+  Triple triple = Triple(BB.getParent()->getTarget().getTargetTriple());
+  if (triple.isEraVM()) {
+    TII->tagFatPointerCopy(*MIB);
+  }
+  return MIB;
+}
+// EraVM local end
 
 std::tuple<LLT, LLT> MachineInstr::getFirst2LLTs() const {
   return std::tuple(getRegInfo()->getType(getOperand(0).getReg()),

@@ -71,6 +71,7 @@ StringRef llvm::getEnumName(MVT::SimpleValueType T) {
   // EraVM local begin
   case MVT::i256:     return "MVT::i256";
   case MVT::i512:     return "MVT::i512";
+  case MVT::fatptr:   return "MVT::fatptr";
   // EraVM local end
   case MVT::Any:      return "MVT::Any";
   case MVT::iAny:     return "MVT::iAny";

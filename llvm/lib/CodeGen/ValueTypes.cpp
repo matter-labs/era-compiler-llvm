@@ -178,6 +178,9 @@ std::string EVT::getEVTString() const {
     return "aarch64svcount";
   case MVT::spirvbuiltin:
     return "spirvbuiltin";
+  // EraVM local begin
+  case MVT::fatptr:    return "fatptr";
+  // EraVM local end
   }
 }
 
@@ -209,6 +212,8 @@ Type *EVT::getTypeForEVT(LLVMContext &Context) const {
   // EraVM local begin
   case MVT::i256:    return Type::getInt256Ty(Context);
   case MVT::i512:    return Type::getInt512Ty(Context);
+  case MVT::fatptr:
+    return PointerType::get(StructType::create(Context), 3);
   // EraVM local end
   case MVT::f16:     return Type::getHalfTy(Context);
   case MVT::bf16:    return Type::getBFloatTy(Context);

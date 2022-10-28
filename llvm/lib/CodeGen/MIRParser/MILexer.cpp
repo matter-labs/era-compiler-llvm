@@ -281,6 +281,9 @@ static MIToken::TokenKind getIdentifierKind(StringRef Identifier) {
       .Case("ir-block-address-taken", MIToken::kw_ir_block_address_taken)
       .Case("machine-block-address-taken",
             MIToken::kw_machine_block_address_taken)
+      // EraVM local begin
+      .Case("fatptr", MIToken::kw_isfatptr)
+      // EraVM local end
       .Default(MIToken::Identifier);
 }
 

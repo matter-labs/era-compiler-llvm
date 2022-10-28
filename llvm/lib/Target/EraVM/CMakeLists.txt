@@ -57,7 +57,6 @@ add_llvm_target(EraVMCodeGen
   EraVMMCInstLower.cpp
   EraVMMachineFunctionInfo.cpp
   EraVMPeephole.cpp
-  EraVMPropagateGenericPointers.cpp
   EraVMRegisterInfo.cpp
   EraVMStackAddressConstantPropagation.cpp
   EraVMSubtarget.cpp

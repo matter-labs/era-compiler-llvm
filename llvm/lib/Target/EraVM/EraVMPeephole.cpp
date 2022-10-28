@@ -53,55 +53,24 @@ bool EraVMPeephole::runOnMachineFunction(MachineFunction &MF) {
   Context = &MF.getFunction().getContext();
 
   bool Changed = false;
+  std::vector<MachineInstr *> ToErase;
 
-  DenseMap<unsigned, unsigned> Mapping = {{EraVM::MULrrrr_s, EraVM::MULrrsr_s},
-                                          {EraVM::MULirrr_s, EraVM::MULirsr_s},
-                                          {EraVM::MULcrrr_s, EraVM::MULcrsr_s},
-                                          {EraVM::MULsrrr_s, EraVM::MULsrsr_s},
-                                          {EraVM::DIVrrrr_s, EraVM::DIVrrsr_s},
-                                          {EraVM::DIVirrr_s, EraVM::DIVirsr_s},
-                                          {EraVM::DIVxrrr_s, EraVM::DIVxrsr_s},
-                                          {EraVM::DIVcrrr_s, EraVM::DIVcrsr_s},
-                                          {EraVM::DIVyrrr_s, EraVM::DIVyrsr_s},
-                                          {EraVM::DIVsrrr_s, EraVM::DIVsrsr_s},
-                                          {EraVM::DIVzrrr_s, EraVM::DIVzrsr_s},
-                                          {EraVM::MULrrrr_v, EraVM::MULrrsr_v},
-                                          {EraVM::MULirrr_v, EraVM::MULirsr_v},
-                                          {EraVM::MULcrrr_v, EraVM::MULcrsr_v},
-                                          {EraVM::MULsrrr_v, EraVM::MULsrsr_v},
-                                          {EraVM::DIVrrrr_v, EraVM::DIVrrsr_v},
-                                          {EraVM::DIVirrr_v, EraVM::DIVirsr_v},
-                                          {EraVM::DIVxrrr_v, EraVM::DIVxrsr_v},
-                                          {EraVM::DIVcrrr_v, EraVM::DIVcrsr_v},
-                                          {EraVM::DIVyrrr_v, EraVM::DIVyrsr_v},
-                                          {EraVM::DIVsrrr_v, EraVM::DIVsrsr_v},
-                                          {EraVM::DIVzrrr_v, EraVM::DIVzrsr_v}};
-
+  // This is to try to eliminate unhandled expansion of PTR_TO_INT instruction
   for (MachineBasicBlock &MBB : MF)
     for (auto MI = MBB.begin(); MI != MBB.end(); ++MI) {
-      if (Mapping.count(MI->getOpcode())) {
-        auto StoreI = std::next(MI);
-        if (StoreI == MBB.end() || StoreI->getOpcode() != EraVM::ADDrrs_s ||
-            StoreI->getOperand(0).getReg() != MI->getOperand(0).getReg() ||
-            // CC must be equals
-            StoreI->getOperand(StoreI->getNumOperands() - 1).getImm() !=
-                MI->getOperand(MI->getNumOperands() - 1).getImm())
-          continue;
-        DebugLoc DL = MI->getDebugLoc();
-
-        auto NewMI = BuildMI(MBB, MI, DL, TII->get(Mapping[MI->getOpcode()]));
-        NewMI.addDef(MI->getOperand(1).getReg());
-        for (unsigned i = 2, e = MI->getNumOperands() - 1; i < e; ++i)
-          NewMI.add(MI->getOperand(i));
-        for (unsigned i = 2; i < 5; ++i)
-          NewMI.add(StoreI->getOperand(i));
-        NewMI.add(MI->getOperand(MI->getNumOperands() - 1));
-        StoreI->eraseFromParent();
-        MI->eraseFromParent();
-        MI = NewMI;
-        Changed = true;
+      // eliminate ADDrrr_s if possible
+      if (MI->getOpcode() == EraVM::PTR_ADDrrr_s) {
+        if (MI->getOperand(0).getReg() == MI->getOperand(1).getReg() &&
+            MI->getOperand(2).getReg() == EraVM::R0) {
+          LLVM_DEBUG(dbgs() << "eliminated ADDrrr_s: "; MI->dump();
+                     dbgs() << '\n');
+          ToErase.push_back(&*MI);
+          Changed = true;
+        }
       }
     }
+  for (auto MI : ToErase)
+    MI->eraseFromParent();
   return Changed;
 }
 
