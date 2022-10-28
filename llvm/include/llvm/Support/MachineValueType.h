@@ -274,9 +274,9 @@ namespace llvm {
       externref      = 178,    // WebAssembly's externref type
       x86amx         = 179,    // This is an X86 AMX value
       i64x8          = 180,    // 8 Consecutive GPRs (AArch64)
-
+      fatptr         = 181,    // SyncVM's fat pointer type
       FIRST_VALUETYPE =  1,    // This is always the beginning of the list.
-      LAST_VALUETYPE = i64x8,  // This always remains at the end of the list.
+      LAST_VALUETYPE = fatptr, // This always remains at the end of the list.
       VALUETYPE_SIZE = LAST_VALUETYPE + 1,
       // SyncVM local end
 
@@ -986,6 +986,7 @@ namespace llvm {
       case v8f32:
       // SyncVM local begin
       case i256:
+      case fatptr:
       // SyncVM local end
       case v4f64: return TypeSize::Fixed(256);
       case nxv32i8:

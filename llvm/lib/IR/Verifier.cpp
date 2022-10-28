@@ -2985,6 +2985,14 @@ void Verifier::visitIntToPtrInst(IntToPtrInst &I) {
     Assert(VSrc->getElementCount() == VDest->getElementCount(),
            "IntToPtr Vector width mismatch", &I);
   }
+
+  // SyncVM local begin
+  if (TT.isSyncVM()) {
+    Assert(I.getAddressSpace() != 3, "Cannot cast int to addrspace 3 pointer",
+           &I);
+  }
+  // SyncVM local end
+
   visitInstruction(I);
 }
 

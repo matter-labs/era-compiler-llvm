@@ -938,7 +938,8 @@ enum IIT_Info {
   IIT_V256 = 50,
   // SyncVM local begin
   IIT_AMX  = 51,
-  IIT_I256 = 52
+  IIT_I256 = 52,
+  IIT_FATPTR = 53
   // SyncVM local end
 };
 
@@ -1155,6 +1156,10 @@ static void DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
     OutputTable.push_back(IITDescriptor::get(IITDescriptor::Integer, 256));
     return;
   }
+  case IIT_FATPTR:
+    OutputTable.push_back(IITDescriptor::get(IITDescriptor::Pointer, 0));
+    DecodeIITType(NextElt, Infos, Info, OutputTable);
+    return;
   }
   // SyncVM local end
   llvm_unreachable("unhandled");
