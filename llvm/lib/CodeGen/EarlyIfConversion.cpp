@@ -618,8 +618,9 @@ void SSAIfConv::replacePHIInstrs() {
     if (hasSameValue(*MRI, TII, PI.TReg, PI.FReg)) {
       // We do not need the select instruction if both incoming values are
       // equal, but we do need a COPY.
-      BuildMI(*Head, FirstTerm, HeadDL, TII->get(TargetOpcode::COPY), DstReg)
-          .addReg(PI.TReg);
+      // SyncVM local begin
+      BuildCOPY(*Head, FirstTerm, HeadDL, TII, DstReg).addReg(PI.TReg);
+      // SyncVM local end
     } else {
       TII->insertSelect(*Head, FirstTerm, HeadDL, DstReg, Cond, PI.TReg,
                         PI.FReg);

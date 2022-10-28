@@ -38,6 +38,7 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
     : TargetLowering(TM) {
   // Set up the register classes.
   addRegisterClass(MVT::i256, &SyncVM::GR256RegClass);
+  addRegisterClass(MVT::fatptr, &SyncVM::GRPTRRegClass);
 
   // Compute derived properties from the register classes
   computeRegisterProperties(STI.getRegisterInfo());
@@ -83,7 +84,8 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::STACKRESTORE, MVT::Other, Custom);
 
   // Intrinsics lowering
-  setOperationAction(ISD::INTRINSIC_VOID, MVT::Other, Custom);
+  setOperationAction({ISD::INTRINSIC_VOID, ISD::INTRINSIC_WO_CHAIN},
+                     MVT::Other, Custom);
 
   for (MVT VT : MVT::integer_valuetypes()) {
     setLoadExtAction(ISD::SEXTLOAD, MVT::i256, VT, Custom);
@@ -93,6 +95,9 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
 
   setOperationAction(ISD::STORE, MVT::i256, Custom);
   setOperationAction(ISD::LOAD, MVT::i256, Custom);
+
+  setOperationAction(ISD::LOAD, MVT::fatptr, Legal);
+  setOperationAction(ISD::STORE, MVT::fatptr, Legal);
 
   setOperationAction(ISD::ZERO_EXTEND, MVT::i256, Custom);
   setOperationAction(ISD::ANY_EXTEND, MVT::i256, Custom);
@@ -175,8 +180,7 @@ SyncVMTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
     CCValAssign &VA = RVLocs[i];
     assert(VA.isRegLoc() && "Can only return in registers!");
 
-    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(),
-                             OutVals[i], Flag);
+    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), OutVals[i], Flag);
 
     // Guarantee that all emitted copies are stuck together,
     // avoiding something bad.
@@ -184,7 +188,7 @@ SyncVMTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
     RetOps.push_back(DAG.getRegister(VA.getLocReg(), VA.getLocVT()));
   }
 
-  RetOps[0] = Chain;  // Update chain.
+  RetOps[0] = Chain; // Update chain.
 
   // Add the flag if we have it.
   if (Flag.getNode())
@@ -229,7 +233,9 @@ SDValue SyncVMTargetLowering::LowerFormalArguments(
   unsigned InIdx = 0;
   for (CCValAssign &VA : ArgLocs) {
     if (VA.isRegLoc()) {
-      Register VReg = RegInfo.createVirtualRegister(&SyncVM::GR256RegClass);
+      auto *RC = VA.getValVT() == MVT::fatptr ? &SyncVM::GRPTRRegClass
+                                              : &SyncVM::GR256RegClass;
+      Register VReg = RegInfo.createVirtualRegister(RC);
       RegInfo.addLiveIn(VA.getLocReg(), VReg);
       SDValue ArgValue = DAG.getCopyFromReg(Chain, DL, VReg, VA.getLocVT());
 
@@ -307,7 +313,7 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
       Ops.push_back(CLI.UnwindBB);
       SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
       Chain = DAG.getNode(farcall_opc, DL, NodeTys, Ops);
-      InVals.push_back(DAG.getCopyFromReg(Chain, DL, SyncVM::R1, MVT::i256,
+      InVals.push_back(DAG.getCopyFromReg(Chain, DL, SyncVM::R1, MVT::fatptr,
                                           Chain.getValue(1)));
       return Chain;
     }
@@ -551,6 +557,8 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
     return LowerSREM(Op, DAG);
   case ISD::INTRINSIC_VOID:
     return LowerINTRINSIC_VOID(Op, DAG);
+  case ISD::INTRINSIC_WO_CHAIN:
+    return LowerINTRINSIC_WO_CHAIN(Op, DAG);
   case ISD::STACKSAVE:
     return LowerSTACKSAVE(Op, DAG);
   case ISD::STACKRESTORE:
@@ -591,52 +599,14 @@ SDValue SyncVMTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
   SDValue Chain = Store->getChain();
   const MachinePointerInfo &PInfo = Store->getPointerInfo();
 
-  const MachineMemOperand *MemOp = Store->getMemOperand();
-  auto *MemVal = [MemOp]() {
-    if (!MemOp)
-      return (const Value *)nullptr;
-    return MemOp->getValue();
-  }();
-
-#if 0
-  // Generic (fat) pointers need to be stored via ptr.add instead of add.
-  if (MemVal && Store->getAddressSpace() == SyncVMAS::AS_STACK  &&
-      cast<PointerType>(MemVal->getType())->getElementType()->isPointerTy() &&
-      cast<PointerType>(MemVal->getType())
-              ->getElementType()
-              ->getPointerAddressSpace() == SyncVMAS::AS_GENERIC) {
-    auto Zero = DAG.getTargetConstant(0, DL, MVT::i256);
-    // TODO: Something like SelectAddress is here, need to be reconsidered.
-    if (isa<GlobalAddressSDNode>(BasePtr))
-      return SDValue(DAG.getMachineNode(SyncVM::PTR_ADDrrs_p, DL, MVT::Other,
-                                        {Store->getValue(),
-                                         DAG.getRegister(SyncVM::R0, MVT::i256),
-                                         Zero, Zero, BasePtr, Chain}),
-                     0);
-    if (auto *FI = dyn_cast<FrameIndexSDNode>(BasePtr))
-      return SDValue(
-          DAG.getMachineNode(
-              SyncVM::PTR_ADDrrs_p, DL, MVT::Other,
-              {Store->getValue(), DAG.getRegister(SyncVM::R0, MVT::i256),
-               DAG.getTargetFrameIndex(FI->getIndex(),
-                                       getPointerTy(DAG.getDataLayout())),
-               Zero, Zero, Chain}),
-          0);
-    return SDValue(DAG.getMachineNode(SyncVM::PTR_ADDrrs_p, DL, MVT::Other,
-                                      {Store->getValue(),
-                                       DAG.getRegister(SyncVM::R0, MVT::i256),
-                                       Zero, BasePtr, Zero, Chain}),
-                   0);
-  }
-#endif
-
   // for now only handle cases where alignment == 1
   // only handle unindexed store
   assert(Store->getAddressingMode() == ISD::UNINDEXED);
 
   EVT MemVT = Store->getMemoryVT();
   unsigned MemVTSize = MemVT.getSizeInBits();
-  assert(MemVT.isScalarInteger() && "Unexpected type to store");
+  assert((MemVT.isScalarInteger() || MemVT.getSimpleVT() == MVT::fatptr) &&
+         "Unexpected type to store");
   if (MemVTSize == 256) {
     return {};
   }
@@ -680,45 +650,6 @@ SDValue SyncVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   SDValue BasePtr = Load->getBasePtr();
   SDValue Chain = Load->getChain();
   const MachinePointerInfo &PInfo = Load->getPointerInfo();
-
-  const MachineMemOperand *MemOp = Load->getMemOperand();
-  auto *MemVal = [MemOp]() {
-    if (!MemOp)
-      return (const Value *)nullptr;
-    return MemOp->getValue();
-  }();
-
-#if 0
-  // Generic (fat) pointers need to be loaded via ptr.add instead of add.
-  if (MemVal && Load->getAddressSpace() == SyncVMAS::AS_STACK &&
-      cast<PointerType>(MemVal->getType())->getElementType()->isPointerTy() &&
-      cast<PointerType>(MemVal->getType())
-              ->getElementType()
-              ->getPointerAddressSpace() == SyncVMAS::AS_GENERIC) {
-    auto Zero = DAG.getTargetConstant(0, DL, MVT::i64);
-    SDVTList RetTys = DAG.getVTList(MVT::i256, MVT::Other);
-    // TODO: Something like SelectAddress is here, need to be reconsidered.
-    if (isa<GlobalAddressSDNode>(BasePtr))
-      return SDValue(
-          DAG.getMachineNode(SyncVM::PTR_ADDsrr_p, DL, RetTys,
-                             {Zero, Zero, BasePtr,
-                              DAG.getRegister(SyncVM::R0, MVT::i256), Chain}),
-          0);
-    if (auto *FI = dyn_cast<FrameIndexSDNode>(BasePtr))
-      return SDValue(
-          DAG.getMachineNode(
-              SyncVM::PTR_ADDsrr_p, DL, RetTys,
-              {DAG.getTargetFrameIndex(FI->getIndex(),
-                                       getPointerTy(DAG.getDataLayout())),
-               Zero, Zero, DAG.getRegister(SyncVM::R0, MVT::i256), Chain}),
-          0);
-    return SDValue(
-        DAG.getMachineNode(SyncVM::PTR_ADDsrr_p, DL, RetTys,
-                           {Zero, BasePtr, Zero,
-                            DAG.getRegister(SyncVM::R0, MVT::i256), Chain}),
-        0);
-  }
-#endif
 
   EVT MemVT = Load->getMemoryVT();
   EVT OpVT = Op->getValueType(0);
@@ -883,6 +814,9 @@ SDValue SyncVMTargetLowering::LowerSELECT_CC(SDValue Op,
   return DAG.getNode(SyncVMISD::SELECT_CC, DL, VTs, Ops);
 }
 
+// TODO: CPR-885 Get rid of LowerCopyToReg in ISelLowering
+// It seems an outdated design solution from SyncVM v1.0. We should check if it
+// still needed, and if it is, use BytesToCells pass instead.
 SDValue SyncVMTargetLowering::LowerCopyToReg(SDValue Op,
                                              SelectionDAG &DAG) const {
   SDLoc DL(Op);
@@ -895,8 +829,8 @@ SDValue SyncVMTargetLowering::LowerCopyToReg(SDValue Op,
     // If we put an expression involving stack frame, we replase the address in
     // bytes with the address in cells. Probably we need to reconsider that
     // desing.
-    SDValue Div = DAG.getNode(ISD::UDIV, DL, MVT::i256, Src,
-                              DAG.getConstant(32, DL, MVT::i256));
+    SDValue Div = DAG.getNode(ISD::UDIV, DL, Op.getValueType(), Src,
+                              DAG.getConstant(32, DL, Op.getValueType()));
     SDValue CTR = DAG.getCopyToReg(Op.getOperand(0), DL, Reg, Div,
                                    Op.getNumOperands() == 4 ? Op.getOperand(3)
                                                             : SDValue());
@@ -911,6 +845,33 @@ SyncVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                                                   MachineBasicBlock *BB) const {
   llvm_unreachable("No instruction require custom inserter");
   return nullptr;
+}
+SDValue SyncVMTargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
+                                                      SelectionDAG &DAG) const {
+  unsigned IntrinsicID = cast<ConstantSDNode>(Op.getOperand(0))->getZExtValue();
+  EVT VT = Op.getValueType();
+  SDLoc DL(Op);
+
+  switch (IntrinsicID) {
+  default:
+    break;
+  case Intrinsic::syncvm_ptrtoint: {
+    return DAG.getNode(SyncVMISD::PTR_TO_INT, DL, VT, Op.getOperand(1));
+  }
+  case Intrinsic::syncvm_ptr_add: {
+    return DAG.getNode(SyncVMISD::PTR_ADD, DL, VT, Op.getOperand(1),
+                       Op.getOperand(2));
+  }
+  case Intrinsic::syncvm_ptr_shrink: {
+    return DAG.getNode(SyncVMISD::PTR_SHRINK, DL, VT, Op.getOperand(1),
+                       Op.getOperand(2));
+  }
+  case Intrinsic::syncvm_ptr_pack: {
+    return DAG.getNode(SyncVMISD::PTR_PACK, DL, VT, Op.getOperand(1),
+                       Op.getOperand(2));
+  }
+  }
+  return SDValue();
 }
 
 SDValue SyncVMTargetLowering::LowerINTRINSIC_VOID(SDValue Op,
@@ -1000,4 +961,18 @@ SDValue SyncVMTargetLowering::PerformDAGCombine(SDNode *N,
   }
   }
   return val;
+}
+
+Register
+SyncVMTargetLowering::getRegisterByName(const char *RegName, LLT VT,
+                                        const MachineFunction &MF) const {
+  Register Reg = StringSwitch<unsigned>(RegName)
+                     .Case("r0", SyncVM::R0)
+                     .Case("r1", SyncVM::R1)
+                     .Default(0);
+  if (Reg)
+    return Reg;
+
+  report_fatal_error(
+      Twine("Invalid register name \"" + StringRef(RegName) + "\"."));
 }

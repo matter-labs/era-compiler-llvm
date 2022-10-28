@@ -43,7 +43,6 @@ add_llvm_target(SyncVMCodeGen
   SyncVMAllocaHoisting.cpp
   SyncVMTargetTransformInfo.cpp
   SyncVMPeephole.cpp
-  SyncVMPropagateGenericPointers.cpp
   SyncVMStackAddressConstantPropagation.cpp
 
   LINK_COMPONENTS

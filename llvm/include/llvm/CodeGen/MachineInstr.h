@@ -112,6 +112,11 @@ public:
     NoMerge      = 1 << 15,             // Passes that drop source location info
                                         // (e.g. branch folding) should skip
                                         // this instruction.
+    // SyncVM local begin
+    IsFatPtr     = 1 << 16,             // Instruction is fat pointer related
+                                        // This is used for RegAlloc to emit different
+                                        // instructions for COPY
+    // SyncVM local end
   };
 
 private:
@@ -122,7 +127,9 @@ private:
   MachineOperand *Operands = nullptr;   // Pointer to the first operand.
   unsigned NumOperands = 0;             // Number of operands on instruction.
 
-  uint16_t Flags = 0;                   // Various bits of additional
+  // SyncVM local begin
+  uint32_t Flags = 0;                   // Various bits of additional
+  // SyncVM local end
                                         // information about machine
                                         // instruction.
 
@@ -335,7 +342,9 @@ public:
 
   /// Set a MI flag.
   void setFlag(MIFlag Flag) {
-    Flags |= (uint16_t)Flag;
+    // SyncVM local begin
+    Flags |= (decltype(Flags))Flag;
+    // SyncVM local end
   }
 
   void setFlags(unsigned flags) {

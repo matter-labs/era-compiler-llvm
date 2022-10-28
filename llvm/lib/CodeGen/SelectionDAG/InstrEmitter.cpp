@@ -172,8 +172,9 @@ EmitCopyFromReg(SDNode *Node, unsigned ResNo, bool IsClone, bool IsCloned,
   } else {
     // Create the reg, emit the copy.
     VRBase = MRI->createVirtualRegister(DstRC);
-    BuildMI(*MBB, InsertPos, Node->getDebugLoc(), TII->get(TargetOpcode::COPY),
-            VRBase).addReg(SrcReg);
+    // SyncVM local begin
+    BuildCOPY(*MBB, InsertPos, Node->getDebugLoc(), TII, VRBase).addReg(SrcReg);
+    // SyncVM local end
   }
 
   SDValue Op(Node, ResNo);
@@ -330,8 +331,10 @@ InstrEmitter::AddRegisterOperand(MachineInstrBuilder &MIB,
         OpRC = TRI->getAllocatableClass(OpRC);
         assert(OpRC && "Constraints cannot be fulfilled for allocation");
         Register NewVReg = MRI->createVirtualRegister(OpRC);
-        BuildMI(*MBB, InsertPos, Op.getNode()->getDebugLoc(),
-                TII->get(TargetOpcode::COPY), NewVReg).addReg(VReg);
+        // SyncVM local begin
+        BuildCOPY(*MBB, InsertPos, Op.getNode()->getDebugLoc(), TII, NewVReg)
+            .addReg(VReg);
+        // SyncVM local end
         VReg = NewVReg;
       } else {
         assert(ConstrainedRC->isAllocatable() &&
@@ -402,8 +405,10 @@ void InstrEmitter::AddOperand(MachineInstrBuilder &MIB,
 
     if (OpRC && IIRC && OpRC != IIRC && Register::isVirtualRegister(VReg)) {
       Register NewVReg = MRI->createVirtualRegister(IIRC);
-      BuildMI(*MBB, InsertPos, Op.getNode()->getDebugLoc(),
-               TII->get(TargetOpcode::COPY), NewVReg).addReg(VReg);
+      // SyncVM local begin
+      BuildCOPY(*MBB, InsertPos, Op.getNode()->getDebugLoc(), TII, NewVReg)
+          .addReg(VReg);
+      // SyncVM local end
       VReg = NewVReg;
     }
     // Turn additional physreg operands into implicit uses on non-variadic
@@ -621,8 +626,9 @@ InstrEmitter::EmitCopyToRegClassNode(SDNode *Node,
   const TargetRegisterClass *DstRC =
     TRI->getAllocatableClass(TRI->getRegClass(DstRCIdx));
   Register NewVReg = MRI->createVirtualRegister(DstRC);
-  BuildMI(*MBB, InsertPos, Node->getDebugLoc(), TII->get(TargetOpcode::COPY),
-    NewVReg).addReg(VReg);
+  // SyncVM local begin
+  BuildCOPY(*MBB, InsertPos, Node->getDebugLoc(), TII, NewVReg).addReg(VReg);
+  // SyncVM local end
 
   SDValue Op(Node, 0);
   bool isNew = VRBaseMap.insert(std::make_pair(Op, NewVReg)).second;
@@ -1188,8 +1194,10 @@ EmitSpecialNode(SDNode *Node, bool IsClone, bool IsCloned,
     if (SrcReg == DestReg) // Coalesced away the copy? Ignore.
       break;
 
-    BuildMI(*MBB, InsertPos, Node->getDebugLoc(), TII->get(TargetOpcode::COPY),
-            DestReg).addReg(SrcReg);
+    // SyncVM local begin
+    BuildCOPY(*MBB, InsertPos, Node->getDebugLoc(), TII, DestReg)
+        .addReg(SrcReg);
+    // SyncVM local end
     break;
   }
   case ISD::CopyFromReg: {

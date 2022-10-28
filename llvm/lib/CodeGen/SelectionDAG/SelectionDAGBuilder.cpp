@@ -1611,6 +1611,10 @@ SDValue SelectionDAGBuilder::getValueImpl(const Value *V) {
           Constants[i] = DAG.getUNDEF(EltVT);
         else if (EltVT.isFloatingPoint())
           Constants[i] = DAG.getConstantFP(0, getCurSDLoc(), EltVT);
+        // SyncVM local begin
+        else if (EltVT == MVT::fatptr)
+          Constants[i] = DAG.getConstant(0, getCurSDLoc(), MVT::i256);
+        // SyncVM local end
         else
           Constants[i] = DAG.getConstant(0, getCurSDLoc(), EltVT);
       }
@@ -3053,11 +3057,22 @@ void SelectionDAGBuilder::visitLandingPad(const LandingPadInst &LP) {
   // copied into virtual registers.
   SDValue Ops[2];
   if (FuncInfo.ExceptionPointerVirtReg) {
+    // SyncVM local begin
+    if (ValueVTs[0] == MVT::fatptr) {
+      // SyncVM-specific EH convention: $r1 contains exception pointer
+      Ops[0] = DAG.getRegister(
+          TLI.getRegisterByName("r1", LLT(), DAG.getMachineFunction()),
+          ValueVTs[0]);
+    } else {
+    // SyncVM local end
     Ops[0] = DAG.getZExtOrTrunc(
         DAG.getCopyFromReg(DAG.getEntryNode(), dl,
                            FuncInfo.ExceptionPointerVirtReg,
                            TLI.getPointerTy(DAG.getDataLayout())),
         dl, ValueVTs[0]);
+    // SyncVM local begin
+    }
+    // SyncVM local end
   } else {
     Ops[0] = DAG.getConstant(0, dl, TLI.getPointerTy(DAG.getDataLayout()));
   }
@@ -4147,7 +4162,9 @@ void SelectionDAGBuilder::visitLoad(const LoadInst &I) {
       Root = Chain;
       ChainI = 0;
     }
-    SDValue A = DAG.getNode(ISD::ADD, dl,
+    // SyncVM local begin
+    SDValue A = Offsets[i] == 0 ? Ptr : DAG.getNode(ISD::ADD, dl,
+    // SyncVM local end
                             PtrVT, Ptr,
                             DAG.getConstant(Offsets[i], dl, PtrVT),
                             Flags);

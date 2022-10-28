@@ -53,56 +53,24 @@ bool SyncVMPeephole::runOnMachineFunction(MachineFunction &MF) {
   Context = &MF.getFunction().getContext();
 
   bool Changed = false;
+  std::vector<MachineInstr *> ToErase;
 
-  DenseMap<unsigned, unsigned> Mapping = {
-      {SyncVM::MULrrrr_s, SyncVM::MULrrsr_s},
-      {SyncVM::MULirrr_s, SyncVM::MULirsr_s},
-      {SyncVM::MULcrrr_s, SyncVM::MULcrsr_s},
-      {SyncVM::MULsrrr_s, SyncVM::MULsrsr_s},
-      {SyncVM::DIVrrrr_s, SyncVM::DIVrrsr_s},
-      {SyncVM::DIVirrr_s, SyncVM::DIVirsr_s},
-      {SyncVM::DIVxrrr_s, SyncVM::DIVxrsr_s},
-      {SyncVM::DIVcrrr_s, SyncVM::DIVcrsr_s},
-      {SyncVM::DIVyrrr_s, SyncVM::DIVyrsr_s},
-      {SyncVM::DIVsrrr_s, SyncVM::DIVsrsr_s},
-      {SyncVM::DIVzrrr_s, SyncVM::DIVzrsr_s},
-      {SyncVM::MULrrrr_v, SyncVM::MULrrsr_v},
-      {SyncVM::MULirrr_v, SyncVM::MULirsr_v},
-      {SyncVM::MULcrrr_v, SyncVM::MULcrsr_v},
-      {SyncVM::MULsrrr_v, SyncVM::MULsrsr_v},
-      {SyncVM::DIVrrrr_v, SyncVM::DIVrrsr_v},
-      {SyncVM::DIVirrr_v, SyncVM::DIVirsr_v},
-      {SyncVM::DIVxrrr_v, SyncVM::DIVxrsr_v},
-      {SyncVM::DIVcrrr_v, SyncVM::DIVcrsr_v},
-      {SyncVM::DIVyrrr_v, SyncVM::DIVyrsr_v},
-      {SyncVM::DIVsrrr_v, SyncVM::DIVsrsr_v},
-      {SyncVM::DIVzrrr_v, SyncVM::DIVzrsr_v}};
-
+  // This is to try to eliminate unhandled expansion of PTR_TO_INT instruction
   for (MachineBasicBlock &MBB : MF)
     for (auto MI = MBB.begin(); MI != MBB.end(); ++MI) {
-      if (Mapping.count(MI->getOpcode())) {
-        auto StoreI = std::next(MI);
-        if (StoreI == MBB.end() || StoreI->getOpcode() != SyncVM::ADDrrs_s ||
-            StoreI->getOperand(0).getReg() != MI->getOperand(0).getReg() ||
-            // CC must be equals
-            StoreI->getOperand(StoreI->getNumOperands() - 1).getImm() !=
-                MI->getOperand(MI->getNumOperands() - 1).getImm())
-          continue;
-        DebugLoc DL = MI->getDebugLoc();
-
-        auto NewMI = BuildMI(MBB, MI, DL, TII->get(Mapping[MI->getOpcode()]));
-        NewMI.addDef(MI->getOperand(1).getReg());
-        for (unsigned i = 2, e = MI->getNumOperands() - 1; i < e; ++i)
-          NewMI.add(MI->getOperand(i));
-        for (unsigned i = 2; i < 5; ++i)
-          NewMI.add(StoreI->getOperand(i));
-        NewMI.add(MI->getOperand(MI->getNumOperands() - 1));
-        StoreI->eraseFromParent();
-        MI->eraseFromParent();
-        MI = NewMI;
-        Changed = true;
+      // eliminate ADDrrr_s if possible
+      if (MI->getOpcode() == SyncVM::PTR_ADDrrr_s) {
+        if (MI->getOperand(0).getReg() == MI->getOperand(1).getReg() &&
+            MI->getOperand(2).getReg() == SyncVM::R0) {
+          LLVM_DEBUG(dbgs() << "eliminated ADDrrr_s: "; MI->dump();
+                     dbgs() << '\n');
+          ToErase.push_back(&*MI);
+          Changed = true;
+        }
       }
     }
+  for (auto MI : ToErase)
+    MI->eraseFromParent();
   return Changed;
 }
 

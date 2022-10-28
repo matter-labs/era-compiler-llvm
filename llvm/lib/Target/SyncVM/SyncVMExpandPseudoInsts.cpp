@@ -37,7 +37,7 @@ public:
 private:
   void expandConst(MachineInstr &MI) const;
   void expandLoadConst(MachineInstr &MI) const;
-  void expandThrow(MachineInstr& MI) const;
+  void expandThrow(MachineInstr &MI) const;
   const TargetInstrInfo *TII;
   LLVMContext *Context;
 };
@@ -154,9 +154,9 @@ void SyncVMExpandPseudo::expandLoadConst(MachineInstr &MI) const {
   // use.
   auto MBBI = std::next(MachineBasicBlock::iterator(MI));
   auto outReg = MI.getOperand(0).getReg();
-  
+
   // We temporarily disabled combining because it will introduce
-  // a bug: when combining, we lose the MI's def, and when there are 
+  // a bug: when combining, we lose the MI's def, and when there are
   // other uses of the def, we result wrong program.
   if (false && can_combine(MI, *MBBI)) {
     auto opcode = MBBI->getOpcode();
@@ -262,20 +262,20 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
         PseudoInst.push_back(&MI);
       } else if (MI.getOpcode() == SyncVM::CALL) {
         // Special handling of calling to __cxa_throw.
-        // If we are calling into the throw wrapper function, we jump into a 
+        // If we are calling into the throw wrapper function, we jump into a
         // local frame with unwind path of `DEFAULT_UNWIND`, which will turn
         // our prepared THROW into a PANIC. This will cause values in registers
-        // not propagated back to upper level, causing lost of returndata 
+        // not propagated back to upper level, causing lost of returndata
         auto *func_opnd = MI.getOperand(1).getGlobal();
         auto func_name = func_opnd->getName();
         if (func_name == "__cxa_throw") {
           BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
-                TII->get(SyncVM::THROW));
+                  TII->get(SyncVM::THROW));
         } else {
-          // One of the problem: the backend cannot restrict frontend to not emit
-          // calls (Should we reinforce it?) so this route is needed.
-          // If a call is generated, it is incomplete as it misses EH label info,
-          // pad 0 instead.
+          // One of the problem: the backend cannot restrict frontend to not
+          // emit calls (Should we reinforce it?) so this route is needed. If a
+          // call is generated, it is incomplete as it misses EH label info, pad
+          // 0 instead.
           Register ABIReg = MI.getOperand(0).getReg();
           BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
                   TII->get(SyncVM::NEAR_CALL))
@@ -286,6 +286,20 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
                                      // which bubbles up the exception.
         }
 
+        PseudoInst.push_back(&MI);
+      } else if (MI.getOpcode() == SyncVM::PTR_TO_INT) {
+        // Eliminate PTR_TO_INT
+        Register ToReg = MI.getOperand(0).getReg();
+        Register FromReg = MI.getOperand(1).getReg();
+        if (ToReg != FromReg) {
+          LLVM_DEBUG(dbgs() << "Found PTR_TO_INT: "; MI.dump());
+          auto NewMI = BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
+                               TII->get(SyncVM::ADDrrr_s), ToReg)
+                           .addReg(FromReg)
+                           .addReg(SyncVM::R0)
+                           .addImm(0);
+          LLVM_DEBUG(dbgs() << "Converting PTR_TO_INT to: "; NewMI->dump());
+        }
         PseudoInst.push_back(&MI);
       }
     }

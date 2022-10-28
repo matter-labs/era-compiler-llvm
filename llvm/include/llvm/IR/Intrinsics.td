@@ -249,6 +249,7 @@ def llvm_i128_ty       : LLVMType<i128>;
 // SyncVM local begin
 def llvm_i256_ty       : LLVMType<i256>;
 def llvm_i512_ty       : LLVMType<i512>;
+def llvm_fatptr_ty     : LLVMType<fatptr>;
 // SyncVM local end
 def llvm_half_ty       : LLVMType<f16>;
 def llvm_bfloat_ty     : LLVMType<bf16>;
