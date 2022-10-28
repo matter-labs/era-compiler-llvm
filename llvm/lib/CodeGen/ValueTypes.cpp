@@ -187,6 +187,9 @@ std::string EVT::getEVTString() const {
     return "aarch64svcount";
   case MVT::spirvbuiltin:
     return "spirvbuiltin";
+  // EraVM local begin
+  case MVT::fatptr:    return "fatptr";
+  // EraVM local end
   }
 }
 
@@ -207,6 +210,10 @@ Type *EVT::getTypeForEVT(LLVMContext &Context) const {
     assert(isExtended() && "Type is not extended!");
     return LLVMTy;
   case MVT::isVoid:  return Type::getVoidTy(Context);
+  // EraVM local begin
+  case MVT::fatptr:
+    return PointerType::get(StructType::create(Context), 3);
+  // EraVM local end
   case MVT::x86mmx:  return Type::getX86_MMXTy(Context);
   case MVT::aarch64svcount:
     return TargetExtType::get(Context, "aarch64.svcount");

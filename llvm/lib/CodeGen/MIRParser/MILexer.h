@@ -142,6 +142,10 @@ struct MIToken {
     kw_call_frame_size,
     kw_noconvergent,
 
+    // EraVM local begin
+    kw_isfatptr,
+    // EraVM local end
+
     // Metadata types.
     kw_distinct,
 

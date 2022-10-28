@@ -290,6 +290,7 @@ def i64x8     : ValueType<512,  200>;  // 8 Consecutive GPRs (AArch64)
 def aarch64svcount
               : ValueType<16,  201>;  // AArch64 predicate-as-counter
 def spirvbuiltin : ValueType<0, 202>; // SPIR-V's builtin type
+def fatptr    : ValueType<256,  203>;  // EraVM's Fat Pointer Type
 // EraVM local end
 
 let isNormalValueType = false in {

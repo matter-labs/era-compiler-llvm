@@ -828,8 +828,9 @@ EmitPhysRegCopy(SUnit *SU, DenseMap<SUnit*, Register> &VRBaseMap,
           break;
         }
       }
-      BuildMI(*BB, InsertPos, DebugLoc(), TII->get(TargetOpcode::COPY), Reg)
-        .addReg(VRI->second);
+      // EraVM local begin
+      BuildCOPY(*BB, InsertPos, DebugLoc(), TII, Reg).addReg(VRI->second);
+      // EraVM local end
     } else {
       // Copy from physical register.
       assert(Pred.getReg() && "Unknown physical register!");
@@ -837,8 +838,9 @@ EmitPhysRegCopy(SUnit *SU, DenseMap<SUnit*, Register> &VRBaseMap,
       bool isNew = VRBaseMap.insert(std::make_pair(SU, VRBase)).second;
       (void)isNew; // Silence compiler warning.
       assert(isNew && "Node emitted out of order - early");
-      BuildMI(*BB, InsertPos, DebugLoc(), TII->get(TargetOpcode::COPY), VRBase)
-          .addReg(Pred.getReg());
+      // EraVM local begin
+      BuildCOPY(*BB, InsertPos, DebugLoc(), TII, VRBase).addReg(Pred.getReg());
+      // EraVM local end
     }
     break;
   }

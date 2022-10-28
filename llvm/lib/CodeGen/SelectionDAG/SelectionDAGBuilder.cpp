@@ -1880,6 +1880,10 @@ SDValue SelectionDAGBuilder::getValueImpl(const Value *V) {
           Constants[i] = DAG.getUNDEF(EltVT);
         else if (EltVT.isFloatingPoint())
           Constants[i] = DAG.getConstantFP(0, getCurSDLoc(), EltVT);
+        // EraVM local begin
+        else if (EltVT == MVT::fatptr)
+          Constants[i] = DAG.getConstant(0, getCurSDLoc(), MVT::i256);
+        // EraVM local end
         else
           Constants[i] = DAG.getConstant(0, getCurSDLoc(), EltVT);
       }
@@ -3491,11 +3495,22 @@ void SelectionDAGBuilder::visitLandingPad(const LandingPadInst &LP) {
   // copied into virtual registers.
   SDValue Ops[2];
   if (FuncInfo.ExceptionPointerVirtReg) {
+    // EraVM local begin
+    if (ValueVTs[0] == MVT::fatptr) {
+      // EraVM-specific EH convention: $r1 contains exception pointer
+      Ops[0] = DAG.getRegister(
+          TLI.getRegisterByName("r1", LLT(), DAG.getMachineFunction()),
+          ValueVTs[0]);
+    } else {
+    // EraVM local end
     Ops[0] = DAG.getZExtOrTrunc(
         DAG.getCopyFromReg(DAG.getEntryNode(), dl,
                            FuncInfo.ExceptionPointerVirtReg,
                            TLI.getPointerTy(DAG.getDataLayout())),
         dl, ValueVTs[0]);
+    // EraVM local begin
+    }
+    // EraVM local end
   } else {
     Ops[0] = DAG.getConstant(0, dl, TLI.getPointerTy(DAG.getDataLayout()));
   }
@@ -4597,7 +4612,6 @@ void SelectionDAGBuilder::visitLoad(const LoadInst &I) {
       Root = Chain;
       ChainI = 0;
     }
-
     // TODO: MachinePointerInfo only supports a fixed length offset.
     MachinePointerInfo PtrInfo =
         !Offsets[i].isScalable() || Offsets[i].isZero()

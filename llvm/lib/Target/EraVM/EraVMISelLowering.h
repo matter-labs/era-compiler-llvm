@@ -65,8 +65,10 @@ public:
   SDValue LowerSREM(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue LowerINTRINSIC_VOID(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerINTRINSIC_WO_CHAIN(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSTACKSAVE(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSTACKRESTORE(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerCopyFromReg(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue LowerConstant(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerConstantPool(SDValue Op, SelectionDAG &DAG) const;
@@ -212,6 +214,21 @@ private:
   void ReplaceNodeResults(SDNode *N, SmallVectorImpl<SDValue> &Results,
                           SelectionDAG &DAG) const override;
   SDValue PerformDAGCombine(SDNode *N, DAGCombinerInfo &DCI) const override;
+
+  MVT getPointerTy(const DataLayout &DL, uint32_t AS = 0) const override {
+    if (AS == EraVMAS::AS_GENERIC)
+      return MVT::fatptr;
+    return TargetLowering::getPointerTy(DL, AS);
+  }
+
+  MVT getPointerMemTy(const DataLayout &DL, uint32_t AS = 0) const override {
+    if (AS == EraVMAS::AS_GENERIC)
+      return MVT::fatptr;
+    return TargetLowering::getPointerTy(DL, AS);
+  }
+
+  Register getRegisterByName(const char *RegName, LLT VT,
+                             const MachineFunction &MF) const override;
 };
 } // namespace llvm
 

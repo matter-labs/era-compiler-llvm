@@ -119,6 +119,11 @@ public:
     Disjoint = 1 << 19,      // Each bit is zero in at least one of the inputs.
     NoUSWrap = 1 << 20,      // Instruction supports geps
                              // no unsigned signed wrap.
+    // EraVM local begin
+    IsFatPtr     = 1 << 21,             // Instruction is fat pointer related
+                                        // This is used for RegAlloc to emit different
+                                        // instructions for COPY
+    // EraVM local end
   };
 
 private:

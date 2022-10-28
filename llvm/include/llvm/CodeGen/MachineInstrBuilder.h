@@ -532,6 +532,15 @@ MachineInstrBuilder BuildMI(MachineBasicBlock &BB,
                             ArrayRef<MachineOperand> MOs,
                             const MDNode *Variable, const MDNode *Expr);
 
+// EraVM local begin
+/// This helper function builds a COPY instruction. And if it is a fat pointer
+/// copy, it will also tag the instruction to notify our backend to emit
+/// corresponding instructions.
+MachineInstrBuilder BuildCOPY(MachineBasicBlock &BB,
+                              MachineBasicBlock::iterator I, const DebugLoc &DL,
+                              const TargetInstrInfo *TII, Register DestReg);
+// EraVM local end
+
 /// Clone a DBG_VALUE whose value has been spilled to FrameIndex.
 MachineInstr *buildDbgValueForSpill(MachineBasicBlock &BB,
                                     MachineBasicBlock::iterator I,

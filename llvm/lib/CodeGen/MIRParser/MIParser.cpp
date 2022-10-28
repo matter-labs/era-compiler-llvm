@@ -1473,6 +1473,9 @@ bool MIParser::parseInstruction(unsigned &OpCode, unsigned &Flags) {
          Token.is(MIToken::kw_noconvergent) ||
          Token.is(MIToken::kw_unpredictable) ||
          Token.is(MIToken::kw_nneg) ||
+         // EraVM local begin
+         Token.is(MIToken::kw_isfatptr) ||
+         // EraVM local end
          Token.is(MIToken::kw_disjoint)) {
     // clang-format on
     // Mine frame and fast math flags
@@ -1510,6 +1513,10 @@ bool MIParser::parseInstruction(unsigned &OpCode, unsigned &Flags) {
       Flags |= MachineInstr::NonNeg;
     if (Token.is(MIToken::kw_disjoint))
       Flags |= MachineInstr::Disjoint;
+    // EraVM local begin
+    if (Token.is(MIToken::kw_isfatptr))
+      Flags |= MachineInstr::IsFatPtr;
+    // EraVM local end
 
     lex();
   }

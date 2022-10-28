@@ -249,6 +249,10 @@ void IntrinsicEmitter::EmitIntrinsicToOverloadTable(
   OS << "#endif\n\n";
 }
 
+#if defined(_MSC_VER) && !defined(__clang__)
+#pragma optimize("",off) // MSVC 2015 optimizer can't deal with this function.
+#endif
+
 /// ComputeFixedEncoding - If we can encode the type signature for this
 /// intrinsic into 32 bits, return it.  If not, return ~0U.
 static void ComputeFixedEncoding(const CodeGenIntrinsic &Int,

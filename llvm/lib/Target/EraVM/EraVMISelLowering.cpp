@@ -44,6 +44,7 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
     : TargetLowering(TM) {
   // Set up the register classes.
   addRegisterClass(MVT::i256, &EraVM::GR256RegClass);
+  addRegisterClass(MVT::fatptr, &EraVM::GRPTRRegClass);
 
   // Compute derived properties from the register classes
   computeRegisterProperties(STI.getRegisterInfo());
@@ -89,7 +90,8 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::STACKRESTORE, MVT::Other, Custom);
 
   // Intrinsics lowering
-  setOperationAction(ISD::INTRINSIC_VOID, MVT::Other, Custom);
+  setOperationAction({ISD::INTRINSIC_VOID, ISD::INTRINSIC_WO_CHAIN}, MVT::Other,
+                     Custom);
 
   for (MVT VT : MVT::integer_valuetypes()) {
     setLoadExtAction(ISD::SEXTLOAD, MVT::i256, VT, Custom);
@@ -99,6 +101,9 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
 
   setOperationAction(ISD::STORE, MVT::i256, Custom);
   setOperationAction(ISD::LOAD, MVT::i256, Custom);
+
+  setOperationAction(ISD::LOAD, MVT::fatptr, Legal);
+  setOperationAction(ISD::STORE, MVT::fatptr, Legal);
 
   setOperationAction(ISD::ZERO_EXTEND, MVT::i256, Custom);
   setOperationAction(ISD::ANY_EXTEND, MVT::i256, Custom);
@@ -133,18 +138,14 @@ bool EraVMTargetLowering::CanLowerReturn(
     CallingConv::ID CallConv, MachineFunction &MF, bool IsVarArg,
     const SmallVectorImpl<ISD::OutputArg> &Outs, LLVMContext &Context) const {
 
-  MachineRegisterInfo &RegInfo = MF.getRegInfo();
   if (Outs.size() >= EraVM::GR256RegClass.getNumRegs() - 1)
     return false;
 
   SmallVector<CCValAssign, 1> RVLocs;
   CCState CCInfo(CallConv, IsVarArg, MF, RVLocs, Context);
 
-  // cannot support return convention or is variadic?
-  if (!CCInfo.CheckReturn(Outs, RetCC_ERAVM) || IsVarArg)
-    return false;
-
-  return true;
+  // Cannot support return convention or is variadic?
+  return CCInfo.CheckReturn(Outs, RetCC_ERAVM);
 }
 
 SDValue
@@ -234,7 +235,9 @@ SDValue EraVMTargetLowering::LowerFormalArguments(
   unsigned InIdx = 0;
   for (CCValAssign &VA : ArgLocs) {
     if (VA.isRegLoc()) {
-      Register VReg = RegInfo.createVirtualRegister(&EraVM::GR256RegClass);
+      const auto *RC = VA.getValVT() == MVT::fatptr ? &EraVM::GRPTRRegClass
+                                                    : &EraVM::GR256RegClass;
+      Register VReg = RegInfo.createVirtualRegister(RC);
       RegInfo.addLiveIn(VA.getLocReg(), VReg);
       SDValue ArgValue = DAG.getCopyFromReg(Chain, DL, VReg, VA.getLocVT());
 
@@ -311,7 +314,7 @@ SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
       Ops.push_back(CLI.UnwindBB);
       SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
       Chain = DAG.getNode(farcall_opc, DL, NodeTys, Ops);
-      InVals.push_back(DAG.getCopyFromReg(Chain, DL, EraVM::R1, MVT::i256,
+      InVals.push_back(DAG.getCopyFromReg(Chain, DL, EraVM::R1, MVT::fatptr,
                                           Chain.getValue(1)));
       return Chain;
     }
@@ -540,6 +543,7 @@ SDValue EraVMTargetLowering::LowerOperation(SDValue Op,
   case ISD::SDIV:               return LowerSDIV(Op, DAG);
   case ISD::SREM:               return LowerSREM(Op, DAG);
   case ISD::INTRINSIC_VOID:     return LowerINTRINSIC_VOID(Op, DAG);
+  case ISD::INTRINSIC_WO_CHAIN: return LowerINTRINSIC_WO_CHAIN(Op, DAG);
   case ISD::STACKSAVE:          return LowerSTACKSAVE(Op, DAG);
   case ISD::STACKRESTORE:       return LowerSTACKRESTORE(Op, DAG);
   default:
@@ -587,7 +591,8 @@ SDValue EraVMTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
 
   EVT MemVT = Store->getMemoryVT();
   unsigned MemVTSize = MemVT.getSizeInBits();
-  assert(MemVT.isScalarInteger() && "Unexpected type to store");
+  assert((MemVT.isScalarInteger() || MemVT.getSimpleVT() == MVT::fatptr) &&
+         "Unexpected type to store");
   if (MemVTSize == 256) {
     return {};
   }
@@ -796,6 +801,34 @@ SDValue EraVMTargetLowering::LowerSELECT_CC(SDValue Op,
   return DAG.getNode(EraVMISD::SELECT_CC, DL, VTs, Ops);
 }
 
+SDValue EraVMTargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
+                                                     SelectionDAG &DAG) const {
+  unsigned IntrinsicID = cast<ConstantSDNode>(Op.getOperand(0))->getZExtValue();
+  EVT VT = Op.getValueType();
+  SDLoc DL(Op);
+
+  switch (IntrinsicID) {
+  default:
+    break;
+  case Intrinsic::eravm_ptrtoint: {
+    return DAG.getNode(EraVMISD::PTR_TO_INT, DL, VT, Op.getOperand(1));
+  }
+  case Intrinsic::eravm_ptr_add: {
+    return DAG.getNode(EraVMISD::PTR_ADD, DL, VT, Op.getOperand(1),
+                       Op.getOperand(2));
+  }
+  case Intrinsic::eravm_ptr_shrink: {
+    return DAG.getNode(EraVMISD::PTR_SHRINK, DL, VT, Op.getOperand(1),
+                       Op.getOperand(2));
+  }
+  case Intrinsic::eravm_ptr_pack: {
+    return DAG.getNode(EraVMISD::PTR_PACK, DL, VT, Op.getOperand(1),
+                       Op.getOperand(2));
+  }
+  }
+  return SDValue();
+}
+
 SDValue EraVMTargetLowering::LowerINTRINSIC_VOID(SDValue Op,
                                                  SelectionDAG &DAG) const {
   unsigned IntNo =
@@ -883,4 +916,18 @@ SDValue EraVMTargetLowering::PerformDAGCombine(SDNode *N,
   }
   }
   return val;
+}
+
+Register
+EraVMTargetLowering::getRegisterByName(const char *RegName, LLT VT,
+                                       const MachineFunction &MF) const {
+  Register Reg = StringSwitch<unsigned>(RegName)
+                     .Case("r0", EraVM::R0)
+                     .Case("r1", EraVM::R1)
+                     .Default(0);
+  if (Reg)
+    return Reg;
+
+  report_fatal_error(
+      Twine("Invalid register name \"" + StringRef(RegName) + "\"."));
 }

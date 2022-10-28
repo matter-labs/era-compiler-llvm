@@ -21,6 +21,7 @@
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/IR/Function.h"
+#include "llvm/MC/MCContext.h"
 #include "llvm/Support/ErrorHandling.h"
 
 using namespace llvm;
@@ -203,24 +204,6 @@ unsigned EraVMInstrInfo::insertBranch(
   return Count;
 }
 
-static bool isDefinedAsFatPtr(const MachineInstr &MI, const EraVMInstrInfo &TII,
-                              const MachineRegisterInfo &MRI) {
-  // FIXME: For some reason loops of COPY definition sometimes appear. It needs
-  // further investigation.
-  static DenseSet<const MachineInstr *> Visited;
-  if (!Visited.count(&MI) && MI.getOpcode() == TargetOpcode::COPY) {
-    Visited.insert(&MI);
-    Register MOReg = MI.getOperand(1).getReg();
-    if (const MachineInstr *MI = MRI.getUniqueVRegDef(MOReg)) {
-      return isDefinedAsFatPtr(*MI, TII, MRI);
-    }
-    return false;
-  }
-  if (TII.getName(MI.getOpcode()).starts_with("PTR_"))
-    return true;
-  return false;
-}
-
 void EraVMInstrInfo::storeRegToStackSlot(
     MachineBasicBlock &MBB, MachineBasicBlock::iterator MI, Register SrcReg,
     bool isKill, int FrameIndex, const TargetRegisterClass *RC,
@@ -229,8 +212,6 @@ void EraVMInstrInfo::storeRegToStackSlot(
   if (MI != MBB.end())
     DL = MI->getDebugLoc();
   MachineFunction &MF = *MBB.getParent();
-  auto *TII = MF.getSubtarget<EraVMSubtarget>().getInstrInfo();
-  MachineRegisterInfo &MRI = MF.getRegInfo();
   MachineFrameInfo &MFI = MF.getFrameInfo();
 
   MachineMemOperand *MMO = MF.getMachineMemOperand(
@@ -239,75 +220,23 @@ void EraVMInstrInfo::storeRegToStackSlot(
       MFI.getObjectAlign(FrameIndex));
 
   if (RC == &EraVM::GR256RegClass) {
-    MachineInstr *Def = MRI.getUniqueVRegDef(SrcReg);
-    // TODO: This code should go off once MVT::fatptr is properly supported
-    // R1 needs special threatment because far calls produce fat pointer in R1.
-    bool IsFatPtrInPhysReg = false;
-    if (!Def && SrcReg == EraVM::R1) {
-      auto findSrcRegDef = [SrcReg](const MachineInstr &Inst) {
-        return Inst.isCall() ||
-               any_of(Inst.defs(), [SrcReg](const MachineOperand &MO) {
-                 return MO.getReg() == SrcReg;
-               });
-      };
-
-      // Look for the closest definition in MBB.
-      auto DefI =
-          std::find_if(std::make_reverse_iterator(MI),
-                       std::make_reverse_iterator(MBB.begin()), findSrcRegDef);
-      if (DefI != std::make_reverse_iterator(MBB.begin()))
-        IsFatPtrInPhysReg = isFarCall(*DefI);
-      // If not found check predecessors.
-      // It's not expected to have a fatptr from one branch, and i256 from
-      // another, so it's ok to find the very first definition using dfs. Loops
-      // are an issue, so track visited BBs to not to continue ad infinum.
-      if (!IsFatPtrInPhysReg) {
-        const MachineBasicBlock &Entry = MBB.getParent()->front();
-        DenseSet<const MachineBasicBlock *> Visited{&MBB};
-        std::deque<const MachineBasicBlock *> WorkList(MBB.pred_begin(),
-                                                       MBB.pred_end());
-        while (!WorkList.empty()) {
-          const MachineBasicBlock &CurrBB = *WorkList.front();
-          if (Visited.count(&CurrBB)) {
-            WorkList.pop_front();
-            continue;
-          }
-          Visited.insert(&CurrBB);
-          // Look for the closest definition of R1.
-          auto DefI = std::find_if(MBB.rbegin(), MBB.rend(), findSrcRegDef);
-          if (DefI != MBB.rend()) {
-            IsFatPtrInPhysReg = isFarCall(*DefI);
-            break;
-          }
-          // TODO: If this code persist for a reson, handle calling conventions
-          // here.
-          if (IsFatPtrInPhysReg || &CurrBB == &Entry)
-            break;
-          WorkList.pop_front();
-          WorkList.insert(WorkList.begin(), CurrBB.pred_begin(),
-                          CurrBB.pred_end());
-        }
-      }
-    }
-    if (IsFatPtrInPhysReg || (Def && isDefinedAsFatPtr(*Def, *TII, MRI))) {
-      BuildMI(MBB, MI, DL, get(EraVM::PTR_ADDrrs_s))
-          .addReg(SrcReg, getKillRegState(isKill))
-          .addReg(EraVM::R0)
-          .addFrameIndex(FrameIndex)
-          .addImm(32)
-          .addImm(0)
-          .addImm(0)
-          .addMemOperand(MMO);
-    } else {
-      BuildMI(MBB, MI, DL, get(EraVM::ADDrrs_s))
-          .addReg(SrcReg, getKillRegState(isKill))
-          .addReg(EraVM::R0)
-          .addFrameIndex(FrameIndex)
-          .addImm(32)
-          .addImm(0)
-          .addImm(0)
-          .addMemOperand(MMO);
-    }
+    BuildMI(MBB, MI, DL, get(EraVM::ADDrrs_s))
+        .addReg(SrcReg, getKillRegState(isKill))
+        .addReg(EraVM::R0)
+        .addFrameIndex(FrameIndex)
+        .addImm(32)
+        .addImm(0)
+        .addImm(0)
+        .addMemOperand(MMO);
+  } else if (RC == &EraVM::GRPTRRegClass) {
+    BuildMI(MBB, MI, DL, get(EraVM::PTR_ADDrrs_s))
+        .addReg(SrcReg, getKillRegState(isKill))
+        .addReg(EraVM::R0)
+        .addFrameIndex(FrameIndex)
+        .addImm(32)
+        .addImm(0)
+        .addImm(0)
+        .addMemOperand(MMO);
   } else {
     llvm_unreachable("Cannot store this register to stack slot!");
   }
@@ -331,78 +260,23 @@ void EraVMInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
       MFI.getObjectAlign(FrameIndex));
 
   if (RC == &EraVM::GR256RegClass) {
-    // TODO: This code should go off once MVT::fatptr is properly supported
-    // R1 needs special threatment because far calls produce fat pointer in R1.
-    bool IsFatPtrInFrameIndex = false;
-    auto findFrameIndexDef = [FrameIndex](const MachineInstr &Inst) {
-      if (Inst.getOpcode() != EraVM::ADDrrs_s &&
-          Inst.getOpcode() != EraVM::PTR_ADDrrs_s)
-        return false;
-      return Inst.getOperand(2).isFI() &&
-             Inst.getOperand(2).getIndex() == FrameIndex &&
-             Inst.getOperand(1).isReg() &&
-             Inst.getOperand(1).getReg() == EraVM::R0 &&
-             Inst.getOperand(3).isImm() && Inst.getOperand(3).getImm() == 32 &&
-             Inst.getOperand(4).isImm() && Inst.getOperand(4).getImm() == 0 &&
-             Inst.getOperand(5).isImm() && Inst.getOperand(5).getImm() == 0;
-    };
-
-    // Look for the closest definition in MBB.
-    auto DefI = std::find_if(std::make_reverse_iterator(MI),
-                             std::make_reverse_iterator(MBB.begin()),
-                             findFrameIndexDef);
-    if (DefI != std::make_reverse_iterator(MBB.begin()))
-      IsFatPtrInFrameIndex = DefI->getOpcode() == EraVM::PTR_ADDrrs_s;
-    // If not found check predecessors.
-    // It's not expected to have a fatptr from one branch, and i256 from
-    // another, so it's ok to find the very first definition using dfs. Loops
-    // are an issue, so track visited BBs to not to continue ad infinum.
-    if (!IsFatPtrInFrameIndex) {
-      const MachineBasicBlock &Entry = MBB.getParent()->front();
-      DenseSet<const MachineBasicBlock *> Visited{&MBB};
-      std::deque<const MachineBasicBlock *> WorkList(MBB.pred_begin(),
-                                                     MBB.pred_end());
-      while (!WorkList.empty()) {
-        const MachineBasicBlock &CurrBB = *WorkList.front();
-        if (Visited.count(&CurrBB)) {
-          WorkList.pop_front();
-          continue;
-        }
-        Visited.insert(&CurrBB);
-        // Look for the closest definition of R1.
-        auto DefI =
-            std::find_if(CurrBB.rbegin(), CurrBB.rend(), findFrameIndexDef);
-        if (DefI != CurrBB.rend()) {
-          IsFatPtrInFrameIndex = DefI->getOpcode() == EraVM::PTR_ADDrrs_s;
-          break;
-        }
-        // TODO: If this code persist for a reson, handle calling conventions
-        // here.
-        if (IsFatPtrInFrameIndex || &CurrBB == &Entry)
-          break;
-        WorkList.pop_front();
-        WorkList.insert(WorkList.begin(), CurrBB.pred_begin(),
-                        CurrBB.pred_end());
-      }
-    }
-    if (!IsFatPtrInFrameIndex)
-      BuildMI(MBB, MI, DL, get(EraVM::ADDsrr_s))
-          .addReg(DestReg, getDefRegState(true))
-          .addFrameIndex(FrameIndex)
-          .addImm(32)
-          .addImm(0)
-          .addImm(0)
-          .addImm(0)
-          .addMemOperand(MMO);
-    else
-      BuildMI(MBB, MI, DL, get(EraVM::PTR_ADDsrr_s))
-          .addReg(DestReg, getDefRegState(true))
-          .addFrameIndex(FrameIndex)
-          .addImm(32)
-          .addImm(0)
-          .addImm(0)
-          .addImm(0)
-          .addMemOperand(MMO);
+    BuildMI(MBB, MI, DL, get(EraVM::ADDsrr_s))
+        .addReg(DestReg, getDefRegState(true))
+        .addFrameIndex(FrameIndex)
+        .addImm(32)
+        .addImm(0)
+        .addImm(0)
+        .addImm(0)
+        .addMemOperand(MMO);
+  } else if (RC == &EraVM::GRPTRRegClass) {
+    BuildMI(MBB, MI, DL, get(EraVM::PTR_ADDsrr_s))
+        .addReg(DestReg, getDefRegState(true))
+        .addFrameIndex(FrameIndex)
+        .addImm(32)
+        .addImm(0)
+        .addImm(0)
+        .addImm(0)
+        .addMemOperand(MMO);
   } else {
     llvm_unreachable("Cannot store this register to stack slot!");
   }
@@ -412,7 +286,11 @@ void EraVMInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                  MachineBasicBlock::iterator I,
                                  const DebugLoc &DL, MCRegister DestReg,
                                  MCRegister SrcReg, bool KillSrc) const {
-  BuildMI(MBB, I, DL, get(EraVM::ADDrrr_s), DestReg)
+  unsigned opcode = I->getFlag(MachineInstr::MIFlag::IsFatPtr)
+                        ? EraVM::PTR_ADDrrr_s
+                        : EraVM::ADDrrr_s;
+
+  BuildMI(MBB, I, DL, get(opcode), DestReg)
       .addReg(SrcReg, getKillRegState(KillSrc))
       .addReg(EraVM::R0)
       .addImm(0);
@@ -514,4 +392,28 @@ bool EraVMInstrInfo::hasRROperandAddressingMode(const MachineInstr &MI) const {
   auto LCIt = find_if<StringRef, int(int)>(std::move(Mnemonic), std::islower);
 
   return LCIt != Mnemonic.end() && *LCIt == 'r' && *std::next(LCIt) == 'r';
+}
+
+/// Mark a copy to a fat pointer register or from a fat pointer register with
+/// IsFatPtr MI flag. Then when COPY is lowered to a real instruction the flag
+/// is used to choose between add and ptr.add.
+void EraVMInstrInfo::tagFatPointerCopy(MachineInstr &MI) const {
+  if (!MI.isCopy())
+    return;
+
+  const MachineRegisterInfo &MRI = MI.getParent()->getParent()->getRegInfo();
+  Register DstReg = MI.getOperand(0).getReg();
+  // If COPY doesn't have arguments use destination reg class twice in the
+  // check.
+  Register SrcReg = (MI.getNumOperands() > 1 && MI.getOperand(1).isReg())
+                        ? MI.getOperand(1).getReg()
+                        : DstReg;
+
+  auto isFPReg = [&MRI](Register R) {
+    return R.isVirtual() &&
+           MRI.getRegClass(R)->getID() == EraVM::GRPTRRegClassID;
+  };
+
+  if (isFPReg(SrcReg) || isFPReg(DstReg))
+    MI.setFlag(MachineInstr::MIFlag::IsFatPtr);
 }

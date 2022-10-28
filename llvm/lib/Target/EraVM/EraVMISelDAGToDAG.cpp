@@ -385,6 +385,20 @@ void EraVMDAGToDAGISel::Select(SDNode *Node) {
       ReplaceNode(Node, Node->getOperand(0).getNode());
       return;
     }
+    break;
+  }
+  case ISD::LOAD: {
+    // lower address space 3 loads
+    auto *ld = cast<LoadSDNode>(Node);
+    if (ld->getAddressSpace() == 3) {
+      SDValue Chain = ld->getChain();
+      SDValue Ptr = ld->getBasePtr();
+      auto Zero = CurDAG->getTargetConstant(0, DL, MVT::i256);
+      auto *LD = CurDAG->getMachineNode(EraVM::LD, DL, ld->getMemoryVT(),
+                                        MVT::Other, Ptr, Zero, Chain);
+      ReplaceNode(Node, LD);
+      return;
+    }
   }
   }
 

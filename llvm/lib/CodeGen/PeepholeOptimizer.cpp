@@ -645,9 +645,10 @@ optimizeExtInstr(MachineInstr &MI, MachineBasicBlock &MBB,
         RC = MRI->getRegClass(UseMI->getOperand(0).getReg());
 
       Register NewVR = MRI->createVirtualRegister(RC);
-      BuildMI(*UseMBB, UseMI, UseMI->getDebugLoc(),
-              TII->get(TargetOpcode::COPY), NewVR)
-        .addReg(DstReg, 0, SubIdx);
+      // EraVM local begin
+      BuildCOPY(*UseMBB, UseMI, UseMI->getDebugLoc(), TII, NewVR)
+          .addReg(DstReg, 0, SubIdx);
+      // EraVM local end
       if (UseSrcSubIdx)
         UseMO->setSubReg(0);
 
@@ -1066,7 +1067,10 @@ public:
       // Get rid of the sub-register index.
       CopyLike.removeOperand(2);
       // Morph the operation into a COPY.
+      // EraVM local begin
       CopyLike.setDesc(TII.get(TargetOpcode::COPY));
+      TII.tagFatPointerCopy(CopyLike);
+      // EraVM local end
       return true;
     }
     CopyLike.getOperand(CurrentSrcIdx + 1).setImm(NewSubReg);

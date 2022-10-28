@@ -3427,6 +3427,14 @@ void Verifier::visitIntToPtrInst(IntToPtrInst &I) {
     Check(VSrc->getElementCount() == VDest->getElementCount(),
           "IntToPtr Vector width mismatch", &I);
   }
+
+  // EraVM local begin
+  if (TT.isEraVM()) {
+    Check(I.getAddressSpace() != 3, "Cannot cast int to addrspace 3 pointer",
+           &I);
+  }
+  // EraVM local end
+
   visitInstruction(I);
 }
 

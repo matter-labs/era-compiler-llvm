@@ -456,9 +456,11 @@ void MachinePipeliner::preprocessPhiNodes(MachineBasicBlock &B) {
       MachineBasicBlock &PredB = *PI.getOperand(i+1).getMBB();
       MachineBasicBlock::iterator At = PredB.getFirstTerminator();
       const DebugLoc &DL = PredB.findDebugLoc(At);
-      auto Copy = BuildMI(PredB, At, DL, TII->get(TargetOpcode::COPY), NewReg)
-                    .addReg(RegOp.getReg(), getRegState(RegOp),
-                            RegOp.getSubReg());
+      // EraVM local begin
+      auto Copy =
+          BuildCOPY(PredB, At, DL, TII, NewReg)
+              .addReg(RegOp.getReg(), getRegState(RegOp), RegOp.getSubReg());
+      // EraVM local end
       Slots.insertMachineInstrInMaps(*Copy);
       RegOp.setReg(NewReg);
       RegOp.setSubReg(0);

@@ -40,7 +40,6 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMLowerIntrinsicsPass(PR);
   initializeEraVMLinkRuntimePass(PR);
   initializeEraVMAllocaHoistingPass(PR);
-  initializeEraVMPropagateGenericPointersPass(PR);
   initializeEraVMStackAddressConstantPropagationPass(PR);
   initializeEraVMDAGToDAGISelLegacyPass(PR);
 }
@@ -129,7 +128,6 @@ void EraVMPassConfig::addPreRegAlloc() {
 }
 
 void EraVMPassConfig::addPreEmitPass() {
-  addPass(createEraVMPropagateGenericPointersPass());
   addPass(createEraVMExpandSelectPass());
   addPass(createEraVMExpandPseudoPass());
 }

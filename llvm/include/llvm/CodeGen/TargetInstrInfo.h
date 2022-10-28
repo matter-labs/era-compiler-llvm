@@ -204,6 +204,9 @@ protected:
                                    unsigned CommutableOpIdx2);
 
 public:
+  // EraVM local begin
+  virtual void tagFatPointerCopy(MachineInstr&) const {}
+  // EraVM local end
   /// These methods return the opcode of the frame setup/destroy instructions
   /// if they exist (-1 otherwise).  Some targets use pseudo instructions in
   /// order to abstract away the difference between operating with a frame
