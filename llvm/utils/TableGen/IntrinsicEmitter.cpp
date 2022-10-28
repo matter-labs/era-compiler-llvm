@@ -257,7 +257,8 @@ enum IIT_Info {
   IIT_I2 = 57,
   IIT_I4 = 58,
   // SyncVM local begin
-  IIT_I256 = 59
+  IIT_I256 = 59,
+  IIT_FATPTR = 60
   // SyncVM local end
 };
 
@@ -302,6 +303,9 @@ static void EncodeFixedValueType(MVT::SimpleValueType VT,
     return Sig.push_back(IIT_EXTERNREF);
   case MVT::funcref:
     return Sig.push_back(IIT_FUNCREF);
+  // SyncVM local begin
+  case MVT::fatptr: return Sig.push_back(IIT_FATPTR);
+  // SyncVM local end
   }
   // clang-format on
 }

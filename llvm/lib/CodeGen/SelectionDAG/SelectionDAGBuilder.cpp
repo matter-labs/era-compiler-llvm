@@ -3053,11 +3053,19 @@ void SelectionDAGBuilder::visitLandingPad(const LandingPadInst &LP) {
   // copied into virtual registers.
   SDValue Ops[2];
   if (FuncInfo.ExceptionPointerVirtReg) {
+    // SyncVM local begin
+    if (ValueVTs[0] == MVT::fatptr) {
+      Ops[0] = DAG.getCopyFromReg(DAG.getEntryNode(), dl, FuncInfo.ExceptionPointerVirtReg, ValueVTs[0]);
+    } else {
+    // SyncVM local end
     Ops[0] = DAG.getZExtOrTrunc(
         DAG.getCopyFromReg(DAG.getEntryNode(), dl,
                            FuncInfo.ExceptionPointerVirtReg,
                            TLI.getPointerTy(DAG.getDataLayout())),
         dl, ValueVTs[0]);
+    // SyncVM local begin
+    }
+    // SyncVM local end
   } else {
     Ops[0] = DAG.getConstant(0, dl, TLI.getPointerTy(DAG.getDataLayout()));
   }
@@ -4147,7 +4155,9 @@ void SelectionDAGBuilder::visitLoad(const LoadInst &I) {
       Root = Chain;
       ChainI = 0;
     }
-    SDValue A = DAG.getNode(ISD::ADD, dl,
+    // SyncVM local begin
+    SDValue A = Offsets[i] == 0 ? Ptr : DAG.getNode(ISD::ADD, dl,
+    // SyncVM local end
                             PtrVT, Ptr,
                             DAG.getConstant(Offsets[i], dl, PtrVT),
                             Flags);

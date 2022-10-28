@@ -702,6 +702,9 @@ void RegAllocFast::assignVirtToPhysReg(MachineInstr &AtMI, LiveReg &LR,
   setPhysRegState(PhysReg, VirtReg);
 
   assignDanglingDebugValues(AtMI, VirtReg, PhysReg);
+  // SyncVM local begin
+  TII->tagFatPointerCopy(AtMI);
+  // SyncVM local end
 }
 
 static bool isCoalescable(const MachineInstr &MI) {

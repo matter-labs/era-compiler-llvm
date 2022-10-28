@@ -228,6 +228,7 @@ def funcref   : ValueType<0,    183>;  // WebAssembly's funcref type
 def externref : ValueType<0,    184>;  // WebAssembly's externref type
 def x86amx    : ValueType<8192, 185>;  // X86 AMX value
 def i64x8     : ValueType<512,  186>;  // 8 Consecutive GPRs (AArch64)
+def fatptr    : ValueType<256,  187>;  // SyncVM's Fat Pointer Type
 // SyncVM local end
 
 def token      : ValueType<0, 248>;  // TokenTy
