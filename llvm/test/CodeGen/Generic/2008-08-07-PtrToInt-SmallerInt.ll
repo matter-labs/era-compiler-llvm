@@ -1,3 +1,5 @@
+; XFAIL: target=eravm{{.*}}
+; TODO: CPR-920 Support operators in global constants.
 ; RUN: llc < %s
 ; PR2603
         %struct.A = type { i8 }

@@ -26,5 +26,8 @@ add_llvm_component_library(LLVMInstCombine
   Analysis
   Core
   Support
+  # EraVM local begin
+  TargetParser
+  # EraVM local end
   TransformUtils
   )

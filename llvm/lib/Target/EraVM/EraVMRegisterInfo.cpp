@@ -1,0 +1,96 @@
+//===-- EraVMRegisterInfo.cpp - EraVM Register Information ------*- C++ -*-===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// This file contains the EraVM implementation of the TargetRegisterInfo class.
+//
+//===----------------------------------------------------------------------===//
+
+#include "EraVMRegisterInfo.h"
+#include "EraVM.h"
+#include "EraVMMachineFunctionInfo.h"
+#include "EraVMTargetMachine.h"
+#include "llvm/ADT/BitVector.h"
+#include "llvm/CodeGen/MachineFrameInfo.h"
+#include "llvm/CodeGen/MachineFunction.h"
+#include "llvm/CodeGen/MachineInstrBuilder.h"
+#include "llvm/IR/Function.h"
+#include "llvm/Support/ErrorHandling.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetOptions.h"
+
+using namespace llvm;
+
+#define DEBUG_TYPE "eravm-reg-info"
+
+#define GET_REGINFO_TARGET_DESC
+#include "EraVMGenRegisterInfo.inc"
+
+EraVMRegisterInfo::EraVMRegisterInfo() : EraVMGenRegisterInfo(0) {}
+
+const MCPhysReg *
+EraVMRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
+  static const std::array<MCPhysReg, 1> CalleeSavedRegs = {0};
+  return CalleeSavedRegs.data();
+}
+
+BitVector EraVMRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
+  BitVector Reserved(getNumRegs());
+  Reserved.set(EraVM::SP);
+  Reserved.set(EraVM::Flags);
+  Reserved.set(EraVM::R0);
+  return Reserved;
+}
+
+const TargetRegisterClass *
+EraVMRegisterInfo::getPointerRegClass(const MachineFunction &MF,
+                                      unsigned Kind) const {
+  return nullptr;
+}
+
+Register EraVMRegisterInfo::getFrameRegister(const MachineFunction &MF) const {
+  return 0;
+}
+
+bool EraVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
+                                            int SPAdj, unsigned FIOperandNum,
+                                            RegScavenger *RS) const {
+  assert(SPAdj == 0 && "Unexpected");
+
+  MachineInstr &MI = *II;
+  MachineBasicBlock &MBB = *MI.getParent();
+  MachineFunction &MF = *MBB.getParent();
+  DebugLoc DL = MI.getDebugLoc();
+  int FrameIndex = MI.getOperand(FIOperandNum).getIndex();
+  const TargetInstrInfo &TII = *MF.getSubtarget().getInstrInfo();
+
+  auto BasePtr = EraVM::SP;
+  int Offset = MF.getFrameInfo().getObjectOffset(FrameIndex);
+
+  Offset += MF.getFrameInfo().getStackSize();
+
+  if (MI.getOpcode() == EraVM::ADDframe) {
+    auto *SPInst = BuildMI(MBB, II, DL, TII.get(EraVM::CTXr_se))
+                       .add(MI.getOperand(0))
+                       .addImm(EraVMCTX::SP)
+                       .addImm(EraVMCC::COND_NONE)
+                       .getInstr();
+    MI.setDesc(TII.get(EraVM::ADDrrr_s));
+    MI.getOperand(1).ChangeToImmediate(Offset / 32);
+    MI.getOperand(2).ChangeToRegister(SPInst->getOperand(0).getReg(),
+                                      false /* IsDef */);
+    MI.addOperand(MachineOperand::CreateImm(EraVMCC::COND_NONE));
+    return false;
+  }
+
+  // Fold imm into offset
+  Offset += MI.getOperand(FIOperandNum + 2).getImm();
+
+  MI.getOperand(FIOperandNum).ChangeToRegister(BasePtr, false);
+  MI.getOperand(FIOperandNum + 2).ChangeToImmediate(Offset);
+  return false;
+}

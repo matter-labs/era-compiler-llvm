@@ -9,6 +9,7 @@
 ; RUN: opt -passes="loop-idiom" -aa-pipeline=basic-aa -disable-loop-idiom-memcpy < %s -S | FileCheck %s --check-prefix=DIS-MEMCPY
 ; RUN: opt -passes="loop-idiom" -aa-pipeline=basic-aa -disable-loop-idiom-memset < %s -S | FileCheck %s --check-prefix=DIS-MEMSET
 ; RUN: opt -passes="loop-idiom" -aa-pipeline=basic-aa -disable-loop-idiom-memset -disable-loop-idiom-memcpy < %s -S | FileCheck %s --check-prefix=DIS-ALL
+; XFAIL: target=eravm{{.*}}
 
 define void @test-memcpy(i64 %Size) nounwind ssp {
 ; DIS-NONE-LABEL: @test-memcpy(

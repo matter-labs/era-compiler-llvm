@@ -1,3 +1,5 @@
+; XFAIL: target=eravm{{.*}}
+; TODO: CPR-921 Needs proger GA wrapping to be implemented.
 ; RUN: llc < %s
 
 ;; Date:     May 28, 2003.

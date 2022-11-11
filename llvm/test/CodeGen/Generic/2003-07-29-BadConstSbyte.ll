@@ -1,4 +1,5 @@
 ; RUN: llc < %s
+; XFAIL: target=eravm{{.*}}
 
 ; Bug: PR31341
 

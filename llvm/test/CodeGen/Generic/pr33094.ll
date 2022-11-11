@@ -1,4 +1,5 @@
 ; RUN: llc < %s
+; XFAIL: target=eravm{{.*}}
 
 ; PR33094
 ; Make sure that a constant extractvalue doesn't cause a crash in

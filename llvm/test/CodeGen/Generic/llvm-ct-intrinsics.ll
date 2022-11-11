@@ -1,3 +1,5 @@
+; XFAIL: target=eravm{{.*}}
+; TODO: Check cttz, ctlz, ctpop, ConstantPool lowering.
 ; Make sure this testcase is supported by all code generators
 ; RUN: llc < %s
 

@@ -25,6 +25,9 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/Support/KnownBits.h"
+// EraVM local begin
+#include "llvm/TargetParser/Triple.h"
+// EraVM local end
 #include "llvm/Transforms/InstCombine/InstCombiner.h"
 
 using namespace llvm;
@@ -4909,8 +4912,16 @@ Instruction *InstCombinerImpl::foldICmpBinOp(ICmpInst &I,
                           Constant::getNullValue(Op0->getType()), Op0);
   }
 
+  // EraVM local begin
+  // At this moment EraVM sees a regression over folding umul
+  Triple TT(I.getFunction()->getParent()->getTargetTriple());
+  if (!TT.isEraVM()) {
+  // EraVM local end
   if (Value *V = foldMultiplicationOverflowCheck(I))
     return replaceInstUsesWith(I, V);
+  // EraVM local begin
+  }
+  // EraVM local end
 
   if (Value *V = foldICmpWithLowBitMaskedVal(I, Builder))
     return replaceInstUsesWith(I, V);
@@ -5780,6 +5791,7 @@ static Instruction *processUMulZExtIdiom(ICmpInst &I, Value *MulVal,
 
   InstCombiner::BuilderTy &Builder = IC.Builder;
   Builder.SetInsertPoint(MulInstr);
+
 
   // Replace: mul(zext A, zext B) --> mul.with.overflow(A, B)
   Value *MulA = A, *MulB = B;
@@ -6952,6 +6964,9 @@ Instruction *InstCombinerImpl::visitICmpInst(ICmpInst &I) {
       }
     }
 
+// EraVM local begin
+// FIXME: support umulo
+#if 0
     // (zext a) * (zext b)  --> llvm.umul.with.overflow.
     if (match(Op0, m_NUWMul(m_ZExt(m_Value(A)), m_ZExt(m_Value(B))))) {
       if (Instruction *R = processUMulZExtIdiom(I, Op0, Op1, *this))
@@ -6961,6 +6976,8 @@ Instruction *InstCombinerImpl::visitICmpInst(ICmpInst &I) {
       if (Instruction *R = processUMulZExtIdiom(I, Op1, Op0, *this))
         return R;
     }
+#endif
+// EraVM local end
   }
 
   if (Instruction *Res = foldICmpEquality(I))

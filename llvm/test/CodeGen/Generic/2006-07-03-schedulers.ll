@@ -1,3 +1,5 @@
+; UNSUPPORTED: target=eravm{{.*}}
+; EraVM doesn't support floats.
 ; RUN: llc < %s -pre-RA-sched=default
 ; RUN: llc < %s -pre-RA-sched=list-burr
 ; RUN: llc < %s -pre-RA-sched=fast

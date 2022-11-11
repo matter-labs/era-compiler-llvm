@@ -1,3 +1,5 @@
+; UNSUPPORTED: target=eravm{{.*}}
+; EraVM doesn't support inline assembly yet.
 ; RUN: llc -no-integrated-as < %s
 
 ; Test that we can have an "X" output constraint.

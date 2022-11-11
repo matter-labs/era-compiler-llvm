@@ -24,6 +24,9 @@ enum class ExceptionHandling {
   WinEH,    ///< Windows Exception Handling
   Wasm,     ///< WebAssembly Exception Handling
   AIX,      ///< AIX Exception Handling
+  // EraVM local begin
+  EraVM,    ///< EraVM Exception Handling
+  // EraVM local end
 };
 
 enum class EmitDwarfUnwindType {

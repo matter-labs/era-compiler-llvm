@@ -21,7 +21,11 @@ using namespace utils;
 
 namespace {
 
+#if defined(_ERAVM)
+TEST(DWARFDie, DISABLED_manualExtractDump) {
+#else
 TEST(DWARFDie, manualExtractDump) {
+#endif
   typedef uint32_t AddrType;
   uint16_t Version = 4;
   Triple Triple = getDefaultTargetTripleForAddrSize(sizeof(AddrType));

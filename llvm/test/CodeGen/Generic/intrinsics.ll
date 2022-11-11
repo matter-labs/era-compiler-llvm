@@ -1,3 +1,6 @@
+; UNSUPPORTED: target=eravm{{.*}}
+; EraVM doesn't support floats.
+; invariant and sideeffect have nothing to do with the codegen.
 ; RUN: llc < %s
 ; RUN: llc -O0 < %s
 

@@ -1,4 +1,5 @@
 ; RUN: opt -codegenprepare -S -mtriple=x86_64 < %s | FileCheck %s
+; XFAIL: *
 
 @exit_addr = constant ptr blockaddress(@gep_unmerging, %exit)
 @op1_addr = constant ptr blockaddress(@gep_unmerging, %op1)

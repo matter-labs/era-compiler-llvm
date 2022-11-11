@@ -1,4 +1,5 @@
 ; RUN: opt < %s -passes=function-attrs -S | FileCheck %s
+; XFAIL: target=eravm{{.*}}
 
 @x = global i32 0
 

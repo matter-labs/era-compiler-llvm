@@ -249,6 +249,10 @@ IntegerType *Type::getInt16Ty(LLVMContext &C) { return &C.pImpl->Int16Ty; }
 IntegerType *Type::getInt32Ty(LLVMContext &C) { return &C.pImpl->Int32Ty; }
 IntegerType *Type::getInt64Ty(LLVMContext &C) { return &C.pImpl->Int64Ty; }
 IntegerType *Type::getInt128Ty(LLVMContext &C) { return &C.pImpl->Int128Ty; }
+// EraVM local begin
+IntegerType *Type::getInt256Ty(LLVMContext &C) { return &C.pImpl->Int256Ty; }
+IntegerType *Type::getInt512Ty(LLVMContext &C) { return &C.pImpl->Int512Ty; }
+// EraVM local end
 
 IntegerType *Type::getIntNTy(LLVMContext &C, unsigned N) {
   return IntegerType::get(C, N);
@@ -326,6 +330,12 @@ Type *Type::getWasm_FuncrefTy(LLVMContext &C) {
   return Ty;
 }
 
+// EraVM local begin
+PointerType *Type::getInt256PtrTy(LLVMContext &C, unsigned AS) {
+  return getInt256Ty(C)->getPointerTo(AS);
+}
+// EraVM local end
+
 //===----------------------------------------------------------------------===//
 //                       IntegerType Implementation
 //===----------------------------------------------------------------------===//
@@ -342,6 +352,9 @@ IntegerType *IntegerType::get(LLVMContext &C, unsigned NumBits) {
   case  32: return cast<IntegerType>(Type::getInt32Ty(C));
   case  64: return cast<IntegerType>(Type::getInt64Ty(C));
   case 128: return cast<IntegerType>(Type::getInt128Ty(C));
+  // EraVM local begin
+  case 256: return cast<IntegerType>(Type::getInt256Ty(C));
+  // EraVM local end
   default:
     break;
   }

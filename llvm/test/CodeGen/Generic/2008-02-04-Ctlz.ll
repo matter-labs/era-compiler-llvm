@@ -1,3 +1,5 @@
+; XFAIL: target=eravm{{.*}}
+; TODO: Check cttz, ctlz, ctpop, ConstantPool lowering.
 ; RUN: llc < %s
 
 @.str = internal constant [14 x i8] c"%lld %d %d %d\00"

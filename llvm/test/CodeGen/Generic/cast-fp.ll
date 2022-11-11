@@ -1,3 +1,5 @@
+; UNSUPPORTED: target=eravm{{.*}}
+; EraVM doesn't support floats
 ; RUN: llc < %s
 @a_fstr = internal constant [8 x i8] c"a = %f\0A\00"		; <ptr> [#uses=1]
 @a_lstr = internal constant [10 x i8] c"a = %lld\0A\00"		; <ptr> [#uses=1]

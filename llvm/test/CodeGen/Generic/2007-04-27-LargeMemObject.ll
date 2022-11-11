@@ -1,3 +1,5 @@
+; UNSUPPORTED: target=eravm{{.*}}
+; EraVM doesn't support inline asm.
 ; RUN: llc -no-integrated-as < %s
 
         %struct..0anon = type { [100 x i32] }

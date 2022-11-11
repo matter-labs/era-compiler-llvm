@@ -4317,6 +4317,9 @@ public:
     SmallVector<ISD::InputArg, 32> Ins;
     SmallVector<SDValue, 4> InVals;
     const ConstantInt *CFIType = nullptr;
+    // EraVM local begin
+    SDValue UnwindBB = {};
+    // EraVM local end
 
     CallLoweringInfo(SelectionDAG &DAG)
         : RetSExt(false), RetZExt(false), IsVarArg(false), IsInReg(false),
@@ -4846,9 +4849,14 @@ public:
   //===--------------------------------------------------------------------===//
   // Div utility functions
   //
-
+  // EraVM local begin
+  virtual
+  // EraVM local end
   SDValue BuildSDIV(SDNode *N, SelectionDAG &DAG, bool IsAfterLegalization,
                     SmallVectorImpl<SDNode *> &Created) const;
+  // EraVM local begin
+  virtual
+  // EraVM local end
   SDValue BuildUDIV(SDNode *N, SelectionDAG &DAG, bool IsAfterLegalization,
                     SmallVectorImpl<SDNode *> &Created) const;
 

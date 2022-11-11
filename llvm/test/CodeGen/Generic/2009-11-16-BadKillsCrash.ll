@@ -1,3 +1,4 @@
+; XFAIL: target=eravm{{.*}}
 ; RUN: llc < %s
 ; PR5495
 

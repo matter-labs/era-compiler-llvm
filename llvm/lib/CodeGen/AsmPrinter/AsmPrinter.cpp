@@ -559,6 +559,12 @@ bool AsmPrinter::doInitialization(Module &M) {
     if (!usesCFIWithoutEH())
       break;
     [[fallthrough]];
+  // EraVM local begin
+  // EraVM doesn't fully support exceptions by now, so it doesn't stream
+  // anything to a file.
+  case ExceptionHandling::EraVM:
+  // EraVM local end
+    break;
   case ExceptionHandling::SjLj:
   case ExceptionHandling::DwarfCFI:
     ES = new DwarfCFIException(this);

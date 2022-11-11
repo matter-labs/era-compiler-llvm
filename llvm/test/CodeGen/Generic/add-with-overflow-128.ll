@@ -4,6 +4,8 @@
 ; the arg byte size must be one of the {16, 8, 4, 2}
 ; XFAIL: target=nvptx{{.*}}
 
+; XFAIL: target=eravm{{.*}}
+
 @ok = internal constant [4 x i8] c"%d\0A\00"
 @no = internal constant [4 x i8] c"no\0A\00"
 

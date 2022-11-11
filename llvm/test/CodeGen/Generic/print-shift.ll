@@ -1,3 +1,5 @@
+; XFAIL: target=eravm{{.*}}
+; TODO: CPR-921 Needs proger GA wrapping to be implemented.
 ; RUN: llc < %s
 
 @a_str = internal constant [8 x i8] c"a = %d\0A\00"             ; <ptr> [#uses=1]

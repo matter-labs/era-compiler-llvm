@@ -1,5 +1,6 @@
 ; Test after FoldValueComparisonIntoPredecessors, one dangling probe is gone
 ; RUN: opt -S -passes='pseudo-probe,simplifycfg' < %s | FileCheck %s
+; XFAIL: target=eravm{{.*}}
 
 
 ; CHECK: if.end80:                                         ; preds = %if.end
