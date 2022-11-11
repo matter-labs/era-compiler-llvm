@@ -1,4 +1,6 @@
 ; RUN: llc -no-integrated-as < %s
+; EVM doesn't support inline asm.
+; UNSUPPORTED: target=evm{{.*}}
 ; PR1133
 define void @test(ptr %X) nounwind  {
 entry:

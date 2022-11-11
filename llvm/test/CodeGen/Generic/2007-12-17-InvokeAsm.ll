@@ -1,3 +1,5 @@
+; UNSUPPORTED: target=evm{{.*}}
+; EVM doesn't support inline asm.
 ; RUN: llc -no-integrated-as < %s
 
 ; The test uses inline assembly with x86-specific constraints.

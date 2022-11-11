@@ -1,4 +1,6 @@
 ; RUN: llc %s -o -
+; EVM doesn't support floats.
+; UNSUPPORTED: target=evm{{.*}}
 
 ; PR6332
 %struct.AVCodecTag = type {}

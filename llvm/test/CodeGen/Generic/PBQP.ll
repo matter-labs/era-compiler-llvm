@@ -1,4 +1,5 @@
 ; RUN: llc -regalloc=pbqp < %s
+; UNSUPPORTED: target=evm{{.*}}
 
 define i32 @foo() {
 entry:

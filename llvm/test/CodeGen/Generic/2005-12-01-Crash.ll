@@ -1,4 +1,6 @@
 ; RUN: llc < %s
+; UNSUPPORTED: target=evm{{.*}}
+
 @str = external global [36 x i8]		; <ptr> [#uses=0]
 @str.upgrd.1 = external global [29 x i8]		; <ptr> [#uses=0]
 @str1 = external global [29 x i8]		; <ptr> [#uses=0]

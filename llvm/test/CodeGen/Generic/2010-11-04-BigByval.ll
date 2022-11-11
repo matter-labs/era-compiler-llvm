@@ -1,4 +1,6 @@
 ; RUN: llc < %s
+; EVM doesn't support byval yet.
+; XFAIL: target=evm{{.*}}
 ; PR7170
 
 ; The test is intentionally disabled only for the NVPTX target

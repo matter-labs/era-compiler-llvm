@@ -1,4 +1,5 @@
 ; RUN: llc < %s
+; UNSUPPORTED: target=evm{{.*}}
 
 ;; Date:     Jul 8, 2003.
 ;; From:     test/Programs/MultiSource/Olden-perimeter

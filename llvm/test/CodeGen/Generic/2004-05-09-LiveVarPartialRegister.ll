@@ -1,4 +1,6 @@
 ; RUN: llc < %s
+; UNSUPPORTED: target=evm{{.*}}
+
 @global_long_1 = linkonce global i64 7          ; <ptr> [#uses=1]
 @global_long_2 = linkonce global i64 49         ; <ptr> [#uses=1]
 

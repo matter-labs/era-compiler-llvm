@@ -1,3 +1,5 @@
+; EVM doesn't support vectors.
+; UNSUPPORTED: target=evm{{.*}}
 ; RUN: llc < %s
 
 define <2 x double> @vector_select(<2 x double> %x, <2 x double> %y) nounwind  {
