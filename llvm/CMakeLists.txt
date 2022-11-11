@@ -389,6 +389,10 @@ set(LLVM_ALL_TARGETS
   XCore
   )
 
+# SyncVM local begin
+add_compile_definitions(_SYNCVM)
+# SyncVM local end
+
 # List of targets with JIT support:
 set(LLVM_TARGETS_WITH_JIT X86 PowerPC AArch64 ARM Mips SystemZ)
 

@@ -1,3 +1,5 @@
+; XFAIL: syncvm
+
 ; RUN: opt -S < %s -loop-idiom | FileCheck %s
 
 declare void @llvm.sideeffect()
