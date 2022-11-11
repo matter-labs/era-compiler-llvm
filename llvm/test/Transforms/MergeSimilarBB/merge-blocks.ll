@@ -1,3 +1,4 @@
+; XFAIL: syncvm
 ; RUN: opt -S --mergebb --simplifycfg < %s | FileCheck %s
 
 declare void @dummy()

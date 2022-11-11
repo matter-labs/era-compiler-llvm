@@ -1,3 +1,5 @@
+; XFAIL: syncvm
+
 ;  RUN: opt -basic-aa -loop-idiom -use-lir-code-size-heurs=true < %s -S | FileCheck %s
 
 ; When compiling for codesize we avoid idiom recognition for a
