@@ -3999,6 +3999,8 @@ SDValue DAGCombiner::visitMUL(SDNode *N) {
     return DAG.getNode(ISD::SUB, DL, VT,
                        DAG.getConstant(0, DL, VT), N0);
 
+// TODO: The following code needs to be enabled on the architectures where it's
+// profitable to use shl. Consider implementing a check for it.
   // fold (mul x, (1 << c)) -> x << c
   if (isConstantOrConstantVector(N1, /*NoOpaques*/ true) &&
       DAG.isKnownToBeAPowerOfTwo(N1) &&
@@ -4534,12 +4536,18 @@ SDValue DAGCombiner::visitUDIVLike(SDValue N0, SDValue N1, SDNode *N) {
     }
   }
 
+// TODO: Implement architecture / profitability check
+// TODO: produces mulhu, which is not currently supported by SyncVM
+// SyncVM local begin
+  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
   // fold (udiv x, c) -> alternate
   AttributeList Attr = DAG.getMachineFunction().getFunction().getAttributes();
   if (isConstantOrConstantVector(N1) &&
       !TLI.isIntDivCheap(N->getValueType(0), Attr))
     if (SDValue Op = BuildUDIV(N))
       return Op;
+  }
+// SyncVM local end
 
   return SDValue();
 }
@@ -5595,6 +5603,7 @@ SDValue DAGCombiner::visitANDLike(SDValue N0, SDValue N1, SDNode *N) {
     }
   }
 
+  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
   // Reduce bit extract of low half of an integer to the narrower type.
   // (and (srl i64:x, K), KMask) ->
   //   (i64 zero_extend (and (srl (i32 (trunc i64:x)), K)), KMask)
@@ -5642,6 +5651,7 @@ SDValue DAGCombiner::visitANDLike(SDValue N0, SDValue N1, SDNode *N) {
         }
       }
     }
+  }
   }
 
   return SDValue();
@@ -5862,6 +5872,11 @@ bool DAGCombiner::SearchForAndLoads(SDNode *N,
 }
 
 bool DAGCombiner::BackwardsPropagateMask(SDNode *N) {
+  // SyncVM local begin
+  // TODO: Consider removing when non-i256 UMA works.
+  if (DAG.getTarget().getTargetTriple().isSyncVM())
+    return false;
+  // SyncVM local end
   auto *Mask = dyn_cast<ConstantSDNode>(N->getOperand(1));
   if (!Mask)
     return false;
@@ -9654,9 +9669,13 @@ SDValue DAGCombiner::visitSRL(SDNode *N) {
     if (SDValue NewSRL = visitShiftByConstant(N))
       return NewSRL;
 
+  // SyncVM local begin
+  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
   // Attempt to convert a srl of a load into a narrower zero-extending load.
   if (SDValue NarrowLoad = reduceLoadWidth(N))
     return NarrowLoad;
+  }
+  // SyncVM local end
 
   // Here is a common situation. We want to optimize:
   //
@@ -11203,8 +11222,11 @@ SDValue DAGCombiner::visitSETCC(SDNode *N) {
       return DAG.getFreeze(DAG.getSetCC(SDLoc(N), VT, N0, N1, Cond));
   }
 
-  SDValue Combined = SimplifySetCC(VT, N->getOperand(0), N->getOperand(1), Cond,
-                                   SDLoc(N), !PreferSetCC);
+  // SyncVM local begin
+  // FIXME
+  SDValue Combined = {}; /* SimplifySetCC(VT, N->getOperand(0), N->getOperand(1), Cond,
+                                   SDLoc(N), !PreferSetCC); */
+  // SyncVM local end
 
   if (!Combined)
     return SDValue();
@@ -12254,6 +12276,8 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
 
   // fold (zext (truncate x)) -> (and x, mask)
   if (N0.getOpcode() == ISD::TRUNCATE) {
+  // SyncVM local begin
+  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
     // fold (zext (truncate (load x))) -> (zext (smaller load x))
     // fold (zext (truncate (srl (load x), c))) -> (zext (smaller load (x+c/n)))
     if (SDValue NarrowLoad = reduceLoadWidth(N0.getNode())) {
@@ -12265,6 +12289,8 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
       }
       return SDValue(N, 0); // Return N so it doesn't get rechecked!
     }
+    }
+    // SyncVM local end
 
     EVT SrcVT = N0.getOperand(0).getValueType();
     EVT MinVT = N0.getValueType();
@@ -12311,6 +12337,8 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
                        X, DAG.getConstant(Mask, DL, VT));
   }
 
+  // SyncVM local begin
+  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
   // Try to simplify (zext (load x)).
   if (SDValue foldedExt =
           tryToFoldExtOfLoad(DAG, *this, TLI, VT, LegalOperations, N, N0,
@@ -12384,6 +12412,8 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
       }
     }
   }
+  }
+  // SyncVM local end
 
   // fold (zext (and/or/xor (shl/shr (load x), cst), cst)) ->
   //      (and/or/xor (shl/shr (zextload x), (zext cst)), (zext cst))
@@ -13334,6 +13364,8 @@ SDValue DAGCombiner::visitTRUNCATE(SDNode *N) {
     }
   }
 
+// SyncVM local begin
+  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
   // fold (truncate (load x)) -> (smaller load x)
   // fold (truncate (srl (load x), c)) -> (smaller load (x+c/evtbits))
   if (!LegalTypes || TLI.isTypeDesirableForOp(N0.getOpcode(), VT)) {
@@ -13354,6 +13386,8 @@ SDValue DAGCombiner::visitTRUNCATE(SDNode *N) {
       }
     }
   }
+  }
+// SyncVM local end
 
   // fold (trunc (concat ... x ...)) -> (concat ..., (trunc x), ...)),
   // where ... are all 'undef'.
@@ -16154,9 +16188,11 @@ SDValue DAGCombiner::visitBR_CC(SDNode *N) {
   // MachineBasicBlock CFG, which is awkward.
 
   // Use SimplifySetCC to simplify SETCC's.
-  SDValue Simp = SimplifySetCC(getSetCCResultType(CondLHS.getValueType()),
+  // SyncVM local begin
+  SDValue Simp = {}; /*SimplifySetCC(getSetCCResultType(CondLHS.getValueType()),
                                CondLHS, CondRHS, CC->get(), SDLoc(N),
-                               false);
+                               false); */
+  // SyncVM local end
   if (Simp.getNode()) AddToWorklist(Simp.getNode());
 
   // fold to a simpler setcc

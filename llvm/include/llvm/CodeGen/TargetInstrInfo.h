@@ -27,6 +27,9 @@
 #include "llvm/CodeGen/MachineOutliner.h"
 #include "llvm/CodeGen/RegisterClassInfo.h"
 #include "llvm/CodeGen/VirtRegMap.h"
+// SyncVM local begin
+#include "llvm/IR/Constants.h"
+// SyncVM local end
 #include "llvm/MC/MCInstrInfo.h"
 #include "llvm/Support/BranchProbability.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -215,8 +218,14 @@ public:
   /// that is set up between the frame setup and destroy pseudo instructions.
   int64_t getFrameSize(const MachineInstr &I) const {
     assert(isFrameInstr(I) && "Not a frame instruction");
-    assert(I.getOperand(0).getImm() >= 0);
-    return I.getOperand(0).getImm();
+    // SyncVM local begin
+    if (I.getOperand(0).isImm()) {
+      assert(I.getOperand(0).getImm() >= 0);
+      return I.getOperand(0).getImm();
+    } else {
+      return I.getOperand(0).getCImm()->getZExtValue();
+    }
+    // SyncVM local end
   }
 
   /// Returns the total frame size, which is made up of the space set up inside

@@ -83,6 +83,9 @@ StringRef Triple::getArchTypeName(ArchType Kind) {
   case x86:            return "i386";
   case x86_64:         return "x86_64";
   case xcore:          return "xcore";
+// SyncVM local begin
+  case syncvm:         return "syncvm";
+// SyncVM local end
   }
 
   llvm_unreachable("Invalid ArchType!");
@@ -172,6 +175,9 @@ StringRef Triple::getArchTypePrefix(ArchType Kind) {
   case loongarch64: return "loongarch";
   
   case dxil:        return "dx";
+  // SyncVM local begin
+  case syncvm:      return "syncvm";
+  // SyncVM local end
   }
 }
 
@@ -371,6 +377,9 @@ Triple::ArchType Triple::getArchTypeForLLVMName(StringRef Name) {
     .Case("loongarch32", loongarch32)
     .Case("loongarch64", loongarch64)
     .Case("dxil", dxil)
+    // SyncVM local begin
+    .Case("syncvm", syncvm)
+    // SyncVM local end
     .Default(UnknownArch);
 }
 
@@ -511,6 +520,9 @@ static Triple::ArchType parseArch(StringRef ArchName) {
     .Case("loongarch32", Triple::loongarch32)
     .Case("loongarch64", Triple::loongarch64)
     .Case("dxil", Triple::dxil)
+    // SyncVM local begin
+    .Case("syncvm", Triple::syncvm)
+    // SyncVM local end
     .Default(Triple::UnknownArch);
 
   // Some architectures require special parsing logic just to compute the
@@ -835,6 +847,9 @@ static Triple::ObjectFormatType getDefaultFormat(const Triple &T) {
   case Triple::thumbeb:
   case Triple::ve:
   case Triple::xcore:
+  // SyncVM local begin
+  case Triple::syncvm:
+  // SyncVM local end
     return Triple::ELF;
 
   case Triple::ppc64:
@@ -1437,6 +1452,12 @@ static unsigned getArchPointerBitWidth(llvm::Triple::ArchType Arch) {
   case llvm::Triple::wasm64:
   case llvm::Triple::x86_64:
     return 64;
+
+  // SyncVM local begin
+  case llvm::Triple::syncvm:
+    return 256;
+  // SyncVM local end
+
   }
   llvm_unreachable("Invalid architecture value");
 }
@@ -1464,6 +1485,9 @@ Triple Triple::get32BitArchVariant() const {
   case Triple::msp430:
   case Triple::systemz:
   case Triple::ve:
+  // SyncVM local begin
+  case Triple::syncvm:
+  // SyncVM local end
     T.setArch(UnknownArch);
     break;
 
@@ -1551,6 +1575,9 @@ Triple Triple::get64BitArchVariant() const {
   case Triple::tce:
   case Triple::tcele:
   case Triple::xcore:
+  // SyncVM local begin
+  case Triple::syncvm:
+  // SyncVM local end
     T.setArch(UnknownArch);
     break;
 
@@ -1650,7 +1677,9 @@ Triple Triple::getBigEndianArchVariant() const {
   case Triple::x86_64:
   case Triple::xcore:
   case Triple::ve:
-  case Triple::csky:
+  // SyncVM local begin
+  case Triple::syncvm:
+  // SyncVM local end
 
   // ARM is intentionally unsupported here, changing the architecture would
   // drop any arch suffixes.
@@ -1760,6 +1789,9 @@ bool Triple::isLittleEndian() const {
   case Triple::x86:
   case Triple::x86_64:
   case Triple::xcore:
+  // SyncVM local begin
+  case Triple::syncvm:
+  // SyncVM local end
     return true;
   default:
     return false;

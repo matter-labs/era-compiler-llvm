@@ -1,0 +1,409 @@
+//===-- SyncVMInstrFormats.td - SyncVM Instruction Formats -*- tablegen -*-===//
+//
+// This file describes the SyncVM instruction formats in TableGen format.
+//
+//===----------------------------------------------------------------------===//
+
+//===----------------------------------------------------------------------===//
+// Generic SyncVM instruction
+//===----------------------------------------------------------------------===//
+
+class SyncVMInstruction<
+  bits<8> opcode,
+  dag outs,
+  dag ins,
+  string asmstr,
+  list<dag> pattern
+> : Instruction
+{
+  field bits<256> Inst;
+  field bits<256> SoftFail = 0;
+
+  let Namespace         = "SyncVM";
+  let AsmString         = asmstr;
+  let Size              = 32;
+  let OutOperandList    = outs;
+  let InOperandList     = ins;
+  let Pattern           = pattern;
+
+  let Inst{255-248}     = opcode;
+}
+
+
+
+//===----------------------------------------------------------------------===//
+// An empty operation
+//===----------------------------------------------------------------------===//
+
+class Empty<
+  bits<8> opcode,
+  string asmstr,
+  list<dag> pattern
+> : SyncVMInstruction<
+  opcode,
+  (outs),
+  (ins),
+  asmstr,
+  pattern
+> {}
+
+
+
+//===----------------------------------------------------------------------===//
+// Binary operation with two source registers and one destination
+//===----------------------------------------------------------------------===//
+
+// The destination is populated with the result
+class ArithmeticRRR<
+  bits<8> opcode,
+  string name,
+  SDNode node
+> : SyncVMInstruction<
+  opcode,
+  (outs GR256:$dst),
+  (ins GR256:$src1, GR256:$src2),
+  !strconcat(name, "\t$src1, $src2, $dst"),
+  [(set i256:$dst, (node i256:$src1, i256:$src2))]
+> {
+  bits<4> src1;
+  bits<4> src2;
+  bits<4> dst;
+
+  let Inst{247-244} = src1;
+  let Inst{243-240} = src2;
+  let Inst{239-236} = dst;
+}
+
+// The destination disposes of its result
+class ArithmeticRRZ<
+  bits<8> opcode,
+  string name,
+  SDNode node
+> : SyncVMInstruction<
+  opcode,
+  (outs GR256:$dst),
+  (ins GR256:$src1, GR256:$src2),
+  !strconcat(name, "\t$src1, $src2, $dst"),
+  [(set i256:$dst, (node i256:$src1, i256:$src2))]
+> {
+  bits<4> src1;
+  bits<4> src2;
+  bits<4> dst;
+
+  let Inst{247-244} = src1;
+  let Inst{243-240} = src2;
+  let Inst{239-236} = dst;
+}
+
+// Arithmetic instruction with 0 as the second argument.
+// The purpose is primarially implement MOV via ADD rSrc, r0, rDst.
+class ArithmeticRZR<
+  bits<8> opcode,
+  string name,
+  SDNode node
+> : SyncVMInstruction<
+  opcode,
+  (outs GR256:$dst),
+  (ins GR256:$src, Z256:$z),
+  !strconcat(name, "\t$src, $z, $dst"),
+  [] // Doesn't make sense for LLVM, so it's only generated, not selected
+> {
+  bits<4> src;
+  bits<4> z;
+  bits<4> dst;
+
+  let Inst{247-244} = src;
+  let Inst{243-240} = z;
+  let Inst{239-236} = dst;
+}
+
+//===----------------------------------------------------------------------===//
+// Binary operation with two source registers and two destinations
+//===----------------------------------------------------------------------===//
+
+// Two destinations are populated with the result
+class ArithmeticRRRR<
+  bits<8> opcode,
+  string name,
+  SDNode node
+> : SyncVMInstruction<
+  opcode,
+  (outs GR256:$dst1, GR256:$dst2),
+  (ins GR256:$src1, GR256:$src2),
+  !strconcat(name, "\t$src1, $src2, $dst1, $dst2"),
+  [(set i256:$dst1, i256:$dst2, (node i256:$src1, i256:$src2))]
+> {
+  bits<4> src1;
+  bits<4> src2;
+  bits<4> dst1;
+  bits<4> dst2;
+
+  let Inst{247-244} = src1;
+  let Inst{243-240} = src2;
+  let Inst{239-236} = dst1;
+  let Inst{235-232} = dst2;
+}
+
+// The first destination disposes of its result
+class ArithmeticRRZR <
+  bits<8> opcode,
+  string name,
+  SDNode node
+> : SyncVMInstruction <
+  opcode,
+  (outs GR256:$dst),
+  (ins GR256:$src1, GR256:$src2),
+  !strconcat(name, "\t$src1, $src2, r0, $dst"),
+  [(set i256:$dst, (node i256:$src1, i256:$src2))]
+> {
+  bits<4> src1;
+  bits<4> src2;
+  bits<4> dst;
+
+  let Inst{247-244} = src1;
+  let Inst{243-240} = src2;
+  let Inst{239-236} = 0;
+  let Inst{235-232} = dst;
+}
+
+// The second destination disposes of its result
+class ArithmeticRRRZ <
+  bits<8> opcode,
+  string name,
+  SDNode node
+> : SyncVMInstruction <
+  opcode,
+  (outs GR256:$dst),
+  (ins GR256:$src1, GR256:$src2),
+  !strconcat(name, "\t$src1, $src2, $dst, r0"),
+  [(set i256:$dst, (node i256:$src1, i256:$src2))]
+> {
+  bits<4> src1;
+  bits<4> src2;
+  bits<4> dst;
+
+  let Inst{247-244} = src1;
+  let Inst{243-240} = src2;
+  let Inst{239-236} = dst;
+  let Inst{235-232} = 0;
+}
+
+
+//===----------------------------------------------------------------------===//
+// Immediate loading operation with one destination
+//===----------------------------------------------------------------------===//
+
+let OperandType = "OPERAND_IMMEDIATE" in
+def i256imm : Operand<i256>;
+
+class Immediate<
+  bits<8> opcode,
+  string name
+> : SyncVMInstruction<
+  opcode,
+  (outs GR256:$dst),
+  (ins i256imm:$imm),
+  !strconcat(name, "\t$imm, $dst"),
+  [(set i256:$dst, imm:$imm)]
+> {
+  bits<4>   dst;
+  bits<128> imm;
+  bit       is_high;
+
+  let Inst{247-244} = dst;
+  let Inst{243-116} = imm;
+  let Inst{115}     = is_high;
+}
+
+
+
+//===----------------------------------------------------------------------===//
+// Jump operation with one source
+//===----------------------------------------------------------------------===//
+
+class Jump<
+  bits<8> opcode,
+  dag outs,
+  dag ins,
+  string asmstr,
+  list<dag> pattern
+> : SyncVMInstruction<
+  opcode,
+  outs,
+  ins,
+  asmstr,
+  pattern
+> {
+  // TODO: Encoding assumption
+  // SyncVMCC        | Z(E) | L | G
+  // UNCONDIONAL = 0 | 0    | 0 | 0
+  // EQ          = 1 | 1    | 0 | 0
+  // LT          = 2 | 0    | 1 | 0
+  // LE          = 3 | 1    | 1 | 0
+  // GT          = 4 | 0    | 0 | 1
+  // GE          = 5 | 1    | 0 | 1
+  // NE          = 6 | 0    | 1 | 1
+  bits<3>   flags;
+  bits<16>  if_dst;
+  bits<16>  else_dst;
+
+  let Inst{247-245} = flags;
+  let Inst{245-230} = if_dst;
+  let Inst{229-214} = else_dst;
+}
+
+
+
+//===----------------------------------------------------------------------===//
+// Call/return operation with one source
+//===----------------------------------------------------------------------===//
+// TODO: Fix encoding
+class Call<
+  bits<8> opcode,
+  dag outs,
+  dag ins,
+  string asmstr,
+  list<dag> pattern
+> : SyncVMInstruction<
+  opcode,
+  outs,
+  ins,
+  asmstr,
+  pattern
+> {
+  bits<16>   address;
+//  bit       call_or_return;
+//  bit       external_or_local;
+//  bit       with_error;
+//  bits<1>   flags_space;
+
+  let Inst{247-232} = address;
+//  let Inst{243}     = call_or_return;
+//  let Inst{242}     = external_or_local;
+//  let Inst{241}     = with_error;
+//  let Inst{240-240} = flags_space;
+}
+
+
+
+//===----------------------------------------------------------------------===//
+// Memory operation with two sources
+//===----------------------------------------------------------------------===//
+
+class Memory<
+  bits<8> opcode,
+  dag outs,
+  dag ins,
+  string asmstr,
+  list<dag> pattern
+> : SyncVMInstruction<
+  opcode,
+  outs,
+  ins,
+  asmstr,
+  pattern
+> {
+  bits<4>   src1;
+  bits<4>   src2;
+  bits<4>   dst;
+  bit       read_or_write;
+  bit       force_stack;
+  bits<2>   memory_type;
+  bits<16>  offset;
+
+  let Inst{247-244} = src1;
+  let Inst{243-240} = src2;
+  let Inst{239}     = read_or_write;
+  let Inst{238}     = force_stack;
+  let Inst{237-236} = memory_type;
+  let Inst{235-220} = offset;
+}
+
+
+
+//===----------------------------------------------------------------------===//
+// Storage operation with two sources and one destination
+//===----------------------------------------------------------------------===//
+
+class Storage<
+  bits<8> opcode,
+  dag outs,
+  dag ins,
+  string asmstr,
+  list<dag> pattern
+> : SyncVMInstruction<
+  opcode,
+  outs,
+  ins,
+  asmstr,
+  pattern
+> {
+  bits<4>   src1;
+  bits<4>   src2;
+  bits<4>   dst;
+  bit       read_or_write;
+  bits<3>   flags_space;
+
+  let Inst{247-244} = src1;
+  let Inst{243-240} = src2;
+  let Inst{239-236} = dst;
+  let Inst{235}     = read_or_write;
+  let Inst{234-232} = flags_space;
+}
+
+
+
+//===----------------------------------------------------------------------===//
+// Hash absorb operation with one source
+//===----------------------------------------------------------------------===//
+
+class HashAbsorb<
+  bits<8> opcode,
+  dag outs,
+  dag ins,
+  string asmstr,
+  list<dag> pattern
+> : SyncVMInstruction<
+  opcode,
+  outs,
+  ins,
+  asmstr,
+  pattern
+> {
+  bits<4>   src;
+  bit       reset;
+  bits<3>   flags_space;
+
+  let Inst{247-244} = src;
+  let Inst{243}     = reset;
+  let Inst{242-240} = flags_space;
+}
+
+
+
+//===----------------------------------------------------------------------===//
+// Hash output operation with one destination
+//===----------------------------------------------------------------------===//
+
+class HashOutput<
+  bits<8> opcode,
+  dag outs,
+  dag ins,
+  string asmstr,
+  list<dag> pattern
+> : SyncVMInstruction<
+  opcode,
+  outs,
+  ins,
+  asmstr,
+  pattern
+> {
+  bits<4>   dst;
+
+  let Inst{247-244} = dst;
+}
+
+
+// Pseudo instructions
+class Pseudo<dag outs, dag ins, string asmstr, list<dag> pattern>
+  : SyncVMInstruction< 0, outs, ins, asmstr, pattern>;

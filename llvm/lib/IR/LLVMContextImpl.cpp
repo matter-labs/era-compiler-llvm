@@ -46,7 +46,10 @@ LLVMContextImpl::LLVMContextImpl(LLVMContext &C)
       X86_FP80Ty(C, Type::X86_FP80TyID), FP128Ty(C, Type::FP128TyID),
       PPC_FP128Ty(C, Type::PPC_FP128TyID), X86_MMXTy(C, Type::X86_MMXTyID),
       X86_AMXTy(C, Type::X86_AMXTyID), Int1Ty(C, 1), Int8Ty(C, 8),
-      Int16Ty(C, 16), Int32Ty(C, 32), Int64Ty(C, 64), Int128Ty(C, 128) {
+      Int16Ty(C, 16), Int32Ty(C, 32), Int64Ty(C, 64), Int128Ty(C, 128),
+      // SyncVM local begin
+      Int256Ty(C, 256), Int512Ty(C, 512) {
+      // SyncVM local end
   if (OpaquePointersCL.getNumOccurrences()) {
     OpaquePointers = OpaquePointersCL;
   }

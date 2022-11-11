@@ -256,6 +256,9 @@ enum IIT_Info {
   IIT_ANYPTR_TO_ELT = 56,
   IIT_I2 = 57,
   IIT_I4 = 58,
+  // SyncVM local begin
+  IIT_I256 = 59
+  // SyncVM local end
 };
 
 static void EncodeFixedValueType(MVT::SimpleValueType VT,
@@ -273,6 +276,9 @@ static void EncodeFixedValueType(MVT::SimpleValueType VT,
     case 32: return Sig.push_back(IIT_I32);
     case 64: return Sig.push_back(IIT_I64);
     case 128: return Sig.push_back(IIT_I128);
+    // SyncVM local begin
+    case 256: return Sig.push_back(IIT_I256);
+    // SyncVM local end
     }
   }
 

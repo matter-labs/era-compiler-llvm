@@ -4561,6 +4561,9 @@ public:
   //===--------------------------------------------------------------------===//
   // Div utility functions
   //
+  // SyncVM local begin
+  virtual
+  // SyncVM local end
   SDValue BuildSDIV(SDNode *N, SelectionDAG &DAG, bool IsAfterLegalization,
                     SmallVectorImpl<SDNode *> &Created) const;
   SDValue BuildUDIV(SDNode *N, SelectionDAG &DAG, bool IsAfterLegalization,
