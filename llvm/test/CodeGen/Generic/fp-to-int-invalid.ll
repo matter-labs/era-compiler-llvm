@@ -1,3 +1,5 @@
+; EVM doesn't support floats.
+; UNSUPPORTED: target=evm{{.*}}
 ; RUN: llc < %s
 ; PR4057
 define void @test_cast_float_to_char(ptr %result) nounwind {

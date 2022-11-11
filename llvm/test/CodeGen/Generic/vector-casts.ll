@@ -1,3 +1,5 @@
+; EVM doesn't support vector instructions.
+; UNSUPPORTED: target=evm{{.*}}
 ; RUN: llc < %s
 ; PR2671
 

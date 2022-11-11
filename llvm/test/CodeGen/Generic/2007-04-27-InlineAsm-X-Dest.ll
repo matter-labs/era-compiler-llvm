@@ -1,5 +1,8 @@
 ; RUN: llc -no-integrated-as < %s
 
+; EVM doesn't support inline assembly yet.
+; UNSUPPORTED: target=evm{{.*}}
+
 ; Test that we can have an "X" output constraint.
 
 define void @test(ptr %t) {

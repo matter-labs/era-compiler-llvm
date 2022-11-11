@@ -1,3 +1,5 @@
+; EVM doesn't support floats.
+; UNSUPPORTED: target=evm{{.*}}
 ; RUN: llc < %s | FileCheck %s
 
 ; This test checks default lowering of the intrinsics operating floating point

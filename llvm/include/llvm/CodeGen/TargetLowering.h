@@ -5075,7 +5075,6 @@ public:
   //===--------------------------------------------------------------------===//
   // Div utility functions
   //
-
   SDValue BuildSDIV(SDNode *N, SelectionDAG &DAG, bool IsAfterLegalization,
                     SmallVectorImpl<SDNode *> &Created) const;
   SDValue BuildUDIV(SDNode *N, SelectionDAG &DAG, bool IsAfterLegalization,

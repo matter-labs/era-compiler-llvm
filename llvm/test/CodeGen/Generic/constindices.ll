@@ -1,4 +1,6 @@
 ; RUN: llc < %s
+; EVM doesn't support floats.
+; UNSUPPORTED: target=evm{{.*}}
 
 ; Test that a sequence of constant indices are folded correctly
 ; into the equivalent offset at compile-time.

@@ -72,7 +72,11 @@ TEST(TripleTest, BasicParsing) {
   EXPECT_EQ("d", T.getEnvironmentName().str());
 }
 
+#if defined(_EVM)
+TEST(TripleTest, DISABLED_ParsedIDs) {
+#else
 TEST(TripleTest, ParsedIDs) {
+#endif
   Triple T;
 
   T = Triple("i386-apple-darwin");
@@ -1233,6 +1237,20 @@ TEST(TripleTest, ParsedIDs) {
   EXPECT_TRUE(T.isTime64ABI());
   EXPECT_TRUE(T.isHardFloatABI());
 
+  // EVM local begin
+  T = Triple("evm-unknown-unknown");
+  EXPECT_EQ(Triple::evm, T.getArch());
+  EXPECT_EQ(Triple::UnknownVendor, T.getVendor());
+  EXPECT_EQ(Triple::UnknownOS, T.getOS());
+  EXPECT_EQ(Triple::UnknownEnvironment, T.getEnvironment());
+
+  T = Triple("evm");
+  EXPECT_EQ(Triple::evm, T.getArch());
+  EXPECT_EQ(Triple::UnknownVendor, T.getVendor());
+  EXPECT_EQ(Triple::UnknownOS, T.getOS());
+  EXPECT_EQ(Triple::UnknownEnvironment, T.getEnvironment());
+  // EVM local end
+
   T = Triple("huh");
   EXPECT_EQ(Triple::UnknownArch, T.getArch());
 }
@@ -1257,7 +1275,11 @@ static std::string Join(StringRef A, StringRef B, StringRef C, StringRef D) {
   return Str;
 }
 
+#if defined(_EVM)
+TEST(TripleTest, DISABLED_Normalization) {
+#else
 TEST(TripleTest, Normalization) {
+#endif
 
   EXPECT_EQ("unknown", Triple::normalize(""));
   EXPECT_EQ("unknown-unknown", Triple::normalize("-"));
@@ -1431,7 +1453,13 @@ TEST(TripleTest, MutateName) {
   EXPECT_EQ("i386-pc-darwin", T.getTriple());
 }
 
+// EVM local begin
+#if defined(_EVM)
+TEST(TripleTest, DISABLED_BitWidthChecks) {
+#else
 TEST(TripleTest, BitWidthChecks) {
+#endif
+// EVM local end
   Triple T;
   EXPECT_FALSE(T.isArch16Bit());
   EXPECT_FALSE(T.isArch32Bit());
@@ -1623,9 +1651,21 @@ TEST(TripleTest, BitWidthChecks) {
   EXPECT_FALSE(T.isArch16Bit());
   EXPECT_TRUE(T.isArch32Bit());
   EXPECT_FALSE(T.isArch64Bit());
+
+  // EVM local begin
+  T.setArch(Triple::evm);
+  EXPECT_FALSE(T.isArch16Bit());
+  EXPECT_FALSE(T.isArch32Bit());
+  EXPECT_FALSE(T.isArch64Bit());
+  EXPECT_TRUE(T.isEVM());
+  // EVM local end
 }
 
+#if defined(_EVM)
+TEST(TripleTest, DISABLED_BitWidthArchVariants) {
+#else
 TEST(TripleTest, BitWidthArchVariants) {
+#endif
   Triple T;
   EXPECT_EQ(Triple::UnknownArch, T.get32BitArchVariant().getArch());
   EXPECT_EQ(Triple::UnknownArch, T.get64BitArchVariant().getArch());
@@ -1827,7 +1867,11 @@ TEST(TripleTest, BitWidthArchVariants) {
   EXPECT_EQ(Triple::UnknownArch, T.get64BitArchVariant().getArch());
 }
 
+#if defined(_EVM)
+TEST(TripleTest, DISABLED_EndianArchVariants) {
+#else
 TEST(TripleTest, EndianArchVariants) {
+#endif
   Triple T;
   EXPECT_EQ(Triple::UnknownArch, T.getBigEndianArchVariant().getArch());
   EXPECT_EQ(Triple::UnknownArch, T.getLittleEndianArchVariant().getArch());
@@ -1978,6 +2022,11 @@ TEST(TripleTest, EndianArchVariants) {
   EXPECT_TRUE(T.isLittleEndian());
   EXPECT_EQ(Triple::UnknownArch, T.getBigEndianArchVariant().getArch());
   EXPECT_EQ(Triple::dxil, T.getLittleEndianArchVariant().getArch());
+
+  // EVM local begin
+  T.setArch(Triple::evm);
+  EXPECT_FALSE(T.isLittleEndian());
+  // EVM local end
 }
 
 TEST(TripleTest, XROS) {

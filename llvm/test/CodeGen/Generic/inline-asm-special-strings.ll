@@ -1,4 +1,6 @@
 ; RUN: llc -no-integrated-as < %s | FileCheck %s
+; EVM doesn't support inline asm yet.
+; UNSUPPORTED: target=evm{{.*}}
 
 define void @bar() nounwind {
   ; CHECK: foo 0 0{{$}}

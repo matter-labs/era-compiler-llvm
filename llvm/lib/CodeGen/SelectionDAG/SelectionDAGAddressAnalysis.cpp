@@ -225,6 +225,10 @@ static BaseIndexOffset matchLSNode(const LSBaseSDNode *N,
       // Only consider ORs which act as adds.
       if (auto *C = dyn_cast<ConstantSDNode>(Base->getOperand(1)))
         if (DAG.MaskedValueIsZero(Base->getOperand(0), C->getAPIntValue())) {
+          // EVM local begin
+          if (C->getAPIntValue().getSignificantBits() > 64)
+            return BaseIndexOffset();
+          // EVM local end
           Offset += C->getSExtValue();
           Base = DAG.getTargetLoweringInfo().unwrapAddress(Base->getOperand(0));
           continue;
@@ -232,6 +236,10 @@ static BaseIndexOffset matchLSNode(const LSBaseSDNode *N,
       break;
     case ISD::ADD:
       if (auto *C = dyn_cast<ConstantSDNode>(Base->getOperand(1))) {
+        // EVM local begin
+        if (C->getAPIntValue().getSignificantBits() > 64)
+          return BaseIndexOffset();
+        // EVM local end
         Offset += C->getSExtValue();
         Base = DAG.getTargetLoweringInfo().unwrapAddress(Base->getOperand(0));
         continue;
@@ -243,6 +251,10 @@ static BaseIndexOffset matchLSNode(const LSBaseSDNode *N,
       unsigned int IndexResNo = (Base->getOpcode() == ISD::LOAD) ? 1 : 0;
       if (LSBase->isIndexed() && Base.getResNo() == IndexResNo)
         if (auto *C = dyn_cast<ConstantSDNode>(LSBase->getOffset())) {
+          // EVM local begin
+          if (C->getAPIntValue().getSignificantBits() > 64)
+            return BaseIndexOffset();
+          // EVM local end
           auto Off = C->getSExtValue();
           if (LSBase->getAddressingMode() == ISD::PRE_DEC ||
               LSBase->getAddressingMode() == ISD::POST_DEC)
@@ -286,6 +298,12 @@ static BaseIndexOffset matchLSNode(const LSBaseSDNode *N,
         !isa<ConstantSDNode>(Index->getOperand(1)))
       return BaseIndexOffset(PotentialBase, Index, Offset, IsIndexSignExt);
 
+    // EVM local begin
+    if (cast<ConstantSDNode>(Index->getOperand(1))
+            ->getAPIntValue()
+            .getSignificantBits() > 64)
+      return BaseIndexOffset();
+    // EVM local end
     Offset += cast<ConstantSDNode>(Index->getOperand(1))->getSExtValue();
     Index = Index->getOperand(0);
     if (Index->getOpcode() == ISD::SIGN_EXTEND) {

@@ -473,6 +473,9 @@ set(LLVM_ALL_TARGETS
   ARM
   AVR
   BPF
+# EVM local begin
+  EVM
+# EVM local end
   Hexagon
   Lanai
   LoongArch
@@ -497,6 +500,10 @@ set(LLVM_ALL_EXPERIMENTAL_TARGETS
   SPIRV
   Xtensa
 )
+
+# EVM local begin
+add_compile_definitions(_EVM)
+# EVM local end
 
 # List of targets with JIT support:
 set(LLVM_TARGETS_WITH_JIT X86 PowerPC AArch64 ARM Mips SystemZ)

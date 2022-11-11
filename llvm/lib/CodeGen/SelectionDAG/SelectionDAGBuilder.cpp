@@ -12343,9 +12343,18 @@ void SelectionDAGBuilder::visitSwitch(const SwitchInst &SI) {
     return;
   }
 
+  // EVM local begin
+  // TODO: CPR-688 EVM can build jump tables, though the constants are 4
+  // times as expensive as instructions in terms of code size. For hot pieces of
+  // code it still makes sense.
+  if (!TM.getTargetTriple().isEVM()) {
+  // EVM local end
   SL->findJumpTables(Clusters, &SI, getCurSDLoc(), DefaultMBB, DAG.getPSI(),
                      DAG.getBFI());
   SL->findBitTestClusters(Clusters, &SI);
+  // EVM local begin
+  }
+  // EVM local end
 
   LLVM_DEBUG({
     dbgs() << "Case clusters: ";

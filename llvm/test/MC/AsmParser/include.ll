@@ -2,6 +2,9 @@
 ; UNSUPPORTED: target={{.*}}-zos{{.*}},target=nvptx{{.*}}
 ; REQUIRES: default_triple
 
+; EVM/EVM doesn't support inline asm (yet).
+; XFAIL: target=evm{{.*}}, target=evm{{.*}}
+
 module asm ".include \22module.x\22"
 
 define void @f() {

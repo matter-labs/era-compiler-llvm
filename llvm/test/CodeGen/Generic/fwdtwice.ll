@@ -1,5 +1,6 @@
 ; RUN: llc < %s
 
+; UNSUPPORTED: target=evm{{.*}}
 ;;
 ;; Test the sequence:
 ;;	cast -> setle 0, %cast -> br %cond

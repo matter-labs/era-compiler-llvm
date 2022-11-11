@@ -4641,6 +4641,10 @@ SDValue TargetLowering::SimplifySetCC(EVT VT, SDValue N0, SDValue N1,
       }
     }
 
+    // EVM local begin
+    // Load narrowing is not profiable for EVM.
+    if (!DAG.getTarget().getTargetTriple().isEVM()) {
+    // EVM local end
     // If the LHS is '(and load, const)', the RHS is 0, the test is for
     // equality or unsigned, and all 1 bits of the const are in the same
     // partial word, see if we can shorten the load.
@@ -4712,6 +4716,9 @@ SDValue TargetLowering::SimplifySetCC(EVT VT, SDValue N0, SDValue N1,
         return DAG.getSetCC(dl, VT, And, DAG.getConstant(0LL, dl, newVT), Cond);
       }
     }
+    // EVM local begin
+    }
+    // EVM local end
 
     // If the LHS is a ZERO_EXTEND, perform the comparison on the input.
     if (N0.getOpcode() == ISD::ZERO_EXTEND) {
@@ -10032,6 +10039,7 @@ SDValue TargetLowering::expandUnalignedStore(StoreSDNode *ST,
 
   assert(StoreMemVT.isInteger() && !StoreMemVT.isVector() &&
          "Unaligned store of unknown type.");
+
   // Get the half-size VT
   EVT NewStoredVT = StoreMemVT.getHalfSizedIntegerVT(*DAG.getContext());
   unsigned NumBits = NewStoredVT.getFixedSizeInBits();

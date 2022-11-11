@@ -1063,8 +1063,12 @@ bool TargetPassConfig::addISelPasses() {
 
   PM->add(createTargetTransformInfoWrapperPass(TM->getTargetIRAnalysis()));
   addPass(createPreISelIntrinsicLoweringPass());
-  addPass(createExpandLargeDivRemPass());
-  addPass(createExpandLargeFpConvertPass());
+  // EVM local begin
+  if (!TM->getTargetTriple().isEVM()) {
+    addPass(createExpandLargeDivRemPass());
+    addPass(createExpandLargeFpConvertPass());
+  }
+  // EVM local end
   addIRPasses();
   addCodeGenPrepare();
   addPassesToHandleExceptions();
