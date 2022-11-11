@@ -3827,10 +3827,14 @@ SDValue DAGCombiner::visitSUB(SDNode *N) {
   if (SDValue NewSel = foldBinOpIntoSelect(N))
     return NewSel;
 
+  // EraVM local begin
+  // TODO: Better to do it on ISel.
+  if (!DAG.getTarget().getTargetTriple().isEraVM()) {
   // fold (sub x, c) -> (add x, -c)
   if (ConstantSDNode *N1C = getAsNonOpaqueConstant(N1))
     return DAG.getNode(ISD::ADD, DL, VT, N0,
                        DAG.getConstant(-N1C->getAPIntValue(), DL, VT));
+  }
 
   if (isNullOrNullSplat(N0)) {
     // Right-shifting everything out but the sign bit followed by negation is
@@ -4366,6 +4370,8 @@ template <class MatchContextClass> SDValue DAGCombiner::visitMUL(SDNode *N) {
   if (N1IsConst && ConstValue1.isAllOnes())
     return Matcher.getNode(ISD::SUB, DL, VT, DAG.getConstant(0, DL, VT), N0);
 
+// TODO: The following code needs to be enabled on the architectures where it's
+// profitable to use shl. Consider implementing a check for it.
   // fold (mul x, (1 << c)) -> x << c
   if (isConstantOrConstantVector(N1, /*NoOpaques*/ true) &&
       (!VT.isVector() || Level <= AfterLegalizeVectorOps)) {
@@ -4938,12 +4944,18 @@ SDValue DAGCombiner::visitUDIVLike(SDValue N0, SDValue N1, SDNode *N) {
     }
   }
 
+// TODO: Implement architecture / profitability check
+// TODO: produces mulhu, which is not currently supported by EraVM
+// EraVM local begin
+  if (!DAG.getTarget().getTargetTriple().isEraVM()) {
   // fold (udiv x, c) -> alternate
   AttributeList Attr = DAG.getMachineFunction().getFunction().getAttributes();
   if (isConstantOrConstantVector(N1) &&
       !TLI.isIntDivCheap(N->getValueType(0), Attr))
     if (SDValue Op = BuildUDIV(N))
       return Op;
+  }
+// EraVM local end
 
   return SDValue();
 }
@@ -6629,6 +6641,11 @@ bool DAGCombiner::SearchForAndLoads(SDNode *N,
 }
 
 bool DAGCombiner::BackwardsPropagateMask(SDNode *N) {
+  // EraVM local begin
+  // TODO: Consider removing when non-i256 UMA works.
+  if (DAG.getTarget().getTargetTriple().isEraVM())
+    return false;
+  // EraVM local end
   auto *Mask = dyn_cast<ConstantSDNode>(N->getOperand(1));
   if (!Mask)
     return false;
@@ -10722,9 +10739,13 @@ SDValue DAGCombiner::visitSRL(SDNode *N) {
     if (SDValue NewSRL = visitShiftByConstant(N))
       return NewSRL;
 
+  // EraVM local begin
+  if (!DAG.getTarget().getTargetTriple().isEraVM()) {
   // Attempt to convert a srl of a load into a narrower zero-extending load.
   if (SDValue NarrowLoad = reduceLoadWidth(N))
     return NarrowLoad;
+  }
+  // EraVM local end
 
   // Here is a common situation. We want to optimize:
   //
@@ -13890,6 +13911,8 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
 
   // fold (zext (truncate x)) -> (and x, mask)
   if (N0.getOpcode() == ISD::TRUNCATE) {
+  // EraVM local begin
+  if (!DAG.getTarget().getTargetTriple().isEraVM()) {
     // fold (zext (truncate (load x))) -> (zext (smaller load x))
     // fold (zext (truncate (srl (load x), c))) -> (zext (smaller load (x+c/n)))
     if (SDValue NarrowLoad = reduceLoadWidth(N0.getNode())) {
@@ -13901,6 +13924,8 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
       }
       return SDValue(N, 0); // Return N so it doesn't get rechecked!
     }
+    }
+    // EraVM local end
 
     EVT SrcVT = N0.getOperand(0).getValueType();
     EVT MinVT = N0.getValueType();
@@ -13971,6 +13996,8 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
                        X, DAG.getConstant(Mask, DL, VT));
   }
 
+  // EraVM local begin
+  if (!DAG.getTarget().getTargetTriple().isEraVM()) {
   // Try to simplify (zext (load x)).
   if (SDValue foldedExt = tryToFoldExtOfLoad(
           DAG, *this, TLI, VT, LegalOperations, N, N0, ISD::ZEXTLOAD,
@@ -14047,6 +14074,8 @@ SDValue DAGCombiner::visitZERO_EXTEND(SDNode *N) {
       }
     }
   }
+  }
+  // EraVM local end
 
   // fold (zext (and/or/xor (shl/shr (load x), cst), cst)) ->
   //      (and/or/xor (shl/shr (zextload x), (zext cst)), (zext cst))
@@ -15096,6 +15125,8 @@ SDValue DAGCombiner::visitTRUNCATE(SDNode *N) {
     }
   }
 
+// EraVM local begin
+  if (!DAG.getTarget().getTargetTriple().isEraVM()) {
   // fold (truncate (load x)) -> (smaller load x)
   // fold (truncate (srl (load x), c)) -> (smaller load (x+c/evtbits))
   if (!LegalTypes || TLI.isTypeDesirableForOp(N0.getOpcode(), VT)) {
@@ -15115,6 +15146,8 @@ SDValue DAGCombiner::visitTRUNCATE(SDNode *N) {
       }
     }
   }
+  }
+// EraVM local end
 
   // fold (trunc (concat ... x ...)) -> (concat ..., (trunc x), ...)),
   // where ... are all 'undef'.

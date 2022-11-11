@@ -1,3 +1,5 @@
+; UNSUPPORTED: target=eravm{{.*}}
+; EraVM only has limited support for EH. resume is not supported.
 ; RUN: llc < %s
 ; PR10733
 declare void @_Znam()

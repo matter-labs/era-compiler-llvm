@@ -1,3 +1,5 @@
+; UNSUPPORTED: target=eravm{{.*}}
+; EraVM doesn't support floats.
 ; RUN: llc %s -o -
 
 ; PR6332

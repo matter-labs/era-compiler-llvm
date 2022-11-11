@@ -1,3 +1,5 @@
+; UNSUPPORTED: target=eravm{{.*}}
+; EraVM doesn't support floats.
 ; RUN: llc < %s
 ; PR4057
 define void @test_cast_float_to_char(ptr %result) nounwind {

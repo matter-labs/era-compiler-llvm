@@ -1,3 +1,5 @@
+# TODO: CPR-1629 EraVM does not implement MachineFunctionInfo cloning
+# XFAIL: target=eravm{{.*}}
 # REQUIRES: default_triple
 # RUN: rm -rf %t.dir && mkdir %t.dir  && cd %t.dir
 

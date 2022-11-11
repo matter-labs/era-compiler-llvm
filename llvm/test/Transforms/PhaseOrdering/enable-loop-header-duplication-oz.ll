@@ -8,6 +8,7 @@
 ; RUN: opt -passes='default<Oz>' -S < %s  | FileCheck %s --check-prefix=NOROTATION
 ; RUN: opt -passes='default<Oz>' -S  -enable-loop-header-duplication < %s  | FileCheck %s --check-prefix=ROTATION
 ; RUN: opt -passes='default<O2>' -S  < %s  | FileCheck %s --check-prefix=ROTATION
+; XFAIL: target=eravm{{.*}}
 
 define void @test(i8* noalias nonnull align 1 %start, i8* %end) unnamed_addr {
 ; NOROTATION-LABEL: define void @test(

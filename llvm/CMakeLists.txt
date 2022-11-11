@@ -482,6 +482,9 @@ set(LLVM_ALL_TARGETS
   PowerPC
   RISCV
   Sparc
+  # EraVM local begin
+  EraVM
+  # EraVM local end
   SystemZ
   VE
   WebAssembly
@@ -497,6 +500,10 @@ set(LLVM_ALL_EXPERIMENTAL_TARGETS
   SPIRV
   Xtensa
 )
+
+# EraVM local begin
+add_compile_definitions(_ERAVM)
+# EraVM local end
 
 # List of targets with JIT support:
 set(LLVM_TARGETS_WITH_JIT X86 PowerPC AArch64 ARM Mips SystemZ)

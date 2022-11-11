@@ -187,7 +187,11 @@ codegen::RegisterCodeGenFlags::RegisterCodeGenFlags() {
           clEnumValN(ExceptionHandling::WinEH, "wineh",
                      "Windows exception model"),
           clEnumValN(ExceptionHandling::Wasm, "wasm",
-                     "WebAssembly exception handling")));
+                     "WebAssembly exception handling"),
+          // EraVM local begin
+          clEnumValN(ExceptionHandling::EraVM, "eravm",
+                     "EraVM exception handling")));
+          // EraVM local end
   CGBINDOPT(ExceptionModel);
 
   static cl::opt<CodeGenFileType> FileType(

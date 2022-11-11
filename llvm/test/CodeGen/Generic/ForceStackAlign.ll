@@ -11,6 +11,9 @@
 ; NVPTX can only select dynamic_stackalloc on sm_52+ and with ptx73+
 ; XFAIL: target=nvptx{{.*}}
 
+; EraVM realignment not supported.
+; UNSUPPORTED: target=eravm{{.*}}
+
 define i32 @f(ptr %p) nounwind {
 entry:
   %0 = load i8, ptr %p

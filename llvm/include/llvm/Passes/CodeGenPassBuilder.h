@@ -741,6 +741,11 @@ void CodeGenPassBuilder<Derived, TargetMachineT>::addPassesToHandleExceptions(
     addPass(WinEHPreparePass(/*DemoteCatchSwitchPHIOnly=*/false));
     addPass(WasmEHPreparePass());
     break;
+  // EraVM local begin
+  case ExceptionHandling::EraVM:
+    // EraVM selects invokes directly. No special handling is required.
+    break;
+  // EraVM local end
   case ExceptionHandling::None:
     addPass(LowerInvokePass());
 

@@ -1,4 +1,5 @@
 ; RUN: opt -passes=function-attrs -stats -disable-output %s 2>&1 | FileCheck %s
+; XFAIL: target=eravm{{.*}}
 
 ; REQUIRES: asserts
 

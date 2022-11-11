@@ -1,0 +1,142 @@
+; RUN: llc < %s | FileCheck %s
+
+target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
+target triple = "eravm"
+
+@val = addrspace(4) global i256 42
+@val2 = addrspace(4) global i256 43
+
+; CHECK-LABEL: contextr
+define i256 @contextr() {
+; CHECK-DAG: context.caller r{{[0-9]+}}
+; CHECK-DAG: context.self_address r{{[0-9]+}}
+; CHECK-DAG: context.code_address r{{[0-9]+}}
+; CHECK-DAG: context.meta r{{[0-9]+}}
+; CHECK-DAG: context.tx_origin r{{[0-9]+}}
+; CHECK-DAG: context.coinbase r{{[0-9]+}}
+; CHECK-DAG: context.ergs_left r{{[0-9]+}}
+  %1 = call i256 @llvm.eravm.context(i256 0)
+  %2 = call i256 @llvm.eravm.context(i256 1)
+  %3 = call i256 @llvm.eravm.context(i256 2)
+  %4 = call i256 @llvm.eravm.context(i256 3)
+  %5 = call i256 @llvm.eravm.context(i256 4)
+  %6 = call i256 @llvm.eravm.context(i256 5)
+  %7 = call i256 @llvm.eravm.ergsleft()
+  %8 = add i256 %1, %2
+  %9 = add i256 %8, %3
+  %10 = add i256 %9, %4
+  %11 = add i256 %10, %5
+  %12 = add i256 %11, %6
+  %13 = add i256 %12, %7
+  ret i256 %13
+}
+
+; CHECK-LABEL: sload_rr
+define i256 @sload_rr(i256 %val) {
+; CHECK-DAG: sload r1, r{{[0-9]+}}
+; CHECK-DAG: sload.first r1, r{{[0-9]+}}
+  %1 = call i256 @llvm.eravm.sload(i256 %val, i256 0)
+  %2 = call i256 @llvm.eravm.sload(i256 %val, i256 1)
+  %3 = add i256 %2, %1
+  ret i256 %3
+}
+
+; CHECK-LABEL: sstore_r
+define void @sstore_r(i256 %key, i256 %val) {
+; CHECK: sstore r1, r2
+; CHECK: sstore.first r1, r2
+  call void @llvm.eravm.sstore(i256 %key, i256 %val, i256 0)
+  call void @llvm.eravm.sstore(i256 %key, i256 %val, i256 1)
+  ret void
+}
+
+; CHECK-LABEL: tol1_r
+define void @tol1_r(i256 %key, i256 %val) {
+; CHECK: to_l1 r1, r2
+; CHECK: to_l1.first r1, r2
+  call void @llvm.eravm.tol1(i256 %key, i256 %val, i256 0)
+  call void @llvm.eravm.tol1(i256 %key, i256 %val, i256 1)
+  ret void
+}
+
+; CHECK-LABEL: event_r
+define void @event_r(i256 %key, i256 %val) {
+; CHECK: event r1, r2
+; CHECK: event.first r1, r2
+  call void @llvm.eravm.event(i256 %key, i256 %val, i256 0)
+  call void @llvm.eravm.event(i256 %key, i256 %val, i256 1)
+  ret void
+}
+
+; CHECK-LABEL: precompile_r
+define void @precompile_r(i256 %key) {
+; CHECK: precompile r1
+; CHECK: precompile.first r1
+  call void @llvm.eravm.precompile(i256 %key, i256 0)
+  call void @llvm.eravm.precompile(i256 %key, i256 1)
+  ret void
+}
+
+; CHECK-LABEL: throw
+define void @throw(i256 %val) {
+; CHECK: revert
+  call void @llvm.eravm.throw(i256 %val)
+  ret void
+}
+
+; CHECK-LABEL: ifeqrr
+define i256 @ifeqrr(i256 %x, i256 %y) {
+  ; CHECK: add.ne r2, r0, r1
+  %res = call i256 @llvm.eravm.ifeq(i256 %x, i256 %y)
+  ret i256 %res
+}
+
+; CHECK-LABEL: ifeqii
+define i256 @ifeqii() {
+  ; CHECK: add 42, r0, r1
+  ; CHECK: add.eq 0, r0, r1
+  %res = call i256 @llvm.eravm.ifeq(i256 0, i256 42)
+  ret i256 %res
+}
+
+; CHECK-LABEL: ifltrr
+define i256 @ifltrr(i256 %x, i256 %y) {
+  ; CHECK: add.ge r2, r0, r1
+  %res = call i256 @llvm.eravm.iflt(i256 %x, i256 %y)
+  ret i256 %res
+}
+
+; CHECK-LABEL: ifltii
+define i256 @ifltii() {
+  ; CHECK: add 42, r0, r1
+  ; CHECK: add.lt 0, r0, r1
+  %res = call i256 @llvm.eravm.iflt(i256 0, i256 42)
+  ret i256 %res
+}
+
+; CHECK-LABEL: ifgtrr
+define i256 @ifgtrr(i256 %x, i256 %y) {
+  ; CHECK: add.le r2, r0, r1
+  %res = call i256 @llvm.eravm.ifgt(i256 %x, i256 %y)
+  ret i256 %res
+}
+
+; CHECK-LABEL: ifgtii
+define i256 @ifgtii() {
+  ; CHECK: add 42, r0, r1
+  ; CHECK: add.gt 0, r0, r1
+  %res = call i256 @llvm.eravm.ifgt(i256 0, i256 42)
+  ret i256 %res
+}
+
+declare i256 @llvm.eravm.context(i256)
+declare i256 @llvm.eravm.ergsleft()
+declare i256 @llvm.eravm.sload(i256, i256)
+declare void @llvm.eravm.sstore(i256, i256, i256)
+declare void @llvm.eravm.tol1(i256, i256, i256)
+declare void @llvm.eravm.event(i256, i256, i256)
+declare void @llvm.eravm.precompile(i256, i256)
+declare void @llvm.eravm.throw(i256)
+declare i256 @llvm.eravm.ifeq(i256, i256)
+declare i256 @llvm.eravm.iflt(i256, i256)
+declare i256 @llvm.eravm.ifgt(i256, i256)

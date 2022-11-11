@@ -321,6 +321,9 @@ def IIT_I4 : IIT_Int<4, 58>;
 def IIT_AARCH64_SVCOUNT : IIT_VT<aarch64svcount, 59>;
 def IIT_V6 : IIT_Vec<6, 60>;
 def IIT_V10 : IIT_Vec<10, 61>;
+// EraVM local begin
+def IIT_I256 : IIT_Int<256, 62>;
+// EraVM local end
 }
 
 defvar IIT_all_FixedTypes = !filter(iit, IIT_all,
@@ -483,6 +486,10 @@ def llvm_i16_ty        : LLVMType<i16>;
 def llvm_i32_ty        : LLVMType<i32>;
 def llvm_i64_ty        : LLVMType<i64>;
 def llvm_i128_ty       : LLVMType<i128>;
+// EraVM local begin
+def llvm_i256_ty       : LLVMType<i256>;
+def llvm_i512_ty       : LLVMType<i512>;
+// EraVM local end
 def llvm_half_ty       : LLVMType<f16>;
 def llvm_bfloat_ty     : LLVMType<bf16>;
 def llvm_float_ty      : LLVMType<f32>;
@@ -2764,5 +2771,7 @@ include "llvm/IR/IntrinsicsSPIRV.td"
 include "llvm/IR/IntrinsicsVE.td"
 include "llvm/IR/IntrinsicsDirectX.td"
 include "llvm/IR/IntrinsicsLoongArch.td"
-
+// EraVM local begin
+include "llvm/IR/IntrinsicsEraVM.td"
+// EraVM local end
 #endif // TEST_INTRINSICS_SUPPRESS_DEFS

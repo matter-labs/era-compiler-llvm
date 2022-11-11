@@ -1346,7 +1346,13 @@ static void DecodeIITType(unsigned &NextElt, ArrayRef<unsigned char> Infos,
                                              ArgInfo));
     return;
   }
+  // EraVM local begin
+  case IIT_I256: {
+    OutputTable.push_back(IITDescriptor::get(IITDescriptor::Integer, 256));
+    return;
   }
+  }
+  // EraVM local end
   llvm_unreachable("unhandled");
 }
 

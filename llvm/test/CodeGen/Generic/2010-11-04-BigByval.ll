@@ -1,3 +1,5 @@
+; XFAIL: target=eravm{{.*}}
+; EraVM doesn't support byval yet.
 ; RUN: llc < %s
 ; PR7170
 

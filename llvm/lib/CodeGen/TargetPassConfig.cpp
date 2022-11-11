@@ -928,6 +928,11 @@ void TargetPassConfig::addPassesToHandleExceptions() {
     addPass(createWinEHPass(/*DemoteCatchSwitchPHIOnly=*/true));
     addPass(createWasmEHPass());
     break;
+  // EraVM local begin
+  case ExceptionHandling::EraVM:
+    // EraVM selects invokes directly. No special handling is required.
+    break;
+  // EraVM local end
   case ExceptionHandling::None:
     addPass(createLowerInvokePass());
 
@@ -1063,8 +1068,12 @@ bool TargetPassConfig::addISelPasses() {
 
   PM->add(createTargetTransformInfoWrapperPass(TM->getTargetIRAnalysis()));
   addPass(createPreISelIntrinsicLoweringPass());
-  addPass(createExpandLargeDivRemPass());
-  addPass(createExpandLargeFpConvertPass());
+  // EraVM local begin
+  if (!TM->getTargetTriple().isEraVM()) {
+    addPass(createExpandLargeDivRemPass());
+    addPass(createExpandLargeFpConvertPass());
+  }
+  // EraVM local end
   addIRPasses();
   addCodeGenPrepare();
   addPassesToHandleExceptions();

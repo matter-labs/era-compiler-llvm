@@ -4541,6 +4541,10 @@ public:
 
     std::optional<PtrAuthInfo> PAI;
 
+    // EraVM local begin
+    SDValue UnwindBB = {};
+    // EraVM local end
+
     CallLoweringInfo(SelectionDAG &DAG)
         : RetSExt(false), RetZExt(false), IsVarArg(false), IsInReg(false),
           DoesNotReturn(false), IsReturnValueUsed(true), IsConvergent(false),
@@ -5075,9 +5079,14 @@ public:
   //===--------------------------------------------------------------------===//
   // Div utility functions
   //
-
+  // EraVM local begin
+  virtual
+  // EraVM local end
   SDValue BuildSDIV(SDNode *N, SelectionDAG &DAG, bool IsAfterLegalization,
                     SmallVectorImpl<SDNode *> &Created) const;
+  // EraVM local begin
+  virtual
+  // EraVM local end
   SDValue BuildUDIV(SDNode *N, SelectionDAG &DAG, bool IsAfterLegalization,
                     SmallVectorImpl<SDNode *> &Created) const;
   // Build sdiv by power-of-2 with conditional move instructions

@@ -525,7 +525,10 @@ FindCallSeqStart(SDNode *N, unsigned &NestLevel, unsigned &MaxNest,
     }
     // Otherwise, find the chain and continue climbing.
     for (const SDValue &Op : N->op_values())
-      if (Op.getValueType() == MVT::Other) {
+      // EraVM local begin
+      if (Op.getValueType() == MVT::Other
+          && Op.getOpcode() != ISD::BasicBlock) {
+      // EraVM local end
         N = Op.getNode();
         goto found_chain_operand;
       }

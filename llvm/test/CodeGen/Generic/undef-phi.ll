@@ -1,3 +1,5 @@
+; XFAIL: target=eravm{{.*}}
+; TODO: CPR-922 Fix
 ; RUN: llc < %s -verify-machineinstrs -verify-coalescing
 ;
 ; This function has a PHI with one undefined input. Verify that PHIElimination

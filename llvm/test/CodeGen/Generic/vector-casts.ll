@@ -1,3 +1,5 @@
+; UNSUPPORTED: target=eravm{{.*}}
+; EraVM doesn't support vector instructions.
 ; RUN: llc < %s
 ; PR2671
 

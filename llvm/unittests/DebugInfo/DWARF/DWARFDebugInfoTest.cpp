@@ -435,7 +435,13 @@ void TestAllForms() {
   EXPECT_EQ(AddrValue, toAddress(DieDG.find(Attr_Last), 0));
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr4AllForms) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr4AllForms) {
+#endif
+// EraVM local end
   // Test that we can decode all forms for DWARF32, version 2, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
@@ -444,7 +450,13 @@ TEST(DWARFDebugInfo, TestDWARF32Version2Addr4AllForms) {
   TestAllForms<2, AddrType, RefAddrType>();
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr8AllForms) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr8AllForms) {
+#endif
+// EraVM local end
   // Test that we can decode all forms for DWARF32, version 2, with 4 byte
   // addresses.
   typedef uint64_t AddrType;
@@ -453,7 +465,13 @@ TEST(DWARFDebugInfo, TestDWARF32Version2Addr8AllForms) {
   TestAllForms<2, AddrType, RefAddrType>();
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr4AllForms) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr4AllForms) {
+#endif
+// EraVM local end
   // Test that we can decode all forms for DWARF32, version 3, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
@@ -462,7 +480,13 @@ TEST(DWARFDebugInfo, TestDWARF32Version3Addr4AllForms) {
   TestAllForms<3, AddrType, RefAddrType>();
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr8AllForms) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr8AllForms) {
+#endif
+// EraVM local end
   // Test that we can decode all forms for DWARF32, version 3, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
@@ -471,7 +495,13 @@ TEST(DWARFDebugInfo, TestDWARF32Version3Addr8AllForms) {
   TestAllForms<3, AddrType, RefAddrType>();
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr4AllForms) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr4AllForms) {
+#endif
+// EraVM local end
   // Test that we can decode all forms for DWARF32, version 4, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
@@ -480,7 +510,13 @@ TEST(DWARFDebugInfo, TestDWARF32Version4Addr4AllForms) {
   TestAllForms<4, AddrType, RefAddrType>();
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr8AllForms) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr8AllForms) {
+#endif
+// EraVM local end
   // Test that we can decode all forms for DWARF32, version 4, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
@@ -489,7 +525,9 @@ TEST(DWARFDebugInfo, TestDWARF32Version4Addr8AllForms) {
   TestAllForms<4, AddrType, RefAddrType>();
 }
 
-#ifdef NO_SUPPORT_DEBUG_STR_OFFSETS
+// EraVM local begin
+#if defined(NO_SUPPORT_DEBUG_STR_OFFSETS) || defined(_ERAVM)
+// EraVM local end
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version5Addr4AllForms) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version5Addr4AllForms) {
@@ -502,7 +540,9 @@ TEST(DWARFDebugInfo, TestDWARF32Version5Addr4AllForms) {
   TestAllForms<5, AddrType, RefAddrType>();
 }
 
-#ifdef NO_SUPPORT_DEBUG_STR_OFFSETS
+// EraVM local begin
+#if defined(NO_SUPPORT_DEBUG_STR_OFFSETS) || defined(_ERAVM)
+// EraVM local end
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version5Addr8AllForms) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version5Addr8AllForms) {
@@ -603,42 +643,78 @@ template <uint16_t Version, class AddrType> void TestChildren() {
   EXPECT_EQ(IntDieDG.getTag(), DW_TAG_base_type);
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr4Children) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr4Children) {
+#endif
+// EraVM local end
   // Test that we can decode all forms for DWARF32, version 2, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
   TestChildren<2, AddrType>();
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr8Children) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr8Children) {
+#endif
+// EraVM local end
   // Test that we can decode all forms for DWARF32, version 2, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
   TestChildren<2, AddrType>();
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr4Children) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr4Children) {
+#endif
+// EraVM local end
   // Test that we can decode all forms for DWARF32, version 3, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
   TestChildren<3, AddrType>();
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr8Children) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr8Children) {
+#endif
+// EraVM local end
   // Test that we can decode all forms for DWARF32, version 3, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
   TestChildren<3, AddrType>();
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr4Children) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr4Children) {
+#endif
+// EraVM local end
   // Test that we can decode all forms for DWARF32, version 4, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
   TestChildren<4, AddrType>();
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr8Children) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr8Children) {
+#endif
+// EraVM local end
   // Test that we can decode all forms for DWARF32, version 4, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
@@ -853,42 +929,78 @@ template <uint16_t Version, class AddrType> void TestReferences() {
             toDebugInfoReference(CU2ToCU1RefAddrDieDG.find(DW_AT_type), -1ULL));
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr4References) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr4References) {
+#endif
+// EraVM local end
   // Test that we can decode all forms for DWARF32, version 2, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
   TestReferences<2, AddrType>();
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr8References) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr8References) {
+#endif
+// EraVM local end
   // Test that we can decode all forms for DWARF32, version 2, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
   TestReferences<2, AddrType>();
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr4References) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr4References) {
+#endif
+// EraVM local end
   // Test that we can decode all forms for DWARF32, version 3, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
   TestReferences<3, AddrType>();
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr8References) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr8References) {
+#endif
+// EraVM local end
   // Test that we can decode all forms for DWARF32, version 3, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
   TestReferences<3, AddrType>();
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr4References) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr4References) {
+#endif
+// EraVM local end
   // Test that we can decode all forms for DWARF32, version 4, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
   TestReferences<4, AddrType>();
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr8References) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr8References) {
+#endif
+// EraVM local end
   // Test that we can decode all forms for DWARF32, version 4, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
@@ -1025,49 +1137,87 @@ template <uint16_t Version, class AddrType> void TestAddresses() {
   EXPECT_EQ(HighPC, ActualHighPC);
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr4Addresses) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr4Addresses) {
+#endif
+// EraVM local end
   // Test that we can decode address values in DWARF32, version 2, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
   TestAddresses<2, AddrType>();
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr8Addresses) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr8Addresses) {
+#endif
+// EraVM local end
   // Test that we can decode address values in DWARF32, version 2, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
   TestAddresses<2, AddrType>();
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr4Addresses) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr4Addresses) {
+#endif
+// EraVM local end
   // Test that we can decode address values in DWARF32, version 3, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
   TestAddresses<3, AddrType>();
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr8Addresses) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr8Addresses) {
+#endif
+// EraVM local end
   // Test that we can decode address values in DWARF32, version 3, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
   TestAddresses<3, AddrType>();
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr4Addresses) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr4Addresses) {
+#endif
+// EraVM local end
   // Test that we can decode address values in DWARF32, version 4, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
   TestAddresses<4, AddrType>();
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr8Addresses) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr8Addresses) {
+#endif
+// EraVM local end
   // Test that we can decode address values in DWARF32, version 4, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
   TestAddresses<4, AddrType>();
 }
 
-#ifdef NO_SUPPORT_DEBUG_STR_OFFSETS
+// EraVM local begin
+#if defined(NO_SUPPORT_DEBUG_STR_OFFSETS) || defined(_ERAVM)
+// EraVM local end
 TEST(DWARFDebugInfo, DISABLED_TestStringOffsets) {
 #else
 TEST(DWARFDebugInfo, TestStringOffsets) {
@@ -1078,6 +1228,7 @@ TEST(DWARFDebugInfo, TestStringOffsets) {
 
   const char *String1 = "Hello";
   const char *String2 = "World";
+// EraVM local end
 
   auto ExpectedDG = dwarfgen::Generator::create(Triple, 5);
   ASSERT_THAT_EXPECTED(ExpectedDG, Succeeded());
@@ -1136,7 +1287,9 @@ TEST(DWARFDebugInfo, TestStringOffsets) {
   EXPECT_STREQ(String1, *Extracted3);
 }
 
-#ifdef NO_SUPPORT_DEBUG_ADDR
+// EraVM local begin
+#if defined(NO_SUPPORT_DEBUG_ADDR) || defined(_ERAVM)
+// EraVM local end
 TEST(DWARFDebugInfo, DISABLED_TestEmptyStringOffsets) {
 #else
 TEST(DWARFDebugInfo, TestEmptyStringOffsets) {
@@ -1170,7 +1323,13 @@ TEST(DWARFDebugInfo, TestEmptyStringOffsets) {
       DwarfContext->getDWARFObj().getStrOffsetsSection().Data.empty());
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestRelations) {
+#else
 TEST(DWARFDebugInfo, TestRelations) {
+#endif
+// EraVM local end
   Triple Triple = getNormalizedDefaultTargetTriple();
   if (!isConfigurationSupported(Triple))
     GTEST_SKIP();
@@ -1357,7 +1516,13 @@ TEST(DWARFDebugInfo, TestDWARFDie) {
   EXPECT_FALSE(DefaultDie.getSibling().isValid());
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestChildIterators) {
+#else
 TEST(DWARFDebugInfo, TestChildIterators) {
+#endif
+// EraVM local end
   Triple Triple = getNormalizedDefaultTargetTriple();
   if (!isConfigurationSupported(Triple))
     GTEST_SKIP();
@@ -1422,7 +1587,13 @@ TEST(DWARFDebugInfo, TestChildIterators) {
   EXPECT_EQ(A.begin(), A.end());
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestChildIteratorsOnInvalidDie) {
+#else
 TEST(DWARFDebugInfo, TestChildIteratorsOnInvalidDie) {
+#endif
+// EraVM local end
   // Verify that an invalid DIE has no children.
   DWARFDie Invalid;
   auto begin = Invalid.begin();
@@ -1432,7 +1603,13 @@ TEST(DWARFDebugInfo, TestChildIteratorsOnInvalidDie) {
   EXPECT_EQ(begin, end);
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestEmptyChildren) {
+#else
 TEST(DWARFDebugInfo, TestEmptyChildren) {
+#endif
+// EraVM local end
   const char *yamldata = "debug_abbrev:\n"
                          "  - Table:\n"
                          "      - Code:            0x00000001\n"
@@ -1466,7 +1643,13 @@ TEST(DWARFDebugInfo, TestEmptyChildren) {
   EXPECT_EQ(CUDie.begin(), CUDie.end());
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestAttributeIterators) {
+#else
 TEST(DWARFDebugInfo, TestAttributeIterators) {
+#endif
+// EraVM local end
   Triple Triple = getNormalizedDefaultTargetTriple();
   if (!isConfigurationSupported(Triple))
     GTEST_SKIP();
@@ -1528,7 +1711,13 @@ TEST(DWARFDebugInfo, TestAttributeIterators) {
   EXPECT_EQ(E, ++I);
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestFindRecurse) {
+#else
 TEST(DWARFDebugInfo, TestFindRecurse) {
+#endif
+// EraVM local end
   Triple Triple = getNormalizedDefaultTargetTriple();
   if (!isConfigurationSupported(Triple))
     GTEST_SKIP();
@@ -1618,7 +1807,13 @@ TEST(DWARFDebugInfo, TestFindRecurse) {
   EXPECT_EQ(AbsDieName, StringOpt.value_or(nullptr));
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestSelfRecursiveType) {
+#else
 TEST(DWARFDebugInfo, TestSelfRecursiveType) {
+#endif
+// EraVM local end
   typedef uint32_t AddrType;
   Triple Triple = getDefaultTargetTripleForAddrSize(sizeof(AddrType));
   if (!isConfigurationSupported(Triple))
@@ -1654,7 +1849,13 @@ TEST(DWARFDebugInfo, TestSelfRecursiveType) {
   }
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDwarfToFunctions) {
+#else
 TEST(DWARFDebugInfo, TestDwarfToFunctions) {
+#endif
+// EraVM local end
   // Test all of the dwarf::toXXX functions that take a
   // std::optional<DWARFFormValue> and extract the values from it.
   uint64_t InvalidU64 = 0xBADBADBADBADBADB;
@@ -1864,7 +2065,13 @@ TEST(DWARFDebugInfo, TestDwarfToFunctions) {
   // Test
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestFindAttrs) {
+#else
 TEST(DWARFDebugInfo, TestFindAttrs) {
+#endif
+// EraVM local end
   Triple Triple = getNormalizedDefaultTargetTriple();
   if (!isConfigurationSupported(Triple))
     GTEST_SKIP();
@@ -1927,7 +2134,9 @@ TEST(DWARFDebugInfo, TestFindAttrs) {
   EXPECT_EQ(DieMangled, toString(NameOpt, ""));
 }
 
-#ifdef NO_SUPPORT_DEBUG_ADDR
+// EraVM local begin
+#if defined(NO_SUPPORT_DEBUG_ADDR) || defined(_ERAVM)
+// EraVM local end
 TEST(DWARFDebugInfo, DISABLED_TestImplicitConstAbbrevs) {
 #else
 TEST(DWARFDebugInfo, TestImplicitConstAbbrevs) {
@@ -2055,7 +2264,13 @@ TEST(DWARFDebugInfo, TestImplicitConstAbbrevs) {
   EXPECT_EQ(DIEs.find(Val2)->second, AbbrevPtrVal2);
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARFDieRangeInfoContains) {
+#else
 TEST(DWARFDebugInfo, TestDWARFDieRangeInfoContains) {
+#endif
+// EraVM local end
   DWARFVerifier::DieRangeInfo Empty;
   ASSERT_TRUE(Empty.contains(Empty));
 

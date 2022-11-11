@@ -1,3 +1,5 @@
+; UNSUPPORTED: target=eravm{{.*}}
+; Unsupported because of floats.
 ; RUN: llc < %s
 
 define void @foo(double %a, double %b, ptr %fp) {

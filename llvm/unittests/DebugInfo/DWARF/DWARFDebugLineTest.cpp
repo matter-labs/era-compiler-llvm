@@ -186,7 +186,13 @@ void checkDefaultPrologue(uint16_t Version, DwarfFormat Format,
   EXPECT_STREQ(*toString(Prologue.FileNames[0].Name), "a file");
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(DebugLineBasicFixture, DISABLED_GetOrParseLineTableAtInvalidOffset) {
+#else
 TEST_F(DebugLineBasicFixture, GetOrParseLineTableAtInvalidOffset) {
+#endif
+// EraVM local end
   if (!setupGenerator())
     GTEST_SKIP();
   generate();
@@ -208,7 +214,14 @@ TEST_F(DebugLineBasicFixture, GetOrParseLineTableAtInvalidOffset) {
           "offset 0x00000001 is not a valid debug line section offset"));
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(DebugLineBasicFixture,
+       DISABLED_GetOrParseLineTableAtInvalidOffsetAfterData) {
+#else
 TEST_F(DebugLineBasicFixture, GetOrParseLineTableAtInvalidOffsetAfterData) {
+#endif
+// EraVM local end
   if (!setupGenerator())
     GTEST_SKIP();
 
@@ -229,7 +242,9 @@ TEST_F(DebugLineBasicFixture, GetOrParseLineTableAtInvalidOffsetAfterData) {
           "offset 0x00000001 is not a valid debug line section offset"));
 }
 
-#ifdef NO_SUPPORT_DEBUG_ADDR
+// EraVM local begin
+#if defined(NO_SUPPORT_DEBUG_ADDR) || defined(_ERAVM)
+// EraVM local end
 TEST_P(DebugLineParameterisedFixture, DISABLED_PrologueGetLength) {
 #else
 TEST_P(DebugLineParameterisedFixture, PrologueGetLength) {
@@ -256,7 +271,9 @@ TEST_P(DebugLineParameterisedFixture, PrologueGetLength) {
   EXPECT_EQ((*ExpectedLineTable)->Prologue.getLength(), ExpectedLength);
 }
 
-#ifdef NO_SUPPORT_DEBUG_ADDR
+// EraVM local begin
+#if defined(NO_SUPPORT_DEBUG_ADDR) || defined(_ERAVM)
+// EraVM local end
 TEST_P(DebugLineParameterisedFixture, DISABLED_GetOrParseLineTableValidTable) {
 #else
 TEST_P(DebugLineParameterisedFixture, GetOrParseLineTableValidTable) {
@@ -326,7 +343,9 @@ TEST_P(DebugLineParameterisedFixture, GetOrParseLineTableValidTable) {
   // correctly.
 }
 
-#ifdef NO_SUPPORT_DEBUG_ADDR
+// EraVM local begin
+#if defined(NO_SUPPORT_DEBUG_ADDR) || defined(_ERAVM)
+// EraVM local end
 TEST_P(DebugLineParameterisedFixture, DISABLED_ClearLineValidTable) {
 #else
 TEST_P(DebugLineParameterisedFixture, ClearLineValidTable) {
@@ -402,7 +421,13 @@ TEST_P(DebugLineParameterisedFixture, ClearLineValidTable) {
   EXPECT_EQ(Expected4->Sequences.size(), 2u);
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(DebugLineBasicFixture, DISABLED_ErrorForReservedLength) {
+#else
 TEST_F(DebugLineBasicFixture, ErrorForReservedLength) {
+#endif
+// EraVM local end
   if (!setupGenerator())
     GTEST_SKIP();
 
@@ -425,7 +450,14 @@ struct DebugLineUnsupportedVersionFixture : public TestWithParam<uint16_t>,
   uint16_t Version;
 };
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_P(DebugLineUnsupportedVersionFixture,
+       DISABLED_ErrorForUnsupportedVersion) {
+#else
 TEST_P(DebugLineUnsupportedVersionFixture, ErrorForUnsupportedVersion) {
+#endif
+// EraVM local end
   if (!setupGenerator())
     GTEST_SKIP();
 
@@ -447,7 +479,9 @@ INSTANTIATE_TEST_SUITE_P(UnsupportedVersionTestParams,
                          Values(/*1 below min */ 1, /* 1 above max */ 6,
                                 /* Maximum possible */ 0xffff));
 
-#ifdef NO_SUPPORT_DEBUG_ADDR
+// EraVM local begin
+#if defined(NO_SUPPORT_DEBUG_ADDR) || defined(_ERAVM)
+// EraVM local end
 TEST_F(DebugLineBasicFixture, DISABLED_ErrorForInvalidV5IncludeDirTable) {
 #else
 TEST_F(DebugLineBasicFixture, ErrorForInvalidV5IncludeDirTable) {
@@ -492,7 +526,9 @@ TEST_F(DebugLineBasicFixture, ErrorForInvalidV5IncludeDirTable) {
           "found"));
 }
 
-#ifdef NO_SUPPORT_DEBUG_ADDR
+// EraVM local begin
+#if defined(NO_SUPPORT_DEBUG_ADDR) || defined(_ERAVM)
+// EraVM local end
 TEST_P(DebugLineParameterisedFixture, DISABLED_ErrorForTooLargePrologueLength) {
 #else
 TEST_P(DebugLineParameterisedFixture, ErrorForTooLargePrologueLength) {
@@ -532,7 +568,9 @@ TEST_P(DebugLineParameterisedFixture, ErrorForTooLargePrologueLength) {
               .str()));
 }
 
-#ifdef NO_SUPPORT_DEBUG_ADDR
+// EraVM local begin
+#if defined(NO_SUPPORT_DEBUG_ADDR) || defined(_ERAVM)
+// EraVM local end
 TEST_P(DebugLineParameterisedFixture, DISABLED_ErrorForTooShortPrologueLength) {
 #else
 TEST_P(DebugLineParameterisedFixture, ErrorForTooShortPrologueLength) {
@@ -590,7 +628,14 @@ INSTANTIATE_TEST_SUITE_P(
            std::make_pair(4, DWARF64), // Test v4 fields and DWARF64.
            std::make_pair(5, DWARF32), std::make_pair(5, DWARF64)));
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(DebugLineBasicFixture,
+       DISABLED_ErrorForExtendedOpcodeLengthSmallerThanExpected) {
+#else
 TEST_F(DebugLineBasicFixture, ErrorForExtendedOpcodeLengthSmallerThanExpected) {
+#endif
+// EraVM local end
   if (!setupGenerator())
     GTEST_SKIP();
 
@@ -619,7 +664,14 @@ TEST_F(DebugLineBasicFixture, ErrorForExtendedOpcodeLengthSmallerThanExpected) {
   EXPECT_EQ((*ExpectedLineTable)->Rows[1].Discriminator, DW_LNS_negate_stmt);
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(DebugLineBasicFixture,
+       DISABLED_ErrorForExtendedOpcodeLengthLargerThanExpected) {
+#else
 TEST_F(DebugLineBasicFixture, ErrorForExtendedOpcodeLengthLargerThanExpected) {
+#endif
+// EraVM local end
   if (!setupGenerator())
     GTEST_SKIP();
 
@@ -648,7 +700,13 @@ TEST_F(DebugLineBasicFixture, ErrorForExtendedOpcodeLengthLargerThanExpected) {
   EXPECT_EQ((*ExpectedLineTable)->Rows[2].IsStmt, 1u);
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(DebugLineBasicFixture, DISABLED_ErrorForUnitLengthTooLarge) {
+#else
 TEST_F(DebugLineBasicFixture, ErrorForUnitLengthTooLarge) {
+#endif
+// EraVM local end
   if (!setupGenerator())
     GTEST_SKIP();
 
@@ -677,7 +735,13 @@ TEST_F(DebugLineBasicFixture, ErrorForUnitLengthTooLarge) {
   EXPECT_EQ((*ExpectedLineTable)->Sequences.size(), 1u);
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(DebugLineBasicFixture, DISABLED_ErrorForMismatchedAddressSize) {
+#else
 TEST_F(DebugLineBasicFixture, ErrorForMismatchedAddressSize) {
+#endif
+// EraVM local end
   if (!setupGenerator(4, 8))
     GTEST_SKIP();
 
@@ -706,8 +770,15 @@ TEST_F(DebugLineBasicFixture, ErrorForMismatchedAddressSize) {
   EXPECT_EQ((*ExpectedLineTable)->Rows[1].Address.Address, Addr2);
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(DebugLineBasicFixture,
+       DISABLED_ErrorForMismatchedAddressSizeUnsetInitialAddress) {
+#else
 TEST_F(DebugLineBasicFixture,
        ErrorForMismatchedAddressSizeUnsetInitialAddress) {
+#endif
+// EraVM local end
   if (!setupGenerator(4, 0))
     GTEST_SKIP();
 
@@ -733,8 +804,15 @@ TEST_F(DebugLineBasicFixture,
   EXPECT_EQ((*ExpectedLineTable)->Rows[1].Address.Address, Addr2);
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(DebugLineBasicFixture,
+       DISABLED_ErrorForUnsupportedAddressSizeInSetAddressLength) {
+#else
 TEST_F(DebugLineBasicFixture,
        ErrorForUnsupportedAddressSizeInSetAddressLength) {
+#endif
+// EraVM local end
   // Use DWARF v4, and 0 for data extractor address size so that the address
   // size is derived from the opcode length.
   if (!setupGenerator(4, 0))
@@ -766,7 +844,13 @@ TEST_F(DebugLineBasicFixture,
   EXPECT_EQ((*ExpectedLineTable)->Rows[0].Address.Address, 0u);
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(DebugLineBasicFixture, DISABLED_ErrorForAddressSizeGreaterThanByteSize) {
+#else
 TEST_F(DebugLineBasicFixture, ErrorForAddressSizeGreaterThanByteSize) {
+#endif
+// EraVM local end
   // Use DWARF v4, and 0 for data extractor address size so that the address
   // size is derived from the opcode length.
   if (!setupGenerator(4, 0))
@@ -790,7 +874,9 @@ TEST_F(DebugLineBasicFixture, ErrorForAddressSizeGreaterThanByteSize) {
   ASSERT_THAT_EXPECTED(ExpectedLineTable, Succeeded());
 }
 
-#ifdef NO_SUPPORT_DEBUG_ADDR
+// EraVM local begin
+#if defined(NO_SUPPORT_DEBUG_ADDR) || defined(_ERAVM)
+// EraVM local end
 TEST_F(DebugLineBasicFixture,
        DISABLED_ErrorForUnsupportedAddressSizeDefinedInHeader) {
 #else
@@ -834,7 +920,13 @@ TEST_F(DebugLineBasicFixture, ErrorForUnsupportedAddressSizeDefinedInHeader) {
   EXPECT_EQ((*ExpectedLineTable)->Rows[0].Address.Address, 0u);
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(DebugLineBasicFixture, DISABLED_CallbackUsedForUnterminatedSequence) {
+#else
 TEST_F(DebugLineBasicFixture, CallbackUsedForUnterminatedSequence) {
+#endif
+// EraVM local end
   if (!setupGenerator())
     GTEST_SKIP();
 
@@ -1048,7 +1140,13 @@ struct OpIndexFixture : Test, CommonFixture {
   }
 };
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(OpIndexFixture, DISABLED_OpIndexAdvance) {
+#else
 TEST_F(OpIndexFixture, OpIndexAdvance) {
+#endif
+// EraVM local end
   if (!setupGenerator(4, 4))
     GTEST_SKIP();
 
@@ -1115,7 +1213,13 @@ TEST_F(OpIndexFixture, OpIndexAdvance) {
   VerifyRow((*Table)->Rows[5], 0x50, 4, 110);
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(OpIndexFixture, DISABLED_OpIndexReset) {
+#else
 TEST_F(OpIndexFixture, OpIndexReset) {
+#endif
+// EraVM local end
   if (!setupGenerator(4, 4))
     GTEST_SKIP();
 
@@ -1178,7 +1282,13 @@ TEST_F(OpIndexFixture, OpIndexReset) {
   EXPECT_EQ((*Table)->Rows[7].OpIndex, 0u);
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(OpIndexFixture, DISABLED_MaxOpsZeroDwarf3) {
+#else
 TEST_F(OpIndexFixture, MaxOpsZeroDwarf3) {
+#endif
+// EraVM local end
   if (!setupGenerator(3, 4))
     GTEST_SKIP();
 
@@ -1195,7 +1305,13 @@ TEST_F(OpIndexFixture, MaxOpsZeroDwarf3) {
   ASSERT_THAT_EXPECTED(Table, Succeeded());
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(OpIndexFixture, DISABLED_MaxOpsZeroDwarf4) {
+#else
 TEST_F(OpIndexFixture, MaxOpsZeroDwarf4) {
+#endif
+// EraVM local end
   if (!setupGenerator(4, 4))
     GTEST_SKIP();
 
@@ -1247,7 +1363,13 @@ struct LineRangeFixture : TestWithParam<std::tuple<uint8_t, bool>>,
   uint8_t LineRange;
 };
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_P(LineRangeFixture, DISABLED_LineRangeProblemsReportedCorrectly) {
+#else
 TEST_P(LineRangeFixture, LineRangeProblemsReportedCorrectly) {
+#endif
+// EraVM local end
   runTest(/*CheckAdvancePC=*/false,
           "but the prologue line_range value is 0. The address and line will "
           "not be adjusted");
@@ -1282,7 +1404,13 @@ struct BadMinInstLenFixture : TestWithParam<std::tuple<uint8_t, bool>>,
   uint8_t MinInstLength;
 };
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_P(BadMinInstLenFixture, DISABLED_MinInstLengthProblemsReportedCorrectly) {
+#else
 TEST_P(BadMinInstLenFixture, MinInstLengthProblemsReportedCorrectly) {
+#endif
+// EraVM local end
   runTest(/*CheckAdvancePC=*/true,
           "but the prologue minimum_instruction_length value is 0, which "
           "prevents any address advancing");
@@ -1293,7 +1421,13 @@ INSTANTIATE_TEST_SUITE_P(
     Values(std::make_tuple(0, true),    // Test zero value (error).
            std::make_tuple(1, false))); // Test non-zero value (no error).
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(DebugLineBasicFixture, DISABLED_ParserParsesCorrectly) {
+#else
 TEST_F(DebugLineBasicFixture, ParserParsesCorrectly) {
+#endif
+// EraVM local end
   if (!setupGenerator())
     GTEST_SKIP();
 
@@ -1320,7 +1454,13 @@ TEST_F(DebugLineBasicFixture, ParserParsesCorrectly) {
   EXPECT_FALSE(Unrecoverable);
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(DebugLineBasicFixture, DISABLED_ParserSkipsCorrectly) {
+#else
 TEST_F(DebugLineBasicFixture, ParserSkipsCorrectly) {
+#endif
+// EraVM local end
   if (!setupGenerator())
     GTEST_SKIP();
 
@@ -1341,7 +1481,13 @@ TEST_F(DebugLineBasicFixture, ParserSkipsCorrectly) {
   EXPECT_FALSE(Unrecoverable);
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(DebugLineBasicFixture, DISABLED_ParserAlwaysDoneForEmptySection) {
+#else
 TEST_F(DebugLineBasicFixture, ParserAlwaysDoneForEmptySection) {
+#endif
+// EraVM local end
   if (!setupGenerator())
     GTEST_SKIP();
 
@@ -1351,7 +1497,14 @@ TEST_F(DebugLineBasicFixture, ParserAlwaysDoneForEmptySection) {
   EXPECT_TRUE(Parser.done());
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(DebugLineBasicFixture,
+       DISABLED_ParserMarkedAsDoneForBadLengthWhenParsing) {
+#else
 TEST_F(DebugLineBasicFixture, ParserMarkedAsDoneForBadLengthWhenParsing) {
+#endif
+// EraVM local end
   if (!setupGenerator())
     GTEST_SKIP();
 
@@ -1374,7 +1527,14 @@ TEST_F(DebugLineBasicFixture, ParserMarkedAsDoneForBadLengthWhenParsing) {
           "reserved unit length of value 0xfffffff0"));
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(DebugLineBasicFixture,
+       DISABLED_ParserMarkedAsDoneForBadLengthWhenSkipping) {
+#else
 TEST_F(DebugLineBasicFixture, ParserMarkedAsDoneForBadLengthWhenSkipping) {
+#endif
+// EraVM local end
   if (!setupGenerator())
     GTEST_SKIP();
 
@@ -1397,7 +1557,14 @@ TEST_F(DebugLineBasicFixture, ParserMarkedAsDoneForBadLengthWhenSkipping) {
           "reserved unit length of value 0xfffffff0"));
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(DebugLineBasicFixture,
+       DISABLED_ParserReportsFirstErrorInEachTableWhenParsing) {
+#else
 TEST_F(DebugLineBasicFixture, ParserReportsFirstErrorInEachTableWhenParsing) {
+#endif
+// EraVM local end
   if (!setupGenerator())
     GTEST_SKIP();
 
@@ -1423,7 +1590,14 @@ TEST_F(DebugLineBasicFixture, ParserReportsFirstErrorInEachTableWhenParsing) {
                         "unsupported version 1"));
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(DebugLineBasicFixture,
+       DISABLED_ParserReportsNonPrologueProblemsWhenParsing) {
+#else
 TEST_F(DebugLineBasicFixture, ParserReportsNonPrologueProblemsWhenParsing) {
+#endif
+// EraVM local end
   if (!setupGenerator())
     GTEST_SKIP();
 
@@ -1455,8 +1629,15 @@ TEST_F(DebugLineBasicFixture, ParserReportsNonPrologueProblemsWhenParsing) {
   EXPECT_FALSE(Unrecoverable);
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(DebugLineBasicFixture,
+       DISABLED_ParserReportsPrologueErrorsInEachTableWhenSkipping) {
+#else
 TEST_F(DebugLineBasicFixture,
        ParserReportsPrologueErrorsInEachTableWhenSkipping) {
+#endif
+// EraVM local end
   if (!setupGenerator())
     GTEST_SKIP();
 
@@ -1482,7 +1663,14 @@ TEST_F(DebugLineBasicFixture,
                         "unsupported version 1"));
 }
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_F(DebugLineBasicFixture,
+       DISABLED_ParserIgnoresNonPrologueErrorsWhenSkipping) {
+#else
 TEST_F(DebugLineBasicFixture, ParserIgnoresNonPrologueErrorsWhenSkipping) {
+#endif
+// EraVM local end
   if (!setupGenerator())
     GTEST_SKIP();
 
@@ -1498,7 +1686,9 @@ TEST_F(DebugLineBasicFixture, ParserIgnoresNonPrologueErrorsWhenSkipping) {
   EXPECT_FALSE(Unrecoverable);
 }
 
-#ifdef NO_SUPPORT_DEBUG_ADDR
+// EraVM local begin
+#if defined(NO_SUPPORT_DEBUG_ADDR) || defined(_ERAVM)
+// EraVM local end
 TEST_F(DebugLineBasicFixture, DISABLED_VerboseOutput) {
 #else
 TEST_F(DebugLineBasicFixture, VerboseOutput) {
@@ -1664,7 +1854,9 @@ struct TruncatedPrologueFixture
   StringRef ExpectedErr;
 };
 
-#ifdef NO_SUPPORT_DEBUG_ADDR
+// EraVM local begin
+#if defined(NO_SUPPORT_DEBUG_ADDR) || defined(_ERAVM)
+// EraVM local end
 TEST_P(TruncatedPrologueFixture, DISABLED_ErrorForTruncatedPrologue) {
 #else
 TEST_P(TruncatedPrologueFixture, ErrorForTruncatedPrologue) {
@@ -1845,7 +2037,14 @@ struct TruncatedExtendedOpcodeFixture
   uint64_t OpcodeLength;
 };
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_P(TruncatedExtendedOpcodeFixture,
+       DISABLED_ErrorForTruncatedExtendedOpcode) {
+#else
 TEST_P(TruncatedExtendedOpcodeFixture, ErrorForTruncatedExtendedOpcode) {
+#endif
+// EraVM local end
   if (!setupGenerator())
     GTEST_SKIP();
   LineTable &LT = setupTable();
@@ -1924,7 +2123,14 @@ INSTANTIATE_TEST_SUITE_P(
             "unexpected end of data at offset 0x35 while reading [0x32, "
             "0x36)")));
 
+// EraVM local begin
+#if defined(_ERAVM)
+TEST_P(TruncatedStandardOpcodeFixture,
+       DISABLED_ErrorForTruncatedStandardOpcode) {
+#else
 TEST_P(TruncatedStandardOpcodeFixture, ErrorForTruncatedStandardOpcode) {
+#endif
+// EraVM local end
   if (!setupGenerator())
     GTEST_SKIP();
   LineTable &LT = setupTable();
@@ -1980,7 +2186,9 @@ INSTANTIATE_TEST_SUITE_P(
             "unable to decode LEB128 at offset 0x00000032: "
             "malformed uleb128, extends past end")));
 
-#ifdef NO_SUPPORT_DEBUG_ADDR
+// EraVM local begin
+#if defined(NO_SUPPORT_DEBUG_ADDR) || defined(_ERAVM)
+// EraVM local end
 TEST_F(DebugLineBasicFixture, DISABLED_PrintPathsProperly) {
 #else
 TEST_F(DebugLineBasicFixture, PrintPathsProperly) {

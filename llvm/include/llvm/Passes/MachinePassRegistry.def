@@ -73,6 +73,9 @@ FUNCTION_PASS("unreachableblockelim", UnreachableBlockElimPass())
 FUNCTION_PASS("verify", VerifierPass())
 FUNCTION_PASS("wasm-eh-prepare", WasmEHPreparePass())
 FUNCTION_PASS("win-eh-prepare", WinEHPreparePass())
+// EraVM local begin
+FUNCTION_PASS("eravmehprepare", EraVMEHPass())
+// EraVM local end
 #undef FUNCTION_PASS
 
 #ifndef LOOP_PASS

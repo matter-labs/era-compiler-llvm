@@ -1,3 +1,5 @@
+; UNSUPPORTED: target=eravm{{.*}}
+; EraVM doesn't support inline asm.
 ; RUN: llc -no-integrated-as < %s
 ; PR1133
 define void @test(ptr %X) nounwind  {

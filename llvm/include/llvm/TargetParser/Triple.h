@@ -106,6 +106,9 @@ public:
     wasm64,         // WebAssembly with 64-bit pointers
     renderscript32, // 32-bit RenderScript
     renderscript64, // 64-bit RenderScript
+    // EraVM local begin
+    eravm,          // EraVM: eravm
+    // EraVM local end
     ve,             // NEC SX-Aurora Vector Engine
     LastArchType = ve
   };
@@ -1068,6 +1071,13 @@ public:
            Env == llvm::Triple::MuslEABIHF ||
            Env == llvm::Triple::EABIHF;
   }
+
+  // EraVM local begin
+  /// Tests whether the target is EraVM.
+  bool isEraVM() const {
+    return getArch() == Triple::eravm;
+  }
+  // EraVM local end
 
   /// Tests whether the target supports comdat
   bool supportsCOMDAT() const {

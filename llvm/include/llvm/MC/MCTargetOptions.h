@@ -26,6 +26,9 @@ enum class ExceptionHandling {
   AIX,      ///< AIX Exception Handling
   ZOS,      ///< z/OS MVS Exception Handling. Very similar to DwarfCFI, but the PPA1
             ///< is used instead of an .eh_frame section.
+  // EraVM local begin
+  EraVM,    ///< EraVM Exception Handling
+  // EraVM local end
 };
 
 enum class EmitDwarfUnwindType {
