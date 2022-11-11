@@ -1340,7 +1340,13 @@ void MCAsmStreamer::emitIntValueInHexWithPadding(uint64_t Value,
 
 void MCAsmStreamer::emitValueImpl(const MCExpr *Value, unsigned Size,
                                   SMLoc Loc) {
+  // EVM local begin
+#if 0
+  // EVM local end
   assert(Size <= 8 && "Invalid size");
+  // EVM local begin
+#endif
+  // EVM local end
   assert(getCurrentSectionOnly() &&
          "Cannot emit contents before setting section!");
   const char *Directive = nullptr;
@@ -1351,6 +1357,11 @@ void MCAsmStreamer::emitValueImpl(const MCExpr *Value, unsigned Size,
   case 4: Directive = MAI->getData32bitsDirective(); break;
   case 8: Directive = MAI->getData64bitsDirective(); break;
   }
+
+  // EVM local begin
+  if (Size == 32)
+    Directive = ".cell\t";
+  // EVM local end
 
   if (!Directive) {
     int64_t IntValue;

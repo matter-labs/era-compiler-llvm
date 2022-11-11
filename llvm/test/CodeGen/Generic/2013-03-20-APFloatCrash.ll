@@ -1,3 +1,6 @@
+; UNSUPPORTED: target=evm{{.*}}
+; EVM doesn't support floats.
+
 ; RUN: llc < %s
 
 define internal i1 @f(float %s) {

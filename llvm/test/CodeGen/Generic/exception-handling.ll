@@ -1,4 +1,6 @@
 ; RUN: llc < %s
+; EVM doesn't support EH.
+; UNSUPPORTED: target=evm{{.*}}
 ; PR10733
 declare void @_Znam()
 

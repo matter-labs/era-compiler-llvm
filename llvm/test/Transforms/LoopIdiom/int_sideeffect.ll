@@ -1,4 +1,5 @@
 ; RUN: opt -S < %s -passes=loop-idiom | FileCheck %s
+; XFAIL: target=evm{{.*}}
 
 declare void @llvm.sideeffect()
 

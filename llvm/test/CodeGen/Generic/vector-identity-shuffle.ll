@@ -1,4 +1,6 @@
 ; RUN: llc < %s 
+; EVM doesn't support vector instructions.
+; UNSUPPORTED: target=evm{{.*}}
 
 
 define void @test(ptr %tmp2.i) {

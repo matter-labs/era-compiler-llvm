@@ -571,6 +571,11 @@ public:
   /// Fetch the type representing a 128-bit integer.
   IntegerType *getInt128Ty() { return Type::getInt128Ty(Context); }
 
+  // EVM local begin
+  /// Fetch the type representing a 256-bit integer.
+  IntegerType *getInt256Ty() { return Type::getInt256Ty(Context); }
+  // EVM local end
+
   /// Fetch the type representing an N-bit integer.
   IntegerType *getIntNTy(unsigned N) {
     return Type::getIntNTy(Context, N);

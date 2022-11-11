@@ -1,5 +1,12 @@
+; UNSUPPORTED: target=evm{{.*}}
+; EVM doesn't support floats.
+; invariant and sideeffect have nothing to do with the codegen.
 ; RUN: llc < %s
 ; RUN: llc -O0 < %s
+
+; EVM doesn't support floats.
+; invariant and sideeffect have nothing to do with the codegen.
+; UNSUPPORTED: target=evm{{.*}}
 
 ; NVPTX can't select sinf(float)/sin(double)
 ; XFAIL: target=nvptx{{.*}}

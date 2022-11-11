@@ -1,5 +1,8 @@
 ; RUN: llc < %s
 
+; TODO: Check cttz, ctlz, ctpop, ConstantPool lowering.
+; XFAIL: target=evm{{.*}}
+
 @.str = internal constant [14 x i8] c"%lld %d %d %d\00"
 
 define i32 @main(i64 %arg) nounwind  {

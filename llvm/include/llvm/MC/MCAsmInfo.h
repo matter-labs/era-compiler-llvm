@@ -387,6 +387,11 @@ protected:
   /// directives, e.g. .word foo(got).
   bool UseParensForSpecifier = false;
 
+  // EVM local begin
+  /// True if target uses @symbol syntax.
+  bool PrependSymbolRefWithAt = false;
+  // EVM local end
+
   /// True if the target supports flags in ".loc" directive, false if only
   /// location is allowed.
   bool SupportsExtendedDwarfLocDirective = true;
@@ -655,6 +660,9 @@ public:
   bool useDwarfRegNumForCFI() const { return DwarfRegNumForCFI; }
   bool useAtForSpecifier() const { return UseAtForSpecifier; }
   bool useParensForSpecifier() const { return UseParensForSpecifier; }
+  // EVM local begin
+  bool prependSymbolRefWithAt() const { return PrependSymbolRefWithAt; }
+  // EVM local end
   bool supportsExtendedDwarfLocDirective() const {
     return SupportsExtendedDwarfLocDirective;
   }

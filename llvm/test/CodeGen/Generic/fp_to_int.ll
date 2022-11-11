@@ -1,3 +1,5 @@
+; EVM doesn't support floats.
+; UNSUPPORTED: target=evm{{.*}}
 ; RUN: llc < %s
 
 define i8 @test1(double %X) {

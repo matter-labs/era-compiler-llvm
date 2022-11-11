@@ -1,3 +1,5 @@
+; EVM doesn't support vectors and floats.
+; UNSUPPORTED: target=evm{{.*}}
 ; RUN: llc < %s
 
 %f8 = type <8 x float>

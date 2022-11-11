@@ -1,5 +1,8 @@
 ; RUN: llc -no-integrated-as < %s
 
+; EVM doesn't support inline asm.
+; UNSUPPORTED: target=evm{{.*}}
+
         %struct..0anon = type { [100 x i32] }
 
 define void @test() {

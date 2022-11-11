@@ -1,3 +1,5 @@
+; UNSUPPORTED: target=evm{{.*}}
+; EVM doesn't support floats.
 ; RUN: llc < %s
 
 define void @QRiterate(double %tmp.212) {

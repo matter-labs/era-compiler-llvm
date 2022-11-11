@@ -455,6 +455,10 @@ public:
   LLVM_ABI static IntegerType *getInt32Ty(LLVMContext &C);
   LLVM_ABI static IntegerType *getInt64Ty(LLVMContext &C);
   LLVM_ABI static IntegerType *getInt128Ty(LLVMContext &C);
+  // EVM local begin
+  LLVM_ABI static IntegerType *getInt256Ty(LLVMContext &C);
+  LLVM_ABI static IntegerType *getInt512Ty(LLVMContext &C);
+  // EVM local end
   template <typename ScalarTy> static Type *getScalarTy(LLVMContext &C) {
     int noOfBits = sizeof(ScalarTy) * CHAR_BIT;
     if (std::is_integral<ScalarTy>::value) {
@@ -477,6 +481,9 @@ public:
   //
   LLVM_ABI static Type *getWasm_ExternrefTy(LLVMContext &C);
   LLVM_ABI static Type *getWasm_FuncrefTy(LLVMContext &C);
+  // EVM local begin
+  LLVM_ABI static PointerType *getInt256PtrTy(LLVMContext &C, unsigned AS = 0);
+  // EVM local end
 
   /// Return a pointer to the current type. This is equivalent to
   /// PointerType::get(Ctx, AddrSpace).

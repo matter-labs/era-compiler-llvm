@@ -1,3 +1,5 @@
+; EVM doesn't support dynamic_stackalloc yet.
+; UNSUPPORTED: target=evm{{.*}}
 ; RUN: llc < %s
 
 ; NVPTX can not select llvm.stacksave (dynamic_stackalloc) and llvm.stackrestore

@@ -830,9 +830,7 @@ private:
       VectorizerEndEPCallbacks;
   // Module callbacks
   // EVM local begin
-  SmallVector<std::function<void(ModulePassManager &, OptimizationLevel,
-                                 ThinOrFullLTOPhase)>,
-              2>
+  SmallVector<std::function<void(ModulePassManager &, OptimizationLevel)>, 2>
       PreInlinerOptimizationsEPCallbacks;
   // EVM local end
   SmallVector<std::function<void(ModulePassManager &, OptimizationLevel,

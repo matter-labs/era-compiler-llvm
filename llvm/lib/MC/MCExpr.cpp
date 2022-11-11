@@ -86,6 +86,8 @@ void MCExpr::print(raw_ostream &OS, const MCAsmInfo *MAI,
     return;
   }
   case MCExpr::SymbolRef: {
+    if (MAI->prependSymbolRefWithAt())
+      OS << '@';
     const MCSymbolRefExpr &SRE = cast<MCSymbolRefExpr>(*this);
     const MCSymbol &Sym = SRE.getSymbol();
     Sym.print(OS, MAI);

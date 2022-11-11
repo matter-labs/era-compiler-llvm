@@ -1,6 +1,9 @@
 ; Make sure this testcase is supported by all code generators
 ; RUN: llc < %s
 
+; TODO: Check cttz, ctlz, ctpop, ConstantPool lowering.
+; XFAIL: target=evm{{.*}}
+
 declare i64 @llvm.ctpop.i64(i64)
 
 declare i32 @llvm.ctpop.i32(i32)

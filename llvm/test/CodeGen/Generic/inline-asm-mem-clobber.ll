@@ -3,6 +3,9 @@
 ; XCore default subtarget does not support 8-byte alignment on stack.
 ; XFAIL: target=xcore{{.*}}
 
+; EVM doesn't support inline asm yet.
+; UNSUPPORTED: target=evm{{.*}}
+
 @G = common global i32 0, align 4
 
 define i32 @foo(ptr %p) nounwind uwtable {

@@ -1,4 +1,6 @@
 ; RUN: llc < %s 
+; EVM doesn't support floats.
+; UNSUPPORTED: target=evm{{.*}}
 ; rdar://5763967
 
 define void @test() {

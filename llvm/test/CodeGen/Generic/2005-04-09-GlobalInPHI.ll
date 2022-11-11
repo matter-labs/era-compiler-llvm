@@ -1,4 +1,6 @@
 ; RUN: llc < %s 
+; UNSUPPORTED: target=evm{{.*}}
+
         %struct.TypHeader = type { i32, ptr, [3 x i8], i8 }
 @.str_67 = external global [4 x i8]             ; <ptr> [#uses=1]
 @.str_87 = external global [17 x i8]            ; <ptr> [#uses=1]

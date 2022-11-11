@@ -1,4 +1,5 @@
 ; RUN: llc < %s
+; UNSUPPORTED: target=evm{{.*}}
 
 @.str_1 = internal constant [16 x i8] c"%d %d %d %d %d\0A\00"           ; <ptr> [#uses=1]
 @XA = external global i32               ; <ptr> [#uses=1]

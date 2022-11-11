@@ -1,3 +1,5 @@
+; EVM doesn't support floats.
+; UNSUPPORTED: target=evm{{.*}}
 ; RUN: llc < %s -pre-RA-sched=default
 ; RUN: llc < %s -pre-RA-sched=list-burr
 ; RUN: llc < %s -pre-RA-sched=fast

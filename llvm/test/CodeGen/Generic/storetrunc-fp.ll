@@ -1,3 +1,5 @@
+; Unsupported because of floats.
+; UNSUPPORTED: target=evm{{.*}}
 ; RUN: llc < %s
 
 define void @foo(double %a, double %b, ptr %fp) {

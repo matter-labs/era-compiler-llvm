@@ -1,5 +1,6 @@
 ; RUN: llc < %s
 ; PR1833
+; UNSUPPORTED: target=evm{{.*}}
 
 	%struct.__class_type_info_pseudo = type { %struct.__type_info_pseudo }
 	%struct.__type_info_pseudo = type { ptr, ptr }

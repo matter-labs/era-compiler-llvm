@@ -1,0 +1,26 @@
+//===------ EVMTargetInfo.cpp - EVM Target Implementation ----*- C++ -*----===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// This file registers the EVM target.
+//
+//===----------------------------------------------------------------------===//
+
+#include "TargetInfo/EVMTargetInfo.h"
+#include "llvm/MC/TargetRegistry.h"
+using namespace llvm;
+
+Target &llvm::getTheEVMTarget() {
+  static Target TheEVMTarget;
+  return TheEVMTarget;
+}
+
+extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTargetInfo() {
+  const RegisterTarget<Triple::evm, /*HasJIT*/ false> X(
+      getTheEVMTarget(), "evm",
+      "Ethereum Virtual Machine [experimental] (256-bit big-endian)", "EVM");
+}

@@ -1,4 +1,5 @@
 ; RUN: llc < %s
+; UNSUPPORTED: target=evm{{.*}}
 
 @letters.3100 = external constant [63 x i8]		; <ptr> [#uses=2]
 

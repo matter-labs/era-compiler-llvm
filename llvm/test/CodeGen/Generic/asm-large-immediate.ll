@@ -1,5 +1,8 @@
 ; RUN: llc -no-integrated-as < %s | FileCheck %s
 
+; EVM doesn't support inline asm yet.
+; UNSUPPORTED: target=evm{{.*}}
+
 define void @test() {
 entry:
 ; CHECK: /* result: 68719476738 */

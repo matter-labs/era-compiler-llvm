@@ -1,4 +1,7 @@
 ; RUN: llc -no-integrated-as < %s
+
+; EVM doesn't support vararg.
+; XFAIL: target=evm{{.*}}
 ; PR1308
 ; PR1557
 

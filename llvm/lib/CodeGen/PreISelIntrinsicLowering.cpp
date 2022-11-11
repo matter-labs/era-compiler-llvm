@@ -628,6 +628,10 @@ public:
     };
 
     const auto *TM = &getAnalysis<TargetPassConfig>().getTM<TargetMachine>();
+    // EVM local begin
+    if (TM->getTargetTriple().isEVM())
+      return false;
+    // EVM local end
     PreISelIntrinsicLowering Lowering(TM, LookupTTI, LookupTLI);
     return Lowering.lowerIntrinsics(M);
   }
@@ -653,6 +657,12 @@ ModulePass *llvm::createPreISelIntrinsicLoweringPass() {
 
 PreservedAnalyses PreISelIntrinsicLoweringPass::run(Module &M,
                                                     ModuleAnalysisManager &AM) {
+  // EVM local begin
+  // This pass can be run through `opt` for the testing purpose,
+  // so TargetMachine can be unavailable.
+  if (TM && TM->getTargetTriple().isEVM())
+    return PreservedAnalyses::all();
+  // EVM local end
   auto &FAM = AM.getResult<FunctionAnalysisManagerModuleProxy>(M).getManager();
 
   auto LookupTTI = [&FAM](Function &F) -> TargetTransformInfo & {

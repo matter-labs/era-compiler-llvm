@@ -1,4 +1,6 @@
 ; RUN: llc < %s
+; EVM doesn't support floats.
+; UNSUPPORTED: target=evm{{.*}}
 
 declare i1 @llvm.isunordered.f64(double, double)
 
