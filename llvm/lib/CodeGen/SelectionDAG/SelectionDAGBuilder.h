@@ -480,6 +480,13 @@ public:
   void LowerStatepoint(const GCStatepointInst &I,
                        const BasicBlock *EHPadBB = nullptr);
 
+  // EraVM local begin
+  // This function is responsible for the whole statepoint lowering process.
+  // It uniformly handles invoke and call eravm.nearcall.
+  void LowerEraVMNearCall(const CallBase &CB,
+                           const BasicBlock *EHPadBB = nullptr);
+  // EraVM local end
+
   void LowerCallSiteWithDeoptBundle(const CallBase *Call, SDValue Callee,
                                     const BasicBlock *EHPadBB);
 

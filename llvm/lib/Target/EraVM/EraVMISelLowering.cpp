@@ -329,8 +329,12 @@ SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 
   SDValue InFlag;
 
+  SDValue AbiData = CLI.EraVMAbiData ? DAG.getRegister(EraVM::R15, MVT::i256)
+                                     : DAG.getRegister(EraVM::R0, MVT::i256);
+
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
     auto VA = ArgLocs[i];
+
     if (!VA.isRegLoc()) {
       assert(VA.isMemLoc());
       SDNode *StackPtr =
@@ -359,12 +363,18 @@ SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
     }
   }
 
+  if (CLI.EraVMAbiData) {
+    Chain = DAG.getCopyToReg(Chain, DL, EraVM::R15, CLI.EraVMAbiData, InFlag);
+    InFlag = Chain.getValue(1);
+  }
+
   // Returns a chain & a flag for retval copy to use.
   SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
   SmallVector<SDValue, 8> Ops;
   Ops.push_back(Chain);
+  Ops.push_back(AbiData);
   Ops.push_back(Callee);
-  if (isa<InvokeInst>(CLI.CB))
+  if (CLI.CB && isa<InvokeInst>(CLI.CB))
     Ops.push_back(CLI.UnwindBB);
 
   // Add argument registers to the end of the list so that they are
@@ -381,6 +391,7 @@ SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
     Chain = DAG.getNode(EraVMISD::INVOKE, DL, NodeTys, Ops);
   else
     Chain = DAG.getNode(EraVMISD::CALL, DL, NodeTys, Ops);
+
   InFlag = Chain.getValue(1);
 
   // Create the CALLSEQ_END node.
@@ -760,6 +771,7 @@ SDValue EraVMTargetLowering::LowerINTRINSIC_VOID(SDValue Op,
       cast<ConstantSDNode>(
           Op.getOperand(Op.getOperand(0).getValueType() == MVT::Other))
           ->getZExtValue();
+
   if (IntNo != Intrinsic::eravm_throw && IntNo != Intrinsic::eravm_return &&
       IntNo != Intrinsic::eravm_revert)
     return {};

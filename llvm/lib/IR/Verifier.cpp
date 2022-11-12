@@ -100,6 +100,7 @@
 #include "llvm/IR/IntrinsicsNVPTX.h"
 // EraVM local begin
 #include "llvm/IR/IntrinsicsEraVM.h"
+#include "llvm/IR/Operator.h"
 // EraVM local end
 #include "llvm/IR/IntrinsicsWebAssembly.h"
 #include "llvm/IR/LLVMContext.h"
@@ -5127,6 +5128,7 @@ void Verifier::visitInstruction(Instruction &I) {
                 F->getIntrinsicID() == Intrinsic::eravm_sstore ||
                 F->getIntrinsicID() == Intrinsic::eravm_throw ||
                 F->getIntrinsicID() == Intrinsic::eravm_farcall ||
+                F->getIntrinsicID() == Intrinsic::eravm_nearcall ||
                 // EraVM local end
                 IsAttachedCallOperand(F, CBI, i),
             "Cannot invoke an intrinsic other than donothing, patchpoint, "
@@ -5616,6 +5618,47 @@ void Verifier::visitIntrinsicCall(Intrinsic::ID ID, CallBase &Call) {
     Check(isa<AllocaInst>(Call.getArgOperand(1)->stripPointerCasts()),
           "llvm.stackprotector parameter #2 must resolve to an alloca.", Call);
     break;
+  // EraVM local begin
+  case Intrinsic::eravm_nearcall: {
+    auto *CalleeFunction = dyn_cast<Function>(Call.getOperand(0));
+    if (!CalleeFunction) {
+      auto *CalleeBitcast = dyn_cast<BitCastInst>(Call.getOperand(0));
+      auto *CalleeBitcastOp = dyn_cast<BitCastOperator>(Call.getOperand(0));
+      Check(CalleeBitcast || CalleeBitcastOp,
+            "llvm.eravm.nearcall parameter #1 must be a statically known "
+            "pointer to a function (bitcasted to i256* if non-opaque pointers "
+            "are used)",
+            Call);
+      CalleeFunction = [CalleeBitcast, CalleeBitcastOp]() {
+        if (CalleeBitcast)
+          return dyn_cast<Function>(CalleeBitcast->getOperand(0));
+        return dyn_cast<Function>(CalleeBitcastOp->getOperand(0));
+      }();
+    }
+    Check(CalleeFunction,
+          "llvm.eravm.nearcall parameter #1 must be a statically known "
+          "pointer to a function (bitcasted to i256* if non-opaque pointers "
+          "are used)",
+          Call);
+    // EraVM does not support vararg functions.
+    Check(isa<CallInst>(Call) &&
+                  // call args + callee ptr + abi data + intrinsic id
+                  CalleeFunction->arg_size() + 3 == Call.getNumOperands() ||
+              // call args + callee ptr + abi data + success bb + unwind bb +
+              // intrinsic id
+              CalleeFunction->arg_size() + 5 == Call.getNumOperands(),
+          "llvm.eravm.nearcall parameters number should be equal to the "
+          "number of the callee parameters plus 2 (the callee and abi data)",
+          Call);
+    for (unsigned i = 0, e = CalleeFunction->arg_size(); i < e; ++i)
+      Check(CalleeFunction->getArg(i)->getType() ==
+                Call.getOperand(i + 2)->getType(),
+            "llvm.eravm.nearcall paramater #" + itostr(i + 3) +
+                " doesn't type match the callee parameter #" + itostr(i + 1),
+            Call);
+    break;
+  }
+  // EraVM local end
   case Intrinsic::localescape: {
     BasicBlock *BB = Call.getParent();
     Check(BB->isEntryBlock(), "llvm.localescape used outside of entry block",

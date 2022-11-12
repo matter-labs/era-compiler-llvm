@@ -4542,6 +4542,7 @@ public:
     std::optional<PtrAuthInfo> PAI;
 
     // EraVM local begin
+    SDValue EraVMAbiData = {};
     SDValue UnwindBB = {};
     // EraVM local end
 

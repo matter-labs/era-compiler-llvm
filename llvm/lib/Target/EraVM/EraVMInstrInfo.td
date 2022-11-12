@@ -819,12 +819,12 @@ def : Pat<(int_eravm_precompile GR256:$rs0, GR256:$rs1),
 
 let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15],
     Uses = [SP], isCall = 1 in {
-   def CALL : Pseudo<(outs), (ins imm16:$callee),
-                   "CALL\t0, @$callee", [(EraVMcall tglobaladdr:$callee)]>;
-   def INVOKE : Pseudo<(outs), (ins imm16:$callee, jmptarget:$unwind),
-                   "INVOKE\tr0, @$callee, @$unwind", [(EraVMinvoke tglobaladdr:$callee, bb:$unwind)]>;
+   def CALL : Pseudo<(outs), (ins GR256:$in1, imm16:$callee),
+                   "CALL\t$in1, @$callee", [(EraVMcall GR256:$in1, tglobaladdr:$callee)]>;
+   def INVOKE : Pseudo<(outs), (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
+                   "INVOKE\t$in1, @$callee, @$unwind", [(EraVMinvoke GR256:$in1, tglobaladdr:$callee, bb:$unwind)]>;
 
-    def NEAR_CALL : ICall<9, CFNormal, (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
+   def NEAR_CALL : ICall<9, CFNormal, (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
                    "near_call\t$in1, @$callee, @$unwind", []>;
 }
 
