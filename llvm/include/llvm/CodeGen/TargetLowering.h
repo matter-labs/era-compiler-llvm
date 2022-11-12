@@ -4318,6 +4318,7 @@ public:
     SmallVector<SDValue, 4> InVals;
     const ConstantInt *CFIType = nullptr;
     // EraVM local begin
+    SDValue EraVMAbiData = {};
     SDValue UnwindBB = {};
     // EraVM local end
 

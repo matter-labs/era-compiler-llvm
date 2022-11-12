@@ -76,6 +76,9 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/IntrinsicsAArch64.h"
+// EraVM local begin
+#include "llvm/IR/IntrinsicsEraVM.h"
+// EraVM local end
 #include "llvm/IR/IntrinsicsWebAssembly.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Metadata.h"
@@ -3056,7 +3059,12 @@ void SelectionDAGBuilder::visitInvoke(const InvokeInst &I) {
       DAG.setRoot(DAG.getNode(ISD::INTRINSIC_VOID, getCurSDLoc(), VTs, Ops));
       break;
     }
+    // EraVM local begin
+    case Intrinsic::eravm_nearcall:
+      LowerEraVMNearCall(cast<CallBase>(I), EHPadBB);
+      break;
     }
+    // EraVM local end
   } else if (I.countOperandBundlesOfType(LLVMContext::OB_deopt)) {
     // Currently we do not lower any intrinsic calls with deopt operand bundles.
     // Eventually we will support lowering the @llvm.experimental.deoptimize
@@ -7139,6 +7147,11 @@ void SelectionDAGBuilder::visitIntrinsicCall(const CallInst &I,
   case Intrinsic::experimental_gc_statepoint:
     LowerStatepoint(cast<GCStatepointInst>(I));
     return;
+  // EraVM local begin
+  case Intrinsic::eravm_nearcall:
+    LowerEraVMNearCall(cast<CallBase>(I));
+    return;
+  // EraVM local end
   case Intrinsic::experimental_gc_result:
     visitGCResult(cast<GCResultInst>(I));
     return;
@@ -10121,6 +10134,7 @@ TargetLowering::LowerCallTo(TargetLowering::CallLoweringInfo &CLI) const {
     Entry.IsSwiftAsync = false;
     Entry.IsSwiftError = false;
     Entry.IsCFGuardTarget = false;
+
     Entry.Alignment = Alignment;
     CLI.getArgs().insert(CLI.getArgs().begin(), Entry);
     CLI.NumFixedArgs += 1;

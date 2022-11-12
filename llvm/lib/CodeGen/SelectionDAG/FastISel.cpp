@@ -1047,6 +1047,7 @@ bool FastISel::lowerCallTo(CallLoweringInfo &CLI) {
       Flags.setCFGuardTarget();
     if (Arg.IsByVal)
       Flags.setByVal();
+
     if (Arg.IsInAlloca) {
       Flags.setInAlloca();
       // Set the byval flag for CCAssignFn callbacks that don't know about

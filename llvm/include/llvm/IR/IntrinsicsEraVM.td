@@ -18,6 +18,7 @@ def int_eravm_delegatecall: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_t
 def int_eravm_callcode: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], []>;
 def int_eravm_staticcall: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], []>;
 def int_eravm_mimiccall: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], []>;
+def int_eravm_nearcall: Intrinsic<[llvm_i256_ty], [llvm_ptr_ty, llvm_i256_ty, llvm_vararg_ty], [Throws]>;
 
 // Get value from the context.
 def int_eravm_this: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
