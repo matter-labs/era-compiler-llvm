@@ -23,6 +23,7 @@ add_llvm_component_library(LLVMSelectionDAG
   SelectionDAGPrinter.cpp
   SelectionDAGTargetInfo.cpp
   StatepointLowering.cpp
+  SyncVMNearCallLowering.cpp
   TargetLowering.cpp
 
   DEPENDS

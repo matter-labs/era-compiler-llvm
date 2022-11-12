@@ -4050,6 +4050,7 @@ public:
     SmallVector<ISD::InputArg, 32> Ins;
     SmallVector<SDValue, 4> InVals;
     // SyncVM local begin
+    SDValue SyncVMAbiData = {};
     SDValue UnwindBB = {};
     // SyncVM local end
 

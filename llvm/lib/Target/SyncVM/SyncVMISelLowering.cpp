@@ -86,9 +86,9 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   }
 
   for (MVT VT : {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}) {
-    setOperationAction(ISD::LOAD,  VT, Custom);
+    setOperationAction(ISD::LOAD, VT, Custom);
     setOperationAction(ISD::STORE, VT, Custom);
-  
+
     setTruncStoreAction(MVT::i256, VT, Expand);
   }
 
@@ -326,19 +326,24 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
 
   SDValue InFlag;
 
+  SDValue AbiData = CLI.SyncVMAbiData ? DAG.getRegister(SyncVM::R15, MVT::i256)
+                                      : DAG.getRegister(SyncVM::R0, MVT::i256);
+
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
     auto VA = ArgLocs[i];
+
     if (!VA.isRegLoc()) {
       assert(VA.isMemLoc());
       SDNode *StackPtr =
-        DAG.getMachineNode(SyncVM::CTXr, DL, MVT::i256, SPCtx, Zero);
+          DAG.getMachineNode(SyncVM::CTXr, DL, MVT::i256, SPCtx, Zero);
 
-      SDValue offset = DAG.getConstant(VA.getLocMemOffset() / 32, DL, MVT::i256);
-      
+      SDValue offset =
+          DAG.getConstant(VA.getLocMemOffset() / 32, DL, MVT::i256);
+
       SDValue StackLocation =
           DAG.getNode(ISD::ADD, DL, MVT::i256, SDValue(StackPtr, 0), offset);
-      MemOpChains.push_back(
-          DAG.getStore(Chain, DL, OutVals[i], StackLocation, MachinePointerInfo()));
+      MemOpChains.push_back(DAG.getStore(Chain, DL, OutVals[i], StackLocation,
+                                         MachinePointerInfo()));
     }
   }
 
@@ -355,12 +360,18 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
     }
   }
 
+  if (CLI.SyncVMAbiData) {
+    Chain = DAG.getCopyToReg(Chain, DL, SyncVM::R15, CLI.SyncVMAbiData, InFlag);
+    InFlag = Chain.getValue(1);
+  }
+
   // Returns a chain & a flag for retval copy to use.
   SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
   SmallVector<SDValue, 8> Ops;
   Ops.push_back(Chain);
+  Ops.push_back(AbiData);
   Ops.push_back(Callee);
-  if (isa<InvokeInst>(CLI.CB))
+  if (CLI.CB && isa<InvokeInst>(CLI.CB))
     Ops.push_back(CLI.UnwindBB);
 
   // Add argument registers to the end of the list so that they are
@@ -373,10 +384,11 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   if (InFlag.getNode())
     Ops.push_back(InFlag);
 
-  if (auto *Invoke = dyn_cast_or_null<InvokeInst>(CLI.CB))
+  if (auto *Invoke = dyn_cast_or_null<InvokeInst>(CLI.CB)) {
     Chain = DAG.getNode(SyncVMISD::INVOKE, DL, NodeTys, Ops);
-  else
+  } else {
     Chain = DAG.getNode(SyncVMISD::CALL, DL, NodeTys, Ops);
+  }
   InFlag = Chain.getValue(1);
 
   // Create the CALLSEQ_END node.
@@ -521,7 +533,8 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
   }
 }
 
-SDValue SyncVMTargetLowering::LowerANY_EXTEND(SDValue Op, SelectionDAG &DAG) const {
+SDValue SyncVMTargetLowering::LowerANY_EXTEND(SDValue Op,
+                                              SelectionDAG &DAG) const {
   SDLoc DL(Op);
   SDValue extending_value = Op.getOperand(0);
   if (extending_value.getValueSizeInBits() == 256) {
@@ -530,7 +543,8 @@ SDValue SyncVMTargetLowering::LowerANY_EXTEND(SDValue Op, SelectionDAG &DAG) con
   return {};
 }
 
-SDValue SyncVMTargetLowering::LowerZERO_EXTEND(SDValue Op, SelectionDAG &DAG) const {
+SDValue SyncVMTargetLowering::LowerZERO_EXTEND(SDValue Op,
+                                               SelectionDAG &DAG) const {
   SDLoc DL(Op);
   SDValue extending_value = Op.getOperand(0);
   if (extending_value.getValueSizeInBits() == 256) {
@@ -561,28 +575,31 @@ SDValue SyncVMTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
 
   LLVM_DEBUG(errs() << "Special handling STORE node:\n"; Op.dump(&DAG));
 
-  // We don't have store of smaller data types, so a snippet of code is needed to represent small stores
+  // We don't have store of smaller data types, so a snippet of code is needed
+  // to represent small stores
 
   // small store is implemented as follows:
   // 1. R = load 256 bits starting from the pointer
   // 2. r <<< n bits; r >>> n bits; to clear top bits
   // 3. V <<< 256 - n bits;
   // 4. R = AND R, V
-  // 5. STORE i256 R 
+  // 5. STORE i256 R
 
-  SDValue OriginalValue = DAG.getLoad(MVT::i256, DL, Chain, BasePtr, PInfo, Store->getAlign());
+  SDValue OriginalValue =
+      DAG.getLoad(MVT::i256, DL, Chain, BasePtr, PInfo, Store->getAlign());
   SDValue SHL = DAG.getNode(ISD::SHL, DL, MVT::i256, OriginalValue,
                             DAG.getConstant(MemVTSize, DL, MVT::i256));
   SDValue SRL = DAG.getNode(ISD::SRL, DL, MVT::i256, SHL,
                             DAG.getConstant(MemVTSize, DL, MVT::i256));
 
-  SDValue ZeroExtendedValue = DAG.getNode(ISD::ZERO_EXTEND, DL, MVT::i256, Store->getValue());
+  SDValue ZeroExtendedValue =
+      DAG.getNode(ISD::ZERO_EXTEND, DL, MVT::i256, Store->getValue());
 
-  SDValue StoreValue = DAG.getNode(ISD::SHL, DL, MVT::i256, ZeroExtendedValue,
-                                   DAG.getConstant(256 - MemVTSize, DL, MVT::i256));
+  SDValue StoreValue =
+      DAG.getNode(ISD::SHL, DL, MVT::i256, ZeroExtendedValue,
+                  DAG.getConstant(256 - MemVTSize, DL, MVT::i256));
   SDValue OR = DAG.getNode(ISD::OR, DL, MVT::i256, StoreValue, SRL);
-  SDValue FinalStore =
-      DAG.getStore(Chain, DL, OR, BasePtr, PInfo);
+  SDValue FinalStore = DAG.getStore(Chain, DL, OR, BasePtr, PInfo);
 
   return FinalStore;
 }
@@ -603,7 +620,7 @@ SDValue SyncVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   LLVM_DEBUG(errs() << "Special handling LOAD node:\n"; Op.dump(&DAG));
 
   Op = DAG.getLoad(MVT::i256, DL, Chain, BasePtr, PInfo, Load->getAlign());
-  
+
   // right-shifting:
   unsigned SRLValue = 256 - MemVTSize;
   SDValue SHR = DAG.getNode(ISD::SRL, DL, MVT::i256, Op,
@@ -756,6 +773,7 @@ SDValue SyncVMTargetLowering::LowerINTRINSIC_VOID(SDValue Op,
       cast<ConstantSDNode>(
           Op.getOperand(Op.getOperand(0).getValueType() == MVT::Other))
           ->getZExtValue();
+
   if (IntNo != Intrinsic::syncvm_throw && IntNo != Intrinsic::syncvm_return &&
       IntNo != Intrinsic::syncvm_revert)
     return {};
