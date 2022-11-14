@@ -20,7 +20,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         -DCMAKE_BUILD_TYPE='Release' \
         -DLLVM_TARGETS_TO_BUILD='SyncVM' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
-        -DLLVM_BUILD_TESTS='Off' \
+        -DLLVM_BUILD_TESTS='On' \
         -DLLVM_BUILD_DOCS='Off' \
         -DLLVM_INCLUDE_DOCS='Off' \
         -DLLVM_INCLUDE_TESTS='On' \
