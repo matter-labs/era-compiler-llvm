@@ -19,11 +19,12 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         -DCMAKE_INSTALL_PREFIX="${TARGET_INSTALL}" \
         -DCMAKE_BUILD_TYPE='Release' \
         -DLLVM_TARGETS_TO_BUILD='SyncVM' \
+        -DLLVM_DEFAULT_TARGET_TRIPLE='syncvm' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
-        -DLLVM_BUILD_TESTS='Off' \
+        -DLLVM_BUILD_TESTS='On' \
         -DLLVM_BUILD_DOCS='Off' \
         -DLLVM_INCLUDE_DOCS='Off' \
-        -DLLVM_INCLUDE_TESTS='Off' \
+        -DLLVM_INCLUDE_TESTS='On' \
         -DLLVM_ENABLE_ASSERTIONS='On' \
         -DLLVM_ENABLE_TERMINFO='Off' \
         -DLLVM_ENABLE_DOXYGEN='Off' \
@@ -32,7 +33,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         -DLLVM_ENABLE_ZLIB='Off' \
         -DLLVM_ENABLE_LIBXML2='Off' \
         -DLLVM_ENABLE_BINDINGS='Off' \
-        -DCMAKE_OSX_DEPLOYMENT_TARGET='10.9'
+        -DCMAKE_OSX_DEPLOYMENT_TARGET='11.0'
 elif [[ -f '/etc/arch-release' ]]; then
     if [[ -z ${CI_RUNNING+x} ]]; then
         sudo pacman --sync --refresh --sysupgrade --noconfirm \
@@ -54,12 +55,13 @@ elif [[ -f '/etc/arch-release' ]]; then
         -DCMAKE_C_COMPILER='clang' \
         -DCMAKE_CXX_COMPILER='clang++' \
         -DLLVM_TARGETS_TO_BUILD='SyncVM' \
+        -DLLVM_DEFAULT_TARGET_TRIPLE='syncvm' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
         -DLLVM_USE_LINKER='lld' \
-        -DLLVM_BUILD_TESTS='Off' \
+        -DLLVM_BUILD_TESTS='On' \
         -DLLVM_BUILD_DOCS='Off' \
         -DLLVM_INCLUDE_DOCS='Off' \
-        -DLLVM_INCLUDE_TESTS='Off' \
+        -DLLVM_INCLUDE_TESTS='On' \
         -DLLVM_ENABLE_ASSERTIONS='On' \
         -DLLVM_ENABLE_TERMINFO='Off' \
         -DLLVM_ENABLE_DOXYGEN='Off' \
@@ -91,12 +93,13 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         -DCMAKE_C_COMPILER="clang-${LLVM_VERSION}" \
         -DCMAKE_CXX_COMPILER="clang++-${LLVM_VERSION}" \
         -DLLVM_TARGETS_TO_BUILD='SyncVM' \
+        -DLLVM_DEFAULT_TARGET_TRIPLE='syncvm' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
         -DLLVM_USE_LINKER="lld-${LLVM_VERSION}" \
-        -DLLVM_BUILD_TESTS='Off' \
+        -DLLVM_BUILD_TESTS='On' \
         -DLLVM_BUILD_DOCS='Off' \
         -DLLVM_INCLUDE_DOCS='Off' \
-        -DLLVM_INCLUDE_TESTS='Off' \
+        -DLLVM_INCLUDE_TESTS='On' \
         -DLLVM_ENABLE_ASSERTIONS='On' \
         -DLLVM_ENABLE_TERMINFO='Off' \
         -DLLVM_ENABLE_DOXYGEN='Off' \
