@@ -56,10 +56,10 @@ elif [[ -f '/etc/arch-release' ]]; then
         -DLLVM_TARGETS_TO_BUILD='SyncVM' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
         -DLLVM_USE_LINKER='lld' \
-        -DLLVM_BUILD_TESTS='Off' \
+        -DLLVM_BUILD_TESTS='On' \
         -DLLVM_BUILD_DOCS='Off' \
         -DLLVM_INCLUDE_DOCS='Off' \
-        -DLLVM_INCLUDE_TESTS='Off' \
+        -DLLVM_INCLUDE_TESTS='On' \
         -DLLVM_ENABLE_ASSERTIONS='On' \
         -DLLVM_ENABLE_TERMINFO='Off' \
         -DLLVM_ENABLE_DOXYGEN='Off' \
@@ -93,10 +93,10 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         -DLLVM_TARGETS_TO_BUILD='SyncVM' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
         -DLLVM_USE_LINKER="lld-${LLVM_VERSION}" \
-        -DLLVM_BUILD_TESTS='Off' \
+        -DLLVM_BUILD_TESTS='On' \
         -DLLVM_BUILD_DOCS='Off' \
         -DLLVM_INCLUDE_DOCS='Off' \
-        -DLLVM_INCLUDE_TESTS='Off' \
+        -DLLVM_INCLUDE_TESTS='On' \
         -DLLVM_ENABLE_ASSERTIONS='On' \
         -DLLVM_ENABLE_TERMINFO='Off' \
         -DLLVM_ENABLE_DOXYGEN='Off' \
