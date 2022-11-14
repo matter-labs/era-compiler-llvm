@@ -107,6 +107,9 @@ jobs:
         if: always() && steps.compiler_tester_run.outcome == 'failure' && env.RUN_SEGFAULT_STEP == 'true'
         run: ${DOCKER_CMD} sh -c 'cd compiler-tester && ./segfault.sh'
 
+      - name: Testing with LLVM Lit.
+        run: ${DOCKER_CMD} sh -c 'cd compiler-llvm && ninja -C build-target check-all'
+
       - uses: 8398a7/action-slack@v3
         with:
           status: ${{ job.status }}
