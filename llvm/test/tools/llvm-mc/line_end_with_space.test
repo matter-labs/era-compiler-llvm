@@ -1,1 +1,3 @@
+# XFAIL: syncvm
+
 RUN: llvm-mc -disassemble %s

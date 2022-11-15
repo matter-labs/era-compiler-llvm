@@ -1,4 +1,6 @@
 ;; Test valid and invalid -binutils-version values.
+; XFAIL: syncvm
+
 ; RUN: llc %s -filetype=null -binutils-version=none
 ; RUN: llc %s -filetype=null -binutils-version=2
 ; RUN: llc %s -filetype=null -binutils-version=2.35
