@@ -16,6 +16,7 @@
 ; skippable passes skipped.
 
 ; REQUIRES: default_triple
+; UNSUPPORTED: syncvm
 ; RUN: opt -O3 -opt-bisect-limit=0 -enable-new-pm=0 < %s | llc -O3 -opt-bisect-limit=0
 
 
