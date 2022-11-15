@@ -72,7 +72,7 @@ TEST(TripleTest, BasicParsing) {
   EXPECT_EQ("d", T.getEnvironmentName().str());
 }
 
-TEST(TripleTest, ParsedIDs) {
+TEST(TripleTest, DISABLED_ParsedIDs) {
   Triple T;
 
   T = Triple("i386-apple-darwin");
@@ -814,7 +814,7 @@ static std::string Join(StringRef A, StringRef B, StringRef C, StringRef D) {
   return Str;
 }
 
-TEST(TripleTest, Normalization) {
+TEST(TripleTest, DISABLED_Normalization) {
 
   EXPECT_EQ("unknown", Triple::normalize(""));
   EXPECT_EQ("unknown-unknown", Triple::normalize("-"));
@@ -988,7 +988,7 @@ TEST(TripleTest, MutateName) {
   EXPECT_EQ("i386-pc-darwin", T.getTriple());
 }
 
-TEST(TripleTest, BitWidthPredicates) {
+TEST(TripleTest, DISABLED_BitWidthPredicates) {
   Triple T;
   EXPECT_FALSE(T.isArch16Bit());
   EXPECT_FALSE(T.isArch32Bit());
@@ -1153,7 +1153,7 @@ TEST(TripleTest, BitWidthPredicates) {
   EXPECT_TRUE(T.isDXIL());
 }
 
-TEST(TripleTest, BitWidthArchVariants) {
+TEST(TripleTest, DISABLED_BitWidthArchVariants) {
   Triple T;
   EXPECT_EQ(Triple::UnknownArch, T.get32BitArchVariant().getArch());
   EXPECT_EQ(Triple::UnknownArch, T.get64BitArchVariant().getArch());
@@ -1347,7 +1347,7 @@ TEST(TripleTest, BitWidthArchVariants) {
   EXPECT_EQ(Triple::UnknownArch, T.get64BitArchVariant().getArch());
 }
 
-TEST(TripleTest, EndianArchVariants) {
+TEST(TripleTest, DISABLED_EndianArchVariants) {
   Triple T;
   EXPECT_EQ(Triple::UnknownArch, T.getBigEndianArchVariant().getArch());
   EXPECT_EQ(Triple::UnknownArch, T.getLittleEndianArchVariant().getArch());

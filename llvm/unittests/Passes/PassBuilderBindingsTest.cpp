@@ -55,7 +55,7 @@ public:
   LLVMContextRef Context;
 };
 
-TEST_F(PassBuilderCTest, Basic) {
+TEST_F(PassBuilderCTest, DISABLED_Basic) {
   LLVMPassBuilderOptionsRef Options = LLVMCreatePassBuilderOptions();
   LLVMPassBuilderOptionsSetLoopUnrolling(Options, 1);
   LLVMPassBuilderOptionsSetVerifyEach(Options, 1);
@@ -69,7 +69,7 @@ TEST_F(PassBuilderCTest, Basic) {
   LLVMDisposePassBuilderOptions(Options);
 }
 
-TEST_F(PassBuilderCTest, InvalidPassIsError) {
+TEST_F(PassBuilderCTest, DISABLED_InvalidPassIsError) {
   LLVMPassBuilderOptionsRef Options = LLVMCreatePassBuilderOptions();
   LLVMErrorRef E1 = LLVMRunPasses(Module, "", TM, Options);
   LLVMErrorRef E2 = LLVMRunPasses(Module, "does-not-exist-pass", TM, Options);
