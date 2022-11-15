@@ -183,7 +183,7 @@ bool UnreachableMachineBlockElim::runOnMachineFunction(MachineFunction &F) {
             // with the input.
             const TargetInstrInfo *TII = F.getSubtarget().getInstrInfo();
             // SyncVM local begin
-            BuildCOPY(*BB, BB->getFirstNonPHI(), phi->getDebugLoc(), TII,
+            BuildCOPY(BB, BB.getFirstNonPHI(), phi->getDebugLoc(), TII,
                       OutputReg)
                 .addReg(InputReg, getRegState(Input), InputSub);
             // SyncVM local end
