@@ -1,4 +1,5 @@
 ; REQUIRES: default_triple, object-emission
+; UNSUPPORTED: syncvm
 ;
 ; RUN: llvm-link %s %p/type-unique-odr-b.ll -S -o - \
 ; RUN:   | %llc_dwarf -dwarf-linkage-names=All -filetype=obj -O0 \
