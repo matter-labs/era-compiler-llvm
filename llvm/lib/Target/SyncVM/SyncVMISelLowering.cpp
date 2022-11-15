@@ -84,7 +84,8 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::STACKRESTORE, MVT::Other, Custom);
 
   // Intrinsics lowering
-  setOperationAction(ISD::INTRINSIC_VOID, MVT::Other, Custom);
+  setOperationAction({ISD::INTRINSIC_VOID, ISD::INTRINSIC_WO_CHAIN},
+                     MVT::Other, Custom);
 
   for (MVT VT : MVT::integer_valuetypes()) {
     setLoadExtAction(ISD::SEXTLOAD, MVT::i256, VT, Custom);
@@ -559,6 +560,8 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
     return LowerSREM(Op, DAG);
   case ISD::INTRINSIC_VOID:
     return LowerINTRINSIC_VOID(Op, DAG);
+  case ISD::INTRINSIC_WO_CHAIN:
+    return LowerINTRINSIC_WO_CHAIN(Op, DAG);
   case ISD::STACKSAVE:
     return LowerSTACKSAVE(Op, DAG);
   case ISD::STACKRESTORE:
@@ -844,6 +847,33 @@ SyncVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
                                                   MachineBasicBlock *BB) const {
   llvm_unreachable("No instruction require custom inserter");
   return nullptr;
+}
+SDValue SyncVMTargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
+                                                      SelectionDAG &DAG) const {
+  unsigned IntrinsicID = cast<ConstantSDNode>(Op.getOperand(0))->getZExtValue();
+  EVT VT = Op.getValueType();
+  SDLoc DL(Op);
+
+  switch (IntrinsicID) {
+  default:
+    break;
+  case Intrinsic::syncvm_ptrtoint: {
+    return DAG.getNode(SyncVMISD::PTR_TO_INT, DL, VT, Op.getOperand(1));
+  }
+  case Intrinsic::syncvm_ptr_add: {
+    return DAG.getNode(SyncVMISD::PTR_ADD, DL, VT, Op.getOperand(1),
+                       Op.getOperand(2));
+  }
+  case Intrinsic::syncvm_ptr_shrink: {
+    return DAG.getNode(SyncVMISD::PTR_SHRINK, DL, VT, Op.getOperand(1),
+                       Op.getOperand(2));
+  }
+  case Intrinsic::syncvm_ptr_pack: {
+    return DAG.getNode(SyncVMISD::PTR_PACK, DL, VT, Op.getOperand(1),
+                       Op.getOperand(2));
+  }
+  }
+  return SDValue();
 }
 
 SDValue SyncVMTargetLowering::LowerINTRINSIC_VOID(SDValue Op,

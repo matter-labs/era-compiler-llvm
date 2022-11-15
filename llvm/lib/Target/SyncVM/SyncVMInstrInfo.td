@@ -26,7 +26,10 @@ def SDT_SyncVMSelectCC     : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
 def SDT_SyncVMCmp          : SDTypeProfile<0, 2, []>;
 def SDT_SyncVMThrow        : SDTypeProfile<0, 1, [SDTCisVT<0, i256>]>;
 
-def SDT_SyncVMCopyFromPtrReg : SDTypeProfile<1, 1, [SDTCisPtrTy<0>]>;
+def SDT_SyncVMCopyFromPtrReg : SDTypeProfile<1, 1, [SDTCisVT<0, fatptr>]>;
+
+def SDT_SyncVMPtrToInt     : SDTypeProfile<1, 1, [SDTCisVT<0, i256>, SDTCisVT<1, fatptr>]>;
+def SDT_SyncVMPtrOp        : SDTypeProfile<1, 2, [SDTCisVT<0, fatptr>, SDTCisVT<1, fatptr>, SDTCisVT<2, i256>]>;
 
 //===----------------------------------------------------------------------===//
 // SyncVM Specific Node Definitions.
@@ -71,6 +74,11 @@ def SyncVMrevert : SDNode<"SyncVMISD::REVERT", SDT_SyncVMThrow,
 def SyncVMcopy_from_ptrreg : SDNode<"SyncVMISD::COPY_FROM_PTRREG",
                                     SDT_SyncVMCopyFromPtrReg,
                                     [SDNPHasChain, SDNPOptInGlue]>;
+
+def SyncVMptr_to_int : SDNode<"SyncVMISD::PTR_TO_INT", SDT_SyncVMPtrToInt, []>;
+def SyncVMptr_add    : SDNode<"SyncVMISD::PTR_ADD", SDT_SyncVMPtrOp, []>;
+def SyncVMptr_pack   : SDNode<"SyncVMISD::PTR_PACK", SDT_SyncVMPtrOp, []>;
+def SyncVMptr_shrink : SDNode<"SyncVMISD::PTR_SHRINK", SDT_SyncVMPtrOp, []>;
 
 //===----------------------------------------------------------------------===//
 // SyncVM Operand Definitions.
@@ -898,7 +906,7 @@ multiclass PtrInstr<bits<8> opcode, string asmstring, SDPatternOperator node> {
 // This is a bridge to convert GRPTR type to GR256 type. It will get eliminated in a post RA pass.
 def PTR_TO_INT : Pseudo<(outs GR256:$rd0), (ins GRPTR:$rs0),
                         "ptrtoint\t$rs0, $rd0",
-                        [(set GR256:$rd0, (int_syncvm_ptrtoint GRPTR:$rs0))]>;
+                        [(set GR256:$rd0, (SyncVMptr_to_int GRPTR:$rs0))]>;
 
 multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit commutes> {
   let BaseOpcode = asmstring, isCommutable = commutes in {
@@ -1115,9 +1123,9 @@ defm ADD  : ArithICommutable<2,  "add", add>;
 defm SUB  : ArithINonCommutable<4, "sub", sub>;
 
 // pointer arithmetic
-defm PTR_ADD    : PtrInstr<159, "ptr.add", int_syncvm_ptr_add>;
-defm PTR_PACK   : PtrInstr<160, "ptr.pack", int_syncvm_ptr_pack>;
-defm PTR_SHRINK : PtrInstr<161, "ptr.shrink", int_syncvm_ptr_shrink>;
+defm PTR_ADD    : PtrInstr<159, "ptr.add", SyncVMptr_add>;
+defm PTR_PACK   : PtrInstr<160, "ptr.pack", SyncVMptr_pack>;
+defm PTR_SHRINK : PtrInstr<161, "ptr.shrink", SyncVMptr_shrink>;
 
 // MOV patterns
 def : Pat<(store_stack (load_code memaddr:$src), stackaddr:$dst),  (ADDcrs_p memaddr:$src, R0, stackaddr:$dst)>;
@@ -1177,7 +1185,6 @@ def FATPTR_LD : IUMA < 45, (outs GRPTR:$rd0), (ins GRPTR:$rs0, cc:$cc),
 }
 def     : Pat<(load_heap GR256:$rs0), (LD1 GR256:$rs0, 0)>;
 def     : Pat<(load_heapaux GR256:$rs0), (LD2 GR256:$rs0, 0)>;
-def     : Pat<(load_generic GRPTR:$rs0), (LD GRPTR:$rs0, 0)>;
 
 let mayStore = 1 in {
 def ST1  : IUMA < 44, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
