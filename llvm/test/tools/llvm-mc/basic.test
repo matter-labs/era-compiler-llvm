@@ -1,3 +1,4 @@
-# RUN: not llvm-mc %t.blah -o /dev/null 2>&1 | FileCheck -DMSG=%errc_ENOENT --check-prefix=ENOENT %s
+# XFAIL: syncvm
 
+# RUN: not llvm-mc %t.blah -o /dev/null 2>&1 | FileCheck -DMSG=%errc_ENOENT --check-prefix=ENOENT %s
 # ENOENT: {{.*}}.blah: [[MSG]]
