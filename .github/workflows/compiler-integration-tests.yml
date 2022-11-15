@@ -108,7 +108,7 @@ jobs:
         run: ${DOCKER_CMD} sh -c 'cd compiler-tester && ./segfault.sh'
 
       - name: Testing with LLVM Lit.
-        run: ${DOCKER_CMD} sh -c 'cd compiler-llvm && ninja -C build-target check-all'
+        run: ${DOCKER_CMD} sh -c 'cd compiler-llvm && ninja -C build-target check-llvm'
 
       - uses: 8398a7/action-slack@v3
         with:
