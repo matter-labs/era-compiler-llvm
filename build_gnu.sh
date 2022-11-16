@@ -19,6 +19,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         -DCMAKE_INSTALL_PREFIX="${TARGET_INSTALL}" \
         -DCMAKE_BUILD_TYPE='Release' \
         -DLLVM_TARGETS_TO_BUILD='SyncVM' \
+        -DLLVM_DEFAULT_TARGET_TRIPLE='syncvm' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
         -DLLVM_BUILD_TESTS='Off' \
         -DLLVM_BUILD_DOCS='Off' \
