@@ -1,3 +1,5 @@
+; XFAIL: syncvm
+
 ; RUN: opt -S -instcombine < %s | FileCheck %s
 
 ; The last test needs this weird datalayout.
