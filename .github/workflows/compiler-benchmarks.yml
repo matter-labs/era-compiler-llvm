@@ -26,12 +26,12 @@ on:
         description: "Input an upstream compiler-llvm repo branch to use as a benchmark candidate"
         required: true
         default: "dev-1.2"
-      compiler_llvm_benchmark_domain:
-        description: "Input domain for compiler-llvm benchmarks"
+      compiler_llvm_benchmark_mode:
+        description: "Input mode filter for compiler-llvm benchmarks"
         required: false
         default: "+M^I+B3"
-      compiler_llvm_benchmark_filter:
-        description: "Input filter for compiler-llvm benchmarks"
+      compiler_llvm_benchmark_path:
+        description: "Input path filter for compiler-llvm benchmarks"
         required: false
         default: ""
 
@@ -53,8 +53,8 @@ jobs:
           echo "COMPOSE_PROJECT_NAME=candidate" >> $GITHUB_ENV
           echo "DOCKER_CMD=docker-compose exec -T zk" >> $GITHUB_ENV
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '+M^I+B3' }}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_filter || '' }}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_MODE=${{ github.event.inputs.compiler_llvm_benchmark_mode || '+M^I+B3' }}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_PATH=${{ github.event.inputs.compiler_llvm_benchmark_path || '' }}" >> $GITHUB_ENV
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_candidate_branch || 'vm1.2' }}" >> $GITHUB_ENV
           echo "COMPILER_LLVM_CANDIDATE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_candidate_branch }}" >> $GITHUB_ENV
 
@@ -119,7 +119,7 @@ jobs:
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
           export LLVM_SYS_130_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-          cargo run --release --bin compiler-tester -- --filter=${{ env.LLVM_BENCHMARK_FILTER }} --domain=${{ env.LLVM_BENCHMARK_DOMAIN }} --benchmark=candidate.json'
+          cargo run --release --bin compiler-tester -- --path=${{ env.LLVM_BENCHMARK_PATH }} --mode=${{ env.LLVM_BENCHMARK_MODE }} --benchmark=candidate.json'
 
       - uses: actions/upload-artifact@v3
         with:
@@ -150,8 +150,8 @@ jobs:
           echo "COMPOSE_PROJECT_NAME=reference" >> $GITHUB_ENV
           echo "DOCKER_CMD=docker-compose exec -T zk" >> $GITHUB_ENV
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_DOMAIN=${{ github.event.inputs.compiler_llvm_benchmark_domain || '+M^I+B3' }}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_FILTER=${{ github.event.inputs.compiler_llvm_benchmark_filter || '' }}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_MODE=${{ github.event.inputs.compiler_llvm_benchmark_mode || '+M^I+B3' }}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_PATH=${{ github.event.inputs.compiler_llvm_benchmark_path || '' }}" >> $GITHUB_ENV
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_reference_branch || 'vm1.2' }}" >> $GITHUB_ENV
           echo "COMPILER_LLVM_CANDIDATE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_reference_branch }}" >> $GITHUB_ENV
 
@@ -217,7 +217,7 @@ jobs:
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
           git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
           export LLVM_SYS_130_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-          cargo run --release --bin compiler-tester -- --filter=${{ env.LLVM_BENCHMARK_FILTER }} --domain=${{ env.LLVM_BENCHMARK_DOMAIN }} --benchmark=reference.json'
+          cargo run --release --bin compiler-tester -- --path=${{ env.LLVM_BENCHMARK_PATH }} --mode=${{ env.LLVM_BENCHMARK_MODE }} --benchmark=reference.json'
 
       - uses: actions/upload-artifact@v3
         with:
