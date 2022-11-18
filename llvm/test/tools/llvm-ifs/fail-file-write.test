@@ -1,6 +1,6 @@
 ## Test failing to write output file on non-windows platforms.
 
-# UNSUPPORTED: system-windows
+# UNSUPPORTED: system-windows, syncvm
 # RUN: rm -rf %t.TestDir
 # RUN: mkdir %t.TestDir
 # RUN: touch %t.TestDir/Output.TestFile
