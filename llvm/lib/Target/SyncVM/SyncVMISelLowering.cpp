@@ -102,8 +102,6 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::ZERO_EXTEND, MVT::i256, Custom);
   setOperationAction(ISD::ANY_EXTEND, MVT::i256, Custom);
 
-  setOperationAction(ISD::CopyFromReg, MVT::fatptr, Custom);
-
   setTargetDAGCombine(ISD::ZERO_EXTEND);
 
   setJumpIsExpensive(false);
@@ -182,8 +180,7 @@ SyncVMTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
     CCValAssign &VA = RVLocs[i];
     assert(VA.isRegLoc() && "Can only return in registers!");
 
-    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(),
-                             OutVals[i], Flag);
+    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), OutVals[i], Flag);
 
     // Guarantee that all emitted copies are stuck together,
     // avoiding something bad.
@@ -191,7 +188,7 @@ SyncVMTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
     RetOps.push_back(DAG.getRegister(VA.getLocReg(), VA.getLocVT()));
   }
 
-  RetOps[0] = Chain;  // Update chain.
+  RetOps[0] = Chain; // Update chain.
 
   // Add the flag if we have it.
   if (Flag.getNode())
@@ -566,8 +563,6 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
     return LowerSTACKSAVE(Op, DAG);
   case ISD::STACKRESTORE:
     return LowerSTACKRESTORE(Op, DAG);
-  case ISD::CopyFromReg:
-    return LowerCopyFromReg(Op, DAG);
   }
 }
 
@@ -819,6 +814,9 @@ SDValue SyncVMTargetLowering::LowerSELECT_CC(SDValue Op,
   return DAG.getNode(SyncVMISD::SELECT_CC, DL, VTs, Ops);
 }
 
+// TODO: CPR-885 Get rid of LowerCopyToReg in ISelLowering
+// It seems an outdated design solution from SyncVM v1.0. We should check if it
+// still needed, and if it is, use BytesToCells pass instead.
 SDValue SyncVMTargetLowering::LowerCopyToReg(SDValue Op,
                                              SelectionDAG &DAG) const {
   SDLoc DL(Op);
@@ -923,21 +921,6 @@ SDValue SyncVMTargetLowering::LowerSTACKRESTORE(SDValue Op,
                      CurrentSP.getValue(1), SPDelta);
 }
 
-SDValue SyncVMTargetLowering::LowerCopyFromReg(SDValue Op,
-                                               SelectionDAG &DAG) const {
-  SDLoc DL(Op);
-
-  if (Op.getSimpleValueType() != MVT::fatptr) {
-    return SDValue();
-  }
-
-  std::vector<SDValue> Ops =
-      makeArrayRef<SDValue>({Op->op_begin(), Op->op_end()});
-
-  SDVTList Tys = Op->getVTList();
-  return DAG.getNode(SyncVMISD::COPY_FROM_PTRREG, DL, Tys, Ops);
-}
-
 void SyncVMTargetLowering::ReplaceNodeResults(SDNode *N,
                                               SmallVectorImpl<SDValue> &Results,
                                               SelectionDAG &DAG) const {
@@ -980,8 +963,9 @@ SDValue SyncVMTargetLowering::PerformDAGCombine(SDNode *N,
   return val;
 }
 
-Register SyncVMTargetLowering::getRegisterByName(const char *RegName, LLT VT,
-                                              const MachineFunction &MF) const {
+Register
+SyncVMTargetLowering::getRegisterByName(const char *RegName, LLT VT,
+                                        const MachineFunction &MF) const {
   Register Reg = StringSwitch<unsigned>(RegName)
                      .Case("r0", SyncVM::R0)
                      .Case("r1", SyncVM::R1)
