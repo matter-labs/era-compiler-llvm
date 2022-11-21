@@ -1,4 +1,5 @@
 ## Test failing to write output file on non-windows platforms.
+## Unsupported on syncvm as CI currently runs with root permission.
 
 # UNSUPPORTED: system-windows, syncvm
 # RUN: rm -rf %t.TestDir
