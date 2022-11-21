@@ -1,5 +1,6 @@
 ## Unsupported on windows as marking files "unreadable"
 ## is non-trivial on windows.
+## Unsupported on syncvm as CI currently runs with root permission.
 # UNSUPPORTED: system-windows, syncvm
 
 # RUN: rm -rf %t && mkdir -p %t
