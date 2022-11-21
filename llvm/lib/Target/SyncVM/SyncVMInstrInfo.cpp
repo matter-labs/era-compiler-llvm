@@ -394,24 +394,26 @@ bool SyncVMInstrInfo::hasRROperandAddressingMode(const MachineInstr &MI) const {
   return LCIt != Mnemonic.end() && *LCIt == 'r' && *std::next(LCIt) == 'r';
 }
 
-// So far the only place we found that needs additional tagging to keep fatptr semantics
-// is the COPY instruction, so at the moment we only tag COPY instructions.
+/// Mark a copy to a fat pointer register or from a fat pointer register with
+/// IsFatPtr MI flag. Then when COPY is lowered to a real instruction the flag
+/// is used to choose between add and ptr.add.
 void SyncVMInstrInfo::tagFatPointerCopy(MachineInstr &MI) const {
   if (!MI.isCopy())
     return;
 
+  const MachineRegisterInfo &MRI = MI.getParent()->getParent()->getRegInfo();
   Register DstReg = MI.getOperand(0).getReg();
+  // If COPY doesn't have arguments use destination reg class twice in the
+  // check.
+  Register SrcReg = (MI.getNumOperands() > 1 && MI.getOperand(1).isReg())
+                        ? MI.getOperand(1).getReg()
+                        : DstReg;
 
-  if (!DstReg.isVirtual()) {
-    return;
-  }
+  auto isFPReg = [&MRI](Register R) {
+    return R.isVirtual() &&
+           MRI.getRegClass(R)->getID() == SyncVM::GRPTRRegClassID;
+  };
 
-  // look up to see if registers are fat pointers
-  const TargetRegisterClass *RC =
-      MI.getParent()->getParent()->getRegInfo().getRegClass(DstReg);
-  if (RC->getID() != llvm::SyncVM::GRPTRRegClassID) {
-    return;
-  }
-
-  MI.setFlag(MachineInstr::MIFlag::IsFatPtr);
+  if (isFPReg(SrcReg) || isFPReg(DstReg))
+    MI.setFlag(MachineInstr::MIFlag::IsFatPtr);
 }
