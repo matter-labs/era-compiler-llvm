@@ -1,7 +1,7 @@
-//===---------------- SyncVMPreRAPeephole.cpp - Peephole optimization ----------===//
+//===------ SyncVMPreRAPeephole.cpp - Peephole optimization ---------------===//
 //
 /// \file
-/// Implement peephole optimization pass
+/// Implement Pre-RA peephole optimization pass
 //
 //===----------------------------------------------------------------------===//
 
@@ -45,7 +45,8 @@ char SyncVMPreRAPeephole::ID = 0;
 
 } // namespace
 
-INITIALIZE_PASS(SyncVMPreRAPeephole, DEBUG_TYPE, SYNCVM_PRERA_PEEPHOLE, false, false)
+INITIALIZE_PASS(SyncVMPreRAPeephole, DEBUG_TYPE, SYNCVM_PRERA_PEEPHOLE, false,
+                false)
 
 // Combine mem/stack to stack moves. For example:
 //
@@ -57,21 +58,28 @@ INITIALIZE_PASS(SyncVMPreRAPeephole, DEBUG_TYPE, SYNCVM_PRERA_PEEPHOLE, false, f
 // add @val[0], r0, stack-[1]
 //
 // with condition that %reg has only one use, which is the 2nd add instruction.
+//
+// We are doing it post-ISEL because tablegen-based ISEL is not able to emit
+// stack-reg-stack addressing instruction. The reason is unknown yet.
 bool SyncVMPreRAPeephole::combineStackToStackMoves(MachineFunction &MF) {
-  auto isMoveRegToStack = [](MachineInstr &MI) {
-    return MI.getOpcode() == SyncVM::ADDrrs_s &&
-           MI.getOperand(1).getReg() == SyncVM::R0 &&
-           getImmOrCImm(MI.getOperand(MI.getNumOperands() - 1)) == 0;
+  // Checks if CC is unconditional
+  auto isUnconditional = [](const MachineInstr &MI) {
+    return getImmOrCImm(MI.getOperand(MI.getNumOperands() - 1)) ==
+           SyncVMCC::COND_NONE;
   };
-  auto isMoveStackToReg = [](MachineInstr &MI) {
-    return MI.getOpcode() == SyncVM::ADDsrr_s &&
-           MI.getOperand(4).getReg() == SyncVM::R0 &&
-           getImmOrCImm(MI.getOperand(MI.getNumOperands() - 1)) == 0;
+  auto isMoveRegToStack = [&](MachineInstr &MI) {
+    return (MI.getOpcode() == SyncVM::ADDrrs_s ||
+            MI.getOpcode() == SyncVM::PTR_ADDrrs_s) &&
+           MI.getOperand(1).getReg() == SyncVM::R0 && isUnconditional(MI);
   };
-  auto isMoveCodeToReg = [](MachineInstr &MI) {
+  auto isMoveStackToReg = [&](MachineInstr &MI) {
+    return (MI.getOpcode() == SyncVM::ADDsrr_s ||
+            MI.getOpcode() == SyncVM::PTR_ADDsrr_s) &&
+           MI.getOperand(4).getReg() == SyncVM::R0 && isUnconditional(MI);
+  };
+  auto isMoveCodeToReg = [&](MachineInstr &MI) {
     return MI.getOpcode() == SyncVM::ADDcrr_s &&
-           MI.getOperand(3).getReg() == SyncVM::R0 &&
-           getImmOrCImm(MI.getOperand(MI.getNumOperands() - 1)) == 0;
+           MI.getOperand(3).getReg() == SyncVM::R0 && isUnconditional(MI);
   };
 
   std::vector<MachineInstr *> ToRemove;
@@ -83,8 +91,9 @@ bool SyncVMPreRAPeephole::combineStackToStackMoves(MachineFunction &MF) {
       if (isMoveCode || isMoveStack) {
         LLVM_DEBUG(dbgs() << " . Found Move to Reg instruction: "; MI->dump());
         auto reg = MI->getOperand(0).getReg();
+        // TODO: CPR-895 relax this condition
         // can only have one use
-        if (!MRI->hasOneUse(reg)) {
+        if (!MRI->hasOneNonDBGUse(reg)) {
           continue;
         }
         auto UseMI = MRI->use_nodbg_instructions(reg).begin();
@@ -97,7 +106,8 @@ bool SyncVMPreRAPeephole::combineStackToStackMoves(MachineFunction &MF) {
            add     r2, r0, stack-[9]
            add     r1, r0, stack-[11]
           */
-          // the program will be incorrect in this case
+          // if we combine the 1st and the 3rd, as well as the 2nd and 4th
+          // instruction, we will emit incorrect code.
           LLVM_DEBUG(
               dbgs()
               << " . Use is not the exact following instruction. Must bail.\n");
@@ -180,5 +190,6 @@ bool SyncVMPreRAPeephole::runOnMachineFunction(MachineFunction &MF) {
   return Changed;
 }
 
-FunctionPass *llvm::createSyncVMPreRAPeepholePass() { return new SyncVMPreRAPeephole(); }
-
+FunctionPass *llvm::createSyncVMPreRAPeepholePass() {
+  return new SyncVMPreRAPeephole();
+}
