@@ -55,6 +55,7 @@ elif [[ -f '/etc/arch-release' ]]; then
         -DCMAKE_C_COMPILER='clang' \
         -DCMAKE_CXX_COMPILER='clang++' \
         -DLLVM_TARGETS_TO_BUILD='SyncVM' \
+        -DLLVM_DEFAULT_TARGET_TRIPLE='syncvm' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
         -DLLVM_USE_LINKER='lld' \
         -DLLVM_BUILD_TESTS='Off' \
@@ -92,6 +93,7 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         -DCMAKE_C_COMPILER="clang-${LLVM_VERSION}" \
         -DCMAKE_CXX_COMPILER="clang++-${LLVM_VERSION}" \
         -DLLVM_TARGETS_TO_BUILD='SyncVM' \
+        -DLLVM_DEFAULT_TARGET_TRIPLE='syncvm' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
         -DLLVM_USE_LINKER="lld-${LLVM_VERSION}" \
         -DLLVM_BUILD_TESTS='Off' \
