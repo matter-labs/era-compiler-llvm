@@ -634,7 +634,11 @@ PassBuilder::buildO1FunctionSimplificationPipeline(OptimizationLevel Level,
   FPM.addPass(SROA());
 
   // Specially optimize memory movement as it doesn't look like dataflow in SSA.
-  FPM.addPass(MemCpyOptPass());
+  // SyncVM local begin
+  // TODO: CPR-887 fix MemCpyOptPass on SyncVM
+  if (!TM->getTargetTriple().isSyncVM())
+    FPM.addPass(MemCpyOptPass());
+  // SyncVM local end
 
   // Sparse conditional constant propagation.
   // FIXME: It isn't clear why we do this *after* loop passes rather than
@@ -844,7 +848,11 @@ PassBuilder::buildFunctionSimplificationPipeline(OptimizationLevel Level,
   FPM.addPass(ADCEPass());
 
   // Specially optimize memory movement as it doesn't look like dataflow in SSA.
-  FPM.addPass(MemCpyOptPass());
+  // SyncVM local begin
+  // TODO: CPR-887 fix MemCpyOptPass on SyncVM
+  if (!TM->getTargetTriple().isSyncVM())
+    FPM.addPass(MemCpyOptPass());
+  // SyncVM local end
 
   FPM.addPass(DSEPass());
   FPM.addPass(createFunctionToLoopPassAdaptor(
@@ -1845,7 +1853,11 @@ PassBuilder::buildLTODefaultPipeline(OptimizationLevel Level,
     MainFPM.addPass(GVN());
 
   // Remove dead memcpy()'s.
-  MainFPM.addPass(MemCpyOptPass());
+  // SyncVM local begin
+  // TODO: CPR-887 fix MemCpyOptPass on SyncVM
+  if (!TM->getTargetTriple().isSyncVM())
+    MainFPM.addPass(MemCpyOptPass());
+  // SyncVM local end
 
   // Nuke dead stores.
   MainFPM.addPass(DSEPass());
