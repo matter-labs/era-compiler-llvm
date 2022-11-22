@@ -109,8 +109,4 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         -DPython3_EXECUTABLE="$(which python3)"
 fi
 
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    sudo ninja -C "${TARGET_BUILD}" install
-else
-    ninja -C "${TARGET_BUILD}" install
-fi
+sudo ninja -C "${TARGET_BUILD}" install
