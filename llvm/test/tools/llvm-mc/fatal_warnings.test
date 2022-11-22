@@ -1,5 +1,4 @@
-# XFAIL: syncvm
-
 # RUN: not llvm-mc --fatal-warnings %s 2>&1 | FileCheck %s
+
 # CHECK: error: .warning directive invoked in source file
 .warning
