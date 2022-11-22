@@ -1,8 +1,6 @@
 ; RUN: llc -print-after=slotindexes < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,SI 
 ; RUN: llc -print-after=slotindexes -print-slotindexes=false < %s 2>&1 | FileCheck %s --check-prefixes=CHECK,NOSI
 ; REQUIRES: default_triple
-; XFAIL: syncvm
-
 define void @foo(){
   ret void
 }

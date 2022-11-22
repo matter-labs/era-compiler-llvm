@@ -1,5 +1,4 @@
 ; REQUIRES: default_triple
-; XFAIL: syncvm
 
 ; Often LLVM tools use "-" to indicate that output should be written to stdout
 ; instead of a file. This behaviour is implemented by the raw_fd_ostream class.
