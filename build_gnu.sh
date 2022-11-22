@@ -19,6 +19,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         -DCMAKE_INSTALL_PREFIX="${TARGET_INSTALL}" \
         -DCMAKE_BUILD_TYPE='Release' \
         -DLLVM_TARGETS_TO_BUILD='SyncVM' \
+        -DLLVM_DEFAULT_TARGET_TRIPLE='syncvm' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
         -DLLVM_BUILD_TESTS='On' \
         -DLLVM_BUILD_DOCS='Off' \
@@ -54,6 +55,7 @@ elif [[ -f '/etc/arch-release' ]]; then
         -DCMAKE_C_COMPILER='clang' \
         -DCMAKE_CXX_COMPILER='clang++' \
         -DLLVM_TARGETS_TO_BUILD='SyncVM' \
+        -DLLVM_DEFAULT_TARGET_TRIPLE='syncvm' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
         -DLLVM_USE_LINKER='lld' \
         -DLLVM_BUILD_TESTS='On' \
@@ -91,6 +93,7 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         -DCMAKE_C_COMPILER="clang-${LLVM_VERSION}" \
         -DCMAKE_CXX_COMPILER="clang++-${LLVM_VERSION}" \
         -DLLVM_TARGETS_TO_BUILD='SyncVM' \
+        -DLLVM_DEFAULT_TARGET_TRIPLE='syncvm' \
         -DLLVM_OPTIMIZED_TABLEGEN='On' \
         -DLLVM_USE_LINKER="lld-${LLVM_VERSION}" \
         -DLLVM_BUILD_TESTS='On' \
@@ -108,8 +111,4 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         -DPython3_EXECUTABLE="$(which python3)"
 fi
 
-if [[ "$OSTYPE" == "darwin"* ]]; then
-    sudo ninja -C "${TARGET_BUILD}" install
-else
-    ninja -C "${TARGET_BUILD}" install
-fi
+sudo ninja -C "${TARGET_BUILD}" install
