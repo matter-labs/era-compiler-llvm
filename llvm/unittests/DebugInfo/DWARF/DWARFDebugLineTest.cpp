@@ -1645,6 +1645,7 @@ TEST_P(TruncatedPrologueFixture, ErrorForTruncatedPrologue) {
   EXPECT_EQ(Offset, ExpectedOffset);
 }
 
+#if 0 // SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(
     TruncatedPrologueParams, TruncatedPrologueFixture,
     Values(
@@ -1725,6 +1726,7 @@ INSTANTIATE_TEST_SUITE_P(
             0x12, 0x12, 4, DWARF32,
             "parsing line table prologue at offset 0x00000001: unexpected end "
             "of data at offset 0x12 while reading [0x12, 0x13)")));
+#endif //SyncVM local end
 
 using ValueAndLengths = std::vector<LineTable::ValueAndLength>;
 
