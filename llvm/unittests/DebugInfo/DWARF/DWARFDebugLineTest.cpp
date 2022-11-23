@@ -952,6 +952,7 @@ TEST_P(MaxOpsPerInstFixture, MaxOpsPerInstProblemsReportedCorrectly) {
               ", which is unsupported. Assuming a value of 1 instead");
 }
 
+#if 0 // SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(
     MaxOpsPerInstParams, MaxOpsPerInstFixture,
     Values(std::make_tuple(3, 0, false), // Test for version < 4 (no error).
@@ -959,6 +960,7 @@ INSTANTIATE_TEST_SUITE_P(
            std::make_tuple(4, 1, false), // Test good value for V4 (no error).
            std::make_tuple(
                4, 2, true))); // Test one higher than permitted V4 (error).
+#endif //SyncVM local end
 
 struct LineRangeFixture : TestWithParam<std::tuple<uint8_t, bool>>,
                           AdjustAddressFixtureBase {
