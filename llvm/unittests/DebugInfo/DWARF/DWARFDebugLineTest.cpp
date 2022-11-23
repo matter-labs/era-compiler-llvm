@@ -595,7 +595,7 @@ TEST_P(DebugLineParameterisedFixture, ErrorForTooShortPrologueLength) {
                     FailedWithMessageArray(testing::ElementsAreArray(Errs)));
 }
 
-/* SyncVM local begin
+#if 0 // SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(
     LineTableTestParams, DebugLineParameterisedFixture,
     Values(std::make_pair(
@@ -603,7 +603,7 @@ INSTANTIATE_TEST_SUITE_P(
            std::make_pair(3, DWARF32), // Test upper-bound of v2-3 fields.
            std::make_pair(4, DWARF64), // Test v4 fields and DWARF64.
            std::make_pair(5, DWARF32), std::make_pair(5, DWARF64)));
-*/ //SyncVM local end
+#endif //SyncVM local end
 
 #if defined _AIX || defined _SYNCVM
 TEST_F(DebugLineBasicFixture,
@@ -1809,6 +1809,7 @@ TEST_P(TruncatedExtendedOpcodeFixture, ErrorForTruncatedExtendedOpcode) {
                     FailedWithMessage(ExpectedErr.str()));
 }
 
+#if 0// SyncVM local begin; beware of nested comment below
 INSTANTIATE_TEST_SUITE_P(
     TruncatedExtendedOpcodeParams, TruncatedExtendedOpcodeFixture,
     Values(
@@ -1877,6 +1878,7 @@ INSTANTIATE_TEST_SUITE_P(
             "Unrecognized extended op 0x7f length 5 (<parsing error> 12 34 34)",
             "unexpected end of data at offset 0x35 while reading [0x32, "
             "0x36)")));
+#endif //SyncVM local end
 
 #if defined _AIX || defined _SYNCVM
 TEST_P(TruncatedStandardOpcodeFixture,
