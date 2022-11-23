@@ -122,7 +122,7 @@ struct CommonFixture {
 // the common state in a separate class, inherited by the two fixture classes.
 struct DISABLED_DebugLineBasicFixture : public Test, public CommonFixture {};
 
-struct DebugLineParameterisedFixture
+struct DISABLED_DebugLineParameterisedFixture
     : public TestWithParam<std::pair<uint16_t, DwarfFormat>>,
       public CommonFixture {
   void SetUp() override { std::tie(Version, Format) = GetParam(); }
@@ -220,7 +220,7 @@ TEST_F(DISABLED_DebugLineBasicFixture, GetOrParseLineTableAtInvalidOffsetAfterDa
           "offset 0x00000001 is not a valid debug line section offset"));
 }
 
-TEST_P(DebugLineParameterisedFixture, PrologueGetLength) {
+TEST_P(DISABLED_DebugLineParameterisedFixture, PrologueGetLength) {
   if (!setupGenerator(Version))
     return;
   LineTable &LT = Gen->addLineTable(Format);
@@ -243,7 +243,7 @@ TEST_P(DebugLineParameterisedFixture, PrologueGetLength) {
   EXPECT_EQ((*ExpectedLineTable)->Prologue.getLength(), ExpectedLength);
 }
 
-TEST_P(DebugLineParameterisedFixture, GetOrParseLineTableValidTable) {
+TEST_P(DISABLED_DebugLineParameterisedFixture, GetOrParseLineTableValidTable) {
   if (!setupGenerator(Version))
     return;
 
@@ -395,7 +395,7 @@ TEST_F(DISABLED_DebugLineBasicFixture, ErrorForInvalidV5IncludeDirTable) {
           "found"));
 }
 
-TEST_P(DebugLineParameterisedFixture, ErrorForTooLargePrologueLength) {
+TEST_P(DISABLED_DebugLineParameterisedFixture, ErrorForTooLargePrologueLength) {
   if (!setupGenerator(Version))
     return;
 
@@ -431,7 +431,7 @@ TEST_P(DebugLineParameterisedFixture, ErrorForTooLargePrologueLength) {
               .str()));
 }
 
-TEST_P(DebugLineParameterisedFixture, ErrorForTooShortPrologueLength) {
+TEST_P(DISABLED_DebugLineParameterisedFixture, ErrorForTooShortPrologueLength) {
   if (!setupGenerator(Version))
     return;
 
@@ -478,7 +478,7 @@ TEST_P(DebugLineParameterisedFixture, ErrorForTooShortPrologueLength) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    LineTableTestParams, DebugLineParameterisedFixture,
+    LineTableTestParams, DISABLED_DebugLineParameterisedFixture,
     Values(std::make_pair(
                2, DWARF32), // Test lower-bound of v2-3 fields and DWARF32.
            std::make_pair(3, DWARF32), // Test upper-bound of v2-3 fields.
