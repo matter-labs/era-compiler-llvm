@@ -455,10 +455,12 @@ TEST_P(DebugLineUnsupportedVersionFixture, ErrorForUnsupportedVersion) {
                         std::to_string(Version)));
 }
 
+#if 0 // SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(UnsupportedVersionTestParams,
                          DebugLineUnsupportedVersionFixture,
                          Values(/*1 below min */ 1, /* 1 above max */ 6,
                                 /* Maximum possible */ 0xffff));
+#endif //SyncVM local end
 
 #if defined _AIX || defined _SYNCVM
 TEST_F(DebugLineBasicFixture, DISABLED_ErrorForInvalidV5IncludeDirTable) {
@@ -1164,10 +1166,12 @@ TEST_P(LineRangeFixture, LineRangeProblemsReportedCorrectly) {
           "not be adjusted");
 }
 
+#if 0 // SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(
     LineRangeParams, LineRangeFixture,
     Values(std::make_tuple(0, true),     // Test zero value (error).
            std::make_tuple(14, false))); // Test non-zero value (no error).
+#endif //SyncVM local end
 
 struct BadMinInstLenFixture : TestWithParam<std::tuple<uint8_t, bool>>,
                               AdjustAddressFixtureBase {
@@ -1203,10 +1207,12 @@ TEST_P(BadMinInstLenFixture, MinInstLengthProblemsReportedCorrectly) {
           "prevents any address advancing");
 }
 
+#if 0 // SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(
     BadMinInstLenParams, BadMinInstLenFixture,
     Values(std::make_tuple(0, true),    // Test zero value (error).
            std::make_tuple(1, false))); // Test non-zero value (no error).
+#endif //SyncVM local end
 
 #if defined _AIX || defined _SYNCVM
 TEST_F(DebugLineBasicFixture, DISABLED_ParserParsesCorrectly) {
