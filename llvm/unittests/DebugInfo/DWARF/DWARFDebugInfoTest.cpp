@@ -1871,7 +1871,7 @@ void VerifySuccess(DWARFContext &DwarfContext) {
   EXPECT_TRUE(DwarfContext.verify(Strm));
 }
 
-TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidCURef) {
+TEST(DWARFDebugInfo, TestDwarfVerifyInvalidCURef) {
   // Create a single compile unit with a single function that has a DW_AT_type
   // that is CU relative. The CU offset is not valid because it is larger than
   // the compile unit itself.
@@ -1919,7 +1919,7 @@ TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidCURef) {
                              "0x0000001a):");
 }
 
-TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidRefAddr) {
+TEST(DWARFDebugInfo, TestDwarfVerifyInvalidRefAddr) {
   // Create a single compile unit with a single function that has an invalid
   // DW_AT_type with an invalid .debug_info offset in its DW_FORM_ref_addr.
   const char *yamldata = R"(
@@ -1964,7 +1964,7 @@ TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidRefAddr) {
               "error: DW_FORM_ref_addr offset beyond .debug_info bounds:");
 }
 
-TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidRanges) {
+TEST(DWARFDebugInfo, TestDwarfVerifyInvalidRanges) {
   // Create a single compile unit with a DW_AT_ranges whose section offset
   // isn't valid.
   const char *yamldata = R"(
@@ -1999,7 +1999,7 @@ TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidRanges) {
       "error: DW_AT_ranges offset is beyond .debug_ranges bounds: 0x00001000");
 }
 
-TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidRnglists) {
+TEST(DWARFDebugInfo, TestDwarfVerifyInvalidRnglists) {
   // Create a single compile unit with a DW_AT_ranges whose section offset
   // isn't valid.
   const char *yamldata = R"(
@@ -2034,7 +2034,7 @@ TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidRnglists) {
                              ".debug_rnglists bounds: 0x00001000");
 }
 
-TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidStmtList) {
+TEST(DWARFDebugInfo, TestDwarfVerifyInvalidStmtList) {
   // Create a single compile unit with a DW_AT_stmt_list whose section offset
   // isn't valid.
   const char *yamldata = R"(
@@ -2069,7 +2069,7 @@ TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidStmtList) {
       "error: DW_AT_stmt_list offset is beyond .debug_line bounds: 0x00001000");
 }
 
-TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidStrp) {
+TEST(DWARFDebugInfo, TestDwarfVerifyInvalidStrp) {
   // Create a single compile unit with a single function that has an invalid
   // DW_FORM_strp for the DW_AT_name.
   const char *yamldata = R"(
@@ -2099,7 +2099,7 @@ TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidStrp) {
               "error: DW_FORM_strp offset beyond .debug_str bounds:");
 }
 
-TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidRefAddrBetween) {
+TEST(DWARFDebugInfo, TestDwarfVerifyInvalidRefAddrBetween) {
   // Create a single compile unit with a single function that has a DW_AT_type
   // with a valid .debug_info offset, but the offset is between two DIEs.
   const char *yamldata = R"(
@@ -2145,7 +2145,7 @@ TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidRefAddrBetween) {
       "error: invalid DIE reference 0x00000011. Offset is in between DIEs:");
 }
 
-TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidLineSequence) {
+TEST(DWARFDebugInfo, TestDwarfVerifyInvalidLineSequence) {
   // Create a single compile unit whose line table has a sequence in it where
   // the address decreases.
   StringRef yamldata = R"(
@@ -2210,7 +2210,7 @@ TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidLineSequence) {
                              "in address from previous row:");
 }
 
-TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidLineFileIndex) {
+TEST(DWARFDebugInfo, TestDwarfVerifyInvalidLineFileIndex) {
   // Create a single compile unit whose line table has a line table row with
   // an invalid file index.
   StringRef yamldata = R"(
@@ -2277,7 +2277,7 @@ TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidLineFileIndex) {
                              "file index 5 (valid values are [1,1]):");
 }
 
-TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidLineTablePorlogueDirIndex) {
+TEST(DWARFDebugInfo, TestDwarfVerifyInvalidLineTablePorlogueDirIndex) {
   // Create a single compile unit whose line table has a prologue with an
   // invalid dir index.
   StringRef yamldata = R"(
@@ -2345,7 +2345,7 @@ TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidLineTablePorlogueDirIndex) {
               "file_names[1].dir_idx contains an invalid index: 2");
 }
 
-TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyDuplicateFileWarning) {
+TEST(DWARFDebugInfo, TestDwarfVerifyDuplicateFileWarning) {
   // Create a single compile unit whose line table has a prologue with an
   // invalid dir index.
   StringRef yamldata = R"(
@@ -2417,7 +2417,7 @@ TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyDuplicateFileWarning) {
                 "a duplicate of file_names[1]");
 }
 
-TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyCUDontShareLineTable) {
+TEST(DWARFDebugInfo, TestDwarfVerifyCUDontShareLineTable) {
   // Create a two compile units where both compile units share the same
   // DW_AT_stmt_list value and verify we report the error correctly.
   StringRef yamldata = R"(
@@ -2527,7 +2527,7 @@ TEST(DISABLED_DWARFDebugInfo, TestErrorReporting) {
   EXPECT_TRUE(Errors == 2);
 }
 
-TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyCURangesIncomplete) {
+TEST(DWARFDebugInfo, TestDwarfVerifyCURangesIncomplete) {
   // Create a single compile unit with a single function. The compile
   // unit has a DW_AT_ranges attribute that doesn't fully contain the
   // address range of the function. The verification should fail due to
@@ -2580,7 +2580,7 @@ TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyCURangesIncomplete) {
                              "contained in its parent's ranges:");
 }
 
-TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyLexicalBlockRanges) {
+TEST(DWARFDebugInfo, TestDwarfVerifyLexicalBlockRanges) {
   // Create a single compile unit with a single function that has a lexical
   // block whose address range is not contained in the function address range.
   StringRef yamldata = R"(
@@ -2641,7 +2641,7 @@ TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyLexicalBlockRanges) {
                              "contained in its parent's ranges:");
 }
 
-TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyOverlappingFunctionRanges) {
+TEST(DWARFDebugInfo, TestDwarfVerifyOverlappingFunctionRanges) {
   // Create a single compile unit with a two functions that have overlapping
   // address ranges.
   StringRef yamldata = R"(
@@ -2694,7 +2694,7 @@ TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyOverlappingFunctionRanges) {
   VerifyError(*DwarfContext, "error: DIEs have overlapping address ranges:");
 }
 
-TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyOverlappingLexicalBlockRanges) {
+TEST(DWARFDebugInfo, TestDwarfVerifyOverlappingLexicalBlockRanges) {
   // Create a single compile unit with a one function that has two lexical
   // blocks with overlapping address ranges.
   StringRef yamldata = R"(
@@ -2764,7 +2764,7 @@ TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyOverlappingLexicalBlockRanges) {
   VerifyError(*DwarfContext, "error: DIEs have overlapping address ranges:");
 }
 
-TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidDIERange) {
+TEST(DWARFDebugInfo, TestDwarfVerifyInvalidDIERange) {
   // Create a single compile unit with a single function that has an invalid
   // address range where the high PC is smaller than the low PC.
   StringRef yamldata = R"(
@@ -2811,7 +2811,7 @@ TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidDIERange) {
   VerifyError(*DwarfContext, "error: Invalid address range");
 }
 
-TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyElidedDoesntFail) {
+TEST(DWARFDebugInfo, TestDwarfVerifyElidedDoesntFail) {
   // Create a single compile unit with two functions: one that has a valid range
   // and one whose low and high PC are the same. When the low and high PC are
   // the same, this indicates the function was dead code stripped. We want to
@@ -2872,7 +2872,7 @@ TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyElidedDoesntFail) {
   VerifySuccess(*DwarfContext);
 }
 
-TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyNestedFunctions) {
+TEST(DWARFDebugInfo, TestDwarfVerifyNestedFunctions) {
   // Create a single compile unit with a nested function which is not contained
   // in its parent. Although LLVM doesn't generate this, it is valid accoridng
   // to the DWARF standard.
