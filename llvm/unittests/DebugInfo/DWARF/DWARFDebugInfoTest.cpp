@@ -393,7 +393,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version2Addr4AllForms) {
   TestAllForms<2, AddrType, RefAddrType>();
 }
 
-#ifdef _AIX
+#if defined _AIX || defined _SYNCVM
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr8AllForms) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr8AllForms) {
@@ -415,7 +415,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version3Addr4AllForms) {
   TestAllForms<3, AddrType, RefAddrType>();
 }
 
-#ifdef _AIX
+#if defined _AIX || defined _SYNCVM
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr8AllForms) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr8AllForms) {
@@ -437,7 +437,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version4Addr4AllForms) {
   TestAllForms<4, AddrType, RefAddrType>();
 }
 
-#ifdef _AIX
+#if defined _AIX || defined _SYNCVM
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr8AllForms) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr8AllForms) {
@@ -450,7 +450,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version4Addr8AllForms) {
   TestAllForms<4, AddrType, RefAddrType>();
 }
 
-#ifdef _AIX
+#if defined _AIX || defined _SYNCVM
 TEST(DWARFDebigInfo, DISABLED_TestDWARF32Version5Addr4AllForms) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version5Addr4AllForms) {
@@ -463,7 +463,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version5Addr4AllForms) {
   TestAllForms<5, AddrType, RefAddrType>();
 }
 
-#ifdef _AIX
+#if defined _AIX || defined _SYNCVM
 TEST(DWARFDebigInfo, DISABLED_TestDWARF32Version5Addr8AllForms) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version5Addr8AllForms) {
@@ -571,7 +571,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version2Addr4Children) {
   TestChildren<2, AddrType>();
 }
 
-#ifdef _AIX
+#if defined _AIX || defined _SYNCVM
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr8Children) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr8Children) {
@@ -589,7 +589,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version3Addr4Children) {
   TestChildren<3, AddrType>();
 }
 
-#ifdef _AIX
+#if defined _AIX || defined _SYNCVM
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr8Children) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr8Children) {
@@ -607,7 +607,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version4Addr4Children) {
   TestChildren<4, AddrType>();
 }
 
-#ifdef _AIX
+#if defined _AIX || defined _SYNCVM
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr8Children) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr8Children) {
@@ -833,7 +833,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version2Addr4References) {
   TestReferences<2, AddrType>();
 }
 
-#ifdef _AIX
+#if defined _AIX || defined _SYNCVM
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr8References) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr8References) {
@@ -851,7 +851,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version3Addr4References) {
   TestReferences<3, AddrType>();
 }
 
-#ifdef _AIX
+#if defined _AIX || defined _SYNCVM
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr8References) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr8References) {
@@ -869,7 +869,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version4Addr4References) {
   TestReferences<4, AddrType>();
 }
 
-#ifdef _AIX
+#if defined _AIX || defined _SYNCVM
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr8References) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr8References) {
@@ -1017,7 +1017,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version2Addr4Addresses) {
   TestAddresses<2, AddrType>();
 }
 
-#ifdef _AIX
+#if defined _AIX || defined _SYNCVM
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr8Addresses) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr8Addresses) {
@@ -1035,7 +1035,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version3Addr4Addresses) {
   TestAddresses<3, AddrType>();
 }
 
-#ifdef _AIX
+#if defined _AIX || defined _SYNCVM
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr8Addresses) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr8Addresses) {
@@ -1053,7 +1053,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version4Addr4Addresses) {
   TestAddresses<4, AddrType>();
 }
 
-#ifdef _AIX
+#if defined _AIX || defined _SYNCVM
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr8Addresses) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr8Addresses) {
@@ -1064,7 +1064,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version4Addr8Addresses) {
   TestAddresses<4, AddrType>();
 }
 
-#ifdef _AIX
+#if defined _AIX || defined _SYNCVM
 TEST(DWARFDebugInfo, DISABLED_TestStringOffsets) {
 #else
 TEST(DWARFDebugInfo, TestStringOffsets) {
