@@ -120,7 +120,7 @@ struct CommonFixture {
 // Fixtures must derive from "Test", but parameterised fixtures from
 // "TestWithParam". It does not seem possible to inherit from both, so we share
 // the common state in a separate class, inherited by the two fixture classes.
-struct DebugLineBasicFixture : public Test, public CommonFixture {};
+struct DISABLED_DebugLineBasicFixture : public Test, public CommonFixture {};
 
 struct DebugLineParameterisedFixture
     : public TestWithParam<std::pair<uint16_t, DwarfFormat>>,
@@ -177,7 +177,7 @@ void checkDefaultPrologue(uint16_t Version, DwarfFormat Format,
   EXPECT_STREQ(*Prologue.FileNames[0].Name.getAsCString(), "a file");
 }
 
-TEST_F(DebugLineBasicFixture, GetOrParseLineTableAtInvalidOffset) {
+TEST_F(DISABLED_DebugLineBasicFixture, GetOrParseLineTableAtInvalidOffset) {
   if (!setupGenerator())
     return;
   generate();
@@ -199,7 +199,7 @@ TEST_F(DebugLineBasicFixture, GetOrParseLineTableAtInvalidOffset) {
           "offset 0x00000001 is not a valid debug line section offset"));
 }
 
-TEST_F(DebugLineBasicFixture, GetOrParseLineTableAtInvalidOffsetAfterData) {
+TEST_F(DISABLED_DebugLineBasicFixture, GetOrParseLineTableAtInvalidOffsetAfterData) {
   if (!setupGenerator())
     return;
 
@@ -309,7 +309,7 @@ TEST_P(DebugLineParameterisedFixture, GetOrParseLineTableValidTable) {
   // correctly.
 }
 
-TEST_F(DebugLineBasicFixture, ErrorForReservedLength) {
+TEST_F(DISABLED_DebugLineBasicFixture, ErrorForReservedLength) {
   if (!setupGenerator())
     return;
 
@@ -354,7 +354,7 @@ INSTANTIATE_TEST_SUITE_P(UnsupportedVersionTestParams,
                          Values(/*1 below min */ 1, /* 1 above max */ 6,
                                 /* Maximum possible */ 0xffff));
 
-TEST_F(DebugLineBasicFixture, ErrorForInvalidV5IncludeDirTable) {
+TEST_F(DISABLED_DebugLineBasicFixture, ErrorForInvalidV5IncludeDirTable) {
   if (!setupGenerator(5))
     return;
 
@@ -485,7 +485,7 @@ INSTANTIATE_TEST_SUITE_P(
            std::make_pair(4, DWARF64), // Test v4 fields and DWARF64.
            std::make_pair(5, DWARF32), std::make_pair(5, DWARF64)));
 
-TEST_F(DebugLineBasicFixture, ErrorForExtendedOpcodeLengthSmallerThanExpected) {
+TEST_F(DISABLED_DebugLineBasicFixture, ErrorForExtendedOpcodeLengthSmallerThanExpected) {
   if (!setupGenerator())
     return;
 
@@ -514,7 +514,7 @@ TEST_F(DebugLineBasicFixture, ErrorForExtendedOpcodeLengthSmallerThanExpected) {
   EXPECT_EQ((*ExpectedLineTable)->Rows[1].Discriminator, DW_LNS_negate_stmt);
 }
 
-TEST_F(DebugLineBasicFixture, ErrorForExtendedOpcodeLengthLargerThanExpected) {
+TEST_F(DISABLED_DebugLineBasicFixture, ErrorForExtendedOpcodeLengthLargerThanExpected) {
   if (!setupGenerator())
     return;
 
@@ -543,7 +543,7 @@ TEST_F(DebugLineBasicFixture, ErrorForExtendedOpcodeLengthLargerThanExpected) {
   EXPECT_EQ((*ExpectedLineTable)->Rows[2].IsStmt, 1u);
 }
 
-TEST_F(DebugLineBasicFixture, ErrorForUnitLengthTooLarge) {
+TEST_F(DISABLED_DebugLineBasicFixture, ErrorForUnitLengthTooLarge) {
   if (!setupGenerator())
     return;
 
@@ -572,7 +572,7 @@ TEST_F(DebugLineBasicFixture, ErrorForUnitLengthTooLarge) {
   EXPECT_EQ((*ExpectedLineTable)->Sequences.size(), 1u);
 }
 
-TEST_F(DebugLineBasicFixture, ErrorForMismatchedAddressSize) {
+TEST_F(DISABLED_DebugLineBasicFixture, ErrorForMismatchedAddressSize) {
   if (!setupGenerator(4, 8))
     return;
 
@@ -601,7 +601,7 @@ TEST_F(DebugLineBasicFixture, ErrorForMismatchedAddressSize) {
   EXPECT_EQ((*ExpectedLineTable)->Rows[1].Address.Address, Addr2);
 }
 
-TEST_F(DebugLineBasicFixture,
+TEST_F(DISABLED_DebugLineBasicFixture,
        ErrorForMismatchedAddressSizeUnsetInitialAddress) {
   if (!setupGenerator(4, 0))
     return;
@@ -628,7 +628,7 @@ TEST_F(DebugLineBasicFixture,
   EXPECT_EQ((*ExpectedLineTable)->Rows[1].Address.Address, Addr2);
 }
 
-TEST_F(DebugLineBasicFixture,
+TEST_F(DISABLED_DebugLineBasicFixture,
        ErrorForUnsupportedAddressSizeInSetAddressLength) {
   // Use DWARF v4, and 0 for data extractor address size so that the address
   // size is derived from the opcode length.
@@ -661,7 +661,7 @@ TEST_F(DebugLineBasicFixture,
   EXPECT_EQ((*ExpectedLineTable)->Rows[0].Address.Address, 0u);
 }
 
-TEST_F(DebugLineBasicFixture, ErrorForAddressSizeGreaterThanByteSize) {
+TEST_F(DISABLED_DebugLineBasicFixture, ErrorForAddressSizeGreaterThanByteSize) {
   // Use DWARF v4, and 0 for data extractor address size so that the address
   // size is derived from the opcode length.
   if (!setupGenerator(4, 0))
@@ -685,7 +685,7 @@ TEST_F(DebugLineBasicFixture, ErrorForAddressSizeGreaterThanByteSize) {
   ASSERT_THAT_EXPECTED(ExpectedLineTable, Succeeded());
 }
 
-TEST_F(DebugLineBasicFixture, ErrorForUnsupportedAddressSizeDefinedInHeader) {
+TEST_F(DISABLED_DebugLineBasicFixture, ErrorForUnsupportedAddressSizeDefinedInHeader) {
   // Use 0 for data extractor address size so that it does not clash with the
   // header address size.
   if (!setupGenerator(5, 0))
@@ -722,7 +722,7 @@ TEST_F(DebugLineBasicFixture, ErrorForUnsupportedAddressSizeDefinedInHeader) {
   EXPECT_EQ((*ExpectedLineTable)->Rows[0].Address.Address, 0u);
 }
 
-TEST_F(DebugLineBasicFixture, CallbackUsedForUnterminatedSequence) {
+TEST_F(DISABLED_DebugLineBasicFixture, CallbackUsedForUnterminatedSequence) {
   if (!setupGenerator())
     return;
 
@@ -1033,7 +1033,7 @@ INSTANTIATE_TEST_SUITE_P(
     Values(std::make_tuple(0, true),    // Test zero value (error).
            std::make_tuple(1, false))); // Test non-zero value (no error).
 
-TEST_F(DebugLineBasicFixture, ParserParsesCorrectly) {
+TEST_F(DISABLED_DebugLineBasicFixture, ParserParsesCorrectly) {
   if (!setupGenerator())
     return;
 
@@ -1060,7 +1060,7 @@ TEST_F(DebugLineBasicFixture, ParserParsesCorrectly) {
   EXPECT_FALSE(Unrecoverable);
 }
 
-TEST_F(DebugLineBasicFixture, ParserSkipsCorrectly) {
+TEST_F(DISABLED_DebugLineBasicFixture, ParserSkipsCorrectly) {
   if (!setupGenerator())
     return;
 
@@ -1081,7 +1081,7 @@ TEST_F(DebugLineBasicFixture, ParserSkipsCorrectly) {
   EXPECT_FALSE(Unrecoverable);
 }
 
-TEST_F(DebugLineBasicFixture, ParserAlwaysDoneForEmptySection) {
+TEST_F(DISABLED_DebugLineBasicFixture, ParserAlwaysDoneForEmptySection) {
   if (!setupGenerator())
     return;
 
@@ -1091,7 +1091,7 @@ TEST_F(DebugLineBasicFixture, ParserAlwaysDoneForEmptySection) {
   EXPECT_TRUE(Parser.done());
 }
 
-TEST_F(DebugLineBasicFixture, ParserMarkedAsDoneForBadLengthWhenParsing) {
+TEST_F(DISABLED_DebugLineBasicFixture, ParserMarkedAsDoneForBadLengthWhenParsing) {
   if (!setupGenerator())
     return;
 
@@ -1114,7 +1114,7 @@ TEST_F(DebugLineBasicFixture, ParserMarkedAsDoneForBadLengthWhenParsing) {
           "reserved unit length of value 0xfffffff0"));
 }
 
-TEST_F(DebugLineBasicFixture, ParserMarkedAsDoneForBadLengthWhenSkipping) {
+TEST_F(DISABLED_DebugLineBasicFixture, ParserMarkedAsDoneForBadLengthWhenSkipping) {
   if (!setupGenerator())
     return;
 
@@ -1137,7 +1137,7 @@ TEST_F(DebugLineBasicFixture, ParserMarkedAsDoneForBadLengthWhenSkipping) {
           "reserved unit length of value 0xfffffff0"));
 }
 
-TEST_F(DebugLineBasicFixture, ParserReportsFirstErrorInEachTableWhenParsing) {
+TEST_F(DISABLED_DebugLineBasicFixture, ParserReportsFirstErrorInEachTableWhenParsing) {
   if (!setupGenerator())
     return;
 
@@ -1163,7 +1163,7 @@ TEST_F(DebugLineBasicFixture, ParserReportsFirstErrorInEachTableWhenParsing) {
                         "unsupported version 1"));
 }
 
-TEST_F(DebugLineBasicFixture, ParserReportsNonPrologueProblemsWhenParsing) {
+TEST_F(DISABLED_DebugLineBasicFixture, ParserReportsNonPrologueProblemsWhenParsing) {
   if (!setupGenerator())
     return;
 
@@ -1195,7 +1195,7 @@ TEST_F(DebugLineBasicFixture, ParserReportsNonPrologueProblemsWhenParsing) {
   EXPECT_FALSE(Unrecoverable);
 }
 
-TEST_F(DebugLineBasicFixture,
+TEST_F(DISABLED_DebugLineBasicFixture,
        ParserReportsPrologueErrorsInEachTableWhenSkipping) {
   if (!setupGenerator())
     return;
@@ -1222,7 +1222,7 @@ TEST_F(DebugLineBasicFixture,
                         "unsupported version 1"));
 }
 
-TEST_F(DebugLineBasicFixture, ParserIgnoresNonPrologueErrorsWhenSkipping) {
+TEST_F(DISABLED_DebugLineBasicFixture, ParserIgnoresNonPrologueErrorsWhenSkipping) {
   if (!setupGenerator())
     return;
 
@@ -1238,7 +1238,7 @@ TEST_F(DebugLineBasicFixture, ParserIgnoresNonPrologueErrorsWhenSkipping) {
   EXPECT_FALSE(Unrecoverable);
 }
 
-TEST_F(DebugLineBasicFixture, VerboseOutput) {
+TEST_F(DISABLED_DebugLineBasicFixture, VerboseOutput) {
   if (!setupGenerator(5))
     return;
 
@@ -1706,7 +1706,7 @@ INSTANTIATE_TEST_SUITE_P(
             "unable to decode LEB128 at offset 0x00000032: "
             "malformed uleb128, extends past end")));
 
-TEST_F(DebugLineBasicFixture, PrintPathsProperly) {
+TEST_F(DISABLED_DebugLineBasicFixture, PrintPathsProperly) {
   if (!setupGenerator(5))
     return;
 
