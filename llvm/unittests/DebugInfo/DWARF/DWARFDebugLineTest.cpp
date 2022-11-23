@@ -477,6 +477,7 @@ TEST_P(DISABLED_DebugLineParameterisedFixture, ErrorForTooShortPrologueLength) {
                     FailedWithMessageArray(testing::ElementsAreArray(Errs)));
 }
 
+/* SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(
     LineTableTestParams, DISABLED_DebugLineParameterisedFixture,
     Values(std::make_pair(
@@ -484,6 +485,7 @@ INSTANTIATE_TEST_SUITE_P(
            std::make_pair(3, DWARF32), // Test upper-bound of v2-3 fields.
            std::make_pair(4, DWARF64), // Test v4 fields and DWARF64.
            std::make_pair(5, DWARF32), std::make_pair(5, DWARF64)));
+*/ //SyncVM local end
 
 TEST_F(DISABLED_DebugLineBasicFixture, ErrorForExtendedOpcodeLengthSmallerThanExpected) {
   if (!setupGenerator())
