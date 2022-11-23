@@ -21,7 +21,7 @@ using namespace utils;
 
 namespace {
 
-TEST(DWARFDie, manualExtractDump) {
+TEST(DWARFDie, DISABLED_manualExtractDump) {
   typedef uint32_t AddrType;
   uint16_t Version = 4;
   Triple Triple = getDefaultTargetTripleForAddrSize(sizeof(AddrType));
