@@ -1897,6 +1897,7 @@ TEST_P(TruncatedStandardOpcodeFixture, ErrorForTruncatedStandardOpcode) {
                     FailedWithMessage(ExpectedErr.str()));
 }
 
+#if 0 // SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(
     TruncatedStandardOpcodeParams, TruncatedStandardOpcodeFixture,
     Values(
@@ -1942,6 +1943,7 @@ INSTANTIATE_TEST_SUITE_P(
             "Unrecognized standard opcode (operands: 0x0000000000000900)",
             "unable to decode LEB128 at offset 0x00000032: "
             "malformed uleb128, extends past end")));
+#endif //SyncVM local end
 
 #if defined _AIX || defined _SYNCVM
 TEST_F(DebugLineBasicFixture, DISABLED_PrintPathsProperly) {
