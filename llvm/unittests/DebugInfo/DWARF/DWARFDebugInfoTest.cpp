@@ -382,7 +382,7 @@ void TestAllForms() {
   EXPECT_EQ(AddrValue, toAddress(DieDG.find(Attr_Last), 0));
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version2Addr4AllForms) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version2Addr4AllForms) {
   // Test that we can decode all forms for DWARF32, version 2, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
@@ -391,7 +391,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version2Addr4AllForms) {
   TestAllForms<2, AddrType, RefAddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version2Addr8AllForms) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version2Addr8AllForms) {
   // Test that we can decode all forms for DWARF32, version 2, with 4 byte
   // addresses.
   typedef uint64_t AddrType;
@@ -400,7 +400,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version2Addr8AllForms) {
   TestAllForms<2, AddrType, RefAddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version3Addr4AllForms) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version3Addr4AllForms) {
   // Test that we can decode all forms for DWARF32, version 3, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
@@ -409,7 +409,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version3Addr4AllForms) {
   TestAllForms<3, AddrType, RefAddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version3Addr8AllForms) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version3Addr8AllForms) {
   // Test that we can decode all forms for DWARF32, version 3, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
@@ -418,7 +418,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version3Addr8AllForms) {
   TestAllForms<3, AddrType, RefAddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version4Addr4AllForms) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version4Addr4AllForms) {
   // Test that we can decode all forms for DWARF32, version 4, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
@@ -427,7 +427,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version4Addr4AllForms) {
   TestAllForms<4, AddrType, RefAddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version4Addr8AllForms) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version4Addr8AllForms) {
   // Test that we can decode all forms for DWARF32, version 4, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
@@ -436,7 +436,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version4Addr8AllForms) {
   TestAllForms<4, AddrType, RefAddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version5Addr4AllForms) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version5Addr4AllForms) {
   // Test that we can decode all forms for DWARF32, version 5, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
@@ -445,7 +445,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version5Addr4AllForms) {
   TestAllForms<5, AddrType, RefAddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version5Addr8AllForms) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version5Addr8AllForms) {
   // Test that we can decode all forms for DWARF32, version 5, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
@@ -542,42 +542,42 @@ template <uint16_t Version, class AddrType> void TestChildren() {
   EXPECT_EQ(IntDieDG.getTag(), DW_TAG_base_type);
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version2Addr4Children) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version2Addr4Children) {
   // Test that we can decode all forms for DWARF32, version 2, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
   TestChildren<2, AddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version2Addr8Children) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version2Addr8Children) {
   // Test that we can decode all forms for DWARF32, version 2, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
   TestChildren<2, AddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version3Addr4Children) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version3Addr4Children) {
   // Test that we can decode all forms for DWARF32, version 3, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
   TestChildren<3, AddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version3Addr8Children) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version3Addr8Children) {
   // Test that we can decode all forms for DWARF32, version 3, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
   TestChildren<3, AddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version4Addr4Children) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version4Addr4Children) {
   // Test that we can decode all forms for DWARF32, version 4, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
   TestChildren<4, AddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version4Addr8Children) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version4Addr8Children) {
   // Test that we can decode all forms for DWARF32, version 4, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
@@ -792,42 +792,42 @@ template <uint16_t Version, class AddrType> void TestReferences() {
             toReference(CU2ToCU1RefAddrDieDG.find(DW_AT_type), -1ULL));
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version2Addr4References) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version2Addr4References) {
   // Test that we can decode all forms for DWARF32, version 2, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
   TestReferences<2, AddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version2Addr8References) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version2Addr8References) {
   // Test that we can decode all forms for DWARF32, version 2, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
   TestReferences<2, AddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version3Addr4References) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version3Addr4References) {
   // Test that we can decode all forms for DWARF32, version 3, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
   TestReferences<3, AddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version3Addr8References) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version3Addr8References) {
   // Test that we can decode all forms for DWARF32, version 3, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
   TestReferences<3, AddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version4Addr4References) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version4Addr4References) {
   // Test that we can decode all forms for DWARF32, version 4, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
   TestReferences<4, AddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version4Addr8References) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version4Addr8References) {
   // Test that we can decode all forms for DWARF32, version 4, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
@@ -964,49 +964,49 @@ template <uint16_t Version, class AddrType> void TestAddresses() {
   EXPECT_EQ(HighPC, ActualHighPC);
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version2Addr4Addresses) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version2Addr4Addresses) {
   // Test that we can decode address values in DWARF32, version 2, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
   TestAddresses<2, AddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version2Addr8Addresses) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version2Addr8Addresses) {
   // Test that we can decode address values in DWARF32, version 2, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
   TestAddresses<2, AddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version3Addr4Addresses) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version3Addr4Addresses) {
   // Test that we can decode address values in DWARF32, version 3, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
   TestAddresses<3, AddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version3Addr8Addresses) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version3Addr8Addresses) {
   // Test that we can decode address values in DWARF32, version 3, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
   TestAddresses<3, AddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version4Addr4Addresses) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version4Addr4Addresses) {
   // Test that we can decode address values in DWARF32, version 4, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
   TestAddresses<4, AddrType>();
 }
 
-TEST(DWARFDebugInfo, TestDWARF32Version4Addr8Addresses) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF32Version4Addr8Addresses) {
   // Test that we can decode address values in DWARF32, version 4, with 8 byte
   // addresses.
   typedef uint64_t AddrType;
   TestAddresses<4, AddrType>();
 }
 
-TEST(DWARFDebugInfo, TestStringOffsets) {
+TEST(DISABLED_DWARFDebugInfo, TestStringOffsets) {
   Triple Triple = getNormalizedDefaultTargetTriple();
   if (!isObjectEmissionSupported(Triple))
     return;
@@ -1070,7 +1070,7 @@ TEST(DWARFDebugInfo, TestStringOffsets) {
   EXPECT_STREQ(String1, *Extracted3);
 }
 
-TEST(DWARFDebugInfo, TestEmptyStringOffsets) {
+TEST(DISABLED_DWARFDebugInfo, TestEmptyStringOffsets) {
   Triple Triple = getNormalizedDefaultTargetTriple();
   if (!isObjectEmissionSupported(Triple))
     return;
@@ -1099,7 +1099,7 @@ TEST(DWARFDebugInfo, TestEmptyStringOffsets) {
       DwarfContext->getDWARFObj().getStrOffsetsSection().Data.empty());
 }
 
-TEST(DWARFDebugInfo, TestRelations) {
+TEST(DISABLED_DWARFDebugInfo, TestRelations) {
   Triple Triple = getNormalizedDefaultTargetTriple();
   if (!isObjectEmissionSupported(Triple))
     return;
@@ -1277,7 +1277,7 @@ TEST(DWARFDebugInfo, TestRelations) {
   }
 }
 
-TEST(DWARFDebugInfo, TestDWARFDie) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARFDie) {
   // Make sure a default constructed DWARFDie doesn't have any parent, sibling
   // or child;
   DWARFDie DefaultDie;
@@ -1286,7 +1286,7 @@ TEST(DWARFDebugInfo, TestDWARFDie) {
   EXPECT_FALSE(DefaultDie.getSibling().isValid());
 }
 
-TEST(DWARFDebugInfo, TestChildIterators) {
+TEST(DISABLED_DWARFDebugInfo, TestChildIterators) {
   Triple Triple = getNormalizedDefaultTargetTriple();
   if (!isObjectEmissionSupported(Triple))
     return;
@@ -1351,7 +1351,7 @@ TEST(DWARFDebugInfo, TestChildIterators) {
   EXPECT_EQ(A.begin(), A.end());
 }
 
-TEST(DWARFDebugInfo, TestChildIteratorsOnInvalidDie) {
+TEST(DISABLED_DWARFDebugInfo, TestChildIteratorsOnInvalidDie) {
   // Verify that an invalid DIE has no children.
   DWARFDie Invalid;
   auto begin = Invalid.begin();
@@ -1361,7 +1361,7 @@ TEST(DWARFDebugInfo, TestChildIteratorsOnInvalidDie) {
   EXPECT_EQ(begin, end);
 }
 
-TEST(DWARFDebugInfo, TestEmptyChildren) {
+TEST(DISABLED_DWARFDebugInfo, TestEmptyChildren) {
   const char *yamldata = "debug_abbrev:\n"
                          "  - Table:\n"
                          "      - Code:            0x00000001\n"
@@ -1395,7 +1395,7 @@ TEST(DWARFDebugInfo, TestEmptyChildren) {
   EXPECT_EQ(CUDie.begin(), CUDie.end());
 }
 
-TEST(DWARFDebugInfo, TestAttributeIterators) {
+TEST(DISABLED_DWARFDebugInfo, TestAttributeIterators) {
   Triple Triple = getNormalizedDefaultTargetTriple();
   if (!isObjectEmissionSupported(Triple))
     return;
@@ -1457,7 +1457,7 @@ TEST(DWARFDebugInfo, TestAttributeIterators) {
   EXPECT_EQ(E, ++I);
 }
 
-TEST(DWARFDebugInfo, TestFindRecurse) {
+TEST(DISABLED_DWARFDebugInfo, TestFindRecurse) {
   Triple Triple = getNormalizedDefaultTargetTriple();
   if (!isObjectEmissionSupported(Triple))
     return;
@@ -1547,7 +1547,7 @@ TEST(DWARFDebugInfo, TestFindRecurse) {
   EXPECT_EQ(AbsDieName, StringOpt.getValueOr(nullptr));
 }
 
-TEST(DWARFDebugInfo, TestDwarfToFunctions) {
+TEST(DISABLED_DWARFDebugInfo, TestDwarfToFunctions) {
   // Test all of the dwarf::toXXX functions that take a
   // Optional<DWARFFormValue> and extract the values from it.
   uint64_t InvalidU64 = 0xBADBADBADBADBADB;
@@ -1671,7 +1671,7 @@ TEST(DWARFDebugInfo, TestDwarfToFunctions) {
   // Test
 }
 
-TEST(DWARFDebugInfo, TestFindAttrs) {
+TEST(DISABLED_DWARFDebugInfo, TestFindAttrs) {
   Triple Triple = getNormalizedDefaultTargetTriple();
   if (!isObjectEmissionSupported(Triple))
     return;
@@ -1734,7 +1734,7 @@ TEST(DWARFDebugInfo, TestFindAttrs) {
   EXPECT_EQ(DieMangled, toString(NameOpt, ""));
 }
 
-TEST(DWARFDebugInfo, TestImplicitConstAbbrevs) {
+TEST(DISABLED_DWARFDebugInfo, TestImplicitConstAbbrevs) {
   Triple Triple = getNormalizedDefaultTargetTriple();
   if (!isObjectEmissionSupported(Triple))
     return;
@@ -1871,7 +1871,7 @@ void VerifySuccess(DWARFContext &DwarfContext) {
   EXPECT_TRUE(DwarfContext.verify(Strm));
 }
 
-TEST(DWARFDebugInfo, TestDwarfVerifyInvalidCURef) {
+TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidCURef) {
   // Create a single compile unit with a single function that has a DW_AT_type
   // that is CU relative. The CU offset is not valid because it is larger than
   // the compile unit itself.
@@ -1919,7 +1919,7 @@ TEST(DWARFDebugInfo, TestDwarfVerifyInvalidCURef) {
                              "0x0000001a):");
 }
 
-TEST(DWARFDebugInfo, TestDwarfVerifyInvalidRefAddr) {
+TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidRefAddr) {
   // Create a single compile unit with a single function that has an invalid
   // DW_AT_type with an invalid .debug_info offset in its DW_FORM_ref_addr.
   const char *yamldata = R"(
@@ -1964,7 +1964,7 @@ TEST(DWARFDebugInfo, TestDwarfVerifyInvalidRefAddr) {
               "error: DW_FORM_ref_addr offset beyond .debug_info bounds:");
 }
 
-TEST(DWARFDebugInfo, TestDwarfVerifyInvalidRanges) {
+TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidRanges) {
   // Create a single compile unit with a DW_AT_ranges whose section offset
   // isn't valid.
   const char *yamldata = R"(
@@ -1999,7 +1999,7 @@ TEST(DWARFDebugInfo, TestDwarfVerifyInvalidRanges) {
       "error: DW_AT_ranges offset is beyond .debug_ranges bounds: 0x00001000");
 }
 
-TEST(DWARFDebugInfo, TestDwarfVerifyInvalidRnglists) {
+TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidRnglists) {
   // Create a single compile unit with a DW_AT_ranges whose section offset
   // isn't valid.
   const char *yamldata = R"(
@@ -2034,7 +2034,7 @@ TEST(DWARFDebugInfo, TestDwarfVerifyInvalidRnglists) {
                              ".debug_rnglists bounds: 0x00001000");
 }
 
-TEST(DWARFDebugInfo, TestDwarfVerifyInvalidStmtList) {
+TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidStmtList) {
   // Create a single compile unit with a DW_AT_stmt_list whose section offset
   // isn't valid.
   const char *yamldata = R"(
@@ -2069,7 +2069,7 @@ TEST(DWARFDebugInfo, TestDwarfVerifyInvalidStmtList) {
       "error: DW_AT_stmt_list offset is beyond .debug_line bounds: 0x00001000");
 }
 
-TEST(DWARFDebugInfo, TestDwarfVerifyInvalidStrp) {
+TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidStrp) {
   // Create a single compile unit with a single function that has an invalid
   // DW_FORM_strp for the DW_AT_name.
   const char *yamldata = R"(
@@ -2099,7 +2099,7 @@ TEST(DWARFDebugInfo, TestDwarfVerifyInvalidStrp) {
               "error: DW_FORM_strp offset beyond .debug_str bounds:");
 }
 
-TEST(DWARFDebugInfo, TestDwarfVerifyInvalidRefAddrBetween) {
+TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidRefAddrBetween) {
   // Create a single compile unit with a single function that has a DW_AT_type
   // with a valid .debug_info offset, but the offset is between two DIEs.
   const char *yamldata = R"(
@@ -2145,7 +2145,7 @@ TEST(DWARFDebugInfo, TestDwarfVerifyInvalidRefAddrBetween) {
       "error: invalid DIE reference 0x00000011. Offset is in between DIEs:");
 }
 
-TEST(DWARFDebugInfo, TestDwarfVerifyInvalidLineSequence) {
+TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidLineSequence) {
   // Create a single compile unit whose line table has a sequence in it where
   // the address decreases.
   StringRef yamldata = R"(
@@ -2210,7 +2210,7 @@ TEST(DWARFDebugInfo, TestDwarfVerifyInvalidLineSequence) {
                              "in address from previous row:");
 }
 
-TEST(DWARFDebugInfo, TestDwarfVerifyInvalidLineFileIndex) {
+TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidLineFileIndex) {
   // Create a single compile unit whose line table has a line table row with
   // an invalid file index.
   StringRef yamldata = R"(
@@ -2277,7 +2277,7 @@ TEST(DWARFDebugInfo, TestDwarfVerifyInvalidLineFileIndex) {
                              "file index 5 (valid values are [1,1]):");
 }
 
-TEST(DWARFDebugInfo, TestDwarfVerifyInvalidLineTablePorlogueDirIndex) {
+TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidLineTablePorlogueDirIndex) {
   // Create a single compile unit whose line table has a prologue with an
   // invalid dir index.
   StringRef yamldata = R"(
@@ -2345,7 +2345,7 @@ TEST(DWARFDebugInfo, TestDwarfVerifyInvalidLineTablePorlogueDirIndex) {
               "file_names[1].dir_idx contains an invalid index: 2");
 }
 
-TEST(DWARFDebugInfo, TestDwarfVerifyDuplicateFileWarning) {
+TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyDuplicateFileWarning) {
   // Create a single compile unit whose line table has a prologue with an
   // invalid dir index.
   StringRef yamldata = R"(
@@ -2417,7 +2417,7 @@ TEST(DWARFDebugInfo, TestDwarfVerifyDuplicateFileWarning) {
                 "a duplicate of file_names[1]");
 }
 
-TEST(DWARFDebugInfo, TestDwarfVerifyCUDontShareLineTable) {
+TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyCUDontShareLineTable) {
   // Create a two compile units where both compile units share the same
   // DW_AT_stmt_list value and verify we report the error correctly.
   StringRef yamldata = R"(
@@ -2494,7 +2494,7 @@ TEST(DWARFDebugInfo, TestDwarfVerifyCUDontShareLineTable) {
               "offset:");
 }
 
-TEST(DWARFDebugInfo, TestErrorReporting) {
+TEST(DISABLED_DWARFDebugInfo, TestErrorReporting) {
   Triple Triple("x86_64-pc-linux");
   if (!isConfigurationSupported(Triple))
       return;
@@ -2527,7 +2527,7 @@ TEST(DWARFDebugInfo, TestErrorReporting) {
   EXPECT_TRUE(Errors == 2);
 }
 
-TEST(DWARFDebugInfo, TestDwarfVerifyCURangesIncomplete) {
+TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyCURangesIncomplete) {
   // Create a single compile unit with a single function. The compile
   // unit has a DW_AT_ranges attribute that doesn't fully contain the
   // address range of the function. The verification should fail due to
@@ -2580,7 +2580,7 @@ TEST(DWARFDebugInfo, TestDwarfVerifyCURangesIncomplete) {
                              "contained in its parent's ranges:");
 }
 
-TEST(DWARFDebugInfo, TestDwarfVerifyLexicalBlockRanges) {
+TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyLexicalBlockRanges) {
   // Create a single compile unit with a single function that has a lexical
   // block whose address range is not contained in the function address range.
   StringRef yamldata = R"(
@@ -2641,7 +2641,7 @@ TEST(DWARFDebugInfo, TestDwarfVerifyLexicalBlockRanges) {
                              "contained in its parent's ranges:");
 }
 
-TEST(DWARFDebugInfo, TestDwarfVerifyOverlappingFunctionRanges) {
+TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyOverlappingFunctionRanges) {
   // Create a single compile unit with a two functions that have overlapping
   // address ranges.
   StringRef yamldata = R"(
@@ -2694,7 +2694,7 @@ TEST(DWARFDebugInfo, TestDwarfVerifyOverlappingFunctionRanges) {
   VerifyError(*DwarfContext, "error: DIEs have overlapping address ranges:");
 }
 
-TEST(DWARFDebugInfo, TestDwarfVerifyOverlappingLexicalBlockRanges) {
+TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyOverlappingLexicalBlockRanges) {
   // Create a single compile unit with a one function that has two lexical
   // blocks with overlapping address ranges.
   StringRef yamldata = R"(
@@ -2764,7 +2764,7 @@ TEST(DWARFDebugInfo, TestDwarfVerifyOverlappingLexicalBlockRanges) {
   VerifyError(*DwarfContext, "error: DIEs have overlapping address ranges:");
 }
 
-TEST(DWARFDebugInfo, TestDwarfVerifyInvalidDIERange) {
+TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyInvalidDIERange) {
   // Create a single compile unit with a single function that has an invalid
   // address range where the high PC is smaller than the low PC.
   StringRef yamldata = R"(
@@ -2811,7 +2811,7 @@ TEST(DWARFDebugInfo, TestDwarfVerifyInvalidDIERange) {
   VerifyError(*DwarfContext, "error: Invalid address range");
 }
 
-TEST(DWARFDebugInfo, TestDwarfVerifyElidedDoesntFail) {
+TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyElidedDoesntFail) {
   // Create a single compile unit with two functions: one that has a valid range
   // and one whose low and high PC are the same. When the low and high PC are
   // the same, this indicates the function was dead code stripped. We want to
@@ -2872,7 +2872,7 @@ TEST(DWARFDebugInfo, TestDwarfVerifyElidedDoesntFail) {
   VerifySuccess(*DwarfContext);
 }
 
-TEST(DWARFDebugInfo, TestDwarfVerifyNestedFunctions) {
+TEST(DISABLED_DWARFDebugInfo, TestDwarfVerifyNestedFunctions) {
   // Create a single compile unit with a nested function which is not contained
   // in its parent. Although LLVM doesn't generate this, it is valid accoridng
   // to the DWARF standard.
@@ -2934,7 +2934,7 @@ TEST(DWARFDebugInfo, TestDwarfVerifyNestedFunctions) {
   VerifySuccess(*DwarfContext);
 }
 
-TEST(DWARFDebugInfo, TestDWARFDieRangeInfoContains) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARFDieRangeInfoContains) {
   DWARFVerifier::DieRangeInfo Empty;
   ASSERT_TRUE(Empty.contains(Empty));
 
@@ -3008,7 +3008,7 @@ void AssertRangesDontIntersect(const DWARFVerifier::DieRangeInfo &LHS,
 }
 
 } // namespace
-TEST(DWARFDebugInfo, TestDwarfRangesIntersect) {
+TEST(DISABLED_DWARFDebugInfo, TestDwarfRangesIntersect) {
   DWARFAddressRange R(0x10, 0x20);
 
   //----------------------------------------------------------------------
@@ -3066,7 +3066,7 @@ TEST(DWARFDebugInfo, TestDwarfRangesIntersect) {
   AssertRangesDontIntersect(R, {0x20, 0x21});
 }
 
-TEST(DWARFDebugInfo, TestDWARFDieRangeInfoIntersects) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARFDieRangeInfoIntersects) {
 
   DWARFVerifier::DieRangeInfo Ranges({{0x10, 0x20}, {0x30, 0x40}});
 
@@ -3109,7 +3109,7 @@ TEST(DWARFDebugInfo, TestDWARFDieRangeInfoIntersects) {
   AssertRangesIntersect(Ranges, {{0x20, 0x21}, {0x2f, 0x31}});
 }
 
-TEST(DWARFDebugInfo, TestDWARF64UnitLength) {
+TEST(DISABLED_DWARFDebugInfo, TestDWARF64UnitLength) {
   static const char DebugInfoSecRaw[] =
       "\xff\xff\xff\xff"                 // DWARF64 mark
       "\x88\x77\x66\x55\x44\x33\x22\x11" // Length
