@@ -636,7 +636,7 @@ PassBuilder::buildO1FunctionSimplificationPipeline(OptimizationLevel Level,
   // Specially optimize memory movement as it doesn't look like dataflow in SSA.
   // SyncVM local begin
   // TODO: CPR-887 fix MemCpyOptPass on SyncVM
-  if (!TM->getTargetTriple().isSyncVM())
+  if (!TM || !TM->getTargetTriple().isSyncVM())
     FPM.addPass(MemCpyOptPass());
   // SyncVM local end
 
@@ -850,7 +850,7 @@ PassBuilder::buildFunctionSimplificationPipeline(OptimizationLevel Level,
   // Specially optimize memory movement as it doesn't look like dataflow in SSA.
   // SyncVM local begin
   // TODO: CPR-887 fix MemCpyOptPass on SyncVM
-  if (!TM->getTargetTriple().isSyncVM())
+  if (!TM || !TM->getTargetTriple().isSyncVM())
     FPM.addPass(MemCpyOptPass());
   // SyncVM local end
 
@@ -1855,7 +1855,7 @@ PassBuilder::buildLTODefaultPipeline(OptimizationLevel Level,
   // Remove dead memcpy()'s.
   // SyncVM local begin
   // TODO: CPR-887 fix MemCpyOptPass on SyncVM
-  if (!TM->getTargetTriple().isSyncVM())
+  if (!TM || !TM->getTargetTriple().isSyncVM())
     MainFPM.addPass(MemCpyOptPass());
   // SyncVM local end
 
