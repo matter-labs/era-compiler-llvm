@@ -1,4 +1,4 @@
-; UNSUPPORTED: syncvm
+; XFAIL: syncvm
 
 ; RUN: opt -S -basic-aa -loop-idiom < %s | FileCheck %s
 
