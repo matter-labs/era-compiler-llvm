@@ -21,6 +21,7 @@
 using namespace llvm;
 
 #define GET_INSTRINFO_CTOR_DTOR
+#define GET_INSTRMAP_INFO
 #include "SyncVMGenInstrInfo.inc"
 
 // Pin the vtable to this file.
@@ -320,25 +321,28 @@ bool SyncVMInstrInfo::isFarCall(const MachineInstr &MI) const {
   return false;
 }
 
-bool SyncVMInstrInfo::isAdd(const MachineInstr &MI) const {
-  StringRef Mnemonic = getName(MI.getOpcode());
-  return Mnemonic.startswith("ADD");
-}
+#define INSTR_TESTER(NAME, OPCODE)                                             \
+  bool SyncVMInstrInfo::is##NAME(const MachineInstr &MI) const {               \
+    StringRef Mnemonic = getName(MI.getOpcode());                              \
+    return Mnemonic.startswith(#OPCODE);                                       \
+  }
 
-bool SyncVMInstrInfo::isSub(const MachineInstr &MI) const {
-  StringRef Mnemonic = getName(MI.getOpcode());
-  return Mnemonic.startswith("SUB");
-}
-
-bool SyncVMInstrInfo::isMul(const MachineInstr &MI) const {
-  StringRef Mnemonic = getName(MI.getOpcode());
-  return Mnemonic.startswith("MUL");
-}
-
-bool SyncVMInstrInfo::isDiv(const MachineInstr &MI) const {
-  StringRef Mnemonic = getName(MI.getOpcode());
-  return Mnemonic.startswith("DIV");
-}
+INSTR_TESTER(Add, ADD)
+INSTR_TESTER(Sub, SUB)
+INSTR_TESTER(Mul, MUL)
+INSTR_TESTER(Div, DIV)
+INSTR_TESTER(And, AND)
+INSTR_TESTER(Or, OR)
+INSTR_TESTER(Xor, XOR)
+INSTR_TESTER(Shl, SHL)
+INSTR_TESTER(Shr, SHR)
+INSTR_TESTER(Rol, ROL)
+INSTR_TESTER(Ror, ROR)
+INSTR_TESTER(Sel, SEL)
+INSTR_TESTER(Load, LD)
+INSTR_TESTER(Store, ST)
+INSTR_TESTER(FatLoad, FATPTR_LD)
+INSTR_TESTER(NOP, NOP)
 
 bool SyncVMInstrInfo::isPtr(const MachineInstr &MI) const {
   StringRef Mnemonic = getName(MI.getOpcode());
@@ -415,4 +419,37 @@ void SyncVMInstrInfo::tagFatPointerCopy(MachineInstr &MI) const {
 
   if (isFPReg(SrcReg) || isFPReg(DstReg))
     MI.setFlag(MachineInstr::MIFlag::IsFatPtr);
+}
+
+bool SyncVMInstrInfo::isPredicatedInstr(MachineInstr &MI) const {
+  return isArithmetic(MI) || isBitwise(MI) || isShift(MI) || isRotate(MI) ||
+         isLoad(MI) || isFatLoad(MI) || isStore(MI) || isNOP(MI) || isSel(MI);
+}
+
+/// Returns the predicate operand
+unsigned SyncVMInstrInfo::getCCCode(MachineInstr &MI) const {
+  assert(isPredicatedInstr(MI) && "MI is not predicated");
+  auto CC = MI.getOperand(MI.getNumExplicitOperands() - 1);
+
+  if (CC.isImm()) {
+    return CC.getImm();
+  } else if (CC.isCImm()) {
+    return CC.getCImm()->getZExtValue();
+  }
+  llvm_unreachable("CC operand is not immediate");
+}
+
+bool SyncVMInstrInfo::isUnconditionalNonTerminator(MachineInstr &MI) const {
+  if (MI.isTerminator())
+    return false;
+  if (!isPredicatedInstr(MI))
+    return true;
+
+  // check if implicitly uses flags
+  for (auto &opnd : MI.implicit_operands()) {
+    if (opnd.isReg() && opnd.getReg() == SyncVM::Flags)
+      return false;
+  }
+
+  return getCCCode(MI) == SyncVMCC::COND_NONE;
 }
