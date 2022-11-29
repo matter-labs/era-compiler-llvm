@@ -21,9 +21,6 @@ using namespace llvm;
 #define DEBUG_TYPE "syncvm-addcc"
 #define SYNCVM_ADD_CONDITIONALS_NAME "SyncVM add conditionals"
 
-#define GET_INSTRMAP_INFO
-#include "SyncVMGenInstrInfo.inc"
-
 namespace {
 
 class SyncVMAddConditions : public MachineFunctionPass {
