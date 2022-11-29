@@ -89,6 +89,7 @@ FunctionPass *createEraVMExpandSelectPass();
 FunctionPass *createEraVMPeepholePass();
 FunctionPass *createEraVMPropagateGenericPointersPass();
 FunctionPass *createEraVMStackAddressConstantPropagationPass();
+FunctionPass *createEraVMCombineInstrsPass();
 
 void initializeEraVMExpandUMAPass(PassRegistry &);
 void initializeEraVMIndirectUMAPass(PassRegistry &);
@@ -105,6 +106,7 @@ void initializeEraVMPeepholePass(PassRegistry &);
 void initializeEraVMPropagateGenericPointersPass(PassRegistry &);
 void initializeEraVMStackAddressConstantPropagationPass(PassRegistry &);
 void initializeEraVMDAGToDAGISelPass(PassRegistry &);
+void initializeEraVMCombineInstrsPass(PassRegistry &);
 
 } // namespace llvm
 

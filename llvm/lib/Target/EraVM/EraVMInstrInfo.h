@@ -21,6 +21,12 @@
 
 namespace llvm {
 
+namespace EraVM {
+int getPseudoMapOpcode(uint16_t);
+int getFlagSettingOpcode(uint16_t);
+int getNonFlagSettingOpcode(uint16_t);
+} // namespace EraVM
+
 class EraVMInstrInfo : public EraVMGenInstrInfo {
   const EraVMRegisterInfo RI;
   virtual void anchor();
@@ -93,10 +99,51 @@ public:
   bool isPtr(const MachineInstr &MI) const;
   /// A zero materializing add
   bool isNull(const MachineInstr &MI) const;
+
+  // bitwise
+  bool isAnd(const MachineInstr &MI) const;
+  bool isOr(const MachineInstr &MI) const;
+  bool isXor(const MachineInstr &MI) const;
+  bool isShl(const MachineInstr &MI) const;
+  bool isShr(const MachineInstr &MI) const;
+  bool isRol(const MachineInstr &MI) const;
+  bool isRor(const MachineInstr &MI) const;
+  bool isSel(const MachineInstr &MI) const;
+
+  bool isArithmetic(const MachineInstr &MI) const {
+    return isAdd(MI) || isSub(MI) || isMul(MI) || isDiv(MI);
+  }
+
+  bool isBitwise(const MachineInstr &MI) const {
+    return isAnd(MI) || isOr(MI) || isXor(MI) || isShl(MI) || isShr(MI) ||
+           isRol(MI) || isRor(MI);
+  }
+
+  bool isShift(const MachineInstr &MI) const {
+    return isShl(MI) || isShr(MI) || isRol(MI) || isRor(MI);
+  }
+
+  bool isRotate(const MachineInstr &MI) const { return isRol(MI) || isRor(MI); }
+
+  bool isLoad(const MachineInstr &MI) const;
+  bool isFatLoad(const MachineInstr &MI) const;
+  bool isStore(const MachineInstr &MI) const;
+  bool isNOP(const MachineInstr &MI) const;
+
   bool isSilent(const MachineInstr &MI) const;
   GenericInstruction genericInstructionFor(const MachineInstr &MI) const;
 
   void tagFatPointerCopy(MachineInstr &) const override;
+
+  bool isFlagSettingInstruction(uint16_t opcode) const {
+    // a reverse lookup: for an `_v` instruction, it should return values
+    // other than -1
+    return EraVM::getNonFlagSettingOpcode(opcode) != -1;
+  }
+
+  bool isPredicatedInstr(MachineInstr &MI) const;
+  unsigned getCCCode(MachineInstr &MI) const;
+  bool isUnconditionalNonTerminator(MachineInstr &MI) const;
 };
 
 } // namespace llvm
