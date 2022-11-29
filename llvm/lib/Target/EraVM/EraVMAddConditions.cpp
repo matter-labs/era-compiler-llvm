@@ -24,9 +24,6 @@ using namespace llvm;
 #define DEBUG_TYPE "eravm-addcc"
 #define ERAVM_ADD_CONDITIONALS_NAME "EraVM add conditionals"
 
-#define GET_INSTRMAP_INFO
-#include "EraVMGenInstrInfo.inc"
-
 namespace {
 
 class EraVMAddConditions : public MachineFunctionPass {

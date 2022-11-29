@@ -27,6 +27,7 @@
 using namespace llvm;
 
 #define GET_INSTRINFO_CTOR_DTOR
+#define GET_INSTRMAP_INFO
 #include "EraVMGenInstrInfo.inc"
 
 // Pin the vtable to this file.
@@ -324,25 +325,28 @@ bool EraVMInstrInfo::isFarCall(const MachineInstr &MI) const {
   return false;
 }
 
-bool EraVMInstrInfo::isAdd(const MachineInstr &MI) const {
-  StringRef Mnemonic = getName(MI.getOpcode());
-  return Mnemonic.starts_with("ADD");
-}
+#define INSTR_TESTER(NAME, OPCODE)                                             \
+  bool EraVMInstrInfo::is##NAME(const MachineInstr &MI) const {                \
+    StringRef Mnemonic = getName(MI.getOpcode());                              \
+    return Mnemonic.starts_with(#OPCODE);                                      \
+  }
 
-bool EraVMInstrInfo::isSub(const MachineInstr &MI) const {
-  StringRef Mnemonic = getName(MI.getOpcode());
-  return Mnemonic.starts_with("SUB");
-}
-
-bool EraVMInstrInfo::isMul(const MachineInstr &MI) const {
-  StringRef Mnemonic = getName(MI.getOpcode());
-  return Mnemonic.starts_with("MUL");
-}
-
-bool EraVMInstrInfo::isDiv(const MachineInstr &MI) const {
-  StringRef Mnemonic = getName(MI.getOpcode());
-  return Mnemonic.starts_with("DIV");
-}
+INSTR_TESTER(Add, ADD)
+INSTR_TESTER(Sub, SUB)
+INSTR_TESTER(Mul, MUL)
+INSTR_TESTER(Div, DIV)
+INSTR_TESTER(And, AND)
+INSTR_TESTER(Or, OR)
+INSTR_TESTER(Xor, XOR)
+INSTR_TESTER(Shl, SHL)
+INSTR_TESTER(Shr, SHR)
+INSTR_TESTER(Rol, ROL)
+INSTR_TESTER(Ror, ROR)
+INSTR_TESTER(Sel, SEL)
+INSTR_TESTER(Load, LD)
+INSTR_TESTER(Store, ST)
+INSTR_TESTER(FatLoad, FATPTR_LD)
+INSTR_TESTER(NOP, NOP)
 
 bool EraVMInstrInfo::isPtr(const MachineInstr &MI) const {
   StringRef Mnemonic = getName(MI.getOpcode());
@@ -419,4 +423,36 @@ void EraVMInstrInfo::tagFatPointerCopy(MachineInstr &MI) const {
 
   if (isFPReg(SrcReg) || isFPReg(DstReg))
     MI.setFlag(MachineInstr::MIFlag::IsFatPtr);
+}
+
+bool EraVMInstrInfo::isPredicatedInstr(MachineInstr &MI) const {
+  return isArithmetic(MI) || isBitwise(MI) || isShift(MI) || isRotate(MI) ||
+         isLoad(MI) || isFatLoad(MI) || isStore(MI) || isNOP(MI) || isSel(MI);
+}
+
+/// Returns the predicate operand
+unsigned EraVMInstrInfo::getCCCode(MachineInstr &MI) const {
+  assert(isPredicatedInstr(MI) && "MI is not predicated");
+  auto CC = MI.getOperand(MI.getNumExplicitOperands() - 1);
+
+  if (CC.isImm())
+    return CC.getImm();
+  if (CC.isCImm())
+    return CC.getCImm()->getZExtValue();
+  llvm_unreachable("CC operand is not immediate");
+}
+
+bool EraVMInstrInfo::isUnconditionalNonTerminator(MachineInstr &MI) const {
+  if (MI.isTerminator())
+    return false;
+  if (!isPredicatedInstr(MI))
+    return true;
+
+  // check if implicitly uses flags
+  for (auto &opnd : MI.implicit_operands()) {
+    if (opnd.isReg() && opnd.getReg() == EraVM::Flags)
+      return false;
+  }
+
+  return getCCCode(MI) == EraVMCC::COND_NONE;
 }

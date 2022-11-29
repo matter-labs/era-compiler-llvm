@@ -125,6 +125,7 @@ void EraVMPassConfig::addPreRegAlloc() {
   addPass(createEraVMAddConditionsPass());
   addPass(createEraVMStackAddressConstantPropagationPass());
   addPass(createEraVMBytesToCellsPass());
+  addPass(createEraVMCombineInstrsPass());
 }
 
 void EraVMPassConfig::addPreEmitPass() {
