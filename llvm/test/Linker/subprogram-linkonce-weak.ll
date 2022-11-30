@@ -5,7 +5,7 @@
 ; REQUIRES: default_triple
 ;
 ; Bug 47131
-; XFAIL: sparc
+; XFAIL: sparc, syncvm
 ;
 ; This testcase tests the following flow:
 ;  - File A defines a linkonce version of @foo which has inlined into @bar.

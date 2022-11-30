@@ -120,9 +120,9 @@ struct CommonFixture {
 // Fixtures must derive from "Test", but parameterised fixtures from
 // "TestWithParam". It does not seem possible to inherit from both, so we share
 // the common state in a separate class, inherited by the two fixture classes.
-struct DebugLineBasicFixture : public Test, public CommonFixture {};
+struct DISABLED_DebugLineBasicFixture : public Test, public CommonFixture {};
 
-struct DebugLineParameterisedFixture
+struct DISABLED_DebugLineParameterisedFixture
     : public TestWithParam<std::pair<uint16_t, DwarfFormat>>,
       public CommonFixture {
   void SetUp() override { std::tie(Version, Format) = GetParam(); }
@@ -177,7 +177,7 @@ void checkDefaultPrologue(uint16_t Version, DwarfFormat Format,
   EXPECT_STREQ(*Prologue.FileNames[0].Name.getAsCString(), "a file");
 }
 
-TEST_F(DebugLineBasicFixture, GetOrParseLineTableAtInvalidOffset) {
+TEST_F(DISABLED_DebugLineBasicFixture, GetOrParseLineTableAtInvalidOffset) {
   if (!setupGenerator())
     return;
   generate();
@@ -199,7 +199,7 @@ TEST_F(DebugLineBasicFixture, GetOrParseLineTableAtInvalidOffset) {
           "offset 0x00000001 is not a valid debug line section offset"));
 }
 
-TEST_F(DebugLineBasicFixture, GetOrParseLineTableAtInvalidOffsetAfterData) {
+TEST_F(DISABLED_DebugLineBasicFixture, GetOrParseLineTableAtInvalidOffsetAfterData) {
   if (!setupGenerator())
     return;
 
@@ -220,7 +220,7 @@ TEST_F(DebugLineBasicFixture, GetOrParseLineTableAtInvalidOffsetAfterData) {
           "offset 0x00000001 is not a valid debug line section offset"));
 }
 
-TEST_P(DebugLineParameterisedFixture, PrologueGetLength) {
+TEST_P(DISABLED_DebugLineParameterisedFixture, PrologueGetLength) {
   if (!setupGenerator(Version))
     return;
   LineTable &LT = Gen->addLineTable(Format);
@@ -243,7 +243,7 @@ TEST_P(DebugLineParameterisedFixture, PrologueGetLength) {
   EXPECT_EQ((*ExpectedLineTable)->Prologue.getLength(), ExpectedLength);
 }
 
-TEST_P(DebugLineParameterisedFixture, GetOrParseLineTableValidTable) {
+TEST_P(DISABLED_DebugLineParameterisedFixture, GetOrParseLineTableValidTable) {
   if (!setupGenerator(Version))
     return;
 
@@ -309,7 +309,7 @@ TEST_P(DebugLineParameterisedFixture, GetOrParseLineTableValidTable) {
   // correctly.
 }
 
-TEST_F(DebugLineBasicFixture, ErrorForReservedLength) {
+TEST_F(DISABLED_DebugLineBasicFixture, ErrorForReservedLength) {
   if (!setupGenerator())
     return;
 
@@ -349,12 +349,14 @@ TEST_P(DebugLineUnsupportedVersionFixture, ErrorForUnsupportedVersion) {
                         std::to_string(Version)));
 }
 
+#if 0 // SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(UnsupportedVersionTestParams,
                          DebugLineUnsupportedVersionFixture,
                          Values(/*1 below min */ 1, /* 1 above max */ 6,
                                 /* Maximum possible */ 0xffff));
+#endif //SyncVM local end
 
-TEST_F(DebugLineBasicFixture, ErrorForInvalidV5IncludeDirTable) {
+TEST_F(DISABLED_DebugLineBasicFixture, ErrorForInvalidV5IncludeDirTable) {
   if (!setupGenerator(5))
     return;
 
@@ -395,7 +397,7 @@ TEST_F(DebugLineBasicFixture, ErrorForInvalidV5IncludeDirTable) {
           "found"));
 }
 
-TEST_P(DebugLineParameterisedFixture, ErrorForTooLargePrologueLength) {
+TEST_P(DISABLED_DebugLineParameterisedFixture, ErrorForTooLargePrologueLength) {
   if (!setupGenerator(Version))
     return;
 
@@ -431,7 +433,7 @@ TEST_P(DebugLineParameterisedFixture, ErrorForTooLargePrologueLength) {
               .str()));
 }
 
-TEST_P(DebugLineParameterisedFixture, ErrorForTooShortPrologueLength) {
+TEST_P(DISABLED_DebugLineParameterisedFixture, ErrorForTooShortPrologueLength) {
   if (!setupGenerator(Version))
     return;
 
@@ -477,15 +479,17 @@ TEST_P(DebugLineParameterisedFixture, ErrorForTooShortPrologueLength) {
                     FailedWithMessageArray(testing::ElementsAreArray(Errs)));
 }
 
+#if 0 // SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(
-    LineTableTestParams, DebugLineParameterisedFixture,
+    LineTableTestParams, DISABLED_DebugLineParameterisedFixture,
     Values(std::make_pair(
                2, DWARF32), // Test lower-bound of v2-3 fields and DWARF32.
            std::make_pair(3, DWARF32), // Test upper-bound of v2-3 fields.
            std::make_pair(4, DWARF64), // Test v4 fields and DWARF64.
            std::make_pair(5, DWARF32), std::make_pair(5, DWARF64)));
+#endif //SyncVM local end
 
-TEST_F(DebugLineBasicFixture, ErrorForExtendedOpcodeLengthSmallerThanExpected) {
+TEST_F(DISABLED_DebugLineBasicFixture, ErrorForExtendedOpcodeLengthSmallerThanExpected) {
   if (!setupGenerator())
     return;
 
@@ -514,7 +518,7 @@ TEST_F(DebugLineBasicFixture, ErrorForExtendedOpcodeLengthSmallerThanExpected) {
   EXPECT_EQ((*ExpectedLineTable)->Rows[1].Discriminator, DW_LNS_negate_stmt);
 }
 
-TEST_F(DebugLineBasicFixture, ErrorForExtendedOpcodeLengthLargerThanExpected) {
+TEST_F(DISABLED_DebugLineBasicFixture, ErrorForExtendedOpcodeLengthLargerThanExpected) {
   if (!setupGenerator())
     return;
 
@@ -543,7 +547,7 @@ TEST_F(DebugLineBasicFixture, ErrorForExtendedOpcodeLengthLargerThanExpected) {
   EXPECT_EQ((*ExpectedLineTable)->Rows[2].IsStmt, 1u);
 }
 
-TEST_F(DebugLineBasicFixture, ErrorForUnitLengthTooLarge) {
+TEST_F(DISABLED_DebugLineBasicFixture, ErrorForUnitLengthTooLarge) {
   if (!setupGenerator())
     return;
 
@@ -572,7 +576,7 @@ TEST_F(DebugLineBasicFixture, ErrorForUnitLengthTooLarge) {
   EXPECT_EQ((*ExpectedLineTable)->Sequences.size(), 1u);
 }
 
-TEST_F(DebugLineBasicFixture, ErrorForMismatchedAddressSize) {
+TEST_F(DISABLED_DebugLineBasicFixture, ErrorForMismatchedAddressSize) {
   if (!setupGenerator(4, 8))
     return;
 
@@ -601,7 +605,7 @@ TEST_F(DebugLineBasicFixture, ErrorForMismatchedAddressSize) {
   EXPECT_EQ((*ExpectedLineTable)->Rows[1].Address.Address, Addr2);
 }
 
-TEST_F(DebugLineBasicFixture,
+TEST_F(DISABLED_DebugLineBasicFixture,
        ErrorForMismatchedAddressSizeUnsetInitialAddress) {
   if (!setupGenerator(4, 0))
     return;
@@ -628,7 +632,7 @@ TEST_F(DebugLineBasicFixture,
   EXPECT_EQ((*ExpectedLineTable)->Rows[1].Address.Address, Addr2);
 }
 
-TEST_F(DebugLineBasicFixture,
+TEST_F(DISABLED_DebugLineBasicFixture,
        ErrorForUnsupportedAddressSizeInSetAddressLength) {
   // Use DWARF v4, and 0 for data extractor address size so that the address
   // size is derived from the opcode length.
@@ -661,7 +665,7 @@ TEST_F(DebugLineBasicFixture,
   EXPECT_EQ((*ExpectedLineTable)->Rows[0].Address.Address, 0u);
 }
 
-TEST_F(DebugLineBasicFixture, ErrorForAddressSizeGreaterThanByteSize) {
+TEST_F(DISABLED_DebugLineBasicFixture, ErrorForAddressSizeGreaterThanByteSize) {
   // Use DWARF v4, and 0 for data extractor address size so that the address
   // size is derived from the opcode length.
   if (!setupGenerator(4, 0))
@@ -685,7 +689,7 @@ TEST_F(DebugLineBasicFixture, ErrorForAddressSizeGreaterThanByteSize) {
   ASSERT_THAT_EXPECTED(ExpectedLineTable, Succeeded());
 }
 
-TEST_F(DebugLineBasicFixture, ErrorForUnsupportedAddressSizeDefinedInHeader) {
+TEST_F(DISABLED_DebugLineBasicFixture, ErrorForUnsupportedAddressSizeDefinedInHeader) {
   // Use 0 for data extractor address size so that it does not clash with the
   // header address size.
   if (!setupGenerator(5, 0))
@@ -722,7 +726,7 @@ TEST_F(DebugLineBasicFixture, ErrorForUnsupportedAddressSizeDefinedInHeader) {
   EXPECT_EQ((*ExpectedLineTable)->Rows[0].Address.Address, 0u);
 }
 
-TEST_F(DebugLineBasicFixture, CallbackUsedForUnterminatedSequence) {
+TEST_F(DISABLED_DebugLineBasicFixture, CallbackUsedForUnterminatedSequence) {
   if (!setupGenerator())
     return;
 
@@ -950,6 +954,7 @@ TEST_P(MaxOpsPerInstFixture, MaxOpsPerInstProblemsReportedCorrectly) {
               ", which is unsupported. Assuming a value of 1 instead");
 }
 
+#if 0 // SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(
     MaxOpsPerInstParams, MaxOpsPerInstFixture,
     Values(std::make_tuple(3, 0, false), // Test for version < 4 (no error).
@@ -957,6 +962,7 @@ INSTANTIATE_TEST_SUITE_P(
            std::make_tuple(4, 1, false), // Test good value for V4 (no error).
            std::make_tuple(
                4, 2, true))); // Test one higher than permitted V4 (error).
+#endif //SyncVM local end
 
 struct LineRangeFixture : TestWithParam<std::tuple<uint8_t, bool>>,
                           AdjustAddressFixtureBase {
@@ -993,10 +999,12 @@ TEST_P(LineRangeFixture, LineRangeProblemsReportedCorrectly) {
           "not be adjusted");
 }
 
+#if 0 // SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(
     LineRangeParams, LineRangeFixture,
     Values(std::make_tuple(0, true),     // Test zero value (error).
            std::make_tuple(14, false))); // Test non-zero value (no error).
+#endif //SyncVM local end
 
 struct BadMinInstLenFixture : TestWithParam<std::tuple<uint8_t, bool>>,
                               AdjustAddressFixtureBase {
@@ -1028,12 +1036,14 @@ TEST_P(BadMinInstLenFixture, MinInstLengthProblemsReportedCorrectly) {
           "prevents any address advancing");
 }
 
+#if 0 // SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(
     BadMinInstLenParams, BadMinInstLenFixture,
     Values(std::make_tuple(0, true),    // Test zero value (error).
            std::make_tuple(1, false))); // Test non-zero value (no error).
+#endif //SyncVM local end
 
-TEST_F(DebugLineBasicFixture, ParserParsesCorrectly) {
+TEST_F(DISABLED_DebugLineBasicFixture, ParserParsesCorrectly) {
   if (!setupGenerator())
     return;
 
@@ -1060,7 +1070,7 @@ TEST_F(DebugLineBasicFixture, ParserParsesCorrectly) {
   EXPECT_FALSE(Unrecoverable);
 }
 
-TEST_F(DebugLineBasicFixture, ParserSkipsCorrectly) {
+TEST_F(DISABLED_DebugLineBasicFixture, ParserSkipsCorrectly) {
   if (!setupGenerator())
     return;
 
@@ -1081,7 +1091,7 @@ TEST_F(DebugLineBasicFixture, ParserSkipsCorrectly) {
   EXPECT_FALSE(Unrecoverable);
 }
 
-TEST_F(DebugLineBasicFixture, ParserAlwaysDoneForEmptySection) {
+TEST_F(DISABLED_DebugLineBasicFixture, ParserAlwaysDoneForEmptySection) {
   if (!setupGenerator())
     return;
 
@@ -1091,7 +1101,7 @@ TEST_F(DebugLineBasicFixture, ParserAlwaysDoneForEmptySection) {
   EXPECT_TRUE(Parser.done());
 }
 
-TEST_F(DebugLineBasicFixture, ParserMarkedAsDoneForBadLengthWhenParsing) {
+TEST_F(DISABLED_DebugLineBasicFixture, ParserMarkedAsDoneForBadLengthWhenParsing) {
   if (!setupGenerator())
     return;
 
@@ -1114,7 +1124,7 @@ TEST_F(DebugLineBasicFixture, ParserMarkedAsDoneForBadLengthWhenParsing) {
           "reserved unit length of value 0xfffffff0"));
 }
 
-TEST_F(DebugLineBasicFixture, ParserMarkedAsDoneForBadLengthWhenSkipping) {
+TEST_F(DISABLED_DebugLineBasicFixture, ParserMarkedAsDoneForBadLengthWhenSkipping) {
   if (!setupGenerator())
     return;
 
@@ -1137,7 +1147,7 @@ TEST_F(DebugLineBasicFixture, ParserMarkedAsDoneForBadLengthWhenSkipping) {
           "reserved unit length of value 0xfffffff0"));
 }
 
-TEST_F(DebugLineBasicFixture, ParserReportsFirstErrorInEachTableWhenParsing) {
+TEST_F(DISABLED_DebugLineBasicFixture, ParserReportsFirstErrorInEachTableWhenParsing) {
   if (!setupGenerator())
     return;
 
@@ -1163,7 +1173,7 @@ TEST_F(DebugLineBasicFixture, ParserReportsFirstErrorInEachTableWhenParsing) {
                         "unsupported version 1"));
 }
 
-TEST_F(DebugLineBasicFixture, ParserReportsNonPrologueProblemsWhenParsing) {
+TEST_F(DISABLED_DebugLineBasicFixture, ParserReportsNonPrologueProblemsWhenParsing) {
   if (!setupGenerator())
     return;
 
@@ -1195,7 +1205,7 @@ TEST_F(DebugLineBasicFixture, ParserReportsNonPrologueProblemsWhenParsing) {
   EXPECT_FALSE(Unrecoverable);
 }
 
-TEST_F(DebugLineBasicFixture,
+TEST_F(DISABLED_DebugLineBasicFixture,
        ParserReportsPrologueErrorsInEachTableWhenSkipping) {
   if (!setupGenerator())
     return;
@@ -1222,7 +1232,7 @@ TEST_F(DebugLineBasicFixture,
                         "unsupported version 1"));
 }
 
-TEST_F(DebugLineBasicFixture, ParserIgnoresNonPrologueErrorsWhenSkipping) {
+TEST_F(DISABLED_DebugLineBasicFixture, ParserIgnoresNonPrologueErrorsWhenSkipping) {
   if (!setupGenerator())
     return;
 
@@ -1238,7 +1248,7 @@ TEST_F(DebugLineBasicFixture, ParserIgnoresNonPrologueErrorsWhenSkipping) {
   EXPECT_FALSE(Unrecoverable);
 }
 
-TEST_F(DebugLineBasicFixture, VerboseOutput) {
+TEST_F(DISABLED_DebugLineBasicFixture, VerboseOutput) {
   if (!setupGenerator(5))
     return;
 
@@ -1422,6 +1432,7 @@ TEST_P(TruncatedPrologueFixture, ErrorForTruncatedPrologue) {
   EXPECT_EQ(Offset, ExpectedOffset);
 }
 
+#if 0 // SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(
     TruncatedPrologueParams, TruncatedPrologueFixture,
     Values(
@@ -1502,6 +1513,7 @@ INSTANTIATE_TEST_SUITE_P(
             0x12, 0x12, 4, DWARF32,
             "parsing line table prologue at offset 0x00000001: unexpected end "
             "of data at offset 0x12 while reading [0x12, 0x13)")));
+#endif //SyncVM local end
 
 using ValueAndLengths = std::vector<LineTable::ValueAndLength>;
 
@@ -1581,6 +1593,7 @@ TEST_P(TruncatedExtendedOpcodeFixture, ErrorForTruncatedExtendedOpcode) {
                     FailedWithMessage(ExpectedErr.str()));
 }
 
+#if 0// SyncVM local begin; beware of nested comment below
 INSTANTIATE_TEST_SUITE_P(
     TruncatedExtendedOpcodeParams, TruncatedExtendedOpcodeFixture,
     Values(
@@ -1649,6 +1662,7 @@ INSTANTIATE_TEST_SUITE_P(
             "Unrecognized extended op 0x7f length 5 (<parsing error> 12 34 34)",
             "unexpected end of data at offset 0x35 while reading [0x32, "
             "0x36)")));
+#endif //SyncVM local end
 
 TEST_P(TruncatedStandardOpcodeFixture, ErrorForTruncatedStandardOpcode) {
   if (!setupGenerator())
@@ -1660,6 +1674,7 @@ TEST_P(TruncatedStandardOpcodeFixture, ErrorForTruncatedStandardOpcode) {
                     FailedWithMessage(ExpectedErr.str()));
 }
 
+#if 0 // SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(
     TruncatedStandardOpcodeParams, TruncatedStandardOpcodeFixture,
     Values(
@@ -1705,8 +1720,9 @@ INSTANTIATE_TEST_SUITE_P(
             "Unrecognized standard opcode (operands: 0x0000000000000900)",
             "unable to decode LEB128 at offset 0x00000032: "
             "malformed uleb128, extends past end")));
+#endif //SyncVM local end
 
-TEST_F(DebugLineBasicFixture, PrintPathsProperly) {
+TEST_F(DISABLED_DebugLineBasicFixture, PrintPathsProperly) {
   if (!setupGenerator(5))
     return;
 

@@ -1,6 +1,7 @@
 ; RUN: opt -enable-new-pm=0 -O3 -enable-matrix -debug-pass=Structure %s -disable-output 2>&1 | FileCheck %s
 
 ; REQUIRES: asserts
+; XFAIL: syncvm
 
 ; CHECK-LABEL: Pass Arguments:
 ; CHECK-NEXT: Target Transform Information

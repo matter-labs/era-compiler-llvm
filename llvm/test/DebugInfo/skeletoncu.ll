@@ -1,3 +1,5 @@
+; XFAIL: syncvm
+
 ; RUN: %llc_dwarf %s -filetype=obj -o %t
 ; RUN: llvm-dwarfdump -debug-info %t | FileCheck %s
 ; CHECK: DW_TAG_compile_unit

@@ -1,6 +1,7 @@
 ; RUN: opt -enable-new-pm=0 -mtriple=x86_64-- -Os -debug-pass=Structure < %s -o /dev/null 2>&1 | FileCheck --check-prefixes=CHECK,%llvmcheckext %s
 
 ; REQUIRES: asserts
+; XFAIL: syncvm
 
 ; CHECK-LABEL: Pass Arguments:
 ; CHECK-NEXT: Target Transform Information

@@ -1,5 +1,6 @@
 ; RUN: opt < %s -O3 | llc -no-integrated-as | FileCheck %s
 ; REQUIRES: default_triple
+; XFAIL: syncvm
 
 ;; We don't want branch folding to fold asm directives.
 

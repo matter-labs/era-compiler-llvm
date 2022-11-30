@@ -280,7 +280,7 @@ if config.libcxx_used:
     config.available_features.add('libcxx-used')
 
 # Direct object generation
-if not 'xcore' in config.target_triple:
+if (not 'xcore' in config.target_triple) and (not 'syncvm' in config.target_triple):
     config.available_features.add('object-emission')
 
 # LLVM can be configured with an empty default triple
