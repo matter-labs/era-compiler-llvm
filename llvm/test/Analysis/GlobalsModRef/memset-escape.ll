@@ -1,4 +1,4 @@
-; UNSUPPORTED: syncvm
+; XFAIL: syncvm
 
 ; RUN: opt < %s -O1 -S | FileCheck %s
 
