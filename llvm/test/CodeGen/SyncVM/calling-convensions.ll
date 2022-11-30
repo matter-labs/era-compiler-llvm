@@ -1,4 +1,4 @@
-; RUN: llc < %s | FileCheck %s
+; RUN: llc -opaque-pointers < %s | FileCheck %s
 
 target datalayout = "E-p:256:256-i8:256:256:256-i256:256:256-S32-a:256:256"
 target triple = "syncvm"
@@ -462,6 +462,15 @@ define i256 @tworet.call() {
   %x3 = add i256 %x1, %x2
   ; CHECK: add r1, r2, r1
   ret i256 %x3
+}
+
+; CHECK-LABEL: call1.i256pabi.opaque
+define i256* @call1.i256pabi.opaque(i256 %a1, i256 %abi_data) nounwind {
+; CHECK: add r2, r0, r15
+; CHECK: near_call r15, @onearg.i256p, @DEFAULT_UNWIND
+  %1 = call i256 (ptr, i256, ...) @llvm.syncvm.nearcall(ptr @onearg.i256p, i256 %abi_data, i256 %a1)
+  %2 = inttoptr i256 %1 to i256*
+  ret i256* %2
 }
 
 ; TODO: enable after MVT::fatptr is introduced

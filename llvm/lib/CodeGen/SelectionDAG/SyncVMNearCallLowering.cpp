@@ -16,15 +16,21 @@ void SelectionDAGBuilder::LowerSyncVMNearCall(
     const CallBase &CB, const BasicBlock *EHPadBB /*= nullptr*/) {
   assert(CB.getIntrinsicID() == Intrinsic::syncvm_nearcall);
 
-  auto *CalleeBitcast = dyn_cast<BitCastInst>(CB.getOperand(0));
-  auto *CalleeBitcastOp = dyn_cast<BitCastOperator>(CB.getOperand(0));
-  assert(CalleeBitcast || CalleeBitcastOp && "Expected bitcast");
+  auto *CalleeFunction = dyn_cast<Function>(CB.getOperand(0));
 
-  Function *CalleeFunction = [CalleeBitcast, CalleeBitcastOp]() {
-    if (CalleeBitcast)
-      return dyn_cast<Function>(CalleeBitcast->getOperand(0));
-    return dyn_cast<Function>(CalleeBitcastOp->getOperand(0));
-  }();
+  // Support pre-opaque pointers convetion to pass a pointer to a function
+  // as i256*
+  if (!CalleeFunction) {
+    auto *CalleeBitcast = dyn_cast<BitCastInst>(CB.getOperand(0));
+    auto *CalleeBitcastOp = dyn_cast<BitCastOperator>(CB.getOperand(0));
+    assert(CalleeBitcast || CalleeBitcastOp && "Expected bitcast");
+
+    CalleeFunction = [CalleeBitcast, CalleeBitcastOp]() {
+      if (CalleeBitcast)
+        return dyn_cast<Function>(CalleeBitcast->getOperand(0));
+      return dyn_cast<Function>(CalleeBitcastOp->getOperand(0));
+    }();
+  }
 
   SDValue Callee = getValue(CalleeFunction);
 

@@ -5149,20 +5149,25 @@ void Verifier::visitIntrinsicCall(Intrinsic::ID ID, CallBase &Call) {
     break;
   // SyncVM local begin
   case Intrinsic::syncvm_nearcall: {
-    auto *CalleeBitcast = dyn_cast<BitCastInst>(Call.getOperand(0));
-    auto *CalleeBitcastOp = dyn_cast<BitCastOperator>(Call.getOperand(0));
-    Check(CalleeBitcast || CalleeBitcastOp,
-          "llvm.syncvm.nearcall parameter #1 must be a statically known "
-          "function pointer bitcasted to i256*",
-          Call);
-    Function *CalleeFunction = [CalleeBitcast, CalleeBitcastOp]() {
-      if (CalleeBitcast)
-        return dyn_cast<Function>(CalleeBitcast->getOperand(0));
-      return dyn_cast<Function>(CalleeBitcastOp->getOperand(0));
-    }();
+    auto *CalleeFunction = dyn_cast<Function>(Call.getOperand(0));
+    if (!CalleeFunction) {
+      auto *CalleeBitcast = dyn_cast<BitCastInst>(Call.getOperand(0));
+      auto *CalleeBitcastOp = dyn_cast<BitCastOperator>(Call.getOperand(0));
+      Check(CalleeBitcast || CalleeBitcastOp,
+            "llvm.syncvm.nearcall parameter #1 must be a statically known "
+            "pointer to a function (bitcasted to i256* if non-opaque pointers "
+            "are used)",
+            Call);
+      CalleeFunction = [CalleeBitcast, CalleeBitcastOp]() {
+        if (CalleeBitcast)
+          return dyn_cast<Function>(CalleeBitcast->getOperand(0));
+        return dyn_cast<Function>(CalleeBitcastOp->getOperand(0));
+      }();
+    }
     Check(CalleeFunction,
           "llvm.syncvm.nearcall parameter #1 must be a statically known "
-          "function pointer bitcasted to i256*",
+          "pointer to a function (bitcasted to i256* if non-opaque pointers "
+          "are used)",
           Call);
     // SyncVM does not support vararg functions.
     Check(isa<CallInst>(Call) &&
