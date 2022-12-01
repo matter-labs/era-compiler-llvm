@@ -32,7 +32,7 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         -DLLVM_ENABLE_ZLIB='Off' \
         -DLLVM_ENABLE_LIBXML2='Off' \
         -DLLVM_ENABLE_BINDINGS='Off' \
-        -DCMAKE_OSX_DEPLOYMENT_TARGET='10.9'
+        -DCMAKE_OSX_DEPLOYMENT_TARGET='11.0'
 elif [[ -f '/etc/arch-release' ]]; then
     if [[ -z ${CI_RUNNING+x} ]]; then
         sudo pacman --sync --refresh --sysupgrade --noconfirm \
