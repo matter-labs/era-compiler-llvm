@@ -19,6 +19,7 @@
 #include "llvm/InitializePasses.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/TargetRegistry.h"
+#include "llvm/Passes/PassBuilder.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/Utils.h"
 
@@ -81,6 +82,13 @@ EraVMTargetMachine::getTargetTransformInfo(const Function &F) const {
   return TargetTransformInfo(EraVMTTIImpl(this, F));
 }
 
+void EraVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
+  PB.registerPipelineStartEPCallback(
+      [](ModulePassManager &PM, OptimizationLevel Level) {
+        PM.addPass(EraVMLinkRuntimePass());
+      });
+}
+
 namespace {
 /// EraVM Code Generator Pass Configuration Options.
 class EraVMPassConfig : public TargetPassConfig {
@@ -112,7 +120,7 @@ MachineFunctionInfo *EraVMTargetMachine::createMachineFunctionInfo(
 
 void EraVMPassConfig::addIRPasses() {
   addPass(createEraVMLowerIntrinsicsPass());
-  addPass(createEraVMLinkRuntimePass());
+  addPass(createEraVMLinkRuntimePass(true));
   addPass(createEraVMCodegenPreparePass());
   addPass(createGlobalDCEPass());
   addPass(createEraVMAllocaHoistingPass());

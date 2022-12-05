@@ -17,6 +17,7 @@
 #include "MCTargetDesc/EraVMMCTargetDesc.h"
 #include "llvm/CodeGen/MachineOperand.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/PassManager.h"
 #include "llvm/Target/TargetMachine.h"
 
 namespace EraVMCC {
@@ -79,7 +80,7 @@ ModulePass *createEraVMExpandUMAPass();
 ModulePass *createEraVMIndirectUMAPass();
 ModulePass *createEraVMIndirectExternalCallPass();
 ModulePass *createEraVMLowerIntrinsicsPass();
-ModulePass *createEraVMLinkRuntimePass();
+ModulePass *createEraVMLinkRuntimePass(bool);
 FunctionPass *createEraVMAddConditionsPass();
 FunctionPass *createEraVMAllocaHoistingPass();
 FunctionPass *createEraVMBytesToCellsPass();
@@ -107,6 +108,11 @@ void initializeEraVMPropagateGenericPointersPass(PassRegistry &);
 void initializeEraVMStackAddressConstantPropagationPass(PassRegistry &);
 void initializeEraVMDAGToDAGISelPass(PassRegistry &);
 void initializeEraVMCombineFlagSettingPass(PassRegistry &);
+
+struct EraVMLinkRuntimePass : PassInfoMixin<EraVMLinkRuntimePass> {
+  explicit EraVMLinkRuntimePass() {}
+  PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
+};
 
 } // namespace llvm
 
