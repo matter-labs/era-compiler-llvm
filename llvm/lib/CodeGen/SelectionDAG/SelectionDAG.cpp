@@ -6345,7 +6345,16 @@ SDValue SelectionDAG::FoldSymbolOffset(unsigned Opcode, EVT VT,
   auto *C2 = dyn_cast<ConstantSDNode>(N2);
   if (!C2)
     return SDValue();
-  int64_t Offset = C2->getSExtValue();
+  // EraVM local begin
+  // In case the offset is negative, it overflows 64 bits with EraVM's i256.
+  // Though the architecture guarantees the offset fits 64 bits wide
+  // signed integer, so it's ok to truncate.
+  int64_t Offset = 0;
+  if (C2->getSimpleValueType(0) == MVT::i256)
+    Offset = C2->getAPIntValue().trunc(64).getSExtValue();
+  else
+    Offset = C2->getSExtValue();
+  // EraVM local end
   switch (Opcode) {
   case ISD::ADD: break;
   case ISD::SUB: Offset = -uint64_t(Offset); break;

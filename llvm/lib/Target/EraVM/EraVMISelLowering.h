@@ -176,6 +176,11 @@ public:
     return EraVM::R1;
   }
 
+  Register
+  getExceptionSelectorRegister(const Constant *PersonalityFn) const override {
+    return EraVM::R2;
+  }
+
   // MVT::i256 is the only legal type, so DAG combiner should never reduce
   // loads.
   bool shouldReduceLoadWidth(SDNode *Load, ISD::LoadExtType ExtTy,
