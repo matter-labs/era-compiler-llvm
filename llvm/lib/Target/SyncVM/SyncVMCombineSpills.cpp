@@ -2,11 +2,12 @@
 //--===//
 //
 /// \file
-// This pass tries to reduce the virtual register pressure before RegAlloc.
-// Specifically, we allocate stack slots for vregs that can be moved to stack,
-// this requires that the def machineinstr can be converted to stack target
-// addressing mode, and all its use machineinstrs can be converted to stack
-// source addressing mode.
+/// This pass tries to reduce the virtual register pressure before RegAlloc.
+/// Specifically, we allocate stack slots for vregs that can be moved to stack,
+/// this requires that the def MachineInstr can be converted to stack target
+/// addressing mode, and all its use MachineInstr can be converted to stack
+/// source addressing mode.
+//
 //===----------------------------------------------------------------------===//
 
 #include "SyncVM.h"
@@ -220,19 +221,23 @@ bool SyncVMCombineSpills::convertVReg(Register reg, MachineFunction &MF) {
 
   // now we can safely transform the program:
 
-  // 0. allocate spilled stack slot
+  // 0. allocate spilled stack slot. We could probably reuse stack slots
+  // but that would not have performance benefits
   int new_fi = MF.getFrameInfo().CreateSpillStackObject(32, Align(1));
 
   // 1. convert def instruction to store to stack:
   MachineInstr *DefMI = MRI->getUniqueVRegDef(reg);
   if (!DefMI) {
+    LLVM_DEBUG(dbgs() << "VReg has un-unique definition.\n");
     return false;
   }
   LLVM_DEBUG(dbgs() << "Converting def to stack target addressing mode: ";
              DefMI->dump());
   auto new_opcode = llvm::SyncVM::getStackSettingOpcode(DefMI->getOpcode());
   if (new_opcode == -1) {
-    LLVM_DEBUG(dbgs() << "Cannot transform def instruction to stack mode\n");
+    LLVM_DEBUG(
+        dbgs()
+        << "Def instruction does not have a stack mode opcode counterpart.\n");
     return false;
   }
   auto NewDefMI = BuildMI(*DefMI->getParent(), DefMI, DefMI->getDebugLoc(),
@@ -260,7 +265,7 @@ bool SyncVMCombineSpills::convertVReg(Register reg, MachineFunction &MF) {
         llvm::SyncVM::getSROperandAddressingModeOpcode(UseMI.getOpcode());
     if (new_use_opcode == -1) {
       LLVM_DEBUG(dbgs() << "Cannot transform use instruction to stack mode\n");
-      return false;
+      llvm_unreachable("Unexpected error happened during conversion.");
     }
 
     // have to reverse operands if use is 2nd operand of non-commutative
@@ -269,7 +274,9 @@ bool SyncVMCombineSpills::convertVReg(Register reg, MachineFunction &MF) {
       if (!IsFirstOperand) {
         int sr_opcode = llvm::SyncVM::getReversedOperandOpcode(new_use_opcode);
         if (sr_opcode == -1) {
-          return false;
+          LLVM_DEBUG(dbgs()
+                     << "Cannot get reversed operand opcode of use MI\n");
+          llvm_unreachable("Unexpected error happened during conversion.");
         }
         new_use_opcode = sr_opcode;
       }
@@ -334,7 +341,6 @@ bool SyncVMCombineSpills::runOnMachineFunction(MachineFunction &MF) {
 
   bool Changed = false;
 
-  // first, sort the intervals
   std::vector<Register> sortedCandidateRegisters =
       getSortedCandidateRegistersByLiveIntervalRange(MF);
 
