@@ -95,7 +95,10 @@ SyncVMStackAddressConstantPropagation::tryExtractConstant(MachineInstr &MI,
     if (getImmOrCImm(MI.getOperand(2)) != 32)
       return {};
     Register In2 = MI.getOperand(3).getReg();
-    MachineInstr *DefMI = RegInfo->getVRegDef(In2);
+    MachineInstr *DefMI = RegInfo->getUniqueVRegDef(In2);
+    if (!DefMI) {
+      return {};
+    }
     auto extracted = tryExtractConstant(*DefMI, 1, 32);
     if (!std::get<0>(extracted))
       return {};
@@ -125,10 +128,13 @@ SyncVMStackAddressConstantPropagation::tryExtractConstant(MachineInstr &MI,
     if (TII->hasRROperandAddressingMode(MI)) {
       Register LHSReg = MI.getOperand(1).getReg();
       Register RHSReg = MI.getOperand(2).getReg();
-      MachineInstr &LHS = *RegInfo->getVRegDef(LHSReg);
-      MachineInstr &RHS = *RegInfo->getVRegDef(RHSReg);
-      auto LHSRes = tryExtractConstant(LHS, Multiplier, Divisor);
-      auto RHSRes = tryExtractConstant(RHS, Multiplier, Divisor);
+      MachineInstr *LHS = RegInfo->getUniqueVRegDef(LHSReg);
+      MachineInstr *RHS = RegInfo->getUniqueVRegDef(RHSReg);
+      if (!LHS || !RHS) {
+        return {};
+      }
+      auto LHSRes = tryExtractConstant(*LHS, Multiplier, Divisor);
+      auto RHSRes = tryExtractConstant(*RHS, Multiplier, Divisor);
       if (!std::get<0>(LHSRes) && !std::get<0>(RHSRes))
         return {};
       Register NewVR = RegInfo->createVirtualRegister(&SyncVM::GR256RegClass);
@@ -156,10 +162,13 @@ SyncVMStackAddressConstantPropagation::tryExtractConstant(MachineInstr &MI,
     if (TII->hasRROperandAddressingMode(MI)) {
       Register LHSReg = MI.getOperand(1).getReg();
       Register RHSReg = MI.getOperand(2).getReg();
-      MachineInstr &LHS = *RegInfo->getVRegDef(LHSReg);
-      MachineInstr &RHS = *RegInfo->getVRegDef(RHSReg);
-      auto LHSRes = tryExtractConstant(LHS, Multiplier, Divisor);
-      auto RHSRes = tryExtractConstant(RHS, -Multiplier, Divisor);
+      MachineInstr *LHS = RegInfo->getUniqueVRegDef(LHSReg);
+      MachineInstr *RHS = RegInfo->getUniqueVRegDef(RHSReg);
+      if (!LHS || !RHS) {
+        return {};
+      }
+      auto LHSRes = tryExtractConstant(*LHS, Multiplier, Divisor);
+      auto RHSRes = tryExtractConstant(*RHS, -Multiplier, Divisor);
       if (!std::get<0>(LHSRes) && !std::get<0>(RHSRes))
         return {};
       Register NewVR = RegInfo->createVirtualRegister(&SyncVM::GR256RegClass);
@@ -211,9 +220,10 @@ bool SyncVMStackAddressConstantPropagation::runOnMachineFunction(
         if (!II->getOperand(RegOpndNo).isReg())
           continue;
         Register Base = II->getOperand(RegOpndNo).getReg();
-        if (!RegInfo->hasOneNonDBGUse(Base))
+        if (!RegInfo->hasOneNonDBGUse(Base) || !RegInfo->hasOneDef(Base))
           continue;
-        MachineInstr *DefMI = RegInfo->getVRegDef(Base);
+        MachineInstr *DefMI = RegInfo->getUniqueVRegDef(Base);
+        assert(DefMI);
         std::tuple<bool, Register, int64_t> extractionResult =
             tryExtractConstant(*DefMI, 1, 1);
         if (std::get<0>(extractionResult)) {

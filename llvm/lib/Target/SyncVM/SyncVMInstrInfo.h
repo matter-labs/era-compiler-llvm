@@ -16,10 +16,14 @@
 
 namespace llvm {
 
+// instruction mapping declarations
 namespace SyncVM {
-int getPseudoMapOpcode(uint16_t);
-int getFlagSettingOpcode(uint16_t);
-int getNonFlagSettingOpcode(uint16_t);
+int getPseudoMapOpcode(uint16_t Opcode);
+int getFlagSettingOpcode(uint16_t Opcode);
+int getNonFlagSettingOpcode(uint16_t Opcode);
+int getStackSettingOpcode(uint16_t Opcode);
+int getSROperandAddressingModeOpcode(uint16_t Opcode);
+int getReversedOperandOpcode(uint16_t Opcode);
 } // namespace SyncVM
 
 class SyncVMInstrInfo : public SyncVMGenInstrInfo {
@@ -115,7 +119,9 @@ public:
     return isShl(MI) || isShr(MI) || isRol(MI) || isRor(MI);
   }
 
-  bool isRotate(const MachineInstr &MI) const { return isRol(MI) || isRor(MI); }
+  bool isRotate(const MachineInstr &MI) const {
+    return isRol(MI) || isRor(MI);
+  }
 
   bool isLoad(const MachineInstr &MI) const;
   bool isFatLoad(const MachineInstr &MI) const;
@@ -135,6 +141,8 @@ public:
 
   bool isPredicatedInstr(const MachineInstr &MI) const;
   SyncVMCC::CondCodes getCCCode(const MachineInstr &MI) const;
+  bool isUnconditionalNonTerminator(const MachineInstr &MI) const;
+  static bool useRegIsFirstSourceOperand(const MachineInstr&MI, Register reg);
 };
 
 } // namespace llvm

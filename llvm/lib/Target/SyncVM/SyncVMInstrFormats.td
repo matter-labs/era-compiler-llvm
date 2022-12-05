@@ -13,28 +13,29 @@ class PredRel;
 class PseudoRel; // map: `_p` -> `_s`
 class FlagRel; // map: `_s` -> `_v`
 class AddrModeRel; // generic map of addressing mode
+class StackRel; // map `r_s` -> `s_s`
 
 // The addressing mode can be categorized into operand addressing and destination addressing
 // OperandAddrMode:
 // RR : Reg Reg; SR : Stack Reg; CR : Code Reg; IR : Imm Reg;
-class OperandAddrModeValue<bits<3> val> {
-  bits<3> Value = val;
+class OperandAddrModeValue<string val> {
+  string Value = val;
 }
-def OpndAddrNotSet : OperandAddrModeValue<0>;
-def OpndRR         : OperandAddrModeValue<1>;
-def OpndIR         : OperandAddrModeValue<2>;
-def OpndSR         : OperandAddrModeValue<3>;
-def OpndCR         : OperandAddrModeValue<4>;
+def OpndAddrNotSet : OperandAddrModeValue<"0">;
+def OpndRR         : OperandAddrModeValue<"1">;
+def OpndIR         : OperandAddrModeValue<"2">;
+def OpndSR         : OperandAddrModeValue<"3">;
+def OpndCR         : OperandAddrModeValue<"4">;
 
 // DestAddrMode:
-class DestAddrModeValue<bits<3> val> {
-  bits<3> Value = val;
+class DestAddrModeValue<string val> {
+  string Value = val;
 }
-def DestAddrNotSet : DestAddrModeValue<0>;
-def ToReg          : DestAddrModeValue<1>;
-def ToStack        : DestAddrModeValue<2>;
-def ToRegReg       : DestAddrModeValue<3>;
-def ToStackReg     : DestAddrModeValue<4>;
+def DestAddrNotSet : DestAddrModeValue<"0">;
+def ToReg          : DestAddrModeValue<"1">;
+def ToStack        : DestAddrModeValue<"2">;
+def ToRegReg       : DestAddrModeValue<"3">;
+def ToStackReg     : DestAddrModeValue<"4">;
 
 // FlagSetting:
 // true (1) : `_v` instructions ; false (0) : `_s` instructions
@@ -64,6 +65,30 @@ def getNonFlagSettingOpcode : InstrMapping {
   let FilterClass = "PredRel";
   let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode", "ReverseOperand"];
   let ColFields = ["FlagSetting"];
+  let KeyCol = ["0"];
+  let ValueCols = [["1"]];
+}
+
+def getStackSettingOpcode : InstrMapping {
+  let FilterClass = "StackRel";
+  let RowFields = ["BaseOpcode", "OperandAddrMode", "FlagSetting", "ReverseOperand"];
+  let ColFields = ["DestAddrMode"];
+  let KeyCol = ["1"];
+  let ValueCols = [["2"]]; 
+}
+
+def getSROperandAddressingModeOpcode : InstrMapping {
+  let FilterClass = "AddrModeRel";
+  let RowFields = ["BaseOpcode", "DestAddrMode", "FlagSetting", "ReverseOperand"];
+  let ColFields = ["OperandAddrMode"];
+  let KeyCol = ["1"];
+  let ValueCols = [["3"]];
+}
+
+def getReversedOperandOpcode : InstrMapping {
+  let FilterClass = "PredRel";
+  let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode", "FlagSetting"];
+  let ColFields = ["ReverseOperand"];
   let KeyCol = ["0"];
   let ValueCols = [["1"]];
 }
@@ -234,8 +259,8 @@ class IBinary<bits<8> opcode,
   bit FlagSetting = silent;
   bit ReverseOperand = swap_operands;
   bit IsPseudoArith = 0;
-  bits<3> OperandAddrMode = OpndAddrNotSet.Value;
-  bits<3> DestAddrMode = DestAddrNotSet.Value;
+  string OperandAddrMode = OpndAddrNotSet.Value;
+  string DestAddrMode = DestAddrNotSet.Value;
   let Inst{32} = swap_operands;
   let Inst{36} = silent;
   let Inst{48-51} = rs1;
@@ -500,8 +525,8 @@ class Pseudo<dag outs, dag ins, string asmstr, list<dag> pattern>
   bit FlagSetting = 0;
   bit IsPseudoArith = 1;
   bit ReverseOperand = 0;
-  bits<3> OperandAddrMode = OpndAddrNotSet.Value;
-  bits<3> DestAddrMode = DestAddrNotSet.Value;
+  string OperandAddrMode = OpndAddrNotSet.Value;
+  string DestAddrMode = DestAddrNotSet.Value;
 }
 
 class CallFlags<bits<4> val> {

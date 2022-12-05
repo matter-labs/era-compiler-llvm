@@ -15,6 +15,7 @@
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/IR/Function.h"
 #include "llvm/MC/MCContext.h"
+#include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/Support/ErrorHandling.h"
 
 using namespace llvm;
@@ -341,11 +342,11 @@ bool SyncVMInstrInfo::isFarCall(const MachineInstr &MI) const {
   return false;
 }
 
-#define INSTR_TESTER(NAME, OPCODE)                                             \
-  bool SyncVMInstrInfo::is##NAME(const MachineInstr &MI) const {               \
-    StringRef Mnemonic = getName(MI.getOpcode());                              \
-    return Mnemonic.startswith(#OPCODE);                                       \
-  }
+#define INSTR_TESTER(NAME, OPCODE) \
+bool SyncVMInstrInfo::is##NAME(const MachineInstr &MI) const { \
+  StringRef Mnemonic = getName(MI.getOpcode());                \
+  return Mnemonic.startswith(#OPCODE);                         \
+}
 
 INSTR_TESTER(Add, ADD)
 INSTR_TESTER(Sub, SUB)
@@ -461,3 +462,13 @@ SyncVMCC::CondCodes SyncVMInstrInfo::getCCCode(const MachineInstr &MI) const {
   }
   return SyncVMCC::COND_INVALID;
 }
+
+bool SyncVMInstrInfo::useRegIsFirstSourceOperand(const MachineInstr&MI, Register reg) {
+  auto numDefs = MI.getNumExplicitDefs();
+  assert(numDefs <= MI.getNumExplicitOperands());
+  if (MI.getOperand(numDefs).isReg() && MI.getOperand(numDefs).getReg() == reg) {
+    return true;
+  }
+  return false;
+}
+

@@ -15,6 +15,7 @@
 #include "llvm/Support/Debug.h"
 
 #include "SyncVMSubtarget.h"
+#include "SyncVMInstrInfo.h"
 
 using namespace llvm;
 
