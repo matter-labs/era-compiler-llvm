@@ -1,10 +1,11 @@
-; RUN: llc < %s | FileCheck %s
+; RUN: opt -O3 < %s | llc | FileCheck %s
 
-target datalayout = "E-p:256:256-i8:256:256:256-i256:256:256-S32-a:256:256"
+target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "syncvm"
 
 @val = addrspace(4) global i256 42
 @val2 = addrspace(4) global i256 43
+declare i32 @__personality()
 
 ; CHECK-LABEL: stacksave
 define i8* @stacksave() {
@@ -14,7 +15,7 @@ define i8* @stacksave() {
 }
 
 ; CHECK-LABEL: stackrestore
-define void @stackrestore(i8* %ptr) {
+define void @stackrestore(i8* %ptr) noinline optnone {
 ; CHECK: context.sp r2
 ; CHECK-NEXT: sub r1, r2, r1
 ; CHECK-NEXT: nop stack+=[r1]
@@ -103,6 +104,19 @@ define i256 @sload_rr(i256 %val) {
 define void @sstore_r(i256 %key, i256 %val) {
 ; CHECK: sstore r1, r2
   call void @llvm.syncvm.sstore(i256 %key, i256 %val)
+  ret void
+}
+
+; CHECK-LABEL: invoke_sstore
+define void @invoke_sstore(i256 %key, i256 %val) personality i32 ()* @__personality {
+; CHECK: near_call	r0, @__sstore, @.BB{{.*}}
+  invoke void @llvm.syncvm.sstore(i256 %key, i256 %val)
+    to label %bb1 unwind label %bb2
+bb1:
+  ret void
+bb2:
+  %landing = landingpad { i8*, i32 }
+          catch i8* null
   ret void
 }
 
@@ -334,7 +348,6 @@ define {i8 addrspace(3)*, i1} @invoke.system_mimiccall_byref(i8 addrspace(3)* %a
 ; CHECK: add 1, r0, r2
 ; CHECK: ret
 ; CHECK: add r0, r0, r2
-; CHECK: ret
 
 ; CHECK-LABEL: __staticcall
 ; CHECK-NOT: r1

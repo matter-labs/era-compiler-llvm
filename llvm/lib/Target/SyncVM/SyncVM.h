@@ -11,6 +11,7 @@
 #include "MCTargetDesc/SyncVMMCTargetDesc.h"
 #include "llvm/CodeGen/MachineOperand.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/PassManager.h"
 #include "llvm/Target/TargetMachine.h"
 
 namespace SyncVMCC {
@@ -73,7 +74,7 @@ ModulePass   *createSyncVMExpandUMAPass();
 ModulePass   *createSyncVMIndirectUMAPass();
 ModulePass   *createSyncVMIndirectExternalCallPass();
 ModulePass   *createSyncVMLowerIntrinsicsPass();
-ModulePass   *createSyncVMLinkRuntimePass();
+ModulePass   *createSyncVMLinkRuntimePass(bool);
 FunctionPass *createSyncVMAddConditionsPass();
 FunctionPass *createSyncVMAllocaHoistingPass();
 FunctionPass *createSyncVMBytesToCellsPass();
@@ -100,6 +101,11 @@ void initializeSyncVMPeepholePass(PassRegistry &);
 void initializeSyncVMPropagateGenericPointersPass(PassRegistry &);
 void initializeSyncVMStackAddressConstantPropagationPass(PassRegistry &);
 void initializeSyncVMCombineFlagSettingPass(PassRegistry &);
+
+struct SyncVMLinkRuntimePass : PassInfoMixin<SyncVMLinkRuntimePass> {
+  SyncVMLinkRuntimePass() {}
+  PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
+};
 
 } // end namespace llvm;
 
