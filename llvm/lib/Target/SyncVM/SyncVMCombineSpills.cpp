@@ -64,6 +64,8 @@ private:
   MachineRegisterInfo *MRI;
   std::vector<Register>
   getSortedCandidateRegistersByLiveIntervalRange(MachineFunction &MF);
+
+ LiveIntervals *LIS;
 };
 
 char SyncVMCombineSpills::ID = 0;
@@ -77,15 +79,13 @@ INITIALIZE_PASS_END(SyncVMCombineSpills, DEBUG_TYPE, SYNCVM_COMBINE_SPILLS_NAME,
                     false, false)
 
 bool SyncVMCombineSpills::isCandidateRegister(Register Reg) const {
-  LiveIntervals &LIS = getAnalysis<LiveIntervals>();
-
-  if (!Reg.isVirtual() || !LIS.hasInterval(Reg)) {
+  if (!Reg.isVirtual() || !LIS->hasInterval(Reg)) {
     LLVM_DEBUG(dbgs() << " . Reg is not virtual or has no interval: " << Reg
                       << ". Skipped.\n");
     return false;
   }
 
-  const LiveInterval &CLI = LIS.getInterval(Reg);
+  const LiveInterval &CLI = LIS->getInterval(Reg);
 
   LLVM_DEBUG(dbgs() << " . Investigating LI for: "; CLI.print(dbgs());
              dbgs() << "\n";);
@@ -126,8 +126,6 @@ bool SyncVMCombineSpills::isCandidateRegister(Register Reg) const {
 std::vector<Register>
 SyncVMCombineSpills::getSortedCandidateRegistersByLiveIntervalRange(
     MachineFunction &MF) {
-  LiveIntervals &LIS = getAnalysis<LiveIntervals>();
-
   MRI = &MF.getRegInfo();
   assert(MRI);
   assert(MRI->isSSA() && "This pass requires MachineFunction to be SSA");
@@ -141,7 +139,7 @@ SyncVMCombineSpills::getSortedCandidateRegistersByLiveIntervalRange(
   for (unsigned I = 0, E = MRI->getNumVirtRegs(); I != E; ++I) {
     auto Reg = Register::index2VirtReg(I);
     if (isCandidateRegister(Reg)) {
-      assert(LIS.hasInterval(Reg));
+      assert(LIS->hasInterval(Reg));
       sortedCandidateRegisters.push_back(Reg);
     }
   }
@@ -149,8 +147,8 @@ SyncVMCombineSpills::getSortedCandidateRegistersByLiveIntervalRange(
   auto compareLI = [&](Register L, Register R) {
     assert(L);
     assert(R);
-    auto &LLI = LIS.getInterval(L);
-    auto &RLI = LIS.getInterval(R);
+    auto &LLI = LIS->getInterval(L);
+    auto &RLI = LIS->getInterval(R);
     return LLI.getSize() > RLI.getSize();
   };
 
@@ -160,7 +158,7 @@ SyncVMCombineSpills::getSortedCandidateRegistersByLiveIntervalRange(
   LLVM_DEBUG(dbgs() << "Live intervals sorted:\n";
              for (auto Reg
                   : sortedCandidateRegisters) {
-               auto &LI = LIS.getInterval(Reg);
+               auto &LI = LIS->getInterval(Reg);
                LI.print(dbgs());
                dbgs() << ", Size: " << LI.getSize() << "\n";
              });
@@ -329,6 +327,8 @@ bool SyncVMCombineSpills::runOnMachineFunction(MachineFunction &MF) {
   LLVM_DEBUG(dbgs() << "********** SyncVM combine spills and uses "
                        "******************** Function: "
                     << MF.getName() << '\n');
+
+  LIS = &getAnalysis<LiveIntervals>();
 
   if (DoNotConvertWhenStackEmpty) {
     if (MF.getFrameInfo().getStackSize() == 0 &&
