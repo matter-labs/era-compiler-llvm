@@ -52,31 +52,49 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
   // Provide all sorts of operation actions
   setStackPointerRegisterToSaveRestore(EraVM::SP);
 
-  setOperationAction(ISD::GlobalAddress, MVT::i256, Custom);
-  setOperationAction(ISD::BR_CC, MVT::i256, Custom);
-  setOperationAction(ISD::BRCOND, MVT::Other, Expand);
-  setOperationAction(ISD::SETCC, MVT::i256, Expand);
-  setOperationAction(ISD::SELECT, MVT::i256, Expand);
-  setOperationAction(ISD::SELECT_CC, MVT::i256, Custom);
+  // By default, expand all i256bit operations
+  for (unsigned Opc = 0; Opc < ISD::BUILTIN_OP_END; ++Opc)
+    setOperationAction(Opc, MVT::i256, Expand);
 
-  // special handling of udiv/urem
-  setOperationAction(ISD::UDIV, MVT::i256, Expand);
-  setOperationAction(ISD::UREM, MVT::i256, Expand);
-  setOperationAction(ISD::UDIVREM, MVT::i256, Legal);
+  setOperationAction(
+      {
+          ISD::BR_JT,
+          ISD::BRIND,
+          ISD::BRCOND,
+          ISD::VASTART,
+          ISD::VAARG,
+          ISD::VAEND,
+          ISD::VACOPY,
+      },
+      MVT::Other, Expand);
 
-  // special handling of umulxx
-  setOperationAction(ISD::MUL, MVT::i256, Expand);
-  setOperationAction(ISD::MULHU, MVT::i256, Expand);
-  setOperationAction(ISD::SMUL_LOHI, MVT::i256, Expand);
-  setOperationAction(ISD::UMUL_LOHI, MVT::i256, Legal);
+  // Legal operations
+  setOperationAction({ISD::ADD, ISD::SUB, ISD::AND, ISD::OR, ISD::XOR, ISD::SHL,
+                      ISD::SRL, ISD::UDIVREM, ISD::UMUL_LOHI, ISD::Constant,
+                      ISD::UNDEF, ISD::FRAMEADDR},
+                     MVT::i256, Legal);
 
-  setOperationAction(ISD::MULHS, MVT::i256, Expand);
-  setOperationAction(ISD::MULHU, MVT::i256, Expand);
+  // custom lowering operations
+  setOperationAction(
+      {
+          ISD::SRA,
+          ISD::SDIV,
+          ISD::SREM,
+          ISD::STORE,
+          ISD::LOAD,
+          ISD::ZERO_EXTEND,
+          ISD::ANY_EXTEND,
+          ISD::GlobalAddress,
+          ISD::BR_CC,
+          ISD::SELECT_CC,
+          ISD::BSWAP,
+          ISD::CTPOP,
+      },
+      MVT::i256, Custom);
 
-  // EraVM lacks of native support for signed operations.
-  setOperationAction(ISD::SRA, MVT::i256, Custom);
-  setOperationAction(ISD::SDIV, MVT::i256, Custom);
-  setOperationAction(ISD::SREM, MVT::i256, Custom);
+  setOperationAction({ISD::INTRINSIC_VOID, ISD::INTRINSIC_WO_CHAIN,
+                      ISD::STACKSAVE, ISD::STACKRESTORE},
+                     MVT::Other, Custom);
 
   for (MVT VT : {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}) {
     setOperationAction(ISD::SIGN_EXTEND_INREG, VT, Expand);
@@ -86,28 +104,17 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
     setOperationAction(ISD::MERGE_VALUES, VT, Promote);
   }
 
-  setOperationAction(ISD::STACKSAVE, MVT::Other, Custom);
-  setOperationAction(ISD::STACKRESTORE, MVT::Other, Custom);
-
-  // Intrinsics lowering
-  setOperationAction({ISD::INTRINSIC_VOID, ISD::INTRINSIC_WO_CHAIN}, MVT::Other,
-                     Custom);
-
   for (MVT VT : MVT::integer_valuetypes()) {
     setLoadExtAction(ISD::SEXTLOAD, MVT::i256, VT, Custom);
     setLoadExtAction(ISD::ZEXTLOAD, MVT::i256, VT, Custom);
     setLoadExtAction(ISD::EXTLOAD, MVT::i256, VT, Custom);
   }
 
-  setOperationAction(ISD::STORE, MVT::i256, Custom);
-  setOperationAction(ISD::LOAD, MVT::i256, Custom);
-
+  // fatptr operations
   setOperationAction(ISD::LOAD, MVT::fatptr, Legal);
   setOperationAction(ISD::STORE, MVT::fatptr, Legal);
 
-  setOperationAction(ISD::ZERO_EXTEND, MVT::i256, Custom);
-  setOperationAction(ISD::ANY_EXTEND, MVT::i256, Custom);
-
+  // special DAG combining handling for EraVM
   setTargetDAGCombine(ISD::ZERO_EXTEND);
 
   setJumpIsExpensive(false);
@@ -546,6 +553,8 @@ SDValue EraVMTargetLowering::LowerOperation(SDValue Op,
   case ISD::INTRINSIC_WO_CHAIN: return LowerINTRINSIC_WO_CHAIN(Op, DAG);
   case ISD::STACKSAVE:          return LowerSTACKSAVE(Op, DAG);
   case ISD::STACKRESTORE:       return LowerSTACKRESTORE(Op, DAG);
+  case ISD::BSWAP:              return LowerBSWAP(Op, DAG);
+  case ISD::CTPOP:              return LowerCTPOP(Op, DAG);
   default:
     llvm_unreachable("unimplemented operation lowering");
   }
@@ -874,6 +883,117 @@ SDValue EraVMTargetLowering::LowerSTACKRESTORE(SDValue Op,
       DAG.getNode(ISD::SUB, DL, MVT::i256, Op.getOperand(1), CurrentSP);
   return DAG.getNode(EraVMISD::CHANGE_SP, DL, MVT::Other, CurrentSP.getValue(1),
                      SPDelta);
+}
+
+SDValue EraVMTargetLowering::LowerBSWAP(SDValue BSWAP,
+                                        SelectionDAG &DAG) const {
+  SDNode *N = BSWAP.getNode();
+  SDLoc dl(N);
+  EVT VT = N->getValueType(0);
+  SDValue Op = N->getOperand(0);
+  EVT SHVT = getShiftAmountTy(VT, DAG.getDataLayout());
+
+  assert(VT == MVT::i256 && "Unexpected type for bswap");
+
+  std::array<SDValue, 33> Tmp;
+
+  for (int i = 32; i >= 17; i--) {
+    Tmp[i] = DAG.getNode(ISD::SHL, dl, VT, Op,
+                         DAG.getConstant((i - 17) * 16 + 8, dl, SHVT));
+  }
+
+  for (int i = 16; i >= 1; i--) {
+    Tmp[i] = DAG.getNode(ISD::SRL, dl, VT, Op,
+                         DAG.getConstant((16 - i) * 16 + 8, dl, SHVT));
+  }
+
+  APInt FFMask = APInt(256, 255);
+
+  // mask off unwanted bytes
+  for (int i = 2; i < 32; i++) {
+    Tmp[i] = DAG.getNode(ISD::AND, dl, VT, Tmp[i],
+                         DAG.getConstant(FFMask << ((i - 1) * 8), dl, VT));
+  }
+
+  // OR everything together
+  for (int i = 2; i <= 32; i += 2) {
+    Tmp[i] = DAG.getNode(ISD::OR, dl, VT, Tmp[i], Tmp[i - 1]);
+  }
+
+  for (int i = 4; i <= 32; i += 4) {
+    Tmp[i] = DAG.getNode(ISD::OR, dl, VT, Tmp[i], Tmp[i - 2]);
+  }
+
+  for (int i = 8; i <= 32; i += 8) {
+    Tmp[i] = DAG.getNode(ISD::OR, dl, VT, Tmp[i], Tmp[i - 4]);
+  }
+
+  Tmp[32] = DAG.getNode(ISD::OR, dl, VT, Tmp[32], Tmp[24]);
+  Tmp[16] = DAG.getNode(ISD::OR, dl, VT, Tmp[16], Tmp[8]);
+
+  return DAG.getNode(ISD::OR, dl, VT, Tmp[32], Tmp[16]);
+}
+
+// This function only counts the number of bits in the lower 128 bits
+// It is a slightly modified version of TargetLowering::expandCTPOP
+static SDValue countPOP128(SDValue Op, SelectionDAG &DAG) {
+  SDLoc dl(Op);
+  EVT VT = Op->getValueType(0);
+
+  // This is the "best" algorithm from
+  // http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
+  SDValue Mask55 = DAG.getConstant(
+      APInt::getSplat(VT.getScalarSizeInBits(), APInt(8, 0x55)), dl, VT);
+  SDValue Mask33 = DAG.getConstant(
+      APInt::getSplat(VT.getScalarSizeInBits(), APInt(8, 0x33)), dl, VT);
+  SDValue Mask0F = DAG.getConstant(
+      APInt::getSplat(VT.getScalarSizeInBits(), APInt(8, 0x0F)), dl, VT);
+
+  // v = v - ((v >> 1) & 0x55555555...)
+  Op = DAG.getNode(ISD::SUB, dl, VT, Op,
+                   DAG.getNode(ISD::AND, dl, VT,
+                               DAG.getNode(ISD::SRL, dl, VT, Op,
+                                           DAG.getConstant(1, dl, MVT::i256)),
+                               Mask55));
+  // v = (v & 0x33333333...) + ((v >> 2) & 0x33333333...)
+  Op = DAG.getNode(ISD::ADD, dl, VT, DAG.getNode(ISD::AND, dl, VT, Op, Mask33),
+                   DAG.getNode(ISD::AND, dl, VT,
+                               DAG.getNode(ISD::SRL, dl, VT, Op,
+                                           DAG.getConstant(2, dl, MVT::i256)),
+                               Mask33));
+  // v = (v + (v >> 4)) & 0x0F0F0F0F...
+  Op = DAG.getNode(ISD::AND, dl, VT,
+                   DAG.getNode(ISD::ADD, dl, VT, Op,
+                               DAG.getNode(ISD::SRL, dl, VT, Op,
+                                           DAG.getConstant(4, dl, MVT::i256))),
+                   Mask0F);
+
+  // v = (v * 0x01010101...) >> (Len - 8)
+  SDValue Mask01 = DAG.getConstant(
+      APInt::getSplat(VT.getScalarSizeInBits(), APInt(8, 0x01)), dl, VT);
+  return DAG.getNode(ISD::SRL, dl, VT,
+                     DAG.getNode(ISD::MUL, dl, VT, Op, Mask01),
+                     DAG.getConstant(120, dl, MVT::i256));
+}
+
+SDValue EraVMTargetLowering::LowerCTPOP(SDValue CTPOP,
+                                        SelectionDAG &DAG) const {
+  SDNode *Node = CTPOP.getNode();
+  SDLoc dl(Node);
+  EVT VT = Node->getValueType(0);
+  SDValue Op = Node->getOperand(0);
+
+  // split the Op into two parts and count separately
+  SDValue hiPart =
+      DAG.getNode(ISD::SRL, dl, VT, Op, DAG.getConstant(128, dl, MVT::i256));
+  SDValue loPart =
+      DAG.getNode(ISD::AND, dl, VT, Op,
+                  DAG.getConstant(APInt::getLowBitsSet(256, 128), dl, VT));
+  auto loSum = DAG.getNode(ISD::AND, dl, VT, countPOP128(loPart, DAG),
+                           DAG.getConstant(255, dl, VT));
+  auto hiSum = DAG.getNode(ISD::AND, dl, VT, countPOP128(hiPart, DAG),
+                           DAG.getConstant(255, dl, VT));
+  return DAG.getNode(ISD::ADD, dl, VT, loSum, hiSum);
 }
 
 void EraVMTargetLowering::ReplaceNodeResults(SDNode *N,
