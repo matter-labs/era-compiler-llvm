@@ -181,7 +181,7 @@ void checkDefaultPrologue(uint16_t Version, DwarfFormat Format,
   EXPECT_STREQ(*toString(Prologue.FileNames[0].Name), "a file");
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture, DISABLED_GetOrParseLineTableAtInvalidOffset) {
 #else
 TEST_F(DebugLineBasicFixture, GetOrParseLineTableAtInvalidOffset) {
@@ -207,7 +207,7 @@ TEST_F(DebugLineBasicFixture, GetOrParseLineTableAtInvalidOffset) {
           "offset 0x00000001 is not a valid debug line section offset"));
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture,
        DISABLED_GetOrParseLineTableAtInvalidOffsetAfterData) {
 #else
@@ -233,7 +233,7 @@ TEST_F(DebugLineBasicFixture, GetOrParseLineTableAtInvalidOffsetAfterData) {
           "offset 0x00000001 is not a valid debug line section offset"));
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_P(DebugLineParameterisedFixture, DISABLED_PrologueGetLength) {
 #else
 TEST_P(DebugLineParameterisedFixture, PrologueGetLength) {
@@ -260,7 +260,7 @@ TEST_P(DebugLineParameterisedFixture, PrologueGetLength) {
   EXPECT_EQ((*ExpectedLineTable)->Prologue.getLength(), ExpectedLength);
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_P(DebugLineParameterisedFixture, DISABLED_GetOrParseLineTableValidTable) {
 #else
 TEST_P(DebugLineParameterisedFixture, GetOrParseLineTableValidTable) {
@@ -330,7 +330,7 @@ TEST_P(DebugLineParameterisedFixture, GetOrParseLineTableValidTable) {
   // correctly.
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_P(DebugLineParameterisedFixture, DISABLED_ClearLineValidTable) {
 #else
 TEST_P(DebugLineParameterisedFixture, ClearLineValidTable) {
@@ -406,7 +406,7 @@ TEST_P(DebugLineParameterisedFixture, ClearLineValidTable) {
   EXPECT_EQ(Expected4->Sequences.size(), 2u);
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture, DISABLED_ErrorForReservedLength) {
 #else
 TEST_F(DebugLineBasicFixture, ErrorForReservedLength) {
@@ -433,7 +433,7 @@ struct DebugLineUnsupportedVersionFixture : public TestWithParam<uint16_t>,
   uint16_t Version;
 };
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_P(DebugLineUnsupportedVersionFixture,
        DISABLED_ErrorForUnsupportedVersion) {
 #else
@@ -462,7 +462,7 @@ INSTANTIATE_TEST_SUITE_P(UnsupportedVersionTestParams,
                                 /* Maximum possible */ 0xffff));
 #endif //SyncVM local end
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture, DISABLED_ErrorForInvalidV5IncludeDirTable) {
 #else
 TEST_F(DebugLineBasicFixture, ErrorForInvalidV5IncludeDirTable) {
@@ -507,7 +507,7 @@ TEST_F(DebugLineBasicFixture, ErrorForInvalidV5IncludeDirTable) {
           "found"));
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_P(DebugLineParameterisedFixture, DISABLED_ErrorForTooLargePrologueLength) {
 #else
 TEST_P(DebugLineParameterisedFixture, ErrorForTooLargePrologueLength) {
@@ -547,7 +547,7 @@ TEST_P(DebugLineParameterisedFixture, ErrorForTooLargePrologueLength) {
               .str()));
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_P(DebugLineParameterisedFixture, DISABLED_ErrorForTooShortPrologueLength) {
 #else
 TEST_P(DebugLineParameterisedFixture, ErrorForTooShortPrologueLength) {
@@ -607,7 +607,7 @@ INSTANTIATE_TEST_SUITE_P(
            std::make_pair(5, DWARF32), std::make_pair(5, DWARF64)));
 #endif //SyncVM local end
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture,
        DISABLED_ErrorForExtendedOpcodeLengthSmallerThanExpected) {
 #else
@@ -641,7 +641,7 @@ TEST_F(DebugLineBasicFixture, ErrorForExtendedOpcodeLengthSmallerThanExpected) {
   EXPECT_EQ((*ExpectedLineTable)->Rows[1].Discriminator, DW_LNS_negate_stmt);
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture,
        DISABLED_ErrorForExtendedOpcodeLengthLargerThanExpected) {
 #else
@@ -675,7 +675,7 @@ TEST_F(DebugLineBasicFixture, ErrorForExtendedOpcodeLengthLargerThanExpected) {
   EXPECT_EQ((*ExpectedLineTable)->Rows[2].IsStmt, 1u);
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture, DISABLED_ErrorForUnitLengthTooLarge) {
 #else
 TEST_F(DebugLineBasicFixture, ErrorForUnitLengthTooLarge) {
@@ -708,7 +708,7 @@ TEST_F(DebugLineBasicFixture, ErrorForUnitLengthTooLarge) {
   EXPECT_EQ((*ExpectedLineTable)->Sequences.size(), 1u);
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture, DISABLED_ErrorForMismatchedAddressSize) {
 #else
 TEST_F(DebugLineBasicFixture, ErrorForMismatchedAddressSize) {
@@ -741,7 +741,7 @@ TEST_F(DebugLineBasicFixture, ErrorForMismatchedAddressSize) {
   EXPECT_EQ((*ExpectedLineTable)->Rows[1].Address.Address, Addr2);
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture,
        DISABLED_ErrorForMismatchedAddressSizeUnsetInitialAddress) {
 #else
@@ -773,7 +773,7 @@ TEST_F(DebugLineBasicFixture,
   EXPECT_EQ((*ExpectedLineTable)->Rows[1].Address.Address, Addr2);
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture,
        DISABLED_ErrorForUnsupportedAddressSizeInSetAddressLength) {
 #else
@@ -811,7 +811,7 @@ TEST_F(DebugLineBasicFixture,
   EXPECT_EQ((*ExpectedLineTable)->Rows[0].Address.Address, 0u);
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture, DISABLED_ErrorForAddressSizeGreaterThanByteSize) {
 #else
 TEST_F(DebugLineBasicFixture, ErrorForAddressSizeGreaterThanByteSize) {
@@ -839,7 +839,7 @@ TEST_F(DebugLineBasicFixture, ErrorForAddressSizeGreaterThanByteSize) {
   ASSERT_THAT_EXPECTED(ExpectedLineTable, Succeeded());
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture,
        DISABLED_ErrorForUnsupportedAddressSizeDefinedInHeader) {
 #else
@@ -881,7 +881,7 @@ TEST_F(DebugLineBasicFixture, ErrorForUnsupportedAddressSizeDefinedInHeader) {
   EXPECT_EQ((*ExpectedLineTable)->Rows[0].Address.Address, 0u);
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture, DISABLED_CallbackUsedForUnterminatedSequence) {
 #else
 TEST_F(DebugLineBasicFixture, CallbackUsedForUnterminatedSequence) {
@@ -1106,7 +1106,7 @@ struct MaxOpsPerInstFixture
   uint8_t MaxOpsPerInst;
 };
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_P(MaxOpsPerInstFixture, DISABLED_MaxOpsPerInstProblemsReportedCorrectly) {
 #else
 TEST_P(MaxOpsPerInstFixture, MaxOpsPerInstProblemsReportedCorrectly) {
@@ -1156,7 +1156,7 @@ struct LineRangeFixture : TestWithParam<std::tuple<uint8_t, bool>>,
   uint8_t LineRange;
 };
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_P(LineRangeFixture, DISABLED_LineRangeProblemsReportedCorrectly) {
 #else
 TEST_P(LineRangeFixture, LineRangeProblemsReportedCorrectly) {
@@ -1197,7 +1197,7 @@ struct BadMinInstLenFixture : TestWithParam<std::tuple<uint8_t, bool>>,
   uint8_t MinInstLength;
 };
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_P(BadMinInstLenFixture, DISABLED_MinInstLengthProblemsReportedCorrectly) {
 #else
 TEST_P(BadMinInstLenFixture, MinInstLengthProblemsReportedCorrectly) {
@@ -1214,7 +1214,7 @@ INSTANTIATE_TEST_SUITE_P(
            std::make_tuple(1, false))); // Test non-zero value (no error).
 #endif //SyncVM local end
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture, DISABLED_ParserParsesCorrectly) {
 #else
 TEST_F(DebugLineBasicFixture, ParserParsesCorrectly) {
@@ -1245,7 +1245,7 @@ TEST_F(DebugLineBasicFixture, ParserParsesCorrectly) {
   EXPECT_FALSE(Unrecoverable);
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture, DISABLED_ParserSkipsCorrectly) {
 #else
 TEST_F(DebugLineBasicFixture, ParserSkipsCorrectly) {
@@ -1270,7 +1270,7 @@ TEST_F(DebugLineBasicFixture, ParserSkipsCorrectly) {
   EXPECT_FALSE(Unrecoverable);
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture, DISABLED_ParserAlwaysDoneForEmptySection) {
 #else
 TEST_F(DebugLineBasicFixture, ParserAlwaysDoneForEmptySection) {
@@ -1284,7 +1284,7 @@ TEST_F(DebugLineBasicFixture, ParserAlwaysDoneForEmptySection) {
   EXPECT_TRUE(Parser.done());
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture,
        DISABLED_ParserMarkedAsDoneForBadLengthWhenParsing) {
 #else
@@ -1312,7 +1312,7 @@ TEST_F(DebugLineBasicFixture, ParserMarkedAsDoneForBadLengthWhenParsing) {
           "reserved unit length of value 0xfffffff0"));
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture,
        DISABLED_ParserMarkedAsDoneForBadLengthWhenSkipping) {
 #else
@@ -1340,7 +1340,7 @@ TEST_F(DebugLineBasicFixture, ParserMarkedAsDoneForBadLengthWhenSkipping) {
           "reserved unit length of value 0xfffffff0"));
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture,
        DISABLED_ParserReportsFirstErrorInEachTableWhenParsing) {
 #else
@@ -1371,7 +1371,7 @@ TEST_F(DebugLineBasicFixture, ParserReportsFirstErrorInEachTableWhenParsing) {
                         "unsupported version 1"));
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture,
        DISABLED_ParserReportsNonPrologueProblemsWhenParsing) {
 #else
@@ -1408,7 +1408,7 @@ TEST_F(DebugLineBasicFixture, ParserReportsNonPrologueProblemsWhenParsing) {
   EXPECT_FALSE(Unrecoverable);
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture,
        DISABLED_ParserReportsPrologueErrorsInEachTableWhenSkipping) {
 #else
@@ -1440,7 +1440,7 @@ TEST_F(DebugLineBasicFixture,
                         "unsupported version 1"));
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture,
        DISABLED_ParserIgnoresNonPrologueErrorsWhenSkipping) {
 #else
@@ -1461,7 +1461,7 @@ TEST_F(DebugLineBasicFixture, ParserIgnoresNonPrologueErrorsWhenSkipping) {
   EXPECT_FALSE(Unrecoverable);
 }
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture, DISABLED_VerboseOutput) {
 #else
 TEST_F(DebugLineBasicFixture, VerboseOutput) {
@@ -1621,7 +1621,7 @@ struct TruncatedPrologueFixture
   StringRef ExpectedErr;
 };
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_P(TruncatedPrologueFixture, DISABLED_ErrorForTruncatedPrologue) {
 #else
 TEST_P(TruncatedPrologueFixture, ErrorForTruncatedPrologue) {
@@ -1804,7 +1804,7 @@ struct TruncatedExtendedOpcodeFixture
   uint64_t OpcodeLength;
 };
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_P(TruncatedExtendedOpcodeFixture,
        DISABLED_ErrorForTruncatedExtendedOpcode) {
 #else
@@ -1890,7 +1890,7 @@ INSTANTIATE_TEST_SUITE_P(
             "0x36)")));
 #endif //SyncVM local end
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_P(TruncatedStandardOpcodeFixture,
        DISABLED_ErrorForTruncatedStandardOpcode) {
 #else
@@ -1953,7 +1953,7 @@ INSTANTIATE_TEST_SUITE_P(
             "malformed uleb128, extends past end")));
 #endif //SyncVM local end
 
-#if defined _AIX || defined _SYNCVM
+#if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture, DISABLED_PrintPathsProperly) {
 #else
 TEST_F(DebugLineBasicFixture, PrintPathsProperly) {
