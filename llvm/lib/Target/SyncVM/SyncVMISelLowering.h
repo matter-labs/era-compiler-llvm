@@ -64,6 +64,8 @@ public:
   SDValue LowerSTACKSAVE(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSTACKRESTORE(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerCopyFromReg(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerBSWAP(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerCTPOP(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue LowerConstant(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerConstantPool(SDValue Op, SelectionDAG &DAG) const;
