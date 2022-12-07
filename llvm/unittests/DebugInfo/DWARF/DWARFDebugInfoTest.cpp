@@ -384,7 +384,11 @@ void TestAllForms() {
   EXPECT_EQ(AddrValue, toAddress(DieDG.find(Attr_Last), 0));
 }
 
+#if defined(_SYNCVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr4AllForms) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr4AllForms) {
+#endif
   // Test that we can decode all forms for DWARF32, version 2, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
@@ -406,7 +410,11 @@ TEST(DWARFDebugInfo, TestDWARF32Version2Addr8AllForms) {
   TestAllForms<2, AddrType, RefAddrType>();
 }
 
+#if defined(_SYNCVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr4AllForms) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr4AllForms) {
+#endif
   // Test that we can decode all forms for DWARF32, version 3, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
@@ -428,7 +436,11 @@ TEST(DWARFDebugInfo, TestDWARF32Version3Addr8AllForms) {
   TestAllForms<3, AddrType, RefAddrType>();
 }
 
+#if defined(_SYNCVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr4AllForms) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr4AllForms) {
+#endif
   // Test that we can decode all forms for DWARF32, version 4, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
