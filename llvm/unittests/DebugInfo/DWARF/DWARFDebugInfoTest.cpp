@@ -576,7 +576,11 @@ template <uint16_t Version, class AddrType> void TestChildren() {
   EXPECT_EQ(IntDieDG.getTag(), DW_TAG_base_type);
 }
 
+#if defined(_SYNCVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr4Children) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr4Children) {
+#endif
   // Test that we can decode all forms for DWARF32, version 2, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
@@ -594,7 +598,11 @@ TEST(DWARFDebugInfo, TestDWARF32Version2Addr8Children) {
   TestChildren<2, AddrType>();
 }
 
+#if defined(_SYNCVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr4Children) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr4Children) {
+#endif
   // Test that we can decode all forms for DWARF32, version 3, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
@@ -612,7 +620,11 @@ TEST(DWARFDebugInfo, TestDWARF32Version3Addr8Children) {
   TestChildren<3, AddrType>();
 }
 
+#if defined(_SYNCVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr4Children) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr4Children) {
+#endif
   // Test that we can decode all forms for DWARF32, version 4, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
@@ -860,7 +872,11 @@ TEST(DWARFDebugInfo, TestDWARF32Version2Addr8References) {
   TestReferences<2, AddrType>();
 }
 
+#if defined(_SYNCVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr4References) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr4References) {
+#endif
   // Test that we can decode all forms for DWARF32, version 3, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
@@ -878,7 +894,11 @@ TEST(DWARFDebugInfo, TestDWARF32Version3Addr8References) {
   TestReferences<3, AddrType>();
 }
 
+#if defined(_SYNCVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr4References) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr4References) {
+#endif
   // Test that we can decode all forms for DWARF32, version 4, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
@@ -1026,7 +1046,11 @@ template <uint16_t Version, class AddrType> void TestAddresses() {
   EXPECT_EQ(HighPC, ActualHighPC);
 }
 
+#if defined(_SYNCVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr4Addresses) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr4Addresses) {
+#endif
   // Test that we can decode address values in DWARF32, version 2, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
@@ -1044,7 +1068,11 @@ TEST(DWARFDebugInfo, TestDWARF32Version2Addr8Addresses) {
   TestAddresses<2, AddrType>();
 }
 
+#if defined(_SYNCVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr4Addresses) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr4Addresses) {
+#endif
   // Test that we can decode address values in DWARF32, version 3, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
@@ -1062,7 +1090,11 @@ TEST(DWARFDebugInfo, TestDWARF32Version3Addr8Addresses) {
   TestAddresses<3, AddrType>();
 }
 
+#if defined(_SYNCVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr4Addresses) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr4Addresses) {
+#endif
   // Test that we can decode address values in DWARF32, version 4, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
