@@ -826,7 +826,11 @@ template <uint16_t Version, class AddrType> void TestReferences() {
             toReference(CU2ToCU1RefAddrDieDG.find(DW_AT_type), -1ULL));
 }
 
+#if defined(_SYNCVM)
+TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr4References) {
+#else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr4References) {
+#endif
   // Test that we can decode all forms for DWARF32, version 2, with 4 byte
   // addresses.
   typedef uint32_t AddrType;
