@@ -72,7 +72,11 @@ TEST(TripleTest, BasicParsing) {
   EXPECT_EQ("d", T.getEnvironmentName().str());
 }
 
+#if defined(_SYNCVM)
 TEST(TripleTest, DISABLED_ParsedIDs) {
+#else
+TEST(TripleTest, ParsedIDs) {
+#endif
   Triple T;
 
   T = Triple("i386-apple-darwin");
@@ -777,7 +781,7 @@ TEST(TripleTest, DISABLED_ParsedIDs) {
   EXPECT_EQ(Triple::UnknownVendor, T.getVendor());
   EXPECT_EQ(Triple::ShaderModel, T.getOS());
   EXPECT_EQ(Triple::Callable, T.getEnvironment());
-  
+
   T = Triple("dxil-unknown-shadermodel-mesh");
   EXPECT_EQ(Triple::dxil, T.getArch());
   EXPECT_EQ(Triple::UnknownVendor, T.getVendor());
@@ -814,7 +818,11 @@ static std::string Join(StringRef A, StringRef B, StringRef C, StringRef D) {
   return Str;
 }
 
+#if defined(_SYNCVM)
 TEST(TripleTest, DISABLED_Normalization) {
+#else
+TEST(TripleTest, Normalization) {
+#endif
 
   EXPECT_EQ("unknown", Triple::normalize(""));
   EXPECT_EQ("unknown-unknown", Triple::normalize("-"));
@@ -988,7 +996,11 @@ TEST(TripleTest, MutateName) {
   EXPECT_EQ("i386-pc-darwin", T.getTriple());
 }
 
+#if defined(_SYNCVM)
 TEST(TripleTest, DISABLED_BitWidthPredicates) {
+#else
+TEST(TripleTest, BitWidthPredicates) {
+#endif
   Triple T;
   EXPECT_FALSE(T.isArch16Bit());
   EXPECT_FALSE(T.isArch32Bit());
@@ -1153,7 +1165,11 @@ TEST(TripleTest, DISABLED_BitWidthPredicates) {
   EXPECT_TRUE(T.isDXIL());
 }
 
+#if defined(_SYNCVM)
 TEST(TripleTest, DISABLED_BitWidthArchVariants) {
+#else
+TEST(TripleTest, BitWidthArchVariants) {
+#endif
   Triple T;
   EXPECT_EQ(Triple::UnknownArch, T.get32BitArchVariant().getArch());
   EXPECT_EQ(Triple::UnknownArch, T.get64BitArchVariant().getArch());
@@ -1347,7 +1363,11 @@ TEST(TripleTest, DISABLED_BitWidthArchVariants) {
   EXPECT_EQ(Triple::UnknownArch, T.get64BitArchVariant().getArch());
 }
 
+#if defined(_SYNCVM)
 TEST(TripleTest, DISABLED_EndianArchVariants) {
+#else
+TEST(TripleTest, EndianArchVariants) {
+#endif
   Triple T;
   EXPECT_EQ(Triple::UnknownArch, T.getBigEndianArchVariant().getArch());
   EXPECT_EQ(Triple::UnknownArch, T.getLittleEndianArchVariant().getArch());
