@@ -1,5 +1,3 @@
-; UNSUPPORTED: syncvm
-
 ; RUN: not llvm-as %s -o /dev/null 2>&1 | FileCheck %s
 
 @buf = dso_local global [1024 x i8] zeroinitializer, align 16
