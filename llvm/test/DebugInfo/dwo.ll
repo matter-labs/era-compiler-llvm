@@ -1,7 +1,6 @@
 ; RUN: %llc_dwarf %s -filetype=obj -o %t
 ; RUN: llvm-dwarfdump -debug-info %t | FileCheck %s
 ; REQUIRES: object-emission
-; UNSUPPORTED: syncvm
 ;
 ; CHECK: DW_TAG_compile_unit
 ; CHECK-NOT: dwo_id
