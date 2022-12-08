@@ -455,12 +455,12 @@ TEST_P(DebugLineUnsupportedVersionFixture, ErrorForUnsupportedVersion) {
                         std::to_string(Version)));
 }
 
-#if 0 // SyncVM local begin
+#if !defined(_SYNCVM)
 INSTANTIATE_TEST_SUITE_P(UnsupportedVersionTestParams,
                          DebugLineUnsupportedVersionFixture,
                          Values(/*1 below min */ 1, /* 1 above max */ 6,
                                 /* Maximum possible */ 0xffff));
-#endif //SyncVM local end
+#endif
 
 #if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture, DISABLED_ErrorForInvalidV5IncludeDirTable) {
