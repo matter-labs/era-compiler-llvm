@@ -455,12 +455,12 @@ TEST_P(DebugLineUnsupportedVersionFixture, ErrorForUnsupportedVersion) {
                         std::to_string(Version)));
 }
 
-#if !defined(_SYNCVM)
+#if !defined(_SYNCVM) //SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(UnsupportedVersionTestParams,
                          DebugLineUnsupportedVersionFixture,
                          Values(/*1 below min */ 1, /* 1 above max */ 6,
                                 /* Maximum possible */ 0xffff));
-#endif
+#endif //SyncVM local end
 
 #if defined(_AIX) || defined(_SYNCVM)
 TEST_F(DebugLineBasicFixture, DISABLED_ErrorForInvalidV5IncludeDirTable) {
@@ -597,7 +597,7 @@ TEST_P(DebugLineParameterisedFixture, ErrorForTooShortPrologueLength) {
                     FailedWithMessageArray(testing::ElementsAreArray(Errs)));
 }
 
-#if !defined(_SYNCVM)
+#if !defined(_SYNCVM) //SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(
     LineTableTestParams, DebugLineParameterisedFixture,
     Values(std::make_pair(
@@ -1117,7 +1117,7 @@ TEST_P(MaxOpsPerInstFixture, MaxOpsPerInstProblemsReportedCorrectly) {
               ", which is unsupported. Assuming a value of 1 instead");
 }
 
-#if !defined(_SYNCVM)
+#if !defined(_SYNCVM) //SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(
     MaxOpsPerInstParams, MaxOpsPerInstFixture,
     Values(std::make_tuple(3, 0, false), // Test for version < 4 (no error).
@@ -1166,7 +1166,7 @@ TEST_P(LineRangeFixture, LineRangeProblemsReportedCorrectly) {
           "not be adjusted");
 }
 
-#if !defined(_SYNCVM)
+#if !defined(_SYNCVM) //SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(
     LineRangeParams, LineRangeFixture,
     Values(std::make_tuple(0, true),     // Test zero value (error).
@@ -1207,7 +1207,7 @@ TEST_P(BadMinInstLenFixture, MinInstLengthProblemsReportedCorrectly) {
           "prevents any address advancing");
 }
 
-#if !defined(_SYNCVM)
+#if !defined(_SYNCVM) //SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(
     BadMinInstLenParams, BadMinInstLenFixture,
     Values(std::make_tuple(0, true),    // Test zero value (error).
@@ -1653,7 +1653,7 @@ TEST_P(TruncatedPrologueFixture, ErrorForTruncatedPrologue) {
   EXPECT_EQ(Offset, ExpectedOffset);
 }
 
-#if !defined(_SYNCVM)
+#if !defined(_SYNCVM) //SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(
     TruncatedPrologueParams, TruncatedPrologueFixture,
     Values(
@@ -1819,7 +1819,7 @@ TEST_P(TruncatedExtendedOpcodeFixture, ErrorForTruncatedExtendedOpcode) {
                     FailedWithMessage(ExpectedErr.str()));
 }
 
-#if !defined(_SYNCVM)
+#if !defined(_SYNCVM) //SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(
     TruncatedExtendedOpcodeParams, TruncatedExtendedOpcodeFixture,
     Values(
@@ -1905,7 +1905,7 @@ TEST_P(TruncatedStandardOpcodeFixture, ErrorForTruncatedStandardOpcode) {
                     FailedWithMessage(ExpectedErr.str()));
 }
 
-#if !defined(_SYNCVM)
+#if !defined(_SYNCVM) //SyncVM local begin
 INSTANTIATE_TEST_SUITE_P(
     TruncatedStandardOpcodeParams, TruncatedStandardOpcodeFixture,
     Values(
