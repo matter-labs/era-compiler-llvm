@@ -8,7 +8,6 @@ TARGET_BUILD="${ROOT_DIR}/build-target/"
 TARGET_INSTALL='/opt/llvm-release/'
 
 if [[ "$OSTYPE" == "darwin"* ]]; then
-
     cmake \
         -S 'llvm' \
         -B "${TARGET_BUILD}" \
@@ -31,8 +30,11 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
         -DLLVM_ENABLE_SPHINX='Off' \
         -DLLVM_ENABLE_OCAMLDOC='Off' \
         -DLLVM_ENABLE_ZLIB='Off' \
+        -DLLVM_ENABLE_ZSTD='Off' \
         -DLLVM_ENABLE_LIBXML2='Off' \
         -DLLVM_ENABLE_BINDINGS='Off' \
+        -DLLVM_ENABLE_TERMINFO='Off' \
+        -DLLVM_ENABLE_PIC='Off' \
         -DCMAKE_OSX_DEPLOYMENT_TARGET='11.0'
 elif [[ -f '/etc/arch-release' ]]; then
     if [[ -z ${CI_RUNNING+x} ]]; then
@@ -68,8 +70,11 @@ elif [[ -f '/etc/arch-release' ]]; then
         -DLLVM_ENABLE_SPHINX='Off' \
         -DLLVM_ENABLE_OCAMLDOC='Off' \
         -DLLVM_ENABLE_ZLIB='Off' \
+        -DLLVM_ENABLE_ZSTD='Off' \
         -DLLVM_ENABLE_LIBXML2='Off' \
-        -DLLVM_ENABLE_BINDINGS='Off'
+        -DLLVM_ENABLE_BINDINGS='Off' \
+        -DLLVM_ENABLE_TERMINFO='Off' \
+        -DLLVM_ENABLE_PIC='Off'
 elif [[ "$OSTYPE" == "linux-gnu" ]]; then
     if [[ -z ${CI_RUNNING+x} ]]; then
         sudo apt --yes update
@@ -106,8 +111,11 @@ elif [[ "$OSTYPE" == "linux-gnu" ]]; then
         -DLLVM_ENABLE_SPHINX='Off' \
         -DLLVM_ENABLE_OCAMLDOC='Off' \
         -DLLVM_ENABLE_ZLIB='Off' \
+        -DLLVM_ENABLE_ZSTD='Off' \
         -DLLVM_ENABLE_LIBXML2='Off' \
         -DLLVM_ENABLE_BINDINGS='Off' \
+        -DLLVM_ENABLE_TERMINFO='Off' \
+        -DLLVM_ENABLE_PIC='Off' \
         -DPython3_EXECUTABLE="$(which python3)"
 fi
 
