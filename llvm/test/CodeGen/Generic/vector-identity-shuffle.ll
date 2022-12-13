@@ -1,3 +1,5 @@
+; UNSUPPORTED: syncvm
+; SyncVM doesn't support vector instructions.
 ; RUN: llc < %s 
 
 

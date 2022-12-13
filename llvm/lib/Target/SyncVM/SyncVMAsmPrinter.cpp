@@ -234,6 +234,7 @@ void SyncVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
       Type *ty = sty->getTypeAtIndex(i);
       assert(ty->isIntegerTy() && ty->getIntegerBitWidth() <= 256);
       Constant *C = CVS->getAggregateElement(i);
+      // TODO: CPR-920 support operators.
       const ConstantInt *CI = cast<ConstantInt>(C);
       Streamer->emitGlobalConst(CI->getValue());
     }
@@ -252,7 +253,6 @@ void SyncVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
   }
 
   if (const ConstantInt *CI = dyn_cast<ConstantInt>(CV)) {
-    assert(CI->getBitWidth() == 256);
     Streamer->emitGlobalConst(CI->getValue());
     return;
   }

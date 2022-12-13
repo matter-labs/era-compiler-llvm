@@ -11263,7 +11263,16 @@ MaybeAlign SelectionDAG::InferPtrAlign(SDValue Ptr) const {
              isa<FrameIndexSDNode>(Ptr.getOperand(0))) {
     // Handle FI+Cst
     FrameIdx = cast<FrameIndexSDNode>(Ptr.getOperand(0))->getIndex();
-    FrameOffset = Ptr.getConstantOperandVal(1);
+    // SyncVM local begin
+    // In case the offset is negative, it overflows 64 bits with SyncVM's i256.
+    // Though the architecture guarantees the offset fits 64 bits wide
+    // signed integer, so it's ok to truncate.
+    FrameOffset = cast<ConstantSDNode>(Ptr.getOperand(1))
+                      ->getAPIntValue()
+                      .trunc(64)
+                      .getZExtValue();
+
+    // SyncVM local end
   }
 
   if (FrameIdx != INT_MIN) {

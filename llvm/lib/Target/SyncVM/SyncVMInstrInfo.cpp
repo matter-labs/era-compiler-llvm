@@ -212,8 +212,6 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
   if (MI != MBB.end())
     DL = MI->getDebugLoc();
   MachineFunction &MF = *MBB.getParent();
-  auto *TII = MF.getSubtarget<SyncVMSubtarget>().getInstrInfo();
-  MachineRegisterInfo &MRI = MF.getRegInfo();
   MachineFrameInfo &MFI = MF.getFrameInfo();
 
   MachineMemOperand *MMO = MF.getMachineMemOperand(

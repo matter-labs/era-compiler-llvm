@@ -11,6 +11,9 @@
 ; NVPTX cannot select dynamic_stackalloc
 ; XFAIL: nvptx
 
+; SyncVM realignment not supported.
+; UNSUPPORTED: syncvm
+
 define i32 @f(i8* %p) nounwind {
 entry:
   %0 = load i8, i8* %p

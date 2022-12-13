@@ -1,3 +1,5 @@
+; UNSUPPORTED: syncvm
+; SyncVM doesn't support floats.
 ; RUN: llc %s -o -
 
 ; PR6332

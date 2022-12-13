@@ -1,3 +1,4 @@
+; XFAIL: syncvm
 ; RUN: llc < %s
 ; PR5495
 
