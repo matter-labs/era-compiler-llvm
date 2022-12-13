@@ -39,6 +39,26 @@ using namespace llvm;
 
 #define DEBUG_TYPE "eravm-lower"
 
+/// Wrap global address with GAStack or GACode nodes.
+/// Precondition:
+/// \p ValueToWrap is SDValue containing a GlobalAddressSDNode.
+/// The nodes are to lower CopyToReg GlobalAddress to
+/// 1. Materialize GlobalAddress in a virtual register
+/// 2. Copy it to a physical one.
+/// TODO: CPR-921 Should be removed after a proper wrapping is implemented.
+static SDValue wrappedGlobalAddress(const SDValue &ValueToWrap,
+                                    SelectionDAG &DAG, const SDLoc &DL) {
+  auto *GANode = cast<GlobalAddressSDNode>(ValueToWrap.getNode());
+  switch (GANode->getAddressSpace()) {
+  case EraVMAS::AS_STACK:
+    return DAG.getNode(EraVMISD::GAStack, DL, MVT::i256, ValueToWrap);
+  case EraVMAS::AS_CODE:
+    return DAG.getNode(EraVMISD::GACode, DL, MVT::i256, ValueToWrap);
+  }
+  llvm_unreachable("Global symbol in unexpected addr space");
+  return {};
+}
+
 EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
                                          const EraVMSubtarget &STI)
     : TargetLowering(TM) {
@@ -189,7 +209,11 @@ EraVMTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
     CCValAssign &VA = RVLocs[i];
     assert(VA.isRegLoc() && "Can only return in registers!");
 
-    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), OutVals[i], Flag);
+    const SDValue &CurVal = OutVals[i];
+    auto Val = isa<GlobalAddressSDNode>(CurVal.getNode())
+                   ? wrappedGlobalAddress(CurVal, DAG, DL)
+                   : CurVal;
+    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), Val, Flag);
 
     // Guarantee that all emitted copies are stuck together,
     // avoiding something bad.
@@ -376,10 +400,22 @@ SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   if (!MemOpChains.empty())
     Chain = DAG.getNode(ISD::TokenFactor, DL, MVT::Other, MemOpChains);
 
+  // If the callee is a GlobalAddress node (quite common, every direct call is)
+  // turn it into a TargetGlobalAddress node so that legalize doesn't hack it.
+  // Likewise ExternalSymbol -> TargetExternalSymbol.
+  if (auto *G = dyn_cast<GlobalAddressSDNode>(Callee))
+    Callee = DAG.getTargetGlobalAddress(G->getGlobal(), DL, MVT::i256);
+  else if (auto *E = dyn_cast<ExternalSymbolSDNode>(Callee))
+    Callee = DAG.getTargetExternalSymbol(E->getSymbol(), MVT::i256);
+
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
     if (ArgLocs[i].isRegLoc()) {
-      Chain = DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), OutVals[i],
-                               InFlag);
+      SDValue &CurVal = OutVals[i];
+      auto Val = isa<GlobalAddressSDNode>(CurVal.getNode())
+                     ? wrappedGlobalAddress(CurVal, DAG, DL)
+                     : CurVal;
+
+      Chain = DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), Val, InFlag);
       InFlag = Chain.getValue(1);
     }
   }
@@ -544,6 +580,8 @@ SDValue EraVMTargetLowering::LowerOperation(SDValue Op,
   case ISD::ZERO_EXTEND:        return LowerZERO_EXTEND(Op, DAG);
   case ISD::ANY_EXTEND:         return LowerANY_EXTEND(Op, DAG);
   case ISD::GlobalAddress:      return LowerGlobalAddress(Op, DAG);
+  case ISD::BlockAddress:       return LowerBlockAddress(Op, DAG);
+  case ISD::ExternalSymbol:     return LowerExternalSymbol(Op, DAG);
   case ISD::BR_CC:              return LowerBR_CC(Op, DAG);
   case ISD::SELECT_CC:          return LowerSELECT_CC(Op, DAG);
   case ISD::SRA:                return LowerSRA(Op, DAG);
@@ -769,13 +807,37 @@ SDValue EraVMTargetLowering::LowerSREM(SDValue Op, SelectionDAG &DAG) const {
 
 SDValue EraVMTargetLowering::LowerGlobalAddress(SDValue Op,
                                                 SelectionDAG &DAG) const {
-  const GlobalValue *GV = cast<GlobalAddressSDNode>(Op)->getGlobal();
+  auto *GANode = cast<GlobalAddressSDNode>(Op);
+  const GlobalValue *GV = GANode->getGlobal();
   int64_t Offset = cast<GlobalAddressSDNode>(Op)->getOffset();
   auto PtrVT = getPointerTy(DAG.getDataLayout());
 
   // Create the TargetGlobalAddress node, folding in the constant offset.
   SDValue Result = DAG.getTargetGlobalAddress(GV, SDLoc(Op), PtrVT, Offset);
   return Result;
+}
+
+SDValue EraVMTargetLowering::LowerExternalSymbol(SDValue Op,
+                                                 SelectionDAG &DAG) const {
+  SDLoc dl(Op);
+  const char *Sym = cast<ExternalSymbolSDNode>(Op)->getSymbol();
+  EVT PtrVT = Op.getValueType();
+  SDValue Result = DAG.getTargetExternalSymbol(Sym, PtrVT);
+
+  // EraVM doesn't support external symbols, but it make sense to enable
+  // generic codegen tests to pass. In case an external symbol persist linker
+  // will emit a diagnostic.
+  return DAG.getNode(EraVMISD::GACode, dl, PtrVT, Result);
+}
+
+SDValue EraVMTargetLowering::LowerBlockAddress(SDValue Op,
+                                               SelectionDAG &DAG) const {
+  SDLoc dl(Op);
+  const BlockAddress *BA = cast<BlockAddressSDNode>(Op)->getBlockAddress();
+  EVT PtrVT = Op.getValueType();
+  SDValue Result = DAG.getTargetBlockAddress(BA, PtrVT);
+
+  return DAG.getNode(EraVMISD::GACode, dl, PtrVT, Result);
 }
 
 SDValue EraVMTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {

@@ -1,5 +1,4 @@
 ; RUN: llc < %s
-; XFAIL: target=eravm{{.*}}
 
 ;; Date: May 28, 2003.
 ;; From: test/Programs/MultiSource/Olden-perimeter/maketree.c

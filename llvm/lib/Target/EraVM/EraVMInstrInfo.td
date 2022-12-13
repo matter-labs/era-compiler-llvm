@@ -22,6 +22,8 @@ def SDT_EraVMCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i256>,
                                              SDTCisVT<1, i256>]>;
 def SDT_EraVMCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i256>,
                                            SDTCisVT<1, i256>]>;
+def SDT_EraVMWrapper      : SDTypeProfile<1, 1, [SDTCisSameAs<0, 1>,
+                                                  SDTCisPtrTy<0>]>;
 def SDT_EraVMChangeSP     : SDTypeProfile<0,  1, [SDTCisVT<0, i256>]>;
 def SDT_EraVMGetSP        : SDTypeProfile<1,  0, []>;
 def SDT_EraVMBrCC         : SDTypeProfile<0,  2, [SDTCisVT<0, OtherVT>,
@@ -66,6 +68,8 @@ def EraVMcallseq_start :
 def EraVMcallseq_end :
                  SDNode<"ISD::CALLSEQ_END",   SDT_EraVMCallSeqEnd,
                         [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
+def EraVMGAStack : SDNode<"EraVMISD::GAStack", SDT_EraVMWrapper>;
+def EraVMGACode : SDNode<"EraVMISD::GACode", SDT_EraVMWrapper>;
 def EraVMget_sp : SDNode<"EraVMISD::GET_SP", SDT_EraVMGetSP,
                           [SDNPHasChain]>;
 def EraVMchange_sp : SDNode<"EraVMISD::CHANGE_SP", SDT_EraVMChangeSP,
@@ -1118,6 +1122,7 @@ def RET   : IRet<7, RFNone, (ins), "ret", [(EraVMret)]>;
 let isTerminator = 1, isBarrier = 1, isTrap = 1 in
 def THROW : IRet<7, RFErr, (ins GR256:$rs0), "revert",
                  [(EraVMthrow GR256:$rs0)]>;
+
 let isTerminator = 1, isBarrier = 1 in {
 def RETURN : IRet<52, RFErr, (ins GR256:$rs0), "ret.ok.to_label\t$rs0, @DEFAULT_FAR_RETURN",
                   [(EraVMreturn GR256:$rs0)]>;
@@ -1243,3 +1248,13 @@ def : Pat<(store_stack (add GR256:$rs0, neg_imm16:$imm), stackaddr:$dst0),
           (SUBxrs_p (negate_imm imm:$imm), GR256:$rs0, stackaddr:$dst0)>;
 def : Pat<(sub GR256:$rs0, neg_imm16:$imm), (ADDirr_p (negate_imm imm:$imm), GR256:$rs0)>;
 def : Pat<(add GR256:$rs0, neg_imm16:$imm), (SUBxrr_p (negate_imm imm:$imm), GR256:$rs0)>;
+
+//===----------------------------------------------------------------------===//
+// Non-instruction patterns
+//===----------------------------------------------------------------------===//
+
+// GlobalAddress, ExternalSymbol
+def : Pat<(i256 (EraVMGAStack tglobaladdr:$dst)), (ADDsrr_p tglobaladdr:$dst, 0, 0, R0)>;
+def : Pat<(i256 (EraVMGACode tglobaladdr:$dst)), (ADDcrr_p tglobaladdr:$dst, 0, R0)>;
+def : Pat<(i256 (EraVMGACode texternalsym:$dst)), (ADDcrr_p texternalsym:$dst, 0, R0)>;
+def : Pat<(i256 (EraVMGACode tblockaddress:$dst)), (ADDcrr_p tblockaddress:$dst, 0, R0)>;
