@@ -1,5 +1,4 @@
 ; RUN: llc < %s
-; XFAIL: target=eravm{{.*}}
 
 @.str_1 = internal constant [4 x i8] c"%d\0A\00"                ; <ptr> [#uses=1]
 
