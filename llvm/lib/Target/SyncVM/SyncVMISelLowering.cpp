@@ -33,6 +33,26 @@ using namespace llvm;
 
 #define DEBUG_TYPE "syncvm-lower"
 
+/// Wrap global address with GAStack or GACode nodes.
+/// Precondition:
+/// \p ValueToWrap is SDValue containing a GlobalAddressSDNode.
+/// The nodes are to lower CopyToReg GlobalAddress to
+/// 1. Materialize GlobalAddress in a virtual register
+/// 2. Copy it to a physical one.
+/// TODO: CPR-921 Should be removed after a proper wrapping is implemented.
+static SDValue wrappedGlobalAddress(const SDValue& ValueToWrap, SelectionDAG &DAG,
+                                    const SDLoc& DL) {
+  auto *GANode = cast<GlobalAddressSDNode>(ValueToWrap.getNode());
+  switch (GANode->getAddressSpace()) {
+  case SyncVMAS::AS_STACK:
+    return DAG.getNode(SyncVMISD::GAStack, DL, MVT::i256, ValueToWrap);
+  case SyncVMAS::AS_CODE:
+    return DAG.getNode(SyncVMISD::GACode, DL, MVT::i256, ValueToWrap);
+  }
+  llvm_unreachable("Global symbol in unexpected addr space");
+  return {};
+}
+
 SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
                                            const SyncVMSubtarget &STI)
     : TargetLowering(TM) {
@@ -186,7 +206,10 @@ SyncVMTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
     CCValAssign &VA = RVLocs[i];
     assert(VA.isRegLoc() && "Can only return in registers!");
 
-    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), OutVals[i], Flag);
+    const SDValue &CurVal = OutVals[i];
+    auto Val = isa<GlobalAddressSDNode>(CurVal.getNode())
+      ? wrappedGlobalAddress(CurVal, DAG, DL) : CurVal;
+    Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), Val, Flag);
 
     // Guarantee that all emitted copies are stuck together,
     // avoiding something bad.
@@ -374,9 +397,21 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   if (!MemOpChains.empty())
     Chain = DAG.getNode(ISD::TokenFactor, DL, MVT::Other, MemOpChains);
 
+  // If the callee is a GlobalAddress node (quite common, every direct call is)
+  // turn it into a TargetGlobalAddress node so that legalize doesn't hack it.
+  // Likewise ExternalSymbol -> TargetExternalSymbol.
+  if (GlobalAddressSDNode *G = dyn_cast<GlobalAddressSDNode>(Callee))
+    Callee = DAG.getTargetGlobalAddress(G->getGlobal(), DL, MVT::i256);
+  else if (ExternalSymbolSDNode *E = dyn_cast<ExternalSymbolSDNode>(Callee))
+    Callee = DAG.getTargetExternalSymbol(E->getSymbol(), MVT::i256);
+
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
     if (ArgLocs[i].isRegLoc()) {
-      Chain = DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), OutVals[i],
+      SDValue &CurVal = OutVals[i];
+      auto Val = isa<GlobalAddressSDNode>(CurVal.getNode())
+        ? wrappedGlobalAddress(CurVal, DAG, DL) : CurVal;
+
+      Chain = DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), Val,
                                InFlag);
       InFlag = Chain.getValue(1);
     }
@@ -535,45 +570,31 @@ static SDValue EmitCMP(SDValue &LHS, SDValue &RHS, ISD::CondCode CC,
 
 SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
                                              SelectionDAG &DAG) const {
+  // clang-format off
   switch (Op.getOpcode()) {
+  case ISD::STORE:              return LowerSTORE(Op, DAG);
+  case ISD::LOAD:               return LowerLOAD(Op, DAG);
+  case ISD::ZERO_EXTEND:        return LowerZERO_EXTEND(Op, DAG);
+  case ISD::ANY_EXTEND:         return LowerANY_EXTEND(Op, DAG);
+  case ISD::GlobalAddress:      return LowerGlobalAddress(Op, DAG);
+  case ISD::BlockAddress:       return LowerBlockAddress(Op, DAG);
+  case ISD::ExternalSymbol:     return LowerExternalSymbol(Op, DAG);
+  case ISD::BR_CC:              return LowerBR_CC(Op, DAG);
+  case ISD::SELECT_CC:          return LowerSELECT_CC(Op, DAG);
+  case ISD::CopyToReg:          return LowerCopyToReg(Op, DAG);
+  case ISD::SRA:                return LowerSRA(Op, DAG);
+  case ISD::SDIV:               return LowerSDIV(Op, DAG);
+  case ISD::SREM:               return LowerSREM(Op, DAG);
+  case ISD::INTRINSIC_VOID:     return LowerINTRINSIC_VOID(Op, DAG);
+  case ISD::INTRINSIC_WO_CHAIN: return LowerINTRINSIC_WO_CHAIN(Op, DAG);
+  case ISD::STACKSAVE:          return LowerSTACKSAVE(Op, DAG);
+  case ISD::STACKRESTORE:       return LowerSTACKRESTORE(Op, DAG);
+  case ISD::BSWAP:              return LowerBSWAP(Op, DAG);
+  case ISD::CTPOP:              return LowerCTPOP(Op, DAG);
   default:
     llvm_unreachable("unimplemented operation lowering");
-    return SDValue();
-  case ISD::STORE:
-    return LowerSTORE(Op, DAG);
-  case ISD::LOAD:
-    return LowerLOAD(Op, DAG);
-  case ISD::ZERO_EXTEND:
-    return LowerZERO_EXTEND(Op, DAG);
-  case ISD::ANY_EXTEND:
-    return LowerANY_EXTEND(Op, DAG);
-  case ISD::GlobalAddress:
-    return LowerGlobalAddress(Op, DAG);
-  case ISD::BR_CC:
-    return LowerBR_CC(Op, DAG);
-  case ISD::SELECT_CC:
-    return LowerSELECT_CC(Op, DAG);
-  case ISD::CopyToReg:
-    return LowerCopyToReg(Op, DAG);
-  case ISD::SRA:
-    return LowerSRA(Op, DAG);
-  case ISD::SDIV:
-    return LowerSDIV(Op, DAG);
-  case ISD::SREM:
-    return LowerSREM(Op, DAG);
-  case ISD::INTRINSIC_VOID:
-    return LowerINTRINSIC_VOID(Op, DAG);
-  case ISD::INTRINSIC_WO_CHAIN:
-    return LowerINTRINSIC_WO_CHAIN(Op, DAG);
-  case ISD::STACKSAVE:
-    return LowerSTACKSAVE(Op, DAG);
-  case ISD::STACKRESTORE:
-    return LowerSTACKRESTORE(Op, DAG);
-  case ISD::BSWAP:
-    return LowerBSWAP(Op, DAG);
-  case ISD::CTPOP:
-    return LowerCTPOP(Op, DAG);
   }
+  // clang-format on
 }
 
 SDValue SyncVMTargetLowering::LowerANY_EXTEND(SDValue Op,
@@ -783,13 +804,37 @@ SDValue SyncVMTargetLowering::LowerSREM(SDValue Op, SelectionDAG &DAG) const {
 
 SDValue SyncVMTargetLowering::LowerGlobalAddress(SDValue Op,
                                                  SelectionDAG &DAG) const {
-  const GlobalValue *GV = cast<GlobalAddressSDNode>(Op)->getGlobal();
+  auto *GANode = cast<GlobalAddressSDNode>(Op);
+  const GlobalValue *GV = GANode->getGlobal();
   int64_t Offset = cast<GlobalAddressSDNode>(Op)->getOffset();
   auto PtrVT = getPointerTy(DAG.getDataLayout());
 
   // Create the TargetGlobalAddress node, folding in the constant offset.
   SDValue Result = DAG.getTargetGlobalAddress(GV, SDLoc(Op), PtrVT, Offset);
   return Result;
+}
+
+SDValue SyncVMTargetLowering::LowerExternalSymbol(SDValue Op,
+                                                  SelectionDAG &DAG) const {
+  SDLoc dl(Op);
+  const char *Sym = cast<ExternalSymbolSDNode>(Op)->getSymbol();
+  EVT PtrVT = Op.getValueType();
+  SDValue Result = DAG.getTargetExternalSymbol(Sym, PtrVT);
+
+  // SyncVM doesn't support external symbols, but it make sense to enable
+  // generic codegen tests to pass. In case an external symbol persist linker
+  // will emit a diagnostic.
+  return DAG.getNode(SyncVMISD::GACode, dl, PtrVT, Result);
+}
+
+SDValue SyncVMTargetLowering::LowerBlockAddress(SDValue Op,
+                                                SelectionDAG &DAG) const {
+  SDLoc dl(Op);
+  const BlockAddress *BA = cast<BlockAddressSDNode>(Op)->getBlockAddress();
+  EVT PtrVT = Op.getValueType();
+  SDValue Result = DAG.getTargetBlockAddress(BA, PtrVT);
+
+  return DAG.getNode(SyncVMISD::GACode, dl, PtrVT, Result);
 }
 
 SDValue SyncVMTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
@@ -834,7 +879,7 @@ SDValue SyncVMTargetLowering::LowerCopyToReg(SDValue Op,
   if (Src.getOpcode() == ISD::FrameIndex ||
       (Src.getOpcode() == ISD::ADD &&
        Src.getOperand(0).getOpcode() == ISD::FrameIndex)) {
-    unsigned Reg = cast<RegisterSDNode>(Op.getOperand(1))->getReg();
+    Register Reg = cast<RegisterSDNode>(Op.getOperand(1))->getReg();
     // TODO: It's really a hack:
     // If we put an expression involving stack frame, we replase the address in
     // bytes with the address in cells. Probably we need to reconsider that

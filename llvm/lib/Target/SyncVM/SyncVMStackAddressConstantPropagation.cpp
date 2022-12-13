@@ -185,8 +185,9 @@ SyncVMStackAddressConstantPropagation::tryExtractConstant(MachineInstr &MI,
   }
 
   // RI mul
-  unsigned Val = getImmOrCImm(MI.getOperand(1));
-  Register RHSReg = MI.getOperand(2).getReg();
+  // TODO: CPR-919 Make operand access more robust and readable.
+  unsigned Val = getImmOrCImm(MI.getOperand(2));
+  Register RHSReg = MI.getOperand(3).getReg();
   MachineInstr &RHS = *RegInfo->getVRegDef(RHSReg);
   return tryExtractConstant(RHS, Multiplier * Val, Divisor);
 }

@@ -1,3 +1,5 @@
+; XFAIL: syncvm
+; TODO: CPR-916 Fix the test.
 ; RUN: llc < %s > %t
 
 ; NVPTX does not support arbitrary integer types and has acceptable subset tested in NVPTX/APIntParam.ll

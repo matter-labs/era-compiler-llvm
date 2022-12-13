@@ -120,21 +120,24 @@ define i1 @boolexpr(i1 %b, i32 %N) {
         ret i1 %b3
 }
 
+; SyncVM local begin
+; SyncVM doesn't support floats
 ; Test branch on floating point comparison
 ;
-define void @testfloatbool(float %x, float %y) {
-        br label %Top
-
-Top:            ; preds = %Top, %0
-        %p = fadd float %x, %y           ; <float> [#uses=1]
-        %z = fsub float %x, %y           ; <float> [#uses=1]
-        %b = fcmp ole float %p, %z              ; <i1> [#uses=2]
-        %c = xor i1 %b, true            ; <i1> [#uses=0]
-        br i1 %b, label %Top, label %goon
-
-goon:           ; preds = %Top
-        ret void
-}
+;define void @testfloatbool(float %x, float %y) {
+;        br label %Top
+;
+;Top:            ; preds = %Top, %0
+;        %p = fadd float %x, %y           ; <float> [#uses=1]
+;        %z = fsub float %x, %y           ; <float> [#uses=1]
+;        %b = fcmp ole float %p, %z              ; <i1> [#uses=2]
+;        %c = xor i1 %b, true            ; <i1> [#uses=0]
+;        br i1 %b, label %Top, label %goon
+;
+;goon:           ; preds = %Top
+;        ret void
+;}
+; SyncVM local end
 
 
 ; Test cases where an LLVM instruction requires no machine
@@ -185,10 +188,13 @@ define i32 @checkFoldGEP(%Domain* %D, i64 %idx) {
         ret i32 %reg820
 }
 
+; SyncVM local begin
+; SyncVM doesn't support vectors
 ; Test case for scalarising a 1 element vselect
 ;
-define <1 x i32> @checkScalariseVSELECT(<1 x i32> %a, <1 x i32> %b) {
-        %cond = icmp uge <1 x i32> %a, %b
-        %s = select <1 x i1> %cond, <1 x i32> %a, <1 x i32> %b
-        ret <1 x i32> %s
-}
+;define <1 x i32> @checkScalariseVSELECT(<1 x i32> %a, <1 x i32> %b) {
+;        %cond = icmp uge <1 x i32> %a, %b
+;        %s = select <1 x i1> %cond, <1 x i32> %a, <1 x i32> %b
+;        ret <1 x i32> %s
+;}
+; SyncVM local end

@@ -16,6 +16,8 @@ def SDT_SyncVMCallSeqStart : SDCallSeqStart<[SDTCisVT<0, i256>,
                                              SDTCisVT<1, i256>]>;
 def SDT_SyncVMCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i256>,
                                            SDTCisVT<1, i256>]>;
+def SDT_SyncVMWrapper      : SDTypeProfile<1, 1, [SDTCisSameAs<0, 1>,
+                                                  SDTCisPtrTy<0>]>;
 def SDT_SyncVMChangeSP     : SDTypeProfile<0,  1, [SDTCisVT<0, i256>]>;
 def SDT_SyncVMGetSP        : SDTypeProfile<1,  0, []>;
 def SDT_SyncVMBrCC         : SDTypeProfile<0,  2, [SDTCisVT<0, OtherVT>,
@@ -60,6 +62,8 @@ def SyncVMcallseq_start :
 def SyncVMcallseq_end :
                  SDNode<"ISD::CALLSEQ_END",   SDT_SyncVMCallSeqEnd,
                         [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
+def SyncVMGAStack : SDNode<"SyncVMISD::GAStack", SDT_SyncVMWrapper>;
+def SyncVMGACode : SDNode<"SyncVMISD::GACode", SDT_SyncVMWrapper>;
 def SyncVMget_sp : SDNode<"SyncVMISD::GET_SP", SDT_SyncVMGetSP,
                           [SDNPHasChain]>;
 def SyncVMchange_sp : SDNode<"SyncVMISD::CHANGE_SP", SDT_SyncVMChangeSP,
@@ -1209,6 +1213,7 @@ def RET   : IRet<7, RFNone, (ins), "ret", [(SyncVMret)]>;
 let isTerminator = 1, isBarrier = 1, isTrap = 1 in
 def THROW : IRet<7, RFErr, (ins GR256:$rs0), "revert",
                  [(SyncVMthrow GR256:$rs0)]>;
+
 let isTerminator = 1, isBarrier = 1 in {
 def RETURN : IRet<52, RFErr, (ins GR256:$rs0), "ret.ok.to_label\t$rs0, @DEFAULT_FAR_RETURN",
                   [(SyncVMreturn GR256:$rs0)]>;
@@ -1332,3 +1337,13 @@ def : Pat<(store_stack (add GR256:$rs0, neg_imm16:$imm), stackaddr:$dst0),
           (SUBxrs_p (negate_imm imm:$imm), GR256:$rs0, stackaddr:$dst0)>;
 def : Pat<(sub GR256:$rs0, neg_imm16:$imm), (ADDirr_p (negate_imm imm:$imm), GR256:$rs0)>;
 def : Pat<(add GR256:$rs0, neg_imm16:$imm), (SUBxrr_p (negate_imm imm:$imm), GR256:$rs0)>;
+
+//===----------------------------------------------------------------------===//
+// Non-instruction patterns
+//===----------------------------------------------------------------------===//
+
+// GlobalAddress, ExternalSymbol
+def : Pat<(i256 (SyncVMGAStack tglobaladdr:$dst)), (ADDsrr_p tglobaladdr:$dst, 0, 0, R0)>;
+def : Pat<(i256 (SyncVMGACode tglobaladdr:$dst)), (ADDcrr_p tglobaladdr:$dst, 0, R0)>;
+def : Pat<(i256 (SyncVMGACode texternalsym:$dst)), (ADDcrr_p texternalsym:$dst, 0, R0)>;
+def : Pat<(i256 (SyncVMGACode tblockaddress:$dst)), (ADDcrr_p tblockaddress:$dst, 0, R0)>;

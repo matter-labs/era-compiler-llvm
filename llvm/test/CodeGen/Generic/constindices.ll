@@ -1,3 +1,5 @@
+; UNSUPPORTED: syncvm
+; SyncVM doesn't support floats.
 ; RUN: llc < %s
 
 ; Test that a sequence of constant indices are folded correctly
