@@ -111,6 +111,33 @@ bool SyncVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
     if (!I->isBranch())
       return true;
 
+    if (I->getOpcode() == SyncVM::J) {
+      // Handle unconditional branches.
+      auto jumpTarget = I->getOperand(0).getMBB();
+      if (!AllowModify) {
+        TBB = jumpTarget;
+        continue;
+      }
+
+      // If the block has any instructions after a JMP, delete them.
+      MBB.erase(std::next(I), MBB.end());
+
+      Cond.clear();
+      FBB = nullptr;
+
+      // Delete the JMP if it's equivalent to a fall-through.
+      if (MBB.isLayoutSuccessor(jumpTarget)) {
+        TBB = nullptr;
+        I->eraseFromParent();
+        I = MBB.end();
+        continue;
+      }
+
+      // TBB is used to indicate the unconditional destination.
+      TBB = jumpTarget;
+      continue;
+    }
+
     // Handle unconditional branches.
     if (getImmOrCImm(I->getOperand(1)) == 0) {
       // TBB is used to indicate the unconditional destination.
@@ -185,18 +212,18 @@ unsigned SyncVMInstrInfo::insertBranch(
   if (Cond.empty()) {
     // Unconditional branch?
     assert(!FBB && "Unconditional branch with multiple successors!");
-    BuildMI(&MBB, DL, get(SyncVM::J)).addMBB(TBB).addImm(SyncVMCC::COND_NONE);
+    BuildMI(&MBB, DL, get(SyncVM::J)).addMBB(TBB);
     return 1;
   }
   // Conditional branch.
   unsigned Count = 0;
   auto cond_code = getImmOrCImm(Cond[0]);
-  BuildMI(&MBB, DL, get(SyncVM::J)).addMBB(TBB).addImm(cond_code);
+  BuildMI(&MBB, DL, get(SyncVM::JC)).addMBB(TBB).addImm(cond_code);
   ++Count;
 
   if (FBB) {
     // Two-way Conditional branch. Insert the second branch.
-    BuildMI(&MBB, DL, get(SyncVM::J)).addMBB(FBB).addImm(SyncVMCC::COND_NONE);
+    BuildMI(&MBB, DL, get(SyncVM::J)).addMBB(FBB);
     ++Count;
   }
   return Count;
