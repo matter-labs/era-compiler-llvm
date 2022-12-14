@@ -252,9 +252,19 @@ public:
   /// prior to the pair.
   int64_t getFrameTotalSize(const MachineInstr &I) const {
     if (isFrameSetup(I)) {
-      assert(I.getOperand(1).getImm() >= 0 &&
+      // EraVM local begin
+      int64_t frame_size = 0;
+      assert(I.getOperand(1).isImm() ||
+             I.getOperand(1).isCImm() && "Unexpected operand type");
+      if (I.getOperand(1).isImm()) {
+        frame_size = I.getOperand(1).getImm();
+      } else if (I.getOperand(1).isCImm()) {
+        frame_size = I.getOperand(1).getCImm()->getSExtValue();
+      }
+      assert(frame_size >= 0 &&
              "Frame size must not be negative");
-      return getFrameSize(I) + I.getOperand(1).getImm();
+      return getFrameSize(I) + frame_size;
+      // EraVM local end
     }
     return getFrameSize(I);
   }
