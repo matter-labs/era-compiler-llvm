@@ -173,10 +173,17 @@ class IConditional<bits<8> opcode,
   let Inst{33-35} = cc;
 }
 
+class ICondJump<bits<8> opcode, dag ins, string asmstr, list<dag> pattern>
+  : IConditional <opcode, SrcNone, DstNone, (outs), ins, asmstr, pattern> {
+  bits<16> dest;
+  let Inst{16-31} = dest;
+}
+
 class IJump<bits<8> opcode, dag ins, string asmstr, list<dag> pattern>
   : IConditional <opcode, SrcNone, DstNone, (outs), ins, asmstr, pattern> {
   bits<16> dest;
   let Inst{16-31} = dest;
+  let cc = 0;
 }
 
 class IUMA<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
