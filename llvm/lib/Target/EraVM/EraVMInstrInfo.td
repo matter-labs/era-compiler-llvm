@@ -124,7 +124,10 @@ def init_flag : Operand<i256>, IntImmLeaf<i256, [{
 }
 
 // Operand for printing out a condition code.
-def cc : Operand<i256> {
+def cc : Operand<i256>, IntImmLeaf<i256, [{
+  // TODO: refine this
+  return Imm.isIntN(4) && Imm != 0;
+}]> {
   let PrintMethod = "printCCOperand";
   // TODO: Implement once encoding is defined.
   //let EncoderMethod = "getCCOpValue";
@@ -1112,10 +1115,16 @@ def     : Pat<(store_heapaux GR256:$rs1, GR256:$rs0),
 //===----------------------------------------------------------------------===//
 // Control flow instructions
 //===----------------------------------------------------------------------===//
-let isTerminator = 1, isBranch = 1, isBarrier = 1, Uses = [Flags] in
-def J: IJump<10, (ins jmptarget:$dest, cc:$cc), "jump$cc\t$dest",
+// Conditional jump
+let isTerminator = 1, isBranch = 1, Uses = [Flags] in
+def JC: ICondJump<10, (ins jmptarget:$dest, cc:$cc), "jump$cc\t$dest",
              [(EraVMbrcc bb:$dest, imm:$cc)]>;
-def : Pat<(br bb:$dst), (J bb:$dst, 0)>;
+
+// Unconditional jump
+let isTerminator = 1, isBranch = 1, isBarrier = 1, Uses = [Flags] in
+def J: IJump<10, (ins jmptarget:$dest), "jump\t$dest",
+             [(EraVMbrcc bb:$dest, 0)]>;
+def : Pat<(br bb:$dst), (J bb:$dst)>;
 
 let isReturn = 1, isTerminator = 1, isBarrier = 1  in
 def RET   : IRet<7, RFNone, (ins), "ret", [(EraVMret)]>;
