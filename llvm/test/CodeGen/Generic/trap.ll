@@ -1,5 +1,3 @@
-; XFAIL: syncvm
-; TODO: CPR-918 Lower trap to panic
 ; RUN: llc < %s
 define i32 @test() noreturn nounwind  {
 entry:
