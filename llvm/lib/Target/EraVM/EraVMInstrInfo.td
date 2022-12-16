@@ -90,6 +90,9 @@ def EraVMptr_add    : SDNode<"EraVMISD::PTR_ADD", SDT_EraVMPtrOp, []>;
 def EraVMptr_pack   : SDNode<"EraVMISD::PTR_PACK", SDT_EraVMPtrOp, []>;
 def EraVMptr_shrink : SDNode<"EraVMISD::PTR_SHRINK", SDT_EraVMPtrOp, []>;
 
+def EraVMTrap : SDNode<"EraVMISD::TRAP", SDTNone,
+    [SDNPHasChain, SDNPOptInGlue]>;
+
 //===----------------------------------------------------------------------===//
 // EraVM Operand Definitions.
 //===----------------------------------------------------------------------===//
@@ -1126,8 +1129,10 @@ def J: IJump<10, (ins jmptarget:$dest), "jump\t$dest",
              [(EraVMbrcc bb:$dest, 0)]>;
 def : Pat<(br bb:$dst), (J bb:$dst)>;
 
-let isReturn = 1, isTerminator = 1, isBarrier = 1  in
+let isReturn = 1, isTerminator = 1, isBarrier = 1  in {
 def RET   : IRet<7, RFNone, (ins), "ret", [(EraVMret)]>;
+def PANIC : IRet<7, RFPanic, (ins GR256:$rs0), "ret.panic\t$rs0", []>;
+}
 let isTerminator = 1, isBarrier = 1, isTrap = 1 in
 def THROW : IRet<7, RFErr, (ins GR256:$rs0), "revert",
                  [(EraVMthrow GR256:$rs0)]>;
@@ -1267,3 +1272,6 @@ def : Pat<(i256 (EraVMGAStack tglobaladdr:$dst)), (ADDsrr_p tglobaladdr:$dst, 0,
 def : Pat<(i256 (EraVMGACode tglobaladdr:$dst)), (ADDcrr_p tglobaladdr:$dst, 0, R0)>;
 def : Pat<(i256 (EraVMGACode texternalsym:$dst)), (ADDcrr_p texternalsym:$dst, 0, R0)>;
 def : Pat<(i256 (EraVMGACode tblockaddress:$dst)), (ADDcrr_p tblockaddress:$dst, 0, R0)>;
+
+// Exceptions
+def : Pat<(EraVMTrap), (PANIC R0)>;

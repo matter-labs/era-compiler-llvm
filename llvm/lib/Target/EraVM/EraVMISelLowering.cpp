@@ -113,7 +113,7 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
       MVT::i256, Custom);
 
   setOperationAction({ISD::INTRINSIC_VOID, ISD::INTRINSIC_WO_CHAIN,
-                      ISD::STACKSAVE, ISD::STACKRESTORE},
+                      ISD::STACKSAVE, ISD::STACKRESTORE, ISD::TRAP},
                      MVT::Other, Custom);
 
   for (MVT VT : {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}) {
@@ -593,6 +593,7 @@ SDValue EraVMTargetLowering::LowerOperation(SDValue Op,
   case ISD::STACKRESTORE:       return LowerSTACKRESTORE(Op, DAG);
   case ISD::BSWAP:              return LowerBSWAP(Op, DAG);
   case ISD::CTPOP:              return LowerCTPOP(Op, DAG);
+  case ISD::TRAP:               return LowerTRAP(Op, DAG);
   default:
     llvm_unreachable("unimplemented operation lowering");
   }
@@ -1056,6 +1057,12 @@ SDValue EraVMTargetLowering::LowerCTPOP(SDValue CTPOP,
   auto hiSum = DAG.getNode(ISD::AND, dl, VT, countPOP128(hiPart, DAG),
                            DAG.getConstant(255, dl, VT));
   return DAG.getNode(ISD::ADD, dl, VT, loSum, hiSum);
+}
+
+SDValue EraVMTargetLowering::LowerTRAP(SDValue Op, SelectionDAG &DAG) const {
+  SDLoc dl(Op);
+  SDValue Chain = Op.getOperand(0);
+  return DAG.getNode(EraVMISD::TRAP, dl, MVT::Other, Chain);
 }
 
 void EraVMTargetLowering::ReplaceNodeResults(SDNode *N,
