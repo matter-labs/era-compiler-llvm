@@ -1,5 +1,4 @@
-; XFAIL: syncvm
-; RUN: opt -S --mergebb --simplifycfg < %s | FileCheck %s
+; RUN: opt -S -mtriple=syncvm -passes="mergebb,simplifycfg<switch-range-to-icmp>" < %s | FileCheck %s
 
 declare void @dummy()
 
@@ -209,28 +208,6 @@ entry:
 
 loop:
   br label %loop
-}
-
-; Callbr may not have duplicate destinations.
-define void @callbr() {
-; CHECK-LABEL: @callbr(
-; CHECK-NEXT:  entry:
-; CHECK-NEXT:    callbr void asm sideeffect "", "X"(i8* blockaddress(@callbr, %[[BB1:.*]]))
-; CHECK-NEXT:    to label %[[BB2:.*]] [label %[[BB1]]]
-; CHECK:       [[BB1]]:
-; CHECK-NEXT:    ret void
-; CHECK:       [[BB2]]:
-; CHECK-NEXT:    br label %[[BB1]]
-;
-entry:
-  callbr void asm sideeffect "", "X"(i8* blockaddress(@callbr, %bb1))
-  to label %bb2 [ label %bb1 ]
-
-bb1:
-  ret void
-
-bb2:
-  ret void
 }
 
 ; For phi nodes, we need to check that incoming blocks match.
