@@ -13,7 +13,9 @@
 #include "llvm/InitializePasses.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/TargetRegistry.h"
+#include "llvm/Passes/PassBuilder.h"
 #include "llvm/Transforms/IPO.h"
+#include "llvm/Transforms/Scalar/MergeSimilarBB.h"
 #include "llvm/Transforms/Utils.h"
 
 #include "SyncVM.h"
@@ -71,6 +73,14 @@ SyncVMTargetMachine::~SyncVMTargetMachine() {}
 TargetTransformInfo
 SyncVMTargetMachine::getTargetTransformInfo(const Function &F) const {
   return TargetTransformInfo(SyncVMTTIImpl(this, F));
+}
+
+void SyncVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
+  PB.registerScalarOptimizerLateEPCallback(
+      [](FunctionPassManager &PM, OptimizationLevel Level) {
+        if (Level.getSizeLevel() || Level.getSpeedupLevel() > 1)
+          PM.addPass(MergeSimilarBB());
+      });
 }
 
 namespace {
