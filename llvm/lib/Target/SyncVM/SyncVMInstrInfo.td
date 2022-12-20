@@ -161,6 +161,13 @@ def spadv_op : Operand<i256>, IntImmLeaf<i256, [{
 
 def jmptarget : Operand<OtherVT>;
 
+// boolean type for stack
+def reladdr : Operand<i256>, IntImmLeaf<i256, [{
+  return Imm.isIntN(1);
+}]> {
+  let PrintMethod = "printContextOperand";
+}
+
 // Address operands
 def memop : Operand<i256> {
   let PrintMethod = "printMemOperand";
@@ -169,9 +176,18 @@ def memop : Operand<i256> {
 
 def stackop : Operand<i256> {
   let PrintMethod = "printStackOperand";
-  let MIOperandInfo = (ops GR256, GR256, i16imm);
+  let MIOperandInfo = (ops GR256, i16imm, i1imm);
 }
 
+def frameindex_to_stackop : SDNodeXForm<frameindex, [{
+  llvm_unreachable("frameindex_to_stackop not implemented");
+}]>;
+
+/*
+def symbol_to_stackop : SDNodeXForm<symbol, [{
+  llvm_unreachable("symbol_to_stackop not implemented");
+}]>;
+*/
 //===----------------------------------------------------------------------===//
 // Custom DAG Selection Operations.
 //===----------------------------------------------------------------------===//
@@ -1357,10 +1373,12 @@ def : Pat<(add GR256:$rs0, neg_imm16:$imm), (SUBxrr_p (negate_imm imm:$imm), GR2
 //===----------------------------------------------------------------------===//
 
 // GlobalAddress, ExternalSymbol
-def : Pat<(i256 (SyncVMGAStack tglobaladdr:$dst)), (ADDsrr_p tglobaladdr:$dst, 0, 0, R0)>;
-def : Pat<(i256 (SyncVMGACode tglobaladdr:$dst)), (ADDcrr_p tglobaladdr:$dst, 0, R0)>;
-def : Pat<(i256 (SyncVMGACode texternalsym:$dst)), (ADDcrr_p texternalsym:$dst, 0, R0)>;
-def : Pat<(i256 (SyncVMGACode tblockaddress:$dst)), (ADDcrr_p tblockaddress:$dst, 0, R0)>;
+/*
+def : Pat<(i256 (SyncVMGAStack tglobaladdr:$dst)), (ADDsrr_p (symbol_to_stackop tglobaladdr:$dst), R0)>;
+def : Pat<(i256 (SyncVMGACode tglobaladdr:$dst)), (ADDcrr_p (symbol_to_memop tglobaladdr:$dst), R0)>;
+def : Pat<(i256 (SyncVMGACode texternalsym:$dst)), (ADDcrr_p (symbol_to_memop texternalsym:$dst), R0)>;
+def : Pat<(i256 (SyncVMGACode tblockaddress:$dst)), (ADDcrr_p (symbol_to_memop tblockaddress:$dst), R0)>;
+*/
 
 // Exceptions
 def : Pat<(SyncVMTrap), (PANIC R0)>;

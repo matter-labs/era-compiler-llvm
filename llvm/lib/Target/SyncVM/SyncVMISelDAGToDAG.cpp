@@ -43,7 +43,6 @@ struct SyncVMISelAddressMode {
   }
 
   bool isOnStack() const { return BaseType != RegBase; }
-
   SyncVMISelAddressMode() = default;
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
@@ -102,6 +101,7 @@ private:
 };
 } // end anonymous namespace
 
+/*
 /// Merge \p LHS and \p RHS address modes as if they are added together.
 /// The main goal is to transform patterns like (+ (+ fi reg), (* reg ci)) to
 /// (+ (+ fi ci), NewReg) so SyncVM can select it.
@@ -123,7 +123,7 @@ SyncVMDAGToDAGISel::MergeAddr(const SyncVMISelAddressMode &LHS,
   Result.Disp += LHS.Disp + RHS.Disp;
   return Result;
 }
-
+*/
 /// MatchAddressBase - Helper for MatchAddress. Add the specified node to the
 /// specified addressing mode without any further recursion.
 bool SyncVMDAGToDAGISel::MatchAddressBase(SDValue N, SyncVMISelAddressMode &AM,
@@ -261,7 +261,6 @@ bool SyncVMDAGToDAGISel::SelectMemAddr(SDValue N, SDValue &Base,
   assert(AM.BaseType == SyncVMISelAddressMode::RegBase);
   if (!AM.Base.Reg.getNode())
     AM.Base.Reg = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
-
   Base = AM.Base.Reg;
 
   if (AM.GV)
@@ -276,59 +275,75 @@ bool SyncVMDAGToDAGISel::SelectMemAddr(SDValue N, SDValue &Base,
 /// SelectStackAddr - returns true if it is able pattern match an addressing
 /// mode for stack. It returns the operands which make up the maximal addressing
 /// mode it can match by reference.
-bool SyncVMDAGToDAGISel::SelectStackAddrCommon(SDValue N, SDValue &Base1,
-                                               SDValue &Base2, SDValue &Disp,
-                                               bool IsAdjusted) {
-  SyncVMISelAddressMode AM;
-  bool UseSP = false;
+/// Stack addressing mode supports absolute addressing and relative addressing,
+/// which is distinguished by the isRelativeAddressing flag.
+bool SyncVMDAGToDAGISel::SelectStackAddr(SDValue N, SDValue &Base,
+                                         SDValue &Disp,
+                                         SDValue &isRelativeAddressing) {
+  isRelativeAddressing = CurDAG->getTargetConstant(1, SDLoc(N), MVT::i64);
 
-  if (MatchAddress(N, AM, true /* IsStackAddr */)) {
-    AM = SyncVMISelAddressMode();
-    if (MatchAddress(N, AM, false))
-      return false;
-  } else {
-    UseSP = true;
+  switch (N->getOpcode()) {
+  case ISD::Constant: {
+    // constant is absolute addressing
+    isRelativeAddressing = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i64);
+    int64_t Offset = cast<ConstantSDNode>(N)->getSExtValue();
+    assert(
+        Offset > 0 &&
+        "Negative stack offset is not supported in absolute addressing mode");
+    Base = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
+    Disp = CurDAG->getTargetConstant(Offset, SDLoc(N), MVT::i256);
+    return true;
   }
-
-  // TODO: Hack (constant is used to designate immediate addressing mode),
-  // redesign.
-  if (!AM.Base.Reg.getNode())
-    AM.Base.Reg = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
-
-  if (UseSP) {
-    Base1 = (AM.BaseType == SyncVMISelAddressMode::FrameIndexBase)
-                ? CurDAG->getTargetFrameIndex(AM.Base.FrameIndex,
-                                              getTargetLowering()->getPointerTy(
-                                                  CurDAG->getDataLayout()))
-                : Base1 = CurDAG->getTargetConstant(
-                      0, SDLoc(N),
-                      MVT::i256); // CurDAG->getRegister(SyncVM::SP, MVT::i256);
-  } else {
-    Base1 = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
+  case ISD::GlobalAddress:
+  case ISD::TargetGlobalAddress: {
+    // TODO: we might need to distinguish between absolute and relative:
+    // [@gv + const] is absolute addressing
+    // [@gv + reg] is relative addressing
+    // But for now we assume that all global addresses are absolute.
+    isRelativeAddressing = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i64);
+    GlobalAddressSDNode *G = cast<GlobalAddressSDNode>(N);
+    Base = CurDAG->getRegister(SyncVM::R0, MVT::i256);
+    Disp = CurDAG->getTargetGlobalAddress(G->getGlobal(), SDLoc(N), MVT::i256,
+                                          G->getOffset());
+    return true;
   }
-  Base2 = AM.Base.Reg;
+  case ISD::FrameIndex: {
+    // frame index is relative addressing
+    int FI = cast<FrameIndexSDNode>(N)->getIndex();
+    Base = CurDAG->getTargetFrameIndex(
+        FI, getTargetLowering()->getPointerTy(CurDAG->getDataLayout()));
+    Disp = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i64);
+    isRelativeAddressing = CurDAG->getTargetConstant(1, SDLoc(N), MVT::i64);
+    return true;
+  }
+  case ISD::ADD: {
+    // add is relative addressing:
+    // Special handling of ADD: if the first operand is a frame index / address, then
+    // this is a [r + offset].
+    auto N0 = N.getOperand(0);
+    auto N1 = N.getOperand(1);
 
-  // 1(sp) is the index of the 1st element on the stack rather than 0(sp).
-  if (AM.BaseType == SyncVMISelAddressMode::FrameIndexBase)
-    AM.Disp = AM.Disp;
-
-  if (AM.GV)
-    Disp = CurDAG->getTargetGlobalAddress(AM.GV, SDLoc(N), MVT::i256, AM.Disp,
-                                          0 /*AM.SymbolFlags*/);
-  else
-    Disp = CurDAG->getTargetConstant(AM.Disp, SDLoc(N), MVT::i64);
-
-  return true;
-}
-
-bool SyncVMDAGToDAGISel::SelectStackAddr(SDValue N, SDValue &Base1,
-                                         SDValue &Base2, SDValue &Disp) {
-  return SelectStackAddrCommon(N, Base1, Base2, Disp, false);
-}
-
-bool SyncVMDAGToDAGISel::SelectAdjStackAddr(SDValue N, SDValue &Base1,
-                                            SDValue &Base2, SDValue &Disp) {
-  return SelectStackAddrCommon(N, Base1, Base2, Disp, true);
+    if (N0.getOpcode() == ISD::TargetGlobalAddress){ 
+      Base = N1;
+      Disp = N0;
+    } else {
+      if (isa<ConstantSDNode>(N1)) {
+        Base = N0;
+        Disp = CurDAG->getTargetConstant(
+            cast<ConstantSDNode>(N1)->getZExtValue(), SDLoc(N), MVT::i256);
+      } else {
+        Base = N;
+        Disp = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
+      }
+    }
+    return true;
+  }
+  default: {
+    Base = N;
+    Disp = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
+    return true;
+  }
+  }
 }
 
 void SyncVMDAGToDAGISel::Select(SDNode *Node) {

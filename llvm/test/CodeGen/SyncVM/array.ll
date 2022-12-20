@@ -10,7 +10,7 @@ target triple = "syncvm"
 define void @consti_loadconst_storeglobal() nounwind {
   ; TODO: CPR-940 Incorrect codegen add	@const+32[0], r0, r1
   %1 = load i256, ptr addrspace(4) getelementptr inbounds ([10 x i256], ptr addrspace(4) @const, i256 0, i256 1), align 32
-	; CHECK: add r1, r0, stack[@val+1]
+	; CHECK: add r2, r0, stack[r1 + @val]
   ; TODO: Should be folded into a single instruction.
   store i256 %1, ptr getelementptr inbounds ([10 x i256], ptr @val, i256 0, i256 1), align 32
   ret void
@@ -18,9 +18,9 @@ define void @consti_loadconst_storeglobal() nounwind {
 
 ; CHECK-LABEL: consti_loadglobal_storeglobal
 define void @consti_loadglobal_storeglobal() nounwind {
-  ; CHECK: add stack[@val+7], r0, r1
+  ; CHECK: add stack[r1 + @val], r0, r1
   %1 = load i256, ptr getelementptr inbounds ([10 x i256], ptr @val, i256 0, i256 7), align 32
-	; CHECK: add r1, r0, stack[@val+1]
+	; CHECK: add r1, r0, stack[r2 + @val]
   ; TODO: Should be folded into a single instruction.
   store i256 %1, ptr getelementptr inbounds ([10 x i256], ptr @val, i256 0, i256 1), align 32
   ret void

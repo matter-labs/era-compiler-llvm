@@ -167,31 +167,63 @@ void SyncVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
 
 void SyncVMInstPrinter::printStackOperand(const MCInst *MI, unsigned OpNo,
                                           raw_ostream &O) {
-  const MCOperand &Base1 = MI->getOperand(OpNo);
-  const MCOperand &Base2 = MI->getOperand(OpNo + 1);
-  const MCOperand &Disp = MI->getOperand(OpNo + 2);
+  const MCOperand &Base = MI->getOperand(OpNo);
+  const MCOperand &Disp = MI->getOperand(OpNo + 1);
+  bool isRelative = MI->getOperand(OpNo + 2).getImm() == 1;
 
   O << "stack";
-  if (Base1.isReg())
-    O << "-";
-  O << "[";
-
-  if (Base2.isReg()) {
-    if (!Base1.isReg() && (Disp.isExpr() || (Disp.isImm() && Disp.getImm() > 0)))
-      O << getRegisterName(Base2.getReg()) << " + ";
-    else
-      O << getRegisterName(Base2.getReg()) << " - ";
+  if (!isRelative) {
+    // absolute stack addressing mode is something like `stack=[10]`
+    // only digital offset is allowed.
+    if (Disp.isExpr()) {
+      O << "[";
+      Disp.getExpr()->print(O, &MAI);
+      O << "]";
+    } else {
+      if (Disp.getImm() < 0) {
+        O << "-[" << std::abs(Disp.getImm()) << "]";
+      } else {
+        O << "[" << Disp.getImm() << "]";
+      }
+    }
+    return;
   }
 
-  // Print displacement first
-  if (Disp.isExpr()) {
-    Disp.getExpr()->print(O, &MAI);
+  // There are a few way to represent relative stack addressing mode:
+  // * if we use immediate displacement only (that is, without base register),
+  //   use `stack-[disp]` format. In this case, Base reg is R0
+  // * if we use base register, use `stack[base + disp]` format.
+  assert(Base.isReg() && "Expected register in base field");
+  // print reg + displacement only mode
+  if (Base.getReg() != SyncVM::R0) {
+    O << "[" << getRegisterName(Base.getReg());
+    if (Disp.isExpr()) {
+      O << " + ";
+      Disp.getExpr()->print(O, &MAI);
+    } else {
+      assert(Disp.isImm());
+      auto disp = Disp.getImm();
+      if (disp != 0) {
+        if (disp > 0) {
+          O << " + " << Disp.getImm();
+        } else {
+          O << " - " << Disp.getImm();
+        }
+      }
+    }
+    O << "]";
   } else {
-    assert(Disp.isImm() && "Expected immediate in displacement field");
-    O << std::abs(Disp.getImm());
+    // print displacement only mode
+    if (Disp.isExpr()) {
+      O << "[";
+      Disp.getExpr()->print(O, &MAI);
+      O << "]";
+    } else {
+      assert(Disp.isImm() && "Expected immediate in displacement field");
+      assert(Disp.getImm() <= 0 && "Expected negative displacement");
+      O << "-[" << std::abs(Disp.getImm()) << "]";
+    }
   }
-
-  O << "]";
 }
 
 void SyncVMInstPrinter::printSPAdvanceOperand(const MCInst *MI, unsigned OpNo,

@@ -129,9 +129,9 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
         continue;
       auto ConvertMI = [&](unsigned OpNum) {
         unsigned Op0Start = opStart(MI, OpNum);
-        MachineOperand &MO0Reg = MI.getOperand(Op0Start + 1);
-        MachineOperand &MO1Global = MI.getOperand(Op0Start + 2);
-        if (MO0Reg.isReg()) {
+        MachineOperand &MO0Reg = MI.getOperand(Op0Start);
+        MachineOperand &MO1Global = MI.getOperand(Op0Start + 1);
+        if (MO0Reg.isReg() && MO0Reg.getReg() != SyncVM::R0) {
           Register Reg = MO0Reg.getReg();
           assert(Reg.isVirtual() && "Physical registers are not expected");
           MachineInstr *DefMI = RegInfo.getVRegDef(Reg);
@@ -139,7 +139,7 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
             // context.sp is already in cells.
             return;
           Register NewVR;
-          if (BytesToCellsRegs.count(Reg) == 1) {
+          if (BytesToCellsRegs.count(Reg) > 0) {
             // Already converted, use value from the cache.
             NewVR = BytesToCellsRegs[Reg];
             ++NumBytesToCells;
@@ -179,7 +179,7 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
           unsigned Offset = MO1Global.getOffset();
           MO1Global.setOffset(Offset /= CellSizeInBytes);
         }
-        MachineOperand &Const = MI.getOperand(Op0Start + 2);
+        MachineOperand &Const = MI.getOperand(Op0Start + 1);
         if (Const.isImm() || Const.isCImm())
           Const.ChangeToImmediate(getImmOrCImm(Const) / CellSizeInBytes);
       };
