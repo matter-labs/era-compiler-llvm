@@ -292,7 +292,7 @@ define i256 @caller_i128.retabi(i256 %a1) nounwind {
 define i256 @call.onestack() nounwind {
 ; TODO: Check calling conventions onse callee-saved and caller-saver registers defined
 ; CHECK: context.sp r1
-; CHECK: add 0, r0, stack[r1 - 0]
+; CHECK: add 0, r0, stack[r1]
 ; CHECK: add r0, r0, r1
 ; CHECK: add r0, r0, r2
 ; CHECK: add r0, r0, r3
@@ -317,7 +317,7 @@ define i256 @call.onestack() nounwind {
 define i256 @call.onestackabi() nounwind {
   %ptr = bitcast i256(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)* @onestack to i256*
 ; CHECK: context.sp r1
-; CHECK: add 0, r0, stack[r1 - 0]
+; CHECK: add 0, r0, stack[r1]
 ; CHECK: add 42, r0, r15
 ; CHECK: add r0, r0, r2
 ; CHECK: add r0, r0, r3
@@ -342,7 +342,7 @@ define i256 @call.twostackabi() nounwind {
   %ptr = bitcast i256(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)* @twostack to i256*
 ; CHECK: context.sp      r1
 ; CHECK: add 2, r0, stack[r1 + 1]
-; CHECK: add 1, r0, stack[r1 - 0]
+; CHECK: add 1, r0, stack[r1]
 ; CHECK: add 42, r0, r15
 ; CHECK: add r0, r0, r2
 ; CHECK: add r0, r0, r3

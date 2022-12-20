@@ -251,8 +251,8 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
         .addReg(SrcReg, getKillRegState(isKill))
         .addReg(SyncVM::R0)
         .addFrameIndex(FrameIdx)
-        .addImm(32)
         .addImm(0)
+        .addImm(1)
         .addImm(0)
         .addMemOperand(MMO);
   } else if (RC == &SyncVM::GRPTRRegClass) {
@@ -260,8 +260,8 @@ void SyncVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
         .addReg(SrcReg, getKillRegState(isKill))
         .addReg(SyncVM::R0)
         .addFrameIndex(FrameIdx)
-        .addImm(32)
         .addImm(0)
+        .addImm(1)
         .addImm(0)
         .addMemOperand(MMO);
   } else {
@@ -288,8 +288,8 @@ void SyncVMInstrInfo::loadRegFromStackSlot(
     BuildMI(MBB, MI, DL, get(SyncVM::ADDsrr_s))
         .addReg(DestReg, getDefRegState(true))
         .addFrameIndex(FrameIdx)
-        .addImm(32)
         .addImm(0)
+        .addImm(1)
         .addImm(0)
         .addImm(0)
         .addMemOperand(MMO);
@@ -297,8 +297,8 @@ void SyncVMInstrInfo::loadRegFromStackSlot(
     BuildMI(MBB, MI, DL, get(SyncVM::PTR_ADDsrr_s))
         .addReg(DestReg, getDefRegState(true))
         .addFrameIndex(FrameIdx)
-        .addImm(32)
         .addImm(0)
+        .addImm(1)
         .addImm(0)
         .addImm(0)
         .addMemOperand(MMO);

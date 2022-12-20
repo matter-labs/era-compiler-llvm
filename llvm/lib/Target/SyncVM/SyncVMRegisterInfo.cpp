@@ -62,7 +62,7 @@ void SyncVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   int FrameIndex = MI.getOperand(FIOperandNum).getIndex();
   const TargetInstrInfo &TII = *MF.getSubtarget().getInstrInfo();
 
-  auto BasePtr = SyncVM::SP;
+  auto BasePtr = SyncVM::R0;
   int Offset = MF.getFrameInfo().getObjectOffset(FrameIndex);
   Offset -= MF.getFrameInfo().getStackSize();
 
@@ -94,13 +94,19 @@ void SyncVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
         .addImm(SyncVMCC::COND_NONE);
     MI.eraseFromParent();
     return;
+  } else {
+    assert(MI.getOperand(FIOperandNum + 2).getImm() == 1 &&
+           "FrameIndex must use relative addressing");
   }
 
 
   // Fold imm into offset
   Offset /= 32;
-  Offset += MI.getOperand(FIOperandNum + 2).getImm();
+  Offset += MI.getOperand(FIOperandNum + 1).getImm();
 
-  MI.getOperand(FIOperandNum).ChangeToRegister(BasePtr, false);
-  MI.getOperand(FIOperandNum + 2).ChangeToImmediate(Offset);
+  // we use Base + Disp to represent the stack slot. If it is relative 
+  // to SP, the Base register is set to $R0 and only use the disp part.
+
+  MI.getOperand(FIOperandNum).ChangeToRegister(SyncVM::R0, false);
+  MI.getOperand(FIOperandNum + 1).ChangeToImmediate(Offset);
 }
