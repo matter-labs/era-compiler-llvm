@@ -107,6 +107,6 @@ struct SyncVMLinkRuntimePass : PassInfoMixin<SyncVMLinkRuntimePass> {
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
 };
 
-} // end namespace llvm;
+} // namespace llvm
 
 #endif
