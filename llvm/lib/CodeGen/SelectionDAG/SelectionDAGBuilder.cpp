@@ -122,7 +122,11 @@ using namespace SwitchCG;
 static unsigned LimitFloatPrecision;
 
 static cl::opt<bool>
-    InsertAssertAlign("insert-assert-align", cl::init(true),
+// EraVM local begin
+// We can't assert alignment for fat pointers which are not numerical.
+// TODO: Move it to the compiler's driver to pass as option.
+    InsertAssertAlign("insert-assert-align", cl::init(false),
+// EraVM local end
                       cl::desc("Insert the experimental `assertalign` node."),
                       cl::ReallyHidden);
 
