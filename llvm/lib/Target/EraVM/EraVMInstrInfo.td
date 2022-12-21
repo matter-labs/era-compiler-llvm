@@ -1280,26 +1280,19 @@ let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Fl
 
    def NEAR_CALL : ICall<9, CFNormal, (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
                    "near_call\t$in1, $callee, $unwind", []>;
-}
 
-let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Flags],
-    isCall = 1 in {
-def FAR_CALL  : ICall<8, CFNormal, (ins GR256:$abi, GR256:$address, jmptarget:$unwind),
-               "far_call\t$abi, $address, $unwind", [(EraVMfarcall GR256:$abi, GR256:$address, bb:$unwind)]>;
-def FAR_CALLL  : ICall<80, CFNormal, (ins GR256:$abi, GR256:$address, GR256:$op1, GR256:$op2, jmptarget:$unwind),
-               "far_call\t$abi, $address, $unwind", [(EraVMfarcall GR256:$abi, GR256:$address, GR256:$op1, GR256:$op2, bb:$unwind)]>;
-def STATIC_CALL  : ICall<10, CFNormal, (ins GR256:$abi, GR256:$address, jmptarget:$unwind),
-               "far_call.static\t$abi, $address, $unwind", [(EraVMstaticcall GR256:$abi, GR256:$address, bb:$unwind)]>;
-def STATIC_CALLL  : ICall<100, CFNormal, (ins GR256:$abi, GR256:$address, GR256:$op1, GR256:$op2, jmptarget:$unwind),
-               "far_call.static\t$abi, $address, $unwind", [(EraVMstaticcall GR256:$abi, GR256:$address, GR256:$op1, GR256:$op2, bb:$unwind)]>;
-def DELEGATE_CALL  : ICall<11, CFDelegate, (ins GR256:$abi, GR256:$address, jmptarget:$unwind),
-               "far_call.delegate\t$abi, $address, $unwind", [(EraVMdelegatecall GR256:$abi, GR256:$address, bb:$unwind)]>;
-def DELEGATE_CALLL  : ICall<110, CFDelegate, (ins GR256:$abi, GR256:$address, GR256:$op1, GR256:$op2, jmptarget:$unwind),
-               "far_call.delegate\t$abi, $address, $unwind", [(EraVMdelegatecall GR256:$abi, GR256:$address, GR256:$op1, GR256:$op2, bb:$unwind)]>;
-def MIMIC_CALL  : ICall<12, CFMimic, (ins GR256:$abi, GR256:$address, GR256:$mimic, jmptarget:$unwind),
-               "far_call.mimic\t$abi, $address, $unwind", [(EraVMmimiccall GR256:$abi, GR256:$address, GR256:$mimic, bb:$unwind)]>;
-def MIMIC_CALLL  : ICall<120, CFMimic, (ins GR256:$abi, GR256:$address, GR256:$op1, GR256:$op2, GR256:$mimic, jmptarget:$unwind),
-               "far_call.mimic\t$abi, $address, $unwind", [(EraVMmimiccall GR256:$abi, GR256:$address, GR256:$op1, GR256:$op2, GR256:$mimic, bb:$unwind)]>;
+  def FAR_CALL       : ICall<8, CFNormal, (ins jmptarget:$unwind),
+                             "far_call\tr1, r2, $unwind",
+                             [(EraVMfarcall bb:$unwind)]>;
+  def STATIC_CALL    : ICall<10, CFNormal, (ins jmptarget:$unwind),
+                             "far_call.static\tr1, r2, $unwind",
+                             [(EraVMstaticcall bb:$unwind)]>;
+  def DELEGATE_CALL  : ICall<11, CFDelegate, (ins jmptarget:$unwind),
+                             "far_call.delegate\tr1, r2, $unwind",
+                             [(EraVMdelegatecall bb:$unwind)]>;
+  def MIMIC_CALL     : ICall<12, CFMimic, (ins jmptarget:$unwind),
+                             "far_call.mimic\tr1, r2, $unwind",
+                             [(EraVMmimiccall bb:$unwind)]>;
 }
 
 def : Pat<(store_stack (add GR256:$rs0, neg_imm16:$imm), stackaddr:$dst0),
