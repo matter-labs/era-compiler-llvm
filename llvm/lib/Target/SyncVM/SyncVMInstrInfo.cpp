@@ -333,13 +333,9 @@ unsigned SyncVMInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
 bool SyncVMInstrInfo::isFarCall(const MachineInstr &MI) const {
   switch (MI.getOpcode()) {
   case SyncVM::FAR_CALL:
-  case SyncVM::FAR_CALLL:
   case SyncVM::STATIC_CALL:
-  case SyncVM::STATIC_CALLL:
   case SyncVM::DELEGATE_CALL:
-  case SyncVM::DELEGATE_CALLL:
   case SyncVM::MIMIC_CALL:
-  case SyncVM::MIMIC_CALLL:
     return true;
   }
   return false;

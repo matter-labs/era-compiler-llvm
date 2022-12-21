@@ -40,8 +40,8 @@ using namespace llvm;
 /// 1. Materialize GlobalAddress in a virtual register
 /// 2. Copy it to a physical one.
 /// TODO: CPR-921 Should be removed after a proper wrapping is implemented.
-static SDValue wrappedGlobalAddress(const SDValue& ValueToWrap, SelectionDAG &DAG,
-                                    const SDLoc& DL) {
+static SDValue wrappedGlobalAddress(const SDValue &ValueToWrap,
+                                    SelectionDAG &DAG, const SDLoc &DL) {
   auto *GANode = cast<GlobalAddressSDNode>(ValueToWrap.getNode());
   switch (GANode->getAddressSpace()) {
   case SyncVMAS::AS_STACK:
@@ -106,11 +106,8 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
       },
       MVT::i256, Custom);
 
-  setOperationAction({ISD::INTRINSIC_VOID,
-                      ISD::INTRINSIC_WO_CHAIN,
-                      ISD::STACKSAVE,
-                      ISD::STACKRESTORE,
-                      ISD::TRAP},
+  setOperationAction({ISD::INTRINSIC_VOID, ISD::INTRINSIC_WO_CHAIN,
+                      ISD::STACKSAVE, ISD::STACKRESTORE, ISD::TRAP},
                      MVT::Other, Custom);
 
   for (MVT VT : {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}) {
@@ -169,7 +166,7 @@ bool SyncVMTargetLowering::CanLowerReturn(
   CCState CCInfo(CallConv, IsVarArg, MF, RVLocs, Context);
 
   // cannot support return convention or is variadic?
-  if (!CCInfo.CheckReturn(Outs, RetCC_SYNCVM) || IsVarArg)
+  if (!CCInfo.CheckReturn(Outs, RetCC_SYNCVM))
     return false;
 
   return true;
@@ -211,7 +208,8 @@ SyncVMTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
 
     const SDValue &CurVal = OutVals[i];
     auto Val = isa<GlobalAddressSDNode>(CurVal.getNode())
-      ? wrappedGlobalAddress(CurVal, DAG, DL) : CurVal;
+                   ? wrappedGlobalAddress(CurVal, DAG, DL)
+                   : CurVal;
     Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), Val, Flag);
 
     // Guarantee that all emitted copies are stuck together,
@@ -236,7 +234,7 @@ SDValue SyncVMTargetLowering::LowerFormalArguments(
   if (!CallingConvSupported(CallConv))
     fail(DL, DAG, "SyncVM doesn't support non-C calling conventions");
   if (IsVarArg)
-    fail(DL, DAG, "VarArg is not supported yet");
+     fail(DL, DAG, "VarArg is not supported yet");
 
   for (const ISD::InputArg &In : Ins) {
     if (In.Flags.isInAlloca())
@@ -307,9 +305,105 @@ SDValue SyncVMTargetLowering::LowerFormalArguments(
   return Chain;
 }
 
+/// If Callee is a farcall "intrinsic" return corresponding opcode.
+/// Return 0 otherwise.
+static uint64_t farcallOpcode(SDValue Callee) {
+  auto GA = dyn_cast<GlobalAddressSDNode>(Callee.getNode());
+  if (!GA)
+    return 0;
+  return StringSwitch<uint64_t>(GA->getGlobal()->getName())
+      .Case("__farcall_int", SyncVMISD::FARCALL)
+      .Case("__staticcall_int", SyncVMISD::STATICCALL)
+      .Case("__delegatecall_int", SyncVMISD::DELEGATECALL)
+      .Case("__mimiccall_int", SyncVMISD::MIMICCALL)
+      .Default(0);
+}
+
+static SDValue lowerFarCall(TargetLowering::CallLoweringInfo &CLI,
+                            SmallVectorImpl<SDValue> &InVals) {
+  SelectionDAG &DAG = CLI.DAG;
+  SDLoc &DL = CLI.DL;
+  SmallVectorImpl<ISD::OutputArg> &Outs = CLI.Outs;
+  SmallVectorImpl<SDValue> &OutVals = CLI.OutVals;
+  SDValue Chain = CLI.Chain;
+  SDValue Callee = CLI.Callee;
+  // TODO: SyncVM target does not yet support tail call optimization.
+  CLI.IsTailCall = false;
+  CallingConv::ID CallConv = CLI.CallConv;
+  // We meddle with number of parameters, set vararg to true to prevent
+  // assertion that the number of parameters before lowering is equal to the
+  // number of parameters after lowering.
+  bool IsVarArg = CLI.IsVarArg = true;
+
+  uint64_t FarcallOpcode = farcallOpcode(Callee);
+  if (!FarcallOpcode)
+    return {};
+  bool IsMimicCall = FarcallOpcode == SyncVMISD::MIMICCALL;
+
+  SmallVector<CCValAssign, 13> ArgLocs;
+  CCState CCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), ArgLocs,
+                 *DAG.getContext());
+  CCInfo.AnalyzeCallOperands(Outs, CC_SYNCVM);
+  SDValue InFlag;
+
+  Chain = DAG.getCALLSEQ_START(Chain, 0, 0, DL);
+
+  // The last argument of a mimic call should be in R15. Handle it separately.
+  unsigned LastNormalArgument = IsMimicCall ? Outs.size() - 1 : Outs.size();
+  for (unsigned i = 0, e = LastNormalArgument; i != e; ++i) {
+    if (!ArgLocs[i].isRegLoc())
+      fail(DL, DAG,
+           "Only operands passed through register expected in a far call");
+    Chain =
+        DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), OutVals[i], InFlag);
+    InFlag = Chain.getValue(1);
+  }
+
+  // Pass whom to mimic in R15.
+  if (IsMimicCall) {
+    Chain = DAG.getCopyToReg(Chain, DL, SyncVM::R15, OutVals.back(), InFlag);
+    InFlag = Chain.getValue(1);
+  }
+
+  // Returns a chain & a flag for retval copy to use.
+  SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
+  SmallVector<SDValue, 14> Ops;
+
+  Ops.push_back(Chain);
+  Ops.push_back(CLI.UnwindBB);
+  for (auto &ArgLoc :
+       make_range(ArgLocs.begin(),
+                  IsMimicCall ? std::prev(ArgLocs.end()) : ArgLocs.end())) {
+    Ops.push_back(DAG.getRegister(ArgLoc.getLocReg(), ArgLoc.getValVT()));
+  }
+  if (IsMimicCall)
+    Ops.push_back(DAG.getRegister(SyncVM::R15, MVT::i256));
+
+  if (InFlag.getNode())
+    Ops.push_back(InFlag);
+
+  Chain = DAG.getNode(FarcallOpcode, DL, NodeTys, Ops);
+  InFlag = Chain.getValue(1);
+
+  // Create the CALLSEQ_END node.
+  Chain =
+      DAG.getCALLSEQ_END(Chain, DAG.getConstant(0, DL, MVT::i256, true),
+                         DAG.getConstant(0, DL, MVT::i256, true), InFlag, DL);
+  InFlag = Chain.getValue(1);
+
+  InVals.push_back(DAG.getCopyFromReg(Chain, DL, SyncVM::R1, MVT::fatptr, {}));
+  InVals.push_back(DAG.getCopyFromReg(InVals[0].getValue(1), DL, SyncVM::R1,
+                                      MVT::fatptr, InVals[0].getValue(2)));
+  return InVals[1].getValue(1);
+}
+
 SDValue
 SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
                                 SmallVectorImpl<SDValue> &InVals) const {
+  SDValue FarCall = lowerFarCall(CLI, InVals);
+  if (FarCall)
+    return FarCall;
+
   SelectionDAG &DAG = CLI.DAG;
   SDLoc &DL = CLI.DL;
   SmallVectorImpl<ISD::OutputArg> &Outs = CLI.Outs;
@@ -317,50 +411,20 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   SmallVectorImpl<ISD::InputArg> &Ins = CLI.Ins;
   SDValue Chain = CLI.Chain;
   SDValue Callee = CLI.Callee;
-  bool &IsTailCall = CLI.IsTailCall;
+  // TODO: SyncVM target does not yet support tail call optimization.
+  CLI.IsTailCall = false;
   CallingConv::ID CallConv = CLI.CallConv;
   bool IsVarArg = CLI.IsVarArg;
-
-  if (auto GA = dyn_cast<GlobalAddressSDNode>(Callee.getNode())) {
-    uint64_t farcall_opc =
-        StringSwitch<uint64_t>(GA->getGlobal()->getName())
-            .Case("__farcall_int", SyncVMISD::FARCALL)
-            .Case("__farcall_int_l", SyncVMISD::FARCALL)
-            .Case("__staticcall_int", SyncVMISD::STATICCALL)
-            .Case("__staticcall_int_l", SyncVMISD::STATICCALL)
-            .Case("__delegatecall_int", SyncVMISD::DELEGATECALL)
-            .Case("__delegatecall_int_l", SyncVMISD::DELEGATECALL)
-            .Case("__mimiccall_int", SyncVMISD::MIMICCALL)
-            .Case("__mimiccall_int_l", SyncVMISD::MIMICCALL)
-            .Default(0);
-
-    bool is_mimic = farcall_opc == SyncVMISD::MIMICCALL;
-
-    if (farcall_opc) {
-      if (is_mimic)
-        Chain = DAG.getCopyToReg(Chain, DL, SyncVM::R3, OutVals[2], SDValue());
-      SmallVector<SDValue, 8> Ops;
-      Ops.push_back(Chain);
-      Ops.insert(Ops.end(), OutVals.begin(), OutVals.end());
-      Ops.push_back(CLI.UnwindBB);
-      SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
-      Chain = DAG.getNode(farcall_opc, DL, NodeTys, Ops);
-      InVals.push_back(DAG.getCopyFromReg(Chain, DL, SyncVM::R1, MVT::fatptr,
-                                          Chain.getValue(1)));
-      return Chain;
-    }
-  }
-
-  // TODO: SyncVM target does not yet support tail call optimization.
-  IsTailCall = false;
-
-  if (!CallingConvSupported(CallConv))
-    fail(DL, DAG, "SyncVM doesn't support non-C calling conventions");
 
   SmallVector<CCValAssign, 16> ArgLocs;
   CCState CCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), ArgLocs,
                  *DAG.getContext());
   CCInfo.AnalyzeCallOperands(Outs, CC_SYNCVM);
+
+  SDValue InFlag;
+
+  if (!CallingConvSupported(CallConv))
+    fail(DL, DAG, "SyncVM doesn't support non-C calling conventions");
 
   // Get a count of how many bytes are to be pushed on the stack.
   unsigned NumBytes = CCInfo.getNextStackOffset();
@@ -371,8 +435,6 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   SmallVector<SDValue, 12> MemOpChains;
   SDValue Zero = DAG.getTargetConstant(0, DL, MVT::i256);
   SDValue SPCtx = DAG.getTargetConstant(SyncVMCTX::SP, DL, MVT::i256);
-
-  SDValue InFlag;
 
   SDValue AbiData = CLI.SyncVMAbiData ? DAG.getRegister(SyncVM::R15, MVT::i256)
                                       : DAG.getRegister(SyncVM::R0, MVT::i256);
@@ -412,10 +474,10 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
     if (ArgLocs[i].isRegLoc()) {
       SDValue &CurVal = OutVals[i];
       auto Val = isa<GlobalAddressSDNode>(CurVal.getNode())
-        ? wrappedGlobalAddress(CurVal, DAG, DL) : CurVal;
+                     ? wrappedGlobalAddress(CurVal, DAG, DL)
+                     : CurVal;
 
-      Chain = DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), Val,
-                               InFlag);
+      Chain = DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), Val, InFlag);
       InFlag = Chain.getValue(1);
     }
   }
@@ -1091,8 +1153,7 @@ SDValue SyncVMTargetLowering::LowerCTPOP(SDValue CTPOP,
   return DAG.getNode(ISD::ADD, dl, VT, loSum, hiSum);
 }
 
-SDValue SyncVMTargetLowering::LowerTRAP(SDValue Op,
-                                        SelectionDAG &DAG) const {
+SDValue SyncVMTargetLowering::LowerTRAP(SDValue Op, SelectionDAG &DAG) const {
   SDLoc dl(Op);
   SDValue Chain = Op.getOperand(0);
   return DAG.getNode(SyncVMISD::TRAP, dl, MVT::Other, Chain);
