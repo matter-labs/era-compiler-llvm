@@ -308,8 +308,104 @@ SDValue EraVMTargetLowering::LowerFormalArguments(
   return Chain;
 }
 
+/// If Callee is a farcall "intrinsic" return corresponding opcode.
+/// Return 0 otherwise.
+static uint64_t farcallOpcode(SDValue Callee) {
+  auto GA = dyn_cast<GlobalAddressSDNode>(Callee.getNode());
+  if (!GA)
+    return 0;
+  return StringSwitch<uint64_t>(GA->getGlobal()->getName())
+      .Case("__farcall_int", EraVMISD::FARCALL)
+      .Case("__staticcall_int", EraVMISD::STATICCALL)
+      .Case("__delegatecall_int", EraVMISD::DELEGATECALL)
+      .Case("__mimiccall_int", EraVMISD::MIMICCALL)
+      .Default(0);
+}
+
+static SDValue lowerFarCall(TargetLowering::CallLoweringInfo &CLI,
+                            SmallVectorImpl<SDValue> &InVals) {
+  SelectionDAG &DAG = CLI.DAG;
+  SDLoc &DL = CLI.DL;
+  SmallVectorImpl<ISD::OutputArg> &Outs = CLI.Outs;
+  SmallVectorImpl<SDValue> &OutVals = CLI.OutVals;
+  SDValue Chain = CLI.Chain;
+  SDValue Callee = CLI.Callee;
+  // TODO: EraVM target does not yet support tail call optimization.
+  CLI.IsTailCall = false;
+  CallingConv::ID CallConv = CLI.CallConv;
+  // We meddle with number of parameters, set vararg to true to prevent
+  // assertion that the number of parameters before lowering is equal to the
+  // number of parameters after lowering.
+  bool IsVarArg = CLI.IsVarArg = true;
+
+  uint64_t FarcallOpcode = farcallOpcode(Callee);
+  if (!FarcallOpcode)
+    return {};
+  bool IsMimicCall = FarcallOpcode == EraVMISD::MIMICCALL;
+
+  SmallVector<CCValAssign, 13> ArgLocs;
+  CCState CCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), ArgLocs,
+                 *DAG.getContext());
+  CCInfo.AnalyzeCallOperands(Outs, CC_ERAVM);
+  SDValue InFlag;
+
+  Chain = DAG.getCALLSEQ_START(Chain, 0, 0, DL);
+
+  // The last argument of a mimic call should be in R15. Handle it separately.
+  unsigned LastNormalArgument = IsMimicCall ? Outs.size() - 1 : Outs.size();
+  for (unsigned i = 0, e = LastNormalArgument; i != e; ++i) {
+    if (!ArgLocs[i].isRegLoc())
+      fail(DL, DAG,
+           "Only operands passed through register expected in a far call");
+    Chain =
+        DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), OutVals[i], InFlag);
+    InFlag = Chain.getValue(1);
+  }
+
+  // Pass whom to mimic in R15.
+  if (IsMimicCall) {
+    Chain = DAG.getCopyToReg(Chain, DL, EraVM::R15, OutVals.back(), InFlag);
+    InFlag = Chain.getValue(1);
+  }
+
+  // Returns a chain & a flag for retval copy to use.
+  SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
+  SmallVector<SDValue, 14> Ops;
+
+  Ops.push_back(Chain);
+  Ops.push_back(CLI.UnwindBB);
+  for (auto &ArgLoc :
+       make_range(ArgLocs.begin(),
+                  IsMimicCall ? std::prev(ArgLocs.end()) : ArgLocs.end())) {
+    Ops.push_back(DAG.getRegister(ArgLoc.getLocReg(), ArgLoc.getValVT()));
+  }
+  if (IsMimicCall)
+    Ops.push_back(DAG.getRegister(EraVM::R15, MVT::i256));
+
+  if (InFlag.getNode())
+    Ops.push_back(InFlag);
+
+  Chain = DAG.getNode(FarcallOpcode, DL, NodeTys, Ops);
+  InFlag = Chain.getValue(1);
+
+  // Create the CALLSEQ_END node.
+  Chain =
+      DAG.getCALLSEQ_END(Chain, DAG.getConstant(0, DL, MVT::i256, true),
+                         DAG.getConstant(0, DL, MVT::i256, true), InFlag, DL);
+  InFlag = Chain.getValue(1);
+
+  InVals.push_back(DAG.getCopyFromReg(Chain, DL, EraVM::R1, MVT::fatptr, {}));
+  InVals.push_back(DAG.getCopyFromReg(InVals[0].getValue(1), DL, EraVM::R1,
+                                      MVT::fatptr, InVals[0].getValue(2)));
+  return InVals[1].getValue(1);
+}
+
 SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
                                        SmallVectorImpl<SDValue> &InVals) const {
+  SDValue FarCall = lowerFarCall(CLI, InVals);
+  if (FarCall)
+    return FarCall;
+
   SelectionDAG &DAG = CLI.DAG;
   SDLoc &DL = CLI.DL;
   SmallVectorImpl<ISD::OutputArg> &Outs = CLI.Outs;
@@ -317,50 +413,20 @@ SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   SmallVectorImpl<ISD::InputArg> &Ins = CLI.Ins;
   SDValue Chain = CLI.Chain;
   SDValue Callee = CLI.Callee;
-  bool &IsTailCall = CLI.IsTailCall;
+  // TODO: EraVM target does not yet support tail call optimization.
+  CLI.IsTailCall = false;
   CallingConv::ID CallConv = CLI.CallConv;
   bool IsVarArg = CLI.IsVarArg;
-
-  if (auto *GA = dyn_cast<GlobalAddressSDNode>(Callee.getNode())) {
-    uint64_t farcall_opc =
-        StringSwitch<uint64_t>(GA->getGlobal()->getName())
-            .Case("__farcall_int", EraVMISD::FARCALL)
-            .Case("__farcall_int_l", EraVMISD::FARCALL)
-            .Case("__staticcall_int", EraVMISD::STATICCALL)
-            .Case("__staticcall_int_l", EraVMISD::STATICCALL)
-            .Case("__delegatecall_int", EraVMISD::DELEGATECALL)
-            .Case("__delegatecall_int_l", EraVMISD::DELEGATECALL)
-            .Case("__mimiccall_int", EraVMISD::MIMICCALL)
-            .Case("__mimiccall_int_l", EraVMISD::MIMICCALL)
-            .Default(0);
-
-    bool is_mimic = farcall_opc == EraVMISD::MIMICCALL;
-
-    if (farcall_opc) {
-      if (is_mimic)
-        Chain = DAG.getCopyToReg(Chain, DL, EraVM::R3, OutVals[2], SDValue());
-      SmallVector<SDValue, 8> Ops;
-      Ops.push_back(Chain);
-      Ops.insert(Ops.end(), OutVals.begin(), OutVals.end());
-      Ops.push_back(CLI.UnwindBB);
-      SDVTList NodeTys = DAG.getVTList(MVT::Other, MVT::Glue);
-      Chain = DAG.getNode(farcall_opc, DL, NodeTys, Ops);
-      InVals.push_back(DAG.getCopyFromReg(Chain, DL, EraVM::R1, MVT::fatptr,
-                                          Chain.getValue(1)));
-      return Chain;
-    }
-  }
-
-  // TODO: EraVM target does not yet support tail call optimization.
-  IsTailCall = false;
-
-  if (!CallingConvSupported(CallConv))
-    fail(DL, DAG, "EraVM doesn't support non-C calling conventions");
 
   SmallVector<CCValAssign, 16> ArgLocs;
   CCState CCInfo(CallConv, IsVarArg, DAG.getMachineFunction(), ArgLocs,
                  *DAG.getContext());
   CCInfo.AnalyzeCallOperands(Outs, CC_ERAVM);
+
+  SDValue InFlag;
+
+  if (!CallingConvSupported(CallConv))
+    fail(DL, DAG, "EraVM doesn't support non-C calling conventions");
 
   // Get a count of how many bytes are to be pushed on the stack.
   unsigned NumBytes = CCInfo.getStackSize();
@@ -371,8 +437,6 @@ SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   SmallVector<SDValue, 12> MemOpChains;
   SDValue Zero = DAG.getTargetConstant(0, DL, MVT::i256);
   SDValue SPCtx = DAG.getTargetConstant(EraVMCTX::SP, DL, MVT::i256);
-
-  SDValue InFlag;
 
   SDValue AbiData = CLI.EraVMAbiData ? DAG.getRegister(EraVM::R15, MVT::i256)
                                      : DAG.getRegister(EraVM::R0, MVT::i256);
