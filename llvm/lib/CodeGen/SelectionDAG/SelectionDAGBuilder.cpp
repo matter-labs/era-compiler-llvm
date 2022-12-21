@@ -115,7 +115,11 @@ using namespace SwitchCG;
 static unsigned LimitFloatPrecision;
 
 static cl::opt<bool>
-    InsertAssertAlign("insert-assert-align", cl::init(true),
+// SyncVM local begin
+// We can't assert alignment for fat pointers which are not numerical.
+// TODO: Move it to the compiler's driver to pass as option.
+    InsertAssertAlign("insert-assert-align", cl::init(false),
+// SyncVM local end
                       cl::desc("Insert the experimental `assertalign` node."),
                       cl::ReallyHidden);
 
