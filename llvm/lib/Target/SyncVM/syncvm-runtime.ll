@@ -295,9 +295,9 @@ define i256 @__signextend(i256 %numbyte, i256 %value) #1 {
   ret i256 %result
 }
 
-define {i8 addrspace(3)*, i1} @__farcall(i256 %abi_params, i256 %address) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__farcall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) personality i32 ()* @__personality {
 entry:
-  %invoke_res = invoke i8 addrspace(3)* @__farcall_int(i256 %abi_params, i256 %address)
+  %invoke_res = invoke i8 addrspace(3)* @__farcall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
     to label %ok unwind label %err
 ok:
   %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
@@ -310,9 +310,9 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__staticcall(i256 %abi_params, i256 %address) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__staticcall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) personality i32 ()* @__personality {
 entry:
-  %invoke_res = invoke i8 addrspace(3)* @__staticcall_int(i256 %abi_params, i256 %address)
+  %invoke_res = invoke i8 addrspace(3)* @__staticcall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
     to label %ok unwind label %err
 ok:
   %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
@@ -325,9 +325,9 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__delegatecall(i256 %abi_params, i256 %address) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__delegatecall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) personality i32 ()* @__personality {
 entry:
-  %invoke_res = invoke i8 addrspace(3)* @__delegatecall_int(i256 %abi_params, i256 %address)
+  %invoke_res = invoke i8 addrspace(3)* @__delegatecall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
     to label %ok unwind label %err
 ok:
   %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
@@ -340,9 +340,9 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__mimiccall(i256 %abi_params, i256 %address, i256 %mimic) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__mimiccall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic) personality i32 ()* @__personality {
 entry:
-  %invoke_res = invoke i8 addrspace(3)* @__mimiccall_int(i256 %abi_params, i256 %address, i256 %mimic)
+  %invoke_res = invoke i8 addrspace(3)* @__mimiccall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic)
     to label %ok unwind label %err
 ok:
   %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
@@ -355,70 +355,10 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__system_call(i256 %abi_params, i256 %address, i256 %p0, i256 %p1) personality i32 ()* @__personality {
-entry:
-  %invoke_res = invoke i8 addrspace(3)* @__farcall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1)
-    to label %ok unwind label %err
-ok:
-  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
-  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
-  ret {i8 addrspace(3)*, i1} %res.1f
-
-err:
-  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
-  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
-  ret {i8 addrspace(3)*, i1} %res.2f
-}
-
-define {i8 addrspace(3)*, i1} @__system_staticcall(i256 %abi_params, i256 %address, i256 %p0, i256 %p1) personality i32 ()* @__personality {
-entry:
-  %invoke_res = invoke i8 addrspace(3)* @__staticcall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1)
-    to label %ok unwind label %err
-ok:
-  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
-  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
-  ret {i8 addrspace(3)*, i1} %res.1f
-
-err:
-  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
-  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
-  ret {i8 addrspace(3)*, i1} %res.2f
-}
-
-define {i8 addrspace(3)*, i1} @__system_delegatecall(i256 %abi_params, i256 %address, i256 %p0, i256 %p1) personality i32 ()* @__personality {
-entry:
-  %invoke_res = invoke i8 addrspace(3)* @__delegatecall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1)
-    to label %ok unwind label %err
-ok:
-  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
-  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
-  ret {i8 addrspace(3)*, i1} %res.1f
-
-err:
-  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
-  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
-  ret {i8 addrspace(3)*, i1} %res.2f
-}
-
-define {i8 addrspace(3)*, i1} @__system_mimiccall(i256 %abi_params, i256 %address, i256 %p0, i256 %p1, i256 %mimic) personality i32 ()* @__personality {
-entry:
-  %invoke_res = invoke i8 addrspace(3)* @__mimiccall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1, i256 %mimic)
-    to label %ok unwind label %err
-ok:
-  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
-  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
-  ret {i8 addrspace(3)*, i1} %res.1f
-
-err:
-  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
-  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
-  ret {i8 addrspace(3)*, i1} %res.2f
-}
-
-define {i8 addrspace(3)*, i1} @__farcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__farcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) personality i32 ()* @__personality {
 entry:
   %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
-  %invoke_res = invoke i8 addrspace(3)* @__farcall_int(i256 %abi_params, i256 %address)
+  %invoke_res = invoke i8 addrspace(3)* @__farcall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
     to label %ok unwind label %err
 ok:
   %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
@@ -431,10 +371,10 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__staticcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__staticcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) personality i32 ()* @__personality {
 entry:
   %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
-  %invoke_res = invoke i8 addrspace(3)* @__staticcall_int(i256 %abi_params, i256 %address)
+  %invoke_res = invoke i8 addrspace(3)* @__staticcall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
     to label %ok unwind label %err
 ok:
   %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
@@ -447,10 +387,10 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__delegatecall_byref(i8 addrspace(3)* %abi_params.r, i256 %address) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__delegatecall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) personality i32 ()* @__personality {
 entry:
   %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
-  %invoke_res = invoke i8 addrspace(3)* @__delegatecall_int(i256 %abi_params, i256 %address)
+  %invoke_res = invoke i8 addrspace(3)* @__delegatecall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
     to label %ok unwind label %err
 ok:
   %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
@@ -463,74 +403,10 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__mimiccall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %mimic) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__mimiccall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic) personality i32 ()* @__personality {
 entry:
   %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
-  %invoke_res = invoke i8 addrspace(3)* @__mimiccall_int(i256 %abi_params, i256 %address, i256 %mimic)
-    to label %ok unwind label %err
-ok:
-  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
-  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
-  ret {i8 addrspace(3)*, i1} %res.1f
-
-err:
-  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
-  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
-  ret {i8 addrspace(3)*, i1} %res.2f
-}
-
-define {i8 addrspace(3)*, i1} @__system_call_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p0, i256 %p1) personality i32 ()* @__personality {
-entry:
-  %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
-  %invoke_res = invoke i8 addrspace(3)* @__farcall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1)
-    to label %ok unwind label %err
-ok:
-  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
-  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
-  ret {i8 addrspace(3)*, i1} %res.1f
-
-err:
-  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
-  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
-  ret {i8 addrspace(3)*, i1} %res.2f
-}
-
-define {i8 addrspace(3)*, i1} @__system_staticcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p0, i256 %p1) personality i32 ()* @__personality {
-entry:
-  %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
-  %invoke_res = invoke i8 addrspace(3)* @__staticcall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1)
-    to label %ok unwind label %err
-ok:
-  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
-  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
-  ret {i8 addrspace(3)*, i1} %res.1f
-
-err:
-  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
-  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
-  ret {i8 addrspace(3)*, i1} %res.2f
-}
-
-define {i8 addrspace(3)*, i1} @__system_delegatecall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p0, i256 %p1) personality i32 ()* @__personality {
-entry:
-  %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
-  %invoke_res = invoke i8 addrspace(3)* @__delegatecall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1)
-    to label %ok unwind label %err
-ok:
-  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
-  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
-  ret {i8 addrspace(3)*, i1} %res.1f
-
-err:
-  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
-  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
-  ret {i8 addrspace(3)*, i1} %res.2f
-}
-
-define {i8 addrspace(3)*, i1} @__system_mimiccall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p0, i256 %p1, i256 %mimic) personality i32 ()* @__personality {
-entry:
-  %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
-  %invoke_res = invoke i8 addrspace(3)* @__mimiccall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1, i256 %mimic)
+  %invoke_res = invoke i8 addrspace(3)* @__mimiccall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic)
     to label %ok unwind label %err
 ok:
   %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
@@ -640,14 +516,10 @@ declare void @llvm.syncvm.throw(i256)
 declare void @llvm.syncvm.sstore(i256 %key, i256 %val)
 declare i256 @llvm.syncvm.sload(i256 %key)
 declare i256 @llvm.syncvm.iflt(i256, i256)
-declare i8 addrspace(3)* @__farcall_int(i256, i256)
-declare i8 addrspace(3)* @__farcall_int_l(i256, i256, i256, i256)
-declare i8 addrspace(3)* @__staticcall_int(i256, i256)
-declare i8 addrspace(3)* @__staticcall_int_l(i256, i256, i256, i256)
-declare i8 addrspace(3)* @__delegatecall_int(i256, i256)
-declare i8 addrspace(3)* @__delegatecall_int_l(i256, i256, i256, i256)
-declare i8 addrspace(3)* @__mimiccall_int(i256, i256, i256)
-declare i8 addrspace(3)* @__mimiccall_int_l(i256, i256, i256, i256, i256)
+declare i8 addrspace(3)* @__farcall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
+declare i8 addrspace(3)* @__staticcall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
+declare i8 addrspace(3)* @__delegatecall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
+declare i8 addrspace(3)* @__mimiccall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
 declare i32 @__personality()
 
 attributes #0 = { nounwind readnone }

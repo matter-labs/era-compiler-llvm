@@ -69,11 +69,11 @@ class PassRegistry;
 
 FunctionPass *createSyncVMISelDag(SyncVMTargetMachine &TM,
                                   CodeGenOpt::Level OptLevel);
-ModulePass   *createSyncVMExpandUMAPass();
-ModulePass   *createSyncVMIndirectUMAPass();
-ModulePass   *createSyncVMIndirectExternalCallPass();
-ModulePass   *createSyncVMLowerIntrinsicsPass();
-ModulePass   *createSyncVMLinkRuntimePass();
+ModulePass *createSyncVMExpandUMAPass();
+ModulePass *createSyncVMIndirectUMAPass();
+ModulePass *createSyncVMIndirectExternalCallPass();
+ModulePass *createSyncVMLowerIntrinsicsPass();
+ModulePass *createSyncVMLinkRuntimePass();
 FunctionPass *createSyncVMAddConditionsPass();
 FunctionPass *createSyncVMAllocaHoistingPass();
 FunctionPass *createSyncVMBytesToCellsPass();
@@ -101,6 +101,6 @@ void initializeSyncVMPropagateGenericPointersPass(PassRegistry &);
 void initializeSyncVMStackAddressConstantPropagationPass(PassRegistry &);
 void initializeSyncVMCombineInstrsPass(PassRegistry &);
 
-} // end namespace llvm;
+} // namespace llvm
 
 #endif
