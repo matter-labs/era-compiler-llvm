@@ -6610,9 +6610,14 @@ bool SimplifyCFGOpt::simplifySwitch(SwitchInst *SI, IRBuilder<> &Builder) {
   // switch expression itself can still be restricted as a result of inlining or
   // CVP. Therefore, only apply this transformation during late stages of the
   // optimisation pipeline.
+  // SyncVM local begin
+  // TODO: CPR-940 Support const arrays.
+#if 0
   if (Options.ConvertSwitchToLookupTable &&
       SwitchToLookupTable(SI, Builder, DTU, DL, TTI))
     return requestResimplify();
+#endif
+  // SyncVM local end
 
   if (ReduceSwitchRange(SI, Builder, DL, TTI))
     return requestResimplify();
