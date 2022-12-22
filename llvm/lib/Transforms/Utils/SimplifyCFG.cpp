@@ -71,6 +71,9 @@
 #include "llvm/Support/KnownBits.h"
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
+// EraVM local begin
+#include "llvm/TargetParser/Triple.h"
+// EraVM local end
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/Local.h"
 #include "llvm/Transforms/Utils/ValueMapper.h"
@@ -7149,9 +7152,13 @@ bool SimplifyCFGOpt::simplifySwitch(SwitchInst *SI, IRBuilder<> &Builder) {
   // switch expression itself can still be restricted as a result of inlining or
   // CVP. Therefore, only apply this transformation during late stages of the
   // optimisation pipeline.
-  if (Options.ConvertSwitchToLookupTable &&
-      SwitchToLookupTable(SI, Builder, DTU, DL, TTI))
-    return requestResimplify();
+  // EraVM local begin
+  // TODO: CPR-940 Support const arrays.
+  if (!Triple(BB->getModule()->getTargetTriple()).isEraVM())
+    if (Options.ConvertSwitchToLookupTable &&
+        SwitchToLookupTable(SI, Builder, DTU, DL, TTI))
+      return requestResimplify();
+  // EraVM local end
 
   if (simplifySwitchOfPowersOfTwo(SI, Builder, DL, TTI))
     return requestResimplify();
