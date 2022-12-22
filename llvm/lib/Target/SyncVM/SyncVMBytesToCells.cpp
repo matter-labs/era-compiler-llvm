@@ -21,6 +21,8 @@ using namespace llvm;
 #define DEBUG_TYPE "syncvm-bytes-to-cells"
 #define SYNCVM_BYTES_TO_CELLS_NAME "SyncVM bytes to cells"
 
+static constexpr unsigned CellSizeInBytes = 32;
+
 static cl::opt<bool>
     EarlyBytesToCells("early-bytes-to-cells-conversion", cl::init(false),
                       cl::Hidden,
@@ -128,6 +130,7 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
       auto ConvertMI = [&](unsigned OpNum) {
         unsigned Op0Start = opStart(MI, OpNum);
         MachineOperand &MO0Reg = MI.getOperand(Op0Start + 1);
+        MachineOperand &MO1Global = MI.getOperand(Op0Start + 2);
         if (MO0Reg.isReg()) {
           Register Reg = MO0Reg.getReg();
           assert(Reg.isVirtual() && "Physical registers are not expected");
@@ -165,16 +168,20 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
                     TII->get(SyncVM::DIVxrrr_s))
                 .addDef(NewVR)
                 .addDef(SyncVM::R0)
-                .addImm(32)
+                .addImm(CellSizeInBytes)
                 .addReg(Reg)
                 .addImm(SyncVMCC::COND_NONE);
             BytesToCellsRegs[Reg] = NewVR;
           }
           MO0Reg.ChangeToRegister(NewVR, false);
         }
+        if (MO1Global.isGlobal()) {
+          unsigned Offset = MO1Global.getOffset();
+          MO1Global.setOffset(Offset /= CellSizeInBytes);
+        }
         MachineOperand &Const = MI.getOperand(Op0Start + 2);
         if (Const.isImm() || Const.isCImm())
-          Const.ChangeToImmediate(getImmOrCImm(Const) / 32);
+          Const.ChangeToImmediate(getImmOrCImm(Const) / CellSizeInBytes);
       };
       for (unsigned OpNo = 0; OpNo < 3; ++OpNo)
         if (isStackOp(MI, OpNo)) {
