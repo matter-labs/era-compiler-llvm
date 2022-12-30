@@ -164,6 +164,10 @@ void EraVMAsmPrinter::emitEndOfAsmFile(Module &) {
     // then print constant:
     emitGlobalConstant(getDataLayout(), C);
   }
+
+  // after emitting all the things, we also need to clear symbol cache
+  UniqueConstants.clear();
+  ConstantPoolMap.clear();
 }
 
 void EraVMAsmPrinter::emitConstantPool() {
