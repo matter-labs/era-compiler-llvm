@@ -290,7 +290,7 @@ void SyncVMInstrInfo::loadRegFromStackSlot(
         .addFrameIndex(FrameIdx)
         .addImm(32)
         .addImm(0)
-        .addImm(0)
+        .addReg(SyncVM::R0)
         .addImm(0)
         .addMemOperand(MMO);
   } else if (RC == &SyncVM::GRPTRRegClass) {
@@ -299,7 +299,7 @@ void SyncVMInstrInfo::loadRegFromStackSlot(
         .addFrameIndex(FrameIdx)
         .addImm(32)
         .addImm(0)
-        .addImm(0)
+        .addReg(SyncVM::R0)
         .addImm(0)
         .addMemOperand(MMO);
   } else {
