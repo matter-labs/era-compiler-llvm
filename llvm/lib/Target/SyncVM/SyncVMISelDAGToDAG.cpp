@@ -288,7 +288,7 @@ bool SyncVMDAGToDAGISel::SelectStackAddr(SDValue N, SDValue &Base,
     isRelativeAddressing = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i64);
     int64_t Offset = cast<ConstantSDNode>(N)->getSExtValue();
     assert(
-        Offset > 0 &&
+        Offset >= 0 &&
         "Negative stack offset is not supported in absolute addressing mode");
     Base = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
     Disp = CurDAG->getTargetConstant(Offset, SDLoc(N), MVT::i256);
@@ -305,6 +305,13 @@ bool SyncVMDAGToDAGISel::SelectStackAddr(SDValue N, SDValue &Base,
     Base = CurDAG->getRegister(SyncVM::R0, MVT::i256);
     Disp = CurDAG->getTargetGlobalAddress(G->getGlobal(), SDLoc(N), MVT::i256,
                                           G->getOffset());
+    return true;
+  }
+  case ISD::ExternalSymbol: {
+    isRelativeAddressing = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i64);
+    ExternalSymbolSDNode *S = cast<ExternalSymbolSDNode>(N);
+    Base = CurDAG->getRegister(SyncVM::R0, MVT::i256);
+    Disp = CurDAG->getTargetExternalSymbol(S->getSymbol(), MVT::i256); 
     return true;
   }
   case ISD::FrameIndex: {
@@ -330,7 +337,7 @@ bool SyncVMDAGToDAGISel::SelectStackAddr(SDValue N, SDValue &Base,
       if (isa<ConstantSDNode>(N1)) {
         Base = N0;
         Disp = CurDAG->getTargetConstant(
-            cast<ConstantSDNode>(N1)->getZExtValue(), SDLoc(N), MVT::i256);
+            cast<ConstantSDNode>(N1)->getSExtValue(), SDLoc(N), MVT::i256);
       } else {
         Base = N;
         Disp = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
@@ -432,6 +439,30 @@ void SyncVMDAGToDAGISel::Select(SDNode *Node) {
       ReplaceNode(Node, LD);
       return;
     }
+    break;
+  }
+  case SyncVMISD::GAStack: {
+    // extract the symbol and emit ADDsrr_p
+    SDValue Base, Disp, isRelativeAddressing;
+    bool result =
+        SelectStackAddr(Node->getOperand(0), Base, Disp, isRelativeAddressing);
+    assert(result && "SelectStackAddr failed for wrapped GAStack node");
+    auto r0 = CurDAG->getRegister(SyncVM::R0, MVT::i256);
+    auto ADDsrr_p = CurDAG->getMachineNode(SyncVM::ADDsrr_p, DL, MVT::i256, {Base,
+                                           Disp, isRelativeAddressing, r0});
+    ReplaceNode(Node, ADDsrr_p);
+    return;
+  }
+  case SyncVMISD::GACode: {
+    // extract mem symbol and emit ADDcrr_p
+    SDValue Base, Disp;
+    bool result = SelectMemAddr(Node->getOperand(0), Base, Disp);
+    assert(result && "SelectMemAddr failed for wrapped GACode node");
+    auto r0 = CurDAG->getRegister(SyncVM::R0, MVT::i256);
+    auto ADDcrr_p = CurDAG->getMachineNode(SyncVM::ADDcrr_p, DL, MVT::i256, {Base,
+                                           Disp, r0});
+    ReplaceNode(Node, ADDcrr_p);
+    return;
   }
   }
 
