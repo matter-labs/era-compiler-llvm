@@ -44,10 +44,10 @@ bb:
 ; CHECK: div.s 32, r1, r1, r0
 ; CHECK: add stack[r1], r2, r1
 ; CHECK: add stack[r2], r1, r1
-; CHECK: add stack[r2], r1, r1
-; CHECK: add stack[r2], r1, r1
-; CHECK: div.s 32, r3, r2, r0
-; CHECK: add stack[r2], r1, r1
+; TODO: add stack[r2], r1, r1
+; TODO: add stack[r2], r1, r1
+; TODO: div.s 32, r3, r2, r0
+; TODO: add stack[r2], r1, r1
   %v1 = load i256, i256* %ptr.i256
   %v2 = load i256, i256* %gep0
   %v3 = load i256, i256* %gep1

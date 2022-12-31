@@ -291,6 +291,7 @@ void SyncVMInstrInfo::loadRegFromStackSlot(
         .addImm(0)
         .addImm(1)
         .addReg(SyncVM::R0)
+        .addImm(0)
         .addMemOperand(MMO);
   } else if (RC == &SyncVM::GRPTRRegClass) {
     BuildMI(MBB, MI, DL, get(SyncVM::PTR_ADDsrr_s))
@@ -299,6 +300,7 @@ void SyncVMInstrInfo::loadRegFromStackSlot(
         .addImm(0)
         .addImm(1)
         .addReg(SyncVM::R0)
+        .addImm(0)
         .addMemOperand(MMO);
   } else {
     llvm_unreachable("Cannot store this register to stack slot!");
