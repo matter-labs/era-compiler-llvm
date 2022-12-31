@@ -269,7 +269,7 @@ void EraVMInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
         .addFrameIndex(FrameIndex)
         .addImm(32)
         .addImm(0)
-        .addImm(0)
+        .addReg(EraVM::R0)
         .addImm(0)
         .addMemOperand(MMO);
   } else if (RC == &EraVM::GRPTRRegClass) {
@@ -278,7 +278,7 @@ void EraVMInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
         .addFrameIndex(FrameIndex)
         .addImm(32)
         .addImm(0)
-        .addImm(0)
+        .addReg(EraVM::R0)
         .addImm(0)
         .addMemOperand(MMO);
   } else {
