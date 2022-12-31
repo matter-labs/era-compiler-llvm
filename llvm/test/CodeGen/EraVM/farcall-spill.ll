@@ -13,7 +13,7 @@ define void @test1() personality i32 ()* @__personality {
   ; CHECK: ptr.add r1, r0, stack-[1]
 ok:
   call void @spill()
-  ; CHECK: ptr.add stack-[1], 0, r1
+  ; CHECK: ptr.add stack-[1], r0, r1
   store i8 addrspace(3)* %fptr, i8 addrspace(3)** @ptr
   ret void
 fail:
@@ -37,7 +37,7 @@ delegatecall:
 ok:
   %fptr = phi i8 addrspace(3)* [%fptrs, %staticcall], [%fptrd, %delegatecall]
   call void @spill()
-  ; CHECK: ptr.add stack-[1], 0, r1
+  ; CHECK: ptr.add stack-[1], r0, r1
   store i8 addrspace(3)* %fptr, i8 addrspace(3)** @ptr
   ret void
 fail:
