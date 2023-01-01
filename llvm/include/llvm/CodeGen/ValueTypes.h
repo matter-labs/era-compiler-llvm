@@ -145,6 +145,13 @@ namespace llvm {
       return isSimple() ? V.isInteger() : isExtendedInteger();
     }
 
+    // SyncVM local begin
+    /// Return true if this is a fat pointer type.
+    bool isFatPointer() const {
+      return V.SimpleTy == MVT::fatptr;
+    }
+    // SyncVM local end
+
     /// Return true if this is an integer, but not a vector.
     bool isScalarInteger() const {
       return isSimple() ? V.isScalarInteger() : isExtendedScalarInteger();

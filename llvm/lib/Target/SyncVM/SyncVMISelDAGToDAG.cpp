@@ -417,6 +417,36 @@ void SyncVMDAGToDAGISel::Select(SDNode *Node) {
       ReplaceNode(Node, LD);
       return;
     }
+    break;
+  }
+  case ISD::STORE: {
+    // lower address space 3 stores if the value is a constant zero
+    // we need this to make zeroinitializer semantic work without hurting other
+    // assumptions.
+    auto st = cast<StoreSDNode>(Node);
+    if (!isa<ConstantSDNode>(st->getValue())) {
+      break;
+    }
+    auto stVal = cast<ConstantSDNode>(st->getValue());
+    if (stVal->getValueType(0) != MVT::fatptr) {
+      break;
+    }
+    if (stVal->getAPIntValue() != 0) {
+      break;
+    }
+    SDValue Chain = st->getChain();
+    SDValue Ptr = st->getBasePtr();
+    auto Zero = CurDAG->getTargetConstant(0, DL, MVT::i256);
+    auto r0 = CurDAG->getRegister(SyncVM::R0, MVT::i256);
+    SDValue Base, Base2, Disp;
+    if (SelectAdjStackAddr(Ptr, Base, Base2, Disp)) {
+      // VM is unlikely to accept such instruction, but we emit it anyway
+      auto ST = CurDAG->getMachineNode(SyncVM::PTR_ADDrrs_p, DL, MVT::Other,
+                                       {r0, r0, Base, Base2, Disp, Chain});
+      ReplaceNode(Node, ST);
+      return;
+    }
+    break;
   }
   }
 

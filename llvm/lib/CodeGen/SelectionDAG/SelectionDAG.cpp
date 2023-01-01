@@ -1466,7 +1466,10 @@ SDValue SelectionDAG::getConstant(const APInt &Val, const SDLoc &DL, EVT VT,
 
 SDValue SelectionDAG::getConstant(const ConstantInt &Val, const SDLoc &DL,
                                   EVT VT, bool isT, bool isO) {
-  assert(VT.isInteger() && "Cannot create FP integer constant!");
+  // SyncVM local begin
+  assert((VT.isInteger() || VT.isFatPointer()) &&
+         "Cannot create FP integer constant!");
+  // SyncVM local end
 
   EVT EltVT = VT.getScalarType();
   const ConstantInt *Elt = &Val;

@@ -1617,7 +1617,7 @@ SDValue SelectionDAGBuilder::getValueImpl(const Value *V) {
           Constants[i] = DAG.getConstantFP(0, getCurSDLoc(), EltVT);
         // SyncVM local begin
         else if (EltVT == MVT::fatptr)
-          Constants[i] = DAG.getConstant(0, getCurSDLoc(), MVT::i256);
+          Constants[i] = DAG.getConstant(0, getCurSDLoc(), MVT::fatptr);
         // SyncVM local end
         else
           Constants[i] = DAG.getConstant(0, getCurSDLoc(), EltVT);
