@@ -649,6 +649,18 @@ SDValue SyncVMTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
 
   LLVM_DEBUG(errs() << "Special handling STORE node:\n"; Op.dump(&DAG));
 
+  SDValue ZeroExtendedValue =
+      DAG.getNode(ISD::ZERO_EXTEND, DL, MVT::i256, Store->getValue());
+
+  // In the case of storing a smaller value type variable to a larger value
+  // slot, we overwrite the target slot's top bits.
+  if (BasePtr->getValueType(0) == MVT::i256 && MemVTSize < 256) {
+    // promote the store to 256 bits
+    SDValue FinalStore =
+        DAG.getStore(Chain, DL, ZeroExtendedValue, BasePtr, PInfo);
+    return FinalStore;
+  }
+
   // We don't have store of smaller data types, so a snippet of code is needed
   // to represent small stores
 
@@ -665,9 +677,6 @@ SDValue SyncVMTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
                             DAG.getConstant(MemVTSize, DL, MVT::i256));
   SDValue SRL = DAG.getNode(ISD::SRL, DL, MVT::i256, SHL,
                             DAG.getConstant(MemVTSize, DL, MVT::i256));
-
-  SDValue ZeroExtendedValue =
-      DAG.getNode(ISD::ZERO_EXTEND, DL, MVT::i256, Store->getValue());
 
   SDValue StoreValue =
       DAG.getNode(ISD::SHL, DL, MVT::i256, ZeroExtendedValue,
