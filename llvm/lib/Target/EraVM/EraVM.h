@@ -87,6 +87,7 @@ FunctionPass *createEraVMExpandSelectPass();
 FunctionPass *createEraVMPropagateGenericPointersPass();
 FunctionPass *createEraVMStackAddressConstantPropagationPass();
 FunctionPass *createEraVMCombineFlagSettingPass();
+FunctionPass *createEraVMCombineToIndexedMemopsPass();
 
 void initializeEraVMLowerIntrinsicsPass(PassRegistry &);
 void initializeEraVMAddConditionsPass(PassRegistry &);
@@ -100,6 +101,7 @@ void initializeEraVMPropagateGenericPointersPass(PassRegistry &);
 void initializeEraVMStackAddressConstantPropagationPass(PassRegistry &);
 void initializeEraVMDAGToDAGISelLegacyPass(PassRegistry &);
 void initializeEraVMCombineFlagSettingPass(PassRegistry &);
+void initializeEraVMCombineToIndexedMemopsPass(PassRegistry &);
 
 struct EraVMLinkRuntimePass : PassInfoMixin<EraVMLinkRuntimePass> {
   explicit EraVMLinkRuntimePass() {}

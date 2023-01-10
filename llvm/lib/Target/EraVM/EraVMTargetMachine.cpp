@@ -44,6 +44,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMCombineFlagSettingPass(PR);
   initializeEraVMStackAddressConstantPropagationPass(PR);
   initializeEraVMDAGToDAGISelLegacyPass(PR);
+  initializeEraVMCombineToIndexedMemopsPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -134,12 +135,15 @@ void EraVMPassConfig::addPreRegAlloc() {
   addPass(createEraVMAddConditionsPass());
   addPass(createEraVMStackAddressConstantPropagationPass());
   addPass(createEraVMBytesToCellsPass());
-  if (TM->getOptLevel() != CodeGenOptLevel::None)
+  if (TM->getOptLevel() != CodeGenOptLevel::None) {
     // The pass combines sub.s! 0, x, y with x definition. It assumes only one
     // usage of every definition of Flags. This is guaranteed by the selection
     // DAG. Every pass that break this assumption is expected to be sequenced
     // after EraVMCombineFlagSetting.
     addPass(createEraVMCombineFlagSettingPass());
+    // This pass emits indexed loads and stores
+    addPass(createEraVMCombineToIndexedMemopsPass());
+  }
 }
 
 void EraVMPassConfig::addPreEmitPass() {

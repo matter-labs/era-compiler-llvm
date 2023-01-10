@@ -399,6 +399,7 @@ void EraVMDAGToDAGISel::Select(SDNode *Node) {
       ReplaceNode(Node, LD);
       return;
     }
+    break;
   }
   }
 
