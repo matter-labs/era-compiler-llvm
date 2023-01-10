@@ -412,11 +412,12 @@ void SyncVMDAGToDAGISel::Select(SDNode *Node) {
       SDValue Chain = ld->getChain();
       SDValue Ptr = ld->getBasePtr();
       auto Zero = CurDAG->getTargetConstant(0, DL, MVT::i256);
-      auto LD = CurDAG->getMachineNode(SyncVM::LD, DL, ld->getMemoryVT(), MVT::Other,
-                                       Ptr, Zero, Chain);
+      auto LD = CurDAG->getMachineNode(SyncVM::LD, DL, ld->getMemoryVT(),
+                                       MVT::Other, Ptr, Zero, Chain);
       ReplaceNode(Node, LD);
       return;
     }
+    break;
   }
   }
 

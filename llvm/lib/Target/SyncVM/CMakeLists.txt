@@ -23,6 +23,7 @@ add_llvm_target(SyncVMCodeGen
   SyncVMBytesToCells.cpp
   SyncVMCodegenPrepare.cpp
   SyncVMCombineFlagSetting.cpp
+  SyncVMCombineToIndexedMemops.cpp
   SyncVMExpandUMA.cpp
   SyncVMExpandPseudoInsts.cpp
   SyncVMExpandSelect.cpp

@@ -85,6 +85,7 @@ FunctionPass *createSyncVMPeepholePass();
 FunctionPass *createSyncVMPropagateGenericPointersPass();
 FunctionPass *createSyncVMStackAddressConstantPropagationPass();
 FunctionPass *createSyncVMCombineFlagSettingPass();
+FunctionPass *createSyncVMCombineToIndexedMemopsPass();
 
 void initializeSyncVMExpandUMAPass(PassRegistry &);
 void initializeSyncVMIndirectUMAPass(PassRegistry &);
@@ -101,6 +102,7 @@ void initializeSyncVMPeepholePass(PassRegistry &);
 void initializeSyncVMPropagateGenericPointersPass(PassRegistry &);
 void initializeSyncVMStackAddressConstantPropagationPass(PassRegistry &);
 void initializeSyncVMCombineFlagSettingPass(PassRegistry &);
+void initializeSyncVMCombineToIndexedMemopsPass(PassRegistry &);
 
 struct SyncVMLinkRuntimePass : PassInfoMixin<SyncVMLinkRuntimePass> {
   SyncVMLinkRuntimePass() {}
