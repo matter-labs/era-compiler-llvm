@@ -22,6 +22,7 @@ add_llvm_target(SyncVMCodeGen
   SyncVMAddConditions.cpp
   SyncVMBytesToCells.cpp
   SyncVMCodegenPrepare.cpp
+  SyncVMCombineFlagSetting.cpp
   SyncVMExpandUMA.cpp
   SyncVMExpandPseudoInsts.cpp
   SyncVMExpandSelect.cpp
@@ -44,7 +45,6 @@ add_llvm_target(SyncVMCodeGen
   SyncVMTargetTransformInfo.cpp
   SyncVMPeephole.cpp
   SyncVMStackAddressConstantPropagation.cpp
-  SyncVMCombineInstrs.cpp
 
   LINK_COMPONENTS
   Analysis

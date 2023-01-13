@@ -8,7 +8,7 @@ define i64 @main(i8 %0) nounwind {
 entry:
   %1 = add i8 %0, -2
   %.not15 = icmp eq i8 %1, 0
-; CHECK: sub.s!
+; CHECK: and!
 ; CHECK: jump.eq
   br i1 %.not15, label %join, label %body
 
