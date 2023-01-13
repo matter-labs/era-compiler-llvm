@@ -7,6 +7,7 @@
 #ifndef LLVM_LIB_TARGET_SYNCVM_SYNCVMINSTRINFO_H
 #define LLVM_LIB_TARGET_SYNCVM_SYNCVMINSTRINFO_H
 
+#include "SyncVM.h"
 #include "SyncVMRegisterInfo.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
 
@@ -132,9 +133,8 @@ public:
     return SyncVM::getNonFlagSettingOpcode(opcode) != -1;
   }
 
-  bool isPredicatedInstr(MachineInstr &MI) const;
-  unsigned getCCCode(MachineInstr &MI) const;
-  bool isUnconditionalNonTerminator(MachineInstr &MI) const;
+  bool isPredicatedInstr(const MachineInstr &MI) const;
+  SyncVMCC::CondCodes getCCCode(const MachineInstr &MI) const;
 };
 
 } // namespace llvm

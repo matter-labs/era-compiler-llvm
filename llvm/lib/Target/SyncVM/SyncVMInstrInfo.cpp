@@ -8,7 +8,6 @@
 
 #include <deque>
 
-#include "SyncVM.h"
 #include "SyncVMMachineFunctionInfo.h"
 #include "SyncVMTargetMachine.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
@@ -446,35 +445,23 @@ void SyncVMInstrInfo::tagFatPointerCopy(MachineInstr &MI) const {
     MI.setFlag(MachineInstr::MIFlag::IsFatPtr);
 }
 
-bool SyncVMInstrInfo::isPredicatedInstr(MachineInstr &MI) const {
-  return isArithmetic(MI) || isBitwise(MI) || isShift(MI) || isRotate(MI) ||
-         isLoad(MI) || isFatLoad(MI) || isStore(MI) || isNOP(MI) || isSel(MI);
+bool SyncVMInstrInfo::isPredicatedInstr(const MachineInstr &MI) const {
+  return MI.isBranch() || isArithmetic(MI) || isBitwise(MI) || isShift(MI) ||
+         isRotate(MI) || isLoad(MI) || isFatLoad(MI) || isStore(MI) ||
+         isNOP(MI) || isSel(MI);
 }
 
 /// Returns the predicate operand
-unsigned SyncVMInstrInfo::getCCCode(MachineInstr &MI) const {
-  assert(isPredicatedInstr(MI) && "MI is not predicated");
+SyncVMCC::CondCodes SyncVMInstrInfo::getCCCode(const MachineInstr &MI) const {
+  if (!isPredicatedInstr(MI))
+    return SyncVMCC::COND_INVALID;
+
   auto CC = MI.getOperand(MI.getNumExplicitOperands() - 1);
 
   if (CC.isImm()) {
-    return CC.getImm();
+    return SyncVMCC::CondCodes(CC.getImm());
   } else if (CC.isCImm()) {
-    return CC.getCImm()->getZExtValue();
+    return SyncVMCC::CondCodes(CC.getCImm()->getZExtValue());
   }
-  llvm_unreachable("CC operand is not immediate");
-}
-
-bool SyncVMInstrInfo::isUnconditionalNonTerminator(MachineInstr &MI) const {
-  if (MI.isTerminator())
-    return false;
-  if (!isPredicatedInstr(MI))
-    return true;
-
-  // check if implicitly uses flags
-  for (auto &opnd : MI.implicit_operands()) {
-    if (opnd.isReg() && opnd.getReg() == SyncVM::Flags)
-      return false;
-  }
-
-  return getCCCode(MI) == SyncVMCC::COND_NONE;
+  return SyncVMCC::COND_INVALID;
 }

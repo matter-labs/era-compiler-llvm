@@ -39,7 +39,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMLinkRuntimePass(PR);
   initializeSyncVMAllocaHoistingPass(PR);
   initializeSyncVMPeepholePass(PR);
-  initializeSyncVMCombineInstrsPass(PR);
+  initializeSyncVMCombineFlagSettingPass(PR);
   initializeSyncVMStackAddressConstantPropagationPass(PR);
 }
 
@@ -59,8 +59,8 @@ SyncVMTargetMachine::SyncVMTargetMachine(const Target &T, const Triple &TT,
                                          Optional<Reloc::Model> RM,
                                          Optional<CodeModel::Model> CM,
                                          CodeGenOpt::Level OL, bool JIT)
-    : LLVMTargetMachine(T, computeDataLayout(), TT, CPU, FS,
-                        Options, getEffectiveRelocModel(RM),
+    : LLVMTargetMachine(T, computeDataLayout(), TT, CPU, FS, Options,
+                        getEffectiveRelocModel(RM),
                         getEffectiveCodeModel(CM, CodeModel::Small), OL),
       TLOF(std::make_unique<TargetLoweringObjectFileELF>()),
       Subtarget(TT, std::string(CPU), std::string(FS), *this) {
@@ -125,7 +125,12 @@ void SyncVMPassConfig::addPreRegAlloc() {
   addPass(createSyncVMAddConditionsPass());
   addPass(createSyncVMStackAddressConstantPropagationPass());
   addPass(createSyncVMBytesToCellsPass());
-  addPass(createSyncVMCombineInstrsPass());
+  if (TM->getOptLevel() != CodeGenOpt::None)
+    // The pass combines sub.s! 0, x, y with x definition. It assumes only one
+    // usage of every definition of Flags. This is guaranteed by the selection
+    // DAG. Every pass that break this assumption is expected to be sequenced
+    // after SyncVMCombineFlagSetting.
+    addPass(createSyncVMCombineFlagSettingPass());
 }
 
 void SyncVMPassConfig::addPreEmitPass() {
