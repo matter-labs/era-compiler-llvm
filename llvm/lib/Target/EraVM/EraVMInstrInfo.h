@@ -13,6 +13,7 @@
 #ifndef LLVM_LIB_TARGET_ERAVM_ERAVMINSTRINFO_H
 #define LLVM_LIB_TARGET_ERAVM_ERAVMINSTRINFO_H
 
+#include "EraVM.h"
 #include "EraVMRegisterInfo.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
 
@@ -141,9 +142,8 @@ public:
     return EraVM::getNonFlagSettingOpcode(opcode) != -1;
   }
 
-  bool isPredicatedInstr(MachineInstr &MI) const;
-  unsigned getCCCode(MachineInstr &MI) const;
-  bool isUnconditionalNonTerminator(MachineInstr &MI) const;
+  bool isPredicatedInstr(const MachineInstr &MI) const;
+  EraVMCC::CondCodes getCCCode(const MachineInstr &MI) const;
 };
 
 } // namespace llvm

@@ -40,6 +40,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMLowerIntrinsicsPass(PR);
   initializeEraVMLinkRuntimePass(PR);
   initializeEraVMAllocaHoistingPass(PR);
+  initializeEraVMCombineFlagSettingPass(PR);
   initializeEraVMStackAddressConstantPropagationPass(PR);
   initializeEraVMDAGToDAGISelLegacyPass(PR);
 }
@@ -125,7 +126,12 @@ void EraVMPassConfig::addPreRegAlloc() {
   addPass(createEraVMAddConditionsPass());
   addPass(createEraVMStackAddressConstantPropagationPass());
   addPass(createEraVMBytesToCellsPass());
-  addPass(createEraVMCombineInstrsPass());
+  if (TM->getOptLevel() != CodeGenOptLevel::None)
+    // The pass combines sub.s! 0, x, y with x definition. It assumes only one
+    // usage of every definition of Flags. This is guaranteed by the selection
+    // DAG. Every pass that break this assumption is expected to be sequenced
+    // after EraVMCombineFlagSetting.
+    addPass(createEraVMCombineFlagSettingPass());
 }
 
 void EraVMPassConfig::addPreEmitPass() {

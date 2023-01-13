@@ -241,7 +241,7 @@ def store_#as : PatFrag<(ops node:$val, node:$ptr),
 // pointer before prolog-epilog rewriting occurs.
 // Pessimistically assume ADJCALLSTACKDOWN / ADJCALLSTACKUP will become
 // sub / add which can clobber SR.
-let isCodeGenOnly = 1, Defs = [SP, Flags], Uses = [SP] in {
+let isCodeGenOnly = 1, Defs = [SP], Uses = [SP] in {
 def ADJCALLSTACKDOWN : Pseudo<(outs), (ins i256imm:$amt1, i256imm:$amt2),
                               "#ADJCALLSTACKDOWN $amt1 $amt2",
                               [(EraVMcallseq_start timm:$amt1, timm:$amt2)]>;
@@ -527,7 +527,7 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
   def swap#rr_v : Iirr<opcode, !if(!eq(swap, "i"), 0, 1), 0,
                        (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1, cc:$cc),
                        !strconcat(!strconcat(asmstring, !if(!eq(swap, "i"), "", ".s")),
-                                  "$cc!\t$imm, $rs1, $rd0"), []>;
+                                  "$cc!\t$imm, $rs1, $rd0"), []>, FlagRel;
   let mayLoad = 1 in {
   let isPseudo = 1, isCodeGenOnly = 1 in
   def yrr_p : Pseudo<(outs GR256:$rd0), (ins memop:$src0, GR256:$rs1),
@@ -960,7 +960,6 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
   def xrrr_s : Iirrr<opcode, 1, 1,
                        (outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1, cc:$cc),
                        !strconcat(!strconcat(asmstring, ".s"), "$cc\t$imm, $rs1, $rd0, $rd1"), []>, PseudoRel, FlagRel;
-  }
 
   foreach swap = ["i", "x"] in
   let Defs = [Flags] in
@@ -1028,6 +1027,7 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
   def zrsr_v : Isrsr<opcode, SrcStack, 1, 0,
                      (outs GR256:$rd1), (ins stackop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                      !strconcat(asmstring, ".s$cc!\t$src0, $rs1, $dst0, $rd1"), []>, FlagRel;
+  }
   }
   }
 
@@ -1227,7 +1227,7 @@ def PCOMPr : ILogR<51, DstNone, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1, 
 def : Pat<(int_eravm_precompile GR256:$rs0, GR256:$rs1),
           (PCOMPr GR256:$rs0, GR256:$rs1, 0)>;
 
-let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15],
+let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Flags],
     Uses = [SP], isCall = 1 in {
    def CALL : Pseudo<(outs), (ins GR256:$in1, imm16:$callee),
                    "CALL\t$in1, $callee", [(EraVMcall GR256:$in1, tglobaladdr:$callee)]>;
@@ -1238,7 +1238,7 @@ let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15],
                    "near_call\t$in1, $callee, $unwind", []>;
 }
 
-let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15],
+let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Flags],
     isCall = 1 in {
 def FAR_CALL  : ICall<8, CFNormal, (ins GR256:$abi, GR256:$address, jmptarget:$unwind),
                "far_call\t$abi, $address, $unwind", [(EraVMfarcall GR256:$abi, GR256:$address, bb:$unwind)]>;
