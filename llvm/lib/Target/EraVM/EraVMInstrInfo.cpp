@@ -14,7 +14,6 @@
 
 #include <deque>
 
-#include "EraVM.h"
 #include "EraVMMachineFunctionInfo.h"
 #include "EraVMTargetMachine.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
@@ -425,34 +424,22 @@ void EraVMInstrInfo::tagFatPointerCopy(MachineInstr &MI) const {
     MI.setFlag(MachineInstr::MIFlag::IsFatPtr);
 }
 
-bool EraVMInstrInfo::isPredicatedInstr(MachineInstr &MI) const {
-  return isArithmetic(MI) || isBitwise(MI) || isShift(MI) || isRotate(MI) ||
-         isLoad(MI) || isFatLoad(MI) || isStore(MI) || isNOP(MI) || isSel(MI);
+bool EraVMInstrInfo::isPredicatedInstr(const MachineInstr &MI) const {
+  return MI.isBranch() || isArithmetic(MI) || isBitwise(MI) || isShift(MI) ||
+         isRotate(MI) || isLoad(MI) || isFatLoad(MI) || isStore(MI) ||
+         isNOP(MI) || isSel(MI);
 }
 
 /// Returns the predicate operand
-unsigned EraVMInstrInfo::getCCCode(MachineInstr &MI) const {
-  assert(isPredicatedInstr(MI) && "MI is not predicated");
+EraVMCC::CondCodes EraVMInstrInfo::getCCCode(const MachineInstr &MI) const {
+  if (!isPredicatedInstr(MI))
+    return EraVMCC::COND_INVALID;
+
   auto CC = MI.getOperand(MI.getNumExplicitOperands() - 1);
 
   if (CC.isImm())
-    return CC.getImm();
+    return EraVMCC::CondCodes(CC.getImm());
   if (CC.isCImm())
-    return CC.getCImm()->getZExtValue();
-  llvm_unreachable("CC operand is not immediate");
-}
-
-bool EraVMInstrInfo::isUnconditionalNonTerminator(MachineInstr &MI) const {
-  if (MI.isTerminator())
-    return false;
-  if (!isPredicatedInstr(MI))
-    return true;
-
-  // check if implicitly uses flags
-  for (auto &opnd : MI.implicit_operands()) {
-    if (opnd.isReg() && opnd.getReg() == EraVM::Flags)
-      return false;
-  }
-
-  return getCCCode(MI) == EraVMCC::COND_NONE;
+    return EraVMCC::CondCodes(CC.getCImm()->getZExtValue());
+  return EraVMCC::COND_INVALID;
 }
