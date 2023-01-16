@@ -263,7 +263,8 @@ bool SyncVMCombineSpills::convertVReg(Register reg, MachineFunction &MF) {
         llvm::SyncVM::getSROperandAddressingModeOpcode(UseMI.getOpcode());
     if (new_use_opcode == -1) {
       LLVM_DEBUG(dbgs() << "Cannot transform use instruction to stack mode\n");
-      llvm_unreachable("Unexpected error happened during conversion.");
+      llvm_unreachable("Unexpected error happened during conversion:"
+                       " cannot find new use opcode");
     }
 
     // have to reverse operands if use is 2nd operand of non-commutative
@@ -274,7 +275,8 @@ bool SyncVMCombineSpills::convertVReg(Register reg, MachineFunction &MF) {
         if (sr_opcode == -1) {
           LLVM_DEBUG(dbgs()
                      << "Cannot get reversed operand opcode of use MI\n");
-          llvm_unreachable("Unexpected error happened during conversion.");
+          llvm_unreachable("Unexpected error happened during conversion:"
+                           "cannot find reverse operand opcode");
         }
         new_use_opcode = sr_opcode;
       }

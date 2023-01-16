@@ -101,12 +101,8 @@ void initializeSyncVMExpandSelectPass(PassRegistry &);
 void initializeSyncVMPeepholePass(PassRegistry &);
 void initializeSyncVMPropagateGenericPointersPass(PassRegistry &);
 void initializeSyncVMStackAddressConstantPropagationPass(PassRegistry &);
-<<<<<<< HEAD
 void initializeSyncVMCombineFlagSettingPass(PassRegistry &);
-=======
-void initializeSyncVMCombineInstrsPass(PassRegistry &);
 void initializeSyncVMCombineSpillsPass(PassRegistry &);
->>>>>>> f4ef227efed1 (Fold comparison with 0 with the previous arithmetic instruction (#78))
 
 struct SyncVMLinkRuntimePass : PassInfoMixin<SyncVMLinkRuntimePass> {
   SyncVMLinkRuntimePass() {}
