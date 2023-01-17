@@ -108,8 +108,8 @@ jobs:
         run: |
           ${DOCKER_CMD} sh -c '
           cd compiler-tester && \
-          git config --global url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
-          git config --global url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
           export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
           cargo run --release --bin compiler-tester -- --path=${{ env.LLVM_BENCHMARK_PATH }} --mode=${{ env.LLVM_BENCHMARK_MODE }} --benchmark=candidate.json'
 
@@ -198,8 +198,8 @@ jobs:
         run: |
           ${DOCKER_CMD} sh -c '
           cd compiler-tester && \
-          git config --global url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
-          git config --global url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
           export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
           cargo run --release --bin compiler-tester -- --path=${{ env.LLVM_BENCHMARK_PATH }} --mode=${{ env.LLVM_BENCHMARK_MODE }} --benchmark=reference.json'
 
@@ -290,8 +290,8 @@ jobs:
         run: |
           ${DOCKER_CMD} sh -c '
           cd compiler-tester && \
-          git config --global url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
-          git config --global url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
           export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
           cargo run --release --bin benchmark-analyzer -- --reference reference.json --candidate candidate.json --output-file result.txt && \
           chown 1000:1000 result.txt'
