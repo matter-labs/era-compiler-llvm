@@ -30,11 +30,11 @@ jobs:
     runs-on: [self-hosted, ci-runner-compiler]
     steps:
       - uses: AutoModality/action-clean@v1.1.0
-      - uses: webfactory/ssh-agent@v0.5.3
-        with:
-          ssh-private-key: ${{ secrets.SSH_PK_BOT }}
       - name: Preparing workspace. Setting environment.
         run: |
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
           echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
           echo "COMPOSE_PROJECT_NAME=llvm_testing" >> $GITHUB_ENV
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch || 'main' }}" >> $GITHUB_ENV
@@ -56,7 +56,7 @@ jobs:
           fi
 
       - name: Preparing workspace. Checkout compiler-tester repository.
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: matter-labs/compiler-tester
           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
@@ -65,7 +65,7 @@ jobs:
           path: "compiler-tester"
 
       - name: Preparing workspace. Checkout compiler-llvm repository.
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: compiler-llvm
 
@@ -73,21 +73,14 @@ jobs:
         run: |
           docker-compose pull
           docker-compose up -d zk
-        env:
-          SSH_PRIVATE_KEY: ${{secrets.SSH_PK_BOT}}
 
-      - name: Preparing workspace. Installing additional packages.
+      - name: Preparing workspace. Prepare docker environment
         run: |
+          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/'
+          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/'
+          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:'
           ${DOCKER_CMD} sh -c 'apt install -y ninja-build musl musl-tools'
           ${DOCKER_CMD} sh -c 'rustup target add x86_64-unknown-linux-musl'
-
-      - name: Preparing workspace. Setting docker ssh key.
-        run: |
-          ${DOCKER_CMD} sh -c 'mkdir -pv /root/.ssh'
-          ${DOCKER_CMD} sh -c 'echo "${SSH_PRIVATE_KEY}" > /root/.ssh/id_rsa'
-          ${DOCKER_CMD} sh -c 'chmod 400 /root/.ssh/id_rsa'
-          ${DOCKER_CMD} sh -c 'touch /root/.ssh/known_hosts'
-          ${DOCKER_CMD} sh -c 'ssh-keyscan github.com >> /root/.ssh/known_hosts'
 
       - name: Testing. Building LLVM framework.
         run: |
@@ -98,17 +91,14 @@ jobs:
       - name: Testing. Building and running compiler tester.
         id: compiler_tester_run
         run: |
-          if [ "${{ inputs.skip_slow }}" != "true" ]; then
-            ${DOCKER_CMD} sh -c '
-            cd compiler-tester && \
-            git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
-            git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
-            export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-            cargo run --release --bin compiler-tester -- --mode=${{ env.COMPILER_TESTER_MODE }}'
-            compiler_exit_code=$?
-          else
-            compiler_exit_code=0
-          fi
+          ${DOCKER_CMD} sh -c '
+          cd compiler-tester && \
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com: && \
+          export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
+          cargo run --release --bin compiler-tester -- --mode=${{ env.COMPILER_TESTER_MODE }}'
+          compiler_exit_code=$?
           if [ "${compiler_exit_code}" -gt "1" ]; then
             echo "RUN_SEGFAULT_STEP=true" >> $GITHUB_ENV
           fi
