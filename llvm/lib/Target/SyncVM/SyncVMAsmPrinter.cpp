@@ -158,6 +158,10 @@ void SyncVMAsmPrinter::emitEndOfAsmFile(Module &) {
     // then print constant:
     emitGlobalConstant(getDataLayout(), C);
   }
+
+  // after emitting all the things, we also need to clear symbol cache
+  UniqueConstants.clear();
+  ConstantPoolMap.clear();
 }
 
 void SyncVMAsmPrinter::emitConstantPool() {
@@ -199,9 +203,8 @@ void SyncVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
   if (const ConstantArray *CVA = dyn_cast<ConstantArray>(CV)) {
     auto aty = CVA->getType();
     uint64_t elem_size = aty->getNumElements();
-    Type *elem_type = aty->getElementType();
     // For now only support integer types.
-    assert(elem_type->isIntegerTy(256));
+    assert(aty->getElementType()->isIntegerTy(256));
 
     for (uint64_t i = 0; i < elem_size; ++i) {
       Constant *C = CVA->getAggregateElement(i);
@@ -215,8 +218,7 @@ void SyncVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
   if (const ConstantDataSequential *CDS =
           dyn_cast<ConstantDataSequential>(CV)) {
     size_t elem_size = CDS->getNumElements();
-    size_t elem_ty_size = CDS->getElementByteSize();
-    assert(elem_ty_size <= 256);
+    assert(CDS->getElementByteSize() <= 256);
 
     for (size_t i = 0; i < elem_size; ++i) {
       APInt val = CDS->getElementAsAPInt(i);
@@ -231,8 +233,8 @@ void SyncVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
     uint64_t elem_size = sty->getNumElements();
 
     for (uint64_t i = 0; i < elem_size; ++i) {
-      Type *ty = sty->getTypeAtIndex(i);
-      assert(ty->isIntegerTy() && ty->getIntegerBitWidth() <= 256);
+      assert(sty->getTypeAtIndex(i) &&
+             sty->getTypeAtIndex(i)->getIntegerBitWidth() <= 256);
       Constant *C = CVS->getAggregateElement(i);
       // TODO: CPR-920 support operators.
       const ConstantInt *CI = cast<ConstantInt>(C);
