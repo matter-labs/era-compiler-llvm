@@ -44,11 +44,11 @@ jobs:
     runs-on: [self-hosted, ci-runner]
     steps:
       - uses: AutoModality/action-clean@v1
-      - uses: webfactory/ssh-agent@v0.5.3
-        with:
-          ssh-private-key: ${{ secrets.SSH_PK_BOT }}
       - name: Preparing workspace. Setting environment.
         run: |
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
           echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
           echo "COMPOSE_PROJECT_NAME=candidate" >> $GITHUB_ENV
           echo "DOCKER_CMD=docker-compose exec -T zk" >> $GITHUB_ENV
@@ -64,7 +64,7 @@ jobs:
         run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
 
       - name: Preparing workspace. Checkout compiler-tester repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: matter-labs/compiler-tester
           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
@@ -74,13 +74,13 @@ jobs:
 
       - name: Preparing workspace. Checkout compiler-llvm candidate (pull request)
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: compiler-llvm
 
       - name: Preparing workspace. Checkout compiler-llvm candidate (workflow dispatch)
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: compiler-llvm
           ref: ${{ env.COMPILER_LLVM_CANDIDATE_BRANCH_NAME }}
@@ -89,21 +89,14 @@ jobs:
         run: |
           docker-compose pull
           docker-compose up -d zk
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PK_BOT }}
 
-      - name: Preparing workspace. Installing additional packages.
+      - name: Preparing workspace. Prepare docker environment
         run: |
+          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/'
+          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/'
+          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:'
           ${DOCKER_CMD} sh -c 'apt install -y ninja-build musl musl-tools'
           ${DOCKER_CMD} sh -c 'rustup target add x86_64-unknown-linux-musl'
-
-      - name: Preparing workspace. Setting docker ssh key.
-        run: |
-          ${DOCKER_CMD} sh -c 'mkdir -pv /root/.ssh'
-          ${DOCKER_CMD} sh -c 'echo "${SSH_PRIVATE_KEY}" > /root/.ssh/id_rsa'
-          ${DOCKER_CMD} sh -c 'chmod 400 /root/.ssh/id_rsa'
-          ${DOCKER_CMD} sh -c 'touch /root/.ssh/known_hosts'
-          ${DOCKER_CMD} sh -c 'ssh-keyscan github.com >> /root/.ssh/known_hosts'
 
       - name: Testing. Building LLVM framework candidate.
         run: |
@@ -116,8 +109,9 @@ jobs:
         run: |
           ${DOCKER_CMD} sh -c '
           cd compiler-tester && \
-          git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
-          git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com: && \
           export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
           cargo run --release --bin compiler-tester -- --path=${{ env.LLVM_BENCHMARK_PATH }} --mode=${{ env.LLVM_BENCHMARK_MODE }} --benchmark=candidate.json'
 
@@ -141,11 +135,11 @@ jobs:
     runs-on: [self-hosted, ci-runner]
     steps:
       - uses: AutoModality/action-clean@v1
-      - uses: webfactory/ssh-agent@v0.5.3
-        with:
-          ssh-private-key: ${{ secrets.SSH_PK_BOT }}
       - name: Preparing workspace. Setting environment.
         run: |
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
           echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
           echo "COMPOSE_PROJECT_NAME=reference" >> $GITHUB_ENV
           echo "DOCKER_CMD=docker-compose exec -T zk" >> $GITHUB_ENV
@@ -161,7 +155,7 @@ jobs:
         run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
 
       - name: Preparing workspace. Checkout compiler-tester repository.
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: matter-labs/compiler-tester
           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
@@ -171,14 +165,14 @@ jobs:
 
       - name: Preparing workspace. Checkout compiler-llvm reference (pull request)
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: compiler-llvm
           ref: ${{ env.BRANCH_NAME }}
 
       - name: Preparing workspace. Checkout compiler-llvm reference (workflow dispatch)
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           path: compiler-llvm
           ref: ${{ env.COMPILER_LLVM_REFERENCE_BRANCH_NAME }}
@@ -187,21 +181,14 @@ jobs:
         run: |
           docker-compose pull
           docker-compose up -d zk
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PK_BOT }}
 
-      - name: Preparing workspace. Installing additional packages.
+      - name: Preparing workspace. Prepare docker environment
         run: |
+          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/'
+          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/'
+          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:'
           ${DOCKER_CMD} sh -c 'apt install -y ninja-build musl musl-tools'
           ${DOCKER_CMD} sh -c 'rustup target add x86_64-unknown-linux-musl'
-
-      - name: Preparing workspace. Setting docker ssh key.
-        run: |
-          ${DOCKER_CMD} sh -c 'mkdir -pv /root/.ssh'
-          ${DOCKER_CMD} sh -c 'echo "${SSH_PRIVATE_KEY}" > /root/.ssh/id_rsa'
-          ${DOCKER_CMD} sh -c 'chmod 400 /root/.ssh/id_rsa'
-          ${DOCKER_CMD} sh -c 'touch /root/.ssh/known_hosts'
-          ${DOCKER_CMD} sh -c 'ssh-keyscan github.com >> /root/.ssh/known_hosts'
 
       - name: Testing. Building LLVM framework reference.
         run: |
@@ -214,8 +201,9 @@ jobs:
         run: |
           ${DOCKER_CMD} sh -c '
           cd compiler-tester && \
-          git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
-          git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com: && \
           export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
           cargo run --release --bin compiler-tester -- --path=${{ env.LLVM_BENCHMARK_PATH }} --mode=${{ env.LLVM_BENCHMARK_MODE }} --benchmark=reference.json'
 
@@ -235,15 +223,15 @@ jobs:
     needs: [candidate, reference]
     steps:
       - uses: AutoModality/action-clean@v1
-      - uses: webfactory/ssh-agent@v0.5.3
-        with:
-          ssh-private-key: ${{ secrets.SSH_PK_BOT }}
       - name: Preparing workspace. Setting environment 1.
         run: |
           echo "COMPOSE_FILE_DIR=${{ github.workspace }}/compiler-llvm/infra" >> $GITHUB_ENV
 
       - name: Preparing workspace. Setting environment 2.
         run: |
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
           echo "COMPOSE_FILE=${COMPOSE_FILE_DIR}/docker-compose.yml" >> $GITHUB_ENV
           echo "COMPOSE_PROJECT_NAME=analysis" >> $GITHUB_ENV
           echo "DOCKER_CMD=docker-compose exec -T zk" >> $GITHUB_ENV
@@ -266,7 +254,7 @@ jobs:
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_candidate_branch }}" >> $GITHUB_ENV
 
       - name: Preparing workspace. Checkout compiler-tester repository.
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: matter-labs/compiler-tester
           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
@@ -274,7 +262,7 @@ jobs:
           token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
           path: "compiler-tester"
 
-      - uses: actions/download-artifact@master
+      - uses: actions/download-artifact@v3
         with:
           name: compiler-llvm-docker-compose
           path: ${{ env.COMPOSE_FILE_DIR }}
@@ -283,28 +271,21 @@ jobs:
         run: |
           docker-compose pull
           docker-compose up -d zk
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PK_BOT }}
 
-      - name: Preparing workspace. Installing additional packages.
+      - name: Preparing workspace. Prepare docker environment
         run: |
+          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/'
+          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/'
+          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:'
           ${DOCKER_CMD} sh -c 'apt install -y ninja-build musl musl-tools'
           ${DOCKER_CMD} sh -c 'rustup target add x86_64-unknown-linux-musl'
 
-      - name: Preparing workspace. Setting docker ssh key.
-        run: |
-          ${DOCKER_CMD} sh -c 'mkdir -pv /root/.ssh'
-          ${DOCKER_CMD} sh -c 'echo "${SSH_PRIVATE_KEY}" > /root/.ssh/id_rsa'
-          ${DOCKER_CMD} sh -c 'chmod 400 /root/.ssh/id_rsa'
-          ${DOCKER_CMD} sh -c 'touch /root/.ssh/known_hosts'
-          ${DOCKER_CMD} sh -c 'ssh-keyscan github.com >> /root/.ssh/known_hosts'
-
-      - uses: actions/download-artifact@master
+      - uses: actions/download-artifact@v3
         with:
           name: compiler-llvm-candidate-benchmark
           path: compiler-tester
 
-      - uses: actions/download-artifact@master
+      - uses: actions/download-artifact@v3
         with:
           name: compiler-llvm-reference-benchmark
           path: compiler-tester
@@ -314,8 +295,9 @@ jobs:
         run: |
           ${DOCKER_CMD} sh -c '
           cd compiler-tester && \
-          git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
-          git config --global url."https://${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com: && \
           export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
           cargo run --release --bin benchmark-analyzer -- --reference reference.json --candidate candidate.json --output-file result.txt && \
           chown 1000:1000 result.txt'
