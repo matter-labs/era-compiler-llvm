@@ -91,14 +91,18 @@ jobs:
       - name: Testing. Building and running compiler tester.
         id: compiler_tester_run
         run: |
-          ${DOCKER_CMD} sh -c '
-          cd compiler-tester && \
-          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
-          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
-          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com: && \
-          export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-          cargo run --release --bin compiler-tester -- --mode=${{ env.COMPILER_TESTER_MODE }}'
-          compiler_exit_code=$?
+          if [ "${{ inputs.skip_slow }}" != "true" ]; then
+            ${DOCKER_CMD} sh -c '
+            cd compiler-tester && \
+            git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
+            git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
+            git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com: && \
+            export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
+            cargo run --release --bin compiler-tester -- --mode=${{ env.COMPILER_TESTER_MODE }}'
+            compiler_exit_code=$?
+          else
+            compiler_exit_code=0
+          fi
           if [ "${compiler_exit_code}" -gt "1" ]; then
             echo "RUN_SEGFAULT_STEP=true" >> $GITHUB_ENV
           fi
