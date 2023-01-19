@@ -4,6 +4,7 @@ target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "syncvm"
 
 @val = addrspace(4) global i256 42
+declare void @foo(i256 %val)
 
 ; CHECK-LABEL: ADDrrr_v:
 define i1 @ADDrrr_v(i256 %p1, i256 %p2) nounwind {
@@ -33,6 +34,38 @@ define i1 @XORrrr_v(i256 %p1, i256 %p2) nounwind {
 define i1 @ORrrr_v(i256 %p1, i256 %p2) nounwind {
 ; CHECK: or! r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}
   %p3 = or i256 %p1, %p2
+  %cmp = icmp eq i256 %p3, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: SHLrrr_v:
+define i1 @SHLrrr_v(i256 %p1, i256 %p2) nounwind {
+; CHECK: shl! r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}
+  %p3 = shl i256 %p1, %p2
+  %cmp = icmp eq i256 %p3, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: SHRrrr_v:
+define i1 @SHRrrr_v(i256 %p1, i256 %p2) nounwind {
+; CHECK: shr! r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}
+  %p3 = lshr i256 %p1, %p2
+  %cmp = icmp eq i256 %p3, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: MULrrrr_v:
+define i1 @MULrrrr_v(i256 %p1, i256 %p2) nounwind {
+; TODO: mul! r1, r2, r{{[0-9]+}}, r{{[0-9]+}}
+  %p3 = mul i256 %p1, %p2
+  %cmp = icmp eq i256 %p3, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: DIVrrrr_v:
+define i1 @DIVrrrr_v(i256 %p1, i256 %p2) nounwind {
+; TODO: div! r1, r2, r{{[0-9]+}}, r{{[0-9]+}}
+  %p3 = udiv i256 %p1, %p2
   %cmp = icmp eq i256 %p3, 0
   ret i1 %cmp
 }
@@ -67,6 +100,62 @@ define i256 @XORirr_Select(i256 %p1) nounwind {
 define i1 @ORirr_v(i256 %p1) nounwind {
 ; CHECK: or! 123, r{{[0-9]+}}, r{{[0-9]+}}
   %p3 = or i256 %p1, 123
+  %cmp = icmp eq i256 %p3, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: SHLirr_v:
+define i1 @SHLirr_v(i256 %p2) nounwind {
+; CHECK: shl! 42, r{{[0-9]+}}, r{{[0-9]+}}
+  %p3 = shl i256 42, %p2
+  %cmp = icmp eq i256 %p3, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: SHRirr_v:
+define i1 @SHRirr_v(i256 %p2) nounwind {
+; CHECK: shr! 42, r{{[0-9]+}}, r{{[0-9]+}}
+  %p3 = lshr i256 42, %p2
+  %cmp = icmp eq i256 %p3, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: SHLxrr_v:
+define i1 @SHLxrr_v(i256 %p1) nounwind {
+; CHECK: shl.s! 42, r{{[0-9]+}}, r{{[0-9]+}}
+  %p3 = shl i256 %p1, 42
+  %cmp = icmp eq i256 %p3, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: SHRxrr_v:
+define i1 @SHRxrr_v(i256 %p1) nounwind {
+; CHECK: shr.s! 42, r{{[0-9]+}}, r{{[0-9]+}}
+  %p3 = lshr i256 %p1, 42
+  %cmp = icmp eq i256 %p3, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: MULirrr_v:
+define i1 @MULirrr_v(i256 %p1) nounwind {
+; TODO: mul! 123, r1, r{{[0-9]+}}
+  %p3 = mul i256 %p1, 123
+  %cmp = icmp eq i256 %p3, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: DIVirrr_v:
+define i1 @DIVirrr_v(i256 %p2) nounwind {
+; TODO: div! 123, r1, r{{[0-9]+}}
+  %p3 = udiv i256 123, %p2
+  %cmp = icmp eq i256 %p3, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: DIVxrrr_v:
+define i1 @DIVxrrr_v(i256 %p1) nounwind {
+; TODO: div.s! 123, r1, r{{[0-9]+}}
+  %p3 = udiv i256 %p1, 123
   %cmp = icmp eq i256 %p3, 0
   ret i1 %cmp
 }
@@ -107,6 +196,69 @@ define i1 @XORcrr_v(i256 %p1) nounwind {
   ret i1 %cmp
 }
 
+; CHECK-LABEL: SHLcrr_v:
+define i1 @SHLcrr_v(i256 %p1) nounwind {
+  %val = load i256, i256 addrspace(4)* @val
+; CHECK: shl! @val[0], r{{[0-9]+}}, r{{[0-9]+}}
+  %p2 = shl i256 %val, %p1
+  %cmp = icmp eq i256 %p2, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: SHRcrr_v:
+define i1 @SHRcrr_v(i256 %p1) nounwind {
+  %val = load i256, i256 addrspace(4)* @val
+; CHECK: shr! @val[0], r{{[0-9]+}}, r{{[0-9]+}}
+  %p2 = lshr i256 %val, %p1
+  %cmp = icmp eq i256 %p2, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: SHLyrr_v:
+define i1 @SHLyrr_v(i256 %p1) nounwind {
+  %val = load i256, i256 addrspace(4)* @val
+; CHECK: shl.s! @val[0], r{{[0-9]+}}, r{{[0-9]+}}
+  %p2 = shl i256 %p1, %val
+  %cmp = icmp eq i256 %p2, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: SHRyrr_v:
+define i1 @SHRyrr_v(i256 %p1) nounwind {
+  %val = load i256, i256 addrspace(4)* @val
+; CHECK: shr.s! @val[0], r{{[0-9]+}}, r{{[0-9]+}}
+  %p2 = lshr i256 %p1, %val
+  %cmp = icmp eq i256 %p2, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: MULcrrr_v:
+define i1 @MULcrrr_v(i256 %p1) nounwind {
+  %val = load i256, i256 addrspace(4)* @val
+; TODO: mul! @val[0], r1, r{{[0-9]+}}
+  %p2 = mul i256 %p1, %val
+  %cmp = icmp eq i256 %p2, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: DIVcrrr_v:
+define i1 @DIVcrrr_v(i256 %p1) nounwind {
+  %val = load i256, i256 addrspace(4)* @val
+; TODO: div! @val[0], r1, r{{[0-9]+}}
+  %p2 = udiv i256 %val, %p1
+  %cmp = icmp eq i256 %p2, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: DIVyrrr_v:
+define i1 @DIVyrrr_v(i256 %p1) nounwind {
+  %val = load i256, i256 addrspace(4)* @val
+; TODO: div.s! @val[0], r1, r{{[0-9]+}}
+  %p2 = udiv i256 %p1, %val
+  %cmp = icmp eq i256 %p2, 0
+  ret i1 %cmp
+}
+
 ; CHECK-LABEL: ADDsrr_v:
 define i1 @ADDsrr_v(i256 %p1) nounwind {
   %valptr = alloca i256
@@ -143,6 +295,76 @@ define i1 @XORsrr_v(i256 %p1) nounwind {
   %val = load i256, i256* %valptr
 ; CHECK: xor! stack-[1], r{{[0-9]+}}, r{{[0-9]+}}
   %p2 =  xor i256 %val, %p1
+  %cmp = icmp eq i256 %p2, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: SHLsrr_v:
+define i1 @SHLsrr_v(i256 %p1) nounwind {
+  %valptr = alloca i256
+  %val = load i256, i256* %valptr
+; CHECK: shl! stack-[1], r{{[0-9]+}}, r{{[0-9]+}}
+  %p2 = shl i256 %val, %p1
+  %cmp = icmp eq i256 %p2, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: SHRsrr_v:
+define i1 @SHRsrr_v(i256 %p1) nounwind {
+  %valptr = alloca i256
+  %val = load i256, i256* %valptr
+; CHECK: shr! stack-[1], r{{[0-9]+}}, r{{[0-9]+}}
+  %p2 = lshr i256 %val, %p1
+  %cmp = icmp eq i256 %p2, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: SHLzrr_v:
+define i1 @SHLzrr_v(i256 %p1) nounwind {
+  %valptr = alloca i256
+  %val = load i256, i256* %valptr
+; CHECK: shl.s! stack-[1], r{{[0-9]+}}, r{{[0-9]+}}
+  %p2 = shl i256 %p1, %val
+  %cmp = icmp eq i256 %p2, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: SHRzrr_v:
+define i1 @SHRzrr_v(i256 %p1) nounwind {
+  %valptr = alloca i256
+  %val = load i256, i256* %valptr
+; CHECK: shr.s! stack-[1], r{{[0-9]+}}, r{{[0-9]+}}
+  %p2 = lshr i256 %p1, %val
+  %cmp = icmp eq i256 %p2, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: MULsrrr_v:
+define i1 @MULsrrr_v(i256 %p1) nounwind {
+  %valptr = alloca i256
+  %val = load i256, i256* %valptr
+; TODO: mul! stack-[1], r1, r{{[0-9]+}}
+  %p2 = mul i256 %p1, %val
+  %cmp = icmp eq i256 %p2, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: DIVsrrr_v:
+define i1 @DIVsrrr_v(i256 %p1) nounwind {
+  %valptr = alloca i256
+  %val = load i256, i256* %valptr
+; TODO: div! stack-[1], r1, r{{[0-9]+}}
+  %p2 = udiv i256 %val, %p1
+  %cmp = icmp eq i256 %p2, 0
+  ret i1 %cmp
+}
+
+; CHECK-LABEL: DIVzrrr_v:
+define i1 @DIVzrrr_v(i256 %p1) nounwind {
+  %valptr = alloca i256
+  %val = load i256, i256* %valptr
+; TODO: div.s! stack-[1], r1, r{{[0-9]+}}
+  %p2 = udiv i256 %p1, %val
   %cmp = icmp eq i256 %p2, 0
   ret i1 %cmp
 }

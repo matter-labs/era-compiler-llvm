@@ -613,12 +613,16 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
                        !strconcat(!strconcat(asmstring, ".s"),
                                   "$cc\t$imm, $rs1, $rd0"), []>, PseudoRel, FlagRel;
 
-  foreach swap = ["i", "x"] in
-  let Defs = [Flags] in
-  def swap#rr_v : Iirr<opcode, !if(!eq(swap, "i"), 0, 1), 0,
+  let Defs = [Flags] in {
+  def irr_v : Iirr<opcode, 0, 0,
+                        (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1, cc:$cc),
+                       !strconcat(asmstring,
+                                  "$cc!\t$imm, $rs1, $rd0"), []>, FlagRel;
+  def xrr_v : Iirr<opcode, 1, 0,
                        (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1, cc:$cc),
-                       !strconcat(!strconcat(asmstring, !if(!eq(swap, "i"), "", ".s")),
-                                  "$cc!\t$imm, $rs1, $rd0"), []>;
+                       !strconcat(!strconcat(asmstring, ".s"),
+                                  "$cc!\t$imm, $rs1, $rd0"), []>, FlagRel;
+  }
   let mayLoad = 1 in {
   let isPseudo = 1, isCodeGenOnly = 1 in
   def yrr_p : Pseudo<(outs GR256:$rd0), (ins memop:$src0, GR256:$rs1),
