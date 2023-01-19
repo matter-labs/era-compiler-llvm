@@ -88,7 +88,7 @@ jobs:
           ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
           ./build_gnu.sh ${{ env.LLVM_BUILD_TYPE }}'
 
-       - name: Testing with LLVM Lit default options.
+      - name: Testing with LLVM Lit default options.
         run: ${DOCKER_CMD} sh -c 'cd compiler-llvm && ninja -C build-target check-llvm'
 
       - name: Running Lit SyncVM tests with llc verification options.
