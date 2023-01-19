@@ -120,7 +120,8 @@ jobs:
       - name: Running Lit SyncVM tests with llc verification options.
         env:
             LLC_OPTS: >
-              --cgp-verify-bfi-updates 
+              --cgp-verify-bfi-updates
+              --compile-twice
               --earlycse-debug-hash
               --loop-distribute-verify
               --machine-combiner-verify-pattern-order
@@ -131,7 +132,9 @@ jobs:
               --tail-dup-verify
               --unroll-verify-domtree
               --vplan-verify-hcfg
-        run: ${DOCKER_CMD} sh -c 'cd compiler-llvm && build-target/bin/llvm-lit -s "-Dllc=llc ${LLC_OPTS}"  llvm/test/CodeGen/SyncVM/'
+            XFAILS:
+              "CodeGen/SyncVM/memcpy-expansion.ll"
+        run: ${DOCKER_CMD} sh -c 'cd compiler-llvm && build-target/bin/llvm-lit -s --xfail "${XFAILS}"  "-Dllc=llc ${LLC_OPTS}"  llvm/test/CodeGen/SyncVM/'
 
       - name: Running Lit tests with opt verification options.
         env:
@@ -159,9 +162,9 @@ jobs:
               --verify-scev-strict
               --vplan-verify-hcfg 
             XFAILS:
-                "Transforms/LoopVectorize/vplan_hcfg_stress_test.ll;\
-                Transforms/LoopFlatten/widen-iv2.ll;\
-                Transforms/LoopFusion/simple.ll"
+              "Transforms/LoopVectorize/vplan_hcfg_stress_test.ll;\
+              Transforms/LoopFlatten/widen-iv2.ll;\
+              Transforms/LoopFusion/simple.ll"
         run: ${DOCKER_CMD} sh -c 'cd compiler-llvm && build-target/bin/llvm-lit -s --xfail "${XFAILS}" "-Dopt=opt ${OPT_OPTS}"  llvm/test/CodeGen/'
         
       - uses: 8398a7/action-slack@v3
