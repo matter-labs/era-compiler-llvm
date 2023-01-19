@@ -88,33 +88,7 @@ jobs:
           ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
           ./build_gnu.sh ${{ env.LLVM_BUILD_TYPE }}'
 
-      - name: Testing. Building and running compiler tester.
-        id: compiler_tester_run
-        run: |
-          if [ "${{ inputs.skip_slow }}" != "true" ]; then
-            ${DOCKER_CMD} sh -c '
-            cd compiler-tester && \
-            git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
-            git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
-            git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com: && \
-            export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-            cargo run --release --bin compiler-tester -- --mode=${{ env.COMPILER_TESTER_MODE }}'
-            compiler_exit_code=$?
-          else
-            compiler_exit_code=0
-          fi
-          if [ "${compiler_exit_code}" -gt "1" ]; then
-            echo "RUN_SEGFAULT_STEP=true" >> $GITHUB_ENV
-          fi
-
-      - name: Testing. Running segfault.sh.
-        if: always() && steps.compiler_tester_run.outcome == 'failure' && env.RUN_SEGFAULT_STEP == 'true'
-        run: |
-          if [ "${{ inputs.skip_slow }}" != "true" ]; then
-            ${DOCKER_CMD} sh -c 'cd compiler-tester && ./segfault.sh'
-          fi
-
-      - name: Testing with LLVM Lit default options.
+       - name: Testing with LLVM Lit default options.
         run: ${DOCKER_CMD} sh -c 'cd compiler-llvm && ninja -C build-target check-llvm'
 
       - name: Running Lit SyncVM tests with llc verification options.
@@ -167,6 +141,32 @@ jobs:
               Transforms/LoopFusion/simple.ll"
         run: ${DOCKER_CMD} sh -c 'cd compiler-llvm && build-target/bin/llvm-lit -s --xfail "${XFAILS}" "-Dopt=opt ${OPT_OPTS}"  llvm/test/CodeGen/'
         
+     - name: Testing. Building and running compiler tester.
+        id: compiler_tester_run
+        run: |
+          if [ "${{ inputs.skip_slow }}" != "true" ]; then
+            ${DOCKER_CMD} sh -c '
+            cd compiler-tester && \
+            git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/ && \
+            git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/ && \
+            git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com: && \
+            export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
+            cargo run --release --bin compiler-tester -- --mode=${{ env.COMPILER_TESTER_MODE }}'
+            compiler_exit_code=$?
+          else
+            compiler_exit_code=0
+          fi
+          if [ "${compiler_exit_code}" -gt "1" ]; then
+            echo "RUN_SEGFAULT_STEP=true" >> $GITHUB_ENV
+          fi
+
+      - name: Testing. Running segfault.sh.
+        if: always() && steps.compiler_tester_run.outcome == 'failure' && env.RUN_SEGFAULT_STEP == 'true'
+        run: |
+          if [ "${{ inputs.skip_slow }}" != "true" ]; then
+            ${DOCKER_CMD} sh -c 'cd compiler-tester && ./segfault.sh'
+          fi
+
       - uses: 8398a7/action-slack@v3
         with:
           status: ${{ job.status }}
