@@ -141,7 +141,7 @@ jobs:
               Transforms/LoopFusion/simple.ll"
         run: ${DOCKER_CMD} sh -c 'cd compiler-llvm && build-target/bin/llvm-lit -s --xfail "${XFAILS}" "-Dopt=opt ${OPT_OPTS}"  llvm/test/CodeGen/'
         
-     - name: Testing. Building and running compiler tester.
+      - name: Testing. Building and running compiler tester.
         id: compiler_tester_run
         run: |
           if [ "${{ inputs.skip_slow }}" != "true" ]; then
