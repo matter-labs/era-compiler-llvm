@@ -169,7 +169,7 @@ def memop : Operand<i256> {
 
 def stackop : Operand<i256> {
   let PrintMethod = "printStackOperand";
-  let MIOperandInfo = (ops GR256, GR256, i16imm);
+  let MIOperandInfo = (ops GRStack, GR256, i16imm);
 }
 
 //===----------------------------------------------------------------------===//

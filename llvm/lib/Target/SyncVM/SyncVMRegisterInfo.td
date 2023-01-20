@@ -42,7 +42,6 @@ def GRPTR : RegisterClass<"SyncVM", [fatptr], 256, (add R0, R1, R2, R3, R4, R5, 
                                                       R7, R8, R9, R10, R11, R12,
                                                       R13, R14, R15)>;
 
-
 //===----------------------------------------------------------------------===//
 // Special registers
 //===----------------------------------------------------------------------===//
@@ -64,3 +63,6 @@ def Flags : SyncVMRegister<18, "#BAD#">;
 
 let isAllocatable = 0 in
 def SPR256 : RegisterClass<"SyncVM", [i256], 256, (add PC, SP, Flags)>;
+
+// Registers that could be used for stack addressing.
+def GRStack : RegisterClass<"SyncVM", [i256], 256, (add R0, SP)>;
