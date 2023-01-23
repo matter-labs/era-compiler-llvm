@@ -1110,6 +1110,16 @@ if(LLVM_INCLUDE_TESTS)
   umbrella_lit_testsuite_begin(check-all)
 endif()
 
+# SyncVM local begin
+find_package(Git REQUIRED)
+execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse HEAD
+                WORKING_DIRECTORY "${LLVM_MAIN_SRC_DIR}"
+                OUTPUT_VARIABLE COMMIT_ID
+                RESULT_VARIABLE RES_ID
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+add_compile_definitions(SYNCVM_LLVM_COMMIT_ID="${COMMIT_ID}")
+# SyncVM local end
+
 # Put this before tblgen. Else we have a circular dependence.
 add_subdirectory(lib/Demangle)
 add_subdirectory(lib/Support)
