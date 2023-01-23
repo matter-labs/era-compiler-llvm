@@ -66,6 +66,7 @@ def phab_login_to_github_login(phab_token:str, repo:github.Repository.Repository
     finding a commit made in Phabricator's Differential.
     The commit's SHA1 is then looked up in the github repo and
     the committer's login associated with that commit is returned.
+
     :param str phab_token: The Conduit API token to use for communication with Pabricator
     :param github.Repository.Repository repo: The github repo to use when looking for the SHA1 found in Differential
     :param str phab_login: The Phabricator login to be translated.
@@ -120,6 +121,7 @@ class ReleaseWorkflow:
     The current sub-commands are:
         * create-branch
         * create-pull-request
+
     The execute_command method will automatically choose the correct sub-command
     based on the text in stdin.
     """
@@ -206,6 +208,7 @@ class ReleaseWorkflow:
         """
         Returns the comment string with a prefix that will cause
         a Github workflow to skip parsing this comment.
+
         :param str comment: The comment to ignore
         """
         return "<!--IGNORE-->\n"+comment
@@ -245,6 +248,7 @@ class ReleaseWorkflow:
         This function will try to find the best reviewers for `commits` and
         then add a comment requesting review of the backport and assign the
         pull request to the selected reviewers.
+
         The reviewers selected are those users who approved the patch in
         Phabricator.
         """
@@ -266,9 +270,12 @@ class ReleaseWorkflow:
         """
         This function attempts to backport `commits` into the branch associated
         with `self.issue_number`.
+
         If this is successful, then the branch is pushed to `self.branch_repo_name`, if not,
         a comment is added to the issue saying that the cherry-pick failed.
+
         :param list commits: List of commits to cherry-pick.
+
         """
         print('cherry-picking', commits)
         branch_name = self.branch_name
