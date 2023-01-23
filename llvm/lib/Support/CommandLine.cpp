@@ -2471,6 +2471,11 @@ public:
     OS << "LLVM (http://llvm.org/):\n  ";
 #endif
     OS << PACKAGE_NAME << " version " << PACKAGE_VERSION << "\n  ";
+// SyncVM local begin
+#ifdef SYNCVM_LLVM_COMMIT_ID
+    OS << "Git: " << SYNCVM_LLVM_COMMIT_ID << "\n  ";
+#endif
+// SyncVM local end
 #if LLVM_IS_DEBUG_BUILD
     OS << "DEBUG build";
 #else
@@ -2739,3 +2744,9 @@ void LLVMParseCommandLineOptions(int argc, const char *const *argv,
   llvm::cl::ParseCommandLineOptions(argc, argv, StringRef(Overview),
                                     &llvm::nulls());
 }
+
+// SyncVM local begin
+int LLVMPrintCommitIDTo(char* Buf) {
+  return sprintf(Buf, "%s", SYNCVM_LLVM_COMMIT_ID);
+}
+// SyncVM local end
