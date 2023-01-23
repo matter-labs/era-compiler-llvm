@@ -2537,6 +2537,11 @@ public:
     OS << "LLVM (http://llvm.org/):\n  ";
 #endif
     OS << PACKAGE_NAME << " version " << PACKAGE_VERSION << "\n  ";
+// EraVM local begin
+#ifdef ERAVM_LLVM_COMMIT_ID
+    OS << "Git: " << ERAVM_LLVM_COMMIT_ID << "\n  ";
+#endif
+// EraVM local end
 #if LLVM_IS_DEBUG_BUILD
     OS << "DEBUG build";
 #else
@@ -2842,3 +2847,9 @@ void LLVMParseCommandLineOptions(int argc, const char *const *argv,
   llvm::cl::ParseCommandLineOptions(argc, argv, StringRef(Overview),
                                     &llvm::nulls());
 }
+
+// EraVM local begin
+int LLVMPrintCommitIDTo(char* Buf) {
+  return sprintf(Buf, "%s", ERAVM_LLVM_COMMIT_ID);
+}
+// EraVM local end
