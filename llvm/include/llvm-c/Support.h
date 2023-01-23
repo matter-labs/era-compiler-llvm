@@ -63,6 +63,14 @@ void *LLVMSearchForAddressOfSymbol(const char *symbolName);
  */
 void LLVMAddSymbol(const char *symbolName, void *symbolValue);
 
+// EraVM local begin
+/**
+ * Print git commit id to Buf.
+ * Return sprintf exit code.
+ */
+int LLVMPrintCommitIDTo(char* Buf);
+// EraVM local end
+
 /**
  * @}
  */
