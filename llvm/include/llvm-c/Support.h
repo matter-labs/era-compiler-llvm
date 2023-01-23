@@ -64,6 +64,14 @@ LLVM_C_ABI void *LLVMSearchForAddressOfSymbol(const char *symbolName);
  */
 LLVM_C_ABI void LLVMAddSymbol(const char *symbolName, void *symbolValue);
 
+// EVM local begin
+/**
+ * Print git commit id to Buf.
+ * Return sprintf exit code.
+ */
+int LLVMPrintCommitIDTo(char* Buf);
+// EVM local end
+
 /**
  * @}
  */

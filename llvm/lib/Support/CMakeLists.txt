@@ -136,6 +136,16 @@ endif()
 
 add_subdirectory(BLAKE3)
 
+# EVM local begin
+find_package(Git REQUIRED)
+execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse HEAD
+                WORKING_DIRECTORY "${LLVM_MAIN_SRC_DIR}"
+                OUTPUT_VARIABLE COMMIT_ID
+                RESULT_VARIABLE RES_ID
+                OUTPUT_STRIP_TRAILING_WHITESPACE)
+set_source_files_properties(CommandLine.cpp PROPERTIES COMPILE_FLAGS -DEVM_LLVM_COMMIT_ID=\\"${COMMIT_ID}\\")
+# EVM local end
+
 add_llvm_component_library(LLVMSupport
   ABIBreak.cpp
   AMDGPUMetadata.cpp
