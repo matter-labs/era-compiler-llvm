@@ -97,6 +97,7 @@ jobs:
               --scev-verify-ir
               --tail-dup-verify
               --unroll-verify-domtree
+              --verify-regalloc
               --vplan-verify-hcfg
             XFAILS:
               "CodeGen/SyncVM/memcpy-expansion.ll"
