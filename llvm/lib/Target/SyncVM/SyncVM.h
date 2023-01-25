@@ -84,6 +84,7 @@ FunctionPass *createSyncVMExpandSelectPass();
 FunctionPass *createSyncVMPeepholePass();
 FunctionPass *createSyncVMPropagateGenericPointersPass();
 FunctionPass *createSyncVMStackAddressConstantPropagationPass();
+FunctionPass *createSyncVMCombineAddressingModePass();
 FunctionPass *createSyncVMCombineFlagSettingPass();
 FunctionPass *createSyncVMCombineToIndexedMemopsPass();
 
@@ -101,6 +102,7 @@ void initializeSyncVMExpandSelectPass(PassRegistry &);
 void initializeSyncVMPeepholePass(PassRegistry &);
 void initializeSyncVMPropagateGenericPointersPass(PassRegistry &);
 void initializeSyncVMStackAddressConstantPropagationPass(PassRegistry &);
+void initializeSyncVMCombineAddressingModePass(PassRegistry &);
 void initializeSyncVMCombineFlagSettingPass(PassRegistry &);
 void initializeSyncVMCombineToIndexedMemopsPass(PassRegistry &);
 

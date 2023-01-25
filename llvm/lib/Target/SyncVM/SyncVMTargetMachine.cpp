@@ -31,6 +31,8 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   // TODO: optimize switch lowering
   auto &PR = *PassRegistry::getPassRegistry();
   initializeLowerSwitchLegacyPassPass(PR);
+  initializeSyncVMCombineAddressingModePass(PR);
+  initializeSyncVMCombineFlagSettingPass(PR);
   initializeSyncVMExpandUMAPass(PR);
   initializeSyncVMIndirectUMAPass(PR);
   initializeSyncVMIndirectExternalCallPass(PR);
@@ -41,7 +43,6 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMLinkRuntimePass(PR);
   initializeSyncVMAllocaHoistingPass(PR);
   initializeSyncVMPeepholePass(PR);
-  initializeSyncVMCombineFlagSettingPass(PR);
   initializeSyncVMStackAddressConstantPropagationPass(PR);
 }
 
@@ -145,6 +146,7 @@ void SyncVMPassConfig::addPreRegAlloc() {
 }
 
 void SyncVMPassConfig::addPreEmitPass() {
+  addPass(createSyncVMCombineAddressingModePass());
   addPass(createSyncVMExpandSelectPass());
   addPass(createSyncVMExpandPseudoPass());
   // TODO: The pass combines store with MULxxrr, DIVxxrr regardles of whether

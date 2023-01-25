@@ -25,6 +25,7 @@ add_llvm_target(SyncVMCodeGen
   SyncVMAddConditions.cpp
   SyncVMBytesToCells.cpp
   SyncVMCodegenPrepare.cpp
+  SyncVMCombineAddressingMode.cpp
   SyncVMCombineFlagSetting.cpp
   SyncVMCombineToIndexedMemops.cpp
   SyncVMExpandUMA.cpp
