@@ -46,7 +46,7 @@ def ToStackReg     : DestAddrModeValue<4>;
 
 def getPseudoMapOpcode : InstrMapping {
   let FilterClass = "PseudoRel";
-  let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode", "ReverseOperand"];
+  let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode", "ReverseOperand", "isCommutable"];
   let ColFields = ["IsPseudoArith"];
   let KeyCol = ["1"];
   let ValueCols = [["0"]];
