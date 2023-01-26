@@ -66,18 +66,25 @@ INITIALIZE_PASS_DEPENDENCY(ReachingDefAnalysis)
 INITIALIZE_PASS_END(SyncVMCombineAddressingMode, DEBUG_TYPE,
                 SYNCVM_COMBINE_ADDRESSING_MODE_NAME, false, false)
 
+static bool isRegister(const MachineOperand& MO, Register Reg) {
+  if (!MO.isReg())
+    return false;
+  return MO.getReg() == Reg;
+}
+
 /// If MI materializes zero.
 bool SyncVMCombineAddressingMode::isZero(const MachineInstr& MI) const {
   if (!TII->isAdd(MI))
     return false;
   unsigned NumDefs = MI.getNumExplicitDefs();
-  return (TII->hasRROperandAddressingMode(MI) && MI.getOperand(NumDefs).getReg() == SyncVM::R0 && MI.getOperand(NumDefs + 1).getReg() == SyncVM::R0)
-    || (TII->hasRIOperandAddressingMode(MI) && getImmOrCImm(MI.getOperand(NumDefs)) == 0 && MI.getOperand(NumDefs + 1).getReg() == SyncVM::R0);
+  return (TII->hasRROperandAddressingMode(MI) && isRegister(MI.getOperand(NumDefs), SyncVM::R0) && isRegister(MI.getOperand(NumDefs + 1), SyncVM::R0))
+    || (TII->hasRIOperandAddressingMode(MI) && getImmOrCImm(MI.getOperand(NumDefs)) == 0 && isRegister(MI.getOperand(NumDefs + 1), SyncVM::R0));
 }
 
 bool isImmediateMaterialization(const MachineInstr& MI) {
-  return MI.getOpcode() == SyncVM::ADDirr_s && MI.getOperand(1).getReg() == SyncVM::R0;
+  return MI.getOpcode() == SyncVM::ADDirr_s && isRegister(MI.getOperand(1), SyncVM::R0);
 }
+
 
 static void canonicalize(MachineInstr &MI) {
 }
