@@ -1291,7 +1291,7 @@ let isReturn = 1, isTerminator = 1, isBarrier = 1  in {
 def RET   : IRet<7, RFNone, (ins), "ret", [(SyncVMret)]>;
 def PANIC : IRet<7, RFPanic, (ins GR256:$rs0), "ret.panic\t$rs0", []>;
 }
-let isTerminator = 1, isBarrier = 1, isTrap = 1 in
+let isTerminator = 1, isBarrier = 1, isTrap = 1, isReturn = 1 in
 def THROW : IRet<7, RFErr, (ins GR256:$rs0), "ret.error\t$rs0",
                  [(SyncVMthrow GR256:$rs0)]>;
 
@@ -1299,6 +1299,8 @@ def : InstAlias<"revert", (THROW R1)>;
 def : InstAlias<"panic", (PANIC R1)>;
 
 let isTerminator = 1, isBarrier = 1 in {
+
+let isTerminator = 1, isBarrier = 1, isReturn = 1 in {
 def RETURN : IRet<52, RFErr, (ins GR256:$rs0), "ret.ok.to_label\t$rs0, @DEFAULT_FAR_RETURN",
                   [(SyncVMreturn GR256:$rs0)]>;
 def REVERT : IRet<53, RFErr, (ins GR256:$rs0), "ret.revert.to_label\t$rs0, @DEFAULT_FAR_REVERT",
