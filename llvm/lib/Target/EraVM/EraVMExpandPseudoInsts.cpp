@@ -82,7 +82,8 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
         auto func_name = func_opnd->getName();
         if (func_name == "__cxa_throw") {
           BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
-                  TII->get(EraVM::THROW));
+                  TII->get(EraVM::THROW))
+              .addReg(EraVM::R1);
         } else {
           // One of the problem: the backend cannot restrict frontend to not
           // emit calls (Should we reinforce it?) so this route is needed. If a
