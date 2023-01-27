@@ -2691,8 +2691,7 @@ Instruction *InstCombinerImpl::visitCallInst(CallInst &CI) {
 
   // Some intrinsics (like experimental_gc_statepoint) can be used in invoke
   // context, so it is handled in visitCallBase and we should trigger it.
-  //return visitCallBase(*II);
-  return nullptr;
+  return visitCallBase(*II);
 }
 
 // Fence instruction simplification
@@ -3074,7 +3073,7 @@ Instruction *InstCombinerImpl::visitCallBase(CallBase &Call) {
     if (Value *ReturnedArg = Call.getReturnedArgOperand()) {
       Type *CallTy = Call.getType();
       Type *RetArgTy = ReturnedArg->getType();
-      if (RetArgTy->canLosslesslyBitCastTo(CallTy))
+      if (CallTy != RetArgTy && RetArgTy->canLosslesslyBitCastTo(CallTy))
         return replaceInstUsesWith(
             Call, Builder.CreateBitOrPointerCast(ReturnedArg, CallTy));
     }
