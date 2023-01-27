@@ -2691,7 +2691,8 @@ Instruction *InstCombinerImpl::visitCallInst(CallInst &CI) {
 
   // Some intrinsics (like experimental_gc_statepoint) can be used in invoke
   // context, so it is handled in visitCallBase and we should trigger it.
-  return visitCallBase(*II);
+  //return visitCallBase(*II);
+  return nullptr;
 }
 
 // Fence instruction simplification
