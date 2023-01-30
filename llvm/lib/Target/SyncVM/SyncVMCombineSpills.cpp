@@ -236,11 +236,10 @@ bool SyncVMCombineSpills::convertVReg(Register reg, MachineFunction &MF) {
     return false;
   }
   
-
   auto NewDefMI = BuildMI(*DefMI->getParent(), DefMI, DefMI->getDebugLoc(),
                           TII->get(new_opcode));
-  // adds operands
-  for (unsigned int i = 1; i < DefMI->getNumOperands() - 1; i++) {
+  // adds operands, except the CC
+  for (unsigned int i = 1; i < DefMI->getNumExplicitOperands() - 1; i++) {
     NewDefMI.add(DefMI->getOperand(i));
   }
 
@@ -259,19 +258,20 @@ bool SyncVMCombineSpills::convertVReg(Register reg, MachineFunction &MF) {
   for (MachineInstr &UseMI : MRI->use_nodbg_instructions(reg)) {
     LLVM_DEBUG(dbgs() << "Converting use: "; UseMI.dump(););
 
-    bool IsFirstOperand =
-        SyncVMInstrInfo::useRegIsFirstSourceOperand(UseMI, reg);
 
     auto new_use_opcode =
         llvm::SyncVM::getSROperandAddressingModeOpcode(UseMI.getOpcode());
     if (new_use_opcode == -1) {
-      LLVM_DEBUG(dbgs() << "Cannot transform use instruction to stack mode\n");
-      llvm_unreachable("Unexpected error happened during conversion:"
-                       " cannot find new use opcode");
+      std::string err =
+          "Cannot transform use instruction to stack mode with opcode:" +
+          std::to_string(UseMI.getOpcode()) + "\n";
+      llvm_unreachable(err.c_str());
     }
 
     // have to reverse operands if use is 2nd operand of non-commutative
     // instruction
+    bool IsFirstOperand =
+        SyncVMInstrInfo::useRegIsFirstSourceOperand(UseMI, reg);
     if (!UseMI.isCommutable()) {
       if (!IsFirstOperand) {
         int sr_opcode = llvm::SyncVM::getReversedOperandOpcode(new_use_opcode);
@@ -303,12 +303,12 @@ bool SyncVMCombineSpills::convertVReg(Register reg, MachineFunction &MF) {
     // add the other operands.
     if (IsFirstOperand) {
       // if it is first operand, then add the second operand
-      for (unsigned i = index + 1; i < UseMI.getNumOperands(); ++i) {
+      for (unsigned i = index + 1; i < UseMI.getNumExplicitOperands(); ++i) {
         NewUseMI.add(UseMI.getOperand(i));
       }
     } else {
       NewUseMI.add(UseMI.getOperand(index - 1));
-      for (unsigned i = index + 1; i < UseMI.getNumOperands(); ++i) {
+      for (unsigned i = index + 1; i < UseMI.getNumExplicitOperands(); ++i) {
         NewUseMI.add(UseMI.getOperand(i));
       }
     }
