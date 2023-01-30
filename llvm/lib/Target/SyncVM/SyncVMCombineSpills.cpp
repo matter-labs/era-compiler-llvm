@@ -321,7 +321,10 @@ bool SyncVMCombineSpills::convertVReg(Register reg, MachineFunction &MF) {
     MI->eraseFromParent();
   }
 
-  return !ToBeRemoved.empty();
+  // make sure the virtual register is gone:
+  assert(MRI->reg_empty(reg));
+
+  return true;
 }
 
 bool SyncVMCombineSpills::runOnMachineFunction(MachineFunction &MF) {
