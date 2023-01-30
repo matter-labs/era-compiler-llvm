@@ -256,7 +256,7 @@ bool SyncVMCombineSpills::convertVReg(Register reg, MachineFunction &MF) {
   ToBeRemoved.push_back(DefMI);
 
   // 2. convert all use instructions to load from stack
-  for (MachineInstr &UseMI : MRI->use_instructions(reg)) {
+  for (MachineInstr &UseMI : MRI->use_nodbg_instructions(reg)) {
     LLVM_DEBUG(dbgs() << "Converting use: "; UseMI.dump(););
 
     bool IsFirstOperand =
