@@ -219,9 +219,6 @@ bool SyncVMCombineSpills::convertVReg(Register reg, MachineFunction &MF) {
 
   // now we can safely transform the program:
 
-  // 0. allocate spilled stack slot. We could probably reuse stack slots
-  // but that would not have performance benefits
-  int new_fi = MF.getFrameInfo().CreateSpillStackObject(32, Align(1));
 
   // 1. convert def instruction to store to stack:
   MachineInstr *DefMI = MRI->getUniqueVRegDef(reg);
@@ -238,13 +235,19 @@ bool SyncVMCombineSpills::convertVReg(Register reg, MachineFunction &MF) {
         << "Def instruction does not have a stack mode opcode counterpart.\n");
     return false;
   }
+  
+
   auto NewDefMI = BuildMI(*DefMI->getParent(), DefMI, DefMI->getDebugLoc(),
                           TII->get(new_opcode));
   // adds operands
   for (unsigned int i = 1; i < DefMI->getNumOperands() - 1; i++) {
     NewDefMI.add(DefMI->getOperand(i));
   }
-  // adds stack slot operand
+
+  // adds stack slot operand:
+  // allocate spilled stack slot. We could probably reuse stack slots
+  // but that would not have performance benefits
+  int new_fi = MF.getFrameInfo().CreateSpillStackObject(32, Align(1));
   addStackOperand(NewDefMI, new_fi);
   NewDefMI.addImm(0);
   LLVM_DEBUG(dbgs() << "To: "; NewDefMI->dump());
@@ -289,14 +292,10 @@ bool SyncVMCombineSpills::convertVReg(Register reg, MachineFunction &MF) {
     auto index = UseMI.findRegisterUseOperandIdx(reg);
     assert(index != -1);
 
-    auto copyOverDestOperands = [](auto &SrcMI, auto &DestMI) {
-      for (unsigned i = 0; i < SrcMI.getNumExplicitDefs(); ++i) {
-        DestMI.add(SrcMI.getOperand(i));
-      }
-    };
-
     // first, copy over destination operands
-    copyOverDestOperands(UseMI, NewUseMI);
+    for (unsigned i = 0; i < UseMI.getNumExplicitDefs(); ++i) {
+      NewUseMI.add(UseMI.getOperand(i));
+    }
 
     // then, stuff in stack operand
     addStackOperand(NewUseMI, new_fi);
@@ -322,7 +321,7 @@ bool SyncVMCombineSpills::convertVReg(Register reg, MachineFunction &MF) {
     MI->eraseFromParent();
   }
 
-  return true;
+  return !ToBeRemoved.empty();
 }
 
 bool SyncVMCombineSpills::runOnMachineFunction(MachineFunction &MF) {
