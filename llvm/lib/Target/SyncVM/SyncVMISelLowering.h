@@ -89,8 +89,7 @@ public:
   }
 
   /// isTruncateFree - Return true if it's free to truncate a value of type
-  /// Ty1 to type Ty2. e.g. On syncvm it's free to truncate a i16 value in
-  /// register R15W to i8 by referencing its sub-register R15B.
+  /// Ty1 to type Ty2. 
   bool isTruncateFree(Type *Ty1, Type *Ty2) const override { return false; }
   bool isTruncateFree(EVT VT1, EVT VT2) const override { return false; }
 
@@ -104,14 +103,24 @@ public:
   /// out to 16 bits.
   bool isZExtFree(Type *Ty1, Type *Ty2) const override { return false; }
   bool isZExtFree(EVT VT1, EVT VT2) const override { return false; }
-  bool isZExtFree(SDValue Val, EVT VT2) const override { return false; }
+
+  bool isZExtFree(SDValue Val, EVT VT2) const override;
 
   bool isIntDivCheap(EVT VT, AttributeList Attr) const override { return true; }
 
-  bool isLegalICmpImmediate(int64_t) const override { return false; }
+  bool isLegalICmpImmediate(int64_t Imm) const override {
+    return isInt<16>(Imm) || isUInt<16>(Imm);
+  }
+
+  bool isLegalAddImmediate(int64_t Imm) const override {
+    return isInt<16>(Imm) || isUInt<16>(Imm);
+  }
+
   bool shouldAvoidTransformToShift(EVT VT, unsigned Amount) const override {
     return true;
   }
+
+  bool isMaskAndCmp0FoldingBeneficial(const Instruction &AndI) const override;
 
   /// Returns true if we should normalize
   /// select(N0&N1, X, Y) => select(N0, select(N1, X, Y), Y) and
@@ -143,8 +152,8 @@ public:
   /// just the constant itself.
   bool shouldConvertConstantLoadToIntImm(const APInt &Imm,
                                          Type *Ty) const override {
-    // 16-bit or smaller immediates can be loaded with 1 instruction
-    if (isInt<128>(Imm.getSExtValue()) || isInt<128>(Imm.getZExtValue())) {
+    // 16-bit or smaller immediate values can be loaded with 1 instruction
+    if (Imm.abs().isIntN(16)) {
       return true;
     }
     return false;

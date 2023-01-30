@@ -1153,3 +1153,25 @@ SyncVMTargetLowering::getRegisterByName(const char *RegName, LLT VT,
   report_fatal_error(
       Twine("Invalid register name \"" + StringRef(RegName) + "\"."));
 }
+
+bool SyncVMTargetLowering::isZExtFree(SDValue Val, EVT VT2) const {
+  // Loading items might subject to unaligned memory access.
+  if (Val.getOpcode() != ISD::LOAD)
+    return false;
+
+  EVT VT1 = Val.getValueType();
+  if (!VT1.isSimple() || !VT1.isInteger() || !VT2.isSimple() ||
+      !VT2.isInteger())
+    return false;
+
+  return VT1.getSimpleVT().getFixedSizeInBits() <=
+         VT2.getSimpleVT().getFixedSizeInBits();
+}
+
+bool SyncVMTargetLowering::isMaskAndCmp0FoldingBeneficial(
+    const Instruction &AndI) const {
+  ConstantInt *Mask = dyn_cast<ConstantInt>(AndI.getOperand(1));
+  if (!Mask)
+    return false;
+  return !Mask->getValue().isSignedIntN(16);
+}
