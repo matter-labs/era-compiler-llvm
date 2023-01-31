@@ -7,14 +7,13 @@ on:
   workflow_dispatch:
     inputs:
       llvm_build_type:
-        description: "Write llvm build type. Variables: release, debug"
+        description: "LLVM build type: debug | release"
         required: true
         default: "release"
       compiler_tester_branch:
-        description: "Input an upstream compiler-tester repo branch to use"
+        description: "compiler-tester branch"
         required: true
         default: "main"
-
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -30,17 +29,17 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: AutoModality/action-clean@v1.1.0
-      - name: Preparing workspace. Setting environment.
+      - name: Setting the environment.
         run: |
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch || 'main' }}" >> $GITHUB_ENV
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
 
-      - name: Get branch name (pull request)
+      - name: Getting the branch name (pull request)
         if: github.event_name == 'pull_request'
         shell: bash
         run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
 
-      - name: Preparing workspace. Checkout compiler-tester repository.
+      - name: Checking out the compiler-tester repository
         uses: actions/checkout@v3
         with:
           repository: matter-labs/compiler-tester
@@ -49,37 +48,36 @@ jobs:
           token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
           path: "compiler-tester"
 
-      - name: Preparing workspace. Prepare docker environment
+      - name: Preparing the Docker environment
         run: |
           git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
           git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
           git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
-          apt install -y ninja-build musl musl-tools
-          rustup target add x86_64-unknown-linux-musl
+          apt install -y ninja-build
 
-      - name: Preparing workspace. Prepare LLVM.lock (pull request)
+      - name: Preparing LLVM.lock (pull request)
         run: |
           echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
           echo "branch = \"${GITHUB_HEAD_REF}\"" >> LLVM.lock
           mv LLVM.lock ./compiler-tester/LLVM.lock
 
-      - name: Testing. Building LLVM framework.
+      - name: Installing the LLVM manager and downloading the LLVM framework
         working-directory: compiler-tester
         run: |
           cargo install compiler-llvm-builder
           zkevm-llvm clone
 
-      - name: Testing. Building LLVM framework (release)
+      - name: Building the LLVM framework (debug)
+        if: ${{ env.LLVM_BUILD_TYPE == 'debug' }}
+        working-directory: compiler-tester
+        run: |
+          zkevm-llvm build --debug
+
+      - name: Building the LLVM framework (release)
         if: ${{ env.LLVM_BUILD_TYPE == 'release' }}
         working-directory: compiler-tester
         run: |
           zkevm-llvm build
-
-      - name: Testing. Building LLVM framework (debug)
-        if: ${{ env.LLVM_BUILD_TYPE == 'debug' }}
-        working-directory: compiler-tester
-        run: |
-          zkevm-llvm build --debug 
 
       #- name: Running Lit SyncVM tests with llc verification options.
       #  env:
@@ -132,22 +130,11 @@ jobs:
       #        Transforms/LoopFusion/simple.ll"
       #  run: build-target/bin/llvm-lit -s --xfail "${XFAILS}" "-Dopt=opt ${OPT_OPTS}"  llvm/test/CodeGen/
 
-      - name: Testing. Building and running compiler tester.
+      - name: Building and running the compiler tester
         id: compiler_tester_run
         working-directory: compiler-tester
         run: |
-          export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/
           cargo run --release --bin compiler-tester -- --mode=${{ env.COMPILER_TESTER_MODE }}
-          compiler_exit_code=$?
-          if [ "${compiler_exit_code}" -gt "1" ]; then
-            echo "RUN_SEGFAULT_STEP=true" >> $GITHUB_ENV
-          fi
-
-      - name: Testing. Running segfault.sh.
-        if: always() && steps.compiler_tester_run.outcome == 'failure' && env.RUN_SEGFAULT_STEP == 'true'
-        working-directory: compiler-tester
-        run: |
-          ./segfault.sh
 
       - uses: 8398a7/action-slack@v3
         with:
