@@ -29,7 +29,7 @@ jobs:
         password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: AutoModality/action-clean@v1.1.0
-      - name: Setting the environment.
+      - name: Setting the environment
         run: |
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch || 'main' }}" >> $GITHUB_ENV
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV

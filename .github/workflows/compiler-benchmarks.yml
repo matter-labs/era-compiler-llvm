@@ -98,17 +98,17 @@ jobs:
           cargo install compiler-llvm-builder
           zkevm-llvm clone
 
-      - name: Building the candidate LLVM framework (release)
-        if: ${{ env.LLVM_BUILD_TYPE == 'release' }}
-        working-directory: compiler-tester
-        run: |
-          zkevm-llvm build
-
       - name: Building the candidate LLVM framework (debug)
         if: ${{ env.LLVM_BUILD_TYPE == 'debug' }}
         working-directory: compiler-tester
         run: |
           zkevm-llvm build --debug  
+
+      - name: Building the candidate LLVM framework (release)
+        if: ${{ env.LLVM_BUILD_TYPE == 'release' }}
+        working-directory: compiler-tester
+        run: |
+          zkevm-llvm build
 
       - name: Benchmarking the candidate LLVM framework
         id: compiler_tester_run
@@ -179,23 +179,22 @@ jobs:
           cargo install compiler-llvm-builder
           zkevm-llvm clone
 
-      - name: Building the reference LLVM framework (release)
-        if: ${{ env.LLVM_BUILD_TYPE == 'release' }}
-        working-directory: compiler-tester
-        run: |
-          zkevm-llvm build
-
       - name: Building the reference LLVM framework (debug)
         if: ${{ env.LLVM_BUILD_TYPE == 'debug' }}
         working-directory: compiler-tester
         run: |
           zkevm-llvm build --debug
 
+      - name: Building the reference LLVM framework (release)
+        if: ${{ env.LLVM_BUILD_TYPE == 'release' }}
+        working-directory: compiler-tester
+        run: |
+          zkevm-llvm build
+
       - name: Benchmarking the reference LLVM framework
         id: compiler_tester_run
         working-directory: compiler-tester
         run: |
-          export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/
           cargo run --release --bin compiler-tester -- --path=${{ env.LLVM_BENCHMARK_PATH }} --mode=${{ env.LLVM_BENCHMARK_MODE }} --benchmark=reference.json
 
       - uses: actions/upload-artifact@v3
@@ -260,7 +259,6 @@ jobs:
         id: compiler_tester_run
         working-directory: compiler-tester
         run: |
-          export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/
           cargo run --release --bin benchmark-analyzer -- --reference reference.json --candidate candidate.json --output-file result.txt
           chown 1000:1000 result.txt
 
