@@ -42,13 +42,15 @@ concurrency:
 jobs:
   candidate:
     runs-on: [self-hosted, ci-runner]
+    container:
+      image: matterlabs/llvm_runner:latest
+      credentials:
+        username: ${{ secrets.DOCKERHUB_USER }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
-      - uses: AutoModality/action-clean@v1
+      - uses: AutoModality/action-clean@v1.1.0
       - name: Preparing workspace. Setting environment.
         run: |
-          echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
-          echo "COMPOSE_PROJECT_NAME=candidate" >> $GITHUB_ENV
-          echo "DOCKER_CMD=docker-compose exec -T zk" >> $GITHUB_ENV
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_MODE=${{ github.event.inputs.compiler_llvm_benchmark_mode || '+M^I+B3' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_PATH=${{ github.event.inputs.compiler_llvm_benchmark_path || '' }}" >> $GITHUB_ENV
@@ -69,71 +71,69 @@ jobs:
           token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
           path: "compiler-tester"
 
-      - name: Preparing workspace. Checkout compiler-llvm candidate (pull request)
-        if: github.event_name == 'pull_request'
-        uses: actions/checkout@v3
-        with:
-          path: compiler-llvm
-
-      - name: Preparing workspace. Checkout compiler-llvm candidate (workflow dispatch)
-        if: github.event_name == 'workflow_dispatch'
-        uses: actions/checkout@v3
-        with:
-          path: compiler-llvm
-          ref: ${{ env.COMPILER_LLVM_CANDIDATE_BRANCH_NAME }}
-
-      - name: Preparing workspace. Start Docker container for candidate.
-        run: |
-          docker-compose pull
-          docker-compose up -d zk
-
       - name: Preparing workspace. Prepare docker environment
         run: |
-          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/'
-          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/'
-          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:'
-          ${DOCKER_CMD} sh -c 'apt install -y ninja-build musl musl-tools'
-          ${DOCKER_CMD} sh -c 'rustup target add x86_64-unknown-linux-musl'
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
+          apt install -y ninja-build musl musl-tools
+          rustup target add x86_64-unknown-linux-musl
+
+      - name: Preparing workspace. Prepare LLVM.lock (pull request)
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
+          echo "branch = \"${GITHUB_HEAD_REF}\"" >> LLVM.lock
+          mv LLVM.lock ./compiler-tester/LLVM.lock
+
+      - name: Preparing workspace. Prepare LLVM.lock (workflow dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
+          echo "branch = \"${{ env.COMPILER_LLVM_CANDIDATE_BRANCH_NAME }}\"" >> LLVM.lock
+          mv LLVM.lock ./compiler-tester/LLVM.lock
 
       - name: Testing. Building LLVM framework candidate.
+        working-directory: compiler-tester
         run: |
-          chmod +x compiler-llvm/build_gnu.sh
-          ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
-          ./build_gnu.sh ${{ env.LLVM_BUILD_TYPE }}'
+          cargo install compiler-llvm-builder
+          zkevm-llvm clone
+
+      - name: Testing. Building LLVM framework reference (release)
+        if: ${{ env.LLVM_BUILD_TYPE == 'release' }}
+        working-directory: compiler-tester
+        run: |
+          zkevm-llvm build
+
+      - name: Testing. Building LLVM framework reference (debug)
+        if: ${{ env.LLVM_BUILD_TYPE == 'debug' }}
+        working-directory: compiler-tester
+        run: |
+          zkevm-llvm build --debug  
 
       - name: Testing. Benchmarking  LLVM framework candidate.
         id: compiler_tester_run
+        working-directory: compiler-tester
         run: |
-          ${DOCKER_CMD} sh -c '
-          cd compiler-tester && \
-          export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-          cargo run --release --bin compiler-tester -- --path=${{ env.LLVM_BENCHMARK_PATH }} --mode=${{ env.LLVM_BENCHMARK_MODE }} --benchmark=candidate.json'
+          export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/
+          cargo run --release --bin compiler-tester -- --path=${{ env.LLVM_BENCHMARK_PATH }} --mode=${{ env.LLVM_BENCHMARK_MODE }} --benchmark=candidate.json
 
       - uses: actions/upload-artifact@v3
         with:
           name: compiler-llvm-candidate-benchmark
           path: compiler-tester/candidate.json
 
-      - uses: actions/upload-artifact@v3
-        with:
-          name: compiler-llvm-docker-compose
-          path: ${{ env.COMPOSE_FILE }}
-
-      - name: Clearing workspace. Removing used and trash docker images.
-        if: always()
-        run: |
-          docker image prune -f --all
-          docker-compose down --rmi local -v
-
   reference:
     runs-on: [self-hosted, ci-runner]
+    container:
+      image: matterlabs/llvm_runner:latest
+      credentials:
+        username: ${{ secrets.DOCKERHUB_USER }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
-      - uses: AutoModality/action-clean@v1
+      - uses: AutoModality/action-clean@v1.1.0
       - name: Preparing workspace. Setting environment.
         run: |
-          echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
-          echo "COMPOSE_PROJECT_NAME=reference" >> $GITHUB_ENV
-          echo "DOCKER_CMD=docker-compose exec -T zk" >> $GITHUB_ENV
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_MODE=${{ github.event.inputs.compiler_llvm_benchmark_mode || '+M^I+B3' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_PATH=${{ github.event.inputs.compiler_llvm_benchmark_path || '' }}" >> $GITHUB_ENV
@@ -154,73 +154,68 @@ jobs:
           token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
           path: "compiler-tester"
 
-      - name: Preparing workspace. Checkout compiler-llvm reference (pull request)
-        if: github.event_name == 'pull_request'
-        uses: actions/checkout@v3
-        with:
-          path: compiler-llvm
-          ref: ${{ env.BRANCH_NAME }}
-
-      - name: Preparing workspace. Checkout compiler-llvm reference (workflow dispatch)
-        if: github.event_name == 'workflow_dispatch'
-        uses: actions/checkout@v3
-        with:
-          path: compiler-llvm
-          ref: ${{ env.COMPILER_LLVM_REFERENCE_BRANCH_NAME }}
-
-      - name: Preparing workspace. Start Docker container for reference.
-        run: |
-          docker-compose pull
-          docker-compose up -d zk
-
       - name: Preparing workspace. Prepare docker environment
         run: |
-          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/'
-          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/'
-          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:'
-          ${DOCKER_CMD} sh -c 'apt install -y ninja-build musl musl-tools'
-          ${DOCKER_CMD} sh -c 'rustup target add x86_64-unknown-linux-musl'
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
+          apt install -y ninja-build musl musl-tools
+          rustup target add x86_64-unknown-linux-musl
+
+      - name: Preparing workspace. Prepare LLVM.lock (pull request)
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
+          echo "branch = \"${GITHUB_HEAD_REF}\"" >> LLVM.lock
+          mv LLVM.lock ./compiler-tester/LLVM.lock
+
+      - name: Preparing workspace. Prepare LLVM.lock (workflow dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
+          echo "branch = \"${{ env.COMPILER_LLVM_CANDIDATE_BRANCH_NAME }}\"" >> LLVM.lock
+          mv LLVM.lock ./compiler-tester/LLVM.lock
 
       - name: Testing. Building LLVM framework reference.
+        working-directory: compiler-tester
         run: |
-          chmod +x compiler-llvm/build_gnu.sh
-          ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
-          ./build_gnu.sh ${{ env.LLVM_BUILD_TYPE }}'
+          cargo install compiler-llvm-builder
+          zkevm-llvm clone
+
+      - name: Testing. Building LLVM framework reference (release)
+        if: ${{ env.LLVM_BUILD_TYPE == 'release' }}
+        working-directory: compiler-tester
+        run: |
+          zkevm-llvm build
+
+      - name: Testing. Building LLVM framework reference (debug)
+        if: ${{ env.LLVM_BUILD_TYPE == 'debug' }}
+        working-directory: compiler-tester
+        run: |
+          zkevm-llvm build --debug
 
       - name: Testing. Benchmarking  LLVM framework reference.
         id: compiler_tester_run
+        working-directory: compiler-tester
         run: |
-          ${DOCKER_CMD} sh -c '
-          cd compiler-tester && \
-          export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-          cargo run --release --bin compiler-tester -- --path=${{ env.LLVM_BENCHMARK_PATH }} --mode=${{ env.LLVM_BENCHMARK_MODE }} --benchmark=reference.json'
+          export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/
+          cargo run --release --bin compiler-tester -- --path=${{ env.LLVM_BENCHMARK_PATH }} --mode=${{ env.LLVM_BENCHMARK_MODE }} --benchmark=reference.json
 
       - uses: actions/upload-artifact@v3
         with:
           name: compiler-llvm-reference-benchmark
           path: compiler-tester/reference.json
 
-      - name: Clearing workspace. Removing used and trash docker images.
-        if: always()
-        run: |
-          docker image prune -f --all
-          docker-compose down --rmi local -v
-
   analysis:
     runs-on: [self-hosted, ci-runner]
+    container:
+      image: matterlabs/llvm_runner:latest
+      credentials:
+        username: ${{ secrets.DOCKERHUB_USER }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
     needs: [candidate, reference]
     steps:
-      - uses: AutoModality/action-clean@v1
-      - name: Preparing workspace. Setting environment 1.
-        run: |
-          echo "COMPOSE_FILE_DIR=${{ github.workspace }}/compiler-llvm/infra" >> $GITHUB_ENV
-
-      - name: Preparing workspace. Setting environment 2.
-        run: |
-          echo "COMPOSE_FILE=${COMPOSE_FILE_DIR}/docker-compose.yml" >> $GITHUB_ENV
-          echo "COMPOSE_PROJECT_NAME=analysis" >> $GITHUB_ENV
-          echo "DOCKER_CMD=docker-compose exec -T zk" >> $GITHUB_ENV
-
+      - uses: AutoModality/action-clean@v1.1.0
       - name: Get branch name (pull request)
         if: github.event_name == 'pull_request'
         shell: bash
@@ -247,23 +242,13 @@ jobs:
           token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
           path: "compiler-tester"
 
-      - uses: actions/download-artifact@v3
-        with:
-          name: compiler-llvm-docker-compose
-          path: ${{ env.COMPOSE_FILE_DIR }}
-
-      - name: Preparing workspace. Start Docker container for reference.
-        run: |
-          docker-compose pull
-          docker-compose up -d zk
-
       - name: Preparing workspace. Prepare docker environment
         run: |
-          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/'
-          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/'
-          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:'
-          ${DOCKER_CMD} sh -c 'apt install -y ninja-build musl musl-tools'
-          ${DOCKER_CMD} sh -c 'rustup target add x86_64-unknown-linux-musl'
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
+          apt install -y ninja-build musl musl-tools
+          rustup target add x86_64-unknown-linux-musl
 
       - uses: actions/download-artifact@v3
         with:
@@ -277,12 +262,11 @@ jobs:
 
       - name: Testing. Comparing LLVM framework results.
         id: compiler_tester_run
+        working-directory: compiler-tester
         run: |
-          ${DOCKER_CMD} sh -c '
-          cd compiler-tester && \
-          export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-          cargo run --release --bin benchmark-analyzer -- --reference reference.json --candidate candidate.json --output-file result.txt && \
-          chown 1000:1000 result.txt'
+          export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/
+          cargo run --release --bin benchmark-analyzer -- --reference reference.json --candidate candidate.json --output-file result.txt
+          chown 1000:1000 result.txt
 
       - name: Testing. Posting LLVM benchmark results to step summary.
         run: |
@@ -307,9 +291,3 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.MATTERMOST_WEBHOOK }} # required
         if: always() # Pick up events even if the job fails or is canceled.
-
-      - name: Clearing workspace. Removing used and trash docker images.
-        if: always()
-        run: |
-          docker image prune -f --all
-          docker-compose down --rmi local -v

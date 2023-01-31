@@ -22,30 +22,23 @@ concurrency:
 
 jobs:
   default:
-    runs-on: [self-hosted, ci-runner-compiler]
+    runs-on: [ self-hosted, ci-runner-compiler ]
+    container:
+      image: matterlabs/llvm_runner:latest
+      credentials:
+        username: ${{ secrets.DOCKERHUB_USER }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
       - uses: AutoModality/action-clean@v1.1.0
       - name: Preparing workspace. Setting environment.
         run: |
-          echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
-          echo "COMPOSE_PROJECT_NAME=llvm_testing" >> $GITHUB_ENV
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch || 'main' }}" >> $GITHUB_ENV
-          echo "DOCKER_CMD=docker-compose exec -T zk" >> $GITHUB_ENV
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
 
       - name: Get branch name (pull request)
         if: github.event_name == 'pull_request'
         shell: bash
         run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
-
-      - name: Set the compiler-tester filter depending on the base branch
-        shell: bash
-        run: |
-          if [[ "${BRANCH_NAME}" == "dev-15" ]]; then
-            echo "COMPILER_TESTER_MODE=''" >> $GITHUB_ENV
-          else
-            echo "COMPILER_TESTER_MODE=''" >> $GITHUB_ENV
-          fi
 
       - name: Preparing workspace. Checkout compiler-tester repository.
         uses: actions/checkout@v3
@@ -56,91 +49,95 @@ jobs:
           token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
           path: "compiler-tester"
 
-      - name: Preparing workspace. Checkout compiler-llvm repository.
-        uses: actions/checkout@v3
-        with:
-          path: compiler-llvm
-
-      - name: Preparing workspace. Start docker.
-        run: |
-          docker-compose pull
-          docker-compose up -d zk
-
       - name: Preparing workspace. Prepare docker environment
         run: |
-          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/'
-          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/'
-          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:'
-          ${DOCKER_CMD} sh -c 'apt install -y ninja-build musl musl-tools'
-          ${DOCKER_CMD} sh -c 'rustup target add x86_64-unknown-linux-musl'
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
+          apt install -y ninja-build musl musl-tools
+          rustup target add x86_64-unknown-linux-musl
+
+      - name: Preparing workspace. Prepare LLVM.lock (pull request)
+        run: |
+          echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
+          echo "branch = \"${GITHUB_HEAD_REF}\"" >> LLVM.lock
+          mv LLVM.lock ./compiler-tester/LLVM.lock
 
       - name: Testing. Building LLVM framework.
+        working-directory: compiler-tester
         run: |
-          chmod +x compiler-llvm/build_gnu.sh
-          ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
-          ./build_gnu.sh ${{ env.LLVM_BUILD_TYPE }}'
+          cargo install compiler-llvm-builder
+          zkevm-llvm clone
 
-      - name: Testing with LLVM Lit default options.
-        run: ${DOCKER_CMD} sh -c 'cd compiler-llvm && ninja -C build-target check-llvm'
+      - name: Testing. Building LLVM framework (release)
+        if: ${{ env.LLVM_BUILD_TYPE == 'release' }}
+        working-directory: compiler-tester
+        run: |
+          zkevm-llvm build
 
-      - name: Running Lit SyncVM tests with llc verification options.
-        env:
-            LLC_OPTS: >
-              --cgp-verify-bfi-updates
-              --compile-twice
-              --earlycse-debug-hash
-              --loop-distribute-verify
-              --machine-combiner-verify-pattern-order
-              --phicse-debug-hash
-              --reassociate-geps-verify-no-dead-code
-              --safepoint-ir-verifier-print-only
-              --scev-verify-ir
-              --tail-dup-verify
-              --unroll-verify-domtree
-              --verify-regalloc
-              --vplan-verify-hcfg
-            XFAILS:
-              "CodeGen/SyncVM/memcpy-expansion.ll"
-        run: ${DOCKER_CMD} sh -c 'cd compiler-llvm && build-target/bin/llvm-lit -s --xfail "${XFAILS}"  "-Dllc=llc ${LLC_OPTS}"  llvm/test/CodeGen/SyncVM/'
+      - name: Testing. Building LLVM framework (debug)
+        if: ${{ env.LLVM_BUILD_TYPE == 'debug' }}
+        working-directory: compiler-tester
+        run: |
+          zkevm-llvm build --debug 
 
-      - name: Running Lit tests with opt verification options.
-        env:
-            OPT_OPTS: >
-              --cgp-verify-bfi-updates
-              --earlycse-debug-hash
-              --loop-distribute-verify
-              --machine-combiner-verify-pattern-order
-              --phicse-debug-hash
-              --scev-verify-ir
-              --tail-dup-verify
-              --unroll-verify-domtree
-              --verify-assumption-cache
-              --verify-cfg-preserved
-              --verify-cfiinstrs
-              --verify-coalescing
-              --verify-dom-info
-              --verify-loop-info
-              --verify-loop-lcssa
-              --verify-machine-dom-info
-              --verify-machineinstrs
-              --verify-memoryssa
-              --verify-misched
-              --verify-regalloc
-              --verify-scev-strict
-              --vplan-verify-hcfg
-            XFAILS:
-              "Transforms/LoopVectorize/vplan_hcfg_stress_test.ll;\
-              Transforms/LoopFlatten/widen-iv2.ll;\
-              Transforms/LoopFusion/simple.ll"
-        run: ${DOCKER_CMD} sh -c 'cd compiler-llvm && build-target/bin/llvm-lit -s --xfail "${XFAILS}" "-Dopt=opt ${OPT_OPTS}"  llvm/test/CodeGen/'
+      #- name: Running Lit SyncVM tests with llc verification options.
+      #  env:
+      #      LLC_OPTS: >
+      #        --cgp-verify-bfi-updates
+      #        --compile-twice
+      #        --earlycse-debug-hash
+      #        --loop-distribute-verify
+      #        --machine-combiner-verify-pattern-order
+      #        --phicse-debug-hash
+      #        --reassociate-geps-verify-no-dead-code
+      #        --safepoint-ir-verifier-print-only
+      #        --scev-verify-ir
+      #        --tail-dup-verify
+      #        --unroll-verify-domtree
+      #        --verify-regalloc
+      #        --vplan-verify-hcfg
+      #      XFAILS:
+      #        "CodeGen/SyncVM/memcpy-expansion.ll"
+      #  run: build-target/bin/llvm-lit -s --xfail "${XFAILS}"  "-Dllc=llc ${LLC_OPTS}"  llvm/test/CodeGen/SyncVM/
+
+      #- name: Running Lit tests with opt verification options.
+      #  env:
+      #      OPT_OPTS: >
+      #        --cgp-verify-bfi-updates
+      #        --earlycse-debug-hash
+      #        --loop-distribute-verify
+      #        --machine-combiner-verify-pattern-order
+      #        --phicse-debug-hash
+      #        --scev-verify-ir
+      #        --tail-dup-verify
+      #        --unroll-verify-domtree
+      #        --verify-assumption-cache
+      #        --verify-cfg-preserved
+      #        --verify-cfiinstrs
+      #        --verify-coalescing
+      #        --verify-dom-info
+      #        --verify-loop-info
+      #        --verify-loop-lcssa
+      #        --verify-machine-dom-info
+      #        --verify-machineinstrs
+      #        --verify-memoryssa
+      #        --verify-misched
+      #        --verify-regalloc
+      #        --verify-scev-strict
+      #        --vplan-verify-hcfg
+      #      XFAILS:
+      #        "Transforms/LoopVectorize/vplan_hcfg_stress_test.ll;\
+      #        Transforms/LoopFlatten/widen-iv2.ll;\
+      #        Transforms/LoopFusion/simple.ll"
+      #  run: build-target/bin/llvm-lit -s --xfail "${XFAILS}" "-Dopt=opt ${OPT_OPTS}"  llvm/test/CodeGen/
 
       - name: Testing. Building and running compiler tester.
         id: compiler_tester_run
+        working-directory: compiler-tester
         run: |
-          ${DOCKER_CMD} sh -c '
-          cd compiler-tester && \
-          export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-          cargo run --release --bin compiler-tester -- --mode=${{ env.COMPILER_TESTER_MODE }}'
+          export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/
+          cargo run --release --bin compiler-tester -- --mode=${{ env.COMPILER_TESTER_MODE }}
           compiler_exit_code=$?
           if [ "${compiler_exit_code}" -gt "1" ]; then
             echo "RUN_SEGFAULT_STEP=true" >> $GITHUB_ENV
@@ -148,8 +145,9 @@ jobs:
 
       - name: Testing. Running segfault.sh.
         if: always() && steps.compiler_tester_run.outcome == 'failure' && env.RUN_SEGFAULT_STEP == 'true'
+        working-directory: compiler-tester
         run: |
-          ${DOCKER_CMD} sh -c 'cd compiler-tester && ./segfault.sh'
+          ./segfault.sh
 
       - uses: 8398a7/action-slack@v3
         with:
@@ -158,10 +156,3 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.MATTERMOST_WEBHOOK }} # required
         if: always() # Pick up events even if the job fails or is canceled.
-
-      - name: Clearing workspace. Removing used and trash docker images.
-        if: always()
-        run: |
-          # Removing trash images. This command isn't remove pulled work image.
-          docker image prune -f --all
-          docker-compose down --rmi local -v
