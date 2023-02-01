@@ -16,7 +16,6 @@ define void @array_ldst_to_parameter([10 x i256]* %array, i256 %val) {
   %3 = load i256, i256* %idx3
   %idx4 = getelementptr inbounds [10 x i256], [10 x i256]* %starr, i256 0, i256 1
   store i256 %3, i256* %idx4
-  ; CHECK: nop stack-=[10]
   ret void
 }
 
