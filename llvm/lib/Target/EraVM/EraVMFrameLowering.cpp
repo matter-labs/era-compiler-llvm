@@ -52,21 +52,8 @@ void EraVMFrameLowering::emitPrologue(MachineFunction &MF,
 
 void EraVMFrameLowering::emitEpilogue(MachineFunction &MF,
                                       MachineBasicBlock &MBB) const {
-  const MachineFrameInfo &MFI = MF.getFrameInfo();
-  const EraVMInstrInfo &TII =
-      *static_cast<const EraVMInstrInfo *>(MF.getSubtarget().getInstrInfo());
-
-  MachineBasicBlock::iterator MBBI = MBB.getLastNonDebugInstr();
-  DebugLoc DL = MBBI->getDebugLoc();
-
-  uint64_t NumCells = MFI.getStackSize() / 32;
-
-  DL = MBBI->getDebugLoc();
-
-  // TODO: Handle callee saved registers once support them
-  // adjust stack pointer back: SP += numbytes
-  if (NumCells)
-    BuildMI(MBB, MBBI, DL, TII.get(EraVM::NOPSP)).addImm(-NumCells).addImm(0);
+  // Ret instruction restores SP to whatever is was before a near or a far
+  // call, so no epilogue is needed.
 }
 
 MachineBasicBlock::iterator EraVMFrameLowering::eliminateCallFramePseudoInstr(
