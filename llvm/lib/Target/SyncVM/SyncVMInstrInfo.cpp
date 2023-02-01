@@ -406,6 +406,60 @@ bool SyncVMInstrInfo::hasRROperandAddressingMode(const MachineInstr &MI) const {
   return LCIt != Mnemonic.end() && *LCIt == 'r' && *std::next(LCIt) == 'r';
 }
 
+bool SyncVMInstrInfo::isStackOpnd(const MachineInstr &MI, unsigned OpNum) const {
+  StringRef InstName = getName(MI.getOpcode());
+  auto Pos = llvm::find_if(InstName, islower);
+  return *(Pos + OpNum) == 's' || *(Pos + OpNum) == 'z';
+}
+
+bool SyncVMInstrInfo::isCodeOpnd(const MachineInstr &MI, unsigned OpNum) const {
+  StringRef InstName = getName(MI.getOpcode());
+  auto Pos = llvm::find_if(InstName, islower);
+  return *(Pos + OpNum) == 'c' || *(Pos + OpNum) == 'y';
+}
+
+bool SyncVMInstrInfo::isRegOpnd(const MachineInstr &MI, unsigned OpNum) const {
+  StringRef InstName = getName(MI.getOpcode());
+  auto Pos = llvm::find_if(InstName, islower);
+  return *(Pos + OpNum) == 'r';
+}
+
+bool SyncVMInstrInfo::isImmOpnd(const MachineInstr &MI, unsigned OpNum) const {
+  StringRef InstName = getName(MI.getOpcode());
+  auto Pos = llvm::find_if(InstName, islower);
+  return *(Pos + OpNum) == 'i' || *(Pos + OpNum) == 'x';
+}
+
+bool SyncVMInstrInfo::hasTwoOuts(const MachineInstr &MI) const {
+  return isMul(MI) || isDiv(MI);
+}
+
+unsigned SyncVMInstrInfo::getOpndStartLoc(const MachineInstr &MI,
+                                          unsigned OpNum) const {
+  StringRef InstName = getName(MI.getOpcode());
+  auto Pos = llvm::find_if(InstName, islower);
+  if (OpNum == 2 && *(Pos + OpNum) == Reg)
+    return 0;
+  unsigned Result = 0;
+  for (unsigned I = 0; I < OpNum; ++I) {
+    char Opnd = *(Pos + I);
+    Result += (Opnd == Reg || Opnd == Imm || Opnd == ImmR) ? 1
+              : (Opnd == Code || Opnd == CodeR)            ? 2
+                                                           : 3;
+  }
+  if (OpNum < 2 && *(Pos + 2) == Reg)
+    ++Result;
+  if (OpNum < 3 && hasTwoOuts(MI))
+    ++Result;
+  if (OpNum == 2 && isSel(MI))
+    ++Result;
+  return Result;
+}
+
+bool SyncVMInstrInfo::mayHaveStackOpnd(const MachineInstr &MI) const {
+  return isArithmetic(MI) || isBitwise(MI) || isPtr(MI);
+}
+
 /// Mark a copy to a fat pointer register or from a fat pointer register with
 /// IsFatPtr MI flag. Then when COPY is lowered to a real instruction the flag
 /// is used to choose between add and ptr.add.

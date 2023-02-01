@@ -121,6 +121,15 @@ public:
   bool isStore(const MachineInstr &MI) const;
   bool isNOP(const MachineInstr &MI) const;
 
+  bool isRegOpnd(const MachineInstr &MI, unsigned Opnd) const;
+  bool isImmOpnd(const MachineInstr &MI, unsigned Opnd) const;
+  bool isStackOpnd(const MachineInstr &MI, unsigned Opnd) const;
+  bool isCodeOpnd(const MachineInstr &MI, unsigned Opnd) const;
+
+  bool mayHaveStackOpnd(const MachineInstr &MI) const;
+
+  unsigned getOpndStartLoc(const MachineInstr &MI, unsigned OpNum) const;
+
   bool isSilent(const MachineInstr &MI) const;
   GenericInstruction genericInstructionFor(const MachineInstr &MI) const;
 
@@ -134,6 +143,17 @@ public:
 
   bool isPredicatedInstr(const MachineInstr &MI) const;
   SyncVMCC::CondCodes getCCCode(const MachineInstr &MI) const;
+
+private:
+  enum OperandType {
+    Reg = 'r',
+    Imm = 'i',
+    ImmR = 'x',
+    Stack = 's',
+    StackR = 'z',
+    Code = 'c',
+    CodeR = 'y',
+  };
 };
 
 } // namespace llvm
