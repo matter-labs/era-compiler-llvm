@@ -80,6 +80,7 @@ jobs:
           zkevm-llvm build --enable-tests
 
       - name: Running Lit SyncVM tests with llc verification options
+        working-directory: compiler-tester
         env:
           LLC_OPTS: >
             --cgp-verify-bfi-updates
@@ -97,9 +98,11 @@ jobs:
             --vplan-verify-hcfg
           XFAILS:
             "CodeGen/SyncVM/memcpy-expansion.ll"
-        run: ./target-llvm/build-final/bin/llvm-lit -s --xfail "${XFAILS}" "-Dllc=llc ${LLC_OPTS}" llvm/test/CodeGen/SyncVM/
+        run: |
+          target-llvm/build-final/bin/llvm-lit -s --xfail "${XFAILS}" "-Dllc=llc ${LLC_OPTS}" llvm/test/CodeGen/SyncVM/
 
       - name: Running Lit tests with opt verification options
+        working-directory: compiler-tester
         env:
           OPT_OPTS: >
             --cgp-verify-bfi-updates
@@ -128,7 +131,8 @@ jobs:
             "Transforms/LoopVectorize/vplan_hcfg_stress_test.ll;\
             Transforms/LoopFlatten/widen-iv2.ll;\
             Transforms/LoopFusion/simple.ll"
-        run: ./target-llvm/build-final/bin/llvm-lit -s --xfail "${XFAILS}" "-Dopt=opt ${OPT_OPTS}" llvm/test/CodeGen/
+        run: |
+          target-llvm/build-final/bin/llvm-lit -s --xfail "${XFAILS}" "-Dopt=opt ${OPT_OPTS}" llvm/test/CodeGen/
 
       - name: Building and running the compiler tester
         id: compiler_tester_run
