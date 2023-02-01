@@ -47,21 +47,8 @@ void SyncVMFrameLowering::emitPrologue(MachineFunction &MF,
 
 void SyncVMFrameLowering::emitEpilogue(MachineFunction &MF,
                                        MachineBasicBlock &MBB) const {
-  const MachineFrameInfo &MFI = MF.getFrameInfo();
-  const SyncVMInstrInfo &TII =
-      *static_cast<const SyncVMInstrInfo *>(MF.getSubtarget().getInstrInfo());
-
-  MachineBasicBlock::iterator MBBI = MBB.getLastNonDebugInstr();
-  DebugLoc DL = MBBI->getDebugLoc();
-
-  uint64_t NumCells = MFI.getStackSize() / 32;
-
-  DL = MBBI->getDebugLoc();
-
-  // TODO: Handle callee saved registers once support them
-  // adjust stack pointer back: SP += numbytes
-  if (NumCells)
-    BuildMI(MBB, MBBI, DL, TII.get(SyncVM::NOPSP)).addImm(-NumCells).addImm(0);
+  // Ret instruction restores SP to whatever is was before a near or a far
+  // call, so no epilogue is needed.
 }
 
 // FIXME: Can we eleminate these in favour of generic code?
