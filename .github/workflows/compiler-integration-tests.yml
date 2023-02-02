@@ -56,9 +56,17 @@ jobs:
           apt install -y ninja-build
 
       - name: Preparing LLVM.lock (pull request)
+        if: github.event_name == 'pull_request'
         run: |
           echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
           echo "branch = \"${GITHUB_HEAD_REF}\"" >> LLVM.lock
+          mv LLVM.lock ./compiler-tester/LLVM.lock
+
+      - name: Preparing LLVM.lock (workflow dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
+          echo "branch = \"${{ env.COMPILER_LLVM_CANDIDATE_BRANCH_NAME }}\"" >> LLVM.lock
           mv LLVM.lock ./compiler-tester/LLVM.lock
 
       - name: Installing the LLVM manager and downloading the LLVM framework
