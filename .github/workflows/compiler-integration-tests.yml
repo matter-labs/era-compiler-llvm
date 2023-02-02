@@ -96,6 +96,7 @@ jobs:
             --unroll-verify-domtree
             --verify-regalloc
             --vplan-verify-hcfg
+            --march=syncvm
           XFAILS:
             "CodeGen/SyncVM/memcpy-expansion.ll"
         run: |
