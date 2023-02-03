@@ -86,6 +86,11 @@ jobs:
         working-directory: compiler-tester
         run: |
           zkevm-llvm build --enable-tests
+          
+      - name: Running Lit tests with default options   
+        working-directory: compiler-tester
+        run: |
+          ninja -C target-llvm/build-final check-llvm
 
       - name: Running Lit SyncVM tests with llc verification options
         working-directory: compiler-tester
