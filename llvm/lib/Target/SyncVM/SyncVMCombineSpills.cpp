@@ -218,7 +218,10 @@ bool SyncVMCombineSpills::convertVReg(Register reg, MachineFunction &MF) {
   }
 
   // now we can safely transform the program:
-
+  
+  // We need a vector to record transformed instructions because MRI is updating
+  // the use list while we are transforming the instructions.
+  std::vector<MachineInstr *> TransformedUses;
 
   // 1. convert def instruction to store to stack:
   MachineInstr *DefMI = MRI->getUniqueVRegDef(reg);
@@ -256,8 +259,12 @@ bool SyncVMCombineSpills::convertVReg(Register reg, MachineFunction &MF) {
 
   // 2. convert all use instructions to load from stack
   for (MachineInstr &UseMI : MRI->use_nodbg_instructions(reg)) {
-    LLVM_DEBUG(dbgs() << "Converting use: "; UseMI.dump(););
+    // skip those instructions that have already been transformed
+    if (llvm::find(TransformedUses, &UseMI) != TransformedUses.end()) {
+      continue;
+    }
 
+    LLVM_DEBUG(dbgs() << "Converting use: "; UseMI.dump(););
 
     auto new_use_opcode =
         llvm::SyncVM::getSROperandAddressingModeOpcode(UseMI.getOpcode());
@@ -314,6 +321,7 @@ bool SyncVMCombineSpills::convertVReg(Register reg, MachineFunction &MF) {
     }
 
     LLVM_DEBUG(dbgs() << "  To new use: "; NewUseMI->dump());
+    TransformedUses.push_back(NewUseMI);
     ToBeRemoved.push_back(&UseMI);
   }
 
