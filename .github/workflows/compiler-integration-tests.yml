@@ -92,6 +92,16 @@ jobs:
         run: |
           ninja -C target-llvm/build-final check-llvm
 
+      - name: Running a single Lit test more verbosely with llc verification options
+        working-directory: compiler-tester
+        env:
+          LLC_OPTS: >
+            --cgp-verify-bfi-updates
+            --earlycse-debug-hash
+        run: |
+          BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
+          target-llvm/build-final/bin/llvm-lit -vva --debug -Dllc="${BINDIR}/llc ${LLC_OPTS}"  llvm/llvm/test/CodeGen/SyncVM/memcpy-expansion.ll
+
       - name: Running Lit SyncVM tests with llc verification options
         working-directory: compiler-tester
         env:
