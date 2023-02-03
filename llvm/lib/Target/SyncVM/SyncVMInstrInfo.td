@@ -1180,6 +1180,9 @@ defm PTR_ADD    : PtrInstr<159, "ptr.add", SyncVMptr_add>;
 defm PTR_PACK   : PtrInstr<160, "ptr.pack", SyncVMptr_pack>;
 defm PTR_SHRINK : PtrInstr<161, "ptr.shrink", SyncVMptr_shrink>;
 
+// Materialization of constants on stack
+def : Pat<(store_stack imm16:$imm, stackaddr:$dst),  (ADDirs_p imm16:$imm, R0, stackaddr:$dst)>;
+
 // MOV patterns
 def : Pat<(store_stack (load_code memaddr:$src), stackaddr:$dst),  (ADDcrs_p memaddr:$src, R0, stackaddr:$dst)>;
 def : Pat<(store_stack (load_stack stackaddr:$src), stackaddr:$dst),  (ADDsrs_p stackaddr:$src, R0, stackaddr:$dst)>;

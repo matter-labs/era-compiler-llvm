@@ -78,7 +78,15 @@ define void @addsrs(i256 %rs1) nounwind {
 ; CHECK-LABEL: addneg
 define i256 @addneg(i256 %rs1) nounwind {
   %res = add i256 %rs1, -65535
-; CHECK; sub.s   65535, r1, r1
+; CHECK: sub.s   65535, r1, r1
   ret i256 %res
+}
+
+; CHECK-LABEL: addstack
+define void @addstack() nounwind {
+  %valptr = alloca i256
+; CHECK: add 1024, r0, stack-[1]
+  store i256 1024, i256 * %valptr
+  ret void
 }
 
