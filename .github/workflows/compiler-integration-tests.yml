@@ -95,10 +95,9 @@ jobs:
       - name: Running a single Lit test more verbosely with llc verification options
         working-directory: compiler-tester
         env:
-          LLC_OPTS: >
-            --cgp-verify-bfi-updates
-            --earlycse-debug-hash
+          LLC_OPTS: --cgp-verify-bfi-updates --earlycse-debug-hash
         run: |
+          echo LLC_OPTS: ${LLC_OPTS}
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
           target-llvm/build-final/bin/llvm-lit -vva --debug -Dllc="${BINDIR}/llc ${LLC_OPTS}"  llvm/llvm/test/CodeGen/SyncVM/memcpy-expansion.ll
 
