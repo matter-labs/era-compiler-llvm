@@ -113,8 +113,7 @@ jobs:
         working-directory: compiler-tester
         env:
           OPT_OPTS: --cgp-verify-bfi-updates --earlycse-debug-hash --loop-distribute-verify --machine-combiner-verify-pattern-order --phicse-debug-hash --scev-verify-ir --tail-dup-verify --unroll-verify-domtree --verify-assumption-cache --verify-cfg-preserved --verify-cfiinstrs --verify-coalescing --verify-dom-info --verify-loop-info --verify-loop-lcssa --verify-machine-dom-info --verify-machineinstrs --verify-memoryssa --verify-misched --verify-regalloc --verify-scev-strict --vplan-verify-hcfg
-          XFAILS:
-"Transforms/LoopVectorize/vplan_hcfg_stress_test.ll;Transforms/LoopFlatten/widen-iv2.ll;Transforms/LoopFusion/simple.ll"
+          XFAILS: "Transforms/LoopVectorize/vplan_hcfg_stress_test.ll;Transforms/LoopFlatten/widen-iv2.ll;Transforms/LoopFusion/simple.ll"
         run: |
           target-llvm/build-final/bin/llvm-lit -s --xfail "${XFAILS}" "-Dopt=opt ${OPT_OPTS}" llvm/llvm/test/CodeGen/
 
