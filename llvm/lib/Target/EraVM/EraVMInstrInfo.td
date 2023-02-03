@@ -1157,6 +1157,7 @@ def LDInc   : IUMA <46, (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, cc:$cc),
 def FATPTR_LD : IUMA < 48, (outs GRPTR:$rd0), (ins GRPTR:$rs0, cc:$cc),
                   "ld$cc\t$rs0, $rd0 ;fat load", []>;
 }
+
 def     : Pat<(load_heap GR256:$rs0), (LD1 GR256:$rs0, 0)>;
 def     : Pat<(load_heap imm16:$addr), (LD1i imm16:$addr, 0)>;
 def     : Pat<(load_heapaux GR256:$rs0), (LD2 GR256:$rs0, 0)>;

@@ -10,7 +10,7 @@ target triple = "eravm"
 define void @consti_loadconst_storeglobal() nounwind {
   ; TODO: CPR-940 Incorrect codegen add	@const+32[0], r0, r1
   %1 = load i256, ptr addrspace(4) getelementptr inbounds ([10 x i256], ptr addrspace(4) @const, i256 0, i256 1), align 32
-	; CHECK: add r1, r0, stack[@val+1]
+  ; CHECK: add r1, r0, stack[@val+1]
   ; TODO: Should be folded into a single instruction.
   store i256 %1, ptr getelementptr inbounds ([10 x i256], ptr @val, i256 0, i256 1), align 32
   ret void
@@ -33,7 +33,7 @@ define void @vari_loadconst_storeglobal(i256 %i) nounwind {
   %addrg = getelementptr inbounds [10 x i256], ptr @val, i256 0, i256 %i
   %1 = load i256, ptr addrspace(4) %addrc, align 32
   ; CHECK-NOT: div.s 32, r1, r1, r0
-  ; CHECK: add r2, r0, stack[r1 + @val]
+  ; CHECK: add r2, r0, stack[@val + r1]
   ; TODO: Should be folded into a single instruction.
   store i256 %1, ptr %addrg, align 32
   ret void
@@ -41,14 +41,161 @@ define void @vari_loadconst_storeglobal(i256 %i) nounwind {
 
 ; CHECK-LABEL: vari_loadglobal_storeglobal
 define void @vari_loadglobal_storeglobal(i256 %i, i256 %j) nounwind {
-  ; CHECK-NOT: ; CHECK: div.s 32, r1, r1, r0
-  ; CHECK: add stack[r1 + @val], r0, r1
+  ; CHECK-NOT: div.s 32, r1, r1, r0
+  ; CHECK: add stack[@val + r1], r0, r1
   %addri = getelementptr inbounds [10 x i256], ptr @val, i256 0, i256 %i
   %addrj = getelementptr inbounds [10 x i256], ptr @val, i256 0, i256 %j
   %1 = load i256, ptr %addri, align 32
   ; CHECK-NOT: div.s 32, r2, r2, r0
-  ; CHECK: add r1, r0, stack[r2 + @val]
+  ; CHECK: add r1, r0, stack[@val + r2]
   ; TODO: Should be folded into a single instruction.
   store i256 %1, ptr %addrj, align 32
   ret void
 }
+
+; CHECK-LABEL: stack_register_addressing_storing
+define void @stack_register_addressing_storing([10 x i256]* %array, i256 %idx, i256 %val) {
+  ; CHECK:  shl.s   5, r[[REG:[0-9]+]], r[[REG]]
+  ; CHECK:  add     r1, r[[REG]], r1
+  ; CHECK:  div.s   32, r1, r1, r0
+  ; CHECK:  add     r{{[0-9]+}}, r0, stack[r1]
+  %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 %idx
+  store i256 %val, i256* %idx_slot
+  ret void
+}
+
+; CHECK-LABEL: alloca_reg_storing
+define void @alloca_reg_storing(i256 %idx, i256 %val) {
+  ; CHECK:  nop     stack+=[10]
+  ; CHECK-NOT:  shl.s   5, r1, r1
+  ; CHECK-NOT:  div.s   32, r1, r1, r0
+  ; CHECK:  add     r2, r0, stack-[10 - r1]
+  %array = alloca [10 x i256], align 32
+  %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 %idx
+  store i256 %val, i256* %idx_slot
+  ret void
+}
+
+; CHECK-LABEL: alloca_const_storing
+define void @alloca_const_storing(i256 %idx, i256 %val) {
+  ; CHECK:  nop     stack+=[10]
+  ; CHECK:  add     r2, r0, stack-[5]
+  %array = alloca [10 x i256], align 32
+  %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 5
+  store i256 %val, i256* %idx_slot
+  ret void
+}
+
+; CHECK-LABEL: stack_register_addressing_loading
+define i256 @stack_register_addressing_loading([10 x i256]* %array, i256 %idx) {
+  ; CHECK:  shl.s   5, r[[REG2:[0-9]+]], r[[REG2]]
+  ; CHECK:  add     r1, r[[REG2]], r1
+  ; CHECK:  div.s   32, r1, r1, r0
+  ; CHECK:  add     stack[r1], r0, r1
+  %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 %idx
+  %rv = load i256, i256* %idx_slot
+  ret i256 %rv
+}
+
+; CHECK-LABEL: alloca_reg_loading
+define i256 @alloca_reg_loading(i256 %idx, i256 %val) {
+  ; CHECK:  nop     stack+=[10]
+  ; TODO: CPR-1040: Optimize the following code
+  ; CHECK-NOT:  shl.s   5, r1, r1
+  ; CHECK-NOT:  div.s   32, r1, r1, r0
+  ; CHECK:  add     stack-[10 - r1], r0, r1
+  %array = alloca [10 x i256], align 32
+  %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 %idx
+  %rv = load i256, i256* %idx_slot
+  ret i256 %rv
+}
+
+; CHECK-LABEL: alloca_const_loading
+define i256 @alloca_const_loading(i256 %val) {
+  ; CHECK:  nop     stack+=[10]
+  ; CHECK:  add     stack-[5], r0, r1
+  %array = alloca [10 x i256], align 32
+  %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 5
+  %rv = load i256, i256* %idx_slot
+  ret i256 %rv
+}
+
+; CHECK-LABEL: arg_array_loading
+define i256 @arg_array_loading([10 x i256]* %array) {
+  ; CHECK:  div.s   32, r1, r1, r0
+  ; CHECK:  add     stack[5 + r1], r0, r1
+  %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 5
+  %rv = load i256, i256* %idx_slot
+  ret i256 %rv
+}
+
+; CHECK-LABEL: arg_array_loading2
+define i256 @arg_array_loading2([10 x i256]* %array, i256 %idx) {
+  ; CHECK:  shl.s   5, r2, r2
+  ; CHECK:  add     r1, r2, r1
+  ; CHECK:  div.s   32, r1, r1, r0
+  ; CHECK:  add     stack[r1], r0, r1
+  %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 %idx
+  %rv = load i256, i256* %idx_slot
+  ret i256 %rv
+}
+
+; CHECK-LABEL: arg_ptr_loading
+define i256 @arg_ptr_loading(i256* %array) {
+  ; CHECK:  div.s   32, r1, r1, r0
+  ; CHECK:  add     stack[5 + r1], r0, r1
+  %idx_slot = getelementptr i256, i256* %array, i256 5
+  %rv = load i256, i256* %idx_slot
+  ret i256 %rv
+}
+
+; CHECK-LABEL: arg_ptr_loading2
+define i256 @arg_ptr_loading2(i256* %array, i256 %idx) {
+  ; CHECK:  shl.s   5, r2, r2
+  ; CHECK:  add     r1, r2, r1
+  ; CHECK:  div.s   32, r1, r1, r0
+  ; CHECK:  add     stack[r1], r0, r1
+  %idx_slot = getelementptr i256, i256* %array, i256 %idx
+  %rv = load i256, i256* %idx_slot
+  ret i256 %rv
+}
+
+; CHECK-LABEL: stack_array_passing
+define void @stack_array_passing() {
+  ; CHECK:  nop     stack+=[10]
+  ; CHECK:  context.sp      r[[REG3:[0-9]+]]
+  ; CHECK:  sub.s   10, r[[REG3]], r[[REG4:[0-9]+]]
+  ; CHECK:  mul     32, r[[REG4]], r1, r0
+  ; CHECK:  near_call       r0, @array_arg, @DEFAULT_UNWIND
+  %array = alloca [10 x i256], align 32
+  call void @array_arg([10 x i256]* %array)
+  ret void
+}
+
+; CHECK-LABEL: stack_pointer_passing
+define void @stack_pointer_passing() {
+  ; CHECK:  nop     stack+=[10]
+  ; CHECK:  context.sp      r[[REG5:[0-9]+]]
+  ; CHECK:  sub.s   10, r[[REG5]], r[[REG5]]
+  ; CHECK:  mul     32, r[[REG5]], r[[REG5]], r0
+  ; CHECK:  add     160, r[[REG5]], r1
+  %array = alloca [10 x i256], align 32
+  %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 5
+  call void @ptr_arg(i256* %idx_slot)
+  ret void
+}
+
+; CHECK-LABEL: stack_pointer_passing2
+define void @stack_pointer_passing2() {
+  ; CHECK: nop     stack+=[10]
+  ; CHECK: context.sp      r[[REG6:[0-9]+]]
+  ; CHECK: sub.s   10, r[[REG6]], r[[REG6]]
+  ; CHECK: mul     32, r[[REG6]], r1, r0
+  %array = alloca [10 x i256], align 32
+  call void @array_arg([10 x i256]* %array)
+  ret void
+}
+
+declare void @ptr_arg(i256*) nounwind
+declare void @array_arg([10 x i256]*) nounwind
+declare void @pointer_arg(i256*) nounwind

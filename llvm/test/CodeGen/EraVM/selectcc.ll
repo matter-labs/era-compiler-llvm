@@ -1,5 +1,3 @@
-; TODO: restore
-; XFAIL: *
 ; RUN: llc < %s | FileCheck %s
 
 target triple = "eravm"
@@ -200,11 +198,11 @@ define i256 @selssr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selrrs
 define void @selrrs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   %resptr = alloca i256
+  ; TODO: CPR-986
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp eq i256 %v3, %v4
-  ; TODO: convert to add.ne if VM support
-  ; CHECK: add r2, r0, stack-[1]
-  ; CHECK: add.eq r1, r0, stack-[1]
+  ; CHECK: add.ne  r{{[0-9]+}}, r0, r1
+  ; CHECK: add     r1, r0, stack-[1]
   %2 = select i1 %1, i256 %v1, i256 %v2
   store i256 %2, i256* %resptr
   ret void
@@ -214,10 +212,12 @@ define void @selrrs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selirs
 define void @selirs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   %resptr = alloca i256
-  ; CHECK: sub! r3, r4, r{{[0-9]+}}
+  ; CHECK: sub!    r3, r4, r1
   %1 = icmp ugt i256 %v3, %v4
-  ; CHECK: add r2, r0, stack-[1]
-  ; CHECK: add.gt 42, r0, stack-[1]
+  ; TODO: CPR-986
+  ; CHECK: add     r2, r0, r1
+  ; CHECK: add.gt  42, r0, r1
+  ; CHECK: add     r1, r0, stack-[1]
   %2 = select i1 %1, i256 42, i256 %v2
   store i256 %2, i256* %resptr
   ret void
@@ -229,8 +229,10 @@ define void @selcrs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp ugt i256 %v3, %v4
   %const = load i256, i256 addrspace(4)* @val
-  ; CHECK: add r2, r0, stack-[1]
-  ; CHECK: add.gt @val[0], r0, stack-[1]
+  ; TODO: CPR-986
+  ; CHECK: add     r2, r0, r1
+  ; CHECK: add.gt  @val[0], r0, r1
+  ; CHECK: add     r1, r0, stack-[1]
   %2 = select i1 %1, i256 %const, i256 %v2
   store i256 %2, i256* %resptr
   ret void
@@ -243,8 +245,10 @@ define void @selsrs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp ugt i256 %v3, %v4
   %val = load i256, i256* %data
-  ; CHECK: add r2, r0, stack-[2]
-  ; CHECK: add.gt stack-[1], r0, stack-[2]
+  ; TODO: CPR-986
+  ; CHECK: add     r2, r0, r1
+  ; CHECK: add.gt  stack-[1], r0, r1
+  ; CHECK: add     r1, r0, stack-[2]
   %2 = select i1 %1, i256 %val, i256 %v2
   store i256 %2, i256* %resptr
   ret void
@@ -255,8 +259,9 @@ define void @selris(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   %resptr = alloca i256
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp ult i256 %v3, %v4
-  ; CHECK: add 42, r0, stack-[1]
-  ; CHECK: add.lt r1, r0, stack-[1]
+  ; TODO: CPR-986
+  ; CHECK: add.ge  42, r0, r1
+  ; CHECK: add     r1, r0, stack-[1]
   %2 = select i1 %1, i256 %v1, i256 42
   store i256 %2, i256* %resptr
   ret void
@@ -267,8 +272,10 @@ define void @seliis(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   %resptr = alloca i256
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp ult i256 %v3, %v4
-  ; CHECK: add 42, r0, stack-[1]
-  ; CHECK: add.lt 17, r0, stack-[1]
+  ; TODO: CPR-986
+  ; CHECK: add     42, r0, r1
+  ; CHECK: add.lt  17, r0, r1
+  ; CHECK: add     r1, r0, stack-[1]
   %2 = select i1 %1, i256 17, i256 42
   store i256 %2, i256* %resptr
   ret void
@@ -280,8 +287,10 @@ define void @selcis(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp ugt i256 %v3, %v4
   %const = load i256, i256 addrspace(4)* @val
-  ; CHECK: add 42, r0, stack-[1]
-  ; CHECK: add.gt @val[0], r0, stack-[1]
+  ; TODO: CPR-986
+  ; CHECK: add     42, r0, r1
+  ; CHECK: add.gt  @val[0], r0, r1
+  ; CHECK: add     r1, r0, stack-[1]
   %2 = select i1 %1, i256 %const, i256 42
   store i256 %2, i256* %resptr
   ret void
@@ -294,8 +303,10 @@ define void @selsis(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp ugt i256 %v3, %v4
   %val = load i256, i256* %data
-  ; CHECK: add 42, r0, stack-[2]
-  ; CHECK: add.gt stack-[1], r0, stack-[2]
+  ; TODO: CPR-986
+  ; CHECK: add     42, r0, r1
+  ; CHECK: add.gt  stack-[1], r0, r1
+  ; CHECK: add     r1, r0, stack-[2]
   %2 = select i1 %1, i256 %val, i256 42
   store i256 %2, i256* %resptr
   ret void
@@ -307,8 +318,9 @@ define void @selrcs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp ult i256 %v3, %v4
   %const = load i256, i256 addrspace(4)* @val
-  ; CHECK: add @val[0], r0, stack-[1]
-  ; CHECK: add.lt r1, r0, stack-[1]
+  ; TODO: CPR-986
+  ; CHECK: add.ge  @val[0], r0, r1
+  ; CHECK: add     r1, r0, stack-[1]
   %2 = select i1 %1, i256 %v1, i256 %const
   store i256 %2, i256* %resptr
   ret void
@@ -320,8 +332,10 @@ define void @selics(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp ult i256 %v3, %v4
   %const = load i256, i256 addrspace(4)* @val
-  ; CHECK: add @val[0], r0, stack-[1]
-  ; CHECK: add.lt 42, r0, stack-[1]
+  ; TODO: CPR-986
+  ; CHECK: add     @val[0], r0, r1
+  ; CHECK: add.lt  42, r0, r1
+  ; CHECK: add     r1, r0, stack-[1]
   %2 = select i1 %1, i256 42, i256 %const
   store i256 %2, i256* %resptr
   ret void
@@ -330,14 +344,14 @@ define void @selics(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selccs
 define void @selccs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   %resptr = alloca i256
-  ; TODO: should be materialized in add.
-	; CHECK: add @val[0], r0, r1
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp ult i256 %v3, %v4
   %const = load i256, i256 addrspace(4)* @val
   %const2 = load i256, i256 addrspace(4)* @val2
-  ; CHECK: add r1, r0, stack-[1]
-  ; CHECK: add.lt @val2[0], r0, stack-[1]
+  ; TODO: CPR-986
+  ; CHECK: add     @val[0], r0, r1
+  ; CHECK: add.lt  @val2[0], r0, r1
+  ; CHECK: add     r1, r0, stack-[1]
   %2 = select i1 %1, i256 %const2, i256 %const
   store i256 %2, i256* %resptr
   ret void
@@ -347,14 +361,14 @@ define void @selccs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define void @selscs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   %resptr = alloca i256
   %ptr = alloca i256
-  ; TODO: should be materialized in add
-	; CHECK: add	@val[0], r0, r1
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp ult i256 %v3, %v4
   %const = load i256, i256 addrspace(4)* @val
   %val2 = load i256, i256* %ptr
-  ; CHECK: add r1, r0, stack-[2]
-  ; CHECK: add.lt stack-[1], r0, stack-[2]
+  ; TODO: CPR-986
+  ; CHECK: add     @val[0], r0, r1
+  ; CHECK: add.lt  stack-[1], r0, r1
+  ; CHECK: add     r1, r0, stack-[2]
   %2 = select i1 %1, i256 %val2, i256 %const
   store i256 %2, i256* %resptr
   ret void
@@ -367,8 +381,9 @@ define void @selrss(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp ult i256 %v3, %v4
   %val = load i256, i256* %data
-  ; CHECK: add stack-[1], r0, stack-[2]
-  ; CHECK: add.lt r1, r0, stack-[2]
+  ; TODO: CPR-986
+  ; CHECK: add.ge  stack-[1], r0, r1
+  ; CHECK: add     r1, r0, stack-[2]
   %2 = select i1 %1, i256 %v1, i256 %val
   store i256 %2, i256* %resptr
   ret void
@@ -381,8 +396,10 @@ define void @seliss(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp ult i256 %v3, %v4
   %val = load i256, i256* %data
-  ; CHECK: add stack-[1], r0, stack-[2]
-  ; CHECK: add.lt 42, r0, stack-[2]
+  ; TODO: CPR-986
+  ; CHECK: add     stack-[1], r0, r1
+  ; CHECK: add.lt  42, r0, r1
+  ; CHECK: add     r1, r0, stack-[2]
   %2 = select i1 %1, i256 42, i256 %val
   store i256 %2, i256* %resptr
   ret void
@@ -392,14 +409,14 @@ define void @seliss(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define void @selcss(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   %resptr = alloca i256
   %data = alloca i256
-  ; TODO: should be materialized in add
-	; CHECK: add	@val[0], r0, r1
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp ult i256 %v3, %v4
   %val = load i256, i256* %data
   %const = load i256, i256 addrspace(4)* @val
-  ; CHECK: add stack-[1], r0, stack-[2]
-  ; CHECK: add.lt r1, r0, stack-[2]
+  ; TODO: CPR-986
+  ; CHECK: add     stack-[1], r0, r1
+  ; CHECK: add.lt  @val[0], r0, r1
+  ; CHECK: add     r1, r0, stack-[2]
   %2 = select i1 %1, i256 %const, i256 %val
   store i256 %2, i256* %resptr
   ret void
@@ -414,8 +431,10 @@ define void @selsss(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   %1 = icmp ult i256 %v3, %v4
   %val = load i256, i256* %data1
   %val2 = load i256, i256* %data2
-  ; CHECK: add stack-[2], r0, r1
-  ; CHECK: add.lt stack-[1], r0, r1
+  ; TODO: CPR-986
+  ; CHECK: add     stack-[2], r0, r1
+  ; CHECK: add.lt  stack-[1], r0, r1
+  ; CHECK: add     r1, r0, stack-[3]
   %2 = select i1 %1, i256 %val2, i256 %val
   store i256 %2, i256* %resptr
   ret void

@@ -1,13 +1,11 @@
-; XFAIL: *
 ; RUN: llc < %s | FileCheck %s
-
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm"
 
 ; CHECK-LABEL: store_to_frame
 define void @store_to_frame(i256 %par) nounwind {
   %1 = alloca i256
-; CHECK: mov r1, 1(sp)
+; CHECK: add r1, r0, stack-[1]
   store i256 %par, i256* %1
   ret void
 }
@@ -16,9 +14,9 @@ define void @store_to_frame(i256 %par) nounwind {
 define void @store_to_frame2(i256 %par) nounwind {
   %1 = alloca i256
   %2 = alloca i256
-; CHECK: mov	r1, 1(sp)
+; CHECK: add r1, r0, stack-[1]
   store i256 %par, i256* %1
-; CHECK: mov	r1, 2(sp)
+; CHECK: add r1, r0, stack-[2]
   store i256 %par, i256* %2
   ret void
 }
@@ -28,17 +26,20 @@ define void @store_to_frame_select(i256 %par, i1 %flag) nounwind {
   %1 = alloca i256
   %2 = alloca i256
   %3 = select i1 %flag, i256* %1, i256*%2
-; CHECK:   sfll #0, r0, r4
-; CHECK:   sfll #32, r0, r3
-; CHECK:   sub r2, r0, r0
-; CHECK:   jne .LBB2_2, .LBB2_1
-; CHECK: .LBB2_1:
-; CHECK:   add r4, r0, r3
-; CHECK: .LBB2_2:
-; CHECK:   sfll #32, r2, r2
-; CHECK:   sflh #0, r2, r2
-; CHECK:   div r3, r2, r2, r0
-; CHECK:   mov r1, 1(sp-r2)
+; get pointer to %1
+; CHECK: context.sp r3
+; CHECK: sub.s 1, r3, r3
+; CHECK: mul 32, r3, r3, r0
+; get pointer to %2
+; CHECK: context.sp r4
+; CHECK: sub.s 2, r4, r4
+; CHECK: mul 32, r4, r4, r0
+; the select part
+; CHECK: sub.s! 0, r2, r2
+; CHECK: add r3, r0, r2
+; CHECK: add.ne r4, r0, r2
+; store
+; CHECK: add r1, r0, stack[r2]
   store i256 %par, i256* %3
   ret void
 }
@@ -46,23 +47,23 @@ define void @store_to_frame_select(i256 %par, i1 %flag) nounwind {
 ; CHECK-LABEL: load_from_frame
 define i256 @load_from_frame(i256 %par) nounwind {
   %1 = alloca i256
-; CHECK: mov	r1, 1(sp)
+; CHECK: add r1, r0, stack-[1]
   store i256 %par, i256* %1
   %2 = call i256 @foo()
-; CHECK: mov 1(sp), r1
+; CHECK: add stack-[1], r0, r1
   %3 = load i256, i256* %1
   ret i256 %3
 }
 
 ; CHECK-LABEL: spill
 define i256 @spill(i256 %par, i256 %par2) nounwind {
-; CHECK: mov r2, 1(sp)
-; CHECK: mov r1, 2(sp)
+; CHECK: add r2, r0, stack-[1]
+; CHECK: add r1, r0, stack-[2]
   %1 = call i256 @foo()
-; CHECK: mov 1(sp), r2
-; CHECK: mov 2(sp), r3
+; CHECK: add stack-[1], r0, r2
   %2 = add i256 %par, %1
   %3 = add i256 %par2, %1
+; CHECK: add stack-[2], r0, r3
   %4 = add i256 %2, %3
   ret i256 %4
 }
@@ -71,21 +72,31 @@ define i256 @spill(i256 %par, i256 %par2) nounwind {
 define void @store_to_frame.i64(i64 %par) nounwind {
   %1 = alloca i64, align 32
   %2 = alloca i64, align 32
-; CHECK: mov r1, 1(sp)
   store i64 %par, i64* %1, align 32
-; TODO: Fix truncstores
-; CHECK: mov r1, 2(sp)
   store i64 %par, i64* %2, align 32
+; TODO: CPR-1003
+; CHECK: add @CPI5_0[0], r0, r2
+; CHECK: and stack-[1], r2, r3
+; CHECK: or  r1, r3, stack-[1]
+; CHECK: and stack-[2], r2, r2
+; CHECK: or  r1, r2, stack-[2]
   ret void
 }
 
 ; CHECK-LABEL: load_from_frame.i64
 define i64 @load_from_frame.i64(i64 %par) nounwind {
   %1 = alloca i64, align 32
-; CHECK: mov r1, 1(sp)
+; TODO: CPR-1003
+; store i64 to stack
+; CHECK: add   @CPI6_0[0], r0, r2
+; CHECK: and   stack-[1], r2, r2
+; CHECK: shl.s 192, r1, r1
+; CHECK: or    r1, r2, stack-[1]
   store i64 %par, i64* %1, align 32
   %2 = call i256 @foo()
-; CHECK: mov 1(sp), r1
+; load i64 from stack
+; CHECK: add 192, r0, r1
+; CHECK: shr stack-[1], r1, r1
   %3 = load i64, i64* %1, align 32
   ret i64 %3
 }
