@@ -167,27 +167,46 @@ void EraVMInstPrinter::printStackOperand(const MCInst *MI, unsigned OpNo,
   const MCOperand &Base2 = MI->getOperand(OpNo + 1);
   const MCOperand &Disp = MI->getOperand(OpNo + 2);
 
+  bool isRelative = Base1.isReg();
+
   O << "stack";
-  if (Base1.isReg())
+  if (isRelative)
     O << "-";
   O << "[";
 
   if (Base2.isReg()) {
-    if (!Base1.isReg() &&
-        (Disp.isExpr() || (Disp.isImm() && Disp.getImm() > 0)))
-      O << getRegisterName(Base2.getReg()) << " + ";
-    else
-      O << getRegisterName(Base2.getReg()) << " - ";
-  }
+    if (isRelative) {
+      // stack-[disp + reg];
+      assert(Disp.isImm() && Disp.getImm() < 0); // don't support expr yet
+      O << std::abs(Disp.getImm()) << " - " << getRegisterName(Base2.getReg());
+    } else {
+      // print absolute address in format stack[disp + reg]:
+      if (Disp.isImm()) {
+        // skip the sign if disp is 0
+        if (Disp.getImm() > 0)
+          O << Disp.getImm();
+        else if (Disp.getImm() < 0)
+          O << " - " << std::abs(Disp.getImm());
 
-  // Print displacement first
-  if (Disp.isExpr()) {
-    Disp.getExpr()->print(O, &MAI);
+        // if disp is 0, don't print the + sign
+        if (Disp.getImm() != 0)
+          O << " + ";
+      } else {
+        assert(Disp.isExpr());
+        Disp.getExpr()->print(O, &MAI);
+        O << " + ";
+      }
+      O << getRegisterName(Base2.getReg());
+    }
   } else {
-    assert(Disp.isImm() && "Expected immediate in displacement field");
-    O << std::abs(Disp.getImm());
+    // Print displacement first
+    if (Disp.isExpr())
+      Disp.getExpr()->print(O, &MAI);
+    else {
+      assert(Disp.isImm() && "Expected immediate in displacement field");
+      O << std::abs(Disp.getImm());
+    }
   }
-
   O << "]";
 }
 

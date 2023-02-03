@@ -292,7 +292,7 @@ define i256 @caller_i128.retabi(i256 %a1) nounwind {
 define i256 @call.onestack() nounwind {
 ; TODO: Check calling conventions onse callee-saved and caller-saver registers defined
 ; CHECK: context.sp r1
-; CHECK: add 0, r0, stack[r1 - 0]
+; CHECK: add 0, r0, stack[r1]
 ; CHECK: add r0, r0, r1
 ; CHECK: add r0, r0, r2
 ; CHECK: add r0, r0, r3
@@ -317,7 +317,7 @@ define i256 @call.onestack() nounwind {
 define i256 @call.onestackabi() nounwind {
   %ptr = bitcast i256(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)* @onestack to i256*
 ; CHECK: context.sp r1
-; CHECK: add 0, r0, stack[r1 - 0]
+; CHECK: add 0, r0, stack[r1]
 ; CHECK: add 42, r0, r15
 ; CHECK: add r0, r0, r2
 ; CHECK: add r0, r0, r3
@@ -341,8 +341,8 @@ define i256 @call.onestackabi() nounwind {
 define i256 @call.twostackabi() nounwind {
   %ptr = bitcast i256(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)* @twostack to i256*
 ; CHECK: context.sp      r1
-; CHECK: add 2, r0, stack[r1 + 1]
-; CHECK: add 1, r0, stack[r1 - 0]
+; CHECK: add 2, r0, stack[1 + r1]
+; CHECK: add 1, r0, stack[r1]
 ; CHECK: add 42, r0, r15
 ; CHECK: add r0, r0, r2
 ; CHECK: add r0, r0, r3
@@ -473,11 +473,13 @@ define i256* @call1.i256pabi.opaque(i256 %a1, i256 %abi_data) nounwind {
   ret i256* %2
 }
 
-; TODO: enable after MVT::fatptr is introduced
-;define {i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256} @toomanyret(i256 %arg1) {
-;  %x = call i256 @onearg(i256 %arg1)
-;  unreachable
-;}
+; CHECK-LABEL: toomanyret
+define {i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256} @toomanyret(i256 %arg1) {
+  ; CHECK: add r2, r0, r1
+  ; CHECK: near_call       r0, @onearg, @DEFAULT_UNWIND
+  %x = call i256 @onearg(i256 %arg1)
+  unreachable
+}
 
 declare i256 @i1.arg(i1 %a1) nounwind
 declare i256 @i8.arg(i8 %a1) nounwind

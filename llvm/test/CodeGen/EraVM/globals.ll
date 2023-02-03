@@ -27,7 +27,7 @@ define void @store.elem(i256 %val) nounwind {
 ; CHECK-LABEL: load.fromarray
 define i256 @load.fromarray(i256 %i) nounwind {
   %elem = getelementptr [4 x i256], [4 x i256]* @val2.arr, i256 0, i256 %i
-  ; CHECK: add stack[r1 + @val2.arr], r0, r1
+  ; CHECK: add stack[@val2.arr + r1], r0, r1
   %res = load i256, i256* %elem
   ret i256 %res
 }
@@ -35,7 +35,7 @@ define i256 @load.fromarray(i256 %i) nounwind {
 ; CHECK-LABEL: store.toarray
 define void @store.toarray(i256 %val, i256 %i) nounwind {
   %elem = getelementptr [4 x i256], [4 x i256]* @val.arr, i256 0, i256 %i
-  ; CHECK: add r1, r0, stack[r2 + @val.arr]
+  ; CHECK: add r1, r0, stack[@val.arr + r2]
   store i256 %val, i256* %elem
   ret void
 }
