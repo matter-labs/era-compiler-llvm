@@ -71,7 +71,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         run: |
           echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
-          echo "branch = \"${{ env.COMPILER_LLVM_BRANCH_NAME }}\"" >> LLVM.lock
+          echo "branch = \"${GITHUB_REF_NAME}\"" >> LLVM.lock
           mv LLVM.lock ./compiler-tester/LLVM.lock
 
       - name: Installing the LLVM manager and downloading the LLVM framework
