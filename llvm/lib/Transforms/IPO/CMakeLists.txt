@@ -73,4 +73,8 @@ add_llvm_component_library(LLVMipo
   Vectorize
   Instrumentation
   Scalar
+  # SyncVM local begin
+  # Enable SyncVM-specific passes to be run in opt pipeline with old PM.
+  SyncVM
+  # SyncVM local end
   )
