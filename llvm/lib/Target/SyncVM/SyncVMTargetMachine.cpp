@@ -17,6 +17,7 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/Scalar/MergeSimilarBB.h"
 #include "llvm/Transforms/Utils.h"
+#include "llvm/Passes/PassBuilder.h"
 
 #include "SyncVM.h"
 #include "SyncVMTargetTransformInfo.h"
@@ -76,6 +77,11 @@ SyncVMTargetMachine::getTargetTransformInfo(const Function &F) const {
 }
 
 void SyncVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
+  PB.registerPipelineStartEPCallback(
+      [](ModulePassManager &PM, OptimizationLevel Level) {
+        PM.addPass(SyncVMLinkRuntimePass());
+      });
+
   PB.registerScalarOptimizerLateEPCallback(
       [](FunctionPassManager &PM, OptimizationLevel Level) {
         if (Level.getSizeLevel() || Level.getSpeedupLevel() > 1)
@@ -107,7 +113,7 @@ TargetPassConfig *SyncVMTargetMachine::createPassConfig(PassManagerBase &PM) {
 
 void SyncVMPassConfig::addIRPasses() {
   addPass(createSyncVMLowerIntrinsicsPass());
-  addPass(createSyncVMLinkRuntimePass());
+  addPass(createSyncVMLinkRuntimePass(true));
   addPass(createSyncVMCodegenPreparePass());
   addPass(createGlobalDCEPass());
   addPass(createSyncVMAllocaHoistingPass());

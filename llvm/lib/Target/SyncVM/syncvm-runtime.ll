@@ -70,7 +70,7 @@ entry:
   ret i256 %result
 }
 
-define i256 @__ulongrem(i256 %0, i256 %1, i256 %2) local_unnamed_addr #0 {
+define i256 @__ulongrem(i256 %0, i256 %1, i256 %2) #0 {
   %.not = icmp ult i256 %1, %2
   br i1 %.not, label %4, label %51
 
@@ -190,7 +190,7 @@ slow:
   ret i256 %res
 }
 
-define i256 @__small_load_as0(i256 %addr, i256 %size_in_bits) {
+define i256 @__small_load_as0(i256 %addr, i256 %size_in_bits) #3 {
 entry:
   %offset_lead_bytes = urem i256 %addr, 32
   %offset_lead_bits = mul nuw nsw i256 %offset_lead_bytes, 8
@@ -223,7 +223,7 @@ two_cells:
   ret i256 %two_cells_res
 }
 
-define void @__small_store_as0(i256 %addr, i256 %size_in_bits, i256 %value) {
+define void @__small_store_as0(i256 %addr, i256 %size_in_bits, i256 %value) #3 {
 entry:
   %offset_lead_bytes = urem i256 %addr, 32
   %offset_lead_bits = mul nuw nsw i256 %offset_lead_bytes, 8
@@ -274,13 +274,13 @@ two_cells:
   ret void
 }
 
-define void @__cxa_throw(i8* %addr, i8*, i8*) {
+define void @__cxa_throw(i8* %addr, i8*, i8*) #4 {
   %addrval = ptrtoint i8* %addr to i256
   call void @llvm.syncvm.throw(i256 %addrval)
   unreachable
 }
 
-define i256 @__signextend(i256 %numbyte, i256 %value) #1 {
+define i256 @__signextend(i256 %numbyte, i256 %value) #0 {
   %numbit_byte = mul nuw nsw i256 %numbyte, 8
   %numbit = add nsw nuw i256 %numbit_byte, 7
   %numbit_inv = sub i256 256, %numbit
@@ -295,7 +295,7 @@ define i256 @__signextend(i256 %numbyte, i256 %value) #1 {
   ret i256 %result
 }
 
-define {i8 addrspace(3)*, i1} @__farcall(i256 %abi_params, i256 %address) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__farcall(i256 %abi_params, i256 %address) #2 personality i32 ()* @__personality {
 entry:
   %invoke_res = invoke i8 addrspace(3)* @__farcall_int(i256 %abi_params, i256 %address)
     to label %ok unwind label %err
@@ -310,7 +310,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__staticcall(i256 %abi_params, i256 %address) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__staticcall(i256 %abi_params, i256 %address) #2 personality i32 ()* @__personality {
 entry:
   %invoke_res = invoke i8 addrspace(3)* @__staticcall_int(i256 %abi_params, i256 %address)
     to label %ok unwind label %err
@@ -325,7 +325,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__delegatecall(i256 %abi_params, i256 %address) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__delegatecall(i256 %abi_params, i256 %address) #2 personality i32 ()* @__personality {
 entry:
   %invoke_res = invoke i8 addrspace(3)* @__delegatecall_int(i256 %abi_params, i256 %address)
     to label %ok unwind label %err
@@ -340,7 +340,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__mimiccall(i256 %abi_params, i256 %address, i256 %mimic) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__mimiccall(i256 %abi_params, i256 %address, i256 %mimic) #2 personality i32 ()* @__personality {
 entry:
   %invoke_res = invoke i8 addrspace(3)* @__mimiccall_int(i256 %abi_params, i256 %address, i256 %mimic)
     to label %ok unwind label %err
@@ -355,7 +355,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__system_call(i256 %abi_params, i256 %address, i256 %p0, i256 %p1) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__system_call(i256 %abi_params, i256 %address, i256 %p0, i256 %p1) #2 personality i32 ()* @__personality {
 entry:
   %invoke_res = invoke i8 addrspace(3)* @__farcall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1)
     to label %ok unwind label %err
@@ -370,7 +370,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__system_staticcall(i256 %abi_params, i256 %address, i256 %p0, i256 %p1) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__system_staticcall(i256 %abi_params, i256 %address, i256 %p0, i256 %p1) #2 personality i32 ()* @__personality {
 entry:
   %invoke_res = invoke i8 addrspace(3)* @__staticcall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1)
     to label %ok unwind label %err
@@ -385,7 +385,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__system_delegatecall(i256 %abi_params, i256 %address, i256 %p0, i256 %p1) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__system_delegatecall(i256 %abi_params, i256 %address, i256 %p0, i256 %p1) #2 personality i32 ()* @__personality {
 entry:
   %invoke_res = invoke i8 addrspace(3)* @__delegatecall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1)
     to label %ok unwind label %err
@@ -400,7 +400,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__system_mimiccall(i256 %abi_params, i256 %address, i256 %p0, i256 %p1, i256 %mimic) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__system_mimiccall(i256 %abi_params, i256 %address, i256 %p0, i256 %p1, i256 %mimic) #2 personality i32 ()* @__personality {
 entry:
   %invoke_res = invoke i8 addrspace(3)* @__mimiccall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1, i256 %mimic)
     to label %ok unwind label %err
@@ -415,7 +415,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__farcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__farcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address) #2 personality i32 ()* @__personality {
 entry:
   %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
   %invoke_res = invoke i8 addrspace(3)* @__farcall_int(i256 %abi_params, i256 %address)
@@ -431,7 +431,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__staticcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__staticcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address) #2 personality i32 ()* @__personality {
 entry:
   %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
   %invoke_res = invoke i8 addrspace(3)* @__staticcall_int(i256 %abi_params, i256 %address)
@@ -447,7 +447,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__delegatecall_byref(i8 addrspace(3)* %abi_params.r, i256 %address) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__delegatecall_byref(i8 addrspace(3)* %abi_params.r, i256 %address) #2 personality i32 ()* @__personality {
 entry:
   %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
   %invoke_res = invoke i8 addrspace(3)* @__delegatecall_int(i256 %abi_params, i256 %address)
@@ -463,7 +463,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__mimiccall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %mimic) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__mimiccall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %mimic) #2 personality i32 ()* @__personality {
 entry:
   %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
   %invoke_res = invoke i8 addrspace(3)* @__mimiccall_int(i256 %abi_params, i256 %address, i256 %mimic)
@@ -479,7 +479,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__system_call_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p0, i256 %p1) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__system_call_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p0, i256 %p1) #2 personality i32 ()* @__personality {
 entry:
   %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
   %invoke_res = invoke i8 addrspace(3)* @__farcall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1)
@@ -495,7 +495,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__system_staticcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p0, i256 %p1) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__system_staticcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p0, i256 %p1) #2 personality i32 ()* @__personality {
 entry:
   %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
   %invoke_res = invoke i8 addrspace(3)* @__staticcall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1)
@@ -511,7 +511,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__system_delegatecall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p0, i256 %p1) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__system_delegatecall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p0, i256 %p1) #2 personality i32 ()* @__personality {
 entry:
   %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
   %invoke_res = invoke i8 addrspace(3)* @__delegatecall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1)
@@ -527,7 +527,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__system_mimiccall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p0, i256 %p1, i256 %mimic) personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__system_mimiccall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p0, i256 %p1, i256 %mimic) #2 personality i32 ()* @__personality {
 entry:
   %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
   %invoke_res = invoke i8 addrspace(3)* @__mimiccall_int_l(i256 %abi_params, i256 %address, i256 %p0, i256 %p1, i256 %mimic)
@@ -543,17 +543,17 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define void @__sstore(i256 %val, i256 %key) {
+define void @__sstore(i256 %val, i256 %key) #1 {
   call void @llvm.syncvm.sstore(i256 %key, i256 %val)
   ret void
 }
 
-define i256 @__sload(i256 %key) {
+define i256 @__sload(i256 %key) #1 {
   %res = call i256 @llvm.syncvm.sload(i256 %key)
   ret i256 %res
 }
 
-define void @__small_store_as1(i256 %addr.i, i256 %value, i256 %size_in_bits) nounwind {
+define void @__small_store_as1(i256 %addr.i, i256 %value, i256 %size_in_bits) #3 {
   %addr = inttoptr i256 %addr.i to i256 addrspace(1)*
   %sizeinv = sub nsw nuw i256 256, %size_in_bits
   %maskload = lshr i256 -1, %size_in_bits
@@ -566,7 +566,7 @@ define void @__small_store_as1(i256 %addr.i, i256 %value, i256 %size_in_bits) no
   ret void
 }
 
-define void @__small_store_as2(i256 %addr.i, i256 %value, i256 %size_in_bits) nounwind {
+define void @__small_store_as2(i256 %addr.i, i256 %value, i256 %size_in_bits) #3 {
   %addr = inttoptr i256 %addr.i to i256 addrspace(2)*
   %sizeinv = sub nsw nuw i256 256, %size_in_bits
   %maskload = lshr i256 -1, %size_in_bits
@@ -579,7 +579,7 @@ define void @__small_store_as2(i256 %addr.i, i256 %value, i256 %size_in_bits) no
   ret void
 }
 
-define void @__memset_uma_as1(i256 addrspace(1)* %dest, i256 %val, i256 %size) nounwind {
+define void @__memset_uma_as1(i256 addrspace(1)* %dest, i256 %val, i256 %size) #3 {
 entry:
   %numcells = udiv i256 %size, 32
   %hascells = icmp ugt i256 %numcells, 0
@@ -607,7 +607,7 @@ return:
   ret void
 }
 
-define void @__memset_uma_as2(i256 addrspace(2)* %dest, i256 %val, i256 %size) nounwind {
+define void @__memset_uma_as2(i256 addrspace(2)* %dest, i256 %val, i256 %size) #3 {
 entry:
   %numcells = udiv i256 %size, 32
   %hascells = icmp ugt i256 %numcells, 0
@@ -650,5 +650,8 @@ declare i8 addrspace(3)* @__mimiccall_int(i256, i256, i256)
 declare i8 addrspace(3)* @__mimiccall_int_l(i256, i256, i256, i256, i256)
 declare i32 @__personality()
 
-attributes #0 = { nounwind readnone }
-attributes #1 = { mustprogress nounwind readnone willreturn }
+attributes #0 = { mustprogress nounwind readnone willreturn "internalize-early"}
+attributes #1 = {"internalize-early"}
+attributes #2 = { noinline nounwind willreturn "internalize-late" }
+attributes #3 = { nounwind "internalize-late"}
+attributes #4 = { noinline "internalize-late"}
