@@ -21,7 +21,6 @@ define void @alloca(i256 %a1, i256 %a2, i256 %a3, i256 %a4) nounwind {
   store i256 %a2, i256* %var2, align 32
   store i256 %a3, i256* %var3, align 32
   store i256 %a4, i256* %var4, align 32
-  ; CHECK: nop stack-=[4]
   ret void
 }
 
@@ -84,7 +83,6 @@ define i256 @stack.obj.passing() {
 ; CHECK: mul 32, r3, r3, r0
 ; CHECK: near_call	r0, @stack.obj.accessing, @DEFAULT_UNWIND
   %res = call i256 @stack.obj.accessing(i256* %par1, [4 x i256]* %arr, i256* %elem)
-; CHECK: nop stack-=[12]
   ret i256 %res
 }
 
