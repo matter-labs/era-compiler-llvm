@@ -92,7 +92,7 @@ jobs:
         run: |
           ninja -C target-llvm/build-final check-llvm
 
-      - name: Running a single Lit test more verbosely with llc verification options
+      - name: Running a single Lit test more verbosely with llc verification options and explicit path
         working-directory: compiler-tester
         env:
           LLC_OPTS: 
