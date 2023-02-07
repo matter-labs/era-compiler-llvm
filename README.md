@@ -28,11 +28,11 @@ The zkEVM back-end is called `SyncVM`, and the architecture is called `syncvm`.
 
 The zkEVM LLVM framework must be built with our tool called `zkevm-llvm`:
 
-1. Install some tools system-wide:  
-   1.a. `apt install cmake ninja-build clang-13 lld-13` on a Debian-based Linux, with optional `musl-tools` if you need a `musl` build  
-   1.b. `pacman -S cmake ninja clang lld` on an Arch-based Linux  
-   1.c. On MacOS, install the [HomeBrew](https://brew.sh) package manager (being careful to install it as the appropriate user), then `brew install cmake ninja coreutils`. Install your choice of a recent LLVM/[Clang](https://clang.llvm.org) compiler, e.g. via [Xcode](https://developer.apple.com/xcode/), [Apple’s Command Line Tools](https://developer.apple.com/library/archive/technotes/tn2339/_index.html), or your preferred package manager.  
-   1.d. Their equivalents with other package managers  
+1. Install some tools system-wide:
+   1.a. `apt install cmake ninja-build clang-13 lld-13` on a Debian-based Linux, with optional `musl-tools` if you need a `musl` build
+   1.b. `pacman -S cmake ninja clang lld` on an Arch-based Linux
+   1.c. On MacOS, install the [HomeBrew](https://brew.sh) package manager (being careful to install it as the appropriate user), then `brew install cmake ninja coreutils`. Install your choice of a recent LLVM/[Clang](https://clang.llvm.org) compiler, e.g. via [Xcode](https://developer.apple.com/xcode/), [Apple’s Command Line Tools](https://developer.apple.com/library/archive/technotes/tn2339/_index.html), or your preferred package manager.
+   1.d. Their equivalents with other package managers
 
 2. [Install Rust](https://www.rust-lang.org/tools/install)
 
@@ -42,7 +42,7 @@ The zkEVM LLVM framework must be built with our tool called `zkevm-llvm`:
 
 3. Install the zkEVM LLVM framework builder:
 
-   3.a. `cargo install compiler-llvm-builder` on MacOS, or Linux for personal use  
+   3.a. `cargo install compiler-llvm-builder` on MacOS, or Linux for personal use
    3.b. `cargo install compiler-llvm-builder --target x86_64-unknown-linux-musl` on Linux for distribution
 
    The builder is not the zkEVM LLVM framework itself, but a tool that clones its repository and runs the sequence of build commands.
@@ -55,9 +55,9 @@ The zkEVM LLVM framework must be built with our tool called `zkevm-llvm`:
   branch = "<THIS REPO BRANCH>"
   ```
 
-5. Run the builder to clone and build the zkevm LLVM framework:  
-   5.1. `zkevm-llvm clone`  
-   5.2. `zkevm-llvm build`  
+5. Run the builder to clone and build the zkevm LLVM framework:
+   5.1. `zkevm-llvm clone`
+   5.2. `zkevm-llvm build`
 
    The build artifacts will end up in the `./target-llvm/target-final/` directory.
    You may point your `LLVM_SYS_150_PREFIX` to that directory to use this build as a compiler dependency.
