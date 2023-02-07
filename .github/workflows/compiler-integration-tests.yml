@@ -129,7 +129,8 @@ jobs:
           XFAILS:
             "CodeGen/SyncVM/memcpy-expansion.ll"
         run: |
-          target-llvm/build-final/bin/llvm-lit -s --xfail "${XFAILS}" "-Dllc=llc ${LLC_OPTS}" llvm/llvm/test/CodeGen/SyncVM/
+          BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
+          target-llvm/build-final/bin/llvm-lit -vv -s --debug --xfail "${XFAILS}" "-Dllc=llc ${LLC_OPTS}" llvm/llvm/test/CodeGen/SyncVM/
 
       - name: Running Lit tests with opt verification options
         working-directory: compiler-tester
