@@ -2,36 +2,34 @@ name: Compiler benchmarking
 
 on:
   pull_request:
-    branches:
-      - dev-15
   workflow_dispatch:
     inputs:
       llvm_build_type:
-        description: "Input LLVM build type. Variables: release, debug"
+        description: "LLVM build type: debug | release"
         required: true
         default: "release"
       compiler_tester_reference_branch:
-        description: "Input an upstream compiler-tester repo branch to use as a benchmark reference"
+        description: "compiler-tester branch to use as a benchmark reference"
         required: true
         default: "main"
       compiler_tester_candidate_branch:
-        description: "Input an upstream compiler-tester repo branch to use as a benchmark candidate"
+        description: "compiler-tester branch to use as a benchmark candidate"
         required: true
         default: "main"
       compiler_llvm_reference_branch:
-        description: "Input an upstream compiler-llvm repo branch to use as a benchmark reference"
+        description: "compiler-llvm branch to use as a benchmark reference"
         required: true
         default: "dev-15"
       compiler_llvm_candidate_branch:
-        description: "Input an upstream compiler-llvm repo branch to use as a benchmark candidate"
+        description: "compiler-llvm branch to use as a benchmark candidate"
         required: true
         default: "dev-15"
       compiler_llvm_benchmark_mode:
-        description: "Input mode filter for compiler-llvm benchmarks"
+        description: "Mode filter for compiler-llvm benchmarks"
         required: false
         default: "+M^I+B3"
       compiler_llvm_benchmark_path:
-        description: "Input path filter for compiler-llvm benchmarks"
+        description: "Path filter for compiler-llvm benchmarks"
         required: false
         default: ""
 
@@ -42,228 +40,194 @@ concurrency:
 jobs:
   candidate:
     runs-on: [self-hosted, ci-runner]
+    container:
+      image: matterlabs/llvm_runner:latest
+      credentials:
+        username: ${{ secrets.DOCKERHUB_USER }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
-      - uses: AutoModality/action-clean@v1
-      - name: Preparing workspace. Setting environment.
+      - uses: AutoModality/action-clean@v1.1.0
+      - name: Setting the environment
         run: |
-          echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
-          echo "COMPOSE_PROJECT_NAME=candidate" >> $GITHUB_ENV
-          echo "DOCKER_CMD=docker-compose exec -T zk" >> $GITHUB_ENV
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_MODE=${{ github.event.inputs.compiler_llvm_benchmark_mode || '+M^I+B3' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_PATH=${{ github.event.inputs.compiler_llvm_benchmark_path || '' }}" >> $GITHUB_ENV
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_candidate_branch || 'main' }}" >> $GITHUB_ENV
           echo "COMPILER_LLVM_CANDIDATE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_candidate_branch }}" >> $GITHUB_ENV
 
-      - name: Get branch name (pull request)
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
-
-      - name: Preparing workspace. Checkout compiler-tester repository
+      - name: Checking out the compiler-tester repository
         uses: actions/checkout@v3
         with:
           repository: matter-labs/compiler-tester
           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
           submodules: recursive
-          token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
+          token: ${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}
           path: "compiler-tester"
 
-      - name: Preparing workspace. Checkout compiler-llvm candidate (pull request)
+      - name: Preparing the Docker environment
+        run: |
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
+          apt install -y ninja-build
+
+      - name: Preparing LLVM.lock (pull request)
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@v3
-        with:
-          path: compiler-llvm
+        run: |
+          echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
+          echo "branch = \"${GITHUB_HEAD_REF}\"" >> LLVM.lock
+          mv LLVM.lock ./compiler-tester/LLVM.lock
 
-      - name: Preparing workspace. Checkout compiler-llvm candidate (workflow dispatch)
+      - name: Preparing LLVM.lock (workflow dispatch)
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/checkout@v3
-        with:
-          path: compiler-llvm
-          ref: ${{ env.COMPILER_LLVM_CANDIDATE_BRANCH_NAME }}
-
-      - name: Preparing workspace. Start Docker container for candidate.
         run: |
-          docker-compose pull
-          docker-compose up -d zk
+          echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
+          echo "branch = \"${{ env.COMPILER_LLVM_CANDIDATE_BRANCH_NAME }}\"" >> LLVM.lock
+          mv LLVM.lock ./compiler-tester/LLVM.lock
 
-      - name: Preparing workspace. Prepare docker environment
+      - name: Installing the LLVM manager and building the candidate LLVM framework
+        working-directory: compiler-tester
         run: |
-          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/'
-          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/'
-          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:'
-          ${DOCKER_CMD} sh -c 'apt install -y ninja-build musl musl-tools'
-          ${DOCKER_CMD} sh -c 'rustup target add x86_64-unknown-linux-musl'
+          cargo install compiler-llvm-builder
+          zkevm-llvm clone
 
-      - name: Testing. Building LLVM framework candidate.
+      - name: Building the candidate LLVM framework (debug)
+        if: ${{ env.LLVM_BUILD_TYPE == 'debug' }}
+        working-directory: compiler-tester
         run: |
-          chmod +x compiler-llvm/build_gnu.sh
-          ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
-          ./build_gnu.sh ${{ env.LLVM_BUILD_TYPE }}'
+          zkevm-llvm build --debug  
 
-      - name: Testing. Benchmarking  LLVM framework candidate.
+      - name: Building the candidate LLVM framework (release)
+        if: ${{ env.LLVM_BUILD_TYPE == 'release' }}
+        working-directory: compiler-tester
+        run: |
+          zkevm-llvm build
+
+      - name: Benchmarking the candidate LLVM framework
         id: compiler_tester_run
+        working-directory: compiler-tester
         run: |
-          ${DOCKER_CMD} sh -c '
-          cd compiler-tester && \
-          export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-          cargo run --release --bin compiler-tester -- --path=${{ env.LLVM_BENCHMARK_PATH }} --mode=${{ env.LLVM_BENCHMARK_MODE }} --benchmark=candidate.json'
+          cargo run --release --bin compiler-tester -- --path=${{ env.LLVM_BENCHMARK_PATH }} --mode=${{ env.LLVM_BENCHMARK_MODE }} --benchmark=candidate.json
 
       - uses: actions/upload-artifact@v3
         with:
           name: compiler-llvm-candidate-benchmark
           path: compiler-tester/candidate.json
 
-      - uses: actions/upload-artifact@v3
-        with:
-          name: compiler-llvm-docker-compose
-          path: ${{ env.COMPOSE_FILE }}
-
-      - name: Clearing workspace. Removing used and trash docker images.
-        if: always()
-        run: |
-          docker image prune -f --all
-          docker-compose down --rmi local -v
-
   reference:
     runs-on: [self-hosted, ci-runner]
+    container:
+      image: matterlabs/llvm_runner:latest
+      credentials:
+        username: ${{ secrets.DOCKERHUB_USER }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
     steps:
-      - uses: AutoModality/action-clean@v1
-      - name: Preparing workspace. Setting environment.
+      - uses: AutoModality/action-clean@v1.1.0
+      - name: Setting the environment
         run: |
-          echo "COMPOSE_FILE=${{github.workspace}}/compiler-llvm/infra/docker-compose.yml" >> $GITHUB_ENV
-          echo "COMPOSE_PROJECT_NAME=reference" >> $GITHUB_ENV
-          echo "DOCKER_CMD=docker-compose exec -T zk" >> $GITHUB_ENV
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_MODE=${{ github.event.inputs.compiler_llvm_benchmark_mode || '+M^I+B3' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_PATH=${{ github.event.inputs.compiler_llvm_benchmark_path || '' }}" >> $GITHUB_ENV
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_reference_branch || 'main' }}" >> $GITHUB_ENV
-          echo "COMPILER_LLVM_CANDIDATE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_reference_branch }}" >> $GITHUB_ENV
+          echo "COMPILER_LLVM_REFERENCE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_reference_branch }}" >> $GITHUB_ENV
 
-      - name: Get branch name (pull request)
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
-
-      - name: Preparing workspace. Checkout compiler-tester repository.
+      - name: Checking out the compiler-tester repository
         uses: actions/checkout@v3
         with:
           repository: matter-labs/compiler-tester
           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
           submodules: recursive
-          token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
+          token: ${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}
           path: "compiler-tester"
 
-      - name: Preparing workspace. Checkout compiler-llvm reference (pull request)
+      - name: Preparing the Docker environment
+        run: |
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
+          apt install -y ninja-build
+
+      - name: Preparing LLVM.lock (pull request)
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@v3
-        with:
-          path: compiler-llvm
-          ref: ${{ env.BRANCH_NAME }}
+        run: |
+          echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
+          echo "branch = \"${GITHUB_BASE_REF}\"" >> LLVM.lock
+          mv LLVM.lock ./compiler-tester/LLVM.lock
 
-      - name: Preparing workspace. Checkout compiler-llvm reference (workflow dispatch)
+      - name: Preparing LLVM.lock (workflow dispatch)
         if: github.event_name == 'workflow_dispatch'
-        uses: actions/checkout@v3
-        with:
-          path: compiler-llvm
-          ref: ${{ env.COMPILER_LLVM_REFERENCE_BRANCH_NAME }}
-
-      - name: Preparing workspace. Start Docker container for reference.
         run: |
-          docker-compose pull
-          docker-compose up -d zk
+          echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
+          echo "branch = \"${{ env.COMPILER_LLVM_REFERENCE_BRANCH_NAME }}\"" >> LLVM.lock
+          mv LLVM.lock ./compiler-tester/LLVM.lock
 
-      - name: Preparing workspace. Prepare docker environment
+      - name: Installing the LLVM manager and downloading the reference LLVM framework
+        working-directory: compiler-tester
         run: |
-          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/'
-          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/'
-          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:'
-          ${DOCKER_CMD} sh -c 'apt install -y ninja-build musl musl-tools'
-          ${DOCKER_CMD} sh -c 'rustup target add x86_64-unknown-linux-musl'
+          cargo install compiler-llvm-builder
+          zkevm-llvm clone
 
-      - name: Testing. Building LLVM framework reference.
+      - name: Building the reference LLVM framework (debug)
+        if: ${{ env.LLVM_BUILD_TYPE == 'debug' }}
+        working-directory: compiler-tester
         run: |
-          chmod +x compiler-llvm/build_gnu.sh
-          ${DOCKER_CMD} sh -c 'cd compiler-llvm && \
-          ./build_gnu.sh ${{ env.LLVM_BUILD_TYPE }}'
+          zkevm-llvm build --debug
 
-      - name: Testing. Benchmarking  LLVM framework reference.
+      - name: Building the reference LLVM framework (release)
+        if: ${{ env.LLVM_BUILD_TYPE == 'release' }}
+        working-directory: compiler-tester
+        run: |
+          zkevm-llvm build
+
+      - name: Benchmarking the reference LLVM framework
         id: compiler_tester_run
+        working-directory: compiler-tester
         run: |
-          ${DOCKER_CMD} sh -c '
-          cd compiler-tester && \
-          export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-          cargo run --release --bin compiler-tester -- --path=${{ env.LLVM_BENCHMARK_PATH }} --mode=${{ env.LLVM_BENCHMARK_MODE }} --benchmark=reference.json'
+          cargo run --release --bin compiler-tester -- --path=${{ env.LLVM_BENCHMARK_PATH }} --mode=${{ env.LLVM_BENCHMARK_MODE }} --benchmark=reference.json
 
       - uses: actions/upload-artifact@v3
         with:
           name: compiler-llvm-reference-benchmark
           path: compiler-tester/reference.json
 
-      - name: Clearing workspace. Removing used and trash docker images.
-        if: always()
-        run: |
-          docker image prune -f --all
-          docker-compose down --rmi local -v
-
   analysis:
     runs-on: [self-hosted, ci-runner]
+    container:
+      image: matterlabs/llvm_runner:latest
+      credentials:
+        username: ${{ secrets.DOCKERHUB_USER }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
     needs: [candidate, reference]
     steps:
-      - uses: AutoModality/action-clean@v1
-      - name: Preparing workspace. Setting environment 1.
-        run: |
-          echo "COMPOSE_FILE_DIR=${{ github.workspace }}/compiler-llvm/infra" >> $GITHUB_ENV
-
-      - name: Preparing workspace. Setting environment 2.
-        run: |
-          echo "COMPOSE_FILE=${COMPOSE_FILE_DIR}/docker-compose.yml" >> $GITHUB_ENV
-          echo "COMPOSE_PROJECT_NAME=analysis" >> $GITHUB_ENV
-          echo "DOCKER_CMD=docker-compose exec -T zk" >> $GITHUB_ENV
-
-      - name: Get branch name (pull request)
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
-
-      - name: Set compiler-tester branch depending on current branch (pull request)
+      - uses: AutoModality/action-clean@v1.1.0
+      - name: Setting the compiler-tester branch depending on current branch (pull request)
         if: github.event_name == 'pull_request'
         shell: bash
         run: |
           echo "COMPILER_TESTER_BRANCH_NAME=main" >> $GITHUB_ENV
 
-      - name: Set compiler-tester branch from manual input (workflow dispatch)
+      - uses: AutoModality/action-clean@v1.1.0
+      - name: Setting the compiler-tester branch from the manual input (workflow dispatch)
         if: github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_candidate_branch }}" >> $GITHUB_ENV
 
-      - name: Preparing workspace. Checkout compiler-tester repository.
+      - name: Checking out the compiler-tester repository
         uses: actions/checkout@v3
         with:
           repository: matter-labs/compiler-tester
           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
           submodules: recursive
-          token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
+          token: ${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}
           path: "compiler-tester"
 
-      - uses: actions/download-artifact@v3
-        with:
-          name: compiler-llvm-docker-compose
-          path: ${{ env.COMPOSE_FILE_DIR }}
-
-      - name: Preparing workspace. Start Docker container for reference.
+      - name: Preparing the Docker environment
         run: |
-          docker-compose pull
-          docker-compose up -d zk
-
-      - name: Preparing workspace. Prepare docker environment
-        run: |
-          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/'
-          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/'
-          ${DOCKER_CMD} sh -c 'git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:'
-          ${DOCKER_CMD} sh -c 'apt install -y ninja-build musl musl-tools'
-          ${DOCKER_CMD} sh -c 'rustup target add x86_64-unknown-linux-musl'
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
+          apt install -y ninja-build
 
       - uses: actions/download-artifact@v3
         with:
@@ -275,16 +239,14 @@ jobs:
           name: compiler-llvm-reference-benchmark
           path: compiler-tester
 
-      - name: Testing. Comparing LLVM framework results.
+      - name: Comparing the LLVM framework benchmark results
         id: compiler_tester_run
+        working-directory: compiler-tester
         run: |
-          ${DOCKER_CMD} sh -c '
-          cd compiler-tester && \
-          export LLVM_SYS_150_PREFIX=/opt/llvm-${{ env.LLVM_BUILD_TYPE }}/ && \
-          cargo run --release --bin benchmark-analyzer -- --reference reference.json --candidate candidate.json --output-file result.txt && \
-          chown 1000:1000 result.txt'
+          cargo run --release --bin benchmark-analyzer -- --reference reference.json --candidate candidate.json --output-file result.txt
+          chown 1000:1000 result.txt
 
-      - name: Testing. Posting LLVM benchmark results to step summary.
+      - name: Posting the LLVM benchmark results to the summary
         run: |
           printf "Benchmark results:\n" >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
@@ -292,11 +254,11 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           cat $GITHUB_STEP_SUMMARY > ./compiler-tester/result.txt
 
-      - name: Testing. Posting LLVM benchmark results to PR comment.
+      - name: Posting the LLVM benchmark results to a PR comment
         if: github.event_name == 'pull_request'
         uses: machine-learning-apps/pr-comment@master
         env:
-          GITHUB_TOKEN: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}
         with:
           path: ./compiler-tester/result.txt
 
@@ -307,9 +269,3 @@ jobs:
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.MATTERMOST_WEBHOOK }} # required
         if: always() # Pick up events even if the job fails or is canceled.
-
-      - name: Clearing workspace. Removing used and trash docker images.
-        if: always()
-        run: |
-          docker image prune -f --all
-          docker-compose down --rmi local -v
