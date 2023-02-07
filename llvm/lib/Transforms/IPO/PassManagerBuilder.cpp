@@ -164,9 +164,6 @@ cl::opt<AttributorRunOption> AttributorRun(
                           "disable attributor runs")));
 
 extern cl::opt<bool> EnableKnowledgeRetention;
-// SyncVM local begin
-extern ModulePass* createSyncVMLinkRuntimePass(bool);
-// SyncVM local end
 } // namespace llvm
 
 PassManagerBuilder::PassManagerBuilder() {
@@ -584,9 +581,6 @@ void PassManagerBuilder::addVectorPasses(legacy::PassManagerBase &PM,
 
 void PassManagerBuilder::populateModulePassManager(
     legacy::PassManagerBase &MPM) {
-  // SyncVM local begin
-  MPM.add(createSyncVMLinkRuntimePass(false /*InternalizeOnly*/));
-  // SyncVM local end
   MPM.add(createAnnotation2MetadataLegacyPass());
 
   // Allow forcing function attributes as a debugging and tuning aid.
