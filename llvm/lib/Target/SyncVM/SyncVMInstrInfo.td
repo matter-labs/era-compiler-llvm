@@ -1227,8 +1227,12 @@ defm ROR  : ArithINonCommutable<39, "ror", rotr>;
 let mayLoad = 1 in {
 def LD1  : IUMA < 41, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
                   "ld.1$cc\t$rs0, $rd0", []>;
+def LD1i  : IUMA < 141, (outs GR256:$rd0), (ins imm16:$addr, cc:$cc),
+                  "ld.1$cc\t$addr, $rd0", []>;
 def LD2  : IUMA < 42, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
                   "ld.2$cc\t$rs0, $rd0", []>;
+def LD2i  : IUMA < 142, (outs GR256:$rd0), (ins imm16:$addr, cc:$cc),
+                  "ld.2$cc\t$addr, $rd0", []>;
 def LD   : IUMA < 43, (outs GR256:$rd0), (ins GRPTR:$rs0, cc:$cc),
                   "ld$cc\t$rs0, $rd0", []>;
 // TODO: pseudo alias version of `LD` which has different type than `LD`
@@ -1237,18 +1241,28 @@ def FATPTR_LD : IUMA < 45, (outs GRPTR:$rd0), (ins GRPTR:$rs0, cc:$cc),
                   "ld$cc\t$rs0, $rd0 ;fat load", []>;
 }
 def     : Pat<(load_heap GR256:$rs0), (LD1 GR256:$rs0, 0)>;
+def     : Pat<(load_heap imm16:$addr), (LD1i imm16:$addr, 0)>;
 def     : Pat<(load_heapaux GR256:$rs0), (LD2 GR256:$rs0, 0)>;
+def     : Pat<(load_heapaux imm16:$addr), (LD2i imm16:$addr, 0)>;
 
 let mayStore = 1 in {
 def ST1  : IUMA < 44, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
                   "st.1$cc\t$rs0, $rs1", []>;
+def ST1i  : IUMA < 144, (outs), (ins imm16:$addr, GR256:$rs1, cc:$cc),
+                  "st.1$cc\t$addr, $rs1", []>;
 def ST2  : IUMA < 54, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
                   "st.2$cc\t$rs0, $rs1", []>;
+def ST2i  : IUMA < 154, (outs), (ins imm16:$addr, GR256:$rs1, cc:$cc),
+                  "st.2$cc\t$addr, $rs1", []>;
 }
 def     : Pat<(store_heap GR256:$rs1, GR256:$rs0),
               (ST1 GR256:$rs0, $rs1, 0)>;
+def     : Pat<(store_heap GR256:$rs1, imm16:$addr),
+              (ST1i imm16:$addr, $rs1, 0)>;
 def     : Pat<(store_heapaux GR256:$rs1, GR256:$rs0),
               (ST2 GR256:$rs0, $rs1, 0)>;
+def     : Pat<(store_heapaux GR256:$rs1, imm16:$addr),
+              (ST2i imm16:$addr, $rs1, 0)>;
 //===----------------------------------------------------------------------===//
 // Control flow instructions
 //===----------------------------------------------------------------------===//
