@@ -14,6 +14,10 @@ on:
         description: "compiler-tester branch"
         required: true
         default: "main"
+      compiler_llvm_candidate_branch:
+        description: "compiler-llvm branch to use as a benchmark candidate"
+        required: true
+        default: "dev-15"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -33,6 +37,7 @@ jobs:
         run: |
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch || 'main' }}" >> $GITHUB_ENV
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
+          echo "COMPILER_LLVM_CANDIDATE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_candidate_branch }}" >> $GITHUB_ENV
 
       - name: Getting the branch name (pull request)
         if: github.event_name == 'pull_request'
