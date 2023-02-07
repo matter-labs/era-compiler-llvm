@@ -14,8 +14,8 @@ on:
         description: "compiler-tester branch"
         required: true
         default: "main"
-      compiler_llvm_candidate_branch:
-        description: "compiler-llvm branch to use as a benchmark candidate"
+      compiler_llvm_branch:
+        description: "compiler-llvm branch"
         required: true
         default: "dev-15"
 
@@ -35,9 +35,9 @@ jobs:
       - uses: AutoModality/action-clean@v1.1.0
       - name: Setting the environment
         run: |
-          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch || 'main' }}" >> $GITHUB_ENV
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
-          echo "COMPILER_LLVM_CANDIDATE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_candidate_branch }}" >> $GITHUB_ENV
+          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch || 'main' }}" >> $GITHUB_ENV
+          echo "COMPILER_LLVM_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_candidate_branch }}" >> $GITHUB_ENV
 
       - name: Getting the branch name (pull request)
         if: github.event_name == 'pull_request'
@@ -71,7 +71,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         run: |
           echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
-          echo "branch = \"${{ env.COMPILER_LLVM_CANDIDATE_BRANCH_NAME }}\"" >> LLVM.lock
+          echo "branch = \"${{ env.COMPILER_LLVM_BRANCH_NAME }}\"" >> LLVM.lock
           mv LLVM.lock ./compiler-tester/LLVM.lock
 
       - name: Installing the LLVM manager and downloading the LLVM framework
@@ -162,7 +162,8 @@ jobs:
             Transforms/LoopFlatten/widen-iv2.ll;\
             Transforms/LoopFusion/simple.ll"
         run: |
-          target-llvm/build-final/bin/llvm-lit -s --xfail "${XFAILS}" "-Dopt=opt ${OPT_OPTS}" llvm/llvm/test/CodeGen/
+          BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
+          target-llvm/build-final/bin/llvm-lit -vv -s --debug --xfail "${XFAILS}" "-Dopt=${BINDIR}/opt ${OPT_OPTS}" llvm/llvm/test/CodeGen/
 
       - name: Building and running the compiler tester
         id: compiler_tester_run
