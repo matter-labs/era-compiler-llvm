@@ -86,7 +86,6 @@ private:
   // Main method to transform nodes into machine nodes.
   void Select(SDNode *N) override;
 
-  bool SelectInRegMemAddr(SDValue Addr, SDValue &Base);
   bool SelectMemAddr(SDValue Addr, SDValue &Base, SDValue &Disp);
   bool SelectStackAddr(SDValue Addr, SDValue &Base1, SDValue &Base2,
                        SDValue &Disp);
@@ -139,6 +138,12 @@ bool EraVMDAGToDAGISel::MatchAddressBase(SDValue N, EraVMISelAddressMode &AM,
 bool EraVMDAGToDAGISel::MatchAddress(SDValue N, EraVMISelAddressMode &AM,
                                      bool IsStackAddr) {
   LLVM_DEBUG(errs() << "MatchAddress: "; AM.dump());
+
+  // strip wrapper and match
+  if ((IsStackAddr && N.getOpcode() == EraVMISD::GAStack) ||
+      (!IsStackAddr && N.getOpcode() == EraVMISD::GACode)) {
+    N = N.getOperand(0);
+  }
 
   switch (N.getOpcode()) {
   default: {
@@ -207,11 +212,6 @@ bool EraVMDAGToDAGISel::MatchAddress(SDValue N, EraVMISelAddressMode &AM,
     return MatchAddress(N->getOperand(0), AM, IsStackAddr);
   }
   return MatchAddressBase(N, AM, IsStackAddr);
-}
-
-bool EraVMDAGToDAGISel::SelectInRegMemAddr(SDValue N, SDValue &Base) {
-  Base = N;
-  return true;
 }
 
 /// SelectMemAddr - returns true if it is able pattern match an addressing mode
