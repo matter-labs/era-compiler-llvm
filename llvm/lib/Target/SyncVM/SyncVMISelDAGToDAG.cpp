@@ -89,7 +89,6 @@ private:
   // Main method to transform nodes into machine nodes.
   void Select(SDNode *N) override;
 
-  bool SelectInRegMemAddr(SDValue Addr, SDValue &Base);
   bool SelectMemAddr(SDValue Addr, SDValue &Base, SDValue &Disp);
   bool SelectStackAddr(SDValue Addr, SDValue &Base1, SDValue &Base2,
                        SDValue &Disp);
@@ -147,6 +146,12 @@ bool SyncVMDAGToDAGISel::MatchAddressBase(SDValue N, SyncVMISelAddressMode &AM,
 bool SyncVMDAGToDAGISel::MatchAddress(SDValue N, SyncVMISelAddressMode &AM,
                                       bool IsStackAddr) {
   LLVM_DEBUG(errs() << "MatchAddress: "; AM.dump());
+  
+  // strip wrapper and match
+  if ((IsStackAddr && N.getOpcode() == SyncVMISD::GAStack) ||
+      (!IsStackAddr && N.getOpcode() == SyncVMISD::GACode)) {
+    N = N.getOperand(0);
+  }
 
   switch (N.getOpcode()) {
   default: {
@@ -220,11 +225,6 @@ bool SyncVMDAGToDAGISel::MatchAddress(SDValue N, SyncVMISelAddressMode &AM,
     return MatchAddress(N->getOperand(0), AM, IsStackAddr);
   }
   return MatchAddressBase(N, AM, IsStackAddr);
-}
-
-bool SyncVMDAGToDAGISel::SelectInRegMemAddr(SDValue N, SDValue &Base) {
-  Base = N;
-  return true;
 }
 
 /// SelectMemAddr - returns true if it is able pattern match an addressing mode

@@ -245,6 +245,13 @@ private:
 
   Register getRegisterByName(const char *RegName, LLT VT,
                              const MachineFunction &MF) const override;
+
+  SDValue wrapGlobalAddress(const SDValue &ValueToWrap, SelectionDAG &DAG,
+                            const SDLoc &DL) const;
+  SDValue wrapExternalSymbol(const SDValue &ValueToWrap, SelectionDAG &DAG,
+                             const SDLoc &DL) const;
+  SDValue wrapSymbol(const SDValue &ValueToWrap, SelectionDAG &DAG,
+                     const SDLoc &DL, unsigned addrspace) const;
 };
 } // namespace llvm
 

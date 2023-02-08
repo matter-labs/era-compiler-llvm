@@ -192,7 +192,6 @@ def constant_pool : SDNodeXForm<imm, [{
 // Complex Pattern Definitions.
 //===----------------------------------------------------------------------===//
 
-def inreg_memaddr: ComplexPattern<iPTR, 1, "SelectInRegMemAddr", [], []>;
 def memaddr      : ComplexPattern<iPTR, 2, "SelectMemAddr", [], []>;
 def stackaddr    : ComplexPattern<iPTR, 3, "SelectStackAddr", [], []>;
 def adjstackaddr : ComplexPattern<iPTR, 3, "SelectAdjStackAddr", [], []>;
@@ -1188,6 +1187,7 @@ def : Pat<(load_code memaddr:$addr),  (ADDcrr_p memaddr:$addr, R0)>;
 def : Pat<(load_stack stackaddr:$addr),  (ADDsrr_p stackaddr:$addr, R0)>;
 def : Pat<(store_stack GR256:$src, stackaddr:$dst),  (ADDrrs_p GR256:$src, R0, stackaddr:$dst)>;
 def : Pat<(store_stack imm16:$src, stackaddr:$dst),  (ADDirs_p imm16:$src, R0, stackaddr:$dst)>;
+
 // fat pointer move patterns
 def : Pat<(fatptr (load_stack stackaddr:$addr)),  (PTR_ADDsrr_p stackaddr:$addr, R0)>;
 def : Pat<(store_stack GRPTR:$src, stackaddr:$dst),  (PTR_ADDrrs_p GRPTR:$src, R0, stackaddr:$dst)>;
@@ -1364,9 +1364,9 @@ def : Pat<(int_syncvm_precompile GR256:$rs0, GR256:$rs1),
 let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Flags],
     Uses = [SP], isCall = 1 in {
    def CALL : Pseudo<(outs), (ins GR256:$in1, imm16:$callee),
-                   "CALL\t$in1, $callee", [(SyncVMcall GR256:$in1, tglobaladdr:$callee)]>;
+                   "CALL\t$in1, $callee", [(SyncVMcall GR256:$in1, (SyncVMGAStack tglobaladdr:$callee))]>;
    def INVOKE : Pseudo<(outs), (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
-                   "INVOKE\t$in1, $callee, $unwind", [(SyncVMinvoke GR256:$in1, tglobaladdr:$callee, bb:$unwind)]>;
+                   "INVOKE\t$in1, $callee, $unwind", [(SyncVMinvoke GR256:$in1, (SyncVMGAStack tglobaladdr:$callee), bb:$unwind)]>;
    def NEAR_CALL : ICall<9, CFNormal, (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
                    "near_call\t$in1, $callee, $unwind", []>;
 
