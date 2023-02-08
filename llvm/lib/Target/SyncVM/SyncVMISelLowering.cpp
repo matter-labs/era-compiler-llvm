@@ -33,24 +33,47 @@ using namespace llvm;
 
 #define DEBUG_TYPE "syncvm-lower"
 
-/// Wrap global address with GAStack or GACode nodes.
+/// Helper function: wrap symbols according to their address space.
 /// Precondition:
-/// \p ValueToWrap is SDValue containing a GlobalAddressSDNode.
-/// The nodes are to lower CopyToReg GlobalAddress to
-/// 1. Materialize GlobalAddress in a virtual register
-/// 2. Copy it to a physical one.
-/// TODO: CPR-921 Should be removed after a proper wrapping is implemented.
-static SDValue wrappedGlobalAddress(const SDValue &ValueToWrap,
-                                    SelectionDAG &DAG, const SDLoc &DL) {
-  auto *GANode = cast<GlobalAddressSDNode>(ValueToWrap.getNode());
-  switch (GANode->getAddressSpace()) {
+/// \p ValueToWrap is SDValue containing a symbol value (global address,
+/// external symbol or block address)
+SDValue SyncVMTargetLowering::wrapSymbol(const SDValue &ValueToWrap,
+                                         SelectionDAG &DAG, const SDLoc &DL,
+                                         unsigned addrspace) const {
+  auto VT = getPointerTy(DAG.getDataLayout());
+  switch (addrspace) {
   case SyncVMAS::AS_STACK:
-    return DAG.getNode(SyncVMISD::GAStack, DL, MVT::i256, ValueToWrap);
+    return DAG.getNode(SyncVMISD::GAStack, DL, VT, ValueToWrap);
   case SyncVMAS::AS_CODE:
-    return DAG.getNode(SyncVMISD::GACode, DL, MVT::i256, ValueToWrap);
+    return DAG.getNode(SyncVMISD::GACode, DL, VT, ValueToWrap);
+  default:
+    llvm_unreachable("Global symbol in unexpected addr space");
   }
-  llvm_unreachable("Global symbol in unexpected addr space");
   return {};
+}
+
+/// Wrap a global address and lower to TargetGlobalAddress.
+/// The \p ValueToWrap must be a GlobalAddressSDNode.
+SDValue SyncVMTargetLowering::wrapGlobalAddress(const SDValue &ValueToWrap,
+                                                SelectionDAG &DAG,
+                                                const SDLoc &DL) const {
+  // convert to TargetGlobalAddress
+  auto *GANode = dyn_cast<GlobalAddressSDNode>(ValueToWrap.getNode());
+  auto TGA = DAG.getTargetGlobalAddress(
+      GANode->getGlobal(), DL, ValueToWrap.getValueType(), GANode->getOffset());
+  return wrapSymbol(TGA, DAG, DL, GANode->getAddressSpace());
+}
+
+/// Wrap a external symbol and lower to TargetExternalSymbol.
+/// The \p ValueToWrap must be a ExternalSymbolSDNode.
+SDValue SyncVMTargetLowering::wrapExternalSymbol(const SDValue &ValueToWrap,
+                                                 SelectionDAG &DAG,
+                                                 const SDLoc &DL) const {
+  // convert to TargetExternalSymbol
+  auto *ESNode = dyn_cast<ExternalSymbolSDNode>(ValueToWrap.getNode());
+  auto TES = DAG.getTargetExternalSymbol(ESNode->getSymbol(),
+                                         ValueToWrap.getValueType());
+  return wrapSymbol(TES, DAG, DL, SyncVMAS::AS_CODE);
 }
 
 SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
@@ -208,7 +231,7 @@ SyncVMTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
 
     const SDValue &CurVal = OutVals[i];
     auto Val = isa<GlobalAddressSDNode>(CurVal.getNode())
-                   ? wrappedGlobalAddress(CurVal, DAG, DL)
+                   ? wrapGlobalAddress(CurVal, DAG, DL)
                    : CurVal;
     Chain = DAG.getCopyToReg(Chain, DL, VA.getLocReg(), Val, Flag);
 
@@ -465,16 +488,18 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   // If the callee is a GlobalAddress node (quite common, every direct call is)
   // turn it into a TargetGlobalAddress node so that legalize doesn't hack it.
   // Likewise ExternalSymbol -> TargetExternalSymbol.
-  if (GlobalAddressSDNode *G = dyn_cast<GlobalAddressSDNode>(Callee))
-    Callee = DAG.getTargetGlobalAddress(G->getGlobal(), DL, MVT::i256);
-  else if (ExternalSymbolSDNode *E = dyn_cast<ExternalSymbolSDNode>(Callee))
-    Callee = DAG.getTargetExternalSymbol(E->getSymbol(), MVT::i256);
+  if (GlobalAddressSDNode *G = dyn_cast<GlobalAddressSDNode>(Callee)) {
+    Callee = wrapGlobalAddress(Callee, DAG, DL);
+  }
+  else if (ExternalSymbolSDNode *E = dyn_cast<ExternalSymbolSDNode>(Callee)) {
+    Callee = wrapExternalSymbol(Callee, DAG, DL);
+  }
 
   for (unsigned i = 0, e = Outs.size(); i != e; ++i) {
     if (ArgLocs[i].isRegLoc()) {
       SDValue &CurVal = OutVals[i];
       auto Val = isa<GlobalAddressSDNode>(CurVal.getNode())
-                     ? wrappedGlobalAddress(CurVal, DAG, DL)
+                     ? wrapGlobalAddress(CurVal, DAG, DL)
                      : CurVal;
 
       Chain = DAG.getCopyToReg(Chain, DL, ArgLocs[i].getLocReg(), Val, InFlag);
@@ -870,14 +895,7 @@ SDValue SyncVMTargetLowering::LowerSREM(SDValue Op, SelectionDAG &DAG) const {
 
 SDValue SyncVMTargetLowering::LowerGlobalAddress(SDValue Op,
                                                  SelectionDAG &DAG) const {
-  auto *GANode = cast<GlobalAddressSDNode>(Op);
-  const GlobalValue *GV = GANode->getGlobal();
-  int64_t Offset = cast<GlobalAddressSDNode>(Op)->getOffset();
-  auto PtrVT = getPointerTy(DAG.getDataLayout());
-
-  // Create the TargetGlobalAddress node, folding in the constant offset.
-  SDValue Result = DAG.getTargetGlobalAddress(GV, SDLoc(Op), PtrVT, Offset);
-  return Result;
+  return wrapGlobalAddress(Op, DAG, SDLoc(Op));
 }
 
 SDValue SyncVMTargetLowering::LowerExternalSymbol(SDValue Op,
