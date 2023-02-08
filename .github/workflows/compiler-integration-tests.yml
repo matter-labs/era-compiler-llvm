@@ -2,8 +2,6 @@ name: Compiler integration testing
 
 on:
   pull_request:
-    branches:
-      - dev-15
   workflow_dispatch:
     inputs:
       llvm_build_type:
@@ -39,18 +37,13 @@ jobs:
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch || 'main' }}" >> $GITHUB_ENV
           echo "COMPILER_LLVM_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_candidate_branch }}" >> $GITHUB_ENV
 
-      - name: Getting the branch name (pull request)
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
-
       - name: Checking out the compiler-tester repository
         uses: actions/checkout@v3
         with:
           repository: matter-labs/compiler-tester
           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
           submodules: recursive
-          token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
+          token: ${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}
           path: "compiler-tester"
 
       - name: Preparing the Docker environment
@@ -71,7 +64,7 @@ jobs:
         if: github.event_name == 'workflow_dispatch'
         run: |
           echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
-          echo "branch = \"${GITHUB_REF_NAME}\"" >> LLVM.lock
+          echo "branch = \"${{ env.COMPILER_LLVM_BRANCH_NAME }}\"" >> LLVM.lock
           mv LLVM.lock ./compiler-tester/LLVM.lock
 
       - name: Installing the LLVM manager and downloading the LLVM framework

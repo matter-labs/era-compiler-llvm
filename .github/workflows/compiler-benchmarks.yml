@@ -2,8 +2,6 @@ name: Compiler benchmarking
 
 on:
   pull_request:
-    branches:
-      - dev-15
   workflow_dispatch:
     inputs:
       llvm_build_type:
@@ -57,18 +55,13 @@ jobs:
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_candidate_branch || 'main' }}" >> $GITHUB_ENV
           echo "COMPILER_LLVM_CANDIDATE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_candidate_branch }}" >> $GITHUB_ENV
 
-      - name: Getting the branch name (pull request)
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
-
       - name: Checking out the compiler-tester repository
         uses: actions/checkout@v3
         with:
           repository: matter-labs/compiler-tester
           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
           submodules: recursive
-          token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
+          token: ${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}
           path: "compiler-tester"
 
       - name: Preparing the Docker environment
@@ -136,12 +129,7 @@ jobs:
           echo "LLVM_BENCHMARK_MODE=${{ github.event.inputs.compiler_llvm_benchmark_mode || '+M^I+B3' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_PATH=${{ github.event.inputs.compiler_llvm_benchmark_path || '' }}" >> $GITHUB_ENV
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_reference_branch || 'main' }}" >> $GITHUB_ENV
-          echo "COMPILER_LLVM_CANDIDATE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_reference_branch }}" >> $GITHUB_ENV
-
-      - name: Getting the branch name (pull request)
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
+          echo "COMPILER_LLVM_REFERENCE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_reference_branch }}" >> $GITHUB_ENV
 
       - name: Checking out the compiler-tester repository
         uses: actions/checkout@v3
@@ -149,7 +137,7 @@ jobs:
           repository: matter-labs/compiler-tester
           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
           submodules: recursive
-          token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
+          token: ${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}
           path: "compiler-tester"
 
       - name: Preparing the Docker environment
@@ -163,14 +151,14 @@ jobs:
         if: github.event_name == 'pull_request'
         run: |
           echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
-          echo "branch = \"${GITHUB_HEAD_REF}\"" >> LLVM.lock
+          echo "branch = \"${GITHUB_BASE_REF}\"" >> LLVM.lock
           mv LLVM.lock ./compiler-tester/LLVM.lock
 
       - name: Preparing LLVM.lock (workflow dispatch)
         if: github.event_name == 'workflow_dispatch'
         run: |
           echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
-          echo "branch = \"${{ env.COMPILER_LLVM_CANDIDATE_BRANCH_NAME }}\"" >> LLVM.lock
+          echo "branch = \"${{ env.COMPILER_LLVM_REFERENCE_BRANCH_NAME }}\"" >> LLVM.lock
           mv LLVM.lock ./compiler-tester/LLVM.lock
 
       - name: Installing the LLVM manager and downloading the reference LLVM framework
@@ -212,17 +200,13 @@ jobs:
     needs: [candidate, reference]
     steps:
       - uses: AutoModality/action-clean@v1.1.0
-      - name: Getting the branch name (pull request)
-        if: github.event_name == 'pull_request'
-        shell: bash
-        run: echo "BRANCH_NAME=$(echo ${GITHUB_BASE_REF} | tr / -)" >> $GITHUB_ENV
-
-      - name: Set compiler-tester branch depending on current branch (pull request)
+      - name: Setting the compiler-tester branch depending on current branch (pull request)
         if: github.event_name == 'pull_request'
         shell: bash
         run: |
           echo "COMPILER_TESTER_BRANCH_NAME=main" >> $GITHUB_ENV
 
+      - uses: AutoModality/action-clean@v1.1.0
       - name: Setting the compiler-tester branch from the manual input (workflow dispatch)
         if: github.event_name == 'workflow_dispatch'
         shell: bash
@@ -235,7 +219,7 @@ jobs:
           repository: matter-labs/compiler-tester
           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
           submodules: recursive
-          token: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
+          token: ${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}
           path: "compiler-tester"
 
       - name: Preparing the Docker environment
@@ -274,7 +258,7 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: machine-learning-apps/pr-comment@master
         env:
-          GITHUB_TOKEN: ${{ secrets.COMPILER_TESTER_ACCESS_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}
         with:
           path: ./compiler-tester/result.txt
 
