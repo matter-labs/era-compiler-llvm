@@ -35,7 +35,7 @@ jobs:
         run: |
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch || 'main' }}" >> $GITHUB_ENV
-          echo "COMPILER_LLVM_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_candidate_branch }}" >> $GITHUB_ENV
+          echo "COMPILER_LLVM_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_branch }}" >> $GITHUB_ENV
 
       - name: Checking out the compiler-tester repository
         uses: actions/checkout@v3
