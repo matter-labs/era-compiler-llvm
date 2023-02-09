@@ -206,6 +206,7 @@ jobs:
         run: |
           echo "COMPILER_TESTER_BRANCH_NAME=main" >> $GITHUB_ENV
 
+      - uses: AutoModality/action-clean@v1.1.0
       - name: Setting the compiler-tester branch from the manual input (workflow dispatch)
         if: github.event_name == 'workflow_dispatch'
         shell: bash
