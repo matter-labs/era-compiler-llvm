@@ -6,6 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 
+#error "This is a test error, to break the build for GitHub Action testing.  Do not merge."
+
 #include "llvm/Config/abi-breaking.h"
 
 #ifndef _MSC_VER
