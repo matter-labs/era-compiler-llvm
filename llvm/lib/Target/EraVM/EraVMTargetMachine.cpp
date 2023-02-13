@@ -21,6 +21,7 @@
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Transforms/IPO.h"
+#include "llvm/Transforms/IPO/GlobalDCE.h"
 #include "llvm/Transforms/Utils.h"
 
 #include "EraVM.h"
@@ -82,6 +83,7 @@ void EraVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
   PB.registerPipelineStartEPCallback(
       [](ModulePassManager &PM, OptimizationLevel Level) {
         PM.addPass(EraVMLinkRuntimePass());
+        PM.addPass(GlobalDCEPass());
       });
 }
 
