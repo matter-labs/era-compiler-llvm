@@ -15,6 +15,8 @@ add_public_tablegen_target(EraVMCommonTableGen)
 
 set(ERAVM_RUNTIME_PATH_IN ${CMAKE_CURRENT_SOURCE_DIR}/eravm-runtime.ll)
 set(ERAVM_RUNTIME_PATH_OUT ${CMAKE_CURRENT_BINARY_DIR}/EraVMRT.inc)
+set(ERAVM_STDLIB_PATH_IN ${CMAKE_CURRENT_SOURCE_DIR}/eravm-stdlib.ll)
+set(ERAVM_STDLIB_PATH_OUT ${CMAKE_CURRENT_BINARY_DIR}/EraVMStdLib.inc)
 
 file(
   GENERATE
@@ -34,7 +36,16 @@ add_custom_command(
   DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/EraVMGenRuntime.cmake
           ${ERAVM_RUNTIME_PATH_IN}
 )
+add_custom_command(
+  OUTPUT "${ERAVM_STDLIB_PATH_OUT}"
+  COMMAND ${CMAKE_COMMAND} -DRT_PATH_IN=${ERAVM_STDLIB_PATH_IN}
+                           -DRT_PATH_OUT=${ERAVM_STDLIB_PATH_OUT}
+                           -P ${CMAKE_CURRENT_BINARY_DIR}/EraVMGenRuntime.cmake
+  DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/EraVMGenRuntime.cmake
+          ${ERAVM_STDLIB_PATH_IN}
+)
 add_custom_target(EraVMRT DEPENDS "${ERAVM_RUNTIME_PATH_OUT}")
+add_custom_target(EraVMStdLib DEPENDS "${ERAVM_STDLIB_PATH_OUT}")
 
 add_llvm_target(EraVMCodeGen
   EraVMAddConditions.cpp
@@ -85,6 +96,7 @@ add_llvm_target(EraVMCodeGen
   DEPENDS
   intrinsics_gen
   EraVMRT
+  EraVMStdLib
   )
 
 add_subdirectory(TargetInfo)

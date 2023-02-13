@@ -44,23 +44,15 @@ ModulePass *createEraVMLinkRuntimePass();
 } // namespace llvm
 
 static ExitOnError ExitOnErr;
-/// The attribute to internalize a runtime function in the beginning of opt
-/// pipeline. Functions that are used directly by a frontend are generally
-/// marked with it.
-static const char INTERNALIZE_EARLY[] = "internalize-early";
-/// The attribute to internalize a runtime function in the beginning of llc
-/// pipeline. LLVM instructions and intrinsics that are lowered to a runtime
-/// call are marked with it.
-static const char INTERNALIZE_LATE[] = "internalize-late";
 
 namespace {
-/// Link the runtime library into the module.
+/// Link std and runtime libraries into the module.
 /// At the moment front ends work only with single source programs.
 struct EraVMLinkRuntime : public ModulePass {
 public:
   static char ID;
-  explicit EraVMLinkRuntime(bool OnlyInternalize = false)
-      : ModulePass(ID), OnlyInternalize(OnlyInternalize) {}
+  explicit EraVMLinkRuntime(bool IsRuntimeLinkage = false)
+      : ModulePass(ID), IsRuntimeLinkage(IsRuntimeLinkage) {}
   bool runOnModule(Module &M) override;
 
   StringRef getPassName() const override {
@@ -72,29 +64,34 @@ public:
   }
 
 private:
-  bool OnlyInternalize;
+  bool IsRuntimeLinkage;
 };
 } // namespace
 
 char EraVMLinkRuntime::ID = 0;
 
 INITIALIZE_PASS(EraVMLinkRuntime, "eravm-link-runtime",
-                "Link runtime library into the module", false, false)
+                "Link standard and runtime library into the module", false,
+                false)
 
-const char *LL_DATA =
+const char *RUNTIME_DATA =
 #include "EraVMRT.inc"
     ;
+const char *STDLIB_DATA =
+#include "EraVMStdLib.inc"
+    ;
 
-static bool EraVMLinkRuntimeImpl(Module &M) {
+static bool EraVMLinkRuntimeImpl(Module &M, const char *ModuleToLink) {
   Linker L(M);
   LLVMContext &C = M.getContext();
   unsigned Flags = Linker::Flags::None;
 
-  std::unique_ptr<MemoryBuffer> Buffer = MemoryBuffer::getMemBuffer(LL_DATA);
+  std::unique_ptr<MemoryBuffer> Buffer =
+      MemoryBuffer::getMemBuffer(ModuleToLink);
   SMDiagnostic Err;
   std::unique_ptr<Module> RTM = parseIR(*Buffer, Err, C);
   if (!RTM) {
-    Err.print("Unable to parse eravm-runtime.ll", errs());
+    Err.print("Unable to parse eravm-runtime.ll, eravm-stdlib.ll", errs());
     exit(1);
   }
   bool LinkErr = false;
@@ -102,76 +99,45 @@ static bool EraVMLinkRuntimeImpl(Module &M) {
       std::move(RTM), Flags, [](Module &M, const StringSet<> &GVS) {
         internalizeModule(M, [&GVS](const GlobalValue &GV) {
           // Keep original symbols as they are
-          if (!GV.hasName() || (GVS.count(GV.getName()) == 0))
-            return true;
-          // Internalize linked-in symbols with "internalize-early" attribute.
-          if (auto *F = llvm::dyn_cast<Function>(&GV))
-            return !F->hasFnAttribute(INTERNALIZE_EARLY);
-          return false;
+          return !GV.hasName() || (GVS.count(GV.getName()) == 0);
         });
       });
   if (LinkErr) {
-    errs() << "Can't link EraVM runtime \n";
+    errs() << "Can't link EraVM runtime or stdlib \n";
     exit(1);
   }
   return true;
 }
 
-// TODO: CPR-988 Replace with __sstore runtime function.
-static Function *createSStoreFunction(Module &M) {
-  LLVMContext &C = M.getContext();
-  Type *Int256Ty = Type::getInt256Ty(C);
-  std::vector<Type *> ArgTy = {Int256Ty, Int256Ty};
-  M.getOrInsertFunction(
-      "__sstore",
-      FunctionType::get(Type::getVoidTy(C), {Int256Ty, Int256Ty}, false));
-  Function *Result = M.getFunction("__sstore");
-  auto *Entry = BasicBlock::Create(C, "entry", Result);
-  auto *SStoreIntFn = Intrinsic::getDeclaration(&M, Intrinsic::eravm_sstore);
-
-  IRBuilder<> Builder(Entry);
-  Builder.CreateCall(SStoreIntFn, {Result->getArg(0), Result->getArg(1)});
-  Builder.CreateRetVoid();
-  return Result;
-}
-
 bool EraVMLinkRuntime::runOnModule(Module &M) {
-  if (!OnlyInternalize)
-    return EraVMLinkRuntimeImpl(M);
-  bool Changed = internalizeModule(M, [](const GlobalValue &GV) {
-    // Only keep entry public
-    if (!GV.hasName())
-      return true;
-    // Internalize linked-in symbols with "internalize-late" attribute.
-    if (auto *F = llvm::dyn_cast<Function>(&GV))
-      return !F->hasFnAttribute(INTERNALIZE_LATE);
-    return false;
-  });
+  bool Changed =
+      EraVMLinkRuntimeImpl(M, IsRuntimeLinkage ? RUNTIME_DATA : STDLIB_DATA);
+  if (!IsRuntimeLinkage)
+    return Changed;
   // sstore can throw, so externalize invoke sstore by wrapping into a function.
-  Function *SStoreF = nullptr;
+  Function *SStoreF = M.getFunction("__sstore");
+  assert(SStoreF && "__sstore must be defined in eravm-runtime.ll");
   for (auto &F : M)
     for (auto &BB : F)
       for (auto &I : BB) {
-        auto Invoke = dyn_cast<InvokeInst>(&I);
+        auto *Invoke = dyn_cast<InvokeInst>(&I);
         if (!Invoke)
           continue;
         Intrinsic::ID IntID = Invoke->getIntrinsicID();
         if (IntID != Intrinsic::eravm_sstore)
           continue;
-        if (!SStoreF)
-          SStoreF = createSStoreFunction(M);
         Invoke->setCalledFunction(SStoreF);
         Changed = true;
       }
   return Changed;
 }
 
-ModulePass *llvm::createEraVMLinkRuntimePass(bool OnlyInternalize) {
-  return new EraVMLinkRuntime(OnlyInternalize);
+ModulePass *llvm::createEraVMLinkRuntimePass(bool IsRuntimeLinkage) {
+  return new EraVMLinkRuntime(IsRuntimeLinkage);
 }
 
 PreservedAnalyses EraVMLinkRuntimePass::run(Module &M,
                                             ModuleAnalysisManager &AM) {
-  EraVMLinkRuntimeImpl(M);
+  EraVMLinkRuntimeImpl(M, STDLIB_DATA);
   return PreservedAnalyses::all();
 }
