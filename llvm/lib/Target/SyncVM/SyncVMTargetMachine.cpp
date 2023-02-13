@@ -15,6 +15,7 @@
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Transforms/IPO.h"
+#include "llvm/Transforms/IPO/GlobalDCE.h"
 #include "llvm/Transforms/Scalar/MergeSimilarBB.h"
 #include "llvm/Transforms/Utils.h"
 #include "llvm/Passes/PassBuilder.h"
@@ -80,6 +81,7 @@ void SyncVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
   PB.registerPipelineStartEPCallback(
       [](ModulePassManager &PM, OptimizationLevel Level) {
         PM.addPass(SyncVMLinkRuntimePass());
+        PM.addPass(GlobalDCEPass());
       });
 
   PB.registerScalarOptimizerLateEPCallback(
