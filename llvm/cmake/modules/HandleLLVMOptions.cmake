@@ -15,9 +15,6 @@ include(CheckSymbolExists)
 include(CMakeDependentOption)
 include(LLVMProcessSources)
 
-append("--analyze" CMAKE_CXX_FLAGS CMAKE_C_FLAGS)
-
-
 if(CMAKE_LINKER MATCHES ".*lld" OR (LLVM_USE_LINKER STREQUAL "lld" OR LLVM_ENABLE_LLD))
   set(LINKER_IS_LLD TRUE)
 else()
