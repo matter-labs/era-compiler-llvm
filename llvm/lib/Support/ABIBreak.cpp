@@ -8,6 +8,15 @@
 
 #include "llvm/Config/abi-breaking.h"
 
+// Analyzer test code, do not merge
+// core.UndefinedBinaryOperatorResult example from
+// https://clang-analyzer.llvm.org/available_checks.html
+
+void test() {
+  int x;
+  int y = x + 1; // warn: left operand is garbage
+}
+
 #ifndef _MSC_VER
 namespace llvm {
 
