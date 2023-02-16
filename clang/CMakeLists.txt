@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13.4)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --analyze -Werror --verbose")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} --analyze -Werror --verbose --bogus")
 
 
 # If we are not building as a part of LLVM, build Clang as an
