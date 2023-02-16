@@ -12,10 +12,22 @@
 // core.UndefinedBinaryOperatorResult example from
 // https://clang-analyzer.llvm.org/available_checks.html
 
-void test() {
+void test_UndefinedBinaryOperatorResult() {
   int x;
   int y = x + 1; // warn: left operand is garbage
 }
+// Also found without --analyze
+
+
+/// cplusplus.NewDelete test
+void test_NewDelete() {
+  int *p = new int[1];
+  delete[] (++p);
+    // warn: argument to 'delete[]' is offset by 4 bytes
+    // from the start of memory allocated by 'new[]'
+}
+// Not found without --analyze
+
 
 #ifndef _MSC_VER
 namespace llvm {
