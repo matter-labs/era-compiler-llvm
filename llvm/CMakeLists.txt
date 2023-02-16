@@ -13,7 +13,7 @@ if(POLICY CMP0116)
   cmake_policy(SET CMP0116 OLD)
 endif()
 
-add_compile_options( --analyze -Werror --verbose)
+add_compile_options(--analyze)
 
 
 set(CMAKE_BUILD_WITH_INSTALL_NAME_DIR ON)
