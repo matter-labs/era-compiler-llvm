@@ -16,7 +16,7 @@ void test_UndefinedBinaryOperatorResult() {
   int x;
   int y = x + 1; // warn: left operand is garbage
 }
-// Also found without --analyze
+// Also found without --analyze, sometimes
 
 
 /// cplusplus.NewDelete test
