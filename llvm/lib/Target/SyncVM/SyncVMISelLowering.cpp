@@ -722,7 +722,8 @@ SDValue SyncVMTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
   const MachinePointerInfo &PInfo = Store->getPointerInfo();
 
   // for now only handle cases where alignment == 1
-  // only handle unindexed store
+  // indexed loads and stores are illegal before ISEL,
+  // the SyncVMCombineToIndexedMemops pass is used to do the trick.
   assert(Store->getAddressingMode() == ISD::UNINDEXED);
 
   EVT MemVT = Store->getMemoryVT();

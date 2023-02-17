@@ -169,7 +169,7 @@ def memop : Operand<i256> {
 
 def stackop : Operand<i256> {
   let PrintMethod = "printStackOperand";
-  let MIOperandInfo = (ops GR256, GR256, i16imm);
+  let MIOperandInfo = (ops GRStack, GR256, i16imm);
 }
 
 //===----------------------------------------------------------------------===//
@@ -1225,19 +1225,25 @@ defm ROR  : ArithINonCommutable<39, "ror", rotr>;
 //===----------------------------------------------------------------------===//
 
 let mayLoad = 1 in {
-def LD1  : IUMA < 41, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
+def LD1     : IUMA <41, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
                   "ld.1$cc\t$rs0, $rd0", []>;
-def LD1i  : IUMA < 141, (outs GR256:$rd0), (ins imm16:$addr, cc:$cc),
+def LD1Inc  : IUMA <42, (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, cc:$cc),
+                  "ld.1.inc$cc\t$rs0, $rd0, $rd1", []>;
+def LD1i    : IUMA < 141, (outs GR256:$rd0), (ins imm16:$addr, cc:$cc),
                   "ld.1$cc\t$addr, $rd0", []>;
-def LD2  : IUMA < 42, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
+def LD2     : IUMA < 43, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
                   "ld.2$cc\t$rs0, $rd0", []>;
-def LD2i  : IUMA < 142, (outs GR256:$rd0), (ins imm16:$addr, cc:$cc),
+def LD2Inc  : IUMA <44, (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, cc:$cc),
+                  "ld.2.inc$cc\t$rs0, $rd0, $rd1", []>;
+def LD2i    : IUMA < 142, (outs GR256:$rd0), (ins imm16:$addr, cc:$cc),
                   "ld.2$cc\t$addr, $rd0", []>;
-def LD   : IUMA < 43, (outs GR256:$rd0), (ins GRPTR:$rs0, cc:$cc),
+def LD      : IUMA <45, (outs GR256:$rd0), (ins GRPTR:$rs0, cc:$cc),
                   "ld$cc\t$rs0, $rd0", []>;
+def LDInc   : IUMA <46, (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, cc:$cc),
+                  "ld.inc$cc\t$rs0, $rd0, $rd1", []>;
 // TODO: pseudo alias version of `LD` which has different type than `LD`
 // We will manually select it when we see that we are loading a fat pointer
-def FATPTR_LD : IUMA < 45, (outs GRPTR:$rd0), (ins GRPTR:$rs0, cc:$cc),
+def FATPTR_LD : IUMA < 48, (outs GRPTR:$rd0), (ins GRPTR:$rs0, cc:$cc),
                   "ld$cc\t$rs0, $rd0 ;fat load", []>;
 }
 def     : Pat<(load_heap GR256:$rs0), (LD1 GR256:$rs0, 0)>;
@@ -1246,12 +1252,16 @@ def     : Pat<(load_heapaux GR256:$rs0), (LD2 GR256:$rs0, 0)>;
 def     : Pat<(load_heapaux imm16:$addr), (LD2i imm16:$addr, 0)>;
 
 let mayStore = 1 in {
-def ST1  : IUMA < 44, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
+def ST1     : IUMA <49, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
                   "st.1$cc\t$rs0, $rs1", []>;
+def ST1Inc  : IUMA <50, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
+                  "st.1.inc$cc\t$rs0, $rs1, $rd0", []>;
 def ST1i  : IUMA < 144, (outs), (ins imm16:$addr, GR256:$rs1, cc:$cc),
                   "st.1$cc\t$addr, $rs1", []>;
 def ST2  : IUMA < 54, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
                   "st.2$cc\t$rs0, $rs1", []>;
+def ST2Inc  : IUMA <53, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
+                  "st.2.inc$cc\t$rs0, $rs1, $rd0", []>;
 def ST2i  : IUMA < 154, (outs), (ins imm16:$addr, GR256:$rs1, cc:$cc),
                   "st.2$cc\t$addr, $rs1", []>;
 }
