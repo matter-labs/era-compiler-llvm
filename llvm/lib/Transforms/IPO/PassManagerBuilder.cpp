@@ -517,9 +517,7 @@ void PassManagerBuilder::addVectorPasses(legacy::PassManagerBase &PM,
   PM.add(createCFGSimplificationPass(SimplifyCFGOptions()
                                          .forwardSwitchCondToPhi(true)
                                          .convertSwitchRangeToICmp(true)
-                                         // SyncVM local begin
-                                         .convertSwitchToLookupTable(false)
-                                         // SyncVM local end
+                                         .convertSwitchToLookupTable(true)
                                          .needCanonicalLoops(false)
                                          .hoistCommonInsts(true)
                                          .sinkCommonInsts(true)));
