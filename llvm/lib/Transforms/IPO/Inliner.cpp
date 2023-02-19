@@ -58,6 +58,9 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
+// SyncVM local begin
+#include "llvm/Transforms/Utils/AllocaHoisting.h"
+// SyncVM local end
 #include "llvm/Transforms/Utils/CallPromotionUtils.h"
 #include "llvm/Transforms/Utils/Cloning.h"
 #include "llvm/Transforms/Utils/Local.h"
@@ -585,6 +588,10 @@ inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG,
         CallSites.erase(CallSites.begin() + CSi);
       }
       --CSi;
+      // SyncVM local begin
+      if (CB.getCaller())
+        HoistAllocaToEntry(*CB.getCaller());
+      // SyncVM local end
 
       Changed = true;
       LocalChange = true;
