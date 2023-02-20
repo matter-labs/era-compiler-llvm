@@ -79,6 +79,11 @@ SyncVMTargetMachine::getTargetTransformInfo(const Function &F) const {
 void SyncVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
   PB.registerPipelineStartEPCallback(
       [](ModulePassManager &PM, OptimizationLevel Level) {
+        if (Level.getSizeLevel() || Level.getSpeedupLevel() > 1) {
+          FunctionPassManager FPM;
+          FPM.addPass(AllocaHoistingPass());
+          PM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
+        }
         PM.addPass(SyncVMLinkRuntimePass());
       });
 
