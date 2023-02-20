@@ -32,12 +32,21 @@ public:
     return "SyncVM specific alloca hoisting";
   }
 
-  bool runOnFunction(Function &function) override;
+  bool runOnFunction(Function &F) override;
 };
 } // namespace
 
 bool SyncVMAllocaHoisting::runOnFunction(Function &F) {
   return HoistAllocaToEntry(F);
+}
+
+PreservedAnalyses AllocaHoistingPass::run(Function &F, FunctionAnalysisManager &AM) {
+  bool Changed = HoistAllocaToEntry(F);
+  if (!Changed)
+    return PreservedAnalyses::all();
+
+  PreservedAnalyses PA;
+  return PA;
 }
 
 char SyncVMAllocaHoisting::ID = 0;

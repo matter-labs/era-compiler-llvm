@@ -105,8 +105,13 @@ void initializeSyncVMCombineFlagSettingPass(PassRegistry &);
 void initializeSyncVMCombineToIndexedMemopsPass(PassRegistry &);
 
 struct SyncVMLinkRuntimePass : PassInfoMixin<SyncVMLinkRuntimePass> {
-  SyncVMLinkRuntimePass() {}
+public:
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
+};
+
+class AllocaHoistingPass : public PassInfoMixin<AllocaHoistingPass> {
+public:
+  PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
 };
 
 } // namespace llvm
