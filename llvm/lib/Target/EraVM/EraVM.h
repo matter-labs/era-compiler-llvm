@@ -55,7 +55,7 @@ enum Context {
   META = 3,
   TX_ORIGIN = 4,
   COINBASE = 5,
-  ERGS_LEFT = 6,
+  GAS_LEFT = 6,
   SP = 7,
   GET_U128 = 8,
   SET_U128 = 9,

@@ -1250,7 +1250,7 @@ def : Pat<(int_eravm_caller), (CTXr 1, 0)>;
 def : Pat<(int_eravm_codesource), (CTXr 2, 0)>;
 def : Pat<(int_eravm_meta), (CTXr 3, 0)>;
 def : Pat<(int_eravm_txorigin), (CTXr 4, 0)>;
-def : Pat<(int_eravm_ergsleft), (CTXr_se 6, 0)>;
+def : Pat<(int_eravm_gasleft), (CTXr_se 6, 0)>;
 def : Pat<(EraVMget_sp), (CTXr_se 7, 0)>;
 def : Pat<(int_eravm_getu128), (CTXr_se 8, 0)>;
 def : Pat<(int_eravm_setu128 GR256:$rs0), (CTXr_set GR256:$rs0, 9, 0)>;

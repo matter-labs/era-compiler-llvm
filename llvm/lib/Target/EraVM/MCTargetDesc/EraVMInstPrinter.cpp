@@ -104,8 +104,8 @@ void EraVMInstPrinter::printContextOperand(const MCInst *MI, unsigned OpNo,
   case EraVMCTX::TX_ORIGIN:
     O << ".tx_origin";
     break;
-  case EraVMCTX::ERGS_LEFT:
-    O << ".ergs_left";
+  case EraVMCTX::GAS_LEFT:
+    O << ".gas_left";
     break;
   case EraVMCTX::SP:
     O << ".sp";
@@ -123,7 +123,7 @@ void EraVMInstPrinter::printContextOperand(const MCInst *MI, unsigned OpNo,
     O << ".inc_tx_num";
     break;
   case EraVMCTX::SET_PUBDATAPRICE:
-    O << ".set_ergs_per_pubdata";
+    O << ".set_gas_per_pubdata";
     break;
   }
 }
