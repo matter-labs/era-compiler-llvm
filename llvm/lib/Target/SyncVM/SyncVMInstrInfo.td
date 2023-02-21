@@ -1337,7 +1337,7 @@ def : Pat<(int_syncvm_caller), (CTXr 1, 0)>;
 def : Pat<(int_syncvm_codesource), (CTXr 2, 0)>;
 def : Pat<(int_syncvm_meta), (CTXr 3, 0)>;
 def : Pat<(int_syncvm_txorigin), (CTXr 4, 0)>;
-def : Pat<(int_syncvm_ergsleft), (CTXr_se 6, 0)>;
+def : Pat<(int_syncvm_gasleft), (CTXr_se 6, 0)>;
 def : Pat<(SyncVMget_sp), (CTXr_se 7, 0)>;
 def : Pat<(int_syncvm_getu128), (CTXr_se 8, 0)>;
 def : Pat<(int_syncvm_setu128 GR256:$rs0), (CTXr_set GR256:$rs0, 9, 0)>;
