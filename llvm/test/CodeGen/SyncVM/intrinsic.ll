@@ -58,10 +58,10 @@ define i256 @txoriginr() {
   ret i256 %res
 }
 
-; CHECK-LABEL: ergsleftr
-define i256 @ergsleftr() {
-; CHECK: context.ergs_left r1
-  %res = call i256 @llvm.syncvm.ergsleft()
+; CHECK-LABEL: gasleftr
+define i256 @gasleftr() {
+; CHECK: context.gas_left r1
+  %res = call i256 @llvm.syncvm.gasleft()
   ret i256 %res
 }
 
@@ -88,7 +88,7 @@ define void @inctx() {
 
 ; CHECK-LABEL: setprice
 define void @setprice(i256 %p) {
-; CHECK: context.set_ergs_per_pubdata
+; CHECK: context.set_gas_per_pubdata
   call void @llvm.syncvm.setpubdataprice(i256 %p)
   ret void
 }
@@ -396,7 +396,7 @@ declare i256 @llvm.syncvm.caller()
 declare i256 @llvm.syncvm.codesource()
 declare i256 @llvm.syncvm.meta()
 declare i256 @llvm.syncvm.txorigin()
-declare i256 @llvm.syncvm.ergsleft()
+declare i256 @llvm.syncvm.gasleft()
 declare i256 @llvm.syncvm.getu128()
 declare void @llvm.syncvm.setu128(i256)
 declare void @llvm.syncvm.inctx()
