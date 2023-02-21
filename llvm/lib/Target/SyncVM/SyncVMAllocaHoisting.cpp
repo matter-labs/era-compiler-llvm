@@ -1,8 +1,7 @@
-//===-- AllocaHoisting.cpp - Hoist allocas to the entry block --*- C++ -*-===//
+//===--- AllocaHoisting.cpp - Hoist allocas to the entry block --*- C++ -*-===//
 //===----------------------------------------------------------------------===//
 //
 // Hoist the alloca instructions in the non-entry blocks to the entry blocks.
-// Copied from NVPTX backend.
 //
 //===----------------------------------------------------------------------===//
 // TODO: The pass is a shortcut solution. DYNAMIC_STACKALLOC suppoer is needed
@@ -40,7 +39,8 @@ bool SyncVMAllocaHoisting::runOnFunction(Function &F) {
   return HoistAllocaToEntry(F);
 }
 
-PreservedAnalyses AllocaHoistingPass::run(Function &F, FunctionAnalysisManager &AM) {
+PreservedAnalyses AllocaHoistingPass::run(Function &F,
+                                          FunctionAnalysisManager &AM) {
   bool Changed = HoistAllocaToEntry(F);
   if (!Changed)
     return PreservedAnalyses::all();

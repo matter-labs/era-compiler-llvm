@@ -370,6 +370,7 @@ inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG,
                 function_ref<InlineCost(CallBase &CB)> GetInlineCost,
                 function_ref<AAResults &(Function &)> AARGetter,
                 ImportedFunctionsInliningStatistics &ImportedFunctionsStats) {
+  outs() << "In inline calls impl\n";
   SmallPtrSet<Function *, 8> SCCFunctions;
   LLVM_DEBUG(dbgs() << "Inliner visiting SCC:");
   for (CallGraphNode *Node : SCC) {
@@ -588,10 +589,6 @@ inlineCallsImpl(CallGraphSCC &SCC, CallGraph &CG,
         CallSites.erase(CallSites.begin() + CSi);
       }
       --CSi;
-      // SyncVM local begin
-      if (CB.getCaller())
-        HoistAllocaToEntry(*CB.getCaller());
-      // SyncVM local end
 
       Changed = true;
       LocalChange = true;
@@ -923,12 +920,17 @@ PreservedAnalyses InlinerPass::run(LazyCallGraph::SCC &InitialC,
           &FAM.getResult<BlockFrequencyAnalysis>(*(CB->getCaller())),
           &FAM.getResult<BlockFrequencyAnalysis>(Callee));
 
+      Function &Caller = *CB->getCaller();
       InlineResult IR =
           InlineFunction(*CB, IFI, &FAM.getResult<AAManager>(*CB->getCaller()));
       if (!IR.isSuccess()) {
         Advice->recordUnsuccessfulInlining(IR);
         continue;
+      // SyncVM local begin
+      } else {
+        HoistAllocaToEntry(Caller);
       }
+      // SyncVM local end
 
       DidInline = true;
       InlinedCallees.insert(&Callee);
