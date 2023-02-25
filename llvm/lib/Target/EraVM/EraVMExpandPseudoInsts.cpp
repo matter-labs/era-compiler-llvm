@@ -38,7 +38,6 @@ public:
   StringRef getPassName() const override { return ERAVM_EXPAND_PSEUDO_NAME; }
 
 private:
-  void expandConst(MachineInstr &MI) const;
   void expandLoadConst(MachineInstr &MI) const;
   void expandThrow(MachineInstr &MI) const;
   const TargetInstrInfo *TII{};
@@ -51,21 +50,6 @@ char EraVMExpandPseudo::ID = 0;
 
 INITIALIZE_PASS(EraVMExpandPseudo, DEBUG_TYPE, ERAVM_EXPAND_PSEUDO_NAME, false,
                 false)
-
-void EraVMExpandPseudo::expandConst(MachineInstr &MI) const {
-  MachineOperand Constant = MI.getOperand(1);
-  MachineOperand Reg = MI.getOperand(0);
-  assert((Constant.isImm() || Constant.isCImm()) && "Unexpected operand type");
-  const APInt &Val = Constant.isCImm() ? Constant.getCImm()->getValue()
-                                       : APInt(256, Constant.getImm(), true);
-  // big immediate or negative values are loaded from constant pool
-  assert(Val.isIntN(16) && !Val.isNegative());
-  BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(EraVM::ADDirr_s))
-      .add(Reg)
-      .addReg(EraVM::R0)
-      .addCImm(ConstantInt::get(*Context, Val))
-      .addImm(0);
-}
 
 void EraVMExpandPseudo::expandLoadConst(MachineInstr &MI) const {
   MachineOperand ConstantPool = MI.getOperand(1);
@@ -93,117 +77,11 @@ void EraVMExpandPseudo::expandLoadConst(MachineInstr &MI) const {
     return false;
   };
 
-  auto can_non_commute_combine = [](MachineInstr &cur, MachineInstr &next) {
-    auto opcode = next.getOpcode();
-    switch (opcode) {
-    default: {
-      break;
-    }
-    // this handles commutative cases
-    case EraVM::SUBrrr_s:
-    case EraVM::SHLrrr_s:
-    case EraVM::SHRrrr_s:
-    case EraVM::ROLrrr_s:
-    case EraVM::RORrrr_s: {
-      auto outReg = cur.getOperand(0).getReg();
-      if (next.getOperand(1).getReg() == outReg ||
-          next.getOperand(2).getReg() == outReg) {
-        return true;
-      }
-      break;
-    }
-    }
-    return false;
-  };
-
-  auto get_crr_op = [](auto opcode, bool reverse = false) {
-    switch (opcode) {
-    default: {
-      llvm_unreachable("wrong opcode");
-      break;
-    }
-    case EraVM::ADDrrr_s: {
-      return EraVM::ADDcrr_s;
-    }
-    case EraVM::ANDrrr_s: {
-      return EraVM::ANDcrr_s;
-    }
-    case EraVM::XORrrr_s: {
-      return EraVM::XORcrr_s;
-    }
-    case EraVM::ORrrr_s: {
-      return EraVM::ORcrr_s;
-    }
-    case EraVM::SUBrrr_s: {
-      return reverse ? EraVM::SUByrr_s : EraVM::SUBcrr_s;
-    }
-    case EraVM::SHLrrr_s: {
-      return reverse ? EraVM::SHLyrr_s : EraVM::SHLcrr_s;
-    }
-    case EraVM::SHRrrr_s: {
-      return reverse ? EraVM::SHRyrr_s : EraVM::SHRcrr_s;
-    }
-    case EraVM::ROLrrr_s: {
-      return reverse ? EraVM::ROLyrr_s : EraVM::ROLcrr_s;
-    }
-    case EraVM::RORrrr_s: {
-      return reverse ? EraVM::RORyrr_s : EraVM::RORrrr_s;
-    }
-    }
-  };
-
   // it is possible that we can merge two instructions, as long as we do not
   // call a scheduler the materialization of a const will be followed by its
   // use.
   auto MBBI = std::next(MachineBasicBlock::iterator(MI));
   auto outReg = MI.getOperand(0).getReg();
-
-  // We temporarily disabled combining because it will introduce
-  // a bug: when combining, we lose the MI's def, and when there are
-  // other uses of the def, we result wrong program.
-  if (false && can_combine(MI, *MBBI)) {
-    auto opcode = MBBI->getOpcode();
-    auto other_op = get_crr_op(opcode);
-
-    auto outReg = MI.getOperand(0).getReg();
-    auto otherReg = MBBI->getOperand(1).getReg() == outReg
-                        ? MBBI->getOperand(2)
-                        : MBBI->getOperand(1);
-
-    BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(other_op))
-        .add(MBBI->getOperand(0))
-        .addImm(0)
-        .add(ConstantPool)
-        .add(otherReg)
-        .addImm(0);
-    MBBI->eraseFromParent();
-    return;
-  }
-
-  if (false && can_non_commute_combine(MI, *MBBI)) {
-    auto opcode = MBBI->getOpcode();
-
-    bool reverse;
-    MachineOperand *otherOpnd;
-    if (MBBI->getOperand(1).getReg() == outReg) {
-      reverse = false;
-      otherOpnd = &MBBI->getOperand(2);
-    } else {
-      assert(MBBI->getOperand(2).getReg() == outReg);
-      reverse = true;
-      otherOpnd = &MBBI->getOperand(1);
-    }
-    auto other_op = get_crr_op(opcode, reverse);
-
-    BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(other_op))
-        .add(MBBI->getOperand(0))
-        .addImm(0)
-        .add(ConstantPool)
-        .add(*otherOpnd)
-        .addImm(0);
-    MBBI->eraseFromParent();
-    return;
-  }
 
   BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(EraVM::ADDcrr_s))
       .add(Reg)
@@ -240,11 +118,6 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
             .add(MI.getOperand(2));
         PseudoInst.push_back(&MI);
         continue;
-      }
-
-      if (MI.getOpcode() == EraVM::CONST) {
-        expandConst(MI);
-        PseudoInst.push_back(&MI);
       } else if (MI.getOpcode() == EraVM::LOADCONST) {
         expandLoadConst(MI);
         PseudoInst.push_back(&MI);

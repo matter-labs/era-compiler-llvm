@@ -70,25 +70,6 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
       {EraVM::SELisr, {EraVM::ADDirr_s, EraVM::ADDsrr_s, 1, 3, 0}},
       {EraVM::SELcsr, {EraVM::ADDcrr_s, EraVM::ADDsrr_s, 2, 3, 0}},
       {EraVM::SELssr, {EraVM::ADDsrr_s, EraVM::ADDsrr_s, 3, 3, 0}},
-
-      /*
-      {EraVM::SELrrs, {EraVM::ADDrrs_s, EraVM::ADDrrs_s, 1, 1, 3}},
-      {EraVM::SELirs, {EraVM::ADDirs_s, EraVM::ADDrrs_s, 1, 1, 3}},
-      {EraVM::SELcrs, {EraVM::ADDcrs_s, EraVM::ADDrrs_s, 2, 1, 3}},
-      {EraVM::SELsrs, {EraVM::ADDsrs_s, EraVM::ADDrrs_s, 3, 1, 3}},
-      {EraVM::SELris, {EraVM::ADDrrs_s, EraVM::ADDirs_s, 1, 1, 3}},
-      {EraVM::SELiis, {EraVM::ADDirs_s, EraVM::ADDirs_s, 1, 1, 3}},
-      {EraVM::SELcis, {EraVM::ADDcrs_s, EraVM::ADDirs_s, 2, 1, 3}},
-      {EraVM::SELsis, {EraVM::ADDsrs_s, EraVM::ADDirs_s, 3, 1, 3}},
-      {EraVM::SELrcs, {EraVM::ADDrrs_s, EraVM::ADDcrs_s, 1, 2, 3}},
-      {EraVM::SELics, {EraVM::ADDirs_s, EraVM::ADDcrs_s, 1, 2, 3}},
-      {EraVM::SELccs, {EraVM::ADDcrs_s, EraVM::ADDcrs_s, 2, 2, 3}},
-      {EraVM::SELscs, {EraVM::ADDsrs_s, EraVM::ADDcrs_s, 3, 2, 3}},
-      {EraVM::SELrss, {EraVM::ADDrrs_s, EraVM::ADDsrs_s, 1, 3, 3}},
-      {EraVM::SELiss, {EraVM::ADDirs_s, EraVM::ADDsrs_s, 1, 3, 3}},
-      {EraVM::SELcss, {EraVM::ADDcrs_s, EraVM::ADDsrs_s, 2, 3, 3}},
-      {EraVM::SELsss, {EraVM::ADDsrs_s, EraVM::ADDsrs_s, 3, 3, 3}},
-      */
   };
 
   DenseMap<unsigned, unsigned> Inverse{

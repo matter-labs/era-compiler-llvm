@@ -672,7 +672,6 @@ SDValue EraVMTargetLowering::LowerOperation(SDValue Op,
   case ISD::ExternalSymbol:     return LowerExternalSymbol(Op, DAG);
   case ISD::BR_CC:              return LowerBR_CC(Op, DAG);
   case ISD::SELECT_CC:          return LowerSELECT_CC(Op, DAG);
-  case ISD::CopyToReg:          return LowerCopyToReg(Op, DAG);
   case ISD::SRA:                return LowerSRA(Op, DAG);
   case ISD::SDIV:               return LowerSDIV(Op, DAG);
   case ISD::SREM:               return LowerSREM(Op, DAG);
@@ -955,38 +954,6 @@ SDValue EraVMTargetLowering::LowerSELECT_CC(SDValue Op,
   return DAG.getNode(EraVMISD::SELECT_CC, DL, VTs, Ops);
 }
 
-// TODO: CPR-885 Get rid of LowerCopyToReg in ISelLowering
-// It seems an outdated design solution from EraVM v1.0. We should check if it
-// still needed, and if it is, use BytesToCells pass instead.
-SDValue EraVMTargetLowering::LowerCopyToReg(SDValue Op,
-                                            SelectionDAG &DAG) const {
-  SDLoc DL(Op);
-  SDValue Src = Op.getOperand(2);
-  if (Src.getOpcode() == ISD::FrameIndex ||
-      (Src.getOpcode() == ISD::ADD &&
-       Src.getOperand(0).getOpcode() == ISD::FrameIndex)) {
-    Register Reg = cast<RegisterSDNode>(Op.getOperand(1))->getReg();
-    // TODO: It's really a hack:
-    // If we put an expression involving stack frame, we replase the address in
-    // bytes with the address in cells. Probably we need to reconsider that
-    // desing.
-    SDValue Div = DAG.getNode(ISD::UDIV, DL, Op.getValueType(), Src,
-                              DAG.getConstant(32, DL, Op.getValueType()));
-    SDValue CTR = DAG.getCopyToReg(Op.getOperand(0), DL, Reg, Div,
-                                   Op.getNumOperands() == 4 ? Op.getOperand(3)
-                                                            : SDValue());
-    return CTR;
-  }
-
-  return SDValue();
-}
-
-MachineBasicBlock *
-EraVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
-                                                 MachineBasicBlock *BB) const {
-  llvm_unreachable("No instruction require custom inserter");
-  return nullptr;
-}
 SDValue EraVMTargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
                                                      SelectionDAG &DAG) const {
   unsigned IntrinsicID = cast<ConstantSDNode>(Op.getOperand(0))->getZExtValue();

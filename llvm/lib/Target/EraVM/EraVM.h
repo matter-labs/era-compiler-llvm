@@ -76,9 +76,6 @@ class PassRegistry;
 
 FunctionPass *createEraVMISelDag(EraVMTargetMachine &TM,
                                  CodeGenOpt::Level OptLevel);
-ModulePass *createEraVMExpandUMAPass();
-ModulePass *createEraVMIndirectUMAPass();
-ModulePass *createEraVMIndirectExternalCallPass();
 ModulePass *createEraVMLowerIntrinsicsPass();
 ModulePass *createEraVMLinkRuntimePass(bool);
 FunctionPass *createEraVMAddConditionsPass();
@@ -87,14 +84,10 @@ FunctionPass *createEraVMBytesToCellsPass();
 FunctionPass *createEraVMCodegenPreparePass();
 FunctionPass *createEraVMExpandPseudoPass();
 FunctionPass *createEraVMExpandSelectPass();
-FunctionPass *createEraVMPeepholePass();
 FunctionPass *createEraVMPropagateGenericPointersPass();
 FunctionPass *createEraVMStackAddressConstantPropagationPass();
 FunctionPass *createEraVMCombineFlagSettingPass();
 
-void initializeEraVMExpandUMAPass(PassRegistry &);
-void initializeEraVMIndirectUMAPass(PassRegistry &);
-void initializeEraVMIndirectExternalCallPass(PassRegistry &);
 void initializeEraVMLowerIntrinsicsPass(PassRegistry &);
 void initializeEraVMAddConditionsPass(PassRegistry &);
 void initializeEraVMAllocaHoistingPass(PassRegistry &);
@@ -103,7 +96,6 @@ void initializeEraVMLinkRuntimePass(PassRegistry &);
 void initializeEraVMCodegenPreparePass(PassRegistry &);
 void initializeEraVMExpandPseudoPass(PassRegistry &);
 void initializeEraVMExpandSelectPass(PassRegistry &);
-void initializeEraVMPeepholePass(PassRegistry &);
 void initializeEraVMPropagateGenericPointersPass(PassRegistry &);
 void initializeEraVMStackAddressConstantPropagationPass(PassRegistry &);
 void initializeEraVMDAGToDAGISelPass(PassRegistry &);

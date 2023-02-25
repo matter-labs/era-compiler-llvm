@@ -45,19 +45,15 @@ add_llvm_target(EraVMCodeGen
   EraVMCombineFlagSetting.cpp
   EraVMExpandPseudoInsts.cpp
   EraVMExpandSelect.cpp
-  EraVMExpandUMA.cpp
   EraVMFrameLowering.cpp
   EraVMISelDAGToDAG.cpp
   EraVMISelLowering.cpp
-  EraVMIndirectExternalCall.cpp
-  EraVMIndirectUMA.cpp
   EraVMInstrInfo.cpp
   EraVMLinkRuntime.cpp
   EraVMLowerIntrinsics.cpp
   EraVMMCExpr.cpp
   EraVMMCInstLower.cpp
   EraVMMachineFunctionInfo.cpp
-  EraVMPeephole.cpp
   EraVMRegisterInfo.cpp
   EraVMStackAddressConstantPropagation.cpp
   EraVMSubtarget.cpp

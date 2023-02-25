@@ -59,9 +59,7 @@ struct EraVMLinkRuntime : public ModulePass {
 public:
   static char ID;
   explicit EraVMLinkRuntime(bool OnlyInternalize = false)
-      : ModulePass(ID), OnlyInternalize(OnlyInternalize) {
-    initializeEraVMIndirectExternalCallPass(*PassRegistry::getPassRegistry());
-  }
+      : ModulePass(ID), OnlyInternalize(OnlyInternalize) {}
   bool runOnModule(Module &M) override;
 
   StringRef getPassName() const override {

@@ -45,12 +45,6 @@ struct EraVMISelAddressMode {
   int64_t Disp = 0;
   const GlobalValue *GV = nullptr;
 
-  bool isDefault() const {
-    return !BaseType && !Base.Reg.getNode() && !Base.FrameIndex && !Disp && !GV;
-  }
-
-  bool isOnStack() const { return BaseType != RegBase; }
-
   EraVMISelAddressMode() = default;
 
 #if !defined(NDEBUG) || defined(LLVM_ENABLE_DUMP)
@@ -100,12 +94,8 @@ private:
   bool SelectMemAddr(SDValue Addr, SDValue &Base, SDValue &Disp);
   bool SelectStackAddr(SDValue Addr, SDValue &Base1, SDValue &Base2,
                        SDValue &Disp);
-  bool SelectAdjStackAddr(SDValue Addr, SDValue &Base1, SDValue &Base2,
-                          SDValue &Disp);
   bool SelectStackAddrCommon(SDValue Addr, SDValue &Base1, SDValue &Base2,
                              SDValue &Disp, bool IsAdjusted);
-  EraVMISelAddressMode MergeAddr(const EraVMISelAddressMode &LHS,
-                                 const EraVMISelAddressMode &RHS, SDLoc DL);
 };
 } // end anonymous namespace
 
@@ -119,28 +109,6 @@ INITIALIZE_PASS(EraVMDAGToDAGISel, DEBUG_TYPE, PASS_NAME, false, false)
 FunctionPass *llvm::createEraVMISelDag(EraVMTargetMachine &TM,
                                        CodeGenOpt::Level OptLevel) {
   return new EraVMDAGToDAGISel(TM, OptLevel);
-}
-
-/// Merge \p LHS and \p RHS address modes as if they are added together.
-/// The main goal is to transform patterns like (+ (+ fi reg), (* reg ci)) to
-/// (+ (+ fi ci), NewReg) so EraVM can select it.
-EraVMISelAddressMode
-EraVMDAGToDAGISel::MergeAddr(const EraVMISelAddressMode &LHS,
-                             const EraVMISelAddressMode &RHS, SDLoc DL) {
-  EraVMISelAddressMode Result;
-  Result.BaseType = EraVMISelAddressMode::FrameIndexBase;
-  Result.Base.FrameIndex = LHS.Base.FrameIndex | RHS.Base.FrameIndex;
-  if (LHS.Base.Reg.getNode() && RHS.Base.Reg.getNode()) {
-    Result.Base.Reg =
-        CurDAG->getNode(ISD::ADD, DL, MVT::i256, LHS.Base.Reg, RHS.Base.Reg);
-    SelectCode(Result.Base.Reg.getNode());
-  } else if (LHS.Base.Reg.getNode()) {
-    Result.Base.Reg = LHS.Base.Reg;
-  } else if (RHS.Base.Reg.getNode()) {
-    Result.Base.Reg = RHS.Base.Reg;
-  }
-  Result.Disp += LHS.Disp + RHS.Disp;
-  return Result;
 }
 
 /// MatchAddressBase - Helper for MatchAddress. Add the specified node to the
@@ -196,11 +164,6 @@ bool EraVMDAGToDAGISel::MatchAddress(SDValue N, EraVMISelAddressMode &AM,
     auto *G = cast<GlobalAddressSDNode>(N);
     AM.GV = G->getGlobal();
     AM.Disp += G->getOffset();
-    // Ext loads, trunc stores has offset in bits
-    if ((isa<StoreSDNode>(N) && cast<StoreSDNode>(N)->isTruncatingStore()) ||
-        (isa<LoadSDNode>(N) &&
-         cast<LoadSDNode>(N)->getExtensionType() != ISD::NON_EXTLOAD))
-      AM.Disp /= 8;
     return false;
   }
   case ISD::ADD: {
@@ -344,11 +307,6 @@ bool EraVMDAGToDAGISel::SelectStackAddrCommon(SDValue Addr, SDValue &Base1,
 bool EraVMDAGToDAGISel::SelectStackAddr(SDValue Addr, SDValue &Base1,
                                         SDValue &Base2, SDValue &Disp) {
   return SelectStackAddrCommon(Addr, Base1, Base2, Disp, false);
-}
-
-bool EraVMDAGToDAGISel::SelectAdjStackAddr(SDValue Addr, SDValue &Base1,
-                                           SDValue &Base2, SDValue &Disp) {
-  return SelectStackAddrCommon(Addr, Base1, Base2, Disp, true);
 }
 
 void EraVMDAGToDAGISel::Select(SDNode *Node) {

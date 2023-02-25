@@ -35,16 +35,12 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   // TODO: optimize switch lowering
   auto &PR = *PassRegistry::getPassRegistry();
   initializeLowerSwitchLegacyPassPass(PR);
-  initializeEraVMExpandUMAPass(PR);
-  initializeEraVMIndirectUMAPass(PR);
-  initializeEraVMIndirectExternalCallPass(PR);
   initializeEraVMCodegenPreparePass(PR);
   initializeEraVMExpandPseudoPass(PR);
   initializeEraVMExpandSelectPass(PR);
   initializeEraVMLowerIntrinsicsPass(PR);
   initializeEraVMLinkRuntimePass(PR);
   initializeEraVMAllocaHoistingPass(PR);
-  initializeEraVMPeepholePass(PR);
   initializeEraVMCombineFlagSettingPass(PR);
   initializeEraVMStackAddressConstantPropagationPass(PR);
   initializeEraVMDAGToDAGISelPass(PR);
@@ -149,7 +145,4 @@ void EraVMPassConfig::addPreRegAlloc() {
 void EraVMPassConfig::addPreEmitPass() {
   addPass(createEraVMExpandSelectPass());
   addPass(createEraVMExpandPseudoPass());
-  // TODO: The pass combines store with MULxxrr, DIVxxrr regardles of whether
-  // the destination register has one use. Should be fixed and reenabled.
-  addPass(createEraVMPeepholePass());
 }
