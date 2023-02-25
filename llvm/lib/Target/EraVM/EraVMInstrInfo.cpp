@@ -309,21 +309,6 @@ unsigned EraVMInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
   return Desc.getSize();
 }
 
-bool EraVMInstrInfo::isFarCall(const MachineInstr &MI) const {
-  switch (MI.getOpcode()) {
-  case EraVM::FAR_CALL:
-  case EraVM::FAR_CALLL:
-  case EraVM::STATIC_CALL:
-  case EraVM::STATIC_CALLL:
-  case EraVM::DELEGATE_CALL:
-  case EraVM::DELEGATE_CALLL:
-  case EraVM::MIMIC_CALL:
-  case EraVM::MIMIC_CALLL:
-    return true;
-  }
-  return false;
-}
-
 #define INSTR_TESTER(NAME, OPCODE)                                             \
   bool EraVMInstrInfo::is##NAME(const MachineInstr &MI) const {                \
     StringRef Mnemonic = getName(MI.getOpcode());                              \

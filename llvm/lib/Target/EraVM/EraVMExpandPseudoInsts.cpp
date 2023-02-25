@@ -112,7 +112,7 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
             .getInstr();
         PseudoInst.push_back(&MI);
       } else if (MI.getOpcode() == EraVM::PTR_TO_INT) {
-        // Eliminate PTR_TO_INT
+        // Eliminate PTR_TO_INT if from and to registers are the same
         Register ToReg = MI.getOperand(0).getReg();
         Register FromReg = MI.getOperand(1).getReg();
         if (ToReg != FromReg) {
