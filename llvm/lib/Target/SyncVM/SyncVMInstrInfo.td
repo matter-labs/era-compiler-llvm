@@ -114,11 +114,6 @@ def z256 : Operand<i256>, IntImmLeaf<i256, [{
   return Imm.isNullValue();
 }]> {}
 
-def ext_address_flag : Operand<i256>, IntImmLeaf<i256, [{
-  return Imm.isNullValue() || Imm.isOneValue();
-}]> {
-  let PrintMethod = "printEAFOperand";
-}
 def init_flag : Operand<i256>, IntImmLeaf<i256, [{
   return Imm.isNullValue() || Imm.isOneValue();
 }]> {
@@ -426,13 +421,13 @@ def : Pat<(load_code(SyncVMselectcc memaddr:$addr1, memaddr:$addr2, imm:$cc)),
           (SELccr memaddr:$addr1, memaddr:$addr2, imm:$cc)>;
 
 // TODO: stack and code forms
-def : Pat<(int_syncvm_ifeq GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, 2 /*COND_LT*/)>;
+def : Pat<(int_syncvm_ifeq GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, 2 /*COND_EQ*/)>;
 def : Pat<(int_syncvm_iflt GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, 4 /*COND_LT*/)>;
-def : Pat<(int_syncvm_ifgt GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, 8 /*COND_LT*/)>;
+def : Pat<(int_syncvm_ifgt GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, 8 /*COND_GT*/)>;
 
-def : Pat<(int_syncvm_ifeq imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, 2 /*COND_LT*/)>;
+def : Pat<(int_syncvm_ifeq imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, 2 /*COND_EQ*/)>;
 def : Pat<(int_syncvm_iflt imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, 4 /*COND_LT*/)>;
-def : Pat<(int_syncvm_ifgt imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, 8 /*COND_LT*/)>;
+def : Pat<(int_syncvm_ifgt imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, 8 /*COND_GT*/)>;
 
 let hasSideEffects = 1, Defs = [SP], Uses = [SP] in {
 def NOPSP : INop< 18, (ins spadv_op:$sp_advance, cc:$cc), "nop$cc\t$sp_advance", [] >;
@@ -1313,8 +1308,6 @@ let isReMaterializable = 1, hasSideEffects = 0, isPseudo = 1 in {
 def LOADCONST : Pseudo<(outs GR256:$val), (ins i256imm:$addr),
                          "LOADCONST\t$addr, $val",
                          [(set GR256:$val, (load tconstpool:$addr))]>;
-def CONST   : Pseudo< (outs GR256:$out), (ins i256imm:$val),
-                      "CONST\t$val", [(set GR256:$out, imm:$val)] >;
 }
 
 //===----------------------------------------------------------------------===//

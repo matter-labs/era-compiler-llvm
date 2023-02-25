@@ -70,9 +70,6 @@ class PassRegistry;
 
 FunctionPass *createSyncVMISelDag(SyncVMTargetMachine &TM,
                                   CodeGenOpt::Level OptLevel);
-ModulePass   *createSyncVMExpandUMAPass();
-ModulePass   *createSyncVMIndirectUMAPass();
-ModulePass   *createSyncVMIndirectExternalCallPass();
 ModulePass   *createSyncVMLowerIntrinsicsPass();
 ModulePass   *createSyncVMLinkRuntimePass(bool);
 FunctionPass *createSyncVMAddConditionsPass();
@@ -81,15 +78,11 @@ FunctionPass *createSyncVMBytesToCellsPass();
 FunctionPass *createSyncVMCodegenPreparePass();
 FunctionPass *createSyncVMExpandPseudoPass();
 FunctionPass *createSyncVMExpandSelectPass();
-FunctionPass *createSyncVMPeepholePass();
 FunctionPass *createSyncVMPropagateGenericPointersPass();
 FunctionPass *createSyncVMStackAddressConstantPropagationPass();
 FunctionPass *createSyncVMCombineFlagSettingPass();
 FunctionPass *createSyncVMCombineToIndexedMemopsPass();
 
-void initializeSyncVMExpandUMAPass(PassRegistry &);
-void initializeSyncVMIndirectUMAPass(PassRegistry &);
-void initializeSyncVMIndirectExternalCallPass(PassRegistry &);
 void initializeSyncVMLowerIntrinsicsPass(PassRegistry &);
 void initializeSyncVMAddConditionsPass(PassRegistry &);
 void initializeSyncVMAllocaHoistingPass(PassRegistry &);
@@ -98,7 +91,6 @@ void initializeSyncVMLinkRuntimePass(PassRegistry &);
 void initializeSyncVMCodegenPreparePass(PassRegistry &);
 void initializeSyncVMExpandPseudoPass(PassRegistry &);
 void initializeSyncVMExpandSelectPass(PassRegistry &);
-void initializeSyncVMPeepholePass(PassRegistry &);
 void initializeSyncVMPropagateGenericPointersPass(PassRegistry &);
 void initializeSyncVMStackAddressConstantPropagationPass(PassRegistry &);
 void initializeSyncVMCombineFlagSettingPass(PassRegistry &);

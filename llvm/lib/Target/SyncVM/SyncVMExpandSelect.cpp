@@ -67,25 +67,6 @@ bool SyncVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
       {SyncVM::SELisr, {SyncVM::ADDirr_s, SyncVM::ADDsrr_s, 1, 3, 0}},
       {SyncVM::SELcsr, {SyncVM::ADDcrr_s, SyncVM::ADDsrr_s, 2, 3, 0}},
       {SyncVM::SELssr, {SyncVM::ADDsrr_s, SyncVM::ADDsrr_s, 3, 3, 0}},
-
-      /*
-      {SyncVM::SELrrs, {SyncVM::ADDrrs_s, SyncVM::ADDrrs_s, 1, 1, 3}},
-      {SyncVM::SELirs, {SyncVM::ADDirs_s, SyncVM::ADDrrs_s, 1, 1, 3}},
-      {SyncVM::SELcrs, {SyncVM::ADDcrs_s, SyncVM::ADDrrs_s, 2, 1, 3}},
-      {SyncVM::SELsrs, {SyncVM::ADDsrs_s, SyncVM::ADDrrs_s, 3, 1, 3}},
-      {SyncVM::SELris, {SyncVM::ADDrrs_s, SyncVM::ADDirs_s, 1, 1, 3}},
-      {SyncVM::SELiis, {SyncVM::ADDirs_s, SyncVM::ADDirs_s, 1, 1, 3}},
-      {SyncVM::SELcis, {SyncVM::ADDcrs_s, SyncVM::ADDirs_s, 2, 1, 3}},
-      {SyncVM::SELsis, {SyncVM::ADDsrs_s, SyncVM::ADDirs_s, 3, 1, 3}},
-      {SyncVM::SELrcs, {SyncVM::ADDrrs_s, SyncVM::ADDcrs_s, 1, 2, 3}},
-      {SyncVM::SELics, {SyncVM::ADDirs_s, SyncVM::ADDcrs_s, 1, 2, 3}},
-      {SyncVM::SELccs, {SyncVM::ADDcrs_s, SyncVM::ADDcrs_s, 2, 2, 3}},
-      {SyncVM::SELscs, {SyncVM::ADDsrs_s, SyncVM::ADDcrs_s, 3, 2, 3}},
-      {SyncVM::SELrss, {SyncVM::ADDrrs_s, SyncVM::ADDsrs_s, 1, 3, 3}},
-      {SyncVM::SELiss, {SyncVM::ADDirs_s, SyncVM::ADDsrs_s, 1, 3, 3}},
-      {SyncVM::SELcss, {SyncVM::ADDcrs_s, SyncVM::ADDsrs_s, 2, 3, 3}},
-      {SyncVM::SELsss, {SyncVM::ADDsrs_s, SyncVM::ADDsrs_s, 3, 3, 3}},
-      */
   };
 
   DenseMap<unsigned, unsigned> Inverse{

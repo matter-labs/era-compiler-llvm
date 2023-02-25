@@ -330,17 +330,6 @@ unsigned SyncVMInstrInfo::getInstSizeInBytes(const MachineInstr &MI) const {
   return Desc.getSize();
 }
 
-bool SyncVMInstrInfo::isFarCall(const MachineInstr &MI) const {
-  switch (MI.getOpcode()) {
-  case SyncVM::FAR_CALL:
-  case SyncVM::STATIC_CALL:
-  case SyncVM::DELEGATE_CALL:
-  case SyncVM::MIMIC_CALL:
-    return true;
-  }
-  return false;
-}
-
 #define INSTR_TESTER(NAME, OPCODE)                                             \
   bool SyncVMInstrInfo::is##NAME(const MachineInstr &MI) const {               \
     StringRef Mnemonic = getName(MI.getOpcode());                              \
