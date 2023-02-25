@@ -31,16 +31,12 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   // TODO: optimize switch lowering
   auto &PR = *PassRegistry::getPassRegistry();
   initializeLowerSwitchLegacyPassPass(PR);
-  initializeSyncVMExpandUMAPass(PR);
-  initializeSyncVMIndirectUMAPass(PR);
-  initializeSyncVMIndirectExternalCallPass(PR);
   initializeSyncVMCodegenPreparePass(PR);
   initializeSyncVMExpandPseudoPass(PR);
   initializeSyncVMExpandSelectPass(PR);
   initializeSyncVMLowerIntrinsicsPass(PR);
   initializeSyncVMLinkRuntimePass(PR);
   initializeSyncVMAllocaHoistingPass(PR);
-  initializeSyncVMPeepholePass(PR);
   initializeSyncVMCombineFlagSettingPass(PR);
   initializeSyncVMStackAddressConstantPropagationPass(PR);
 }
@@ -147,7 +143,4 @@ void SyncVMPassConfig::addPreRegAlloc() {
 void SyncVMPassConfig::addPreEmitPass() {
   addPass(createSyncVMExpandSelectPass());
   addPass(createSyncVMExpandPseudoPass());
-  // TODO: The pass combines store with MULxxrr, DIVxxrr regardles of whether
-  // the destination register has one use. Should be fixed and reenabled.
-  addPass(createSyncVMPeepholePass());
 }

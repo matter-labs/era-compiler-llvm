@@ -47,9 +47,7 @@ struct SyncVMLinkRuntime : public ModulePass {
 public:
   static char ID;
   SyncVMLinkRuntime(bool IsRuntimeLinkage = false)
-      : ModulePass(ID), IsRuntimeLinkage(IsRuntimeLinkage) {
-    initializeSyncVMIndirectExternalCallPass(*PassRegistry::getPassRegistry());
-  }
+      : ModulePass(ID), IsRuntimeLinkage(IsRuntimeLinkage) { }
   bool runOnModule(Module &M) override;
 
   StringRef getPassName() const override {

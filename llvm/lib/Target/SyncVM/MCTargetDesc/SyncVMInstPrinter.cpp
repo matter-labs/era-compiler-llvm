@@ -122,16 +122,6 @@ void SyncVMInstPrinter::printContextOperand(const MCInst *MI, unsigned OpNo,
   }
 }
 
-void SyncVMInstPrinter::printEAFOperand(const MCInst *MI, unsigned OpNo,
-                                        raw_ostream &O) {
-  const MCOperand &EAF = MI->getOperand(OpNo);
-  assert(EAF.isImm() &&
-         "Expected immediate in exteranal address storage field");
-  if (EAF.getImm() == 1) {
-    O << ".e";
-  }
-}
-
 void SyncVMInstPrinter::printFirstOperand(const MCInst *MI, unsigned OpNo,
                                           raw_ostream &O) {
   const MCOperand &EAF = MI->getOperand(OpNo);

@@ -27,7 +27,6 @@ add_llvm_target(SyncVMCodeGen
   SyncVMCodegenPrepare.cpp
   SyncVMCombineFlagSetting.cpp
   SyncVMCombineToIndexedMemops.cpp
-  SyncVMExpandUMA.cpp
   SyncVMExpandPseudoInsts.cpp
   SyncVMExpandSelect.cpp
   SyncVMTargetMachine.cpp
@@ -41,13 +40,10 @@ add_llvm_target(SyncVMCodeGen
   SyncVMFrameLowering.cpp
   SyncVMISelDAGToDAG.cpp
   SyncVMISelLowering.cpp
-  SyncVMIndirectUMA.cpp
-  SyncVMIndirectExternalCall.cpp
   SyncVMLinkRuntime.cpp
   SyncVMLowerIntrinsics.cpp
   SyncVMAllocaHoisting.cpp
   SyncVMTargetTransformInfo.cpp
-  SyncVMPeephole.cpp
   SyncVMStackAddressConstantPropagation.cpp
 
   LINK_COMPONENTS
