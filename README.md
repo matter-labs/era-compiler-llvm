@@ -2,10 +2,10 @@
 
 [![Logo](eraLogo.svg)](https://zksync.io/)
 
-zkSync Era is a layer 2 rollup that uses zero-knowledge proofs to scale Ethereum without compromising on security or
-decentralization. Since it's EVM compatible (Solidity/Vyper), 99% of Ethereum projects can redeploy without refactoring
-or re-auditing a single line of code. zkSync Era also uses an LLVM-based compiler that will eventually let developers
-write smart contracts in C++, Rust and other popular languages.
+zkSync Era is a layer 2 rollup that uses zero-knowledge proofs to scale Ethereum without compromising on security
+or decentralization. As it's EVM-compatible (with Solidity/Vyper), 99% of Ethereum projects can redeploy without
+needing to refactor or re-audit any code. zkSync Era also uses an LLVM-based compiler that will eventually enable
+developers to write smart contracts in popular languages such as C++ and Rust.
 
 This directory and its sub-directories contain the source code for the zkEVM fork of the [LLVM](https://llvm.org) framework,
 a toolkit for the construction of highly optimized compilers, optimizers, and run-time environments
@@ -85,3 +85,11 @@ Apache License, Version 2.0 with LLVM Exceptions, ([LICENSE](LICENSE) or <https:
 - [Twitter](https://twitter.com/zksync)
 - [Twitter for Devs](https://twitter.com/zkSyncDevs)
 - [Discord](https://discord.gg/nMaPGrDDwk)
+
+## Disclaimer
+
+zkSync Era has been through extensive testing and audits, and although it is live, it is still in alpha state and
+will undergo further audits and bug bounty programs. We would love to hear our community's thoughts and suggestions
+about it!
+It's important to note that forking it now could potentially lead to missing important
+security updates, critical features, and performance improvements.
