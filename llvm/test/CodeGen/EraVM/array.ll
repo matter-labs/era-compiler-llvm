@@ -20,7 +20,7 @@ define void @consti_loadconst_storeglobal() nounwind {
 define void @consti_loadglobal_storeglobal() nounwind {
   ; CHECK: add stack[@val+7], r0, r1
   %1 = load i256, ptr getelementptr inbounds ([10 x i256], ptr @val, i256 0, i256 7), align 32
-	; CHECK: add r1, r0, stack[@val+1]
+  ; CHECK: add r1, r0, stack[@val+1]
   ; TODO: Should be folded into a single instruction.
   store i256 %1, ptr getelementptr inbounds ([10 x i256], ptr @val, i256 0, i256 1), align 32
   ret void
@@ -32,8 +32,8 @@ define void @vari_loadconst_storeglobal(i256 %i) nounwind {
   %addrc = getelementptr inbounds [10 x i256], ptr addrspace(4) @const, i256 0, i256 %i
   %addrg = getelementptr inbounds [10 x i256], ptr @val, i256 0, i256 %i
   %1 = load i256, ptr addrspace(4) %addrc, align 32
-  ; CHECK: div.s 32, r1, r1, r0
-	; CHECK: add r2, r0, stack[r1 + @val]
+  ; CHECK-NOT: div.s 32, r1, r1, r0
+  ; CHECK: add r2, r0, stack[r1 + @val]
   ; TODO: Should be folded into a single instruction.
   store i256 %1, ptr %addrg, align 32
   ret void
@@ -41,12 +41,12 @@ define void @vari_loadconst_storeglobal(i256 %i) nounwind {
 
 ; CHECK-LABEL: vari_loadglobal_storeglobal
 define void @vari_loadglobal_storeglobal(i256 %i, i256 %j) nounwind {
-  ; CHECK: div.s 32, r1, r1, r0
+  ; CHECK-NOT: ; CHECK: div.s 32, r1, r1, r0
   ; CHECK: add stack[r1 + @val], r0, r1
   %addri = getelementptr inbounds [10 x i256], ptr @val, i256 0, i256 %i
   %addrj = getelementptr inbounds [10 x i256], ptr @val, i256 0, i256 %j
   %1 = load i256, ptr %addri, align 32
-  ; CHECK: div.s 32, r2, r2, r0
+  ; CHECK-NOT: div.s 32, r2, r2, r0
   ; CHECK: add r1, r0, stack[r2 + @val]
   ; TODO: Should be folded into a single instruction.
   store i256 %1, ptr %addrj, align 32
