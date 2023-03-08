@@ -149,6 +149,25 @@ bool EraVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
           if (DefMI->getOpcode() == EraVM::CTXr)
             // context.sp is already in cells.
             return;
+
+          // Shortcut:
+          // if we insert DIV, sometimes we have the following pattern:
+          // shl.s   5, r1, r1
+          // div.s   32, r1, r1, r0
+          // Which is redundant. We can simply remove the shift.
+          if (DefMI->getOpcode() == EraVM::SHLxrr_s &&
+              getImmOrCImm(DefMI->getOperand(1)) == 5) {
+            // replace all uses of the register with the second operand.
+            Register UnshiftedReg = DefMI->getOperand(2).getReg();
+            if (MRI.hasOneUse(UnshiftedReg)) {
+              Register UseReg = MO0Reg.getReg();
+              MRI.replaceRegWith(UseReg, UnshiftedReg);
+              DefMI->eraseFromParent();
+              Changed = true;
+              return;
+            }
+          }
+
           Register NewVR;
           if (BytesToCellsRegs.count(Reg) == 1) {
             // Already converted, use value from the cache.
