@@ -4,6 +4,7 @@ target triple = "syncvm-unknown-unknown"
 
 ; Function Attrs: argmemonly mustprogress nofree nounwind willreturn
 declare void @llvm.memcpy.p1i256.p3i256.i256(i256 addrspace(1)* noalias nocapture writeonly, i256 addrspace(3)* noalias nocapture readonly, i256, i1 immarg)
+declare void @llvm.memcpy.p1i256.p1i256.i256(i256 addrspace(1)* noalias nocapture writeonly, i256 addrspace(1)* noalias nocapture readonly, i256, i1 immarg)
 
 ; CHECK-LABEL: expand-known
 define fastcc void @expand-known(i256 addrspace(1)* %dest, i256 addrspace(3)* %src) {

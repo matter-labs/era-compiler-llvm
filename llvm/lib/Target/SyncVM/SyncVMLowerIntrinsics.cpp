@@ -59,12 +59,14 @@ void CreateMemCpyLoopKnownSize(Instruction *InsertBefore, Value *SrcAddr,
   unsigned SrcAS = cast<PointerType>(SrcAddr->getType())->getAddressSpace();
   unsigned DstAS = cast<PointerType>(DstAddr->getType())->getAddressSpace();
 
-  Type *TypeOfCopyLen = CopyLen->getType();
+  Type *TypeOfCopyLen = IntegerType::getInt256Ty(Ctx);
   Type *LoopOpType = TTI.getMemcpyLoopLoweringType(
       Ctx, CopyLen, SrcAS, DstAS, SrcAlign.value(), DstAlign.value());
 
   unsigned LoopOpSize = DL.getTypeStoreSize(LoopOpType);
-  uint64_t LoopEndCount = CopyLen->getZExtValue() / LoopOpSize;
+
+  APInt CopyLenVal = CopyLen->getValue().zext(256);
+  APInt LoopEndCount = CopyLenVal.udiv(APInt(256, LoopOpSize));
 
   if (LoopEndCount != 0) {
     // Split
@@ -108,27 +110,24 @@ void CreateMemCpyLoopKnownSize(Instruction *InsertBefore, Value *SrcAddr,
                              LoopBB, PostLoopBB);
   }
 
-  uint64_t BytesCopied = LoopEndCount * LoopOpSize;
-  uint64_t RemainingBytes = CopyLen->getZExtValue() - BytesCopied;
-  if (RemainingBytes) {
+  APInt BytesCopied = LoopEndCount * LoopOpSize;
+  APInt RemainingBytes = CopyLenVal - BytesCopied;
+  if (RemainingBytes != 0) {
     IRBuilder<> RBuilder(PostLoopBB ? PostLoopBB->getFirstNonPHI()
                                     : InsertBefore);
-    uint64_t GepIndex = BytesCopied / 32;
-    SrcAddr = RBuilder.CreateInBoundsGEP(
-        LoopOpType, SrcAddr, RBuilder.getInt(APInt(256, GepIndex, true)));
+    APInt GepIndex = BytesCopied.udiv(32);
+    SrcAddr = RBuilder.CreateInBoundsGEP(LoopOpType, SrcAddr,
+                                         RBuilder.getInt(GepIndex));
 
     Value *Load = RBuilder.CreateAlignedLoad(LoopOpType, SrcAddr, SrcAlign,
                                              SrcIsVolatile);
-    Value *RuntimeResidual =
-        RBuilder.getInt(APInt(256, 8 * RemainingBytes, false));
-    Value *RuntimeResidualI =
-        RBuilder.getInt(APInt(256, 256 - 8 * RemainingBytes, false));
+    Value *RuntimeResidual = RBuilder.getInt(8 * RemainingBytes);
+    Value *RuntimeResidualI = RBuilder.getInt(256 - 8 * RemainingBytes);
     Value *LoadMask = RBuilder.CreateShl(RBuilder.getInt(APInt(256, -1, true)),
                                          RuntimeResidualI);
     Load = RBuilder.CreateAnd(Load, LoadMask);
 
-    DstAddr = RBuilder.CreateInBoundsGEP(
-        LoopOpType, DstAddr, RBuilder.getInt(APInt(256, GepIndex, true)));
+    DstAddr = RBuilder.CreateInBoundsGEP(LoopOpType, DstAddr, RBuilder.getInt(GepIndex));
 
     Value *Origin = RBuilder.CreateAlignedLoad(LoopOpType, DstAddr, DstAlign,
                                                DstIsVolatile);
@@ -139,7 +138,7 @@ void CreateMemCpyLoopKnownSize(Instruction *InsertBefore, Value *SrcAddr,
     RBuilder.CreateAlignedStore(Load, DstAddr, DstAlign, DstIsVolatile);
     BytesCopied += RemainingBytes;
   }
-  assert(BytesCopied == CopyLen->getZExtValue() &&
+  assert(BytesCopied == CopyLenVal &&
          "Bytes copied should match size in the call!");
 }
 
