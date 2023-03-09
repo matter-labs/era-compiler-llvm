@@ -66,7 +66,7 @@ void CreateMemCpyLoopKnownSize(Instruction *InsertBefore, Value *SrcAddr,
   unsigned SrcAS = cast<PointerType>(SrcAddr->getType())->getAddressSpace();
   unsigned DstAS = cast<PointerType>(DstAddr->getType())->getAddressSpace();
 
-  Type *TypeOfCopyLen = CopyLen->getType();
+  Type *TypeOfCopyLen = IntegerType::getInt256Ty(Ctx);
   Type *LoopOpType = TTI.getMemcpyLoopLoweringType(
       Ctx, CopyLen, SrcAS, DstAS, SrcAlign.value(), DstAlign.value());
 
