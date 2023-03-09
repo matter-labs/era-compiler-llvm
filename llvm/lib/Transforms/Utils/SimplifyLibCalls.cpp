@@ -75,6 +75,21 @@ static bool callHasFP128Argument(const CallInst *CI) {
   });
 }
 
+// SyncVM local begin
+// On SyncVM target, we allow sizes up to 256bits because we allow i256
+// datatype, but it is not always the case that LLVM infra can accept i256
+// values. So here when we are trying to annotate memory location info according
+// for intrinsics, we simply just bail out if the size is larger than 64bits
+// because the size attributes are assuming an i64 type size information.
+static bool isInt64Constant(Value *Size) {
+  if (ConstantInt *LenC = dyn_cast<ConstantInt>(Size)) {
+    if (LenC->getValue().getActiveBits() > 64)
+      return false;
+  }
+  return true;
+}
+// SyncVM local end
+
 // Convert the entire string Str representing an integer in Base, up to
 // the terminating nul if present, to a constant according to the rules
 // of strtoul[l] or, when AsSigned is set, of strtol[l].  On success
@@ -1395,7 +1410,6 @@ Value *LibCallSimplifier::optimizeMemCmpBCmpCommon(CallInst *CI,
                                                    IRBuilderBase &B) {
   Value *LHS = CI->getArgOperand(0), *RHS = CI->getArgOperand(1);
   Value *Size = CI->getArgOperand(2);
-
   annotateNonNullAndDereferenceable(CI, {0, 1}, Size, DL);
 
   if (Value *Res = optimizeMemCmpVarSize(CI, LHS, RHS, Size, false, B, DL))
@@ -1434,6 +1448,10 @@ Value *LibCallSimplifier::optimizeBCmp(CallInst *CI, IRBuilderBase &B) {
 
 Value *LibCallSimplifier::optimizeMemCpy(CallInst *CI, IRBuilderBase &B) {
   Value *Size = CI->getArgOperand(2);
+  // SyncVM local begin
+  if (!isInt64Constant(Size))
+    return nullptr;
+  // SyncVM local end
   annotateNonNullAndDereferenceable(CI, {0, 1}, Size, DL);
   if (isa<IntrinsicInst>(CI))
     return nullptr;
@@ -1505,6 +1523,10 @@ Value *LibCallSimplifier::optimizeMemPCpy(CallInst *CI, IRBuilderBase &B) {
 
 Value *LibCallSimplifier::optimizeMemMove(CallInst *CI, IRBuilderBase &B) {
   Value *Size = CI->getArgOperand(2);
+  // SyncVM local begin
+  if (!isInt64Constant(Size))
+    return nullptr;
+  // SyncVM local end
   annotateNonNullAndDereferenceable(CI, {0, 1}, Size, DL);
   if (isa<IntrinsicInst>(CI))
     return nullptr;
@@ -1520,6 +1542,10 @@ Value *LibCallSimplifier::optimizeMemMove(CallInst *CI, IRBuilderBase &B) {
 
 Value *LibCallSimplifier::optimizeMemSet(CallInst *CI, IRBuilderBase &B) {
   Value *Size = CI->getArgOperand(2);
+  // SyncVM local begin
+  if (!isInt64Constant(Size))
+    return nullptr;
+  // SyncVM local end
   annotateNonNullAndDereferenceable(CI, 0, Size, DL);
   if (isa<IntrinsicInst>(CI))
     return nullptr;
