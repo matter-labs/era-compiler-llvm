@@ -51,19 +51,6 @@ void SyncVMFrameLowering::emitEpilogue(MachineFunction &MF,
   // call, so no epilogue is needed.
 }
 
-// FIXME: Can we eleminate these in favour of generic code?
-bool SyncVMFrameLowering::spillCalleeSavedRegisters(
-    MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
-    ArrayRef<CalleeSavedInfo> CSI, const TargetRegisterInfo *TRI) const {
-  return true;
-}
-
-bool SyncVMFrameLowering::restoreCalleeSavedRegisters(
-    MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
-    MutableArrayRef<CalleeSavedInfo> CSI, const TargetRegisterInfo *TRI) const {
-  return true;
-}
-
 MachineBasicBlock::iterator SyncVMFrameLowering::eliminateCallFramePseudoInstr(
     MachineFunction &MF, MachineBasicBlock &MBB,
     MachineBasicBlock::iterator I) const {

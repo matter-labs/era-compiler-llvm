@@ -86,7 +86,7 @@ static bool SyncVMLinkRuntimeImpl(Module &M, const char *ModuleToLink) {
   SMDiagnostic Err;
   std::unique_ptr<Module> RTM = parseIR(*Buffer, Err, C);
   if (!RTM) {
-    Err.print("syncvm-runtime.ll, syncvm-stdlib.ll", errs());
+    Err.print("Unable to parse syncvm-runtime.ll, syncvm-stdlib.ll", errs());
     exit(1);
   }
   bool LinkErr = false;
