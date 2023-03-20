@@ -35,8 +35,6 @@ public:
   StringRef getPassName() const override { return SYNCVM_EXPAND_PSEUDO_NAME; }
 
 private:
-  void expandLoadConst(MachineInstr &MI) const;
-  void expandThrow(MachineInstr &MI) const;
   const TargetInstrInfo *TII;
   LLVMContext *Context;
 };
@@ -47,47 +45,6 @@ char SyncVMExpandPseudo::ID = 0;
 
 INITIALIZE_PASS(SyncVMExpandPseudo, DEBUG_TYPE, SYNCVM_EXPAND_PSEUDO_NAME,
                 false, false)
-
-void SyncVMExpandPseudo::expandLoadConst(MachineInstr &MI) const {
-  MachineOperand ConstantPool = MI.getOperand(1);
-  MachineOperand Reg = MI.getOperand(0);
-
-  auto can_combine = [](MachineInstr &cur, MachineInstr &next) {
-    auto opcode = next.getOpcode();
-    switch (opcode) {
-    default: {
-      break;
-    }
-    // this handles commutative cases
-    case SyncVM::ADDrrr_s:
-    case SyncVM::ANDrrr_s:
-    case SyncVM::XORrrr_s:
-    case SyncVM::ORrrr_s: {
-      auto outReg = cur.getOperand(0).getReg();
-      if (next.getOperand(1).getReg() == outReg ||
-          next.getOperand(2).getReg() == outReg) {
-        return true;
-      }
-      break;
-    }
-    }
-    return false;
-  };
-
-  // it is possible that we can merge two instructions, as long as we do not
-  // call a scheduler the materialization of a const will be followed by its
-  // use.
-  auto MBBI = std::next(MachineBasicBlock::iterator(MI));
-  auto outReg = MI.getOperand(0).getReg();
-
-  BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(SyncVM::ADDcrr_s))
-      .add(Reg)
-      .addImm(0)
-      .add(ConstantPool)
-      .addReg(SyncVM::R0)
-      .addImm(0)
-      .getInstr();
-}
 
 bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
   LLVM_DEBUG(
@@ -100,28 +57,7 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
   Context = &MF.getFunction().getContext();
 
   std::vector<MachineInstr *> PseudoInst;
-  for (MachineBasicBlock &MBB : MF)
-    for (MachineInstr &MI : MBB) {
-      if (!MI.isPseudo())
-        continue;
 
-      if (MI.getOpcode() == SyncVM::INVOKE) {
-        // convert INVOKE to an actual call
-        Register ABIReg = MI.getOperand(0).getReg();
-        BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
-                TII->get(SyncVM::NEAR_CALL))
-            .addReg(ABIReg)
-            .add(MI.getOperand(1))
-            .add(MI.getOperand(2));
-        PseudoInst.push_back(&MI);
-        continue;
-      } else if (MI.getOpcode() == SyncVM::LOADCONST) {
-        expandLoadConst(MI);
-        PseudoInst.push_back(&MI);
-      }
-    }
-
-  // Handle calls
   for (MachineBasicBlock &MBB : MF)
     for (MachineInstr &MI : MBB) {
       if (MI.getOpcode() == SyncVM::INVOKE) {
@@ -161,7 +97,7 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
 
         PseudoInst.push_back(&MI);
       } else if (MI.getOpcode() == SyncVM::PTR_TO_INT) {
-        // Eliminate PTR_TO_INT
+        // Eliminate PTR_TO_INT if from and to registers are the same
         Register ToReg = MI.getOperand(0).getReg();
         Register FromReg = MI.getOperand(1).getReg();
         if (ToReg != FromReg) {
@@ -173,6 +109,17 @@ bool SyncVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
                            .addImm(0);
           LLVM_DEBUG(dbgs() << "Converting PTR_TO_INT to: "; NewMI->dump());
         }
+        PseudoInst.push_back(&MI);
+      } else if (MI.getOpcode() == SyncVM::LOADCONST) {
+      // expand load const
+        BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
+                TII->get(SyncVM::ADDcrr_s))
+            .add(MI.getOperand(0))
+            .addImm(0)
+            .add(MI.getOperand(1))
+            .addReg(SyncVM::R0)
+            .addImm(0)
+            .getInstr();
         PseudoInst.push_back(&MI);
       }
     }

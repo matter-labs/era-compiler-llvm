@@ -38,7 +38,6 @@ public:
 
 private:
   const TargetInstrInfo *TII;
-  LLVMContext *Context;
 };
 
 char SyncVMAddConditions::ID = 0;
@@ -56,8 +55,6 @@ bool SyncVMAddConditions::runOnMachineFunction(MachineFunction &MF) {
   bool Changed = false;
   TII = MF.getSubtarget<SyncVMSubtarget>().getInstrInfo();
   assert(TII && "TargetInstrInfo must be a valid object");
-
-  Context = &MF.getFunction().getContext();
 
   std::vector<MachineInstr *> PseudoInst;
   for (MachineBasicBlock &MBB : MF)

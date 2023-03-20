@@ -34,10 +34,6 @@ public:
   MCFragment *findAssociatedFragment() const override { return nullptr; }
 
   void fixELFSymbolsInTLSFixups(MCAssembler &Asm) const override {}
-
-  static bool classof(const MCExpr *E) {
-    return E->getKind() == MCExpr::Target;
-  }
 };
 
 } // end namespace llvm
