@@ -67,67 +67,15 @@ public:
 
   bool runOnMachineFunction(MachineFunction &MF) override;
 
-  void PrintSymbolOperand(const MachineOperand &MO, raw_ostream &O) override;
-  void printOperand(const MachineInstr *MI, int OpNum, raw_ostream &O,
-                    const char *Modifier = nullptr);
-  bool PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
-                       const char *ExtraCode, raw_ostream &O) override;
-  bool PrintAsmMemoryOperand(const MachineInstr *MI, unsigned OpNo,
-                             const char *ExtraCode, raw_ostream &O) override;
   void emitInstruction(const MachineInstr *MI) override;
   using AliasMapTy = DenseMap<uint64_t, SmallVector<const GlobalAlias *, 1>>;
   void emitGlobalConstant(const DataLayout &DL, const Constant *CV,
                           AliasMapTy *AliasList = nullptr) override;
-  void EmitInterruptVectorSection(MachineFunction &ISR);
 
   void emitConstantPool() override;
   void emitEndOfAsmFile(Module &) override;
 };
 } // end of anonymous namespace
-
-void EraVMAsmPrinter::PrintSymbolOperand(const MachineOperand &MO,
-                                         raw_ostream &O) {
-  uint64_t Offset = MO.getOffset();
-  if (Offset)
-    O << '(' << Offset << '+';
-  getSymbol(MO.getGlobal())->print(O, MAI);
-  if (Offset)
-    O << ')';
-}
-
-void EraVMAsmPrinter::printOperand(const MachineInstr *MI, int OpNum,
-                                   raw_ostream &O, const char *Modifier) {
-  const MachineOperand &MO = MI->getOperand(OpNum);
-  switch (MO.getType()) {
-  default:
-    llvm_unreachable("Not implemented yet!");
-  case MachineOperand::MO_Register:
-    O << EraVMInstPrinter::getRegisterName(MO.getReg());
-    return;
-  case MachineOperand::MO_Immediate:
-    O << MO.getImm();
-    return;
-  case MachineOperand::MO_GlobalAddress:
-    PrintSymbolOperand(MO, O);
-    return;
-  }
-}
-
-/// PrintAsmOperand - Print out an operand for an inline asm expression.
-///
-bool EraVMAsmPrinter::PrintAsmOperand(const MachineInstr *MI, unsigned OpNo,
-                                      const char *ExtraCode, raw_ostream &O) {
-  llvm_unreachable("Not implemented yet!");
-  return false;
-}
-
-bool EraVMAsmPrinter::PrintAsmMemoryOperand(const MachineInstr *MI,
-                                            unsigned OpNo,
-                                            const char *ExtraCode,
-                                            raw_ostream &O) {
-  llvm_unreachable("Not implemented yet!");
-  return false;
-}
 
 //===----------------------------------------------------------------------===//
 void EraVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
@@ -136,10 +84,6 @@ void EraVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
   MCInst TmpInst;
   MCInstLowering.Lower(MI, TmpInst);
   EmitToStreamer(*OutStreamer, TmpInst);
-}
-
-void EraVMAsmPrinter::EmitInterruptVectorSection(MachineFunction &ISR) {
-  llvm_unreachable("Not implemented yet!");
 }
 
 bool EraVMAsmPrinter::runOnMachineFunction(MachineFunction &MF) {

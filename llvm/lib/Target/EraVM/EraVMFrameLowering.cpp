@@ -56,19 +56,6 @@ void EraVMFrameLowering::emitEpilogue(MachineFunction &MF,
   // call, so no epilogue is needed.
 }
 
-// FIXME: Can we eleminate these in favour of generic code?
-bool EraVMFrameLowering::spillCalleeSavedRegisters(
-    MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
-    ArrayRef<CalleeSavedInfo> CSI, const TargetRegisterInfo *TRI) const {
-  return true;
-}
-
-bool EraVMFrameLowering::restoreCalleeSavedRegisters(
-    MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
-    MutableArrayRef<CalleeSavedInfo> CSI, const TargetRegisterInfo *TRI) const {
-  return true;
-}
-
 MachineBasicBlock::iterator EraVMFrameLowering::eliminateCallFramePseudoInstr(
     MachineFunction &MF, MachineBasicBlock &MBB,
     MachineBasicBlock::iterator I) const {

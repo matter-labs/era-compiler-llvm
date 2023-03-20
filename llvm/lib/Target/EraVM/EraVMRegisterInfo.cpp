@@ -78,20 +78,14 @@ bool EraVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
                        .addImm(EraVMCTX::SP)
                        .addImm(EraVMCC::COND_NONE)
                        .getInstr();
-    if (Offset < 0)
-      SPInst = BuildMI(MBB, II, DL, TII.get(EraVM::SUBxrr_s))
-                   .addDef(MI.getOperand(0).getReg())
-                   .addImm(-Offset / 32)
-                   .add(SPInst->getOperand(0))
-                   .addImm(EraVMCC::COND_NONE)
-                   .getInstr();
-    else
-      SPInst = BuildMI(MBB, II, DL, TII.get(EraVM::ADDirr_s))
-                   .addDef(MI.getOperand(0).getReg())
-                   .addImm(Offset / 32)
-                   .add(SPInst->getOperand(0))
-                   .addImm(EraVMCC::COND_NONE)
-                   .getInstr();
+    assert(Offset < 0 && "On EraVM, offset cannot be positive");
+    SPInst = BuildMI(MBB, II, DL, TII.get(EraVM::SUBxrr_s))
+                 .addDef(MI.getOperand(0).getReg())
+                 .addImm(-Offset / 32)
+                 .add(SPInst->getOperand(0))
+                 .addImm(EraVMCC::COND_NONE)
+                 .getInstr();
+
     BuildMI(MBB, II, DL, TII.get(EraVM::MULirrr_s))
         .addDef(MI.getOperand(0).getReg())
         .addDef(EraVM::R0)

@@ -90,7 +90,7 @@ static bool EraVMLinkRuntimeImpl(Module &M, const char *ModuleToLink) {
   SMDiagnostic Err;
   std::unique_ptr<Module> RTM = parseIR(*Buffer, Err, C);
   if (!RTM) {
-    Err.print("eravm-runtime.ll, eravm-stdlib.ll", errs());
+    Err.print("Unable to parse eravm-runtime.ll, eravm-stdlib.ll", errs());
     exit(1);
   }
   bool LinkErr = false;

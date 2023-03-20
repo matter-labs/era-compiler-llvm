@@ -37,7 +37,6 @@ public:
 
 private:
   const TargetInstrInfo *TII{};
-  LLVMContext *Context{};
 };
 
 char EraVMAddConditions::ID = 0;
@@ -55,8 +54,6 @@ bool EraVMAddConditions::runOnMachineFunction(MachineFunction &MF) {
   bool Changed = false;
   TII = MF.getSubtarget<EraVMSubtarget>().getInstrInfo();
   assert(TII && "TargetInstrInfo must be a valid object");
-
-  Context = &MF.getFunction().getContext();
 
   std::vector<MachineInstr *> PseudoInst;
   for (MachineBasicBlock &MBB : MF)
