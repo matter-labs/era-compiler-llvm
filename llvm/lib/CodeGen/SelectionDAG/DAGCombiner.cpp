@@ -796,6 +796,12 @@ namespace {
     void ExtendSetCCUses(const SmallVectorImpl<SDNode *> &SetCCs,
                          SDValue OrigLoad, SDValue ExtLoad,
                          ISD::NodeType ExtType);
+  
+    // SyncVM local begin
+    bool isSyncVM() const {
+      return DAG.getTarget().getTargetTriple().isSyncVM();
+    }
+    // SyncVM local end
   };
 
 /// This class is a DAGUpdateListener that removes any deleted
@@ -2394,6 +2400,11 @@ static SDValue foldAddSubOfSignBit(SDNode *N, SelectionDAG &DAG) {
   if (SDValue NewC = DAG.FoldConstantArithmetic(
           IsAdd ? ISD::ADD : ISD::SUB, DL, VT,
           {ConstantOp, DAG.getConstant(1, DL, VT)})) {
+    // SyncVM local begin
+    // Do not translate into SRA because it is expensive
+    if (DAG.getTarget().getTargetTriple().isSyncVM() && IsAdd)
+      return SDValue();
+    // SyncVM local end
     SDValue NewShift = DAG.getNode(IsAdd ? ISD::SRA : ISD::SRL, DL, VT,
                                    Not.getOperand(0), ShAmt);
     return DAG.getNode(ISD::ADD, DL, VT, NewShift, NewC);
@@ -3459,7 +3470,10 @@ SDValue DAGCombiner::visitSUB(SDNode *N) {
     // the same as flipping arithmetic/logical shift type without the negation:
     // -(X >>u 31) -> (X >>s 31)
     // -(X >>s 31) -> (X >>u 31)
-    if (N1->getOpcode() == ISD::SRA || N1->getOpcode() == ISD::SRL) {
+    // SyncVM local begin
+    if (N1->getOpcode() == ISD::SRA ||
+        (!isSyncVM() && N1->getOpcode() == ISD::SRL)) {
+    // SyncVM local end
       ConstantSDNode *ShiftAmt = isConstOrConstSplat(N1.getOperand(1));
       if (ShiftAmt && ShiftAmt->getAPIntValue() == (BitWidth - 1)) {
         auto NewSh = N1->getOpcode() == ISD::SRA ? ISD::SRL : ISD::SRA;
@@ -3733,7 +3747,9 @@ SDValue DAGCombiner::visitSUB(SDNode *N) {
   if (!LegalOperations && N1.getOpcode() == ISD::SRL && N1.hasOneUse()) {
     SDValue ShAmt = N1.getOperand(1);
     ConstantSDNode *ShAmtC = isConstOrConstSplat(ShAmt);
-    if (ShAmtC &&
+    // SyncVM local begin
+    if (!isSyncVM() && ShAmtC &&
+    // SyncVM local end
         ShAmtC->getAPIntValue() == (N1.getScalarValueSizeInBits() - 1)) {
       SDValue SRA = DAG.getNode(ISD::SRA, DL, VT, N1.getOperand(0), ShAmt);
       return DAG.getNode(ISD::ADD, DL, VT, N0, SRA);
@@ -4602,7 +4618,10 @@ SDValue DAGCombiner::visitREM(SDNode *N) {
     // fold (urem x, (lshr pow2, y)) -> (and x, (add (lshr pow2, y), -1))
     // TODO: We should sink the following into isKnownToBePowerOfTwo
     // using a OrZero parameter analogous to our handling in ValueTracking.
-    if ((N1.getOpcode() == ISD::SHL || N1.getOpcode() == ISD::SRL) &&
+    // SyncVM local begin
+    if (((!isSyncVM() && N1.getOpcode() == ISD::SHL) ||
+        N1.getOpcode() == ISD::SRL) &&
+    // SyncVM local end
         DAG.isKnownToBeAPowerOfTwo(N1.getOperand(0))) {
       SDValue NegOne = DAG.getAllOnesConstant(DL, VT);
       SDValue Add = DAG.getNode(ISD::ADD, DL, VT, N1, NegOne);
@@ -5597,7 +5616,7 @@ SDValue DAGCombiner::visitANDLike(SDValue N0, SDValue N1, SDNode *N) {
     }
   }
 
-  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
+  if (!isSyncVM()) {
   // Reduce bit extract of low half of an integer to the narrower type.
   // (and (srl i64:x, K), KMask) ->
   //   (i64 zero_extend (and (srl (i32 (trunc i64:x)), K)), KMask)
@@ -12143,8 +12162,13 @@ SDValue DAGCombiner::visitSIGN_EXTEND(SDNode *N) {
   // fold sext (not i1 X) -> add (zext i1 X), -1
   // TODO: This could be extended to handle bool vectors.
   if (N0.getValueType() == MVT::i1 && isBitwiseNot(N0) && N0.hasOneUse() &&
-      (!LegalOperations || (TLI.isOperationLegal(ISD::ZERO_EXTEND, VT) &&
-                            TLI.isOperationLegal(ISD::ADD, VT)))) {
+      // SyncVM local begin
+      (!LegalOperations ||
+        (((isSyncVM() && TLI.isOperationLegalOrCustom(ISD::ZERO_EXTEND, VT)) ||
+          TLI.isOperationLegal(ISD::ZERO_EXTEND, VT)) &&
+         TLI.isOperationLegal(ISD::ADD, VT)))
+     ) {
+      // SyncVM local end
     // If we can eliminate the 'not', the sext form should be better
     if (SDValue NewXor = visitXOR(N0.getNode())) {
       // Returning N0 is a form of in-visit replacement that may have
