@@ -82,6 +82,7 @@ FunctionPass *createSyncVMPropagateGenericPointersPass();
 FunctionPass *createSyncVMStackAddressConstantPropagationPass();
 FunctionPass *createSyncVMCombineFlagSettingPass();
 FunctionPass *createSyncVMCombineToIndexedMemopsPass();
+FunctionPass *createSyncVMFoldCellScalesPass();
 
 void initializeSyncVMLowerIntrinsicsPass(PassRegistry &);
 void initializeSyncVMAddConditionsPass(PassRegistry &);
@@ -95,6 +96,7 @@ void initializeSyncVMPropagateGenericPointersPass(PassRegistry &);
 void initializeSyncVMStackAddressConstantPropagationPass(PassRegistry &);
 void initializeSyncVMCombineFlagSettingPass(PassRegistry &);
 void initializeSyncVMCombineToIndexedMemopsPass(PassRegistry &);
+void initializeSyncVMFoldCellScalesPass(PassRegistry &);
 
 struct SyncVMLinkRuntimePass : PassInfoMixin<SyncVMLinkRuntimePass> {
   SyncVMLinkRuntimePass() {}

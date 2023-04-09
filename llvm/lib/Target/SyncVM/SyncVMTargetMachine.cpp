@@ -137,6 +137,7 @@ void SyncVMPassConfig::addPreRegAlloc() {
     addPass(createSyncVMCombineFlagSettingPass());
     // This pass emits indexed loads and stores
     addPass(createSyncVMCombineToIndexedMemopsPass());
+    addPass(createSyncVMFoldCellScalesPass());
   }
 }
 
