@@ -62,6 +62,9 @@ bool SyncVMInstrInfo::reverseBranchCondition(
   switch (CC) {
   default:
     llvm_unreachable("Invalid branch condition!");
+  case SyncVMCC::COND_OF:
+    // we cannot reverse overflow checking condition
+    return true;
   case SyncVMCC::COND_E:
     CC = SyncVMCC::COND_NE;
     break;
