@@ -138,12 +138,14 @@ bool SyncVMFoldCellScales::combineCellScalingInstrs(MachineInstr& MI) {
   eraseAndReplaceUses(Div32Uses, SourceReg);
   
   // also remove the shl.s instruction if rY is not used anymore
+  /*
   Register DestReg = MI.getOperand(0).getReg();
   if (RegInfo->use_empty(DestReg)) {
     MI.eraseFromParent();
     ++NumInstrsFolded;
     return true;
   }
+  */
 
   return !Div32Uses.empty();
 }
