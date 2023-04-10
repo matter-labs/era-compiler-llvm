@@ -50,6 +50,7 @@ public:
   SDValue LowerBlockAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerExternalSymbol(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerBR_CC(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerBRCOND(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerLOAD(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSTORE(SDValue Op, SelectionDAG &DAG) const;
@@ -70,7 +71,7 @@ public:
 
   SDValue LowerConstant(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerConstantPool(SDValue Op, SelectionDAG &DAG) const;
-
+  SDValue LowerUArithO(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerBrFlag(SDValue Cond, SDValue Chain, SDValue DestFalse,
                       SDValue DestTrue, SDLoc DL, SelectionDAG &DAG) const;
 
@@ -182,6 +183,9 @@ public:
                              EVT NewVT) const override {
     return false;
   }
+
+  void AdjustInstrPostInstrSelection(MachineInstr &MI,
+                                     SDNode *Node) const override;
 
 private:
   SDValue LowerFormalArguments(SDValue Chain, CallingConv::ID CallConv,

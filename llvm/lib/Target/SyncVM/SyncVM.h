@@ -24,7 +24,8 @@ enum CondCodes {
   COND_NE,
   COND_LE,
   COND_GE,
-
+  COND_OF,       /// Overflow flag, cannot be reversed in optimization.
+                 /// Used in conjunction with arithmetic overflow check.
   COND_INVALID = -1
 };
 } // namespace SyncVMCC

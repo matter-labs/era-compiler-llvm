@@ -97,7 +97,6 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
       {
           ISD::BR_JT,
           ISD::BRIND,
-          ISD::BRCOND,
           ISD::VASTART,
           ISD::VAARG,
           ISD::VAEND,
@@ -130,7 +129,8 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
       MVT::i256, Custom);
 
   setOperationAction({ISD::INTRINSIC_VOID, ISD::INTRINSIC_WO_CHAIN,
-                      ISD::STACKSAVE, ISD::STACKRESTORE, ISD::TRAP},
+                      ISD::STACKSAVE, ISD::STACKRESTORE, ISD::TRAP,
+                      ISD::BRCOND},
                      MVT::Other, Custom);
 
   for (MVT VT : {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}) {
@@ -258,7 +258,7 @@ SDValue SyncVMTargetLowering::LowerFormalArguments(
   if (!CallingConvSupported(CallConv))
     fail(DL, DAG, "SyncVM doesn't support non-C calling conventions");
   if (IsVarArg)
-     fail(DL, DAG, "VarArg is not supported yet");
+    fail(DL, DAG, "VarArg is not supported yet");
 
   for (const ISD::InputArg &In : Ins) {
     if (In.Flags.isInAlloca())
@@ -491,8 +491,7 @@ SyncVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   // Likewise ExternalSymbol -> TargetExternalSymbol.
   if (GlobalAddressSDNode *G = dyn_cast<GlobalAddressSDNode>(Callee)) {
     Callee = wrapGlobalAddress(Callee, DAG, DL);
-  }
-  else if (ExternalSymbolSDNode *E = dyn_cast<ExternalSymbolSDNode>(Callee)) {
+  } else if (ExternalSymbolSDNode *E = dyn_cast<ExternalSymbolSDNode>(Callee)) {
     Callee = wrapExternalSymbol(Callee, DAG, DL);
   }
 
@@ -671,6 +670,7 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
   case ISD::BlockAddress:       return LowerBlockAddress(Op, DAG);
   case ISD::ExternalSymbol:     return LowerExternalSymbol(Op, DAG);
   case ISD::BR_CC:              return LowerBR_CC(Op, DAG);
+  case ISD::BRCOND:             return LowerBRCOND(Op, DAG);
   case ISD::SELECT_CC:          return LowerSELECT_CC(Op, DAG);
   case ISD::SRA:                return LowerSRA(Op, DAG);
   case ISD::SDIV:               return LowerSDIV(Op, DAG);
@@ -934,6 +934,45 @@ SDValue SyncVMTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
   SDValue Cmp = DAG.getNode(SyncVMISD::CMP, DL, MVT::Glue, LHS, RHS);
   return DAG.getNode(SyncVMISD::BR_CC, DL, Op.getValueType(), Chain, Dest,
                      TargetCC, Cmp);
+}
+
+static const std::unordered_map<uint64_t, uint64_t> OpcodeMap = {
+    {ISD::UADDO, SyncVMISD::ADD_V},
+    {ISD::USUBO, SyncVMISD::SUB_V},
+    {ISD::UMULO, SyncVMISD::MUL_V},
+};
+
+static SDValue matchingOverflowArithmeticOperation(SDValue Op) {
+  // match of Op is the 2nd result of u{add|sub|mul}.with.overflow
+  if (Op.getResNo() == 1)
+    if (OpcodeMap.count(Op.getOpcode()))
+      return Op.getValue(0);
+  return SDValue();
+}
+
+// try to custom lower U{add|sub|mul}.with.overflow feeding into a branch
+// into {ADD|SUB|MUL}! and jump.of
+SDValue SyncVMTargetLowering::LowerBRCOND(SDValue Op, SelectionDAG &DAG) const {
+  SDValue Chain = Op.getOperand(0);
+  SDValue Cond = Op.getOperand(1);
+  SDValue Dest = Op.getOperand(2);
+  SDLoc DL(Op);
+  SDValue MatchedUArithO = matchingOverflowArithmeticOperation(Cond);
+  if (!MatchedUArithO)
+    return SDValue();
+
+  auto OPC = MatchedUArithO.getOpcode();
+  auto LoweredOPC = OpcodeMap.at(OPC);
+  SDValue FoldedArith = DAG.getNode(LoweredOPC, DL, {MVT::i256, MVT::Other},
+                            {DAG.getEntryNode(), MatchedUArithO.getOperand(0),
+                             MatchedUArithO.getOperand(1)});
+  DAG.ReplaceAllUsesOfValueWith(MatchedUArithO.getValue(0),
+                                FoldedArith.getValue(0));
+
+  auto TF = DAG.getNode(ISD::TokenFactor, DL, MVT::Other,
+                        {Chain, FoldedArith.getValue(1)});
+  auto OFCC = DAG.getConstant(SyncVMCC::COND_OF, DL, MVT::i256);
+  return DAG.getNode(SyncVMISD::BRCOND, DL, Op.getValueType(), TF, Dest, OFCC);
 }
 
 SDValue SyncVMTargetLowering::LowerSELECT_CC(SDValue Op,
@@ -1200,4 +1239,15 @@ SyncVMTargetLowering::getRegisterByName(const char *RegName, LLT VT,
 
   report_fatal_error(
       Twine("Invalid register name \"" + StringRef(RegName) + "\"."));
+}
+
+void SyncVMTargetLowering::AdjustInstrPostInstrSelection(MachineInstr &MI,
+                                                         SDNode *Node) const {
+  assert(MI.hasPostISelHook() && "Expected instruction to have post-isel hook");
+
+  // mark the implicit def to be alive
+  if (SyncVMInstrInfo::isFlagSettingInstruction(MI.getOpcode()))
+    for (auto &MO : MI.implicit_operands())
+      if (MO.isDef())
+        MO.setIsDead(false);
 }

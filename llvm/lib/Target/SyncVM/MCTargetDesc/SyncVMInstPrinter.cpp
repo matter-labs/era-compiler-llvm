@@ -56,6 +56,9 @@ void SyncVMInstPrinter::printCCOperand(const MCInst *MI, unsigned OpNo,
   case SyncVMCC::COND_E:
     O << ".eq";
     break;
+  case SyncVMCC::COND_OF:
+    O << ".of";
+    break;
   case SyncVMCC::COND_LT:
     O << ".lt";
     break;

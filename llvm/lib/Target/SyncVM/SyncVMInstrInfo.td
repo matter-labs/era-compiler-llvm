@@ -22,6 +22,8 @@ def SDT_SyncVMChangeSP     : SDTypeProfile<0,  1, [SDTCisVT<0, i256>]>;
 def SDT_SyncVMGetSP        : SDTypeProfile<1,  0, []>;
 def SDT_SyncVMBrCC         : SDTypeProfile<0,  2, [SDTCisVT<0, OtherVT>,
                                                    SDTCisVT<1, i256>]>;
+def SDT_SyncVMBrCOND       : SDTypeProfile<0,  2, [SDTCisVT<0, OtherVT>,
+                                                   SDTCisVT<1, i256>]>;
 def SDT_SyncVMSelectCC     : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
                                                   SDTCisSameAs<1, 2>,
                                                   SDTCisVT<3, i256>]>;
@@ -32,6 +34,8 @@ def SDT_SyncVMCopyFromPtrReg : SDTypeProfile<1, 1, [SDTCisVT<0, fatptr>]>;
 
 def SDT_SyncVMPtrToInt     : SDTypeProfile<1, 1, [SDTCisVT<0, i256>, SDTCisVT<1, fatptr>]>;
 def SDT_SyncVMPtrOp        : SDTypeProfile<1, 2, [SDTCisVT<0, fatptr>, SDTCisVT<1, fatptr>, SDTCisVT<2, i256>]>;
+
+def SDT_SyncVMArith  : SDTypeProfile<1, 2, [SDTCisVT<0, i256>, SDTCisVT<1, i256>, SDTCisVT<2, i256>]>;
 
 //===----------------------------------------------------------------------===//
 // SyncVM Specific Node Definitions.
@@ -52,6 +56,8 @@ def SyncVMdelegatecall: SDNode<"SyncVMISD::DELEGATECALL", SDT_SyncVMFarCall,
 def SyncVMmimiccall: SDNode<"SyncVMISD::MIMICCALL", SDT_SyncVMFarCall,
                     [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
 def SyncVMbrcc   : SDNode<"SyncVMISD::BR_CC", SDT_SyncVMBrCC,
+                    [SDNPHasChain, SDNPInGlue]>;
+def SyncVMbrcond : SDNode<"SyncVMISD::BRCOND", SDT_SyncVMBrCOND,
                     [SDNPHasChain, SDNPInGlue]>;
 def SyncVMselectcc: SDNode<"SyncVMISD::SELECT_CC", SDT_SyncVMSelectCC,
                            [SDNPInGlue]>;
@@ -86,6 +92,10 @@ def SyncVMptr_shrink : SDNode<"SyncVMISD::PTR_SHRINK", SDT_SyncVMPtrOp, []>;
 
 def SyncVMTrap : SDNode<"SyncVMISD::TRAP", SDTNone,
     [SDNPHasChain, SDNPOptInGlue]>;
+
+def SyncVMAdd_v : SDNode<"SyncVMISD::ADD_V", SDT_SyncVMArith, [SDNPHasChain]>;
+def SyncVMSub_v : SDNode<"SyncVMISD::SUB_V", SDT_SyncVMArith, [SDNPHasChain]>;
+def SyncVMMul_v : SDNode<"SyncVMISD::MUL_V", SDT_SyncVMArith, [SDNPHasChain]>;
 
 //===----------------------------------------------------------------------===//
 // SyncVM Operand Definitions.
@@ -370,7 +380,7 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
   def rrr_s : Irrr<opcode, 0, 1,
                    (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, "$cc\t$rs0, $rs1, $rd0"), []>, PseudoRel, FlagRel;
-  let Defs = [Flags] in
+  let Defs = [Flags], hasPostISelHook = 1 in
   def rrr_v : Irrr<opcode, 0, 0,
                    (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, "$cc!\t$rs0, $rs1, $rd0"), []>, FlagRel;
@@ -386,7 +396,7 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
   def crr_s : Imrr<opcode, SrcCode, 0, 1,
                    (outs GR256:$rd0), (ins memop:$src0, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, "$cc\t$src0[0], $rs1, $rd0"), []>, PseudoRel, FlagRel;
-  let Defs = [Flags] in
+  let Defs = [Flags], hasPostISelHook = 1 in
   def crr_v : Imrr<opcode, SrcCode, 0, 0,
                    (outs GR256:$rd0), (ins memop:$src0, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, "$cc!\t$src0[0], $rs1, $rd0"), []>, FlagRel;
@@ -400,7 +410,7 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
   def srr_s : Isrr<opcode, SrcStack, 0, 1,
                    (outs GR256:$rd0), (ins stackop:$src0, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, "$cc\t$src0, $rs1, $rd0"), []>, PseudoRel, FlagRel;
-  let Defs = [Flags] in
+  let Defs = [Flags], hasPostISelHook = 1 in
   def srr_v : Isrr<opcode, SrcStack, 0, 0,
                    (outs GR256:$rd0), (ins stackop:$src0, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, "$cc!\t$src0, $rs1, $rd0"), []>, FlagRel;
@@ -417,7 +427,7 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
   def rrs_s : Irrs<opcode, 0, 1,
                    (outs), (ins GR256:$rs0, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, "$cc\t$rs0, $rs1, $dst0"), []>, PseudoRel, FlagRel;
-  let Defs = [Flags] in
+  let Defs = [Flags], hasPostISelHook = 1 in
   def rrs_v : Irrs<opcode, 0, 0,
                    (outs), (ins GR256:$rs0, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, "$cc!\t$rs0, $rs1, $dst0"), []>, FlagRel;
@@ -434,7 +444,7 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
   def crs_s : Imrs<opcode, SrcCode, 0, 1,
                    (outs), (ins memop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, "$cc\t$src0[0], $rs1, $dst0"), []>, PseudoRel, FlagRel;
-  let Defs = [Flags] in
+  let Defs = [Flags], hasPostISelHook = 1 in
   def crs_v : Imrs<opcode, SrcCode, 0, 0,
                    (outs), (ins memop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, "$cc!\t$src0[0], $rs1, $dst0"), []>, FlagRel;
@@ -450,7 +460,7 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
                    (outs), (ins stackop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, "$cc\t$src0, $rs1, $dst0"), []>, PseudoRel, FlagRel;
 
-  let Defs = [Flags] in
+  let Defs = [Flags], hasPostISelHook = 1 in
   def srs_v : Isrs<opcode, SrcStack, 0, 0,
                    (outs), (ins stackop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, "$cc!\t$src0, $rs1, $dst0"), []>, FlagRel;
@@ -470,7 +480,7 @@ multiclass ArithICommutable<bits<8> opcode, string asmstring, SDPatternOperator 
   def irr_s : Iirr<opcode, 0, 1,
                    (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, "$cc\t$imm, $rs1, $rd0"), []>, PseudoRel, FlagRel;
-  let Defs = [Flags] in
+  let Defs = [Flags] , hasPostISelHook = 1 in
   def irr_v : Iirr<opcode, 0, 0,
                    (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, "$cc!\t$imm, $rs1, $rd0"), []>, FlagRel;
@@ -485,7 +495,7 @@ multiclass ArithICommutable<bits<8> opcode, string asmstring, SDPatternOperator 
   def irs_s : Iirs<opcode, 0, 1,
                    (outs), (ins imm16:$imm, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, "$cc\t$imm, $rs1, $dst0"), []>, PseudoRel, FlagRel;
-  let Defs = [Flags] in
+  let Defs = [Flags], hasPostISelHook = 1 in
   def irs_v : Iirs<opcode, 0, 0,
                    (outs), (ins imm16:$imm, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, "$cc!\t$imm, $rs1, $dst0"), []>, FlagRel;
@@ -527,7 +537,7 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
                                   "$cc\t$imm, $rs1, $rd0"), []>, PseudoRel, FlagRel;
 
   foreach swap = ["i", "x"] in
-  let Defs = [Flags] in
+  let Defs = [Flags], hasPostISelHook = 1 in
   def swap#rr_v : Iirr<opcode, !if(!eq(swap, "i"), 0, 1), 0,
                        (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1, cc:$cc),
                        !strconcat(!strconcat(asmstring, !if(!eq(swap, "i"), "", ".s")),
@@ -544,7 +554,7 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
   def yrr_s : Imrr<opcode, SrcCode, 1, 1,
                    (outs GR256:$rd0), (ins memop:$src0, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, ".s$cc\t$src0[0], $rs1, $rd0"), []>, PseudoRel, FlagRel;
-  let Defs = [Flags] in
+  let Defs = [Flags], hasPostISelHook = 1 in
   def yrr_v : Imrr<opcode, SrcCode, 1, 0,
                    (outs GR256:$rd0), (ins memop:$src0, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, ".s$cc!\t$src0[0], $rs1, $rd0"), []>, FlagRel;
@@ -559,7 +569,7 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
   def zrr_s : Isrr<opcode, SrcStack, 1, 1,
                    (outs GR256:$rd0), (ins stackop:$src0, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, ".s$cc\t$src0, $rs1, $rd0"), []>, PseudoRel, FlagRel;
-  let Defs = [Flags] in
+  let Defs = [Flags], hasPostISelHook = 1 in
   def zrr_v : Isrr<opcode, SrcStack, 1, 0,
                    (outs GR256:$rd0), (ins stackop:$src0, GR256:$rs1, cc:$cc),
                    !strconcat(asmstring, ".s$cc!\t$src0, $rs1, $rd0"), []>, FlagRel;
@@ -589,9 +599,9 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
                        !strconcat(!strconcat(asmstring, ".s"), "$cc\t$imm, $rs1, $dst0"), []>, PseudoRel, FlagRel;
 
   foreach swap = ["i", "x"] in
-  let Defs = [Flags] in
+  let Defs = [Flags], hasPostISelHook = 1 in
   def swap#rs_v : Iirs<opcode, !if(!eq(swap, "i"), 0, 1), 0,
-                       (outs), (ins imm16:$imm, GR256:$rs1, GR256:$dst0, cc:$cc),
+                       (outs), (ins imm16:$imm, GR256:$rs1, stackop:$dst0, cc:$cc),
                        !strconcat(!strconcat(asmstring, !if(!eq(swap, "i"), "", ".s")),
                                   "$cc!\t$imm, $rs1, $dst0"), []>, FlagRel;
   let mayLoad = 1 in {
@@ -608,7 +618,7 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
                    (outs), (ins memop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, ".s$cc\t$src0[0], $rs1, $dst0"), []>, PseudoRel, FlagRel;
 
-  let Defs = [Flags] in
+  let Defs = [Flags], hasPostISelHook = 1 in
   def yrs_v : Imrs<opcode, SrcCode, 1, 0,
                    (outs), (ins memop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, ".s$cc!\t$src0[0], $rs1, $dst0"), []>, FlagRel;
@@ -624,7 +634,7 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
   def zrs_s : Isrs<opcode, SrcStack, 1, 1,
                    (outs), (ins stackop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, ".s$cc\t$src0, $rs1, $dst0"), []>, PseudoRel, FlagRel;
-  let Defs = [Flags] in
+  let Defs = [Flags], hasPostISelHook = 1 in
   def zrs_v : Isrs<opcode, SrcStack, 1, 0,
                    (outs), (ins stackop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                    !strconcat(asmstring, ".s$cc!\t$src0, $rs1, $dst0"), []>, FlagRel;
@@ -843,10 +853,11 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
   def rrrr_s : Irrrr<opcode, 0, 1,
                      (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
                      !strconcat(asmstring, "$cc\t$rs0, $rs1, $rd0, $rd1"), []>, PseudoRel, FlagRel;
-  let Defs = [Flags] in
+  let Defs = [Flags], hasPostISelHook = 1 in {
   def rrrr_v : Irrrr<opcode, 0, 0,
                      (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
                      !strconcat(asmstring, "$cc!\t$rs0, $rs1, $rd0, $rd1"), []>, FlagRel;
+  }
 
   let mayLoad = 1 in {
   let isPseudo = 1, isCodeGenOnly = 1 in
@@ -859,7 +870,7 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
   def crrr_s : Imrrr<opcode, SrcCode, 0, 1,
                      (outs GR256:$rd0, GR256:$rd1), (ins memop:$src0, GR256:$rs1, cc:$cc),
                      !strconcat(asmstring, "$cc\t$src0[0], $rs1, $rd0, $rd1"), []>, PseudoRel, FlagRel;
-  let Defs = [Flags] in
+  let Defs = [Flags], hasPostISelHook = 1 in
   def crrr_v : Imrrr<opcode, SrcCode, 0, 0,
                      (outs GR256:$rd0, GR256:$rd1), (ins memop:$src0, GR256:$rs1, cc:$cc),
                      !strconcat(asmstring, "$cc!\t$src0[0], $rs1, $rd0, $rd1"), []>, FlagRel;
@@ -873,7 +884,7 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
   def srrr_s : Isrrr<opcode, SrcStack, 0, 1,
                      (outs GR256:$rd0, GR256:$rd1), (ins stackop:$src0, GR256:$rs1, cc:$cc),
                      !strconcat(asmstring, "$cc\t$src0, $rs1, $rd0, $rd1"), []>, PseudoRel, FlagRel;
-  let Defs = [Flags] in
+  let Defs = [Flags], hasPostISelHook = 1 in
   def srrr_v : Isrrr<opcode, SrcStack, 0, 0,
                      (outs GR256:$rd0, GR256:$rd1), (ins stackop:$src0, GR256:$rs1, cc:$cc),
                      !strconcat(asmstring, "$cc!\t$src0, $rs1, $rd0, $rd1"), []>, FlagRel;
@@ -888,7 +899,7 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
   def rrsr_s : Irrsr<opcode, 0, 1,
                      (outs GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, stackop:$dst0, cc:$cc),
                      !strconcat(asmstring, "$cc\t$rs0, $rs1, $dst0, $rd1"), []>, PseudoRel, FlagRel;
-  let Defs = [Flags] in
+  let Defs = [Flags], hasPostISelHook = 1 in
   def rrsr_v : Irrsr<opcode, 0, 0,
                      (outs GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, stackop:$dst0, cc:$cc),
                      !strconcat(asmstring, "$cc!\t$rs0, $rs1, $dst0, $rd1"), []>, FlagRel;
@@ -901,7 +912,7 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
   def crsr_s : Imrsr<opcode, SrcCode, 0, 1,
                      (outs GR256:$rd1), (ins memop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                      !strconcat(asmstring, "$cc\t$src0[0], $rs1, $dst0, $rd1"), []>, PseudoRel, FlagRel;
-  let Defs = [Flags] in
+  let Defs = [Flags], hasPostISelHook = 1 in
   def crsr_v : Imrsr<opcode, SrcCode, 0, 0,
                      (outs GR256:$rd1), (ins memop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                      !strconcat(asmstring, "$cc!\t$src0[0], $rs1, $dst0, $rd1"), []>, FlagRel;
@@ -914,7 +925,7 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
   def srsr_s : Isrsr<opcode, SrcStack, 0, 1,
                      (outs GR256:$rd1), (ins stackop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                      !strconcat(asmstring, "$cc\t$src0, $rs1, $dst0, $rd1"), []>, PseudoRel, FlagRel;
-  let Defs = [Flags] in
+  let Defs = [Flags], hasPostISelHook = 1 in
   def srsr_v : Isrsr<opcode, SrcStack, 0, 0,
                      (outs GR256:$rd1), (ins stackop:$src0, GR256:$rs1, stackop:$dst0, cc:$cc),
                      !strconcat(asmstring, "$cc!\t$src0, $rs1, $dst0, $rd1"), []>, FlagRel;
@@ -935,7 +946,7 @@ multiclass Arith2ICommutable<bits<8> opcode, string asmstring, SDPatternOperator
   def irrr_s : Iirrr<opcode, 0, 1,
                      (outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1, cc:$cc),
                      !strconcat(asmstring, "$cc\t$imm, $rs1, $rd0, $rd1"), []>, PseudoRel, FlagRel;
-  let Defs = [Flags] in
+  let Defs = [Flags], hasPostISelHook = 1 in
   def irrr_v : Iirrr<opcode, 0, 0,
                      (outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1, cc:$cc),
                      !strconcat(asmstring, "$cc!\t$imm, $rs1, $rd0, $rd1"), []>, FlagRel;
@@ -1343,3 +1354,98 @@ def : Pat<(SyncVMTrap), (PANIC R0)>;
 
 def : Pat<(SyncVMselectcc GRPTR:$rs0, GRPTR:$rs1, imm:$cc),
           (FATPTR_SELrrr GRPTR:$rs0, GRPTR:$rs1, imm:$cc)>;
+
+// our own version of brcond
+def : Pat<(SyncVMbrcond bb:$unwind, imm:$cc), (JC bb:$unwind, imm:$cc)>;
+
+// ============================ Overflow ADDs =====================================
+// to register
+def : Pat<(SyncVMAdd_v GR256:$rs0, GR256:$rs1),
+          (ADDrrr_v GR256:$rs0, GR256:$rs1, 0)>;
+def : Pat<(SyncVMAdd_v GR256:$rs0, imm16:$rs1),
+          (ADDirr_v imm16:$rs1, GR256:$rs0, 0)>;
+def : Pat<(SyncVMAdd_v GR256:$rs0, (load_code memaddr:$rs1)),
+          (ADDcrr_v memop:$rs1, GR256:$rs0, 0)>;
+def : Pat<(SyncVMAdd_v (load_code memaddr:$rs0), GR256:$rs1),
+          (ADDcrr_v memop:$rs0, GR256:$rs1, 0)>;
+def : Pat<(SyncVMAdd_v GR256:$rs0, (load_stack stackaddr:$rs1)),
+          (ADDsrr_v stackop:$rs1, GR256:$rs0, 0)>;
+def : Pat<(SyncVMAdd_v (load_stack stackaddr:$rs0), GR256:$rs1),
+          (ADDsrr_v stackop:$rs0, GR256:$rs1, 0)>;
+
+// to stack
+def : Pat<(store_stack (SyncVMAdd_v GR256:$rs0, GR256:$rs1), stackaddr:$stack),
+          (ADDrrs_v GR256:$rs0, GR256:$rs1, stackaddr:$stack, 0)>;
+def : Pat<(store_stack (SyncVMAdd_v GR256:$rs0, imm16:$rs1), stackaddr:$stack),
+          (ADDirs_v imm16:$rs1, GR256:$rs0, stackop:$stack, 0)>;
+def : Pat<(store_stack (SyncVMAdd_v GR256:$rs0, (load_code memaddr:$rs1)), stackaddr:$stack),
+          (ADDcrs_v memop:$rs1, GR256:$rs0, stackop:$stack, 0)>;
+def : Pat<(store_stack (SyncVMAdd_v (load_code memaddr:$rs0), GR256:$rs1), stackaddr:$stack),
+          (ADDcrs_v memop:$rs0, GR256:$rs1, stackop:$stack, 0)>;
+def : Pat<(store_stack (SyncVMAdd_v (load_stack stackaddr:$rs0), GR256:$rs1), stackaddr:$stack),
+          (ADDsrs_v stackop:$rs0, GR256:$rs1, stackop:$stack, 0)>;
+def : Pat<(store_stack (SyncVMAdd_v GR256:$rs0, (load_stack stackaddr:$rs1)), stackaddr:$stack),
+          (ADDsrs_v stackop:$rs1, GR256:$rs0, stackop:$stack, 0)>;
+
+// ============================ Overflow SUBs =====================================
+// to register
+def : Pat<(SyncVMSub_v GR256:$rs0, GR256:$rs1), (SUBrrr_v GR256:$rs0, GR256:$rs1, 0)>;
+def : Pat<(SyncVMSub_v imm16:$rs0, GR256:$rs1), (SUBirr_v imm16:$rs0, GR256:$rs1, 0)>;
+def : Pat<(SyncVMSub_v (load_code memaddr:$rs0), GR256:$rs1),
+          (SUBcrr_v memop:$rs0, GR256:$rs1, 0)>;
+def : Pat<(SyncVMSub_v (load_stack stackaddr:$rs0), GR256:$rs1),
+          (SUBsrr_v stackop:$rs0, GR256:$rs1, 0)>;
+
+def : Pat<(SyncVMSub_v GR256:$rs0, imm16:$rs1),
+          (SUBxrr_v imm16:$rs1, GR256:$rs0, 0)>;
+def : Pat<(SyncVMSub_v GR256:$rs0, (load_code memaddr:$rs1)),
+          (SUByrr_v memop:$rs1, GR256:$rs0, 0)>;
+def : Pat<(SyncVMSub_v GR256:$rs0, (load_stack stackaddr:$rs1)),
+          (SUBzrr_v stackop:$rs1, GR256:$rs0, 0)>;
+
+// to stack
+def : Pat<(store_stack (SyncVMSub_v GR256:$rs0, GR256:$rs1), stackaddr:$stack),
+          (SUBrrs_v GR256:$rs0, GR256:$rs1, stackop:$stack, 0)>;
+
+def : Pat<(store_stack (SyncVMSub_v imm16:$rs0, GR256:$rs1), stackaddr:$stack),
+          (SUBirs_v imm16:$rs0, GR256:$rs1, stackop:$stack, 0)>;
+def : Pat<(store_stack (SyncVMSub_v (load_code memaddr:$rs0), GR256:$rs1), stackaddr:$stack),
+          (SUBcrs_v memop:$rs0, GR256:$rs1, stackop:$stack, 0)>;
+def : Pat<(store_stack (SyncVMSub_v (load_stack stackaddr:$rs0), GR256:$rs1), stackaddr:$stack),
+          (SUBsrs_v stackop:$rs0, GR256:$rs1, stackop:$stack, 0)>;
+
+def : Pat<(store_stack (SyncVMSub_v GR256:$rs0, imm16:$rs1), stackaddr:$stack),
+          (SUBxrs_v imm16:$rs1, GR256:$rs0, stackop:$stack, 0)>;
+def : Pat<(store_stack (SyncVMSub_v GR256:$rs0, (load_code memaddr:$rs1)), stackaddr:$stack),
+          (SUByrs_v memop:$rs1, GR256:$rs0, stackop:$stack, 0)>;
+def : Pat<(store_stack (SyncVMSub_v GR256:$rs0, (load_stack stackaddr:$rs1)), stackaddr:$stack),
+          (SUBzrs_v stackop:$rs1, GR256:$rs0, stackop:$stack, 0)>;
+
+// ============================ Overflow ADDs =====================================
+// to register
+def : Pat<(SyncVMMul_v GR256:$rs0, GR256:$rs1),
+          (MULrrrr_v GR256:$rs0, GR256:$rs1, 0)>;
+def : Pat<(SyncVMMul_v GR256:$rs0, imm16:$rs1),
+          (MULirrr_v imm16:$rs1, GR256:$rs0, 0)>;
+def : Pat<(SyncVMMul_v (load_code memaddr:$rs0), GR256:$rs1),
+          (MULcrrr_v memaddr:$rs0, GR256:$rs1, 0)>;
+def : Pat<(SyncVMMul_v GR256:$rs0, (load_code memaddr:$rs1)),
+          (MULcrrr_v memaddr:$rs1, GR256:$rs0, 0)>;
+def : Pat<(SyncVMMul_v (load_stack stackaddr:$rs0), GR256:$rs1),
+          (MULsrrr_v stackaddr:$rs0, GR256:$rs1, 0)>;
+def : Pat<(SyncVMMul_v GR256:$rs0, (load_stack stackaddr:$rs1)),
+          (MULsrrr_v stackaddr:$rs1, GR256:$rs0, 0)>;
+
+// to stack
+def : Pat<(store_stack (SyncVMMul_v GR256:$rs0, GR256:$rs1), stackaddr:$stack),
+          (MULrrsr_v GR256:$rs0, GR256:$rs1, stackaddr:$stack, 0)>;
+def : Pat<(store_stack (SyncVMMul_v GR256:$rs0, imm16:$rs1), stackaddr:$stack),
+          (MULirsr_v imm16:$rs1, GR256:$rs0, stackop:$stack, 0)>;
+def : Pat<(store_stack (SyncVMMul_v GR256:$rs0, (load_code memaddr:$rs1)), stackaddr:$stack),
+          (MULcrsr_v memop:$rs1, GR256:$rs0, stackop:$stack, 0)>;
+def : Pat<(store_stack (SyncVMMul_v (load_code memaddr:$rs0) ,GR256:$rs1), stackaddr:$stack),
+          (MULcrsr_v memop:$rs0, GR256:$rs1, stackop:$stack, 0)>;
+def : Pat<(store_stack (SyncVMMul_v GR256:$rs0, (load_stack stackaddr:$rs1)), stackaddr:$stack),
+          (MULsrsr_v stackop:$rs1, GR256:$rs0, stackop:$stack, 0)>;
+def : Pat<(store_stack (SyncVMMul_v (load_stack stackaddr:$rs0) ,GR256:$rs1), stackaddr:$stack),
+          (MULsrsr_v stackop:$rs0, GR256:$rs1, stackop:$stack, 0)>;
