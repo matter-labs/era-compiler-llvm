@@ -1,5 +1,6 @@
-; RUN: llc < %s | FileCheck %s
-target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
+; RUN: llc --enable-eravm-combine-reload-use=false < %s | FileCheck %s
+
+target datalayout = "E-p:256:256-i256:256:256-S32"
 target triple = "eravm"
 
 ; CHECK-LABEL: store_to_frame

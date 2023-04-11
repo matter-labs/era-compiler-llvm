@@ -3,8 +3,6 @@
 target datalayout = "E-p:256:256-i8:256:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm"
 
-; TODO: print src1 == 0 as r0
-
 @val = addrspace(4) global i256 42
 
 ; CHECK-LABEL: movrrr
@@ -65,9 +63,7 @@ define void @movcrs() nounwind {
 define void @movsrs() nounwind {
   %valptr = alloca i256
   %destptr = alloca i256
-; TODO: CPR-447 should be `add stack-[2], r0, stack-[1]`
-; CHECK: stack-[2], r0, r[[REG:[0-9]+]]
-; CHECK: r[[REG]], r0, stack-[1]
+; CHECK: stack-[2], r0, stack-[1]
   %val = load i256, i256* %valptr
   store i256 %val, i256* %destptr
   ret void
