@@ -30,14 +30,14 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   RegisterTargetMachine<SyncVMTargetMachine> X(getTheSyncVMTarget());
   // TODO: optimize switch lowering
   auto &PR = *PassRegistry::getPassRegistry();
-  initializeLowerSwitchLegacyPassPass(PR);
   initializeSyncVMCodegenPreparePass(PR);
+  initializeSyncVMCombineFlagSettingPass(PR);
+  initializeSyncVMCombineReloadUsePass(PR);
   initializeSyncVMExpandPseudoPass(PR);
   initializeSyncVMExpandSelectPass(PR);
   initializeSyncVMLowerIntrinsicsPass(PR);
   initializeSyncVMLinkRuntimePass(PR);
   initializeSyncVMAllocaHoistingPass(PR);
-  initializeSyncVMCombineFlagSettingPass(PR);
   initializeSyncVMStackAddressConstantPropagationPass(PR);
 }
 
@@ -156,6 +156,7 @@ void SyncVMPassConfig::addPreRegAlloc() {
 }
 
 void SyncVMPassConfig::addPreEmitPass() {
+  addPass(createSyncVMCombineReloadUsePass());
   addPass(createSyncVMExpandSelectPass());
   addPass(createSyncVMExpandPseudoPass());
 }

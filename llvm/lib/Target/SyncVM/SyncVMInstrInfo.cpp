@@ -28,6 +28,7 @@ namespace llvm {
 namespace SyncVM {
 
 ArgumentType argumentType(ArgumentKind Kind, unsigned Opcode) {
+  Opcode = getWithInsNotSwapped(Opcode);
   // TODO: Mappings for Select.
   // Select is not a part of a mapping, so have to handle it manually.
   const DenseSet<unsigned> In0R = {SyncVM::SELrrr, SyncVM::SELrir,
@@ -172,18 +173,22 @@ int getWithInsSwapped(uint16_t Opcode) {
 }
 
 bool hasRRInAddressingMode(unsigned Opcode) {
+  Opcode = getWithInsNotSwapped(Opcode);
   return (unsigned)mapRRInputTo(Opcode, OperandAM_0) == Opcode;
 }
 
 bool hasIRInAddressingMode(unsigned Opcode) {
+  Opcode = getWithInsNotSwapped(Opcode);
   return (unsigned)mapIRInputTo(Opcode, OperandAM_1) == Opcode;
 }
 
 bool hasCRInAddressingMode(unsigned Opcode) {
+  Opcode = getWithInsNotSwapped(Opcode);
   return (unsigned)mapCRInputTo(Opcode, OperandAM_2) == Opcode;
 }
 
 bool hasSRInAddressingMode(unsigned Opcode) {
+  Opcode = getWithInsNotSwapped(Opcode);
   return (unsigned)mapSRInputTo(Opcode, OperandAM_3) == Opcode;
 }
 
@@ -585,7 +590,7 @@ void SyncVMInstrInfo::tagFatPointerCopy(MachineInstr &MI) const {
 bool SyncVMInstrInfo::isPredicatedInstr(const MachineInstr &MI) const {
   return MI.isBranch() || isArithmetic(MI) || isBitwise(MI) || isShift(MI) ||
          isRotate(MI) || isLoad(MI) || isFatLoad(MI) || isStore(MI) ||
-         isNOP(MI) || isSel(MI);
+         isNOP(MI) || isSel(MI) || isPtr(MI);
 }
 
 /// Returns the predicate operand

@@ -6,7 +6,6 @@
 
 #include "SyncVMISelLowering.h"
 
-#include <unordered_map>
 #include "SyncVM.h"
 #include "SyncVMMachineFunctionInfo.h"
 #include "SyncVMSubtarget.h"
@@ -31,6 +30,8 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
+#include <unordered_map>
+
 using namespace llvm;
 
 #define DEBUG_TYPE "syncvm-lower"
