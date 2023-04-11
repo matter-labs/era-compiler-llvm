@@ -83,6 +83,13 @@ inline bool hasSROutAddressingMode(const MachineInstr &MI) {
   return hasSROutAddressingMode(MI.getOpcode());
 }
 /// @}
+inline bool hasInsSwapped(unsigned Opcode) {
+  int NewOpc = getWithInsNotSwapped(Opcode);
+  return NewOpc != -1 && NewOpc != static_cast<int>(Opcode);
+}
+inline bool hasInsSwapped(const MachineInstr &MI) {
+  return hasInsSwapped(MI.getOpcode());
+}
 
 bool isSelect(unsigned Opcode);
 inline bool isSelect(const MachineInstr &MI) {

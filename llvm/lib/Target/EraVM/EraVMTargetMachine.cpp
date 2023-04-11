@@ -35,14 +35,14 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   RegisterTargetMachine<EraVMTargetMachine> X(getTheEraVMTarget());
   // TODO: optimize switch lowering
   auto &PR = *PassRegistry::getPassRegistry();
-  initializeLowerSwitchLegacyPassPass(PR);
   initializeEraVMCodegenPreparePass(PR);
+  initializeEraVMCombineFlagSettingPass(PR);
+  initializeEraVMCombineReloadUsePass(PR);
   initializeEraVMExpandPseudoPass(PR);
   initializeEraVMExpandSelectPass(PR);
   initializeEraVMLowerIntrinsicsPass(PR);
   initializeEraVMLinkRuntimePass(PR);
   initializeEraVMAllocaHoistingPass(PR);
-  initializeEraVMCombineFlagSettingPass(PR);
   initializeEraVMStackAddressConstantPropagationPass(PR);
   initializeEraVMDAGToDAGISelLegacyPass(PR);
   initializeEraVMCombineToIndexedMemopsPass(PR);
@@ -149,6 +149,7 @@ void EraVMPassConfig::addPreRegAlloc() {
 }
 
 void EraVMPassConfig::addPreEmitPass() {
+  addPass(createEraVMCombineReloadUsePass());
   addPass(createEraVMExpandSelectPass());
   addPass(createEraVMExpandPseudoPass());
 }

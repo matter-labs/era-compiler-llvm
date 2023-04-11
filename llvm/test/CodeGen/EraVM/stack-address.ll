@@ -98,9 +98,7 @@ define void @load_fat_ptr(i8 addrspace(3)** %ptr) {
 
 ; CHECK-LABEL: store_fat_ptr
 define void @store_fat_ptr(i8 addrspace(3)** %ptr) {
-; TODO: should be ptr.add stack[r1], r0, stack[@fatptr]
-; CHECK: ptr.add stack[@fatptr], r0, r2
-; CHECK: ptr.add r2, r0, stack[r1]
+; CHECK: ptr.add stack[@fatptr], r0, stack[r1]
   %val = load i8 addrspace(3)*, i8 addrspace(3)** @fatptr, align 32
   store i8 addrspace(3)* %val, i8 addrspace(3)** %ptr
   ret void

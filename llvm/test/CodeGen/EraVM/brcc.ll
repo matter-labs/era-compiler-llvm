@@ -123,9 +123,7 @@ l2:
 ; CHECK-LABEL: cmpsr
 define i256 @cmpsr(i256 %p1, i256 %p2) nounwind {
   %ptr = alloca i256
-; TODO: CPR-447 should be subx stack-[1], r1, r{{[0-9]}}
-; CHECK: add stack-[1], r0, r2
-; CHECK: sub! r1, r2, r{{[0-9]+}}
+; CHECK: sub.s! stack-[1], r1, r1
   %data = load i256, i256* %ptr
   %1 = icmp ugt i256 %p1, %data
   br i1 %1, label %l1, label %l2
@@ -137,7 +135,6 @@ l2:
 
 ; CHECK-LABEL: cmpri
 define i256 @cmpri(i256 %p1, i256 %p2) nounwind {
-; TODO: CPR-447 should be sub 42, r1, r{{[0-9]}}
 ; CHECK: sub.s! 41, r1, r1
   %1 = icmp ugt i256 42, %p1
 ; CHECK: jump.gt
@@ -165,9 +162,7 @@ l2:
 ; CHECK-LABEL: cmprs
 define i256 @cmprs(i256 %p1, i256 %p2) nounwind {
   %ptr = alloca i256
-; TODO: CPR-447 should be sub stack-[1], r1, r{{[0-9]}}
-; CHECK: add stack-[1], r0, r2
-; CHECK: sub! r2, r1, r{{[0-9]+}}
+; CHECK: sub! stack-[1], r1, r{{[0-9]+}}
   %data = load i256, i256* %ptr
   %1 = icmp ugt i256 %data, %p1
   br i1 %1, label %l1, label %l2

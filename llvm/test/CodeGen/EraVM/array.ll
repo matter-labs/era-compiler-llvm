@@ -18,10 +18,8 @@ define void @consti_loadconst_storeglobal() nounwind {
 
 ; CHECK-LABEL: consti_loadglobal_storeglobal
 define void @consti_loadglobal_storeglobal() nounwind {
-  ; CHECK: add stack[@val+7], r0, r1
+  ; CHECK: add stack[@val+7], r0, stack[@val+1]
   %1 = load i256, ptr getelementptr inbounds ([10 x i256], ptr @val, i256 0, i256 7), align 32
-  ; CHECK: add r1, r0, stack[@val+1]
-  ; TODO: Should be folded into a single instruction.
   store i256 %1, ptr getelementptr inbounds ([10 x i256], ptr @val, i256 0, i256 1), align 32
   ret void
 }
