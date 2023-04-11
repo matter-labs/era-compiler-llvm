@@ -24,8 +24,9 @@ file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/SyncVMStdLib.inc ${STDLIB_CONTENT})
 add_llvm_target(SyncVMCodeGen
   SyncVMAddConditions.cpp
   SyncVMBytesToCells.cpp
-  SyncVMCodegenPrepare.cpp
   SyncVMCombineFlagSetting.cpp
+  SyncVMCodegenPrepare.cpp
+  SyncVMCombineReloadUse.cpp
   SyncVMCombineToIndexedMemops.cpp
   SyncVMExpandPseudoInsts.cpp
   SyncVMExpandSelect.cpp
