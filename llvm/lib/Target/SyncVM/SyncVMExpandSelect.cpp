@@ -67,6 +67,9 @@ bool SyncVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
       {SyncVM::SELisr, {SyncVM::ADDirr_s, SyncVM::ADDsrr_s, 1, 3, 0}},
       {SyncVM::SELcsr, {SyncVM::ADDcrr_s, SyncVM::ADDsrr_s, 2, 3, 0}},
       {SyncVM::SELssr, {SyncVM::ADDsrr_s, SyncVM::ADDsrr_s, 3, 3, 0}},
+      // Fat pointer
+      {SyncVM::FATPTR_SELrrr,
+               {SyncVM::PTR_ADDrrr_s, SyncVM::PTR_ADDrrr_s, 1, 1, 0}},
   };
 
   DenseMap<unsigned, unsigned> Inverse{
