@@ -156,6 +156,7 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
   // fatptr operations
   setOperationAction(ISD::LOAD, MVT::fatptr, Legal);
   setOperationAction(ISD::STORE, MVT::fatptr, Legal);
+  setOperationAction(ISD::SELECT_CC, MVT::fatptr, Custom);
 
   // special DAG combining handling for EraVM
   setTargetDAGCombine(ISD::ZERO_EXTEND);

@@ -70,6 +70,9 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
       {EraVM::SELisr, {EraVM::ADDirr_s, EraVM::ADDsrr_s, 1, 3, 0}},
       {EraVM::SELcsr, {EraVM::ADDcrr_s, EraVM::ADDsrr_s, 2, 3, 0}},
       {EraVM::SELssr, {EraVM::ADDsrr_s, EraVM::ADDsrr_s, 3, 3, 0}},
+      // Fat pointer
+      {EraVM::FATPTR_SELrrr,
+       {EraVM::PTR_ADDrrr_s, EraVM::PTR_ADDrrr_s, 1, 1, 0}},
   };
 
   DenseMap<unsigned, unsigned> Inverse{

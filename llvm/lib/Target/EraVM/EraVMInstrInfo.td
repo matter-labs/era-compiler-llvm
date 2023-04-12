@@ -259,6 +259,12 @@ let isCodeGenOnly = 1, isPseudo = 1, Uses = [Flags] in {
                        "# SELrrr PSEUDO",
                        [(set GR256:$dst,
                           (EraVMselectcc GR256:$src, GR256:$src2, imm:$cc))]>;
+
+  def FATPTR_SELrrr : Pseudo<(outs GRPTR:$dst), (ins GRPTR:$src, GRPTR:$src2, i256imm:$cc),
+                             "# FATPTR_SELrrr PSEUDO",
+                             [(set GRPTR:$dst,
+                               (EraVMselectcc GRPTR:$src, GRPTR:$src2, imm:$cc))]>;
+
   def SELirr : Pseudo<(outs GR256:$dst), (ins imm16:$src, GR256:$src2, i256imm:$cc),
                        "# SELirr PSEUDO",
                        [(set GR256:$dst,
@@ -1340,3 +1346,6 @@ def : Pat<(i256 (EraVMGACode tblockaddress:$dst)), (ADDcrr_p tblockaddress:$dst,
 
 // Exceptions
 def : Pat<(EraVMTrap), (PANIC R0)>;
+
+def : Pat<(EraVMselectcc GRPTR:$rs0, GRPTR:$rs1, imm:$cc),
+          (FATPTR_SELrrr GRPTR:$rs0, GRPTR:$rs1, imm:$cc)>;
