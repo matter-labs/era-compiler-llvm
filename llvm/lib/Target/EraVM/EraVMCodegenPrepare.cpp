@@ -142,8 +142,8 @@ bool EraVMCodegenPrepare::convertPointerArithmetics(Function &F) {
     Value *TmpOffset = Builder.getIntN(256, 0);
     APInt Offset(256, 0);
     if (GEP->accumulateConstantOffset(*DL, Offset)) {
-      // the 32 here is the word length for zkEVM
-      TmpOffset = Builder.getIntN(256, Offset.getZExtValue());
+      // We allow arbitrary GEP offset (256-bit)
+      TmpOffset = Builder.getInt(Offset.sext(256));
     } else {
       for (gep_type_iterator GTI = gep_type_begin(GEP), E = gep_type_end(GEP);
            GTI != E; ++GTI) {
