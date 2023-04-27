@@ -202,6 +202,7 @@ bool SyncVMCombineFlagSetting::runOnMachineFunction(MachineFunction &MF) {
       Register ResultReg = MI->getOperand(0).getReg();
       DefMI->setDesc(
           TII->get(SyncVM::getFlagSettingOpcode(DefMI->getOpcode())));
+      DefMI->copyImplicitOps(MF, *MI);
       RegInfo.replaceRegWith(ResultReg, DefResultReg);
       ToRemove.push_back(&*MI);
 
