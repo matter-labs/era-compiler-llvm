@@ -204,6 +204,7 @@ bool EraVMCombineFlagSetting::runOnMachineFunction(MachineFunction &MF) {
       // Fold sub.s! 0, (op x, y) to op! x, y
       Register ResultReg = MI->getOperand(0).getReg();
       DefMI->setDesc(TII->get(EraVM::getFlagSettingOpcode(DefMI->getOpcode())));
+      DefMI->copyImplicitOps(MF, *MI);
       RegInfo.replaceRegWith(ResultReg, DefResultReg);
       ToRemove.push_back(&*MI);
 
