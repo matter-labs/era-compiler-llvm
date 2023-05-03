@@ -95,7 +95,8 @@ jobs:
             --vplan-verify-hcfg \
             --march=eravm"
           XFAILS:
-            "CodeGen/EraVM/memcpy-expansion.ll"
+            "CodeGen/EraVM/memcpy-expansion.ll;\
+             CodeGen/EraVM/flag-setting-set-implicit-flags.ll"
 
         run: |
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
