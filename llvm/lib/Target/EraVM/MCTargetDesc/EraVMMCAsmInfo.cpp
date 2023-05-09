@@ -31,4 +31,6 @@ EraVMMCAsmInfo::EraVMMCAsmInfo(const Triple &TheTriple) {
 
   SupportsDebugInformation = true;
   ExceptionsType = ExceptionHandling::EraVM;
+  AllowDollarAtStartOfIdentifier = true;
+  UseParensForDollarSignNames = false;
 }
