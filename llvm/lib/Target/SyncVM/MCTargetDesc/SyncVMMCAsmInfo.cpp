@@ -31,4 +31,6 @@ SyncVMMCAsmInfo::SyncVMMCAsmInfo(const Triple &TheTriple) {
 
   SupportsDebugInformation = true;
   ExceptionsType = ExceptionHandling::SyncVM;
+  AllowDollarAtStartOfIdentifier = true;
+  UseParensForDollarSignNames = false;
 }
