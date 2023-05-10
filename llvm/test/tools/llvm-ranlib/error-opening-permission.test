@@ -1,6 +1,6 @@
 ## Unsupported on windows as marking files "unreadable" is non-trivial on windows.
-## Unsupported on eravm as CI currently runs with root permission.
-# UNSUPPORTED: system-windows, eravm
+## Unsupported on eravm, evm as CI currently runs with root permission.
+# UNSUPPORTED: system-windows, eravm, evm
 
 # RUN: rm -rf %t && split-file %s %t && cd %t
 # RUN: yaml2obj 1.yaml -o 1.o

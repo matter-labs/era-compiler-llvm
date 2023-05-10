@@ -1,7 +1,7 @@
 ## Unsupported on windows as marking files "unreadable"
 ## is non-trivial on windows.
-## Unsupported on eravm as CI currently runs with root permission.
-# UNSUPPORTED: system-windows, eravm
+## Unsupported on eravm, evm as CI currently runs with root permission.
+# UNSUPPORTED: system-windows, eravm, evm
 
 # RUN: rm -rf %t && mkdir -p %t
 # RUN: echo file1 > %t/1.txt

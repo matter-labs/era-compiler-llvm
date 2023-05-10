@@ -1,4 +1,4 @@
-; UNSUPPORTED: eravm
+; UNSUPPORTED: eravm, evm
 ; EraVM doesn't support floats.
 ; invariant and sideeffect have nothing to do with the codegen.
 ; RUN: llc < %s

@@ -6615,7 +6615,8 @@ bool SimplifyCFGOpt::simplifySwitch(SwitchInst *SI, IRBuilder<> &Builder) {
   // optimisation pipeline.
   // EraVM local begin
   // TODO: CPR-940 Support const arrays.
-  if (!Triple(BB->getModule()->getTargetTriple()).isEraVM())
+  if (!Triple(BB->getModule()->getTargetTriple()).isEraVM() &&
+      !Triple(BB->getModule()->getTargetTriple()).isEVM())
     if (Options.ConvertSwitchToLookupTable &&
         SwitchToLookupTable(SI, Builder, DTU, DL, TTI))
       return requestResimplify();
