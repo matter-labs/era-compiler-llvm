@@ -1,4 +1,4 @@
-; XFAIL: eravm
+; XFAIL: eravm, evm
 ; EraVM doesn't support byval yet.
 ; RUN: llc < %s
 ; PR7170

@@ -1,4 +1,4 @@
-; UNSUPPORTED: eravm
+; UNSUPPORTED: eravm, evm
 ; EraVM doesn't support floats.
 ; RUN: llc < %s -pre-RA-sched=default
 ; RUN: llc < %s -pre-RA-sched=list-burr

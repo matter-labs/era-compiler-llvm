@@ -2061,3 +2061,6 @@ include "llvm/IR/IntrinsicsDirectX.td"
 // EraVM local begin
 include "llvm/IR/IntrinsicsEraVM.td"
 // EraVM local end
+// EVM local begin
+include "llvm/IR/IntrinsicsEVM.td"
+// EVM local end

@@ -1,4 +1,4 @@
-; UNSUPPORTED: eravm
+; UNSUPPORTED: eravm, evm
 ; EraVM doesn't support floats.
 ; RUN: llc < %s 
 ; rdar://5763967

@@ -1,6 +1,6 @@
 ; XFAIL: -aix
 ; EraVM doesn't support dwarf yet
-; UNSUPPORTED: eravm
+; UNSUPPORTED: eravm, evm
 ; MD5 checksums provided by IR should be passed through to asm.
 ; They'll be emitted to an object file only for DWARF 5 or later.
 

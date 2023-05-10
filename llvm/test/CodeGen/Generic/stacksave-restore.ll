@@ -1,4 +1,4 @@
-; UNSUPPORTED: eravm
+; UNSUPPORTED: eravm, evm
 ; EraVM doesn't support dynamic_stackalloc yet.
 ; RUN: llc < %s
 

@@ -1,4 +1,4 @@
-; XFAIL: eravm
+; XFAIL: eravm, evm
 
 ; RUN: opt -S -function-attrs < %s | FileCheck %s
 ; RUN: opt -S -passes=function-attrs < %s | FileCheck %s
