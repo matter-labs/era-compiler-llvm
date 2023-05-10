@@ -415,7 +415,7 @@ public:
 
     const auto &TM = getAnalysis<TargetPassConfig>().getTM<TargetMachine>();
     // EraVM local begin
-    if (TM.getTargetTriple().isEraVM())
+    if (TM.getTargetTriple().isEraVM() || TM.getTargetTriple().isEVM())
       return false;
     // EraVM local end
     PreISelIntrinsicLowering Lowering(TM, LookupTTI);
@@ -443,7 +443,7 @@ ModulePass *llvm::createPreISelIntrinsicLoweringPass() {
 PreservedAnalyses PreISelIntrinsicLoweringPass::run(Module &M,
                                                     ModuleAnalysisManager &AM) {
   // EraVM local begin
-  if (TM.getTargetTriple().isEraVM())
+  if (TM.getTargetTriple().isEraVM() || TM.getTargetTriple().isEVM())
     return PreservedAnalyses::all();
   // EraVM local end
   auto &FAM = AM.getResult<FunctionAnalysisManagerModuleProxy>(M).getManager();

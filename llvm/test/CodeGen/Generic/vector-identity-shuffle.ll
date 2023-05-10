@@ -1,4 +1,4 @@
-; UNSUPPORTED: target=eravm{{.*}}
+; UNSUPPORTED: target=eravm{{.*}}, target=evm{{.*}}
 ; EraVM doesn't support vector instructions.
 ; RUN: llc < %s 
 

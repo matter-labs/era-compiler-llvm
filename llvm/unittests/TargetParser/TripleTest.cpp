@@ -1237,6 +1237,20 @@ TEST(TripleTest, ParsedIDs) {
   EXPECT_TRUE(T.isTime64ABI());
   EXPECT_TRUE(T.isHardFloatABI());
 
+  // EVM local begin
+  T = Triple("evm-unknown-unknown");
+  EXPECT_EQ(Triple::evm, T.getArch());
+  EXPECT_EQ(Triple::UnknownVendor, T.getVendor());
+  EXPECT_EQ(Triple::UnknownOS, T.getOS());
+  EXPECT_EQ(Triple::UnknownEnvironment, T.getEnvironment());
+
+  T = Triple("evm");
+  EXPECT_EQ(Triple::evm, T.getArch());
+  EXPECT_EQ(Triple::UnknownVendor, T.getVendor());
+  EXPECT_EQ(Triple::UnknownOS, T.getOS());
+  EXPECT_EQ(Triple::UnknownEnvironment, T.getEnvironment());
+  // EVM local end
+
   T = Triple("huh");
   EXPECT_EQ(Triple::UnknownArch, T.getArch());
 }
@@ -1637,6 +1651,14 @@ TEST(TripleTest, BitWidthChecks) {
   EXPECT_FALSE(T.isArch16Bit());
   EXPECT_TRUE(T.isArch32Bit());
   EXPECT_FALSE(T.isArch64Bit());
+
+  // EVM local begin
+  T.setArch(Triple::evm);
+  EXPECT_FALSE(T.isArch16Bit());
+  EXPECT_FALSE(T.isArch32Bit());
+  EXPECT_FALSE(T.isArch64Bit());
+  EXPECT_TRUE(T.isEVM());
+  // EVM local end
 }
 
 #if defined(_ERAVM)
@@ -2000,6 +2022,11 @@ TEST(TripleTest, EndianArchVariants) {
   EXPECT_TRUE(T.isLittleEndian());
   EXPECT_EQ(Triple::UnknownArch, T.getBigEndianArchVariant().getArch());
   EXPECT_EQ(Triple::dxil, T.getLittleEndianArchVariant().getArch());
+
+  // EVM local begin
+  T.setArch(Triple::evm);
+  EXPECT_FALSE(T.isLittleEndian());
+  // EVM local end
 }
 
 TEST(TripleTest, XROS) {

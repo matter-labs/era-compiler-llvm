@@ -2776,4 +2776,7 @@ include "llvm/IR/IntrinsicsLoongArch.td"
 // EraVM local begin
 include "llvm/IR/IntrinsicsEraVM.td"
 // EraVM local end
+// EVM local begin
+include "llvm/IR/IntrinsicsEVM.td"
+// EVM local end
 #endif // TEST_INTRINSICS_SUPPRESS_DEFS

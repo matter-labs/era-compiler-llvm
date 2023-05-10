@@ -1069,7 +1069,7 @@ bool TargetPassConfig::addISelPasses() {
   PM->add(createTargetTransformInfoWrapperPass(TM->getTargetIRAnalysis()));
   addPass(createPreISelIntrinsicLoweringPass());
   // EraVM local begin
-  if (!TM->getTargetTriple().isEraVM()) {
+  if (!TM->getTargetTriple().isEraVM() && !TM->getTargetTriple().isEVM()) {
     addPass(createExpandLargeDivRemPass());
     addPass(createExpandLargeFpConvertPass());
   }

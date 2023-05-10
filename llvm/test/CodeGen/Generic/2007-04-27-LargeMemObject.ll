@@ -1,4 +1,4 @@
-; UNSUPPORTED: target=eravm{{.*}}
+; UNSUPPORTED: target=eravm{{.*}}, target=evm{{.*}}
 ; EraVM doesn't support inline asm.
 ; RUN: llc -no-integrated-as < %s
 

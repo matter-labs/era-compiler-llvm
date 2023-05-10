@@ -25,4 +25,7 @@ tablegen(LLVM IntrinsicsVE.h -gen-intrinsic-enums -intrinsic-prefix=ve)
 # EraVM local begin
 tablegen(LLVM IntrinsicsEraVM.h -gen-intrinsic-enums -intrinsic-prefix=eravm)
 # EraVM local end
+# EVM local begin
+tablegen(LLVM IntrinsicsEVM.h -gen-intrinsic-enums -intrinsic-prefix=evm)
+# EVM local end
 add_public_tablegen_target(intrinsics_gen)

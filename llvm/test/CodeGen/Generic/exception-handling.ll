@@ -1,4 +1,4 @@
-; UNSUPPORTED: target=eravm{{.*}}
+; UNSUPPORTED: target=eravm{{.*}}, target=evm{{.*}}
 ; EraVM only has limited support for EH. resume is not supported.
 ; RUN: llc < %s
 ; PR10733

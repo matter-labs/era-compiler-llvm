@@ -473,6 +473,9 @@ set(LLVM_ALL_TARGETS
   ARM
   AVR
   BPF
+# EVM local begin
+  EVM
+# EVM local end
   Hexagon
   Lanai
   LoongArch

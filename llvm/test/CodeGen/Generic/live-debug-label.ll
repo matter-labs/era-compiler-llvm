@@ -10,6 +10,9 @@
 ; XFAIL: target=riscv{{.*}}
 ; XFAIL: target=amdgcn-{{.*}}
 
+; The LiveDebugValuesID pass that handles DBG_LABEL instructions is disabled for EVM.
+; XFAIL: target=evm{{.*}}
+
 ; Generated with "clang++ -g -O1 -S -emit-llvm"
 ;
 ; inline bool bar(char c) {

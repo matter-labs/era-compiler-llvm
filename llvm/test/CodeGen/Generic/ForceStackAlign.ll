@@ -12,7 +12,7 @@
 ; XFAIL: target=nvptx{{.*}}
 
 ; EraVM realignment not supported.
-; UNSUPPORTED: target=eravm{{.*}}
+; UNSUPPORTED: target=eravm{{.*}}, target=evm{{.*}}
 
 define i32 @f(ptr %p) nounwind {
 entry:

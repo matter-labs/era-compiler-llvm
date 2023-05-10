@@ -1,5 +1,5 @@
 ; RUN: llc -no-integrated-as < %s
-; XFAIL: target=eravm{{.*}}
+; XFAIL: target=eravm{{.*}}, target=evm{{.*}}
 ; EraVM doesn't support vararg.
 ; PR1308
 ; PR1557

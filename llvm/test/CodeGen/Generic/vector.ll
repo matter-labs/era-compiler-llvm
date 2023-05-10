@@ -1,4 +1,4 @@
-; UNSUPPORTED: target=eravm{{.*}}
+; UNSUPPORTED: target=eravm{{.*}}, target=evm{{.*}}
 ; EraVM doesn't support vector instructions and floats.
 ; Test that vectors are scalarized/lowered correctly.
 ; RUN: llc < %s
