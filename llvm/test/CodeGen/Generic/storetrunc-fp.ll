@@ -1,4 +1,4 @@
-; UNSUPPORTED: target=eravm{{.*}}
+; UNSUPPORTED: target=eravm{{.*}}, target=evm{{.*}}
 ; Unsupported because of floats.
 ; RUN: llc < %s
 

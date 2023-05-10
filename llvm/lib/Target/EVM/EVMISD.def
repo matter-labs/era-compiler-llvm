@@ -1,0 +1,23 @@
+//----------------- EVMISD.def - EVM ISD ---------------------------*- C++ -*-//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// This file describes the various EVM ISD node types.
+//
+//===----------------------------------------------------------------------===//
+
+// NOTE: NO INCLUDE GUARD DESIRED!
+
+HANDLE_NODETYPE(FCALL)
+HANDLE_NODETYPE(RET)
+HANDLE_NODETYPE(ARGUMENT)
+HANDLE_NODETYPE(SIGNEXTEND)
+HANDLE_NODETYPE(TARGET_ADDR_WRAPPER)
+HANDLE_NODETYPE(MEMCPY_CALL_DATA)
+HANDLE_NODETYPE(MEMCPY_CODE)
+HANDLE_NODETYPE(MEMCPY_HEAP)
+HANDLE_NODETYPE(MEMCPY_RETURN_DATA)

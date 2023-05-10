@@ -475,7 +475,7 @@ if config.libcxx_used:
 if config.target_triple:
     config.available_features.add("default_triple")
     # Direct object generation
-    if not config.target_triple.startswith(("nvptx", "eravm", "xcore")):
+    if not config.target_triple.startswith(("nvptx", "eravm", "evm", "xcore")):
         config.available_features.add("object-emission")
 
 # Allow checking for specific details in the host triple

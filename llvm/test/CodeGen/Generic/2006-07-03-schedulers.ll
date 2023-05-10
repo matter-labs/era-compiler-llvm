@@ -1,4 +1,4 @@
-; UNSUPPORTED: target=eravm{{.*}}
+; UNSUPPORTED: target=eravm{{.*}}, target=evm{{.*}}
 ; EraVM doesn't support floats.
 ; RUN: llc < %s -pre-RA-sched=default
 ; RUN: llc < %s -pre-RA-sched=list-burr

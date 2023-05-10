@@ -1,4 +1,4 @@
-; XFAIL: target=eravm{{.*}}
+; XFAIL: target=eravm{{.*}}, target=evm{{.*}}
 ; TODO: Check cttz, ctlz, ctpop, ConstantPool lowering.
 ; RUN: llc < %s
 
