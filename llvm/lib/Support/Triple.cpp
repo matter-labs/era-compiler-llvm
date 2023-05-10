@@ -86,6 +86,9 @@ StringRef Triple::getArchTypeName(ArchType Kind) {
 // EraVM local begin
   case eravm:          return "eravm";
 // EraVM local end
+// EVM local begin
+  case evm:            return "evm";
+// EVM local end
   }
 
   llvm_unreachable("Invalid ArchType!");
@@ -173,11 +176,14 @@ StringRef Triple::getArchTypePrefix(ArchType Kind) {
 
   case loongarch32:
   case loongarch64: return "loongarch";
-  
+
   case dxil:        return "dx";
   // EraVM local begin
   case eravm:       return "eravm";
   // EraVM local end
+  // EVM local begin
+  case evm:         return "evm";
+  // EVM local end
   }
 }
 
@@ -380,6 +386,9 @@ Triple::ArchType Triple::getArchTypeForLLVMName(StringRef Name) {
     // EraVM local begin
     .Case("eravm", eravm)
     // EraVM local end
+    // EVM local begin
+    .Case("evm", evm)
+    // EVM local end
     .Default(UnknownArch);
 }
 
@@ -523,6 +532,9 @@ static Triple::ArchType parseArch(StringRef ArchName) {
     // EraVM local begin
     .Case("eravm", Triple::eravm)
     // EraVM local end
+    // EVM local begin
+    .Case("evm", Triple::evm)
+    // EVM local end
     .Default(Triple::UnknownArch);
 
   // Some architectures require special parsing logic just to compute the
@@ -850,6 +862,9 @@ static Triple::ObjectFormatType getDefaultFormat(const Triple &T) {
   // EraVM local begin
   case Triple::eravm:
   // EraVM local end
+  // EVM local begin
+  case Triple::evm:
+  // EVM local end
     return Triple::ELF;
 
   case Triple::ppc64:
@@ -1455,6 +1470,7 @@ static unsigned getArchPointerBitWidth(llvm::Triple::ArchType Arch) {
 
   // EraVM local begin
   case llvm::Triple::eravm:
+  case llvm::Triple::evm:
     return 256;
   // EraVM local end
 
@@ -1488,6 +1504,9 @@ Triple Triple::get32BitArchVariant() const {
   // EraVM local begin
   case Triple::eravm:
   // EraVM local end
+  // EVM local begin
+  case Triple::evm:
+  // EVM local end
     T.setArch(UnknownArch);
     break;
 
@@ -1578,6 +1597,9 @@ Triple Triple::get64BitArchVariant() const {
   // EraVM local begin
   case Triple::eravm:
   // EraVM local end
+  // EVM local begin
+  case Triple::evm:
+  // EVM local end
     T.setArch(UnknownArch);
     break;
 
@@ -1680,6 +1702,9 @@ Triple Triple::getBigEndianArchVariant() const {
   // EraVM local begin
   case Triple::eravm:
   // EraVM local end
+  // EVM local begin
+  case Triple::evm:
+  // EVM local end
 
   // ARM is intentionally unsupported here, changing the architecture would
   // drop any arch suffixes.
