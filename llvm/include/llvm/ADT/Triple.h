@@ -107,6 +107,9 @@ public:
     // SyncVM local begin
     syncvm,         // SyncVM: syncvm
     // SyncVM local end
+    // EVM local begin
+    evm,            // EVM: evm
+    // EVM local end
     ve,             // NEC SX-Aurora Vector Engine
     LastArchType = ve
   };
@@ -921,6 +924,12 @@ public:
     return getArch() == Triple::syncvm;
   }
   // SyncVM local end
+
+  // EVM local begin
+  bool isEVM() const {
+    return getArch() == Triple::evm;
+  }
+  // EVM local end
 
   /// Tests whether the target supports comdat
   bool supportsCOMDAT() const {

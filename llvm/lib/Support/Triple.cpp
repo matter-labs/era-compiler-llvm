@@ -86,6 +86,9 @@ StringRef Triple::getArchTypeName(ArchType Kind) {
 // SyncVM local begin
   case syncvm:         return "syncvm";
 // SyncVM local end
+// EVM local begin
+  case evm:            return "evm";
+// EVM local end
   }
 
   llvm_unreachable("Invalid ArchType!");
@@ -178,6 +181,9 @@ StringRef Triple::getArchTypePrefix(ArchType Kind) {
   // SyncVM local begin
   case syncvm:      return "syncvm";
   // SyncVM local end
+  // EVM local begin
+  case evm:         return "evm";
+  // EVM local end
   }
 }
 
@@ -380,6 +386,9 @@ Triple::ArchType Triple::getArchTypeForLLVMName(StringRef Name) {
     // SyncVM local begin
     .Case("syncvm", syncvm)
     // SyncVM local end
+    // EVM local begin
+    .Case("evm", evm)
+    // EVM local end
     .Default(UnknownArch);
 }
 
@@ -523,6 +532,9 @@ static Triple::ArchType parseArch(StringRef ArchName) {
     // SyncVM local begin
     .Case("syncvm", Triple::syncvm)
     // SyncVM local end
+    // EVM local begin
+    .Case("evm", Triple::evm)
+    // EVM local end
     .Default(Triple::UnknownArch);
 
   // Some architectures require special parsing logic just to compute the
@@ -850,6 +862,10 @@ static Triple::ObjectFormatType getDefaultFormat(const Triple &T) {
   // SyncVM local begin
   case Triple::syncvm:
   // SyncVM local end
+  // EVM local begin
+  case Triple::evm:
+  // EVM local end
+
     return Triple::ELF;
 
   case Triple::ppc64:
@@ -1453,6 +1469,9 @@ static unsigned getArchPointerBitWidth(llvm::Triple::ArchType Arch) {
   case llvm::Triple::x86_64:
     return 64;
 
+  // EVM local begin
+  case Triple::evm:
+  // EVM local end
   // SyncVM local begin
   case llvm::Triple::syncvm:
     return 256;
@@ -1488,6 +1507,9 @@ Triple Triple::get32BitArchVariant() const {
   // SyncVM local begin
   case Triple::syncvm:
   // SyncVM local end
+  // EVM local begin
+  case Triple::evm:
+  // EVM local end
     T.setArch(UnknownArch);
     break;
 
@@ -1578,6 +1600,9 @@ Triple Triple::get64BitArchVariant() const {
   // SyncVM local begin
   case Triple::syncvm:
   // SyncVM local end
+  // EVM local begin
+  case Triple::evm:
+  // EVM local end
     T.setArch(UnknownArch);
     break;
 
@@ -1680,6 +1705,9 @@ Triple Triple::getBigEndianArchVariant() const {
   // SyncVM local begin
   case Triple::syncvm:
   // SyncVM local end
+  // EVM local begin
+  case Triple::evm:
+  // EVM local end
 
   // ARM is intentionally unsupported here, changing the architecture would
   // drop any arch suffixes.
