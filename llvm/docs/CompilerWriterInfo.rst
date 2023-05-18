@@ -211,3 +211,10 @@ Miscellaneous Resources
 * `GCC prefetch project <http://gcc.gnu.org/projects/prefetch.html>`_ page has a
   good survey of the prefetching capabilities of a variety of modern
   processors.
+
+EVM
+===
+
+* `https://www.evm.codes/about`
+
+* `https://github.com/ethereum/execution-specs/tree/master/src/ethereum/shanghai/vm`
