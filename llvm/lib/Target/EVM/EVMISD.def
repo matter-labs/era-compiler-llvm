@@ -1,0 +1,11 @@
+//----------------- EVMISD.def - EVM ISD ---------------------------*- C++ -*-//
+//
+// This file describes the various EVM ISD node types.
+//
+//===----------------------------------------------------------------------===//
+
+// NOTE: NO INCLUDE GUARD DESIRED!
+
+HANDLE_NODETYPE(RETURN)
+HANDLE_NODETYPE(ARGUMENT)
+
