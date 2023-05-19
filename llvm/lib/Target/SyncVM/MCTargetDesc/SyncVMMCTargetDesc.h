@@ -46,9 +46,6 @@ MCAsmBackend *createSyncVMMCAsmBackend(const Target &T,
                                        const MCRegisterInfo &MRI,
                                        const MCTargetOptions &Options);
 
-MCTargetStreamer *createSyncVMObjectTargetStreamer(MCStreamer &S,
-                                                   const MCSubtargetInfo &STI);
-
 std::unique_ptr<MCObjectTargetWriter>
 createSyncVMELFObjectWriter(uint8_t OSABI);
 
