@@ -6,6 +6,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMMCInstLower.h"
+#include "MCTargetDesc/EVMMCExpr.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/IR/Constants.h"
@@ -36,6 +37,22 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
       break;
     case MachineOperand::MO_Immediate:
       MCOp = MCOperand::createImm(MO.getImm());
+      break;
+    case MachineOperand::MO_CImmediate:
+      const APInt &CImmVal = MO.getCImm()->getValue();
+      // Check for the max number of significant bits - 64, otherwise
+      // the assertion in getZExtValue() is failed.
+      if (CImmVal.getSignificantBits() <= 64 && CImmVal.isNonNegative()) {
+        MCOp = MCOperand::createImm(MO.getCImm()->getZExtValue());
+      } else {
+        // To avoid a memory leak, initial size of the SmallString should be
+        // chosen enough for the entire string. Otherwise, its internal memory
+        // will be reallocated into the generic heap but not into the Ctx
+        // arena and thus never deallocated.
+        auto Str = new (Ctx) SmallString<80>();
+        CImmVal.toStringUnsigned(*Str);
+        MCOp = MCOperand::createExpr(EVMCImmMCExpr::create(*Str, Ctx));
+      }
       break;
     }
 

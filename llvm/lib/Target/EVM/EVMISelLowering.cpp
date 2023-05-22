@@ -16,6 +16,10 @@ using namespace llvm;
 EVMTargetLowering::EVMTargetLowering(const TargetMachine &TM,
                                      const EVMSubtarget &STI)
     : TargetLowering(TM) {
+
+  // Booleans always contain 0 or 1.
+  setBooleanContents(ZeroOrOneBooleanContent);
+
   // Set up the register classes.
   addRegisterClass(MVT::i256, &EVM::GPRRegClass);
 
@@ -31,8 +35,17 @@ EVMTargetLowering::EVMTargetLowering(const TargetMachine &TM,
 
   // Legal operations
   setOperationAction({ISD::ADD, ISD::SUB, ISD::MUL, ISD::AND, ISD::OR, ISD::XOR,
-                      ISD::SHL, ISD::SRL},
+                      ISD::SHL, ISD::SRL, ISD::SRA, ISD::SDIV, ISD::UDIV,
+                      ISD::UREM, ISD::SREM, ISD::SETCC},
                      MVT::i256, Legal);
+
+  for (auto CC : {ISD::SETULT, ISD::SETUGT, ISD::SETLT, ISD::SETGT, ISD::SETGE,
+                  ISD::SETUGE, ISD::SETLE, ISD::SETULE, ISD::SETEQ, ISD::SETNE})
+    setCondCodeAction(CC, MVT::i256, Legal);
+
+  // Don't use constant pools.
+  // TODO: Probably this needs to be relaxed in the future.
+  setOperationAction(ISD::Constant, MVT::i256, Legal);
 
   setJumpIsExpensive(false);
   setMaximumJumpTableSize(0);
