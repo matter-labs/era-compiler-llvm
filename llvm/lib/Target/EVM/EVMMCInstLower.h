@@ -28,12 +28,14 @@ class LLVM_LIBRARY_VISIBILITY EVMMCInstLower {
   typedef DenseMap<unsigned, unsigned> VRegMap;
   typedef DenseMap<const TargetRegisterClass *, VRegMap> VRegRCMap;
 
+  MCContext &Ctx;
   const VRegRCMap &VRegMapping;
   const MachineRegisterInfo &MRI;
 
 public:
-  EVMMCInstLower(const VRegRCMap &VRegMapping, const MachineRegisterInfo &MRI)
-      : VRegMapping(VRegMapping), MRI(MRI) {}
+  EVMMCInstLower(MCContext &Ctx, const VRegRCMap &VRegMapping,
+                 const MachineRegisterInfo &MRI)
+      : Ctx(Ctx), VRegMapping(VRegMapping), MRI(MRI) {}
 
   void Lower(const MachineInstr *MI, MCInst &OutMI);
 
