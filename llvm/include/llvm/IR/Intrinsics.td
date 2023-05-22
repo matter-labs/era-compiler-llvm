@@ -2061,3 +2061,6 @@ include "llvm/IR/IntrinsicsDirectX.td"
 // SyncVM local begin
 include "llvm/IR/IntrinsicsSyncVM.td"
 // SyncVM local end
+// EVM local begin
+include "llvm/IR/IntrinsicsEVM.td"
+// EVM local end
