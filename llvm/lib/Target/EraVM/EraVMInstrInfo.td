@@ -331,6 +331,11 @@ let mayLoad = 1 in {
 }
 }
 
+// To be able to fold (op in0, (select.cc x, y)) to (op in0, y) + (op.cc in0, y) for
+// non-register in0 reduce immediate 0 to r0 in select.
+def : Pat<(EraVMselectcc 0, GR256:$src2, imm:$cc), (SELrrr R0, GR256:$src2, imm:$cc)>;
+def : Pat<(EraVMselectcc GR256:$src1, 0, imm:$cc), (SELrrr GR256:$src1, R0, imm:$cc)>;
+
 /*
 def : Pat<(store_stack (load_stack(EraVMselectcc stackaddr:$addr1, stackaddr:$addr2, imm:$cc)), stackaddr:$addr3),
           (SELsss stackaddr:$addr1, stackaddr:$addr2, imm:$cc, stackaddr:$addr3)>;
@@ -1114,6 +1119,8 @@ def : Pat<(EraVMcopy_from_ptrreg GRPTR:$src), (PTR_ADDrrr_p GRPTR:$src, R0)>;
 
 // SelecCC, BR_CC supplement
 def : Pat<(EraVMcmp GR256:$lhs, GR256:$rhs), (SUBrrr_v GR256:$lhs, GR256:$rhs, 0)>;
+// r0 is more profitable than imm 0 because it makes sub! x, r0 combinable with x = load y.
+def : Pat<(EraVMcmp GR256:$lhs, 0), (SUBrrr_v GR256:$lhs, R0, 0)>;
 def : Pat<(EraVMcmp GR256:$lhs, imm16:$rhs), (SUBxrr_v imm:$rhs, GR256:$lhs, 0)>;
 def : Pat<(EraVMcmp GR256:$lhs, large_imm:$rhs), (SUByrr_v (constant_pool imm:$rhs), 0, GR256:$lhs, 0)>;
 

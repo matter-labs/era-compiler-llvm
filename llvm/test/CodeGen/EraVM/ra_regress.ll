@@ -12,14 +12,14 @@ define i256 @test_length(i256 %arg1) {
 ; CHECK-NEXT:    add r1, r0, r3
 ; CHECK-NEXT:    add @CPI0_0[0], r0, r1
 ; CHECK-NEXT:    sub.s! 36, r3, r2
-; CHECK-NEXT:    add 0, r0, r2
+; CHECK-NEXT:    add r0, r0, r2
 ; CHECK-NEXT:    add.lt r1, r0, r2
 ; CHECK-NEXT:    and @CPI0_0[0], r3, r3
-; CHECK-NEXT:    sub.s! 0, r3, r4
-; CHECK-NEXT:    add.le 0, r0, r1
+; CHECK-NEXT:    sub! r3, r0, r4
+; CHECK-NEXT:    add.le r0, r0, r1
 ; CHECK-NEXT:    sub.s! @CPI0_0[0], r3, r3
 ; CHECK-NEXT:    add.ne r2, r0, r1
-; CHECK-NEXT:    sub.s! 0, r1, r1
+; CHECK-NEXT:    sub! r1, r0, r1
 ; CHECK-NEXT:    add 0, r0, r1
 ; CHECK-NEXT:    add.ne 1, r0, r1
 ; CHECK-NEXT:    ret
