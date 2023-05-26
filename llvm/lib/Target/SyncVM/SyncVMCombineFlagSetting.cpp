@@ -2,12 +2,12 @@
 //
 /// \file
 ///
-/// The pass attempts to combine `sub.s! 0, x, y` with the definition of x:
+/// The pass attempts to combine `sub! x, r0, y` with the definition of x:
 /// '''
 /// def = op x, y
 /// ; No flags def or use in between
 /// ; ... ...
-/// result = sub.s! 0, def
+/// result = sub! def, r0
 /// '''
 ///
 /// can be folded into:
@@ -84,7 +84,7 @@ char SyncVMCombineFlagSetting::ID = 0;
 INITIALIZE_PASS(SyncVMCombineFlagSetting, DEBUG_TYPE,
                 SYNCVM_COMBINE_FLAG_SETTING_NAME, false, false)
 
-/// Given sub.s! 0, x, y or equivalent \p MI return the register for x.
+/// Given sub! x, r0, y or equivalent \p MI return the register for x.
 /// Return R0 if precondition is not met.
 /// TODO: CPR-965 It might worth canonicalizing instead of checking different
 /// forms, but there is a chance that the proper layering of CPR-965 is post-RA.
@@ -92,9 +92,6 @@ static Register getValueRegister(const MachineInstr &MI) {
   if (MI.getOpcode() == SyncVM::SUBrrr_v && MI.getOperand(1).isReg() &&
       MI.getOperand(2).isReg() && MI.getOperand(2).getReg() == SyncVM::R0)
     return MI.getOperand(1).getReg();
-  if (MI.getOpcode() == SyncVM::SUBxrr_v && MI.getOperand(2).isReg() &&
-      MI.getOperand(1).getCImm()->isZero())
-    return MI.getOperand(2).getReg();
   return SyncVM::R0;
 }
 
@@ -140,7 +137,7 @@ bool SyncVMCombineFlagSetting::runOnMachineFunction(MachineFunction &MF) {
   for (MachineBasicBlock &MBB : MF)
     for (auto MI = MBB.begin(); MI != MBB.end(); ++MI) {
       Register ValReg = getValueRegister(*MI);
-      // MI is not sub.s! 0, x, y or equivalent.
+      // MI is not sub! x, r0, y.
       if (ValReg == SyncVM::R0)
         continue;
 
@@ -152,7 +149,7 @@ bool SyncVMCombineFlagSetting::runOnMachineFunction(MachineFunction &MF) {
       MachineInstr *DefMI = &*RegInfo.def_instructions(ValReg).begin();
 
       // There must be no flag def or use between the value definition and
-      // sub.s! 0, x, y.
+      // sub! x, r0, y.
       if (hasFlagsDefOrUseBetween(DefMI->getIterator(), MI))
         continue;
 
@@ -198,7 +195,7 @@ bool SyncVMCombineFlagSetting::runOnMachineFunction(MachineFunction &MF) {
                  dbgs() << "        And instruction:"; MI->dump(););
       ++NumFlagsFolded;
 
-      // Fold sub.s! 0, (op x, y) to op! x, y
+      // Fold sub! (op x, y), r0 to op! x, y
       Register ResultReg = MI->getOperand(0).getReg();
       DefMI->setDesc(
           TII->get(SyncVM::getFlagSettingOpcode(DefMI->getOpcode())));
