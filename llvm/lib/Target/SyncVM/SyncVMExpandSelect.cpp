@@ -81,6 +81,8 @@ bool SyncVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
       {SyncVMCC::COND_LE, SyncVMCC::COND_GT},
       {SyncVMCC::COND_GT, SyncVMCC::COND_LE},
       {SyncVMCC::COND_GE, SyncVMCC::COND_LT},
+      // COND_OF is an alias for COND_LT
+      {SyncVMCC::COND_OF, SyncVMCC::COND_GE},
   };
 
   TII = MF.getSubtarget<SyncVMSubtarget>().getInstrInfo();
@@ -98,6 +100,7 @@ bool SyncVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
       auto In0Range = SyncVM::in0Range(MI);
       auto In1Range = SyncVM::in1Range(MI);
       auto Out = SyncVM::out0Iterator(MI);
+      auto CCVal = getImmOrCImm(*SyncVM::ccIterator(MI));
 
       // For rN = cc ? rN : y it's profitable to reverse (rN = reverse_cc ? y :
       // rN) It allows to lower select to a single instruction rN =
@@ -127,13 +130,10 @@ bool SyncVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
 
       if (ShouldInverse) {
         buildMOV(SyncVM::ArgumentKind::In0, SyncVMCC::COND_NONE);
-        buildMOV(SyncVM::ArgumentKind::In1,
-                 InverseCond[getImmOrCImm(
-                     MI.getOperand(MI.getNumExplicitOperands() - 1))]);
+        buildMOV(SyncVM::ArgumentKind::In1, InverseCond[CCVal]);
       } else {
         buildMOV(SyncVM::ArgumentKind::In1, SyncVMCC::COND_NONE);
-        buildMOV(SyncVM::ArgumentKind::In0,
-                 getImmOrCImm(MI.getOperand(MI.getNumExplicitOperands() - 1)));
+        buildMOV(SyncVM::ArgumentKind::In0, CCVal);
       }
 
       PseudoInst.push_back(&MI);

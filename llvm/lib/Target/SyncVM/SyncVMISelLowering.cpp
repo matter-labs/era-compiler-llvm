@@ -126,6 +126,7 @@ SyncVMTargetLowering::SyncVMTargetLowering(const TargetMachine &TM,
           ISD::ANY_EXTEND,
           ISD::GlobalAddress,
           ISD::BR_CC,
+          ISD::SELECT,
           ISD::SELECT_CC,
           ISD::BSWAP,
           ISD::CTPOP,
@@ -675,6 +676,7 @@ SDValue SyncVMTargetLowering::LowerOperation(SDValue Op,
   case ISD::ExternalSymbol:     return LowerExternalSymbol(Op, DAG);
   case ISD::BR_CC:              return LowerBR_CC(Op, DAG);
   case ISD::BRCOND:             return LowerBRCOND(Op, DAG);
+  case ISD::SELECT:             return LowerSELECT(Op, DAG);
   case ISD::SELECT_CC:          return LowerSELECT_CC(Op, DAG);
   case ISD::SRA:                return LowerSRA(Op, DAG);
   case ISD::SDIV:               return LowerSDIV(Op, DAG);
@@ -1030,6 +1032,39 @@ SDValue SyncVMTargetLowering::LowerBRCOND(SDValue Op, SelectionDAG &DAG) const {
                         {Chain, FoldedArith.getValue(1)});
   auto OFCC = DAG.getConstant(SyncVMCC::COND_OF, DL, MVT::i256);
   return DAG.getNode(SyncVMISD::BRCOND, DL, Op.getValueType(), TF, Dest, OFCC);
+}
+
+SDValue SyncVMTargetLowering::LowerSELECT(SDValue Op,
+                                             SelectionDAG &DAG) const {
+  // try to fold select with u{add|sub|mul}.with.overflow
+  SDValue Cond = Op.getOperand(0);
+  SDValue TrueV = Op.getOperand(1);
+  SDValue FalseV = Op.getOperand(2);
+
+  SDValue MatchedUArithO = matchingOverflowArithmeticOperation(Cond);
+  if (!MatchedUArithO)
+    return SDValue();
+
+  SDValue FoldedArith;
+  auto Opc = MatchedUArithO.getOpcode();
+  auto LoweredOpc = OpcodeMap.at(Opc);
+  SDLoc DL(Op);
+  SDVTList FoldedVT = DAG.getVTList(MVT::i256, MVT::Other, MVT::Glue);
+  int OFGlueResult = 2;
+  // MUL has 2 results
+  if (LoweredOpc == SyncVMISD::MUL_V) {
+    FoldedVT = DAG.getVTList(MVT::i256, MVT::i256, MVT::Other, MVT::Glue);
+    OFGlueResult = 3;
+  }
+  FoldedArith = DAG.getNode(LoweredOpc, DL, FoldedVT,
+                            {DAG.getEntryNode(), MatchedUArithO.getOperand(0),
+                             MatchedUArithO.getOperand(1)});
+  DAG.ReplaceAllUsesOfValueWith(MatchedUArithO.getValue(0),
+                                FoldedArith.getValue(0));
+  SDVTList VTs = DAG.getVTList(Op.getValueType(), MVT::Glue);
+  SDValue CC = DAG.getConstant(SyncVMCC::COND_OF, DL, MVT::i256);
+  SDValue Ops[] = {TrueV, FalseV, CC, FoldedArith.getValue(OFGlueResult)};
+  return DAG.getNode(SyncVMISD::SELECT_CC, DL, VTs, Ops);
 }
 
 SDValue SyncVMTargetLowering::LowerSELECT_CC(SDValue Op,
