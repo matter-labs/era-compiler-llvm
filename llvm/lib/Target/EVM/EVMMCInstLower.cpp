@@ -38,7 +38,7 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
     case MachineOperand::MO_Immediate:
       MCOp = MCOperand::createImm(MO.getImm());
       break;
-    case MachineOperand::MO_CImmediate:
+    case MachineOperand::MO_CImmediate: {
       const APInt &CImmVal = MO.getCImm()->getValue();
       // Check for the max number of significant bits - 64, otherwise
       // the assertion in getZExtValue() is failed.
@@ -53,6 +53,10 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
         CImmVal.toStringUnsigned(*Str);
         MCOp = MCOperand::createExpr(EVMCImmMCExpr::create(*Str, Ctx));
       }
+    } break;
+    case MachineOperand::MO_MachineBasicBlock:
+      MCOp = MCOperand::createExpr(
+          MCSymbolRefExpr::create(MO.getMBB()->getSymbol(), Ctx));
       break;
     }
 

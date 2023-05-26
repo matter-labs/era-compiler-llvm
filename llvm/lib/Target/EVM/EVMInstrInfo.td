@@ -42,6 +42,7 @@ def imm128 : Operand<i256>, IntImmLeaf<i256, [{
   return APInt(256, 1, false).shl(128).ugt(Imm);
 }]>;
 
+def jmptarget : Operand<OtherVT>;
 
 //===----------------------------------------------------------------------===//
 // Custom DAG Selection Operations.
@@ -58,6 +59,17 @@ def negate_imm : SDNodeXForm<imm, [{
 //===----------------------------------------------------------------------===//
 // EVM Instructions list.
 //===----------------------------------------------------------------------===//
+
+
+//===----------------------------------------------------------------------===//
+// Pseudo instructions.
+//===----------------------------------------------------------------------===//
+
+let usesCustomInserter = 1 in
+def SELECT
+  : EVMPseudo<(outs GPR:$dst), (ins GPR:$cond, GPR:$lhs, GPR:$rhs),
+              [(set i256:$dst, (select GPR:$cond, i256:$lhs, i256:$rhs))]>;
+
 
 //===----------------------------------------------------------------------===//
 // Additional instructions.
@@ -76,6 +88,11 @@ defm CONST_I256
   : I<(outs GPR:$res), (ins i256imm:$imm), [(set GPR:$res, imm:$imm)],
       "CONST_I256 $res, $imm">;
 
+// This is not real EVM instruction. It should be eliminted while
+// stackification.
+let isAsCheapAsAMove = 1 in
+defm COPY_I256
+  : I<(outs GPR:$res), (ins GPR:$src), [], "COPY_I256 $res, $src">;
 
 //===----------------------------------------------------------------------===//
 // EVM arithmetic instructions.
@@ -198,6 +215,21 @@ defm SAR : BinaryInst<sra, "SAR", 0x1d, 3>;
 // EVM control instructions.
 //===----------------------------------------------------------------------===//
 
-let isBarrier = 1, isTerminator = 1, isReturn = 1, isBranch = 1 in
+let isBranch = 1, isTerminator = 1 in {
+// The condition operand is a boolean value which EVM represents as i256.
+defm JUMPI
+  : I<(outs), (ins jmptarget:$dst, GPR:$cond), [(brcond GPR:$cond, bb:$dst)],
+      "JUMPI $dst, $cond", 0x56, 10>;
+
+let isBarrier = 1 in
+defm JUMP
+  : I<(outs), (ins jmptarget:$dst), [(br bb:$dst)], "JUMP $dst", 0x57, 10>;
+} // isBranch = 1, isTerminator = 1
+
+// This isn't really a control flow instruction, but it should be used to mark
+// destination of jump instructions.
+defm : I<(outs), (ins), [], "JUMPDEST", 0x57, 10>;
+
+let isBarrier = 1, isTerminator = 1, isReturn = 1 in
 defm RETURN
   : I<(outs), (ins variable_ops), [(EVMreturn)], "RETURN", 0xF3, 0>;
