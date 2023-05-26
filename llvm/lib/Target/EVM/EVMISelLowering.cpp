@@ -36,7 +36,7 @@ EVMTargetLowering::EVMTargetLowering(const TargetMachine &TM,
   // Legal operations
   setOperationAction({ISD::ADD, ISD::SUB, ISD::MUL, ISD::AND, ISD::OR, ISD::XOR,
                       ISD::SHL, ISD::SRL, ISD::SRA, ISD::SDIV, ISD::UDIV,
-                      ISD::UREM, ISD::SREM, ISD::SETCC},
+                      ISD::UREM, ISD::SREM, ISD::SETCC, ISD::SELECT},
                      MVT::i256, Legal);
 
   for (auto CC : {ISD::SETULT, ISD::SETUGT, ISD::SETLT, ISD::SETGT, ISD::SETGE,
@@ -159,4 +159,75 @@ bool EVMTargetLowering::CanLowerReturn(
     const SmallVectorImpl<ISD::OutputArg> &Outs,
     LLVMContext & /*Context*/) const {
   return true;
+}
+
+MachineBasicBlock *
+EVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
+                                               MachineBasicBlock *BB) const {
+  switch (MI.getOpcode()) {
+  default:
+    llvm_unreachable("Unexpected instr type to insert");
+  case EVM::SELECT:
+    return emitSelect(MI, BB);
+  }
+}
+
+MachineBasicBlock *EVMTargetLowering::emitSelect(MachineInstr &MI,
+                                                 MachineBasicBlock *BB) const {
+  const TargetInstrInfo *TII = BB->getParent()->getSubtarget().getInstrInfo();
+  DebugLoc DL = MI.getDebugLoc();
+  // To "insert" a SELECT instruction, we actually have to insert the
+  // diamond control-flow pattern.  The incoming instruction knows the
+  // destination vreg to set, the condition code register to branch on and the
+  // true/false values to select between.
+  const BasicBlock *LLVM_BB = BB->getBasicBlock();
+  MachineFunction::iterator It = ++BB->getIterator();
+
+  //  ThisMBB:
+  //  ...
+  //   TrueVal = ...
+  //   setcc $cond, $2, $1
+  //   JUMPI SinkMBB, $cond
+  //   fallthrough --> FHMBB
+  MachineBasicBlock *ThisMBB = BB;
+  MachineFunction *F = BB->getParent();
+  MachineBasicBlock *FHMBB = F->CreateMachineBasicBlock(LLVM_BB);
+  MachineBasicBlock *SinkMBB = F->CreateMachineBasicBlock(LLVM_BB);
+  F->insert(It, FHMBB);
+  F->insert(It, SinkMBB);
+
+  // Transfer the remainder of BB and its successor edges to SinkMBB.
+  SinkMBB->splice(SinkMBB->begin(), BB,
+                  std::next(MachineBasicBlock::iterator(MI)), BB->end());
+  SinkMBB->transferSuccessorsAndUpdatePHIs(BB);
+
+  // Next, add the true and fallthrough blocks as its successors.
+  BB->addSuccessor(FHMBB);
+  BB->addSuccessor(SinkMBB);
+
+  BuildMI(BB, DL, TII->get(EVM::JUMPI))
+      .addMBB(SinkMBB)
+      .addReg(MI.getOperand(1).getReg());
+
+  //  FHMBB:
+  //   %FalseValue = ...
+  //   # fallthrough to SinkMBB
+  BB = FHMBB;
+
+  // Update machine-CFG edges
+  BB->addSuccessor(SinkMBB);
+
+  //  SinkMBB:
+  //   %Result = phi [ %TrueValue, ThisMBB ], [ %FalseValue, FHMBB ]
+  //  ...
+  BB = SinkMBB;
+
+  BuildMI(*BB, BB->begin(), DL, TII->get(EVM::PHI), MI.getOperand(0).getReg())
+      .addReg(MI.getOperand(2).getReg())
+      .addMBB(ThisMBB)
+      .addReg(MI.getOperand(3).getReg())
+      .addMBB(FHMBB);
+
+  MI.eraseFromParent(); // The pseudo instruction is gone now.
+  return BB;
 }

@@ -33,3 +33,9 @@ multiclass I<dag oops_r, dag iops_r, list<dag> pattern_r,
              string asmstr_r = "", bits<8> inst = 0, int cost = 0> {
   def "" : NI<oops_r, iops_r, pattern_r, asmstr_r, inst, cost>;
 }
+
+class EVMPseudo<dag oops, dag iops, list<dag> pattern>
+  : NI<oops, iops, pattern> {
+  let isPseudo = 1;
+  let isCodeGenOnly = 1;
+}
