@@ -54,6 +54,12 @@ private:
                       const SmallVectorImpl<ISD::OutputArg> &Outs,
                       const SmallVectorImpl<SDValue> &OutVals, const SDLoc &dl,
                       SelectionDAG &DAG) const override;
+
+  MachineBasicBlock *
+  EmitInstrWithCustomInserter(MachineInstr &MI,
+                              MachineBasicBlock *BB) const override;
+
+  MachineBasicBlock *emitSelect(MachineInstr &MI, MachineBasicBlock *BB) const;
 };
 
 } // end namespace llvm
