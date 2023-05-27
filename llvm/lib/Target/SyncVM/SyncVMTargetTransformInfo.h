@@ -106,6 +106,8 @@ public:
   // TODO: The value is copied from AMDGPU, needs to be configured.
   unsigned getInliningThresholdMultiplier() const { return 11; }
 
+  unsigned getNumberOfParts(Type *Tp) const { return 0; }
+
   /// @}
 };
 
