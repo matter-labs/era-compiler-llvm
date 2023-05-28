@@ -51,15 +51,6 @@ InstructionCost SyncVMTTIImpl::getIntImmCost(const APInt &Imm, Type *Ty,
   return TTI::TCC_Expensive;
 }
 
-unsigned SyncVMTTIImpl::getNumberOfRegisters(unsigned ClassID) const {
-  unsigned Result = BaseT::getNumberOfRegisters(ClassID);
-  return Result;
-}
-
-TypeSize SyncVMTTIImpl::getRegisterBitWidth(bool) const {
-  return TypeSize::Fixed(256);
-}
-
 InstructionCost
 SyncVMTTIImpl::getIntrinsicInstrCost(const IntrinsicCostAttributes &ICA,
                                      TTI::TargetCostKind CostKind) {
