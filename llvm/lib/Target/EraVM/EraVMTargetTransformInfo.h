@@ -75,8 +75,26 @@ public:
   /// \name Vector TTI Implementations
   /// @{
 
-  unsigned getNumberOfRegisters(unsigned ClassID) const;
-  TypeSize getRegisterBitWidth(bool Vector) const;
+  enum EraVMRegisterClass { Vector /* Unsupported */, GPR };
+  unsigned getNumberOfRegisters(unsigned ClassID) const {
+    return ClassID == Vector ? 0 : 15;
+  }
+  TypeSize getRegisterBitWidth(TargetTransformInfo::RegisterKind RK) const {
+    return TypeSize::getFixed(256);
+  }
+  unsigned getRegisterClassForType(bool IsVector, Type *Ty = nullptr) const {
+    if (IsVector)
+      return Vector;
+    return GPR;
+  }
+
+  const char *getRegisterClassName(unsigned ClassID) const {
+    if (ClassID == GPR) {
+      return "EraVM::GPR";
+    }
+    llvm_unreachable("unknown register class");
+  }
+
   InstructionCost getArithmeticInstrCost(
       unsigned Opcode, Type *Ty,
       TTI::TargetCostKind CostKind = TTI::TCK_SizeAndLatency,

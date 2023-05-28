@@ -55,15 +55,6 @@ InstructionCost EraVMTTIImpl::getIntImmCost(const APInt &Imm, Type *Ty,
   return TTI::TCC_Expensive;
 }
 
-unsigned EraVMTTIImpl::getNumberOfRegisters(unsigned ClassID) const {
-  unsigned Result = BaseT::getNumberOfRegisters(ClassID);
-  return Result;
-}
-
-TypeSize EraVMTTIImpl::getRegisterBitWidth(bool) const {
-  return TypeSize::getFixed(256);
-}
-
 InstructionCost
 EraVMTTIImpl::getIntrinsicInstrCost(const IntrinsicCostAttributes &ICA,
                                     TTI::TargetCostKind CostKind) {
