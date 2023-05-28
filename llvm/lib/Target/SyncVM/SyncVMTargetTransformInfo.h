@@ -74,8 +74,28 @@ public:
   /// \name Vector TTI Implementations
   /// @{
 
-  unsigned getNumberOfRegisters(unsigned ClassID) const;
-  TypeSize getRegisterBitWidth(bool Vector) const;
+  enum SyncVMRegisterClass { Vector /* Unsupported */, GPR };
+  unsigned getNumberOfRegisters(unsigned ClassID) const {
+    return ClassID == Vector ? 0 : 15;
+  }
+  TypeSize getRegisterBitWidth(TargetTransformInfo::RegisterKind RK) const {
+    assert(RK == TargetTransformInfo::RGK_Scalar &&
+           "Vector registers aren't supported");
+    return TypeSize::Fixed(256);
+  }
+  unsigned getRegisterClassForType(bool IsVector, Type *Ty = nullptr) const {
+    if (IsVector)
+      return Vector;
+    return GPR;
+  }
+
+  const char *getRegisterClassName(unsigned ClassID) const {
+    if (ClassID == GPR) {
+      return "SyncVM::GPR";
+    }
+    llvm_unreachable("unknown register class");
+  }
+
   InstructionCost getArithmeticInstrCost(
       unsigned Opcode, Type *Ty,
       TTI::TargetCostKind CostKind = TTI::TCK_SizeAndLatency,
@@ -98,7 +118,8 @@ public:
   void getMemcpyLoopResidualLoweringType(
       SmallVectorImpl<Type *> &OpsOut, LLVMContext &Context,
       unsigned RemainingBytes, unsigned SrcAddrSpace, unsigned DestAddrSpace,
-      unsigned SrcAlign, unsigned DestAlign, Optional<uint32_t> AtomicCpySize) const {
+      unsigned SrcAlign, unsigned DestAlign,
+      Optional<uint32_t> AtomicCpySize) const {
     assert(RemainingBytes < 32);
     OpsOut.push_back(Type::getIntNTy(Context, RemainingBytes * 8));
   }
