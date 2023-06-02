@@ -2602,7 +2602,12 @@ CheckInteger(const unsigned char *MatcherTable, unsigned &MatcherIndex,
 
   ConstantSDNode *C = dyn_cast<ConstantSDNode>(N);
   // SyncVM local begin
-  return C && C->getAPIntValue() == Val;
+  if (C) {
+    const APInt &CVal = C->getAPIntValue();
+    if (CVal == APInt(CVal.getBitWidth(), Val, /*isSigned=*/true))
+      return true;
+  }
+  return false;
   // SyncVM local end
 }
 
