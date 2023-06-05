@@ -58,14 +58,14 @@ jobs:
         run: |
           echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
           echo "branch = \"${GITHUB_HEAD_REF}\"" >> LLVM.lock
-          mv LLVM.lock ./compiler-tester/LLVM.lock
+          mv -fv './LLVM.lock' './compiler-tester/LLVM.lock'
 
       - name: Preparing LLVM.lock (workflow dispatch)
         if: github.event_name == 'workflow_dispatch'
         run: |
-          echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
-          echo "branch = \"${{ env.COMPILER_LLVM_BRANCH_NAME }}\"" >> LLVM.lock
-          mv LLVM.lock ./compiler-tester/LLVM.lock
+          echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> './LLVM.lock'
+          echo "branch = \"${{ env.COMPILER_LLVM_BRANCH_NAME }}\"" >> './LLVM.lock'
+          mv -fv './LLVM.lock' './compiler-tester/LLVM.lock'
 
       - name: Installing the LLVM manager and downloading the LLVM framework
         working-directory: compiler-tester
@@ -88,7 +88,7 @@ jobs:
       - name: Running Lit tests with default options   
         working-directory: compiler-tester
         run: |
-          ninja -C target-llvm/build-final check-llvm
+          ninja -C './target-llvm/build-final' check-llvm
 
       - name: Running Lit SyncVM tests with llc verification options
         working-directory: compiler-tester
@@ -114,7 +114,7 @@ jobs:
 
         run: |
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
-          target-llvm/build-final/bin/llvm-lit -vv -s --debug --xfail "${XFAILS}" "-Dllc=${BINDIR}/llc ${LLC_OPTS}" llvm/llvm/test/CodeGen/SyncVM/
+          ./target-llvm/build-final/bin/llvm-lit -vv -s --debug --xfail "${XFAILS}" "-Dllc=${BINDIR}/llc ${LLC_OPTS}" './llvm/llvm/test/CodeGen/SyncVM/'
 
       - name: Running Lit tests with opt verification options
         working-directory: compiler-tester
@@ -149,13 +149,22 @@ jobs:
             Transforms/LoopFusion/simple.ll"
         run: |
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
-          target-llvm/build-final/bin/llvm-lit -vv -s --debug --xfail "${XFAILS}" "-Dopt=${BINDIR}/opt ${OPT_OPTS}" llvm/llvm/test/CodeGen/
+          ./target-llvm/build-final/bin/llvm-lit -vv -s --debug --xfail "${XFAILS}" "-Dopt=${BINDIR}/opt ${OPT_OPTS}" './llvm/llvm/test/CodeGen/'
 
       - name: Building and running the compiler tester
         id: compiler_tester_run
         working-directory: compiler-tester
-        run: |
-          cargo run --release --bin compiler-tester -- --mode=${{ env.COMPILER_TESTER_MODE }}
+        run: |          
+          export RUST_BACKTRACE='full'
+          export LLVM_SYS_150_PREFIX="$(pwd)/target-llvm/target-final/"
+          cargo build --verbose --release --bin 'compiler-tester'
+          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-solidity-*/*/Cargo.toml --target-dir './target-zksolc/'
+          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-vyper-*/*/Cargo.toml --target-dir './target-zkvyper/'
+          
+          ./target/release/compiler-tester \
+            --zksolc './target-zksolc/release/zksolc' \
+            --zkvyper './target-zkvyper/release/zkvyper' \
+            --mode=${{ env.COMPILER_TESTER_MODE }}
 
       - uses: 8398a7/action-slack@v3
         with:

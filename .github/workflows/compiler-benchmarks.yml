@@ -76,14 +76,14 @@ jobs:
         run: |
           echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
           echo "branch = \"${GITHUB_HEAD_REF}\"" >> LLVM.lock
-          mv LLVM.lock ./compiler-tester/LLVM.lock
+          mv -fv './LLVM.lock' './compiler-tester/LLVM.lock'
 
       - name: Preparing LLVM.lock (workflow dispatch)
         if: github.event_name == 'workflow_dispatch'
         run: |
           echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
           echo "branch = \"${{ env.COMPILER_LLVM_CANDIDATE_BRANCH_NAME }}\"" >> LLVM.lock
-          mv LLVM.lock ./compiler-tester/LLVM.lock
+          mv -fv './LLVM.lock' './compiler-tester/LLVM.lock'
 
       - name: Installing the LLVM manager and building the candidate LLVM framework
         working-directory: compiler-tester
@@ -106,8 +106,19 @@ jobs:
       - name: Benchmarking the candidate LLVM framework
         id: compiler_tester_run
         working-directory: compiler-tester
-        run: |
-          cargo run --release --bin compiler-tester -- --path=${{ env.LLVM_BENCHMARK_PATH }} --mode=${{ env.LLVM_BENCHMARK_MODE }} --benchmark=candidate.json
+        run: |          
+          export RUST_BACKTRACE='full'
+          export LLVM_SYS_150_PREFIX="$(pwd)/target-llvm/target-final/"
+          cargo build --verbose --release --bin 'compiler-tester'
+          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-solidity-*/*/Cargo.toml --target-dir './target-zksolc/'
+          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-vyper-*/*/Cargo.toml --target-dir './target-zkvyper/'
+          
+          ./target/release/compiler-tester \
+            --zksolc './target-zksolc/release/zksolc' \
+            --zkvyper './target-zkvyper/release/zkvyper' \
+            --path=${{ env.LLVM_BENCHMARK_PATH || '' }} \
+            --mode=${{ env.LLVM_BENCHMARK_MODE || '' }} \
+            --benchmark='candidate.json'
 
       - uses: actions/upload-artifact@v3
         with:
@@ -152,14 +163,14 @@ jobs:
         run: |
           echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
           echo "branch = \"${GITHUB_BASE_REF}\"" >> LLVM.lock
-          mv LLVM.lock ./compiler-tester/LLVM.lock
+          mv -fv './LLVM.lock' './compiler-tester/LLVM.lock'
 
       - name: Preparing LLVM.lock (workflow dispatch)
         if: github.event_name == 'workflow_dispatch'
         run: |
           echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
           echo "branch = \"${{ env.COMPILER_LLVM_REFERENCE_BRANCH_NAME }}\"" >> LLVM.lock
-          mv LLVM.lock ./compiler-tester/LLVM.lock
+          mv -fv './LLVM.lock' './compiler-tester/LLVM.lock'
 
       - name: Installing the LLVM manager and downloading the reference LLVM framework
         working-directory: compiler-tester
@@ -182,8 +193,19 @@ jobs:
       - name: Benchmarking the reference LLVM framework
         id: compiler_tester_run
         working-directory: compiler-tester
-        run: |
-          cargo run --release --bin compiler-tester -- --path=${{ env.LLVM_BENCHMARK_PATH }} --mode=${{ env.LLVM_BENCHMARK_MODE }} --benchmark=reference.json
+        run: |          
+          export RUST_BACKTRACE='full'
+          export LLVM_SYS_150_PREFIX="$(pwd)/target-llvm/target-final/"
+          cargo build --verbose --release --bin 'compiler-tester'
+          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-solidity-*/*/Cargo.toml --target-dir './target-zksolc/'
+          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-vyper-*/*/Cargo.toml --target-dir './target-zkvyper/'
+          
+          ./target/release/compiler-tester \
+            --zksolc './target-zksolc/release/zksolc' \
+            --zkvyper './target-zkvyper/release/zkvyper' \
+            --path=${{ env.LLVM_BENCHMARK_PATH || '' }} \
+            --mode=${{ env.LLVM_BENCHMARK_MODE || '' }} \
+            --benchmark='reference.json'
 
       - uses: actions/upload-artifact@v3
         with:
@@ -243,8 +265,8 @@ jobs:
         id: compiler_tester_run
         working-directory: compiler-tester
         run: |
-          cargo run --release --bin benchmark-analyzer -- --reference reference.json --candidate candidate.json --output-file result.txt
-          chown 1000:1000 result.txt
+          cargo run --release --bin benchmark-analyzer -- --reference 'reference.json' --candidate 'candidate.json' --output-file 'result.txt'
+          chown 1000:1000 'result.txt'
 
       - name: Posting the LLVM benchmark results to the summary
         run: |
@@ -252,7 +274,7 @@ jobs:
           echo '```' >> $GITHUB_STEP_SUMMARY
           cat ./compiler-tester/result.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          cat $GITHUB_STEP_SUMMARY > ./compiler-tester/result.txt
+          cat $GITHUB_STEP_SUMMARY > './compiler-tester/result.txt'
 
       - name: Posting the LLVM benchmark results to a PR comment
         if: github.event_name == 'pull_request'
