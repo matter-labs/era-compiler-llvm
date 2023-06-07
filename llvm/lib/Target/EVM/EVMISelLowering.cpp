@@ -36,7 +36,8 @@ EVMTargetLowering::EVMTargetLowering(const TargetMachine &TM,
   // Legal operations
   setOperationAction({ISD::ADD, ISD::SUB, ISD::MUL, ISD::AND, ISD::OR, ISD::XOR,
                       ISD::SHL, ISD::SRL, ISD::SRA, ISD::SDIV, ISD::UDIV,
-                      ISD::UREM, ISD::SREM, ISD::SETCC, ISD::SELECT},
+                      ISD::UREM, ISD::SREM, ISD::SETCC, ISD::SELECT, ISD::STORE,
+                      ISD::LOAD},
                      MVT::i256, Legal);
 
   for (auto CC : {ISD::SETULT, ISD::SETUGT, ISD::SETLT, ISD::SETGT, ISD::SETGE,
@@ -136,7 +137,7 @@ EVMTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
 
   SmallVector<SDValue, 4> RetOps(1, Chain);
   RetOps.append(OutVals.begin(), OutVals.end());
-  Chain = DAG.getNode(EVMISD::RETURN, DL, MVT::Other, RetOps);
+  Chain = DAG.getNode(EVMISD::RET, DL, MVT::Other, RetOps);
 
   // Record the number and types of the return values.
   for (const ISD::OutputArg &Out : Outs) {
