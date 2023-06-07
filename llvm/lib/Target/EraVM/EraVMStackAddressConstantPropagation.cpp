@@ -74,10 +74,7 @@ EraVMStackAddressConstantPropagation::tryExtractConstant(MachineInstr &MI,
       !TII->isSilent(MI) || MI.mayStore() || MI.mayLoad())
     return {};
 
-  if (TII->isMul(MI) && !TII->hasRIOperandAddressingMode(MI))
-    return {};
-
-  if (TII->isDiv(MI) && !TII->hasRXOperandAddressingMode(MI))
+  if (TII->isDiv(MI) && !EraVM::hasIRInAddressingMode(MI))
     return {};
 
   // If the second out of MUL or DIV is used, don't extract a constant from it.
@@ -125,7 +122,7 @@ EraVMStackAddressConstantPropagation::tryExtractConstant(MachineInstr &MI,
   };
 
   if (TII->isAdd(MI)) {
-    if (TII->hasRROperandAddressingMode(MI)) {
+    if (EraVM::hasRRInAddressingMode(MI)) {
       Register LHSReg = MI.getOperand(1).getReg();
       Register RHSReg = MI.getOperand(2).getReg();
       MachineInstr &LHS = *RegInfo->getVRegDef(LHSReg);
@@ -147,7 +144,7 @@ EraVMStackAddressConstantPropagation::tryExtractConstant(MachineInstr &MI,
       MI.eraseFromParent();
       return {true, NewVR, std::get<2>(LHSRes) + std::get<2>(RHSRes)};
     }
-    assert(TII->hasRIOperandAddressingMode(MI));
+    assert(EraVM::hasIRInAddressingMode(MI));
     Register RHSReg = MI.getOperand(2).getReg();
     unsigned Val = getImmOrCImm(MI.getOperand(1));
     LLVM_DEBUG(dbgs() << "Erase " << MI);
@@ -156,7 +153,7 @@ EraVMStackAddressConstantPropagation::tryExtractConstant(MachineInstr &MI,
     return {true, RHSReg, Multiplier * Val / Divisor};
   }
   if (TII->isSub(MI)) {
-    if (TII->hasRROperandAddressingMode(MI)) {
+    if (EraVM::hasRRInAddressingMode(MI)) {
       Register LHSReg = MI.getOperand(1).getReg();
       Register RHSReg = MI.getOperand(2).getReg();
       MachineInstr &LHS = *RegInfo->getVRegDef(LHSReg);
@@ -178,7 +175,7 @@ EraVMStackAddressConstantPropagation::tryExtractConstant(MachineInstr &MI,
       MI.eraseFromParent();
       return {true, NewVR, std::get<2>(LHSRes) + std::get<2>(RHSRes)};
     }
-    assert(TII->hasRIOperandAddressingMode(MI));
+    assert(EraVM::hasIRInAddressingMode(MI));
     Register RHSReg = MI.getOperand(2).getReg();
     unsigned Val = getImmOrCImm(MI.getOperand(1));
     LLVM_DEBUG(dbgs() << "Erase " << MI);
@@ -208,7 +205,7 @@ bool EraVMStackAddressConstantPropagation::runOnMachineFunction(
 
   for (auto &BB : MF) {
     for (auto II = BB.begin(); II != BB.end(); ++II) {
-      if (TII->hasRSOperandAddressingMode(*II)) {
+      if (EraVM::hasSRInAddressingMode(*II)) {
         unsigned RegOpndNo = II->getNumExplicitDefs() + 1;
         if (!II->getOperand(RegOpndNo).isReg())
           continue;

@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "EraVMISelLowering.h"
+
 #include "EraVM.h"
 #include "EraVMMachineFunctionInfo.h"
 #include "EraVMSubtarget.h"
@@ -35,6 +36,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
+#include <unordered_map>
 using namespace llvm;
 
 #define DEBUG_TYPE "eravm-lower"

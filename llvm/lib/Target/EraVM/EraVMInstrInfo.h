@@ -23,9 +23,45 @@
 namespace llvm {
 
 namespace EraVM {
+
 int getPseudoMapOpcode(uint16_t);
 int getFlagSettingOpcode(uint16_t);
 int getNonFlagSettingOpcode(uint16_t);
+
+/// Return opcode of the instruction with RR input addressing mode otherwise
+/// identical to \p Opcode.
+int getWithRRInAddrMode(uint16_t Opcode);
+/// Return opcode of the instruction with IR input addressing mode otherwise
+/// identical to \p Opcode. For a fat pointer instruction return an opcode with
+/// operands swapped (i.e. XR).
+int getWithIRInAddrMode(uint16_t Opcode);
+/// Return opcode of the instruction with CR input addressing mode otherwise
+/// identical to \p Opcode. For a fat pointer instruction return an opcode with
+/// operands swapped (i.e. YR).
+int getWithCRInAddrMode(uint16_t Opcode);
+/// Return opcode of the instruction with SR input addressing mode otherwise
+/// identical to \p Opcode.
+int getWithSRInAddrMode(uint16_t Opcode);
+/// Return opcode of the instruction with RR otput addressing mode otherwise
+/// identical to \p Opcode.
+int getWithRROutAddrMode(uint16_t Opcode);
+/// Return opcode of the instruction with SR otput addressing mode otherwise
+/// identical to \p Opcode.
+int getWithSROutAddrMode(uint16_t Opcode);
+/// Return opcode of the instruction with operands not swapped
+/// otherwise identical to \p Opcode.
+int getWithInsNotSwapped(uint16_t Opcode);
+/// Return opcode of the instruction with operands swapped otherwise identical
+/// to \p Opcode.
+int getWithInsSwapped(uint16_t Opcode);
+
+bool hasRRInAddressingMode(const MachineInstr &MI);
+bool hasIRInAddressingMode(const MachineInstr &MI);
+bool hasCRInAddressingMode(const MachineInstr &MI);
+bool hasSRInAddressingMode(const MachineInstr &MI);
+bool hasRROutAddressingMode(const MachineInstr &MI);
+bool hasSROutAddressingMode(const MachineInstr &MI);
+
 } // namespace EraVM
 
 class EraVMInstrInfo : public EraVMGenInstrInfo {
@@ -86,11 +122,6 @@ public:
   int64_t getFramePoppedByCallee(const MachineInstr &I) const { return 0; }
 
   // Properties and mappings
-  bool hasRROperandAddressingMode(const MachineInstr &MI) const;
-  bool hasRIOperandAddressingMode(const MachineInstr &MI) const;
-  bool hasRXOperandAddressingMode(const MachineInstr &MI) const;
-  bool hasRSOperandAddressingMode(const MachineInstr &MI) const;
-  bool hasTwoOuts(const MachineInstr &MI) const;
   bool isAdd(const MachineInstr &MI) const;
   bool isSub(const MachineInstr &MI) const;
   bool isMul(const MachineInstr &MI) const;
