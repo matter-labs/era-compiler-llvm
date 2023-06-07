@@ -1238,10 +1238,16 @@ def JC: ICondJump<10, (ins jmptarget:$dest, cc:$cc), "jump$cc\t$dest",
              [(EraVMbrcc bb:$dest, imm:$cc)]>;
 
 // Unconditional jump
-let isTerminator = 1, isBranch = 1, isBarrier = 1 in
-def J: IJump<10, (ins jmptarget:$dest), "jump\t$dest",
+let isTerminator = 1, isBranch = 1, isBarrier = 1 in {
+def J: IJump<10, SrcNone, (ins jmptarget:$dest), "jump\t$dest",
              [(EraVMbrcc bb:$dest, 0)]>;
+def J_s: IJump<10, SrcStack, (ins stackop:$dest), "jump\t$dest", [] >;
+}
 def : Pat<(br bb:$dst), (J bb:$dst)>;
+
+// Dynamic jumps
+let isPseudo = 1, isCall = 1 in
+def JCALL: IJump<10, SrcNone, (ins jmptarget:$dest), "jump\t$dest", [] >;
 
 let isReturn = 1, isTerminator = 1, isBarrier = 1  in {
 def RET   : IRet<7, RFNone, (ins), "ret", [(EraVMret)]>;

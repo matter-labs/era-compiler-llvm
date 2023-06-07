@@ -21,6 +21,7 @@
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/Module.h"
 #include "llvm/MC/MCContext.h"
 #include "llvm/Support/ErrorHandling.h"
 
@@ -217,6 +218,16 @@ bool isSelect(unsigned Opcode) {
   return Members.count(Opcode);
 }
 
+bool hasInvalidRelativeStackAccess(MachineInstr::const_mop_iterator Op) {
+  auto SA = EraVM::classifyStackAccess(Op);
+  if (SA == EraVM::StackAccess::Invalid)
+    return true;
+
+  if (SA == EraVM::StackAccess::Relative && !(Op + 2)->isImm())
+    return true;
+  return false;
+}
+
 } // namespace EraVM
 } // namespace llvm
 
@@ -304,6 +315,10 @@ bool EraVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
     // A terminator that isn't a branch can't easily be handled
     // by this analysis.
     if (!I->isBranch())
+      return true;
+
+    // We can't analyze if target address is on stack.
+    if (I->getOpcode() == EraVM::J_s)
       return true;
 
     if (I->getOpcode() == EraVM::J) {
@@ -581,4 +596,245 @@ EraVMCC::CondCodes EraVMInstrInfo::getCCCode(const MachineInstr &MI) const {
   if (CC.isCImm())
     return EraVMCC::CondCodes(CC.getCImm()->getZExtValue());
   return EraVMCC::COND_INVALID;
+}
+
+/// Return true if the first instruction in a function is stack advance.
+static bool hasStackAdvanceInstruction(MachineFunction &MF) {
+  auto EntryBB = MF.begin();
+  auto FirstMI = EntryBB->getFirstNonDebugInstr();
+  return FirstMI != EntryBB->end() && FirstMI->getOpcode() == EraVM::NOPSP;
+}
+
+/// Sets the offsets on instructions in MBB which use SP, so that they will be
+/// valid post-outlining.
+static void fixupStackOffsetPostOutline(MachineBasicBlock &MBB,
+                                        int64_t FixupOffset) {
+  auto AdjustDisp = [FixupOffset](MachineInstr::mop_iterator It) {
+    if (EraVM::classifyStackAccess(It) != EraVM::StackAccess::Relative)
+      return;
+
+    auto DispIt = It + 2;
+    assert(DispIt->isImm() && "Displacement is not immediate.");
+    DispIt->setImm(DispIt->getImm() + FixupOffset);
+  };
+
+  for (MachineInstr &MI : MBB) {
+    if (EraVM::hasSRInAddressingMode(MI))
+      AdjustDisp(EraVM::in0Iterator(MI));
+    if (EraVM::hasSROutAddressingMode(MI))
+      AdjustDisp(EraVM::out0Iterator(MI));
+
+    // Adjust sub instruction that was generated from ADDframe during
+    // elimination of frame indices.
+    if (MI.getOpcode() == EraVM::SUBxrr_s &&
+        MI.getOperand(1).getTargetFlags() == EraVMII::MO_STACK_SLOT_IDX) {
+      auto &StackSlotOP = MI.getOperand(1);
+      StackSlotOP.setImm(StackSlotOP.getImm() - FixupOffset);
+    }
+  }
+}
+
+/// Since we are placing return address from the outlined function onto the top
+/// of the stack, we need to reserve stack slot for it and to adjust
+/// instructions which use SP in this function.
+void EraVMInstrInfo::fixupPostOutline(MachineFunction &MF) const {
+  auto *SFI = MF.getInfo<EraVMMachineFunctionInfo>();
+  if (SFI->isStackAdjustedPostOutline())
+    return;
+
+  // Reserve stack slot for return address from outlined function.
+  if (hasStackAdvanceInstruction(MF)) {
+    auto NopIt = MF.begin()->getFirstNonDebugInstr();
+    auto &StackAdvanceOp = NopIt->getOperand(0);
+    StackAdvanceOp.setImm(StackAdvanceOp.getImm() + 1 /* StackSlotSize */);
+  } else {
+    auto EntryBB = MF.begin();
+    BuildMI(*EntryBB, EntryBB->begin(), DebugLoc(), get(EraVM::NOPSP))
+        .addImm(1 /* StackSlotSize */)
+        .addImm(EraVMCC::COND_NONE);
+  }
+
+  // Adjust instructions which use SP in this function.
+  for (MachineBasicBlock &MBB : MF)
+    fixupStackOffsetPostOutline(MBB, -1 /* FixupOffset */);
+
+  SFI->setStackAdjustedPostOutline();
+}
+
+/// Enum values indicating how an outlined call should be constructed.
+enum MachineOutlinerConstructionID { MachineOutlinerDefault };
+
+bool EraVMInstrInfo::shouldOutlineFromFunctionByDefault(
+    MachineFunction &MF) const {
+  return MF.getFunction().hasMinSize();
+}
+
+bool EraVMInstrInfo::isFunctionSafeToOutlineFrom(
+    MachineFunction &MF, bool OutlineFromLinkOnceODRs) const {
+  const Function &F = MF.getFunction();
+
+  // Can F be deduplicated by the linker? If it can, don't outline from it.
+  if (!OutlineFromLinkOnceODRs && F.hasLinkOnceODRLinkage())
+    return false;
+
+  // Don't outline from functions with section markings; the program could
+  // expect that all the code is in the named section.
+  if (F.hasSection())
+    return false;
+
+  // Don't outline from functions if there is non-adjustable stack relative
+  // addressing instruction.
+  for (MachineBasicBlock &MBB : MF) {
+    if (any_of(
+            instructionsWithoutDebug(MBB.begin(), MBB.end()),
+            [](MachineInstr &MI) {
+              if (EraVM::hasSRInAddressingMode(MI) &&
+                  EraVM::hasInvalidRelativeStackAccess(EraVM::in0Iterator(MI)))
+                return true;
+              if (EraVM::hasSROutAddressingMode(MI) &&
+                  EraVM::hasInvalidRelativeStackAccess(EraVM::out0Iterator(MI)))
+                return true;
+              return false;
+            }))
+      return false;
+  }
+
+  // It's safe to outline from MF.
+  return true;
+}
+
+bool EraVMInstrInfo::isMBBSafeToOutlineFrom(MachineBasicBlock &MBB,
+                                            unsigned &Flags) const {
+  return TargetInstrInfo::isMBBSafeToOutlineFrom(MBB, Flags);
+}
+
+outliner::InstrType
+EraVMInstrInfo::getOutliningTypeImpl(MachineBasicBlock::iterator &MBBI,
+                                     unsigned Flags) const {
+  MachineInstr &MI = *MBBI;
+
+  // Don't allow debug values to impact outlining type.
+  if (MI.isDebugInstr() || MI.isIndirectDebugValue())
+    return outliner::InstrType::Invisible;
+
+  // Don't allow instructions which won't be materialized to impact outlining
+  // analysis.
+  if (MI.isMetaInstruction())
+    return outliner::InstrType::Invisible;
+
+  // Don't outline context.gas_left instruction.
+  if (MI.getOpcode() == EraVM::CTXr_se &&
+      getImmOrCImm(MI.getOperand(1)) == EraVMCTX::GAS_LEFT)
+    return outliner::InstrType::Illegal;
+
+  // Positions generally can't safely be outlined.
+  if (MI.isPosition())
+    return outliner::InstrType::Illegal;
+
+  // Don't trust the user to write safe inline assembly.
+  if (MI.isInlineAsm())
+    return outliner::InstrType::Illegal;
+
+  // We can't outline branches and return statements.
+  if (MI.isTerminator() || MI.isReturn())
+    return outliner::InstrType::Illegal;
+
+  // Don't outline instructions that set or modify SP.
+  if (MI.getDesc().hasImplicitDefOfPhysReg(EraVM::SP))
+    return outliner::InstrType::Illegal;
+
+  // Make sure the operands don't reference something unsafe.
+  for (const auto &MO : MI.operands())
+    if (MO.isMBB() || MO.isBlockAddress() || MO.isCPI() || MO.isJTI())
+      return outliner::InstrType::Illegal;
+
+  return outliner::InstrType::Legal;
+}
+
+std::optional<outliner::OutlinedFunction>
+EraVMInstrInfo::getOutliningCandidateInfo(
+    std::vector<outliner::Candidate> &RepeatedSequenceLocs) const {
+  unsigned SequenceSize =
+      std::accumulate(RepeatedSequenceLocs[0].begin(),
+                      RepeatedSequenceLocs[0].end(), 0,
+                      [this](unsigned Sum, const MachineInstr &MI) {
+                        return Sum + getInstSizeInBytes(MI);
+                      });
+
+  SmallPtrSet<MachineFunction *, 4> NoStackAdvance;
+  unsigned SaveRetSize = get(EraVM::ADDcrs_s).getSize();
+  unsigned JumpSize = get(EraVM::JCALL).getSize();
+  unsigned CallOverhead = SaveRetSize + JumpSize;
+  for (auto &C : RepeatedSequenceLocs) {
+    unsigned Overhead = CallOverhead;
+    MachineFunction *MF = C.getMF();
+
+    // If function doesn't have stack advance instruction, add overhead only
+    // once for each function.
+    if (!hasStackAdvanceInstruction(*MF) && NoStackAdvance.insert(MF).second)
+      Overhead += get(EraVM::NOPSP).getSize();
+
+    C.setCallInfo(MachineOutlinerDefault, Overhead);
+  }
+
+  unsigned JumpSPSize = get(EraVM::J_s).getSize();
+  unsigned FrameOverhead = JumpSPSize;
+  return outliner::OutlinedFunction(RepeatedSequenceLocs, SequenceSize,
+                                    FrameOverhead, MachineOutlinerDefault);
+}
+
+void EraVMInstrInfo::buildOutlinedFrame(
+    MachineBasicBlock &MBB, MachineFunction &MF,
+    const outliner::OutlinedFunction &OF) const {
+  // Perform stack fixup only if we didn't do it in the original function from
+  // which we are outlining. Machine outliner algorithm is outlining from
+  // the first candidate, so take original function from it.
+  MachineFunction *OriginalMF = OF.Candidates.front().getMF();
+  auto *SFI = OriginalMF->getInfo<EraVMMachineFunctionInfo>();
+  if (!SFI->isStackAdjustedPostOutline())
+    fixupStackOffsetPostOutline(MBB, -1 /* FixupOffset */);
+
+  DebugLoc DL;
+  if (!MBB.empty())
+    DL = MBB.back().getDebugLoc();
+
+  // Add jump instruction to the end of the outlined frame.
+  MBB.insert(MBB.end(), BuildMI(MF, DL, get(EraVM::J_s))
+                            .addReg(EraVM::SP)
+                            .addImm(0 /* AMBase2 */)
+                            .addImm(-1 /* StackOffset */));
+}
+
+MachineBasicBlock::iterator EraVMInstrInfo::insertOutlinedCall(
+    Module &M, MachineBasicBlock &MBB, MachineBasicBlock::iterator &It,
+    MachineFunction &OutlinedMF, outliner::Candidate &C) const {
+  MachineFunction &MF = *C.getMF();
+  fixupPostOutline(MF);
+
+  DebugLoc DL;
+  if (It != MBB.end())
+    DL = It->getDebugLoc();
+
+  // Add jump instruction to the outlined function at the given location.
+  It = MBB.insert(It,
+                  BuildMI(MF, DL, get(EraVM::JCALL))
+                      .addGlobalAddress(M.getNamedValue(OutlinedMF.getName())));
+
+  // Add symbol just after the jump that will be used as a return address
+  // from the outlined function.
+  MCSymbol *RetSym =
+      MF.getContext().createTempSymbol("OUTLINED_FUNCTION_RET", true);
+  It->setPostInstrSymbol(MF, RetSym);
+
+  // Add instruction to store return address onto the top of the stack.
+  BuildMI(MBB, It, DL, get(EraVM::ADDcrs_s))
+      .addSym(RetSym)
+      .addImm(0 /* RetSymOffset */)
+      .addReg(EraVM::R0)
+      .addReg(EraVM::SP)
+      .addImm(0 /* AMBase2 */)
+      .addImm(-1 /* StackOffset */)
+      .addImm(EraVMCC::COND_NONE);
+
+  return It;
 }

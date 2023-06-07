@@ -86,6 +86,9 @@ bool EraVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
                  .addImm(EraVMCC::COND_NONE)
                  .getInstr();
 
+    // Set that immediate represents stack slot index.
+    SPInst->getOperand(1).setTargetFlags(EraVMII::MO_STACK_SLOT_IDX);
+
     BuildMI(MBB, II, DL, TII.get(EraVM::MULirrr_s))
         .addDef(MI.getOperand(0).getReg())
         .addDef(EraVM::R0)

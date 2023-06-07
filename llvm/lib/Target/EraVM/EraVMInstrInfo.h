@@ -14,8 +14,10 @@
 #define LLVM_LIB_TARGET_ERAVM_ERAVMINSTRINFO_H
 
 #include "EraVM.h"
+
 #include "EraVMRegisterInfo.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
+#include <optional>
 
 #define GET_INSTRINFO_HEADER
 #include "EraVMGenInstrInfo.inc"
@@ -170,6 +172,19 @@ inline void copyOperands(MachineInstrBuilder &Inst,
     Inst.add(MO);
 }
 
+enum class StackAccess { Invalid, Relative, Absolute };
+inline StackAccess classifyStackAccess(MachineInstr::const_mop_iterator Op) {
+  constexpr int NumStackOp = 3;
+  if (std::distance(Op, Op->getParent()->operands_end()) < NumStackOp)
+    return StackAccess::Invalid;
+
+  if (Op->isReg() && Op->getReg() == EraVM::SP)
+    return StackAccess::Relative;
+  return StackAccess::Absolute;
+}
+
+bool hasInvalidRelativeStackAccess(MachineInstr::const_mop_iterator Op);
+
 } // namespace EraVM
 
 class EraVMInstrInfo : public EraVMGenInstrInfo {
@@ -273,6 +288,50 @@ public:
 
   bool isPredicatedInstr(const MachineInstr &MI) const;
   EraVMCC::CondCodes getCCCode(const MachineInstr &MI) const;
+
+  bool shouldOutlineFromFunctionByDefault(MachineFunction &MF) const override;
+
+  void fixupPostOutline(MachineFunction &MF) const;
+
+  /// Return true if the function can safely be outlined from.
+  bool isFunctionSafeToOutlineFrom(MachineFunction &MF,
+                                   bool OutlineFromLinkOnceODRs) const override;
+
+  /// Return true if MBB is safe to outline from, and return any target-specific
+  /// information in Flags.
+  bool isMBBSafeToOutlineFrom(MachineBasicBlock &MBB,
+                              unsigned &Flags) const override;
+
+  /// Return if/how a given MachineInstr should be outlined.
+  outliner::InstrType getOutliningTypeImpl(MachineBasicBlock::iterator &MBBI,
+                                           unsigned Flags) const override;
+
+  /// Calculate target-specific information for a set of outlining candidates.
+  std::optional<outliner::OutlinedFunction> getOutliningCandidateInfo(
+      std::vector<outliner::Candidate> &RepeatedSequenceLocs) const override;
+
+  /// Insert a custom frame for outlined functions.
+  /// Since for outlined functions we don't need to follow standard calling
+  /// convention ABI, we are using jump that loads return address from TOS that
+  /// was added just before the call, to return from it. Usually for this, we
+  /// would use ret instruction, but we would have some limitations w.r.t.
+  /// propagating flags. Also, in some cases, we need to adjust stack accesses
+  /// in the outlined function, as we are placing return address onto TOS.
+  void buildOutlinedFrame(MachineBasicBlock &MBB, MachineFunction &MF,
+                          const outliner::OutlinedFunction &OF) const override;
+
+  /// Insert a call to an outlined function into a given basic block.
+  /// Since for outlined functions we don't need to follow standard calling
+  /// convention ABI, we are using 2 instructions to generate call to it: first
+  /// to save return address onto TOS and second to jump to outlined function.
+  /// Usually for this, we would use near_call instruction, but we would have
+  /// some limitations w.r.t. propagating flags. Also, we need to adjust stack
+  /// accesses in function from which we are calling outlined function, as we
+  /// are placing return address onto TOS.
+  MachineBasicBlock::iterator
+  insertOutlinedCall(Module &M, MachineBasicBlock &MBB,
+                     MachineBasicBlock::iterator &It, MachineFunction &MF,
+                     outliner::Candidate &C) const override;
 };
 
 } // namespace llvm

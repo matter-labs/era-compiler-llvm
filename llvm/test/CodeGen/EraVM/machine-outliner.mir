@@ -1,0 +1,244 @@
+# RUN: llc -x mir -run-pass=machine-outliner -outliner-leaf-descendants=false -verify-machineinstrs < %s | FileCheck %s
+
+--- |
+
+  target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
+  target triple = "eravm"
+
+  define void @foo(i256 %a, i256 %b) { ret void }
+  define void @bar(i256 %a, i256 %b) { ret void }
+  define void @baz(i256 %a, i256 %b) { ret void }
+  define void @zed(i256 %a, i256 %b) { ret void }
+
+...
+---
+# This test ensures that we
+# - Create outlined functions
+# - Outline candidates where Flags register is propagated across a sequence
+#
+# CHECK-LABEL: foo
+# CHECK-LABEL: bb.0:
+# CHECK: NOPSP 1, 0, implicit-def $sp, implicit $sp
+# CHECK-NEXT: ADDcrs_s <mcsymbol >, 0, $r0, $sp, 0, -1, 0
+# CHECK-NEXT: JCALL @OUTLINED_FUNCTION_2, implicit-def $r1, implicit-def $flags, implicit $r2, implicit $r1, post-instr-symbol <mcsymbol >
+# CHECK-NEXT: $r1 = ADDirr_s i256 1, $r0, 2, implicit $flags
+
+# CHECK-LABEL: bb.1:
+# CHECK: ADDcrs_s <mcsymbol >, 0, $r0, $sp, 0, -1, 0
+# CHECK-NEXT: JCALL @OUTLINED_FUNCTION_2, implicit-def $r1, implicit-def $flags, implicit $r2, implicit $r1, post-instr-symbol <mcsymbol >
+# CHECK-NEXT: $r1 = ORrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = ADDirr_s i256 1, $r0, 2, implicit $flags
+# CHECK-NEXT: RET
+name:            foo
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+    $r1 = ANDrrr_v $r1, $r2, 0, implicit-def $flags
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    $r1 = ADDirr_s i256 1, $r0, 2, implicit $flags
+  bb.1:
+    liveins: $r1, $r2
+    $r1 = ANDrrr_v $r1, $r2, 0, implicit-def $flags
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    $r1 = ADDirr_s i256 1, $r0, 2, implicit $flags
+    RET
+
+...
+---
+# This test ensures that we
+# - Create outlined functions
+# - We don't outline context.gas_left instruction
+#
+# CHECK-LABEL: bar
+# CHECK-LABEL: bb.0:
+# CHECK: NOPSP 1, 0, implicit-def $sp, implicit $sp
+# CHECK-NEXT: $r3 = CTXr_se i256 6, i256 0
+# CHECK-NEXT: ADDcrs_s <mcsymbol >, 0, $r0, $sp, 0, -1, 0
+# CHECK-NEXT: JCALL @OUTLINED_FUNCTION_1, implicit-def $r1, implicit $r2, implicit $r1, post-instr-symbol <mcsymbol >
+
+# CHECK-LABEL: bb.1:
+# CHECK: $r3 = CTXr_se i256 6, i256 0
+# CHECK-NEXT: ADDcrs_s <mcsymbol >, 0, $r0, $sp, 0, -1, 0
+# CHECK-NEXT: JCALL @OUTLINED_FUNCTION_1, implicit-def $r1, implicit $r2, implicit $r1, post-instr-symbol <mcsymbol >
+# CHECK-NEXT: RET
+name:            bar
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+    $r3 = CTXr_se i256 6, i256 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    $r1 = ORrrr_s $r1, $r2, 0
+  bb.1:
+    liveins: $r1, $r2
+    $r3 = CTXr_se i256 6, i256 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    RET
+
+...
+---
+# This test ensures that we
+# - Create outlined functions
+# - Properly adjust stack offsets
+#
+# CHECK-LABEL: baz
+# CHECK-LABEL: bb.0:
+# CHECK: NOPSP 2, 0, implicit-def $sp, implicit $sp
+# CHECK-NEXT: ADDsrs_s $sp, 0, -2, $r1, $sp, 0, -2, 0
+# CHECK-NEXT: SHRxrs_s i256 224, $r2, $sp, i256 0, -2, 0
+# CHECK-NEXT: $r1 = SUBzrr_s $sp, i256 0, -2, $r2, 0
+# CHECK-NEXT: ADDcrs_s <mcsymbol >, 0, $r0, $sp, 0, -1, 0
+# CHECK-NEXT: JCALL @OUTLINED_FUNCTION_0, implicit-def $r2, implicit $sp, implicit $r0, implicit $r1, post-instr-symbol <mcsymbol >
+
+# CHECK-LABEL: bb.1:
+# CHECK: ADDcrs_s <mcsymbol >, 0, $r0, $sp, 0, -1, 0
+# CHECK-NEXT: JCALL @OUTLINED_FUNCTION_0, implicit-def $r2, implicit $sp, implicit $r0, implicit $r1, post-instr-symbol <mcsymbol >
+# CHECK-NEXT: RET
+name:            baz
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+    NOPSP 1, 0, implicit-def $sp, implicit $sp
+    ADDsrs_s $sp, 0, -1, $r1, $sp, 0, -1, 0
+    SHRxrs_s i256 224, $r2, $sp, i256 0, -1, 0
+    $r1 = SUBzrr_s $sp, i256 0, -1, $r2, 0
+    ADDrrs_s $r1, $r0, $sp, 0, -1, 0
+    ADDrrs_s $r1, $r0, $sp, 0, -1, 0
+    ADDrrs_s $r1, $r0, $sp, 0, -1, 0
+    ADDrrs_s $r1, $r0, $sp, 0, -1, 0
+    ADDsrs_s $sp, 0, -1, $r1, $sp, 0, -1, 0
+    $r2 = ADDsrr_s $sp, 0, -1, $r0, 0
+    $r2 = ADDsrr_s $sp, 0, -1, $r0, 0
+    $r2 = ADDsrr_s $sp, 0, -1, $r0, 0
+    $r2 = ADDsrr_s $sp, 0, -1, $r0, 0
+  bb.1:
+    liveins: $r1, $r2
+    ADDrrs_s $r1, $r0, $sp, 0, -1, 0
+    ADDrrs_s $r1, $r0, $sp, 0, -1, 0
+    ADDrrs_s $r1, $r0, $sp, 0, -1, 0
+    ADDrrs_s $r1, $r0, $sp, 0, -1, 0
+    ADDsrs_s $sp, 0, -1, $r1, $sp, 0, -1, 0
+    $r2 = ADDsrr_s $sp, 0, -1, $r0, 0
+    $r2 = ADDsrr_s $sp, 0, -1, $r0, 0
+    $r2 = ADDsrr_s $sp, 0, -1, $r0, 0
+    $r2 = ADDsrr_s $sp, 0, -1, $r0, 0
+    RET
+
+...
+---
+# This test ensures that we
+# - Don't outline, because it is not beneficial as we need to add stack advance instruction
+#
+# Cost model is calculated like this:
+#   Outlined cost:     2 (call overhead) * 3 (candidates) +
+#                      4 (sequence size) + 1 (jump to return) +
+#                      1 (stack advance instruction) = 12 instructions
+#
+#   Non-Outlined cost: 3 (candidates) * 4 (sequence size) = 12 instructions
+#
+# CHECK-LABEL: zed
+# CHECK-LABEL: bb.0:
+# CHECK: $r1 = XORrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = XORrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = XORrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = XORrrr_s $r1, $r2, 0
+
+# CHECK-LABEL: bb.1:
+# CHECK: $r1 = XORrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = XORrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = XORrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = XORrrr_s $r1, $r2, 0
+
+# CHECK-LABEL: bb.2:
+# CHECK: $r1 = XORrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = XORrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = XORrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = XORrrr_s $r1, $r2, 0
+# CHECK-NEXT: RET
+name:            zed
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+    $r1 = XORrrr_s $r1, $r2, 0
+    $r1 = XORrrr_s $r1, $r2, 0
+    $r1 = XORrrr_s $r1, $r2, 0
+    $r1 = XORrrr_s $r1, $r2, 0
+  bb.1:
+    liveins: $r1, $r2
+    $r1 = XORrrr_s $r1, $r2, 0
+    $r1 = XORrrr_s $r1, $r2, 0
+    $r1 = XORrrr_s $r1, $r2, 0
+    $r1 = XORrrr_s $r1, $r2, 0
+  bb.2:
+    liveins: $r1, $r2
+    $r1 = XORrrr_s $r1, $r2, 0
+    $r1 = XORrrr_s $r1, $r2, 0
+    $r1 = XORrrr_s $r1, $r2, 0
+    $r1 = XORrrr_s $r1, $r2, 0
+    RET
+
+# CHECK-LABEL: name: OUTLINED_FUNCTION_0
+# CHECK-LABEL: bb.0:
+# CHECK: ADDrrs_s $r1, $r0, $sp, 0, -2, 0
+# CHECK-NEXT: ADDrrs_s $r1, $r0, $sp, 0, -2, 0
+# CHECK-NEXT: ADDrrs_s $r1, $r0, $sp, 0, -2, 0
+# CHECK-NEXT: ADDrrs_s $r1, $r0, $sp, 0, -2, 0
+# CHECK-NEXT: ADDsrs_s $sp, 0, -2, $r1, $sp, 0, -2, 0
+# CHECK-NEXT: $r2 = ADDsrr_s $sp, 0, -2, $r0, 0
+# CHECK-NEXT: $r2 = ADDsrr_s $sp, 0, -2, $r0, 0
+# CHECK-NEXT: $r2 = ADDsrr_s $sp, 0, -2, $r0, 0
+# CHECK-NEXT: $r2 = ADDsrr_s $sp, 0, -2, $r0, 0
+# CHECK-NEXT: J_s $sp, 0, -1
+
+# CHECK-LABEL: name: OUTLINED_FUNCTION_1
+# CHECK-LABEL: bb.0:
+# CHECK: $r1 = ORrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = ORrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = ORrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = ORrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = ORrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = ORrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = ORrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = ORrrr_s $r1, $r2, 0
+# CHECK-NEXT: J_s $sp, 0, -1
+
+# CHECK-LABEL: name: OUTLINED_FUNCTION_2
+# CHECK-LABEL: bb.0:
+# CHECK: $r1 = ANDrrr_v $r1, $r2, 0, implicit-def $flags
+# CHECK-NEXT: $r1 = ANDrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = ANDrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = ANDrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = ANDrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = ANDrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = ANDrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = ORrrr_s $r1, $r2, 0
+# CHECK-NEXT: J_s $sp, 0, -1

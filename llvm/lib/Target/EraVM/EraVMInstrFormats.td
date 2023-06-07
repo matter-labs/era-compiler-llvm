@@ -245,8 +245,8 @@ class ICondJump<bits<8> opcode, dag ins, string asmstr, list<dag> pattern>
   let Inst{16-31} = dest;
 }
 
-class IJump<bits<8> opcode, dag ins, string asmstr, list<dag> pattern>
-  : IConditional <opcode, SrcNone, DstNone, (outs), ins, asmstr, pattern> {
+class IJump<bits<8> opcode, SourceMode as, dag ins, string asmstr, list<dag> pattern>
+  : IConditional <opcode, as, DstNone, (outs), ins, asmstr, pattern> {
   bits<16> dest;
   let Inst{16-31} = dest;
   let cc = 0;
