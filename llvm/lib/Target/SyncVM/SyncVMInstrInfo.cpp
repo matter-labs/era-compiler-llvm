@@ -23,6 +23,103 @@ using namespace llvm;
 #define GET_INSTRMAP_INFO
 #include "SyncVMGenInstrInfo.inc"
 
+namespace llvm {
+namespace SyncVM {
+int getWithRRInAddrMode(uint16_t Opcode) {
+  Opcode = getWithInsNotSwapped(Opcode);
+  if (int Result = mapRRInputTo(Opcode, OperandAM_0); Result != -1)
+    return Result;
+  if (int Result = mapIRInputTo(Opcode, OperandAM_0); Result != -1)
+    return Result;
+  if (int Result = mapCRInputTo(Opcode, OperandAM_0); Result != -1)
+    return Result;
+  return mapSRInputTo(Opcode, OperandAM_0);
+}
+
+int getWithIRInAddrMode(uint16_t Opcode) {
+  Opcode = getWithInsNotSwapped(Opcode);
+  if (int Result = mapRRInputTo(Opcode, OperandAM_1); Result != -1)
+    return Result;
+  if (int Result = mapIRInputTo(Opcode, OperandAM_1); Result != -1)
+    return Result;
+  if (int Result = mapCRInputTo(Opcode, OperandAM_1); Result != -1)
+    return Result;
+  return mapSRInputTo(Opcode, OperandAM_1);
+}
+
+int getWithCRInAddrMode(uint16_t Opcode) {
+  Opcode = getWithInsNotSwapped(Opcode);
+  if (int Result = mapRRInputTo(Opcode, OperandAM_2); Result != -1)
+    return Result;
+  if (int Result = mapIRInputTo(Opcode, OperandAM_2); Result != -1)
+    return Result;
+  if (int Result = mapCRInputTo(Opcode, OperandAM_2); Result != -1)
+    return Result;
+  return mapSRInputTo(Opcode, OperandAM_2);
+}
+
+int getWithSRInAddrMode(uint16_t Opcode) {
+  Opcode = getWithInsNotSwapped(Opcode);
+  if (int Result = mapRRInputTo(Opcode, OperandAM_3); Result != -1)
+    return Result;
+  if (int Result = mapIRInputTo(Opcode, OperandAM_3); Result != -1)
+    return Result;
+  if (int Result = mapCRInputTo(Opcode, OperandAM_3); Result != -1)
+    return Result;
+  return mapSRInputTo(Opcode, OperandAM_3);
+}
+
+int getWithRROutAddrMode(uint16_t Opcode) {
+  if (int Result = withRegisterResult(Opcode); Result != -1)
+    return Result;
+  return Opcode;
+}
+
+int getWithSROutAddrMode(uint16_t Opcode) {
+  if (int Result = withStackResult(Opcode); Result != -1)
+    return Result;
+  return Opcode;
+}
+
+int getWithInsNotSwapped(uint16_t Opcode) {
+  if (int Result = withInsNotSwapped(Opcode); Result != -1)
+    return Result;
+  return Opcode;
+}
+
+int getWithInsSwapped(uint16_t Opcode) {
+  if (int Result = withInsSwapped(Opcode); Result != -1)
+    return Result;
+  return Opcode;
+}
+
+bool hasRRInAddressingMode(const MachineInstr &MI) {
+  return (unsigned)mapRRInputTo(MI.getOpcode(), OperandAM_0) == MI.getOpcode();
+}
+
+bool hasIRInAddressingMode(const MachineInstr &MI) {
+  return (unsigned)mapIRInputTo(MI.getOpcode(), OperandAM_1) == MI.getOpcode();
+}
+
+bool hasCRInAddressingMode(const MachineInstr &MI) {
+  return (unsigned)mapCRInputTo(MI.getOpcode(), OperandAM_2) == MI.getOpcode();
+}
+
+bool hasSRInAddressingMode(const MachineInstr &MI) {
+  return (unsigned)mapSRInputTo(MI.getOpcode(), OperandAM_3) == MI.getOpcode();
+}
+
+bool hasRROutAddressingMode(const MachineInstr &MI) {
+  return withStackResult(MI.getOpcode()) != -1;
+}
+
+bool hasSROutAddressingMode(const MachineInstr &MI) {
+  return withRegisterResult(MI.getOpcode()) != -1;
+}
+
+} // namespace SyncVM
+} // namespace llvm
+
 // Pin the vtable to this file.
 void SyncVMInstrInfo::anchor() {}
 
@@ -362,8 +459,8 @@ bool SyncVMInstrInfo::isPtr(const MachineInstr &MI) const {
 }
 
 bool SyncVMInstrInfo::isNull(const MachineInstr &MI) const {
-  return isAdd(MI) && hasRROperandAddressingMode(MI) && MI.getNumDefs() == 1u &&
-         MI.getOperand(1).getReg() == SyncVM::R0 &&
+  return isAdd(MI) && SyncVM::hasRRInAddressingMode(MI) &&
+         MI.getNumDefs() == 1u && MI.getOperand(1).getReg() == SyncVM::R0 &&
          MI.getOperand(2).getReg() == SyncVM::R0;
 }
 
@@ -383,30 +480,6 @@ SyncVMInstrInfo::genericInstructionFor(const MachineInstr &MI) const {
   if (isDiv(MI))
     return DIV;
   return Unsupported;
-}
-
-bool SyncVMInstrInfo::hasRIOperandAddressingMode(const MachineInstr &MI) const {
-  StringRef Mnemonic = getName(MI.getOpcode());
-  return find(Mnemonic, 'i') != Mnemonic.end();
-}
-
-bool SyncVMInstrInfo::hasRXOperandAddressingMode(const MachineInstr &MI) const {
-  StringRef Mnemonic = getName(MI.getOpcode());
-  return find(Mnemonic, 'x') != Mnemonic.end();
-}
-
-bool SyncVMInstrInfo::hasRSOperandAddressingMode(const MachineInstr &MI) const {
-  StringRef Mnemonic = getName(MI.getOpcode());
-  auto LCIt = find_if<StringRef, int(int)>(std::move(Mnemonic), std::islower);
-
-  return LCIt != Mnemonic.end() && (*LCIt == 's' || *LCIt == 'y');
-}
-
-bool SyncVMInstrInfo::hasRROperandAddressingMode(const MachineInstr &MI) const {
-  StringRef Mnemonic = getName(MI.getOpcode());
-  auto LCIt = find_if<StringRef, int(int)>(std::move(Mnemonic), std::islower);
-
-  return LCIt != Mnemonic.end() && *LCIt == 'r' && *std::next(LCIt) == 'r';
 }
 
 /// Mark a copy to a fat pointer register or from a fat pointer register with

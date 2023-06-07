@@ -5,6 +5,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "SyncVMISelLowering.h"
+
+#include <unordered_map>
 #include "SyncVM.h"
 #include "SyncVMMachineFunctionInfo.h"
 #include "SyncVMSubtarget.h"
