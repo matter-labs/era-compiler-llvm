@@ -159,9 +159,7 @@ define void @ptrshrinkrcs(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK-LABEL: ptrshrinkgrs
 define void @ptrshrinkgrs(i256 %rs2) nounwind {
   %result = alloca i8 addrspace(3)*
-; TODO: should be ptr.shrink stack[@ptr], r1, stack-[1]
-; CHECK: ptr.add stack[@ptr], r0, r2
-; CHECK: ptr.shrink      r2, r1, stack-[1]
+; CHECK: ptr.shrink stack[@ptr], r1, stack-[1]
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** @ptr
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.shrink(i8 addrspace(3)* %ptr, i256 %rs2)
   store i8 addrspace(3)* %res1, i8 addrspace(3)** %result
@@ -171,9 +169,10 @@ define void @ptrshrinkgrs(i256 %rs2) nounwind {
 ; CHECK-LABEL: ptrshrinkgis
 define void @ptrshrinkgis(i8 addrspace(3)* %rs1) nounwind {
   %result = alloca i8 addrspace(3)*
-; CHECK: ptr.shrink.s 42, r1, stack-[1]
+  ; CHECK: add 42, r0, r1
+  ; CHECK: ptr.shrink stack[@ptr], r1, stack-[1]
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** @ptr
-  %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.shrink(i8 addrspace(3)* %rs1, i256 42)
+  %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.shrink(i8 addrspace(3)* %ptr, i256 42)
   store i8 addrspace(3)* %res1, i8 addrspace(3)** %result
   ret void
 }
@@ -181,8 +180,8 @@ define void @ptrshrinkgis(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK-LABEL: ptrshrinkgss
 define void @ptrshrinkgss(i8 addrspace(3)* %rs1) nounwind {
   %result = alloca i8 addrspace(3)*
-; CHECK: ptr.add stack[@ptr], r0, r1
-; CHECK: ptr.shrink.s stack-[1], r1, stack-[2]
+; CHECK: add stack-[1], r0, r1
+; CHECK: ptr.shrink stack[@ptr], r1, stack-[2]
   %valptr = alloca i256
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** @ptr
   %val = load i256, i256* %valptr
@@ -194,8 +193,8 @@ define void @ptrshrinkgss(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK-LABEL: ptrshrinkgcs
 define void @ptrshrinkgcs(i8 addrspace(3)* %rs1) nounwind {
   %result = alloca i8 addrspace(3)*
-; CHECK: ptr.add stack[@ptr], r0, r1
-; CHECK: ptr.shrink.s @val[0], r1, stack-[1]
+  ; CHECK: add @val[0], r0, r1
+  ; CHECK: ptr.shrink stack[@ptr], r1, stack-[1]
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** @ptr
   %val = load i256, i256 addrspace(4)* @val
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.shrink(i8 addrspace(3)* %ptr, i256 %val)
@@ -206,9 +205,7 @@ define void @ptrshrinkgcs(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK-LABEL: ptrshrinksrs
 define void @ptrshrinksrs(i256 %rs2) nounwind {
   %result = alloca i8 addrspace(3)*
-; TODO: should be ptr.shrink stack-[1], r0, stack-[2]
-; CHECK: ptr.add stack-[1], r0, r2
-; CHECK: ptr.shrink r2, r1, stack-[2]
+; CHECK: ptr.shrink stack-[1], r1, stack-[2]
   %ptrptr = alloca i8 addrspace(3)*
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** %ptrptr
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.shrink(i8 addrspace(3)* %ptr, i256 %rs2)
@@ -219,8 +216,8 @@ define void @ptrshrinksrs(i256 %rs2) nounwind {
 ; CHECK-LABEL: ptrshrinksis
 define void @ptrshrinksis(i8 addrspace(3)* %rs1) nounwind {
   %result = alloca i8 addrspace(3)*
-; CHECK: ptr.add stack-[1], r0, r1
-; CHECK: ptr.shrink.s 42, r1, stack-[2]
+  ; CHECK: add 42, r0, r1
+  ; CHECK: ptr.shrink stack-[1], r1, stack-[2]
   %ptrptr = alloca i8 addrspace(3)*
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** %ptrptr
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.shrink(i8 addrspace(3)* %ptr, i256 42)
@@ -231,8 +228,8 @@ define void @ptrshrinksis(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK-LABEL: ptrshrinksss
 define void @ptrshrinksss(i8 addrspace(3)* %rs1) nounwind {
   %result = alloca i8 addrspace(3)*
-; CHECK: ptr.add stack-[1], r0, r1
-; CHECK: ptr.shrink.s stack-[2], r1, stack-[3]
+  ; CHECK: add stack-[2], r0, r1
+  ; CHECK: ptr.shrink stack-[1], r1, stack-[3]
   %valptr = alloca i256
   %ptrptr = alloca i8 addrspace(3)*
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** %ptrptr
@@ -245,8 +242,8 @@ define void @ptrshrinksss(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK-LABEL: ptrshrinkscs
 define void @ptrshrinkscs(i8 addrspace(3)* %rs1) nounwind {
   %result = alloca i8 addrspace(3)*
-; CHECK: ptr.add stack-[1], r0, r1
-; CHECK: ptr.shrink.s @val[0], r1, stack-[2]
+  ; CHECK: add @val[0], r0, r1
+  ; CHECK: ptr.shrink stack-[1], r1, stack-[2]
   %ptrptr = alloca i8 addrspace(3)*
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** %ptrptr
   %val = load i256, i256 addrspace(4)* @val
@@ -257,9 +254,7 @@ define void @ptrshrinkscs(i8 addrspace(3)* %rs1) nounwind {
 
 ; CHECK-LABEL: ptrshrinkgrg
 define void @ptrshrinkgrg(i256 %rs2) nounwind {
-; TODO: should be ptr.shrink stack[@ptr], r1, stack[@ptr]
-; CHECK: ptr.add stack[@ptr], r0, r2
-; CHECK: ptr.shrink      r2, r1, stack[@ptr]
+; CHECK: ptr.shrink stack[@ptr], r1, stack[@ptr]
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** @ptr
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.shrink(i8 addrspace(3)* %ptr, i256 %rs2)
   store i8 addrspace(3)* %res1, i8 addrspace(3)** @ptr
@@ -268,8 +263,8 @@ define void @ptrshrinkgrg(i256 %rs2) nounwind {
 
 ; CHECK-LABEL: ptrshrinkgig
 define void @ptrshrinkgig(i8 addrspace(3)* %rs1) nounwind {
-; CHECK: ptr.add stack[@ptr], r0, r1
-; CHECK: ptr.shrink.s 42, r1, stack[@ptr]
+  ; CHECK: add 42, r0, r1
+  ; CHECK: ptr.shrink stack[@ptr], r1, stack[@ptr]
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** @ptr
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.shrink(i8 addrspace(3)* %ptr, i256 42)
   store i8 addrspace(3)* %res1, i8 addrspace(3)** @ptr
@@ -278,8 +273,8 @@ define void @ptrshrinkgig(i8 addrspace(3)* %rs1) nounwind {
 
 ; CHECK-LABEL: ptrshrinkgsg
 define void @ptrshrinkgsg(i8 addrspace(3)* %rs1) nounwind {
-; CHECK: ptr.add stack[@ptr], r0, r1
-; CHECK: ptr.shrink.s stack-[1], r1, stack[@ptr]
+  ; CHECK: add stack-[1], r0, r1
+  ; CHECK: ptr.shrink stack[@ptr], r1, stack[@ptr]
   %valptr = alloca i256
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** @ptr
   %val = load i256, i256* %valptr
@@ -290,8 +285,8 @@ define void @ptrshrinkgsg(i8 addrspace(3)* %rs1) nounwind {
 
 ; CHECK-LABEL: ptrshrinkgcg
 define void @ptrshrinkgcg(i8 addrspace(3)* %rs1) nounwind {
-; CHECK: ptr.add stack[@ptr], r0, r1
-; CHECK: ptr.shrink.s @val[0], r1, stack[@ptr]
+; CHECK: add @val[0], r0, r1
+; CHECK: ptr.shrink stack[@ptr], r1, stack[@ptr]
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** @ptr
   %val = load i256, i256 addrspace(4)* @val
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.shrink(i8 addrspace(3)* %ptr, i256 %val)
@@ -301,9 +296,7 @@ define void @ptrshrinkgcg(i8 addrspace(3)* %rs1) nounwind {
 
 ; CHECK-LABEL: ptrshrinksrg
 define void @ptrshrinksrg(i256 %rs2) nounwind {
-; TODO: should be ptr.shrink stack-[1], r0, stack[@ptr]
-; CHECK: ptr.add stack-[1], r0, r2
-; CHECK: ptr.shrink      r2, r1, stack[@ptr]
+; CHECK: ptr.shrink stack-[1], r1, stack[@ptr]
   %ptrptr = alloca i8 addrspace(3)*
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** %ptrptr
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.shrink(i8 addrspace(3)* %ptr, i256 %rs2)
@@ -313,8 +306,8 @@ define void @ptrshrinksrg(i256 %rs2) nounwind {
 
 ; CHECK-LABEL: ptrshrinksig
 define void @ptrshrinksig(i8 addrspace(3)* %rs1) nounwind {
-; CHECK: ptr.add stack-[1], r0, r1
-; CHECK: ptr.shrink.s 42, r1, stack[@ptr]
+  ; CHECK: add 42, r0, r1
+  ; CHECK: ptr.shrink stack-[1], r1, stack[@ptr]
   %ptrptr = alloca i8 addrspace(3)*
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** %ptrptr
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.shrink(i8 addrspace(3)* %ptr, i256 42)
@@ -324,8 +317,8 @@ define void @ptrshrinksig(i8 addrspace(3)* %rs1) nounwind {
 
 ; CHECK-LABEL: ptrshrinkssg
 define void @ptrshrinkssg(i8 addrspace(3)* %rs1) nounwind {
-; CHECK: ptr.add stack-[1], r0, r1
-; CHECK: ptr.shrink.s stack-[2], r1, stack[@ptr]
+  ; CHECK: add stack-[2], r0, r1
+  ; CHECK: ptr.shrink stack-[1], r1, stack[@ptr]
   %valptr = alloca i256
   %ptrptr = alloca i8 addrspace(3)*
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** %ptrptr
@@ -337,8 +330,8 @@ define void @ptrshrinkssg(i8 addrspace(3)* %rs1) nounwind {
 
 ; CHECK-LABEL: ptrshrinkscg
 define void @ptrshrinkscg(i8 addrspace(3)* %rs1) nounwind {
-; CHECK: ptr.add stack-[1], r0, r1
-; CHECK: ptr.shrink.s @val[0], r1, stack[@ptr]
+  ; CHECK: add @val[0], r0, r1
+  ; CHECK: ptr.shrink stack-[1], r1, stack[@ptr]
   %ptrptr = alloca i8 addrspace(3)*
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** %ptrptr
   %val = load i256, i256 addrspace(4)* @val
