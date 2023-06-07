@@ -11,7 +11,7 @@ include "EVMInstrFormats.td"
 //===----------------------------------------------------------------------===//
 
 def SDT_EVMArgument   : SDTypeProfile<1, 1, [SDTCisVT<1, i256>]>;
-def SDT_EVMReturn     : SDTypeProfile<0, -1, []>;
+def SDT_EVMRet        : SDTypeProfile<0, -1, []>;
 def SDT_EVMSignextend : SDTypeProfile<1, 2, [SDTCisSameAs<0, 1>,
                                              SDTCisVT<1, i256>]>;
 
@@ -22,10 +22,10 @@ def SDT_EVMSignextend : SDTypeProfile<1, 2, [SDTCisSameAs<0, 1>,
 
 def EVMargument : SDNode<"EVMISD::ARGUMENT", SDT_EVMArgument>;
 
-def EVMreturn   : SDNode<"EVMISD::RETURN", SDT_EVMReturn,
-                         [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+def EVMret : SDNode<"EVMISD::RET", SDT_EVMRet,
+                    [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
 
-def EVMSignextend: SDNode<"EVMISD::SIGNEXTEND", SDT_EVMSignextend>;
+def EVMSignextend : SDNode<"EVMISD::SIGNEXTEND", SDT_EVMSignextend>;
 
 //===----------------------------------------------------------------------===//
 // EVM Operand Definitions.
@@ -68,7 +68,7 @@ def negate_imm : SDNodeXForm<imm, [{
 let usesCustomInserter = 1 in
 def SELECT
   : EVMPseudo<(outs GPR:$dst), (ins GPR:$cond, GPR:$lhs, GPR:$rhs),
-              [(set i256:$dst, (select GPR:$cond, i256:$lhs, i256:$rhs))]>;
+              [(set GPR:$dst, (select GPR:$cond, GPR:$lhs, GPR:$rhs))]>;
 
 
 //===----------------------------------------------------------------------===//
@@ -201,6 +201,12 @@ defm NOT
   : I<(outs GPR:$dst), (ins GPR:$src), [(set GPR:$dst, (not GPR:$src))],
       "NOT $dst, $src", 0x19, 3>;
 
+let mayLoad = 1 in
+defm SHA3
+  : I<(outs GPR:$dst), (ins GPR:$offset, GPR:$size),
+      [(set GPR:$dst, (int_evm_sha3 GPR:$offset, GPR:$size))],
+      "SHA3 $dst, $offset, $size", 0x20, 30>;
+
 
 //===----------------------------------------------------------------------===//
 // EVM shift instructions.
@@ -231,5 +237,276 @@ defm JUMP
 defm : I<(outs), (ins), [], "JUMPDEST", 0x57, 10>;
 
 let isBarrier = 1, isTerminator = 1, isReturn = 1 in
-defm RETURN
-  : I<(outs), (ins variable_ops), [(EVMreturn)], "RETURN", 0xF3, 0>;
+def RET : NI<(outs), (ins variable_ops), [(EVMret)], "RET">;
+
+
+//===----------------------------------------------------------------------===//
+// EVM memory/storage instructions.
+//===----------------------------------------------------------------------===//
+
+let mayLoad = 1 in
+defm MLOAD
+  : I<(outs GPR:$dst), (ins GPR:$offset),
+      [(set GPR:$dst, (load GPR:$offset))],
+      "MLOAD $dst, $offset", 0x51, 3>;
+
+let mayStore = 1, hasSideEffects = 1 in {
+  defm MSTORE
+    : I<(outs), (ins GPR:$offset, GPR:$val), [(store GPR:$val, GPR:$offset)],
+        "MSTORE $offset, $val", 0x52, 3>;
+
+  defm MSTORE8
+    : I<(outs), (ins GPR:$offset, GPR:$val),
+        [(int_evm_mstore8 GPR:$offset, GPR:$val)],
+        "MSTORE8 $offset, $val", 0x53, 3>;
+}
+
+defm SLOAD
+  : I<(outs GPR:$dst), (ins GPR:$key),
+      [(set GPR:$dst, (int_evm_sload GPR:$key))],
+      "SLOAD $dst, $key", 0x54, 100>;
+
+let hasSideEffects = 1 in {
+  defm SSTORE
+    : I<(outs), (ins GPR:$key, GPR:$val), [(int_evm_sstore GPR:$key, GPR:$val)],
+        "SSTORE $key, $val", 0x55, 100>;
+
+  defm PC : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_pc))],
+               "PC $dst", 0x58, 2>;
+
+  defm GAS : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_gas))],
+                "GAS $dst", 0x5A, 2>;
+}
+
+defm MSIZE : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_msize))],
+                "MSIZE $dst", 0x59, 2>;
+
+
+//===----------------------------------------------------------------------===//
+// EVM instructions for retrieval values from context.
+//===----------------------------------------------------------------------===//
+
+defm ADDRESS
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_address))],
+      "ADDRESS $dst", 0x30, 2>;
+
+defm BALANCE
+  : I<(outs GPR:$dst), (ins GPR:$addr),
+      [(set GPR:$dst, (int_evm_balance GPR:$addr))],
+      "BALANCE $dst, $addr", 0x31, 100>;
+
+defm ORIGIN
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_origin))],
+      "ORIGIN $dst", 0x32, 2>;
+
+defm CALLER
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_caller))],
+      "CALLER $dst", 0x32, 2>;
+
+defm CALLVALUE
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_callvalue))],
+      "CALLVALUE $dst", 0x34, 2>;
+
+defm CALLDATALOAD
+  : I<(outs GPR:$dst), (ins GPR:$off),
+      [(set GPR:$dst, (int_evm_calldataload GPR:$off))],
+      "CALLDATALOAD $dst, $off", 0x35, 2>;
+
+defm CALLDATASIZE
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_calldatasize))],
+      "CALLDATASIZE $dst", 0x36, 2>;
+
+let mayStore = 1, hasSideEffects = 1 in
+defm CALLDATACOPY
+  : I<(outs), (ins GPR:$dst_off, GPR:$src_off, GPR:$size),
+      [(int_evm_calldatacopy GPR:$dst_off, GPR:$src_off, GPR:$size)],
+      "CALLDATACOPY $dst_off, $src_off, $size", 0x37, 3>;
+
+defm CODESIZE
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_codesize))],
+      "CODESIZE $dst", 0x38, 2>;
+
+let mayStore = 1, hasSideEffects = 1 in
+defm CODECOPY
+  : I<(outs), (ins GPR:$dst_off, GPR:$src_off, GPR:$size),
+      [(int_evm_codecopy GPR:$dst_off, GPR:$src_off, GPR:$size)],
+      "CODECOPY $dst_off, $src_off, $size", 0x39, 3>;
+
+defm GASPRICE
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_gasprice))],
+      "GASPRICE $dst", 0x3A, 2>;
+
+defm EXTCODESIZE
+  : I<(outs GPR:$dst), (ins GPR:$addr),
+      [(set GPR:$dst, (int_evm_extcodesize GPR:$addr))],
+      "EXTCODESIZE $dst, $addr", 0x3B, 100>;
+
+let mayStore = 1, hasSideEffects = 1 in
+defm EXTCODECOPY
+  : I<(outs), (ins GPR:$addr, GPR:$dst_off, GPR:$src_off, GPR:$size),
+      [(int_evm_extcodecopy GPR:$addr, GPR:$dst_off, GPR:$src_off, GPR:$size)],
+      "EXTCODECOPY $addr, $dst_off, $src_off, $size", 0x3C, 100>;
+
+defm RETURNDATASIZE
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_returndatasize))],
+      "RETURNDATASIZE $dst", 0x3D, 2>;
+
+let mayStore = 1, hasSideEffects = 1 in
+defm RETURNDATACOPY
+  : I<(outs), (ins GPR:$dst_off, GPR:$src_off, GPR:$size),
+      [(int_evm_returndatacopy GPR:$dst_off, GPR:$src_off, GPR:$size)],
+      "RETURNDATACOPY $dst_off, $src_off, $size", 0x3E, 3>;
+
+defm EXTCODEHASH
+  : I<(outs GPR:$dst), (ins GPR:$addr),
+      [(set GPR:$dst, (int_evm_extcodehash GPR:$addr))],
+      "EXTCODEHASH $dst, $addr", 0x3F, 100>;
+
+defm BLOCKHASH
+  : I<(outs GPR:$dst), (ins GPR:$addr),
+      [(set GPR:$dst, (int_evm_blockhash GPR:$addr))],
+      "BLOCKHASH $dst, $addr", 0x40, 20>;
+
+defm COINBASE
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_coinbase))],
+      "COINBASE $dst", 0x41, 2>;
+
+defm TIMESTAMP
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_timestamp))],
+      "TIMESTAMP $dst", 0x42, 2>;
+
+defm NUMBER
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_number))],
+      "NUMBER $dst", 0x43, 2>;
+
+defm PREVRANDAO
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_prevrandao))],
+      "PREVRANDAO $dst", 0x44, 2>;
+
+defm GASLIMIT
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_gaslimit))],
+      "GASLIMIT $dst", 0x45, 2>;
+
+defm CHAINID
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_chainid))],
+      "CHAINID $dst", 0x46, 2>;
+
+let hasSideEffects = 1 in
+defm SELFBALANCE
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_selfbalance))],
+      "SELFBALANCE $dst", 0x47, 5>;
+
+defm BASEFEE
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_basefee))],
+      "BASEFEE $dst", 0x48, 2>;
+
+
+//===----------------------------------------------------------------------===//
+// EVM instructions for logging.
+//===----------------------------------------------------------------------===//
+
+let mayLoad = 1 in {
+  defm LOG0
+    : I<(outs), (ins GPR:$offset, GPR:$size),
+        [(int_evm_log0 GPR:$offset, GPR:$size)],
+        "LOG0 $offset, $size", 0xA0, 375>;
+
+  defm LOG1
+    : I<(outs), (ins GPR:$offset, GPR:$size, GPR:$t1),
+        [(int_evm_log1 GPR:$offset, GPR:$size, GPR:$t1)],
+        "LOG1 $offset, $size, $t1", 0xA1, 750>;
+
+  defm LOG2
+    : I<(outs), (ins GPR:$offset, GPR:$size, GPR:$t1, GPR:$t2),
+        [(int_evm_log2 GPR:$offset, GPR:$size, GPR:$t1, GPR:$t2)],
+        "LOG2 $offset, $size, $t1, $t2", 0xA2, 1125>;
+
+  defm LOG3
+    : I<(outs), (ins GPR:$offset, GPR:$size, GPR:$t1, GPR:$t2, GPR:$t3),
+        [(int_evm_log3 GPR:$offset, GPR:$size, GPR:$t1, GPR:$t2, GPR:$t3)],
+        "LOG3 $offset, $size, $t1, $t2, $t3", 0xA3, 1500>;
+
+  defm LOG4
+    : I<(outs), (ins GPR:$offset, GPR:$size, GPR:$t1, GPR:$t2, GPR:$t3, GPR:$t4),
+        [(int_evm_log4 GPR:$offset, GPR:$size, GPR:$t1, GPR:$t2, GPR:$t3,
+          GPR:$t4)],
+        "LOG4 $offset, $size, $t1, $t2, $t3, $t4", 0xA4, 1875>;
+}
+
+//===----------------------------------------------------------------------===//
+// EVM system instructions.
+//===----------------------------------------------------------------------===//
+
+let mayLoad = 1, hasSideEffects = 1 in
+defm CREATE
+  : I<(outs GPR:$dst), (ins GPR:$value, GPR:$offset, GPR:$size),
+      [(set GPR:$dst, (int_evm_create GPR:$value, GPR:$offset, GPR:$size))],
+      "CREATE $dst, $value, $offset, $size", 0xF0, 32000>;
+
+let isCall = 1, hasSideEffects = 1, mayLoad = 1, mayStore = 1 in {
+  defm CALL
+    : I<(outs GPR:$dst), (ins GPR:$gas, GPR:$addr, GPR:$value, GPR:$arg_off,
+                          GPR:$arg_size, GPR:$ret_off, GPR:$ret_size),
+        [(set GPR:$dst, (int_evm_call GPR:$gas, GPR:$addr, GPR:$value,
+          GPR:$arg_off, GPR:$arg_size, GPR:$ret_off, GPR:$ret_size))],
+        "CALL $dst, $gas, $addr, $value, $arg_off, $arg_size, $ret_off, $ret_size",
+        0xF1, 100>;
+
+  defm CALLCODE
+    : I<(outs GPR:$dst), (ins GPR:$gas, GPR:$addr, GPR:$value, GPR:$arg_off,
+                          GPR:$arg_size, GPR:$ret_off, GPR:$ret_size),
+        [(set GPR:$dst, (int_evm_callcode GPR:$gas, GPR:$addr, GPR:$value,
+          GPR:$arg_off, GPR:$arg_size, GPR:$ret_off, GPR:$ret_size))],
+        "CALLCODE $dst, $gas, $addr, $value, $arg_off, $arg_size, $ret_off, $ret_size",
+        0xF2, 100>;
+
+  defm DELEGATECALL
+    : I<(outs GPR:$dst), (ins GPR:$gas, GPR:$addr, GPR:$arg_off, GPR:$arg_size,
+                          GPR:$ret_off, GPR:$ret_size),
+        [(set GPR:$dst, (int_evm_delegatecall GPR:$gas, GPR:$addr, GPR:$arg_off,
+          GPR:$arg_size, GPR:$ret_off, GPR:$ret_size))],
+        "DELEGATECALL $dst, $gas, $addr, $arg_off, $arg_size, $ret_off, $ret_size",
+        0xF4, 100>;
+
+  defm STATICCALL
+    : I<(outs GPR:$dst), (ins GPR:$gas, GPR:$addr, GPR:$arg_off, GPR:$arg_size,
+                          GPR:$ret_off, GPR:$ret_size),
+        [(set GPR:$dst, (int_evm_staticcall GPR:$gas, GPR:$addr, GPR:$arg_off,
+          GPR:$arg_size, GPR:$ret_off, GPR:$ret_size))],
+        "STATICCALL $dst, $gas, $addr, $arg_off, $arg_size, $ret_off, $ret_size",
+        0xFA, 100>;
+}
+
+let mayLoad = 1, hasSideEffects = 1 in
+defm CREATE2
+  : I<(outs GPR:$dst), (ins GPR:$value, GPR:$offset, GPR:$size, GPR:$salt),
+      [(set GPR:$dst, (int_evm_create2 GPR:$value, GPR:$offset, GPR:$size,
+        GPR:$salt))],
+      "CREATE2 $dst, $value, $offset, $size, $salt", 0xF5, 32000>;
+
+
+//===----------------------------------------------------------------------===//
+// EVM instructions to return with error.
+//===----------------------------------------------------------------------===//
+
+let isTerminator = 1, isBarrier = 1 in {
+  defm REVERT
+    : I<(outs), (ins GPR:$offset, GPR:$size),
+        [(int_evm_revert GPR:$offset, GPR:$size)],
+        "REVERT $offset, $size", 0xFD, 0>;
+
+  defm RETURN
+    : I<(outs), (ins GPR:$offset, GPR:$size),
+        [(int_evm_return GPR:$offset, GPR:$size)],
+        "RETURN $offset, $size", 0xF3, 0>;
+}
+
+let hasSideEffects = 1 in {
+  defm SELFDESTRUCT
+      : I<(outs), (ins GPR:$addr), [(int_evm_selfdestruct GPR:$addr)],
+          "SELFDESTRUCT $addr", 0xFF, 5000>;
+
+  defm STOP : I<(outs), (ins), [(int_evm_stop)], "STOP", 0x00, 0>;
+
+  defm INVALID : I<(outs), (ins), [], "INVALID", 0xFE, 0>;
+}
