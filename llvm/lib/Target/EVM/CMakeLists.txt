@@ -21,6 +21,7 @@ add_llvm_target(EVMCodeGen
   EVMRegisterInfo.cpp
   EVMSubtarget.cpp
   EVMTargetMachine.cpp
+  EVMTargetTransformInfo.cpp
 
   LINK_COMPONENTS
   Analysis
