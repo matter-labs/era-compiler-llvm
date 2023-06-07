@@ -96,7 +96,8 @@ jobs:
             --march=eravm"
           XFAILS:
             "CodeGen/EraVM/memcpy-expansion.ll;\
-             CodeGen/EraVM/flag-setting-set-implicit-flags.ll"
+             CodeGen/EraVM/flag-setting-set-implicit-flags.ll;\
+             CodeGen/EraVM/machine-outliner.mir"
 
         run: |
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)

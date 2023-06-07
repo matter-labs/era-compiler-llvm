@@ -14,8 +14,10 @@
 #define LLVM_LIB_TARGET_ERAVM_ERAVMINSTRINFO_H
 
 #include "EraVM.h"
+
 #include "EraVMRegisterInfo.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
+#include <optional>
 
 #define GET_INSTRINFO_HEADER
 #include "EraVMGenInstrInfo.inc"
@@ -266,6 +268,37 @@ public:
 
   bool isPredicatedInstr(const MachineInstr &MI) const;
   EraVMCC::CondCodes getCCCode(const MachineInstr &MI) const;
+
+  // TODO: Enable this.
+  // bool shouldOutlineFromFunctionByDefault(MachineFunction &MF) const
+  // override;
+
+  /// Return true if the function can safely be outlined from.
+  bool isFunctionSafeToOutlineFrom(MachineFunction &MF,
+                                   bool OutlineFromLinkOnceODRs) const override;
+
+  /// Return true if MBB is safe to outline from, and return any target-specific
+  /// information in Flags.
+  bool isMBBSafeToOutlineFrom(MachineBasicBlock &MBB,
+                              unsigned &Flags) const override;
+
+  /// Return if/how a given MachineInstr should be outlined.
+  outliner::InstrType getOutliningTypeImpl(MachineBasicBlock::iterator &MBBI,
+                                           unsigned Flags) const override;
+
+  /// Calculate target-specific information for a set of outlining candidates.
+  std::optional<outliner::OutlinedFunction> getOutliningCandidateInfo(
+      std::vector<outliner::Candidate> &RepeatedSequenceLocs) const override;
+
+  /// Insert a custom frame for outlined functions.
+  void buildOutlinedFrame(MachineBasicBlock &MBB, MachineFunction &MF,
+                          const outliner::OutlinedFunction &OF) const override;
+
+  /// Insert a call to an outlined function into a given basic block.
+  MachineBasicBlock::iterator
+  insertOutlinedCall(Module &M, MachineBasicBlock &MBB,
+                     MachineBasicBlock::iterator &It, MachineFunction &MF,
+                     outliner::Candidate &C) const override;
 };
 
 } // namespace llvm
