@@ -6,6 +6,7 @@
 
 #include "EVMTargetMachine.h"
 #include "EVM.h"
+#include "EVMTargetTransformInfo.h"
 #include "TargetInfo/EVMTargetInfo.h"
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/CodeGen/TargetLoweringObjectFileImpl.h"
@@ -44,6 +45,11 @@ EVMTargetMachine::EVMTargetMachine(const Target &T, const Triple &TT,
       TLOF(std::make_unique<TargetLoweringObjectFileELF>()),
       Subtarget(TT, std::string(CPU), std::string(FS), *this) {
   initAsmInfo();
+}
+
+TargetTransformInfo
+EVMTargetMachine::getTargetTransformInfo(const Function &F) const {
+  return TargetTransformInfo(EVMTTIImpl(this, F));
 }
 
 namespace {
