@@ -602,3 +602,268 @@ SyncVMCC::CondCodes SyncVMInstrInfo::getCCCode(const MachineInstr &MI) const {
   }
   return SyncVMCC::COND_INVALID;
 }
+
+enum FlagsUsage { FlagsUseBeforeDef = 0, FlagsDef, NoFlags };
+
+/// Return how Flags register is used in [Start, End).
+static FlagsUsage getFlagsUsage(MachineBasicBlock::iterator Start,
+                                MachineBasicBlock::iterator End) {
+  for (MachineInstr &I : instructionsWithoutDebug(Start, End)) {
+    if (I.getDesc().hasImplicitDefOfPhysReg(SyncVM::Flags))
+      return FlagsDef;
+
+    if (I.readsRegister(SyncVM::Flags))
+      return FlagsUseBeforeDef;
+  }
+
+  return NoFlags;
+}
+
+/// Enum values indicating how an outlined call should be constructed.
+enum MachineOutlinerConstructionID { MachineOutlinerDefault };
+
+enum MachineOutlinerMBBFlags {
+  FlagsRegDead = 1 << 0,
+  OutlinerMBBFlagsMask = (1 << 1) - 1
+};
+
+// TODO: Enable this.
+// bool SyncVMInstrInfo::shouldOutlineFromFunctionByDefault(
+//     MachineFunction &MF) const {
+//   return MF.getFunction().hasOptSize();
+// }
+
+bool SyncVMInstrInfo::isFunctionSafeToOutlineFrom(
+    MachineFunction &MF, bool OutlineFromLinkOnceODRs) const {
+  const Function &F = MF.getFunction();
+
+  // Can F be deduplicated by the linker? If it can, don't outline from it.
+  if (!OutlineFromLinkOnceODRs && F.hasLinkOnceODRLinkage())
+    return false;
+
+  // Don't outline from functions with section markings; the program could
+  // expect that all the code is in the named section.
+  if (F.hasSection())
+    return false;
+
+  // It's safe to outline from MF.
+  return true;
+}
+
+bool SyncVMInstrInfo::isMBBSafeToOutlineFrom(MachineBasicBlock &MBB,
+                                             unsigned &Flags) const {
+  if (!TargetInstrInfo::isMBBSafeToOutlineFrom(MBB, Flags))
+    return false;
+
+  bool SeenDef = false;
+  bool SeenUse = false;
+  bool HasFlagsInst = false;
+
+  // Check how Flags register is used in the MBB. We can't outline this MBB if
+  // we find use before def, or def without use.
+  for (MachineInstr &I : MBB) {
+    if (I.isCall()) {
+      SeenDef = false;
+    } else if (I.getDesc().hasImplicitDefOfPhysReg(SyncVM::Flags)) {
+      SeenDef = true;
+      SeenUse = false;
+      HasFlagsInst = true;
+    } else if (I.readsRegister(SyncVM::Flags)) {
+      // Return false if we find use before def.
+      if (!SeenDef)
+        return false;
+      SeenUse = true;
+      HasFlagsInst = true;
+    }
+  }
+
+  // Return false if we find def without use.
+  if (SeenDef && !SeenUse)
+    return false;
+
+  // If Flags register is not used in this MBB, we know we don't have to check
+  // it later.
+  if (!HasFlagsInst)
+    Flags |= MachineOutlinerMBBFlags::FlagsRegDead;
+
+  // Don't check for successors if this MBB has no predecessors
+  // and no Flags instructions.
+  if (MBB.pred_empty() && !HasFlagsInst)
+    return true;
+
+  SmallVector<MachineBasicBlock *, 4> Worklist{MBB.successors()};
+  SmallPtrSet<MachineBasicBlock *, 4> Visited{&MBB};
+
+  // Check if Flags register is propagated across MBBs.
+  while (!Worklist.empty()) {
+    MachineBasicBlock *SuccMBB = Worklist.pop_back_val();
+    if (!Visited.insert(SuccMBB).second)
+      continue;
+
+    auto Usage = getFlagsUsage(SuccMBB->begin(), SuccMBB->end());
+
+    // If Flags register is propagated across MBBs, we know outlining is
+    // unsafe.
+    if (Usage == FlagsUseBeforeDef)
+      return false;
+
+    // If there are no Flags usage in this MBB, we need to look further.
+    if (Usage == NoFlags)
+      append_range(Worklist, SuccMBB->successors());
+  }
+
+  return true;
+}
+
+outliner::InstrType
+SyncVMInstrInfo::getOutliningType(MachineBasicBlock::iterator &MBBI,
+                                  unsigned Flags) const {
+  MachineInstr &MI = *MBBI;
+
+  // Don't allow debug values to impact outlining type.
+  if (MI.isDebugInstr() || MI.isIndirectDebugValue())
+    return outliner::InstrType::Invisible;
+
+  // Don't allow instructions which won't be materialized to impact outlining
+  // analysis.
+  if (MI.isMetaInstruction())
+    return outliner::InstrType::Invisible;
+
+  // TODO: Remove this once issue with heap growth is fixed in VM.
+  switch (MI.getOpcode()) {
+  case SyncVM::LD1:
+  case SyncVM::LD1Inc:
+  case SyncVM::LD1i:
+  case SyncVM::LD2:
+  case SyncVM::LD2Inc:
+  case SyncVM::LD2i:
+  case SyncVM::ST1:
+  case SyncVM::ST1Inc:
+  case SyncVM::ST1i:
+  case SyncVM::ST2:
+  case SyncVM::ST2Inc:
+  case SyncVM::ST2i:
+    return outliner::InstrType::Illegal;
+  }
+
+  // Positions generally can't safely be outlined.
+  if (MI.isPosition())
+    return outliner::InstrType::Illegal;
+
+  // Don't trust the user to write safe inline assembly.
+  if (MI.isInlineAsm())
+    return outliner::InstrType::Illegal;
+
+  // We can't outline branches and return statements.
+  if (MI.isTerminator() || MI.isReturn())
+    return outliner::InstrType::Illegal;
+
+  // Don't outline instructions that set or modify SP.
+  if (MI.getDesc().hasImplicitDefOfPhysReg(SyncVM::SP))
+    return outliner::InstrType::Illegal;
+
+  // Make sure the operands don't reference something unsafe.
+  for (const auto &MO : MI.operands())
+    if (MO.isMBB() || MO.isBlockAddress() || MO.isCPI() || MO.isJTI())
+      return outliner::InstrType::Illegal;
+
+  // Since we don't outline branches, don't outline instruction that defines
+  // Flags register that is used by conditional branch.
+  if (!MI.isCall() && MI.getDesc().hasImplicitDefOfPhysReg(SyncVM::Flags)) {
+    auto TermIt = MI.getParent()->getFirstTerminator();
+
+    // If there is a conditional branch and there are no more instructions
+    // that define Flags register, don't outline this instruction.
+    if (TermIt != MI.getParent()->end() && TermIt->isConditionalBranch() &&
+        !any_of(instructionsWithoutDebug(std::next(MBBI), TermIt),
+                [](const MachineInstr &I) {
+                  return I.getDesc().hasImplicitDefOfPhysReg(SyncVM::Flags);
+                }))
+      return outliner::InstrType::Illegal;
+  }
+
+  return outliner::InstrType::Legal;
+}
+
+outliner::OutlinedFunction SyncVMInstrInfo::getOutliningCandidateInfo(
+    std::vector<outliner::Candidate> &RepeatedSequenceLocs) const {
+  constexpr unsigned MinCandidatesToOutline = 2;
+  unsigned SequenceSize =
+      std::accumulate(RepeatedSequenceLocs[0].front(),
+                      std::next(RepeatedSequenceLocs[0].back()), 0,
+                      [this](unsigned Sum, const MachineInstr &MI) {
+                        return Sum + getInstSizeInBytes(MI);
+                      });
+
+  // Properties about candidate MBBs that hold for all of them.
+  unsigned FlagsSetInAll = OutlinerMBBFlagsMask;
+
+  // Compute liveness information for each candidate, and set FlagsSetInAll.
+  for (outliner::Candidate &C : RepeatedSequenceLocs)
+    FlagsSetInAll &= C.Flags;
+
+  // Are there any candidates where Flags register is live?
+  if (!(FlagsSetInAll & FlagsRegDead)) {
+    // Since Flags register is cleared on entry/exit from a function call,
+    // we can't outline any sequence of instructions where this register
+    // is live into/across it.
+    auto CantGuaranteeValueAcrossCall = [](outliner::Candidate &C) {
+      // If the unsafe register in this block is dead, then we don't need
+      // to compute liveness here.
+      if (C.Flags & FlagsRegDead)
+        return false;
+
+      // Check if Flags register is defined outside, but used in a sequence.
+      if (getFlagsUsage(C.front(), std::next(C.back())) == FlagsUseBeforeDef)
+        return true;
+
+      // Check if Flags register is propagated across a sequence.
+      if (getFlagsUsage(std::next(C.back()), C.getMBB()->end()) ==
+          FlagsUseBeforeDef)
+        return true;
+
+      return false;
+    };
+
+    // Erase every candidate that violates the restriction above.
+    llvm::erase_if(RepeatedSequenceLocs, CantGuaranteeValueAcrossCall);
+
+    // If the sequence doesn't have enough candidates left, then we're done.
+    if (RepeatedSequenceLocs.size() < MinCandidatesToOutline)
+      return outliner::OutlinedFunction();
+  }
+
+  unsigned CallOverhead = get(SyncVM::NEAR_CALL).getSize();
+  for (auto &C : RepeatedSequenceLocs)
+    C.setCallInfo(MachineOutlinerDefault, CallOverhead);
+
+  unsigned FrameOverhead = get(SyncVM::RET).getSize();
+  return outliner::OutlinedFunction(RepeatedSequenceLocs, SequenceSize,
+                                    FrameOverhead, MachineOutlinerDefault);
+}
+
+void SyncVMInstrInfo::buildOutlinedFrame(
+    MachineBasicBlock &MBB, MachineFunction &MF,
+    const outliner::OutlinedFunction &OF) const {
+  DebugLoc DL;
+  if (!MBB.empty())
+    DL = MBB.back().getDebugLoc();
+
+  // Add return instruction to the end of the outlined frame.
+  MBB.insert(MBB.end(), BuildMI(MF, DL, get(SyncVM::RET)));
+}
+
+MachineBasicBlock::iterator SyncVMInstrInfo::insertOutlinedCall(
+    Module &M, MachineBasicBlock &MBB, MachineBasicBlock::iterator &It,
+    MachineFunction &MF, outliner::Candidate &C) const {
+  DebugLoc DL;
+  if (It != MBB.end())
+    DL = It->getDebugLoc();
+
+  // Add call instruction to the outlined function at the given location.
+  It = MBB.insert(It, BuildMI(MF, DL, get(SyncVM::NEAR_CALL))
+                          .addReg(SyncVM::R0)
+                          .addGlobalAddress(M.getNamedValue(MF.getName()))
+                          .addExternalSymbol("DEFAULT_UNWIND"));
+  return It;
+}
