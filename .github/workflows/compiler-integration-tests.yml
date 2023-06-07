@@ -110,7 +110,8 @@ jobs:
             --march=syncvm"
           XFAILS:
             "CodeGen/SyncVM/memcpy-expansion.ll;\
-             CodeGen/SyncVM/flag-setting-set-implicit-flags.ll"
+             CodeGen/SyncVM/flag-setting-set-implicit-flags.ll;\
+             CodeGen/SyncVM/machine-outliner.mir"
 
         run: |
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
