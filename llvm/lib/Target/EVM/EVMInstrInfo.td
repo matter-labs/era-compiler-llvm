@@ -10,22 +10,62 @@ include "EVMInstrFormats.td"
 // EVM-specific DAG Node Types.
 //===----------------------------------------------------------------------===//
 
-def SDT_EVMArgument   : SDTypeProfile<1, 1, [SDTCisVT<1, i256>]>;
-def SDT_EVMRet        : SDTypeProfile<0, -1, []>;
-def SDT_EVMSignextend : SDTypeProfile<1, 2, [SDTCisSameAs<0, 1>,
-                                             SDTCisVT<1, i256>]>;
+def SDT_EVMCall0
+  : SDTypeProfile<0, -1, [SDTCisPtrTy<0>]>;
 
+def SDT_EVMCall1
+  : SDTypeProfile<1, -1, [SDTCisPtrTy<1>]>;
+
+def SDT_EVMCallSeqStart
+  : SDCallSeqStart<[SDTCisVT<0, i256>, SDTCisVT<1, i256>]>;
+
+def SDT_EVMCallSeqEnd
+  : SDCallSeqEnd<[SDTCisVT<0, i256>, SDTCisVT<1, i256>]>;
+
+def SDT_EVMArgument
+  : SDTypeProfile<1, 1, [SDTCisVT<1, i256>]>;
+
+def SDT_EVMRet
+  : SDTypeProfile<0, -1, []>;
+
+def SDT_EVMSignextend
+  : SDTypeProfile<1, 2, [SDTCisSameAs<0, 1>, SDTCisVT<1, i256>]>;
+
+def SDT_EVMTargetAddrWrapper
+  : SDTypeProfile<1, 1, [SDTCisPtrTy<0>]>;
 
 //===----------------------------------------------------------------------===//
 // EVM-specific DAG Nodes.
 //===----------------------------------------------------------------------===//
 
-def EVMargument : SDNode<"EVMISD::ARGUMENT", SDT_EVMArgument>;
+def EVMargument
+  : SDNode<"EVMISD::ARGUMENT", SDT_EVMArgument>;
 
-def EVMret : SDNode<"EVMISD::RET", SDT_EVMRet,
-                    [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+def EVMcall0
+  : SDNode<"EVMISD::CALL0", SDT_EVMCall0,
+            [SDNPHasChain, SDNPVariadic]>;
 
-def EVMSignextend : SDNode<"EVMISD::SIGNEXTEND", SDT_EVMSignextend>;
+def EVMcall1
+  : SDNode<"EVMISD::CALL1", SDT_EVMCall1,
+            [SDNPHasChain, SDNPVariadic]>;
+
+def EVMcallseq_start
+  : SDNode<"ISD::CALLSEQ_START", SDT_EVMCallSeqStart,
+            [SDNPHasChain, SDNPOutGlue]>;
+
+def EVMcallseq_end
+  : SDNode<"ISD::CALLSEQ_END", SDT_EVMCallSeqEnd,
+            [SDNPHasChain, SDNPOptInGlue, SDNPOutGlue]>;
+
+def EVMret
+  : SDNode<"EVMISD::RET", SDT_EVMRet,
+           [SDNPHasChain, SDNPOptInGlue, SDNPVariadic]>;
+
+def EVMSignextend
+  : SDNode<"EVMISD::SIGNEXTEND", SDT_EVMSignextend>;
+
+def EVMTargetAddrWrapper
+  : SDNode<"EVMISD::TARGET_ADDR_WRAPPER", SDT_EVMTargetAddrWrapper>;
 
 //===----------------------------------------------------------------------===//
 // EVM Operand Definitions.
@@ -75,6 +115,19 @@ def SELECT
 // Additional instructions.
 //===----------------------------------------------------------------------===//
 
+// Call sequence markers.
+let isCodeGenOnly = 1, Defs = [SP], Uses = [SP] in {
+def ADJCALLSTACKDOWN
+  : NI<(outs), (ins i256imm:$amt1, i256imm:$amt2),
+       [(EVMcallseq_start timm:$amt1, timm:$amt2)],
+       "#ADJCALLSTACKDOWN $amt1 $amt2">;
+
+def ADJCALLSTACKUP
+  : NI<(outs), (ins i256imm:$amt1, i256imm:$amt2),
+       [(EVMcallseq_end timm:$amt1, timm:$amt2)],
+       "#ADJCALLSTACKUP $amt1 $amt2">;
+}
+
 let hasSideEffects = 1, Uses = [ARGUMENTS] in
 def ARGUMENT
   : NI<(outs GPR:$res), (ins i256imm:$argno),
@@ -93,6 +146,28 @@ defm CONST_I256
 let isAsCheapAsAMove = 1 in
 defm COPY_I256
   : I<(outs GPR:$res), (ins GPR:$src), [], "COPY_I256 $res, $src">;
+
+// There is no 'call' instruction in EVM; the 'jump' is used instead.
+// The CALL* are not real EVM instructions. They should be replaced
+// with the jump while stackification.
+
+let isCall = 1, hasCtrlDep = 1 in {
+def CALL0
+  : NI<(outs), (ins GPR:$callee, variable_ops),
+       [(EVMcall0 tglobaladdr:$callee)],
+       "CALL0 $callee">;
+
+def CALL1
+  : NI<(outs GPR:$res), (ins GPR:$callee, variable_ops),
+       [(set GPR:$res, (EVMcall1 tglobaladdr:$callee))],
+       "CALL1 $res, $callee">;
+}
+
+def : Pat<(EVMcall0 GPR:$addr), (CALL0 GPR:$addr)>;
+def : Pat<(EVMcall1 GPR:$addr), (CALL1 GPR:$addr)>;
+def : Pat<(i256 (EVMTargetAddrWrapper tglobaladdr:$addr)),
+          (CONST_I256 tglobaladdr:$addr)>;
+
 
 //===----------------------------------------------------------------------===//
 // EVM arithmetic instructions.
