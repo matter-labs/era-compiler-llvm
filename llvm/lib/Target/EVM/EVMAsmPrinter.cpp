@@ -62,7 +62,8 @@ void EVMAsmPrinter::emitFunctionEntryLabel() {
 }
 
 void EVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
-  EVMMCInstLower MCInstLowering(OutContext, VRegMapping, MF->getRegInfo());
+  EVMMCInstLower MCInstLowering(OutContext, *this, VRegMapping,
+                                MF->getRegInfo());
 
   MCInst TmpInst;
   MCInstLowering.Lower(MI, TmpInst);

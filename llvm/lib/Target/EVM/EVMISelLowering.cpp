@@ -125,6 +125,93 @@ SDValue EVMTargetLowering::LowerFormalArguments(
   return Chain;
 }
 
+SDValue EVMTargetLowering::LowerCall(CallLoweringInfo &CLI,
+                                     SmallVectorImpl<SDValue> &InVals) const {
+  SelectionDAG &DAG = CLI.DAG;
+  SDLoc DL = CLI.DL;
+  SDValue Chain = CLI.Chain;
+  SDValue Callee = CLI.Callee;
+  MachineFunction &MF = DAG.getMachineFunction();
+  auto Layout = MF.getDataLayout();
+
+  CallingConv::ID CallConv = CLI.CallConv;
+  if (!callingConvSupported(CallConv))
+    fail(DL, DAG,
+         "EVM doesn't support language-specific or target-specific "
+         "calling conventions yet");
+  if (CLI.IsPatchPoint)
+    fail(DL, DAG, "EVM doesn't support patch point yet");
+
+  // TODO: add suport of tail call optimization
+  CLI.IsTailCall = false;
+
+  if (CLI.IsVarArg)
+    fail(DL, DAG, "EVM hasn't implemented variable arguments");
+
+  SmallVectorImpl<ISD::InputArg> &Ins = CLI.Ins;
+  SmallVectorImpl<ISD::OutputArg> &Outs = CLI.Outs;
+  SmallVectorImpl<SDValue> &OutVals = CLI.OutVals;
+
+  for (const auto &Out : Outs) {
+    if (Out.Flags.isNest())
+      fail(DL, DAG, "EVM hasn't implemented nest arguments");
+    if (Out.Flags.isInAlloca())
+      fail(DL, DAG, "EVM hasn't implemented inalloca arguments");
+    if (Out.Flags.isInConsecutiveRegs())
+      fail(DL, DAG, "EVM hasn't implemented cons regs arguments");
+    if (Out.Flags.isInConsecutiveRegsLast())
+      fail(DL, DAG, "EVM hasn't implemented cons regs last arguments");
+    if (Out.Flags.isByVal())
+      fail(DL, DAG, "EVM hasn't implemented byval arguments");
+  }
+
+  if (Callee->getOpcode() == ISD::GlobalAddress) {
+    GlobalAddressSDNode *GA = cast<GlobalAddressSDNode>(Callee);
+    Callee = DAG.getTargetGlobalAddress(GA->getGlobal(), DL,
+                                        getPointerTy(DAG.getDataLayout()),
+                                        GA->getOffset());
+    Callee = DAG.getNode(EVMISD::TARGET_ADDR_WRAPPER, DL,
+                         getPointerTy(DAG.getDataLayout()), Callee);
+  }
+
+  // Compute the operands for the CALLn node.
+  SmallVector<SDValue, 16> Ops;
+  Ops.push_back(Chain);
+  Ops.push_back(Callee);
+
+  // Add all fixed arguments.
+  Ops.append(OutVals.begin(), OutVals.end());
+
+  assert(Ins.size() <= 1 &&
+         "EVM doesn't support functions returning more that one value");
+
+  SmallVector<EVT, 8> InTys;
+  for (const auto &In : Ins) {
+    assert(!In.Flags.isByVal() && "byval is not valid for return values");
+    assert(!In.Flags.isNest() && "nest is not valid for return values");
+    if (In.Flags.isInAlloca())
+      fail(DL, DAG, "EVM hasn't implemented inalloca return values");
+    if (In.Flags.isInConsecutiveRegs())
+      fail(DL, DAG, "EVM hasn't implemented cons regs return values");
+    if (In.Flags.isInConsecutiveRegsLast())
+      fail(DL, DAG, "EVM hasn't implemented cons regs last return values");
+    // Ignore In.getNonZeroOrigAlign() because all our arguments are passed in
+    // registers.
+    InTys.push_back(In.VT);
+  }
+
+  InTys.push_back(MVT::Other);
+  SDVTList InTyList = DAG.getVTList(InTys);
+  SDValue Res = DAG.getNode(Ins.size() == 0 ? EVMISD::CALL0 : EVMISD::CALL1, DL,
+                            InTyList, Ops);
+
+  if(Ins.size() > 0)
+    InVals.push_back(Res.getValue(0));
+
+  // Return the chain
+  return Res.getValue(Ins.size());
+}
+
 SDValue
 EVMTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                                bool /*IsVarArg*/,

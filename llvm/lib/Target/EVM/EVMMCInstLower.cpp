@@ -8,6 +8,7 @@
 #include "EVMMCInstLower.h"
 #include "MCTargetDesc/EVMMCExpr.h"
 #include "llvm/ADT/SmallString.h"
+#include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/MC/MCContext.h"
@@ -17,6 +18,47 @@ using namespace llvm;
 
 #define GET_REGINFO_HEADER
 #include "EVMGenRegisterInfo.inc"
+
+MCSymbol *
+EVMMCInstLower::GetGlobalAddressSymbol(const MachineOperand &MO) const {
+  switch (MO.getTargetFlags()) {
+  default:
+    llvm_unreachable("Unknown target flag on GV operand");
+  case 0:
+    break;
+  }
+
+  return Printer.getSymbol(MO.getGlobal());
+}
+
+MCSymbol *
+EVMMCInstLower::GetExternalSymbolSymbol(const MachineOperand &MO) const {
+  switch (MO.getTargetFlags()) {
+  default:
+    llvm_unreachable("Unknown target flag on GV operand");
+  case 0:
+    break;
+  }
+
+  return Printer.GetExternalSymbolSymbol(MO.getSymbolName());
+}
+
+MCOperand EVMMCInstLower::LowerSymbolOperand(const MachineOperand &MO,
+                                             MCSymbol *Sym) const {
+  const MCExpr *Expr = MCSymbolRefExpr::create(Sym, Ctx);
+
+  switch (MO.getTargetFlags()) {
+  default:
+    llvm_unreachable("Unknown target flag on GV operand");
+  case 0:
+    break;
+  }
+
+  if (MO.getOffset())
+    Expr = MCBinaryExpr::createAdd(
+        Expr, MCConstantExpr::create(MO.getOffset(), Ctx), Ctx);
+  return MCOperand::createExpr(Expr);
+}
 
 void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
   OutMI.setOpcode(MI->getOpcode());
@@ -57,6 +99,12 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
     case MachineOperand::MO_MachineBasicBlock:
       MCOp = MCOperand::createExpr(
           MCSymbolRefExpr::create(MO.getMBB()->getSymbol(), Ctx));
+      break;
+    case MachineOperand::MO_GlobalAddress:
+      MCOp = LowerSymbolOperand(MO, GetGlobalAddressSymbol(MO));
+      break;
+    case MachineOperand::MO_ExternalSymbol:
+      MCOp = LowerSymbolOperand(MO, GetExternalSymbolSymbol(MO));
       break;
     }
 
