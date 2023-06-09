@@ -7,6 +7,7 @@
 #include "EVMInstPrinter.h"
 #include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCInst.h"
+#include "llvm/MC/MCInstrInfo.h"
 #include "llvm/Support/FormattedStream.h"
 using namespace llvm;
 
@@ -42,12 +43,34 @@ void EVMInstPrinter::printInst(const MCInst *MI, uint64_t Address,
   // Print the instruction (this uses the AsmStrings from the .td files).
   printInstruction(MI, Address, O);
 
+  // Print any additional variadic operands.
+  const MCInstrDesc &Desc = MII.get(MI->getOpcode());
+  if (Desc.isVariadic()) {
+    if ((Desc.getNumOperands() == 0 && MI->getNumOperands() > 0) ||
+        Desc.variadicOpsAreDefs())
+      O << " ";
+    unsigned Start = Desc.getNumOperands();
+    unsigned NumVariadicDefs = 0;
+    if (Desc.variadicOpsAreDefs()) {
+      // The number of variadic defs is encoded in an immediate by MCInstLower
+      NumVariadicDefs = MI->getOperand(0).getImm();
+      Start = 1;
+    }
+    bool NeedsComma = Desc.getNumOperands() > 0 && !Desc.variadicOpsAreDefs();
+    for (auto I = Start, E = MI->getNumOperands(); I < E; ++I) {
+      if (NeedsComma)
+        O << ", ";
+      printOperand(MI, I, O, I - Start < NumVariadicDefs);
+      NeedsComma = true;
+    }
+  }
+
   // Print any added annotation.
   printAnnotation(O, Annot);
 }
 
 void EVMInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
-                                  raw_ostream &O) {
+                                  raw_ostream &O, bool IsVariadicDef) {
   const MCOperand &Op = MI->getOperand(OpNo);
   if (Op.isReg()) {
     printRegName(O, Op.getReg());
