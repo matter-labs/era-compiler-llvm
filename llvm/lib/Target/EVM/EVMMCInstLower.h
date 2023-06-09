@@ -29,13 +29,14 @@ class LLVM_LIBRARY_VISIBILITY EVMMCInstLower {
   typedef DenseMap<const TargetRegisterClass *, VRegMap> VRegRCMap;
 
   MCContext &Ctx;
+  AsmPrinter &Printer;
   const VRegRCMap &VRegMapping;
   const MachineRegisterInfo &MRI;
 
 public:
-  EVMMCInstLower(MCContext &Ctx, const VRegRCMap &VRegMapping,
-                 const MachineRegisterInfo &MRI)
-      : Ctx(Ctx), VRegMapping(VRegMapping), MRI(MRI) {}
+  EVMMCInstLower(MCContext &Ctx, AsmPrinter &Printer,
+                 const VRegRCMap &VRegMapping, const MachineRegisterInfo &MRI)
+      : Ctx(Ctx), Printer(Printer), VRegMapping(VRegMapping), MRI(MRI) {}
 
   void Lower(const MachineInstr *MI, MCInst &OutMI);
 
@@ -45,6 +46,10 @@ private:
   // Must be kept in sync with EVMInstPrinter::printRegName.
   // TODO: this can be removed once stackification is implemented.
   unsigned EncodeVReg(unsigned Reg);
+
+  MCOperand LowerSymbolOperand(const MachineOperand &MO, MCSymbol *Sym) const;
+  MCSymbol *GetGlobalAddressSymbol(const MachineOperand &MO) const;
+  MCSymbol *GetExternalSymbolSymbol(const MachineOperand &MO) const;
 };
 
 } // namespace llvm

@@ -14,7 +14,8 @@ using namespace llvm;
 #define GET_INSTRINFO_CTOR_DTOR
 #include "EVMGenInstrInfo.inc"
 
-EVMInstrInfo::EVMInstrInfo() : EVMGenInstrInfo(), RI() {}
+EVMInstrInfo::EVMInstrInfo()
+    : EVMGenInstrInfo(EVM::ADJCALLSTACKDOWN, EVM::ADJCALLSTACKUP), RI() {}
 
 void EVMInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                MachineBasicBlock::iterator I,
