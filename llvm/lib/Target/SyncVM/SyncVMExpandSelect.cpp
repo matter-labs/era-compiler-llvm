@@ -118,6 +118,8 @@ bool SyncVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
         SyncVM::copyOperands(Mov, OperandRange);
         Mov.addReg(SyncVM::R0);
         Mov.addImm(CC);
+        if (CC != SyncVMCC::COND_NONE)
+          Mov.addReg(SyncVM::Flags, RegState::Implicit);
         return;
       };
 
