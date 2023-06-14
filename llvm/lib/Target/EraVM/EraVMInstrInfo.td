@@ -1238,7 +1238,7 @@ def JC: ICondJump<10, (ins jmptarget:$dest, cc:$cc), "jump$cc\t$dest",
              [(EraVMbrcc bb:$dest, imm:$cc)]>;
 
 // Unconditional jump
-let isTerminator = 1, isBranch = 1, isBarrier = 1, Uses = [Flags] in
+let isTerminator = 1, isBranch = 1, isBarrier = 1 in
 def J: IJump<10, (ins jmptarget:$dest), "jump\t$dest",
              [(EraVMbrcc bb:$dest, 0)]>;
 def : Pat<(br bb:$dst), (J bb:$dst)>;
