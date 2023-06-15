@@ -4301,7 +4301,8 @@ SDValue TargetLowering::SimplifySetCC(EVT VT, SDValue N0, SDValue N1,
 
     // EraVM local begin
     // Load narrowing is not profiable for EraVM
-    if (!DAG.getTarget().getTargetTriple().isEraVM()) {
+    if (!DAG.getTarget().getTargetTriple().isEraVM() &&
+        !DAG.getTarget().getTargetTriple().isEVM()) {
     // EraVM local end
     // If the LHS is '(and load, const)', the RHS is 0, the test is for
     // equality or unsigned, and all 1 bits of the const are in the same

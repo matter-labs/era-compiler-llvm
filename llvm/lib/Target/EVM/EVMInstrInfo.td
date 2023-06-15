@@ -211,11 +211,11 @@ defm SIGNEXTEND
 
 // The first operand of SIGNEXTEND is the type size in bytes of
 // the value being extendent minus one.
-def : Pat<(sext_inreg GPR:$src, i8), (SIGNEXTEND 0, GPR:$src)>;
-def : Pat<(sext_inreg GPR:$src, i16), (SIGNEXTEND 1, GPR:$src)>;
-def : Pat<(sext_inreg GPR:$src, i32), (SIGNEXTEND 3, GPR:$src)>;
-def : Pat<(sext_inreg GPR:$src, i64), (SIGNEXTEND 7, GPR:$src)>;
-def : Pat<(sext_inreg GPR:$src, i128), (SIGNEXTEND 15, GPR:$src)>;
+def : Pat<(sext_inreg GPR:$src, i8), (SIGNEXTEND (CONST_I256 0), GPR:$src)>;
+def : Pat<(sext_inreg GPR:$src, i16), (SIGNEXTEND (CONST_I256 1), GPR:$src)>;
+def : Pat<(sext_inreg GPR:$src, i32), (SIGNEXTEND (CONST_I256 3), GPR:$src)>;
+def : Pat<(sext_inreg GPR:$src, i64), (SIGNEXTEND (CONST_I256 7), GPR:$src)>;
+def : Pat<(sext_inreg GPR:$src, i128), (SIGNEXTEND (CONST_I256 15), GPR:$src)>;
 
 // Reverse some operations with negative immediate operands to reduce bit-size
 // of the immediate encoding.
@@ -355,6 +355,10 @@ let hasSideEffects = 1 in {
 
 defm MSIZE : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_msize))],
                 "MSIZE $dst", 0x59, 2>;
+
+// The i8 store is handled a speciall way, as EVM has a dedicated instruction
+// for this.
+def : Pat<(truncstorei8 GPR:$val, GPR:$off), (MSTORE8 GPR:$off, GPR:$val)>;
 
 
 //===----------------------------------------------------------------------===//
