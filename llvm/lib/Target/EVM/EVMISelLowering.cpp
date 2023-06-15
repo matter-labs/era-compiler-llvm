@@ -36,8 +36,7 @@ EVMTargetLowering::EVMTargetLowering(const TargetMachine &TM,
   // Legal operations
   setOperationAction({ISD::ADD, ISD::SUB, ISD::MUL, ISD::AND, ISD::OR, ISD::XOR,
                       ISD::SHL, ISD::SRL, ISD::SRA, ISD::SDIV, ISD::UDIV,
-                      ISD::UREM, ISD::SREM, ISD::SETCC, ISD::SELECT, ISD::STORE,
-                      ISD::LOAD},
+                      ISD::UREM, ISD::SREM, ISD::SETCC, ISD::SELECT},
                      MVT::i256, Legal);
 
   for (auto CC : {ISD::SETULT, ISD::SETUGT, ISD::SETLT, ISD::SETGT, ISD::SETGE,
@@ -47,6 +46,22 @@ EVMTargetLowering::EVMTargetLowering(const TargetMachine &TM,
   // Don't use constant pools.
   // TODO: Probably this needs to be relaxed in the future.
   setOperationAction(ISD::Constant, MVT::i256, Legal);
+
+  for (MVT VT : {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}) {
+    setOperationAction(ISD::MERGE_VALUES, VT, Promote);
+    setTruncStoreAction(MVT::i256, VT, Custom);
+  }
+
+  // Custom lowering of extended loads.
+  for (MVT VT : {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}) {
+    setLoadExtAction(ISD::SEXTLOAD, MVT::i256, VT, Custom);
+    setLoadExtAction(ISD::ZEXTLOAD, MVT::i256, VT, Custom);
+    setLoadExtAction(ISD::EXTLOAD, MVT::i256, VT, Custom);
+  }
+
+  // Custom lowering operations.
+  setOperationAction({ISD::GlobalAddress, ISD::LOAD, ISD::STORE}, MVT::i256,
+                     Custom);
 
   setJumpIsExpensive(false);
   setMaximumJumpTableSize(0);
@@ -69,15 +84,156 @@ const char *EVMTargetLowering::getTargetNodeName(unsigned Opcode) const {
 // EVM Lowering private implementation.
 //===----------------------------------------------------------------------===//
 
-//===----------------------------------------------------------------------===//
-// Calling Convention cmplementation.
-//===----------------------------------------------------------------------===//
-
 static void fail(const SDLoc &DL, SelectionDAG &DAG, const char *msg) {
   MachineFunction &MF = DAG.getMachineFunction();
   DAG.getContext()->diagnose(
       DiagnosticInfoUnsupported(MF.getFunction(), msg, DL.getDebugLoc()));
 }
+
+SDValue EVMTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  switch (Op.getOpcode()) {
+  default:
+    llvm_unreachable("Unimplemented operation lowering");
+  case ISD::GlobalAddress:
+    return LowerGlobalAddress(Op, DAG);
+  case ISD::LOAD:
+    return LowerLOAD(Op, DAG);
+  case ISD::STORE:
+    return LowerSTORE(Op, DAG);
+  }
+}
+
+SDValue EVMTargetLowering::LowerGlobalAddress(SDValue Op,
+                                              SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  const auto *GA = cast<GlobalAddressSDNode>(Op);
+  EVT VT = Op.getValueType();
+  assert(GA->getTargetFlags() == 0 &&
+         "Unexpected target flags on generic GlobalAddressSDNode");
+  if (GA->getAddressSpace() != 0)
+    fail(DL, DAG, "EVM expects only the 0 address space");
+
+  return DAG.getNode(
+      EVMISD::TARGET_ADDR_WRAPPER, DL, VT,
+      DAG.getTargetGlobalAddress(GA->getGlobal(), DL, VT, GA->getOffset()));
+}
+
+SDValue EVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  LoadSDNode *Load = cast<LoadSDNode>(Op);
+
+  SDValue BasePtr = Load->getBasePtr();
+  SDValue Chain = Load->getChain();
+  const MachinePointerInfo &PInfo = Load->getPointerInfo();
+
+  EVT MemVT = Load->getMemoryVT();
+  unsigned MemVTSize = MemVT.getSizeInBits();
+  if (MemVT == MVT::i256)
+    return {};
+
+  auto ExtType = Load->getExtensionType();
+
+  assert(Op->getValueType(0) == MVT::i256 && "Unexpected load type");
+  assert(ExtType != ISD::NON_EXTLOAD && "Expected extended LOAD");
+  assert(MemVT.isScalarInteger() && "Expected scalar load");
+  assert(MemVTSize < 256 && "Expected < 256-bits sized loads");
+
+  LLVM_DEBUG(errs() << "Special handling of extended LOAD node:\n";
+             Op.dump(&DAG));
+
+  // As the EVM architecture has only 256-bits load, additional handling
+  // is required to load smaller types.
+  // In the EVM architecture, values located on stack are righ-aligned. Values
+  // located in memory are left-aligned.
+
+  // A small load is implemented as follows:
+  // 1. L = load 256 bits starting from the pointer
+  // 2. Shift the value to the right
+  //   V = V >> (256 - MemVTSize)
+  // 3. Sign-expand the value for SEXTLOAD
+
+  SDValue LoadValue =
+      DAG.getLoad(MVT::i256, DL, Chain, BasePtr, PInfo, Load->getAlign());
+
+  SDValue Res = DAG.getNode(ISD::SRL, DL, MVT::i256, LoadValue,
+                            DAG.getConstant(256 - MemVTSize, DL, MVT::i256));
+
+  if (ExtType == ISD::SEXTLOAD)
+    Res = DAG.getNode(ISD::SIGN_EXTEND_INREG, DL, MVT::i256, Res,
+                      DAG.getValueType(MemVT));
+
+  return DAG.getMergeValues({Res, LoadValue.getValue(1)}, DL);
+}
+
+SDValue EVMTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
+  SDLoc DL(Op);
+  StoreSDNode *Store = cast<StoreSDNode>(Op);
+
+  SDValue BasePtr = Store->getBasePtr();
+  SDValue Chain = Store->getChain();
+  const MachinePointerInfo &PInfo = Store->getPointerInfo();
+
+  EVT MemVT = Store->getMemoryVT();
+  unsigned MemVTSize = MemVT.getSizeInBits();
+  assert(MemVT.isScalarInteger() && "Expected a scalar store");
+  if (MemVT == MVT::i256 || MemVT == MVT::i8)
+    return {};
+
+  assert(MemVTSize < 256 && "Expected < 256-bits sized stores");
+
+  LLVM_DEBUG(errs() << "Special handling of STORE node:\n"; Op.dump(&DAG));
+
+  // As the EVM architecture has only 256-bits stors, additional handling
+  // is required to store smaller types.
+  // In the EVM architecture, values located on stack are righ-aligned. Values
+  // located in memory are left-aligned.
+  // The i8 store is handled a special way, as EVM has MSTORE8 instruction
+  // for this case.
+
+  // A small store is implemented as follows:
+  // 1. L = load 256 bits starting from the pointer
+  // 2. Clear the MSB memory bits that will be overwritten
+  //   L = L << MemVTSize
+  //   L = L >> MemVTSize
+  // 3. Zero-expand the value being stored
+  // 4. Shift the value to the left
+  //   V = V << (256 - MemVTSize)
+  // 5. S = or L, V
+  // 6. store i256 S
+
+  // Load 256 bits starting from the pointer.
+  SDValue OrigValue = DAG.getExtLoad(
+      ISD::NON_EXTLOAD, DL, MVT::i256, Chain, BasePtr, PInfo, MVT::i256,
+      Store->getAlign(), MachineMemOperand::MOLoad, Store->getAAInfo());
+  Chain = OrigValue.getValue(1);
+
+  // Clear LSB bits of the memory word that will be overwritten.
+  OrigValue = DAG.getNode(ISD::SRL, DL, MVT::i256, OrigValue,
+                          DAG.getConstant(MemVTSize, DL, MVT::i256));
+  OrigValue = DAG.getNode(ISD::SHL, DL, MVT::i256, OrigValue,
+                          DAG.getConstant(MemVTSize, DL, MVT::i256));
+
+  SDValue ZextValue = DAG.getZeroExtendInReg(Store->getValue(), DL, MVT::i256);
+
+  SDValue StoreValue =
+      DAG.getNode(ISD::SHL, DL, MVT::i256, ZextValue,
+                  DAG.getConstant(256 - MemVTSize, DL, MVT::i256));
+
+  SDValue OR = DAG.getNode(ISD::OR, DL, MVT::i256, StoreValue, OrigValue);
+
+  return DAG.getStore(Chain, DL, OR, BasePtr, PInfo);
+}
+
+void EVMTargetLowering::ReplaceNodeResults(SDNode *N,
+                                           SmallVectorImpl<SDValue> &Results,
+                                           SelectionDAG &DAG) const {
+  LowerOperationWrapper(N, Results, DAG);
+}
+
+//===----------------------------------------------------------------------===//
+// Calling Convention cmplementation.
+//===----------------------------------------------------------------------===//
 
 // Test whether the given calling convention is supported.
 static bool callingConvSupported(CallingConv::ID CallConv) {
