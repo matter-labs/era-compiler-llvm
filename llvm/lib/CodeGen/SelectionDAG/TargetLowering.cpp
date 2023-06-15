@@ -4300,8 +4300,9 @@ SDValue TargetLowering::SimplifySetCC(EVT VT, SDValue N0, SDValue N1,
     }
 
     // SyncVM local begin
-    // Load narrowing is not profiable for SyncVM
-    if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
+    // Load narrowing is not profiable for SyncVM/EVM
+    if (!DAG.getTarget().getTargetTriple().isSyncVM() &&
+        !DAG.getTarget().getTargetTriple().isEVM()) {
     // SyncVM local end
     // If the LHS is '(and load, const)', the RHS is 0, the test is for
     // equality or unsigned, and all 1 bits of the const are in the same
