@@ -27,18 +27,17 @@ using namespace llvm;
 
 namespace {
 
+/// Lower SEL instruction family to uncoditional + conditional move.
+/// Select x, y, cc -> add x, r0 + add.cc y, r0.
 class EraVMExpandSelect : public MachineFunctionPass {
 public:
   static char ID;
   EraVMExpandSelect() : MachineFunctionPass(ID) {}
-
   bool runOnMachineFunction(MachineFunction &MF) override;
-
   StringRef getPassName() const override { return ERAVM_EXPAND_SELECT_NAME; }
 
 private:
   const TargetInstrInfo *TII{};
-  LLVMContext *Context{};
 };
 
 char EraVMExpandSelect::ID = 0;
@@ -48,32 +47,28 @@ char EraVMExpandSelect::ID = 0;
 INITIALIZE_PASS(EraVMExpandSelect, DEBUG_TYPE, ERAVM_EXPAND_SELECT_NAME, false,
                 false)
 
+/// For given \p Select and argument \p Kind return corresponding mov opcode
+/// for conditional or unconditional mov.
+static unsigned movOpcode(EraVM::ArgumentKind Kind, unsigned Select) {
+  switch (EraVM::argumentType(Kind, Select)) {
+  case EraVM::ArgumentType::Register:
+    if (Select == EraVM::FATPTR_SELrrr)
+      return EraVM::PTR_ADDrrr_s;
+    return EraVM::ADDrrr_s;
+  case EraVM::ArgumentType::Immediate:
+    return EraVM::ADDirr_s;
+  case EraVM::ArgumentType::Code:
+    return EraVM::ADDcrr_s;
+  case EraVM::ArgumentType::Stack:
+    return EraVM::ADDsrr_s;
+  }
+  llvm_unreachable("Unexpected argument type");
+}
+
 bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
   LLVM_DEBUG(
       dbgs() << "********** EraVM EXPAND SELECT INSTRUCTIONS **********\n"
              << "********** Function: " << MF.getName() << '\n');
-  // pseudo opcode -> mov opcode, cmov opcode, #args src0, #args src1, #args dst
-  DenseMap<unsigned, std::vector<unsigned>> Pseudos{
-      {EraVM::SELrrr, {EraVM::ADDrrr_s, EraVM::ADDrrr_s, 1, 1, 0}},
-      {EraVM::SELirr, {EraVM::ADDirr_s, EraVM::ADDrrr_s, 1, 1, 0}},
-      {EraVM::SELcrr, {EraVM::ADDcrr_s, EraVM::ADDrrr_s, 2, 1, 0}},
-      {EraVM::SELsrr, {EraVM::ADDsrr_s, EraVM::ADDrrr_s, 3, 1, 0}},
-      {EraVM::SELrir, {EraVM::ADDrrr_s, EraVM::ADDirr_s, 1, 1, 0}},
-      {EraVM::SELiir, {EraVM::ADDirr_s, EraVM::ADDirr_s, 1, 1, 0}},
-      {EraVM::SELcir, {EraVM::ADDcrr_s, EraVM::ADDirr_s, 2, 1, 0}},
-      {EraVM::SELsir, {EraVM::ADDsrr_s, EraVM::ADDirr_s, 3, 1, 0}},
-      {EraVM::SELrcr, {EraVM::ADDrrr_s, EraVM::ADDcrr_s, 1, 2, 0}},
-      {EraVM::SELicr, {EraVM::ADDirr_s, EraVM::ADDcrr_s, 1, 2, 0}},
-      {EraVM::SELccr, {EraVM::ADDcrr_s, EraVM::ADDcrr_s, 2, 2, 0}},
-      {EraVM::SELscr, {EraVM::ADDsrr_s, EraVM::ADDcrr_s, 3, 2, 0}},
-      {EraVM::SELrsr, {EraVM::ADDrrr_s, EraVM::ADDsrr_s, 1, 3, 0}},
-      {EraVM::SELisr, {EraVM::ADDirr_s, EraVM::ADDsrr_s, 1, 3, 0}},
-      {EraVM::SELcsr, {EraVM::ADDcrr_s, EraVM::ADDsrr_s, 2, 3, 0}},
-      {EraVM::SELssr, {EraVM::ADDsrr_s, EraVM::ADDsrr_s, 3, 3, 0}},
-      // Fat pointer
-      {EraVM::FATPTR_SELrrr,
-       {EraVM::PTR_ADDrrr_s, EraVM::PTR_ADDrrr_s, 1, 1, 0}},
-  };
 
   DenseMap<unsigned, unsigned> Inverse{
       {EraVM::SELrrr, EraVM::SELrrr},
@@ -94,66 +89,57 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
   TII = MF.getSubtarget<EraVMSubtarget>().getInstrInfo();
   assert(TII && "TargetInstrInfo must be a valid object");
 
-  Context = &MF.getFunction().getContext();
-
   std::vector<MachineInstr *> PseudoInst;
   for (MachineBasicBlock &MBB : MF)
     for (MachineInstr &MI : MBB) {
-      if (!MI.isPseudo())
+      if (!EraVM::isSelect(MI))
         continue;
 
-      if (Pseudos.count(MI.getOpcode())) {
-        // Expand SELxxx pseudo into mov + cmov
-        unsigned Opc = MI.getOpcode();
-        DebugLoc DL = MI.getDebugLoc();
+      unsigned Opc = MI.getOpcode();
+      DebugLoc DL = MI.getDebugLoc();
+      auto *In0 = EraVM::in0Iterator(MI);
+      auto In0Range = EraVM::in0Range(MI);
+      auto In1Range = EraVM::in1Range(MI);
+      auto Out = EraVM::out0Iterator(MI);
 
-        assert(Pseudos.count(Opc) && "Unexpected instr type to insert");
-        unsigned NumDefs = MI.getNumDefs();
-        unsigned Src0ArgPos = NumDefs;
-        unsigned Src1ArgPos = NumDefs + Pseudos[Opc][2];
-        unsigned CCPos = Src1ArgPos + Pseudos[Opc][3];
-        unsigned DstArgPos = CCPos + 1;
-        unsigned EndPos = DstArgPos + Pseudos[Opc][4];
+      // For rN = cc ? rN : y it's profitable to reverse (rN = reverse_cc ? y :
+      // rN) It allows to lower select to a single instruction rN =
+      // add.reverse_cc y, r0.
+      bool ShouldInverse =
+          Inverse.count(Opc) != 0U && Out->getReg() == In0->getReg();
 
-        bool ShouldInverse =
-            Inverse.count(Opc) != 0u &&
-            MI.getOperand(0).getReg() == MI.getOperand(Src0ArgPos).getReg();
-
-        auto buildMOV = [&](unsigned OpNo, unsigned CC) {
-          unsigned ArgPos = (OpNo == 0) ? Src0ArgPos : Src1ArgPos;
-          unsigned NextPos = (OpNo == 0) ? Src1ArgPos : CCPos;
-          bool IsReg = (NextPos - ArgPos == 1) && MI.getOperand(ArgPos).isReg();
-          unsigned MovOpc = Pseudos[Opc][OpNo];
-          // Avoid unconditional mov rN, rN
-          if (CC == EraVMCC::COND_NONE && NumDefs && IsReg &&
-              MI.getOperand(ArgPos).getReg() == MI.getOperand(0).getReg())
-            return;
-          auto Mov = [&]() {
-            if (NumDefs)
-              return BuildMI(MBB, &MI, DL, TII->get(MovOpc),
-                             MI.getOperand(0).getReg());
-            return BuildMI(MBB, &MI, DL, TII->get(MovOpc));
-          }();
-          for (unsigned i = ArgPos; i < NextPos; ++i)
-            Mov.add(MI.getOperand(i));
-          Mov.addReg(EraVM::R0);
-          for (unsigned i = DstArgPos; i < EndPos; ++i) {
-            Mov.add(MI.getOperand(i));
-          }
-          Mov.addImm(CC);
+      auto buildMOV = [&](EraVM::ArgumentKind OpNo, unsigned CC) {
+        auto OperandRange =
+            (OpNo == EraVM::ArgumentKind::In0) ? In0Range : In1Range;
+        auto *OperandIt = OperandRange.begin();
+        bool IsRegister =
+            argumentType(OpNo, MI) == EraVM::ArgumentType::Register;
+        unsigned MovOpc = movOpcode(OpNo, Opc);
+        // Avoid unconditional mov rN, rN
+        if (CC == EraVMCC::COND_NONE && IsRegister &&
+            OperandIt->getReg() == Out->getReg())
           return;
-        };
+        auto Mov = BuildMI(MBB, &MI, DL, TII->get(MovOpc), Out->getReg());
+        EraVM::copyOperands(Mov, OperandRange);
+        Mov.addReg(EraVM::R0);
+        Mov.addImm(CC);
+        if (CC != EraVMCC::COND_NONE)
+          Mov.addReg(EraVM::Flags, RegState::Implicit);
+        return;
+      };
 
-        if (ShouldInverse) {
-          buildMOV(0, EraVMCC::COND_NONE);
-          buildMOV(1, InverseCond[getImmOrCImm(MI.getOperand(CCPos))]);
-        } else {
-          buildMOV(1, EraVMCC::COND_NONE);
-          buildMOV(0, getImmOrCImm(MI.getOperand(CCPos)));
-        }
-
-        PseudoInst.push_back(&MI);
+      if (ShouldInverse) {
+        buildMOV(EraVM::ArgumentKind::In0, EraVMCC::COND_NONE);
+        buildMOV(EraVM::ArgumentKind::In1,
+                 InverseCond[getImmOrCImm(
+                     MI.getOperand(MI.getNumExplicitOperands() - 1))]);
+      } else {
+        buildMOV(EraVM::ArgumentKind::In1, EraVMCC::COND_NONE);
+        buildMOV(EraVM::ArgumentKind::In0,
+                 getImmOrCImm(MI.getOperand(MI.getNumExplicitOperands() - 1)));
       }
+
+      PseudoInst.push_back(&MI);
     }
 
   for (auto *I : PseudoInst)

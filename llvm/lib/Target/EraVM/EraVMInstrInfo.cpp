@@ -13,6 +13,7 @@
 #include "EraVMInstrInfo.h"
 
 #include <deque>
+#include <optional>
 
 #include "EraVMMachineFunctionInfo.h"
 #include "EraVMTargetMachine.h"
@@ -31,6 +32,83 @@ using namespace llvm;
 
 namespace llvm {
 namespace EraVM {
+
+ArgumentType argumentType(ArgumentKind Kind, unsigned Opcode) {
+  // TODO: Mappings for Select.
+  // Select is not a part of a mapping, so have to handle it manually.
+  const DenseSet<unsigned> In0R = {EraVM::SELrrr, EraVM::SELrir, EraVM::SELrcr,
+                                   EraVM::SELrsr, EraVM::FATPTR_SELrrr};
+  const DenseSet<unsigned> In0I = {EraVM::SELirr, EraVM::SELiir, EraVM::SELicr,
+                                   EraVM::SELisr};
+  const DenseSet<unsigned> In0C = {EraVM::SELcrr, EraVM::SELcir, EraVM::SELccr,
+                                   EraVM::SELcsr};
+  const DenseSet<unsigned> In0S = {EraVM::SELsrr, EraVM::SELsir, EraVM::SELscr,
+                                   EraVM::SELssr};
+  const DenseSet<unsigned> In1R = {EraVM::SELrrr, EraVM::SELirr, EraVM::SELcrr,
+                                   EraVM::SELsrr, EraVM::FATPTR_SELrrr};
+  const DenseSet<unsigned> In1I = {EraVM::SELrir, EraVM::SELiir, EraVM::SELcir,
+                                   EraVM::SELsir};
+  const DenseSet<unsigned> In1C = {EraVM::SELrcr, EraVM::SELicr, EraVM::SELccr,
+                                   EraVM::SELscr};
+  const DenseSet<unsigned> In1S = {EraVM::SELrsr, EraVM::SELisr, EraVM::SELcsr,
+                                   EraVM::SELssr};
+  if (Kind == ArgumentKind::Out1) {
+    // TODO: Support stack output for Select.
+    return ArgumentType::Register;
+  }
+  if (Kind == ArgumentKind::In1) {
+    if (In1R.count(Opcode))
+      return ArgumentType::Register;
+    if (In1I.count(Opcode))
+      return ArgumentType::Immediate;
+    if (In1C.count(Opcode))
+      return ArgumentType::Code;
+    if (In1S.count(Opcode))
+      return ArgumentType::Stack;
+    return ArgumentType::Register;
+  }
+  if (Kind == ArgumentKind::Out0) {
+    if (hasSROutAddressingMode(Opcode))
+      return ArgumentType::Stack;
+    return ArgumentType::Register;
+  }
+  assert(Kind == ArgumentKind::In0);
+  if (In0R.count(Opcode))
+    return ArgumentType::Register;
+  if (In0I.count(Opcode))
+    return ArgumentType::Immediate;
+  if (In0C.count(Opcode))
+    return ArgumentType::Code;
+  if (In0S.count(Opcode))
+    return ArgumentType::Stack;
+  if (hasRRInAddressingMode(Opcode))
+    return ArgumentType::Register;
+  if (hasIRInAddressingMode(Opcode))
+    return ArgumentType::Immediate;
+  if (hasCRInAddressingMode(Opcode))
+    return ArgumentType::Code;
+  return ArgumentType::Stack;
+}
+
+MachineInstr::mop_iterator in0Iterator(MachineInstr &MI) {
+  return MI.operands_begin() + MI.getNumExplicitDefs();
+}
+
+MachineInstr::mop_iterator in1Iterator(MachineInstr &MI) {
+  return in0Iterator(MI) + argumentSize(ArgumentKind::In0, MI);
+}
+
+MachineInstr::mop_iterator out0Iterator(MachineInstr &MI) {
+  auto Begin = MI.operands_begin();
+  if (hasRROutAddressingMode(MI) || isSelect(MI))
+    return Begin;
+  return in1Iterator(MI) + argumentSize(ArgumentKind::In1, MI);
+}
+
+MachineInstr::mop_iterator out1Iterator(MachineInstr &MI) {
+  return MI.operands_begin() + MI.getNumExplicitDefs() - 1;
+}
+
 int getWithRRInAddrMode(uint16_t Opcode) {
   Opcode = getWithInsNotSwapped(Opcode);
   if (int Result = mapRRInputTo(Opcode, OperandAM_0); Result != -1)
@@ -99,28 +177,39 @@ int getWithInsSwapped(uint16_t Opcode) {
   return Opcode;
 }
 
-bool hasRRInAddressingMode(const MachineInstr &MI) {
-  return (unsigned)mapRRInputTo(MI.getOpcode(), OperandAM_0) == MI.getOpcode();
+bool hasRRInAddressingMode(unsigned Opcode) {
+  return (unsigned)mapRRInputTo(Opcode, OperandAM_0) == Opcode;
 }
 
-bool hasIRInAddressingMode(const MachineInstr &MI) {
-  return (unsigned)mapIRInputTo(MI.getOpcode(), OperandAM_1) == MI.getOpcode();
+bool hasIRInAddressingMode(unsigned Opcode) {
+  return (unsigned)mapIRInputTo(Opcode, OperandAM_1) == Opcode;
 }
 
-bool hasCRInAddressingMode(const MachineInstr &MI) {
-  return (unsigned)mapCRInputTo(MI.getOpcode(), OperandAM_2) == MI.getOpcode();
+bool hasCRInAddressingMode(unsigned Opcode) {
+  return (unsigned)mapCRInputTo(Opcode, OperandAM_2) == Opcode;
 }
 
-bool hasSRInAddressingMode(const MachineInstr &MI) {
-  return (unsigned)mapSRInputTo(MI.getOpcode(), OperandAM_3) == MI.getOpcode();
+bool hasSRInAddressingMode(unsigned Opcode) {
+  return (unsigned)mapSRInputTo(Opcode, OperandAM_3) == Opcode;
 }
 
-bool hasRROutAddressingMode(const MachineInstr &MI) {
-  return withStackResult(MI.getOpcode()) != -1;
+bool hasRROutAddressingMode(unsigned Opcode) {
+  return withStackResult(Opcode) != -1;
 }
 
-bool hasSROutAddressingMode(const MachineInstr &MI) {
-  return withRegisterResult(MI.getOpcode()) != -1;
+bool hasSROutAddressingMode(unsigned Opcode) {
+  return withRegisterResult(Opcode) != -1;
+}
+
+// TODO: Implement in via td.
+bool isSelect(unsigned Opcode) {
+  DenseSet<unsigned> Members = {
+      EraVM::SELrrr,       EraVM::SELrir, EraVM::SELrcr, EraVM::SELrsr,
+      EraVM::SELirr,       EraVM::SELiir, EraVM::SELicr, EraVM::SELisr,
+      EraVM::SELcrr,       EraVM::SELcir, EraVM::SELccr, EraVM::SELcsr,
+      EraVM::SELsrr,       EraVM::SELsir, EraVM::SELscr, EraVM::SELssr,
+      EraVM::FATPTR_SELrrr};
+  return Members.count(Opcode);
 }
 
 } // namespace EraVM
@@ -443,19 +532,6 @@ bool EraVMInstrInfo::isNull(const MachineInstr &MI) const {
 bool EraVMInstrInfo::isSilent(const MachineInstr &MI) const {
   StringRef Mnemonic = getName(MI.getOpcode());
   return Mnemonic.ends_with("s");
-}
-
-EraVMInstrInfo::GenericInstruction
-EraVMInstrInfo::genericInstructionFor(const MachineInstr &MI) const {
-  if (isAdd(MI))
-    return ADD;
-  if (isSub(MI))
-    return SUB;
-  if (isMul(MI))
-    return MUL;
-  if (isDiv(MI))
-    return DIV;
-  return Unsupported;
 }
 
 /// Mark a copy to a fat pointer register or from a fat pointer register with
