@@ -7,6 +7,7 @@
 #include "SyncVMInstrInfo.h"
 
 #include <deque>
+#include <optional>
 
 #include "SyncVMMachineFunctionInfo.h"
 #include "SyncVMTargetMachine.h"
@@ -25,6 +26,83 @@ using namespace llvm;
 
 namespace llvm {
 namespace SyncVM {
+
+ArgumentType argumentType(ArgumentKind Kind, unsigned Opcode) {
+  // TODO: Mappings for Select.
+  // Select is not a part of a mapping, so have to handle it manually.
+  const DenseSet<unsigned> In0R = {SyncVM::SELrrr, SyncVM::SELrir,
+                                   SyncVM::SELrcr, SyncVM::SELrsr,
+                                   SyncVM::FATPTR_SELrrr};
+  const DenseSet<unsigned> In0I = {SyncVM::SELirr, SyncVM::SELiir,
+                                   SyncVM::SELicr, SyncVM::SELisr};
+  const DenseSet<unsigned> In0C = {SyncVM::SELcrr, SyncVM::SELcir,
+                                   SyncVM::SELccr, SyncVM::SELcsr};
+  const DenseSet<unsigned> In0S = {SyncVM::SELsrr, SyncVM::SELsir,
+                                   SyncVM::SELscr, SyncVM::SELssr};
+  const DenseSet<unsigned> In1R = {SyncVM::SELrrr, SyncVM::SELirr,
+                                   SyncVM::SELcrr, SyncVM::SELsrr,
+                                   SyncVM::FATPTR_SELrrr};
+  const DenseSet<unsigned> In1I = {SyncVM::SELrir, SyncVM::SELiir,
+                                   SyncVM::SELcir, SyncVM::SELsir};
+  const DenseSet<unsigned> In1C = {SyncVM::SELrcr, SyncVM::SELicr,
+                                   SyncVM::SELccr, SyncVM::SELscr};
+  const DenseSet<unsigned> In1S = {SyncVM::SELrsr, SyncVM::SELisr,
+                                   SyncVM::SELcsr, SyncVM::SELssr};
+  if (Kind == ArgumentKind::Out1) {
+    // TODO: Support stack output for Select.
+    return ArgumentType::Register;
+  } else if (Kind == ArgumentKind::In1) {
+    if (In1R.count(Opcode))
+      return ArgumentType::Register;
+    if (In1I.count(Opcode))
+      return ArgumentType::Immediate;
+    if (In1C.count(Opcode))
+      return ArgumentType::Code;
+    if (In1S.count(Opcode))
+      return ArgumentType::Stack;
+    return ArgumentType::Register;
+  } else if (Kind == ArgumentKind::Out0) {
+    if (hasSROutAddressingMode(Opcode))
+      return ArgumentType::Stack;
+    return ArgumentType::Register;
+  }
+  assert(Kind == ArgumentKind::In0);
+  if (In0R.count(Opcode))
+    return ArgumentType::Register;
+  if (In0I.count(Opcode))
+    return ArgumentType::Immediate;
+  if (In0C.count(Opcode))
+    return ArgumentType::Code;
+  if (In0S.count(Opcode))
+    return ArgumentType::Stack;
+  if (hasRRInAddressingMode(Opcode))
+    return ArgumentType::Register;
+  if (hasIRInAddressingMode(Opcode))
+    return ArgumentType::Immediate;
+  if (hasCRInAddressingMode(Opcode))
+    return ArgumentType::Code;
+  return ArgumentType::Stack;
+}
+
+MachineInstr::mop_iterator in0Iterator(MachineInstr &MI) {
+  return MI.operands_begin() + MI.getNumExplicitDefs();
+}
+
+MachineInstr::mop_iterator in1Iterator(MachineInstr &MI) {
+  return in0Iterator(MI) + argumentSize(ArgumentKind::In0, MI);
+}
+
+MachineInstr::mop_iterator out0Iterator(MachineInstr &MI) {
+  auto Begin = MI.operands_begin();
+  if (hasRROutAddressingMode(MI) || isSelect(MI))
+    return Begin;
+  return in1Iterator(MI) + argumentSize(ArgumentKind::In1, MI);
+}
+
+MachineInstr::mop_iterator out1Iterator(MachineInstr &MI) {
+  return MI.operands_begin() + MI.getNumExplicitDefs() - 1;
+}
+
 int getWithRRInAddrMode(uint16_t Opcode) {
   Opcode = getWithInsNotSwapped(Opcode);
   if (int Result = mapRRInputTo(Opcode, OperandAM_0); Result != -1)
@@ -93,28 +171,39 @@ int getWithInsSwapped(uint16_t Opcode) {
   return Opcode;
 }
 
-bool hasRRInAddressingMode(const MachineInstr &MI) {
-  return (unsigned)mapRRInputTo(MI.getOpcode(), OperandAM_0) == MI.getOpcode();
+bool hasRRInAddressingMode(unsigned Opcode) {
+  return (unsigned)mapRRInputTo(Opcode, OperandAM_0) == Opcode;
 }
 
-bool hasIRInAddressingMode(const MachineInstr &MI) {
-  return (unsigned)mapIRInputTo(MI.getOpcode(), OperandAM_1) == MI.getOpcode();
+bool hasIRInAddressingMode(unsigned Opcode) {
+  return (unsigned)mapIRInputTo(Opcode, OperandAM_1) == Opcode;
 }
 
-bool hasCRInAddressingMode(const MachineInstr &MI) {
-  return (unsigned)mapCRInputTo(MI.getOpcode(), OperandAM_2) == MI.getOpcode();
+bool hasCRInAddressingMode(unsigned Opcode) {
+  return (unsigned)mapCRInputTo(Opcode, OperandAM_2) == Opcode;
 }
 
-bool hasSRInAddressingMode(const MachineInstr &MI) {
-  return (unsigned)mapSRInputTo(MI.getOpcode(), OperandAM_3) == MI.getOpcode();
+bool hasSRInAddressingMode(unsigned Opcode) {
+  return (unsigned)mapSRInputTo(Opcode, OperandAM_3) == Opcode;
 }
 
-bool hasRROutAddressingMode(const MachineInstr &MI) {
-  return withStackResult(MI.getOpcode()) != -1;
+bool hasRROutAddressingMode(unsigned Opcode) {
+  return withStackResult(Opcode) != -1;
 }
 
-bool hasSROutAddressingMode(const MachineInstr &MI) {
-  return withRegisterResult(MI.getOpcode()) != -1;
+bool hasSROutAddressingMode(unsigned Opcode) {
+  return withRegisterResult(Opcode) != -1;
+}
+
+// TODO: Implement in via td.
+bool isSelect(unsigned Opcode) {
+  DenseSet<unsigned> Members = {
+      SyncVM::SELrrr,       SyncVM::SELrir, SyncVM::SELrcr, SyncVM::SELrsr,
+      SyncVM::SELirr,       SyncVM::SELiir, SyncVM::SELicr, SyncVM::SELisr,
+      SyncVM::SELcrr,       SyncVM::SELcir, SyncVM::SELccr, SyncVM::SELcsr,
+      SyncVM::SELsrr,       SyncVM::SELsir, SyncVM::SELscr, SyncVM::SELssr,
+      SyncVM::FATPTR_SELrrr};
+  return Members.count(Opcode);
 }
 
 } // namespace SyncVM
@@ -467,19 +556,6 @@ bool SyncVMInstrInfo::isNull(const MachineInstr &MI) const {
 bool SyncVMInstrInfo::isSilent(const MachineInstr &MI) const {
   StringRef Mnemonic = getName(MI.getOpcode());
   return Mnemonic.endswith("s");
-}
-
-SyncVMInstrInfo::GenericInstruction
-SyncVMInstrInfo::genericInstructionFor(const MachineInstr &MI) const {
-  if (isAdd(MI))
-    return ADD;
-  if (isSub(MI))
-    return SUB;
-  if (isMul(MI))
-    return MUL;
-  if (isDiv(MI))
-    return DIV;
-  return Unsupported;
 }
 
 /// Mark a copy to a fat pointer register or from a fat pointer register with

@@ -9,7 +9,7 @@
 
 #include "SyncVM.h"
 
-#include <tuple>
+#include <optional>
 
 #include "llvm/ADT/Statistic.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
@@ -22,19 +22,22 @@
 using namespace llvm;
 
 #define DEBUG_TYPE "syncvm-stack-address-constant-propagation"
-#define SYNCVM_STACK_ADDRESS_CONSTANT_PROPAGATION_NAME "SyncVM bytes to cells"
+#define SYNCVM_STACK_ADDRESS_CONSTANT_PROPAGATION_NAME                         \
+  "SyncVM stack address constant propagation"
 
 STATISTIC(NumInstructionsErased, "Number of instructions erased");
 
 namespace {
 
+struct PropagationResult {
+  Register Base;
+  int64_t Displacement;
+};
+
 class SyncVMStackAddressConstantPropagation : public MachineFunctionPass {
 public:
   static char ID;
   SyncVMStackAddressConstantPropagation() : MachineFunctionPass(ID) {}
-
-  const TargetRegisterInfo *TRI;
-
   bool runOnMachineFunction(MachineFunction &Fn) override;
 
   StringRef getPassName() const override {
@@ -42,151 +45,73 @@ public:
   }
 
 private:
-  void expandConst(MachineInstr &MI) const;
-  void expandLoadConst(MachineInstr &MI) const;
-  void expandThrow(MachineInstr &MI) const;
-  std::tuple<bool, Register, int64_t>
-  tryExtractConstant(MachineInstr &MI, int Multiplier, int Dividor);
+  // If base for a stack address is in form x1 + x2 + ... + xn, propagate and
+  // fold all constants that are in expression.
+  // TODO: When FE start to produce LLVM arrays, it make sense to support
+  // propagation through mul.
+  std::optional<PropagationResult> tryPropagateConstant(MachineInstr &MI);
   const SyncVMInstrInfo *TII;
   MachineRegisterInfo *RegInfo;
-  LLVMContext *Context;
 };
 
 char SyncVMStackAddressConstantPropagation::ID = 0;
 
 } // namespace
 
-static const std::vector<std::string> BinaryIO = {"MUL", "DIV"};
-static const std::vector<std::string> BinaryI = {
-    "ADD", "SUB", "AND", "OR", "XOR", "SHL", "SHR", "ROL", "ROR"};
-
 INITIALIZE_PASS(SyncVMStackAddressConstantPropagation, DEBUG_TYPE,
                 SYNCVM_STACK_ADDRESS_CONSTANT_PROPAGATION_NAME, false, false)
 
-std::tuple<bool, Register, int64_t>
-SyncVMStackAddressConstantPropagation::tryExtractConstant(MachineInstr &MI,
-                                                          int Multiplier,
-                                                          int Divisor) {
-  if (!TII->genericInstructionFor(MI) || !TII->genericInstructionFor(MI) ||
-      !TII->isSilent(MI) || MI.mayStore() || MI.mayLoad())
+std::optional<PropagationResult>
+SyncVMStackAddressConstantPropagation::tryPropagateConstant(MachineInstr &MI) {
+  if (!TII->isAdd(MI) || !TII->isSilent(MI) || MI.mayStore() || MI.mayLoad())
     return {};
-
-  if (TII->isDiv(MI) && !SyncVM::hasIRInAddressingMode(MI))
-    return {};
-
-  // If the second out of MUL or DIV is used, don't extract a constant from it.
-  if (MI.getNumExplicitDefs() == 2) {
-    Register Def2 = MI.getOperand(1).getReg();
-    if (Def2 != SyncVM::R0 && !RegInfo->use_empty(MI.getOperand(1).getReg()))
-      return {};
-  }
 
   // If the result of the operation is used more than once, don't extract a
   // constant from it.
-  if (!RegInfo->hasOneNonDBGUse(MI.getOperand(0).getReg()))
+  if (!RegInfo->hasOneNonDBGUse(SyncVM::out0Iterator(MI)->getReg()))
     return {};
 
-  if (TII->isDiv(MI)) {
-    if (Divisor != 1)
+  auto In0 = SyncVM::in0Iterator(MI);
+  auto In1 = SyncVM::in1Iterator(MI);
+  Register In1Reg = In1->getReg();
+  MachineInstr &In1Def = *RegInfo->getVRegDef(In1Reg);
+  auto In1Res = tryPropagateConstant(In1Def);
+
+  // If Base = VR1 + VR2, try to propagate constant from VR1 and VR2
+  // recursively.
+  if (SyncVM::hasRRInAddressingMode(MI)) {
+    Register In0Reg = In0->getReg();
+    MachineInstr &LHS = *RegInfo->getVRegDef(In0Reg);
+    auto LHSRes = tryPropagateConstant(LHS);
+    if (!LHSRes && In1Res)
       return {};
-    if (getImmOrCImm(MI.getOperand(2)) != 32)
-      return {};
-    Register In2 = MI.getOperand(3).getReg();
-    MachineInstr *DefMI = RegInfo->getVRegDef(In2);
-    auto extracted = tryExtractConstant(*DefMI, 1, 32);
-    if (!std::get<0>(extracted))
-      return {};
+    In0Reg = LHSRes ? LHSRes->Base : In0Reg;
+    In1Reg = In1Res ? In1Res->Base : In1Reg;
+    int64_t In0Const = LHSRes ? LHSRes->Displacement : 0;
+    int64_t In1Const = In1Res ? In1Res->Displacement : 0;
     Register NewVR = RegInfo->createVirtualRegister(&SyncVM::GR256RegClass);
     MachineInstr *NewMI = BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
-                                  TII->get(SyncVM::DIVxrrr_s))
+                                  TII->get(SyncVM::ADDrrr_s))
                               .addDef(NewVR)
-                              .addDef(SyncVM::R0)
-                              .addImm(32)
-                              .addReg(std::get<1>(extracted))
+                              .addReg(In0Reg)
+                              .addReg(In1Reg)
                               .addImm(SyncVMCC::COND_NONE)
                               .getInstr();
     LLVM_DEBUG(dbgs() << "Replace " << MI << "\n  with " << NewMI);
     ++NumInstructionsErased;
     MI.eraseFromParent();
-    return {true, NewVR, std::get<2>(extracted)};
+    return PropagationResult{NewVR, In0Const + In1Const};
   }
-
-  auto getNewReg = [](std::tuple<bool, Register, int64_t> Result,
-                      Register Old) {
-    if (std::get<0>(Result))
-      return std::get<1>(Result);
-    return Old;
-  };
-
-  if (TII->isAdd(MI)) {
-    if (SyncVM::hasRRInAddressingMode(MI)) {
-      Register LHSReg = MI.getOperand(1).getReg();
-      Register RHSReg = MI.getOperand(2).getReg();
-      MachineInstr &LHS = *RegInfo->getVRegDef(LHSReg);
-      MachineInstr &RHS = *RegInfo->getVRegDef(RHSReg);
-      auto LHSRes = tryExtractConstant(LHS, Multiplier, Divisor);
-      auto RHSRes = tryExtractConstant(RHS, Multiplier, Divisor);
-      if (!std::get<0>(LHSRes) && !std::get<0>(RHSRes))
-        return {};
-      Register NewVR = RegInfo->createVirtualRegister(&SyncVM::GR256RegClass);
-      MachineInstr *NewMI = BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
-                                    TII->get(SyncVM::ADDrrr_s))
-                                .addDef(NewVR)
-                                .addReg(getNewReg(LHSRes, LHSReg))
-                                .addReg(getNewReg(RHSRes, RHSReg))
-                                .addImm(SyncVMCC::COND_NONE)
-                                .getInstr();
-      LLVM_DEBUG(dbgs() << "Replace " << MI << "\n  with " << NewMI);
-      ++NumInstructionsErased;
-      MI.eraseFromParent();
-      return {true, NewVR, std::get<2>(LHSRes) + std::get<2>(RHSRes)};
-    }
-    assert(SyncVM::hasIRInAddressingMode(MI));
-    Register RHSReg = MI.getOperand(2).getReg();
-    unsigned Val = getImmOrCImm(MI.getOperand(1));
-    LLVM_DEBUG(dbgs() << "Erase " << MI);
-    ++NumInstructionsErased;
-    MI.eraseFromParent();
-    return {true, RHSReg, Multiplier * Val / Divisor};
-  }
-  if (TII->isSub(MI)) {
-    if (SyncVM::hasRRInAddressingMode(MI)) {
-      Register LHSReg = MI.getOperand(1).getReg();
-      Register RHSReg = MI.getOperand(2).getReg();
-      MachineInstr &LHS = *RegInfo->getVRegDef(LHSReg);
-      MachineInstr &RHS = *RegInfo->getVRegDef(RHSReg);
-      auto LHSRes = tryExtractConstant(LHS, Multiplier, Divisor);
-      auto RHSRes = tryExtractConstant(RHS, -Multiplier, Divisor);
-      if (!std::get<0>(LHSRes) && !std::get<0>(RHSRes))
-        return {};
-      Register NewVR = RegInfo->createVirtualRegister(&SyncVM::GR256RegClass);
-      MachineInstr *NewMI = BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
-                                    TII->get(SyncVM::SUBrrr_s))
-                                .addDef(NewVR)
-                                .addReg(getNewReg(LHSRes, LHSReg))
-                                .addReg(getNewReg(RHSRes, RHSReg))
-                                .addImm(SyncVMCC::COND_NONE)
-                                .getInstr();
-      LLVM_DEBUG(dbgs() << "Replace " << MI << "\n  with " << NewMI);
-      ++NumInstructionsErased;
-      MI.eraseFromParent();
-      return {true, NewVR, std::get<2>(LHSRes) + std::get<2>(RHSRes)};
-    }
-    assert(SyncVM::hasIRInAddressingMode(MI));
-    Register RHSReg = MI.getOperand(2).getReg();
-    unsigned Val = getImmOrCImm(MI.getOperand(1));
-    LLVM_DEBUG(dbgs() << "Erase " << MI);
-    ++NumInstructionsErased;
-    MI.eraseFromParent();
-    return {true, RHSReg, -Multiplier * Val / Divisor};
-  }
-
-  // RI mul
-  // TODO: CPR-919 Make operand access more robust and readable.
-  unsigned Val = getImmOrCImm(MI.getOperand(2));
-  Register RHSReg = MI.getOperand(3).getReg();
-  MachineInstr &RHS = *RegInfo->getVRegDef(RHSReg);
-  return tryExtractConstant(RHS, Multiplier * Val, Divisor);
+  // If Base = VR + Disp, try to propagate const from VR and use Disp as Imm in
+  // Reg + Imm addressing mode.
+  assert(SyncVM::hasIRInAddressingMode(MI));
+  In1Reg = In1Res ? In1Res->Base : In1Reg;
+  unsigned Displacement =
+      getImmOrCImm(*In0) + (In1Res ? In1Res->Displacement : 0);
+  LLVM_DEBUG(dbgs() << "Erase " << MI);
+  ++NumInstructionsErased;
+  MI.eraseFromParent();
+  return PropagationResult{In1Reg, Displacement};
 }
 
 bool SyncVMStackAddressConstantPropagation::runOnMachineFunction(
@@ -202,28 +127,27 @@ bool SyncVMStackAddressConstantPropagation::runOnMachineFunction(
   assert(TII && "TargetInstrInfo must be a valid object");
 
   for (auto &BB : MF) {
-    for (auto II = BB.begin(); II != BB.end(); ++II) {
-      if (SyncVM::hasSRInAddressingMode(*II)) {
-        unsigned RegOpndNo = II->getNumExplicitDefs() + 1;
-        if (!II->getOperand(RegOpndNo).isReg())
-          continue;
-        Register Base = II->getOperand(RegOpndNo).getReg();
-        if (!RegInfo->hasOneNonDBGUse(Base))
-          continue;
-        MachineInstr *DefMI = RegInfo->getVRegDef(Base);
-        std::tuple<bool, Register, int64_t> extractionResult =
-            tryExtractConstant(*DefMI, 1, 1);
-        if (std::get<0>(extractionResult)) {
-          int64_t C = getImmOrCImm(II->getOperand(RegOpndNo + 1));
-          C += std::get<2>(extractionResult);
-          LLVM_DEBUG(dbgs() << "Replace " << *II);
-          II->getOperand(RegOpndNo).ChangeToRegister(
-              std::get<1>(extractionResult), 0);
-          II->getOperand(RegOpndNo + 1).ChangeToImmediate(C, 0);
-          LLVM_DEBUG(dbgs() << "  with " << *II);
-          Changed = true;
-        }
-      }
+    for (auto &MI : BB) {
+      if (!SyncVM::hasSRInAddressingMode(MI))
+        continue;
+      auto In0Reg = SyncVM::in0Iterator(MI) + 1;
+      auto In0Const = SyncVM::in0Iterator(MI) + 2;
+      if (!In0Reg->isReg())
+        continue;
+      Register Base = In0Reg->getReg();
+      if (!RegInfo->hasOneNonDBGUse(Base))
+        continue;
+      MachineInstr *DefMI = RegInfo->getVRegDef(Base);
+      auto ConstPropagationResult = tryPropagateConstant(*DefMI);
+      if (!ConstPropagationResult)
+        continue;
+      int64_t Displacement = getImmOrCImm(*In0Const);
+      Displacement += ConstPropagationResult->Displacement;
+      LLVM_DEBUG(dbgs() << "Replace " << MI);
+      In0Reg->ChangeToRegister(ConstPropagationResult->Base, 0);
+      In0Const->ChangeToImmediate(Displacement, 0);
+      LLVM_DEBUG(dbgs() << "  with " << MI);
+      Changed = true;
     }
   }
   LLVM_DEBUG(
