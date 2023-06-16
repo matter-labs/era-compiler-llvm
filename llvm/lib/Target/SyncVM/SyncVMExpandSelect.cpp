@@ -22,20 +22,17 @@ using namespace llvm;
 
 namespace {
 
+/// Lower SEL instruction family to uncoditional + conditional move.
+/// Select x, y, cc -> add x, r0 + add.cc y, r0.
 class SyncVMExpandSelect : public MachineFunctionPass {
 public:
   static char ID;
   SyncVMExpandSelect() : MachineFunctionPass(ID) {}
-
-  const TargetRegisterInfo *TRI;
-
   bool runOnMachineFunction(MachineFunction &Fn) override;
-
   StringRef getPassName() const override { return SYNCVM_EXPAND_SELECT_NAME; }
 
 private:
-  const TargetInstrInfo *TII;
-  LLVMContext *Context;
+  const SyncVMInstrInfo *TII;
 };
 
 char SyncVMExpandSelect::ID = 0;
@@ -45,32 +42,28 @@ char SyncVMExpandSelect::ID = 0;
 INITIALIZE_PASS(SyncVMExpandSelect, DEBUG_TYPE, SYNCVM_EXPAND_SELECT_NAME,
                 false, false)
 
+/// For given \p Select and argument \p Kind return corresponding mov opcode
+/// for conditional or unconditional mov.
+static unsigned movOpcode(SyncVM::ArgumentKind Kind, unsigned Select) {
+  switch (SyncVM::argumentType(Kind, Select)) {
+  case SyncVM::ArgumentType::Register:
+    if (Select == SyncVM::FATPTR_SELrrr)
+      return SyncVM::PTR_ADDrrr_s;
+    return SyncVM::ADDrrr_s;
+  case SyncVM::ArgumentType::Immediate:
+    return SyncVM::ADDirr_s;
+  case SyncVM::ArgumentType::Code:
+    return SyncVM::ADDcrr_s;
+  case SyncVM::ArgumentType::Stack:
+    return SyncVM::ADDsrr_s;
+  }
+  llvm_unreachable("Unexpected argument type");
+}
+
 bool SyncVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
   LLVM_DEBUG(
       dbgs() << "********** SyncVM EXPAND SELECT INSTRUCTIONS **********\n"
              << "********** Function: " << MF.getName() << '\n');
-  // pseudo opcode -> mov opcode, cmov opcode, #args src0, #args src1, #args dst
-  DenseMap<unsigned, std::vector<unsigned>> Pseudos{
-      {SyncVM::SELrrr, {SyncVM::ADDrrr_s, SyncVM::ADDrrr_s, 1, 1, 0}},
-      {SyncVM::SELirr, {SyncVM::ADDirr_s, SyncVM::ADDrrr_s, 1, 1, 0}},
-      {SyncVM::SELcrr, {SyncVM::ADDcrr_s, SyncVM::ADDrrr_s, 2, 1, 0}},
-      {SyncVM::SELsrr, {SyncVM::ADDsrr_s, SyncVM::ADDrrr_s, 3, 1, 0}},
-      {SyncVM::SELrir, {SyncVM::ADDrrr_s, SyncVM::ADDirr_s, 1, 1, 0}},
-      {SyncVM::SELiir, {SyncVM::ADDirr_s, SyncVM::ADDirr_s, 1, 1, 0}},
-      {SyncVM::SELcir, {SyncVM::ADDcrr_s, SyncVM::ADDirr_s, 2, 1, 0}},
-      {SyncVM::SELsir, {SyncVM::ADDsrr_s, SyncVM::ADDirr_s, 3, 1, 0}},
-      {SyncVM::SELrcr, {SyncVM::ADDrrr_s, SyncVM::ADDcrr_s, 1, 2, 0}},
-      {SyncVM::SELicr, {SyncVM::ADDirr_s, SyncVM::ADDcrr_s, 1, 2, 0}},
-      {SyncVM::SELccr, {SyncVM::ADDcrr_s, SyncVM::ADDcrr_s, 2, 2, 0}},
-      {SyncVM::SELscr, {SyncVM::ADDsrr_s, SyncVM::ADDcrr_s, 3, 2, 0}},
-      {SyncVM::SELrsr, {SyncVM::ADDrrr_s, SyncVM::ADDsrr_s, 1, 3, 0}},
-      {SyncVM::SELisr, {SyncVM::ADDirr_s, SyncVM::ADDsrr_s, 1, 3, 0}},
-      {SyncVM::SELcsr, {SyncVM::ADDcrr_s, SyncVM::ADDsrr_s, 2, 3, 0}},
-      {SyncVM::SELssr, {SyncVM::ADDsrr_s, SyncVM::ADDsrr_s, 3, 3, 0}},
-      // Fat pointer
-      {SyncVM::FATPTR_SELrrr,
-               {SyncVM::PTR_ADDrrr_s, SyncVM::PTR_ADDrrr_s, 1, 1, 0}},
-  };
 
   DenseMap<unsigned, unsigned> Inverse{
       {SyncVM::SELrrr, SyncVM::SELrrr},
@@ -91,66 +84,55 @@ bool SyncVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
   TII = MF.getSubtarget<SyncVMSubtarget>().getInstrInfo();
   assert(TII && "TargetInstrInfo must be a valid object");
 
-  Context = &MF.getFunction().getContext();
-
   std::vector<MachineInstr *> PseudoInst;
   for (MachineBasicBlock &MBB : MF)
     for (MachineInstr &MI : MBB) {
-      if (!MI.isPseudo())
+      if (!SyncVM::isSelect(MI))
         continue;
 
-      if (Pseudos.count(MI.getOpcode())) {
-        // Expand SELxxx pseudo into mov + cmov
-        unsigned Opc = MI.getOpcode();
-        DebugLoc DL = MI.getDebugLoc();
+      unsigned Opc = MI.getOpcode();
+      DebugLoc DL = MI.getDebugLoc();
+      auto In0 = SyncVM::in0Iterator(MI);
+      auto In0Range = SyncVM::in0Range(MI);
+      auto In1Range = SyncVM::in1Range(MI);
+      auto Out = SyncVM::out0Iterator(MI);
 
-        assert(Pseudos.count(Opc) && "Unexpected instr type to insert");
-        unsigned NumDefs = MI.getNumDefs();
-        unsigned Src0ArgPos = NumDefs;
-        unsigned Src1ArgPos = NumDefs + Pseudos[Opc][2];
-        unsigned CCPos = Src1ArgPos + Pseudos[Opc][3];
-        unsigned DstArgPos = CCPos + 1;
-        unsigned EndPos = DstArgPos + Pseudos[Opc][4];
+      // For rN = cc ? rN : y it's profitable to reverse (rN = reverse_cc ? y :
+      // rN) It allows to lower select to a single instruction rN =
+      // add.reverse_cc y, r0.
+      bool ShouldInverse =
+          Inverse.count(Opc) != 0u && Out->getReg() == In0->getReg();
 
-        bool ShouldInverse =
-            Inverse.count(Opc) != 0u &&
-            MI.getOperand(0).getReg() == MI.getOperand(Src0ArgPos).getReg();
-
-        auto buildMOV = [&](unsigned OpNo, unsigned CC) {
-          unsigned ArgPos = (OpNo == 0) ? Src0ArgPos : Src1ArgPos;
-          unsigned NextPos = (OpNo == 0) ? Src1ArgPos : CCPos;
-          bool IsReg = (NextPos - ArgPos == 1) && MI.getOperand(ArgPos).isReg();
-          unsigned MovOpc = Pseudos[Opc][OpNo];
-          // Avoid unconditional mov rN, rN
-          if (CC == SyncVMCC::COND_NONE && NumDefs && IsReg &&
-              MI.getOperand(ArgPos).getReg() == MI.getOperand(0).getReg())
-            return;
-          auto Mov = [&]() {
-            if (NumDefs)
-              return BuildMI(MBB, &MI, DL, TII->get(MovOpc),
-                             MI.getOperand(0).getReg());
-            return BuildMI(MBB, &MI, DL, TII->get(MovOpc));
-          }();
-          for (unsigned i = ArgPos; i < NextPos; ++i)
-            Mov.add(MI.getOperand(i));
-          Mov.addReg(SyncVM::R0);
-          for (unsigned i = DstArgPos; i < EndPos; ++i) {
-            Mov.add(MI.getOperand(i));
-          }
-          Mov.addImm(CC);
+      auto buildMOV = [&](SyncVM::ArgumentKind OpNo, unsigned CC) {
+        auto OperandRange =
+            (OpNo == SyncVM::ArgumentKind::In0) ? In0Range : In1Range;
+        auto OperandIt = OperandRange.begin();
+        bool IsRegister =
+            argumentType(OpNo, MI) == SyncVM::ArgumentType::Register;
+        unsigned MovOpc = movOpcode(OpNo, Opc);
+        // Avoid unconditional mov rN, rN
+        if (CC == SyncVMCC::COND_NONE && IsRegister &&
+            OperandIt->getReg() == Out->getReg())
           return;
-        };
+        auto Mov = BuildMI(MBB, &MI, DL, TII->get(MovOpc), Out->getReg());
+        SyncVM::copyOperands(Mov, OperandRange);
+        Mov.addReg(SyncVM::R0);
+        Mov.addImm(CC);
+        return;
+      };
 
-        if (ShouldInverse) {
-          buildMOV(0, SyncVMCC::COND_NONE);
-          buildMOV(1, InverseCond[getImmOrCImm(MI.getOperand(CCPos))]);
-        } else {
-          buildMOV(1, SyncVMCC::COND_NONE);
-          buildMOV(0, getImmOrCImm(MI.getOperand(CCPos)));
-        }
-
-        PseudoInst.push_back(&MI);
+      if (ShouldInverse) {
+        buildMOV(SyncVM::ArgumentKind::In0, SyncVMCC::COND_NONE);
+        buildMOV(SyncVM::ArgumentKind::In1,
+                 InverseCond[getImmOrCImm(
+                     MI.getOperand(MI.getNumExplicitOperands() - 1))]);
+      } else {
+        buildMOV(SyncVM::ArgumentKind::In1, SyncVMCC::COND_NONE);
+        buildMOV(SyncVM::ArgumentKind::In0,
+                 getImmOrCImm(MI.getOperand(MI.getNumExplicitOperands() - 1)));
       }
+
+      PseudoInst.push_back(&MI);
     }
 
   for (auto *I : PseudoInst)
