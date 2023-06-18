@@ -360,6 +360,34 @@ defm MSIZE : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_msize))],
 // for this.
 def : Pat<(truncstorei8 GPR:$val, GPR:$off), (MSTORE8 GPR:$off, GPR:$val)>;
 
+// Instructions for the stack manipulation. These are not real EVM instructions.
+// They are used to model 'alloca' before stackification and should be
+// eliminated at that stage.
+
+def to_tframeindex : SDNodeXForm<frameindex, [{
+  return CurDAG->getTargetFrameIndex(N->getIndex(), MVT::i256);
+}]>;
+
+def TargetFI: OutPatFrag<(ops node:$fi), (i256 (to_tframeindex $fi))>;
+
+def add_like: PatFrags<(ops node:$lhs, node:$rhs),
+                       [(add $lhs, $rhs), (or $lhs, $rhs)], [{
+  return N->getOpcode() == ISD::ADD || isOrEquivalentToAdd(N);
+}]>;
+
+let mayLoad = 1 in
+def STACK_LOAD
+  : NI<(outs GPR:$dst), (ins GPR:$fi), [], "STACK_LOAD $dst, $fi">;
+
+let mayStore = 1, hasSideEffects = 1 in
+  def STACK_STORE
+    : NI<(outs), (ins GPR:$fi, GPR:$val), [], "STACK_STORE $fi, $val">;
+
+def : Pat<(i256 frameindex:$fi), (TargetFI $fi)>;
+def : Pat<(load frameindex:$fi), (STACK_LOAD (TargetFI $fi))>;
+def : Pat<(store GPR:$val, frameindex:$fi),
+          (STACK_STORE (TargetFI $fi), GPR:$val)>;
+
 
 //===----------------------------------------------------------------------===//
 // EVM instructions for retrieval values from context.
