@@ -36,7 +36,8 @@ EVMTargetLowering::EVMTargetLowering(const TargetMachine &TM,
   // Legal operations
   setOperationAction({ISD::ADD, ISD::SUB, ISD::MUL, ISD::AND, ISD::OR, ISD::XOR,
                       ISD::SHL, ISD::SRL, ISD::SRA, ISD::SDIV, ISD::UDIV,
-                      ISD::UREM, ISD::SREM, ISD::SETCC, ISD::SELECT},
+                      ISD::UREM, ISD::SREM, ISD::SETCC, ISD::SELECT,
+                      ISD::FrameIndex},
                      MVT::i256, Legal);
 
   for (auto CC : {ISD::SETULT, ISD::SETUGT, ISD::SETLT, ISD::SETGT, ISD::SETGE,
