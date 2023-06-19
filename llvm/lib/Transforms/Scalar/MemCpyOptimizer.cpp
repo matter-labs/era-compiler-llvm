@@ -836,6 +836,11 @@ bool MemCpyOptPass::processStore(StoreInst *SI, BasicBlock::iterator &BBI) {
 }
 
 bool MemCpyOptPass::processMemSet(MemSetInst *MSI, BasicBlock::iterator &BBI) {
+  // SyncVM local begin
+  if (isa<ConstantInt>(MSI->getLength()) &&
+      cast<ConstantInt>(MSI->getLength())->getValue().getSignificantBits() > 64)
+    return false;
+  // SyncVM local end
   // See if there is another memset or store neighboring this memset which
   // allows us to widen out the memset to do a single larger store.
   if (isa<ConstantInt>(MSI->getLength()) && !MSI->isVolatile())
@@ -1109,6 +1114,11 @@ bool MemCpyOptPass::performCallSlotOptzn(Instruction *cpyLoad,
 /// the memcpy 'MDep'. Try to simplify M to copy from MDep's input if we can.
 bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
                                                   MemCpyInst *MDep) {
+  // SyncVM local begin
+  if (isa<ConstantInt>(M->getLength()) &&
+      cast<ConstantInt>(M->getLength())->getValue().getSignificantBits() > 64)
+    return false;
+  // SyncVM local end
   // We can only transforms memcpy's where the dest of one is the source of the
   // other.
   if (M->getSource() != MDep->getDest() || MDep->isVolatile())
@@ -1395,6 +1405,11 @@ bool MemCpyOptPass::performMemCpyToMemSetOptzn(MemCpyInst *MemCpy,
 /// circumstances). This allows later passes to remove the first memcpy
 /// altogether.
 bool MemCpyOptPass::processMemCpy(MemCpyInst *M, BasicBlock::iterator &BBI) {
+  // SyncVM local begin
+  if (isa<ConstantInt>(M->getLength()) &&
+      cast<ConstantInt>(M->getLength())->getValue().getSignificantBits() > 64)
+    return false;
+  // SyncVM local end
   // We can only optimize non-volatile memcpy's.
   if (M->isVolatile()) return false;
 
@@ -1499,6 +1514,11 @@ bool MemCpyOptPass::processMemCpy(MemCpyInst *M, BasicBlock::iterator &BBI) {
 /// Transforms memmove calls to memcpy calls when the src/dst are guaranteed
 /// not to alias.
 bool MemCpyOptPass::processMemMove(MemMoveInst *M) {
+  // SyncVM local begin
+  if (isa<ConstantInt>(M->getLength()) &&
+      cast<ConstantInt>(M->getLength())->getValue().getSignificantBits() > 64)
+    return false;
+  // SyncVM local end
   // See if the source could be modified by this memmove potentially.
   if (isModSet(AA->getModRefInfo(M, MemoryLocation::getForSource(M))))
     return false;
@@ -1546,6 +1566,10 @@ bool MemCpyOptPass::processByValArgument(CallBase &CB, unsigned ArgNo) {
 
   // The length of the memcpy must be larger or equal to the size of the byval.
   auto *C1 = dyn_cast<ConstantInt>(MDep->getLength());
+  // SyncVM local begin
+  if (C1 && C1->getValue().getSignificantBits() > 64)
+    return false;
+  // SyncVM local end
   if (!C1 || !TypeSize::isKnownGE(
                  TypeSize::getFixed(C1->getValue().getZExtValue()), ByValSize))
     return false;
@@ -1685,10 +1709,7 @@ bool MemCpyOptPass::runImpl(Function &F, TargetLibraryInfo *TLI_,
 
 /// This is the main transformation entry point for a function.
 bool MemCpyOptLegacyPass::runOnFunction(Function &F) {
-  // TODO: The pass should only be skipped for SyncVM.
-  // SyncVM local begin
-  if (true || skipFunction(F))
-  // SyncVM local end
+  if (skipFunction(F))
     return false;
 
   auto *TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(F);
