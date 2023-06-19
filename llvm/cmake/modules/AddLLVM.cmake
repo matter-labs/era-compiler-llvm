@@ -2355,3 +2355,48 @@ function(find_first_existing_vc_file path out_var)
     endif()
   endif()
 endfunction()
+
+function(get_host_tool_path tool_name setting_name exe_var_name target_var_name)
+  set(${setting_name}_DEFAULT "")
+
+  if(LLVM_NATIVE_TOOL_DIR)
+    if(EXISTS "${LLVM_NATIVE_TOOL_DIR}/${tool_name}${LLVM_HOST_EXECUTABLE_SUFFIX}")
+      set(${setting_name}_DEFAULT "${LLVM_NATIVE_TOOL_DIR}/${tool_name}${LLVM_HOST_EXECUTABLE_SUFFIX}")
+    endif()
+  endif()
+
+  set(${setting_name} "${${setting_name}_DEFAULT}" CACHE
+    STRING "Host ${tool_name} executable. Saves building if cross-compiling.")
+
+  if(${setting_name})
+    set(exe_name ${${setting_name}})
+    set(target_name "")
+  elseif(LLVM_USE_HOST_TOOLS)
+    get_native_tool_path(${tool_name} exe_name)
+    set(target_name ${exe_name})
+  else()
+    set(exe_name $<TARGET_FILE:${tool_name}>)
+    set(target_name ${tool_name})
+  endif()
+  set(${exe_var_name} "${exe_name}" CACHE STRING "")
+  set(${target_var_name} "${target_name}" CACHE STRING "")
+endfunction()
+
+function(setup_host_tool tool_name setting_name exe_var_name target_var_name)
+  get_host_tool_path(${tool_name} ${setting_name} ${exe_var_name} ${target_var_name})
+  # Set up a native tool build if necessary
+  if(LLVM_USE_HOST_TOOLS AND NOT ${setting_name})
+    build_native_tool(${tool_name} exe_name DEPENDS ${tool_name})
+    add_custom_target(${target_var_name} DEPENDS ${exe_name})
+  endif()
+endfunction()
+
+# Adds the unittests folder if gtest is available.
+function(llvm_add_unittests tests_added)
+  if (EXISTS ${LLVM_THIRD_PARTY_DIR}/unittest/googletest/include/gtest/gtest.h)
+    add_subdirectory(unittests)
+    set(${tests_added} ON PARENT_SCOPE)
+  else()
+    message(WARNING "gtest not found, unittests will not be available")
+  endif()
+endfunction()

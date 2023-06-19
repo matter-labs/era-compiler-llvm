@@ -1145,7 +1145,9 @@ static void referenceStubBinder() {
   symtab->addUndefined("dyld_stub_binder", /*file=*/nullptr, /*isWeak=*/false);
 }
 
-bool macho::link(ArrayRef<const char *> argsArr, llvm::raw_ostream &stdoutOS,
+namespace lld {
+namespace macho {
+bool link(ArrayRef<const char *> argsArr, llvm::raw_ostream &stdoutOS,
                  llvm::raw_ostream &stderrOS, bool exitEarly,
                  bool disableOutput) {
   // This driver-specific context will be freed later by lldMain().
@@ -1700,3 +1702,5 @@ bool macho::link(ArrayRef<const char *> argsArr, llvm::raw_ostream &stdoutOS,
   }
   return errorCount() == 0;
 }
+} // namespace macho
+} // namespace lld

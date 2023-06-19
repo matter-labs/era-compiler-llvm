@@ -90,10 +90,11 @@ void elf::errorOrWarn(const Twine &msg) {
     error(msg);
 }
 
-bool elf::link(ArrayRef<const char *> args, llvm::raw_ostream &stdoutOS,
-               llvm::raw_ostream &stderrOS, bool exitEarly,
-               bool disableOutput) {
-  // This driver-specific context will be freed later by lldMain().
+namespace lld {
+namespace elf {
+bool link(ArrayRef<const char *> args, llvm::raw_ostream &stdoutOS,
+          llvm::raw_ostream &stderrOS, bool exitEarly, bool disableOutput) {
+  // This driver-specific context will be freed later by unsafeLldMain().
   auto *ctx = new CommonLinkerContext;
 
   ctx->e.initialize(stdoutOS, stderrOS, exitEarly, disableOutput);
@@ -129,6 +130,8 @@ bool elf::link(ArrayRef<const char *> args, llvm::raw_ostream &stdoutOS,
 
   return errorCount() == 0;
 }
+} // namespace elf
+} // namespace lld
 
 // Parses a linker -m option.
 static std::tuple<ELFKind, uint16_t, uint8_t> parseEmulation(StringRef emul) {
