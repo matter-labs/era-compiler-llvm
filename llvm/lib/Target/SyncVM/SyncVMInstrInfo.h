@@ -269,6 +269,8 @@ public:
   // bool shouldOutlineFromFunctionByDefault(MachineFunction &MF) const
   // override;
 
+  void fixupPostOutline(MachineFunction &MF) const;
+
   /// Return true if the function can safely be outlined from.
   bool isFunctionSafeToOutlineFrom(MachineFunction &MF,
                                    bool OutlineFromLinkOnceODRs) const override;

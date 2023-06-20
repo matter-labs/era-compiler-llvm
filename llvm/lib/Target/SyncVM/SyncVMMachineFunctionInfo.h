@@ -31,6 +31,9 @@ class SyncVMMachineFunctionInfo : public MachineFunctionInfo {
   /// holds the virtual register into which the sret argument is passed.
   Register SRetReturnReg;
 
+  // Whether we adjusted stack after machine outline in this function.
+  bool StackAdjustedPostOutline = false;
+
 public:
   SyncVMMachineFunctionInfo() = default;
 
@@ -48,6 +51,9 @@ public:
 
   int getVarArgsFrameIndex() const { return VarArgsFrameIndex;}
   void setVarArgsFrameIndex(int Index) { VarArgsFrameIndex = Index; }
+
+  bool isStackAdjustedPostOutline() const { return StackAdjustedPostOutline; }
+  void setStackAdjustedPostOutline() { StackAdjustedPostOutline = true; }
 };
 
 } // End llvm namespace

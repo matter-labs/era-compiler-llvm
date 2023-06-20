@@ -59,6 +59,18 @@ enum Context {
 };
 } // namespace SyncVMCTX
 
+/// This namespace holds all of the target specific flags that instruction info
+/// tracks.
+namespace SyncVMII {
+/// Target Operand Flag enum.
+enum TOF {
+  MO_NO_FLAG,
+
+  /// Immediate that represents stack slot index.
+  MO_STACK_SLOT_IDX,
+}; // enum TOF
+} // namespace SyncVMII
+
 inline unsigned getImmOrCImm(const llvm::MachineOperand &MO) {
   return MO.isImm() ? MO.getImm() : MO.getCImm()->getZExtValue();
 }
