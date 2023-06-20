@@ -17,6 +17,7 @@ add_llvm_target(EVMCodeGen
   EVMISelDAGToDAG.cpp
   EVMISelLowering.cpp
   EVMInstrInfo.cpp
+  EVMLowerIntrinsics.cpp
   EVMMCInstLower.cpp
   EVMRegisterInfo.cpp
   EVMSubtarget.cpp
