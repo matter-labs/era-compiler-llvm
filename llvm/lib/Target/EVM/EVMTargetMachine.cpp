@@ -21,6 +21,8 @@ using namespace llvm;
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   // Register the target.
   RegisterTargetMachine<EVMTargetMachine> X(getTheEVMTarget());
+  auto &PR = *PassRegistry::getPassRegistry();
+  initializeEVMLowerIntrinsicsPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -73,11 +75,17 @@ public:
   // No reg alloc
   bool addRegAssignAndRewriteOptimized() override { return false; }
 
+  void addIRPasses() override;
   bool addGCPasses() override { return false; }
   bool addInstSelector() override;
   void addPostRegAlloc() override;
 };
 } // namespace
+
+void EVMPassConfig::addIRPasses() {
+  addPass(createEVMLowerIntrinsicsPass());
+  TargetPassConfig::addIRPasses();
+}
 
 bool EVMPassConfig::addInstSelector() {
   (void)TargetPassConfig::addInstSelector();

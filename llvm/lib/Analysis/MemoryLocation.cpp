@@ -172,7 +172,7 @@ MemoryLocation MemoryLocation::getForArgument(const CallBase *Call,
     // check if the length is within i64 range. If not, return imprecise
     // location
     auto T = Call->getModule()->getTargetTriple();
-    if (Triple(T).isSyncVM()) {
+    if (Triple(T).isSyncVM() || Triple(T).isEVM()) {
       switch (II->getIntrinsicID()) {
       case Intrinsic::memcpy:
       case Intrinsic::memcpy_inline:
@@ -189,7 +189,7 @@ MemoryLocation MemoryLocation::getForArgument(const CallBase *Call,
         // it is okay to have lifetime intrinsic
         break;
       default:
-        llvm_unreachable("Unexpected intrinsic for SyncVM target");
+        llvm_unreachable("Unexpected intrinsic for SyncVM/EVM target");
         break;
       }
     }
