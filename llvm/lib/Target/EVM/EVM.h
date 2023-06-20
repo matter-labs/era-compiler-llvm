@@ -8,13 +8,18 @@
 #ifndef LLVM_LIB_TARGET_EVM_EVM_H
 #define LLVM_LIB_TARGET_EVM_EVM_H
 
-#include "llvm/Target/TargetMachine.h"
+#include "llvm/MC/TargetRegistry.h"
 
 namespace llvm {
 class EVMTargetMachine;
 class FunctionPass;
+class ModulePass;
+class PassRegistry;
 
 FunctionPass *createEVMISelDag(EVMTargetMachine &TM,
                                CodeGenOpt::Level OptLevel);
+ModulePass *createEVMLowerIntrinsicsPass();
+
+void initializeEVMLowerIntrinsicsPass(PassRegistry &);
 } // namespace llvm
 #endif // LLVM_LIB_TARGET_EVM_EVM_H
