@@ -80,6 +80,9 @@ void SyncVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
                  .addImm(SyncVMCC::COND_NONE)
                  .getInstr();
 
+    // Set that immediate represents stack slot index.
+    SPInst->getOperand(1).setTargetFlags(SyncVMII::MO_STACK_SLOT_IDX);
+
     BuildMI(MBB, II, DL, TII.get(SyncVM::MULirrr_s))
         .addDef(MI.getOperand(0).getReg())
         .addDef(SyncVM::R0)
