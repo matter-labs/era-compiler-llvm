@@ -64,6 +64,18 @@ enum Context {
 };
 } // namespace EraVMCTX
 
+/// This namespace holds all of the target specific flags that instruction info
+/// tracks.
+namespace EraVMII {
+/// Target Operand Flags enum.
+enum TargetOperandFlags {
+  MO_NO_FLAG,
+
+  /// Immediate that represents stack slot index.
+  MO_STACK_SLOT_IDX,
+}; // enum TargetOperandFlags
+} // namespace EraVMII
+
 inline unsigned getImmOrCImm(const llvm::MachineOperand &MO) {
   return MO.isImm() ? MO.getImm() : MO.getCImm()->getZExtValue();
 }

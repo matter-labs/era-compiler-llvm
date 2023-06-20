@@ -217,6 +217,16 @@ bool isSelect(unsigned Opcode) {
   return Members.count(Opcode);
 }
 
+bool hasInvalidRelativeStackAccess(MachineInstr::const_mop_iterator Op) {
+  auto SA = EraVM::classifyStackAccess(Op);
+  if (SA == EraVM::StackAccess::Invalid)
+    return true;
+
+  if (SA == EraVM::StackAccess::Relative && !(Op + 2)->isImm())
+    return true;
+  return false;
+}
+
 } // namespace EraVM
 } // namespace llvm
 
@@ -304,6 +314,10 @@ bool EraVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
     // A terminator that isn't a branch can't easily be handled
     // by this analysis.
     if (!I->isBranch())
+      return true;
+
+    // We can't analyze if target address is on stack.
+    if (I->getOpcode() == EraVM::J_s)
       return true;
 
     if (I->getOpcode() == EraVM::J) {
@@ -583,29 +597,71 @@ EraVMCC::CondCodes EraVMInstrInfo::getCCCode(const MachineInstr &MI) const {
   return EraVMCC::COND_INVALID;
 }
 
-enum FlagsUsage { FlagsUseBeforeDef = 0, FlagsDef, NoFlags };
+/// Return true if the first instruction in a function is stack advance.
+static bool hasStackAdvanceInstruction(MachineFunction &MF) {
+  auto EntryBB = MF.begin();
+  auto FirstMI = EntryBB->getFirstNonDebugInstr();
+  return FirstMI != EntryBB->end() && FirstMI->getOpcode() == EraVM::NOPSP;
+}
 
-/// Return how Flags register is used in [Start, End).
-static FlagsUsage getFlagsUsage(MachineBasicBlock::iterator Start,
-                                MachineBasicBlock::iterator End) {
-  for (MachineInstr &I : instructionsWithoutDebug(Start, End)) {
-    if (I.getDesc().hasImplicitDefOfPhysReg(EraVM::Flags))
-      return FlagsDef;
+/// Sets the offsets on instructions in MBB which use SP, so that they will be
+/// valid post-outlining.
+static void fixupStackOffsetPostOutline(MachineBasicBlock &MBB,
+                                        int64_t FixupOffset) {
+  auto AdjustDisp = [FixupOffset](MachineInstr::mop_iterator It) {
+    if (EraVM::classifyStackAccess(It) != EraVM::StackAccess::Relative)
+      return;
 
-    if (I.readsRegister(EraVM::Flags))
-      return FlagsUseBeforeDef;
+    auto DispIt = It + 2;
+    assert(DispIt->isImm() && "Displacement is not immediate.");
+    DispIt->setImm(DispIt->getImm() + FixupOffset);
+  };
+
+  for (MachineInstr &MI : MBB) {
+    if (EraVM::hasSRInAddressingMode(MI))
+      AdjustDisp(EraVM::in0Iterator(MI));
+    if (EraVM::hasSROutAddressingMode(MI))
+      AdjustDisp(EraVM::out0Iterator(MI));
+
+    // Adjust sub instruction that was generated from ADDframe during
+    // elimination of frame indices.
+    if (MI.getOpcode() == EraVM::SUBxrr_s &&
+        MI.getOperand(1).getTargetFlags() == EraVMII::MO_STACK_SLOT_IDX) {
+      auto &StackSlotOP = MI.getOperand(1);
+      StackSlotOP.setImm(StackSlotOP.getImm() - FixupOffset);
+    }
+  }
+}
+
+/// Since we are placing return address from the outlined function onto the top
+/// of the stack, we need to reserve stack slot for it and to adjust
+/// instructions which use SP in this function.
+void EraVMInstrInfo::fixupPostOutline(MachineFunction &MF) const {
+  auto *SFI = MF.getInfo<EraVMMachineFunctionInfo>();
+  if (SFI->isStackAdjustedPostOutline())
+    return;
+
+  // Reserve stack slot for return address from outlined function.
+  if (hasStackAdvanceInstruction(MF)) {
+    auto NopIt = MF.begin()->getFirstNonDebugInstr();
+    auto &StackAdvanceOp = NopIt->getOperand(0);
+    StackAdvanceOp.setImm(StackAdvanceOp.getImm() + 1 /* StackSlotSize */);
+  } else {
+    auto EntryBB = MF.begin();
+    BuildMI(*EntryBB, EntryBB->begin(), DebugLoc(), get(EraVM::NOPSP))
+        .addImm(1 /* StackSlotSize */)
+        .addImm(EraVMCC::COND_NONE);
   }
 
-  return NoFlags;
+  // Adjust instructions which use SP in this function.
+  for (MachineBasicBlock &MBB : MF)
+    fixupStackOffsetPostOutline(MBB, -1 /* FixupOffset */);
+
+  SFI->setStackAdjustedPostOutline();
 }
 
 /// Enum values indicating how an outlined call should be constructed.
 enum MachineOutlinerConstructionID { MachineOutlinerDefault };
-
-enum MachineOutlinerMBBFlags {
-  FlagsRegDead = 1 << 0,
-  OutlinerMBBFlagsMask = (1 << 1) - 1
-};
 
 // TODO: Enable this.
 // bool EraVMInstrInfo::shouldOutlineFromFunctionByDefault(
@@ -626,73 +682,30 @@ bool EraVMInstrInfo::isFunctionSafeToOutlineFrom(
   if (F.hasSection())
     return false;
 
+  // Don't outline from functions if there is non-adjustable stack relative
+  // addressing instruction.
+  for (MachineBasicBlock &MBB : MF) {
+    if (any_of(
+            instructionsWithoutDebug(MBB.begin(), MBB.end()),
+            [](MachineInstr &MI) {
+              if (EraVM::hasSRInAddressingMode(MI) &&
+                  EraVM::hasInvalidRelativeStackAccess(EraVM::in0Iterator(MI)))
+                return true;
+              if (EraVM::hasSROutAddressingMode(MI) &&
+                  EraVM::hasInvalidRelativeStackAccess(EraVM::out0Iterator(MI)))
+                return true;
+              return false;
+            }))
+      return false;
+  }
+
   // It's safe to outline from MF.
   return true;
 }
 
 bool EraVMInstrInfo::isMBBSafeToOutlineFrom(MachineBasicBlock &MBB,
                                             unsigned &Flags) const {
-  if (!TargetInstrInfo::isMBBSafeToOutlineFrom(MBB, Flags))
-    return false;
-
-  bool SeenDef = false;
-  bool SeenUse = false;
-  bool HasFlagsInst = false;
-
-  // Check how Flags register is used in the MBB. We can't outline this MBB if
-  // we find use before def, or def without use.
-  for (MachineInstr &I : MBB) {
-    if (I.isCall()) {
-      SeenDef = false;
-    } else if (I.getDesc().hasImplicitDefOfPhysReg(EraVM::Flags)) {
-      SeenDef = true;
-      SeenUse = false;
-      HasFlagsInst = true;
-    } else if (I.readsRegister(EraVM::Flags)) {
-      // Return false if we find use before def.
-      if (!SeenDef)
-        return false;
-      SeenUse = true;
-      HasFlagsInst = true;
-    }
-  }
-
-  // Return false if we find def without use.
-  if (SeenDef && !SeenUse)
-    return false;
-
-  // If Flags register is not used in this MBB, we know we don't have to check
-  // it later.
-  if (!HasFlagsInst)
-    Flags |= MachineOutlinerMBBFlags::FlagsRegDead;
-
-  // Don't check for successors if this MBB has no predecessors
-  // and no Flags instructions.
-  if (MBB.pred_empty() && !HasFlagsInst)
-    return true;
-
-  SmallVector<MachineBasicBlock *, 4> Worklist{MBB.successors()};
-  SmallPtrSet<MachineBasicBlock *, 4> Visited{&MBB};
-
-  // Check if Flags register is propagated across MBBs.
-  while (!Worklist.empty()) {
-    MachineBasicBlock *SuccMBB = Worklist.pop_back_val();
-    if (!Visited.insert(SuccMBB).second)
-      continue;
-
-    auto Usage = getFlagsUsage(SuccMBB->begin(), SuccMBB->end());
-
-    // If Flags register is propagated across MBBs, we know outlining is
-    // unsafe.
-    if (Usage == FlagsUseBeforeDef)
-      return false;
-
-    // If there are no Flags usage in this MBB, we need to look further.
-    if (Usage == NoFlags)
-      append_range(Worklist, SuccMBB->successors());
-  }
-
-  return true;
+  return TargetInstrInfo::isMBBSafeToOutlineFrom(MBB, Flags);
 }
 
 outliner::InstrType
@@ -709,22 +722,10 @@ EraVMInstrInfo::getOutliningTypeImpl(MachineBasicBlock::iterator &MBBI,
   if (MI.isMetaInstruction())
     return outliner::InstrType::Invisible;
 
-  // TODO: Remove this once issue with heap growth is fixed in VM.
-  switch (MI.getOpcode()) {
-  case EraVM::LD1:
-  case EraVM::LD1Inc:
-  case EraVM::LD1i:
-  case EraVM::LD2:
-  case EraVM::LD2Inc:
-  case EraVM::LD2i:
-  case EraVM::ST1:
-  case EraVM::ST1Inc:
-  case EraVM::ST1i:
-  case EraVM::ST2:
-  case EraVM::ST2Inc:
-  case EraVM::ST2i:
+  // Don't outline context.gas_left instruction.
+  if (MI.getOpcode() == EraVM::CTXr_se &&
+      getImmOrCImm(MI.getOperand(1)) == EraVMCTX::GAS_LEFT)
     return outliner::InstrType::Illegal;
-  }
 
   // Positions generally can't safely be outlined.
   if (MI.isPosition())
@@ -747,28 +748,12 @@ EraVMInstrInfo::getOutliningTypeImpl(MachineBasicBlock::iterator &MBBI,
     if (MO.isMBB() || MO.isBlockAddress() || MO.isCPI() || MO.isJTI())
       return outliner::InstrType::Illegal;
 
-  // Since we don't outline branches, don't outline instruction that defines
-  // Flags register that is used by conditional branch.
-  if (!MI.isCall() && MI.getDesc().hasImplicitDefOfPhysReg(EraVM::Flags)) {
-    auto TermIt = MI.getParent()->getFirstTerminator();
-
-    // If there is a conditional branch and there are no more instructions
-    // that define Flags register, don't outline this instruction.
-    if (TermIt != MI.getParent()->end() && TermIt->isConditionalBranch() &&
-        !any_of(instructionsWithoutDebug(std::next(MBBI), TermIt),
-                [](const MachineInstr &I) {
-                  return I.getDesc().hasImplicitDefOfPhysReg(EraVM::Flags);
-                }))
-      return outliner::InstrType::Illegal;
-  }
-
   return outliner::InstrType::Legal;
 }
 
 std::optional<outliner::OutlinedFunction>
 EraVMInstrInfo::getOutliningCandidateInfo(
     std::vector<outliner::Candidate> &RepeatedSequenceLocs) const {
-  constexpr unsigned MinCandidatesToOutline = 2;
   unsigned SequenceSize =
       std::accumulate(RepeatedSequenceLocs[0].front(),
                       std::next(RepeatedSequenceLocs[0].back()), 0,
@@ -776,49 +761,24 @@ EraVMInstrInfo::getOutliningCandidateInfo(
                         return Sum + getInstSizeInBytes(MI);
                       });
 
-  // Properties about candidate MBBs that hold for all of them.
-  unsigned FlagsSetInAll = OutlinerMBBFlagsMask;
+  SmallPtrSet<MachineFunction *, 4> NoStackAdvance;
+  unsigned SaveRetSize = get(EraVM::ADDcrs_s).getSize();
+  unsigned JumpSize = get(EraVM::JCALL).getSize();
+  unsigned CallOverhead = SaveRetSize + JumpSize;
+  for (auto &C : RepeatedSequenceLocs) {
+    unsigned Overhead = CallOverhead;
+    MachineFunction *MF = C.getMF();
 
-  // Compute liveness information for each candidate, and set FlagsSetInAll.
-  for (outliner::Candidate &C : RepeatedSequenceLocs)
-    FlagsSetInAll &= C.Flags;
+    // If function doesn't have stack advance instruction, add overhead only
+    // once for each function.
+    if (!hasStackAdvanceInstruction(*MF) && NoStackAdvance.insert(MF).second)
+      Overhead += get(EraVM::NOPSP).getSize();
 
-  // Are there any candidates where Flags register is live?
-  if (!(FlagsSetInAll & FlagsRegDead)) {
-    // Since Flags register is cleared on entry/exit from a function call,
-    // we can't outline any sequence of instructions where this register
-    // is live into/across it.
-    auto CantGuaranteeValueAcrossCall = [](outliner::Candidate &C) {
-      // If the unsafe register in this block is dead, then we don't need
-      // to compute liveness here.
-      if (C.Flags & FlagsRegDead)
-        return false;
-
-      // Check if Flags register is defined outside, but used in a sequence.
-      if (getFlagsUsage(C.front(), std::next(C.back())) == FlagsUseBeforeDef)
-        return true;
-
-      // Check if Flags register is propagated across a sequence.
-      if (getFlagsUsage(std::next(C.back()), C.getMBB()->end()) ==
-          FlagsUseBeforeDef)
-        return true;
-
-      return false;
-    };
-
-    // Erase every candidate that violates the restriction above.
-    llvm::erase_if(RepeatedSequenceLocs, CantGuaranteeValueAcrossCall);
-
-    // If the sequence doesn't have enough candidates left, then we're done.
-    if (RepeatedSequenceLocs.size() < MinCandidatesToOutline)
-      return {};
+    C.setCallInfo(MachineOutlinerDefault, Overhead);
   }
 
-  unsigned CallOverhead = get(EraVM::NEAR_CALL).getSize();
-  for (auto &C : RepeatedSequenceLocs)
-    C.setCallInfo(MachineOutlinerDefault, CallOverhead);
-
-  unsigned FrameOverhead = get(EraVM::RET).getSize();
+  unsigned JumpSPSize = get(EraVM::J_s).getSize();
+  unsigned FrameOverhead = JumpSPSize;
   return outliner::OutlinedFunction(RepeatedSequenceLocs, SequenceSize,
                                     FrameOverhead, MachineOutlinerDefault);
 }
@@ -826,25 +786,55 @@ EraVMInstrInfo::getOutliningCandidateInfo(
 void EraVMInstrInfo::buildOutlinedFrame(
     MachineBasicBlock &MBB, MachineFunction &MF,
     const outliner::OutlinedFunction &OF) const {
+  // Perform stack fixup only if we didn't do it in the original function from
+  // which we are outlining. Machine outliner algorithm is outlining from
+  // the first candidate, so take original function from it.
+  MachineFunction *OriginalMF = OF.Candidates.front().getMF();
+  auto *SFI = OriginalMF->getInfo<EraVMMachineFunctionInfo>();
+  if (!SFI->isStackAdjustedPostOutline())
+    fixupStackOffsetPostOutline(MBB, -1 /* FixupOffset */);
+
   DebugLoc DL;
   if (!MBB.empty())
     DL = MBB.back().getDebugLoc();
 
-  // Add return instruction to the end of the outlined frame.
-  MBB.insert(MBB.end(), BuildMI(MF, DL, get(EraVM::RET)));
+  // Add jump instruction to the end of the outlined frame.
+  MBB.insert(MBB.end(), BuildMI(MF, DL, get(EraVM::J_s))
+                            .addReg(EraVM::SP)
+                            .addImm(0 /* AMBase2 */)
+                            .addImm(-1 /* StackOffset */));
 }
 
 MachineBasicBlock::iterator EraVMInstrInfo::insertOutlinedCall(
     Module &M, MachineBasicBlock &MBB, MachineBasicBlock::iterator &It,
-    MachineFunction &MF, outliner::Candidate &C) const {
+    MachineFunction &OutlinedMF, outliner::Candidate &C) const {
+  MachineFunction &MF = *C.getMF();
+  fixupPostOutline(MF);
+
   DebugLoc DL;
   if (It != MBB.end())
     DL = It->getDebugLoc();
 
-  // Add call instruction to the outlined function at the given location.
-  It = MBB.insert(It, BuildMI(MF, DL, get(EraVM::NEAR_CALL))
-                          .addReg(EraVM::R0)
-                          .addGlobalAddress(M.getNamedValue(MF.getName()))
-                          .addExternalSymbol("DEFAULT_UNWIND"));
+  // Add jump instruction to the outlined function at the given location.
+  It = MBB.insert(It,
+                  BuildMI(MF, DL, get(EraVM::JCALL))
+                      .addGlobalAddress(M.getNamedValue(OutlinedMF.getName())));
+
+  // Add symbol just after the jump that will be used as a return address
+  // from the outlined function.
+  MCSymbol *RetSym =
+      MF.getContext().createTempSymbol("OUTLINED_FUNCTION_RET", true);
+  It->setPostInstrSymbol(MF, RetSym);
+
+  // Add instruction to store return address onto the top of the stack.
+  BuildMI(MBB, It, DL, get(EraVM::ADDcrs_s))
+      .addSym(RetSym)
+      .addImm(0 /* RetSymOffset */)
+      .addReg(EraVM::R0)
+      .addReg(EraVM::SP)
+      .addImm(0 /* AMBase2 */)
+      .addImm(-1 /* StackOffset */)
+      .addImm(EraVMCC::COND_NONE);
+
   return It;
 }

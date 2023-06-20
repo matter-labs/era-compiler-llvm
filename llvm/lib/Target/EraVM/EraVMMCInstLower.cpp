@@ -178,6 +178,10 @@ void EraVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) const {
     case MachineOperand::MO_BlockAddress:
       MCOp = LowerSymbolOperand(MO, GetBlockAddressSymbol(MO));
       break;
+    case MachineOperand::MO_MCSymbol:
+      assert(MO.getTargetFlags() == 0 && "Unknown target flag on MCSymbol");
+      MCOp = LowerSymbolOperand(MO, MO.getMCSymbol());
+      break;
     case MachineOperand::MO_RegisterMask:
       continue;
     }
