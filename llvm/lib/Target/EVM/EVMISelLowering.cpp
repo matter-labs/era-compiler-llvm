@@ -48,13 +48,17 @@ EVMTargetLowering::EVMTargetLowering(const TargetMachine &TM,
   // TODO: Probably this needs to be relaxed in the future.
   setOperationAction(ISD::Constant, MVT::i256, Legal);
 
+  // Sign-extension of a boolean value reguires expansion, as we cannot use
+  // EVM::SIGNEXTEND instruction here.
+  setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i1, Expand);
+
   for (MVT VT : {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}) {
     setOperationAction(ISD::MERGE_VALUES, VT, Promote);
     setTruncStoreAction(MVT::i256, VT, Custom);
   }
 
   // Custom lowering of extended loads.
-  for (MVT VT : {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}) {
+  for (MVT VT : MVT::integer_valuetypes()) {
     setLoadExtAction(ISD::SEXTLOAD, MVT::i256, VT, Custom);
     setLoadExtAction(ISD::ZEXTLOAD, MVT::i256, VT, Custom);
     setLoadExtAction(ISD::EXTLOAD, MVT::i256, VT, Custom);
@@ -302,8 +306,11 @@ SDValue EVMTargetLowering::LowerCall(CallLoweringInfo &CLI,
   // TODO: add suport of tail call optimization
   CLI.IsTailCall = false;
 
-  if (CLI.IsVarArg)
-    fail(DL, DAG, "EVM hasn't implemented variable arguments");
+  // Ignore the fact EVM doesn't support varargs to able to compile
+  // more target-independent LIT tests. Anyway this assert is still
+  // present in LowerFormalArguments.
+  // if (CLI.IsVarArg)
+  //   fail(DL, DAG, "EVM hasn't implemented variable arguments");
 
   SmallVectorImpl<ISD::InputArg> &Ins = CLI.Ins;
   SmallVectorImpl<ISD::OutputArg> &Outs = CLI.Outs;
@@ -327,6 +334,12 @@ SDValue EVMTargetLowering::LowerCall(CallLoweringInfo &CLI,
     Callee = DAG.getTargetGlobalAddress(GA->getGlobal(), DL,
                                         getPointerTy(DAG.getDataLayout()),
                                         GA->getOffset());
+    Callee = DAG.getNode(EVMISD::TARGET_ADDR_WRAPPER, DL,
+                         getPointerTy(DAG.getDataLayout()), Callee);
+  } else if (Callee->getOpcode() == ISD::ExternalSymbol) {
+    ExternalSymbolSDNode *ES = cast<ExternalSymbolSDNode>(Callee);
+    Callee = DAG.getTargetExternalSymbol(ES->getSymbol(),
+                                         Callee.getValueType());
     Callee = DAG.getNode(EVMISD::TARGET_ADDR_WRAPPER, DL,
                          getPointerTy(DAG.getDataLayout()), Callee);
   }

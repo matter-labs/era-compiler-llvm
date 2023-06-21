@@ -167,6 +167,8 @@ def : Pat<(EVMcall0 GPR:$addr), (CALL0 GPR:$addr)>;
 def : Pat<(EVMcall1 GPR:$addr), (CALL1 GPR:$addr)>;
 def : Pat<(i256 (EVMTargetAddrWrapper tglobaladdr:$addr)),
           (CONST_I256 tglobaladdr:$addr)>;
+def : Pat<(i256 (EVMTargetAddrWrapper texternalsym:$addr)),
+          (CONST_I256 texternalsym:$addr)>;
 
 
 //===----------------------------------------------------------------------===//
