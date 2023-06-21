@@ -2,6 +2,10 @@
 ;
 ; NVPTX produces a different order of the BBs
 ; XFAIL: nvptx
+; The LiveDebugValuesID pass that handles DBG_LABEL instructions
+; is disabled for EVM.
+; XFAIL: evm
+
 
 ; Generated with "clang++ -g -O1 -S -emit-llvm"
 ;

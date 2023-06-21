@@ -9,6 +9,8 @@
 
 ; regalloc-enable-advisor is not enabled for NVPTX
 ; UNSUPPORTED: nvptx
+; regalloc-enable-advisor is not enabled for EVM
+; UNSUPPORTED: evm
 
 define void @f2(i64 %lhs, i64 %rhs, i64* %addr) {
   %sum = add i64 %lhs, %rhs

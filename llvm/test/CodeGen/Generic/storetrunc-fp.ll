@@ -1,4 +1,4 @@
-; UNSUPPORTED: eravm
+; UNSUPPORTED: eravm, evm
 ; Unsupported because of floats.
 ; RUN: llc < %s
 

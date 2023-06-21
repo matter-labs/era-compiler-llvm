@@ -1,4 +1,4 @@
-; XFAIL: eravm
+; XFAIL: eravm, evm
 
 ;  RUN: opt -basic-aa -loop-idiom -use-lir-code-size-heurs=true < %s -S | FileCheck %s
 

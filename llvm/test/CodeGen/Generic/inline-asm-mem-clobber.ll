@@ -1,4 +1,4 @@
-; UNSUPPORTED: eravm
+; UNSUPPORTED: eravm, evm
 ; EraVM doesn't support inline asm yet.
 ; RUN: llc -O2 -no-integrated-as < %s | FileCheck %s
 

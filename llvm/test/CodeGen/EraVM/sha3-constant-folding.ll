@@ -1,5 +1,7 @@
 ; RUN: opt -passes=eravm-sha3-constant-folding -S < %s | FileCheck %s
 
+UNSUPPORTED: evm
+
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm"
 

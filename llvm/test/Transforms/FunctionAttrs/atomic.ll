@@ -1,4 +1,4 @@
-; XFAIL: eravm
+; XFAIL: eravm, evm
 
 ; RUN: opt -basic-aa -function-attrs -S < %s | FileCheck %s
 ; RUN: opt -aa-pipeline=basic-aa -passes=function-attrs -S < %s | FileCheck %s

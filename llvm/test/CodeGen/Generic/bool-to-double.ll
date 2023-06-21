@@ -1,4 +1,4 @@
-; UNSUPPORTED: eravm
+; UNSUPPORTED: eravm, evm
 ; EraVM doesn't support floats
 ; RUN: llc < %s
 define double @test(i1 %X) {

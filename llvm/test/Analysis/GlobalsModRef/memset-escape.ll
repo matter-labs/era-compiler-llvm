@@ -1,4 +1,4 @@
-; XFAIL: eravm
+; XFAIL: eravm, evm
 
 ; RUN: opt < %s -O1 -S | FileCheck %s
 

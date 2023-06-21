@@ -1,3 +1,6 @@
+; UNSUPPORTED: evm
+; EVM has no support of returning multiple values from a call
+
 ; RUN: llc < %s
 declare { i64, double } @wild()
 

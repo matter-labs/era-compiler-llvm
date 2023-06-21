@@ -12,7 +12,7 @@
 ; XFAIL: nvptx
 
 ; EraVM realignment not supported.
-; UNSUPPORTED: eravm
+; UNSUPPORTED: eravm, evm
 
 define i32 @f(i8* %p) nounwind {
 entry:

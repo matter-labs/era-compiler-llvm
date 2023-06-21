@@ -5,7 +5,7 @@
 ; REQUIRES: object-emission
 ;
 ; Bug 47131
-; XFAIL: sparc, eravm
+; XFAIL: sparc, eravm, evm
 ;
 ; This testcase tests the following flow:
 ;  - File A defines a linkonce version of @foo which has inlined into @bar.
