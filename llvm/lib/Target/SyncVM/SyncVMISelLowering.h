@@ -26,7 +26,7 @@ enum NodeType : unsigned {
 } // namespace SyncVMISD
 
 class SyncVMSubtarget;
-class SyncVMTargetLowering : public TargetLowering {
+class SyncVMTargetLowering final : public TargetLowering {
 public:
   explicit SyncVMTargetLowering(const TargetMachine &TM,
                                 const SyncVMSubtarget &STI);
@@ -37,6 +37,19 @@ public:
 
   MVT::SimpleValueType getCmpLibcallReturnType() const override {
     return MVT::i256;
+  }
+
+  /// Return true if it is profitable to move this shift by a constant amount
+  /// through its operand, adjusting any immediate operands as necessary to
+  /// preserve semantics. This transformation may not be desirable if it
+  /// disrupts a particularly auspicious target-specific tree (e.g. bitfield
+  /// extraction in AArch64). By default, it returns true.
+  /// For EVM this may result in the creation of a big immediate,
+  /// which is not profitable.
+  virtual bool
+  isDesirableToCommuteWithShift(const SDNode *N,
+                                CombineLevel Level) const override {
+    return false;
   }
 
   /// LowerOperation - Provide custom lowering hooks for some operations.
