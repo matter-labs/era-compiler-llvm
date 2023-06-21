@@ -51,6 +51,17 @@ public:
                                 CombineLevel Level) const override {
     return false;
   }
+  /// Return true if it is profitable to fold a pair of shifts into a mask.
+  /// This is usually true on most targets. But some targets, like Thumb1,
+  /// have immediate shift instructions, but no immediate "and" instruction;
+  /// this makes the fold unprofitable.
+  /// For EVM this may result in the creation of a big immediate,
+  /// which is not profitable.
+  virtual bool
+  shouldFoldConstantShiftPairToMask(const SDNode *N,
+                                    CombineLevel Level) const override {
+    return false;
+  }
 
   /// LowerOperation - Provide custom lowering hooks for some operations.
   SDValue LowerOperation(SDValue Op, SelectionDAG &DAG) const override;
