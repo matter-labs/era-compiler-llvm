@@ -1,4 +1,5 @@
 ; XFAIL: syncvm
+; XFAIL: evm
 
 ; RUN: opt < %s -function-attrs -S | FileCheck %s
 

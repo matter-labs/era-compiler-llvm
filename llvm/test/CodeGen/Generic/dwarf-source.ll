@@ -1,6 +1,7 @@
 ; XFAIL: -aix
 ; SyncVM doesn't support dwarf yet
 ; UNSUPPORTED: syncvm
+; UNSUPPORTED: evm
 ; Source text provided by IR should be passed through to asm.
 ; It is emitted to an object file only for DWARF 5 or later.
 

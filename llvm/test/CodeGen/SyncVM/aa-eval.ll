@@ -1,3 +1,5 @@
+; UNSUPPORTED: evm
+
 ; RUN: opt -passes=aa-eval -aa-pipeline=basic-aa,syncvm-aa -print-all-alias-modref-info -disable-output < %s 2>&1 | FileCheck %s
 
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"

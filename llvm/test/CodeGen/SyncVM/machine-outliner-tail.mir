@@ -1,3 +1,5 @@
+; UNSUPPORTED: evm
+
 # RUN: llc -x mir -run-pass=machine-outliner -verify-machineinstrs < %s | FileCheck %s
 
 # This test ensures that we create outlined functions, and do SP adjustment in

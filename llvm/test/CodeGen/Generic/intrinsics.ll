@@ -1,4 +1,5 @@
 ; UNSUPPORTED: syncvm
+; UNSUPPORTED: evm
 ; SyncVM doesn't support floats.
 ; invariant and sideeffect have nothing to do with the codegen.
 ; RUN: llc < %s

@@ -1,4 +1,5 @@
 ; UNSUPPORTED: syncvm
+; UNSUPPORTED: evm
 ; SyncVM doesn't support floats.
 ; RUN: llc < %s -pre-RA-sched=default
 ; RUN: llc < %s -pre-RA-sched=list-burr

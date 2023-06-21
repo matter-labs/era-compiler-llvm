@@ -8,6 +8,7 @@
 ; REQUIRES: asserts, default_triple
 ; UNSUPPORTED: nvptx
 ; XFAIL: syncvm
+; XFAIL: evm
 
 ; This test verifies that we don't run Machine Function optimizations
 ; on optnone functions, and that we can turn off FastISel.

@@ -1,4 +1,5 @@
 ; UNSUPPORTED: syncvm
+; UNSUPPORTED: evm
 ; SyncVM doesn't support inline asm yet.
 ; RUN: llc -O2 -no-integrated-as < %s | FileCheck %s
 

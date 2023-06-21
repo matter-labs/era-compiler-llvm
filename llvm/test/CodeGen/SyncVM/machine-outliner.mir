@@ -1,3 +1,5 @@
+; UNSUPPORTED: evm
+
 # RUN: llc -x mir -run-pass=machine-outliner -verify-machineinstrs < %s | FileCheck %s
 
 --- |
