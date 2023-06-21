@@ -1,4 +1,5 @@
 ; UNSUPPORTED: syncvm
+; UNSUPPORTED: evm
 ; SyncVM doesn't support vectors and floats.
 ; RUN: llc < %s
 

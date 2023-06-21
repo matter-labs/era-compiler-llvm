@@ -1,4 +1,5 @@
 ; XFAIL: syncvm
+; XFAIL: evm
 
 ; RUN: opt < %s -aa-pipeline=basic-aa -passes='cgscc(function-attrs,inline)' -S | FileCheck %s
 ; This test runs the inliner and the function attribute deduction. It ensures

@@ -1,4 +1,5 @@
 ; UNSUPPORTED: syncvm
+; UNSUPPORTED: evm
 ; SyncVM doesn't support floats.
 ; RUN: llc < %s | FileCheck %s
 

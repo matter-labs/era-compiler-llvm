@@ -13,6 +13,7 @@
 
 ; SyncVM realignment not supported.
 ; UNSUPPORTED: syncvm
+; UNSUPPORTED: evm
 
 define i32 @f(i8* %p) nounwind {
 entry:
