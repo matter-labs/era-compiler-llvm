@@ -1,4 +1,5 @@
 ; XFAIL: syncvm
+; XFAIL: evm
 
 ; RUN: opt < %s -O1 -S | FileCheck %s
 

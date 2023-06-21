@@ -1,4 +1,5 @@
 ; UNSUPPORTED: syncvm
+; UNSUPPORTED: evm
 ; SyncVM doesn't support dynamic_stackalloc yet.
 ; RUN: llc < %s
 

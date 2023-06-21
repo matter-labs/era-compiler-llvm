@@ -1,4 +1,5 @@
 ; XFAIL: syncvm
+; XFAIL: evm
 ; SyncVM doesn't support byval yet.
 ; RUN: llc < %s
 ; PR7170

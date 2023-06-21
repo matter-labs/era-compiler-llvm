@@ -1,4 +1,5 @@
 ; UNSUPPORTED: syncvm
+; UNSUPPORTED: evm
 ; SyncVM only has limited support for EH. resume is not supported.
 ; RUN: llc < %s
 ; PR10733

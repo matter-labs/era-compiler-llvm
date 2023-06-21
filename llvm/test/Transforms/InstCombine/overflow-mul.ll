@@ -1,5 +1,6 @@
 ; RUN: opt -S -passes=instcombine < %s | FileCheck %s
 ; XFAIL: syncvm
+; XFAIL: evm
 
 ; The last test needs this weird datalayout.
 target datalayout = "i32:8:8"

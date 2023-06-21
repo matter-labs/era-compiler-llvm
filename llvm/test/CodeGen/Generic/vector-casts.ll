@@ -1,4 +1,5 @@
 ; UNSUPPORTED: syncvm
+; UNSUPPORTED: evm
 ; SyncVM doesn't support vector instructions.
 ; RUN: llc < %s
 ; PR2671

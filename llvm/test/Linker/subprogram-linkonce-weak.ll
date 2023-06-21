@@ -6,6 +6,7 @@
 ;
 ; Bug 47131
 ; XFAIL: sparc, syncvm
+; XFAIL: evm
 ;
 ; This testcase tests the following flow:
 ;  - File A defines a linkonce version of @foo which has inlined into @bar.
