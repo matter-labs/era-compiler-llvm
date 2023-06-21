@@ -1,5 +1,17 @@
 ; RUN: llc --mtriple=evm < %s | FileCheck %s
 
+define i256 @sexti1(i1 %rs1) nounwind {
+; CHECK-LABEL: @sexti1
+; CHECK: CONST_I256 [[MASK:\$[0-9]+]], 1
+; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: AND [[TMP:\$[0-9]+]], [[IN1]], [[MASK]]
+; CHECK: CONST_I256 [[ZERO:\$[0-9]+]], 0
+; CHECK: SUB [[RES:\$[0-9]+]], [[ZERO]], [[TMP]]
+
+  %res = sext i1 %rs1 to i256
+  ret i256 %res
+}
+
 define i256 @sexti8(i8 %rs1) nounwind {
 ; CHECK-LABEL: @sexti8
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
