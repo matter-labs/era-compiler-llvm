@@ -91,6 +91,10 @@ bool EVMPassConfig::addInstSelector() {
   (void)TargetPassConfig::addInstSelector();
   // Install an instruction selector.
   addPass(createEVMISelDag(getEVMTargetMachine(), getOptLevel()));
+  // Run the argument-move pass immediately after the ScheduleDAG scheduler
+  // so that we can fix up the ARGUMENT instructions before anything else
+  // sees them in the wrong place.
+  addPass(createEVMArgumentMove());
   return false;
 }
 

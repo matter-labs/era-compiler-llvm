@@ -31,8 +31,8 @@ define void @call2(i256 %a, i256 %b) nounwind {
 
 define void @call3_indir(void (i256)* %callee) nounwind {
 ; CHECK-LABEL: @call3_indir
-; CHECK: CONST_I256 [[C1:\$[0-9]+]], 10
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: CONST_I256 [[C1:\$[0-9]+]], 10
 ; CHECK: CALL0 [[IN1]], [[C1]]
 
   call void %callee(i256 10)
@@ -41,8 +41,8 @@ define void @call3_indir(void (i256)* %callee) nounwind {
 
 define i256 @call4_indir(i256 (i256)* %callee) nounwind {
 ; CHECK-LABEL: @call4_indir
-; CHECK: CONST_I256 [[C1:\$[0-9]+]], 10
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: CONST_I256 [[C1:\$[0-9]+]], 10
 ; CHECK: CALL1 [[RES1:\$[0-9]+]], [[IN1]], [[C1]]
 
   %res = call i256 %callee(i256 10)

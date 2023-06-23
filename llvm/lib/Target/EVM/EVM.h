@@ -16,10 +16,16 @@ class FunctionPass;
 class ModulePass;
 class PassRegistry;
 
-FunctionPass *createEVMISelDag(EVMTargetMachine &TM,
-                               CodeGenOpt::Level OptLevel);
+// LLVM IR passes.
 ModulePass *createEVMLowerIntrinsicsPass();
 
+// ISel and immediate followup passes.
+FunctionPass *createEVMISelDag(EVMTargetMachine &TM,
+                               CodeGenOpt::Level OptLevel);
+FunctionPass *createEVMArgumentMove();
+
+// PassRegistry initialization declarations.
 void initializeEVMLowerIntrinsicsPass(PassRegistry &);
+void initializeEVMArgumentMovePass(PassRegistry &);
 } // namespace llvm
 #endif // LLVM_LIB_TARGET_EVM_EVM_H
