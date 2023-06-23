@@ -15,8 +15,8 @@ define void @storei8(i8 %val) nounwind {
 
 define void @storei32(i32 %val) nounwind {
 ; CHECK-LABEL: @storei32
-; CHECK: CONST_I256 [[TMP1:\$[0-9]+]], 224
 ; CHECK: ARGUMENT [[VAL:\$[0-9]+]], 0
+; CHECK: CONST_I256 [[TMP1:\$[0-9]+]], 224
 ; CHECK: SHL [[SHL_VAL:\$[0-9]+]], [[VAL]], [[TMP1]]
 ; CHECK: CONST_I256 [[ADDR:\$[0-9]+]], @glob_i32
 ; CHECK: MLOAD [[ORIG_MEM:\$[0-9]+]], [[ADDR]]
