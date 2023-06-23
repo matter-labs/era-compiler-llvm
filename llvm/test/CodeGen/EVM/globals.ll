@@ -40,8 +40,8 @@ define void @store.elem(i256 %val) nounwind {
 
 define i256 @load.fromarray(i256 %i) nounwind {
 ; CHECK-LABEL: load.fromarray
-; CHECK: CONST_I256 [[C:\$[0-9]+]], 5
 ; CHECK: ARGUMENT [[IDX:\$[0-9]+]], 0
+; CHECK: CONST_I256 [[C:\$[0-9]+]], 5
 ; CHECK: SHL [[SHL:\$[0-9]+]], [[IDX]], [[C]]
 ; CHECK: CONST_I256 [[TMP:\$[0-9]+]], @val2.arr
 ; CHECK: ADD  [[ADDR:\$[0-9]+]], [[TMP]], [[SHL]]
@@ -54,12 +54,12 @@ define i256 @load.fromarray(i256 %i) nounwind {
 
 define void @store.toarray(i256 %val, i256 %i) nounwind {
 ; CHECK-LABEL: store.toarray
-; CHECK: CONST_I256 [[C:\$[0-9]+]], 5
 ; CHECK: ARGUMENT [[IDX:\$[0-9]+]], 1
+; CHECK: ARGUMENT [[VAL:\$[0-9]+]], 0
+; CHECK: CONST_I256 [[C:\$[0-9]+]], 5
 ; CHECK: SHL [[SHL:\$[0-9]+]], [[IDX]], [[C]]
 ; CHECK: CONST_I256 [[TMP:\$[0-9]+]], @val.arr
 ; CHECK: ADD  [[ADDR:\$[0-9]+]], [[TMP]], [[SHL]]
-; CHECK: ARGUMENT [[VAL:\$[0-9]+]], 0
 ; CHECK: MSTORE [[ADDR]], [[VAL]]
 
   %elem = getelementptr [4 x i256], [4 x i256]* @val.arr, i256 0, i256 %i

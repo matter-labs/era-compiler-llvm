@@ -12,6 +12,7 @@ tablegen(LLVM EVMGenSubtargetInfo.inc -gen-subtarget)
 add_public_tablegen_target(EVMCommonTableGen)
 
 add_llvm_target(EVMCodeGen
+  EVMArgumentMove.cpp
   EVMAsmPrinter.cpp
   EVMFrameLowering.cpp
   EVMISelDAGToDAG.cpp

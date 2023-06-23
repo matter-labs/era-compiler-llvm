@@ -2,8 +2,8 @@
 
 define i256 @sexti1(i1 %rs1) nounwind {
 ; CHECK-LABEL: @sexti1
-; CHECK: CONST_I256 [[MASK:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: CONST_I256 [[MASK:\$[0-9]+]], 1
 ; CHECK: AND [[TMP:\$[0-9]+]], [[IN1]], [[MASK]]
 ; CHECK: CONST_I256 [[ZERO:\$[0-9]+]], 0
 ; CHECK: SUB [[RES:\$[0-9]+]], [[ZERO]], [[TMP]]
@@ -65,8 +65,8 @@ define i256 @sexti128(i128 %rs1) nounwind {
 ; Check that 'sext' also gets lowered for types not declared in MVT.
 define i256 @sexti40(i40 %rs1) nounwind {
 ; CHECK-LABEL: @sexti40
-; CHECK: CONST_I256 [[C1:\$[0-9]+]], 216
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: CONST_I256 [[C1:\$[0-9]+]], 216
 ; CHECK: SHL [[TMP1:\$[0-9]+]], [[IN1]], [[C1]]
 ; CHECK: SAR [[TMP2:\$[0-9]]], [[TMP1]], [[C1]]
 
