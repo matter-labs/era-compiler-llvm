@@ -99,8 +99,7 @@ entry:
   %overflow = extractvalue {i256, i1} %res1, 1
   br i1 %overflow, label %overflow_detected, label %no_overflow_detected
 
-; CHECK: add! r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}
-; CHECK-NEXT: add r{{[0-9]+}}, r0, stack-[1] 
+; CHECK: add! r{{[0-9]+}}, r{{[0-9]+}}, stack-[1]
 ; CHECK-NEXT: jump.of
 ; CHECK-NEXT: ; %bb.{{[0-9]+}}:
 ; CHECK-NEXT: near_call       r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -461,8 +460,7 @@ entry:
   %overflow = extractvalue {i256, i1} %res1, 1
   br i1 %overflow, label %overflow_detected, label %no_overflow_detected
 
-; CHECK: sub! r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}
-; CHECK-NEXT: add r{{[0-9]+}}, r0, stack-[1] 
+; CHECK: sub! r{{[0-9]+}}, r{{[0-9]+}}, stack-[1]
 ; CHECK-NEXT: jump.of
 ; CHECK-NEXT: ; %bb.{{[0-9]+}}:
 ; CHECK-NEXT: near_call       r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -865,8 +863,7 @@ entry:
   %overflow = extractvalue {i256, i1} %res1, 1
   br i1 %overflow, label %overflow_detected, label %no_overflow_detected
 
-; CHECK: mul! r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}
-; CHECK-NEXT: add r{{[0-9]+}}, r0, stack-[1] 
+; CHECK: mul! r{{[0-9]+}}, r{{[0-9]+}}, stack-[1], r{{[0-9]+}}
 ; CHECK-NEXT: jump.of
 ; CHECK-NEXT: ; %bb.{{[0-9]+}}:
 ; CHECK-NEXT: near_call       r0, @has_no_overflow, @DEFAULT_UNWIND

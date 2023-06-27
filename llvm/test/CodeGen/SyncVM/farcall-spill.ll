@@ -1,4 +1,4 @@
-; RUN: llc --verify-coalescing --enable-syncvm-combine-reload-use=false < %s | FileCheck %s
+; RUN: llc --verify-coalescing --enable-syncvm-combine-addressing-mode=false < %s | FileCheck %s
 
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "syncvm"

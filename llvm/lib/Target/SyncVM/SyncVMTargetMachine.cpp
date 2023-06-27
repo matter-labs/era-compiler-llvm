@@ -32,7 +32,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   auto &PR = *PassRegistry::getPassRegistry();
   initializeSyncVMCodegenPreparePass(PR);
   initializeSyncVMCombineFlagSettingPass(PR);
-  initializeSyncVMCombineReloadUsePass(PR);
+  initializeSyncVMCombineAddressingModePass(PR);
   initializeSyncVMExpandPseudoPass(PR);
   initializeSyncVMExpandSelectPass(PR);
   initializeSyncVMLowerIntrinsicsPass(PR);
@@ -172,7 +172,7 @@ void SyncVMPassConfig::addPreSched2() {
 }
 
 void SyncVMPassConfig::addPreEmitPass() {
-  addPass(createSyncVMCombineReloadUsePass());
+  addPass(createSyncVMCombineAddressingModePass());
   addPass(createSyncVMExpandSelectPass());
   addPass(createSyncVMExpandPseudoPass());
 }
