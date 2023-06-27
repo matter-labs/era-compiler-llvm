@@ -52,9 +52,9 @@ add_llvm_target(EraVMCodeGen
   EraVMAllocaHoisting.cpp
   EraVMAsmPrinter.cpp
   EraVMBytesToCells.cpp
+  EraVMCombineAddressingMode.cpp
   EraVMCombineFlagSetting.cpp
   EraVMCodegenPrepare.cpp
-  EraVMCombineReloadUse.cpp
   EraVMCombineToIndexedMemops.cpp
   EraVMExpandPseudoInsts.cpp
   EraVMExpandSelect.cpp

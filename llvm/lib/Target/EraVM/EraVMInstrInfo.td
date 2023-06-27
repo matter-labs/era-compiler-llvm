@@ -1074,10 +1074,10 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
                          !strconcat(asmstring, ".s$cc\t$imm, $rs1, $dst0, $rd1"), []>, PseudoRel, FlagRel, RetAddrModeRel;
   let Defs = [Flags] in {
   def irsr_v : Iirsr<opcode, 0, 0,
-                         (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, GR256:$dst0, cc:$cc),
+                         (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackop:$dst0, cc:$cc),
                          !strconcat(asmstring, "$cc!\t$imm, $rs1, $dst0, $rd1"), []>, FlagRel, AddrModeRel, RetAddrModeRel;
   def xrsr_v : Iirsr<opcode, 1, 0,
-                         (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, GR256:$dst0, cc:$cc),
+                         (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackop:$dst0, cc:$cc),
                          !strconcat(asmstring, ".s$cc!\t$imm, $rs1, $dst0, $rd1"), []>, FlagRel, RetAddrModeRel;
   }
   let mayLoad = 1 in {
