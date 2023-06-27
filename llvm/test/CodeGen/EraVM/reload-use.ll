@@ -58,9 +58,7 @@ define i256 @spill_mulr(i256 %a) nounwind {
 define void @spill_muls(i256 %a) nounwind {
   %slot = alloca i256
   %b = call i256 @foo()
-  ; CHECK: mul stack-[1], r1, r1, r2
-  ; CHECK: add r1, r0, stack-[2]
-  ; TODO: Should be one inst.
+  ; CHECK: mul stack-[1], r1, stack-[2], r2
   %res = mul i256 %a, %b
   store i256 %res, i256* %slot
   ret void
@@ -106,9 +104,7 @@ define i256 @spill_divr(i256 %a) nounwind {
 define void @spill_divs(i256 %a) nounwind {
   %slot = alloca i256
   %b = call i256 @foo()
-  ; CHECK: div stack-[1], r1, r1, r2
-  ; CHECK: add r1, r0, stack-[2]
-  ; TODO: Should be one inst.
+  ; CHECK: div stack-[1], r1, stack-[2], r2
   %res = udiv i256 %a, %b
   store i256 %res, i256* %slot
   ret void

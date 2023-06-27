@@ -66,8 +66,10 @@ bool hasRRInAddressingMode(unsigned Opcode);
 bool hasIRInAddressingMode(unsigned Opcode);
 bool hasCRInAddressingMode(unsigned Opcode);
 bool hasSRInAddressingMode(unsigned Opcode);
+bool hasAnyInAddressingMode(unsigned Opcode);
 bool hasRROutAddressingMode(unsigned Opcode);
 bool hasSROutAddressingMode(unsigned Opcode);
+bool hasAnyOutAddressingMode(unsigned Opcode);
 inline bool hasRRInAddressingMode(const MachineInstr &MI) {
   return hasRRInAddressingMode(MI.getOpcode());
 }
@@ -80,11 +82,17 @@ inline bool hasCRInAddressingMode(const MachineInstr &MI) {
 inline bool hasSRInAddressingMode(const MachineInstr &MI) {
   return hasSRInAddressingMode(MI.getOpcode());
 }
+inline bool hasAnyInAddressingMode(const MachineInstr &MI) {
+  return hasAnyInAddressingMode(MI.getOpcode());
+}
 inline bool hasRROutAddressingMode(const MachineInstr &MI) {
   return hasRROutAddressingMode(MI.getOpcode());
 }
 inline bool hasSROutAddressingMode(const MachineInstr &MI) {
   return hasSROutAddressingMode(MI.getOpcode());
+}
+inline bool hasAnyOutAddressingMode(const MachineInstr &MI) {
+  return hasAnyOutAddressingMode(MI.getOpcode());
 }
 /// @}
 inline bool hasInsSwapped(unsigned Opcode) {
@@ -138,6 +146,22 @@ MachineInstr::mop_iterator in1Iterator(MachineInstr &MI);
 MachineInstr::mop_iterator out0Iterator(MachineInstr &MI);
 MachineInstr::mop_iterator out1Iterator(MachineInstr &MI);
 MachineInstr::mop_iterator ccIterator(MachineInstr &MI);
+
+inline MachineInstr::const_mop_iterator in0Iterator(const MachineInstr &MI) {
+  return in0Iterator(const_cast<MachineInstr &>(MI));
+}
+inline MachineInstr::const_mop_iterator in1Iterator(const MachineInstr &MI) {
+  return in1Iterator(const_cast<MachineInstr &>(MI));
+}
+inline MachineInstr::const_mop_iterator out0Iterator(const MachineInstr &MI) {
+  return out0Iterator(const_cast<MachineInstr &>(MI));
+}
+inline MachineInstr::const_mop_iterator out1Iterator(const MachineInstr &MI) {
+  return out1Iterator(const_cast<MachineInstr &>(MI));
+}
+inline MachineInstr::const_mop_iterator ccIterator(const MachineInstr &MI) {
+  return ccIterator(const_cast<MachineInstr &>(MI));
+}
 /// @}
 
 /// \defgroup ISAOperandRange MOP ranges to instruction operands as per ISA.
@@ -163,20 +187,41 @@ inline auto ccRange(MachineInstr &MI) {
   auto It = ccIterator(MI);
   return make_range(It, It + argumentSize(ArgumentKind::CC, MI));
 }
+inline auto in0Range(const MachineInstr &MI) {
+  auto It = in0Iterator(MI);
+  return make_range(It, It + argumentSize(ArgumentKind::In0, MI));
+}
+inline auto in1Range(const MachineInstr &MI) {
+  auto It = in1Iterator(MI);
+  return make_range(It, It + argumentSize(ArgumentKind::In1, MI));
+}
+inline auto out0Range(const MachineInstr &MI) {
+  auto It = out0Iterator(MI);
+  return make_range(It, It + argumentSize(ArgumentKind::Out0, MI));
+}
+inline auto out1Range(const MachineInstr &MI) {
+  auto It = out1Iterator(MI);
+  return make_range(It, It + argumentSize(ArgumentKind::Out1, MI));
+}
+inline auto ccRange(const MachineInstr &MI) {
+  auto It = ccIterator(MI);
+  return make_range(It, It + argumentSize(ArgumentKind::CC, MI));
+}
 /// @}
 
 /// Copy \p OpRange to \p Inst.
-inline void copyOperands(MachineInstrBuilder &Inst,
-                         iterator_range<MachineInstr::mop_iterator> OpRange) {
-  for (MachineOperand &MO : OpRange)
+inline void
+copyOperands(MachineInstrBuilder &Inst,
+             iterator_range<MachineInstr::const_mop_iterator> OpRange) {
+  for (const MachineOperand &MO : OpRange)
     Inst.add(MO);
 }
 
 /// Copy \p OpRange to \p Inst.
 inline void copyOperands(MachineInstrBuilder &Inst,
-                         MachineInstr::mop_iterator OpBegin,
-                         MachineInstr::mop_iterator OpEnd) {
-  for (MachineOperand &MO : make_range(OpBegin, OpEnd))
+                         MachineInstr::const_mop_iterator OpBegin,
+                         MachineInstr::const_mop_iterator OpEnd) {
+  for (const MachineOperand &MO : make_range(OpBegin, OpEnd))
     Inst.add(MO);
 }
 

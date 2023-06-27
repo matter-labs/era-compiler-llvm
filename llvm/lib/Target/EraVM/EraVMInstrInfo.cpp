@@ -111,10 +111,6 @@ MachineInstr::mop_iterator out1Iterator(MachineInstr &MI) {
   return MI.operands_begin() + MI.getNumExplicitDefs() - 1;
 }
 
-MachineInstr::const_mop_iterator ccIterator(const MachineInstr &MI) {
-  return MI.operands_begin() + (MI.getNumExplicitOperands() - 1);
-}
-
 MachineInstr::mop_iterator ccIterator(MachineInstr &MI) {
   return MI.operands_begin() + (MI.getNumExplicitOperands() - 1);
 }
@@ -207,12 +203,21 @@ bool hasSRInAddressingMode(unsigned Opcode) {
   return (unsigned)mapSRInputTo(Opcode, OperandAM_3) == Opcode;
 }
 
+bool hasAnyInAddressingMode(unsigned Opcode) {
+  return hasRRInAddressingMode(Opcode) || hasIRInAddressingMode(Opcode) ||
+         hasCRInAddressingMode(Opcode) || hasSRInAddressingMode(Opcode);
+}
+
 bool hasRROutAddressingMode(unsigned Opcode) {
   return withStackResult(Opcode) != -1;
 }
 
 bool hasSROutAddressingMode(unsigned Opcode) {
   return withRegisterResult(Opcode) != -1;
+}
+
+bool hasAnyOutAddressingMode(unsigned Opcode) {
+  return hasRROutAddressingMode(Opcode) || hasSROutAddressingMode(Opcode);
 }
 
 // TODO: Implement in via td.

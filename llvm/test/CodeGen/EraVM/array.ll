@@ -9,10 +9,8 @@ target triple = "eravm"
 
 ; CHECK-LABEL: consti_loadconst_storeglobal
 define void @consti_loadconst_storeglobal() nounwind {
-  ; CHECK: add	@const[1], r0, r1
+  ; CHECK: add @const[1], r0, stack[@val+1]
   %1 = load i256, ptr addrspace(4) getelementptr inbounds ([10 x i256], ptr addrspace(4) @const, i256 0, i256 1), align 32
-  ; CHECK: add r1, r0, stack[@val+1]
-  ; TODO: Should be folded into a single instruction.
   store i256 %1, ptr getelementptr inbounds ([10 x i256], ptr @val, i256 0, i256 1), align 32
   ret void
 }
