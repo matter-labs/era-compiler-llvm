@@ -29,6 +29,8 @@ namespace EraVM {
 int getPseudoMapOpcode(uint16_t);
 int getFlagSettingOpcode(uint16_t);
 int getNonFlagSettingOpcode(uint16_t);
+int withRegisterResult(uint16_t);
+int withStackResult(uint16_t);
 
 /// Return opcode of the instruction with RR input addressing mode otherwise
 /// identical to \p Opcode.

@@ -30,7 +30,7 @@ define void @vari_loadconst_storeglobal(i256 %i) nounwind {
   %addrc = getelementptr inbounds [10 x i256], ptr addrspace(4) @const, i256 0, i256 %i
   %addrg = getelementptr inbounds [10 x i256], ptr @val, i256 0, i256 %i
   %1 = load i256, ptr addrspace(4) %addrc, align 32
-  ; CHECK-NOT: div.s 32, r1, r1, r0
+  ; CHECK-NOT: shr.s 5, r1, r1
   ; CHECK: add r2, r0, stack[@val + r1]
   ; TODO: Should be folded into a single instruction.
   store i256 %1, ptr %addrg, align 32
@@ -39,12 +39,12 @@ define void @vari_loadconst_storeglobal(i256 %i) nounwind {
 
 ; CHECK-LABEL: vari_loadglobal_storeglobal
 define void @vari_loadglobal_storeglobal(i256 %i, i256 %j) nounwind {
-  ; CHECK-NOT: div.s 32, r1, r1, r0
+  ; CHECK-NOT: shr.s 5, r1, r1
   ; CHECK: add stack[@val + r1], r0, r1
   %addri = getelementptr inbounds [10 x i256], ptr @val, i256 0, i256 %i
   %addrj = getelementptr inbounds [10 x i256], ptr @val, i256 0, i256 %j
   %1 = load i256, ptr %addri, align 32
-  ; CHECK-NOT: div.s 32, r2, r2, r0
+  ; CHECK-NOT: shr.s 5, r2, r2
   ; CHECK: add r1, r0, stack[@val + r2]
   ; TODO: Should be folded into a single instruction.
   store i256 %1, ptr %addrj, align 32
@@ -55,7 +55,7 @@ define void @vari_loadglobal_storeglobal(i256 %i, i256 %j) nounwind {
 define void @stack_register_addressing_storing([10 x i256]* %array, i256 %idx, i256 %val) {
   ; CHECK:  shl.s   5, r[[REG:[0-9]+]], r[[REG]]
   ; CHECK:  add     r1, r[[REG]], r1
-  ; CHECK:  div.s   32, r1, r1, r0
+  ; CHECK:  shr.s   5, r1, r1
   ; CHECK:  add     r{{[0-9]+}}, r0, stack[r1]
   %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 %idx
   store i256 %val, i256* %idx_slot
@@ -66,7 +66,7 @@ define void @stack_register_addressing_storing([10 x i256]* %array, i256 %idx, i
 define void @alloca_reg_storing(i256 %idx, i256 %val) {
   ; CHECK:  nop     stack+=[10]
   ; CHECK-NOT:  shl.s   5, r1, r1
-  ; CHECK-NOT:  div.s   32, r1, r1, r0
+  ; CHECK-NOT:  shr.s   5, r1, r1
   ; CHECK:  add     r2, r0, stack-[10 - r1]
   %array = alloca [10 x i256], align 32
   %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 %idx
@@ -88,7 +88,7 @@ define void @alloca_const_storing(i256 %idx, i256 %val) {
 define i256 @stack_register_addressing_loading([10 x i256]* %array, i256 %idx) {
   ; CHECK:  shl.s   5, r[[REG2:[0-9]+]], r[[REG2]]
   ; CHECK:  add     r1, r[[REG2]], r1
-  ; CHECK:  div.s   32, r1, r1, r0
+  ; CHECK:  shr.s   5, r1, r1
   ; CHECK:  add     stack[r1], r0, r1
   %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 %idx
   %rv = load i256, i256* %idx_slot
@@ -100,7 +100,7 @@ define i256 @alloca_reg_loading(i256 %idx, i256 %val) {
   ; CHECK:  nop     stack+=[10]
   ; TODO: CPR-1040: Optimize the following code
   ; CHECK-NOT:  shl.s   5, r1, r1
-  ; CHECK-NOT:  div.s   32, r1, r1, r0
+  ; CHECK-NOT:  shr.s   5, r1, r1
   ; CHECK:  add     stack-[10 - r1], r0, r1
   %array = alloca [10 x i256], align 32
   %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 %idx
@@ -120,7 +120,7 @@ define i256 @alloca_const_loading(i256 %val) {
 
 ; CHECK-LABEL: arg_array_loading
 define i256 @arg_array_loading([10 x i256]* %array) {
-  ; CHECK:  div.s   32, r1, r1, r0
+  ; CHECK:  shr.s   5, r1, r1
   ; CHECK:  add     stack[5 + r1], r0, r1
   %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 5
   %rv = load i256, i256* %idx_slot
@@ -131,7 +131,7 @@ define i256 @arg_array_loading([10 x i256]* %array) {
 define i256 @arg_array_loading2([10 x i256]* %array, i256 %idx) {
   ; CHECK:  shl.s   5, r2, r2
   ; CHECK:  add     r1, r2, r1
-  ; CHECK:  div.s   32, r1, r1, r0
+  ; CHECK:  shr.s   5, r1, r1
   ; CHECK:  add     stack[r1], r0, r1
   %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 %idx
   %rv = load i256, i256* %idx_slot
@@ -140,7 +140,7 @@ define i256 @arg_array_loading2([10 x i256]* %array, i256 %idx) {
 
 ; CHECK-LABEL: arg_ptr_loading
 define i256 @arg_ptr_loading(i256* %array) {
-  ; CHECK:  div.s   32, r1, r1, r0
+  ; CHECK:  shr.s   5, r1, r1
   ; CHECK:  add     stack[5 + r1], r0, r1
   %idx_slot = getelementptr i256, i256* %array, i256 5
   %rv = load i256, i256* %idx_slot
@@ -151,7 +151,7 @@ define i256 @arg_ptr_loading(i256* %array) {
 define i256 @arg_ptr_loading2(i256* %array, i256 %idx) {
   ; CHECK:  shl.s   5, r2, r2
   ; CHECK:  add     r1, r2, r1
-  ; CHECK:  div.s   32, r1, r1, r0
+  ; CHECK:  shr.s   5, r1, r1
   ; CHECK:  add     stack[r1], r0, r1
   %idx_slot = getelementptr i256, i256* %array, i256 %idx
   %rv = load i256, i256* %idx_slot

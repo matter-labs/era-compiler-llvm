@@ -1,5 +1,4 @@
 ; RUN: llc < %s | FileCheck %s
-; RUN: llc --early-bytes-to-cells-conversion < %s | FileCheck %s --check-prefix=EARLY-BTC
 
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm"
@@ -31,21 +30,17 @@ entry:
   %gep1 = getelementptr [4 x i256], [4 x i256]* %ptr.arr, i256 0, i256 1
   %gep2 = getelementptr [4 x i256], [4 x i256]* %ptr.arr, i256 0, i256 2
   %gep3 = getelementptr [4 x i256], [4 x i256]* %ptr.arr, i256 0, i256 3
-; EARLY-BTC: div.s 32, r3, r{{[0-9]*}}, r0
-; EARLY-BTC: div.s 32, r2, r{{[0-9]*}}, r0
-; EARLY-BTC: div.s 32, r1, r{{[0-9]*}}, r0
-; EARLY-BTC: jump.eq @.BB1_2
   %x = icmp eq i256* %ptr.i256, null
   br i1 %x, label %fail, label %bb
 bb:
 ; CHECK: jump.eq @.BB1_2
 ; CHECK: add stack[r2], r0, r{{[0-9]*}}
-; CHECK: div.s 32, r1, r1, r0
+; CHECK: shr.s 5, r1, r1
 ; CHECK: add stack[r1], r4, r1
 ; CHECK: add stack[1 + r2], r1, r1
 ; CHECK: add stack[2 + r2], r1, r1
 ; CHECK: add stack[3 + r2], r1, r1
-; CHECK: div.s 32, r3, r2, r0
+; CHECK: shr.s 5, r3, r2
 ; CHECK: add stack[r2], r1, r1
   %v1 = load i256, i256* %ptr.i256
   %v2 = load i256, i256* %gep0
@@ -102,4 +97,18 @@ define void @store_fat_ptr(i8 addrspace(3)** %ptr) {
   %val = load i8 addrspace(3)*, i8 addrspace(3)** @fatptr, align 32
   store i8 addrspace(3)* %val, i8 addrspace(3)** %ptr
   ret void
+}
+
+; check that when we are returning a stack address (passed down as argument in cells)
+; it is returned in bytes.
+; CHECK-LABEL: return_stack_address
+define i256* @return_stack_address(i256* %0) {
+entry:
+  %return_0_gep_pointer = getelementptr i256, i256* %0, i256 0
+  store i256 0, i256* %return_0_gep_pointer, align 32
+  %return_1_gep_pointer = getelementptr i256, i256* %0, i32 1
+  store i256 0, i256* %return_1_gep_pointer, align 32
+; CHECK-NOT: shl.s
+; CHECK: ret
+  ret i256* %0
 }
