@@ -115,7 +115,7 @@ jobs:
 
         run: |
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
-          ./target-llvm/build-final/bin/llvm-lit -vv -s --debug --xfail "${XFAILS}" "-Dllc=${BINDIR}/llc ${LLC_OPTS}" './llvm/llvm/test/CodeGen/SyncVM/'
+          ./target-llvm/build-final/bin/llvm-lit -vv -s --xfail "${XFAILS}" "-Dllc=${BINDIR}/llc ${LLC_OPTS}" './llvm/llvm/test/CodeGen/SyncVM/'
 
       - name: Running Lit tests with opt verification options
         working-directory: compiler-tester
@@ -150,7 +150,7 @@ jobs:
             Transforms/LoopFusion/simple.ll"
         run: |
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
-          ./target-llvm/build-final/bin/llvm-lit -vv -s --debug --xfail "${XFAILS}" "-Dopt=${BINDIR}/opt ${OPT_OPTS}" './llvm/llvm/test/CodeGen/'
+          ./target-llvm/build-final/bin/llvm-lit -vv -s --xfail "${XFAILS}" "-Dopt=${BINDIR}/opt ${OPT_OPTS}" './llvm/llvm/test/CodeGen/'
 
       - name: Building and running the compiler tester
         id: compiler_tester_run
