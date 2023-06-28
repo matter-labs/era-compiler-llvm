@@ -120,7 +120,7 @@ define i256 @alloca_const_loading(i256 %val) {
 
 ; CHECK-LABEL: arg_array_loading
 define i256 @arg_array_loading([10 x i256]* %array) {
-  ; CHECK:  div.s   32, r1, r1, r0
+  ; CHECK-NOT:  div.s   32, r1, r1, r0
   ; CHECK:  add     stack[5 + r1], r0, r1
   %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 5
   %rv = load i256, i256* %idx_slot
@@ -140,7 +140,7 @@ define i256 @arg_array_loading2([10 x i256]* %array, i256 %idx) {
 
 ; CHECK-LABEL: arg_ptr_loading
 define i256 @arg_ptr_loading(i256* %array) {
-  ; CHECK:  div.s   32, r1, r1, r0
+  ; CHECK-NOT:  div.s   32, r1, r1, r0
   ; CHECK:  add     stack[5 + r1], r0, r1
   %idx_slot = getelementptr i256, i256* %array, i256 5
   %rv = load i256, i256* %idx_slot
@@ -164,6 +164,7 @@ define void @stack_array_passing() {
   ; CHECK:  context.sp      r[[REG3:[0-9]+]]
   ; CHECK:  sub.s   10, r[[REG3]], r[[REG4:[0-9]+]]
   ; CHECK:  mul     32, r[[REG4]], r1, r0
+  ; CHECK:  div
   ; CHECK:  near_call       r0, @array_arg, @DEFAULT_UNWIND
   %array = alloca [10 x i256], align 32
   call void @array_arg([10 x i256]* %array)

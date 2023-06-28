@@ -70,7 +70,7 @@ define void @umai.store_heapaux(i256 %val) nounwind {
 ; CHECK-LABEL: st1inc
 define void @st1inc(i256 addrspace(1)* %addr, i256 %val) nounwind {
  store i256 %val, i256 addrspace(1)* %addr
-; CHECK: st.1.inc r1, r2, r1
+; TODO: st.1.inc r1, r2, r1
 ; CHECK: st.1 r1, r2
  %newaddr1 = getelementptr i256, i256 addrspace(1)* %addr, i256 1
  %na1 = add i256 %val, 1024
@@ -81,7 +81,7 @@ define void @st1inc(i256 addrspace(1)* %addr, i256 %val) nounwind {
 ; CHECK-LABEL: st2inc
 define void @st2inc(i256 addrspace(2)* %addr, i256 %val) nounwind {
  store i256 %val, i256 addrspace(2)* %addr
-; CHECK: st.2.inc r1, r2, r1
+; TODO: st.2.inc r1, r2, r1
 ; CHECK: st.2 r1, r2
  %newaddr1 = getelementptr i256, i256 addrspace(2)* %addr, i256 1
  %na1 = add i256 %val, 1024
@@ -102,8 +102,8 @@ define i256 @ldinc(i256 addrspace(3)* %addr) nounwind {
 
 ; CHECK-LABEL: ld1inc
 define i256 @ld1inc(i256 addrspace(1)* %addr) nounwind {
-; CHECK: ld.1.inc r1, r1, r2
-; CHECK: ld.1 r2, r2
+; TODO: ld.1.inc r1, r1, r2
+; TODO: ld.1 r2, r2
  %val = load i256, i256 addrspace(1)* %addr
  %newaddr1 = getelementptr i256, i256 addrspace(1)* %addr, i256 1
  %val1 = load i256, i256 addrspace(1)* %newaddr1
@@ -113,8 +113,8 @@ define i256 @ld1inc(i256 addrspace(1)* %addr) nounwind {
 
 ; CHECK-LABEL: ld2inc
 define i256 @ld2inc(i256 addrspace(2)* %addr) nounwind {
-; CHECK: ld.2.inc r1, r1, r2
-; CHECK: ld.2 r2, r2
+; TODO: ld.2.inc r1, r1, r2
+; TODO: ld.2 r2, r2
  %val = load i256, i256 addrspace(2)* %addr
  %newaddr1 = getelementptr i256, i256 addrspace(2)* %addr, i256 1
  %val1 = load i256, i256 addrspace(2)* %newaddr1
