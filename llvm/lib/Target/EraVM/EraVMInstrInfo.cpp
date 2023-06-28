@@ -102,10 +102,9 @@ MachineInstr::mop_iterator in1Iterator(MachineInstr &MI) {
 }
 
 MachineInstr::mop_iterator out0Iterator(MachineInstr &MI) {
-  auto Begin = MI.operands_begin();
-  if (hasRROutAddressingMode(MI) || isSelect(MI))
-    return Begin;
-  return in1Iterator(MI) + argumentSize(ArgumentKind::In1, MI);
+  if (hasSROutAddressingMode(MI))
+    return in1Iterator(MI) + argumentSize(ArgumentKind::In1, MI);
+  return MI.operands_begin();
 }
 
 MachineInstr::mop_iterator out1Iterator(MachineInstr &MI) {

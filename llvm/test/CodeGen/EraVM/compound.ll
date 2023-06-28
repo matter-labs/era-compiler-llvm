@@ -11,7 +11,7 @@ define void @array_ldst_to_parameter([10 x i256]* %array, i256 %val) {
   %2 = add i256 %1, %val
   %idx2 = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 2
   store i256 %2, i256* %idx2
-; CHECK: div.s 32, r1, r1, r0
+; CHECK: shr.s 5, r1, r1
 ; CHECK: add stack[6 + r1], r2, stack[2 + r1]
   ret void
 }
