@@ -96,7 +96,10 @@ MachineInstr::mop_iterator in1Iterator(MachineInstr &MI) {
 
 MachineInstr::mop_iterator out0Iterator(MachineInstr &MI) {
   auto Begin = MI.operands_begin();
-  if (hasRROutAddressingMode(MI) || isSelect(MI))
+  if (hasRROutAddressingMode(MI) || isSelect(MI) ||
+      MI.getOpcode() == SyncVM::ADDframe ||
+      MI.getOpcode() == SyncVM::ADDframeNoScaling ||
+      MI.getOpcode() == SyncVM::COPY)
     return Begin;
   return in1Iterator(MI) + argumentSize(ArgumentKind::In1, MI);
 }
@@ -228,6 +231,26 @@ bool hasInvalidRelativeStackAccess(MachineInstr::const_mop_iterator Op) {
   if (SA == SyncVM::StackAccess::Relative && !(Op + 2)->isImm())
     return true;
   return false;
+}
+
+MachineInstr::mop_iterator getStackAccess(MachineInstr &MI) {
+  // check if the stack access is in input operands
+  if (SyncVM::hasSRInAddressingMode(MI)) {
+    return SyncVM::in0Iterator(MI);
+  }
+
+  // check if the stack access is in output operands
+  if (SyncVM::hasSROutAddressingMode(MI)) {
+    return SyncVM::out0Iterator(MI);
+  }
+  return {};
+}
+
+MachineInstr::mop_iterator getSecondStackAccess(MachineInstr &MI) {
+  if (SyncVM::hasSRInAddressingMode(MI) && SyncVM::hasSROutAddressingMode(MI)) {
+    return SyncVM::out0Iterator(MI);
+  }
+  return {};
 }
 
 } // namespace SyncVM

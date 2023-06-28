@@ -66,7 +66,8 @@ void SyncVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   int Offset = MF.getFrameInfo().getObjectOffset(FrameIndex);
   Offset -= MF.getFrameInfo().getStackSize();
 
-  if (MI.getOpcode() == SyncVM::ADDframe) {
+  if (MI.getOpcode() == SyncVM::ADDframe ||
+      MI.getOpcode() == SyncVM::ADDframeNoScaling) {
     auto SPInst = BuildMI(MBB, II, DL, TII.get(SyncVM::CTXr_se))
                       .addDef(MI.getOperand(0).getReg())
                       .addImm(SyncVMCTX::SP)
@@ -83,12 +84,17 @@ void SyncVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     // Set that immediate represents stack slot index.
     SPInst->getOperand(1).setTargetFlags(SyncVMII::MO_STACK_SLOT_IDX);
 
-    BuildMI(MBB, II, DL, TII.get(SyncVM::MULirrr_s))
-        .addDef(MI.getOperand(0).getReg())
-        .addDef(SyncVM::R0)
-        .addImm(32)
-        .addReg(SPInst->getOperand(0).getReg())
-        .addImm(SyncVMCC::COND_NONE);
+    // We do not do conversion to bytes for `ADDframeNoScaling`, because
+    // if there is a such node, we know that the use of it will see its 
+    // value as cells.
+    if (MI.getOpcode() == SyncVM::ADDframe)
+      BuildMI(MBB, II, DL, TII.get(SyncVM::MULirrr_s))
+          .addDef(MI.getOperand(0).getReg())
+          .addDef(SyncVM::R0)
+          .addImm(32)
+          .addReg(SPInst->getOperand(0).getReg())
+          .addImm(SyncVMCC::COND_NONE);
+
     MI.eraseFromParent();
     return;
   }

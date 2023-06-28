@@ -23,6 +23,8 @@ namespace SyncVM {
 int getPseudoMapOpcode(uint16_t);
 int getFlagSettingOpcode(uint16_t);
 int getNonFlagSettingOpcode(uint16_t);
+int withRegisterResult(uint16_t);
+int withStackResult(uint16_t);
 
 /// Return opcode of the instruction with RR input addressing mode otherwise
 /// identical to \p Opcode.
@@ -184,6 +186,15 @@ inline StackAccess classifyStackAccess(MachineInstr::const_mop_iterator Op) {
 }
 
 bool hasInvalidRelativeStackAccess(MachineInstr::const_mop_iterator Op);
+
+/// return iterator to the stack access operand of \p MI. If there is no stack
+/// accesses, return an empty iterator.
+MachineInstr::mop_iterator getStackAccess(MachineInstr &MI);
+
+
+/// return iterator to the second stack access operand of \p MI. If there is no
+/// second stack access, return an empty iterator.
+MachineInstr::mop_iterator getSecondStackAccess(MachineInstr &MI);
 
 } // namespace SyncVM
 
