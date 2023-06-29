@@ -93,12 +93,13 @@ define i256 @XORirr_Select(i256 %p1) nounwind {
   %p3 = xor i256 %p1, 123
   %cmp = icmp eq i256 %p3, 0
   %res = select i1 %cmp, i256 42, i256 %p3
-  ret i256 %p3
+  ret i256 %res
 }
 
 ; CHECK-LABEL: ORirr_v:
 define i1 @ORirr_v(i256 %p1) nounwind {
-; CHECK: or! 123, r{{[0-9]+}}, r{{[0-9]+}}
+; Can't be equal to 0, optimized away.
+; CHECK: add r0, r0, r1
   %p3 = or i256 %p1, 123
   %cmp = icmp eq i256 %p3, 0
   ret i1 %cmp

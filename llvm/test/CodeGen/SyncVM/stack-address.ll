@@ -65,15 +65,13 @@ fail:
 
 ; CHECK-LABEL: stack.obj.passing
 define i256 @stack.obj.passing() {
-; CHECK: nop stack+=[12]
-  %unused1 = alloca [3 x i256]
+; CHECK: nop stack+=[7]
   %par1 = alloca i256
-  %unused2 = alloca [2 x i256]
   %elem.cont = alloca [2 x i256]
   %arr = alloca [4 x i256]
   %elem = getelementptr [2 x i256], [2 x i256]* %elem.cont, i256 0, i256 0
 ; CHECK: context.sp r1
-; CHECK: sub.s 9, r1, r1
+; CHECK: sub.s 7, r1, r1
 ; CHECK: mul 32, r1, r1, r0
 ; CHECK: context.sp r2
 ; CHECK: sub.s 4, r2, r2
