@@ -64,8 +64,7 @@ SyncVMTargetMachine::SyncVMTargetMachine(const Target &T, const Triple &TT,
       Subtarget(TT, std::string(CPU), std::string(FS), *this) {
   setRequiresStructuredCFG(true);
   setMachineOutliner(true);
-  // TODO: Enable this.
-  // setSupportsDefaultOutlining(true);
+  setSupportsDefaultOutlining(true);
   initAsmInfo();
 }
 
