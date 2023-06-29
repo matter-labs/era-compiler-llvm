@@ -1,4 +1,4 @@
-; RUN: llc -O3 < %s | FileCheck %s
+; RUN: llc -O3 -enable-machine-outliner=never < %s | FileCheck %s
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "syncvm"
 
