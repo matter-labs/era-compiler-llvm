@@ -289,9 +289,7 @@ public:
   bool isPredicatedInstr(const MachineInstr &MI) const;
   EraVMCC::CondCodes getCCCode(const MachineInstr &MI) const;
 
-  // TODO: Enable this.
-  // bool shouldOutlineFromFunctionByDefault(MachineFunction &MF) const
-  // override;
+  bool shouldOutlineFromFunctionByDefault(MachineFunction &MF) const override;
 
   void fixupPostOutline(MachineFunction &MF) const;
 

@@ -663,11 +663,10 @@ void EraVMInstrInfo::fixupPostOutline(MachineFunction &MF) const {
 /// Enum values indicating how an outlined call should be constructed.
 enum MachineOutlinerConstructionID { MachineOutlinerDefault };
 
-// TODO: Enable this.
-// bool EraVMInstrInfo::shouldOutlineFromFunctionByDefault(
-//     MachineFunction &MF) const {
-//   return MF.getFunction().hasOptSize();
-// }
+bool EraVMInstrInfo::shouldOutlineFromFunctionByDefault(
+    MachineFunction &MF) const {
+  return MF.getFunction().hasMinSize();
+}
 
 bool EraVMInstrInfo::isFunctionSafeToOutlineFrom(
     MachineFunction &MF, bool OutlineFromLinkOnceODRs) const {
