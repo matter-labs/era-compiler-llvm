@@ -16,9 +16,9 @@
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/GlobalDCE.h"
+#include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/MergeSimilarBB.h"
 #include "llvm/Transforms/Utils.h"
-#include "llvm/Passes/PassBuilder.h"
 
 #include "SyncVM.h"
 #include "SyncVMTargetTransformInfo.h"
@@ -118,6 +118,18 @@ void SyncVMPassConfig::addIRPasses() {
   addPass(createSyncVMCodegenPreparePass());
   addPass(createGlobalDCEPass());
   addPass(createSyncVMAllocaHoistingPass());
+  if (TM->getOptLevel() != CodeGenOpt::None) {
+    // Call SeparateConstOffsetFromGEP pass to extract constants within indices
+    // and lower a GEP with multiple indices to either arithmetic operations or
+    // multiple GEPs with single index.
+    addPass(createSeparateConstOffsetFromGEPPass(true));
+    // Call EarlyCSE pass to find and remove subexpressions in the lowered
+    // result.
+    addPass(createEarlyCSEPass());
+    // Do loop invariant code motion in case part of the lowered result is
+    // invariant.
+    addPass(createLICMPass());
+  }
   TargetPassConfig::addIRPasses();
 }
 
