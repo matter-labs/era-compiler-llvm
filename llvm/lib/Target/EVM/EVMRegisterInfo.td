@@ -27,6 +27,10 @@ def SP : EVMReg<"%SP">;
 // we otherwise don't need a physical register in this class.
 def GPR256 : EVMReg<"%reg">;
 
+// The value stack "register". This is an opaque entity which serves to order
+// uses and defs that must remain in LIFO order.
+def VALUE_STACK : EVMReg<"STACK">;
+
 // The incoming arguments "register". This is an opaque entity which serves to
 // order the ARGUMENT instructions that are emulating live-in registers and
 // must not be scheduled below other instructions.

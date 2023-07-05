@@ -19,21 +19,33 @@ namespace llvm {
 // EVM streamer interface to support EVM assembly directives
 class EVMTargetStreamer : public MCTargetStreamer {
 public:
-  EVMTargetStreamer(MCStreamer &S);
+  explicit EVMTargetStreamer(MCStreamer &S);
+  EVMTargetStreamer(const EVMTargetStreamer &) = delete;
+  EVMTargetStreamer(EVMTargetStreamer &&) = delete;
+  EVMTargetStreamer &operator=(const EVMTargetStreamer &) = delete;
+  EVMTargetStreamer &operator=(EVMTargetStreamer &&) = delete;
   ~EVMTargetStreamer() override;
 };
 
 /// This part is for ASCII assembly output
 class EVMTargetAsmStreamer final : public EVMTargetStreamer {
 public:
-  EVMTargetAsmStreamer(MCStreamer &S);
+  explicit EVMTargetAsmStreamer(MCStreamer &S);
+  EVMTargetAsmStreamer(const EVMTargetAsmStreamer &) = delete;
+  EVMTargetAsmStreamer(EVMTargetAsmStreamer &&) = delete;
+  EVMTargetAsmStreamer &operator=(const EVMTargetAsmStreamer &) = delete;
+  EVMTargetAsmStreamer &operator=(EVMTargetAsmStreamer &&) = delete;
   ~EVMTargetAsmStreamer() override;
 };
 
 // This part is for EVM object output
 class EVMTargetObjStreamer final : public EVMTargetStreamer {
 public:
-  EVMTargetObjStreamer(MCStreamer &S);
+  explicit EVMTargetObjStreamer(MCStreamer &S);
+  EVMTargetObjStreamer(const EVMTargetObjStreamer &) = delete;
+  EVMTargetObjStreamer(EVMTargetObjStreamer &&) = delete;
+  EVMTargetObjStreamer &operator=(const EVMTargetObjStreamer &) = delete;
+  EVMTargetObjStreamer &operator=(EVMTargetObjStreamer &&) = delete;
   ~EVMTargetObjStreamer() override;
 };
 } // namespace llvm

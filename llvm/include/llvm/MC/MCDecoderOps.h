@@ -15,9 +15,13 @@ namespace llvm {
 namespace MCD {
 // Disassembler state machine opcodes.
 enum DecoderOps {
-  OPC_ExtractField = 1, // OPC_ExtractField(uleb128 Start, uint8_t Len)
+  // EVM local begin
+  OPC_ExtractField = 1, // OPC_ExtractField(uleb128 Start, uint16_t Len)
+  // EVM local end
   OPC_FilterValue,      // OPC_FilterValue(uleb128 Val, uint16_t NumToSkip)
-  OPC_CheckField,       // OPC_CheckField(uleb128 Start, uint8_t Len,
+  // EVM local begin
+  OPC_CheckField,       // OPC_CheckField(uleb128 Start, uint16_t Len,
+  // EVM local end
                         //                uleb128 Val, uint16_t NumToSkip)
   OPC_CheckPredicate,   // OPC_CheckPredicate(uleb128 PIdx, uint16_t NumToSkip)
   OPC_Decode,           // OPC_Decode(uleb128 Opcode, uleb128 DIdx)

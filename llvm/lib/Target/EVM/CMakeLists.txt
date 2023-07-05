@@ -4,6 +4,7 @@ set(LLVM_TARGET_DEFINITIONS EVM.td)
 
 tablegen(LLVM EVMGenAsmWriter.inc -gen-asm-writer)
 tablegen(LLVM EVMGenDAGISel.inc -gen-dag-isel)
+tablegen(LLVM EVMGenDisassemblerTables.inc -gen-disassembler)
 tablegen(LLVM EVMGenInstrInfo.inc -gen-instr-info)
 tablegen(LLVM EVMGenMCCodeEmitter.inc -gen-emitter)
 tablegen(LLVM EVMGenRegisterInfo.inc -gen-register-info)
@@ -16,6 +17,7 @@ set (STDLIB_CONTENT "R\"(${STDLIB_CONTENT})\"")
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/EVMStdLib.inc ${STDLIB_CONTENT})
 
 add_llvm_target(EVMCodeGen
+  EVMAllocaHoisting.cpp
   EVMArgumentMove.cpp
   EVMAsmPrinter.cpp
   EVMCodegenPrepare.cpp
@@ -25,8 +27,13 @@ add_llvm_target(EVMCodeGen
   EVMInstrInfo.cpp
   EVMLinkRuntime.cpp
   EVMLowerIntrinsics.cpp
+  EVMMachineFunctionInfo.cpp
   EVMMCInstLower.cpp
+  EVMOptimizeLiveIntervals.cpp
+  EVMRegColoring.cpp
   EVMRegisterInfo.cpp
+  EVMSingleUseExpression.cpp
+  EVMStackify.cpp
   EVMSubtarget.cpp
   EVMTargetMachine.cpp
   EVMTargetTransformInfo.cpp
@@ -48,6 +55,8 @@ add_llvm_target(EVMCodeGen
   Target
   TargetParser
   TransformUtils
+  EVMDesc
+  EVMInfo
 
   ADD_TO_COMPONENT
   EVM
@@ -56,5 +65,6 @@ add_llvm_target(EVMCodeGen
   intrinsics_gen
   )
 
-add_subdirectory(TargetInfo)
+add_subdirectory(Disassembler)
 add_subdirectory(MCTargetDesc)
+add_subdirectory(TargetInfo)

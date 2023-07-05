@@ -22,6 +22,16 @@
 
 namespace llvm {
 
+namespace EVMII {
+
+enum {
+  // TSF flag to check if this is a stack instruction.
+  IsStackPos = 0,
+  IsStackMask = 0x1,
+};
+
+} // namespace EVMII
+
 class EVMInstrInfo final : public EVMGenInstrInfo {
   const EVMRegisterInfo RI;
 
@@ -29,6 +39,8 @@ public:
   explicit EVMInstrInfo();
 
   const EVMRegisterInfo &getRegisterInfo() const { return RI; }
+
+  bool isReallyTriviallyReMaterializable(const MachineInstr &MI) const override;
 
   void copyPhysReg(MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
                    const DebugLoc &DL, MCRegister DestReg, MCRegister SrcReg,
@@ -48,6 +60,16 @@ public:
 
   bool
   reverseBranchCondition(SmallVectorImpl<MachineOperand> &Cond) const override;
+
+  /// TSFlags extraction
+  static unsigned getTSFlag(const MachineInstr *MI, unsigned Pos,
+                            unsigned Mask) {
+    return (MI->getDesc().TSFlags >> Pos) & Mask;
+  }
+
+  static bool isStack(const MachineInstr *MI) {
+    return getTSFlag(MI, EVMII::IsStackPos, EVMII::IsStackMask);
+  }
 };
 
 } // end namespace llvm

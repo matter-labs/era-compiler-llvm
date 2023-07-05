@@ -48,7 +48,7 @@ public:
   }
   const EVMInstrInfo *getInstrInfo() const override { return &InstrInfo; }
 
-  const TargetRegisterInfo *getRegisterInfo() const override {
+  const EVMRegisterInfo *getRegisterInfo() const override {
     return &InstrInfo.getRegisterInfo();
   }
   const EVMTargetLowering *getTargetLowering() const override {

@@ -27,7 +27,6 @@ private:
 public:
   static const EVMCImmMCExpr *create(const StringRef &Data, MCContext &Ctx);
 
-  /// getOpcode - Get the kind of this expression.
   StringRef getString() const { return Data; }
 
   void printImpl(raw_ostream &OS, const MCAsmInfo *MAI) const override;

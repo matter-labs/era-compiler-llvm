@@ -8,3 +8,5 @@ add_llvm_component_library(LLVMEVMInfo
   ADD_TO_COMPONENT
   EVM
   )
+
+add_dependencies(LLVMEVMInfo EVMCommonTableGen)
