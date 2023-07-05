@@ -22,13 +22,33 @@
 
 namespace llvm {
 
+namespace EVMII {
+
+enum {
+  // TSF flag to check if this is a stack instruction.
+  IsStackPos = 0,
+  IsStackMask = 0x1,
+};
+
+} // namespace EVMII
+
 class EVMInstrInfo final : public EVMGenInstrInfo {
   const EVMRegisterInfo RI;
 
 public:
   explicit EVMInstrInfo();
 
+  enum BranchType : uint8_t {
+    BT_None,      // Couldn't analyze branch.
+    BT_NoBranch,  // No branches found.
+    BT_Uncond,    // One unconditional branch.
+    BT_Cond,      // One conditional branch.
+    BT_CondUncond // A conditional branch followed by an unconditional branch.
+  };
+
   const EVMRegisterInfo &getRegisterInfo() const { return RI; }
+
+  bool isReallyTriviallyReMaterializable(const MachineInstr &MI) const override;
 
   void copyPhysReg(MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
                    const DebugLoc &DL, Register DestReg, Register SrcReg,
@@ -40,6 +60,12 @@ public:
                      SmallVectorImpl<MachineOperand> &Cond,
                      bool AllowModify) const override;
 
+  BranchType analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB,
+                           MachineBasicBlock *&FBB,
+                           SmallVectorImpl<MachineOperand> &Cond,
+                           bool AllowModify,
+                           SmallVectorImpl<MachineInstr *> &BranchInstrs) const;
+
   unsigned removeBranch(MachineBasicBlock &MBB,
                         int *BytesRemoved) const override;
 
@@ -49,6 +75,16 @@ public:
 
   bool
   reverseBranchCondition(SmallVectorImpl<MachineOperand> &Cond) const override;
+
+  /// TSFlags extraction
+  static unsigned getTSFlag(const MachineInstr *MI, unsigned Pos,
+                            unsigned Mask) {
+    return (MI->getDesc().TSFlags >> Pos) & Mask;
+  }
+
+  static bool isStack(const MachineInstr *MI) {
+    return getTSFlag(MI, EVMII::IsStackPos, EVMII::IsStackMask);
+  }
 };
 
 } // end namespace llvm

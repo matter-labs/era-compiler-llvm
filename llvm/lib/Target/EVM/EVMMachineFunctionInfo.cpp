@@ -21,3 +21,18 @@ MachineFunctionInfo *EVMMachineFunctionInfo::clone(
     const {
   return DestMF.cloneInfo<EVMMachineFunctionInfo>(*this);
 }
+
+yaml::EVMMachineFunctionInfo::~EVMMachineFunctionInfo() = default;
+
+yaml::EVMMachineFunctionInfo::EVMMachineFunctionInfo(
+    const llvm::EVMMachineFunctionInfo &MFI)
+    : IsStackified(MFI.getIsStackified()) {}
+
+void yaml::EVMMachineFunctionInfo::mappingImpl(yaml::IO &YamlIO) {
+  MappingTraits<EVMMachineFunctionInfo>::mapping(YamlIO, *this);
+}
+
+void EVMMachineFunctionInfo::initializeBaseYamlFields(
+    const yaml::EVMMachineFunctionInfo &YamlMFI) {
+  IsStackified = YamlMFI.IsStackified;
+}

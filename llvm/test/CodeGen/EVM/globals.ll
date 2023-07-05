@@ -1,4 +1,4 @@
-; RUN: llc < %s | FileCheck %s
+; RUN: llc --evm-keep-registers < %s | FileCheck %s
 
 target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
 target triple = "evm"
@@ -57,8 +57,8 @@ define i256 @load.fromarray(i256 %i) nounwind {
 
 define void @store.toarray(i256 %val, i256 %i) nounwind {
 ; CHECK-LABEL: store.toarray
-; CHECK: ARGUMENT [[IDX:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[VAL:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IDX:\$[0-9]+]], 1
 ; CHECK: CONST_I256 [[C:\$[0-9]+]], 5
 ; CHECK: SHL [[SHL:\$[0-9]+]], [[IDX]], [[C]]
 ; CHECK: CONST_I256 [[TMP:\$[0-9]+]], @val.arr

@@ -1,4 +1,4 @@
-; RUN: llc < %s | FileCheck %s
+; RUN: llc --evm-keep-registers < %s | FileCheck %s
 
 target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
 target triple = "evm"
@@ -8,8 +8,8 @@ declare void @foo2(i256)
 
 define i256 @call(i256 %a, i256 %b) nounwind {
 ; CHECK-LABEL: @call
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ADD [[TMP1:\$[0-9]+]], [[IN1]], [[IN2]]
 ; CHECK: FCALL 1 [[RES1:\$[0-9]+]], @foo, [[TMP1]]
 
@@ -20,8 +20,8 @@ define i256 @call(i256 %a, i256 %b) nounwind {
 
 define void @call2(i256 %a, i256 %b) nounwind {
 ; CHECK-LABEL: @call2
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ADD [[TMP1:\$[0-9]+]], [[IN1]], [[IN2]]
 ; CHECK: FCALL 0 @foo2, [[TMP1]]
 

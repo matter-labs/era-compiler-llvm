@@ -12,7 +12,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMMCInstLower.h"
+#include "EVMInstrInfo.h"
 #include "MCTargetDesc/EVMMCExpr.h"
+#include "MCTargetDesc/EVMMCTargetDesc.h"
+#include "TargetInfo/EVMTargetInfo.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
@@ -22,8 +25,25 @@
 
 using namespace llvm;
 
-#define GET_REGINFO_HEADER
-#include "EVMGenRegisterInfo.inc"
+extern cl::opt<bool> EVMKeepRegisters;
+
+// Stackify instruction that were not stackified before.
+static void stackifyInstruction(const MachineInstr *MI, MCInst &OutMI) {
+  if (MI->isDebugInstr() || MI->isLabel() || MI->isInlineAsm())
+    return;
+
+  // Check there are no register operands.
+  assert(std::all_of(OutMI.begin(), OutMI.end(),
+                     [](const MCOperand &MO) { return !MO.isReg(); }));
+
+  // Set up final opcodes for the following codegen-only instructions.
+  unsigned Opcode = OutMI.getOpcode();
+  if (Opcode == EVM::PUSH_LABEL)
+    OutMI.setOpcode(EVM::PUSH4_S);
+
+  // Check that all the instructions are in the 'stack' form.
+  assert(EVM::getRegisterOpcode(OutMI.getOpcode()));
+}
 
 MCSymbol *
 EVMMCInstLower::GetGlobalAddressSymbol(const MachineOperand &MO) const {
@@ -102,6 +122,10 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
         MCOp = MCOperand::createExpr(EVMCImmMCExpr::create(*Str, Ctx));
       }
     } break;
+    case MachineOperand::MO_MCSymbol:
+      MCOp =
+          MCOperand::createExpr(MCSymbolRefExpr::create(MO.getMCSymbol(), Ctx));
+      break;
     case MachineOperand::MO_MachineBasicBlock:
       MCOp = MCOperand::createExpr(
           MCSymbolRefExpr::create(MO.getMBB()->getSymbol(), Ctx));
@@ -113,10 +137,11 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
       MCOp = LowerSymbolOperand(MO, GetExternalSymbolSymbol(MO));
       break;
     }
-
     OutMI.addOperand(MCOp);
   }
-  if (Desc.variadicOpsAreDefs())
+  if (!EVMKeepRegisters)
+    stackifyInstruction(MI, OutMI);
+  else if (Desc.variadicOpsAreDefs())
     OutMI.insert(OutMI.begin(), MCOperand::createImm(MI->getNumExplicitDefs()));
 }
 

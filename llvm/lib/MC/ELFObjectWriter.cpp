@@ -1034,6 +1034,13 @@ uint64_t ELFWriter::writeObject() {
     const uint64_t SecStart = align(Section.getAlign());
 
     const MCSymbolELF *SignatureSymbol = Section.getGroup();
+    // EVM local begin
+    if (Ctx.getTargetTriple().isEVM()) {
+      if (Section.getName() == ".text")
+        writeSectionData(Section);
+      continue;
+    }
+    // EVM local end
     writeSectionData(Section);
 
     uint64_t SecEnd = W.OS.tell();
@@ -1069,6 +1076,11 @@ uint64_t ELFWriter::writeObject() {
         Members.second.push_back(RelSection->getOrdinal());
     }
   }
+
+  // EVM local begin
+  if (Ctx.getTargetTriple().isEVM())
+    return W.OS.tell() - StartOffset;
+  // EVM local end
 
   for (auto &[Group, Members] : Groups) {
     // Remember the offset into the file for this section.

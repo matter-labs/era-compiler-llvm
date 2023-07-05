@@ -16,9 +16,7 @@
 //============================================================================//
 
 #include "llvm/IR/Function.h"
-#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
-#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Linker/Linker.h"
@@ -26,7 +24,6 @@
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Transforms/IPO/Internalize.h"
-#include "llvm/Transforms/Scalar.h"
 
 #include <memory>
 
@@ -35,11 +32,6 @@
 #define DEBUG_TYPE "evm-link-runtime"
 
 using namespace llvm;
-
-namespace llvm {
-ModulePass *createEVMLinkRuntimePass();
-void initializeEVMLinkRuntimePass(PassRegistry &);
-} // namespace llvm
 
 static ExitOnError ExitOnErr;
 
@@ -85,6 +77,7 @@ static bool EVMLinkRuntimeImpl(Module &M, const char *ModuleToLink) {
     Err.print("Unable to parse evm-stdlib.ll", errs());
     exit(1);
   }
+
   bool LinkErr = false;
   LinkErr = L.linkInModule(
       std::move(RTM), Flags, [](Module &M, const StringSet<> &GVS) {

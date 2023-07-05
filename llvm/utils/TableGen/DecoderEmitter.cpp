@@ -749,7 +749,11 @@ void Filter::emitTableEntry(DecoderTableInfo &TableInfo) const {
   TableInfo.Table.push_back(MCD::OPC_ExtractField);
 
   TableInfo.Table.insertULEB128(StartBit);
-  TableInfo.Table.push_back(NumBits);
+
+  // EVM local begin
+  TableInfo.Table.push_back((uint8_t)NumBits);
+  TableInfo.Table.push_back((uint8_t)(NumBits >> 8));
+  // EVM local end
 
   // If the NO_FIXED_SEGMENTS_SENTINEL is present, we need to add a new scope
   // for this filter. Otherwise, we can skip adding a new scope and any
@@ -911,8 +915,12 @@ unsigned DecoderEmitter::emitTable(formatted_raw_ostream &OS,
       assert(ErrMsg == nullptr && "ULEB128 value too large!");
       emitULEB128(I, OS);
 
+      // EVM local begin
+      // 16-bit Len value
       unsigned Len = *I++;
-      OS << Len << ",  // Inst{";
+      Len |= (*I++) << 8;
+      OS << (Len & 0xFF) << ", " << (Len >> 8) << ",  // Inst{";
+      // EVM local end
       if (Len > 1)
         OS << (Start + Len - 1) << "-";
       OS << Start << "} ...\n";
@@ -938,9 +946,12 @@ unsigned DecoderEmitter::emitTable(formatted_raw_ostream &OS,
       OS << "  MCD::OPC_CheckField" << (IsFail ? "OrFail, " : ", ");
       // ULEB128 encoded start value.
       emitULEB128(I, OS);
-      // 8-bit length.
+      // EVM local begin
+      // 16-bit length.
       unsigned Len = *I++;
-      OS << Len << ", ";
+      Len |= (*I++) << 8;
+      OS << (Len & 0xFF) << ", " << (Len >> 8) << ", ";
+      // EVM local begin
       // ULEB128 encoded field value.
       emitULEB128(I, OS);
 
@@ -1475,7 +1486,10 @@ void FilterChooser::emitSingletonTableEntry(DecoderTableInfo &TableInfo,
     TableInfo.Table.push_back(DecoderOp);
 
     TableInfo.Table.insertULEB128(Ilnd.StartBit);
-    TableInfo.Table.push_back(NumBits);
+    // EVM local begin
+    TableInfo.Table.push_back((uint8_t)NumBits);
+    TableInfo.Table.push_back((uint8_t)(NumBits >> 8));
+    // EVM local end
     TableInfo.Table.insertULEB128(Ilnd.FieldVal);
 
     if (DecoderOp == MCD::OPC_CheckField) {
@@ -2266,7 +2280,10 @@ static DecodeStatus decodeInstruction(const uint8_t DecodeTable[], MCInst &MI,
     case MCD::OPC_ExtractField: {
       // Decode the start value.
       unsigned Start = decodeULEB128AndIncUnsafe(Ptr);
-      unsigned Len = *Ptr++;)";
+      // EVM local begin
+      unsigned Len = *Ptr++;
+      Len |= (*Ptr++) << 8;)";
+      // EVM local end
   if (IsVarLenInst)
     OS << "\n      makeUp(insn, Start + Len);";
   OS << R"(
@@ -2305,7 +2322,10 @@ static DecodeStatus decodeInstruction(const uint8_t DecodeTable[], MCInst &MI,
       bool IsFail = DecoderOp == MCD::OPC_CheckFieldOrFail;
       // Decode the start value.
       unsigned Start = decodeULEB128AndIncUnsafe(Ptr);
-      unsigned Len = *Ptr;)";
+      // EVM local begin
+      unsigned Len = *Ptr++;
+      Len |= (*Ptr) << 8;)";
+      // EVM local end
   if (IsVarLenInst)
     OS << "\n      makeUp(insn, Start + Len);";
   OS << R"(

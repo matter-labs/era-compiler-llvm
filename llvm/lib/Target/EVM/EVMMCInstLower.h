@@ -27,8 +27,8 @@ class TargetRegisterClass;
 class LLVM_LIBRARY_VISIBILITY EVMMCInstLower {
   // TODO: Once stackification is implemented this should be removed,
   // see the comments in EVMAsmPrinter.
-  typedef DenseMap<unsigned, unsigned> VRegMap;
-  typedef DenseMap<const TargetRegisterClass *, VRegMap> VRegRCMap;
+  using VRegMap = DenseMap<unsigned, unsigned>;
+  using VRegRCMap = DenseMap<const TargetRegisterClass *, VRegMap>;
 
   MCContext &Ctx;
   AsmPrinter &Printer;

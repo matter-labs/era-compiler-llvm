@@ -10,8 +10,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "EVMISelLowering.h"
 #include "EVM.h"
+#include "EVMISelLowering.h"
+#include "EVMMachineFunctionInfo.h"
 #include "EVMSelectionDAGInfo.h"
 #include "EVMTargetMachine.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
@@ -339,6 +340,7 @@ SDValue EVMTargetLowering::LowerFormalArguments(
     fail(DL, DAG, "VarArg is not supported yet");
 
   MachineFunction &MF = DAG.getMachineFunction();
+  auto *MFI = MF.getInfo<EVMMachineFunctionInfo>();
 
   // Set up the incoming ARGUMENTS value, which serves to represent the liveness
   // of the incoming values before they're represented by virtual registers.
@@ -362,6 +364,8 @@ SDValue EVMTargetLowering::LowerFormalArguments(
                                            DAG.getTargetConstant(InVals.size(),
                                                                  DL, MVT::i32))
                              : DAG.getUNDEF(In.VT));
+    // Record the number of arguments.
+    MFI->addParam();
   }
 
   return Chain;
@@ -465,7 +469,6 @@ EVMTargetLowering::LowerReturn(SDValue Chain, CallingConv::ID CallConv,
                                const SmallVectorImpl<ISD::OutputArg> &Outs,
                                const SmallVectorImpl<SDValue> &OutVals,
                                const SDLoc &DL, SelectionDAG &DAG) const {
-  assert((Outs.size() <= 1) && "EVM can only return up to one value");
   if (!callingConvSupported(CallConv))
     fail(DL, DAG, "EVM doesn't support non-C calling conventions");
 

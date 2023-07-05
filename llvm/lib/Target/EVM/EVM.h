@@ -35,6 +35,13 @@ enum AddressSpaces {
 };
 } // namespace EVMAS
 
+namespace EVMCOST {
+unsigned constexpr SWAP = 3;
+unsigned constexpr DUP = 3;
+unsigned constexpr POP = 2;
+unsigned constexpr PUSH = 3;
+} // namespace EVMCOST
+
 // LLVM IR passes.
 ModulePass *createEVMLowerIntrinsicsPass();
 FunctionPass *createEVMCodegenPreparePass();
@@ -42,17 +49,34 @@ FunctionPass *createEVMCodegenPreparePass();
 // ISel and immediate followup passes.
 FunctionPass *createEVMISelDag(EVMTargetMachine &TM, CodeGenOptLevel OptLevel);
 FunctionPass *createEVMArgumentMove();
+FunctionPass *createEVMAllocaHoistingPass();
 ModulePass *createEVMLinkRuntimePass();
+
+// Late passes.
+FunctionPass *createEVMOptimizeLiveIntervals();
+FunctionPass *createEVMSingleUseExpression();
+FunctionPass *createEVMSplitCriticalEdges();
+FunctionPass *createEVMBPStackification();
 
 // PassRegistry initialization declarations.
 void initializeEVMCodegenPreparePass(PassRegistry &);
+void initializeEVMAllocaHoistingPass(PassRegistry &);
 void initializeEVMLowerIntrinsicsPass(PassRegistry &);
 void initializeEVMArgumentMovePass(PassRegistry &);
 void initializeEVMLinkRuntimePass(PassRegistry &);
+void initializeEVMOptimizeLiveIntervalsPass(PassRegistry &);
+void initializeEVMSingleUseExpressionPass(PassRegistry &);
+void initializeEVMSplitCriticalEdgesPass(PassRegistry &);
+void initializeEVMBPStackificationPass(PassRegistry &);
 
 struct EVMLinkRuntimePass : PassInfoMixin<EVMLinkRuntimePass> {
-  EVMLinkRuntimePass() {}
+  EVMLinkRuntimePass() = default;
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
+};
+
+struct EVMAllocaHoistingPass : PassInfoMixin<EVMAllocaHoistingPass> {
+  EVMAllocaHoistingPass() = default;
+  PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
 };
 
 } // namespace llvm

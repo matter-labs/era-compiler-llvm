@@ -16,12 +16,18 @@ namespace llvm::MCD {
 // nts_t is either uint16_t or uint24_t based on whether large decoder table is
 // enabled.
 enum DecoderOps {
-  OPC_ExtractField = 1,     // OPC_ExtractField(uleb128 Start, uint8_t Len)
+  // EVM local begin
+  OPC_ExtractField = 1,     // OPC_ExtractField(uleb128 Start, uint16_t Len)
+  // EVM local end
   OPC_FilterValue,          // OPC_FilterValue(uleb128 Val, nts_t NumToSkip)
   OPC_FilterValueOrFail,    // OPC_FilterValueOrFail(uleb128 Val)
-  OPC_CheckField,           // OPC_CheckField(uleb128 Start, uint8_t Len,
+  // EVM local begin
+  OPC_CheckField,           // OPC_CheckField(uleb128 Start, uint16_t Len,
+  // EVM local end
                             //                uleb128 Val, nts_t NumToSkip)
-  OPC_CheckFieldOrFail,     // OPC_CheckFieldOrFail(uleb128 Start, uint8_t Len,
+  // EVM local begin
+  OPC_CheckFieldOrFail,     // OPC_CheckFieldOrFail(uleb128 Start, uint16_t Len,
+  // EVM local end
                             //                uleb128 Val)
   OPC_CheckPredicate,       // OPC_CheckPredicate(uleb128 PIdx, nts_t NumToSkip)
   OPC_CheckPredicateOrFail, // OPC_CheckPredicateOrFail(uleb128 PIdx)
