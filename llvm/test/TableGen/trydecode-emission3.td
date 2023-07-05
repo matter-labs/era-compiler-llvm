@@ -34,11 +34,11 @@ def InstB : TestInstruction {
   let AsmString = "InstB";
 }
 
-// CHECK:      /* 0 */       MCD::OPC_ExtractField, 4, 4,  // Inst{7-4} ...
-// CHECK-NEXT: /* 3 */       MCD::OPC_FilterValue, 0, 18, 0, 0, // Skip to: 26
-// CHECK-NEXT: /* 8 */       MCD::OPC_CheckField, 2, 2, 0, 7, 0, 0, // Skip to: 22
-// CHECK-NEXT: /* 15 */      MCD::OPC_TryDecode, {{[0-9]+}}, 1, 0, 0, 0, 0, // Opcode: InstB, skip to: 22
-// CHECK-NEXT: /* 22 */      MCD::OPC_Decode, {{[0-9]+}}, 1, 1, // Opcode: InstA
-// CHECK-NEXT: /* 26 */      MCD::OPC_Fail,
+// CHECK:      /* 0 */       MCD::OPC_ExtractField, 4, 0, 4, 0, // Inst{7-4} ...
+// CHECK-NEXT: /* 5 */       MCD::OPC_FilterValue, 0, 20, 0, 0, // Skip to: 30
+// CHECK-NEXT: /* 10 */      MCD::OPC_CheckField, 2, 0, 2, 0, 0, 7, 0, 0, // Skip to: 26
+// CHECK-NEXT: /* 19 */      MCD::OPC_TryDecode, {{[0-9]+}}, 1, 0, 0, 0, 0, // Opcode: InstB, skip to: 26
+// CHECK-NEXT: /* 26 */      MCD::OPC_Decode, {{[0-9]+}}, 1, 1, // Opcode: InstA
+// CHECK-NEXT: /* 30 */      MCD::OPC_Fail,
 
 // CHECK: if (DecodeInstBOp(MI, tmp, Address, Decoder) == MCDisassembler::Fail) { DecodeComplete = false; return MCDisassembler::Fail; }

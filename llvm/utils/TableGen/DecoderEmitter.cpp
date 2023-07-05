@@ -687,8 +687,12 @@ static void resolveTableFixups(DecoderTable &Table, const FixupList &Fixups,
 // of bits.
 void Filter::emitTableEntry(DecoderTableInfo &TableInfo) const {
   TableInfo.Table.push_back(MCD::OPC_ExtractField);
-  TableInfo.Table.push_back(StartBit);
-  TableInfo.Table.push_back(NumBits);
+  // EVM local begin
+  TableInfo.Table.push_back((uint8_t)StartBit);
+  TableInfo.Table.push_back((uint8_t)(StartBit >> 8));
+  TableInfo.Table.push_back((uint8_t)NumBits);
+  TableInfo.Table.push_back((uint8_t)(NumBits >> 8));
+  // EVM local end
 
   // A new filter entry begins a new scope for fixup resolution.
   TableInfo.FixupStack.emplace_back();
@@ -796,10 +800,17 @@ void DecoderEmitter::emitTable(formatted_raw_ostream &OS, DecoderTable &Table,
       PrintFatalError("invalid decode table opcode");
     case MCD::OPC_ExtractField: {
       ++I;
+      // EVM local begin
+      // 16-bit Start value
       unsigned Start = *I++;
+      Start |= (*I++) << 8;
+      // 16-bit Len value
       unsigned Len = *I++;
-      OS.indent(Indentation) << "MCD::OPC_ExtractField, " << Start << ", "
-        << Len << ",  // Inst{";
+      Len |= (*I++) << 8;
+      OS.indent(Indentation) << "MCD::OPC_ExtractField, "
+        << (Start & 0xFF) << ", " << (Start >> 8) << ", "
+        << (Len & 0xFF) << ", " << (Len >> 8) << ",  // Inst{";
+      // EVM local end
       if (Len > 1)
         OS << (Start + Len - 1) << "-";
       OS << Start << "} ...\n";
@@ -828,10 +839,18 @@ void DecoderEmitter::emitTable(formatted_raw_ostream &OS, DecoderTable &Table,
     }
     case MCD::OPC_CheckField: {
       ++I;
+      // EVM local begin
+      // 16-bit Start value
       unsigned Start = *I++;
+      Start |= (*I++) << 8;
+      // 16-bit Len value
       unsigned Len = *I++;
-      OS.indent(Indentation) << "MCD::OPC_CheckField, " << Start << ", "
-        << Len << ", ";// << Val << ", " << NumToSkip << ",\n";
+      Len |= (*I++) << 8;
+      OS.indent(Indentation) << "MCD::OPC_CheckField, "
+        << (Start & 0xFF) << ", " << (Start >> 8) << ", "
+        << (Len & 0xFF) << ", " << (Len >> 8) << ", ";
+      // EVM local begin
+      // << Val << ", " << NumToSkip << ",\n";
       // ULEB128 encoded field value.
       for (; *I >= 128; ++I)
         OS << (unsigned)*I << ", ";
@@ -1428,8 +1447,12 @@ void FilterChooser::emitSingletonTableEntry(DecoderTableInfo &TableInfo,
   for (unsigned I = Size; I != 0; --I) {
     unsigned NumBits = EndBits[I-1] - StartBits[I-1] + 1;
     TableInfo.Table.push_back(MCD::OPC_CheckField);
-    TableInfo.Table.push_back(StartBits[I-1]);
-    TableInfo.Table.push_back(NumBits);
+    // EVM local begin
+    TableInfo.Table.push_back((uint8_t)StartBits[I-1]);
+    TableInfo.Table.push_back((uint8_t)(StartBits[I-1] >> 8));
+    TableInfo.Table.push_back((uint8_t)NumBits);
+    TableInfo.Table.push_back((uint8_t)(NumBits >> 8));
+    // EVM local end
     uint8_t Buffer[16], *p;
     encodeULEB128(FieldVals[I-1], Buffer);
     for (p = Buffer; *p >= 128 ; ++p)
@@ -2346,8 +2369,12 @@ static void emitDecodeInstruction(formatted_raw_ostream &OS,
      << "      errs() << Loc << \": Unexpected decode table opcode!\\n\";\n"
      << "      return MCDisassembler::Fail;\n"
      << "    case MCD::OPC_ExtractField: {\n"
+     // EVM local begin
      << "      unsigned Start = *++Ptr;\n"
+     << "      Start |= (*++Ptr) << 8;\n"
      << "      unsigned Len = *++Ptr;\n"
+     << "      Len |= (*++Ptr) << 8;\n"
+     // EVM local begin
      << "      ++Ptr;\n";
   if (IsVarLenInst)
     OS << "      makeUp(insn, Start + Len);\n";
@@ -2380,8 +2407,12 @@ static void emitDecodeInstruction(formatted_raw_ostream &OS,
      << "      break;\n"
      << "    }\n"
      << "    case MCD::OPC_CheckField: {\n"
+     // EVM local begin
      << "      unsigned Start = *++Ptr;\n"
-     << "      unsigned Len = *++Ptr;\n";
+     << "      Start |= (*++Ptr) << 8;\n"
+     << "      unsigned Len = *++Ptr;\n"
+     << "      Len |= (*++Ptr) << 8;\n";
+     // EVM local end
   if (IsVarLenInst)
     OS << "      makeUp(insn, Start + Len);\n";
   OS << "      uint64_t FieldValue = fieldFromInstruction(insn, Start, Len);\n"

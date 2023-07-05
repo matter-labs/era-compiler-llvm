@@ -9,7 +9,7 @@
 
 using namespace llvm;
 
-EVMMCAsmInfo::EVMMCAsmInfo(const Triple &TheTriple) {
+EVMMCAsmInfo::EVMMCAsmInfo(const Triple &TT) {
   IsLittleEndian = false;
   HasFunctionAlignment = false;
   HasDotTypeDotSizeDirective = false;

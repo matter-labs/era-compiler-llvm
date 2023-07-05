@@ -1,13 +1,19 @@
 //===----- EVMLinkRuntime.cpp - inject runtime library into the module ---===//
 //
-/// \file
-/// Implement pass which links stdlib (evm-stdlib.ll) and internalize their
-/// contents. EVM doesn't have a proper linker and all programs consist
-/// of a single module. The pass links the the necessary modules into the
-/// program module.
-/// It's called at the beginning of optimization pipeline. The pass links
-/// the context of evm-stdlib.ll and internalize its content, after that
-/// global DCE is expected to be run to remove all unused functions.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//============================================================================//
+//
+// TODO: CPR-1556, make this pass common for both EVM and EraVM BEs.
+// This file implements pass which links stdlib (evm-stdlib.ll) and internalize
+// their contents. EVM doesn't have a proper linker and all programs consist
+// of a single module. The pass links the the necessary modules into the
+// program module.
+// It's called at the beginning of optimization pipeline. The pass links
+// the context of evm-stdlib.ll and internalize its content, after that
+// global DCE is expected to be run to remove all unused functions.
 //
 //============================================================================//
 
@@ -30,11 +36,6 @@
 #define DEBUG_TYPE "evm-link-runtime"
 
 using namespace llvm;
-
-namespace llvm {
-ModulePass *createEVMLinkRuntimePass();
-void initializeEVMLinkRuntimePass(PassRegistry &);
-} // namespace llvm
 
 static ExitOnError ExitOnErr;
 
@@ -80,6 +81,13 @@ static bool EVMLinkRuntimeImpl(Module &M, const char *ModuleToLink) {
     Err.print("Unable to parse evm-stdlib.ll", errs());
     exit(1);
   }
+
+  for (auto &F : M.functions()) {
+    if (!F.isDeclaration()) {
+      F.addFnAttr(Attribute::NoInline);
+    }
+  }
+
   bool LinkErr = false;
   LinkErr = L.linkInModule(
       std::move(RTM), Flags, [](Module &M, const StringSet<> &GVS) {
