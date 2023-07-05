@@ -22,6 +22,16 @@ using namespace llvm;
 EVMInstrInfo::EVMInstrInfo()
     : EVMGenInstrInfo(EVM::ADJCALLSTACKDOWN, EVM::ADJCALLSTACKUP), RI() {}
 
+bool EVMInstrInfo::isReallyTriviallyReMaterializable(
+    const MachineInstr &MI) const {
+  switch (MI.getOpcode()) {
+  case EVM::CONST_I256:
+    return true;
+  default:
+    return false;
+  }
+}
+
 void EVMInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                MachineBasicBlock::iterator I,
                                const DebugLoc &DL, MCRegister DestReg,

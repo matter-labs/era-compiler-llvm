@@ -8,7 +8,7 @@
 
 using namespace llvm;
 
-// EVMTargetStreamer implemenations
+// EVMTargetStreamer implementations
 
 EVMTargetStreamer::EVMTargetStreamer(MCStreamer &S) : MCTargetStreamer(S) {}
 

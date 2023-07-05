@@ -8,6 +8,11 @@ add_llvm_component_library(LLVMEVMDesc
   EVMMCTargetDesc.cpp
   EVMTargetStreamer.cpp
 
+  LINK_COMPONENTS
+  MC
+  Support
+  EVMInfo
+
   ADD_TO_COMPONENT
   EVM
   )
