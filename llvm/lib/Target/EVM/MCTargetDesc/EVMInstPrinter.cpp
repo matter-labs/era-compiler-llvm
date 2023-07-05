@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMInstPrinter.h"
+#include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCInst.h"
 #include "llvm/MC/MCInstrInfo.h"

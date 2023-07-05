@@ -32,13 +32,13 @@ using namespace llvm;
 #include "EVMGenRegisterInfo.inc"
 
 static MCInstrInfo *createEVMMCInstrInfo() {
-  MCInstrInfo *X = new MCInstrInfo();
+  auto *X = new MCInstrInfo();
   InitEVMMCInstrInfo(X);
   return X;
 }
 
 static MCRegisterInfo *createEVMMCRegisterInfo(const Triple &TT) {
-  MCRegisterInfo *X = new MCRegisterInfo();
+  auto *X = new MCRegisterInfo();
   InitEVMMCRegisterInfo(X, 0);
   return X;
 }

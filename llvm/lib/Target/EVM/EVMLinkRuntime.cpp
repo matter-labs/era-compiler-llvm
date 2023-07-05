@@ -36,11 +36,6 @@
 
 using namespace llvm;
 
-namespace llvm {
-ModulePass *createEVMLinkRuntimePass();
-void initializeEVMLinkRuntimePass(PassRegistry &);
-} // namespace llvm
-
 static ExitOnError ExitOnErr;
 
 namespace {
@@ -85,6 +80,13 @@ static bool EVMLinkRuntimeImpl(Module &M, const char *ModuleToLink) {
     Err.print("Unable to parse evm-stdlib.ll", errs());
     exit(1);
   }
+
+  for (auto &F : M.functions()) {
+    if (!F.isDeclaration()) {
+      F.addFnAttr(Attribute::NoInline);
+    }
+  }
+
   bool LinkErr = false;
   LinkErr = L.linkInModule(
       std::move(RTM), Flags, [](Module &M, const StringSet<> &GVS) {

@@ -19,11 +19,15 @@ using namespace llvm;
 namespace {
 class EVMELFObjectWriter final : public MCELFObjectTargetWriter {
 public:
-  EVMELFObjectWriter(uint8_t OSABI)
+  explicit EVMELFObjectWriter(uint8_t OSABI)
       : MCELFObjectTargetWriter(false, OSABI, ELF::EM_NONE,
-                                /*HasRelocationAddend*/ true) {}
+                                /*HasRelocationAddend*/ true){};
 
-  ~EVMELFObjectWriter() override {}
+  EVMELFObjectWriter(const EVMELFObjectWriter &) = delete;
+  EVMELFObjectWriter(EVMELFObjectWriter &&) = delete;
+  EVMELFObjectWriter &operator=(EVMELFObjectWriter &&) = delete;
+  EVMELFObjectWriter &operator=(const EVMELFObjectWriter &) = delete;
+  ~EVMELFObjectWriter() override = default;
 
 protected:
   unsigned getRelocType(MCContext &Ctx, const MCValue &Target,

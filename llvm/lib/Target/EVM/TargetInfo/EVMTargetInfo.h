@@ -16,8 +16,17 @@
 namespace llvm {
 
 class Target;
+class APInt;
 
 Target &getTheEVMTarget();
+
+namespace EVM {
+
+unsigned getStackOpcode(unsigned Opcode);
+unsigned getRegisterOpcode(unsigned Opcode);
+unsigned getPUSHOpcode(const APInt &Imm);
+
+} // namespace EVM
 
 } // namespace llvm
 

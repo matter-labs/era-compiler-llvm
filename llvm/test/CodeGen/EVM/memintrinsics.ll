@@ -1,4 +1,4 @@
-; RUN: llc -O3 < %s | FileCheck %s
+; RUN: llc -O3 --evm-keep-registers < %s | FileCheck %s
 
 target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
 target triple = "evm"

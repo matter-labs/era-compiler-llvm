@@ -104,6 +104,23 @@ public:
     return false;
   }
 
+  /// allowsMisalignedMemoryAccesses - Returns true if the target allows
+  /// unaligned memory accesses of the specified type. Returns whether it
+  /// is "fast" by reference in the second argument.
+  bool allowsMisalignedMemoryAccesses(EVT VT, unsigned AddrSpace,
+                                      Align Alignment,
+                                      MachineMemOperand::Flags Flags,
+                                      unsigned *Fast) const override {
+    return AddrSpace != EVMAS::AS_STACK;
+  }
+
+  // MVT::i256 is the only legal type, so DAG combiner should never reduce
+  // loads.
+  bool shouldReduceLoadWidth(SDNode *Load, ISD::LoadExtType ExtTy,
+                             EVT NewVT) const override {
+    return false;
+  }
+
 private:
   const EVMSubtarget *Subtarget;
 
