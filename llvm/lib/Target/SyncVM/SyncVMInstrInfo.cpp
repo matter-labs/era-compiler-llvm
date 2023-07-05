@@ -172,18 +172,22 @@ int getWithInsSwapped(uint16_t Opcode) {
 }
 
 bool hasRRInAddressingMode(unsigned Opcode) {
+  Opcode = getWithInsNotSwapped(Opcode);
   return (unsigned)mapRRInputTo(Opcode, OperandAM_0) == Opcode;
 }
 
 bool hasIRInAddressingMode(unsigned Opcode) {
+  Opcode = getWithInsNotSwapped(Opcode);
   return (unsigned)mapIRInputTo(Opcode, OperandAM_1) == Opcode;
 }
 
 bool hasCRInAddressingMode(unsigned Opcode) {
+  Opcode = getWithInsNotSwapped(Opcode);
   return (unsigned)mapCRInputTo(Opcode, OperandAM_2) == Opcode;
 }
 
 bool hasSRInAddressingMode(unsigned Opcode) {
+  Opcode = getWithInsNotSwapped(Opcode);
   return (unsigned)mapSRInputTo(Opcode, OperandAM_3) == Opcode;
 }
 
