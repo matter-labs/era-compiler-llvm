@@ -12,7 +12,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMMCInstLower.h"
+#include "EVMInstrInfo.h"
 #include "MCTargetDesc/EVMMCExpr.h"
+#include "MCTargetDesc/EVMMCTargetDesc.h"
+#include "TargetInfo/EVMTargetInfo.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
@@ -22,8 +25,33 @@
 
 using namespace llvm;
 
-#define GET_REGINFO_HEADER
-#include "EVMGenRegisterInfo.inc"
+extern cl::opt<bool> EVMKeepRegisters;
+
+static void removeRegisterOperands(const MachineInstr *MI, MCInst &OutMI) {
+  // Remove all uses of stackified registers to bring the instruction format
+  // into its final stack form used throughout MC, and transition opcodes to
+  // their _S variant.
+  if (MI->isDebugInstr() || MI->isLabel() || MI->isInlineAsm())
+    return;
+
+  // Transform 'register' instruction to 'stack' one.
+  unsigned RegOpcode = OutMI.getOpcode();
+  if (RegOpcode == EVM::PUSH8_LABEL) {
+    // Replace PUSH8_LABEL with PUSH8_S opcode.
+    OutMI.setOpcode(EVM::PUSH8_S);
+  } else {
+    unsigned StackOpcode = EVM::getStackOpcode(RegOpcode);
+    OutMI.setOpcode(StackOpcode);
+  }
+
+  // Remove register operands.
+  for (auto I = OutMI.getNumOperands(); I; --I) {
+    auto &MO = OutMI.getOperand(I - 1);
+    if (MO.isReg()) {
+      OutMI.erase(&MO);
+    }
+  }
+}
 
 MCSymbol *
 EVMMCInstLower::GetGlobalAddressSymbol(const MachineOperand &MO) const {
@@ -102,6 +130,10 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
         MCOp = MCOperand::createExpr(EVMCImmMCExpr::create(*Str, Ctx));
       }
     } break;
+    case MachineOperand::MO_MCSymbol:
+      MCOp =
+          MCOperand::createExpr(MCSymbolRefExpr::create(MO.getMCSymbol(), Ctx));
+      break;
     case MachineOperand::MO_MachineBasicBlock:
       MCOp = MCOperand::createExpr(
           MCSymbolRefExpr::create(MO.getMBB()->getSymbol(), Ctx));
@@ -113,10 +145,11 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
       MCOp = LowerSymbolOperand(MO, GetExternalSymbolSymbol(MO));
       break;
     }
-
     OutMI.addOperand(MCOp);
   }
-  if (Desc.variadicOpsAreDefs())
+  if (!EVMKeepRegisters)
+    removeRegisterOperands(MI, OutMI);
+  else if (Desc.variadicOpsAreDefs())
     OutMI.insert(OutMI.begin(), MCOperand::createImm(MI->getNumExplicitDefs()));
 }
 

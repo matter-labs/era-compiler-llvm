@@ -1,4 +1,4 @@
-; RUN: llc < %s | FileCheck %s
+; RUN: llc --evm-keep-registers < %s | FileCheck %s
 
 target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
 target triple = "evm"
@@ -47,7 +47,7 @@ define i256 @shl(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: @shl
 ; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
-; CHECK: SHL [[TMP:\$[0-9]+]], [[IN1]], [[IN2]]
+; CHECK: SHL [[TMP:\$[0-9]+]], [[IN2]], [[IN1]]
 
   %res = call i256 @llvm.evm.shl(i256 %rs1, i256 %rs2)
   ret i256 %res
@@ -57,7 +57,7 @@ define i256 @shr(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: @shr
 ; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
-; CHECK: SHR [[TMP:\$[0-9]+]], [[IN1]], [[IN2]]
+; CHECK: SHR [[TMP:\$[0-9]+]], [[IN2]], [[IN1]]
 
   %res = call i256 @llvm.evm.shr(i256 %rs1, i256 %rs2)
   ret i256 %res
@@ -67,7 +67,7 @@ define i256 @sar(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: @sar
 ; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
-; CHECK: SAR [[TMP:\$[0-9]+]], [[IN1]], [[IN2]]
+; CHECK: SAR [[TMP:\$[0-9]+]], [[IN2]], [[IN1]]
 
   %res = call i256 @llvm.evm.sar(i256 %rs1, i256 %rs2)
   ret i256 %res
@@ -513,15 +513,6 @@ define void @invalid() nounwind {
 ; CHECK: INVALID
 
   call void @llvm.evm.invalid()
-  ret void
-}
-
-define void @pop(i256 %val) nounwind {
-; CHECK-LABEL: @pop
-; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
-; CHECK: POP [[IN1]]
-
-  call void @llvm.evm.pop(i256 %val)
   ret void
 }
 

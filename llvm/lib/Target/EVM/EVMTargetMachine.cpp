@@ -10,8 +10,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "EVMTargetMachine.h"
 #include "EVM.h"
+
+#include "EVMMachineFunctionInfo.h"
+#include "EVMTargetMachine.h"
 #include "EVMTargetTransformInfo.h"
 #include "TargetInfo/EVMTargetInfo.h"
 #include "llvm/CodeGen/Passes.h"
@@ -22,16 +24,31 @@
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Transforms/IPO/GlobalDCE.h"
+#include "llvm/Transforms/Utils.h"
 
 using namespace llvm;
+
+// Disable stackification pass and keep a register form
+// form of instructions. Is only used for debug purposes
+// when assembly printing.
+cl::opt<bool>
+    EVMKeepRegisters("evm-keep-registers", cl::Hidden,
+                      cl::desc("EVM: output stack registers in"
+                               " instruction output for test purposes only."),
+                      cl::init(false));
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   // Register the target.
   const RegisterTargetMachine<EVMTargetMachine> X(getTheEVMTarget());
   auto &PR = *PassRegistry::getPassRegistry();
   initializeEVMCodegenPreparePass(PR);
+  initializeEVMAllocaHoistingPass(PR);
   initializeEVMLinkRuntimePass(PR);
   initializeEVMLowerIntrinsicsPass(PR);
+  initializeEVMOptimizeLiveIntervalsPass(PR);
+  initializeEVMRegColoringPass(PR);
+  initializeEVMSingleUseExpressionPass(PR);
+  initializeEVMStackifyPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -64,11 +81,18 @@ EVMTargetMachine::getTargetTransformInfo(const Function &F) const {
   return TargetTransformInfo(EVMTTIImpl(this, F));
 }
 
+MachineFunctionInfo *EVMTargetMachine::createMachineFunctionInfo(
+    BumpPtrAllocator &Allocator, const Function &F,
+    const TargetSubtargetInfo *STI) const {
+  return EVMFunctionInfo::create<EVMFunctionInfo>(Allocator, F, STI);
+}
+
 void EVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
   PB.registerPipelineStartEPCallback(
       [](ModulePassManager &PM, OptimizationLevel Level) {
         PM.addPass(EVMLinkRuntimePass());
         PM.addPass(GlobalDCEPass());
+        PM.addPass(createModuleToFunctionPassAdaptor(EVMAllocaHoistingPass()));
       });
 }
 
@@ -98,6 +122,7 @@ public:
   bool addGCPasses() override { return false; }
   bool addInstSelector() override;
   void addPostRegAlloc() override;
+  void addPreEmitPass() override;
 };
 } // namespace
 
@@ -141,6 +166,19 @@ void EVMPassConfig::addPostRegAlloc() {
   disablePass(&MachineBlockPlacementID);
 
   TargetPassConfig::addPostRegAlloc();
+}
+
+void EVMPassConfig::addPreEmitPass() {
+  TargetPassConfig::addPreEmitPass();
+
+  // FIXME: enable all the passes below, but the Stackify with EVMKeepRegisters.
+  if (!EVMKeepRegisters) {
+    addPass(createEVMOptimizeLiveIntervals());
+    addPass(createEVMSingleUseExpression());
+    // Run the register coloring pass to reduce the total number of registers.
+    addPass(createEVMRegColoring());
+    addPass(createEVMStackify());
+  }
 }
 
 TargetPassConfig *EVMTargetMachine::createPassConfig(PassManagerBase &PM) {
