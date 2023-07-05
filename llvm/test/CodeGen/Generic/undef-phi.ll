@@ -1,7 +1,6 @@
 ; XFAIL: target=evm{{.*}}
 ; TODO: CPR-922 Fix
 ; RUN: llc < %s -verify-machineinstrs -verify-coalescing
-; UNSUPPORTED: target=evm{{.*}}
 ;
 ; This function has a PHI with one undefined input. Verify that PHIElimination
 ; inserts an IMPLICIT_DEF instruction in the predecessor so all paths to the use

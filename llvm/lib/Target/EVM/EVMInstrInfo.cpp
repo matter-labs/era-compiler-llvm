@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMInstrInfo.h"
+#include "EVMMachineFunctionInfo.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 using namespace llvm;
 
@@ -21,6 +22,16 @@ using namespace llvm;
 
 EVMInstrInfo::EVMInstrInfo()
     : EVMGenInstrInfo(EVM::ADJCALLSTACKDOWN, EVM::ADJCALLSTACKUP), RI() {}
+
+bool EVMInstrInfo::isReallyTriviallyReMaterializable(
+    const MachineInstr &MI) const {
+  switch (MI.getOpcode()) {
+  case EVM::CONST_I256:
+    return true;
+  default:
+    return false;
+  }
+}
 
 void EVMInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                MachineBasicBlock::iterator I,
@@ -55,6 +66,12 @@ bool EVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
   TBB = nullptr;
   FBB = nullptr;
   Cond.clear();
+
+  const auto *MFI = MBB.getParent()->getInfo<EVMMachineFunctionInfo>();
+  if (MFI->getIsStackified()) {
+    LLVM_DEBUG(dbgs() << "Can't analyze terminators in stackified code");
+    return true;
+  }
 
   // Iterate backwards and analyze all terminators.
   MachineBasicBlock::reverse_iterator I = MBB.rbegin(), E = MBB.rend();

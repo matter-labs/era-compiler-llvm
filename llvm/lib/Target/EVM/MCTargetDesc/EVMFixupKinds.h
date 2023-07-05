@@ -1,4 +1,4 @@
-//===-------- EVMFixupKinds.h - EVM Specific Fixup Entries ------*- C++ -*-===//
+//===------ EVMFixupKinds.h - EVM Specific Fixup Entries --------*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -11,16 +11,14 @@
 
 #include "llvm/MC/MCFixup.h"
 
-#undef EVM
-
 namespace llvm {
 namespace EVM {
-
-// This table must be in the same order of
-// MCFixupKindInfo Infos[EVM::NumTargetFixupKinds]
-// in EVMAsmBackend.cpp.
-//
 enum Fixups {
+  fixup_SecRel_i32 = FirstTargetFixupKind, // 32-bit unsigned
+  fixup_SecRel_i24,                        // 24-bit unsigned
+  fixup_SecRel_i16,                        // 16-bit unsigned
+  fixup_SecRel_i8,                         // 8-bit unsigned
+
   // Marker
   LastTargetFixupKind,
   NumTargetFixupKinds = LastTargetFixupKind - FirstTargetFixupKind

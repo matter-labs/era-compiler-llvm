@@ -42,17 +42,30 @@ FunctionPass *createEVMCodegenPreparePass();
 // ISel and immediate followup passes.
 FunctionPass *createEVMISelDag(EVMTargetMachine &TM, CodeGenOptLevel OptLevel);
 FunctionPass *createEVMArgumentMove();
+FunctionPass *createEVMAllocaHoistingPass();
 ModulePass *createEVMLinkRuntimePass();
+
+// Late passes.
+FunctionPass *createEVMOptimizeLiveIntervals();
+FunctionPass *createEVMSingleUseExpression();
 
 // PassRegistry initialization declarations.
 void initializeEVMCodegenPreparePass(PassRegistry &);
+void initializeEVMAllocaHoistingPass(PassRegistry &);
 void initializeEVMLowerIntrinsicsPass(PassRegistry &);
 void initializeEVMArgumentMovePass(PassRegistry &);
 void initializeEVMLinkRuntimePass(PassRegistry &);
+void initializeEVMOptimizeLiveIntervalsPass(PassRegistry &);
+void initializeEVMSingleUseExpressionPass(PassRegistry &);
 
 struct EVMLinkRuntimePass : PassInfoMixin<EVMLinkRuntimePass> {
-  EVMLinkRuntimePass() {}
+  EVMLinkRuntimePass() = default;
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
+};
+
+struct EVMAllocaHoistingPass : PassInfoMixin<EVMAllocaHoistingPass> {
+  EVMAllocaHoistingPass() = default;
+  PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
 };
 
 } // namespace llvm

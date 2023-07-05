@@ -4,6 +4,7 @@ set(LLVM_TARGET_DEFINITIONS EVM.td)
 
 tablegen(LLVM EVMGenAsmWriter.inc -gen-asm-writer)
 tablegen(LLVM EVMGenDAGISel.inc -gen-dag-isel)
+tablegen(LLVM EVMGenDisassemblerTables.inc -gen-disassembler)
 tablegen(LLVM EVMGenInstrInfo.inc -gen-instr-info)
 tablegen(LLVM EVMGenMCCodeEmitter.inc -gen-emitter)
 tablegen(LLVM EVMGenRegisterInfo.inc -gen-register-info)
@@ -36,6 +37,7 @@ add_custom_command(
 add_custom_target(EVMStdLib DEPENDS "${EVM_STDLIB_PATH_OUT}")
 
 add_llvm_target(EVMCodeGen
+  EVMAllocaHoisting.cpp
   EVMArgumentMove.cpp
   EVMAsmPrinter.cpp
   EVMCodegenPrepare.cpp
@@ -47,8 +49,10 @@ add_llvm_target(EVMCodeGen
   EVMLowerIntrinsics.cpp
   EVMMachineFunctionInfo.cpp
   EVMMCInstLower.cpp
+  EVMOptimizeLiveIntervals.cpp
   EVMRegisterInfo.cpp
   EVMSelectionDAGInfo.cpp
+  EVMSingleUseExpression.cpp
   EVMSubtarget.cpp
   EVMTargetMachine.cpp
   EVMTargetTransformInfo.cpp
@@ -70,6 +74,8 @@ add_llvm_target(EVMCodeGen
   Target
   TargetParser
   TransformUtils
+  EVMDesc
+  EVMInfo
 
   ADD_TO_COMPONENT
   EVM
@@ -79,5 +85,6 @@ add_llvm_target(EVMCodeGen
   intrinsics_gen
 )
 
-add_subdirectory(TargetInfo)
+add_subdirectory(Disassembler)
 add_subdirectory(MCTargetDesc)
+add_subdirectory(TargetInfo)
