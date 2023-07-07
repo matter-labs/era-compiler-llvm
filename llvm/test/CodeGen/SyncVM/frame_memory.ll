@@ -94,7 +94,7 @@ define i64 @load_from_frame.i64(i64 %par) nounwind {
 ; CHECK: shl.s 192, r1, r1
 ; CHECK: or    r1, r2, stack-[1]
   store i64 %par, i64* %1, align 32
-  %2 = call i256 @foo()
+  %2 = call i256 @bar(i64* %1)
 ; load i64 from stack
 ; CHECK: add 192, r0, r1
 ; CHECK: shr stack-[1], r1, r1
@@ -103,3 +103,4 @@ define i64 @load_from_frame.i64(i64 %par) nounwind {
 }
 
 declare i256 @foo()
+declare i256 @bar(i64* %val)
