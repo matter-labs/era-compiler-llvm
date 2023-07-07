@@ -1983,6 +1983,11 @@ public:
                      "TargetInstrInfo::isFunctionSafeToOutlineFrom!");
   }
 
+  // SyncVM local begin
+  /// Return default number of outliner reruns.
+  virtual unsigned defaultOutlineReruns() const { return 0; }
+  // SyncVM local end
+
   /// Return true if the function should be outlined from by default.
   virtual bool shouldOutlineFromFunctionByDefault(MachineFunction &MF) const {
     return false;

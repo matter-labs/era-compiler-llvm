@@ -22,6 +22,7 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetMachine.h"
 
+#include "SyncVM.h"
 #include "SyncVMMCExpr.h"
 
 using namespace llvm;
@@ -93,22 +94,11 @@ GetBlockAddressSymbol(const MachineOperand &MO) const {
 MCOperand SyncVMMCInstLower::
 LowerSymbolOperand(const MachineOperand &MO, MCSymbol *Sym) const {
   const MCExpr *Expr = MCSymbolRefExpr::create(Sym, Ctx);
-
-  switch (MO.getTargetFlags()) {
-  default:
-    llvm_unreachable("Unknown target flag on GV operand");
-  case 0:
-    break;
-  }
-
   if (MO.getOffset())
     Expr = MCBinaryExpr::createAdd(
         Expr, MCConstantExpr::create(MO.getOffset(), Ctx), Ctx);
   return MCOperand::createExpr(Expr);
 }
-
-#define GET_REGINFO_ENUM
-#include "SyncVMGenRegisterInfo.inc"
 
 void SyncVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) const {
   OutMI.setOpcode(MI->getOpcode());
@@ -163,7 +153,13 @@ void SyncVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) const {
       MCOp = LowerSymbolOperand(MO, GetBlockAddressSymbol(MO));
       break;
     case MachineOperand::MO_MCSymbol:
-      assert(MO.getTargetFlags() == 0 && "Unknown target flag on MCSymbol");
+      switch (MO.getTargetFlags()) {
+      case SyncVMII::MO_NO_FLAG:
+      case SyncVMII::MO_SYM_RET_ADDRESS:
+        break;
+      default:
+        llvm_unreachable("Unknown target flag on MCSymbol");
+      }
       MCOp = LowerSymbolOperand(MO, MO.getMCSymbol());
       break;
     case MachineOperand::MO_RegisterMask:
