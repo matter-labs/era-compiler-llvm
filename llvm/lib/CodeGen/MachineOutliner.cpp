@@ -1142,13 +1142,30 @@ bool MachineOutliner::runOnModule(Module &M) {
   if (!doOutline(M, OutlinedFunctionNum))
     return false;
 
-  for (unsigned I = 0; I < OutlinerReruns; ++I) {
+  // EraVM local begin
+  MachineModuleInfo &MMI = getAnalysis<MachineModuleInfoWrapperPass>().getMMI();
+  const TargetInstrInfo *TII = nullptr;
+  for (Function &F : M) {
+    if (MachineFunction *MF = MMI.getMachineFunction(F)) {
+      TII = MF->getSubtarget().getInstrInfo();
+      break;
+    }
+  }
+  assert(TII && "Didn't find target instruction info.");
+  unsigned Reruns = OutlinerReruns;
+  if (!OutlinerReruns.getNumOccurrences())
+    Reruns = TII->defaultOutlineReruns();
+
+  for (unsigned I = 0; I < Reruns; ++I) {
+  // EraVM local end
     OutlinedFunctionNum = 0;
     OutlineRepeatedNum++;
     if (!doOutline(M, OutlinedFunctionNum)) {
       LLVM_DEBUG({
         dbgs() << "Did not outline on iteration " << I + 2 << " out of "
-               << OutlinerReruns + 1 << "\n";
+               // EraVM local begin
+               << Reruns + 1 << "\n";
+               // EraVM local end
       });
       break;
     }

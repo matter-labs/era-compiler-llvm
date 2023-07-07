@@ -40,6 +40,9 @@ class EraVMMachineFunctionInfo : public MachineFunctionInfo {
   // Whether we adjusted stack after machine outline in this function.
   bool StackAdjustedPostOutline = false;
 
+  // Whether this function is outlined.
+  bool IsOutlined = false;
+
 public:
   EraVMMachineFunctionInfo() = default;
 
@@ -59,6 +62,9 @@ public:
 
   bool isStackAdjustedPostOutline() const { return StackAdjustedPostOutline; }
   void setStackAdjustedPostOutline() { StackAdjustedPostOutline = true; }
+
+  bool isOutlined() const { return IsOutlined; }
+  void setIsOutlined() { IsOutlined = true; }
 };
 
 } // namespace llvm

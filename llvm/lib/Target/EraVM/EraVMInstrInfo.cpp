@@ -682,6 +682,10 @@ bool EraVMInstrInfo::isFunctionSafeToOutlineFrom(
   if (F.hasSection())
     return false;
 
+  // Don't outline function that was previously outlined.
+  if (MF.getInfo<EraVMMachineFunctionInfo>()->isOutlined())
+    return false;
+
   // Don't outline from functions if there is non-adjustable stack relative
   // addressing instruction.
   for (MachineBasicBlock &MBB : MF) {
@@ -745,7 +749,8 @@ EraVMInstrInfo::getOutliningTypeImpl(MachineBasicBlock::iterator &MBBI,
 
   // Make sure the operands don't reference something unsafe.
   for (const auto &MO : MI.operands())
-    if (MO.isMBB() || MO.isBlockAddress() || MO.isCPI() || MO.isJTI())
+    if (MO.isMBB() || MO.isBlockAddress() || MO.isCPI() || MO.isJTI() ||
+        MO.getTargetFlags() == EraVMII::MO_SYM_RET_ADDRESS)
       return outliner::InstrType::Illegal;
 
   return outliner::InstrType::Legal;
@@ -754,6 +759,40 @@ EraVMInstrInfo::getOutliningTypeImpl(MachineBasicBlock::iterator &MBBI,
 std::optional<outliner::OutlinedFunction>
 EraVMInstrInfo::getOutliningCandidateInfo(
     std::vector<outliner::Candidate> &RepeatedSequenceLocs) const {
+  // If candidates contain instructions that we need to adjust, do more
+  // checks in order to see whether outlining is safe.
+  if (any_of(make_range(RepeatedSequenceLocs[0].begin(),
+                        RepeatedSequenceLocs[0].end()),
+             [](MachineInstr &MI) {
+               return (EraVM::hasSRInAddressingMode(MI) &&
+                       EraVM::classifyStackAccess(EraVM::in0Iterator(MI)) ==
+                           EraVM::StackAccess::Relative) ||
+                      (EraVM::hasSROutAddressingMode(MI) &&
+                       EraVM::classifyStackAccess(EraVM::out0Iterator(MI)) ==
+                           EraVM::StackAccess::Relative) ||
+                      (MI.getOpcode() == EraVM::SUBxrr_s &&
+                       MI.getOperand(1).getTargetFlags() ==
+                           EraVMII::MO_STACK_SLOT_IDX);
+             })) {
+    // Since we can't mix candidates from functions where we adjusted SP and
+    // from function where we didn't, partition them into two sets and remove
+    // candidates from the smaller set. This can happen when we run outliner
+    // more than once.
+    auto IsSPAdjusted =
+        llvm::partition(RepeatedSequenceLocs, [](const outliner::Candidate &C) {
+          auto *SFI = C.getMF()->getInfo<EraVMMachineFunctionInfo>();
+          return SFI->isStackAdjustedPostOutline();
+        });
+    if (std::distance(RepeatedSequenceLocs.begin(), IsSPAdjusted) >
+        std::distance(IsSPAdjusted, RepeatedSequenceLocs.end()))
+      RepeatedSequenceLocs.erase(IsSPAdjusted, RepeatedSequenceLocs.end());
+    else
+      RepeatedSequenceLocs.erase(RepeatedSequenceLocs.begin(), IsSPAdjusted);
+
+    if (RepeatedSequenceLocs.size() < 2)
+      return {};
+  }
+
   unsigned SequenceSize =
       std::accumulate(RepeatedSequenceLocs[0].begin(),
                       RepeatedSequenceLocs[0].end(), 0,
@@ -803,6 +842,8 @@ void EraVMInstrInfo::buildOutlinedFrame(
                             .addReg(EraVM::SP)
                             .addImm(0 /* AMBase2 */)
                             .addImm(-1 /* StackOffset */));
+
+  MF.getInfo<EraVMMachineFunctionInfo>()->setIsOutlined();
 }
 
 MachineBasicBlock::iterator EraVMInstrInfo::insertOutlinedCall(
@@ -828,7 +869,7 @@ MachineBasicBlock::iterator EraVMInstrInfo::insertOutlinedCall(
 
   // Add instruction to store return address onto the top of the stack.
   BuildMI(MBB, It, DL, get(EraVM::ADDcrs_s))
-      .addSym(RetSym)
+      .addSym(RetSym, EraVMII::MO_SYM_RET_ADDRESS)
       .addImm(0 /* RetSymOffset */)
       .addReg(EraVM::R0)
       .addReg(EraVM::SP)
