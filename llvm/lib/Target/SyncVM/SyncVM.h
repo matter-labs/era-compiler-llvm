@@ -68,6 +68,9 @@ enum TOF {
 
   /// Immediate that represents stack slot index.
   MO_STACK_SLOT_IDX,
+
+  /// Represents return address symbol.
+  MO_SYM_RET_ADDRESS,
 }; // enum TOF
 } // namespace SyncVMII
 

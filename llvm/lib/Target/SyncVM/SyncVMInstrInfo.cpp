@@ -698,6 +698,10 @@ bool SyncVMInstrInfo::isFunctionSafeToOutlineFrom(
   if (F.hasSection())
     return false;
 
+  // Don't outline function that was previously outlined.
+  if (MF.getInfo<SyncVMMachineFunctionInfo>()->isOutlined())
+    return false;
+
   // Return true if displacement is not immediate in relative stack addressing
   // mode.
   auto InvalidStackRelativeAM = [](MachineInstr::mop_iterator It) {
@@ -766,7 +770,8 @@ SyncVMInstrInfo::getOutliningType(MachineBasicBlock::iterator &MBBI,
 
   // Make sure the operands don't reference something unsafe.
   for (const auto &MO : MI.operands())
-    if (MO.isMBB() || MO.isBlockAddress() || MO.isCPI() || MO.isJTI())
+    if (MO.isMBB() || MO.isBlockAddress() || MO.isCPI() || MO.isJTI() ||
+        MO.getTargetFlags() == SyncVMII::MO_SYM_RET_ADDRESS)
       return outliner::InstrType::Illegal;
 
   return outliner::InstrType::Legal;
@@ -828,6 +833,8 @@ void SyncVMInstrInfo::buildOutlinedFrame(
                             .addReg(SyncVM::SP)
                             .addImm(AMBase2)
                             .addImm(StackOffset));
+
+  MF.getInfo<SyncVMMachineFunctionInfo>()->setIsOutlined();
 }
 
 MachineBasicBlock::iterator SyncVMInstrInfo::insertOutlinedCall(
@@ -856,7 +863,7 @@ MachineBasicBlock::iterator SyncVMInstrInfo::insertOutlinedCall(
   int AMBase2 = 0;
   int StackOffset = -1;
   BuildMI(MBB, It, DL, get(SyncVM::ADDcrs_s))
-      .addSym(RetSym)
+      .addSym(RetSym, SyncVMII::MO_SYM_RET_ADDRESS)
       .addImm(RetSymOffset)
       .addReg(SyncVM::R0)
       .addReg(SyncVM::SP)

@@ -109,7 +109,9 @@ static cl::opt<bool> EnableLinkOnceODROutlining(
 /// as the outliner will run at least one time. The default value is set to 0,
 /// meaning the outliner will run one time and rerun zero times after that.
 static cl::opt<unsigned> OutlinerReruns(
-    "machine-outliner-reruns", cl::init(0), cl::Hidden,
+    // SyncVM local begin
+    "machine-outliner-reruns", cl::init(5), cl::Hidden,
+    // SyncVM local end
     cl::desc(
         "Number of times to rerun the outliner after the initial outline"));
 
