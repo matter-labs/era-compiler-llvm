@@ -706,6 +706,10 @@ bool SyncVMInstrInfo::isFunctionSafeToOutlineFrom(
   if (F.hasSection())
     return false;
 
+  // Don't outline function that was previously outlined.
+  if (MF.getInfo<SyncVMMachineFunctionInfo>()->isOutlined())
+    return false;
+
   // Don't outline from functions if there is non-adjustable stack relative
   // addressing instruction.
   for (MachineBasicBlock &MBB : MF) {
@@ -770,7 +774,8 @@ SyncVMInstrInfo::getOutliningType(MachineBasicBlock::iterator &MBBI,
 
   // Make sure the operands don't reference something unsafe.
   for (const auto &MO : MI.operands())
-    if (MO.isMBB() || MO.isBlockAddress() || MO.isCPI() || MO.isJTI())
+    if (MO.isMBB() || MO.isBlockAddress() || MO.isCPI() || MO.isJTI() ||
+        MO.getTargetFlags() == SyncVMII::MO_SYM_RET_ADDRESS)
       return outliner::InstrType::Illegal;
 
   return outliner::InstrType::Legal;
@@ -778,6 +783,40 @@ SyncVMInstrInfo::getOutliningType(MachineBasicBlock::iterator &MBBI,
 
 outliner::OutlinedFunction SyncVMInstrInfo::getOutliningCandidateInfo(
     std::vector<outliner::Candidate> &RepeatedSequenceLocs) const {
+  // If candidates contain instructions that we need to adjust, do more
+  // checks in order to see whether outlining is safe.
+  if (any_of(make_range(RepeatedSequenceLocs[0].front(),
+                        std::next(RepeatedSequenceLocs[0].back())),
+             [](MachineInstr &MI) {
+               return (SyncVM::hasSRInAddressingMode(MI) &&
+                       SyncVM::classifyStackAccess(SyncVM::in0Iterator(MI)) ==
+                           SyncVM::StackAccess::Relative) ||
+                      (SyncVM::hasSROutAddressingMode(MI) &&
+                       SyncVM::classifyStackAccess(SyncVM::out0Iterator(MI)) ==
+                           SyncVM::StackAccess::Relative) ||
+                      (MI.getOpcode() == SyncVM::SUBxrr_s &&
+                       MI.getOperand(1).getTargetFlags() ==
+                           SyncVMII::MO_STACK_SLOT_IDX);
+             })) {
+    // Since we can't mix candidates from functions where we adjusted SP and
+    // from function where we didn't, partition them into two sets and remove
+    // candidates from the smaller set. This can happen when we run outliner
+    // more than once.
+    auto IsSPAdjusted =
+        llvm::partition(RepeatedSequenceLocs, [](const outliner::Candidate &C) {
+          auto *SFI = C.getMF()->getInfo<SyncVMMachineFunctionInfo>();
+          return SFI->isStackAdjustedPostOutline();
+        });
+    if (std::distance(RepeatedSequenceLocs.begin(), IsSPAdjusted) >
+        std::distance(IsSPAdjusted, RepeatedSequenceLocs.end()))
+      RepeatedSequenceLocs.erase(IsSPAdjusted, RepeatedSequenceLocs.end());
+    else
+      RepeatedSequenceLocs.erase(RepeatedSequenceLocs.begin(), IsSPAdjusted);
+
+    if (RepeatedSequenceLocs.size() < 2)
+      return outliner::OutlinedFunction();
+  }
+
   unsigned SequenceSize =
       std::accumulate(RepeatedSequenceLocs[0].front(),
                       std::next(RepeatedSequenceLocs[0].back()), 0,
@@ -827,6 +866,8 @@ void SyncVMInstrInfo::buildOutlinedFrame(
                             .addReg(SyncVM::SP)
                             .addImm(0 /* AMBase2 */)
                             .addImm(-1 /* StackOffset */));
+
+  MF.getInfo<SyncVMMachineFunctionInfo>()->setIsOutlined();
 }
 
 MachineBasicBlock::iterator SyncVMInstrInfo::insertOutlinedCall(
@@ -852,7 +893,7 @@ MachineBasicBlock::iterator SyncVMInstrInfo::insertOutlinedCall(
 
   // Add instruction to store return address onto the top of the stack.
   BuildMI(MBB, It, DL, get(SyncVM::ADDcrs_s))
-      .addSym(RetSym)
+      .addSym(RetSym, SyncVMII::MO_SYM_RET_ADDRESS)
       .addImm(0 /* RetSymOffset */)
       .addReg(SyncVM::R0)
       .addReg(SyncVM::SP)
