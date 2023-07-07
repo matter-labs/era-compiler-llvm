@@ -1,4 +1,4 @@
-; RUN: llc -stop-before verify < %s | FileCheck %s
+; RUN: llc -stop-after syncvm-alloca-hoisting < %s | FileCheck %s
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "syncvm-unknown-unknown"
 

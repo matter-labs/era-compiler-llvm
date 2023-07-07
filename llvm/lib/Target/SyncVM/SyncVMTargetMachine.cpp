@@ -123,6 +123,16 @@ void SyncVMPassConfig::addIRPasses() {
     // and lower a GEP with multiple indices to either arithmetic operations or
     // multiple GEPs with single index.
     addPass(createSeparateConstOffsetFromGEPPass(true));
+    // ReassociateGEPs exposes more opportunites for SLSR. See
+    // the example in reassociate-geps-and-slsr.ll.
+    addPass(createStraightLineStrengthReducePass());
+    // SeparateConstOffsetFromGEP and SLSR creates common expressions which GVN
+    // or EarlyCSE can reuse. GVN generates significantly better code than
+    // EarlyCSE for some of our benchmarks.
+    addPass(createNewGVNPass());
+    addPass(createGVNHoistPass());
+    // Run NaryReassociate after EarlyCSE/GVN to be more effective.
+    addPass(createNaryReassociatePass());
     // Call EarlyCSE pass to find and remove subexpressions in the lowered
     // result.
     addPass(createEarlyCSEPass());
