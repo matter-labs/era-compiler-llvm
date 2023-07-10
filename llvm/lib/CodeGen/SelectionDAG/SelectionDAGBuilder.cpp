@@ -10873,7 +10873,7 @@ void SelectionDAGBuilder::lowerWorkItem(SwitchWorkListItem W, Value *Cond,
                [](const CaseCluster &a, const CaseCluster &b) {
       return a.Prob != b.Prob ?
              a.Prob > b.Prob :
-             a.Low->getValue().slt(b.Low->getValue());
+             a.Low->getValue().ult(b.Low->getValue());
     });
     // SyncVM local begin
     }
