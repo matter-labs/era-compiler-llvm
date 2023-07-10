@@ -486,9 +486,9 @@ defm NUMBER
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_number))],
       "NUMBER $dst", 0x43, 2>;
 
-defm PREVRANDAO
-  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_prevrandao))],
-      "PREVRANDAO $dst", 0x44, 2>;
+defm DIFFICULTY
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_difficulty))],
+      "DIFFICULTY $dst", 0x44, 2>;
 
 defm GASLIMIT
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_gaslimit))],
@@ -615,5 +615,5 @@ let hasSideEffects = 1 in {
 
   defm STOP : I<(outs), (ins), [(int_evm_stop)], "STOP", 0x00, 0>;
 
-  defm INVALID : I<(outs), (ins), [], "INVALID", 0xFE, 0>;
+  defm INVALID : I<(outs), (ins), [(int_evm_invalid)], "INVALID", 0xFE, 0>;
 }
