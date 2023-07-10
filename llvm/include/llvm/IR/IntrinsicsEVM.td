@@ -91,7 +91,7 @@ def int_evm_timestamp : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
 
 def int_evm_number : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
 
-def int_evm_prevrandao : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_evm_difficulty : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
 
 def int_evm_gaslimit : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
 
@@ -160,6 +160,8 @@ def int_evm_staticcall
 def int_evm_selfdestruct: Intrinsic<[], [llvm_i256_ty], []>;
 
 def int_evm_stop: Intrinsic<[], [], [IntrNoReturn]>;
+
+def int_evm_invalid: Intrinsic<[], [], [IntrNoReturn]>;
 
 // Return with error.
 def int_evm_return: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty], [IntrNoReturn]>;

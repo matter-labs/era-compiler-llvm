@@ -255,11 +255,11 @@ define i256 @number() nounwind {
   ret i256 %res
 }
 
-define i256 @prevrandao() nounwind {
-; CHECK-LABEL: @prevrandao
-; CHECK: PREVRANDAO [[RES1:\$[0-9]+]]
+define i256 @difficulty() nounwind {
+; CHECK-LABEL: @difficulty
+; CHECK: DIFFICULTY [[RES1:\$[0-9]+]]
 
-  %res = call i256 @llvm.evm.prevrandao()
+  %res = call i256 @llvm.evm.difficulty()
   ret i256 %res
 }
 
@@ -450,6 +450,14 @@ define void @revert(i256 %rs1, i256 %rs2) nounwind {
   ret void
 }
 
+define void @invalid() nounwind {
+; CHECK-LABEL: @invalid
+; CHECK: INVALID
+
+  call void @llvm.evm.invalid()
+  ret void
+}
+
 declare i256 @llvm.evm.addmod(i256, i256, i256)
 declare i256 @llvm.evm.mulmod(i256, i256, i256)
 declare i256 @llvm.evm.exp(i256, i256)
@@ -478,7 +486,7 @@ declare void @llvm.evm.returndatacopy(ptr, i256, i256)
 declare i256 @llvm.evm.coinbase()
 declare i256 @llvm.evm.timestamp()
 declare i256 @llvm.evm.number()
-declare i256 @llvm.evm.prevrandao()
+declare i256 @llvm.evm.difficulty()
 declare i256 @llvm.evm.gaslimit()
 declare i256 @llvm.evm.chainid()
 declare i256 @llvm.evm.selfbalance()
@@ -496,3 +504,4 @@ declare i256 @llvm.evm.staticcall(i256, i256, ptr, i256, ptr, i256)
 declare void @llvm.evm.selfdestruct(i256)
 declare void @llvm.evm.return(i256, i256)
 declare void @llvm.evm.revert(i256, i256)
+declare void @llvm.evm.invalid()
