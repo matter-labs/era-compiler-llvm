@@ -138,6 +138,8 @@ void SyncVMPassConfig::addIRPasses() {
     // Do loop invariant code motion in case part of the lowered result is
     // invariant.
     addPass(createLICMPass());
+  
+    addPass(createGVNHoistPass());
   }
   TargetPassConfig::addIRPasses();
 }
