@@ -1993,6 +1993,13 @@ public:
     return false;
   }
 
+  // SyncVM local begin
+  /// Do a fixup post outline.
+  virtual void fixupPostOutline(
+      std::vector<std::pair<MachineFunction *, std::vector<MachineFunction *>>>
+          &FixupFunctions) const {}
+  // SyncVM local end
+
   /// Produce the expression describing the \p MI loading a value into
   /// the physical register \p Reg. This hook should only be used with
   /// \p MIs belonging to VReg-less functions.
