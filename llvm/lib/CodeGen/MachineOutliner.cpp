@@ -357,6 +357,13 @@ struct MachineOutliner : public ModulePass {
   /// The current repeat number of machine outlining.
   unsigned OutlineRepeatedNum = 0;
 
+  // SyncVM local begin
+  /// Functions to fixup post outlining. It contains outlined function and all
+  /// caller functions.
+  std::vector<std::pair<MachineFunction *, std::vector<MachineFunction *>>>
+      FixupFunctions;
+  // SyncVM local end
+
   /// Set to true if the outliner should run on all functions in the module
   /// considered safe for outlining.
   /// Set to true by default for compatibility with llc's -run-pass option.
@@ -784,6 +791,10 @@ bool MachineOutliner::outline(Module &M,
     const TargetSubtargetInfo &STI = MF->getSubtarget();
     const TargetInstrInfo &TII = *STI.getInstrInfo();
 
+    // SyncVM local begin
+    FixupFunctions.push_back({MF, {}});
+    // SyncVM local end
+
     // Replace occurrences of the sequence with calls to the new function.
     for (Candidate &C : OF.Candidates) {
       MachineBasicBlock &MBB = *C.getMBB();
@@ -792,6 +803,10 @@ bool MachineOutliner::outline(Module &M,
 
       // Insert the call.
       auto CallInst = TII.insertOutlinedCall(M, MBB, StartIt, *MF, C);
+
+      // SyncVM local begin
+      FixupFunctions.back().second.push_back(C.getMF());
+      // SyncVM local end
 
       // If the caller tracks liveness, then we need to make sure that
       // anything we outline doesn't break liveness assumptions. The outlined
@@ -1039,6 +1054,11 @@ bool MachineOutliner::runOnModule(Module &M) {
       break;
     }
   }
+
+  // SyncVM local begin
+  TII->fixupPostOutline(FixupFunctions);
+  FixupFunctions.clear();
+  // SyncVM local end
 
   return true;
 }
