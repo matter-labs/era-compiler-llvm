@@ -43,6 +43,9 @@ class EraVMMachineFunctionInfo : public MachineFunctionInfo {
   // Whether this function is outlined.
   bool IsOutlined = false;
 
+  // Whether this function ends with a tail call.
+  bool IsTailCall = false;
+
 public:
   EraVMMachineFunctionInfo() = default;
 
@@ -65,6 +68,9 @@ public:
 
   bool isOutlined() const { return IsOutlined; }
   void setIsOutlined() { IsOutlined = true; }
+
+  bool isTailCall() const { return IsTailCall; }
+  void setIsTailCall(bool IsTC) { IsTailCall = IsTC; }
 };
 
 } // namespace llvm
