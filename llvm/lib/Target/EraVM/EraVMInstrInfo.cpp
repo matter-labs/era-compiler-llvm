@@ -19,6 +19,7 @@
 #include "EraVMTargetMachine.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
+#include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/Module.h"
@@ -598,6 +599,54 @@ EraVMCC::CondCodes EraVMInstrInfo::getCCCode(const MachineInstr &MI) const {
   return EraVMCC::COND_INVALID;
 }
 
+/// Return whether outlining candidate ends with a tail call. This is true only
+/// if it is a terminator that ends function, call to outlined function that
+/// ends with a tail call, or call to a no return function.
+static bool isOutliningCandidateTailCall(const MachineInstr &MI) {
+  const MachineBasicBlock *MBB = MI.getParent();
+  if (MI.isTerminator()) {
+    assert(MBB->succ_empty() && "Terminator is not ending a function.");
+    return true;
+  }
+
+  auto GetFunction = [](const MachineOperand &MO) -> const Function * {
+    if (!MO.isGlobal())
+      return nullptr;
+    return dyn_cast<Function>(MO.getGlobal());
+  };
+
+  // Check if outlined function ends with tail call.
+  if (MI.getOpcode() == EraVM::JCALL) {
+    const Function *Callee = GetFunction(MI.getOperand(0));
+    if (!Callee)
+      return false;
+
+    MachineFunction *CalleeMF =
+        MBB->getParent()->getMMI().getMachineFunction(*Callee);
+    return CalleeMF &&
+           CalleeMF->getInfo<EraVMMachineFunctionInfo>()->isOutlined() &&
+           CalleeMF->getInfo<EraVMMachineFunctionInfo>()->isTailCall();
+  }
+
+  // Check if we have a call to a no return function.
+  if (MI.getOpcode() != EraVM::NEAR_CALL)
+    return false;
+
+  const Function *Callee = GetFunction(MI.getOperand(1));
+  if (!Callee)
+    return false;
+
+  if (Callee->doesNotReturn())
+    return true;
+
+  // Sometimes, special functions are not marked as noreturn, so check
+  // if we are calling one, and do additional checks if it is a last
+  // instruction in an ending MBB.
+  return std::next(MI.getIterator()) == MBB->end() && MBB->succ_empty() &&
+         (Callee->getName() == "__exit_return" ||
+          Callee->getName() == "__exit_revert");
+}
+
 /// Return true if the first instruction in a function is stack advance.
 static bool hasStackAdvanceInstruction(MachineFunction &MF) {
   auto EntryBB = MF.begin();
@@ -605,10 +654,11 @@ static bool hasStackAdvanceInstruction(MachineFunction &MF) {
   return FirstMI != EntryBB->end() && FirstMI->getOpcode() == EraVM::NOPSP;
 }
 
-/// Sets the offsets on instructions in MBB which use SP, so that they will be
-/// valid post-outlining.
-static void fixupStackOffsetPostOutline(MachineBasicBlock &MBB,
-                                        int64_t FixupOffset) {
+/// Sets the offsets on instructions in [Start, End) which use SP, so that they
+/// will be valid post-outlining.
+static void fixupStackAccessOffsetPostOutline(MachineBasicBlock::iterator Start,
+                                              MachineBasicBlock::iterator End,
+                                              int64_t FixupOffset) {
   auto AdjustDisp = [FixupOffset](MachineInstr::mop_iterator It) {
     if (EraVM::classifyStackAccess(It) != EraVM::StackAccess::Relative)
       return;
@@ -618,7 +668,14 @@ static void fixupStackOffsetPostOutline(MachineBasicBlock &MBB,
     DispIt->setImm(DispIt->getImm() + FixupOffset);
   };
 
-  for (MachineInstr &MI : MBB) {
+  for (MachineInstr &MI : make_range(Start, End)) {
+    // Skip adjusting instruction that is used to set return address
+    // from outlining function.
+    if (any_of(MI.operands(), [](const MachineOperand &MO) {
+          return MO.getTargetFlags() == EraVMII::MO_SYM_RET_ADDRESS;
+        }))
+      continue;
+
     if (EraVM::hasSRInAddressingMode(MI))
       AdjustDisp(EraVM::in0Iterator(MI));
     if (EraVM::hasSROutAddressingMode(MI))
@@ -637,7 +694,7 @@ static void fixupStackOffsetPostOutline(MachineBasicBlock &MBB,
 /// Since we are placing return address from the outlined function onto the top
 /// of the stack, we need to reserve stack slot for it and to adjust
 /// instructions which use SP in this function.
-void EraVMInstrInfo::fixupPostOutline(MachineFunction &MF) const {
+void EraVMInstrInfo::fixupStackPostOutline(MachineFunction &MF) const {
   auto *SFI = MF.getInfo<EraVMMachineFunctionInfo>();
   if (SFI->isStackAdjustedPostOutline())
     return;
@@ -656,13 +713,49 @@ void EraVMInstrInfo::fixupPostOutline(MachineFunction &MF) const {
 
   // Adjust instructions which use SP in this function.
   for (MachineBasicBlock &MBB : MF)
-    fixupStackOffsetPostOutline(MBB, -1 /* FixupOffset */);
+    fixupStackAccessOffsetPostOutline(MBB.begin(), MBB.end(),
+                                      -1 /* FixupOffset */);
 
   SFI->setStackAdjustedPostOutline();
 }
 
-/// Enum values indicating how an outlined call should be constructed.
-enum MachineOutlinerConstructionID { MachineOutlinerDefault };
+/// Constants defining how certain sequences should be outlined.
+/// This encompasses how an outlined function should be called, and what kind of
+/// frame should be emitted for that outlined function.
+///
+/// \p MachineOutlinerDefault implies that the function should be called with
+/// a save return address onto TOS and jump back from address on TOS.
+///
+/// That is,
+///
+/// I1     Save RET ADDR onto TOS     OUTLINED_FUNCTION:
+/// I2 --> J OUTLINED_FUNCTION        I1
+/// I3     RET ADDR SYM               I2
+///                                   I3
+///                                   J TOS
+///
+/// * Call construction overhead: 2 (save + J) + 1? (SP advance)
+/// * Frame construction overhead: 1 (J)
+/// * Requires stack fixups? Yes
+///
+/// \p MachineOutlinerTailCall implies that the function is being created from
+/// a sequence of instructions ending in a return.
+///
+/// That is,
+///
+/// I1                             OUTLINED_FUNCTION:
+/// I2 --> J OUTLINED_FUNCTION     I1
+/// RET                            I2
+///                                RET
+///
+/// * Call construction overhead: 1 (J)
+/// * Frame construction overhead: 0 (Return included in sequence)
+/// * Requires stack fixups? No, if all callers don't need to do stack fixup
+///
+enum MachineOutlinerConstructionID {
+  MachineOutlinerDefault, /// Emit save, jump and jump to return.
+  MachineOutlinerTailCall /// Only emit a jump.
+};
 
 bool EraVMInstrInfo::shouldOutlineFromFunctionByDefault(
     MachineFunction &MF) const {
@@ -726,6 +819,50 @@ EraVMInstrInfo::getOutliningTypeImpl(MachineBasicBlock::iterator &MBBI,
   if (MI.isMetaInstruction())
     return outliner::InstrType::Invisible;
 
+  // Is this a terminator for a basic block?
+  if (MI.isTerminator()) {
+
+    // Is this the end of a function?
+    if (MI.getParent()->succ_empty())
+      return outliner::InstrType::Legal;
+
+    // It's not, so don't outline it.
+    return outliner::InstrType::Illegal;
+  }
+
+  // Don't outline jump instruction that is used to call non-tail outlined
+  // function.
+  if (MI.getOpcode() == EraVM::JCALL) {
+    const MachineOperand &MO = MI.getOperand(0);
+
+    // If it's not a global, we can outline it.
+    if (!MO.isGlobal())
+      return outliner::InstrType::Legal;
+
+    const Function *Callee = dyn_cast<Function>(MO.getGlobal());
+
+    // Only check for functions.
+    if (!Callee)
+      return outliner::InstrType::Legal;
+
+    MachineFunction *CalleeMF =
+        MI.getMF()->getMMI().getMachineFunction(*Callee);
+
+    // We don't know what's going on with the callee at all. Don't touch it.
+    if (!CalleeMF)
+      return outliner::InstrType::Legal;
+
+    auto *SFI = CalleeMF->getInfo<EraVMMachineFunctionInfo>();
+
+    // We can safely outline calls to non-outlined or tail outlined functions.
+    if (!SFI->isOutlined() || SFI->isTailCall())
+      return outliner::InstrType::Legal;
+
+    // Don't outline this, as it is paired with instruction that adds return
+    // address onto TOS.
+    return outliner::InstrType::Illegal;
+  }
+
   // Don't outline context.gas_left instruction.
   if (MI.getOpcode() == EraVM::CTXr_se &&
       getImmOrCImm(MI.getOperand(1)) == EraVMCTX::GAS_LEFT)
@@ -737,10 +874,6 @@ EraVMInstrInfo::getOutliningTypeImpl(MachineBasicBlock::iterator &MBBI,
 
   // Don't trust the user to write safe inline assembly.
   if (MI.isInlineAsm())
-    return outliner::InstrType::Illegal;
-
-  // We can't outline branches and return statements.
-  if (MI.isTerminator() || MI.isReturn())
     return outliner::InstrType::Illegal;
 
   // Don't outline instructions that set or modify SP.
@@ -759,40 +892,6 @@ EraVMInstrInfo::getOutliningTypeImpl(MachineBasicBlock::iterator &MBBI,
 std::optional<outliner::OutlinedFunction>
 EraVMInstrInfo::getOutliningCandidateInfo(
     std::vector<outliner::Candidate> &RepeatedSequenceLocs) const {
-  // If candidates contain instructions that we need to adjust, do more
-  // checks in order to see whether outlining is safe.
-  if (any_of(make_range(RepeatedSequenceLocs[0].begin(),
-                        RepeatedSequenceLocs[0].end()),
-             [](MachineInstr &MI) {
-               return (EraVM::hasSRInAddressingMode(MI) &&
-                       EraVM::classifyStackAccess(EraVM::in0Iterator(MI)) ==
-                           EraVM::StackAccess::Relative) ||
-                      (EraVM::hasSROutAddressingMode(MI) &&
-                       EraVM::classifyStackAccess(EraVM::out0Iterator(MI)) ==
-                           EraVM::StackAccess::Relative) ||
-                      (MI.getOpcode() == EraVM::SUBxrr_s &&
-                       MI.getOperand(1).getTargetFlags() ==
-                           EraVMII::MO_STACK_SLOT_IDX);
-             })) {
-    // Since we can't mix candidates from functions where we adjusted SP and
-    // from function where we didn't, partition them into two sets and remove
-    // candidates from the smaller set. This can happen when we run outliner
-    // more than once.
-    auto IsSPAdjusted =
-        llvm::partition(RepeatedSequenceLocs, [](const outliner::Candidate &C) {
-          auto *SFI = C.getMF()->getInfo<EraVMMachineFunctionInfo>();
-          return SFI->isStackAdjustedPostOutline();
-        });
-    if (std::distance(RepeatedSequenceLocs.begin(), IsSPAdjusted) >
-        std::distance(IsSPAdjusted, RepeatedSequenceLocs.end()))
-      RepeatedSequenceLocs.erase(IsSPAdjusted, RepeatedSequenceLocs.end());
-    else
-      RepeatedSequenceLocs.erase(RepeatedSequenceLocs.begin(), IsSPAdjusted);
-
-    if (RepeatedSequenceLocs.size() < 2)
-      return {};
-  }
-
   unsigned SequenceSize =
       std::accumulate(RepeatedSequenceLocs[0].begin(),
                       RepeatedSequenceLocs[0].end(), 0,
@@ -800,9 +899,19 @@ EraVMInstrInfo::getOutliningCandidateInfo(
                         return Sum + getInstSizeInBytes(MI);
                       });
 
-  SmallPtrSet<MachineFunction *, 4> NoStackAdvance;
+  unsigned FrameID = MachineOutlinerDefault;
   unsigned SaveRetSize = get(EraVM::ADDcrs_s).getSize();
   unsigned JumpSize = get(EraVM::JCALL).getSize();
+  unsigned JumpSPSize = get(EraVM::J_s).getSize();
+
+  // For tail calls, we are just using jump.
+  if (isOutliningCandidateTailCall(RepeatedSequenceLocs[0].back())) {
+    FrameID = MachineOutlinerTailCall;
+    SaveRetSize = 0;
+    JumpSPSize = 0;
+  }
+
+  SmallPtrSet<MachineFunction *, 4> NoStackAdvance;
   unsigned CallOverhead = SaveRetSize + JumpSize;
   for (auto &C : RepeatedSequenceLocs) {
     unsigned Overhead = CallOverhead;
@@ -810,48 +919,45 @@ EraVMInstrInfo::getOutliningCandidateInfo(
 
     // If function doesn't have stack advance instruction, add overhead only
     // once for each function.
+    // Add this overhead also for tail calls, as we can end up adjusting stack
+    // in caller just to align stack accesses with other callers.
     if (!hasStackAdvanceInstruction(*MF) && NoStackAdvance.insert(MF).second)
       Overhead += get(EraVM::NOPSP).getSize();
 
-    C.setCallInfo(MachineOutlinerDefault, Overhead);
+    C.setCallInfo(FrameID, Overhead);
   }
 
-  unsigned JumpSPSize = get(EraVM::J_s).getSize();
   unsigned FrameOverhead = JumpSPSize;
   return outliner::OutlinedFunction(RepeatedSequenceLocs, SequenceSize,
-                                    FrameOverhead, MachineOutlinerDefault);
+                                    FrameOverhead, FrameID);
 }
 
 void EraVMInstrInfo::buildOutlinedFrame(
     MachineBasicBlock &MBB, MachineFunction &MF,
     const outliner::OutlinedFunction &OF) const {
-  // Perform stack fixup only if we didn't do it in the original function from
-  // which we are outlining. Machine outliner algorithm is outlining from
-  // the first candidate, so take original function from it.
-  MachineFunction *OriginalMF = OF.Candidates.front().getMF();
-  auto *SFI = OriginalMF->getInfo<EraVMMachineFunctionInfo>();
-  if (!SFI->isStackAdjustedPostOutline())
-    fixupStackOffsetPostOutline(MBB, -1 /* FixupOffset */);
-
-  DebugLoc DL;
-  if (!MBB.empty())
-    DL = MBB.back().getDebugLoc();
+  bool IsTailCall = OF.FrameConstructionID == MachineOutlinerTailCall;
 
   // Add jump instruction to the end of the outlined frame.
-  MBB.insert(MBB.end(), BuildMI(MF, DL, get(EraVM::J_s))
-                            .addReg(EraVM::SP)
-                            .addImm(0 /* AMBase2 */)
-                            .addImm(-1 /* StackOffset */));
+  if (!IsTailCall) {
+    DebugLoc DL;
+    if (!MBB.empty())
+      DL = MBB.back().getDebugLoc();
 
-  MF.getInfo<EraVMMachineFunctionInfo>()->setIsOutlined();
+    MBB.insert(MBB.end(), BuildMI(MF, DL, get(EraVM::J_s))
+                              .addReg(EraVM::SP)
+                              .addImm(0 /* AMBase2 */)
+                              .addImm(-1 /* StackOffset */));
+  }
+
+  auto *SFI = MF.getInfo<EraVMMachineFunctionInfo>();
+  SFI->setIsOutlined();
+  SFI->setIsTailCall(IsTailCall);
 }
 
 MachineBasicBlock::iterator EraVMInstrInfo::insertOutlinedCall(
     Module &M, MachineBasicBlock &MBB, MachineBasicBlock::iterator &It,
     MachineFunction &OutlinedMF, outliner::Candidate &C) const {
   MachineFunction &MF = *C.getMF();
-  fixupPostOutline(MF);
-
   DebugLoc DL;
   if (It != MBB.end())
     DL = It->getDebugLoc();
@@ -861,21 +967,98 @@ MachineBasicBlock::iterator EraVMInstrInfo::insertOutlinedCall(
                   BuildMI(MF, DL, get(EraVM::JCALL))
                       .addGlobalAddress(M.getNamedValue(OutlinedMF.getName())));
 
-  // Add symbol just after the jump that will be used as a return address
-  // from the outlined function.
-  MCSymbol *RetSym =
-      MF.getContext().createTempSymbol("OUTLINED_FUNCTION_RET", true);
-  It->setPostInstrSymbol(MF, RetSym);
+  if (C.CallConstructionID != MachineOutlinerTailCall) {
+    // Add symbol just after the jump that will be used as a return address
+    // from the outlined function.
+    MCSymbol *RetSym =
+        MF.getContext().createTempSymbol("OUTLINED_FUNCTION_RET", true);
+    It->setPostInstrSymbol(MF, RetSym);
 
-  // Add instruction to store return address onto the top of the stack.
-  BuildMI(MBB, It, DL, get(EraVM::ADDcrs_s))
-      .addSym(RetSym, EraVMII::MO_SYM_RET_ADDRESS)
-      .addImm(0 /* RetSymOffset */)
-      .addReg(EraVM::R0)
-      .addReg(EraVM::SP)
-      .addImm(0 /* AMBase2 */)
-      .addImm(-1 /* StackOffset */)
-      .addImm(EraVMCC::COND_NONE);
+    // Add instruction to store return address onto the top of the stack.
+    BuildMI(MBB, It, DL, get(EraVM::ADDcrs_s))
+        .addSym(RetSym, EraVMII::MO_SYM_RET_ADDRESS)
+        .addImm(0 /* RetSymOffset */)
+        .addReg(EraVM::R0)
+        .addReg(EraVM::SP)
+        .addImm(0 /* AMBase2 */)
+        .addImm(-1 /* StackOffset */)
+        .addImm(EraVMCC::COND_NONE);
+  }
 
   return It;
+}
+
+void EraVMInstrInfo::fixupPostOutline(
+    std::vector<std::pair<MachineFunction *, std::vector<MachineFunction *>>>
+        &FixupFunctions) const {
+  // First, adjust all outlined functions with MachineOutlinerDefault strategy.
+  for (auto [Outlined, Callers] : FixupFunctions) {
+    if (Outlined->getInfo<EraVMMachineFunctionInfo>()->isTailCall())
+      continue;
+
+    // Skip adjusting last instruction which is jump that loads return address
+    // from the stack.
+    auto &OutlinedMBB = Outlined->front();
+    fixupStackAccessOffsetPostOutline(OutlinedMBB.begin(),
+                                      std::prev(OutlinedMBB.end()),
+                                      -1 /* FixupOffset */);
+    for (auto Caller : Callers)
+      fixupStackPostOutline(*Caller);
+  }
+
+  // Remove all functions that we don't need to process. These are outlined
+  // functions with MachineOutlinerDefault strategy, and tail call outlined
+  // functions that don't have stack relative access instructions.
+  erase_if(FixupFunctions, [](auto &Funcs) {
+    auto Outlined = Funcs.first;
+    if (!Outlined->template getInfo<EraVMMachineFunctionInfo>()->isTailCall())
+      return true;
+    if (none_of(Outlined->front(), [](MachineInstr &MI) {
+          return (EraVM::hasSRInAddressingMode(MI) &&
+                  EraVM::classifyStackAccess(EraVM::in0Iterator(MI)) ==
+                      EraVM::StackAccess::Relative) ||
+                 (EraVM::hasSROutAddressingMode(MI) &&
+                  EraVM::classifyStackAccess(EraVM::out0Iterator(MI)) ==
+                      EraVM::StackAccess::Relative) ||
+                 (MI.getOpcode() == EraVM::SUBxrr_s &&
+                  MI.getOperand(1).getTargetFlags() ==
+                      EraVMII::MO_STACK_SLOT_IDX);
+        }))
+      return true;
+    return false;
+  });
+
+  // After that, adjust all outlined functions with MachineOutlinerTailCall
+  // strategy. Repeat this iteration as long as we are changing something,
+  // because it can happen that we first decide to not adjust some function
+  // because callers weren't adjusted, but in later iterations we adjust one
+  // of the callers. See this example in machine-outliner-tail.mir.
+  bool Changed;
+  do {
+    Changed = false;
+    for (auto [Outlined, Callers] : FixupFunctions) {
+      auto *SFI = Outlined->getInfo<EraVMMachineFunctionInfo>();
+
+      // Skip outlined functions that we already adjusted.
+      if (SFI->isStackAdjustedPostOutline())
+        continue;
+
+      // Skip if there is no caller that adjusted sp.
+      if (none_of(Callers, [](MachineFunction *MF) {
+            return MF->getInfo<EraVMMachineFunctionInfo>()
+                ->isStackAdjustedPostOutline();
+          }))
+        continue;
+
+      auto &OutlinedMBB = Outlined->front();
+      fixupStackAccessOffsetPostOutline(OutlinedMBB.begin(), OutlinedMBB.end(),
+                                        -1 /* FixupOffset */);
+      for (auto Caller : Callers)
+        fixupStackPostOutline(*Caller);
+
+      // Set that we adjusted this outlined function, so we can skip it.
+      SFI->setStackAdjustedPostOutline();
+      Changed = true;
+    }
+  } while (Changed);
 }

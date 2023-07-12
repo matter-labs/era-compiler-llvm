@@ -1,0 +1,149 @@
+# RUN: llc -x mir -run-pass=machine-outliner -verify-machineinstrs -outliner-leaf-descendants=false < %s | FileCheck %s
+
+# This test ensures that we create outlined functions, and do SP adjustment in
+# all callers and outlined functions. This also shows why we have to iterate
+# over tailcall outlined functions more than once to align stack relative
+# accesses.
+# In this test, we are iterating to adjust functions like this:
+#
+#   - Adjust functions that need to place return address onto TOS
+#     1. Adjusted OUTLINED_FUNCTION_1 and adjusted caller foo.
+#
+#   - Adjust tailcall functions
+#     1. Didn't adjust OUTLINED_FUNCTION_0 as caller bar wasn't adjusted.
+#     2. Adjusted OUTLINED_FUNCTION_2 and adjusted caller bar because foo was previously adjusted.
+#     3. Adjusted OUTLINED_FUNCTION_0 as caller bar was adjusted in previous iteration.
+#
+
+--- |
+
+  target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
+  target triple = "eravm"
+
+  define void @foo(i256 %a, i256 %b) { ret void }
+  define void @bar(i256 %a, i256 %b) { ret void }
+
+...
+---
+# CHECK-LABEL: foo
+# CHECK-LABEL: bb.0:
+# CHECK: NOPSP 2, 0, implicit-def $sp, implicit $sp
+# CHECK-NEXT: ADDcrs_s target-flags(<unknown>) <mcsymbol >, 0, $r0, $sp, 0, -1, 0
+# CHECK-NEXT: JCALL @OUTLINED_FUNCTION_2, implicit-def $r1, implicit $sp, implicit $r1, implicit $r2, post-instr-symbol <mcsymbol >
+
+# CHECK-LABEL: bb.1:
+# CHECK: ADDcrs_s target-flags(<unknown>) <mcsymbol >, 0, $r0, $sp, 0, -1, 0
+# CHECK-NEXT: JCALL @OUTLINED_FUNCTION_2, implicit-def $r1, implicit $sp, implicit $r1, implicit $r2, post-instr-symbol <mcsymbol >
+
+# CHECK-LABEL: bb.2:
+# CHECK: JCALL @OUTLINED_FUNCTION_1, implicit-def $r1, implicit $sp, implicit $r1, implicit $r2
+name:            foo
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+    NOPSP 1, 0, implicit-def $sp, implicit $sp
+    ADDsrs_s $sp, 0, -1, $r1, $sp, 0, -1, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+  bb.1:
+    liveins: $r1, $r2
+    ADDsrs_s $sp, 0, -1, $r1, $sp, 0, -1, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+    $r1 = ANDrrr_s $r1, $r2, 0
+  bb.2:
+    liveins: $r1, $r2
+    ADDsrs_s $sp, 0, -1, $r1, $sp, 0, -1, 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    RET
+
+...
+---
+# CHECK-LABEL: bar
+# CHECK-LABEL: bb.0:
+# CHECK: NOPSP 2, 0, implicit-def $sp, implicit $sp
+# CHECK-NEXT: dead $r3 = SUBrrr_v $r1, $r2, i256 0, implicit-def $flags
+# CHECK-NEXT: JC %bb.2, i256 10, implicit $flags
+
+# CHECK-LABEL: bb.1:
+# CHECK: JCALL @OUTLINED_FUNCTION_1, implicit-def $r1, implicit $sp, implicit $r1, implicit $r2
+
+# CHECK-LABEL: bb.2:
+# CHECK: dead $r3 = SUBrrr_v $r1, $r0, i256 0, implicit-def $flags
+# CHECK-NEXT: JC %bb.4, 2, implicit $flags
+
+# CHECK-LABEL: bb.3:
+# CHECK: JCALL @OUTLINED_FUNCTION_0, implicit-def $r1, implicit $sp, implicit $r0, implicit $r1, implicit $r2
+
+# CHECK-LABEL: bb.4:
+# CHECK: JCALL @OUTLINED_FUNCTION_0, implicit-def $r1, implicit $sp, implicit $r0, implicit $r1, implicit $r2
+name:            bar
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+    NOPSP 1, 0, implicit-def $sp, implicit $sp
+    dead $r3 = SUBrrr_v $r1, $r2, i256 0, implicit-def $flags
+    JC %bb.2, i256 10, implicit $flags
+  bb.1:
+    liveins: $r1, $r2
+    ADDsrs_s $sp, 0, -1, $r1, $sp, 0, -1, 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    $r1 = ORrrr_s $r1, $r2, 0
+    RET
+  bb.2:
+    liveins: $r1, $r2
+    dead $r3 = SUBrrr_v $r1, $r0, i256 0, implicit-def $flags
+    JC %bb.4, 2, implicit $flags
+  bb.3:
+    liveins: $r1, $r2
+    ADDrrs_s $r1, $r0, $sp, 0, -1, 0
+    ADDrrs_s $r1, $r0, $sp, 0, -1, 0
+    ADDrrs_s $r1, $r0, $sp, 0, -1, 0
+    $r1 = XORrrr_s $r1, $r2, 0
+    RET
+  bb.4:
+    liveins: $r1, $r2
+    ADDrrs_s $r1, $r0, $sp, 0, -1, 0
+    ADDrrs_s $r1, $r0, $sp, 0, -1, 0
+    ADDrrs_s $r1, $r0, $sp, 0, -1, 0
+    $r1 = XORrrr_s $r1, $r2, 0
+    RET
+
+# CHECK-LABEL: name: OUTLINED_FUNCTION_0
+# CHECK-LABEL: bb.0:
+# CHECK: ADDrrs_s $r1, $r0, $sp, 0, -2, 0
+# CHECK-NEXT: ADDrrs_s $r1, $r0, $sp, 0, -2, 0
+# CHECK-NEXT: ADDrrs_s $r1, $r0, $sp, 0, -2, 0
+# CHECK-NEXT: $r1 = XORrrr_s $r1, $r2, 0
+# CHECK-NEXT: RET
+
+# CHECK-LABEL: name: OUTLINED_FUNCTION_1
+# CHECK-LABEL: bb.0:
+# CHECK: ADDsrs_s $sp, 0, -2, $r1, $sp, 0, -2, 0
+# CHECK-NEXT: $r1 = ORrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = ORrrr_s $r1, $r2, 0
+# CHECK-NEXT: RET
+
+# CHECK-LABEL: name: OUTLINED_FUNCTION_2
+# CHECK-LABEL: bb.0:
+# CHECK: ADDsrs_s $sp, 0, -2, $r1, $sp, 0, -2, 0
+# CHECK-NEXT: $r1 = ANDrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = ANDrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = ANDrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = ANDrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = ANDrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = ANDrrr_s $r1, $r2, 0
+# CHECK-NEXT: $r1 = ANDrrr_s $r1, $r2, 0
+# CHECK-NEXT: J_s $sp, 0, -1

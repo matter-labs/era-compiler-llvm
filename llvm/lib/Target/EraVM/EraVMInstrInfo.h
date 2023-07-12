@@ -293,7 +293,7 @@ public:
 
   bool shouldOutlineFromFunctionByDefault(MachineFunction &MF) const override;
 
-  void fixupPostOutline(MachineFunction &MF) const;
+  void fixupStackPostOutline(MachineFunction &MF) const;
 
   /// Return true if the function can safely be outlined from.
   bool isFunctionSafeToOutlineFrom(MachineFunction &MF,
@@ -314,26 +314,44 @@ public:
 
   /// Insert a custom frame for outlined functions.
   /// Since for outlined functions we don't need to follow standard calling
-  /// convention ABI, we are using jump that loads return address from TOS that
-  /// was added just before the call, to return from it. Usually for this, we
-  /// would use ret instruction, but we would have some limitations w.r.t.
-  /// propagating flags. Also, in some cases, we need to adjust stack accesses
-  /// in the outlined function, as we are placing return address onto TOS.
+  /// convention ABI, in case we are returning from the outlined function we are
+  /// using jump that loads return address from TOS that was added just before
+  /// the call. Usually for this, we would use ret nstruction, but we would have
+  /// some limitations w.r.t. propagating flags. In case we are not returning
+  /// from a function, we are not adding any instruction.
   void buildOutlinedFrame(MachineBasicBlock &MBB, MachineFunction &MF,
                           const outliner::OutlinedFunction &OF) const override;
 
   /// Insert a call to an outlined function into a given basic block.
   /// Since for outlined functions we don't need to follow standard calling
-  /// convention ABI, we are using 2 instructions to generate call to it: first
-  /// to save return address onto TOS and second to jump to outlined function.
-  /// Usually for this, we would use near_call instruction, but we would have
-  /// some limitations w.r.t. propagating flags. Also, we need to adjust stack
-  /// accesses in function from which we are calling outlined function, as we
-  /// are placing return address onto TOS.
+  /// convention ABI, in case we are returning from the outlined function we are
+  /// using 2 instructions to generate call to it: first to save return address
+  /// onto TOS and second to jump to the outlined function. Usually for this, we
+  /// would use near_call instruction, but we would have some limitations w.r.t.
+  /// propagating flags. In other case where we are not returning from a
+  /// function, we just use jump to it.
   MachineBasicBlock::iterator
   insertOutlinedCall(Module &M, MachineBasicBlock &MBB,
                      MachineBasicBlock::iterator &It, MachineFunction &MF,
                      outliner::Candidate &C) const override;
+
+  /// Do a fixup post outline.
+  /// We are doing fixup in three phasses:
+  ///   1. Adjust outlined functions and callers that have to put return address
+  ///      onto the stack.
+  ///   2. Remove functions that we already adjusted or we don't need to, so we
+  ///      can simplify 3rd phase.
+  ///   3. Adjust outlined functions that don't return and their callers, and
+  ///      repeat it as long as we are changing something.
+  ///
+  /// This is done in order to detect cases where we have to adjust outlined
+  /// functions that don't return, so we can align relative stack addresses in
+  /// all their callers to preserve correctness. Also, doing like this, we could
+  /// end up saving 1 instruction in a frameless function if we don't need to
+  /// adjust it.
+  void fixupPostOutline(
+      std::vector<std::pair<MachineFunction *, std::vector<MachineFunction *>>>
+          &FixupFunctions) const override;
 };
 
 } // namespace llvm
