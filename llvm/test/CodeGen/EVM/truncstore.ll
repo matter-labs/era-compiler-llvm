@@ -1,7 +1,7 @@
 ; RUN: llc --mtriple=evm < %s | FileCheck %s
 
-@glob_i8 = global i8 0
-@glob_i32 = global i32 0
+@glob_i8 = addrspace(1) global i8 0
+@glob_i32 = addrspace(1) global i32 0
 
 define void @storei8(i8 %val) nounwind {
 ; CHECK-LABEL: @storei8
@@ -9,7 +9,7 @@ define void @storei8(i8 %val) nounwind {
 ; CHECK: CONST_I256 [[ADDR:\$[0-9]+]], @glob_i8
 ; CHECK: MSTORE8 [[ADDR]], [[VAL]]
 
-  store i8 %val, ptr @glob_i8
+  store i8 %val, ptr addrspace(1) @glob_i8
   ret void
 }
 
@@ -26,7 +26,6 @@ define void @storei32(i32 %val) nounwind {
 ; CHECK: OR [[RES_MEM:\$[0-9]+]], [[SHL_VAL]], [[SHL_MEM]]
 ; CHECK: MSTORE [[ADDR]], [[RES_MEM]]
 
-  store i32 %val, ptr @glob_i32
+  store i32 %val, ptr addrspace(1) @glob_i32
   ret void
 }
-
