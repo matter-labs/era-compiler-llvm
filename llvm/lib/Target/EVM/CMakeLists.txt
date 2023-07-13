@@ -21,6 +21,7 @@ add_llvm_target(EVMCodeGen
   EVMLowerIntrinsics.cpp
   EVMMCInstLower.cpp
   EVMRegisterInfo.cpp
+  EVMSelectionDAGInfo.cpp
   EVMSubtarget.cpp
   EVMTargetMachine.cpp
   EVMTargetTransformInfo.cpp

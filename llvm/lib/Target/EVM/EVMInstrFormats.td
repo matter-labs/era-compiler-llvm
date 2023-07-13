@@ -4,6 +4,18 @@
 //
 //===----------------------------------------------------------------------===//
 
+class ASList<list<int> lst> {
+  list<int> List = lst;
+}
+
+// The 'AS' structure is defined in IntrinsicsEVM.td
+// For each address space define a list containing the one address space
+// to override the AddressSpaces property of the PatFrag.
+def AS_stack  : ASList<[AS.STACK]>;
+def AS_heap : ASList<[AS.HEAP]>;
+def AS_call_data : ASList<[AS.CALL_DATA]>;
+def AS_return_data : ASList<[AS.RETURN_DATA]>;
+
 // EVM general instruction format.
 class EVMInst<bits<8> inst, string asmstr, int cost>
   : Instruction {
