@@ -4,7 +4,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVM.h"
-
+#include "EVMSubtarget.h"
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/IR/Constants.h"
@@ -13,8 +13,6 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Transforms/Utils/LowerMemIntrinsics.h"
-
-#include "EVMSubtarget.h"
 
 #define DEBUG_TYPE "evm-lower-intrinsics"
 
@@ -81,12 +79,18 @@ bool EVMLowerIntrinsics::expandMemIntrinsicUses(Function &F) {
     switch (ID) {
     case Intrinsic::memcpy: {
       auto *Memcpy = cast<MemCpyInst>(Inst);
-      Function *ParentFunc = Memcpy->getParent()->getParent();
-      const TargetTransformInfo &TTI =
-          getAnalysis<TargetTransformInfoWrapperPass>().getTTI(*ParentFunc);
-      ExpandMemCpyAsLoop(Memcpy, TTI);
-      Changed = true;
-      Memcpy->eraseFromParent();
+      auto DstAS = Memcpy->getDestAddressSpace();
+      auto SrcAS = Memcpy->getSourceAddressSpace();
+      // Expand here only heap-to-heap memcpy. Other cross-address space
+      // intrinsics are mapped 1-to-1 to the corresponding EVM instructions.
+      if (DstAS == EVMAS::AS_HEAP && SrcAS == EVMAS::AS_HEAP) {
+        Function *ParentFunc = Memcpy->getParent()->getParent();
+        const TargetTransformInfo &TTI =
+            getAnalysis<TargetTransformInfoWrapperPass>().getTTI(*ParentFunc);
+        ExpandMemCpyAsLoop(Memcpy, TTI);
+        Changed = true;
+        Memcpy->eraseFromParent();
+      }
 
       break;
     }

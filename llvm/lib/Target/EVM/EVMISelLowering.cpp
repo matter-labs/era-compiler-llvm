@@ -5,6 +5,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMISelLowering.h"
+#include "EVM.h"
 #include "EVMTargetMachine.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "llvm/IR/DiagnosticInfo.h"
@@ -116,8 +117,6 @@ SDValue EVMTargetLowering::LowerGlobalAddress(SDValue Op,
   EVT VT = Op.getValueType();
   assert(GA->getTargetFlags() == 0 &&
          "Unexpected target flags on generic GlobalAddressSDNode");
-  if (GA->getAddressSpace() != 0)
-    fail(DL, DAG, "EVM expects only the 0 address space");
 
   return DAG.getNode(
       EVMISD::TARGET_ADDR_WRAPPER, DL, VT,

@@ -30,3 +30,28 @@ define void @alloca3(i256 %val) nounwind {
   store i256 %val, ptr %fill
   ret void
 }
+
+define i256 @alloca4() nounwind {
+; CHECK-LABEL: alloca4:
+; CHECK: CONST_I256 [[OFF:\$[0-9]+]], 64
+; CHECK: ADD [[PTR:\$[0-9]+]], %SP, [[OFF]]
+; CHECK: STACK_LOAD [[RES:\$[0-9]+]], [[PTR]]
+
+  %alloca_ptr = alloca i256, i32 128
+  %elm = getelementptr i256, ptr %alloca_ptr, i256 2
+  %rv = load i256, ptr %elm
+  ret i256 %rv
+}
+
+define void @alloca5(i256 %val) nounwind {
+; CHECK-LABEL: alloca5:
+; CHECK: ARGUMENT [[ARG1:\$[0-9]]], 0
+; CHECK: CONST_I256 [[OFF:\$[0-9]+]], 64
+; CHECK: ADD [[PTR:\$[0-9]+]], %SP, [[OFF]]
+; CHECK: STACK_STORE [[PTR]], [[RES:\$[0-9]+]]
+
+  %alloca_ptr = alloca i256, i32 128
+  %elm = getelementptr i256, ptr %alloca_ptr, i256 2
+  store i256 %val, ptr %elm
+  ret void
+}

@@ -1,5 +1,7 @@
 ; RUN: llc < %s 
 
+;UNSUPPORTED: evm
+
 ; This testcase is invalid (the alignment specified for memcpy is 
 ; greater than the alignment guaranteed for Qux or C.0.1173), but it
 ; should compile, not crash the code generator.

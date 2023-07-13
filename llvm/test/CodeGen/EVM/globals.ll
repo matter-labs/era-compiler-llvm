@@ -2,21 +2,21 @@
 
 %struct.w = type { i32, i256 }
 
-@val = global i256 0
-@val2 = global i256 42
-@val3 = global i256 0
-@val.arr = global [4 x i256] zeroinitializer
-@val2.arr = global [4 x i256] [i256 1, i256 2, i256 3, i256 4]
-@as_ptr = global ptr zeroinitializer
-@w = external dso_local local_unnamed_addr global %struct.w, align 1
+@val = addrspace(1) global i256 0
+@val2 = addrspace(1) global i256 42
+@val3 = addrspace(1) global i256 0
+@val.arr = addrspace(1) global [4 x i256] zeroinitializer
+@val2.arr = addrspace(1) global [4 x i256] [i256 1, i256 2, i256 3, i256 4]
+@as_ptr = addrspace(1) global ptr zeroinitializer
+@w = external dso_local local_unnamed_addr addrspace(1) global %struct.w, align 1
 
 define i256 @load.stelem() {
 ; CHECK-LABEL: load.stelem
 ; CHECK: CONST_I256 [[ADDR:\$[0-9]+]], @w+32
 ; CHECK: MLOAD [[TMP:\$[0-9]+]], [[ADDR]]
 
-  %elem = getelementptr inbounds %struct.w, ptr @w, i32 0, i32 1
-  %load = load i256, ptr %elem
+  %elem = getelementptr inbounds %struct.w, ptr addrspace(1) @w, i32 0, i32 1
+  %load = load i256, ptr addrspace(1) %elem
   ret i256 %load
 }
 
@@ -25,7 +25,7 @@ define i256 @load.elem() nounwind {
 ; CHECK: CONST_I256 [[ADDR:\$[0-9]+]], @val
 ; CHECK: MLOAD [[TMP:\$[0-9]+]], [[ADDR]]
 
-  %res = load i256, i256* @val
+  %res = load i256, i256 addrspace(1)* @val
   ret i256 %res
 }
 
@@ -34,7 +34,7 @@ define void @store.elem(i256 %val) nounwind {
 ; CHECK: CONST_I256 [[ADDR:\$[0-9]+]], @val
 ; CHECK: MSTORE [[ADDR]], {{.*}}
 
-  store i256 %val, i256* @val
+  store i256 %val, i256 addrspace(1)* @val
   ret void
 }
 
@@ -47,8 +47,8 @@ define i256 @load.fromarray(i256 %i) nounwind {
 ; CHECK: ADD  [[ADDR:\$[0-9]+]], [[TMP]], [[SHL]]
 ; CHECK: MLOAD [[RES:\$[0-9]+]], [[ADDR]]
 
-  %elem = getelementptr [4 x i256], [4 x i256]* @val2.arr, i256 0, i256 %i
-  %res = load i256, i256* %elem
+  %elem = getelementptr [4 x i256], [4 x i256] addrspace(1)* @val2.arr, i256 0, i256 %i
+  %res = load i256, i256 addrspace(1)* %elem
   ret i256 %res
 }
 
@@ -62,8 +62,8 @@ define void @store.toarray(i256 %val, i256 %i) nounwind {
 ; CHECK: ADD  [[ADDR:\$[0-9]+]], [[TMP]], [[SHL]]
 ; CHECK: MSTORE [[ADDR]], [[VAL]]
 
-  %elem = getelementptr [4 x i256], [4 x i256]* @val.arr, i256 0, i256 %i
-  store i256 %val, i256* %elem
+  %elem = getelementptr [4 x i256], [4 x i256] addrspace(1)* @val.arr, i256 0, i256 %i
+  store i256 %val, i256 addrspace(1)* %elem
   ret void
 }
 
@@ -72,15 +72,15 @@ define ptr @load.ptr() nounwind {
 ; CHECK: CONST_I256 [[ADDR:\$[0-9]+]], @as_ptr
 ; CHECK: MLOAD [[TMP:\$[0-9]+]], [[ADDR]]
 
-  %res = load ptr, ptr @as_ptr
+  %res = load ptr, ptr addrspace(1) @as_ptr
   ret ptr %res
 }
 
-define void @store.ptr(ptr %val) nounwind {
+define void @store.ptr(ptr addrspace(1) %val) nounwind {
 ; CHECK-LABEL: store.ptr
 ; CHECK: CONST_I256 [[ADDR:\$[0-9]+]], @as_ptr
 ; CHECK: MSTORE [[ADDR]], {{.*}}
 
-  store ptr %val, ptr @as_ptr
+  store ptr addrspace(1) %val, ptr addrspace(1) @as_ptr
   ret void
 }
