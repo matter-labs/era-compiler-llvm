@@ -16,6 +16,17 @@ class FunctionPass;
 class ModulePass;
 class PassRegistry;
 
+namespace EVMAS {
+// EVM address spaces
+enum AddressSpaces {
+  AS_STACK = 0,
+  AS_HEAP = 1,
+  AS_CALL_DATA = 2,
+  AS_RETURN_DATA = 3,
+  AS_CODE = 4,
+};
+} // namespace EVMAS
+
 // LLVM IR passes.
 ModulePass *createEVMLowerIntrinsicsPass();
 

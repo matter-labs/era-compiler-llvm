@@ -4,6 +4,15 @@
 //
 //===----------------------------------------------------------------------===//
 
+// This must be in sync with the declaration of address spaces in EVM.h
+def AS {
+  int STACK = 0;
+  int HEAP = 1;
+  int CALL_DATA = 2;
+  int RETURN_DATA = 3;
+  int CODE = 4;
+}
+
 let TargetPrefix = "evm" in {
 
 // Arithmetical operations.
@@ -19,12 +28,13 @@ def int_evm_exp
   : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
 
 def int_evm_sha3
-  : Intrinsic<[llvm_i256_ty], [LLVMPointerType<llvm_i256_ty>, llvm_i256_ty],
+  : Intrinsic<[llvm_i256_ty],
+              [LLVMQualPointerType<llvm_i256_ty, AS.HEAP>, llvm_i256_ty],
               [IntrReadMem]>;
 
 // Memory operations.
 def int_evm_mstore8
-  : Intrinsic<[], [LLVMPointerType<llvm_i256_ty>, llvm_i256_ty],
+  : Intrinsic<[], [LLVMQualPointerType<llvm_i8_ty, AS.HEAP>, llvm_i256_ty],
               [IntrWriteMem, IntrHasSideEffects]>;
 
 def int_evm_sload
@@ -54,34 +64,42 @@ def int_evm_callvalue : Intrinsic<[llvm_i256_ty], [], []>;
 
 def int_evm_calldatasize : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
 
-def int_evm_calldataload : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], []>;
+def int_evm_calldataload
+  : Intrinsic<[llvm_i256_ty], [LLVMQualPointerType<llvm_i256_ty, AS.CALL_DATA>],
+              []>;
 
 def int_evm_calldatacopy
-  : Intrinsic<[], [LLVMPointerType<llvm_i256_ty>, llvm_i256_ty, llvm_i256_ty],
+  : Intrinsic<[], [LLVMQualPointerType<llvm_i256_ty, AS.HEAP>,
+              LLVMQualPointerType<llvm_i256_ty, AS.CALL_DATA>, llvm_i256_ty],
               [IntrWriteMem]>;
 
 def int_evm_codesize : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
 
 def int_evm_codecopy
-  : Intrinsic<[], [LLVMPointerType<llvm_i256_ty>, llvm_i256_ty, llvm_i256_ty],
+  : Intrinsic<[], [LLVMQualPointerType<llvm_i256_ty, AS.HEAP>,
+                  LLVMQualPointerType<llvm_i256_ty, AS.CODE>, llvm_i256_ty],
               [IntrWriteMem]>;
 
 // TODO: Ensure the gasprice is fixed while a function execution.
 def int_evm_gasprice : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
 
-def int_evm_extcodesize : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrNoMem]>;
+def int_evm_extcodesize
+  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrNoMem]>;
 
 def int_evm_extcodecopy
-  : Intrinsic<[], [llvm_i256_ty, LLVMPointerType<llvm_i256_ty>, llvm_i256_ty,
-                   llvm_i256_ty], [IntrWriteMem]>;
+  : Intrinsic<[], [llvm_i256_ty, LLVMQualPointerType<llvm_i256_ty, AS.HEAP>,
+                   LLVMQualPointerType<llvm_i256_ty, AS.CODE>, llvm_i256_ty],
+              [IntrWriteMem]>;
 
 def int_evm_returndatasize : Intrinsic<[llvm_i256_ty], [], []>;
 
 def int_evm_returndatacopy
-  : Intrinsic<[], [LLVMPointerType<llvm_i256_ty>, llvm_i256_ty, llvm_i256_ty],
-              [IntrWriteMem]>;
+  : Intrinsic<[], [LLVMQualPointerType<llvm_i256_ty, AS.HEAP>,
+                   LLVMQualPointerType<llvm_i256_ty, AS.RETURN_DATA>,
+                   llvm_i256_ty], [IntrWriteMem]>;
 
-def int_evm_extcodehash : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrNoMem]>;
+def int_evm_extcodehash
+  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrNoMem]>;
 
 def int_evm_blockhash : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrNoMem]>;
 
@@ -103,58 +121,62 @@ def int_evm_basefee : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
 
 // Logging.
 def int_evm_log0
-  : Intrinsic<[], [LLVMPointerType<llvm_i256_ty>, llvm_i256_ty],
-              [IntrWriteMem]>;
+  : Intrinsic<[], [LLVMQualPointerType<llvm_i256_ty, AS.HEAP>, llvm_i256_ty],
+              []>;
 
 def int_evm_log1
-  : Intrinsic<[], [LLVMPointerType<llvm_i256_ty>, llvm_i256_ty, llvm_i256_ty],
-              [IntrWriteMem]>;
+  : Intrinsic<[], [LLVMQualPointerType<llvm_i256_ty, AS.HEAP>, llvm_i256_ty,
+                   llvm_i256_ty], []>;
 
 def int_evm_log2
-  : Intrinsic<[], [LLVMPointerType<llvm_i256_ty>, llvm_i256_ty, llvm_i256_ty,
-                   llvm_i256_ty],
-              [IntrWriteMem]>;
+  : Intrinsic<[], [LLVMQualPointerType<llvm_i256_ty, AS.HEAP>, llvm_i256_ty,
+                   llvm_i256_ty, llvm_i256_ty], []>;
 
 def int_evm_log3
-  : Intrinsic<[], [LLVMPointerType<llvm_i256_ty>, llvm_i256_ty, llvm_i256_ty,
-                   llvm_i256_ty, llvm_i256_ty],
-              [IntrWriteMem]>;
+  : Intrinsic<[], [LLVMQualPointerType<llvm_i256_ty, AS.HEAP>, llvm_i256_ty,
+                   llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], []>;
 
 def int_evm_log4
-  : Intrinsic<[], [LLVMPointerType<llvm_i256_ty>, llvm_i256_ty, llvm_i256_ty,
-                   llvm_i256_ty, llvm_i256_ty, llvm_i256_ty],
-              [IntrWriteMem]>;
+  : Intrinsic<[], [LLVMQualPointerType<llvm_i256_ty, AS.HEAP>, llvm_i256_ty,
+                   llvm_i256_ty, llvm_i256_ty, llvm_i256_ty, llvm_i256_ty],
+              []>;
 
 // System calls
 def int_evm_create
-  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, LLVMPointerType<llvm_i256_ty>,
-                               llvm_i256_ty], []>;
+  : Intrinsic<[llvm_i256_ty],
+              [llvm_i256_ty, LLVMQualPointerType<llvm_i256_ty, AS.HEAP>,
+              llvm_i256_ty], []>;
 
 def int_evm_call
   : Intrinsic<[llvm_i256_ty],
               [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty,
-               LLVMPointerType<llvm_i256_ty>, llvm_i256_ty,
-               LLVMPointerType<llvm_i256_ty>, llvm_i256_ty], []>;
+               LLVMQualPointerType<llvm_i256_ty, AS.HEAP>, llvm_i256_ty,
+               LLVMQualPointerType<llvm_i256_ty, AS.HEAP>, llvm_i256_ty], []>;
 
 def int_evm_callcode
   : Intrinsic<[llvm_i256_ty],
               [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty,
-               LLVMPointerType<llvm_i256_ty>, llvm_i256_ty,
-               LLVMPointerType<llvm_i256_ty>, llvm_i256_ty], []>;
+               LLVMQualPointerType<llvm_i256_ty, AS.HEAP>, llvm_i256_ty,
+               LLVMQualPointerType<llvm_i256_ty, AS.HEAP>, llvm_i256_ty], []>;
 
 def int_evm_delegatecall
   : Intrinsic<[llvm_i256_ty],
-              [llvm_i256_ty, llvm_i256_ty, LLVMPointerType<llvm_i256_ty>,
-               llvm_i256_ty, LLVMPointerType<llvm_i256_ty>, llvm_i256_ty], []>;
+              [llvm_i256_ty, llvm_i256_ty,
+               LLVMQualPointerType<llvm_i256_ty, AS.HEAP>,
+               llvm_i256_ty, LLVMQualPointerType<llvm_i256_ty, AS.HEAP>,
+               llvm_i256_ty], []>;
 
 def int_evm_create2
-  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, LLVMPointerType<llvm_i256_ty>,
+  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty,
+                               LLVMQualPointerType<llvm_i256_ty, AS.HEAP>,
                                llvm_i256_ty, llvm_i256_ty], []>;
 
 def int_evm_staticcall
   : Intrinsic<[llvm_i256_ty],
-              [llvm_i256_ty, llvm_i256_ty, LLVMPointerType<llvm_i256_ty>,
-               llvm_i256_ty, LLVMPointerType<llvm_i256_ty>, llvm_i256_ty], []>;
+              [llvm_i256_ty, llvm_i256_ty,
+               LLVMQualPointerType<llvm_i256_ty, AS.HEAP>,
+               llvm_i256_ty, LLVMQualPointerType<llvm_i256_ty, AS.HEAP>,
+               llvm_i256_ty], []>;
 
 
 def int_evm_selfdestruct: Intrinsic<[], [llvm_i256_ty], []>;

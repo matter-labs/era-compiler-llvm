@@ -11,6 +11,7 @@
 #include "EVMISelLowering.h"
 #include "EVMInstrInfo.h"
 #include "EVMRegisterInfo.h"
+#include "EVMSelectionDAGInfo.h"
 #include "llvm/CodeGen/SelectionDAGTargetInfo.h"
 #include "llvm/CodeGen/TargetSubtargetInfo.h"
 
@@ -26,7 +27,7 @@ private:
   EVMFrameLowering FrameLowering;
   EVMInstrInfo InstrInfo;
   EVMTargetLowering TLInfo;
-  SelectionDAGTargetInfo TSInfo;
+  EVMSelectionDAGInfo TSInfo;
 
 public:
   // This constructor initializes the data members to match that
@@ -49,7 +50,7 @@ public:
   const EVMTargetLowering *getTargetLowering() const override {
     return &TLInfo;
   }
-  const SelectionDAGTargetInfo *getSelectionDAGInfo() const override {
+  const EVMSelectionDAGInfo *getSelectionDAGInfo() const override {
     return &TSInfo;
   }
 
