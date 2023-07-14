@@ -1,4 +1,6 @@
 name: Compiler integration testing
+env:
+  COMPILER_LLVM_DEFAULT_BRANCH_NAME: "dev-15"  # Can’t be used for compiler_llvm_branch popup
 
 on:
   pull_request:
@@ -52,7 +54,8 @@ jobs:
           git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
           git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
           git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
-          apt install -y ninja-build
+          apt update
+          apt install -y ninja-build clang-tidy-15
 
       - name: Preparing LLVM.lock (pull request)
         if: github.event_name == 'pull_request'
@@ -78,15 +81,28 @@ jobs:
         if: ${{ env.LLVM_BUILD_TYPE == 'debug' }}
         working-directory: compiler-tester
         run: |
-          zkevm-llvm build --debug --enable-tests --extra-args '\-DLLVM_ENABLE_WERROR=On'
+          zkevm-llvm build --debug --enable-tests --extra-args '\-DLLVM_ENABLE_WERROR=On'  '\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON'
 
       - name: Building the LLVM framework (release)
         if: ${{ env.LLVM_BUILD_TYPE == 'release' }}
         working-directory: compiler-tester
         run: |
-          zkevm-llvm build --enable-tests --extra-args '\-DLLVM_ENABLE_WERROR=On'
-          
-      - name: Running Lit tests with default options   
+          zkevm-llvm build --enable-tests --extra-args '\-DLLVM_ENABLE_WERROR=On'   '\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON'
+
+      - name: Checking with clang-tidy-diff.py
+        shell: bash
+        working-directory: compiler-tester/llvm
+        run: |
+          pwd
+          echo $SHELL
+          $SHELL --version
+          clang-tidy-15  --version
+          git status
+          git branch
+          set -euxo pipefail
+          git diff -U0 remotes/origin/${{ env.COMPILER_LLVM_DEFAULT_BRANCH_NAME }} | ./clang-tools-extra/clang-tidy/tool/clang-tidy-diff_Zegar.py -p1 -clang-tidy-binary /usr/bin/clang-tidy-15   -path ../target-llvm/build-final/compile_commands.json
+
+      - name: Running Lit tests with default options
         working-directory: compiler-tester
         run: |
           ninja -C './target-llvm/build-final' check-llvm
@@ -153,7 +169,7 @@ jobs:
       - name: Building and running the compiler tester
         id: compiler_tester_run
         working-directory: compiler-tester
-        run: |          
+        run: |
           export RUST_BACKTRACE='full'
           export LLVM_SYS_150_PREFIX="$(pwd)/target-llvm/target-final/"
           cargo build --verbose --release --bin 'compiler-tester'
