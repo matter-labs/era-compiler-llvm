@@ -11305,7 +11305,8 @@ void SelectionDAGBuilder::visitSwitch(const SwitchInst &SI) {
   // TODO: CPR-688 SyncVM can build jump tables, though the constants are 4
   // times as expensive as instructions in terms of code size. For hot pieces of
   // code it still makes sense.
-  if (!TM.getTargetTriple().isSyncVM()) {
+  // Disable jump tables for EVM. The reason is the same as for SyncVM.
+  if (!TM.getTargetTriple().isSyncVM() && !TM.getTargetTriple().isEVM()) {
     SL->findJumpTables(Clusters, &SI, DefaultMBB, DAG.getPSI(), DAG.getBFI());
     SL->findBitTestClusters(Clusters, &SI);
   }
