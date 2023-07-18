@@ -32,6 +32,9 @@ def int_evm_sha3
               [LLVMQualPointerType<llvm_i256_ty, AS.HEAP>, llvm_i256_ty],
               [IntrReadMem]>;
 
+def int_evm_signextend
+  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
+
 // Memory operations.
 def int_evm_mstore8
   : Intrinsic<[], [LLVMQualPointerType<llvm_i8_ty, AS.HEAP>, llvm_i256_ty],
@@ -189,5 +192,8 @@ def int_evm_invalid: Intrinsic<[], [], [IntrNoReturn]>;
 def int_evm_return: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty], [IntrNoReturn]>;
 
 def int_evm_revert: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty], [IntrNoReturn]>;
+
+// Stack manipulation.
+def int_evm_pop: Intrinsic<[], [llvm_i256_ty], [IntrNoReturn]>;
 
 } // TargetPrefix = "evm"
