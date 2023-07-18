@@ -254,7 +254,8 @@ defm EXP
       "EXP $dst, $base, $exp", 0x0A, 10>;
 
 defm SIGNEXTEND
-  : I<(outs GPR:$dst), (ins GPR:$size, GPR:$src), [],
+  : I<(outs GPR:$dst), (ins GPR:$size, GPR:$src),
+      [(set GPR:$dst, (int_evm_signextend GPR:$size, GPR:$src))],
       "SIGNEXTEND $dst, $size, $src", 0x0B, 5>;
 
 // The first operand of SIGNEXTEND is the type size in bytes of
@@ -688,3 +689,10 @@ let hasSideEffects = 1 in {
 
   defm INVALID : I<(outs), (ins), [(int_evm_invalid)], "INVALID", 0xFE, 0>;
 }
+
+
+//===----------------------------------------------------------------------===//
+// EVM instructions for stack manipulation.
+//===----------------------------------------------------------------------===//
+defm POP : I<(outs), (ins GPR:$val), [(int_evm_pop GPR:$val)],
+             "POP $val", 0x50, 2>;

@@ -42,6 +42,16 @@ define i256 @sha3(ptr addrspace(1) %offset, i256 %size) nounwind {
   ret i256 %res
 }
 
+define i256 @signextend(i256 %bytesize, i256 %val) nounwind {
+; CHECK-LABEL: @signextend
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
+; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: SIGNEXTEND [[RES1:\$[0-9]+]], [[IN1]], [[IN2]]
+
+  %res = call i256 @llvm.evm.signextend(i256 %bytesize, i256 %val)
+  ret i256 %res
+}
+
 define void @sstore(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: @sstore
 ; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
@@ -458,10 +468,20 @@ define void @invalid() nounwind {
   ret void
 }
 
+define void @pop(i256 %val) nounwind {
+; CHECK-LABEL: @pop
+; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: POP [[IN1]]
+
+  call void @llvm.evm.pop(i256 %val)
+  ret void
+}
+
 declare i256 @llvm.evm.addmod(i256, i256, i256)
 declare i256 @llvm.evm.mulmod(i256, i256, i256)
 declare i256 @llvm.evm.exp(i256, i256)
 declare i256 @llvm.evm.sha3(ptr addrspace(1), i256)
+declare i256 @llvm.evm.signextend(i256, i256)
 declare void @llvm.evm.sstore(i256, i256)
 declare i256 @llvm.evm.sload(i256)
 declare i256 @llvm.evm.pc()
@@ -505,3 +525,4 @@ declare void @llvm.evm.selfdestruct(i256)
 declare void @llvm.evm.return(i256, i256)
 declare void @llvm.evm.revert(i256, i256)
 declare void @llvm.evm.invalid()
+declare void @llvm.evm.pop(i256)
