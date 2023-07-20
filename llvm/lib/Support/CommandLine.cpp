@@ -2850,6 +2850,7 @@ void LLVMParseCommandLineOptions(int argc, const char *const *argv,
 
 // EraVM local begin
 int LLVMPrintCommitIDTo(char* Buf) {
-  return sprintf(Buf, "%s", ERAVM_LLVM_COMMIT_ID);
+  return snprintf(Buf, sizeof(ERAVM_LLVM_COMMIT_ID), "%s",
+                  ERAVM_LLVM_COMMIT_ID);
 }
 // EraVM local end
