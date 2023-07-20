@@ -2850,6 +2850,7 @@ void LLVMParseCommandLineOptions(int argc, const char *const *argv,
 
 // EVM local begin
 int LLVMPrintCommitIDTo(char* Buf) {
-  return sprintf(Buf, "%s", EVM_LLVM_COMMIT_ID);
+  return snprintf(Buf, sizeof(EVM_LLVM_COMMIT_ID), "%s",
+                  EVM_LLVM_COMMIT_ID);
 }
 // EVM local end
