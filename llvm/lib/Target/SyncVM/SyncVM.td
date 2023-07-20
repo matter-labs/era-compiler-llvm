@@ -12,6 +12,9 @@
 
 include "llvm/Target/Target.td"
 
+class Proc<string Name, list<SubtargetFeature> Features>
+ : Processor<Name, NoItineraries, Features>;
+def : Proc<"generic",         []>;
 
 
 //===----------------------------------------------------------------------===//

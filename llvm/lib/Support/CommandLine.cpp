@@ -2747,6 +2747,7 @@ void LLVMParseCommandLineOptions(int argc, const char *const *argv,
 
 // SyncVM local begin
 int LLVMPrintCommitIDTo(char* Buf) {
-  return sprintf(Buf, "%s", SYNCVM_LLVM_COMMIT_ID);
+  return snprintf(Buf, sizeof(SYNCVM_LLVM_COMMIT_ID), "%s",
+                  SYNCVM_LLVM_COMMIT_ID);
 }
 // SyncVM local end
