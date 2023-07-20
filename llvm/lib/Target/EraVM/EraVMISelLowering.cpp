@@ -56,9 +56,9 @@ SDValue EraVMTargetLowering::wrapSymbol(const SDValue &ValueToWrap,
   case EraVMAS::AS_CODE:
     return DAG.getNode(EraVMISD::GACode, DL, VT, ValueToWrap);
   default:
-    llvm_unreachable("Global symbol in unexpected addr space");
+    break;
   }
-  return {};
+  llvm_unreachable("Global symbol in unexpected addr space");
 }
 
 /// Wrap a global address and lower to TargetGlobalAddress.
@@ -67,7 +67,7 @@ SDValue EraVMTargetLowering::wrapGlobalAddress(const SDValue &ValueToWrap,
                                                SelectionDAG &DAG,
                                                const SDLoc &DL) const {
   // convert to TargetGlobalAddress
-  auto *GANode = dyn_cast<GlobalAddressSDNode>(ValueToWrap.getNode());
+  auto *GANode = cast<GlobalAddressSDNode>(ValueToWrap.getNode());
   auto TGA = DAG.getTargetGlobalAddress(
       GANode->getGlobal(), DL, ValueToWrap.getValueType(), GANode->getOffset());
   return wrapSymbol(TGA, DAG, DL, GANode->getAddressSpace());
@@ -79,7 +79,7 @@ SDValue EraVMTargetLowering::wrapExternalSymbol(const SDValue &ValueToWrap,
                                                 SelectionDAG &DAG,
                                                 const SDLoc &DL) const {
   // convert to TargetExternalSymbol
-  auto *ESNode = dyn_cast<ExternalSymbolSDNode>(ValueToWrap.getNode());
+  auto *ESNode = cast<ExternalSymbolSDNode>(ValueToWrap.getNode());
   auto TES = DAG.getTargetExternalSymbol(ESNode->getSymbol(),
                                          ValueToWrap.getValueType());
   return wrapSymbol(TES, DAG, DL, EraVMAS::AS_CODE);
@@ -705,16 +705,14 @@ SDValue EraVMTargetLowering::LowerANY_EXTEND(SDValue Op,
 SDValue EraVMTargetLowering::LowerZERO_EXTEND(SDValue Op,
                                               SelectionDAG &DAG) const {
   SDLoc DL(Op);
-  SDValue extending_value = Op.getOperand(0);
-  if (extending_value.getValueType() == Op.getValueType()) {
-    return extending_value;
-  } else {
-    // eliminate zext
-    SDValue new_value = DAG.getNode(extending_value->getOpcode(), DL,
-                                    Op.getValueType(), extending_value->ops());
-    return new_value;
-  }
-  return {};
+  SDValue ExtendingValue = Op.getOperand(0);
+  if (ExtendingValue.getValueType() == Op.getValueType())
+    return ExtendingValue;
+
+  // eliminate zext
+  SDValue NewValue = DAG.getNode(ExtendingValue->getOpcode(), DL,
+                                 Op.getValueType(), ExtendingValue->ops());
+  return NewValue;
 }
 
 SDValue EraVMTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {

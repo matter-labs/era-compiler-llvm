@@ -74,7 +74,7 @@ bool EraVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
 
   if (MI.getOpcode() == EraVM::ADDframe) {
     auto *SPInst = BuildMI(MBB, II, DL, TII.get(EraVM::CTXr_se))
-                       .add(MI.getOperand(0))
+                       .addDef(MI.getOperand(0).getReg())
                        .addImm(EraVMCTX::SP)
                        .addImm(EraVMCC::COND_NONE)
                        .getInstr();
@@ -82,7 +82,7 @@ bool EraVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     SPInst = BuildMI(MBB, II, DL, TII.get(EraVM::SUBxrr_s))
                  .addDef(MI.getOperand(0).getReg())
                  .addImm(-Offset / 32)
-                 .add(SPInst->getOperand(0))
+                 .addReg(SPInst->getOperand(0).getReg())
                  .addImm(EraVMCC::COND_NONE)
                  .getInstr();
 
@@ -93,7 +93,7 @@ bool EraVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
         .addDef(MI.getOperand(0).getReg())
         .addDef(EraVM::R0)
         .addImm(32)
-        .add(SPInst->getOperand(0))
+        .addReg(SPInst->getOperand(0).getReg())
         .addImm(EraVMCC::COND_NONE);
     MI.eraseFromParent();
     return true;
