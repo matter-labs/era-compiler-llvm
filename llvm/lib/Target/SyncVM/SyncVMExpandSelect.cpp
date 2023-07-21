@@ -56,6 +56,8 @@ static unsigned movOpcode(SyncVM::ArgumentKind Kind, unsigned Select) {
     return SyncVM::ADDcrr_s;
   case SyncVM::ArgumentType::Stack:
     return SyncVM::ADDsrr_s;
+  default:
+    break;
   }
   llvm_unreachable("Unexpected argument type");
 }

@@ -90,9 +90,9 @@ inline bool isSelect(const MachineInstr &MI) {
   return isSelect(MI.getOpcode());
 }
 
-enum class ArgumentKind { In0, In1, Out0, Out1 };
+enum class ArgumentKind { In0, In1, Out0, Out1, CC };
 
-enum class ArgumentType { Register, Immediate, Code, Stack };
+enum class ArgumentType { Register, Immediate, Code, Stack, CondCode };
 
 /// Return argument addressing mode for a specified argument.
 ArgumentType argumentType(ArgumentKind Kind, unsigned Opcode);
@@ -105,6 +105,7 @@ inline unsigned argumentSize(ArgumentType Type) {
   switch (Type) {
   case ArgumentType::Register:
   case ArgumentType::Immediate:
+  case ArgumentType::CondCode:
     return 1;
   case ArgumentType::Code:
     return 2;
@@ -126,6 +127,7 @@ MachineInstr::mop_iterator in0Iterator(MachineInstr &MI);
 MachineInstr::mop_iterator in1Iterator(MachineInstr &MI);
 MachineInstr::mop_iterator out0Iterator(MachineInstr &MI);
 MachineInstr::mop_iterator out1Iterator(MachineInstr &MI);
+MachineInstr::mop_iterator ccIterator(MachineInstr &MI);
 /// @}
 
 /// \defgroup ISAOperandRange MOP ranges to instruction operands as per ISA.
@@ -146,6 +148,10 @@ inline auto out0Range(MachineInstr &MI) {
 inline auto out1Range(MachineInstr &MI) {
   auto It = out1Iterator(MI);
   return make_range(It, It + argumentSize(ArgumentKind::Out1, MI));
+}
+inline auto ccRange(MachineInstr &MI) {
+  auto It = ccIterator(MI);
+  return make_range(It, It + argumentSize(ArgumentKind::CC, MI));
 }
 /// @}
 
@@ -207,6 +213,27 @@ public:
                             const TargetRegisterInfo *TRI) const override;
 
   unsigned getInstSizeInBytes(const MachineInstr &MI) const override;
+
+  static std::optional<SyncVMCC::CondCodes>
+  getReversedCondition(SyncVMCC::CondCodes CC);
+
+  bool isPredicable(const MachineInstr &MI) const override;
+
+  bool isProfitableToIfCvt(MachineBasicBlock &MBB, unsigned NumCycles,
+                           unsigned ExtraPredCycles,
+                           BranchProbability Probability) const override;
+
+  bool isProfitableToIfCvt(MachineBasicBlock &TMBB, unsigned NumTCycles,
+                           unsigned ExtraTCycles, MachineBasicBlock &FMBB,
+                           unsigned NumFCycles, unsigned ExtraFCycles,
+                           BranchProbability Probability) const override;
+
+  bool isProfitableToDupForIfCvt(MachineBasicBlock &MBB, unsigned NumInstrs,
+                                 BranchProbability Probability) const override;
+
+  virtual bool
+  PredicateInstruction(MachineInstr &MI,
+                       ArrayRef<MachineOperand> Pred) const override;
 
   // Branch folding goodness
   bool
@@ -277,6 +304,9 @@ public:
 
   bool isPredicatedInstr(const MachineInstr &MI) const;
   SyncVMCC::CondCodes getCCCode(const MachineInstr &MI) const;
+  
+  // return true if the update is successful
+  bool updateCCCode(MachineInstr &MI, SyncVMCC::CondCodes CC) const;
 
   unsigned defaultOutlineReruns() const override { return 5; }
 
@@ -341,6 +371,15 @@ public:
   void fixupPostOutline(
       std::vector<std::pair<MachineFunction *, std::vector<MachineFunction *>>>
           &FixupFunctions) const override;
+
+  // The maximum size of a MBB that should be considered for if-conversion.
+  // On SyncVM, the benefit of if-conversion comes from eliminating the
+  // conditional jump.
+  // * If the MBB size is 1, 1 branch instruction saved.
+  // * If the MBB size is 2, we break even.
+  // * bigger MBB size will have negative yield.
+  // In order to maximize if_conversion, we set the threshold to 2.
+  static const int MAX_MBB_SIZE_TO_ALWAYS_IFCVT = 2;
 };
 
 } // namespace llvm
