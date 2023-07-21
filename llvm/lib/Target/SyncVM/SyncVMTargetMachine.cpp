@@ -104,6 +104,7 @@ public:
   bool addInstSelector() override;
   void addPreRegAlloc() override;
   void addPreEmitPass() override;
+  void addPreSched2() override;
 };
 } // namespace
 
@@ -161,6 +162,12 @@ void SyncVMPassConfig::addPreRegAlloc() {
     addPass(createSyncVMCombineFlagSettingPass());
     // This pass emits indexed loads and stores
     addPass(createSyncVMCombineToIndexedMemopsPass());
+  }
+}
+
+void SyncVMPassConfig::addPreSched2() {
+  if (getOptLevel() != CodeGenOpt::None) {
+    addPass(createIfConverter([](const MachineFunction &MF) { return true; }));
   }
 }
 
