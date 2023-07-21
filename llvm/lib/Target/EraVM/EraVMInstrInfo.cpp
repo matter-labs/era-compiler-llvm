@@ -112,6 +112,14 @@ MachineInstr::mop_iterator out1Iterator(MachineInstr &MI) {
   return MI.operands_begin() + MI.getNumExplicitDefs() - 1;
 }
 
+MachineInstr::const_mop_iterator ccIterator(const MachineInstr &MI) {
+  return MI.operands_begin() + (MI.getNumExplicitOperands() - 1);
+}
+
+MachineInstr::mop_iterator ccIterator(MachineInstr &MI) {
+  return MI.operands_begin() + (MI.getNumExplicitOperands() - 1);
+}
+
 int getWithRRInAddrMode(uint16_t Opcode) {
   Opcode = getWithInsNotSwapped(Opcode);
   if (int Result = mapRRInputTo(Opcode, OperandAM_0); Result != -1)
@@ -256,7 +264,6 @@ unsigned EraVMInstrInfo::removeBranch(MachineBasicBlock &MBB,
     I = MBB.end();
     ++Count;
   }
-
   return Count;
 }
 
@@ -567,10 +574,11 @@ bool EraVMInstrInfo::isPredicatedInstr(const MachineInstr &MI) const {
 
 /// Returns the predicate operand
 EraVMCC::CondCodes EraVMInstrInfo::getCCCode(const MachineInstr &MI) const {
-  if (!isPredicatedInstr(MI))
+  if (!EraVMInstrInfo::isPredicatedInstr(MI))
     return EraVMCC::COND_INVALID;
 
-  auto CC = MI.getOperand(MI.getNumExplicitOperands() - 1);
+  // predicated CC is the last operand of the instruction
+  auto CC = *EraVM::ccIterator(MI);
 
   if (CC.isImm())
     return EraVMCC::CondCodes(CC.getImm());
@@ -1043,6 +1051,14 @@ void EraVMInstrInfo::fixupPostOutline(
   } while (Changed);
 }
 
+bool EraVMInstrInfo::PredicateInstruction(MachineInstr &MI,
+                                          ArrayRef<MachineOperand> Pred) const {
+  assert(Pred.size() == 1);
+  auto CC = static_cast<EraVMCC::CondCodes>(getImmOrCImm(Pred[0]));
+
+  return EraVMInstrInfo::updateCCCode(MI, CC);
+}
+
 std::optional<EraVMCC::CondCodes>
 EraVMInstrInfo::getReversedCondition(EraVMCC::CondCodes CC) {
   const std::unordered_map<EraVMCC::CondCodes, EraVMCC::CondCodes> ReverseMap =
@@ -1058,4 +1074,139 @@ EraVMInstrInfo::getReversedCondition(EraVMCC::CondCodes CC) {
   auto it = ReverseMap.find(CC);
   return (it == ReverseMap.end()) ? std::optional<EraVMCC::CondCodes>()
                                   : it->second;
+}
+
+bool EraVMInstrInfo::isPredicable(const MachineInstr &MI) const {
+  if (!isPredicatedInstr(MI))
+    return false;
+
+  // we cannot make a flag setting instruction predicated execute
+  if (EraVMInstrInfo::isFlagSettingInstruction(MI.getOpcode()))
+    return false;
+
+  // CPR-1241: We temporarily disable ld/st instructions from being predicated
+  // until assembler is fixed to support predicated ld/st instructions.
+  if (isLoad(MI) || isFatLoad(MI) || isStore(MI))
+    return false;
+
+  // some instructions are not defined as predicated yet in our backend:
+  // CPR-1231 to track the progress to make them predicated
+  if (MI.getOpcode() == EraVM::J)
+    return false;
+
+  // check condition code validity.
+  EraVMCC::CondCodes CC = getCCCode(MI);
+  if (CC == EraVMCC::COND_INVALID)
+    return false;
+
+  return true;
+}
+
+static bool probabilityIsProfitable(unsigned TrueCycles, unsigned FalseCycles,
+                                    BranchProbability Probability) {
+  // opportunistically convert it:
+  // We calculate the mathematical expectation of the conversion,
+  // and see if the probability will satisfy that after conversion
+  // the expected number of cycles are actually smaller.
+  // The original expectation is calculated as:
+  // (1 - P)*NumFCycles + P*(NumTCycles + jump) + (jump)
+  // = (1 - P) * (FalseCycles) + P * (TrueCycles + 1) + 1
+  //
+  // The converted expectation is (TrueCycles + FalseCycles).
+  // Note that if we conditionally execute TBB, then we eliminate one jump
+  // at the end.
+  //
+  // so we need to check if it is profitable after conversion:
+  // TrueCycles + FalseCycles < (1-P) * (FalseCycles) + P*(TrueCycles + 1) +1
+  // -> P > (TrueCycles - 1) / (TrueCycles - FalseCycles + 1), and 0 <= P <= 1
+
+  // manually handle the case where invalid branch probability will be
+  // calculated.
+  if (TrueCycles < 2 || FalseCycles > 2)
+    return false;
+  return Probability >=
+         BranchProbability((TrueCycles - 1), (TrueCycles - FalseCycles + 1));
+}
+
+static bool isOptimizeForSize(MachineFunction &MF) {
+  return MF.getFunction().hasOptSize();
+}
+
+bool EraVMInstrInfo::isProfitableToIfCvt(
+    MachineBasicBlock &TMBB, unsigned NumTCycles, unsigned ExtraTCycles,
+    MachineBasicBlock &FMBB, unsigned NumFCycles, unsigned ExtraFCycles,
+    BranchProbability Probability) const {
+  // If we are optimizing for size, it is always profitable to ifcvt,
+  // because we are eliminating branchings.
+  if (isOptimizeForSize(*TMBB.getParent()))
+    return true;
+
+  // profitable if execution sizes of both T and F are small enough
+  if (NumTCycles <= EraVMInstrInfo::MAX_MBB_SIZE_TO_ALWAYS_IFCVT &&
+      NumFCycles <= EraVMInstrInfo::MAX_MBB_SIZE_TO_ALWAYS_IFCVT)
+    return true;
+
+  // do not convert if probability is unknown
+  if (Probability.isUnknown())
+    return false;
+
+  return probabilityIsProfitable(NumTCycles, NumFCycles, Probability);
+}
+
+bool EraVMInstrInfo::isProfitableToDupForIfCvt(
+    MachineBasicBlock &MBB, unsigned NumInstrs,
+    BranchProbability Probability) const {
+  // if sensitive about size, just do not duplicate MBB:
+  if (isOptimizeForSize(*MBB.getParent()))
+    return false;
+
+  // profitable if execution size is small enough
+  if (NumInstrs <= EraVMInstrInfo::MAX_MBB_SIZE_TO_ALWAYS_IFCVT)
+    return true;
+
+  // do not duplicate if probability is unknown
+  if (Probability.isUnknown())
+    return false;
+
+  // 1 instruction is 1 cycle
+  return probabilityIsProfitable(NumInstrs, 0, Probability);
+}
+
+bool EraVMInstrInfo::isProfitableToIfCvt(MachineBasicBlock &MBB,
+                                         unsigned NumCycles,
+                                         unsigned ExtraPredCycles,
+                                         BranchProbability Probability) const {
+  // always profitable if optimizing for size
+  if (isOptimizeForSize(*MBB.getParent()))
+    return true;
+
+  // profitable if execution size is small enough
+  if (NumCycles <= EraVMInstrInfo::MAX_MBB_SIZE_TO_ALWAYS_IFCVT)
+    return true;
+  // do not convert if probability is unknown
+  if (Probability.isUnknown())
+    return false;
+
+  return probabilityIsProfitable(NumCycles, 0, Probability);
+}
+
+bool EraVMInstrInfo::updateCCCode(MachineInstr &MI,
+                                  EraVMCC::CondCodes CC) const {
+  // cannot update CC code to invalid
+  if (CC == EraVMCC::COND_INVALID)
+    return false;
+
+  if (!EraVMInstrInfo::isPredicatedInstr(MI))
+    return false;
+
+  auto &Opnd = *EraVM::ccIterator(MI);
+  if (!(Opnd.isImm() || Opnd.isCImm()))
+    return false;
+
+  if (Opnd.isImm())
+    Opnd.setImm(CC);
+  else if (Opnd.isCImm())
+    Opnd.setCImm(ConstantInt::get(cast<IntegerType>(Opnd.getCImm()->getType()),
+                                  CC, false));
+  return true;
 }

@@ -61,6 +61,8 @@ static unsigned movOpcode(EraVM::ArgumentKind Kind, unsigned Select) {
     return EraVM::ADDcrr_s;
   case EraVM::ArgumentType::Stack:
     return EraVM::ADDsrr_s;
+  default:
+    break;
   }
   llvm_unreachable("Unexpected argument type");
 }

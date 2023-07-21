@@ -10,12 +10,8 @@ define i256 @brcond(i256 %p1) nounwind {
 ; CHECK-LABEL: brcond:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    and! 1, r1, r1
-; CHECK-NEXT:    jump.eq @.BB0_2
-; CHECK-NEXT:  ; %bb.1: ; %l1
-; CHECK-NEXT:    add 42, r0, r1
-; CHECK-NEXT:    ret
-; CHECK-NEXT:  .BB0_2: ; %l2
-; CHECK-NEXT:    add 43, r0, r1
+; CHECK-NEXT:    add.eq 43, r0, r1
+; CHECK-NEXT:    add.ne 42, r0, r1
 ; CHECK-NEXT:    ret
   %1 = trunc i256 %p1 to i1
   br i1 %1, label %l1, label %l2

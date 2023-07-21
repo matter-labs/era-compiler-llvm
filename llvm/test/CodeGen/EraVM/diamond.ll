@@ -6,9 +6,10 @@ target triple = "eravm"
 ; CHECK-LABEL: diamond
 define i256 @diamond(i256 %p1, i256 %p2, i256 %x, i256 %y) nounwind {
   %1 = icmp ugt i256 %p1, %p2
-  ; CHECK: sub! r1, r2, r{{[0-9]+}}
-  ; CHECK: jump.le @.BB0_2
-  ; CHECK: jump @.BB0_3
+; CHECK: sub! r1, r2, r{{[0-9]+}}
+; CHECK-NEXT: add.le  r2, r4, r1
+; CHECK-NEXT: add.gt  r1, r3, r1
+; CHECK-NEXT: ret
   br i1 %1, label %l1, label %l2
 l1:
   %2 = add i256 %p1, %x
