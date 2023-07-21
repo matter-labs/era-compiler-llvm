@@ -265,37 +265,15 @@ bool SyncVMInstrInfo::reverseBranchCondition(
     SmallVectorImpl<MachineOperand> &Cond) const {
   assert(Cond.size() == 1 && "Invalid Xbranch condition!");
 
-  SyncVMCC::CondCodes CC = static_cast<SyncVMCC::CondCodes>(
-      Cond[0].isImm() ? Cond[0].getImm() : Cond[0].getCImm()->getZExtValue());
+  SyncVMCC::CondCodes CC =
+      static_cast<SyncVMCC::CondCodes>(getImmOrCImm(Cond[0]));
 
-  switch (CC) {
-  default:
-    llvm_unreachable("Invalid branch condition!");
-  case SyncVMCC::COND_OF:
-    // we cannot reverse overflow checking condition
+  auto NewCC = getReversedCondition(CC);
+  if (!NewCC)
     return true;
-  case SyncVMCC::COND_E:
-    CC = SyncVMCC::COND_NE;
-    break;
-  case SyncVMCC::COND_NE:
-    CC = SyncVMCC::COND_E;
-    break;
-  case SyncVMCC::COND_LT:
-    CC = SyncVMCC::COND_GE;
-    break;
-  case SyncVMCC::COND_GE:
-    CC = SyncVMCC::COND_LT;
-    break;
-  case SyncVMCC::COND_LE:
-    CC = SyncVMCC::COND_GT;
-    break;
-  case SyncVMCC::COND_GT:
-    CC = SyncVMCC::COND_LE;
-    break;
-  }
 
   Cond.pop_back();
-  Cond.push_back(MachineOperand::CreateImm(CC));
+  Cond.push_back(MachineOperand::CreateImm(*NewCC));
   return false;
 }
 
