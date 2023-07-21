@@ -352,6 +352,9 @@ public:
   void fixupPostOutline(
       std::vector<std::pair<MachineFunction *, std::vector<MachineFunction *>>>
           &FixupFunctions) const override;
+
+  static std::optional<EraVMCC::CondCodes>
+  getReversedCondition(EraVMCC::CondCodes CC);
 };
 
 } // namespace llvm

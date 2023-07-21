@@ -264,34 +264,14 @@ bool EraVMInstrInfo::reverseBranchCondition(
     SmallVectorImpl<MachineOperand> &Cond) const {
   assert(Cond.size() == 1 && "Invalid Xbranch condition!");
 
-  auto CC = static_cast<EraVMCC::CondCodes>(
-      Cond[0].isImm() ? Cond[0].getImm() : Cond[0].getCImm()->getZExtValue());
+  auto CC = static_cast<EraVMCC::CondCodes>(getImmOrCImm(Cond[0]));
 
-  switch (CC) {
-  default:
-    llvm_unreachable("Invalid branch condition!");
-  case EraVMCC::COND_E:
-    CC = EraVMCC::COND_NE;
-    break;
-  case EraVMCC::COND_NE:
-    CC = EraVMCC::COND_E;
-    break;
-  case EraVMCC::COND_LT:
-    CC = EraVMCC::COND_GE;
-    break;
-  case EraVMCC::COND_GE:
-    CC = EraVMCC::COND_LT;
-    break;
-  case EraVMCC::COND_LE:
-    CC = EraVMCC::COND_GT;
-    break;
-  case EraVMCC::COND_GT:
-    CC = EraVMCC::COND_LE;
-    break;
-  }
+  auto NewCC = getReversedCondition(CC);
+  if (!NewCC)
+    return true;
 
   Cond.pop_back();
-  Cond.push_back(MachineOperand::CreateImm(CC));
+  Cond.push_back(MachineOperand::CreateImm(*NewCC));
   return false;
 }
 
@@ -1061,4 +1041,21 @@ void EraVMInstrInfo::fixupPostOutline(
       Changed = true;
     }
   } while (Changed);
+}
+
+std::optional<EraVMCC::CondCodes>
+EraVMInstrInfo::getReversedCondition(EraVMCC::CondCodes CC) {
+  const std::unordered_map<EraVMCC::CondCodes, EraVMCC::CondCodes> ReverseMap =
+      {
+          {EraVMCC::COND_E, EraVMCC::COND_NE},
+          {EraVMCC::COND_NE, EraVMCC::COND_E},
+          {EraVMCC::COND_LT, EraVMCC::COND_GE},
+          {EraVMCC::COND_GE, EraVMCC::COND_LT},
+          {EraVMCC::COND_LE, EraVMCC::COND_GT},
+          {EraVMCC::COND_GT, EraVMCC::COND_LE},
+      };
+
+  auto it = ReverseMap.find(CC);
+  return (it == ReverseMap.end()) ? std::optional<EraVMCC::CondCodes>()
+                                  : it->second;
 }
