@@ -104,6 +104,7 @@ public:
   bool addInstSelector() override;
   void addPreRegAlloc() override;
   void addPreEmitPass() override;
+  void addPreSched2() override;
 };
 } // namespace
 
@@ -146,6 +147,12 @@ void EraVMPassConfig::addPreRegAlloc() {
     addPass(createEraVMCombineFlagSettingPass());
     // This pass emits indexed loads and stores
     addPass(createEraVMCombineToIndexedMemopsPass());
+  }
+}
+
+void EraVMPassConfig::addPreSched2() {
+  if (getOptLevel() != CodeGenOpt::None) {
+    addPass(createIfConverter([](const MachineFunction &MF) { return true; }));
   }
 }
 

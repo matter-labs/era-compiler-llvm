@@ -8,7 +8,9 @@ target triple = "eravm"
 ; CHECK-LABEL: ugt
 define i256 @ugt(i256 %p1, i256 %p2) nounwind {
 ; CHECK: sub! r1, r2, r{{[0-9]+}}
-; CHECK: jump.le @.BB0_2
+; CHECK-NEXT: add.le 72, r0, r1
+; CHECK-NEXT: add.gt  42, r0, r1
+; CHECK-NEXT: ret
   %1 = icmp ugt i256 %p1, %p2
   br i1 %1, label %l1, label %l2
 l1:
@@ -20,7 +22,9 @@ l2:
 ; CHECK-LABEL: uge
 define i256 @uge(i256 %p1, i256 %p2) nounwind {
 ; CHECK: sub! r1, r2, r{{[0-9]+}}
-; CHECK: jump.lt @.BB1_2
+; CHECK-NEXT: add.lt 72, r0, r1
+; CHECK-NEXT: add.ge 42, r0, r1
+; CHECK-NEXT: ret
   %1 = icmp uge i256 %p1, %p2
   br i1 %1, label %l1, label %l2
 l1:
@@ -32,7 +36,9 @@ l2:
 ; CHECK-LABEL: ult
 define i256 @ult(i256 %p1, i256 %p2) nounwind {
 ; CHECK: sub! r1, r2, r{{[0-9]+}}
-; CHECK: jump.ge @.BB2_2
+; CHECK-NEXT: add.ge 72, r0, r1
+; CHECK-NEXT: add.lt  42, r0, r1
+; CHECK-NEXT: ret
   %1 = icmp ult i256 %p1, %p2
   br i1 %1, label %l1, label %l2
 l1:
@@ -44,7 +50,9 @@ l2:
 ; CHECK-LABEL: ule
 define i256 @ule(i256 %p1, i256 %p2) nounwind {
 ; CHECK: sub! r1, r2, r{{[0-9]+}}
-; CHECK: jump.gt @.BB3_2
+; CHECK-NEXT: add.gt  72, r0, r1
+; CHECK-NEXT: add.le  42, r0, r1
+; CHECK-NEXT: ret
   %1 = icmp ule i256 %p1, %p2
   br i1 %1, label %l1, label %l2
 l1:
@@ -56,7 +64,9 @@ l2:
 ; CHECK-LABEL: eq
 define i256 @eq(i256 %p1, i256 %p2) nounwind {
 ; CHECK: sub! r1, r2, r{{[0-9]+}}
-; CHECK-NEXT: jump.ne @.BB4_2
+; CHECK-NEXT: add.ne  72, r0, r1
+; CHECK-NEXT: add.eq  42, r0, r1
+; CHECK-NEXT: ret
   %1 = icmp eq i256 %p1, %p2
   br i1 %1, label %l1, label %l2
 l1:
@@ -68,7 +78,9 @@ l2:
 ; CHECK-LABEL: cmpne
 define i256 @cmpne(i256 %p1, i256 %p2) nounwind {
 ; CHECK: sub! r1, r2, r{{[0-9]+}}
-; CHECK: jump.eq @.BB5_2
+; CHECK-NEXT: add.eq  72, r0, r1
+; CHECK-NEXT: add.ne  42, r0, r1
+; CHECK-NEXT: ret
   %1 = icmp ne i256 %p1, %p2
   br i1 %1, label %l1, label %l2
 l1:
@@ -97,8 +109,10 @@ loop.exit:
 ; CHECK-LABEL: cmpir
 define i256 @cmpir(i256 %p1, i256 %p2) nounwind {
 ; CHECK: sub.s! 43, r{{[0-9]+}}, r{{[0-9]+}}
+; CHECK-NEXT: add.lt  72, r0, r1
+; CHECK-NEXT: add.ge  42, r0, r1
+; CHECK-NEXT: ret
   %1 = icmp ugt i256 %p1, 42
-; CHECK: jump.lt
   br i1 %1, label %l1, label %l2
 l1:
   ret i256 42
@@ -111,6 +125,9 @@ define i256 @cmpcr(i256 %p1, i256 %p2) nounwind {
 ; TODO: CPR-447 should be subx code[val], r1, r{{[0-9]}}
 ; CHECK: add @val[0], r0, r2
 ; CHECK: sub! r1, r2, r{{[0-9]+}}
+; CHECK-NEXT: add.le  72, r0, r1
+; CHECK-NEXT: add.gt  42, r0, r1
+; CHECK-NEXT: ret
   %const = load i256, i256 addrspace(4)* @val
   %1 = icmp ugt i256 %p1, %const
   br i1 %1, label %l1, label %l2
@@ -136,8 +153,10 @@ l2:
 ; CHECK-LABEL: cmpri
 define i256 @cmpri(i256 %p1, i256 %p2) nounwind {
 ; CHECK: sub.s! 41, r1, r1
+; CHECK-NEXT: add.gt  72, r0, r1
+; CHECK-NEXT: add.le  42, r0, r1
+; CHECK-NEXT: ret
   %1 = icmp ugt i256 42, %p1
-; CHECK: jump.gt
   br i1 %1, label %l1, label %l2
 l1:
   ret i256 42
@@ -150,6 +169,9 @@ define i256 @cmprc(i256 %p1, i256 %p2) nounwind {
 ; TODO: CPR-447 should be sub code[val], r1, r{{[0-9]}}
 ; CHECK: add @val[0], r0, r2
 ; CHECK: sub! r2, r1, r{{[0-9]+}}
+; CHECK-NEXT: add.le  72, r0, r1
+; CHECK-NEXT: add.gt  42, r0, r1
+; CHECK-NEXT: ret
   %const = load i256, i256 addrspace(4)* @val
   %1 = icmp ugt i256 %const, %p1
   br i1 %1, label %l1, label %l2
