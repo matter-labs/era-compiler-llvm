@@ -47,12 +47,9 @@ private:
   bool isStackOp(const MachineInstr &MI, unsigned OpNum);
   unsigned opStart(const MachineInstr &MI, unsigned OpNum);
   bool mayHaveStackOperands(const MachineInstr &MI);
-  void expandConst(MachineInstr &MI) const;
-  void expandLoadConst(MachineInstr &MI) const;
-  void expandThrow(MachineInstr &MI) const;
 
-  void multipleByCellSize(MachineInstr &MI, unsigned OpNum) const;
-  void divideByCellSize(MachineInstr &MI, unsigned OpNum) const;
+  void multiplyByCellSize(MachineInstr::mop_iterator Mop) const;
+  void divideByCellSize(MachineInstr::mop_iterator Mop) const;
 
   void collectArgumentsAsRegisters(MachineFunction &MF);
 
@@ -124,34 +121,43 @@ unsigned SyncVMBytesToCells::opStart(const MachineInstr &MI, unsigned OpNum) {
   return Result;
 }
 
-void SyncVMBytesToCells::multipleByCellSize(MachineInstr &MI,
-                                            unsigned OpNum) const {
-  Register Reg = MI.getOperand(OpNum).getReg();
+void SyncVMBytesToCells::multiplyByCellSize(MachineInstr::mop_iterator Mop) const {
+  assert(Mop->isReg() && "Expected register operand");
+  Register Reg = Mop->getReg();
   assert(Reg.isVirtual() && "Physical registers are not expected");
+
+  MachineInstr *MI = Mop->getParent();
+  assert(MI);
+
   auto NewVR = MRI->createVirtualRegister(&SyncVM::GR256RegClass);
-  BuildMI(*MI.getParent(), MI.getIterator(), MI.getDebugLoc(),
+  BuildMI(*MI->getParent(), MI->getIterator(), MI->getDebugLoc(),
           TII->get(SyncVM::MULirrr_s))
       .addDef(NewVR)
       .addDef(SyncVM::R0)
       .addImm(CellSizeInBytes)
       .addReg(Reg)
       .addImm(SyncVMCC::COND_NONE);
-  MI.getOperand(OpNum).ChangeToRegister(NewVR, false);
+  Mop->ChangeToRegister(NewVR, false);
 }
 
-void SyncVMBytesToCells::divideByCellSize(MachineInstr &MI,
-                                          unsigned OpNum) const {
-  Register Reg = MI.getOperand(OpNum).getReg();
+void SyncVMBytesToCells::divideByCellSize(
+    MachineInstr::mop_iterator Mop) const {
+  assert(Mop->isReg() && "Expected register operand");
+  Register Reg = Mop->getReg();
   assert(Reg.isVirtual() && "Physical registers are not expected");
+
+  MachineInstr *MI = Mop->getParent();
+  assert(MI);
+
   auto NewVR = MRI->createVirtualRegister(&SyncVM::GR256RegClass);
-  BuildMI(*MI.getParent(), MI.getIterator(), MI.getDebugLoc(),
+  BuildMI(*MI->getParent(), MI->getIterator(), MI->getDebugLoc(),
           TII->get(SyncVM::DIVxrrr_s))
       .addDef(NewVR)
       .addDef(SyncVM::R0)
       .addImm(CellSizeInBytes)
       .addReg(Reg)
       .addImm(SyncVMCC::COND_NONE);
-  MI.getOperand(OpNum).ChangeToRegister(NewVR, false);
+  Mop->ChangeToRegister(NewVR, false);
 }
 
 bool SyncVMBytesToCells::scalePointerArithmeticIfNeeded(MachineInstr *MI) const {
@@ -161,17 +167,13 @@ bool SyncVMBytesToCells::scalePointerArithmeticIfNeeded(MachineInstr *MI) const 
   auto Opc = MI->getOpcode();
   if (Opc != SyncVM::ADDrrr_s && Opc != SyncVM::ADDirr_s)
     return false;
-  // base is always the first operand
-  unsigned BaseIndex = (Opc == SyncVM::ADDrrr_s) ? 1 : 2;
-  Register Base = MI->getOperand(BaseIndex).getReg();
-
-  if (!Base.isVirtual())
+  auto BaseOpnd = (Opc == SyncVM::ADDrrr_s) ? SyncVM::in0Iterator(*MI)
+                                            : SyncVM::in1Iterator(*MI);
+  Register Base = BaseOpnd->getReg();
+  if (!Base.isVirtual() || !mayContainCells(Base))
     return false;
 
-  if (!mayContainCells(Base))
-    return false;
-
-  multipleByCellSize(*MI, BaseIndex);
+  multiplyByCellSize(BaseOpnd);
   return true;
 }
 
@@ -219,6 +221,14 @@ bool SyncVMBytesToCells::isPassedInCells(const MachineInstr &MI,
   return mayContainCells(Reg) && isUsedAsStackAddress(Reg);
 }
 
+// Returns true if the instruction is a copy to a physical register from a
+// virtual register.
+static bool isCopyToPhyReg(const MachineInstr &MI) {
+  return MI.getOpcode() == SyncVM::COPY &&
+         !MI.getOperand(0).getReg().isVirtual() &&
+         MI.getOperand(1).getReg().isVirtual();
+}
+
 bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
   LLVM_DEBUG(dbgs() << "********** SyncVM convert bytes to cells **********\n"
                     << "********** Function: " << MF.getName() << '\n');
@@ -241,25 +251,14 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
     for (auto II = BB.begin(); II != BB.end(); ++II) {
       MachineInstr &MI = *II;
 
-      // If a stack address is used as a passed argument to a call, it is in
-      // cells not bytes.
-      if (MI.getOpcode() == SyncVM::COPY &&
-          !MI.getOperand(0).getReg().isVirtual() && // copy to a physical reg
-          MI.getOperand(1).getReg().isVirtual()) {  // copy from a virtual reg
-        auto SrcReg = MI.getOperand(1).getReg();
-        // find its def:
+      // If a stack address is used as a passed argument to a call, it must be
+      // in cells not bytes.
+      if (isCopyToPhyReg(MI)) {
+        auto SrcReg = SyncVM::in0Iterator(MI)->getReg();
         auto DefInstr = MRI->getVRegDef(SrcReg);
         if (DefInstr->getOpcode() == SyncVM::ADDframe) {
-          // insert DIV before it.
-          auto NewVR = MRI->createVirtualRegister(&SyncVM::GR256RegClass);
-          BuildMI(*DefInstr->getParent(), MI.getIterator(), MI.getDebugLoc(),
-                  TII->get(SyncVM::DIVxrrr_s))
-              .addDef(NewVR)
-              .addDef(SyncVM::R0)
-              .addImm(CellSizeInBytes)
-              .addReg(SrcReg)
-              .addImm(SyncVMCC::COND_NONE);
-          MI.getOperand(1).setReg(NewVR);
+          // convert from bytes to cells
+          divideByCellSize(SyncVM::in0Iterator(MI));
         }
       }
 
@@ -374,14 +373,18 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
     for (auto II = BB.begin(); II != BB.end(); ++II) {
       MachineInstr &MI = *II;
       // scale up any of those registers are used in pointer arithmetic.
-      if (MI.getOpcode() == SyncVM::ADDirr_s && isPassedInCells(MI, 2))
-        multipleByCellSize(MI, 2);
+      if (MI.getOpcode() == SyncVM::ADDirr_s) {
+        auto SPOpnd = SyncVM::in1Iterator(MI);
+        if (isPassedInCells(MI, 2)) {
+          multiplyByCellSize(SPOpnd);
+        }
+      }
     
       // scale up returned stack pointer
       if (isCopyReturnValue(MI) && isPassedInCells(MI, 1)) {
-        auto Reg = MI.getOperand(1).getReg();
-        if (mayContainCells(Reg))
-          multipleByCellSize(MI, 1);
+        auto RegOpnd = SyncVM::in0Iterator(MI);;
+        if (mayContainCells(RegOpnd->getReg()))
+          multiplyByCellSize(RegOpnd);
       }
     }
   }
