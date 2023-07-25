@@ -8,6 +8,8 @@
 #define LLVM_LIB_TARGET_SYNCVM_SYNCVMINSTRINFO_H
 
 #include "SyncVM.h"
+
+#include <optional>
 #include "SyncVMRegisterInfo.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
 
