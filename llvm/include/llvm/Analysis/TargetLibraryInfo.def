@@ -235,6 +235,11 @@ TLI_DEFINE_STRING_INTERNAL("__acoshl_finite")
 /// long double __acosl_finite(long double x);
 TLI_DEFINE_ENUM_INTERNAL(acosl_finite)
 TLI_DEFINE_STRING_INTERNAL("__acosl_finite")
+// SyncVM local begin
+// i256 __addmod(i255, i256, i256)
+TLI_DEFINE_ENUM_INTERNAL(xvm_addmod)
+TLI_DEFINE_STRING_INTERNAL("__addmod")
+// SyncVM local end
 /// double __asin_finite(double x);
 TLI_DEFINE_ENUM_INTERNAL(asin_finite)
 TLI_DEFINE_STRING_INTERNAL("__asin_finite")
@@ -323,6 +328,11 @@ TLI_DEFINE_STRING_INTERNAL("__expf_finite")
 /// long double __expl_finite(long double x);
 TLI_DEFINE_ENUM_INTERNAL(expl_finite)
 TLI_DEFINE_STRING_INTERNAL("__expl_finite")
+// SyncVM local begin
+// i256 __exponent(i255, i256, i256)
+TLI_DEFINE_ENUM_INTERNAL(xvm_exponent)
+TLI_DEFINE_STRING_INTERNAL("__exponent")
+// SyncVM local end
 /// int __isoc99_scanf (const char *format, ...)
 TLI_DEFINE_ENUM_INTERNAL(dunder_isoc99_scanf)
 TLI_DEFINE_STRING_INTERNAL("__isoc99_scanf")
@@ -379,6 +389,11 @@ TLI_DEFINE_STRING_INTERNAL("__mempcpy_chk")
 TLI_DEFINE_ENUM_INTERNAL(memset_chk)
 TLI_DEFINE_STRING_INTERNAL("__memset_chk")
 
+// SyncVM local begin
+// i256 __mulmod(i255, i256, i256)
+TLI_DEFINE_ENUM_INTERNAL(xvm_mulmod)
+TLI_DEFINE_STRING_INTERNAL("__mulmod")
+// SyncVM local end
 // int __nvvm_reflect(const char *)
 TLI_DEFINE_ENUM_INTERNAL(nvvm_reflect)
 TLI_DEFINE_STRING_INTERNAL("__nvvm_reflect")
@@ -391,6 +406,11 @@ TLI_DEFINE_STRING_INTERNAL("__powf_finite")
 /// long double __powl_finite(long double x, long double y);
 TLI_DEFINE_ENUM_INTERNAL(powl_finite)
 TLI_DEFINE_STRING_INTERNAL("__powl_finite")
+// SyncVM local begin
+// i256 __signextend(i255, i256)
+TLI_DEFINE_ENUM_INTERNAL(xvm_signextend)
+TLI_DEFINE_STRING_INTERNAL("__signextend")
+// SyncVM local end
 /// double __sincospi_stret(double x);
 TLI_DEFINE_ENUM_INTERNAL(sincospi_stret)
 TLI_DEFINE_STRING_INTERNAL("__sincospi_stret")

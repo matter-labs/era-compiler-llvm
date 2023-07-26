@@ -1700,10 +1700,12 @@ bool llvm::canConstantFoldCallTo(const CallBase *Call, const Function *F) {
     // Check for various function names that get used for the math functions
     // when the header files are preprocessed with the macro
     // __FINITE_MATH_ONLY__ enabled.
-    // The '12' here is the length of the shortest name that can match.
+    // SyncVM local begin
+    // The '8' here is the length of the shortest name that can match.
     // We need to check the size before looking at Name[1] and Name[2]
     // so we may as well check a limit that will eliminate mismatches.
-    if (Name.size() < 12 || Name[1] != '_')
+    if (Name.size() < 8 || Name[1] != '_')
+    // SyncVM local end
       return false;
     switch (Name[2]) {
     default:
@@ -1711,19 +1713,32 @@ bool llvm::canConstantFoldCallTo(const CallBase *Call, const Function *F) {
     case 'a':
       return Name == "__acos_finite" || Name == "__acosf_finite" ||
              Name == "__asin_finite" || Name == "__asinf_finite" ||
-             Name == "__atan2_finite" || Name == "__atan2f_finite";
+             Name == "__atan2_finite" || Name == "__atan2f_finite" ||
+    // SyncVM local begin
+             Name == "__addmod";
+    // SyncVM local end
     case 'c':
       return Name == "__cosh_finite" || Name == "__coshf_finite";
     case 'e':
       return Name == "__exp_finite" || Name == "__expf_finite" ||
-             Name == "__exp2_finite" || Name == "__exp2f_finite";
+             Name == "__exp2_finite" || Name == "__exp2f_finite" ||
+    // SyncVM local begin
+             Name == "__exponent";
+    // SyncVM local end
     case 'l':
       return Name == "__log_finite" || Name == "__logf_finite" ||
              Name == "__log10_finite" || Name == "__log10f_finite";
+    // SyncVM local begin
+    case 'm':
+      return Name == "__mulmod";
+    // SyncVM local end
     case 'p':
       return Name == "__pow_finite" || Name == "__powf_finite";
     case 's':
-      return Name == "__sinh_finite" || Name == "__sinhf_finite";
+      return Name == "__sinh_finite" || Name == "__sinhf_finite" ||
+    // SyncVM local begin
+             Name == "__signextend";
+    // SyncVM local end
     }
   }
 }
@@ -2436,6 +2451,71 @@ static Constant *evaluateCompare(const APFloat &Op1, const APFloat &Op2,
   return nullptr;
 }
 
+// SyncVM local begin
+/// Extending length of two’s complement signed integer.
+/// NumByte: the size in bytes minus one of the integer to sign extend.
+/// Val: the integer being extended.
+static Constant *ConstantFoldSignextendCall(Type *Ty, const APInt &NumByte,
+                                            const APInt &Val) {
+  unsigned BitWidth = Ty->getIntegerBitWidth();
+  const APInt NumBits = NumByte * 8 + 7;
+  const APInt NumBitInv = APInt(BitWidth, BitWidth) - NumBits;
+  const APInt SignMask = APInt(BitWidth, 1).shl(NumBits);
+  const APInt ValMask = APInt::getAllOnes(BitWidth).lshr(NumBitInv);
+  const APInt Ext1 = APInt::getAllOnes(BitWidth).shl(NumBits);
+  const APInt SignVal = SignMask & Val;
+  const APInt ValClean = Val & ValMask;
+  const APInt Sext = SignVal.isZero() ? APInt::getZero(BitWidth) : Ext1;
+  const APInt Result = Sext | ValClean;
+  return ConstantInt::get(Ty, Result);
+}
+
+/// Exponential operation.
+/// Calculates:
+///   (base ** exp) (mod 2**256)
+/// This is an implementation of the binary exponentiation algorithm.
+static Constant *ConstantFoldExpCall(Type *Ty, const APInt &Base,
+                                     const APInt &Exp) {
+  const unsigned BitWidth = Ty->getIntegerBitWidth();
+  if (Base == 0)
+    return Constant::getNullValue(Ty);
+  if (Base == 1)
+    return ConstantInt::get(Ty, APInt(BitWidth, 1));
+  if (Base == 2 && Exp.ule(255))
+    return ConstantInt::get(Ty, APInt(BitWidth, 1).shl(Exp));
+
+  // The target algorithm is an implementation of the following C code,
+  // where m = 2 ** 256 and 'long long' type is replaced with i256 one.
+  // long long binpow(long long a, long long b, long long m) {
+  //   a %= m;
+  //   long long res = 1;
+  //   while (b > 0) {
+  //     if (b & 1)
+  //       res = res * a % m;
+  //     a = a * a % m;
+  //     b >>= 1;
+  //   }
+  //   return res;
+  // }
+
+  // Perform calculations in double bit-width, as we need to
+  // multiply.
+  const unsigned ExtBitWidth = BitWidth * 2;
+  const APInt ModExt = APInt(ExtBitWidth, 1).shl(BitWidth);
+  APInt ResExt(ExtBitWidth, 1);
+  APInt BaseExt = Base.zext(ExtBitWidth);
+  APInt ExpExt = Exp.zext(ExtBitWidth);
+  while (ExpExt.ugt(0)) {
+    if (ExpExt[0])
+      ResExt = (ResExt * BaseExt).urem(ModExt);
+
+    BaseExt = (BaseExt * BaseExt).urem(ModExt);
+    ExpExt.lshrInPlace(1);
+  }
+  return ConstantInt::get(Ty, ResExt.trunc(BitWidth));
+}
+// SyncVM local end
+
 static Constant *ConstantFoldScalarCall2(StringRef Name,
                                          Intrinsic::ID IntrinsicID,
                                          Type *Ty,
@@ -2748,6 +2828,37 @@ static Constant *ConstantFoldScalarCall2(StringRef Name,
       return ConstantInt::get(Ty, C0->abs());
     }
 
+    // SyncVM local begin
+    if (Name == "__signextend" || Name == "__exponent") {
+      if (isa<PoisonValue>(Operands[0]) || isa<PoisonValue>(Operands[1]))
+        return PoisonValue::get(Ty);
+
+      const unsigned BitWidth = Ty->getIntegerBitWidth();
+      assert(BitWidth == 256);
+
+      if (Name == "__signextend") {
+        // Signextend operation is not defined if the size operand exceeds the
+        // type width.
+        if (!C0 || C0->ugt(APInt(BitWidth, BitWidth / 8 - 1)))
+          return PoisonValue::get(Ty);
+        if (!C1)
+          return Constant::getNullValue(Ty);
+
+        return ConstantFoldSignextendCall(Ty, *C0, *C1);
+      }
+      if (Name == "__exponent") {
+        // Assume C0 is equal 0, 0 ** C1 -> 0.
+        if (!C0)
+          return Constant::getNullValue(Ty);
+        if (!C1)
+          // Assume C1 equal to 0, C0 ** 0 -> 1
+          return ConstantInt::get(Ty, APInt(BitWidth, 1));
+
+        return ConstantFoldExpCall(Ty, *C0, *C1);
+      }
+    }
+    // SyncVM local end
+
     return nullptr;
   }
 
@@ -2901,6 +3012,46 @@ static Constant *ConstantFoldAMDGCNPermIntrinsic(ArrayRef<Constant *> Operands,
   return ConstantInt::get(Ty, Val);
 }
 
+// SyncVM local begin
+/// Unsigned modulo addition operation.
+/// Returns:
+///   0, if Mod == 0
+///   (Arg1 + Arg2) (mod Mod), if Mod != 0
+/// All intermediate calculations of this operation are not subject
+/// to the 2 ** 256 modulo.
+static Constant *ConstantFoldAddModCall(Type *Ty, const APInt &Arg1,
+                                        const APInt &Arg2, const APInt &Mod) {
+  const unsigned BitWidth = Ty->getIntegerBitWidth();
+  if (Mod.isZero())
+    return Constant::getNullValue(Ty);
+
+  // Sum representation of two N-bit values takes up to N + 1 bits.
+  const unsigned ExtBitWidth = BitWidth + 1;
+  const APInt Sum = Arg1.zext(ExtBitWidth) + Arg2.zext(ExtBitWidth);
+  const APInt Rem = Sum.urem(Mod.zext(ExtBitWidth));
+  return ConstantInt::get(Ty, Rem.trunc(BitWidth));
+}
+
+/// Unsigned modulo multiplication operation.
+/// Returns:
+///   0, if Mod == 0
+///   (Arg1 * Arg2) (mod Mod), if Mod != 0
+/// All intermediate calculations of this operation are not subject
+/// to the 2**256 modulo.
+static Constant *ConstantFoldMulModCall(Type *Ty, const APInt &Arg1,
+                                        const APInt &Arg2, const APInt &Mod) {
+  const unsigned BitWidth = Ty->getIntegerBitWidth();
+  if (Mod.isZero())
+    return Constant::getNullValue(Ty);
+
+  // Multiplication representation of two N-bit values takes up to 2 * N bits.
+  const unsigned ExtBitWidth = BitWidth * 2;
+  const APInt Product = Arg1.zext(ExtBitWidth) * Arg2.zext(ExtBitWidth);
+  const APInt Rem = Product.urem(Mod.zext(ExtBitWidth));
+  return ConstantInt::get(Ty, Rem.trunc(BitWidth));
+}
+// SyncVM local end
+
 static Constant *ConstantFoldScalarCall3(StringRef Name,
                                          Intrinsic::ID IntrinsicID,
                                          Type *Ty,
@@ -3034,6 +3185,41 @@ static Constant *ConstantFoldScalarCall3(StringRef Name,
 
   if (IntrinsicID == Intrinsic::amdgcn_perm)
     return ConstantFoldAMDGCNPermIntrinsic(Operands, Ty);
+
+  // SyncVM local begin
+  if (Name == "__addmod" || Name == "__mulmod") {
+    if (isa<PoisonValue>(Operands[0]) || isa<PoisonValue>(Operands[1]) ||
+        isa<PoisonValue>(Operands[2]))
+      return PoisonValue::get(Ty);
+
+    const APInt *C0, *C1, *C2;
+    if (!getConstIntOrUndef(Operands[0], C0) ||
+        !getConstIntOrUndef(Operands[1], C1) ||
+        !getConstIntOrUndef(Operands[2], C2))
+      return nullptr;
+
+    assert(Ty->getIntegerBitWidth() == 256);
+
+    // C % undef -> 0
+    if (!C2)
+      return Constant::getNullValue(Ty);
+
+    if (Name == "__addmod") {
+      // undef + C -> C
+      APInt Zero = APInt::getZero(Ty->getIntegerBitWidth());
+      C0 = C0 ? C0 : &Zero;
+      C1 = C1 ? C1 : &Zero;
+      return ConstantFoldAddModCall(Ty, *C0, *C1, *C2);
+    }
+    if (Name == "__mulmod") {
+      // undef * C -> 0
+      if (!C0 || !C1)
+        return Constant::getNullValue(Ty);
+
+      return ConstantFoldMulModCall(Ty, *C0, *C1, *C2);
+    }
+  }
+  // SyncVM local end
 
   return nullptr;
 }
