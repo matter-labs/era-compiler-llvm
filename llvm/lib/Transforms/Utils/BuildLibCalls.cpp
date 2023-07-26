@@ -1093,6 +1093,16 @@ bool llvm::inferNonMandatoryLibFuncAttrs(Function &F,
     Changed |= setDoesNotAccessMemory(F);
     Changed |= setDoesNotThrow(F);
     break;
+  // SyncVM local begin
+  case LibFunc_xvm_addmod:
+  case LibFunc_xvm_exponent:
+  case LibFunc_xvm_mulmod:
+  case LibFunc_xvm_signextend:
+    Changed |= setDoesNotThrow(F);
+    Changed |= setWillReturn(F);
+    Changed |= setDoesNotAccessMemory(F);
+    break;
+  // SyncVM local end
   case LibFunc_ldexp:
   case LibFunc_ldexpf:
   case LibFunc_ldexpl:
