@@ -199,18 +199,31 @@ bool SyncVMStackAddressConstantPropagation::runOnMachineFunction(
       cast<SyncVMInstrInfo>(MF.getSubtarget<SyncVMSubtarget>().getInstrInfo());
   assert(TII && "TargetInstrInfo must be a valid object");
 
-  for (auto &BB : MF) {
-    for (auto &MI : BB) {
-      if (!SyncVM::hasSRInAddressingMode(MI))
-        continue;
+  auto getStackAccess = [&](MachineInstr &MI) {
+    // check if the stack access is in input operands
+    if (SyncVM::hasSRInAddressingMode(MI)) {
       auto In0Reg = SyncVM::in0Iterator(MI) + 1;
       auto In0Const = SyncVM::in0Iterator(MI) + 2;
-      if (!In0Reg->isReg())
+      if (In0Reg->isReg())
+        return std::make_pair(In0Reg, In0Const);
+    }
+    
+    // check if the stack access is in output operands
+    if (SyncVM::withRegisterResult(MI.getOpcode()) != -1) {
+      auto In0Reg = SyncVM::out0Iterator(MI) + 1;
+      auto In0Const = SyncVM::out0Iterator(MI) + 2;
+      if (In0Reg->isReg())
+        return std::make_pair(In0Reg, In0Const);
+    }
+    return std::make_pair(MI.operands_end(), MI.operands_end());
+  };
+
+  for (auto &BB : MF) {
+    for (auto &MI : BB) {
+      auto [In0Reg, In0Const] = getStackAccess(MI);
+      if (In0Reg == MI.operands_end())
         continue;
       Register Base = In0Reg->getReg();
-      
-
-
 
       if (!RegInfo->hasOneNonDBGUse(Base))
         continue;
@@ -257,23 +270,6 @@ bool SyncVMStackAddressConstantPropagation::runOnMachineFunction(
         Changed = true;
       }
     }
-
-  auto getStackAccess = [&](MachineInstr &MI) {
-    if (SyncVM::hasSRInAddressingMode(MI)) {
-      auto In0Reg = SyncVM::in0Iterator(MI) + 1;
-      auto In0Const = SyncVM::in0Iterator(MI) + 2;
-      if (In0Reg->isReg())
-        return std::make_pair(In0Reg, In0Const);
-    }
-    // TODO: fix it
-    if (MI.getOpcode() == SyncVM::ADDirs_s) {
-      auto In0Reg = SyncVM::out0Iterator(MI) + 1;
-      auto In0Const = SyncVM::out0Iterator(MI) + 2;
-      if (In0Reg->isReg())
-        return std::make_pair(In0Reg, In0Const);
-    }
-    return std::make_pair(MI.operands_end(), MI.operands_end());
-  };
 
   for (auto &BB : MF)
     for (auto &MI : BB) {
