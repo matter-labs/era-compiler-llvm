@@ -4,6 +4,7 @@ target triple = "syncvm-unknown-unknown"
 
 ; check that when base pointer is a stack address (passed down as argument in cells),
 ; it is scaled for pointer arithmetics.
+; because the index offset is unknown so optimizing this is skipped
 ; CHECK-LABEL: return_elem_var
 define ptr @return_elem_var(ptr %array, i256 %i) {
 ; CHECK:      shl.s   5, r2, r2
@@ -35,7 +36,7 @@ define ptr @return_ptr(i256* %array) nounwind {
 
 declare void @foo(ptr %val);
 
-; passing stack pointer in cells as argument
+; passing stack pointer in cells as argument, without unnecessary scaling
 ; CHECK-LABEL: call_foo
 define void @call_foo() nounwind {
 ; CHECK: context.sp      [[REG:r[0-9]+]]
@@ -82,10 +83,13 @@ define ptr @call_bar3() nounwind {
 }
 
 
-; complicated case of pointer arithmetics, and return values
+; complicated case of pointer arithmetics, and return values. Extracted from our Solidity test
 ; CHECK-LABEL: ZKSYNC_NEAR_CALL_16_args_tuple20
 define ptr @ZKSYNC_NEAR_CALL_16_args_tuple20(ptr %0, i256 %1, i256 %2, i256 %3, i256 %4, i256 %5, i256 %6, i256 %7, i256 %8, i256 %9, i256 %10, i256 %11, i256 %12, i256 %13, i256 %14, i256 %15, i256 %16) {
 entry:
+; make sure that no scaling happens in this big chunk of code, only assignments to stack slots
+; CHECK-NOT: mul
+; CHECK-NOT: div
   %return_0_gep_pointer = getelementptr { i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256 }, ptr %0, i256 0, i32 0
   store i256 0, ptr %return_0_gep_pointer, align 32
   %return_1_gep_pointer = getelementptr { i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256 }, ptr %0, i256 0, i32 1
@@ -200,6 +204,31 @@ invoke_success_block:                             ; preds = %entry
   store i256 18, ptr %return_17_gep_pointer, align 32
   store i256 19, ptr %return_18_gep_pointer, align 32
   store i256 20, ptr %return_19_gep_pointer, align 32
+
+; check that we are using stack pointers without unnecessary scalings
+; CHECK: add r2, r0, stack[[[SR:r[0-9]+]]]
+; CHECK: add r3, r0, stack[1 + [[SR]]]
+; CHECK: add r4, r0, stack[2 + [[SR]]]
+; CHECK: add r5, r0, stack[3 + [[SR]]]
+; CHECK: add r6, r0, stack[4 + [[SR]]]
+; CHECK: add r7, r0, stack[5 + [[SR]]]
+; CHECK: add r8, r0, stack[6 + [[SR]]]
+; CHECK: add r9, r0, stack[7 + [[SR]]]
+; CHECK: add r10, r0, stack[8 + [[SR]]]
+; CHECK: add r11, r0, stack[9 + [[SR]]]
+; CHECK: add r12, r0, stack[10 + [[SR]]]
+; CHECK: add r13, r0, stack[11 + [[SR]]]
+; CHECK: add r14, r0, stack[12 + [[SR]]]
+; CHECK: add r15, r0, stack[13 + [[SR]]]
+; CHECK: add stack-[1], r0, stack[14 + [[SR]]]
+; CHECK: add stack-[2], r0, stack[15 + [[SR]]]
+; CHECK: add 17, r0, stack[16 + [[SR]]]
+; CHECK: add 18, r0, stack[17 + [[SR]]]
+; CHECK: add 19, r0, stack[18 + [[SR]]]
+; CHECK: add 20, r0, stack[19 + [[SR]]]
+
+; check that we are returning bytes not cells
+; CHECK mul 32, r[[[0-9]+]], r1, r0
   br label %return
 }
 
