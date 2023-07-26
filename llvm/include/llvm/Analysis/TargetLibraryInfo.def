@@ -386,6 +386,13 @@ TLI_DEFINE_ENUM_INTERNAL(acosl_finite)
 TLI_DEFINE_STRING_INTERNAL("__acosl_finite")
 TLI_DEFINE_SIG_INTERNAL(LDbl, LDbl)
 
+// EraVM local begin
+// i256 __addmod(i256, i256, i256)
+TLI_DEFINE_ENUM_INTERNAL(xvm_addmod)
+TLI_DEFINE_STRING_INTERNAL("__addmod")
+TLI_DEFINE_SIG_INTERNAL(IntPlus, IntPlus, IntPlus, IntPlus)
+// EraVM local end
+
 /// double __asin_finite(double x);
 TLI_DEFINE_ENUM_INTERNAL(asin_finite)
 TLI_DEFINE_STRING_INTERNAL("__asin_finite")
@@ -491,6 +498,13 @@ TLI_DEFINE_SIG_INTERNAL(Int, Ptr)
 TLI_DEFINE_ENUM_INTERNAL(cxa_guard_release)
 TLI_DEFINE_STRING_INTERNAL("__cxa_guard_release")
 TLI_DEFINE_SIG_INTERNAL(Void, Ptr)
+
+// EraVM local begin
+// i256 __exp(i256, i256)
+TLI_DEFINE_ENUM_INTERNAL(xvm_exp)
+TLI_DEFINE_STRING_INTERNAL("__exp")
+TLI_DEFINE_SIG_INTERNAL(IntPlus, IntPlus, IntPlus)
+// EraVM local end
 
 /// double __exp10_finite(double x);
 TLI_DEFINE_ENUM_INTERNAL(exp10_finite)
@@ -628,6 +642,12 @@ TLI_DEFINE_ENUM_INTERNAL(memset_chk)
 TLI_DEFINE_STRING_INTERNAL("__memset_chk")
 TLI_DEFINE_SIG_INTERNAL(Ptr, Ptr, Int, SizeT, SizeT)
 
+// EraVM local begin
+// i256 __mulmod(i256, i256, i256)
+TLI_DEFINE_ENUM_INTERNAL(xvm_mulmod)
+TLI_DEFINE_STRING_INTERNAL("__mulmod")
+TLI_DEFINE_SIG_INTERNAL(IntPlus, IntPlus, IntPlus, IntPlus)
+// EraVM local end
 // int __nvvm_reflect(const char *)
 TLI_DEFINE_ENUM_INTERNAL(nvvm_reflect)
 TLI_DEFINE_STRING_INTERNAL("__nvvm_reflect")
@@ -647,6 +667,13 @@ TLI_DEFINE_SIG_INTERNAL(Flt, Flt, Flt)
 TLI_DEFINE_ENUM_INTERNAL(powl_finite)
 TLI_DEFINE_STRING_INTERNAL("__powl_finite")
 TLI_DEFINE_SIG_INTERNAL(LDbl, LDbl, LDbl)
+
+// EraVM local begin
+// i256 __signextend(i256, i256)
+TLI_DEFINE_ENUM_INTERNAL(xvm_signextend)
+TLI_DEFINE_STRING_INTERNAL("__signextend")
+TLI_DEFINE_SIG_INTERNAL(IntPlus, IntPlus, IntPlus)
+// EraVM local end
 
 /// double __sincospi_stret(double x);
 TLI_DEFINE_ENUM_INTERNAL(sincospi_stret)

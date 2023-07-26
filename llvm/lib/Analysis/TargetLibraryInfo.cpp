@@ -877,6 +877,19 @@ static void initializeLibCalls(TargetLibraryInfoImpl &TLI, const Triple &T,
     TLI.setUnavailable(LibFunc_nvvm_reflect);
   }
 
+  // EraVM local begin
+  // There is really no runtime library on EraVM/EVM, apart from
+  // special functions written and linked on LLVM IR level.
+  if (T.isEraVM()) {
+    TLI.disableAllFunctions();
+    TLI.setAvailable(llvm::LibFunc_xvm_addmod);
+    TLI.setAvailable(llvm::LibFunc_xvm_exp);
+    TLI.setAvailable(llvm::LibFunc_xvm_mulmod);
+    TLI.setAvailable(llvm::LibFunc_xvm_signextend);
+    return;
+  }
+  // EraVM local end
+
   // These vec_malloc/free routines are only available on AIX.
   if (!T.isOSAIX()) {
     TLI.setUnavailable(LibFunc_vec_calloc);

@@ -5,7 +5,7 @@ target triple = "eravm"
 
 declare i32 @__personality()
 
-declare i256 @__signextend(i256, i256) local_unnamed_addr
+declare i256 @__signextend(i256, i256) #3
 
 ; Function Attrs: noreturn
 ; CHECK-LABEL: __entry
@@ -40,3 +40,4 @@ entry:
 attributes #0 = { noprofile }
 attributes #1 = { noreturn }
 attributes #2 = { noreturn nounwind }
+attributes #3 = {nounwind readnone willreturn}
