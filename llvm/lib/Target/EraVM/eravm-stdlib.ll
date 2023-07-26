@@ -205,6 +205,29 @@ define i256 @__signextend(i256 %numbyte, i256 %value) #0 {
   ret i256 %result
 }
 
+define i256 @__exp(i256 %value, i256 %exp) #0 {
+entry:
+  %exp_is_non_zero = icmp eq i256 %exp, 0
+  br i1 %exp_is_non_zero, label %return, label %exponent_loop_body
+
+return:
+  %exp_res = phi i256 [ 1, %entry ], [ %exp_res.1, %exponent_loop_body ]
+  ret i256 %exp_res
+
+exponent_loop_body:
+  %exp_res.2 = phi i256 [ %exp_res.1, %exponent_loop_body ], [ 1, %entry ]
+  %exp_val = phi i256 [ %exp_val_halved, %exponent_loop_body ], [ %exp, %entry ]
+  %val_squared.1 = phi i256 [ %val_squared, %exponent_loop_body ], [ %value, %entry ]
+  %odd_test = and i256 %exp_val, 1
+  %is_exp_odd = icmp eq i256 %odd_test, 0
+  %exp_res.1.interm = select i1 %is_exp_odd, i256 1, i256 %val_squared.1
+  %exp_res.1 = mul i256 %exp_res.1.interm, %exp_res.2
+  %val_squared = mul i256 %val_squared.1, %val_squared.1
+  %exp_val_halved = lshr i256 %exp_val, 1
+  %exp_val_is_less_2 = icmp ult i256 %exp_val, 2
+  br i1 %exp_val_is_less_2, label %return, label %exponent_loop_body
+}
+
 define void @__cxa_throw(i8* %addr, i8*, i8*) noinline {
   %addrval = ptrtoint i8* %addr to i256
   call void @llvm.eravm.throw(i256 %addrval)
@@ -214,4 +237,4 @@ define void @__cxa_throw(i8* %addr, i8*, i8*) noinline {
 declare {i256, i1} @llvm.uadd.with.overflow.i256(i256, i256)
 declare void @llvm.eravm.throw(i256)
 
-attributes #0 = { mustprogress nounwind readnone willreturn}
+attributes #0 = { mustprogress nounwind readnone willreturn }
