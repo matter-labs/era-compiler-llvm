@@ -33,6 +33,7 @@ struct PropagationResult {
   Register Base;
   int64_t Displacement;
 };
+using MopIter = MachineInstr::mop_iterator;
 
 class SyncVMStackAddressConstantPropagation : public MachineFunctionPass {
 public:
@@ -51,26 +52,35 @@ private:
   // propagation through mul.
   std::optional<PropagationResult> tryPropagateConstant(MachineInstr &MI);
   
-  // match an instruction pattern. If it matches, return the register that
-  // are being scaled
+
+
+  // If an instruction takes a stack operand (either in or out), return the iterator
+  // for that stack access.
+  std::optional<std::pair<MopIter, MopIter>>
+  getStackAccess(MachineInstr &MI) const;
+
+  // fold ADDframe with DIV into AddframeNoScaling, which does not do cells to
+  // bytes conversion
+  bool foldAddFrame(MachineInstr* MI) const;
+
+  // match an instruction pattern:
+  // %dst, $r0 = MULirrr_s 32, %src 
+  // If it matches, return the register that are being scaled (%src)
   Register matchScalingBy32(MachineInstr &MI) const {
     if (MI.getOpcode() != SyncVM::MULirrr_s)
       return {};
     auto In0Const = SyncVM::in0Iterator(MI);
-    if (getImmOrCImm(*In0Const) != 32)
-      return {};
     auto In1Reg = SyncVM::in1Iterator(MI)->getReg();
-    if (!In1Reg.isVirtual())
+
+    if (getImmOrCImm(*In0Const) != 32 ||
+        SyncVM::out1Iterator(MI)->getReg() != SyncVM::R0 || !In1Reg.isVirtual())
       return {};
-    // do not check because it can be reused
-    //if (!RegInfo->hasOneNonDBGUse(In1Reg))
-    //  return {};
     return In1Reg;
   }
   
   Register isScaledBy32(Register Reg) const {
-    if (!Reg.isVirtual()) return false;
-    if (!RegInfo->hasOneDef(Reg)) return false;
+    if (!Reg.isVirtual() || !RegInfo->hasOneDef(Reg))
+      return false;
     MachineInstr* DefMI = RegInfo->getVRegDef(Reg);
     if (matchScalingBy32(*DefMI))
       return SyncVM::in1Iterator(*DefMI)->getReg();
@@ -78,22 +88,22 @@ private:
       return {};
   }
   
-  // TODO: refactor
+  // match an instruction pattern:
+  // %dst, $r0 = DIVxrrr_s 32, %src 
+  // If it matches, return the register that are being scaled (%src)
   Register matchDescalingBy32(MachineInstr &MI) const {
-    if (MI.getOpcode() != SyncVM::DIVxrrr_s)
-      return {};
-    auto In0Const = SyncVM::in0Iterator(MI);
-    if (getImmOrCImm(*In0Const) != 32)
+    if (MI.getOpcode() != SyncVM::DIVxrrr_s ||
+       getImmOrCImm(*SyncVM::in0Iterator(MI)) != 32)
       return {};
     auto In1Reg = SyncVM::in1Iterator(MI)->getReg();
-    if (!In1Reg.isVirtual())
-      return {};
-    if (!RegInfo->hasOneNonDBGUse(In1Reg))
+    if (!In1Reg.isVirtual() || 
+        SyncVM::out1Iterator (MI)->getReg() != SyncVM::R0 ||
+        !RegInfo->hasOneNonDBGUse(In1Reg))
       return {};
     return In1Reg;
   }
 
-  // return the output result of ADDframe
+  // match and return the output result of ADDframe
   Register matchADDframe(MachineInstr &MI) const {
     if (MI.getOpcode() != SyncVM::ADDframe)
       return {};
@@ -187,6 +197,53 @@ SyncVMStackAddressConstantPropagation::tryPropagateConstant(MachineInstr &MI) {
   return PropagationResult{In1Reg, Displacement};
 }
 
+std::optional<std::pair<MopIter, MopIter>>
+SyncVMStackAddressConstantPropagation::getStackAccess(MachineInstr &MI) const {
+  // check if the stack access is in input operands
+  if (SyncVM::hasSRInAddressingMode(MI)) {
+    auto In0Reg = SyncVM::in0Iterator(MI) + 1;
+    auto In0Const = SyncVM::in0Iterator(MI) + 2;
+    if (In0Reg->isReg())
+      return std::make_pair(In0Reg, In0Const);
+  }
+
+  // check if the stack access is in output operands
+  if (SyncVM::hasSROutAddressingMode(MI)) {
+    auto In0Reg = SyncVM::out0Iterator(MI) + 1;
+    auto In0Const = SyncVM::out0Iterator(MI) + 2;
+    if (In0Reg->isReg())
+      return std::make_pair(In0Reg, In0Const);
+  }
+  return {};
+}
+
+bool SyncVMStackAddressConstantPropagation::foldAddFrame(
+    MachineInstr *MI) const {
+  Register DivReg = matchDescalingBy32(*MI);
+  if (!DivReg)
+    return false;
+  Register ScaledAndDescaledReg = SyncVM::out0Iterator(*MI)->getReg();
+  assert(ScaledAndDescaledReg);
+
+  if (!RegInfo->hasOneNonDBGUse(DivReg))
+    return false;
+
+  MachineInstr *DivDefMI = RegInfo->getVRegDef(DivReg);
+  Register FrameReg = matchADDframe(*DivDefMI);
+  if (!FrameReg)
+    return false;
+
+  Register AddFrameReturnReg = DivDefMI->getOperand(0).getReg();
+  RegInfo->replaceRegWith(ScaledAndDescaledReg, AddFrameReturnReg);
+
+  MI->eraseFromParent();
+  DivDefMI->setDesc(TII->get(SyncVM::ADDframeNoScaling));
+  // actually, we remove two instructions because ADDframeNoScaling is 1
+  // instruction shorter than ADDframe
+  ++NumInstructionsErased;
+  return true;
+}
+
 bool SyncVMStackAddressConstantPropagation::runOnMachineFunction(
     MachineFunction &MF) {
   LLVM_DEBUG(dbgs() << "********** SyncVM convert bytes to cells **********\n"
@@ -199,118 +256,79 @@ bool SyncVMStackAddressConstantPropagation::runOnMachineFunction(
       cast<SyncVMInstrInfo>(MF.getSubtarget<SyncVMSubtarget>().getInstrInfo());
   assert(TII && "TargetInstrInfo must be a valid object");
 
-  auto getStackAccess = [&](MachineInstr &MI) {
-    // check if the stack access is in input operands
-    if (SyncVM::hasSRInAddressingMode(MI)) {
-      auto In0Reg = SyncVM::in0Iterator(MI) + 1;
-      auto In0Const = SyncVM::in0Iterator(MI) + 2;
-      if (In0Reg->isReg())
-        return std::make_pair(In0Reg, In0Const);
-    }
-    
-    // check if the stack access is in output operands
-    if (SyncVM::withRegisterResult(MI.getOpcode()) != -1) {
-      auto In0Reg = SyncVM::out0Iterator(MI) + 1;
-      auto In0Const = SyncVM::out0Iterator(MI) + 2;
-      if (In0Reg->isReg())
-        return std::make_pair(In0Reg, In0Const);
-    }
-    return std::make_pair(MI.operands_end(), MI.operands_end());
-  };
-
-  for (auto &BB : MF) {
-    for (auto &MI : BB) {
-      auto [In0Reg, In0Const] = getStackAccess(MI);
-      if (In0Reg == MI.operands_end())
-        continue;
-      Register Base = In0Reg->getReg();
-
-      if (!RegInfo->hasOneNonDBGUse(Base))
-        continue;
-      MachineInstr *DefMI = RegInfo->getVRegDef(Base);
-      auto ConstPropagationResult = tryPropagateConstant(*DefMI);
-      if (!ConstPropagationResult)
-        continue;
-      int64_t Displacement = getImmOrCImm(*In0Const);
-      Displacement += ConstPropagationResult->Displacement;
-      LLVM_DEBUG(dbgs() << "Replace " << MI);
-      In0Reg->ChangeToRegister(ConstPropagationResult->Base, 0);
-      In0Const->ChangeToImmediate(Displacement, 0);
-      LLVM_DEBUG(dbgs() << "  with " << MI);
-      Changed = true;
-    }
-  }
-  
-  auto foldMulDiv = [&] (MachineInstr* MI) {
-    Register DivReg = matchDescalingBy32(*MI);
-    if (!DivReg) return false;
-    Register ScaledAndDescaledReg = SyncVM::out0Iterator(*MI)->getReg();
-    assert(ScaledAndDescaledReg);
-
-    if (!RegInfo->hasOneNonDBGUse(DivReg))
+  auto startPropagateConstant = [&](MachineInstr &MI) {
+    auto StackIt = getStackAccess(MI);
+    if (!StackIt)
       return false;
-    
-    MachineInstr* DivDefMI = RegInfo->getVRegDef(DivReg);
-    Register FrameReg = matchADDframe(*DivDefMI);
-    if (!FrameReg) return false;
-
-    Register AddFrameReturnReg = DivDefMI->getOperand(0).getReg();
-    RegInfo->replaceRegWith(ScaledAndDescaledReg, AddFrameReturnReg);
-
-    MI->eraseFromParent();
-    DivDefMI->setDesc(TII->get(SyncVM::ADDframeNoScaling));
+    auto [In0Reg, In0Const] = *StackIt;
+    Register Base = In0Reg->getReg();
+    if (!RegInfo->hasOneNonDBGUse(Base))
+      return false;
+    MachineInstr *DefMI = RegInfo->getVRegDef(Base);
+    auto ConstPropagationResult = tryPropagateConstant(*DefMI);
+    if (!ConstPropagationResult)
+      return false;
+    int64_t Displacement = getImmOrCImm(*In0Const);
+    Displacement += ConstPropagationResult->Displacement;
+    LLVM_DEBUG(dbgs() << "Replace " << MI);
+    In0Reg->ChangeToRegister(ConstPropagationResult->Base, 0);
+    In0Const->ChangeToImmediate(Displacement, 0);
+    LLVM_DEBUG(dbgs() << "  with " << MI);
     return true;
   };
   
+
+  auto foldStackArithmetic = [&](MachineInstr &MI) {
+    auto StackIt = getStackAccess(MI);
+    if (!StackIt)
+      return false;
+    auto [In0Reg, In0Const] = *StackIt;
+
+    Register Base = In0Reg->getReg();
+    MachineInstr *DivMI = RegInfo->getVRegDef(Base);
+    // here we try to determine if it is the following pattern:
+    // %r1, $r0 = MULirrr_s 32, %r0
+    // %2 = ADDirr_s 32*Offset, %r1
+    // %r3, $r0 = DIVxrrr_s 32, %r2
+    // STACKOP(stack[%r3], ...)
+    Register DivReg = matchDescalingBy32(*DivMI);
+    if (!DivReg)
+      return false;
+    MachineInstr *AddMI = getDefOfRegister(DivReg);
+    if (!AddMI)
+      return false;
+
+    auto [ScaledBaseReg, ScalingFactor] = matchAddWithMultipleOf32(*AddMI);
+    if (!ScaledBaseReg)
+      return false;
+    Register UnscaledReg = isScaledBy32(ScaledBaseReg);
+    MachineInstr *MulMI = RegInfo->getVRegDef(ScaledBaseReg);
+    if (!UnscaledReg)
+      return false;
+
+    // now we can safely replace the register with the unscaled one, and add
+    // offset
+    int64_t Displacement = getImmOrCImm(*In0Const);
+    In0Const->ChangeToImmediate(Displacement + ScalingFactor, false);
+    In0Reg->ChangeToRegister(UnscaledReg, false);
+
+    DivMI->eraseFromParent();
+    AddMI->eraseFromParent();
+    MulMI->eraseFromParent();
+    NumInstructionsErased += 3;
+    return true;
+  };
+
   for (auto &BB : MF)
     for (auto II = BB.begin(); II != BB.end();) {
       MachineInstr &MI = *II;
       ++II;
-      if (foldMulDiv(&MI)) {
+      if (foldAddFrame(&MI)) {
         Changed = true;
-      }
-    }
-
-  for (auto &BB : MF)
-    for (auto &MI : BB) {
-      auto [In0Reg, In0Const] = getStackAccess(MI);
-      if (In0Reg == MI.operands_end())
         continue;
-
-      Register Base = In0Reg->getReg();
-      MachineInstr *DivMI = RegInfo->getVRegDef(Base);
-      
-      // here we try to determine if it is the following pattern:
-      // 
-      //  mul     32, r2, r6, r0
-      //  add     32, r6, r6
-      //  DIV     32, r6, r2, r0
-      //  STACKOP stack[r2], r1, r1
-      Register DivReg = matchDescalingBy32(*DivMI);
-      if (!DivReg) continue;
-      MachineInstr* AddMI = getDefOfRegister(DivReg);
-      if (!AddMI) continue;
-
-      auto [ScaledBaseReg, ScalingFactor] = matchAddWithMultipleOf32(*AddMI);
-      if (ScaledBaseReg) {
-        Register UnscaledReg = isScaledBy32(ScaledBaseReg);
-        MachineInstr* MulMI = RegInfo->getVRegDef(ScaledBaseReg);
-        if (!UnscaledReg) continue;
-
-        // now we can safely replace the register with the unscaled one, and add offset
-        int64_t Displacement = getImmOrCImm(*In0Const);
-        In0Const->ChangeToImmediate(Displacement + ScalingFactor, false); 
-        In0Reg->ChangeToRegister(UnscaledReg, false);
-
-        DivMI->eraseFromParent();
-        AddMI->eraseFromParent();
-        MulMI->eraseFromParent();
-
-        Changed = true;
-      } else if (Register UnscaledReg = matchScalingBy32(*AddMI)) {
-        assert(false);
       }
-
+      Changed |= startPropagateConstant(MI);
+      Changed |= foldStackArithmetic(MI);
     }
 
   LLVM_DEBUG(

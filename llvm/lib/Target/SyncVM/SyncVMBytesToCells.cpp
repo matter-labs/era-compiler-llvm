@@ -62,7 +62,6 @@ private:
   bool isUsedAsStackAddress(Register Reg) const;
 
   const TargetInstrInfo *TII;
-  LLVMContext *Context;
   MachineRegisterInfo *MRI;
 
   std::vector<unsigned> MayContainCells;
