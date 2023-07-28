@@ -84,6 +84,9 @@ void SyncVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     // Set that immediate represents stack slot index.
     SPInst->getOperand(1).setTargetFlags(SyncVMII::MO_STACK_SLOT_IDX);
 
+    // We do not do conversion to bytes for `ADDframeNoScaling`, because
+    // if there is a such node, we know that the use of it will see its 
+    // value as cells.
     if (MI.getOpcode() == SyncVM::ADDframe)
       BuildMI(MBB, II, DL, TII.get(SyncVM::MULirrr_s))
           .addDef(MI.getOperand(0).getReg())
@@ -91,6 +94,7 @@ void SyncVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
           .addImm(32)
           .addReg(SPInst->getOperand(0).getReg())
           .addImm(SyncVMCC::COND_NONE);
+
     MI.eraseFromParent();
     return;
   }

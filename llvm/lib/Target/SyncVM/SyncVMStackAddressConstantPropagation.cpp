@@ -51,87 +51,40 @@ private:
   // TODO: When FE start to produce LLVM arrays, it make sense to support
   // propagation through mul.
   std::optional<PropagationResult> tryPropagateConstant(MachineInstr &MI);
-  
 
+  // match an instruction pattern:
+  // %dst, $r0 = MULirrr_s 32, %src
+  // If it matches, return the register that are being scaled (%src)
+  Register matchScalingBy32(MachineInstr &MI) const;
 
-  // If an instruction takes a stack operand (either in or out), return the iterator
-  // for that stack access.
-  std::optional<std::pair<MopIter, MopIter>>
+  // If an instruction takes a stack operand (either in or out), return the
+  // iterators for that stack access (base and displacement iterators)
+  std::optional<
+      std::pair<MachineInstr::mop_iterator, MachineInstr::mop_iterator>>
   getStackAccess(MachineInstr &MI) const;
 
-  // fold ADDframe with DIV into AddframeNoScaling, which does not do cells to
+  // fold ADDframe with DIV into ADDframeNoScaling, which does not do cells to
   // bytes conversion
   bool foldAddFrame(MachineInstr* MI) const;
 
-  // match an instruction pattern:
-  // %dst, $r0 = MULirrr_s 32, %src 
-  // If it matches, return the register that are being scaled (%src)
-  Register matchScalingBy32(MachineInstr &MI) const {
-    if (MI.getOpcode() != SyncVM::MULirrr_s)
-      return {};
-    auto In0Const = SyncVM::in0Iterator(MI);
-    auto In1Reg = SyncVM::in1Iterator(MI)->getReg();
 
-    if (getImmOrCImm(*In0Const) != 32 ||
-        SyncVM::out1Iterator(MI)->getReg() != SyncVM::R0 || !In1Reg.isVirtual())
-      return {};
-    return In1Reg;
-  }
-  
-  Register isScaledBy32(Register Reg) const {
-    if (!Reg.isVirtual() || !RegInfo->hasOneDef(Reg))
-      return false;
-    MachineInstr* DefMI = RegInfo->getVRegDef(Reg);
-    if (matchScalingBy32(*DefMI))
-      return SyncVM::in1Iterator(*DefMI)->getReg();
-    else
-      return {};
-  }
+  // match pattern: %dst, $r0 = MULirrr_s 32, %src, where %dst is the input reg
+  // if it matches, return the register that are being scaled (%src)
+  Register isScaledBy32(Register Reg) const;
   
   // match an instruction pattern:
   // %dst, $r0 = DIVxrrr_s 32, %src 
   // If it matches, return the register that are being scaled (%src)
-  Register matchDescalingBy32(MachineInstr &MI) const {
-    if (MI.getOpcode() != SyncVM::DIVxrrr_s ||
-       getImmOrCImm(*SyncVM::in0Iterator(MI)) != 32)
-      return {};
-    auto In1Reg = SyncVM::in1Iterator(MI)->getReg();
-    if (!In1Reg.isVirtual() || 
-        SyncVM::out1Iterator (MI)->getReg() != SyncVM::R0 ||
-        !RegInfo->hasOneNonDBGUse(In1Reg))
-      return {};
-    return In1Reg;
-  }
+  Register matchDescalingBy32(MachineInstr &MI) const;
 
   // match and return the output result of ADDframe
-  Register matchADDframe(MachineInstr &MI) const {
-    if (MI.getOpcode() != SyncVM::ADDframe)
-      return {};
-    return MI.getOperand(0).getReg();
-  }
+  Register matchADDframe(MachineInstr &MI) const;
 
-  std::pair<Register, unsigned>
-  matchAddWithMultipleOf32(MachineInstr &MI) const {
-    if (MI.getOpcode() != SyncVM::ADDirr_s)
-      return {{}, 0};
-    auto In0Const = SyncVM::in0Iterator(MI);
-    
-    unsigned ConstAddValue = getImmOrCImm(*In0Const);
-    if (ConstAddValue % 32 != 0)
-      return {{}, 0};
-    auto In1Reg = SyncVM::in1Iterator(MI)->getReg();
-    if (!In1Reg.isVirtual())
-      return {{}, 0};
-    if (!RegInfo->hasOneNonDBGUse(In1Reg))
-      return {{}, 0};
-    return {In1Reg, ConstAddValue / 32};
-  }
+  // if match a = %reg + 32*b, return the %reg and the constant b
+  std::optional<std::pair<Register, unsigned>>
+  matchAddWithMultipleOf32(MachineInstr &MI) const;
 
-  MachineInstr* getDefOfRegister(Register Reg) const {
-    if (!Reg.isVirtual() || !RegInfo->hasOneDef(Reg))
-      return nullptr;
-    return RegInfo->getVRegDef(Reg);
-  }
+  MachineInstr* getDefOfRegister(Register Reg) const;
 
   const SyncVMInstrInfo *TII;
   MachineRegisterInfo *RegInfo;
@@ -143,6 +96,78 @@ char SyncVMStackAddressConstantPropagation::ID = 0;
 
 INITIALIZE_PASS(SyncVMStackAddressConstantPropagation, DEBUG_TYPE,
                 SYNCVM_STACK_ADDRESS_CONSTANT_PROPAGATION_NAME, false, false)
+
+// match an instruction pattern:
+// %dst, $r0 = MULirrr_s 32, %src
+// If it matches, return the register that are being scaled (%src)
+Register SyncVMStackAddressConstantPropagation::matchScalingBy32(
+    MachineInstr &MI) const {
+  if (MI.getOpcode() != SyncVM::MULirrr_s)
+    return {};
+  auto In0Const = SyncVM::in0Iterator(MI);
+  auto In1Reg = SyncVM::in1Iterator(MI)->getReg();
+
+  if (getImmOrCImm(*In0Const) != 32 ||
+      SyncVM::out1Iterator(MI)->getReg() != SyncVM::R0 || !In1Reg.isVirtual())
+    return {};
+  return In1Reg;
+}
+
+Register
+SyncVMStackAddressConstantPropagation::isScaledBy32(Register Reg) const {
+  if (!Reg.isVirtual() || !RegInfo->hasOneDef(Reg))
+    return false;
+  MachineInstr *DefMI = RegInfo->getVRegDef(Reg);
+  if (matchScalingBy32(*DefMI))
+    return SyncVM::in1Iterator(*DefMI)->getReg();
+  else
+    return {};
+}
+
+Register SyncVMStackAddressConstantPropagation::matchDescalingBy32(
+    MachineInstr &MI) const {
+  if (MI.getOpcode() != SyncVM::DIVxrrr_s ||
+      getImmOrCImm(*SyncVM::in0Iterator(MI)) != 32)
+    return {};
+  auto In1Reg = SyncVM::in1Iterator(MI)->getReg();
+  if (!In1Reg.isVirtual() || SyncVM::out1Iterator(MI)->getReg() != SyncVM::R0 ||
+      !RegInfo->hasOneNonDBGUse(In1Reg))
+    return {};
+  return In1Reg;
+}
+
+// if match a = %reg + 32*b, return the %reg and the constant b
+std::optional<std::pair<Register, unsigned>>
+SyncVMStackAddressConstantPropagation::matchAddWithMultipleOf32(
+    MachineInstr &MI) const {
+  if (MI.getOpcode() != SyncVM::ADDirr_s)
+    return std::nullopt;
+  auto In0Const = SyncVM::in0Iterator(MI);
+
+  unsigned ConstAddValue = getImmOrCImm(*In0Const);
+  if (ConstAddValue % 32 != 0)
+    return std::nullopt;
+  auto In1Reg = SyncVM::in1Iterator(MI)->getReg();
+  if (!In1Reg.isVirtual())
+    return std::nullopt;
+  if (!RegInfo->hasOneNonDBGUse(In1Reg))
+    return std::nullopt;
+  return std::make_pair(In1Reg, ConstAddValue / 32);
+}
+
+MachineInstr *
+SyncVMStackAddressConstantPropagation::getDefOfRegister(Register Reg) const {
+  if (!Reg.isVirtual() || !RegInfo->hasOneDef(Reg))
+    return nullptr;
+  return RegInfo->getVRegDef(Reg);
+}
+
+Register
+SyncVMStackAddressConstantPropagation::matchADDframe(MachineInstr &MI) const {
+  if (MI.getOpcode() != SyncVM::ADDframe)
+    return {};
+  return MI.getOperand(0).getReg();
+}
 
 std::optional<PropagationResult>
 SyncVMStackAddressConstantPropagation::tryPropagateConstant(MachineInstr &MI) {
@@ -197,7 +222,7 @@ SyncVMStackAddressConstantPropagation::tryPropagateConstant(MachineInstr &MI) {
   return PropagationResult{In1Reg, Displacement};
 }
 
-std::optional<std::pair<MopIter, MopIter>>
+std::optional<std::pair<MachineInstr::mop_iterator, MachineInstr::mop_iterator>>
 SyncVMStackAddressConstantPropagation::getStackAccess(MachineInstr &MI) const {
   // check if the stack access is in input operands
   if (SyncVM::hasSRInAddressingMode(MI)) {
@@ -298,13 +323,14 @@ bool SyncVMStackAddressConstantPropagation::runOnMachineFunction(
     if (!AddMI)
       return false;
 
-    auto [ScaledBaseReg, ScalingFactor] = matchAddWithMultipleOf32(*AddMI);
-    if (!ScaledBaseReg)
+    auto MatchedResult = matchAddWithMultipleOf32(*AddMI);
+    if (!MatchedResult)
       return false;
+    auto [ScaledBaseReg, ScalingFactor] = *MatchedResult;
     Register UnscaledReg = isScaledBy32(ScaledBaseReg);
-    MachineInstr *MulMI = RegInfo->getVRegDef(ScaledBaseReg);
     if (!UnscaledReg)
       return false;
+    MachineInstr *MulMI = RegInfo->getVRegDef(ScaledBaseReg);
 
     // now we can safely replace the register with the unscaled one, and add
     // offset
