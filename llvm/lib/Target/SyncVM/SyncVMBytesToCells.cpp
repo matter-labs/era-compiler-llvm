@@ -55,7 +55,7 @@ private:
 
   // Returns true if the instruction is a return with argument.
   bool isCopyReturnValue(const MachineInstr &MI) const;
-  bool isPassedInCells(const MachineInstr &MI, unsigned OpNum) const;
+  bool isPassedInCells(Register) const;
   bool scalePointerArithmeticIfNeeded(MachineInstr *MI) const;
 
   bool mayContainCells(Register Reg) const;
@@ -193,10 +193,10 @@ void SyncVMBytesToCells::collectArgumentsAsRegisters(MachineFunction &MF) {
       break;
     if (MI.getOpcode() != SyncVM::COPY)
       continue;
-    if (!MI.getOperand(0).getReg().isVirtual())
+    Register OutReg = SyncVM::out0Iterator(MI)->getReg();
+    if (!OutReg.isVirtual())
       continue;
-    Register Reg = MI.getOperand(0).getReg();
-    MayContainCells.push_back(Reg.virtRegIndex());
+    MayContainCells.push_back(OutReg.virtRegIndex());
   }
 }
 
@@ -212,9 +212,7 @@ bool SyncVMBytesToCells::isUsedAsStackAddress(Register Reg) const {
   return llvm::find(VRegsUsedInStackAddressing, Reg.virtRegIndex()) !=
          VRegsUsedInStackAddressing.end();
 }
-bool SyncVMBytesToCells::isPassedInCells(const MachineInstr &MI,
-                                             unsigned OpNum) const {
-  Register Reg = MI.getOperand(OpNum).getReg();
+bool SyncVMBytesToCells::isPassedInCells(Register Reg) const {
   if (!Reg.isVirtual())
     return false;
   return mayContainCells(Reg) && isUsedAsStackAddress(Reg);
@@ -222,10 +220,10 @@ bool SyncVMBytesToCells::isPassedInCells(const MachineInstr &MI,
 
 // Returns true if the instruction is a copy to a physical register from a
 // virtual register.
-static bool isCopyToPhyReg(const MachineInstr &MI) {
+static bool isCopyToPhyReg(MachineInstr &MI) {
   return MI.getOpcode() == SyncVM::COPY &&
-         !MI.getOperand(0).getReg().isVirtual() &&
-         MI.getOperand(1).getReg().isVirtual();
+         !SyncVM::out0Iterator(MI)->getReg().isVirtual() &&
+         SyncVM::in0Iterator(MI)->getReg().isVirtual();
 }
 
 bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
@@ -374,17 +372,18 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
       // scale up any of those registers are used in pointer arithmetic.
       if (MI.getOpcode() == SyncVM::ADDirr_s) {
         auto SPOpnd = SyncVM::in1Iterator(MI);
-        if (isPassedInCells(MI, 2)) {
+        if (isPassedInCells(SPOpnd->getReg())) {
           multiplyByCellSize(SPOpnd);
         }
       }
     
       // scale up returned stack pointer
-      if (isCopyReturnValue(MI) && isPassedInCells(MI, 1)) {
-        auto RegOpnd = SyncVM::in0Iterator(MI);;
-        if (mayContainCells(RegOpnd->getReg()))
-          multiplyByCellSize(RegOpnd);
-      }
+      if (!isCopyReturnValue(MI))
+        continue;
+      auto RegOpnd = SyncVM::in0Iterator(MI);
+      if (isPassedInCells(RegOpnd->getReg()) &&
+          mayContainCells(RegOpnd->getReg()))
+        multiplyByCellSize(RegOpnd);
     }
   }
 

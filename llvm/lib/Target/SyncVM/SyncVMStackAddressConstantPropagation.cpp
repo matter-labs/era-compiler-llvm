@@ -166,7 +166,7 @@ Register
 SyncVMStackAddressConstantPropagation::matchADDframe(MachineInstr &MI) const {
   if (MI.getOpcode() != SyncVM::ADDframe)
     return {};
-  return MI.getOperand(0).getReg();
+  return SyncVM::out0Iterator(MI)->getReg();
 }
 
 std::optional<PropagationResult>
@@ -254,11 +254,12 @@ bool SyncVMStackAddressConstantPropagation::foldAddFrame(
     return false;
 
   MachineInstr *DivDefMI = RegInfo->getVRegDef(DivReg);
+  assert(DivDefMI);
   Register FrameReg = matchADDframe(*DivDefMI);
   if (!FrameReg)
     return false;
 
-  Register AddFrameReturnReg = DivDefMI->getOperand(0).getReg();
+  Register AddFrameReturnReg = SyncVM::out0Iterator(*DivDefMI)->getReg();
   RegInfo->replaceRegWith(ScaledAndDescaledReg, AddFrameReturnReg);
 
   MI->eraseFromParent();
