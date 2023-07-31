@@ -764,7 +764,9 @@ TypeSystemClang::GetBuiltinTypeForEncodingAndBitSize(Encoding encoding,
       return GetType(ast.UnsignedLongLongTy);
     if (QualTypeMatchesBitSize(bit_size, ast, ast.UnsignedInt128Ty))
       return GetType(ast.UnsignedInt128Ty);
-    break;
+    // EraVM local begin
+    return GetType(ast.getBitIntType(true, bit_size));
+    // EraVM local end
 
   case eEncodingSint:
     if (QualTypeMatchesBitSize(bit_size, ast, ast.SignedCharTy))
@@ -779,7 +781,9 @@ TypeSystemClang::GetBuiltinTypeForEncodingAndBitSize(Encoding encoding,
       return GetType(ast.LongLongTy);
     if (QualTypeMatchesBitSize(bit_size, ast, ast.Int128Ty))
       return GetType(ast.Int128Ty);
-    break;
+    // EraVM local begin
+    return GetType(ast.getBitIntType(false, bit_size));
+    // EraVM local end
 
   case eEncodingIEEE754:
     if (QualTypeMatchesBitSize(bit_size, ast, ast.FloatTy))
@@ -1004,7 +1008,9 @@ CompilerType TypeSystemClang::GetBuiltinTypeForDWARFEncodingAndBitSize(
       return GetType(ast.LongLongTy);
     if (QualTypeMatchesBitSize(bit_size, ast, ast.Int128Ty))
       return GetType(ast.Int128Ty);
-    break;
+    // EraVM local begin
+    return GetType(ast.getBitIntType(false, bit_size));
+    // EraVM local end
 
   case DW_ATE_signed_char:
     if (type_name == "char") {
@@ -1056,7 +1062,9 @@ CompilerType TypeSystemClang::GetBuiltinTypeForDWARFEncodingAndBitSize(
       return GetType(ast.UnsignedLongLongTy);
     if (QualTypeMatchesBitSize(bit_size, ast, ast.UnsignedInt128Ty))
       return GetType(ast.UnsignedInt128Ty);
-    break;
+    // EraVM local begin
+    return GetType(ast.getBitIntType(true, bit_size));
+    // EraVM local end
 
   case DW_ATE_unsigned_char:
     if (type_name == "char") {
@@ -2369,7 +2377,9 @@ CompilerType TypeSystemClang::GetIntTypeFromBitSize(size_t bit_size,
     if (bit_size == ast.getTypeSize(ast.UnsignedInt128Ty))
       return GetType(ast.UnsignedInt128Ty);
   }
-  return CompilerType();
+  // EraVM local begin
+  return GetType(ast.getBitIntType(!is_signed, bit_size));
+  // EraVM local end
 }
 
 CompilerType TypeSystemClang::GetPointerSizedIntType(bool is_signed) {
@@ -3832,6 +3842,16 @@ TypeSystemClang::GetTypeInfo(lldb::opaque_compiler_type_t type,
                            ->getModifiedType()
                            .getAsOpaquePtr(),
                        pointee_or_element_clang_type);
+  // EraVM local begin
+  case clang::Type::BitInt:
+  case clang::Type::DependentBitInt: {
+    uint32_t bitint_type_flags =
+        eTypeIsBuiltIn | eTypeHasValue | eTypeIsScalar | eTypeIsInteger;
+    if (qual_type->isSignedIntegerType())
+      bitint_type_flags |= eTypeIsSigned;
+    return bitint_type_flags;
+  }
+  // EraVM local end
   case clang::Type::Builtin: {
     const clang::BuiltinType *builtin_type =
         llvm::cast<clang::BuiltinType>(qual_type->getCanonicalTypeInternal());

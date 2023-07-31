@@ -371,6 +371,9 @@ namespace clang {
 #define TYPE(Class, Base)                                                    \
     ExpectedType Visit##Class##Type(const Class##Type *T);
 #include "clang/AST/TypeNodes.inc"
+    // EraVM local begin
+    ExpectedType VisitBitIntType(const BitIntType *T);
+    // EraVM local end
 
     // Importing declarations
     Error ImportDeclParts(NamedDecl *D, DeclarationName &Name, NamedDecl *&ToD,
@@ -1072,6 +1075,13 @@ ExpectedType ASTNodeImporter::VisitAtomicType(const AtomicType *T){
 
   return Importer.getToContext().getAtomicType(*UnderlyingTypeOrErr);
 }
+
+// EraVM local begin
+ExpectedType ASTNodeImporter::VisitBitIntType(const BitIntType *T) {
+  return Importer.getToContext().getBitIntType(T->isUnsigned(),
+                                               T->getNumBits());
+}
+// EraVM local end
 
 ExpectedType ASTNodeImporter::VisitBuiltinType(const BuiltinType *T) {
   switch (T->getKind()) {
