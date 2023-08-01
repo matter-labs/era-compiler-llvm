@@ -57,12 +57,6 @@ private:
   // If it matches, return the register that are being scaled (%src)
   Register matchScalingBy32(MachineInstr &MI) const;
 
-  // If an instruction takes a stack operand (either in or out), return the
-  // iterators for that stack access (base and displacement iterators)
-  std::optional<
-      std::pair<MachineInstr::mop_iterator, MachineInstr::mop_iterator>>
-  getStackAccess(MachineInstr &MI) const;
-
   // fold ADDframe with DIV into ADDframeNoScaling, which does not do cells to
   // bytes conversion
   bool foldAddFrame(MachineInstr* MI) const;
@@ -222,26 +216,6 @@ SyncVMStackAddressConstantPropagation::tryPropagateConstant(MachineInstr &MI) {
   return PropagationResult{In1Reg, Displacement};
 }
 
-std::optional<std::pair<MachineInstr::mop_iterator, MachineInstr::mop_iterator>>
-SyncVMStackAddressConstantPropagation::getStackAccess(MachineInstr &MI) const {
-  // check if the stack access is in input operands
-  if (SyncVM::hasSRInAddressingMode(MI)) {
-    auto In0Reg = SyncVM::in0Iterator(MI) + 1;
-    auto In0Const = SyncVM::in0Iterator(MI) + 2;
-    if (In0Reg->isReg())
-      return std::make_pair(In0Reg, In0Const);
-  }
-
-  // check if the stack access is in output operands
-  if (SyncVM::hasSROutAddressingMode(MI)) {
-    auto In0Reg = SyncVM::out0Iterator(MI) + 1;
-    auto In0Const = SyncVM::out0Iterator(MI) + 2;
-    if (In0Reg->isReg())
-      return std::make_pair(In0Reg, In0Const);
-  }
-  return {};
-}
-
 bool SyncVMStackAddressConstantPropagation::foldAddFrame(
     MachineInstr *MI) const {
   Register DivReg = matchDescalingBy32(*MI);
@@ -283,10 +257,14 @@ bool SyncVMStackAddressConstantPropagation::runOnMachineFunction(
   assert(TII && "TargetInstrInfo must be a valid object");
 
   auto startPropagateConstant = [&](MachineInstr &MI) {
-    auto StackIt = getStackAccess(MI);
+    auto StackIt = SyncVM::getStackAccess(MI);
     if (!StackIt)
       return false;
-    auto [In0Reg, In0Const] = *StackIt;
+    auto In0Reg = StackIt + 1;
+    auto In0Const = StackIt + 2;
+    if (!In0Reg->isReg())
+      return false;
+
     Register Base = In0Reg->getReg();
     if (!RegInfo->hasOneNonDBGUse(Base))
       return false;
@@ -305,10 +283,13 @@ bool SyncVMStackAddressConstantPropagation::runOnMachineFunction(
   
 
   auto foldStackArithmetic = [&](MachineInstr &MI) {
-    auto StackIt = getStackAccess(MI);
+    auto StackIt = SyncVM::getStackAccess(MI);
     if (!StackIt)
       return false;
-    auto [In0Reg, In0Const] = *StackIt;
+    auto In0Reg = StackIt + 1;
+    auto In0Const = StackIt + 2;
+    if (!In0Reg->isReg())
+      return false;
 
     Register Base = In0Reg->getReg();
     MachineInstr *DivMI = RegInfo->getVRegDef(Base);
