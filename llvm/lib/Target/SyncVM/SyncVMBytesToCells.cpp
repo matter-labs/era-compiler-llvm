@@ -54,7 +54,7 @@ private:
   void collectArgumentsAsRegisters(MachineFunction &MF);
 
   // Returns true if the instruction is a return with argument.
-  bool isCopyReturnValue(const MachineInstr &MI) const;
+  bool isCopyReturnValue(MachineInstr &MI) const;
   bool isPassedInCells(Register) const;
   bool scalePointerArithmeticIfNeeded(MachineInstr *MI) const;
 
@@ -394,13 +394,13 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
 }
 
 // Look for instruction: $r1 = COPY %0
-bool SyncVMBytesToCells::isCopyReturnValue(const MachineInstr &MI) const {
+bool SyncVMBytesToCells::isCopyReturnValue(MachineInstr &MI) const {
   if (!(MI.getOpcode() == SyncVM::COPY &&
-        MI.getOperand(0).getReg().isPhysical()))
+        SyncVM::out0Iterator(MI)->getReg().isPhysical()))
     return false;
   // The first return must be R1
-  Register PReg = MI.getOperand(0).getReg();
-  Register Reg = MI.getOperand(1).getReg();
+  Register PReg = SyncVM::out0Iterator(MI)->getReg();
+  Register Reg = SyncVM::in0Iterator(MI)->getReg();
   if (PReg != SyncVM::R1 || !Reg.isVirtual())
     return false;
 
