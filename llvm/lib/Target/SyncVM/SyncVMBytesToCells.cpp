@@ -28,7 +28,7 @@ static cl::opt<bool>
                       cl::Hidden,
                       cl::desc("Converts bytes to cells after the definition"));
 
-STATISTIC(NumBytesToCells, "Number of bytes to cells convertions gone");
+STATISTIC(NumBytesToCells, "Number of bytes to cells conversions done");
 
 namespace {
 
@@ -44,9 +44,6 @@ public:
   StringRef getPassName() const override { return SYNCVM_BYTES_TO_CELLS_NAME; }
 
 private:
-  bool isStackOp(const MachineInstr &MI, unsigned OpNum);
-  unsigned opStart(const MachineInstr &MI, unsigned OpNum);
-  bool mayHaveStackOperands(const MachineInstr &MI);
 
   void multiplyByCellSize(MachineInstr::mop_iterator Mop) const;
   void divideByCellSize(MachineInstr::mop_iterator Mop) const;
@@ -71,54 +68,6 @@ private:
 char SyncVMBytesToCells::ID = 0;
 
 } // namespace
-
-static const char Reg = 'r';
-static const char Stack = 's';
-static const char StackR = 'z';
-static const char Code = 'c';
-static const char CodeR = 'y';
-static const char Immediate = 'i';
-static const char ImmediateR = 'x';
-static const std::vector<std::string> BinaryIO = {"MUL", "DIV"};
-static const std::vector<std::string> BinaryI = {
-    "PTR_ADD", "PTR_SUB", "PTR_PACK", "ADD", "SUB", "AND",
-    "OR",      "XOR",     "SHL",      "SHR", "ROL", "ROR"};
-
-bool SyncVMBytesToCells::mayHaveStackOperands(const MachineInstr &MI) {
-  StringRef InstName = TII->getName(MI.getOpcode());
-  auto Pos = llvm::find_if(InstName, islower);
-  std::string InstRoot(InstName.begin(), Pos);
-  return llvm::find(BinaryIO, InstRoot) != BinaryIO.end() ||
-         llvm::find(BinaryI, InstRoot) != BinaryI.end() || InstRoot == "SEL";
-}
-
-bool SyncVMBytesToCells::isStackOp(const MachineInstr &MI, unsigned OpNum) {
-  StringRef InstName = TII->getName(MI.getOpcode());
-  auto Pos = llvm::find_if(InstName, islower);
-  return *(Pos + OpNum) == Stack || *(Pos + OpNum) == StackR;
-}
-
-unsigned SyncVMBytesToCells::opStart(const MachineInstr &MI, unsigned OpNum) {
-  StringRef InstName = TII->getName(MI.getOpcode());
-  auto Pos = llvm::find_if(InstName, islower);
-  std::string InstRoot(InstName.begin(), Pos);
-  if (OpNum == 2 && *(Pos + OpNum) == Reg)
-    return 0;
-  unsigned Result = 0;
-  for (unsigned I = 0; I < OpNum; ++I) {
-    char Opnd = *(Pos + I);
-    Result += (Opnd == Reg || Opnd == Immediate || Opnd == ImmediateR) ? 1
-              : (Opnd == Code || Opnd == CodeR)                        ? 2
-                                                                       : 3;
-  }
-  if (OpNum < 2 && *(Pos + 2) == Reg)
-    ++Result;
-  if (OpNum < 3 && llvm::find(BinaryIO, InstRoot) != BinaryIO.end())
-    ++Result;
-  if (OpNum == 2 && InstRoot == "SEL")
-    ++Result;
-  return Result;
-}
 
 void SyncVMBytesToCells::multiplyByCellSize(MachineInstr::mop_iterator Mop) const {
   assert(Mop->isReg() && "Expected register operand");
@@ -175,9 +124,6 @@ bool SyncVMBytesToCells::scalePointerArithmeticIfNeeded(MachineInstr *MI) const 
   multiplyByCellSize(BaseOpnd);
   return true;
 }
-
-INITIALIZE_PASS(SyncVMBytesToCells, DEBUG_TYPE, SYNCVM_BYTES_TO_CELLS_NAME,
-                false, false)
 
 void SyncVMBytesToCells::collectArgumentsAsRegisters(MachineFunction &MF) {
   // identify registers that are used as stack pointers and is coming from
@@ -259,8 +205,6 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
         }
       }
 
-      if (!mayHaveStackOperands(MI))
-        continue;
       auto ConvertMI = [&](MachineInstr::mop_iterator OpIt) {
         MachineOperand &MO0Reg = *(OpIt + 1);
         MachineOperand &MO1Global = *(OpIt + 2);
@@ -278,9 +222,9 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
           // div.s   32, r1, r1, r0
           // Which is redundant. We can simply remove the shift.
           if (DefMI->getOpcode() == SyncVM::SHLxrr_s &&
-              getImmOrCImm(DefMI->getOperand(1)) == 5) {
+              getImmOrCImm(*SyncVM::in0Iterator(*DefMI)) == 5) {
             // replace all uses of the register with the second operand.
-            Register UnshiftedReg = DefMI->getOperand(2).getReg();
+            Register UnshiftedReg = SyncVM::in1Iterator(*DefMI)->getReg();
             if (MRI->hasOneUse(UnshiftedReg)) {
               Register UseReg = MO0Reg.getReg();
               MRI->replaceRegWith(UseReg, UnshiftedReg);
@@ -368,11 +312,10 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
       BytesToCellsRegs.clear();
   }
 
-
+  // handling pointer arithmetic, returned stack pointer
   for (auto &BB : MF) {
     for (auto II = BB.begin(); II != BB.end(); ++II) {
       MachineInstr &MI = *II;
-      // scale up any of those registers are used in pointer arithmetic.
       if (MI.getOpcode() == SyncVM::ADDirr_s) {
         auto SPOpnd = SyncVM::in1Iterator(MI);
         if (isPassedInCells(SPOpnd->getReg())) {
@@ -380,7 +323,6 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
         }
       }
     
-      // scale up returned stack pointer
       if (!isCopyReturnValue(MI))
         continue;
       auto RegOpnd = SyncVM::in0Iterator(MI);
@@ -389,7 +331,6 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
         multiplyByCellSize(RegOpnd);
     }
   }
-
 
   LLVM_DEBUG(
       dbgs() << "*******************************************************\n");
@@ -421,3 +362,6 @@ bool SyncVMBytesToCells::isCopyReturnValue(MachineInstr &MI) const {
 FunctionPass *llvm::createSyncVMBytesToCellsPass() {
   return new SyncVMBytesToCells();
 }
+
+INITIALIZE_PASS(SyncVMBytesToCells, DEBUG_TYPE, SYNCVM_BYTES_TO_CELLS_NAME,
+                false, false)
