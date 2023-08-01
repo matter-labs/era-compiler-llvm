@@ -261,10 +261,9 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
 
       if (!mayHaveStackOperands(MI))
         continue;
-      auto ConvertMI = [&](unsigned OpNum) {
-        unsigned Op0Start = opStart(MI, OpNum);
-        MachineOperand &MO0Reg = MI.getOperand(Op0Start + 1);
-        MachineOperand &MO1Global = MI.getOperand(Op0Start + 2);
+      auto ConvertMI = [&](MachineInstr::mop_iterator OpIt) {
+        MachineOperand &MO0Reg = *(OpIt + 1);
+        MachineOperand &MO1Global = *(OpIt + 2);
         if (MO0Reg.isReg()) {
           Register Reg = MO0Reg.getReg();
           assert(Reg.isVirtual() && "Physical registers are not expected");
@@ -349,17 +348,21 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
           unsigned Offset = MO1Global.getOffset();
           MO1Global.setOffset(Offset /= CellSizeInBytes);
         }
-        MachineOperand &Const = MI.getOperand(Op0Start + 2);
+        MachineOperand &Const = *(OpIt + 2);
         if (Const.isImm() || Const.isCImm())
           Const.ChangeToImmediate(getImmOrCImm(Const) / CellSizeInBytes);
       };
 
-      for (unsigned OpNo = 0; OpNo < 3; ++OpNo)
-        if (isStackOp(MI, OpNo)) {
-          // avoid handling frame index addressing
-          ConvertMI(OpNo);
-          Changed = true;
-        }
+      auto StackIt = SyncVM::getStackAccess(MI);
+      if (!StackIt)
+        continue;
+      ConvertMI(StackIt);
+      
+      StackIt = SyncVM::getSecondStackAccess(MI);
+      if (StackIt)
+        ConvertMI(StackIt);
+
+      Changed = true;
     }
     if (!EarlyBytesToCells)
       BytesToCellsRegs.clear();

@@ -191,6 +191,11 @@ bool hasInvalidRelativeStackAccess(MachineInstr::const_mop_iterator Op);
 /// accesses, return an empty iterator.
 MachineInstr::mop_iterator getStackAccess(MachineInstr &MI);
 
+
+/// return iterator to the second stack access operand of \p MI. If there is no
+/// second stack access, return an empty iterator.
+MachineInstr::mop_iterator getSecondStackAccess(MachineInstr &MI);
+
 } // namespace SyncVM
 
 class SyncVMInstrInfo : public SyncVMGenInstrInfo {
