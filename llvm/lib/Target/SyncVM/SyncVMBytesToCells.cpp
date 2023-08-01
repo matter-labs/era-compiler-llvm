@@ -321,14 +321,16 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
         if (isPassedInCells(SPOpnd->getReg())) {
           multiplyByCellSize(SPOpnd);
         }
+      } else if (MI.getOpcode() == SyncVM::RET) {
+        auto ReverseIt = std::next(MI.getReverseIterator());
+        while (ReverseIt != BB.rend() && isCopyReturnValue(*ReverseIt)) {
+          auto RegOpnd = SyncVM::in0Iterator(*ReverseIt);
+          if (isPassedInCells(RegOpnd->getReg()) &&
+              mayContainCells(RegOpnd->getReg()))
+            multiplyByCellSize(RegOpnd);
+          ++ReverseIt;
+        }
       }
-    
-      if (!isCopyReturnValue(MI))
-        continue;
-      auto RegOpnd = SyncVM::in0Iterator(MI);
-      if (isPassedInCells(RegOpnd->getReg()) &&
-          mayContainCells(RegOpnd->getReg()))
-        multiplyByCellSize(RegOpnd);
     }
   }
 
@@ -342,10 +344,9 @@ bool SyncVMBytesToCells::isCopyReturnValue(MachineInstr &MI) const {
   if (!(MI.getOpcode() == SyncVM::COPY &&
         SyncVM::out0Iterator(MI)->getReg().isPhysical()))
     return false;
-  // The first return must be R1
   Register PReg = SyncVM::out0Iterator(MI)->getReg();
   Register Reg = SyncVM::in0Iterator(MI)->getReg();
-  if (PReg != SyncVM::R1 || !Reg.isVirtual())
+  if (!PReg.isPhysical() || !Reg.isVirtual())
     return false;
 
   // look for the copy instruction immediately before RET
