@@ -470,6 +470,24 @@ define void @swapinv(i256 %a) nounwind {
   ret void
 }
 
+; CHECK-LABEL: dont_combine_predicated_use
+define i256 @dont_combine_predicated_use(i256 %a, i1 %cond) nounwind {
+  %slot1 = alloca i256
+  %b = call i256 @foo()
+  %s1val = load i256, i256* %slot1
+  br i1 %cond, label %ltrue, label %lfalse
+; CHECK: add stack-[2], r0, r2
+; CHECK: sub! stack-[1], r0, r3
+; TODO: In that particular case we can combine, but it isn't analyzed in the pass.
+; CHECK: add.eq r2, r0, r1
+; CHECK: add.ne r2, r1, r1
+ltrue:
+  %res = add i256 %s1val, %b
+  ret i256 %res
+lfalse:
+  ret i256 %s1val
+}
+
 declare i8 addrspace(3)* @llvm.eravm.ptr.add(i8 addrspace(3)*, i256)
 declare i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)*, i256)
 declare i8 addrspace(3)* @llvm.eravm.ptr.shrink(i8 addrspace(3)*, i256)
