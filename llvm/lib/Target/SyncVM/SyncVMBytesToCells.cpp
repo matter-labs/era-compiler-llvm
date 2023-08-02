@@ -28,7 +28,7 @@ static cl::opt<bool>
                       cl::Hidden,
                       cl::desc("Converts bytes to cells after the definition"));
 
-STATISTIC(NumBytesToCells, "Number of bytes to cells conversions done");
+STATISTIC(NumBytesToCells, "Number of bytes to cells conversions gone");
 
 namespace {
 
@@ -68,6 +68,9 @@ private:
 char SyncVMBytesToCells::ID = 0;
 
 } // namespace
+
+INITIALIZE_PASS(SyncVMBytesToCells, DEBUG_TYPE, SYNCVM_BYTES_TO_CELLS_NAME,
+                false, false)
 
 void SyncVMBytesToCells::multiplyByCellSize(MachineInstr::mop_iterator Mop) const {
   assert(Mop->isReg() && "Expected register operand");
@@ -127,8 +130,7 @@ bool SyncVMBytesToCells::scalePointerArithmeticIfNeeded(MachineInstr *MI) const 
 
 void SyncVMBytesToCells::collectArgumentsAsRegisters(MachineFunction &MF) {
   // identify registers that are used as stack pointers and is coming from
-  // arguments.
-  // If so, need to mark them as do not scale.
+  // arguments. If so, need to mark them as do not scale.
   auto &BB = MF.front();
   // from top to bottom:
   for (auto II = BB.begin(); II != BB.end(); ++II) {
@@ -187,14 +189,12 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
 
   MayContainCells.clear();
   VRegsUsedInStackAddressing.clear();
-
   collectArgumentsAsRegisters(MF);
 
   for (auto &BB : MF) {
     for (auto II = BB.begin(); II != BB.end(); ++II) {
       MachineInstr &MI = *II;
-
-      // If a stack address is used as a passed argument to a call, it must be
+      // If a stack pointer is used as an argument to a call, its value must be
       // in cells not bytes.
       if (isCopyToPhyReg(MI)) {
         auto SrcReg = SyncVM::in0Iterator(MI)->getReg();
@@ -312,7 +312,9 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
       BytesToCellsRegs.clear();
   }
 
-  // handling pointer arithmetic, returned stack pointer
+  // handling pointer arithmetic, returned stack pointer.  We have to do it
+  // separately in a second pass is because it needs the information collected
+  // by the first pass.
   for (auto &BB : MF) {
     for (auto II = BB.begin(); II != BB.end(); ++II) {
       MachineInstr &MI = *II;
@@ -339,7 +341,8 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
   return Changed;
 }
 
-// Look for instruction: $r1 = COPY %0
+// match instructions with format: $r1 = COPY %0
+// which are used to copy return value from a virtual to a physical
 bool SyncVMBytesToCells::isCopyReturnValue(MachineInstr &MI) const {
   if (!(MI.getOpcode() == SyncVM::COPY &&
         SyncVM::out0Iterator(MI)->getReg().isPhysical()))
@@ -363,6 +366,3 @@ bool SyncVMBytesToCells::isCopyReturnValue(MachineInstr &MI) const {
 FunctionPass *llvm::createSyncVMBytesToCellsPass() {
   return new SyncVMBytesToCells();
 }
-
-INITIALIZE_PASS(SyncVMBytesToCells, DEBUG_TYPE, SYNCVM_BYTES_TO_CELLS_NAME,
-                false, false)
