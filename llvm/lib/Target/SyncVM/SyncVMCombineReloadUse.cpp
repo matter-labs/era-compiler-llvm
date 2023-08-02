@@ -273,8 +273,13 @@ bool SyncVMCombineReloadUse::combineReloadUse(MachineFunction &MF) {
                     return false;
                 if (!SyncVM::hasRRInAddressingMode(*Use))
                   return false;
+                // After IfConversion is done, some uses could be predicated,
+                // thus require more in-depth analysis to combine. Ignore such
+                // cases as unlikely to worth the effort.
+                if (getImmOrCImm(*SyncVM::ccIterator(*Use)) != SyncVMCC::COND_NONE)
+                  return false;
                 // Can't use the same stack slot twice because stack-stack is
-                // not a valid addressing mode.
+                // not a valid addressing mode with an unpredicated reload.
                 if (SyncVM::in0Iterator(*Use)->getReg() == Def &&
                     SyncVM::in1Iterator(*Use)->getReg() != Def)
                   return true;
