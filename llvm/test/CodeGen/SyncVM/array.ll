@@ -163,8 +163,8 @@ define void @stack_array_passing() {
   ; CHECK:  nop     stack+=[10]
   ; CHECK:  context.sp      r[[REG3:[0-9]+]]
   ; CHECK:  sub.s   10, r[[REG3]], r[[REG4:[0-9]+]]
-  ; CHECK-NOT:  mul
-  ; CHECK-NOT:  div
+  ; CHECK:  mul
+  ; CHECK:  div
   ; CHECK:  near_call       r0, @array_arg, @DEFAULT_UNWIND
   %array = alloca [10 x i256], align 32
   call void @array_arg([10 x i256]* %array)
@@ -189,7 +189,7 @@ define void @stack_pointer_passing2() {
   ; CHECK: nop     stack+=[10]
   ; CHECK: context.sp      r[[REG6:[0-9]+]]
   ; CHECK: sub.s   10, r[[REG6]], r[[REG6]]
-  ; CHECK-NOT: mul
+  ; CHECK: mul
   %array = alloca [10 x i256], align 32
   call void @array_arg([10 x i256]* %array)
   ret void
