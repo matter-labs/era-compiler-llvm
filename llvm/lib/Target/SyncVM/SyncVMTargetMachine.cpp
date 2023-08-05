@@ -152,8 +152,8 @@ bool SyncVMPassConfig::addInstSelector() {
 
 void SyncVMPassConfig::addPreRegAlloc() {
   addPass(createSyncVMAddConditionsPass());
-  addPass(createSyncVMBytesToCellsPass());
   addPass(createSyncVMStackAddressConstantPropagationPass());
+  addPass(createSyncVMBytesToCellsPass());
   if (TM->getOptLevel() != CodeGenOpt::None) {
     // The pass combines sub.s! 0, x, y with x definition. It assumes only one
     // usage of every definition of Flags. This is guaranteed by the selection

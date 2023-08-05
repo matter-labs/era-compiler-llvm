@@ -98,7 +98,6 @@ MachineInstr::mop_iterator out0Iterator(MachineInstr &MI) {
   auto Begin = MI.operands_begin();
   if (hasRROutAddressingMode(MI) || isSelect(MI) ||
       MI.getOpcode() == SyncVM::ADDframe ||
-      MI.getOpcode() == SyncVM::ADDframeNoScaling ||
       MI.getOpcode() == SyncVM::COPY)
     return Begin;
   return in1Iterator(MI) + argumentSize(ArgumentKind::In1, MI);

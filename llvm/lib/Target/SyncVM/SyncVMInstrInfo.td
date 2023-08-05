@@ -256,9 +256,6 @@ def ADJCALLSTACKUP   : Pseudo<(outs), (ins i256imm:$amt1, i256imm:$amt2),
 let isCodeGenOnly = 1, Defs = [Flags], Uses = [SP] in {
 def ADDframe : Pseudo<(outs GR256:$dst), (ins i256imm:$base, i256imm:$offset),
                       "# ADDframe PSEUDO", []>;
-// Same as ADDFrame, but do not scale the result.
-def ADDframeNoScaling : Pseudo<(outs GR256:$dst), (ins i256imm:$base, i256imm:$offset),
-                      "# ADDframe PSEUDO", []>;
 }
 
 let isCodeGenOnly = 1, isPseudo = 1, Uses = [Flags] in {
