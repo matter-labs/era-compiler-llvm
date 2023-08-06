@@ -43,6 +43,7 @@ public:
   bool convertStackPointerArithmetics(MachineFunction &MF);
 
   bool runOnMachineFunction(MachineFunction &Fn) override;
+  bool convertStackMachineInstr(MachineInstr::mop_iterator OpIt);
 
   StringRef getPassName() const override { return SYNCVM_BYTES_TO_CELLS_NAME; }
 
@@ -137,14 +138,15 @@ void SyncVMBytesToCells::collectArgumentsAsRegisters(MachineFunction &MF) {
   for (MachineInstr & MI : BB) {
     // we are collecting arguments on machine level. To identify arguments,
     // look for COPY instructions in the entry block where it copies physical
-    // register to a virtual register. However, CALLs in the entry block will
-    // also followed by same COPY instructions. So we will stop collecting when
-    // we see a CALL as all arguments should have been collected when we see a
-    // CALL.
+    // register to a virtual register. Those copies are generated from ISel's
+    // CopyFromReg, and are in entry block. However, CALLs in the entry block
+    // will also be followed by same COPY instructions. We will stop
+    // collecting when we see a CALL as all arguments copies should appear
+    // before CALL due to dependency.
     if (MI.getOpcode() == SyncVM::CALL)
       break;
     if (MI.getOpcode() != SyncVM::COPY)
-      continue;
+      break;
     Register OutReg = SyncVM::out0Iterator(MI)->getReg();
     if (!OutReg.isVirtual())
       continue;
@@ -152,18 +154,22 @@ void SyncVMBytesToCells::collectArgumentsAsRegisters(MachineFunction &MF) {
   }
 }
 
+/// return if a register might contain cell addressing info.
 bool SyncVMBytesToCells::mayContainCells(Register Reg) const {
   if (!Reg.isVirtual())
     return false;
   return llvm::find(MayContainCells, Reg.virtRegIndex()) !=
              MayContainCells.end();
 }
+
+/// returns if a register is used as stack address.
 bool SyncVMBytesToCells::isUsedAsStackAddress(Register Reg) const {
   if (!Reg.isVirtual())
     return false;
   return llvm::find(VRegsUsedInStackAddressing, Reg.virtRegIndex()) !=
          VRegsUsedInStackAddressing.end();
 }
+
 bool SyncVMBytesToCells::isPassedInCells(Register Reg) const {
   if (!Reg.isVirtual())
     return false;
@@ -204,6 +210,99 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
   return Changed;
 }
 
+bool SyncVMBytesToCells::convertStackMachineInstr(
+    MachineInstr::mop_iterator OpIt) {
+  MachineOperand &MO0Reg = *(OpIt + 1);
+  MachineOperand &MO1Global = *(OpIt + 2);
+  MachineInstr &MI = *OpIt->getParent();
+  if (MO0Reg.isReg()) {
+    Register Reg = MO0Reg.getReg();
+    assert(Reg.isVirtual() && "Physical registers are not expected");
+    MachineInstr *DefMI = MRI->getVRegDef(Reg);
+    if (DefMI->getOpcode() == SyncVM::CTXr)
+      // context.sp is already in cells.
+      return false;
+
+    // Shortcut:
+    // if we insert DIV, sometimes we have the following pattern:
+    // shl.s   5, r1, r1
+    // div.s   32, r1, r1, r0
+    // Which is redundant. We can simply remove the shift.
+    if (DefMI->getOpcode() == SyncVM::SHLxrr_s &&
+        getImmOrCImm(*SyncVM::in0Iterator(*DefMI)) == 5) {
+      // replace all uses of the register with the second operand.
+      Register UnshiftedReg = SyncVM::in1Iterator(*DefMI)->getReg();
+      if (MRI->hasOneUse(UnshiftedReg)) {
+        Register UseReg = MO0Reg.getReg();
+        MRI->replaceRegWith(UseReg, UnshiftedReg);
+        DefMI->eraseFromParent();
+        return true;
+      }
+    }
+
+    Register NewVR;
+    if (BytesToCellsRegs.count(Reg) == 1) {
+      // Already converted, use value from the cache.
+      NewVR = BytesToCellsRegs[Reg];
+      ++NumBytesToCells;
+    } else {
+      NewVR = MRI->createVirtualRegister(&SyncVM::GR256RegClass);
+      MachineBasicBlock *DefBB = [DefMI, &MI]() {
+        if (EarlyBytesToCells)
+          return DefMI->getParent();
+        else
+          return MI.getParent();
+      }();
+      auto DefIt = [DefBB, DefMI, &MI]() {
+        if (!EarlyBytesToCells)
+          return find_if(*DefBB, [&MI](const MachineInstr &CurrentMI) {
+            return &MI == &CurrentMI;
+          });
+        if (!DefMI->isPHI())
+          return std::next(
+              find_if(*DefBB, [DefMI](const MachineInstr &CurrentMI) {
+                return DefMI == &CurrentMI;
+              }));
+        return DefBB->getFirstNonPHI();
+      }();
+      assert(DefIt->getParent() == DefBB);
+
+      // if the Reg is coming from argument list, then it is already in cells.
+      // so we will skip DIV insertion.
+      if (mayContainCells(Reg)) {
+        NewVR = Reg;
+      } else {
+        // check that if the base register is already in cells.
+        // if so, we need not to insert DIV, but descale the offset.
+        auto DefInstr = MRI->getVRegDef(Reg);
+        // pointer arithmetic
+        scalePointerArithmeticIfNeeded(DefInstr);
+
+        // Insert DIV before the instruction.
+        BuildMI(*DefBB, DefIt, MI.getDebugLoc(), TII->get(SyncVM::DIVxrrr_s))
+            .addDef(NewVR)
+            .addDef(SyncVM::R0)
+            .addImm(CellSizeInBytes)
+            .addReg(Reg)
+            .addImm(SyncVMCC::COND_NONE);
+      }
+      BytesToCellsRegs[Reg] = NewVR;
+      VRegsUsedInStackAddressing.push_back(Reg.virtRegIndex());
+      LLVM_DEBUG(dbgs() << "Adding Reg to Stack access list: "
+                        << Reg.virtRegIndex() << '\n');
+    }
+    MO0Reg.ChangeToRegister(NewVR, false);
+  }
+  if (MO1Global.isGlobal()) {
+    unsigned Offset = MO1Global.getOffset();
+    MO1Global.setOffset(Offset /= CellSizeInBytes);
+  }
+  MachineOperand &Const = *(OpIt + 2);
+  if (Const.isImm() || Const.isCImm())
+    Const.ChangeToImmediate(getImmOrCImm(Const) / CellSizeInBytes);
+  return true;
+}
+
 bool SyncVMBytesToCells::convertStackAccesses(MachineFunction &MF) {
   bool Changed = false;
   for (auto &BB : MF) {
@@ -218,108 +317,14 @@ bool SyncVMBytesToCells::convertStackAccesses(MachineFunction &MF) {
           divideByCellSize(SyncVM::in0Iterator(MI));
       }
 
-      auto ConvertMI = [&](MachineInstr::mop_iterator OpIt) {
-        MachineOperand &MO0Reg = *(OpIt + 1);
-        MachineOperand &MO1Global = *(OpIt + 2);
-        if (MO0Reg.isReg()) {
-          Register Reg = MO0Reg.getReg();
-          assert(Reg.isVirtual() && "Physical registers are not expected");
-          MachineInstr *DefMI = MRI->getVRegDef(Reg);
-          if (DefMI->getOpcode() == SyncVM::CTXr)
-            // context.sp is already in cells.
-            return;
-
-          // Shortcut:
-          // if we insert DIV, sometimes we have the following pattern:
-          // shl.s   5, r1, r1
-          // div.s   32, r1, r1, r0
-          // Which is redundant. We can simply remove the shift.
-          if (DefMI->getOpcode() == SyncVM::SHLxrr_s &&
-              getImmOrCImm(*SyncVM::in0Iterator(*DefMI)) == 5) {
-            // replace all uses of the register with the second operand.
-            Register UnshiftedReg = SyncVM::in1Iterator(*DefMI)->getReg();
-            if (MRI->hasOneUse(UnshiftedReg)) {
-              Register UseReg = MO0Reg.getReg();
-              MRI->replaceRegWith(UseReg, UnshiftedReg);
-              DefMI->eraseFromParent();
-              Changed = true;
-              return;
-            }
-          }
-
-          Register NewVR;
-          if (BytesToCellsRegs.count(Reg) == 1) {
-            // Already converted, use value from the cache.
-            NewVR = BytesToCellsRegs[Reg];
-            ++NumBytesToCells;
-          } else {
-            NewVR = MRI->createVirtualRegister(&SyncVM::GR256RegClass);
-            MachineBasicBlock *DefBB = [DefMI, &MI]() {
-              if (EarlyBytesToCells)
-                return DefMI->getParent();
-              else
-                return MI.getParent();
-            }();
-            auto DefIt = [DefBB, DefMI, &MI]() {
-              if (!EarlyBytesToCells)
-                return find_if(*DefBB, [&MI](const MachineInstr &CurrentMI) {
-                  return &MI == &CurrentMI;
-                });
-              if (!DefMI->isPHI())
-                return std::next(
-                    find_if(*DefBB, [DefMI](const MachineInstr &CurrentMI) {
-                      return DefMI == &CurrentMI;
-                    }));
-              return DefBB->getFirstNonPHI();
-            }();
-            assert(DefIt->getParent() == DefBB);
-            
-            // if the Reg is coming from argument list, then it is already in cells.
-            // so we will skip DIV insertion.
-            if (mayContainCells(Reg)) {
-              NewVR = Reg;
-            } else {
-              // check that if the base register is already in cells.
-              // if so, we need not to insert DIV, but descale the offset.
-              auto DefInstr = MRI->getVRegDef(Reg);
-              // pointer arithmetic
-              scalePointerArithmeticIfNeeded(DefInstr);
-
-              // Insert DIV before the instruction.
-              BuildMI(*DefBB, DefIt, MI.getDebugLoc(),
-                      TII->get(SyncVM::DIVxrrr_s))
-                  .addDef(NewVR)
-                  .addDef(SyncVM::R0)
-                  .addImm(CellSizeInBytes)
-                  .addReg(Reg)
-                  .addImm(SyncVMCC::COND_NONE);
-            }
-            BytesToCellsRegs[Reg] = NewVR;
-            VRegsUsedInStackAddressing.push_back(Reg.virtRegIndex());
-            LLVM_DEBUG(dbgs() << "Adding Reg to Stack access list: "
-                              << Reg.virtRegIndex() << '\n');
-          }
-          MO0Reg.ChangeToRegister(NewVR, false);
-        }
-        if (MO1Global.isGlobal()) {
-          unsigned Offset = MO1Global.getOffset();
-          MO1Global.setOffset(Offset /= CellSizeInBytes);
-        }
-        MachineOperand &Const = *(OpIt + 2);
-        if (Const.isImm() || Const.isCImm())
-          Const.ChangeToImmediate(getImmOrCImm(Const) / CellSizeInBytes);
-      };
-
       auto StackIt = SyncVM::getStackAccess(MI);
       if (!StackIt)
         continue;
-      ConvertMI(StackIt);
+      Changed |= convertStackMachineInstr(StackIt);
       
       StackIt = SyncVM::getSecondStackAccess(MI);
       if (StackIt)
-        ConvertMI(StackIt);
-
-      Changed = true;
+        Changed |= convertStackMachineInstr(StackIt);
     }
     if (!EarlyBytesToCells)
       BytesToCellsRegs.clear();
