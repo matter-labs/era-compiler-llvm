@@ -1,5 +1,5 @@
 ; RUN: llc < %s | FileCheck %s
-; RUN: llc --early-bytes-to-cells-conversion -opaque-pointers < %s | FileCheck %s --check-prefix=EARLY-BTC
+; RUN: llc -opaque-pointers < %s | FileCheck %s
 
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "syncvm"
@@ -31,7 +31,6 @@ entry:
   %gep1 = getelementptr [4 x i256], [4 x i256]* %ptr.arr, i256 0, i256 1
   %gep2 = getelementptr [4 x i256], [4 x i256]* %ptr.arr, i256 0, i256 2
   %gep3 = getelementptr [4 x i256], [4 x i256]* %ptr.arr, i256 0, i256 3
-; EARLY-BTC: jump.eq @.BB1_2
   %x = icmp eq i256* %ptr.i256, null
   br i1 %x, label %fail, label %bb
 bb:

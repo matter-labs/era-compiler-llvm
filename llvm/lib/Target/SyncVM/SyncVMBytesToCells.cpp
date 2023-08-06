@@ -30,11 +30,6 @@ using namespace llvm;
 
 static constexpr unsigned CellSizeInBytes = 32;
 
-static cl::opt<bool>
-    EarlyBytesToCells("early-bytes-to-cells-conversion", cl::init(false),
-                      cl::Hidden,
-                      cl::desc("Converts bytes to cells after the definition"));
-
 STATISTIC(NumBytesToCells, "Number of bytes to cells conversions gone");
 
 namespace {
@@ -252,18 +247,11 @@ bool SyncVMBytesToCells::convertStackMachineInstr(
       ++NumBytesToCells;
     } else {
       NewVR = MRI->createVirtualRegister(&SyncVM::GR256RegClass);
-      MachineBasicBlock *DefBB = [&MI]() { return MI.getParent(); }();
-      auto DefIt = [DefBB, DefMI, &MI]() {
-        if (!EarlyBytesToCells)
-          return find_if(*DefBB, [&MI](const MachineInstr &CurrentMI) {
-            return &MI == &CurrentMI;
-          });
-        if (!DefMI->isPHI())
-          return std::next(
-              find_if(*DefBB, [DefMI](const MachineInstr &CurrentMI) {
-                return DefMI == &CurrentMI;
-              }));
-        return DefBB->getFirstNonPHI();
+      MachineBasicBlock *DefBB = MI.getParent();
+      auto DefIt = [DefBB, &MI]() {
+        return find_if(*DefBB, [&MI](const MachineInstr &CurrentMI) {
+          return &MI == &CurrentMI;
+        });
       }();
       assert(DefIt->getParent() == DefBB);
 
@@ -334,8 +322,7 @@ bool SyncVMBytesToCells::convertStackAccesses(MachineFunction &MF) {
       if (StackIt)
         Changed |= convertStackMachineInstr(StackIt);
     }
-    if (!EarlyBytesToCells)
-      BytesToCellsRegs.clear();
+    BytesToCellsRegs.clear();
   }
   return Changed;
 }
@@ -375,13 +362,14 @@ bool SyncVMBytesToCells::convertStackPointerArithmeticsAndReturns(
 bool SyncVMBytesToCells::isCopyReturnValue(MachineInstr &MI) const {
   if (!isCopyToPhyReg(MI))
     return false;
-
-  // look for the copy instruction immediately before RET
+  // look for the copy instruction before RET. Those instructions are generated
+  // by CopyToReg, and are in the same block as RET.
   auto NextMI = std::next(MI.getIterator());
   auto *BB = MI.getParent();
-  if (NextMI == BB->end() || NextMI->isReturn())
+  while (NextMI != BB->end() && NextMI->isCopy())
+    ++NextMI;
+  if (NextMI == BB->end() || !NextMI->isReturn())
     return false;
-
   return true;
 }
 
