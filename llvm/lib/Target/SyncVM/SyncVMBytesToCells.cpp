@@ -252,12 +252,7 @@ bool SyncVMBytesToCells::convertStackMachineInstr(
       ++NumBytesToCells;
     } else {
       NewVR = MRI->createVirtualRegister(&SyncVM::GR256RegClass);
-      MachineBasicBlock *DefBB = [DefMI, &MI]() {
-        if (EarlyBytesToCells)
-          return DefMI->getParent();
-        else
-          return MI.getParent();
-      }();
+      MachineBasicBlock *DefBB = [&MI]() { return MI.getParent(); }();
       auto DefIt = [DefBB, DefMI, &MI]() {
         if (!EarlyBytesToCells)
           return find_if(*DefBB, [&MI](const MachineInstr &CurrentMI) {
