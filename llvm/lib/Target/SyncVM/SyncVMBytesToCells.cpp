@@ -23,11 +23,6 @@ using namespace llvm;
 
 static constexpr unsigned CellSizeInBytes = 32;
 
-static cl::opt<bool>
-    EarlyBytesToCells("early-bytes-to-cells-conversion", cl::init(false),
-                      cl::Hidden,
-                      cl::desc("Converts bytes to cells after the definition"));
-
 STATISTIC(NumBytesToCells, "Number of bytes to cells conversions gone");
 
 namespace {
@@ -254,25 +249,12 @@ bool SyncVMBytesToCells::convertStackAccesses(MachineFunction &MF) {
             ++NumBytesToCells;
           } else {
             NewVR = MRI->createVirtualRegister(&SyncVM::GR256RegClass);
-            MachineBasicBlock *DefBB = [DefMI, &MI]() {
-              if (EarlyBytesToCells)
-                return DefMI->getParent();
-              else
-                return MI.getParent();
+            auto DefIt = [&MI]() {
+              return find_if(*MI.getParent(), [&MI](const MachineInstr &CurrentMI) {
+                return &MI == &CurrentMI;
+              });
             }();
-            auto DefIt = [DefBB, DefMI, &MI]() {
-              if (!EarlyBytesToCells)
-                return find_if(*DefBB, [&MI](const MachineInstr &CurrentMI) {
-                  return &MI == &CurrentMI;
-                });
-              if (!DefMI->isPHI())
-                return std::next(
-                    find_if(*DefBB, [DefMI](const MachineInstr &CurrentMI) {
-                      return DefMI == &CurrentMI;
-                    }));
-              return DefBB->getFirstNonPHI();
-            }();
-            assert(DefIt->getParent() == DefBB);
+            assert(DefIt->getParent() == MI.getParent());
             
             // if the Reg is coming from argument list, then it is already in cells.
             // so we will skip DIV insertion.
@@ -286,7 +268,7 @@ bool SyncVMBytesToCells::convertStackAccesses(MachineFunction &MF) {
               scalePointerArithmeticIfNeeded(DefInstr);
 
               // Insert DIV before the instruction.
-              BuildMI(*DefBB, DefIt, MI.getDebugLoc(),
+              BuildMI(*MI.getParent(), DefIt, MI.getDebugLoc(),
                       TII->get(SyncVM::DIVxrrr_s))
                   .addDef(NewVR)
                   .addDef(SyncVM::R0)
@@ -321,8 +303,6 @@ bool SyncVMBytesToCells::convertStackAccesses(MachineFunction &MF) {
 
       Changed = true;
     }
-    if (!EarlyBytesToCells)
-      BytesToCellsRegs.clear();
   }
   return Changed;
 }
