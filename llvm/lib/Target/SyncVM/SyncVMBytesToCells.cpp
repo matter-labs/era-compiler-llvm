@@ -210,6 +210,7 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
   return Changed;
 }
 
+/// Convert an operand of a stack access instruction to cell addressing.
 bool SyncVMBytesToCells::convertStackMachineInstr(
     MachineInstr::mop_iterator OpIt) {
   MachineOperand &MO0Reg = *(OpIt + 1);
@@ -292,8 +293,9 @@ bool SyncVMBytesToCells::convertStackMachineInstr(
   return true;
 }
 
-/// If a stack pointer in current frame is used as an argument to a call,
-/// convert its byte value intoto cell value.
+/// If a stack pointer pointing to current frame is used as an argument to a
+/// call, convert its byte value into cell value, because we are passing by
+/// cell value.
 bool SyncVMBytesToCells::handleCopyToPhyReg(MachineInstr &MI) const {
   auto SrcReg = SyncVM::in0Iterator(MI)->getReg();
   auto DefInstr = MRI->getVRegDef(SrcReg);
@@ -304,14 +306,15 @@ bool SyncVMBytesToCells::handleCopyToPhyReg(MachineInstr &MI) const {
   return false;
 }
 
+/// Look for stack accesses that are in bytes and convert them to cell accesses.
 bool SyncVMBytesToCells::convertStackAccesses(MachineFunction &MF) {
   bool Changed = false;
   for (auto &BB : MF) {
     for (auto II = BB.begin(); II != BB.end(); ++II) {
       MachineInstr &MI = *II;
-      if (isCopyToPhyReg(MI)) {
+
+      if (isCopyToPhyReg(MI))
         Changed |= handleCopyToPhyReg(MI);
-      }
 
       auto StackIt = SyncVM::getStackAccess(MI);
       if (!StackIt)
@@ -327,9 +330,9 @@ bool SyncVMBytesToCells::convertStackAccesses(MachineFunction &MF) {
   return Changed;
 }
 
-/// Handle pointer arithmetics and returned stack pointer.  We have to do it
-/// separately in a second pass is because it needs the information collected
-/// by the first pass.
+/// Handle pointer arithmetics and returned stack pointer. We have to do it
+/// separately in a second iteration is because it needs the information
+/// collected by the first pass.
 bool SyncVMBytesToCells::convertStackPointerArithmeticsAndReturns(
     MachineFunction &MF) {
   bool Changed = false;
@@ -357,13 +360,14 @@ bool SyncVMBytesToCells::convertStackPointerArithmeticsAndReturns(
   return Changed;
 }
 
-/// match instructions with format: $r1 = COPY %0
-/// which are used to copy return value from a virtual to a physical
+/// Match instructions with format: \code $rx = COPY %y \endcode
+/// which are used to copy return value from a virtual to a physical.
 bool SyncVMBytesToCells::isCopyReturnValue(MachineInstr &MI) const {
   if (!isCopyToPhyReg(MI))
     return false;
-  // look for the copy instruction before RET. Those instructions are generated
-  // by CopyToReg, and are in the same block as RET.
+  // Look for the copy instructions before RET. Those instructions are generated
+  // by CopyToReg, and are in the same block as RET. If there are multiple,
+  // they should be consecutive and at the end of BB (next to return).
   auto NextMI = std::next(MI.getIterator());
   auto *BB = MI.getParent();
   while (NextMI != BB->end() && NextMI->isCopy())
