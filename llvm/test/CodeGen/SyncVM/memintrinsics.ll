@@ -12,9 +12,9 @@ define fastcc void @huge-copysize0(i256 addrspace(0)* %dest, i256 addrspace(0)* 
 ; CHECK:   add     r0, r0, [[INDEX0:r[0-9]+]]
 ; CHECK: .BB0_1:
 ; CHECK:   shl.s   5, [[INDEX0]], [[SHIFTED_OFFSET0_SRC:r[0-9]+]]
-; CHECK:   mul     32, r1, [[SCALED_R1:r[0-9]+]], r0
+; CHECK:   shl.s   5, r1, [[SCALED_R1:r[0-9]+]]
 ; CHECK:   add     [[SCALED_R1]], [[SHIFTED_OFFSET0_SRC]], [[SHIFTED_OFFSET0_DST:r[0-9]+]]
-; CHECK:   mul     32, r2, [[SCALED_R2:r[0-9]+]], r0
+; CHECK:   shl.s   5, r2, [[SCALED_R2:r[0-9]+]]
 ; CHECK:   add     [[SCALED_R2]], [[SHIFTED_OFFSET0_SRC]], [[SHIFTED_OFFSET0_SRC]]
 ; CHECK:   div.s   32, [[SHIFTED_OFFSET0_SRC]], [[SHIFTED_OFFSET0_SRC]], r0
 ; CHECK:   add     stack[[[SHIFTED_OFFSET0_SRC]]], r0, [[LOADED_VALUE0:r[0-9]+]]
@@ -91,9 +91,9 @@ define fastcc void @normal-known-size(i256* %dest, i256* %src) {
 ; CHECK:   add     r0, r0, [[INDEX3:r[3-9]+]]
 ; CHECK: .BB3_1:
 ; CHECK:   shl.s   5, [[INDEX3]], [[SHIFTED_OFFSET3_SRC:r[3-9]+]]
-; CHECK:   mul     32, r1, [[SCALED_R1:r[3-9]+]], r0
+; CHECK:   shl.s   5, r1, [[SCALED_R1:r[3-9]+]]
 ; CHECK:   add     [[SCALED_R1]], [[SHIFTED_OFFSET3_SRC]], [[SHIFTED_OFFSET3_DST:r[3-9]+]]
-; CHECK:   mul     32, r2, [[SCALED_R2:r[3-9]+]], r0 
+; CHECK:   shl.s   5, r2, [[SCALED_R2:r[3-9]+]]
 ; CHECK:   add     [[SCALED_R2]], [[SHIFTED_OFFSET3_SRC]], [[SHIFTED_OFFSET3_SRC]]
 ; CHECK:   div.s   32, [[SHIFTED_OFFSET3_SRC]], [[SHIFTED_OFFSET3_SRC]], r0
 ; CHECK:   add     stack[[[SHIFTED_OFFSET3_SRC]]], r0, [[LOADED_VALUE3:r[3-9]+]]
@@ -112,9 +112,9 @@ define fastcc void @normal-known-size-2(i256* %dest, i256* %src) {
 ; CHECK:   add     r0, r0, [[INDEX4:r[3-9]+]]
 ; CHECK: .BB4_1:
 ; CHECK:   shl.s   5, [[INDEX4]], [[SHIFTED_OFFSET4_SRC:r[3-9]+]]
-; CHECK:   mul     32, r1, [[SCALED_R1:r[3-9]+]], r0
+; CHECK:   shl.s   5, r1, [[SCALED_R1:r[3-9]+]]
 ; CHECK:   add     [[SCALED_R1]], [[SHIFTED_OFFSET4_SRC]], [[SHIFTED_OFFSET4_DST:r[3-9]+]]
-; CHECK:   mul     32, r2, [[SCALED_R2:r[3-9]+]], r0
+; CHECK:   shl.s   5, r2, [[SCALED_R2:r[3-9]+]]
 ; CHECK:   add     [[SCALED_R2]], [[SHIFTED_OFFSET4_SRC]], [[SHIFTED_OFFSET4_SRC]]
 ; CHECK:   div.s   32, [[SHIFTED_OFFSET4_SRC]], [[SHIFTED_OFFSET4_SRC]], r0
 ; CHECK:   add     stack[[[SHIFTED_OFFSET4_SRC]]], r0, [[LOADED_VALUE4:r[3-9]+]]

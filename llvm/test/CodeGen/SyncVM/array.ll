@@ -164,7 +164,7 @@ define void @stack_array_passing() {
   ; CHECK:  context.sp      r[[REG3:[0-9]+]]
   ; CHECK:  sub.s   10, r[[REG3]], r[[REG4:[0-9]+]]
   ; CHECK:  mul
-  ; CHECK:  div
+  ; CHECK:  shr.s   5, r1, r1
   ; CHECK:  near_call       r0, @array_arg, @DEFAULT_UNWIND
   %array = alloca [10 x i256], align 32
   call void @array_arg([10 x i256]* %array)

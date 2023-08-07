@@ -29,6 +29,7 @@ using namespace llvm;
 #define SYNCVM_BYTES_TO_CELLS_NAME "SyncVM bytes to cells"
 
 static constexpr unsigned CellSizeInBytes = 32;
+static constexpr unsigned Log2CellSizeInBytes = 5;
 
 STATISTIC(NumBytesToCells, "Number of bytes to cells conversions gone");
 
@@ -92,8 +93,7 @@ void SyncVMBytesToCells::scalingHelper(MachineInstr::mop_iterator Mop,
   BuildMI(*MI->getParent(), MI->getIterator(), MI->getDebugLoc(),
           TII->get(Opcode))
       .addDef(NewVR)
-      .addDef(SyncVM::R0)
-      .addImm(CellSizeInBytes)
+      .addImm(Log2CellSizeInBytes)
       .addReg(Reg)
       .addImm(SyncVMCC::COND_NONE);
   Mop->ChangeToRegister(NewVR, false);
@@ -101,12 +101,12 @@ void SyncVMBytesToCells::scalingHelper(MachineInstr::mop_iterator Mop,
 
 void SyncVMBytesToCells::multiplyByCellSize(
     MachineInstr::mop_iterator Mop) const {
-  scalingHelper(Mop, SyncVM::MULirrr_s);
+  scalingHelper(Mop, SyncVM::SHLxrr_s);
 }
 
 void SyncVMBytesToCells::divideByCellSize(
     MachineInstr::mop_iterator Mop) const {
-  scalingHelper(Mop, SyncVM::DIVxrrr_s);
+  scalingHelper(Mop, SyncVM::SHRxrr_s);
 }
 
 /// Given an instruction, if the instruction is about pointer arithmetic,

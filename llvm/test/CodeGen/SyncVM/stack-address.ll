@@ -107,7 +107,7 @@ entry:
   store i256 0, i256* %return_0_gep_pointer, align 32
   %return_1_gep_pointer = getelementptr i256, i256* %0, i32 1
   store i256 0, i256* %return_1_gep_pointer, align 32
-; CHECK:      mul     32, r1, r1, r0
+; CHECK:      shl.s     5, r1, r1
 ; CHECK-NEXT: ret
   ret i256* %0
 }
