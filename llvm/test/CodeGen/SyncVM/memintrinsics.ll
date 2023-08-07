@@ -12,10 +12,8 @@ define fastcc void @huge-copysize0(i256 addrspace(0)* %dest, i256 addrspace(0)* 
 ; CHECK:   add     r0, r0, [[INDEX0:r[0-9]+]]
 ; CHECK: .BB0_1:
 ; CHECK:   shl.s   5, [[INDEX0]], [[SHIFTED_OFFSET0_SRC:r[0-9]+]]
-; CHECK:   shl.s   5, r1, [[SCALED_R1:r[0-9]+]]
-; CHECK:   add     [[SCALED_R1]], [[SHIFTED_OFFSET0_SRC]], [[SHIFTED_OFFSET0_DST:r[0-9]+]]
-; CHECK:   shl.s   5, r2, [[SCALED_R2:r[0-9]+]]
-; CHECK:   add     [[SCALED_R2]], [[SHIFTED_OFFSET0_SRC]], [[SHIFTED_OFFSET0_SRC]]
+; CHECK:   add     r1, [[SHIFTED_OFFSET0_SRC]], [[SHIFTED_OFFSET0_DST:r[0-9]+]]
+; CHECK:   add     r2, [[SHIFTED_OFFSET0_SRC]], [[SHIFTED_OFFSET0_SRC]]
 ; CHECK:   shr.s   5, [[SHIFTED_OFFSET0_SRC]], [[SHIFTED_OFFSET0_SRC]]
 ; CHECK:   add     stack[[[SHIFTED_OFFSET0_SRC]]], r0, [[LOADED_VALUE0:r[0-9]+]]
 ; CHECK:   shr.s   5, [[SHIFTED_OFFSET0_DST]], [[SHIFTED_OFFSET0_DST]]
@@ -91,10 +89,8 @@ define fastcc void @normal-known-size(i256* %dest, i256* %src) {
 ; CHECK:   add     r0, r0, [[INDEX3:r[3-9]+]]
 ; CHECK: .BB3_1:
 ; CHECK:   shl.s   5, [[INDEX3]], [[SHIFTED_OFFSET3_SRC:r[3-9]+]]
-; CHECK:   shl.s   5, r1, [[SCALED_R1:r[3-9]+]]
-; CHECK:   add     [[SCALED_R1]], [[SHIFTED_OFFSET3_SRC]], [[SHIFTED_OFFSET3_DST:r[3-9]+]]
-; CHECK:   shl.s   5, r2, [[SCALED_R2:r[3-9]+]]
-; CHECK:   add     [[SCALED_R2]], [[SHIFTED_OFFSET3_SRC]], [[SHIFTED_OFFSET3_SRC]]
+; CHECK:   add     r1, [[SHIFTED_OFFSET3_SRC]], [[SHIFTED_OFFSET3_DST:r[3-9]+]]
+; CHECK:   add     r2, [[SHIFTED_OFFSET3_SRC]], [[SHIFTED_OFFSET3_SRC]]
 ; CHECK:   shr.s   5, [[SHIFTED_OFFSET3_SRC]], [[SHIFTED_OFFSET3_SRC]]
 ; CHECK:   add     stack[[[SHIFTED_OFFSET3_SRC]]], r0, [[LOADED_VALUE3:r[3-9]+]]
 ; CHECK:   shr.s   5, [[SHIFTED_OFFSET3_DST]], [[SHIFTED_OFFSET3_DST]]
@@ -112,10 +108,8 @@ define fastcc void @normal-known-size-2(i256* %dest, i256* %src) {
 ; CHECK:   add     r0, r0, [[INDEX4:r[3-9]+]]
 ; CHECK: .BB4_1:
 ; CHECK:   shl.s   5, [[INDEX4]], [[SHIFTED_OFFSET4_SRC:r[3-9]+]]
-; CHECK:   shl.s   5, r1, [[SCALED_R1:r[3-9]+]]
-; CHECK:   add     [[SCALED_R1]], [[SHIFTED_OFFSET4_SRC]], [[SHIFTED_OFFSET4_DST:r[3-9]+]]
-; CHECK:   shl.s   5, r2, [[SCALED_R2:r[3-9]+]]
-; CHECK:   add     [[SCALED_R2]], [[SHIFTED_OFFSET4_SRC]], [[SHIFTED_OFFSET4_SRC]]
+; CHECK:   add     r1, [[SHIFTED_OFFSET4_SRC]], [[SHIFTED_OFFSET4_DST:r[3-9]+]]
+; CHECK:   add     r2, [[SHIFTED_OFFSET4_SRC]], [[SHIFTED_OFFSET4_SRC]]
 ; CHECK:   shr.s   5, [[SHIFTED_OFFSET4_SRC]], [[SHIFTED_OFFSET4_SRC]]
 ; CHECK:   add     stack[[[SHIFTED_OFFSET4_SRC]]], r0, [[LOADED_VALUE4:r[3-9]+]]
 ; CHECK:   shr.s   5, [[SHIFTED_OFFSET4_DST]], [[SHIFTED_OFFSET4_DST]]
@@ -124,10 +118,10 @@ define fastcc void @normal-known-size-2(i256* %dest, i256* %src) {
 ; CHECK:   sub.s!  33, [[INDEX4]], r{{[0-9]+}}
 ; CHECK:   jump.lt @.BB4_1
 ; CHECK:   add     @CPI4_0[0], r0, [[SRCMASK4:r[0-9]+]]
-; CHECK-NOT:   shr.s   5, r2, r2
+; CHECK:   shr.s   5, r2, r2
 ; CHECK:   and     stack[33 + r2], [[SRCMASK4]], [[SRCMASKED_VALUE4:r[0-9]+]]
 ; CHECK:   add     @CPI4_1[0], r0, [[DSTMASK4:r[0-9]+]]
-; CHECK-NOT:   shr.s   5, r1, r1
+; CHECK:   shr.s   5, r1, r1
 ; CHECK:   and     stack[33 + r1], [[DSTMASK4]], [[DSTMASKED_VALUE4:r[0-9]+]]
 ; CHECK:   or      [[SRCMASKED_VALUE4]], [[DSTMASKED_VALUE4]], stack[33 + r1]
   call void @llvm.memcpy.p0i256.p0i256.i256(i256* %dest, i256* %src, i256 1060, i1 false)

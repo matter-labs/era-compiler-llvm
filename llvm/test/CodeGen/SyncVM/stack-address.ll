@@ -36,13 +36,13 @@ entry:
 bb:
 ; CHECK: jump.eq @.BB1_2
 ; CHECK: add stack[r2], r0, r{{[0-9]*}}
-; CHECK-NOT: div.s 32
+; CHECK: shr.s 5, r1, r1
 ; CHECK: add stack[r1], r4, r1
 ; CHECK: add stack[1 + r2], r1, r1
 ; CHECK: add stack[2 + r2], r1, r1
 ; CHECK: add stack[3 + r2], r1, r1
-; CHECK-NOT: div.s 32
-; CHECK: add stack[r3], r1, r1
+; CHECK: shr.s 5, r3, r2
+; CHECK: add stack[r2], r1, r1
   %v1 = load i256, i256* %ptr.i256
   %v2 = load i256, i256* %gep0
   %v3 = load i256, i256* %gep1
@@ -107,7 +107,7 @@ entry:
   store i256 0, i256* %return_0_gep_pointer, align 32
   %return_1_gep_pointer = getelementptr i256, i256* %0, i32 1
   store i256 0, i256* %return_1_gep_pointer, align 32
-; CHECK:      shl.s     5, r1, r1
-; CHECK-NEXT: ret
+; CHECK-NOT:      shl.s
+; CHECK: ret
   ret i256* %0
 }

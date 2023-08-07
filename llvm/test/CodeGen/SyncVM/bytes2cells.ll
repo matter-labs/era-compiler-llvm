@@ -7,9 +7,9 @@ target triple = "syncvm-unknown-unknown"
 ; because the index offset is unknown so optimizing this is skipped
 ; CHECK-LABEL: return_elem_var
 define ptr @return_elem_var(ptr %array, i256 %i) {
-; CHECK:      shl.s   5, r2, r2
-;	CHECK-NEXT: shl.s   5, r1, r[[REG:[0-9]+]]
-; CHECK-NEXT: add     r[[REG]], r2
+; CHECK: shl.s   5, r2, r2
+; CHECK: add     r1, r2, r[[REG:[0-9]+]]
+;	CHECK: shr.s   5, r[[REG]], r[[REG]]
   %addri = getelementptr inbounds [10 x i256], ptr %array, i256 0, i256 %i
   store i256 0, ptr %addri
   ret ptr %array
@@ -20,9 +20,10 @@ define ptr @return_elem_var(ptr %array, i256 %i) {
 define ptr @return_elem_var_2(i256* %array) nounwind {
   %addri = getelementptr inbounds [10 x i256], ptr %array, i256 0, i256 7
   store i256 0, ptr %addri
-; CHECK:      shl.s	5, r1, r1
-; CHECK-NEXT: add	224, r1, r1
-; CHECK-NEXT: ret
+; CHECK: shr.s 5, r1, r[[REG:[0-9]+]]
+; CHECK: add 0, r0, stack[7 + r[[REG]]]
+; CHECK: add	224, r1, r1
+; CHECK: ret
   ret ptr %addri
 }
 
@@ -40,8 +41,8 @@ declare void @foo(ptr %val);
 define void @call_foo() nounwind {
 ; CHECK: context.sp      [[REG:r[0-9]+]]
 ; CHECK: sub.s   1, [[REG]], [[REG2:r[0-9]+]]
-; CHECK-NEXT: mul
-; CHECK-NEXT: shr.s
+; CHECK: mul
+; CHECK-NOT: shr.s
 ; CHECK: near_call
   %p = alloca i256
   call void @foo(ptr %p)

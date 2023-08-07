@@ -100,7 +100,7 @@ define i256 @alloca_reg_loading(i256 %idx, i256 %val) {
   ; CHECK:  nop     stack+=[10]
   ; TODO: CPR-1040: Optimize the following code 
   ; CHECK-NOT:  shl.s   5, r1, r1
-  ; CHECK-NOT:  div.s   32, r1, r1, r0
+  ; CHECK-NOT:  shr.s   5, r1, r1
   ; CHECK:  add     stack-[10 - r1], r0, r1
   %array = alloca [10 x i256], align 32
   %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 %idx
@@ -120,7 +120,7 @@ define i256 @alloca_const_loading(i256 %val) {
 
 ; CHECK-LABEL: arg_array_loading
 define i256 @arg_array_loading([10 x i256]* %array) {
-  ; CHECK-NOT:  div.s   32, r1, r1, r0
+  ; CHECK:  shr.s   5, r1, r1
   ; CHECK:  add     stack[5 + r1], r0, r1
   %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 5
   %rv = load i256, i256* %idx_slot
@@ -140,7 +140,7 @@ define i256 @arg_array_loading2([10 x i256]* %array, i256 %idx) {
 
 ; CHECK-LABEL: arg_ptr_loading
 define i256 @arg_ptr_loading(i256* %array) {
-  ; CHECK-NOT:  shr.s   5, r1, r1
+  ; CHECK:  shr.s   5, r1, r1
   ; CHECK:  add     stack[5 + r1], r0, r1
   %idx_slot = getelementptr i256, i256* %array, i256 5
   %rv = load i256, i256* %idx_slot
@@ -163,8 +163,7 @@ define void @stack_array_passing() {
   ; CHECK:  nop     stack+=[10]
   ; CHECK:  context.sp      r[[REG3:[0-9]+]]
   ; CHECK:  sub.s   10, r[[REG3]], r[[REG4:[0-9]+]]
-  ; CHECK:  mul
-  ; CHECK:  shr.s   5, r1, r1
+  ; CHECK:  mul     32, r[[REG4]], r1, r0
   ; CHECK:  near_call       r0, @array_arg, @DEFAULT_UNWIND
   %array = alloca [10 x i256], align 32
   call void @array_arg([10 x i256]* %array)
@@ -189,7 +188,7 @@ define void @stack_pointer_passing2() {
   ; CHECK: nop     stack+=[10]
   ; CHECK: context.sp      r[[REG6:[0-9]+]]
   ; CHECK: sub.s   10, r[[REG6]], r[[REG6]]
-  ; CHECK: mul
+  ; CHECK: mul     32, r[[REG6]], r1, r0
   %array = alloca [10 x i256], align 32
   call void @array_arg([10 x i256]* %array)
   ret void
