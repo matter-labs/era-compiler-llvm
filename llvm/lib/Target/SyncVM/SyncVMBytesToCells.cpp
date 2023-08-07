@@ -172,8 +172,6 @@ bool SyncVMBytesToCells::isUsedAsStackAddress(Register Reg) const {
 
 /// Returns if a register definitely contains cell addressing info.
 bool SyncVMBytesToCells::isPassedInCells(Register Reg) const {
-  if (!Reg.isVirtual())
-    return false;
   return mayContainCells(Reg) && isUsedAsStackAddress(Reg);
 }
 
