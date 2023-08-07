@@ -132,7 +132,7 @@ bool SyncVMBytesToCells::scalePointerArithmeticIfNeeded(
 }
 
 /// Identify registers that are used as stack pointers and is coming from
-/// arguments. If so, mark them as do not scale.
+/// arguments, collect them for future analysis.
 void SyncVMBytesToCells::collectArgumentsAsRegisters(MachineFunction &MF) {
   auto &BB = MF.front();
   for (MachineInstr &MI : BB) {
@@ -175,7 +175,7 @@ bool SyncVMBytesToCells::isPassedInCells(Register Reg) const {
   return mayContainCells(Reg) && isUsedAsStackAddress(Reg);
 }
 
-/// Returns true if the instruction is a copy to a physical register from a
+/// Returns if the instruction is a copy to a physical register from a
 /// virtual register.
 static bool isCopyToPhyReg(MachineInstr &MI) {
   return MI.getOpcode() == SyncVM::COPY &&
@@ -223,9 +223,9 @@ bool SyncVMBytesToCells::convertStackMachineInstr(
       return false;
 
     // Shortcut:
-    // if we insert DIV, sometimes we have the following pattern:
+    // if we insert shr.s, sometimes we have the following pattern:
     // shl.s   5, r1, r1
-    // div.s   32, r1, r1, r0
+    // shr.s   5, r1, r1
     // Which is redundant. We can simply remove the shift.
     if (DefMI->getOpcode() == SyncVM::SHLxrr_s &&
         getImmOrCImm(*SyncVM::in0Iterator(*DefMI)) == 5) {
@@ -255,22 +255,22 @@ bool SyncVMBytesToCells::convertStackMachineInstr(
       assert(DefIt->getParent() == DefBB);
 
       // if the Reg is coming from argument list, then it is already in cells.
-      // so we will skip DIV insertion.
+      // so we will skip its scaling.
       if (mayContainCells(Reg))
         NewVR = Reg;
       else {
         // check that if the base register is already in cells.
-        // if so, we need not to insert DIV, but descale the offset.
+        // if so, we need not to insert its right shift, but just to descale the
+        // offset.
         auto DefInstr = MRI->getVRegDef(Reg);
         // pointer arithmetic
         if (DefInstr)
           scalePointerArithmeticIfNeeded(DefInstr);
 
-        // Insert DIV before the instruction.
-        BuildMI(*DefBB, DefIt, MI.getDebugLoc(), TII->get(SyncVM::DIVxrrr_s))
+        // convert bytes to cells
+        BuildMI(*DefBB, DefIt, MI.getDebugLoc(), TII->get(SyncVM::SHRxrr_s))
             .addDef(NewVR)
-            .addDef(SyncVM::R0)
-            .addImm(CellSizeInBytes)
+            .addImm(Log2CellSizeInBytes)
             .addReg(Reg)
             .addImm(SyncVMCC::COND_NONE);
       }
