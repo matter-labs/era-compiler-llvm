@@ -49,7 +49,7 @@ entry:
   %overflow = extractvalue {i256, i1} %res1, 1
   br i1 %overflow, label %overflow_detected, label %no_overflow_detected
 
-; CHECK: add!
+; CHECK: add! r1, r2, r{{[0-9]+}}
 ; CHECK-NEXT: jump.of
 ; CHECK-NEXT: ; %bb.{{[0-9]+}}:
 ; CHECK-NEXT: near_call       r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -72,7 +72,7 @@ entry:
   %res1 = call {i256, i1} @llvm.uadd.with.overflow.i256(i256 %x, i256 %y)
   %overflow = extractvalue {i256, i1} %res1, 1
   br i1 %overflow, label %overflow_detected, label %no_overflow_detected
-; CHECK: add!
+; CHECK: add! r1, r2, r{{[0-9]+}}
 ; CHECK-NEXT: jump.of
 ; CHECK-NEXT: ; %bb.{{[0-9]+}}:
 ; CHECK-NEXT: near_call       r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -149,7 +149,7 @@ entry:
   %overflow = extractvalue {i256, i1} %res1, 1
   br i1 %overflow, label %overflow_detected, label %no_overflow_detected
 
-; CHECK: add! 0(r2)[0], r1, r1
+; CHECK: add! code[r2], r1, r{{[0-9]+}}
 ; CHECK-NEXT: jump.of
 ; CHECK-NEXT: ; %bb.{{[0-9]+}}:
 ; CHECK-NEXT: near_call       r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -173,7 +173,7 @@ entry:
   %overflow = extractvalue {i256, i1} %res1, 1
   br i1 %overflow, label %overflow_detected, label %no_overflow_detected
 
-; CHECK: add! 0(r2)[0], r1, r1
+; CHECK: add! code[r2], r1, r{{[0-9]+}}
 ; CHECK-NEXT: jump.of
 ; CHECK-NEXT: ; %bb.{{[0-9]+}}:
 ; CHECK-NEXT: near_call       r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -248,7 +248,8 @@ define void @uadd_branch_code_stack(i256 %x, i256 addrspace(4)* %valptr) nounwin
   %overflow = extractvalue {i256, i1} %res1, 1
   br i1 %overflow, label %overflow_detected, label %no_overflow_detected
 
-; CHECK: add! 0(r2)[0], r1, stack-[1]
+; CHECK: shr.s 5, r[[REG:[0-9]+]], r[[REG]]
+; CHECK: add! code[r[[REG]]], r1, stack-[1]
 ; CHECK-NEXT: jump.of
 ; CHECK-NEXT: ; %bb.{{[0-9]+}}:
 ; CHECK-NEXT: near_call       r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -276,7 +277,8 @@ define void @uadd_branch_code_stack_2(i256 %x, i256 addrspace(4)* %valptr) nounw
   %overflow = extractvalue {i256, i1} %res1, 1
   br i1 %overflow, label %overflow_detected, label %no_overflow_detected
 
-; CHECK: add! 0(r2)[0], r1, stack-[1]
+; CHECK: shr.s 5, r[[REG:[0-9]+]], r[[REG]]
+; CHECK: add! code[r[[REG]]], r1, stack-[1]
 ; CHECK-NEXT: jump.of
 ; CHECK-NEXT: ; %bb.{{[0-9]+}}:
 ; CHECK-NEXT: near_call       r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -535,7 +537,7 @@ entry:
   %overflow = extractvalue {i256, i1} %res1, 1
   br i1 %overflow, label %overflow_detected, label %no_overflow_detected
 
-; CHECK: sub.s! 0(r{{[0-9]+}})[0], r{{[0-9]+}}, r{{[0-9]+}}
+; CHECK: sub.s! code[r{{[0-9]+}}], r{{[0-9]+}}, r{{[0-9]+}}
 ; CHECK-NEXT: jump.of
 ; CHECK-NEXT: ; %bb.{{[0-9]+}}:
 ; CHECK-NEXT: near_call       r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -560,7 +562,7 @@ entry:
   %overflow = extractvalue {i256, i1} %res1, 1
   br i1 %overflow, label %overflow_detected, label %no_overflow_detected
 
-; CHECK: sub! 0(r{{[0-9]+}})[0], r{{[0-9]+}}, r{{[0-9]+}}
+; CHECK: sub! code[r2], r1, r{{[0-9]+}}
 ; CHECK-NEXT: jump.of
 ; CHECK-NEXT: ; %bb.{{[0-9]+}}:
 ; CHECK-NEXT: near_call       r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -700,7 +702,7 @@ define void @usub_branch_code_stack(i256 %inc, i256 addrspace(4)* %valptr) nounw
   %overflow = extractvalue {i256, i1} %res1, 1
   br i1 %overflow, label %overflow_detected, label %no_overflow_detected
 
-; CHECK: sub! 0(r2)[0], r{{[0-9]+}}, stack-[1]
+; CHECK: sub! code[r2], r1, stack-[1]
 ; CHECK-NEXT: jump.of
 ; CHECK-NEXT: ; %bb.{{[0-9]+}}:
 ; CHECK-NEXT: near_call       r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -729,7 +731,7 @@ define void @usub_branch_code_stack_2(i256 %inc, i256 addrspace(4)* %valptr) nou
   %overflow = extractvalue {i256, i1} %res1, 1
   br i1 %overflow, label %overflow_detected, label %no_overflow_detected
 
-; CHECK: sub.s! 0(r2)[0], r{{[0-9]+}}, stack-[1]
+; CHECK: sub.s! code[r{{[0-9]+}}], r{{[0-9]+}}, stack-[1]
 ; CHECK-NEXT: jump.of
 ; CHECK-NEXT: ; %bb.{{[0-9]+}}:
 ; CHECK-NEXT: near_call       r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -814,7 +816,7 @@ entry:
   %overflow = extractvalue {i256, i1} %res1, 1
   br i1 %overflow, label %overflow_detected, label %no_overflow_detected
 
-; CHECK: mul!
+; CHECK: mul! r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}
 ; CHECK-NEXT: jump.of
 ; CHECK-NEXT: ; %bb.{{[0-9]+}}:
 ; CHECK-NEXT: near_call       r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -838,7 +840,7 @@ entry:
   %overflow = extractvalue {i256, i1} %res1, 1
   br i1 %overflow, label %overflow_detected, label %no_overflow_detected
 
-; CHECK: mul!
+; CHECK: mul! r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}
 ; CHECK-NEXT: jump.of
 ; CHECK-NEXT: ; %bb.{{[0-9]+}}:
 ; CHECK-NEXT: near_call       r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -915,7 +917,7 @@ entry:
   %overflow = extractvalue {i256, i1} %res1, 1
   br i1 %overflow, label %overflow_detected, label %no_overflow_detected
 
-; CHECK: mul! 0(r{{[0-9]+}})[0], r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}
+; CHECK: mul! code[r2], r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}
 ; CHECK-NEXT: jump.of
 ; CHECK-NEXT: ; %bb.{{[0-9]+}}:
 ; CHECK-NEXT: near_call       r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -940,7 +942,7 @@ entry:
   %overflow = extractvalue {i256, i1} %res1, 1
   br i1 %overflow, label %overflow_detected, label %no_overflow_detected
 
-; CHECK: mul! 0(r{{[0-9]+}})[0], r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}
+; CHECK: mul! code[r2], r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}
 ; CHECK-NEXT: jump.of
 ; CHECK-NEXT: ; %bb.{{[0-9]+}}:
 ; CHECK-NEXT: near_call       r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -1130,7 +1132,7 @@ define void @umul_branch_code_stack(i256 %inc, i256 addrspace(4)* %valptr) nounw
   %overflow = extractvalue {i256, i1} %res1, 1
   br i1 %overflow, label %overflow_detected, label %no_overflow_detected
 
-; CHECK: mul! 0(r2)[0], r{{[0-9]+}}, stack-[1]
+; CHECK: mul! code[r2], r1, stack-[1], r{{[0-9]+}}
 ; CHECK-NEXT: jump.of
 ; CHECK-NEXT: ; %bb.{{[0-9]+}}:
 ; CHECK-NEXT: near_call       r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -1159,7 +1161,7 @@ define void @umul_branch_code_stack_2(i256 %inc, i256 addrspace(4)* %valptr) nou
   %overflow = extractvalue {i256, i1} %res1, 1
   br i1 %overflow, label %overflow_detected, label %no_overflow_detected
 
-; CHECK: mul! 0(r2)[0], r{{[0-9]+}}, stack-[1]
+; CHECK: mul! code[r2], r1, stack-[1], r{{[0-9]+}}
 ; CHECK-NEXT: jump.of
 ; CHECK-NEXT: ; %bb.{{[0-9]+}}:
 ; CHECK-NEXT: near_call       r0, @has_no_overflow, @DEFAULT_UNWIND
