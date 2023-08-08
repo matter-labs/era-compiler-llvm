@@ -1,15 +1,13 @@
 //===-- SyncVMBytesToCells.cpp - Replace bytes addresses with cells ones --===//
 //
 /// \file
-/// This file contains a pass that corrects stack addressing:
-/// 1. generally, replaces addresses in bytes with addresses in cells for
-/// instructions addressing stack.
-/// 2. make sure when we are passing stack pointers to a function, we pass not
-/// in bytes but in cells.
+/// This file contains a pass that corrects stack addressing to replace
+/// addresses in bytes with addresses in cells for instructions addressing
+/// stack.
 /// This pass is necessary for SyncVM target to ensure stack accesses, because
 /// LLVM will emit byte addressing for stack accesses, and on SyncVM the stack
 /// space is addressed in cells (32 bytes per cell). Without this pass the
-/// generated code wouldn't work correctly.
+/// generated code would not work correctly on SyncVM.
 //
 //===----------------------------------------------------------------------===//
 
@@ -75,9 +73,21 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
   TII = MF.getSubtarget<SyncVMSubtarget>().getInstrInfo();
   assert(TII && "TargetInstrInfo must be a valid object");
 
-  BytesToCellsRegs.clear();
+  for (auto &BB : MF) {
+    for (auto II = BB.begin(); II != BB.end(); ++II) {
+      MachineInstr &MI = *II;
 
-  Changed |= convertStackAccesses(MF);
+      auto StackIt = SyncVM::getStackAccess(MI);
+      if (!StackIt)
+        continue;
+      Changed |= convertStackMachineInstr(StackIt);
+
+      StackIt = SyncVM::getSecondStackAccess(MI);
+      if (StackIt)
+        Changed |= convertStackMachineInstr(StackIt);
+    }
+    BytesToCellsRegs.clear();
+  }
 
   LLVM_DEBUG(
       dbgs() << "*******************************************************\n");
@@ -94,8 +104,8 @@ bool SyncVMBytesToCells::convertStackMachineInstr(
     Register Reg = MO0Reg.getReg();
     assert(Reg.isVirtual() && "Physical registers are not expected");
     MachineInstr *DefMI = MRI->getVRegDef(Reg);
+    // context.sp is already in cells
     if (DefMI->getOpcode() == SyncVM::CTXr)
-      // context.sp is already in cells.
       return false;
 
     // Shortcut:
@@ -104,7 +114,7 @@ bool SyncVMBytesToCells::convertStackMachineInstr(
     // shr.s   5, r1, r1
     // Which is redundant. We can simply remove the shift.
     if (DefMI->getOpcode() == SyncVM::SHLxrr_s &&
-        getImmOrCImm(*SyncVM::in0Iterator(*DefMI)) == 5) {
+        getImmOrCImm(*SyncVM::in0Iterator(*DefMI)) == Log2CellSizeInBytes) {
       // replace all uses of the register with the second operand.
       Register UnshiftedReg = SyncVM::in1Iterator(*DefMI)->getReg();
       if (MRI->hasOneUse(UnshiftedReg)) {
@@ -130,7 +140,7 @@ bool SyncVMBytesToCells::convertStackMachineInstr(
       }();
       assert(DefIt->getParent() == DefBB);
 
-      // convert bytes to cells
+      // convert bytes to cells by right shifting
       BuildMI(*DefBB, DefIt, MI.getDebugLoc(), TII->get(SyncVM::SHRxrr_s))
           .addDef(NewVR)
           .addImm(Log2CellSizeInBytes)
@@ -150,27 +160,6 @@ bool SyncVMBytesToCells::convertStackMachineInstr(
   if (Const.isImm() || Const.isCImm())
     Const.ChangeToImmediate(getImmOrCImm(Const) / CellSizeInBytes);
   return true;
-}
-
-/// Look for stack accesses that are in bytes and convert them to cell accesses.
-bool SyncVMBytesToCells::convertStackAccesses(MachineFunction &MF) {
-  bool Changed = false;
-  for (auto &BB : MF) {
-    for (auto II = BB.begin(); II != BB.end(); ++II) {
-      MachineInstr &MI = *II;
-
-      auto StackIt = SyncVM::getStackAccess(MI);
-      if (!StackIt)
-        continue;
-      Changed |= convertStackMachineInstr(StackIt);
-
-      StackIt = SyncVM::getSecondStackAccess(MI);
-      if (StackIt)
-        Changed |= convertStackMachineInstr(StackIt);
-    }
-    BytesToCellsRegs.clear();
-  }
-  return Changed;
 }
 
 /// createSyncVMBytesToCellsPass - returns an instance of bytes to cells
