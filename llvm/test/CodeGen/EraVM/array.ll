@@ -5,10 +5,11 @@ target triple = "eravm"
 
 @val = global [10 x i256] zeroinitializer
 @const = addrspace(4) global [10 x i256] zeroinitializer
+@const2 = addrspace(4) global [10 x i256] zeroinitializer
 
 ; CHECK-LABEL: consti_loadconst_storeglobal
 define void @consti_loadconst_storeglobal() nounwind {
-  ; TODO: CPR-940 Incorrect codegen add	@const+32[0], r0, r1
+  ; CHECK: add	@const[1], r0, r1
   %1 = load i256, ptr addrspace(4) getelementptr inbounds ([10 x i256], ptr addrspace(4) @const, i256 0, i256 1), align 32
   ; CHECK: add r1, r0, stack[@val+1]
   ; TODO: Should be folded into a single instruction.
@@ -26,13 +27,13 @@ define void @consti_loadglobal_storeglobal() nounwind {
 
 ; CHECK-LABEL: vari_loadconst_storeglobal
 define void @vari_loadconst_storeglobal(i256 %i) nounwind {
-  ; TODO: CPR-940 Incorrect codegen add	@const(r1)[0], r0, r2
-  %addrc = getelementptr inbounds [10 x i256], ptr addrspace(4) @const, i256 0, i256 %i
+  %addrc = getelementptr inbounds [10 x i256], ptr addrspace(4) @const2, i256 0, i256 %i
   %addrg = getelementptr inbounds [10 x i256], ptr @val, i256 0, i256 %i
   %1 = load i256, ptr addrspace(4) %addrc, align 32
-  ; CHECK-NOT: shr.s 5, r1, r1
+  ; CHECK-NOT: shr.s 5, r1, {{r[0-9]+}}
+  ; CHECK: add @const2[r1], r0, {{r[0-9]+}}
+  ; TODO: The next instruction can be folded with previous `add`.
   ; CHECK: add r2, r0, stack[@val + r1]
-  ; TODO: Should be folded into a single instruction.
   store i256 %1, ptr %addrg, align 32
   ret void
 }

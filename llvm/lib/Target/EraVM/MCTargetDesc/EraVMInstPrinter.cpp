@@ -16,6 +16,7 @@
 #include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCInst.h"
 #include "llvm/MC/MCInstrInfo.h"
+#include "llvm/MC/MCSymbol.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/FormattedStream.h"
 using namespace llvm;
@@ -145,20 +146,50 @@ void EraVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
   // print constant pool memory
   if (Base.isExpr()) {
     Base.getExpr()->print(O, &MAI);
+    O << "[0]";
+    return;
+  }
+
+  if (Base.isReg() && Disp.isImm()) {
+    if (Disp.getImm() == 0)
+      O << "code[" << getRegisterName(Base.getReg()) << "]";
+    else
+      O << "code[" << getRegisterName(Base.getReg()) << "+" << Disp.getImm()
+        << "]";
     return;
   }
 
   // Print displacement first
   if (Disp.isExpr()) {
-    Disp.getExpr()->print(O, &MAI);
-  } else {
-    assert(Disp.isImm() && "Expected immediate in displacement field");
-    O << Disp.getImm();
+    auto *expr = Disp.getExpr();
+    // handle the case where symbol has an offset
+    if (auto *binExpr = dyn_cast<MCBinaryExpr>(expr)) {
+      assert(binExpr->getOpcode() == MCBinaryExpr::Add &&
+             "Unexpected binary expression type, check EraVMMCInstLower "
+             "for reference.");
+      auto sym = cast<MCSymbolRefExpr>(binExpr->getLHS());
+      auto offset = cast<MCConstantExpr>(binExpr->getRHS());
+      // print symbol
+      O << '@' << sym->getSymbol().getName() << "[";
+      // if there is a reg, print it before offset
+      if (Base.isReg())
+        O << getRegisterName(Base.getReg()) << "+";
+      // finally, print offset
+      O << offset->getValue() << "]";
+    } else if (auto *symExpr = dyn_cast<MCSymbolRefExpr>(expr)) {
+      // handle the case where symbol has no imm offset but could have a reg
+      // index
+      if (Base.isReg())
+        O << '@' << symExpr->getSymbol().getName() << "["
+          << getRegisterName(Base.getReg()) << "]";
+      else
+        O << '@' << symExpr->getSymbol().getName() << "[0]";
+    }
+    return;
   }
 
-  // Print register base field
-  if (Base.isReg())
-    O << '(' << getRegisterName(Base.getReg()) << ')';
+  assert(Disp.isImm() && "Expected immediate in displacement field");
+  O << Disp.getImm();
 }
 
 void EraVMInstPrinter::printStackOperand(const MCInst *MI, unsigned OpNo,
