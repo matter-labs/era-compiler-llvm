@@ -194,6 +194,7 @@ add_llvm_component_library(LLVMSupport
   IntEqClasses.cpp
   IntervalMap.cpp
   JSON.cpp
+  KECCAK.cpp
   KnownBits.cpp
   LEB128.cpp
   LineIterator.cpp
