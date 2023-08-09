@@ -232,23 +232,6 @@ bool hasInvalidRelativeStackAccess(MachineInstr::const_mop_iterator Op) {
   return false;
 }
 
-MachineInstr::mop_iterator getStackAccess(MachineInstr &MI) {
-  // check if the stack access is in input operands
-  if (SyncVM::hasSRInAddressingMode(MI))
-    return SyncVM::in0Iterator(MI);
-
-  // check if the stack access is in output operands
-  if (SyncVM::hasSROutAddressingMode(MI))
-    return SyncVM::out0Iterator(MI);
-
-  return {};
-}
-
-MachineInstr::mop_iterator getSecondStackAccess(MachineInstr &MI) {
-  if (SyncVM::hasSRInAddressingMode(MI) && SyncVM::hasSROutAddressingMode(MI))
-    return SyncVM::out0Iterator(MI);
-  return {};
-}
 
 } // namespace SyncVM
 } // namespace llvm

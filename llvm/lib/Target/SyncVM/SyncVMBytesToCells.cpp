@@ -1,13 +1,14 @@
 //===-- SyncVMBytesToCells.cpp - Replace bytes addresses with cells ones --===//
 //
 /// \file
+/// LLVM emits byte addressing for stack accesses, and on SyncVM the stack
+/// space is addressed in cells (32 bytes per cell).
+///
 /// This file contains a pass that corrects stack addressing to replace
 /// addresses in bytes with addresses in cells for instructions addressing
 /// stack.
 /// This pass is necessary for SyncVM target to ensure stack accesses, because
-/// LLVM will emit byte addressing for stack accesses, and on SyncVM the stack
-/// space is addressed in cells (32 bytes per cell). Without this pass the
-/// generated code would not work correctly on SyncVM.
+/// Without this pass the  generated code would not work correctly on SyncVM.
 //
 //===----------------------------------------------------------------------===//
 
@@ -40,14 +41,24 @@ public:
 
   const TargetRegisterInfo *TRI;
 
-  bool convertStackAccesses(MachineFunction &MF);
-
   bool runOnMachineFunction(MachineFunction &Fn) override;
-  bool convertStackMachineInstr(MachineInstr::mop_iterator OpIt);
 
   StringRef getPassName() const override { return SYNCVM_BYTES_TO_CELLS_NAME; }
 
 private:
+  bool convertStackMachineInstr(MachineInstr::mop_iterator OpIt);
+
+  /// return iterator to the stack access operand of \p MI. If there is no stack
+  /// accesses, return an empty iterator.
+  MachineInstr::mop_iterator getStackAccess(MachineInstr &MI);
+
+  /// return iterator to the second stack access operand of \p MI. If there is
+  /// no second stack access, return an empty iterator.
+  MachineInstr::mop_iterator getSecondStackAccess(MachineInstr &MI);
+
+  /// fold conversion to cells with shift left
+  bool foldWithLeftShift(MachineInstr *DefMI, MachineOperand &MO0Reg);
+
   const TargetInstrInfo *TII;
   MachineRegisterInfo *MRI;
 
@@ -60,6 +71,26 @@ char SyncVMBytesToCells::ID = 0;
 
 INITIALIZE_PASS(SyncVMBytesToCells, DEBUG_TYPE, SYNCVM_BYTES_TO_CELLS_NAME,
                 false, false)
+
+/// If the source of the byte-addressed pointer is from a shift left, we can
+/// simply remove the shift and use the un-shifted register instead because the
+/// un-shifted register is already cell-addressed.
+bool SyncVMBytesToCells::foldWithLeftShift(MachineInstr *DefMI,
+                                           MachineOperand &MO0Reg) {
+  if (DefMI->getOpcode() != SyncVM::SHLxrr_s ||
+      getImmOrCImm(*SyncVM::in0Iterator(*DefMI)) != Log2CellSizeInBytes)
+    return false;
+
+  // replace all uses of the register with the second operand.
+  Register UnshiftedReg = SyncVM::in1Iterator(*DefMI)->getReg();
+  if (!MRI->hasOneUse(UnshiftedReg))
+    return false;
+
+  Register UseReg = MO0Reg.getReg();
+  MRI->replaceRegWith(UseReg, UnshiftedReg);
+  DefMI->eraseFromParent();
+  return true;
+}
 
 bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
   LLVM_DEBUG(dbgs() << "********** SyncVM convert bytes to cells **********\n"
@@ -77,12 +108,12 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
     for (auto II = BB.begin(); II != BB.end(); ++II) {
       MachineInstr &MI = *II;
 
-      auto StackIt = SyncVM::getStackAccess(MI);
+      auto StackIt = getStackAccess(MI);
       if (!StackIt)
         continue;
       Changed |= convertStackMachineInstr(StackIt);
 
-      StackIt = SyncVM::getSecondStackAccess(MI);
+      StackIt = getSecondStackAccess(MI);
       if (StackIt)
         Changed |= convertStackMachineInstr(StackIt);
     }
@@ -104,26 +135,14 @@ bool SyncVMBytesToCells::convertStackMachineInstr(
     Register Reg = MO0Reg.getReg();
     assert(Reg.isVirtual() && "Physical registers are not expected");
     MachineInstr *DefMI = MRI->getVRegDef(Reg);
-    // context.sp is already in cells
+
+    // corner case: as per spec, stack pointer retrieved from context.sp is
+    // cell-addressed, while everything else is byte-addressed.
     if (DefMI->getOpcode() == SyncVM::CTXr)
       return false;
 
-    // Shortcut:
-    // if we insert shr.s, sometimes we have the following pattern:
-    // shl.s   5, r1, r1
-    // shr.s   5, r1, r1
-    // Which is redundant. We can simply remove the shift.
-    if (DefMI->getOpcode() == SyncVM::SHLxrr_s &&
-        getImmOrCImm(*SyncVM::in0Iterator(*DefMI)) == Log2CellSizeInBytes) {
-      // replace all uses of the register with the second operand.
-      Register UnshiftedReg = SyncVM::in1Iterator(*DefMI)->getReg();
-      if (MRI->hasOneUse(UnshiftedReg)) {
-        Register UseReg = MO0Reg.getReg();
-        MRI->replaceRegWith(UseReg, UnshiftedReg);
-        DefMI->eraseFromParent();
-        return true;
-      }
-    }
+    if (foldWithLeftShift(DefMI, MO0Reg))
+      return true;
 
     Register NewVR;
     if (BytesToCellsRegs.count(Reg) == 1) {
@@ -160,6 +179,26 @@ bool SyncVMBytesToCells::convertStackMachineInstr(
   if (Const.isImm() || Const.isCImm())
     Const.ChangeToImmediate(getImmOrCImm(Const) / CellSizeInBytes);
   return true;
+}
+
+MachineInstr::mop_iterator
+SyncVMBytesToCells::getStackAccess(MachineInstr &MI) {
+  // check if the stack access is in input operands
+  if (SyncVM::hasSRInAddressingMode(MI))
+    return SyncVM::in0Iterator(MI);
+
+  // check if the stack access is in output operands
+  if (SyncVM::hasSROutAddressingMode(MI))
+    return SyncVM::out0Iterator(MI);
+
+  return {};
+}
+
+MachineInstr::mop_iterator
+SyncVMBytesToCells::getSecondStackAccess(MachineInstr &MI) {
+  if (SyncVM::hasSRInAddressingMode(MI) && SyncVM::hasSROutAddressingMode(MI))
+    return SyncVM::out0Iterator(MI);
+  return {};
 }
 
 /// createSyncVMBytesToCellsPass - returns an instance of bytes to cells
