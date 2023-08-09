@@ -24,7 +24,7 @@ using namespace llvm;
 static constexpr unsigned CellSizeInBytes = 32;
 
 static cl::opt<bool>
-    EarlyBytesToCells("early-bytes-to-cells-conversion", cl::init(false),
+    EarlyBytesToCells("early-bytes-to-cells-conversion", cl::init(true),
                       cl::Hidden,
                       cl::desc("Converts bytes to cells after the definition"));
 
