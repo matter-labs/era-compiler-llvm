@@ -50,6 +50,7 @@ add_llvm_unittest(SupportTests
   InstructionCostTest.cpp
   JSONTest.cpp
   KnownBitsTest.cpp
+  KECCAKTest.cpp
   LEB128Test.cpp
   LineIteratorTest.cpp
   LockFileManagerTest.cpp
