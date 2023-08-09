@@ -998,7 +998,7 @@ MachineBasicBlock::iterator SyncVMInstrInfo::insertOutlinedCall(
   return It;
 }
 
-void SyncVMInstrInfo::fixupPostOutline(
+void SyncVMInstrInfo::fixupPostOutlining(
     std::vector<std::pair<MachineFunction *, std::vector<MachineFunction *>>>
         &FixupFunctions) const {
   // First, adjust all outlined functions with MachineOutlinerDefault strategy.
