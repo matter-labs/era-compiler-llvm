@@ -50,6 +50,7 @@ add_llvm_unittest(SupportTests
   ItaniumManglingCanonicalizerTest.cpp
   JSONTest.cpp
   KnownBitsTest.cpp
+  KECCAKTest.cpp
   LEB128Test.cpp
   LinearPolyBaseTest.cpp
   LineIteratorTest.cpp

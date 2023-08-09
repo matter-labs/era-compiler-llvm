@@ -192,6 +192,7 @@ add_llvm_component_library(LLVMSupport
   IntervalMap.cpp
   ItaniumManglingCanonicalizer.cpp
   JSON.cpp
+  KECCAK.cpp
   KnownBits.cpp
   LEB128.cpp
   LineIterator.cpp
