@@ -364,7 +364,7 @@ public:
                      MachineBasicBlock::iterator &It, MachineFunction &MF,
                      outliner::Candidate &C) const override;
 
-  /// Do a fixup post outline.
+  /// Do a fixup post outlining.
   /// We are doing fixup in three phasses:
   ///   1. Adjust outlined functions and callers that have to put return address
   ///      onto the stack.
@@ -378,7 +378,7 @@ public:
   /// all their callers to preserve correctness. Also, doing like this, we could
   /// end up saving 1 instruction in a frameless function if we don't need to
   /// adjust it.
-  void fixupPostOutline(
+  void fixupPostOutlining(
       std::vector<std::pair<MachineFunction *, std::vector<MachineFunction *>>>
           &FixupFunctions) const override;
 

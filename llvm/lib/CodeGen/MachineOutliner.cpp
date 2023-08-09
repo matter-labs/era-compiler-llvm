@@ -1158,18 +1158,22 @@ bool MachineOutliner::runOnModule(Module &M) {
     return false;
 
   // EraVM local begin
-  MachineModuleInfo &MMI = getAnalysis<MachineModuleInfoWrapperPass>().getMMI();
-  const TargetInstrInfo *TII = nullptr;
-  for (Function &F : M) {
-    if (MachineFunction *MF = MMI.getMachineFunction(F)) {
-      TII = MF->getSubtarget().getInstrInfo();
-      break;
+  auto GetTII = [&]() -> const TargetInstrInfo * {
+    MachineModuleInfo &MMI =
+        getAnalysis<MachineModuleInfoWrapperPass>().getMMI();
+    for (Function &F : M) {
+      MachineFunction *MF = MMI.getMachineFunction(F);
+      if (!MF)
+        continue;
+      if (const TargetInstrInfo *TII = MF->getSubtarget().getInstrInfo())
+        return TII;
     }
-  }
-  assert(TII && "Didn't find target instruction info.");
+    report_fatal_error("Didn't find target instruction info.");
+  };
+
   unsigned Reruns = OutlinerReruns;
   if (!OutlinerReruns.getNumOccurrences())
-    Reruns = TII->defaultOutlineReruns();
+    Reruns = GetTII()->defaultOutlineReruns();
 
   for (unsigned I = 0; I < Reruns; ++I) {
   // EraVM local end
@@ -1187,7 +1191,7 @@ bool MachineOutliner::runOnModule(Module &M) {
   }
 
   // EraVM local begin
-  TII->fixupPostOutline(FixupFunctions);
+  GetTII()->fixupPostOutlining(FixupFunctions);
   FixupFunctions.clear();
   // EraVM local end
 

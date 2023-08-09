@@ -975,7 +975,7 @@ MachineBasicBlock::iterator EraVMInstrInfo::insertOutlinedCall(
   return It;
 }
 
-void EraVMInstrInfo::fixupPostOutline(
+void EraVMInstrInfo::fixupPostOutlining(
     std::vector<std::pair<MachineFunction *, std::vector<MachineFunction *>>>
         &FixupFunctions) const {
   // First, adjust all outlined functions with MachineOutlinerDefault strategy.

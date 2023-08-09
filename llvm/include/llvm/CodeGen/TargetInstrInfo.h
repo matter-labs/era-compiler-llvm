@@ -2225,8 +2225,8 @@ public:
   }
 
   // EraVM local begin
-  /// Do a fixup post outline.
-  virtual void fixupPostOutline(
+  /// Do a fixup post outlining.
+  virtual void fixupPostOutlining(
       std::vector<std::pair<MachineFunction *, std::vector<MachineFunction *>>>
           &FixupFunctions) const {}
   // EraVM local end
