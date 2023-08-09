@@ -2,13 +2,13 @@
 //
 /// \file
 /// LLVM emits byte addressing for stack accesses, and on SyncVM the stack
-/// space is addressed in cells (32 bytes per cell).
+/// space is addressed in cells (32 bytes per cell). To make things more
+/// complicated, some instruction generated stack pointers are already
+/// cell-addressed, for example: `context.sp` returns stack pointer in cells.
 ///
-/// This file contains a pass that corrects stack addressing to replace
-/// addresses in bytes with addresses in cells for instructions addressing
-/// stack.
-/// This pass is necessary for SyncVM target to ensure stack accesses, because
-/// Without this pass the  generated code would not work correctly on SyncVM.
+/// To handle such inconsistencies, This pass ensures that after the pass, all
+/// bytes addressings of stack are converted to cells addressings. This is
+/// necessary for SyncVM target to ensure stack accesses.
 //
 //===----------------------------------------------------------------------===//
 
@@ -46,6 +46,8 @@ public:
   StringRef getPassName() const override { return SYNCVM_BYTES_TO_CELLS_NAME; }
 
 private:
+  /// Convert an operand of a stack access instruction to cell addressing.
+  /// Return true of a conversion has been done.
   bool convertStackMachineInstr(MachineInstr::mop_iterator OpIt);
 
   /// return iterator to the stack access operand of \p MI. If there is no stack
@@ -56,8 +58,12 @@ private:
   /// no second stack access, return an empty iterator.
   MachineInstr::mop_iterator getSecondStackAccess(MachineInstr &MI);
 
-  /// fold conversion to cells with shift left
-  bool foldWithLeftShift(MachineInstr *DefMI, MachineOperand &MO0Reg);
+  /// Fold conversion to cells with shift left: If the source of the
+  /// byte-addressed pointer is from a shift left, we can simply remove the
+  /// shift and use the un-shifted register instead because the un-shifted
+  /// register is already cell-addressed. Return true if the folding is
+  /// successful.
+  bool foldWithLeftShift(Register);
 
   const TargetInstrInfo *TII;
   MachineRegisterInfo *MRI;
@@ -72,22 +78,21 @@ char SyncVMBytesToCells::ID = 0;
 INITIALIZE_PASS(SyncVMBytesToCells, DEBUG_TYPE, SYNCVM_BYTES_TO_CELLS_NAME,
                 false, false)
 
-/// If the source of the byte-addressed pointer is from a shift left, we can
-/// simply remove the shift and use the un-shifted register instead because the
-/// un-shifted register is already cell-addressed.
-bool SyncVMBytesToCells::foldWithLeftShift(MachineInstr *DefMI,
-                                           MachineOperand &MO0Reg) {
+bool SyncVMBytesToCells::foldWithLeftShift(Register Reg) {
+  assert(Reg.isVirtual() && "Physical registers are not expected");
+  MachineInstr *DefMI = MRI->getVRegDef(Reg);
+  if (!DefMI)
+    return false;
+
   if (DefMI->getOpcode() != SyncVM::SHLxrr_s ||
       getImmOrCImm(*SyncVM::in0Iterator(*DefMI)) != Log2CellSizeInBytes)
     return false;
 
-  // replace all uses of the register with the second operand.
   Register UnshiftedReg = SyncVM::in1Iterator(*DefMI)->getReg();
   if (!MRI->hasOneUse(UnshiftedReg))
     return false;
 
-  Register UseReg = MO0Reg.getReg();
-  MRI->replaceRegWith(UseReg, UnshiftedReg);
+  MRI->replaceRegWith(Reg, UnshiftedReg);
   DefMI->eraseFromParent();
   return true;
 }
@@ -125,7 +130,6 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
   return Changed;
 }
 
-/// Convert an operand of a stack access instruction to cell addressing.
 bool SyncVMBytesToCells::convertStackMachineInstr(
     MachineInstr::mop_iterator OpIt) {
   MachineOperand &MO0Reg = *(OpIt + 1);
@@ -141,7 +145,7 @@ bool SyncVMBytesToCells::convertStackMachineInstr(
     if (DefMI->getOpcode() == SyncVM::CTXr)
       return false;
 
-    if (foldWithLeftShift(DefMI, MO0Reg))
+    if (foldWithLeftShift(Reg))
       return true;
 
     Register NewVR;
@@ -152,12 +156,7 @@ bool SyncVMBytesToCells::convertStackMachineInstr(
     } else {
       NewVR = MRI->createVirtualRegister(&SyncVM::GR256RegClass);
       MachineBasicBlock *DefBB = MI.getParent();
-      auto DefIt = [DefBB, &MI]() {
-        return find_if(*DefBB, [&MI](const MachineInstr &CurrentMI) {
-          return &MI == &CurrentMI;
-        });
-      }();
-      assert(DefIt->getParent() == DefBB);
+      auto DefIt = MI.getIterator();
 
       // convert bytes to cells by right shifting
       BuildMI(*DefBB, DefIt, MI.getDebugLoc(), TII->get(SyncVM::SHRxrr_s))
