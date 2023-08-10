@@ -168,26 +168,24 @@ void SyncVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
       // print symbol
       O << '@' << sym->getSymbol().getName() << "[";
       // if there is a reg, print it before offset
-      if (Base.isReg()) {
+      if (Base.isReg())
         O << getRegisterName(Base.getReg()) << "+";
-      }
       // finally, print offset
       O << offset->getValue() << "]";
     } else if (auto *symExpr = dyn_cast<MCSymbolRefExpr>(expr)) {
       // handle the case where symbol has no imm offset but could have a reg
       // index
-      if (Base.isReg()) {
+      if (Base.isReg())
         O << '@' << symExpr->getSymbol().getName() << "["
           << getRegisterName(Base.getReg()) << "]";
-      } else {
+      else
         O << '@' << symExpr->getSymbol().getName() << "[0]";
-      }
     }
     return;
-  } else {
-    assert(Disp.isImm() && "Expected immediate in displacement field");
-    O << Disp.getImm();
   }
+
+  assert(Disp.isImm() && "Expected immediate in displacement field");
+  O << Disp.getImm();
 }
 
 void SyncVMInstPrinter::printStackOperand(const MCInst *MI, unsigned OpNo,

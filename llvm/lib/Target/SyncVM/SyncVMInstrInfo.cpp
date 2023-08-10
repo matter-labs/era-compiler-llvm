@@ -230,13 +230,6 @@ bool hasInvalidRelativeStackAccess(MachineInstr::const_mop_iterator Op) {
 }
 
 
-MachineInstr::mop_iterator getCodeAccess(MachineInstr &MI) {
-  if (SyncVM::hasCRInAddressingMode(MI)) 
-    return SyncVM::in0Iterator(MI);
-  else
-    return {};
-}
-
 } // namespace SyncVM
 } // namespace llvm
 
