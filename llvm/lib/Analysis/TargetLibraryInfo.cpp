@@ -827,6 +827,7 @@ static void initialize(TargetLibraryInfoImpl &TLI, const Triple &T,
     TLI.setAvailable(llvm::LibFunc_xvm_exponent);
     TLI.setAvailable(llvm::LibFunc_xvm_mulmod);
     TLI.setAvailable(llvm::LibFunc_xvm_signextend);
+    TLI.setAvailable(llvm::LibFunc_xvm_keccak256);
     return;
   }
   // SyncVM local end
@@ -1571,7 +1572,12 @@ bool TargetLibraryInfoImpl::isValidProtoForLibFunc(const FunctionType &FTy,
             FTy.getParamType(1)->isIntegerTy(256) &&
             FTy.getParamType(2)->isIntegerTy(256) &&
             FTy.getReturnType()->isIntegerTy(256));
-  // SyncVM local end
+
+  case LibFunc_xvm_keccak256:
+    return (NumParams == 2 && FTy.getParamType(0)->isPointerTy() &&
+            FTy.getParamType(1)->isIntegerTy(256) &&
+            FTy.getReturnType()->isIntegerTy(256));
+    // SyncVM local end
 
   case LibFunc_sincospi_stret:
   case LibFunc_sincospif_stret:

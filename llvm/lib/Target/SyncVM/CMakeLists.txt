@@ -46,6 +46,7 @@ add_llvm_target(SyncVMCodeGen
   SyncVMAllocaHoisting.cpp
   SyncVMTargetTransformInfo.cpp
   SyncVMStackAddressConstantPropagation.cpp
+  SyncVMKeccakConstFolding.cpp
 
   LINK_COMPONENTS
   Analysis

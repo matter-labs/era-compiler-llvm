@@ -339,6 +339,11 @@ TLI_DEFINE_STRING_INTERNAL("__isoc99_scanf")
 /// int __isoc99_sscanf(const char *s, const char *format, ...)
 TLI_DEFINE_ENUM_INTERNAL(dunder_isoc99_sscanf)
 TLI_DEFINE_STRING_INTERNAL("__isoc99_sscanf")
+// SyncVM local begin
+// i256 __keccak256(ptr, i256)
+TLI_DEFINE_ENUM_INTERNAL(xvm_keccak256)
+TLI_DEFINE_STRING_INTERNAL("__keccak256")
+// SyncVM local end
 /// void __kmpc_alloc_shared(size_t nbyte);
 TLI_DEFINE_ENUM_INTERNAL(__kmpc_alloc_shared)
 TLI_DEFINE_STRING_INTERNAL("__kmpc_alloc_shared")

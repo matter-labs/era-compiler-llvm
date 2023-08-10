@@ -99,6 +99,7 @@ FunctionPass *createSyncVMStackAddressConstantPropagationPass();
 FunctionPass *createSyncVMCombineFlagSettingPass();
 FunctionPass *createSyncVMCombineReloadUsePass();
 FunctionPass *createSyncVMCombineToIndexedMemopsPass();
+FunctionPass *createSyncVMSha3ConstFoldingPass();
 
 void initializeSyncVMLowerIntrinsicsPass(PassRegistry &);
 void initializeSyncVMAddConditionsPass(PassRegistry &);
@@ -113,10 +114,16 @@ void initializeSyncVMStackAddressConstantPropagationPass(PassRegistry &);
 void initializeSyncVMCombineFlagSettingPass(PassRegistry &);
 void initializeSyncVMCombineReloadUsePass(PassRegistry &);
 void initializeSyncVMCombineToIndexedMemopsPass(PassRegistry &);
+void initializeSyncVMSha3ConstFoldingPass(PassRegistry &);
 
 struct SyncVMLinkRuntimePass : PassInfoMixin<SyncVMLinkRuntimePass> {
   SyncVMLinkRuntimePass() {}
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
+};
+
+struct SyncVMSha3ConstFoldingPass : PassInfoMixin<SyncVMSha3ConstFoldingPass> {
+  SyncVMSha3ConstFoldingPass() {}
+  PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
 };
 
 } // namespace llvm

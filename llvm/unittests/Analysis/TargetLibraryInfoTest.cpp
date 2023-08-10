@@ -598,8 +598,9 @@ TEST_F(TargetLibraryInfoTest, ValidProto) {
       "declare i256 @__addmod(i256, i256, i256)\n"
       "declare i256 @__exponent(i256, i256)\n"
       "declare i256 @__mulmod(i256, i256, i256)\n"
+      "declare i256 @__keccak256(i256 addrspace(1)*, i256)\n"
       "declare i256 @__signextend(i256, i256)\n");
-      // SyncVM local end
+  // SyncVM local end
 
   for (unsigned FI = 0; FI != LibFunc::NumLibFuncs; ++FI) {
     LibFunc LF = (LibFunc)FI;
