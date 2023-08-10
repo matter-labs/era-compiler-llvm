@@ -43,9 +43,6 @@ public:
 
   bool runOnMachineFunction(MachineFunction &Fn) override;
 
-  void convertGlobalOffset(MachineOperand &MO) const;
-  Register convertRegisterPointerToCells(MachineOperand &MOReg);
-
   StringRef getPassName() const override { return SYNCVM_BYTES_TO_CELLS_NAME; }
 
 private:
@@ -53,9 +50,9 @@ private:
   /// Return true of a conversion has been done.
   bool convertStackMachineInstr(MachineInstr::mop_iterator OpIt);
 
-  /// Convert an operand of a code page accessing instruction to cell
-  /// addressing. Return true of a conversion has been done.
-  void convertGlobalAddressMachineInstr(MachineInstr::mop_iterator OpIt);
+  /// Convert an operand of a code page accessing to cell addressing. Return
+  /// true of a conversion has been done.
+  void convertCodeAddressMachineInstr(MachineInstr::mop_iterator OpIt);
 
   /// return iterator to the stack access operand of \p MI. If there is no stack
   /// accesses, return default constructed iterator.
@@ -65,12 +62,29 @@ private:
   /// no second stack access, return default constructed iterator.
   MachineInstr::mop_iterator getSecondStackAccess(MachineInstr &MI);
 
+  /// return iterator to the code operand of \p MI. If there is no code operand
+  /// return empty iterator.
+  MachineInstr::mop_iterator getCodeAccess(MachineInstr &MI);
+
   /// Fold conversion to cells with shift left: If the source of the
   /// byte-addressed pointer is from a shift left, we can simply remove the
   /// shift and use the un-shifted register instead because the un-shifted
-  /// register is already cell-addressed. Return true if the folding is
-  /// successful.
-  bool foldWithLeftShift(Register);
+  /// register is already cell-addressed. Return the Register containing cell
+  /// addressing pointer if successful.
+  std::optional<Register> foldWithLeftShift(Register);
+
+  /// Convert a register machine operand which contains byte addressing pointer
+  /// to cell addressing pointer. Return the converted, cell-addressing
+  /// register.
+  Register convertRegisterPointerToCells(MachineOperand &MOReg);
+
+  /// Convert the byte-addressing stack operands of an instruction to
+  /// cell-addressing stack operands.
+  bool convertStackAccesses(MachineInstr &MI);
+
+  /// Convert the byte-addressing code operands of an instruction to
+  /// cell-addressing code operands.
+  bool convertCodeAccess(MachineInstr &MI);
 
   const SyncVMInstrInfo *TII;
   MachineRegisterInfo *MRI;
@@ -85,23 +99,23 @@ char SyncVMBytesToCells::ID = 0;
 INITIALIZE_PASS(SyncVMBytesToCells, DEBUG_TYPE, SYNCVM_BYTES_TO_CELLS_NAME,
                 false, false)
 
-bool SyncVMBytesToCells::foldWithLeftShift(Register Reg) {
+std::optional<Register> SyncVMBytesToCells::foldWithLeftShift(Register Reg) {
   assert(Reg.isVirtual() && "Physical registers are not expected");
   MachineInstr *DefMI = MRI->getVRegDef(Reg);
   if (!DefMI)
-    return false;
+    return std::nullopt;
 
   if (DefMI->getOpcode() != SyncVM::SHLxrr_s ||
       getImmOrCImm(*SyncVM::in0Iterator(*DefMI)) != Log2CellSizeInBytes)
-    return false;
+    return std::nullopt;
 
   Register UnshiftedReg = SyncVM::in1Iterator(*DefMI)->getReg();
   if (!MRI->hasOneUse(UnshiftedReg))
-    return false;
+    return std::nullopt;
 
   MRI->replaceRegWith(Reg, UnshiftedReg);
   DefMI->eraseFromParent();
-  return true;
+  return UnshiftedReg;
 }
 
 bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
@@ -115,26 +129,6 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
   bool Changed = false;
   TII = MF.getSubtarget<SyncVMSubtarget>().getInstrInfo();
   assert(TII && "TargetInstrInfo must be a valid object");
-
-  auto convertStackAccesses = [&](MachineInstr &MI) -> bool {
-    auto StackIt = getStackAccess(MI);
-    if (!StackIt)
-      return false;
-
-    convertStackMachineInstr(StackIt);
-    StackIt = getSecondStackAccess(MI);
-    if (StackIt)
-      convertStackMachineInstr(StackIt);
-    return true;
-  };
-
-  auto convertCodeAccess = [&](MachineInstr &MI) -> bool {
-    auto CodeIt = SyncVM::getCodeAccess(MI);
-    if (!CodeIt)
-      return false;
-    convertGlobalAddressMachineInstr(CodeIt);
-    return true;
-  };
 
   for (auto &BB : MF) {
     for (auto II = BB.begin(); II != BB.end(); ++II) {
@@ -159,22 +153,9 @@ SyncVMBytesToCells::convertRegisterPointerToCells(MachineOperand &MOReg) {
   MachineInstr *DefMI = MRI->getVRegDef(Reg);
   assert(DefMI);
 
-  // Shortcut:
-  // if we insert shr.s, sometimes we have the following pattern:
-  // shl.s   5, r1, r1
-  // shr.s   5, r1, r1
-  // Which is redundant. We can simply remove the shift.
-  if (DefMI->getOpcode() == SyncVM::SHLxrr_s &&
-      getImmOrCImm(*SyncVM::in0Iterator(*DefMI)) == Log2CellSizeInBytes) {
-    // replace all uses of the register with the second operand.
-    Register UnshiftedReg = SyncVM::in1Iterator(*DefMI)->getReg();
-    if (MRI->hasOneUse(UnshiftedReg)) {
-      Register UseReg = MOReg.getReg();
-      MRI->replaceRegWith(UseReg, UnshiftedReg);
-      DefMI->eraseFromParent();
-      return UnshiftedReg;
-    }
-  }
+  auto FoldedReg = foldWithLeftShift(Reg);
+  if (FoldedReg)
+    return *FoldedReg;
 
   Register NewVR;
   if (BytesToCellsRegs.count(Reg) == 1) {
@@ -223,13 +204,11 @@ bool SyncVMBytesToCells::convertStackMachineInstr(
     if (DefMI->getOpcode() == SyncVM::CTXr)
       return false;
 
-    if (!foldWithLeftShift(Reg)) {
-      Register NewVR = convertRegisterPointerToCells(MO0Reg);
-      BytesToCellsRegs[Reg] = NewVR;
-      LLVM_DEBUG(dbgs() << "Adding Reg to Stack access list: "
-                        << Reg.virtRegIndex() << '\n');
-      MO0Reg.ChangeToRegister(NewVR, false);
-    }
+    Register NewVR = convertRegisterPointerToCells(MO0Reg);
+    BytesToCellsRegs[Reg] = NewVR;
+    LLVM_DEBUG(dbgs() << "Adding Reg to Stack access list: "
+                      << Reg.virtRegIndex() << '\n');
+    MO0Reg.ChangeToRegister(NewVR, false);
   }
 
   // convert global and immediate offsets to cell addressing
@@ -263,12 +242,20 @@ SyncVMBytesToCells::getSecondStackAccess(MachineInstr &MI) {
   return {};
 }
 
-void SyncVMBytesToCells::convertGlobalAddressMachineInstr(MachineInstr::mop_iterator OpIt) {
+MachineInstr::mop_iterator SyncVMBytesToCells::getCodeAccess(MachineInstr &MI) {
+  if (SyncVM::hasCRInAddressingMode(MI))
+    return SyncVM::in0Iterator(MI);
+  else
+    return {};
+}
+
+void SyncVMBytesToCells::convertCodeAddressMachineInstr(
+    MachineInstr::mop_iterator OpIt) {
   MachineOperand &MO0Reg = *OpIt;
   MachineOperand &MO1Global = *(OpIt + 1);
 
   if (MO1Global.isGlobal())
-    convertGlobalOffset(MO1Global);
+    MO1Global.setOffset(MO1Global.getOffset() / CellSizeInBytes);
   if (MO0Reg.isReg()) {
     Register NewVR = convertRegisterPointerToCells(MO0Reg);
     BytesToCellsRegs[MO0Reg.getReg()] = NewVR;
@@ -279,27 +266,42 @@ void SyncVMBytesToCells::convertGlobalAddressMachineInstr(MachineInstr::mop_iter
   // note that assembler cannot parse and combine (@var + 1), we need to
   // combine r1 with immediate value.
   if (MO0Reg.isReg() && MO1Global.isGlobal() && MO1Global.getOffset() != 0) {
-    MachineInstr& MI = *MO0Reg.getParent();
+    MachineInstr &MI = *MO0Reg.getParent();
     // combine register with immediate value
     Register NewVR = MRI->createVirtualRegister(&SyncVM::GR256RegClass);
-    BuildMI(*MI.getParent(), MI.getIterator(), MI.getDebugLoc(), TII->get(SyncVM::ADDirr_s))
+    BuildMI(*MI.getParent(), MI.getIterator(), MI.getDebugLoc(),
+            TII->get(SyncVM::ADDirr_s))
         .addDef(NewVR)
         .addImm(MO1Global.getOffset())
         .addReg(MO0Reg.getReg())
         .addImm(SyncVMCC::COND_NONE);
     MO0Reg.ChangeToRegister(NewVR, false);
-  
+
     MO1Global.setOffset(0);
   }
 
   return;
 }
 
-void SyncVMBytesToCells::convertGlobalOffset(MachineOperand &MO) const {
-  assert(MO.isGlobal() && "Expected global operand");
-  MO.setOffset(MO.getOffset() / CellSizeInBytes);
+bool SyncVMBytesToCells::convertCodeAccess(MachineInstr &MI) {
+  auto CodeIt = getCodeAccess(MI);
+  if (!CodeIt)
+    return false;
+  convertCodeAddressMachineInstr(CodeIt);
+  return true;
 }
 
+bool SyncVMBytesToCells::convertStackAccesses(MachineInstr &MI) {
+  auto StackIt = getStackAccess(MI);
+  if (!StackIt)
+    return false;
+
+  convertStackMachineInstr(StackIt);
+  StackIt = getSecondStackAccess(MI);
+  if (StackIt)
+    convertStackMachineInstr(StackIt);
+  return true;
+}
 
 /// createSyncVMBytesToCellsPass - returns an instance of bytes to cells
 /// conversion pass.
