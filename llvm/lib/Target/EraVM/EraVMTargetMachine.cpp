@@ -24,6 +24,7 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/GlobalDCE.h"
 #include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Scalar/DeadStoreElimination.h"
 #include "llvm/Transforms/Utils.h"
 
 #include "EraVM.h"
@@ -51,6 +52,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMAAWrapperPassPass(PR);
   initializeEraVMExternalAAWrapperPass(PR);
   initializeEraVMAlwaysInlinePass(PR);
+  initializeEraVMSHA3ConstFoldingPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -92,17 +94,23 @@ void EraVMTargetMachine::registerDefaultAliasAnalyses(AAManager &AAM) {
 }
 
 void EraVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
-  PB.registerPipelineEarlySimplificationEPCallback(
-      [](ModulePassManager &PM, OptimizationLevel Level) {
-        FunctionPassManager FPM;
-        FPM.addPass(EraVMOptimizeStdLibCallsPass());
+  PB.registerPipelineEarlySimplificationEPCallback([](ModulePassManager &PM,
+                                                      OptimizationLevel Level) {
+    if (Level != OptimizationLevel::O0)
+      PM.addPass(EraVMAlwaysInlinePass());
 
-        if (Level != OptimizationLevel::O0)
-          PM.addPass(EraVMAlwaysInlinePass());
-        PM.addPass(EraVMLinkRuntimePass(Level));
-        PM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
-        PM.addPass(GlobalDCEPass());
-      });
+    PM.addPass(EraVMLinkRuntimePass(Level));
+    if (Level != OptimizationLevel::O0) {
+      PM.addPass(
+          createModuleToFunctionPassAdaptor(EraVMOptimizeStdLibCallsPass()));
+      PM.addPass(GlobalDCEPass());
+      PM.addPass(
+          createModuleToFunctionPassAdaptor(EraVMSHA3ConstFoldingPass()));
+      PM.addPass(createModuleToFunctionPassAdaptor(DSEPass()));
+    } else {
+      PM.addPass(GlobalDCEPass());
+    }
+  });
 
   PB.registerAnalysisRegistrationCallback([](FunctionAnalysisManager &FAM) {
     FAM.registerPass([] { return EraVMAA(); });
@@ -113,6 +121,16 @@ void EraVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
          ArrayRef<PassBuilder::PipelineElement>) {
         if (PassName == "eravm-always-inline") {
           PM.addPass(EraVMAlwaysInlinePass());
+          return true;
+        }
+        return false;
+      });
+
+  PB.registerPipelineParsingCallback(
+      [](StringRef PassName, FunctionPassManager &PM,
+         ArrayRef<PassBuilder::PipelineElement>) {
+        if (PassName == "eravm-sha3-constant-folding") {
+          PM.addPass(EraVMSHA3ConstFoldingPass());
           return true;
         }
         return false;
