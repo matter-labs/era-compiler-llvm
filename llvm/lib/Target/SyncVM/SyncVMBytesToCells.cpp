@@ -51,11 +51,11 @@ private:
   bool convertStackMachineInstr(MachineInstr::mop_iterator OpIt);
 
   /// return iterator to the stack access operand of \p MI. If there is no stack
-  /// accesses, return an empty iterator.
+  /// accesses, return default constructed iterator.
   MachineInstr::mop_iterator getStackAccess(MachineInstr &MI);
 
   /// return iterator to the second stack access operand of \p MI. If there is
-  /// no second stack access, return an empty iterator.
+  /// no second stack access, return default constructed iterator.
   MachineInstr::mop_iterator getSecondStackAccess(MachineInstr &MI);
 
   /// Fold conversion to cells with shift left: If the source of the
@@ -135,6 +135,14 @@ bool SyncVMBytesToCells::convertStackMachineInstr(
   MachineOperand &MO0Reg = *(OpIt + 1);
   MachineOperand &MO1Global = *(OpIt + 2);
   MachineInstr &MI = *OpIt->getParent();
+
+  // To convert to cell addressing, we need to convert the followings:
+  // 1. stack pointer, if in stack pointer relative addressing mode
+  // 2. immediate offsets, if any
+  // 3. offsets in global addresses, if any
+
+  // If the second operand is a register, this stack access is in stack pointer
+  // relative addressing mode.
   if (MO0Reg.isReg()) {
     Register Reg = MO0Reg.getReg();
     assert(Reg.isVirtual() && "Physical registers are not expected");
@@ -170,6 +178,8 @@ bool SyncVMBytesToCells::convertStackMachineInstr(
                       << Reg.virtRegIndex() << '\n');
     MO0Reg.ChangeToRegister(NewVR, false);
   }
+
+  // convert global and immediate offsets to cell addressing
   if (MO1Global.isGlobal()) {
     unsigned Offset = MO1Global.getOffset();
     MO1Global.setOffset(Offset /= CellSizeInBytes);

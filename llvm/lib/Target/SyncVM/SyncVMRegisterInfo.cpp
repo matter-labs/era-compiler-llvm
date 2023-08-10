@@ -83,16 +83,14 @@ void SyncVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
     // Set that immediate represents stack slot index.
     SPInst->getOperand(1).setTargetFlags(SyncVMII::MO_STACK_SLOT_IDX);
 
-    BuildMI(MBB, II, DL, TII.get(SyncVM::MULirrr_s))
+    BuildMI(MBB, II, DL, TII.get(SyncVM::SHLirr_s))
         .addDef(MI.getOperand(0).getReg())
-        .addDef(SyncVM::R0)
-        .addImm(32)
+        .addImm(5)
         .addReg(SPInst->getOperand(0).getReg())
         .addImm(SyncVMCC::COND_NONE);
     MI.eraseFromParent();
     return;
   }
-
 
   // Fold imm into offset
   Offset /= 32;

@@ -41,7 +41,7 @@ declare void @foo(ptr %val);
 define void @call_foo() nounwind {
 ; CHECK: context.sp      [[REG:r[0-9]+]]
 ; CHECK: sub.s   1, [[REG]], [[REG2:r[0-9]+]]
-; CHECK: mul
+; CHECK: shl 5
 ; CHECK-NOT: shr.s
 ; CHECK: near_call
   %p = alloca i256
@@ -54,8 +54,8 @@ declare ptr @bar();
 ; passing stack pointer in cells as argument
 ; CHECK-LABEL: call_bar
 define ptr @call_bar() nounwind {
-; CHECK-NOT: mul
-; CHECK-NOT: div
+; CHECK-NOT: shl.s
+; CHECK-NOT: shr.s
   %p = call ptr @bar();
   ret ptr %p
 }
@@ -65,7 +65,7 @@ define ptr @call_bar() nounwind {
 define ptr @call_bar2() nounwind {
   %p = call ptr @bar();
   %p2 = getelementptr inbounds [10 x i256], ptr %p, i256 0, i256 7
-; CHECK-NOT: div.s   32, [[REG_BAR:r[0-9]+]], r1, r0
+; CHECK-NOT: shr.s   5, [[REG_BAR:r[0-9]+]], r1
   store i256 0, ptr %p2
   ret ptr %p2
 }
@@ -73,8 +73,8 @@ define ptr @call_bar2() nounwind {
 ; passing stack pointer
 ; CHECK-LABEL: call_bar3
 define ptr @call_bar3() nounwind {
-; CHECK: add 224, r1, r1
-; CHECK-NOT: div.s 32, r1, r1, r0
+; CHECK:     add 224, r1, r1
+; CHECK-NOT: shr.s 5, r1, r1
 ; CHECK: ret
   %p = call ptr @bar();
   %p2 = getelementptr inbounds [10 x i256], ptr %p, i256 0, i256 7

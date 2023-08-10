@@ -68,13 +68,13 @@ define i256 @stack.obj.passing() {
   %elem = getelementptr [2 x i256], [2 x i256]* %elem.cont, i256 0, i256 0
 ; CHECK: context.sp r1
 ; CHECK: sub.s 7, r1, r1
-; CHECK: mul
+; CHECK: shl 5, r1, r1
 ; CHECK: context.sp r2
 ; CHECK: sub.s 4, r2, r2
-; CHECK: mul
+; CHECK: shl 5, r2, r2
 ; CHECK: context.sp r3
 ; CHECK: sub.s 6, r3, r3
-; CHECK: mul
+; CHECK: shl 5, r3, r3
 ; CHECK: near_call	r0, @stack.obj.accessing, @DEFAULT_UNWIND
   %res = call i256 @stack.obj.accessing(i256* %par1, [4 x i256]* %arr, i256* %elem)
   ret i256 %res
