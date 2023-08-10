@@ -49,6 +49,7 @@ add_llvm_target(SyncVMCodeGen
   SyncVMTargetTransformInfo.cpp
   SyncVMStackAddressConstantPropagation.cpp
   SyncVMOptimizeStdLibCalls.cpp
+  SyncVMSHA3ConstFolding.cpp
 
   LINK_COMPONENTS
   Analysis
