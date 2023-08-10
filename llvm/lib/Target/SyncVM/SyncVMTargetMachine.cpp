@@ -18,7 +18,9 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/GlobalDCE.h"
 #include "llvm/Transforms/IPO/PassManagerBuilder.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Scalar/DeadStoreElimination.h"
 #include "llvm/Transforms/Scalar/MergeSimilarBB.h"
 #include "llvm/Transforms/Utils.h"
 
@@ -45,6 +47,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMOptimizeStdLibCallsPass(PR);
   initializeSyncVMAAWrapperPassPass(PR);
   initializeSyncVMExternalAAWrapperPass(PR);
+  initializeSyncVMSHA3ConstFoldingPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -107,14 +110,15 @@ void SyncVMTargetMachine::adjustPassManager(PassManagerBuilder &Builder) {
 }
 
 void SyncVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
-  PB.registerPipelineEarlySimplificationEPCallback(
-      [](ModulePassManager &PM, OptimizationLevel Level) {
-        FunctionPassManager FPM;
-        FPM.addPass(SyncVMOptimizeStdLibCallsPass());
-        PM.addPass(SyncVMLinkRuntimePass(Level));
-        PM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
-        PM.addPass(GlobalDCEPass());
-      });
+  PB.registerPipelineEarlySimplificationEPCallback([](ModulePassManager &PM,
+                                                      OptimizationLevel Level) {
+    PM.addPass(SyncVMLinkRuntimePass(Level));
+    PM.addPass(
+        createModuleToFunctionPassAdaptor(SyncVMOptimizeStdLibCallsPass()));
+    PM.addPass(GlobalDCEPass());
+    PM.addPass(createModuleToFunctionPassAdaptor(SyncVMSHA3ConstFoldingPass()));
+    PM.addPass(createModuleToFunctionPassAdaptor(DSEPass()));
+  });
 
   PB.registerScalarOptimizerLateEPCallback(
       [](FunctionPassManager &PM, OptimizationLevel Level) {
