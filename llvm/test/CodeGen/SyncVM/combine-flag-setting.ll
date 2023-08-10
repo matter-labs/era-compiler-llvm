@@ -164,7 +164,7 @@ define i1 @DIVxrrr_v(i256 %p1) nounwind {
 ; CHECK-LABEL: ADDcrr_v:
 define i1 @ADDcrr_v(i256 %p1) nounwind {
   %val = load i256, i256 addrspace(4)* @val
-; CHECK: add! @val[0], r{{[0-9]+}}, r{{[0-9]+}}
+; CHECK: add! @val, r{{[0-9]+}}, r{{[0-9]+}}
   %p2 = add i256 %val, %p1
   %cmp = icmp eq i256 %p2, 0
   ret i1 %cmp
@@ -173,7 +173,7 @@ define i1 @ADDcrr_v(i256 %p1) nounwind {
 ; CHECK-LABEL: ANDcrr_v:
 define i1 @ANDcrr_v(i256 %p1) nounwind {
   %val = load i256, i256 addrspace(4)* @val
-; CHECK: and! @val[0], r{{[0-9]+}}, r{{[0-9]+}}
+; CHECK: and! @val, r{{[0-9]+}}, r{{[0-9]+}}
   %p2 = and i256 %val, %p1
   %cmp = icmp eq i256 %p2, 0
   ret i1 %cmp
@@ -182,7 +182,7 @@ define i1 @ANDcrr_v(i256 %p1) nounwind {
 ; CHECK-LABEL: ORcrr_v:
 define i1 @ORcrr_v(i256 %p1) nounwind {
   %val = load i256, i256 addrspace(4)* @val
-; CHECK: or! @val[0], r{{[0-9]+}}, r{{[0-9]+}}
+; CHECK: or! @val, r{{[0-9]+}}, r{{[0-9]+}}
   %p2 = or i256 %val, %p1
   %cmp = icmp eq i256 %p2, 0
   ret i1 %cmp
@@ -191,7 +191,7 @@ define i1 @ORcrr_v(i256 %p1) nounwind {
 ; CHECK-LABEL: XORcrr_v:
 define i1 @XORcrr_v(i256 %p1) nounwind {
   %val = load i256, i256 addrspace(4)* @val
-; CHECK: xor! @val[0], r{{[0-9]+}}, r{{[0-9]+}}
+; CHECK: xor! @val, r{{[0-9]+}}, r{{[0-9]+}}
   %p2 = xor i256 %val, %p1
   %cmp = icmp eq i256 %p2, 0
   ret i1 %cmp
@@ -200,7 +200,7 @@ define i1 @XORcrr_v(i256 %p1) nounwind {
 ; CHECK-LABEL: SHLcrr_v:
 define i1 @SHLcrr_v(i256 %p1) nounwind {
   %val = load i256, i256 addrspace(4)* @val
-; CHECK: shl! @val[0], r{{[0-9]+}}, r{{[0-9]+}}
+; CHECK: shl! @val, r{{[0-9]+}}, r{{[0-9]+}}
   %p2 = shl i256 %val, %p1
   %cmp = icmp eq i256 %p2, 0
   ret i1 %cmp
@@ -209,7 +209,7 @@ define i1 @SHLcrr_v(i256 %p1) nounwind {
 ; CHECK-LABEL: SHRcrr_v:
 define i1 @SHRcrr_v(i256 %p1) nounwind {
   %val = load i256, i256 addrspace(4)* @val
-; CHECK: shr! @val[0], r{{[0-9]+}}, r{{[0-9]+}}
+; CHECK: shr! @val, r{{[0-9]+}}, r{{[0-9]+}}
   %p2 = lshr i256 %val, %p1
   %cmp = icmp eq i256 %p2, 0
   ret i1 %cmp
@@ -218,7 +218,7 @@ define i1 @SHRcrr_v(i256 %p1) nounwind {
 ; CHECK-LABEL: SHLyrr_v:
 define i1 @SHLyrr_v(i256 %p1) nounwind {
   %val = load i256, i256 addrspace(4)* @val
-; CHECK: shl.s! @val[0], r{{[0-9]+}}, r{{[0-9]+}}
+; CHECK: shl.s! @val, r{{[0-9]+}}, r{{[0-9]+}}
   %p2 = shl i256 %p1, %val
   %cmp = icmp eq i256 %p2, 0
   ret i1 %cmp
@@ -227,7 +227,7 @@ define i1 @SHLyrr_v(i256 %p1) nounwind {
 ; CHECK-LABEL: SHRyrr_v:
 define i1 @SHRyrr_v(i256 %p1) nounwind {
   %val = load i256, i256 addrspace(4)* @val
-; CHECK: shr.s! @val[0], r{{[0-9]+}}, r{{[0-9]+}}
+; CHECK: shr.s! @val, r{{[0-9]+}}, r{{[0-9]+}}
   %p2 = lshr i256 %p1, %val
   %cmp = icmp eq i256 %p2, 0
   ret i1 %cmp
@@ -236,7 +236,7 @@ define i1 @SHRyrr_v(i256 %p1) nounwind {
 ; CHECK-LABEL: MULcrrr_v:
 define i1 @MULcrrr_v(i256 %p1) nounwind {
   %val = load i256, i256 addrspace(4)* @val
-; CHECK: mul! @val[0], r1, r{{[0-9]+}}
+; CHECK: mul! @val, r1, r{{[0-9]+}}
   %p2 = mul i256 %p1, %val
   %cmp = icmp eq i256 %p2, 0
   ret i1 %cmp
@@ -245,7 +245,7 @@ define i1 @MULcrrr_v(i256 %p1) nounwind {
 ; CHECK-LABEL: DIVcrrr_v:
 define i1 @DIVcrrr_v(i256 %p1) nounwind {
   %val = load i256, i256 addrspace(4)* @val
-; CHECK: div! @val[0], r1, r{{[0-9]+}}
+; CHECK: div! @val, r1, r{{[0-9]+}}
   %p2 = udiv i256 %val, %p1
   %cmp = icmp eq i256 %p2, 0
   ret i1 %cmp
@@ -254,7 +254,7 @@ define i1 @DIVcrrr_v(i256 %p1) nounwind {
 ; CHECK-LABEL: DIVyrrr_v:
 define i1 @DIVyrrr_v(i256 %p1) nounwind {
   %val = load i256, i256 addrspace(4)* @val
-; CHECK: div.s! @val[0], r1, r{{[0-9]+}}
+; CHECK: div.s! @val, r1, r{{[0-9]+}}
   %p2 = udiv i256 %p1, %val
   %cmp = icmp eq i256 %p2, 0
   ret i1 %cmp

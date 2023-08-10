@@ -19,7 +19,7 @@ define i256 @materialize_small_imm() nounwind {
 
 ; CHECK-LABEL: materialize_big_imm
 define i256 @materialize_big_imm() nounwind {
-  ; CHECK: add @CPI{{[0-9]}}_0[0], r0, r1
+  ; CHECK: add @CPI{{[0-9]}}_0, r0, r1
   ret i256 65536
 }
 

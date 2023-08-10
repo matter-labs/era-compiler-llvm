@@ -19,7 +19,7 @@ define fastcc void @huge-copysize0(i256 addrspace(0)* %dest, i256 addrspace(0)* 
 ; CHECK:   shr.s   5, [[SHIFTED_OFFSET0_DST]], [[SHIFTED_OFFSET0_DST]]
 ; CHECK:   add     [[LOADED_VALUE0]], r0, stack[[[SHIFTED_OFFSET0_DST]]]
 ; CHECK:   add     1, [[INDEX0]], [[INDEX0]]
-; CHECK:   sub.s!  @CPI0_0[0], [[INDEX0]], r4
+; CHECK:   sub.s!  @CPI0_0, [[INDEX0]], r4
 ; CHECK:   jump.lt @.BB0_1
 ; CHECK:   ret
   call void @llvm.memcpy.p0i256.p0i256.i256(i256 addrspace(0)* %dest, i256 addrspace(0)* %src, i256 81129638414606681695789005144064, i1 false)
@@ -36,16 +36,16 @@ define fastcc void @huge-copysize1(i256 addrspace(1)* %dest, i256 addrspace(1)* 
 ; CHECK:  ld.1    [[SHIFTED_OFFSET1_SRC]], [[LOADED_VALUE1:r[0-9]+]]
 ; CHECK:  st.1    [[SHIFTED_OFFSET1_DST]], [[LOADED_VALUE1]]
 ; CHECK:  add     1, [[INDEX1]], [[INDEX1]]
-; CHECK:  sub.s!  @CPI1_0[0], [[INDEX1]], r{{[0-9]+}}
+; CHECK:  sub.s!  @CPI1_0, [[INDEX1]], r{{[0-9]+}}
 ; CHECK:  jump.lt @.BB1_1
   
 ; trailing part:
-; CHECK:  add     @CPI1_1[0], r1, r1
+; CHECK:  add     @CPI1_1, r1, r1
 ; CHECK:  ld.1    r1, [[TRAILING_PART1:r[0-9]+]]
-; CHECK:  and     @CPI1_2[0], [[TRAILING_DST1:r[0-9]+]], [[TRAILING_DST1]]
-; CHECK:  add     @CPI1_1[0], r2, r2
+; CHECK:  and     @CPI1_2, [[TRAILING_DST1:r[0-9]+]], [[TRAILING_DST1]]
+; CHECK:  add     @CPI1_1, r2, r2
 ; CHECK:  ld.1    r2, [[TRAILING_SRC1:r[0-9]+]]
-; CHECK:  and     @CPI1_3[0], [[TRAILING_SRC1]], [[TRAILING_SRC1]]
+; CHECK:  and     @CPI1_3, [[TRAILING_SRC1]], [[TRAILING_SRC1]]
 ; CHECK:  or      [[TRAILING_SRC1]], [[TRAILING_DST1]], [[MERGED1:r[0-9]+]]
 ; CHECK:  st.1    r1, [[MERGED1:r[0-9]+]]
 ; CHECK:  ret
@@ -65,16 +65,16 @@ define fastcc void @huge-copysize2(i256 addrspace(2)* %dest, i256 addrspace(2)* 
 ; CHECK:  ld.2    [[SHIFTED_OFFSET2_SRC]], [[LOADED_VALUE2:r[0-9]+]]
 ; CHECK:  st.2    [[SHIFTED_OFFSET2_DST]], [[LOADED_VALUE2]]
 ; CHECK:  add     1, [[INDEX2]], [[INDEX2]]
-; CHECK:  sub.s!  @CPI2_0[0], [[INDEX2]], r{{[0-9]+}}
+; CHECK:  sub.s!  @CPI2_0, [[INDEX2]], r{{[0-9]+}}
 ; CHECK:  jump.lt @.BB2_1
 
 ; trailing part:
-; CHECK:  add     @CPI2_1[0], r1, r1
+; CHECK:  add     @CPI2_1, r1, r1
 ; CHECK:  ld.2    r1, [[TRAILING_PART2:r[0-9]+]]
-; CHECK:  and     @CPI2_2[0], [[TRAILING_DST2:r[0-9]+]], [[TRAILING_DST2]]
-; CHECK:  add     @CPI2_1[0], r2, r2
+; CHECK:  and     @CPI2_2, [[TRAILING_DST2:r[0-9]+]], [[TRAILING_DST2]]
+; CHECK:  add     @CPI2_1, r2, r2
 ; CHECK:  ld.2    r2, [[TRAILING_SRC2:r[0-9]+]]
-; CHECK:  and     @CPI2_3[0], [[TRAILING_SRC2]], [[TRAILING_SRC2]]
+; CHECK:  and     @CPI2_3, [[TRAILING_SRC2]], [[TRAILING_SRC2]]
 ; CHECK:  or      [[TRAILING_SRC2]], [[TRAILING_DST2]], [[MERGED2:r[0-9]+]]
 ; CHECK:  st.2    r1, [[MERGED2:r[0-9]+]]
 ; CHECK:  ret
@@ -117,10 +117,10 @@ define fastcc void @normal-known-size-2(i256* %dest, i256* %src) {
 ; CHECK:   add     1, [[INDEX4]], [[INDEX4]]
 ; CHECK:   sub.s!  33, [[INDEX4]], r{{[0-9]+}}
 ; CHECK:   jump.lt @.BB4_1
-; CHECK:   add     @CPI4_0[0], r0, [[SRCMASK4:r[0-9]+]]
+; CHECK:   add     @CPI4_0, r0, [[SRCMASK4:r[0-9]+]]
 ; CHECK:   shr.s   5, r2, r2
 ; CHECK:   and     stack[33 + r2], [[SRCMASK4]], [[SRCMASKED_VALUE4:r[0-9]+]]
-; CHECK:   add     @CPI4_1[0], r0, [[DSTMASK4:r[0-9]+]]
+; CHECK:   add     @CPI4_1, r0, [[DSTMASK4:r[0-9]+]]
 ; CHECK:   shr.s   5, r1, r1
 ; CHECK:   and     stack[33 + r1], [[DSTMASK4]], [[DSTMASKED_VALUE4:r[0-9]+]]
 ; CHECK:   or      [[SRCMASKED_VALUE4]], [[DSTMASKED_VALUE4]], stack[33 + r1]

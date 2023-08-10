@@ -143,7 +143,6 @@ void SyncVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
   // print constant pool memory
   if (Base.isExpr()) {
     Base.getExpr()->print(O, &MAI);
-    O << "[0]";
     return;
   }
 
@@ -179,7 +178,7 @@ void SyncVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
         O << '@' << symExpr->getSymbol().getName() << "["
           << getRegisterName(Base.getReg()) << "]";
       else
-        O << '@' << symExpr->getSymbol().getName() << "[0]";
+        O << '@' << symExpr->getSymbol().getName();
     }
     return;
   }
