@@ -107,6 +107,7 @@ FunctionPass *createSyncVMOptimizeStdLibCallsPass();
 ImmutablePass *createSyncVMAAWrapperPass();
 ImmutablePass *createSyncVMExternalAAWrapperPass();
 ModulePass *createSyncVMAlwaysInlinePass();
+FunctionPass *createSyncVMSHA3ConstFoldingPass();
 
 void initializeSyncVMLowerIntrinsicsPass(PassRegistry &);
 void initializeSyncVMAddConditionsPass(PassRegistry &);
@@ -125,6 +126,7 @@ void initializeSyncVMOptimizeStdLibCallsPass(PassRegistry &);
 void initializeSyncVMAAWrapperPassPass(PassRegistry &);
 void initializeSyncVMExternalAAWrapperPass(PassRegistry &);
 void initializeSyncVMAlwaysInlinePass(PassRegistry &);
+void initializeSyncVMSHA3ConstFoldingPass(PassRegistry &);
 
 struct SyncVMLinkRuntimePass : PassInfoMixin<SyncVMLinkRuntimePass> {
   SyncVMLinkRuntimePass(OptimizationLevel Level) : Level(Level) {}
@@ -143,6 +145,11 @@ struct SyncVMOptimizeStdLibCallsPass
 struct SyncVMAlwaysInlinePass : PassInfoMixin<SyncVMAlwaysInlinePass> {
   SyncVMAlwaysInlinePass() {}
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
+};
+
+struct SyncVMSHA3ConstFoldingPass : PassInfoMixin<SyncVMSHA3ConstFoldingPass> {
+  SyncVMSHA3ConstFoldingPass() {}
+  PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
 };
 
 } // namespace llvm
