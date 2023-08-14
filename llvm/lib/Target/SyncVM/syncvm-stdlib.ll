@@ -205,7 +205,7 @@ define i256 @__signextend(i256 %numbyte, i256 %value) #0 {
   ret i256 %result
 }
 
-define i256 @__exponent(i256 %value, i256 %exp) #0 {
+define i256 @__exp(i256 %value, i256 %exp) #0 {
 entry:
   %exp_is_non_zero = icmp eq i256 %exp, 0
   br i1 %exp_is_non_zero, label %return, label %exponent_loop_body
@@ -237,4 +237,4 @@ define void @__cxa_throw(i8* %addr, i8*, i8*) noinline {
 declare {i256, i1} @llvm.uadd.with.overflow.i256(i256, i256)
 declare void @llvm.syncvm.throw(i256)
 
-attributes #0 = { mustprogress nounwind readnone willreturn}
+attributes #0 = { mustprogress nounwind readnone willreturn }

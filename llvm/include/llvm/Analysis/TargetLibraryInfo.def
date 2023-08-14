@@ -301,6 +301,11 @@ TLI_DEFINE_STRING_INTERNAL("__cxa_guard_acquire")
 /// void __cxa_guard_release(guard_t *guard);
 TLI_DEFINE_ENUM_INTERNAL(cxa_guard_release)
 TLI_DEFINE_STRING_INTERNAL("__cxa_guard_release")
+// SyncVM local begin
+// i256 __exp(i255, i256, i256)
+TLI_DEFINE_ENUM_INTERNAL(xvm_exp)
+TLI_DEFINE_STRING_INTERNAL("__exp")
+// SyncVM local end
 /// double __exp10_finite(double x);
 TLI_DEFINE_ENUM_INTERNAL(exp10_finite)
 TLI_DEFINE_STRING_INTERNAL("__exp10_finite")
@@ -328,11 +333,6 @@ TLI_DEFINE_STRING_INTERNAL("__expf_finite")
 /// long double __expl_finite(long double x);
 TLI_DEFINE_ENUM_INTERNAL(expl_finite)
 TLI_DEFINE_STRING_INTERNAL("__expl_finite")
-// SyncVM local begin
-// i256 __exponent(i255, i256, i256)
-TLI_DEFINE_ENUM_INTERNAL(xvm_exponent)
-TLI_DEFINE_STRING_INTERNAL("__exponent")
-// SyncVM local end
 /// int __isoc99_scanf (const char *format, ...)
 TLI_DEFINE_ENUM_INTERNAL(dunder_isoc99_scanf)
 TLI_DEFINE_STRING_INTERNAL("__isoc99_scanf")

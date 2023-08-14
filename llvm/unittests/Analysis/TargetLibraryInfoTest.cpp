@@ -596,7 +596,7 @@ TEST_F(TargetLibraryInfoTest, ValidProto) {
       // SyncVM local begin
       // These functions are SyncVM/EVM routines
       "declare i256 @__addmod(i256, i256, i256)\n"
-      "declare i256 @__exponent(i256, i256)\n"
+      "declare i256 @__exp(i256, i256)\n"
       "declare i256 @__mulmod(i256, i256, i256)\n"
       "declare i256 @__signextend(i256, i256)\n");
       // SyncVM local end
