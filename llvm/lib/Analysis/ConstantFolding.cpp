@@ -1704,7 +1704,7 @@ bool llvm::canConstantFoldCallTo(const CallBase *Call, const Function *F) {
     // The '8' here is the length of the shortest name that can match.
     // We need to check the size before looking at Name[1] and Name[2]
     // so we may as well check a limit that will eliminate mismatches.
-    if (Name.size() < 8 || Name[1] != '_')
+    if (Name.size() < 5 || Name[1] != '_')
     // SyncVM local end
       return false;
     switch (Name[2]) {
@@ -1723,7 +1723,7 @@ bool llvm::canConstantFoldCallTo(const CallBase *Call, const Function *F) {
       return Name == "__exp_finite" || Name == "__expf_finite" ||
              Name == "__exp2_finite" || Name == "__exp2f_finite" ||
     // SyncVM local begin
-             Name == "__exponent";
+             Name == "__exp";
     // SyncVM local end
     case 'l':
       return Name == "__log_finite" || Name == "__logf_finite" ||
@@ -2477,9 +2477,9 @@ static Constant *ConstantFoldSignextendCall(Type *Ty, const APInt &NumByte,
 static Constant *ConstantFoldExpCall(Type *Ty, const APInt &Base,
                                      const APInt &Exp) {
   const unsigned BitWidth = Ty->getIntegerBitWidth();
-  if (Base == 0)
+  if (Base == 0 && Exp != 0)
     return Constant::getNullValue(Ty);
-  if (Base == 1)
+  if (Base == 1 || (Base == 0 && Exp == 0))
     return ConstantInt::get(Ty, APInt(BitWidth, 1));
   if (Base == 2 && Exp.ule(255))
     return ConstantInt::get(Ty, APInt(BitWidth, 1).shl(Exp));
@@ -2504,13 +2504,13 @@ static Constant *ConstantFoldExpCall(Type *Ty, const APInt &Base,
   const APInt ModExt = APInt(ExtBitWidth, 1).shl(BitWidth);
   APInt ResExt(ExtBitWidth, 1);
   APInt BaseExt = Base.zext(ExtBitWidth);
-  APInt ExpExt = Exp.zext(ExtBitWidth);
-  while (ExpExt.ugt(0)) {
-    if (ExpExt[0])
+  APInt CurrExp = Exp;
+  while (CurrExp.ugt(0)) {
+    if (CurrExp[0])
       ResExt = (ResExt * BaseExt).urem(ModExt);
 
     BaseExt = (BaseExt * BaseExt).urem(ModExt);
-    ExpExt.lshrInPlace(1);
+    CurrExp.lshrInPlace(1);
   }
   return ConstantInt::get(Ty, ResExt.trunc(BitWidth));
 }
@@ -2829,7 +2829,7 @@ static Constant *ConstantFoldScalarCall2(StringRef Name,
     }
 
     // SyncVM local begin
-    if (Name == "__signextend" || Name == "__exponent") {
+    if (Name == "__signextend" || Name == "__exp") {
       if (isa<PoisonValue>(Operands[0]) || isa<PoisonValue>(Operands[1]))
         return PoisonValue::get(Ty);
 
@@ -2846,7 +2846,7 @@ static Constant *ConstantFoldScalarCall2(StringRef Name,
 
         return ConstantFoldSignextendCall(Ty, *C0, *C1);
       }
-      if (Name == "__exponent") {
+      if (Name == "__exp") {
         // Assume C0 is equal 0, 0 ** C1 -> 0.
         if (!C0)
           return Constant::getNullValue(Ty);
