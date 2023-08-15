@@ -30,6 +30,7 @@ add_llvm_target(SyncVMCodeGen
   SyncVMCombineToIndexedMemops.cpp
   SyncVMExpandPseudoInsts.cpp
   SyncVMExpandSelect.cpp
+  SyncVMFoldSelect.cpp
   SyncVMTargetMachine.cpp
   SyncVMSubtarget.cpp
   SyncVMRegisterInfo.cpp
