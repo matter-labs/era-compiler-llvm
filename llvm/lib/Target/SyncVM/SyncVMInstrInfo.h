@@ -132,6 +132,11 @@ MachineInstr::mop_iterator in1Iterator(MachineInstr &MI);
 MachineInstr::mop_iterator out0Iterator(MachineInstr &MI);
 MachineInstr::mop_iterator out1Iterator(MachineInstr &MI);
 MachineInstr::mop_iterator ccIterator(MachineInstr &MI);
+MachineInstr::const_mop_iterator in0ConstIterator(const MachineInstr &MI);
+MachineInstr::const_mop_iterator in1ConstIterator(const MachineInstr &MI);
+MachineInstr::const_mop_iterator out0ConstIterator(const MachineInstr &MI);
+MachineInstr::const_mop_iterator out1ConstIterator(const MachineInstr &MI);
+MachineInstr::const_mop_iterator ccConstIterator(const MachineInstr &MI);
 /// @}
 
 /// \defgroup ISAOperandRange MOP ranges to instruction operands as per ISA.

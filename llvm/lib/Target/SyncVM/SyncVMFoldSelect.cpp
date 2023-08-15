@@ -28,12 +28,13 @@ public:
   StringRef getPassName() const override { return SYNCVM_FOLD_SELECT_NAME; }
 
 private:
-  const MachineInstr* getFlagSettingInstrInSameBB(const MachineInstr* Select) const;
-  bool canFoldLHS(MachineInstr *Select, MachineInstr *FlagSettingInstr) const;
-  bool canFoldRHS(MachineInstr *Select, MachineInstr *FlagSettingInstr) const;
-  bool canFoldHelper(MachineInstr *Select,
-                                            MachineInstr *FlagSettingInstr,
-                                            DenseSet<unsigned> &FoldableOps) const;
+  const MachineInstr* getFlagSettingInstrInSameBB(const MachineInstr &Select) const;
+  bool canFoldLHS(const MachineInstr *Select, const MachineInstr *FlagSettingInstr) const;
+  bool canFoldRHS(const MachineInstr *Select, const MachineInstr *FlagSettingInstr) const;
+  bool canFoldHelper(const MachineInstr *Select,
+                     MachineInstr::const_mop_iterator Selectee,
+                     const MachineInstr *FlagSettingInstr,
+                     DenseSet<unsigned> &FoldableOps) const;
   MachineRegisterInfo *MRI;
   const SyncVMInstrInfo *TII;
 };
@@ -46,9 +47,9 @@ INITIALIZE_PASS(SyncVMFoldSelect, DEBUG_TYPE, SYNCVM_FOLD_SELECT_NAME,
                 false, false)
 
 
-const MachineInstr* SyncVMFoldSelect::getFlagSettingInstrInSameBB(const MachineInstr* Select) const {
-  auto MBB = Select->getParent();
-  auto It = Select->getIterator();
+const MachineInstr* SyncVMFoldSelect::getFlagSettingInstrInSameBB(const MachineInstr &Select) const {
+  auto MBB = Select.getParent();
+  auto It = Select.getIterator();
   auto Begin = MBB->begin();
   auto End = MBB->end();
   while (It != Begin) {
@@ -59,7 +60,7 @@ const MachineInstr* SyncVMFoldSelect::getFlagSettingInstrInSameBB(const MachineI
   return nullptr;
 }
 
-static bool isAfterInSameMBB(MachineInstr* A, MachineInstr* B) {
+static bool isAfterInSameMBB(const MachineInstr* A, const MachineInstr* B) {
   if (A->getParent() != B->getParent())
     return false;
 
@@ -82,19 +83,19 @@ static DenseSet<unsigned> FoldableRHSOps = {
     SyncVM::SELrrr, SyncVM::SELrir, SyncVM::SELrcr, SyncVM::SELrsr,
     SyncVM::SELirr, SyncVM::SELcrr, SyncVM::SELsrr, SyncVM::FATPTR_SELrrr};
 
-bool SyncVMFoldSelect::canFoldHelper(MachineInstr *Select,
-                                            MachineInstr *FlagSettingInstr,
-                                            DenseSet<unsigned> &FoldableOps) const {
+bool SyncVMFoldSelect::canFoldHelper(const MachineInstr *Select,
+                                     MachineInstr::const_mop_iterator Selectee,
+                                     const MachineInstr *FlagSettingInstr,
+                                     DenseSet<unsigned> &FoldableOps) const {
   auto Opc = Select->getOpcode();
   // fast prototyping, needs to be refined:
   if (FoldableOps.count(Opc) == 0)
     return false;
 
-  // def of LHS must be after the flag setting instruction
-  auto LHSResult = *SyncVM::in0Iterator(*Select);
-  assert(LHSResult.isReg() && "LHS must be a register");
+  if (!Selectee->isReg())
+    return false;
 
-  auto LHSDef = MRI->getUniqueVRegDef(LHSResult.getReg());
+  auto LHSDef = MRI->getUniqueVRegDef(Selectee->getReg());
   if (!LHSDef)
     return false;
 
@@ -104,14 +105,16 @@ bool SyncVMFoldSelect::canFoldHelper(MachineInstr *Select,
   return true;
 }
 
-bool SyncVMFoldSelect::canFoldLHS(MachineInstr *Select,
-                                  MachineInstr *FlagSettingInstr) const {
-  return canFoldHelper(Select, FlagSettingInstr, FoldableLHSOps);
+bool SyncVMFoldSelect::canFoldLHS(const MachineInstr *Select,
+                                  const MachineInstr *FlagSettingInstr) const {
+  MachineInstr::const_mop_iterator Selectee = SyncVM::in0ConstIterator(*Select);
+  return canFoldHelper(Select, Selectee, FlagSettingInstr, FoldableLHSOps);
 }
 
-bool SyncVMFoldSelect::canFoldRHS(MachineInstr *Select,
-                                  MachineInstr *FlagSettingInstr) const {
-  return canFoldHelper(Select, FlagSettingInstr, FoldableRHSOps);
+bool SyncVMFoldSelect::canFoldRHS(const MachineInstr *Select,
+                                  const MachineInstr *FlagSettingInstr) const {
+  MachineInstr::const_mop_iterator Selectee = SyncVM::in1ConstIterator(*Select);
+  return canFoldHelper(Select, Selectee, FlagSettingInstr, FoldableRHSOps);
 }
 
 bool SyncVMFoldSelect::runOnMachineFunction(MachineFunction &MF) {
@@ -139,11 +142,13 @@ bool SyncVMFoldSelect::runOnMachineFunction(MachineFunction &MF) {
       auto Out = SyncVM::out0Iterator(MI);
       auto CCVal = getImmOrCImm(*SyncVM::ccIterator(MI));
 
-      // if the selct is not foldable on both LHS and RHS, just skip
-      /*
-      if (!canFoldLHS(Opc) && !canFoldRHS(Opc))
+      auto FlagSetter = getFlagSettingInstrInSameBB(MI);
+      if (!FlagSetter)
         continue;
-      */
+
+      // if the selct is not foldable on both LHS and RHS, just skip
+      if (!canFoldLHS(&MI, FlagSetter) && !canFoldRHS(&MI, FlagSetter))
+        continue;
     
       // can convert: flag setting instruction must be before the evaluation of
 

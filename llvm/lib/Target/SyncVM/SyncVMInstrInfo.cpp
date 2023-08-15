@@ -104,11 +104,29 @@ MachineInstr::mop_iterator out1Iterator(MachineInstr &MI) {
   return MI.operands_begin() + MI.getNumExplicitDefs() - 1;
 }
 
-MachineInstr::const_mop_iterator ccIterator(const MachineInstr &MI) {
+MachineInstr::mop_iterator ccIterator(MachineInstr &MI) {
   return MI.operands_begin() + (MI.getNumExplicitOperands() - 1);
 }
 
-MachineInstr::mop_iterator ccIterator(MachineInstr &MI) {
+MachineInstr::const_mop_iterator in0ConstIterator(const MachineInstr &MI) {
+  return MI.operands_begin() + MI.getNumExplicitDefs();
+}
+
+MachineInstr::const_mop_iterator in1ConstIterator(const MachineInstr &MI) {
+  return in0ConstIterator(MI) + argumentSize(ArgumentKind::In0, MI);
+}
+
+MachineInstr::const_mop_iterator out0ConstIterator(const MachineInstr &MI) {
+  if (hasSROutAddressingMode(MI))
+    return in1ConstIterator(MI) + argumentSize(ArgumentKind::In1, MI);
+  return MI.operands_begin();
+}
+
+MachineInstr::const_mop_iterator out1ConstIterator(const MachineInstr &MI) {
+  return MI.operands_begin() + MI.getNumExplicitDefs() - 1;
+}
+
+MachineInstr::const_mop_iterator ccConstIterator(const MachineInstr &MI) {
   return MI.operands_begin() + (MI.getNumExplicitOperands() - 1);
 }
 
@@ -598,7 +616,7 @@ SyncVMCC::CondCodes SyncVMInstrInfo::getCCCode(const MachineInstr &MI) const {
     return SyncVMCC::COND_INVALID;
 
   // predicated CC is the last operand of the instruction
-  auto CC = *SyncVM::ccIterator(MI);
+  auto CC = *SyncVM::ccConstIterator(MI);
 
   if (CC.isImm()) {
     return SyncVMCC::CondCodes(CC.getImm());
