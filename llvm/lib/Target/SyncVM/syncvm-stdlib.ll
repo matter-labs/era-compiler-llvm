@@ -191,6 +191,11 @@ slow:
 }
 
 define i256 @__signextend(i256 %numbyte, i256 %value) #0 {
+entry:
+  %is_overflow = icmp uge i256 %numbyte, 31
+  br i1 %is_overflow, label %return, label %signextend
+
+signextend:
   %numbit_byte = mul nuw nsw i256 %numbyte, 8
   %numbit = add nsw nuw i256 %numbit_byte, 7
   %numbit_inv = sub i256 256, %numbit
@@ -202,7 +207,11 @@ define i256 @__signextend(i256 %numbyte, i256 %value) #0 {
   %valclean = and i256 %value, %valmask
   %sext = select i1 %sign, i256 %ext1, i256 0
   %result = or i256 %sext, %valclean
-  ret i256 %result
+  br label %return
+
+return:
+  %signext_res = phi i256 [%value, %entry], [%result, %signextend]
+  ret i256 %signext_res
 }
 
 define i256 @__exp(i256 %value, i256 %exp) #0 {
