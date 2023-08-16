@@ -24,6 +24,9 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
+// EraVM local begin
+#include "llvm/ADT/StringSet.h"
+// EraVM local end
 #include "llvm/Analysis/TargetFolder.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/ValueTracking.h"
@@ -1717,9 +1720,15 @@ bool llvm::canConstantFoldCallTo(const CallBase *Call, const Function *F) {
              Name == "__atan2_finite" || Name == "__atan2f_finite" ||
     // EraVM local begin
              Name == "__addmod";
+    case 'b':
+      return Name == "__byte";
     // EraVM local end
     case 'c':
       return Name == "__cosh_finite" || Name == "__coshf_finite";
+    // EraVM local begin
+    case 'd':
+      return Name == "__div";
+    // EraVM local end
     case 'e':
       return Name == "__exp_finite" || Name == "__expf_finite" ||
              Name == "__exp2_finite" || Name == "__exp2f_finite" ||
@@ -1731,14 +1740,15 @@ bool llvm::canConstantFoldCallTo(const CallBase *Call, const Function *F) {
              Name == "__log10_finite" || Name == "__log10f_finite";
     // EraVM local begin
     case 'm':
-      return Name == "__mulmod";
+      return Name == "__mulmod" || Name == "__mod" || Name == "__mstore8";
     // EraVM local end
     case 'p':
       return Name == "__pow_finite" || Name == "__powf_finite";
     case 's':
       return Name == "__sinh_finite" || Name == "__sinhf_finite" ||
     // EraVM local begin
-             Name == "__signextend";
+             Name == "__signextend" || Name == "__sdiv" || Name == "__smod" ||
+             Name == "__shl" || Name == "__shr" || Name == "__sar";
     // EraVM local end
     }
   }
@@ -2650,6 +2660,106 @@ static Constant *ConstantFoldExpCall(Type *Ty, const APInt &Base,
   }
   return ConstantInt::get(Ty, ResExt.trunc(BitWidth));
 }
+
+/// Unsigned integer division operation.
+/// Returns:
+///   0, if Divisor == 0,
+///   Dividend / Divisor, else
+static Constant *ConstantFoldDivCall(Type *Ty, const APInt &Dividend,
+                                     const APInt &Divisor) {
+  if (Divisor.isZero())
+    return Constant::getNullValue(Ty);
+
+  return ConstantInt::get(Ty, Dividend.udiv(Divisor));
+}
+
+/// Signed integer division operation.
+/// Returns:
+///   0, if Divisor == 0,
+///   -2 ** 255, if (Dividend == -2 ** 255) && (Divisor == -1),
+///   Dividend / Divisor, else
+static Constant *ConstantFoldSDivCall(Type *Ty, const APInt &Dividend,
+                                      const APInt &Divisor) {
+  if (Divisor.isZero())
+    return Constant::getNullValue(Ty);
+
+  if (Dividend.shl(1).isZero() && Divisor.isAllOnes())
+    return ConstantInt::get(Ty, Dividend);
+
+  return ConstantInt::get(Ty, Dividend.sdiv(Divisor));
+}
+
+/// Modulo remainder operation.
+/// Returns:
+///   0, if Mod == 0,
+///   Val (mod Mod), else
+static Constant *ConstantFoldModCall(Type *Ty, const APInt &Val,
+                                     const APInt &Mod) {
+  if (Mod.isZero())
+    return Constant::getNullValue(Ty);
+
+  return ConstantInt::get(Ty, Val.urem(Mod));
+}
+
+/// Signed modulo remainder operation.
+/// Returns:
+///   0, if Mod == 0,
+///   sign(Val) (|Val| (mod |Mod|)), else
+static Constant *ConstantFoldSModCall(Type *Ty, const APInt &Val,
+                                      const APInt &Mod) {
+  if (Mod.isZero())
+    return Constant::getNullValue(Ty);
+
+  return ConstantInt::get(Ty, Val.srem(Mod));
+}
+
+/// Left shift operation.
+/// Returns:
+///   (Val * (2 ** Shift)) (mod 2 ** 256)
+static Constant *ConstantFoldSHLCall(Type *Ty, const APInt &Shift,
+                                     const APInt &Val) {
+  // Please, note the case Shift >= BitWidth is properly handled by the
+  // APInt::shl(const APInt &) implementation returning zero value.
+  return ConstantInt::get(Ty, Val.shl(Shift));
+}
+
+/// Logical right shift operation.
+/// Returns:
+///   floor(Val / (2 ** Shift))
+static Constant *ConstantFoldSHRCall(Type *Ty, const APInt &Shift,
+                                     const APInt &Val) {
+  // Please, note the case Shift >= BitWidth is properly handled by the
+  // APInt::lshr(const APInt &) implementation returning zero value.
+  return ConstantInt::get(Ty, Val.lshr(Shift));
+}
+
+/// Arithmetic (signed) right shift operation.
+/// Returns:
+///   floor(Val / (2 ** Shift)), where 'Val' is treated as two’s complement
+///   signed 256-bit integer, if 'Shift' <= 255,
+///   0, if  'Val' >=0 && 'Shift' > 255,
+///   -1, if  'Val' < 0 && 'Shift' > 255,
+static Constant *ConstantFoldSARCall(Type *Ty, const APInt &Shift,
+                                     const APInt &Val) {
+  // Please, note all the three cases are properly handled by the
+  // APInt::ashr(const APInt &) implementation returning values
+  // as show in the description.
+  return ConstantInt::get(Ty, Val.ashr(Shift));
+}
+
+/// Retrieve single byte from i256 word.
+/// Returns:
+///   (Val << ByteIdx * 8) >> 248.
+///   For the Nth byte, we count from the left
+///   (i.e. N=0 would be the most significant in big endian),
+///   0, if ByteIdx > 255.
+static Constant *ConstantFoldByteCall(Type *Ty, const APInt &ByteIdx,
+                                      const APInt &Val) {
+  // Please, note the case ByteIdx > 31 is properly handled by the shl
+  // implementation, see the comments for ConstantFoldSHRCall.
+  unsigned BitWidth = Ty->getIntegerBitWidth();
+  return ConstantInt::get(Ty, Val.shl(ByteIdx * 8).lshr(BitWidth - 8));
+}
 // EraVM local end
 
 static Constant *ConstantFoldLibCall2(StringRef Name, Type *Ty,
@@ -2663,33 +2773,44 @@ static Constant *ConstantFoldLibCall2(StringRef Name, Type *Ty,
         !getConstIntOrUndef(Operands[1], C1))
       return nullptr;
 
-    if (Name == "__signextend" || Name == "__exp") {
-      if (isa<PoisonValue>(Operands[0]) || isa<PoisonValue>(Operands[1]))
+    const StringSet<> LibFuncNames = {
+        "__signextend", "__exp", "__div", "__sdiv", "__mod",
+        "__smod",       "__shl", "__shr", "__sar",  "__byte"};
+
+    if (LibFuncNames.count(Name)) {
+      if (isa<PoisonValue>(Operands[0]) || isa<PoisonValue>(Operands[1]) ||
+          !C0 || !C1)
         return PoisonValue::get(Ty);
 
       const unsigned BitWidth = Ty->getIntegerBitWidth();
       assert(BitWidth == 256);
 
       if (Name == "__signextend") {
-        // Signextend operation is not defined if the size operand exceeds the
-        // type width.
-        if (!C0 || C0->ugt(APInt(BitWidth, BitWidth / 8 - 1)))
-          return PoisonValue::get(Ty);
-        if (!C1)
-          return Constant::getNullValue(Ty);
+        // Signextend operation returns original value if the extension
+        // overflows the type width.
+        if (C0->uge(APInt(BitWidth, BitWidth / 8 - 1)))
+          return Operands[1];
 
         return ConstantFoldSignextendCall(Ty, *C0, *C1);
       }
-      if (Name == "__exp") {
-        // Assume C0 is equal 0, 0 ** C1 -> 0.
-        if (!C0)
-          return Constant::getNullValue(Ty);
-        if (!C1)
-          // Assume C1 equal to 0, C0 ** 0 -> 1
-          return ConstantInt::get(Ty, APInt(BitWidth, 1));
-
+      if (Name == "__exp")
         return ConstantFoldExpCall(Ty, *C0, *C1);
-      }
+      if (Name == "__div")
+        return ConstantFoldDivCall(Ty, *C0, *C1);
+      if (Name == "__sdiv")
+        return ConstantFoldSDivCall(Ty, *C0, *C1);
+      if (Name == "__mod")
+        return ConstantFoldModCall(Ty, *C0, *C1);
+      if (Name == "__smod")
+        return ConstantFoldSModCall(Ty, *C0, *C1);
+      if (Name == "__shl")
+        return ConstantFoldSHLCall(Ty, *C0, *C1);
+      if (Name == "__shr")
+        return ConstantFoldSHRCall(Ty, *C0, *C1);
+      if (Name == "__sar")
+        return ConstantFoldSARCall(Ty, *C0, *C1);
+      if (Name == "__byte")
+        return ConstantFoldByteCall(Ty, *C0, *C1);
     }
     return nullptr;
   }
@@ -3389,36 +3510,22 @@ static Constant *ConstantFoldScalarCall3(StringRef Name,
 
   // EraVM local begin
   if (Name == "__addmod" || Name == "__mulmod") {
-    if (isa<PoisonValue>(Operands[0]) || isa<PoisonValue>(Operands[1]) ||
-        isa<PoisonValue>(Operands[2]))
-      return PoisonValue::get(Ty);
-
     const APInt *C0, *C1, *C2;
     if (!getConstIntOrUndef(Operands[0], C0) ||
         !getConstIntOrUndef(Operands[1], C1) ||
         !getConstIntOrUndef(Operands[2], C2))
       return nullptr;
 
+    if (isa<PoisonValue>(Operands[0]) || isa<PoisonValue>(Operands[1]) ||
+        isa<PoisonValue>(Operands[2]) || !C0 || !C1 || !C2)
+      return PoisonValue::get(Ty);
+
     assert(Ty->getIntegerBitWidth() == 256);
 
-    // C % undef -> 0
-    if (!C2)
-      return Constant::getNullValue(Ty);
-
-    if (Name == "__addmod") {
-      // undef + C -> C
-      APInt Zero = APInt::getZero(Ty->getIntegerBitWidth());
-      C0 = C0 ? C0 : &Zero;
-      C1 = C1 ? C1 : &Zero;
+    if (Name == "__addmod")
       return ConstantFoldAddModCall(Ty, *C0, *C1, *C2);
-    }
-    if (Name == "__mulmod") {
-      // undef * C -> 0
-      if (!C0 || !C1)
-        return Constant::getNullValue(Ty);
-
+    if (Name == "__mulmod")
       return ConstantFoldMulModCall(Ty, *C0, *C1, *C2);
-    }
   }
   // EraVM local end
 

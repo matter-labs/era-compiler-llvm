@@ -886,6 +886,15 @@ static void initializeLibCalls(TargetLibraryInfoImpl &TLI, const Triple &T,
     TLI.setAvailable(llvm::LibFunc_xvm_exp);
     TLI.setAvailable(llvm::LibFunc_xvm_mulmod);
     TLI.setAvailable(llvm::LibFunc_xvm_signextend);
+    TLI.setAvailable(llvm::LibFunc_xvm_div);
+    TLI.setAvailable(llvm::LibFunc_xvm_sdiv);
+    TLI.setAvailable(llvm::LibFunc_xvm_mod);
+    TLI.setAvailable(llvm::LibFunc_xvm_smod);
+    TLI.setAvailable(llvm::LibFunc_xvm_shl);
+    TLI.setAvailable(llvm::LibFunc_xvm_shr);
+    TLI.setAvailable(llvm::LibFunc_xvm_sar);
+    TLI.setAvailable(llvm::LibFunc_xvm_byte);
+    TLI.setAvailable(llvm::LibFunc_xvm_mstore8);
     return;
   }
   // EraVM local end

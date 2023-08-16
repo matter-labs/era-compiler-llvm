@@ -83,9 +83,9 @@ EraVMTargetMachine::getTargetTransformInfo(const Function &F) const {
 }
 
 void EraVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
-  PB.registerPipelineStartEPCallback(
+  PB.registerPipelineEarlySimplificationEPCallback(
       [](ModulePassManager &PM, OptimizationLevel Level) {
-        PM.addPass(EraVMLinkRuntimePass());
+        PM.addPass(EraVMLinkRuntimePass(Level));
         PM.addPass(GlobalDCEPass());
       });
 }

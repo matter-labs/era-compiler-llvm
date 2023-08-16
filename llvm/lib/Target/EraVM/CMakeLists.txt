@@ -84,6 +84,7 @@ add_llvm_target(EraVMCodeGen
   IRReader
   Linker
   MC
+  Passes
   Scalar
   SelectionDAG
   Support

@@ -1098,9 +1098,23 @@ bool llvm::inferNonMandatoryLibFuncAttrs(Function &F,
   case LibFunc_xvm_exp:
   case LibFunc_xvm_mulmod:
   case LibFunc_xvm_signextend:
+  case LibFunc_xvm_div:
+  case LibFunc_xvm_sdiv:
+  case LibFunc_xvm_mod:
+  case LibFunc_xvm_smod:
+  case LibFunc_xvm_shl:
+  case LibFunc_xvm_shr:
+  case LibFunc_xvm_sar:
+  case LibFunc_xvm_byte:
     Changed |= setDoesNotThrow(F);
     Changed |= setWillReturn(F);
     Changed |= setDoesNotAccessMemory(F);
+    break;
+  case LibFunc_xvm_mstore8:
+    Changed |= setDoesNotThrow(F);
+    Changed |= setWillReturn(F);
+    Changed |= setDoesNotCapture(F, 0);
+    Changed |= setOnlyAccessesArgMemory(F);
     break;
   // EraVM local end
   case LibFunc_ldexp:
