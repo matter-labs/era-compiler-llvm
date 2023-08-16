@@ -12,6 +12,7 @@
 #include "llvm/CodeGen/MachineOperand.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/PassManager.h"
+#include "llvm/Passes/OptimizationLevel.h"
 #include "llvm/Target/TargetMachine.h"
 
 namespace SyncVMCC {
@@ -115,8 +116,11 @@ void initializeSyncVMCombineAddressingModePass(PassRegistry &);
 void initializeSyncVMCombineToIndexedMemopsPass(PassRegistry &);
 
 struct SyncVMLinkRuntimePass : PassInfoMixin<SyncVMLinkRuntimePass> {
-  SyncVMLinkRuntimePass() {}
+  SyncVMLinkRuntimePass(OptimizationLevel Level) : Level(Level) {}
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
+
+private:
+  OptimizationLevel Level;
 };
 
 } // namespace llvm

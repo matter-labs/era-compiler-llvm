@@ -53,6 +53,7 @@ add_llvm_target(SyncVMCodeGen
   CodeGen
   Core
   IPO
+  Passes
   MC
   Scalar
   SelectionDAG
