@@ -162,6 +162,9 @@ void SyncVMPassConfig::addPreRegAlloc() {
     addPass(createSyncVMCombineFlagSettingPass());
     // This pass emits indexed loads and stores
     addPass(createSyncVMCombineToIndexedMemopsPass());
+  
+    // adding a register coalescer pass before RA
+    addPass(&RegisterCoalescerID);
   }
 }
 
