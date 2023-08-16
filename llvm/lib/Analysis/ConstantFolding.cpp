@@ -2837,10 +2837,15 @@ static Constant *ConstantFoldScalarCall2(StringRef Name,
       assert(BitWidth == 256);
 
       if (Name == "__signextend") {
-        // Signextend operation is not defined if the size operand exceeds the
-        // type width.
-        if (!C0 || C0->ugt(APInt(BitWidth, BitWidth / 8 - 1)))
-          return PoisonValue::get(Ty);
+        APInt Zero = APInt::getZero(Ty->getIntegerBitWidth());
+        // If C0 is undef assume it's equal zero.
+        if (!C0)
+          C0 = &Zero;
+
+        // Signextend operation returns original value if the extension
+        // overflows the type width.
+        if (C0->uge(APInt(BitWidth, BitWidth / 8 - 1)))
+          return Operands[1];
         if (!C1)
           return Constant::getNullValue(Ty);
 
