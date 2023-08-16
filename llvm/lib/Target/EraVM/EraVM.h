@@ -18,6 +18,7 @@
 #include "llvm/CodeGen/MachineOperand.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/PassManager.h"
+#include "llvm/Passes/OptimizationLevel.h"
 #include "llvm/Target/TargetMachine.h"
 
 namespace EraVMCC {
@@ -121,8 +122,11 @@ void initializeEraVMCombineAddressingModePass(PassRegistry &);
 void initializeEraVMCombineToIndexedMemopsPass(PassRegistry &);
 
 struct EraVMLinkRuntimePass : PassInfoMixin<EraVMLinkRuntimePass> {
-  explicit EraVMLinkRuntimePass() {}
+  explicit EraVMLinkRuntimePass(OptimizationLevel Level) : Level(Level) {}
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
+
+private:
+  OptimizationLevel Level;
 };
 
 } // namespace llvm

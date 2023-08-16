@@ -191,6 +191,11 @@ slow:
 }
 
 define i256 @__signextend(i256 %numbyte, i256 %value) #0 {
+entry:
+  %is_overflow = icmp uge i256 %numbyte, 31
+  br i1 %is_overflow, label %return, label %signextend
+
+signextend:
   %numbit_byte = mul nuw nsw i256 %numbyte, 8
   %numbit = add nsw nuw i256 %numbit_byte, 7
   %numbit_inv = sub i256 256, %numbit
@@ -202,10 +207,14 @@ define i256 @__signextend(i256 %numbyte, i256 %value) #0 {
   %valclean = and i256 %value, %valmask
   %sext = select i1 %sign, i256 %ext1, i256 0
   %result = or i256 %sext, %valclean
-  ret i256 %result
+  br label %return
+
+return:
+  %signext_res = phi i256 [%value, %entry], [%result, %signextend]
+  ret i256 %signext_res
 }
 
-define i256 @__exp(i256 %value, i256 %exp) #0 {
+define i256 @__exp(i256 %value, i256 %exp) "noinline-oz" #0 {
 entry:
   %exp_is_non_zero = icmp eq i256 %exp, 0
   br i1 %exp_is_non_zero, label %return, label %exponent_loop_body
@@ -228,13 +237,226 @@ exponent_loop_body:
   br i1 %exp_val_is_less_2, label %return, label %exponent_loop_body
 }
 
-define void @__cxa_throw(i8* %addr, i8*, i8*) noinline {
+define void @__cxa_throw(i8* %addr, i8*, i8*) #3 {
   %addrval = ptrtoint i8* %addr to i256
   call void @llvm.eravm.throw(i256 %addrval)
   unreachable
 }
 
+define i256 @__div(i256 %arg1, i256 %arg2) #0 {
+entry:
+  %is_divider_zero = icmp eq i256 %arg2, 0
+  br i1 %is_divider_zero, label %return, label %division
+
+division:
+  %div_res = udiv i256 %arg1, %arg2
+  br label %return
+
+return:
+  %res = phi i256 [ 0, %entry ], [ %div_res, %division ]
+  ret i256 %res
+}
+
+define i256 @__sdiv(i256 %arg1, i256 %arg2) #0 {
+entry:
+  %is_divider_zero = icmp eq i256 %arg2, 0
+  br i1 %is_divider_zero, label %return, label %division_overflow
+
+division_overflow:
+  %is_divided_int_min = icmp eq i256 %arg1, -57896044618658097711785492504343953926634992332820282019728792003956564819968
+  %is_minus_one = icmp eq i256 %arg2, -1
+  %is_overflow = and i1 %is_divided_int_min, %is_minus_one
+  br i1 %is_overflow, label %return, label %division
+
+division:
+  %div_res = sdiv i256 %arg1, %arg2
+  br label %return
+
+return:
+  %res = phi i256 [ 0, %entry ], [ %arg1, %division_overflow ], [ %div_res, %division ]
+  ret i256 %res
+}
+
+define i256 @__mod(i256 %arg1, i256 %arg2) #0 {
+entry:
+  %is_divider_zero = icmp eq i256 %arg2, 0
+  br i1 %is_divider_zero, label %return, label %remainder
+
+remainder:
+  %rem_res = urem i256 %arg1, %arg2
+  br label %return
+
+return:
+  %res = phi i256 [ 0, %entry ], [ %rem_res, %remainder ]
+  ret i256 %res
+}
+
+define i256 @__smod(i256 %arg1, i256 %arg2) #0 {
+entry:
+  %is_divider_zero = icmp eq i256 %arg2, 0
+  br i1 %is_divider_zero, label %return, label %division_overflow
+
+division_overflow:
+  %is_divided_int_min = icmp eq i256 %arg1, -57896044618658097711785492504343953926634992332820282019728792003956564819968
+  %is_minus_one = icmp eq i256 %arg2, -1
+  %is_overflow = and i1 %is_divided_int_min, %is_minus_one
+  br i1 %is_overflow, label %return, label %remainder
+
+remainder:
+  %rem_res = srem i256 %arg1, %arg2
+  br label %return
+
+return:
+  %res = phi i256 [ 0, %entry ], [ 0, %division_overflow ], [ %rem_res, %remainder ]
+  ret i256 %res
+}
+
+define private i256 @__aux_pack_abi(i256 %0, i256 %1, i256 %2) #4 {
+entry:
+  %3 = tail call i256 @llvm.umin.i256(i256 %0, i256 4294967295)
+  %4 = tail call i256 @llvm.umin.i256(i256 %1, i256 4294967295)
+  %offset_shifted = shl nuw nsw i256 %3, 64
+  %length_shifted = shl nuw nsw i256 %4, 96
+  %mode_shifted = shl nuw nsw i256 %2, 224
+  %tmp = add i256 %offset_shifted, %length_shifted
+  %abi = add i256 %tmp, %mode_shifted
+  ret i256 %abi
+}
+
+define void @__revert(i256 %0, i256 %1, i256 %2) "noinline-oz" #5 personality i32()* @__personality {
+entry:
+  %abi = call i256@__aux_pack_abi(i256 %0, i256 %1, i256 %2)
+  tail call void @llvm.eravm.revert(i256 %abi)
+  unreachable
+}
+
+define void @__return(i256 %0, i256 %1, i256 %2) "noinline-oz" #5 personality i32()* @__personality {
+entry:
+  %abi = call i256@__aux_pack_abi(i256 %0, i256 %1, i256 %2)
+  tail call void @llvm.eravm.return(i256 %abi)
+  unreachable
+}
+
+define i256 @__sha3(i256 %0, i256 %1, i1 %throw_at_failure) "noinline-oz" #1 personality i32()* @__personality {
+entry:
+  %2 = tail call i256 @llvm.umin.i256(i256 %0, i256 4294967295)
+  %3 = tail call i256 @llvm.umin.i256(i256 %1, i256 4294967295)
+  %gas_left = tail call i256 @llvm.eravm.gasleft()
+  %4 = tail call i256 @llvm.umin.i256(i256 %gas_left, i256 4294967295)
+  %abi_data_input_offset_shifted = shl nuw nsw i256 %2, 64
+  %abi_data_input_length_shifted = shl nuw nsw i256 %3, 96
+  %abi_data_gas_shifted = shl nuw nsw i256 %4, 192
+  %abi_data_offset_and_length = add i256 %abi_data_input_length_shifted, %abi_data_input_offset_shifted
+  %abi_data_add_gas = add i256 %abi_data_gas_shifted, %abi_data_offset_and_length
+  %abi_data_add_system_call_marker = add i256 %abi_data_add_gas, 904625697166532776746648320380374280103671755200316906558262375061821325312
+  %call_external = tail call { i8 addrspace(3)*, i1 } @__staticcall(i256 %abi_data_add_system_call_marker, i256 32784, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef)
+  %status_code = extractvalue { i8 addrspace(3)*, i1 } %call_external, 1
+  br i1 %status_code, label %success_block, label %failure_block
+
+success_block:
+  %abi_data_pointer = extractvalue { i8 addrspace(3)*, i1 } %call_external, 0
+  %data_pointer = bitcast i8 addrspace(3)* %abi_data_pointer to i256 addrspace(3)*
+  %keccak256_child_data = load i256, i256 addrspace(3)* %data_pointer, align 1
+  ret i256 %keccak256_child_data
+
+failure_block:
+  br i1 %throw_at_failure, label %throw_block, label %revert_block
+
+revert_block:
+  call void @__revert(i256 0, i256 0, i256 0)
+  unreachable
+
+throw_block:
+  call void @__cxa_throw(i8* noalias nocapture nofree align 32 null, i8* noalias nocapture nofree align 32 undef, i8* noalias nocapture nofree align 32 undef)
+  unreachable
+}
+
+define void @__mstore8(i256 addrspace(1)* nocapture nofree noundef dereferenceable(32) %addr, i256 %val) #2 {
+entry:
+  %orig_value = load i256, i256 addrspace(1)* %addr, align 1
+  %orig_value_shifted_left = shl i256 %orig_value, 8
+  %orig_value_shifted_right = lshr i256 %orig_value_shifted_left, 8
+  %byte_value_shifted = shl i256 %val, 248
+  %store_result = or i256 %orig_value_shifted_right, %byte_value_shifted
+  store i256 %store_result, i256 addrspace(1)* %addr, align 1
+  ret void
+}
+
+define i256 @__byte(i256 %index, i256 %value) #0 {
+entry:
+  %is_overflow = icmp ugt i256 %index, 31
+  br i1 %is_overflow, label %return, label %extract_byte
+
+extract_byte:
+  %bits_offset = shl i256 %index, 3
+  %value_shifted_left = shl i256 %value, %bits_offset
+  %value_shifted_right = lshr i256 %value_shifted_left, 248
+  br label %return
+
+return:
+  %res = phi i256 [ 0, %entry ], [ %value_shifted_right, %extract_byte ]
+  ret i256 %res
+}
+
+define i256 @__shl(i256 %shift, i256 %value) #0 {
+entry:
+  %is_overflow = icmp ugt i256 %shift, 255
+  br i1 %is_overflow, label %return, label %shift_value
+
+shift_value:
+  %shift_res = shl i256 %value, %shift
+  br label %return
+
+return:
+  %res = phi i256 [ 0, %entry ], [ %shift_res, %shift_value ]
+  ret i256 %res
+}
+
+define i256 @__shr(i256 %shift, i256 %value) #0 {
+entry:
+  %is_overflow = icmp ugt i256 %shift, 255
+  br i1 %is_overflow, label %return, label %shift_value
+
+shift_value:
+  %shift_res = lshr i256 %value, %shift
+  br label %return
+
+return:
+  %res = phi i256 [ 0, %entry ], [ %shift_res, %shift_value ]
+  ret i256 %res
+}
+
+define i256 @__sar(i256 %shift, i256 %value) #0 {
+entry:
+  %is_overflow = icmp ugt i256 %shift, 255
+  br i1 %is_overflow, label %arith_overflow, label %shift_value
+
+arith_overflow:
+  %is_val_positive = icmp sge i256 %value, 0
+  %res_overflow = select i1 %is_val_positive, i256 0, i256 -1
+  br label %return
+
+shift_value:
+  %shift_res = ashr i256 %value, %shift
+  br label %return
+
+return:
+  %res = phi i256 [ %res_overflow, %arith_overflow ], [ %shift_res, %shift_value ]
+  ret i256 %res
+}
+
 declare {i256, i1} @llvm.uadd.with.overflow.i256(i256, i256)
 declare void @llvm.eravm.throw(i256)
+declare i256 @llvm.umin.i256(i256, i256)
+declare i256 @llvm.eravm.gasleft()
+declare void @llvm.eravm.revert(i256)
+declare void @llvm.eravm.return(i256)
+declare i32 @__personality()
+declare { i8 addrspace(3)*, i1 } @__staticcall(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256) #1
 
-attributes #0 = { mustprogress nounwind readnone willreturn }
+attributes #0 = { mustprogress nofree norecurse nosync nounwind readnone willreturn }
+attributes #1 = { nofree null_pointer_is_valid }
+attributes #2 = { argmemonly mustprogress nofree norecurse nosync nounwind willreturn null_pointer_is_valid }
+attributes #3 = { noinline noreturn }
+attributes #4 = { alwaysinline mustprogress nofree norecurse nosync nounwind readnone willreturn }
+attributes #5 = { noreturn nounwind }
