@@ -76,9 +76,9 @@ SyncVMTargetMachine::getTargetTransformInfo(const Function &F) const {
 }
 
 void SyncVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
-  PB.registerPipelineStartEPCallback(
+  PB.registerPipelineEarlySimplificationEPCallback(
       [](ModulePassManager &PM, OptimizationLevel Level) {
-        PM.addPass(SyncVMLinkRuntimePass());
+        PM.addPass(SyncVMLinkRuntimePass(Level));
         PM.addPass(GlobalDCEPass());
       });
 
