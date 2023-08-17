@@ -302,6 +302,9 @@ TLI_DEFINE_STRING_INTERNAL("__cxa_guard_acquire")
 TLI_DEFINE_ENUM_INTERNAL(cxa_guard_release)
 TLI_DEFINE_STRING_INTERNAL("__cxa_guard_release")
 // SyncVM local begin
+/// i256 __div(i256, i256)
+TLI_DEFINE_ENUM_INTERNAL(xvm_div)
+TLI_DEFINE_STRING_INTERNAL("__div")
 // i256 __exp(i255, i256, i256)
 TLI_DEFINE_ENUM_INTERNAL(xvm_exp)
 TLI_DEFINE_STRING_INTERNAL("__exp")
@@ -388,8 +391,10 @@ TLI_DEFINE_STRING_INTERNAL("__mempcpy_chk")
 /// void *__memset_chk(void *s, char v, size_t n, size_t s1size);
 TLI_DEFINE_ENUM_INTERNAL(memset_chk)
 TLI_DEFINE_STRING_INTERNAL("__memset_chk")
-
 // SyncVM local begin
+// i256 __mod(i256, i256)
+TLI_DEFINE_ENUM_INTERNAL(xvm_mod)
+TLI_DEFINE_STRING_INTERNAL("__mod")
 // i256 __mulmod(i255, i256, i256)
 TLI_DEFINE_ENUM_INTERNAL(xvm_mulmod)
 TLI_DEFINE_STRING_INTERNAL("__mulmod")
@@ -407,6 +412,9 @@ TLI_DEFINE_STRING_INTERNAL("__powf_finite")
 TLI_DEFINE_ENUM_INTERNAL(powl_finite)
 TLI_DEFINE_STRING_INTERNAL("__powl_finite")
 // SyncVM local begin
+// i256 __sdiv(i256, i256)
+TLI_DEFINE_ENUM_INTERNAL(xvm_sdiv)
+TLI_DEFINE_STRING_INTERNAL("__sdiv")
 // i256 __signextend(i255, i256)
 TLI_DEFINE_ENUM_INTERNAL(xvm_signextend)
 TLI_DEFINE_STRING_INTERNAL("__signextend")
@@ -441,6 +449,11 @@ TLI_DEFINE_STRING_INTERNAL("__small_printf")
 /// int __small_sprintf(char *str, const char *format, ...);
 TLI_DEFINE_ENUM_INTERNAL(small_sprintf)
 TLI_DEFINE_STRING_INTERNAL("__small_sprintf")
+// SyncVM local begin
+// i256 __smod(i256, i256)
+TLI_DEFINE_ENUM_INTERNAL(xvm_smod)
+TLI_DEFINE_STRING_INTERNAL("__smod")
+// SyncVM local end
 /// int __snprintf_chk(char *s, size_t n, int flags, size_t slen,
 ///                    const char *format, ...);
 TLI_DEFINE_ENUM_INTERNAL(snprintf_chk)

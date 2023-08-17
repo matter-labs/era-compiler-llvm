@@ -24,6 +24,9 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
+// SyncVM local begin
+#include "llvm/ADT/StringSet.h"
+// SyncVM local end
 #include "llvm/Analysis/TargetFolder.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/ValueTracking.h"
@@ -1719,6 +1722,10 @@ bool llvm::canConstantFoldCallTo(const CallBase *Call, const Function *F) {
     // SyncVM local end
     case 'c':
       return Name == "__cosh_finite" || Name == "__coshf_finite";
+    // SyncVM local begin
+    case 'd':
+      return Name == "__div";
+    // SyncVM local end
     case 'e':
       return Name == "__exp_finite" || Name == "__expf_finite" ||
              Name == "__exp2_finite" || Name == "__exp2f_finite" ||
@@ -1730,14 +1737,14 @@ bool llvm::canConstantFoldCallTo(const CallBase *Call, const Function *F) {
              Name == "__log10_finite" || Name == "__log10f_finite";
     // SyncVM local begin
     case 'm':
-      return Name == "__mulmod";
+      return Name == "__mulmod" || Name == "__mod";
     // SyncVM local end
     case 'p':
       return Name == "__pow_finite" || Name == "__powf_finite";
     case 's':
       return Name == "__sinh_finite" || Name == "__sinhf_finite" ||
     // SyncVM local begin
-             Name == "__signextend";
+             Name == "__signextend" || Name == "__sdiv" || Name == "__smod";
     // SyncVM local end
     }
   }
@@ -2514,6 +2521,59 @@ static Constant *ConstantFoldExpCall(Type *Ty, const APInt &Base,
   }
   return ConstantInt::get(Ty, ResExt.trunc(BitWidth));
 }
+
+/// Unsigned integer division operation.
+/// Returns:
+///   0, if Divisor == 0,
+///   Dividend / Divisor, else
+static Constant *ConstantFoldDivCall(Type *Ty, const APInt &Dividend,
+                                     const APInt &Divisor) {
+  if (Divisor.isZero())
+    return Constant::getNullValue(Ty);
+
+  return ConstantInt::get(Ty, Dividend.udiv(Divisor));
+}
+
+/// Signed integer division operation.
+/// Returns:
+///   0, if Divisor == 0,
+///   -2 ** 255, if (Dividend == -2 ** 255) && (Divisor == -1),
+///   Dividend / Divisor, else
+static Constant *ConstantFoldSDivCall(Type *Ty, const APInt &Dividend,
+                                      const APInt &Divisor) {
+  if (Divisor.isZero())
+    return Constant::getNullValue(Ty);
+
+  if (Dividend.shl(1).isZero() && Divisor.isAllOnes())
+    return ConstantInt::get(Ty, Dividend);
+
+  return ConstantInt::get(Ty, Dividend.sdiv(Divisor));
+}
+
+/// Modulo remainder operation.
+/// Returns:
+///   0, if Mod == 0,
+///   Val (mod Mod), else
+static Constant *ConstantFoldModCall(Type *Ty, const APInt &Val,
+                                     const APInt &Mod) {
+  if (Mod.isZero())
+    return Constant::getNullValue(Ty);
+
+  return ConstantInt::get(Ty, Val.urem(Mod));
+}
+
+/// Signed modulo remainder operation.
+/// Returns:
+///   0, if Mod == 0,
+///   sign(Val) (|Val| (mod |Mod|)), else
+static Constant *ConstantFoldSModCall(Type *Ty, const APInt &Val,
+                                      const APInt &Mod) {
+  if (Mod.isZero())
+    return Constant::getNullValue(Ty);
+
+  return ConstantInt::get(Ty, Val.srem(Mod));
+}
+
 // SyncVM local end
 
 static Constant *ConstantFoldScalarCall2(StringRef Name,
@@ -2829,7 +2889,10 @@ static Constant *ConstantFoldScalarCall2(StringRef Name,
     }
 
     // SyncVM local begin
-    if (Name == "__signextend" || Name == "__exp") {
+    const StringSet<> LibFuncNames = {"__signextend", "__exp", "__div",
+                                      "__sdiv",       "__mod", "__smod"};
+
+    if (LibFuncNames.count(Name)) {
       if (isa<PoisonValue>(Operands[0]) || isa<PoisonValue>(Operands[1]))
         return PoisonValue::get(Ty);
 
@@ -2860,6 +2923,38 @@ static Constant *ConstantFoldScalarCall2(StringRef Name,
           return ConstantInt::get(Ty, APInt(BitWidth, 1));
 
         return ConstantFoldExpCall(Ty, *C0, *C1);
+      }
+      if (Name == "__div") {
+        // Assume C0 is equal 0, 0 / C1 -> 0.
+        // Assume C1 is equal 0, C0 / 0 -> 0, see __div() semantics.
+        if (!C0 || !C1)
+          return Constant::getNullValue(Ty);
+
+        return ConstantFoldDivCall(Ty, *C0, *C1);
+      }
+      if (Name == "__sdiv") {
+        // Assume C0 is equal 0, 0 / C1 -> 0.
+        // Assume C1 is equal 0, C0 / 0 -> 0, see __sdiv() semantics.
+        if (!C0 || !C1)
+          return Constant::getNullValue(Ty);
+
+        return ConstantFoldSDivCall(Ty, *C0, *C1);
+      }
+      if (Name == "__mod") {
+        // Assume C0 is equal 0, 0 (mod C1) -> 0.
+        // Assume C1 is equal 0, C0 (mod 0) -> 0, see __mod() semantics.
+        if (!C0 || !C1)
+          return Constant::getNullValue(Ty);
+
+        return ConstantFoldModCall(Ty, *C0, *C1);
+      }
+      if (Name == "__smod") {
+        // Assume C0 is equal 0, 0 (mod C1) -> 0.
+        // Assume C1 is equal 0, C0 (mod 0) -> 0, see __mod() semantics.
+        if (!C0 || !C1)
+          return Constant::getNullValue(Ty);
+
+        return ConstantFoldSModCall(Ty, *C0, *C1);
       }
     }
     // SyncVM local end

@@ -1098,6 +1098,10 @@ bool llvm::inferNonMandatoryLibFuncAttrs(Function &F,
   case LibFunc_xvm_exp:
   case LibFunc_xvm_mulmod:
   case LibFunc_xvm_signextend:
+  case LibFunc_xvm_div:
+  case LibFunc_xvm_sdiv:
+  case LibFunc_xvm_mod:
+  case LibFunc_xvm_smod:
     Changed |= setDoesNotThrow(F);
     Changed |= setWillReturn(F);
     Changed |= setDoesNotAccessMemory(F);

@@ -243,6 +243,74 @@ define void @__cxa_throw(i8* %addr, i8*, i8*) noinline {
   unreachable
 }
 
+define i256 @__div(i256 %arg1, i256 %arg2) #0 {
+entry:
+  %is_divider_zero = icmp eq i256 %arg2, 0
+  br i1 %is_divider_zero, label %return, label %division
+
+division:
+  %div_res = udiv i256 %arg1, %arg2
+  br label %return
+
+return:
+  %res = phi i256 [ 0, %entry ], [ %div_res, %division ]
+  ret i256 %res
+}
+
+define i256 @__sdiv(i256 %arg1, i256 %arg2) #0 {
+entry:
+  %is_divider_zero = icmp eq i256 %arg2, 0
+  br i1 %is_divider_zero, label %return, label %division_overflow
+
+division_overflow:
+  %is_divided_int_min = icmp eq i256 %arg1, -57896044618658097711785492504343953926634992332820282019728792003956564819968
+  %is_minus_one = icmp eq i256 %arg2, -1
+  %is_overflow = and i1 %is_divided_int_min, %is_minus_one
+  br i1 %is_overflow, label %return, label %division
+
+division:
+  %div_res = sdiv i256 %arg1, %arg2
+  br label %return
+
+return:
+  %res = phi i256 [ 0, %entry ], [ %arg1, %division_overflow ], [ %div_res, %division ]
+  ret i256 %res
+}
+
+define i256 @__mod(i256 %arg1, i256 %arg2) #0 {
+entry:
+  %is_divider_zero = icmp eq i256 %arg2, 0
+  br i1 %is_divider_zero, label %return, label %remainder
+
+remainder:
+  %rem_res = urem i256 %arg1, %arg2
+  br label %return
+
+return:
+  %res = phi i256 [ 0, %entry ], [ %rem_res, %remainder ]
+  ret i256 %res
+}
+
+define i256 @__smod(i256 %arg1, i256 %arg2) #0 {
+entry:
+  %is_divider_zero = icmp eq i256 %arg2, 0
+  br i1 %is_divider_zero, label %return, label %division_overflow
+
+division_overflow:
+  %is_divided_int_min = icmp eq i256 %arg1, -57896044618658097711785492504343953926634992332820282019728792003956564819968
+  %is_minus_one = icmp eq i256 %arg2, -1
+  %is_overflow = and i1 %is_divided_int_min, %is_minus_one
+  br i1 %is_overflow, label %return, label %remainder
+
+remainder:
+  %rem_res = srem i256 %arg1, %arg2
+  br label %return
+
+return:
+  %res = phi i256 [ 0, %entry ], [ 0, %division_overflow ], [ %rem_res, %remainder ]
+  ret i256 %res
+}
+
 declare {i256, i1} @llvm.uadd.with.overflow.i256(i256, i256)
 declare void @llvm.syncvm.throw(i256)
 
