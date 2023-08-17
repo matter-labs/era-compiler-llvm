@@ -598,6 +598,10 @@ TEST_F(TargetLibraryInfoTest, ValidProto) {
       "declare i256 @__addmod(i256, i256, i256)\n"
       "declare i256 @__exp(i256, i256)\n"
       "declare i256 @__mulmod(i256, i256, i256)\n"
+      "declare i256 @__div(i256, i256)\n"
+      "declare i256 @__sdiv(i256, i256)\n"
+      "declare i256 @__mod(i256, i256)\n"
+      "declare i256 @__smod(i256, i256)\n"
       "declare i256 @__signextend(i256, i256)\n");
       // SyncVM local end
 
