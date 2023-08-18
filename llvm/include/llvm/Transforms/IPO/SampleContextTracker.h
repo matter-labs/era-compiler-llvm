@@ -143,8 +143,13 @@ public:
     return FuncToCtxtProfiles;
   }
 
+  // SyncVM local begin
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   class Iterator : public std::iterator<std::forward_iterator_tag,
                                         const ContextTrieNode *> {
+#pragma GCC diagnostic pop
+  // SyncVM local end
     std::queue<ContextTrieNode *> NodeQueue;
 
   public:
