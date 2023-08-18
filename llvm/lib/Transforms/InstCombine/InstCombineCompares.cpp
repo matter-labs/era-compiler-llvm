@@ -6964,9 +6964,6 @@ Instruction *InstCombinerImpl::visitICmpInst(ICmpInst &I) {
       }
     }
 
-// EraVM local begin
-// FIXME: support umulo
-#if 0
     // (zext a) * (zext b)  --> llvm.umul.with.overflow.
     if (match(Op0, m_NUWMul(m_ZExt(m_Value(A)), m_ZExt(m_Value(B))))) {
       if (Instruction *R = processUMulZExtIdiom(I, Op0, Op1, *this))
@@ -6976,8 +6973,6 @@ Instruction *InstCombinerImpl::visitICmpInst(ICmpInst &I) {
       if (Instruction *R = processUMulZExtIdiom(I, Op1, Op0, *this))
         return R;
     }
-#endif
-// EraVM local end
   }
 
   if (Instruction *Res = foldICmpEquality(I))
