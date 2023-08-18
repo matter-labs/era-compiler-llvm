@@ -24,6 +24,9 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/StringRef.h"
+// SyncVM local begin
+#include "llvm/ADT/Triple.h"
+// SyncVM local end
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/CaptureTracking.h"
 #include "llvm/Analysis/ConstantFolding.h"
@@ -6612,11 +6615,10 @@ bool SimplifyCFGOpt::simplifySwitch(SwitchInst *SI, IRBuilder<> &Builder) {
   // optimisation pipeline.
   // SyncVM local begin
   // TODO: CPR-940 Support const arrays.
-#if 0
-  if (Options.ConvertSwitchToLookupTable &&
-      SwitchToLookupTable(SI, Builder, DTU, DL, TTI))
-    return requestResimplify();
-#endif
+  if (!Triple(BB->getModule()->getTargetTriple()).isSyncVM())
+    if (Options.ConvertSwitchToLookupTable &&
+        SwitchToLookupTable(SI, Builder, DTU, DL, TTI))
+      return requestResimplify();
   // SyncVM local end
 
   if (ReduceSwitchRange(SI, Builder, DL, TTI))
