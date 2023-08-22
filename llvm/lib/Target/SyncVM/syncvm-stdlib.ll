@@ -311,7 +311,74 @@ return:
   ret i256 %res
 }
 
+define private i256 @__aux_pack_abi(i256 %0, i256 %1, i256 %2) alwaysinline {
+entry:
+  %3 = tail call i256 @llvm.umin.i256(i256 %0, i256 4294967295)
+  %4 = tail call i256 @llvm.umin.i256(i256 %1, i256 4294967295)
+  %offset_shifted = shl nuw nsw i256 %3, 64
+  %length_shifted = shl nuw nsw i256 %4, 96
+  %mode_shifted = shl nuw nsw i256 %2, 224
+  %tmp = add i256 %offset_shifted, %length_shifted
+  %abi = add i256 %tmp, %mode_shifted
+  ret i256 %abi
+}
+
+define void @__revert(i256 %0, i256 %1, i256 %2) #1 personality i32()* @__personality {
+entry:
+  %abi = call i256@__aux_pack_abi(i256 %0, i256 %1, i256 %2)
+  tail call void @llvm.syncvm.revert(i256 %abi)
+  unreachable
+}
+
+define void @__return(i256 %0, i256 %1, i256 %2) #1 personality i32()* @__personality {
+entry:
+  %abi = call i256@__aux_pack_abi(i256 %0, i256 %1, i256 %2)
+  tail call void @llvm.syncvm.return(i256 %abi)
+  unreachable
+}
+
+define i256 @__sha3(i256 %0, i256 %1, i1 %throw_at_failure) #1 personality i32()* @__personality {
+entry:
+  %2 = tail call i256 @llvm.umin.i256(i256 %0, i256 4294967295)
+  %3 = tail call i256 @llvm.umin.i256(i256 %1, i256 4294967295)
+  %gas_left = tail call i256 @llvm.syncvm.gasleft()
+  %4 = tail call i256 @llvm.umin.i256(i256 %gas_left, i256 4294967295)
+  %abi_data_input_offset_shifted = shl nuw nsw i256 %2, 64
+  %abi_data_input_length_shifted = shl nuw nsw i256 %3, 96
+  %abi_data_gas_shifted = shl nuw nsw i256 %4, 192
+  %abi_data_offset_and_length = add i256 %abi_data_input_length_shifted, %abi_data_input_offset_shifted
+  %abi_data_add_gas = add i256 %abi_data_gas_shifted, %abi_data_offset_and_length
+  %abi_data_add_system_call_marker = add i256 %abi_data_add_gas, 904625697166532776746648320380374280103671755200316906558262375061821325312
+  %call_external = tail call { i8 addrspace(3)*, i1 } @__staticcall(i256 %abi_data_add_system_call_marker, i256 32784, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef)
+  %status_code = extractvalue { i8 addrspace(3)*, i1 } %call_external, 1
+  br i1 %status_code, label %success_block, label %failure_block
+
+success_block:
+  %abi_data_pointer = extractvalue { i8 addrspace(3)*, i1 } %call_external, 0
+  %data_pointer = bitcast i8 addrspace(3)* %abi_data_pointer to i256 addrspace(3)*
+  %keccak256_child_data = load i256, i256 addrspace(3)* %data_pointer, align 1
+  ret i256 %keccak256_child_data
+
+failure_block:
+  br i1 %throw_at_failure, label %throw_block, label %revert_block
+
+revert_block:
+  call void @__revert(i256 0, i256 0, i256 0)
+  unreachable
+
+throw_block:
+  call void @__cxa_throw(i8* noalias nocapture nofree align 32 null, i8* noalias nocapture nofree align 32 null, i8* noalias nocapture nofree align 32 null)
+  unreachable
+}
+
 declare {i256, i1} @llvm.uadd.with.overflow.i256(i256, i256)
 declare void @llvm.syncvm.throw(i256)
+declare i256 @llvm.umin.i256(i256, i256)
+declare i256 @llvm.syncvm.gasleft()
+declare void @llvm.syncvm.revert(i256)
+declare void @llvm.syncvm.return(i256)
+declare i32 @__personality()
+declare { i8 addrspace(3)*, i1 } @__staticcall(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256) #1
 
 attributes #0 = { mustprogress nounwind readnone willreturn }
+attributes #1 = { nofree null_pointer_is_valid }
