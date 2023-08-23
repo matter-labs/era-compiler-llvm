@@ -4080,9 +4080,7 @@ bool NewGVN::eliminateInstructions(Function &F) {
           U->set(DominatingLeader);
           // This is now a use of the dominating leader, which means if the
           // dominating leader was dead, it's now live!
-          // SyncVM local begin
-          auto LeaderUseCount = UseCounts[DominatingLeader];
-          // SyncVM local end
+          auto &LeaderUseCount = UseCounts[DominatingLeader];
           // It's about to be alive again.
           if (LeaderUseCount == 0 && isa<Instruction>(DominatingLeader))
             ProbablyDead.erase(cast<Instruction>(DominatingLeader));
@@ -4093,9 +4091,7 @@ bool NewGVN::eliminateInstructions(Function &F) {
             if (--IIUseCount == 0)
               ProbablyDead.insert(II);
           }
-          // SyncVM local begin
-          ++UseCounts[DominatingLeader];
-          // SyncVM local end
+          ++LeaderUseCount;
           AnythingReplaced = true;
         }
       }
