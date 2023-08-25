@@ -19,7 +19,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "llvm/ADT/StringSet.h"
+#include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstIterator.h"
@@ -83,8 +83,10 @@ const char *STDLIB_DATA =
 #include "EraVMStdLib.inc"
     ;
 
-static bool EraVMLinkRuntimeImpl(Module &M, const char *ModuleToLink,
-                                 bool OptimizeForSize = false) {
+namespace {
+bool EraVMLinkRuntimeImpl(Module &M, const char *ModuleToLink,
+                          FunctionAnalysisManager *FAM = nullptr,
+                          bool OptimizeForSize = false) {
   Linker L(M);
   LLVMContext &C = M.getContext();
   unsigned Flags = Linker::Flags::None;
@@ -96,14 +98,6 @@ static bool EraVMLinkRuntimeImpl(Module &M, const char *ModuleToLink,
   if (!RTM) {
     Err.print("Unable to parse eravm-runtime.ll, eravm-stdlib.ll", errs());
     exit(1);
-  }
-
-  // Collect stdlib function definitions.
-  StringSet<> LibFuncs;
-  if (OptimizeForSize) {
-    for (auto &F : RTM->functions())
-      if (!F.isDeclaration())
-        LibFuncs.insert(F.getName());
   }
 
   bool LinkErr = false;
@@ -133,26 +127,25 @@ static bool EraVMLinkRuntimeImpl(Module &M, const char *ModuleToLink,
         if (!Callee)
           continue;
 
-        StringRef FuncName = Callee->getName();
-        if (LibFuncs.count(FuncName) == 0)
-          continue;
-
-        // If arguments are constants, these functions are simplified to
+        // If arguments are constants, following functions are simplified to
         // one intrinsic call, so it's worth to enable their inlining.
-        if (FuncName == "__revert" || FuncName == "__return")
+        LibFunc Func = NotLibFunc;
+        const TargetLibraryInfo &TLI = FAM->getResult<TargetLibraryAnalysis>(F);
+        const StringRef Name = Callee->getName();
+        if (TLI.getLibFunc(Name, Func) && TLI.has(Func) &&
+            (Func == LibFunc_xvm_revert || Func == LibFunc_xvm_return)) {
           if (Call->arg_empty() ||
               std::all_of(Call->arg_begin(), Call->arg_end(),
                           [](const auto &Arg) { return isa<Constant>(Arg); }))
             continue;
-
+        }
         if (Callee->hasFnAttribute("noinline-oz"))
           Call->addFnAttr(Attribute::NoInline);
       }
     }
-    // 2. Add 'minsize', 'optsize' attributes to all the function definitions,
-    // but those from the stdlib.
+    // 2. Add 'minsize', 'optsize' attributes to all the function definitions.
     for (auto &F : M.functions()) {
-      if (!F.isDeclaration() && LibFuncs.count(F.getName()) == 0) {
+      if (!F.isDeclaration()) {
         F.addFnAttr(Attribute::MinSize);
         F.addFnAttr(Attribute::OptimizeForSize);
       }
@@ -161,6 +154,8 @@ static bool EraVMLinkRuntimeImpl(Module &M, const char *ModuleToLink,
 
   return true;
 }
+
+} // end of anonymous namespace
 
 bool EraVMLinkRuntime::runOnModule(Module &M) {
   bool Changed =
@@ -191,6 +186,8 @@ ModulePass *llvm::createEraVMLinkRuntimePass(bool IsRuntimeLinkage) {
 
 PreservedAnalyses EraVMLinkRuntimePass::run(Module &M,
                                             ModuleAnalysisManager &AM) {
-  EraVMLinkRuntimeImpl(M, STDLIB_DATA, Level == OptimizationLevel::Oz);
+  FunctionAnalysisManager *FAM =
+      &AM.getResult<FunctionAnalysisManagerModuleProxy>(M).getManager();
+  EraVMLinkRuntimeImpl(M, STDLIB_DATA, FAM, Level == OptimizationLevel::Oz);
   return PreservedAnalyses::all();
 }

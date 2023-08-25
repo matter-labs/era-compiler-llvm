@@ -1,8 +1,13 @@
-//===--- EraVMCombineAddressingMode.cpp - use complex addressing modes ----===//
+//===-- EraVMCombineAddressingMode.cpp - Combine addr modes -----*- C++ -*-===//
 //
-/// \file
-/// Implements a pass that combines instructions into one with more
-/// sophisticated addressing mode.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// Implements a pass that combines instructions into one with more
+// sophisticated addressing mode.
 //
 //===----------------------------------------------------------------------===//
 

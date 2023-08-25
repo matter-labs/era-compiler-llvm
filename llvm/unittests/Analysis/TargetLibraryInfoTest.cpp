@@ -625,6 +625,7 @@ TEST_F(TargetLibraryInfoTest, ValidProto) {
       // These functions are EraVM/EVM routines
       "declare i256 @__addmod(i256, i256, i256)\n"
       "declare i256 @__exp(i256, i256)\n"
+      "declare i256 @__exp_pow2(i256, i256)\n"
       "declare i256 @__mulmod(i256, i256, i256)\n"
       "declare i256 @__div(i256, i256)\n"
       "declare i256 @__sdiv(i256, i256)\n"
@@ -635,6 +636,8 @@ TEST_F(TargetLibraryInfoTest, ValidProto) {
       "declare i256 @__sar(i256, i256)\n"
       "declare i256 @__byte(i256, i256)\n"
       "declare void @__mstore8(i256 addrspace(1)* nocapture writeonly, i256)\n"
+      "declare void @__return(i256, i256, i256)\n"
+      "declare void @__revert(i256, i256, i256)\n"
       "declare i256 @__signextend(i256, i256)\n");
       // EraVM local end
 

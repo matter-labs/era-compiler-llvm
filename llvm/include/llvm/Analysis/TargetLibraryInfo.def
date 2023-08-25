@@ -553,6 +553,13 @@ TLI_DEFINE_ENUM_INTERNAL(exp_finite)
 TLI_DEFINE_STRING_INTERNAL("__exp_finite")
 TLI_DEFINE_SIG_INTERNAL(Dbl, Dbl)
 
+// EraVM local begin
+/// i256 __exp_pow2(i256, i256);
+TLI_DEFINE_ENUM_INTERNAL(xvm_exp_pow2)
+TLI_DEFINE_STRING_INTERNAL("__exp_pow2")
+TLI_DEFINE_SIG_INTERNAL(IntPlus, IntPlus, IntPlus)
+// EraVM local end
+
 /// float __expf_finite(float x);
 TLI_DEFINE_ENUM_INTERNAL(expf_finite)
 TLI_DEFINE_STRING_INTERNAL("__expf_finite")
@@ -692,6 +699,16 @@ TLI_DEFINE_STRING_INTERNAL("__powl_finite")
 TLI_DEFINE_SIG_INTERNAL(LDbl, LDbl, LDbl)
 
 // EraVM local begin
+// void __return(i256, i256, i256)
+TLI_DEFINE_ENUM_INTERNAL(xvm_return)
+TLI_DEFINE_STRING_INTERNAL("__return")
+TLI_DEFINE_SIG_INTERNAL(Void, IntPlus, IntPlus, IntPlus)
+
+// void __revert(i256, i256, i256)
+TLI_DEFINE_ENUM_INTERNAL(xvm_revert)
+TLI_DEFINE_STRING_INTERNAL("__revert")
+TLI_DEFINE_SIG_INTERNAL(Void, IntPlus, IntPlus, IntPlus)
+
 // i256 __sar(i256, i256)
 TLI_DEFINE_ENUM_INTERNAL(xvm_sar)
 TLI_DEFINE_STRING_INTERNAL("__sar")

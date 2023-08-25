@@ -105,6 +105,7 @@ FunctionPass *createEraVMStackAddressConstantPropagationPass();
 FunctionPass *createEraVMCombineFlagSettingPass();
 FunctionPass *createEraVMCombineAddressingModePass();
 FunctionPass *createEraVMCombineToIndexedMemopsPass();
+FunctionPass *createEraVMOptimizeStdLibCallsPass();
 
 void initializeEraVMLowerIntrinsicsPass(PassRegistry &);
 void initializeEraVMAddConditionsPass(PassRegistry &);
@@ -120,6 +121,7 @@ void initializeEraVMDAGToDAGISelLegacyPass(PassRegistry &);
 void initializeEraVMCombineFlagSettingPass(PassRegistry &);
 void initializeEraVMCombineAddressingModePass(PassRegistry &);
 void initializeEraVMCombineToIndexedMemopsPass(PassRegistry &);
+void initializeEraVMOptimizeStdLibCallsPass(PassRegistry &);
 
 struct EraVMLinkRuntimePass : PassInfoMixin<EraVMLinkRuntimePass> {
   explicit EraVMLinkRuntimePass(OptimizationLevel Level) : Level(Level) {}
@@ -127,6 +129,12 @@ struct EraVMLinkRuntimePass : PassInfoMixin<EraVMLinkRuntimePass> {
 
 private:
   OptimizationLevel Level;
+};
+
+struct EraVMOptimizeStdLibCallsPass
+    : PassInfoMixin<EraVMOptimizeStdLibCallsPass> {
+  EraVMOptimizeStdLibCallsPass() {}
+  PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
 };
 
 } // namespace llvm

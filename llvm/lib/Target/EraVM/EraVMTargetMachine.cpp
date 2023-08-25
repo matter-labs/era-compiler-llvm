@@ -46,6 +46,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMStackAddressConstantPropagationPass(PR);
   initializeEraVMDAGToDAGISelLegacyPass(PR);
   initializeEraVMCombineToIndexedMemopsPass(PR);
+  initializeEraVMOptimizeStdLibCallsPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -85,7 +86,10 @@ EraVMTargetMachine::getTargetTransformInfo(const Function &F) const {
 void EraVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
   PB.registerPipelineEarlySimplificationEPCallback(
       [](ModulePassManager &PM, OptimizationLevel Level) {
+        FunctionPassManager FPM;
+        FPM.addPass(EraVMOptimizeStdLibCallsPass());
         PM.addPass(EraVMLinkRuntimePass(Level));
+        PM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
         PM.addPass(GlobalDCEPass());
       });
 }
