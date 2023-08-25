@@ -863,6 +863,7 @@ static void initialize(TargetLibraryInfoImpl &TLI, const Triple &T,
     TLI.disableAllFunctions();
     TLI.setAvailable(llvm::LibFunc_xvm_addmod);
     TLI.setAvailable(llvm::LibFunc_xvm_exp);
+    TLI.setAvailable(llvm::LibFunc_xvm_exp_pow2);
     TLI.setAvailable(llvm::LibFunc_xvm_mulmod);
     TLI.setAvailable(llvm::LibFunc_xvm_signextend);
     TLI.setAvailable(llvm::LibFunc_xvm_div);
@@ -874,6 +875,8 @@ static void initialize(TargetLibraryInfoImpl &TLI, const Triple &T,
     TLI.setAvailable(llvm::LibFunc_xvm_sar);
     TLI.setAvailable(llvm::LibFunc_xvm_byte);
     TLI.setAvailable(llvm::LibFunc_xvm_mstore8);
+    TLI.setAvailable(llvm::LibFunc_xvm_revert);
+    TLI.setAvailable(llvm::LibFunc_xvm_return);
     return;
   }
   // EraVM local end

@@ -237,6 +237,15 @@ exponent_loop_body:
   br i1 %exp_val_is_less_2, label %return, label %exponent_loop_body
 }
 
+define i256 @__exp_pow2(i256 %val_log2, i256 %exp) #0 {
+entry:
+  %shift = mul nuw nsw i256 %val_log2, %exp
+  %is_overflow = icmp ugt i256 %shift, 255
+  %shift_res = shl nuw i256 1, %shift
+  %res = select i1 %is_overflow, i256 0, i256 %shift_res
+  ret i256 %res
+}
+
 define void @__cxa_throw(i8* %addr, i8*, i8*) #3 {
   %addrval = ptrtoint i8* %addr to i256
   call void @llvm.eravm.throw(i256 %addrval)
