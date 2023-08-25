@@ -825,6 +825,7 @@ static void initialize(TargetLibraryInfoImpl &TLI, const Triple &T,
     TLI.disableAllFunctions();
     TLI.setAvailable(llvm::LibFunc_xvm_addmod);
     TLI.setAvailable(llvm::LibFunc_xvm_exp);
+    TLI.setAvailable(llvm::LibFunc_xvm_exp_pow2);
     TLI.setAvailable(llvm::LibFunc_xvm_mulmod);
     TLI.setAvailable(llvm::LibFunc_xvm_signextend);
     TLI.setAvailable(llvm::LibFunc_xvm_div);
@@ -1569,6 +1570,7 @@ bool TargetLibraryInfoImpl::isValidProtoForLibFunc(const FunctionType &FTy,
 
   // SyncVM local begin
   case LibFunc_xvm_exp:
+  case LibFunc_xvm_exp_pow2:
   case LibFunc_xvm_signextend:
   case LibFunc_xvm_div:
   case LibFunc_xvm_sdiv:

@@ -310,7 +310,7 @@ TLI_DEFINE_STRING_INTERNAL("__cxa_guard_release")
 /// i256 __div(i256, i256)
 TLI_DEFINE_ENUM_INTERNAL(xvm_div)
 TLI_DEFINE_STRING_INTERNAL("__div")
-// i256 __exp(i255, i256, i256)
+// i256 __exp(i255, i256)
 TLI_DEFINE_ENUM_INTERNAL(xvm_exp)
 TLI_DEFINE_STRING_INTERNAL("__exp")
 // SyncVM local end
@@ -335,6 +335,10 @@ TLI_DEFINE_STRING_INTERNAL("__exp2l_finite")
 /// double __exp_finite(double x);
 TLI_DEFINE_ENUM_INTERNAL(exp_finite)
 TLI_DEFINE_STRING_INTERNAL("__exp_finite")
+// SyncVM local begin
+TLI_DEFINE_ENUM_INTERNAL(xvm_exp_pow2)
+TLI_DEFINE_STRING_INTERNAL("__exp_pow2")
+// SyncVM local end
 /// float __expf_finite(float x);
 TLI_DEFINE_ENUM_INTERNAL(expf_finite)
 TLI_DEFINE_STRING_INTERNAL("__expf_finite")

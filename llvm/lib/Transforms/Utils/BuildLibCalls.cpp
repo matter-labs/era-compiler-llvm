@@ -1096,6 +1096,7 @@ bool llvm::inferNonMandatoryLibFuncAttrs(Function &F,
   // SyncVM local begin
   case LibFunc_xvm_addmod:
   case LibFunc_xvm_exp:
+  case LibFunc_xvm_exp_pow2:
   case LibFunc_xvm_mulmod:
   case LibFunc_xvm_signextend:
   case LibFunc_xvm_div:
