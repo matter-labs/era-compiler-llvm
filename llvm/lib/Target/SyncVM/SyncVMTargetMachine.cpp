@@ -39,6 +39,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMLinkRuntimePass(PR);
   initializeSyncVMAllocaHoistingPass(PR);
   initializeSyncVMStackAddressConstantPropagationPass(PR);
+  initializeSyncVMOptimizeStdLibCallsPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -78,7 +79,10 @@ SyncVMTargetMachine::getTargetTransformInfo(const Function &F) const {
 void SyncVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
   PB.registerPipelineEarlySimplificationEPCallback(
       [](ModulePassManager &PM, OptimizationLevel Level) {
+        FunctionPassManager FPM;
+        FPM.addPass(SyncVMOptimizeStdLibCallsPass());
         PM.addPass(SyncVMLinkRuntimePass(Level));
+        PM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
         PM.addPass(GlobalDCEPass());
       });
 
