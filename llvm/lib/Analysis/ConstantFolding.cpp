@@ -2893,69 +2893,31 @@ static Constant *ConstantFoldScalarCall2(StringRef Name,
                                       "__sdiv",       "__mod", "__smod"};
 
     if (LibFuncNames.count(Name)) {
-      if (isa<PoisonValue>(Operands[0]) || isa<PoisonValue>(Operands[1]))
+      if (isa<PoisonValue>(Operands[0]) || isa<PoisonValue>(Operands[1]) ||
+          !C0 || !C1)
         return PoisonValue::get(Ty);
 
       const unsigned BitWidth = Ty->getIntegerBitWidth();
       assert(BitWidth == 256);
 
       if (Name == "__signextend") {
-        APInt Zero = APInt::getZero(Ty->getIntegerBitWidth());
-        // If C0 is undef assume it's equal zero.
-        if (!C0)
-          C0 = &Zero;
-
         // Signextend operation returns original value if the extension
         // overflows the type width.
         if (C0->uge(APInt(BitWidth, BitWidth / 8 - 1)))
           return Operands[1];
-        if (!C1)
-          return Constant::getNullValue(Ty);
 
         return ConstantFoldSignextendCall(Ty, *C0, *C1);
       }
-      if (Name == "__exp") {
-        // Assume C0 is equal 0, 0 ** C1 -> 0.
-        if (!C0)
-          return Constant::getNullValue(Ty);
-        if (!C1)
-          // Assume C1 equal to 0, C0 ** 0 -> 1
-          return ConstantInt::get(Ty, APInt(BitWidth, 1));
-
+      if (Name == "__exp")
         return ConstantFoldExpCall(Ty, *C0, *C1);
-      }
-      if (Name == "__div") {
-        // Assume C0 is equal 0, 0 / C1 -> 0.
-        // Assume C1 is equal 0, C0 / 0 -> 0, see __div() semantics.
-        if (!C0 || !C1)
-          return Constant::getNullValue(Ty);
-
+      if (Name == "__div")
         return ConstantFoldDivCall(Ty, *C0, *C1);
-      }
-      if (Name == "__sdiv") {
-        // Assume C0 is equal 0, 0 / C1 -> 0.
-        // Assume C1 is equal 0, C0 / 0 -> 0, see __sdiv() semantics.
-        if (!C0 || !C1)
-          return Constant::getNullValue(Ty);
-
+      if (Name == "__sdiv")
         return ConstantFoldSDivCall(Ty, *C0, *C1);
-      }
-      if (Name == "__mod") {
-        // Assume C0 is equal 0, 0 (mod C1) -> 0.
-        // Assume C1 is equal 0, C0 (mod 0) -> 0, see __mod() semantics.
-        if (!C0 || !C1)
-          return Constant::getNullValue(Ty);
-
+      if (Name == "__mod")
         return ConstantFoldModCall(Ty, *C0, *C1);
-      }
-      if (Name == "__smod") {
-        // Assume C0 is equal 0, 0 (mod C1) -> 0.
-        // Assume C1 is equal 0, C0 (mod 0) -> 0, see __mod() semantics.
-        if (!C0 || !C1)
-          return Constant::getNullValue(Ty);
-
+      if (Name == "__smod")
         return ConstantFoldSModCall(Ty, *C0, *C1);
-      }
     }
     // SyncVM local end
 
@@ -3288,36 +3250,22 @@ static Constant *ConstantFoldScalarCall3(StringRef Name,
 
   // SyncVM local begin
   if (Name == "__addmod" || Name == "__mulmod") {
-    if (isa<PoisonValue>(Operands[0]) || isa<PoisonValue>(Operands[1]) ||
-        isa<PoisonValue>(Operands[2]))
-      return PoisonValue::get(Ty);
-
     const APInt *C0, *C1, *C2;
     if (!getConstIntOrUndef(Operands[0], C0) ||
         !getConstIntOrUndef(Operands[1], C1) ||
         !getConstIntOrUndef(Operands[2], C2))
       return nullptr;
 
+    if (isa<PoisonValue>(Operands[0]) || isa<PoisonValue>(Operands[1]) ||
+        isa<PoisonValue>(Operands[2]) || !C0 || !C1 || !C2)
+      return PoisonValue::get(Ty);
+
     assert(Ty->getIntegerBitWidth() == 256);
 
-    // C % undef -> 0
-    if (!C2)
-      return Constant::getNullValue(Ty);
-
-    if (Name == "__addmod") {
-      // undef + C -> C
-      APInt Zero = APInt::getZero(Ty->getIntegerBitWidth());
-      C0 = C0 ? C0 : &Zero;
-      C1 = C1 ? C1 : &Zero;
+    if (Name == "__addmod")
       return ConstantFoldAddModCall(Ty, *C0, *C1, *C2);
-    }
-    if (Name == "__mulmod") {
-      // undef * C -> 0
-      if (!C0 || !C1)
-        return Constant::getNullValue(Ty);
-
+    if (Name == "__mulmod")
       return ConstantFoldMulModCall(Ty, *C0, *C1, *C2);
-    }
   }
   // SyncVM local end
 
