@@ -30,7 +30,7 @@ define i256 @test_addmod2() {
 
 define i256 @test_addmod3() {
 ; CHECK-LABEL: @test_addmod3
-; CHECK-NEXT: ret i256 3
+; CHECK-NEXT: ret i256 poison
 
   %res = call i256 @__addmod(i256 48, i256 undef, i256 5)
   ret i256 %res
@@ -38,7 +38,7 @@ define i256 @test_addmod3() {
 
 define i256 @test_addmod4() {
 ; CHECK-LABEL: @test_addmod4
-; CHECK-NEXT: ret i256 3
+; CHECK-NEXT: ret i256 poison
 
   %res = call i256 @__addmod(i256 undef, i256 48, i256 5)
   ret i256 %res
@@ -46,7 +46,7 @@ define i256 @test_addmod4() {
 
 define i256 @test_addmod5() {
 ; CHECK-LABEL: @test_addmod5
-; CHECK-NEXT: ret i256 0
+; CHECK-NEXT: ret i256 poison
 
   %res = call i256 @__addmod(i256 48, i256 1, i256 undef)
   ret i256 %res
@@ -71,7 +71,7 @@ define i256 @test_mulmod2() {
 
 define i256 @test_mulmod3() {
 ; CHECK-LABEL: @test_mulmod3
-; CHECK-NEXT: ret i256 0
+; CHECK-NEXT: ret i256 poison
 
   %res = call i256 @__mulmod(i256 undef, i256 17, i256 7)
   ret i256 %res
@@ -79,7 +79,7 @@ define i256 @test_mulmod3() {
 
 define i256 @test_mulmod4() {
 ; CHECK-LABEL: @test_mulmod4
-; CHECK-NEXT: ret i256 0
+; CHECK-NEXT: ret i256 poison
 
   %res = call i256 @__mulmod(i256 17, i256 undef, i256 7)
   ret i256 %res
@@ -87,7 +87,7 @@ define i256 @test_mulmod4() {
 
 define i256 @test_mulmod5() {
 ; CHECK-LABEL: @test_mulmod5
-; CHECK-NEXT: ret i256 0
+; CHECK-NEXT: ret i256 poison
 
   %res = call i256 @__mulmod(i256 3, i256 17, i256 undef)
   ret i256 %res
@@ -111,7 +111,7 @@ define i256 @test_signextend2() {
 
 define i256 @test_signextend3() {
 ; CHECK-LABEL: @test_signextend3
-; CHECK-NEXT: ret i256 -1
+; CHECK-NEXT: ret i256 poison
 
   %res = call i256 @__signextend(i256 undef, i256 32767)
   ret i256 %res
@@ -119,7 +119,7 @@ define i256 @test_signextend3() {
 
 define i256 @test_signextend4() {
 ; CHECK-LABEL: @test_signextend4
-; CHECK-NEXT: ret i256 0
+; CHECK-NEXT: ret i256 poison
 
   %res = call i256 @__signextend(i256 1, i256 undef)
   ret i256 %res
@@ -127,7 +127,7 @@ define i256 @test_signextend4() {
 
 define i256 @test_signextend5() {
 ; CHECK-LABEL: @test_signextend5
-; CHECK-NEXT: ret i256 undef
+; CHECK-NEXT: ret i256 poison
 
   %res = call i256 @__signextend(i256 32, i256 undef)
   ret i256 %res
@@ -383,7 +383,7 @@ define i256 @test_exponent1() {
 
 define i256 @test_exponent2() {
 ; CHECK-LABEL: @test_exponent2
-; CHECK-NEXT: ret i256 1
+; CHECK-NEXT: ret i256 poison
 
   %res = call i256 @__exp(i256 2, i256 undef)
   ret i256 %res
@@ -407,7 +407,7 @@ define i256 @test_exponent4() {
 
 define i256 @test_exponent5() {
 ; CHECK-LABEL: @test_exponent5
-; CHECK-NEXT: ret i256 0
+; CHECK-NEXT: ret i256 poison
 
   %res = call i256 @__exp(i256 undef, i256 2)
   ret i256 %res
@@ -578,7 +578,7 @@ define i256 @test_exponent22() {
 
 define i256 @test_div1() {
 ; CHECK-LABEL: @test_div1
-; CHECK-NEXT: ret i256 0
+; CHECK-NEXT: ret i256 poison
 
   %res = call i256 @__div(i256 undef, i256 1)
   ret i256 %res
@@ -586,7 +586,7 @@ define i256 @test_div1() {
 
 define i256 @test_div2() {
 ; CHECK-LABEL: @test_div2
-; CHECK-NEXT: ret i256 0
+; CHECK-NEXT: ret i256 poison
 
   %res = call i256 @__div(i256 1, i256 undef)
   ret i256 %res
@@ -738,7 +738,7 @@ define i256 @test_div20() {
 
 define i256 @test_sdiv1() {
 ; CHECK-LABEL: @test_sdiv1
-; CHECK-NEXT: ret i256 0
+; CHECK-NEXT: ret i256 poison
 
   %res = call i256 @__sdiv(i256 undef, i256 1)
  ret i256 %res
@@ -746,7 +746,7 @@ define i256 @test_sdiv1() {
 
 define i256 @test_sdiv2() {
 ; CHECK-LABEL: @test_sdiv2
-; CHECK-NEXT: ret i256 0
+; CHECK-NEXT: ret i256 poison
 
   %res = call i256 @__sdiv(i256 1, i256 undef)
   ret i256 %res
@@ -1226,7 +1226,7 @@ define i256 @test_sdiv61() {
 
 define i256 @test_mod1() {
 ; CHECK-LABEL: @test_mod1
-; CHECK-NEXT: ret i256 0
+; CHECK-NEXT: ret i256 poison
 
   %res = call i256 @__mod(i256 undef, i256 1)
   ret i256 %res
@@ -1234,7 +1234,7 @@ define i256 @test_mod1() {
 
 define i256 @test_mod2() {
 ; CHECK-LABEL: @test_mod2
-; CHECK-NEXT: ret i256 0
+; CHECK-NEXT: ret i256 poison
 
   %res = call i256 @__mod(i256 1, i256 undef)
   ret i256 %res
@@ -1410,7 +1410,7 @@ define i256 @test_mod23() {
 
 define i256 @test_smod1() {
 ; CHECK-LABEL: @test_smod1
-; CHECK-NEXT: ret i256 0
+; CHECK-NEXT: ret i256 poison
 
   %res = call i256 @__smod(i256 undef, i256 1)
   ret i256 %res
@@ -1418,7 +1418,7 @@ define i256 @test_smod1() {
 
 define i256 @test_smod2() {
 ; CHECK-LABEL: @test_smod2
-; CHECK-NEXT: ret i256 0
+; CHECK-NEXT: ret i256 poison
 
   %res = call i256 @__smod(i256 1, i256 undef)
   ret i256 %res
