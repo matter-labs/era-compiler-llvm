@@ -1001,11 +1001,11 @@ static LazyCallGraph::SCC &updateCGAndAnalysisManagerForPass(
   }
 
   // Include synthetic reference edges to known, defined lib functions.
-  for (auto *LibFn : G.getLibFunctions())
-    // While the list of lib functions doesn't have repeats, don't re-visit
-    // anything handled above.
-    if (!Visited.count(LibFn))
-      VisitRef(*LibFn);
+  // for (auto *LibFn : G.getLibFunctions())
+  //   // While the list of lib functions doesn't have repeats, don't re-visit
+  //   // anything handled above.
+  //   if (!Visited.count(LibFn))
+  //     VisitRef(*LibFn);
 
   // First remove all of the edges that are no longer present in this function.
   // The first step makes these edges uniformly ref edges and accumulates them
