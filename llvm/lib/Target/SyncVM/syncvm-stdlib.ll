@@ -371,6 +371,80 @@ throw_block:
   unreachable
 }
 
+define void @__mstore8(i256 addrspace(1)* nocapture writeonly %addr, i256 %val) #2 {
+entry:
+  %orig_value = load i256, i256 addrspace(1)* %addr, align 1
+  %orig_value_shifted_left = shl i256 %orig_value, 8
+  %orig_value_shifted_right = lshr i256 %orig_value_shifted_left, 8
+  %byte_value_shifted = shl i256 %val, 248
+  %store_result = or i256 %orig_value_shifted_right, %byte_value_shifted
+  store i256 %store_result, i256 addrspace(1)* %addr, align 1
+  ret void
+}
+
+define i256 @__byte(i256 %index, i256 %value) #0 {
+entry:
+  %is_overflow = icmp ugt i256 %index, 31
+  br i1 %is_overflow, label %return, label %extract_byte
+
+extract_byte:
+  %bits_offset = shl i256 %index, 3
+  %value_shifted_left = shl i256 %value, %bits_offset
+  %value_shifted_right = lshr i256 %value_shifted_left, 248
+  br label %return
+
+return:
+  %res = phi i256 [ 0, %entry ], [ %value_shifted_right, %extract_byte ]
+  ret i256 %res
+}
+
+define i256 @__shl(i256 %shift, i256 %value) #0 {
+entry:
+  %is_overflow = icmp ugt i256 %shift, 255
+  br i1 %is_overflow, label %return, label %shift_value
+
+shift_value:
+  %shift_res = shl i256 %value, %shift
+  br label %return
+
+return:
+  %res = phi i256 [ 0, %entry ], [ %shift_res, %shift_value ]
+  ret i256 %res
+}
+
+define i256 @__shr(i256 %shift, i256 %value) #0 {
+entry:
+  %is_overflow = icmp ugt i256 %shift, 255
+  br i1 %is_overflow, label %return, label %shift_value
+
+shift_value:
+  %shift_res = lshr i256 %value, %shift
+  br label %return
+
+return:
+  %res = phi i256 [ 0, %entry ], [ %shift_res, %shift_value ]
+  ret i256 %res
+}
+
+define i256 @__sar(i256 %shift, i256 %value) #0 {
+entry:
+  %is_overflow = icmp ugt i256 %shift, 255
+  br i1 %is_overflow, label %arith_overflow, label %shift_value
+
+arith_overflow:
+  %is_val_positive = icmp sge i256 %value, 0
+  %res_overflow = select i1 %is_val_positive, i256 0, i256 -1
+  br label %return
+
+shift_value:
+  %shift_res = ashr i256 %value, %shift
+  br label %return
+
+return:
+  %res = phi i256 [ %res_overflow, %arith_overflow ], [ %shift_res, %shift_value ]
+  ret i256 %res
+}
+
 declare {i256, i1} @llvm.uadd.with.overflow.i256(i256, i256)
 declare void @llvm.syncvm.throw(i256)
 declare i256 @llvm.umin.i256(i256, i256)
@@ -382,3 +456,4 @@ declare { i8 addrspace(3)*, i1 } @__staticcall(i256, i256, i256, i256, i256, i25
 
 attributes #0 = { mustprogress nounwind readnone willreturn }
 attributes #1 = { nofree null_pointer_is_valid }
+attributes #2 = { mustprogress argmemonly nounwind willreturn }

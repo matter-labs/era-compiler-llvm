@@ -1719,6 +1719,8 @@ bool llvm::canConstantFoldCallTo(const CallBase *Call, const Function *F) {
              Name == "__atan2_finite" || Name == "__atan2f_finite" ||
     // SyncVM local begin
              Name == "__addmod";
+    case 'b':
+      return Name == "__byte";
     // SyncVM local end
     case 'c':
       return Name == "__cosh_finite" || Name == "__coshf_finite";
@@ -1737,14 +1739,15 @@ bool llvm::canConstantFoldCallTo(const CallBase *Call, const Function *F) {
              Name == "__log10_finite" || Name == "__log10f_finite";
     // SyncVM local begin
     case 'm':
-      return Name == "__mulmod" || Name == "__mod";
+      return Name == "__mulmod" || Name == "__mod" || Name == "__mstore8";
     // SyncVM local end
     case 'p':
       return Name == "__pow_finite" || Name == "__powf_finite";
     case 's':
       return Name == "__sinh_finite" || Name == "__sinhf_finite" ||
     // SyncVM local begin
-             Name == "__signextend" || Name == "__sdiv" || Name == "__smod";
+             Name == "__signextend" || Name == "__sdiv" || Name == "__smod" ||
+             Name == "__shl" || Name == "__shr" || Name == "__sar";
     // SyncVM local end
     }
   }
@@ -2574,6 +2577,41 @@ static Constant *ConstantFoldSModCall(Type *Ty, const APInt &Val,
   return ConstantInt::get(Ty, Val.srem(Mod));
 }
 
+/// Left shift operation.
+/// Returns:
+///   (Val * (2 ** Shift)) (mod 2 ** 256)
+static Constant *ConstantFoldSHLCall(Type *Ty, const APInt &Shift,
+                                     const APInt &Val) {
+  return ConstantInt::get(Ty, Val.shl(Shift));
+}
+
+/// Logical right shift operation.
+/// Returns:
+///   floor(Val / (2 ** Shift))
+static Constant *ConstantFoldSHRCall(Type *Ty, const APInt &Shift,
+                                     const APInt &Val) {
+  return ConstantInt::get(Ty, Val.lshr(Shift));
+}
+
+/// Arithmetic (signed) right shift operation.
+/// Returns:
+///   floor(Val / (2 ** Shift)), where 'Val' is treated as two’s complement
+///   signed 256-bit integer.
+static Constant *ConstantFoldSARCall(Type *Ty, const APInt &Shift,
+                                     const APInt &Val) {
+  return ConstantInt::get(Ty, Val.ashr(Shift));
+}
+
+/// Retrieve single byte from i256 word.
+/// Returns:
+///   (Val << ByteIdx * 8) >> 248
+/// For the Nth byte, we count from the left
+/// (i.e. N=0 would be the most significant in big endian).
+static Constant *ConstantFoldByteCall(Type *Ty, const APInt &ByteIdx,
+                                      const APInt &Val) {
+  unsigned BitWidth = Ty->getIntegerBitWidth();
+  return ConstantInt::get(Ty, Val.shl(ByteIdx * 8).lshr(BitWidth - 8));
+}
 // SyncVM local end
 
 static Constant *ConstantFoldScalarCall2(StringRef Name,
@@ -2889,8 +2927,9 @@ static Constant *ConstantFoldScalarCall2(StringRef Name,
     }
 
     // SyncVM local begin
-    const StringSet<> LibFuncNames = {"__signextend", "__exp", "__div",
-                                      "__sdiv",       "__mod", "__smod"};
+    const StringSet<> LibFuncNames = {
+        "__signextend", "__exp", "__div", "__sdiv", "__mod",
+        "__smod",       "__shl", "__shr", "__sar",  "__byte"};
 
     if (LibFuncNames.count(Name)) {
       if (isa<PoisonValue>(Operands[0]) || isa<PoisonValue>(Operands[1]) ||
@@ -2918,6 +2957,14 @@ static Constant *ConstantFoldScalarCall2(StringRef Name,
         return ConstantFoldModCall(Ty, *C0, *C1);
       if (Name == "__smod")
         return ConstantFoldSModCall(Ty, *C0, *C1);
+      if (Name == "__shl")
+        return ConstantFoldSHLCall(Ty, *C0, *C1);
+      if (Name == "__shr")
+        return ConstantFoldSHRCall(Ty, *C0, *C1);
+      if (Name == "__sar")
+        return ConstantFoldSARCall(Ty, *C0, *C1);
+      if (Name == "__byte")
+        return ConstantFoldByteCall(Ty, *C0, *C1);
     }
     // SyncVM local end
 

@@ -10,6 +10,10 @@ declare i256 @__div(i256, i256) #0
 declare i256 @__sdiv(i256, i256) #0
 declare i256 @__mod(i256, i256) #0
 declare i256 @__smod(i256, i256) #0
+declare i256 @__shl(i256, i256) #0
+declare i256 @__shr(i256, i256) #0
+declare i256 @__sar(i256, i256) #0
+declare i256 @__byte(i256, i256) #0
 
 define i256 @test_addmod1() {
 ; CHECK-LABEL: @test_addmod1
@@ -1975,4 +1979,1373 @@ define i256 @test_smod70() {
   %res = call i256 @__smod(i256 -57896044618658097711785492504343953926634992332820282019728792003956564819968, i256 57896044618658097711785492504343953926634992332820282019728792003956564819967)
   ret i256 %res
 }
+
+define i256 @test_shl1() {
+; CHECK-LABEL: @test_shl1
+; CHECK-NEXT: ret i256 poison
+
+  %res = call i256 @__shl(i256 undef, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_shl2() {
+; CHECK-LABEL: @test_shl2
+; CHECK-NEXT: ret i256 poison
+
+  %res = call i256 @__shl(i256 1, i256 undef)
+  ret i256 %res
+}
+
+define i256 @test_shl3() {
+; CHECK-LABEL: @test_shl3
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shl(i256 0, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_shl4() {
+; CHECK-LABEL: @test_shl4
+; CHECK-NEXT: ret i256 1
+
+  %res = call i256 @__shl(i256 0, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_shl5() {
+; CHECK-LABEL: @test_shl5
+; CHECK-NEXT: ret i256 37670211480306196047687443673641227745170897112008692523754794019498533073987
+
+  %res = call i256 @__shl(i256 0, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_shl6() {
+; CHECK-LABEL: @test_shl6
+; CHECK-NEXT: ret i256 -1
+
+  %res = call i256 @__shl(i256 0, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_shl7() {
+; CHECK-LABEL: @test_shl7
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shl(i256 1, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_shl8() {
+; CHECK-LABEL: @test_shl8
+; CHECK-NEXT: ret i256 2
+
+  %res = call i256 @__shl(i256 1, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_shl9() {
+; CHECK-LABEL: @test_shl9
+; CHECK-NEXT: ret i256 -40451666276703803328196097661405452362928190441623178991947995968916063491962
+
+  %res = call i256 @__shl(i256 1, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_shl10() {
+; CHECK-LABEL: @test_shl10
+; CHECK-NEXT: ret i256 -2
+
+  %res = call i256 @__shl(i256 1, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_shl11() {
+; CHECK-LABEL: @test_shl11
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shl(i256 40, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_shl12() {
+; CHECK-LABEL: @test_shl12
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shl(i256 40, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_shl13() {
+; CHECK-LABEL: @test_shl13
+; CHECK-NEXT: ret i256 1099511627776
+
+  %res = call i256 @__shl(i256 40, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_shl14() {
+; CHECK-LABEL: @test_shl14
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shl(i256 40, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_shl15() {
+; CHECK-LABEL: @test_shl15
+; CHECK-NEXT: ret i256 40063763421114410033923212107166246724796859226574628379196082273060414029824
+
+  %res = call i256 @__shl(i256 40, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_shl16() {
+; CHECK-LABEL: @test_shl16
+; CHECK-NEXT: ret i256 -1
+
+  %res = call i256 @__shl(i256 40, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_shl17() {
+; CHECK-LABEL: @test_shl17
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shl(i256 171, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_shl18() {
+; CHECK-LABEL: @test_shl18
+; CHECK-NEXT: ret i256 2993155353253689176481146537402947624255349848014848
+
+  %res = call i256 @__shl(i256 171, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_shl19() {
+; CHECK-LABEL: @test_shl19
+; CHECK-NEXT: ret i256 -19177177688971274584416941610210820178639383122214864933301741884673332609024
+
+  %res = call i256 @__shl(i256 171, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_shl20() {
+; CHECK-LABEL: @test_shl20
+; CHECK-NEXT: ret i256 -2993155353253689176481146537402947624255349848014848
+
+  %res = call i256 @__shl(i256 171, i256 115792089237316195423570985008687907853269984665640564039457584007913129639935)
+  ret i256 %res
+}
+
+define i256 @test_shl121() {
+; CHECK-LABEL: @test_shl121
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shl(i256 255, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_shl122() {
+; CHECK-LABEL: @test_shl122
+; CHECK-NEXT: ret i256 -57896044618658097711785492504343953926634992332820282019728792003956564819968
+
+  %res = call i256 @__shl(i256 255, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_shl23() {
+; CHECK-LABEL: @test_shl23
+; CHECK-NEXT: ret i256 -57896044618658097711785492504343953926634992332820282019728792003956564819968
+
+  %res = call i256 @__shl(i256 255, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_shl24() {
+; CHECK-LABEL: @test_shl24
+; CHECK-NEXT: ret i256 -57896044618658097711785492504343953926634992332820282019728792003956564819968
+
+  %res = call i256 @__shl(i256 255, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_shl25() {
+; CHECK-LABEL: @test_shl25
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shl(i256 256, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_shl26() {
+; CHECK-LABEL: @test_shl26
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shl(i256 256, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_shl27() {
+; CHECK-LABEL: @test_shl27
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shl(i256 256, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_shl28() {
+; CHECK-LABEL: @test_shl28
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shl(i256 35242523534534534233424343343443, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_shl29() {
+; CHECK-LABEL: @test_shl29
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shl(i256 35242523534534534233424343343443, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_shl30() {
+; CHECK-LABEL: @test_shl30
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shl(i256 35242523534534534233424343343443, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_shl31() {
+; CHECK-LABEL: @test_shl31
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shl(i256 -1, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_shl32() {
+; CHECK-LABEL: @test_shl32
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shl(i256 -1, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_shl33() {
+; CHECK-LABEL: @test_shl33
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shl(i256 -1, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_shl34() {
+; CHECK-LABEL: @test_shl34
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shl(i256 -1, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_shr1() {
+; CHECK-LABEL: @test_shr1
+; CHECK-NEXT: ret i256 poison
+
+  %res = call i256 @__shr(i256 undef, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_shr2() {
+; CHECK-LABEL: @test_shr2
+; CHECK-NEXT: ret i256 poison
+
+  %res = call i256 @__shr(i256 1, i256 undef)
+  ret i256 %res
+}
+
+define i256 @test_shr3() {
+; CHECK-LABEL: @test_shr3
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 0, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_shr4() {
+; CHECK-LABEL: @test_shr4
+; CHECK-NEXT: ret i256 1
+
+  %res = call i256 @__shr(i256 0, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_shr5() {
+; CHECK-LABEL: @test_shr5
+; CHECK-NEXT: ret i256 37670211480306196047687443673641227745170897112008692523754794019498533073987
+
+  %res = call i256 @__shr(i256 0, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_shr6() {
+; CHECK-LABEL: @test_shr6
+; CHECK-NEXT: ret i256 -1
+
+  %res = call i256 @__shr(i256 0, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_shr7() {
+; CHECK-LABEL: @test_shr7
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 1, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_shr8() {
+; CHECK-LABEL: @test_shr8
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 1, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_shr9() {
+; CHECK-LABEL: @test_shr9
+; CHECK-NEXT: ret i256 18835105740153098023843721836820613872585448556004346261877397009749266536993
+
+  %res = call i256 @__shr(i256 1, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_shr10() {
+; CHECK-LABEL: @test_shr10
+; CHECK-NEXT: ret i256 57896044618658097711785492504343953926634992332820282019728792003956564819967
+
+  %res = call i256 @__shr(i256 1, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_shr11() {
+; CHECK-LABEL: @test_shr11
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 40, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_shr12() {
+; CHECK-LABEL: @test_shr12
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 40, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_shr13() {
+; CHECK-LABEL: @test_shr13
+; CHECK-NEXT: ret i256 34260857756004221344198816653844212619488550546528761082076738620
+
+  %res = call i256 @__shr(i256 40, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_shr14() {
+; CHECK-LABEL: @test_shr14
+; CHECK-NEXT: ret i256 105312291668557186697918027683670432318895095400549111254310977535
+
+  %res = call i256 @__shr(i256 40, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_shr15() {
+; CHECK-LABEL: @test_shr15
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 171, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_shr16() {
+; CHECK-LABEL: @test_shr16
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 171, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_shr17() {
+; CHECK-LABEL: @test_shr17
+; CHECK-NEXT: ret i256 12585451483284036284784745
+
+  %res = call i256 @__shr(i256 171, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_shr18() {
+; CHECK-LABEL: @test_shr18
+; CHECK-NEXT: ret i256 38685626227668133590597631
+
+  %res = call i256 @__shr(i256 171, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_shr19() {
+; CHECK-LABEL: @test_shr19
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 255, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_shr20() {
+; CHECK-LABEL: @test_shr20
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 255, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_shr21() {
+; CHECK-LABEL: @test_shr21
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 255, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_shr22() {
+; CHECK-LABEL: @test_shr22
+; CHECK-NEXT: ret i256 1
+
+  %res = call i256 @__shr(i256 255, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_shr23() {
+; CHECK-LABEL: @test_shr23
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 256, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_shr24() {
+; CHECK-LABEL: @test_shr24
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 256, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_shr25() {
+; CHECK-LABEL: @test_shr25
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 256, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_shr26() {
+; CHECK-LABEL: @test_shr26
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 256, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_shr27() {
+; CHECK-LABEL: @test_shr27
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 35242523534534534233424343343443, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_shr28() {
+; CHECK-LABEL: @test_shr28
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 35242523534534534233424343343443, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_shr29() {
+; CHECK-LABEL: @test_shr29
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 35242523534534534233424343343443, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_shr30() {
+; CHECK-LABEL: @test_shr30
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 35242523534534534233424343343443, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_shr31() {
+; CHECK-LABEL: @test_shr31
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 -1, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_shr32() {
+; CHECK-LABEL: @test_shr32
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 -1, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_shr33() {
+; CHECK-LABEL: @test_shr33
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 -1, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_shr34() {
+; CHECK-LABEL: @test_shr34
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__shr(i256 -1, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_sar1() {
+; CHECK-LABEL: @test_sar1
+; CHECK-NEXT: ret i256 poison
+
+  %res = call i256 @__sar(i256 undef, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_sar2() {
+; CHECK-LABEL: @test_sar2
+; CHECK-NEXT: ret i256 poison
+
+  %res = call i256 @__sar(i256 1, i256 undef)
+  ret i256 %res
+}
+
+define i256 @test_sar3() {
+; CHECK-LABEL: @test_sar3
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 0, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_sar4() {
+; CHECK-LABEL: @test_sar4
+; CHECK-NEXT: ret i256 1
+
+  %res = call i256 @__sar(i256 0, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_sar5() {
+; CHECK-LABEL: @test_sar5
+; CHECK-NEXT: ret i256 -1
+
+  %res = call i256 @__sar(i256 0, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_sar6() {
+; CHECK-LABEL: @test_sar6
+; CHECK-NEXT: ret i256 37670211480306196047687443673641227745170897112008692523754794019498533073987
+
+  %res = call i256 @__sar(i256 0, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_sar7() {
+; CHECK-LABEL: @test_sar7
+; CHECK-NEXT: ret i256 -632574534856236475345634624374238423192181237123712631236123123
+
+  %res = call i256 @__sar(i256 0, i256 -632574534856236475345634624374238423192181237123712631236123123)
+  ret i256 %res
+}
+
+define i256 @test_sar8() {
+; CHECK-LABEL: @test_sar8
+; CHECK-NEXT: ret i256 57896044618658097711785492504343953926634992332820282019728792003956564819967
+
+  %res = call i256 @__sar(i256 0, i256 57896044618658097711785492504343953926634992332820282019728792003956564819967)
+  ret i256 %res
+}
+
+define i256 @test_sar9() {
+; CHECK-LABEL: @test_sar9
+; CHECK-NEXT: ret i256 -57896044618658097711785492504343953926634992332820282019728792003956564819968
+
+  %res = call i256 @__sar(i256 0, i256 -57896044618658097711785492504343953926634992332820282019728792003956564819968)
+  ret i256 %res
+}
+
+define i256 @test_sar10() {
+; CHECK-LABEL: @test_sar10
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 1, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_sar11() {
+; CHECK-LABEL: @test_sar11
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 1, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_sar12() {
+; CHECK-LABEL: @test_sar12
+; CHECK-NEXT: ret i256 -1
+
+  %res = call i256 @__sar(i256 1, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_sar13() {
+; CHECK-LABEL: @test_sar13
+; CHECK-NEXT: ret i256 18835105740153098023843721836820613872585448556004346261877397009749266536993
+
+  %res = call i256 @__sar(i256 1, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_sar14() {
+; CHECK-LABEL: @test_sar14
+; CHECK-NEXT: ret i256 -316287267428118237672817312187119211596090618561856315618061562
+
+  %res = call i256 @__sar(i256 1, i256 -632574534856236475345634624374238423192181237123712631236123123)
+  ret i256 %res
+}
+
+define i256 @test_sar15() {
+; CHECK-LABEL: @test_sar15
+; CHECK-NEXT: ret i256 28948022309329048855892746252171976963317496166410141009864396001978282409983
+
+  %res = call i256 @__sar(i256 1, i256 57896044618658097711785492504343953926634992332820282019728792003956564819967)
+  ret i256 %res
+}
+
+define i256 @test_sar16() {
+; CHECK-LABEL: @test_sar16
+; CHECK-NEXT: ret i256 -28948022309329048855892746252171976963317496166410141009864396001978282409984
+
+  %res = call i256 @__sar(i256 1, i256 -57896044618658097711785492504343953926634992332820282019728792003956564819968)
+  ret i256 %res
+}
+
+define i256 @test_sar17() {
+; CHECK-LABEL: @test_sar17
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 40, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_sar18() {
+; CHECK-LABEL: @test_sar18
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 40, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_sar19() {
+; CHECK-LABEL: @test_sar19
+; CHECK-NEXT: ret i256 -1
+
+  %res = call i256 @__sar(i256 40, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_sar20() {
+; CHECK-LABEL: @test_sar20
+; CHECK-NEXT: ret i256 34260857756004221344198816653844212619488550546528761082076738620
+
+  %res = call i256 @__sar(i256 40, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_sar21() {
+; CHECK-LABEL: @test_sar21
+; CHECK-NEXT: ret i256 -575323187928221591706128151030714819346195542606177
+
+  %res = call i256 @__sar(i256 40, i256 -632574534856236475345634624374238423192181237123712631236123123)
+  ret i256 %res
+}
+
+define i256 @test_sar22() {
+; CHECK-LABEL: @test_sar22
+; CHECK-NEXT: ret i256 52656145834278593348959013841835216159447547700274555627155488767
+
+  %res = call i256 @__sar(i256 40, i256 57896044618658097711785492504343953926634992332820282019728792003956564819967)
+  ret i256 %res
+}
+
+define i256 @test_sar23() {
+; CHECK-LABEL: @test_sar23
+; CHECK-NEXT: ret i256 -52656145834278593348959013841835216159447547700274555627155488768
+
+  %res = call i256 @__sar(i256 40, i256 -57896044618658097711785492504343953926634992332820282019728792003956564819968)
+  ret i256 %res
+}
+
+define i256 @test_sar24() {
+; CHECK-LABEL: @test_sar24
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 171, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_sar25() {
+; CHECK-LABEL: @test_sar25
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 171, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_sar26() {
+; CHECK-LABEL: @test_sar26
+; CHECK-NEXT: ret i256 -1
+
+  %res = call i256 @__sar(i256 171, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_sar27() {
+; CHECK-LABEL: @test_sar27
+; CHECK-NEXT: ret i256 12585451483284036284784745
+
+  %res = call i256 @__sar(i256 171, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_sar28() {
+; CHECK-LABEL: @test_sar28
+; CHECK-NEXT: ret i256 -211340361659
+
+  %res = call i256 @__sar(i256 171, i256 -632574534856236475345634624374238423192181237123712631236123123)
+  ret i256 %res
+}
+
+define i256 @test_sar29() {
+; CHECK-LABEL: @test_sar29
+; CHECK-NEXT: ret i256 19342813113834066795298815
+
+  %res = call i256 @__sar(i256 171, i256 57896044618658097711785492504343953926634992332820282019728792003956564819967)
+  ret i256 %res
+}
+
+define i256 @test_sar30() {
+; CHECK-LABEL: @test_sar30
+; CHECK-NEXT: ret i256 -19342813113834066795298816
+
+  %res = call i256 @__sar(i256 171, i256 -57896044618658097711785492504343953926634992332820282019728792003956564819968)
+  ret i256 %res
+}
+
+define i256 @test_sar31() {
+; CHECK-LABEL: @test_sar31
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 254, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_sar32() {
+; CHECK-LABEL: @test_sar32
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 254, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_sar33() {
+; CHECK-LABEL: @test_sar33
+; CHECK-NEXT: ret i256 -1
+
+  %res = call i256 @__sar(i256 254, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_sar34() {
+; CHECK-LABEL: @test_sar34
+; CHECK-NEXT: ret i256 1
+
+  %res = call i256 @__sar(i256 254, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_sar35() {
+; CHECK-LABEL: @test_sar35
+; CHECK-NEXT: ret i256 -1
+
+  %res = call i256 @__sar(i256 254, i256 -632574534856236475345634624374238423192181237123712631236123123)
+  ret i256 %res
+}
+
+define i256 @test_sar36() {
+; CHECK-LABEL: @test_sar36
+; CHECK-NEXT: ret i256 1
+
+  %res = call i256 @__sar(i256 254, i256 57896044618658097711785492504343953926634992332820282019728792003956564819967)
+  ret i256 %res
+}
+
+define i256 @test_sar37() {
+; CHECK-LABEL: @test_sar37
+; CHECK-NEXT: ret i256 -2
+
+  %res = call i256 @__sar(i256 254, i256 -57896044618658097711785492504343953926634992332820282019728792003956564819968)
+  ret i256 %res
+}
+
+define i256 @test_sar38() {
+; CHECK-LABEL: @test_sar38
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 255, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_sar39() {
+; CHECK-LABEL: @test_sar39
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 255, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_sar40() {
+; CHECK-LABEL: @test_sar40
+; CHECK-NEXT: ret i256 -1
+
+  %res = call i256 @__sar(i256 255, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_sar41() {
+; CHECK-LABEL: @test_sar41
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 255, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_sar42() {
+; CHECK-LABEL: @test_sar42
+; CHECK-NEXT: ret i256 -1
+
+  %res = call i256 @__sar(i256 255, i256 -632574534856236475345634624374238423192181237123712631236123123)
+  ret i256 %res
+}
+
+define i256 @test_sar43() {
+; CHECK-LABEL: @test_sar43
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 255, i256 57896044618658097711785492504343953926634992332820282019728792003956564819967)
+  ret i256 %res
+}
+
+define i256 @test_sar44() {
+; CHECK-LABEL: @test_sar44
+; CHECK-NEXT: ret i256 -1
+
+  %res = call i256 @__sar(i256 255, i256 -57896044618658097711785492504343953926634992332820282019728792003956564819968)
+  ret i256 %res
+}
+
+define i256 @test_sar45() {
+; CHECK-LABEL: @test_sar45
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 256, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_sar46() {
+; CHECK-LABEL: @test_sar46
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 256, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_sar47() {
+; CHECK-LABEL: @test_sar47
+; CHECK-NEXT: ret i256 -1
+
+  %res = call i256 @__sar(i256 256, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_sar48() {
+; CHECK-LABEL: @test_sar48
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 256, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_sar49() {
+; CHECK-LABEL: @test_sar49
+; CHECK-NEXT: ret i256 -1
+
+  %res = call i256 @__sar(i256 256, i256 -632574534856236475345634624374238423192181237123712631236123123)
+  ret i256 %res
+}
+
+define i256 @test_sar50() {
+; CHECK-LABEL: @test_sar50
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 256, i256 57896044618658097711785492504343953926634992332820282019728792003956564819967)
+  ret i256 %res
+}
+
+define i256 @test_sar51() {
+; CHECK-LABEL: @test_sar51
+; CHECK-NEXT: ret i256 -1
+
+  %res = call i256 @__sar(i256 256, i256 -57896044618658097711785492504343953926634992332820282019728792003956564819968)
+  ret i256 %res
+}
+
+define i256 @test_sar52() {
+; CHECK-LABEL: @test_sar52
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 35242523534534534233424343343443, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_sar53() {
+; CHECK-LABEL: @test_sar53
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 35242523534534534233424343343443, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_sar54() {
+; CHECK-LABEL: @test_sar54
+; CHECK-NEXT: ret i256 -1
+
+  %res = call i256 @__sar(i256 35242523534534534233424343343443, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_sar55() {
+; CHECK-LABEL: @test_sar55
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 35242523534534534233424343343443, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_sar56() {
+; CHECK-LABEL: @test_sar56
+; CHECK-NEXT: ret i256 -1
+
+  %res = call i256 @__sar(i256 35242523534534534233424343343443, i256 -632574534856236475345634624374238423192181237123712631236123123)
+  ret i256 %res
+}
+
+define i256 @test_sar57() {
+; CHECK-LABEL: @test_sar57
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 35242523534534534233424343343443, i256 57896044618658097711785492504343953926634992332820282019728792003956564819967)
+  ret i256 %res
+}
+
+define i256 @test_sar58() {
+; CHECK-LABEL: @test_sar58
+; CHECK-NEXT: ret i256 -1
+
+  %res = call i256 @__sar(i256 35242523534534534233424343343443, i256 -57896044618658097711785492504343953926634992332820282019728792003956564819968)
+  ret i256 %res
+}
+
+define i256 @test_sar59() {
+; CHECK-LABEL: @test_sar59
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 -1, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_sar60() {
+; CHECK-LABEL: @test_sar60
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 -1, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_sar61() {
+; CHECK-LABEL: @test_sar61
+; CHECK-NEXT: ret i256 -1
+
+  %res = call i256 @__sar(i256 -1, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_sar62() {
+; CHECK-LABEL: @test_sar62
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 -1, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_sar63() {
+; CHECK-LABEL: @test_sar63
+; CHECK-NEXT: ret i256 -1
+
+  %res = call i256 @__sar(i256 -1, i256 -632574534856236475345634624374238423192181237123712631236123123)
+  ret i256 %res
+}
+
+define i256 @test_sar64() {
+; CHECK-LABEL: @test_sar64
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__sar(i256 -1, i256 57896044618658097711785492504343953926634992332820282019728792003956564819967)
+  ret i256 %res
+}
+
+define i256 @test_sar65() {
+; CHECK-LABEL: @test_sar65
+; CHECK-NEXT: ret i256 -1
+
+  %res = call i256 @__sar(i256 -1, i256 -57896044618658097711785492504343953926634992332820282019728792003956564819968)
+  ret i256 %res
+}
+
+define i256 @test_byte1() {
+; CHECK-LABEL: @test_byte1
+; CHECK-NEXT: ret i256 poison
+
+  %res = call i256 @__byte(i256 undef, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_byte2() {
+; CHECK-LABEL: @test_byte2
+; CHECK-NEXT: ret i256 poison
+
+  %res = call i256 @__byte(i256 1, i256 undef)
+  ret i256 %res
+}
+
+define i256 @test_byte3() {
+; CHECK-LABEL: @test_byte3
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 0, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_byte4() {
+; CHECK-LABEL: @test_byte4
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 0, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_byte5() {
+; CHECK-LABEL: @test_byte5
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 0, i256 62786337629547936342664354281295019512044052096983040078175507080572122364)
+  ret i256 %res
+}
+
+define i256 @test_byte6() {
+; CHECK-LABEL: @test_byte6
+; CHECK-NEXT: ret i256 83
+
+  %res = call i256 @__byte(i256 0, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_byte7() {
+; CHECK-LABEL: @test_byte7
+; CHECK-NEXT: ret i256 255
+
+  %res = call i256 @__byte(i256 0, i256 -213508454229078891452382036238048110874681386347114622284045643289719458749)
+  ret i256 %res
+}
+
+define i256 @test_byte8() {
+; CHECK-LABEL: @test_byte8
+; CHECK-NEXT: ret i256 255
+
+  %res = call i256 @__byte(i256 0, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_byte9() {
+; CHECK-LABEL: @test_byte9
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 1, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_byte10() {
+; CHECK-LABEL: @test_byte10
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 1, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_byte11() {
+; CHECK-LABEL: @test_byte11
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 1, i256 15831896390776628077873594548411842773272337831711882241313510853617203623164)
+  ret i256 %res
+}
+
+define i256 @test_byte12() {
+; CHECK-LABEL: @test_byte12
+; CHECK-NEXT: ret i256 72
+
+  %res = call i256 @__byte(i256 1, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_byte13() {
+; CHECK-LABEL: @test_byte13
+; CHECK-NEXT: ret i256 255
+
+  %res = call i256 @__byte(i256 1, i256 -54279028636447639376701285558971354695195688630741054740805195402843884604349)
+  ret i256 %res
+}
+
+define i256 @test_byte14() {
+; CHECK-LABEL: @test_byte14
+; CHECK-NEXT: ret i256 255
+
+  %res = call i256 @__byte(i256 1, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_byte15() {
+; CHECK-LABEL: @test_byte15
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 17, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_byte16() {
+; CHECK-LABEL: @test_byte16
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 17, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_byte17() {
+; CHECK-LABEL: @test_byte17
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 17, i256 16073302433164271703722074696011524995083260326051756269332189763149975074044)
+  ret i256 %res
+}
+
+define i256 @test_byte18() {
+; CHECK-LABEL: @test_byte18
+; CHECK-NEXT: ret i256 205
+
+  %res = call i256 @__byte(i256 17, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_byte19() {
+; CHECK-LABEL: @test_byte19
+; CHECK-NEXT: ret i256 255
+
+  %res = call i256 @__byte(i256 17, i256 -54658164282644196211809801276940316383917872613704572060086920199132892875709)
+  ret i256 %res
+}
+
+define i256 @test_byte20() {
+; CHECK-LABEL: @test_byte20
+; CHECK-NEXT: ret i256 255
+
+  %res = call i256 @__byte(i256 17, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_byte21() {
+; CHECK-LABEL: @test_byte21
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 31, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_byte22() {
+; CHECK-LABEL: @test_byte22
+; CHECK-NEXT: ret i256 1
+
+  %res = call i256 @__byte(i256 31, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_byte23() {
+; CHECK-LABEL: @test_byte23
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 31, i256 16073302433164271703722074696011524995083277336827658260012929812626463325184)
+  ret i256 %res
+}
+
+define i256 @test_byte24() {
+; CHECK-LABEL: @test_byte24
+; CHECK-NEXT: ret i256 67
+
+  %res = call i256 @__byte(i256 31, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_byte25() {
+; CHECK-LABEL: @test_byte25
+; CHECK-NEXT: ret i256 255
+
+  %res = call i256 @__byte(i256 31, i256 -54658164282644196211809801276940316383918434904861343304715684682168181439489)
+  ret i256 %res
+}
+
+define i256 @test_byte26() {
+; CHECK-LABEL: @test_byte26
+; CHECK-NEXT: ret i256 255
+
+  %res = call i256 @__byte(i256 31, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_byte27() {
+; CHECK-LABEL: @test_byte27
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 32, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_byte28() {
+; CHECK-LABEL: @test_byte28
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 32, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_byte29() {
+; CHECK-LABEL: @test_byte29
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 32, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_byte30() {
+; CHECK-LABEL: @test_byte30
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 32, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_byte31() {
+; CHECK-LABEL: @test_byte31
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 35242523534534534233424343343443, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_byte32() {
+; CHECK-LABEL: @test_byte32
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 35242523534534534233424343343443, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_byte33() {
+; CHECK-LABEL: @test_byte33
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 35242523534534534233424343343443, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_byte34() {
+; CHECK-LABEL: @test_byte34
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 35242523534534534233424343343443, i256 -1)
+  ret i256 %res
+}
+
+define i256 @test_byte35() {
+; CHECK-LABEL: @test_byte35
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 -1, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_byte36() {
+; CHECK-LABEL: @test_byte36
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 -1, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_byte37() {
+; CHECK-LABEL: @test_byte37
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 -1, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
+  ret i256 %res
+}
+
+define i256 @test_byte38() {
+; CHECK-LABEL: @test_byte38
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__byte(i256 -1, i256 -1)
+  ret i256 %res
+}
+
 attributes #0 = { nounwind readnone willreturn }
