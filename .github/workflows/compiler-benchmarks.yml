@@ -95,13 +95,13 @@ jobs:
         if: ${{ env.LLVM_BUILD_TYPE == 'debug' }}
         working-directory: compiler-tester
         run: |
-          zkevm-llvm build --debug  
+          zkevm-llvm build --debug --extra-args '\-DLLVM_ENABLE_WERROR=On'
 
       - name: Building the candidate LLVM framework (release)
         if: ${{ env.LLVM_BUILD_TYPE == 'release' }}
         working-directory: compiler-tester
         run: |
-          zkevm-llvm build
+          zkevm-llvm build --extra-args '\-DLLVM_ENABLE_WERROR=On'
 
       - name: Benchmarking the candidate LLVM framework
         id: compiler_tester_run
@@ -182,13 +182,13 @@ jobs:
         if: ${{ env.LLVM_BUILD_TYPE == 'debug' }}
         working-directory: compiler-tester
         run: |
-          zkevm-llvm build --debug
+          zkevm-llvm build --debug --extra-args '\-DLLVM_ENABLE_WERROR=On'
 
       - name: Building the reference LLVM framework (release)
         if: ${{ env.LLVM_BUILD_TYPE == 'release' }}
         working-directory: compiler-tester
         run: |
-          zkevm-llvm build
+          zkevm-llvm build --extra-args '\-DLLVM_ENABLE_WERROR=On'
 
       - name: Benchmarking the reference LLVM framework
         id: compiler_tester_run
