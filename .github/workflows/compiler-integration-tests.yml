@@ -77,13 +77,13 @@ jobs:
         if: ${{ env.LLVM_BUILD_TYPE == 'debug' }}
         working-directory: compiler-tester
         run: |
-          zkevm-llvm build --debug --enable-tests
+          zkevm-llvm build --debug --enable-tests --extra-args '\-DLLVM_ENABLE_WERROR=On'
 
       - name: Building the LLVM framework (release)
         if: ${{ env.LLVM_BUILD_TYPE == 'release' }}
         working-directory: compiler-tester
         run: |
-          zkevm-llvm build --enable-tests
+          zkevm-llvm build --enable-tests --extra-args '\-DLLVM_ENABLE_WERROR=On'
           
       - name: Running Lit tests with default options   
         working-directory: compiler-tester
