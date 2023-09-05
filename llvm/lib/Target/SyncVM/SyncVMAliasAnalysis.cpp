@@ -87,7 +87,8 @@ AliasResult SyncVMAAResult::alias(const MemoryLocation &LocA,
 
   // Since pointers are in the same address space, handle only cases that are
   // interesting to us.
-  if (ASA != SyncVMAS::AS_HEAP && ASA != SyncVMAS::AS_HEAP_AUX)
+  if (ASA != SyncVMAS::AS_HEAP && ASA != SyncVMAS::AS_HEAP_AUX &&
+      ASA != SyncVMAS::AS_STORAGE)
     return AAResultBase::alias(LocA, LocB, AAQI);
 
   auto StartA = getConstStartLoc(LocA);
@@ -102,6 +103,11 @@ AliasResult SyncVMAAResult::alias(const MemoryLocation &LocA,
   // If locations are the same, they must alias.
   if (*StartA == *StartB)
     return AliasResult::MustAlias;
+
+  // For storage accesses, we know that locations are pointing to the different
+  // keys, so they are not aliasing.
+  if (ASA == SyncVMAS::AS_STORAGE)
+    return AliasResult::NoAlias;
 
   auto DoesOverlap = [](const APInt &X, const APInt &XEnd, const APInt &Y) {
     return Y.uge(X) && Y.ult(XEnd);
