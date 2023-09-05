@@ -16,15 +16,18 @@
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/CodeGen/TargetLoweringObjectFileImpl.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
+#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/GlobalDCE.h"
+#include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils.h"
 
 #include "EraVM.h"
+#include "EraVMAliasAnalysis.h"
 #include "EraVMMachineFunctionInfo.h"
 #include "EraVMTargetTransformInfo.h"
 
@@ -47,6 +50,8 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMDAGToDAGISelLegacyPass(PR);
   initializeEraVMCombineToIndexedMemopsPass(PR);
   initializeEraVMOptimizeStdLibCallsPass(PR);
+  initializeEraVMAAWrapperPassPass(PR);
+  initializeEraVMExternalAAWrapperPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -83,6 +88,10 @@ EraVMTargetMachine::getTargetTransformInfo(const Function &F) const {
   return TargetTransformInfo(EraVMTTIImpl(this, F));
 }
 
+void EraVMTargetMachine::registerDefaultAliasAnalyses(AAManager &AAM) {
+  AAM.registerFunctionAnalysis<EraVMAA>();
+}
+
 void EraVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
   PB.registerPipelineEarlySimplificationEPCallback(
       [](ModulePassManager &PM, OptimizationLevel Level) {
@@ -92,6 +101,18 @@ void EraVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
         PM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
         PM.addPass(GlobalDCEPass());
       });
+
+  PB.registerAnalysisRegistrationCallback([](FunctionAnalysisManager &FAM) {
+    FAM.registerPass([] { return EraVMAA(); });
+  });
+
+  PB.registerParseAACallback([](StringRef AAName, AAManager &AAM) {
+    if (AAName == "eravm-aa") {
+      AAM.registerFunctionAnalysis<EraVMAA>();
+      return true;
+    }
+    return false;
+  });
 }
 
 namespace {
@@ -130,6 +151,14 @@ void EraVMPassConfig::addIRPasses() {
   addPass(createEraVMCodegenPreparePass());
   addPass(createGlobalDCEPass());
   addPass(createEraVMAllocaHoistingPass());
+  if (TM->getOptLevel() != CodeGenOptLevel::None) {
+    addPass(createEraVMAAWrapperPass());
+    addPass(createExternalAAWrapperPass([](Pass &P, Function &,
+                                           AAResults &AAR) {
+      if (auto *WrapperPass = P.getAnalysisIfAvailable<EraVMAAWrapperPass>())
+        AAR.addAAResult(WrapperPass->getResult());
+    }));
+  }
   TargetPassConfig::addIRPasses();
 }
 
