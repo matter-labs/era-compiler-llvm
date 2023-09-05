@@ -204,6 +204,7 @@ class AddressSpacesImpl {
   int HeapAux = 2;
   int Generic = 3;
   int Code = 4;
+  int Storage = 5;
 }
 
 def AddrSpaces : AddressSpacesImpl;
@@ -217,8 +218,9 @@ def Address_heap          : AddressSpaceList<[ AddrSpaces.Heap ]>;
 def Address_heapaux       : AddressSpaceList<[ AddrSpaces.HeapAux ]>;
 def Address_generic       : AddressSpaceList<[ AddrSpaces.Generic ]>;
 def Address_code          : AddressSpaceList<[ AddrSpaces.Code ]>;
+def Address_storage       : AddressSpaceList<[ AddrSpaces.Storage ]>;
 
-foreach as = [ "stack", "heap", "heapaux", "generic", "code" ] in {
+foreach as = [ "stack", "heap", "heapaux", "generic", "code", "storage" ] in {
 let AddressSpaces = !cast<AddressSpaceList>("Address_"#as).AddrSpaces in {
 def load_#as : PatFrag<(ops node:$ptr), (unindexedload node:$ptr)> {
   let IsLoad = 1;
@@ -1310,12 +1312,15 @@ def SLDrr : ILogR<47, DstReg, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
 // Fat Pointer
 //===----------------------------------------------------------------------===//
 def : Pat<(int_eravm_sload GR256:$rs0), (SLDrr GR256:$rs0, 0)>;
+def : Pat<(load_storage GR256:$rs0), (SLDrr GR256:$rs0, 0)>;
 
 let hasSideEffects = 1, first = 0 in
   def SSTr : ILogR<48, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
       "sstore$cc\t$rs0, $rs1", []>;
 
 def : Pat<(int_eravm_sstore GR256:$rs0, GR256:$rs1),
+          (SSTr GR256:$rs0, GR256:$rs1, 0)>;
+def : Pat<(store_storage GR256:$rs1, GR256:$rs0),
           (SSTr GR256:$rs0, GR256:$rs1, 0)>;
 
 let hasSideEffects = 1 in
