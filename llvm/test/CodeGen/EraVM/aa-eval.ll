@@ -47,10 +47,10 @@ define void @test_noalias_fallback(ptr noalias %0, ptr noalias %1) {
 ; CHECK: NoAlias: i256* %ptr0, i256 addrspace(4)* %ptr4
 ; CHECK: NoAlias: i256 addrspace(1)* %ptr1, i256 addrspace(4)* %ptr4
 ; CHECK: NoAlias: i256 addrspace(2)* %ptr2, i256 addrspace(4)* %ptr4
-; CHECK: MayAlias: i256* %ptr0, i256 addrspace(5)* %ptr5
-; CHECK: MayAlias: i256 addrspace(1)* %ptr1, i256 addrspace(5)* %ptr5
-; CHECK: MayAlias: i256 addrspace(2)* %ptr2, i256 addrspace(5)* %ptr5
-; CHECK: MayAlias: i256 addrspace(4)* %ptr4, i256 addrspace(5)* %ptr5
+; CHECK: NoAlias: i256* %ptr0, i256 addrspace(5)* %ptr5
+; CHECK: NoAlias: i256 addrspace(1)* %ptr1, i256 addrspace(5)* %ptr5
+; CHECK: NoAlias: i256 addrspace(2)* %ptr2, i256 addrspace(5)* %ptr5
+; CHECK: NoAlias: i256 addrspace(4)* %ptr4, i256 addrspace(5)* %ptr5
 define void @test_noalias() {
   %ptr0 = inttoptr i256 32 to ptr
   %ptr1 = inttoptr i256 32 to ptr addrspace(1)
@@ -126,7 +126,7 @@ define void @test_as2_partialalias() {
 }
 
 ; CHECK-LABEL: Function: test_as5_noalias
-; CHECK: MayAlias: i256 addrspace(5)* %ptr1, i256 addrspace(5)* %ptr2
+; CHECK: NoAlias: i256 addrspace(5)* %ptr1, i256 addrspace(5)* %ptr2
 define void @test_as5_noalias() {
   %ptr1 = inttoptr i256 0 to ptr addrspace(5)
   %ptr2 = inttoptr i256 1 to ptr addrspace(5)
@@ -136,7 +136,7 @@ define void @test_as5_noalias() {
 }
 
 ; CHECK-LABEL: Function: test_as5_mustalias
-; CHECK: MayAlias: i256 addrspace(5)* %ptr1, i256 addrspace(5)* %ptr2
+; CHECK: MustAlias: i256 addrspace(5)* %ptr1, i256 addrspace(5)* %ptr2
 define void @test_as5_mustalias() {
   %ptr1 = inttoptr i256 0 to ptr addrspace(5)
   %ptr2 = inttoptr i256 0 to ptr addrspace(5)
