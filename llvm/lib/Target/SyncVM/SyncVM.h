@@ -40,7 +40,8 @@ enum AddressSpaces {
   AS_HEAP_AUX = 2,
   AS_GENERIC = 3,
   AS_CODE = 4,
-  MAX_ADDRESS = AS_CODE,
+  AS_STORAGE = 5,
+  MAX_ADDRESS = AS_STORAGE,
 };
 } // namespace SyncVMAS
 

@@ -117,8 +117,7 @@ define i256 @test_as5_null() {
 ; CHECK-LABEL: @test_as5_null(
 ; CHECK-NEXT:    store i256 2, ptr addrspace(5) null, align 4294967296
 ; CHECK-NEXT:    store i256 1, ptr addrspace(5) inttoptr (i256 1 to ptr addrspace(5)), align 64
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(5) null, align 4294967296
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(5) null, align 64
   store i256 1, ptr addrspace(5) inttoptr (i256 1 to ptr addrspace(5)), align 64
@@ -130,8 +129,7 @@ define i256 @test_as5_small() {
 ; CHECK-LABEL: @test_as5_small(
 ; CHECK-NEXT:    store i256 2, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
 ; CHECK-NEXT:    store i256 1, ptr addrspace(5) inttoptr (i256 1 to ptr addrspace(5)), align 64
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
   store i256 1, ptr addrspace(5) inttoptr (i256 1 to ptr addrspace(5)), align 64
@@ -143,8 +141,7 @@ define i256 @test_as5_large() {
 ; CHECK-LABEL: @test_as5_large(
 ; CHECK-NEXT:    store i256 2, ptr addrspace(5) inttoptr (i256 53919893334301279589334030174039261352344891250716429051063678533632 to ptr addrspace(5)), align 4294967296
 ; CHECK-NEXT:    store i256 1, ptr addrspace(5) inttoptr (i256 1 to ptr addrspace(5)), align 64
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(5) inttoptr (i256 53919893334301279589334030174039261352344891250716429051063678533632 to ptr addrspace(5)), align 4294967296
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(5) inttoptr (i256 53919893334301279589334030174039261352344891250716429051063678533632 to ptr addrspace(5)), align 64
   store i256 1, ptr addrspace(5) inttoptr (i256 1 to ptr addrspace(5)), align 64
