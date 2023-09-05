@@ -18,6 +18,7 @@
 #include "llvm/CodeGen/MachineOperand.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/PassManager.h"
+#include "llvm/Pass.h"
 #include "llvm/Passes/OptimizationLevel.h"
 #include "llvm/Target/TargetMachine.h"
 
@@ -44,6 +45,7 @@ enum AddressSpaces {
   AS_HEAP_AUX = 2,
   AS_GENERIC = 3,
   AS_CODE = 4,
+  MAX_ADDRESS = AS_CODE,
 };
 } // namespace EraVMAS
 
@@ -106,6 +108,8 @@ FunctionPass *createEraVMCombineFlagSettingPass();
 FunctionPass *createEraVMCombineAddressingModePass();
 FunctionPass *createEraVMCombineToIndexedMemopsPass();
 FunctionPass *createEraVMOptimizeStdLibCallsPass();
+ImmutablePass *createEraVMAAWrapperPass();
+ImmutablePass *createEraVMExternalAAWrapperPass();
 
 void initializeEraVMLowerIntrinsicsPass(PassRegistry &);
 void initializeEraVMAddConditionsPass(PassRegistry &);
@@ -122,6 +126,8 @@ void initializeEraVMCombineFlagSettingPass(PassRegistry &);
 void initializeEraVMCombineAddressingModePass(PassRegistry &);
 void initializeEraVMCombineToIndexedMemopsPass(PassRegistry &);
 void initializeEraVMOptimizeStdLibCallsPass(PassRegistry &);
+void initializeEraVMAAWrapperPassPass(PassRegistry &);
+void initializeEraVMExternalAAWrapperPass(PassRegistry &);
 
 struct EraVMLinkRuntimePass : PassInfoMixin<EraVMLinkRuntimePass> {
   explicit EraVMLinkRuntimePass(OptimizationLevel Level) : Level(Level) {}

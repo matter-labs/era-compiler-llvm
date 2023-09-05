@@ -50,6 +50,7 @@ public:
   createMachineFunctionInfo(BumpPtrAllocator &Allocator, const Function &F,
                             const TargetSubtargetInfo *STI) const override;
   void registerPassBuilderCallbacks(PassBuilder &PB) override;
+  void registerDefaultAliasAnalyses(AAManager &AAM) override;
 
 }; // EraVMTargetMachine.
 

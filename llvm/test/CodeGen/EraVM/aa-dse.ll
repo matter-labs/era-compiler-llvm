@@ -5,9 +5,7 @@ target triple = "eravm"
 
 define void @test() {
 ; CHECK-LABEL: @test(
-; CHECK-NEXT:    [[PTR1:%.*]] = inttoptr i256 32 to ptr addrspace(1)
 ; CHECK-NEXT:    [[PTR2:%.*]] = inttoptr i256 32 to ptr addrspace(1)
-; CHECK-NEXT:    store i256 2, ptr addrspace(1) [[PTR1]], align 64
 ; CHECK-NEXT:    store i256 1, ptr addrspace(1) [[PTR2]], align 64
 ; CHECK-NEXT:    ret void
 ;

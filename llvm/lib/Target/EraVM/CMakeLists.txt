@@ -49,6 +49,7 @@ add_custom_target(EraVMStdLib DEPENDS "${ERAVM_STDLIB_PATH_OUT}")
 
 add_llvm_target(EraVMCodeGen
   EraVMAddConditions.cpp
+  EraVMAliasAnalysis.cpp
   EraVMAllocaHoisting.cpp
   EraVMAsmPrinter.cpp
   EraVMBytesToCells.cpp
