@@ -10,17 +10,20 @@
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/CodeGen/TargetLoweringObjectFileImpl.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
+#include "llvm/IR/LegacyPassManager.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/GlobalDCE.h"
+#include "llvm/Transforms/IPO/PassManagerBuilder.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/MergeSimilarBB.h"
 #include "llvm/Transforms/Utils.h"
 
 #include "SyncVM.h"
+#include "SyncVMAliasAnalysis.h"
 #include "SyncVMTargetTransformInfo.h"
 
 using namespace llvm;
@@ -40,6 +43,8 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMAllocaHoistingPass(PR);
   initializeSyncVMStackAddressConstantPropagationPass(PR);
   initializeSyncVMOptimizeStdLibCallsPass(PR);
+  initializeSyncVMAAWrapperPassPass(PR);
+  initializeSyncVMExternalAAWrapperPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -76,6 +81,31 @@ SyncVMTargetMachine::getTargetTransformInfo(const Function &F) const {
   return TargetTransformInfo(SyncVMTTIImpl(this, F));
 }
 
+void SyncVMTargetMachine::registerDefaultAliasAnalyses(AAManager &AAM) {
+  AAM.registerFunctionAnalysis<SyncVMAA>();
+}
+
+void SyncVMTargetMachine::adjustPassManager(PassManagerBuilder &Builder) {
+  bool EnableOpt = getOptLevel() > CodeGenOpt::None;
+  Builder.addExtension(
+      PassManagerBuilder::EP_ModuleOptimizerEarly,
+      [EnableOpt](const PassManagerBuilder &, legacy::PassManagerBase &PM) {
+        if (EnableOpt) {
+          PM.add(createSyncVMAAWrapperPass());
+          PM.add(createSyncVMExternalAAWrapperPass());
+        }
+      });
+
+  Builder.addExtension(
+      PassManagerBuilder::EP_EarlyAsPossible,
+      [EnableOpt](const PassManagerBuilder &, legacy::PassManagerBase &PM) {
+        if (EnableOpt) {
+          PM.add(createSyncVMAAWrapperPass());
+          PM.add(createSyncVMExternalAAWrapperPass());
+        }
+      });
+}
+
 void SyncVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
   PB.registerPipelineEarlySimplificationEPCallback(
       [](ModulePassManager &PM, OptimizationLevel Level) {
@@ -91,6 +121,18 @@ void SyncVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
         if (Level.getSizeLevel() || Level.getSpeedupLevel() > 1)
           PM.addPass(MergeSimilarBB());
       });
+
+  PB.registerAnalysisRegistrationCallback([](FunctionAnalysisManager &FAM) {
+    FAM.registerPass([] { return SyncVMAA(); });
+  });
+
+  PB.registerParseAACallback([](StringRef AAName, AAManager &AAM) {
+    if (AAName == "syncvm-aa") {
+      AAM.registerFunctionAnalysis<SyncVMAA>();
+      return true;
+    }
+    return false;
+  });
 }
 
 namespace {
@@ -143,6 +185,13 @@ void SyncVMPassConfig::addIRPasses() {
     // Do loop invariant code motion in case part of the lowered result is
     // invariant.
     addPass(createLICMPass());
+
+    addPass(createSyncVMAAWrapperPass());
+    addPass(createExternalAAWrapperPass([](Pass &P, Function &,
+                                           AAResults &AAR) {
+      if (auto *WrapperPass = P.getAnalysisIfAvailable<SyncVMAAWrapperPass>())
+        AAR.addAAResult(WrapperPass->getResult());
+    }));
   }
   TargetPassConfig::addIRPasses();
 }

@@ -36,6 +36,8 @@ public:
   }
   TargetTransformInfo getTargetTransformInfo(const Function &F) const override;
   void registerPassBuilderCallbacks(PassBuilder &PB) override;
+  void registerDefaultAliasAnalyses(AAManager &AAM) override;
+  void adjustPassManager(PassManagerBuilder &Builder) override;
 
 }; // SyncVMTargetMachine.
 
