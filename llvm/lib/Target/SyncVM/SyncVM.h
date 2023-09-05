@@ -115,7 +115,11 @@ void initializeSyncVMStackAddressConstantPropagationPass(PassRegistry &);
 void initializeSyncVMCombineFlagSettingPass(PassRegistry &);
 void initializeSyncVMCombineAddressingModePass(PassRegistry &);
 void initializeSyncVMCombineToIndexedMemopsPass(PassRegistry &);
+<<<<<<< HEAD
 void initializeSyncVMOptimizeStdLibCallsPass(PassRegistry &);
+=======
+void initializeSyncVMIRIdiomRecognitionPass(PassRegistry &);
+>>>>>>> f4e4b7380617 (skeleton)
 
 struct SyncVMLinkRuntimePass : PassInfoMixin<SyncVMLinkRuntimePass> {
   SyncVMLinkRuntimePass(OptimizationLevel Level) : Level(Level) {}

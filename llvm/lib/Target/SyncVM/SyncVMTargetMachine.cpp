@@ -144,6 +144,7 @@ void SyncVMPassConfig::addIRPasses() {
     // invariant.
     addPass(createLICMPass());
   }
+  addPass(createSyncVMIRIdiomRecognitionPass());
   TargetPassConfig::addIRPasses();
 }
 
