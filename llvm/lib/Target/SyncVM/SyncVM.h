@@ -12,6 +12,7 @@
 #include "llvm/CodeGen/MachineOperand.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/PassManager.h"
+#include "llvm/Pass.h"
 #include "llvm/Passes/OptimizationLevel.h"
 #include "llvm/Target/TargetMachine.h"
 
@@ -39,6 +40,7 @@ enum AddressSpaces {
   AS_HEAP_AUX = 2,
   AS_GENERIC = 3,
   AS_CODE = 4,
+  MAX_ADDRESS = AS_CODE,
 };
 } // namespace SyncVMAS
 
@@ -101,6 +103,8 @@ FunctionPass *createSyncVMCombineFlagSettingPass();
 FunctionPass *createSyncVMCombineAddressingModePass();
 FunctionPass *createSyncVMCombineToIndexedMemopsPass();
 FunctionPass *createSyncVMOptimizeStdLibCallsPass();
+ImmutablePass *createSyncVMAAWrapperPass();
+ImmutablePass *createSyncVMExternalAAWrapperPass();
 
 void initializeSyncVMLowerIntrinsicsPass(PassRegistry &);
 void initializeSyncVMAddConditionsPass(PassRegistry &);
@@ -116,6 +120,8 @@ void initializeSyncVMCombineFlagSettingPass(PassRegistry &);
 void initializeSyncVMCombineAddressingModePass(PassRegistry &);
 void initializeSyncVMCombineToIndexedMemopsPass(PassRegistry &);
 void initializeSyncVMOptimizeStdLibCallsPass(PassRegistry &);
+void initializeSyncVMAAWrapperPassPass(PassRegistry &);
+void initializeSyncVMExternalAAWrapperPass(PassRegistry &);
 
 struct SyncVMLinkRuntimePass : PassInfoMixin<SyncVMLinkRuntimePass> {
   SyncVMLinkRuntimePass(OptimizationLevel Level) : Level(Level) {}
