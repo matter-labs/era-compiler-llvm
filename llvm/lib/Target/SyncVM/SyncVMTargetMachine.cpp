@@ -119,6 +119,7 @@ TargetPassConfig *SyncVMTargetMachine::createPassConfig(PassManagerBase &PM) {
 void SyncVMPassConfig::addIRPasses() {
   addPass(createSyncVMLowerIntrinsicsPass());
   addPass(createSyncVMLinkRuntimePass(true));
+    addPass(createSyncVMOptimizeStdLibCallsPass());
   addPass(createSyncVMCodegenPreparePass());
   addPass(createGlobalDCEPass());
   addPass(createSyncVMAllocaHoistingPass());
@@ -143,6 +144,7 @@ void SyncVMPassConfig::addIRPasses() {
     // Do loop invariant code motion in case part of the lowered result is
     // invariant.
     addPass(createLICMPass());
+  
   }
   //addPass(createSyncVMIRIdiomRecognitionPass());
   TargetPassConfig::addIRPasses();

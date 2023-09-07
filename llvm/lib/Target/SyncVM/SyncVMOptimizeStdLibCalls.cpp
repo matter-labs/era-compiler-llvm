@@ -85,53 +85,107 @@ static bool tryToOptimizeExpCall(CallBase *Call, const TargetLibraryInfo &TLI) {
   return true;
 }
 
-static APInt computeReverse(APInt P, APInt PrimeBitWidth) {
-  return P;
+/// given an integer A and a prime P, return the X such that A*X = 1 (mod P)
+[[maybe_unused]] static APInt computeInversModulus(APInt A, APInt P) {
+  APInt T = APInt(256, 0, true);
+  APInt NewT = APInt(256, 1, true);
+  
+  APInt R = P.zext(256);
+  APInt NewR = A.zext(256);
+
+  while (!NewR.isZero()) {
+    APInt Quotient = R.udiv(NewR);
+    APInt Tmp = T - Quotient * NewT;
+    T = Tmp;
+
+    Tmp = NewR;
+    NewR = R - Quotient * NewR;
+    R = Tmp;
+  }
+  if(R.sgt(1))
+    return APInt(256, 0); // A is not invertible, return 0
+  if (T.slt(0))
+      T = T + P; // making sure T ispositive
+  return T;
+}
+
+[[maybe_unused]]
+static APInt computeBarrettReverse(APInt P, uint64_t PrimeBitWidth) {
+  APInt R = APInt(512, 1) << PrimeBitWidth;
+  P = P.zext(512);
+  APInt s;
+  APInt aux;
+
+  for (;;) {
+    s = R;
+    APInt RR = R * R;
+    aux = RR.lshr(PrimeBitWidth);
+    aux = (aux * P).lshr(PrimeBitWidth); 
+    R = (R << 1) - aux;
+    if (R.ule(s))
+      break;
+  }
+
+  APInt t = (APInt(512, 1, true) << (2 * PrimeBitWidth)) - (P * R);
+
+  while (t.slt(0)) {
+    R = R - 1;
+    t = t + P;
+  }
+
+  // R's effective bit width is less than 256, so we can truncate it.
+  return R.trunc(256);
 }
 
 static bool tryToOptimizeMulModCall(CallBase *Call, const TargetLibraryInfo &TLI) {
   // This pass is executed after constant folding, where it will try to fold
   // mulmod if all arguments are known. So if we happen to see the 3rd argument
   // is a constant, we know it's not folded.
+  
+  if(Call->arg_size() != 3)
+    return false;
   auto *PrimeConstant = dyn_cast<ConstantInt>(Call->getArgOperand(2));
   if (!PrimeConstant)
     return false;
   APInt Prime = PrimeConstant->getValue();
+  
+  // Cannot handle negative primes
+  if (Prime.sle(0))
+    return false;
+
+  // TODO: tune this, because 250 is random.
+  uint32_t EffectiveBits = Prime.getBitWidth() - Prime.countLeadingZeros();
+  if (EffectiveBits > 250)
+    return false;
 
   LLVM_DEBUG(dbgs() << "Found foldable call to `__mulmod`: "; Call->dump(););
 
-  auto *Module = Call->getModule();
+  llvm::errs() << Call->getFunction()->getName() << "\n";
 
-  llvm::Function *NewFunction = [&]() {
-    llvm::FunctionType *FuncType = Call->getFunctionType();
-    return llvm::Function::Create(FuncType, llvm::Function::ExternalLinkage,
-                                  "__mulmod_replaced", Module);
-  }();
+  //assert(false && "found call candidate: ");
+
   StringRef BarrettName = TLI.getName(LibFunc_xvm_mulmod_barrett);
   Function *BarrettFunc = Call->getParent()->getModule()->getFunction(BarrettName);
   assert(BarrettFunc && "__mulmod_barrett must be defined in syncvm-stdlib.ll");
 
   // prepare extra parameters
-  APInt PrimeBitWidth = APInt(256, Prime.getBitWidth() - Prime.countLeadingZeros());
-  APInt PrimeReverse = computeReverse(Prime, PrimeBitWidth);
-
+  uint64_t PrimeBitWidthInt = Prime.getBitWidth() - Prime.countLeadingZeros();
+  APInt Estimate = computeBarrettReverse(Prime, PrimeBitWidthInt);
+  dbgs() << "Calculated Estimate: "; Estimate.dump();
+  APInt PrimeBitWidth(256, PrimeBitWidthInt);
   std::vector<llvm::Value *> Args{Call->getOperand(0), Call->getOperand(1),
                                   ConstantInt::get(PrimeConstant->getType(), PrimeBitWidth),
-                                  ConstantInt::get(PrimeConstant->getType(), PrimeReverse),
+                                  ConstantInt::get(PrimeConstant->getType(), Estimate),
                                   PrimeConstant};
-  Call->setCalledFunction(BarrettFunc);
-  for (int i = 0; i < Args.size(); i++) {
-    Call->setOperand(i, Args[i]);
-  }
-
-  //llvm::CallInst *NewCall = llvm::CallInst::Create(NewFunction, Args, "", Call);
-  //Call->replaceAllUsesWith(NewCall);
-
+  auto IRBuilder = llvm::IRBuilder<>(Call);
+  auto NewCall = IRBuilder.CreateCall(BarrettFunc, Args, "replaced_mulmod_call");
+  Call->replaceAllUsesWith(NewCall);
   return true;
 }
 
 static bool runSyncVMOptimizeStdLibCalls(Function &F,
                                          const TargetLibraryInfo &TLI) {
+  std::vector<CallInst *> CallsToErase;
   bool Changed = false;
   for (auto &I : instructions(F)) {
     CallInst *Call = dyn_cast<CallInst>(&I);
@@ -153,15 +207,19 @@ static bool runSyncVMOptimizeStdLibCalls(Function &F,
     case LibFunc_xvm_exp:
       Changed |= tryToOptimizeExpCall(Call, TLI);
       break;
-    case LibFunc_xvm_mulmod:
+    case LibFunc_xvm_mulmod: {
       Changed |= tryToOptimizeMulModCall(Call, TLI);
+      if (Changed)
+        CallsToErase.push_back(Call);
       break;
+    }
     default:
       break;
     }
   }
-
-  return Changed;
+  for (auto *Call : CallsToErase)
+    Call->eraseFromParent();
+  return CallsToErase.size() > 0;
 }
 
 bool SyncVMOptimizeStdLibCalls::runOnFunction(Function &F) {

@@ -607,6 +607,7 @@ TEST_F(TargetLibraryInfoTest, ValidProto) {
       "declare i256 @__sar(i256, i256)\n"
       "declare i256 @__byte(i256, i256)\n"
       "declare void @__mstore8(i256 addrspace(1)* nocapture writeonly, i256)\n"
+      "declare i256 @__mulmod_barrett(i256, i256, i256, i256, i256)\n"
       "declare i256 @__signextend(i256, i256)\n");
       // SyncVM local end
 

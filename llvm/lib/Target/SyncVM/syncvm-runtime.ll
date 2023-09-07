@@ -328,6 +328,45 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
+define i256 @__mulmod_barrett(i256 %0, i256 %1, i256 %2, i256 %3, i256 %4) {
+  %6 = zext i256 %0 to i512
+  %7 = zext i256 %1 to i512
+  %8 = mul nuw i512 %7, %6
+  %9 = add i256 %2, -1
+  %10 = zext i256 %9 to i512
+  %11 = lshr i512 %8, %10
+  %12 = and i512 %11, 115792089237316195423570985008687907853269984665640564039457584007913129639935
+  %13 = zext i256 %3 to i512
+  %14 = mul nuw i512 %12, %13
+  %15 = add i256 %2, 1
+  %16 = zext i256 %15 to i512
+  %17 = lshr i512 %14, %16
+  %18 = trunc i512 %17 to i256
+  %19 = shl nuw i256 1, %15
+  %20 = zext i256 %19 to i512
+  %21 = lshr i512 %8, %16
+  %22 = mul i512 %21, %20
+  %23 = sub i512 %8, %22
+  %24 = trunc i512 %23 to i256
+  %25 = mul i256 %18, %4
+  %26 = shl nsw i256 -1, %15
+  %.not34 = xor i256 %26, -1
+  %27 = and i256 %25, %.not34
+  %28 = icmp ugt i256 %27, %24
+  %29 = select i1 %28, i256 %19, i256 0
+  %.pn = sub i256 %24, %27
+  %.0 = add i256 %.pn, %29
+  br label %L30
+L30:
+  %.1 = phi i256 [ %.0, %5 ], [ %30, %L30 ]
+  %.not = icmp ult i256 %.1, %4
+  %30 = sub i256 %.1, %4
+  br i1 %.not, label %L32, label %L30
+L32:
+  ret i256 %.1
+}
+
+
 declare void @llvm.syncvm.sstore(i256, i256) #2
 declare i8 addrspace(3)* @__farcall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
 declare i8 addrspace(3)* @__staticcall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
