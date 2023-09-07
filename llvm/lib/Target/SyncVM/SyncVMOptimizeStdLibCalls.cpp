@@ -85,6 +85,29 @@ static bool tryToOptimizeExpCall(CallBase *Call, const TargetLibraryInfo &TLI) {
   return true;
 }
 
+static bool tryToOptimizeMulModCall(CallBase *Call, const TargetLibraryInfo &TLI) {
+  // This pass is executed after constant folding, where it will try to fold
+  // mulmod if all arguments are known. So if we happen to see the 3rd argument
+  // is a constant, we know it's not folded.
+  auto *C = dyn_cast<ConstantInt>(Call->getArgOperand(2));
+  if (!C)
+    return false;
+
+  LLVM_DEBUG(dbgs() << "Found foldable call to `__mulmod`: "; Call->dump(););
+
+  auto *Module = Call->getModule();
+  llvm::Function *NewFunction = [&]() {
+    llvm::FunctionType *FuncType = Call->getFunctionType();
+    return llvm::Function::Create(FuncType, llvm::Function::ExternalLinkage,
+                                  "__mulmod_replaced", Module);
+  }();
+  std::vector<llvm::Value*> Args(Call->arg_begin(), Call->arg_end());
+  llvm::CallInst *NewCall = llvm::CallInst::Create(NewFunction, Args, "", Call);
+  Call->replaceAllUsesWith(NewCall);
+
+  return true;
+}
+
 static bool runSyncVMOptimizeStdLibCalls(Function &F,
                                          const TargetLibraryInfo &TLI) {
   bool Changed = false;
@@ -107,6 +130,9 @@ static bool runSyncVMOptimizeStdLibCalls(Function &F,
     switch (Func) {
     case LibFunc_xvm_exp:
       Changed |= tryToOptimizeExpCall(Call, TLI);
+      break;
+    case LibFunc_xvm_mulmod:
+      Changed |= tryToOptimizeMulModCall(Call, TLI);
       break;
     default:
       break;
