@@ -85,25 +85,47 @@ static bool tryToOptimizeExpCall(CallBase *Call, const TargetLibraryInfo &TLI) {
   return true;
 }
 
+static APInt computeReverse(APInt P, APInt PrimeBitWidth) {
+  return P;
+}
+
 static bool tryToOptimizeMulModCall(CallBase *Call, const TargetLibraryInfo &TLI) {
   // This pass is executed after constant folding, where it will try to fold
   // mulmod if all arguments are known. So if we happen to see the 3rd argument
   // is a constant, we know it's not folded.
-  auto *C = dyn_cast<ConstantInt>(Call->getArgOperand(2));
-  if (!C)
+  auto *PrimeConstant = dyn_cast<ConstantInt>(Call->getArgOperand(2));
+  if (!PrimeConstant)
     return false;
+  APInt Prime = PrimeConstant->getValue();
 
   LLVM_DEBUG(dbgs() << "Found foldable call to `__mulmod`: "; Call->dump(););
 
   auto *Module = Call->getModule();
+
   llvm::Function *NewFunction = [&]() {
     llvm::FunctionType *FuncType = Call->getFunctionType();
     return llvm::Function::Create(FuncType, llvm::Function::ExternalLinkage,
                                   "__mulmod_replaced", Module);
   }();
-  std::vector<llvm::Value*> Args(Call->arg_begin(), Call->arg_end());
-  llvm::CallInst *NewCall = llvm::CallInst::Create(NewFunction, Args, "", Call);
-  Call->replaceAllUsesWith(NewCall);
+  StringRef BarrettName = TLI.getName(LibFunc_xvm_mulmod_barrett);
+  Function *BarrettFunc = Call->getParent()->getModule()->getFunction(BarrettName);
+  assert(BarrettFunc && "__mulmod_barrett must be defined in syncvm-stdlib.ll");
+
+  // prepare extra parameters
+  APInt PrimeBitWidth = APInt(256, Prime.getBitWidth() - Prime.countLeadingZeros());
+  APInt PrimeReverse = computeReverse(Prime, PrimeBitWidth);
+
+  std::vector<llvm::Value *> Args{Call->getOperand(0), Call->getOperand(1),
+                                  ConstantInt::get(PrimeConstant->getType(), PrimeBitWidth),
+                                  ConstantInt::get(PrimeConstant->getType(), PrimeReverse),
+                                  PrimeConstant};
+  Call->setCalledFunction(BarrettFunc);
+  for (int i = 0; i < Args.size(); i++) {
+    Call->setOperand(i, Args[i]);
+  }
+
+  //llvm::CallInst *NewCall = llvm::CallInst::Create(NewFunction, Args, "", Call);
+  //Call->replaceAllUsesWith(NewCall);
 
   return true;
 }

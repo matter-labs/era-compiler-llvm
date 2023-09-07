@@ -826,6 +826,7 @@ static void initialize(TargetLibraryInfoImpl &TLI, const Triple &T,
     TLI.setAvailable(llvm::LibFunc_xvm_addmod);
     TLI.setAvailable(llvm::LibFunc_xvm_exp);
     TLI.setAvailable(llvm::LibFunc_xvm_mulmod);
+    TLI.setAvailable(llvm::LibFunc_xvm_mulmod_barrett);
     TLI.setAvailable(llvm::LibFunc_xvm_signextend);
     TLI.setAvailable(llvm::LibFunc_xvm_div);
     TLI.setAvailable(llvm::LibFunc_xvm_sdiv);
@@ -1591,6 +1592,13 @@ bool TargetLibraryInfoImpl::isValidProtoForLibFunc(const FunctionType &FTy,
     return (NumParams == 3 && FTy.getParamType(0)->isIntegerTy(256) &&
             FTy.getParamType(1)->isIntegerTy(256) &&
             FTy.getParamType(2)->isIntegerTy(256) &&
+            FTy.getReturnType()->isIntegerTy(256));
+  case LibFunc_xvm_mulmod_barrett:
+    return (NumParams == 5 && FTy.getParamType(0)->isIntegerTy(256) &&
+            FTy.getParamType(1)->isIntegerTy(256) &&
+            FTy.getParamType(2)->isIntegerTy(256) &&
+            FTy.getParamType(3)->isIntegerTy(256) &&
+            FTy.getParamType(4)->isIntegerTy(256) &&
             FTy.getReturnType()->isIntegerTy(256));
   // SyncVM local end
 

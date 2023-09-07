@@ -1097,6 +1097,7 @@ bool llvm::inferNonMandatoryLibFuncAttrs(Function &F,
   case LibFunc_xvm_addmod:
   case LibFunc_xvm_exp:
   case LibFunc_xvm_mulmod:
+  case LibFunc_xvm_mulmod_barrett:
   case LibFunc_xvm_signextend:
   case LibFunc_xvm_div:
   case LibFunc_xvm_sdiv:
