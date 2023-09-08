@@ -31,6 +31,25 @@ unsigned EraVMTTIImpl::getAssumedAddrSpace(const Value *V) const {
   return LD->getPointerAddressSpace();
 }
 
+void EraVMTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
+                                           TTI::UnrollingPreferences &UP,
+                                           OptimizationRemarkEmitter *ORE) {
+  BaseT::getUnrollingPreferences(L, SE, UP, ORE);
+
+  // Only allow unrolling small loops.
+  UP.Threshold = 40;
+  UP.MaxIterationsCountToAnalyze = 32;
+
+  // Disable runtime, partial unrolling and unrolling using
+  // trip count upper bound.
+  UP.Partial = UP.Runtime = UP.UpperBound = false;
+  UP.PartialThreshold = 0;
+
+  // Avoid unrolling when optimizing for size.
+  UP.OptSizeThreshold = 0;
+  UP.PartialOptSizeThreshold = 0;
+}
+
 InstructionCost EraVMTTIImpl::getIntImmCost(const APInt &Imm, Type *Ty,
                                             TTI::TargetCostKind CostKind) {
   assert(Ty->isIntegerTy());

@@ -70,6 +70,10 @@ public:
 
   unsigned getAssumedAddrSpace(const Value *V) const;
 
+  void getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
+                               TTI::UnrollingPreferences &UP,
+                               OptimizationRemarkEmitter *ORE);
+
   /// @}
 
   /// \name Vector TTI Implementations
