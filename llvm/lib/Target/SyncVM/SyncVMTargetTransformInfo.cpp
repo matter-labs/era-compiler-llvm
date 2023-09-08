@@ -27,6 +27,15 @@ unsigned SyncVMTTIImpl::getAssumedAddrSpace(const Value *V) const {
   return LD->getPointerAddressSpace();
 }
 
+void SyncVMTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
+                                            TTI::UnrollingPreferences &UP,
+                                            OptimizationRemarkEmitter *ORE) {
+  BaseT::getUnrollingPreferences(L, SE, UP, ORE);
+
+  // Only allow unrolling small loops.
+  UP.Threshold = 30;
+}
+
 InstructionCost SyncVMTTIImpl::getIntImmCost(const APInt &Imm, Type *Ty,
                                              TTI::TargetCostKind CostKind) {
   assert(Ty->isIntegerTy());
