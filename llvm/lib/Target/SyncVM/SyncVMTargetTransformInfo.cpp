@@ -47,7 +47,6 @@ InstructionCost SyncVMTTIImpl::getIntImmCost(const APInt &Imm, Type *Ty,
   if (isInt<128>(Imm.getSExtValue()) || isInt<128>(Imm.getZExtValue())) {
     return TTI::TCC_Basic;
   }
-
   return TTI::TCC_Expensive;
 }
 
