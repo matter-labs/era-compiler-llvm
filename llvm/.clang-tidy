@@ -1,5 +1,5 @@
 InheritParentConfig: true
 # SyncVM local begin
-Checks: '-readability-identifier-naming,clang-diagnostic-*,llvm-*,misc-*,-misc-unused-parameters,-misc-non-private-member-variables-in-classes,-misc-no-recursion' #,readability-identifier-naming
-# WarningsAsErrors: '*'
+Checks: '-*,clang-diagnostic-*,llvm-*,misc-*,-misc-unused-parameters,-misc-non-private-member-variables-in-classes,-misc-no-recursion' #,readability-identifier-naming
+WarningsAsErrors: '*'
 # SyncVM local end
