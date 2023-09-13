@@ -109,13 +109,9 @@ std::optional<Register> SyncVMBytesToCells::foldWithLeftShift(Register Reg) {
       getImmOrCImm(*SyncVM::in0Iterator(*DefMI)) != Log2CellSizeInBytes)
     return std::nullopt;
 
-  Register UnshiftedReg = SyncVM::in1Iterator(*DefMI)->getReg();
-  if (!MRI->hasOneUse(UnshiftedReg))
-    return std::nullopt;
-
-  MRI->replaceRegWith(Reg, UnshiftedReg);
-  DefMI->eraseFromParent();
-  return UnshiftedReg;
+  if (MRI->hasOneUse(Reg))
+    DefMI->eraseFromParent();
+  return SyncVM::in1Iterator(*DefMI)->getReg();
 }
 
 bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
@@ -199,11 +195,19 @@ bool SyncVMBytesToCells::convertStackMachineInstr(
     if (DefMI->getOpcode() == SyncVM::CTXr)
       return false;
 
-    Register NewVR = convertRegisterPointerToCells(MO0Reg);
-    BytesToCellsRegs[Reg] = NewVR;
-    LLVM_DEBUG(dbgs() << "Adding Reg to Stack access list: "
-                      << Reg.virtRegIndex() << '\n');
-    MO0Reg.ChangeToRegister(NewVR, false);
+    // FRAMEirrr is doing sp + reg + imm, and since sp is cell-addressed we only
+    // need to remove left shift from the reg to get correct calculation.
+    if (DefMI->getOpcode() == SyncVM::FRAMEirrr) {
+      MachineOperand &MOReg = DefMI->getOperand(2 /* reg */);
+      if (auto FoldedReg = foldWithLeftShift(MOReg.getReg()))
+        MOReg.ChangeToRegister(*FoldedReg, false);
+    } else {
+      Register NewVR = convertRegisterPointerToCells(MO0Reg);
+      BytesToCellsRegs[Reg] = NewVR;
+      LLVM_DEBUG(dbgs() << "Adding Reg to Stack access list: "
+                        << Reg.virtRegIndex() << '\n');
+      MO0Reg.ChangeToRegister(NewVR, false);
+    }
   }
 
   // convert global and immediate offsets to cell addressing

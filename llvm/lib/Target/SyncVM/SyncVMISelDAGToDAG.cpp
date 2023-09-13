@@ -253,27 +253,44 @@ bool SyncVMDAGToDAGISel::SelectStackAddrCommon(SDValue N, SDValue &Base1,
     UseSP = true;
   }
 
-  // TODO: Hack (constant is used to designate immediate addressing mode),
-  // redesign.
-  if (!AM.Base.Reg.getNode())
-    AM.Base.Reg = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
-
-  if (UseSP) {
-    Base1 = (AM.BaseType == SyncVMISelAddressMode::FrameIndexBase)
-                ? CurDAG->getTargetFrameIndex(AM.Base.FrameIndex,
-                                              getTargetLowering()->getPointerTy(
-                                                  CurDAG->getDataLayout()))
-                : Base1 = CurDAG->getTargetConstant(
-                      0, SDLoc(N),
-                      MVT::i256); // CurDAG->getRegister(SyncVM::SP, MVT::i256);
-  } else {
-    Base1 = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
+  // Check if we have relative stack addressing.
+  if (UseSP && AM.BaseType == SyncVMISelAddressMode::FrameIndexBase) {
+    SDValue TFI = CurDAG->getTargetFrameIndex(AM.Base.FrameIndex, MVT::i256);
+    if (AM.Base.Reg.getNode()) {
+      // Currently we can't use sp + reg + imm addressing mode, so we need to
+      // do following address calculation:
+      //
+      // context.sp sp
+      // FRAMEirrr imm, reg, sp, output -> add sp, reg, output
+      //                                   sub.s imm, output, output
+      //
+      // Usually, we would generate FRAMEirr imm, reg, output and expand it to
+      // all three instructions, but since register allocator can assign reg and
+      // output to the same physical register, we need to emit separately
+      // context.sp and FRAMEirrr instructions.
+      SDValue CurrentSP = SDValue(
+          CurDAG->getMachineNode(
+              SyncVM::CTXr_se, SDLoc(N), MVT::i256,
+              CurDAG->getTargetConstant(SyncVMCTX::SP, SDLoc(N), MVT::i256),
+              CurDAG->getTargetConstant(SyncVMCC::COND_NONE, SDLoc(N),
+                                        MVT::i256)),
+          0);
+      Base2 =
+          SDValue(CurDAG->getMachineNode(SyncVM::FRAMEirrr, SDLoc(N), MVT::i256,
+                                         TFI, AM.Base.Reg, CurrentSP),
+                  0);
+    } else {
+      Base1 = TFI;
+    }
   }
-  Base2 = AM.Base.Reg;
 
-  // 1(sp) is the index of the 1st element on the stack rather than 0(sp).
-  if (AM.BaseType == SyncVMISelAddressMode::FrameIndexBase)
-    AM.Disp = AM.Disp;
+  if (!Base1.getNode())
+    Base1 = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
+
+  if (!Base2.getNode())
+    Base2 = AM.Base.Reg.getNode()
+                ? AM.Base.Reg
+                : CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
 
   if (AM.GV)
     Disp = CurDAG->getTargetGlobalAddress(AM.GV, SDLoc(N), MVT::i256, AM.Disp,
