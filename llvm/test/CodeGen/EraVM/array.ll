@@ -64,9 +64,13 @@ define void @stack_register_addressing_storing([10 x i256]* %array, i256 %idx, i
 ; CHECK-LABEL: alloca_reg_storing
 define void @alloca_reg_storing(i256 %idx, i256 %val) {
   ; CHECK:  nop     stack+=[10]
+  ; CHECK-NEXT:  context.sp r3
+  ; CHECK-NEXT:  add     r3, r1, r1
+  ; CHECK-NEXT:  sub.s   10, r1, r1
+  ; CHECK-NEXT:  add     r2, r0, stack[r1]
   ; CHECK-NOT:  shl.s   5, r1, r1
   ; CHECK-NOT:  shr.s   5, r1, r1
-  ; CHECK:  add     r2, r0, stack-[10 - r1]
+  ; CHECK-NOT:  add     r2, r0, stack-[10 - r1]
   %array = alloca [10 x i256], align 32
   %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 %idx
   store i256 %val, i256* %idx_slot
@@ -97,10 +101,13 @@ define i256 @stack_register_addressing_loading([10 x i256]* %array, i256 %idx) {
 ; CHECK-LABEL: alloca_reg_loading
 define i256 @alloca_reg_loading(i256 %idx, i256 %val) {
   ; CHECK:  nop     stack+=[10]
-  ; TODO: CPR-1040: Optimize the following code
+  ; CHECK-NEXT:  context.sp r2
+  ; CHECK-NEXT:  add     r2, r1, r1
+  ; CHECK-NEXT:  sub.s   10, r1, r1
+  ; CHECK-NEXT:  add     stack[r1], r0, r1
   ; CHECK-NOT:  shl.s   5, r1, r1
   ; CHECK-NOT:  shr.s   5, r1, r1
-  ; CHECK:  add     stack-[10 - r1], r0, r1
+  ; CHECK-NOT:  add     stack-[10 - r1], r0, r1
   %array = alloca [10 x i256], align 32
   %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 %idx
   %rv = load i256, i256* %idx_slot

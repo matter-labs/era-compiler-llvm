@@ -115,11 +115,8 @@ std::optional<Register> EraVMBytesToCells::foldWithLeftShift(Register Reg) {
     return std::nullopt;
 
   Register UnshiftedReg = EraVM::in1Iterator(*DefMI)->getReg();
-  if (!MRI->hasOneUse(UnshiftedReg))
-    return std::nullopt;
-
-  MRI->replaceRegWith(Reg, UnshiftedReg);
-  DefMI->eraseFromParent();
+  if (MRI->hasOneUse(Reg))
+    DefMI->eraseFromParent();
   return UnshiftedReg;
 }
 
@@ -202,11 +199,19 @@ bool EraVMBytesToCells::convertStackMachineInstr(
     if (DefMI->getOpcode() == EraVM::CTXr)
       return false;
 
-    const Register NewVR = convertRegisterPointerToCells(MO0Reg);
-    BytesToCellsRegs[Reg] = NewVR;
-    LLVM_DEBUG(dbgs() << "Adding Reg to Stack access list: "
-                      << Reg.virtRegIndex() << '\n');
-    MO0Reg.ChangeToRegister(NewVR, false);
+    // FRAMEirrr is doing sp + reg + imm, and since sp is cell-addressed we only
+    // need to remove left shift from the reg to get correct calculation.
+    if (DefMI->getOpcode() == EraVM::FRAMEirrr) {
+      MachineOperand &MOReg = DefMI->getOperand(2 /* reg */);
+      if (auto FoldedReg = foldWithLeftShift(MOReg.getReg()))
+        MOReg.ChangeToRegister(*FoldedReg, false);
+    } else {
+      const Register NewVR = convertRegisterPointerToCells(MO0Reg);
+      BytesToCellsRegs[Reg] = NewVR;
+      LLVM_DEBUG(dbgs() << "Adding Reg to Stack access list: "
+                        << Reg.virtRegIndex() << '\n');
+      MO0Reg.ChangeToRegister(NewVR, false);
+    }
   }
 
   // convert global and immediate offsets to cell addressing

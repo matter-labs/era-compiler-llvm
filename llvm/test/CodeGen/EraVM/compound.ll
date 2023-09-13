@@ -32,10 +32,14 @@ define i256 @frame_compound_idx(i256 %val) {
 define i256 @frame_compound(i256 %index, i256 %val) {
   %1 = alloca [5 x i256]
   %2 = getelementptr inbounds [5 x i256], [5 x i256]* %1, i256 0, i256 %index
-; CHECK: add r2, r0, stack-[6 - r1]
+; CHECK: context.sp r3
+; CHECK: add r3, r1, r1
+; CHECK: sub.s 6, r1, r1
+; CHECK: add r1, r0, stack-[1]
+; CHECK: add r2, r0, stack[r1]
   store i256 %val, i256* %2
   call void @foo()
-; CHECK: add stack-[6 - r1], r0, r1
+; CHECK: add stack-[1], r0, r1
   %3 = load i256, i256* %2
   ret i256 %3
 }
