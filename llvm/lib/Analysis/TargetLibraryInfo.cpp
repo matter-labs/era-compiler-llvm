@@ -837,6 +837,8 @@ static void initialize(TargetLibraryInfoImpl &TLI, const Triple &T,
     TLI.setAvailable(llvm::LibFunc_xvm_sar);
     TLI.setAvailable(llvm::LibFunc_xvm_byte);
     TLI.setAvailable(llvm::LibFunc_xvm_mstore8);
+    TLI.setAvailable(llvm::LibFunc_xvm_revert);
+    TLI.setAvailable(llvm::LibFunc_xvm_return);
     return;
   }
   // SyncVM local end
@@ -1583,6 +1585,7 @@ bool TargetLibraryInfoImpl::isValidProtoForLibFunc(const FunctionType &FTy,
     return (NumParams == 2 && FTy.getParamType(0)->isIntegerTy(256) &&
             FTy.getParamType(1)->isIntegerTy(256) &&
             FTy.getReturnType()->isIntegerTy(256));
+
   case LibFunc_xvm_mstore8:
     return (NumParams == 2 && FTy.getParamType(0)->isPointerTy() &&
             FTy.getParamType(1)->isIntegerTy(256) &&
@@ -1594,7 +1597,14 @@ bool TargetLibraryInfoImpl::isValidProtoForLibFunc(const FunctionType &FTy,
             FTy.getParamType(1)->isIntegerTy(256) &&
             FTy.getParamType(2)->isIntegerTy(256) &&
             FTy.getReturnType()->isIntegerTy(256));
-  // SyncVM local end
+
+  case LibFunc_xvm_return:
+  case LibFunc_xvm_revert:
+    return (NumParams == 3 && FTy.getParamType(0)->isIntegerTy(256) &&
+            FTy.getParamType(1)->isIntegerTy(256) &&
+            FTy.getParamType(2)->isIntegerTy(256) &&
+            FTy.getReturnType()->isVoidTy());
+    // SyncVM local end
 
   case LibFunc_sincospi_stret:
   case LibFunc_sincospif_stret:
