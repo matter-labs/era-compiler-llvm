@@ -109,6 +109,7 @@ static bool tryToOptimizeExpCall(CallBase *Call, const TargetLibraryInfo &TLI) {
   return T;
 }
 
+/// Returns the precompute estimate part of the Barrett reduction algorithm.
 [[maybe_unused]]
 static APInt computeBarrettReverse(APInt P, uint64_t PrimeBitWidth) {
   APInt R = APInt(512, 1) << PrimeBitWidth;
@@ -133,6 +134,7 @@ static APInt computeBarrettReverse(APInt P, uint64_t PrimeBitWidth) {
     t = t + P;
   }
 
+  assert(R.getBitWidth() - R.countLeadingZeros() <= 256);
   // R's effective bit width is less than 256, so we can truncate it.
   return R.trunc(256);
 }
@@ -153,16 +155,12 @@ static bool tryToOptimizeMulModCall(CallBase *Call, const TargetLibraryInfo &TLI
   if (Prime.sle(0))
     return false;
 
-  // TODO: tune this, because 250 is random.
+  // TODO: tune this, because 250 is not a accurate number
   uint32_t EffectiveBits = Prime.getBitWidth() - Prime.countLeadingZeros();
   if (EffectiveBits > 250)
     return false;
 
   LLVM_DEBUG(dbgs() << "Found foldable call to `__mulmod`: "; Call->dump(););
-
-  llvm::errs() << Call->getFunction()->getName() << "\n";
-
-  //assert(false && "found call candidate: ");
 
   StringRef BarrettName = TLI.getName(LibFunc_xvm_mulmod_barrett);
   Function *BarrettFunc = Call->getParent()->getModule()->getFunction(BarrettName);
@@ -171,7 +169,7 @@ static bool tryToOptimizeMulModCall(CallBase *Call, const TargetLibraryInfo &TLI
   // prepare extra parameters
   uint64_t PrimeBitWidthInt = Prime.getBitWidth() - Prime.countLeadingZeros();
   APInt Estimate = computeBarrettReverse(Prime, PrimeBitWidthInt);
-  dbgs() << "Calculated Estimate: "; Estimate.dump();
+  LLVM_DEBUG(dbgs() << "Calculated Estimate: "; Estimate.dump());
   APInt PrimeBitWidth(256, PrimeBitWidthInt);
   std::vector<llvm::Value *> Args{Call->getOperand(0), Call->getOperand(1),
                                   ConstantInt::get(PrimeConstant->getType(), PrimeBitWidth),
@@ -187,39 +185,38 @@ static bool runSyncVMOptimizeStdLibCalls(Function &F,
                                          const TargetLibraryInfo &TLI) {
   std::vector<CallInst *> CallsToErase;
   bool Changed = false;
-  for (auto &I : instructions(F)) {
-    CallInst *Call = dyn_cast<CallInst>(&I);
-    if (!Call)
-      continue;
+  for (auto &BB : F)
+    for (auto II = BB.begin(); II != BB.end();) {
+      CallInst *Call = dyn_cast<CallInst>(&*II);
+      II++;
 
-    Function *Callee = Call->getCalledFunction();
-    if (!Callee)
-      continue;
+      if (!Call)
+        continue;
 
-    LibFunc Func = NotLibFunc;
-    StringRef Name = Callee->getName();
-    if (!TLI.getLibFunc(Name, Func) || !TLI.has(Func))
-      continue;
+      Function *Callee = Call->getCalledFunction();
+      if (!Callee)
+        continue;
 
-    LLVM_DEBUG(dbgs() << "Trying to optimize : " << *Call << '\n');
+      LibFunc Func = NotLibFunc;
+      StringRef Name = Callee->getName();
+      if (!TLI.getLibFunc(Name, Func) || !TLI.has(Func))
+        continue;
 
-    switch (Func) {
-    case LibFunc_xvm_exp:
-      Changed |= tryToOptimizeExpCall(Call, TLI);
-      break;
-    case LibFunc_xvm_mulmod: {
-      Changed |= tryToOptimizeMulModCall(Call, TLI);
-      if (Changed)
-        CallsToErase.push_back(Call);
-      break;
+      LLVM_DEBUG(dbgs() << "Trying to optimize : " << *Call << '\n');
+
+      switch (Func) {
+      case LibFunc_xvm_exp:
+        Changed |= tryToOptimizeExpCall(Call, TLI);
+        break;
+      case LibFunc_xvm_mulmod: {
+        Changed |= tryToOptimizeMulModCall(Call, TLI);
+        break;
+      }
+      default:
+        break;
+      }
     }
-    default:
-      break;
-    }
-  }
-  for (auto *Call : CallsToErase)
-    Call->eraseFromParent();
-  return CallsToErase.size() > 0;
+  return Changed;
 }
 
 bool SyncVMOptimizeStdLibCalls::runOnFunction(Function &F) {
