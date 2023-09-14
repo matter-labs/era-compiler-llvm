@@ -144,10 +144,9 @@ static bool SyncVMLinkRuntimeImpl(Module &M, const char *ModuleToLink,
           Call->addFnAttr(Attribute::NoInline);
       }
     }
-    // 2. Add 'minsize', 'optsize' attributes to all the function definitions,
-    // but those from the stdlib.
+    // 2. Add 'minsize', 'optsize' attributes to all the function definitions.
     for (auto &F : M.functions()) {
-      if (!F.isDeclaration() && LibFuncs.count(F.getName()) == 0) {
+      if (!F.isDeclaration()) {
         F.addFnAttr(Attribute::MinSize);
         F.addFnAttr(Attribute::OptimizeForSize);
       }
