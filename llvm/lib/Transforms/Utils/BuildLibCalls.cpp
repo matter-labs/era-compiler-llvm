@@ -1116,6 +1116,10 @@ bool llvm::inferNonMandatoryLibFuncAttrs(Function &F,
     Changed |= setDoesNotCapture(F, 0);
     Changed |= setOnlyAccessesArgMemory(F);
     break;
+  case LibFunc_xvm_return:
+  case LibFunc_xvm_revert:
+    Changed |= setDoesNotThrow(F);
+    break;
   // SyncVM local end
   case LibFunc_ldexp:
   case LibFunc_ldexpf:
