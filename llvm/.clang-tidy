@@ -1,5 +1,5 @@
 InheritParentConfig: true
 # SyncVM local begin
-Checks: '-readability-identifier-naming'
+Checks: '-readability-identifier-naming,bugprone-*,-bugprone-easily-swappable-parameters,-bugprone-narrowing-conversions,-bugprone-implicit-widening-of-multiplication-result'
 WarningsAsErrors: '*'
 # SyncVM local end
