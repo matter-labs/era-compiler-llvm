@@ -143,7 +143,7 @@ bool SyncVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
 Register
 SyncVMBytesToCells::convertRegisterPointerToCells(MachineOperand &MOReg) {
   MachineInstr &MI = *MOReg.getParent();
-  Register Reg = MOReg.getReg();
+  const Register Reg = MOReg.getReg();
   assert(Reg.isVirtual() && "Expecting virtual register");
 
   MachineInstr *DefMI = MRI->getVRegDef(Reg);
@@ -186,7 +186,7 @@ bool SyncVMBytesToCells::convertStackMachineInstr(
   // If the second operand is a register, this stack access is in stack pointer
   // relative addressing mode.
   if (MO0Reg.isReg()) {
-    Register Reg = MO0Reg.getReg();
+    const Register Reg = MO0Reg.getReg();
     assert(Reg.isVirtual() && "Physical registers are not expected");
     MachineInstr *DefMI = MRI->getVRegDef(Reg);
 
@@ -202,7 +202,7 @@ bool SyncVMBytesToCells::convertStackMachineInstr(
       if (auto FoldedReg = foldWithLeftShift(MOReg.getReg()))
         MOReg.ChangeToRegister(*FoldedReg, false);
     } else {
-      Register NewVR = convertRegisterPointerToCells(MO0Reg);
+      const Register NewVR = convertRegisterPointerToCells(MO0Reg);
       BytesToCellsRegs[Reg] = NewVR;
       LLVM_DEBUG(dbgs() << "Adding Reg to Stack access list: "
                         << Reg.virtRegIndex() << '\n');
@@ -244,8 +244,7 @@ SyncVMBytesToCells::getSecondStackAccess(MachineInstr &MI) {
 MachineInstr::mop_iterator SyncVMBytesToCells::getCodeAccess(MachineInstr &MI) {
   if (SyncVM::hasCRInAddressingMode(MI))
     return SyncVM::in0Iterator(MI);
-  else
-    return {};
+  return {};
 }
 
 void SyncVMBytesToCells::convertCodeAddressMachineInstr(
@@ -259,7 +258,7 @@ void SyncVMBytesToCells::convertCodeAddressMachineInstr(
 
   // pointer in register is in bytes
   if (MO0Reg.isReg()) {
-    Register NewVR = convertRegisterPointerToCells(MO0Reg);
+    const Register NewVR = convertRegisterPointerToCells(MO0Reg);
     BytesToCellsRegs[MO0Reg.getReg()] = NewVR;
     MO0Reg.ChangeToRegister(NewVR, false);
   }
@@ -272,7 +271,7 @@ void SyncVMBytesToCells::convertCodeAddressMachineInstr(
   if (MO0Reg.isReg() && MO1Global.isGlobal() && MO1Global.getOffset() != 0) {
     MachineInstr &MI = *MO0Reg.getParent();
     // combine register with immediate value
-    Register NewVR = MRI->createVirtualRegister(&SyncVM::GR256RegClass);
+    const Register NewVR = MRI->createVirtualRegister(&SyncVM::GR256RegClass);
     BuildMI(*MI.getParent(), MI.getIterator(), MI.getDebugLoc(),
             TII->get(SyncVM::ADDirr_s))
         .addDef(NewVR)
@@ -285,7 +284,7 @@ void SyncVMBytesToCells::convertCodeAddressMachineInstr(
 }
 
 bool SyncVMBytesToCells::convertCodeAccess(MachineInstr &MI) {
-  auto CodeIt = getCodeAccess(MI);
+  auto *CodeIt = getCodeAccess(MI);
   if (!CodeIt)
     return false;
   convertCodeAddressMachineInstr(CodeIt);
@@ -293,7 +292,7 @@ bool SyncVMBytesToCells::convertCodeAccess(MachineInstr &MI) {
 }
 
 bool SyncVMBytesToCells::convertStackAccesses(MachineInstr &MI) {
-  auto StackIt = getStackAccess(MI);
+  auto *StackIt = getStackAccess(MI);
   if (!StackIt)
     return false;
 
