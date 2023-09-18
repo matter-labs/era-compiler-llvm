@@ -355,6 +355,13 @@ MemoryLocation MemoryLocation::getForArgument(const CallBase *Call,
         return MemoryLocation(
             Arg, LocationSize::upperBound(LenCI->getZExtValue()), AATags);
       return MemoryLocation::getAfter(Arg, AATags);
+    case LibFunc_xvm_sha3:
+      assert((ArgIdx == 0) && "Invalid argument index for sha3");
+      if (const ConstantInt *LenCI =
+              dyn_cast<ConstantInt>(Call->getArgOperand(1)))
+        return MemoryLocation(Arg, LocationSize::precise(LenCI->getZExtValue()),
+                              AATags);
+      return MemoryLocation::getAfter(Arg, AATags);
     default:
       break;
     };

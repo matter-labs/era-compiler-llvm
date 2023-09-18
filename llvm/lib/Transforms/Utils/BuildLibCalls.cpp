@@ -1121,6 +1121,10 @@ bool llvm::inferNonMandatoryLibFuncAttrs(Function &F,
   case LibFunc_xvm_revert:
     Changed |= setDoesNotThrow(F);
     break;
+  case LibFunc_xvm_sha3:
+    Changed |= setOnlyReadsMemory(F, 0);
+    Changed |= setOnlyAccessesArgMemory(F);
+    break;
   // EraVM local end
   case LibFunc_ldexp:
   case LibFunc_ldexpf:
