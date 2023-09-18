@@ -839,6 +839,7 @@ static void initialize(TargetLibraryInfoImpl &TLI, const Triple &T,
     TLI.setAvailable(llvm::LibFunc_xvm_mstore8);
     TLI.setAvailable(llvm::LibFunc_xvm_revert);
     TLI.setAvailable(llvm::LibFunc_xvm_return);
+    TLI.setAvailable(llvm::LibFunc_xvm_sha3);
     return;
   }
   // SyncVM local end
@@ -1604,7 +1605,13 @@ bool TargetLibraryInfoImpl::isValidProtoForLibFunc(const FunctionType &FTy,
             FTy.getParamType(1)->isIntegerTy(256) &&
             FTy.getParamType(2)->isIntegerTy(256) &&
             FTy.getReturnType()->isVoidTy());
-    // SyncVM local end
+
+  case LibFunc_xvm_sha3:
+    return (NumParams == 3 && FTy.getParamType(0)->isPointerTy() &&
+            FTy.getParamType(1)->isIntegerTy(256) &&
+            FTy.getParamType(2)->isIntegerTy(1) &&
+            FTy.getReturnType()->isIntegerTy(256));
+  // SyncVM local end
 
   case LibFunc_sincospi_stret:
   case LibFunc_sincospif_stret:
