@@ -211,10 +211,9 @@ bool SyncVMBytesToCells::convertStackMachineInstr(
   }
 
   // convert global and immediate offsets to cell addressing
-  if (MO1Global.isGlobal()) {
-    unsigned Offset = MO1Global.getOffset();
-    MO1Global.setOffset(Offset /= CellSizeInBytes);
-  }
+  if (MO1Global.isGlobal())
+    MO1Global.setOffset(MO1Global.getOffset() / CellSizeInBytes);
+
   MachineOperand &Const = *(OpIt + 2);
   if (Const.isImm() || Const.isCImm())
     Const.ChangeToImmediate(getImmOrCImm(Const) / CellSizeInBytes);
