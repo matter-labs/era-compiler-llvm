@@ -877,6 +877,7 @@ static void initialize(TargetLibraryInfoImpl &TLI, const Triple &T,
     TLI.setAvailable(llvm::LibFunc_xvm_mstore8);
     TLI.setAvailable(llvm::LibFunc_xvm_revert);
     TLI.setAvailable(llvm::LibFunc_xvm_return);
+    TLI.setAvailable(llvm::LibFunc_xvm_sha3);
     return;
   }
   // EraVM local end

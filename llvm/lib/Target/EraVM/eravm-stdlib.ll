@@ -346,9 +346,10 @@ entry:
   unreachable
 }
 
-define i256 @__sha3(i256 %0, i256 %1, i1 %throw_at_failure) "noinline-oz" #1 personality i32()* @__personality {
+define i256 @__sha3(i8 addrspace(1)* nocapture nofree noundef %0, i256 %1, i1 %throw_at_failure) "noinline-oz" #1 personality i32()* @__personality {
 entry:
-  %2 = tail call i256 @llvm.umin.i256(i256 %0, i256 4294967295)
+  %addr_int = ptrtoint i8 addrspace(1)* %0 to i256
+  %2 = tail call i256 @llvm.umin.i256(i256 %addr_int, i256 4294967295)
   %3 = tail call i256 @llvm.umin.i256(i256 %1, i256 4294967295)
   %gas_left = tail call i256 @llvm.eravm.gasleft()
   %4 = tail call i256 @llvm.umin.i256(i256 %gas_left, i256 4294967295)
@@ -464,7 +465,7 @@ declare i32 @__personality()
 declare { i8 addrspace(3)*, i1 } @__staticcall(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256) #1
 
 attributes #0 = { mustprogress nofree norecurse nosync nounwind readnone willreturn }
-attributes #1 = { nofree null_pointer_is_valid }
+attributes #1 = { argmemonly readonly nofree null_pointer_is_valid }
 attributes #2 = { argmemonly mustprogress nofree norecurse nosync nounwind willreturn null_pointer_is_valid }
 attributes #3 = { noinline noreturn }
 attributes #4 = { alwaysinline mustprogress nofree norecurse nosync nounwind readnone willreturn }
