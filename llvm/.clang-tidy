@@ -13,7 +13,8 @@ Checks: >
     -cppcoreguidelines-avoid-do-while,
     -cppcoreguidelines-avoid-magic-numbers,
     -cppcoreguidelines-avoid-non-const-global-variables,
-    -cppcoreguidelines-pro-type-const-cast
+    -cppcoreguidelines-owning-memory,
+    -cppcoreguidelines-narrowing-conversions,
     
 
 # For non-incremental checks, these have hundred of hits: -misc-const-correctness,-llvm-qualified-auto,-misc-use-anonymous-namespace
