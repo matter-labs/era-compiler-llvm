@@ -18,6 +18,7 @@ Checks: >
     -cppcoreguidelines-pro-bounds-constant-array-index,
     -cppcoreguidelines-macro-usage,
     -cppcoreguidelines-pro-type-union-access,
+    -cppcoreguidelines-pro-type-static-cast-downcast.
 
 
 
