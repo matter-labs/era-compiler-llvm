@@ -10,6 +10,6 @@ Checks: >
     -misc-use-anonymous-namespace,
     cppcoreguidelines-*,
 
-    # For non-incremental checks, these have hundred of hits: -misc-const-correctness,-llvm-qualified-auto,-misc-use-anonymous-namespace
+# For non-incremental checks, these have hundred of hits: -misc-const-correctness,-llvm-qualified-auto,-misc-use-anonymous-namespace
 WarningsAsErrors: '*'
 # SyncVM local end
