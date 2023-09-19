@@ -10,6 +10,11 @@ Checks: >
     -bugprone-narrowing-conversions,
     -bugprone-implicit-widening-of-multiplication-result,
     cppcoreguidelines-*,
+    -cppcoreguidelines-avoid-do-while,
+    -cppcoreguidelines-avoid-magic-numbers,
+    -cppcoreguidelines-avoid-non-const-global-variables,
+    -cppcoreguidelines-pro-type-const-cast
+    
 
 # For non-incremental checks, these have hundred of hits: -misc-const-correctness,-llvm-qualified-auto,-misc-use-anonymous-namespace
 WarningsAsErrors: '*'
