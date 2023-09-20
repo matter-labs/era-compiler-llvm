@@ -160,23 +160,6 @@ bool EraVMLinkRuntimeImpl(Module &M, const char *ModuleToLink,
 bool EraVMLinkRuntime::runOnModule(Module &M) {
   bool Changed =
       EraVMLinkRuntimeImpl(M, IsRuntimeLinkage ? RUNTIME_DATA : STDLIB_DATA);
-  if (!IsRuntimeLinkage)
-    return Changed;
-  // sstore can throw, so externalize invoke sstore by wrapping into a function.
-  Function *SStoreF = M.getFunction("__sstore");
-  assert(SStoreF && "__sstore must be defined in eravm-runtime.ll");
-  for (auto &F : M)
-    for (auto &BB : F)
-      for (auto &I : BB) {
-        auto *Invoke = dyn_cast<InvokeInst>(&I);
-        if (!Invoke)
-          continue;
-        Intrinsic::ID IntID = Invoke->getIntrinsicID();
-        if (IntID != Intrinsic::eravm_sstore)
-          continue;
-        Invoke->setCalledFunction(SStoreF);
-        Changed = true;
-      }
   return Changed;
 }
 

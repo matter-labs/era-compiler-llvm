@@ -87,11 +87,6 @@ two_cells:
   br label %common.ret
 }
 
-define void @__sstore(i256 %val, i256 %key) local_unnamed_addr #2 {
-  tail call void @llvm.eravm.sstore(i256 %key, i256 %val)
-  ret void
-}
-
 define void @__small_store_as1(i256 %addr.i, i256 %value, i256 %size_in_bits) local_unnamed_addr #1 {
   %addr = inttoptr i256 %addr.i to i256 addrspace(1)*
   %sizeinv = sub nuw nsw i256 256, %size_in_bits
@@ -118,7 +113,7 @@ define void @__small_store_as2(i256 %addr.i, i256 %value, i256 %size_in_bits) lo
   ret void
 }
 
-define void @__memset_uma_as1(i256 addrspace(1)* %dest, i256 %val, i256 %size) local_unnamed_addr #3 {
+define void @__memset_uma_as1(i256 addrspace(1)* %dest, i256 %val, i256 %size) local_unnamed_addr #2 {
 entry:
   %hascells.not = icmp ult i256 %size, 32
   %dest.int = ptrtoint i256 addrspace(1)* %dest to i256
@@ -161,7 +156,7 @@ residual:
   br label %common.ret
 }
 
-define void @__memset_uma_as2(i256 addrspace(2)* %dest, i256 %val, i256 %size) local_unnamed_addr #3 {
+define void @__memset_uma_as2(i256 addrspace(2)* %dest, i256 %val, i256 %size) local_unnamed_addr #2 {
 entry:
   %hascells.not = icmp ult i256 %size, 32
   %dest.int = ptrtoint i256 addrspace(2)* %dest to i256
@@ -204,7 +199,7 @@ residual:
   br label %common.ret
 }
 
-define {i8 addrspace(3)*, i1} @__farcall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #4 personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__farcall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #3 personality i32 ()* @__personality {
 entry:
   %invoke_res = invoke i8 addrspace(3)* @__farcall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
     to label %ok unwind label %err
@@ -219,7 +214,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__staticcall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #4 personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__staticcall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #3 personality i32 ()* @__personality {
 entry:
   %invoke_res = invoke i8 addrspace(3)* @__staticcall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
     to label %ok unwind label %err
@@ -234,7 +229,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__delegatecall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #4 personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__delegatecall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #3 personality i32 ()* @__personality {
 entry:
   %invoke_res = invoke i8 addrspace(3)* @__delegatecall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
     to label %ok unwind label %err
@@ -249,7 +244,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__mimiccall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic) #4 personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__mimiccall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic) #3 personality i32 ()* @__personality {
 entry:
   %invoke_res = invoke i8 addrspace(3)* @__mimiccall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic)
     to label %ok unwind label %err
@@ -264,7 +259,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__farcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #4 personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__farcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #3 personality i32 ()* @__personality {
 entry:
   %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
   %invoke_res = invoke i8 addrspace(3)* @__farcall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
@@ -280,7 +275,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__staticcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #4 personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__staticcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #3 personality i32 ()* @__personality {
 entry:
   %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
   %invoke_res = invoke i8 addrspace(3)* @__staticcall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
@@ -296,7 +291,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__delegatecall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #4 personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__delegatecall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #3 personality i32 ()* @__personality {
 entry:
   %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
   %invoke_res = invoke i8 addrspace(3)* @__delegatecall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
@@ -312,7 +307,7 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__mimiccall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic) #4 personality i32 ()* @__personality {
+define {i8 addrspace(3)*, i1} @__mimiccall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic) #3 personality i32 ()* @__personality {
 entry:
   %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
   %invoke_res = invoke i8 addrspace(3)* @__mimiccall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic)
@@ -328,7 +323,6 @@ err:
   ret {i8 addrspace(3)*, i1} %res.2f
 }
 
-declare void @llvm.eravm.sstore(i256, i256) #2
 declare i8 addrspace(3)* @__farcall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
 declare i8 addrspace(3)* @__staticcall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
 declare i8 addrspace(3)* @__delegatecall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
@@ -337,6 +331,5 @@ declare i32 @__personality()
 
 attributes #0 = { mustprogress nofree norecurse nosync nounwind readonly willreturn }
 attributes #1 = { mustprogress nofree norecurse nosync nounwind willreturn }
-attributes #2 = { writeonly }
-attributes #3 = { nofree norecurse nosync nounwind }
-attributes #4 = { noinline nounwind willreturn }
+attributes #2 = { nofree norecurse nosync nounwind }
+attributes #3 = { noinline nounwind willreturn }
