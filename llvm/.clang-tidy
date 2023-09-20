@@ -18,8 +18,9 @@ Checks: >
     -cppcoreguidelines-pro-bounds-constant-array-index,
     -cppcoreguidelines-macro-usage,
     -cppcoreguidelines-pro-type-union-access,
-    -cppcoreguidelines-pro-type-static-cast-downcast
-
+    -cppcoreguidelines-pro-type-static-cast-downcast,
+    clang-analyzer-*,
+    -clang-analyzer-optin.cplusplus.UninitializedObject
 
 
 # For non-incremental checks, these have hundred of hits: -misc-const-correctness,-llvm-qualified-auto,-misc-use-anonymous-namespace
