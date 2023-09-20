@@ -4695,7 +4695,6 @@ void Verifier::visitInstruction(Instruction &I) {
                 F->getIntrinsicID() == Intrinsic::experimental_gc_statepoint ||
                 F->getIntrinsicID() == Intrinsic::wasm_rethrow ||
                 // SyncVM local begin
-                F->getIntrinsicID() == Intrinsic::syncvm_sstore ||
                 F->getIntrinsicID() == Intrinsic::syncvm_throw ||
                 F->getIntrinsicID() == Intrinsic::syncvm_farcall ||
                 F->getIntrinsicID() == Intrinsic::syncvm_nearcall ||
