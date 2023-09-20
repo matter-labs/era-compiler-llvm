@@ -5009,7 +5009,6 @@ void Verifier::visitInstruction(Instruction &I) {
                 F->getIntrinsicID() == Intrinsic::experimental_gc_statepoint ||
                 F->getIntrinsicID() == Intrinsic::wasm_rethrow ||
                 // EraVM local begin
-                F->getIntrinsicID() == Intrinsic::eravm_sstore ||
                 F->getIntrinsicID() == Intrinsic::eravm_throw ||
                 F->getIntrinsicID() == Intrinsic::eravm_farcall ||
                 F->getIntrinsicID() == Intrinsic::eravm_nearcall ||

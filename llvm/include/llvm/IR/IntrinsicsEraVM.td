@@ -33,8 +33,6 @@ def int_eravm_inctx: Intrinsic<[], [], []>;
 def int_eravm_setpubdataprice: Intrinsic<[], [llvm_i256_ty], []>;
 
 // Persistent memory access.
-def int_eravm_sstore: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty], [IntrWriteMem, Throws]>;
-def int_eravm_sload: Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrReadMem]>;
 def int_eravm_event: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], [IntrHasSideEffects]>;
 def int_eravm_tol1: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], [IntrHasSideEffects]>;
 def int_eravm_precompile: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrHasSideEffects]>;

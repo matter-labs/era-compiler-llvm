@@ -93,33 +93,6 @@ define void @setprice(i256 %p) {
   ret void
 }
 
-; CHECK-LABEL: sload_rr
-define i256 @sload_rr(i256 %val) {
-; CHECK: sload r1, r{{[0-9]+}}
-  %1 = call i256 @llvm.eravm.sload(i256 %val)
-  ret i256 %1
-}
-
-; CHECK-LABEL: sstore_r
-define void @sstore_r(i256 %key, i256 %val) {
-; CHECK: sstore r1, r2
-  call void @llvm.eravm.sstore(i256 %key, i256 %val)
-  ret void
-}
-
-; CHECK-LABEL: invoke_sstore
-define void @invoke_sstore(i256 %key, i256 %val) personality i32 ()* @__personality {
-; CHECK: near_call	r0, @__sstore, @.BB{{.*}}
-  invoke void @llvm.eravm.sstore(i256 %key, i256 %val)
-    to label %bb1 unwind label %bb2
-bb1:
-  ret void
-bb2:
-  %landing = landingpad { i8*, i32 }
-          catch i8* null
-  ret void
-}
-
 ; CHECK-LABEL: tol1_r
 define void @tol1_r(i256 %key, i256 %val) {
 ; CHECK: to_l1 r1, r2
@@ -401,8 +374,6 @@ declare i256 @llvm.eravm.getu128()
 declare void @llvm.eravm.setu128(i256)
 declare void @llvm.eravm.inctx()
 declare void @llvm.eravm.setpubdataprice(i256)
-declare i256 @llvm.eravm.sload(i256)
-declare void @llvm.eravm.sstore(i256, i256)
 declare void @llvm.eravm.tol1(i256, i256, i256)
 declare void @llvm.eravm.event(i256, i256, i256)
 declare i256 @llvm.eravm.precompile(i256, i256)
