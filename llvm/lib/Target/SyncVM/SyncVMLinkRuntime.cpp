@@ -24,6 +24,7 @@
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Linker/Linker.h"
 #include "llvm/Pass.h"
+#include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Transforms/IPO/Internalize.h"
@@ -157,6 +158,11 @@ bool SyncVMLinkRuntime::runOnModule(Module &M) {
       SyncVMLinkRuntimeImpl(M, IsRuntimeLinkage ? RUNTIME_DATA : STDLIB_DATA);
   if (!IsRuntimeLinkage)
     return Changed;
+
+  for (auto &F : M)
+    if (F.getName() == "__runtime")
+      report_fatal_error("__runtime function is not inlined!");
+
   // sstore can throw, so externalize invoke sstore by wrapping into a function.
   Function *SStoreF = M.getFunction("__sstore");
   assert(SStoreF && "__sstore must be defined in syncvm-runtime.ll");
