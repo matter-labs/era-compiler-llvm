@@ -20,7 +20,14 @@ Checks: >
     -cppcoreguidelines-pro-type-union-access,
     -cppcoreguidelines-pro-type-static-cast-downcast,
     clang-analyzer-*,
-    -clang-analyzer-optin.cplusplus.UninitializedObject
+    -clang-analyzer-optin.cplusplus.UninitializedObject,
+    concurrency-*,
+
+
+CheckOptions:
+  - key:             concurrency-mt-unsafe.FunctionSet
+    value:           posix
+
 
 
 # For non-incremental checks, these have hundred of hits: -misc-const-correctness,-llvm-qualified-auto,-misc-use-anonymous-namespace
