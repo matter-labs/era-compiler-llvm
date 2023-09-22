@@ -94,11 +94,11 @@ jobs:
           pwd
           echo $SHELL
           $SHELL --version
-          clang-tidy-13  --version
+          clang-tidy-15  --version
           git status
           git branch
           set -euxo pipefail
-          git diff -U0 remotes/origin/${{ env.COMPILER_LLVM_DEFAULT_BRANCH_NAME }} | ./clang-tools-extra/clang-tidy/tool/clang-tidy-diff_Zegar.py -p1 -clang-tidy-binary /usr/bin/clang-tidy-13   -path ../target-llvm/build-final/compile_commands.json
+          git diff -U0 remotes/origin/${{ env.COMPILER_LLVM_DEFAULT_BRANCH_NAME }} | ./clang-tools-extra/clang-tidy/tool/clang-tidy-diff_Zegar.py -p1 -clang-tidy-binary /usr/bin/clang-tidy-15   -path ../target-llvm/build-final/compile_commands.json
 
       - name: Running Lit tests with default options
         working-directory: compiler-tester
