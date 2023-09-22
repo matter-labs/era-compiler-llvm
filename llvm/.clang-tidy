@@ -22,6 +22,7 @@ Checks: >
     clang-analyzer-*,
     -clang-analyzer-optin.cplusplus.UninitializedObject,
     concurrency-*,
+    cert-*,
 
 
 CheckOptions:
