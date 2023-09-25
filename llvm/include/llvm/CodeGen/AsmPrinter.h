@@ -478,9 +478,9 @@ public:
   /// On AIX, when an alias refers to a sub-element of a global variable, the
   /// label of that alias needs to be emitted before the corresponding element.
   using AliasMapTy = DenseMap<uint64_t, SmallVector<const GlobalAlias *, 1>>;
-  // SyncVM local begin
+  // EraVM local begin
   virtual void emitGlobalConstant(const DataLayout &DL, const Constant *CV,
-  // SyncVM local end
+  // EraVM local end
                           AliasMapTy *AliasList = nullptr);
 
   /// Unnamed constant global variables solely contaning a pointer to

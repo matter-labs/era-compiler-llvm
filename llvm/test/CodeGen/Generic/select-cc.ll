@@ -1,5 +1,5 @@
-; UNSUPPORTED: syncvm
-; SyncVM doesn't support vectors.
+; UNSUPPORTED: eravm
+; EraVM doesn't support vectors.
 ; RUN: llc < %s
 
 define <2 x double> @vector_select(<2 x double> %x, <2 x double> %y) nounwind  {

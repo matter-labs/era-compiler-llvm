@@ -2325,7 +2325,7 @@ unsigned MachineInstr::getDebugInstrNum(MachineFunction &MF) {
   return DebugInstrNum;
 }
 
-// SyncVM local begin
+// EraVM local begin
 MachineInstrBuilder llvm::BuildCOPY(MachineBasicBlock &BB,
                                     MachineBasicBlock::iterator I,
                                     const DebugLoc &DL,
@@ -2335,9 +2335,9 @@ MachineInstrBuilder llvm::BuildCOPY(MachineBasicBlock &BB,
       BuildMI(BB, I, DL, TII->get(TargetOpcode::COPY), DestReg);
   // get triple
   Triple triple = Triple(BB.getParent()->getTarget().getTargetTriple());
-  if (triple.isSyncVM()) {
+  if (triple.isEraVM()) {
     TII->tagFatPointerCopy(*MIB);
   }
   return MIB;
 }
-// SyncVM local end
+// EraVM local end

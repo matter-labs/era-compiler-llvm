@@ -593,8 +593,8 @@ TEST_F(TargetLibraryInfoTest, ValidProto) {
       // These functions are OpenMP Offloading allocation / free routines
       "declare i8* @__kmpc_alloc_shared(i64)\n"
       "declare void @__kmpc_free_shared(i8*, i64)\n"
-      // SyncVM local begin
-      // These functions are SyncVM/EVM routines
+      // EraVM local begin
+      // These functions are EraVM/EVM routines
       "declare i256 @__addmod(i256, i256, i256)\n"
       "declare i256 @__exp(i256, i256)\n"
       "declare i256 @__exp_pow2(i256, i256)\n"
@@ -612,7 +612,7 @@ TEST_F(TargetLibraryInfoTest, ValidProto) {
       "declare void @__mstore8(i256 addrspace(1)* nocapture writeonly, i256)\n"
       "declare i256 @__sha3(i256 addrspace(1)*, i256, i1)\n"
       "declare i256 @__signextend(i256, i256)\n");
-      // SyncVM local end
+      // EraVM local end
 
   for (unsigned FI = 0; FI != LibFunc::NumLibFuncs; ++FI) {
     LibFunc LF = (LibFunc)FI;

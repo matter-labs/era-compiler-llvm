@@ -618,9 +618,9 @@ void SSAIfConv::replacePHIInstrs() {
     if (hasSameValue(*MRI, TII, PI.TReg, PI.FReg)) {
       // We do not need the select instruction if both incoming values are
       // equal, but we do need a COPY.
-      // SyncVM local begin
+      // EraVM local begin
       BuildCOPY(*Head, FirstTerm, HeadDL, TII, DstReg).addReg(PI.TReg);
-      // SyncVM local end
+      // EraVM local end
     } else {
       TII->insertSelect(*Head, FirstTerm, HeadDL, DstReg, Cond, PI.TReg,
                         PI.FReg);

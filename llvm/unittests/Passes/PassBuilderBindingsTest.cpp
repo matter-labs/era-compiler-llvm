@@ -55,7 +55,7 @@ public:
   LLVMContextRef Context;
 };
 
-#if defined(_SYNCVM)
+#if defined(_ERAVM)
 TEST_F(PassBuilderCTest, DISABLED_Basic) {
 #else
 TEST_F(PassBuilderCTest, Basic) {
@@ -73,7 +73,7 @@ TEST_F(PassBuilderCTest, Basic) {
   LLVMDisposePassBuilderOptions(Options);
 }
 
-#if defined(_SYNCVM)
+#if defined(_ERAVM)
 TEST_F(PassBuilderCTest, DISABLED_InvalidPassIsError) {
 #else
 TEST_F(PassBuilderCTest, InvalidPassIsError) {

@@ -200,9 +200,9 @@ class VirtRegRewriter : public MachineFunctionPass {
   void expandCopyBundle(MachineInstr &MI) const;
   bool subRegLiveThrough(const MachineInstr &MI, MCRegister SuperPhysReg) const;
 
-  // SyncVM local begin
+  // EraVM local begin
   void handleFatPointer(MachineInstr &MI);
-  // SyncVM local end
+  // EraVM local end
 
 public:
   static char ID;
@@ -408,14 +408,14 @@ bool VirtRegRewriter::readsUndefSubreg(const MachineOperand &MO) const {
   return true;
 }
 
-// SyncVM local begin
+// EraVM local begin
 void VirtRegRewriter::handleFatPointer(MachineInstr &MI) {
   if (!MI.isCopy())  {
     return;
   }
   TII->tagFatPointerCopy(MI);
 }
-// SyncVM localend
+// EraVM localend
 
 void VirtRegRewriter::handleIdentityCopy(MachineInstr &MI) {
   if (!MI.isIdentityCopy())
@@ -555,9 +555,9 @@ void VirtRegRewriter::rewrite() {
        MBBI != MBBE; ++MBBI) {
     LLVM_DEBUG(MBBI->print(dbgs(), Indexes));
     for (MachineInstr &MI : llvm::make_early_inc_range(MBBI->instrs())) {
-      // SyncVM local begin
+      // EraVM local begin
       handleFatPointer(MI);
-      // SyncVM local end
+      // EraVM local end
       for (MachineOperand &MO : MI.operands()) {
         // Make sure MRI knows about registers clobbered by regmasks.
         if (MO.isRegMask())

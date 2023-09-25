@@ -79,9 +79,9 @@ HANDLE_LIBCALL(UREM_I32, "__umodsi3")
 HANDLE_LIBCALL(UREM_I64, "__umoddi3")
 HANDLE_LIBCALL(UREM_I128, "__umodti3")
 HANDLE_LIBCALL(UREM_IEXT, "__umodei4")
-// SyncVM local begin
+// EraVM local begin
 HANDLE_LIBCALL(UREM_I512, "__umodi512")
-// SyncVM local end
+// EraVM local end
 HANDLE_LIBCALL(SDIVREM_I8, nullptr)
 HANDLE_LIBCALL(SDIVREM_I16, nullptr)
 HANDLE_LIBCALL(SDIVREM_I32, nullptr)

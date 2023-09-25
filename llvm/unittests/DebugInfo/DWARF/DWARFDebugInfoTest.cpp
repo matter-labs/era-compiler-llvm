@@ -384,7 +384,7 @@ void TestAllForms() {
   EXPECT_EQ(AddrValue, toAddress(DieDG.find(Attr_Last), 0));
 }
 
-#if defined(_SYNCVM)
+#if defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr4AllForms) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr4AllForms) {
@@ -397,7 +397,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version2Addr4AllForms) {
   TestAllForms<2, AddrType, RefAddrType>();
 }
 
-#if defined(_AIX) || defined(_SYNCVM)
+#if defined(_AIX) || defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr8AllForms) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr8AllForms) {
@@ -410,7 +410,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version2Addr8AllForms) {
   TestAllForms<2, AddrType, RefAddrType>();
 }
 
-#if defined(_SYNCVM)
+#if defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr4AllForms) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr4AllForms) {
@@ -423,7 +423,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version3Addr4AllForms) {
   TestAllForms<3, AddrType, RefAddrType>();
 }
 
-#if defined(_AIX) || defined(_SYNCVM)
+#if defined(_AIX) || defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr8AllForms) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr8AllForms) {
@@ -436,7 +436,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version3Addr8AllForms) {
   TestAllForms<3, AddrType, RefAddrType>();
 }
 
-#if defined(_SYNCVM)
+#if defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr4AllForms) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr4AllForms) {
@@ -449,7 +449,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version4Addr4AllForms) {
   TestAllForms<4, AddrType, RefAddrType>();
 }
 
-#if defined(_AIX) || defined(_SYNCVM)
+#if defined(_AIX) || defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr8AllForms) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr8AllForms) {
@@ -462,7 +462,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version4Addr8AllForms) {
   TestAllForms<4, AddrType, RefAddrType>();
 }
 
-#if defined(_AIX) || defined(_SYNCVM)
+#if defined(_AIX) || defined(_ERAVM)
 TEST(DWARFDebigInfo, DISABLED_TestDWARF32Version5Addr4AllForms) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version5Addr4AllForms) {
@@ -475,7 +475,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version5Addr4AllForms) {
   TestAllForms<5, AddrType, RefAddrType>();
 }
 
-#if defined(_AIX) || defined(_SYNCVM)
+#if defined(_AIX) || defined(_ERAVM)
 TEST(DWARFDebigInfo, DISABLED_TestDWARF32Version5Addr8AllForms) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version5Addr8AllForms) {
@@ -576,7 +576,7 @@ template <uint16_t Version, class AddrType> void TestChildren() {
   EXPECT_EQ(IntDieDG.getTag(), DW_TAG_base_type);
 }
 
-#if defined(_SYNCVM)
+#if defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr4Children) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr4Children) {
@@ -587,7 +587,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version2Addr4Children) {
   TestChildren<2, AddrType>();
 }
 
-#if defined(_AIX) || defined(_SYNCVM)
+#if defined(_AIX) || defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr8Children) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr8Children) {
@@ -598,7 +598,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version2Addr8Children) {
   TestChildren<2, AddrType>();
 }
 
-#if defined(_SYNCVM)
+#if defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr4Children) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr4Children) {
@@ -609,7 +609,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version3Addr4Children) {
   TestChildren<3, AddrType>();
 }
 
-#if defined(_AIX) || defined(_SYNCVM)
+#if defined(_AIX) || defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr8Children) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr8Children) {
@@ -620,7 +620,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version3Addr8Children) {
   TestChildren<3, AddrType>();
 }
 
-#if defined(_SYNCVM)
+#if defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr4Children) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr4Children) {
@@ -631,7 +631,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version4Addr4Children) {
   TestChildren<4, AddrType>();
 }
 
-#if defined(_AIX) || defined(_SYNCVM)
+#if defined(_AIX) || defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr8Children) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr8Children) {
@@ -850,7 +850,7 @@ template <uint16_t Version, class AddrType> void TestReferences() {
             toReference(CU2ToCU1RefAddrDieDG.find(DW_AT_type), -1ULL));
 }
 
-#if defined(_SYNCVM)
+#if defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr4References) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr4References) {
@@ -861,7 +861,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version2Addr4References) {
   TestReferences<2, AddrType>();
 }
 
-#if defined(_AIX) || defined(_SYNCVM)
+#if defined(_AIX) || defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr8References) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr8References) {
@@ -872,7 +872,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version2Addr8References) {
   TestReferences<2, AddrType>();
 }
 
-#if defined(_SYNCVM)
+#if defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr4References) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr4References) {
@@ -883,7 +883,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version3Addr4References) {
   TestReferences<3, AddrType>();
 }
 
-#if defined(_AIX) || defined(_SYNCVM)
+#if defined(_AIX) || defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr8References) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr8References) {
@@ -894,7 +894,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version3Addr8References) {
   TestReferences<3, AddrType>();
 }
 
-#if defined(_SYNCVM)
+#if defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr4References) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr4References) {
@@ -905,7 +905,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version4Addr4References) {
   TestReferences<4, AddrType>();
 }
 
-#if defined(_AIX) || defined(_SYNCVM)
+#if defined(_AIX) || defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr8References) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr8References) {
@@ -1046,7 +1046,7 @@ template <uint16_t Version, class AddrType> void TestAddresses() {
   EXPECT_EQ(HighPC, ActualHighPC);
 }
 
-#if defined(_SYNCVM)
+#if defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr4Addresses) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr4Addresses) {
@@ -1057,7 +1057,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version2Addr4Addresses) {
   TestAddresses<2, AddrType>();
 }
 
-#if defined(_AIX) || defined(_SYNCVM)
+#if defined(_AIX) || defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version2Addr8Addresses) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version2Addr8Addresses) {
@@ -1068,7 +1068,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version2Addr8Addresses) {
   TestAddresses<2, AddrType>();
 }
 
-#if defined(_SYNCVM)
+#if defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr4Addresses) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr4Addresses) {
@@ -1079,7 +1079,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version3Addr4Addresses) {
   TestAddresses<3, AddrType>();
 }
 
-#if defined(_AIX) || defined(_SYNCVM)
+#if defined(_AIX) || defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version3Addr8Addresses) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version3Addr8Addresses) {
@@ -1090,7 +1090,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version3Addr8Addresses) {
   TestAddresses<3, AddrType>();
 }
 
-#if defined(_SYNCVM)
+#if defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr4Addresses) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr4Addresses) {
@@ -1101,7 +1101,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version4Addr4Addresses) {
   TestAddresses<4, AddrType>();
 }
 
-#if defined(_AIX) || defined(_SYNCVM)
+#if defined(_AIX) || defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestDWARF32Version4Addr8Addresses) {
 #else
 TEST(DWARFDebugInfo, TestDWARF32Version4Addr8Addresses) {
@@ -1112,7 +1112,7 @@ TEST(DWARFDebugInfo, TestDWARF32Version4Addr8Addresses) {
   TestAddresses<4, AddrType>();
 }
 
-#if defined(_AIX) || defined(_SYNCVM)
+#if defined(_AIX) || defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestStringOffsets) {
 #else
 TEST(DWARFDebugInfo, TestStringOffsets) {
@@ -1180,7 +1180,7 @@ TEST(DWARFDebugInfo, TestStringOffsets) {
   EXPECT_STREQ(String1, *Extracted3);
 }
 
-#if (defined(_AIX) && defined(__64BIT__)) || defined(_SYNCVM)
+#if (defined(_AIX) && defined(__64BIT__)) || defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestEmptyStringOffsets) {
 #else
 TEST(DWARFDebugInfo, TestEmptyStringOffsets) {
@@ -1213,7 +1213,7 @@ TEST(DWARFDebugInfo, TestEmptyStringOffsets) {
       DwarfContext->getDWARFObj().getStrOffsetsSection().Data.empty());
 }
 
-#if (defined(_AIX) && defined(__64BIT__)) || defined(_SYNCVM)
+#if (defined(_AIX) && defined(__64BIT__)) || defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestRelations) {
 #else
 TEST(DWARFDebugInfo, TestRelations) {
@@ -1404,7 +1404,7 @@ TEST(DWARFDebugInfo, TestDWARFDie) {
   EXPECT_FALSE(DefaultDie.getSibling().isValid());
 }
 
-#if (defined(_AIX) && defined(__64BIT__)) || defined(_SYNCVM)
+#if (defined(_AIX) && defined(__64BIT__)) || defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestChildIterators) {
 #else
 TEST(DWARFDebugInfo, TestChildIterators) {
@@ -1517,7 +1517,7 @@ TEST(DWARFDebugInfo, TestEmptyChildren) {
   EXPECT_EQ(CUDie.begin(), CUDie.end());
 }
 
-#if (defined(_AIX) && defined(__64BIT__)) || defined(_SYNCVM)
+#if (defined(_AIX) && defined(__64BIT__)) || defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestAttributeIterators) {
 #else
 TEST(DWARFDebugInfo, TestAttributeIterators) {
@@ -1583,7 +1583,7 @@ TEST(DWARFDebugInfo, TestAttributeIterators) {
   EXPECT_EQ(E, ++I);
 }
 
-#if (defined(_AIX) && defined(__64BIT__)) || defined(_SYNCVM)
+#if (defined(_AIX) && defined(__64BIT__)) || defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestFindRecurse) {
 #else
 TEST(DWARFDebugInfo, TestFindRecurse) {
@@ -1801,7 +1801,7 @@ TEST(DWARFDebugInfo, TestDwarfToFunctions) {
   // Test
 }
 
-#if (defined(_AIX) && defined(__64BIT__)) || defined(_SYNCVM)
+#if (defined(_AIX) && defined(__64BIT__)) || defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestFindAttrs) {
 #else
 TEST(DWARFDebugInfo, TestFindAttrs) {
@@ -1868,7 +1868,7 @@ TEST(DWARFDebugInfo, TestFindAttrs) {
   EXPECT_EQ(DieMangled, toString(NameOpt, ""));
 }
 
-#if (defined(_AIX) && defined(__64BIT__)) || defined(_SYNCVM)
+#if (defined(_AIX) && defined(__64BIT__)) || defined(_ERAVM)
 TEST(DWARFDebugInfo, DISABLED_TestImplicitConstAbbrevs) {
 #else
 TEST(DWARFDebugInfo, TestImplicitConstAbbrevs) {

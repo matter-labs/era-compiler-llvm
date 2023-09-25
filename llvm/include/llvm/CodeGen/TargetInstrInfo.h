@@ -27,9 +27,9 @@
 #include "llvm/CodeGen/MachineOutliner.h"
 #include "llvm/CodeGen/RegisterClassInfo.h"
 #include "llvm/CodeGen/VirtRegMap.h"
-// SyncVM local begin
+// EraVM local begin
 #include "llvm/IR/Constants.h"
-// SyncVM local end
+// EraVM local end
 #include "llvm/MC/MCInstrInfo.h"
 #include "llvm/Support/BranchProbability.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -189,9 +189,9 @@ private:
   bool isReallyTriviallyReMaterializableGeneric(const MachineInstr &MI) const;
 
 public:
-  // SyncVM local begin
+  // EraVM local begin
   virtual void tagFatPointerCopy(MachineInstr&) const {}
-  // SyncVM local end
+  // EraVM local end
   /// These methods return the opcode of the frame setup/destroy instructions
   /// if they exist (-1 otherwise).  Some targets use pseudo instructions in
   /// order to abstract away the difference between operating with a frame
@@ -221,14 +221,14 @@ public:
   /// that is set up between the frame setup and destroy pseudo instructions.
   int64_t getFrameSize(const MachineInstr &I) const {
     assert(isFrameInstr(I) && "Not a frame instruction");
-    // SyncVM local begin
+    // EraVM local begin
     if (I.getOperand(0).isImm()) {
       assert(I.getOperand(0).getImm() >= 0);
       return I.getOperand(0).getImm();
     } else {
       return I.getOperand(0).getCImm()->getZExtValue();
     }
-    // SyncVM local end
+    // EraVM local end
   }
 
   /// Returns the total frame size, which is made up of the space set up inside
@@ -236,7 +236,7 @@ public:
   /// prior to the pair.
   int64_t getFrameTotalSize(const MachineInstr &I) const {
     if (isFrameSetup(I)) {
-      // SyncVM local begin
+      // EraVM local begin
       int64_t frame_size = 0;
       assert(I.getOperand(1).isImm() ||
              I.getOperand(1).isCImm() && "Unexpected operand type");
@@ -248,7 +248,7 @@ public:
       assert(frame_size >= 0 &&
              "Frame size must not be negative");
       return getFrameSize(I) + frame_size;
-      // SyncVM Local end
+      // EraVM local end
     }
     return getFrameSize(I);
   }
@@ -1983,22 +1983,22 @@ public:
                      "TargetInstrInfo::isFunctionSafeToOutlineFrom!");
   }
 
-  // SyncVM local begin
+  // EraVM local begin
   /// Return default number of outliner reruns.
   virtual unsigned defaultOutlineReruns() const { return 0; }
-  // SyncVM local end
+  // EraVM local end
 
   /// Return true if the function should be outlined from by default.
   virtual bool shouldOutlineFromFunctionByDefault(MachineFunction &MF) const {
     return false;
   }
 
-  // SyncVM local begin
+  // EraVM local begin
   /// Do a fixup post outlining.
   virtual void fixupPostOutlining(
       std::vector<std::pair<MachineFunction *, std::vector<MachineFunction *>>>
           &FixupFunctions) const {}
-  // SyncVM local end
+  // EraVM local end
 
   /// Produce the expression describing the \p MI loading a value into
   /// the physical register \p Reg. This hook should only be used with

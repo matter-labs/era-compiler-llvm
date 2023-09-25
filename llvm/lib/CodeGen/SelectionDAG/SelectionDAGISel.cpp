@@ -1228,10 +1228,10 @@ bool SelectionDAGISel::PrepareEHLandingPad() {
         assert(EHPhysReg && "target lacks exception pointer register");
         MBB->addLiveIn(EHPhysReg);
         unsigned VReg = FuncInfo->getCatchPadExceptionPointerVReg(CPI, PtrRC);
-        // SyncVM local begin
+        // EraVM local begin
         BuildCOPY(*MBB, FuncInfo->InsertPt, SDB->getCurDebugLoc(), TII, VReg)
             .addReg(EHPhysReg, RegState::Kill);
-        // SyncVM local end
+        // EraVM local end
       }
     }
     return true;
@@ -2601,14 +2601,14 @@ CheckInteger(const unsigned char *MatcherTable, unsigned &MatcherIndex,
   Val = decodeSignRotatedValue(Val);
 
   ConstantSDNode *C = dyn_cast<ConstantSDNode>(N);
-  // SyncVM local begin
+  // EraVM local begin
   if (C) {
     const APInt &CVal = C->getAPIntValue();
     if (CVal == APInt(CVal.getBitWidth(), Val, /*isSigned=*/true))
       return true;
   }
   return false;
-  // SyncVM local end
+  // EraVM local end
 }
 
 LLVM_ATTRIBUTE_ALWAYS_INLINE static bool

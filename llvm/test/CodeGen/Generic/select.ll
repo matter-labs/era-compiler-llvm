@@ -120,8 +120,8 @@ define i1 @boolexpr(i1 %b, i32 %N) {
         ret i1 %b3
 }
 
-; SyncVM local begin
-; SyncVM doesn't support floats
+; EraVM local begin
+; EraVM doesn't support floats
 ; Test branch on floating point comparison
 ;
 ;define void @testfloatbool(float %x, float %y) {
@@ -137,7 +137,7 @@ define i1 @boolexpr(i1 %b, i32 %N) {
 ;goon:           ; preds = %Top
 ;        ret void
 ;}
-; SyncVM local end
+; EraVM local end
 
 
 ; Test cases where an LLVM instruction requires no machine
@@ -188,8 +188,8 @@ define i32 @checkFoldGEP(%Domain* %D, i64 %idx) {
         ret i32 %reg820
 }
 
-; SyncVM local begin
-; SyncVM doesn't support vectors
+; EraVM local begin
+; EraVM doesn't support vectors
 ; Test case for scalarising a 1 element vselect
 ;
 ;define <1 x i32> @checkScalariseVSELECT(<1 x i32> %a, <1 x i32> %b) {
@@ -197,4 +197,4 @@ define i32 @checkFoldGEP(%Domain* %D, i64 %idx) {
 ;        %s = select <1 x i1> %cond, <1 x i32> %a, <1 x i32> %b
 ;        ret <1 x i32> %s
 ;}
-; SyncVM local end
+; EraVM local end

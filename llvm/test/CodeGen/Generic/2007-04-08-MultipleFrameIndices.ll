@@ -1,7 +1,7 @@
 ; RUN: llc -no-integrated-as < %s
 ; XFAIL: sparc-sun-solaris2
-; XFAIL: syncvm
-; SyncVM doesn't support vararg.
+; XFAIL: eravm
+; EraVM doesn't support vararg.
 ; PR1308
 ; PR1557
 

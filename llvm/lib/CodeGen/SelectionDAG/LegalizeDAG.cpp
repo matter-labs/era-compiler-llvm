@@ -511,19 +511,19 @@ void SelectionDAGLegalize::LegalizeStoreOps(SDNode *Node) {
       const DataLayout &DL = DAG.getDataLayout();
       if (!TLI.allowsMemoryAccessForAlignment(*DAG.getContext(), DL, MemVT,
                                               *ST->getMemOperand())) {
-        // SyncVM local begin
+        // EraVM local begin
         bool Aligned = false;
         if (auto ConstPtr = dyn_cast<ConstantSDNode>(Ptr))
           Aligned = ConstPtr->getAPIntValue().urem(32) == 0;
-        Aligned &= DAG.getTarget().getTargetTriple().isSyncVM();
+        Aligned &= DAG.getTarget().getTargetTriple().isEraVM();
         if (!Aligned) {
-        // SyncVM local end
+        // EraVM local end
         LLVM_DEBUG(dbgs() << "Expanding unsupported unaligned store\n");
         SDValue Result = TLI.expandUnalignedStore(ST, DAG);
         ReplaceNode(SDValue(ST, 0), Result);
-        // SyncVM local begin
+        // EraVM local begin
         }
-        // SyncVM local end
+        // EraVM local end
       } else
         LLVM_DEBUG(dbgs() << "Legal store\n");
       break;
@@ -566,11 +566,11 @@ void SelectionDAGLegalize::LegalizeStoreOps(SDNode *Node) {
         DAG.getTruncStore(Chain, dl, Value, Ptr, ST->getPointerInfo(), NVT,
                           ST->getOriginalAlign(), MMOFlags, AAInfo);
     ReplaceNode(SDValue(Node, 0), Result);
-    // SyncVM local begin
+    // EraVM local begin
   } else if ((!StVT.isVector() && !isPowerOf2_64(StWidth.getFixedSize())) ||
-             (DAG.getTarget().getTargetTriple().isSyncVM() && StWidth != 256 &&
+             (DAG.getTarget().getTargetTriple().isEraVM() && StWidth != 256 &&
               ST->getOriginalAlign().value() % 32 != 0)) {
-    if (DAG.getTarget().getTargetTriple().isSyncVM()) {
+    if (DAG.getTarget().getTargetTriple().isEraVM()) {
       assert(StWidth < 256);
       auto OrigValue = DAG.getExtLoad(ISD::NON_EXTLOAD, dl, MVT::i256, Chain, Ptr,
                              ST->getPointerInfo(), MVT::i256,
@@ -587,7 +587,7 @@ void SelectionDAGLegalize::LegalizeStoreOps(SDNode *Node) {
                                  AAInfo);
       ReplaceNode(SDValue(Node, 0), Result);
     } else {
-    // SyncVM local end
+    // EraVM local end
     // If not storing a power-of-2 number of bits, expand as two stores.
     assert(!StVT.isVector() && "Unsupported truncstore!");
     unsigned StWidthBits = StWidth.getFixedSize();
@@ -644,9 +644,9 @@ void SelectionDAGLegalize::LegalizeStoreOps(SDNode *Node) {
     // The order of the stores doesn't matter.
     SDValue Result = DAG.getNode(ISD::TokenFactor, dl, MVT::Other, Lo, Hi);
     ReplaceNode(SDValue(Node, 0), Result);
-    // SyncVM local begin
+    // EraVM local begin
     }
-    // SyncVM local end
+    // EraVM local end
   } else {
     switch (TLI.getTruncStoreAction(ST->getValue().getValueType(), StVT)) {
     default: llvm_unreachable("This action is not supported yet!");
@@ -656,18 +656,18 @@ void SelectionDAGLegalize::LegalizeStoreOps(SDNode *Node) {
       // expand it.
       if (!TLI.allowsMemoryAccessForAlignment(*DAG.getContext(), DL, MemVT,
                                               *ST->getMemOperand())) {
-        // SyncVM local begin
+        // EraVM local begin
         bool Aligned = false;
         if (auto ConstPtr = dyn_cast<ConstantSDNode>(Ptr))
           Aligned = ConstPtr->getAPIntValue().urem(32) == 0;
-        Aligned &= DAG.getTarget().getTargetTriple().isSyncVM();
+        Aligned &= DAG.getTarget().getTargetTriple().isEraVM();
         if (!Aligned) {
-        // SyncVM local end
+        // EraVM local end
         SDValue Result = TLI.expandUnalignedStore(ST, DAG);
         ReplaceNode(SDValue(ST, 0), Result);
-        // SyncVM local begin
+        // EraVM local begin
         }
-        // SyncVM local end
+        // EraVM local end
       }
       break;
     }
@@ -728,13 +728,13 @@ void SelectionDAGLegalize::LegalizeLoadOps(SDNode *Node) {
       // expand it.
       if (!TLI.allowsMemoryAccessForAlignment(*DAG.getContext(), DL, MemVT,
                                               *LD->getMemOperand())) {
-        // SyncVM local begin
+        // EraVM local begin
         bool Aligned = false;
         if (auto ConstPtr = dyn_cast<ConstantSDNode>(Ptr))
           Aligned = ConstPtr->getAPIntValue().urem(32) == 0;
-        Aligned &= DAG.getTarget().getTargetTriple().isSyncVM();
+        Aligned &= DAG.getTarget().getTargetTriple().isEraVM();
         if (!Aligned)
-        // SyncVM local end
+        // EraVM local end
         std::tie(RVal, RChain) = TLI.expandUnalignedLoad(LD, DAG);
       }
       break;
@@ -818,11 +818,11 @@ void SelectionDAGLegalize::LegalizeLoadOps(SDNode *Node) {
 
     Value = Result;
     Chain = Ch;
-    // SyncVM local begin
+    // EraVM local begin
   } else if (!isPowerOf2_64(SrcWidth.getKnownMinSize()) ||
-             (DAG.getTarget().getTargetTriple().isSyncVM() && SrcWidth != 256 &&
+             (DAG.getTarget().getTargetTriple().isEraVM() && SrcWidth != 256 &&
               LD->getOriginalAlign().value() % 32 != 0)) {
-    if (DAG.getTarget().getTargetTriple().isSyncVM()) {
+    if (DAG.getTarget().getTargetTriple().isEraVM()) {
       assert(SrcWidth < 256);
       Value = DAG.getExtLoad(ISD::NON_EXTLOAD, dl, MVT::i256, Chain, Ptr,
                              LD->getPointerInfo(), MVT::i256,
@@ -833,7 +833,7 @@ void SelectionDAGLegalize::LegalizeLoadOps(SDNode *Node) {
       Value = DAG.getNode(ISD::AND, dl, MVT::i256, Value,
                           DAG.getConstant(Mask, dl, MVT::i256));
     } else {
-    // SyncVM local end
+    // EraVM local end
     // If not loading a power-of-2 number of bits, expand as two loads.
     assert(!SrcVT.isVector() && "Unsupported extload!");
     unsigned SrcWidthBits = SrcWidth.getFixedSize();
@@ -934,13 +934,13 @@ void SelectionDAGLegalize::LegalizeLoadOps(SDNode *Node) {
         const DataLayout &DL = DAG.getDataLayout();
         if (!TLI.allowsMemoryAccess(*DAG.getContext(), DL, MemVT,
                                     *LD->getMemOperand())) {
-        // SyncVM local begin
+        // EraVM local begin
         bool Aligned = false;
         if (auto ConstPtr = dyn_cast<ConstantSDNode>(Ptr))
           Aligned = ConstPtr->getAPIntValue().urem(32) == 0;
-        Aligned &= DAG.getTarget().getTargetTriple().isSyncVM();
+        Aligned &= DAG.getTarget().getTargetTriple().isEraVM();
         if (!Aligned)
-        // SyncVM local end
+        // EraVM local end
           std::tie(Value, Chain) = TLI.expandUnalignedLoad(LD, DAG);
         }
       }

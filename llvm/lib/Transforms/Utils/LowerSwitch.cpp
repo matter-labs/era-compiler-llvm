@@ -279,14 +279,14 @@ BasicBlock *SwitchConvert(CaseItr Begin, CaseItr End, ConstantInt *LowerBound,
     if (GapHigh >= GapLow && IsInRanges(Gap, UnreachableRanges))
       NewUpperBound = LHS.back().High;
   }
-// SyncVM local change begin
+// EraVM local change begin
 #if 0
   LLVM_DEBUG(dbgs() << "LHS Bounds ==> [" << LowerBound->getSExtValue() << ", "
                     << NewUpperBound->getSExtValue() << "]\n"
                     << "RHS Bounds ==> [" << NewLowerBound->getSExtValue()
                     << ", " << UpperBound->getSExtValue() << "]\n");
 #endif
-// SyncVM local change end
+// EraVM local change end
 
   // Create a new node that checks if the value is < pivot. Go to the
   // left branch if it is and right branch if not.

@@ -1,0 +1,16 @@
+;====- lib/Target/EraVM/Disassembler/LLVMBuild.txt -------------*- Conf -*--===;
+;
+; This is an LLVMBuild description file for the components in this subdirectory.
+;
+; For more information on the LLVMBuild system, please see:
+;
+;   http://llvm.org/docs/LLVMBuild.html
+;
+;===------------------------------------------------------------------------===;
+
+[component_0]
+type = Library
+name = EraVMDisassembler
+parent = EraVM
+required_libraries = MCDisassembler EraVMInfo Support
+add_to_library_groups = EraVM

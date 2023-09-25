@@ -118,15 +118,15 @@ endif()
 
 add_subdirectory(BLAKE3)
 
-# SyncVM local begin
+# EraVM local begin
 find_package(Git REQUIRED)
 execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse HEAD
                 WORKING_DIRECTORY "${LLVM_MAIN_SRC_DIR}"
                 OUTPUT_VARIABLE COMMIT_ID
                 RESULT_VARIABLE RES_ID
                 OUTPUT_STRIP_TRAILING_WHITESPACE)
-set_source_files_properties(CommandLine.cpp PROPERTIES COMPILE_FLAGS -DSYNCVM_LLVM_COMMIT_ID=\\"${COMMIT_ID}\\")
-# SyncVM local end
+set_source_files_properties(CommandLine.cpp PROPERTIES COMPILE_FLAGS -DERAVM_LLVM_COMMIT_ID=\\"${COMMIT_ID}\\")
+# EraVM local end
 
 add_llvm_component_library(LLVMSupport
   AddressRanges.cpp

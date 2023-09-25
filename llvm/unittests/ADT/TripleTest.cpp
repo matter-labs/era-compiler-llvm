@@ -72,7 +72,7 @@ TEST(TripleTest, BasicParsing) {
   EXPECT_EQ("d", T.getEnvironmentName().str());
 }
 
-#if defined(_SYNCVM)
+#if defined(_ERAVM)
 TEST(TripleTest, DISABLED_ParsedIDs) {
 #else
 TEST(TripleTest, ParsedIDs) {
@@ -818,7 +818,7 @@ static std::string Join(StringRef A, StringRef B, StringRef C, StringRef D) {
   return Str;
 }
 
-#if defined(_SYNCVM)
+#if defined(_ERAVM)
 TEST(TripleTest, DISABLED_Normalization) {
 #else
 TEST(TripleTest, Normalization) {
@@ -996,7 +996,7 @@ TEST(TripleTest, MutateName) {
   EXPECT_EQ("i386-pc-darwin", T.getTriple());
 }
 
-#if defined(_SYNCVM)
+#if defined(_ERAVM)
 TEST(TripleTest, DISABLED_BitWidthPredicates) {
 #else
 TEST(TripleTest, BitWidthPredicates) {
@@ -1165,7 +1165,7 @@ TEST(TripleTest, BitWidthPredicates) {
   EXPECT_TRUE(T.isDXIL());
 }
 
-#if defined(_SYNCVM)
+#if defined(_ERAVM)
 TEST(TripleTest, DISABLED_BitWidthArchVariants) {
 #else
 TEST(TripleTest, BitWidthArchVariants) {
@@ -1363,7 +1363,7 @@ TEST(TripleTest, BitWidthArchVariants) {
   EXPECT_EQ(Triple::UnknownArch, T.get64BitArchVariant().getArch());
 }
 
-#if defined(_SYNCVM)
+#if defined(_ERAVM)
 TEST(TripleTest, DISABLED_EndianArchVariants) {
 #else
 TEST(TripleTest, EndianArchVariants) {

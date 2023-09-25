@@ -1,5 +1,5 @@
 InheritParentConfig: true
-# SyncVM local begin
+# EraVM local begin
 Checks: '-readability-identifier-naming'
 WarningsAsErrors: '*'
-# SyncVM local end
+# EraVM local end

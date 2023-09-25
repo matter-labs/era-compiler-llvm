@@ -54,14 +54,14 @@ void SwitchCG::SwitchLowering::findJumpTables(CaseClusterVector &Clusters,
   for (CaseCluster &C : Clusters)
     assert(C.Kind == CC_Range);
   for (unsigned i = 1, e = Clusters.size(); i < e; ++i)
-    // SyncVM local begin
-    if (!TM->getTargetTriple().isSyncVM())
-    // SyncVM local end
+    // EraVM local begin
+    if (!TM->getTargetTriple().isEraVM())
+    // EraVM local end
     assert(Clusters[i - 1].High->getValue().slt(Clusters[i].Low->getValue()));
-    // SyncVM local begin
+    // EraVM local begin
     else 
     assert(Clusters[i - 1].High->getValue().ult(Clusters[i].Low->getValue()));
-    // SyncVM local end
+    // EraVM local end
 #endif
 
   assert(TLI && "TLI not set!");
@@ -219,14 +219,14 @@ bool SwitchCG::SwitchLowering::buildJumpTable(const CaseClusterVector &Clusters,
     if (I != First) {
       // Fill the gap between this and the previous cluster.
       const APInt &PreviousHigh = Clusters[I - 1].High->getValue();
-      // SyncVM local begin
-      if (!TM->getTargetTriple().isSyncVM())
-      // SyncVM local end
+      // EraVM local begin
+      if (!TM->getTargetTriple().isEraVM())
+      // EraVM local end
       assert(PreviousHigh.slt(Low));
-      // SyncVM local begin
+      // EraVM local begin
       else
       assert(PreviousHigh.ult(Low));
-      // SyncVM local end
+      // EraVM local end
       uint64_t Gap = (Low - PreviousHigh).getLimitedValue() - 1;
       for (uint64_t J = 0; J < Gap; J++)
         Table.push_back(DefaultMBB);
@@ -288,14 +288,14 @@ void SwitchCG::SwitchLowering::findBitTestClusters(CaseClusterVector &Clusters,
   for (const CaseCluster &C : Clusters)
     assert(C.Kind == CC_Range || C.Kind == CC_JumpTable);
   for (unsigned i = 1; i < Clusters.size(); ++i)
-    // SyncVM local begin
-    if (!TM->getTargetTriple().isSyncVM())
-    // SyncVM local end
+    // EraVM local begin
+    if (!TM->getTargetTriple().isEraVM())
+    // EraVM local end
     assert(Clusters[i-1].High->getValue().slt(Clusters[i].Low->getValue()));
-    // SyncVM local begin
+    // EraVM local begin
     else
     assert(Clusters[i-1].High->getValue().ult(Clusters[i].Low->getValue()));
-    // SyncVM local end
+    // EraVM local end
 #endif
 
   // The algorithm below is not suitable for -O0.
@@ -401,14 +401,14 @@ bool SwitchCG::SwitchLowering::buildBitTests(CaseClusterVector &Clusters,
 
   APInt Low = Clusters[First].Low->getValue();
   APInt High = Clusters[Last].High->getValue();
-  // SyncVM local begin
-  if (!TM->getTargetTriple().isSyncVM())
-  // SyncVM local end
+  // EraVM local begin
+  if (!TM->getTargetTriple().isEraVM())
+  // EraVM local end
   assert(Low.slt(High));
-  // SyncVM local begin
+  // EraVM local begin
   else
   assert(Low.ult(High));
-  // SyncVM local end
+  // EraVM local end
 
   if (!TLI->isSuitableForBitTests(NumDests, NumCmps, Low, High, *DL))
     return false;
@@ -430,11 +430,11 @@ bool SwitchCG::SwitchLowering::buildBitTests(CaseClusterVector &Clusters,
     }
   }
 
-  // SyncVM local begin
+  // EraVM local begin
   if (Low.isStrictlyPositive() &&
-      TM->getTargetTriple().isSyncVM() ? High.ult(BitWidth)
+      TM->getTargetTriple().isEraVM() ? High.ult(BitWidth)
                                        : High.slt(BitWidth)) {
-  // SyncVM local end
+  // EraVM local end
     // Optimize the case where all the case values fit in a word without having
     // to subtract minValue. In this case, we can optimize away the subtraction.
     LowBound = APInt::getZero(Low.getBitWidth());
@@ -493,9 +493,9 @@ bool SwitchCG::SwitchLowering::buildBitTests(CaseClusterVector &Clusters,
   return true;
 }
 
-// SyncVM local begin
+// EraVM local begin
 void SwitchCG::sortAndRangeify(CaseClusterVector &Clusters, bool isUseUlt) {
-// SyncVM local end
+// EraVM local end
 #ifndef NDEBUG
   for (const CaseCluster &CC : Clusters)
     assert(CC.Low == CC.High && "Input clusters must be single-case");

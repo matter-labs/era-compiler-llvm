@@ -1371,10 +1371,10 @@ SDValue SelectionDAG::getSExtOrTrunc(SDValue Op, const SDLoc &DL, EVT VT) {
 }
 
 SDValue SelectionDAG::getZExtOrTrunc(SDValue Op, const SDLoc &DL, EVT VT) {
-  // SyncVM local begin
+  // EraVM local begin
   if (VT.bitsEq(Op.getValueType()))
     return Op;
-  // SyncVM local end
+  // EraVM local end
   return VT.bitsGT(Op.getValueType()) ?
     getNode(ISD::ZERO_EXTEND, DL, VT, Op) :
     getNode(ISD::TRUNCATE, DL, VT, Op);
@@ -5522,12 +5522,12 @@ SDValue SelectionDAG::FoldSymbolOffset(unsigned Opcode, EVT VT,
   auto *C2 = dyn_cast<ConstantSDNode>(N2);
   if (!C2)
     return SDValue();
-    // SyncVM local begin
-    // In case the offset is negative, it overflows 64 bits with SyncVM's i256.
+    // EraVM local begin
+    // In case the offset is negative, it overflows 64 bits with EraVM's i256.
     // Though the architecture guarantees the offset fits 64 bits wide
     // signed integer, so it's ok to truncate.
   int64_t Offset = C2->getAPIntValue().trunc(64).getSExtValue();
-    // SyncVM local end
+    // EraVM local end
   switch (Opcode) {
   case ISD::ADD: break;
   case ISD::SUB: Offset = -uint64_t(Offset); break;
@@ -11268,8 +11268,8 @@ MaybeAlign SelectionDAG::InferPtrAlign(SDValue Ptr) const {
              isa<FrameIndexSDNode>(Ptr.getOperand(0))) {
     // Handle FI+Cst
     FrameIdx = cast<FrameIndexSDNode>(Ptr.getOperand(0))->getIndex();
-    // SyncVM local begin
-    // In case the offset is negative, it overflows 64 bits with SyncVM's i256.
+    // EraVM local begin
+    // In case the offset is negative, it overflows 64 bits with EraVM's i256.
     // Though the architecture guarantees the offset fits 64 bits wide
     // signed integer, so it's ok to truncate.
     FrameOffset = cast<ConstantSDNode>(Ptr.getOperand(1))
@@ -11277,7 +11277,7 @@ MaybeAlign SelectionDAG::InferPtrAlign(SDValue Ptr) const {
                       .trunc(64)
                       .getZExtValue();
 
-    // SyncVM local end
+    // EraVM local end
   }
 
   if (FrameIdx != INT_MIN) {

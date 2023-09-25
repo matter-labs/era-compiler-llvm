@@ -1,4 +1,4 @@
-; XFAIL: syncvm
+; XFAIL: eravm
 
 ; RUN: opt < %s -aa-pipeline=basic-aa -passes='cgscc(function-attrs),rpo-function-attrs' -S | FileCheck %s
 

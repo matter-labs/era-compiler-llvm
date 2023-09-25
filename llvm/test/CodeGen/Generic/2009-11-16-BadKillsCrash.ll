@@ -1,4 +1,4 @@
-; XFAIL: syncvm
+; XFAIL: eravm
 ; RUN: llc < %s
 ; PR5495
 

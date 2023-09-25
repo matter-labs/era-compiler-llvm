@@ -444,10 +444,10 @@ void TailDuplicator::duplicateInstruction(
             if (NewRC == nullptr)
               NewRC = OrigRC;
             Register NewReg = MRI->createVirtualRegister(NewRC);
-            // SyncVM local begin
+            // EraVM local begin
             BuildCOPY(*PredBB, NewMI, NewMI.getDebugLoc(), TII, NewReg)
                 .addReg(VI->second.Reg, 0, VI->second.SubReg);
-            // SyncVM local end
+            // EraVM local end
             LocalVRMap.erase(VI);
             LocalVRMap.insert(std::make_pair(Reg, RegSubRegPair(NewReg, 0)));
             MO.setReg(NewReg);
@@ -826,13 +826,13 @@ bool TailDuplicator::tailDuplicate(bool IsSimple, MachineBasicBlock *TailBB,
   DenseSet<Register> UsedByPhi;
   getRegsUsedByPHIs(*TailBB, &UsedByPhi);
 
-  // SyncVM local begin
+  // EraVM local begin
   // TODO: enable duplication
 #if 0
   if (IsSimple)
     return duplicateSimpleBB(TailBB, TDBBs, UsedByPhi, Copies);
 #endif
-  // SyncVM local end
+  // EraVM local end
 
   // Iterate through all the unique predecessors and tail-duplicate this
   // block into them, if possible. Copying the list ahead of time also
@@ -1032,14 +1032,14 @@ void TailDuplicator::appendCopies(MachineBasicBlock *MBB,
       SmallVectorImpl<std::pair<Register, RegSubRegPair>> &CopyInfos,
       SmallVectorImpl<MachineInstr*> &Copies) {
   MachineBasicBlock::iterator Loc = MBB->getFirstTerminator();
-  // SyncVM local begin
+  // EraVM local begin
   //const MCInstrDesc &CopyD = TII->get(TargetOpcode::COPY);
-  // SyncVM local end
+  // EraVM local end
   for (auto &CI : CopyInfos) {
-    // SyncVM local begin
+    // EraVM local begin
     auto C = BuildCOPY(*MBB, Loc, DebugLoc(), TII, CI.first)
                  .addReg(CI.second.Reg, 0, CI.second.SubReg);
-    // SyncVM local end
+    // EraVM local end
     Copies.push_back(C);
   }
 }

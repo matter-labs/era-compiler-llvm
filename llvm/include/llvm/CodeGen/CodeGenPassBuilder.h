@@ -706,11 +706,11 @@ void CodeGenPassBuilder<Derived>::addPassesToHandleExceptions(
     addPass(WinEHPass(/*DemoteCatchSwitchPHIOnly=*/false));
     addPass(WasmEHPass());
     break;
-  // SyncVM local begin
-  case ExceptionHandling::SyncVM:
-    addPass(SyncVMEHPass());
+  // EraVM local begin
+  case ExceptionHandling::EraVM:
+    addPass(EraVMEHPass());
     break;
-  // SyncVM local end
+  // EraVM local end
   case ExceptionHandling::None:
     addPass(LowerInvokePass());
 
