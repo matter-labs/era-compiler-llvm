@@ -51,6 +51,7 @@ add_llvm_target(EraVMCodeGen
   EraVMAddConditions.cpp
   EraVMAliasAnalysis.cpp
   EraVMAllocaHoisting.cpp
+  EraVMAlwaysInline.cpp
   EraVMAsmPrinter.cpp
   EraVMBytesToCells.cpp
   EraVMCodegenPrepare.cpp

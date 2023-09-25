@@ -111,6 +111,7 @@ FunctionPass *createEraVMCombineToIndexedMemopsPass();
 FunctionPass *createEraVMOptimizeStdLibCallsPass();
 ImmutablePass *createEraVMAAWrapperPass();
 ImmutablePass *createEraVMExternalAAWrapperPass();
+ModulePass *createEraVMAlwaysInlinePass();
 
 void initializeEraVMLowerIntrinsicsPass(PassRegistry &);
 void initializeEraVMAddConditionsPass(PassRegistry &);
@@ -129,6 +130,7 @@ void initializeEraVMCombineToIndexedMemopsPass(PassRegistry &);
 void initializeEraVMOptimizeStdLibCallsPass(PassRegistry &);
 void initializeEraVMAAWrapperPassPass(PassRegistry &);
 void initializeEraVMExternalAAWrapperPass(PassRegistry &);
+void initializeEraVMAlwaysInlinePass(PassRegistry &);
 
 struct EraVMLinkRuntimePass : PassInfoMixin<EraVMLinkRuntimePass> {
   explicit EraVMLinkRuntimePass(OptimizationLevel Level) : Level(Level) {}
@@ -142,6 +144,11 @@ struct EraVMOptimizeStdLibCallsPass
     : PassInfoMixin<EraVMOptimizeStdLibCallsPass> {
   EraVMOptimizeStdLibCallsPass() {}
   PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
+};
+
+struct EraVMAlwaysInlinePass : PassInfoMixin<EraVMAlwaysInlinePass> {
+  EraVMAlwaysInlinePass() {}
+  PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
 };
 
 } // namespace llvm

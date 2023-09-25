@@ -51,6 +51,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMOptimizeStdLibCallsPass(PR);
   initializeEraVMAAWrapperPassPass(PR);
   initializeEraVMExternalAAWrapperPass(PR);
+  initializeEraVMAlwaysInlinePass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -96,6 +97,9 @@ void EraVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
       [](ModulePassManager &PM, OptimizationLevel Level) {
         FunctionPassManager FPM;
         FPM.addPass(EraVMOptimizeStdLibCallsPass());
+
+        if (Level != OptimizationLevel::O0)
+          PM.addPass(EraVMAlwaysInlinePass());
         PM.addPass(EraVMLinkRuntimePass(Level));
         PM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
         PM.addPass(GlobalDCEPass());
@@ -104,6 +108,16 @@ void EraVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
   PB.registerAnalysisRegistrationCallback([](FunctionAnalysisManager &FAM) {
     FAM.registerPass([] { return EraVMAA(); });
   });
+
+  PB.registerPipelineParsingCallback(
+      [](StringRef PassName, ModulePassManager &PM,
+         ArrayRef<PassBuilder::PipelineElement>) {
+        if (PassName == "eravm-always-inline") {
+          PM.addPass(EraVMAlwaysInlinePass());
+          return true;
+        }
+        return false;
+      });
 
   PB.registerParseAACallback([](StringRef AAName, AAManager &AAM) {
     if (AAName == "eravm-aa") {
