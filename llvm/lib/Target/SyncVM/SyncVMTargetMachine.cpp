@@ -45,6 +45,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMOptimizeStdLibCallsPass(PR);
   initializeSyncVMAAWrapperPassPass(PR);
   initializeSyncVMExternalAAWrapperPass(PR);
+  initializeSyncVMAlwaysInlinePass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -111,6 +112,7 @@ void SyncVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
       [](ModulePassManager &PM, OptimizationLevel Level) {
         FunctionPassManager FPM;
         FPM.addPass(SyncVMOptimizeStdLibCallsPass());
+        PM.addPass(SyncVMAlwaysInlinePass(Level));
         PM.addPass(SyncVMLinkRuntimePass(Level));
         PM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
         PM.addPass(GlobalDCEPass());
