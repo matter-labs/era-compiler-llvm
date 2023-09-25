@@ -44,6 +44,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   initializeSyncVMOptimizeStdLibCallsPass(PR);
   initializeSyncVMAAWrapperPassPass(PR);
   initializeSyncVMExternalAAWrapperPass(PR);
+  initializeSyncVMAlwaysInlinePass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -110,6 +111,9 @@ void SyncVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
       [](ModulePassManager &PM, OptimizationLevel Level) {
         FunctionPassManager FPM;
         FPM.addPass(SyncVMOptimizeStdLibCallsPass());
+
+        if (Level != OptimizationLevel::O0)
+          PM.addPass(SyncVMAlwaysInlinePass());
         PM.addPass(SyncVMLinkRuntimePass(Level));
         PM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
         PM.addPass(GlobalDCEPass());
@@ -124,6 +128,16 @@ void SyncVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
   PB.registerAnalysisRegistrationCallback([](FunctionAnalysisManager &FAM) {
     FAM.registerPass([] { return SyncVMAA(); });
   });
+
+  PB.registerPipelineParsingCallback(
+      [](StringRef PassName, ModulePassManager &PM,
+         ArrayRef<PassBuilder::PipelineElement>) {
+        if (PassName == "syncvm-always-inline") {
+          PM.addPass(SyncVMAlwaysInlinePass());
+          return true;
+        }
+        return false;
+      });
 
   PB.registerParseAACallback([](StringRef AAName, AAManager &AAM) {
     if (AAName == "syncvm-aa") {
