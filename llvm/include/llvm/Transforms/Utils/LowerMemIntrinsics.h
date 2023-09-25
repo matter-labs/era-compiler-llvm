@@ -47,28 +47,28 @@ void createMemCpyLoopKnownSize(Instruction *InsertBefore, Value *SrcAddr,
                                bool CanOverlap, const TargetTransformInfo &TTI,
                                Optional<uint32_t> AtomicCpySize = None);
 
-// SyncVM local begin
+// EraVM local begin
 /// Expands memcopy of known size to loop copying data cell by cell and
 /// residual copying the remaining bytes via load, store and bitwise operations.
 /// TODO: Aligned memory instructions are cheaper than misaligned, so consider
 /// peel + loop + residual structure for copying.
-void createSyncVMMemCpyLoopKnownSize(Instruction *InsertBefore, Value *SrcAddr,
-                                     Value *DstAddr, ConstantInt *CopyLen,
-                                     Align SrcAlign, Align DstAlign,
-                                     bool SrcIsVolatile, bool DstIsVolatile,
-                                     const TargetTransformInfo &TTI);
+void createEraVMMemCpyLoopKnownSize(Instruction *InsertBefore, Value *SrcAddr,
+                                    Value *DstAddr, ConstantInt *CopyLen,
+                                    Align SrcAlign, Align DstAlign,
+                                    bool SrcIsVolatile, bool DstIsVolatile,
+                                    const TargetTransformInfo &TTI);
 
 /// Expands memcopy of unknown size to loop copying data cell by cell and
 /// residual copying the remaining bytes via load, store and bitwise operations.
 /// TODO: Aligned memory instructions are cheaper than misaligned, so consider
 /// peel + loop + residual structure for copying.
-void createSyncVMMemCpyLoopUnknownSize(Instruction *InsertBefore,
-                                       Value *SrcAddr, Value *DstAddr,
-                                       Value *CopyLen, Align SrcAlign,
-                                       Align DstAlign, bool SrcIsVolatile,
-                                       bool DstIsVolatile,
-                                       const TargetTransformInfo &TTI);
-// SyncVM local end
+void createEraVMMemCpyLoopUnknownSize(Instruction *InsertBefore,
+                                      Value *SrcAddr, Value *DstAddr,
+                                      Value *CopyLen, Align SrcAlign,
+                                      Align DstAlign, bool SrcIsVolatile,
+                                      bool DstIsVolatile,
+                                      const TargetTransformInfo &TTI);
+// EraVM local end
 
 /// Expand \p MemCpy as a loop. \p MemCpy is not deleted.
 void expandMemCpyAsLoop(MemCpyInst *MemCpy, const TargetTransformInfo &TTI,

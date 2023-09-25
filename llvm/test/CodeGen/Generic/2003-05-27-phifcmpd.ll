@@ -1,5 +1,5 @@
-; UNSUPPORTED: syncvm
-; SyncVM doesn't support floats.
+; UNSUPPORTED: eravm
+; EraVM doesn't support floats.
 ; RUN: llc < %s
 
 define void @QRiterate(i32 %p.1, double %tmp.212) {

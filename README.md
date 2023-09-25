@@ -22,7 +22,7 @@ object files. Tools include an assembler, disassembler, bitcode analyzer, and
 bitcode optimizer. These tools are not yet officially supported for third-party front-ends.
 It also contains zkEVM modifications of the standard [LLVM regression tests](https://llvm.org/docs/TestingGuide.html#regression-tests).
 
-The zkEVM back-end is called `SyncVM`, and the architecture is called `syncvm`.
+The zkEVM back-end is called `EraVM`, and the architecture is called `eravm`.
 
 ## Building
 

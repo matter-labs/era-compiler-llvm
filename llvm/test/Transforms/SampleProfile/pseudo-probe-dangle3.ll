@@ -1,5 +1,5 @@
 ; Test after FoldValueComparisonIntoPredecessors, one dangling probe is gone
-; XFAIL: syncvm
+; XFAIL: eravm
 
 ; RUN: opt -S -passes='pseudo-probe,simplifycfg' < %s | FileCheck %s
 

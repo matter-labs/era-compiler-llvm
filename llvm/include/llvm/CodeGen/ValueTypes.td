@@ -27,7 +27,7 @@ def i16     : ValueType<16,  6>;  // 16-bit integer value
 def i32     : ValueType<32,  7>;  // 32-bit integer value
 def i64     : ValueType<64,  8>;  // 64-bit integer value
 def i128    : ValueType<128, 9>;  // 128-bit integer value
-// SyncVM local begin
+// EraVM local begin
 def i256    : ValueType<128, 10>;  // 256-bit integer value
 def i512    : ValueType<128, 11>;  // 256-bit integer value
 
@@ -228,8 +228,8 @@ def funcref   : ValueType<0,    183>;  // WebAssembly's funcref type
 def externref : ValueType<0,    184>;  // WebAssembly's externref type
 def x86amx    : ValueType<8192, 185>;  // X86 AMX value
 def i64x8     : ValueType<512,  186>;  // 8 Consecutive GPRs (AArch64)
-def fatptr    : ValueType<256,  187>;  // SyncVM's Fat Pointer Type
-// SyncVM local end
+def fatptr    : ValueType<256,  187>;  // EraVM's Fat Pointer Type
+// EraVM local end
 
 def token      : ValueType<0, 248>;  // TokenTy
 def MetadataVT : ValueType<0, 249>;  // Metadata

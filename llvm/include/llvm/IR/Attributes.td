@@ -321,9 +321,9 @@ def NoJumpTables : StrBoolAttr<"no-jump-tables">;
 def NoInlineLineTables : StrBoolAttr<"no-inline-line-tables">;
 def ProfileSampleAccurate : StrBoolAttr<"profile-sample-accurate">;
 def UseSampleProfile : StrBoolAttr<"use-sample-profile">;
-// SyncVM local begin
+// EraVM local begin
 def NoInlineOz : StrBoolAttr<"noinline-oz">;
-// SyncVM local end
+// EraVM local end
 
 class CompatRule<string F> {
   // The name of the function called to check the attribute of the caller and

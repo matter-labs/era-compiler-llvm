@@ -1,5 +1,5 @@
-; XFAIL: syncvm
-; SyncVM doesn't support byval yet.
+; XFAIL: eravm
+; EraVM doesn't support byval yet.
 ; RUN: llc < %s
 ; PR7170
 

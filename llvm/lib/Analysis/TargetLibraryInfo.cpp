@@ -818,10 +818,10 @@ static void initialize(TargetLibraryInfoImpl &TLI, const Triple &T,
     TLI.setUnavailable(LibFunc_nvvm_reflect);
   }
 
-  // SyncVM local begin
-  // There is really no runtime library on SyncVM/EVM, apart from
+  // EraVM local begin
+  // There is really no runtime library on EraVM/EVM, apart from
   // special functions written and linked on LLVM IR level.
-  if (T.isSyncVM()) {
+  if (T.isEraVM()) {
     TLI.disableAllFunctions();
     TLI.setAvailable(llvm::LibFunc_xvm_addmod);
     TLI.setAvailable(llvm::LibFunc_xvm_exp);
@@ -842,7 +842,7 @@ static void initialize(TargetLibraryInfoImpl &TLI, const Triple &T,
     TLI.setAvailable(llvm::LibFunc_xvm_sha3);
     return;
   }
-  // SyncVM local end
+  // EraVM local end
 
   // These vec_malloc/free routines are only available on AIX.
   if (!T.isOSAIX()) {
@@ -1571,7 +1571,7 @@ bool TargetLibraryInfoImpl::isValidProtoForLibFunc(const FunctionType &FTy,
   case LibFunc_nvvm_reflect:
     return (NumParams == 1 && FTy.getParamType(0)->isPointerTy());
 
-  // SyncVM local begin
+  // EraVM local begin
   case LibFunc_xvm_exp:
   case LibFunc_xvm_exp_pow2:
   case LibFunc_xvm_signextend:
@@ -1611,7 +1611,7 @@ bool TargetLibraryInfoImpl::isValidProtoForLibFunc(const FunctionType &FTy,
             FTy.getParamType(1)->isIntegerTy(256) &&
             FTy.getParamType(2)->isIntegerTy(1) &&
             FTy.getReturnType()->isIntegerTy(256));
-  // SyncVM local end
+  // EraVM local end
 
   case LibFunc_sincospi_stret:
   case LibFunc_sincospif_stret:

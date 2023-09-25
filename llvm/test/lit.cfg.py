@@ -348,7 +348,7 @@ if config.libcxx_used:
 if config.target_triple:
     config.available_features.add('default_triple')
     # Direct object generation
-    if not config.target_triple.startswith(("nvptx", "syncvm", "xcore")):
+    if not config.target_triple.startswith(("nvptx", "eravm", "xcore")):
         config.available_features.add('object-emission')
 
 if config.have_llvm_driver:

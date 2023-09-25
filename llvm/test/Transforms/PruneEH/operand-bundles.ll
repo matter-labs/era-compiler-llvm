@@ -1,4 +1,4 @@
-; XFAIL: syncvm
+; XFAIL: eravm
 
 ; RUN: opt < %s -prune-eh -enable-new-pm=0 -S | FileCheck %s
 ; RUN: opt < %s -passes='function-attrs,function(simplifycfg)' -S | FileCheck %s

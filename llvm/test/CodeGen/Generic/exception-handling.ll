@@ -1,5 +1,5 @@
-; UNSUPPORTED: syncvm
-; SyncVM only has limited support for EH. resume is not supported.
+; UNSUPPORTED: eravm
+; EraVM only has limited support for EH. resume is not supported.
 ; RUN: llc < %s
 ; PR10733
 declare void @_Znam()

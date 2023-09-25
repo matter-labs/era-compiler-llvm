@@ -11,8 +11,8 @@
 ; NVPTX cannot select dynamic_stackalloc
 ; XFAIL: nvptx
 
-; SyncVM realignment not supported.
-; UNSUPPORTED: syncvm
+; EraVM realignment not supported.
+; UNSUPPORTED: eravm
 
 define i32 @f(i8* %p) nounwind {
 entry:

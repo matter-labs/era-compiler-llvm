@@ -4213,17 +4213,17 @@ SDValue DAGCombiner::useDivRem(SDNode *Node) {
   unsigned OtherOpcode = 0;
   if ((Opcode == ISD::SDIV) || (Opcode == ISD::UDIV)) {
     OtherOpcode = isSigned ? ISD::SREM : ISD::UREM;
-    // SyncVM local begin
-    if (!DAG.getTarget().getTargetTriple().isSyncVM() &&
+    // EraVM local begin
+    if (!DAG.getTarget().getTargetTriple().isEraVM() &&
         TLI.isOperationLegalOrCustom(Opcode, VT))
-      // SyncVM local end
+      // EraVM local end
       return SDValue();
   } else {
     OtherOpcode = isSigned ? ISD::SDIV : ISD::UDIV;
-    // SyncVM local begin
-    if (!DAG.getTarget().getTargetTriple().isSyncVM() &&
+    // EraVM local begin
+    if (!DAG.getTarget().getTargetTriple().isEraVM() &&
         TLI.isOperationLegalOrCustom(OtherOpcode, VT))
-      // SyncVM local end
+      // EraVM local end
       return SDValue();
   }
 
@@ -5603,7 +5603,7 @@ SDValue DAGCombiner::visitANDLike(SDValue N0, SDValue N1, SDNode *N) {
     }
   }
 
-  if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
+  if (!DAG.getTarget().getTargetTriple().isEraVM()) {
   // Reduce bit extract of low half of an integer to the narrower type.
   // (and (srl i64:x, K), KMask) ->
   //   (i64 zero_extend (and (srl (i32 (trunc i64:x)), K)), KMask)
@@ -11756,9 +11756,9 @@ static SDValue tryToFoldExtOfLoad(SelectionDAG &DAG, DAGCombiner &Combiner,
   // isVectorLoadExtDesirable().
   if (!ISD::isNON_EXTLoad(N0.getNode()) ||
       !ISD::isUNINDEXEDLoad(N0.getNode()) ||
-      // SyncVM local begin
-      DAG.getTarget().getTargetTriple().isSyncVM() ||
-      // SyncVM local end
+      // EraVM local begin
+      DAG.getTarget().getTargetTriple().isEraVM() ||
+      // EraVM local end
       ((LegalOperations || VT.isFixedLengthVector() ||
         !cast<LoadSDNode>(N0)->isSimple()) &&
        !TLI.isLoadExtLegal(ExtLoadType, VT, N0.getValueType())))

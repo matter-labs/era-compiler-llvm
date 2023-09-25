@@ -1,4 +1,4 @@
-; XFAIL: syncvm
+; XFAIL: eravm
 
 ; RUN: %llc_dwarf %s -filetype=obj -o %t
 ; RUN: llvm-dwarfdump -debug-info %t | FileCheck %s

@@ -1,4 +1,4 @@
-; XFAIL: syncvm
+; XFAIL: eravm
 ; TODO: CPR-916 Fix the test.
 ; RUN: llc < %s > %t
 

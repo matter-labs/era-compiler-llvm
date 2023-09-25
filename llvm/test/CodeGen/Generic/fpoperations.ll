@@ -1,5 +1,5 @@
-; UNSUPPORTED: syncvm
-; SyncVM doesn't support floats.
+; UNSUPPORTED: eravm
+; EraVM doesn't support floats.
 ; RUN: llc < %s | FileCheck %s
 
 ; This test checks default lowering of the intrinsics operating floating point

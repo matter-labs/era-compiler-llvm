@@ -1,5 +1,5 @@
-; UNSUPPORTED: syncvm
-; SyncVM doesn't support vector instructions and floats.
+; UNSUPPORTED: eravm
+; EraVM doesn't support vector instructions and floats.
 ; Test that vectors are scalarized/lowered correctly.
 ; RUN: llc < %s
 

@@ -624,10 +624,10 @@ MachineBasicBlock::addLiveIn(MCRegister PhysReg, const TargetRegisterClass *RC) 
 
   // No luck, create a virtual register.
   Register VirtReg = MRI.createVirtualRegister(RC);
-  // SyncVM local begin
+  // EraVM local begin
   BuildCOPY(*this, I, DebugLoc(), &TII, VirtReg)
       .addReg(PhysReg, RegState::Kill);
-  // SyncVM local end
+  // EraVM local end
   if (!LiveIn)
     addLiveIn(PhysReg);
   return VirtReg;
@@ -661,10 +661,10 @@ void MachineBasicBlock::updateTerminator(
     if (TBB) {
       // The block has an unconditional branch. If its successor is now its
       // layout successor, delete the branch.
-      // SyncVM local begin
+      // EraVM local begin
       if (isLayoutSuccessor(TBB) && !FBB)
         TII->removeBranch(*this);
-      // SyncVM local end
+      // EraVM local end
     } else {
       // The block has an unconditional fallthrough, or the end of the block is
       // unreachable.

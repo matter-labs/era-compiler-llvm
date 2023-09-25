@@ -104,9 +104,9 @@ public:
     wasm64,         // WebAssembly with 64-bit pointers
     renderscript32, // 32-bit RenderScript
     renderscript64, // 64-bit RenderScript
-    // SyncVM local begin
-    syncvm,         // SyncVM: syncvm
-    // SyncVM local end
+    // EraVM local begin
+    eravm,          // EraVM: eravm
+    // EraVM local end
     ve,             // NEC SX-Aurora Vector Engine
     LastArchType = ve
   };
@@ -915,12 +915,12 @@ public:
     return Env == Triple::GNUX32 || Env == Triple::MuslX32;
   }
 
-  // SyncVM local begin
-  /// Tests whether the target is SyncVM.
-  bool isSyncVM() const {
-    return getArch() == Triple::syncvm;
+  // EraVM local begin
+  /// Tests whether the target is EraVM.
+  bool isEraVM() const {
+    return getArch() == Triple::eravm;
   }
-  // SyncVM local end
+  // EraVM local end
 
   /// Tests whether the target supports comdat
   bool supportsCOMDAT() const {

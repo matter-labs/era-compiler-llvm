@@ -1464,10 +1464,10 @@ public:
   Type VoidTy, LabelTy, HalfTy, BFloatTy, FloatTy, DoubleTy, MetadataTy,
       TokenTy;
   Type X86_FP80Ty, FP128Ty, PPC_FP128Ty, X86_MMXTy, X86_AMXTy;
-  // SyncVM local begin
+  // EraVM local begin
   IntegerType Int1Ty, Int8Ty, Int16Ty, Int32Ty, Int64Ty, Int128Ty, Int256Ty,
               Int512Ty;
-  // SyncVM local end
+  // EraVM local end
 
   std::unique_ptr<ConstantTokenNone> TheNoneToken;
 

@@ -1,5 +1,5 @@
-; UNSUPPORTED: syncvm
-; SyncVM doesn't support vectors and floats.
+; UNSUPPORTED: eravm
+; EraVM doesn't support vectors and floats.
 ; RUN: llc < %s
 
 %f8 = type <8 x float>

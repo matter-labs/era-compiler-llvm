@@ -1,5 +1,5 @@
-; UNSUPPORTED: syncvm
-; SyncVM doesn't support floats.
+; UNSUPPORTED: eravm
+; EraVM doesn't support floats.
 ; RUN: llc < %s
 
 declare i1 @llvm.isunordered.f64(double, double)

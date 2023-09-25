@@ -438,10 +438,10 @@ public:
   static IntegerType *getInt32Ty(LLVMContext &C);
   static IntegerType *getInt64Ty(LLVMContext &C);
   static IntegerType *getInt128Ty(LLVMContext &C);
-  // SyncVM local begin
+  // EraVM local begin
   static IntegerType *getInt256Ty(LLVMContext &C);
   static IntegerType *getInt512Ty(LLVMContext &C);
-  // SyncVM local end
+  // EraVM local end
   template <typename ScalarTy> static Type *getScalarTy(LLVMContext &C) {
     int noOfBits = sizeof(ScalarTy) * CHAR_BIT;
     if (std::is_integral<ScalarTy>::value) {
@@ -477,9 +477,9 @@ public:
   static PointerType *getInt16PtrTy(LLVMContext &C, unsigned AS = 0);
   static PointerType *getInt32PtrTy(LLVMContext &C, unsigned AS = 0);
   static PointerType *getInt64PtrTy(LLVMContext &C, unsigned AS = 0);
-  // SyncVM local begin
+  // EraVM local begin
   static PointerType *getInt256PtrTy(LLVMContext &C, unsigned AS = 0);
-  // SyncVM local end
+  // EraVM local end
 
   /// Return a pointer to the current type. This is equivalent to
   /// PointerType::get(Foo, AddrSpace).

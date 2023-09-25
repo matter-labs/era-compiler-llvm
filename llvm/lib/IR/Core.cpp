@@ -594,14 +594,14 @@ LLVMTypeRef LLVMInt64TypeInContext(LLVMContextRef C) {
 LLVMTypeRef LLVMInt128TypeInContext(LLVMContextRef C) {
   return (LLVMTypeRef) Type::getInt128Ty(*unwrap(C));
 }
-// SyncVM local begin
+// EraVM local begin
 LLVMTypeRef LLVMInt256TypeInContext(LLVMContextRef C) {
   return (LLVMTypeRef) Type::getInt256Ty(*unwrap(C));
 }
 LLVMTypeRef LLVMInt512TypeInContext(LLVMContextRef C) {
   return (LLVMTypeRef) Type::getInt512Ty(*unwrap(C));
 }
-// SyncVM local end
+// EraVM local end
 LLVMTypeRef LLVMIntTypeInContext(LLVMContextRef C, unsigned NumBits) {
   return wrap(IntegerType::get(*unwrap(C), NumBits));
 }
@@ -624,14 +624,14 @@ LLVMTypeRef LLVMInt64Type(void) {
 LLVMTypeRef LLVMInt128Type(void) {
   return LLVMInt128TypeInContext(LLVMGetGlobalContext());
 }
-// SyncVM local begin
+// EraVM local begin
 LLVMTypeRef LLVMInt256Type(void) {
   return LLVMInt256TypeInContext(LLVMGetGlobalContext());
 }
 LLVMTypeRef LLVMInt512Type(void) {
   return LLVMInt512TypeInContext(LLVMGetGlobalContext());
 }
-// SyncVM local end
+// EraVM local end
 LLVMTypeRef LLVMIntType(unsigned NumBits) {
   return LLVMIntTypeInContext(LLVMGetGlobalContext(), NumBits);
 }

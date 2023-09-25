@@ -1,7 +1,7 @@
 ; RUN: opt -S -memcpyopt < %s
 
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
-target triple = "syncvm-unknown-unknown"
+target triple = "eravm-unknown-unknown"
 
 @ptr_calldata = private global ptr addrspace(3) null
 

@@ -357,12 +357,12 @@ struct MachineOutliner : public ModulePass {
   /// The current repeat number of machine outlining.
   unsigned OutlineRepeatedNum = 0;
 
-  // SyncVM local begin
+  // EraVM local begin
   /// Functions to fixup post outlining. It contains outlined function and all
   /// caller functions.
   std::vector<std::pair<MachineFunction *, std::vector<MachineFunction *>>>
       FixupFunctions;
-  // SyncVM local end
+  // EraVM local end
 
   /// Set to true if the outliner should run on all functions in the module
   /// considered safe for outlining.
@@ -791,9 +791,9 @@ bool MachineOutliner::outline(Module &M,
     const TargetSubtargetInfo &STI = MF->getSubtarget();
     const TargetInstrInfo &TII = *STI.getInstrInfo();
 
-    // SyncVM local begin
+    // EraVM local begin
     FixupFunctions.push_back({MF, {}});
-    // SyncVM local end
+    // EraVM local end
 
     // Replace occurrences of the sequence with calls to the new function.
     for (Candidate &C : OF.Candidates) {
@@ -804,9 +804,9 @@ bool MachineOutliner::outline(Module &M,
       // Insert the call.
       auto CallInst = TII.insertOutlinedCall(M, MBB, StartIt, *MF, C);
 
-      // SyncVM local begin
+      // EraVM local begin
       FixupFunctions.back().second.push_back(C.getMF());
-      // SyncVM local end
+      // EraVM local end
 
       // If the caller tracks liveness, then we need to make sure that
       // anything we outline doesn't break liveness assumptions. The outlined
@@ -1026,7 +1026,7 @@ bool MachineOutliner::runOnModule(Module &M) {
   if (!doOutline(M, OutlinedFunctionNum))
     return false;
 
-  // SyncVM local begin
+  // EraVM local begin
   auto GetTII = [&]() -> const TargetInstrInfo * {
     MachineModuleInfo &MMI =
         getAnalysis<MachineModuleInfoWrapperPass>().getMMI();
@@ -1045,24 +1045,24 @@ bool MachineOutliner::runOnModule(Module &M) {
     Reruns = GetTII()->defaultOutlineReruns();
 
   for (unsigned I = 0; I < Reruns; ++I) {
-  // SyncVM local end
+  // EraVM local end
     OutlinedFunctionNum = 0;
     OutlineRepeatedNum++;
     if (!doOutline(M, OutlinedFunctionNum)) {
       LLVM_DEBUG({
         dbgs() << "Did not outline on iteration " << I + 2 << " out of "
-               // SyncVM local begin
+               // EraVM local begin
                << Reruns + 1 << "\n";
-               // SyncVM local end
+               // EraVM local end
       });
       break;
     }
   }
 
-  // SyncVM local begin
+  // EraVM local begin
   GetTII()->fixupPostOutlining(FixupFunctions);
   FixupFunctions.clear();
-  // SyncVM local end
+  // EraVM local end
 
   return true;
 }

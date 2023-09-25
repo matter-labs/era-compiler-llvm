@@ -1093,7 +1093,7 @@ bool llvm::inferNonMandatoryLibFuncAttrs(Function &F,
     Changed |= setDoesNotAccessMemory(F);
     Changed |= setDoesNotThrow(F);
     break;
-  // SyncVM local begin
+  // EraVM local begin
   case LibFunc_xvm_addmod:
   case LibFunc_xvm_exp:
   case LibFunc_xvm_exp_pow2:
@@ -1125,7 +1125,7 @@ bool llvm::inferNonMandatoryLibFuncAttrs(Function &F,
     Changed |= setOnlyReadsMemory(F, 0);
     Changed |= setOnlyAccessesArgMemory(F);
     break;
-  // SyncVM local end
+  // EraVM local end
   case LibFunc_ldexp:
   case LibFunc_ldexpf:
   case LibFunc_ldexpl:

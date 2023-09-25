@@ -24,9 +24,9 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
-// SyncVM local begin
+// EraVM local begin
 #include "llvm/ADT/StringSet.h"
-// SyncVM local end
+// EraVM local end
 #include "llvm/Analysis/TargetFolder.h"
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/Analysis/ValueTracking.h"
@@ -1703,12 +1703,12 @@ bool llvm::canConstantFoldCallTo(const CallBase *Call, const Function *F) {
     // Check for various function names that get used for the math functions
     // when the header files are preprocessed with the macro
     // __FINITE_MATH_ONLY__ enabled.
-    // SyncVM local begin
+    // EraVM local begin
     // The '8' here is the length of the shortest name that can match.
     // We need to check the size before looking at Name[1] and Name[2]
     // so we may as well check a limit that will eliminate mismatches.
     if (Name.size() < 5 || Name[1] != '_')
-    // SyncVM local end
+    // EraVM local end
       return false;
     switch (Name[2]) {
     default:
@@ -1717,38 +1717,38 @@ bool llvm::canConstantFoldCallTo(const CallBase *Call, const Function *F) {
       return Name == "__acos_finite" || Name == "__acosf_finite" ||
              Name == "__asin_finite" || Name == "__asinf_finite" ||
              Name == "__atan2_finite" || Name == "__atan2f_finite" ||
-    // SyncVM local begin
+    // EraVM local begin
              Name == "__addmod";
     case 'b':
       return Name == "__byte";
-    // SyncVM local end
+    // EraVM local end
     case 'c':
       return Name == "__cosh_finite" || Name == "__coshf_finite";
-    // SyncVM local begin
+    // EraVM local begin
     case 'd':
       return Name == "__div";
-    // SyncVM local end
+    // EraVM local end
     case 'e':
       return Name == "__exp_finite" || Name == "__expf_finite" ||
              Name == "__exp2_finite" || Name == "__exp2f_finite" ||
-    // SyncVM local begin
+    // EraVM local begin
              Name == "__exp";
-    // SyncVM local end
+    // EraVM local end
     case 'l':
       return Name == "__log_finite" || Name == "__logf_finite" ||
              Name == "__log10_finite" || Name == "__log10f_finite";
-    // SyncVM local begin
+    // EraVM local begin
     case 'm':
       return Name == "__mulmod" || Name == "__mod" || Name == "__mstore8";
-    // SyncVM local end
+    // EraVM local end
     case 'p':
       return Name == "__pow_finite" || Name == "__powf_finite";
     case 's':
       return Name == "__sinh_finite" || Name == "__sinhf_finite" ||
-    // SyncVM local begin
+    // EraVM local begin
              Name == "__signextend" || Name == "__sdiv" || Name == "__smod" ||
              Name == "__shl" || Name == "__shr" || Name == "__sar";
-    // SyncVM local end
+    // EraVM local end
     }
   }
 }
@@ -2461,7 +2461,7 @@ static Constant *evaluateCompare(const APFloat &Op1, const APFloat &Op2,
   return nullptr;
 }
 
-// SyncVM local begin
+// EraVM local begin
 /// Extending length of two’s complement signed integer.
 /// NumByte: the size in bytes minus one of the integer to sign extend.
 /// Val: the integer being extended.
@@ -2624,7 +2624,7 @@ static Constant *ConstantFoldByteCall(Type *Ty, const APInt &ByteIdx,
   unsigned BitWidth = Ty->getIntegerBitWidth();
   return ConstantInt::get(Ty, Val.shl(ByteIdx * 8).lshr(BitWidth - 8));
 }
-// SyncVM local end
+// EraVM local end
 
 static Constant *ConstantFoldScalarCall2(StringRef Name,
                                          Intrinsic::ID IntrinsicID,
@@ -2938,7 +2938,7 @@ static Constant *ConstantFoldScalarCall2(StringRef Name,
       return ConstantInt::get(Ty, C0->abs());
     }
 
-    // SyncVM local begin
+    // EraVM local begin
     const StringSet<> LibFuncNames = {
         "__signextend", "__exp", "__div", "__sdiv", "__mod",
         "__smod",       "__shl", "__shr", "__sar",  "__byte"};
@@ -2978,7 +2978,7 @@ static Constant *ConstantFoldScalarCall2(StringRef Name,
       if (Name == "__byte")
         return ConstantFoldByteCall(Ty, *C0, *C1);
     }
-    // SyncVM local end
+    // EraVM local end
 
     return nullptr;
   }
@@ -3133,7 +3133,7 @@ static Constant *ConstantFoldAMDGCNPermIntrinsic(ArrayRef<Constant *> Operands,
   return ConstantInt::get(Ty, Val);
 }
 
-// SyncVM local begin
+// EraVM local begin
 /// Unsigned modulo addition operation.
 /// Returns:
 ///   0, if Mod == 0
@@ -3171,7 +3171,7 @@ static Constant *ConstantFoldMulModCall(Type *Ty, const APInt &Arg1,
   const APInt Rem = Product.urem(Mod.zext(ExtBitWidth));
   return ConstantInt::get(Ty, Rem.trunc(BitWidth));
 }
-// SyncVM local end
+// EraVM local end
 
 static Constant *ConstantFoldScalarCall3(StringRef Name,
                                          Intrinsic::ID IntrinsicID,
@@ -3307,7 +3307,7 @@ static Constant *ConstantFoldScalarCall3(StringRef Name,
   if (IntrinsicID == Intrinsic::amdgcn_perm)
     return ConstantFoldAMDGCNPermIntrinsic(Operands, Ty);
 
-  // SyncVM local begin
+  // EraVM local begin
   if (Name == "__addmod" || Name == "__mulmod") {
     const APInt *C0, *C1, *C2;
     if (!getConstIntOrUndef(Operands[0], C0) ||
@@ -3326,7 +3326,7 @@ static Constant *ConstantFoldScalarCall3(StringRef Name,
     if (Name == "__mulmod")
       return ConstantFoldMulModCall(Ty, *C0, *C1, *C2);
   }
-  // SyncVM local end
+  // EraVM local end
 
   return nullptr;
 }

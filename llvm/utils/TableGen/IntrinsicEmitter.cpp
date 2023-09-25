@@ -256,10 +256,10 @@ enum IIT_Info {
   IIT_ANYPTR_TO_ELT = 56,
   IIT_I2 = 57,
   IIT_I4 = 58,
-  // SyncVM local begin
+  // EraVM local begin
   IIT_I256 = 59,
   IIT_FATPTR = 60
-  // SyncVM local end
+  // EraVM local end
 };
 
 static void EncodeFixedValueType(MVT::SimpleValueType VT,
@@ -277,9 +277,9 @@ static void EncodeFixedValueType(MVT::SimpleValueType VT,
     case 32: return Sig.push_back(IIT_I32);
     case 64: return Sig.push_back(IIT_I64);
     case 128: return Sig.push_back(IIT_I128);
-    // SyncVM local begin
+    // EraVM local begin
     case 256: return Sig.push_back(IIT_I256);
-    // SyncVM local end
+    // EraVM local end
     }
   }
 
@@ -303,9 +303,9 @@ static void EncodeFixedValueType(MVT::SimpleValueType VT,
     return Sig.push_back(IIT_EXTERNREF);
   case MVT::funcref:
     return Sig.push_back(IIT_FUNCREF);
-  // SyncVM local begin
+  // EraVM local begin
   case MVT::fatptr: return Sig.push_back(IIT_FATPTR);
-  // SyncVM local end
+  // EraVM local end
   }
   // clang-format on
 }

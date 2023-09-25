@@ -355,9 +355,9 @@ FUNCTION_PASS("print-memderefs", MemDerefPrinterPass(dbgs()))
 FUNCTION_PASS("reassociate", ReassociatePass())
 FUNCTION_PASS("redundant-dbg-inst-elim", RedundantDbgInstEliminationPass())
 FUNCTION_PASS("reg2mem", RegToMemPass())
-// SyncVM local begin
+// EraVM local begin
 FUNCTION_PASS("mergebb", MergeSimilarBB())
-// SyncVM local end
+// EraVM local end
 FUNCTION_PASS("scalarize-masked-mem-intrin", ScalarizeMaskedMemIntrinPass())
 FUNCTION_PASS("scalarizer", ScalarizerPass())
 FUNCTION_PASS("separate-const-offset-from-gep", SeparateConstOffsetFromGEPPass())
