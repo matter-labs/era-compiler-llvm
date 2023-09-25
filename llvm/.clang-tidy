@@ -24,6 +24,12 @@ Checks: >
     concurrency-*,
     cert-*,
     portability-*,
+    hicpp-*,
+    -hicpp-avoid-c-arrays,
+    -hicpp-braces-around-statements,
+    -hicpp-use-auto,
+    -hicpp-signed-bitwise,
+    -hicpp-named-parameter,
 
 
 CheckOptions:
