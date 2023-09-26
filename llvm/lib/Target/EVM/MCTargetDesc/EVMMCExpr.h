@@ -4,8 +4,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef EVM_LIB_TARGET_TVM_TVMMVEXPR_H
-#define EVM_LIB_TARGET_TVM_TVMMVEXPR_H
+#ifndef LLVM_LIB_TARGET_EVM_MCTARGETDESC_EVMMCEXPR_H
+#define LLVM_LIB_TARGET_EVM_MCTARGETDESC_EVMMCEXPR_H
 
 #include "llvm/ADT/StringRef.h"
 #include "llvm/MC/MCExpr.h"
@@ -40,4 +40,4 @@ public:
 
 } // end namespace llvm
 
-#endif // EVM_LIB_TARGET_TVM_TVMMVEXPR_H
+#endif // LLVM_LIB_TARGET_EVM_MCTARGETDESC_EVMMCEXPR_H

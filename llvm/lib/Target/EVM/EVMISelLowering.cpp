@@ -53,13 +53,14 @@ EVMTargetLowering::EVMTargetLowering(const TargetMachine &TM,
   // EVM::SIGNEXTEND instruction here.
   setOperationAction(ISD::SIGN_EXTEND_INREG, MVT::i1, Expand);
 
-  for (MVT VT : {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}) {
+  for (const MVT VT :
+       {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}) {
     setOperationAction(ISD::MERGE_VALUES, VT, Promote);
     setTruncStoreAction(MVT::i256, VT, Custom);
   }
 
   // Custom lowering of extended loads.
-  for (MVT VT : MVT::integer_valuetypes()) {
+  for (const MVT VT : MVT::integer_valuetypes()) {
     setLoadExtAction(ISD::SEXTLOAD, MVT::i256, VT, Custom);
     setLoadExtAction(ISD::ZEXTLOAD, MVT::i256, VT, Custom);
     setLoadExtAction(ISD::EXTLOAD, MVT::i256, VT, Custom);
@@ -97,7 +98,7 @@ static void fail(const SDLoc &DL, SelectionDAG &DAG, const char *msg) {
 }
 
 SDValue EVMTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
-  SDLoc DL(Op);
+  const SDLoc DL(Op);
   switch (Op.getOpcode()) {
   default:
     llvm_unreachable("Unimplemented operation lowering");
@@ -112,9 +113,9 @@ SDValue EVMTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
 
 SDValue EVMTargetLowering::LowerGlobalAddress(SDValue Op,
                                               SelectionDAG &DAG) const {
-  SDLoc DL(Op);
+  const SDLoc DL(Op);
   const auto *GA = cast<GlobalAddressSDNode>(Op);
-  EVT VT = Op.getValueType();
+  const EVT VT = Op.getValueType();
   assert(GA->getTargetFlags() == 0 &&
          "Unexpected target flags on generic GlobalAddressSDNode");
 
@@ -124,15 +125,15 @@ SDValue EVMTargetLowering::LowerGlobalAddress(SDValue Op,
 }
 
 SDValue EVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
-  SDLoc DL(Op);
+  const SDLoc DL(Op);
   LoadSDNode *Load = cast<LoadSDNode>(Op);
 
-  SDValue BasePtr = Load->getBasePtr();
-  SDValue Chain = Load->getChain();
+  const SDValue BasePtr = Load->getBasePtr();
+  const SDValue Chain = Load->getChain();
   const MachinePointerInfo &PInfo = Load->getPointerInfo();
 
-  EVT MemVT = Load->getMemoryVT();
-  unsigned MemVTSize = MemVT.getSizeInBits();
+  const EVT MemVT = Load->getMemoryVT();
+  const unsigned MemVTSize = MemVT.getSizeInBits();
   if (MemVT == MVT::i256)
     return {};
 
@@ -157,7 +158,7 @@ SDValue EVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   //   V = V >> (256 - MemVTSize)
   // 3. Sign-expand the value for SEXTLOAD
 
-  SDValue LoadValue =
+  const SDValue LoadValue =
       DAG.getLoad(MVT::i256, DL, Chain, BasePtr, PInfo, Load->getAlign());
 
   SDValue Res = DAG.getNode(ISD::SRL, DL, MVT::i256, LoadValue,
@@ -171,15 +172,15 @@ SDValue EVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
 }
 
 SDValue EVMTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
-  SDLoc DL(Op);
+  const SDLoc DL(Op);
   StoreSDNode *Store = cast<StoreSDNode>(Op);
 
-  SDValue BasePtr = Store->getBasePtr();
+  const SDValue BasePtr = Store->getBasePtr();
   SDValue Chain = Store->getChain();
   const MachinePointerInfo &PInfo = Store->getPointerInfo();
 
-  EVT MemVT = Store->getMemoryVT();
-  unsigned MemVTSize = MemVT.getSizeInBits();
+  const EVT MemVT = Store->getMemoryVT();
+  const unsigned MemVTSize = MemVT.getSizeInBits();
   assert(MemVT.isScalarInteger() && "Expected a scalar store");
   if (MemVT == MVT::i256 || MemVT == MVT::i8)
     return {};
@@ -218,13 +219,14 @@ SDValue EVMTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
   OrigValue = DAG.getNode(ISD::SHL, DL, MVT::i256, OrigValue,
                           DAG.getConstant(MemVTSize, DL, MVT::i256));
 
-  SDValue ZextValue = DAG.getZeroExtendInReg(Store->getValue(), DL, MVT::i256);
+  const SDValue ZextValue =
+      DAG.getZeroExtendInReg(Store->getValue(), DL, MVT::i256);
 
-  SDValue StoreValue =
+  const SDValue StoreValue =
       DAG.getNode(ISD::SHL, DL, MVT::i256, ZextValue,
                   DAG.getConstant(256 - MemVTSize, DL, MVT::i256));
 
-  SDValue OR = DAG.getNode(ISD::OR, DL, MVT::i256, StoreValue, OrigValue);
+  const SDValue OR = DAG.getNode(ISD::OR, DL, MVT::i256, StoreValue, OrigValue);
 
   return DAG.getStore(Chain, DL, OR, BasePtr, PInfo);
 }
@@ -288,13 +290,13 @@ SDValue EVMTargetLowering::LowerFormalArguments(
 SDValue EVMTargetLowering::LowerCall(CallLoweringInfo &CLI,
                                      SmallVectorImpl<SDValue> &InVals) const {
   SelectionDAG &DAG = CLI.DAG;
-  SDLoc DL = CLI.DL;
-  SDValue Chain = CLI.Chain;
+  const SDLoc DL = CLI.DL;
+  const SDValue Chain = CLI.Chain;
   SDValue Callee = CLI.Callee;
-  MachineFunction &MF = DAG.getMachineFunction();
+  const MachineFunction &MF = DAG.getMachineFunction();
   auto Layout = MF.getDataLayout();
 
-  CallingConv::ID CallConv = CLI.CallConv;
+  const CallingConv::ID CallConv = CLI.CallConv;
   if (!callingConvSupported(CallConv))
     fail(DL, DAG,
          "EVM doesn't support language-specific or target-specific "
@@ -311,8 +313,8 @@ SDValue EVMTargetLowering::LowerCall(CallLoweringInfo &CLI,
   // if (CLI.IsVarArg)
   //   fail(DL, DAG, "EVM hasn't implemented variable arguments");
 
-  SmallVectorImpl<ISD::InputArg> &Ins = CLI.Ins;
-  SmallVectorImpl<ISD::OutputArg> &Outs = CLI.Outs;
+  const SmallVectorImpl<ISD::InputArg> &Ins = CLI.Ins;
+  const SmallVectorImpl<ISD::OutputArg> &Outs = CLI.Outs;
   SmallVectorImpl<SDValue> &OutVals = CLI.OutVals;
 
   for (const auto &Out : Outs) {
@@ -370,9 +372,9 @@ SDValue EVMTargetLowering::LowerCall(CallLoweringInfo &CLI,
   }
 
   InTys.push_back(MVT::Other);
-  SDVTList InTyList = DAG.getVTList(InTys);
-  SDValue Res = DAG.getNode(Ins.size() == 0 ? EVMISD::CALL0 : EVMISD::CALL1, DL,
-                            InTyList, Ops);
+  const SDVTList InTyList = DAG.getVTList(InTys);
+  const SDValue Res = DAG.getNode(
+      Ins.size() == 0 ? EVMISD::CALL0 : EVMISD::CALL1, DL, InTyList, Ops);
 
   if(Ins.size() > 0)
     InVals.push_back(Res.getValue(0));
@@ -432,13 +434,13 @@ EVMTargetLowering::EmitInstrWithCustomInserter(MachineInstr &MI,
 MachineBasicBlock *EVMTargetLowering::emitSelect(MachineInstr &MI,
                                                  MachineBasicBlock *BB) const {
   const TargetInstrInfo *TII = BB->getParent()->getSubtarget().getInstrInfo();
-  DebugLoc DL = MI.getDebugLoc();
+  const DebugLoc DL = MI.getDebugLoc();
   // To "insert" a SELECT instruction, we actually have to insert the
   // diamond control-flow pattern.  The incoming instruction knows the
   // destination vreg to set, the condition code register to branch on and the
   // true/false values to select between.
   const BasicBlock *LLVM_BB = BB->getBasicBlock();
-  MachineFunction::iterator It = ++BB->getIterator();
+  const MachineFunction::iterator It = ++BB->getIterator();
 
   //  ThisMBB:
   //  ...

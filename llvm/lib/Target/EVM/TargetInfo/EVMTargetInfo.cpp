@@ -14,7 +14,7 @@ Target &llvm::getTheEVMTarget() {
 }
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTargetInfo() {
-  RegisterTarget<Triple::evm, /*HasJIT*/ false> X(
+  const RegisterTarget<Triple::evm, /*HasJIT*/ false> X(
       getTheEVMTarget(), "evm",
       "Ethereum Virtual Machine [experimental] (256-bit big-endian)", "EVM");
 }

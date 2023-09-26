@@ -41,9 +41,9 @@ void EVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   MachineBasicBlock &MBB = *MI.getParent();
   MachineFunction &MF = *MBB.getParent();
   MachineRegisterInfo &MRI = MF.getRegInfo();
-  int FrameIndex = MI.getOperand(FIOperandNum).getIndex();
+  const int FrameIndex = MI.getOperand(FIOperandNum).getIndex();
   const MachineFrameInfo &MFI = MF.getFrameInfo();
-  int64_t FrameOffset = MFI.getObjectOffset(FrameIndex);
+  const int64_t FrameOffset = MFI.getObjectOffset(FrameIndex);
   const auto *TII = MF.getSubtarget<EVMSubtarget>().getInstrInfo();
 
   assert(FrameOffset >= 0 && "FrameOffset < 0");
@@ -53,11 +53,11 @@ void EVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
          "We assume that variable-sized objects have already been lowered, "
          "and don't use FrameIndex operands.");
 
-  Register FrameRegister = getFrameRegister(MF);
+  const Register FrameRegister = getFrameRegister(MF);
   Register FIRegOperand = FrameRegister;
   if (FrameOffset > 0) {
     FIRegOperand = MRI.createVirtualRegister(&EVM::GPRRegClass);
-    Register OffsetReg = MRI.createVirtualRegister(&EVM::GPRRegClass);
+    const Register OffsetReg = MRI.createVirtualRegister(&EVM::GPRRegClass);
     BuildMI(MBB, MI, II->getDebugLoc(), TII->get(EVM::CONST_I256), OffsetReg)
         .addImm(FrameOffset);
     BuildMI(MBB, MI, II->getDebugLoc(), TII->get(EVM::ADD), FIRegOperand)

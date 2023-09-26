@@ -20,7 +20,7 @@ using namespace llvm;
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   // Register the target.
-  RegisterTargetMachine<EVMTargetMachine> X(getTheEVMTarget());
+  const RegisterTargetMachine<EVMTargetMachine> X(getTheEVMTarget());
   auto &PR = *PassRegistry::getPassRegistry();
   initializeEVMLowerIntrinsicsPass(PR);
 }

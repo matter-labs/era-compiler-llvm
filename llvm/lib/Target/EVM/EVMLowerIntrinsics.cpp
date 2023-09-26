@@ -69,7 +69,7 @@ INITIALIZE_PASS(EVMLowerIntrinsics, DEBUG_TYPE, "Lower intrinsics", false,
                 false)
 
 bool EVMLowerIntrinsics::expandMemIntrinsicUses(Function &F) {
-  Intrinsic::ID ID = F.getIntrinsicID();
+  const Intrinsic::ID ID = F.getIntrinsicID();
   bool Changed = false;
 
   for (auto I = F.user_begin(), E = F.user_end(); I != E;) {

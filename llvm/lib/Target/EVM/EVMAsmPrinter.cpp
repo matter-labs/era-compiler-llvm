@@ -51,12 +51,12 @@ void EVMAsmPrinter::emitFunctionEntryLabel() {
   // TODO: This is a temporary solution while EVM-backend outputs virtual
   // registers. Once stackification is implemented this should be removed.
   const MachineRegisterInfo &MRI = MF->getRegInfo();
-  unsigned int NumVRs = MRI.getNumVirtRegs();
+  const unsigned NumVRs = MRI.getNumVirtRegs();
   for (unsigned I = 0; I < NumVRs; I++) {
-    Register Vr = Register::index2VirtReg(I);
+    const Register Vr = Register::index2VirtReg(I);
     const TargetRegisterClass *RC = MRI.getRegClass(Vr);
     DenseMap<unsigned, unsigned> &VRegMap = VRegMapping[RC];
-    unsigned N = VRegMap.size();
+    const unsigned N = VRegMap.size();
     VRegMap.insert(std::make_pair(Vr, N + 1));
   }
 }
@@ -71,5 +71,5 @@ void EVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
 }
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMAsmPrinter() {
-  RegisterAsmPrinter<EVMAsmPrinter> X(getTheEVMTarget());
+  const RegisterAsmPrinter<EVMAsmPrinter> X(getTheEVMTarget());
 }

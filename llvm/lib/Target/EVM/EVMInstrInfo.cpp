@@ -82,7 +82,7 @@ bool EVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
       TBB = I->getOperand(0).getMBB();
 
       // Put the "use" of the condition into Cond[0].
-      MachineOperand &UseMO = I->getOperand(1);
+      const MachineOperand &UseMO = I->getOperand(1);
       Cond.push_back(UseMO);
 
       // reverseBranch needs the instruction which feeds the branch, but only
@@ -92,7 +92,7 @@ bool EVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
         // TODO: This info is required for branch reversing, but this
         // is not yet implemented.
         if (CI->isCompare()) {
-          MachineOperand &DefMO = CI->getOperand(0);
+          const MachineOperand &DefMO = CI->getOperand(0);
           if (DefMO.getReg() == UseMO.getReg())
             Cond.push_back(DefMO);
           // Only give it one shot, this should be enough.
@@ -156,9 +156,10 @@ unsigned EVMInstrInfo::insertBranch(MachineBasicBlock &MBB,
   // The number of instructions inserted.
   unsigned InstrCount = 0;
 
-  bool IsUncondBranch = Cond.empty();
-  bool IsCondBranch = (Cond.size() == 1 && Cond[0].isReg()) ||
-                      (Cond.size() == 2 && Cond[0].isReg() && Cond[1].isReg());
+  const bool IsUncondBranch = Cond.empty();
+  const bool IsCondBranch =
+      (Cond.size() == 1 && Cond[0].isReg()) ||
+      (Cond.size() == 2 && Cond[0].isReg() && Cond[1].isReg());
 
   // Insert a branch to the "true" destination.
   assert(TBB && "A branch must have a destination");
