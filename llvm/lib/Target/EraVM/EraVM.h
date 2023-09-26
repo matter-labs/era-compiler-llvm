@@ -113,6 +113,7 @@ ImmutablePass *createEraVMAAWrapperPass();
 ImmutablePass *createEraVMExternalAAWrapperPass();
 ModulePass *createEraVMAlwaysInlinePass();
 FunctionPass *createEraVMSHA3ConstFoldingPass();
+FunctionPass *createEraVMOptimizeSelectPostRAPass();
 
 void initializeEraVMLowerIntrinsicsPass(PassRegistry &);
 void initializeEraVMAddConditionsPass(PassRegistry &);
@@ -133,6 +134,7 @@ void initializeEraVMAAWrapperPassPass(PassRegistry &);
 void initializeEraVMExternalAAWrapperPass(PassRegistry &);
 void initializeEraVMAlwaysInlinePass(PassRegistry &);
 void initializeEraVMSHA3ConstFoldingPass(PassRegistry &);
+void initializeEraVMOptimizeSelectPostRAPass(PassRegistry &);
 
 struct EraVMLinkRuntimePass : PassInfoMixin<EraVMLinkRuntimePass> {
   explicit EraVMLinkRuntimePass(OptimizationLevel Level) : Level(Level) {}
