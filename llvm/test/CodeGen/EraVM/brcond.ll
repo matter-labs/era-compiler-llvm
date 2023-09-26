@@ -4,8 +4,6 @@
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm"
 
-; TODO: optimize
-
 define i256 @brcond(i256 %p1) nounwind {
 ; CHECK-LABEL: brcond:
 ; CHECK:       ; %bb.0:

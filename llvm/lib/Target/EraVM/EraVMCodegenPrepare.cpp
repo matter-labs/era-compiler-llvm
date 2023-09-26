@@ -103,8 +103,7 @@ bool EraVMCodegenPrepare::runOnFunction(Function &F) {
         break;
       }
       case Instruction::Call: {
-        // TODO: Link the runtime earlier instead of specifying cryptic
-        // knowledge here.
+        // TODO: CPR-1353 Move to the constant folding pass.
         auto &Call = cast<CallInst>(I);
         Function *Callee = Call.getCalledFunction();
         if (!Callee && isa<BitCastOperator>(Call.getCalledOperand()))

@@ -242,8 +242,8 @@ bool EraVMDAGToDAGISel::SelectMemAddr(SDValue Addr, SDValue &Base,
     AM.Disp -= AM.Disp % 32;
   }
 
-  // TODO: Hack (constant is used to designate immediate addressing mode),
-  // redesign.
+  // TODO: CPR-1354 Hack (constant is used to designate immediate addressing
+  // mode), redesign.
   assert(AM.BaseType == EraVMISelAddressMode::RegBase);
   if (!AM.Base.Reg.getNode())
     AM.Base.Reg = CurDAG->getTargetConstant(0, Loc, MVT::i256);

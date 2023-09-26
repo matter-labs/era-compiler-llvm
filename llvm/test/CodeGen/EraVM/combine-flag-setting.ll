@@ -89,7 +89,7 @@ define i1 @XORirr_v(i256 %p1) nounwind {
 
 ; CHECK-LABEL: XORirr_Select:
 define i256 @XORirr_Select(i256 %p1) nounwind {
-; TODO: CPR-895 xor! 123, r{{[0-9]+}}, r1
+; CHECK: xor 123, r1, r1
   %p3 = xor i256 %p1, 123
   %cmp = icmp eq i256 %p3, 0
   %res = select i1 %cmp, i256 42, i256 %p3

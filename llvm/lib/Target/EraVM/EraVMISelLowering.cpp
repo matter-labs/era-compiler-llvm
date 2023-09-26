@@ -182,8 +182,6 @@ static void fail(const SDLoc &DL, SelectionDAG &DAG, const char *msg) {
 
 /// Test whether the given calling convention is supported.
 static bool CallingConvSupported(CallingConv::ID CallConv) {
-  // TODO: EraVM currently doesn't distinguish between different calling
-  // convensions.
   return CallConv == CallingConv::C || CallConv == CallingConv::Fast ||
          CallConv == CallingConv::Cold;
 }
@@ -357,7 +355,7 @@ static SDValue lowerFarCall(TargetLowering::CallLoweringInfo &CLI,
   SmallVectorImpl<SDValue> &OutVals = CLI.OutVals;
   SDValue Chain = CLI.Chain;
   SDValue Callee = CLI.Callee;
-  // TODO: EraVM target does not yet support tail call optimization.
+  // TODO: CPR-410 EraVM target does not yet support tail call optimization.
   CLI.IsTailCall = false;
   CallingConv::ID CallConv = CLI.CallConv;
   // We meddle with number of parameters, set vararg to true to prevent
@@ -440,7 +438,7 @@ SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   SmallVectorImpl<ISD::InputArg> &Ins = CLI.Ins;
   SDValue Chain = CLI.Chain;
   SDValue Callee = CLI.Callee;
-  // TODO: EraVM target does not yet support tail call optimization.
+  // TODO: CPR-410 EraVM target does not yet support tail call optimization.
   CLI.IsTailCall = false;
   CallingConv::ID CallConv = CLI.CallConv;
   bool IsVarArg = CLI.IsVarArg;

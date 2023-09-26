@@ -36,7 +36,6 @@ using namespace llvm;
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   // Register the target.
   RegisterTargetMachine<EraVMTargetMachine> X(getTheEraVMTarget());
-  // TODO: optimize switch lowering
   auto &PR = *PassRegistry::getPassRegistry();
   initializeEraVMCodegenPreparePass(PR);
   initializeEraVMCombineFlagSettingPass(PR);

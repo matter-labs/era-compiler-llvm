@@ -30,7 +30,7 @@ define void @vari_loadconst_storeglobal(i256 %i) nounwind {
   %1 = load i256, ptr addrspace(4) %addrc, align 32
   ; CHECK-NOT: shr.s 5, r1, {{r[0-9]+}}
   ; CHECK: add @const2[r1], r0, {{r[0-9]+}}
-  ; TODO: The next instruction can be folded with previous `add`.
+  ; TODO: CPR-1362 The next instruction can be folded with previous `add`.
   ; CHECK: add r2, r0, stack[@val + r1]
   store i256 %1, ptr %addrg, align 32
   ret void
@@ -45,7 +45,7 @@ define void @vari_loadglobal_storeglobal(i256 %i, i256 %j) nounwind {
   %1 = load i256, ptr %addri, align 32
   ; CHECK-NOT: shr.s 5, r2, r2
   ; CHECK: add r1, r0, stack[@val + r2]
-  ; TODO: Should be folded into a single instruction.
+  ; TODO: CPR-1363 Should be folded into a single instruction.
   store i256 %1, ptr %addrj, align 32
   ret void
 }

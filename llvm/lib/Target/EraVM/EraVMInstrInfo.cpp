@@ -37,7 +37,7 @@ namespace EraVM {
 
 ArgumentType argumentType(ArgumentKind Kind, unsigned Opcode) {
   Opcode = getWithInsNotSwapped(Opcode);
-  // TODO: Mappings for Select.
+  // TODO: CPR-1355 Mappings for Select.
   // Select is not a part of a mapping, so have to handle it manually.
   const DenseSet<unsigned> In0R = {EraVM::SELrrr, EraVM::SELrir, EraVM::SELrcr,
                                    EraVM::SELrsr, EraVM::FATPTR_SELrrr};
@@ -56,7 +56,7 @@ ArgumentType argumentType(ArgumentKind Kind, unsigned Opcode) {
   const DenseSet<unsigned> In1S = {EraVM::SELrsr, EraVM::SELisr, EraVM::SELcsr,
                                    EraVM::SELssr};
   if (Kind == ArgumentKind::Out1) {
-    // TODO: Support stack output for Select.
+    // TODO: CPR-986 Support stack output for Select.
     return ArgumentType::Register;
   }
   if (Kind == ArgumentKind::In1) {
@@ -220,7 +220,7 @@ bool hasAnyOutAddressingMode(unsigned Opcode) {
   return hasRROutAddressingMode(Opcode) || hasSROutAddressingMode(Opcode);
 }
 
-// TODO: Implement in via td.
+// TODO: CPR-1355 Implement in via td.
 bool isSelect(unsigned Opcode) {
   DenseSet<unsigned> Members = {
       EraVM::SELrrr,       EraVM::SELrir, EraVM::SELrcr, EraVM::SELrsr,

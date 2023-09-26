@@ -38,7 +38,7 @@ public:
   /// \name Scalar TTI Implementations
   /// @{
 
-  // TODO: Implement more Scalar TTI for EraVM
+  // TODO: CPR-1358 Implement more Scalar TTI for EraVM
 
   TTI::PopcntSupportKind getPopcntSupport(unsigned TyWidth) const;
 
@@ -129,7 +129,7 @@ public:
     OpsOut.push_back(Type::getIntNTy(Context, RemainingBytes * 8));
   }
 
-  // TODO: The value is copied from AMDGPU, needs to be configured.
+  // Since we prefer inlining, use larger threshold multiplier.
   unsigned getInliningThresholdMultiplier() const { return 11; }
 
   /// @}
