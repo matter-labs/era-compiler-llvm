@@ -1,12 +1,12 @@
-//===-- AllocaHoisting.cpp - Hoist allocas to the entry block --*- C++ -*-===//
+//===-- AllocaHoisting.cpp - Hoist allocas to the entry block ---*- C++ -*-===//
 //===----------------------------------------------------------------------===//
 //
 // Hoist the alloca instructions in the non-entry blocks to the entry blocks.
 // Copied from NVPTX backend.
 //
 //===----------------------------------------------------------------------===//
-// TODO: The pass is a shortcut solution. DYNAMIC_STACKALLOC suppoer is needed
-// instead.
+// TODO: CPR-408 The pass is a shortcut solution. DYNAMIC_STACKALLOC support
+// is needed instead.
 
 #include "SyncVM.h"
 

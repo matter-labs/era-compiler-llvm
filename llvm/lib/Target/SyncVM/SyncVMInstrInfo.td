@@ -132,12 +132,9 @@ def init_flag : Operand<i256>, IntImmLeaf<i256, [{
 
 // Operand for printing out a condition code.
 def cc : Operand<i256>, IntImmLeaf<i256, [{
-  // TODO: refine this
   return Imm.isIntN(4) && Imm != 0;
 }]> {
   let PrintMethod = "printCCOperand";
-  // TODO: Implement once encoding is defined.
-  //let EncoderMethod = "getCCOpValue";
 }
 
 def context_op : Operand<i256>, IntImmLeaf<i256, [{
@@ -344,16 +341,12 @@ let mayLoad = 1 in {
 def : Pat<(SyncVMselectcc 0, GR256:$src2, imm:$cc), (SELrrr R0, GR256:$src2, imm:$cc)>;
 def : Pat<(SyncVMselectcc GR256:$src1, 0, imm:$cc), (SELrrr GR256:$src1, R0, imm:$cc)>;
 
-/*
-def : Pat<(store_stack (load_stack(SyncVMselectcc stackaddr:$addr1, stackaddr:$addr2, imm:$cc)), stackaddr:$addr3),
-          (SELsss stackaddr:$addr1, stackaddr:$addr2, imm:$cc, stackaddr:$addr3)>;
-          */
 def : Pat<(load_stack(SyncVMselectcc stackaddr:$addr1, stackaddr:$addr2, imm:$cc)),
           (SELssr stackaddr:$addr1, stackaddr:$addr2, imm:$cc)>;
 def : Pat<(load_code(SyncVMselectcc memaddr:$addr1, memaddr:$addr2, imm:$cc)),
           (SELccr memaddr:$addr1, memaddr:$addr2, imm:$cc)>;
 
-// TODO: stack and code forms
+// TODO: CPR-1356 stack and code forms
 def : Pat<(int_syncvm_ifeq GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, 2 /*COND_EQ*/)>;
 def : Pat<(int_syncvm_iflt GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, 4 /*COND_LT*/)>;
 def : Pat<(int_syncvm_ifgt GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, 8 /*COND_GT*/)>;
@@ -1169,8 +1162,6 @@ def : Pat<(SyncVMcmp GR256:$lhs, (load_stack stackaddr:$rhs)), (SUBzrr_v stackad
 defm MUL  : Arith2ICommutable<6, "mul", umullohi>;
 defm DIV  : Arith2INonCommutable<8, "div", udivrem>;
 
-// FIXME: Wrong encoding
-// FIXME: Wrong flags
 defm AND  : ArithICommutable<33, "and", and>;
 defm OR   : ArithICommutable<34, "or", or>;
 defm XOR  : ArithICommutable<35, "xor", xor>;
@@ -1200,7 +1191,7 @@ def LD      : IUMA <45, (outs GR256:$rd0), (ins GRPTR:$rs0, cc:$cc),
                   "ld$cc\t$rs0, $rd0", []>;
 def LDInc   : IUMA <46, (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, cc:$cc),
                   "ld.inc$cc\t$rs0, $rd0, $rd1", []>;
-// TODO: pseudo alias version of `LD` which has different type than `LD`
+// Pseudo alias version of `LD` which has different type than `LD`
 // We will manually select it when we see that we are loading a fat pointer
 def FATPTR_LD : IUMA < 48, (outs GRPTR:$rd0), (ins GRPTR:$rs0, cc:$cc),
                   "ld$cc\t$rs0, $rd0 ;fat load", []>;

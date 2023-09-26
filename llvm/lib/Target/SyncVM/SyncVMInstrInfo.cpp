@@ -30,7 +30,7 @@ namespace SyncVM {
 
 ArgumentType argumentType(ArgumentKind Kind, unsigned Opcode) {
   Opcode = getWithInsNotSwapped(Opcode);
-  // TODO: Mappings for Select.
+  // TODO: CPR-1355 Mappings for Select.
   // Select is not a part of a mapping, so have to handle it manually.
   const DenseSet<unsigned> In0R = {SyncVM::SELrrr, SyncVM::SELrir,
                                    SyncVM::SELrcr, SyncVM::SELrsr,
@@ -51,7 +51,7 @@ ArgumentType argumentType(ArgumentKind Kind, unsigned Opcode) {
   const DenseSet<unsigned> In1S = {SyncVM::SELrsr, SyncVM::SELisr,
                                    SyncVM::SELcsr, SyncVM::SELssr};
   if (Kind == ArgumentKind::Out1) {
-    // TODO: Support stack output for Select.
+    // TODO: CPR-986 Support stack output for Select.
     return ArgumentType::Register;
   } else if (Kind == ArgumentKind::In1) {
     if (In1R.count(Opcode))
@@ -213,7 +213,7 @@ bool hasAnyOutAddressingMode(unsigned Opcode) {
   return hasRROutAddressingMode(Opcode) || hasSROutAddressingMode(Opcode);
 }
 
-// TODO: Implement in via td.
+// TODO: CPR-1355 Implement in via td.
 bool isSelect(unsigned Opcode) {
   DenseSet<unsigned> Members = {
       SyncVM::SELrrr,       SyncVM::SELrir, SyncVM::SELrcr, SyncVM::SELrsr,
