@@ -196,8 +196,8 @@ static bool mergeSimilarBBImpl(Function &F, const TargetTransformInfo &TTI,
                                     DominatorTree *DT) {
   DomTreeUpdater DTU(DT, DomTreeUpdater::UpdateStrategy::Eager);
 
-  bool EverChanged = mergeIdenticalBlocks(F);
-  EverChanged |= removeUnreachableBlocks(F, DT ? &DTU : nullptr);
+  bool EverChanged = removeUnreachableBlocks(F, DT ? &DTU : nullptr);
+  EverChanged |= mergeIdenticalBlocks(F);
 
   return EverChanged;
 }
