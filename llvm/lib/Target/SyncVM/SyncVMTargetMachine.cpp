@@ -117,7 +117,6 @@ void SyncVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
         createModuleToFunctionPassAdaptor(SyncVMOptimizeStdLibCallsPass()));
     PM.addPass(GlobalDCEPass());
     PM.addPass(createModuleToFunctionPassAdaptor(SyncVMSHA3ConstFoldingPass()));
-    PM.addPass(createModuleToFunctionPassAdaptor(DSEPass()));
   });
 
   PB.registerScalarOptimizerLateEPCallback(
