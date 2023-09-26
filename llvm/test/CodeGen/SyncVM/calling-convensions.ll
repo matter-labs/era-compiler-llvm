@@ -290,7 +290,6 @@ define i256 @caller_i128.retabi(i256 %a1) nounwind {
 
 ; CHECK-LABEL: call.onestack
 define i256 @call.onestack() nounwind {
-; TODO: Check calling conventions onse callee-saved and caller-saver registers defined
 ; CHECK: context.sp r1
 ; CHECK: add 0, r0, stack[r1]
 ; CHECK: add r0, r0, r1

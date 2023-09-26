@@ -219,8 +219,8 @@ bool SyncVMDAGToDAGISel::SelectMemAddr(SDValue N, SDValue &Base,
     AM.Disp -= AM.Disp % 32;
   }
 
-  // TODO: Hack (constant is used to designate immediate addressing mode),
-  // redesign.
+  // TODO: CPR-1354 Hack (constant is used to designate immediate addressing
+  // mode), redesign.
   assert(AM.BaseType == SyncVMISelAddressMode::RegBase);
   if (!AM.Base.Reg.getNode())
     AM.Base.Reg = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);

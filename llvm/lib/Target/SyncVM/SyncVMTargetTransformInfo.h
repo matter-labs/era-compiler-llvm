@@ -38,7 +38,7 @@ public:
   /// \name Scalar TTI Implementations
   /// @{
 
-  // TODO: Implement more Scalar TTI for SyncVM
+  // TODO: CPR-1358 Implement more Scalar TTI for SyncVM
 
   TTI::PopcntSupportKind getPopcntSupport(unsigned TyWidth) const;
 
@@ -128,7 +128,7 @@ public:
     OpsOut.push_back(Type::getIntNTy(Context, RemainingBytes * 8));
   }
 
-  // TODO: The value is copied from AMDGPU, needs to be configured.
+  // TODO: CPR-1359 The value is copied from AMDGPU, needs to be configured.
   unsigned getInliningThresholdMultiplier() const { return 11; }
 
   /// @}

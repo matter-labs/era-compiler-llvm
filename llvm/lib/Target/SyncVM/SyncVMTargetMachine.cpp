@@ -31,7 +31,6 @@ using namespace llvm;
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeSyncVMTarget() {
   // Register the target.
   RegisterTargetMachine<SyncVMTargetMachine> X(getTheSyncVMTarget());
-  // TODO: optimize switch lowering
   auto &PR = *PassRegistry::getPassRegistry();
   initializeSyncVMCodegenPreparePass(PR);
   initializeSyncVMCombineFlagSettingPass(PR);

@@ -42,9 +42,6 @@ define i256 @materialize_smallimm_in_operation(i256 %par) nounwind {
   ret i256 %res
 }
 
-; TODO: combine load constant from constant pool with use instruction
-; for the following test cases
-
 ; CHECK-LABEL: materialize_small_negimm_in_operation
 define i256 @materialize_small_negimm_in_operation(i256 %par) nounwind {
   ; CHECK: sub.s 42, r1, r1
@@ -61,14 +58,18 @@ define i256 @materialize_small_negimm_in_operation_2(i256 %par) nounwind {
 
 ; CHECK-LABEL: materialize_bigimm_in_and_operation
 define i256 @materialize_bigimm_in_and_operation(i256 %par) nounwind {
+  ; TODO: CPR-1365 Consider to trade size for cycles in O3 / hot code
   ; CHECK: sub.s 42, r0, r2
+  ; CHECK: and r1, r2, r1
   %res = and i256 %par, -42
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_in_xor_operation
 define i256 @materialize_bigimm_in_xor_operation(i256 %par) nounwind {
+  ; TODO: CPR-1365 Consider to trade size for cycles in O3 / hot code
   ; CHECK: sub.s 42, r0, r2
+  ; CHECK: xor r1, r2, r1
   %res = xor i256 -42, %par
   ret i256 %res
 }
@@ -83,18 +84,25 @@ define i256 @materialize_bigimm_in_sub_operation(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_bigimm_in_sub_operation_2
 define i256 @materialize_bigimm_in_sub_operation_2(i256 %par) nounwind {
   ; CHECK: sub.s 42, r0, r2
+  ; CHECK: sub r2, r1, r1
   %res = sub i256 -42, %par
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_1
 define i256 @materialize_bigimm_1(i256 %par) nounwind {
+  ; CHECK: add @CPI12_0[0], r0, r2
+	; CHECK: sub r2, r1, r1
+  ; TODO: CPR-1356 Combine into a single instruction.
   %res = sub i256 12345678901234567890, %par
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_2
 define i256 @materialize_bigimm_2(i256 %par) nounwind {
+  ; CHECK: add @CPI13_0[0], r0, r2
+	; CHECK: sub r2, r1, r1
+  ; TODO: CPR-1356 Combine into a single instruction.
   %res = sub i256 12345678901234567890, %par
   ret i256 %res
 }
