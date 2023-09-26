@@ -67,7 +67,7 @@ bool EVMArgumentMove::runOnMachineFunction(MachineFunction &MF) {
   MachineBasicBlock &EntryMBB = MF.front();
 
   // Look for the first NonArg instruction.
-  MachineBasicBlock::iterator InsertPt =
+  const auto InsertPt =
       std::find_if_not(EntryMBB.begin(), EntryMBB.end(), [](auto &MI) {
         return EVM::ARGUMENT == MI.getOpcode();
       });

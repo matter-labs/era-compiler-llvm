@@ -19,7 +19,7 @@ using namespace llvm;
 void EVMInstPrinter::printRegName(raw_ostream &OS, unsigned RegNo) const {
   // Decode the virtual register. This must be kept in sync with
   // EVMMCInstLower::encodeVirtualRegister.
-  unsigned RCId = (RegNo >> 28);
+  const unsigned RCId = (RegNo >> 28);
   switch (RCId) {
   default:
     report_fatal_error("Bad virtual register encoding");
@@ -33,7 +33,7 @@ void EVMInstPrinter::printRegName(raw_ostream &OS, unsigned RegNo) const {
     break;
   }
 
-  unsigned VReg = RegNo & 0x0FFFFFFF;
+  const unsigned VReg = RegNo & 0x0FFFFFFF;
   OS << VReg;
 }
 

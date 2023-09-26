@@ -78,7 +78,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTargetMC() {
   Target &T = getTheEVMTarget();
 
   // Register the MC asm info.
-  RegisterMCAsmInfoFn X(T, createEVMMCAsmInfo);
+  const RegisterMCAsmInfoFn X(T, createEVMMCAsmInfo);
 
   // Register the MC instruction info.
   TargetRegistry::RegisterMCInstrInfo(T, createEVMMCInstrInfo);

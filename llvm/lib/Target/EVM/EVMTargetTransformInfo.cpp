@@ -20,7 +20,7 @@ unsigned EVMTTIImpl::getAssumedAddrSpace(const Value *V) const {
 
 InstructionCost EVMTTIImpl::getVectorInstrCost(unsigned Opcode, Type *Val,
                                                unsigned Index) {
-  InstructionCost Cost =
+  const InstructionCost Cost =
       BasicTTIImplBase::getVectorInstrCost(Opcode, Val, Index);
   return Cost + 25 * TargetTransformInfo::TCC_Expensive;
 }

@@ -37,7 +37,7 @@ private:
 } // end anonymous namespace
 
 void EVMDAGToDAGISel::Select(SDNode *Node) {
-  SDLoc DL(Node);
+  const SDLoc DL(Node);
 
   // If we have a custom node, we already have selected!
   if (Node->isMachineOpcode()) {

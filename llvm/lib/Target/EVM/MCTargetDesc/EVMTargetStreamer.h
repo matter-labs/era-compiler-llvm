@@ -4,8 +4,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIB_TARGET_EVM_MCTARGET_STREAMER_H
-#define LLVM_LIB_TARGET_EVM_MCTARGET_STREAMER_H
+#ifndef LLVM_LIB_TARGET_EVM_MCTARGETDESC_EVMTARGETSTREAMER_H
+#define LLVM_LIB_TARGET_EVM_MCTARGETDESC_EVMTARGETSTREAMER_H
 #include "llvm/MC/MCStreamer.h"
 
 namespace llvm {
@@ -32,4 +32,4 @@ public:
 };
 } // namespace llvm
 
-#endif // LLVM_LIB_TARGET_EVM_MCTARGET_STREAMER_H
+#endif // LLVM_LIB_TARGET_EVM_MCTARGETDESC_EVMTARGETSTREAMER_H

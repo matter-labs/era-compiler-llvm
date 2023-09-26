@@ -91,7 +91,7 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
         // chosen enough for the entire string. Otherwise, its internal memory
         // will be reallocated into the generic heap but not into the Ctx
         // arena and thus never deallocated.
-        auto Str = new (Ctx) SmallString<80>();
+        auto *Str = new (Ctx) SmallString<80>();
         CImmVal.toStringUnsigned(*Str);
         MCOp = MCOperand::createExpr(EVMCImmMCExpr::create(*Str, Ctx));
       }
@@ -115,13 +115,13 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
 unsigned EVMMCInstLower::EncodeVReg(unsigned Reg) {
   if (Register::isVirtualRegister(Reg)) {
     const TargetRegisterClass *RC = MRI.getRegClass(Reg);
-    VRegRCMap::const_iterator I = VRegMapping.find(RC);
+    const VRegRCMap::const_iterator I = VRegMapping.find(RC);
     assert(I != VRegMapping.end() && "Bad register class");
     const DenseMap<unsigned, unsigned> &RegMap = I->second;
 
-    VRegMap::const_iterator VI = RegMap.find(Reg);
+    const VRegMap::const_iterator VI = RegMap.find(Reg);
     assert(VI != RegMap.end() && "Bad virtual register");
-    unsigned RegNum = VI->second;
+    const unsigned RegNum = VI->second;
     unsigned Ret = 0;
     if (RC == &EVM::GPRRegClass)
       Ret = (1 << 28);
