@@ -54,6 +54,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMExternalAAWrapperPass(PR);
   initializeEraVMAlwaysInlinePass(PR);
   initializeEraVMSHA3ConstFoldingPass(PR);
+  initializeEraVMOptimizeSelectPostRAPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -225,4 +226,5 @@ void EraVMPassConfig::addPreEmitPass() {
   addPass(createEraVMCombineAddressingModePass());
   addPass(createEraVMExpandSelectPass());
   addPass(createEraVMExpandPseudoPass());
+  addPass(createEraVMOptimizeSelectPostRAPass());
 }
