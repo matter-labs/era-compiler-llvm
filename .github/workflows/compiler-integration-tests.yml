@@ -127,7 +127,8 @@ jobs:
             "CodeGen/EraVM/memcpy-expansion.ll;\
              CodeGen/EraVM/flag-setting-set-implicit-flags.ll;\
              CodeGen/EraVM/machine-outliner.mir;\
-             CodeGen/EraVM/machine-outliner-tail.mir"
+             CodeGen/EraVM/machine-outliner-tail.mir;\
+             CodeGen/EraVM/select_fold.mir"
 
         run: |
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
