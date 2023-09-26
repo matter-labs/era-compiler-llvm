@@ -45,7 +45,6 @@ void EraVMFrameLowering::emitPrologue(MachineFunction &MF,
 
   uint64_t NumCells = MFI.getStackSize() / 32;
 
-  // TODO: Handle callee saved registers once support them
   if (NumCells)
     BuildMI(MBB, MBBI, DL, TII.get(EraVM::NOPSP)).addImm(NumCells).addImm(0);
 }

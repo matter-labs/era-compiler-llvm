@@ -52,8 +52,8 @@ public:
 private:
   // If base for a stack address is in form x1 + x2 + ... + xn, propagate and
   // fold all constants that are in expression.
-  // TODO: When FE start to produce LLVM arrays, it make sense to support
-  // propagation through mul.
+  // TODO: CPR-1357 When FE start to produce LLVM arrays, it make sense
+  // to support propagation through mul.
   std::optional<PropagationResult> tryPropagateConstant(MachineInstr &MI);
   const EraVMInstrInfo *TII{};
   MachineRegisterInfo *RegInfo{};

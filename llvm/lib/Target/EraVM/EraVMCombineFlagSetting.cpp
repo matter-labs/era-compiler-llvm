@@ -90,8 +90,6 @@ INITIALIZE_PASS(EraVMCombineFlagSetting, DEBUG_TYPE,
 
 /// Given sub! x, r0, y or equivalent \p MI return the register for x.
 /// Return R0 if precondition is not met.
-/// TODO: CPR-965 It might worth canonicalizing instead of checking different
-/// forms, but there is a chance that the proper layering of CPR-965 is post-RA.
 static Register getValueRegister(const MachineInstr &MI) {
   if (MI.getOpcode() == EraVM::SUBrrr_v && MI.getOperand(1).isReg() &&
       MI.getOperand(2).isReg() && MI.getOperand(2).getReg() == EraVM::R0)

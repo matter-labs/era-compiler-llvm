@@ -210,7 +210,7 @@ class IForm <
   let Inst{56-63} = opcode;
 }
 
-// FIXME: SP change is currently only allowed in NOPs.
+// TODO: CPR-1360 SP change is currently only allowed in NOPs.
 // It should be fixed in accordance with the spec.
 class INop<bits<8> opcode, dag ins, string asmstr, list<dag> pattern>
   : IForm <opcode, SrcNone, DstNone, (outs), ins, asmstr, pattern > {

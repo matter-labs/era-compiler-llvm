@@ -87,7 +87,6 @@ define void @spill_mulhs(i256 %a) nounwind {
   %res2 = trunc i512 %res2l to i256
   ; CHECK: mul stack-[1], r1, r1, r2
   ; CHECK: add r2, r0, stack-[2]
-  ; TODO: Should be one inst.
   store i256 %res2, i256* %slot
   ret void
 }
@@ -124,7 +123,6 @@ define void @spill_rems(i256 %a) nounwind {
   %b = call i256 @foo()
   ; CHECK: div stack-[1], r1, r1, r2
   ; CHECK: add r2, r0, stack-[2]
-  ; TODO: Should be one inst.
   %res = urem i256 %a, %b
   store i256 %res, i256* %slot
   ret void
@@ -474,7 +472,7 @@ define i256 @dont_combine_predicated_use(i256 %a, i1 %cond) nounwind {
   br i1 %cond, label %ltrue, label %lfalse
 ; CHECK: add stack-[2], r0, r2
 ; CHECK: sub! stack-[1], r0, r3
-; TODO: In that particular case we can combine, but it isn't analyzed in the pass.
+; TODO: CPR-1367 In that particular case we can combine, but it isn't analyzed in the pass.
 ; CHECK: add.eq r2, r0, r1
 ; CHECK: add.ne r2, r1, r1
 ltrue:

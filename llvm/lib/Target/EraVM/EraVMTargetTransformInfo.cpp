@@ -58,7 +58,7 @@ InstructionCost EraVMTTIImpl::getIntImmCost(const APInt &Imm, Type *Ty,
 InstructionCost
 EraVMTTIImpl::getIntrinsicInstrCost(const IntrinsicCostAttributes &ICA,
                                     TTI::TargetCostKind CostKind) {
-  // TODO
+  // TODO: CPR-1065 Implement.
   return BaseT::getIntrinsicInstrCost(ICA, CostKind);
 }
 
