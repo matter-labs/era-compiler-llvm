@@ -112,9 +112,11 @@ void SyncVMTargetMachine::adjustPassManager(PassManagerBuilder &Builder) {
 void SyncVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
   PB.registerPipelineEarlySimplificationEPCallback([](ModulePassManager &PM,
                                                       OptimizationLevel Level) {
+    if (Level != OptimizationLevel::O0)
+      PM.addPass(SyncVMAlwaysInlinePass());
+
     PM.addPass(SyncVMLinkRuntimePass(Level));
     if (Level != OptimizationLevel::O0) {
-      PM.addPass(SyncVMAlwaysInlinePass());
       PM.addPass(
           createModuleToFunctionPassAdaptor(SyncVMOptimizeStdLibCallsPass()));
       PM.addPass(GlobalDCEPass());
@@ -141,6 +143,16 @@ void SyncVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
          ArrayRef<PassBuilder::PipelineElement>) {
         if (PassName == "syncvm-always-inline") {
           PM.addPass(SyncVMAlwaysInlinePass());
+          return true;
+        }
+        return false;
+      });
+
+  PB.registerPipelineParsingCallback(
+      [](StringRef PassName, FunctionPassManager &PM,
+         ArrayRef<PassBuilder::PipelineElement>) {
+        if (PassName == "syncvm-sha3-constant-folding") {
+          PM.addPass(SyncVMSHA3ConstFoldingPass());
           return true;
         }
         return false;
