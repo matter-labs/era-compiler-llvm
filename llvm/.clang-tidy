@@ -8,6 +8,7 @@ Checks: >
     -readability-magic-numbers,
     -readability-implicit-bool-conversion,
     -readability-convert-member-functions-to-static,
+    -readability-simplify-boolean-expr,
     -misc-const-correctness,
     -llvm-qualified-auto,
     -misc-use-anonymous-namespace,
