@@ -1,7 +1,13 @@
 InheritParentConfig: true
 # SyncVM local begin
 Checks: >
+    readability-*,
     -readability-identifier-naming,
+    -readability-identifier-length,
+    -readability-braces-around-statements,
+    -readability-magic-numbers,
+    -readability-implicit-bool-conversion,
+    -readability-convert-member-functions-to-static,
     -misc-const-correctness,
     -llvm-qualified-auto,
     -misc-use-anonymous-namespace,
