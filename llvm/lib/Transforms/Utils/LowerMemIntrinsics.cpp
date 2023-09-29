@@ -407,13 +407,23 @@ void llvm::createSyncVMMemCpyLoopKnownSize(Instruction *InsertBefore,
     LoopIndex->addIncoming(ConstantInt::get(TypeOfCopyLen, 0U), PreLoopBB);
 
     // Loop Body
-    Value *SrcGEP =
-        LoopBuilder.CreateInBoundsGEP(LoopOpType, SrcAddr, LoopIndex);
-    Value *Load = LoopBuilder.CreateAlignedLoad(LoopOpType, SrcGEP,
+    PHINode *SrcGEPPHI = LoopBuilder.CreatePHI(SrcOpType, 2, "src-gep");
+    SrcGEPPHI->addIncoming(SrcAddr, PreLoopBB);
+
+    PHINode *DstGEPPHI = LoopBuilder.CreatePHI(DstOpType, 2, "dst-gep");
+    DstGEPPHI->addIncoming(DstAddr, PreLoopBB);
+
+    Value *Load = LoopBuilder.CreateAlignedLoad(LoopOpType, SrcGEPPHI,
                                                 PartSrcAlign, SrcIsVolatile);
-    Value *DstGEP =
-        LoopBuilder.CreateInBoundsGEP(LoopOpType, DstAddr, LoopIndex);
-    LoopBuilder.CreateAlignedStore(Load, DstGEP, PartDstAlign, DstIsVolatile);
+    Value *NewSrcGEP =
+        LoopBuilder.CreateInBoundsGEP(LoopOpType, SrcGEPPHI, ConstantInt::get(TypeOfCopyLen, 1U));
+
+    SrcGEPPHI->addIncoming(NewSrcGEP, LoopBB);
+
+    LoopBuilder.CreateAlignedStore(Load, DstGEPPHI, PartDstAlign, DstIsVolatile);
+    Value *NewDstGEP =
+        LoopBuilder.CreateInBoundsGEP(LoopOpType, DstGEPPHI, ConstantInt::get(TypeOfCopyLen, 1U));
+    DstGEPPHI->addIncoming(NewDstGEP, LoopBB);
 
     Value *NewIndex =
         LoopBuilder.CreateAdd(LoopIndex, ConstantInt::get(TypeOfCopyLen, 1U));

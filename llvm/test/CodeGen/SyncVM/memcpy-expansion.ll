@@ -10,8 +10,8 @@ declare void @llvm.memcpy.p1i256.p1i256.i256(i256 addrspace(1)* noalias nocaptur
 define fastcc void @expand-known(i256 addrspace(1)* %dest, i256 addrspace(3)* %src) {
 ; Loop
 ; CHECK:   %loop-index = phi i256 [ 0, %{{.*}} ], [ [[NEWCTR:%[0-9]+]], %load-store-loop ]
-; CHECK:   [[REG:%[0-9]+]] = load i256, i256 addrspace(3)* %{{[0-9]+}}, align 1
-; CHECK:   store i256 [[REG]], i256 addrspace(1)* %{{[0-9]+}}, align 1
+; CHECK:   [[REG:%[0-9]+]] = load i256, i256 addrspace(3)* %{{.*}}, align 1
+; CHECK:   store i256 [[REG]], i256 addrspace(1)* %{{.*}}, align 1
 ; CHECK:   [[NEWCTR]] = add i256 %loop-index, 1
 
 ; Residual
@@ -34,7 +34,7 @@ define fastcc void @expand-unknown(i256 addrspace(1)* %dest, i256 addrspace(3)* 
 
 ; Loop
 ; CHECK:   [[REG:%[0-9]+]] = load i256, i256 addrspace(3)* %{{[0-9]+}}, align 1
-; CHECK:   store i256 [[REG]], i256 addrspace(1)* %{{[0-9]+}}, align 1
+; CHECK:   store i256 [[REG]], i256 addrspace(1)* %{{.*}}, align 1
 ; CHECK:   br i1 %{{[0-9]+}}, label %{{.*}}, label %{{.*}}
 
 ; Residual
