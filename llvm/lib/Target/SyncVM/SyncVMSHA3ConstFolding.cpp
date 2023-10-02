@@ -373,12 +373,12 @@ FoldingState::collectSHA3Clobbers(const CallInst *Call) {
 
   MemoryAccess *MA =
       Walker->getClobberingMemoryAccess(MSSA.getMemoryAccess(Call));
-  do {
+  for( ;!MSSA.isLiveOnEntryDef(MA) && !isa<MemoryPhi>(MA); ) {
     if (auto *Def = dyn_cast<MemoryDef>(MA)) {
       Clobbers.push_back(Def);
       MA = Walker->getClobberingMemoryAccess(Def->getDefiningAccess(), Loc);
     }
-  } while (!MSSA.isLiveOnEntryDef(MA) && !isa<MemoryPhi>(MA));
+  }
 
   return Clobbers;
 }
@@ -475,12 +475,6 @@ FoldingState::OverlapResult
 FoldingState::isOverlap(const Instruction *MemUse, const Instruction *Clobber,
                         const MemoryLocation &MemUseLoc,
                         const MemoryLocation &ClobberLoc) const {
-  // AliasAnalysis does not always account for loops. Limit overlap checks
-  // to dependencies for which we can guarantee they are independent of any
-  // loops they are in.
-  if (!isGuaranteedLoopIndependent(Clobber, MemUse, ClobberLoc))
-    return {OverlapType::OL_Unknown, 0};
-
   const Value *ClobberPtr = ClobberLoc.Ptr->stripPointerCasts();
   const Value *MemUsePtr = MemUseLoc.Ptr->stripPointerCasts();
   const Value *ClobberUndObj = getUnderlyingObject(ClobberPtr);
@@ -590,9 +584,9 @@ std::optional<uint64_t> FoldingState::checkMemoryClobbers(
   assert(Begin != End);
 
   uint64_t TotalSize = Begin->Size;
-  for (auto It = std::next(Begin); It != End; ++It) {
+  for (auto *It = std::next(Begin); It != End; ++It) {
     TotalSize += It->Size;
-    auto ItPrev = std::prev(It);
+    const auto *ItPrev = std::prev(It);
     if ((ItPrev->Start + ItPrev->Size) != It->Start) {
       LLVM_DEBUG(dbgs() << "\tclobbers do alias, or there is a gap: ["
                         << ItPrev->Start << ", " << ItPrev->Start + ItPrev->Size
