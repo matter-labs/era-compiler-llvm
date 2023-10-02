@@ -32,7 +32,7 @@ namespace {
 /// Function to load a 64-bit value using the little-endian (LE) convention.
 /// On a LE platform, this could be greatly simplified using a cast.
 ///
-static uint64_t load64(const uint8_t *x) {
+uint64_t load64(const uint8_t *x) {
   int i;
   uint64_t u = 0;
   for (i = 7; i >= 0; --i) {
@@ -46,7 +46,7 @@ static uint64_t load64(const uint8_t *x) {
 /// Function to store a 64-bit value using the little-endian (LE) convention.
 /// On a LE platform, this could be greatly simplified using a cast.
 ///
-static void store64(uint8_t *x, uint64_t u) {
+void store64(uint8_t *x, uint64_t u) {
   unsigned int i;
   for (i = 0; i < 8; ++i) {
     x[i] = u;
@@ -58,7 +58,7 @@ static void store64(uint8_t *x, uint64_t u) {
 /// Function to XOR into a 64-bit value using the little-endian (LE) convention.
 /// On a LE platform, this could be greatly simplified using a cast.
 ///
-static void xor64(uint8_t *x, uint64_t u) {
+void xor64(uint8_t *x, uint64_t u) {
   unsigned int i;
   for (i = 0; i < 8; ++i) {
     x[i] ^= u;
