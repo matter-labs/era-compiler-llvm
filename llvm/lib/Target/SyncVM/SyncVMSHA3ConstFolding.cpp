@@ -590,9 +590,9 @@ std::optional<uint64_t> FoldingState::checkMemoryClobbers(
   assert(Begin != End);
 
   uint64_t TotalSize = Begin->Size;
-  for (auto It = std::next(Begin); It != End; ++It) {
+  for (const auto *It = std::next(Begin); It != End; ++It) {
     TotalSize += It->Size;
-    auto ItPrev = std::prev(It);
+    const auto *ItPrev = std::prev(It);
     if ((ItPrev->Start + ItPrev->Size) != It->Start) {
       LLVM_DEBUG(dbgs() << "\tclobbers do alias, or there is a gap: ["
                         << ItPrev->Start << ", " << ItPrev->Start + ItPrev->Size
