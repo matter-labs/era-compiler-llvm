@@ -39,7 +39,7 @@ concurrency:
 
 jobs:
   candidate:
-    runs-on: [self-hosted, ci-runner]
+    runs-on: [matterlabs-ci-runner]
     container:
       image: matterlabs/llvm_runner:latest
       credentials:
@@ -126,7 +126,7 @@ jobs:
           path: compiler-tester/candidate.json
 
   reference:
-    runs-on: [self-hosted, ci-runner]
+    runs-on: [matterlabs-ci-runner]
     container:
       image: matterlabs/llvm_runner:latest
       credentials:
@@ -213,7 +213,7 @@ jobs:
           path: compiler-tester/reference.json
 
   analysis:
-    runs-on: [self-hosted, ci-runner]
+    runs-on: [matterlabs-ci-runner]
     container:
       image: matterlabs/llvm_runner:latest
       credentials:
