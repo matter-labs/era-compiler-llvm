@@ -373,12 +373,12 @@ FoldingState::collectSHA3Clobbers(const CallInst *Call) {
 
   MemoryAccess *MA =
       Walker->getClobberingMemoryAccess(MSSA.getMemoryAccess(Call));
-  do {
+  for (; !MSSA.isLiveOnEntryDef(MA) && !isa<MemoryPhi>(MA);) {
     if (auto *Def = dyn_cast<MemoryDef>(MA)) {
       Clobbers.push_back(Def);
       MA = Walker->getClobberingMemoryAccess(Def->getDefiningAccess(), Loc);
     }
-  } while (!MSSA.isLiveOnEntryDef(MA) && !isa<MemoryPhi>(MA));
+  }
 
   return Clobbers;
 }
