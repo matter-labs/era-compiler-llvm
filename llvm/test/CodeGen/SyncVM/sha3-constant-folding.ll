@@ -104,7 +104,7 @@ entry:
 }
 
 ; Memory locations of store instructions do alias with each other, so no
-; constant folding.
+; constant folding. Theoretically we can support this case. TODO: CPR-1370.
 define i256 @sha3_test_8(ptr addrspace(1) nocapture %addr) nounwind {
 ; CHECK-LABEL: @sha3_test_8
 ; CHECK: {{.*call.*}} i256 @__sha3
@@ -116,6 +116,35 @@ entry:
   %next_addr2 = getelementptr i8, ptr addrspace(1) %addr, i256 63
   store i8 17, ptr addrspace(1) %next_addr2, align 1
   %hash = tail call fastcc i256 @__sha3(ptr addrspace(1) %addr, i256 64, i1 true)
+  ret i256 %hash
+}
+
+; We have two __sha3 calls where the second call gets folded on the second iteration.
+define i256 @sha3_test_9(ptr addrspace(1) %addr) nounwind {
+; CHECK-LABEL: @sha3_test_9
+; CHECK-NOT: {{.*call.*}} i256 @__sha3
+
+entry:
+  store i256 304594385234, ptr addrspace(1) %addr, align 1
+  %next_addr = getelementptr i256, ptr addrspace(1) %addr, i256 1
+  store i256 56457598675863654, ptr addrspace(1) %next_addr, align 1
+  %hash = tail call fastcc i256 @__sha3(ptr addrspace(1) %addr, i256 64, i1 true)
+  %sum = add i256 %hash, 10
+  store i256 %sum, ptr addrspace(1) %next_addr, align 1
+  store i256 111111111111, ptr addrspace(1) %addr, align 1
+  %hash2 = tail call fastcc i256 @__sha3(ptr addrspace(1) %addr, i256 64, i1 true)
+  ret i256 %hash2
+}
+
+; Offset of the second store is too big (requires > 64 bits), so no constant folding.
+define i256 @sha3_test_10() nounwind {
+; CHECK-LABEL: @sha3_test_10
+; CHECK: {{.*call.*}} i256 @__sha3
+
+entry:
+  store i256 304594385234, ptr addrspace(1) null, align 4294967296
+  store i256 56457598675863654, ptr addrspace(1) inttoptr (i256 18446744073709551616 to ptr addrspace(1)), align 32
+  %hash = tail call i256 @__sha3(ptr addrspace(1) null, i256 64, i1 true)
   ret i256 %hash
 }
 

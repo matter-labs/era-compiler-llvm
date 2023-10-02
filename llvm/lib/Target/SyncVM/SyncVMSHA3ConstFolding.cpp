@@ -30,7 +30,7 @@
 //
 // 2. Check that
 //   1. Each clobber is withing the __sha3 memory location:
-//     |<->|--clobber--|<->|
+//        |--clobber--|
 //     |------MemUse-------|
 //   2. Clobbers are not intersected with each other:
 //     |--cl1--|
@@ -115,17 +115,6 @@ public:
   SyncVMSHA3ConstFolding() : FunctionPass(ID) {}
 };
 
-uint64_t getPointerSize(const Value *V, const DataLayout &DL,
-                        const TargetLibraryInfo &TLI, const Function *F) {
-  uint64_t Size;
-  ObjectSizeOpts Opts;
-  Opts.NullIsUnknownSize = NullPointerIsDefined(F);
-
-  if (getObjectSize(V, Size, DL, &TLI, Opts))
-    return Size;
-  return MemoryLocation::UnknownSize;
-}
-
 /// This structure holds an information about a single memory clobber.
 /// While walking upwards starting at a __sha3 call (which is a MemUse),
 /// we create a MemClobber instance for each dominating memory clobber
@@ -160,7 +149,7 @@ struct MemClobber {
 ///
 class FoldingState {
   /// Types of the relative placement of the two memory locations.
-  enum OverlapType {
+  enum class OverlapType {
     // Loc1 is completely within the Loc2
     //    |-Loc1-|
     // |-----Loc2----|
@@ -193,7 +182,7 @@ class FoldingState {
 
   // Whether the function contains any irreducible control flow, useful for
   // being accurately able to detect loops.
-  bool ContainsIrreducibleLoops;
+  const bool ContainsIrreducibleLoops;
 
   // The __sha3 calls to be analyzed.
   SmallVector<MemoryUse *, 8> SHA3MemUses;
@@ -248,33 +237,28 @@ public:
 
 private:
   /// Return true if the \p I is a call to the library function \p F.
+  /// Consider moving it to a common code. TODO: CPR-1386.
   bool isLibFuncCall(const Instruction *I, LibFunc F) const;
 
   /// Return true if a dependency between \p Clobber and \p MemUse is
   /// guaranteed to be loop invariant for the loops that they are in.
-  bool isGuaranteedLoopIndependent(const Instruction *MemUse,
-                                   const Instruction *Clobber,
-                                   const MemoryLocation &MemUseLoc) const;
+  bool isGuaranteedLoopIndependent(const Instruction *Clobber,
+                                   const Instruction *MemUse,
+                                   const MemoryLocation &ClobberLoc) const;
 
-  /// Returns true if \p Ptr is guaranteed to be loop invariant for any possible
+  /// Return true if \p Ptr is guaranteed to be loop invariant for any possible
   /// loop. In particular, this guarantees that it only references a single
   /// MemoryLocation during execution of the containing function.
   bool isGuaranteedLoopInvariant(const Value *Ptr) const;
 
-  /// Return 'OW_Complete' if a store to the \p ClobberLoc location (by \p
-  /// Clobber instruction) is completely within the \p MemUseLoc
-  /// location (by \p MemUseLoc).
-  /// Return 'OW_MaybePartial' if \p ClobberLoc is partially with the
-  /// \p MemUseLoc and they both refer to the same underlying object.
-  /// Return 'OR_None' if \p Clobber is known to not write
-  /// to the memory referring by \p MemUse.
-  /// Returns 'OW_Unknown' if nothing can be determined.
+  /// Check how the two memory locations (\p MemUseLoc and \p ClobberLoc)
+  /// are located with respect to each other.
   OverlapResult isOverlap(const Instruction *MemUse, const Instruction *Clobber,
                           const MemoryLocation &MemUseLoc,
                           const MemoryLocation &ClobberLoc) const;
 
   /// Try to cast the constant pointer value \p Ptr to the integer offset.
-  /// TODO: CPR-1380.
+  /// Consider moving it to a common code. TODO: CPR-1380.
   std::optional<uint64_t> tryToCastPtrToInt(const Value *Ptr) const;
 
   /// Ensure the sorted array of clobbers forms a continuous memory region.
@@ -305,8 +289,21 @@ private:
   MemoryLocation getLocForSHA3Call(const CallInst *I) const {
     return MemoryLocation::getForArgument(I, 0, TLI);
   }
-
 }; // end FoldingState struct
+
+} // end anonymous namespace
+
+static uint64_t getPointerSize(const Value *V, const DataLayout &DL,
+                               const TargetLibraryInfo &TLI,
+                               const Function *F) {
+  uint64_t Size;
+  ObjectSizeOpts Opts;
+  Opts.NullIsUnknownSize = NullPointerIsDefined(F);
+
+  if (getObjectSize(V, Size, DL, &TLI, Opts))
+    return Size;
+  return MemoryLocation::UnknownSize;
+}
 
 bool FoldingState::isLibFuncCall(const Instruction *I, LibFunc F) const {
   const CallInst *Call = dyn_cast<CallInst>(I);
@@ -328,7 +325,8 @@ bool FoldingState::isLibFuncCall(const Instruction *I, LibFunc F) const {
 FoldingState::FoldingState(Function &F, AliasAnalysis &AA, AssumptionCache &AC,
                            MemorySSA &MSSA, DominatorTree &DT,
                            const TargetLibraryInfo &TLI, const LoopInfo &LI)
-    : F(F), AA(AA), AC(AC), MSSA(MSSA),
+    : ContainsIrreducibleLoops(mayContainIrreducibleControl(F, &LI)), F(F),
+      AA(AA), AC(AC), MSSA(MSSA),
       MSSAUpdater(std::make_unique<MemorySSAUpdater>(&MSSA)), TLI(TLI),
       DL(F.getParent()->getDataLayout()), SQ(DL, &TLI, &DT, &AC), LI(LI) {
   MSSA.ensureOptimizedUses();
@@ -350,8 +348,6 @@ FoldingState::FoldingState(Function &F, AliasAnalysis &AA, AssumptionCache &AC,
         SHA3MemUses.push_back(MU);
     }
   }
-  // Collect whether there is any irreducible control flow in the function.
-  ContainsIrreducibleLoops = mayContainIrreducibleControl(F, &LI);
 }
 
 SmallVector<MemoryDef *, 8>
@@ -377,18 +373,12 @@ FoldingState::collectSHA3Clobbers(const CallInst *Call) {
 
   MemoryAccess *MA =
       Walker->getClobberingMemoryAccess(MSSA.getMemoryAccess(Call));
-  for (;;) {
-    if (MSSA.isLiveOnEntryDef(MA))
-      break;
-
-    if (isa<MemoryPhi>(MA))
-      break;
-
+  do {
     if (auto *Def = dyn_cast<MemoryDef>(MA)) {
       Clobbers.push_back(Def);
       MA = Walker->getClobberingMemoryAccess(Def->getDefiningAccess(), Loc);
     }
-  }
+  } while (!MSSA.isLiveOnEntryDef(MA) && !isa<MemoryPhi>(MA));
 
   return Clobbers;
 }
@@ -420,12 +410,11 @@ bool FoldingState::simplifyInstructions() {
 }
 
 bool FoldingState::isGuaranteedLoopIndependent(
-    const Instruction *MemUse, const Instruction *Clobber,
-    const MemoryLocation &MemUseLoc) const {
+    const Instruction *Clobber, const Instruction *MemUse,
+    const MemoryLocation &ClobberLoc) const {
   // If the dependency is within the same block or loop level (being careful
   // of irreducible loops), we know that AA will return a valid result for the
-  // memory dependency. (Both at the function level, outside of any loop,
-  // would also be valid but we currently disable that to limit compile time).
+  // memory dependency.
   if (MemUse->getParent() == Clobber->getParent())
     return true;
 
@@ -436,7 +425,7 @@ bool FoldingState::isGuaranteedLoopIndependent(
     return true;
 
   // Otherwise check the memory location is invariant to any loops.
-  return isGuaranteedLoopInvariant(MemUseLoc.Ptr);
+  return isGuaranteedLoopInvariant(ClobberLoc.Ptr);
 }
 
 bool FoldingState::isGuaranteedLoopInvariant(const Value *Ptr) const {
@@ -451,6 +440,13 @@ bool FoldingState::isGuaranteedLoopInvariant(const Value *Ptr) const {
   return true;
 }
 
+static std::optional<uint64_t> getNullOrInt(const APInt &APVal) {
+  if (APVal.getActiveBits() <= 64)
+    return APVal.getZExtValue();
+
+  return std::nullopt;
+}
+
 std::optional<uint64_t>
 FoldingState::tryToCastPtrToInt(const Value *Ptr) const {
   if (isa<ConstantPointerNull>(Ptr))
@@ -458,14 +454,18 @@ FoldingState::tryToCastPtrToInt(const Value *Ptr) const {
 
   if (auto *CE = dyn_cast<ConstantExpr>(Ptr)) {
     if (CE->getOpcode() == Instruction::IntToPtr) {
-      if (auto *CI = dyn_cast<ConstantInt>(CE->getOperand(0)))
-        return CI->getValue().getZExtValue();
+      if (auto *CI = dyn_cast<ConstantInt>(CE->getOperand(0))) {
+        // Give up in case of a huge offsset, as this shouldn't happen
+        // in a real life.
+        return getNullOrInt(CI->getValue());
+      }
     }
   }
 
   if (auto *IntToPtr = dyn_cast<IntToPtrInst>(Ptr)) {
-    if (auto *CI = dyn_cast<ConstantInt>(IntToPtr->getOperand(0)))
-      return CI->getValue().getZExtValue();
+    if (auto *CI = dyn_cast<ConstantInt>(IntToPtr->getOperand(0))) {
+      return getNullOrInt(CI->getValue());
+    }
   }
 
   return std::nullopt;
@@ -479,7 +479,7 @@ FoldingState::isOverlap(const Instruction *MemUse, const Instruction *Clobber,
   // to dependencies for which we can guarantee they are independent of any
   // loops they are in.
   if (!isGuaranteedLoopIndependent(Clobber, MemUse, ClobberLoc))
-    return {OL_Unknown, 0};
+    return {OverlapType::OL_Unknown, 0};
 
   const Value *ClobberPtr = ClobberLoc.Ptr->stripPointerCasts();
   const Value *MemUsePtr = MemUseLoc.Ptr->stripPointerCasts();
@@ -493,13 +493,14 @@ FoldingState::isOverlap(const Instruction *MemUse, const Instruction *Clobber,
   //  - pointer is a cast of an integer constant
 
   if (isa<Constant>(ClobberPtr) && isa<Constant>(MemUsePtr)) {
-    assert(tryToCastPtrToInt(ClobberPtr) && tryToCastPtrToInt(MemUsePtr));
+    if (!tryToCastPtrToInt(ClobberPtr) || !tryToCastPtrToInt(MemUsePtr))
+      return {OverlapType::OL_Unknown, 0};
 
     const uint64_t ClobberPtrInt = *tryToCastPtrToInt(ClobberPtr);
     const uint64_t MemUsePtrInt = *tryToCastPtrToInt(MemUsePtr);
     if (MemUsePtrInt <= ClobberPtrInt &&
         (ClobberPtrInt + ClobberSize) <= (MemUsePtrInt + MemUseSize)) {
-      return {OL_Complete, ClobberPtrInt - MemUsePtrInt};
+      return {OverlapType::OL_Complete, ClobberPtrInt - MemUsePtrInt};
     }
   }
 
@@ -508,7 +509,7 @@ FoldingState::isOverlap(const Instruction *MemUse, const Instruction *Clobber,
     const uint64_t MemUseUndObjSize = getPointerSize(MemUseUndObj, DL, TLI, &F);
     if (MemUseUndObjSize != MemoryLocation::UnknownSize &&
         MemUseUndObjSize == MemUseSize && MemUseSize == ClobberSize)
-      return {OL_Complete, 0};
+      return {OverlapType::OL_Complete, 0};
   }
 
   // Query the alias information
@@ -519,14 +520,15 @@ FoldingState::isOverlap(const Instruction *MemUse, const Instruction *Clobber,
   if (AAR == AliasResult::MustAlias) {
     // Make sure that the MemUseSize size is >= the ClobberSize size.
     if (MemUseSize >= ClobberSize)
-      return {OL_Complete, 0};
+      return {OverlapType::OL_Complete, 0};
   }
 
   // If we hit a partial alias we may have a full overwrite
   if (AAR == AliasResult::PartialAlias && AAR.hasOffset()) {
-    const int32_t Off = AAR.getOffset();
-    if (Off >= 0 && static_cast<uint64_t>(Off) + ClobberSize <= MemUseSize) {
-      return {OL_Complete, static_cast<uint64_t>(Off)};
+    const int32_t Offset = AAR.getOffset();
+    if (Offset >= 0 &&
+        static_cast<uint64_t>(Offset) + ClobberSize <= MemUseSize) {
+      return {OverlapType::OL_Complete, static_cast<uint64_t>(Offset)};
     }
   }
 
@@ -534,12 +536,12 @@ FoldingState::isOverlap(const Instruction *MemUse, const Instruction *Clobber,
   // analyze them at all.
   if (MemUseUndObj != ClobberUndObj) {
     if (AAR == AliasResult::NoAlias)
-      return {OL_None, 0};
-    return {OL_Unknown, 0};
+      return {OverlapType::OL_None, 0};
+    return {OverlapType::OL_Unknown, 0};
   }
 
-  // Okay, we have stores to two completely different pointers.  Try to
-  // decompose the pointer into a "base + constant_offset" form.  If the base
+  // Okay, we have stores to two completely different pointers. Try to
+  // decompose the pointer into a "base + constant_offset" form. If the base
   // pointers are equal, then we can reason about the MemUse and the Clobber.
   int64_t ClobberOffset = 0, MemUseOffset = 0;
   const Value *ClobberBasePtr =
@@ -550,7 +552,7 @@ FoldingState::isOverlap(const Instruction *MemUse, const Instruction *Clobber,
   // If the base pointers still differ, we have two completely different
   // stores.
   if (ClobberBasePtr != MemUseBasePtr)
-    return {OL_Unknown, 0};
+    return {OverlapType::OL_Unknown, 0};
 
   // The MemUse completely overlaps the clobber if both the start and the end
   // of the Clobber are inside the MemUse:
@@ -564,41 +566,40 @@ FoldingState::isOverlap(const Instruction *MemUse, const Instruction *Clobber,
     // clobber one is completely overlapped by the MemUse one.
     if (static_cast<uint64_t>(ClobberOffset - MemUseOffset) + ClobberSize <=
         MemUseSize)
-      return {OL_Complete, static_cast<uint64_t>(ClobberOffset - MemUseOffset)};
+      return {OverlapType::OL_Complete,
+              static_cast<uint64_t>(ClobberOffset - MemUseOffset)};
 
     // If start of the Clobber access is before end of the MemUse access
     // then accesses overlap.
     if (static_cast<uint64_t>(ClobberOffset - MemUseOffset) < MemUseSize)
-      return {OL_MaybePartial, 0};
+      return {OverlapType::OL_MaybePartial, 0};
   }
   // If start of the MemUse access is before end of the Clobber access then
   // accesses overlap.
   else if (static_cast<uint64_t>(MemUseOffset - ClobberOffset) < ClobberSize) {
-    return {OL_MaybePartial, 0};
+    return {OverlapType::OL_MaybePartial, 0};
   }
 
   // Can reach here only if accesses are known not to overlap.
-  return {OL_None, 0};
+  return {OverlapType::OL_None, 0};
 }
 
 std::optional<uint64_t> FoldingState::checkMemoryClobbers(
     const SmallVector<MemClobber> &MemClobbers) const {
-  uint64_t TotalSize = 0;
   auto Begin = MemClobbers.begin(), End = MemClobbers.end();
-  auto It = Begin, ItPrev = Begin;
-  for (; It != End; ++It) {
-    TotalSize += It->Size;
-    if (It == Begin)
-      continue;
+  assert(Begin != End);
 
+  uint64_t TotalSize = Begin->Size;
+  for (auto It = std::next(Begin); It != End; ++It) {
+    TotalSize += It->Size;
+    auto ItPrev = std::prev(It);
     if ((ItPrev->Start + ItPrev->Size) != It->Start) {
-      LLVM_DEBUG(dbgs() << "\tclobbers do alias, or there is a gep: ["
+      LLVM_DEBUG(dbgs() << "\tclobbers do alias, or there is a gap: ["
                         << ItPrev->Start << ", " << ItPrev->Start + ItPrev->Size
                         << "] -> [" << It->Start << ", " << It->Start + It->Size
                         << "]" << '\n');
       return std::nullopt;
     }
-    ++ItPrev;
   }
 
   return TotalSize;
@@ -650,7 +651,7 @@ Value *FoldingState::runFolding(const CallInst *Call,
 
     // This clobber doesn't write to the memory __sha3 is reading from.
     // Just skip it and come to the next clobber.
-    if (OverlapRes.Type == OL_None) {
+    if (OverlapRes.Type == OverlapType::OL_None) {
       LLVM_DEBUG(dbgs() << "\t\twrites out of sha3 memory, offset: "
                         << OverlapRes.ClobberOffset << '\n');
       continue;
@@ -659,7 +660,8 @@ Value *FoldingState::runFolding(const CallInst *Call,
     // We give up in these cases, as it's  difficult or impossible
     // to determine the full memory data for the __sha3.
     // If required, we could try to support some cases. TODO: CPR-1370.
-    if (OverlapRes.Type == OL_MaybePartial || OverlapRes.Type == OL_Unknown) {
+    if (OverlapRes.Type == OverlapType::OL_MaybePartial ||
+        OverlapRes.Type == OverlapType::OL_Unknown) {
       LLVM_DEBUG(dbgs() << "\t\tpartially or unknow overlap" << '\n');
       return nullptr;
     }
@@ -739,11 +741,10 @@ bool runSyncVMSHA3ConstFolding(Function &F, AliasAnalysis &AA,
   FoldingState State(F, AA, AC, MSSA, DT, TLI, LI);
   SmallSet<MemoryUse *, 16> RemovedSHA3;
 
-  bool Changed = false;
-  for (;;) {
+  bool Changed = false, ChangedOnIter = false;
+  do {
     LLVM_DEBUG(dbgs() << "Running new iteration of sha3 constant folding...\n");
 
-    bool ChangedOnIter = false;
     for (MemoryUse *SHA3MemUse : State.getSHA3MemUses()) {
       if (RemovedSHA3.count(SHA3MemUse))
         continue;
@@ -774,13 +775,10 @@ bool runSyncVMSHA3ConstFolding(Function &F, AliasAnalysis &AA,
     }
     // If we simplified some instructions after folding __sha3 calls,
     // run the folding again, as there may be new opportunities for this.
-    if (!ChangedOnIter || !State.simplifyInstructions())
-      break;
-  }
+  } while (ChangedOnIter && State.simplifyInstructions());
+
   return Changed;
 }
-
-} // end anonymous namespace
 
 bool SyncVMSHA3ConstFolding::runOnFunction(Function &F) {
   if (skipFunction(F))
