@@ -25,7 +25,7 @@ concurrency:
 
 jobs:
   default:
-    runs-on: [ self-hosted, ci-runner-compiler ]
+    runs-on: [ matterlabs-ci-runner-compiler ]
     container:
       image: matterlabs/llvm_runner:latest
       credentials:
