@@ -28,7 +28,7 @@ define i256 @selrrr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define i256 @selirr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp ugt i256 %v3, %v4
-  ; CHECK: add r2, r0, r1
+  ; CHECK-NOT: add
   ; CHECK: add.gt 42, r0, r1
   %2 = select i1 %1, i256 42, i256 %v2
   ret i256 %2
@@ -39,7 +39,7 @@ define i256 @selcrr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp ugt i256 %v3, %v4
   %const = load i256, i256 addrspace(4)* @val
-  ; CHECK: add r2, r0, r1
+  ; CHECK-NOT: add
   ; CHECK: add.gt @val[0], r0, r1
   %2 = select i1 %1, i256 %const, i256 %v2
   ret i256 %2
@@ -51,7 +51,7 @@ define i256 @selsrr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp ugt i256 %v3, %v4
   %val = load i256, i256* %data
-  ; CHECK: add r2, r0, r1
+  ; CHECK-NOT: add
   ; CHECK: add.gt stack-[1], r0, r1
   %2 = select i1 %1, i256 %val, i256 %v2
   ret i256 %2
@@ -215,9 +215,9 @@ define void @selirs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ; CHECK: sub!    r3, r4, r1
   %1 = icmp ugt i256 %v3, %v4
   ; TODO: CPR-986
-  ; CHECK: add     r2, r0, r1
-  ; CHECK: add.gt  42, r0, r1
-  ; CHECK: add     r1, r0, stack-[1]
+  ; CHECK-NOT: add
+  ; CHECK: add.gt  42, r0, r2
+  ; CHECK-NEXT: add     r2, r0, stack-[1]
   %2 = select i1 %1, i256 42, i256 %v2
   store i256 %2, i256* %resptr
   ret void
@@ -230,9 +230,9 @@ define void @selcrs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   %1 = icmp ugt i256 %v3, %v4
   %const = load i256, i256 addrspace(4)* @val
   ; TODO: CPR-986
-  ; CHECK: add     r2, r0, r1
-  ; CHECK: add.gt  @val[0], r0, r1
-  ; CHECK: add     r1, r0, stack-[1]
+  ; CHECK-NOT: add
+  ; CHECK: add.gt  @val[0], r0, [[rselcrs:r[0-9]+]]
+  ; CHECK-NEXT: add     [[rselcrs]], r0, stack-[1]
   %2 = select i1 %1, i256 %const, i256 %v2
   store i256 %2, i256* %resptr
   ret void
@@ -246,9 +246,9 @@ define void @selsrs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   %1 = icmp ugt i256 %v3, %v4
   %val = load i256, i256* %data
   ; TODO: CPR-986
-  ; CHECK: add     r2, r0, r1
-  ; CHECK: add.gt  stack-[1], r0, r1
-  ; CHECK: add     r1, r0, stack-[2]
+  ; CHECK-NOT: add
+  ; CHECK: add.gt  stack-[1], r0, r2
+  ; CHECK-NEXT: add     r2, r0, stack-[2]
   %2 = select i1 %1, i256 %val, i256 %v2
   store i256 %2, i256* %resptr
   ret void
@@ -261,7 +261,7 @@ define void @selris(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   %1 = icmp ult i256 %v3, %v4
   ; TODO: CPR-986
   ; CHECK: add.ge  42, r0, r1
-  ; CHECK: add     r1, r0, stack-[1]
+  ; CHECK-NEXT: add     r1, r0, stack-[1]
   %2 = select i1 %1, i256 %v1, i256 42
   store i256 %2, i256* %resptr
   ret void
