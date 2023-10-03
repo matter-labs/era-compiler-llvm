@@ -21,7 +21,7 @@ define i256 @spill_addr(i256 %a) nounwind {
 define void @spill_adds(i256 %a) nounwind {
   %slot = alloca i256
   %b = call i256 @foo()
-  ; CHECK: add stack-[1], r1, stack-[2]
+  ; CHECK: add stack-[1], r1, stack-[2] 
   %res = add i256 %a, %b
   store i256 %res, i256* %slot
   ret void
@@ -40,7 +40,7 @@ define i256 @spill_subr(i256 %a) nounwind {
 define void @spill_subs(i256 %a) nounwind {
   %slot = alloca i256
   %b = call i256 @foo()
-  ; CHECK: sub stack-[1], r1, stack-[2]
+  ; CHECK: sub stack-[1], r1, stack-[2] 
   %res = sub i256 %a, %b
   store i256 %res, i256* %slot
   ret void
@@ -140,7 +140,7 @@ define i256 @spill_andr(i256 %a) nounwind {
 define void @spill_ands(i256 %a) nounwind {
   %slot = alloca i256
   %b = call i256 @foo()
-  ; CHECK: and stack-[1], r1, stack-[2]
+  ; CHECK: and stack-[1], r1, stack-[2] 
   %res = and i256 %a, %b
   store i256 %res, i256* %slot
   ret void
@@ -158,7 +158,7 @@ define i256 @spill_orr(i256 %a) nounwind {
 define void @spill_ors(i256 %a) nounwind {
   %slot = alloca i256
   %b = call i256 @foo()
-  ; CHECK: or stack-[1], r1, stack-[2]
+  ; CHECK: or stack-[1], r1, stack-[2] 
   %res = or i256 %a, %b
   store i256 %res, i256* %slot
   ret void
@@ -176,7 +176,7 @@ define i256 @spill_xorr(i256 %a) nounwind {
 define void @spill_xors(i256 %a) nounwind {
   %slot = alloca i256
   %b = call i256 @foo()
-  ; CHECK: xor stack-[1], r1, stack-[2]
+  ; CHECK: xor stack-[1], r1, stack-[2] 
   %res = xor i256 %a, %b
   store i256 %res, i256* %slot
   ret void
@@ -194,7 +194,7 @@ define i256 @spill_shlr(i256 %a) nounwind {
 define void @spill_shls(i256 %a) nounwind {
   %slot = alloca i256
   %b = call i256 @foo()
-  ; CHECK: shl stack-[1], r1, stack-[2]
+  ; CHECK: shl stack-[1], r1, stack-[2] 
   %res = shl i256 %a, %b
   store i256 %res, i256* %slot
   ret void
@@ -212,7 +212,7 @@ define i256 @spill_shrr(i256 %a) nounwind {
 define void @spill_shrs(i256 %a) nounwind {
   %slot = alloca i256
   %b = call i256 @foo()
-  ; CHECK: shr stack-[1], r1, stack-[2]
+  ; CHECK: shr stack-[1], r1, stack-[2] 
   %res = lshr i256 %a, %b
   store i256 %res, i256* %slot
   ret void
@@ -230,7 +230,7 @@ define i8 addrspace(3)* @spill_ptraddr(i8 addrspace(3)* %a) nounwind {
 define void @spill_ptradds(i8 addrspace(3)* %a) nounwind {
   %slot = alloca i8 addrspace(3)*
   %b = call i256 @foo()
-  ; CHECK: ptr.add stack-[1], r1, stack-[2]
+  ; CHECK: ptr.add stack-[1], r1, stack-[2] 
   %res = call i8 addrspace(3)* @llvm.eravm.ptr.add(i8 addrspace(3)* %a, i256 %b)
   store i8 addrspace(3)* %res, i8 addrspace(3)** %slot
   ret void
@@ -248,7 +248,7 @@ define i8 addrspace(3)* @spill_ptrpackr(i8 addrspace(3)* %a) nounwind {
 define void @spill_ptrpacks(i8 addrspace(3)* %a) nounwind {
   %slot = alloca i8 addrspace(3)*
   %b = call i256 @foo()
-  ; CHECK: ptr.pack stack-[1], r1, stack-[2]
+  ; CHECK: ptr.pack stack-[1], r1, stack-[2] 
   %res = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %a, i256 %b)
   store i8 addrspace(3)* %res, i8 addrspace(3)** %slot
   ret void
@@ -266,7 +266,7 @@ define i8 addrspace(3)* @spill_ptrshrinkr(i8 addrspace(3)* %a) nounwind {
 define void @spill_ptrshrinks(i8 addrspace(3)* %a) nounwind {
   %slot = alloca i8 addrspace(3)*
   %b = call i256 @foo()
-  ; CHECK: ptr.shrink stack-[1], r1, stack-[2]
+  ; CHECK: ptr.shrink stack-[1], r1, stack-[2] 
   %res = call i8 addrspace(3)* @llvm.eravm.ptr.shrink(i8 addrspace(3)* %a, i256 %b)
   store i8 addrspace(3)* %res, i8 addrspace(3)** %slot
   ret void
@@ -415,7 +415,7 @@ define i256 @spill_andv(i256 %a, i256 %b, i256 %c) nounwind {
 define i256 @spill_select(i256 %a, i1 %cond) nounwind {
   %b = call i256 @foo()
 ; CHECK: sub! stack-[1], r0, r2
-; CHECK: add.ne stack-[2], r0, r1
+; CHECK: add.ne stack-[2], r0, r2
   %res = select i1 %cond, i256 %a, i256 %b
   ret i256 %res
 }
