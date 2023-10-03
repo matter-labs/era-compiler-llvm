@@ -415,7 +415,7 @@ define i256 @spill_andv(i256 %a, i256 %b, i256 %c) nounwind {
 define i256 @spill_select(i256 %a, i1 %cond) nounwind {
   %b = call i256 @foo()
 ; CHECK: sub! stack-[1], r0, r2
-; CHECK: add.ne stack-[2], r0, r1
+; CHECK: add.ne stack-[2], r0, r2
   %res = select i1 %cond, i256 %a, i256 %b
   ret i256 %res
 }

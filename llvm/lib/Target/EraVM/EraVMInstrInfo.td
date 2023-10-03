@@ -265,7 +265,7 @@ def FRAMEirrr : Pseudo<(outs GR256:$dst), (ins i256imm:$imm, GR256:$src, GR256:$
                        "# FRAMEirrr PSEUDO", []>;
 }
 
-let isCodeGenOnly = 1, isPseudo = 1, Uses = [Flags] in {
+let isCodeGenOnly = 1, isPseudo = 1, isSelect = 1, Uses = [Flags] in {
   def SELrrr : Pseudo<(outs GR256:$dst), (ins GR256:$src, GR256:$src2, i256imm:$cc),
                        "# SELrrr PSEUDO",
                        [(set GR256:$dst,
@@ -279,21 +279,29 @@ let isCodeGenOnly = 1, isPseudo = 1, Uses = [Flags] in {
   def SELirr : Pseudo<(outs GR256:$dst), (ins imm16:$src, GR256:$src2, i256imm:$cc),
                        "# SELirr PSEUDO",
                        [(set GR256:$dst,
-                          (EraVMselectcc imm16:$src, GR256:$src2, imm:$cc))]>;
+                          (EraVMselectcc imm16:$src, GR256:$src2, imm:$cc))]> {
+                            let Constraints = "$dst = $src2";
+                          }
 let mayLoad = 1 in {
   def SELcrr : Pseudo<(outs GR256:$dst), (ins memop:$src, GR256:$src2, i256imm:$cc),
                        "# SELcrr PSEUDO",
                        [(set GR256:$dst,
-                          (EraVMselectcc (load_code memaddr:$src), GR256:$src2, imm:$cc))]>;
+                          (EraVMselectcc (load_code memaddr:$src), GR256:$src2, imm:$cc))]> {
+                            let Constraints = "$dst = $src2";
+                          }
   def SELsrr : Pseudo<(outs GR256:$dst), (ins stackop:$src, GR256:$src2, i256imm:$cc),
                        "# SELsrr PSEUDO",
                        [(set GR256:$dst,
-                          (EraVMselectcc (load_stack stackaddr:$src), GR256:$src2, imm:$cc))]>;
+                          (EraVMselectcc (load_stack stackaddr:$src), GR256:$src2, imm:$cc))]> {
+                            let Constraints = "$dst = $src2";
+                          }
 }
   def SELrir : Pseudo<(outs GR256:$dst), (ins GR256:$src, imm16:$src2, i256imm:$cc),
                        "# SELrir PSEUDO",
                        [(set GR256:$dst,
-                          (EraVMselectcc GR256:$src, imm16:$src2, imm:$cc))]>;
+                          (EraVMselectcc GR256:$src, imm16:$src2, imm:$cc))]> {
+                            let Constraints = "$dst = $src";
+                          }
   def SELiir : Pseudo<(outs GR256:$dst), (ins imm16:$src, imm16:$src2, i256imm:$cc),
                        "# SELiir PSEUDO",
                        [(set GR256:$dst,
@@ -310,7 +318,9 @@ let mayLoad = 1 in {
   def SELrcr : Pseudo<(outs GR256:$dst), (ins GR256:$src, memop:$src2, i256imm:$cc),
                        "# SELrcr PSEUDO",
                        [(set GR256:$dst,
-                          (EraVMselectcc GR256:$src, (load_code memaddr:$src2), imm:$cc))]>;
+                          (EraVMselectcc GR256:$src, (load_code memaddr:$src2), imm:$cc))]> {
+                            let Constraints = "$dst = $src";
+                          }
   def SELicr : Pseudo<(outs GR256:$dst), (ins imm16:$src, memop:$src2, i256imm:$cc),
                        "# SELicr PSEUDO",
                        [(set GR256:$dst,
@@ -326,7 +336,9 @@ let mayLoad = 1 in {
   def SELrsr : Pseudo<(outs GR256:$dst), (ins GR256:$src, stackop:$src2, i256imm:$cc),
                        "# SELrsr PSEUDO",
                        [(set GR256:$dst,
-                          (EraVMselectcc GR256:$src, (load_stack stackaddr:$src2), imm:$cc))]>;
+                          (EraVMselectcc GR256:$src, (load_stack stackaddr:$src2), imm:$cc))]> {
+                            let Constraints = "$dst = $src";
+                          }
   def SELisr : Pseudo<(outs GR256:$dst), (ins imm16:$src, stackop:$src2, i256imm:$cc),
                        "# SELisr PSEUDO",
                        [(set GR256:$dst,
@@ -340,6 +352,7 @@ let mayLoad = 1 in {
                        [(set GR256:$dst,
                           (EraVMselectcc (load_stack stackaddr:$src), (load_stack stackaddr:$src2), imm:$cc))]>;
 }
+
 }
 
 // To be able to fold (op in0, (select.cc x, y)) to (op in0, y) + (op.cc in0, y) for
