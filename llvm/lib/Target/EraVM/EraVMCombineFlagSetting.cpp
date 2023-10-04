@@ -62,7 +62,7 @@ public:
   static char ID;
   EraVMCombineFlagSetting() : MachineFunctionPass(ID) {}
 
-  bool runOnMachineFunction(MachineFunction &Fn) override;
+  bool runOnMachineFunction(MachineFunction &MF) override;
 
   StringRef getPassName() const override {
     return ERAVM_COMBINE_FLAG_SETTING_NAME;

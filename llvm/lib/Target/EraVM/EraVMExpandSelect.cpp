@@ -28,7 +28,7 @@ class EraVMExpandSelect : public MachineFunctionPass {
 public:
   static char ID;
   EraVMExpandSelect() : MachineFunctionPass(ID) {}
-  bool runOnMachineFunction(MachineFunction &Fn) override;
+  bool runOnMachineFunction(MachineFunction &MF) override;
   StringRef getPassName() const override { return ERAVM_EXPAND_SELECT_NAME; }
 
 private:

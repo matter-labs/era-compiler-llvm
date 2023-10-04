@@ -41,7 +41,7 @@ public:
 
   const TargetRegisterInfo *TRI;
 
-  bool runOnMachineFunction(MachineFunction &Fn) override;
+  bool runOnMachineFunction(MachineFunction &MF) override;
 
   StringRef getPassName() const override { return ERAVM_BYTES_TO_CELLS_NAME; }
 

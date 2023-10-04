@@ -30,7 +30,7 @@ public:
 
   const TargetRegisterInfo *TRI;
 
-  bool runOnMachineFunction(MachineFunction &Fn) override;
+  bool runOnMachineFunction(MachineFunction &MF) override;
 
   StringRef getPassName() const override { return ERAVM_ADD_CONDITIONALS_NAME; }
 

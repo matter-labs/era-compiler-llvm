@@ -50,7 +50,7 @@ public:
   static char ID;
   EraVMCombineToIndexedMemops() : MachineFunctionPass(ID) {}
 
-  bool runOnMachineFunction(MachineFunction &Fn) override;
+  bool runOnMachineFunction(MachineFunction &MF) override;
 
   StringRef getPassName() const override {
     return ERAVM_COMBINE_INDEXED_MEMOPS_NAME;

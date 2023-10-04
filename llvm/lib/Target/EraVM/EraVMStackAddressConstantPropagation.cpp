@@ -38,7 +38,7 @@ class EraVMStackAddressConstantPropagation : public MachineFunctionPass {
 public:
   static char ID;
   EraVMStackAddressConstantPropagation() : MachineFunctionPass(ID) {}
-  bool runOnMachineFunction(MachineFunction &Fn) override;
+  bool runOnMachineFunction(MachineFunction &MF) override;
 
   StringRef getPassName() const override {
     return ERAVM_STACK_ADDRESS_CONSTANT_PROPAGATION_NAME;

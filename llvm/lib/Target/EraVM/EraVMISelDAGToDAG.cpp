@@ -83,10 +83,10 @@ private:
   // Main method to transform nodes into machine nodes.
   void Select(SDNode *N) override;
 
-  bool SelectMemAddr(SDValue Addr, SDValue &Base, SDValue &Disp);
-  bool SelectStackAddr(SDValue Addr, SDValue &Base1, SDValue &Base2,
+  bool SelectMemAddr(SDValue N, SDValue &Base, SDValue &Disp);
+  bool SelectStackAddr(SDValue N, SDValue &Base1, SDValue &Base2,
                        SDValue &Disp);
-  bool SelectStackAddrCommon(SDValue Addr, SDValue &Base1, SDValue &Base2,
+  bool SelectStackAddrCommon(SDValue N, SDValue &Base1, SDValue &Base2,
                              SDValue &Disp, bool IsAdjusted);
 };
 } // end anonymous namespace
