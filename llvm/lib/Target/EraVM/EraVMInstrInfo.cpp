@@ -1044,7 +1044,7 @@ void EraVMInstrInfo::fixupPostOutlining(
   // because it can happen that we first decide to not adjust some function
   // because callers weren't adjusted, but in later iterations we adjust one
   // of the callers. See this example in machine-outliner-tail.mir.
-  bool Changed;
+  bool Changed = false;
   do {
     Changed = false;
     for (auto [Outlined, Callers] : FixupFunctions) {

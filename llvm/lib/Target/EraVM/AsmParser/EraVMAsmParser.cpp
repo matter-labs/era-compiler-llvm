@@ -159,7 +159,7 @@ public:
     if (Kind != k_Imm)
       return false;
 
-    int64_t Val;
+    int64_t Val = 0;
     if (!Imm->evaluateAsAbsolute(Val))
       return false;
 

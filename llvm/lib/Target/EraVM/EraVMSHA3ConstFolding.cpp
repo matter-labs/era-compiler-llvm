@@ -296,7 +296,7 @@ private:
 static uint64_t getPointerSize(const Value *V, const DataLayout &DL,
                                const TargetLibraryInfo &TLI,
                                const Function *F) {
-  uint64_t Size;
+  uint64_t Size = 0;
   ObjectSizeOpts Opts;
   Opts.NullIsUnknownSize = NullPointerIsDefined(F);
 

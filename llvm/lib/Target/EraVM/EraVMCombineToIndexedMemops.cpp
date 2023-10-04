@@ -124,7 +124,7 @@ EraVMCombineToIndexedMemops::replaceWithIndexed(MachineInstr &MI,
   assert(PostIncOpcMap.count(MI.getOpcode()) && "MI opcode must be in the map");
   MachineBasicBlock &MBB = *MI.getParent();
   auto IncOpcode = PostIncOpcMap.lookup(MI.getOpcode());
-  MachineInstr *Result;
+  MachineInstr *Result = nullptr;
   if (MI.mayLoad())
     Result = BuildMI(MBB, MI, MI.getDebugLoc(), TII->get(IncOpcode))
                  .addDef(MI.getOperand(0).getReg())

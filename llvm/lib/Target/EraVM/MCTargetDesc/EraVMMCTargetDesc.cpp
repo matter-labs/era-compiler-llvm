@@ -60,7 +60,7 @@ createEraVMMCSubtargetInfo(const Triple &TT, StringRef CPU, StringRef FS) {
 static MCAsmInfo *createARMMCAsmInfo(const MCRegisterInfo &MRI,
                                      const Triple &TheTriple,
                                      const MCTargetOptions &Options) {
-  MCAsmInfo *MAI;
+  MCAsmInfo *MAI = nullptr;
   MAI = new EraVMMCAsmInfo(TheTriple);
   return MAI;
 }
