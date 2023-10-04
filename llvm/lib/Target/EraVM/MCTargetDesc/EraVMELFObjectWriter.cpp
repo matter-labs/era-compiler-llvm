@@ -7,7 +7,6 @@
 #include "MCTargetDesc/EraVMFixupKinds.h"
 #include "MCTargetDesc/EraVMMCTargetDesc.h"
 
-#include "MCTargetDesc/EraVMMCTargetDesc.h"
 #include "llvm/MC/MCELFObjectWriter.h"
 #include "llvm/MC/MCFixup.h"
 #include "llvm/MC/MCObjectWriter.h"
