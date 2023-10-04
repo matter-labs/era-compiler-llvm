@@ -24,9 +24,9 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/StringRef.h"
-// SyncVM local begin
+// EraVM local begin
 #include "llvm/ADT/Triple.h"
-// SyncVM local end
+// EraVM local end
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/CaptureTracking.h"
 #include "llvm/Analysis/ConstantFolding.h"
@@ -6613,13 +6613,13 @@ bool SimplifyCFGOpt::simplifySwitch(SwitchInst *SI, IRBuilder<> &Builder) {
   // switch expression itself can still be restricted as a result of inlining or
   // CVP. Therefore, only apply this transformation during late stages of the
   // optimisation pipeline.
-  // SyncVM local begin
+  // EraVM local begin
   // TODO: CPR-940 Support const arrays.
-  if (!Triple(BB->getModule()->getTargetTriple()).isSyncVM())
+  if (!Triple(BB->getModule()->getTargetTriple()).isEraVM())
     if (Options.ConvertSwitchToLookupTable &&
         SwitchToLookupTable(SI, Builder, DTU, DL, TTI))
       return requestResimplify();
-  // SyncVM local end
+  // EraVM local end
 
   if (ReduceSwitchRange(SI, Builder, DL, TTI))
     return requestResimplify();
@@ -6836,7 +6836,7 @@ bool SimplifyCFGOpt::simplifyCondBranch(BranchInst *BI, IRBuilder<> &Builder) {
     return false;
 
   // Conditional branch
-  // SyncVM local begin
+  // EraVM local begin
    #if 0
   if (isValueEqualityComparison(BI)) {
     // If we only have one predecessor, and if it is a branch on this value,
@@ -6863,7 +6863,7 @@ bool SimplifyCFGOpt::simplifyCondBranch(BranchInst *BI, IRBuilder<> &Builder) {
   if (SimplifyBranchOnICmpChain(BI, Builder, DL))
     return true;
 #endif
-// SyncVM local end
+// EraVM local end
 
   // If this basic block has dominating predecessor blocks and the dominating
   // blocks' conditions imply BI's condition, we know the direction of BI.

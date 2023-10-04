@@ -1,5 +1,5 @@
 InheritParentConfig: true
-# SyncVM local begin
+# EraVM local begin
 Checks: >
     readability-*,
     -readability-identifier-naming,
@@ -49,4 +49,4 @@ CheckOptions:
 
 # For non-incremental checks, these have hundred of hits: -misc-const-correctness,-llvm-qualified-auto,-misc-use-anonymous-namespace
 WarningsAsErrors: '*'
-# SyncVM local end
+# EraVM local end

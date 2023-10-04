@@ -2471,11 +2471,11 @@ public:
     OS << "LLVM (http://llvm.org/):\n  ";
 #endif
     OS << PACKAGE_NAME << " version " << PACKAGE_VERSION << "\n  ";
-// SyncVM local begin
-#ifdef SYNCVM_LLVM_COMMIT_ID
-    OS << "Git: " << SYNCVM_LLVM_COMMIT_ID << "\n  ";
+// EraVM local begin
+#ifdef ERAVM_LLVM_COMMIT_ID
+    OS << "Git: " << ERAVM_LLVM_COMMIT_ID << "\n  ";
 #endif
-// SyncVM local end
+// EraVM local end
 #if LLVM_IS_DEBUG_BUILD
     OS << "DEBUG build";
 #else
@@ -2745,9 +2745,9 @@ void LLVMParseCommandLineOptions(int argc, const char *const *argv,
                                     &llvm::nulls());
 }
 
-// SyncVM local begin
+// EraVM local begin
 int LLVMPrintCommitIDTo(char* Buf) {
-  return snprintf(Buf, sizeof(SYNCVM_LLVM_COMMIT_ID), "%s",
-                  SYNCVM_LLVM_COMMIT_ID);
+  return snprintf(Buf, sizeof(ERAVM_LLVM_COMMIT_ID), "%s",
+                  ERAVM_LLVM_COMMIT_ID);
 }
-// SyncVM local end
+// EraVM local end

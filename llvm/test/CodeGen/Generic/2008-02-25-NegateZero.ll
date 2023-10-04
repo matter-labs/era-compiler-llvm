@@ -1,5 +1,5 @@
-; UNSUPPORTED: syncvm
-; SyncVM doesn't support floats.
+; UNSUPPORTED: eravm
+; EraVM doesn't support floats.
 ; RUN: llc < %s 
 ; rdar://5763967
 

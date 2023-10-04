@@ -111,9 +111,9 @@ DUMMY_FUNCTION_PASS("sjljehprepare", SjLjEHPreparePass, ())
 DUMMY_FUNCTION_PASS("dwarfehprepare", DwarfEHPass, ())
 DUMMY_FUNCTION_PASS("winehprepare", WinEHPass, ())
 DUMMY_FUNCTION_PASS("wasmehprepare", WasmEHPass, ())
-// SyncVM local begin
-DUMMY_FUNCTION_PASS("syncvmehprepare", SyncVMEHPass, ())
-// SyncVM local end
+// EraVM local begin
+DUMMY_FUNCTION_PASS("eravmehprepare", EraVMEHPass, ())
+// EraVM local end
 DUMMY_FUNCTION_PASS("codegenprepare", CodeGenPreparePass, ())
 DUMMY_FUNCTION_PASS("safe-stack", SafeStackPass, ())
 DUMMY_FUNCTION_PASS("stack-protector", StackProtectorPass, ())

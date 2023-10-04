@@ -195,9 +195,9 @@
 #include "llvm/Transforms/Scalar/MakeGuardsExplicit.h"
 #include "llvm/Transforms/Scalar/MemCpyOptimizer.h"
 #include "llvm/Transforms/Scalar/MergeICmps.h"
-// SyncVM local begin
+// EraVM local begin
 #include "llvm/Transforms/Scalar/MergeSimilarBB.h"
-// SyncVM local end
+// EraVM local end
 #include "llvm/Transforms/Scalar/MergedLoadStoreMotion.h"
 #include "llvm/Transforms/Scalar/NaryReassociate.h"
 #include "llvm/Transforms/Scalar/NewGVN.h"

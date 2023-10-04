@@ -981,11 +981,11 @@ void TargetPassConfig::addPassesToHandleExceptions() {
     addPass(createWinEHPass(/*DemoteCatchSwitchPHIOnly=*/false));
     addPass(createWasmEHPass());
     break;
-  // SyncVM local begin
-  case ExceptionHandling::SyncVM:
-    // SyncVM selects invokes directly. No special handling is required.
+  // EraVM local begin
+  case ExceptionHandling::EraVM:
+    // EraVM selects invokes directly. No special handling is required.
     break;
-  // SyncVM local end
+  // EraVM local end
   case ExceptionHandling::None:
     addPass(createLowerInvokePass());
 

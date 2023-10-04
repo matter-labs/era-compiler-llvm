@@ -1,7 +1,7 @@
 ## Test failing to write output file on non-windows platforms.
-## Unsupported on syncvm as CI currently runs with root permission.
+## Unsupported on eravm as CI currently runs with root permission.
 
-# UNSUPPORTED: system-windows, syncvm
+# UNSUPPORTED: system-windows, eravm
 # RUN: rm -rf %t.TestDir
 # RUN: mkdir %t.TestDir
 # RUN: touch %t.TestDir/Output.TestFile

@@ -246,11 +246,11 @@ def llvm_i16_ty        : LLVMType<i16>;
 def llvm_i32_ty        : LLVMType<i32>;
 def llvm_i64_ty        : LLVMType<i64>;
 def llvm_i128_ty       : LLVMType<i128>;
-// SyncVM local begin
+// EraVM local begin
 def llvm_i256_ty       : LLVMType<i256>;
 def llvm_i512_ty       : LLVMType<i512>;
 def llvm_fatptr_ty     : LLVMType<fatptr>;
-// SyncVM local end
+// EraVM local end
 def llvm_half_ty       : LLVMType<f16>;
 def llvm_bfloat_ty     : LLVMType<bf16>;
 def llvm_float_ty      : LLVMType<f32>;
@@ -2058,6 +2058,6 @@ include "llvm/IR/IntrinsicsRISCV.td"
 include "llvm/IR/IntrinsicsSPIRV.td"
 include "llvm/IR/IntrinsicsVE.td"
 include "llvm/IR/IntrinsicsDirectX.td"
-// SyncVM local begin
-include "llvm/IR/IntrinsicsSyncVM.td"
-// SyncVM local end
+// EraVM local begin
+include "llvm/IR/IntrinsicsEraVM.td"
+// EraVM local end

@@ -1,4 +1,4 @@
-; XFAIL: syncvm
+; XFAIL: eravm
 ; TODO: CPR-920 support operators
 ; RUN: llc < %s
 ; PR2603

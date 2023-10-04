@@ -554,11 +554,11 @@ bool AsmPrinter::doInitialization(Module &M) {
     if (!needsCFIForDebug())
       break;
     LLVM_FALLTHROUGH;
-  // SyncVM local begin
-  // SyncVM doesn't fully support exceptions by now, so it doesn't stream
+  // EraVM local begin
+  // EraVM doesn't fully support exceptions by now, so it doesn't stream
   // anything to a file.
-  case ExceptionHandling::SyncVM:
-  // SyncVM local end
+  case ExceptionHandling::EraVM:
+  // EraVM local end
     break;
   case ExceptionHandling::SjLj:
   case ExceptionHandling::DwarfCFI:

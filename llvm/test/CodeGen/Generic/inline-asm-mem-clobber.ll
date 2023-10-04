@@ -1,5 +1,5 @@
-; UNSUPPORTED: syncvm
-; SyncVM doesn't support inline asm yet.
+; UNSUPPORTED: eravm
+; EraVM doesn't support inline asm yet.
 ; RUN: llc -O2 -no-integrated-as < %s | FileCheck %s
 
 ; XCore default subtarget does not support 8-byte alignment on stack.

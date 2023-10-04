@@ -1,4 +1,4 @@
-; UNSUPPORTED: syncvm
+; UNSUPPORTED: eravm
 ; Unsupported because of floats.
 ; RUN: llc < %s
 

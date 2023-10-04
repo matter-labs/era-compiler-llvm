@@ -5110,10 +5110,10 @@ static bool IsNonLocalValue(Value *V, BasicBlock *BB) {
 /// addressing mode computation from the fast path entirely.).
 bool CodeGenPrepare::optimizeMemoryInst(Instruction *MemoryInst, Value *Addr,
                                         Type *AccessTy, unsigned AddrSpace) {
-// SyncVM local begin
+// EraVM local begin
 // FIXME: enable the pass
   return false;
-// SyncVM local end
+// EraVM local end
   Value *Repl = Addr;
 
   // Try to collapse single-value PHI nodes.  This is necessary to undo

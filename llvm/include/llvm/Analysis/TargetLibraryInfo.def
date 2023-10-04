@@ -235,11 +235,11 @@ TLI_DEFINE_STRING_INTERNAL("__acoshl_finite")
 /// long double __acosl_finite(long double x);
 TLI_DEFINE_ENUM_INTERNAL(acosl_finite)
 TLI_DEFINE_STRING_INTERNAL("__acosl_finite")
-// SyncVM local begin
+// EraVM local begin
 // i256 __addmod(i256, i256, i256)
 TLI_DEFINE_ENUM_INTERNAL(xvm_addmod)
 TLI_DEFINE_STRING_INTERNAL("__addmod")
-// SyncVM local end
+// EraVM local end
 /// double __asin_finite(double x);
 TLI_DEFINE_ENUM_INTERNAL(asin_finite)
 TLI_DEFINE_STRING_INTERNAL("__asin_finite")
@@ -273,11 +273,11 @@ TLI_DEFINE_STRING_INTERNAL("__atomic_load")
 /// void __atomic_store(size_t size, void *mptr, void *vptr, int smodel);
 TLI_DEFINE_ENUM_INTERNAL(atomic_store)
 TLI_DEFINE_STRING_INTERNAL("__atomic_store")
-// SyncVM local begin
+// EraVM local begin
 // i256 __byte(i256, i256)
 TLI_DEFINE_ENUM_INTERNAL(xvm_byte)
 TLI_DEFINE_STRING_INTERNAL("__byte")
-// SyncVM local end
+// EraVM local end
 /// double __cosh_finite(double x);
 TLI_DEFINE_ENUM_INTERNAL(cosh_finite)
 TLI_DEFINE_STRING_INTERNAL("__cosh_finite")
@@ -306,14 +306,14 @@ TLI_DEFINE_STRING_INTERNAL("__cxa_guard_acquire")
 /// void __cxa_guard_release(guard_t *guard);
 TLI_DEFINE_ENUM_INTERNAL(cxa_guard_release)
 TLI_DEFINE_STRING_INTERNAL("__cxa_guard_release")
-// SyncVM local begin
+// EraVM local begin
 /// i256 __div(i256, i256)
 TLI_DEFINE_ENUM_INTERNAL(xvm_div)
 TLI_DEFINE_STRING_INTERNAL("__div")
 // i256 __exp(i256, i256)
 TLI_DEFINE_ENUM_INTERNAL(xvm_exp)
 TLI_DEFINE_STRING_INTERNAL("__exp")
-// SyncVM local end
+// EraVM local end
 /// double __exp10_finite(double x);
 TLI_DEFINE_ENUM_INTERNAL(exp10_finite)
 TLI_DEFINE_STRING_INTERNAL("__exp10_finite")
@@ -335,10 +335,10 @@ TLI_DEFINE_STRING_INTERNAL("__exp2l_finite")
 /// double __exp_finite(double x);
 TLI_DEFINE_ENUM_INTERNAL(exp_finite)
 TLI_DEFINE_STRING_INTERNAL("__exp_finite")
-// SyncVM local begin
+// EraVM local begin
 TLI_DEFINE_ENUM_INTERNAL(xvm_exp_pow2)
 TLI_DEFINE_STRING_INTERNAL("__exp_pow2")
-// SyncVM local end
+// EraVM local end
 /// float __expf_finite(float x);
 TLI_DEFINE_ENUM_INTERNAL(expf_finite)
 TLI_DEFINE_STRING_INTERNAL("__expf_finite")
@@ -400,7 +400,7 @@ TLI_DEFINE_STRING_INTERNAL("__mempcpy_chk")
 /// void *__memset_chk(void *s, char v, size_t n, size_t s1size);
 TLI_DEFINE_ENUM_INTERNAL(memset_chk)
 TLI_DEFINE_STRING_INTERNAL("__memset_chk")
-// SyncVM local begin
+// EraVM local begin
 // i256 __mod(i256, i256)
 TLI_DEFINE_ENUM_INTERNAL(xvm_mod)
 TLI_DEFINE_STRING_INTERNAL("__mod")
@@ -410,7 +410,7 @@ TLI_DEFINE_STRING_INTERNAL("__mstore8")
 // i256 __mulmod(i256, i256, i256)
 TLI_DEFINE_ENUM_INTERNAL(xvm_mulmod)
 TLI_DEFINE_STRING_INTERNAL("__mulmod")
-// SyncVM local end
+// EraVM local end
 // int __nvvm_reflect(const char *)
 TLI_DEFINE_ENUM_INTERNAL(nvvm_reflect)
 TLI_DEFINE_STRING_INTERNAL("__nvvm_reflect")
@@ -423,7 +423,7 @@ TLI_DEFINE_STRING_INTERNAL("__powf_finite")
 /// long double __powl_finite(long double x, long double y);
 TLI_DEFINE_ENUM_INTERNAL(powl_finite)
 TLI_DEFINE_STRING_INTERNAL("__powl_finite")
-// SyncVM local begin
+// EraVM local begin
 // i256 __return(i256, i256, i256)
 TLI_DEFINE_ENUM_INTERNAL(xvm_return)
 TLI_DEFINE_STRING_INTERNAL("__return")
@@ -448,7 +448,7 @@ TLI_DEFINE_STRING_INTERNAL("__shr")
 // i256 __signextend(i256, i256)
 TLI_DEFINE_ENUM_INTERNAL(xvm_signextend)
 TLI_DEFINE_STRING_INTERNAL("__signextend")
-// SyncVM local end
+// EraVM local end
 /// double __sincospi_stret(double x);
 TLI_DEFINE_ENUM_INTERNAL(sincospi_stret)
 TLI_DEFINE_STRING_INTERNAL("__sincospi_stret")
@@ -479,11 +479,11 @@ TLI_DEFINE_STRING_INTERNAL("__small_printf")
 /// int __small_sprintf(char *str, const char *format, ...);
 TLI_DEFINE_ENUM_INTERNAL(small_sprintf)
 TLI_DEFINE_STRING_INTERNAL("__small_sprintf")
-// SyncVM local begin
+// EraVM local begin
 // i256 __smod(i256, i256)
 TLI_DEFINE_ENUM_INTERNAL(xvm_smod)
 TLI_DEFINE_STRING_INTERNAL("__smod")
-// SyncVM local end
+// EraVM local end
 /// int __snprintf_chk(char *s, size_t n, int flags, size_t slen,
 ///                    const char *format, ...);
 TLI_DEFINE_ENUM_INTERNAL(snprintf_chk)

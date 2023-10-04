@@ -4299,10 +4299,10 @@ SDValue TargetLowering::SimplifySetCC(EVT VT, SDValue N0, SDValue N1,
       }
     }
 
-    // SyncVM local begin
-    // Load narrowing is not profiable for SyncVM
-    if (!DAG.getTarget().getTargetTriple().isSyncVM()) {
-    // SyncVM local end
+    // EraVM local begin
+    // Load narrowing is not profiable for EraVM
+    if (!DAG.getTarget().getTargetTriple().isEraVM()) {
+    // EraVM local end
     // If the LHS is '(and load, const)', the RHS is 0, the test is for
     // equality or unsigned, and all 1 bits of the const are in the same
     // partial word, see if we can shorten the load.
@@ -4360,9 +4360,9 @@ SDValue TargetLowering::SimplifySetCC(EVT VT, SDValue N0, SDValue N1,
         }
       }
     }
-    // SyncVM local begin
+    // EraVM local begin
     }
-    // SyncVM local end
+    // EraVM local end
 
     // If the LHS is a ZERO_EXTEND, perform the comparison on the input.
     if (N0.getOpcode() == ISD::ZERO_EXTEND) {
@@ -8470,11 +8470,11 @@ TargetLowering::expandUnalignedLoad(LoadSDNode *LD, SelectionDAG &DAG) const {
   assert(LoadedVT.isInteger() && !LoadedVT.isVector() &&
          "Unaligned load of unsupported type.");
 
-  // SyncVM local begin
+  // EraVM local begin
   bool Aligned = false;
   if (auto ConstPtr = dyn_cast<ConstantSDNode>(Ptr))
     Aligned = ConstPtr->getAPIntValue().urem(32) == 0;
-  if (!Aligned && DAG.getTarget().getTargetTriple().isSyncVM()) {
+  if (!Aligned && DAG.getTarget().getTargetTriple().isEraVM()) {
     unsigned NumBits = LoadedVT.getSizeInBits();
     assert(NumBits == 256);
     auto Const32 = DAG.getConstant(APInt(256, 32, false), dl, MVT::i256);
@@ -8510,7 +8510,7 @@ TargetLowering::expandUnalignedLoad(LoadSDNode *LD, SelectionDAG &DAG) const {
 
     return std::make_pair(Result, TF);
   }
-  // SyncVM local end
+  // EraVM local end
   // Compute the new VT that is half the size of the old one.  This is an
   // integer MVT.
   unsigned NumBits = LoadedVT.getSizeInBits();
@@ -8659,11 +8659,11 @@ SDValue TargetLowering::expandUnalignedStore(StoreSDNode *ST,
   assert(StoreMemVT.isInteger() && !StoreMemVT.isVector() &&
          "Unaligned store of unknown type.");
 
-  // SyncVM local begin
+  // EraVM local begin
   bool Aligned = false;
   if (auto ConstPtr = dyn_cast<ConstantSDNode>(Ptr))
     Aligned = ConstPtr->getAPIntValue().urem(32) == 0;
-  if (!Aligned && DAG.getTarget().getTargetTriple().isSyncVM()) {
+  if (!Aligned && DAG.getTarget().getTargetTriple().isEraVM()) {
     unsigned NumBits = StoreMemVT.getSizeInBits();
     assert(NumBits == 256);
     auto Const32 = DAG.getConstant(APInt(256, 32, false), dl, MVT::i256);
@@ -8714,7 +8714,7 @@ SDValue TargetLowering::expandUnalignedStore(StoreSDNode *ST,
     return TF;
   }
 
-  // SyncVM local end
+  // EraVM local end
   // Get the half-size VT
   EVT NewStoredVT = StoreMemVT.getHalfSizedIntegerVT(*DAG.getContext());
   unsigned NumBits = NewStoredVT.getFixedSizeInBits();

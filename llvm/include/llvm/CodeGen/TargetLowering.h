@@ -4049,10 +4049,10 @@ public:
     SmallVector<SDValue, 32> OutVals;
     SmallVector<ISD::InputArg, 32> Ins;
     SmallVector<SDValue, 4> InVals;
-    // SyncVM local begin
-    SDValue SyncVMAbiData = {};
+    // EraVM local begin
+    SDValue EraVMAbiData = {};
     SDValue UnwindBB = {};
-    // SyncVM local end
+    // EraVM local end
 
     CallLoweringInfo(SelectionDAG &DAG)
         : RetSExt(false), RetZExt(false), IsVarArg(false), IsInReg(false),
@@ -4565,9 +4565,9 @@ public:
   //===--------------------------------------------------------------------===//
   // Div utility functions
   //
-  // SyncVM local begin
+  // EraVM local begin
   virtual
-  // SyncVM local end
+  // EraVM local end
   SDValue BuildSDIV(SDNode *N, SelectionDAG &DAG, bool IsAfterLegalization,
                     SmallVectorImpl<SDNode *> &Created) const;
   SDValue BuildUDIV(SDNode *N, SelectionDAG &DAG, bool IsAfterLegalization,

@@ -86,10 +86,10 @@
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/IntrinsicsAArch64.h"
 #include "llvm/IR/IntrinsicsARM.h"
-// SyncVM local begin
-#include "llvm/IR/IntrinsicsSyncVM.h"
+// EraVM local begin
+#include "llvm/IR/IntrinsicsEraVM.h"
 #include "llvm/IR/Operator.h"
-// SyncVM local end
+// EraVM local end
 #include "llvm/IR/IntrinsicsWebAssembly.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Metadata.h"
@@ -3102,12 +3102,12 @@ void Verifier::visitIntToPtrInst(IntToPtrInst &I) {
           "IntToPtr Vector width mismatch", &I);
   }
 
-  // SyncVM local begin
-  if (TT.isSyncVM()) {
+  // EraVM local begin
+  if (TT.isEraVM()) {
     Check(I.getAddressSpace() != 3, "Cannot cast int to addrspace 3 pointer",
            &I);
   }
-  // SyncVM local end
+  // EraVM local end
 
   visitInstruction(I);
 }
@@ -4694,11 +4694,11 @@ void Verifier::visitInstruction(Instruction &I) {
                 F->getIntrinsicID() == Intrinsic::experimental_patchpoint_i64 ||
                 F->getIntrinsicID() == Intrinsic::experimental_gc_statepoint ||
                 F->getIntrinsicID() == Intrinsic::wasm_rethrow ||
-                // SyncVM local begin
-                F->getIntrinsicID() == Intrinsic::syncvm_throw ||
-                F->getIntrinsicID() == Intrinsic::syncvm_farcall ||
-                F->getIntrinsicID() == Intrinsic::syncvm_nearcall ||
-                // SyncVM local end
+                // EraVM local begin
+                F->getIntrinsicID() == Intrinsic::eravm_throw ||
+                F->getIntrinsicID() == Intrinsic::eravm_farcall ||
+                F->getIntrinsicID() == Intrinsic::eravm_nearcall ||
+                // EraVM local end
                 IsAttachedCallOperand(F, CBI, i),
             "Cannot invoke an intrinsic other than donothing, patchpoint, "
             "statepoint, coro_resume, coro_destroy or clang.arc.attachedcall",
@@ -5146,14 +5146,14 @@ void Verifier::visitIntrinsicCall(Intrinsic::ID ID, CallBase &Call) {
     Check(isa<AllocaInst>(Call.getArgOperand(1)->stripPointerCasts()),
           "llvm.stackprotector parameter #2 must resolve to an alloca.", Call);
     break;
-  // SyncVM local begin
-  case Intrinsic::syncvm_nearcall: {
+  // EraVM local begin
+  case Intrinsic::eravm_nearcall: {
     auto *CalleeFunction = dyn_cast<Function>(Call.getOperand(0));
     if (!CalleeFunction) {
       auto *CalleeBitcast = dyn_cast<BitCastInst>(Call.getOperand(0));
       auto *CalleeBitcastOp = dyn_cast<BitCastOperator>(Call.getOperand(0));
       Check(CalleeBitcast || CalleeBitcastOp,
-            "llvm.syncvm.nearcall parameter #1 must be a statically known "
+            "llvm.eravm.nearcall parameter #1 must be a statically known "
             "pointer to a function (bitcasted to i256* if non-opaque pointers "
             "are used)",
             Call);
@@ -5164,29 +5164,29 @@ void Verifier::visitIntrinsicCall(Intrinsic::ID ID, CallBase &Call) {
       }();
     }
     Check(CalleeFunction,
-          "llvm.syncvm.nearcall parameter #1 must be a statically known "
+          "llvm.eravm.nearcall parameter #1 must be a statically known "
           "pointer to a function (bitcasted to i256* if non-opaque pointers "
           "are used)",
           Call);
-    // SyncVM does not support vararg functions.
+    // EraVM does not support vararg functions.
     Check(isa<CallInst>(Call) &&
                   // call args + callee ptr + abi data + intrinsic id
                   CalleeFunction->arg_size() + 3 == Call.getNumOperands() ||
               // call args + callee ptr + abi data + success bb + unwind bb +
               // intrinsic id
               CalleeFunction->arg_size() + 5 == Call.getNumOperands(),
-          "llvm.syncvm.nearcall parameters number should be equal to the "
+          "llvm.eravm.nearcall parameters number should be equal to the "
           "number of the callee parameters plus 2 (the callee and abi data)",
           Call);
     for (unsigned i = 0, e = CalleeFunction->arg_size(); i < e; ++i)
       Check(CalleeFunction->getArg(i)->getType() ==
                 Call.getOperand(i + 2)->getType(),
-            "llvm.syncvm.nearcall paramater #" + itostr(i + 3) +
+            "llvm.eravm.nearcall paramater #" + itostr(i + 3) +
                 " doesn't type match the callee parameter #" + itostr(i + 1),
             Call);
     break;
   }
-  // SyncVM local end
+  // EraVM local end
   case Intrinsic::localescape: {
     BasicBlock *BB = Call.getParent();
     Check(BB == &BB->getParent()->front(),

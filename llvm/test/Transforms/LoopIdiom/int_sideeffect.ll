@@ -1,4 +1,4 @@
-; XFAIL: syncvm
+; XFAIL: eravm
 
 ; RUN: opt -S < %s -loop-idiom | FileCheck %s
 

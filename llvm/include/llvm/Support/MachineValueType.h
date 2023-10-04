@@ -48,7 +48,7 @@ namespace llvm {
       i32            =   7,   // This is a 32 bit integer value
       i64            =   8,   // This is a 64 bit integer value
       i128           =   9,   // This is a 128 bit integer value
-      // SyncVM local begin
+      // EraVM local begin
       i256           =   10,  // This is a 256 bit integer value
       i512           =   11,  // This is a 512 bit integer value
 
@@ -282,10 +282,10 @@ namespace llvm {
       externref      = 184,    // WebAssembly's externref type
       x86amx         = 185,    // This is an X86 AMX value
       i64x8          = 186,    // 8 Consecutive GPRs (AArch64)
-      fatptr         = 187,    // SyncVM's fat pointer type
+      fatptr         = 187,    // EraVM's fat pointer type
       FIRST_VALUETYPE =  1,    // This is always the beginning of the list.
       LAST_VALUETYPE = fatptr, // This always remains at the end of the list.
-      // SyncVM local end
+      // EraVM local end
       VALUETYPE_SIZE = LAST_VALUETYPE + 1,
 
       // This is the current maximum for LAST_VALUETYPE.
@@ -1011,10 +1011,10 @@ namespace llvm {
       case v16f16:
       case v16bf16:
       case v8f32:
-      // SyncVM local begin
+      // EraVM local begin
       case i256:
       case fatptr:
-      // SyncVM local end
+      // EraVM local end
       case v4f64: return TypeSize::Fixed(256);
       case nxv32i8:
       case nxv16i16:
@@ -1033,9 +1033,9 @@ namespace llvm {
       case v32f16:
       case v32bf16:
       case v16f32:
-      // SyncVM local begin
+      // EraVM local begin
       case i512:
-      // SyncVM local end
+      // EraVM local end
       case v8f64: return TypeSize::Fixed(512);
       case nxv64i8:
       case nxv32i16:
@@ -1221,12 +1221,12 @@ namespace llvm {
         return MVT::i64;
       case 128:
         return MVT::i128;
-      // SyncVM local begin
+      // EraVM local begin
       case 256:
         return MVT::i256;
       case 512:
         return MVT::i512;
-      // SyncVM local end
+      // EraVM local end
       }
     }
 

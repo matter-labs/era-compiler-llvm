@@ -1,4 +1,4 @@
-; RUN: opt -S -mtriple=syncvm -passes="mergebb,simplifycfg<switch-range-to-icmp>" < %s | FileCheck %s
+; RUN: opt -S -mtriple=eravm -passes="mergebb,simplifycfg<switch-range-to-icmp>" < %s | FileCheck %s
 
 declare void @dummy()
 

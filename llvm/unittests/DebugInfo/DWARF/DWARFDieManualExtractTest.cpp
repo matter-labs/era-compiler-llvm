@@ -21,7 +21,7 @@ using namespace utils;
 
 namespace {
 
-#if defined(_SYNCVM)
+#if defined(_ERAVM)
 TEST(DWARFDie, DISABLED_manualExtractDump) {
 #else
 TEST(DWARFDie, manualExtractDump) {

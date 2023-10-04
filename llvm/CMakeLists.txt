@@ -381,17 +381,17 @@ set(LLVM_ALL_TARGETS
   Sparc
   SystemZ
   VE
-# SyncVM local begin
-  SyncVM
-# SyncVM local end
+# EraVM local begin
+  EraVM
+# EraVM local end
   WebAssembly
   X86
   XCore
   )
 
-# SyncVM local begin
-add_compile_definitions(_SYNCVM)
-# SyncVM local end
+# EraVM local begin
+add_compile_definitions(_ERAVM)
+# EraVM local end
 
 # List of targets with JIT support:
 set(LLVM_TARGETS_WITH_JIT X86 PowerPC AArch64 ARM Mips SystemZ)

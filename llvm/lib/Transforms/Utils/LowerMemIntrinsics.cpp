@@ -354,13 +354,13 @@ void llvm::createMemCpyLoopUnknownSize(Instruction *InsertBefore,
   }
 }
 
-// SyncVM local begin
-void llvm::createSyncVMMemCpyLoopKnownSize(Instruction *InsertBefore,
-                                           Value *SrcAddr, Value *DstAddr,
-                                           ConstantInt *CopyLen, Align SrcAlign,
-                                           Align DstAlign, bool SrcIsVolatile,
-                                           bool DstIsVolatile,
-                                           const TargetTransformInfo &TTI) {
+// EraVM local begin
+void llvm::createEraVMMemCpyLoopKnownSize(Instruction *InsertBefore,
+                                          Value *SrcAddr, Value *DstAddr,
+                                          ConstantInt *CopyLen, Align SrcAlign,
+                                          Align DstAlign, bool SrcIsVolatile,
+                                          bool DstIsVolatile,
+                                          const TargetTransformInfo &TTI) {
   // No need to expand zero length copies.
   if (CopyLen->isZero())
     return;
@@ -458,12 +458,12 @@ void llvm::createSyncVMMemCpyLoopKnownSize(Instruction *InsertBefore,
          "Bytes copied should match size in the call!");
 }
 
-void llvm::createSyncVMMemCpyLoopUnknownSize(Instruction *InsertBefore,
-                                             Value *SrcAddr, Value *DstAddr,
-                                             Value *CopyLen, Align SrcAlign,
-                                             Align DstAlign, bool SrcIsVolatile,
-                                             bool DstIsVolatile,
-                                             const TargetTransformInfo &TTI) {
+void llvm::createEraVMMemCpyLoopUnknownSize(Instruction *InsertBefore,
+                                            Value *SrcAddr, Value *DstAddr,
+                                            Value *CopyLen, Align SrcAlign,
+                                            Align DstAlign, bool SrcIsVolatile,
+                                            bool DstIsVolatile,
+                                            const TargetTransformInfo &TTI) {
   BasicBlock *PreLoopBB = InsertBefore->getParent();
   BasicBlock *PostLoopBB =
       PreLoopBB->splitBasicBlock(InsertBefore, "memcpy-split");
@@ -565,7 +565,7 @@ void llvm::createSyncVMMemCpyLoopUnknownSize(Instruction *InsertBefore,
   ResBuilder.CreateAlignedStore(Load, DstAddr, PartDstAlign, DstIsVolatile);
   ResBuilder.CreateBr(PostLoopBB);
 }
-// SyncVM local end
+// EraVM local end
 
 // Lower memmove to IR. memmove is required to correctly copy overlapping memory
 // regions; therefore, it has to check the relative positions of the source and

@@ -105,7 +105,7 @@ jobs:
         run: |
           ninja -C './target-llvm/build-final' check-llvm
 
-      - name: Running Lit SyncVM tests with llc verification options
+      - name: Running Lit EraVM tests with llc verification options
         working-directory: compiler-tester
         env:
           LLC_OPTS:
@@ -122,16 +122,16 @@ jobs:
             --unroll-verify-domtree \
             --verify-regalloc \
             --vplan-verify-hcfg \
-            --march=syncvm"
+            --march=eravm"
           XFAILS:
-            "CodeGen/SyncVM/memcpy-expansion.ll;\
-             CodeGen/SyncVM/flag-setting-set-implicit-flags.ll;\
-             CodeGen/SyncVM/machine-outliner.mir;\
-             CodeGen/SyncVM/machine-outliner-tail.mir"
+            "CodeGen/EraVM/memcpy-expansion.ll;\
+             CodeGen/EraVM/flag-setting-set-implicit-flags.ll;\
+             CodeGen/EraVM/machine-outliner.mir;\
+             CodeGen/EraVM/machine-outliner-tail.mir"
 
         run: |
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
-          ./target-llvm/build-final/bin/llvm-lit -vv -s --xfail "${XFAILS}" "-Dllc=${BINDIR}/llc ${LLC_OPTS}" './llvm/llvm/test/CodeGen/SyncVM/'
+          ./target-llvm/build-final/bin/llvm-lit -vv -s --xfail "${XFAILS}" "-Dllc=${BINDIR}/llc ${LLC_OPTS}" './llvm/llvm/test/CodeGen/EraVM/'
 
       - name: Running Lit tests with opt verification options
         working-directory: compiler-tester
@@ -159,7 +159,7 @@ jobs:
             --verify-regalloc \
             --verify-scev-strict \
             --vplan-verify-hcfg \
-            --march=syncvm"
+            --march=eravm"
           XFAILS:
             "Transforms/LoopVectorize/vplan_hcfg_stress_test.ll;\
             Transforms/LoopFlatten/widen-iv2.ll;\

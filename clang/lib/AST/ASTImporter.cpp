@@ -372,9 +372,9 @@ namespace clang {
     ExpectedType VisitType(const Type *T);
     ExpectedType VisitAtomicType(const AtomicType *T);
     ExpectedType VisitBuiltinType(const BuiltinType *T);
-    // SyncVM local begin
+    // EraVM local begin
     ExpectedType VisitBitIntType(const BitIntType *T);
-    // SyncVM local end
+    // EraVM local end
     ExpectedType VisitDecayedType(const DecayedType *T);
     ExpectedType VisitComplexType(const ComplexType *T);
     ExpectedType VisitPointerType(const PointerType *T);
@@ -1080,12 +1080,12 @@ ExpectedType ASTNodeImporter::VisitAtomicType(const AtomicType *T){
   return Importer.getToContext().getAtomicType(*UnderlyingTypeOrErr);
 }
 
-// SyncVM local begin
+// EraVM local begin
 ExpectedType ASTNodeImporter::VisitBitIntType(const BitIntType *T) {
   return Importer.getToContext().getBitIntType(T->isUnsigned(),
                                                T->getNumBits());
 }
-// SyncVM local end
+// EraVM local end
 
 ExpectedType ASTNodeImporter::VisitBuiltinType(const BuiltinType *T) {
   switch (T->getKind()) {

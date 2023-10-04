@@ -74,9 +74,9 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/IntrinsicsAArch64.h"
-// SyncVM local begin
-#include "llvm/IR/IntrinsicsSyncVM.h"
-// SyncVM local end
+// EraVM local begin
+#include "llvm/IR/IntrinsicsEraVM.h"
+// EraVM local end
 #include "llvm/IR/IntrinsicsWebAssembly.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Metadata.h"
@@ -115,11 +115,11 @@ using namespace SwitchCG;
 static unsigned LimitFloatPrecision;
 
 static cl::opt<bool>
-// SyncVM local begin
+// EraVM local begin
 // We can't assert alignment for fat pointers which are not numerical.
 // TODO: Move it to the compiler's driver to pass as option.
     InsertAssertAlign("insert-assert-align", cl::init(false),
-// SyncVM local end
+// EraVM local end
                       cl::desc("Insert the experimental `assertalign` node."),
                       cl::ReallyHidden);
 
@@ -1615,10 +1615,10 @@ SDValue SelectionDAGBuilder::getValueImpl(const Value *V) {
           Constants[i] = DAG.getUNDEF(EltVT);
         else if (EltVT.isFloatingPoint())
           Constants[i] = DAG.getConstantFP(0, getCurSDLoc(), EltVT);
-        // SyncVM local begin
+        // EraVM local begin
         else if (EltVT == MVT::fatptr)
           Constants[i] = DAG.getConstant(0, getCurSDLoc(), MVT::i256);
-        // SyncVM local end
+        // EraVM local end
         else
           Constants[i] = DAG.getConstant(0, getCurSDLoc(), EltVT);
       }
@@ -2948,12 +2948,12 @@ void SelectionDAGBuilder::visitInvoke(const InvokeInst &I) {
       DAG.setRoot(DAG.getNode(ISD::INTRINSIC_VOID, getCurSDLoc(), VTs, Ops));
       break;
     }
-    // SyncVM local begin
-    case Intrinsic::syncvm_nearcall:
-      LowerSyncVMNearCall(cast<CallBase>(I), EHPadBB);
+    // EraVM local begin
+    case Intrinsic::eravm_nearcall:
+      LowerEraVMNearCall(cast<CallBase>(I), EHPadBB);
       break;
     }
-    // SyncVM local end
+    // EraVM local end
   } else if (I.countOperandBundlesOfType(LLVMContext::OB_deopt)) {
     // Currently we do not lower any intrinsic calls with deopt operand bundles.
     // Eventually we will support lowering the @llvm.experimental.deoptimize
@@ -3061,22 +3061,22 @@ void SelectionDAGBuilder::visitLandingPad(const LandingPadInst &LP) {
   // copied into virtual registers.
   SDValue Ops[2];
   if (FuncInfo.ExceptionPointerVirtReg) {
-    // SyncVM local begin
+    // EraVM local begin
     if (ValueVTs[0] == MVT::fatptr) {
-      // SyncVM-specific EH convention: $r1 contains exception pointer
+      // EraVM-specific EH convention: $r1 contains exception pointer
       Ops[0] = DAG.getRegister(
           TLI.getRegisterByName("r1", LLT(), DAG.getMachineFunction()),
           ValueVTs[0]);
     } else {
-    // SyncVM local end
+    // EraVM local end
     Ops[0] = DAG.getZExtOrTrunc(
         DAG.getCopyFromReg(DAG.getEntryNode(), dl,
                            FuncInfo.ExceptionPointerVirtReg,
                            TLI.getPointerTy(DAG.getDataLayout())),
         dl, ValueVTs[0]);
-    // SyncVM local begin
+    // EraVM local begin
     }
-    // SyncVM local end
+    // EraVM local end
   } else {
     Ops[0] = DAG.getConstant(0, dl, TLI.getPointerTy(DAG.getDataLayout()));
   }
@@ -4166,9 +4166,9 @@ void SelectionDAGBuilder::visitLoad(const LoadInst &I) {
       Root = Chain;
       ChainI = 0;
     }
-    // SyncVM local begin
+    // EraVM local begin
     SDValue A = Offsets[i] == 0 ? Ptr : DAG.getNode(ISD::ADD, dl,
-    // SyncVM local end
+    // EraVM local end
                             PtrVT, Ptr,
                             DAG.getConstant(Offsets[i], dl, PtrVT),
                             Flags);
@@ -6959,11 +6959,11 @@ void SelectionDAGBuilder::visitIntrinsicCall(const CallInst &I,
   case Intrinsic::experimental_gc_statepoint:
     LowerStatepoint(cast<GCStatepointInst>(I));
     return;
-  // SyncVM local begin
-  case Intrinsic::syncvm_nearcall:
-    LowerSyncVMNearCall(cast<CallBase>(I));
+  // EraVM local begin
+  case Intrinsic::eravm_nearcall:
+    LowerEraVMNearCall(cast<CallBase>(I));
     return;
-  // SyncVM local end
+  // EraVM local end
   case Intrinsic::experimental_gc_result:
     visitGCResult(cast<GCResultInst>(I));
     return;
@@ -7741,10 +7741,10 @@ SelectionDAGBuilder::lowerInvokable(TargetLowering::CallLoweringInfo &CLI,
     (void)getRoot();
     DAG.setRoot(lowerStartEH(getControlRoot(), EHPadBB, BeginLabel));
     CLI.setChain(getRoot());
-    // SyncVM local begin
+    // EraVM local begin
     MachineBasicBlock *UnwindBB = FuncInfo.MBBMap[EHPadBB];
     CLI.UnwindBB = DAG.getBasicBlock(UnwindBB);
-    // SyncVM local end
+    // EraVM local end
   }
 
   const TargetLowering &TLI = DAG.getTargetLoweringInfo();
@@ -9966,9 +9966,9 @@ TargetLowering::LowerCallTo(TargetLowering::CallLoweringInfo &CLI) const {
          "LowerCall didn't return a valid chain!");
   assert((!CLI.IsTailCall || InVals.empty()) &&
          "LowerCall emitted a return value for a tail call!");
-  // SyncVM local begin
+  // EraVM local begin
   assert((CLI.IsTailCall || CLI.IsVarArg || InVals.size() == CLI.Ins.size()) &&
-  // SyncVM local end
+  // EraVM local end
          "LowerCall didn't emit the correct number of values!");
 
   // For a tail call, the return value is merely live-out and there aren't
@@ -10853,9 +10853,9 @@ void SelectionDAGBuilder::lowerWorkItem(SwitchWorkListItem W, Value *Cond,
   }
 
   if (TM.getOptLevel() != CodeGenOpt::None) {
-    // SyncVM local begin
-    if (!TM.getTargetTriple().isSyncVM()) {
-    // SyncVM local end
+    // EraVM local begin
+    if (!TM.getTargetTriple().isEraVM()) {
+    // EraVM local end
     // Here, we order cases by probability so the most likely case will be
     // checked first. However, two clusters can have the same probability in
     // which case their relative ordering is non-deterministic. So we use Low
@@ -10866,18 +10866,18 @@ void SelectionDAGBuilder::lowerWorkItem(SwitchWorkListItem W, Value *Cond,
              a.Prob > b.Prob :
              a.Low->getValue().slt(b.Low->getValue());
     });
-    // SyncVM local begin
+    // EraVM local begin
     } else {
-    // SyncVM local end
+    // EraVM local end
     llvm::sort(W.FirstCluster, W.LastCluster + 1,
                [](const CaseCluster &a, const CaseCluster &b) {
       return a.Prob != b.Prob ?
              a.Prob > b.Prob :
              a.Low->getValue().ult(b.Low->getValue());
     });
-    // SyncVM local begin
+    // EraVM local begin
     }
-    // SyncVM local end
+    // EraVM local end
 
     // Rearrange the case blocks so that the last one falls through if possible
     // without changing the order of probabilities.
@@ -11038,14 +11038,14 @@ unsigned SelectionDAGBuilder::caseClusterRank(const CaseCluster &CC,
     if (X.Prob != CC.Prob)
       return X.Prob > CC.Prob;
 
-    // SyncVM local begin
-    if (!TM.getTargetTriple().isSyncVM())
-    // SyncVM local end
+    // EraVM local begin
+    if (!TM.getTargetTriple().isEraVM())
+    // EraVM local end
     // Ties are broken by comparing the case value.
     return X.Low->getValue().slt(CC.Low->getValue());
-    // SyncVM local begin
+    // EraVM local begin
     return X.Low->getValue().ult(CC.Low->getValue());
-    // SyncVM local end
+    // EraVM local end
   });
 }
 
@@ -11053,15 +11053,15 @@ void SelectionDAGBuilder::splitWorkItem(SwitchWorkList &WorkList,
                                         const SwitchWorkListItem &W,
                                         Value *Cond,
                                         MachineBasicBlock *SwitchMBB) {
-  // SyncVM local begin
-  if (!TM.getTargetTriple().isSyncVM())
-  // SyncVM local end
+  // EraVM local begin
+  if (!TM.getTargetTriple().isEraVM())
+  // EraVM local end
   assert(W.FirstCluster->Low->getValue().slt(W.LastCluster->Low->getValue()) &&
          "Clusters not sorted?");
-  // SyncVM local begin
+  // EraVM local begin
   assert(W.FirstCluster->Low->getValue().ult(W.LastCluster->Low->getValue()) &&
          "Clusters not sorted?");
-  // SyncVM local end
+  // EraVM local end
 
   assert(W.LastCluster - W.FirstCluster + 1 >= 2 && "Too small to split!");
 
@@ -11180,10 +11180,10 @@ void SelectionDAGBuilder::splitWorkItem(SwitchWorkList &WorkList,
   }
 
   // Create the CaseBlock record that will be used to lower the branch.
-  // SyncVM local begin
-  CaseBlock CB(TM.getTargetTriple().isSyncVM() ? ISD::SETULT : ISD::SETLT,
+  // EraVM local begin
+  CaseBlock CB(TM.getTargetTriple().isEraVM() ? ISD::SETULT : ISD::SETLT,
                Cond, Pivot, nullptr, LeftMBB, RightMBB, W.MBB,
-  // SyncVM local end
+  // EraVM local end
                getCurSDLoc(), LeftProb, RightProb);
 
   if (W.MBB == SwitchMBB)
@@ -11282,7 +11282,7 @@ void SelectionDAGBuilder::visitSwitch(const SwitchInst &SI) {
   // Cluster adjacent cases with the same destination. We do this at all
   // optimization levels because it's cheap to do and will make codegen faster
   // if there are many clusters.
-  sortAndRangeify(Clusters, TM.getTargetTriple().isSyncVM());
+  sortAndRangeify(Clusters, TM.getTargetTriple().isEraVM());
 
   // The branch probablity of the peeled case.
   BranchProbability PeeledCaseProb = BranchProbability::getZero();
@@ -11301,15 +11301,15 @@ void SelectionDAGBuilder::visitSwitch(const SwitchInst &SI) {
     return;
   }
 
-  // SyncVM local begin
-  // TODO: CPR-688 SyncVM can build jump tables, though the constants are 4
+  // EraVM local begin
+  // TODO: CPR-688 EraVM can build jump tables, though the constants are 4
   // times as expensive as instructions in terms of code size. For hot pieces of
   // code it still makes sense.
-  if (!TM.getTargetTriple().isSyncVM()) {
+  if (!TM.getTargetTriple().isEraVM()) {
     SL->findJumpTables(Clusters, &SI, DefaultMBB, DAG.getPSI(), DAG.getBFI());
     SL->findBitTestClusters(Clusters, &SI);
   }
-  // SyncVM local end
+  // EraVM local end
 
   LLVM_DEBUG({
     dbgs() << "Case clusters: ";

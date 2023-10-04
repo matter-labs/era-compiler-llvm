@@ -490,10 +490,10 @@ protected:
   /// '$' character to distinguish them from absolute names.
   bool UseParensForDollarSignNames = true;
 
-  // SyncVM local begin
+  // EraVM local begin
   /// True if target uses @symbol syntax.
   bool PrependSymbolRefWithAt = false;
-  // SyncVM local end
+  // EraVM local end
 
   /// True if the target supports flags in ".loc" directive, false if only
   /// location is allowed.
@@ -811,9 +811,9 @@ public:
   bool useParensForDollarSignNames() const {
     return UseParensForDollarSignNames;
   }
-  // SyncVM local begin
+  // EraVM local begin
   bool prependSymbolRefWithAt() const { return PrependSymbolRefWithAt; }
-  // SyncVM local end
+  // EraVM local end
   bool supportsExtendedDwarfLocDirective() const {
     return SupportsExtendedDwarfLocDirective;
   }

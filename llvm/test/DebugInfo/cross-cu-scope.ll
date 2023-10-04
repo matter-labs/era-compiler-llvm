@@ -1,7 +1,7 @@
 ; RUN: %llc_dwarf %s -filetype=obj -o %t
 ; RUN: llvm-dwarfdump -debug-info %t | FileCheck %s
 ; REQUIRES: object-emission
-; XFAIL: syncvm
+; XFAIL: eravm
 
 ; Reduced test case from PR35212. Two DISubprogram belong to a different CU but
 ; share a scope. Both are declarations and end up in the scope's CU. We want to

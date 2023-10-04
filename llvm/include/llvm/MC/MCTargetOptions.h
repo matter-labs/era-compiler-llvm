@@ -23,9 +23,9 @@ enum class ExceptionHandling {
   WinEH,    ///< Windows Exception Handling
   Wasm,     ///< WebAssembly Exception Handling
   AIX,      ///< AIX Exception Handling
-  // SyncVM local begin
-  SyncVM,   ///< SyncVM Exception Handling
-  // SyncVM local end
+  // EraVM local begin
+  EraVM,    ///< EraVM Exception Handling
+  // EraVM local end
 };
 
 enum class DebugCompressionType {

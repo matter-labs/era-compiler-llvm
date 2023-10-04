@@ -702,9 +702,9 @@ void RegAllocFast::assignVirtToPhysReg(MachineInstr &AtMI, LiveReg &LR,
   setPhysRegState(PhysReg, VirtReg);
 
   assignDanglingDebugValues(AtMI, VirtReg, PhysReg);
-  // SyncVM local begin
+  // EraVM local begin
   TII->tagFatPointerCopy(AtMI);
-  // SyncVM local end
+  // EraVM local end
 }
 
 static bool isCoalescable(const MachineInstr &MI) {
@@ -880,10 +880,10 @@ void RegAllocFast::defineLiveThroughVirtReg(MachineInstr &MI, unsigned OpNum,
         std::next((MachineBasicBlock::iterator)MI.getIterator());
       LLVM_DEBUG(dbgs() << "Copy " << printReg(LRI->PhysReg, TRI) << " to "
                         << printReg(PrevReg, TRI) << '\n');
-      // SyncVM local begin
+      // EraVM local begin
       BuildCOPY(*MBB, InsertBefore, MI.getDebugLoc(), TII, PrevReg)
           .addReg(LRI->PhysReg, llvm::RegState::Kill);
-      // SyncVM local end
+      // EraVM local end
     }
     MachineOperand &MO = MI.getOperand(OpNum);
     if (MO.getSubReg() && !MO.isUndef()) {

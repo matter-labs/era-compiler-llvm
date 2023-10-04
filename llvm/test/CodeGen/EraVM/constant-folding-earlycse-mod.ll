@@ -1,0 +1,191 @@
+; RUN: opt -early-cse -S < %s | FileCheck %s
+
+target triple = "eravm"
+
+declare i256 @__mod(i256, i256) #0
+
+define i256 @test_mod1() {
+; CHECK-LABEL: @test_mod1
+; CHECK-NEXT: ret i256 poison
+
+  %res = call i256 @__mod(i256 undef, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_mod2() {
+; CHECK-LABEL: @test_mod2
+; CHECK-NEXT: ret i256 poison
+
+  %res = call i256 @__mod(i256 1, i256 undef)
+  ret i256 %res
+}
+
+define i256 @test_mod3() {
+; CHECK-LABEL: @test_mod3
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__mod(i256 0, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_mod4() {
+; CHECK-LABEL: @test_mod4
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__mod(i256 0, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_mod5() {
+; CHECK-LABEL: @test_mod5
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__mod(i256 1, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_mod6() {
+; CHECK-LABEL: @test_mod6
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__mod(i256 1, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_mod7() {
+; CHECK-LABEL: @test_mod7
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__mod(i256 0, i256 433478394034343)
+  ret i256 %res
+}
+
+define i256 @test_mod8() {
+; CHECK-LABEL: @test_mod8
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__mod(i256 121563127839120, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_mod9() {
+; CHECK-LABEL: @test_mod9
+; CHECK-NEXT: ret i256 1
+
+  %res = call i256 @__mod(i256 1, i256 433478394034343)
+  ret i256 %res
+}
+
+define i256 @test_mod10() {
+; CHECK-LABEL: @test_mod10
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__mod(i256 121563127839120, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_mod11() {
+; CHECK-LABEL: @test_mod11
+; CHECK-NEXT: ret i256 27913038370354150
+
+  %res = call i256 @__mod(i256 3456789009876545678, i256 45116789098765678)
+  ret i256 %res
+}
+
+define i256 @test_mod12() {
+; CHECK-LABEL: @test_mod12
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__mod(i256 15903955902367335447395448984, i256 67897657890876)
+  ret i256 %res
+}
+
+define i256 @test_mod13() {
+; CHECK-LABEL: @test_mod13
+; CHECK-NEXT: ret i256 1
+
+  %res = call i256 @__mod(i256 77345497107738552411838431392522000948863935069627095510731433067785723314338, i256 77345497107738552411838431392522000948863935069627095510731433067785723314337)
+  ret i256 %res
+}
+
+define i256 @test_mod14() {
+; CHECK-LABEL: @test_mod14
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__mod(i256 6873546235472354672354762358492378590345034805934590348534, i256 6873546235472354672354762358492378590345034805934590348534)
+  ret i256 %res
+}
+
+define i256 @test_mod15() {
+; CHECK-LABEL: @test_mod15
+; CHECK-NEXT: ret i256 -38446592129577643011732553616165906904406049596013468528726150940127406325599
+
+  %res = call i256 @__mod(i256 77345497107738552411838431392522000948863935069627095510731433067785723314337, i256 77345497107738552411838431392522000948863935069627095510731433067785723314338)
+  ret i256 %res
+}
+
+define i256 @test_mod16() {
+; CHECK-LABEL: @test_mod16
+; CHECK-NEXT: ret i256 456789098765467892304234234234234234234
+
+  %res = call i256 @__mod(i256 456789098765467892304234234234234234234, i256 7863249563247857289401203492047823764573465734573434537783)
+  ret i256 %res
+}
+
+define i256 @test_mod17() {
+; CHECK-LABEL: @test_mod17
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__mod(i256 0, i256 115792089237316195423570985008687907853269984665640564039457584007913129639935)
+  ret i256 %res
+}
+
+define i256 @test_mod18() {
+; CHECK-LABEL: @test_mod18
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__mod(i256 115792089237316195423570985008687907853269984665640564039457584007913129639935, i256 0)
+  ret i256 %res
+}
+
+define i256 @test_mod19() {
+; CHECK-LABEL: @test_mod19
+; CHECK-NEXT: ret i256 1
+
+  %res = call i256 @__mod(i256 1, i256 115792089237316195423570985008687907853269984665640564039457584007913129639935)
+  ret i256 %res
+}
+
+define i256 @test_mod20() {
+; CHECK-LABEL: @test_mod20
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__mod(i256 115792089237316195423570985008687907853269984665640564039457584007913129639935, i256 1)
+  ret i256 %res
+}
+
+define i256 @test_mod21() {
+; CHECK-LABEL: @test_mod21
+; CHECK-NEXT: ret i256 7437834752357434334343423343443375834785783474
+
+  %res = call i256 @__mod(i256 7437834752357434334343423343443375834785783474, i256 115792089237316195423570985008687907853269984665640564039457584007913129639935)
+  ret i256 %res
+}
+
+define i256 @test_mod22() {
+; CHECK-LABEL: @test_mod22
+; CHECK-NEXT: ret i256 6417771337354779485678372628500671724
+
+  %res = call i256 @__mod(i256 115792089237316195423570985008687907853269984665640564039457584007913129639935, i256 23784273472384723848213821342323233223)
+  ret i256 %res
+}
+
+define i256 @test_mod23() {
+; CHECK-LABEL: @test_mod23
+; CHECK-NEXT: ret i256 0
+
+  %res = call i256 @__mod(i256 115792089237316195423570985008687907853269984665640564039457584007913129639935, i256 115792089237316195423570985008687907853269984665640564039457584007913129639935)
+  ret i256 %res
+}
+
+attributes #0 = { nounwind readnone willreturn }
