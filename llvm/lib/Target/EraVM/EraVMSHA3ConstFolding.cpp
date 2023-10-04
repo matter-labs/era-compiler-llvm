@@ -543,7 +543,8 @@ FoldingState::isOverlap(const Instruction *MemUse, const Instruction *Clobber,
   // Okay, we have stores to two completely different pointers. Try to
   // decompose the pointer into a "base + constant_offset" form. If the base
   // pointers are equal, then we can reason about the MemUse and the Clobber.
-  int64_t ClobberOffset = 0, MemUseOffset = 0;
+  int64_t ClobberOffset = 0;
+  int64_t MemUseOffset = 0;
   const Value *ClobberBasePtr =
       GetPointerBaseWithConstantOffset(ClobberPtr, ClobberOffset, DL);
   const Value *MemUseBasePtr =
@@ -586,7 +587,8 @@ FoldingState::isOverlap(const Instruction *MemUse, const Instruction *Clobber,
 
 std::optional<uint64_t> FoldingState::checkMemoryClobbers(
     const SmallVector<MemClobber> &MemClobbers) const {
-  auto Begin = MemClobbers.begin(), End = MemClobbers.end();
+  auto Begin = MemClobbers.begin();
+  auto End = MemClobbers.end();
   assert(Begin != End);
 
   uint64_t TotalSize = Begin->Size;
@@ -741,7 +743,8 @@ bool runEraVMSHA3ConstFolding(Function &F, AliasAnalysis &AA,
   FoldingState State(F, AA, AC, MSSA, DT, TLI, LI);
   SmallSet<MemoryUse *, 16> RemovedSHA3;
 
-  bool Changed = false, ChangedOnIter = false;
+  bool Changed = false;
+  bool ChangedOnIter = false;
   do {
     LLVM_DEBUG(dbgs() << "Running new iteration of sha3 constant folding...\n");
 
