@@ -19,5 +19,4 @@ void EraVMSubtarget::anchor() {}
 
 EraVMSubtarget::EraVMSubtarget(const Triple &TT, const std::string &CPU,
                                const std::string &FS, const TargetMachine &TM)
-    : EraVMGenSubtargetInfo(TT, CPU, /*TuneCPU*/ CPU, FS), FrameLowering(),
-      InstrInfo(), TLInfo(TM, *this) {}
+    : EraVMGenSubtargetInfo(TT, CPU, /*TuneCPU*/ CPU, FS), TLInfo(TM, *this) {}

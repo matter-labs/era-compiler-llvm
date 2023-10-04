@@ -107,13 +107,13 @@ class EraVMOperand : public MCParsedAsmOperand {
 
 public:
   EraVMOperand(StringRef Tok, SMLoc const &S)
-      : Base(), Kind(k_Tok), Tok(Tok), Start(S), End(S) {}
+      : Kind(k_Tok), Tok(Tok), Start(S), End(S) {}
   EraVMOperand(KindTy Kind, unsigned Reg, SMLoc const &S, SMLoc const &E)
-      : Base(), Kind(Kind), Reg(Reg), Start(S), End(E) {}
+      : Kind(Kind), Reg(Reg), Start(S), End(E) {}
   EraVMOperand(MCExpr const *Imm, SMLoc const &S, SMLoc const &E)
-      : Base(), Kind(k_Imm), Imm(Imm), Start(S), End(E) {}
+      : Kind(k_Imm), Imm(Imm), Start(S), End(E) {}
   EraVMOperand(unsigned Reg, MCExpr const *Expr, SMLoc const &S, SMLoc const &E)
-      : Base(), Kind(k_Mem), Mem({Reg, Expr}), Start(S), End(E) {}
+      : Kind(k_Mem), Mem({Reg, Expr}), Start(S), End(E) {}
 
   void addRegOperands(MCInst &Inst, unsigned N) const {
     assert((Kind == k_Reg || Kind == k_IndReg || Kind == k_PostIndReg) &&
