@@ -213,7 +213,7 @@ bool EraVMCombineAddressingMode::canCombineUse(
   Register Def = Reload.getOperand(0).getReg();
   SmallPtrSet<MachineInstr *, 4> ReachingDefs;
   // LLVM doesn't provide const qualified version of the method, yet the code
-  // below doesn't modify anything.
+  // below doesn't modify anything. NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
   RDA->getGlobalReachingDefs(const_cast<MachineInstr *>(&Use), Def,
                              ReachingDefs);
   // It's expected that if there are more than one reaching def,
