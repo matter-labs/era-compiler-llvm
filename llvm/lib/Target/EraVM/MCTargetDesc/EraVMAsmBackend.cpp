@@ -33,7 +33,7 @@ class EraVMAsmBackend : public MCAsmBackend {
 public:
   EraVMAsmBackend(const MCSubtargetInfo &STI, uint8_t OSABI)
       : MCAsmBackend(support::little), OSABI(OSABI) {}
-  ~EraVMAsmBackend() override {}
+  ~EraVMAsmBackend() override = default;
 
   void applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
                   const MCValue &Target, MutableArrayRef<char> Data,

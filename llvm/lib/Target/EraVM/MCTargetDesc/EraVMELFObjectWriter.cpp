@@ -23,7 +23,7 @@ public:
       : MCELFObjectTargetWriter(false, OSABI, ELF::EM_NONE,
                                 /*HasRelocationAddend*/ true) {}
 
-  ~EraVMELFObjectWriter() override {}
+  ~EraVMELFObjectWriter() override = default;
 
 protected:
   unsigned getRelocType(MCContext &Ctx, const MCValue &Target,

@@ -77,7 +77,7 @@ EraVMTargetMachine::EraVMTargetMachine(const Target &T, const Triple &TT,
   initAsmInfo();
 }
 
-EraVMTargetMachine::~EraVMTargetMachine() {}
+EraVMTargetMachine::~EraVMTargetMachine() = default;
 
 TargetTransformInfo
 EraVMTargetMachine::getTargetTransformInfo(const Function &F) const {
