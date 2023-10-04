@@ -400,7 +400,7 @@ unsigned EraVMInstrInfo::insertBranch(
     ArrayRef<MachineOperand> Cond, const DebugLoc &DL, int *BytesAdded) const {
   // Shouldn't be a fall through.
   assert(TBB && "insertBranch must not be told to insert a fallthrough");
-  assert((Cond.size() == 1 || Cond.size() == 0) &&
+  assert((Cond.size() == 1 || Cond.empty()) &&
          "EraVM branch conditions have one component!");
   assert(!BytesAdded && "code size not handled");
 
