@@ -106,7 +106,7 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
       // rN) It allows to lower select to a single instruction rN =
       // add.reverse_cc y, r0.
       bool ShouldInverse =
-          Inverse.count(Opc) != 0u && Out->getReg() == In0->getReg();
+          Inverse.count(Opc) != 0U && Out->getReg() == In0->getReg();
 
       auto buildMOV = [&](EraVM::ArgumentKind OpNo, unsigned CC) {
         auto OperandRange =

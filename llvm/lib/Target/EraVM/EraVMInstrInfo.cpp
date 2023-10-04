@@ -556,7 +556,7 @@ bool EraVMInstrInfo::isPtr(const MachineInstr &MI) const {
 
 bool EraVMInstrInfo::isNull(const MachineInstr &MI) const {
   return isAdd(MI) && EraVM::hasRRInAddressingMode(MI) &&
-         MI.getNumDefs() == 1u && MI.getOperand(1).getReg() == EraVM::R0 &&
+         MI.getNumDefs() == 1U && MI.getOperand(1).getReg() == EraVM::R0 &&
          MI.getOperand(2).getReg() == EraVM::R0;
 }
 

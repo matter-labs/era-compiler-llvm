@@ -409,7 +409,7 @@ bool EraVMCombineAddressingMode::combineDefSpill(MachineFunction &MF) {
       RDA->getGlobalReachingDefs(&MI, Spilled, ReachingDefs);
       // TODO: CPR-1225 While the transformation is local, multiple reaching def
       // is unexpected.
-      if (ReachingDefs.size() != 1u)
+      if (ReachingDefs.size() != 1U)
         continue;
       SmallPtrSet<MachineInstr *, 4> DefUses;
       MachineInstr *DefMI = *ReachingDefs.begin();
@@ -445,7 +445,7 @@ bool EraVMCombineAddressingMode::combineDefSpill(MachineFunction &MF) {
     int NewOpcode = EraVM::getWithSROutAddrMode(Def->getOpcode());
     assert(NewOpcode != -1);
     MachineInstrBuilder NewMI;
-    if (Def->getNumExplicitDefs() == 2u)
+    if (Def->getNumExplicitDefs() == 2U)
       NewMI = BuildMI(*Def->getParent(), *Def, Def->getDebugLoc(),
                       TII->get(NewOpcode), EraVM::out1Iterator(*Def)->getReg());
     else
