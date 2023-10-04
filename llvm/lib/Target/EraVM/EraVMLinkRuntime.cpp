@@ -37,7 +37,7 @@ using namespace llvm;
 
 namespace llvm {
 ModulePass *createEraVMLinkRuntimePass();
-void initializeEraVMLinkRuntimePass(PassRegistry &);
+void initializeEraVMLinkRuntimePass(PassRegistry & /*Registry*/);
 } // namespace llvm
 
 static ExitOnError ExitOnErr;

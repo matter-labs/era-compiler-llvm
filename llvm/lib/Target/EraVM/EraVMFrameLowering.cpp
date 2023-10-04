@@ -109,4 +109,4 @@ MachineBasicBlock::iterator EraVMFrameLowering::eliminateCallFramePseudoInstr(
 }
 
 void EraVMFrameLowering::processFunctionBeforeFrameFinalized(
-    MachineFunction &MF, RegScavenger *) const {}
+    MachineFunction &MF, RegScavenger * /*RS*/) const {}

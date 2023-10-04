@@ -67,7 +67,7 @@ public:
                           AliasMapTy *AliasList = nullptr) override;
 
   void emitConstantPool() override;
-  void emitEndOfAsmFile(Module &) override;
+  void emitEndOfAsmFile(Module & /*unused*/) override;
 };
 } // end of anonymous namespace
 
@@ -86,7 +86,7 @@ bool EraVMAsmPrinter::runOnMachineFunction(MachineFunction &MF) {
   return false;
 }
 
-void EraVMAsmPrinter::emitEndOfAsmFile(Module &) {
+void EraVMAsmPrinter::emitEndOfAsmFile(Module & /*unused*/) {
   MCSection *ReadOnlySection =
       OutContext.getELFSection(".rodata", ELF::SHT_PROGBITS, ELF::SHF_ALLOC);
 

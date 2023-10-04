@@ -71,7 +71,7 @@ private:
   /// shift and use the un-shifted register instead because the un-shifted
   /// register is already cell-addressed. Return the cell addressing pointer if
   /// successful.
-  std::optional<Register> foldWithLeftShift(Register);
+  std::optional<Register> foldWithLeftShift(Register /*Reg*/);
 
   /// Convert a register machine operand which contains byte addressing pointer
   /// to cell addressing pointer. Return the converted, cell-addressing
