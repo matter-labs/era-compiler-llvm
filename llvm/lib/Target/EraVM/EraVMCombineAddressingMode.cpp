@@ -194,8 +194,8 @@ static bool areEqualStackSlots(MachineInstr::const_mop_iterator It1,
   // Locals and globals don't intersect, UB otherwise.
   if (It1->isReg() != It2->isReg())
     return false;
-  auto Const1 = It1 + 2;
-  auto Const2 = It2 + 2;
+  const auto *Const1 = It1 + 2;
+  const auto *Const2 = It2 + 2;
   // If addressing mode is the same, match the constant part.
   if (Const1->isImm() && Const2->isImm())
     return Const1->getImm() == Const2->getImm();

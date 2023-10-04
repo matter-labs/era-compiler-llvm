@@ -62,7 +62,8 @@ ArgumentType argumentType(ArgumentKind Kind, unsigned Opcode) {
     if (In1S.count(Opcode))
       return ArgumentType::Stack;
     return ArgumentType::Register;
-  } else if (Kind == ArgumentKind::Out0) {
+  }
+  if (Kind == ArgumentKind::Out0) {
     if (hasSROutAddressingMode(Opcode))
       return ArgumentType::Stack;
     return ArgumentType::Register;

@@ -587,8 +587,8 @@ FoldingState::isOverlap(const Instruction *MemUse, const Instruction *Clobber,
 
 std::optional<uint64_t> FoldingState::checkMemoryClobbers(
     const SmallVector<MemClobber> &MemClobbers) const {
-  auto Begin = MemClobbers.begin();
-  auto End = MemClobbers.end();
+  const auto *Begin = MemClobbers.begin();
+  const auto *End = MemClobbers.end();
   assert(Begin != End);
 
   uint64_t TotalSize = Begin->Size;
