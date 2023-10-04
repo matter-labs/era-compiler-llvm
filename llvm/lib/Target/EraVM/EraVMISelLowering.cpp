@@ -849,8 +849,12 @@ lowerCommonSDIVREMOperations(SDValue Op, SelectionDAG &DAG, int Opcode) {
       DAG.getNode(ISD::SUB, DL, MVT::i256, MaskSign, UDivDivisor.getValue(1)),
       UDivDivisor.getValue(1), ISD::SETNE);
 
-  SDVTList VTs = DAG.getVTList(MVT::i256, MVT::i256);
-  SDValue Result = DAG.getNode(Opcode, DL, VTs, DividendVal, DivisorVal);
+  SmallVector<EVT, 2> ResultVTs{MVT::i256};
+  if (Opcode == ISD::UDIVREM)
+    ResultVTs.push_back(MVT::i256);
+
+  const SDValue Result = DAG.getNode(Opcode, DL, DAG.getVTList(ResultVTs),
+                                     DividendVal, DivisorVal);
   return {UDivDividend, UDivDivisor, Result};
 }
 
