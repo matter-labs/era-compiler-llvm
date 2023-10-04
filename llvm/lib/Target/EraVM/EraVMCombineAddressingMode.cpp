@@ -353,7 +353,7 @@ bool EraVMCombineAddressingMode::combineReloadUse(MachineFunction &MF) {
           }))
         continue;
       UsesToUpdate.insert(Uses.begin(), Uses.end());
-      Deleted.push_back({&MI, Uses});
+      Deleted.emplace_back(&MI, Uses);
     }
   }
 
@@ -433,7 +433,7 @@ bool EraVMCombineAddressingMode::combineDefSpill(MachineFunction &MF) {
       assert(find(DefUses, &MI) != DefUses.end() &&
              "The spill is expected to be among uses");
 
-      Deleted.push_back({DefMI, &MI, DefUses});
+      Deleted.emplace_back(DefMI, &MI, DefUses);
       UsesToUpdate.insert(DefUses.begin(), DefUses.end());
       UsesToUpdate.insert(DefMI);
     }
