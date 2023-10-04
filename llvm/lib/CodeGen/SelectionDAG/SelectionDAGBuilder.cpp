@@ -1615,10 +1615,6 @@ SDValue SelectionDAGBuilder::getValueImpl(const Value *V) {
           Constants[i] = DAG.getUNDEF(EltVT);
         else if (EltVT.isFloatingPoint())
           Constants[i] = DAG.getConstantFP(0, getCurSDLoc(), EltVT);
-        // EraVM local begin
-        else if (EltVT == MVT::fatptr)
-          Constants[i] = DAG.getConstant(0, getCurSDLoc(), MVT::i256);
-        // EraVM local end
         else
           Constants[i] = DAG.getConstant(0, getCurSDLoc(), EltVT);
       }
