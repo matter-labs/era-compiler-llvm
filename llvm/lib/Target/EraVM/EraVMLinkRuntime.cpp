@@ -48,7 +48,7 @@ namespace {
 struct EraVMLinkRuntime : public ModulePass {
 public:
   static char ID;
-  EraVMLinkRuntime(bool IsRuntimeLinkage = false)
+  explicit EraVMLinkRuntime(bool IsRuntimeLinkage = false)
       : ModulePass(ID), IsRuntimeLinkage(IsRuntimeLinkage) {}
   bool runOnModule(Module &M) override;
 

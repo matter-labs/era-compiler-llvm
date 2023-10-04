@@ -19,7 +19,7 @@ using namespace llvm;
 namespace {
 class EraVMELFObjectWriter : public MCELFObjectTargetWriter {
 public:
-  EraVMELFObjectWriter(uint8_t OSABI)
+  explicit EraVMELFObjectWriter(uint8_t OSABI)
       : MCELFObjectTargetWriter(false, OSABI, ELF::EM_NONE,
                                 /*HasRelocationAddend*/ true) {}
 
