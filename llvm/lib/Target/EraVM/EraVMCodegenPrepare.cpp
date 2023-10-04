@@ -19,7 +19,7 @@ using namespace llvm;
 
 namespace llvm {
 FunctionPass *createEraVMCodegenPrepare();
-void initializeEraVMCodegenPreparePass(PassRegistry & /*Registry*/);
+
 } // namespace llvm
 
 namespace {
