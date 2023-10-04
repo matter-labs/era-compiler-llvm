@@ -1,21 +1,14 @@
 InheritParentConfig: true
 # EraVM local begin
 Checks: >
-    readability-*,
-    -readability-identifier-naming,
-    -readability-identifier-length,
-    -readability-braces-around-statements,
-    -readability-magic-numbers,
-    -readability-implicit-bool-conversion,
-    -readability-convert-member-functions-to-static,
-    -readability-simplify-boolean-expr,
-    -misc-const-correctness,
-    -llvm-qualified-auto,
-    -misc-use-anonymous-namespace,
     bugprone-*,
     -bugprone-easily-swappable-parameters,
     -bugprone-narrowing-conversions,
     -bugprone-implicit-widening-of-multiplication-result,
+    cert-*,
+    clang-analyzer-*,
+    -clang-analyzer-optin.cplusplus.UninitializedObject,
+    concurrency-*,
     cppcoreguidelines-*,
     -cppcoreguidelines-avoid-do-while,
     -cppcoreguidelines-avoid-magic-numbers,
@@ -26,18 +19,25 @@ Checks: >
     -cppcoreguidelines-macro-usage,
     -cppcoreguidelines-pro-type-union-access,
     -cppcoreguidelines-pro-type-static-cast-downcast,
-    clang-analyzer-*,
-    -clang-analyzer-optin.cplusplus.UninitializedObject,
-    concurrency-*,
-    cert-*,
-    portability-*,
     hicpp-*,
     -hicpp-avoid-c-arrays,
     -hicpp-braces-around-statements,
     -hicpp-use-auto,
     -hicpp-signed-bitwise,
     -hicpp-named-parameter,
+    -llvm-qualified-auto,
+    -misc-const-correctness,
+    -misc-use-anonymous-namespace,
     performance-*,
+    portability-*,
+    readability-*,
+    -readability-identifier-naming,
+    -readability-identifier-length,
+    -readability-braces-around-statements,
+    -readability-magic-numbers,
+    -readability-implicit-bool-conversion,
+    -readability-convert-member-functions-to-static,
+    -readability-simplify-boolean-expr,
 
 
 CheckOptions:
@@ -47,6 +47,5 @@ CheckOptions:
     value: true
 
 
-# For non-incremental checks, these have hundred of hits: -misc-const-correctness,-llvm-qualified-auto,-misc-use-anonymous-namespace
 WarningsAsErrors: '*'
 # EraVM local end
