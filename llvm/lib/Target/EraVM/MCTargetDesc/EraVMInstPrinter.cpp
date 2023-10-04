@@ -159,14 +159,14 @@ void EraVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
 
   // Print displacement first
   if (Disp.isExpr()) {
-    auto *expr = Disp.getExpr();
+    const auto *expr = Disp.getExpr();
     // handle the case where symbol has an offset
-    if (auto *binExpr = dyn_cast<MCBinaryExpr>(expr)) {
+    if (const auto *binExpr = dyn_cast<MCBinaryExpr>(expr)) {
       assert(binExpr->getOpcode() == MCBinaryExpr::Add &&
              "Unexpected binary expression type, check EraVMMCInstLower "
              "for reference.");
-      auto sym = cast<MCSymbolRefExpr>(binExpr->getLHS());
-      auto offset = cast<MCConstantExpr>(binExpr->getRHS());
+      const auto *sym = cast<MCSymbolRefExpr>(binExpr->getLHS());
+      const auto *offset = cast<MCConstantExpr>(binExpr->getRHS());
       // print symbol
       O << '@' << sym->getSymbol().getName() << "[";
       // if there is a reg, print it before offset
@@ -174,7 +174,7 @@ void EraVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
         O << getRegisterName(Base.getReg()) << "+";
       // finally, print offset
       O << offset->getValue() << "]";
-    } else if (auto *symExpr = dyn_cast<MCSymbolRefExpr>(expr)) {
+    } else if (const auto *symExpr = dyn_cast<MCSymbolRefExpr>(expr)) {
       // handle the case where symbol has no imm offset but could have a reg
       // index
       if (Base.isReg())

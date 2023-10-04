@@ -430,11 +430,11 @@ bool FoldingState::isGuaranteedLoopIndependent(
 
 bool FoldingState::isGuaranteedLoopInvariant(const Value *Ptr) const {
   Ptr = Ptr->stripPointerCasts();
-  if (auto *GEP = dyn_cast<GEPOperator>(Ptr))
+  if (const auto *GEP = dyn_cast<GEPOperator>(Ptr))
     if (GEP->hasAllConstantIndices())
       Ptr = GEP->getPointerOperand()->stripPointerCasts();
 
-  if (auto *I = dyn_cast<Instruction>(Ptr))
+  if (const auto *I = dyn_cast<Instruction>(Ptr))
     return I->getParent()->isEntryBlock();
 
   return true;
@@ -452,7 +452,7 @@ FoldingState::tryToCastPtrToInt(const Value *Ptr) const {
   if (isa<ConstantPointerNull>(Ptr))
     return UINT64_C(0);
 
-  if (auto *CE = dyn_cast<ConstantExpr>(Ptr)) {
+  if (const auto *CE = dyn_cast<ConstantExpr>(Ptr)) {
     if (CE->getOpcode() == Instruction::IntToPtr) {
       if (auto *CI = dyn_cast<ConstantInt>(CE->getOperand(0))) {
         // Give up in case of a huge offsset, as this shouldn't happen
@@ -462,7 +462,7 @@ FoldingState::tryToCastPtrToInt(const Value *Ptr) const {
     }
   }
 
-  if (auto *IntToPtr = dyn_cast<IntToPtrInst>(Ptr)) {
+  if (const auto *IntToPtr = dyn_cast<IntToPtrInst>(Ptr)) {
     if (auto *CI = dyn_cast<ConstantInt>(IntToPtr->getOperand(0))) {
       return getNullOrInt(CI->getValue());
     }

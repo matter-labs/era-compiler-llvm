@@ -96,7 +96,7 @@ void EraVMAsmPrinter::emitEndOfAsmFile(Module &) {
   for (const Constant *C : UniqueConstants) {
     std::vector<MCSymbol *> symbols = ConstantPoolMap[C];
 
-    for (auto symbol : symbols) {
+    for (auto *symbol : symbols) {
       OutStreamer->emitLabel(symbol);
     }
     // then print constant:
@@ -145,7 +145,7 @@ void EraVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
       static_cast<EraVMTargetStreamer *>(OutStreamer->getTargetStreamer());
 
   if (const ConstantArray *CVA = dyn_cast<ConstantArray>(CV)) {
-    auto aty = CVA->getType();
+    auto *aty = CVA->getType();
     uint64_t elem_size = aty->getNumElements();
     // For now only support integer types.
     assert(aty->getElementType()->isIntegerTy(256));

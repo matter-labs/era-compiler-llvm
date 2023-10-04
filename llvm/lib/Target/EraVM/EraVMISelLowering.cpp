@@ -290,8 +290,8 @@ SDValue EraVMTargetLowering::LowerFormalArguments(
   unsigned InIdx = 0;
   for (CCValAssign &VA : ArgLocs) {
     if (VA.isRegLoc()) {
-      auto *RC = VA.getValVT() == MVT::fatptr ? &EraVM::GRPTRRegClass
-                                              : &EraVM::GR256RegClass;
+      const auto *RC = VA.getValVT() == MVT::fatptr ? &EraVM::GRPTRRegClass
+                                                    : &EraVM::GR256RegClass;
       Register VReg = RegInfo.createVirtualRegister(RC);
       RegInfo.addLiveIn(VA.getLocReg(), VReg);
       SDValue ArgValue = DAG.getCopyFromReg(Chain, DL, VReg, VA.getLocVT());
@@ -335,7 +335,7 @@ SDValue EraVMTargetLowering::LowerFormalArguments(
 /// If Callee is a farcall "intrinsic" return corresponding opcode.
 /// Return 0 otherwise.
 static uint64_t farcallOpcode(SDValue Callee) {
-  auto GA = dyn_cast<GlobalAddressSDNode>(Callee.getNode());
+  auto *GA = dyn_cast<GlobalAddressSDNode>(Callee.getNode());
   if (!GA)
     return 0;
   return StringSwitch<uint64_t>(GA->getGlobal()->getName())
@@ -533,7 +533,7 @@ SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   if (InFlag.getNode())
     Ops.push_back(InFlag);
 
-  if (auto *Invoke = dyn_cast_or_null<InvokeInst>(CLI.CB)) {
+  if (const auto *Invoke = dyn_cast_or_null<InvokeInst>(CLI.CB)) {
     Chain = DAG.getNode(EraVMISD::INVOKE, DL, NodeTys, Ops);
   } else {
     Chain = DAG.getNode(EraVMISD::CALL, DL, NodeTys, Ops);

@@ -52,17 +52,17 @@ static Optional<APInt> getConstStartLoc(const MemoryLocation &Loc) {
   if (Loc.Size != ByteWidth)
     return None;
 
-  if (auto *CPN = dyn_cast<ConstantPointerNull>(Loc.Ptr))
+  if (const auto *CPN = dyn_cast<ConstantPointerNull>(Loc.Ptr))
     return APInt::getZero(ByteWidth * 8);
 
-  if (auto *CE = dyn_cast<ConstantExpr>(Loc.Ptr)) {
+  if (const auto *CE = dyn_cast<ConstantExpr>(Loc.Ptr)) {
     if (CE->getOpcode() == Instruction::IntToPtr) {
       if (auto *CI = dyn_cast<ConstantInt>(CE->getOperand(0)))
         return CI->getValue();
     }
   }
 
-  if (auto *IntToPtr = dyn_cast<IntToPtrInst>(Loc.Ptr)) {
+  if (const auto *IntToPtr = dyn_cast<IntToPtrInst>(Loc.Ptr)) {
     if (auto *CI = dyn_cast<ConstantInt>(IntToPtr->getOperand(0)))
       return CI->getValue();
   }

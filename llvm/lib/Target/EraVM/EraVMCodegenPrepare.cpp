@@ -91,9 +91,9 @@ bool EraVMCodegenPrepare::runOnFunction(Function &F) {
             break;
 
           if (P == CmpInst::ICMP_UGT) {
-            auto Val256 =
+            auto *Val256 =
                 Builder.CreateZExt(Builder.getInt(Val), Builder.getIntNTy(256));
-            auto Op256 =
+            auto *Op256 =
                 Builder.CreateZExt(I.getOperand(0), Builder.getIntNTy(256));
             auto *NewCmp = Builder.CreateICmp(P, Op256, Val256);
             if (CmpVal->getValue().isOneValue()) {
@@ -159,7 +159,7 @@ bool EraVMCodegenPrepare::runOnFunction(Function &F) {
 }
 
 static bool isUnsignedArithmeticOverflowInstruction(Instruction &I) {
-  auto Call = dyn_cast<CallInst>(&I);
+  auto *Call = dyn_cast<CallInst>(&I);
   if (!Call)
     return false;
   Intrinsic::ID IntID = Call->getIntrinsicID();
@@ -177,7 +177,7 @@ bool EraVMCodegenPrepare::rearrangeOverflowHandlingBranches(Function &F) {
   auto BBI = F.begin();
   auto BBE = F.end();
   while (BBI != BBE) {
-    auto BB = &*BBI;
+    auto *BB = &*BBI;
     BBI = std::next(BBI);
     for (auto &I : *BB) {
       if (!isUnsignedArithmeticOverflowInstruction(I))
@@ -191,7 +191,7 @@ bool EraVMCodegenPrepare::rearrangeOverflowHandlingBranches(Function &F) {
       // %7 = extractvalue { i32, i1 } %5, 1
       // br i1 %7, label %8, label %10
 
-      auto Call = dyn_cast<CallInst>(&I);
+      auto *Call = dyn_cast<CallInst>(&I);
       for (User *U : Call->users()) {
 
         // check extractvalue: there must be at least one use which is

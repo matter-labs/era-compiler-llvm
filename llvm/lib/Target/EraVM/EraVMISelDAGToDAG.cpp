@@ -211,7 +211,7 @@ bool EraVMDAGToDAGISel::SelectMemAddr(SDValue N, SDValue &Base, SDValue &Disp) {
     if (AM.Base.Reg.getNode()) {
       auto AddToReg =
           CurDAG->getTargetConstant(AM.Disp % 32, SDLoc(N), MVT::i256);
-      auto AddrNode = CurDAG->getMachineNode(
+      auto *AddrNode = CurDAG->getMachineNode(
           EraVM::ADDirr_s, SDLoc(N), MVT::i256, AM.Base.Reg, AddToReg, Zero);
       AM.Base.Reg = SDValue(AddrNode, 0);
     }
@@ -320,7 +320,7 @@ void EraVMDAGToDAGISel::Select(SDNode *Node) {
   default:
     break;
   case ISD::Constant: {
-    auto cn = cast<ConstantSDNode>(Node);
+    auto *cn = cast<ConstantSDNode>(Node);
     auto val = cn->getAPIntValue();
 
     // if it is loading zero value, just select R0 to save its materialization
@@ -336,8 +336,8 @@ void EraVMDAGToDAGISel::Select(SDNode *Node) {
       auto negated = -(val.getSExtValue());
       auto Negated_Val = CurDAG->getTargetConstant(negated, DL, MVT::i256);
       auto R0 = CurDAG->getRegister(EraVM::R0, MVT::i256);
-      auto SUB = CurDAG->getMachineNode(EraVM::SUBxrr_p, DL, MVT::i256,
-                                        SDValue(Negated_Val), R0);
+      auto *SUB = CurDAG->getMachineNode(EraVM::SUBxrr_p, DL, MVT::i256,
+                                         SDValue(Negated_Val), R0);
       ReplaceNode(Node, SUB);
       return;
     }
@@ -348,7 +348,7 @@ void EraVMDAGToDAGISel::Select(SDNode *Node) {
       MVT PtrVT = getTargetLowering()->getPointerTy(CurDAG->getDataLayout());
       SDValue CP =
           CurDAG->getTargetConstantPool(cn->getConstantIntValue(), PtrVT);
-      auto lc = CurDAG->getMachineNode(EraVM::LOADCONST, DL, MVT::i256, CP);
+      auto *lc = CurDAG->getMachineNode(EraVM::LOADCONST, DL, MVT::i256, CP);
       ReplaceNode(Node, lc);
       return;
     }
@@ -381,13 +381,13 @@ void EraVMDAGToDAGISel::Select(SDNode *Node) {
   }
   case ISD::LOAD: {
     // lower address space 3 loads
-    auto ld = cast<LoadSDNode>(Node);
+    auto *ld = cast<LoadSDNode>(Node);
     if (ld->getAddressSpace() == 3) {
       SDValue Chain = ld->getChain();
       SDValue Ptr = ld->getBasePtr();
       auto Zero = CurDAG->getTargetConstant(0, DL, MVT::i256);
-      auto LD = CurDAG->getMachineNode(EraVM::LD, DL, ld->getMemoryVT(),
-                                       MVT::Other, Ptr, Zero, Chain);
+      auto *LD = CurDAG->getMachineNode(EraVM::LD, DL, ld->getMemoryVT(),
+                                        MVT::Other, Ptr, Zero, Chain);
       ReplaceNode(Node, LD);
       return;
     }

@@ -307,7 +307,7 @@ bool EraVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
 
     if (I->getOpcode() == EraVM::J) {
       // Handle unconditional branches.
-      auto jumpTarget = I->getOperand(0).getMBB();
+      auto *jumpTarget = I->getOperand(0).getMBB();
       if (!AllowModify) {
         TBB = jumpTarget;
         continue;
@@ -366,7 +366,7 @@ bool EraVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
       FBB = TBB;
       TBB = I->getOperand(0).getMBB();
       LLVMContext &C = MBB.getParent()->getFunction().getContext();
-      auto CImmCC =
+      auto *CImmCC =
           ConstantInt::get(IntegerType::get(C, 256), BranchCode, false);
       Cond.push_back(MachineOperand::CreateCImm(CImmCC));
       continue;
@@ -675,7 +675,7 @@ static void fixupStackAccessOffsetPostOutline(MachineBasicBlock::iterator Start,
     if (EraVM::classifyStackAccess(It) != EraVM::StackAccess::Relative)
       return;
 
-    auto DispIt = It + 2;
+    auto *DispIt = It + 2;
     assert(DispIt->isImm() && "Displacement is not immediate.");
     DispIt->setImm(DispIt->getImm() + FixupOffset);
   };
@@ -1013,7 +1013,7 @@ void EraVMInstrInfo::fixupPostOutlining(
     fixupStackAccessOffsetPostOutline(OutlinedMBB.begin(),
                                       std::prev(OutlinedMBB.end()),
                                       -1 /* FixupOffset */);
-    for (auto Caller : Callers)
+    for (auto *Caller : Callers)
       fixupStackPostOutline(*Caller);
   }
 
@@ -1064,7 +1064,7 @@ void EraVMInstrInfo::fixupPostOutlining(
       auto &OutlinedMBB = Outlined->front();
       fixupStackAccessOffsetPostOutline(OutlinedMBB.begin(), OutlinedMBB.end(),
                                         -1 /* FixupOffset */);
-      for (auto Caller : Callers)
+      for (auto *Caller : Callers)
         fixupStackPostOutline(*Caller);
 
       // Set that we adjusted this outlined function, so we can skip it.

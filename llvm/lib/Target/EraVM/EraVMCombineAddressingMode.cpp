@@ -154,7 +154,7 @@ void EraVMCombineAddressingMode::mergeSelect(
     iterator_range<MachineInstr::const_mop_iterator> In) {
   // TODO: CPR-1131 Allow to merge twice.
   assert(TII->isSel(Base) && "Expected Select instruction");
-  auto In0It = EraVM::in0Iterator(Base);
+  auto *In0It = EraVM::in0Iterator(Base);
   bool IsIn0 =
       In0It->isReg() && In0It->getReg() == EraVM::out0Iterator(Def)->getReg();
   DenseMap<unsigned, unsigned> In0Map = {
@@ -358,7 +358,7 @@ bool EraVMCombineAddressingMode::combineReloadUse(MachineFunction &MF) {
 
   // 2. Combine.
   for (auto [Reload, Uses] : Deleted) {
-    for (auto Use : Uses) {
+    for (auto *Use : Uses) {
       if (EraVM::isSelect(*Use)) {
         mergeSelect(*Use, *Reload, EraVM::in0Range(*Reload));
       } else {

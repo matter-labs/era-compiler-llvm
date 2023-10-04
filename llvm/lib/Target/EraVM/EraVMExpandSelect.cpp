@@ -96,10 +96,10 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
 
       unsigned Opc = MI.getOpcode();
       DebugLoc DL = MI.getDebugLoc();
-      auto In0 = EraVM::in0Iterator(MI);
+      auto *In0 = EraVM::in0Iterator(MI);
       auto In0Range = EraVM::in0Range(MI);
       auto In1Range = EraVM::in1Range(MI);
-      auto Out = EraVM::out0Iterator(MI);
+      auto *Out = EraVM::out0Iterator(MI);
       auto CCVal = getImmOrCImm(*EraVM::ccIterator(MI));
 
       // For rN = cc ? rN : y it's profitable to reverse (rN = reverse_cc ? y :
@@ -111,7 +111,7 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
       auto buildMOV = [&](EraVM::ArgumentKind OpNo, unsigned CC) {
         auto OperandRange =
             (OpNo == EraVM::ArgumentKind::In0) ? In0Range : In1Range;
-        auto OperandIt = OperandRange.begin();
+        auto *OperandIt = OperandRange.begin();
         bool IsRegister =
             argumentType(OpNo, MI) == EraVM::ArgumentType::Register;
         unsigned MovOpc = movOpcode(OpNo, Opc);

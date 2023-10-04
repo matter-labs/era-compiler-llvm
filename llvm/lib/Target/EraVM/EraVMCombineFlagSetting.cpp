@@ -202,7 +202,7 @@ bool EraVMCombineFlagSetting::runOnMachineFunction(MachineFunction &MF) {
       LLVM_DEBUG(dbgs() << "== Into:"; DefMI->dump(););
     }
 
-  for (auto MI : ToRemove)
+  for (auto *MI : ToRemove)
     MI->eraseFromParent();
 
   return !ToRemove.empty();

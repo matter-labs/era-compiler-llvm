@@ -137,7 +137,7 @@ void EraVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) const {
         // chosen enough for the entire string. Otherwise, its internal memory
         // will be reallocated into the generic heap but not into the Ctx
         // arena and thus never deallocated.
-        auto Str = new (Ctx) SmallString<80>();
+        auto *Str = new (Ctx) SmallString<80>();
         MO.getCImm()->getValue().toStringUnsigned(*Str);
         MCOp = MCOperand::createExpr(EraVMCImmMCExpr::create(*Str, Ctx));
       }
