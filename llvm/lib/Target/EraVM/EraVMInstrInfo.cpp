@@ -51,7 +51,8 @@ ArgumentType argumentType(ArgumentKind Kind, unsigned Opcode) {
   if (Kind == ArgumentKind::Out1) {
     // TODO: CPR-986 Support stack output for Select.
     return ArgumentType::Register;
-  } else if (Kind == ArgumentKind::In1) {
+  }
+  if (Kind == ArgumentKind::In1) {
     if (In1R.count(Opcode))
       return ArgumentType::Register;
     if (In1I.count(Opcode))
@@ -605,7 +606,8 @@ EraVMCC::CondCodes EraVMInstrInfo::getCCCode(const MachineInstr &MI) const {
 
   if (CC.isImm()) {
     return EraVMCC::CondCodes(CC.getImm());
-  } else if (CC.isCImm()) {
+  }
+  if (CC.isCImm()) {
     return EraVMCC::CondCodes(CC.getCImm()->getZExtValue());
   }
   return EraVMCC::COND_INVALID;

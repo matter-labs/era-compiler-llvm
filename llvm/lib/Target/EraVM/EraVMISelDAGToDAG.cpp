@@ -201,9 +201,8 @@ bool EraVMDAGToDAGISel::SelectMemAddr(SDValue N, SDValue &Base, SDValue &Disp) {
   if (MatchAddress(N, AM, false /* IsStackAddr */)) {
     LLVM_DEBUG(errs() << "Failed to match address.");
     return false;
-  } else {
-    LLVM_DEBUG(errs() << "Matched: "; AM.dump());
   }
+  LLVM_DEBUG(errs() << "Matched: "; AM.dump());
 
   // EraVM doesn't support offsets by unaligned number of bytes, so add
   // the displacement to the base register.
