@@ -70,10 +70,10 @@ class EraVMAsmParser : public MCTargetAsmParser {
 
 public:
   EraVMAsmParser(const MCSubtargetInfo &STI, MCAsmParser &Parser,
-                  const MCInstrInfo &MII, const MCTargetOptions &Options)
-      : MCTargetAsmParser(Options, STI, MII), Parser(Parser) {
+                 const MCInstrInfo &MII, const MCTargetOptions &Options)
+      : MCTargetAsmParser(Options, STI, MII), Parser(Parser),
+        MRI(getContext().getRegisterInfo()) {
     MCAsmParserExtension::Initialize(Parser);
-    MRI = getContext().getRegisterInfo();
 
     setAvailableFeatures(ComputeAvailableFeatures(STI.getFeatureBits()));
   }
