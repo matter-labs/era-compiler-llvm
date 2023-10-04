@@ -28,15 +28,15 @@ public:
   static char ID;
   EraVMExpandPseudo() : MachineFunctionPass(ID) {}
 
-  const TargetRegisterInfo *TRI;
+  const TargetRegisterInfo *TRI{};
 
   bool runOnMachineFunction(MachineFunction &MF) override;
 
   StringRef getPassName() const override { return ERAVM_EXPAND_PSEUDO_NAME; }
 
 private:
-  const TargetInstrInfo *TII;
-  LLVMContext *Context;
+  const TargetInstrInfo *TII{};
+  LLVMContext *Context{};
 };
 
 char EraVMExpandPseudo::ID = 0;

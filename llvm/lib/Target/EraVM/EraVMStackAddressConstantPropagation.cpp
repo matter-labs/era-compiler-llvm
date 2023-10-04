@@ -50,8 +50,8 @@ private:
   // TODO: CPR-1357 When FE start to produce LLVM arrays, it make sense
   // to support propagation through mul.
   std::optional<PropagationResult> tryPropagateConstant(MachineInstr &MI);
-  const EraVMInstrInfo *TII;
-  MachineRegisterInfo *RegInfo;
+  const EraVMInstrInfo *TII{};
+  MachineRegisterInfo *RegInfo{};
 };
 
 char EraVMStackAddressConstantPropagation::ID = 0;

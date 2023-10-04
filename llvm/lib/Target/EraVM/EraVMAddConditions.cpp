@@ -28,14 +28,14 @@ public:
   static char ID;
   EraVMAddConditions() : MachineFunctionPass(ID) {}
 
-  const TargetRegisterInfo *TRI;
+  const TargetRegisterInfo *TRI{};
 
   bool runOnMachineFunction(MachineFunction &MF) override;
 
   StringRef getPassName() const override { return ERAVM_ADD_CONDITIONALS_NAME; }
 
 private:
-  const TargetInstrInfo *TII;
+  const TargetInstrInfo *TII{};
 };
 
 char EraVMAddConditions::ID = 0;

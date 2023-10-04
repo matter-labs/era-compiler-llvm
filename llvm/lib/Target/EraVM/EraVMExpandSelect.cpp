@@ -32,7 +32,7 @@ public:
   StringRef getPassName() const override { return ERAVM_EXPAND_SELECT_NAME; }
 
 private:
-  const EraVMInstrInfo *TII;
+  const EraVMInstrInfo *TII{};
 };
 
 char EraVMExpandSelect::ID = 0;

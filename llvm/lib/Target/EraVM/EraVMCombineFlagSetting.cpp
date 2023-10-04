@@ -69,7 +69,7 @@ public:
   }
 
 private:
-  const EraVMInstrInfo *TII;
+  const EraVMInstrInfo *TII{};
   /// Check whether there is any flag definition or usage in (Start, End).
   /// \p Start is a instuction that define Flags, so it's ok for it to use
   /// Flags, thus it's excluded from the check.

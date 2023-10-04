@@ -97,7 +97,7 @@ class EraVMOperand : public MCParsedAsmOperand {
     const MCExpr *Offset;
   };
   union {
-    const MCExpr *Imm;
+    const MCExpr *Imm{};
     unsigned      Reg;
     StringRef     Tok;
     Memory        Mem;

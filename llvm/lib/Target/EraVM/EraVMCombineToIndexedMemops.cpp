@@ -90,9 +90,9 @@ private:
   /// \precondition MI's opcode must be among PostIncOpcMap keys.
   MachineInstr *replaceWithIndexed(MachineInstr &MI, Register NewOffset);
 
-  const MachineDominatorTree *MDT;
-  const EraVMInstrInfo *TII;
-  MachineRegisterInfo *RegInfo;
+  const MachineDominatorTree *MDT{};
+  const EraVMInstrInfo *TII{};
+  MachineRegisterInfo *RegInfo{};
 };
 
 char EraVMCombineToIndexedMemops::ID = 0;

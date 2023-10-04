@@ -55,9 +55,9 @@ public:
   }
 
 private:
-  const EraVMInstrInfo *TII;
-  ReachingDefAnalysis *RDA;
-  const MachineDominatorTree *MDT;
+  const EraVMInstrInfo *TII{};
+  ReachingDefAnalysis *RDA{};
+  const MachineDominatorTree *MDT{};
   /// Replace in0 or in1 of \p Base with \p NewArg.
   /// For in1 swap operands as stack addressing mode is only supported for in0,
   /// and if the instruction is not commutable replace the opcode by reversing

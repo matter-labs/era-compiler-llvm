@@ -39,7 +39,7 @@ public:
   static char ID;
   EraVMBytesToCells() : MachineFunctionPass(ID) {}
 
-  const TargetRegisterInfo *TRI;
+  const TargetRegisterInfo *TRI{};
 
   bool runOnMachineFunction(MachineFunction &MF) override;
 
@@ -86,8 +86,8 @@ private:
   /// cell-addressing code operands.
   bool convertCodeAccess(MachineInstr &MI);
 
-  const EraVMInstrInfo *TII;
-  MachineRegisterInfo *MRI;
+  const EraVMInstrInfo *TII{};
+  MachineRegisterInfo *MRI{};
 
   DenseMap<Register, Register> BytesToCellsRegs;
 };
