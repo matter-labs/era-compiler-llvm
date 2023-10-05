@@ -77,6 +77,8 @@
 #include "llvm/Transforms/Utils/AssumeBundleBuilder.h"
 #include "llvm/Transforms/Utils/Local.h"
 
+#include <optional>
+
 using namespace llvm;
 
 #define DEBUG_TYPE "eravm-sha3-constant-folding"
