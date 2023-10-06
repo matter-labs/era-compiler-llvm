@@ -128,7 +128,7 @@ public:
     OpsOut.push_back(Type::getIntNTy(Context, RemainingBytes * 8));
   }
 
-  // TODO: CPR-1359 The value is copied from AMDGPU, needs to be configured.
+  // Since we prefer inlining, use larger threshold multiplier.
   unsigned getInliningThresholdMultiplier() const { return 11; }
 
   /// @}
