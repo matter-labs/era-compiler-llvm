@@ -26,7 +26,9 @@ namespace {
 class EraVMExpandPseudo : public MachineFunctionPass {
 public:
   static char ID;
-  EraVMExpandPseudo() : MachineFunctionPass(ID) {}
+  EraVMExpandPseudo() : MachineFunctionPass(ID) {
+    initializeEraVMExpandPseudoPass(*PassRegistry::getPassRegistry());
+  }
 
   const TargetRegisterInfo *TRI;
 

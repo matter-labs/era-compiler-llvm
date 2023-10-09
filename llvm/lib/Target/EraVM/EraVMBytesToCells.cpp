@@ -37,7 +37,9 @@ namespace {
 class EraVMBytesToCells : public MachineFunctionPass {
 public:
   static char ID;
-  EraVMBytesToCells() : MachineFunctionPass(ID) {}
+  EraVMBytesToCells() : MachineFunctionPass(ID) {
+    initializeEraVMBytesToCellsPass(*PassRegistry::getPassRegistry());
+  }
 
   const TargetRegisterInfo *TRI;
 

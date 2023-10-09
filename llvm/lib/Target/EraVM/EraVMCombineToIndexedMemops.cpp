@@ -48,7 +48,9 @@ namespace {
 class EraVMCombineToIndexedMemops : public MachineFunctionPass {
 public:
   static char ID;
-  EraVMCombineToIndexedMemops() : MachineFunctionPass(ID) {}
+  EraVMCombineToIndexedMemops() : MachineFunctionPass(ID) {
+    initializeEraVMCombineToIndexedMemopsPass(*PassRegistry::getPassRegistry());
+  }
 
   bool runOnMachineFunction(MachineFunction &Fn) override;
 

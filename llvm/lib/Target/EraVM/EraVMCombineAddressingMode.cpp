@@ -39,7 +39,9 @@ namespace {
 class EraVMCombineAddressingMode : public MachineFunctionPass {
 public:
   static char ID;
-  EraVMCombineAddressingMode() : MachineFunctionPass(ID) {}
+  EraVMCombineAddressingMode() : MachineFunctionPass(ID) {
+    initializeEraVMCombineAddressingModePass(*PassRegistry::getPassRegistry());
+  }
 
   bool runOnMachineFunction(MachineFunction &Fn) override;
 
