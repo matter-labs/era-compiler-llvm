@@ -42,7 +42,10 @@ struct PropagationResult {
 class EraVMStackAddressConstantPropagation : public MachineFunctionPass {
 public:
   static char ID;
-  EraVMStackAddressConstantPropagation() : MachineFunctionPass(ID) {}
+  EraVMStackAddressConstantPropagation() : MachineFunctionPass(ID) {
+    initializeEraVMStackAddressConstantPropagationPass(
+        *PassRegistry::getPassRegistry());
+  }
   bool runOnMachineFunction(MachineFunction &MF) override;
 
   StringRef getPassName() const override {
