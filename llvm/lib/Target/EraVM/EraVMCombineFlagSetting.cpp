@@ -60,7 +60,9 @@ namespace {
 class EraVMCombineFlagSetting : public MachineFunctionPass {
 public:
   static char ID;
-  EraVMCombineFlagSetting() : MachineFunctionPass(ID) {}
+  EraVMCombineFlagSetting() : MachineFunctionPass(ID) {
+    initializeEraVMCombineFlagSettingPass(*PassRegistry::getPassRegistry());
+  }
 
   bool runOnMachineFunction(MachineFunction &Fn) override;
 

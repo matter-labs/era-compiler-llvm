@@ -26,7 +26,9 @@ namespace {
 class EraVMAddConditions : public MachineFunctionPass {
 public:
   static char ID;
-  EraVMAddConditions() : MachineFunctionPass(ID) {}
+  EraVMAddConditions() : MachineFunctionPass(ID) {
+    initializeEraVMAddConditionsPass(*PassRegistry::getPassRegistry());
+  }
 
   const TargetRegisterInfo *TRI;
 
