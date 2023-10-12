@@ -30,6 +30,7 @@ struct SimplifyCFGOptions {
   bool SinkCommonInsts = false;
   bool SimplifyCondBranch = true;
   bool FoldTwoEntryPHINode = true;
+  bool SimplifyAfterLoopUnroll = false;
 
   AssumptionCache *AC = nullptr;
 
@@ -73,6 +74,11 @@ struct SimplifyCFGOptions {
 
   SimplifyCFGOptions &setFoldTwoEntryPHINode(bool B) {
     FoldTwoEntryPHINode = B;
+    return *this;
+  }
+
+  SimplifyCFGOptions &setSimplifyAfterLoopUnroll(bool B) {
+    SimplifyAfterLoopUnroll = B;
     return *this;
   }
 };

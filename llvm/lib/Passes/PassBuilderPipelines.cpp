@@ -535,6 +535,9 @@ PassBuilder::buildFunctionSimplificationPipeline(OptimizationLevel Level,
                                               /*UseMemorySSA=*/false,
                                               /*UseBlockFrequencyInfo=*/false));
 
+  FPM.addPass(
+      SimplifyCFGPass(SimplifyCFGOptions().setSimplifyAfterLoopUnroll(true)));
+
   // Delete small array after loop unroll.
   FPM.addPass(SROAPass());
 

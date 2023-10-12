@@ -362,6 +362,9 @@ PreservedAnalyses SimplifyCFGPass::run(Function &F,
   } else {
     Options.setSimplifyCondBranch(true).setFoldTwoEntryPHINode(true);
   }
+  if (Options.SimplifyAfterLoopUnroll &&
+      !F.hasFnAttribute("simplify-after-unroll"))
+    return PreservedAnalyses::all();
   if (!simplifyFunctionCFG(F, TTI, DT, Options))
     return PreservedAnalyses::all();
   PreservedAnalyses PA;

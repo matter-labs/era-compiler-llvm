@@ -788,8 +788,10 @@ LoopUnrollResult llvm::UnrollLoop(Loop *L, UnrollLoopOptions ULO, LoopInfo *LI,
 
   Loop *OuterL = L->getParentLoop();
   // Update LoopInfo if the loop is completely removed.
-  if (CompletelyUnroll)
+  if (CompletelyUnroll) {
+    L->getHeader()->getParent()->addFnAttr("simplify-after-unroll");
     LI->erase(L);
+  }
 
   // LoopInfo should not be valid, confirm that.
   if (UnrollVerifyLoopInfo)

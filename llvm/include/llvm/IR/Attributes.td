@@ -323,6 +323,7 @@ def ProfileSampleAccurate : StrBoolAttr<"profile-sample-accurate">;
 def UseSampleProfile : StrBoolAttr<"use-sample-profile">;
 // EraVM local begin
 def NoInlineOz : StrBoolAttr<"noinline-oz">;
+def SimplifyAfterUnroll : StrBoolAttr<"simplify-after-unroll">;
 // EraVM local end
 
 class CompatRule<string F> {
