@@ -34,8 +34,7 @@ define i256 @test_gasleft() {
 ; CHECK-NEXT:    store i256 2, ptr addrspace(2) inttoptr (i256 2 to ptr addrspace(2)), align 64
 ; CHECK-NEXT:    [[GASLEFT:%.*]] = tail call i256 @llvm.eravm.gasleft()
 ; CHECK-NEXT:    store i256 [[GASLEFT]], ptr addrspace(1) inttoptr (i256 1 to ptr addrspace(1)), align 64
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(2) inttoptr (i256 2 to ptr addrspace(2)), align 64
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(2) inttoptr (i256 2 to ptr addrspace(2)), align 64
   %gasleft = call i256 @llvm.eravm.gasleft()
@@ -49,8 +48,7 @@ define i256 @test_getu128() {
 ; CHECK-NEXT:    store i256 2, ptr addrspace(2) inttoptr (i256 2 to ptr addrspace(2)), align 64
 ; CHECK-NEXT:    [[GETU128:%.*]] = tail call i256 @llvm.eravm.getu128()
 ; CHECK-NEXT:    store i256 [[GETU128]], ptr addrspace(1) inttoptr (i256 1 to ptr addrspace(1)), align 64
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(2) inttoptr (i256 2 to ptr addrspace(2)), align 64
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(2) inttoptr (i256 2 to ptr addrspace(2)), align 64
   %getu128 = call i256 @llvm.eravm.getu128()
@@ -63,8 +61,7 @@ define i256 @test_setu128(i256 %val) {
 ; CHECK-LABEL: @test_setu128(
 ; CHECK-NEXT:    store i256 2, ptr addrspace(2) inttoptr (i256 2 to ptr addrspace(2)), align 64
 ; CHECK-NEXT:    tail call void @llvm.eravm.setu128(i256 [[VAL:%.*]])
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(2) inttoptr (i256 2 to ptr addrspace(2)), align 64
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(2) inttoptr (i256 2 to ptr addrspace(2)), align 64
   call void @llvm.eravm.setu128(i256 %val)
@@ -76,8 +73,7 @@ define i256 @test_inctx() {
 ; CHECK-LABEL: @test_inctx(
 ; CHECK-NEXT:    store i256 2, ptr addrspace(2) inttoptr (i256 2 to ptr addrspace(2)), align 64
 ; CHECK-NEXT:    tail call void @llvm.eravm.inctx()
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(2) inttoptr (i256 2 to ptr addrspace(2)), align 64
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(2) inttoptr (i256 2 to ptr addrspace(2)), align 64
   call void @llvm.eravm.inctx()
@@ -89,8 +85,7 @@ define i256 @test_setpubdataprice(i256 %val) {
 ; CHECK-LABEL: @test_setpubdataprice(
 ; CHECK-NEXT:    store i256 2, ptr addrspace(2) inttoptr (i256 2 to ptr addrspace(2)), align 64
 ; CHECK-NEXT:    tail call void @llvm.eravm.setpubdataprice(i256 [[VAL:%.*]])
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(2) inttoptr (i256 2 to ptr addrspace(2)), align 64
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(2) inttoptr (i256 2 to ptr addrspace(2)), align 64
   call void @llvm.eravm.setpubdataprice(i256 %val)
