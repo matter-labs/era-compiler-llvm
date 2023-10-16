@@ -221,7 +221,7 @@ static BaseIndexOffset matchLSNode(const LSBaseSDNode *N,
       if (auto *C = dyn_cast<ConstantSDNode>(Base->getOperand(1)))
         if (DAG.MaskedValueIsZero(Base->getOperand(0), C->getAPIntValue())) {
           // EraVM local begin
-          if (C->getAPIntValue().getActiveBits() > 64)
+          if (C->getAPIntValue().getSignificantBits() > 64)
             return BaseIndexOffset();
           // EraVM local end
           Offset += C->getSExtValue();
@@ -232,7 +232,7 @@ static BaseIndexOffset matchLSNode(const LSBaseSDNode *N,
     case ISD::ADD:
       if (auto *C = dyn_cast<ConstantSDNode>(Base->getOperand(1))) {
         // EraVM local begin
-        if (C->getAPIntValue().getActiveBits() > 64)
+        if (C->getAPIntValue().getSignificantBits() > 64)
           return BaseIndexOffset();
         // EraVM local end
         Offset += C->getSExtValue();
@@ -247,7 +247,7 @@ static BaseIndexOffset matchLSNode(const LSBaseSDNode *N,
       if (LSBase->isIndexed() && Base.getResNo() == IndexResNo)
         if (auto *C = dyn_cast<ConstantSDNode>(LSBase->getOffset())) {
           // EraVM local begin
-          if (C->getAPIntValue().getActiveBits() > 64)
+          if (C->getAPIntValue().getSignificantBits() > 64)
             return BaseIndexOffset();
           // EraVM local end
           auto Off = C->getSExtValue();
@@ -296,7 +296,7 @@ static BaseIndexOffset matchLSNode(const LSBaseSDNode *N,
     // EraVM local begin
     if (cast<ConstantSDNode>(Index->getOperand(1))
             ->getAPIntValue()
-            .getActiveBits() > 64)
+            .getSignificantBits() > 64)
       return BaseIndexOffset();
     // EraVM local end
     Offset += cast<ConstantSDNode>(Index->getOperand(1))->getSExtValue();
