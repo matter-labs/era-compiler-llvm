@@ -46,14 +46,10 @@ void EraVMAAWrapperPass::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesAll();
 }
 
-static Optional<APInt> getConstStartLoc(const MemoryLocation &Loc) {
-  // TODO: CPR-1337 Enable all pointer sizes.
-  constexpr unsigned ByteWidth = 32;
-  if (Loc.Size != ByteWidth)
-    return None;
-
+static Optional<APInt> getConstStartLoc(const MemoryLocation &Loc,
+                                        const DataLayout &DL) {
   if (auto *CPN = dyn_cast<ConstantPointerNull>(Loc.Ptr))
-    return APInt::getZero(ByteWidth * 8);
+    return APInt::getZero(DL.getPointerTypeSizeInBits(CPN->getType()));
 
   if (auto *CE = dyn_cast<ConstantExpr>(Loc.Ptr)) {
     if (CE->getOpcode() == Instruction::IntToPtr) {
@@ -90,31 +86,53 @@ AliasResult EraVMAAResult::alias(const MemoryLocation &LocA,
       ASA != EraVMAS::AS_STORAGE)
     return AAResultBase::alias(LocA, LocB, AAQI);
 
-  auto StartA = getConstStartLoc(LocA);
-  auto StartB = getConstStartLoc(LocB);
+  // Don't check unknown memory locations.
+  if (!LocA.Size.isPrecise() || !LocB.Size.isPrecise())
+    return AAResultBase::alias(LocA, LocB, AAQI);
+
+  // Only 256-bit keys are valid for storage.
+  if (ASA == EraVMAS::AS_STORAGE) {
+    constexpr unsigned KeyByteWidth = 32;
+    if (LocA.Size != KeyByteWidth || LocB.Size != KeyByteWidth)
+      return AAResultBase::alias(LocA, LocB, AAQI);
+  }
+
+  auto StartA = getConstStartLoc(LocA, DL);
+  auto StartB = getConstStartLoc(LocB, DL);
 
   // Forward the query to the next alias analysis, if we don't have constant
   // start locations.
   if (!StartA || !StartB)
     return AAResultBase::alias(LocA, LocB, AAQI);
 
-  // TODO: CPR-1337 Take into account pointer size.
-  // If locations are the same, they must alias.
-  if (*StartA == *StartB)
-    return AliasResult::MustAlias;
+  // Extend start locations to the same bitwidth.
+  const unsigned MaxBitWidth =
+      std::max(StartA->getBitWidth(), StartB->getBitWidth());
+  const APInt StartAVal = StartA->zext(MaxBitWidth);
+  const APInt StartBVal = StartB->zext(MaxBitWidth);
 
-  // For storage accesses, we know that locations are pointing to the different
-  // keys, so they are not aliasing.
-  if (ASA == EraVMAS::AS_STORAGE)
+  // Keys in storage can't overlap.
+  if (ASA == EraVMAS::AS_STORAGE) {
+    if (StartAVal == StartBVal)
+      return AliasResult::MustAlias;
     return AliasResult::NoAlias;
+  }
+
+  // If heap locations are the same, they either must or partially alias based
+  // on the size of locations.
+  if (StartAVal == StartBVal) {
+    if (LocA.Size == LocB.Size)
+      return AliasResult::MustAlias;
+    return AliasResult::PartialAlias;
+  }
 
   auto DoesOverlap = [](const APInt &X, const APInt &XEnd, const APInt &Y) {
     return Y.uge(X) && Y.ult(XEnd);
   };
 
   // For heap accesses, if locations don't overlap, they are not aliasing.
-  if (!DoesOverlap(*StartA, *StartA + LocA.Size.getValue(), *StartB) &&
-      !DoesOverlap(*StartB, *StartB + LocB.Size.getValue(), *StartA))
+  if (!DoesOverlap(StartAVal, StartAVal + LocA.Size.getValue(), StartBVal) &&
+      !DoesOverlap(StartBVal, StartBVal + LocB.Size.getValue(), StartAVal))
     return AliasResult::NoAlias;
   return AliasResult::PartialAlias;
 }

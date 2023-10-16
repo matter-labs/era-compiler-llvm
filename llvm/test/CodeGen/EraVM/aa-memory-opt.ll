@@ -9,8 +9,7 @@ define i256 @test_memcpy() {
 ; CHECK-LABEL: @test_memcpy(
 ; CHECK-NEXT:    store i256 2, ptr addrspace(1) inttoptr (i256 2 to ptr addrspace(1)), align 64
 ; CHECK-NEXT:    tail call void @llvm.memcpy.p1.p1.i256(ptr addrspace(1) noundef nonnull align 32 dereferenceable(53) inttoptr (i256 96 to ptr addrspace(1)), ptr addrspace(1) noundef nonnull align 256 dereferenceable(53) inttoptr (i256 256 to ptr addrspace(1)), i256 53, i1 false)
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(1) inttoptr (i256 2 to ptr addrspace(1)), align 64
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(1) inttoptr (i256 2 to ptr addrspace(1)), align 64
   tail call void @llvm.memcpy.p1.p1.i256(ptr addrspace(1) inttoptr (i256 96 to ptr addrspace(1)), ptr addrspace(1) inttoptr (i256 256 to ptr addrspace(1)), i256 53, i1 false)
@@ -22,8 +21,7 @@ define i256 @test_different_locsizes() {
 ; CHECK-LABEL: @test_different_locsizes(
 ; CHECK-NEXT:    store i256 2, ptr addrspace(2) inttoptr (i256 2 to ptr addrspace(2)), align 64
 ; CHECK-NEXT:    store i8 1, ptr addrspace(2) inttoptr (i8 1 to ptr addrspace(2)), align 64
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(2) inttoptr (i256 2 to ptr addrspace(2)), align 64
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(2) inttoptr (i256 2 to ptr addrspace(2)), align 64
   store i8 1, ptr addrspace(2) inttoptr (i8 1 to ptr addrspace(2)), align 64
