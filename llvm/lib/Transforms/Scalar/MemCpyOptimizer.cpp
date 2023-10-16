@@ -17,6 +17,7 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/Statistic.h"
+#include "llvm/ADT/Triple.h"
 #include "llvm/ADT/iterator_range.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/AssumptionCache.h"
@@ -1115,6 +1116,9 @@ bool MemCpyOptPass::performCallSlotOptzn(Instruction *cpyLoad,
 bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
                                                   MemCpyInst *MDep) {
   // EraVM local begin
+  const Triple TT(M->getFunction()->getParent()->getTargetTriple());
+  if (TT.isEraVM())
+    return false;
   if (isa<ConstantInt>(M->getLength()) &&
       cast<ConstantInt>(M->getLength())->getValue().getSignificantBits() > 64)
     return false;
