@@ -3,9 +3,8 @@
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm"
 
-; TODO: CPR-1337 Enable all pointer sizes.
 ; CHECK-LABEL: Function: test_as1_i8_noalias
-; CHECK: MayAlias: i8 addrspace(1)* %ptr1, i8 addrspace(1)* %ptr2
+; CHECK: NoAlias: i8 addrspace(1)* %ptr1, i8 addrspace(1)* %ptr2
 define void @test_as1_i8_noalias() {
   %ptr1 = inttoptr i8 32 to ptr addrspace(1)
   %ptr2 = inttoptr i8 64 to ptr addrspace(1)
