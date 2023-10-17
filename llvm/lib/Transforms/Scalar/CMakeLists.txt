@@ -95,5 +95,6 @@ add_llvm_component_library(LLVMScalarOpts
   Core
   InstCombine
   Support
+  TargetParser # EraVM local
   TransformUtils
   )
