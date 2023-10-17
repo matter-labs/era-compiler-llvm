@@ -9,7 +9,7 @@ define i256 @test() {
 ; CHECK-LABEL: @test(
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    tail call void @llvm.memcpy.p1.p1.i256(ptr addrspace(1) inttoptr (i256 96 to ptr addrspace(1)), ptr addrspace(1) inttoptr (i256 256 to ptr addrspace(1)), i256 53, i1 false)
-; CHECK-NEXT:    call void @llvm.memmove.p1.p1.i256(ptr addrspace(1) inttoptr (i256 288 to ptr addrspace(1)), ptr addrspace(1) inttoptr (i256 256 to ptr addrspace(1)), i256 53, i1 false)
+; CHECK-NEXT:    tail call void @llvm.memcpy.p1.p1.i256(ptr addrspace(1) inttoptr (i256 288 to ptr addrspace(1)), ptr addrspace(1) inttoptr (i256 96 to ptr addrspace(1)), i256 53, i1 false)
 ; CHECK-NEXT:    ret i256 0
 ;
 entry:

@@ -17,6 +17,7 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/Statistic.h"
+#include "llvm/ADT/Triple.h"
 #include "llvm/ADT/iterator_range.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/AssumptionCache.h"
@@ -1164,6 +1165,13 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
   bool UseMemMove = false;
   if (isModSet(AA->getModRefInfo(M, MemoryLocation::getForSource(MDep))))
     UseMemMove = true;
+
+  // EraVM local begin
+  // TODO: CPR-1418 Fix memmove lowering.
+  const Triple TT(M->getFunction()->getParent()->getTargetTriple());
+  if (TT.isEraVM() && UseMemMove)
+    return false;
+  // EraVM local end
 
   // If all checks passed, then we can transform M.
   LLVM_DEBUG(dbgs() << "MemCpyOptPass: Forwarding memcpy->memcpy src:\n"
