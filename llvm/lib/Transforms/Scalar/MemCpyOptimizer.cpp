@@ -54,6 +54,7 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
+#include "llvm/TargetParser/Triple.h" // EraVM local
 #include "llvm/Transforms/Utils/Local.h"
 #include <algorithm>
 #include <cassert>
@@ -1244,6 +1245,13 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
       return false;
     UseMemMove = true;
   }
+
+  // EraVM local begin
+  // memmove is more expensive for EraVM than memcpy, so don't convert for EraVM
+  const Triple TT(M->getFunction()->getParent()->getTargetTriple());
+  if (TT.isEraVM() && UseMemMove)
+    return false;
+  // EraVM local end
 
   // If all checks passed, then we can transform M.
   LLVM_DEBUG(dbgs() << "MemCpyOptPass: Forwarding memcpy->memcpy src:\n"
