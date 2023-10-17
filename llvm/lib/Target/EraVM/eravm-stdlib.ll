@@ -455,6 +455,47 @@ return:
   ret i256 %res
 }
 
+define i256 @__system_request(i256 %index_address, i256 %index_signature, i256 %calldata_size, i256* nocapture readonly %calldata_pointer) "noinline-oz" #1 personality i32()* @__personality {
+entry:
+  store i256 %index_signature, i256 addrspace(2)* null, align 4294967296
+  %for_condition_compared5 = icmp ugt i256 %calldata_size, 4
+  br i1 %for_condition_compared5, label %system_request_calldata_loop_body_block, label %system_request_calldata_loop_join_block
+
+return:
+  %system_request_result_abi_data = extractvalue { i8 addrspace(3)*, i1 } %system_request, 0
+  %system_request_result_abi_data.i256 = bitcast i8 addrspace(3)* %system_request_result_abi_data to i256 addrspace(3)*
+  %system_request_child_address = load i256, i256 addrspace(3)* %system_request_result_abi_data.i256, align 1
+  ret i256 %system_request_child_address
+
+system_request_calldata_loop_body_block:
+  %system_request_stack_index_pointer.07 = phi i256 [ %system_request_stack_index_value_incremented, %system_request_calldata_loop_body_block ], [ 0, %entry ]
+  %system_request_calldata_index_pointer.06 = phi i256 [ %system_request_calldata_index_value_incremented, %system_request_calldata_loop_body_block ], [ 4, %entry ]
+  %system_request_stack_pointer_with_offset = getelementptr i256, i256* %calldata_pointer, i256 %system_request_stack_index_pointer.07
+  %system_request_stack_value = load i256, i256* %system_request_stack_pointer_with_offset, align 32
+  %system_request_calldata_pointer = inttoptr i256 %system_request_calldata_index_pointer.06 to i256 addrspace(2)*
+  store i256 %system_request_stack_value, i256 addrspace(2)* %system_request_calldata_pointer, align 4
+  %system_request_calldata_index_value_incremented = add i256 %system_request_calldata_index_pointer.06, 32
+  %system_request_stack_index_value_incremented = add i256 %system_request_stack_index_pointer.07, 1
+  %for_condition_compared = icmp ult i256 %system_request_calldata_index_value_incremented, %calldata_size
+  br i1 %for_condition_compared, label %system_request_calldata_loop_body_block, label %system_request_calldata_loop_join_block
+
+system_request_calldata_loop_join_block:
+  %0 = tail call i256 @llvm.umin.i256(i256 %calldata_size, i256 4294967295)
+  %gas_left = tail call i256 @llvm.eravm.gasleft()
+  %1 = tail call i256 @llvm.umin.i256(i256 %gas_left, i256 4294967295)
+  %abi_data_input_length_shifted = shl nuw nsw i256 %0, 96
+  %abi_data_gas_shifted = shl nuw nsw i256 %1, 192
+  %abi_data_add_gas = or i256 %abi_data_gas_shifted, %abi_data_input_length_shifted
+  %abi_data_add_system_call_marker = or i256 %abi_data_add_gas, 904625751086426111047927909714404454142933102474605751639407337269041823744
+  %system_request = tail call { i8 addrspace(3)*, i1 } @__staticcall(i256 %abi_data_add_system_call_marker, i256 %index_address, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef)
+  %system_request_result_status_code_boolean = extractvalue { i8 addrspace(3)*, i1 } %system_request, 1
+  br i1 %system_request_result_status_code_boolean, label %return, label %system_request_error_block
+
+system_request_error_block:
+  tail call fastcc void @__cxa_throw(i8* undef, i8* undef, i8* undef)
+  unreachable
+}
+
 declare {i256, i1} @llvm.uadd.with.overflow.i256(i256, i256)
 declare void @llvm.eravm.throw(i256)
 declare i256 @llvm.umin.i256(i256, i256)
