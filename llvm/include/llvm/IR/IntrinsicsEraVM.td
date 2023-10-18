@@ -16,16 +16,16 @@ def int_eravm_mimiccall: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty, 
 def int_eravm_nearcall: Intrinsic<[llvm_i256_ty], [LLVMPointerType<llvm_i256_ty>, llvm_i256_ty, llvm_vararg_ty], [Throws]>;
 
 // Get value from the context.
-def int_eravm_this: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
-def int_eravm_caller: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
-def int_eravm_codesource: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
-def int_eravm_meta: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
-def int_eravm_txorigin: Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
-def int_eravm_gasleft: Intrinsic<[llvm_i256_ty], [], [IntrInaccessibleMemOnly]>;
-def int_eravm_getu128: Intrinsic<[llvm_i256_ty], [], [IntrInaccessibleMemOnly]>;
-def int_eravm_setu128: Intrinsic<[], [llvm_i256_ty], [IntrInaccessibleMemOnly]>;
-def int_eravm_inctx: Intrinsic<[], [], [IntrInaccessibleMemOnly]>;
-def int_eravm_setpubdataprice: Intrinsic<[], [llvm_i256_ty], [IntrInaccessibleMemOnly]>;
+def int_eravm_this: Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
+def int_eravm_caller: Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
+def int_eravm_codesource: Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
+def int_eravm_meta: Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
+def int_eravm_txorigin: Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
+def int_eravm_gasleft: Intrinsic<[llvm_i256_ty], [], [IntrInaccessibleMemOnly, IntrWillReturn]>;
+def int_eravm_getu128: Intrinsic<[llvm_i256_ty], [], [IntrInaccessibleMemOnly, IntrWillReturn]>;
+def int_eravm_setu128: Intrinsic<[], [llvm_i256_ty], [IntrInaccessibleMemOnly, IntrWillReturn]>;
+def int_eravm_inctx: Intrinsic<[], [], [IntrInaccessibleMemOnly, IntrWillReturn]>;
+def int_eravm_setpubdataprice: Intrinsic<[], [llvm_i256_ty], [IntrInaccessibleMemOnly, IntrWillReturn]>;
 
 // Persistent memory access.
 def int_eravm_event: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], [IntrHasSideEffects]>;
@@ -38,13 +38,13 @@ def int_eravm_return: Intrinsic<[], [llvm_i256_ty], [IntrNoReturn]>;
 def int_eravm_revert: Intrinsic<[], [llvm_i256_ty], [IntrNoReturn]>;
 
 // Access to flags.
-def int_eravm_iflt  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
-def int_eravm_ifgt  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
-def int_eravm_ifeq  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
+def int_eravm_iflt  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
+def int_eravm_ifgt  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
+def int_eravm_ifeq  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
 
 // Pointer arithmetics
-def int_eravm_ptr_pack : Intrinsic<[LLVMQualPointerType<llvm_i8_ty, 3>], [LLVMQualPointerType<llvm_i8_ty, 3>, llvm_i256_ty], [IntrNoMem]>;
-def int_eravm_ptr_shrink : Intrinsic<[LLVMQualPointerType<llvm_i8_ty, 3>], [LLVMQualPointerType<llvm_i8_ty, 3>, llvm_i256_ty], [IntrNoMem]>;
-def int_eravm_ptr_add : Intrinsic<[LLVMQualPointerType<llvm_i8_ty, 3>], [LLVMQualPointerType<llvm_i8_ty, 3>, llvm_i256_ty], [IntrNoMem]>;
-def int_eravm_ptrtoint : Intrinsic<[llvm_i256_ty], [LLVMQualPointerType<llvm_i8_ty, 3>], [IntrNoMem]>;
+def int_eravm_ptr_pack : Intrinsic<[LLVMQualPointerType<llvm_i8_ty, 3>], [LLVMQualPointerType<llvm_i8_ty, 3>, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
+def int_eravm_ptr_shrink : Intrinsic<[LLVMQualPointerType<llvm_i8_ty, 3>], [LLVMQualPointerType<llvm_i8_ty, 3>, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
+def int_eravm_ptr_add : Intrinsic<[LLVMQualPointerType<llvm_i8_ty, 3>], [LLVMQualPointerType<llvm_i8_ty, 3>, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
+def int_eravm_ptrtoint : Intrinsic<[llvm_i256_ty], [LLVMQualPointerType<llvm_i8_ty, 3>], [IntrNoMem, IntrWillReturn]>;
 }
