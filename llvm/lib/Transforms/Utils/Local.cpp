@@ -58,6 +58,7 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
+#include "llvm/IR/IntrinsicsEraVM.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/MDBuilder.h"
 #include "llvm/IR/Metadata.h"
@@ -456,6 +457,12 @@ bool llvm::wouldInstructionBeTriviallyDead(Instruction *I,
     if (II->getIntrinsicID() == Intrinsic::stacksave ||
         II->getIntrinsicID() == Intrinsic::launder_invariant_group)
       return true;
+
+    // EraVM local begin
+    if (II->getIntrinsicID() == Intrinsic::eravm_gasleft ||
+        II->getIntrinsicID() == Intrinsic::eravm_getu128)
+      return true;
+    // EraVM local end
 
     if (II->isLifetimeStartOrEnd()) {
       auto *Arg = II->getArgOperand(1);
