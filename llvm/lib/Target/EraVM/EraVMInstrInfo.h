@@ -433,6 +433,31 @@ public:
   // * bigger MBB size will have negative yield.
   // In order to maximize if_conversion, we set the threshold to 2.
   static const int MAX_MBB_SIZE_TO_ALWAYS_IFCVT = 2;
+
+  // Analyze the given select instruction, returning true if it cannot be
+  // understood. It is assumed that MI->isSelect() is true.
+  //
+  // When successful, return the controlling condition and the operands that
+  // determine the true and false result values.
+  //
+  //   Result = SELECT Cond, TrueOp, FalseOp
+  bool analyzeSelect(const MachineInstr &MI,
+                     SmallVectorImpl<MachineOperand> &Cond, unsigned &TrueOp,
+                     unsigned &FalseOp, bool &Optimizable) const override;
+
+  // Given a select instruction that was understood by analyzeSelect and
+  // returned Optimizable = true, attempt to optimize MI by merging it with one
+  // of its operands. Returns NULL on failure.
+  //
+  // When successful, returns the new select instruction. The client is
+  // responsible for deleting MI.
+  //
+  // If both sides of the select can be optimized, the TrueOp is modifed.
+  // PreferFalse is not used.
+  MachineInstr *optimizeSelect(MachineInstr &MI,
+                               SmallPtrSetImpl<MachineInstr *> &SeenMIs,
+                               bool PreferFalse) const override;
+
 };
 
 } // namespace llvm

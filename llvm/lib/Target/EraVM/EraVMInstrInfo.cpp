@@ -1233,3 +1233,78 @@ bool EraVMInstrInfo::updateCCCode(MachineInstr &MI,
     Opnd.setCImm(ConstantInt::get(Opnd.getCImm()->getType(), CC, false));
   return true;
 }
+
+bool EraVMInstrInfo::analyzeSelect(const MachineInstr &MI,
+                                   SmallVectorImpl<MachineOperand> &Cond,
+                                   unsigned &TrueOp, unsigned &FalseOp,
+                                   bool &Optimizable) const {
+  Optimizable = true;
+  return true;
+}
+
+/// Identify instructions that can be folded into a SELECT instruction, and
+/// return the defining instruction.
+/// Return nullptr if no candidate can be folded.
+static MachineInstr *canFoldIntoSelect(Register Reg,
+                                       const MachineRegisterInfo &MRI,
+                                       const EraVMInstrInfo *TII) {
+  if (!Reg.isVirtual())
+    return nullptr;
+  if (!MRI.hasOneNonDBGUse(Reg))
+    return nullptr;
+  MachineInstr *MI = MRI.getVRegDef(Reg);
+  if (!MI)
+    return nullptr;
+
+  // MI is folded into the SELECT by predicating it.
+  if (!TII->isPredicatedInstr(*MI) ||
+      getImmOrCImm(*EraVM::ccIterator(*MI)) != EraVMCC::COND_NONE)
+    return nullptr;
+
+  // must not set conditional flag
+  if (EraVMInstrInfo::isFlagSettingInstruction(*MI))
+    return nullptr;
+
+  // TODO: 
+  // Check if MI has any non-dead defs or physreg uses. This also detects
+  // predicated instructions which will be reading CPSR.
+  
+
+
+  bool DontMoveAcrossStores = true;
+  if (!MI->isSafeToMove(/* AliasAnalysis = */ nullptr, DontMoveAcrossStores))
+    return nullptr;
+
+  return MI;
+}
+
+MachineInstr *
+EraVMInstrInfo::optimizeSelect(MachineInstr &MI,
+                               SmallPtrSetImpl<MachineInstr *> &SeenMIs,
+                               bool /*PreferFalse*/) const {
+  MachineRegisterInfo &MRI = MI.getParent()->getParent()->getRegInfo();
+  const EraVMInstrInfo *TII = MI.getParent()
+                                  ->getParent()
+                                  ->getSubtarget<EraVMSubtarget>()
+                                  .getInstrInfo();
+  MachineInstr *DefMI =
+      canFoldIntoSelect(MI.getOperand(2).getReg(), MRI, TII);
+  if (!DefMI)
+    return nullptr;
+  return nullptr;
+
+  // Create a new predicated version of DefMI.
+  MachineInstrBuilder NewMI =
+      BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), DefMI->getDesc());  
+  EraVM::copyOperands(NewMI, MI.operands_begin(), EraVM::in0Iterator(MI));
+  EraVM::copyOperands(NewMI, EraVM::in0Range(MI));
+  EraVM::copyOperands(NewMI, EraVM::in1Range(MI)); 
+
+  SeenMIs.insert(NewMI);
+  SeenMIs.erase(DefMI);
+
+  // The caller will erase MI, but not DefMI.
+  DefMI->eraseFromParent();
+
+  return NewMI;
+}
