@@ -259,7 +259,7 @@ def FRAMEirrr : Pseudo<(outs GR256:$dst), (ins i256imm:$imm, GR256:$src, GR256:$
                        "# FRAMEirrr PSEUDO", []>;
 }
 
-let isCodeGenOnly = 1, isPseudo = 1, Uses = [Flags] in {
+let isCodeGenOnly = 1, isPseudo = 1, isSelect = 1, Uses = [Flags] in {
   def SELrrr : Pseudo<(outs GR256:$dst), (ins GR256:$src, GR256:$src2, i256imm:$cc),
                        "# SELrrr PSEUDO",
                        [(set GR256:$dst,
