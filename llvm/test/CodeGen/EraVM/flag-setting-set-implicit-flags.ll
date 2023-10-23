@@ -1,4 +1,4 @@
-; RUN: llc -march=eravm -stop-after=eravm-combine-flag-setting -simplify-mir < %s | FileCheck %s
+; RUN: llc -opaque-pointers -march=eravm -stop-after=eravm-combine-flag-setting -simplify-mir < %s | FileCheck %s
 
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm"

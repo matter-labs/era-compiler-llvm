@@ -1,4 +1,4 @@
-; RUN: llc --enable-eravm-combine-addressing-mode=false < %s | FileCheck %s
+; RUN: llc -opaque-pointers --enable-eravm-combine-addressing-mode=false < %s | FileCheck %s
 
 target datalayout = "E-p:256:256-i256:256:256-S32"
 target triple = "eravm"

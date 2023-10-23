@@ -1,4 +1,4 @@
-; RUN: opt -O3 < %s | llc | FileCheck %s
+; RUN: opt -opaque-pointers -O3 < %s | llc | FileCheck %s
 
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm"

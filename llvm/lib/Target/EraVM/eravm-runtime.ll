@@ -6,8 +6,8 @@ entry:
   %offset_lead_bytes = shl i256 %addr, 3
   %offset_lead_bits = and i256 %offset_lead_bytes, 248
   %base_int = and i256 %addr, -32
-  %base_ptr = inttoptr i256 %base_int to i256*
-  %hival = load i256, i256* %base_ptr, align 32
+  %base_ptr = inttoptr i256 %base_int to ptr
+  %hival = load i256, ptr %base_ptr, align 32
   %offset_size = add nuw nsw i256 %offset_lead_bits, %size_in_bits
   %fits_cell = icmp ult i256 %offset_size, 257
   br i1 %fits_cell, label %one_cell, label %two_cells
@@ -30,8 +30,8 @@ two_cells:
   %lo_bits_inv = sub nuw nsw i256 256, %lo_bits
   %hival_shifted = shl i256 %hival, %lo_bits
   %lo_base_int = add nuw nsw i256 %base_int, 32
-  %lo_base_ptr = inttoptr i256 %lo_base_int to i256*
-  %loval = load i256, i256* %lo_base_ptr, align 32
+  %lo_base_ptr = inttoptr i256 %lo_base_int to ptr
+  %loval = load i256, ptr %lo_base_ptr, align 32
   %loval_shifted = lshr i256 %loval, %lo_bits_inv
   %valcomb = or i256 %loval_shifted, %hival_shifted
   br label %common.ret
@@ -43,8 +43,8 @@ entry:
   %offset_lead_bits = shl nuw nsw i256 %offset_lead_bytes, 3
   %offset_lead_bits_inv = sub nuw nsw i256 256, %offset_lead_bits
   %base_int = and i256 %addr, -32
-  %base_ptr = inttoptr i256 %base_int to i256*
-  %hival_orig = load i256, i256* %base_ptr, align 32
+  %base_ptr = inttoptr i256 %base_int to ptr
+  %hival_orig = load i256, ptr %base_ptr, align 32
   %offset_size = add nuw nsw i256 %offset_lead_bits, %size_in_bits
   %fits_cell = icmp ult i256 %offset_size, 257
   %mask_hi_common.1 = shl nsw i256 -1, %offset_lead_bits_inv
@@ -63,7 +63,7 @@ one_cell:
   %mask_oc = or i256 %mask_oc_trail, %mask_hi_common
   %orig_oc_masked = and i256 %hival_orig, %mask_oc
   %store_oc.f = or i256 %orig_oc_masked, %store_oc
-  store i256 %store_oc.f, i256* %base_ptr, align 32
+  store i256 %store_oc.f, ptr %base_ptr, align 32
   br label %common.ret
 
 common.ret:
@@ -75,48 +75,48 @@ two_cells:
   %bits_outstanding_inv = sub nuw nsw i256 256, %offset_size
   %hi_val_outstanding = lshr i256 %value, %bits_outstanding
   %hi_store = or i256 %hi_orig, %hi_val_outstanding
-  store i256 %hi_store, i256* %base_ptr, align 32
+  store i256 %hi_store, ptr %base_ptr, align 32
   %lo_base_int = add nuw nsw i256 %base_int, 32
-  %lo_base_ptr = inttoptr i256 %lo_base_int to i256*
-  %loval_orig = load i256, i256* %lo_base_ptr, align 32
+  %lo_base_ptr = inttoptr i256 %lo_base_int to ptr
+  %loval_orig = load i256, ptr %lo_base_ptr, align 32
   %lo_store = shl nuw nsw i256 %value, %bits_outstanding_inv
   %loval_mask = lshr i256 -1, %bits_outstanding
   %loval_masked = and i256 %loval_orig, %loval_mask
   %loval_store = or i256 %loval_masked, %lo_store
-  store i256 %loval_store, i256* %lo_base_ptr, align 32
+  store i256 %loval_store, ptr %lo_base_ptr, align 32
   br label %common.ret
 }
 
 define void @__small_store_as1(i256 %addr.i, i256 %value, i256 %size_in_bits) local_unnamed_addr #1 {
-  %addr = inttoptr i256 %addr.i to i256 addrspace(1)*
+  %addr = inttoptr i256 %addr.i to ptr addrspace(1)
   %sizeinv = sub nuw nsw i256 256, %size_in_bits
   %maskload = lshr i256 -1, %size_in_bits
   %maskval = shl nsw i256 -1, %sizeinv
   %val.m = and i256 %maskval, %value
-  %oldval = load i256, i256 addrspace(1)* %addr, align 1
+  %oldval = load i256, ptr addrspace(1) %addr, align 1
   %oldval.m = and i256 %oldval, %maskload
   %val.f = or i256 %oldval.m, %val.m
-  store i256 %val.f, i256 addrspace(1)* %addr, align 1
+  store i256 %val.f, ptr addrspace(1) %addr, align 1
   ret void
 }
 
 define void @__small_store_as2(i256 %addr.i, i256 %value, i256 %size_in_bits) local_unnamed_addr #1 {
-  %addr = inttoptr i256 %addr.i to i256 addrspace(2)*
+  %addr = inttoptr i256 %addr.i to ptr addrspace(2)
   %sizeinv = sub nuw nsw i256 256, %size_in_bits
   %maskload = lshr i256 -1, %size_in_bits
   %maskval = shl nsw i256 -1, %sizeinv
   %val.m = and i256 %maskval, %value
-  %oldval = load i256, i256 addrspace(2)* %addr, align 1
+  %oldval = load i256, ptr addrspace(2) %addr, align 1
   %oldval.m = and i256 %oldval, %maskload
   %val.f = or i256 %oldval.m, %val.m
-  store i256 %val.f, i256 addrspace(2)* %addr, align 1
+  store i256 %val.f, ptr addrspace(2) %addr, align 1
   ret void
 }
 
-define void @__memset_uma_as1(i256 addrspace(1)* %dest, i256 %val, i256 %size) local_unnamed_addr #2 {
+define void @__memset_uma_as1(ptr addrspace(1) %dest, i256 %val, i256 %size) local_unnamed_addr #2 {
 entry:
   %hascells.not = icmp ult i256 %size, 32
-  %dest.int = ptrtoint i256 addrspace(1)* %dest to i256
+  %dest.int = ptrtoint ptr addrspace(1) %dest to i256
   br i1 %hascells.not, label %copybytes, label %copycells.preheader
 
 copycells.preheader:
@@ -126,8 +126,8 @@ copycells.preheader:
 copycells:
   %cellsrem = phi i256 [ %cellsrem.next, %copycells ], [ %numcells1, %copycells.preheader ]
   %currentdest.int = phi i256 [ %currentdest.inext, %copycells ], [ %dest.int, %copycells.preheader ]
-  %currentdest = inttoptr i256 %currentdest.int to i256 addrspace(1)*
-  store i256 %val, i256 addrspace(1)* %currentdest, align 1
+  %currentdest = inttoptr i256 %currentdest.int to ptr addrspace(1)
+  store i256 %val, ptr addrspace(1) %currentdest, align 1
   %currentdest.inext = add nuw nsw i256 %currentdest.int, 32
   %cellsrem.next = add nsw i256 %cellsrem, -1
   %continue.not = icmp eq i256 %cellsrem.next, 0
@@ -144,22 +144,22 @@ common.ret:
 
 residual:
   %rembits = shl nuw nsw i256 %rembytes, 3
-  %addr.i = inttoptr i256 %addr.int to i256 addrspace(1)*
+  %addr.i = inttoptr i256 %addr.int to ptr addrspace(1)
   %sizeinv.i = sub nuw nsw i256 256, %rembits
   %maskload.i = lshr i256 -1, %rembits
   %maskval.i = shl nsw i256 -1, %sizeinv.i
   %val.m.i = and i256 %maskval.i, %val
-  %oldval.i = load i256, i256 addrspace(1)* %addr.i, align 1
+  %oldval.i = load i256, ptr addrspace(1) %addr.i, align 1
   %oldval.m.i = and i256 %oldval.i, %maskload.i
   %val.f.i = or i256 %oldval.m.i, %val.m.i
-  store i256 %val.f.i, i256 addrspace(1)* %addr.i, align 1
+  store i256 %val.f.i, ptr addrspace(1) %addr.i, align 1
   br label %common.ret
 }
 
-define void @__memset_uma_as2(i256 addrspace(2)* %dest, i256 %val, i256 %size) local_unnamed_addr #2 {
+define void @__memset_uma_as2(ptr addrspace(2) %dest, i256 %val, i256 %size) local_unnamed_addr #2 {
 entry:
   %hascells.not = icmp ult i256 %size, 32
-  %dest.int = ptrtoint i256 addrspace(2)* %dest to i256
+  %dest.int = ptrtoint ptr addrspace(2) %dest to i256
   br i1 %hascells.not, label %copybytes, label %copycells.preheader
 
 copycells.preheader:
@@ -169,8 +169,8 @@ copycells.preheader:
 copycells:
   %cellsrem = phi i256 [ %cellsrem.next, %copycells ], [ %numcells1, %copycells.preheader ]
   %currentdest.int = phi i256 [ %currentdest.inext, %copycells ], [ %dest.int, %copycells.preheader ]
-  %currentdest = inttoptr i256 %currentdest.int to i256 addrspace(2)*
-  store i256 %val, i256 addrspace(2)* %currentdest, align 1
+  %currentdest = inttoptr i256 %currentdest.int to ptr addrspace(2)
+  store i256 %val, ptr addrspace(2) %currentdest, align 1
   %currentdest.inext = add nuw nsw i256 %currentdest.int, 32
   %cellsrem.next = add nsw i256 %cellsrem, -1
   %continue.not = icmp eq i256 %cellsrem.next, 0
@@ -187,146 +187,146 @@ common.ret:
 
 residual:
   %rembits = shl nuw nsw i256 %rembytes, 3
-  %addr.i = inttoptr i256 %addr.int to i256 addrspace(2)*
+  %addr.i = inttoptr i256 %addr.int to ptr addrspace(2)
   %sizeinv.i = sub nuw nsw i256 256, %rembits
   %maskload.i = lshr i256 -1, %rembits
   %maskval.i = shl nsw i256 -1, %sizeinv.i
   %val.m.i = and i256 %maskval.i, %val
-  %oldval.i = load i256, i256 addrspace(2)* %addr.i, align 1
+  %oldval.i = load i256, ptr addrspace(2) %addr.i, align 1
   %oldval.m.i = and i256 %oldval.i, %maskload.i
   %val.f.i = or i256 %oldval.m.i, %val.m.i
-  store i256 %val.f.i, i256 addrspace(2)* %addr.i, align 1
+  store i256 %val.f.i, ptr addrspace(2) %addr.i, align 1
   br label %common.ret
 }
 
-define {i8 addrspace(3)*, i1} @__farcall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #3 personality i32 ()* @__personality {
+define {ptr addrspace(3), i1} @__farcall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #3 personality ptr @__personality {
 entry:
-  %invoke_res = invoke i8 addrspace(3)* @__farcall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
+  %invoke_res = invoke ptr addrspace(3) @__farcall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
     to label %ok unwind label %err
 ok:
-  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
-  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
-  ret {i8 addrspace(3)*, i1} %res.1f
+  %res.1u = insertvalue {ptr addrspace(3), i1} undef, ptr addrspace(3) %invoke_res, 0
+  %res.1f = insertvalue {ptr addrspace(3), i1} %res.1u, i1 1, 1
+  ret {ptr addrspace(3), i1} %res.1f
 
 err:
-  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
-  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
-  ret {i8 addrspace(3)*, i1} %res.2f
+  %res.2u = landingpad {ptr addrspace(3), i1} cleanup
+  %res.2f = insertvalue {ptr addrspace(3), i1} %res.2u, i1 0, 1
+  ret {ptr addrspace(3), i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__staticcall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #3 personality i32 ()* @__personality {
+define {ptr addrspace(3), i1} @__staticcall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #3 personality ptr @__personality {
 entry:
-  %invoke_res = invoke i8 addrspace(3)* @__staticcall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
+  %invoke_res = invoke ptr addrspace(3) @__staticcall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
     to label %ok unwind label %err
 ok:
-  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
-  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
-  ret {i8 addrspace(3)*, i1} %res.1f
+  %res.1u = insertvalue {ptr addrspace(3), i1} undef, ptr addrspace(3) %invoke_res, 0
+  %res.1f = insertvalue {ptr addrspace(3), i1} %res.1u, i1 1, 1
+  ret {ptr addrspace(3), i1} %res.1f
 
 err:
-  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
-  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
-  ret {i8 addrspace(3)*, i1} %res.2f
+  %res.2u = landingpad {ptr addrspace(3), i1} cleanup
+  %res.2f = insertvalue {ptr addrspace(3), i1} %res.2u, i1 0, 1
+  ret {ptr addrspace(3), i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__delegatecall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #3 personality i32 ()* @__personality {
+define {ptr addrspace(3), i1} @__delegatecall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #3 personality ptr @__personality {
 entry:
-  %invoke_res = invoke i8 addrspace(3)* @__delegatecall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
+  %invoke_res = invoke ptr addrspace(3) @__delegatecall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
     to label %ok unwind label %err
 ok:
-  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
-  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
-  ret {i8 addrspace(3)*, i1} %res.1f
+  %res.1u = insertvalue {ptr addrspace(3), i1} undef, ptr addrspace(3) %invoke_res, 0
+  %res.1f = insertvalue {ptr addrspace(3), i1} %res.1u, i1 1, 1
+  ret {ptr addrspace(3), i1} %res.1f
 
 err:
-  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
-  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
-  ret {i8 addrspace(3)*, i1} %res.2f
+  %res.2u = landingpad {ptr addrspace(3), i1} cleanup
+  %res.2f = insertvalue {ptr addrspace(3), i1} %res.2u, i1 0, 1
+  ret {ptr addrspace(3), i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__mimiccall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic) #3 personality i32 ()* @__personality {
+define {ptr addrspace(3), i1} @__mimiccall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic) #3 personality ptr @__personality {
 entry:
-  %invoke_res = invoke i8 addrspace(3)* @__mimiccall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic)
+  %invoke_res = invoke ptr addrspace(3) @__mimiccall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic)
     to label %ok unwind label %err
 ok:
-  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
-  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
-  ret {i8 addrspace(3)*, i1} %res.1f
+  %res.1u = insertvalue {ptr addrspace(3), i1} undef, ptr addrspace(3) %invoke_res, 0
+  %res.1f = insertvalue {ptr addrspace(3), i1} %res.1u, i1 1, 1
+  ret {ptr addrspace(3), i1} %res.1f
 
 err:
-  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
-  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
-  ret {i8 addrspace(3)*, i1} %res.2f
+  %res.2u = landingpad {ptr addrspace(3), i1} cleanup
+  %res.2f = insertvalue {ptr addrspace(3), i1} %res.2u, i1 0, 1
+  ret {ptr addrspace(3), i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__farcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #3 personality i32 ()* @__personality {
+define {ptr addrspace(3), i1} @__farcall_byref(ptr addrspace(3) %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #3 personality ptr @__personality {
 entry:
-  %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
-  %invoke_res = invoke i8 addrspace(3)* @__farcall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
+  %abi_params = ptrtoint ptr addrspace(3) %abi_params.r to i256
+  %invoke_res = invoke ptr addrspace(3) @__farcall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
     to label %ok unwind label %err
 ok:
-  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
-  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
-  ret {i8 addrspace(3)*, i1} %res.1f
+  %res.1u = insertvalue {ptr addrspace(3), i1} undef, ptr addrspace(3) %invoke_res, 0
+  %res.1f = insertvalue {ptr addrspace(3), i1} %res.1u, i1 1, 1
+  ret {ptr addrspace(3), i1} %res.1f
 
 err:
-  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
-  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
-  ret {i8 addrspace(3)*, i1} %res.2f
+  %res.2u = landingpad {ptr addrspace(3), i1} cleanup
+  %res.2f = insertvalue {ptr addrspace(3), i1} %res.2u, i1 0, 1
+  ret {ptr addrspace(3), i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__staticcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #3 personality i32 ()* @__personality {
+define {ptr addrspace(3), i1} @__staticcall_byref(ptr addrspace(3) %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #3 personality ptr @__personality {
 entry:
-  %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
-  %invoke_res = invoke i8 addrspace(3)* @__staticcall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
+  %abi_params = ptrtoint ptr addrspace(3) %abi_params.r to i256
+  %invoke_res = invoke ptr addrspace(3) @__staticcall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
     to label %ok unwind label %err
 ok:
-  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
-  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
-  ret {i8 addrspace(3)*, i1} %res.1f
+  %res.1u = insertvalue {ptr addrspace(3), i1} undef, ptr addrspace(3) %invoke_res, 0
+  %res.1f = insertvalue {ptr addrspace(3), i1} %res.1u, i1 1, 1
+  ret {ptr addrspace(3), i1} %res.1f
 
 err:
-  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
-  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
-  ret {i8 addrspace(3)*, i1} %res.2f
+  %res.2u = landingpad {ptr addrspace(3), i1} cleanup
+  %res.2f = insertvalue {ptr addrspace(3), i1} %res.2u, i1 0, 1
+  ret {ptr addrspace(3), i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__delegatecall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #3 personality i32 ()* @__personality {
+define {ptr addrspace(3), i1} @__delegatecall_byref(ptr addrspace(3) %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #3 personality ptr @__personality {
 entry:
-  %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
-  %invoke_res = invoke i8 addrspace(3)* @__delegatecall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
+  %abi_params = ptrtoint ptr addrspace(3) %abi_params.r to i256
+  %invoke_res = invoke ptr addrspace(3) @__delegatecall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
     to label %ok unwind label %err
 ok:
-  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
-  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
-  ret {i8 addrspace(3)*, i1} %res.1f
+  %res.1u = insertvalue {ptr addrspace(3), i1} undef, ptr addrspace(3) %invoke_res, 0
+  %res.1f = insertvalue {ptr addrspace(3), i1} %res.1u, i1 1, 1
+  ret {ptr addrspace(3), i1} %res.1f
 
 err:
-  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
-  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
-  ret {i8 addrspace(3)*, i1} %res.2f
+  %res.2u = landingpad {ptr addrspace(3), i1} cleanup
+  %res.2f = insertvalue {ptr addrspace(3), i1} %res.2u, i1 0, 1
+  ret {ptr addrspace(3), i1} %res.2f
 }
 
-define {i8 addrspace(3)*, i1} @__mimiccall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic) #3 personality i32 ()* @__personality {
+define {ptr addrspace(3), i1} @__mimiccall_byref(ptr addrspace(3) %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic) #3 personality ptr @__personality {
 entry:
-  %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
-  %invoke_res = invoke i8 addrspace(3)* @__mimiccall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic)
+  %abi_params = ptrtoint ptr addrspace(3) %abi_params.r to i256
+  %invoke_res = invoke ptr addrspace(3) @__mimiccall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic)
     to label %ok unwind label %err
 ok:
-  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
-  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
-  ret {i8 addrspace(3)*, i1} %res.1f
+  %res.1u = insertvalue {ptr addrspace(3), i1} undef, ptr addrspace(3) %invoke_res, 0
+  %res.1f = insertvalue {ptr addrspace(3), i1} %res.1u, i1 1, 1
+  ret {ptr addrspace(3), i1} %res.1f
 
 err:
-  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
-  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
-  ret {i8 addrspace(3)*, i1} %res.2f
+  %res.2u = landingpad {ptr addrspace(3), i1} cleanup
+  %res.2f = insertvalue {ptr addrspace(3), i1} %res.2u, i1 0, 1
+  ret {ptr addrspace(3), i1} %res.2f
 }
 
-declare i8 addrspace(3)* @__farcall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
-declare i8 addrspace(3)* @__staticcall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
-declare i8 addrspace(3)* @__delegatecall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
-declare i8 addrspace(3)* @__mimiccall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
+declare ptr addrspace(3) @__farcall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
+declare ptr addrspace(3) @__staticcall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
+declare ptr addrspace(3) @__delegatecall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
+declare ptr addrspace(3) @__mimiccall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
 declare i32 @__personality()
 
 attributes #0 = { mustprogress nofree norecurse nosync nounwind readonly willreturn }

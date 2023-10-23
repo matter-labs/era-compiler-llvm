@@ -246,8 +246,8 @@ entry:
   ret i256 %res
 }
 
-define void @__cxa_throw(i8* %addr, i8*, i8*) #3 {
-  %addrval = ptrtoint i8* %addr to i256
+define void @__cxa_throw(ptr %addr, ptr, ptr) #3 {
+  %addrval = ptrtoint ptr %addr to i256
   call void @llvm.eravm.throw(i256 %addrval)
   unreachable
 }
@@ -332,23 +332,23 @@ entry:
   ret i256 %abi
 }
 
-define void @__revert(i256 %0, i256 %1, i256 %2) "noinline-oz" #5 personality i32()* @__personality {
+define void @__revert(i256 %0, i256 %1, i256 %2) "noinline-oz" #5 personality ptr @__personality {
 entry:
-  %abi = call i256@__aux_pack_abi(i256 %0, i256 %1, i256 %2)
+  %abi = call i256 @__aux_pack_abi(i256 %0, i256 %1, i256 %2)
   tail call void @llvm.eravm.revert(i256 %abi)
   unreachable
 }
 
-define void @__return(i256 %0, i256 %1, i256 %2) "noinline-oz" #5 personality i32()* @__personality {
+define void @__return(i256 %0, i256 %1, i256 %2) "noinline-oz" #5 personality ptr @__personality {
 entry:
-  %abi = call i256@__aux_pack_abi(i256 %0, i256 %1, i256 %2)
+  %abi = call i256 @__aux_pack_abi(i256 %0, i256 %1, i256 %2)
   tail call void @llvm.eravm.return(i256 %abi)
   unreachable
 }
 
-define i256 @__sha3(i8 addrspace(1)* nocapture nofree noundef %0, i256 %1, i1 %throw_at_failure) "noinline-oz" #1 personality i32()* @__personality {
+define i256 @__sha3(ptr addrspace(1) nocapture nofree noundef %0, i256 %1, i1 %throw_at_failure) "noinline-oz" #1 personality ptr @__personality {
 entry:
-  %addr_int = ptrtoint i8 addrspace(1)* %0 to i256
+  %addr_int = ptrtoint ptr addrspace(1) %0 to i256
   %2 = tail call i256 @llvm.umin.i256(i256 %addr_int, i256 4294967295)
   %3 = tail call i256 @llvm.umin.i256(i256 %1, i256 4294967295)
   %gas_left = tail call i256 @llvm.eravm.gasleft()
@@ -359,14 +359,13 @@ entry:
   %abi_data_offset_and_length = add i256 %abi_data_input_length_shifted, %abi_data_input_offset_shifted
   %abi_data_add_gas = add i256 %abi_data_gas_shifted, %abi_data_offset_and_length
   %abi_data_add_system_call_marker = add i256 %abi_data_add_gas, 904625697166532776746648320380374280103671755200316906558262375061821325312
-  %call_external = tail call { i8 addrspace(3)*, i1 } @__staticcall(i256 %abi_data_add_system_call_marker, i256 32784, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef)
-  %status_code = extractvalue { i8 addrspace(3)*, i1 } %call_external, 1
+  %call_external = tail call { ptr addrspace(3), i1 } @__staticcall(i256 %abi_data_add_system_call_marker, i256 32784, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef)
+  %status_code = extractvalue { ptr addrspace(3), i1 } %call_external, 1
   br i1 %status_code, label %success_block, label %failure_block
 
 success_block:
-  %abi_data_pointer = extractvalue { i8 addrspace(3)*, i1 } %call_external, 0
-  %data_pointer = bitcast i8 addrspace(3)* %abi_data_pointer to i256 addrspace(3)*
-  %keccak256_child_data = load i256, i256 addrspace(3)* %data_pointer, align 1
+  %abi_data_pointer = extractvalue { ptr addrspace(3), i1 } %call_external, 0
+  %keccak256_child_data = load i256, ptr addrspace(3) %abi_data_pointer, align 1
   ret i256 %keccak256_child_data
 
 failure_block:
@@ -377,18 +376,18 @@ revert_block:
   unreachable
 
 throw_block:
-  call void @__cxa_throw(i8* noalias nocapture nofree align 32 null, i8* noalias nocapture nofree align 32 undef, i8* noalias nocapture nofree align 32 undef)
+  call void @__cxa_throw(ptr noalias nocapture nofree align 32 null, ptr noalias nocapture nofree align 32 undef, ptr noalias nocapture nofree align 32 undef)
   unreachable
 }
 
-define void @__mstore8(i256 addrspace(1)* nocapture nofree noundef dereferenceable(32) %addr, i256 %val) #2 {
+define void @__mstore8(ptr addrspace(1) nocapture nofree noundef dereferenceable(32) %addr, i256 %val) #2 {
 entry:
-  %orig_value = load i256, i256 addrspace(1)* %addr, align 1
+  %orig_value = load i256, ptr addrspace(1) %addr, align 1
   %orig_value_shifted_left = shl i256 %orig_value, 8
   %orig_value_shifted_right = lshr i256 %orig_value_shifted_left, 8
   %byte_value_shifted = shl i256 %val, 248
   %store_result = or i256 %orig_value_shifted_right, %byte_value_shifted
-  store i256 %store_result, i256 addrspace(1)* %addr, align 1
+  store i256 %store_result, ptr addrspace(1) %addr, align 1
   ret void
 }
 
@@ -462,7 +461,7 @@ declare i256 @llvm.eravm.gasleft()
 declare void @llvm.eravm.revert(i256)
 declare void @llvm.eravm.return(i256)
 declare i32 @__personality()
-declare { i8 addrspace(3)*, i1 } @__staticcall(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256) #1
+declare { ptr addrspace(3), i1 } @__staticcall(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256) #1
 
 attributes #0 = { mustprogress nofree norecurse nosync nounwind readnone willreturn }
 attributes #1 = { argmemonly readonly nofree null_pointer_is_valid }
