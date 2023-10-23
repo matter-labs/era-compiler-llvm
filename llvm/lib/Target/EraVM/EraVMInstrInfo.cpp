@@ -1315,6 +1315,9 @@ EraVMInstrInfo::optimizeSelect(MachineInstr &MI,
   const Register In0Reg = In0.getReg();
   const Register In1Reg = In1.getReg();
 
+  bool ShouldChange = In0.isKill() || In1.isKill();
+  if (!ShouldChange)
+    return nullptr;
 
   // Create a new predicated version of DefMI.
   MachineInstrBuilder NewMI =
@@ -1323,28 +1326,29 @@ EraVMInstrInfo::optimizeSelect(MachineInstr &MI,
           .addReg(In1Reg)
           .addImm(getImmOrCImm(MI.getOperand(3)));
 
+  //NewMI.copyImplicitOps(MI);
+
+  /*
   if (In0.isKill())
     NewMI->getOperand(1).setIsKill(true);
   if (In1.isKill())
     NewMI->getOperand(2).setIsKill(true);
+  */
 
   // we know that
   if (In0.isKill()) {
     In0.setImplicit();
     NewMI.add(In0);
     NewMI->tieOperands(0, NewMI->getNumOperands() - 1);
-  } else if (In1.isKill()) {
+  } else {
+    assert(In1.isKill());
     In1.setImplicit();
     NewMI.add(In1);
     NewMI->tieOperands(0, NewMI->getNumOperands() - 1);
-  } else {
-    return nullptr;
   }
 
 
-
   SeenMIs.insert(NewMI);
-  //SeenMIs.erase(MI);
 
   // The caller will erase MI, but not DefMI.
   //DefMI->eraseFromParent();
