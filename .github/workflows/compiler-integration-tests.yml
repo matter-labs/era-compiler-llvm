@@ -53,7 +53,7 @@ jobs:
           git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
           git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
           git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
-          apt install -y ninja-build # clang-tidy-15
+          apt install -y ninja-build clang-tidy-15
 
       - name: Preparing LLVM.lock (pull request)
         if: github.event_name == 'pull_request'
@@ -94,11 +94,11 @@ jobs:
           pwd
           echo $SHELL
           $SHELL --version
-          # clang-tidy-15  --version
+          clang-tidy-15  --version
           git status
           git branch
           set -euxo pipefail
-          # git diff -U0 remotes/origin/${{ env.COMPILER_LLVM_DEFAULT_BRANCH_NAME }} | ./clang-tools-extra/clang-tidy/tool/clang-tidy-diff_Zegar.py -p1 -clang-tidy-binary /usr/bin/clang-tidy-15   -path ../target-llvm/build-final/compile_commands.json
+          git diff -U0 remotes/origin/${{ env.COMPILER_LLVM_DEFAULT_BRANCH_NAME }} | ./clang-tools-extra/clang-tidy/tool/clang-tidy-diff_Zegar.py -p1 -clang-tidy-binary /usr/bin/clang-tidy-15   -path ../target-llvm/build-final/compile_commands.json
 
       - name: Running Lit tests with default options
         working-directory: compiler-tester
