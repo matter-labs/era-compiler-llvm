@@ -1326,31 +1326,24 @@ EraVMInstrInfo::optimizeSelect(MachineInstr &MI,
           .addReg(In1Reg)
           .addImm(getImmOrCImm(MI.getOperand(3)));
 
-  //NewMI.copyImplicitOps(MI);
-
-  /*
   if (In0.isKill())
     NewMI->getOperand(1).setIsKill(true);
   if (In1.isKill())
     NewMI->getOperand(2).setIsKill(true);
-  */
 
-  // we know that
-  if (In0.isKill()) {
-    In0.setImplicit();
-    NewMI.add(In0);
-    NewMI->tieOperands(0, NewMI->getNumOperands() - 1);
-  } else {
-    assert(In1.isKill());
+  if (In1.isKill()) {
     In1.setImplicit();
     NewMI.add(In1);
     NewMI->tieOperands(0, NewMI->getNumOperands() - 1);
+  } else {
+    assert(In0.isKill());
+    In0.setImplicit();
+    NewMI.add(In0);
+    NewMI->tieOperands(0, NewMI->getNumOperands() - 1);
   }
 
-
+  // maintain the SeenMIs list
   SeenMIs.insert(NewMI);
 
-  // The caller will erase MI, but not DefMI.
-  //DefMI->eraseFromParent();
   return NewMI;
 }
