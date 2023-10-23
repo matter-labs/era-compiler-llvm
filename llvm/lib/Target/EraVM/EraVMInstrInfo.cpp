@@ -1238,13 +1238,16 @@ bool EraVMInstrInfo::analyzeSelect(const MachineInstr &MI,
                                    SmallVectorImpl<MachineOperand> &Cond,
                                    unsigned &TrueOp, unsigned &FalseOp,
                                    bool &Optimizable) const {
+  if (MI.getOpcode() != EraVM::SELrrr)
+    return true;
   Optimizable = true;
-  return true;
+  return false;
 }
 
 /// Identify instructions that can be folded into a SELECT instruction, and
 /// return the defining instruction.
 /// Return nullptr if no candidate can be folded.
+[[maybe_unused]]
 static MachineInstr *canFoldIntoSelect(Register Reg,
                                        const MachineRegisterInfo &MRI,
                                        const EraVMInstrInfo *TII) {
@@ -1282,11 +1285,14 @@ MachineInstr *
 EraVMInstrInfo::optimizeSelect(MachineInstr &MI,
                                SmallPtrSetImpl<MachineInstr *> &SeenMIs,
                                bool /*PreferFalse*/) const {
+  /*
   MachineRegisterInfo &MRI = MI.getParent()->getParent()->getRegInfo();
   const EraVMInstrInfo *TII = MI.getParent()
                                   ->getParent()
                                   ->getSubtarget<EraVMSubtarget>()
                                   .getInstrInfo();
+  */
+  /*
   MachineInstr *DefMI =
       canFoldIntoSelect(MI.getOperand(2).getReg(), MRI, TII);
   if (!DefMI)
@@ -1299,12 +1305,48 @@ EraVMInstrInfo::optimizeSelect(MachineInstr &MI,
   EraVM::copyOperands(NewMI, MI.operands_begin(), EraVM::in0Iterator(MI));
   EraVM::copyOperands(NewMI, EraVM::in0Range(MI));
   EraVM::copyOperands(NewMI, EraVM::in1Range(MI)); 
+  */
+
+  MachineOperand &Out0 = MI.getOperand(0);
+  MachineOperand &In0 = MI.getOperand(1);
+  MachineOperand &In1 = MI.getOperand(2);
+
+  const Register Out0Reg = Out0.getReg();
+  const Register In0Reg = In0.getReg();
+  const Register In1Reg = In1.getReg();
+
+
+  // Create a new predicated version of DefMI.
+  MachineInstrBuilder NewMI =
+      BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), MI.getDesc(), Out0Reg)
+          .addReg(In0Reg)
+          .addReg(In1Reg)
+          .addImm(getImmOrCImm(MI.getOperand(3)));
+
+  if (In0.isKill())
+    NewMI->getOperand(1).setIsKill(true);
+  if (In1.isKill())
+    NewMI->getOperand(2).setIsKill(true);
+
+  // we know that
+  if (In0.isKill()) {
+    In0.setImplicit();
+    NewMI.add(In0);
+    NewMI->tieOperands(0, NewMI->getNumOperands() - 1);
+  } else if (In1.isKill()) {
+    In1.setImplicit();
+    NewMI.add(In1);
+    NewMI->tieOperands(0, NewMI->getNumOperands() - 1);
+  } else {
+    return nullptr;
+  }
+
+
 
   SeenMIs.insert(NewMI);
-  SeenMIs.erase(DefMI);
+  //SeenMIs.erase(MI);
 
   // The caller will erase MI, but not DefMI.
-  DefMI->eraseFromParent();
-
+  //DefMI->eraseFromParent();
   return NewMI;
 }
