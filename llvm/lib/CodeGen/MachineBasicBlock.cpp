@@ -1012,10 +1012,11 @@ MachineBasicBlock *MachineBasicBlock::splitAt(MachineInstr &MI,
   return SplitBB;
 }
 
-MachineBasicBlock *MachineBasicBlock::SplitCriticalEdge(
-    MachineBasicBlock *Succ, Pass &P,
-    std::vector<SparseBitVector<>> *LiveInSets) {
-  if (!canSplitCriticalEdge(Succ))
+MachineBasicBlock *
+MachineBasicBlock::SplitCriticalEdge(MachineBasicBlock *Succ, Pass &P,
+                                     std::vector<SparseBitVector<>> *LiveInSets,
+                                     bool RequireStructuredCFG) {
+  if (!canSplitCriticalEdge(Succ, RequireStructuredCFG))
     return nullptr;
 
   MachineFunction *MF = getParent();
@@ -1246,8 +1247,8 @@ MachineBasicBlock *MachineBasicBlock::SplitCriticalEdge(
   return NMBB;
 }
 
-bool MachineBasicBlock::canSplitCriticalEdge(
-    const MachineBasicBlock *Succ) const {
+bool MachineBasicBlock::canSplitCriticalEdge(const MachineBasicBlock *Succ,
+                                             bool RequireStructuredCFG) const {
   // Splitting the critical edge to a landing pad block is non-trivial. Don't do
   // it in this generic function.
   if (Succ->isEHPad())
@@ -1261,7 +1262,7 @@ bool MachineBasicBlock::canSplitCriticalEdge(
   const MachineFunction *MF = getParent();
   // Performance might be harmed on HW that implements branching using exec mask
   // where both sides of the branches are always executed.
-  if (MF->getTarget().requiresStructuredCFG())
+  if (RequireStructuredCFG && MF->getTarget().requiresStructuredCFG())
     return false;
 
   // We may need to update this's terminator, but we can't do that if
