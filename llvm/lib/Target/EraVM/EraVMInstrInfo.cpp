@@ -1238,75 +1238,16 @@ bool EraVMInstrInfo::analyzeSelect(const MachineInstr &MI,
                                    SmallVectorImpl<MachineOperand> &Cond,
                                    unsigned &TrueOp, unsigned &FalseOp,
                                    bool &Optimizable) const {
-  if (MI.getOpcode() != EraVM::SELrrr)
+  if (MI.getOpcode() != EraVM::SELirr && MI.getOpcode() != EraVM::SELrir &&
+      MI.getOpcode() != EraVM::SELcrr && MI.getOpcode() != EraVM::SELrcr &&
+      MI.getOpcode() != EraVM::SELsrr && MI.getOpcode() != EraVM::SELrsr &&
+      MI.getOpcode() != EraVM::SELrrr)
     return true;
   Optimizable = true;
   return false;
 }
 
-/// Identify instructions that can be folded into a SELECT instruction, and
-/// return the defining instruction.
-/// Return nullptr if no candidate can be folded.
-[[maybe_unused]]
-static MachineInstr *canFoldIntoSelect(Register Reg,
-                                       const MachineRegisterInfo &MRI,
-                                       const EraVMInstrInfo *TII) {
-  if (!Reg.isVirtual())
-    return nullptr;
-  if (!MRI.hasOneNonDBGUse(Reg))
-    return nullptr;
-  MachineInstr *MI = MRI.getVRegDef(Reg);
-  if (!MI)
-    return nullptr;
-
-  // MI is folded into the SELECT by predicating it.
-  if (!TII->isPredicatedInstr(*MI) ||
-      getImmOrCImm(*EraVM::ccIterator(*MI)) != EraVMCC::COND_NONE)
-    return nullptr;
-
-  // must not set conditional flag
-  if (EraVMInstrInfo::isFlagSettingInstruction(*MI))
-    return nullptr;
-
-  // TODO: 
-  // Check if MI has any non-dead defs or physreg uses. This also detects
-  // predicated instructions which will be reading CPSR.
-  
-
-
-  bool DontMoveAcrossStores = true;
-  if (!MI->isSafeToMove(/* AliasAnalysis = */ nullptr, DontMoveAcrossStores))
-    return nullptr;
-
-  return MI;
-}
-
-MachineInstr *
-EraVMInstrInfo::optimizeSelect(MachineInstr &MI,
-                               SmallPtrSetImpl<MachineInstr *> &SeenMIs,
-                               bool /*PreferFalse*/) const {
-  /*
-  MachineRegisterInfo &MRI = MI.getParent()->getParent()->getRegInfo();
-  const EraVMInstrInfo *TII = MI.getParent()
-                                  ->getParent()
-                                  ->getSubtarget<EraVMSubtarget>()
-                                  .getInstrInfo();
-  */
-  /*
-  MachineInstr *DefMI =
-      canFoldIntoSelect(MI.getOperand(2).getReg(), MRI, TII);
-  if (!DefMI)
-    return nullptr;
-  return nullptr;
-
-  // Create a new predicated version of DefMI.
-  MachineInstrBuilder NewMI =
-      BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), DefMI->getDesc());  
-  EraVM::copyOperands(NewMI, MI.operands_begin(), EraVM::in0Iterator(MI));
-  EraVM::copyOperands(NewMI, EraVM::in0Range(MI));
-  EraVM::copyOperands(NewMI, EraVM::in1Range(MI)); 
-  */
-
+static MachineInstr *tieSELrrrOperands(MachineInstr &MI) {
   MachineOperand &Out0 = MI.getOperand(0);
   MachineOperand &In0 = MI.getOperand(1);
   MachineOperand &In1 = MI.getOperand(2);
@@ -1319,7 +1260,6 @@ EraVMInstrInfo::optimizeSelect(MachineInstr &MI,
   if (!ShouldChange)
     return nullptr;
 
-  // Create a new predicated version of DefMI.
   MachineInstrBuilder NewMI =
       BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), MI.getDesc(), Out0Reg)
           .addReg(In0Reg)
@@ -1341,9 +1281,79 @@ EraVMInstrInfo::optimizeSelect(MachineInstr &MI,
     NewMI.add(In0);
     NewMI->tieOperands(0, NewMI->getNumOperands() - 1);
   }
+  return NewMI;
+}
 
-  // maintain the SeenMIs list
-  SeenMIs.insert(NewMI);
+static MachineInstr* tieOperand(MachineInstr &MI, bool TieFirst = true) {
+  MachineOperand &Out0 = *EraVM::out0Iterator(MI);
+  MachineOperand &In0 = *EraVM::in0Iterator(MI);
+  MachineOperand &In1 = *EraVM::in1Iterator(MI);
+
+  const Register Out0Reg = Out0.getReg();
+
+  if (TieFirst) {
+    assert (In0.isReg());
+    if (!In0.isKill())
+      return nullptr;
+  } else {
+    assert (In1.isReg());
+    if (!In1.isKill())
+      return nullptr;
+  }
+  
+  MachineInstrBuilder NewMI =
+      BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), MI.getDesc(), Out0Reg);
+
+  if (TieFirst) {
+    const Register In0Reg = In0.getReg();
+    NewMI.addReg(In0Reg);
+    EraVM::copyOperands(NewMI, EraVM::in1Range(MI));
+    NewMI.add(MI.getOperand(MI.getNumExplicitOperands() - 1));
+
+    In0.setImplicit();
+    NewMI.add(In0);
+    NewMI->tieOperands(0, NewMI->getNumOperands() - 1);
+  } else {
+    const Register In1Reg = In1.getReg();
+    EraVM::copyOperands(NewMI, EraVM::in0Range(MI));
+    NewMI.addReg(In1Reg);
+    NewMI.add(MI.getOperand(MI.getNumExplicitOperands() - 1));
+
+    In1.setImplicit();
+    NewMI.add(In1);
+    NewMI->tieOperands(0, NewMI->getNumOperands() - 1);
+  }
+
+  return NewMI;
+}
+
+MachineInstr *
+EraVMInstrInfo::optimizeSelect(MachineInstr &MI,
+                               SmallPtrSetImpl<MachineInstr *> &SeenMIs,
+                               bool /*PreferFalse*/) const {
+  MachineInstr *NewMI = nullptr;
+  if (MI.getOpcode() == EraVM::SELrrr) {
+    NewMI = tieSELrrrOperands(MI);
+    if (!NewMI)
+      return nullptr;
+  }
+
+  if (MI.getOpcode() == EraVM::SELrir || MI.getOpcode() == EraVM::SELrcr ||
+      MI.getOpcode() == EraVM::SELrsr) {
+    NewMI = tieOperand(MI, true);
+    if (!NewMI)
+      return nullptr;
+  }
+
+  if (MI.getOpcode() == EraVM::SELirr || MI.getOpcode() == EraVM::SELcrr ||
+      MI.getOpcode() == EraVM::SELsrr) {
+    NewMI = tieOperand(MI, false);
+    if (!NewMI)
+      return nullptr;
+  }
+
+    // maintain the SeenMIs list
+    SeenMIs.insert(NewMI);
 
   return NewMI;
 }
