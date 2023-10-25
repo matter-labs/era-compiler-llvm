@@ -1310,6 +1310,11 @@ EraVMInstrInfo::optimizeSelect(MachineInstr &MI,
   if (Opcode != EraVM::SELiir)
     return nullptr;
 
+  // there must be no flag setting instructions in between.
+  for (auto &I : make_range(std::next(MI.getIterator()), UseMI.getIterator()))
+    if (EraVMInstrInfo::isFlagSettingInstruction(I))
+      return nullptr;
+
   // to be able to fold select into the use, one of the operands must be a zero.
 
   // TODO: this is inaccurate, need to change
@@ -1332,16 +1337,13 @@ EraVMInstrInfo::optimizeSelect(MachineInstr &MI,
   if (EraVMInstrInfo::isFlagSettingInstruction(UseMI))
     return nullptr;
 
-  if (UseMI.getOpcode() != EraVM::ADDrrr_p)
-    return nullptr;
-  
-
   const auto CC = getCCCode(MI);
   if (CC == EraVMCC::COND_INVALID || CC == EraVMCC::COND_OF ||
       CC == EraVMCC::COND_NONE)
     return nullptr;
 
   // now we need to manually expand ADDrrr_p into ADDrrr_s
+  /*
   MachineInstrBuilder NewMI =
       BuildMI(*UseMI.getParent(), UseMI, UseMI.getDebugLoc(), TII->get(EraVM::ADDirr_s), UseMI.getOperand(0).getReg());
 
@@ -1355,66 +1357,75 @@ EraVMInstrInfo::optimizeSelect(MachineInstr &MI,
 
   // remove UseMI
   UseMI.eraseFromParent();
-
-  return NewMI;
-
-  /*
-  MachineInstr *DefMI =
-      canFoldIntoSelect(MI.getOperand(2).getReg(), MRI, TII);
-  if (!DefMI)
-    return nullptr;
-  return nullptr;
-
-  // Create a new predicated version of DefMI.
-  MachineInstrBuilder NewMI =
-      BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), DefMI->getDesc());  
-  EraVM::copyOperands(NewMI, MI.operands_begin(), EraVM::in0Iterator(MI));
-  EraVM::copyOperands(NewMI, EraVM::in0Range(MI));
-  EraVM::copyOperands(NewMI, EraVM::in1Range(MI)); 
   */
+ MachineOperand &OtherOperand = UseMI.getOperand(1).getReg() == Out0Reg
+                                    ? UseMI.getOperand(2)
+                                    : UseMI.getOperand(1);
+ UseMI.getOperand(2).ChangeToRegister(OtherOperand.getReg(), false);
+ UseMI.setDesc(TII->get(EraVM::ADDirr_s));
+ UseMI.getOperand(1).ChangeToImmediate(NoneZeroImm);
+ UseMI.addOperand(MachineOperand::CreateImm(CC));
 
-  /*
-  MachineOperand &Out0 = MI.getOperand(0);
-  MachineOperand &In0 = MI.getOperand(1);
-  MachineOperand &In1 = MI.getOperand(2);
+ // It is actually not being used
+ return &UseMI;
 
-  const Register Out0Reg = Out0.getReg();
-  const Register In0Reg = In0.getReg();
-  const Register In1Reg = In1.getReg();
+ /*
+ MachineInstr *DefMI =
+     canFoldIntoSelect(MI.getOperand(2).getReg(), MRI, TII);
+ if (!DefMI)
+   return nullptr;
+ return nullptr;
 
+ // Create a new predicated version of DefMI.
+ MachineInstrBuilder NewMI =
+     BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), DefMI->getDesc());
+ EraVM::copyOperands(NewMI, MI.operands_begin(), EraVM::in0Iterator(MI));
+ EraVM::copyOperands(NewMI, EraVM::in0Range(MI));
+ EraVM::copyOperands(NewMI, EraVM::in1Range(MI));
+ */
 
-  // Create a new predicated version of DefMI.
-  MachineInstrBuilder NewMI =
-      BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), MI.getDesc(), Out0Reg)
-          .addReg(In0Reg)
-          .addReg(In1Reg)
-          .addImm(getImmOrCImm(MI.getOperand(3)));
+ /*
+ MachineOperand &Out0 = MI.getOperand(0);
+ MachineOperand &In0 = MI.getOperand(1);
+ MachineOperand &In1 = MI.getOperand(2);
 
-  if (In0.isKill())
-    NewMI->getOperand(1).setIsKill(true);
-  if (In1.isKill())
-    NewMI->getOperand(2).setIsKill(true);
-
-  // we know that
-  if (In0.isKill()) {
-    In0.setImplicit();
-    NewMI.add(In0);
-    NewMI->tieOperands(0, NewMI->getNumOperands() - 1);
-  } else if (In1.isKill()) {
-    In1.setImplicit();
-    NewMI.add(In1);
-    NewMI->tieOperands(0, NewMI->getNumOperands() - 1);
-  } else {
-    return nullptr;
-  }
-
+ const Register Out0Reg = Out0.getReg();
+ const Register In0Reg = In0.getReg();
+ const Register In1Reg = In1.getReg();
 
 
-  SeenMIs.insert(NewMI);
-  //SeenMIs.erase(MI);
+ // Create a new predicated version of DefMI.
+ MachineInstrBuilder NewMI =
+     BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), MI.getDesc(), Out0Reg)
+         .addReg(In0Reg)
+         .addReg(In1Reg)
+         .addImm(getImmOrCImm(MI.getOperand(3)));
 
-  // The caller will erase MI, but not DefMI.
-  //DefMI->eraseFromParent();
-  return NewMI;
-  */
+ if (In0.isKill())
+   NewMI->getOperand(1).setIsKill(true);
+ if (In1.isKill())
+   NewMI->getOperand(2).setIsKill(true);
+
+ // we know that
+ if (In0.isKill()) {
+   In0.setImplicit();
+   NewMI.add(In0);
+   NewMI->tieOperands(0, NewMI->getNumOperands() - 1);
+ } else if (In1.isKill()) {
+   In1.setImplicit();
+   NewMI.add(In1);
+   NewMI->tieOperands(0, NewMI->getNumOperands() - 1);
+ } else {
+   return nullptr;
+ }
+
+
+
+ SeenMIs.insert(NewMI);
+ //SeenMIs.erase(MI);
+
+ // The caller will erase MI, but not DefMI.
+ //DefMI->eraseFromParent();
+ return NewMI;
+ */
 }
