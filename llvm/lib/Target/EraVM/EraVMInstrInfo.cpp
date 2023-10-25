@@ -1238,7 +1238,7 @@ bool EraVMInstrInfo::analyzeSelect(const MachineInstr &MI,
                                    SmallVectorImpl<MachineOperand> &Cond,
                                    unsigned &TrueOp, unsigned &FalseOp,
                                    bool &Optimizable) const {
-  if (MI.getOpcode() != EraVM::SELrrr)
+  if (MI.getOpcode() != EraVM::SELiir)
     return true;
   Optimizable = true;
   return false;
@@ -1281,17 +1281,83 @@ static MachineInstr *canFoldIntoSelect(Register Reg,
   return MI;
 }
 
+/// we try to optimize select instruction in two ways:
+/// 1. fold select into defs of TrueOp or FalseOp, if select can be reduced into conditional move.
+/// 2. fold select into the use of select
 MachineInstr *
 EraVMInstrInfo::optimizeSelect(MachineInstr &MI,
                                SmallPtrSetImpl<MachineInstr *> &SeenMIs,
                                bool /*PreferFalse*/) const {
-  /*
   MachineRegisterInfo &MRI = MI.getParent()->getParent()->getRegInfo();
   const EraVMInstrInfo *TII = MI.getParent()
                                   ->getParent()
                                   ->getSubtarget<EraVMSubtarget>()
                                   .getInstrInfo();
-  */
+  
+  const Register Out0Reg = EraVM::out0Iterator(MI)->getReg();
+  
+  // the selected value must only be used once to be folded
+  if (!MRI.hasOneUse(Out0Reg))
+    return nullptr;
+
+  MachineInstr &UseMI = *MRI.use_instr_begin(Out0Reg);
+  if (UseMI.getParent() != MI.getParent())
+    return nullptr;
+
+  const auto Opcode = MI.getOpcode();
+  
+  // For now support SELiir first
+  if (Opcode != EraVM::SELiir)
+    return nullptr;
+
+  // to be able to fold select into the use, one of the operands must be a zero.
+
+  // TODO: this is inaccurate, need to change
+  auto In0Imm = getImmOrCImm(*EraVM::in0Iterator(MI));
+  auto In1Imm = getImmOrCImm(*EraVM::in1Iterator(MI));
+
+  if (In0Imm != 0 && In1Imm != 0)
+    return nullptr;
+
+  auto NoneZeroImm = In0Imm == 0 ? In1Imm : In0Imm;
+
+  // the use of select must be a predicable instruction
+  //if (!TII->isPredicable(UseMI))
+  //  return nullptr;
+  
+  // We have not yet expand the pseudos
+  if (UseMI.getOpcode() != EraVM::ADDrrr_p)
+    return nullptr;
+
+  if (EraVMInstrInfo::isFlagSettingInstruction(UseMI))
+    return nullptr;
+
+  if (UseMI.getOpcode() != EraVM::ADDrrr_p)
+    return nullptr;
+  
+
+  const auto CC = getCCCode(MI);
+  if (CC == EraVMCC::COND_INVALID || CC == EraVMCC::COND_OF ||
+      CC == EraVMCC::COND_NONE)
+    return nullptr;
+
+  // now we need to manually expand ADDrrr_p into ADDrrr_s
+  MachineInstrBuilder NewMI =
+      BuildMI(*UseMI.getParent(), UseMI, UseMI.getDebugLoc(), TII->get(EraVM::ADDirr_s), UseMI.getOperand(0).getReg());
+
+  MachineOperand &OtherOperand = UseMI.getOperand(1).getReg() == Out0Reg
+                                     ? UseMI.getOperand(2)
+                                     : UseMI.getOperand(1);
+  NewMI
+      .addImm(NoneZeroImm)
+      .add(OtherOperand)
+      .addImm(CC);
+
+  // remove UseMI
+  UseMI.eraseFromParent();
+
+  return NewMI;
+
   /*
   MachineInstr *DefMI =
       canFoldIntoSelect(MI.getOperand(2).getReg(), MRI, TII);
@@ -1307,6 +1373,7 @@ EraVMInstrInfo::optimizeSelect(MachineInstr &MI,
   EraVM::copyOperands(NewMI, EraVM::in1Range(MI)); 
   */
 
+  /*
   MachineOperand &Out0 = MI.getOperand(0);
   MachineOperand &In0 = MI.getOperand(1);
   MachineOperand &In1 = MI.getOperand(2);
@@ -1349,4 +1416,5 @@ EraVMInstrInfo::optimizeSelect(MachineInstr &MI,
   // The caller will erase MI, but not DefMI.
   //DefMI->eraseFromParent();
   return NewMI;
+  */
 }
