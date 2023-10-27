@@ -1266,7 +1266,8 @@ def REVERT : IRet<53, RFErr, (ins GR256:$rs0), "ret.revert.to_label\t$rs0, @DEFA
 // Constants materialization
 //===----------------------------------------------------------------------===//
 
-let isReMaterializable = 1, hasSideEffects = 0, isPseudo = 1 in {
+let isAsCheapAsAMove = 1, mayLoad = 1, isReMaterializable = 1,
+    hasSideEffects = 0, isPseudo = 1 in {
 def LOADCONST : Pseudo<(outs GR256:$val), (ins i256imm:$addr),
                          "LOADCONST\t$addr, $val",
                          [(set GR256:$val, (load tconstpool:$addr))]>;
