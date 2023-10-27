@@ -23,6 +23,7 @@ class EraVMRegister<bits<5> num, string n> : Register<n> {
 // General purpose registers
 //===----------------------------------------------------------------------===//
 
+let isConstant = true in
 def R0 : EraVMRegister<0, "r0">;
 def R1 : EraVMRegister<1, "r1">;
 def R2 : EraVMRegister<2, "r2">;
