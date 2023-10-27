@@ -40,6 +40,10 @@ BitVector EraVMRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   return Reserved;
 }
 
+bool EraVMRegisterInfo::isConstantPhysReg(MCRegister PhysReg) const {
+  return PhysReg == EraVM::R0;
+}
+
 const TargetRegisterClass *
 EraVMRegisterInfo::getPointerRegClass(const MachineFunction &MF,
                                       unsigned Kind) const {
