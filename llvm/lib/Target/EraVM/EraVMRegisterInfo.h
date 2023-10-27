@@ -21,6 +21,8 @@ public:
   /// Code Generation virtual methods...
   const MCPhysReg *getCalleeSavedRegs(const MachineFunction *MF) const override;
 
+  bool isConstantPhysReg(MCRegister PhysReg) const override;
+
   BitVector getReservedRegs(const MachineFunction &MF) const override;
   const TargetRegisterClass*
   getPointerRegClass(const MachineFunction &MF,
