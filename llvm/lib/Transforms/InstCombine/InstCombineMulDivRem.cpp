@@ -14,6 +14,9 @@
 #include "InstCombineInternal.h"
 #include "llvm/ADT/APInt.h"
 #include "llvm/ADT/SmallVector.h"
+// EraVM local begin
+#include "llvm/ADT/Triple.h"
+// EraVM local end
 #include "llvm/Analysis/InstructionSimplify.h"
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Constant.h"
@@ -1524,6 +1527,12 @@ Instruction *InstCombinerImpl::visitURem(BinaryOperator &I) {
     return CastInst::CreateZExtOrBitCast(Cmp, Ty);
   }
 
+  // EraVM local begin
+  // This transformation isn't profitable for EraVM, as umul operation
+  // is cheaper.
+  const Triple TT(I.getFunction()->getParent()->getTargetTriple());
+  if (!TT.isEraVM()) {
+  // EraVM local end
   // Op0 urem C -> Op0 < C ? Op0 : Op0 - C, where C >= signbit.
   // Op0 must be frozen because we are increasing its number of uses.
   if (match(Op1, m_Negative())) {
@@ -1532,6 +1541,9 @@ Instruction *InstCombinerImpl::visitURem(BinaryOperator &I) {
     Value *Sub = Builder.CreateSub(F0, Op1);
     return SelectInst::Create(Cmp, F0, Sub);
   }
+  // EraVM local begin
+  }
+  // EraVM local end
 
   // If the divisor is a sext of a boolean, then the divisor must be max
   // unsigned value (-1). Therefore, the remainder is Op0 unless Op0 is also
