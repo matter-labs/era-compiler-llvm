@@ -1,15 +1,17 @@
-//===- KECCAK.cpp - Private copy of the KECCAK implementation ---*- C++ -* ===//
+//===-- KECCAK.cpp - Private copy of the KECCAK implementation --*- C++ -*-===//
 //
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
+//===----------------------------------------------------------------------===//
 //
-///===---------------------------------------------------------------------===//
-///
-/// This code was taken from public domain
-/// (https://github.com/XKCP/XKCP/blob/master/Standalone/CompactFIPS202/
-///  C/Keccak-readable-and-compact.c), and modified by wrapping it in a
-/// C++ interface for LLVM, changing formatting, and removing
-/// unnecessary comments.
-///
+// This code was taken from public domain
+// (https://github.com/XKCP/XKCP/blob/master/Standalone/CompactFIPS202/
+//  C/Keccak-readable-and-compact.c), and modified by wrapping it in a
+// C++ interface for LLVM, changing formatting, and removing
+// unnecessary comments.
+//
 //===----------------------------------------------------------------------===//
 
 #include "llvm/Support/KECCAK.h"

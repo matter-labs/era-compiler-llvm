@@ -1,4 +1,10 @@
-//===---- EraVMISelLowering.cpp - EraVM DAG Lowering Implementation  ------===//
+//===-- EraVMISelLowering.cpp - EraVM DAG Lowering Impl ---------*- C++ -*-===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
 //
 // This file implements the EraVMTargetLowering class.
 //
@@ -126,7 +132,6 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
           ISD::ANY_EXTEND,
           ISD::GlobalAddress,
           ISD::BR_CC,
-          ISD::SELECT,
           ISD::SELECT_CC,
           ISD::BSWAP,
           ISD::CTPOP,
@@ -673,7 +678,6 @@ SDValue EraVMTargetLowering::LowerOperation(SDValue Op,
   case ISD::ExternalSymbol:     return LowerExternalSymbol(Op, DAG);
   case ISD::BR_CC:              return LowerBR_CC(Op, DAG);
   case ISD::BRCOND:             return LowerBRCOND(Op, DAG);
-  case ISD::SELECT:             return LowerSELECT(Op, DAG);
   case ISD::SELECT_CC:          return LowerSELECT_CC(Op, DAG);
   case ISD::SRA:                return LowerSRA(Op, DAG);
   case ISD::SDIV:               return LowerSDIV(Op, DAG);
@@ -1033,38 +1037,6 @@ SDValue EraVMTargetLowering::LowerBRCOND(SDValue Op, SelectionDAG &DAG) const {
                         {Chain, FoldedArith.getValue(1)});
   auto OFCC = DAG.getConstant(EraVMCC::COND_OF, DL, MVT::i256);
   return DAG.getNode(EraVMISD::BRCOND, DL, Op.getValueType(), TF, Dest, OFCC);
-}
-
-SDValue EraVMTargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
-  // try to fold select with u{add|sub|mul}.with.overflow
-  SDValue Cond = Op.getOperand(0);
-  SDValue TrueV = Op.getOperand(1);
-  SDValue FalseV = Op.getOperand(2);
-
-  SDValue MatchedUArithO = matchingOverflowArithmeticOperation(Cond);
-  if (!MatchedUArithO)
-    return SDValue();
-
-  SDValue FoldedArith;
-  auto Opc = MatchedUArithO.getOpcode();
-  auto LoweredOpc = OpcodeMap.at(Opc);
-  SDLoc DL(Op);
-  SDVTList FoldedVT = DAG.getVTList(MVT::i256, MVT::Other, MVT::Glue);
-  int OFGlueResult = 2;
-  // MUL has 2 results
-  if (LoweredOpc == EraVMISD::MUL_V) {
-    FoldedVT = DAG.getVTList(MVT::i256, MVT::i256, MVT::Other, MVT::Glue);
-    OFGlueResult = 3;
-  }
-  FoldedArith = DAG.getNode(LoweredOpc, DL, FoldedVT,
-                            {DAG.getEntryNode(), MatchedUArithO.getOperand(0),
-                             MatchedUArithO.getOperand(1)});
-  DAG.ReplaceAllUsesOfValueWith(MatchedUArithO.getValue(0),
-                                FoldedArith.getValue(0));
-  SDVTList VTs = DAG.getVTList(Op.getValueType(), MVT::Glue);
-  SDValue CC = DAG.getConstant(EraVMCC::COND_OF, DL, MVT::i256);
-  SDValue Ops[] = {TrueV, FalseV, CC, FoldedArith.getValue(OFGlueResult)};
-  return DAG.getNode(EraVMISD::SELECT_CC, DL, VTs, Ops);
 }
 
 SDValue EraVMTargetLowering::LowerSELECT_CC(SDValue Op,

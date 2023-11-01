@@ -1,10 +1,17 @@
-//===---------------- llvm/unittests/Target/EraVM/Utils.h -----------------===//
+//===-- Utils.h - Testing utilities -----------------------------*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
+//
+// This file defines utilities for testing.
+//
+//===----------------------------------------------------------------------===//
+
+#ifndef LLVM_UNITTESTS_TARGET_ERAVM_UTILS_H
+#define LLVM_UNITTESTS_TARGET_ERAVM_UTILS_H
 
 #include "EraVMTargetMachine.h"
 #include "EraVMSubtarget.h"
@@ -42,3 +49,5 @@ createEraVMTargetMachine() {
   return std::unique_ptr<EraVMTargetMachine>(static_cast<EraVMTargetMachine *>(
       T->createTargetMachine("eravm", "", "", Options, None, None)));
 }
+
+#endif // LLVM_UNITTESTS_TARGET_ERAVM_UTILS_H

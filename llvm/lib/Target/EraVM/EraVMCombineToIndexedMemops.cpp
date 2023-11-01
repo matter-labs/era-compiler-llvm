@@ -1,21 +1,27 @@
-//===--- EraVMCombineToIndexedMemops.cpp - Combine memops to indexed ------===//
+//===-- EraVMCombineToIndexedMemops.cpp - Combine to indexed ----*- C++ -*-===//
 //
-/// \file
-/// This file contains load and store combination pass to emit indexed memory
-/// operations. It relies on def-use chains and runs on pre-RA phase.
-///
-///
-/// Generally speaking, this pass does the following:
-/// * iterate a function from top to bottom, combine this pattern:
-///     {ld|st}.{1|2} %ra, %rv
-///     add 32, %ra, %rb
-///   into:
-///     {ld|st}.{1|2}.inc %ra, %rv, %rb
-///
-///   where %rb is automatically incremented by the new `.inc` instruction.
-///
-/// Note that this pass is not able to handle similar patterns within loops
-/// because %rb will carry loop dependence.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// This file contains load and store combination pass to emit indexed memory
+// operations. It relies on def-use chains and runs on pre-RA phase.
+//
+//
+// Generally speaking, this pass does the following:
+// * iterate a function from top to bottom, combine this pattern:
+//     {ld|st}.{1|2} %ra, %rv
+//     add 32, %ra, %rb
+//   into:
+//     {ld|st}.{1|2}.inc %ra, %rv, %rb
+//
+//   where %rb is automatically incremented by the new `.inc` instruction.
+//
+// Note that this pass is not able to handle similar patterns within loops
+// because %rb will carry loop dependence.
+//
 //===----------------------------------------------------------------------===//
 
 #include "EraVM.h"

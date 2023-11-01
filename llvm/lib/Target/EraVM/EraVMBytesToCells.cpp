@@ -1,14 +1,19 @@
-//===-- EraVMBytesToCells.cpp - Replace bytes addresses with cells ones ---===//
+//===-- EraVMBytesToCells.cpp - EraVM Bytes To Cells conversion -*- C++ -*-===//
 //
-/// \file
-/// LLVM emits byte addressing for stack accesses, and on EraVM the stack
-/// space is addressed in cells (32 bytes per cell). To make things more
-/// complicated, some instruction generated stack pointers are already
-/// cell-addressed, for example: `context.sp` returns stack pointer in cells.
-///
-/// To handle such inconsistencies, This pass ensures that after the pass, all
-/// bytes addressings of stack are converted to cells addressings. This is
-/// necessary for EraVM target to ensure stack accesses.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// LLVM emits byte addressing for stack accesses, and on EraVM the stack
+// space is addressed in cells (32 bytes per cell). To make things more
+// complicated, some instruction generated stack pointers are already
+// cell-addressed, for example: `context.sp` returns stack pointer in cells.
+//
+// To handle such inconsistencies, This pass ensures that after the pass, all
+// bytes addressings of stack are converted to cells addressings. This is
+// necessary for EraVM target to ensure stack accesses.
 //
 //===----------------------------------------------------------------------===//
 

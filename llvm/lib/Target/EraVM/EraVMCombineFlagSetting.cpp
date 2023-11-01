@@ -1,32 +1,36 @@
-//===---- EraVMCombineFlagSetting.cpp - Combine instructions Pre-RA -------===//
+//===-- EraVMCombineFlagSetting.cpp - Combine flag instructions -*- C++ -*-===//
 //
-/// \file
-///
-/// The pass attempts to combine `sub! x, r0, y` with the definition of x:
-/// '''
-/// def = op x, y
-/// ; No flags def or use in between
-/// ; ... ...
-/// result = sub! def, r0
-/// '''
-///
-/// can be folded into:
-/// '''
-/// def = op! x, y
-/// '''
-///
-/// The pass implemented as a local optimization and it require SSA form of MIR.
-/// The pass require a single usage of each definition of Flags, so passes the
-/// break that invariant must be scheduled after.
-///
-/// The pass layering is chosen this way because despite the pass can't handle
-/// COPY and PHI pseudos, later passes elide most of the copies, and thus
-/// `result` from the example above is defined by a near call instruction.
-/// It require to make ret instruction flag setting to fold which is not
-/// supported the VM now.
-/// As for PHIs, it's unlikely that control-flow reaches the basic block
-/// unconditionally from all predecessors, thus another flag setting is used
-/// for a jump and it makes folding impossible.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// The pass attempts to combine `sub! x, r0, y` with the definition of x:
+// '''
+// def = op x, y
+// ; No flags def or use in between
+// ; ... ...
+// result = sub! def, r0
+// '''
+//
+// can be folded into:
+// '''
+// def = op! x, y
+// '''
+//
+// The pass implemented as a local optimization and it require SSA form of MIR.
+// The pass require a single usage of each definition of Flags, so passes the
+// break that invariant must be scheduled after.
+//
+// The pass layering is chosen this way because despite the pass can't handle
+// COPY and PHI pseudos, later passes elide most of the copies, and thus
+// `result` from the example above is defined by a near call instruction.
+// It require to make ret instruction flag setting to fold which is not
+// supported the VM now.
+// As for PHIs, it's unlikely that control-flow reaches the basic block
+// unconditionally from all predecessors, thus another flag setting is used
+// for a jump and it makes folding impossible.
 //
 //===----------------------------------------------------------------------===//
 

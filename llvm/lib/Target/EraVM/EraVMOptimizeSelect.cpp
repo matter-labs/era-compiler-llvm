@@ -1,9 +1,14 @@
-//===--------------- EraVMOptimizeSelect.cpp - Optimize select ------------===//
+//===-- EraVMOptimizeSelect.cpp - Optimize select ---------------*- C++ -*-===//
 //
-/// \file
-/// This file contains a pass that tries to optimize after select instruction
-/// expansion. Usually a conditional move instruction is expanded, which might
-/// be folded with a previous instruction.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// This file contains a pass that tries to optimize after select instruction
+// expansion. Usually a conditional move instruction is expanded, which might
+// be folded with a previous instruction.
 //
 //===----------------------------------------------------------------------===//
 

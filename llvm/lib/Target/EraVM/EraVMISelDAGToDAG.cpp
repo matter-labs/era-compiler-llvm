@@ -1,4 +1,10 @@
-//===-- EraVMISelDAGToDAG.cpp - A dag to dag inst selector for EraVM ------===//
+//===-- EraVMISelDAGToDAG.cpp - EraVM dag to dag inst selector --*- C++ -*-===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
 //
 // This file defines an instruction selector for the EraVM target.
 //
@@ -349,6 +355,14 @@ void EraVMDAGToDAGISel::Select(SDNode *Node) {
       SDValue CP =
           CurDAG->getTargetConstantPool(cn->getConstantIntValue(), PtrVT);
       auto lc = CurDAG->getMachineNode(EraVM::LOADCONST, DL, MVT::i256, CP);
+
+      // Annotate the Node with memory operand information so that MachineInstr
+      // queries work properly.
+      MachineFunction &MF = CurDAG->getMachineFunction();
+      MachineMemOperand *MemOp =
+          MF.getMachineMemOperand(MachinePointerInfo::getConstantPool(MF),
+                                  MachineMemOperand::MOLoad, 32, Align(32));
+      CurDAG->setNodeMemRefs(cast<MachineSDNode>(lc), {MemOp});
       ReplaceNode(Node, lc);
       return;
     }

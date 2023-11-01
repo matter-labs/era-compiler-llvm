@@ -1,13 +1,13 @@
-//===---- EraVMTargetTransformInfo.h - EraVM-specific TTI -*- C++ -*-------===//
+//===-- EraVMTargetTransformInfo.h - EraVM-specific TTI ---------*- C++ -*-===//
 //
-/// \file
-/// This file a TargetTransformInfo::Concept conforming object specific
-/// to the EraVM target machine.
-///
-/// It uses the target's detailed information to provide more precise answers to
-/// certain TTI queries, while letting the target independent and default TTI
-/// implementations handle the rest.
-///
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// This file defines the EraVM-specific TargetTransformInfo.
+//
 //===----------------------------------------------------------------------===//
 
 #ifndef LLVM_LIB_TARGET_ERAVM_ERAVMTARGETTRANSFORMINFO_H
