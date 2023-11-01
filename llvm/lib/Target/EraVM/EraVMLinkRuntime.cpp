@@ -1,18 +1,23 @@
-//===--- EraVMLinkRuntime.cpp - inject runtime library into the module ---===//
+//===-- EraVMLinkRuntime.cpp - Link runtime library -------------*- C++ -*-===//
 //
-/// \file
-/// Implement pass which links runtime (eravm-runtime.ll), stdlib
-/// (eravm-stdlib.ll) and internalize their contents. EraVM doesn't have a
-/// proper linker and all programs consist of a single module. The pass links
-/// the the necessary modules into the program module.
-/// It supposed to be called twice:
-/// * First, in the beginning of optimization pipeline, the pass links
-///   the context of eravm-stdlib.ll and internalize its content, after that
-///   global DCE is expected to be run to remove all unused functions.
-/// * Second, it runs before code generation, and it links and internalize
-///   eravm-runtime.ll
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
-//============================================================================//
+//===----------------------------------------------------------------------===//
+//
+// Implement pass which links runtime (eravm-runtime.ll), stdlib
+// (eravm-stdlib.ll) and internalize their contents. EraVM doesn't have a
+// proper linker and all programs consist of a single module. The pass links
+// the the necessary modules into the program module.
+// It supposed to be called twice:
+// * First, in the beginning of optimization pipeline, the pass links
+//   the context of eravm-stdlib.ll and internalize its content, after that
+//   global DCE is expected to be run to remove all unused functions.
+// * Second, it runs before code generation, and it links and internalize
+//   eravm-runtime.ll
+//
+//===----------------------------------------------------------------------===//
 
 #include "llvm/Analysis/TargetLibraryInfo.h"
 #include "llvm/IR/Function.h"

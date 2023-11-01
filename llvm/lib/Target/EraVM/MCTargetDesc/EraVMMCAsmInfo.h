@@ -6,7 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file contains the declaration of the EraVMMCAsmInfo class.
+// This file contains the declarations of the EraVMMCAsmInfo properties.
 //
 //===----------------------------------------------------------------------===//
 

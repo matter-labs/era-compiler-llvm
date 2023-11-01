@@ -1,11 +1,19 @@
-//===- EraVMAllocaHoisting.cpp - Hoist allocas to the entry -----*- C++ -*-===//
+//===-- EraVMAllocaHoisting.cpp - Hoist allocas to the entry ----*- C++ -*-===//
 //
-// Hoist the alloca instructions in the non-entry blocks to the entry blocks.
-// Copied from NVPTX backend.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
+//
+// This pass hoists the alloca instructions in the non-entry blocks to the
+// entry blocks.
+// Copied from NVPTX backend.
+//
 // TODO: CPR-408 The pass is a shortcut solution. DYNAMIC_STACKALLOC support
 // is needed instead.
+//
+//===----------------------------------------------------------------------===//
 
 #include "EraVM.h"
 

@@ -1,6 +1,12 @@
-//=-- EraVMInstPrinter.h - Convert EraVM MCInst to assembly syntax -*- C++ -*-//
+//===-- EraVMInstPrinter.h - EraVM instr printer ----------------*- C++ -*-===//
 //
-// This class prints a EraVM MCInst to a .s file.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// This class prints an EraVM MCInst to a .s file.
 //
 //===----------------------------------------------------------------------===//
 
