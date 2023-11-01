@@ -1,19 +1,21 @@
-//====----------- KECCAK.cpp - KECCAK implementation ---------*- C++ -* ======//
+//===-- KECCAK.h - KECCAK implementation ------------------------*- C++ -*-===//
 //
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
+//===----------------------------------------------------------------------===//
 //
-///===---------------------------------------------------------------------===//
-///
-/// Implementation the Keccak-f[1600] permutation approved in the FIPS 202
-/// standard, which is used for instantiation of the KECCAK-256 hash function.
-///
-/// [FIPS PUB 202]
-///   https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
-/// [Keccak Reference]
-///   https://keccak.team/files/Keccak-reference-3.0.pdf
-/// [Keccak Specifications Summary]
-///   https://keccak.team/keccak_specs_summary.html
-///
+// Implementation the Keccak-f[1600] permutation approved in the FIPS 202
+// standard, which is used for instantiation of the KECCAK-256 hash function.
+//
+// [FIPS PUB 202]
+//   https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf
+// [Keccak Reference]
+//   https://keccak.team/files/Keccak-reference-3.0.pdf
+// [Keccak Specifications Summary]
+//   https://keccak.team/keccak_specs_summary.html
+//
 //===----------------------------------------------------------------------===//
 
 #ifndef LLVM_SUPPORT_KECCAK_H

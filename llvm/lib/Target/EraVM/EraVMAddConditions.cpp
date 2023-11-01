@@ -1,9 +1,12 @@
-//===------ EraVMAddConditions.cpp - Expand pseudo instructions -----------===//
+//===-- EraVMAddConditions.cpp - EraVM Add Conditions -----------*- C++ -*-===//
 //
-/// \file
-/// This file contains a pass that expands pseudo instructions into target
-/// instructions. This pass should be run after register allocation but before
-/// the post-regalloc scheduling pass.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// This pass changes _p instruction variants to _s.
 //
 //===----------------------------------------------------------------------===//
 

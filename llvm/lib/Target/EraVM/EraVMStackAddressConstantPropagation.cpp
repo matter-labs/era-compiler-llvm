@@ -1,9 +1,14 @@
-//===------------ EraVMStackAddressConstantPropagation.cpp ----------------===//
+//===-- EraVMStackAddressConstantPropagation.cpp - Const prop ---*- C++ -*-===//
 //
-/// \file
-/// This file contains a pass that attempts to extract contant part of a stack
-/// address from the register, replacing (op reg) where reg = reg1 + C with
-/// (op reg1 + C), thus utilizing reg + imm addressing mode.
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// This file contains a pass that attempts to extract contant part of a stack
+// address from the register, replacing (op reg) where reg = reg1 + C with
+// (op reg1 + C), thus utilizing reg + imm addressing mode.
 //
 //===----------------------------------------------------------------------===//
 

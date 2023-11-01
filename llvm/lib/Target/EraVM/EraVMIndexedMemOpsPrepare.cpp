@@ -1,6 +1,11 @@
-//===--- EraVMIndexedMemOpsPrepare.cpp - Prepare for indexed MemOps -------===//
+//===-- EraVMIndexedMemOpsPrepare.cpp - Prepare for indexed -----*- C++ -*-===//
 //
-// \file
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
 // This pass intends to utilize the SCEV info to find load/store that can be
 // optimized to indexed load/store provided by EraVM.
 //
@@ -61,7 +66,7 @@
 //       We can use them to judge whether loop should exit. In this way, if
 //       loop index isn't used by any other places, we can optimize out loop
 //       index along with instruction used to increase its value.
-//============================================================================//
+//===----------------------------------------------------------------------===//
 
 #include "EraVM.h"
 
