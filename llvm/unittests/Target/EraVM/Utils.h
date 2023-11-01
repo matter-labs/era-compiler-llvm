@@ -10,6 +10,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+#ifndef LLVM_UNITTESTS_TARGET_ERAVM_UTILS_H
+#define LLVM_UNITTESTS_TARGET_ERAVM_UTILS_H
+
 #include "EraVMTargetMachine.h"
 #include "EraVMSubtarget.h"
 
@@ -46,3 +49,5 @@ createEraVMTargetMachine() {
   return std::unique_ptr<EraVMTargetMachine>(static_cast<EraVMTargetMachine *>(
       T->createTargetMachine("eravm", "", "", Options, None, None)));
 }
+
+#endif // LLVM_UNITTESTS_TARGET_ERAVM_UTILS_H
