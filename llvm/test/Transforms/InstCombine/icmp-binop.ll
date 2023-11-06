@@ -43,7 +43,9 @@ define i1 @mul_assumeoddV_asumeoddV_eq(i16 %v, i16 %v2) {
 ; CHECK-NEXT:    [[LB2:%.*]] = and i16 [[V2:%.*]], 1
 ; CHECK-NEXT:    [[ODD2:%.*]] = icmp ne i16 [[LB2]], 0
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[ODD2]])
-; CHECK-NEXT:    ret i1 true
+; CHECK-NEXT:    [[MUL:%.*]] = mul i16 [[V]], [[V2]]
+; CHECK-NEXT:    [[CMP:%.*]] = icmp ne i16 [[MUL]], 0
+; CHECK-NEXT:    ret i1 [[CMP]]
 ;
   %lb = and i16 %v, 1
   %odd = icmp ne i16 %lb, 0
@@ -85,7 +87,8 @@ define i1 @mul_assumeoddV_unkV_eq(i16 %v, i16 %v2) {
 ; CHECK-NEXT:    [[LB:%.*]] = and i16 [[V2:%.*]], 1
 ; CHECK-NEXT:    [[ODD:%.*]] = icmp ne i16 [[LB]], 0
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[ODD]])
-; CHECK-NEXT:    [[CMP:%.*]] = icmp eq i16 [[V:%.*]], 0
+; CHECK-NEXT:    [[MUL:%.*]] = mul i16 [[V:%.*]], [[V2]]
+; CHECK-NEXT:    [[CMP:%.*]] = icmp eq i16 [[MUL]], 0
 ; CHECK-NEXT:    ret i1 [[CMP]]
 ;
   %lb = and i16 %v2, 1
@@ -102,7 +105,7 @@ define i1 @mul_reusedassumeoddV_unkV_ne(i64 %v, i64 %v2) {
 ; CHECK-NEXT:    [[ODD:%.*]] = icmp ne i64 [[LB]], 0
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[ODD]])
 ; CHECK-NEXT:    [[MUL:%.*]] = mul i64 [[V]], [[V2:%.*]]
-; CHECK-NEXT:    [[CMP:%.*]] = icmp ne i64 [[V2]], 0
+; CHECK-NEXT:    [[CMP:%.*]] = icmp ne i64 [[MUL]], 0
 ; CHECK-NEXT:    call void @use64(i64 [[MUL]])
 ; CHECK-NEXT:    ret i1 [[CMP]]
 ;
