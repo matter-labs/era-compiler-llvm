@@ -27,7 +27,7 @@ on:
       compiler_llvm_benchmark_mode:
         description: "Mode filter for compiler-llvm benchmarks"
         required: false
-        default: "+M^B3"
+        default: "^M^B3"
       compiler_llvm_benchmark_path:
         description: "Path filter for compiler-llvm benchmarks"
         required: false
@@ -50,7 +50,7 @@ jobs:
       - name: Setting the environment
         run: |
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_MODE=${{ github.event.inputs.compiler_llvm_benchmark_mode || '+M^B3' }}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_MODE=${{ github.event.inputs.compiler_llvm_benchmark_mode || '^M^B3' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_PATH=${{ github.event.inputs.compiler_llvm_benchmark_path || '' }}" >> $GITHUB_ENV
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_candidate_branch || 'main' }}" >> $GITHUB_ENV
           echo "COMPILER_LLVM_CANDIDATE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_candidate_branch }}" >> $GITHUB_ENV
@@ -137,7 +137,7 @@ jobs:
       - name: Setting the environment
         run: |
           echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
-          echo "LLVM_BENCHMARK_MODE=${{ github.event.inputs.compiler_llvm_benchmark_mode || '+M^B3' }}" >> $GITHUB_ENV
+          echo "LLVM_BENCHMARK_MODE=${{ github.event.inputs.compiler_llvm_benchmark_mode || '^M^B3' }}" >> $GITHUB_ENV
           echo "LLVM_BENCHMARK_PATH=${{ github.event.inputs.compiler_llvm_benchmark_path || '' }}" >> $GITHUB_ENV
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_reference_branch || 'main' }}" >> $GITHUB_ENV
           echo "COMPILER_LLVM_REFERENCE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_reference_branch }}" >> $GITHUB_ENV
