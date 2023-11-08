@@ -80,13 +80,14 @@ jobs:
         if: ${{ env.LLVM_BUILD_TYPE == 'debug' }}
         working-directory: compiler-tester
         run: |
-          zkevm-llvm build --debug --enable-tests --extra-args '\-DLLVM_ENABLE_WERROR=On'  '\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON'
+          zkevm-llvm build --debug --enable-tests --extra-args \\-DLLVM_ENABLE_WERROR=ON --extra-args \\-DLLVM_TARGETS_TO_BUILD=\'EraVM\;EVM\' \\-DLLVM_DEFAULT_TARGET_TRIPLE=evm
 
       - name: Building the LLVM framework (release)
         if: ${{ env.LLVM_BUILD_TYPE == 'release' }}
         working-directory: compiler-tester
         run: |
-          zkevm-llvm build --enable-tests --extra-args '\-DLLVM_ENABLE_WERROR=On'   '\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON'
+          zkevm-llvm build --enable-tests --extra-args \\-DLLVM_ENABLE_WERROR=ON \\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \\-DLLVM_ENABLE_WERROR=ON \\-DLLVM_TARGETS_TO_BUILD=\'EraVM\;EVM\' \\-DLLVM_DEFAULT_TARGET_TRIPLE=evm
+
 
       - name: Checking with clang-tidy-diff.py
         shell: bash
@@ -106,7 +107,7 @@ jobs:
         run: |
           ninja -C './target-llvm/build-final' check-llvm
 
-      - name: Running Lit EraVM tests with llc verification options
+      - name: Running Lit EVM tests with llc verification options
         working-directory: compiler-tester
         env:
           LLC_OPTS:
@@ -121,21 +122,20 @@ jobs:
             --scev-verify-ir \
             --tail-dup-verify \
             --unroll-verify-domtree \
-            --verify-regalloc \
             --vplan-verify-hcfg \
-            --march=eravm"
+            --march=evm"
+          # Note that EVM doesn't use regalloc, so --verify-regalloc isn't present there.
           XFAILS:
             "CodeGen/EraVM/memcpy-expansion.ll;\
              CodeGen/EraVM/flag-setting-set-implicit-flags.ll;\
              CodeGen/EraVM/indexed-ld-in-a-loop-bug.ll;\
-             CodeGen/EraVM/machine-outliner.mir;\
              CodeGen/EraVM/machine-outliner-tail.mir;\
-             CodeGen/EraVM/select_fold.mir;\
-             CodeGen/EraVM/select_tie.mir"
+             CodeGen/EraVM/machine-outliner.mir;\
+             CodeGen/EVM/memcpy-expansion.ll"
 
         run: |
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
-          ./target-llvm/build-final/bin/llvm-lit -vv -s --xfail "${XFAILS}" "-Dllc=${BINDIR}/llc ${LLC_OPTS}" './llvm/llvm/test/CodeGen/EraVM/'
+          ./target-llvm/build-final/bin/llvm-lit -vv -s --xfail "${XFAILS}" "-Dllc=${BINDIR}/llc ${LLC_OPTS}" llvm/llvm/test/CodeGen/EVM/
 
       - name: Running Lit tests with opt verification options
         working-directory: compiler-tester
@@ -160,10 +160,10 @@ jobs:
             --verify-machineinstrs \
             --verify-memoryssa \
             --verify-misched \
-            --verify-regalloc \
             --verify-scev-strict \
             --vplan-verify-hcfg \
-            --march=eravm"
+            --march=evm"
+          # Note that EVM doesn't use regalloc, so --verify-regalloc isn't present there.
           XFAILS:
             "Transforms/LoopVectorize/vplan_hcfg_stress_test.ll;\
             Transforms/LoopFlatten/widen-iv2.ll;\
@@ -171,21 +171,6 @@ jobs:
         run: |
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
           ./target-llvm/build-final/bin/llvm-lit -vv -s --xfail "${XFAILS}" "-Dopt=${BINDIR}/opt ${OPT_OPTS}" './llvm/llvm/test/CodeGen/'
-
-      - name: Building and running the compiler tester
-        id: compiler_tester_run
-        working-directory: compiler-tester
-        run: |
-          export RUST_BACKTRACE='full'
-          export LLVM_SYS_150_PREFIX="$(pwd)/target-llvm/target-final/"
-          cargo build --verbose --release --bin 'compiler-tester'
-          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-solidity-*/*/Cargo.toml --target-dir './target-zksolc/'
-          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-vyper-*/*/Cargo.toml --target-dir './target-zkvyper/'
-
-          ./target/release/compiler-tester \
-            --zksolc './target-zksolc/release/zksolc' \
-            --zkvyper './target-zkvyper/release/zkvyper' \
-            --mode=${{ env.COMPILER_TESTER_MODE }}
 
       - uses: 8398a7/action-slack@v3
         with:
