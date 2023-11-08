@@ -55,8 +55,8 @@ private:
   /// into:
   /// op.cc ra, rb, rd
   ///
-  /// return true if transformation successful.
-  bool foldConditionalMove(MachineInstr &MI) const;
+  /// Return folding instruction if all requirements are met.
+  MachineInstr *getFoldingInst(MachineInstr &MI) const;
 
   /// Returns a folding-candidate out register from MI.
   /// Returns invalid register if the output register of MI is not a folding
@@ -179,9 +179,9 @@ std::optional<MachineInstr *> EraVMOptimizeSelect::findFoldingCandidateInstr(
   return DefMI;
 }
 
-bool EraVMOptimizeSelect::foldConditionalMove(MachineInstr &MI) const {
+MachineInstr *EraVMOptimizeSelect::getFoldingInst(MachineInstr &MI) const {
   if (!isConditionalMove(MI))
-    return false;
+    return nullptr;
 
   const Register IntermediateReg = EraVM::in0Iterator(MI)->getReg();
   const Register OutReg = EraVM::out0Iterator(MI)->getReg();
@@ -189,27 +189,21 @@ bool EraVMOptimizeSelect::foldConditionalMove(MachineInstr &MI) const {
   // Find if the previous instruction is a folding candidte.
   auto CandidateOpt = findFoldingCandidateInstr(&MI, IntermediateReg, OutReg);
   if (!CandidateOpt)
-    return false;
+    return nullptr;
   MachineInstr &CandidateInstr = **CandidateOpt;
 
   // If there are more than 1 outputs, we have to make sure the
   // other output is killed before we can fold it.
   const Register CandidateOutReg = getOutRegToFold(CandidateInstr);
   if (!CandidateOutReg)
-    return false;
+    return nullptr;
 
   // Check the CandidateOutReg is the intermedate value register:
   if (CandidateOutReg != IntermediateReg)
-    return false;
+    return nullptr;
 
-  // Now we have a candidate pair:
-  // 1. move the condition code to PrevMI
-  // 2. replace CandidateOutReg with OutReg
-  // 3. return true to remove MI
-  EraVM::ccIterator(CandidateInstr)
-      ->ChangeToImmediate(EraVM::ccIterator(MI)->getImm());
-  EraVM::out0Iterator(CandidateInstr)->setReg(OutReg);
-  return true;
+  // Now we have a instruction to fold conditional move, so return it.
+  return &CandidateInstr;
 }
 
 bool EraVMOptimizeSelect::runOnMachineFunction(MachineFunction &MF) {
@@ -222,17 +216,26 @@ bool EraVMOptimizeSelect::runOnMachineFunction(MachineFunction &MF) {
 
   RDA = &getAnalysis<ReachingDefAnalysis>();
 
-  std::vector<MachineInstr *> ToBeErased;
+  std::vector<std::pair<MachineInstr *, MachineInstr *>> Deleted;
 
   for (MachineBasicBlock &MBB : MF)
     for (MachineInstr &MI : MBB)
-      if (foldConditionalMove(MI))
-        ToBeErased.push_back(&MI);
+      if (MachineInstr *FoldInst = getFoldingInst(MI))
+        Deleted.push_back({&MI, FoldInst});
 
-  for (auto *I : ToBeErased)
-    I->eraseFromParent();
+  // Do the following:
+  // 1. Move the CMov condition code to FoldInst.
+  // 2. Replace output register of FoldInst with CMov's.
+  // 3. Remove CMov instruction.
+  for (auto [CMov, FoldInst] : Deleted) {
+    EraVM::ccIterator(*FoldInst)->ChangeToImmediate(
+        getImmOrCImm(*EraVM::ccIterator(*CMov)));
+    EraVM::out0Iterator(*FoldInst)->setReg(
+        EraVM::out0Iterator(*CMov)->getReg());
+    CMov->eraseFromParent();
+  }
 
-  return !ToBeErased.empty();
+  return !Deleted.empty();
 }
 
 /// createEraVMOptimizeSelectPass - returns an instance of the select
