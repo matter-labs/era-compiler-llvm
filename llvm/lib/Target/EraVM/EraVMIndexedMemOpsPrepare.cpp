@@ -140,6 +140,8 @@ bool EraVMIndexedMemOpsPrepare::rewriteToFavorIndexedMemOps(
 
   Type *TypeOfCopyLen = IntegerType::getInt256Ty(*Ctx);
   BasicBlock *LoopPreheader = CurrentLoop->getLoopPreheader();
+  BasicBlock *LoopLatch = CurrentLoop->getLoopLatch();
+  assert(LoopPreheader && LoopLatch && "Expected a loop in a simplified form");
 
   Value *SrcOperand = getPointerOperand(BasePtr);
   Type *RstType = BasePtr->getResultElementType();
@@ -185,7 +187,7 @@ bool EraVMIndexedMemOpsPrepare::rewriteToFavorIndexedMemOps(
     cast<GetElementPtrInst>(IncNewBasePtr)->setIsInBounds(false);
 
   // Add to the PHI
-  NewBasePtr->addIncoming(IncNewBasePtr, MemOpInst->getParent());
+  NewBasePtr->addIncoming(IncNewBasePtr, LoopLatch);
 
   return true;
 }
@@ -222,6 +224,11 @@ bool EraVMIndexedMemOpsPrepare::isValidGEPAndIncByOneCell(
   // can be increased along with loop iteration.
   const unsigned LastIndexOperandId = BasePtr->getNumOperands() - 1;
   Value *LastIndexOperand = BasePtr->getOperand(LastIndexOperandId);
+
+  assert(std::all_of(
+      BasePtr->op_begin(), std::prev(BasePtr->op_end()),
+      [this](Value *V) { return CurrentLoop->isLoopInvariant(V); }));
+
   return isa<PHINode>(LastIndexOperand);
 }
 
