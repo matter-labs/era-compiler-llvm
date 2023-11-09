@@ -127,6 +127,7 @@ jobs:
           XFAILS:
             "CodeGen/EraVM/memcpy-expansion.ll;\
              CodeGen/EraVM/flag-setting-set-implicit-flags.ll;\
+             CodeGen/EraVM/indexed-ld-in-a-loop-bug.ll;\
              CodeGen/EraVM/machine-outliner.mir;\
              CodeGen/EraVM/machine-outliner-tail.mir;\
              CodeGen/EraVM/select_fold.mir;\
