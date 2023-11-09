@@ -116,9 +116,10 @@ std::optional<Register> EraVMBytesToCells::foldWithLeftShift(Register Reg) {
       getImmOrCImm(*EraVM::in0Iterator(*DefMI)) != Log2CellSizeInBytes)
     return std::nullopt;
 
+  Register UnshiftedReg = EraVM::in1Iterator(*DefMI)->getReg();
   if (MRI->hasOneUse(Reg))
     DefMI->eraseFromParent();
-  return EraVM::in1Iterator(*DefMI)->getReg();
+  return UnshiftedReg;
 }
 
 bool EraVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
