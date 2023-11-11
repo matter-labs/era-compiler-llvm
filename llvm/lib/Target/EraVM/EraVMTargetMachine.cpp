@@ -49,6 +49,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMExpandPseudoPass(PR);
   initializeEraVMExpandSelectPass(PR);
   initializeEraVMExternalAAWrapperPass(PR);
+  initializeEraVMFoldSelectPass(PR);
   initializeEraVMLinkRuntimePass(PR);
   initializeEraVMLowerIntrinsicsPass(PR);
   initializeEraVMIndexedMemOpsPreparePass(PR);
@@ -273,4 +274,5 @@ void EraVMPassConfig::addPreEmitPass() {
   addPass(createEraVMExpandPseudoPass());
   addPass(createEraVMExpandSelectPass());
   addPass(createEraVMOptimizeSelectPass());
+  addPass(createEraVMFoldSelectPass());
 }

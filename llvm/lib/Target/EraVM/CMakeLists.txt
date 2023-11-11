@@ -34,6 +34,7 @@ add_llvm_target(EraVMCodeGen
   EraVMCombineToIndexedMemops.cpp
   EraVMExpandPseudoInsts.cpp
   EraVMExpandSelect.cpp
+  EraVMFoldSelect.cpp
   EraVMFrameLowering.cpp
   EraVMISelDAGToDAG.cpp
   EraVMISelLowering.cpp

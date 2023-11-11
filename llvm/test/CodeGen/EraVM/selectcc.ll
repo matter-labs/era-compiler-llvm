@@ -273,9 +273,8 @@ define void @seliis(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ; CHECK: sub! r3, r4, r{{[0-9]+}}
   %1 = icmp ult i256 %v3, %v4
   ; TODO: CPR-986
-  ; CHECK: add     42, r0, r1
-  ; CHECK: add.lt  17, r0, r1
-  ; CHECK: add     r1, r0, stack-[1]
+  ; CHECK: add     42, r0, stack-[1]
+  ; CHECK: add.lt  17, r0, stack-[1]
   %2 = select i1 %1, i256 17, i256 42
   store i256 %2, i256* %resptr
   ret void

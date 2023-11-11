@@ -93,13 +93,15 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
           // call is generated, it is incomplete as it misses EH label info, pad
           // 0 instead.
           Register ABIReg = MI.getOperand(0).getReg();
-          BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
-                  TII->get(EraVM::NEAR_CALL))
-              .addReg(ABIReg)
-              .add(MI.getOperand(1))
-              .addExternalSymbol(
-                  "DEFAULT_UNWIND"); // Linker inserts a basic block
-                                     // which bubbles up the exception.
+          auto NewMI =
+              BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
+                      TII->get(EraVM::NEAR_CALL))
+                  .addReg(ABIReg)
+                  .add(MI.getOperand(1))
+                  .addExternalSymbol(
+                      "DEFAULT_UNWIND"); // Linker inserts a basic block
+                                         // which bubbles up the exception.
+          NewMI.copyImplicitOps(MI);
         }
 
         PseudoInst.push_back(&MI);
