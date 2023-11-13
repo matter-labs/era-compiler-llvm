@@ -122,7 +122,7 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
 
       if (false && MI.getOpcode() == EraVM::SELiir && EraVM::in0Iterator(MI)->isCImm() && EraVM::in0Iterator(MI)->getCImm()->isOne()
           && EraVM::in1Iterator(MI)->isCImm() && EraVM::in1Iterator(MI)->getCImm()->isZero()) {
-        Register Def = MI.getOperand(0).getReg();
+        const Register Def = MI.getOperand(0).getReg();
         SmallPtrSet<MachineInstr *, 4> Uses;
         RDA->getGlobalUses(&MI, Def, Uses);
         if (Uses.size() == 1 && &*std::next(MI.getIterator()) == *Uses.begin() &&
