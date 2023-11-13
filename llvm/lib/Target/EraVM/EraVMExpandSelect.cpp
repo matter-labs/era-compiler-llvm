@@ -36,7 +36,7 @@ public:
   EraVMExpandSelect() : MachineFunctionPass(ID) {
     initializeEraVMExpandSelectPass(*PassRegistry::getPassRegistry());
   }
-  bool runOnMachineFunction(MachineFunction &Fn) override;
+  bool runOnMachineFunction(MachineFunction &MF) override;
   StringRef getPassName() const override { return ERAVM_EXPAND_SELECT_NAME; }
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.setPreservesCFG();
@@ -114,22 +114,22 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
 
       unsigned Opc = MI.getOpcode();
       DebugLoc DL = MI.getDebugLoc();
-      auto In0 = EraVM::in0Iterator(MI);
+      auto *In0 = EraVM::in0Iterator(MI);
       auto In0Range = EraVM::in0Range(MI);
       auto In1Range = EraVM::in1Range(MI);
-      auto Out = EraVM::out0Iterator(MI);
+      auto *Out = EraVM::out0Iterator(MI);
       auto CCVal = getImmOrCImm(*EraVM::ccIterator(MI));
 
-      if (false && MI.getOpcode() == EraVM::SELiir && EraVM::in0Iterator(MI)->isCImm() && EraVM::in0Iterator(MI)->getCImm()->isOne()
+      if (MI.getOpcode() == EraVM::SELiir && EraVM::in0Iterator(MI)->isCImm() && EraVM::in0Iterator(MI)->getCImm()->isOne()
           && EraVM::in1Iterator(MI)->isCImm() && EraVM::in1Iterator(MI)->getCImm()->isZero()) {
         const Register Def = MI.getOperand(0).getReg();
         SmallPtrSet<MachineInstr *, 4> Uses;
         RDA->getGlobalUses(&MI, Def, Uses);
         if (Uses.size() == 1 && &*std::next(MI.getIterator()) == *Uses.begin() &&
             TII->isAdd(**Uses.begin()) && EraVM::hasRRInAddressingMode(**Uses.begin())
-            //&& EraVM::in0Iterator(**Uses.begin())->getReg() != EraVM::in1Iterator(**Uses.begin())->getReg()
+            &&  EraVM::in0Iterator(**Uses.begin())->getReg() !=  EraVM::in1Iterator(**Uses.begin())->getReg()
             && getImmOrCImm(*EraVM::ccIterator(**Uses.begin())) == EraVMCC::COND_NONE) {
-          dbgs() << "x\n";
+          //dbgs() << "x\n";
 
           const Register Def = MI.getOperand(0).getReg();
           SmallPtrSet<MachineInstr *, 4> Uses;
@@ -155,12 +155,12 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
       // rN) It allows to lower select to a single instruction rN =
       // add.reverse_cc y, r0.
       bool ShouldInverse =
-          Inverse.count(Opc) != 0u && Out->getReg() == In0->getReg();
+          Inverse.count(Opc) != 0U && Out->getReg() == In0->getReg();
 
       auto buildMOV = [&](EraVM::ArgumentKind OpNo, unsigned CC) {
         auto OperandRange =
             (OpNo == EraVM::ArgumentKind::In0) ? In0Range : In1Range;
-        auto OperandIt = OperandRange.begin();
+        auto *OperandIt = OperandRange.begin();
         bool IsRegister =
             argumentType(OpNo, MI) == EraVM::ArgumentType::Register;
         unsigned MovOpc = movOpcode(OpNo, Opc);
