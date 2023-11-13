@@ -146,6 +146,7 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
            if (!EraVM::hasRROutAddressingMode(**Uses.begin()))
              EraVM::copyOperands(NewInst, EraVM::out0Range(**Uses.begin()));
            NewInst.add(*EraVM::ccIterator(MI));
+           RDA->reset();
           continue;
 
         }
