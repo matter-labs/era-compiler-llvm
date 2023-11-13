@@ -131,7 +131,7 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
             && getImmOrCImm(*EraVM::ccIterator(**Uses.begin())) == EraVMCC::COND_NONE) {
           dbgs() << "x\n";
 
-          Register Def = MI.getOperand(0).getReg();
+          const Register Def = MI.getOperand(0).getReg();
           SmallPtrSet<MachineInstr *, 4> Uses;
           RDA->getGlobalUses(&MI, Def, Uses);
           if (Uses.size() == 1 && &*std::next(MI.getIterator()) == *Uses.begin())
