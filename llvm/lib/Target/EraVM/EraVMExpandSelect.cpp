@@ -15,6 +15,7 @@
 
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
+#include "llvm/CodeGen/ReachingDefAnalysis.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
 #include "llvm/Support/Debug.h"
 
@@ -37,16 +38,25 @@ public:
   }
   bool runOnMachineFunction(MachineFunction &Fn) override;
   StringRef getPassName() const override { return ERAVM_EXPAND_SELECT_NAME; }
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.setPreservesCFG();
+    AU.addRequired<ReachingDefAnalysis>();
+    MachineFunctionPass::getAnalysisUsage(AU);
+  }
 
 private:
-  const EraVMInstrInfo *TII;
+  const EraVMInstrInfo *TII{};
+  ReachingDefAnalysis *RDA{};
 };
 
 char EraVMExpandSelect::ID = 0;
 
 } // namespace
 
-INITIALIZE_PASS(EraVMExpandSelect, DEBUG_TYPE, ERAVM_EXPAND_SELECT_NAME, false,
+INITIALIZE_PASS_BEGIN(EraVMExpandSelect, DEBUG_TYPE, ERAVM_EXPAND_SELECT_NAME, false,
+                false)
+INITIALIZE_PASS_DEPENDENCY(ReachingDefAnalysis)
+INITIALIZE_PASS_END(EraVMExpandSelect, DEBUG_TYPE, ERAVM_EXPAND_SELECT_NAME, false,
                 false)
 
 /// For given \p Select and argument \p Kind return corresponding mov opcode
@@ -94,6 +104,7 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
 
   TII = MF.getSubtarget<EraVMSubtarget>().getInstrInfo();
   assert(TII && "TargetInstrInfo must be a valid object");
+  RDA = &getAnalysis<ReachingDefAnalysis>();
 
   std::vector<MachineInstr *> PseudoInst;
   for (MachineBasicBlock &MBB : MF)
@@ -108,6 +119,37 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
       auto In1Range = EraVM::in1Range(MI);
       auto Out = EraVM::out0Iterator(MI);
       auto CCVal = getImmOrCImm(*EraVM::ccIterator(MI));
+
+      if (false && MI.getOpcode() == EraVM::SELiir && EraVM::in0Iterator(MI)->isCImm() && EraVM::in0Iterator(MI)->getCImm()->isOne()
+          && EraVM::in1Iterator(MI)->isCImm() && EraVM::in1Iterator(MI)->getCImm()->isZero()) {
+        Register Def = MI.getOperand(0).getReg();
+        SmallPtrSet<MachineInstr *, 4> Uses;
+        RDA->getGlobalUses(&MI, Def, Uses);
+        if (Uses.size() == 1 && &*std::next(MI.getIterator()) == *Uses.begin() &&
+            TII->isAdd(**Uses.begin()) && EraVM::hasRRInAddressingMode(**Uses.begin())
+            //&& EraVM::in0Iterator(**Uses.begin())->getReg() != EraVM::in1Iterator(**Uses.begin())->getReg()
+            && getImmOrCImm(*EraVM::ccIterator(**Uses.begin())) == EraVMCC::COND_NONE) {
+          dbgs() << "x\n";
+
+          Register Def = MI.getOperand(0).getReg();
+          SmallPtrSet<MachineInstr *, 4> Uses;
+          RDA->getGlobalUses(&MI, Def, Uses);
+          if (Uses.size() == 1 && &*std::next(MI.getIterator()) == *Uses.begin())
+            dbgs() << "x\n";
+          PseudoInst.push_back(&MI);
+          PseudoInst.push_back(*Uses.begin());
+          auto NewInst = EraVM::hasRROutAddressingMode(**Uses.begin()) ?
+            BuildMI(MBB, &MI, DL, TII->get(EraVM::getWithIRInAddrMode((*Uses.begin())->getOpcode())), EraVM::out0Iterator(**Uses.begin())->getReg()) 
+            : BuildMI(MBB, &MI, DL, TII->get(EraVM::getWithIRInAddrMode((*Uses.begin())->getOpcode())));
+           NewInst.addCImm(EraVM::in0Iterator(MI)->getCImm())
+            .addReg((EraVM::in0Iterator(**Uses.begin())->getReg()) == Def ? EraVM::in1Iterator(**Uses.begin())->getReg() : EraVM::in0Iterator(**Uses.begin())->getReg());
+           if (!EraVM::hasRROutAddressingMode(**Uses.begin()))
+             EraVM::copyOperands(NewInst, EraVM::out0Range(**Uses.begin()));
+           NewInst.add(*EraVM::ccIterator(MI));
+          continue;
+
+        }
+      }
 
       // For rN = cc ? rN : y it's profitable to reverse (rN = reverse_cc ? y :
       // rN) It allows to lower select to a single instruction rN =
