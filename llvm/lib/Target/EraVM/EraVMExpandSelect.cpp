@@ -54,11 +54,11 @@ char EraVMExpandSelect::ID = 0;
 
 } // namespace
 
-INITIALIZE_PASS_BEGIN(EraVMExpandSelect, DEBUG_TYPE, ERAVM_EXPAND_SELECT_NAME, false,
-                false)
+INITIALIZE_PASS_BEGIN(EraVMExpandSelect, DEBUG_TYPE, ERAVM_EXPAND_SELECT_NAME,
+                      false, false)
 INITIALIZE_PASS_DEPENDENCY(ReachingDefAnalysis)
-INITIALIZE_PASS_END(EraVMExpandSelect, DEBUG_TYPE, ERAVM_EXPAND_SELECT_NAME, false,
-                false)
+INITIALIZE_PASS_END(EraVMExpandSelect, DEBUG_TYPE, ERAVM_EXPAND_SELECT_NAME,
+                    false, false)
 
 /// For given \p Select and argument \p Kind return corresponding mov opcode
 /// for conditional or unconditional mov.
@@ -80,21 +80,34 @@ static unsigned movOpcode(EraVM::ArgumentKind Kind, unsigned Select) {
   llvm_unreachable("Unexpected argument type");
 }
 
-std::vector<MachineInstr *> EraVMExpandSelect::findSelectAdd(MachineFunction &MF) {
+std::vector<MachineInstr *>
+EraVMExpandSelect::findSelectAdd(MachineFunction &MF) {
   std::vector<MachineInstr *> Result;
   for (MachineBasicBlock &MBB : MF)
     for (MachineInstr &MI : MBB) {
-      if (MI.getOpcode() == EraVM::SELiir && EraVM::in0Iterator(MI)->isCImm() && EraVM::in0Iterator(MI)->getCImm()->isOne()
-          && EraVM::in1Iterator(MI)->isCImm() && EraVM::in1Iterator(MI)->getCImm()->isZero()) {
+      if (MI.getOpcode() == EraVM::SELiir && EraVM::in0Iterator(MI)->isCImm() &&
+          EraVM::in0Iterator(MI)->getCImm()->isOne() &&
+          EraVM::in1Iterator(MI)->isCImm() &&
+          EraVM::in1Iterator(MI)->getCImm()->isZero()) {
         const Register Def = MI.getOperand(0).getReg();
         SmallPtrSet<MachineInstr *, 4> Uses;
         RDA->getGlobalUses(&MI, Def, Uses);
-        if (Uses.size() == 1 && std::next(MI.getIterator()) != MI.getParent()->end() && &*std::next(MI.getIterator()) == *Uses.begin() &&
-            TII->isAdd(**Uses.begin()) && EraVM::hasRRInAddressingMode(**Uses.begin())
-            &&  EraVM::in0Iterator(**Uses.begin())->getReg() !=  EraVM::in1Iterator(**Uses.begin())->getReg()
-            && getImmOrCImm(*EraVM::ccIterator(**Uses.begin())) == EraVMCC::COND_NONE)
+        if (Uses.size() == 1 &&
+            std::next(MI.getIterator()) != MI.getParent()->end() &&
+            &*std::next(MI.getIterator()) == *Uses.begin() &&
+            TII->isAdd(**Uses.begin()) &&
+            EraVM::hasRRInAddressingMode(**Uses.begin()) &&
+            EraVM::hasRROutAddressingMode(**Uses.begin()) &&
+            EraVM::in0Iterator(**Uses.begin())->getReg() !=
+                EraVM::in1Iterator(**Uses.begin())->getReg() &&
+            getImmOrCImm(*EraVM::ccIterator(**Uses.begin())) ==
+                EraVMCC::COND_NONE) {
 
+          const bool IsIn0Const = EraVM::in0Iterator(**Uses.begin())->getReg() == Def;
+          if ((!IsIn0Const && EraVM::in0Iterator(**Uses.begin())->getReg() == EraVM::out0Iterator(**Uses.begin())->getReg())
+              || (IsIn0Const && EraVM::in1Iterator(**Uses.begin())->getReg() == EraVM::out0Iterator(**Uses.begin())->getReg()))
           Result.push_back(&MI);
+        }
       }
     }
   return Result;
@@ -127,7 +140,7 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
   TII = MF.getSubtarget<EraVMSubtarget>().getInstrInfo();
   assert(TII && "TargetInstrInfo must be a valid object");
   RDA = &getAnalysis<ReachingDefAnalysis>();
-  const std::vector<MachineInstr*> ToCombine = findSelectAdd(MF);
+  const std::vector<MachineInstr *> ToCombine = findSelectAdd(MF);
   std::vector<MachineInstr *> PseudoInst;
   for (MachineInstr *Select : ToCombine) {
     MachineInstr *Add = &*std::next(Select->getIterator());
@@ -136,14 +149,20 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
     MachineBasicBlock &MBB = *Select->getParent();
     PseudoInst.push_back(Select);
     PseudoInst.push_back(Add);
-    auto NewInst = EraVM::hasRROutAddressingMode(*Add) ?
-      BuildMI(MBB, Select, DL, TII->get(EraVM::getWithIRInAddrMode(Add->getOpcode())), EraVM::out0Iterator(*Add)->getReg()) 
-      : BuildMI(MBB, Select, DL, TII->get(EraVM::getWithIRInAddrMode(Add->getOpcode())));
-     NewInst.addCImm(EraVM::in0Iterator(*Select)->getCImm())
-      .addReg((EraVM::in0Iterator(*Add)->getReg()) == Def ? EraVM::in1Iterator(*Add)->getReg() : EraVM::in0Iterator(*Add)->getReg());
-     if (!EraVM::hasRROutAddressingMode(*Add))
-       EraVM::copyOperands(NewInst, EraVM::out0Range(*Add));
-     NewInst.add(*EraVM::ccIterator(*Select));
+    auto NewInst =
+        EraVM::hasRROutAddressingMode(*Add)
+            ? BuildMI(MBB, Select, DL,
+                      TII->get(EraVM::getWithIRInAddrMode(Add->getOpcode())),
+                      EraVM::out0Iterator(*Add)->getReg())
+            : BuildMI(MBB, Select, DL,
+                      TII->get(EraVM::getWithIRInAddrMode(Add->getOpcode())));
+    NewInst.addCImm(EraVM::in0Iterator(*Select)->getCImm())
+        .addReg((EraVM::in0Iterator(*Add)->getReg()) == Def
+                    ? EraVM::in1Iterator(*Add)->getReg()
+                    : EraVM::in0Iterator(*Add)->getReg());
+    if (!EraVM::hasRROutAddressingMode(*Add))
+      EraVM::copyOperands(NewInst, EraVM::out0Range(*Add));
+    NewInst.add(*EraVM::ccIterator(*Select));
   }
 
   Changed = !PseudoInst.empty();
@@ -163,7 +182,6 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
       auto In1Range = EraVM::in1Range(MI);
       auto *Out = EraVM::out0Iterator(MI);
       auto CCVal = getImmOrCImm(*EraVM::ccIterator(MI));
-
 
       // For rN = cc ? rN : y it's profitable to reverse (rN = reverse_cc ? y :
       // rN) It allows to lower select to a single instruction rN =
