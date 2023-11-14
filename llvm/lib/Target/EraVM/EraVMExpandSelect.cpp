@@ -127,12 +127,12 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
   TII = MF.getSubtarget<EraVMSubtarget>().getInstrInfo();
   assert(TII && "TargetInstrInfo must be a valid object");
   RDA = &getAnalysis<ReachingDefAnalysis>();
-  std::vector<MachineInstr*> ToCombine = findSelectAdd(MF);
+  const std::vector<MachineInstr*> ToCombine = findSelectAdd(MF);
   std::vector<MachineInstr *> PseudoInst;
   for (MachineInstr *Select : ToCombine) {
     MachineInstr *Add = &*std::next(Select->getIterator());
-    Register Def = Select->getOperand(0).getReg();
-    DebugLoc DL = Select->getDebugLoc();
+    const Register Def = Select->getOperand(0).getReg();
+    const DebugLoc DL = Select->getDebugLoc();
     MachineBasicBlock &MBB = *Select->getParent();
     PseudoInst.push_back(Select);
     PseudoInst.push_back(Add);
