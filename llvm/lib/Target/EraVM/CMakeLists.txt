@@ -61,6 +61,7 @@ add_llvm_target(EraVMCodeGen
   EraVMExpandPseudoInsts.cpp
   EraVMExpandSelect.cpp
   EraVMFrameLowering.cpp
+  EraVMHoistFlagSetting.cpp
   EraVMISelDAGToDAG.cpp
   EraVMISelLowering.cpp
   EraVMInstrInfo.cpp

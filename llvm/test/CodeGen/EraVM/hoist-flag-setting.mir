@@ -1,0 +1,160 @@
+# RUN: llc -x mir -run-pass=eravm-hoist-flag-setting -verify-machineinstrs < %s | FileCheck %s
+
+--- |
+  ; ModuleID = 'test.ll'
+  source_filename = "test.ll"
+  target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
+  target triple = "eravm"
+
+  define i256 @test_no_hoist(i256 %value, i256 %exp) {
+  entry:
+    %exp_is_non_zero = icmp eq i256 %exp, 0
+    br i1 %exp_is_non_zero, label %return, label %exponent_loop_body.preheader
+
+  exponent_loop_body.preheader:                     ; preds = %entry
+    br label %exponent_loop_body
+
+  return:                                           ; preds = %exponent_loop_body, %entry
+    %exp_res = phi i256 [ 1, %entry ], [ %exp_res.1, %exponent_loop_body ]
+    ret i256 %exp_res
+
+  exponent_loop_body:                               ; preds = %exponent_loop_body.preheader, %exponent_loop_body
+    %exp_res.2 = phi i256 [ %exp_res.1, %exponent_loop_body ], [ 1, %exponent_loop_body.preheader ]
+    %exp_val = phi i256 [ %exp_val_halved, %exponent_loop_body ], [ %exp, %exponent_loop_body.preheader ]
+    %val_squared.1 = phi i256 [ %val_squared, %exponent_loop_body ], [ %value, %exponent_loop_body.preheader ]
+    %odd_test = and i256 %exp_val, 1
+    %is_exp_odd = icmp eq i256 %odd_test, 0
+    %exp_res.1.interm = select i1 %is_exp_odd, i256 1, i256 %val_squared.1
+    %exp_res.1 = mul i256 %exp_res.1.interm, %exp_res.2
+    %val_squared = mul i256 %val_squared.1, %val_squared.1
+    %exp_val_halved = lshr i256 %exp_val, 1
+    %exp_val_is_less_2 = icmp ult i256 %exp_val, 2
+    br i1 %exp_val_is_less_2, label %return, label %exponent_loop_body
+  }
+
+...
+---
+# This test ensures that we can't hoist:
+#   %17:gr256 = SUBxrr_v i256 2, %2, i256 0, implicit-def $flags
+# above:
+#   %6:gr256 = SHRxrr_s i256 1, %2, 0
+# because there is the instruction which manipulates with the flags:
+#   %14:gr256 = SELirr i256 1, %3, i256 2, implicit $flags
+#
+# CHECK-LABEL: test_no_hoist
+# CHECK-LABEL: bb.3.exponent_loop_body:
+# CHECK: %1:gr256 = PHI %11, %bb.1, %4, %bb.3
+# CHECK-NEXT: %2:gr256 = PHI %8, %bb.1, %6, %bb.3
+# CHECK-NEXT: %3:gr256 = PHI %7, %bb.1, %5, %bb.3
+# CHECK-NEXT: %12:gr256 = ANDirr_v i256 1, %2, 0, implicit-def $flags
+# CHECK-NEXT: %6:gr256 = SHRxrr_s i256 1, %2, 0
+# CHECK-NEXT: %14:gr256 = SELirr i256 1, %3, i256 2, implicit $flags
+# CHECK-NEXT: %4:gr256, %15:gr256 = MULrrrr_s killed %14, %1, 0
+# CHECK-NEXT: %5:gr256, %16:gr256 = MULrrrr_s %3, %3, 0
+# CHECK-NEXT: %17:gr256 = SUBxrr_v i256 2, %2, i256 0, implicit-def $flags
+# CHECK-NEXT: JC %bb.2, i256 4, implicit $flags
+# CHECK-NEXT: J %bb.3
+name:            test_no_hoist
+alignment:       1
+exposesReturnsTwice: false
+legalized:       false
+regBankSelected: false
+selected:        false
+failedISel:      false
+tracksRegLiveness: true
+hasWinCFI:       false
+callsEHReturn:   false
+callsUnwindInit: false
+hasEHCatchret:   false
+hasEHScopes:     false
+hasEHFunclets:   false
+failsVerification: false
+tracksDebugUserValues: false
+registers:
+  - { id: 0, class: gr256, preferred-register: '' }
+  - { id: 1, class: gr256, preferred-register: '' }
+  - { id: 2, class: gr256, preferred-register: '' }
+  - { id: 3, class: gr256, preferred-register: '' }
+  - { id: 4, class: gr256, preferred-register: '' }
+  - { id: 5, class: gr256, preferred-register: '' }
+  - { id: 6, class: gr256, preferred-register: '' }
+  - { id: 7, class: gr256, preferred-register: '' }
+  - { id: 8, class: gr256, preferred-register: '' }
+  - { id: 9, class: gr256, preferred-register: '' }
+  - { id: 10, class: gr256, preferred-register: '' }
+  - { id: 11, class: gr256, preferred-register: '' }
+  - { id: 12, class: gr256, preferred-register: '' }
+  - { id: 13, class: gr256, preferred-register: '' }
+  - { id: 14, class: gr256, preferred-register: '' }
+  - { id: 15, class: gr256, preferred-register: '' }
+  - { id: 16, class: gr256, preferred-register: '' }
+  - { id: 17, class: gr256, preferred-register: '' }
+liveins:
+  - { reg: '$r1', virtual-reg: '%7' }
+  - { reg: '$r2', virtual-reg: '%8' }
+frameInfo:
+  isFrameAddressTaken: false
+  isReturnAddressTaken: false
+  hasStackMap:     false
+  hasPatchPoint:   false
+  stackSize:       0
+  offsetAdjustment: 0
+  maxAlignment:    1
+  adjustsStack:    false
+  hasCalls:        false
+  stackProtector:  ''
+  functionContext: ''
+  maxCallFrameSize: 4294967295
+  cvBytesOfCalleeSavedRegisters: 0
+  hasOpaqueSPAdjustment: false
+  hasVAStart:      false
+  hasMustTailInVarArgFunc: false
+  hasTailCall:     false
+  localFrameSize:  0
+  savePoint:       ''
+  restorePoint:    ''
+fixedStack:      []
+stack:           []
+callSites:       []
+debugValueSubstitutions: []
+constants:       []
+machineFunctionInfo: {}
+body:             |
+  bb.0.entry:
+    successors: %bb.2(0x30000000), %bb.1(0x50000000)
+    liveins: $r1, $r2
+
+    %8:gr256 = COPY $r2
+    %7:gr256 = COPY $r1
+    %9:gr256 = ADDirr_s i256 1, $r0, 0
+    %10:gr256 = SUBrrr_v %8, $r0, i256 0, implicit-def $flags
+    JC %bb.2, i256 2, implicit $flags
+    J %bb.1
+
+  bb.1.exponent_loop_body.preheader:
+    successors: %bb.3(0x80000000)
+
+    %11:gr256 = ADDirr_s i256 1, $r0, 0
+    J %bb.3
+
+  bb.2.return:
+    %0:gr256 = PHI %9, %bb.0, %4, %bb.3
+    $r1 = COPY %0
+    RET implicit $r1
+
+  bb.3.exponent_loop_body:
+    successors: %bb.2(0x04000000), %bb.3(0x7c000000)
+
+    %1:gr256 = PHI %11, %bb.1, %4, %bb.3
+    %2:gr256 = PHI %8, %bb.1, %6, %bb.3
+    %3:gr256 = PHI %7, %bb.1, %5, %bb.3
+    %12:gr256 = ANDirr_v i256 1, %2, 0, implicit-def $flags
+    %6:gr256 = SHRxrr_s i256 1, %2, 0
+    %14:gr256 = SELirr i256 1, %3, i256 2, implicit $flags
+    %4:gr256, %15:gr256 = MULrrrr_s killed %14, %1, 0
+    %5:gr256, %16:gr256 = MULrrrr_s %3, %3, 0
+    %17:gr256 = SUBxrr_v i256 2, %2, i256 0, implicit-def $flags
+    JC %bb.2, i256 4, implicit $flags
+    J %bb.3
+
+...
