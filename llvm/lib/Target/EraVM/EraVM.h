@@ -118,6 +118,7 @@ FunctionPass *createEraVMSHA3ConstFoldingPass();
 FunctionPass *createEraVMOptimizeSelectPass();
 Pass *createEraVMIndexedMemOpsPreparePass();
 FunctionPass *createEraVMTieSelectOperandsPass();
+FunctionPass *createEraVMReorderIndVarsPass();
 
 void initializeEraVMLowerIntrinsicsPass(PassRegistry &);
 void initializeEraVMAddConditionsPass(PassRegistry &);
@@ -140,6 +141,7 @@ void initializeEraVMSHA3ConstFoldingPass(PassRegistry &);
 void initializeEraVMOptimizeSelectPass(PassRegistry &);
 void initializeEraVMIndexedMemOpsPreparePass(PassRegistry &);
 void initializeEraVMTieSelectOperandsPass(PassRegistry &);
+void initializeEraVMReorderIndVarsPass(PassRegistry &);
 
 struct EraVMLinkRuntimePass : PassInfoMixin<EraVMLinkRuntimePass> {
   EraVMLinkRuntimePass(OptimizationLevel Level) : Level(Level) {}

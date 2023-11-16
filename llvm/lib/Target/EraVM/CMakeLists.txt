@@ -46,6 +46,7 @@ add_llvm_target(EraVMCodeGen
   EraVMOptimizeStdLibCalls.cpp
   EraVMOptimizeSelect.cpp
   EraVMRegisterInfo.cpp
+  EraVMReorderIndVars.cpp
   EraVMSHA3ConstFolding.cpp
   EraVMStackAddressConstantPropagation.cpp
   EraVMSubtarget.cpp

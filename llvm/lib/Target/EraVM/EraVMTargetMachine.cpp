@@ -57,6 +57,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMStackAddressConstantPropagationPass(PR);
   initializeEraVMOptimizeSelectPass(PR);
   initializeEraVMTieSelectOperandsPass(PR);
+  initializeEraVMReorderIndVarsPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -257,6 +258,7 @@ void EraVMPassConfig::addPreRegAlloc() {
     addPass(createEraVMCombineFlagSettingPass());
     // This pass emits indexed loads and stores
     addPass(createEraVMCombineToIndexedMemopsPass());
+    addPass(createEraVMReorderIndVarsPass());
     addPass(&LiveVariablesID);
     addPass(createEraVMTieSelectOperandsPass());
   }
