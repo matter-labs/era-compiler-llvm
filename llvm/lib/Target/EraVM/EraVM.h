@@ -120,6 +120,7 @@ FunctionPass *createEraVMOptimizeSelectPass();
 Pass *createEraVMIndexedMemOpsPreparePass();
 FunctionPass *createEraVMTieSelectOperandsPass();
 FunctionPass *createEraVMHoistFlagSettingPass();
+FunctionPass *createEraVMFoldSelectPass();
 
 void initializeEraVMLowerIntrinsicsPass(PassRegistry &);
 void initializeEraVMAddConditionsPass(PassRegistry &);
@@ -143,6 +144,7 @@ void initializeEraVMOptimizeSelectPass(PassRegistry &);
 void initializeEraVMIndexedMemOpsPreparePass(PassRegistry &);
 void initializeEraVMTieSelectOperandsPass(PassRegistry &);
 void initializeEraVMHoistFlagSettingPass(PassRegistry &);
+void initializeEraVMFoldSelectPass(PassRegistry &);
 
 struct EraVMLinkRuntimePass : PassInfoMixin<EraVMLinkRuntimePass> {
   explicit EraVMLinkRuntimePass(OptimizationLevel Level) : Level(Level) {}
