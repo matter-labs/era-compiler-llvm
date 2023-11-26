@@ -40,6 +40,7 @@ def SDT_EraVMCopyFromPtrReg : SDTypeProfile<1, 1, [SDTCisVT<0, fatptr>]>;
 
 def SDT_EraVMPtrToInt     : SDTypeProfile<1, 1, [SDTCisVT<0, i256>, SDTCisVT<1, fatptr>]>;
 def SDT_EraVMPtrOp        : SDTypeProfile<1, 2, [SDTCisVT<0, fatptr>, SDTCisVT<1, fatptr>, SDTCisVT<2, i256>]>;
+def SDT_EraVMLogDecommit  : SDTypeProfile<1, 2, [SDTCisVT<0, fatptr>, SDTCisVT<1, i256>, SDTCisVT<2, i256>]>;
 
 def SDT_EraVMArith  : SDTypeProfile<1, 2, [SDTCisVT<0, i256>, SDTCisVT<1, i256>, SDTCisVT<2, i256>]>;
 
@@ -91,10 +92,11 @@ def EraVMcopy_from_ptrreg : SDNode<"EraVMISD::COPY_FROM_PTRREG",
                                     SDT_EraVMCopyFromPtrReg,
                                     [SDNPHasChain, SDNPOptInGlue]>;
 
-def EraVMptr_to_int : SDNode<"EraVMISD::PTR_TO_INT", SDT_EraVMPtrToInt, []>;
-def EraVMptr_add    : SDNode<"EraVMISD::PTR_ADD", SDT_EraVMPtrOp, []>;
-def EraVMptr_pack   : SDNode<"EraVMISD::PTR_PACK", SDT_EraVMPtrOp, []>;
-def EraVMptr_shrink : SDNode<"EraVMISD::PTR_SHRINK", SDT_EraVMPtrOp, []>;
+def EraVMptr_to_int   : SDNode<"EraVMISD::PTR_TO_INT", SDT_EraVMPtrToInt, []>;
+def EraVMptr_add      : SDNode<"EraVMISD::PTR_ADD", SDT_EraVMPtrOp, []>;
+def EraVMptr_pack     : SDNode<"EraVMISD::PTR_PACK", SDT_EraVMPtrOp, []>;
+def EraVMptr_shrink   : SDNode<"EraVMISD::PTR_SHRINK", SDT_EraVMPtrOp, []>;
+def EraVMlog_decommit : SDNode<"EraVMISD::LOG_DECOMMIT", SDT_EraVMLogDecommit, [SDNPHasChain]>;
 
 def EraVMTrap : SDNode<"EraVMISD::TRAP", SDTNone,
     [SDNPHasChain, SDNPOptInGlue]>;
@@ -215,6 +217,7 @@ class AddressSpacesImpl {
   int Generic = 3;
   int Code = 4;
   int Storage = 5;
+  int Transient = 6;
 }
 
 def AddrSpaces : AddressSpacesImpl;
@@ -229,8 +232,9 @@ def Address_heapaux       : AddressSpaceList<[ AddrSpaces.HeapAux ]>;
 def Address_generic       : AddressSpaceList<[ AddrSpaces.Generic ]>;
 def Address_code          : AddressSpaceList<[ AddrSpaces.Code ]>;
 def Address_storage       : AddressSpaceList<[ AddrSpaces.Storage ]>;
+def Address_transient     : AddressSpaceList<[ AddrSpaces.Transient ]>;
 
-foreach as = [ "stack", "heap", "heapaux", "generic", "code", "storage" ] in {
+foreach as = [ "stack", "heap", "heapaux", "generic", "code", "storage", "transient" ] in {
 let AddressSpaces = !cast<AddressSpaceList>("Address_"#as).AddrSpaces in {
 def load_#as : PatFrag<(ops node:$ptr), (unindexedload node:$ptr)> {
   let IsLoad = 1;
@@ -1325,17 +1329,30 @@ def SLDrr : ILogR<47, DstReg, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
   let rs1 = 0;
   let Inst{40-43} = rd0;
 }
+
+def TLDrr : ILogR<471, DstReg, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
+                  "tload$cc\t$rs0, $rd0", []> {
+  bits<4> rd0;
+  let rs1 = 0;
+  let Inst{40-43} = rd0;
+}
 //===----------------------------------------------------------------------===//
 // Fat Pointer
 //===----------------------------------------------------------------------===//
 def : Pat<(load_storage GR256:$rs0), (SLDrr GR256:$rs0, 0)>;
+def : Pat<(load_transient GR256:$rs0), (TLDrr GR256:$rs0, 0)>;
 
-let hasSideEffects = 1 in
+let hasSideEffects = 1 in {
   def SSTr : ILogR<48, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
       "sstore$cc\t$rs0, $rs1", []>;
+  def TSTr : ILogR<481, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
+      "tstore$cc\t$rs0, $rs1", []>;
+}
 
 def : Pat<(store_storage GR256:$rs1, GR256:$rs0),
           (SSTr GR256:$rs0, GR256:$rs1, 0)>;
+def : Pat<(store_transient GR256:$rs1, GR256:$rs0),
+          (TSTr GR256:$rs0, GR256:$rs1, 0)>;
 
 let hasSideEffects = 1 in
 def L1r : ILogR<49, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first, cc:$cc),
@@ -1351,14 +1368,21 @@ def EVTr : ILogR<50, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$fir
 def : Pat<(int_eravm_event GR256:$rs0, GR256:$rs1, first_op:$first),
           (EVTr GR256:$rs0, GR256:$rs1, first_op:$first, 0)>;
 
-let hasSideEffects = 1 in
+let hasSideEffects = 1 in {
 def PCOMPr : ILogR<51, DstNone, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
-                 "precompile$cc\t$rs0, $rs1, $rd0", []> {
+                   "precompile$cc\t$rs0, $rs1, $rd0", []> {
   let rs1 = 0;
+}
+def DECOMMITr : ILogR<511, DstNone, (outs GRPTR:$rd0), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
+                      "log.decommit$cc\t$rs0, $rs1, $rd0", []> {
+  let rs1 = 0;
+}
 }
 
 def : Pat<(int_eravm_precompile GR256:$rs0, GR256:$rs1),
           (PCOMPr GR256:$rs0, GR256:$rs1, 0)>;
+def : Pat<(EraVMlog_decommit GR256:$rs0, GR256:$rs1),
+          (DECOMMITr GR256:$rs0, GR256:$rs1, 0)>;
 
 let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Flags],
     Uses = [SP], isCall = 1 in {

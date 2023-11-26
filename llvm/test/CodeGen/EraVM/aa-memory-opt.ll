@@ -237,6 +237,30 @@ define i256 @test_as5_large() {
   ret i256 %ret
 }
 
+define i256 @test_as6_small() {
+; CHECK-LABEL: @test_as6_small(
+; CHECK-NEXT:    store i256 2, ptr addrspace(6) inttoptr (i256 2 to ptr addrspace(6)), align 64
+; CHECK-NEXT:    store i256 1, ptr addrspace(6) inttoptr (i256 1 to ptr addrspace(6)), align 64
+; CHECK-NEXT:    ret i256 2
+;
+  store i256 2, ptr addrspace(6) inttoptr (i256 2 to ptr addrspace(6)), align 64
+  store i256 1, ptr addrspace(6) inttoptr (i256 1 to ptr addrspace(6)), align 64
+  %ret = load i256, ptr addrspace(6) inttoptr (i256 2 to ptr addrspace(6)), align 64
+  ret i256 %ret
+}
+
+define i256 @test_as6_large() {
+; CHECK-LABEL: @test_as6_large(
+; CHECK-NEXT:    store i256 2, ptr addrspace(6) inttoptr (i256 53919893334301279589334030174039261352344891250716429051063678533632 to ptr addrspace(6)), align 4294967296
+; CHECK-NEXT:    store i256 1, ptr addrspace(6) inttoptr (i256 1 to ptr addrspace(6)), align 64
+; CHECK-NEXT:    ret i256 2
+;
+  store i256 2, ptr addrspace(6) inttoptr (i256 53919893334301279589334030174039261352344891250716429051063678533632 to ptr addrspace(6)), align 64
+  store i256 1, ptr addrspace(6) inttoptr (i256 1 to ptr addrspace(6)), align 64
+  %ret = load i256, ptr addrspace(6) inttoptr (i256 53919893334301279589334030174039261352344891250716429051063678533632 to ptr addrspace(6)), align 64
+  ret i256 %ret
+}
+
 declare void @llvm.memcpy.p1.p1.i256(ptr addrspace(1), ptr addrspace(1), i256, i1 immarg)
 declare i256 @llvm.eravm.gasleft()
 declare i256 @llvm.eravm.getu128()
