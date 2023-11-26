@@ -140,7 +140,8 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
       MVT::i256, Custom);
 
   setOperationAction({ISD::INTRINSIC_VOID, ISD::INTRINSIC_WO_CHAIN,
-                      ISD::STACKSAVE, ISD::STACKRESTORE, ISD::TRAP},
+                      ISD::INTRINSIC_W_CHAIN, ISD::STACKSAVE, ISD::STACKRESTORE,
+                      ISD::TRAP},
                      MVT::Other, Custom);
 
   for (MVT VT : {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}) {
@@ -680,6 +681,7 @@ SDValue EraVMTargetLowering::LowerOperation(SDValue Op,
   case ISD::SREM:               return LowerSREM(Op, DAG);
   case ISD::SDIVREM:            return LowerSDIVREM(Op, DAG);
   case ISD::INTRINSIC_VOID:     return LowerINTRINSIC_VOID(Op, DAG);
+  case ISD::INTRINSIC_W_CHAIN:  return LowerINTRINSIC_W_CHAIN(Op, DAG);
   case ISD::INTRINSIC_WO_CHAIN: return LowerINTRINSIC_WO_CHAIN(Op, DAG);
   case ISD::STACKSAVE:          return LowerSTACKSAVE(Op, DAG);
   case ISD::STACKRESTORE:       return LowerSTACKRESTORE(Op, DAG);
@@ -1012,6 +1014,18 @@ SDValue EraVMTargetLowering::LowerSELECT_CC(SDValue Op,
   std::array Ops = {TrueV, FalseV, TargetCC, Cmp};
 
   return DAG.getNode(EraVMISD::SELECT_CC, DL, VTs, Ops);
+}
+
+SDValue EraVMTargetLowering::LowerINTRINSIC_W_CHAIN(SDValue Op,
+                                                    SelectionDAG &DAG) const {
+  unsigned IntrinsicID = cast<ConstantSDNode>(Op.getOperand(1))->getZExtValue();
+  SDLoc DL(Op);
+
+  if (IntrinsicID != Intrinsic::eravm_decommit)
+    return {};
+  return DAG.getNode(EraVMISD::LOG_DECOMMIT, DL,
+                     {Op.getValueType(), MVT::Other},
+                     {Op->getOperand(0), Op.getOperand(2), Op.getOperand(3)});
 }
 
 SDValue EraVMTargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,

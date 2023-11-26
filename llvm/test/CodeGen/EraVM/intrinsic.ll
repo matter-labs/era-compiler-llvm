@@ -118,6 +118,13 @@ define i256 @precompile_rr(i256 %key, i256 %ergs) {
   ret i256 %res
 }
 
+; CHECK-LABEL: decommit_rr
+define i8 addrspace(3)* @decommit_rr(i256 %key, i256 %ergs) {
+; CHECK: log.decommit r1, r2
+  %res = call i8 addrspace(3)* @llvm.eravm.decommit(i256 %key, i256 %ergs)
+  ret i8 addrspace(3)* %res
+}
+
 ; CHECK-LABEL: throw
 define void @throw(i256 %val) {
 ; CHECK: revert
@@ -377,6 +384,7 @@ declare void @llvm.eravm.setpubdataprice(i256)
 declare void @llvm.eravm.tol1(i256, i256, i256)
 declare void @llvm.eravm.event(i256, i256, i256)
 declare i256 @llvm.eravm.precompile(i256, i256)
+declare i8 addrspace(3)* @llvm.eravm.decommit(i256, i256)
 declare void @llvm.eravm.throw(i256)
 declare void @llvm.eravm.return(i256)
 declare void @llvm.eravm.revert(i256)

@@ -85,7 +85,7 @@ AliasResult EraVMAAResult::alias(const MemoryLocation &LocA,
   // Since pointers are in the same address space, handle only cases that are
   // interesting to us.
   if (ASA != EraVMAS::AS_HEAP && ASA != EraVMAS::AS_HEAP_AUX &&
-      ASA != EraVMAS::AS_STORAGE)
+      ASA != EraVMAS::AS_STORAGE && ASA != EraVMAS::AS_TRANSIENT)
     return AAResultBase::alias(LocA, LocB, AAQI, I);
 
   // Don't check unknown memory locations.
@@ -93,7 +93,7 @@ AliasResult EraVMAAResult::alias(const MemoryLocation &LocA,
     return AAResultBase::alias(LocA, LocB, AAQI, I);
 
   // Only 256-bit keys are valid for storage.
-  if (ASA == EraVMAS::AS_STORAGE) {
+  if (ASA == EraVMAS::AS_STORAGE || ASA == EraVMAS::AS_TRANSIENT) {
     constexpr unsigned KeyByteWidth = 32;
     if (LocA.Size != KeyByteWidth || LocB.Size != KeyByteWidth)
       return AAResultBase::alias(LocA, LocB, AAQI, I);
@@ -114,7 +114,7 @@ AliasResult EraVMAAResult::alias(const MemoryLocation &LocA,
   const APInt StartBVal = StartB->zext(MaxBitWidth);
 
   // Keys in storage can't overlap.
-  if (ASA == EraVMAS::AS_STORAGE) {
+  if (ASA == EraVMAS::AS_STORAGE || ASA == EraVMAS::AS_TRANSIENT) {
     if (StartAVal == StartBVal)
       return AliasResult::MustAlias;
     return AliasResult::NoAlias;

@@ -171,8 +171,9 @@ InstructionCost EraVMTTIImpl::getMemoryOpCost(unsigned Opcode, Type *Src,
     if ((AlignmentValue % 32) > 0)
       return TargetTransformInfo::TCC_Basic * 2;
     break;
-    }
-    case EraVMAS::AS_STORAGE:
+  }
+  case EraVMAS::AS_STORAGE:
+  case EraVMAS::AS_TRANSIENT:
     return TargetTransformInfo::TCC_Basic;
   }
   // aligned basic instructions cost 1 cycle
