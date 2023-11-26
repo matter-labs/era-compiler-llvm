@@ -1,0 +1,48 @@
+# RUN: llc -x mir -run-pass=eravm-opt-select-prera -verify-machineinstrs < %s | FileCheck %s
+
+# This file tests that select-with-zero shouldn't be folded with its sole user
+# when the flag register is redefined in between.
+
+--- |
+
+  target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
+  target triple = "eravm"
+
+  define void @stop_by_flag_setting(i256 %0, i256 %1) { ret void }
+
+...
+---
+# CHECK-LABEL: stop_by_flag_setting
+# CHECK-LABEL: bb.0:
+# CHECK: %3:gr256 = SELiir i256 1, i256 0, i256 2, implicit $flags
+name:            stop_by_flag_setting
+alignment:       1
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gr256 }
+  - { id: 1, class: gr256 }
+  - { id: 2, class: gr256 }
+  - { id: 3, class: gr256 }
+  - { id: 4, class: gr256 }
+  - { id: 5, class: gr256 }
+  - { id: 6, class: gr256 }
+liveins:
+  - { reg: '$r1', virtual-reg: '%0' }
+  - { reg: '$r2', virtual-reg: '%1' }
+frameInfo:
+  maxAlignment:    1
+machineFunctionInfo: {}
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+
+    %1:gr256 = COPY killed $r2
+    %0:gr256 = COPY killed $r1
+    dead %2:gr256 = SUBrrr_v %0, %1, i256 0, implicit-def $flags
+    %3:gr256 = SELiir i256 1, i256 0, i256 2, implicit $flags
+    %6 = ANDrrr_v %1, %0, 0, implicit-def $flags
+    %4:gr256 = ADDrrr_s killed %0, killed %1, 0
+    %5:gr256 = ADDrrr_s killed %4, killed %3, 0
+    $r1 = COPY killed %5
+    RET implicit killed $r1
+...
