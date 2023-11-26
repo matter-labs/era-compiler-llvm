@@ -36,6 +36,7 @@ def int_eravm_setpubdataprice: Intrinsic<[], [llvm_i256_ty], [IntrInaccessibleMe
 def int_eravm_event: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], [IntrHasSideEffects]>;
 def int_eravm_tol1: Intrinsic<[], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], [IntrHasSideEffects]>;
 def int_eravm_precompile: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrHasSideEffects]>;
+def int_eravm_decommit: Intrinsic<[LLVMQualPointerType<3>], [llvm_i256_ty, llvm_i256_ty], [IntrHasSideEffects]>;
 
 // Return with error.
 def int_eravm_throw: Intrinsic<[], [llvm_i256_ty], [Throws, IntrNoReturn]>;

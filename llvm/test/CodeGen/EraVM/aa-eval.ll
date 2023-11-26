@@ -50,17 +50,24 @@ define void @test_noalias_fallback(ptr noalias %0, ptr noalias %1) {
 ; CHECK: NoAlias: i256 addrspace(1)* %ptr1, i256 addrspace(5)* %ptr5
 ; CHECK: NoAlias: i256 addrspace(2)* %ptr2, i256 addrspace(5)* %ptr5
 ; CHECK: NoAlias: i256 addrspace(4)* %ptr4, i256 addrspace(5)* %ptr5
+; CHECK: NoAlias: i256* %ptr0, i256 addrspace(6)* %ptr6
+; CHECK: NoAlias: i256 addrspace(1)* %ptr1, i256 addrspace(6)* %ptr6
+; CHECK: NoAlias: i256 addrspace(2)* %ptr2, i256 addrspace(6)* %ptr6
+; CHECK: NoAlias: i256 addrspace(4)* %ptr4, i256 addrspace(6)* %ptr6
+; CHECK: NoAlias: i256 addrspace(5)* %ptr5, i256 addrspace(6)* %ptr6
 define void @test_noalias() {
   %ptr0 = inttoptr i256 32 to ptr
   %ptr1 = inttoptr i256 32 to ptr addrspace(1)
   %ptr2 = inttoptr i256 32 to ptr addrspace(2)
   %ptr4 = inttoptr i256 32 to ptr addrspace(4)
   %ptr5 = inttoptr i256 32 to ptr addrspace(5)
+  %ptr6 = inttoptr i256 32 to ptr addrspace(6)
   store i256 1, ptr %ptr0, align 64
   store i256 1, ptr addrspace(1) %ptr1, align 64
   store i256 1, ptr addrspace(2) %ptr2, align 64
   store i256 1, ptr addrspace(4) %ptr4, align 64
   store i256 1, ptr addrspace(5) %ptr5, align 64
+  store i256 1, ptr addrspace(6) %ptr6, align 64
   ret void
 }
 
@@ -141,5 +148,25 @@ define void @test_as5_mustalias() {
   %ptr2 = inttoptr i256 0 to ptr addrspace(5)
   store i256 2, ptr addrspace(5) %ptr1, align 64
   store i256 1, ptr addrspace(5) %ptr2, align 64
+  ret void
+}
+
+; CHECK-LABEL: Function: test_as6_noalias
+; CHECK: NoAlias: i256 addrspace(6)* %ptr1, i256 addrspace(6)* %ptr2
+define void @test_as6_noalias() {
+  %ptr1 = inttoptr i256 0 to ptr addrspace(6)
+  %ptr2 = inttoptr i256 1 to ptr addrspace(6)
+  store i256 2, ptr addrspace(6) %ptr1, align 64
+  store i256 1, ptr addrspace(6) %ptr2, align 64
+  ret void
+}
+
+; CHECK-LABEL: Function: test_as6_mustalias
+; CHECK: MustAlias: i256 addrspace(6)* %ptr1, i256 addrspace(6)* %ptr2
+define void @test_as6_mustalias() {
+  %ptr1 = inttoptr i256 0 to ptr addrspace(6)
+  %ptr2 = inttoptr i256 0 to ptr addrspace(6)
+  store i256 2, ptr addrspace(6) %ptr1, align 64
+  store i256 1, ptr addrspace(6) %ptr2, align 64
   ret void
 }

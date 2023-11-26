@@ -47,7 +47,8 @@ enum AddressSpaces {
   AS_GENERIC = 3,
   AS_CODE = 4,
   AS_STORAGE = 5,
-  MAX_ADDRESS = AS_STORAGE,
+  AS_TRANSIENT = 6,
+  MAX_ADDRESS = AS_TRANSIENT,
 };
 } // namespace EraVMAS
 
