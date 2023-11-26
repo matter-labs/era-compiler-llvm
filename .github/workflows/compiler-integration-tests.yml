@@ -102,6 +102,8 @@ jobs:
              CodeGen/EraVM/machine-outliner-tail.mir;\
              CodeGen/EraVM/select_fold.mir;\
              CodeGen/EraVM/select_tie.mir;\
+             CodeGen/EraVM/select-zero-bitrot.mir;\
+             CodeGen/EraVM/select-zero-flags.mir;\
              CodeGen/EraVM/hoist-flag-setting.mir"
 
         run: |
