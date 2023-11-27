@@ -27,8 +27,6 @@ class EraVMAAResult : public AAResultBase {
 
 public:
   explicit EraVMAAResult(const DataLayout &DL) : DL(DL) {}
-  EraVMAAResult(EraVMAAResult &&Arg)
-      : AAResultBase(std::move(Arg)), DL(Arg.DL) {}
 
   /// Handle invalidation events from the new pass manager.
   ///
@@ -69,7 +67,7 @@ public:
   const EraVMAAResult &getResult() const { return *Result; }
 
   bool doInitialization(Module &M) override {
-    Result.reset(new EraVMAAResult(M.getDataLayout()));
+    Result = std::make_unique<EraVMAAResult>(M.getDataLayout());
     return false;
   }
 

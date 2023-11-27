@@ -43,7 +43,7 @@ public:
   EraVMMCCodeEmitter(MCContext &ctx, MCInstrInfo const &MCII) {}
 
   unsigned getMachineOpValue(const MCInst &MI, const MCOperand &MO,
-                             const APInt Opcode,
+                             const APInt &Opcode,
                              SmallVectorImpl<MCFixup> &Fixups,
                              const MCSubtargetInfo &STI) const;
 
@@ -57,7 +57,7 @@ void EraVMMCCodeEmitter::encodeInstruction(const MCInst &MI, SmallVectorImpl<cha
                                            const MCSubtargetInfo &STI) const {}
 
 unsigned EraVMMCCodeEmitter::getMachineOpValue(
-    const MCInst &MI, const MCOperand &MO, const APInt Opcode,
+    const MCInst &MI, const MCOperand &MO, const APInt &Opcode,
     SmallVectorImpl<MCFixup> &Fixups, const MCSubtargetInfo &STI) const {
   return 0;
 }

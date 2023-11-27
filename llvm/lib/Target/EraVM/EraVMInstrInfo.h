@@ -168,43 +168,43 @@ inline MachineInstr::const_mop_iterator ccIterator(const MachineInstr &MI) {
 /// Return machine operand range of an ISA operand.
 /// @{
 inline auto in0Range(MachineInstr &MI) {
-  auto It = in0Iterator(MI);
+  auto *It = in0Iterator(MI);
   return make_range(It, It + argumentSize(ArgumentKind::In0, MI));
 }
 inline auto in1Range(MachineInstr &MI) {
-  auto It = in1Iterator(MI);
+  auto *It = in1Iterator(MI);
   return make_range(It, It + argumentSize(ArgumentKind::In1, MI));
 }
 inline auto out0Range(MachineInstr &MI) {
-  auto It = out0Iterator(MI);
+  auto *It = out0Iterator(MI);
   return make_range(It, It + argumentSize(ArgumentKind::Out0, MI));
 }
 inline auto out1Range(MachineInstr &MI) {
-  auto It = out1Iterator(MI);
+  auto *It = out1Iterator(MI);
   return make_range(It, It + argumentSize(ArgumentKind::Out1, MI));
 }
 inline auto ccRange(MachineInstr &MI) {
-  auto It = ccIterator(MI);
+  auto *It = ccIterator(MI);
   return make_range(It, It + argumentSize(ArgumentKind::CC, MI));
 }
 inline auto in0Range(const MachineInstr &MI) {
-  auto It = in0Iterator(MI);
+  const auto *It = in0Iterator(MI);
   return make_range(It, It + argumentSize(ArgumentKind::In0, MI));
 }
 inline auto in1Range(const MachineInstr &MI) {
-  auto It = in1Iterator(MI);
+  const auto *It = in1Iterator(MI);
   return make_range(It, It + argumentSize(ArgumentKind::In1, MI));
 }
 inline auto out0Range(const MachineInstr &MI) {
-  auto It = out0Iterator(MI);
+  const auto *It = out0Iterator(MI);
   return make_range(It, It + argumentSize(ArgumentKind::Out0, MI));
 }
 inline auto out1Range(const MachineInstr &MI) {
-  auto It = out1Iterator(MI);
+  const auto *It = out1Iterator(MI);
   return make_range(It, It + argumentSize(ArgumentKind::Out1, MI));
 }
 inline auto ccRange(const MachineInstr &MI) {
-  auto It = ccIterator(MI);
+  const auto *It = ccIterator(MI);
   return make_range(It, It + argumentSize(ArgumentKind::CC, MI));
 }
 /// @}
@@ -286,9 +286,8 @@ public:
   bool isProfitableToDupForIfCvt(MachineBasicBlock &MBB, unsigned NumInstrs,
                                  BranchProbability Probability) const override;
 
-  virtual bool
-  PredicateInstruction(MachineInstr &MI,
-                       ArrayRef<MachineOperand> Pred) const override;
+  bool PredicateInstruction(MachineInstr &MI,
+                            ArrayRef<MachineOperand> Pred) const override;
 
   // Branch folding goodness
   bool

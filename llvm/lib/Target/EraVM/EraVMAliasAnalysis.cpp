@@ -50,17 +50,17 @@ void EraVMAAWrapperPass::getAnalysisUsage(AnalysisUsage &AU) const {
 
 static std::optional<APInt> getConstStartLoc(const MemoryLocation &Loc,
                                              const DataLayout &DL) {
-  if (auto *CPN = dyn_cast<ConstantPointerNull>(Loc.Ptr))
+  if (const auto *CPN = dyn_cast<ConstantPointerNull>(Loc.Ptr))
     return APInt::getZero(DL.getPointerTypeSizeInBits(CPN->getType()));
 
-  if (auto *CE = dyn_cast<ConstantExpr>(Loc.Ptr)) {
+  if (const auto *CE = dyn_cast<ConstantExpr>(Loc.Ptr)) {
     if (CE->getOpcode() == Instruction::IntToPtr) {
       if (auto *CI = dyn_cast<ConstantInt>(CE->getOperand(0)))
         return CI->getValue();
     }
   }
 
-  if (auto *IntToPtr = dyn_cast<IntToPtrInst>(Loc.Ptr)) {
+  if (const auto *IntToPtr = dyn_cast<IntToPtrInst>(Loc.Ptr)) {
     if (auto *CI = dyn_cast<ConstantInt>(IntToPtr->getOperand(0)))
       return CI->getValue();
   }

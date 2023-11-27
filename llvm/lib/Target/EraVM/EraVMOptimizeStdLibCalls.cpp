@@ -50,11 +50,9 @@ public:
 } // end anonymous namespace
 
 static bool hasUndefOrPoision(CallBase *Call) {
-  for (const auto &Op : Call->operands()) {
-    if (isa<PoisonValue>(Op) || isa<UndefValue>(Op))
-      return true;
-  }
-  return false;
+  return any_of(Call->operands(), [](const Use &Op) {
+    return isa<PoisonValue>(Op) || isa<UndefValue>(Op);
+  });
 }
 
 /// Convert __exp(base, exp) call where 'base' is a power of 2 into
@@ -90,7 +88,7 @@ static bool runEraVMOptimizeStdLibCalls(Function &F,
                                         const TargetLibraryInfo &TLI) {
   bool Changed = false;
   for (auto &I : instructions(F)) {
-    CallInst *Call = dyn_cast<CallInst>(&I);
+    auto *Call = dyn_cast<CallInst>(&I);
     if (!Call)
       continue;
 

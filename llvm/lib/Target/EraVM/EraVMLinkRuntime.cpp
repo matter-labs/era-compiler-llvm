@@ -119,7 +119,7 @@ bool EraVMLinkRuntimeImpl(Module &M, const char *ModuleToLink,
     // added to some stdlib functions based on test results.
     for (auto &F : M) {
       for (auto &I : instructions(F)) {
-        CallInst *Call = dyn_cast<CallInst>(&I);
+        auto *Call = dyn_cast<CallInst>(&I);
         if (!Call)
           continue;
 

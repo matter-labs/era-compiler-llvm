@@ -43,7 +43,7 @@ static bool runImpl(Module &M) {
         F.hasFnAttribute(Attribute::NoInline) || !F.hasOneUse())
       continue;
 
-    CallInst *Call = dyn_cast<CallInst>(*F.user_begin());
+    auto *Call = dyn_cast<CallInst>(*F.user_begin());
 
     // Skip non call instructions, recursive calls, or calls with noinline
     // attribute.

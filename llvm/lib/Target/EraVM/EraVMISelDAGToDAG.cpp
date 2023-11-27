@@ -235,8 +235,8 @@ bool EraVMDAGToDAGISel::SelectMemAddr(SDValue Addr, SDValue &Base,
   if (unsigned Unaligned = AM.Disp % 32) {
     if (AM.Base.Reg.getNode()) {
       auto AddToReg = CurDAG->getTargetConstant(AM.Disp % 32, Loc, MVT::i256);
-      auto AddrNode = CurDAG->getMachineNode(EraVM::ADDirr_s, Loc, MVT::i256,
-                                             AM.Base.Reg, AddToReg, Zero);
+      auto *AddrNode = CurDAG->getMachineNode(EraVM::ADDirr_s, Loc, MVT::i256,
+                                              AM.Base.Reg, AddToReg, Zero);
       AM.Base.Reg = SDValue(AddrNode, 0);
     }
     AM.Disp -= AM.Disp % 32;
