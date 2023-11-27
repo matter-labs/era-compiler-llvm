@@ -58,7 +58,7 @@ public:
     initializeEraVMCombineToIndexedMemopsPass(*PassRegistry::getPassRegistry());
   }
 
-  bool runOnMachineFunction(MachineFunction &Fn) override;
+  bool runOnMachineFunction(MachineFunction &MF) override;
 
   StringRef getPassName() const override {
     return ERAVM_COMBINE_INDEXED_MEMOPS_NAME;
@@ -98,9 +98,9 @@ private:
   /// \precondition MI's opcode must be among PostIncOpcMap keys.
   MachineInstr *replaceWithIndexed(MachineInstr &MI, Register NewOffset);
 
-  const MachineDominatorTree *MDT;
-  const EraVMInstrInfo *TII;
-  MachineRegisterInfo *RegInfo;
+  const MachineDominatorTree *MDT{};
+  const EraVMInstrInfo *TII{};
+  MachineRegisterInfo *RegInfo{};
 };
 
 char EraVMCombineToIndexedMemops::ID = 0;
@@ -132,7 +132,7 @@ EraVMCombineToIndexedMemops::replaceWithIndexed(MachineInstr &MI,
   assert(PostIncOpcMap.count(MI.getOpcode()) && "MI opcode must be in the map");
   MachineBasicBlock &MBB = *MI.getParent();
   auto IncOpcode = PostIncOpcMap.lookup(MI.getOpcode());
-  MachineInstr *Result;
+  MachineInstr *Result{};
   if (MI.mayLoad())
     Result = BuildMI(MBB, MI, MI.getDebugLoc(), TII->get(IncOpcode))
                  .addDef(MI.getOperand(0).getReg())

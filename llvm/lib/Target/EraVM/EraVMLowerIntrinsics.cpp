@@ -45,7 +45,7 @@ public:
 };
 
 void ExpandMemCpyAsLoop(MemCpyInst *Memcpy, const TargetTransformInfo &TTI) {
-  if (ConstantInt *CI = dyn_cast<ConstantInt>(Memcpy->getLength())) {
+  if (auto *CI = dyn_cast<ConstantInt>(Memcpy->getLength())) {
     createEraVMMemCpyLoopKnownSize(
         /* InsertBefore */ Memcpy,
         /* SrcAddr */ Memcpy->getRawSource(),
@@ -82,7 +82,7 @@ bool EraVMLowerIntrinsics::expandMemIntrinsicUses(Function &F) {
   bool Changed = false;
 
   for (auto I = F.user_begin(), E = F.user_end(); I != E;) {
-    Instruction *Inst = cast<Instruction>(*I);
+    auto *Inst = cast<Instruction>(*I);
     ++I;
 
     switch (ID) {

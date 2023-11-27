@@ -46,9 +46,7 @@ public:
     initializeEraVMBytesToCellsPass(*PassRegistry::getPassRegistry());
   }
 
-  const TargetRegisterInfo *TRI;
-
-  bool runOnMachineFunction(MachineFunction &Fn) override;
+  bool runOnMachineFunction(MachineFunction &MF) override;
 
   StringRef getPassName() const override { return ERAVM_BYTES_TO_CELLS_NAME; }
 
@@ -93,8 +91,8 @@ private:
   /// cell-addressing code operands.
   bool convertCodeAccess(MachineInstr &MI);
 
-  const EraVMInstrInfo *TII;
-  MachineRegisterInfo *MRI;
+  const EraVMInstrInfo *TII{};
+  MachineRegisterInfo *MRI{};
 
   DenseMap<Register, Register> BytesToCellsRegs;
 };
@@ -135,8 +133,7 @@ bool EraVMBytesToCells::runOnMachineFunction(MachineFunction &MF) {
   assert(TII && "TargetInstrInfo must be a valid object");
 
   for (auto &BB : MF) {
-    for (auto II = BB.begin(); II != BB.end(); ++II) {
-      MachineInstr &MI = *II;
+    for (auto &MI : BB) {
       Changed |= convertStackAccesses(MI);
       Changed |= convertCodeAccess(MI);
     }

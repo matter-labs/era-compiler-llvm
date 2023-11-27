@@ -13,7 +13,6 @@
 #include "MCTargetDesc/EraVMFixupKinds.h"
 #include "MCTargetDesc/EraVMMCTargetDesc.h"
 
-#include "MCTargetDesc/EraVMMCTargetDesc.h"
 #include "llvm/MC/MCELFObjectWriter.h"
 #include "llvm/MC/MCFixup.h"
 #include "llvm/MC/MCObjectWriter.h"
@@ -25,11 +24,15 @@ using namespace llvm;
 namespace {
 class EraVMELFObjectWriter : public MCELFObjectTargetWriter {
 public:
-  EraVMELFObjectWriter(uint8_t OSABI)
+  explicit EraVMELFObjectWriter(uint8_t OSABI)
       : MCELFObjectTargetWriter(false, OSABI, ELF::EM_NONE,
                                 /*HasRelocationAddend*/ true) {}
 
-  ~EraVMELFObjectWriter() override {}
+  ~EraVMELFObjectWriter() override = default;
+  EraVMELFObjectWriter(const EraVMELFObjectWriter &) = delete;
+  EraVMELFObjectWriter &operator=(EraVMELFObjectWriter &) = delete;
+  EraVMELFObjectWriter(EraVMELFObjectWriter &&) = delete;
+  EraVMELFObjectWriter &&operator=(EraVMELFObjectWriter &&) = delete;
 
 protected:
   unsigned getRelocType(MCContext &Ctx, const MCValue &Target,

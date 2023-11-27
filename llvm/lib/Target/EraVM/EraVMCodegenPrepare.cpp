@@ -13,7 +13,6 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
-#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/Pass.h"
 #include "llvm/Transforms/Scalar.h"
 
@@ -29,7 +28,7 @@ using namespace llvm;
 
 namespace llvm {
 FunctionPass *createEraVMCodegenPrepare();
-void initializeEraVMCodegenPreparePass(PassRegistry &);
+
 } // namespace llvm
 
 namespace {
@@ -78,8 +77,7 @@ bool EraVMCodegenPrepare::runOnFunction(Function &F) {
 
   std::vector<Instruction *> Replaced;
   for (auto &BB : F)
-    for (auto II = BB.begin(); II != BB.end(); ++II) {
-      auto &I = *II;
+    for (auto &I : BB) {
       switch (I.getOpcode()) {
       default:
         break;
@@ -101,9 +99,9 @@ bool EraVMCodegenPrepare::runOnFunction(Function &F) {
             break;
 
           if (P == CmpInst::ICMP_UGT) {
-            auto Val256 =
+            auto *Val256 =
                 Builder.CreateZExt(Builder.getInt(Val), Builder.getIntNTy(256));
-            auto Op256 =
+            auto *Op256 =
                 Builder.CreateZExt(I.getOperand(0), Builder.getIntNTy(256));
             auto *NewCmp = Builder.CreateICmp(P, Op256, Val256);
             if (CmpVal->getValue().isOneValue()) {
@@ -127,29 +125,15 @@ bool EraVMCodegenPrepare::runOnFunction(Function &F) {
           Callee = dyn_cast<Function>(
               cast<BitCastOperator>(Call.getCalledOperand())->getOperand(0));
         if (Callee && Callee->hasName()) {
-          if (Callee->getName() == "__memset_uma_as1" &&
-              isa<ConstantInt>(Call.getOperand(2)) &&
-              (cast<ConstantInt>(Call.getOperand(2))->isZero())) {
-            Changed = true;
-            Replaced.push_back(&I);
-          } else if (Callee->getName() == "__memset_uma_as2" &&
-                     isa<ConstantInt>(Call.getOperand(2)) &&
-                     (cast<ConstantInt>(Call.getOperand(2))->isZero())) {
-            Changed = true;
-            Replaced.push_back(&I);
-          } else if (Callee->getName() == "__small_store_as1" &&
-                     isa<ConstantInt>(Call.getOperand(2)) &&
-                     (cast<ConstantInt>(Call.getOperand(2))->isZero())) {
-            Changed = true;
-            Replaced.push_back(&I);
-          } else if (Callee->getName() == "__small_store_as2" &&
-                     isa<ConstantInt>(Call.getOperand(2)) &&
-                     (cast<ConstantInt>(Call.getOperand(2))->isZero())) {
-            Changed = true;
-            Replaced.push_back(&I);
-          } else if (Callee->getName() == "__small_store_as0" &&
-                     isa<ConstantInt>(Call.getOperand(1)) &&
-                     (cast<ConstantInt>(Call.getOperand(1))->isZero())) {
+          auto IsOpNZeroConst = [&Call](unsigned N) {
+            return isa<ConstantInt>(Call.getOperand(N)) &&
+                   cast<ConstantInt>(Call.getOperand(N))->isZero();
+          };
+          if ((Callee->getName() == "__memset_uma_as1" && IsOpNZeroConst(2)) ||
+              (Callee->getName() == "__memset_uma_as2" && IsOpNZeroConst(2)) ||
+              (Callee->getName() == "__small_store_as1" && IsOpNZeroConst(2)) ||
+              (Callee->getName() == "__small_store_as2" && IsOpNZeroConst(2)) ||
+              (Callee->getName() == "__small_store_as0" && IsOpNZeroConst(1))) {
             Changed = true;
             Replaced.push_back(&I);
           }
@@ -169,16 +153,13 @@ bool EraVMCodegenPrepare::runOnFunction(Function &F) {
 }
 
 static bool isUnsignedArithmeticOverflowInstruction(Instruction &I) {
-  auto Call = dyn_cast<CallInst>(&I);
+  auto *Call = dyn_cast<CallInst>(&I);
   if (!Call)
     return false;
   Intrinsic::ID IntID = Call->getIntrinsicID();
-  if (IntID != Intrinsic::uadd_with_overflow &&
-      IntID != Intrinsic::usub_with_overflow &&
-      IntID != Intrinsic::umul_with_overflow) {
-    return false;
-  }
-  return true;
+  return IntID == Intrinsic::uadd_with_overflow ||
+         IntID == Intrinsic::usub_with_overflow ||
+         IntID == Intrinsic::umul_with_overflow;
 }
 
 bool EraVMCodegenPrepare::rearrangeOverflowHandlingBranches(Function &F) {
@@ -187,7 +168,7 @@ bool EraVMCodegenPrepare::rearrangeOverflowHandlingBranches(Function &F) {
   auto BBI = F.begin();
   auto BBE = F.end();
   while (BBI != BBE) {
-    auto BB = &*BBI;
+    auto *BB = &*BBI;
     BBI = std::next(BBI);
     for (auto &I : *BB) {
       if (!isUnsignedArithmeticOverflowInstruction(I))
@@ -201,12 +182,12 @@ bool EraVMCodegenPrepare::rearrangeOverflowHandlingBranches(Function &F) {
       // %7 = extractvalue { i32, i1 } %5, 1
       // br i1 %7, label %8, label %10
 
-      auto Call = dyn_cast<CallInst>(&I);
+      auto *Call = dyn_cast<CallInst>(&I);
       for (User *U : Call->users()) {
 
         // check extractvalue: there must be at least one use which is
         // extractvalue and index 1
-        ExtractValueInst *ExtractValue = dyn_cast<ExtractValueInst>(U);
+        auto *ExtractValue = dyn_cast<ExtractValueInst>(U);
         if (!ExtractValue ||
             (!ExtractValue->hasIndices() || ExtractValue->getIndices()[0] != 1))
           continue;
@@ -216,17 +197,15 @@ bool EraVMCodegenPrepare::rearrangeOverflowHandlingBranches(Function &F) {
         auto it = std::find_if(
             ExtractValue->user_begin(), ExtractValue->user_end(), [&](User *U) {
               auto *IteratingBranch = dyn_cast<BranchInst>(U);
-              if (IteratingBranch && IteratingBranch->getParent() == BB &&
-                  IteratingBranch->isConditional())
-                return true;
-              return false;
+              return IteratingBranch && IteratingBranch->getParent() == BB &&
+                     IteratingBranch->isConditional();
             });
         if (it == ExtractValue->user_end())
           continue;
 
         // we have found a use which is conditional branch that uses the
         // result of extractvalue.
-        BranchInst *Branch = cast<BranchInst>(*it);
+        auto *Branch = cast<BranchInst>(*it);
         BasicBlock *TBB = Branch->getSuccessor(0);
         BasicBlock *FBB = Branch->getSuccessor(1);
 

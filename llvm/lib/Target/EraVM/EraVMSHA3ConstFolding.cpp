@@ -206,8 +206,10 @@ class FoldingState {
 
 public:
   FoldingState(const FoldingState &) = delete;
-
   FoldingState &operator=(const FoldingState &) = delete;
+  FoldingState(FoldingState &&) = delete;
+  FoldingState &&operator=(FoldingState &&) = delete;
+  ~FoldingState() = default;
 
   FoldingState(Function &F, AliasAnalysis &AA, AssumptionCache &AC,
                MemorySSA &MSSA, DominatorTree &DT, const TargetLibraryInfo &TLI,
@@ -303,7 +305,7 @@ private:
 static uint64_t getPointerSize(const Value *V, const DataLayout &DL,
                                const TargetLibraryInfo &TLI,
                                const Function *F) {
-  uint64_t Size;
+  uint64_t Size = 0;
   ObjectSizeOpts Opts;
   Opts.NullIsUnknownSize = NullPointerIsDefined(F);
 
@@ -313,7 +315,7 @@ static uint64_t getPointerSize(const Value *V, const DataLayout &DL,
 }
 
 bool FoldingState::isLibFuncCall(const Instruction *I, LibFunc F) const {
-  const CallInst *Call = dyn_cast<CallInst>(I);
+  const auto *Call = dyn_cast<CallInst>(I);
   if (!Call)
     return false;
 
@@ -323,10 +325,7 @@ bool FoldingState::isLibFuncCall(const Instruction *I, LibFunc F) const {
 
   LibFunc Func = NotLibFunc;
   const StringRef Name = Callee->getName();
-  if (!TLI.getLibFunc(Name, Func) || !TLI.has(Func) || Func != F)
-    return false;
-
-  return true;
+  return TLI.getLibFunc(Name, Func) && TLI.has(Func) && Func == F;
 }
 
 FoldingState::FoldingState(Function &F, AliasAnalysis &AA, AssumptionCache &AC,
@@ -437,11 +436,11 @@ bool FoldingState::isGuaranteedLoopIndependent(
 
 bool FoldingState::isGuaranteedLoopInvariant(const Value *Ptr) const {
   Ptr = Ptr->stripPointerCasts();
-  if (auto *GEP = dyn_cast<GEPOperator>(Ptr))
+  if (const auto *GEP = dyn_cast<GEPOperator>(Ptr))
     if (GEP->hasAllConstantIndices())
       Ptr = GEP->getPointerOperand()->stripPointerCasts();
 
-  if (auto *I = dyn_cast<Instruction>(Ptr))
+  if (const auto *I = dyn_cast<Instruction>(Ptr))
     return I->getParent()->isEntryBlock();
 
   return true;
@@ -459,7 +458,7 @@ FoldingState::tryToCastPtrToInt(const Value *Ptr) const {
   if (isa<ConstantPointerNull>(Ptr))
     return UINT64_C(0);
 
-  if (auto *CE = dyn_cast<ConstantExpr>(Ptr)) {
+  if (const auto *CE = dyn_cast<ConstantExpr>(Ptr)) {
     if (CE->getOpcode() == Instruction::IntToPtr) {
       if (auto *CI = dyn_cast<ConstantInt>(CE->getOperand(0))) {
         // Give up in case of a huge offsset, as this shouldn't happen
@@ -469,7 +468,7 @@ FoldingState::tryToCastPtrToInt(const Value *Ptr) const {
     }
   }
 
-  if (auto *IntToPtr = dyn_cast<IntToPtrInst>(Ptr)) {
+  if (const auto *IntToPtr = dyn_cast<IntToPtrInst>(Ptr)) {
     if (auto *CI = dyn_cast<ConstantInt>(IntToPtr->getOperand(0))) {
       return getNullOrInt(CI->getValue());
     }
@@ -642,7 +641,7 @@ Value *FoldingState::runFolding(const CallInst *Call,
     if (shouldSkipClobber(MemInstr))
       continue;
 
-    const StoreInst *SI = dyn_cast<StoreInst>(MemInstr);
+    const auto *SI = dyn_cast<StoreInst>(MemInstr);
     if (!SI) {
       LLVM_DEBUG(dbgs() << "\tunknown clobber: " << *MemInstr << '\n');
       return nullptr;

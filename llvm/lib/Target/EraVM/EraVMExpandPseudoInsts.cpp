@@ -35,15 +35,13 @@ public:
     initializeEraVMExpandPseudoPass(*PassRegistry::getPassRegistry());
   }
 
-  const TargetRegisterInfo *TRI;
-
-  bool runOnMachineFunction(MachineFunction &Fn) override;
+  bool runOnMachineFunction(MachineFunction &MF) override;
 
   StringRef getPassName() const override { return ERAVM_EXPAND_PSEUDO_NAME; }
 
 private:
-  const TargetInstrInfo *TII;
-  LLVMContext *Context;
+  const TargetInstrInfo *TII{};
+  LLVMContext *Context{};
 };
 
 char EraVMExpandPseudo::ID = 0;
@@ -82,7 +80,7 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
         // local frame with unwind path of `DEFAULT_UNWIND`, which will turn
         // our prepared THROW into a PANIC. This will cause values in registers
         // not propagated back to upper level, causing lost of returndata
-        auto *func_opnd = MI.getOperand(1).getGlobal();
+        const auto *func_opnd = MI.getOperand(1).getGlobal();
         auto func_name = func_opnd->getName();
         if (func_name == "__cxa_throw") {
           BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),

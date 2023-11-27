@@ -31,13 +31,13 @@ using namespace llvm;
 #include "EraVMGenSubtargetInfo.inc"
 
 static MCInstrInfo *createEraVMMCInstrInfo() {
-  MCInstrInfo *X = new MCInstrInfo();
+  auto *X = new MCInstrInfo();
   InitEraVMMCInstrInfo(X);
   return X;
 }
 
 static MCRegisterInfo *createEraVMMCRegisterInfo(const Triple &TT) {
-  MCRegisterInfo *X = new MCRegisterInfo();
+  auto *X = new MCRegisterInfo();
   InitEraVMMCRegisterInfo(X, EraVM::PC);
   return X;
 }
@@ -60,7 +60,7 @@ createEraVMMCSubtargetInfo(const Triple &TT, StringRef CPU, StringRef FS) {
 static MCAsmInfo *createARMMCAsmInfo(const MCRegisterInfo &MRI,
                                      const Triple &TheTriple,
                                      const MCTargetOptions &Options) {
-  MCAsmInfo *MAI;
+  MCAsmInfo *MAI{};
   MAI = new EraVMMCAsmInfo(TheTriple);
   return MAI;
 }

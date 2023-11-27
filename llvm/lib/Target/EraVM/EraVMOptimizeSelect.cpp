@@ -37,7 +37,7 @@ public:
   EraVMOptimizeSelect() : MachineFunctionPass(ID) {
     initializeEraVMOptimizeSelectPass(*PassRegistry::getPassRegistry());
   }
-  bool runOnMachineFunction(MachineFunction &Fn) override;
+  bool runOnMachineFunction(MachineFunction &MF) override;
   StringRef getPassName() const override { return SYNCVM_OPT_SELECT_NAME; }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
@@ -78,8 +78,8 @@ private:
   std::optional<MachineInstr *>
   findFoldingCandidateInstr(MachineInstr *MI, MCRegister UseReg,
                             MCRegister DefReg) const;
-  const EraVMInstrInfo *TII;
-  ReachingDefAnalysis *RDA;
+  const EraVMInstrInfo *TII{};
+  ReachingDefAnalysis *RDA{};
 };
 
 char EraVMOptimizeSelect::ID = 0;
@@ -169,9 +169,7 @@ std::optional<MachineInstr *> EraVMOptimizeSelect::findFoldingCandidateInstr(
                        if (!Opnd.isReg())
                          return false;
                        const Register OpndReg = Opnd.getReg();
-                       if (OpndReg == ConditionalDefReg || OpndReg == UseReg)
-                         return true;
-                       return false;
+                       return OpndReg == ConditionalDefReg || OpndReg == UseReg;
                      }))
       return {};
   }
@@ -221,7 +219,7 @@ bool EraVMOptimizeSelect::runOnMachineFunction(MachineFunction &MF) {
   for (MachineBasicBlock &MBB : MF)
     for (MachineInstr &MI : MBB)
       if (MachineInstr *FoldInst = getFoldingInst(MI))
-        Deleted.push_back({&MI, FoldInst});
+        Deleted.emplace_back(&MI, FoldInst);
 
   // Do the following:
   // 1. Move the CMov condition code to FoldInst.

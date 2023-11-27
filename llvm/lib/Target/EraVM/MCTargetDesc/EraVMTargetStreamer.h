@@ -10,16 +10,20 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIB_TARGET_ERAVM_MCTARGET_STREAMER_H
-#define LLVM_LIB_TARGET_ERAVM_MCTARGET_STREAMER_H
+#ifndef LLVM_LIB_TARGET_ERAVM_MCTARGETDESC_ERAVMTARGETSTREAMER_H
+#define LLVM_LIB_TARGET_ERAVM_MCTARGETDESC_ERAVMTARGETSTREAMER_H
 #include "llvm/MC/MCStreamer.h"
 
 namespace llvm {
 
 class EraVMTargetStreamer : public MCTargetStreamer {
 public:
-  EraVMTargetStreamer(MCStreamer &S);
+  explicit EraVMTargetStreamer(MCStreamer &S);
   ~EraVMTargetStreamer() override;
+  EraVMTargetStreamer(const EraVMTargetStreamer &) = delete;
+  EraVMTargetStreamer &operator=(EraVMTargetStreamer &) = delete;
+  EraVMTargetStreamer(EraVMTargetStreamer &&) = delete;
+  EraVMTargetStreamer &&operator=(EraVMTargetStreamer &&) = delete;
   virtual void emitGlobalConst(APInt Value);
 
 private:

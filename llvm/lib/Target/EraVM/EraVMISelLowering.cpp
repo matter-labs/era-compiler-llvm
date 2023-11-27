@@ -197,11 +197,8 @@ bool EraVMTargetLowering::CanLowerReturn(
   SmallVector<CCValAssign, 1> RVLocs;
   CCState CCInfo(CallConv, IsVarArg, MF, RVLocs, Context);
 
-  // cannot support return convention or is variadic?
-  if (!CCInfo.CheckReturn(Outs, RetCC_ERAVM))
-    return false;
-
-  return true;
+  // Cannot support return convention or is variadic?
+  return CCInfo.CheckReturn(Outs, RetCC_ERAVM);
 }
 
 SDValue
@@ -295,8 +292,8 @@ SDValue EraVMTargetLowering::LowerFormalArguments(
   unsigned InIdx = 0;
   for (CCValAssign &VA : ArgLocs) {
     if (VA.isRegLoc()) {
-      auto *RC = VA.getValVT() == MVT::fatptr ? &EraVM::GRPTRRegClass
-                                              : &EraVM::GR256RegClass;
+      const auto *RC = VA.getValVT() == MVT::fatptr ? &EraVM::GRPTRRegClass
+                                                    : &EraVM::GR256RegClass;
       Register VReg = RegInfo.createVirtualRegister(RC);
       RegInfo.addLiveIn(VA.getLocReg(), VReg);
       SDValue ArgValue = DAG.getCopyFromReg(Chain, DL, VReg, VA.getLocVT());
@@ -340,7 +337,7 @@ SDValue EraVMTargetLowering::LowerFormalArguments(
 /// If Callee is a farcall "intrinsic" return corresponding opcode.
 /// Return 0 otherwise.
 static uint64_t farcallOpcode(SDValue Callee) {
-  auto GA = dyn_cast<GlobalAddressSDNode>(Callee.getNode());
+  auto *GA = dyn_cast<GlobalAddressSDNode>(Callee.getNode());
   if (!GA)
     return 0;
   return StringSwitch<uint64_t>(GA->getGlobal()->getName())
@@ -496,9 +493,9 @@ SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   // If the callee is a GlobalAddress node (quite common, every direct call is)
   // turn it into a TargetGlobalAddress node so that legalize doesn't hack it.
   // Likewise ExternalSymbol -> TargetExternalSymbol.
-  if (GlobalAddressSDNode *G = dyn_cast<GlobalAddressSDNode>(Callee)) {
+  if (auto *G = dyn_cast<GlobalAddressSDNode>(Callee)) {
     Callee = wrapGlobalAddress(Callee, DAG, DL);
-  } else if (ExternalSymbolSDNode *E = dyn_cast<ExternalSymbolSDNode>(Callee)) {
+  } else if (auto *E = dyn_cast<ExternalSymbolSDNode>(Callee)) {
     Callee = wrapExternalSymbol(Callee, DAG, DL);
   }
 
@@ -538,7 +535,7 @@ SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   if (InFlag.getNode())
     Ops.push_back(InFlag);
 
-  if (auto *Invoke = dyn_cast_or_null<InvokeInst>(CLI.CB)) {
+  if (const auto *Invoke = dyn_cast_or_null<InvokeInst>(CLI.CB)) {
     Chain = DAG.getNode(EraVMISD::INVOKE, DL, NodeTys, Ops);
   } else {
     Chain = DAG.getNode(EraVMISD::CALL, DL, NodeTys, Ops);
@@ -559,13 +556,13 @@ SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   InFlag = SDValue();
   DenseMap<unsigned, SDValue> CopiedRegs;
   // Copy all of the result registers out of their specified physreg.
-  for (unsigned i = 0; i != RVLocs.size(); ++i) {
+  for (auto RVLoc : RVLocs) {
     // Avoid copying a physreg twice since RegAllocFast is incompetent and only
     // allows one use of a physreg per block.
-    SDValue Val = CopiedRegs.lookup(RVLocs[i].getLocReg());
+    SDValue Val = CopiedRegs.lookup(RVLoc.getLocReg());
     if (!Val) {
-      Val = DAG.getCopyFromReg(Chain, DL, RVLocs[i].getLocReg(),
-                               RVLocs[i].getValVT(), InFlag);
+      Val = DAG.getCopyFromReg(Chain, DL, RVLoc.getLocReg(), RVLoc.getValVT(),
+                               InFlag);
       Chain = Val.getValue(1);
       InFlag = Val.getValue(2);
       // if the return type is of integer type, and the size is smaller than
@@ -579,7 +576,7 @@ SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
                             DAG.getValueType(int_type));
         }
       }
-      CopiedRegs[RVLocs[i].getLocReg()] = Val;
+      CopiedRegs[RVLoc.getLocReg()] = Val;
     }
     InVals.push_back(Val);
   }
@@ -721,7 +718,7 @@ SDValue EraVMTargetLowering::LowerZERO_EXTEND(SDValue Op,
 
 SDValue EraVMTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
   SDLoc DL(Op);
-  StoreSDNode *Store = cast<StoreSDNode>(Op);
+  auto *Store = cast<StoreSDNode>(Op);
 
   SDValue BasePtr = Store->getBasePtr();
   SDValue Chain = Store->getChain();
@@ -774,7 +771,7 @@ SDValue EraVMTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
 
 SDValue EraVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   SDLoc DL(Op);
-  LoadSDNode *Load = cast<LoadSDNode>(Op);
+  auto *Load = cast<LoadSDNode>(Op);
 
   SDValue BasePtr = Load->getBasePtr();
   SDValue Chain = Load->getChain();
@@ -798,26 +795,27 @@ SDValue EraVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
                             DAG.getConstant(SRLValue, DL, MVT::i256));
   SDValue TRUNCATE = DAG.getNode(ISD::TRUNCATE, DL, OpVT, SHR);
 
-  SDValue Ops[] = {TRUNCATE, Op.getValue(1)};
+  std::array Ops = {TRUNCATE, Op.getValue(1)};
   return DAG.getMergeValues(Ops, DL);
 }
 
 SDValue EraVMTargetLowering::LowerSRA(SDValue Op, SelectionDAG &DAG) const {
   auto DL = SDLoc(Op);
-  auto LHS = Op.getOperand(0);
-  auto RHS = Op.getOperand(1);
+  auto Val = Op.getOperand(0);
+  auto Shift = Op.getOperand(1);
   auto Zero = DAG.getConstant(0, DL, MVT::i256);
   auto One = DAG.getConstant(APInt(256, -1, true), DL, MVT::i256);
   auto Mask = DAG.getConstant(APInt(256, 1, false).shl(255), DL, MVT::i256);
-  auto Sign = DAG.getNode(ISD::AND, DL, MVT::i256, LHS, Mask);
+  auto Sign = DAG.getNode(ISD::AND, DL, MVT::i256, Val, Mask);
   auto Init = DAG.getSelectCC(DL, Sign, Mask, One, Zero, ISD::SETEQ);
   Mask = DAG.getNode(
       ISD::SHL, DL, MVT::i256, Init,
       DAG.getNode(ISD::SUB, DL, MVT::i256,
-                  DAG.getConstant(APInt(256, 256, false), DL, MVT::i256), RHS));
-  auto Value = DAG.getNode(ISD::SRL, DL, MVT::i256, LHS, RHS);
+                  DAG.getConstant(APInt(256, 256, false), DL, MVT::i256),
+                  Shift));
+  auto Value = DAG.getNode(ISD::SRL, DL, MVT::i256, Val, Shift);
   auto Shifted = DAG.getNode(ISD::OR, DL, MVT::i256, Value, Mask);
-  return DAG.getSelectCC(DL, RHS, Zero, LHS, Shifted, ISD::SETEQ);
+  return DAG.getSelectCC(DL, Shift, Zero, Val, Shifted, ISD::SETEQ);
 }
 
 struct SignedDivisionLowerResult {
@@ -1052,7 +1050,7 @@ SDValue EraVMTargetLowering::LowerSELECT_CC(SDValue Op,
   SDValue Cmp = DAG.getNode(EraVMISD::CMP, DL, MVT::Glue, LHS, RHS);
 
   SDVTList VTs = DAG.getVTList(Op.getValueType(), MVT::Glue);
-  SDValue Ops[] = {TrueV, FalseV, TargetCC, Cmp};
+  std::array Ops = {TrueV, FalseV, TargetCC, Cmp};
 
   return DAG.getNode(EraVMISD::SELECT_CC, DL, VTs, Ops);
 }
@@ -1142,7 +1140,7 @@ SDValue EraVMTargetLowering::LowerBSWAP(SDValue BSWAP,
 
   assert(VT == MVT::i256 && "Unexpected type for bswap");
 
-  SDValue Tmp[33];
+  std::array<SDValue, 33> Tmp;
 
   for (int i = 32; i >= 17; i--) {
     Tmp[i] = DAG.getNode(ISD::SHL, dl, VT, Op,

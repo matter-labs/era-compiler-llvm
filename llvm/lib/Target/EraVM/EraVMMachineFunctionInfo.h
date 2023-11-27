@@ -49,8 +49,7 @@ class EraVMMachineFunctionInfo : public MachineFunctionInfo {
 public:
   EraVMMachineFunctionInfo() = default;
 
-  explicit EraVMMachineFunctionInfo(MachineFunction &MF)
-    : CalleeSavedFrameSize(0), ReturnAddrIndex(0), SRetReturnReg(0) {}
+  explicit EraVMMachineFunctionInfo(MachineFunction &MF) {};
 
   unsigned getCalleeSavedFrameSize() const { return CalleeSavedFrameSize; }
   void setCalleeSavedFrameSize(unsigned bytes) { CalleeSavedFrameSize = bytes; }
@@ -74,6 +73,6 @@ public:
   void setIsTailCall(bool IsTC) { IsTailCall = IsTC; }
 };
 
-} // End llvm namespace
+} // namespace llvm
 
 #endif

@@ -68,14 +68,14 @@ public:
     initializeEraVMCombineFlagSettingPass(*PassRegistry::getPassRegistry());
   }
 
-  bool runOnMachineFunction(MachineFunction &Fn) override;
+  bool runOnMachineFunction(MachineFunction &MF) override;
 
   StringRef getPassName() const override {
     return ERAVM_COMBINE_FLAG_SETTING_NAME;
   }
 
 private:
-  const EraVMInstrInfo *TII;
+  const EraVMInstrInfo *TII{};
   /// Check whether there is any flag definition or usage in (Start, End).
   /// \p Start is a instuction that define Flags, so it's ok for it to use
   /// Flags, thus it's excluded from the check.
@@ -208,7 +208,7 @@ bool EraVMCombineFlagSetting::runOnMachineFunction(MachineFunction &MF) {
       LLVM_DEBUG(dbgs() << "== Into:"; DefMI->dump(););
     }
 
-  for (auto MI : ToRemove)
+  for (auto *MI : ToRemove)
     MI->eraseFromParent();
 
   return !ToRemove.empty();

@@ -34,8 +34,8 @@ EraVMRegisterInfo::EraVMRegisterInfo() : EraVMGenRegisterInfo(0) {}
 
 const MCPhysReg *
 EraVMRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
-  static const MCPhysReg CalleeSavedRegs[] = {0};
-  return CalleeSavedRegs;
+  static const std::array<MCPhysReg, 1> CalleeSavedRegs = {0};
+  return CalleeSavedRegs.data();
 }
 
 BitVector EraVMRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
@@ -83,7 +83,7 @@ void EraVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
         .add(MI.getOperand(FIOperandNum + 1))
         .addImm(EraVMCC::COND_NONE);
     assert(Offset < 0 && "On EraVM, offset cannot be positive");
-    auto Sub = BuildMI(MBB, II, DL, TII.get(EraVM::SUBxrr_s))
+    auto *Sub = BuildMI(MBB, II, DL, TII.get(EraVM::SUBxrr_s))
                    .addDef(MI.getOperand(0).getReg())
                    .addImm(-Offset / 32)
                    .addReg(MI.getOperand(0).getReg(), RegState::Kill)
@@ -97,7 +97,7 @@ void EraVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   }
 
   if (MI.getOpcode() == EraVM::ADDframe) {
-    auto SPInst = BuildMI(MBB, II, DL, TII.get(EraVM::CTXr_se))
+    auto *SPInst = BuildMI(MBB, II, DL, TII.get(EraVM::CTXr_se))
                       .addDef(MI.getOperand(0).getReg())
                       .addImm(EraVMCTX::SP)
                       .addImm(EraVMCC::COND_NONE)

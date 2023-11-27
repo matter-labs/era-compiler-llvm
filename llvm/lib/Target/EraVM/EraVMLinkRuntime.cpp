@@ -42,7 +42,7 @@ using namespace llvm;
 
 namespace llvm {
 ModulePass *createEraVMLinkRuntimePass();
-void initializeEraVMLinkRuntimePass(PassRegistry &);
+
 } // namespace llvm
 
 static ExitOnError ExitOnErr;
@@ -53,7 +53,7 @@ namespace {
 struct EraVMLinkRuntime : public ModulePass {
 public:
   static char ID;
-  EraVMLinkRuntime(bool IsRuntimeLinkage = false)
+  explicit EraVMLinkRuntime(bool IsRuntimeLinkage = false)
       : ModulePass(ID), IsRuntimeLinkage(IsRuntimeLinkage) {}
   bool runOnModule(Module &M) override;
 
@@ -119,7 +119,7 @@ bool EraVMLinkRuntimeImpl(Module &M, const char *ModuleToLink,
     // added to some stdlib functions based on test results.
     for (auto &F : M) {
       for (auto &I : instructions(F)) {
-        CallInst *Call = dyn_cast<CallInst>(&I);
+        auto *Call = dyn_cast<CallInst>(&I);
         if (!Call)
           continue;
 
