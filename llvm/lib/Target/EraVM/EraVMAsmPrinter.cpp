@@ -198,9 +198,8 @@ void EraVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
     return;
   }
 
-  if (const auto *CE = dyn_cast<ConstantExpr>(CV)) {
+  if (const auto *CE = dyn_cast<ConstantExpr>(CV))
     return;
-  }
 
   if (const auto *CI = dyn_cast<ConstantInt>(CV)) {
     Streamer->emitGlobalConst(CI->getValue());

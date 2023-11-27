@@ -48,7 +48,7 @@ public:
     initializeEraVMCombineAddressingModePass(*PassRegistry::getPassRegistry());
   }
 
-  bool runOnMachineFunction(MachineFunction &Fn) override;
+  bool runOnMachineFunction(MachineFunction &MF) override;
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.setPreservesCFG();
@@ -62,9 +62,9 @@ public:
   }
 
 private:
-  const EraVMInstrInfo *TII;
-  ReachingDefAnalysis *RDA;
-  const MachineDominatorTree *MDT;
+  const EraVMInstrInfo *TII{};
+  ReachingDefAnalysis *RDA{};
+  const MachineDominatorTree *MDT{};
   /// Replace in0 or in1 of \p Base with \p NewArg.
   /// For in1 swap operands as stack addressing mode is only supported for in0,
   /// and if the instruction is not commutable replace the opcode by reversing
@@ -161,7 +161,7 @@ void EraVMCombineAddressingMode::mergeSelect(
     iterator_range<MachineInstr::const_mop_iterator> In) {
   // TODO: CPR-1131 Allow to merge twice.
   assert(TII->isSel(Base) && "Expected Select instruction");
-  auto In0It = EraVM::in0Iterator(Base);
+  auto *In0It = EraVM::in0Iterator(Base);
   bool IsIn0 =
       In0It->isReg() && In0It->getReg() == EraVM::out0Iterator(Def)->getReg();
   DenseMap<unsigned, unsigned> In0Map = {
@@ -359,13 +359,13 @@ bool EraVMCombineAddressingMode::combineReloadUse(MachineFunction &MF) {
           }))
         continue;
       UsesToUpdate.insert(Uses.begin(), Uses.end());
-      Deleted.push_back({&MI, Uses});
+      Deleted.emplace_back(&MI, Uses);
     }
   }
 
   // 2. Combine.
   for (auto [Reload, Uses] : Deleted) {
-    for (auto Use : Uses) {
+    for (auto *Use : Uses) {
       if (EraVM::isSelect(*Use)) {
         mergeSelect(*Use, *Reload, EraVM::in0Range(*Reload));
       } else {
@@ -416,7 +416,7 @@ bool EraVMCombineAddressingMode::combineDefSpill(MachineFunction &MF) {
       RDA->getGlobalReachingDefs(&MI, Spilled, ReachingDefs);
       // TODO: CPR-1225 While the transformation is local, multiple reaching def
       // is unexpected.
-      if (ReachingDefs.size() != 1u)
+      if (ReachingDefs.size() != 1U)
         continue;
       SmallPtrSet<MachineInstr *, 4> DefUses;
       MachineInstr *DefMI = *ReachingDefs.begin();
@@ -439,7 +439,7 @@ bool EraVMCombineAddressingMode::combineDefSpill(MachineFunction &MF) {
       assert(find(DefUses, &MI) != DefUses.end() &&
              "The spill is expected to be among uses");
 
-      Deleted.push_back({DefMI, &MI, DefUses});
+      Deleted.emplace_back(DefMI, &MI, DefUses);
       UsesToUpdate.insert(DefUses.begin(), DefUses.end());
       UsesToUpdate.insert(DefMI);
     }
@@ -452,7 +452,7 @@ bool EraVMCombineAddressingMode::combineDefSpill(MachineFunction &MF) {
     int NewOpcode = EraVM::getWithSROutAddrMode(Def->getOpcode());
     assert(NewOpcode != -1);
     MachineInstrBuilder NewMI;
-    if (Def->getNumExplicitDefs() == 2u)
+    if (Def->getNumExplicitDefs() == 2U)
       NewMI = BuildMI(*Def->getParent(), *Def, Def->getDebugLoc(),
                       TII->get(NewOpcode), EraVM::out1Iterator(*Def)->getReg());
     else

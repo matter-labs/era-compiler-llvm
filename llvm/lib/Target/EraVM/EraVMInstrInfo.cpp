@@ -381,7 +381,7 @@ unsigned EraVMInstrInfo::insertBranch(
     ArrayRef<MachineOperand> Cond, const DebugLoc &DL, int *BytesAdded) const {
   // Shouldn't be a fall through.
   assert(TBB && "insertBranch must not be told to insert a fallthrough");
-  assert((Cond.size() <= 1) && "EraVM branch conditions have one component!");
+  assert(Cond.size() <= 1 && "EraVM branch conditions have one component!");
   assert(!BytesAdded && "code size not handled");
 
   if (Cond.empty()) {
@@ -654,7 +654,7 @@ static void fixupStackAccessOffsetPostOutline(MachineBasicBlock::iterator Start,
     if (EraVM::classifyStackAccess(It) != EraVM::StackAccess::Relative)
       return;
 
-    auto DispIt = It + 2;
+    auto *DispIt = It + 2;
     assert(DispIt->isImm() && "Displacement is not immediate.");
     DispIt->setImm(DispIt->getImm() + FixupOffset);
   };
@@ -830,7 +830,7 @@ EraVMInstrInfo::getOutliningTypeImpl(MachineBasicBlock::iterator &MBBI,
     if (!MO.isGlobal())
       return outliner::InstrType::Legal;
 
-    const Function *Callee = dyn_cast<Function>(MO.getGlobal());
+    const auto *Callee = dyn_cast<Function>(MO.getGlobal());
 
     // Only check for functions.
     if (!Callee)
@@ -993,7 +993,7 @@ void EraVMInstrInfo::fixupPostOutlining(
     fixupStackAccessOffsetPostOutline(OutlinedMBB.begin(),
                                       std::prev(OutlinedMBB.end()),
                                       -1 /* FixupOffset */);
-    for (auto Caller : Callers)
+    for (auto *Caller : Callers)
       fixupStackPostOutline(*Caller);
   }
 
@@ -1024,7 +1024,7 @@ void EraVMInstrInfo::fixupPostOutlining(
   // because it can happen that we first decide to not adjust some function
   // because callers weren't adjusted, but in later iterations we adjust one
   // of the callers. See this example in machine-outliner-tail.mir.
-  bool Changed;
+  bool Changed = false;
   do {
     Changed = false;
     for (auto [Outlined, Callers] : FixupFunctions) {
@@ -1044,7 +1044,7 @@ void EraVMInstrInfo::fixupPostOutlining(
       auto &OutlinedMBB = Outlined->front();
       fixupStackAccessOffsetPostOutline(OutlinedMBB.begin(), OutlinedMBB.end(),
                                         -1 /* FixupOffset */);
-      for (auto Caller : Callers)
+      for (auto *Caller : Callers)
         fixupStackPostOutline(*Caller);
 
       // Set that we adjusted this outlined function, so we can skip it.
@@ -1099,10 +1099,7 @@ bool EraVMInstrInfo::isPredicable(const MachineInstr &MI) const {
 
   // check condition code validity.
   EraVMCC::CondCodes CC = getCCCode(MI);
-  if (CC == EraVMCC::COND_INVALID)
-    return false;
-
-  return true;
+  return CC != EraVMCC::COND_INVALID;
 }
 
 static bool probabilityIsProfitable(unsigned TrueCycles, unsigned FalseCycles,

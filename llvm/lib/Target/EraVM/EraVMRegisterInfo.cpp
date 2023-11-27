@@ -79,12 +79,12 @@ bool EraVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
         .add(MI.getOperand(FIOperandNum + 1))
         .addImm(EraVMCC::COND_NONE);
     assert(Offset < 0 && "On EraVM, offset cannot be positive");
-    auto Sub = BuildMI(MBB, II, DL, TII.get(EraVM::SUBxrr_s))
-                   .addDef(MI.getOperand(0).getReg())
-                   .addImm(-Offset / 32)
-                   .addReg(MI.getOperand(0).getReg(), RegState::Kill)
-                   .addImm(EraVMCC::COND_NONE)
-                   .getInstr();
+    auto *Sub = BuildMI(MBB, II, DL, TII.get(EraVM::SUBxrr_s))
+                    .addDef(MI.getOperand(0).getReg())
+                    .addImm(-Offset / 32)
+                    .addReg(MI.getOperand(0).getReg(), RegState::Kill)
+                    .addImm(EraVMCC::COND_NONE)
+                    .getInstr();
 
     // Set that immediate represents stack slot index.
     Sub->getOperand(1).setTargetFlags(EraVMII::MO_STACK_SLOT_IDX);

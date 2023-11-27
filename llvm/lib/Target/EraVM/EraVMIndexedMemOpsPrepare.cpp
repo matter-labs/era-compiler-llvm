@@ -201,11 +201,10 @@ bool EraVMIndexedMemOpsPrepare::isValidGEPAndIncByOneCell(
   const SCEV *SCEVPtr = SE->getSCEVAtScope(BasePtr, CurrentLoop);
 
   if (SCEVPtr) {
-    const SCEVAddRecExpr *AddRec = dyn_cast<SCEVAddRecExpr>(SCEVPtr);
+    const auto *AddRec = dyn_cast<SCEVAddRecExpr>(SCEVPtr);
     if (!AddRec)
       return false;
-    const SCEVConstant *Step =
-        dyn_cast<SCEVConstant>(AddRec->getStepRecurrence(*SE));
+    const auto *Step = dyn_cast<SCEVConstant>(AddRec->getStepRecurrence(*SE));
     if (!Step)
       return false;
     const APInt StrideVal = Step->getAPInt();
@@ -213,16 +212,17 @@ bool EraVMIndexedMemOpsPrepare::isValidGEPAndIncByOneCell(
       return false;
   }
 
+  if (!std::all_of(
+          BasePtr->op_begin(), std::prev(BasePtr->op_end()),
+          [this](Value *V) { return CurrentLoop->isLoopInvariant(V); }))
+    return false;
+
   // The last index operand of this BasePtr GEP instruction must be
   // defined by a PHI node. Only via this PHI node, the BasePtr
   // can be increased along with loop iteration.
   const unsigned LastIndexOperandId = BasePtr->getNumOperands() - 1;
   Value *LastIndexOperand = BasePtr->getOperand(LastIndexOperandId);
-  const PHINode *PHI = dyn_cast<PHINode>(LastIndexOperand);
-  if (!PHI)
-    return false;
-
-  return true;
+  return isa<PHINode>(LastIndexOperand);
 }
 
 bool EraVMIndexedMemOpsPrepare::runOnLoop(Loop *L, LPPassManager &) {
@@ -241,9 +241,9 @@ bool EraVMIndexedMemOpsPrepare::runOnLoop(Loop *L, LPPassManager &) {
   for (auto *const BB : L->blocks()) {
     for (auto &I : *BB) {
       GetElementPtrInst *BasePtrValue = nullptr;
-      if (LoadInst *LMemI = dyn_cast<LoadInst>(&I)) {
+      if (auto *LMemI = dyn_cast<LoadInst>(&I)) {
         BasePtrValue = dyn_cast<GetElementPtrInst>(LMemI->getPointerOperand());
-      } else if (StoreInst *SMemI = dyn_cast<StoreInst>(&I)) {
+      } else if (auto *SMemI = dyn_cast<StoreInst>(&I)) {
         BasePtrValue = dyn_cast<GetElementPtrInst>(SMemI->getPointerOperand());
       } else {
         continue; // Skip if current inst isn't load nor store inst.

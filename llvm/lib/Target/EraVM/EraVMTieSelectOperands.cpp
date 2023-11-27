@@ -38,7 +38,7 @@ public:
     initializeEraVMTieSelectOperandsPass(*PassRegistry::getPassRegistry());
   }
 
-  bool runOnMachineFunction(MachineFunction &Fn) override;
+  bool runOnMachineFunction(MachineFunction &MF) override;
 
   StringRef getPassName() const override {
     return ERAVM_TIE_SELECT_OPERANDS_NAME;
@@ -125,7 +125,7 @@ bool EraVMTieSelectOperands::runOnMachineFunction(MachineFunction &MF) {
   for (MachineInstr *MI : ToBeRemoved)
     MI->eraseFromParent();
 
-  return ToBeRemoved.size() > 0;
+  return !ToBeRemoved.empty();
 }
 
 /// createEraVMTieSelectOperandsPass - returns an instance of the Tie Select

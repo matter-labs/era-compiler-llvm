@@ -337,7 +337,7 @@ SDValue EraVMTargetLowering::LowerFormalArguments(
 /// If Callee is a farcall "intrinsic" return corresponding opcode.
 /// Return 0 otherwise.
 static uint64_t farcallOpcode(SDValue Callee) {
-  auto GA = dyn_cast<GlobalAddressSDNode>(Callee.getNode());
+  auto *GA = dyn_cast<GlobalAddressSDNode>(Callee.getNode());
   if (!GA)
     return 0;
   return StringSwitch<uint64_t>(GA->getGlobal()->getName())
@@ -717,7 +717,7 @@ SDValue EraVMTargetLowering::LowerZERO_EXTEND(SDValue Op,
 
 SDValue EraVMTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
   SDLoc DL(Op);
-  StoreSDNode *Store = cast<StoreSDNode>(Op);
+  auto *Store = cast<StoreSDNode>(Op);
 
   SDValue BasePtr = Store->getBasePtr();
   SDValue Chain = Store->getChain();
