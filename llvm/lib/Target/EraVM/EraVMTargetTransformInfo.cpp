@@ -32,8 +32,8 @@ unsigned EraVMTTIImpl::getAssumedAddrSpace(const Value *V) const {
 }
 
 void EraVMTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
-                                            TTI::UnrollingPreferences &UP,
-                                            OptimizationRemarkEmitter *ORE) {
+                                           TTI::UnrollingPreferences &UP,
+                                           OptimizationRemarkEmitter *ORE) {
   BaseT::getUnrollingPreferences(L, SE, UP, ORE);
 
   // Only allow unrolling small loops.
@@ -88,20 +88,18 @@ InstructionCost EraVMTTIImpl::getArithmeticInstrCost(
     TTI::OperandValueProperties Opd2PropInfo, ArrayRef<const Value *> Args,
     const Instruction *CxtI) {
 
-  auto Cost = BasicTTIImplBase<EraVMTTIImpl>::getArithmeticInstrCost(
-      Opcode, Ty, CostKind, Opd1Info, Opd2Info, Opd1PropInfo, Opd2PropInfo);
-
   switch (Opcode) {
+  default:
+    return BasicTTIImplBase<EraVMTTIImpl>::getArithmeticInstrCost(
+        Opcode, Ty, CostKind, Opd1Info, Opd2Info, Opd1PropInfo, Opd2PropInfo);
   // signed instructions are generally expensive on EraVM
   case Instruction::SDiv:
   case Instruction::SRem:
   // arithmetic shifts are expensive
-  case Instruction::AShr: {
-    Cost = TargetTransformInfo::TCC_Expensive;
-    break;
+  case Instruction::AShr:
+    return TargetTransformInfo::TCC_Expensive;
   }
-  }
-  return Cost;
+  llvm_unreachable("unhandled instruction");
 }
 
 bool EraVMTTIImpl::hasDivRemOp(Type *DataType, bool IsSigned) {
@@ -116,9 +114,11 @@ InstructionCost EraVMTTIImpl::getCmpSelInstrCost(unsigned Opcode, Type *ValTy,
                                                  const Instruction *I) {
 
   switch (Opcode) {
+  default:
+    return BaseT::getCmpSelInstrCost(Opcode, ValTy, CondTy, VecPred, CostKind, I);
   case Instruction::ICmp: {
     if (I) {
-      const CmpInst *CI = cast<CmpInst>(I);
+      const auto *CI = cast<CmpInst>(I);
       switch (CI->getPredicate()) {
       case CmpInst::Predicate::ICMP_SGE:
       case CmpInst::Predicate::ICMP_SLE:
@@ -127,9 +127,8 @@ InstructionCost EraVMTTIImpl::getCmpSelInstrCost(unsigned Opcode, Type *ValTy,
         // signed comparisons are expensive
         return TargetTransformInfo::TCC_Expensive;
       }
-      default: {
+      default:
         return TargetTransformInfo::TCC_Basic;
-      }
       }
     } else {
       // signed comparisons are expensive. However we cannot distinguish
@@ -146,7 +145,7 @@ InstructionCost EraVMTTIImpl::getCmpSelInstrCost(unsigned Opcode, Type *ValTy,
     return TargetTransformInfo::TCC_Expensive;
   }
   }
-  return BaseT::getCmpSelInstrCost(Opcode, ValTy, CondTy, VecPred, CostKind, I);
+  llvm_unreachable("unhandled instruction");
 }
 
 InstructionCost EraVMTTIImpl::getMemoryOpCost(unsigned Opcode, Type *Src,
@@ -154,11 +153,13 @@ InstructionCost EraVMTTIImpl::getMemoryOpCost(unsigned Opcode, Type *Src,
                                               unsigned AddressSpace,
                                               TTI::TargetCostKind CostKind,
                                               const Instruction *I) {
-  auto alignment_value = Alignment.valueOrOne().value();
+  auto AlignmentValue = Alignment.valueOrOne().value();
   switch (AddressSpace) {
+  default:
+    llvm_unreachable("unsupported");
   case EraVMAS::AS_STACK:
   case EraVMAS::AS_CODE: {
-    if ((alignment_value % 32) > 0) {
+    if ((AlignmentValue % 32) > 0) {
       // Estimate of the call to runtime function `__unaligned_store/load`
       return TargetTransformInfo::TCC_Expensive * 10;
     }
@@ -167,10 +168,12 @@ InstructionCost EraVMTTIImpl::getMemoryOpCost(unsigned Opcode, Type *Src,
   case EraVMAS::AS_HEAP:
   case EraVMAS::AS_HEAP_AUX:
   case EraVMAS::AS_GENERIC: {
-    if ((alignment_value % 32) > 0) {
+    if ((AlignmentValue % 32) > 0)
       return TargetTransformInfo::TCC_Basic * 2;
-    }
+    break;
   }
+  case EraVMAS::AS_STORAGE:
+    return TargetTransformInfo::TCC_Basic;
   }
   // aligned basic instructions cost 1 cycle
   return TargetTransformInfo::TCC_Basic;

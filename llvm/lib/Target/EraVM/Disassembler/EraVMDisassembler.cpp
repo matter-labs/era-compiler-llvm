@@ -26,7 +26,7 @@ using namespace llvm;
 
 #define DEBUG_TYPE "eravm-disassembler"
 
-typedef MCDisassembler::DecodeStatus DecodeStatus;
+using DecodeStatus = MCDisassembler::DecodeStatus;
 
 namespace {
 class EraVMDisassembler : public MCDisassembler {

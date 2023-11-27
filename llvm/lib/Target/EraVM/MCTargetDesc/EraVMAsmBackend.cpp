@@ -39,7 +39,11 @@ class EraVMAsmBackend : public MCAsmBackend {
 public:
   EraVMAsmBackend(const MCSubtargetInfo &STI, uint8_t OSABI)
       : MCAsmBackend(support::little), OSABI(OSABI) {}
-  ~EraVMAsmBackend() override {}
+  ~EraVMAsmBackend() override = default;
+  EraVMAsmBackend(const EraVMAsmBackend &) = delete;
+  EraVMAsmBackend &operator=(const EraVMAsmBackend &) = delete;
+  EraVMAsmBackend(EraVMAsmBackend &&) = delete;
+  EraVMAsmBackend &&operator=(EraVMAsmBackend &&) = delete;
 
   void applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
                   const MCValue &Target, MutableArrayRef<char> Data,
@@ -106,8 +110,7 @@ public:
 uint64_t EraVMAsmBackend::adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
                                            MCContext &Ctx) const {
   unsigned Kind = Fixup.getKind();
-  switch (Kind) {
-  case EraVM::fixup_10_pcrel: {
+  if (Kind == EraVM::fixup_10_pcrel) {
     if (Value & 0x1)
       Ctx.reportError(Fixup.getLoc(), "fixup value must be 2-byte aligned");
 
@@ -126,9 +129,7 @@ uint64_t EraVMAsmBackend::adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
 
     return Offset;
   }
-  default:
-    return Value;
-  }
+  return Value;
 }
 
 void EraVMAsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,

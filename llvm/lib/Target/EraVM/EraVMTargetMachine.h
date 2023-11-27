@@ -30,6 +30,10 @@ public:
                      StringRef FS, const TargetOptions &Options,
                      Optional<Reloc::Model> RM, Optional<CodeModel::Model> CM,
                      CodeGenOpt::Level OL, bool JIT);
+  EraVMTargetMachine(const EraVMTargetMachine &) = delete;
+  EraVMTargetMachine &operator=(EraVMTargetMachine &) = delete;
+  EraVMTargetMachine(EraVMTargetMachine &&) = delete;
+  EraVMTargetMachine &&operator=(EraVMTargetMachine &&) = delete;
   ~EraVMTargetMachine() override;
 
   const EraVMSubtarget *getSubtargetImpl(const Function &F) const override {

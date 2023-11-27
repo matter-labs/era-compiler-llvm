@@ -142,7 +142,7 @@ void initializeEraVMIndexedMemOpsPreparePass(PassRegistry &);
 void initializeEraVMTieSelectOperandsPass(PassRegistry &);
 
 struct EraVMLinkRuntimePass : PassInfoMixin<EraVMLinkRuntimePass> {
-  EraVMLinkRuntimePass(OptimizationLevel Level) : Level(Level) {}
+  explicit EraVMLinkRuntimePass(OptimizationLevel Level) : Level(Level) {}
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
 
 private:
@@ -151,17 +151,17 @@ private:
 
 struct EraVMOptimizeStdLibCallsPass
     : PassInfoMixin<EraVMOptimizeStdLibCallsPass> {
-  EraVMOptimizeStdLibCallsPass() {}
+  EraVMOptimizeStdLibCallsPass() = default;
   PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
 };
 
 struct EraVMAlwaysInlinePass : PassInfoMixin<EraVMAlwaysInlinePass> {
-  EraVMAlwaysInlinePass() {}
+  EraVMAlwaysInlinePass() = default;
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
 };
 
 struct EraVMSHA3ConstFoldingPass : PassInfoMixin<EraVMSHA3ConstFoldingPass> {
-  EraVMSHA3ConstFoldingPass() {}
+  EraVMSHA3ConstFoldingPass() = default;
   PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
 };
 

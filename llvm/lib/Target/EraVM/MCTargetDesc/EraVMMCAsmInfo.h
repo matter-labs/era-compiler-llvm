@@ -24,7 +24,7 @@ class EraVMMCAsmInfo : public MCAsmInfoELF {
   void anchor() override;
 
 public:
-  explicit EraVMMCAsmInfo(const Triple &TT);
+  explicit EraVMMCAsmInfo(const Triple &TheTriple);
   bool shouldOmitSectionDirective(StringRef) const override { return true; }
 };
 

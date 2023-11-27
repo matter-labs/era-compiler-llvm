@@ -57,7 +57,8 @@ ArgumentType argumentType(ArgumentKind Kind, unsigned Opcode) {
   if (Kind == ArgumentKind::Out1) {
     // TODO: CPR-986 Support stack output for Select.
     return ArgumentType::Register;
-  } else if (Kind == ArgumentKind::In1) {
+  }
+  if (Kind == ArgumentKind::In1) {
     if (In1R.count(Opcode))
       return ArgumentType::Register;
     if (In1I.count(Opcode))
@@ -67,7 +68,8 @@ ArgumentType argumentType(ArgumentKind Kind, unsigned Opcode) {
     if (In1S.count(Opcode))
       return ArgumentType::Stack;
     return ArgumentType::Register;
-  } else if (Kind == ArgumentKind::Out0) {
+  }
+  if (Kind == ArgumentKind::Out0) {
     if (hasSROutAddressingMode(Opcode))
       return ArgumentType::Stack;
     return ArgumentType::Register;
@@ -272,8 +274,7 @@ bool EraVMInstrInfo::reverseBranchCondition(
     SmallVectorImpl<MachineOperand> &Cond) const {
   assert(Cond.size() == 1 && "Invalid Xbranch condition!");
 
-  EraVMCC::CondCodes CC =
-      static_cast<EraVMCC::CondCodes>(getImmOrCImm(Cond[0]));
+  auto CC = static_cast<EraVMCC::CondCodes>(getImmOrCImm(Cond[0]));
 
   auto NewCC = getReversedCondition(CC);
   if (!NewCC)
@@ -313,7 +314,7 @@ bool EraVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
 
     if (I->getOpcode() == EraVM::J) {
       // Handle unconditional branches.
-      auto jumpTarget = I->getOperand(0).getMBB();
+      auto *jumpTarget = I->getOperand(0).getMBB();
       if (!AllowModify) {
         TBB = jumpTarget;
         continue;
@@ -362,7 +363,7 @@ bool EraVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
       continue;
     }
 
-    EraVMCC::CondCodes BranchCode =
+    auto BranchCode =
         static_cast<EraVMCC::CondCodes>(getImmOrCImm(I->getOperand(1)));
     if (BranchCode == EraVMCC::COND_INVALID)
       return true; // Can't handle weird stuff.
@@ -372,7 +373,7 @@ bool EraVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
       FBB = TBB;
       TBB = I->getOperand(0).getMBB();
       LLVMContext &C = MBB.getParent()->getFunction().getContext();
-      auto CImmCC =
+      auto *CImmCC =
           ConstantInt::get(IntegerType::get(C, 256), BranchCode, false);
       Cond.push_back(MachineOperand::CreateCImm(CImmCC));
       continue;
@@ -388,8 +389,7 @@ bool EraVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
     if (TBB != I->getOperand(0).getMBB())
       return true;
 
-    EraVMCC::CondCodes OldBranchCode =
-        (EraVMCC::CondCodes)Cond[0].getCImm()->getZExtValue();
+    auto OldBranchCode = (EraVMCC::CondCodes)Cond[0].getCImm()->getZExtValue();
     // If the conditions are the same, we can leave them alone.
     if (OldBranchCode == BranchCode)
       continue;
@@ -405,8 +405,7 @@ unsigned EraVMInstrInfo::insertBranch(
     ArrayRef<MachineOperand> Cond, const DebugLoc &DL, int *BytesAdded) const {
   // Shouldn't be a fall through.
   assert(TBB && "insertBranch must not be told to insert a fallthrough");
-  assert((Cond.size() == 1 || Cond.size() == 0) &&
-         "EraVM branch conditions have one component!");
+  assert(Cond.size() <= 1 && "EraVM branch conditions have one component!");
   assert(!BytesAdded && "code size not handled");
 
   if (Cond.empty()) {
@@ -432,7 +431,7 @@ unsigned EraVMInstrInfo::insertBranch(
 void EraVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
                                          MachineBasicBlock::iterator MI,
                                          Register SrcReg, bool isKill,
-                                         int FrameIdx,
+                                         int FrameIndex,
                                          const TargetRegisterClass *RC,
                                          const TargetRegisterInfo *TRI) const {
   DebugLoc DL;
@@ -442,15 +441,15 @@ void EraVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
   MachineFrameInfo &MFI = MF.getFrameInfo();
 
   MachineMemOperand *MMO = MF.getMachineMemOperand(
-      MachinePointerInfo::getFixedStack(MF, FrameIdx),
-      MachineMemOperand::MOStore, MFI.getObjectSize(FrameIdx),
-      MFI.getObjectAlign(FrameIdx));
+      MachinePointerInfo::getFixedStack(MF, FrameIndex),
+      MachineMemOperand::MOStore, MFI.getObjectSize(FrameIndex),
+      MFI.getObjectAlign(FrameIndex));
 
   if (RC == &EraVM::GR256RegClass) {
     BuildMI(MBB, MI, DL, get(EraVM::ADDrrs_s))
         .addReg(SrcReg, getKillRegState(isKill))
         .addReg(EraVM::R0)
-        .addFrameIndex(FrameIdx)
+        .addFrameIndex(FrameIndex)
         .addImm(32)
         .addImm(0)
         .addImm(0)
@@ -459,7 +458,7 @@ void EraVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
     BuildMI(MBB, MI, DL, get(EraVM::PTR_ADDrrs_s))
         .addReg(SrcReg, getKillRegState(isKill))
         .addReg(EraVM::R0)
-        .addFrameIndex(FrameIdx)
+        .addFrameIndex(FrameIndex)
         .addImm(32)
         .addImm(0)
         .addImm(0)
@@ -471,7 +470,7 @@ void EraVMInstrInfo::storeRegToStackSlot(MachineBasicBlock &MBB,
 
 void EraVMInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
                                           MachineBasicBlock::iterator MI,
-                                          Register DestReg, int FrameIdx,
+                                          Register DestReg, int FrameIndex,
                                           const TargetRegisterClass *RC,
                                           const TargetRegisterInfo *TRI) const {
   DebugLoc DL;
@@ -481,14 +480,14 @@ void EraVMInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
   MachineFrameInfo &MFI = MF.getFrameInfo();
 
   MachineMemOperand *MMO = MF.getMachineMemOperand(
-      MachinePointerInfo::getFixedStack(MF, FrameIdx),
-      MachineMemOperand::MOLoad, MFI.getObjectSize(FrameIdx),
-      MFI.getObjectAlign(FrameIdx));
+      MachinePointerInfo::getFixedStack(MF, FrameIndex),
+      MachineMemOperand::MOLoad, MFI.getObjectSize(FrameIndex),
+      MFI.getObjectAlign(FrameIndex));
 
   if (RC == &EraVM::GR256RegClass) {
     BuildMI(MBB, MI, DL, get(EraVM::ADDsrr_s))
         .addReg(DestReg, getDefRegState(true))
-        .addFrameIndex(FrameIdx)
+        .addFrameIndex(FrameIndex)
         .addImm(32)
         .addImm(0)
         .addReg(EraVM::R0)
@@ -497,7 +496,7 @@ void EraVMInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
   } else if (RC == &EraVM::GRPTRRegClass) {
     BuildMI(MBB, MI, DL, get(EraVM::PTR_ADDsrr_s))
         .addReg(DestReg, getDefRegState(true))
-        .addFrameIndex(FrameIdx)
+        .addFrameIndex(FrameIndex)
         .addImm(32)
         .addImm(0)
         .addReg(EraVM::R0)
@@ -562,7 +561,7 @@ bool EraVMInstrInfo::isPtr(const MachineInstr &MI) const {
 
 bool EraVMInstrInfo::isNull(const MachineInstr &MI) const {
   return isAdd(MI) && EraVM::hasRRInAddressingMode(MI) &&
-         MI.getNumDefs() == 1u && MI.getOperand(1).getReg() == EraVM::R0 &&
+         MI.getNumDefs() == 1U && MI.getOperand(1).getReg() == EraVM::R0 &&
          MI.getOperand(2).getReg() == EraVM::R0;
 }
 
@@ -609,11 +608,10 @@ EraVMCC::CondCodes EraVMInstrInfo::getCCCode(const MachineInstr &MI) const {
   // predicated CC is the last operand of the instruction
   auto CC = *EraVM::ccIterator(MI);
 
-  if (CC.isImm()) {
+  if (CC.isImm())
     return EraVMCC::CondCodes(CC.getImm());
-  } else if (CC.isCImm()) {
+  if (CC.isCImm())
     return EraVMCC::CondCodes(CC.getCImm()->getZExtValue());
-  }
   return EraVMCC::COND_INVALID;
 }
 
@@ -681,7 +679,7 @@ static void fixupStackAccessOffsetPostOutline(MachineBasicBlock::iterator Start,
     if (EraVM::classifyStackAccess(It) != EraVM::StackAccess::Relative)
       return;
 
-    auto DispIt = It + 2;
+    auto *DispIt = It + 2;
     assert(DispIt->isImm() && "Displacement is not immediate.");
     DispIt->setImm(DispIt->getImm() + FixupOffset);
   };
@@ -857,7 +855,7 @@ EraVMInstrInfo::getOutliningType(MachineBasicBlock::iterator &MBBI,
     if (!MO.isGlobal())
       return outliner::InstrType::Legal;
 
-    const Function *Callee = dyn_cast<Function>(MO.getGlobal());
+    const auto *Callee = dyn_cast<Function>(MO.getGlobal());
 
     // Only check for functions.
     if (!Callee)
@@ -1019,7 +1017,7 @@ void EraVMInstrInfo::fixupPostOutlining(
     fixupStackAccessOffsetPostOutline(OutlinedMBB.begin(),
                                       std::prev(OutlinedMBB.end()),
                                       -1 /* FixupOffset */);
-    for (auto Caller : Callers)
+    for (auto *Caller : Callers)
       fixupStackPostOutline(*Caller);
   }
 
@@ -1050,7 +1048,7 @@ void EraVMInstrInfo::fixupPostOutlining(
   // because it can happen that we first decide to not adjust some function
   // because callers weren't adjusted, but in later iterations we adjust one
   // of the callers. See this example in machine-outliner-tail.mir.
-  bool Changed;
+  bool Changed = false;
   do {
     Changed = false;
     for (auto [Outlined, Callers] : FixupFunctions) {
@@ -1070,7 +1068,7 @@ void EraVMInstrInfo::fixupPostOutlining(
       auto &OutlinedMBB = Outlined->front();
       fixupStackAccessOffsetPostOutline(OutlinedMBB.begin(), OutlinedMBB.end(),
                                         -1 /* FixupOffset */);
-      for (auto Caller : Callers)
+      for (auto *Caller : Callers)
         fixupStackPostOutline(*Caller);
 
       // Set that we adjusted this outlined function, so we can skip it.
@@ -1126,10 +1124,7 @@ bool EraVMInstrInfo::isPredicable(const MachineInstr &MI) const {
   // check condition code validity.
   // Overflow condition code is not reversible so not predicable
   EraVMCC::CondCodes CC = getCCCode(MI);
-  if (CC == EraVMCC::COND_INVALID || CC == EraVMCC::COND_OF)
-    return false;
-
-  return true;
+  return CC != EraVMCC::COND_INVALID && CC != EraVMCC::COND_OF;
 }
 
 static bool probabilityIsProfitable(unsigned TrueCycles, unsigned FalseCycles,

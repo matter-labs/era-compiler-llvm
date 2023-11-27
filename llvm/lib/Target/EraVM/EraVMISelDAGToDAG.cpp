@@ -170,7 +170,7 @@ bool EraVMDAGToDAGISel::MatchAddress(SDValue N, EraVMISelAddressMode &AM,
   }
   case ISD::OR:
     // Handle "X | C" as "X + C" iff X is known to have C bits clear.
-    if (ConstantSDNode *CN = dyn_cast<ConstantSDNode>(N.getOperand(1))) {
+    if (auto *CN = dyn_cast<ConstantSDNode>(N.getOperand(1))) {
       EraVMISelAddressMode Backup = AM;
       uint64_t Offset = CN->getSExtValue();
       // Start with the LHS as an addr mode.
@@ -199,26 +199,26 @@ bool EraVMDAGToDAGISel::MatchAddress(SDValue N, EraVMISelAddressMode &AM,
 /// SelectMemAddr - returns true if it is able pattern match an addressing mode
 /// for heap, parent or child memory. It returns the operands which make up the
 /// maximal addressing mode it can match by reference.
-bool EraVMDAGToDAGISel::SelectMemAddr(SDValue N, SDValue &Base, SDValue &Disp) {
+bool EraVMDAGToDAGISel::SelectMemAddr(SDValue Addr, SDValue &Base,
+                                      SDValue &Disp) {
   EraVMISelAddressMode AM;
+  SDLoc Loc(Addr);
 
-  auto Zero = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
+  auto Zero = CurDAG->getTargetConstant(0, Loc, MVT::i256);
 
-  if (MatchAddress(N, AM, false /* IsStackAddr */)) {
+  if (MatchAddress(Addr, AM, false /* IsStackAddr */)) {
     LLVM_DEBUG(errs() << "Failed to match address.");
     return false;
-  } else {
-    LLVM_DEBUG(errs() << "Matched: "; AM.dump());
   }
+  LLVM_DEBUG(errs() << "Matched: "; AM.dump());
 
   // EraVM doesn't support offsets by unaligned number of bytes, so add
   // the displacement to the base register.
   if (unsigned Unaligned = AM.Disp % 32) {
     if (AM.Base.Reg.getNode()) {
-      auto AddToReg =
-          CurDAG->getTargetConstant(AM.Disp % 32, SDLoc(N), MVT::i256);
-      auto AddrNode = CurDAG->getMachineNode(
-          EraVM::ADDirr_s, SDLoc(N), MVT::i256, AM.Base.Reg, AddToReg, Zero);
+      auto AddToReg = CurDAG->getTargetConstant(AM.Disp % 32, Loc, MVT::i256);
+      auto *AddrNode = CurDAG->getMachineNode(EraVM::ADDirr_s, Loc, MVT::i256,
+                                              AM.Base.Reg, AddToReg, Zero);
       AM.Base.Reg = SDValue(AddrNode, 0);
     }
     AM.Disp -= AM.Disp % 32;
@@ -228,15 +228,15 @@ bool EraVMDAGToDAGISel::SelectMemAddr(SDValue N, SDValue &Base, SDValue &Disp) {
   // mode), redesign.
   assert(AM.BaseType == EraVMISelAddressMode::RegBase);
   if (!AM.Base.Reg.getNode())
-    AM.Base.Reg = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
+    AM.Base.Reg = CurDAG->getTargetConstant(0, Loc, MVT::i256);
 
   Base = AM.Base.Reg;
 
   if (AM.GV)
-    Disp = CurDAG->getTargetGlobalAddress(AM.GV, SDLoc(N), MVT::i256, AM.Disp,
+    Disp = CurDAG->getTargetGlobalAddress(AM.GV, Loc, MVT::i256, AM.Disp,
                                           0 /*AM.SymbolFlags*/);
   else
-    Disp = CurDAG->getTargetConstant(AM.Disp, SDLoc(N), MVT::i64);
+    Disp = CurDAG->getTargetConstant(AM.Disp, Loc, MVT::i64);
 
   return true;
 }
@@ -244,15 +244,16 @@ bool EraVMDAGToDAGISel::SelectMemAddr(SDValue N, SDValue &Base, SDValue &Disp) {
 /// SelectStackAddr - returns true if it is able pattern match an addressing
 /// mode for stack. It returns the operands which make up the maximal addressing
 /// mode it can match by reference.
-bool EraVMDAGToDAGISel::SelectStackAddrCommon(SDValue N, SDValue &Base1,
+bool EraVMDAGToDAGISel::SelectStackAddrCommon(SDValue Addr, SDValue &Base1,
                                               SDValue &Base2, SDValue &Disp,
                                               bool IsAdjusted) {
   EraVMISelAddressMode AM;
+  SDLoc Loc(Addr);
   bool UseSP = false;
 
-  if (MatchAddress(N, AM, true /* IsStackAddr */)) {
+  if (MatchAddress(Addr, AM, true /* IsStackAddr */)) {
     AM = EraVMISelAddressMode();
-    if (MatchAddress(N, AM, false))
+    if (MatchAddress(Addr, AM, false))
       return false;
   } else {
     UseSP = true;
@@ -275,40 +276,38 @@ bool EraVMDAGToDAGISel::SelectStackAddrCommon(SDValue N, SDValue &Base1,
       // context.sp and FRAMEirrr instructions.
       SDValue CurrentSP = SDValue(
           CurDAG->getMachineNode(
-              EraVM::CTXr_se, SDLoc(N), MVT::i256,
-              CurDAG->getTargetConstant(EraVMCTX::SP, SDLoc(N), MVT::i256),
-              CurDAG->getTargetConstant(EraVMCC::COND_NONE, SDLoc(N),
-                                        MVT::i256)),
+              EraVM::CTXr_se, SDLoc(Addr), MVT::i256,
+              CurDAG->getTargetConstant(EraVMCTX::SP, Loc, MVT::i256),
+              CurDAG->getTargetConstant(EraVMCC::COND_NONE, Loc, MVT::i256)),
           0);
-      Base2 =
-          SDValue(CurDAG->getMachineNode(EraVM::FRAMEirrr, SDLoc(N), MVT::i256,
-                                         TFI, AM.Base.Reg, CurrentSP),
-                  0);
+      Base2 = SDValue(CurDAG->getMachineNode(EraVM::FRAMEirrr, Loc, MVT::i256,
+                                             TFI, AM.Base.Reg, CurrentSP),
+                      0);
     } else {
       Base1 = TFI;
     }
   }
 
   if (!Base1.getNode())
-    Base1 = CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
+    Base1 = CurDAG->getTargetConstant(0, Loc, MVT::i256);
 
   if (!Base2.getNode())
     Base2 = AM.Base.Reg.getNode()
                 ? AM.Base.Reg
-                : CurDAG->getTargetConstant(0, SDLoc(N), MVT::i256);
+                : CurDAG->getTargetConstant(0, Loc, MVT::i256);
 
   if (AM.GV)
-    Disp = CurDAG->getTargetGlobalAddress(AM.GV, SDLoc(N), MVT::i256, AM.Disp,
+    Disp = CurDAG->getTargetGlobalAddress(AM.GV, Loc, MVT::i256, AM.Disp,
                                           0 /*AM.SymbolFlags*/);
   else
-    Disp = CurDAG->getTargetConstant(AM.Disp, SDLoc(N), MVT::i64);
+    Disp = CurDAG->getTargetConstant(AM.Disp, Loc, MVT::i64);
 
   return true;
 }
 
-bool EraVMDAGToDAGISel::SelectStackAddr(SDValue N, SDValue &Base1,
+bool EraVMDAGToDAGISel::SelectStackAddr(SDValue Addr, SDValue &Base1,
                                         SDValue &Base2, SDValue &Disp) {
-  return SelectStackAddrCommon(N, Base1, Base2, Disp, false);
+  return SelectStackAddrCommon(Addr, Base1, Base2, Disp, false);
 }
 
 void EraVMDAGToDAGISel::Select(SDNode *Node) {
@@ -326,7 +325,7 @@ void EraVMDAGToDAGISel::Select(SDNode *Node) {
   default:
     break;
   case ISD::Constant: {
-    auto cn = cast<ConstantSDNode>(Node);
+    auto *cn = cast<ConstantSDNode>(Node);
     auto val = cn->getAPIntValue();
 
     // if it is loading zero value, just select R0 to save its materialization
@@ -342,8 +341,8 @@ void EraVMDAGToDAGISel::Select(SDNode *Node) {
       auto negated = -(val.getSExtValue());
       auto Negated_Val = CurDAG->getTargetConstant(negated, DL, MVT::i256);
       auto R0 = CurDAG->getRegister(EraVM::R0, MVT::i256);
-      auto SUB = CurDAG->getMachineNode(EraVM::SUBxrr_p, DL, MVT::i256,
-                                        SDValue(Negated_Val), R0);
+      auto *SUB = CurDAG->getMachineNode(EraVM::SUBxrr_p, DL, MVT::i256,
+                                         SDValue(Negated_Val), R0);
       ReplaceNode(Node, SUB);
       return;
     }
@@ -354,7 +353,7 @@ void EraVMDAGToDAGISel::Select(SDNode *Node) {
       MVT PtrVT = getTargetLowering()->getPointerTy(CurDAG->getDataLayout());
       SDValue CP =
           CurDAG->getTargetConstantPool(cn->getConstantIntValue(), PtrVT);
-      auto lc = CurDAG->getMachineNode(EraVM::LOADCONST, DL, MVT::i256, CP);
+      auto *lc = CurDAG->getMachineNode(EraVM::LOADCONST, DL, MVT::i256, CP);
 
       // Annotate the Node with memory operand information so that MachineInstr
       // queries work properly.
@@ -395,13 +394,13 @@ void EraVMDAGToDAGISel::Select(SDNode *Node) {
   }
   case ISD::LOAD: {
     // lower address space 3 loads
-    auto ld = cast<LoadSDNode>(Node);
+    auto *ld = cast<LoadSDNode>(Node);
     if (ld->getAddressSpace() == 3) {
       SDValue Chain = ld->getChain();
       SDValue Ptr = ld->getBasePtr();
       auto Zero = CurDAG->getTargetConstant(0, DL, MVT::i256);
-      auto LD = CurDAG->getMachineNode(EraVM::LD, DL, ld->getMemoryVT(),
-                                       MVT::Other, Ptr, Zero, Chain);
+      auto *LD = CurDAG->getMachineNode(EraVM::LD, DL, ld->getMemoryVT(),
+                                        MVT::Other, Ptr, Zero, Chain);
       ReplaceNode(Node, LD);
       return;
     }

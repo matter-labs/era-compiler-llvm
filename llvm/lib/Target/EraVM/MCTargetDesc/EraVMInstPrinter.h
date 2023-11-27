@@ -46,6 +46,6 @@ private:
   /// Print first flag
   void printFirstOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
 };
-}
+} // namespace llvm
 
 #endif

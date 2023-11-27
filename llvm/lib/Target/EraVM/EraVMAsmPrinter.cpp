@@ -102,7 +102,7 @@ void EraVMAsmPrinter::emitEndOfAsmFile(Module &) {
   for (const Constant *C : UniqueConstants) {
     std::vector<MCSymbol *> symbols = ConstantPoolMap[C];
 
-    for (auto symbol : symbols) {
+    for (auto *symbol : symbols) {
       OutStreamer->emitLabel(symbol);
     }
     // then print constant:
@@ -150,22 +150,22 @@ void EraVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
   auto *Streamer =
       static_cast<EraVMTargetStreamer *>(OutStreamer->getTargetStreamer());
 
-  if (const ConstantArray *CVA = dyn_cast<ConstantArray>(CV)) {
-    auto aty = CVA->getType();
+  if (const auto *CVA = dyn_cast<ConstantArray>(CV)) {
+    auto *aty = CVA->getType();
     uint64_t elem_size = aty->getNumElements();
     // For now only support integer types.
     assert(aty->getElementType()->isIntegerTy(256));
 
     for (uint64_t i = 0; i < elem_size; ++i) {
       Constant *C = CVA->getAggregateElement(i);
-      ConstantInt *CI = cast<ConstantInt>(C);
+      auto *CI = cast<ConstantInt>(C);
       assert(CI && CI->getBitWidth() == 256);
       Streamer->emitGlobalConst(CI->getValue());
     }
     return;
   }
 
-  if (const ConstantDataSequential *CDS =
+  if (const auto *CDS =
           dyn_cast<ConstantDataSequential>(CV)) {
     size_t elem_size = CDS->getNumElements();
     assert(CDS->getElementByteSize() <= 256);
@@ -177,7 +177,7 @@ void EraVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
     return;
   }
 
-  if (const ConstantStruct *CVS = dyn_cast<ConstantStruct>(CV)) {
+  if (const auto *CVS = dyn_cast<ConstantStruct>(CV)) {
     StructType *sty = CVS->getType();
     assert(!sty->isPacked());
     uint64_t elem_size = sty->getNumElements();
@@ -194,17 +194,15 @@ void EraVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
     return;
   }
 
-  if (const ConstantVector *V = dyn_cast<ConstantVector>(CV)) {
+  if (const auto *V = dyn_cast<ConstantVector>(CV)) {
     assert(false);
     return;
   }
 
-  if (const ConstantExpr *CE = dyn_cast<ConstantExpr>(CV)) {
-    printf("ConstantExpr for type\n");
+  if (const auto *CE = dyn_cast<ConstantExpr>(CV))
     return;
-  }
 
-  if (const ConstantInt *CI = dyn_cast<ConstantInt>(CV)) {
+  if (const auto *CI = dyn_cast<ConstantInt>(CV)) {
     Streamer->emitGlobalConst(CI->getValue());
     return;
   }

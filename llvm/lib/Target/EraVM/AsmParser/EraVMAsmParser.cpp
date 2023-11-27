@@ -74,10 +74,10 @@ class EraVMAsmParser : public MCTargetAsmParser {
 
 public:
   EraVMAsmParser(const MCSubtargetInfo &STI, MCAsmParser &Parser,
-                  const MCInstrInfo &MII, const MCTargetOptions &Options)
-      : MCTargetAsmParser(Options, STI, MII), Parser(Parser) {
+                 const MCInstrInfo &MII, const MCTargetOptions &Options)
+      : MCTargetAsmParser(Options, STI, MII), Parser(Parser),
+        MRI(getContext().getRegisterInfo()) {
     MCAsmParserExtension::Initialize(Parser);
-    MRI = getContext().getRegisterInfo();
 
     setAvailableFeatures(ComputeAvailableFeatures(STI.getFeatureBits()));
   }
@@ -85,39 +85,32 @@ public:
 
 /// A parsed EraVM assembly operand.
 class EraVMOperand : public MCParsedAsmOperand {
-  typedef MCParsedAsmOperand Base;
+  using Base = MCParsedAsmOperand;
 
-  enum KindTy {
-    k_Imm,
-    k_Reg,
-    k_Tok,
-    k_Mem,
-    k_IndReg,
-    k_PostIndReg
-  } Kind;
+  enum KindTy { k_Imm, k_Reg, k_Tok, k_Mem, k_IndReg, k_PostIndReg } Kind;
 
   struct Memory {
     unsigned Reg;
     const MCExpr *Offset;
   };
   union {
-    const MCExpr *Imm;
-    unsigned      Reg;
-    StringRef     Tok;
-    Memory        Mem;
+    const MCExpr *Imm{};
+    unsigned Reg;
+    StringRef Tok;
+    Memory Mem;
   };
 
   SMLoc Start, End;
 
 public:
   EraVMOperand(StringRef Tok, SMLoc const &S)
-      : Base(), Kind(k_Tok), Tok(Tok), Start(S), End(S) {}
+      : Kind(k_Tok), Tok(Tok), Start(S), End(S) {}
   EraVMOperand(KindTy Kind, unsigned Reg, SMLoc const &S, SMLoc const &E)
-      : Base(), Kind(Kind), Reg(Reg), Start(S), End(E) {}
+      : Kind(Kind), Reg(Reg), Start(S), End(E) {}
   EraVMOperand(MCExpr const *Imm, SMLoc const &S, SMLoc const &E)
-      : Base(), Kind(k_Imm), Imm(Imm), Start(S), End(E) {}
+      : Kind(k_Imm), Imm(Imm), Start(S), End(E) {}
   EraVMOperand(unsigned Reg, MCExpr const *Expr, SMLoc const &S, SMLoc const &E)
-      : Base(), Kind(k_Mem), Mem({Reg, Expr}), Start(S), End(E) {}
+      : Kind(k_Mem), Mem({Reg, Expr}), Start(S), End(E) {}
 
   void addRegOperands(MCInst &Inst, unsigned N) const {
     assert((Kind == k_Reg || Kind == k_IndReg || Kind == k_PostIndReg) &&
@@ -131,7 +124,7 @@ public:
     // Add as immediate when possible
     if (!Expr)
       Inst.addOperand(MCOperand::createImm(0));
-    else if (const MCConstantExpr *CE = dyn_cast<MCConstantExpr>(Expr))
+    else if (const auto *CE = dyn_cast<MCConstantExpr>(Expr))
       Inst.addOperand(MCOperand::createImm(CE->getValue()));
     else
       Inst.addOperand(MCOperand::createExpr(Expr));
@@ -152,18 +145,18 @@ public:
     addExprOperand(Inst, Mem.Offset);
   }
 
-  bool isReg()   const override { return Kind == k_Reg; }
-  bool isImm()   const override { return Kind == k_Imm; }
+  bool isReg() const override { return Kind == k_Reg; }
+  bool isImm() const override { return Kind == k_Imm; }
   bool isToken() const override { return Kind == k_Tok; }
-  bool isMem()   const override { return Kind == k_Mem; }
-  bool isIndReg()         const { return Kind == k_IndReg; }
-  bool isPostIndReg()     const { return Kind == k_PostIndReg; }
+  bool isMem() const override { return Kind == k_Mem; }
+  bool isIndReg() const { return Kind == k_IndReg; }
+  bool isPostIndReg() const { return Kind == k_PostIndReg; }
 
   bool isCGImm() const {
     if (Kind != k_Imm)
       return false;
 
-    int64_t Val;
+    int64_t Val = 0;
     if (!Imm->evaluateAsAbsolute(Val))
       return false;
 
@@ -193,28 +186,27 @@ public:
   }
 
   static std::unique_ptr<EraVMOperand> CreateReg(unsigned RegNum, SMLoc S,
-                                                  SMLoc E) {
+                                                 SMLoc E) {
     return std::make_unique<EraVMOperand>(k_Reg, RegNum, S, E);
   }
 
   static std::unique_ptr<EraVMOperand> CreateImm(const MCExpr *Val, SMLoc S,
-                                                  SMLoc E) {
+                                                 SMLoc E) {
     return std::make_unique<EraVMOperand>(Val, S, E);
   }
 
-  static std::unique_ptr<EraVMOperand> CreateMem(unsigned RegNum,
-                                                  const MCExpr *Val,
-                                                  SMLoc S, SMLoc E) {
+  static std::unique_ptr<EraVMOperand>
+  CreateMem(unsigned RegNum, const MCExpr *Val, SMLoc S, SMLoc E) {
     return std::make_unique<EraVMOperand>(RegNum, Val, S, E);
   }
 
   static std::unique_ptr<EraVMOperand> CreateIndReg(unsigned RegNum, SMLoc S,
-                                                     SMLoc E) {
+                                                    SMLoc E) {
     return std::make_unique<EraVMOperand>(k_IndReg, RegNum, S, E);
   }
 
-  static std::unique_ptr<EraVMOperand> CreatePostIndReg(unsigned RegNum, SMLoc S,
-                                                         SMLoc E) {
+  static std::unique_ptr<EraVMOperand> CreatePostIndReg(unsigned RegNum,
+                                                        SMLoc S, SMLoc E) {
     return std::make_unique<EraVMOperand>(k_PostIndReg, RegNum, S, E);
   }
 
@@ -248,10 +240,10 @@ public:
 } // end anonymous namespace
 
 bool EraVMAsmParser::MatchAndEmitInstruction(SMLoc Loc, unsigned &Opcode,
-                                              OperandVector &Operands,
-                                              MCStreamer &Out,
-                                              uint64_t &ErrorInfo,
-                                              bool MatchingInlineAsm) {
+                                             OperandVector &Operands,
+                                             MCStreamer &Out,
+                                             uint64_t &ErrorInfo,
+                                             bool MatchingInlineAsm) {
   return true;
 }
 
@@ -260,13 +252,13 @@ static unsigned MatchRegisterName(StringRef Name);
 static unsigned MatchRegisterAltName(StringRef Name);
 
 bool EraVMAsmParser::ParseRegister(unsigned &RegNo, SMLoc &StartLoc,
-                                    SMLoc &EndLoc) {
+                                   SMLoc &EndLoc) {
   return true;
 }
 
 OperandMatchResultTy EraVMAsmParser::tryParseRegister(unsigned &RegNo,
-                                                       SMLoc &StartLoc,
-                                                       SMLoc &EndLoc) {
+                                                      SMLoc &StartLoc,
+                                                      SMLoc &EndLoc) {
   if (getLexer().getKind() == AsmToken::Identifier) {
     auto Name = getLexer().getTok().getIdentifier().lower();
     RegNo = MatchRegisterName(Name);
@@ -288,14 +280,12 @@ OperandMatchResultTy EraVMAsmParser::tryParseRegister(unsigned &RegNo,
 }
 
 bool EraVMAsmParser::ParseInstruction(ParseInstructionInfo &Info,
-                                       StringRef Name, SMLoc NameLoc,
-                                       OperandVector &Operands) {
+                                      StringRef Name, SMLoc NameLoc,
+                                      OperandVector &Operands) {
   return false;
 }
 
-bool EraVMAsmParser::ParseDirective(AsmToken DirectiveID) {
-  return true;
-}
+bool EraVMAsmParser::ParseDirective(AsmToken DirectiveID) { return true; }
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMAsmParser() {
   RegisterMCAsmParser<EraVMAsmParser> X(getTheEraVMTarget());
@@ -306,6 +296,6 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMAsmParser() {
 #include "EraVMGenAsmMatcher.inc"
 
 unsigned EraVMAsmParser::validateTargetOperandClass(MCParsedAsmOperand &AsmOp,
-                                                     unsigned Kind) {
+                                                    unsigned Kind) {
   return Match_Success;
 }

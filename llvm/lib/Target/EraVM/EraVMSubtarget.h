@@ -65,4 +65,4 @@ public:
 };
 } // namespace llvm
 
-#endif // LLVM_TARGET_ERAVM_SUBTARGET_H
+#endif // LLVM_LIB_TARGET_ERAVM_ERAVMSUBTARGET_H

@@ -46,7 +46,7 @@ public:
     initializeEraVMStackAddressConstantPropagationPass(
         *PassRegistry::getPassRegistry());
   }
-  bool runOnMachineFunction(MachineFunction &Fn) override;
+  bool runOnMachineFunction(MachineFunction &MF) override;
 
   StringRef getPassName() const override {
     return ERAVM_STACK_ADDRESS_CONSTANT_PROPAGATION_NAME;
@@ -58,8 +58,8 @@ private:
   // TODO: CPR-1357 When FE start to produce LLVM arrays, it make sense
   // to support propagation through mul.
   std::optional<PropagationResult> tryPropagateConstant(MachineInstr &MI);
-  const EraVMInstrInfo *TII;
-  MachineRegisterInfo *RegInfo;
+  const EraVMInstrInfo *TII{};
+  MachineRegisterInfo *RegInfo{};
 };
 
 char EraVMStackAddressConstantPropagation::ID = 0;
@@ -79,8 +79,8 @@ EraVMStackAddressConstantPropagation::tryPropagateConstant(MachineInstr &MI) {
   if (!RegInfo->hasOneNonDBGUse(EraVM::out0Iterator(MI)->getReg()))
     return {};
 
-  auto In0 = EraVM::in0Iterator(MI);
-  auto In1 = EraVM::in1Iterator(MI);
+  auto *In0 = EraVM::in0Iterator(MI);
+  auto *In1 = EraVM::in1Iterator(MI);
   Register In1Reg = In1->getReg();
   MachineInstr &In1Def = *RegInfo->getVRegDef(In1Reg);
   auto In1Res = tryPropagateConstant(In1Def);
@@ -137,8 +137,8 @@ bool EraVMStackAddressConstantPropagation::runOnMachineFunction(
     for (auto &MI : BB) {
       if (!EraVM::hasSRInAddressingMode(MI))
         continue;
-      auto In0Reg = EraVM::in0Iterator(MI) + 1;
-      auto In0Const = EraVM::in0Iterator(MI) + 2;
+      auto *In0Reg = EraVM::in0Iterator(MI) + 1;
+      auto *In0Const = EraVM::in0Iterator(MI) + 2;
       if (!In0Reg->isReg())
         continue;
       Register Base = In0Reg->getReg();
@@ -151,7 +151,7 @@ bool EraVMStackAddressConstantPropagation::runOnMachineFunction(
       int64_t Displacement = getImmOrCImm(*In0Const);
       Displacement += ConstPropagationResult->Displacement;
       LLVM_DEBUG(dbgs() << "Replace " << MI);
-      In0Reg->ChangeToRegister(ConstPropagationResult->Base, 0);
+      In0Reg->ChangeToRegister(ConstPropagationResult->Base, false);
       In0Const->ChangeToImmediate(Displacement, 0);
       LLVM_DEBUG(dbgs() << "  with " << MI);
       Changed = true;

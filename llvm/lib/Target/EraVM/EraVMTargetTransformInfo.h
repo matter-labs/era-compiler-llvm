@@ -20,8 +20,8 @@
 namespace llvm {
 
 class EraVMTTIImpl final : public BasicTTIImplBase<EraVMTTIImpl> {
-  typedef BasicTTIImplBase<EraVMTTIImpl> BaseT;
-  typedef TargetTransformInfo TTI;
+  using BaseT = BasicTTIImplBase<EraVMTTIImpl>;
+  using TTI = TargetTransformInfo;
   friend BaseT;
 
   const EraVMSubtarget *ST;
