@@ -207,7 +207,10 @@ public:
   /// Destructor.
   ~APInt() {
     if (needsCleanup())
+      // EVM local begin
+      // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDelete)
       delete[] U.pVal;
+      // EVM local end
   }
 
   /// @}
