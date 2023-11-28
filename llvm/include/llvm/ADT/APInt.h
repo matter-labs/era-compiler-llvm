@@ -166,7 +166,10 @@ public:
   /// Destructor.
   ~APInt() {
     if (needsCleanup())
+      // EraVM local begin
+      // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDelete)
       delete[] U.pVal;
+      // EraVM local end
   }
 
   /// @}
