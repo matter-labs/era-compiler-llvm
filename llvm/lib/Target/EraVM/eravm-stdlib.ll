@@ -346,7 +346,7 @@ entry:
   unreachable
 }
 
-define i256 @__sha3(i8 addrspace(1)* nocapture nofree noundef %0, i256 %1, i1 %throw_at_failure) "noinline-oz" #1 personality i32()* @__personality {
+define i256 @__sha3(i8 addrspace(1)* nocapture nofree noundef %0, i256 %1, i1 %throw_at_failure) noinline #1 personality i32()* @__personality {
 entry:
   %addr_int = ptrtoint i8 addrspace(1)* %0 to i256
   %2 = tail call i256 @llvm.umin.i256(i256 %addr_int, i256 4294967295)
