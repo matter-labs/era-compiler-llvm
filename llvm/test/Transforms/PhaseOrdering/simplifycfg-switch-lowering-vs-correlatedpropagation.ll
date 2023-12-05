@@ -2,7 +2,6 @@
 ; RUN: opt -passes='default<O1>' -S < %s | FileCheck %s
 ; RUN: opt -passes='default<O2>' -S < %s | FileCheck %s
 ; RUN: opt -passes='default<O3>' -S < %s | FileCheck %s
-; XFAIL: target=eravm{{.*}}
 
 ; We are worse at propagating correlation facts when in select form
 ; as compared to the PHI form, so if we lower switches to early,
