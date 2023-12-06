@@ -247,6 +247,37 @@ class EraVMInstrInfo : public EraVMGenInstrInfo {
 public:
   explicit EraVMInstrInfo();
 
+    /// If the specified machine instruction is a direct
+  /// load from a stack slot, return the virtual or physical register number of
+  /// the destination along with the FrameIndex of the loaded stack slot.  If
+  /// not, return 0.  This predicate must return 0 if the instruction has
+  /// any side effects other than loading from the stack slot.
+  unsigned isLoadFromStackSlot(const MachineInstr &MI,
+                               int &FrameIndex) const override;
+
+  /// If the specified machine instruction is a direct
+  /// store to a stack slot, return the virtual or physical register number of
+  /// the source reg along with the FrameIndex of the loaded stack slot.  If
+  /// not, return 0.  This predicate must return 0 if the instruction has
+  /// any side effects other than storing to the stack slot.
+  unsigned isStoreToStackSlot(const MachineInstr &MI,
+                              int &FrameIndex) const override;
+
+  /// Check if the instruction or the bundle of instructions has
+  /// load from stack slots. Return the frameindex and machine memory operand
+  /// if true.
+  bool hasLoadFromStackSlot(
+      const MachineInstr &MI,
+      SmallVectorImpl<const MachineMemOperand *> &Accesses) const override;
+
+  /// Check if the instruction or the bundle of instructions has
+  /// store to stack slots. Return the frameindex and machine memory operand
+  /// if true.
+  bool hasStoreToStackSlot(
+      const MachineInstr &MI,
+      SmallVectorImpl<const MachineMemOperand *> &Accesses) const override;
+
+
   /// getRegisterInfo - TargetInstrInfo is a superset of MRegister info.  As
   /// such, whenever a client has an instance of instruction info, it should
   /// always be able to get register info as well (through this method).

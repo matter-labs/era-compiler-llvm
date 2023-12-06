@@ -249,6 +249,70 @@ void EraVMInstrInfo::anchor() {}
 EraVMInstrInfo::EraVMInstrInfo()
     : EraVMGenInstrInfo(EraVM::ADJCALLSTACKDOWN, EraVM::ADJCALLSTACKUP), RI() {}
 
+unsigned EraVMInstrInfo::isLoadFromStackSlot(const MachineInstr &MI,
+                                             int &FrameIndex) const {
+  if (MI.getOpcode() != EraVM::ADDsrr_s &&
+      MI.getOpcode() != EraVM::PTR_ADDsrr_s)
+       return 0;
+  auto In0 = EraVM::in0Iterator(MI);
+  if (EraVM::in1Iterator(MI)->getReg() != EraVM::R0 || getImmOrCImm(*EraVM::ccIterator(MI)) != EraVMCC::COND_NONE)
+       return 0;
+  if (!In0->isReg() /* SP */|| !(In0 + 1)->isFI())
+       return 0;
+  FrameIndex = (In0 + 1)->getIndex();
+  return MI.getOperand(0).getReg();
+}
+
+unsigned EraVMInstrInfo::isStoreToStackSlot(const MachineInstr &MI,
+                                            int &FrameIndex) const {
+   if (MI.getOpcode() != EraVM::ADDrrs_s &&
+       MI.getOpcode() != EraVM::PTR_ADDrrs_s)
+     return 0;
+  if (EraVM::in1Iterator(MI)->getReg() != EraVM::R0 || getImmOrCImm(*EraVM::ccIterator(MI)) != EraVMCC::COND_NONE)
+       return 0;
+  auto Out0 = EraVM::out0Iterator(MI);
+  if (!Out0->isReg() /* SP */|| !(Out0 + 1)->isFI())
+       return 0;
+  FrameIndex = (Out0 + 1)->getIndex();
+  return MI.getOperand(0).getReg();
+}
+
+/// This function checks if the instruction or bundle of instructions
+/// has load from stack slot and returns frameindex and machine memory
+/// operand of that instruction if true.
+bool EraVMInstrInfo::hasLoadFromStackSlot(
+    const MachineInstr &MI,
+    SmallVectorImpl<const MachineMemOperand *> &Accesses) const {
+  if (MI.isBundle()) {
+    const MachineBasicBlock *MBB = MI.getParent();
+    MachineBasicBlock::const_instr_iterator MII = MI.getIterator();
+    for (++MII; MII != MBB->instr_end() && MII->isInsideBundle(); ++MII)
+      if (TargetInstrInfo::hasLoadFromStackSlot(*MII, Accesses))
+        return true;
+    return false;
+  }
+
+  return TargetInstrInfo::hasLoadFromStackSlot(MI, Accesses);
+}
+
+/// This function checks if the instruction or bundle of instructions
+/// has store to stack slot and returns frameindex and machine memory
+/// operand of that instruction if true.
+bool EraVMInstrInfo::hasStoreToStackSlot(
+    const MachineInstr &MI,
+    SmallVectorImpl<const MachineMemOperand *> &Accesses) const {
+  if (MI.isBundle()) {
+    const MachineBasicBlock *MBB = MI.getParent();
+    MachineBasicBlock::const_instr_iterator MII = MI.getIterator();
+    for (++MII; MII != MBB->instr_end() && MII->isInsideBundle(); ++MII)
+      if (TargetInstrInfo::hasStoreToStackSlot(*MII, Accesses))
+        return true;
+    return false;
+  }
+
+  return TargetInstrInfo::hasStoreToStackSlot(MI, Accesses);
+}
+
 unsigned EraVMInstrInfo::removeBranch(MachineBasicBlock &MBB,
                                       int *BytesRemoved) const {
   assert(!BytesRemoved && "code size not handled");
