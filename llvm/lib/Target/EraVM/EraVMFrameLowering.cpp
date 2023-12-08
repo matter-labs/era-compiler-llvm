@@ -111,7 +111,6 @@ MachineBasicBlock::iterator EraVMFrameLowering::eliminateCallFramePseudoInstr(
   }
 
   return MBB.erase(I);
-  return I;
 }
 
 void EraVMFrameLowering::processFunctionBeforeFrameFinalized(
