@@ -58,8 +58,6 @@ private:
       {EraVMCC::COND_LE, EraVMCC::COND_GT},
       {EraVMCC::COND_GT, EraVMCC::COND_LE},
       {EraVMCC::COND_GE, EraVMCC::COND_LT},
-      // COND_OF is an alias for COND_LT
-      {EraVMCC::COND_OF, EraVMCC::COND_GE},
   };
 
   /// Non-commutative opcodes that will produce a neutral result once operated

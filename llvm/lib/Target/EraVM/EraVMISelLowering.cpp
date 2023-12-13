@@ -106,6 +106,7 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
       {
           ISD::BR_JT,
           ISD::BRIND,
+          ISD::BRCOND,
           ISD::VASTART,
           ISD::VAARG,
           ISD::VAEND,
@@ -140,7 +141,7 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
 
   setOperationAction({ISD::INTRINSIC_VOID, ISD::INTRINSIC_WO_CHAIN,
                       ISD::INTRINSIC_W_CHAIN, ISD::STACKSAVE, ISD::STACKRESTORE,
-                      ISD::TRAP, ISD::BRCOND},
+                      ISD::TRAP},
                      MVT::Other, Custom);
 
   for (MVT VT : {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}) {
@@ -674,7 +675,6 @@ SDValue EraVMTargetLowering::LowerOperation(SDValue Op,
   case ISD::BlockAddress:       return LowerBlockAddress(Op, DAG);
   case ISD::ExternalSymbol:     return LowerExternalSymbol(Op, DAG);
   case ISD::BR_CC:              return LowerBR_CC(Op, DAG);
-  case ISD::BRCOND:             return LowerBRCOND(Op, DAG);
   case ISD::SELECT_CC:          return LowerSELECT_CC(Op, DAG);
   case ISD::SRA:                return LowerSRA(Op, DAG);
   case ISD::SDIV:               return LowerSDIV(Op, DAG);
@@ -998,46 +998,6 @@ SDValue EraVMTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
                      TargetCC, Cmp);
 }
 
-static const std::unordered_map<uint64_t, uint64_t> OpcodeMap = {
-    {ISD::UADDO, EraVMISD::ADD_V},
-    {ISD::USUBO, EraVMISD::SUB_V},
-    {ISD::UMULO, EraVMISD::MUL_V},
-};
-
-static SDValue matchingOverflowArithmeticOperation(SDValue Op) {
-  // match of Op is the 2nd result of u{add|sub|mul}.with.overflow
-  if (Op.getResNo() == 1)
-    if (OpcodeMap.count(Op.getOpcode()))
-      return Op.getValue(0);
-  return SDValue();
-}
-
-// try to custom lower U{add|sub|mul}.with.overflow feeding into a branch
-// into {ADD|SUB|MUL}! and jump.of
-SDValue EraVMTargetLowering::LowerBRCOND(SDValue Op, SelectionDAG &DAG) const {
-  SDValue Chain = Op.getOperand(0);
-  SDValue Cond = Op.getOperand(1);
-  SDValue Dest = Op.getOperand(2);
-  SDLoc DL(Op);
-  SDValue MatchedUArithO = matchingOverflowArithmeticOperation(Cond);
-  if (!MatchedUArithO)
-    return SDValue();
-
-  auto OPC = MatchedUArithO.getOpcode();
-  auto LoweredOPC = OpcodeMap.at(OPC);
-  SDValue FoldedArith =
-      DAG.getNode(LoweredOPC, DL, {MVT::i256, MVT::Other},
-                  {DAG.getEntryNode(), MatchedUArithO.getOperand(0),
-                   MatchedUArithO.getOperand(1)});
-  DAG.ReplaceAllUsesOfValueWith(MatchedUArithO.getValue(0),
-                                FoldedArith.getValue(0));
-
-  auto TF = DAG.getNode(ISD::TokenFactor, DL, MVT::Other,
-                        {Chain, FoldedArith.getValue(1)});
-  auto OFCC = DAG.getConstant(EraVMCC::COND_OF, DL, MVT::i256);
-  return DAG.getNode(EraVMISD::BRCOND, DL, Op.getValueType(), TF, Dest, OFCC);
-}
-
 SDValue EraVMTargetLowering::LowerSELECT_CC(SDValue Op,
                                             SelectionDAG &DAG) const {
   SDValue LHS = Op.getOperand(0);
@@ -1314,15 +1274,4 @@ EraVMTargetLowering::getRegisterByName(const char *RegName, LLT VT,
 
   report_fatal_error(
       Twine("Invalid register name \"" + StringRef(RegName) + "\"."));
-}
-
-void EraVMTargetLowering::AdjustInstrPostInstrSelection(MachineInstr &MI,
-                                                        SDNode *Node) const {
-  assert(MI.hasPostISelHook() && "Expected instruction to have post-isel hook");
-
-  // mark the implicit def to be alive
-  if (EraVMInstrInfo::isFlagSettingInstruction(MI.getOpcode()))
-    for (auto &MO : MI.implicit_operands())
-      if (MO.isDef())
-        MO.setIsDead(false);
 }

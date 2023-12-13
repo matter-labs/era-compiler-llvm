@@ -1124,7 +1124,7 @@ bool EraVMInstrInfo::isPredicable(const MachineInstr &MI) const {
   // check condition code validity.
   // Overflow condition code is not reversible so not predicable
   EraVMCC::CondCodes CC = getCCCode(MI);
-  return CC != EraVMCC::COND_INVALID && CC != EraVMCC::COND_OF;
+  return CC != EraVMCC::COND_INVALID;
 }
 
 static bool probabilityIsProfitable(unsigned TrueCycles, unsigned FalseCycles,
