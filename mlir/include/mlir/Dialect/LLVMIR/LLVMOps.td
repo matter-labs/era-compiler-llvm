@@ -635,6 +635,61 @@ def LLVM_CallOp : LLVM_MemAccessOpBase<"call",
   let hasCustomAssemblyFormat = 1;
 }
 
+// FIXME: This op is a temporary workaround until we're able to define llvm
+// dialect version of target specific intrinsics tracking the
+// `IntrinsicProperty` using ODS traits.
+// TODO: Do we need to copy the CallOp traits and/or interfaces here?
+def LLVM_IntrCallOp : LLVM_Op<"intrcall"> {
+  let summary = "Call to an LLVM intrinsic";
+
+  // FIXME: Support non-string metadata.
+  let arguments = (ins I32Attr:$id, Variadic<LLVM_Type>:$ins,
+                       OptionalAttr<StrArrayAttr>:$metadata,
+                       OptionalAttr<StrAttr>:$name);
+  let results = (outs Optional<LLVM_Type>:$res);
+
+  let builders = [
+    OpBuilder<(ins "uint32_t":$id, "Type":$resTy,
+                   CArg<"ValueRange", "{}">:$ins,
+                   CArg<"StringRef", "StringRef()">:$name), [{
+      build($_builder, $_state, resTy, id, ins, /*metadata=*/{},
+            $_builder.getStringAttr(name));
+    }]>,
+    OpBuilder<(ins "uint32_t":$id, "Type":$resTy,
+                   CArg<"ArrayAttr", "{}">:$metadata,
+                   CArg<"StringRef", "StringRef()">:$name), [{
+      build($_builder, $_state, resTy, id, /*ins=*/{}, metadata,
+            $_builder.getStringAttr(name));
+    }]>
+  ];
+
+  string llvmBuilder = [{
+    llvm::Module *mod = builder.GetInsertBlock()->getModule();
+    llvm::LLVMContext &ctx = mod->getContext();
+    llvm::Function *fn = llvm::Intrinsic::getDeclaration(mod, $id);
+
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    if (op.getMetadata()) {
+      auto attrs = *op.getMetadata();
+      for (auto attr : attrs) {
+        auto strAttr = cast<StringAttr>(attr);
+        auto metadataNode =
+            llvm::MDNode::get(ctx, {llvm::MDString::get(ctx, strAttr)});
+        operands.push_back(llvm::MetadataAsValue::get(ctx, metadataNode));
+      }
+    }
+
+    if (opInst.getNumResults() == 1) {
+      $res = builder.CreateCall(fn, operands);
+    } else {
+      assert(opInst.getNumResults() == 0);
+      builder.CreateCall(fn, operands);
+    }
+  }];
+
+  // TODO: Implement verifier (and custom asm format?)
+}
+
 //===----------------------------------------------------------------------===//
 // ExtractElementOp
 //===----------------------------------------------------------------------===//
