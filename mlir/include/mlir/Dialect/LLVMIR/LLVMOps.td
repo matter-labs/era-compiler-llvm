@@ -635,6 +635,31 @@ def LLVM_CallOp : LLVM_MemAccessOpBase<"call",
   let hasCustomAssemblyFormat = 1;
 }
 
+// FIXME: This op is a temporary workaround until we're able to define llvm
+// dialect version of target specific intrinsics tracking the
+// `IntrinsicProperty` using ODS traits.
+// TODO: Do we need to copy the CallOp traits and/or interfaces here?
+def LLVM_IntrCallOp : LLVM_Op<"intrcall"> {
+  let summary = "Call to an LLVM intrinsic";
+
+  let arguments = (ins I32Attr:$id, Variadic<LLVM_Type>:$ins,
+                       OptionalAttr<StrAttr>:$name);
+  // TODO: Support empty and multi-valued return (like LLVM_IntrOpBase maybe?).
+  let results = (outs LLVM_Type:$res);
+
+  let builders = [OpBuilder<(ins "uint32_t":$id, "Type":$resTy,
+                             CArg<"ValueRange", "{}">:$ins,
+                             CArg<"StringRef", "StringRef()">:$name), [{
+    build($_builder, $_state, resTy, id, ins, $_builder.getStringAttr(name));
+  }]>];
+
+  string llvmBuilder = [{
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    $res = mlir::LLVM::detail::createIntrinsicCall(builder, $id, operands);
+  }];
+  // TODO: Implement verifier (and custom asm format?)
+}
+
 //===----------------------------------------------------------------------===//
 // ExtractElementOp
 //===----------------------------------------------------------------------===//
