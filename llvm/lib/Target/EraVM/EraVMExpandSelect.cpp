@@ -88,8 +88,6 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
       {EraVMCC::COND_LE, EraVMCC::COND_GT},
       {EraVMCC::COND_GT, EraVMCC::COND_LE},
       {EraVMCC::COND_GE, EraVMCC::COND_LT},
-      // COND_OF is an alias for COND_LT
-      {EraVMCC::COND_OF, EraVMCC::COND_GE},
   };
 
   TII = MF.getSubtarget<EraVMSubtarget>().getInstrInfo();

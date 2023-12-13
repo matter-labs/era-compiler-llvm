@@ -64,9 +64,6 @@ void EraVMInstPrinter::printCCOperand(const MCInst *MI, unsigned OpNo,
   case EraVMCC::COND_E:
     O << ".eq";
     break;
-  case EraVMCC::COND_OF:
-    O << ".of";
-    break;
   case EraVMCC::COND_LT:
     O << ".lt";
     break;
