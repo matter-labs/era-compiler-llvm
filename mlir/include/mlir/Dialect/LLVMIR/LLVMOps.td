@@ -635,6 +635,19 @@ def LLVM_CallOp : LLVM_MemAccessOpBase<"call",
   let hasCustomAssemblyFormat = 1;
 }
 
+// TODO: Do we need to copy the CallOp traits and/or interfaces here?
+def LLVM_IntrCallOp : LLVM_Op<"intrcall"> {
+  let summary = "Call to an LLVM intrinsic";
+  let arguments = (ins I32Attr:$id, OptionalAttr<StrAttr>:$name);
+  // TODO: Support empty and multi-valued return (like LLVM_IntrOpBase maybe?)
+  let results = (outs LLVM_Type:$res);
+  string llvmBuilder = [{
+    auto operands = moduleTranslation.lookupValues(opInst.getOperands());
+    $res = mlir::LLVM::detail::createIntrinsicCall(builder, $id, operands);
+  }];
+  // TODO: Implement verifier (and custom asm format?)
+}
+
 //===----------------------------------------------------------------------===//
 // ExtractElementOp
 //===----------------------------------------------------------------------===//
