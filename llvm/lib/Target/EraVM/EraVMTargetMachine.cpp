@@ -27,6 +27,7 @@
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/DeadStoreElimination.h"
+#include "llvm/Transforms/Scalar/EarlyCSE.h"
 #include "llvm/Transforms/Scalar/MergeSimilarBB.h"
 #include "llvm/Transforms/Utils.h"
 
@@ -123,8 +124,10 @@ void EraVMTargetMachine::adjustPassManager(PassManagerBuilder &Builder) {
 void EraVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
   PB.registerPipelineEarlySimplificationEPCallback([](ModulePassManager &PM,
                                                       OptimizationLevel Level) {
-    if (Level != OptimizationLevel::O0)
+    if (Level != OptimizationLevel::O0) {
+      PM.addPass(createModuleToFunctionPassAdaptor(EarlyCSEPass(true)));
       PM.addPass(EraVMAlwaysInlinePass());
+    }
 
     PM.addPass(EraVMLinkRuntimePass(Level));
     if (Level != OptimizationLevel::O0) {
