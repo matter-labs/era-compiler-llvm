@@ -32,6 +32,7 @@ add_llvm_target(EraVMCodeGen
   EraVMCombineAddressingMode.cpp
   EraVMCombineFlagSetting.cpp
   EraVMCombineToIndexedMemops.cpp
+  EraVMCSE.cpp
   EraVMExpandPseudoInsts.cpp
   EraVMExpandSelect.cpp
   EraVMFoldSelect.cpp
