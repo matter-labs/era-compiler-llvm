@@ -1207,6 +1207,11 @@ PassBuilder::buildModuleSimplificationPipeline(OptimizationLevel Level,
   if (EnablePGOForceFunctionAttrs && PGOOpt)
     MPM.addPass(PGOForceFunctionAttrsPass(PGOOpt->ColdOptType));
 
+  // EVM local begin
+  for (auto &C : PreInlinerOptimizationsEPCallbacks)
+    C(MPM, Level);
+  // EVM local end
+
   MPM.addPass(AlwaysInlinerPass(/*InsertLifetimeIntrinsics=*/true));
 
   if (EnableModuleInliner)
@@ -2093,6 +2098,11 @@ ModulePassManager PassBuilder::buildO0DefaultPipeline(OptimizationLevel Level,
     MPM.addPass(createModuleToFunctionPassAdaptor(AddDiscriminatorsPass()));
 
   invokePipelineEarlySimplificationEPCallbacks(MPM, Level);
+
+  // EVM local begin
+  for (auto &C : PreInlinerOptimizationsEPCallbacks)
+    C(MPM, Level);
+  // EVM local end
 
   // Build a minimal pipeline based on the semantics required by LLVM,
   // which is just that always inlining occurs. Further, disable generating
