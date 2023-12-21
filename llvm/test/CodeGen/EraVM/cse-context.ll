@@ -42,8 +42,7 @@ define i256 @test_codesource() {
 define i256 @test_meta() {
 ; CHECK-LABEL: @test_meta(
 ; CHECK-NEXT:    [[VAL1:%.*]] = tail call i256 @llvm.eravm.meta()
-; CHECK-NEXT:    [[VAL2:%.*]] = tail call i256 @llvm.eravm.meta()
-; CHECK-NEXT:    [[RES:%.*]] = add i256 [[VAL2]], [[VAL1]]
+; CHECK-NEXT:    [[RES:%.*]] = shl i256 [[VAL1]], 1
 ; CHECK-NEXT:    ret i256 [[RES]]
 ;
   %val1 = call i256 @llvm.eravm.meta()

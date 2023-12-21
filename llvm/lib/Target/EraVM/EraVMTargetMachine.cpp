@@ -41,6 +41,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMCodegenPreparePass(PR);
   initializeEraVMCombineFlagSettingPass(PR);
   initializeEraVMCombineAddressingModePass(PR);
+  initializeEraVMCSELegacyPassPass(PR);
   initializeEraVMExpandPseudoPass(PR);
   initializeEraVMExpandSelectPass(PR);
   initializeEraVMIndexedMemOpsPreparePass(PR);
@@ -118,6 +119,12 @@ void EraVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
     }
   });
 
+  PB.registerPreInlinerOptimizationsEPCallback(
+      [](ModulePassManager &PM, OptimizationLevel Level) {
+        if (Level != OptimizationLevel::O0)
+          PM.addPass(createModuleToFunctionPassAdaptor(EraVMCSEPass()));
+      });
+
   PB.registerAnalysisRegistrationCallback([](FunctionAnalysisManager &FAM) {
     FAM.registerPass([] { return EraVMAA(); });
   });
@@ -137,6 +144,10 @@ void EraVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
          ArrayRef<PassBuilder::PipelineElement>) {
         if (PassName == "eravm-sha3-constant-folding") {
           PM.addPass(EraVMSHA3ConstFoldingPass());
+          return true;
+        }
+        if (PassName == "eravm-cse") {
+          PM.addPass(EraVMCSEPass());
           return true;
         }
         return false;
