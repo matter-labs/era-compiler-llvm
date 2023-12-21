@@ -127,16 +127,20 @@ void EraVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
       PM.addPass(EraVMAlwaysInlinePass());
 
     PM.addPass(EraVMLinkRuntimePass(Level));
-    if (Level != OptimizationLevel::O0) {
+    if (Level != OptimizationLevel::O0)
       PM.addPass(
           createModuleToFunctionPassAdaptor(EraVMOptimizeStdLibCallsPass()));
-      PM.addPass(GlobalDCEPass());
-      PM.addPass(
-          createModuleToFunctionPassAdaptor(EraVMSHA3ConstFoldingPass()));
-      PM.addPass(createModuleToFunctionPassAdaptor(DSEPass()));
-    } else {
-      PM.addPass(GlobalDCEPass());
-    }
+    PM.addPass(GlobalDCEPass());
+  });
+
+  PB.registerPreInlinerOptimizationsEPCallback([](ModulePassManager &PM,
+                                                  OptimizationLevel Level) {
+    if (Level == OptimizationLevel::O0)
+      return;
+
+    PM.addPass(createModuleToFunctionPassAdaptor(EraVMSHA3ConstFoldingPass()));
+    PM.addPass(createModuleToFunctionPassAdaptor(DSEPass()));
+    PM.addPass(GlobalDCEPass());
   });
 
   PB.registerScalarOptimizerLateEPCallback(
