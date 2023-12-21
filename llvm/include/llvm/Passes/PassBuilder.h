@@ -469,6 +469,44 @@ public:
     PipelineEarlySimplificationEPCallbacks.push_back(C);
   }
 
+  // EraVM local begin
+  /// Register a callback for a default optimizer pipeline extension point
+  ///
+  /// This extension point allows adding optimizations before the inliner
+  /// and it differs from PipelineEarlySimplificationEPCallbacks, because some
+  /// passes are called in between, that in some cases can create opportunities
+  /// for CSE-like and memory based optimizations, since the input code is
+  /// better optimized.
+  /// EraVM adds passes to remove repetitive computation of read only library
+  /// function calls (__sha3, __system_request, etc.). These passes must work
+  /// before the inliner, but to simplify inner pattern matching logic and make
+  /// it work more frequently, we found it better to put it right before the
+  /// inliner. Since InstCombinePass is called before this extension point,
+  /// it can simplify code and enable easier elimination of repetitive function
+  /// calls.
+  ///
+  /// Example that shows how InstCombinePass enables elimination of repetitive
+  /// function calls based on the input data that is passed:
+  ///   Before InstCombinePass:
+  ///     %_118 = load i256, ptr %_1, align 32
+  ///     store i256 %_118, ptr addrspace(1) %ptr1, align 1
+  ///     %_119 = load i256, ptr %_1, align 32
+  ///     store i256 %_119, ptr addrspace(1) %ptr2, align 1
+  ///   After InstCombinePass:
+  ///     %_118 = load i256, ptr %_1, align 32
+  ///     store i256 %_118, ptr addrspace(1) %ptr1, align 4294967296
+  ///     store i256 %_118, ptr addrspace(1) %ptr2, align 32
+  ///
+  /// In case there are two consecutive calls to the same library function,
+  /// but only different pointers are passed (in this case %ptr1 and %ptr2),
+  /// we can inspect these pointers and see that the same input data is written,
+  /// so in that case, it's possible to safely eliminate the second call.
+  void registerPreInlinerOptimizationsEPCallback(
+      const std::function<void(ModulePassManager &, OptimizationLevel)> &C) {
+    PreInlinerOptimizationsEPCallbacks.push_back(C);
+  }
+  // EraVM local end
+
   /// Register a callback for a default optimizer pipeline extension point
   ///
   /// This extension point allows adding optimizations before the function
@@ -628,6 +666,10 @@ private:
   SmallVector<std::function<void(FunctionPassManager &, OptimizationLevel)>, 2>
       VectorizerStartEPCallbacks;
   // Module callbacks
+  // EraVM local begin
+  SmallVector<std::function<void(ModulePassManager &, OptimizationLevel)>, 2>
+      PreInlinerOptimizationsEPCallbacks;
+  // EraVM local end
   SmallVector<std::function<void(ModulePassManager &, OptimizationLevel)>, 2>
       OptimizerEarlyEPCallbacks;
   SmallVector<std::function<void(ModulePassManager &, OptimizationLevel)>, 2>
