@@ -1110,6 +1110,11 @@ PassBuilder::buildModuleSimplificationPipeline(OptimizationLevel Level,
   if (EnableSyntheticCounts && !PGOOpt)
     MPM.addPass(SyntheticCountsPropagation());
 
+  // EraVM local begin
+  for (auto &C : PreInlinerOptimizationsEPCallbacks)
+    C(MPM, Level);
+  // EraVM local end
+
   if (EnableModuleInliner)
     MPM.addPass(buildModuleInlinerPipeline(Level, Phase));
   else
@@ -1949,6 +1954,11 @@ ModulePassManager PassBuilder::buildO0DefaultPipeline(OptimizationLevel Level,
     MPM.addPass(createModuleToFunctionPassAdaptor(AddDiscriminatorsPass()));
 
   invokePipelineEarlySimplificationEPCallbacks(MPM, Level);
+
+  // EraVM local begin
+  for (auto &C : PreInlinerOptimizationsEPCallbacks)
+    C(MPM, Level);
+  // EraVM local end
 
   // Build a minimal pipeline based on the semantics required by LLVM,
   // which is just that always inlining occurs. Further, disable generating
