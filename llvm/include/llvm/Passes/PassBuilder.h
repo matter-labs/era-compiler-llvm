@@ -469,6 +469,16 @@ public:
     PipelineEarlySimplificationEPCallbacks.push_back(C);
   }
 
+  // EraVM local begin
+  /// Register a callback for a default optimizer pipeline extension point
+  ///
+  /// This extension point allows adding optimizations before the inliner.
+  void registerPreInlinerOptimizationsEPCallback(
+      const std::function<void(ModulePassManager &, OptimizationLevel)> &C) {
+    PreInlinerOptimizationsEPCallbacks.push_back(C);
+  }
+  // EraVM local end
+
   /// Register a callback for a default optimizer pipeline extension point
   ///
   /// This extension point allows adding optimizations before the function
@@ -628,6 +638,10 @@ private:
   SmallVector<std::function<void(FunctionPassManager &, OptimizationLevel)>, 2>
       VectorizerStartEPCallbacks;
   // Module callbacks
+  // EraVM local begin
+  SmallVector<std::function<void(ModulePassManager &, OptimizationLevel)>, 2>
+      PreInlinerOptimizationsEPCallbacks;
+  // EraVM local end
   SmallVector<std::function<void(ModulePassManager &, OptimizationLevel)>, 2>
       OptimizerEarlyEPCallbacks;
   SmallVector<std::function<void(ModulePassManager &, OptimizationLevel)>, 2>
