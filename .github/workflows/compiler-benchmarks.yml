@@ -56,7 +56,7 @@ jobs:
           echo "COMPILER_LLVM_CANDIDATE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_candidate_branch }}" >> $GITHUB_ENV
 
       - name: Checking out the compiler-tester repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: matter-labs/compiler-tester
           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
@@ -106,13 +106,13 @@ jobs:
       - name: Benchmarking the candidate LLVM framework
         id: compiler_tester_run
         working-directory: compiler-tester
-        run: |          
+        run: |
           export RUST_BACKTRACE='full'
           export LLVM_SYS_150_PREFIX="$(pwd)/target-llvm/target-final/"
           cargo build --verbose --release --bin 'compiler-tester'
           cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-solidity-*/*/Cargo.toml --target-dir './target-zksolc/'
           cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-vyper-*/*/Cargo.toml --target-dir './target-zkvyper/'
-          
+
           ./target/release/compiler-tester \
             --zksolc './target-zksolc/release/zksolc' \
             --zkvyper './target-zkvyper/release/zkvyper' \
@@ -120,7 +120,7 @@ jobs:
             --mode=${{ env.LLVM_BENCHMARK_MODE || '' }} \
             --benchmark='candidate.json'
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: compiler-llvm-candidate-benchmark
           path: compiler-tester/candidate.json
@@ -143,7 +143,7 @@ jobs:
           echo "COMPILER_LLVM_REFERENCE_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_reference_branch }}" >> $GITHUB_ENV
 
       - name: Checking out the compiler-tester repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: matter-labs/compiler-tester
           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
@@ -193,13 +193,13 @@ jobs:
       - name: Benchmarking the reference LLVM framework
         id: compiler_tester_run
         working-directory: compiler-tester
-        run: |          
+        run: |
           export RUST_BACKTRACE='full'
           export LLVM_SYS_150_PREFIX="$(pwd)/target-llvm/target-final/"
           cargo build --verbose --release --bin 'compiler-tester'
           cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-solidity-*/*/Cargo.toml --target-dir './target-zksolc/'
           cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-vyper-*/*/Cargo.toml --target-dir './target-zkvyper/'
-          
+
           ./target/release/compiler-tester \
             --zksolc './target-zksolc/release/zksolc' \
             --zkvyper './target-zkvyper/release/zkvyper' \
@@ -236,7 +236,7 @@ jobs:
           echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_candidate_branch }}" >> $GITHUB_ENV
 
       - name: Checking out the compiler-tester repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           repository: matter-labs/compiler-tester
           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
@@ -251,12 +251,12 @@ jobs:
           git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
           apt install -y ninja-build
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: compiler-llvm-candidate-benchmark
           path: compiler-tester
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
         with:
           name: compiler-llvm-reference-benchmark
           path: compiler-tester
@@ -278,11 +278,11 @@ jobs:
 
       - name: Posting the LLVM benchmark results to a PR comment
         if: github.event_name == 'pull_request'
-        uses: machine-learning-apps/pr-comment@master
+        uses: mshick/add-pr-comment@v2
         env:
           GITHUB_TOKEN: ${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}
         with:
-          path: ./compiler-tester/result.txt
+          message-path: ./compiler-tester/result.txt
 
       - uses: 8398a7/action-slack@v3
         with:
