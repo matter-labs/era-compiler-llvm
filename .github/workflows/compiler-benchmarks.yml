@@ -207,7 +207,7 @@ jobs:
             --mode=${{ env.LLVM_BENCHMARK_MODE || '' }} \
             --benchmark='reference.json'
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: compiler-llvm-reference-benchmark
           path: compiler-tester/reference.json
