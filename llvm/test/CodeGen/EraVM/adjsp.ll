@@ -45,7 +45,7 @@ define i256* @caller() {
 ; CHECK: context.sp r1
 ; CHECK: context.sp r2
 ; CHECK: sub.s 3, r2, r2
-; CHECK: mul 32, r2, r2, r0
+; CHECK: shl.s 5, r2, r2
 ; CHECK: add r2, r0, stack[1 + r1]
   %v = call i256* @callee(i256* %alloc, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256* %alloc2)
   ret i256* %v
