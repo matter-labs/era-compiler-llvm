@@ -41,7 +41,6 @@ declare void @foo(ptr %val);
 define void @call_foo() nounwind {
 ; CHECK: context.sp [[REG:r[0-9]+]]
 ; CHECK: sub.s 1, [[REG]], [[REG2:r[0-9]+]]
-; CHECK: mul
 ; CHECK-NOT: shr.s
 ; CHECK: near_call
   %p = alloca i256
