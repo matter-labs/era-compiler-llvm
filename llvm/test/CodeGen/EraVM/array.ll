@@ -169,7 +169,7 @@ define void @stack_array_passing() {
   ; CHECK:  nop     stack+=[10]
   ; CHECK:  context.sp      r[[REG3:[0-9]+]]
   ; CHECK:  sub.s   10, r[[REG3]], r[[REG4:[0-9]+]]
-  ; CHECK:  mul     32, r[[REG4]], r1, r0
+  ; CHECK:  shl.s    5, r[[REG4]], r1
   ; CHECK:  near_call       r0, @array_arg, @DEFAULT_UNWIND
   %array = alloca [10 x i256], align 32
   call void @array_arg([10 x i256]* %array)
@@ -181,7 +181,7 @@ define void @stack_pointer_passing() {
   ; CHECK:  nop     stack+=[10]
   ; CHECK:  context.sp      r[[REG5:[0-9]+]]
   ; CHECK:  sub.s   10, r[[REG5]], r[[REG5]]
-  ; CHECK:  mul     32, r[[REG5]], r[[REG5]], r0
+  ; CHECK:  shl.s    5, r[[REG5]], r[[REG5]]
   ; CHECK:  add     160, r[[REG5]], r1
   %array = alloca [10 x i256], align 32
   %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 5
@@ -194,7 +194,7 @@ define void @stack_pointer_passing2() {
   ; CHECK: nop     stack+=[10]
   ; CHECK: context.sp      r[[REG6:[0-9]+]]
   ; CHECK: sub.s   10, r[[REG6]], r[[REG6]]
-  ; CHECK: mul     32, r[[REG6]], r1, r0
+  ; CHECK: shl.s    5, r[[REG6]], r1
   %array = alloca [10 x i256], align 32
   call void @array_arg([10 x i256]* %array)
   ret void
