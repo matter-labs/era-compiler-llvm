@@ -30,11 +30,11 @@ define void @store_to_frame_select(i256 %par, i1 %flag) nounwind {
 ; get pointer to %1
 ; CHECK: context.sp r3
 ; CHECK: sub.s 1, r3, r3
-; CHECK: mul 32, r3, r3, r0
+; CHECK: shl.s 5, r3, r3
 ; get pointer to %2
 ; CHECK: context.sp r4
 ; CHECK: sub.s 2, r4, r4
-; CHECK: mul 32, r4, r4, r0
+; CHECK: shl.s 5, r4, r4
 ; the select part
 ; CHECK: sub! r2, r0, r2
 ; CHECK: add.eq r3, r0, r4
