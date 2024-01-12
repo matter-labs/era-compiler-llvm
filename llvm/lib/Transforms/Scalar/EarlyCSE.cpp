@@ -18,6 +18,9 @@
 #include "llvm/ADT/ScopedHashTable.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/Statistic.h"
+// EraVM local begin
+#include "llvm/ADT/Triple.h"
+// EraVM local end
 #include "llvm/Analysis/AssumptionCache.h"
 #include "llvm/Analysis/GlobalsModRef.h"
 #include "llvm/Analysis/GuardUtils.h"
@@ -449,6 +452,15 @@ struct CallValue {
            Inst == DenseMapInfo<Instruction *>::getTombstoneKey();
   }
 
+  // EraVM local begin
+  static bool isEraVMNoCSECall(const CallInst *Call) {
+    if (const auto *Callee = Call->getCalledFunction())
+      return Callee->getName() == "__system_request" ||
+             Callee->getName() == "__sha3";
+    return false;
+  }
+  // EraVM local end
+
   static bool canHandle(Instruction *Inst) {
     // Don't value number anything that returns void.
     if (Inst->getType()->isVoidTy())
@@ -457,6 +469,14 @@ struct CallValue {
     CallInst *CI = dyn_cast<CallInst>(Inst);
     if (!CI || !CI->onlyReadsMemory())
       return false;
+
+    // EraVM local begin
+    // CSE of EraVM library calls is handled in a separate pass.
+    Triple TT(CI->getFunction()->getParent()->getTargetTriple());
+    if (TT.isEraVM() && isEraVMNoCSECall(CI))
+      return false;
+    // EraVM local end
+
     return true;
   }
 };
