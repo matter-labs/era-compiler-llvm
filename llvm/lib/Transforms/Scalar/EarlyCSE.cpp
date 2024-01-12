@@ -49,6 +49,9 @@
 #include "llvm/Support/DebugCounter.h"
 #include "llvm/Support/RecyclingAllocator.h"
 #include "llvm/Support/raw_ostream.h"
+// EraVM local begin
+#include "llvm/TargetParser/Triple.h"
+// EraVM local end
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils/AssumeBundleBuilder.h"
 #include "llvm/Transforms/Utils/Local.h"
@@ -491,6 +494,15 @@ struct CallValue {
            Inst == DenseMapInfo<Instruction *>::getTombstoneKey();
   }
 
+  // EraVM local begin
+  static bool isEraVMNoCSECall(const CallInst *Call) {
+    if (const auto *Callee = Call->getCalledFunction())
+      return Callee->getName() == "__system_request" ||
+             Callee->getName() == "__sha3";
+    return false;
+  }
+  // EraVM local end
+
   static bool canHandle(Instruction *Inst) {
     // Don't value number anything that returns void.
     if (Inst->getType()->isVoidTy())
@@ -507,6 +519,14 @@ struct CallValue {
         // accessing kind more precisely.
         CI->getFunction()->isPresplitCoroutine())
       return false;
+
+    // EraVM local begin
+    // CSE of EraVM library calls is handled in a separate pass.
+    Triple TT(CI->getFunction()->getParent()->getTargetTriple());
+    if (TT.isEraVM() && isEraVMNoCSECall(CI))
+      return false;
+    // EraVM local end
+
     return true;
   }
 };
