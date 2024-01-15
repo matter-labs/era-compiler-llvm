@@ -72,7 +72,8 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
                 TII->get(EraVM::NEAR_CALL))
             .addReg(ABIReg)
             .add(MI.getOperand(1))
-            .add(MI.getOperand(2));
+            .add(MI.getOperand(2))
+            .copyImplicitOps(MI);
         PseudoInst.push_back(&MI);
       } else if (MI.getOpcode() == EraVM::CALL) {
         // Special handling of calling to __cxa_throw.
@@ -84,7 +85,8 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
         auto func_name = func_opnd->getName();
         if (func_name == "__cxa_throw") {
           BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
-                  TII->get(EraVM::THROW)).addReg(EraVM::R1);
+                  TII->get(EraVM::THROW)).addReg(EraVM::R1)
+            .copyImplicitOps(MI);
         } else {
           // One of the problem: the backend cannot restrict frontend to not
           // emit calls (Should we reinforce it?) so this route is needed. If a
@@ -96,8 +98,9 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
               .addReg(ABIReg)
               .add(MI.getOperand(1))
               .addExternalSymbol(
-                  "DEFAULT_UNWIND"); // Linker inserts a basic block
+                  "DEFAULT_UNWIND")  // Linker inserts a basic block
                                      // which bubbles up the exception.
+              .copyImplicitOps(MI);
         }
 
         PseudoInst.push_back(&MI);
