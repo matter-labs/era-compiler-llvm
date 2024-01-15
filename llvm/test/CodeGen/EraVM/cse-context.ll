@@ -42,13 +42,22 @@ define i256 @test_codesource() {
 define i256 @test_meta() {
 ; CHECK-LABEL: @test_meta(
 ; CHECK-NEXT:    [[VAL1:%.*]] = tail call i256 @llvm.eravm.meta()
-; CHECK-NEXT:    [[RES:%.*]] = shl i256 [[VAL1]], 1
+; CHECK-NEXT:    [[VAL2:%.*]] = tail call i256 @llvm.eravm.meta()
+; CHECK-NEXT:    [[RES:%.*]] = add i256 [[VAL2]], [[VAL1]]
 ; CHECK-NEXT:    ret i256 [[RES]]
 ;
   %val1 = call i256 @llvm.eravm.meta()
   %val2 = call i256 @llvm.eravm.meta()
   %res = add i256 %val1, %val2
   ret i256 %res
+}
+
+define i256 @test_meta_dce() {
+; CHECK-LABEL: @test_meta_dce(
+; CHECK-NEXT:    ret i256 0
+;
+  %val1 = call i256 @llvm.eravm.meta()
+  ret i256 0
 }
 
 define i256 @test_txorigin() {
@@ -76,18 +85,32 @@ define i256 @test_gasleft() {
   ret i256 %res
 }
 
-; TODO: CPR-1414 Remove duplicated calls to llvm.eravm.getu128.
+define i256 @test_gasleft_dce() {
+; CHECK-LABEL: @test_gasleft_dce(
+; CHECK-NEXT:    ret i256 0
+;
+  %val1 = call i256 @llvm.eravm.gasleft()
+  ret i256 0
+}
+
 define i256 @test_getu128() {
 ; CHECK-LABEL: @test_getu128(
 ; CHECK-NEXT:    [[VAL1:%.*]] = tail call i256 @llvm.eravm.getu128()
-; CHECK-NEXT:    [[VAL2:%.*]] = tail call i256 @llvm.eravm.getu128()
-; CHECK-NEXT:    [[RES:%.*]] = add i256 [[VAL2]], [[VAL1]]
+; CHECK-NEXT:    [[RES:%.*]] = shl i256 [[VAL1]], 1
 ; CHECK-NEXT:    ret i256 [[RES]]
 ;
   %val1 = call i256 @llvm.eravm.getu128()
   %val2 = call i256 @llvm.eravm.getu128()
   %res = add i256 %val1, %val2
   ret i256 %res
+}
+
+define i256 @test_getu128_dce() {
+; CHECK-LABEL: @test_getu128_dce(
+; CHECK-NEXT:    ret i256 0
+;
+  %val1 = call i256 @llvm.eravm.getu128()
+  ret i256 0
 }
 
 define void @test_setu128(i256 %val) {
@@ -105,8 +128,7 @@ define i256 @test_getu128_setu128(i256 %val) {
 ; CHECK-LABEL: @test_getu128_setu128(
 ; CHECK-NEXT:    [[VAL1:%.*]] = tail call i256 @llvm.eravm.getu128()
 ; CHECK-NEXT:    tail call void @llvm.eravm.setu128(i256 [[VAL:%.*]])
-; CHECK-NEXT:    [[VAL2:%.*]] = tail call i256 @llvm.eravm.getu128()
-; CHECK-NEXT:    [[RES:%.*]] = add i256 [[VAL2]], [[VAL1]]
+; CHECK-NEXT:    [[RES:%.*]] = shl i256 [[VAL1]], 1
 ; CHECK-NEXT:    ret i256 [[RES]]
 ;
   %val1 = call i256 @llvm.eravm.getu128()

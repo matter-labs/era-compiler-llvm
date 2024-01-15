@@ -56,6 +56,9 @@
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
+// EraVM local begin
+#include "llvm/IR/IntrinsicsEraVM.h"
+// EraVM local end
 #include "llvm/IR/IntrinsicsWebAssembly.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/MDBuilder.h"
@@ -435,6 +438,13 @@ bool llvm::wouldInstructionBeTriviallyDead(const Instruction *I,
       return false;
     return true;
   }
+
+  // EraVM local begin
+  if (auto *II = dyn_cast<IntrinsicInst>(I))
+    if (II->getIntrinsicID() == Intrinsic::eravm_gasleft ||
+        II->getIntrinsicID() == Intrinsic::eravm_meta)
+      return true;
+  // EraVM local end
 
   if (auto *CB = dyn_cast<CallBase>(I))
     if (isRemovableAlloc(CB, TLI))
