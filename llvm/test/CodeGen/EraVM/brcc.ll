@@ -122,9 +122,7 @@ l2:
 
 ; CHECK-LABEL: cmpcr
 define i256 @cmpcr(i256 %p1, i256 %p2) nounwind {
-; TODO: CPR-447 should be subx code[val], r1, r{{[0-9]}}
-; CHECK: add @val[0], r0, r2
-; CHECK: sub! r1, r2, r{{[0-9]+}}
+; CHECK: sub.s! @val[0], r1, r{{[0-9]+}}
 ; CHECK-NEXT: add.le  72, r0, r1
 ; CHECK-NEXT: add.gt  42, r0, r1
 ; CHECK-NEXT: ret
@@ -166,9 +164,7 @@ l2:
 
 ; CHECK-LABEL: cmprc
 define i256 @cmprc(i256 %p1, i256 %p2) nounwind {
-; TODO: CPR-447 should be sub code[val], r1, r{{[0-9]}}
-; CHECK: add @val[0], r0, r2
-; CHECK: sub! r2, r1, r{{[0-9]+}}
+; CHECK: sub! @val[0], r1, r{{[0-9]+}}
 ; CHECK-NEXT: add.le  72, r0, r1
 ; CHECK-NEXT: add.gt  42, r0, r1
 ; CHECK-NEXT: ret

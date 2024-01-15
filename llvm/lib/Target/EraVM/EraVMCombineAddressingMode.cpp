@@ -38,6 +38,7 @@ static cl::opt<bool>
 
 STATISTIC(NumReloadFolded, "Number of reloads folded");
 STATISTIC(NumSpillsFolded, "Number of spills folded");
+STATISTIC(NumLoadConstFolded, "Number of load const folded");
 
 namespace {
 
@@ -81,6 +82,9 @@ private:
   /// mappings.
   void mergeSelect(MachineInstr &Base, MachineInstr &Def,
                    iterator_range<MachineInstr::const_mop_iterator> In);
+  /// Return whether \p MI is a load const.
+  /// I.e. an instruction of form `add const, r0, rN`.
+  bool isConstLoad(const MachineInstr &MI) const;
   /// Return whether \p MI is a reload instruction.
   /// I.e. an instruction of form `add stack, r0, rN`.
   bool isReloadInst(const MachineInstr &MI) const;
@@ -109,6 +113,8 @@ private:
   /// Combine spill and spill-like instructions with definitions the register to
   /// spill.
   bool combineDefSpill(MachineFunction &MF);
+  /// Combine constant loading with its usage.
+  bool combineConstantUse(MachineFunction &MF);
 };
 
 char EraVMCombineAddressingMode::ID = 0;
@@ -120,6 +126,12 @@ INITIALIZE_PASS_DEPENDENCY(ReachingDefAnalysis)
 INITIALIZE_PASS_DEPENDENCY(MachineDominatorTree)
 INITIALIZE_PASS_END(EraVMCombineAddressingMode, DEBUG_TYPE,
                     ERAVM_COMBINE_ADDRESSING_MODE_NAME, false, false)
+
+bool EraVMCombineAddressingMode::isConstLoad(const MachineInstr &MI) const {
+  return MI.getOpcode() == EraVM::ADDcrr_s &&
+         EraVM::in1Iterator(MI)->getReg() == EraVM::R0 &&
+         TII->getCCCode(MI) == EraVMCC::COND_NONE;
+}
 
 bool EraVMCombineAddressingMode::isReloadInst(const MachineInstr &MI) const {
   return (MI.getOpcode() == EraVM::ADDsrr_s ||
@@ -501,8 +513,76 @@ bool EraVMCombineAddressingMode::combineDefSpill(MachineFunction &MF) {
   return !Deleted.empty();
 }
 
+bool EraVMCombineAddressingMode::combineConstantUse(MachineFunction &MF) {
+  std::vector<std::pair<MachineInstr *, SmallPtrSet<MachineInstr *, 4>>>
+      Deleted;
+  DenseSet<MachineInstr *> UsesToUpdate;
+  // The pass consists of two phases to not to recompute RDA on every single
+  // rewrite.
+  // 1. Collect all instructions to be combined.
+  for (auto &MBB : MF) {
+    for (auto &MI : MBB) {
+      if (!isConstLoad(MI))
+        continue;
+      Register Def = MI.getOperand(0).getReg();
+      SmallPtrSet<MachineInstr *, 4> Uses;
+      RDA->getGlobalUses(&MI, Def, Uses);
+      // Combining is only profitable if all uses can be rewritten.
+      if (any_of(Uses, [&UsesToUpdate](const MachineInstr *Use) {
+            // Already pending to combine. Can't combine twice.
+            // TODO: CPR-1131 Select is the exception here.
+            return UsesToUpdate.count(Use);
+          }))
+        continue;
+      if (!all_of(Uses, [this, &MI, Def](MachineInstr *Use) {
+            SmallPtrSet<MachineInstr *, 4> ReachingDefs;
+            RDA->getGlobalReachingDefs(Use, Def, ReachingDefs);
+            if (ReachingDefs.size() != 1U)
+              return false;
+            assert(*ReachingDefs.begin() == &MI && "RDA is broken");
+            if (TII->getCCCode(*Use) != EraVMCC::COND_NONE ||
+                !MDT->dominates(&MI, Use))
+              return false;
+            // TODO: CPR-1499 Support select.
+            return !TII->isSel(*Use) && EraVM::hasRRInAddressingMode(*Use);
+          }))
+        continue;
+      UsesToUpdate.insert(Uses.begin(), Uses.end());
+      Deleted.emplace_back(&MI, Uses);
+    }
+  }
+
+  // 2. Combine.
+  for (auto [LoadConst, Uses] : Deleted) {
+    for (auto *Use : Uses) {
+      if (EraVM::in0Iterator(*Use)->getReg() ==
+          LoadConst->getOperand(0).getReg()) {
+        replaceArgument(*Use, EraVM::ArgumentKind::In0,
+                        EraVM::in0Range(*LoadConst),
+                        EraVM::getWithCRInAddrMode(Use->getOpcode()));
+      } else {
+        int NewOpcode = EraVM::getWithCRInAddrMode(Use->getOpcode());
+        if (!Use->isCommutable())
+          NewOpcode = EraVM::getWithInsSwapped(NewOpcode);
+        assert(NewOpcode != -1);
+        replaceArgument(*Use, EraVM::ArgumentKind::In1,
+                        EraVM::in0Range(*LoadConst), NewOpcode);
+      }
+      LLVM_DEBUG(dbgs() << "== Combine load const"; LoadConst->dump();
+                 dbgs() << "   and use:"; Use->dump(); dbgs() << " into:";
+                 std::prev(Use->getIterator())->dump(););
+      Use->eraseFromParent();
+    }
+    LoadConst->eraseFromParent();
+  }
+
+  NumLoadConstFolded += Deleted.size();
+
+  return !Deleted.empty();
+}
+
 bool EraVMCombineAddressingMode::runOnMachineFunction(MachineFunction &MF) {
-  LLVM_DEBUG(dbgs() << "********** EraVM COMBINE RELOAD USE **********\n"
+  LLVM_DEBUG(dbgs() << "********** EraVM COMBINE ADDRESSING MODE **********\n"
                     << "********** Function: " << MF.getName() << '\n');
   bool Changed = false;
   if (!EnableEraVMCombineAddressingMode)
@@ -513,6 +593,8 @@ bool EraVMCombineAddressingMode::runOnMachineFunction(MachineFunction &MF) {
   Changed |= combineReloadUse(MF);
   RDA->reset();
   Changed |= combineDefSpill(MF);
+  RDA->reset();
+  Changed |= combineConstantUse(MF);
   return Changed;
 }
 
