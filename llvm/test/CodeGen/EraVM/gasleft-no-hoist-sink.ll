@@ -6,18 +6,20 @@ target triple = "eravm"
 define i256 @no_hoist(i1 %cond) {
 ; CHECK-LABEL: @no_hoist(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[VAL1:%.*]] = tail call i256 @llvm.eravm.gasleft()
 ; CHECK-NEXT:    br i1 [[COND:%.*]], label [[THEN:%.*]], label [[ELSE:%.*]]
 ; CHECK:       then:
+; CHECK-NEXT:    [[VAL1:%.*]] = tail call i256 @llvm.eravm.gasleft()
 ; CHECK-NEXT:    store i256 2, ptr addrspace(2) inttoptr (i256 3 to ptr addrspace(2)), align 64
+; CHECK-NEXT:    [[RES1:%.*]] = add i256 [[VAL1]], 5
 ; CHECK-NEXT:    br label [[RET:%.*]]
 ; CHECK:       else:
+; CHECK-NEXT:    [[VAL2:%.*]] = tail call i256 @llvm.eravm.gasleft()
 ; CHECK-NEXT:    store i256 2, ptr addrspace(1) inttoptr (i256 2 to ptr addrspace(1)), align 64
+; CHECK-NEXT:    [[RES2:%.*]] = add i256 [[VAL2]], 6
 ; CHECK-NEXT:    br label [[RET]]
 ; CHECK:       ret:
-; CHECK-NEXT:    [[DOTSINK:%.*]] = phi i256 [ 6, [[ELSE]] ], [ 5, [[THEN]] ]
-; CHECK-NEXT:    [[RES2:%.*]] = add i256 [[VAL1]], [[DOTSINK]]
-; CHECK-NEXT:    ret i256 [[RES2]]
+; CHECK-NEXT:    [[PHI:%.*]] = phi i256 [ [[RES1]], [[THEN]] ], [ [[RES2]], [[ELSE]] ]
+; CHECK-NEXT:    ret i256 [[PHI]]
 ;
 entry:
   br i1 %cond, label %then, label %else
@@ -45,13 +47,15 @@ define i256 @no_sink(i1 %cond) {
 ; CHECK-NEXT:    br i1 [[COND:%.*]], label [[THEN:%.*]], label [[ELSE:%.*]]
 ; CHECK:       then:
 ; CHECK-NEXT:    store i256 2, ptr addrspace(2) inttoptr (i256 3 to ptr addrspace(2)), align 64
+; CHECK-NEXT:    [[VAL1:%.*]] = tail call i256 @llvm.eravm.gasleft()
 ; CHECK-NEXT:    br label [[RET:%.*]]
 ; CHECK:       else:
 ; CHECK-NEXT:    store i256 2, ptr addrspace(1) inttoptr (i256 2 to ptr addrspace(1)), align 64
+; CHECK-NEXT:    [[VAL2:%.*]] = tail call i256 @llvm.eravm.gasleft()
 ; CHECK-NEXT:    br label [[RET]]
 ; CHECK:       ret:
-; CHECK-NEXT:    [[VAL2:%.*]] = tail call i256 @llvm.eravm.gasleft()
-; CHECK-NEXT:    ret i256 [[VAL2]]
+; CHECK-NEXT:    [[PHI:%.*]] = phi i256 [ [[VAL1]], [[THEN]] ], [ [[VAL2]], [[ELSE]] ]
+; CHECK-NEXT:    ret i256 [[PHI]]
 ;
 entry:
   br i1 %cond, label %then, label %else

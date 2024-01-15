@@ -1290,9 +1290,11 @@ def LOADCONST : Pseudo<(outs GR256:$val), (ins i256imm:$addr),
 // Intrinsics lowering
 //===----------------------------------------------------------------------===//
 
+// TODO: CPR-1505 Regroup instructions based on the attributes from IntrinsicsEraVM.td.
 def CTXr : IContextR<45, (outs GR256:$rd0), (ins context_op:$cop, cc:$cc),
                      "context$cop$cc\t$rd0", []>;
 let hasSideEffects = 1 in {
+let hasPostISelHook = 1 in
 def CTXr_se : IContextR<46, (outs GR256:$rd0), (ins context_se_op:$cop, cc:$cc),
                         "context$cop$cc\t$rd0", []>;
 def CTXr_set : IContextR<52, (outs), (ins GR256:$rs0, context_se_op:$cop, cc:$cc),
@@ -1301,10 +1303,10 @@ def CTXr_se0 : IContextR<152, (outs), (ins context_se_op:$cop, cc:$cc),
                          "context$cop$cc", []>;
 }
 
+def : Pat<(int_eravm_meta), (CTXr 3, 0)>;
 def : Pat<(int_eravm_this), (CTXr 0, 0)>;
 def : Pat<(int_eravm_caller), (CTXr 1, 0)>;
 def : Pat<(int_eravm_codesource), (CTXr 2, 0)>;
-def : Pat<(int_eravm_meta), (CTXr 3, 0)>;
 def : Pat<(int_eravm_txorigin), (CTXr 4, 0)>;
 def : Pat<(int_eravm_gasleft), (CTXr_se 6, 0)>;
 def : Pat<(EraVMget_sp), (CTXr_se 7, 0)>;

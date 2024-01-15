@@ -1275,3 +1275,14 @@ EraVMTargetLowering::getRegisterByName(const char *RegName, LLT VT,
   report_fatal_error(
       Twine("Invalid register name \"" + StringRef(RegName) + "\"."));
 }
+
+void EraVMTargetLowering::AdjustInstrPostInstrSelection(MachineInstr &MI,
+                                                        SDNode *Node) const {
+  assert(MI.hasPostISelHook() && "Expected instruction to have post-isel hook");
+
+  // Set NoMerge to gasleft instructions. This has to be in sync with nomerge
+  // attribute in IntrinsicsEraVM.td for this intrinsic.
+  if (MI.getOpcode() == EraVM::CTXr_se &&
+      getImmOrCImm(MI.getOperand(1)) == EraVMCTX::GAS_LEFT)
+    MI.setFlag(MachineInstr::MIFlag::NoMerge);
+}
