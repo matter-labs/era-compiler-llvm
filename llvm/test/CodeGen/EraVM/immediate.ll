@@ -117,8 +117,7 @@ define i256 @materialize_zero() nounwind {
 define i256 @materialize_bigimm_1(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_bigimm_1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add @CPI12_0[0], r0, r2
-; CHECK-NEXT:    sub r2, r1, r1
+; CHECK-NEXT:    sub @CPI12_0[0], r1, r1
 ; CHECK-NEXT:    ret
   %res = sub i256 12345678901234567890, %par
   ret i256 %res
@@ -127,8 +126,7 @@ define i256 @materialize_bigimm_1(i256 %par) nounwind {
 define i256 @materialize_bigimm_2(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_bigimm_2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add @CPI13_0[0], r0, r2
-; CHECK-NEXT:    sub r2, r1, r1
+; CHECK-NEXT:    sub @CPI13_0[0], r1, r1
 ; CHECK-NEXT:    ret
   %res = sub i256 12345678901234567890, %par
   ret i256 %res

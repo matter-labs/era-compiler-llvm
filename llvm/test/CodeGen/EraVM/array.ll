@@ -29,9 +29,7 @@ define void @vari_loadconst_storeglobal(i256 %i) nounwind {
   %addrg = getelementptr inbounds [10 x i256], ptr @val, i256 0, i256 %i
   %1 = load i256, ptr addrspace(4) %addrc, align 32
   ; CHECK-NOT: shr.s 5, r1, {{r[0-9]+}}
-  ; CHECK: add @const2[r1], r0, {{r[0-9]+}}
-  ; TODO: CPR-1362 The next instruction can be folded with previous `add`.
-  ; CHECK: add r2, r0, stack[@val + r1]
+  ; CHECK: add @const2[r1], r0, stack[@val + r1]
   store i256 %1, ptr %addrg, align 32
   ret void
 }
