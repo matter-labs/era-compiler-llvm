@@ -273,8 +273,8 @@ void EraVMPassConfig::addPreSched2() {
 }
 
 void EraVMPassConfig::addPreEmitPass() {
-  addPass(createEraVMCombineAddressingModePass());
   addPass(createEraVMExpandPseudoPass());
+  addPass(createEraVMCombineAddressingModePass());
   addPass(createEraVMExpandSelectPass());
   addPass(createEraVMOptimizeSelectPass());
 }
