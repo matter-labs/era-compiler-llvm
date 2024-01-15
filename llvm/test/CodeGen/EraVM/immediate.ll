@@ -91,18 +91,14 @@ define i256 @materialize_bigimm_in_sub_operation_2(i256 %par) nounwind {
 
 ; CHECK-LABEL: materialize_bigimm_1
 define i256 @materialize_bigimm_1(i256 %par) nounwind {
-  ; CHECK: add @CPI12_0[0], r0, r2
-	; CHECK: sub r2, r1, r1
-  ; TODO: CPR-1356 Combine into a single instruction.
+  ; CHECK: sub @CPI12_0[0], r1, r1
   %res = sub i256 12345678901234567890, %par
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_2
 define i256 @materialize_bigimm_2(i256 %par) nounwind {
-  ; CHECK: add @CPI13_0[0], r0, r2
-	; CHECK: sub r2, r1, r1
-  ; TODO: CPR-1356 Combine into a single instruction.
+  ; CHECK: sub @CPI13_0[0], r1, r1
   %res = sub i256 12345678901234567890, %par
   ret i256 %res
 }
@@ -114,4 +110,3 @@ define i256 @materialize_bigimm_2(i256 %par) nounwind {
 ; materialize_big_imm
 ; CHECK-LABEL: CPI2_0:
 ; CHECK: .cell 65536
-
