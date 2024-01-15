@@ -464,22 +464,27 @@ void ReachingDefAnalysis::getGlobalUses(MachineInstr *MI, Register Reg,
   // Collect the uses that each def touches within the block.
   getReachingLocalUses(MI, Reg, Uses);
 
-  // Handle live-out values.
-  if (auto *LiveOut = getLocalLiveOutMIDef(MI->getParent(), Reg)) {
-    if (LiveOut != MI)
+  // EVM local begin
+  // If the definition doesn't live-out stop search.
+  if (getLocalLiveOutMIDef(MI->getParent(), Reg) != MI)
       return;
-
     SmallVector<MachineBasicBlock *, 4> ToVisit(MBB->successors());
     SmallPtrSet<MachineBasicBlock*, 4>Visited;
+  // EVM local end
+
+  // Otherwise visit successors until Reg is redefined.
     while (!ToVisit.empty()) {
       MachineBasicBlock *MBB = ToVisit.pop_back_val();
       if (Visited.count(MBB) || !MBB->isLiveIn(Reg))
         continue;
-      if (getLiveInUses(MBB, Reg, Uses))
+    // EVM local begin
+    getLiveInUses(MBB, Reg, Uses);
+    // Check if any Reg definition exist in the current MBB.
+    if (!getLocalLiveOutMIDef(MBB, Reg))
+    // EVM local end
         llvm::append_range(ToVisit, MBB->successors());
       Visited.insert(MBB);
     }
-  }
 }
 
 void ReachingDefAnalysis::getGlobalReachingDefs(MachineInstr *MI, Register Reg,
