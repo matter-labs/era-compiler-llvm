@@ -9,12 +9,13 @@ define i256 @no_sink(i1 %cond) {
 ; CHECK-NEXT:   jump.eq @.BB0_2
 ; CHECK:        add 2, r0, r1
 ; CHECK-NEXT:   st.2 3, r1
+; CHECK-NEXT:   context.gas_left r1
 ; CHECK-NEXT:   jump @.BB0_3
 ; CHECK:       .BB0_2:
 ; CHECK:        add 2, r0, r1
 ; CHECK-NEXT:   st.1 2, r1
+; CHECK-NEXT:   context.gas_left r1
 ; CHECK:       .BB0_3:
-; CHECK:        context.gas_left r1
 ; CHECK:        ret
 ;
 entry:
