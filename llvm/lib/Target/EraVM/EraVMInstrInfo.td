@@ -1134,7 +1134,48 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
             (!cast<Instruction>(NAME # yrrr_p) (constant_pool imm:$imm), 0, GR256:$rs1)>;
 }
 
-defm ADD  : ArithICommutable<2,  "add", add>;
+multiclass ArithICommutableAddSpecial<bits<8> opcode, string asmstring, SDPatternOperator node> : Arith<opcode, asmstring, node, 1>{
+  let BaseOpcode = asmstring, isCommutable = 1, isAsCheapAsAMove = 1 in {
+  let isPseudo = 1, isCodeGenOnly = 1 in
+  def irr_p : Pseudo<(outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
+                     !strconcat(asmstring, "\t$imm, $rs1, $rd0"),
+                     [(set GR256:$rd0, (node GR256:$rs1, imm16:$imm))]> {
+                      let DestAddrMode = ToReg.Value;
+                      let OperandAddrMode = OpndIR.Value;
+                     }
+  def irr_s : Iirr<opcode, 0, 1,
+                   (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1, cc:$cc),
+                   !strconcat(asmstring, "$cc\t$imm, $rs1, $rd0"), []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+  let Defs = [Flags] in
+  def irr_v : Iirr<opcode, 0, 0,
+                   (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1, cc:$cc),
+                   !strconcat(asmstring, "$cc!\t$imm, $rs1, $rd0"), []>, FlagRel, AddrModeRel, RetAddrModeRel;
+  let mayStore = 1 in {
+  let isPseudo = 1, isCodeGenOnly = 1 in
+  def irs_p : Pseudo<(outs), (ins imm16:$imm, GR256:$rs1, stackop:$dst0),
+                     !strconcat(asmstring, "\t$imm, $rs1, $dst0"),
+                     [(store_stack (node GR256:$rs1, imm16:$imm), stackaddr:$dst0)]> {
+                      let DestAddrMode = ToStack.Value;
+                      let OperandAddrMode = OpndIR.Value;
+                     }
+  def irs_s : Iirs<opcode, 0, 1,
+                   (outs), (ins imm16:$imm, GR256:$rs1, stackop:$dst0, cc:$cc),
+                   !strconcat(asmstring, "$cc\t$imm, $rs1, $dst0"), []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+  let Defs = [Flags] in
+  def irs_v : Iirs<opcode, 0, 0,
+                   (outs), (ins imm16:$imm, GR256:$rs1, stackop:$dst0, cc:$cc),
+                   !strconcat(asmstring, "$cc!\t$imm, $rs1, $dst0"), []>, FlagRel, AddrModeRel, RetAddrModeRel;
+  }
+  } // end isCommutable = 1
+
+  // commutative: irr_p -> crr_p
+  def : Pat<(node GR256:$rs1, large_imm:$imm),
+            (!cast<Instruction>(NAME # crr_p) (constant_pool imm:$imm), 0, GR256:$rs1)>;
+  // commutative: irs_p -> crs_p
+  def : Pat<(store_stack (node GR256:$rs1, large_imm:$imm), stackaddr:$dst0),
+            (!cast<Instruction>(NAME # crs_p) (constant_pool imm:$imm), 0, GR256:$rs1, stackaddr:$dst0)>;
+}
+defm ADD  : ArithICommutableAddSpecial<2,  "add", add>;
 defm SUB  : ArithINonCommutable<4, "sub", sub>;
 
 // pointer arithmetic
