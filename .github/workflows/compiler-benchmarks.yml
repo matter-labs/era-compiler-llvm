@@ -45,6 +45,7 @@ jobs:
       credentials:
         username: ${{ secrets.DOCKERHUB_USER }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
+      options: -m 24g
     steps:
       - uses: AutoModality/action-clean@v1.1.0
       - name: Setting the environment
@@ -132,6 +133,7 @@ jobs:
       credentials:
         username: ${{ secrets.DOCKERHUB_USER }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
+      options: -m 24g
     steps:
       - uses: AutoModality/action-clean@v1.1.0
       - name: Setting the environment
