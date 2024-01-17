@@ -6,9 +6,7 @@ declare void @use(i32)
 define i1 @test1(i32 %arg) {
 ; CHECK-LABEL: @test1(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[SUB:%.*]] = sub i32 0, [[ARG:%.*]]
-; CHECK-NEXT:    [[XOR:%.*]] = xor i32 [[ARG]], -1
-; CHECK-NEXT:    [[CMP:%.*]] = icmp ugt i32 [[SUB]], [[XOR]]
+; CHECK-NEXT:    [[CMP:%.*]] = icmp ne i32 [[ARG:%.*]], 0
 ; CHECK-NEXT:    ret i1 [[CMP]]
 ;
 entry:
@@ -33,9 +31,7 @@ entry:
 define i1 @test1_nsw(i32 %arg) {
 ; CHECK-LABEL: @test1_nsw(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[SUB:%.*]] = sub nsw i32 0, [[ARG:%.*]]
-; CHECK-NEXT:    [[XOR:%.*]] = xor i32 [[ARG]], -1
-; CHECK-NEXT:    [[CMP:%.*]] = icmp ugt i32 [[SUB]], [[XOR]]
+; CHECK-NEXT:    [[CMP:%.*]] = icmp ne i32 [[ARG:%.*]], 0
 ; CHECK-NEXT:    ret i1 [[CMP]]
 ;
 entry:
@@ -60,9 +56,7 @@ entry:
 define i1 @test2(i32 %arg) {
 ; CHECK-LABEL: @test2(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[SUB:%.*]] = sub i32 0, [[ARG:%.*]]
-; CHECK-NEXT:    [[XOR:%.*]] = xor i32 [[ARG]], -1
-; CHECK-NEXT:    [[CMP:%.*]] = icmp ugt i32 [[SUB]], [[XOR]]
+; CHECK-NEXT:    [[CMP:%.*]] = icmp ne i32 [[ARG:%.*]], 0
 ; CHECK-NEXT:    ret i1 [[CMP]]
 ;
 entry:
@@ -87,9 +81,7 @@ entry:
 define i1 @test2_nsw(i32 %arg) {
 ; CHECK-LABEL: @test2_nsw(
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[SUB:%.*]] = sub nsw i32 0, [[ARG:%.*]]
-; CHECK-NEXT:    [[XOR:%.*]] = xor i32 [[ARG]], -1
-; CHECK-NEXT:    [[CMP:%.*]] = icmp ugt i32 [[SUB]], [[XOR]]
+; CHECK-NEXT:    [[CMP:%.*]] = icmp ne i32 [[ARG:%.*]], 0
 ; CHECK-NEXT:    ret i1 [[CMP]]
 ;
 entry:
@@ -118,7 +110,7 @@ define i1 @test3(i32 %arg) {
 ; CHECK-NEXT:    call void @use(i32 [[SUB]])
 ; CHECK-NEXT:    [[XOR:%.*]] = xor i32 [[ARG]], -1
 ; CHECK-NEXT:    call void @use(i32 [[XOR]])
-; CHECK-NEXT:    [[CMP:%.*]] = icmp ugt i32 [[SUB]], [[XOR]]
+; CHECK-NEXT:    [[CMP:%.*]] = icmp ne i32 [[ARG]], 0
 ; CHECK-NEXT:    ret i1 [[CMP]]
 ;
 entry:
