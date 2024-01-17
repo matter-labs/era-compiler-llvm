@@ -110,8 +110,8 @@ jobs:
           export RUST_BACKTRACE='full'
           export LLVM_SYS_150_PREFIX="$(pwd)/target-llvm/target-final/"
           cargo build --verbose --release --bin 'compiler-tester'
-          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-solidity-*/*/Cargo.toml --target-dir './target-zksolc/'
-          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-vyper-*/*/Cargo.toml --target-dir './target-zkvyper/'
+          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/era-compiler-solidity-*/*/Cargo.toml --target-dir './target-zksolc/'
+          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/era-compiler-vyper-*/*/Cargo.toml --target-dir './target-zkvyper/'
 
           ./target/release/compiler-tester \
             --zksolc './target-zksolc/release/zksolc' \
@@ -197,8 +197,8 @@ jobs:
           export RUST_BACKTRACE='full'
           export LLVM_SYS_150_PREFIX="$(pwd)/target-llvm/target-final/"
           cargo build --verbose --release --bin 'compiler-tester'
-          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-solidity-*/*/Cargo.toml --target-dir './target-zksolc/'
-          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/compiler-vyper-*/*/Cargo.toml --target-dir './target-zkvyper/'
+          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/era-compiler-solidity-*/*/Cargo.toml --target-dir './target-zksolc/'
+          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/era-compiler-vyper-*/*/Cargo.toml --target-dir './target-zkvyper/'
 
           ./target/release/compiler-tester \
             --zksolc './target-zksolc/release/zksolc' \
