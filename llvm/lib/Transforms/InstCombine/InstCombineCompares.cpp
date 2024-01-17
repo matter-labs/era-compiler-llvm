@@ -7595,6 +7595,18 @@ Instruction *InstCombinerImpl::visitICmpInst(ICmpInst &I) {
             !ACXI->isWeak())
           return ExtractValueInst::Create(ACXI, 1);
 
+
+  // EraVM local begin
+  {
+    Value *X = nullptr;
+    // -X > ~X --> X != 0
+    if (Pred == ICmpInst::ICMP_UGT && match(Op0, m_Neg(m_Value(X))) &&
+        match(Op1, m_Not(m_Specific(X))))
+      return new ICmpInst(ICmpInst::ICMP_NE, X,
+                          ConstantInt::getNullValue(Op0->getType()));
+  }
+  // EraVM local end
+
   if (Instruction *Res = foldICmpWithHighBitMask(I, Builder))
     return Res;
 
