@@ -48,6 +48,14 @@ Pass *createSingleLoopExtractorPass();
 /// manager.
 ModulePass *createBarrierNoopPass();
 
+// EraVM local begin
+//===----------------------------------------------------------------------===//
+/// createGlobalDCEPass - This transform is designed to eliminate unreachable
+/// internal globals (functions or global variables)
+///
+ModulePass *createGlobalDCEPass();
+// EraVM local end
+
 /// What to do with the summary when running passes that operate on it.
 enum class PassSummaryAction {
   None,   ///< Do nothing.

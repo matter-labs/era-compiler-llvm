@@ -120,6 +120,9 @@ void initializeGCEmptyBasicBlocksPass(PassRegistry &);
 void initializeGCMachineCodeAnalysisPass(PassRegistry&);
 void initializeGCModuleInfoPass(PassRegistry&);
 void initializeGVNLegacyPassPass(PassRegistry&);
+// EraVM local begin
+void initializeGlobalDCELegacyPassPass(PassRegistry&);
+// EraVM local end
 void initializeGlobalMergePass(PassRegistry&);
 void initializeGlobalsAAWrapperPassPass(PassRegistry &);
 void initializeHardwareLoopsLegacyPass(PassRegistry&);
