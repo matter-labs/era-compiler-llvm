@@ -20,6 +20,10 @@
 #include "llvm/Analysis/TypeMetadataUtils.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
+// EraVM local begin
+#include "llvm/InitializePasses.h"
+#include "llvm/Pass.h"
+// EraVM local end
 #include "llvm/IR/Module.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Transforms/IPO.h"
@@ -39,6 +43,49 @@ STATISTIC(NumFunctions, "Number of functions removed");
 STATISTIC(NumIFuncs,    "Number of indirect functions removed");
 STATISTIC(NumVariables, "Number of global variables removed");
 STATISTIC(NumVFuncs,    "Number of virtual functions removed");
+
+// EraVM local begin
+namespace {
+  class GlobalDCELegacyPass : public ModulePass {
+  public:
+    static char ID; // Pass identification, replacement for typeid
+    GlobalDCELegacyPass() : ModulePass(ID) {
+      initializeGlobalDCELegacyPassPass(*PassRegistry::getPassRegistry());
+    }
+
+    // run - Do the GlobalDCE pass on the specified module, optionally updating
+    // the specified callgraph to reflect the changes.
+    //
+    bool runOnModule(Module &M) override {
+      if (skipModule(M))
+        return false;
+
+      // We need a minimally functional dummy module analysis manager. It needs
+      // to at least know about the possibility of proxying a function analysis
+      // manager.
+      FunctionAnalysisManager DummyFAM;
+      ModuleAnalysisManager DummyMAM;
+      DummyMAM.registerPass(
+          [&] { return FunctionAnalysisManagerModuleProxy(DummyFAM); });
+
+      auto PA = Impl.run(M, DummyMAM);
+      return !PA.areAllPreserved();
+    }
+
+  private:
+    GlobalDCEPass Impl;
+  };
+}
+
+char GlobalDCELegacyPass::ID = 0;
+INITIALIZE_PASS(GlobalDCELegacyPass, "globaldce",
+                "Dead Global Elimination", false, false)
+
+// Public interface to the GlobalDCEPass.
+ModulePass *llvm::createGlobalDCEPass() {
+  return new GlobalDCELegacyPass();
+}
+// EraVM local begin
 
 /// Returns true if F is effectively empty.
 static bool isEmptyFunction(Function *F) {
