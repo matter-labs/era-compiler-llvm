@@ -1,7 +1,7 @@
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm"
 
-define i256 @__addmod(i256 %arg1, i256 %arg2, i256 %modulo) #0 {
+define i256 @__addmod(i256 %arg1, i256 %arg2, i256 %modulo) #4 {
 entry:
   %is_zero = icmp eq i256 %modulo, 0
   br i1 %is_zero, label %return, label %addmod
@@ -9,9 +9,8 @@ entry:
 addmod:
   %arg1m = urem i256 %arg1, %modulo
   %arg2m = urem i256 %arg2, %modulo
-  %res = call {i256, i1} @llvm.uadd.with.overflow.i256(i256 %arg1m, i256 %arg2m)
-  %sum = extractvalue {i256, i1} %res, 0
-  %obit = extractvalue {i256, i1} %res, 1
+  %sum = add i256 %arg1m, %arg2m
+  %obit = icmp ult i256 %sum, %arg1m
   %sum.mod = urem i256 %sum, %modulo
   br i1 %obit, label %overflow, label %return
 
@@ -496,7 +495,6 @@ system_request_error_block:
   unreachable
 }
 
-declare {i256, i1} @llvm.uadd.with.overflow.i256(i256, i256)
 declare void @llvm.eravm.throw(i256)
 declare i256 @llvm.umin.i256(i256, i256)
 declare i256 @llvm.eravm.gasleft()
