@@ -6,25 +6,13 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file implements a pre-ra pass to fold SELECT with its user.
-// When one of SELECT's input operands is immediate zero, then it is possible to
-// fold it with its sole user to result in just one folded instruction.
-//
-// A typical case is like below:
-//
-//   x = SEL non-zero-val, 0, cc
-//   ...
-//   z = ADDrrr_s non-zero-val, y
-//
-// can be folded into:
-//   z = ADDirr_s.cc non-zero-val, y
-//
-// if z and y can be allocated to same reg. The tie is used to ensure this.
+// This file implements a pre-ra pass to optimize SELECT and CMP instructions.
 //
 //===----------------------------------------------------------------------===//
 
 #include "EraVM.h"
 
+#include "llvm/CodeGen/MachineConstantPool.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
@@ -79,12 +67,39 @@ private:
   unsigned getFoldedMIOp(EraVM::ArgumentKind Kind, const MachineInstr &SelectMI,
                          const MachineInstr &UseMI) const;
 
-  /// Try to fold SELECT with input value zero with its sole user,
-  /// return true if we did.
+  /// In case one of the input operand of SELECT is immediate zero, then it is
+  /// possible to fold it with its sole user to result in just one folded
+  /// instruction.
+  ///
+  /// A typical case is like below:
+  ///
+  ///   x = SEL non-zero-val, 0, cc
+  ///   ...
+  ///   z = ADDrrr_s non-zero-val, y
+  ///
+  /// can be folded into:
+  ///   z = ADDirr_s.cc non-zero-val, y
+  ///
+  /// if z and y can be allocated to same reg. The tie is used to ensure this.
   bool tryFoldSelectZero(MachineBasicBlock &MBB);
+
+  bool isConstAdd(const MachineInstr &MI) const;
+  bool isImmAdd(const MachineInstr &MI) const;
+  bool isRegAdd(const MachineInstr &MI) const;
+  bool isImmSubWithFlags(const MachineInstr &MI) const;
+  bool isImmSubWithoutFlags(const MachineInstr &MI) const;
+  bool isConstSub(const MachineInstr &MI) const;
+  bool isConstAddIdenticalToConstSub(const MachineInstr &Add,
+                                     const MachineInstr &Sub) const;
+  bool areSubsIdentical(const MachineInstr &FirstSub,
+                        const MachineInstr &SecondSub) const;
+  APInt getConstFromCP(unsigned CPI) const;
+  bool tryFoldAddToSelect(MachineBasicBlock &MBB);
+  bool tryReplaceOpWithCmp(MachineBasicBlock &MBB);
 
   const EraVMInstrInfo *TII{};
   MachineRegisterInfo *RegInfo{};
+  MachineConstantPool *MCP{};
 };
 
 char EraVMOptimizeSelectCmpPreRA::ID = 0;
@@ -251,20 +266,188 @@ bool EraVMOptimizeSelectCmpPreRA::tryFoldSelectZero(MachineBasicBlock &MBB) {
   return !ToRemove.empty();
 }
 
+bool EraVMOptimizeSelectCmpPreRA::isRegAdd(const MachineInstr &MI) const {
+  return MI.getOpcode() == EraVM::ADDrrr_s &&
+         TII->getCCCode(MI) == EraVMCC::COND_NONE;
+}
+
+bool EraVMOptimizeSelectCmpPreRA::isConstAdd(const MachineInstr &MI) const {
+  return MI.getOpcode() == EraVM::ADDcrr_s && EraVM::in0Iterator(MI)->isCPI() &&
+         (EraVM::in0Iterator(MI) + 1)->isImm() &&
+         !(EraVM::in0Iterator(MI) + 1)->getImm() &&
+         TII->getCCCode(MI) == EraVMCC::COND_NONE;
+}
+
+bool EraVMOptimizeSelectCmpPreRA::isImmAdd(const MachineInstr &MI) const {
+  return MI.getOpcode() == EraVM::ADDirr_s &&
+         EraVM::in0Iterator(MI)->isCImm() &&
+         TII->getCCCode(MI) == EraVMCC::COND_NONE;
+}
+
+bool EraVMOptimizeSelectCmpPreRA::isImmSubWithoutFlags(
+    const MachineInstr &MI) const {
+  return MI.getOpcode() == EraVM::SUBxrr_s &&
+         EraVM::in0Iterator(MI)->isCImm() &&
+         TII->getCCCode(MI) == EraVMCC::COND_NONE;
+}
+
+bool EraVMOptimizeSelectCmpPreRA::isImmSubWithFlags(
+    const MachineInstr &MI) const {
+  return MI.getOpcode() == EraVM::SUBxrr_v &&
+         EraVM::in0Iterator(MI)->isCImm() &&
+         TII->getCCCode(MI) == EraVMCC::COND_NONE;
+}
+
+bool EraVMOptimizeSelectCmpPreRA::isConstSub(const MachineInstr &MI) const {
+  return MI.getOpcode() == EraVM::SUByrr_v && EraVM::in0Iterator(MI)->isCPI() &&
+         (EraVM::in0Iterator(MI) + 1)->isImm() &&
+         !(EraVM::in0Iterator(MI) + 1)->getImm() &&
+         TII->getCCCode(MI) == EraVMCC::COND_NONE;
+}
+
+APInt EraVMOptimizeSelectCmpPreRA::getConstFromCP(unsigned CPI) const {
+  assert(CPI < MCP->getConstants().size() && "Invalid constpool index");
+  const MachineConstantPoolEntry &CPE = MCP->getConstants()[CPI];
+  assert(!CPE.isMachineConstantPoolEntry() && "Invalid constpool entry");
+  APInt Const = cast<ConstantInt>(CPE.Val.ConstVal)->getValue();
+  assert(Const.getBitWidth() == 256 && "Invalid constant bitwidth");
+  return Const;
+}
+
+bool EraVMOptimizeSelectCmpPreRA::areSubsIdentical(
+    const MachineInstr &FirstSub, const MachineInstr &SecondSub) const {
+  if (!isImmSubWithoutFlags(FirstSub) || !isImmSubWithFlags(SecondSub) ||
+      EraVM::in1Iterator(FirstSub)->getReg() !=
+          EraVM::in1Iterator(SecondSub)->getReg())
+    return false;
+
+  uint64_t FirstSubImm =
+      EraVM::in0Iterator(FirstSub)->getCImm()->getZExtValue();
+  uint64_t SecondSubImm =
+      EraVM::in0Iterator(SecondSub)->getCImm()->getZExtValue();
+  return FirstSubImm == SecondSubImm;
+}
+
+bool EraVMOptimizeSelectCmpPreRA::isConstAddIdenticalToConstSub(
+    const MachineInstr &Add, const MachineInstr &Sub) const {
+  if (!isConstAdd(Add) || !isConstSub(Sub) ||
+      EraVM::in1Iterator(Add)->getReg() != EraVM::in1Iterator(Sub)->getReg())
+    return false;
+
+  APInt AddConst = getConstFromCP(EraVM::in0Iterator(Add)->getIndex());
+  APInt SubConst = getConstFromCP(EraVM::in0Iterator(Sub)->getIndex());
+  return (AddConst + SubConst).isZero();
+}
+
+bool EraVMOptimizeSelectCmpPreRA::tryFoldAddToSelect(MachineBasicBlock &MBB) {
+  SmallVector<std::pair<MachineInstr *, MachineInstr *>, 16> Deleted;
+  SmallPtrSet<MachineInstr *, 16> UsesToUpdate;
+
+  // 1. Collect all instructions to be combined.
+  for (auto &MI : MBB) {
+    if (!isConstAdd(MI) && !isImmAdd(MI) && !isRegAdd(MI))
+      continue;
+
+    Register OutAddReg = EraVM::out0Iterator(MI)->getReg();
+    if (!RegInfo->hasOneNonDBGUser(OutAddReg))
+      continue;
+
+    MachineInstr &UseMI = *RegInfo->use_instr_nodbg_begin(OutAddReg);
+    if (UsesToUpdate.count(&UseMI) || MI.getParent() != UseMI.getParent())
+      continue;
+
+    SmallSet<Register, 2> InRegs;
+    InRegs.insert(EraVM::in1Iterator(MI)->getReg());
+    if (EraVM::hasRRInAddressingMode(MI))
+      InRegs.insert(EraVM::in0Iterator(MI)->getReg());
+
+    if (UseMI.getOpcode() != EraVM::SELrrr ||
+        (!InRegs.count(EraVM::in0Iterator(UseMI)->getReg()) &&
+         !InRegs.count(EraVM::in1Iterator(UseMI)->getReg())))
+      continue;
+
+    UsesToUpdate.insert(&UseMI);
+    Deleted.emplace_back(&MI, &UseMI);
+  }
+
+  // 2. Combine.
+  for (auto [Add, Use] : Deleted) {
+    bool OutAddIsIn1Use = EraVM::out0Iterator(*Add)->getReg() ==
+                          EraVM::in1Iterator(*Use)->getReg();
+    auto CC = getImmOrCImm(*EraVM::ccIterator(*Use));
+    auto CCNewMI = OutAddIsIn1Use ? InverseCond[CC] : CC;
+    Register TieReg;
+    if (EraVM::hasRRInAddressingMode(*Add))
+      TieReg = OutAddIsIn1Use ? EraVM::in0Iterator(*Use)->getReg()
+                              : EraVM::in1Iterator(*Use)->getReg();
+    else
+      TieReg = EraVM::in1Iterator(*Add)->getReg();
+
+    // Create new instruction.
+    auto NewMI = BuildMI(*Use->getParent(), Use, Use->getDebugLoc(),
+                         TII->get(Add->getOpcode()),
+                         EraVM::out0Iterator(*Use)->getReg());
+    EraVM::copyOperands(NewMI, EraVM::in0Range(*Add));
+    NewMI.addReg(EraVM::in1Iterator(*Add)->getReg())
+        .addImm(CCNewMI)
+        .addReg(TieReg, RegState::Implicit)
+        .addReg(EraVM::Flags, RegState::Implicit);
+
+    // Add tie to ensure those two operands will get same reg
+    // after RA pass. This is the key to make transformation in this pass
+    // correct.
+    NewMI->tieOperands(0, NewMI->getNumOperands() - 2);
+
+    // Set the flags.
+    NewMI->setFlags(Add->getFlags());
+
+    LLVM_DEBUG(dbgs() << "== Combine add:"; Add->dump();
+               dbgs() << "       and use:"; Use->dump();
+               dbgs() << "          into:"; NewMI->dump(););
+    Use->eraseFromParent();
+    Add->eraseFromParent();
+  }
+  return !Deleted.empty();
+}
+
+bool EraVMOptimizeSelectCmpPreRA::tryReplaceOpWithCmp(MachineBasicBlock &MBB) {
+  if (MBB.empty())
+    return false;
+
+  bool Changed = false;
+  for (auto &MI : make_early_inc_range(drop_end(MBB))) {
+    auto &NextMI = *std::next(MI.getIterator());
+    if (!isConstAddIdenticalToConstSub(MI, NextMI) &&
+        !areSubsIdentical(MI, NextMI))
+      continue;
+
+    LLVM_DEBUG(dbgs() << "== Replacing inst:"; MI.dump();
+               dbgs() << "             with:"; NextMI.dump(););
+    RegInfo->replaceRegWith(EraVM::out0Iterator(MI)->getReg(),
+                            EraVM::out0Iterator(NextMI)->getReg());
+    MI.eraseFromParent();
+    Changed = true;
+  }
+  return Changed;
+}
+
 bool EraVMOptimizeSelectCmpPreRA::runOnMachineFunction(MachineFunction &MF) {
   LLVM_DEBUG(
       dbgs() << "********** EraVM OPTIMIZE SELECT AND CMP PRERA **********\n"
              << "********** Function: " << MF.getName() << '\n');
 
+  MCP = MF.getConstantPool();
   TII = cast<EraVMInstrInfo>(MF.getSubtarget<EraVMSubtarget>().getInstrInfo());
   assert(TII && "TargetInstrInfo must be a valid object");
 
   RegInfo = &MF.getRegInfo();
 
   bool Changed = false;
-  for (MachineBasicBlock &MBB : MF)
+  for (MachineBasicBlock &MBB : MF) {
     Changed |= tryFoldSelectZero(MBB);
-
+    Changed |= tryReplaceOpWithCmp(MBB);
+    Changed |= tryFoldAddToSelect(MBB);
+  }
   return Changed;
 }
 
