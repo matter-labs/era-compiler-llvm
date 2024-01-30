@@ -7,7 +7,8 @@ entry:
   br i1 %is_zero, label %return, label %addmod
 
 addmod:
-  %arg1m = urem i256 %arg1, %modulo
+  %arg1.fr = freeze i256 %arg1
+  %arg1m = urem i256 %arg1.fr, %modulo
   %arg2m = urem i256 %arg2, %modulo
   %sum = add i256 %arg1m, %arg2m
   %obit = icmp ult i256 %sum, %arg1m
