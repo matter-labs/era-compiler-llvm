@@ -350,18 +350,18 @@ bool IndVarSimplify::handleFloatingPointIV(Loop *L, PHINode *PN) {
   IntegerType *Int32Ty = Type::getInt32Ty(PN->getContext());
 
   // Insert new integer induction variable.
-  PHINode *NewPHI = PHINode::Create(Int32Ty, 2, PN->getName()+".int", PN);
-  NewPHI->addIncoming(ConstantInt::get(Int32Ty, InitValue),
+  PHINode *NewPHI = PHINode::Create(Int32Ty, 2, PN->getName() + ".int", PN);
+  NewPHI->addIncoming(ConstantInt::get(Int32Ty, InitValue, true),
                       PN->getIncomingBlock(IncomingEdge));
 
-  Value *NewAdd =
-    BinaryOperator::CreateAdd(NewPHI, ConstantInt::get(Int32Ty, IncValue),
-                              Incr->getName()+".int", Incr);
+  Value *NewAdd = BinaryOperator::CreateAdd(
+      NewPHI, ConstantInt::get(Int32Ty, IncValue, true),
+      Incr->getName() + ".int", Incr);
   NewPHI->addIncoming(NewAdd, PN->getIncomingBlock(BackEdge));
 
-  ICmpInst *NewCompare = new ICmpInst(TheBr, NewPred, NewAdd,
-                                      ConstantInt::get(Int32Ty, ExitValue),
-                                      Compare->getName());
+  ICmpInst *NewCompare = new ICmpInst(
+      TheBr, NewPred, NewAdd, ConstantInt::get(Int32Ty, ExitValue, true),
+      Compare->getName());
 
   // In the following deletions, PN may become dead and may be deleted.
   // Use a WeakTrackingVH to observe whether this happens.
