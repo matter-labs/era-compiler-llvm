@@ -246,4 +246,20 @@ def int_evm_memcpyas1as4
                WriteOnly<ArgIndex<0>>, ReadOnly<ArgIndex<1>>,
                ImmArg<ArgIndex<3>>]>;
 
+// The following intrinsics are used for linking purposes.
+
+// Returns a code size of the Yul object with the name
+// passed in the metadata.
+def int_evm_datasize : DefaultAttrsIntrinsic<
+  [llvm_i256_ty], [llvm_metadata_ty],
+  [IntrNoMem, IntrSpeculatable]
+>;
+
+// Returns a code offset of the Yul object with the name
+// passed in the metadata.
+def int_evm_dataoffset : DefaultAttrsIntrinsic<
+  [llvm_i256_ty], [llvm_metadata_ty],
+  [IntrNoMem, IntrSpeculatable]
+>;
+
 } // TargetPrefix = "evm"
