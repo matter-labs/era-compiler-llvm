@@ -966,14 +966,7 @@ uint64_t ELFWriter::writeObject(MCAssembler &Asm) {
   RevGroupMapTy RevGroupMap;
 
   // Write out the ELF header ...
-  // EVM local begin
-  // HACK!!! For EVM target we don't need the whole EFL file,
-  // but just its .text section. The natural way would be to extract
-  // it using objdump utility, but design of our FE doesn't admit
-  // usage of any other tool besides the BE itslef.
-  if (!Ctx.getTargetTriple().isEVM())
-    writeHeader(Asm);
-  // EVM local end
+  writeHeader(Asm);
 
   // ... then the sections ...
   SmallVector<std::pair<MCSectionELF *, SmallVector<unsigned>>, 0> Groups;
@@ -991,13 +984,6 @@ uint64_t ELFWriter::writeObject(MCAssembler &Asm) {
     const uint64_t SecStart = align(Section.getAlign());
 
     const MCSymbolELF *SignatureSymbol = Section.getGroup();
-    // EVM local begin
-    if (Ctx.getTargetTriple().isEVM()) {
-      if (Section.getName() == ".text")
-        writeSectionData(Asm, Section);
-      continue;
-    }
-    // EVM local end
 
     writeSectionData(Asm, Section);
 
@@ -1037,10 +1023,6 @@ uint64_t ELFWriter::writeObject(MCAssembler &Asm) {
     OWriter.TargetObjectWriter->addTargetSectionFlags(Ctx, Section);
   }
 
-  // EVM local begin
-  if (Ctx.getTargetTriple().isEVM())
-    return W.OS.tell() - StartOffset;
-  // EVM local end
 
   for (auto &[Group, Members] : Groups) {
     // Remember the offset into the file for this section.
