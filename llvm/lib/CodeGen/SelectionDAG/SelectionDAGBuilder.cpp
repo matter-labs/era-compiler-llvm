@@ -4028,7 +4028,8 @@ void SelectionDAGBuilder::visitGetElementPtr(const User &I) {
           DAG.getDataLayout().getTypeAllocSize(GTI.getIndexedType());
       // We intentionally mask away the high bits here; ElementSize may not
       // fit in IdxTy.
-      APInt ElementMul(IdxSize, ElementSize.getKnownMinValue());
+      APInt ElementMul(IdxSize, ElementSize.getKnownMinValue(),
+                       /*isSigned=*/false, /*implicitTrunc=*/true);
       bool ElementScalable = ElementSize.isScalable();
 
       // If this is a scalar constant or a splat vector of constants,

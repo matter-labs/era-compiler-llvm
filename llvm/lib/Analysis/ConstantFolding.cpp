@@ -915,7 +915,7 @@ Constant *SymbolicallyEvaluateGEP(const GEPOperator *GEP,
                 SrcElemTy,
                 // NOLINTNEXTLINE(cppcoreguidelines-pro-type-cstyle-cast)
                 ArrayRef((Value *const *)Ops.data() + 1, Ops.size() - 1)),
-            true);
+      /*isSigned=*/true, /*implicitTrunc=*/true);
   // EraVM local end
   Ptr = StripPtrCastKeepAS(Ptr);
 

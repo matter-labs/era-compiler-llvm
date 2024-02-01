@@ -94,10 +94,8 @@ static bool isDereferenceableAndAlignedPointer(
   }
 
   bool CheckForNonNull, CheckForFreed;
-  APInt KnownDerefBytes(Size.getBitWidth(),
-                        V->getPointerDereferenceableBytes(DL, CheckForNonNull,
-                                                          CheckForFreed));
-  if (KnownDerefBytes.getBoolValue() && KnownDerefBytes.uge(Size) &&
+  if (Size.ule(V->getPointerDereferenceableBytes(DL, CheckForNonNull,
+                                                 CheckForFreed)) &&
       !CheckForFreed)
     if (!CheckForNonNull || isKnownNonZero(V, DL, 0, AC, CtxI, DT)) {
       // As we recursed through GEPs to get here, we've incrementally checked
