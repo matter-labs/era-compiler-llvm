@@ -306,8 +306,8 @@ Instruction *InstCombinerImpl::SimplifyAnyMemSet(AnyMemSetInst *MI) {
     Dest = Builder.CreateBitCast(Dest, NewDstPtrTy);
 
     // Extract the fill value and store.
-    const uint64_t Fill = FillC->getZExtValue()*0x0101010101010101ULL;
-    Constant *FillVal = ConstantInt::get(ITy, Fill);
+    Constant *FillVal = ConstantInt::get(
+        MI->getContext(), APInt::getSplat(Len * 8, FillC->getValue()));
     StoreInst *S = Builder.CreateStore(FillVal, Dest, MI->isVolatile());
     S->copyMetadata(*MI, LLVMContext::MD_DIAssignID);
     for (auto *DAI : at::getAssignmentMarkers(S)) {

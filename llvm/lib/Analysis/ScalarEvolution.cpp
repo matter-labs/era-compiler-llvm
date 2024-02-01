@@ -1455,7 +1455,7 @@ bool ScalarEvolution::proveNoWrapByVaryingStart(const SCEV *Start,
 
   APInt StartAI = StartC->getAPInt();
 
-  for (unsigned Delta : {-2, -1, 1, 2}) {
+  for (int Delta : {-2, -1, 1, 2}) {
     const SCEV *PreStart = getConstant(StartAI - Delta);
 
     FoldingSetNodeID ID;
@@ -1470,7 +1470,7 @@ bool ScalarEvolution::proveNoWrapByVaryingStart(const SCEV *Start,
     // Give up if we don't already have the add recurrence we need because
     // actually constructing an add recurrence is relatively expensive.
     if (PreAR && PreAR->getNoWrapFlags(WrapType)) {  // proves (2)
-      const SCEV *DeltaS = getConstant(StartC->getType(), Delta);
+      const SCEV *DeltaS = getConstant(StartC->getType(), Delta, true);
       ICmpInst::Predicate Pred = ICmpInst::BAD_ICMP_PREDICATE;
       const SCEV *Limit = ExtendOpTraits<ExtendOpTy>::getOverflowLimitForStep(
           DeltaS, &Pred, this);

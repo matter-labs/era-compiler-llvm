@@ -670,7 +670,7 @@ Value *llvm::lowerObjectSizeCall(
   if (!MustSucceed)
     return nullptr;
 
-  return ConstantInt::get(ResultType, MaxVal ? -1ULL : 0);
+  return ConstantInt::get(ResultType, MaxVal ? -1ULL : 0, true);
 }
 
 STATISTIC(ObjectVisitorArgument,
