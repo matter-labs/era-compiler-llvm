@@ -1261,6 +1261,9 @@ const EnumEntry<unsigned> ElfMachineType[] = {
   // EraVM local begin
   ENUM_ENT(EM_ERAVM,         "EraVM"),
   // EraVM local end
+  // EVM local begin
+  ENUM_ENT(EM_EVM,           "EVM"),
+  // EVM local end
 };
 
 const EnumEntry<unsigned> ElfSymbolBindings[] = {
