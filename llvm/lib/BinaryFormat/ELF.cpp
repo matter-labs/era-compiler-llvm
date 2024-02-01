@@ -197,6 +197,9 @@ uint16_t ELF::convertArchNameToEMachine(StringRef Arch) {
       .Case("ve", EM_VE)
       .Case("csky", EM_CSKY)
       .Case("loongarch", EM_LOONGARCH)
+      // EVM local begin
+      .Case("evm", EM_EVM)
+      // EVM local end
       .Default(EM_NONE);
 }
 
@@ -563,6 +566,10 @@ StringRef ELF::convertEMachineToArchName(uint16_t EMachine) {
     return "csky";
   case EM_LOONGARCH:
     return "loongarch";
+  // EVM local begin
+  case EM_EVM:
+    return "evm";
+  // EVM local end
   default:
     return "None";
   }
