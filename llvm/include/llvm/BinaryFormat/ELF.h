@@ -323,6 +323,9 @@ enum {
   // EraVM local begin
   EM_ERAVM = 260,         // EraVM
   // EraVM local end
+  // EVM local begin
+  EM_EVM = 261            // EVM
+  // EVM local end
 };
 
 // Object file classes.
@@ -425,6 +428,13 @@ enum {
 enum {
 #include "ELFRelocs/AArch64.def"
 };
+
+// EVM local begin
+// ELF Relocation types for EVM
+enum {
+#include "ELFRelocs/EVM.def"
+};
+// EVM local end
 
 // Special values for the st_other field in the symbol table entry for AArch64.
 enum {
