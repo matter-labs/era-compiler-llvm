@@ -262,4 +262,17 @@ def int_evm_memcpyas1as4
                WriteOnly<ArgIndex<0>>, ReadOnly<ArgIndex<1>>,
                ImmArg<ArgIndex<3>>]>;
 
+// The following intrinsics are intended for linking of a constructor code.
+// The constructor code needs to be patched at linking time to contain final
+// sizes of either the constructor code itself, or the sum of the constructor
+// and runtime code.
+
+// Returns the sum of the constructor and runtime code size.
+def int_evm_datasize
+  : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+
+// Returns the runtime code size.
+def int_evm_datasizeruntime
+  : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+
 } // TargetPrefix = "evm"

@@ -22,6 +22,8 @@ enum Fixups {
   fixup_SecRel_i24,                        // 24-bit unsigned
   fixup_SecRel_i16,                        // 16-bit unsigned
   fixup_SecRel_i8,                         // 8-bit unsigned
+  fixup_DataSize_i64,                      // 64-bit unsigned
+  fixup_DataSize_Runtime_i64,              // 64-bit unsigned
 
   // Marker
   LastTargetFixupKind,

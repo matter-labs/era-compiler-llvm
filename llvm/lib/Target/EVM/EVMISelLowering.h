@@ -131,6 +131,11 @@ private:
 
   SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
 
+  SDValue lowerINTRINSIC_WO_CHAIN(SDValue Op, SelectionDAG &DAG) const;
+
+  SDValue lowerIntrinsicDataSize(unsigned IntrID, SDValue Op,
+                                 SelectionDAG &DAG) const;
+
   SDValue LowerLOAD(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue LowerSTORE(SDValue Op, SelectionDAG &DAG) const;

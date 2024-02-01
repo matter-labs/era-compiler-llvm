@@ -320,6 +320,9 @@ enum {
   EM_VE = 251,            // NEC SX-Aurora VE
   EM_CSKY = 252,          // C-SKY 32-bit processor
   EM_LOONGARCH = 258,     // LoongArch
+  // EVM local begin
+  EM_EVM = 259            // EVM
+  // EVM local end
 };
 
 // Object file classes.
@@ -422,6 +425,13 @@ enum {
 enum {
 #include "ELFRelocs/AArch64.def"
 };
+
+// EVM local begin
+// ELF Relocation types for EVM
+enum {
+#include "ELFRelocs/EVM.def"
+};
+// EVM local end
 
 // Special values for the st_other field in the symbol table entry for AArch64.
 enum {

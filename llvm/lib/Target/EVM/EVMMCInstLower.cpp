@@ -51,6 +51,9 @@ static void removeRegisterOperands(const MachineInstr *MI, MCInst &OutMI) {
       OutMI.erase(&MO);
     }
   }
+
+  if (RegOpcode == EVM::DATASIZE || RegOpcode == EVM::DATASIZE_RUNTIME)
+    OutMI.setOpcode(EVM::PUSH8_S);
 }
 
 MCSymbol *
@@ -130,10 +133,17 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
         MCOp = MCOperand::createExpr(EVMCImmMCExpr::create(*Str, Ctx));
       }
     } break;
-    case MachineOperand::MO_MCSymbol:
-      MCOp =
-          MCOperand::createExpr(MCSymbolRefExpr::create(MO.getMCSymbol(), Ctx));
-      break;
+    case MachineOperand::MO_MCSymbol: {
+      MCSymbolRefExpr::VariantKind Kind = MCSymbolRefExpr::VariantKind::VK_None;
+      unsigned Opc = MI->getOpcode();
+      if (Opc == EVM::DATASIZE)
+        Kind = MCSymbolRefExpr::VariantKind::VK_EVM_DATASIZE;
+      else if (Opc == EVM::DATASIZE_RUNTIME)
+        Kind = MCSymbolRefExpr::VariantKind::VK_EVM_DATASIZE_RUNTIME;
+
+      MCOp = MCOperand::createExpr(
+          MCSymbolRefExpr::create(MO.getMCSymbol(), Kind, Ctx));
+    } break;
     case MachineOperand::MO_MachineBasicBlock:
       MCOp = MCOperand::createExpr(
           MCSymbolRefExpr::create(MO.getMBB()->getSymbol(), Ctx));

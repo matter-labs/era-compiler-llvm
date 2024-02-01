@@ -50,12 +50,22 @@ public:
   EVMMCCodeEmitter(MCContext &Ctx, MCInstrInfo const &MCII) : MCII(MCII) {}
 };
 
-EVM::Fixups getFixupForOpc(unsigned Opcode) {
+EVM::Fixups getFixupForOpc(unsigned Opcode, MCSymbolRefExpr::VariantKind Kind) {
   switch (Opcode) {
   default:
     llvm_unreachable("Unexpected MI for the SymbolRef MO");
-  case EVM::PUSH8_S:
-    return EVM::fixup_SecRel_i64;
+  case EVM::PUSH8_S: {
+    switch (Kind) {
+    default:
+      llvm_unreachable("Unexpected variant kind for MI");
+    case MCSymbolRefExpr::VariantKind::VK_EVM_DATASIZE:
+      return EVM::fixup_DataSize_i64;
+    case MCSymbolRefExpr::VariantKind::VK_EVM_DATASIZE_RUNTIME:
+      return EVM::fixup_DataSize_Runtime_i64;
+    case MCSymbolRefExpr::VariantKind::VK_None:
+      return EVM::fixup_SecRel_i64;
+    }
+  } break;
   case EVM::PUSH7_S:
     return EVM::fixup_SecRel_i56;
   case EVM::PUSH6_S:
@@ -112,9 +122,13 @@ unsigned EVMMCCodeEmitter::getMachineOpValue(const MCInst &MI,
       const auto *CImmExp = cast<EVMCImmMCExpr>(MO.getExpr());
       Op = APInt(Op.getBitWidth(), CImmExp->getString(), /*radix=*/10);
     } else if (Kind == MCExpr::ExprKind::SymbolRef) {
-      EVM::Fixups Fixup = getFixupForOpc(MI.getOpcode());
+      const auto *RefExpr = cast<MCSymbolRefExpr>(MO.getExpr());
+      MCSymbolRefExpr::VariantKind Kind = RefExpr->getKind();
+      EVM::Fixups Fixup = getFixupForOpc(MI.getOpcode(), Kind);
+      // The byte index of start of the relocation is always 1, as
+      // we need to skip the instruction opcode which is always one byte.
       Fixups.push_back(
-          MCFixup::create(0, MO.getExpr(), MCFixupKind(Fixup), MI.getLoc()));
+          MCFixup::create(1, MO.getExpr(), MCFixupKind(Fixup), MI.getLoc()));
     }
   } else {
     llvm_unreachable("Unexpected MC operand type");

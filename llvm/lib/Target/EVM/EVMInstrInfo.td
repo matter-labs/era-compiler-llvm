@@ -1120,3 +1120,14 @@ def PUSH32_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH32 $imm",
   let BaseName = "PUSH32";
   let DecoderMethod = "decodePUSH<32>";
 }
+
+// Linking-related pseudo instructions
+let isCodeGenOnly = 1 in {
+  defm DATASIZE
+    : I<(outs GPR:$dst), (ins jmptarget:$size), [], "DATASIZE",
+         " $dst, $size", 0, 0>;
+
+  defm DATASIZE_RUNTIME
+    : I<(outs GPR:$dst), (ins jmptarget:$size), [], "DATASIZE_RUNTIME",
+         " $dst, $size", 0, 0>;
+}
