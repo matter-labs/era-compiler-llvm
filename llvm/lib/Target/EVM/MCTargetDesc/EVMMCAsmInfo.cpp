@@ -11,9 +11,17 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMMCAsmInfo.h"
+#include "llvm/MC/MCExpr.h"
+#include "llvm/Support/raw_ostream.h"
 #include "llvm/TargetParser/Triple.h"
 
 using namespace llvm;
+
+#define DEBUG_TYPE "evm-mc-asm-info"
+
+const MCAsmInfo::AtSpecifier atSpecifiers[] = {
+    {EVM::S_DATA, "DATA"},
+};
 
 EVMMCAsmInfo::EVMMCAsmInfo(const Triple &TT) {
   IsLittleEndian = false;
@@ -25,6 +33,18 @@ EVMMCAsmInfo::EVMMCAsmInfo(const Triple &TT) {
   PrependSymbolRefWithAt = true;
   CommentString = ";";
   SupportsDebugInformation = true;
+
+  initializeAtSpecifiers(atSpecifiers);
 }
 
 bool EVMMCAsmInfo::shouldOmitSectionDirective(StringRef) const { return true; }
+
+void EVMMCAsmInfo::printSpecifierExpr(raw_ostream &OS,
+                                      const MCSpecifierExpr &Expr) const {
+  StringRef S = EVM::getSpecifierName(Expr.getSpecifier());
+  if (!S.empty())
+    OS << '%' << S << '(';
+  printExpr(OS, *Expr.getSubExpr());
+  if (!S.empty())
+    OS << ')';
+}

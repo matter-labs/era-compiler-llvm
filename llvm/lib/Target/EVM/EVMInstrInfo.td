@@ -1123,3 +1123,9 @@ def PUSH32_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH32 $imm",
   let BaseName = "PUSH32";
   let DecoderMethod = "decodePUSH<32>";
 }
+
+// Pseudo instructions for linkage
+let isCodeGenOnly = 1, BaseName = "DATA" in {
+  def DATA : NI<(outs GPR:$dst), (ins jmptarget:$reloc), [], false, "", 0, 0>;
+  def DATA_S : NI<(outs), (ins jmptarget:$reloc), [], true, "", 0, 0>;
+}

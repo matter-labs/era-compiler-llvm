@@ -13,6 +13,7 @@
 
 #include "EVMMCInstLower.h"
 #include "EVMInstrInfo.h"
+#include "MCTargetDesc/EVMMCAsmInfo.h"
 #include "MCTargetDesc/EVMMCExpr.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "TargetInfo/EVMTargetInfo.h"
@@ -38,7 +39,7 @@ static void stackifyInstruction(const MachineInstr *MI, MCInst &OutMI) {
 
   // Set up final opcodes for the following codegen-only instructions.
   unsigned Opcode = OutMI.getOpcode();
-  if (Opcode == EVM::PUSH_LABEL)
+  if (Opcode == EVM::PUSH_LABEL || Opcode == EVM::DATA_S)
     OutMI.setOpcode(EVM::PUSH4_S);
 
   // Check that all the instructions are in the 'stack' form.
@@ -122,10 +123,12 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
         MCOp = MCOperand::createExpr(EVMCImmMCExpr::create(*Str, Ctx));
       }
     } break;
-    case MachineOperand::MO_MCSymbol:
-      MCOp =
-          MCOperand::createExpr(MCSymbolRefExpr::create(MO.getMCSymbol(), Ctx));
-      break;
+    case MachineOperand::MO_MCSymbol: {
+      EVM::Specifier Spec =
+          MI->getOpcode() == EVM::DATA_S ? EVM::S_DATA : EVM::S_None;
+      MCOp = MCOperand::createExpr(
+          MCSymbolRefExpr::create(MO.getMCSymbol(), Spec, Ctx));
+    } break;
     case MachineOperand::MO_MachineBasicBlock:
       MCOp = MCOperand::createExpr(
           MCSymbolRefExpr::create(MO.getMBB()->getSymbol(), Ctx));

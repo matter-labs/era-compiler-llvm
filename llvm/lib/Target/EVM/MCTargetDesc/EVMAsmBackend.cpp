@@ -94,10 +94,11 @@ MCFixupKindInfo EVMAsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
        //
        // Name          Offset  Size  Flags
        //               (bits) (bits)
-       {"fixup_SecRel_i32", 8, 8 * 4, 0},
-       {"fixup_SecRel_i24", 8, 8 * 3, 0},
-       {"fixup_SecRel_i16", 8, 8 * 2, 0},
-       {"fixup_SecRel_i8",  8, 8 * 1, 0}
+       {"fixup_SecRel_i32", 0, 8 * 4, 0},
+       {"fixup_SecRel_i24", 0, 8 * 3, 0},
+       {"fixup_SecRel_i16", 0, 8 * 2, 0},
+       {"fixup_SecRel_i8",  0, 8 * 1, 0},
+       {"fixup_Data_i32",   0, 8 * 4, 0}
       }};
 
   if (Kind < FirstTargetFixupKind)
@@ -113,9 +114,15 @@ std::optional<bool> EVMAsmBackend::evaluateFixup(const MCFragment &F,
                                                  MCFixup &Fixup,
                                                  MCValue &Target,
                                                  uint64_t &Value) {
-  assert(static_cast<unsigned>(Fixup.getKind() - FirstTargetFixupKind) <
+  unsigned FixUpKind = Fixup.getKind();
+  assert(static_cast<unsigned>(FixUpKind - FirstTargetFixupKind) <
              EVM::NumTargetFixupKinds &&
          "Invalid kind!");
+
+  // The following fixups should be emited as relocations,
+  // as they can only be resolved at link time.
+  if (FixUpKind == EVM::fixup_Data_i32)
+    return false;
 
   Value = Target.getConstant();
   if (Value > std::numeric_limits<uint32_t>::max())
@@ -131,14 +138,16 @@ void EVMAsmBackend::applyFixup(const MCFragment &F, const MCFixup &Fixup,
                                const MCValue &Target,
                                MutableArrayRef<char> Data, uint64_t Value,
                                bool IsResolved) {
-  const MCFixupKindInfo &Info = getFixupKindInfo(Fixup.getKind());
-  unsigned NumBytes = alignTo(Info.TargetSize, 8) / 8;
+  if (!IsResolved)
+    return;
 
   // Doesn't change encoding.
   if (Value == 0)
     return;
 
-  unsigned Offset = Fixup.getOffset() + Info.TargetOffset / 8;
+  const MCFixupKindInfo &Info = getFixupKindInfo(Fixup.getKind());
+  unsigned NumBytes = alignTo(Info.TargetSize, 8) / 8;
+  unsigned Offset = Fixup.getOffset();
   assert(Offset + NumBytes <= Data.size() && "Invalid fixup offset!");
 
   LLVM_DEBUG(dbgs() << "applyFixup: value: " << Value
@@ -174,6 +183,12 @@ void EVMAsmBackend::relaxInstruction(MCInst &Inst,
 bool EVMAsmBackend::fixupNeedsRelaxationAdvanced(const MCFixup &Fixup,
                                                  const MCValue &, uint64_t Value,
                                                  bool Resolved) const {
+  unsigned FixUpKind = Fixup.getKind();
+  // The following fixups shouls always be emited as relocations,
+  // as they can only be resolved at linking time.
+  if (FixUpKind == EVM::fixup_Data_i32)
+    return false;
+
   assert(Resolved);
   unsigned Opcode = EVM::getPUSHOpcode(APInt(256, Value));
   // The first byte of an instruction is an opcode, so
@@ -185,7 +200,7 @@ bool EVMAsmBackend::fixupNeedsRelaxationAdvanced(const MCFixup &Fixup,
   LLVM_DEBUG(getContext().getAsmInfo()->printExpr(dbgs(), *Fixup.getValue()));
   LLVM_DEBUG(dbgs() << '\n');
 
-  switch (Fixup.getKind()) {
+  switch (FixUpKind) {
   default:
     llvm_unreachable("Unexpected target fixup kind");
   case EVM::fixup_SecRel_i32:

@@ -14,12 +14,12 @@
 
 #include "EVMMachineFunctionInfo.h"
 #include "EVMTargetMachine.h"
+#include "EVMTargetObjectFile.h"
 #include "EVMTargetTransformInfo.h"
 #include "TargetInfo/EVMTargetInfo.h"
 #include "llvm/CodeGen/MIRParser/MIParser.h"
 #include "llvm/CodeGen/MIRYamlMapping.h"
 #include "llvm/CodeGen/Passes.h"
-#include "llvm/CodeGen/TargetLoweringObjectFileImpl.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/MC/TargetRegistry.h"
@@ -71,7 +71,7 @@ EVMTargetMachine::EVMTargetMachine(const Target &T, const Triple &TT,
     : CodeGenTargetMachineImpl(T, computeDataLayout(), TT, CPU, FS, Options,
                                getEffectiveRelocModel(RM),
                                getEffectiveCodeModel(CM, CodeModel::Small), OL),
-      TLOF(std::make_unique<TargetLoweringObjectFileELF>()),
+      TLOF(std::make_unique<EVMELFTargetObjectFile>()),
       Subtarget(TT, std::string(CPU), std::string(FS), *this) {
   initAsmInfo();
 }

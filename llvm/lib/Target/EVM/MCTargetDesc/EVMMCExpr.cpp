@@ -11,6 +11,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMMCExpr.h"
+#include "MCTargetDesc/EVMMCAsmInfo.h"
+#include "llvm/ADT/StringSwitch.h"
 #include "llvm/MC/MCAssembler.h"
 #include "llvm/MC/MCContext.h"
 using namespace llvm;
@@ -25,3 +27,19 @@ const EVMCImmMCExpr *EVMCImmMCExpr::create(const StringRef &Data,
 void EVMCImmMCExpr::printImpl(raw_ostream &OS, const MCAsmInfo *MAI) const {
   OS << Data;
 }
+
+EVM::Specifier EVM::parseSpecifierName(StringRef name) {
+  return StringSwitch<EVM::Specifier>(name)
+      .Case("evm_data", EVM::S_DATA)
+      .Default(EVM::S_None);
+}
+
+StringRef EVM::getSpecifierName(Specifier S) {
+  switch (S) {
+  default:
+    llvm_unreachable("not used as %specifier()");
+  case EVM::S_DATA:
+    return "evm_data";
+  }
+}
+      
