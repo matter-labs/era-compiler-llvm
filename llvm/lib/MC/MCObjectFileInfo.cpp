@@ -386,6 +386,10 @@ void MCObjectFileInfo::initELFMCObjectFileInfo(const Triple &T, bool Large) {
 
   TextSection = Ctx->getELFSection(".text", ELF::SHT_PROGBITS,
                                    ELF::SHF_EXECINSTR | ELF::SHF_ALLOC);
+  // EVM local begin
+  if (T.getArch() == Triple::evm)
+    TextSection->setAlignment(Align(1));
+  // EVM local end
 
   DataSection = Ctx->getELFSection(".data", ELF::SHT_PROGBITS,
                                    ELF::SHF_WRITE | ELF::SHF_ALLOC);

@@ -357,7 +357,10 @@ public:
     VK_VE_TPOFF_LO32,  // symbol@tpoff_lo
 
     VK_TPREL,
-    VK_DTPREL
+    VK_DTPREL,
+    // EVM local begin
+    VK_EVM_DATA,
+    // EVM local end
   };
 
 private:
