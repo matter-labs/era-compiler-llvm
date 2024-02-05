@@ -35,7 +35,6 @@ add_llvm_target(EraVMCodeGen
   EraVMCSE.cpp
   EraVMExpandPseudoInsts.cpp
   EraVMExpandSelect.cpp
-  EraVMFoldSelect.cpp
   EraVMFrameLowering.cpp
   EraVMHoistFlagSetting.cpp
   EraVMISelDAGToDAG.cpp
@@ -47,7 +46,8 @@ add_llvm_target(EraVMCodeGen
   EraVMMCInstLower.cpp
   EraVMMachineFunctionInfo.cpp
   EraVMOptimizeStdLibCalls.cpp
-  EraVMOptimizeSelect.cpp
+  EraVMOptimizeSelectCmpPreRA.cpp
+  EraVMOptimizeSelectPostRA.cpp
   EraVMRegisterInfo.cpp
   EraVMSHA3ConstFolding.cpp
   EraVMStackAddressConstantPropagation.cpp

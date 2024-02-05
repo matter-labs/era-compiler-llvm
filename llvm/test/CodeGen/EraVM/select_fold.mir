@@ -1,4 +1,4 @@
-# RUN: llc -x mir -run-pass=eravm-opt-select -verify-machineinstrs < %s | FileCheck %s
+# RUN: llc -x mir -run-pass=eravm-opt-select-postra -verify-machineinstrs < %s | FileCheck %s
 
 # This file tests select optimization pass on various instructions.
 

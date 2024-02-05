@@ -114,11 +114,11 @@ ImmutablePass *createEraVMAAWrapperPass();
 ImmutablePass *createEraVMExternalAAWrapperPass();
 ModulePass *createEraVMAlwaysInlinePass();
 FunctionPass *createEraVMSHA3ConstFoldingPass();
-FunctionPass *createEraVMOptimizeSelectPass();
+FunctionPass *createEraVMOptimizeSelectPostRAPass();
 Pass *createEraVMIndexedMemOpsPreparePass();
 FunctionPass *createEraVMTieSelectOperandsPass();
 FunctionPass *createEraVMHoistFlagSettingPass();
-FunctionPass *createEraVMFoldSelectPass();
+FunctionPass *createEraVMOptimizeSelectCmpPreRAPass();
 FunctionPass *createEraVMCSEPass();
 
 void initializeEraVMLowerIntrinsicsPass(PassRegistry &);
@@ -139,11 +139,11 @@ void initializeEraVMAAWrapperPassPass(PassRegistry &);
 void initializeEraVMExternalAAWrapperPass(PassRegistry &);
 void initializeEraVMAlwaysInlinePass(PassRegistry &);
 void initializeEraVMSHA3ConstFoldingPass(PassRegistry &);
-void initializeEraVMOptimizeSelectPass(PassRegistry &);
+void initializeEraVMOptimizeSelectPostRAPass(PassRegistry &);
 void initializeEraVMIndexedMemOpsPreparePass(PassRegistry &);
 void initializeEraVMTieSelectOperandsPass(PassRegistry &);
 void initializeEraVMHoistFlagSettingPass(PassRegistry &);
-void initializeEraVMFoldSelectPass(PassRegistry &);
+void initializeEraVMOptimizeSelectCmpPreRAPass(PassRegistry &);
 void initializeEraVMCSELegacyPassPass(PassRegistry &);
 
 struct EraVMLinkRuntimePass : PassInfoMixin<EraVMLinkRuntimePass> {

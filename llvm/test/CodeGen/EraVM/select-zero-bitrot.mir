@@ -1,4 +1,4 @@
-# RUN: llc -x mir -run-pass=eravm-fold-select -verify-machineinstrs < %s | FileCheck %s
+# RUN: llc -x mir -run-pass=eravm-opt-select-cmp-prera -verify-machineinstrs < %s | FileCheck %s
 
 # This file tests that combing select-with-zero with bit rotation
 
