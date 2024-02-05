@@ -1,4 +1,4 @@
-//===-- EraVMOptimizeSelect.cpp - Optimize select ---------------*- C++ -*-===//
+//===-- EraVMOptimizeSelectPostRA.cpp - Optimize select postRA --*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -24,21 +24,23 @@
 
 using namespace llvm;
 
-#define DEBUG_TYPE "eravm-opt-select"
-#define SYNCVM_OPT_SELECT_NAME "EraVM select optimization"
+#define DEBUG_TYPE "eravm-opt-select-postra"
+#define ERAVM_OPT_SELECT_POSTRA_NAME "EraVM select optimization postRA"
 
 namespace {
 
 /// This pass folds conditional move from an expanded select instructions, with
 /// an instruction that is in the same MBB.
-class EraVMOptimizeSelect : public MachineFunctionPass {
+class EraVMOptimizeSelectPostRA : public MachineFunctionPass {
 public:
   static char ID;
-  EraVMOptimizeSelect() : MachineFunctionPass(ID) {
-    initializeEraVMOptimizeSelectPass(*PassRegistry::getPassRegistry());
+  EraVMOptimizeSelectPostRA() : MachineFunctionPass(ID) {
+    initializeEraVMOptimizeSelectPostRAPass(*PassRegistry::getPassRegistry());
   }
   bool runOnMachineFunction(MachineFunction &MF) override;
-  StringRef getPassName() const override { return SYNCVM_OPT_SELECT_NAME; }
+  StringRef getPassName() const override {
+    return ERAVM_OPT_SELECT_POSTRA_NAME;
+  }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.setPreservesCFG();
@@ -82,14 +84,15 @@ private:
   ReachingDefAnalysis *RDA{};
 };
 
-char EraVMOptimizeSelect::ID = 0;
+char EraVMOptimizeSelectPostRA::ID = 0;
 
 } // namespace
 
-INITIALIZE_PASS(EraVMOptimizeSelect, DEBUG_TYPE, SYNCVM_OPT_SELECT_NAME, false,
-                false)
+INITIALIZE_PASS(EraVMOptimizeSelectPostRA, DEBUG_TYPE,
+                ERAVM_OPT_SELECT_POSTRA_NAME, false, false)
 
-Register EraVMOptimizeSelect::getOutRegToFold(const MachineInstr &MI) const {
+Register
+EraVMOptimizeSelectPostRA::getOutRegToFold(const MachineInstr &MI) const {
   // For writing to stack, it is risky to fold it into conditional move because
   // we currently have no way to track a stackop's liveness. So just bail out if
   // we are not dealing with register out form.
@@ -124,7 +127,8 @@ static bool isConditionalMove(const MachineInstr &MI) {
   return In1->getReg() == EraVM::R0 && In0->isKill();
 }
 
-std::optional<MachineInstr *> EraVMOptimizeSelect::findFoldingCandidateInstr(
+std::optional<MachineInstr *>
+EraVMOptimizeSelectPostRA::findFoldingCandidateInstr(
     MachineInstr *MI, MCRegister UseReg, MCRegister ConditionalDefReg) const {
   assert(MI && "MI cannot be null");
   assert(RDA && "RDA cannot be null");
@@ -177,7 +181,8 @@ std::optional<MachineInstr *> EraVMOptimizeSelect::findFoldingCandidateInstr(
   return DefMI;
 }
 
-MachineInstr *EraVMOptimizeSelect::getFoldingInst(MachineInstr &MI) const {
+MachineInstr *
+EraVMOptimizeSelectPostRA::getFoldingInst(MachineInstr &MI) const {
   if (!isConditionalMove(MI))
     return nullptr;
 
@@ -204,10 +209,9 @@ MachineInstr *EraVMOptimizeSelect::getFoldingInst(MachineInstr &MI) const {
   return &CandidateInstr;
 }
 
-bool EraVMOptimizeSelect::runOnMachineFunction(MachineFunction &MF) {
-  LLVM_DEBUG(
-      dbgs() << "********** EraVM OptimizeSelect optimization **********\n"
-             << "********** Function: " << MF.getName() << '\n');
+bool EraVMOptimizeSelectPostRA::runOnMachineFunction(MachineFunction &MF) {
+  LLVM_DEBUG(dbgs() << "********** EraVM OPTIMIZE SELECT POSTRA **********\n"
+                    << "********** Function: " << MF.getName() << '\n');
 
   TII = MF.getSubtarget<EraVMSubtarget>().getInstrInfo();
   assert(TII && "TargetInstrInfo must be a valid object");
@@ -226,6 +230,8 @@ bool EraVMOptimizeSelect::runOnMachineFunction(MachineFunction &MF) {
   // 2. Replace output register of FoldInst with CMov's.
   // 3. Remove CMov instruction.
   for (auto [CMov, FoldInst] : Deleted) {
+    LLVM_DEBUG(dbgs() << "== Folding cond move:"; CMov->dump();
+               dbgs() << "                into:"; FoldInst->dump(););
     EraVM::ccIterator(*FoldInst)->ChangeToImmediate(
         getImmOrCImm(*EraVM::ccIterator(*CMov)));
     EraVM::out0Iterator(*FoldInst)->setReg(
@@ -236,8 +242,8 @@ bool EraVMOptimizeSelect::runOnMachineFunction(MachineFunction &MF) {
   return !Deleted.empty();
 }
 
-/// createEraVMOptimizeSelectPass - returns an instance of the select
-/// optimization pass.
-FunctionPass *llvm::createEraVMOptimizeSelectPass() {
-  return new EraVMOptimizeSelect();
+/// createEraVMOptimizeSelectPostRAPass - returns an instance of the select
+/// optimization postRA pass.
+FunctionPass *llvm::createEraVMOptimizeSelectPostRAPass() {
+  return new EraVMOptimizeSelectPostRA();
 }
