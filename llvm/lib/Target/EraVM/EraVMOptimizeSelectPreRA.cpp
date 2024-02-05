@@ -1,4 +1,4 @@
-//===-- EraVMFoldSelect.cpp - Fold select with its user ---------*- C++ -*-===//
+//===-- EraVMOptimizeSelectPreRA.cpp - Optimize select preRA ----*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -34,21 +34,21 @@
 
 using namespace llvm;
 
-#define DEBUG_TYPE "eravm-fold-select"
-#define ERAVM_FOLD_SELECT_NAME "EraVM fold select with its user"
+#define DEBUG_TYPE "eravm-opt-select-prera"
+#define ERAVM_OPT_SELECT_PRERA_NAME "EraVM select optimization preRA"
 
 namespace {
 
-class EraVMFoldSelect : public MachineFunctionPass {
+class EraVMOptimizeSelectPreRA : public MachineFunctionPass {
 public:
   static char ID;
-  EraVMFoldSelect() : MachineFunctionPass(ID) {
-    initializeEraVMFoldSelectPass(*PassRegistry::getPassRegistry());
+  EraVMOptimizeSelectPreRA() : MachineFunctionPass(ID) {
+    initializeEraVMOptimizeSelectPreRAPass(*PassRegistry::getPassRegistry());
   }
 
   bool runOnMachineFunction(MachineFunction &MF) override;
 
-  StringRef getPassName() const override { return ERAVM_FOLD_SELECT_NAME; }
+  StringRef getPassName() const override { return ERAVM_OPT_SELECT_PRERA_NAME; }
 
 private:
   DenseMap<unsigned, unsigned> InverseCond{
@@ -87,13 +87,13 @@ private:
   MachineRegisterInfo *RegInfo{};
 };
 
-char EraVMFoldSelect::ID = 0;
+char EraVMOptimizeSelectPreRA::ID = 0;
 } // namespace
 
-INITIALIZE_PASS(EraVMFoldSelect, DEBUG_TYPE, ERAVM_FOLD_SELECT_NAME, false,
-                false)
+INITIALIZE_PASS(EraVMOptimizeSelectPreRA, DEBUG_TYPE,
+                ERAVM_OPT_SELECT_PRERA_NAME, false, false)
 
-bool EraVMFoldSelect::hasFlagsDefBetween(
+bool EraVMOptimizeSelectPreRA::hasFlagsDefBetween(
     MachineBasicBlock::iterator Start, MachineBasicBlock::iterator End) const {
   // In case of different basic blocks, conservatively assume true.
   if (Start->getParent() != End->getParent())
@@ -106,8 +106,8 @@ bool EraVMFoldSelect::hasFlagsDefBetween(
   });
 }
 
-bool EraVMFoldSelect::isSupportedMI(const MachineInstr &MI,
-                                    unsigned Reg) const {
+bool EraVMOptimizeSelectPreRA::isSupportedMI(const MachineInstr &MI,
+                                             unsigned Reg) const {
   auto Op = MI.getOpcode();
 
   // For commutative opcode, no need to check its operands. For non-commutative
@@ -121,7 +121,8 @@ bool EraVMFoldSelect::isSupportedMI(const MachineInstr &MI,
   return false;
 }
 
-unsigned EraVMFoldSelect::getFoldedMIOp(EraVM::ArgumentKind Kind,
+unsigned
+EraVMOptimizeSelectPreRA::getFoldedMIOp(EraVM::ArgumentKind Kind,
                                         const MachineInstr &SelectMI,
                                         const MachineInstr &UseMI) const {
   unsigned NewOp = 0;
@@ -152,7 +153,7 @@ unsigned EraVMFoldSelect::getFoldedMIOp(EraVM::ArgumentKind Kind,
   return NewOp;
 }
 
-bool EraVMFoldSelect::tryFoldSelectZero(MachineBasicBlock &MBB) {
+bool EraVMOptimizeSelectPreRA::tryFoldSelectZero(MachineBasicBlock &MBB) {
   SmallPtrSet<MachineInstr *, 4> ToRemove;
   for (auto &MI : MBB) {
     if (!TII->isSel(MI))
@@ -236,6 +237,10 @@ bool EraVMFoldSelect::tryFoldSelectZero(MachineBasicBlock &MBB) {
     // Set the flags.
     NewMI->setFlags(UseMI.getFlags());
 
+    LLVM_DEBUG(dbgs() << "== Folding select:"; MI.dump();
+               dbgs() << "          and use:"; UseMI.dump();
+               dbgs() << "             into:"; NewMI->dump(););
+
     ToRemove.insert(&UseMI);
     ToRemove.insert(&MI);
   }
@@ -246,8 +251,8 @@ bool EraVMFoldSelect::tryFoldSelectZero(MachineBasicBlock &MBB) {
   return !ToRemove.empty();
 }
 
-bool EraVMFoldSelect::runOnMachineFunction(MachineFunction &MF) {
-  LLVM_DEBUG(dbgs() << "********** EraVM Fold Select with its user **********\n"
+bool EraVMOptimizeSelectPreRA::runOnMachineFunction(MachineFunction &MF) {
+  LLVM_DEBUG(dbgs() << "********** EraVM OPTIMIZE SELECT PRERA **********\n"
                     << "********** Function: " << MF.getName() << '\n');
 
   TII = cast<EraVMInstrInfo>(MF.getSubtarget<EraVMSubtarget>().getInstrInfo());
@@ -262,8 +267,8 @@ bool EraVMFoldSelect::runOnMachineFunction(MachineFunction &MF) {
   return Changed;
 }
 
-/// createEraVMFoldSelectOperandsPass - returns an instance of the Fold
-/// Select pass
-FunctionPass *llvm::createEraVMFoldSelectPass() {
-  return new EraVMFoldSelect();
+/// createEraVMOptimizeSelectPreRAOperandsPass - returns an instance of the
+/// optimize select preRA pass.
+FunctionPass *llvm::createEraVMOptimizeSelectPreRAPass() {
+  return new EraVMOptimizeSelectPreRA();
 }
