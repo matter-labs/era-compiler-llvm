@@ -1,0 +1,316 @@
+# RUN: llc -x mir -run-pass=eravm-fold-similar-instrs -verify-machineinstrs < %s | FileCheck %s
+
+--- |
+
+  target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
+  target triple = "eravm"
+
+  define void @fold_subs(i256 %0, i256 %1) { ret void }
+  define void @fold_subs_ties(i256 %0, i256 %1) { ret void }
+  define void @fold_subs_ties_flags_def1(i256 %0, i256 %1) { ret void }
+  define void @fold_subs_ties_flags_def2(i256 %0, i256 %1) { ret void }
+  define void @fold_subs_flags_uses(i256 %0, i256 %1) { ret void }
+  define void @fold_subs_flags_def(i256 %0, i256 %1) { ret void }
+  define void @no_fold_subs(i256 %0, i256 %1) { ret void }
+  define void @no_fold_subs_ties(i256 %0, i256 %1) { ret void }
+  define void @no_fold_subs_flags_uses_defs(i256 %0, i256 %1) { ret void }
+
+...
+---
+# CHECK-LABEL: fold_subs
+# CHECK-LABEL: bb.0:
+# CHECK:       %3:gr256 = SUBrrr_s %0, %1, i256 0
+# CHECK-NEXT:  %4:gr256 = ADDrrr_s killed %3, killed %3, 0
+name:            fold_subs
+alignment:       1
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gr256 }
+  - { id: 1, class: gr256 }
+  - { id: 2, class: gr256 }
+  - { id: 3, class: gr256 }
+  - { id: 4, class: gr256 }
+liveins:
+  - { reg: '$r1', virtual-reg: '%0' }
+  - { reg: '$r2', virtual-reg: '%1' }
+frameInfo:
+  maxAlignment:    1
+machineFunctionInfo: {}
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+
+    %0:gr256 = COPY killed $r1
+    %1:gr256 = COPY killed $r2
+    %2:gr256 = SUBrrr_s %0, %1, i256 0
+    %3:gr256 = SUBrrr_s %0, %1, i256 0
+    %4:gr256 = ADDrrr_s killed %2, killed %3, 0
+    $r1 = COPY killed %4
+    RET implicit killed $r1
+
+...
+---
+# CHECK-LABEL: fold_subs_ties
+# CHECK-LABEL: bb.0:
+# CHECK:       %3:gr256 = SUBrrr_s %0, %1, i256 0, implicit %0(tied-def 0)
+# CHECK-NEXT:  %4:gr256 = ADDrrr_s killed %3, killed %3, 0
+name:            fold_subs_ties
+alignment:       1
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gr256 }
+  - { id: 1, class: gr256 }
+  - { id: 2, class: gr256 }
+  - { id: 3, class: gr256 }
+  - { id: 4, class: gr256 }
+liveins:
+  - { reg: '$r1', virtual-reg: '%0' }
+  - { reg: '$r2', virtual-reg: '%1' }
+frameInfo:
+  maxAlignment:    1
+machineFunctionInfo: {}
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+
+    %0:gr256 = COPY killed $r1
+    %1:gr256 = COPY killed $r2
+    %2:gr256 = SUBrrr_s %0, %1, i256 0, implicit %0:gr256(tied-def 0)
+    %3:gr256 = SUBrrr_s %0, %1, i256 0, implicit %0:gr256(tied-def 0)
+    %4:gr256 = ADDrrr_s killed %2, killed %3, 0
+    $r1 = COPY killed %4
+    RET implicit killed $r1
+
+...
+---
+# CHECK-LABEL: fold_subs_ties_flags_def1
+# CHECK-LABEL: bb.0:
+# CHECK:       %3:gr256 = SUBrrr_v %0, %1, i256 0, implicit %0(tied-def 0), implicit-def $flags
+# CHECK-NEXT:  %4:gr256 = ADDrrr_s killed %3, killed %3, 0
+name:            fold_subs_ties_flags_def1
+alignment:       1
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gr256 }
+  - { id: 1, class: gr256 }
+  - { id: 2, class: gr256 }
+  - { id: 3, class: gr256 }
+  - { id: 4, class: gr256 }
+liveins:
+  - { reg: '$r1', virtual-reg: '%0' }
+  - { reg: '$r2', virtual-reg: '%1' }
+frameInfo:
+  maxAlignment:    1
+machineFunctionInfo: {}
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+
+    %0:gr256 = COPY killed $r1
+    %1:gr256 = COPY killed $r2
+    %2:gr256 = SUBrrr_s %0, %1, i256 0, implicit %0:gr256(tied-def 0)
+    %3:gr256 = SUBrrr_v %0, %1, i256 0, implicit %0:gr256(tied-def 0), implicit-def $flags
+    %4:gr256 = ADDrrr_s killed %2, killed %3, 0
+    $r1 = COPY killed %4
+    RET implicit killed $r1
+
+...
+---
+# CHECK-LABEL: fold_subs_ties_flags_def2
+# CHECK-LABEL: bb.0:
+# CHECK:       %3:gr256 = SUBrrr_v %0, %1, i256 0, implicit-def $flags, implicit %1(tied-def 0)
+# CHECK-NEXT:  %4:gr256 = ADDrrr_s killed %3, killed %3, 0
+name:            fold_subs_ties_flags_def2
+alignment:       1
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gr256 }
+  - { id: 1, class: gr256 }
+  - { id: 2, class: gr256 }
+  - { id: 3, class: gr256 }
+  - { id: 4, class: gr256 }
+liveins:
+  - { reg: '$r1', virtual-reg: '%0' }
+  - { reg: '$r2', virtual-reg: '%1' }
+frameInfo:
+  maxAlignment:    1
+machineFunctionInfo: {}
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+
+    %0:gr256 = COPY killed $r1
+    %1:gr256 = COPY killed $r2
+    %2:gr256 = SUBrrr_s %0, %1, i256 0, implicit %1:gr256(tied-def 0)
+    %3:gr256 = SUBrrr_v %0, %1, i256 0, implicit-def $flags, implicit %1:gr256(tied-def 0)
+    %4:gr256 = ADDrrr_s killed %2, killed %3, 0
+    $r1 = COPY killed %4
+    RET implicit killed $r1
+
+...
+---
+# CHECK-LABEL: fold_subs_flags_uses
+# CHECK-LABEL: bb.0:
+# CHECK:       %3:gr256 = SUBrrr_s %0, %1, i256 0, implicit $flags
+# CHECK-NEXT:  %4:gr256 = ADDrrr_s killed %3, killed %3, 0
+name:            fold_subs_flags_uses
+alignment:       1
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gr256 }
+  - { id: 1, class: gr256 }
+  - { id: 2, class: gr256 }
+  - { id: 3, class: gr256 }
+  - { id: 4, class: gr256 }
+liveins:
+  - { reg: '$r1', virtual-reg: '%0' }
+  - { reg: '$r2', virtual-reg: '%1' }
+frameInfo:
+  maxAlignment:    1
+machineFunctionInfo: {}
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+
+    %0:gr256 = COPY killed $r1
+    %1:gr256 = COPY killed $r2
+    %2:gr256 = SUBrrr_s %0, %1, i256 0, implicit $flags
+    %3:gr256 = SUBrrr_s %0, %1, i256 0, implicit $flags
+    %4:gr256 = ADDrrr_s killed %2, killed %3, 0
+    $r1 = COPY killed %4
+    RET implicit killed $r1
+
+...
+---
+# CHECK-LABEL: fold_subs_flags_def
+# CHECK-LABEL: bb.0:
+# CHECK:       %3:gr256 = SUBrrr_v %0, %1, i256 0, implicit-def $flags
+# CHECK-NEXT:  %4:gr256 = ADDrrr_s killed %3, killed %3, 0
+name:            fold_subs_flags_def
+alignment:       1
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gr256 }
+  - { id: 1, class: gr256 }
+  - { id: 2, class: gr256 }
+  - { id: 3, class: gr256 }
+  - { id: 4, class: gr256 }
+liveins:
+  - { reg: '$r1', virtual-reg: '%0' }
+  - { reg: '$r2', virtual-reg: '%1' }
+frameInfo:
+  maxAlignment:    1
+machineFunctionInfo: {}
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+
+    %0:gr256 = COPY killed $r1
+    %1:gr256 = COPY killed $r2
+    %2:gr256 = SUBrrr_v %0, %1, i256 0, implicit-def $flags
+    %3:gr256 = SUBrrr_v %0, %1, i256 0, implicit-def $flags
+    %4:gr256 = ADDrrr_s killed %2, killed %3, 0
+    $r1 = COPY killed %4
+    RET implicit killed $r1
+
+...
+---
+# CHECK-LABEL: no_fold_subs
+# CHECK-LABEL: bb.0:
+# CHECK:       %2:gr256 = SUBrrr_s %0, %1, i256 0
+# CHECK-NEXT:  %3:gr256 = SUBrrr_s %1, %0, i256 0
+# CHECK-NEXT:  %4:gr256 = ADDrrr_s killed %2, killed %3, 0
+name:            no_fold_subs
+alignment:       1
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gr256 }
+  - { id: 1, class: gr256 }
+  - { id: 2, class: gr256 }
+  - { id: 3, class: gr256 }
+  - { id: 4, class: gr256 }
+liveins:
+  - { reg: '$r1', virtual-reg: '%0' }
+  - { reg: '$r2', virtual-reg: '%1' }
+frameInfo:
+  maxAlignment:    1
+machineFunctionInfo: {}
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+
+    %0:gr256 = COPY killed $r1
+    %1:gr256 = COPY killed $r2
+    %2:gr256 = SUBrrr_s %0, %1, i256 0
+    %3:gr256 = SUBrrr_s %1, %0, i256 0
+    %4:gr256 = ADDrrr_s killed %2, killed %3, 0
+    $r1 = COPY killed %4
+    RET implicit killed $r1
+
+...
+---
+# CHECK-LABEL: no_fold_subs_ties
+# CHECK-LABEL: bb.0:
+# CHECK:       %2:gr256 = SUBrrr_s %0, %1, i256 0, implicit %0(tied-def 0)
+# CHECK-NEXT:  %3:gr256 = SUBrrr_s %0, %1, i256 0, implicit %1(tied-def 0)
+# CHECK-NEXT:  %4:gr256 = ADDrrr_s killed %2, killed %3, 0
+name:            no_fold_subs_ties
+alignment:       1
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gr256 }
+  - { id: 1, class: gr256 }
+  - { id: 2, class: gr256 }
+  - { id: 3, class: gr256 }
+  - { id: 4, class: gr256 }
+liveins:
+  - { reg: '$r1', virtual-reg: '%0' }
+  - { reg: '$r2', virtual-reg: '%1' }
+frameInfo:
+  maxAlignment:    1
+machineFunctionInfo: {}
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+
+    %0:gr256 = COPY killed $r1
+    %1:gr256 = COPY killed $r2
+    %2:gr256 = SUBrrr_s %0, %1, i256 0, implicit %0:gr256(tied-def 0)
+    %3:gr256 = SUBrrr_s %0, %1, i256 0, implicit %1:gr256(tied-def 0)
+    %4:gr256 = ADDrrr_s killed %2, killed %3, 0
+    $r1 = COPY killed %4
+    RET implicit killed $r1
+
+...
+---
+# CHECK-LABEL: no_fold_subs_flags_uses_defs
+# CHECK-LABEL: bb.0:
+# CHECK:       %2:gr256 = SUBrrr_s %0, %1, i256 0, implicit $flags
+# CHECK-NEXT:  %3:gr256 = SUBrrr_v %0, %1, i256 0, implicit-def $flags
+# CHECK-NEXT:  %4:gr256 = ADDrrr_s killed %2, killed %3, 0
+name:            no_fold_subs_flags_uses_defs
+alignment:       1
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gr256 }
+  - { id: 1, class: gr256 }
+  - { id: 2, class: gr256 }
+  - { id: 3, class: gr256 }
+  - { id: 4, class: gr256 }
+liveins:
+  - { reg: '$r1', virtual-reg: '%0' }
+  - { reg: '$r2', virtual-reg: '%1' }
+frameInfo:
+  maxAlignment:    1
+machineFunctionInfo: {}
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+
+    %0:gr256 = COPY killed $r1
+    %1:gr256 = COPY killed $r2
+    %2:gr256 = SUBrrr_s %0, %1, i256 0, implicit $flags
+    %3:gr256 = SUBrrr_v %0, %1, i256 0, implicit-def $flags
+    %4:gr256 = ADDrrr_s killed %2, killed %3, 0
+    $r1 = COPY killed %4
+    RET implicit killed $r1
