@@ -5346,6 +5346,9 @@ Instruction *InstCombinerImpl::foldICmpBinOp(ICmpInst &I,
     }
   }
 
+  // EraVM local begin
+  Triple TT(I.getFunction()->getParent()->getTargetTriple());
+  if (!TT.isEraVM()) {
   // For unsigned predicates / eq / ne:
   // icmp pred (x << 1), x --> icmp getSignedPredicate(pred) x, 0
   // icmp pred x, (x << 1) --> icmp getSignedPredicate(pred) 0, x
@@ -5357,10 +5360,9 @@ Instruction *InstCombinerImpl::foldICmpBinOp(ICmpInst &I,
       return new ICmpInst(ICmpInst::getSignedPredicate(Pred),
                           Constant::getNullValue(Op0->getType()), Op0);
   }
+  }
 
-  // EraVM local begin
   // At this moment EraVM sees a regression over folding umul
-  Triple TT(I.getFunction()->getParent()->getTargetTriple());
   if (!TT.isEraVM()) {
   // EraVM local end
   if (Value *V = foldMultiplicationOverflowCheck(I))
