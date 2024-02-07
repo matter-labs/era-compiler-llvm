@@ -135,7 +135,8 @@ jobs:
              CodeGen/EraVM/select_tie.mir;\
              CodeGen/EraVM/select-zero-bitrot.mir;\
              CodeGen/EraVM/select-zero-flags.mir;\
-             CodeGen/EraVM/hoist-flag-setting.mir"
+             CodeGen/EraVM/hoist-flag-setting.mir;\
+             CodeGen/EraVM/fold-similar-instructions.mir"
 
         run: |
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
