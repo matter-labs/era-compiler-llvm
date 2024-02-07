@@ -5,10 +5,9 @@ target triple = "eravm"
 
 define i256 @test(i256 %a) {
 ; CHECK-LABEL: test
-; CHECK:       add 5, r1, r2
-; CHECK-NEXT:  sub.s 5, r0, r3
-; CHECK-NEXT:  sub! r1, r3, r4
-; CHECK-NEXT:  add.ge r2, r0, r1
+; CHECK:       sub.s 5, r0, r3
+; CHECK-NEXT:  sub! r1, r3, r2
+; CHECK-NEXT:  add.ge 5, r1, r1
 ; CHECK-NEXT:  shl.s 1, r1, r4
 ; CHECK-NEXT:  add 5, r4, r2
 ; CHECK-NEXT:  sub! r4, r3, r3
