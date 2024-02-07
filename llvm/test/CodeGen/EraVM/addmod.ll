@@ -5,25 +5,17 @@ target triple = "eravm"
 
 define i256 @test(i256 %a) {
 ; CHECK-LABEL: test
-; CHECK:       add 5, r1, r2
-; CHECK-NEXT:  sub.s 5, r0, r3
-; CHECK-NEXT:  sub! r1, r3, r4
-; CHECK-NEXT:  add.ge r2, r0, r1
-; CHECK-NEXT:  add @CPI0_0[0], r0, r2
-; CHECK-NEXT:  sub! r1, r0, r4
-; CHECK-NEXT:  add r0, r0, r4
-; CHECK-NEXT:  add.lt r2, r0, r4
-; CHECK-NEXT:  and @CPI0_0[0], r1, r5
-; CHECK-NEXT:  sub! r5, r0, r6
-; CHECK-NEXT:  add.le r0, r0, r2
-; CHECK-NEXT:  sub.s! @CPI0_0[0], r5, r5
-; CHECK-NEXT:  add.ne r4, r0, r2
+; CHECK:       sub.s 5, r0, r3
+; CHECK-NEXT:  sub! r1, r3, r2
+; CHECK-NEXT:  add.ge 5, r1, r1
 ; CHECK-NEXT:  shl.s 1, r1, r4
-; CHECK-NEXT:  add 5, r4, r1
+; CHECK-NEXT:  add 5, r4, r2
 ; CHECK-NEXT:  sub! r4, r3, r3
-; CHECK-NEXT:  add.ge r1, r0, r4
-; CHECK-NEXT:  sub! r2, r0, r2
-; CHECK-NEXT:  add.eq r4, r0, r1
+; CHECK-NEXT:  add r2, r0, r3
+; CHECK-NEXT:  add.lt r4, r0, r3
+; CHECK-NEXT:  sub! r4, r1, r1
+; CHECK-NEXT:  add.ge r3, r0, r2
+; CHECK-NEXT:  add r2, r0, r1
 ; CHECK-NEXT:  ret
 entry:
   %res = call i256 @__addmod(i256 %a, i256 %a, i256 -5)
