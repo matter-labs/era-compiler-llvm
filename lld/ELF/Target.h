@@ -192,6 +192,9 @@ TargetInfo *getSPARCV9TargetInfo();
 TargetInfo *getSystemZTargetInfo();
 TargetInfo *getX86TargetInfo();
 TargetInfo *getX86_64TargetInfo();
+// EVM local begin
+TargetInfo *getEVMTargetInfo();
+// EVM local end
 template <class ELFT> TargetInfo *getMipsTargetInfo();
 
 struct ErrorPlace {
