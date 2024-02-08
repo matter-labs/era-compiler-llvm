@@ -136,6 +136,10 @@ void EraVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
           PM.addPass(EraVMAlwaysInlinePass());
           return true;
         }
+        if (PassName == "eravm-lower-intrinsics") {
+          PM.addPass(EraVMLowerIntrinsicsPass());
+          return true;
+        }
         return false;
       });
 

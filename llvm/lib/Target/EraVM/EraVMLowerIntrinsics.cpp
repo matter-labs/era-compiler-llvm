@@ -36,7 +36,6 @@ public:
   EraVMLowerIntrinsics() : ModulePass(ID) {}
 
   bool runOnModule(Module &M) override;
-  bool expandMemIntrinsicUses(Function &F);
   StringRef getPassName() const override { return "EraVM Lower Intrinsics"; }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
@@ -44,7 +43,15 @@ public:
   }
 };
 
-void ExpandMemCpyAsLoop(MemCpyInst *Memcpy, const TargetTransformInfo &TTI) {
+} // namespace
+
+char EraVMLowerIntrinsics::ID = 0;
+
+INITIALIZE_PASS(EraVMLowerIntrinsics, DEBUG_TYPE, "Lower intrinsics", false,
+                false)
+
+static void ExpandMemCpyAsLoop(MemCpyInst *Memcpy,
+                               const TargetTransformInfo &TTI) {
   if (auto *CI = dyn_cast<ConstantInt>(Memcpy->getLength())) {
     createEraVMMemCpyLoopKnownSize(
         /* InsertBefore */ Memcpy,
@@ -70,18 +77,12 @@ void ExpandMemCpyAsLoop(MemCpyInst *Memcpy, const TargetTransformInfo &TTI) {
   }
 }
 
-} // namespace
-
-char EraVMLowerIntrinsics::ID = 0;
-
-INITIALIZE_PASS(EraVMLowerIntrinsics, DEBUG_TYPE, "Lower intrinsics", false,
-                false)
-
-bool EraVMLowerIntrinsics::expandMemIntrinsicUses(Function &F) {
+static bool
+expandMemIntrinsicUses(Function &F,
+                       function_ref<TargetTransformInfo &(Function &)> GetTTI) {
   Intrinsic::ID ID = F.getIntrinsicID();
   bool Changed = false;
-  const TargetTransformInfo &TTI =
-      getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
+  const TargetTransformInfo &TTI = GetTTI(F);
 
   for (auto I = F.user_begin(), E = F.user_end(); I != E;) {
     auto *Inst = cast<Instruction>(*I);
@@ -120,7 +121,8 @@ bool EraVMLowerIntrinsics::expandMemIntrinsicUses(Function &F) {
   return Changed;
 }
 
-bool EraVMLowerIntrinsics::runOnModule(Module &M) {
+static bool runImpl(Module &M,
+                    function_ref<TargetTransformInfo &(Function &)> GetTTI) {
   bool Changed = false;
 
   for (Function &F : M) {
@@ -131,7 +133,7 @@ bool EraVMLowerIntrinsics::runOnModule(Module &M) {
     case Intrinsic::memcpy:
     case Intrinsic::memmove:
     case Intrinsic::memset:
-      if (expandMemIntrinsicUses(F))
+      if (expandMemIntrinsicUses(F, GetTTI))
         Changed = true;
       break;
 
@@ -143,6 +145,24 @@ bool EraVMLowerIntrinsics::runOnModule(Module &M) {
   return Changed;
 }
 
+bool EraVMLowerIntrinsics::runOnModule(Module &M) {
+  auto GetTTI = [this](Function &F) -> TargetTransformInfo & {
+    return this->getAnalysis<TargetTransformInfoWrapperPass>().getTTI(F);
+  };
+  return runImpl(M, GetTTI);
+}
+
 ModulePass *llvm::createEraVMLowerIntrinsicsPass() {
   return new EraVMLowerIntrinsics();
+}
+
+PreservedAnalyses EraVMLowerIntrinsicsPass::run(Module &M,
+                                                ModuleAnalysisManager &AM) {
+  auto &FAM = AM.getResult<FunctionAnalysisManagerModuleProxy>(M).getManager();
+  auto GetTTI = [&FAM](Function &F) -> TargetTransformInfo & {
+    return FAM.getResult<TargetIRAnalysis>(F);
+  };
+  if (runImpl(M, GetTTI))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
 }
