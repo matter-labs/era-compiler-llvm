@@ -24,6 +24,7 @@ add_lld_library(lldELF
   Arch/AMDGPU.cpp
   Arch/ARM.cpp
   Arch/AVR.cpp
+  Arch/EVM.cpp
   Arch/EraVM.cpp
   Arch/Hexagon.cpp
   Arch/LoongArch.cpp
