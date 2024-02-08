@@ -2556,6 +2556,12 @@ static uint64_t computeFileOffset(OutputSection *os, uint64_t off) {
 template <class ELFT> void Writer<ELFT>::assignFileOffsetsBinary() {
   // Compute the minimum LMA of all non-empty non-NOBITS sections as minAddr.
   auto needsOffset = [](OutputSection &sec) {
+    // EVM local begin
+    if (config->emachine == EM_EVM)
+      // We are only looking for .text sections.
+      return sec.type == SHT_PROGBITS && (sec.flags & SHF_ALLOC) &&
+             (sec.flags & SHF_EXECINSTR) && sec.size > 0;
+    // EVM local end
     return sec.type != SHT_NOBITS && (sec.flags & SHF_ALLOC) && sec.size > 0;
   };
   uint64_t minAddr = UINT64_MAX;
@@ -2864,8 +2870,13 @@ template <class ELFT> void Writer<ELFT>::openFile() {
 
 template <class ELFT> void Writer<ELFT>::writeSectionsBinary() {
   for (OutputSection *sec : outputSections)
-    if (sec->flags & SHF_ALLOC)
+    if (sec->flags & SHF_ALLOC) {
+      // EVM local begin
+      if (config->emachine == EM_EVM && !(sec->flags & SHF_EXECINSTR))
+        continue;
+      // EVM local end
       sec->writeTo<ELFT>(Out::bufferStart + sec->offset);
+    }
 }
 
 static void fillTrap(uint8_t *i, uint8_t *end) {

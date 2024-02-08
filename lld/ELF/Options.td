@@ -136,6 +136,17 @@ defm demangle: B<"demangle",
 defm dependency_file: EEq<"dependency-file", "Write a dependency file">,
   MetaVarName<"<file>">;
 
+// EVM local begin
+def evm_link_deploy: F<"evm-link-deploy">,
+  HelpText<"Link EVM deploy code">;
+def evm_link_runtime: F<"evm-link-runtime">,
+  HelpText<"Link EVM runtime code">;
+defm evm_deploy_file: EEq<"evm-deploy-binary", "Deployment code">,
+  MetaVarName<"<file>">;
+defm evm_runtime_file: EEq<"evm-runtime-binary", "Runtime code">,
+  MetaVarName<"<file>">;
+// EVM local end
+
 def disable_new_dtags: F<"disable-new-dtags">,
   HelpText<"Disable new dynamic tags">;
 

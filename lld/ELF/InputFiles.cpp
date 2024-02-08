@@ -368,8 +368,35 @@ uint32_t ObjFile<ELFT>::getSectionIndex(const Elf_Sym &sym) const {
       this);
 }
 
+// EVM local begin
+template <class ELFT>
+void ObjFile<ELFT>::inititializeTextSecSize(
+    const llvm::object::ELFFile<ELFT> &obj) {
+  const ArrayRef<Elf_Shdr> objSections = getELFShdrs<ELFT>();
+  StringRef shstrtab = CHECK(obj.getSectionStringTable(objSections), this);
+  const uint64_t size = objSections.size();
+
+  sections.resize(numELFShdrs);
+  for (size_t i = 0; i != size; ++i) {
+    if (this->sections[i] == &InputSection::discarded)
+      continue;
+    const Elf_Shdr &sec = objSections[i];
+    if (check(obj.getSectionName(sec, shstrtab)) == ".text") {
+      evmTextSectionSize = sec.sh_size;
+      return;
+    }
+  }
+}
+// EVM local end
+
 template <class ELFT> void ObjFile<ELFT>::parse(bool ignoreComdats) {
   object::ELFFile<ELFT> obj = this->getObj();
+  // EVM local begin
+  inititializeTextSecSize(obj);
+  if (this->justTextSecSize)
+    return;
+  // EVM local end
+
   // Read a section table. justSymbols is usually false.
   if (this->justSymbols)
     initializeJustSymbols();
@@ -1064,8 +1091,10 @@ void ObjFile<ELFT>::initializeSymbols(const object::ELFFile<ELFT> &obj) {
 }
 
 template <class ELFT> void ObjFile<ELFT>::initializeLocalSymbols() {
-  if (!firstGlobal)
+  // EVM local begin
+  if (!firstGlobal || justTextSecSize)
     return;
+  // EVM local end
   localSymStorage = std::make_unique<SymbolUnion[]>(firstGlobal);
   SymbolUnion *locals = localSymStorage.get();
 
@@ -1105,6 +1134,10 @@ template <class ELFT> void ObjFile<ELFT>::initializeLocalSymbols() {
 // Called after all ObjFile::parse is called for all ObjFiles. This checks
 // duplicate symbols and may do symbol property merge in the future.
 template <class ELFT> void ObjFile<ELFT>::postParse() {
+  // EVM local begin
+  if (justTextSecSize)
+    return;
+  // EVM local end
   static std::mutex mu;
   ArrayRef<Elf_Sym> eSyms = this->getELFSyms<ELFT>();
   for (size_t i = firstGlobal, end = eSyms.size(); i != end; ++i) {
@@ -1538,6 +1571,10 @@ static uint16_t getBitcodeMachineKind(StringRef path, const Triple &t) {
     return t.isOSIAMCU() ? EM_IAMCU : EM_386;
   case Triple::x86_64:
     return EM_X86_64;
+  // EVM local begin
+  case Triple::evm:
+    return EM_EVM;
+  // EVM local end
   default:
     error(path + ": could not infer e_machine from bitcode target triple " +
           t.str());

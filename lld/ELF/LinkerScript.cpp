@@ -1046,7 +1046,7 @@ void LinkerScript::assignOffsets(OutputSection *sec) {
     for (InputSection *isec : cast<InputSectionDescription>(cmd)->sections) {
       assert(isec->getParent() == sec);
       const uint64_t pos = dot;
-      dot = alignToPowerOf2(dot, isec->alignment);
+      dot = alignToPowerOf2(dot, 1 /*isec->alignment*/);
       isec->outSecOff = dot - sec->addr;
       dot += isec->getSize();
 

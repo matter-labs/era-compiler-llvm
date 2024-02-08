@@ -50,6 +50,9 @@
 #include "llvm/Config/llvm-config.h"
 #include "llvm/LTO/LTO.h"
 #include "llvm/Object/Archive.h"
+// EVM local begin
+#include "llvm/Object/ELF.h"
+// EVM local end
 #include "llvm/Remarks/HotnessThresholdParser.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Compression.h"
@@ -1128,6 +1131,17 @@ static void readConfigs(opt::InputArgList &args) {
       OPT_plugin_opt_opaque_pointers, OPT_plugin_opt_no_opaque_pointers, true);
   config->optRemarksFilename = args.getLastArgValue(OPT_opt_remarks_filename);
   config->optStatsFilename = args.getLastArgValue(OPT_plugin_opt_stats_file);
+  // EVM local begin
+  if (opt::Arg *arg =
+          args.getLastArg(OPT_evm_link_deploy, OPT_evm_link_runtime)) {
+    if (arg->getOption().matches(OPT_evm_link_deploy))
+      config->evmLinkingKind = EVMLinkingKind::Deploy;
+    else if (arg->getOption().matches(OPT_evm_link_runtime))
+      config->evmLinkingKind = EVMLinkingKind::Runtime;
+    // Linking for EVM implies emitting only the .text section.
+    config->oFormatBinary = true;
+  }
+  // EVM local end
 
   // Parse remarks hotness threshold. Valid value is either integer or 'auto'.
   if (auto *arg = args.getLastArg(OPT_opt_remarks_hotness_threshold)) {
@@ -1571,6 +1585,25 @@ void LinkerDriver::createFiles(opt::InputArgList &args) {
       addFile(arg->getValue(), /*withLOption=*/false);
       hasInput = true;
       break;
+    // EVM local begin
+    case OPT_evm_deploy_file:
+    case OPT_evm_runtime_file: {
+      const unsigned optID = arg->getOption().getID();
+      const bool isDeploy = (optID == OPT_evm_deploy_file);
+      const bool isRuntime = (optID == OPT_evm_runtime_file);
+      const bool justTextSection =
+          (config->evmLinkingKind == EVMLinkingKind::Deploy && isRuntime) ||
+          (config->evmLinkingKind == EVMLinkingKind::Runtime && isDeploy);
+
+      if (Optional<MemoryBufferRef> mb = readFile(arg->getValue())) {
+        files.push_back(createObjFile(*mb));
+        files.back()->justTextSecSize = justTextSection;
+        files.back()->evmBinaryKind =
+            isDeploy ? InputFile::EVMDeploy : InputFile::EVMRuntime;
+        hasInput = !justTextSection;
+      }
+    } break;
+    // EVM local end
     case OPT_defsym: {
       StringRef from;
       StringRef to;
@@ -1987,6 +2020,34 @@ static void replaceCommonSymbols() {
     }
   }
 }
+
+// EVM local begin
+template <class ELFT> static std::pair<size_t, size_t> calcEVMCtorSymVals() {
+  size_t deploySize = 0, runtimeSize = 0;
+  for (ELFFileBase *file : ctx->objectFiles) {
+    const size_t textSize = dyn_cast<ObjFile<ELFT>>(file)->evmTextSectionSize;
+    if (file->evmBinaryKind == InputFile::EVMRuntime)
+      runtimeSize += textSize;
+    else if (file->evmBinaryKind == InputFile::EVMDeploy)
+      deploySize += textSize;
+  }
+  return {deploySize + runtimeSize, runtimeSize};
+}
+
+template <class ELFT> static void replaceEVMCtorSymbols() {
+  const llvm::TimeTraceScope timeScope("Replace EVM ctor symbols");
+  auto [textSize, textSizeRuntime] = calcEVMCtorSymVals<ELFT>();
+
+  // Replace ctor symbol with the 'ABS' one with the size stored in 'value'.
+  if (Symbol *s = symtab->find("__evm_datasize"))
+    s->replace(Defined{nullptr, StringRef(), STB_GLOBAL, STV_HIDDEN, STT_NOTYPE,
+                       /*value=*/textSize, 0, nullptr});
+
+  if (Symbol *s = symtab->find("__evm_datasize_runtime"))
+    s->replace(Defined{nullptr, StringRef(), STB_GLOBAL, STV_HIDDEN, STT_NOTYPE,
+                       /*value=*/textSizeRuntime, 0, nullptr});
+}
+// EVM local end
 
 // If all references to a DSO happen to be weak, the DSO is not added to
 // DT_NEEDED. If that happens, replace ShardSymbol with Undefined to avoid
@@ -2644,6 +2705,10 @@ void LinkerDriver::link(opt::InputArgList &args) {
 
   // Replace common symbols with regular symbols.
   replaceCommonSymbols();
+
+  // EVM local begin
+  invokeELFT(replaceEVMCtorSymbols);
+  // EVM local end
 
   {
     llvm::TimeTraceScope timeScope("Aggregate sections");

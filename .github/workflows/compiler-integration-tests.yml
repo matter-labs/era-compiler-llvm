@@ -52,7 +52,7 @@ jobs:
       - name: Build LLVM
         uses: ./llvm/.github/actions/build
         with:
-          extra-args: "\\-DLLVM_ENABLE_WERROR=On \\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+          extra-args: "\\-DLLVM_ENABLE_WERROR=On \\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON \\-DLLVM_ENABLE_PROJECTS=lld"
           enable-tests: true
           debug: ${{ github.event.inputs.llvm_build_type || 'release' }}
 

@@ -82,6 +82,10 @@ enum class SeparateSegmentKind { None, Code, Loadable };
 // For -z *stack
 enum class GnuStackKind { None, Exec, NoExec };
 
+// EVM local begin
+enum class EVMLinkingKind { None, Deploy, Runtime };
+// EVM local end
+
 struct SymbolVersion {
   llvm::StringRef name;
   bool isExternCpp;
@@ -107,6 +111,9 @@ struct Configuration {
   llvm::CachePruningPolicy thinLTOCachePolicy;
   llvm::SetVector<llvm::CachedHashString> dependencyFiles; // for --dependency-file
   llvm::StringMap<uint64_t> sectionStartMap;
+  // EVM local begin
+  EVMLinkingKind evmLinkingKind = EVMLinkingKind::None;
+  // EVM local end
   llvm::StringRef bfdname;
   llvm::StringRef chroot;
   llvm::StringRef dependencyFile;

@@ -63,6 +63,14 @@ public:
     BinaryKind,
   };
 
+  // EVM local begin
+  enum EVMBinaryKind : uint8_t {
+    EVMNone,
+    EVMDeploy,
+    EVMRuntime,
+  };
+  // EVM local end
+
   Kind kind() const { return fileKind; }
 
   bool isElf() const {
@@ -124,6 +132,13 @@ public:
 
   // True if this is an argument for --just-symbols. Usually false.
   bool justSymbols = false;
+
+  // EVM local begin
+  // This flag is set if the only infortmation we need from this file
+  // is the size of .text section.
+  bool justTextSecSize = false;
+  EVMBinaryKind evmBinaryKind = EVMNone;
+  // EVM local end
 
   std::string getSrcMsg(const Symbol &sym, InputSectionBase &sec,
                         uint64_t offset);
@@ -226,6 +241,9 @@ public:
   }
 
   void parse(bool ignoreComdats = false);
+  // EVM local begin
+  void inititializeTextSecSize(const llvm::object::ELFFile<ELFT> &obj);
+  // EVM local end
   void parseLazy();
 
   StringRef getShtGroupSignature(ArrayRef<Elf_Shdr> sections,
@@ -270,6 +288,10 @@ public:
   // True if the file defines functions compiled with -fsplit-stack,
   // but had one or more functions with the no_split_stack attribute.
   bool someNoSplitStack = false;
+
+  // EVM local begin
+  size_t evmTextSectionSize = 0;
+  // EVM local end
 
   // Get cached DWARF information.
   DWARFCache *getDwarf();
