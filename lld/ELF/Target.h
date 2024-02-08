@@ -195,6 +195,9 @@ void setSPARCV9TargetInfo(Ctx &);
 void setSystemZTargetInfo(Ctx &);
 void setX86TargetInfo(Ctx &);
 void setX86_64TargetInfo(Ctx &);
+// EVM local begin
+void setEVMTargetInfo(Ctx &);
+// EVM local end
 
 struct ErrorPlace {
   InputSectionBase *isec;
