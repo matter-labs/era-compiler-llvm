@@ -904,7 +904,9 @@ void SeparateConstOffsetFromGEP::lowerToSingleIndexGEPs(
 
   // Create a GEP with the constant offset index.
   if (AccumulativeByteOffset != 0) {
-    Value *Offset = ConstantInt::get(PtrIndexTy, AccumulativeByteOffset);
+    // EVM local begin
+    Value *Offset = ConstantInt::get(PtrIndexTy, AccumulativeByteOffset, true);
+    // EVM local end
     ResultPtr = Builder.CreatePtrAdd(ResultPtr, Offset, "uglygep");
   } else
     isSwapCandidate = false;
@@ -961,8 +963,10 @@ SeparateConstOffsetFromGEP::lowerToArithmetics(GetElementPtrInst *Variadic,
 
   // Create an ADD for the constant offset index.
   if (AccumulativeByteOffset != 0) {
+    // EVM local begin
     ResultPtr = Builder.CreateAdd(
-        ResultPtr, ConstantInt::get(IntPtrTy, AccumulativeByteOffset));
+        ResultPtr, ConstantInt::get(IntPtrTy, AccumulativeByteOffset, true));
+    // EVM local end
   }
 
   ResultPtr = Builder.CreateIntToPtr(ResultPtr, Variadic->getType());
