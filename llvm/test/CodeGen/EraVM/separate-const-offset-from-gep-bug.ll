@@ -8,13 +8,11 @@ define void @test(ptr addrspace(1) %0, ptr addrspace(1) %1, i256 %2) {
 ; CHECK:       sub! r3, r0, r4
 ; CHECK-NEXT:  jump.eq @.BB0_3
 ; CHECK:       .BB0_2:
-; CHECK:       add r1, r3, r4
-; CHECK-NEXT:  add @CPI0_0[0], r4, r4
-; CHECK-NEXT:  add r2, r3, r5
-; CHECK-NEXT:  add @CPI0_0[0], r5, r5
+; CHECK:       sub.s! 32, r3, r3
+; CHECK-NEXT:  add r3, r1, r4
+; CHECK-NEXT:  add r3, r2, r5
 ; CHECK-NEXT:  ld.1 r5, r5
 ; CHECK-NEXT:  st.1 r4, r5
-; CHECK-NEXT:  sub.s! 32, r3, r3
 ; CHECK-NEXT:  jump.ne @.BB0_2
 ; CHECK:       .BB0_3:
 ; CHECK-NEXT:  ret
@@ -35,9 +33,10 @@ define void @test(ptr addrspace(1) %0, ptr addrspace(1) %1, i256 %2) {
   ret void
 }
 
-; During lowering of a GEP with multiple indices into ptrtoint+arithmetics+inttoptr form,
-; SeparateConstOffsetFromGEP pass is emitting wrong negative offset index. Instead of -32,
-; it is emitting uint64_t representation of -32 (18446744073709551584), so that number ends
-; up in the CP.
-; CHECK: CPI0_0:
-; CHECK: .cell 18446744073709551584
+; Before the fix, during lowering of a GEP with multiple indices into
+; ptrtoint+arithmetics+inttoptr form, SeparateConstOffsetFromGEP pass
+; was emitting wrong negative offset index. Instead of -32, it was
+; emitting uint64_t representation of -32 (18446744073709551584), so
+; that number ended up in the CP. Check that it is not longer the case.
+; CHECK-NOT: CPI0_0:
+; CHECK-NOT: .cell 18446744073709551584
