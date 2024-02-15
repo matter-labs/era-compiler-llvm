@@ -1,6 +1,8 @@
 //===---------- EVMStackify.cpp - Replace phys regs with virt regs --------===//
 //
-//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
 //
@@ -15,7 +17,6 @@
 //   "Global Stack Allocation – Register Allocation for Stack Machines",
 // but in quite simplified form.
 //
-// Current implementation doesn't involve any kind of optimizations other
 // than that required for the stackification itself. It's expected that
 // previous passes perform required optimizations:
 //  - splitting live intervals that contain unrelated register values.

@@ -1,22 +1,21 @@
-//===--- EVMOptimizeLiveIntervals.cpp - LiveInterval processing ---===//
+//===--- EVMOptimizeLiveIntervals.cpp - LiveInterval processing -*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
-///
-/// \file
-/// Optimize LiveIntervals for use in a post-RA context.
 //
-/// LiveIntervals normally runs before register allocation when the code is
-/// only recently lowered out of SSA form, so it's uncommon for registers to
-/// have multiple defs, and when they do, the defs are usually closely related.
-/// Later, after coalescing, tail duplication, and other optimizations, it's
-/// more common to see registers with multiple unrelated defs. This pass
-/// updates LiveIntervals to distribute the value numbers across separate
-/// LiveIntervals.
-///
+// This file optimize LiveIntervals for use in a post-RA context.
+//
+// LiveIntervals normally runs before register allocation when the code is
+// only recently lowered out of SSA form, so it's uncommon for registers to
+// have multiple defs, and when they do, the defs are usually closely related.
+// Later, after coalescing, tail duplication, and other optimizations, it's
+// more common to see registers with multiple unrelated defs. This pass
+// updates LiveIntervals to distribute the value numbers across separate
+// LiveIntervals.
+//
 //===----------------------------------------------------------------------===//
 
 #include "EVM.h"

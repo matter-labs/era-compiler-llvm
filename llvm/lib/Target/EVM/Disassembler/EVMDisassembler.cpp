@@ -1,15 +1,16 @@
 //==----------- EVMDisassembler.cpp - Disassembler for EVM -*- C++ -------*-==//
 //
-//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
-///
-/// \file
-/// This file is part of the EVM Disassembler.
-///
-/// It contains code to translate the data produced by the decoder into
-/// MCInsts.
-///
+//
+// This file is part of the EVM Disassembler.
+//
+// It contains code to translate the data produced by the decoder into
+// MCInsts.
+//
 //===----------------------------------------------------------------------===//
 
 #include "MCTargetDesc/EVMMCExpr.h"
