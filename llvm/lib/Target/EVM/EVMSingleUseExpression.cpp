@@ -1,16 +1,16 @@
 //===-- EVMSingleUseExpression.cpp - Register Stackification --------------===//
 //
-//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
 //
 //===----------------------------------------------------------------------===//
-///
-/// \file
-///
-/// This pass reorders instructions to put register uses and defs in an order
-/// such that they form single-use expression trees. Registers fitting this form
-/// are then marked as "stackified", meaning references to them are replaced by
-/// "push" and "pop" from the value stack.
-///
+//
+// This pass reorders instructions to put register uses and defs in an order
+// such that they form single-use expression trees. Registers fitting this form
+// are then marked as "stackified", meaning references to them are replaced by
+// "push" and "pop" from the stack.
+//
 //===----------------------------------------------------------------------===//
 
 #include "EVM.h"

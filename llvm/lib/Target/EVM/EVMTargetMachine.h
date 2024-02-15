@@ -1,8 +1,14 @@
-//===---- EVMTargetMachine.h - Define TargetMachine for EVM -*- C++ -*----===//
+//===---- EVMTargetMachine.h - Define TargetMachine for EVM -*- C++ -*-----===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
 //
 // This file declares the EVM specific subclass of TargetMachine.
 //
-//===---------------------------------------------------------------------===//
+//===----------------------------------------------------------------------===//
 
 #ifndef LLVM_LIB_TARGET_EVM_EVMTARGETMACHINE_H
 #define LLVM_LIB_TARGET_EVM_EVMTARGETMACHINE_H

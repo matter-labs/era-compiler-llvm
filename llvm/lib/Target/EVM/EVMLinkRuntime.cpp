@@ -7,10 +7,9 @@
 //============================================================================//
 //
 // TODO: CPR-1556, make this pass common for both EVM and EraVM BEs.
-// This file implements pass which links stdlib (evm-stdlib.ll) and internalize
-// their contents. EVM doesn't have a proper linker and all programs consist
-// of a single module. The pass links the the necessary modules into the
-// program module.
+// This pas links stdlib (evm-stdlib.ll) and internalize their contents.
+// EVM doesn't have a proper linker and all programs consist of a single module.
+// The pass links the the necessary modules into the program module.
 // It's called at the beginning of optimization pipeline. The pass links
 // the context of evm-stdlib.ll and internalize its content, after that
 // global DCE is expected to be run to remove all unused functions.
