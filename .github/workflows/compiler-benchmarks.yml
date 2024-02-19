@@ -59,17 +59,13 @@ jobs:
       - name: Checking out the compiler-tester repository
         uses: actions/checkout@v4
         with:
-          repository: matter-labs/compiler-tester
+          repository: matter-labs/era-compiler-tester
           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
           submodules: recursive
-          token: ${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}
           path: "compiler-tester"
 
       - name: Preparing the Docker environment
         run: |
-          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
-          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
-          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
           apt install -y ninja-build
 
       - name: Preparing LLVM.lock (pull request)
@@ -147,17 +143,13 @@ jobs:
       - name: Checking out the compiler-tester repository
         uses: actions/checkout@v4
         with:
-          repository: matter-labs/compiler-tester
+          repository: matter-labs/era-compiler-tester
           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
           submodules: recursive
-          token: ${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}
           path: "compiler-tester"
 
       - name: Preparing the Docker environment
         run: |
-          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
-          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
-          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
           apt install -y ninja-build
 
       - name: Preparing LLVM.lock (pull request)
@@ -240,17 +232,13 @@ jobs:
       - name: Checking out the compiler-tester repository
         uses: actions/checkout@v4
         with:
-          repository: matter-labs/compiler-tester
+          repository: matter-labs/era-compiler-tester
           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
           submodules: recursive
-          token: ${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}
           path: "compiler-tester"
 
       - name: Preparing the Docker environment
         run: |
-          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
-          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
-          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
           apt install -y ninja-build
 
       - uses: actions/download-artifact@v4
@@ -282,7 +270,7 @@ jobs:
         if: github.event_name == 'pull_request'
         uses: mshick/add-pr-comment@v2
         env:
-          GITHUB_TOKEN: ${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           message-path: ./compiler-tester/result.txt
 

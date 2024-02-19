@@ -43,17 +43,13 @@ jobs:
       - name: Checking out the compiler-tester repository
         uses: actions/checkout@v4
         with:
-          repository: matter-labs/compiler-tester
+          repository: matter-labs/era-compiler-tester
           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
           submodules: recursive
-          token: ${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}
           path: "compiler-tester"
 
       - name: Preparing the Docker environment
         run: |
-          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
-          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
-          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
           apt update
           apt install -y ninja-build clang-tidy-15
 
