@@ -19,11 +19,11 @@ on:
       compiler_llvm_reference_branch:
         description: "compiler-llvm branch to use as a benchmark reference"
         required: true
-        default: "dev-15"
+        default: "main"
       compiler_llvm_candidate_branch:
         description: "compiler-llvm branch to use as a benchmark candidate"
         required: true
-        default: "dev-15"
+        default: "main"
       compiler_llvm_benchmark_mode:
         description: "Mode filter for compiler-llvm benchmarks"
         required: false
