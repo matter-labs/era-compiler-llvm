@@ -906,11 +906,15 @@ Constant *SymbolicallyEvaluateGEP(const GEPOperator *GEP,
       return nullptr;
 
   unsigned BitWidth = DL.getTypeSizeInBits(IntIdxTy);
+  // EraVM local begin
   APInt Offset =
       APInt(BitWidth,
             DL.getIndexedOffsetInType(
                 SrcElemTy,
-                makeArrayRef((Value * const *)Ops.data() + 1, Ops.size() - 1)));
+                // NOLINTNEXTLINE(cppcoreguidelines-pro-type-cstyle-cast)
+                makeArrayRef((Value *const *)Ops.data() + 1, Ops.size() - 1)),
+            true);
+  // EraVM local end
   Ptr = StripPtrCastKeepAS(Ptr);
 
   // If this is a GEP of a GEP, fold it all into a single GEP.
@@ -932,7 +936,10 @@ Constant *SymbolicallyEvaluateGEP(const GEPOperator *GEP,
 
     Ptr = cast<Constant>(GEP->getOperand(0));
     SrcElemTy = GEP->getSourceElementType();
-    Offset += APInt(BitWidth, DL.getIndexedOffsetInType(SrcElemTy, NestedOps));
+    // EraVM local begin
+    Offset +=
+        APInt(BitWidth, DL.getIndexedOffsetInType(SrcElemTy, NestedOps), true);
+    // EraVM local end
     Ptr = StripPtrCastKeepAS(Ptr);
   }
 
