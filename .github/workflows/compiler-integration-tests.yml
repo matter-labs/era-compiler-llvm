@@ -1,6 +1,6 @@
 name: Compiler integration testing
 env:
-  COMPILER_LLVM_DEFAULT_BRANCH_NAME: "dev-15"  # Can’t be used for compiler_llvm_branch popup
+  COMPILER_LLVM_DEFAULT_BRANCH_NAME: "main"
 
 on:
   pull_request:
@@ -17,7 +17,7 @@ on:
       compiler_llvm_branch:
         description: "compiler-llvm branch"
         required: true
-        default: "dev-15"
+        default: "main"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
