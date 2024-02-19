@@ -21,6 +21,9 @@
 #include "llvm/ADT/SmallBitVector.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/Statistic.h"
+// EraVM local begin
+#include "llvm/ADT/Triple.h"
+// EraVM local end
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/AssumeBundleQueries.h"
 #include "llvm/Analysis/AssumptionCache.h"
@@ -161,8 +164,15 @@ Instruction *InstCombinerImpl::SimplifyAnyMemTransfer(AnyMemTransferInst *MI) {
   uint64_t Size = MemOpLength->getLimitedValue();
   assert(Size && "0-sized memory transferring should be removed already.");
 
-  if (Size > 8 || (Size&(Size-1)))
+  // EraVM local begin
+  uint64_t SizeLimit = 8;
+  Triple TT(MI->getFunction()->getParent()->getTargetTriple());
+  if (TT.isEraVM())
+    SizeLimit = 32;
+
+  if (Size > SizeLimit || (Size & (Size - 1)))
     return nullptr;  // If not 1/2/4/8 bytes, exit.
+  // EraVM local end
 
   // If it is an atomic and alignment is less than the size then we will
   // introduce the unaligned memory access which will be later transformed
