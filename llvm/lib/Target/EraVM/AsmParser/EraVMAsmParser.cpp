@@ -41,7 +41,6 @@ namespace {
 
 /// Parses EraVM assembly from a stream.
 class EraVMAsmParser : public MCTargetAsmParser {
-  MCAsmParser &Parser;
   const MCRegisterInfo *MRI;
 
   bool MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
@@ -62,9 +61,6 @@ class EraVMAsmParser : public MCTargetAsmParser {
   unsigned validateTargetOperandClass(MCParsedAsmOperand &Op,
                                       unsigned Kind) override;
 
-  MCAsmParser &getParser() const { return Parser; }
-  MCAsmLexer &getLexer() const { return Parser.getLexer(); }
-
   /// @name Auto-generated Matcher Functions
   /// {
 
@@ -76,8 +72,8 @@ class EraVMAsmParser : public MCTargetAsmParser {
 public:
   EraVMAsmParser(const MCSubtargetInfo &STI, MCAsmParser &Parser,
                  const MCInstrInfo &MII, const MCTargetOptions &Options)
-      : MCTargetAsmParser(Options, STI, MII), Parser(Parser),
-        MRI(getContext().getRegisterInfo()) {
+      : MCTargetAsmParser(Options, STI, MII),
+        MRI(Parser.getContext().getRegisterInfo()) {
     MCAsmParserExtension::Initialize(Parser);
 
     setAvailableFeatures(ComputeAvailableFeatures(STI.getFeatureBits()));
