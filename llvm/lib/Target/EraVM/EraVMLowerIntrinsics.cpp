@@ -160,36 +160,29 @@ static void createEraVMMemMoveLoop(Instruction *InsertBefore, Value *SrcAddr,
   Align PartDstAlign(commonAlignment(DstAlign, LoopOpSize));
 
   // Copying backwards preheader.
-  // TODO: CPR-1553 Remove two -LoopOpSize GEPs.
   IRBuilder<> BwdLoopPreheaderBuilder(CopyBwdLoopPreheaderBB);
   Value *SrcBwdAddr = BwdLoopPreheaderBuilder.CreateInBoundsGEP(
-      Int8Type,
-      BwdLoopPreheaderBuilder.CreateInBoundsGEP(
-          Int8Type, SrcAddr, ResidualBytes, "src-bwd-res-end"),
-      ConstantInt::get(LoopOpType, -LoopOpSize, true), "src-bwd-start");
+      Int8Type, SrcAddr, ResidualBytes, "src-bwd-start");
   Value *DstBwdAddr = BwdLoopPreheaderBuilder.CreateInBoundsGEP(
-      Int8Type,
-      BwdLoopPreheaderBuilder.CreateInBoundsGEP(
-          Int8Type, DstAddr, ResidualBytes, "dst-bwd-res-end"),
-      ConstantInt::get(LoopOpType, -LoopOpSize, true), "dst-bwd-start");
+      Int8Type, DstAddr, ResidualBytes, "dst-bwd-start");
   BwdLoopPreheaderBuilder.CreateBr(CopyBwdLoopBB);
 
   // Copying backwards.
-  // TODO: CPR-1553 Update generation of this loop.
   IRBuilder<> BwdLoopBuilder(CopyBwdLoopBB);
   PHINode *BwdLoopPhi = BwdLoopBuilder.CreatePHI(LoopOpType, 2, "bytes-count");
+  Value *BytesDecrement = BwdLoopBuilder.CreateAdd(
+      BwdLoopPhi, ConstantInt::get(LoopOpType, -LoopOpSize, true),
+      "decrement-bytes");
   Value *BwdElement = BwdLoopBuilder.CreateAlignedLoad(
       LoopOpType,
-      BwdLoopBuilder.CreateInBoundsGEP(Int8Type, SrcBwdAddr, BwdLoopPhi,
+      BwdLoopBuilder.CreateInBoundsGEP(Int8Type, SrcBwdAddr, BytesDecrement,
                                        "load-addr"),
       PartSrcAlign, SrcIsVolatile, "element");
   BwdLoopBuilder.CreateAlignedStore(
       BwdElement,
-      BwdLoopBuilder.CreateInBoundsGEP(Int8Type, DstBwdAddr, BwdLoopPhi,
+      BwdLoopBuilder.CreateInBoundsGEP(Int8Type, DstBwdAddr, BytesDecrement,
                                        "store-addr"),
       PartDstAlign, DstIsVolatile);
-  Value *BytesDecrement = BwdLoopBuilder.CreateSub(
-      BwdLoopPhi, ConstantInt::get(LoopOpType, LoopOpSize), "decrement-bytes");
   BwdLoopBuilder.CreateCondBr(
       BwdLoopBuilder.CreateICmpEQ(
           BytesDecrement, ConstantInt::get(LoopOpType, 0), "compare-bytes"),

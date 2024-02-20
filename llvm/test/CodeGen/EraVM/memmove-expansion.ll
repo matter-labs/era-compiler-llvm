@@ -20,18 +20,16 @@ define i256 @test_unknown(ptr addrspace(1) %dst, ptr addrspace(1) %src, i256 %si
 ; CHECK:       copy-backwards-residual-cond:
 ; CHECK-NEXT:    br i1 [[COMPARE_RB_TO_0]], label [[MEMMOVE_DONE:%.*]], label [[MEMMOVE_RESIDUAL:%.*]]
 ; CHECK:       copy-backwards-loop-preheader:
-; CHECK-NEXT:    [[SRC_BWD_RES_END:%.*]] = getelementptr inbounds i8, ptr addrspace(1) [[SRC]], i256 [[RESIDUAL_BYTES]]
-; CHECK-NEXT:    [[SRC_BWD_START:%.*]] = getelementptr inbounds i8, ptr addrspace(1) [[SRC_BWD_RES_END]], i256 -32
-; CHECK-NEXT:    [[DST_BWD_RES_END:%.*]] = getelementptr inbounds i8, ptr addrspace(1) [[DST]], i256 [[RESIDUAL_BYTES]]
-; CHECK-NEXT:    [[DST_BWD_START:%.*]] = getelementptr inbounds i8, ptr addrspace(1) [[DST_BWD_RES_END]], i256 -32
+; CHECK-NEXT:    [[SRC_BWD_START:%.*]] = getelementptr inbounds i8, ptr addrspace(1) [[SRC]], i256 [[RESIDUAL_BYTES]]
+; CHECK-NEXT:    [[DST_BWD_START:%.*]] = getelementptr inbounds i8, ptr addrspace(1) [[DST]], i256 [[RESIDUAL_BYTES]]
 ; CHECK-NEXT:    br label [[COPY_BACKWARDS_LOOP:%.*]]
 ; CHECK:       copy-backwards-loop:
 ; CHECK-NEXT:    [[BYTES_COUNT:%.*]] = phi i256 [ [[DECREMENT_BYTES:%.*]], [[COPY_BACKWARDS_LOOP]] ], [ [[LOOP_BYTES_COUNT]], [[COPY_BACKWARDS_LOOP_PREHEADER]] ]
-; CHECK-NEXT:    [[LOAD_ADDR:%.*]] = getelementptr inbounds i8, ptr addrspace(1) [[SRC_BWD_START]], i256 [[BYTES_COUNT]]
+; CHECK-NEXT:    [[DECREMENT_BYTES]] = add i256 [[BYTES_COUNT]], -32
+; CHECK-NEXT:    [[LOAD_ADDR:%.*]] = getelementptr inbounds i8, ptr addrspace(1) [[SRC_BWD_START]], i256 [[DECREMENT_BYTES]]
 ; CHECK-NEXT:    [[ELEMENT:%.*]] = load i256, ptr addrspace(1) [[LOAD_ADDR]], align 1
-; CHECK-NEXT:    [[STORE_ADDR:%.*]] = getelementptr inbounds i8, ptr addrspace(1) [[DST_BWD_START]], i256 [[BYTES_COUNT]]
+; CHECK-NEXT:    [[STORE_ADDR:%.*]] = getelementptr inbounds i8, ptr addrspace(1) [[DST_BWD_START]], i256 [[DECREMENT_BYTES]]
 ; CHECK-NEXT:    store i256 [[ELEMENT]], ptr addrspace(1) [[STORE_ADDR]], align 1
-; CHECK-NEXT:    [[DECREMENT_BYTES]] = sub i256 [[BYTES_COUNT]], 32
 ; CHECK-NEXT:    [[COMPARE_BYTES:%.*]] = icmp eq i256 [[DECREMENT_BYTES]], 0
 ; CHECK-NEXT:    br i1 [[COMPARE_BYTES]], label [[COPY_BACKWARDS_RESIDUAL_COND]], label [[COPY_BACKWARDS_LOOP]]
 ; CHECK:       copy-forward:
@@ -75,16 +73,14 @@ define i256 @test_unknown(ptr addrspace(1) %dst, ptr addrspace(1) %src, i256 %si
 ; CHECK-INSTRS-LABEL: test_unknown:
 
 ; Preheader and backwards loop.
-; CHECK-INSTRS:       add r2, r3, r6
-; CHECK-INSTRS-NEXT:  add r1, r3, r5
-; CHECK-INSTRS-NEXT:  sub.s 32, r5, r5
-; CHECK-INSTRS-NEXT:  sub.s 32, r6, r6
+; CHECK-INSTRS:       add r1, r3, r5
+; CHECK-INSTRS-NEXT:  add r2, r3, r6
 ; CHECK-INSTRS-NEXT:  .BB0_4:
-; CHECK-INSTRS:       add r5, r4, r7
-; CHECK-INSTRS-NEXT:  add r6, r4, r8
+; CHECK-INSTRS:       sub.s! 32, r4, r4
+; CHECK-INSTRS-NEXT:  add r4, r5, r7
+; CHECK-INSTRS-NEXT:  add r4, r6, r8
 ; CHECK-INSTRS-NEXT:  ld.1 r8, r8
 ; CHECK-INSTRS-NEXT:  st.1 r7, r8
-; CHECK-INSTRS-NEXT:  sub.s! 32, r4, r4
 ; CHECK-INSTRS-NEXT:  jump.ne @.BB0_4
 
 ; Preheader and forward loop.
