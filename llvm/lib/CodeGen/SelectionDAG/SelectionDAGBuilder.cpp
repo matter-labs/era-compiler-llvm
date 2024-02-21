@@ -11298,13 +11298,10 @@ void SelectionDAGBuilder::visitSwitch(const SwitchInst &SI) {
   }
 
   // EraVM local begin
-  // TODO: CPR-688 EraVM can build jump tables, though the constants are 4
-  // times as expensive as instructions in terms of code size. For hot pieces of
-  // code it still makes sense.
-  if (!TM.getTargetTriple().isEraVM() && !TM.getTargetTriple().isEVM()) {
+  if (!TM.getTargetTriple().isEVM())
     SL->findJumpTables(Clusters, &SI, DefaultMBB, DAG.getPSI(), DAG.getBFI());
+  if (!TM.getTargetTriple().isEraVM() && !TM.getTargetTriple().isEVM())
     SL->findBitTestClusters(Clusters, &SI);
-  }
   // EraVM local end
 
   LLVM_DEBUG({

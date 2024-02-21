@@ -109,7 +109,7 @@ EraVMMCInstLower::GetBlockAddressSymbol(const MachineOperand &MO) const {
 MCOperand EraVMMCInstLower::LowerSymbolOperand(const MachineOperand &MO,
                                                MCSymbol *Sym) const {
   const MCExpr *Expr = MCSymbolRefExpr::create(Sym, Ctx);
-  if (MO.getOffset())
+  if (!MO.isJTI() && !MO.isMBB() && MO.getOffset())
     Expr = MCBinaryExpr::createAdd(
         Expr, MCConstantExpr::create(MO.getOffset(), Ctx), Ctx);
   return MCOperand::createExpr(Expr);
