@@ -309,6 +309,11 @@ bool EraVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
     if (!I->isBranch())
       return true;
 
+    // We can't analyze indirect branches, since the jump target
+    // is unknown.
+    if (I->isIndirectBranch())
+      return true;
+
     // We can't analyze if target address is on stack.
     if (I->getOpcode() == EraVM::J_s)
       return true;

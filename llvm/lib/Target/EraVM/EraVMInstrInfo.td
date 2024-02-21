@@ -1257,6 +1257,9 @@ def J_s: IJump<10, SrcStack, (ins stackop:$dest), "jump\t$dest", [] >;
 }
 def : Pat<(br bb:$dst), (J bb:$dst)>;
 
+let isBranch=1, isIndirectBranch=1, isTerminator=1, isBarrier = 1 in
+def J_jt: IJump<10, SrcCode, (ins memop:$dest, cc:$cc), "jump$cc\t$dest", [] >;
+
 // Dynamic jumps
 let isPseudo = 1, isCall = 1 in
 def JCALL: IJump<10, SrcNone, (ins jmptarget:$dest), "jump\t$dest", [] >;

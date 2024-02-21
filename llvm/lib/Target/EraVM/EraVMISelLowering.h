@@ -56,6 +56,7 @@ public:
   SDValue LowerBlockAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerExternalSymbol(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerBR_CC(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerBR_JT(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerLOAD(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSTORE(SDValue Op, SelectionDAG &DAG) const;
@@ -189,6 +190,15 @@ public:
                              EVT NewVT) const override {
     return false;
   }
+
+  // Returns true if lowering to a jump table is allowed.
+  bool areJTsAllowed(const Function *Fn) const override;
+
+  // Return jump table encoding.
+  unsigned getJumpTableEncoding() const override;
+
+  // Return lower limit of the density in a jump table.
+  unsigned getMinimumJumpTableDensity(bool OptForSize) const override;
 
   void AdjustInstrPostInstrSelection(MachineInstr &MI,
                                      SDNode *Node) const override;

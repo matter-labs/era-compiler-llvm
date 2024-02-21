@@ -16,10 +16,12 @@
 #include "EraVMMachineFunctionInfo.h"
 #include "EraVMSubtarget.h"
 #include "EraVMTargetMachine.h"
+#include "MCTargetDesc/EraVMMCTargetDesc.h"
 #include "llvm/CodeGen/CallingConvLower.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
+#include "llvm/CodeGen/MachineJumpTableInfo.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/SelectionDAGISel.h"
 #include "llvm/CodeGen/TargetLoweringObjectFileImpl.h"
@@ -41,6 +43,11 @@
 using namespace llvm;
 
 #define DEBUG_TYPE "eravm-lower"
+
+/// Minimum jump table density.
+static cl::opt<unsigned> EraVMJumpTableDensityThreshold(
+    "eravm-jump-table-density-threshold", cl::init(100), cl::Hidden,
+    cl::desc("Minimum density threshold for building a jump table"));
 
 /// Helper function: wrap symbols according to their address space.
 /// Precondition:
@@ -104,7 +111,6 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
 
   setOperationAction(
       {
-          ISD::BR_JT,
           ISD::BRIND,
           ISD::BRCOND,
           ISD::VASTART,
@@ -141,7 +147,7 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
 
   setOperationAction({ISD::INTRINSIC_VOID, ISD::INTRINSIC_WO_CHAIN,
                       ISD::INTRINSIC_W_CHAIN, ISD::STACKSAVE, ISD::STACKRESTORE,
-                      ISD::TRAP},
+                      ISD::TRAP, ISD::BR_JT},
                      MVT::Other, Custom);
 
   for (MVT VT : {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}) {
@@ -167,7 +173,6 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
   setTargetDAGCombine(ISD::ZERO_EXTEND);
 
   setJumpIsExpensive(false);
-  setMaximumJumpTableSize(0);
 }
 
 //===----------------------------------------------------------------------===//
@@ -675,6 +680,7 @@ SDValue EraVMTargetLowering::LowerOperation(SDValue Op,
   case ISD::BlockAddress:       return LowerBlockAddress(Op, DAG);
   case ISD::ExternalSymbol:     return LowerExternalSymbol(Op, DAG);
   case ISD::BR_CC:              return LowerBR_CC(Op, DAG);
+  case ISD::BR_JT:              return LowerBR_JT(Op, DAG);
   case ISD::SELECT_CC:          return LowerSELECT_CC(Op, DAG);
   case ISD::SRA:                return LowerSRA(Op, DAG);
   case ISD::SDIV:               return LowerSDIV(Op, DAG);
@@ -998,6 +1004,30 @@ SDValue EraVMTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
                      TargetCC, Cmp);
 }
 
+SDValue EraVMTargetLowering::LowerBR_JT(SDValue Op, SelectionDAG &DAG) const {
+  SDValue Chain = Op.getOperand(0);
+  SDValue Table = Op.getOperand(1);
+  SDValue Index = Op.getOperand(2);
+  SDLoc DL(Op);
+
+  [[maybe_unused]] unsigned EntrySize =
+      DAG.getMachineFunction().getJumpTableInfo()->getEntrySize(
+          DAG.getDataLayout());
+  assert(EntrySize == /* CellSizeInBytes */ 32 &&
+         "Unsupported jump table entry size");
+
+  SDValue TargetJT = DAG.getTargetJumpTable(
+      cast<JumpTableSDNode>(Table)->getIndex(), MVT::i256);
+  SDValue CC = DAG.getTargetConstant(EraVMCC::COND_NONE, DL, MVT::i256);
+
+  // Since we are using memop for jump tables, and memop uses cell addressing
+  // mode, use index as is. In order for memop operand to emit @JTI[Reg], set
+  // index as first and jt as second operand in memop.
+  std::array Ops = {Index, TargetJT, CC, Chain};
+  SDNode *Res = DAG.getMachineNode(EraVM::J_jt, DL, MVT::Other, Ops);
+  return SDValue(Res, 0);
+}
+
 SDValue EraVMTargetLowering::LowerSELECT_CC(SDValue Op,
                                             SelectionDAG &DAG) const {
   SDValue LHS = Op.getOperand(0);
@@ -1278,6 +1308,26 @@ EraVMTargetLowering::getRegisterByName(const char *RegName, LLT VT,
 
   report_fatal_error(
       Twine("Invalid register name \"" + StringRef(RegName) + "\"."));
+}
+
+unsigned
+EraVMTargetLowering::getMinimumJumpTableDensity(bool OptForSize) const {
+  return EraVMJumpTableDensityThreshold;
+}
+
+unsigned EraVMTargetLowering::getJumpTableEncoding() const {
+  // We prefer absolute addressing.
+  return MachineJumpTableInfo::EK_BlockAddress;
+}
+
+bool EraVMTargetLowering::areJTsAllowed(const Function *Fn) const {
+  // Jump table entries are 32-byte large, so it is not profitable to
+  // create jump table if we are compiling for size.
+  if (Fn->hasOptSize())
+    return false;
+
+  // Otherwise, fallback on the generic logic.
+  return TargetLowering::areJTsAllowed(Fn);
 }
 
 void EraVMTargetLowering::AdjustInstrPostInstrSelection(MachineInstr &MI,
