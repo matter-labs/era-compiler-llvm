@@ -92,13 +92,13 @@ void sortAndRangeify(CaseClusterVector &Clusters, bool isUseUlt = false);
 // EraVM local end
 
 struct CaseBits {
-  uint64_t Mask = 0;
+  APInt Mask;
   MachineBasicBlock *BB = nullptr;
   unsigned Bits = 0;
   BranchProbability ExtraProb;
 
   CaseBits() = default;
-  CaseBits(uint64_t mask, MachineBasicBlock *bb, unsigned bits,
+  CaseBits(const APInt &mask, MachineBasicBlock *bb, unsigned bits,
            BranchProbability Prob)
       : Mask(mask), BB(bb), Bits(bits), ExtraProb(Prob) {}
 };
@@ -195,12 +195,12 @@ struct JumpTableHeader {
 using JumpTableBlock = std::pair<JumpTableHeader, JumpTable>;
 
 struct BitTestCase {
-  uint64_t Mask;
+  APInt Mask;
   MachineBasicBlock *ThisBB;
   MachineBasicBlock *TargetBB;
   BranchProbability ExtraProb;
 
-  BitTestCase(uint64_t M, MachineBasicBlock *T, MachineBasicBlock *Tr,
+  BitTestCase(const APInt &M, MachineBasicBlock *T, MachineBasicBlock *Tr,
               BranchProbability Prob)
       : Mask(M), ThisBB(T), TargetBB(Tr), ExtraProb(Prob) {}
 };

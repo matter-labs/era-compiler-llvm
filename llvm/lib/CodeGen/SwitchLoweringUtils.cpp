@@ -416,7 +416,7 @@ bool SwitchCG::SwitchLowering::buildBitTests(CaseClusterVector &Clusters,
   APInt LowBound;
   APInt CmpRange;
 
-  const int BitWidth = TLI->getPointerTy(*DL).getSizeInBits();
+  const uint64_t BitWidth = TLI->getPointerTy(*DL).getSizeInBits();
   assert(TLI->rangeFitsInWord(Low, High, *DL) &&
          "Case range must fit in bit mask!");
 
@@ -447,6 +447,7 @@ bool SwitchCG::SwitchLowering::buildBitTests(CaseClusterVector &Clusters,
 
   CaseBitsVector CBV;
   auto TotalProb = BranchProbability::getZero();
+  APInt AllOnes = APInt::getAllOnes(BitWidth);
   for (unsigned i = First; i <= Last; ++i) {
     // Find the CaseBits for this destination.
     unsigned j;
@@ -454,15 +455,15 @@ bool SwitchCG::SwitchLowering::buildBitTests(CaseClusterVector &Clusters,
       if (CBV[j].BB == Clusters[i].MBB)
         break;
     if (j == CBV.size())
-      CBV.push_back(
-          CaseBits(0, Clusters[i].MBB, 0, BranchProbability::getZero()));
+      CBV.push_back(CaseBits(APInt::getZero(BitWidth), Clusters[i].MBB, 0,
+                             BranchProbability::getZero()));
     CaseBits *CB = &CBV[j];
 
     // Update Mask, Bits and ExtraProb.
     uint64_t Lo = (Clusters[i].Low->getValue() - LowBound).getZExtValue();
     uint64_t Hi = (Clusters[i].High->getValue() - LowBound).getZExtValue();
-    assert(Hi >= Lo && Hi < 64 && "Invalid bit case!");
-    CB->Mask |= (-1ULL >> (63 - (Hi - Lo))) << Lo;
+    assert(Hi >= Lo && Hi < BitWidth && "Invalid bit case!");
+    CB->Mask |= (AllOnes.lshr(BitWidth - 1 - (Hi - Lo))).shl(Lo);
     CB->Bits += Hi - Lo + 1;
     CB->ExtraProb += Clusters[i].Prob;
     TotalProb += Clusters[i].Prob;
@@ -475,7 +476,7 @@ bool SwitchCG::SwitchLowering::buildBitTests(CaseClusterVector &Clusters,
       return a.ExtraProb > b.ExtraProb;
     if (a.Bits != b.Bits)
       return a.Bits > b.Bits;
-    return a.Mask < b.Mask;
+    return a.Mask.ult(b.Mask);
   });
 
   for (auto &CB : CBV) {

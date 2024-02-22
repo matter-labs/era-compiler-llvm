@@ -2787,7 +2787,7 @@ void SelectionDAGBuilder::visitBitTestHeader(BitTestBlock &B,
     UsePtrType = true;
   } else {
     for (unsigned i = 0, e = B.Cases.size(); i != e; ++i)
-      if (!isUIntN(VT.getSizeInBits(), B.Cases[i].Mask)) {
+      if (!B.Cases[i].Mask.isIntN(VT.getSizeInBits())) {
         // Switch table case range are encoded into series of masks.
         // Just use pointer type, it's guaranteed to fit.
         UsePtrType = true;
@@ -2842,20 +2842,20 @@ void SelectionDAGBuilder::visitBitTestCase(BitTestBlock &BB,
   MVT VT = BB.RegVT;
   SDValue ShiftOp = DAG.getCopyFromReg(getControlRoot(), dl, Reg, VT);
   SDValue Cmp;
-  unsigned PopCount = countPopulation(B.Mask);
+  unsigned PopCount = B.Mask.countPopulation();
   const TargetLowering &TLI = DAG.getTargetLoweringInfo();
   if (PopCount == 1) {
     // Testing for a single bit; just compare the shift count with what it
     // would need to be to shift a 1 bit in that position.
     Cmp = DAG.getSetCC(
         dl, TLI.getSetCCResultType(DAG.getDataLayout(), *DAG.getContext(), VT),
-        ShiftOp, DAG.getConstant(countTrailingZeros(B.Mask), dl, VT),
+        ShiftOp, DAG.getConstant(B.Mask.countTrailingZeros(), dl, VT),
         ISD::SETEQ);
   } else if (PopCount == BB.Range) {
     // There is only one zero bit in the range, test for it directly.
     Cmp = DAG.getSetCC(
         dl, TLI.getSetCCResultType(DAG.getDataLayout(), *DAG.getContext(), VT),
-        ShiftOp, DAG.getConstant(countTrailingOnes(B.Mask), dl, VT),
+        ShiftOp, DAG.getConstant(B.Mask.countTrailingOnes(), dl, VT),
         ISD::SETNE);
   } else {
     // Make desired shift
@@ -2863,8 +2863,13 @@ void SelectionDAGBuilder::visitBitTestCase(BitTestBlock &BB,
                                     DAG.getConstant(1, dl, VT), ShiftOp);
 
     // Emit bit tests and jumps
-    SDValue AndOp = DAG.getNode(ISD::AND, dl,
-                                VT, SwitchVal, DAG.getConstant(B.Mask, dl, VT));
+    APInt Mask = B.Mask;
+    if (Mask.getBitWidth() != VT.getSizeInBits()) {
+      assert(Mask.isIntN(VT.getSizeInBits()) && "Mask can't be truncated");
+      Mask = Mask.trunc(VT.getSizeInBits());
+    }
+    SDValue AndOp =
+        DAG.getNode(ISD::AND, dl, VT, SwitchVal, DAG.getConstant(Mask, dl, VT));
     Cmp = DAG.getSetCC(
         dl, TLI.getSetCCResultType(DAG.getDataLayout(), *DAG.getContext(), VT),
         AndOp, DAG.getConstant(0, dl, VT), ISD::SETNE);
@@ -11303,9 +11308,10 @@ void SelectionDAGBuilder::visitSwitch(const SwitchInst &SI) {
   // code it still makes sense.
   if (!TM.getTargetTriple().isEraVM()) {
     SL->findJumpTables(Clusters, &SI, DefaultMBB, DAG.getPSI(), DAG.getBFI());
-    SL->findBitTestClusters(Clusters, &SI);
   }
   // EraVM local end
+
+  SL->findBitTestClusters(Clusters, &SI);
 
   LLVM_DEBUG({
     dbgs() << "Case clusters: ";

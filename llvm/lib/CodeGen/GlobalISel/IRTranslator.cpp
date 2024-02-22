@@ -1018,7 +1018,7 @@ void IRTranslator::emitBitTestHeader(SwitchCG::BitTestBlock &B,
   else {
     // Ensure that the type will fit the mask value.
     for (unsigned I = 0, E = B.Cases.size(); I != E; ++I) {
-      if (!isUIntN(SwitchOpTy.getSizeInBits(), B.Cases[I].Mask)) {
+      if (!B.Cases[I].Mask.isIntN(SwitchOpTy.getSizeInBits())) {
         // Switch table case range are encoded into series of masks.
         // Just use pointer type, it's guaranteed to fit.
         MaskTy = LLT::scalar(PtrTy.getSizeInBits());
@@ -1064,19 +1064,19 @@ void IRTranslator::emitBitTestCase(SwitchCG::BitTestBlock &BB,
 
   LLT SwitchTy = getLLTForMVT(BB.RegVT);
   Register Cmp;
-  unsigned PopCount = countPopulation(B.Mask);
+  unsigned PopCount = B.Mask.countPopulation();
   if (PopCount == 1) {
     // Testing for a single bit; just compare the shift count with what it
     // would need to be to shift a 1 bit in that position.
     auto MaskTrailingZeros =
-        MIB.buildConstant(SwitchTy, countTrailingZeros(B.Mask));
+        MIB.buildConstant(SwitchTy, B.Mask.countTrailingZeros());
     Cmp =
         MIB.buildICmp(ICmpInst::ICMP_EQ, LLT::scalar(1), Reg, MaskTrailingZeros)
             .getReg(0);
   } else if (PopCount == BB.Range) {
     // There is only one zero bit in the range, test for it directly.
     auto MaskTrailingOnes =
-        MIB.buildConstant(SwitchTy, countTrailingOnes(B.Mask));
+        MIB.buildConstant(SwitchTy, B.Mask.countTrailingOnes());
     Cmp = MIB.buildICmp(CmpInst::ICMP_NE, LLT::scalar(1), Reg, MaskTrailingOnes)
               .getReg(0);
   } else {
@@ -1085,7 +1085,13 @@ void IRTranslator::emitBitTestCase(SwitchCG::BitTestBlock &BB,
     auto SwitchVal = MIB.buildShl(SwitchTy, CstOne, Reg);
 
     // Emit bit tests and jumps.
-    auto CstMask = MIB.buildConstant(SwitchTy, B.Mask);
+    APInt Mask = B.Mask;
+    if (Mask.getBitWidth() != SwitchTy.getSizeInBits()) {
+      assert(Mask.isIntN(SwitchTy.getSizeInBits()) &&
+             "Mask can't be truncated");
+      Mask = Mask.trunc(SwitchTy.getSizeInBits());
+    }
+    auto CstMask = MIB.buildConstant(SwitchTy, Mask);
     auto AndOp = MIB.buildAnd(SwitchTy, SwitchVal, CstMask);
     auto CstZero = MIB.buildConstant(SwitchTy, 0);
     Cmp = MIB.buildICmp(CmpInst::ICMP_NE, LLT::scalar(1), AndOp, CstZero)
