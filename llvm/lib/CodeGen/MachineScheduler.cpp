@@ -3110,7 +3110,6 @@ int biasPhysReg(const SUnit *SU, bool isTop) {
     if (Register::isPhysicalRegister(MI->getOperand(UnscheduledOper).getReg()))
       return AtBoundary ? -1 : 1;
   }
-
   if (MI->isMoveImmediate()) {
     // If we have a move immediate and all successors have been assigned, bias
     // towards scheduling this later. Make sure all register defs are to
@@ -3126,7 +3125,6 @@ int biasPhysReg(const SUnit *SU, bool isTop) {
     if (DoBias)
       return isTop ? -1 : 1;
   }
-
   return 0;
 }
 } // end namespace llvm

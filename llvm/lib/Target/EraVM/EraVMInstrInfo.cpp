@@ -14,15 +14,21 @@
 
 #include <deque>
 #include <optional>
+#include <tuple>
 
+#include "EraVM.h"
 #include "EraVMMachineFunctionInfo.h"
 #include "EraVMTargetMachine.h"
+#include "MCTargetDesc/EraVMMCTargetDesc.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
+#include "llvm/CodeGen/TargetOpcodes.h"
 #include "llvm/IR/Function.h"
 #include "llvm/MC/MCContext.h"
+#include "llvm/MC/MCInstrInfo.h"
+#include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
 
 using namespace llvm;
@@ -34,7 +40,76 @@ using namespace llvm;
 namespace llvm {
 namespace EraVM {
 
+namespace {
+using OpType = ArgumentType;
+using InstructionOpTypes = std::tuple<OpType, OpType, OpType, OpType>;
+std::optional<InstructionOpTypes> movOpType(unsigned Opcode) {
+  const auto _ = ArgumentType::None;
+  const auto i = ArgumentType::Immediate;
+  const auto r = ArgumentType::Register;
+  const auto s = ArgumentType::Stack;
+  const auto c = ArgumentType::Code;
+  switch (Opcode) {
+
+#define CASE_MOV(t1, t_out)                                                    \
+  case MOV##t1##t_out##_p:                                                     \
+    return std::make_tuple(t1, _, t_out, _);
+
+#define CASE_PTR_MOV(t1, t_out)                                                \
+  case PTR_MOV##t1##t_out##_p:                                                 \
+    return std::make_tuple(t1, _, t_out, _);
+    CASE_MOV(i, r)
+    CASE_MOV(i, s)
+    CASE_MOV(c, r)
+    CASE_MOV(s, s)
+    CASE_MOV(s, r)
+    CASE_MOV(r, s)
+    CASE_MOV(r, r)
+
+    CASE_PTR_MOV(s, s)
+    CASE_PTR_MOV(s, r)
+    CASE_PTR_MOV(r, s)
+    CASE_PTR_MOV(r, r)
+
+#undef CASE_MOV
+#undef CASE_PTR_MOV
+  default:
+    return std::nullopt;
+  }
+}
+bool isMovPseudo(unsigned Opcode) { return movOpType(Opcode).has_value(); }
+std::optional<ArgumentType> movArgumentType(ArgumentKind Kind,
+                                            unsigned MovLikeOpcode) {
+  const std::optional<InstructionOpTypes> TypesOpt = movOpType(MovLikeOpcode);
+  assert(TypesOpt && "Expecting an opcode of a MOV or PTR_MOV pseudo "
+                               "instruction.");
+  const auto Types = *TypesOpt;
+  switch (Kind) {
+  case ArgumentKind::In0:
+    return std::get<0>(Types);
+  case ArgumentKind::In1:
+    return std::get<1>(Types);
+  case ArgumentKind::Out0:
+    return std::get<2>(Types);
+  case ArgumentKind::Out1:
+    return std::get<3>(Types);
+  default:
+    llvm_unreachable(
+        "Only In0, In1, Out0 and Out1 argument kinds are supported for "
+        "MOV-like and PTR_MOV-like pseudo instructions.");
+  }
+  llvm_unreachable("Only opcodes of MOV-like and PTR_MOV-like pseudo "
+                   "instructions are supported.");
+  return std::nullopt;
+}
+
+} // namespace
+
 ArgumentType argumentType(ArgumentKind Kind, unsigned Opcode) {
+  // MOV and PTR_MOV pseudo instructions are not parts of any mappings
+  if (isMovPseudo(Opcode)) {
+    return *movArgumentType(Kind,Opcode);
+  }
   Opcode = getWithInsNotSwapped(Opcode);
   // TODO: CPR-1355 Mappings for Select.
   // Select is not a part of a mapping, so have to handle it manually.
@@ -1233,4 +1308,242 @@ bool EraVMInstrInfo::updateCCCode(MachineInstr &MI,
   else if (Opnd.isCImm())
     Opnd.setCImm(ConstantInt::get(Opnd.getCImm()->getType(), CC, false));
   return true;
+}
+
+// iz begin peephole optimization hooks
+#define DEBUG_TYPE "peephole-opt"
+namespace {
+  //FIXME: need to refactor OperandAM so that the names of enum variants reflect
+  //their meaning?
+  const EraVM::OperandAM AMImmediate = EraVM::OperandAM::OperandAM_1;
+  const EraVM::OperandAM AMReg = EraVM::OperandAM::OperandAM_0;
+
+  bool SupportsFolding(MachineInstr& UseMI, Register reg) {
+    const auto OpCode = UseMI.getOpcode();
+
+
+    // if (OpCode == EraVM::ST1 || OpCode == EraVM::ST1Inc) {
+    //   const auto &Src0It = UseMI.getOperand(1);
+    //   if (Src0It.isReg() && Src0It.getReg() == reg)
+    //   return true;
+    // }
+    if (!EraVM::hasAnyInAddressingMode(OpCode)) {
+      return false;
+    }
+
+    const auto &Src0It = UseMI.getOperand(1);
+    const MCInstrDesc &UseMCID = UseMI.getDesc();
+    const MCOperandInfo *UseInfo = &UseMCID.OpInfo[1];
+    if (UseInfo->Constraints != 0) {
+      return false;
+    }
+
+    return (Src0It.isReg() && Src0It.getReg() == reg);
+  }
+
+  // FIXME: some methods of EraVMInstrInfo e.g. getCCCode should be free instead
+  // This will allow to erase the `II` parameter in `DefEraseable`
+
+  void debug_ins_investigate(MachineInstr const &mi) {
+    {
+    int i = 0;
+    for (const auto *it = mi.operands_begin(); it != mi.operands_end();
+         ++it, ++i) {
+      LLVM_DEBUG(dbgs() << "Operand " << i << " is " << *it << "\n");
+    }
+    }
+    if (EraVM::in0Iterator(mi))
+    LLVM_DEBUG(dbgs() << "in0iter: " << *EraVM::in0Iterator(mi) << "\n");
+    if (EraVM::in1Iterator(mi))
+    LLVM_DEBUG(dbgs() << "in1iter: " << *EraVM::in1Iterator(mi) << "\n");
+    if (EraVM::out0Iterator(mi))
+    LLVM_DEBUG(dbgs() << "out0iter: " << *EraVM::out0Iterator(mi) << "\n");
+    if (EraVM::out1Iterator(mi))
+    LLVM_DEBUG(dbgs() << "out1iter: " << *EraVM::out1Iterator(mi) << "\n");
+  }
+
+  bool MIIsMovInt(MachineInstr const &MI) {
+    const auto Opcode = MI.getOpcode();
+    switch (Opcode) {
+    case EraVM::MOVir_p:
+      LLVM_DEBUG(dbgs() << "Encounter: Mov\n");
+      return true;
+    case EraVM::ADDirr_p:
+    case EraVM::ADDirs_p:
+    case EraVM::ADDrrs_p:
+    case EraVM::ADDcrs_p:
+    case EraVM::ADDsrs_p:
+    case EraVM::ADDsrr_p:
+    case EraVM::ADDcrr_p:
+      if (!MI.getOperand(2).isReg()) {
+      LLVM_DEBUG(dbgs() << "Malformed?");
+      debug_ins_investigate(MI);
+      return false;
+      }
+      LLVM_DEBUG(dbgs() << "Encounter: " << MI);
+      return false;
+    case EraVM::SUBirr_p:
+      if (!MI.getOperand(2).isReg()) {
+      LLVM_DEBUG(dbgs() << "Malformed?");
+      debug_ins_investigate(MI);
+      return false;
+      }
+      LLVM_DEBUG(dbgs() << "Encounter: " << MI);
+      return false;
+    default:
+      return false;
+    }
+    return false;
+  }
+
+  bool DefEraseable(Register Reg, MachineRegisterInfo *MRI,
+                    llvm::EraVMInstrInfo const &II, MachineInstr &DefMI) {
+    // Removing definitions that set flags or are conditional (predicated) is
+    // risky
+
+    LLVM_DEBUG(dbgs() << "Users of reg " << Register::virtReg2Index(Reg) << "\n");
+    for (const auto &u : MRI->use_instructions(Reg)) {
+      LLVM_DEBUG(dbgs() << "User: " << u);
+    }
+    if (!MRI->hasOneNonDBGUse(Reg)) {
+      LLVM_DEBUG(dbgs() << "Not erasing def: has more than one use.\n");
+      return false;
+    }
+
+    const bool NotPredicated = DefMI.isPseudo() || II.getCCCode(DefMI) == EraVMCC::COND_NONE;
+    const bool NoEffects = !EraVMInstrInfo::isFlagSettingInstruction(DefMI);
+    LLVM_DEBUG(dbgs() << "Instruction is "<< (NotPredicated?"not predicated":"predicated") << ";" << (NoEffects?"has no effects":"has effects") << "\n");
+    return NotPredicated && NoEffects;
+  }
+  std::optional<uint16_t> ExtractImmediate(MachineInstr const &DefMI) {
+
+    LLVM_DEBUG(dbgs() << "Attempt to extract an immediate from " << DefMI << "\n");
+    // debug_ins_investigate(DefMI);
+    if (MIIsMovInt(DefMI)) {
+      const auto imm = getImmOrCImm(DefMI.getOperand(1));
+      return static_cast<uint16_t>(imm);
+    }
+    return std::nullopt;
+  }
+
+  // TODO also load const -- but maybe in a different fun
+  bool InlineImmSrc0(MCInstrInfo const& II, MachineInstr& MI, uint16_t imm) {
+    const auto Opcode = MI.getOpcode();
+    const int NewOpcode = mapRRInputTo(Opcode, AMImmediate);
+    const bool SupportsImmediateSrc0 = NewOpcode != -1;
+    const bool HasRegInputSrc0 = (int)Opcode == mapRRInputTo(Opcode, AMReg);
+    // Only EraVM instructions with full addressing mode on src0 are supported
+    if (HasRegInputSrc0 && SupportsImmediateSrc0) {
+      MI.setDesc(II.get(NewOpcode));
+      MI.getOperand(1).ChangeToImmediate(imm);
+      return true;
+    }
+    return false;
+  }
+
+  } // namespace
+
+  // TODO: do not fold 0? fold 0 into r0 for other operands too? fold operand from code page -- better in optimizeload? For now purely a POC.
+  bool EraVMInstrInfo::FoldImmediate(MachineInstr &UseMI, MachineInstr &DefMI,
+                                     Register Reg,
+                                     MachineRegisterInfo *MRI) const {
+    const bool FoldedAndDefErased = true, Skipped = false;
+    LLVM_DEBUG(dbgs() << "FoldImmediate:: Considering folding def instruction:"
+               << DefMI << " into a load for user instruction :" << UseMI
+               << "\n");
+
+    if (!SupportsFolding(UseMI, Reg)) {
+      LLVM_DEBUG(dbgs() << "FoldImmediate:: Unsupported user, skip\n");
+      return Skipped;
+    }
+
+    if (const auto ImmValOpt = ExtractImmediate(DefMI)) {
+      const auto ImmVal = ImmValOpt.value();
+      LLVM_DEBUG( dbgs() << "FoldImmediate:: Extracted [" << ImmVal << "] from " << DefMI) ;
+      const bool Eraseable = DefEraseable(Reg, MRI, *this, DefMI);
+      InlineImmSrc0(*this, UseMI, ImmVal);
+      LLVM_DEBUG(dbgs() << "FoldImmediate:: Def after substitution: " << UseMI);
+      if (Eraseable) {
+        LLVM_DEBUG(dbgs() << "FoldImmediate:: can erase" << DefMI);
+        DefMI.eraseFromParent();
+        return FoldedAndDefErased;
+        return Skipped;
+      }
+      LLVM_DEBUG(dbgs() << "FoldImmediate:: Not erasing " << DefMI);
+      return Skipped;
+    }
+    LLVM_DEBUG(dbgs() << "FoldImmediate::Failed to extract immediate from ins " << DefMI << "\n");
+    return Skipped;
+  }
+
+MachineInstr * EraVMInstrInfo::optimizeLoadInstr(MachineInstr &MI,
+                                const MachineRegisterInfo *MRI,
+                                Register &FoldAsLoadDefReg,
+                                MachineInstr *&DefMI) const {
+
+    // Check whether we can move DefMI here.
+    DefMI = MRI->getVRegDef(FoldAsLoadDefReg);
+    assert(DefMI);
+    bool SawStore = false;
+    if (!DefMI->isSafeToMove(nullptr, SawStore))
+      return nullptr;
+
+    // Collect information about virtual register operands of MI.
+    SmallVector<unsigned, 1> SrcOperandIds;
+    for (unsigned i = 0, e = MI.getNumOperands(); i != e; ++i) {
+      MachineOperand &MO = MI.getOperand(i);
+      if (!MO.isReg())
+        continue;
+      Register Reg = MO.getReg();
+      if (Reg != FoldAsLoadDefReg)
+        continue;
+      // Do not fold if we have a subreg use or a def.
+      if (MO.getSubReg() || MO.isDef())
+        return nullptr;
+      SrcOperandIds.push_back(i);
+  }
+  if (SrcOperandIds.empty())
+    return nullptr;
+
+  // Check whether we can fold the def into SrcOperandId.
+  if (MachineInstr *FoldMI = foldMemoryOperand(MI, SrcOperandIds, *DefMI)) {
+    FoldAsLoadDefReg = 0;
+    return FoldMI;
+  }
+
+  return nullptr;
+}
+#undef DEBUG_TYPE
+
+bool EraVMInstrInfo::isReallyTriviallyReMaterializable(const MachineInstr &MI) const {
+  errs() << "Considering for remat: " << MI;
+  if (getCCCode(MI) != EraVMCC::COND_NONE)
+      return false;
+  if (MI.getOpcode() == EraVM::LOADCONST)
+    return true;
+  if (MI.getOpcode() == EraVM::MOVir_p)
+    return true;
+  if (MI.getOpcode() == EraVM::MOVcr_p)
+      return true;
+  if (isAdd(MI) && EraVM::in1Iterator(MI)->getReg() == EraVM::R0)
+      return true;
+  return false;
+}
+
+void EraVMInstrInfo::reMaterialize(MachineBasicBlock &MBB,
+                                   MachineBasicBlock::iterator I,
+                                   Register DestReg, unsigned SubIdx,
+                                   const MachineInstr &Orig,
+                                   const TargetRegisterInfo &TRI) const {
+  errs() << "Rematerializing:" << Orig;
+  unsigned Opcode = Orig.getOpcode();
+  switch (Opcode) {
+  default: {
+      MachineInstr *MI = MBB.getParent()->CloneMachineInstr(&Orig);
+      MI->substituteRegister(Orig.getOperand(0).getReg(), DestReg, SubIdx, TRI);
+      MBB.insert(I, MI);
+      errs() << "New instruction: " << MI;
+      break;
+  }
+  }
 }

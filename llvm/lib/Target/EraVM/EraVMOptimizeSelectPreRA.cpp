@@ -303,6 +303,8 @@ bool EraVMOptimizeSelectPreRA::tryFoldAddToSelect(MachineBasicBlock &MBB) {
 
     // It's expected that if there are more uses of add, it's very unlikely that
     // all of them are select instruction where folding is feasible.
+    if (!EraVM::out0Iterator(MI)->isReg())
+      dbgs() << "NOOOO " << MI;
     Register OutAddReg = EraVM::out0Iterator(MI)->getReg();
     if (!RegInfo->hasOneNonDBGUser(OutAddReg))
       continue;

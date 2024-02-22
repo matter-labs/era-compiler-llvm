@@ -126,6 +126,8 @@ void LiveVariables::MarkVirtRegAliveInBlock(VarInfo &VRInfo,
 
 void LiveVariables::HandleVirtRegUse(Register Reg, MachineBasicBlock *MBB,
                                      MachineInstr &MI) {
+
+  if (!MRI->getVRegDef(Reg)) errs() << "Register use before def: " << Register::virtReg2Index(Reg) << "\n";
   assert(MRI->getVRegDef(Reg) && "Register use before def!");
 
   unsigned BBNum = MBB->getNumber();

@@ -16,6 +16,7 @@
 #include "EraVM.h"
 
 #include "EraVMRegisterInfo.h"
+#include "MCTargetDesc/EraVMMCTargetDesc.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
 #include <optional>
 
@@ -110,7 +111,7 @@ inline bool isSelect(const MachineInstr &MI) {
 
 enum class ArgumentKind { In0, In1, Out0, Out1, CC };
 
-enum class ArgumentType { Register, Immediate, Code, Stack, CondCode };
+enum class ArgumentType { Register, Immediate, Code, Stack, CondCode, None };
 
 /// Return argument addressing mode for a specified argument.
 ArgumentType argumentType(ArgumentKind Kind, unsigned Opcode);
@@ -129,6 +130,8 @@ inline unsigned argumentSize(ArgumentType Type) {
     return 2;
   case ArgumentType::Stack:
     return 3;
+  case ArgumentType::None:
+    return 0;
   }
   llvm_unreachable("Unexpected argument type");
 }
@@ -305,6 +308,44 @@ public:
                         int *BytesAdded = nullptr) const override;
 
   int64_t getFramePoppedByCallee(const MachineInstr &I) const { return 0; }
+
+
+  /// Try to remove the load by folding it to a register operand at the use.
+  /// We fold the load instructions if and only if the
+  /// def and use are in the same BB. We only look at one load and see
+  /// whether it can be folded into MI. FoldAsLoadDefReg is the virtual register
+  /// defined by the load we are trying to fold. DefMI returns the machine
+  /// instruction that defines FoldAsLoadDefReg, and the function returns
+  /// the machine instruction generated due to folding.
+  MachineInstr *optimizeLoadInstr(MachineInstr &MI,
+                                          const MachineRegisterInfo *MRI,
+                                          Register &FoldAsLoadDefReg,
+                                  MachineInstr *&DefMI) const override;
+
+  bool FoldImmediate(MachineInstr &UseMI, MachineInstr &DefMI,
+                     Register Reg, MachineRegisterInfo *MRI) const override;
+
+  // bool isIgnorableUse(const MachineOperand &MO) const override {
+  //   return MO.isReg() && MO.getReg() == EraVM::R0;
+  // }
+
+  /// For instructions with opcodes for which the M_REMATERIALIZABLE flag is
+  /// set, this hook lets the target specify whether the instruction is actually
+  /// trivially rematerializable, taking into consideration its operands. This
+  /// predicate must return false if the instruction has any side effects other
+  /// than producing a value, or if it requres any address registers that are
+  /// not always available.
+  /// Requirements must be check as stated in isTriviallyReMaterializable() .
+  bool isReallyTriviallyReMaterializable(const MachineInstr &MI) const override;
+  /// Re-issue the specified 'original' instruction at the
+  /// specific location targeting a new destination register.
+  /// The register in Orig->getOperand(0).getReg() will be substituted by
+  /// DestReg:SubIdx. Any existing subreg index is preserved or composed with
+  /// SubIdx.
+  void reMaterialize(MachineBasicBlock &MBB,
+                             MachineBasicBlock::iterator MI, Register DestReg,
+                             unsigned SubIdx, const MachineInstr &Orig,
+                             const TargetRegisterInfo &TRI) const override;
 
   // Properties and mappings
   bool isAdd(const MachineInstr &MI) const;

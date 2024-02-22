@@ -60,6 +60,7 @@ void EraVMInstPrinter::printCCOperand(const MCInst *MI, unsigned OpNo,
 
   switch (CC) {
   default:
+    dbgs()<<*MI;
     llvm_unreachable("Unsupported CC code");
   case EraVMCC::COND_E:
     O << ".eq";
