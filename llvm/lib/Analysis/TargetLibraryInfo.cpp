@@ -839,6 +839,8 @@ static void initialize(TargetLibraryInfoImpl &TLI, const Triple &T,
     TLI.setAvailable(llvm::LibFunc_xvm_mstore8);
     TLI.setAvailable(llvm::LibFunc_xvm_revert);
     TLI.setAvailable(llvm::LibFunc_xvm_return);
+    TLI.setAvailable(llvm::LibFunc_xvm_revert_forward);
+    TLI.setAvailable(llvm::LibFunc_xvm_return_forward);
     TLI.setAvailable(llvm::LibFunc_xvm_sha3);
     return;
   }
@@ -1604,6 +1606,12 @@ bool TargetLibraryInfoImpl::isValidProtoForLibFunc(const FunctionType &FTy,
     return (NumParams == 3 && FTy.getParamType(0)->isIntegerTy(256) &&
             FTy.getParamType(1)->isIntegerTy(256) &&
             FTy.getParamType(2)->isIntegerTy(256) &&
+            FTy.getReturnType()->isVoidTy());
+
+  case LibFunc_xvm_return_forward:
+  case LibFunc_xvm_revert_forward:
+    return (NumParams == 1 && FTy.getParamType(0)->isPointerTy() &&
+            FTy.getParamType(0)->getPointerAddressSpace() == /*AS_GENERIC*/ 3 &&
             FTy.getReturnType()->isVoidTy());
 
   case LibFunc_xvm_sha3:
