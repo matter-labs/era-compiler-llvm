@@ -1119,6 +1119,8 @@ bool llvm::inferNonMandatoryLibFuncAttrs(Function &F,
     break;
   case LibFunc_xvm_return:
   case LibFunc_xvm_revert:
+  case LibFunc_xvm_return_forward:
+  case LibFunc_xvm_revert_forward:
     Changed |= setDoesNotThrow(F);
     break;
   case LibFunc_xvm_sha3:

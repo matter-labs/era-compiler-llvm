@@ -704,10 +704,20 @@ TLI_DEFINE_ENUM_INTERNAL(xvm_return)
 TLI_DEFINE_STRING_INTERNAL("__return")
 TLI_DEFINE_SIG_INTERNAL(Void, IntPlus, IntPlus, IntPlus)
 
+// void __return_forward(ptr)
+TLI_DEFINE_ENUM_INTERNAL(xvm_return_forward)
+TLI_DEFINE_STRING_INTERNAL("__return_forward")
+TLI_DEFINE_SIG_INTERNAL(Void, Ptr)
+
 // void __revert(i256, i256, i256)
 TLI_DEFINE_ENUM_INTERNAL(xvm_revert)
 TLI_DEFINE_STRING_INTERNAL("__revert")
 TLI_DEFINE_SIG_INTERNAL(Void, IntPlus, IntPlus, IntPlus)
+
+// void __revert_forward(ptr)
+TLI_DEFINE_ENUM_INTERNAL(xvm_revert_forward)
+TLI_DEFINE_STRING_INTERNAL("__revert_forward")
+TLI_DEFINE_SIG_INTERNAL(Void, Ptr)
 
 // i256 __sar(i256, i256)
 TLI_DEFINE_ENUM_INTERNAL(xvm_sar)

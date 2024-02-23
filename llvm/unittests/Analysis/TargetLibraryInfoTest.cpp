@@ -638,6 +638,8 @@ TEST_F(TargetLibraryInfoTest, ValidProto) {
       "declare void @__mstore8(i256 addrspace(1)* nocapture writeonly, i256)\n"
       "declare void @__return(i256, i256, i256)\n"
       "declare void @__revert(i256, i256, i256)\n"
+      "declare void @__return_forward(i256 addrspace(3)*)\n"
+      "declare void @__revert_forward(i256 addrspace(3)*)\n"
       "declare i256 @__sha3(i256 addrspace(1)*, i256, i1)\n"
       "declare i256 @__signextend(i256, i256)\n");
       // EraVM local end
