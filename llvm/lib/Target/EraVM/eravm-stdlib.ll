@@ -346,6 +346,18 @@ entry:
   unreachable
 }
 
+define void @__revert_forward(i8 addrspace(3)* %addr) #5 personality i32()* @__personality {
+  %mode = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %addr, i256 26959946667150639794667015087019630673637144422540572481103610249216)
+  tail call void @llvm.eravm.revert.ptr(i8 addrspace(3)* %mode)
+  unreachable
+}
+
+define void @__return_forward(i8 addrspace(3)* %addr) #5 personality i32()* @__personality {
+  %mode = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %addr, i256 26959946667150639794667015087019630673637144422540572481103610249216)
+  tail call void @llvm.eravm.return.ptr(i8 addrspace(3)* %mode)
+  unreachable
+}
+
 define i256 @__sha3(i8 addrspace(1)* nocapture nofree noundef %0, i256 %1, i1 %throw_at_failure) "noinline-oz" #1 personality i32()* @__personality {
 entry:
   %addr_int = ptrtoint i8 addrspace(1)* %0 to i256
@@ -501,6 +513,9 @@ declare i256 @llvm.umin.i256(i256, i256)
 declare i256 @llvm.eravm.gasleft()
 declare void @llvm.eravm.revert(i256)
 declare void @llvm.eravm.return(i256)
+declare void @llvm.eravm.revert.ptr(i8 addrspace(3)*)
+declare void @llvm.eravm.return.ptr(i8 addrspace(3)*)
+declare i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)*, i256)
 declare i32 @__personality()
 declare { i8 addrspace(3)*, i1 } @__staticcall(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256) #1
 
