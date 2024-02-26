@@ -105,18 +105,9 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
 
         PseudoInst.push_back(&MI);
       } else if (MI.getOpcode() == EraVM::PTR_TO_INT) {
-        // Eliminate PTR_TO_INT if from and to registers are the same
-        Register ToReg = MI.getOperand(0).getReg();
-        Register FromReg = MI.getOperand(1).getReg();
-        if (ToReg != FromReg) {
-          LLVM_DEBUG(dbgs() << "Found PTR_TO_INT: "; MI.dump());
-          auto NewMI = BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
-                               TII->get(EraVM::ADDrrr_s), ToReg)
-                           .addReg(FromReg)
-                           .addReg(EraVM::R0)
-                           .addImm(0);
-          LLVM_DEBUG(dbgs() << "Converting PTR_TO_INT to: "; NewMI->dump());
-        }
+        // Eliminate PTR_TO_INT instruction.
+        assert(MI.getOperand(0).getReg() == MI.getOperand(1).getReg() &&
+               "Src and dst registers are not the same in PTR_TO_INT");
         PseudoInst.push_back(&MI);
       } else if (MI.getOpcode() == EraVM::LOADCONST) {
       // expand load const
