@@ -185,19 +185,6 @@ bool EraVMCodegenPrepare::convertPointerArithmetics(Function &F) {
                    dbgs() << "    to: "; NewI->dump());
         GEP->replaceAllUsesWith(NewI);
         Replaced.push_back(GEP);
-      } else if (auto *PtrToInt = dyn_cast<PtrToIntInst>(&I)) {
-        if (PtrToInt->getPointerAddressSpace() != EraVMAS::AS_GENERIC)
-          continue;
-        // convert it to `PTR_TO_INT` intrinsic internally
-        auto *ptr = PtrToInt->getPointerOperand();
-        IRBuilder<> Builder(&I);
-        Value *NewI = Builder.CreateCall(
-            Intrinsic::getDeclaration(F.getParent(), Intrinsic::eravm_ptrtoint),
-            {ptr});
-        LLVM_DEBUG(dbgs() << "    Converted PtrToInt:"; PtrToInt->dump();
-                   dbgs() << "    to: "; NewI->dump());
-        PtrToInt->replaceAllUsesWith(NewI);
-        Replaced.push_back(PtrToInt);
       }
     }
   }
