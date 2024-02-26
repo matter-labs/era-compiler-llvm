@@ -148,6 +148,22 @@ define void @far_revert(i256 %x, i256 %val) {
   unreachable
 }
 
+; CHECK-LABEL: return_ptr
+define void @return_ptr(i256 %unused, i8 addrspace(3)* %addr) {
+; CHECK: ptr.add r2, r0, r1
+; CHECK: ret.ok.to_label r1, @DEFAULT_FAR_RETURN
+  call void @llvm.eravm.return.ptr(i8 addrspace(3)* %addr)
+  unreachable
+}
+
+; CHECK-LABEL: revert_ptr
+define void @revert_ptr(i256 %unused, i8 addrspace(3)* %addr) {
+; CHECK: ptr.add r2, r0, r1
+; CHECK: ret.revert.to_label r1, @DEFAULT_FAR_REVERT
+  call void @llvm.eravm.revert.ptr(i8 addrspace(3)* %addr)
+  unreachable
+}
+
 ; CHECK-LABEL: ifeqrr
 define i256 @ifeqrr(i256 %x, i256 %y) {
   ; CHECK: add.ne r2, r0, r1
@@ -388,6 +404,8 @@ declare i8 addrspace(3)* @llvm.eravm.decommit(i256, i256)
 declare void @llvm.eravm.throw(i256)
 declare void @llvm.eravm.return(i256)
 declare void @llvm.eravm.revert(i256)
+declare void @llvm.eravm.return.ptr(i8 addrspace(3)*)
+declare void @llvm.eravm.revert.ptr(i8 addrspace(3)*)
 declare i256 @llvm.eravm.ifeq(i256, i256)
 declare i256 @llvm.eravm.iflt(i256, i256)
 declare i256 @llvm.eravm.ifgt(i256, i256)

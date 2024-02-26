@@ -1064,7 +1064,9 @@ SDValue EraVMTargetLowering::LowerINTRINSIC_VOID(SDValue Op,
           ->getZExtValue();
 
   if (IntNo != Intrinsic::eravm_throw && IntNo != Intrinsic::eravm_return &&
-      IntNo != Intrinsic::eravm_revert)
+      IntNo != Intrinsic::eravm_revert &&
+      IntNo != Intrinsic::eravm_return_ptr &&
+      IntNo != Intrinsic::eravm_revert_ptr)
     return {};
   SDLoc DL(Op);
   auto CTR =
@@ -1077,9 +1079,11 @@ SDValue EraVMTargetLowering::LowerINTRINSIC_VOID(SDValue Op,
     return DAG.getNode(EraVMISD::THROW, DL, MVT::Other, CTR,
                        DAG.getRegister(EraVM::R1, MVT::i256));
   case Intrinsic::eravm_return:
+  case Intrinsic::eravm_return_ptr:
     return DAG.getNode(EraVMISD::RETURN, DL, MVT::Other, CTR,
                        DAG.getRegister(EraVM::R1, MVT::i256));
   case Intrinsic::eravm_revert:
+  case Intrinsic::eravm_revert_ptr:
     return DAG.getNode(EraVMISD::REVERT, DL, MVT::Other, CTR,
                        DAG.getRegister(EraVM::R1, MVT::i256));
   }
