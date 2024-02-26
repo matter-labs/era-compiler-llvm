@@ -98,6 +98,7 @@ FunctionPass *createEraVMISelDag(EraVMTargetMachine &TM,
                                  CodeGenOpt::Level OptLevel);
 ModulePass *createEraVMLowerIntrinsicsPass();
 ModulePass *createEraVMLinkRuntimePass(bool);
+FunctionPass *createEraVMMovExpansionPass();
 FunctionPass *createEraVMAddConditionsPass();
 FunctionPass *createEraVMAllocaHoistingPass();
 FunctionPass *createEraVMBytesToCellsPass();
@@ -127,6 +128,7 @@ void initializeEraVMAddConditionsPass(PassRegistry &);
 void initializeEraVMAllocaHoistingPass(PassRegistry &);
 void initializeEraVMBytesToCellsPass(PassRegistry &);
 void initializeEraVMLinkRuntimePass(PassRegistry &);
+void initializeEraVMMovExpansionPass(PassRegistry &);
 void initializeEraVMCodegenPreparePass(PassRegistry &);
 void initializeEraVMExpandPseudoPass(PassRegistry &);
 void initializeEraVMExpandSelectPass(PassRegistry &);

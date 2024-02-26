@@ -264,6 +264,7 @@ bool EraVMPassConfig::addInstSelector() {
 }
 
 void EraVMPassConfig::addPreRegAlloc() {
+  addPass(createEraVMMovExpansionPass());
   addPass(createEraVMAddConditionsPass());
   addPass(createEraVMStackAddressConstantPropagationPass());
   addPass(createEraVMBytesToCellsPass());

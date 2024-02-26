@@ -46,6 +46,7 @@ add_llvm_target(EraVMCodeGen
   EraVMMCExpr.cpp
   EraVMMCInstLower.cpp
   EraVMMachineFunctionInfo.cpp
+  EraVMMovExpansion.cpp
   EraVMOptimizeSelectPostRA.cpp
   EraVMOptimizeSelectPreRA.cpp
   EraVMOptimizeStdLibCalls.cpp

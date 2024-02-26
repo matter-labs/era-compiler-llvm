@@ -1134,6 +1134,103 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
             (!cast<Instruction>(NAME # yrrr_p) (constant_pool imm:$imm), 0, GR256:$rs1)>;
 }
 
+
+multiclass PtrMovInstr<string asmstring> {
+  let BaseOpcode = asmstring, isPseudo = 1, isCodeGenOnly = 1 in {
+  let isAsCheapAsAMove = 1 in
+  def rr_p : Pseudo<(outs GRPTR:$rd0), (ins GRPTR:$rs0),
+                     !strconcat(asmstring, "\t$rs0, r0, $rd0"),
+                     []> {
+                      let DestAddrMode = ToReg.Value;
+                      let OperandAddrMode = OpndRR.Value;
+                     }
+  let mayLoad = 1 in {
+  def sr_p : Pseudo<(outs GRPTR:$rd0), (ins stackop:$src0),
+                     !strconcat(asmstring, "\t$src0, r0, $rd0"),
+                     []> {
+                      let DestAddrMode = ToReg.Value;
+                      let OperandAddrMode = OpndSR.Value;
+                     }
+  }
+
+  let mayStore = 1 in {
+  def rs_p : Pseudo<(outs), (ins GRPTR:$rs0, stackop:$dst0),
+                     !strconcat(asmstring, "\t$rs0, r0, $dst0"),
+                     []> {
+                      let DestAddrMode = ToStack.Value;
+                      let OperandAddrMode = OpndRR.Value;
+                     }
+  }
+
+  let mayLoad = 1, mayStore = 1 in {
+  def ss_p : Pseudo<(outs), (ins stackop:$src0, stackop:$dst0),
+                     !strconcat(asmstring, "\t$src0, r0, $dst0"),
+                     []> {
+                      let DestAddrMode = ToStack.Value;
+                      let OperandAddrMode = OpndSR.Value;
+                     }
+  }
+}
+}
+
+multiclass MovInstr<string asmstring> {
+let BaseOpcode = asmstring, isPseudo = 1, isCodeGenOnly = 1 in {
+  let isMoveImm = 1, isReMaterializable = 1, isAsCheapAsAMove = 1 in {
+  def ir_p : Pseudo<(outs GR256:$rd0), (ins imm16:$imm),
+                     !strconcat(asmstring, "\t$imm, $rd0"), []> {
+                      let DestAddrMode = ToReg.Value;
+                      let OperandAddrMode = OpndIR.Value;
+                     }
+  let mayLoad = 1 in
+  def cr_p : Pseudo<(outs GR256:$rd0), (ins memop:$src0),
+                     !strconcat(asmstring, "\t$src0, $rd0"),[]> {
+                      let DestAddrMode = ToReg.Value;
+                      let OperandAddrMode = OpndCR.Value;
+                     }
+  } // isMoveImm
+  let mayStore = 1 in
+  def is_p : Pseudo<(outs), (ins imm16:$imm, stackop:$rd0),
+                     !strconcat(asmstring, "\t$imm, $rd0"), []> {
+                      let DestAddrMode = ToStack.Value;
+                      let OperandAddrMode = OpndIR.Value;
+                     }
+  let canFoldAsLoad = 1 in
+  def rr_p : Pseudo<(outs GR256:$rd0), (ins GR256:$rs0),
+                     !strconcat(asmstring, "\t$rs0, $rd0"), []> {
+                      let DestAddrMode = ToReg.Value;
+                      let OperandAddrMode = OpndRR.Value;
+                      let OperandAM = 0;
+                     }
+  let mayLoad = 1, canFoldAsLoad = 1 in
+  def sr_p : Pseudo<(outs GR256:$rd0), (ins stackop:$src0),
+                     !strconcat(asmstring, "\t$src0, $rd0"), []> {
+                      let DestAddrMode = ToReg.Value;
+                      let OperandAddrMode = OpndSR.Value;
+                     }
+  let mayLoad = 1, mayStore = 1 in
+  def ss_p : Pseudo<(outs), (ins stackop:$src0, stackop:$rd0),
+                     !strconcat(asmstring, "\t$src0, $rd0"), []> {
+                      let DestAddrMode = ToReg.Value;
+                      let OperandAddrMode = OpndSR.Value;
+                     }
+  let mayStore = 1 in
+  def rs_p : Pseudo<(outs), (ins GR256:$rs0,  stackop:$rd0),
+                     !strconcat(asmstring, "\t$rs0, r0, $rd0"), []> {
+                      let DestAddrMode = ToStack.Value;
+                      let OperandAddrMode = OpndRR.Value;
+                     }
+  let mayLoad = 1, mayStore = 1 in
+  def cs_p : Pseudo<(outs), (ins memop:$src0, GR256:$rd0),
+                     !strconcat(asmstring, "\t$src0, r0, $rd0"),[]> {
+                      let DestAddrMode = ToStackReg.Value;
+                      let OperandAddrMode = OpndCR.Value;
+                     }
+   }
+} // MOV instructions
+
+defm MOV      : MovInstr<"mov">;
+defm PTR_MOV  : PtrMovInstr<"ptr.mov">;
+
 defm ADD  : ArithICommutable<2,  "add", add>;
 defm SUB  : ArithINonCommutable<4, "sub", sub>;
 
@@ -1143,22 +1240,25 @@ defm PTR_PACK   : PtrInstr<160, "ptr.pack", EraVMptr_pack>;
 defm PTR_SHRINK : PtrInstr<161, "ptr.shrink", EraVMptr_shrink>;
 
 // MOV patterns
-def : Pat<(store_stack (load_code memaddr:$src), stackaddr:$dst),  (ADDcrs_p memaddr:$src, R0, stackaddr:$dst)>;
-def : Pat<(store_stack (load_stack stackaddr:$src), stackaddr:$dst),  (ADDsrs_p stackaddr:$src, R0, stackaddr:$dst)>;
-def : Pat<(imm16:$val),  (ADDirr_p imm16:$val, R0)>;
-def : Pat<(load_code memaddr:$addr),  (ADDcrr_p memaddr:$addr, R0)>;
-def : Pat<(load_stack stackaddr:$addr),  (ADDsrr_p stackaddr:$addr, R0)>;
-def : Pat<(store_stack GR256:$src, stackaddr:$dst),  (ADDrrs_p GR256:$src, R0, stackaddr:$dst)>;
-def : Pat<(store_stack imm16:$src, stackaddr:$dst),  (ADDirs_p imm16:$src, R0, stackaddr:$dst)>;
+def : Pat<(store_stack (load_code memaddr:$src), stackaddr:$dst),  (MOVcs_p memaddr:$src, stackaddr:$dst)>;
+def : Pat<(store_stack (load_stack stackaddr:$src), stackaddr:$dst),  (MOVss_p stackaddr:$src, stackaddr:$dst)>;
+def : Pat<(imm16:$val),  (MOVir_p imm16:$val)>;
+def : Pat<(load_code memaddr:$addr),  (MOVcr_p memaddr:$addr)>;
+def : Pat<(load_stack stackaddr:$addr),  (MOVsr_p stackaddr:$addr)>;
+def : Pat<(store_stack GR256:$src, stackaddr:$dst),  (MOVrs_p GR256:$src, stackaddr:$dst)>;
+def : Pat<(store_stack imm16:$src, stackaddr:$dst),  (MOVis_p imm16:$src, stackaddr:$dst)>;
 
 // fat pointer move patterns
-def : Pat<(fatptr (load_stack stackaddr:$addr)),  (PTR_ADDsrr_p stackaddr:$addr, R0)>;
-def : Pat<(store_stack GRPTR:$src, stackaddr:$dst),  (PTR_ADDrrs_p GRPTR:$src, R0, stackaddr:$dst)>;
+def : Pat<(fatptr (load_stack stackaddr:$addr)),  (PTR_MOVsr_p stackaddr:$addr)>;
+def : Pat<(store_stack GRPTR:$src, stackaddr:$dst),  (PTR_MOVrs_p GRPTR:$src, stackaddr:$dst)>;
+def : Pat<(fatptr (load_stack stackaddr:$addr)),  (PTR_MOVsr_p stackaddr:$addr)>;
+def : Pat<(store_stack GRPTR:$src, stackaddr:$dst),  (PTR_MOVrs_p GRPTR:$src, stackaddr:$dst)>;
 
 // fat pointer load/store
-def : Pat<(store_stack GRPTR:$src, stackaddr:$dst), (PTR_ADDrrs_p GRPTR:$src, R0, stackaddr:$dst)>;
+def : Pat<(store_stack GRPTR:$src, stackaddr:$dst), (PTR_MOVrs_p GRPTR:$src, stackaddr:$dst)>;
 
-def : Pat<(EraVMcopy_from_ptrreg GRPTR:$src), (PTR_ADDrrr_p GRPTR:$src, R0)>;
+def : Pat<(EraVMcopy_from_ptrreg GRPTR:$src), (PTR_MOVrr_p GRPTR:$src)>;
+
 
 // SelecCC, BR_CC supplement
 def : Pat<(EraVMcmp GR256:$lhs, GR256:$rhs), (SUBrrr_v GR256:$lhs, GR256:$rhs, 0)>;
@@ -1409,10 +1509,10 @@ def : Pat<(add GR256:$rs0, neg_imm16:$imm), (SUBxrr_p (negate_imm imm:$imm), GR2
 //===----------------------------------------------------------------------===//
 
 // GlobalAddress, ExternalSymbol
-def : Pat<(i256 (EraVMGAStack tglobaladdr:$dst)), (ADDsrr_p tglobaladdr:$dst, 0, 0, R0)>;
-def : Pat<(i256 (EraVMGACode tglobaladdr:$dst)), (ADDcrr_p tglobaladdr:$dst, 0, R0)>;
-def : Pat<(i256 (EraVMGACode texternalsym:$dst)), (ADDcrr_p texternalsym:$dst, 0, R0)>;
-def : Pat<(i256 (EraVMGACode tblockaddress:$dst)), (ADDcrr_p tblockaddress:$dst, 0, R0)>;
+def : Pat<(i256 (EraVMGAStack tglobaladdr:$dst)), (MOVsr_p tglobaladdr:$dst, 0, 0)>;
+def : Pat<(i256 (EraVMGACode tglobaladdr:$dst)), (MOVcr_p tglobaladdr:$dst, 0)>;
+def : Pat<(i256 (EraVMGACode texternalsym:$dst)), (MOVcr_p texternalsym:$dst, 0)>;
+def : Pat<(i256 (EraVMGACode tblockaddress:$dst)), (MOVcr_p tblockaddress:$dst, 0)>;
 
 // Exceptions
 def : Pat<(EraVMTrap), (PANIC R0)>;
