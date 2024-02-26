@@ -1,0 +1,71 @@
+name: 'Build LLVM'
+description: 'Builds LLVM framework'
+inputs:
+  enable-tests:
+    description: "Enable tests."
+    required: false
+    default: 'false'
+  debug:
+    description: 'Build LLVM in debug mode.'
+    required: false
+    default: 'false'
+  extra-args:
+    description: 'Extra arguments to compile LLVM.'
+    required: false
+    default: ''
+  target:
+    description: 'Specific build target triplet.'
+    required: false
+    default: ''
+runs:
+  using: "composite"
+  steps:
+    - name: Prepare environment
+      if: runner.os == 'macOS'
+      run: brew install cmake ninja
+      shell: ${{ runner.os == 'Windows' && 'msys2 {0}' || 'bash' }}
+
+    - name: Define build target
+      id: build-target
+      if: inputs.target != ''
+      shell: ${{ runner.os == 'Windows' && 'msys2 {0}' || 'bash' }}
+      run: |
+        rustup target add ${{ inputs.target }}
+        echo "target=--target ${{ inputs.target }}" >> $GITHUB_OUTPUT
+
+    - name: Install LLVM builder
+      shell: ${{ runner.os == 'Windows' && 'msys2 {0}' || 'bash' }}
+      run: |
+        cargo install compiler-llvm-builder ${{ steps.build-target.outputs.target }} \
+          --git https://github.com/matter-labs/era-compiler-llvm-builder
+
+    - name: Set up compiler cache
+      uses: hendrikmuhs/ccache-action@v1.2
+      env:
+        CCACHE_BASEDIR: ${{ github.workspace }}
+        CCACHE_NOHASHDIR: "true"
+        CCACHE_COMPILERCHECK: "content"
+      with:
+        key: llvm-${{ github.event.repository.default_branch }}
+        restore-keys: llvm-${{ github.event.repository.default_branch }}
+        append-timestamp: false
+        max-size: "2G"
+        verbose: 2
+        save: ${{ github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/v') }}
+
+    - name: Build LLVM
+      uses: nick-fields/retry@v2
+      env:
+        CCACHE_BASEDIR: ${{ github.workspace }}
+        CCACHE_NOHASHDIR: "true"
+        CCACHE_COMPILERCHECK: "content"
+        LIBSTDCPP_SOURCE_PATH: "C:/a/_temp/msys64/mingw64/lib/libstdc++.a"
+      with:
+        timeout_minutes: 60
+        max_attempts: 16 # protection mechanism for sporadic dependencies download failure
+        command: |
+          set -x
+          [ "${{ inputs.enable-tests }}" != "" ] && ENABLE_TESTS="--enable-tests"
+          [ "${{ inputs.extra-args }}" != "" ] && EXTRA_ARGS="--extra-args ${{ inputs.extra-args }}"
+          echo zkevm-llvm build --use-ccache ${ENABLE_TESTS} ${EXTRA_ARGS}
+          zkevm-llvm build --use-ccache ${ENABLE_TESTS} ${EXTRA_ARGS}
