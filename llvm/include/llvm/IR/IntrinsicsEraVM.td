@@ -46,6 +46,8 @@ def int_eravm_decommit: Intrinsic<[LLVMQualPointerType<3>], [llvm_i256_ty, llvm_
 def int_eravm_throw: Intrinsic<[], [llvm_i256_ty], [Throws, IntrNoReturn]>;
 def int_eravm_return: Intrinsic<[], [llvm_i256_ty], [IntrNoReturn]>;
 def int_eravm_revert: Intrinsic<[], [llvm_i256_ty], [IntrNoReturn]>;
+def int_eravm_return_ptr: Intrinsic<[], [LLVMQualPointerType<3>], [IntrNoReturn]>;
+def int_eravm_revert_ptr: Intrinsic<[], [LLVMQualPointerType<3>], [IntrNoReturn]>;
 
 // Access to flags.
 def int_eravm_iflt  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
