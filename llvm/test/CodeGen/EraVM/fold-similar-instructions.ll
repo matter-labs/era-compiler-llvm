@@ -265,7 +265,8 @@ define i256 @test_code1(i256 %a, i1 %cond) {
 
 define i256 @test_code2(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_code2
-; CHECK:       sub! @val[0], r1, r3
+; CHECK:       sub  @val[0], r1, r3
+; CHECK-NEXT:  sub!	@val[0], r1, r4
 ; CHECK-NEXT:  add.lt r3, r0, r1
 ; CHECK-NEXT:  sub! r2, r0, r2
 ; CHECK-NEXT:  add.eq r3, r0, r1

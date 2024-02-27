@@ -289,6 +289,11 @@ public:
   bool PredicateInstruction(MachineInstr &MI,
                             ArrayRef<MachineOperand> Pred) const override;
 
+  // PeepholeOptimizer support
+
+  bool FoldImmediate(MachineInstr &UseMI, MachineInstr &DefMI,
+                                     Register Reg,
+                                     MachineRegisterInfo *MRI) const override;
   // Branch folding goodness
   bool
   reverseBranchCondition(SmallVectorImpl<MachineOperand> &Cond) const override;
