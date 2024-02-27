@@ -1067,7 +1067,17 @@ bool EraVMInstrInfo::PredicateInstruction(MachineInstr &MI,
   assert(Pred.size() == 1);
   auto CC = static_cast<EraVMCC::CondCodes>(getImmOrCImm(Pred[0]));
 
-  return EraVMInstrInfo::updateCCCode(MI, CC);
+  if (!EraVMInstrInfo::updateCCCode(MI, CC))
+    return false;
+
+  // Add implicit Flags register if instruction doesn't have it.
+  if (none_of(MI.implicit_operands(), [](const MachineOperand &MO) {
+        return MO.isReg() && MO.isUse() && MO.getReg() == EraVM::Flags;
+      }))
+    MachineInstrBuilder(*MI.getParent()->getParent(), MI)
+        .addReg(EraVM::Flags, RegState::Implicit);
+
+  return true;
 }
 
 std::optional<EraVMCC::CondCodes>
