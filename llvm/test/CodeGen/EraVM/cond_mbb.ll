@@ -42,16 +42,10 @@ define i256 @test3(i256 %x, i1 %y) {
 entry:
   %x1 = add i256 %x, 1
   br i1 %y, label %BB2, label %BB1
-
-; TODO CPR-1223
-; a more optimal code sequence is more desirable here
-; (same as in test4) but would require manipulating the
-; block sequence.
-
-; CHECK: sub! r2, r0
-; CHECK-NEXT: jump.ne @.BB2_1
-; CHECK-NEXT: %bb.2:
-; CHECK-NEXT: add 1, r1, r1
+; CHECK: sub! r2, r0, r2
+; CHECK-NEXT: add.eq 1, r1, r1
+; CHECK-NEXT: %bb.1:
+; CHECK-NEXT: ret
 BB2:                                             
   %z = phi i256 [%z1, %BB1], [%x1, %entry]  
   ret i256 %z
@@ -65,11 +59,10 @@ define i256 @test4(i256 %x, i1 %y) {
 entry:
   %x1 = add i256 %x, 1
   br i1 %y, label %BB1, label %BB2
-; TODO: CPR-1223 eliminate the jump
-; CHECK: sub! r2, r0
-; CHECK-NEXT: jump.eq @.BB3_1
-; CHECK-NEXT: %bb.2:
-; CHECK-NEXT: add     1, r1
+; CHECK: sub! r2, r0, r2
+; CHECK-NEXT: add.ne 1, r1, r1
+; CHECK-NEXT: %bb.1:
+; CHECK-NEXT: ret
 BB2:                                             
   %z = phi i256 [%z1, %BB1], [%x1, %entry]  
   ret i256 %z

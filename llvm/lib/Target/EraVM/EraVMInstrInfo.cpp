@@ -1090,7 +1090,11 @@ bool EraVMInstrInfo::PredicateInstruction(MachineInstr &MI,
   assert(Pred.size() == 1);
   auto CC = static_cast<EraVMCC::CondCodes>(getImmOrCImm(Pred[0]));
 
-  if (!EraVMInstrInfo::updateCCCode(MI, CC))
+  if (MI.getOpcode() == EraVM::J) {
+    // Convert unconditional branch into conditional.
+    MI.setDesc(get(EraVM::JC));
+    MachineInstrBuilder(*MI.getParent()->getParent(), MI).addImm(CC);
+  } else if (!EraVMInstrInfo::updateCCCode(MI, CC))
     return false;
 
   // Add implicit Flags register if instruction doesn't have it.
@@ -1129,6 +1133,10 @@ bool EraVMInstrInfo::isPredicated(const MachineInstr &MI) const {
 }
 
 bool EraVMInstrInfo::isPredicable(const MachineInstr &MI) const {
+  // We can convert unconditional branch into conditional.
+  if (MI.getOpcode() == EraVM::J)
+    return true;
+
   if (!isPredicatedInstr(MI))
     return false;
 
