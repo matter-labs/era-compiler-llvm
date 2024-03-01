@@ -164,6 +164,53 @@ bool link(ArrayRef<const char *> args, llvm::raw_ostream &stdoutOS,
 
   return errorCount() == 0;
 }
+
+// EraVM local begin
+bool linkMemBuf(ArrayRef<MemoryBufferRef> inBuffers,
+                raw_pwrite_stream *outBuffer, ArrayRef<const char *> args,
+                llvm::raw_ostream &stdoutOS, llvm::raw_ostream &stderrOS,
+                bool exitEarly, bool disableOutput) {
+  // This driver-specific context will be freed later by unsafeLldMainMemBuf().
+  auto *ctx = new CommonLinkerContext;
+
+  ctx->e.initialize(stdoutOS, stderrOS, exitEarly, disableOutput);
+  ctx->e.cleanupCallback = []() {
+    elf::ctx.reset();
+    symtab = SymbolTable();
+
+    outputSections.clear();
+    symAux.clear();
+
+    tar = nullptr;
+    in.reset();
+
+    partitions.clear();
+    partitions.emplace_back();
+
+    SharedFile::vernauxNum = 0;
+  };
+  ctx->e.logName = args::getFilenameWithoutExe(args[0]);
+  ctx->e.errorLimitExceededMsg = "too many errors emitted, stopping now (use "
+                                 "--error-limit=0 to see all errors)";
+
+  config = ConfigWrapper();
+  script = ScriptWrapper();
+
+  symAux.emplace_back();
+
+  partitions.clear();
+  partitions.emplace_back();
+
+  config->progName = args[0];
+  config->inBuffers = inBuffers;
+  config->outBuffer = outBuffer;
+  config->useIOMemoryBuffers = true;
+
+  elf::ctx.driver.linkerMain(args);
+
+  return errorCount() == 0;
+}
+// EraVM local end
 } // namespace elf
 } // namespace lld
 
@@ -1868,13 +1915,19 @@ static void setConfigs(opt::InputArgList &args) {
       (!config->entry.empty() || (!config->shared && !config->relocatable));
   if (config->entry.empty() && !config->relocatable)
     config->entry = config->emachine == EM_MIPS ? "__start" : "_start";
-  if (config->outputFile.empty())
+  if (!config->useIOMemoryBuffers && config->outputFile.empty()) // EraVM local
     config->outputFile = "a.out";
+
+  // EraVM local begin
+  if (config->useIOMemoryBuffers && !config->outputFile.empty())
+    error("specification of an out file name has no effect, as the memory "
+          "buffer will be used instead");
+  // EraVM local end
 
   // Fail early if the output file or map file is not writable. If a user has a
   // long link, e.g. due to a large LTO link, they do not wish to run it and
   // find that it failed because there was a mistake in their command-line.
-  {
+  if (!config->useIOMemoryBuffers) { // EraVM local
     llvm::TimeTraceScope timeScope("Create output files");
     if (auto e = tryCreateFile(config->outputFile))
       error("cannot open output file " + config->outputFile + ": " +
@@ -1931,7 +1984,14 @@ void LinkerDriver::createFiles(opt::InputArgList &args) {
     }
     case OPT_script:
     case OPT_default_script:
-      if (std::optional<std::string> path = searchScript(arg->getValue())) {
+      // EraVM local begin
+      if (config->useIOMemoryBuffers) {
+        if (std::optional<MemoryBufferRef> mb = readFile(arg->getValue()))
+          readLinkerScript(*mb);
+        break;
+        // EraVM local end
+      } else if (std::optional<std::string> path =
+                     searchScript(arg->getValue())) {
         if (std::optional<MemoryBufferRef> mb = readFile(*path)) {
           if (arg->getOption().matches(OPT_default_script)) {
             defaultScript = mb;
