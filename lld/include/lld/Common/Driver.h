@@ -26,11 +26,23 @@ enum Flavor {
 using Driver = bool (*)(llvm::ArrayRef<const char *>, llvm::raw_ostream &,
                         llvm::raw_ostream &, bool, bool);
 
+// EVM local begin
+using DriverMemBuf = bool (*)(llvm::ArrayRef<MemoryBufferRef> inData,
+                              llvm::raw_pwrite_stream *outData,
+                              llvm::ArrayRef<const char *>, llvm::raw_ostream &,
+                              llvm::raw_ostream &, bool, bool);
+// EVM local end
+
 struct DriverDef {
   Flavor f;
   Driver d;
 };
-
+// EVM local begin
+struct DriverDefMemBuf {
+  Flavor f;
+  DriverMemBuf d;
+};
+// EVM local begin
 struct Result {
   int retCode;
   bool canRunAgain;
@@ -44,6 +56,13 @@ struct Result {
 // by cleanup.
 Result lldMain(llvm::ArrayRef<const char *> args, llvm::raw_ostream &stdoutOS,
                llvm::raw_ostream &stderrOS, llvm::ArrayRef<DriverDef> drivers);
+// EVM local begin
+Result lldMainMemBuf(llvm::ArrayRef<MemoryBufferRef> inData,
+                     llvm::raw_pwrite_stream *outData,
+                     llvm::ArrayRef<const char *> args,
+                     llvm::raw_ostream &stdoutOS, llvm::raw_ostream &stderrOS,
+                     llvm::ArrayRef<DriverDefMemBuf> drivers);
+// EVM local end
 } // namespace lld
 
 // With this macro, library users must specify which drivers they use, provide
@@ -57,6 +76,19 @@ Result lldMain(llvm::ArrayRef<const char *> args, llvm::raw_ostream &stdoutOS,
   }                                                                            \
   }
 
+// EVM local begin
+#define LLD_HAS_DRIVER_MEM_BUF(name)                                           \
+  namespace lld {                                                              \
+  namespace name {                                                             \
+  bool linkMemBuf(llvm::ArrayRef<MemoryBufferRef> inData,                      \
+                  llvm::raw_pwrite_stream *outData,                            \
+                  llvm::ArrayRef<const char *> args,                           \
+                  llvm::raw_ostream &stdoutOS, llvm::raw_ostream &stderrOS,    \
+                  bool exitEarly, bool disableOutput);                         \
+  }                                                                            \
+  }
+// EVM local end
+
 // An array which declares that all LLD drivers are linked in your executable.
 // Must be used along with LLD_HAS_DRIVERS. See examples in LLD unittests.
 #define LLD_ALL_DRIVERS                                                        \
@@ -67,4 +99,10 @@ Result lldMain(llvm::ArrayRef<const char *> args, llvm::raw_ostream &stdoutOS,
     }                                                                          \
   }
 
+// EVM local begin
+#define LLD_ALL_DRIVERS_MEM_BUF                                                \
+  {                                                                            \
+    { lld::Gnu, &lld::elf::linkMemBuf }                                        \
+  }
+// EVM local end
 #endif

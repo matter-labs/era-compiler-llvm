@@ -100,6 +100,20 @@ InputFile::InputFile(Kind k, MemoryBufferRef m)
 Optional<MemoryBufferRef> elf::readFile(StringRef path) {
   llvm::TimeTraceScope timeScope("Load input files", path);
 
+  // EVM local begin
+  if (config->useMemBuf) {
+    unsigned idx = 0;
+    if (path.getAsInteger(10, idx)) {
+      error(path + ": path should be an index");
+      return None;
+    }
+    if (idx >= config->inData.size()) {
+      error("memory buffer index is out of range");
+      return None;
+    }
+    return config->inData[idx];
+  }
+  // EVM local end
   // The --chroot option changes our virtual root directory.
   // This is useful when you are dealing with files created by --reproduce.
   if (!config->chroot.empty() && path.startswith("/"))

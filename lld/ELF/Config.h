@@ -113,6 +113,9 @@ struct Configuration {
   llvm::StringMap<uint64_t> sectionStartMap;
   // EVM local begin
   EVMLinkingKind evmLinkingKind = EVMLinkingKind::None;
+  llvm::ArrayRef<MemoryBufferRef> inData;
+  llvm::raw_pwrite_stream *outData;
+  bool useMemBuf = false;
   // EVM local end
   llvm::StringRef bfdname;
   llvm::StringRef chroot;

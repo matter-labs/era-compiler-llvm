@@ -130,6 +130,53 @@ bool link(ArrayRef<const char *> args, llvm::raw_ostream &stdoutOS,
 
   return errorCount() == 0;
 }
+
+// EVM local begin
+bool linkMemBuf(ArrayRef<MemoryBufferRef> inData, raw_pwrite_stream *outData,
+                ArrayRef<const char *> args, llvm::raw_ostream &stdoutOS,
+                llvm::raw_ostream &stderrOS, bool exitEarly,
+                bool disableOutput) {
+  // This driver-specific context will be freed later by unsafeLldMainMemBuf().
+  auto *ctx = new CommonLinkerContext;
+
+  ctx->e.initialize(stdoutOS, stderrOS, exitEarly, disableOutput);
+  ctx->e.cleanupCallback = []() {
+    inputSections.clear();
+    outputSections.clear();
+    symAux.clear();
+
+    tar = nullptr;
+    in.reset();
+
+    partitions.clear();
+    partitions.emplace_back();
+
+    SharedFile::vernauxNum = 0;
+  };
+  ctx->e.logName = args::getFilenameWithoutExe(args[0]);
+  ctx->e.errorLimitExceededMsg = "too many errors emitted, stopping now (use "
+                                 "--error-limit=0 to see all errors)";
+
+  config = std::make_unique<Configuration>();
+  elf::ctx = std::make_unique<Ctx>();
+  driver = std::make_unique<LinkerDriver>();
+  script = std::make_unique<LinkerScript>();
+  symtab = std::make_unique<SymbolTable>();
+
+  partitions.clear();
+  partitions.emplace_back();
+
+  config->progName = args[0];
+
+  config->inData = inData;
+  config->outData = outData;
+  config->useMemBuf = true;
+
+  driver->linkerMain(args);
+
+  return errorCount() == 0;
+}
+// EVM local end
 } // namespace elf
 } // namespace lld
 
@@ -2496,23 +2543,32 @@ void LinkerDriver::link(opt::InputArgList &args) {
       config->sysvHash = config->gnuHash = true;
   }
 
+  // EVM local begin
   // Default output filename is "a.out" by the Unix tradition.
-  if (config->outputFile.empty())
+  if (!config->useMemBuf && config->outputFile.empty())
     config->outputFile = "a.out";
 
-  // Fail early if the output file or map file is not writable. If a user has a
-  // long link, e.g. due to a large LTO link, they do not wish to run it and
-  // find that it failed because there was a mistake in their command-line.
-  {
-    llvm::TimeTraceScope timeScope("Create output files");
-    if (auto e = tryCreateFile(config->outputFile))
-      error("cannot open output file " + config->outputFile + ": " +
-            e.message());
-    if (auto e = tryCreateFile(config->mapFile))
-      error("cannot open map file " + config->mapFile + ": " + e.message());
-    if (auto e = tryCreateFile(config->whyExtract))
-      error("cannot open --why-extract= file " + config->whyExtract + ": " +
-            e.message());
+  if (config->useMemBuf && !config->outputFile.empty())
+    error("specification of an out file name has no effect, as the memory "
+          "buffer will be used instead");
+  // EVM local end
+
+  // EVM local begin
+  if (!config->useMemBuf) {
+    // Fail early if the output file or map file is not writable. If a user has
+    // a long link, e.g. due to a large LTO link, they do not wish to run it and
+    // find that it failed because there was a mistake in their command-line.
+    {
+      const llvm::TimeTraceScope timeScope("Create output files");
+      if (auto e = tryCreateFile(config->outputFile))
+        error("cannot open output file " + config->outputFile + ": " +
+              e.message());
+      if (auto e = tryCreateFile(config->mapFile))
+        error("cannot open map file " + config->mapFile + ": " + e.message());
+      if (auto e = tryCreateFile(config->whyExtract))
+        error("cannot open --why-extract= file " + config->whyExtract + ": " +
+              e.message());
+    }
   }
   if (errorCount())
     return;
