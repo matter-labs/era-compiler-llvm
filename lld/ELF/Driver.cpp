@@ -141,6 +141,40 @@ bool link(ArrayRef<const char *> args, llvm::raw_ostream &stdoutOS,
 
   return errCount(ctx) == 0;
 }
+
+// EVM local begin
+bool linkMemBuf(ArrayRef<MemoryBufferRef> inBuffers,
+                raw_pwrite_stream *outBuffer, ArrayRef<const char *> args,
+                llvm::raw_ostream &stdoutOS, llvm::raw_ostream &stderrOS,
+                bool exitEarly, bool disableOutput) {
+  // This driver-specific context will be freed later by unsafeLldMainMemBuf().
+  auto *context = new Ctx;
+  Ctx &ctx = *context;
+
+  context->e.initialize(stdoutOS, stderrOS, exitEarly, disableOutput);
+  context->e.logName = args::getFilenameWithoutExe(args[0]);
+  context->e.errorLimitExceededMsg =
+      "too many errors emitted, stopping now (use "
+      "--error-limit=0 to see all errors)";
+
+  LinkerScript script(ctx);
+  ctx.script = &script;
+  ctx.symAux.emplace_back();
+  ctx.symtab = std::make_unique<SymbolTable>(ctx);
+
+  ctx.partitions.clear();
+  ctx.partitions.emplace_back(ctx);
+
+  ctx.arg.progName = args[0];
+  ctx.arg.inBuffers = inBuffers;
+  ctx.arg.outBuffer = outBuffer;
+  ctx.arg.useIOMemoryBuffers = true;
+
+  ctx.driver.linkerMain(args);
+
+  return errCount(ctx) == 0;
+}
+// EVM local end
 } // namespace elf
 } // namespace lld
 
@@ -2039,13 +2073,19 @@ static void setConfigs(Ctx &ctx, opt::InputArgList &args) {
       (!ctx.arg.entry.empty() || (!ctx.arg.shared && !ctx.arg.relocatable));
   if (ctx.arg.entry.empty() && !ctx.arg.relocatable)
     ctx.arg.entry = ctx.arg.emachine == EM_MIPS ? "__start" : "_start";
-  if (ctx.arg.outputFile.empty())
+  if (!ctx.arg.useIOMemoryBuffers && ctx.arg.outputFile.empty()) // EVM local
     ctx.arg.outputFile = "a.out";
+
+  // EVM local begin
+  if (ctx.arg.useIOMemoryBuffers && !ctx.arg.outputFile.empty())
+    error("specification of an out file name has no effect, as the memory "
+          "buffer will be used instead");
+  // EVM local end
 
   // Fail early if the output file or map file is not writable. If a user has a
   // long link, e.g. due to a large LTO link, they do not wish to run it and
   // find that it failed because there was a mistake in their command-line.
-  {
+  if (!ctx.arg.useIOMemoryBuffers) { // EVM local
     llvm::TimeTraceScope timeScope("Create output files");
     if (auto e = tryCreateFile(ctx.arg.outputFile))
       ErrAlways(ctx) << "cannot open output file " << ctx.arg.outputFile << ": "
@@ -2056,7 +2096,7 @@ static void setConfigs(Ctx &ctx, opt::InputArgList &args) {
     if (auto e = tryCreateFile(ctx.arg.whyExtract))
       ErrAlways(ctx) << "cannot open --why-extract= file " << ctx.arg.whyExtract
                      << ": " << e.message();
-  }
+  } // EVM local
 }
 
 static bool isFormatBinary(Ctx &ctx, StringRef s) {
@@ -2098,7 +2138,13 @@ void LinkerDriver::createFiles(opt::InputArgList &args) {
     }
     case OPT_script:
     case OPT_default_script:
-      if (std::optional<std::string> path =
+      // EVM local begin
+      if (ctx.arg.useIOMemoryBuffers) {
+        if (std::optional<MemoryBufferRef> mb = readFile(ctx, arg->getValue()))
+          readLinkerScript(ctx, *mb);
+        break;
+        // EVM local end
+      } else if (std::optional<std::string> path =
               searchScript(ctx, arg->getValue())) {
         if (std::optional<MemoryBufferRef> mb = readFile(ctx, *path)) {
           if (arg->getOption().matches(OPT_default_script)) {
