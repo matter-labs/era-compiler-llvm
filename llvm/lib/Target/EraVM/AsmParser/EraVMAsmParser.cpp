@@ -56,6 +56,7 @@ class EraVMAsmParser : public MCTargetAsmParser {
   bool ParseInstruction(ParseInstructionInfo &Info, StringRef Name,
                         SMLoc NameLoc, OperandVector &Operands) override;
 
+  const unsigned CellBitWidth = 256;
   bool ParseDirective(AsmToken DirectiveID) override;
 
   unsigned validateTargetOperandClass(MCParsedAsmOperand &Op,
@@ -282,7 +283,44 @@ bool EraVMAsmParser::ParseInstruction(ParseInstructionInfo &Info,
   return false;
 }
 
-bool EraVMAsmParser::ParseDirective(AsmToken DirectiveID) { return true; }
+bool EraVMAsmParser::ParseDirective(AsmToken DirectiveID) {
+  if (DirectiveID.getString() == ".cell") {
+    // At now, assume exactly one signed integer follows.
+    // If an arbitrary MCExpr should be accepted as well, an MCTargetExpr
+    // for 256-bit integer constant can be implemented and provided to
+    // parseExpression machinery by overriding the parsePrimaryExpr
+    // function in this class.
+
+    bool IsNegated = false;
+    if (getTok().is(AsmToken::Minus)) {
+      IsNegated = true;
+      Lex(); // eat "-" token
+    }
+
+    if (!getTok().is(AsmToken::Integer) && !getTok().is(AsmToken::BigNum))
+      return TokError("integer literal expected");
+
+    APInt Value = getTok().getAPIntVal();
+    if (Value.getActiveBits() > CellBitWidth)
+      return TokError("integer too wide");
+
+    // emitIntValue(APInt Value) emits the amount of data based on
+    // the bit width of Value, so extend to exactly 256 bits.
+    Value = Value.zextOrTrunc(CellBitWidth);
+    if (IsNegated)
+      Value = -Value;
+
+    Lex(); // eat integer token
+
+    if (parseEOL())
+      return true;
+
+    getStreamer().emitIntValue(Value);
+
+    return false;
+  }
+  return true;
+}
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMAsmParser() {
   RegisterMCAsmParser<EraVMAsmParser> X(getTheEraVMTarget());
