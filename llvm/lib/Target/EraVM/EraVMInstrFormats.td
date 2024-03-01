@@ -208,6 +208,7 @@ class IForm <
   let Inst{40-43} = 0; /* dst1 */
   let Inst{48-51} = 0; /* src1 */
   let Inst{56-63} = opcode;
+  let hasSideEffects = 0;
 }
 
 // TODO: CPR-1360 SP change is currently only allowed in NOPs.
