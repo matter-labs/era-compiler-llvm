@@ -81,13 +81,19 @@ jobs:
         if: ${{ env.LLVM_BUILD_TYPE == 'debug' }}
         working-directory: compiler-tester
         run: |
-          zkevm-llvm build --debug --enable-tests --extra-args '\-DLLVM_ENABLE_WERROR=On'  '\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON'
+          zkevm-llvm build --debug \
+            --targets EVM \
+            --enable-tests \
+            --extra-args '\-DLLVM_ENABLE_WERROR=On' '\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON'
 
       - name: Building the LLVM framework (release)
         if: ${{ env.LLVM_BUILD_TYPE == 'release' }}
         working-directory: compiler-tester
         run: |
-          zkevm-llvm build --enable-tests --extra-args '\-DLLVM_ENABLE_WERROR=On'   '\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON'
+          zkevm-llvm build \
+            --targets EVM \
+            --enable-tests \
+            --extra-args '\-DLLVM_ENABLE_WERROR=On' '\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON'
 
       - name: Checking with clang-tidy-diff.py
         shell: bash
