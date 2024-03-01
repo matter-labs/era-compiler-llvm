@@ -260,11 +260,11 @@ bool EraVMPassConfig::addInstSelector() {
   (void)TargetPassConfig::addInstSelector();
   // Install an instruction selector.
   addPass(createEraVMISelDag(getEraVMTargetMachine(), getOptLevel()));
+  addPass(createEraVMAddConditionsPass());
   return false;
 }
 
 void EraVMPassConfig::addPreRegAlloc() {
-  addPass(createEraVMAddConditionsPass());
   addPass(createEraVMStackAddressConstantPropagationPass());
   addPass(createEraVMBytesToCellsPass());
   if (TM->getOptLevel() != CodeGenOpt::None) {
