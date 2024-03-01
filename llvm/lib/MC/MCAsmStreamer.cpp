@@ -226,6 +226,8 @@ public:
 
   void emitBytes(StringRef Data) override;
 
+  void emitIntValue(APInt Value) override;
+
   void emitValueImpl(const MCExpr *Value, unsigned Size,
                      SMLoc Loc = SMLoc()) override;
   void emitIntValue(uint64_t Value, unsigned Size) override;
@@ -1294,6 +1296,17 @@ void MCAsmStreamer::emitBytes(StringRef Data) {
   }
 }
 
+void MCAsmStreamer::emitIntValue(APInt Value) {
+  // EraVM local begin
+  if (Value.getBitWidth() == 256) {
+    OS << "\t.cell\t" << Value;
+    EmitEOL();
+    return;
+  }
+  // EraVM local end
+  MCStreamer::emitIntValue(Value);
+}
+
 void MCAsmStreamer::emitBinaryData(StringRef Data) {
   // This is binary data. Print it in a grid of hex bytes for readability.
   const size_t Cols = 4;
@@ -1343,7 +1356,7 @@ void MCAsmStreamer::emitValueImpl(const MCExpr *Value, unsigned Size,
 
   // EraVM local begin
   if (Size == 32)
-    Directive = ".cell\t";
+    Directive = "\t.cell\t";
   // EraVM local end
 
   if (!Directive) {
