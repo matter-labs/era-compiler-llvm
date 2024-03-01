@@ -595,9 +595,11 @@ void EraVMInstrInfo::tagFatPointerCopy(MachineInstr &MI) const {
 }
 
 bool EraVMInstrInfo::isPredicatedInstr(const MachineInstr &MI) const {
-  return MI.isBranch() || isArithmetic(MI) || isBitwise(MI) || isShift(MI) ||
-         isRotate(MI) || isLoad(MI) || isFatLoad(MI) || isStore(MI) ||
-         isNOP(MI) || isSel(MI) || isPtr(MI);
+  if (MI.isBranch())
+    return !MI.isUnconditionalBranch();
+  return isArithmetic(MI) || isBitwise(MI) || isShift(MI) || isRotate(MI) ||
+         isLoad(MI) || isFatLoad(MI) || isStore(MI) || isNOP(MI) || isSel(MI) ||
+         isPtr(MI);
 }
 
 /// Returns the predicate operand
@@ -1103,6 +1105,14 @@ EraVMInstrInfo::getReversedCondition(EraVMCC::CondCodes CC) {
                                   : it->second;
 }
 
+bool EraVMInstrInfo::isPredicated(const MachineInstr &MI) const {
+  if (!isPredicatedInstr(MI))
+    return false;
+
+  EraVMCC::CondCodes CC = getCCCode(MI);
+  return CC != EraVMCC::COND_INVALID && CC != EraVMCC::COND_NONE;
+}
+
 bool EraVMInstrInfo::isPredicable(const MachineInstr &MI) const {
   if (!isPredicatedInstr(MI))
     return false;
@@ -1114,11 +1124,6 @@ bool EraVMInstrInfo::isPredicable(const MachineInstr &MI) const {
   // CPR-1241: We temporarily disable ld/st instructions from being predicated
   // until assembler is fixed to support predicated ld/st instructions.
   if (isLoad(MI) || isFatLoad(MI) || isStore(MI))
-    return false;
-
-  // some instructions are not defined as predicated yet in our backend:
-  // CPR-1231 to track the progress to make them predicated
-  if (MI.getOpcode() == EraVM::J)
     return false;
 
   // check condition code validity.

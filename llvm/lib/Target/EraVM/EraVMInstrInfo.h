@@ -272,6 +272,8 @@ public:
   static std::optional<EraVMCC::CondCodes>
   getReversedCondition(EraVMCC::CondCodes CC);
 
+  bool isPredicated(const MachineInstr &MI) const override;
+
   bool isPredicable(const MachineInstr &MI) const override;
 
   bool isProfitableToIfCvt(MachineBasicBlock &MBB, unsigned NumCycles,
