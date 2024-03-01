@@ -38,6 +38,6 @@ void EraVMTargetStreamer::emitGlobalConst(APInt Value) {
   }
   SmallString<86> Str;
   raw_svector_ostream OS(Str);
-  OS << "\t.cell " << Value;
+  OS << "\t.cell\t" << Value;
   Streamer.emitRawText(OS.str());
 }
