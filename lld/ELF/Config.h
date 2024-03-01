@@ -150,6 +150,11 @@ struct Config {
   llvm::CachePruningPolicy thinLTOCachePolicy;
   llvm::SetVector<llvm::CachedHashString> dependencyFiles; // for --dependency-file
   llvm::StringMap<uint64_t> sectionStartMap;
+  // EVM local begin
+  llvm::ArrayRef<MemoryBufferRef> inBuffers;
+  llvm::raw_pwrite_stream *outBuffer;
+  bool useMemoryBuffer = false;
+  // EVM local end
   llvm::StringRef bfdname;
   llvm::StringRef chroot;
   llvm::StringRef dependencyFile;
