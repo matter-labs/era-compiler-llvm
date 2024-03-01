@@ -150,6 +150,11 @@ struct Config {
   llvm::CachePruningPolicy thinLTOCachePolicy;
   llvm::SetVector<llvm::CachedHashString> dependencyFiles; // for --dependency-file
   llvm::StringMap<uint64_t> sectionStartMap;
+  // EraVM local begin
+  llvm::ArrayRef<MemoryBufferRef> inBuffers;
+  llvm::raw_pwrite_stream *outBuffer;
+  bool useIOMemoryBuffers = false;
+  // EraVM local end
   llvm::StringRef bfdname;
   llvm::StringRef chroot;
   llvm::StringRef dependencyFile;
