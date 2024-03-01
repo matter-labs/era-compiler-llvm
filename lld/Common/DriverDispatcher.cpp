@@ -150,6 +150,22 @@ static Driver whichDriver(llvm::SmallVectorImpl<const char *> &argsV,
   return it->d;
 }
 
+// EVM local begin
+static DriverMemBuf whichDriver(llvm::SmallVectorImpl<const char *> &argsV,
+                                llvm::ArrayRef<DriverDefMemBuf> drivers) {
+  Flavor f = parseFlavor(argsV);
+  const auto *const it =
+      llvm::find_if(drivers, [=](auto &driverdef) { return driverdef.f == f; });
+  if (it == drivers.end()) {
+    // Driver is invalid or not available in this build.
+    return [](llvm::ArrayRef<llvm::MemoryBufferRef>, llvm::raw_pwrite_stream *,
+              llvm::ArrayRef<const char *>, llvm::raw_ostream &,
+              llvm::raw_ostream &, bool, bool) { return false; };
+  }
+  return it->d;
+}
+// EVM local end
+
 namespace lld {
 bool inTestOutputDisabled = false;
 
@@ -174,6 +190,35 @@ int unsafeLldMain(llvm::ArrayRef<const char *> args,
 
   return r;
 }
+
+// EVM local begin
+/// Universal linker main(). This linker emulates the gnu, darwin, or
+/// windows linker based on the argv[0] or -flavor option.
+int unsafeLldMainMemBuf(llvm::ArrayRef<llvm::MemoryBufferRef> inData,
+                        llvm::raw_pwrite_stream *outData,
+                        llvm::ArrayRef<const char *> args,
+                        llvm::raw_ostream &stdoutOS,
+                        llvm::raw_ostream &stderrOS,
+                        llvm::ArrayRef<DriverDefMemBuf> drivers,
+                        bool exitEarly) {
+  SmallVector<const char *, 256> argsV(make_range(args.begin(), args.end()));
+  DriverMemBuf d = whichDriver(argsV, drivers);
+  // Run the driver. If an error occurs, false will be returned.
+  const int r = !d(inData, outData, argsV, stdoutOS, stderrOS, exitEarly,
+                   inTestOutputDisabled);
+  // At this point 'r' is either 1 for error, and 0 for no error.
+
+  // Call exit() if we can to avoid calling destructors.
+  if (exitEarly)
+    exitLld(r);
+
+  // Delete the global context and clear the global context pointer, so that it
+  // cannot be accessed anymore.
+  CommonLinkerContext::destroy();
+
+  return r;
+}
+// EVM local end
 } // namespace lld
 
 Result lld::lldMain(llvm::ArrayRef<const char *> args,
@@ -201,3 +246,35 @@ Result lld::lldMain(llvm::ArrayRef<const char *> args,
   }
   return {r, /*canRunAgain=*/true};
 }
+
+// EVM local begin
+Result lld::lldMainMemBuf(llvm::ArrayRef<llvm::MemoryBufferRef> inData,
+                          llvm::raw_pwrite_stream *outData,
+                          llvm::ArrayRef<const char *> args,
+                          llvm::raw_ostream &stdoutOS,
+                          llvm::raw_ostream &stderrOS,
+                          llvm::ArrayRef<DriverDefMemBuf> drivers) {
+  int r = 0;
+  {
+    // The crash recovery is here only to be able to recover from arbitrary
+    // control flow when fatal() is called (through setjmp/longjmp or
+    // __try/__except).
+    llvm::CrashRecoveryContext crc;
+    if (!crc.RunSafely([&]() {
+          r = unsafeLldMainMemBuf(inData, outData, args, stdoutOS, stderrOS,
+                                  drivers,
+                                  /*exitEarly=*/false);
+        }))
+      return {crc.RetCode, /*canRunAgain=*/false};
+  }
+
+  // Cleanup memory and reset everything back in pristine condition. This path
+  // is only taken when LLD is in test, or when it is used as a library.
+  llvm::CrashRecoveryContext crc;
+  if (!crc.RunSafely([&]() { CommonLinkerContext::destroy(); })) {
+    // The memory is corrupted beyond any possible recovery.
+    return {r, /*canRunAgain=*/false};
+  }
+  return {r, /*canRunAgain=*/true};
+}
+// EVM local end
