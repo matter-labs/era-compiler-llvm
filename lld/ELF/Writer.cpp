@@ -2858,6 +2858,28 @@ template <class ELFT> void Writer<ELFT>::openFile() {
     return;
   }
 
+  // EraVM local begin
+  if (config->useIOMemoryBuffers) {
+    // Create a special buffer that outputs its content to the
+    // raw memory stream (config->outBuffer) instead of a file.
+    // The ugly point in this design is that the buffer type is derived
+    // from FileOutputBuffer, but the file management functionality
+    // is not used. Probably this is fine, as otherwise we will need
+    // much more changes in the lld code.
+    Expected<std::unique_ptr<FileOutputBuffer>> bufferOrErr =
+        FileOutputBuffer::create(fileSize, *config->outBuffer);
+
+    if (!bufferOrErr) {
+      error("failed to create memory buffer for the result: " +
+            llvm::toString(bufferOrErr.takeError()));
+      return;
+    }
+
+    buffer = std::move(*bufferOrErr);
+    Out::bufferStart = buffer->getBufferStart();
+    return;
+  }
+  // EraVM local end
   unlinkAsync(config->outputFile);
   unsigned flags = 0;
   if (!config->relocatable)

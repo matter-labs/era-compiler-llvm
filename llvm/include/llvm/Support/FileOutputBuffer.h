@@ -48,6 +48,17 @@ public:
   static Expected<std::unique_ptr<FileOutputBuffer>>
   create(StringRef FilePath, size_t Size, unsigned Flags = 0);
 
+  // EraVM local begin
+  /// Factory method to create an OutputBuffer object which manages a read/write
+  /// buffer of the specified size. When committed, the buffer will be written
+  /// to the stream p\ Out.
+  /// Please note, even though the returned buffer type is derived from
+  /// FileOutputBuffer, the functionality related to file management
+  /// is not used and completely ignored.
+  static Expected<std::unique_ptr<FileOutputBuffer>>
+  create(size_t Size, raw_pwrite_stream &Out);
+  // EraVM local end
+
   /// Returns a pointer to the start of the buffer.
   virtual uint8_t *getBufferStart() const = 0;
 

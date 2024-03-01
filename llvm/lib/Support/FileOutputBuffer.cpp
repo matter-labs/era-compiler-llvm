@@ -109,6 +109,43 @@ private:
   size_t BufferSize;
   unsigned Mode;
 };
+
+// EraVM local begin
+// A FileOutputBuffer which keeps data in memory and writes to the final
+// output stream on commit().
+// Note, the file management functionality, derived from FileOutputBuffer,
+// is not supposed to be used.
+class InMemoryStreamBuffer : public FileOutputBuffer {
+public:
+  InMemoryStreamBuffer(MemoryBlock Buf, std::size_t BufSize,
+                       raw_pwrite_stream &Out)
+      : FileOutputBuffer("<<"), Buffer(Buf), BufferSize(BufSize),
+        OutStream(Out) {}
+
+  uint8_t *getBufferStart() const override {
+    return static_cast<uint8_t *>(Buffer.base());
+  }
+
+  uint8_t *getBufferEnd() const override {
+    return static_cast<uint8_t *>(Buffer.base()) + BufferSize;
+  }
+
+  size_t getBufferSize() const override { return BufferSize; }
+
+  Error commit() override {
+    OutStream << StringRef(static_cast<const char *>(Buffer.base()),
+                           BufferSize);
+    OutStream.flush();
+    return Error::success();
+  }
+
+private:
+  // Buffer may actually contain a larger memory block than BufferSize
+  OwningMemoryBlock Buffer;
+  size_t BufferSize;
+  raw_pwrite_stream &OutStream;
+};
+// EraVM local end
 } // namespace
 
 static Expected<std::unique_ptr<InMemoryBuffer>>
@@ -150,6 +187,19 @@ createOnDiskBuffer(StringRef Path, size_t Size, unsigned Mode) {
   return std::make_unique<OnDiskBuffer>(Path, std::move(File),
                                          std::move(MappedFile));
 }
+
+// EraVM local begin
+// Create an instance of InMemoryStreamBuffer.
+Expected<std::unique_ptr<FileOutputBuffer>>
+FileOutputBuffer::create(size_t Size, raw_pwrite_stream &Out) {
+  std::error_code EC;
+  MemoryBlock MB = Memory::allocateMappedMemory(
+      Size, nullptr, sys::Memory::MF_READ | sys::Memory::MF_WRITE, EC);
+  if (EC)
+    return errorCodeToError(EC);
+  return std::make_unique<InMemoryStreamBuffer>(MB, Size, Out);
+}
+// EraVM local end
 
 // Create an instance of FileOutputBuffer.
 Expected<std::unique_ptr<FileOutputBuffer>>
