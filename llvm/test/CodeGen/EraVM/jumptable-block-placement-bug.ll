@@ -9,6 +9,8 @@ define i256 @test(i256 %cond) {
 ; CHECK-NEXT:    sub.s! 3, r2, r1
 ; CHECK-NEXT:    add r0, r0, r1
 ; CHECK-NEXT:    jump.le @JTI0_0[r2]
+; CHECK:       .BB0_1:
+; CHECK-NEXT:    ret
 ; CHECK:       .BB0_2:
 ; CHECK-NEXT:    add 1, r0, r1
 ; CHECK-NEXT:    jump @.BB0_1
@@ -20,8 +22,7 @@ define i256 @test(i256 %cond) {
 ; CHECK-NEXT:    jump @.BB0_1
 ; CHECK:       .BB0_5:
 ; CHECK-NEXT:    add 4, r0, r1
-; CHECK:       .BB0_1:
-; CHECK-NEXT:    ret
+; CHECK-NEXT:    jump @.BB0_1
 entry:
   switch i256 %cond, label %exit [
     i256 0, label %bb1
