@@ -53,6 +53,20 @@ class EraVMAsmParser : public MCTargetAsmParser {
   OperandMatchResultTy tryParseRegister(MCRegister &RegNo, SMLoc &StartLoc,
                                         SMLoc &EndLoc) override;
 
+  const MCConstantExpr *createConstant(int64_t Value) {
+    return MCConstantExpr::create(Value, getContext());
+  }
+
+  bool parseNameWithSuffixes(StringRef Name, SMLoc NameLoc,
+                             OperandVector &Operands);
+  bool parseRegOperand(OperandVector &Operands);
+  bool parseImmediateOperand(OperandVector &Operands);
+  bool parseRegisterWithAddend(MCRegister &RegNo, int &Addend);
+  bool parseOperand(StringRef Mnemonic, OperandVector &Operands);
+
+  OperandMatchResultTy tryParseStackOperand(OperandVector &Operands);
+  OperandMatchResultTy tryParseCodeOperand(OperandVector &Operands);
+
   bool ParseInstruction(ParseInstructionInfo &Info, StringRef Name,
                         SMLoc NameLoc, OperandVector &Operands) override;
 
@@ -84,16 +98,21 @@ public:
 /// A parsed EraVM assembly operand.
 class EraVMOperand : public MCParsedAsmOperand {
   using Base = MCParsedAsmOperand;
+  enum KindTy { k_Imm, k_Reg, k_Tok, k_Mem };
 
-  enum KindTy { k_Imm, k_Reg, k_Tok, k_Mem, k_IndReg, k_PostIndReg } Kind;
+  KindTy Kind;
 
   struct Memory {
-    unsigned Reg;
-    const MCExpr *Offset;
+    MCContext *Ctx;
+    const MCSymbol *Symbol;
+    MCRegister Reg;
+    int Addend;
+    EraVM::MemOperandKind Kind;
   };
+
   union {
     const MCExpr *Imm{};
-    unsigned Reg;
+    MCRegister Reg;
     StringRef Tok;
     Memory Mem;
   };
@@ -101,21 +120,34 @@ class EraVMOperand : public MCParsedAsmOperand {
   SMLoc Start, End;
 
 public:
-  EraVMOperand(StringRef Tok, SMLoc const &S)
-      : Kind(k_Tok), Tok(Tok), Start(S), End(S) {}
-  EraVMOperand(KindTy Kind, unsigned Reg, SMLoc const &S, SMLoc const &E)
-      : Kind(Kind), Reg(Reg), Start(S), End(E) {}
-  EraVMOperand(MCExpr const *Imm, SMLoc const &S, SMLoc const &E)
+  // Exactly one constructor per union member.
+  EraVMOperand(SMLoc S, SMLoc E, const MCExpr *Imm)
       : Kind(k_Imm), Imm(Imm), Start(S), End(E) {}
-  EraVMOperand(unsigned Reg, MCExpr const *Expr, SMLoc const &S, SMLoc const &E)
-      : Kind(k_Mem), Mem({Reg, Expr}), Start(S), End(E) {}
+  EraVMOperand(SMLoc S, SMLoc E, MCRegister Reg)
+      : Kind(k_Reg), Reg(Reg), Start(S), End(E) {}
+  EraVMOperand(SMLoc S, SMLoc E, StringRef Tok)
+      : Kind(k_Tok), Tok(Tok), Start(S), End(E) {}
+  EraVMOperand(SMLoc S, SMLoc E, MCContext *Ctx, const MCSymbol *Symbol,
+               MCRegister Reg, int Addend, EraVM::MemOperandKind K)
+      : Kind(k_Mem), Start(S), End(E) {
+    Mem.Ctx = Ctx;
+    Mem.Symbol = Symbol;
+    Mem.Reg = Reg;
+    Mem.Addend = Addend;
+    Mem.Kind = K;
+  }
 
   void addRegOperands(MCInst &Inst, unsigned N) const {
-    assert((Kind == k_Reg || Kind == k_IndReg || Kind == k_PostIndReg) &&
-           "Unexpected operand kind");
+    assert(Kind == k_Reg && "Unexpected operand kind");
     assert(N == 1 && "Invalid number of operands!");
 
     Inst.addOperand(MCOperand::createReg(Reg));
+  }
+
+  bool isStackReference() const { return Kind == k_Mem && !isCodeReference(); }
+
+  bool isCodeReference() const {
+    return Kind == k_Mem && Mem.Kind == EraVM::OperandCode;
   }
 
   void addExprOperand(MCInst &Inst, const MCExpr *Expr) const {
@@ -135,34 +167,24 @@ public:
     addExprOperand(Inst, Imm);
   }
 
-  void addMemOperands(MCInst &Inst, unsigned N) const {
+  void addStackReferenceOperands(MCInst &Inst, unsigned N) const {
+    assert(N == 3 && "Invalid number of operands!");
     assert(Kind == k_Mem && "Unexpected operand kind");
-    assert(N == 2 && "Invalid number of operands");
+    EraVM::appendMCOperands(*Mem.Ctx, Inst, Mem.Kind, Mem.Reg, Mem.Symbol,
+                            Mem.Addend);
+  }
 
-    Inst.addOperand(MCOperand::createReg(Mem.Reg));
-    addExprOperand(Inst, Mem.Offset);
+  void addCodeReferenceOperands(MCInst &Inst, unsigned N) const {
+    assert(N == 2 && "Invalid number of operands!");
+    assert(Kind == k_Mem && "Unexpected operand kind");
+    EraVM::appendMCOperands(*Mem.Ctx, Inst, EraVM::OperandCode, Mem.Reg,
+                            Mem.Symbol, Mem.Addend);
   }
 
   bool isReg() const override { return Kind == k_Reg; }
   bool isImm() const override { return Kind == k_Imm; }
   bool isToken() const override { return Kind == k_Tok; }
-  bool isMem() const override { return Kind == k_Mem; }
-  bool isIndReg() const { return Kind == k_IndReg; }
-  bool isPostIndReg() const { return Kind == k_PostIndReg; }
-
-  bool isCGImm() const {
-    if (Kind != k_Imm)
-      return false;
-
-    int64_t Val = 0;
-    if (!Imm->evaluateAsAbsolute(Val))
-      return false;
-
-    if (Val == 0 || Val == 1 || Val == 2 || Val == 4 || Val == 8 || Val == -1)
-      return true;
-
-    return false;
-  }
+  bool isMem() const override { return false; }
 
   StringRef getToken() const {
     assert(Kind == k_Tok && "Invalid access!");
@@ -180,32 +202,23 @@ public:
   }
 
   static std::unique_ptr<EraVMOperand> CreateToken(StringRef Str, SMLoc S) {
-    return std::make_unique<EraVMOperand>(Str, S);
+    return std::make_unique<EraVMOperand>(S, S, Str);
   }
 
-  static std::unique_ptr<EraVMOperand> CreateReg(unsigned RegNum, SMLoc S,
+  static std::unique_ptr<EraVMOperand> CreateReg(MCRegister Reg, SMLoc S,
                                                  SMLoc E) {
-    return std::make_unique<EraVMOperand>(k_Reg, RegNum, S, E);
+    return std::make_unique<EraVMOperand>(S, E, Reg);
   }
 
   static std::unique_ptr<EraVMOperand> CreateImm(const MCExpr *Val, SMLoc S,
                                                  SMLoc E) {
-    return std::make_unique<EraVMOperand>(Val, S, E);
+    return std::make_unique<EraVMOperand>(S, E, Val);
   }
 
   static std::unique_ptr<EraVMOperand>
-  CreateMem(unsigned RegNum, const MCExpr *Val, SMLoc S, SMLoc E) {
-    return std::make_unique<EraVMOperand>(RegNum, Val, S, E);
-  }
-
-  static std::unique_ptr<EraVMOperand> CreateIndReg(unsigned RegNum, SMLoc S,
-                                                    SMLoc E) {
-    return std::make_unique<EraVMOperand>(k_IndReg, RegNum, S, E);
-  }
-
-  static std::unique_ptr<EraVMOperand> CreatePostIndReg(unsigned RegNum,
-                                                        SMLoc S, SMLoc E) {
-    return std::make_unique<EraVMOperand>(k_PostIndReg, RegNum, S, E);
+  CreateMem(MCContext *Ctx, EraVM::MemOperandKind K, MCRegister Reg,
+            const MCSymbol *Symbol, int Addend, SMLoc S, SMLoc E) {
+    return std::make_unique<EraVMOperand>(S, E, Ctx, Symbol, Reg, Addend, K);
   }
 
   SMLoc getStartLoc() const override { return Start; }
@@ -223,14 +236,8 @@ public:
       O << "Immediate " << *Imm;
       break;
     case k_Mem:
-      O << "Memory ";
-      O << *Mem.Offset << "(" << Reg << ")";
-      break;
-    case k_IndReg:
-      O << "RegInd " << Reg;
-      break;
-    case k_PostIndReg:
-      O << "PostInc " << Reg;
+      O << "MemOperand(kind = " << Mem.Kind << " reg = " << Mem.Reg
+        << " sym = " << Mem.Symbol << " addend = " << Mem.Addend << ")";
       break;
     }
   }
@@ -242,12 +249,34 @@ bool EraVMAsmParser::MatchAndEmitInstruction(SMLoc Loc, unsigned &Opcode,
                                              MCStreamer &Out,
                                              uint64_t &ErrorInfo,
                                              bool MatchingInlineAsm) {
-  return true;
+  MCInst Inst;
+
+  if (Operands.empty())
+    return true;
+
+  switch (MatchInstructionImpl(Operands, Inst, ErrorInfo, MatchingInlineAsm)) {
+  default:
+    return Error(Loc, "cannot parse instruction");
+  case Match_MnemonicFail: {
+    auto MnemonicOperand = static_cast<EraVMOperand &>(*Operands.front());
+    StringRef Mnemonic = "<unknown>";
+    if (MnemonicOperand.isToken())
+      Mnemonic = MnemonicOperand.getToken();
+    return Error(Loc, "unknown mnemonic: " + Mnemonic);
+  }
+  case Match_Success:
+    Inst.setLoc(Loc);
+    Out.emitInstruction(Inst, *STI);
+    return false;
+  }
 }
 
 // Auto-generated by TableGen
 static unsigned MatchRegisterName(StringRef Name);
 static unsigned MatchRegisterAltName(StringRef Name);
+static void applyMnemonicAliases(StringRef &Mnemonic,
+                                 const FeatureBitset &Features,
+                                 unsigned VariantID);
 
 bool EraVMAsmParser::parseRegister(MCRegister &RegNo, SMLoc &StartLoc,
                                    SMLoc &EndLoc) {
@@ -257,30 +286,303 @@ bool EraVMAsmParser::parseRegister(MCRegister &RegNo, SMLoc &StartLoc,
 OperandMatchResultTy EraVMAsmParser::tryParseRegister(MCRegister &RegNo,
                                                       SMLoc &StartLoc,
                                                       SMLoc &EndLoc) {
-  if (getLexer().getKind() == AsmToken::Identifier) {
-    auto Name = getLexer().getTok().getIdentifier().lower();
-    RegNo = MatchRegisterName(Name);
-    if (RegNo == EraVM::NoRegister) {
-      RegNo = MatchRegisterAltName(Name);
-      if (RegNo == EraVM::NoRegister)
-        return MatchOperand_NoMatch;
-    }
+  if (!getLexer().is(AsmToken::Identifier))
+    return MatchOperand_NoMatch;
 
-    AsmToken const &T = getParser().getTok();
-    StartLoc = T.getLoc();
-    EndLoc = T.getEndLoc();
-    getLexer().Lex(); // eat register token
-
-    return MatchOperand_Success;
+  auto Name = getTok().getIdentifier().lower();
+  RegNo = MatchRegisterName(Name);
+  if (RegNo == EraVM::NoRegister) {
+    RegNo = MatchRegisterAltName(Name);
+    if (RegNo == EraVM::NoRegister)
+      return MatchOperand_NoMatch;
   }
 
-  return MatchOperand_ParseFail;
+  AsmToken const &T = getTok();
+  StartLoc = T.getLoc();
+  EndLoc = T.getEndLoc();
+  Lex(); // eat register token
+
+  return MatchOperand_Success;
+}
+
+static int parseExplicitCondition(StringRef Code) {
+  return StringSwitch<int>(Code)
+      .Cases("eq", "if_eq", EraVMCC::COND_E)
+      .Cases("lt", "if_lt", EraVMCC::COND_LT)
+      .Cases("gt", "if_gt", EraVMCC::COND_GT)
+      .Cases("ne", "if_not_eq", EraVMCC::COND_NE)
+      .Cases("ge", "if_ge", "if_gt_or_eq", EraVMCC::COND_GE)
+      .Cases("le", "if_le", EraVMCC::COND_LE)
+      .Default(EraVMCC::COND_INVALID);
+}
+
+bool EraVMAsmParser::parseNameWithSuffixes(StringRef Name, SMLoc NameLoc,
+                                           OperandVector &Operands) {
+  // Parses "<name>[!][.<cond>]", where name includes ".s" and possibly
+  // other dot-separated parts. Spaces are not allowed around "!".
+
+  // Make sure no spaces are between the tokens.
+  const char *ExpectedNextLocPtr = NameLoc.getPointer() + Name.size();
+  auto CheckNoSpaces = [&ExpectedNextLocPtr](const AsmToken &Tok) {
+    if (ExpectedNextLocPtr != Tok.getLoc().getPointer())
+      return false;
+
+    ExpectedNextLocPtr = Tok.getEndLoc().getPointer();
+    return true;
+  };
+
+  // From the lexer point of view, condition code can either be part of
+  // Name or be a separate AsmToken::Identifier separated from Name with
+  // AsmToken::Exclaim. For that reason, TryParseCC function ensures at most
+  // one condition code string is accepted (so instructions like "sub.lt!.ge"
+  // are rejected since ".ge" is not a valid operand).
+  int CondCode = EraVMCC::COND_INVALID;
+  auto TryParseCC = [&CondCode](const StringRef &MaybeCondStr) {
+    // Do not process condition code twice.
+    if (CondCode != EraVMCC::COND_INVALID)
+      return false;
+
+    CondCode = parseExplicitCondition(MaybeCondStr);
+    return CondCode != EraVMCC::COND_INVALID;
+  };
+
+  // Drop ".<cond>" suffix from Name, if any.
+  StringRef MaybeMnemonic, MaybeCondStr;
+  std::tie(MaybeMnemonic, MaybeCondStr) = Name.rsplit('.');
+  if (TryParseCC(MaybeCondStr))
+    Name = MaybeMnemonic;
+
+  Operands.push_back(EraVMOperand::CreateToken(Name, NameLoc));
+
+  if (getTok().is(AsmToken::Exclaim)) {
+    if (!CheckNoSpaces(getTok()))
+      return TokError("unexpected whitespace before '!'");
+    if (CondCode != EraVMCC::COND_INVALID)
+      return TokError("unexpected '!' after condition code");
+
+    Lex(); // eat "!" token
+    Operands.push_back(EraVMOperand::CreateToken("!", NameLoc));
+  }
+
+  if (getTok().is(AsmToken::Identifier) &&
+      getTok().getString().startswith(".") &&
+      TryParseCC(getTok().getString().drop_front(1))) {
+    if (!CheckNoSpaces(getTok()))
+      return TokError("unexpected whitespace before condition code");
+    Lex(); // eat ".<cond>" token
+  }
+
+  // If no condition code was parsed, set the default.
+  if (CondCode == EraVMCC::COND_INVALID)
+    CondCode = EraVMCC::COND_NONE;
+
+  const MCExpr *CondCodeExpr = createConstant(CondCode);
+  Operands.push_back(EraVMOperand::CreateImm(CondCodeExpr, NameLoc, NameLoc));
+
+  return false;
+}
+
+bool EraVMAsmParser::parseRegOperand(OperandVector &Operands) {
+  MCRegister RegNo = 0;
+  SMLoc StartLoc, EndLoc;
+  if (tryParseRegister(RegNo, StartLoc, EndLoc))
+    return true;
+
+  Operands.push_back(EraVMOperand::CreateReg(RegNo, StartLoc, EndLoc));
+  return false;
+}
+
+bool EraVMAsmParser::parseImmediateOperand(OperandVector &Operands) {
+  if (!getLexer().is(AsmToken::Integer))
+    return true;
+
+  const AsmToken &Tok = getTok();
+  const MCExpr *Expr = createConstant(Tok.getIntVal());
+  Operands.push_back(
+      EraVMOperand::CreateImm(Expr, Tok.getLoc(), Tok.getEndLoc()));
+  Lex();
+  return false;
+}
+
+bool EraVMAsmParser::parseRegisterWithAddend(MCRegister &RegNo, int &Addend) {
+  // If both register and addend are specified, let's only parse them
+  // in that order as both "r1 + 42" and "r1 - 42" are possible, but
+  // not "42 - r1", only "42 + r1" (as well as "-42 + r1").
+
+  int Multiplier = 1;
+
+  RegNo = 0;
+  Addend = 0;
+
+  // The register name is the first token, if it exists.
+  if (getLexer().is(AsmToken::Identifier)) {
+    SMLoc S, E;
+    if (tryParseRegister(RegNo, S, E))
+      return TokError("register name expected");
+  }
+
+  // "+" or "-" is mandatory if a register name was parsed and addend has to be
+  // parsed next, optional otherwise.
+  switch (getTok().getKind()) {
+  case AsmToken::RBrac:
+    // "]" is the next token - keep it and stop further processing.
+    // Return an error if and only if nothing was parsed at all.
+    if (RegNo == 0)
+      return TokError("empty subscript");
+    return false;
+  case AsmToken::Plus:
+    Multiplier = 1;
+    Lex(); // eat "+" token
+    break;
+  case AsmToken::Minus:
+    Multiplier = -1;
+    Lex(); // eat "-" token
+    break;
+  default:
+    // If a register was parsed and this is not the end of bracket-enclosed
+    // sub-expression, it should be followed by "+" or "-" token, otherwise
+    // these are optional.
+    if (RegNo)
+      return TokError("'+' or '-' expected");
+    break;
+  }
+
+  // Parse integer addend - at this point it is mandatory as the register-only
+  // case was already handled above.
+  if (!getLexer().is(AsmToken::Integer))
+    return TokError("integer addend expected");
+
+  Addend = Multiplier * getTok().getIntVal();
+  Lex(); // eat integer token
+
+  return false;
+}
+
+bool EraVMAsmParser::parseOperand(StringRef Mnemonic, OperandVector &Operands) {
+  OperandMatchResultTy Result =
+      MatchOperandParserImpl(Operands, Mnemonic, /*ParseForAllFeatures=*/true);
+  if (Result == llvm::MatchOperand_Success)
+    return false;
+  if (Result == MatchOperand_ParseFail)
+    return true;
+
+  MCRegister RegNo = 0;
+  SMLoc StartLoc, EndLoc;
+  Result = tryParseRegister(RegNo, StartLoc, EndLoc);
+  if (Result == llvm::MatchOperand_Success) {
+    Operands.push_back(EraVMOperand::CreateReg(RegNo, StartLoc, EndLoc));
+    return false;
+  }
+  if (Result == MatchOperand_ParseFail)
+    return true;
+
+  if (!parseImmediateOperand(Operands))
+    return false;
+
+  return TokError("cannot parse operand");
+}
+
+OperandMatchResultTy
+EraVMAsmParser::tryParseStackOperand(OperandVector &Operands) {
+  EraVM::MemOperandKind MemOpKind = EraVM::OperandStackAbsolute;
+  MCRegister RegNo = 0;
+  int Addend = 0;
+
+  if (!getLexer().is(AsmToken::Identifier))
+    return MatchOperand_NoMatch;
+
+  SMLoc StartOfOperand = getLexer().getLoc();
+  if (getTok().getString() != "stack")
+    return MatchOperand_NoMatch;
+  Lex(); // eat "stack" token
+
+  if (getTok().is(AsmToken::Minus)) {
+    MemOpKind = EraVM::OperandStackSPRelative;
+    Lex(); // eat "-" token
+  }
+
+  if (!getTok().is(AsmToken::LBrac)) {
+    TokError("expected '['");
+    return MatchOperand_ParseFail;
+  }
+  Lex(); // eat "[" token
+
+  if (parseRegisterWithAddend(RegNo, Addend))
+    return MatchOperand_ParseFail;
+
+  if (parseToken(AsmToken::RBrac, "']' expected"))
+    return MatchOperand_ParseFail;
+
+  Operands.push_back(EraVMOperand::CreateMem(&getContext(), MemOpKind, RegNo,
+                                             nullptr, Addend, StartOfOperand,
+                                             getTok().getEndLoc()));
+
+  return MatchOperand_Success;
+}
+
+OperandMatchResultTy
+EraVMAsmParser::tryParseCodeOperand(OperandVector &Operands) {
+  SMLoc StartOfOperand = getLexer().getLoc();
+  MCSymbol *Symbol = nullptr;
+  MCRegister RegNo = 0;
+  int Addend = 0;
+
+  // Decide if this is a code operand
+  SmallVector<AsmToken, 2> PeekedTokens(2);
+  getLexer().peekTokens(PeekedTokens);
+  if (getTok().is(AsmToken::At)) {
+    // "@symbol_name[...]"
+    if (!PeekedTokens[0].is(AsmToken::Identifier) ||
+        !PeekedTokens[1].is(AsmToken::LBrac))
+      return MatchOperand_NoMatch;
+
+    Lex(); // eat "@" token
+    Symbol = getContext().getOrCreateSymbol(getTok().getString());
+    Lex(); // eat constant symbol name
+    Lex(); // eat "[" token
+  } else {
+    // "code[...]"
+    if (!getTok().is(AsmToken::Identifier) ||
+        !PeekedTokens[0].is(AsmToken::LBrac) || getTok().getString() != "code")
+      return MatchOperand_NoMatch;
+
+    Lex(); // eat "code" token
+    Lex(); // eat "[" token
+  }
+
+  if (parseRegisterWithAddend(RegNo, Addend))
+    return MatchOperand_ParseFail;
+
+  if (parseToken(AsmToken::RBrac, "']' expected"))
+    return MatchOperand_ParseFail;
+
+  if (Symbol) {
+    // @symbol_name[reg + imm]
+    Operands.push_back(EraVMOperand::CreateMem(
+        &getContext(), EraVM::OperandCode, RegNo, Symbol, Addend,
+        StartOfOperand, getTok().getEndLoc()));
+  } else {
+    // code[...]
+    Operands.push_back(EraVMOperand::CreateMem(
+        &getContext(), EraVM::OperandCode, RegNo, nullptr, Addend,
+        StartOfOperand, getTok().getEndLoc()));
+  }
+
+  return MatchOperand_Success;
 }
 
 bool EraVMAsmParser::ParseInstruction(ParseInstructionInfo &Info,
                                       StringRef Name, SMLoc NameLoc,
                                       OperandVector &Operands) {
-  return false;
+  if (parseNameWithSuffixes(Name, NameLoc, Operands))
+    return true;
+
+  StringRef Mnemonic = static_cast<EraVMOperand &>(*Operands[0]).getToken();
+  applyMnemonicAliases(Mnemonic, getAvailableFeatures(), /*VariantID=*/0);
+  auto ParseOne = [this, Mnemonic, &Operands]() {
+    return parseOperand(Mnemonic, Operands);
+  };
+  return parseMany(ParseOne);
 }
 
 bool EraVMAsmParser::ParseDirective(AsmToken DirectiveID) {
@@ -342,5 +644,5 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMAsmParser() {
 
 unsigned EraVMAsmParser::validateTargetOperandClass(MCParsedAsmOperand &AsmOp,
                                                     unsigned Kind) {
-  return Match_Success;
+  return Match_InvalidOperand;
 }

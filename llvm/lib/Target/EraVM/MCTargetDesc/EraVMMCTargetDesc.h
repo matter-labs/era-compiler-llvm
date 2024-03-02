@@ -30,6 +30,8 @@ class MCTargetOptions;
 class MCObjectTargetWriter;
 class MCStreamer;
 class MCTargetStreamer;
+class MCInst;
+class MCSymbol;
 
 MCTargetStreamer *createEraVMTargetAsmStreamer(MCStreamer &S,
                                                formatted_raw_ostream &OS,
@@ -47,6 +49,39 @@ MCAsmBackend *createEraVMMCAsmBackend(const Target &T,
                                       const MCTargetOptions &Options);
 
 std::unique_ptr<MCObjectTargetWriter> createEraVMELFObjectWriter(uint8_t OSABI);
+
+namespace EraVM {
+/// At now, stack operands are handled specially:
+/// * At the machine instruction level, many instructions may have 6 source
+///   operand kinds and 4 destination operand kinds, with each combination
+///   yielding a separate 11-bit opcode. On both "sides", three of these kinds
+///   represent the stack-referring operands (absolute, SP-relative,
+///   SP-modifying).
+/// * This backend has multiple instructions defined for each "base
+///   instruction" as well (such as ADDrrr_s for the three-register form of
+///   ADD and ADDsrr_s for the form with stack-referring input operand), but
+///   no distinction is made for different stack-operands (though, they are
+///   differentiated from non-stack operands).
+/// * For this reason, stack-referring operands are encoded at the MC level
+///   as a (marker, reg, addend) triple, where
+///   * reg+addend comprise the "address" (the "subscript" inside "[...]" such
+///     as "stack-=[r1+42]")
+///   * addend is either MCConstantExpr, MCSymbolRefExpr or the sum of these,
+///     in this particular order
+///   * marker is SP register for SP-relative addressing (stack-[...]),
+///     R0 register for SP-modyfing addressing (stack-=[...] or stack+=[...])
+///     and dummy integer immediate for absolute addressing
+///   * a few special cases exist - see appendMCOperands function.
+enum MemOperandKind {
+  OperandCode,
+  OperandStackAbsolute,
+  OperandStackSPRelative,
+  OperandStackSPModifying,
+};
+
+void appendMCOperands(MCContext &Ctx, MCInst &MI, MemOperandKind Kind,
+                      unsigned Reg, const MCSymbol *Symbol, int Addend);
+} // namespace EraVM
 
 } // namespace llvm
 

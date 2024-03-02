@@ -179,3 +179,74 @@ MCAsmBackend *llvm::createEraVMMCAsmBackend(const Target &T,
                                             const MCTargetOptions &Options) {
   return new EraVMAsmBackend(STI, ELF::ELFOSABI_STANDALONE);
 }
+
+static MCOperand createStackOperandMarker(EraVM::MemOperandKind Kind) {
+  switch (Kind) {
+  default:
+    llvm_unreachable("Stack operand kind expected");
+  case EraVM::OperandStackAbsolute:
+    return MCOperand::createImm(0);
+  case EraVM::OperandStackSPRelative:
+    return MCOperand::createReg(EraVM::SP);
+  case EraVM::OperandStackSPModifying:
+    return MCOperand::createReg(EraVM::R0);
+  }
+}
+
+static MCOperand createSymbolWithAddend(MCContext &Ctx, const MCSymbol *Symbol,
+                                        int Addend) {
+  // Use just an immediate operand, if possible.
+  if (!Symbol)
+    return MCOperand::createImm(Addend);
+
+  // Fallback to constructing Symbol + Addend expression.
+  const MCExpr *AddendExpr = MCConstantExpr::create(Addend, Ctx);
+  const MCExpr *SymbolExpr = MCSymbolRefExpr::create(Symbol, Ctx);
+  const MCExpr *Expr = MCBinaryExpr::createAdd(SymbolExpr, AddendExpr, Ctx);
+  return MCOperand::createExpr(Expr);
+}
+
+static void appendCodeMCOperands(MCContext &Ctx, MCInst &MI, unsigned Reg,
+                                 const MCSymbol *Symbol, int Addend) {
+  // If address is a compile-time constant (possibly after relocations),
+  // use r0 as a base register.
+  if (Reg == 0)
+    Reg = EraVM::R0;
+
+  // First sub-operand: base register.
+  MI.addOperand(MCOperand::createReg(Reg));
+
+  // Second sub-operand: Symbol+Addend (effectively an immediate integer operand
+  // after all relocations).
+  MI.addOperand(createSymbolWithAddend(Ctx, Symbol, Addend));
+}
+
+static void appendStackMCOperands(MCContext &Ctx, MCInst &MI,
+                                  EraVM::MemOperandKind Kind, unsigned Reg,
+                                  const MCSymbol *Symbol, int Addend) {
+  // TODO Refactor internal encoding used by the backend
+  if (Reg == 0 && !Symbol)
+    Addend *= -1;
+
+  // First sub-operand: marker (whether this stack reference is absolute,
+  // SP-relative or SP-modifying).
+  MI.addOperand(createStackOperandMarker(Kind));
+
+  // Second sub-operand: base register (marker immediate operand, if none).
+  if (Reg == 0)
+    MI.addOperand(MCOperand::createImm(0));
+  else
+    MI.addOperand(MCOperand::createReg(Reg));
+
+  // Third sub-operand: Symbol+Addend (effectively an immediate integer operand
+  // after all relocations).
+  MI.addOperand(createSymbolWithAddend(Ctx, Symbol, Addend));
+}
+
+void EraVM::appendMCOperands(MCContext &Ctx, MCInst &MI, MemOperandKind Kind,
+                             unsigned Reg, const MCSymbol *Symbol, int Addend) {
+  if (Kind == OperandCode)
+    appendCodeMCOperands(Ctx, MI, Reg, Symbol, Addend);
+  else
+    appendStackMCOperands(Ctx, MI, Kind, Reg, Symbol, Addend);
+}

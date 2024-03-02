@@ -152,13 +152,26 @@ def spadv_op : Operand<i256>, IntImmLeaf<i256, [{
 def jmptarget : Operand<OtherVT>;
 
 // Address operands
+
+def CodeOperand : AsmOperandClass {
+  let Name = "CodeReference";
+  let ParserMethod = "tryParseCodeOperand";
+}
+
 def memop : Operand<i256> {
   let PrintMethod = "printMemOperand";
+  let ParserMatchClass = CodeOperand;
   let MIOperandInfo = (ops GR256, i16imm);
+}
+
+def StackOperand : AsmOperandClass {
+  let Name = "StackReference";
+  let ParserMethod = "tryParseStackOperand";
 }
 
 def stackop : Operand<i256> {
   let PrintMethod = "printStackOperand";
+  let ParserMatchClass = StackOperand;
   let MIOperandInfo = (ops GRStack, GR256, i16imm);
 }
 
@@ -1226,6 +1239,18 @@ def     : Pat<(store_heapaux GR256:$rs1, GR256:$rs0),
               (ST2 GR256:$rs0, $rs1, 0)>;
 def     : Pat<(store_heapaux GR256:$rs1, imm16:$addr),
               (ST2i imm16:$addr, $rs1, 0)>;
+
+def : MnemonicAlias<"uma.fat_ptr_read", "ld">;
+def : MnemonicAlias<"uma.fat_ptr_read.inc", "ld.inc">;
+def : MnemonicAlias<"uma.heap_read", "ld.1">;
+def : MnemonicAlias<"uma.aux_heap_read", "ld.2">;
+def : MnemonicAlias<"uma.inc.heap_read", "ld.1.inc">;
+def : MnemonicAlias<"uma.inc.aux_heap_read", "ld.2.inc">;
+def : MnemonicAlias<"uma.heap_write", "st.1">;
+def : MnemonicAlias<"uma.aux_heap_write", "st.2">;
+def : MnemonicAlias<"uma.inc.heap_write", "st.1.inc">;
+def : MnemonicAlias<"uma.inc.aux_heap_write", "st.2.inc">;
+
 //===----------------------------------------------------------------------===//
 // Control flow instructions
 //===----------------------------------------------------------------------===//
@@ -1266,6 +1291,9 @@ def RETURN : IRet<52, RFErr, (ins GR256:$rs0), "ret.ok.to_label", "$rs0, @DEFAUL
 def REVERT : IRet<53, RFErr, (ins GR256:$rs0), "ret.revert.to_label", "$rs0, @DEFAULT_FAR_REVERT",
                   [(EraVMrevert GR256:$rs0)]>;
 }
+
+def : MnemonicAlias<"ret", "ret.ok">;
+def : MnemonicAlias<"revert", "ret.revert">;
 
 //===----------------------------------------------------------------------===//
 // Constants materialization
@@ -1314,6 +1342,9 @@ def SLDrr : ILogR<47, DstReg, (outs GR256:$rd0), (ins GR256:$rs0),
 def TLDrr : ILogR<471, DstReg, (outs GR256:$rd0), (ins GR256:$rs0),
                   "tload", "$rs0, $rd0", []> {
 }
+
+def : MnemonicAlias<"log.sread", "sload">;
+
 //===----------------------------------------------------------------------===//
 // Fat Pointer
 //===----------------------------------------------------------------------===//
@@ -1387,6 +1418,8 @@ def : Pat<(store_stack (add GR256:$rs0, neg_imm16:$imm), stackaddr:$dst0),
           (SUBxrs_p (negate_imm imm:$imm), GR256:$rs0, stackaddr:$dst0)>;
 def : Pat<(sub GR256:$rs0, neg_imm16:$imm), (ADDirr_p (negate_imm imm:$imm), GR256:$rs0)>;
 def : Pat<(add GR256:$rs0, neg_imm16:$imm), (SUBxrr_p (negate_imm imm:$imm), GR256:$rs0)>;
+
+def : MnemonicAlias<"log.swrite", "sstore">;
 
 //===----------------------------------------------------------------------===//
 // Non-instruction patterns
