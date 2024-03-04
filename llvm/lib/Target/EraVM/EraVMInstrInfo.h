@@ -272,6 +272,8 @@ public:
 
   unsigned getInstSizeInBytes(const MachineInstr &MI) const override;
 
+  bool isPredicated(const MachineInstr &MI) const override;
+
   bool isPredicable(const MachineInstr &MI) const override;
 
   bool isProfitableToIfCvt(MachineBasicBlock &MBB, unsigned NumCycles,
