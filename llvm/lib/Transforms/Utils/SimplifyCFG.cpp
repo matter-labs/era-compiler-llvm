@@ -5953,9 +5953,14 @@ SwitchLookupTable::SwitchLookupTable(
   ArrayType *ArrayTy = ArrayType::get(ValueType, TableSize);
   Constant *Initializer = ConstantArray::get(ArrayTy, TableContents);
 
+  unsigned AddrSpace = 0;
+  if (Triple(M.getTargetTriple()).isEraVM())
+    AddrSpace = 4;
+
   Array = new GlobalVariable(M, ArrayTy, /*isConstant=*/true,
                              GlobalVariable::PrivateLinkage, Initializer,
-                             "switch.table." + FuncName);
+                             "switch.table." + FuncName, nullptr,
+                             llvm::GlobalValue::NotThreadLocal, AddrSpace);
   Array->setUnnamedAddr(GlobalValue::UnnamedAddr::Global);
   // Set the alignment to that of an array items. We will be only loading one
   // value out of it.
@@ -6615,8 +6620,7 @@ bool SimplifyCFGOpt::simplifySwitch(SwitchInst *SI, IRBuilder<> &Builder) {
   // optimisation pipeline.
   // EraVM local begin
   // TODO: CPR-940 Support const arrays.
-  if (!Triple(BB->getModule()->getTargetTriple()).isEraVM() &&
-      !Triple(BB->getModule()->getTargetTriple()).isEVM())
+  if (!Triple(BB->getModule()->getTargetTriple()).isEVM())
     if (Options.ConvertSwitchToLookupTable &&
         SwitchToLookupTable(SI, Builder, DTU, DL, TTI))
       return requestResimplify();
