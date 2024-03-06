@@ -274,10 +274,18 @@ void EraVMBytesToCells::convertCodeAddressMachineInstr(
     MachineInstr &MI = *MO0Reg.getParent();
     // combine register with immediate value
     const Register NewVR = MRI->createVirtualRegister(&EraVM::GR256RegClass);
+    unsigned Opcode = EraVM::ADDirr_s;
+    int64_t Offset = MO1Global.getOffset();
+    if (Offset < 0) {
+      // Use sub instead of add for negative offsets, as negative immediate
+      // values are not valid in addressing mode.
+      Opcode = EraVM::SUBxrr_s;
+      Offset = -Offset;
+    }
     BuildMI(*MI.getParent(), MI.getIterator(), MI.getDebugLoc(),
-            TII->get(EraVM::ADDirr_s))
+            TII->get(Opcode))
         .addDef(NewVR)
-        .addImm(MO1Global.getOffset())
+        .addImm(Offset)
         .addReg(MO0Reg.getReg())
         .addImm(EraVMCC::COND_NONE);
     MO0Reg.ChangeToRegister(NewVR, false);
