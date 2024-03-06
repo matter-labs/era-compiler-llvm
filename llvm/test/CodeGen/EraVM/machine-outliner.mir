@@ -55,7 +55,7 @@ body:             |
     $r1 = ORrrr_s $r1, $r2, 0
     $r1 = ORrrr_s $r1, $r2, 0
     $r1 = ADDirr_s i256 1, $r0, 2, implicit $flags
-    RET
+    RET 0
 
 ...
 ---
@@ -100,7 +100,7 @@ body:             |
     $r1 = ORrrr_s $r1, $r2, 0
     $r1 = ORrrr_s $r1, $r2, 0
     $r1 = ORrrr_s $r1, $r2, 0
-    RET
+    RET 0
 
 ...
 ---
@@ -150,7 +150,7 @@ body:             |
     $r2 = ADDsrr_s $sp, 0, -1, $r0, 0
     $r2 = ADDsrr_s $sp, 0, -1, $r0, 0
     $r2 = ADDsrr_s $sp, 0, -1, $r0, 0
-    RET
+    RET 0
 
 ...
 ---
@@ -204,7 +204,7 @@ body:             |
     $r1 = XORrrr_s $r1, $r2, 0
     $r1 = XORrrr_s $r1, $r2, 0
     $r1 = XORrrr_s $r1, $r2, 0
-    RET
+    RET 0
 
 # CHECK-LABEL: name: OUTLINED_FUNCTION_0
 # CHECK-LABEL: bb.0:

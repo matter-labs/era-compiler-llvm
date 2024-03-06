@@ -36,6 +36,6 @@ body:             |
     %2:gr256 = ADDrrr_v %0:gr256, %1:gr256, i256 0, implicit-def $flags
     %3:gr256 = SELrrr killed %2:gr256, %0:gr256, i256 2, implicit $flags
     $r1 = COPY killed %3
-    RET implicit killed $r1
+    RET 0, implicit killed $r1
 
 ...

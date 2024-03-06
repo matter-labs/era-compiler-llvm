@@ -66,7 +66,7 @@ body:             |
     ADDsrs_s $sp, 0, -1, $r1, $sp, 0, -1, 0
     $r1 = ORrrr_s $r1, $r2, 0
     $r1 = ORrrr_s $r1, $r2, 0
-    RET
+    RET 0
 
 ...
 ---
@@ -101,7 +101,7 @@ body:             |
     ADDsrs_s $sp, 0, -1, $r1, $sp, 0, -1, 0
     $r1 = ORrrr_s $r1, $r2, 0
     $r1 = ORrrr_s $r1, $r2, 0
-    RET
+    RET 0
   bb.2:
     liveins: $r1, $r2
     dead $r3 = SUBrrr_v $r1, $r0, i256 0, implicit-def $flags
@@ -112,14 +112,14 @@ body:             |
     ADDrrs_s $r1, $r0, $sp, 0, -1, 0
     ADDrrs_s $r1, $r0, $sp, 0, -1, 0
     $r1 = XORrrr_s $r1, $r2, 0
-    RET
+    RET 0
   bb.4:
     liveins: $r1, $r2
     ADDrrs_s $r1, $r0, $sp, 0, -1, 0
     ADDrrs_s $r1, $r0, $sp, 0, -1, 0
     ADDrrs_s $r1, $r0, $sp, 0, -1, 0
     $r1 = XORrrr_s $r1, $r2, 0
-    RET
+    RET 0
 
 # CHECK-LABEL: name: OUTLINED_FUNCTION_0
 # CHECK-LABEL: bb.0:

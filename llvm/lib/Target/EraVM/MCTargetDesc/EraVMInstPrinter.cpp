@@ -49,6 +49,7 @@ void EraVMInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
   } else if (Op.isImm()) {
     O << Op.getImm();
   } else {
+    assert(Op.isExpr() && "expected expression");
     Op.getExpr()->print(O, &MAI);
   }
 }

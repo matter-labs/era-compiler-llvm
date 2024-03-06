@@ -193,61 +193,65 @@ class EraVMInstruction<
   let Pattern           = pattern;
 }
 
+let OperandType = "OPERAND_IMMEDIATE" in
+def i256imm : Operand<i256>;
+
+// Operand for printing out a condition code.
+// TODO: We really do not need here full i256
+def pred : PredicateOperand<i256, (ops i256imm), (ops (i256 0))> {
+  let PrintMethod = "printCCOperand";
+}
+
 class IForm <
   bits<8>  opcode,
   SourceMode as,
   DestMode ad,
-  dag outs,
-  dag ins,
+  dag oops,
+  dag inops,
+  string opc,
   string asmstr,
   list<dag> pattern
-> : EraVMInstruction<outs, ins, 8, asmstr, pattern>
+> : EraVMInstruction<oops, inops, 8, "", pattern>
 {
+  dag InOperandList  = !con(inops, (ins pred:$cc));
+  let AsmString      = !strconcat(opc, "${cc}", "\t", asmstr);
+}
+
+class IRet<bits<8> opcode, RetFlags flags, dag ins, string opc, string asmstr, list<dag> pattern>
+  : IForm <opcode, SrcNone, DstNone, (outs), ins, opc, asmstr, pattern > {
 }
 
 // TODO: CPR-1360 SP change is currently only allowed in NOPs.
 // It should be fixed in accordance with the spec.
-class INop<bits<8> opcode, dag ins, string asmstr, list<dag> pattern>
-  : IForm <opcode, SrcNone, DstNone, (outs), ins, asmstr, pattern > {
+class INop<bits<8> opcode, dag ins, string opc, string asmstr, list<dag> pattern>
+  : IForm <opcode, SrcNone, DstNone, (outs), ins, opc, asmstr, pattern > {
 }
 
-class IRet<bits<8> opcode, RetFlags flags, dag ins, string asmstr, list<dag> pattern>
-  : IForm <opcode, SrcNone, DstNone, (outs), ins, asmstr, pattern > {
+class ICondJump<bits<8> opcode, dag ins, string opc, string asmstr, list<dag> pattern>
+  : IForm <opcode, SrcNone, DstNone, (outs), ins, opc, asmstr, pattern> {
 }
 
-class IConditional<bits<8> opcode,
-                   SourceMode as,
-                   DestMode ad,
-                   dag outs,
-                   dag ins,
-                   string asmstr,
-                   list<dag> pattern>
-  : IForm <opcode, as, ad, outs, ins, asmstr, pattern > {
+// FIXME: Make this pseudo
+class IJump<bits<8> opcode, SourceMode as, dag ins, string opc, string asmstr, list<dag> pattern>
+  : EraVMInstruction<(outs), ins, 9, asmstr, pattern> {
+  let AsmString = !strconcat(opc, "\t", asmstr);
 }
 
-class ICondJump<bits<8> opcode, dag ins, string asmstr, list<dag> pattern>
-  : IConditional <opcode, SrcNone, DstNone, (outs), ins, asmstr, pattern> {
+class IUMA<bits<8> opcode, dag outs, dag ins, string opc, string asmstr, list<dag> pattern>
+  : IForm <opcode, SrcNone, DstNone, outs, ins, opc, asmstr, pattern> {
 }
 
-class IJump<bits<8> opcode, SourceMode as, dag ins, string asmstr, list<dag> pattern>
-  : IConditional <opcode, as, DstNone, (outs), ins, asmstr, pattern> {
+class IContextR<bits<8> opcode, dag outs, dag ins, string opc, string asmstr, list<dag> pattern>
+  : IForm <opcode, SrcNone, DstReg, outs, ins, opc, asmstr, pattern> {
 }
 
-class IUMA<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-  : IConditional <opcode, SrcNone, DstNone, outs, ins, asmstr, pattern> {
-}
-
-class IContextR<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-  : IConditional <opcode, SrcNone, DstReg, outs, ins, asmstr, pattern> {
-}
-
-class IContextS<bits<8> opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-  : IConditional <opcode, SrcNone, DstStack, outs, ins, asmstr, pattern> {
+class IContextS<bits<8> opcode, dag outs, dag ins, string opc, string asmstr, list<dag> pattern>
+  : IForm <opcode, SrcNone, DstStack, outs, ins, opc, asmstr, pattern> {
 }
 
 class ILogR<bits<8> opcode, DestMode ad, dag outs, dag ins,
-            string asmstr, list<dag> pattern>
-  : IConditional <opcode, SrcReg, ad, outs, ins, asmstr, pattern> {
+            string opc, string asmstr, list<dag> pattern>
+  : IForm <opcode, SrcReg, ad, outs, ins, opc, asmstr, pattern> {
 }
 
 class IBinary<bits<8> opcode,
@@ -257,9 +261,10 @@ class IBinary<bits<8> opcode,
               bit silent,
               dag outs,
               dag ins,
+              string opc,
               string asmstr,
               list<dag> pattern>
-  : IConditional <opcode, as, ad, outs, ins, asmstr, pattern >, PredRel {
+  : IForm <opcode, as, ad, outs, ins, opc, asmstr, pattern >, PredRel {
   string BaseOpcode;
   bit FlagSetting = silent;
   bit ReverseOperand = swap_operands;
@@ -276,9 +281,10 @@ class IBinaryR<bits<8> opcode,
                bit silent,
                dag outs,
                dag ins,
+               string opc,
                string asmstr,
                list<dag> pattern>
-  : IBinary <opcode, as, DstReg, swap_operands, silent, outs, ins, asmstr, pattern > {
+  : IBinary <opcode, as, DstReg, swap_operands, silent, outs, ins, opc, asmstr, pattern > {
   let DestAddrMode = ToReg.Value;
   let ResultAM = 0;
 }
@@ -289,9 +295,10 @@ class IBinaryS<bits<8> opcode,
                bit silent,
                dag outs,
                dag ins,
+               string opc,
                string asmstr,
                list<dag> pattern>
-  : IBinary <opcode, as, DstStack, swap_operands, silent, outs, ins, asmstr, pattern > {
+  : IBinary <opcode, as, DstStack, swap_operands, silent, outs, ins, opc, asmstr, pattern > {
   let DestAddrMode = ToStack.Value;
   let ResultAM = 3;
 }
@@ -301,9 +308,10 @@ class Irrr<bits<8> opcode,
            bit silent,
            dag outs,
            dag ins,
+           string opc,
            string asmstr,
            list<dag> pattern>
-  : IBinaryR<opcode, SrcReg, swap_operands, silent, outs, ins, asmstr, pattern> {
+  : IBinaryR<opcode, SrcReg, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let OperandAddrMode = OpndRR.Value;
   let OperandAM = 0;
 }
@@ -313,9 +321,10 @@ class Irrrr<bits<8> opcode,
             bit silent,
             dag outs,
             dag ins,
+            string opc,
             string asmstr,
             list<dag> pattern>
-  : Irrr<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
+  : Irrr<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let DestAddrMode = ToRegReg.Value;
   let OperandAM = 0;
 }
@@ -325,9 +334,10 @@ class Iirr<bits<8> opcode,
            bit silent,
            dag outs,
            dag ins,
+           string opc,
            string asmstr,
            list<dag> pattern>
-  : IBinaryR<opcode, SrcImm, swap_operands, silent, outs, ins, asmstr, pattern> {
+  : IBinaryR<opcode, SrcImm, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let OperandAddrMode = OpndIR.Value;
   let OperandAM = 1;
 }
@@ -337,9 +347,10 @@ class Iirrr<bits<8> opcode,
             bit silent,
             dag outs,
             dag ins,
+            string opc,
             string asmstr,
             list<dag> pattern>
-  : Iirr<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
+  : Iirr<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let DestAddrMode = ToRegReg.Value;
   let OperandAM = 1;
 }
@@ -350,9 +361,10 @@ class Imrr<bits<8> opcode,
            bit silent,
            dag outs,
            dag ins,
+           string opc,
            string asmstr,
            list<dag> pattern>
-  : IBinaryR<opcode, as, swap_operands, silent, outs, ins, asmstr, pattern> {
+  : IBinaryR<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let OperandAddrMode = OpndCR.Value;
   let OperandAM = 2;
 }
@@ -363,9 +375,10 @@ class Isrr<bits<8> opcode,
            bit silent,
            dag outs,
            dag ins,
+           string opc,
            string asmstr,
            list<dag> pattern>
-  : IBinaryR<opcode, as, swap_operands, silent, outs, ins, asmstr, pattern> {
+  : IBinaryR<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let OperandAddrMode = OpndSR.Value;
   let OperandAM = 3;
 }
@@ -376,9 +389,10 @@ class Imrrr<bits<8> opcode,
             bit silent,
             dag outs,
             dag ins,
+            string opc,
             string asmstr,
             list<dag> pattern>
-  : Imrr<opcode, as, swap_operands, silent, outs, ins, asmstr, pattern> {
+  : Imrr<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let DestAddrMode = ToRegReg.Value;
   let OperandAddrMode = OpndCR.Value;
   let OperandAM = 2;
@@ -390,9 +404,10 @@ class Isrrr<bits<8> opcode,
             bit silent,
             dag outs,
             dag ins,
+            string opc,
             string asmstr,
             list<dag> pattern>
-  : Isrr<opcode, as, swap_operands, silent, outs, ins, asmstr, pattern> {
+  : Isrr<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let DestAddrMode = ToRegReg.Value;
   let OperandAM = 3;
 }
@@ -402,9 +417,10 @@ class Irrs<bits<8> opcode,
            bit silent,
            dag outs,
            dag ins,
+           string opc,
            string asmstr,
            list<dag> pattern>
-  : IBinaryS<opcode, SrcReg, swap_operands, silent, outs, ins, asmstr, pattern> {
+  : IBinaryS<opcode, SrcReg, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let OperandAddrMode = OpndRR.Value;
   let OperandAM = 0;
 }
@@ -414,9 +430,10 @@ class Irrsr<bits<8> opcode,
             bit silent,
             dag outs,
             dag ins,
+            string opc,
             string asmstr,
             list<dag> pattern>
-  : Irrs<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
+  : Irrs<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let DestAddrMode = ToStackReg.Value;
   let OperandAM = 0;
 }
@@ -426,9 +443,10 @@ class Iirs<bits<8> opcode,
            bit silent,
            dag outs,
            dag ins,
+           string opc,
            string asmstr,
            list<dag> pattern>
-  : IBinaryS<opcode, SrcImm, swap_operands, silent, outs, ins, asmstr, pattern> {
+  : IBinaryS<opcode, SrcImm, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let OperandAddrMode = OpndIR.Value;
   let OperandAM = 1;
 }
@@ -438,9 +456,10 @@ class Iirsr<bits<8> opcode,
             bit silent,
             dag outs,
             dag ins,
+            string opc,
             string asmstr,
             list<dag> pattern>
-  : Iirs<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
+  : Iirs<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let DestAddrMode = ToStackReg.Value;
   let OperandAM = 1;
 }
@@ -451,9 +470,10 @@ class Imrs<bits<8> opcode,
            bit silent,
            dag outs,
            dag ins,
+           string opc,
            string asmstr,
            list<dag> pattern>
-  : IBinaryS<opcode, as, swap_operands, silent, outs, ins, asmstr, pattern> {
+  : IBinaryS<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let OperandAddrMode = OpndCR.Value;
   let OperandAM = 2;
 }
@@ -464,9 +484,10 @@ class Isrs<bits<8> opcode,
            bit silent,
            dag outs,
            dag ins,
+           string opc,
            string asmstr,
            list<dag> pattern>
-  : IBinaryS<opcode, as, swap_operands, silent, outs, ins, asmstr, pattern> {
+  : IBinaryS<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let OperandAddrMode = OpndSR.Value;
   let OperandAM = 3;
 }
@@ -477,9 +498,10 @@ class Imrsr<bits<8> opcode,
             bit silent,
             dag outs,
             dag ins,
+            string opc,
             string asmstr,
             list<dag> pattern>
-  : Imrs<opcode, as, swap_operands, silent, outs, ins, asmstr, pattern> {
+  : Imrs<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let DestAddrMode = ToStackReg.Value;
   let OperandAM = 2;
 }
@@ -490,9 +512,10 @@ class Isrsr<bits<8> opcode,
             bit silent,
             dag outs,
             dag ins,
+            string opc,
             string asmstr,
             list<dag> pattern>
-  : Isrs<opcode, as, swap_operands, silent, outs, ins, asmstr, pattern> {
+  : Isrs<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let DestAddrMode = ToStackReg.Value;
   let OperandAM = 3;
 }
@@ -516,6 +539,6 @@ def CFNormal         : CallFlags<0b0000>;
 def CFDelegate       : CallFlags<0b0001>;
 def CFMimic          : CallFlags<0b0010>;
 
-class ICall<bits<8> opcode, CallFlags flags, dag ins, string asmstr, list<dag> pattern>
-  : IForm <opcode, SrcNone, DstNone, (outs), ins, asmstr, pattern > {
+class ICall<bits<8> opcode, CallFlags flags, dag ins, string opc, string asmstr, list<dag> pattern>
+  : IForm <opcode, SrcNone, DstNone, (outs), ins, opc, asmstr, pattern > {
 }
