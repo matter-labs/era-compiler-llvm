@@ -273,12 +273,19 @@ void EraVMBytesToCells::convertCodeAddressMachineInstr(
   // CPR-1280: update assembly to support this pattern, and remove this handling
   if (MO0Reg.isReg() && MO1Global.isGlobal() && MO1Global.getOffset() != 0) {
     MachineInstr &MI = *MO0Reg.getParent();
+    unsigned Opcode = EraVM::ADDirr_s;
+    int64_t Offset = MO1Global.getOffset();
+    if (Offset < 0) {
+      Opcode = EraVM::SUBxrr_s;
+      Offset = -Offset;
+    }
+
     // combine register with immediate value
     const Register NewVR = MRI->createVirtualRegister(&EraVM::GR256RegClass);
     BuildMI(*MI.getParent(), MI.getIterator(), MI.getDebugLoc(),
-            TII->get(EraVM::ADDirr_s))
+            TII->get(Opcode))
         .addDef(NewVR)
-        .addImm(MO1Global.getOffset())
+        .addImm(Offset)
         .addReg(MO0Reg.getReg())
         .addImm(EraVMCC::COND_NONE);
     MO0Reg.ChangeToRegister(NewVR, false);
