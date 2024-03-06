@@ -9,7 +9,7 @@ target triple = "eravm"
 
 ; CHECK-LABEL: consti_loadconst_neg_offset
 define i256 @consti_loadconst_neg_offset(i256 %idx) nounwind {
-  ; CHECK: add -1, r1, r1
+  ; CHECK: sub.s 1, r1, r1
   ; CHECK: add @const[r1], r0, r1
   %sub = add nsw i256 %idx, -1
   %gep = getelementptr inbounds [10 x i256], ptr addrspace(4) @const, i256 0, i256 %sub
