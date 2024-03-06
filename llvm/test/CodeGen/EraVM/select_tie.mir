@@ -48,7 +48,7 @@ body:             |
     dead %4:gr256 = SUBrrr_v killed %2, killed %3, i256 0, implicit-def $flags
     %5:gr256 = SELrrr killed %0, killed %1, i256 2, implicit $flags
     $r1 = COPY killed %5
-    RET implicit killed $r1
+    RET 0, implicit killed $r1
 ...
 ---
 # CHECK-LABEL: LeftKilled
@@ -83,7 +83,7 @@ body:             |
     dead %4:gr256 = SUBrrr_v killed %2, %3, i256 0, implicit-def $flags
     %5:gr256 = SELrrr killed %0, %1, i256 2, implicit $flags
     $r1 = COPY killed %5
-    RET implicit killed $r1
+    RET 0, implicit killed $r1
 ...
 ---
 # CHECK-LABEL: RightKilled
@@ -118,5 +118,5 @@ body:             |
     dead %4:gr256 = SUBrrr_v killed %2, %3, i256 0, implicit-def $flags
     %5:gr256 = SELrrr %0, killed %1, i256 2, implicit $flags
     $r1 = COPY killed %5
-    RET implicit killed $r1
+    RET 0, implicit killed $r1
 ...

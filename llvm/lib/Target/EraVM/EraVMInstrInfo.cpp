@@ -308,7 +308,7 @@ bool EraVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
 
     // Working from the bottom, when we see a non-terminator
     // instruction, we're done.
-    if (!isUnpredicatedTerminator(*I))
+    if (!I->isTerminator())
       break;
 
     // A terminator that isn't a branch can't easily be handled

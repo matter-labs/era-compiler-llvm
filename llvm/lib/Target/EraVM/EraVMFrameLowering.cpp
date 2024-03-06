@@ -46,7 +46,9 @@ void EraVMFrameLowering::emitPrologue(MachineFunction &MF,
   uint64_t NumCells = MFI.getStackSize() / 32;
 
   if (NumCells)
-    BuildMI(MBB, MBBI, DL, TII.get(EraVM::NOPSP)).addImm(NumCells).addImm(0);
+    BuildMI(MBB, MBBI, DL, TII.get(EraVM::NOPSP))
+        .addImm(NumCells)
+        .addImm(EraVMCC::COND_NONE);
 }
 
 void EraVMFrameLowering::emitEpilogue(MachineFunction &MF,
@@ -84,7 +86,7 @@ MachineBasicBlock::iterator EraVMFrameLowering::eliminateCallFramePseudoInstr(
         if (Amount)
           New = BuildMI(MF, Old.getDebugLoc(), TII.get(EraVM::NOPSP))
                     .addImm(-Amount)
-                    .addImm(0);
+                    .addImm(EraVMCC::COND_NONE);
       }
 
       if (New) {
@@ -102,7 +104,7 @@ MachineBasicBlock::iterator EraVMFrameLowering::eliminateCallFramePseudoInstr(
       MachineInstr &Old = *I;
       MachineInstr *New = BuildMI(MF, Old.getDebugLoc(), TII.get(EraVM::NOPSP))
                               .addImm(CalleeAmt)
-                              .addImm(0);
+                              .addImm(EraVMCC::COND_NONE);
       // The SRW implicit def is dead.
       New->getOperand(3).setIsDead();
 

@@ -119,6 +119,6 @@ body:             |
     %2:grptr = PHI %1, %bb.2, %0, %bb.1
     %6:gr256 = LD killed %2, i256 0
     $r1 = COPY killed %6
-    RET implicit killed $r1
+    RET i256 0, implicit killed $r1
 
 ...

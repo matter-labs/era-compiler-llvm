@@ -140,7 +140,7 @@ body:             |
   bb.2.return:
     %0:gr256 = PHI %9, %bb.0, %4, %bb.3
     $r1 = COPY %0
-    RET implicit $r1
+    RET 0, implicit $r1
 
   bb.3.exponent_loop_body:
     successors: %bb.2(0x04000000), %bb.3(0x7c000000)

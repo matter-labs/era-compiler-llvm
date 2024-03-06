@@ -73,6 +73,7 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
             .addReg(ABIReg)
             .add(MI.getOperand(1))
             .add(MI.getOperand(2))
+            .addImm(EraVMCC::COND_NONE)
             .copyImplicitOps(MI);
         PseudoInst.push_back(&MI);
       } else if (MI.getOpcode() == EraVM::CALL) {
@@ -87,6 +88,7 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
           BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
                   TII->get(EraVM::THROW))
               .addReg(EraVM::R1)
+              .addImm(EraVMCC::COND_NONE)
               .copyImplicitOps(MI);
         } else {
           // One of the problem: the backend cannot restrict frontend to not
@@ -101,6 +103,7 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
               .addExternalSymbol(
                   "DEFAULT_UNWIND") // Linker inserts a basic block
                                     // which bubbles up the exception.
+              .addImm(EraVMCC::COND_NONE)
               .copyImplicitOps(MI);
         }
 
