@@ -7,6 +7,6 @@ define ptr addrspace(3) @test(ptr addrspace(3) %addr) {
 ; CHECK-LABEL: test
 ; CHECK:         %0:grptr = fatptr COPY $r1
 ; CHECK-NEXT:    $r1 = COPY %0
-; CHECK-NEXT:    RET implicit $r1
+; CHECK-NEXT:    RET i256 0, implicit $r1
   ret ptr addrspace(3) %addr
 }

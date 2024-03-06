@@ -46,7 +46,7 @@ body:             |
     %3:gr256 = SUBrrr_s %0, %1, i256 0
     %4:gr256 = ADDrrr_s killed %2, killed %3, 0
     $r1 = COPY killed %4
-    RET implicit killed $r1
+    RET 0, implicit killed $r1
 
 ...
 ---
@@ -79,7 +79,7 @@ body:             |
     %3:gr256 = SUBrrr_s %0, %1, i256 0, implicit %0:gr256(tied-def 0)
     %4:gr256 = ADDrrr_s killed %2, killed %3, 0
     $r1 = COPY killed %4
-    RET implicit killed $r1
+    RET 0, implicit killed $r1
 
 ...
 ---
@@ -112,7 +112,7 @@ body:             |
     %3:gr256 = SUBrrr_v %0, %1, i256 0, implicit %0:gr256(tied-def 0), implicit-def $flags
     %4:gr256 = ADDrrr_s killed %2, killed %3, 0
     $r1 = COPY killed %4
-    RET implicit killed $r1
+    RET 0, implicit killed $r1
 
 ...
 ---
@@ -145,7 +145,7 @@ body:             |
     %3:gr256 = SUBrrr_v %0, %1, i256 0, implicit-def $flags, implicit %1:gr256(tied-def 0)
     %4:gr256 = ADDrrr_s killed %2, killed %3, 0
     $r1 = COPY killed %4
-    RET implicit killed $r1
+    RET 0, implicit killed $r1
 
 ...
 ---
@@ -178,7 +178,7 @@ body:             |
     %3:gr256 = SUBrrr_s %0, %1, i256 0, implicit $flags
     %4:gr256 = ADDrrr_s killed %2, killed %3, 0
     $r1 = COPY killed %4
-    RET implicit killed $r1
+    RET 0, implicit killed $r1
 
 ...
 ---
@@ -211,7 +211,7 @@ body:             |
     %3:gr256 = SUBrrr_v %0, %1, i256 0, implicit-def $flags
     %4:gr256 = ADDrrr_s killed %2, killed %3, 0
     $r1 = COPY killed %4
-    RET implicit killed $r1
+    RET 0, implicit killed $r1
 
 ...
 ---
@@ -245,7 +245,7 @@ body:             |
     %3:gr256 = SUBrrr_s %1, %0, i256 0
     %4:gr256 = ADDrrr_s killed %2, killed %3, 0
     $r1 = COPY killed %4
-    RET implicit killed $r1
+    RET 0, implicit killed $r1
 
 ...
 ---
@@ -279,7 +279,7 @@ body:             |
     %3:gr256 = SUBrrr_s %0, %1, i256 0, implicit %1:gr256(tied-def 0)
     %4:gr256 = ADDrrr_s killed %2, killed %3, 0
     $r1 = COPY killed %4
-    RET implicit killed $r1
+    RET 0, implicit killed $r1
 
 ...
 ---
@@ -313,4 +313,4 @@ body:             |
     %3:gr256 = SUBrrr_v %0, %1, i256 0, implicit-def $flags
     %4:gr256 = ADDrrr_s killed %2, killed %3, 0
     $r1 = COPY killed %4
-    RET implicit killed $r1
+    RET 0, implicit killed $r1

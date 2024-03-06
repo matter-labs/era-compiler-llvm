@@ -44,5 +44,5 @@ body:             |
     %4:gr256 = ADDrrr_s killed %0, killed %1, 0
     %5:gr256 = ADDrrr_s killed %4, killed %3, 0
     $r1 = COPY killed %5
-    RET implicit killed $r1
+    RET 0, implicit killed $r1
 ...

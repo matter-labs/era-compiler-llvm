@@ -87,6 +87,6 @@ body:             |
     %3:gr256 = LD killed %2, i256 0
     %4:gr256 = ADDrrr_s killed %1, killed %3, 0
     $r1 = COPY %4
-    RET implicit $r1
+    RET i256 0, implicit $r1
 
 ...
