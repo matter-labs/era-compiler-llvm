@@ -122,11 +122,12 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
         Register FromReg = MI.getOperand(1).getReg();
         if (ToReg != FromReg) {
           LLVM_DEBUG(dbgs() << "Found PTR_TO_INT: "; MI.dump());
-          auto NewMI = BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
-                               TII->get(EraVM::ADDrrr_s), ToReg)
-                           .addReg(FromReg)
-                           .addReg(EraVM::R0)
-                           .addImm(0);
+          [[maybe_unused]] auto NewMI =
+              BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
+                      TII->get(EraVM::ADDrrr_s), ToReg)
+                  .addReg(FromReg)
+                  .addReg(EraVM::R0)
+                  .addImm(0);
           LLVM_DEBUG(dbgs() << "Converting PTR_TO_INT to: "; NewMI->dump());
         }
         PseudoInst.push_back(&MI);

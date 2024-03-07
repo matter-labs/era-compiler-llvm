@@ -275,7 +275,7 @@ bool EraVMOptimizeSelectPreRA::tryFoldSelectZero(MachineBasicBlock &MBB) {
             : EraVM::in0Iterator(UseMI);
 
     // Now we fold the SELECT with its sole user.
-    auto *NewMI =
+    [[maybe_unused]] auto *NewMI =
         getFoldedInst(UseMI, UseMI, NonZeroOpnd, NonSelectOutOpnd->getReg(),
                       NewOp, CCNewMI, NonSelectOutOpnd->getReg());
     LLVM_DEBUG(dbgs() << "== Folding select:"; MI.dump();
@@ -332,9 +332,9 @@ bool EraVMOptimizeSelectPreRA::tryFoldAddToSelect(MachineBasicBlock &MBB) {
     Register TieReg = OutAddIsIn1Use ? EraVM::in0Iterator(UseMI)->getReg()
                                      : EraVM::in1Iterator(UseMI)->getReg();
 
-    auto *NewMI = getFoldedInst(UseMI, MI, EraVM::in0Range(MI),
-                                EraVM::in1Iterator(MI)->getReg(),
-                                MI.getOpcode(), CCNewMI, TieReg);
+    [[maybe_unused]] auto *NewMI = getFoldedInst(
+        UseMI, MI, EraVM::in0Range(MI), EraVM::in1Iterator(MI)->getReg(),
+        MI.getOpcode(), CCNewMI, TieReg);
     LLVM_DEBUG(dbgs() << "== Folding add:"; MI.dump();
                dbgs() << "       and use:"; UseMI.dump();
                dbgs() << "          into:"; NewMI->dump(););

@@ -100,13 +100,14 @@ EraVMStackAddressConstantPropagation::tryPropagateConstant(MachineInstr &MI) {
     int64_t In0Const = LHSRes ? LHSRes->Displacement : 0;
     int64_t In1Const = In1Res ? In1Res->Displacement : 0;
     Register NewVR = RegInfo->createVirtualRegister(&EraVM::GR256RegClass);
-    MachineInstr *NewMI = BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
-                                  TII->get(EraVM::ADDrrr_s))
-                              .addDef(NewVR)
-                              .addReg(In0Reg)
-                              .addReg(In1Reg)
-                              .addImm(EraVMCC::COND_NONE)
-                              .getInstr();
+    [[maybe_unused]] MachineInstr *NewMI =
+        BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
+                TII->get(EraVM::ADDrrr_s))
+            .addDef(NewVR)
+            .addReg(In0Reg)
+            .addReg(In1Reg)
+            .addImm(EraVMCC::COND_NONE)
+            .getInstr();
     LLVM_DEBUG(dbgs() << "Replace " << MI << "\n  with " << NewMI);
     ++NumInstructionsErased;
     MI.eraseFromParent();
