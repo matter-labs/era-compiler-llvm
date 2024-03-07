@@ -203,7 +203,7 @@ using MIIter = MachineBasicBlock::iterator;
 using RegisterLocation = std::pair<Register, StackLocation>;
 
 class StackModel {
-  static constexpr unsigned StackAccessDepthLimit = 16;
+  [[maybe_unused]] static constexpr unsigned StackAccessDepthLimit = 16;
   const LiveIntervals &LIS;
   const EVMInstrInfo *TII;
   MachineFunction *MF;
@@ -1016,6 +1016,7 @@ void StackModel::postProcess() {
 }
 
 void StackModel::dumpState() const {
+#ifndef NDEBUG
   LLVM_DEBUG(dbgs() << "X: " << XStack.size() << ", L: " << LStack.size()
                     << ", E: " << EStack.size() << '\n');
   for (const auto &Reg : LStack) {
@@ -1031,6 +1032,7 @@ void StackModel::dumpState() const {
                       << ", Depth: " << getPhysRegDepth(Reg) << '\n');
   }
   LLVM_DEBUG(dbgs() << '\n');
+#endif
 }
 
 unsigned StackModel::getDUPOpcode(unsigned Depth) {

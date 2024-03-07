@@ -150,9 +150,7 @@ EraVMBytesToCells::convertRegisterPointerToCells(MachineOperand &MOReg) {
   MachineInstr &MI = *MOReg.getParent();
   const Register Reg = MOReg.getReg();
   assert(Reg.isVirtual() && "Expecting virtual register");
-
-  MachineInstr *DefMI = MRI->getVRegDef(Reg);
-  assert(DefMI);
+  assert(MRI->getVRegDef(Reg));
 
   if (auto FoldedReg = foldWithLeftShift(Reg))
     return *FoldedReg;

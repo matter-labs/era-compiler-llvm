@@ -1,5 +1,7 @@
 ; RUN: llc -debug-only=isel %s -o /dev/null 2>&1 | FileCheck %s
 
+; REQUIRES: asserts
+
 target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
 target triple = "eravm"
 

@@ -92,9 +92,7 @@ static void convertImplicitDefToConstZero(MachineInstr *MI,
                                           MachineFunction &MF,
                                           LiveIntervals &LIS) {
   assert(MI->getOpcode() == TargetOpcode::IMPLICIT_DEF);
-
-  const auto *RegClass = MRI.getRegClass(MI->getOperand(0).getReg());
-  assert(RegClass == &EVM::GPRRegClass);
+  assert(MRI.getRegClass(MI->getOperand(0).getReg()) == &EVM::GPRRegClass);
   MI->setDesc(TII->get(EVM::CONST_I256));
   MI->addOperand(MachineOperand::CreateImm(0));
 }
