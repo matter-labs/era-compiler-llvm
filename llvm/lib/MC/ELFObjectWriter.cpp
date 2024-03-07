@@ -1070,6 +1070,8 @@ uint64_t ELFWriter::writeObject(MCAssembler &Asm, const MCAsmLayout &Layout) {
   // but just its .text section. The natural way would be to extract
   // it using objdump utility, but design of our FE doesn't admit
   // usage of any other tool besides the BE itslef.
+  if (!Ctx.getTargetTriple().isEVM())
+    writeHeader(Asm);
   // EVM local end
 
   // ... then the sections ...
@@ -1086,16 +1088,16 @@ uint64_t ELFWriter::writeObject(MCAssembler &Asm, const MCAsmLayout &Layout) {
     // Remember the offset into the file for this section.
     const uint64_t SecStart = align(Section.getAlignment());
 
-    // EVM local begin
     const MCSymbolELF *SignatureSymbol = Section.getGroup();
-    if (Section.getName() != ".text")
+    // EVM local begin
+    if (Ctx.getTargetTriple().isEVM()) {
+      if (Section.getName() == ".text")
+        writeSectionData(Asm, Section, Layout);
       continue;
+    }
     // EVM local end
 
     writeSectionData(Asm, Section, Layout);
-    // EVM local begin
-    continue;
-    // EVM local end
 
     uint64_t SecEnd = W.OS.tell();
     SectionOffsets[&Section] = std::make_pair(SecStart, SecEnd);
@@ -1128,7 +1130,8 @@ uint64_t ELFWriter::writeObject(MCAssembler &Asm, const MCAsmLayout &Layout) {
   }
 
   // EVM local begin
-  return W.OS.tell() - StartOffset;
+  if (Ctx.getTargetTriple().isEVM())
+    return W.OS.tell() - StartOffset;
   // EVM local end
 
   for (MCSectionELF *Group : Groups) {
