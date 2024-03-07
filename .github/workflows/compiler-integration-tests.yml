@@ -87,8 +87,7 @@ jobs:
              CodeGen/EraVM/select-zero-bitrot.mir;\
              CodeGen/EraVM/select-zero-flags.mir;\
              CodeGen/EraVM/hoist-flag-setting.mir;\
-             CodeGen/EraVM/fold-similar-instructions.mir;\
-             CodeGen/EraVM/memmove-expansion.ll" # https://github.com/llvm/llvm-project/issues/64197
+             CodeGen/EraVM/fold-similar-instructions.mir"
 
         run: |
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
