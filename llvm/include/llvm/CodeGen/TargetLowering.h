@@ -1985,7 +1985,9 @@ public:
   virtual unsigned getMinimumJumpTableEntries() const;
 
   /// Return lower limit of the density in a jump table.
-  unsigned getMinimumJumpTableDensity(bool OptForSize) const;
+  // EraVM local begin
+  virtual unsigned getMinimumJumpTableDensity(bool OptForSize) const;
+  // EraVM local end
 
   /// Return upper limit for number of entries in a jump table.
   /// Zero if no limit.
