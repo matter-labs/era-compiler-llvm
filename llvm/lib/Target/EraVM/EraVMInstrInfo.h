@@ -289,6 +289,8 @@ public:
   bool PredicateInstruction(MachineInstr &MI,
                             ArrayRef<MachineOperand> Pred) const override;
 
+  bool shouldTailMergeInIfCvt(bool OptForSize) const override;
+
   // Branch folding goodness
   bool
   reverseBranchCondition(SmallVectorImpl<MachineOperand> &Cond) const override;

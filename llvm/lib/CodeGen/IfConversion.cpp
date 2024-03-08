@@ -460,7 +460,8 @@ bool IfConverter::runOnMachineFunction(MachineFunction &MF) {
   bool BFChange = false;
   if (!PreRegAlloc) {
     // Tail merge tend to expose more if-conversion opportunities.
-    BranchFolder BF(true, false, MBFI, *MBPI, PSI);
+    bool TailMerge = TII->shouldTailMergeInIfCvt(MF.getFunction().hasOptSize());
+    BranchFolder BF(TailMerge, false, MBFI, *MBPI, PSI);
     BFChange = BF.OptimizeFunction(MF, TII, ST.getRegisterInfo());
   }
 

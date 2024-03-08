@@ -1153,6 +1153,11 @@ static bool probabilityIsProfitable(unsigned TrueCycles, unsigned FalseCycles,
          BranchProbability((TrueCycles - 1), (TrueCycles - FalseCycles + 1));
 }
 
+// Run TailMerge in if-conversion only if we are optimizing for size.
+bool EraVMInstrInfo::shouldTailMergeInIfCvt(bool OptForSize) const {
+  return OptForSize;
+}
+
 static bool isOptimizeForSize(MachineFunction &MF) {
   return MF.getFunction().hasOptSize();
 }

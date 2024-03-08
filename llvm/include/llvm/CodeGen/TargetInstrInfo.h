@@ -822,6 +822,9 @@ public:
     return true;
   }
 
+  /// Return whether TailMerge optimization should be run in if-conversion.
+  virtual bool shouldTailMergeInIfCvt(bool OptForSize) const { return true; }
+
   /// Return true if it's profitable to predicate
   /// instructions with accumulated instruction latency of "NumCycles"
   /// of the specified basic block, where the probability of the instructions
