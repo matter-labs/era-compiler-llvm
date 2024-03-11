@@ -1,8 +1,9 @@
-name: Compiler integration testing
-env:
-  COMPILER_LLVM_DEFAULT_BRANCH_NAME: "main"
+name: Integration tests
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
   workflow_dispatch:
     inputs:
@@ -24,91 +25,59 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  default:
+
+  test:
+    name: Integration tests
     runs-on: [ self-hosted, ci-runner-compiler ]
     container:
-      image: matterlabs/llvm_runner:latest
-      credentials:
-        username: ${{ secrets.DOCKERHUB_USER }}
-        password: ${{ secrets.DOCKERHUB_TOKEN }}
+      image: matterlabs/llvm_runner:ubuntu22-llvm15-latest
       options: -m 110g
     steps:
-      - uses: AutoModality/action-clean@v1.1.0
-      - name: Setting the environment
-        run: |
-          echo "LLVM_BUILD_TYPE=${{ github.event.inputs.llvm_build_type || 'release' }}" >> $GITHUB_ENV
-          echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_branch || 'main' }}" >> $GITHUB_ENV
-          echo "COMPILER_LLVM_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_branch }}" >> $GITHUB_ENV
 
-      - name: Checking out the compiler-tester repository
+      - name: Checkout compiler-tester
         uses: actions/checkout@v4
         with:
           repository: matter-labs/compiler-tester
-          ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
+          ref: ${{ github.event.inputs.compiler_tester_branch || 'main' }}
           submodules: recursive
           token: ${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}
-          path: "compiler-tester"
 
-      - name: Preparing the Docker environment
-        run: |
-          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf ssh://git@github.com/
-          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
-          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf git@github.com:
-          apt update
-          apt install -y ninja-build clang-tidy-15
+      - name: Checkout LLVM
+        uses: actions/checkout@v4
+        with:
+          path: "llvm"
+          ref: ${{ github.event.inputs.compiler_llvm_branch || github.head_ref }}
+          fetch-depth: 0
 
-      - name: Preparing LLVM.lock (pull request)
-        if: github.event_name == 'pull_request'
-        run: |
-          echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> LLVM.lock
-          echo "branch = \"${GITHUB_HEAD_REF}\"" >> LLVM.lock
-          mv -fv './LLVM.lock' './compiler-tester/LLVM.lock'
-
-      - name: Preparing LLVM.lock (workflow dispatch)
-        if: github.event_name == 'workflow_dispatch'
-        run: |
-          echo "url = \"https://github.com/matter-labs/compiler-llvm\"" >> './LLVM.lock'
-          echo "branch = \"${{ env.COMPILER_LLVM_BRANCH_NAME }}\"" >> './LLVM.lock'
-          mv -fv './LLVM.lock' './compiler-tester/LLVM.lock'
-
-      - name: Installing the LLVM manager and downloading the LLVM framework
-        working-directory: compiler-tester
-        run: |
-          cargo install compiler-llvm-builder
-          zkevm-llvm clone
-
-      - name: Building the LLVM framework (debug)
-        if: ${{ env.LLVM_BUILD_TYPE == 'debug' }}
-        working-directory: compiler-tester
-        run: |
-          zkevm-llvm build --debug --enable-tests --extra-args '\-DLLVM_ENABLE_WERROR=On'  '\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON'
-
-      - name: Building the LLVM framework (release)
-        if: ${{ env.LLVM_BUILD_TYPE == 'release' }}
-        working-directory: compiler-tester
-        run: |
-          zkevm-llvm build --enable-tests --extra-args '\-DLLVM_ENABLE_WERROR=On'   '\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON'
+      - name: Build LLVM
+        uses: ./llvm/.github/actions/build
+        with:
+          extra-args: "\\-DLLVM_ENABLE_WERROR=On \\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+          enable-tests: true
+          debug: ${{ github.event.inputs.llvm_build_type || 'release' }}
 
       - name: Checking with clang-tidy-diff.py
+        working-directory: llvm
         shell: bash
-        working-directory: compiler-tester/llvm
         run: |
           pwd
           echo $SHELL
           $SHELL --version
-          clang-tidy-15  --version
+          clang-tidy-15 --version
           git status
           git branch
           set -euxo pipefail
-          git diff -U0 remotes/origin/${{ env.COMPILER_LLVM_DEFAULT_BRANCH_NAME }} | ./clang-tools-extra/clang-tidy/tool/clang-tidy-diff_Zegar.py -p1 -clang-tidy-binary /usr/bin/clang-tidy-15   -path ../target-llvm/build-final/compile_commands.json
+          git diff -U0 remotes/origin/${{ github.event.repository.default_branch }} \
+            | ./clang-tools-extra/clang-tidy/tool/clang-tidy-diff_Zegar.py \
+              -p1 -clang-tidy-binary $(which clang-tidy) \
+              -path ../target-llvm/build-final/compile_commands.json
 
       - name: Running Lit tests with default options
-        working-directory: compiler-tester
         run: |
-          ninja -C './target-llvm/build-final' check-llvm
+          BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
+          ${BINDIR}/llvm-lit -vv -s './target-llvm/build-final/test' --xunit-xml-output test-results-default.xml
 
       - name: Running Lit EraVM tests with llc verification options
-        working-directory: compiler-tester
         env:
           LLC_OPTS:
             "--cgp-verify-bfi-updates \
@@ -127,12 +96,13 @@ jobs:
             --march=eravm"
           XFAILS:
             "CodeGen/EraVM/memcpy-expansion.ll"
+
         run: |
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
-          ./target-llvm/build-final/bin/llvm-lit -vv -s --xfail "${XFAILS}" "-Dllc=${BINDIR}/llc ${LLC_OPTS}" './llvm/llvm/test/CodeGen/EraVM/'
+          ${BINDIR}/llvm-lit -vv -s --xfail "${XFAILS}" "-Dllc=${BINDIR}/llc ${LLC_OPTS}" './llvm/llvm/test/CodeGen/EraVM/' \
+            --xunit-xml-output test-results-llc.xml
 
       - name: Running Lit tests with opt verification options
-        working-directory: compiler-tester
         env:
           OPT_OPTS:
             "--cgp-verify-bfi-updates \
@@ -164,27 +134,34 @@ jobs:
             Transforms/LoopFusion/simple.ll"
         run: |
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
-          ./target-llvm/build-final/bin/llvm-lit -vv -s --xfail "${XFAILS}" "-Dopt=${BINDIR}/opt ${OPT_OPTS}" './llvm/llvm/test/CodeGen/'
+          ${BINDIR}/llvm-lit -vv -s --xfail "${XFAILS}" "-Dopt=${BINDIR}/opt ${OPT_OPTS}" './llvm/llvm/test/CodeGen/' \
+            --xunit-xml-output test-results-opt.xml
+
+      - name: Upload results (Linux)
+        uses: EnricoMi/publish-unit-test-result-action@v2.12.0
+        with:
+          check_name: Lit Tests Results
+          files: test-results-*.xml
+          action_fail_on_inconclusive: true
 
       - name: Building and running the compiler tester
         id: compiler_tester_run
-        working-directory: compiler-tester
+        env:
+          RUST_BACKTRACE: "full"
         run: |
-          export RUST_BACKTRACE='full'
-          export LLVM_SYS_150_PREFIX="$(pwd)/target-llvm/target-final/"
+          export LLVM_SYS_150_PREFIX="$(pwd)/target-llvm/target-final"
+          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
           cargo build --verbose --release --bin 'compiler-tester'
           cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/era-compiler-solidity-*/*/Cargo.toml --target-dir './target-zksolc/'
           cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/era-compiler-vyper-*/*/Cargo.toml --target-dir './target-zkvyper/'
-
           ./target/release/compiler-tester \
             --zksolc './target-zksolc/release/zksolc' \
-            --zkvyper './target-zkvyper/release/zkvyper' \
-            --mode=${{ env.COMPILER_TESTER_MODE }}
+            --zkvyper './target-zkvyper/release/zkvyper'
 
       - uses: 8398a7/action-slack@v3
         with:
           status: ${{ job.status }}
-          fields: repo,commit,author,action,eventName,ref,workflow,job,took,pullRequest # selectable (default: repo,message)
+          fields: repo,commit,author,action,eventName,ref,workflow,job,took,pullRequest
         env:
-          SLACK_WEBHOOK_URL: ${{ secrets.MATTERMOST_WEBHOOK }} # required
-        if: always() # Pick up events even if the job fails or is canceled.
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+        if: always()
