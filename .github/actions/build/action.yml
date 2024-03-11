@@ -25,6 +25,11 @@ runs:
       run: brew install cmake ninja
       shell: ${{ runner.os == 'Windows' && 'msys2 {0}' || 'bash' }}
 
+    - name: Prepare ccache installation
+      if: runner.os == 'Linux'
+      shell: 'bash'
+      run: apt update
+
     - name: Define build target
       id: build-target
       if: inputs.target != ''
@@ -54,7 +59,7 @@ runs:
         save: ${{ github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/v') }}
 
     - name: Build LLVM
-      uses: nick-fields/retry@v2
+      uses: nick-fields/retry@v3
       env:
         CCACHE_BASEDIR: ${{ github.workspace }}
         CCACHE_NOHASHDIR: "true"
@@ -62,10 +67,8 @@ runs:
         LIBSTDCPP_SOURCE_PATH: "C:/a/_temp/msys64/mingw64/lib/libstdc++.a"
       with:
         timeout_minutes: 60
-        max_attempts: 16 # protection mechanism for sporadic dependencies download failure
+        max_attempts: 2 # protection mechanism for sporadic dependencies download failure
         command: |
-          set -x
           [ "${{ inputs.enable-tests }}" != "" ] && ENABLE_TESTS="--enable-tests"
           [ "${{ inputs.extra-args }}" != "" ] && EXTRA_ARGS="--extra-args ${{ inputs.extra-args }}"
-          echo zkevm-llvm build --use-ccache ${ENABLE_TESTS} ${EXTRA_ARGS}
-          zkevm-llvm build --use-ccache ${ENABLE_TESTS} ${EXTRA_ARGS}
+          zkevm-llvm build --targets EVM --use-ccache ${ENABLE_TESTS} ${EXTRA_ARGS}
