@@ -10,21 +10,27 @@ foo:
   rol       r1, r2, r3
   ror       r1, r2, r3
 
-; modifiers (all combinations of ".s", "!" and ".condition", ordered exactly like this, FIXME: name.s reg, reg, reg)
+; modifiers (all combinations of ".s", "!" and ".condition", ordered exactly like this)
   sub       r1, r2, r3
   sub!      r1, r2, r3
-  ; FIXME sub.s     r1, r2, r3
-  ; FIXME sub.s!    r1, r2, r3
+  sub.s     r1, r2, r3
+  sub.s!    r1, r2, r3
   sub.lt    r1, r2, r3
   sub!.lt   r1, r2, r3
-  ; FIXME sub.s.lt  r1, r2, r3
-  ; FIXME sub.s!.lt r1, r2, r3
+  sub.s.lt  r1, r2, r3
+  sub.s!.lt r1, r2, r3
 
 ; modifiers (more relevant operands for ".s" modifier)
   sub.s     42, r2, r3
   sub.s!    42, r2, r3
   sub.s.lt  42, r2, r3
   sub.s!.lt 42, r2, r3
+
+; modifiers (".s" modifier, "reg, reg, stack" operands)
+  sub.s     r1, r2, stack[1]
+  sub.s!    r1, r2, stack[1]
+  sub.s.lt  r1, r2, stack[1]
+  sub.s!.lt r1, r2, stack[1]
 
 ; operands (5 src modes x 3 dst modes, FIXME: stack-[...])
   sub       r1, r2, r3
@@ -56,13 +62,22 @@ foo:
 
 ; CHECK:  sub  r1, r2, r3
 ; CHECK:  sub! r1, r2, r3
+; CHECK:  sub.s        r1, r2, r3
+; CHECK:  sub.s!       r1, r2, r3
 ; CHECK:  sub.lt       r1, r2, r3
 ; CHECK:  sub!.lt      r1, r2, r3
+; CHECK:  sub.s.lt     r1, r2, r3
+; CHECK:  sub.s!.lt    r1, r2, r3
 
 ; CHECK:  sub.s        42, r2, r3
 ; CHECK:  sub.s!       42, r2, r3
 ; CHECK:  sub.s.lt     42, r2, r3
 ; CHECK:  sub.s!.lt    42, r2, r3
+
+; CHECK:  sub.s        r1, r2, stack[1]
+; CHECK:  sub.s!       r1, r2, stack[1]
+; CHECK:  sub.s.lt     r1, r2, stack[1]
+; CHECK:  sub.s!.lt    r1, r2, stack[1]
 
 ; CHECK:  sub  r1, r2, r3
 ; CHECK:  sub  42, r2, r3
