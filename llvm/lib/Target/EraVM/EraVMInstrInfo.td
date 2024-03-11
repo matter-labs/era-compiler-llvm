@@ -549,6 +549,27 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
                        (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
                        !strconcat(asmstring, ".s"), "$imm, $rs1, $rd0", []>, PseudoRel, FlagRel, RetAddrModeRel;
 
+  // The four *_alias instructions below are defined to make asm parser handle
+  // "mnemonic.s rs0, rs1, rd0" instructions for the sake of uniformity, that
+  // are otherwise redundant. *Rel base classes are dropped, as these
+  // instructions are not intended to participate in InstrMappings.
+  def rrr_s_alias : Irrr<opcode, 1, 1,
+                         (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
+                         !strconcat(asmstring, ".s"), "$rs0, $rs1, $rd0", []>;
+  let Defs = [Flags] in
+  def rrr_v_alias : Irrr<opcode, 1, 0,
+                         (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
+                         !strconcat(asmstring, ".s!"), "$rs0, $rs1, $rd0", []>;
+  let mayStore = 1 in {
+  def rrs_s_alias : Irrs<opcode, 1, 1,
+                         (outs), (ins GR256:$rs0, GR256:$rs1, stackop:$dst0),
+                         !strconcat(asmstring, ".s"), "$rs0, $rs1, $dst0", []>;
+  let Defs = [Flags] in
+  def rrs_v_alias : Irrs<opcode, 1, 0,
+                         (outs), (ins GR256:$rs0, GR256:$rs1, stackop:$dst0),
+                         !strconcat(asmstring, ".s!"), "$rs0, $rs1, $dst0", []>;
+  }
+
   let Defs = [Flags] in {
   def irr_v : Iirr<opcode, 0, 0,
                        (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
@@ -1037,6 +1058,27 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
   def xrrr_v : Iirrr<opcode, 1, 0,
                        (outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1),
                        !strconcat(asmstring, ".s!"), "$imm, $rs1, $rd0, $rd1", []>, FlagRel, RetAddrModeRel;
+  }
+
+  // The four *_alias instructions below are defined to make asm parser handle
+  // "mnemonic.s rs0, rs1, rd0, rd1" instructions for the sake of uniformity, that
+  // are otherwise redundant. *Rel base classes are dropped, as these
+  // instructions are not intended to participate in InstrMappings.
+  def rrrr_s_alias : Irrrr<opcode, 1, 1,
+                           (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, GR256:$rs1),
+                           !strconcat(asmstring, ".s"), "$rs0, $rs1, $rd0, $rd1", []>;
+  let Defs = [Flags] in
+  def rrrr_v_alias : Irrrr<opcode, 1, 0,
+                           (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, GR256:$rs1),
+                           !strconcat(asmstring, ".s!"), "$rs0, $rs1, $rd0, $rd1", []>;
+  let mayStore = 1 in {
+  def rrsr_s_alias : Irrsr<opcode, 1, 1,
+                           (outs GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, stackop:$dst0),
+                           !strconcat(asmstring, ".s"), "$rs0, $rs1, $dst0, $rd1", []>;
+  let Defs = [Flags] in
+  def rrsr_v_alias : Irrsr<opcode, 1, 0,
+                           (outs GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, stackop:$dst0),
+                           !strconcat(asmstring, ".s!"), "$rs0, $rs1, $dst0, $rd1", []>;
   }
 
   let mayLoad = 1 in {

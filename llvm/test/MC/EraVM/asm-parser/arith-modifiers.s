@@ -13,6 +13,13 @@ foo:
   sub.s.lt  42, r2, r3
   sub.s!.lt 42, r2, r3
 
+; For uniformity, ".s" modifier should be accepted for non-commutative
+; instructions with two register input operands.
+  sub.s     r1, r2, r3
+  sub.s!    r1, r2, r3
+  div.s     r1, r2, r3, r4
+  div.s!    r1, r2, r3, r4
+
 ; For commutative arithmetic instructions, ".s" modifier cannot be encoded
 ; in opcode
   add       42, r2, r3
@@ -49,6 +56,11 @@ foo:
 ; CHECK:  sub!.lt      42, r2, r3
 ; CHECK:  sub.s.lt     42, r2, r3
 ; CHECK:  sub.s!.lt    42, r2, r3
+
+; CHECK:  sub.s        r1, r2, r3
+; CHECK:  sub.s!       r1, r2, r3
+; CHECK:  div.s        r1, r2, r3, r4
+; CHECK:  div.s!       r1, r2, r3, r4
 
 ; CHECK:  add  42, r2, r3
 ; CHECK:  add! 42, r2, r3

@@ -6,21 +6,27 @@ foo:
 ; mnemonics
   div       r1, r2, r3, r4
 
-; modifiers (all combinations of ".s", "!" and ".condition", ordered exactly like this, FIXME: name.s reg, reg, reg, reg)
+; modifiers (all combinations of ".s", "!" and ".condition", ordered exactly like this)
   div       r1, r2, r3, r4
   div!      r1, r2, r3, r4
-  ; FIXME div.s     r1, r2, r3, r4
-  ; FIXME div.s!    r1, r2, r3, r4
+  div.s     r1, r2, r3, r4
+  div.s!    r1, r2, r3, r4
   div.lt    r1, r2, r3, r4
   div!.lt   r1, r2, r3, r4
-  ; FIXME div.s.lt  r1, r2, r3, r4
-  ; FIXME div.s!.lt r1, r2, r3, r4
+  div.s.lt  r1, r2, r3, r4
+  div.s!.lt r1, r2, r3, r4
 
 ; modifiers (more relevant operands for ".s" modifier)
   div.s     42, r2, r3, r4
   div.s!    42, r2, r3, r4
   div.s.lt  42, r2, r3, r4
   div.s!.lt 42, r2, r3, r4
+
+; modifiers (".s" modifier, "reg, reg, stack, reg" operands)
+  div.s     r1, r2, stack[1], r4
+  div.s!    r1, r2, stack[1], r4
+  div.s.lt  r1, r2, stack[1], r4
+  div.s!.lt r1, r2, stack[1], r4
 
 ; operands (5 src modes x 3 dst modes, FIXME: stack-[...])
   div       r1, r2, r3, r4
@@ -48,13 +54,22 @@ foo:
 
 ; CHECK:  div  r1, r2, r3, r4
 ; CHECK:  div! r1, r2, r3, r4
+; CHECK:  div.s        r1, r2, r3, r4
+; CHECK:  div.s!       r1, r2, r3, r4
 ; CHECK:  div.lt       r1, r2, r3, r4
 ; CHECK:  div!.lt      r1, r2, r3, r4
+; CHECK:  div.s.lt     r1, r2, r3, r4
+; CHECK:  div.s!.lt    r1, r2, r3, r4
 
 ; CHECK:  div.s        42, r2, r3, r4
 ; CHECK:  div.s!       42, r2, r3, r4
 ; CHECK:  div.s.lt     42, r2, r3, r4
 ; CHECK:  div.s!.lt    42, r2, r3, r4
+
+; CHECK:  div.s        r1, r2, stack[1], r4
+; CHECK:  div.s!       r1, r2, stack[1], r4
+; CHECK:  div.s.lt     r1, r2, stack[1], r4
+; CHECK:  div.s!.lt    r1, r2, stack[1], r4
 
 ; CHECK:  div  r1, r2, r3, r4
 ; CHECK:  div  42, r2, r3, r4
