@@ -43,6 +43,8 @@ using namespace llvm;
 
 namespace {
 class EraVMAsmPrinter : public AsmPrinter {
+  EraVMMCInstLower MCInstLowering;
+
   // In a compiled machine module, there might be multiple instances of a
   // same constant values (across different compiled functions), however,
   // emitting only 1 is enough for the assembly because it is global.
@@ -61,27 +63,68 @@ class EraVMAsmPrinter : public AsmPrinter {
 
 public:
   EraVMAsmPrinter(TargetMachine &TM, std::unique_ptr<MCStreamer> Streamer)
-      : AsmPrinter(TM, std::move(Streamer)) {}
+      : AsmPrinter(TM, std::move(Streamer)), MCInstLowering(OutContext, *this) {
+  }
 
   StringRef getPassName() const override { return "EraVM Assembly Printer"; }
 
   bool runOnMachineFunction(MachineFunction &MF) override;
+
+  bool emitPseudoExpansionLowering(MCStreamer &OutStreamer,
+                                   const MachineInstr *MI);
 
   void emitInstruction(const MachineInstr *MI) override;
   using AliasMapTy = DenseMap<uint64_t, SmallVector<const GlobalAlias *, 1>>;
   void emitGlobalConstant(const DataLayout &DL, const Constant *CV,
                           AliasMapTy *AliasList = nullptr) override;
 
+  // Wrapper needed for tblgenned pseudo lowering.
+  bool lowerOperand(const MachineOperand &MO, MCOperand &MCOp) const {
+    return MCInstLowering.lowerOperand(MO, MCOp);
+  }
+
   void emitConstantPool() override;
   void emitEndOfAsmFile(Module &) override;
 };
 } // end of anonymous namespace
 
+// Simple pseudo-instructions have their lowering (with expansion to real
+// instructions) auto-generated.
+#include "EraVMGenMCPseudoLowering.inc"
+
 //===----------------------------------------------------------------------===//
 void EraVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
-  EraVMMCInstLower MCInstLowering(OutContext, *this);
+  // Do any auto-generated pseudo lowerings.
+  if (emitPseudoExpansionLowering(*OutStreamer, MI))
+    return;
 
   MCInst TmpInst;
+
+  // Do some manual expansion
+  unsigned Opc = MI->getOpcode();
+  if (Opc == EraVM::J_s) {
+    MCOperand MCOp;
+    TmpInst.setOpcode(EraVM::JCs);
+    // Operand: dest
+    lowerOperand(MI->getOperand(0), MCOp);
+    TmpInst.addOperand(MCOp);
+    lowerOperand(MI->getOperand(1), MCOp);
+    TmpInst.addOperand(MCOp);
+    lowerOperand(MI->getOperand(2), MCOp);
+    TmpInst.addOperand(MCOp);
+    // Operand: cc
+    TmpInst.addOperand(MCOperand::createImm(0));
+    EmitToStreamer(*OutStreamer, TmpInst);
+    return;
+  }
+
+  if (MI->isPseudo()) {
+#ifndef NDEBUG
+    MI->dump();
+#endif
+    llvm_unreachable("pseudo opcode found in emitInstruction()");
+  }
+
   MCInstLowering.Lower(MI, TmpInst);
   EmitToStreamer(*OutStreamer, TmpInst);
 }

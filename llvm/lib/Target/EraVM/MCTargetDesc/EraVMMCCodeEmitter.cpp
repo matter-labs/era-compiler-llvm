@@ -35,16 +35,12 @@ namespace llvm {
 class EraVMMCCodeEmitter : public MCCodeEmitter {
   /// TableGen'erated function for getting the binary encoding for an
   /// instruction.
-  void getBinaryCodeForInstr(const MCInst &MI, SmallVectorImpl<MCFixup> &Fixups,
-                             APInt &Inst, APInt &Scratch,
-                             const MCSubtargetInfo &STI) const;
-
-public:
-  EraVMMCCodeEmitter(MCContext &ctx, MCInstrInfo const &MCII) {}
-
   uint64_t getBinaryCodeForInstr(const MCInst &MI,
                                  SmallVectorImpl<MCFixup> &Fixups,
                                  const MCSubtargetInfo &STI) const;
+
+public:
+  EraVMMCCodeEmitter(MCContext &ctx, MCInstrInfo const &MCII) {}
 
   void encodeInstruction(const MCInst &MI, raw_ostream &OS,
                          SmallVectorImpl<MCFixup> &Fixups,
