@@ -100,7 +100,7 @@ def EraVMTrap : SDNode<"EraVMISD::TRAP", SDTNone,
 //===----------------------------------------------------------------------===//
 
 def imm16 : Operand<i256>, IntImmLeaf<i256, [{
-  return APInt(256, 1, false).shl(16).ugt(Imm);
+  return Imm.isIntN(16);
 }]> {}
 
 def neg_imm16 : Operand<i256>, IntImmLeaf<i256, [{
@@ -108,22 +108,8 @@ def neg_imm16 : Operand<i256>, IntImmLeaf<i256, [{
 }]> {}
 
 def large_imm : Operand<i256>, IntImmLeaf<i256, [{
-  return !Imm.abs().isIntN(16) && Imm.isIntN(256);
+  return !Imm.abs().isIntN(16);
 }]> {}
-
-def imm128 : Operand<i256>, IntImmLeaf<i256, [{
-  return APInt(256, 1, false).shl(128).ugt(Imm);
-}]> {}
-
-def z256 : Operand<i256>, IntImmLeaf<i256, [{
-  return Imm.isNullValue();
-}]> {}
-
-def init_flag : Operand<i256>, IntImmLeaf<i256, [{
-  return Imm.isNullValue() || Imm.isOneValue();
-}]> {
-  let PrintMethod = "printInitOperand";
-}
 
 def context_op : Operand<i256>, IntImmLeaf<i256, [{
   return Imm.getZExtValue() < 5;
@@ -180,8 +166,7 @@ def stackop : Operand<i256> {
 //===----------------------------------------------------------------------===//
 
 def negate_imm : SDNodeXForm<imm, [{
-  auto& neg = N->getAPIntValue();
-  APInt pos = neg;
+  APInt pos = N->getAPIntValue();
   pos.negate();
   return CurDAG->getTargetConstant(pos, SDLoc(N), MVT::i256);
 }]>;
@@ -377,8 +362,6 @@ def NOPSPr : INop< 181, (ins GR256:$sp_change), "nop", "stack+=[$sp_change]", []
 }
 def : Pat<(EraVMchange_sp spadv_op:$size), (NOPSP spadv_op:$size)>;
 def : Pat<(EraVMchange_sp GR256:$size), (NOPSPr GR256:$size)>;
-
-def zext256 : PatFrag<(ops node:$src), (zext (i256 node:$src))>;
 
 multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit commutes> {
   let BaseOpcode = asmstring, isCommutable = commutes in {
