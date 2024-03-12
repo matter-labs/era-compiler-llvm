@@ -432,9 +432,9 @@ bool SwitchCG::SwitchLowering::buildBitTests(CaseClusterVector &Clusters,
 
   // EraVM local begin
   if (Low.isStrictlyPositive() &&
-      TM->getTargetTriple().isEraVM() ? High.ult(BitWidth)
-                                       : High.slt(BitWidth)) {
-  // EraVM local end
+      (TM->getTargetTriple().isEraVM() ? High.ult(BitWidth)
+                                       : High.slt(BitWidth))) {
+    // EraVM local end
     // Optimize the case where all the case values fit in a word without having
     // to subtract minValue. In this case, we can optimize away the subtraction.
     LowBound = APInt::getZero(Low.getBitWidth());
