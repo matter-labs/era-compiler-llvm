@@ -37,6 +37,8 @@ public:
       : Ctx(ctx), Printer(printer) {}
   void Lower(const MachineInstr *MI, MCInst &OutMI) const;
 
+  bool lowerOperand(const MachineOperand &MO, MCOperand &MCOp) const;
+
   MCOperand LowerSymbolOperand(const MachineOperand &MO, MCSymbol *Sym) const;
 
   MCSymbol *GetGlobalAddressSymbol(const MachineOperand &MO) const;
