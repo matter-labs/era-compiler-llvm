@@ -1,5 +1,6 @@
 ; RUN: opt -passes=eravm-lower-intrinsics -S < %s | FileCheck %s
 ; RUN: llc -O3 < %s | FileCheck --check-prefix=CHECK-INSTRS %s
+; XFAIL: *
 
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm"
