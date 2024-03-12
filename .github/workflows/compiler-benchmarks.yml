@@ -41,7 +41,7 @@ jobs:
   benchmarks:
     strategy:
       matrix:
-        type: ["reference", "candidate"]
+        type: ["candidate", "reference"]
     name: ${{ matrix.type }}
     runs-on: matterlabs-ci-runner
     container:
