@@ -827,11 +827,9 @@ bool TailDuplicator::tailDuplicate(bool IsSimple, MachineBasicBlock *TailBB,
   getRegsUsedByPHIs(*TailBB, &UsedByPhi);
 
   // EraVM local begin
-  // TODO: enable duplication
-#if 0
-  if (IsSimple)
+  Triple TT(TailBB->getParent()->getTarget().getTargetTriple());
+  if (IsSimple && (!PreRegAlloc || !TT.isEraVM()))
     return duplicateSimpleBB(TailBB, TDBBs, UsedByPhi, Copies);
-#endif
   // EraVM local end
 
   // Iterate through all the unique predecessors and tail-duplicate this

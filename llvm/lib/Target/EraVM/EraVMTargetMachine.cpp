@@ -286,6 +286,7 @@ void EraVMPassConfig::addPreRegAlloc() {
 void EraVMPassConfig::addPreSched2() {
   if (getOptLevel() != CodeGenOpt::None) {
     addPass(createIfConverter([](const MachineFunction &MF) { return true; }));
+    addPass(&TailDuplicateID);
   }
 }
 
