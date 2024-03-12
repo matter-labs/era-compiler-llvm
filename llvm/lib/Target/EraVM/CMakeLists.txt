@@ -4,6 +4,7 @@ set(LLVM_TARGET_DEFINITIONS EraVM.td)
 
 tablegen(LLVM EraVMGenAsmMatcher.inc -gen-asm-matcher)
 tablegen(LLVM EraVMGenAsmWriter.inc -gen-asm-writer)
+tablegen(LLVM EraVMGenMCPseudoLowering.inc -gen-pseudo-lowering)
 tablegen(LLVM EraVMGenCallingConv.inc -gen-callingconv)
 tablegen(LLVM EraVMGenDAGISel.inc -gen-dag-isel)
 tablegen(LLVM EraVMGenInstrInfo.inc -gen-instr-info)

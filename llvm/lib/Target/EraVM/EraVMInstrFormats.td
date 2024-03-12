@@ -173,24 +173,26 @@ def RFPanic          : RetFlags<0b0010>;
 def RFTransitRetData : RetFlags<0b0100>;
 
 // Generic EraVM instruction
-class EraVMInstruction<
-  dag outs,
-  dag ins,
-  int size,
-  string asmstr,
-  list<dag> pattern
-> : Instruction
-{
-  field bits<64>        Inst;
-  field bits<64>        SoftFail = 0;
-
+class EraVMInstruction : Instruction {
   let Namespace         = "EraVM";
   let DecoderNamespace  = "EraVM";
-  let AsmString         = asmstr;
-  let Size              = size;
-  let OutOperandList    = outs;
-  let InOperandList     = ins;
-  let Pattern           = pattern;
+  let Pattern   = [];
+}
+
+// Pseudo instructions (do not have encoding information)
+// FIXME: Replace Pseudo with this (maybe not)
+class IPseudo<dag oops, dag inops, list<dag> pattern>
+    : EraVMInstruction {
+  dag OutOperandList = oops;
+  dag InOperandList  = inops;
+  let Pattern        = pattern;
+  let isPseudo       = 1;
+  let isCodeGenOnly  = 1;
+}
+
+class Encoding {
+  field bits<64> Inst;
+  field bits<64> SoftFail = 0;
 }
 
 let OperandType = "OPERAND_IMMEDIATE" in
@@ -202,19 +204,18 @@ def pred : PredicateOperand<i256, (ops i256imm), (ops (i256 0))> {
   let PrintMethod = "printCCOperand";
 }
 
-class IForm <
-  bits<8>  opcode,
-  SourceMode as,
-  DestMode ad,
-  dag oops,
-  dag inops,
-  string opc,
-  string asmstr,
-  list<dag> pattern
-> : EraVMInstruction<oops, inops, 8, "", pattern>
+// Real instructions (have encoding)
+class IForm <bits<8> opcode,
+             SourceMode as, DestMode ad,
+             dag oops, dag inops,
+             string opc, string asmstr,
+             list<dag> pattern> : EraVMInstruction, Encoding
 {
   dag InOperandList  = !con(inops, (ins pred:$cc));
+  dag OutOperandList = oops;
   let AsmString      = !strconcat(opc, "${cc}", "\t", asmstr);
+  let Pattern        = pattern;
+  let Size           = 8;
 }
 
 class IRet<bits<8> opcode, RetFlags flags, dag ins, string opc, string asmstr, list<dag> pattern>
@@ -229,12 +230,6 @@ class INop<bits<8> opcode, dag ins, string opc, string asmstr, list<dag> pattern
 
 class ICondJump<bits<8> opcode, dag ins, string opc, string asmstr, list<dag> pattern>
   : IForm <opcode, SrcNone, DstNone, (outs), ins, opc, asmstr, pattern> {
-}
-
-// FIXME: Make this pseudo
-class IJump<bits<8> opcode, SourceMode as, dag ins, string opc, string asmstr, list<dag> pattern>
-  : EraVMInstruction<(outs), ins, 9, asmstr, pattern> {
-  let AsmString = !strconcat(opc, "\t", asmstr);
 }
 
 class IUMA<bits<8> opcode, dag outs, dag ins, string opc, string asmstr, list<dag> pattern>
@@ -521,13 +516,23 @@ class Isrsr<bits<8> opcode,
 }
 
 // Pseudo instructions
-class Pseudo<dag outs, dag ins, string asmstr, list<dag> pattern>
-  : EraVMInstruction <outs, ins, 0, asmstr, pattern>, PseudoRel {
+class Pseudo<dag outs, dag ins, list<dag> pattern>
+  : EraVMInstruction, PseudoRel {
   string BaseOpcode;
+
+  dag InOperandList  = ins;
+  dag OutOperandList = outs;
+  let Pattern        = pattern;
+  let Size           = 9; // FIXME
+
   int OperandAM = 0;
   bit FlagSetting = 0;
   bit IsPseudoArith = 1;
   bit ReverseOperand = 0;
+
+  let isCodeGenOnly = 1;
+  let isPseudo = 1;
+
   bits<3> OperandAddrMode = OpndAddrNotSet.Value;
   bits<3> DestAddrMode = DestAddrNotSet.Value;
 }
