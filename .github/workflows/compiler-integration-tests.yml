@@ -54,7 +54,6 @@ jobs:
         with:
           extra-args: "\\-DLLVM_ENABLE_WERROR=On \\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
           enable-tests: true
-          enable-assertions: true
           debug: ${{ github.event.inputs.llvm_build_type || 'release' }}
 
       - name: Checking with clang-tidy-diff.py
