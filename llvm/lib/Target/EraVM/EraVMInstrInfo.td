@@ -99,9 +99,18 @@ def EraVMTrap : SDNode<"EraVMISD::TRAP", SDTNone,
 // EraVM Operand Definitions.
 //===----------------------------------------------------------------------===//
 
+def UImm16Operand : AsmOperandClass {
+  let Name = "UImm16";
+  let ParserMethod = "tryParseUImm16Operand";
+  let PredicateMethod = "isImm";
+  let RenderMethod = "addImmOperands";
+}
+
 def imm16 : Operand<i256>, IntImmLeaf<i256, [{
   return Imm.isIntN(16);
-}]> {}
+}]> {
+  let ParserMatchClass = UImm16Operand;
+}
 
 def neg_imm16 : Operand<i256>, IntImmLeaf<i256, [{
   return Imm.isNegative() && Imm.abs().isIntN(16);

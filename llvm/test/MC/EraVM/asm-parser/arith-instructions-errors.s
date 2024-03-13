@@ -39,9 +39,9 @@
 ; CHECK:       <stdin>:{{[0-9]+}}:3: error: cannot parse instruction
 ; CHECK-NEXT:    add       r1, code[r2 + 1], r3
 ; CHECK-NEXT:    ^
-; CHECK:       <stdin>:{{[0-9]+}}:3: error: cannot parse instruction
+; CHECK:       <stdin>:{{[0-9]+}}:21: error: cannot parse operand
 ; CHECK-NEXT:    add       r1, r2, 42
-; CHECK-NEXT:    ^
+; CHECK-NEXT:                      ^
 ; CHECK:       <stdin>:{{[0-9]+}}:21: error: cannot parse operand
 ; CHECK-NEXT:    add       r1, r2, code[r3 + 1]
 ; CHECK-NEXT:                      ^
@@ -51,18 +51,18 @@
 ; CHECK:       <stdin>:{{[0-9]+}}:3: error: cannot parse instruction
 ; CHECK-NEXT:    add r1, r2, r3, r4
 ; CHECK-NEXT:    ^
-; CHECK:       <stdin>:{{[0-9]+}}:3: error: unknown mnemonic: add.s
+; CHECK:       <stdin>:{{[0-9]+}}:13: error: cannot parse operand
 ; CHECK-NEXT:    add.s     42, r2, r3
-; CHECK-NEXT:    ^
-; CHECK:       <stdin>:{{[0-9]+}}:3: error: unknown mnemonic: and.s
+; CHECK-NEXT:              ^
+; CHECK:       <stdin>:{{[0-9]+}}:13: error: cannot parse operand
 ; CHECK-NEXT:    and.s     42, r2, r3
-; CHECK-NEXT:    ^
-; CHECK:       <stdin>:{{[0-9]+}}:3: error: unknown mnemonic: or.s
+; CHECK-NEXT:              ^
+; CHECK:       <stdin>:{{[0-9]+}}:13: error: cannot parse operand
 ; CHECK-NEXT:    or.s      42, r2, r3
-; CHECK-NEXT:    ^
-; CHECK:       <stdin>:{{[0-9]+}}:3: error: unknown mnemonic: xor.s
+; CHECK-NEXT:              ^
+; CHECK:       <stdin>:{{[0-9]+}}:13: error: cannot parse operand
 ; CHECK-NEXT:    xor.s     42, r2, r3
-; CHECK-NEXT:    ^
-; CHECK:       <stdin>:{{[0-9]+}}:3: error: unknown mnemonic: mul.s
+; CHECK-NEXT:              ^
+; CHECK:       <stdin>:{{[0-9]+}}:13: error: cannot parse operand
 ; CHECK-NEXT:    mul.s     42, r2, r3, r4
-; CHECK-NEXT:    ^
+; CHECK-NEXT:              ^

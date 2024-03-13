@@ -47,15 +47,15 @@
 ; CHECK:       <stdin>:{{[0-9]+}}:7: error: cannot parse operand
 ; CHECK-NEXT:    sub!.lt.s      42, r3, r3
 ; CHECK-NEXT:        ^
-; CHECK:       <stdin>:{{[0-9]+}}:3: error: unknown mnemonic: sub.lt.s
+; CHECK:       <stdin>:{{[0-9]+}}:18: error: cannot parse operand
 ; CHECK-NEXT:    sub.lt.s!      42, r3, r3
-; CHECK-NEXT:    ^
+; CHECK-NEXT:                   ^
 ; CHECK:       <stdin>:{{[0-9]+}}:9: error: unexpected '!' after condition code
 ; CHECK-NEXT:    sub.lt!.s      42, r3, r3
 ; CHECK-NEXT:          ^
-; CHECK:       <stdin>:{{[0-9]+}}:3: error: unknown mnemonic: sub.lt.s
+; CHECK:       <stdin>:{{[0-9]+}}:18: error: cannot parse operand
 ; CHECK-NEXT:    sub.lt.s       42, r3, r3
-; CHECK-NEXT:    ^
+; CHECK-NEXT:                   ^
 ; CHECK:       <stdin>:{{[0-9]+}}:9: error: unexpected '!' after condition code
 ; CHECK-NEXT:    sub.lt!        42, r3, r3
 ; CHECK-NEXT:          ^
