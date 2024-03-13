@@ -65,6 +65,7 @@ class EraVMAsmParser : public MCTargetAsmParser {
   bool parseRegisterWithAddend(MCRegister &RegNo, int &Addend);
   bool parseOperand(StringRef Mnemonic, OperandVector &Operands);
 
+  template <bool IsInput>
   ParseStatus tryParseStackOperand(OperandVector &Operands);
   ParseStatus tryParseCodeOperand(OperandVector &Operands);
 
@@ -511,6 +512,7 @@ bool EraVMAsmParser::parseOperand(StringRef Mnemonic, OperandVector &Operands) {
   return TokError("cannot parse operand");
 }
 
+template <bool IsInput>
 ParseStatus EraVMAsmParser::tryParseStackOperand(OperandVector &Operands) {
   EraVM::MemOperandKind MemOpKind = EraVM::OperandStackAbsolute;
   MCRegister RegNo = 0;
