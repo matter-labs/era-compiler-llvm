@@ -5,6 +5,10 @@ inputs:
     description: "Enable tests."
     required: false
     default: 'false'
+  enable-assertions:
+    description: "Enable assertions."
+    required: false
+    default: 'true'
   debug:
     description: 'Build LLVM in debug mode.'
     required: false
@@ -70,5 +74,6 @@ runs:
         max_attempts: 2 # protection mechanism for sporadic dependencies download failure
         command: |
           [ "${{ inputs.enable-tests }}" != "" ] && ENABLE_TESTS="--enable-tests"
+          [ "${{ inputs.enable-assertions }}" != "" ] && ENABLE_ASSERTIONS="--enable-assertions"
           [ "${{ inputs.extra-args }}" != "" ] && EXTRA_ARGS="--extra-args ${{ inputs.extra-args }}"
-          zkevm-llvm build --targets EVM --use-ccache ${ENABLE_TESTS} ${EXTRA_ARGS}
+          zkevm-llvm build --targets EVM --use-ccache ${ENABLE_TESTS} ${ENABLE_ASSERTIONS} ${EXTRA_ARGS}
