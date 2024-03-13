@@ -65,6 +65,7 @@ class EraVMAsmParser : public MCTargetAsmParser {
   bool parseRegisterWithAddend(MCRegister &RegNo, int &Addend);
   bool parseOperand(StringRef Mnemonic, OperandVector &Operands);
 
+  template <bool IsInput>
   OperandMatchResultTy tryParseStackOperand(OperandVector &Operands);
   OperandMatchResultTy tryParseCodeOperand(OperandVector &Operands);
 
@@ -514,6 +515,7 @@ bool EraVMAsmParser::parseOperand(StringRef Mnemonic, OperandVector &Operands) {
   return TokError("cannot parse operand");
 }
 
+template <bool IsInput>
 OperandMatchResultTy
 EraVMAsmParser::tryParseStackOperand(OperandVector &Operands) {
   EraVM::MemOperandKind MemOpKind = EraVM::OperandStackAbsolute;
