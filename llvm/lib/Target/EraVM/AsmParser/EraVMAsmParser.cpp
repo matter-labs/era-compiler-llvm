@@ -60,7 +60,7 @@ class EraVMAsmParser : public MCTargetAsmParser {
   bool parseNameWithSuffixes(StringRef Name, SMLoc NameLoc,
                              OperandVector &Operands);
   bool parseRegOperand(OperandVector &Operands);
-  bool parseImmediateOperand(OperandVector &Operands);
+  OperandMatchResultTy tryParseUImm16Operand(OperandVector &Operands);
   bool parseRegisterWithAddend(MCRegister &RegNo, int &Addend);
   bool parseOperand(StringRef Mnemonic, OperandVector &Operands);
 
@@ -392,16 +392,29 @@ bool EraVMAsmParser::parseRegOperand(OperandVector &Operands) {
   return false;
 }
 
-bool EraVMAsmParser::parseImmediateOperand(OperandVector &Operands) {
+OperandMatchResultTy
+EraVMAsmParser::tryParseUImm16Operand(OperandVector &Operands) {
+  if (getLexer().is(AsmToken::Minus) &&
+      getLexer().peekTok().is(AsmToken::Integer)) {
+    TokError("negative immediate operands are not supported");
+    return MatchOperand_ParseFail;
+  }
+
   if (!getLexer().is(AsmToken::Integer))
-    return true;
+    return MatchOperand_NoMatch;
 
   const AsmToken &Tok = getTok();
-  const MCExpr *Expr = createConstant(Tok.getIntVal());
+  uint64_t IntValue = Tok.getIntVal();
+  if (!isUIntN(16, IntValue)) {
+    TokError("uint16 immediate expected");
+    return MatchOperand_ParseFail;
+  }
+  const MCExpr *Expr = createConstant(IntValue);
   Operands.push_back(
       EraVMOperand::CreateImm(Expr, Tok.getLoc(), Tok.getEndLoc()));
   Lex();
-  return false;
+
+  return MatchOperand_Success;
 }
 
 bool EraVMAsmParser::parseRegisterWithAddend(MCRegister &RegNo, int &Addend) {
@@ -475,9 +488,6 @@ bool EraVMAsmParser::parseOperand(StringRef Mnemonic, OperandVector &Operands) {
   }
   if (Result == MatchOperand_ParseFail)
     return true;
-
-  if (!parseImmediateOperand(Operands))
-    return false;
 
   return TokError("cannot parse operand");
 }
