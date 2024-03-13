@@ -61,6 +61,7 @@ class EraVMAsmParser : public MCTargetAsmParser {
                              OperandVector &Operands);
   bool parseRegOperand(OperandVector &Operands);
   ParseStatus tryParseUImm16Operand(OperandVector &Operands);
+  ParseStatus tryParseJumpTargetOperand(OperandVector &Operands);
   bool parseRegisterWithAddend(MCRegister &RegNo, int &Addend);
   bool parseOperand(StringRef Mnemonic, OperandVector &Operands);
 
@@ -412,6 +413,26 @@ ParseStatus EraVMAsmParser::tryParseUImm16Operand(OperandVector &Operands) {
       EraVMOperand::CreateImm(Expr, Tok.getLoc(), Tok.getEndLoc()));
   Lex();
 
+  return ParseStatus::Success;
+}
+
+ParseStatus EraVMAsmParser::tryParseJumpTargetOperand(OperandVector &Operands) {
+  SMLoc StartLoc = getTok().getLoc();
+
+  if (!getLexer().is(AsmToken::At))
+    return ParseStatus::NoMatch;
+  Lex(); // eat "@" token
+
+  if (!getTok().is(AsmToken::Identifier)) {
+    TokError("identifier expected");
+    return ParseStatus::Failure;
+  }
+  MCSymbol *Symbol = getContext().getOrCreateSymbol(getTok().getString());
+  SMLoc EndLoc = getTok().getEndLoc();
+  Lex(); // eat symbol name
+
+  const MCExpr *Expr = MCSymbolRefExpr::create(Symbol, getContext());
+  Operands.push_back(EraVMOperand::CreateImm(Expr, StartLoc, EndLoc));
   return ParseStatus::Success;
 }
 

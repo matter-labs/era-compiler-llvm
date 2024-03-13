@@ -144,7 +144,18 @@ def spadv_op : Operand<i256>, IntImmLeaf<i256, [{
   let PrintMethod = "printSPAdvanceOperand";
 }
 
-def jmptarget : Operand<OtherVT>;
+// This operand class represents those jump targets described
+// as imm_in operand in the spec.
+def JumpTargetOperand : AsmOperandClass {
+  let Name = "JumpTarget";
+  let ParserMethod = "tryParseJumpTargetOperand";
+  let PredicateMethod = "isImm";
+  let RenderMethod = "addImmOperands";
+}
+
+def jmptarget : Operand<OtherVT> {
+  let ParserMatchClass = JumpTargetOperand;
+}
 
 // Address operands
 
@@ -1206,8 +1217,9 @@ def J_s: Pseudo<(outs), (ins stackop:$dest), [] >;
 }
 def : Pat<(br bb:$dst), (J bb:$dst)>;
 
-let isBranch=1, isIndirectBranch=1, isTerminator=1, isBarrier = 1 in
-def J_jt: ICondJump<10, (ins memop:$dest), "jump", "$dest", [] >;
+let isBranch=1, isIndirectBranch=1, isTerminator=1, isBarrier = 1, mayLoad = 1 in
+def J_jt: Pseudo<(outs), (ins memop:$dest, pred:$cc), []>,
+          PseudoInstExpansion<(JCc memop:$dest, pred:$cc)>;
 
 // Dynamic jumps
 let isCall = 1 in
@@ -1338,9 +1350,12 @@ let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Fl
    // FIXME: Expand to NEAR_CALL
    def INVOKE : Pseudo<(outs), (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
                        [(EraVMinvoke GR256:$in1, (EraVMGAStack tglobaladdr:$callee), bb:$unwind)]>;
-   def NEAR_CALL : ICall<9, CFNormal, (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
+   def NEAR_CALL : ICall<9, CFNormal, (ins GR256:$in1, jmptarget:$callee, jmptarget:$unwind),
                    "near_call", "$in1, $callee, $unwind", []>;
-
+  def NEAR_CALL_default_unwind : ICall<9, CFNormal, (ins GR256:$in1, jmptarget:$callee),
+                   "near_call", "$in1, $callee", []>;
+  def NEAR_CALL_default_unwind_r0 : ICall<9, CFNormal, (ins jmptarget:$callee),
+                   "near_call", "$callee", []>;
   def FAR_CALL       : ICall<8, CFNormal, (ins jmptarget:$unwind),
                              "far_call", "r1, r2, $unwind",
                              [(EraVMfarcall bb:$unwind)]>;
