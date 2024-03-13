@@ -8,7 +8,7 @@ inputs:
   enable-assertions:
     description: "Enable assertions."
     required: false
-    default: 'false'
+    default: 'true'
   debug:
     description: 'Build LLVM in debug mode.'
     required: false
