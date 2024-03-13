@@ -19,7 +19,7 @@
 
 ; correct number of outputs
   add r1, r2, r3, r4
-  ; FIXME mul r1, r2, r3
+  mul r1, r2, r3
 
 ; commutative instructions cannot have swapped variants because
 ; there are no corresponding opcodes for machine instructions
@@ -50,6 +50,9 @@
 ; CHECK-NEXT:    ^
 ; CHECK:       <stdin>:{{[0-9]+}}:3: error: cannot parse instruction
 ; CHECK-NEXT:    add r1, r2, r3, r4
+; CHECK-NEXT:    ^
+; CHECK:       <stdin>:{{[0-9]+}}:3: error: cannot parse instruction
+; CHECK-NEXT:    mul r1, r2, r3
 ; CHECK-NEXT:    ^
 ; CHECK:       <stdin>:{{[0-9]+}}:13: error: cannot parse operand
 ; CHECK-NEXT:    add.s     42, r2, r3
