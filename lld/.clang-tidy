@@ -1,4 +1,7 @@
 InheritParentConfig: true
+Checks: >
+        -clang-diagnostic-unused-function,
+        -clang-diagnostic-error,
 CheckOptions:
   - key:             readability-identifier-naming.MemberCase
     value:           camelBack
