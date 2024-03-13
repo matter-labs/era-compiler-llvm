@@ -250,16 +250,17 @@ class ILogR<bits<8> opcode, DestMode ad, dag outs, dag ins,
 }
 
 class IBinary<bits<8> opcode,
-              SourceMode as,
-              DestMode ad,
-              bit swap_operands,
-              bit silent,
-              dag outs,
-              dag ins,
-              string opc,
-              string asmstr,
+              SourceMode as, DestMode ad,
+              bit swap_operands, bit silent,
+              dag outs, dag ins,
+              string opc, string asmstr,
               list<dag> pattern>
   : IForm <opcode, as, ad, outs, ins, opc, asmstr, pattern >, PredRel {
+  let AsmString = !strconcat(opc,
+                             !if(swap_operands, ".s", ""),
+                             !if(silent, "", "!"),
+                             "${cc}", "\t", asmstr);
+
   string BaseOpcode;
   bit FlagSetting = silent;
   bit ReverseOperand = swap_operands;
@@ -272,12 +273,9 @@ class IBinary<bits<8> opcode,
 
 class IBinaryR<bits<8> opcode,
                SourceMode as,
-               bit swap_operands,
-               bit silent,
-               dag outs,
-               dag ins,
-               string opc,
-               string asmstr,
+               bit swap_operands, bit silent,
+               dag outs, dag ins,
+               string opc, string asmstr,
                list<dag> pattern>
   : IBinary <opcode, as, DstReg, swap_operands, silent, outs, ins, opc, asmstr, pattern > {
   let DestAddrMode = ToReg.Value;
@@ -286,12 +284,9 @@ class IBinaryR<bits<8> opcode,
 
 class IBinaryS<bits<8> opcode,
                SourceMode as,
-               bit swap_operands,
-               bit silent,
-               dag outs,
-               dag ins,
-               string opc,
-               string asmstr,
+               bit swap_operands, bit silent,
+               dag outs, dag ins,
+               string opc, string asmstr,
                list<dag> pattern>
   : IBinary <opcode, as, DstStack, swap_operands, silent, outs, ins, opc, asmstr, pattern > {
   let DestAddrMode = ToStack.Value;
@@ -299,12 +294,9 @@ class IBinaryS<bits<8> opcode,
 }
 
 class Irrr<bits<8> opcode,
-           bit swap_operands,
-           bit silent,
-           dag outs,
-           dag ins,
-           string opc,
-           string asmstr,
+           bit swap_operands, bit silent,
+           dag outs, dag ins,
+           string opc, string asmstr,
            list<dag> pattern>
   : IBinaryR<opcode, SrcReg, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let OperandAddrMode = OpndRR.Value;
@@ -312,12 +304,9 @@ class Irrr<bits<8> opcode,
 }
 
 class Irrrr<bits<8> opcode,
-            bit swap_operands,
-            bit silent,
-            dag outs,
-            dag ins,
-            string opc,
-            string asmstr,
+            bit swap_operands, bit silent,
+            dag outs, dag ins,
+            string opc, string asmstr,
             list<dag> pattern>
   : Irrr<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let DestAddrMode = ToRegReg.Value;
@@ -325,12 +314,9 @@ class Irrrr<bits<8> opcode,
 }
 
 class Iirr<bits<8> opcode,
-           bit swap_operands,
-           bit silent,
-           dag outs,
-           dag ins,
-           string opc,
-           string asmstr,
+           bit swap_operands, bit silent,
+           dag outs, dag ins,
+           string opc, string asmstr,
            list<dag> pattern>
   : IBinaryR<opcode, SrcImm, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let OperandAddrMode = OpndIR.Value;
@@ -338,12 +324,9 @@ class Iirr<bits<8> opcode,
 }
 
 class Iirrr<bits<8> opcode,
-            bit swap_operands,
-            bit silent,
-            dag outs,
-            dag ins,
-            string opc,
-            string asmstr,
+            bit swap_operands, bit silent,
+            dag outs, dag ins,
+            string opc, string asmstr,
             list<dag> pattern>
   : Iirr<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let DestAddrMode = ToRegReg.Value;
@@ -352,12 +335,9 @@ class Iirrr<bits<8> opcode,
 
 class Imrr<bits<8> opcode,
            SourceMode as,
-           bit swap_operands,
-           bit silent,
-           dag outs,
-           dag ins,
-           string opc,
-           string asmstr,
+           bit swap_operands, bit silent,
+           dag outs, dag ins,
+           string opc, string asmstr,
            list<dag> pattern>
   : IBinaryR<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let OperandAddrMode = OpndCR.Value;
@@ -366,12 +346,9 @@ class Imrr<bits<8> opcode,
 
 class Isrr<bits<8> opcode,
            SourceMode as,
-           bit swap_operands,
-           bit silent,
-           dag outs,
-           dag ins,
-           string opc,
-           string asmstr,
+           bit swap_operands, bit silent,
+           dag outs, dag ins,
+           string opc, string asmstr,
            list<dag> pattern>
   : IBinaryR<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let OperandAddrMode = OpndSR.Value;
@@ -380,12 +357,9 @@ class Isrr<bits<8> opcode,
 
 class Imrrr<bits<8> opcode,
             SourceMode as,
-            bit swap_operands,
-            bit silent,
-            dag outs,
-            dag ins,
-            string opc,
-            string asmstr,
+            bit swap_operands, bit silent,
+            dag outs, dag ins,
+            string opc, string asmstr,
             list<dag> pattern>
   : Imrr<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let DestAddrMode = ToRegReg.Value;
@@ -395,12 +369,9 @@ class Imrrr<bits<8> opcode,
 
 class Isrrr<bits<8> opcode,
             SourceMode as,
-            bit swap_operands,
-            bit silent,
-            dag outs,
-            dag ins,
-            string opc,
-            string asmstr,
+            bit swap_operands, bit silent,
+            dag outs, dag ins,
+            string opc, string asmstr,
             list<dag> pattern>
   : Isrr<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let DestAddrMode = ToRegReg.Value;
@@ -408,12 +379,9 @@ class Isrrr<bits<8> opcode,
 }
 
 class Irrs<bits<8> opcode,
-           bit swap_operands,
-           bit silent,
-           dag outs,
-           dag ins,
-           string opc,
-           string asmstr,
+           bit swap_operands, bit silent,
+           dag outs, dag ins,
+           string opc, string asmstr,
            list<dag> pattern>
   : IBinaryS<opcode, SrcReg, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let OperandAddrMode = OpndRR.Value;
@@ -421,12 +389,9 @@ class Irrs<bits<8> opcode,
 }
 
 class Irrsr<bits<8> opcode,
-            bit swap_operands,
-            bit silent,
-            dag outs,
-            dag ins,
-            string opc,
-            string asmstr,
+            bit swap_operands, bit silent,
+            dag outs, dag ins,
+            string opc, string asmstr,
             list<dag> pattern>
   : Irrs<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let DestAddrMode = ToStackReg.Value;
@@ -434,12 +399,9 @@ class Irrsr<bits<8> opcode,
 }
 
 class Iirs<bits<8> opcode,
-           bit swap_operands,
-           bit silent,
-           dag outs,
-           dag ins,
-           string opc,
-           string asmstr,
+           bit swap_operands, bit silent,
+           dag outs, dag ins,
+           string opc, string asmstr,
            list<dag> pattern>
   : IBinaryS<opcode, SrcImm, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let OperandAddrMode = OpndIR.Value;
@@ -447,12 +409,9 @@ class Iirs<bits<8> opcode,
 }
 
 class Iirsr<bits<8> opcode,
-            bit swap_operands,
-            bit silent,
-            dag outs,
-            dag ins,
-            string opc,
-            string asmstr,
+            bit swap_operands, bit silent,
+            dag outs, dag ins,
+            string opc, string asmstr,
             list<dag> pattern>
   : Iirs<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let DestAddrMode = ToStackReg.Value;
@@ -461,12 +420,9 @@ class Iirsr<bits<8> opcode,
 
 class Imrs<bits<8> opcode,
            SourceMode as,
-           bit swap_operands,
-           bit silent,
-           dag outs,
-           dag ins,
-           string opc,
-           string asmstr,
+           bit swap_operands, bit silent,
+           dag outs, dag ins,
+           string opc, string asmstr,
            list<dag> pattern>
   : IBinaryS<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let OperandAddrMode = OpndCR.Value;
@@ -475,12 +431,9 @@ class Imrs<bits<8> opcode,
 
 class Isrs<bits<8> opcode,
            SourceMode as,
-           bit swap_operands,
-           bit silent,
-           dag outs,
-           dag ins,
-           string opc,
-           string asmstr,
+           bit swap_operands, bit silent,
+           dag outs, dag ins,
+           string opc, string asmstr,
            list<dag> pattern>
   : IBinaryS<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let OperandAddrMode = OpndSR.Value;
@@ -489,12 +442,9 @@ class Isrs<bits<8> opcode,
 
 class Imrsr<bits<8> opcode,
             SourceMode as,
-            bit swap_operands,
-            bit silent,
-            dag outs,
-            dag ins,
-            string opc,
-            string asmstr,
+            bit swap_operands, bit silent,
+            dag outs, dag ins,
+            string opc, string asmstr,
             list<dag> pattern>
   : Imrs<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let DestAddrMode = ToStackReg.Value;
@@ -503,12 +453,9 @@ class Imrsr<bits<8> opcode,
 
 class Isrsr<bits<8> opcode,
             SourceMode as,
-            bit swap_operands,
-            bit silent,
-            dag outs,
-            dag ins,
-            string opc,
-            string asmstr,
+            bit swap_operands, bit silent,
+            dag outs, dag ins,
+            string opc, string asmstr,
             list<dag> pattern>
   : Isrs<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let DestAddrMode = ToStackReg.Value;
