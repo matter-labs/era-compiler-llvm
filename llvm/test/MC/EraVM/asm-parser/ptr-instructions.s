@@ -27,24 +27,24 @@ foo:
   ptr.add       r1, r2, r3
   ; FIXME ptr.add       42, r2, r3
   ptr.add       stack[r1 + 1], r2, r3
-  ; FIXME ptr.add       stack-[r1 + 1], r2, r3
+  ptr.add       stack-[r1 + 1], r2, r3
   ; FIXME ptr.add       code[r1 + 1], r2, r3
   ptr.add       r1, r2, stack[r3 + 1]
   ; FIXME ptr.add       42, r2, stack[r3 + 1]
   ptr.add       stack[r1 + 1], r2, stack[r3 + 1]
-  ; FIXME ptr.add       stack-[r1 + 1], r2, stack[r3 + 1]
+  ptr.add       stack-[r1 + 1], r2, stack[r3 + 1]
   ; FIXME ptr.add       code[r1 + 1], r2, stack[r3 + 1]
-  ; FIXME ptr.add       r1, r2, stack-[r3 + 1]
+  ptr.add       r1, r2, stack-[r3 + 1]
   ; FIXME ptr.add       42, r2, stack-[r3 + 1]
-  ; FIXME ptr.add       stack[r1 + 1], r2, stack-[r3 + 1]
-  ; FIXME ptr.add       stack-[r1 + 1], r2, stack-[r3 + 1]
+  ptr.add       stack[r1 + 1], r2, stack-[r3 + 1]
+  ptr.add       stack-[r1 + 1], r2, stack-[r3 + 1]
   ; FIXME ptr.add       code[r1 + 1], r2, stack-[r3 + 1]
 
 ; operands (5 src modes, ".s" modifier)
   ; FIXME ptr.add.s    r1, r2, r3
   ptr.add.s    42, r2, r3
   ptr.add.s    stack[r1 + 1], r2, r3
-  ; FIXME ptr.add.s    stack-[r1 + 1], r2, r3
+  ptr.add.s    stack-[r1 + 1], r2, r3
   ptr.add.s    code[r1 + 1], r2, r3
 
 
@@ -68,9 +68,15 @@ foo:
 
 ; CHECK:  ptr.add      r1, r2, r3
 ; CHECK:  ptr.add      stack[1 + r1], r2, r3
+; CHECK:  ptr.add      stack-[1 + r1], r2, r3
 ; CHECK:  ptr.add      r1, r2, stack[1 + r3]
 ; CHECK:  ptr.add      stack[1 + r1], r2, stack[1 + r3]
+; CHECK:  ptr.add      stack-[1 + r1], r2, stack[1 + r3]
+; CHECK:  ptr.add      r1, r2, stack-[1 + r3]
+; CHECK:  ptr.add      stack[1 + r1], r2, stack-[1 + r3]
+; CHECK:  ptr.add      stack-[1 + r1], r2, stack-[1 + r3]
 
 ; CHECK:  ptr.add.s    42, r2, r3
 ; CHECK:  ptr.add.s    stack[1 + r1], r2, r3
+; CHECK:  ptr.add.s    stack-[1 + r1], r2, r3
 ; CHECK:  ptr.add.s    code[r1+1], r2, r3

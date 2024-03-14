@@ -17,17 +17,25 @@ foo:
   add       stack[42], r2, r3
   add       stack[r1 + 42], r2, r3
 ; src: stack, absolute (alternative syntax)
-  ; FIXME add       stack=[r1], r2, r3
-  ; FIXME add       stack=[42], r2, r3
-  ; FIXME add       stack=[r1 + 42], r2, r3
+  add       stack=[r1], r2, r3
+  add       stack=[42], r2, r3
+  add       stack=[r1 + 42], r2, r3
 ; src: stack, SP-relative
-  ; FIXME add       stack-[r1], r2, r3
-  ; FIXME add       stack-[42], r2, r3
-  ; FIXME add       stack-[r1 + 42], r2, r3
+  add       stack-[r1], r2, r3
+  add       stack-[42], r2, r3
+  add       stack-[r1 + 42], r2, r3
 ; src: stack, SP-relative, SP-decrementing
   ; FIXME add       stack-=[r1], r2, r3
   ; FIXME add       stack-=[42], r2, r3
   ; FIXME add       stack-=[r1 + 42], r2, r3
+; different subscript syntax variants
+  add       stack[r1], r2, r3
+  add       stack[42], r2, r3
+  add       stack[-42], r2, r3
+  add       stack[r1 + 42], r2, r3
+  add       stack[r1 - 42], r2, r3
+  add       stack[42 + r1], r2, r3
+  add       stack[-42 + r1], r2, r3
 
 ; dst: register
   add       r1, r2, r3
@@ -36,13 +44,13 @@ foo:
   add       r1, r2, stack[42]
   add       r1, r2, stack[r1 + 42]
 ; dst: stack, absolute (alternative syntax)
-  ; FIXME add       r1, r2, stack=[r1]
-  ; FIXME add       r1, r2, stack=[42]
-  ; FIXME add       r1, r2, stack=[r1 + 42]
+  add       r1, r2, stack=[r1]
+  add       r1, r2, stack=[42]
+  add       r1, r2, stack=[r1 + 42]
 ; dst: stack, SP-relative
-  ; FIXME add       r1, r2, stack-[r1]
-  ; FIXME add       r1, r2, stack-[42]
-  ; FIXME add       r1, r2, stack-[r1 + 42]
+  add       r1, r2, stack-[r1]
+  add       r1, r2, stack-[42]
+  add       r1, r2, stack-[r1 + 42]
 ; dst: stack, SP-relative, SP-incrementing
   ; FIXME add       r1, r2, stack+=[r1]
   ; FIXME add       r1, r2, stack+=[42]
@@ -62,8 +70,27 @@ foo:
 ; CHECK:  add  stack[r1], r2, r3
 ; CHECK:  add  stack[42], r2, r3
 ; CHECK:  add  stack[42 + r1], r2, r3
+; CHECK:  add  stack[r1], r2, r3
+; CHECK:  add  stack[42], r2, r3
+; CHECK:  add  stack[42 + r1], r2, r3
+; CHECK:  add  stack-[0 + r1], r2, r3
+; CHECK:  add  stack-[42], r2, r3
+; CHECK:  add  stack-[42 + r1], r2, r3
+; CHECK:  add  stack[r1], r2, r3
+; CHECK:  add  stack[42], r2, r3
+; CHECK:  add  stack[65494], r2, r3
+; CHECK:  add  stack[42 + r1], r2, r3
+; CHECK:  add  stack[65494 + r1], r2, r3
+; CHECK:  add  stack[42 + r1], r2, r3
+; CHECK:  add  stack[65494 + r1], r2, r3
 
 ; CHECK:  add  r1, r2, r3
 ; CHECK:  add  r1, r2, stack[r1]
 ; CHECK:  add  r1, r2, stack[42]
 ; CHECK:  add  r1, r2, stack[42 + r1]
+; CHECK:  add  r1, r2, stack[r1]
+; CHECK:  add  r1, r2, stack[42]
+; CHECK:  add  r1, r2, stack[42 + r1]
+; CHECK:  add  r1, r2, stack-[0 + r1]
+; CHECK:  add  r1, r2, stack-[42]
+; CHECK:  add  r1, r2, stack-[42 + r1]

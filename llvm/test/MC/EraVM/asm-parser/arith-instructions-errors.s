@@ -7,7 +7,7 @@
 ; operands (2nd input should be register)
   add       r1, 42, r3
   add       r1, stack[r2 + 1], r3
-  ; FIXME add       r1, stack-[r2 + 1], r3
+  add       r1, stack-[r2 + 1], r3
   add       r1, code[r2 + 1], r3
 
 ; operands (output should be writable)
@@ -35,6 +35,9 @@
 ; CHECK-NEXT:    ^
 ; CHECK:       <stdin>:{{[0-9]+}}:3: error: cannot parse instruction
 ; CHECK-NEXT:    add       r1, stack[r2 + 1], r3
+; CHECK-NEXT:    ^
+; CHECK:       <stdin>:{{[0-9]+}}:3: error: cannot parse instruction
+; CHECK-NEXT:    add       r1, stack-[r2 + 1], r3
 ; CHECK-NEXT:    ^
 ; CHECK:       <stdin>:{{[0-9]+}}:3: error: cannot parse instruction
 ; CHECK-NEXT:    add       r1, code[r2 + 1], r3

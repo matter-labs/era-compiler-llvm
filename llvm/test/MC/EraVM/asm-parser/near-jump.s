@@ -11,7 +11,7 @@ foo:
   jump       r1
   jump       @label
   jump       stack[r1 + 1]
-  ; FIXME jump       stack-[r1 + 1]
+  jump       stack-[r1 + 1]
   jump       code[r1 + 1]
 
 ; do not confuse @jump_target and @indirect_via_const[1]
@@ -28,6 +28,7 @@ foo:
 ; CHECK:  jump r1
 ; CHECK:  jump @label
 ; CHECK:  jump stack[1 + r1]
+; CHECK:  jump stack-[1 + r1]
 ; CHECK:  jump code[r1+1]
 
 ; CHECK:  jump @label

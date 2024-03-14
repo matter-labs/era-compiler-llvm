@@ -209,8 +209,10 @@ void EraVMInstPrinter::printStackOperand(const MCInst *MI, unsigned OpNo,
   if (Base2.isReg()) {
     if (isRelative) {
       // stack-[disp + reg];
-      assert(Disp.isImm() && Disp.getImm() < 0); // don't support expr yet
-      O << std::abs(Disp.getImm()) << " - " << getRegisterName(Base2.getReg());
+      // FIXME Check if any machine pass actually emits Disp < 0,
+      //       as it was asserted before.
+      assert(Disp.isImm() && Disp.getImm() >= 0); // don't support expr yet
+      O << Disp.getImm() << " + " << getRegisterName(Base2.getReg());
     } else {
       // print absolute address in format stack[disp + reg]:
       if (Disp.isImm()) {
