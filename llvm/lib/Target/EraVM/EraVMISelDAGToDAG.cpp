@@ -355,10 +355,11 @@ void EraVMDAGToDAGISel::Select(SDNode *Node) {
     // if it is small negative values, use SUB instruction to materialize it
     if (val.isNegative() && val.isSignedIntN(16)) {
       auto negated = -(val.getSExtValue());
-      auto Negated_Val = CurDAG->getTargetConstant(negated, DL, MVT::i256);
       auto R0 = CurDAG->getRegister(EraVM::R0, MVT::i256);
-      auto *SUB = CurDAG->getMachineNode(EraVM::SUBxrr_p, DL, MVT::i256,
-                                         SDValue(Negated_Val), R0);
+      auto *SUB = CurDAG->getMachineNode(
+          EraVM::SUBxrr_s, DL, MVT::i256,
+          CurDAG->getTargetConstant(negated, DL, MVT::i256), R0,
+          CurDAG->getTargetConstant(EraVMCC::COND_NONE, DL, MVT::i256));
       ReplaceNode(Node, SUB);
       return;
     }

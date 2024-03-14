@@ -49,7 +49,6 @@ add_custom_target(EraVMRT DEPENDS "${ERAVM_RUNTIME_PATH_OUT}")
 add_custom_target(EraVMStdLib DEPENDS "${ERAVM_STDLIB_PATH_OUT}")
 
 add_llvm_target(EraVMCodeGen
-  EraVMAddConditions.cpp
   EraVMAliasAnalysis.cpp
   EraVMAllocaHoisting.cpp
   EraVMAlwaysInline.cpp

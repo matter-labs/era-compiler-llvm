@@ -41,7 +41,6 @@ target triple = "eravm"
 ; CHECK-NEXT:       EraVM DAG->DAG Pattern Instruction Selection
 ; CHECK-NEXT:       Finalize ISel and expand pseudo-instructions
 ; CHECK-NEXT:       Local Stack Slot Allocation
-; CHECK-NEXT:       EraVM add conditionals
 ; CHECK-NEXT:       EraVM stack address constant propagation
 ; CHECK-NEXT:       EraVM bytes to cells
 ; CHECK-NEXT:       Eliminate PHI nodes for register allocation
