@@ -441,57 +441,59 @@ EraVMAsmParser::tryParseJumpTargetOperand(OperandVector &Operands) {
 }
 
 bool EraVMAsmParser::parseRegisterWithAddend(MCRegister &RegNo, int &Addend) {
-  // If both register and addend are specified, let's only parse them
-  // in that order as both "r1 + 42" and "r1 - 42" are possible, but
-  // not "42 - r1", only "42 + r1" (as well as "-42 + r1").
+  auto ParseAddend = [this, &Addend](bool SignRequired) {
+    int Multiplier = 1;
 
-  int Multiplier = 1;
+    switch (getTok().getKind()) {
+    case AsmToken::Plus:
+      Multiplier = 1;
+      Lex(); // eat "+" token
+      break;
+    case AsmToken::Minus:
+      Multiplier = -1;
+      Lex(); // eat "-" token
+      break;
+    default:
+      if (SignRequired)
+        return TokError("'+' or '-' expected");
+      break;
+    }
+
+    if (!getLexer().is(AsmToken::Integer))
+      return TokError("integer addend expected");
+    Addend = Multiplier * getTok().getIntVal();
+    Lex(); // eat integer token
+
+    return false;
+  };
+
+  auto ParseRegister = [this, &RegNo]() {
+    SMLoc S, E;
+    if (tryParseRegister(RegNo, S, E))
+      return TokError("register name expected");
+    return false;
+  };
 
   RegNo = 0;
   Addend = 0;
 
-  // The register name is the first token, if it exists.
   if (getLexer().is(AsmToken::Identifier)) {
-    SMLoc S, E;
-    if (tryParseRegister(RegNo, S, E))
-      return TokError("register name expected");
+    if (ParseRegister())
+      return true;
+    if (getTok().is(AsmToken::RBrac))
+      return false; // keep "]" token for the caller
+    return ParseAddend(/*SignRequired=*/true);
   }
 
-  // "+" or "-" is mandatory if a register name was parsed and addend has to be
-  // parsed next, optional otherwise.
-  switch (getTok().getKind()) {
-  case AsmToken::RBrac:
-    // "]" is the next token - keep it and stop further processing.
-    // Return an error if and only if nothing was parsed at all.
-    if (RegNo == 0)
-      return TokError("empty subscript");
-    return false;
-  case AsmToken::Plus:
-    Multiplier = 1;
-    Lex(); // eat "+" token
-    break;
-  case AsmToken::Minus:
-    Multiplier = -1;
-    Lex(); // eat "-" token
-    break;
-  default:
-    // If a register was parsed and this is not the end of bracket-enclosed
-    // sub-expression, it should be followed by "+" or "-" token, otherwise
-    // these are optional.
-    if (RegNo)
-      return TokError("'+' or '-' expected");
-    break;
-  }
+  if (ParseAddend(/*SignRequired=*/false))
+    return true;
+  if (getTok().is(AsmToken::RBrac))
+    return false; // keep "]" token for the caller
+  if (!getTok().is(AsmToken::Plus))
+    return TokError("'+' expected");
+  Lex(); // eat "+" token
 
-  // Parse integer addend - at this point it is mandatory as the register-only
-  // case was already handled above.
-  if (!getLexer().is(AsmToken::Integer))
-    return TokError("integer addend expected");
-
-  Addend = Multiplier * getTok().getIntVal();
-  Lex(); // eat integer token
-
-  return false;
+  return ParseRegister();
 }
 
 bool EraVMAsmParser::parseOperand(StringRef Mnemonic, OperandVector &Operands) {
@@ -533,6 +535,9 @@ EraVMAsmParser::tryParseStackOperand(OperandVector &Operands) {
   if (getTok().is(AsmToken::Minus)) {
     MemOpKind = EraVM::OperandStackSPRelative;
     Lex(); // eat "-" token
+  } else if (getTok().is(AsmToken::Equal)) {
+    // alternative syntax: stack=[...] is alias of stack[...]
+    Lex(); // eat "=" token
   }
 
   if (!getTok().is(AsmToken::LBrac)) {
@@ -543,6 +548,9 @@ EraVMAsmParser::tryParseStackOperand(OperandVector &Operands) {
 
   if (parseRegisterWithAddend(RegNo, Addend))
     return MatchOperand_ParseFail;
+
+  // FIXME Should we support negative addends?
+  Addend &= (unsigned)0xffff;
 
   if (parseToken(AsmToken::RBrac, "']' expected"))
     return MatchOperand_ParseFail;
@@ -586,6 +594,9 @@ EraVMAsmParser::tryParseCodeOperand(OperandVector &Operands) {
 
   if (parseRegisterWithAddend(RegNo, Addend))
     return MatchOperand_ParseFail;
+
+  // FIXME Should we support negative addends?
+  Addend &= (unsigned)0xffff;
 
   if (parseToken(AsmToken::RBrac, "']' expected"))
     return MatchOperand_ParseFail;
