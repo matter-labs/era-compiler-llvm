@@ -856,13 +856,8 @@ bool TailDuplicator::tailDuplicate(bool IsSimple, MachineBasicBlock *TailBB,
   DenseSet<Register> UsedByPhi;
   getRegsUsedByPHIs(*TailBB, &UsedByPhi);
 
-  // EraVM local begin
-  // TODO: enable duplication
-#if 0
   if (IsSimple)
     return duplicateSimpleBB(TailBB, TDBBs, UsedByPhi);
-#endif
-  // EraVM local end
 
   // Iterate through all the unique predecessors and tail-duplicate this
   // block into them, if possible. Copying the list ahead of time also

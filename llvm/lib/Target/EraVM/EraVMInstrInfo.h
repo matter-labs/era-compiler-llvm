@@ -308,6 +308,8 @@ public:
 
   int64_t getFramePoppedByCallee(const MachineInstr &I) const { return 0; }
 
+  unsigned int getTailDuplicateSize(CodeGenOptLevel OptLevel) const override;
+
   // Properties and mappings
   bool isAdd(const MachineInstr &MI) const;
   bool isSub(const MachineInstr &MI) const;

@@ -49,9 +49,10 @@ entry:
 ; block sequence.
 
 ; CHECK: sub! r2, r0
-; CHECK-NEXT: jump.ne @.BB2_1
-; CHECK-NEXT: %bb.2:
-; CHECK-NEXT: add 1, r1, r1
+; CHECK-NEXT: jump.eq @.BB2_2
+; CHECK:      ret
+; CHECK:      add 1, r1, r1
+; CHECK-NEXT: ret
 BB2:
   %z = phi i256 [%z1, %BB1], [%x1, %entry]
   ret i256 %z
@@ -68,8 +69,8 @@ entry:
 ; TODO: CPR-1223 eliminate the jump
 ; CHECK: sub! r2, r0
 ; CHECK-NEXT: jump.eq @.BB3_1
-; CHECK-NEXT: %bb.2:
-; CHECK-NEXT: add     1, r1
+; CHECK:      add 1, r1, r1
+; CHECK-NEXT: ret
 BB2:
   %z = phi i256 [%z1, %BB1], [%x1, %entry]
   ret i256 %z

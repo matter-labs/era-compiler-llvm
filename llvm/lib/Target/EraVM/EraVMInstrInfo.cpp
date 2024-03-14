@@ -250,6 +250,14 @@ void EraVMInstrInfo::anchor() {}
 EraVMInstrInfo::EraVMInstrInfo()
     : EraVMGenInstrInfo(EraVM::ADJCALLSTACKDOWN, EraVM::ADJCALLSTACKUP), RI() {}
 
+unsigned int
+EraVMInstrInfo::getTailDuplicateSize(CodeGenOptLevel OptLevel) const {
+  // After benchmarking tail duplication sizes of 2, 3, 4, 6, and 10, it was
+  // determined that a size of 3 provides the best trade-off between code size
+  // and performance at optimization level -O3.
+  return OptLevel >= CodeGenOptLevel::Aggressive ? 3 : 2;
+}
+
 unsigned EraVMInstrInfo::removeBranch(MachineBasicBlock &MBB,
                                       int *BytesRemoved) const {
   assert(!BytesRemoved && "code size not handled");

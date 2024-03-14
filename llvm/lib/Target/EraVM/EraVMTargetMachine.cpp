@@ -93,7 +93,6 @@ EraVMTargetMachine::EraVMTargetMachine(const Target &T, const Triple &TT,
                         getEffectiveCodeModel(CM, CodeModel::Small), OL),
       TLOF(std::make_unique<TargetLoweringObjectFileELF>()),
       Subtarget(TT, std::string(CPU), std::string(FS), *this) {
-  setRequiresStructuredCFG(true);
   setMachineOutliner(true);
   setSupportsDefaultOutlining(true);
   initAsmInfo();
