@@ -377,41 +377,25 @@ def : Pat<(EraVMchange_sp GR256:$size), (NOPSPr GR256:$size)>;
 multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit commutes> {
   let BaseOpcode = asmstring, isCommutable = commutes in {
 
-  def rrr_p : Pseudo<(outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
-                     [(set GR256:$rd0, (node GR256:$rs0, GR256:$rs1))]> {
-                      let DestAddrMode = ToReg.Value;
-                      let OperandAddrMode = OpndRR.Value;
-                      let OperandAM = 0;
-                     }
   def rrr_s : Irrr<opcode, 0, 1,
                    (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
-                   asmstring, "$rs0, $rs1, $rd0", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                   asmstring, "$rs0, $rs1, $rd0", [(set GR256:$rd0, (node GR256:$rs0, GR256:$rs1))]>, FlagRel, AddrModeRel, RetAddrModeRel;
   let Defs = [Flags] in
   def rrr_v : Irrr<opcode, 0, 0,
                    (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
                    asmstring, "$rs0, $rs1, $rd0", []>, FlagRel, AddrModeRel, RetAddrModeRel;
 
   let mayLoad = 1 in {
-  def crr_p : Pseudo<(outs GR256:$rd0), (ins memop:$src0, GR256:$rs1),
-                     [(set GR256:$rd0, (node (load_code memaddr:$src0), GR256:$rs1))]> {
-                      let DestAddrMode = ToReg.Value;
-                      let OperandAddrMode = OpndCR.Value;
-                     }
   def crr_s : Imrr<opcode, SrcCode, 0, 1,
                    (outs GR256:$rd0), (ins memop:$src0, GR256:$rs1),
-                   asmstring, "$src0, $rs1, $rd0", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                   asmstring, "$src0, $rs1, $rd0", [(set GR256:$rd0, (node (load_code memaddr:$src0), GR256:$rs1))]>,  FlagRel, AddrModeRel, RetAddrModeRel;
   let Defs = [Flags] in
   def crr_v : Imrr<opcode, SrcCode, 0, 0,
                    (outs GR256:$rd0), (ins memop:$src0, GR256:$rs1),
                    asmstring, "$src0, $rs1, $rd0", []>, FlagRel, AddrModeRel, RetAddrModeRel;
-  def srr_p : Pseudo<(outs GR256:$rd0), (ins stackout:$src0, GR256:$rs1),
-                     [(set GR256:$rd0, (node (load_stack stackaddr:$src0), GR256:$rs1))]> {
-                      let DestAddrMode = ToReg.Value;
-                      let OperandAddrMode = OpndSR.Value;
-                     }
   def srr_s : Isrr<opcode, SrcStack, 0, 1,
                    (outs GR256:$rd0), (ins stackout:$src0, GR256:$rs1),
-                   asmstring, "$src0, $rs1, $rd0", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                   asmstring, "$src0, $rs1, $rd0", [(set GR256:$rd0, (node (load_stack stackaddr:$src0), GR256:$rs1))]>, FlagRel, AddrModeRel, RetAddrModeRel;
   let Defs = [Flags] in
   def srr_v : Isrr<opcode, SrcStack, 0, 0,
                    (outs GR256:$rd0), (ins stackout:$src0, GR256:$rs1),
@@ -419,14 +403,9 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
   }
 
   let mayStore = 1 in {
-  def rrs_p : Pseudo<(outs), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
-                     [(store_stack (node GR256:$rs0, GR256:$rs1), stackaddr:$dst0)]> {
-                      let DestAddrMode = ToStack.Value;
-                      let OperandAddrMode = OpndRR.Value;
-                     }
   def rrs_s : Irrs<opcode, 0, 1,
                    (outs), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
-                   asmstring, "$rs0, $rs1, $dst0", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                   asmstring, "$rs0, $rs1, $dst0", [(store_stack (node GR256:$rs0, GR256:$rs1), stackaddr:$dst0)]>, FlagRel, AddrModeRel, RetAddrModeRel;
   let Defs = [Flags] in
   def rrs_v : Irrs<opcode, 0, 0,
                    (outs), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
@@ -434,27 +413,17 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
   }
 
   let mayLoad = 1, mayStore = 1 in {
-  def crs_p : Pseudo<(outs), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
-                     [(store_stack (node (load_code memaddr:$src0), GR256:$rs1), stackaddr:$dst0)]> {
-                      let DestAddrMode = ToStack.Value;
-                      let OperandAddrMode = OpndCR.Value;
-                     }
   def crs_s : Imrs<opcode, SrcCode, 0, 1,
                    (outs), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
-                   asmstring, "$src0, $rs1, $dst0", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                   asmstring, "$src0, $rs1, $dst0", [(store_stack (node (load_code memaddr:$src0), GR256:$rs1), stackaddr:$dst0)]>, FlagRel, AddrModeRel, RetAddrModeRel;
   let Defs = [Flags] in
   def crs_v : Imrs<opcode, SrcCode, 0, 0,
                    (outs), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
                    asmstring, "$src0, $rs1, $dst0", []>, FlagRel, AddrModeRel, RetAddrModeRel;
 
-  def srs_p : Pseudo<(outs), (ins stackout:$src0, GR256:$rs1, stackout:$dst0),
-                     [(store_stack (node (load_stack stackaddr:$src0), GR256:$rs1), stackaddr:$dst0)]> {
-                      let DestAddrMode = ToStack.Value;
-                      let OperandAddrMode = OpndSR.Value;
-                     }
   def srs_s : Isrs<opcode, SrcStack, 0, 1,
                    (outs), (ins stackout:$src0, GR256:$rs1, stackout:$dst0),
-                   asmstring, "$src0, $rs1, $dst0", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                   asmstring, "$src0, $rs1, $dst0", [(store_stack (node (load_stack stackaddr:$src0), GR256:$rs1), stackaddr:$dst0)]>, FlagRel, AddrModeRel, RetAddrModeRel;
 
   let Defs = [Flags] in
   def srs_v : Isrs<opcode, SrcStack, 0, 0,
@@ -466,27 +435,17 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
 
 multiclass ArithICommutable<bits<8> opcode, string asmstring, SDPatternOperator node> : Arith<opcode, asmstring, node, 1> {
   let BaseOpcode = asmstring, isCommutable = 1 in {
-  def irr_p : Pseudo<(outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
-                     [(set GR256:$rd0, (node GR256:$rs1, imm16:$imm))]> {
-                      let DestAddrMode = ToReg.Value;
-                      let OperandAddrMode = OpndIR.Value;
-                     }
   def irr_s : Iirr<opcode, 0, 1,
                    (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
-                   asmstring, "$imm, $rs1, $rd0", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                   asmstring, "$imm, $rs1, $rd0", [(set GR256:$rd0, (node GR256:$rs1, imm16:$imm))]>, FlagRel, AddrModeRel, RetAddrModeRel;
   let Defs = [Flags] in
   def irr_v : Iirr<opcode, 0, 0,
                    (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
                    asmstring, "$imm, $rs1, $rd0", []>, FlagRel, AddrModeRel, RetAddrModeRel;
   let mayStore = 1 in {
-  def irs_p : Pseudo<(outs), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                     [(store_stack (node GR256:$rs1, imm16:$imm), stackaddr:$dst0)]> {
-                      let DestAddrMode = ToStack.Value;
-                      let OperandAddrMode = OpndIR.Value;
-                     }
   def irs_s : Iirs<opcode, 0, 1,
                    (outs), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                   asmstring, "$imm, $rs1, $dst0", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                   asmstring, "$imm, $rs1, $dst0", [(store_stack (node GR256:$rs1, imm16:$imm), stackaddr:$dst0)]>, FlagRel, AddrModeRel, RetAddrModeRel;
   let Defs = [Flags] in
   def irs_v : Iirs<opcode, 0, 0,
                    (outs), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
@@ -494,34 +453,22 @@ multiclass ArithICommutable<bits<8> opcode, string asmstring, SDPatternOperator 
   }
   } // end isCommutable = 1
 
-  // commutative: irr_p -> crr_p
+  // commutative: irr_s -> crr_s
   def : Pat<(node GR256:$rs1, large_imm:$imm),
-            (!cast<Instruction>(NAME # crr_p) (constant_pool imm:$imm), 0, GR256:$rs1)>;
-  // commutative: irs_p -> crs_p
+            (!cast<Instruction>(NAME # crr_s) (constant_pool imm:$imm), 0, GR256:$rs1, 0)>;
+  // commutative: irs_s -> crs_s
   def : Pat<(store_stack (node GR256:$rs1, large_imm:$imm), stackaddr:$dst0),
-            (!cast<Instruction>(NAME # crs_p) (constant_pool imm:$imm), 0, GR256:$rs1, stackaddr:$dst0)>;
+            (!cast<Instruction>(NAME # crs_s) (constant_pool imm:$imm), 0, GR256:$rs1, stackaddr:$dst0, 0)>;
 }
 
 multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperator node> : Arith<opcode, asmstring, node, 0> {
   let BaseOpcode = asmstring in {
-  def irr_p : Pseudo<(outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
-                     [(set GR256:$rd0, (node imm16:$imm, GR256:$rs1))]> {
-                      let DestAddrMode = ToReg.Value;
-                      let OperandAddrMode = OpndIR.Value;
-                     }
-  def xrr_p : Pseudo<(outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
-                     [(set GR256:$rd0, (node GR256:$rs1, imm16:$imm))]> {
-                      let DestAddrMode = ToReg.Value;
-                      let OperandAddrMode = OpndIR.Value;
-                      let ReverseOperand = 1;
-                     }
-
   def irr_s : Iirr<opcode, 0, 1,
                        (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
-                       asmstring, "$imm, $rs1, $rd0", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                       asmstring, "$imm, $rs1, $rd0", [(set GR256:$rd0, (node imm16:$imm, GR256:$rs1))]>, FlagRel, AddrModeRel, RetAddrModeRel;
   def xrr_s : Iirr<opcode, 1, 1,
                        (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
-                       asmstring, "$imm, $rs1, $rd0", []>, PseudoRel, FlagRel, RetAddrModeRel;
+                       asmstring, "$imm, $rs1, $rd0", [(set GR256:$rd0, (node GR256:$rs1, imm16:$imm))]>, FlagRel, RetAddrModeRel;
 
   // The four *_alias instructions below are defined to make asm parser handle
   // "mnemonic.s rs0, rs1, rd0" instructions for the sake of uniformity, that
@@ -554,52 +501,29 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
   }
 
   let mayLoad = 1 in {
-  def yrr_p : Pseudo<(outs GR256:$rd0), (ins memop:$src0, GR256:$rs1),
-                     [(set GR256:$rd0, (node GR256:$rs1, (load_code memaddr:$src0)))]> {
-                      let DestAddrMode = ToReg.Value;
-                      let OperandAddrMode = OpndCR.Value;
-                      let ReverseOperand = 1;
-                     }
   def yrr_s : Imrr<opcode, SrcCode, 1, 1,
                    (outs GR256:$rd0), (ins memop:$src0, GR256:$rs1),
-                   asmstring, "$src0, $rs1, $rd0", []>, PseudoRel, FlagRel, RetAddrModeRel;
+                   asmstring, "$src0, $rs1, $rd0", [(set GR256:$rd0, (node GR256:$rs1, (load_code memaddr:$src0)))]>, FlagRel, RetAddrModeRel;
   let Defs = [Flags] in
   def yrr_v : Imrr<opcode, SrcCode, 1, 0,
                    (outs GR256:$rd0), (ins memop:$src0, GR256:$rs1),
                    asmstring, "$src0, $rs1, $rd0", []>, FlagRel, RetAddrModeRel;
-  def zrr_p : Pseudo<(outs GR256:$rd0), (ins stackout:$src0, GR256:$rs1),
-                     [(set GR256:$rd0, (node GR256:$rs1, (load_stack stackaddr:$src0)))]> {
-                      let DestAddrMode = ToReg.Value;
-                      let OperandAddrMode = OpndSR.Value;
-                      let ReverseOperand = 1;
-                     }
   def zrr_s : Isrr<opcode, SrcStack, 1, 1,
                    (outs GR256:$rd0), (ins stackout:$src0, GR256:$rs1),
-                   asmstring, "$src0, $rs1, $rd0", []>, PseudoRel, FlagRel, RetAddrModeRel;
+                   asmstring, "$src0, $rs1, $rd0", [(set GR256:$rd0, (node GR256:$rs1, (load_stack stackaddr:$src0)))]>, FlagRel, RetAddrModeRel;
   let Defs = [Flags] in
   def zrr_v : Isrr<opcode, SrcStack, 1, 0,
                    (outs GR256:$rd0), (ins stackout:$src0, GR256:$rs1),
                    asmstring, "$src0, $rs1, $rd0", []>, FlagRel, RetAddrModeRel;
   }
   let mayStore = 1 in {
-  def irs_p : Pseudo<(outs), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                     [(store_stack (node imm16:$imm, GR256:$rs1), stackaddr:$dst0)]> {
-                      let DestAddrMode = ToStack.Value;
-                      let OperandAddrMode = OpndIR.Value;
-                     }
-  def xrs_p : Pseudo<(outs), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                     [(store_stack (node GR256:$rs1, imm16:$imm), stackaddr:$dst0)]> {
-                      let DestAddrMode = ToStack.Value;
-                      let OperandAddrMode = OpndIR.Value;
-                      let ReverseOperand = 1;
-                     }
   def irs_s : Iirs<opcode, 0, 1,
                        (outs), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                       asmstring, "$imm, $rs1, $dst0", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                       asmstring, "$imm, $rs1, $dst0", [(store_stack (node imm16:$imm, GR256:$rs1), stackaddr:$dst0)]>, FlagRel, AddrModeRel, RetAddrModeRel;
 
   def xrs_s : Iirs<opcode, 1, 1,
                        (outs), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                       asmstring, "$imm, $rs1, $dst0", []>, PseudoRel, FlagRel, RetAddrModeRel;
+                       asmstring, "$imm, $rs1, $dst0", [(store_stack (node GR256:$rs1, imm16:$imm), stackaddr:$dst0)]>, FlagRel, RetAddrModeRel;
 
   let Defs = [Flags] in {
   def irs_v : Iirs<opcode, 0, 0,
@@ -610,31 +534,18 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
                        asmstring, "$imm, $rs1, $dst0", []>, FlagRel, RetAddrModeRel;
   }
   let mayLoad = 1 in {
-  def yrs_p : Pseudo<(outs), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
-                     [(store_stack (node GR256:$rs1, (load_code memaddr:$src0)), stackaddr:$dst0)]> {
-                      let DestAddrMode = ToStack.Value;
-                      let OperandAddrMode = OpndCR.Value;
-                      let ReverseOperand = 1;
-                     }
-
   def yrs_s : Imrs<opcode, SrcCode, 1, 1,
                    (outs), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
-                   asmstring, "$src0, $rs1, $dst0", []>, PseudoRel, FlagRel, RetAddrModeRel;
+                   asmstring, "$src0, $rs1, $dst0", [(store_stack (node GR256:$rs1, (load_code memaddr:$src0)), stackaddr:$dst0)]>, FlagRel, RetAddrModeRel;
 
   let Defs = [Flags] in
   def yrs_v : Imrs<opcode, SrcCode, 1, 0,
                    (outs), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
                    asmstring, "$src0, $rs1, $dst0", []>, FlagRel, RetAddrModeRel;
 
-  def zrs_p : Pseudo<(outs), (ins stackout:$src0, GR256:$rs1, stackout:$dst0),
-                     [(store_stack (node GR256:$rs1, (load_stack stackaddr:$src0)), stackaddr:$dst0)]> {
-                      let DestAddrMode = ToStack.Value;
-                      let OperandAddrMode = OpndSR.Value;
-                      let ReverseOperand = 1;
-                     }
   def zrs_s : Isrs<opcode, SrcStack, 1, 1,
                    (outs), (ins stackout:$src0, GR256:$rs1, stackout:$dst0),
-                   asmstring, "$src0, $rs1, $dst0", []>, PseudoRel, FlagRel, RetAddrModeRel;
+                   asmstring, "$src0, $rs1, $dst0", [(store_stack (node GR256:$rs1, (load_stack stackaddr:$src0)), stackaddr:$dst0)]>, FlagRel, RetAddrModeRel;
   let Defs = [Flags] in
   def zrs_v : Isrs<opcode, SrcStack, 1, 0,
                    (outs), (ins stackout:$src0, GR256:$rs1, stackout:$dst0),
@@ -643,48 +554,38 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
   }
   }
 
-  // non-commutative: irr_p -> crr_p
+  // non-commutative: irr_s -> crr_s
   def : Pat<(node GR256:$rs1, large_imm:$imm),
-            (!cast<Instruction>(NAME # crr_p) (constant_pool imm:$imm), 0, GR256:$rs1)>;
+            (!cast<Instruction>(NAME # crr_s) (constant_pool imm:$imm), 0, GR256:$rs1, 0)>;
 
-  // xrr_p -> yrr_p
+  // xrr_s -> yrr_s
   def : Pat<(node GR256:$rs1, large_imm:$imm),
-            (!cast<Instruction>(NAME # yrr_p) (constant_pool imm:$imm), 0, GR256:$rs1)>;
+            (!cast<Instruction>(NAME # yrr_s) (constant_pool imm:$imm), 0, GR256:$rs1, 0)>;
 
-  // non-commutative: irs_p -> crs_p
+  // non-commutative: irs_s -> crs_s
   def : Pat<(store_stack (node GR256:$rs1, large_imm:$imm), stackaddr:$dst0),
-            (!cast<Instruction>(NAME # crs_p) (constant_pool imm:$imm), 0, GR256:$rs1, stackaddr:$dst0)>;
+            (!cast<Instruction>(NAME # crs_s) (constant_pool imm:$imm), 0, GR256:$rs1, stackaddr:$dst0, 0)>;
 
-  // xrs_p -> yrs_p
+  // xrs_s -> yrs_s
   def : Pat<(store_stack (node GR256:$rs1, large_imm:$imm), stackaddr:$dst0),
-            (!cast<Instruction>(NAME # yrs_p) (constant_pool imm:$imm), 0, GR256:$rs1, stackaddr:$dst0)>;
+            (!cast<Instruction>(NAME # yrs_s) (constant_pool imm:$imm), 0, GR256:$rs1, stackaddr:$dst0, 0)>;
 }
 
 multiclass PtrInstr<bits<8> opcode, string asmstring, SDPatternOperator node> {
   let BaseOpcode = asmstring in {
 
-  def rrr_p : Pseudo<(outs GRPTR:$rd0), (ins GRPTR:$rs0, GR256:$rs1),
-                     [(set GRPTR:$rd0, (node GRPTR:$rs0, GR256:$rs1))]> {
-                      let DestAddrMode = ToReg.Value;
-                      let OperandAddrMode = OpndRR.Value;
-                     }
   def rrr_s : Irrr<opcode, 0, 1,
                    (outs GRPTR:$rd0), (ins GRPTR:$rs0, GR256:$rs1),
-                   asmstring, "$rs0, $rs1, $rd0", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                   asmstring, "$rs0, $rs1, $rd0", [(set GRPTR:$rd0, (node GRPTR:$rs0, GR256:$rs1))]>, FlagRel, AddrModeRel, RetAddrModeRel;
   let Defs = [Flags] in
   def rrr_v : Irrr<opcode, 0, 0,
                    (outs GRPTR:$rd0), (ins GRPTR:$rs0, GR256:$rs1),
                    asmstring, "$rs0, $rs1, $rd0", []>, FlagRel, AddrModeRel, RetAddrModeRel;
 
   let mayLoad = 1 in {
-  def srr_p : Pseudo<(outs GRPTR:$rd0), (ins stackout:$src0, GR256:$rs1),
-                     [(set GRPTR:$rd0, (node (load_stack stackaddr:$src0), GR256:$rs1))]> {
-                      let DestAddrMode = ToReg.Value;
-                      let OperandAddrMode = OpndSR.Value;
-                     }
   def srr_s : Isrr<opcode, SrcStack, 0, 1,
                    (outs GRPTR:$rd0), (ins stackout:$src0, GR256:$rs1),
-                    asmstring, "$src0, $rs1, $rd0", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                    asmstring, "$src0, $rs1, $rd0", [(set GRPTR:$rd0, (node (load_stack stackaddr:$src0), GR256:$rs1))]>, FlagRel, AddrModeRel, RetAddrModeRel;
   let Defs = [Flags] in
   def srr_v : Isrr<opcode, SrcStack, 0, 0,
                    (outs GRPTR:$rd0), (ins stackout:$src0, GR256:$rs1),
@@ -692,14 +593,9 @@ multiclass PtrInstr<bits<8> opcode, string asmstring, SDPatternOperator node> {
   }
 
   let mayStore = 1 in {
-  def rrs_p : Pseudo<(outs), (ins GRPTR:$rs0, GR256:$rs1, stackout:$dst0),
-                     [(store_stack (node GRPTR:$rs0, GR256:$rs1), stackaddr:$dst0)]> {
-                      let DestAddrMode = ToStack.Value;
-                      let OperandAddrMode = OpndRR.Value;
-                     }
   def rrs_s : Irrs<opcode, 0, 1,
                    (outs), (ins GRPTR:$rs0, GR256:$rs1, stackout:$dst0),
-                    asmstring, "$rs0, $rs1, $dst0", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                    asmstring, "$rs0, $rs1, $dst0", [(store_stack (node GRPTR:$rs0, GR256:$rs1), stackaddr:$dst0)]>, FlagRel, AddrModeRel, RetAddrModeRel;
   let Defs = [Flags] in
   def rrs_v : Irrs<opcode, 0, 0,
                    (outs), (ins GRPTR:$rs0, GR256:$rs1, stackout:$dst0),
@@ -707,30 +603,18 @@ multiclass PtrInstr<bits<8> opcode, string asmstring, SDPatternOperator node> {
   }
 
   let mayLoad =1, mayStore = 1 in {
-  def srs_p : Pseudo<(outs), (ins stackout:$src0, GR256:$rs1, stackout:$dst0),
-                     [(store_stack (node (load_stack stackaddr:$src0), GR256:$rs1), stackaddr:$dst0)]> {
-                      let DestAddrMode = ToStack.Value;
-                      let OperandAddrMode = OpndSR.Value;
-                     }
   def srs_s : Isrs<opcode, SrcStack, 0, 1,
                    (outs), (ins stackout:$src0, GR256:$rs1, stackout:$dst0),
-                   asmstring, "$src0, $rs1, $dst0", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                   asmstring, "$src0, $rs1, $dst0", [(store_stack (node (load_stack stackaddr:$src0), GR256:$rs1), stackaddr:$dst0)]>, FlagRel, AddrModeRel, RetAddrModeRel;
   let Defs = [Flags] in
   def srs_v : Isrs<opcode, SrcStack, 0, 0,
                    (outs), (ins GRPTR:$src0, GR256:$rs1, stackout:$dst0),
                    asmstring, "$src0, $rs1, $dst0", []>, FlagRel, AddrModeRel, RetAddrModeRel;
   }
 
-  def xrr_p : Pseudo<(outs GRPTR:$rd0), (ins imm16:$imm, GRPTR:$rs1),
-                     [(set GRPTR:$rd0, (node GRPTR:$rs1, imm16:$imm))]> {
-                      let DestAddrMode = ToReg.Value;
-                      let OperandAddrMode = OpndIR.Value;
-                      let ReverseOperand = 1;
-                     }
   def xrr_s : Iirr<opcode, 1, 1,
                        (outs GRPTR:$rd0), (ins imm16:$imm, GRPTR:$rs1),
-                       asmstring,
-                                  "$imm, $rs1, $rd0", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                       asmstring, "$imm, $rs1, $rd0", [(set GRPTR:$rd0, (node GRPTR:$rs1, imm16:$imm))]>, FlagRel, AddrModeRel, RetAddrModeRel;
 
   let Defs = [Flags] in
   def xrr_v : Iirr<opcode, 1, 0,
@@ -738,31 +622,18 @@ multiclass PtrInstr<bits<8> opcode, string asmstring, SDPatternOperator node> {
                        asmstring,
                                   "$imm, $rs1, $rd0", []>, FlagRel, AddrModeRel, RetAddrModeRel;
   let mayLoad = 1 in {
-  def yrr_p : Pseudo<(outs GRPTR:$rd0), (ins memop:$src0, GRPTR:$rs1),
-                     [(set GRPTR:$rd0, (node GRPTR:$rs1, (load_code memaddr:$src0)))]> {
-                      let DestAddrMode = ToReg.Value;
-                      let OperandAddrMode = OpndCR.Value;
-                      let ReverseOperand = 1;
-                     }
   def yrr_s : Imrr<opcode, SrcCode, 1, 1,
                    (outs GRPTR:$rd0), (ins memop:$src0, GRPTR:$rs1),
-                   asmstring, "$src0, $rs1, $rd0", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                   asmstring, "$src0, $rs1, $rd0", [(set GRPTR:$rd0, (node GRPTR:$rs1, (load_code memaddr:$src0)))]>, FlagRel, AddrModeRel, RetAddrModeRel;
 
   let Defs = [Flags] in
   def yrr_v : Imrr<opcode, SrcCode, 1, 0,
                    (outs GRPTR:$rd0), (ins memop:$src0, GRPTR:$rs1),
                    asmstring, "$src0, $rs1, $rd0", []>, FlagRel, AddrModeRel, RetAddrModeRel;
 
-  def zrr_p : Pseudo<(outs GRPTR:$rd0), (ins stackout:$src0, GRPTR:$rs1),
-                     [(set GRPTR:$rd0, (node GRPTR:$rs1, (load_stack stackaddr:$src0)))]> {
-                      let DestAddrMode = ToReg.Value;
-                      let OperandAddrMode = OpndSR.Value;
-                      let ReverseOperand = 1;
-                     }
-
   def zrr_s : Isrr<opcode, SrcStack, 1, 1,
                    (outs GRPTR:$rd0), (ins stackout:$src0, GRPTR:$rs1),
-                   asmstring, "$src0, $rs1, $rd0", []>, PseudoRel, FlagRel, RetAddrModeRel;
+                   asmstring, "$src0, $rs1, $rd0", [(set GRPTR:$rd0, (node GRPTR:$rs1, (load_stack stackaddr:$src0)))]>, FlagRel, RetAddrModeRel;
 
   let Defs = [Flags] in
   def zrr_v : Isrr<opcode, SrcStack, 1, 0,
@@ -771,16 +642,10 @@ multiclass PtrInstr<bits<8> opcode, string asmstring, SDPatternOperator node> {
   }
 
   let mayStore = 1 in {
-  def xrs_p : Pseudo<(outs), (ins imm16:$imm, GRPTR:$rs1, stackout:$dst0),
-                     [(store_stack (node GRPTR:$rs1, imm16:$imm), stackaddr:$dst0)]> {
-                      let DestAddrMode = ToStack.Value;
-                      let OperandAddrMode = OpndIR.Value;
-                      let ReverseOperand = 1;
-                     }
 
   def xrs_s : Iirs<opcode, 1, 1,
                        (outs), (ins imm16:$imm, GRPTR:$rs1, stackout:$dst0),
-                       asmstring, "$imm, $rs1, $dst0", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                       asmstring, "$imm, $rs1, $dst0", [(store_stack (node GRPTR:$rs1, imm16:$imm), stackaddr:$dst0)]>, FlagRel, AddrModeRel, RetAddrModeRel;
 
   let Defs = [Flags] in
   def xrs_v : Iirs<opcode, 1, 0,
@@ -788,32 +653,19 @@ multiclass PtrInstr<bits<8> opcode, string asmstring, SDPatternOperator node> {
                        asmstring,
                                   "t$imm, $rs1, $dst0", []>, FlagRel, AddrModeRel, RetAddrModeRel;
   let mayLoad = 1 in {
-  def yrs_p : Pseudo<(outs), (ins memop:$src0, GRPTR:$rs1, stackout:$dst0),
-                     [(store_stack (node GRPTR:$rs1, (load_code memaddr:$src0)), stackaddr:$dst0)]> {
-                      let DestAddrMode = ToStack.Value;
-                      let OperandAddrMode = OpndCR.Value;
-                      let ReverseOperand = 1;
-                     }
 
   def yrs_s : Imrs<opcode, SrcCode, 1, 1,
                    (outs), (ins memop:$src0, GRPTR:$rs1, stackout:$dst0),
-                   asmstring, "$src0, $rs1, $dst0", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                   asmstring, "$src0, $rs1, $dst0", [(store_stack (node GRPTR:$rs1, (load_code memaddr:$src0)), stackaddr:$dst0)]>, FlagRel, AddrModeRel, RetAddrModeRel;
 
   let Defs = [Flags] in
   def yrs_v : Imrs<opcode, SrcCode, 1, 0,
                    (outs), (ins memop:$src0, GRPTR:$rs1, stackout:$dst0),
                    asmstring, "$src0, $rs1, $dst0", []>, FlagRel, AddrModeRel, RetAddrModeRel;
 
-  def zrs_p : Pseudo<(outs), (ins stackout:$src0, GRPTR:$rs1, stackout:$dst0),
-                     [(store_stack (node GRPTR:$rs1, (load_stack stackaddr:$src0)), stackaddr:$dst0)]> {
-                      let DestAddrMode = ToStack.Value;
-                      let OperandAddrMode = OpndSR.Value;
-                      let ReverseOperand = 1;
-                     }
-
   def zrs_s : Isrs<opcode, SrcStack, 1, 1,
                    (outs), (ins stackout:$src0, GRPTR:$rs1, stackout:$dst0),
-                   asmstring, "$src0, $rs1, $dst0", []>, PseudoRel, FlagRel, RetAddrModeRel;
+                   asmstring, "$src0, $rs1, $dst0", [(store_stack (node GRPTR:$rs1, (load_stack stackaddr:$src0)), stackaddr:$dst0)]>, FlagRel, RetAddrModeRel;
 
   let Defs = [Flags] in
   def zrs_v : Isrs<opcode, SrcStack, 1, 0,
@@ -823,13 +675,13 @@ multiclass PtrInstr<bits<8> opcode, string asmstring, SDPatternOperator node> {
   }
   }
 
-  // xrr_p -> yrr_p
+  // xrr_s -> yrr_s
   def : Pat<(node GRPTR:$rs1, large_imm:$imm),
-            (!cast<Instruction>(NAME # yrr_p) (constant_pool imm:$imm), 0, GRPTR:$rs1)>;
+            (!cast<Instruction>(NAME # yrr_s) (constant_pool imm:$imm), 0, GRPTR:$rs1, 0)>;
 
-  // xrs_p -> yrs_p
+  // xrs_s -> yrs_s
   def : Pat<(store_stack (node GRPTR:$rs1, large_imm:$imm), stackaddr:$dst0),
-            (!cast<Instruction>(NAME # yrs_p) (constant_pool imm:$imm), 0, GRPTR:$rs1, stackaddr:$dst0)>;
+            (!cast<Instruction>(NAME # yrs_s) (constant_pool imm:$imm), 0, GRPTR:$rs1, stackaddr:$dst0, 0)>;
 }
 
 // This is a bridge to convert GRPTR type to GR256 type. It will get eliminated in a post RA pass.
@@ -838,40 +690,25 @@ def PTR_TO_INT : Pseudo<(outs GR256:$rd0), (ins GRPTR:$rs0),
 
 multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit commutes> {
   let BaseOpcode = asmstring, isCommutable = commutes in {
-  def rrrr_p : Pseudo<(outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, GR256:$rs1),
-                      [(set GR256:$rd0, GR256:$rd1, (node GR256:$rs0, GR256:$rs1))]> {
-                        let DestAddrMode = ToRegReg.Value;
-                        let OperandAddrMode = OpndRR.Value;
-                      }
   def rrrr_s : Irrrr<opcode, 0, 1,
                      (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, GR256:$rs1),
-                     asmstring, "$rs0, $rs1, $rd0, $rd1", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                     asmstring, "$rs0, $rs1, $rd0, $rd1", [(set GR256:$rd0, GR256:$rd1, (node GR256:$rs0, GR256:$rs1))]>, FlagRel, AddrModeRel, RetAddrModeRel;
   let Defs = [Flags] in
   def rrrr_v : Irrrr<opcode, 0, 0,
                      (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, GR256:$rs1),
                      asmstring, "$rs0, $rs1, $rd0, $rd1", []>, FlagRel, AddrModeRel, RetAddrModeRel;
 
   let mayLoad = 1 in {
-  def crrr_p : Pseudo<(outs GR256:$rd0, GR256:$rd1), (ins memop:$src0, GR256:$rs1),
-                      [(set GR256:$rd0, GR256:$rd1, (node (load_code memaddr:$src0), GR256:$rs1))]> {
-                        let DestAddrMode = ToRegReg.Value;
-                        let OperandAddrMode = OpndCR.Value;
-                      }
   def crrr_s : Imrrr<opcode, SrcCode, 0, 1,
                      (outs GR256:$rd0, GR256:$rd1), (ins memop:$src0, GR256:$rs1),
-                     asmstring, "$src0, $rs1, $rd0, $rd1", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                     asmstring, "$src0, $rs1, $rd0, $rd1", [(set GR256:$rd0, GR256:$rd1, (node (load_code memaddr:$src0), GR256:$rs1))]>, FlagRel, AddrModeRel, RetAddrModeRel;
   let Defs = [Flags] in
   def crrr_v : Imrrr<opcode, SrcCode, 0, 0,
                      (outs GR256:$rd0, GR256:$rd1), (ins memop:$src0, GR256:$rs1),
                      asmstring, "$src0, $rs1, $rd0, $rd1", []>, FlagRel, AddrModeRel, RetAddrModeRel;
-  def srrr_p : Pseudo<(outs GR256:$rd0, GR256:$rd1), (ins stackout:$src0, GR256:$rs1),
-                      [(set GR256:$rd0, GR256:$rd1, (node (load_stack stackaddr:$src0), GR256:$rs1))]> {
-                        let DestAddrMode = ToRegReg.Value;
-                        let OperandAddrMode = OpndSR.Value;
-                      }
   def srrr_s : Isrrr<opcode, SrcStack, 0, 1,
                      (outs GR256:$rd0, GR256:$rd1), (ins stackout:$src0, GR256:$rs1),
-                     asmstring, "$src0, $rs1, $rd0, $rd1", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                     asmstring, "$src0, $rs1, $rd0, $rd1", [(set GR256:$rd0, GR256:$rd1, (node (load_stack stackaddr:$src0), GR256:$rs1))]>, FlagRel, AddrModeRel, RetAddrModeRel;
   let Defs = [Flags] in
   def srrr_v : Isrrr<opcode, SrcStack, 0, 0,
                      (outs GR256:$rd0, GR256:$rd1), (ins stackout:$src0, GR256:$rs1),
@@ -879,37 +716,24 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
   }
 
   let mayStore = 1 in {
-  def rrsr_p : Pseudo<(outs GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0), []> {
-                        let DestAddrMode = ToStackReg.Value;
-                        let OperandAddrMode = OpndRR.Value;
-                      }
   def rrsr_s : Irrsr<opcode, 0, 1,
                      (outs GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
-                     asmstring, "$rs0, $rs1, $dst0, $rd1", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                     asmstring, "$rs0, $rs1, $dst0, $rd1", []>, FlagRel, AddrModeRel, RetAddrModeRel;
   let Defs = [Flags] in
   def rrsr_v : Irrsr<opcode, 0, 0,
                      (outs GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
                      asmstring, "$rs0, $rs1, $dst0, $rd1", []>, FlagRel, AddrModeRel, RetAddrModeRel;
   let mayLoad = 1 in {
-  def crsr_p : Pseudo<(outs GR256:$rd1), (ins memop:$src0, GR256:$rs1, stackout:$dst0), []> {
-                        let DestAddrMode = ToStackReg.Value;
-                        let OperandAddrMode = OpndCR.Value;
-                      }
   def crsr_s : Imrsr<opcode, SrcCode, 0, 1,
                      (outs GR256:$rd1), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
-                     asmstring, "$src0, $rs1, $dst0, $rd1", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                     asmstring, "$src0, $rs1, $dst0, $rd1", []>, FlagRel, AddrModeRel, RetAddrModeRel;
   let Defs = [Flags] in
   def crsr_v : Imrsr<opcode, SrcCode, 0, 0,
                      (outs GR256:$rd1), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
                      asmstring, "$src0, $rs1, $dst0, $rd1", []>, FlagRel, AddrModeRel, RetAddrModeRel;
-  def srsr_p : Pseudo<(outs GR256:$rd1), (ins stackout:$src0, GR256:$rs1, stackout:$dst0), []> {
-                        let DestAddrMode = ToStackReg.Value;
-                        let OperandAddrMode = OpndSR.Value;
-                        let ReverseOperand = 0;
-                      }
   def srsr_s : Isrsr<opcode, SrcStack, 0, 1,
                      (outs GR256:$rd1), (ins stackout:$src0, GR256:$rs1, stackout:$dst0),
-                     asmstring, "$src0, $rs1, $dst0, $rd1", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                     asmstring, "$src0, $rs1, $dst0, $rd1", []>, FlagRel, AddrModeRel, RetAddrModeRel;
   let Defs = [Flags] in
   def srsr_v : Isrsr<opcode, SrcStack, 0, 0,
                      (outs GR256:$rd1), (ins stackout:$src0, GR256:$rs1, stackout:$dst0),
@@ -922,26 +746,17 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
 multiclass Arith2ICommutable<bits<8> opcode, string asmstring, SDPatternOperator node>
          : Arith2<opcode, asmstring, node, 1> {
   let BaseOpcode = asmstring, isCommutable = 1 in {
-  def irrr_p : Pseudo<(outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1),
-                      [(set GR256:$rd0, GR256:$rd1, (node GR256:$rs1, imm16:$imm))]> {
-                        let DestAddrMode = ToRegReg.Value;
-                        let OperandAddrMode = OpndIR.Value;
-                      }
   def irrr_s : Iirrr<opcode, 0, 1,
                      (outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1),
-                     asmstring, "$imm, $rs1, $rd0, $rd1", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                     asmstring, "$imm, $rs1, $rd0, $rd1", [(set GR256:$rd0, GR256:$rd1, (node GR256:$rs1, imm16:$imm))]>, FlagRel, AddrModeRel, RetAddrModeRel;
   let Defs = [Flags] in
   def irrr_v : Iirrr<opcode, 0, 0,
                      (outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1),
                      asmstring, "$imm, $rs1, $rd0, $rd1", []>, FlagRel, AddrModeRel, RetAddrModeRel;
   let mayStore = 1 in {
-  def irsr_p : Pseudo<(outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackout:$dst0), []> {
-                        let DestAddrMode = ToStackReg.Value;
-                        let OperandAddrMode = OpndIR.Value;
-                      }
   def irsr_s : Iirsr<opcode, 0, 1,
                      (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                     asmstring, "$imm, $rs1, $dst0, $rd1", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                     asmstring, "$imm, $rs1, $dst0, $rd1", []>, FlagRel, AddrModeRel, RetAddrModeRel;
   let Defs = [Flags] in
   def irsr_v : Iirsr<opcode, 0, 0,
                      (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
@@ -951,29 +766,18 @@ multiclass Arith2ICommutable<bits<8> opcode, string asmstring, SDPatternOperator
 
   // commutative: rrrr_p -> crrr_p
   def : Pat<(node GR256:$rs1, large_imm:$imm),
-            (!cast<Instruction>(NAME # crrr_p) (constant_pool imm:$imm), 0, GR256:$rs1)>;
+            (!cast<Instruction>(NAME # crrr_s) (constant_pool imm:$imm), 0, GR256:$rs1, 0)>;
 }
 
 multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOperator node>
          : Arith2<opcode, asmstring, node, 0> {
   let BaseOpcode = asmstring in {
-  def irrr_p : Pseudo<(outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1),
-                       [(set GR256:$rd0, GR256:$rd1, (node imm16:$imm, GR256:$rs1))]> {
-                        let DestAddrMode = ToRegReg.Value;
-                        let OperandAddrMode = OpndIR.Value;
-                       }
-  def xrrr_p : Pseudo<(outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1),
-                       [(set GR256:$rd0, GR256:$rd1, (node GR256:$rs1, imm16:$imm))]> {
-                        let DestAddrMode = ToRegReg.Value;
-                        let OperandAddrMode = OpndIR.Value;
-                        let ReverseOperand = 1;
-                       }
   def irrr_s : Iirrr<opcode, 0, 1,
                        (outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1),
-                       asmstring, "$imm, $rs1, $rd0, $rd1", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                       asmstring, "$imm, $rs1, $rd0, $rd1", [(set GR256:$rd0, GR256:$rd1, (node imm16:$imm, GR256:$rs1))]>, FlagRel, AddrModeRel, RetAddrModeRel;
   def xrrr_s : Iirrr<opcode, 1, 1,
                        (outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1),
-                       asmstring, "$imm, $rs1, $rd0, $rd1", []>, PseudoRel, FlagRel, RetAddrModeRel;
+                       asmstring, "$imm, $rs1, $rd0, $rd1", [(set GR256:$rd0, GR256:$rd1, (node GR256:$rs1, imm16:$imm))]>, FlagRel, RetAddrModeRel;
 
   let Defs = [Flags] in {
   def irrr_v : Iirrr<opcode, 0, 0,
@@ -1006,47 +810,28 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
   }
 
   let mayLoad = 1 in {
-  def yrrr_p : Pseudo<(outs GR256:$rd0, GR256:$rd1), (ins memop:$src0, GR256:$rs1),
-                      [(set GR256:$rd0, GR256:$rd1, (node GR256:$rs1, (load_code memaddr:$src0)))]> {
-                        let DestAddrMode = ToRegReg.Value;
-                        let OperandAddrMode = OpndCR.Value;
-                        let ReverseOperand = 1;
-                      }
   def yrrr_s : Imrrr<opcode, SrcCode, 1, 1,
                      (outs GR256:$rd0, GR256:$rd1), (ins memop:$src0, GR256:$rs1),
-                     asmstring, "$src0, $rs1, $rd0, $rd1", []>, PseudoRel, FlagRel, RetAddrModeRel;
+                     asmstring, "$src0, $rs1, $rd0, $rd1", [(set GR256:$rd0, GR256:$rd1, (node GR256:$rs1, (load_code memaddr:$src0)))]>, FlagRel, RetAddrModeRel;
   let Defs = [Flags] in
   def yrrr_v : Imrrr<opcode, SrcCode, 1, 0,
                      (outs GR256:$rd0, GR256:$rd1), (ins memop:$src0, GR256:$rs1),
                      asmstring, "$src0, $rs1, $rd0, $rd1", []>, FlagRel, RetAddrModeRel;
-  def zrrr_p : Pseudo<(outs GR256:$rd0, GR256:$rd1), (ins stackout:$src0, GR256:$rs1),
-                      [(set GR256:$rd0, GR256:$rd1, (node GR256:$rs1, (load_stack stackaddr:$src0)))]> {
-                        let DestAddrMode = ToRegReg.Value;
-                        let OperandAddrMode = OpndSR.Value;
-                        let ReverseOperand = 1;
-                      }
   def zrrr_s : Isrrr<opcode, SrcStack, 1, 1,
                      (outs GR256:$rd0, GR256:$rd1), (ins stackout:$src0, GR256:$rs1),
-                     asmstring, "$src0, $rs1, $rd0, $rd1", []>, PseudoRel, FlagRel, RetAddrModeRel;
+                     asmstring, "$src0, $rs1, $rd0, $rd1", [(set GR256:$rd0, GR256:$rd1, (node GR256:$rs1, (load_stack stackaddr:$src0)))]>, FlagRel, RetAddrModeRel;
   let Defs = [Flags] in
   def zrrr_v : Isrrr<opcode, SrcStack, 1, 0,
                    (outs GR256:$rd0, GR256:$rd1), (ins stackout:$src0, GR256:$rs1),
                    asmstring, "$src0, $rs1, $rd0, $rd1", []>, FlagRel, RetAddrModeRel;
   }
   let mayStore = 1 in {
-  foreach swap = ["i", "x"] in {
-  def swap#rsr_p : Pseudo<(outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackout:$dst0), []> {
-      let DestAddrMode = ToStackReg.Value;
-      let OperandAddrMode = OpndIR.Value;
-      let ReverseOperand = !if(!eq(swap, "i"), 0, 1);
-    }
-  }
   def irsr_s : Iirsr<opcode, 0, 1,
                          (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                         asmstring, "$imm, $rs1, $dst0, $rd1", []>, PseudoRel, FlagRel, AddrModeRel, RetAddrModeRel;
+                         asmstring, "$imm, $rs1, $dst0, $rd1", []>, FlagRel, AddrModeRel, RetAddrModeRel;
   def xrsr_s : Iirsr<opcode, 1, 1,
                          (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                         asmstring, "$imm, $rs1, $dst0, $rd1", []>, PseudoRel, FlagRel, RetAddrModeRel;
+                         asmstring, "$imm, $rs1, $dst0, $rd1", []>, FlagRel, RetAddrModeRel;
   let Defs = [Flags] in {
   def irsr_v : Iirsr<opcode, 0, 0,
                          (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
@@ -1056,26 +841,16 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
                          asmstring, "$imm, $rs1, $dst0, $rd1", []>, FlagRel, RetAddrModeRel;
   }
   let mayLoad = 1 in {
-  def yrsr_p : Pseudo<(outs GR256:$rd0), (ins memop:$src0, GR256:$rs1, stackout:$dst0), []> {
-                        let DestAddrMode = ToStackReg.Value;
-                        let OperandAddrMode = OpndCR.Value;
-                        let ReverseOperand = 1;
-                      }
   def yrsr_s : Imrsr<opcode, SrcCode, 1, 1,
                      (outs GR256:$rd1), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
-                     asmstring, "$src0, $rs1, $dst0, $rd1", []>, PseudoRel, FlagRel, RetAddrModeRel;
+                     asmstring, "$src0, $rs1, $dst0, $rd1", []>, FlagRel, RetAddrModeRel;
   let Defs = [Flags] in
   def yrsr_v : Imrsr<opcode, SrcCode, 1, 0,
                      (outs GR256:$rd1), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
                      asmstring, "$src0, $rs1, $dst0, $rd1", []>, FlagRel, RetAddrModeRel;
-  def zrsr_p : Pseudo<(outs GR256:$rd0), (ins stackout:$src0, GR256:$rs1, stackout:$dst0), []> {
-                        let DestAddrMode = ToStackReg.Value;
-                        let OperandAddrMode = OpndSR.Value;
-                        let ReverseOperand = 1;
-                      }
   def zrsr_s : Isrsr<opcode, SrcStack, 1, 1,
                      (outs GR256:$rd1), (ins stackout:$src0, GR256:$rs1, stackout:$dst0),
-                     asmstring, "$src0, $rs1, $dst0, $rd1", []>, PseudoRel, FlagRel, RetAddrModeRel;
+                     asmstring, "$src0, $rs1, $dst0, $rd1", []>, FlagRel, RetAddrModeRel;
   let Defs = [Flags] in
   def zrsr_v : Isrsr<opcode, SrcStack, 1, 0,
                      (outs GR256:$rd1), (ins stackout:$src0, GR256:$rs1, stackout:$dst0),
@@ -1086,9 +861,9 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
 
   // non-commutative:
   def : Pat<(node large_imm:$imm, GR256:$rs1),
-            (!cast<Instruction>(NAME # crrr_p) (constant_pool imm:$imm), 0, GR256:$rs1)>;
+            (!cast<Instruction>(NAME # crrr_s) (constant_pool imm:$imm), 0, GR256:$rs1, 0)>;
   def : Pat<(node GR256:$rs1, large_imm:$imm),
-            (!cast<Instruction>(NAME # yrrr_p) (constant_pool imm:$imm), 0, GR256:$rs1)>;
+            (!cast<Instruction>(NAME # yrrr_s) (constant_pool imm:$imm), 0, GR256:$rs1, 0)>;
 }
 
 defm ADD  : ArithICommutable<2,  "add", add>;
@@ -1100,22 +875,22 @@ defm PTR_PACK   : PtrInstr<160, "ptr.pack", EraVMptr_pack>;
 defm PTR_SHRINK : PtrInstr<161, "ptr.shrink", EraVMptr_shrink>;
 
 // MOV patterns
-def : Pat<(store_stack (load_code memaddr:$src), stackaddr:$dst),  (ADDcrs_p memaddr:$src, R0, stackaddr:$dst)>;
-def : Pat<(store_stack (load_stack stackaddr:$src), stackaddr:$dst),  (ADDsrs_p stackaddr:$src, R0, stackaddr:$dst)>;
-def : Pat<(imm16:$val),  (ADDirr_p imm16:$val, R0)>;
-def : Pat<(load_code memaddr:$addr),  (ADDcrr_p memaddr:$addr, R0)>;
-def : Pat<(load_stack stackaddr:$addr),  (ADDsrr_p stackaddr:$addr, R0)>;
-def : Pat<(store_stack GR256:$src, stackaddr:$dst),  (ADDrrs_p GR256:$src, R0, stackaddr:$dst)>;
-def : Pat<(store_stack imm16:$src, stackaddr:$dst),  (ADDirs_p imm16:$src, R0, stackaddr:$dst)>;
+def : Pat<(store_stack (load_code memaddr:$src), stackaddr:$dst),  (ADDcrs_s memaddr:$src, R0, stackaddr:$dst, 0)>;
+def : Pat<(store_stack (load_stack stackaddr:$src), stackaddr:$dst),  (ADDsrs_s stackaddr:$src, R0, stackaddr:$dst, 0)>;
+def : Pat<(imm16:$val),  (ADDirr_s imm16:$val, R0, 0)>;
+def : Pat<(load_code memaddr:$addr),  (ADDcrr_s memaddr:$addr, R0, 0)>;
+def : Pat<(load_stack stackaddr:$addr),  (ADDsrr_s stackaddr:$addr, R0, 0)>;
+def : Pat<(store_stack GR256:$src, stackaddr:$dst),  (ADDrrs_s GR256:$src, R0, stackaddr:$dst, 0)>;
+def : Pat<(store_stack imm16:$src, stackaddr:$dst),  (ADDirs_s imm16:$src, R0, stackaddr:$dst, 0)>;
 
 // fat pointer move patterns
-def : Pat<(fatptr (load_stack stackaddr:$addr)),  (PTR_ADDsrr_p stackaddr:$addr, R0)>;
-def : Pat<(store_stack GRPTR:$src, stackaddr:$dst),  (PTR_ADDrrs_p GRPTR:$src, R0, stackaddr:$dst)>;
+def : Pat<(fatptr (load_stack stackaddr:$addr)),  (PTR_ADDsrr_s stackaddr:$addr, R0, 0)>;
+def : Pat<(store_stack GRPTR:$src, stackaddr:$dst),  (PTR_ADDrrs_s GRPTR:$src, R0, stackaddr:$dst, 0)>;
 
 // fat pointer load/store
-def : Pat<(store_stack GRPTR:$src, stackaddr:$dst), (PTR_ADDrrs_p GRPTR:$src, R0, stackaddr:$dst)>;
+def : Pat<(store_stack GRPTR:$src, stackaddr:$dst), (PTR_ADDrrs_s GRPTR:$src, R0, stackaddr:$dst, 0)>;
 
-def : Pat<(EraVMcopy_from_ptrreg GRPTR:$src), (PTR_ADDrrr_p GRPTR:$src, R0)>;
+def : Pat<(EraVMcopy_from_ptrreg GRPTR:$src), (PTR_ADDrrr_s GRPTR:$src, R0, 0)>;
 
 // SelecCC, BR_CC supplement
 def : Pat<(EraVMcmp GR256:$lhs, GR256:$rhs), (SUBrrr_v GR256:$lhs, GR256:$rhs, 0)>;
@@ -1383,9 +1158,9 @@ let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Fl
 }
 
 def : Pat<(store_stack (add GR256:$rs0, neg_imm16:$imm), stackaddr:$dst0),
-          (SUBxrs_p (negate_imm imm:$imm), GR256:$rs0, stackaddr:$dst0)>;
-def : Pat<(sub GR256:$rs0, neg_imm16:$imm), (ADDirr_p (negate_imm imm:$imm), GR256:$rs0)>;
-def : Pat<(add GR256:$rs0, neg_imm16:$imm), (SUBxrr_p (negate_imm imm:$imm), GR256:$rs0)>;
+          (SUBxrs_s (negate_imm imm:$imm), GR256:$rs0, stackaddr:$dst0, 0)>;
+def : Pat<(sub GR256:$rs0, neg_imm16:$imm), (ADDirr_s (negate_imm imm:$imm), GR256:$rs0, 0)>;
+def : Pat<(add GR256:$rs0, neg_imm16:$imm), (SUBxrr_s (negate_imm imm:$imm), GR256:$rs0, 0)>;
 
 def : MnemonicAlias<"log.swrite", "sstore">;
 
@@ -1394,10 +1169,10 @@ def : MnemonicAlias<"log.swrite", "sstore">;
 //===----------------------------------------------------------------------===//
 
 // GlobalAddress, ExternalSymbol
-def : Pat<(i256 (EraVMGAStack tglobaladdr:$dst)), (ADDsrr_p tglobaladdr:$dst, 0, 0, R0)>;
-def : Pat<(i256 (EraVMGACode tglobaladdr:$dst)), (ADDcrr_p tglobaladdr:$dst, 0, R0)>;
-def : Pat<(i256 (EraVMGACode texternalsym:$dst)), (ADDcrr_p texternalsym:$dst, 0, R0)>;
-def : Pat<(i256 (EraVMGACode tblockaddress:$dst)), (ADDcrr_p tblockaddress:$dst, 0, R0)>;
+def : Pat<(i256 (EraVMGAStack tglobaladdr:$dst)), (ADDsrr_s tglobaladdr:$dst, 0, 0, R0, 0)>;
+def : Pat<(i256 (EraVMGACode tglobaladdr:$dst)), (ADDcrr_s tglobaladdr:$dst, 0, R0, 0)>;
+def : Pat<(i256 (EraVMGACode texternalsym:$dst)), (ADDcrr_s texternalsym:$dst, 0, R0, 0)>;
+def : Pat<(i256 (EraVMGACode tblockaddress:$dst)), (ADDcrr_s tblockaddress:$dst, 0, R0, 0)>;
 
 // Exceptions
 def : Pat<(EraVMTrap), (PANIC R0)>;

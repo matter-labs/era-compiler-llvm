@@ -16,7 +16,6 @@
 //===----------------------------------------------------------------------===//
 
 class PredRel;
-class PseudoRel; // map: `_p` -> `_s`
 class FlagRel; // map: `_s` -> `_v`
 class AddrModeRel; // generic map of addressing mode of operands
 class RetAddrModeRel; // generic map of addressing mode of results
@@ -48,18 +47,11 @@ def ToStackReg     : DestAddrModeValue<4>;
 // true (1) : `_v` instructions ; false (0) : `_s` instructions
 
 //===----------------------------------------------------------------------===//
+// Instruction mapping tables
+
 // Generate mapping table to relate non-flag setting instruction (`_s`) to flag-setting
 // instruction (`_v`)
 //
-
-def getPseudoMapOpcode : InstrMapping {
-  let FilterClass = "PseudoRel";
-  let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode", "ReverseOperand", "isCommutable"];
-  let ColFields = ["IsPseudoArith"];
-  let KeyCol = ["1"];
-  let ValueCols = [["0"]];
-}
-
 def getFlagSettingOpcode : InstrMapping {
   let FilterClass = "FlagRel";
   let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode", "ReverseOperand"];
@@ -180,14 +172,15 @@ class EraVMInstruction : Instruction {
 }
 
 // Pseudo instructions (do not have encoding information)
-// FIXME: Replace Pseudo with this (maybe not)
-class IPseudo<dag oops, dag inops, list<dag> pattern>
-    : EraVMInstruction {
-  dag OutOperandList = oops;
-  dag InOperandList  = inops;
+class Pseudo<dag outs, dag ins, list<dag> pattern>
+  : EraVMInstruction {
+  dag InOperandList  = ins;
+  dag OutOperandList = outs;
   let Pattern        = pattern;
-  let isPseudo       = 1;
-  let isCodeGenOnly  = 1;
+  let Size           = 8;
+
+  let isCodeGenOnly = 1;
+  let isPseudo = 1;
 }
 
 class Encoding {
@@ -264,7 +257,6 @@ class IBinary<bits<8> opcode,
   string BaseOpcode;
   bit FlagSetting = silent;
   bit ReverseOperand = swap_operands;
-  bit IsPseudoArith = 0;
   bits<3> OperandAddrMode = OpndAddrNotSet.Value;
   bits<3> DestAddrMode = DestAddrNotSet.Value;
   int OperandAM = 0;
@@ -460,28 +452,6 @@ class Isrsr<bits<8> opcode,
   : Isrs<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let DestAddrMode = ToStackReg.Value;
   let OperandAM = 3;
-}
-
-// Pseudo instructions
-class Pseudo<dag outs, dag ins, list<dag> pattern>
-  : EraVMInstruction, PseudoRel {
-  string BaseOpcode;
-
-  dag InOperandList  = ins;
-  dag OutOperandList = outs;
-  let Pattern        = pattern;
-  let Size           = 9; // FIXME
-
-  int OperandAM = 0;
-  bit FlagSetting = 0;
-  bit IsPseudoArith = 1;
-  bit ReverseOperand = 0;
-
-  let isCodeGenOnly = 1;
-  let isPseudo = 1;
-
-  bits<3> OperandAddrMode = OpndAddrNotSet.Value;
-  bits<3> DestAddrMode = DestAddrNotSet.Value;
 }
 
 class CallFlags<bits<4> val> {
