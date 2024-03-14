@@ -283,14 +283,6 @@ TEST(GetNonFlagSettingOpcode, TheTest) {
   TEST_INSTR_MAPS(v, s);
 }
 
-TEST(GetPseudoMapOpcode, TheTest) {
-#undef EXPECT_MAP_EQ_OPCODE_BASE
-#define EXPECT_MAP_EQ_OPCODE_BASE(Opcode, Subfix1, Subfix2)                    \
-  EXPECT_EQ(EraVM::getPseudoMapOpcode(Opcode##Subfix1), Opcode##Subfix2)
-
-  TEST_INSTR_MAPS(p, s);
-}
-
 TEST(GetOperandAM_RR, TheTest) {
 #undef EXPECT_MAP_EQ_OPCODE_BASE
 #define EXPECT_MAP_EQ_OPCODE_BASE(Opcode1, Opcode2)                            \
