@@ -88,6 +88,7 @@ def EraVMcopy_from_ptrreg : SDNode<"EraVMISD::COPY_FROM_PTRREG",
 
 def EraVMptr_to_int   : SDNode<"EraVMISD::PTR_TO_INT", SDT_EraVMPtrToInt, []>;
 def EraVMptr_add      : SDNode<"EraVMISD::PTR_ADD", SDT_EraVMPtrOp, []>;
+def EraVMptr_sub      : SDNode<"EraVMISD::PTR_SUB", SDT_EraVMPtrOp, []>;
 def EraVMptr_pack     : SDNode<"EraVMISD::PTR_PACK", SDT_EraVMPtrOp, []>;
 def EraVMptr_shrink   : SDNode<"EraVMISD::PTR_SHRINK", SDT_EraVMPtrOp, []>;
 def EraVMlog_decommit : SDNode<"EraVMISD::LOG_DECOMMIT", SDT_EraVMLogDecommit, [SDNPHasChain]>;
@@ -577,10 +578,23 @@ multiclass PtrInstr<bits<8> opcode, string asmstring, SDPatternOperator node> {
   def rrr_s : Irrr<opcode, 0, 1,
                    (outs GRPTR:$rd0), (ins GRPTR:$rs0, GR256:$rs1),
                    asmstring, "$rs0, $rs1, $rd0", [(set GRPTR:$rd0, (node GRPTR:$rs0, GR256:$rs1))]>, FlagRel, AddrModeRel, RetAddrModeRel;
+  // FIXME No opcodes are defined for flag-setting variants and none are defined in the spec.
   let Defs = [Flags] in
   def rrr_v : Irrr<opcode, 0, 0,
                    (outs GRPTR:$rd0), (ins GRPTR:$rs0, GR256:$rs1),
                    asmstring, "$rs0, $rs1, $rd0", []>, FlagRel, AddrModeRel, RetAddrModeRel;
+
+  // The two *_alias instructions below are defined to make asm parser handle
+  // "ptr.<op>.s rs0, rs1, rd0" instructions for the sake of uniformity, that
+  // are otherwise redundant. *Rel base classes are dropped, as these
+  // instructions are not intended to participate in InstrMappings.
+  def rrr_s_alias : Irrr<opcode, 1, 1,
+                         (outs GRPTR:$rd0), (ins GRPTR:$rs0, GR256:$rs1),
+                         asmstring, "$rs0, $rs1, $rd0", []>;
+  let mayStore = 1 in
+  def rrs_s_alias : Irrs<opcode, 1, 1,
+                         (outs), (ins GRPTR:$rs0, GR256:$rs1, stackout:$dst0),
+                         asmstring, "$rs0, $rs1, $dst0", []>;
 
   let mayLoad = 1 in {
   def srr_s : Isrr<opcode, SrcStack, 0, 1,
@@ -871,6 +885,7 @@ defm SUB  : ArithINonCommutable<4, "sub", sub>;
 
 // pointer arithmetic
 defm PTR_ADD    : PtrInstr<159, "ptr.add", EraVMptr_add>;
+defm PTR_SUB    : PtrInstr<-1, "ptr.sub", EraVMptr_sub>;
 defm PTR_PACK   : PtrInstr<160, "ptr.pack", EraVMptr_pack>;
 defm PTR_SHRINK : PtrInstr<161, "ptr.shrink", EraVMptr_shrink>;
 
