@@ -926,12 +926,16 @@ def LD1Inc  : IUMA <42, (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0),
                   "ld.1.inc", "$rs0, $rd0, $rd1", []>;
 def LD1i    : IUMA < 141, (outs GR256:$rd0), (ins imm16:$addr),
                   "ld.1", "$addr, $rd0", []>;
+def LD1iInc : IUMA < 141, (outs GR256:$rd0, GR256:$rd1), (ins imm16:$addr),
+                  "ld.1.inc", "$addr, $rd0, $rd1", []>;
 def LD2     : IUMA < 43, (outs GR256:$rd0), (ins GR256:$rs0),
                   "ld.2", "$rs0, $rd0", []>;
 def LD2Inc  : IUMA <44, (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0),
                   "ld.2.inc", "$rs0, $rd0, $rd1", []>;
 def LD2i    : IUMA < 142, (outs GR256:$rd0), (ins imm16:$addr),
                   "ld.2", "$addr, $rd0", []>;
+def LD2iInc : IUMA <44, (outs GR256:$rd0, GR256:$rd1), (ins imm16:$addr),
+                  "ld.2.inc", "$addr, $rd0, $rd1", []>;
 def LD      : IUMA <45, (outs GR256:$rd0), (ins GRPTR:$rs0),
                   "ld", "$rs0, $rd0", []>;
 def LDInc   : IUMA <46, (outs GR256:$rd0, GRPTR:$rd1), (ins GRPTR:$rs0),
@@ -955,12 +959,16 @@ def ST1Inc  : IUMA <50, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
                   "st.1.inc", "$rs0, $rs1, $rd0", []>;
 def ST1i  : IUMA < 144, (outs), (ins imm16:$addr, GR256:$rs1),
                   "st.1", "$addr, $rs1", []>;
+def ST1iInc : IUMA <50, (outs GR256:$rd0), (ins imm16:$addr, GR256:$rs1),
+                  "st.1.inc", "$addr, $rs1, $rd0", []>;
 def ST2  : IUMA < 54, (outs), (ins GR256:$rs0, GR256:$rs1),
                   "st.2", "$rs0, $rs1", []>;
 def ST2Inc  : IUMA <53, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
                   "st.2.inc", "$rs0, $rs1, $rd0", []>;
 def ST2i  : IUMA < 154, (outs), (ins imm16:$addr, GR256:$rs1),
                   "st.2", "$addr, $rs1", []>;
+def ST2iInc : IUMA <53, (outs GR256:$rd0), (ins imm16:$addr, GR256:$rs1),
+                  "st.2.inc", "$addr, $rs1, $rd0", []>;
 }
 def     : Pat<(store_heap GR256:$rs1, GR256:$rs0),
               (ST1 GR256:$rs0, $rs1, 0)>;
