@@ -1,4 +1,4 @@
-InheritParentConfig: true
+InheritParentConfig: false
 Checks: >
         -clang-diagnostic-unused-function,
         -clang-diagnostic-error,
