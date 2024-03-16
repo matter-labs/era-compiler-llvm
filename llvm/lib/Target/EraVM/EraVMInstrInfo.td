@@ -369,8 +369,8 @@ def : Pat<(int_eravm_iflt imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:
 def : Pat<(int_eravm_ifgt imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, 8 /*COND_GT*/)>;
 
 let hasSideEffects = 1, Defs = [SP], Uses = [SP] in {
-def NOPSP : INop< 18, (ins spadv_op:$sp_change), "nop", "$sp_change", [] >;
-def NOPSPr : INop< 181, (ins GR256:$sp_change), "nop", "stack+=[$sp_change]", [] >;
+def NOPSP : INop<(ins spadv_op:$sp_change), "nop", "$sp_change", [] >;
+def NOPSPr : INop<(ins GR256:$sp_change), "nop", "stack+=[$sp_change]", [] >;
 }
 def : Pat<(EraVMchange_sp spadv_op:$size), (NOPSP spadv_op:$size)>;
 def : Pat<(EraVMchange_sp GR256:$size), (NOPSPr GR256:$size)>;
@@ -378,7 +378,7 @@ def : Pat<(EraVMchange_sp GR256:$size), (NOPSPr GR256:$size)>;
 // Note that while technically commutative arithmetic instructions are not swappable,
 // it is not a problem as there will be no corresponding instruction defined with SwapOperand = 1
 // and therefore such instruction will be not emitted in `Swappable`-related tables.
-multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit commutes> {
+multiclass Arith<EraVMOpcode opcode, string asmstring, SDPatternOperator node, bit commutes> {
   let BaseOpcode = asmstring, isCommutable = commutes in {
 
   def rrr_s : Irrr<opcode, NoSwap, PreserveFlags,
@@ -442,7 +442,7 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
   }
 }
 
-multiclass ArithICommutable<bits<8> opcode, string asmstring, SDPatternOperator node> : Arith<opcode, asmstring, node, 1> {
+multiclass ArithICommutable<EraVMOpcode opcode, string asmstring, SDPatternOperator node> : Arith<opcode, asmstring, node, 1> {
   let BaseOpcode = asmstring, isCommutable = 1 in {
   def irr_s : Iirr<opcode, NoSwap, PreserveFlags,
                    (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
@@ -471,7 +471,7 @@ multiclass ArithICommutable<bits<8> opcode, string asmstring, SDPatternOperator 
             (!cast<Instruction>(NAME # crs_s) (constant_pool imm:$imm), 0, GR256:$rs1, stackaddr:$dst0, 0)>;
 }
 
-multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperator node> : Arith<opcode, asmstring, node, 0> {
+multiclass ArithINonCommutable<EraVMOpcode opcode, string asmstring, SDPatternOperator node> : Arith<opcode, asmstring, node, 0> {
   let BaseOpcode = asmstring in {
   def irr_s : Iirr<opcode, NoSwap, PreserveFlags,
                        (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
@@ -589,7 +589,7 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
             (!cast<Instruction>(NAME # yrs_s) (constant_pool imm:$imm), 0, GR256:$rs1, stackaddr:$dst0, 0)>;
 }
 
-multiclass PtrInstr<bits<8> opcode, string asmstring, SDPatternOperator node> {
+multiclass PtrInstr<EraVMOpcode opcode, string asmstring, SDPatternOperator node> {
   let BaseOpcode = asmstring in {
 
   def rrr_s : Irrr<opcode, NoSwap, PreserveFlags,
@@ -677,7 +677,7 @@ multiclass PtrInstr<bits<8> opcode, string asmstring, SDPatternOperator node> {
 def PTR_TO_INT : Pseudo<(outs GR256:$rd0), (ins GRPTR:$rs0),
                         [(set GR256:$rd0, (EraVMptr_to_int GRPTR:$rs0))]>;
 
-multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit commutes> {
+multiclass Arith2<EraVMOpcode opcode, string asmstring, SDPatternOperator node, bit commutes> {
   let BaseOpcode = asmstring, isCommutable = commutes in {
   def rrrr_s : Irrrr<opcode, NoSwap, PreserveFlags,
                      (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, GR256:$rs1),
@@ -735,7 +735,7 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
   }
 }
 
-multiclass Arith2ICommutable<bits<8> opcode, string asmstring, SDPatternOperator node>
+multiclass Arith2ICommutable<EraVMOpcode opcode, string asmstring, SDPatternOperator node>
          : Arith2<opcode, asmstring, node, 1> {
   let BaseOpcode = asmstring, isCommutable = 1 in {
   def irrr_s : Iirrr<opcode, NoSwap, PreserveFlags,
@@ -762,7 +762,7 @@ multiclass Arith2ICommutable<bits<8> opcode, string asmstring, SDPatternOperator
             (!cast<Instruction>(NAME # crrr_s) (constant_pool imm:$imm), 0, GR256:$rs1, 0)>;
 }
 
-multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOperator node>
+multiclass Arith2INonCommutable<EraVMOpcode opcode, string asmstring, SDPatternOperator node>
          : Arith2<opcode, asmstring, node, 0> {
   let BaseOpcode = asmstring in {
   def irrr_s : Iirrr<opcode, NoSwap, PreserveFlags,
@@ -861,24 +861,24 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
             (!cast<Instruction>(NAME # yrrr_s) (constant_pool imm:$imm), 0, GR256:$rs1, 0)>;
 }
 
-defm ADD  : ArithICommutable<2,  "add", add>;
-defm SUB  : ArithINonCommutable<4, "sub", sub>;
-defm AND  : ArithICommutable<33, "and", and>;
-defm OR   : ArithICommutable<34, "or", or>;
-defm XOR  : ArithICommutable<35, "xor", xor>;
-defm SHL  : ArithINonCommutable<36, "shl", shl>;
-defm SHR  : ArithINonCommutable<37, "shr", srl>;
-defm ROL  : ArithINonCommutable<38, "rol", rotl>;
-defm ROR  : ArithINonCommutable<39, "ror", rotr>;
+defm ADD  : ArithICommutable<OpAdd,  "add", add>;
+defm SUB  : ArithINonCommutable<OpSub, "sub", sub>;
+defm AND  : ArithICommutable<OpAnd, "and", and>;
+defm OR   : ArithICommutable<OpOr, "or", or>;
+defm XOR  : ArithICommutable<OpXor, "xor", xor>;
+defm SHL  : ArithINonCommutable<OpShl, "shl", shl>;
+defm SHR  : ArithINonCommutable<OpShr, "shr", srl>;
+defm ROL  : ArithINonCommutable<OpRol, "rol", rotl>;
+defm ROR  : ArithINonCommutable<OpRor, "ror", rotr>;
 
-defm MUL  : Arith2ICommutable<6, "mul", umullohi>;
-defm DIV  : Arith2INonCommutable<8, "div", udivrem>;
+defm MUL  : Arith2ICommutable<OpMul, "mul", umullohi>;
+defm DIV  : Arith2INonCommutable<OpDiv, "div", udivrem>;
 
 // pointer arithmetic
-defm PTR_ADD    : PtrInstr<159, "ptr.add", EraVMptr_add>;
-defm PTR_SUB    : PtrInstr<-1, "ptr.sub", EraVMptr_sub>;
-defm PTR_PACK   : PtrInstr<160, "ptr.pack", EraVMptr_pack>;
-defm PTR_SHRINK : PtrInstr<161, "ptr.shrink", EraVMptr_shrink>;
+defm PTR_ADD    : PtrInstr<OpPtrAdd, "ptr.add", EraVMptr_add>;
+defm PTR_SUB    : PtrInstr<OpPtrSub, "ptr.sub", EraVMptr_sub>;
+defm PTR_PACK   : PtrInstr<OpPtrPack, "ptr.pack", EraVMptr_pack>;
+defm PTR_SHRINK : PtrInstr<OpPtrShrink, "ptr.shrink", EraVMptr_shrink>;
 
 // MOV patterns
 def : Pat<(store_stack (load_code memaddr:$src), stackaddr:$dst),  (ADDcrs_s memaddr:$src, R0, stackaddr:$dst, 0)>;
@@ -915,29 +915,29 @@ def : Pat<(EraVMcmp GR256:$lhs, (load_stack stackaddr:$rhs)), (SUBzrr_v stackadd
 //===----------------------------------------------------------------------===//
 
 let mayLoad = 1 in {
-def LD1     : IUMA <41, (outs GR256:$rd0), (ins GR256:$rs0),
+def LD1     : IUMA <OpLoadHeap, (outs GR256:$rd0), (ins GR256:$rs0),
                   "ld.1", "$rs0, $rd0", []>;
-def LD1Inc  : IUMA <42, (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0),
+def LD1Inc  : IUMA <OpLoadHeap, (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0),
                   "ld.1.inc", "$rs0, $rd0, $rd1", []>;
-def LD1i    : IUMA < 141, (outs GR256:$rd0), (ins imm16:$addr),
+def LD1i    : IUMA <OpLoadHeap, (outs GR256:$rd0), (ins imm16:$addr),
                   "ld.1", "$addr, $rd0", []>;
-def LD1iInc : IUMA < 141, (outs GR256:$rd0, GR256:$rd1), (ins imm16:$addr),
+def LD1iInc : IUMA <OpLoadHeap, (outs GR256:$rd0, GR256:$rd1), (ins imm16:$addr),
                   "ld.1.inc", "$addr, $rd0, $rd1", []>;
-def LD2     : IUMA < 43, (outs GR256:$rd0), (ins GR256:$rs0),
+def LD2     : IUMA <OpLoadAuxHeap, (outs GR256:$rd0), (ins GR256:$rs0),
                   "ld.2", "$rs0, $rd0", []>;
-def LD2Inc  : IUMA <44, (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0),
+def LD2Inc  : IUMA <OpLoadAuxHeap, (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0),
                   "ld.2.inc", "$rs0, $rd0, $rd1", []>;
-def LD2i    : IUMA < 142, (outs GR256:$rd0), (ins imm16:$addr),
+def LD2i    : IUMA <OpLoadAuxHeap, (outs GR256:$rd0), (ins imm16:$addr),
                   "ld.2", "$addr, $rd0", []>;
-def LD2iInc : IUMA <44, (outs GR256:$rd0, GR256:$rd1), (ins imm16:$addr),
+def LD2iInc : IUMA <OpLoadAuxHeap, (outs GR256:$rd0, GR256:$rd1), (ins imm16:$addr),
                   "ld.2.inc", "$addr, $rd0, $rd1", []>;
-def LD      : IUMA <45, (outs GR256:$rd0), (ins GRPTR:$rs0),
+def LD      : IUMA <OpLoadPtr, (outs GR256:$rd0), (ins GRPTR:$rs0),
                   "ld", "$rs0, $rd0", []>;
-def LDInc   : IUMA <46, (outs GR256:$rd0, GRPTR:$rd1), (ins GRPTR:$rs0),
+def LDInc   : IUMA <OpLoadPtr, (outs GR256:$rd0, GRPTR:$rd1), (ins GRPTR:$rs0),
                   "ld.inc", "$rs0, $rd0, $rd1", []>;
 // Pseudo alias version of `LD` which has different type than `LD`
 // We will manually select it when we see that we are loading a fat pointer
-def FATPTR_LD : IUMA < 48, (outs GRPTR:$rd0), (ins GRPTR:$rs0),
+def FATPTR_LD : IUMA <OpLoadPtr, (outs GRPTR:$rd0), (ins GRPTR:$rs0),
                   "ld", "$rs0, $rd0 ;fat load", []>;
 }
 
@@ -948,21 +948,21 @@ def     : Pat<(load_heapaux imm16:$addr), (LD2i imm16:$addr, 0)>;
 
 
 let mayStore = 1 in {
-def ST1     : IUMA <49, (outs), (ins GR256:$rs0, GR256:$rs1),
+def ST1     : IUMA <OpStoreHeap, (outs), (ins GR256:$rs0, GR256:$rs1),
                   "st.1", "$rs0, $rs1", []>;
-def ST1Inc  : IUMA <50, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
+def ST1Inc  : IUMA <OpStoreHeap, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
                   "st.1.inc", "$rs0, $rs1, $rd0", []>;
-def ST1i  : IUMA < 144, (outs), (ins imm16:$addr, GR256:$rs1),
+def ST1i  : IUMA <OpStoreHeap, (outs), (ins imm16:$addr, GR256:$rs1),
                   "st.1", "$addr, $rs1", []>;
-def ST1iInc : IUMA <50, (outs GR256:$rd0), (ins imm16:$addr, GR256:$rs1),
+def ST1iInc : IUMA <OpStoreHeap, (outs GR256:$rd0), (ins imm16:$addr, GR256:$rs1),
                   "st.1.inc", "$addr, $rs1, $rd0", []>;
-def ST2  : IUMA < 54, (outs), (ins GR256:$rs0, GR256:$rs1),
+def ST2  : IUMA <OpStoreAuxHeap, (outs), (ins GR256:$rs0, GR256:$rs1),
                   "st.2", "$rs0, $rs1", []>;
-def ST2Inc  : IUMA <53, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
+def ST2Inc  : IUMA <OpStoreAuxHeap, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
                   "st.2.inc", "$rs0, $rs1, $rd0", []>;
-def ST2i  : IUMA < 154, (outs), (ins imm16:$addr, GR256:$rs1),
+def ST2i  : IUMA <OpStoreAuxHeap, (outs), (ins imm16:$addr, GR256:$rs1),
                   "st.2", "$addr, $rs1", []>;
-def ST2iInc : IUMA <53, (outs GR256:$rd0), (ins imm16:$addr, GR256:$rs1),
+def ST2iInc : IUMA <OpStoreAuxHeap, (outs GR256:$rd0), (ins imm16:$addr, GR256:$rs1),
                   "st.2.inc", "$addr, $rs1, $rd0", []>;
 }
 def     : Pat<(store_heap GR256:$rs1, GR256:$rs0),
@@ -990,13 +990,13 @@ def : MnemonicAlias<"uma.inc.aux_heap_write", "st.2.inc">;
 //===----------------------------------------------------------------------===//
 // Conditional jump
 let isTerminator = 1, isBranch = 1, Uses = [Flags] in
-def JC: ICondJump<10, (ins jmptarget:$dest), "jump", "$dest",
-             [(EraVMbrcc bb:$dest, imm:$cc)]>;
+def JC: IJump<(ins jmptarget:$dest), "jump", "$dest",
+              [(EraVMbrcc bb:$dest, imm:$cc)]>;
 
 let isTerminator = 1, isBranch = 1, Uses = [Flags], isIndirectBranch = 1 in {
-def JCr: ICondJump<-1, (ins GR256:$dest), "jump", "$dest", []>;
-def JCc: ICondJump<-1, (ins memop:$dest), "jump", "$dest", []>;
-def JCs: ICondJump<-1, (ins stackin:$dest), "jump", "$dest", []>;
+def JCr: IJump<(ins GR256:$dest), "jump", "$dest", []>;
+def JCc: IJump<(ins memop:$dest), "jump", "$dest", []>;
+def JCs: IJump<(ins stackin:$dest), "jump", "$dest", []>;
 }
 
 // Unconditional jump
@@ -1017,20 +1017,20 @@ def JCALL: Pseudo<(outs), (ins jmptarget:$dest), []>,
            PseudoInstExpansion<(JC jmptarget:$dest, 0)>;
 
 let isReturn = 1, isTerminator = 1, isBarrier = 1  in {
-def RET  : IRet<7, RFNone, (ins), "ret", "", [(EraVMret)]>;
-def PANIC : IRet<7, RFPanic, (ins GR256:$rs0), "ret.panic", "$rs0", []>;
+def RET  : IRet<OpRet, RFNone, (ins), "ret", "", [(EraVMret)]>;
+def PANIC : IRet<OpPanic, RFPanic, (ins GR256:$rs0), "ret.panic", "$rs0", []>;
 }
 let isTerminator = 1, isBarrier = 1, isTrap = 1 in
-def THROW : IRet<7, RFErr, (ins GR256:$rs0), "ret.error", "$rs0",
+def THROW : IRet<OpRevert, RFErr, (ins GR256:$rs0), "ret.error", "$rs0",
                  [(EraVMthrow GR256:$rs0)]>;
 
 def : InstAlias<"revert", (THROW R1, 0)>;
 def : InstAlias<"panic", (PANIC R1, 0)>;
 
 let isTerminator = 1, isBarrier = 1, isReturn = 1 in {
-def RETURN : IRet<52, RFErr, (ins GR256:$rs0), "ret.ok.to_label", "$rs0, @DEFAULT_FAR_RETURN",
+def RETURN : IRet<OpRet, RFErr, (ins GR256:$rs0), "ret.ok.to_label", "$rs0, @DEFAULT_FAR_RETURN",
                   [(EraVMreturn GR256:$rs0)]>;
-def REVERT : IRet<53, RFErr, (ins GR256:$rs0), "ret.revert.to_label", "$rs0, @DEFAULT_FAR_REVERT",
+def REVERT : IRet<OpRevert, RFErr, (ins GR256:$rs0), "ret.revert.to_label", "$rs0, @DEFAULT_FAR_REVERT",
                   [(EraVMrevert GR256:$rs0)]>;
 }
 
@@ -1053,15 +1053,15 @@ def LOADCONST : Pseudo<(outs GR256:$val), (ins i256imm:$addr),
 //===----------------------------------------------------------------------===//
 
 // TODO: CPR-1505 Regroup instructions based on the attributes from IntrinsicsEraVM.td.
-def CTXr : IContextR<45, (outs GR256:$rd0), (ins context_op:$cop),
+def CTXr : IContext<OpContext, (outs GR256:$rd0), (ins context_op:$cop),
                      "context$cop", "$rd0", []>;
 let hasSideEffects = 1 in {
 let hasPostISelHook = 1 in
-def CTXr_se : IContextR<46, (outs GR256:$rd0), (ins context_se_op:$cop),
+def CTXr_se : IContext<OpContext, (outs GR256:$rd0), (ins context_se_op:$cop),
                         "context$cop", "$rd0", []>;
-def CTXr_set : IContextR<52, (outs), (ins GR256:$rs0, context_se_op:$cop),
+def CTXr_set : IContext<OpContext, (outs), (ins GR256:$rs0, context_se_op:$cop),
                          "context$cop", "$rs0", []>;
-def CTXr_se0 : IContextR<152, (outs), (ins context_se_op:$cop),
+def CTXr_se0 : IContext<OpContext, (outs), (ins context_se_op:$cop),
                          "context$cop", "", []>;
 }
 
@@ -1077,14 +1077,11 @@ def : Pat<(int_eravm_setu128 GR256:$rs0), (CTXr_set GR256:$rs0, 9, 0)>;
 def : Pat<(int_eravm_inctx), (CTXr_se0 10, 0)>;
 def : Pat<(int_eravm_setpubdataprice GR256:$rs0), (CTXr_set GR256:$rs0, 11, 0)>;
 
-def SLDrr : ILogR<47, DstReg, (outs GR256:$rd0), (ins GR256:$rs0),
-                  "sload", "$rs0, $rd0", []> {
-}
-
-def TLDrr : ILogR<471, DstReg, (outs GR256:$rd0), (ins GR256:$rs0),
-                  "tload", "$rs0, $rd0", []> {
-}
-
+def SLDrr : ILogR<OpSload, DstReg, (outs GR256:$rd0), (ins GR256:$rs0),
+                  "sload", "$rs0, $rd0", []>;
+// FIXME: undefined instruction
+def TLDrr : ILogR<OpSload, DstReg, (outs GR256:$rd0), (ins GR256:$rs0),
+                  "tload", "$rs0, $rd0", []>;
 def : MnemonicAlias<"log.sread", "sload">;
 
 //===----------------------------------------------------------------------===//
@@ -1094,11 +1091,13 @@ def : Pat<(load_storage GR256:$rs0), (SLDrr GR256:$rs0, 0)>;
 def : Pat<(load_transient GR256:$rs0), (TLDrr GR256:$rs0, 0)>;
 
 let hasSideEffects = 1 in {
-  def SSTr : ILogR<48, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1),
+  def SSTr : ILogR<OpSstore, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1),
       "sstore", "$rs0, $rs1", []>;
-  def TSTr : ILogR<481, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1),
+  // FIXME: undefined instruction
+  def TSTr : ILogR<OpSstore, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1),
       "tstore", "$rs0, $rs1", []>;
 }
+def : MnemonicAlias<"log.swrite", "sstore">;
 
 def : Pat<(store_storage GR256:$rs1, GR256:$rs0),
           (SSTr GR256:$rs0, GR256:$rs1, 0)>;
@@ -1106,24 +1105,25 @@ def : Pat<(store_transient GR256:$rs1, GR256:$rs0),
           (TSTr GR256:$rs0, GR256:$rs1, 0)>;
 
 let hasSideEffects = 1 in
-def L1r : ILogR<49, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first),
+def L1r : ILogR<OpLogToL1, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first),
                  "to_l1$first", "$rs0, $rs1", []>;
 
 def : Pat<(int_eravm_tol1 GR256:$rs0, GR256:$rs1, first_op:$first),
           (L1r GR256:$rs0, GR256:$rs1, first_op:$first, 0)>;
 
 let hasSideEffects = 1 in
-def EVTr : ILogR<50, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first),
+def EVTr : ILogR<OpLogEvent, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first),
                  "event$first", "$rs0, $rs1", []>;
 
 def : Pat<(int_eravm_event GR256:$rs0, GR256:$rs1, first_op:$first),
           (EVTr GR256:$rs0, GR256:$rs1, first_op:$first, 0)>;
 
 let hasSideEffects = 1 in {
-def PCOMPr : ILogR<51, DstNone, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
+def PCOMPr : ILogR<OpLogPrecompile, DstNone, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
                    "precompile", "$rs0, $rs1, $rd0", []> {
 }
-def DECOMMITr : ILogR<511, DstNone, (outs GRPTR:$rd0), (ins GR256:$rs0, GR256:$rs1),
+// FIXME: undefined instruction
+def DECOMMITr : ILogR<OpLogPrecompile, DstNone, (outs GRPTR:$rd0), (ins GR256:$rs0, GR256:$rs1),
                       "log.decommit", "$rs0, $rs1, $rd0", []> {
 }
 }
@@ -1140,22 +1140,22 @@ let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Fl
    // FIXME: Expand to NEAR_CALL
    def INVOKE : Pseudo<(outs), (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
                        [(EraVMinvoke GR256:$in1, (EraVMGAStack tglobaladdr:$callee), bb:$unwind)]>;
-   def NEAR_CALL : ICall<9, CFNormal, (ins GR256:$in1, jmptarget:$callee, jmptarget:$unwind),
+   def NEAR_CALL : ICall<OpCall, CFNormal, (ins GR256:$in1, jmptarget:$callee, jmptarget:$unwind),
                    "near_call", "$in1, $callee, $unwind", []>;
-  def NEAR_CALL_default_unwind : ICall<9, CFNormal, (ins GR256:$in1, jmptarget:$callee),
+  def NEAR_CALL_default_unwind : ICall<OpCall, CFNormal, (ins GR256:$in1, jmptarget:$callee),
                    "near_call", "$in1, $callee", []>;
-  def NEAR_CALL_default_unwind_r0 : ICall<9, CFNormal, (ins jmptarget:$callee),
+  def NEAR_CALL_default_unwind_r0 : ICall<OpCall, CFNormal, (ins jmptarget:$callee),
                    "near_call", "$callee", []>;
-  def FAR_CALL       : ICall<8, CFNormal, (ins jmptarget:$unwind),
+  def FAR_CALL       : ICall<OpFarcall, CFNormal, (ins jmptarget:$unwind),
                              "far_call", "r1, r2, $unwind",
                              [(EraVMfarcall bb:$unwind)]>;
-  def STATIC_CALL    : ICall<10, CFNormal, (ins jmptarget:$unwind),
+  def STATIC_CALL    : ICall<OpFarcall, CFNormal, (ins jmptarget:$unwind),
                              "far_call.static", "r1, r2, $unwind",
                              [(EraVMstaticcall bb:$unwind)]>;
-  def DELEGATE_CALL  : ICall<11, CFDelegate, (ins jmptarget:$unwind),
+  def DELEGATE_CALL  : ICall<OpDelegate, CFDelegate, (ins jmptarget:$unwind),
                              "far_call.delegate", "r1, r2, $unwind",
                              [(EraVMdelegatecall bb:$unwind)]>;
-  def MIMIC_CALL     : ICall<12, CFMimic, (ins jmptarget:$unwind),
+  def MIMIC_CALL     : ICall<OpMimic, CFMimic, (ins jmptarget:$unwind),
                              "far_call.mimic", "r1, r2, $unwind",
                              [(EraVMmimiccall bb:$unwind)]>;
 }
@@ -1164,8 +1164,6 @@ def : Pat<(store_stack (add GR256:$rs0, neg_imm16:$imm), stackaddr:$dst0),
           (SUBxrs_s (negate_imm imm:$imm), GR256:$rs0, stackaddr:$dst0, 0)>;
 def : Pat<(sub GR256:$rs0, neg_imm16:$imm), (ADDirr_s (negate_imm imm:$imm), GR256:$rs0, 0)>;
 def : Pat<(add GR256:$rs0, neg_imm16:$imm), (SUBxrr_s (negate_imm imm:$imm), GR256:$rs0, 0)>;
-
-def : MnemonicAlias<"log.swrite", "sstore">;
 
 //===----------------------------------------------------------------------===//
 // Non-instruction patterns
