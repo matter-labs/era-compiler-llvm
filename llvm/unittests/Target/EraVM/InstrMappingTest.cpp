@@ -66,8 +66,7 @@
   EXPECT_MAP_EQ_OPCODE_BASE(Opcode##zrs_, S1, S2)
 
 #define EXPECT_MAP_OPERAND_IN_AM_PTR(Mnemonic, S1, S2)                         \
-  EXPECT_MAP_EQ_OPCODE_BASE(Mnemonic##S1##rr_s, Mnemonic##S2##rr_s);           \
-  EXPECT_MAP_EQ_OPCODE_BASE(Mnemonic##S1##rr_v, Mnemonic##S2##rr_v);
+  EXPECT_MAP_EQ_OPCODE_BASE(Mnemonic##S1##rr_s, Mnemonic##S2##rr_s);
 
 #define EXPECT_MAP_OPERAND_IN_AM(Mnemonic, S1, S2)                             \
   EXPECT_MAP_EQ_OPCODE_BASE(Mnemonic##S1##rr_s, Mnemonic##S2##rr_s);           \
@@ -101,15 +100,10 @@
 
 #define EXPECT_MAP_OPERAND_OUT_AM_PTR(Mnemonic, S1, S2)                        \
   EXPECT_MAP_EQ_OPCODE_BASE(Mnemonic##rr##S1##_s, Mnemonic##rr##S2##_s);       \
-  EXPECT_MAP_EQ_OPCODE_BASE(Mnemonic##rr##S1##_v, Mnemonic##rr##S2##_v);       \
   EXPECT_MAP_EQ_OPCODE_BASE(Mnemonic##sr##S1##_s, Mnemonic##sr##S2##_s);       \
-  EXPECT_MAP_EQ_OPCODE_BASE(Mnemonic##sr##S1##_v, Mnemonic##sr##S2##_v);       \
   EXPECT_MAP_EQ_OPCODE_BASE(Mnemonic##xr##S1##_s, Mnemonic##xr##S2##_s);       \
-  EXPECT_MAP_EQ_OPCODE_BASE(Mnemonic##xr##S1##_v, Mnemonic##xr##S2##_v);       \
   EXPECT_MAP_EQ_OPCODE_BASE(Mnemonic##yr##S1##_s, Mnemonic##yr##S2##_s);       \
-  EXPECT_MAP_EQ_OPCODE_BASE(Mnemonic##yr##S1##_v, Mnemonic##yr##S2##_v);       \
-  EXPECT_MAP_EQ_OPCODE_BASE(Mnemonic##zr##S1##_s, Mnemonic##zr##S2##_s);       \
-  EXPECT_MAP_EQ_OPCODE_BASE(Mnemonic##zr##S1##_v, Mnemonic##zr##S2##_v);
+  EXPECT_MAP_EQ_OPCODE_BASE(Mnemonic##zr##S1##_s, Mnemonic##zr##S2##_s);
 
 #define EXPECT_MAP_OPERAND_OUT_AM_BASE2(Mnemonic, S1, S2)                      \
   EXPECT_MAP_EQ_OPCODE_BASE(Mnemonic##rr##S1##r_s, Mnemonic##rr##S2##r_s);     \
@@ -141,6 +135,10 @@
   EXPECT_MAP_EQ_OPCODE_BASE(Mnemonic##S1##rsr_s, Mnemonic##S2##rsr_s);         \
   EXPECT_MAP_EQ_OPCODE_BASE(Mnemonic##S1##rsr_v, Mnemonic##S2##rsr_v);
 
+#define EXPECT_MAP_OPERAND_SWAP_PTR(Mnemonic, S1, S2)                          \
+  EXPECT_MAP_EQ_OPCODE_BASE(Mnemonic##S1##rr_s, Mnemonic##S2##rr_s);           \
+  EXPECT_MAP_EQ_OPCODE_BASE(Mnemonic##S1##rs_s, Mnemonic##S2##rs_s);
+
 #define TEST_INSTR_MAPS(S1, S2)                                                \
   EXPECT_MAP_COMMUTABLE(EraVM::ADD, S1, S2);                                   \
   EXPECT_MAP_COMMUTABLE(EraVM::AND, S1, S2);                                   \
@@ -151,9 +149,6 @@
   EXPECT_MAP_NONCOMMUTABLE(EraVM::SHR, S1, S2);                                \
   EXPECT_MAP_NONCOMMUTABLE(EraVM::ROL, S1, S2);                                \
   EXPECT_MAP_NONCOMMUTABLE(EraVM::ROR, S1, S2);                                \
-  EXPECT_MAP_PTR(EraVM::PTR_ADD, S1, S2);                                      \
-  EXPECT_MAP_PTR(EraVM::PTR_PACK, S1, S2);                                     \
-  EXPECT_MAP_PTR(EraVM::PTR_SHRINK, S1, S2);                                   \
   EXPECT_MAP_ARITH2(EraVM::MUL, S1, S2);                                       \
   EXPECT_MAP_ARITH2_EXTEND(EraVM::DIV, S1, S2)
 
@@ -263,9 +258,9 @@
   EXPECT_MAP_OPERAND_SWAP2(EraVM::DIV, S1, S2);
 
 #define TEST_MAPS_SWAP_PTR(S1, S2)                                             \
-  EXPECT_MAP_OPERAND_SWAP(EraVM::PTR_ADD, S1, S2);                             \
-  EXPECT_MAP_OPERAND_SWAP(EraVM::PTR_PACK, S1, S2);                            \
-  EXPECT_MAP_OPERAND_SWAP(EraVM::PTR_SHRINK, S1, S2);
+  EXPECT_MAP_OPERAND_SWAP_PTR(EraVM::PTR_ADD, S1, S2);                         \
+  EXPECT_MAP_OPERAND_SWAP_PTR(EraVM::PTR_PACK, S1, S2);                        \
+  EXPECT_MAP_OPERAND_SWAP_PTR(EraVM::PTR_SHRINK, S1, S2);
 
 TEST(GetFlagSettingOpcode, TheTest) {
 #undef EXPECT_MAP_EQ_OPCODE_BASE
