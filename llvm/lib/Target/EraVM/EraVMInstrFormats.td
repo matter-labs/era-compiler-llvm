@@ -15,12 +15,6 @@
 // Classes and defs used for relation maps.
 //===----------------------------------------------------------------------===//
 
-class PredRel;
-class FlagRel; // map: `_s` -> `_v`
-class AddrModeRel; // generic map of addressing mode of operands
-class RetAddrModeRel; // generic map of addressing mode of results
-class SwapRel; // map in0, in1 swapping operand instruction <-> non swapping one
-
 // The addressing mode can be categorized into operand addressing and destination addressing
 // OperandAddrMode:
 // RR : Reg Reg; SR : Stack Reg; CR : Code Reg; IR : Imm Reg;
@@ -43,34 +37,72 @@ def ToStack        : DestAddrModeValue<2>;
 def ToRegReg       : DestAddrModeValue<3>;
 def ToStackReg     : DestAddrModeValue<4>;
 
-// FlagSetting:
-// true (1) : `_v` instructions ; false (0) : `_s` instructions
-
 //===----------------------------------------------------------------------===//
 // Instruction mapping tables
 
-// Generate mapping table to relate non-flag setting instruction (`_s`) to flag-setting
-// instruction (`_v`)
-//
+// Flag setting instructions
+// Used to map: `_s` -> `_v`
+// Flag setting instructions include: and, or, xor, add, sub, shl, shr, rol, ror, mul, div
+class FlagSetting;
+
+class mod_set_flags<bit silent> {
+  bit Value = silent;
+}
+
+def PreserveFlags : mod_set_flags<0>;
+def SetFlags : mod_set_flags<1>;
+
 def getFlagSettingOpcode : InstrMapping {
-  let FilterClass = "FlagRel";
-  let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode", "ReverseOperand"];
-  let ColFields = ["FlagSetting"];
+  let FilterClass = "FlagSetting";
+  let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode", "ReverseOperands"];
+  let ColFields = ["Silent"];
   let KeyCol = ["1"];
   let ValueCols = [["0"]];
 }
 
 def getNonFlagSettingOpcode : InstrMapping {
-  let FilterClass = "PredRel";
-  let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode", "ReverseOperand"];
-  let ColFields = ["FlagSetting"];
+  let FilterClass = "FlagSetting";
+  let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode", "ReverseOperands"];
+  let ColFields = ["Silent"];
   let KeyCol = ["0"];
   let ValueCols = [["1"]];
 }
 
+// Instructions that support swapping arguments
+// This included non-commutative arithmetic ones: sub, shl, shr, rol, ror, div and
+// pointer manipulation: ptr.add, ptr.sub, ptr.shrink, ptr.sub
+class Swappable;
+
+class mod_swap<bit swap> {
+  bit Value = swap;
+}
+
+def NoSwap : mod_swap<0>;
+def Swap : mod_swap<1>;
+
+def withInsSwapped : InstrMapping {
+  let FilterClass = "Swappable";
+  let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode", "Silent"];
+  let ColFields = ["ReverseOperands"];
+  let KeyCol = ["0"];
+  let ValueCols = [["1"]];
+}
+
+def withInsNotSwapped : InstrMapping {
+  let FilterClass = "Swappable";
+  let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode", "Silent"];
+  let ColFields = ["ReverseOperands"];
+  let KeyCol = ["1"];
+  let ValueCols = [["0"]];
+}
+
+class AddrModeRel; // generic map of addressing mode of operands
+class RetAddrModeRel; // generic map of addressing mode of results
+
+
 def mapRRInputTo : InstrMapping {
   let FilterClass = "AddrModeRel";
-  let RowFields = ["BaseOpcode", "DestAddrMode", "FlagSetting"];
+  let RowFields = ["BaseOpcode", "DestAddrMode", "Silent"];
   let ColFields = ["OperandAM"];
   let KeyCol = ["0"];
   let ValueCols = [["0"], ["1"], ["2"], ["3"]];
@@ -78,7 +110,7 @@ def mapRRInputTo : InstrMapping {
 
 def mapIRInputTo : InstrMapping {
   let FilterClass = "AddrModeRel";
-  let RowFields = ["BaseOpcode", "DestAddrMode", "FlagSetting"];
+  let RowFields = ["BaseOpcode", "DestAddrMode", "Silent"];
   let ColFields = ["OperandAM"];
   let KeyCol = ["1"];
   let ValueCols = [["0"], ["1"], ["2"], ["3"]];
@@ -86,7 +118,7 @@ def mapIRInputTo : InstrMapping {
 
 def mapCRInputTo : InstrMapping {
   let FilterClass = "AddrModeRel";
-  let RowFields = ["BaseOpcode", "DestAddrMode", "FlagSetting"];
+  let RowFields = ["BaseOpcode", "DestAddrMode", "Silent"];
   let ColFields = ["OperandAM"];
   let KeyCol = ["2"];
   let ValueCols = [["0"], ["1"], ["2"], ["3"]];
@@ -94,7 +126,7 @@ def mapCRInputTo : InstrMapping {
 
 def mapSRInputTo : InstrMapping {
   let FilterClass = "AddrModeRel";
-  let RowFields = ["BaseOpcode", "DestAddrMode", "FlagSetting"];
+  let RowFields = ["BaseOpcode", "DestAddrMode", "Silent"];
   let ColFields = ["OperandAM"];
   let KeyCol = ["3"];
   let ValueCols = [["0"], ["1"], ["2"], ["3"]];
@@ -102,7 +134,7 @@ def mapSRInputTo : InstrMapping {
 
 def withStackResult : InstrMapping {
   let FilterClass = "RetAddrModeRel";
-  let RowFields = ["BaseOpcode", "OperandAddrMode", "FlagSetting", "ReverseOperand"];
+  let RowFields = ["BaseOpcode", "OperandAddrMode", "Silent", "ReverseOperands"];
   let ColFields = ["ResultAM"];
   let KeyCol = ["0"];
   let ValueCols = [["3"]];
@@ -110,25 +142,9 @@ def withStackResult : InstrMapping {
 
 def withRegisterResult : InstrMapping {
   let FilterClass = "RetAddrModeRel";
-  let RowFields = ["BaseOpcode", "OperandAddrMode", "FlagSetting", "ReverseOperand"];
+  let RowFields = ["BaseOpcode", "OperandAddrMode", "Silent", "ReverseOperands"];
   let ColFields = ["ResultAM"];
   let KeyCol = ["3"];
-  let ValueCols = [["0"]];
-}
-
-def withInsSwapped : InstrMapping {
-  let FilterClass = "PredRel";
-  let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode", "FlagSetting"];
-  let ColFields = ["ReverseOperand"];
-  let KeyCol = ["0"];
-  let ValueCols = [["1"]];
-}
-
-def withInsNotSwapped : InstrMapping {
-  let FilterClass = "PredRel";
-  let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode", "FlagSetting"];
-  let ColFields = ["ReverseOperand"];
-  let KeyCol = ["1"];
   let ValueCols = [["0"]];
 }
 
@@ -244,28 +260,28 @@ class ILogR<bits<8> opcode, DestMode ad, dag outs, dag ins,
 
 class IBinary<bits<8> opcode,
               SourceMode as, DestMode ad,
-              bit swap_operands, bit silent,
+              mod_swap swap, mod_set_flags set_flags,
               dag outs, dag ins,
               string opc, string asmstr,
               list<dag> pattern>
-  : IForm <opcode, as, ad, outs, ins, opc, asmstr, pattern >, PredRel {
-  let AsmString = !strconcat(opc,
-                             !if(swap_operands, ".s", ""),
-                             !if(silent, "", "!"),
-                             "${cc}", "\t", asmstr);
-
+  : IForm <opcode, as, ad, outs, ins, opc, asmstr, pattern > {
   string BaseOpcode;
-  bit FlagSetting = silent;
-  bit ReverseOperand = swap_operands;
+  bit Silent = !eq(set_flags, PreserveFlags);
+  bit ReverseOperands = !eq(swap, Swap);
   bits<3> OperandAddrMode = OpndAddrNotSet.Value;
   bits<3> DestAddrMode = DestAddrNotSet.Value;
   int OperandAM = 0;
   int ResultAM = 0;
+
+  let AsmString = !strconcat(opc,
+                             !if(!eq(swap, Swap), ".s", ""),
+                             !if(!eq(set_flags, SetFlags), "!", ""),
+                             "${cc}", "\t", asmstr);
 }
 
 class IBinaryR<bits<8> opcode,
                SourceMode as,
-               bit swap_operands, bit silent,
+               mod_swap swap_operands, mod_set_flags silent,
                dag outs, dag ins,
                string opc, string asmstr,
                list<dag> pattern>
@@ -276,7 +292,7 @@ class IBinaryR<bits<8> opcode,
 
 class IBinaryS<bits<8> opcode,
                SourceMode as,
-               bit swap_operands, bit silent,
+               mod_swap swap_operands, mod_set_flags silent,
                dag outs, dag ins,
                string opc, string asmstr,
                list<dag> pattern>
@@ -286,7 +302,7 @@ class IBinaryS<bits<8> opcode,
 }
 
 class Irrr<bits<8> opcode,
-           bit swap_operands, bit silent,
+           mod_swap swap_operands, mod_set_flags silent,
            dag outs, dag ins,
            string opc, string asmstr,
            list<dag> pattern>
@@ -296,7 +312,7 @@ class Irrr<bits<8> opcode,
 }
 
 class Irrrr<bits<8> opcode,
-            bit swap_operands, bit silent,
+            mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
             string opc, string asmstr,
             list<dag> pattern>
@@ -306,7 +322,7 @@ class Irrrr<bits<8> opcode,
 }
 
 class Iirr<bits<8> opcode,
-           bit swap_operands, bit silent,
+           mod_swap swap_operands, mod_set_flags silent,
            dag outs, dag ins,
            string opc, string asmstr,
            list<dag> pattern>
@@ -316,7 +332,7 @@ class Iirr<bits<8> opcode,
 }
 
 class Iirrr<bits<8> opcode,
-            bit swap_operands, bit silent,
+            mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
             string opc, string asmstr,
             list<dag> pattern>
@@ -327,7 +343,7 @@ class Iirrr<bits<8> opcode,
 
 class Imrr<bits<8> opcode,
            SourceMode as,
-           bit swap_operands, bit silent,
+           mod_swap swap_operands, mod_set_flags silent,
            dag outs, dag ins,
            string opc, string asmstr,
            list<dag> pattern>
@@ -338,7 +354,7 @@ class Imrr<bits<8> opcode,
 
 class Isrr<bits<8> opcode,
            SourceMode as,
-           bit swap_operands, bit silent,
+           mod_swap swap_operands, mod_set_flags silent,
            dag outs, dag ins,
            string opc, string asmstr,
            list<dag> pattern>
@@ -349,7 +365,7 @@ class Isrr<bits<8> opcode,
 
 class Imrrr<bits<8> opcode,
             SourceMode as,
-            bit swap_operands, bit silent,
+            mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
             string opc, string asmstr,
             list<dag> pattern>
@@ -361,7 +377,7 @@ class Imrrr<bits<8> opcode,
 
 class Isrrr<bits<8> opcode,
             SourceMode as,
-            bit swap_operands, bit silent,
+            mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
             string opc, string asmstr,
             list<dag> pattern>
@@ -371,7 +387,7 @@ class Isrrr<bits<8> opcode,
 }
 
 class Irrs<bits<8> opcode,
-           bit swap_operands, bit silent,
+           mod_swap swap_operands, mod_set_flags silent,
            dag outs, dag ins,
            string opc, string asmstr,
            list<dag> pattern>
@@ -381,7 +397,7 @@ class Irrs<bits<8> opcode,
 }
 
 class Irrsr<bits<8> opcode,
-            bit swap_operands, bit silent,
+            mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
             string opc, string asmstr,
             list<dag> pattern>
@@ -391,7 +407,7 @@ class Irrsr<bits<8> opcode,
 }
 
 class Iirs<bits<8> opcode,
-           bit swap_operands, bit silent,
+           mod_swap swap_operands, mod_set_flags silent,
            dag outs, dag ins,
            string opc, string asmstr,
            list<dag> pattern>
@@ -401,7 +417,7 @@ class Iirs<bits<8> opcode,
 }
 
 class Iirsr<bits<8> opcode,
-            bit swap_operands, bit silent,
+            mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
             string opc, string asmstr,
             list<dag> pattern>
@@ -412,7 +428,7 @@ class Iirsr<bits<8> opcode,
 
 class Imrs<bits<8> opcode,
            SourceMode as,
-           bit swap_operands, bit silent,
+           mod_swap swap_operands, mod_set_flags silent,
            dag outs, dag ins,
            string opc, string asmstr,
            list<dag> pattern>
@@ -423,7 +439,7 @@ class Imrs<bits<8> opcode,
 
 class Isrs<bits<8> opcode,
            SourceMode as,
-           bit swap_operands, bit silent,
+           mod_swap swap_operands, mod_set_flags silent,
            dag outs, dag ins,
            string opc, string asmstr,
            list<dag> pattern>
@@ -434,7 +450,7 @@ class Isrs<bits<8> opcode,
 
 class Imrsr<bits<8> opcode,
             SourceMode as,
-            bit swap_operands, bit silent,
+            mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
             string opc, string asmstr,
             list<dag> pattern>
@@ -445,7 +461,7 @@ class Imrsr<bits<8> opcode,
 
 class Isrsr<bits<8> opcode,
             SourceMode as,
-            bit swap_operands, bit silent,
+            mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
             string opc, string asmstr,
             list<dag> pattern>
