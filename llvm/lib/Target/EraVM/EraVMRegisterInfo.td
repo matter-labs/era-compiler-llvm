@@ -72,5 +72,8 @@ def Flags : EraVMRegister<18, "#BAD#">;
 let isAllocatable = 0 in
 def SPR256 : RegisterClass<"EraVM", [i256], 256, (add PC, SP, Flags)>;
 
-// Registers that could be used for stack addressing.
-def GRStack : RegisterClass<"EraVM", [i256], 256, (add R0, SP)>;
+// Registers that can be used as marker values to distinguish stack references:
+// * SP - SP-relative access (stack-[...])
+// * R0 - SP-modifying operand (stack-=[...] for input / stack+=[...] for output)
+// FIXME Rework internal encoding used by the backend.
+def GRStackRefMarker : RegisterClass<"EraVM", [i256], 256, (add R0, SP)>;

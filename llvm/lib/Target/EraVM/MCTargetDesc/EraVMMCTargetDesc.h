@@ -76,7 +76,8 @@ enum MemOperandKind {
   OperandCode,
   OperandStackAbsolute,
   OperandStackSPRelative,
-  OperandStackSPModifying,
+  OperandStackSPDecrement,
+  OperandStackSPIncrement,
 };
 
 void appendMCOperands(MCContext &Ctx, MCInst &MI, MemOperandKind Kind,

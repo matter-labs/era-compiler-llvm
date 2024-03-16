@@ -187,7 +187,8 @@ static MCOperand createStackOperandMarker(EraVM::MemOperandKind Kind) {
     return MCOperand::createImm(0);
   case EraVM::OperandStackSPRelative:
     return MCOperand::createReg(EraVM::SP);
-  case EraVM::OperandStackSPModifying:
+  case EraVM::OperandStackSPDecrement:
+  case EraVM::OperandStackSPIncrement:
     return MCOperand::createReg(EraVM::R0);
   }
 }
