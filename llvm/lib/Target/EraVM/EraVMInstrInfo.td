@@ -386,7 +386,6 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
                    asmstring, "$rs0, $rs1, $rd0",
                    [(set GR256:$rd0, (node GR256:$rs0, GR256:$rs1))]>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  let Defs = [Flags] in
   def rrr_v : Irrr<opcode, NoSwap, SetFlags,
                    (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
                    asmstring, "$rs0, $rs1, $rd0", []>,
@@ -398,7 +397,6 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
                    asmstring, "$src0, $rs1, $rd0",
                    [(set GR256:$rd0, (node (load_code memaddr:$src0), GR256:$rs1))]>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  let Defs = [Flags] in
   def crr_v : Imrr<opcode, NoSwap, SetFlags,
                    (outs GR256:$rd0), (ins memop:$src0, GR256:$rs1),
                    asmstring, "$src0, $rs1, $rd0", []>,
@@ -408,7 +406,6 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
                    asmstring, "$src0, $rs1, $rd0",
                    [(set GR256:$rd0, (node (load_stack stackaddr:$src0), GR256:$rs1))]>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  let Defs = [Flags] in
   def srr_v : Isrr<opcode, NoSwap, SetFlags,
                    (outs GR256:$rd0), (ins stackout:$src0, GR256:$rs1),
                    asmstring, "$src0, $rs1, $rd0", []>,
@@ -421,7 +418,6 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
                    asmstring, "$rs0, $rs1, $dst0",
                    [(store_stack (node GR256:$rs0, GR256:$rs1), stackaddr:$dst0)]>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  let Defs = [Flags] in
   def rrs_v : Irrs<opcode, NoSwap, SetFlags,
                    (outs), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
                    asmstring, "$rs0, $rs1, $dst0", []>,
@@ -434,7 +430,6 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
                    asmstring, "$src0, $rs1, $dst0",
                    [(store_stack (node (load_code memaddr:$src0), GR256:$rs1), stackaddr:$dst0)]>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  let Defs = [Flags] in
   def crs_v : Imrs<opcode, NoSwap, SetFlags,
                    (outs), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
                    asmstring, "$src0, $rs1, $dst0", []>,
@@ -445,8 +440,6 @@ multiclass Arith<bits<8> opcode, string asmstring, SDPatternOperator node, bit c
                    asmstring, "$src0, $rs1, $dst0",
                    [(store_stack (node (load_stack stackaddr:$src0), GR256:$rs1), stackaddr:$dst0)]>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-
-  let Defs = [Flags] in
   def srs_v : Isrs<opcode, NoSwap, SetFlags,
                    (outs), (ins stackout:$src0, GR256:$rs1, stackout:$dst0),
                    asmstring, "$src0, $rs1, $dst0", []>,
@@ -461,7 +454,6 @@ multiclass ArithICommutable<bits<8> opcode, string asmstring, SDPatternOperator 
                    (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
                    asmstring, "$imm, $rs1, $rd0", [(set GR256:$rd0, (node GR256:$rs1, imm16:$imm))]>,
                    FlagSetting, AddrModeRel, RetAddrModeRel;
-  let Defs = [Flags] in
   def irr_v : Iirr<opcode, NoSwap, SetFlags,
                    (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
                    asmstring, "$imm, $rs1, $rd0", []>,
@@ -472,7 +464,6 @@ multiclass ArithICommutable<bits<8> opcode, string asmstring, SDPatternOperator 
                    asmstring, "$imm, $rs1, $dst0",
                    [(store_stack (node GR256:$rs1, imm16:$imm), stackaddr:$dst0)]>,
                    FlagSetting, AddrModeRel, RetAddrModeRel;
-  let Defs = [Flags] in
   def irs_v : Iirs<opcode, NoSwap, SetFlags,
                    (outs), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
                    asmstring, "$imm, $rs1, $dst0", []>,
@@ -508,7 +499,6 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
   def rrr_s_alias : Irrr<opcode, Swap, PreserveFlags,
                          (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
                          asmstring, "$rs0, $rs1, $rd0", []>;
-  let Defs = [Flags] in
   def rrr_v_alias : Irrr<opcode, Swap, SetFlags,
                          (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
                          asmstring, "$rs0, $rs1, $rd0", []>;
@@ -516,13 +506,11 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
   def rrs_s_alias : Irrs<opcode, Swap, PreserveFlags,
                          (outs), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
                          asmstring, "$rs0, $rs1, $dst0", []>;
-  let Defs = [Flags] in
   def rrs_v_alias : Irrs<opcode, Swap, SetFlags,
                          (outs), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
                          asmstring, "$rs0, $rs1, $dst0", []>;
   }
 
-  let Defs = [Flags] in {
   def irr_v : Iirr<opcode, NoSwap, SetFlags,
                        (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
                        asmstring, "$imm, $rs1, $rd0", []>,
@@ -531,7 +519,6 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
                        (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
                        asmstring, "$imm, $rs1, $rd0", []>,
                        FlagSetting, Swappable, RetAddrModeRel;
-  }
 
   let mayLoad = 1 in {
   def yrr_s : Imrr<opcode, Swap, PreserveFlags,
@@ -539,7 +526,6 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
                    asmstring, "$src0, $rs1, $rd0",
                    [(set GR256:$rd0, (node GR256:$rs1, (load_code memaddr:$src0)))]>,
                    FlagSetting, Swappable, RetAddrModeRel;
-  let Defs = [Flags] in
   def yrr_v : Imrr<opcode, Swap, SetFlags,
                    (outs GR256:$rd0), (ins memop:$src0, GR256:$rs1),
                    asmstring, "$src0, $rs1, $rd0", []>,
@@ -549,7 +535,6 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
                    asmstring, "$src0, $rs1, $rd0",
                    [(set GR256:$rd0, (node GR256:$rs1, (load_stack stackaddr:$src0)))]>,
                    FlagSetting, Swappable, RetAddrModeRel;
-  let Defs = [Flags] in
   def zrr_v : Isrr<opcode, Swap, SetFlags,
                    (outs GR256:$rd0), (ins stackout:$src0, GR256:$rs1),
                    asmstring, "$src0, $rs1, $rd0", []>,
@@ -568,7 +553,6 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
                        [(store_stack (node GR256:$rs1, imm16:$imm), stackaddr:$dst0)]>,
                        FlagSetting, Swappable, RetAddrModeRel;
 
-  let Defs = [Flags] in {
   def irs_v : Iirs<opcode, NoSwap, SetFlags,
                        (outs), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
                        asmstring, "$imm, $rs1, $dst0", []>,
@@ -577,7 +561,7 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
                        (outs), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
                        asmstring, "$imm, $rs1, $dst0", []>,
                        FlagSetting, Swappable, RetAddrModeRel;
-  }
+
   let mayLoad = 1 in {
   def yrs_s : Imrs<opcode, Swap, PreserveFlags,
                    (outs), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
@@ -585,7 +569,6 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
                    [(store_stack (node GR256:$rs1, (load_code memaddr:$src0)), stackaddr:$dst0)]>,
                    FlagSetting, Swappable, RetAddrModeRel;
 
-  let Defs = [Flags] in
   def yrs_v : Imrs<opcode, Swap, SetFlags,
                    (outs), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
                    asmstring, "$src0, $rs1, $dst0", []>,
@@ -596,7 +579,6 @@ multiclass ArithINonCommutable<bits<8> opcode, string asmstring, SDPatternOperat
                    asmstring, "$src0, $rs1, $dst0",
                    [(store_stack (node GR256:$rs1, (load_stack stackaddr:$src0)), stackaddr:$dst0)]>,
                    FlagSetting, Swappable, RetAddrModeRel;
-  let Defs = [Flags] in
   def zrs_v : Isrs<opcode, Swap, SetFlags,
                    (outs), (ins stackout:$src0, GR256:$rs1, stackout:$dst0),
                    asmstring, "$src0, $rs1, $dst0", []>,
@@ -731,7 +713,6 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
                      asmstring, "$rs0, $rs1, $rd0, $rd1",
                      [(set GR256:$rd0, GR256:$rd1, (node GR256:$rs0, GR256:$rs1))]>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  let Defs = [Flags] in
   def rrrr_v : Irrrr<opcode, NoSwap, SetFlags,
                      (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, GR256:$rs1),
                      asmstring, "$rs0, $rs1, $rd0, $rd1", []>,
@@ -743,7 +724,6 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
                      asmstring, "$src0, $rs1, $rd0, $rd1",
                      [(set GR256:$rd0, GR256:$rd1, (node (load_code memaddr:$src0), GR256:$rs1))]>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  let Defs = [Flags] in
   def crrr_v : Imrrr<opcode, NoSwap, SetFlags,
                      (outs GR256:$rd0, GR256:$rd1), (ins memop:$src0, GR256:$rs1),
                      asmstring, "$src0, $rs1, $rd0, $rd1", []>,
@@ -753,7 +733,6 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
                      asmstring, "$src0, $rs1, $rd0, $rd1",
                      [(set GR256:$rd0, GR256:$rd1, (node (load_stack stackaddr:$src0), GR256:$rs1))]>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  let Defs = [Flags] in
   def srrr_v : Isrrr<opcode, NoSwap, SetFlags,
                      (outs GR256:$rd0, GR256:$rd1), (ins stackout:$src0, GR256:$rs1),
                      asmstring, "$src0, $rs1, $rd0, $rd1", []>,
@@ -765,7 +744,6 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
                      (outs GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
                      asmstring, "$rs0, $rs1, $dst0, $rd1", []>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  let Defs = [Flags] in
   def rrsr_v : Irrsr<opcode, NoSwap, SetFlags,
                      (outs GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
                      asmstring, "$rs0, $rs1, $dst0, $rd1", []>,
@@ -775,7 +753,6 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
                      (outs GR256:$rd1), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
                      asmstring, "$src0, $rs1, $dst0, $rd1", []>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  let Defs = [Flags] in
   def crsr_v : Imrsr<opcode, NoSwap, SetFlags,
                      (outs GR256:$rd1), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
                      asmstring, "$src0, $rs1, $dst0, $rd1", []>,
@@ -784,7 +761,6 @@ multiclass Arith2<bits<8> opcode, string asmstring, SDPatternOperator node, bit 
                      (outs GR256:$rd1), (ins stackout:$src0, GR256:$rs1, stackout:$dst0),
                      asmstring, "$src0, $rs1, $dst0, $rd1", []>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  let Defs = [Flags] in
   def srsr_v : Isrsr<opcode, NoSwap, SetFlags,
                      (outs GR256:$rd1), (ins stackout:$src0, GR256:$rs1, stackout:$dst0),
                      asmstring, "$src0, $rs1, $dst0, $rd1", []>,
@@ -802,7 +778,6 @@ multiclass Arith2ICommutable<bits<8> opcode, string asmstring, SDPatternOperator
                      asmstring, "$imm, $rs1, $rd0, $rd1",
                      [(set GR256:$rd0, GR256:$rd1, (node GR256:$rs1, imm16:$imm))]>,
                      FlagSetting, AddrModeRel, RetAddrModeRel;
-  let Defs = [Flags] in
   def irrr_v : Iirrr<opcode, NoSwap, SetFlags,
                      (outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1),
                      asmstring, "$imm, $rs1, $rd0, $rd1", []>,
@@ -812,7 +787,6 @@ multiclass Arith2ICommutable<bits<8> opcode, string asmstring, SDPatternOperator
                      (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
                      asmstring, "$imm, $rs1, $dst0, $rd1", []>,
                      FlagSetting, AddrModeRel, RetAddrModeRel;
-  let Defs = [Flags] in
   def irsr_v : Iirsr<opcode, NoSwap, SetFlags,
                      (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
                      asmstring, "$imm, $rs1, $dst0, $rd1", []>,
@@ -838,8 +812,6 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
                      asmstring, "$imm, $rs1, $rd0, $rd1",
                      [(set GR256:$rd0, GR256:$rd1, (node GR256:$rs1, imm16:$imm))]>,
                      FlagSetting, Swappable, RetAddrModeRel;
-
-  let Defs = [Flags] in {
   def irrr_v : Iirrr<opcode, NoSwap, SetFlags,
                      (outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1),
                      asmstring, "$imm, $rs1, $rd0, $rd1", []>,
@@ -848,7 +820,6 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
                      (outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1),
                      asmstring, "$imm, $rs1, $rd0, $rd1", []>,
                      FlagSetting, Swappable, RetAddrModeRel;
-  }
 
   // The four *_alias instructions below are defined to make asm parser handle
   // "mnemonic.s rs0, rs1, rd0, rd1" instructions for the sake of uniformity, that
@@ -857,7 +828,6 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
   def rrrr_s_alias : Irrrr<opcode, Swap, PreserveFlags,
                            (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, GR256:$rs1),
                            asmstring, "$rs0, $rs1, $rd0, $rd1", []>;
-  let Defs = [Flags] in
   def rrrr_v_alias : Irrrr<opcode, Swap, SetFlags,
                            (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, GR256:$rs1),
                            asmstring, "$rs0, $rs1, $rd0, $rd1", []>;
@@ -865,7 +835,6 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
   def rrsr_s_alias : Irrsr<opcode, Swap, PreserveFlags,
                            (outs GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
                            asmstring, "$rs0, $rs1, $dst0, $rd1", []>;
-  let Defs = [Flags] in
   def rrsr_v_alias : Irrsr<opcode, Swap, SetFlags,
                            (outs GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
                            asmstring, "$rs0, $rs1, $dst0, $rd1", []>;
@@ -877,7 +846,6 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
                      asmstring, "$src0, $rs1, $rd0, $rd1",
                      [(set GR256:$rd0, GR256:$rd1, (node GR256:$rs1, (load_code memaddr:$src0)))]>,
                      FlagSetting, Swappable, RetAddrModeRel;
-  let Defs = [Flags] in
   def yrrr_v : Imrrr<opcode, Swap, SetFlags,
                      (outs GR256:$rd0, GR256:$rd1), (ins memop:$src0, GR256:$rs1),
                      asmstring, "$src0, $rs1, $rd0, $rd1", []>,
@@ -887,7 +855,6 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
                      asmstring, "$src0, $rs1, $rd0, $rd1",
                      [(set GR256:$rd0, GR256:$rd1, (node GR256:$rs1, (load_stack stackaddr:$src0)))]>,
                      FlagSetting, Swappable, RetAddrModeRel;
-  let Defs = [Flags] in
   def zrrr_v : Isrrr<opcode, Swap, SetFlags,
                    (outs GR256:$rd0, GR256:$rd1), (ins stackout:$src0, GR256:$rs1),
                    asmstring, "$src0, $rs1, $rd0, $rd1", []>,
@@ -902,7 +869,6 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
                      (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
                      asmstring, "$imm, $rs1, $dst0, $rd1", []>,
                      FlagSetting, Swappable, RetAddrModeRel;
-  let Defs = [Flags] in {
   def irsr_v : Iirsr<opcode, NoSwap, SetFlags,
                      (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
                      asmstring, "$imm, $rs1, $dst0, $rd1", []>,
@@ -911,13 +877,11 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
                      (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
                      asmstring, "$imm, $rs1, $dst0, $rd1", []>,
                      FlagSetting, Swappable, RetAddrModeRel;
-  }
   let mayLoad = 1 in {
   def yrsr_s : Imrsr<opcode, Swap, PreserveFlags,
                      (outs GR256:$rd1), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
                      asmstring, "$src0, $rs1, $dst0, $rd1", []>,
                      FlagSetting, Swappable, RetAddrModeRel;
-  let Defs = [Flags] in
   def yrsr_v : Imrsr<opcode, Swap, SetFlags,
                      (outs GR256:$rd1), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
                      asmstring, "$src0, $rs1, $dst0, $rd1", []>,
@@ -926,7 +890,6 @@ multiclass Arith2INonCommutable<bits<8> opcode, string asmstring, SDPatternOpera
                      (outs GR256:$rd1), (ins stackout:$src0, GR256:$rs1, stackout:$dst0),
                      asmstring, "$src0, $rs1, $dst0, $rd1", []>,
                      FlagSetting, Swappable, RetAddrModeRel;
-  let Defs = [Flags] in
   def zrsr_v : Isrsr<opcode, Swap, SetFlags,
                      (outs GR256:$rd1), (ins stackout:$src0, GR256:$rs1, stackout:$dst0),
                      asmstring, "$src0, $rs1, $dst0, $rd1", []>,
