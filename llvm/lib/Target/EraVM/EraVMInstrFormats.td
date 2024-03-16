@@ -277,6 +277,7 @@ class IBinary<bits<8> opcode,
                              !if(!eq(swap, Swap), ".s", ""),
                              !if(!eq(set_flags, SetFlags), "!", ""),
                              "${cc}", "\t", asmstr);
+  let Defs = !if(Silent, [], [Flags]);
 }
 
 class IBinaryR<bits<8> opcode,
