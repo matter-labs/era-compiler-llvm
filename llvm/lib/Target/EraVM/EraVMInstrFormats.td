@@ -275,7 +275,24 @@ class Encoding {
   field bits<64> Inst;
   field bits<64> SoftFail = 0;
 
+  bits<16> Imm1;
+  bits<16> Imm0;
+  bits<4> Dst1;
+  bits<4> Dst0;
+  bits<4> Src1;
+  bits<4> Src0;
+  bits<3> Predicate;
+  bits<11> Opcode;
+
+  // let Inst{63-48} = Imm1;
+  // let Inst{47-32} = Imm0;
+  // let Inst{31-28} = Dst1;
+  // let Inst{27-24} = Dst0;
+  // let Inst{23-20} = Src1;
+  // let Inst{19-16} = Src0;
+  // let Inst{15-13} = Predicate;
   let Inst{12-11} = 0;
+  let Inst{10-0} = Opcode;
 }
 
 let OperandType = "OPERAND_IMMEDIATE" in
@@ -301,7 +318,7 @@ class IForm <EraVMOpcode opcode,
   let Size           = 8;
 
   // FIXME: This is not correct, we need to calculate real opcode out of the base one
-  let Inst{10-0} = opcode.BaseOpcode;
+  let Opcode = opcode.BaseOpcode;
 }
 
 class IRet<EraVMOpcode opcode, RetFlags flags, dag ins, string opc, string asmstr, list<dag> pattern>
