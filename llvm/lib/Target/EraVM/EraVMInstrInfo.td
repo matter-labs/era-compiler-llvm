@@ -1147,6 +1147,15 @@ def : Pat<(int_eravm_precompile GR256:$rs0, GR256:$rs1),
 def : Pat<(EraVMlog_decommit GR256:$rs0, GR256:$rs1),
           (DECOMMITr GR256:$rs0, GR256:$rs1, 0)>;
 
+multiclass FarCallInst<EraVMOpcode opcode, CallFlags flags, string asmstring> {
+  def _rrl : ICall<opcode, flags, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
+                  asmstring, "$rs0, $rs1, $unwind", []>;
+  def _STATIC_rrl : ICall<opcode, flags, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
+                         !strconcat(asmstring, ".static"), "$rs0, $rs1, $unwind", []>;
+  def _SHARD_rrl  : ICall<opcode, flags, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
+                         !strconcat(asmstring, ".shard"), "$rs0, $rs1, $unwind", []>;
+}
+
 let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Flags],
     Uses = [SP], isCall = 1 in {
    def CALL : Pseudo<(outs), (ins GR256:$in1, imm16:$callee),
@@ -1160,19 +1169,19 @@ let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Fl
                    "near_call", "$in1, $callee", []>;
   def NEAR_CALL_default_unwind_r0 : ICall<OpCall, CFNormal, (ins jmptarget:$callee),
                    "near_call", "$callee", []>;
-  def FAR_CALL       : ICall<OpFarcall, CFNormal, (ins jmptarget:$unwind),
-                             "far_call", "r1, r2, $unwind",
-                             [(EraVMfarcall bb:$unwind)]>;
-  def STATIC_CALL    : ICall<OpFarcall, CFNormal, (ins jmptarget:$unwind),
-                             "far_call.static", "r1, r2, $unwind",
-                             [(EraVMstaticcall bb:$unwind)]>;
-  def DELEGATE_CALL  : ICall<OpDelegate, CFDelegate, (ins jmptarget:$unwind),
-                             "far_call.delegate", "r1, r2, $unwind",
-                             [(EraVMdelegatecall bb:$unwind)]>;
-  def MIMIC_CALL     : ICall<OpMimic, CFMimic, (ins jmptarget:$unwind),
-                             "far_call.mimic", "r1, r2, $unwind",
-                             [(EraVMmimiccall bb:$unwind)]>;
+
+  defm FAR_CALL      : FarCallInst<OpFarcall, CFNormal, "far_call">;
+  defm DELEGATE_CALL : FarCallInst<OpDelegate, CFDelegate, "far_call.delegate">;
+  defm MIMIC_CALL    : FarCallInst<OpMimic, CFMimic, "far_call.mimic">;
 }
+
+def : Pat<(EraVMfarcall bb:$unwind), (FAR_CALL_rrl R1, R2, bb:$unwind)>;
+def : Pat<(EraVMstaticcall bb:$unwind), (FAR_CALL_STATIC_rrl R1, R2, bb:$unwind)>;
+def : Pat<(EraVMdelegatecall bb:$unwind), (DELEGATE_CALL_rrl R1, R2, bb:$unwind)>;
+def : Pat<(EraVMmimiccall bb:$unwind), (MIMIC_CALL_rrl R1, R2, bb:$unwind)>;
+
+def : MnemonicAlias<"delegatecall", "far_call.delegate">;
+def : MnemonicAlias<"mimiccall", "far_call.mimic">;
 
 def : Pat<(store_stack (add GR256:$rs0, neg_imm16:$imm), stackaddr:$dst0),
           (SUBxrs_s (negate_imm imm:$imm), GR256:$rs0, stackaddr:$dst0, 0)>;
