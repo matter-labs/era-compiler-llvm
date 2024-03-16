@@ -1017,15 +1017,25 @@ def JCALL: Pseudo<(outs), (ins jmptarget:$dest), []>,
            PseudoInstExpansion<(JC jmptarget:$dest, 0)>;
 
 let isReturn = 1, isTerminator = 1, isBarrier = 1  in {
-def RET  : IRet<OpRet, RFNone, (ins), "ret", "", [(EraVMret)]>;
-def PANIC : IRet<OpPanic, RFPanic, (ins GR256:$rs0), "ret.panic", "$rs0", []>;
-}
-let isTerminator = 1, isBarrier = 1, isTrap = 1 in
-def THROW : IRet<OpRevert, RFErr, (ins GR256:$rs0), "ret.error", "$rs0",
-                 [(EraVMthrow GR256:$rs0)]>;
+// FIXME: Split IRet to register and label variants, make multiclass
+def RETr : IRet<OpRet, RFNone, (ins GR256:$rs0), "ret.ok", "$rs0", []>;
+def RET  : Pseudo<(outs), (ins pred:$cc), [(EraVMret)]>,
+           PseudoInstExpansion<(RETr R1, pred:$cc)>;
 
-def : InstAlias<"revert", (THROW R1, 0)>;
-def : InstAlias<"panic", (PANIC R1, 0)>;
+def REVERTr : IRet<OpRevert, RFErr, (ins GR256:$rs0), "ret.revert", "$rs0", []>;
+
+def PANICr : IRet<OpPanic, RFPanic, (ins GR256:$rs0), "ret.panic", "$rs0", []>;
+}
+
+// FIXME Are "revert" and "error" the same?
+// FIXME Check if isTrap is handled properly.
+let isTerminator = 1, isBarrier = 1, isTrap = 1 in
+def THROW : Pseudo<(outs), (ins GR256:$rs0, pred:$cc), [(EraVMthrow GR256:$rs0)]>,
+            PseudoInstExpansion<(REVERTr GR256:$rs0, pred:$cc)>;
+
+def : InstAlias<"ret${cc}", (RETr R1, pred:$cc)>;
+def : InstAlias<"revert${cc}", (REVERTr R1, pred:$cc)>;
+def : InstAlias<"panic${cc}", (PANICr R0, pred:$cc)>;
 
 let isTerminator = 1, isBarrier = 1, isReturn = 1 in {
 def RETURN : IRet<OpRet, RFErr, (ins GR256:$rs0), "ret.ok.to_label", "$rs0, @DEFAULT_FAR_RETURN",
@@ -1034,8 +1044,12 @@ def REVERT : IRet<OpRevert, RFErr, (ins GR256:$rs0), "ret.revert.to_label", "$rs
                   [(EraVMrevert GR256:$rs0)]>;
 }
 
-def : MnemonicAlias<"ret", "ret.ok">;
-def : MnemonicAlias<"revert", "ret.revert">;
+// FIXME At now, standalone assembler does not treat "ret" and "ret.ok" as
+//       *mnemonic* aliases: "ret.ok r1" is accepted, "ret" is accepted as well
+//       (as an alias to "ret.ok r1"), but "ret.ok" (without operand) is not.
+// def : MnemonicAlias<"ret", "ret.ok">;
+// def : MnemonicAlias<"revert", "ret.revert">;
+// def : MnemonicAlias<"ret.panic", "panic">;
 
 //===----------------------------------------------------------------------===//
 // Constants materialization
@@ -1176,7 +1190,7 @@ def : Pat<(i256 (EraVMGACode texternalsym:$dst)), (ADDcrr_s texternalsym:$dst, 0
 def : Pat<(i256 (EraVMGACode tblockaddress:$dst)), (ADDcrr_s tblockaddress:$dst, 0, R0, 0)>;
 
 // Exceptions
-def : Pat<(EraVMTrap), (PANIC R0)>;
+def : Pat<(EraVMTrap), (PANICr R0)>;
 
 def : Pat<(EraVMselectcc GRPTR:$rs0, GRPTR:$rs1, imm:$cc),
           (FATPTR_SELrrr GRPTR:$rs0, GRPTR:$rs1, imm:$cc)>;
