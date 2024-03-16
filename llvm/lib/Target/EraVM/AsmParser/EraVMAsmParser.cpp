@@ -65,7 +65,6 @@ class EraVMAsmParser : public MCTargetAsmParser {
   bool parseRegisterWithAddend(MCRegister &RegNo, int &Addend);
   bool parseOperand(StringRef Mnemonic, OperandVector &Operands);
 
-  template <bool IsInput>
   ParseStatus tryParseStackOperand(OperandVector &Operands);
   ParseStatus tryParseCodeOperand(OperandVector &Operands);
 
@@ -146,7 +145,20 @@ public:
     Inst.addOperand(MCOperand::createReg(Reg));
   }
 
-  bool isStackReference() const { return Kind == k_Mem && !isCodeReference(); }
+  template <bool IsInput> bool isStackReference() const {
+    if (Kind != k_Mem)
+      return false;
+
+    switch (Mem.Kind) {
+    case EraVM::OperandCode:
+      return false;
+    case EraVM::OperandStackSPDecrement:
+    case EraVM::OperandStackSPIncrement:
+      return IsInput == (Mem.Kind == EraVM::OperandStackSPDecrement);
+    default:
+      return true;
+    }
+  }
 
   bool isCodeReference() const {
     return Kind == k_Mem && Mem.Kind == EraVM::OperandCode;
@@ -514,7 +526,6 @@ bool EraVMAsmParser::parseOperand(StringRef Mnemonic, OperandVector &Operands) {
   return TokError("cannot parse operand");
 }
 
-template <bool IsInput>
 ParseStatus EraVMAsmParser::tryParseStackOperand(OperandVector &Operands) {
   EraVM::MemOperandKind MemOpKind = EraVM::OperandStackAbsolute;
   MCRegister RegNo = 0;
@@ -529,8 +540,24 @@ ParseStatus EraVMAsmParser::tryParseStackOperand(OperandVector &Operands) {
   Lex(); // eat "stack" token
 
   if (getTok().is(AsmToken::Minus)) {
-    MemOpKind = EraVM::OperandStackSPRelative;
     Lex(); // eat "-" token
+    if (getTok().is(AsmToken::Equal)) {
+      // stack-=[...]
+      MemOpKind = EraVM::OperandStackSPDecrement;
+      Lex(); // eat "=" token
+    } else {
+      MemOpKind = EraVM::OperandStackSPRelative;
+    }
+  } else if (getTok().is(AsmToken::Plus)) {
+    Lex(); // eat "+" token
+    if (getTok().is(AsmToken::Equal)) {
+      // stack+=[...]
+      MemOpKind = EraVM::OperandStackSPIncrement;
+      Lex(); // eat "=" token
+    } else {
+      TokError("'=' expected");
+      return ParseStatus::Failure;
+    }
   } else if (getTok().is(AsmToken::Equal)) {
     // alternative syntax: stack=[...] is alias of stack[...]
     Lex(); // eat "=" token

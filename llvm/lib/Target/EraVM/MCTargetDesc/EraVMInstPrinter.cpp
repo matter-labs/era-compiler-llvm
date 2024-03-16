@@ -193,21 +193,32 @@ void EraVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
   O << Disp.getImm();
 }
 
+template <bool IsInput>
 void EraVMInstPrinter::printStackOperand(const MCInst *MI, unsigned OpNo,
                                          raw_ostream &O) {
   const MCOperand &Base1 = MI->getOperand(OpNo);
   const MCOperand &Base2 = MI->getOperand(OpNo + 1);
   const MCOperand &Disp = MI->getOperand(OpNo + 2);
 
-  bool isRelative = Base1.isReg();
-
-  O << "stack";
-  if (isRelative)
-    O << "-";
-  O << "[";
+  // FIXME
+  bool ExprPermitted = !Base1.isReg();
+  if (Base1.isReg()) {
+    switch (Base1.getReg()) {
+    case EraVM::SP:
+      O << "stack-[";
+      break;
+    case EraVM::R0:
+      O << (IsInput ? "stack-=[" : "stack+=[");
+      break;
+    default:
+      llvm_unreachable("unexpected register operand");
+    }
+  } else {
+    O << "stack[";
+  }
 
   if (Base2.isReg()) {
-    if (isRelative) {
+    if (!ExprPermitted) {
       // stack-[disp + reg];
       // FIXME Check if any machine pass actually emits Disp < 0,
       //       as it was asserted before.

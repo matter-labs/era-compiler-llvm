@@ -325,8 +325,6 @@ class IRet<EraVMOpcode opcode, RetFlags flags, dag ins, string opc, string asmst
   : IForm <opcode, SrcNone, DstNone, (outs), ins, opc, asmstr, pattern > {
 }
 
-// TODO: CPR-1360 SP change is currently only allowed in NOPs.
-// It should be fixed in accordance with the spec.
 class INop<dag ins, string opc, string asmstr, list<dag> pattern>
   : IForm <OpNoOp, SrcNone, DstNone, (outs), ins, opc, asmstr, pattern > {
 }
