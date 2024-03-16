@@ -342,46 +342,42 @@ class Iirrr<bits<8> opcode,
 }
 
 class Imrr<bits<8> opcode,
-           SourceMode as,
            mod_swap swap_operands, mod_set_flags silent,
            dag outs, dag ins,
            string opc, string asmstr,
            list<dag> pattern>
-  : IBinaryR<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : IBinaryR<opcode, SrcCode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let OperandAddrMode = OpndCR.Value;
   let OperandAM = 2;
 }
 
 class Isrr<bits<8> opcode,
-           SourceMode as,
            mod_swap swap_operands, mod_set_flags silent,
            dag outs, dag ins,
            string opc, string asmstr,
            list<dag> pattern>
-  : IBinaryR<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : IBinaryR<opcode, SrcStack, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let OperandAddrMode = OpndSR.Value;
   let OperandAM = 3;
 }
 
 class Imrrr<bits<8> opcode,
-            SourceMode as,
             mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
             string opc, string asmstr,
             list<dag> pattern>
-  : Imrr<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : Imrr<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let DestAddrMode = ToRegReg.Value;
   let OperandAddrMode = OpndCR.Value;
   let OperandAM = 2;
 }
 
 class Isrrr<bits<8> opcode,
-            SourceMode as,
             mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
             string opc, string asmstr,
             list<dag> pattern>
-  : Isrr<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : Isrr<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let DestAddrMode = ToRegReg.Value;
   let OperandAM = 3;
 }
@@ -427,45 +423,41 @@ class Iirsr<bits<8> opcode,
 }
 
 class Imrs<bits<8> opcode,
-           SourceMode as,
            mod_swap swap_operands, mod_set_flags silent,
            dag outs, dag ins,
            string opc, string asmstr,
            list<dag> pattern>
-  : IBinaryS<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : IBinaryS<opcode, SrcCode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let OperandAddrMode = OpndCR.Value;
   let OperandAM = 2;
 }
 
 class Isrs<bits<8> opcode,
-           SourceMode as,
            mod_swap swap_operands, mod_set_flags silent,
            dag outs, dag ins,
            string opc, string asmstr,
            list<dag> pattern>
-  : IBinaryS<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : IBinaryS<opcode, SrcStack, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let OperandAddrMode = OpndSR.Value;
   let OperandAM = 3;
 }
 
 class Imrsr<bits<8> opcode,
-            SourceMode as,
             mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
             string opc, string asmstr,
             list<dag> pattern>
-  : Imrs<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : Imrs<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let DestAddrMode = ToStackReg.Value;
   let OperandAM = 2;
 }
 
 class Isrsr<bits<8> opcode,
-            SourceMode as,
             mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
             string opc, string asmstr,
             list<dag> pattern>
-  : Isrs<opcode, as, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : Isrs<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
   let DestAddrMode = ToStackReg.Value;
   let OperandAM = 3;
 }
