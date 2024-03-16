@@ -8,6 +8,10 @@
   add       -42, r2, r3
   add       100000, r2, r3
 
+; incorrect use of SP-modifying operands (in vs. out)
+  add    stack+=[1], r0, r0
+  add    r0, r0, stack-=[1]
+
 ; incorrect "subscript" index
   add    stack[-r1], r1, r2
   add    stack[r1 + r1], r1, r2
@@ -20,6 +24,12 @@
 ; CHECK:       <stdin>:{{[0-9]+}}:13: error: uint16 immediate expected
 ; CHECK-NEXT:    add       100000, r2, r3
 ; CHECK-NEXT:              ^
+; CHECK:       <stdin>:{{[0-9]+}}:3: error: cannot parse instruction
+; CHECK-NEXT:    add    stack+=[1], r0, r0
+; CHECK-NEXT:    ^
+; CHECK:       <stdin>:{{[0-9]+}}:3: error: cannot parse instruction
+; CHECK-NEXT:    add    r0, r0, stack-=[1]
+; CHECK-NEXT:    ^
 ; CHECK:       <stdin>:{{[0-9]+}}:17: error: integer addend expected
 ; CHECK-NEXT:    add    stack[-r1], r1, r2
 ; CHECK-NEXT:                  ^

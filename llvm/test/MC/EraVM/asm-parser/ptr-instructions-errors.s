@@ -16,6 +16,8 @@
   ptr.add       code[r1 + 1], r2, stack[r3 + 1]
   ptr.add       42, r2, stack-[r3 + 1]
   ptr.add       code[r1 + 1], r2, stack-[r3 + 1]
+  ptr.add       42, r2, stack+=[r3 + 1]
+  ptr.add       code[r1 + 1], r2, stack+=[r3 + 1]
 
 ; briefly check the three other instructions
   ptr.sub       42, r2, r3
@@ -44,6 +46,12 @@
 ; CHECK-NEXT:                  ^
 ; CHECK:       <stdin>:{{[0-9]+}}:17: error: cannot parse operand
 ; CHECK-NEXT:    ptr.add       code[r1 + 1], r2, stack-[r3 + 1]
+; CHECK-NEXT:                  ^
+; CHECK:       <stdin>:{{[0-9]+}}:17: error: cannot parse operand
+; CHECK-NEXT:    ptr.add       42, r2, stack+=[r3 + 1]
+; CHECK-NEXT:                  ^
+; CHECK:       <stdin>:{{[0-9]+}}:17: error: cannot parse operand
+; CHECK-NEXT:    ptr.add       code[r1 + 1], r2, stack+=[r3 + 1]
 ; CHECK-NEXT:                  ^
 ; CHECK:       <stdin>:{{[0-9]+}}:17: error: cannot parse operand
 ; CHECK-NEXT:    ptr.sub       42, r2, r3
