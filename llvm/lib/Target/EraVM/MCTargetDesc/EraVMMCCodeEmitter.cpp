@@ -42,9 +42,21 @@ class EraVMMCCodeEmitter : public MCCodeEmitter {
 public:
   EraVMMCCodeEmitter(MCContext &ctx, MCInstrInfo const &MCII) {}
 
-  unsigned getMachineOpValue(const MCInst &MI, const MCOperand &MO,
+  uint64_t getMachineOpValue(const MCInst &MI, const MCOperand &MO,
                              SmallVectorImpl<MCFixup> &Fixups,
                              const MCSubtargetInfo &STI) const;
+
+  uint64_t getMemOpValue(const MCInst &MI, unsigned Idx,
+                         SmallVectorImpl<MCFixup> &Fixups,
+                         const MCSubtargetInfo &STI) const;
+
+  uint64_t getStackOpValue(const MCInst &MI, unsigned Idx,
+                           SmallVectorImpl<MCFixup> &Fixups,
+                           const MCSubtargetInfo &STI) const;
+
+  uint64_t getCCOpValue(const MCInst &MI, unsigned Idx,
+                        SmallVectorImpl<MCFixup> &Fixups,
+                        const MCSubtargetInfo &STI) const;
 
   void encodeInstruction(const MCInst &MI, raw_ostream &OS,
                          SmallVectorImpl<MCFixup> &Fixups,
@@ -57,11 +69,29 @@ void EraVMMCCodeEmitter::encodeInstruction(const MCInst &MI, raw_ostream &OS,
   llvm_unreachable("Unable to encode MCInst!");
 }
 
-unsigned
+uint64_t
 EraVMMCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
                                       SmallVectorImpl<MCFixup> &Fixups,
                                       const MCSubtargetInfo &STI) const {
   llvm_unreachable("Unable to encode MCOperand!");
+}
+
+uint64_t EraVMMCCodeEmitter::getStackOpValue(const MCInst &MI, unsigned Idx,
+                                             SmallVectorImpl<MCFixup> &Fixups,
+                                             const MCSubtargetInfo &STI) const {
+  llvm_unreachable("Unable to encode stack operand!");
+}
+
+uint64_t EraVMMCCodeEmitter::getMemOpValue(const MCInst &MI, unsigned Idx,
+                                           SmallVectorImpl<MCFixup> &Fixups,
+                                           const MCSubtargetInfo &STI) const {
+  llvm_unreachable("Unable to encode mem operand!");
+}
+
+uint64_t EraVMMCCodeEmitter::getCCOpValue(const MCInst &MI, unsigned Idx,
+                                          SmallVectorImpl<MCFixup> &Fixups,
+                                          const MCSubtargetInfo &STI) const {
+  llvm_unreachable("Unable to encode predicate operand!");
 }
 
 MCCodeEmitter *createEraVMMCCodeEmitter(const MCInstrInfo &MCII,
