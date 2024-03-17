@@ -275,21 +275,21 @@ class Encoding {
   field bits<64> Inst;
   field bits<64> SoftFail = 0;
 
-  bits<16> Imm1;
-  bits<16> Imm0;
-  bits<4> Dst1;
-  bits<4> Dst0;
-  bits<4> Src1;
-  bits<4> Src0;
+  bits<16> Imm1 = 0;
+  bits<16> Imm0 = 0;
+  bits<4> Dst1 = 0b0000;
+  bits<4> Dst0 = 0b0000;
+  bits<4> Src1 = 0b0000;
+  bits<4> Src0 = 0b0000;
   bits<3> Predicate;
   bits<11> Opcode;
 
-  // let Inst{63-48} = Imm1;
-  // let Inst{47-32} = Imm0;
-  // let Inst{31-28} = Dst1;
-  // let Inst{27-24} = Dst0;
-  // let Inst{23-20} = Src1;
-  // let Inst{19-16} = Src0;
+  let Inst{63-48} = Imm1;
+  let Inst{47-32} = Imm0;
+  let Inst{31-28} = Dst1;
+  let Inst{27-24} = Dst0;
+  let Inst{23-20} = Src1;
+  let Inst{19-16} = Src0;
   let Inst{15-13} = Predicate;
   let Inst{12-11} = 0;
   let Inst{10-0} = Opcode;
@@ -302,8 +302,7 @@ def i256imm : Operand<i256>;
 // TODO: We really do not need here full i256
 def pred : PredicateOperand<i256, (ops i256imm), (ops (i256 0))> {
   let PrintMethod = "printCCOperand";
-  // FIXME: Implement method
-  // let EncoderMethod = "getCCOpValue";
+  let EncoderMethod = "getCCOpValue";
 }
 
 // Real instructions (have encoding)
@@ -382,8 +381,12 @@ class IBinaryR<EraVMOpcode opcode,
                string opc, string asmstr,
                list<dag> pattern>
   : IBinary <opcode, as, DstReg, swap_operands, silent, outs, ins, opc, asmstr, pattern > {
+  bits<4> rd0;
+
   let DestAddrMode = ToReg.Value;
   let ResultAM = 0;
+
+  let Dst0 = rd0;
 }
 
 class IBinaryS<EraVMOpcode opcode,
@@ -393,8 +396,14 @@ class IBinaryS<EraVMOpcode opcode,
                string opc, string asmstr,
                list<dag> pattern>
   : IBinary <opcode, as, DstStack, swap_operands, silent, outs, ins, opc, asmstr, pattern > {
+  // Encode stack operand into 20 bits as reg + imm offset
+  bits<20> dst0;
+
   let DestAddrMode = ToStack.Value;
   let ResultAM = 3;
+
+  let Dst0 = dst0{3-0};
+  let Imm1 = dst0{19-4};
 }
 
 class Irr_r<EraVMOpcode opcode,
@@ -403,8 +412,14 @@ class Irr_r<EraVMOpcode opcode,
             string opc, string asmstr,
             list<dag> pattern>
   : IBinaryR<opcode, SrcReg, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  bits<4> rs0;
+  bits<4> rs1;
+
   let OperandAddrMode = OpndRR.Value;
   let OperandAM = 0;
+
+  let Src0 = rs0;
+  let Src1 = rs1;
 }
 
 class Irr_rr<EraVMOpcode opcode,
@@ -413,8 +428,12 @@ class Irr_rr<EraVMOpcode opcode,
              string opc, string asmstr,
              list<dag> pattern>
   : Irr_r<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  bits<4> rd1;
+
   let DestAddrMode = ToRegReg.Value;
   let OperandAM = 0;
+
+  let Dst1 = rd1;
 }
 
 class Iir_r<EraVMOpcode opcode,
@@ -423,8 +442,14 @@ class Iir_r<EraVMOpcode opcode,
             string opc, string asmstr,
             list<dag> pattern>
   : IBinaryR<opcode, SrcImm, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  bits<4> rs1;
+  bits<16> imm;
+
   let OperandAddrMode = OpndIR.Value;
   let OperandAM = 1;
+
+  let Src1 = rs1;
+  let Imm0 = imm;
 }
 
 class Iir_rr<EraVMOpcode opcode,
@@ -433,8 +458,12 @@ class Iir_rr<EraVMOpcode opcode,
              string opc, string asmstr,
              list<dag> pattern>
   : Iir_r<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  bits<4> rd1;
+
   let DestAddrMode = ToRegReg.Value;
   let OperandAM = 1;
+
+  let Dst1 = rd1;
 }
 
 class Imr_r<EraVMOpcode opcode,
@@ -443,8 +472,15 @@ class Imr_r<EraVMOpcode opcode,
             string opc, string asmstr,
             list<dag> pattern>
   : IBinaryR<opcode, SrcCode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  bits<4> rs1;
+  // FIXME: ensure we encode address mode properly
+  bits<16> src0;
+
   let OperandAddrMode = OpndCR.Value;
   let OperandAM = 2;
+
+  let Src1 = rs1;
+  let Imm0 = src0;
 }
 
 class Isr_r<EraVMOpcode opcode,
@@ -453,8 +489,15 @@ class Isr_r<EraVMOpcode opcode,
             string opc, string asmstr,
             list<dag> pattern>
   : IBinaryR<opcode, SrcStack, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  bits<20> src0;
+  bits<4> rs1;
+
   let OperandAddrMode = OpndSR.Value;
   let OperandAM = 3;
+
+  let Src0 = src0{3-0};
+  let Src1 = rs1;
+  let Imm0 = src0{19-4};
 }
 
 class Imr_rr<EraVMOpcode opcode,
@@ -463,9 +506,13 @@ class Imr_rr<EraVMOpcode opcode,
              string opc, string asmstr,
              list<dag> pattern>
   : Imr_r<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  bits<4> rd1;
+
   let DestAddrMode = ToRegReg.Value;
   let OperandAddrMode = OpndCR.Value;
   let OperandAM = 2;
+
+  let Dst1 = rd1;
 }
 
 class Isr_rr<EraVMOpcode opcode,
@@ -474,8 +521,12 @@ class Isr_rr<EraVMOpcode opcode,
              string opc, string asmstr,
              list<dag> pattern>
   : Isr_r<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  bits<4> rd1;
+
   let DestAddrMode = ToRegReg.Value;
   let OperandAM = 3;
+
+  let Dst1 = rd1;
 }
 
 class Irr_s<EraVMOpcode opcode,
@@ -484,8 +535,14 @@ class Irr_s<EraVMOpcode opcode,
             string opc, string asmstr,
             list<dag> pattern>
   : IBinaryS<opcode, SrcReg, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  bits<4> rs0;
+  bits<4> rs1;
+
   let OperandAddrMode = OpndRR.Value;
   let OperandAM = 0;
+
+  let Src0 = rs0;
+  let Src1 = rs1;
 }
 
 class Irr_sr<EraVMOpcode opcode,
@@ -494,8 +551,12 @@ class Irr_sr<EraVMOpcode opcode,
             string opc, string asmstr,
             list<dag> pattern>
   : Irr_s<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  bits<4> rd1;
+
   let DestAddrMode = ToStackReg.Value;
   let OperandAM = 0;
+
+  let Dst1 = rd1;
 }
 
 class Iir_s<EraVMOpcode opcode,
@@ -504,8 +565,14 @@ class Iir_s<EraVMOpcode opcode,
             string opc, string asmstr,
             list<dag> pattern>
   : IBinaryS<opcode, SrcImm, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  bits<16> imm;
+  bits<4> rs1;
+
   let OperandAddrMode = OpndIR.Value;
   let OperandAM = 1;
+
+  let Imm0 = imm;
+  let Src1 = rs1;
 }
 
 class Iir_sr<EraVMOpcode opcode,
@@ -514,8 +581,12 @@ class Iir_sr<EraVMOpcode opcode,
              string opc, string asmstr,
              list<dag> pattern>
   : Iir_s<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  bits<4> rd1;
+
   let DestAddrMode = ToStackReg.Value;
   let OperandAM = 1;
+
+  let Dst1 = rd1;
 }
 
 class Imr_s<EraVMOpcode opcode,
@@ -524,8 +595,15 @@ class Imr_s<EraVMOpcode opcode,
             string opc, string asmstr,
             list<dag> pattern>
   : IBinaryS<opcode, SrcCode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  bits<4> rs1;
+  // FIXME: ensure we encode address mode properly
+  bits<16> src0;
+
   let OperandAddrMode = OpndCR.Value;
   let OperandAM = 2;
+
+  let Src1 = rs1;
+  let Imm0 = src0;
 }
 
 class Isr_s<EraVMOpcode opcode,
@@ -534,8 +612,15 @@ class Isr_s<EraVMOpcode opcode,
             string opc, string asmstr,
             list<dag> pattern>
   : IBinaryS<opcode, SrcStack, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  bits<20> src0;
+  bits<4> rs1;
+
   let OperandAddrMode = OpndSR.Value;
   let OperandAM = 3;
+
+  let Src0 = src0{3-0};
+  let Src1 = rs1;
+  let Imm0 = src0{19-4};
 }
 
 class Imr_sr<EraVMOpcode opcode,
@@ -544,8 +629,12 @@ class Imr_sr<EraVMOpcode opcode,
              string opc, string asmstr,
              list<dag> pattern>
   : Imr_s<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  bits<4> rd1;
+
   let DestAddrMode = ToStackReg.Value;
   let OperandAM = 2;
+
+  let Dst1 = rd1;
 }
 
 class Isr_sr<EraVMOpcode opcode,
@@ -554,8 +643,12 @@ class Isr_sr<EraVMOpcode opcode,
              string opc, string asmstr,
              list<dag> pattern>
   : Isr_s<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  bits<4> rd1;
+
   let DestAddrMode = ToStackReg.Value;
   let OperandAM = 3;
+
+  let Dst1 = rd1;
 }
 
 class CallFlags<bits<4> val> {

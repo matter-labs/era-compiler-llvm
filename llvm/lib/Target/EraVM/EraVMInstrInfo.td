@@ -167,6 +167,7 @@ def CodeOperand : AsmOperandClass {
 
 def memop : Operand<i256> {
   let PrintMethod = "printMemOperand";
+  let EncoderMethod = "getMemOpValue";
   let ParserMatchClass = CodeOperand;
   let MIOperandInfo = (ops GR256, i16imm);
 }
@@ -185,12 +186,14 @@ def StackOutOperand : AsmOperandClass {
 
 def stackin : Operand<i256> {
   let PrintMethod = "printStackOperand<true>";
+  let EncoderMethod = "getStackOpValue";
   let ParserMatchClass = StackInOperand;
   let MIOperandInfo = (ops GRStackRefMarker, GR256, i16imm);
 }
 
 def stackout : Operand<i256> {
   let PrintMethod = "printStackOperand<false>";
+  let EncoderMethod = "getStackOpValue";
   let ParserMatchClass = StackOutOperand;
   let MIOperandInfo = (ops GRStackRefMarker, GR256, i16imm);
 }
@@ -1073,7 +1076,7 @@ let isAsCheapAsAMove = 1, mayLoad = 1, isReMaterializable = 1,
     hasSideEffects = 0 in {
 // FIXME: expand pseudo
 def LOADCONST : Pseudo<(outs GR256:$val), (ins i256imm:$addr),
-                         [(set GR256:$val, (load tconstpool:$addr))]>;
+                       [(set GR256:$val, (load tconstpool:$addr))]>;
 }
 
 //===----------------------------------------------------------------------===//
@@ -1086,11 +1089,11 @@ def CTXr : IContext<OpContext, (outs GR256:$rd0), (ins context_op:$cop),
 let hasSideEffects = 1 in {
 let hasPostISelHook = 1 in
 def CTXr_se : IContext<OpContext, (outs GR256:$rd0), (ins context_se_op:$cop),
-                        "context$cop", "$rd0", []>;
+                       "context$cop", "$rd0", []>;
 def CTXr_set : IContext<OpContext, (outs), (ins GR256:$rs0, context_se_op:$cop),
-                         "context$cop", "$rs0", []>;
+                        "context$cop", "$rs0", []>;
 def CTXr_se0 : IContext<OpContext, (outs), (ins context_se_op:$cop),
-                         "context$cop", "", []>;
+                        "context$cop", "", []>;
 }
 
 def : Pat<(int_eravm_meta), (CTXr 3, 0)>;
@@ -1120,10 +1123,10 @@ def : Pat<(load_transient GR256:$rs0), (TLDrr GR256:$rs0, 0)>;
 
 let hasSideEffects = 1 in {
   def SSTr : ILogR<OpSstore, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1),
-      "sstore", "$rs0, $rs1", []>;
+                   "sstore", "$rs0, $rs1", []>;
   // FIXME: undefined instruction
   def TSTr : ILogR<OpSstore, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1),
-      "tstore", "$rs0, $rs1", []>;
+                   "tstore", "$rs0, $rs1", []>;
 }
 def : MnemonicAlias<"log.swrite", "sstore">;
 
@@ -1134,7 +1137,7 @@ def : Pat<(store_transient GR256:$rs1, GR256:$rs0),
 
 let hasSideEffects = 1 in
 def L1r : ILogR<OpLogToL1, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first),
-                 "to_l1$first", "$rs0, $rs1", []>;
+                "to_l1$first", "$rs0, $rs1", []>;
 
 def : Pat<(int_eravm_tol1 GR256:$rs0, GR256:$rs1, first_op:$first),
           (L1r GR256:$rs0, GR256:$rs1, first_op:$first, 0)>;
@@ -1162,23 +1165,23 @@ def : Pat<(EraVMlog_decommit GR256:$rs0, GR256:$rs1),
           (DECOMMITr GR256:$rs0, GR256:$rs1, 0)>;
 
 multiclass FarCallInst<EraVMOpcode opcode, CallFlags flags, string asmstring> {
-  def _rrl : ICall<opcode, flags, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
+  def rrl : ICall<opcode, flags, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
                   asmstring, "$rs0, $rs1, $unwind", []>;
-  def _STATIC_rrl : ICall<opcode, flags, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
+  def _STATICrrl : ICall<opcode, flags, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
                          !strconcat(asmstring, ".static"), "$rs0, $rs1, $unwind", []>;
-  def _SHARD_rrl  : ICall<opcode, flags, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
+  def _SHARDrrl  : ICall<opcode, flags, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
                          !strconcat(asmstring, ".shard"), "$rs0, $rs1, $unwind", []>;
 }
 
 let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Flags],
     Uses = [SP], isCall = 1 in {
-   def CALL : Pseudo<(outs), (ins GR256:$in1, imm16:$callee),
+  def CALL : Pseudo<(outs), (ins GR256:$in1, imm16:$callee),
                      [(EraVMcall GR256:$in1, (EraVMGAStack tglobaladdr:$callee))]>;
-   // FIXME: Expand to NEAR_CALL
-   def INVOKE : Pseudo<(outs), (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
-                       [(EraVMinvoke GR256:$in1, (EraVMGAStack tglobaladdr:$callee), bb:$unwind)]>;
-   def NEAR_CALL : ICall<OpCall, CFNormal, (ins GR256:$in1, jmptarget:$callee, jmptarget:$unwind),
-                   "near_call", "$in1, $callee, $unwind", []>;
+  // FIXME: Expand to NEAR_CALL
+  def INVOKE : Pseudo<(outs), (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
+                      [(EraVMinvoke GR256:$in1, (EraVMGAStack tglobaladdr:$callee), bb:$unwind)]>;
+  def NEAR_CALL : ICall<OpCall, CFNormal, (ins GR256:$in1, jmptarget:$callee, jmptarget:$unwind),
+                        "near_call", "$in1, $callee, $unwind", []>;
   def NEAR_CALL_default_unwind : ICall<OpCall, CFNormal, (ins GR256:$in1, jmptarget:$callee),
                    "near_call", "$in1, $callee", []>;
   def NEAR_CALL_default_unwind_r0 : ICall<OpCall, CFNormal, (ins jmptarget:$callee),
@@ -1189,10 +1192,10 @@ let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Fl
   defm MIMIC_CALL    : FarCallInst<OpMimic, CFMimic, "far_call.mimic">;
 }
 
-def : Pat<(EraVMfarcall bb:$unwind), (FAR_CALL_rrl R1, R2, bb:$unwind)>;
-def : Pat<(EraVMstaticcall bb:$unwind), (FAR_CALL_STATIC_rrl R1, R2, bb:$unwind)>;
-def : Pat<(EraVMdelegatecall bb:$unwind), (DELEGATE_CALL_rrl R1, R2, bb:$unwind)>;
-def : Pat<(EraVMmimiccall bb:$unwind), (MIMIC_CALL_rrl R1, R2, bb:$unwind)>;
+def : Pat<(EraVMfarcall bb:$unwind), (FAR_CALLrrl R1, R2, bb:$unwind)>;
+def : Pat<(EraVMstaticcall bb:$unwind), (FAR_CALL_STATICrrl R1, R2, bb:$unwind)>;
+def : Pat<(EraVMdelegatecall bb:$unwind), (DELEGATE_CALLrrl R1, R2, bb:$unwind)>;
+def : Pat<(EraVMmimiccall bb:$unwind), (MIMIC_CALLrrl R1, R2, bb:$unwind)>;
 
 def : MnemonicAlias<"delegatecall", "far_call.delegate">;
 def : MnemonicAlias<"mimiccall", "far_call.mimic">;
