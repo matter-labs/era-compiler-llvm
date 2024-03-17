@@ -152,14 +152,27 @@ def withRegisterResult : InstrMapping {
 //===----------------------------------------------------------------------===//
 // EraVM Opcodes
 //===----------------------------------------------------------------------===//
-class EraVMOpcode<string name, bits<11> opc> {
+class OpcodeEncoding<bits<4> val> {
+  bits<4> Value = val;
+}
+
+def DirectEncoding     : OpcodeEncoding<0>; // opcode ⇒ opcode
+def NopEncoding        : OpcodeEncoding<1>; // opcode src dst ⇒ opcode + 4 × src + 1 × dst
+def ArithCommEncoding  : OpcodeEncoding<2>; // opcode src dst set_flags ⇒ opcode + 8 × src + 2 × dst + set_flags
+def ArithNCommEncoding : OpcodeEncoding<3>; // opcode src dst swap set_flags ⇒ opcode + 16 × src + 4 × dst + 2 × set_flags + swap
+def ArithPtrEncoding   : OpcodeEncoding<4>; // opcode src dst swap ⇒ opcode + 8 × src + 2 × dst + swap
+// TODO: add more as necessary
+def FIXMEEncoding      : OpcodeEncoding<-1>; // To be clarified as implemented
+
+class EraVMOpcode<string name, bits<11> opc, OpcodeEncoding encoding> {
   string Name = name;
   bits<11> BaseOpcode = opc;
+  OpcodeEncoding Encoding = encoding;
 }
 def EraVMOpcodesList : GenericTable {
   let FilterClass = "EraVMOpcode";
   let Fields = [
-    "Name", "BaseOpcode"
+    "Name", "BaseOpcode", "Encoding"
   ];
   let PrimaryKey = [ "BaseOpcode" ];
   let PrimaryKeyName = "lookupEraVMOpcodeByValue";
@@ -169,74 +182,65 @@ def lookupEraVMOpcodeByName : SearchIndex {
   let Key = [ "Name" ];
 }
 
-def OpInvalid : EraVMOpcode<"<invalid>", 0>;
+def OpInvalid : EraVMOpcode<"<invalid>", 0, DirectEncoding>;
+def OpNoOp : EraVMOpcode<"nop",  1,   NopEncoding>;
+def OpAdd  : EraVMOpcode<"add",  25,  ArithCommEncoding>;
+def OpSub  : EraVMOpcode<"sub",  73,  ArithNCommEncoding>;
+def OpMul  : EraVMOpcode<"mul",  169, ArithCommEncoding>;
+def OpDiv  : EraVMOpcode<"div",  217, ArithNCommEncoding>;
+def OpJump : EraVMOpcode<"jump", 313, FIXMEEncoding>; // src ⇒ 313 + 1 × src
+def OpXor  : EraVMOpcode<"xor",  319, ArithCommEncoding>;
+def OpAnd  : EraVMOpcode<"and",  367, ArithCommEncoding>;
+def OpOr   : EraVMOpcode<"or",   415, ArithCommEncoding>;
+def OpShl  : EraVMOpcode<"shl",  463, ArithNCommEncoding>;
+def OpShr  : EraVMOpcode<"shr",  559, ArithNCommEncoding>;
+def OpRol  : EraVMOpcode<"rol",  655, ArithNCommEncoding>;
+def OpRor  : EraVMOpcode<"ror",  751, ArithNCommEncoding>;
+def OpPtrAdd    : EraVMOpcode<"ptr.add",    847, ArithPtrEncoding>;
+def OpPtrSub    : EraVMOpcode<"ptr.sub",    895, ArithPtrEncoding>;
+def OpPtrPack   : EraVMOpcode<"ptr.pack",   943, ArithPtrEncoding>;
+def OpPtrShrink : EraVMOpcode<"ptr.shrink", 991, ArithPtrEncoding>;
+def OpCall      : EraVMOpcode<"near_call",  1039, DirectEncoding>;
+def OpContext   : EraVMOpcode<"context",    1040, FIXMEEncoding>; // op ⇒ 1040 + op
 
-def OpNoOp : EraVMOpcode<"nop", 1>;   // src dst ⇒ 1 + 4 × src + 1 × dst
-
-def OpAdd  : EraVMOpcode<"add", 25>;  // src dst set_flags ⇒ 25 + 8 × src + 2 × dst + set_flags
-
-def OpSub  : EraVMOpcode<"sub", 73>;  // src dst swap set_flags ⇒ 73 + 16 × src + 4 × dst + 2 × set_flags + swap
-
-def OpMul  : EraVMOpcode<"mul", 169>; // src dst set_flags ⇒ 169 + 8 × src + 2 × dst + set_flags
-
-def OpDiv  : EraVMOpcode<"div", 217>; // src dst swap set_flags ⇒ 217 + 16 × src + 4 × dst + 2 × set_flags + swap
-
-def OpJump : EraVMOpcode<"jump",313>; // src ⇒ 313 + 1 × src
-
-def OpXor  : EraVMOpcode<"xor", 319>; // src dst set_flags ⇒ 319 + 8 × src + 2 × dst + set_flags
-def OpAnd  : EraVMOpcode<"and", 367>; // src dst set_flags ⇒ 367 + 8 × src + 2 × dst + set_flags
-def OpOr   : EraVMOpcode<"or",  415>; // src dst set_flags ⇒ 415 + 8 × src + 2 × dst + set_flags
-
-def OpShl  : EraVMOpcode<"shl", 463>; // src dst swap set_flags ⇒ 463 + 16 × src + 4 × dst + 2 × set_flags + swap
-def OpShr  : EraVMOpcode<"shr", 559>; // src dst swap set_flags ⇒ 559 + 16 × src + 4 × dst + 2 × set_flags + swap
-def OpRol  : EraVMOpcode<"rol", 655>; // src dst swap set_flags ⇒ 655 + 16 × src + 4 × dst + 2 × set_flags + swap
-def OpRor  : EraVMOpcode<"ror", 751>; // src dst swap set_flags ⇒ 751 + 16 × src + 4 × dst + 2 × set_flags + swap
-
-def OpPtrAdd    : EraVMOpcode<"ptr.add",    847>;  // src dst swap ⇒ 847 + 8 × src + 2 × dst + swap
-def OpPtrSub    : EraVMOpcode<"ptr.sub",    895>;  // src dst swap ⇒ 895 + 8 × src + 2 × dst + swap
-def OpPtrPack   : EraVMOpcode<"ptr.pack",   943>;  // src dst swap ⇒ 943 + 8 × src + 2 × dst + swap
-def OpPtrShrink : EraVMOpcode<"ptr.shrink", 991>;  // src dst swap ⇒ 991 + 8 × src + 2 × dst + swap
-
-def OpCall      : EraVMOpcode<"call",       1039>;
-def OpContext   : EraVMOpcode<"context",    1040>; // op ⇒ 1040 + op
 // aliased as log.sread
-def OpSload     : EraVMOpcode<"sload",      1050>;
+def OpSload     : EraVMOpcode<"sload",      1050, DirectEncoding>;
 // aliased as log.swrite
-def OpSstore    : EraVMOpcode<"sstore",     1051>;
+def OpSstore    : EraVMOpcode<"sstore",     1051, DirectEncoding>;
 // FIXME: Split those
 // aliased as log.to_l1
-def OpLogToL1   : EraVMOpcode<"to_l1",      1052>; // is_first ⇒ 1052 + is_first
+def OpLogToL1   : EraVMOpcode<"to_l1",      1052, FIXMEEncoding>; // is_first ⇒ 1052 + is_first
 // aliased as log.event
-def OpLogEvent  : EraVMOpcode<"event",      1054>; // is_first ⇒ 1054 + is_first
+def OpLogEvent  : EraVMOpcode<"event",      1054, FIXMEEncoding>; // is_first ⇒ 1054 + is_first
 // aliased as log.precompile
-def OpLogPrecompile : EraVMOpcode<"precompile", 1056>;
+def OpLogPrecompile : EraVMOpcode<"precompile", 1056, DirectEncoding>;
 
-def OpFarcall  : EraVMOpcode<"far_call",          1057>; // is_shard is_static ⇒ 1057 + 2 × is_static + is_shard
-def OpDelegate : EraVMOpcode<"far_call.delegate", 1061>; // is_shard is_static ⇒ 1061 + 2 × is_static + is_shard
-def OpMimic    : EraVMOpcode<"far_call.mimic",    1065>; // is_shard is_static ⇒ 1065 + 2 × is_static + is_shard
+def OpFarcall  : EraVMOpcode<"far_call",          1057, FIXMEEncoding>; // is_shard is_static ⇒ 1057 + 2 × is_static + is_shard
+def OpDelegate : EraVMOpcode<"far_call.delegate", 1061, FIXMEEncoding>; // is_shard is_static ⇒ 1061 + 2 × is_static + is_shard
+def OpMimic    : EraVMOpcode<"far_call.mimic",    1065, FIXMEEncoding>; // is_shard is_static ⇒ 1065 + 2 × is_static + is_shard
 
-def OpRet      : EraVMOpcode<"ret.ok",    1069>; // to_label ⇒ 1069 + to_label
-def OpRevert   : EraVMOpcode<"ret.revert", 1071>; // to_label ⇒ 1071 + to_label
-def OpPanic    : EraVMOpcode<"ret.panic",  1073>; // to_label ⇒ 1073 + to_label
+def OpRet      : EraVMOpcode<"ret.ok",    1069, FIXMEEncoding>; // to_label ⇒ 1069 + to_label
+def OpRevert   : EraVMOpcode<"ret.revert", 1071, FIXMEEncoding>; // to_label ⇒ 1071 + to_label
+def OpPanic    : EraVMOpcode<"ret.panic",  1073, FIXMEEncoding>; // to_label ⇒ 1073 + to_label
 
 // aliased as uma.heap_read
-def OpLoadHeap     : EraVMOpcode<"ld1", 1075>; // src inc ⇒ 1075 + 10 × src + inc
-def OpLoadHeapInc  : EraVMOpcode<"ld1.inc", 1076>;
+def OpLoadHeap     : EraVMOpcode<"ld1", 1075, FIXMEEncoding>; // src inc ⇒ 1075 + 10 × src + inc
+def OpLoadHeapInc  : EraVMOpcode<"ld1.inc", 1076, FIXMEEncoding>;
 
 // aliased as uma.heap_write
-def OpStoreHeap    : EraVMOpcode<"st1", 1077>; // src inc ⇒ 1077 + 10 × src + inc
-def OpStoreHeapInc : EraVMOpcode<"st1.inc", 1078>;
+def OpStoreHeap    : EraVMOpcode<"st1", 1077, FIXMEEncoding>; // src inc ⇒ 1077 + 10 × src + inc
+def OpStoreHeapInc : EraVMOpcode<"st1.inc", 1078, FIXMEEncoding>;
 
 // aliased as uma.aux_heap_read
-def OpLoadAuxHeap  : EraVMOpcode<"ld2", 1079>; // src inc ⇒ 1079 + 10 × src + inc
-def OpLoadAuxHeapInc  : EraVMOpcode<"ld2.inc", 1080>;
+def OpLoadAuxHeap  : EraVMOpcode<"ld2", 1079, FIXMEEncoding>; // src inc ⇒ 1079 + 10 × src + inc
+def OpLoadAuxHeapInc  : EraVMOpcode<"ld2.inc", 1080, FIXMEEncoding>;
 // aliased as uma.aux_heap_write
-def OpStoreAuxHeap : EraVMOpcode<"st2", 1081>; // src inc ⇒ 1081 + 10 × src + inc
-def OpStoreAuxHeapInc : EraVMOpcode<"st2.inc", 1082>;
+def OpStoreAuxHeap : EraVMOpcode<"st2", 1081, FIXMEEncoding>; // src inc ⇒ 1081 + 10 × src + inc
+def OpStoreAuxHeapInc : EraVMOpcode<"st2.inc", 1082, FIXMEEncoding>;
 
 // aliased as uma.fat_ptr_read
-def OpLoadPtr      : EraVMOpcode<"ld",  1083>; // inc ⇒ 1083 + inc
-def OpLoadPtrInc   : EraVMOpcode<"ld.inc",  1084>;
+def OpLoadPtr      : EraVMOpcode<"ld",  1083, FIXMEEncoding>; // inc ⇒ 1083 + inc
+def OpLoadPtrInc   : EraVMOpcode<"ld.inc",  1084, FIXMEEncoding>;
 
 //===----------------------------------------------------------------------===//
 // EraVM Instructions
