@@ -42,6 +42,10 @@ class EraVMMCCodeEmitter : public MCCodeEmitter {
 public:
   EraVMMCCodeEmitter(MCContext &ctx, MCInstrInfo const &MCII) {}
 
+  unsigned getMachineOpValue(const MCInst &MI, const MCOperand &MO,
+                             SmallVectorImpl<MCFixup> &Fixups,
+                             const MCSubtargetInfo &STI) const;
+
   void encodeInstruction(const MCInst &MI, raw_ostream &OS,
                          SmallVectorImpl<MCFixup> &Fixups,
                          const MCSubtargetInfo &STI) const override;
@@ -49,7 +53,16 @@ public:
 
 void EraVMMCCodeEmitter::encodeInstruction(const MCInst &MI, raw_ostream &OS,
                                            SmallVectorImpl<MCFixup> &Fixups,
-                                           const MCSubtargetInfo &STI) const {}
+                                           const MCSubtargetInfo &STI) const {
+  llvm_unreachable("Unable to encode MCInst!");
+}
+
+unsigned
+EraVMMCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
+                                      SmallVectorImpl<MCFixup> &Fixups,
+                                      const MCSubtargetInfo &STI) const {
+  llvm_unreachable("Unable to encode MCOperand!");
+}
 
 MCCodeEmitter *createEraVMMCCodeEmitter(const MCInstrInfo &MCII,
                                         MCContext &Ctx) {
