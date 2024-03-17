@@ -378,9 +378,9 @@ class IBinary<EraVMOpcode opcode,
               SourceMode as, DestMode ad,
               mod_swap swap, mod_set_flags set_flags,
               dag outs, dag ins,
-              string opc, string asmstr,
+              string asmstr,
               list<dag> pattern>
-  : IForm <opcode, as, ad, outs, ins, opc, asmstr, pattern > {
+  : IForm <opcode, as, ad, outs, ins, "<invalid>", asmstr, pattern > {
   string BaseOpcode;
   bit Silent = !eq(set_flags, PreserveFlags);
   bit ReverseOperands = !eq(swap, Swap);
@@ -389,7 +389,7 @@ class IBinary<EraVMOpcode opcode,
   int OperandAM = 0;
   int ResultAM = 0;
 
-  let AsmString = !strconcat(opc,
+  let AsmString = !strconcat(opcode.Name,
                              !if(!eq(swap, Swap), ".s", ""),
                              !if(!eq(set_flags, SetFlags), "!", ""),
                              "${cc}", "\t", asmstr);
@@ -402,9 +402,9 @@ class IBinaryR<EraVMOpcode opcode,
                SourceMode as,
                mod_swap swap_operands, mod_set_flags silent,
                dag outs, dag ins,
-               string opc, string asmstr,
+               string asmstr,
                list<dag> pattern>
-  : IBinary <opcode, as, DstReg, swap_operands, silent, outs, ins, opc, asmstr, pattern > {
+  : IBinary <opcode, as, DstReg, swap_operands, silent, outs, ins, asmstr, pattern > {
   bits<4> rd0;
 
   let DestAddrMode = ToReg.Value;
@@ -417,9 +417,9 @@ class IBinaryS<EraVMOpcode opcode,
                SourceMode as,
                mod_swap swap_operands, mod_set_flags silent,
                dag outs, dag ins,
-               string opc, string asmstr,
+               string asmstr,
                list<dag> pattern>
-  : IBinary <opcode, as, DstStack, swap_operands, silent, outs, ins, opc, asmstr, pattern > {
+  : IBinary <opcode, as, DstStack, swap_operands, silent, outs, ins, asmstr, pattern > {
   // Encode stack operand into 20 bits as reg + imm offset
   bits<20> dst0;
 
@@ -433,9 +433,9 @@ class IBinaryS<EraVMOpcode opcode,
 class Irr_r<EraVMOpcode opcode,
             mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
-            string opc, string asmstr,
+            string asmstr,
             list<dag> pattern>
-  : IBinaryR<opcode, SrcReg, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : IBinaryR<opcode, SrcReg, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rs0;
   bits<4> rs1;
 
@@ -449,9 +449,9 @@ class Irr_r<EraVMOpcode opcode,
 class Irr_rr<EraVMOpcode opcode,
              mod_swap swap_operands, mod_set_flags silent,
              dag outs, dag ins,
-             string opc, string asmstr,
+             string asmstr,
              list<dag> pattern>
-  : Irr_r<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : Irr_r<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rd1;
 
   let DestAddrMode = ToRegReg.Value;
@@ -463,9 +463,9 @@ class Irr_rr<EraVMOpcode opcode,
 class Iir_r<EraVMOpcode opcode,
             mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
-            string opc, string asmstr,
+            string asmstr,
             list<dag> pattern>
-  : IBinaryR<opcode, SrcImm, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : IBinaryR<opcode, SrcImm, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rs1;
   bits<16> imm;
 
@@ -479,9 +479,9 @@ class Iir_r<EraVMOpcode opcode,
 class Iir_rr<EraVMOpcode opcode,
              mod_swap swap_operands, mod_set_flags silent,
              dag outs, dag ins,
-             string opc, string asmstr,
+             string asmstr,
              list<dag> pattern>
-  : Iir_r<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : Iir_r<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rd1;
 
   let DestAddrMode = ToRegReg.Value;
@@ -493,9 +493,9 @@ class Iir_rr<EraVMOpcode opcode,
 class Imr_r<EraVMOpcode opcode,
             mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
-            string opc, string asmstr,
+            string asmstr,
             list<dag> pattern>
-  : IBinaryR<opcode, SrcCode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : IBinaryR<opcode, SrcCode, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rs1;
   // FIXME: ensure we encode address mode properly
   bits<16> src0;
@@ -510,9 +510,9 @@ class Imr_r<EraVMOpcode opcode,
 class Isr_r<EraVMOpcode opcode,
             mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
-            string opc, string asmstr,
+            string asmstr,
             list<dag> pattern>
-  : IBinaryR<opcode, SrcStack, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : IBinaryR<opcode, SrcStack, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<20> src0;
   bits<4> rs1;
 
@@ -527,9 +527,9 @@ class Isr_r<EraVMOpcode opcode,
 class Imr_rr<EraVMOpcode opcode,
              mod_swap swap_operands, mod_set_flags silent,
              dag outs, dag ins,
-             string opc, string asmstr,
+             string asmstr,
              list<dag> pattern>
-  : Imr_r<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : Imr_r<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rd1;
 
   let DestAddrMode = ToRegReg.Value;
@@ -542,9 +542,9 @@ class Imr_rr<EraVMOpcode opcode,
 class Isr_rr<EraVMOpcode opcode,
              mod_swap swap_operands, mod_set_flags silent,
              dag outs, dag ins,
-             string opc, string asmstr,
+             string asmstr,
              list<dag> pattern>
-  : Isr_r<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : Isr_r<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rd1;
 
   let DestAddrMode = ToRegReg.Value;
@@ -556,9 +556,9 @@ class Isr_rr<EraVMOpcode opcode,
 class Irr_s<EraVMOpcode opcode,
             mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
-            string opc, string asmstr,
+            string asmstr,
             list<dag> pattern>
-  : IBinaryS<opcode, SrcReg, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : IBinaryS<opcode, SrcReg, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rs0;
   bits<4> rs1;
 
@@ -572,9 +572,9 @@ class Irr_s<EraVMOpcode opcode,
 class Irr_sr<EraVMOpcode opcode,
             mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
-            string opc, string asmstr,
+            string asmstr,
             list<dag> pattern>
-  : Irr_s<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : Irr_s<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rd1;
 
   let DestAddrMode = ToStackReg.Value;
@@ -586,9 +586,9 @@ class Irr_sr<EraVMOpcode opcode,
 class Iir_s<EraVMOpcode opcode,
             mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
-            string opc, string asmstr,
+            string asmstr,
             list<dag> pattern>
-  : IBinaryS<opcode, SrcImm, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : IBinaryS<opcode, SrcImm, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<16> imm;
   bits<4> rs1;
 
@@ -602,9 +602,9 @@ class Iir_s<EraVMOpcode opcode,
 class Iir_sr<EraVMOpcode opcode,
              mod_swap swap_operands, mod_set_flags silent,
              dag outs, dag ins,
-             string opc, string asmstr,
+             string asmstr,
              list<dag> pattern>
-  : Iir_s<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : Iir_s<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rd1;
 
   let DestAddrMode = ToStackReg.Value;
@@ -616,9 +616,9 @@ class Iir_sr<EraVMOpcode opcode,
 class Imr_s<EraVMOpcode opcode,
             mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
-            string opc, string asmstr,
+            string asmstr,
             list<dag> pattern>
-  : IBinaryS<opcode, SrcCode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : IBinaryS<opcode, SrcCode, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rs1;
   // FIXME: ensure we encode address mode properly
   bits<16> src0;
@@ -633,9 +633,9 @@ class Imr_s<EraVMOpcode opcode,
 class Isr_s<EraVMOpcode opcode,
             mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
-            string opc, string asmstr,
+            string asmstr,
             list<dag> pattern>
-  : IBinaryS<opcode, SrcStack, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : IBinaryS<opcode, SrcStack, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<20> src0;
   bits<4> rs1;
 
@@ -650,9 +650,9 @@ class Isr_s<EraVMOpcode opcode,
 class Imr_sr<EraVMOpcode opcode,
              mod_swap swap_operands, mod_set_flags silent,
              dag outs, dag ins,
-             string opc, string asmstr,
+             string asmstr,
              list<dag> pattern>
-  : Imr_s<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : Imr_s<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rd1;
 
   let DestAddrMode = ToStackReg.Value;
@@ -664,9 +664,9 @@ class Imr_sr<EraVMOpcode opcode,
 class Isr_sr<EraVMOpcode opcode,
              mod_swap swap_operands, mod_set_flags silent,
              dag outs, dag ins,
-             string opc, string asmstr,
+             string asmstr,
              list<dag> pattern>
-  : Isr_s<opcode, swap_operands, silent, outs, ins, opc, asmstr, pattern> {
+  : Isr_s<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rd1;
 
   let DestAddrMode = ToStackReg.Value;
