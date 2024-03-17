@@ -933,19 +933,23 @@ def : Pat<(EraVMcmp GR256:$lhs, (load_stack stackaddr:$rhs)), (SUBzrr_v stackadd
 
 let mayLoad = 1 in {
 def LD1     : IUMA <OpLoadHeap, (outs GR256:$rd0), (ins GR256:$rs0),
-                  "ld.1", "$rs0, $rd0", []>;
+                  "ld.1", "$rs0, $rd0",
+                  [(set GR256:$rd0, (load_heap GR256:$rs0))]>;
 def LD1Inc  : IUMA <OpLoadHeap, (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0),
                   "ld.1.inc", "$rs0, $rd0, $rd1", []>;
 def LD1i    : IUMA <OpLoadHeap, (outs GR256:$rd0), (ins imm16:$addr),
-                  "ld.1", "$addr, $rd0", []>;
+                  "ld.1", "$addr, $rd0",
+                  [(set GR256:$rd0, (load_heap imm16:$addr))]>;
 def LD1iInc : IUMA <OpLoadHeap, (outs GR256:$rd0, GR256:$rd1), (ins imm16:$addr),
                   "ld.1.inc", "$addr, $rd0, $rd1", []>;
 def LD2     : IUMA <OpLoadAuxHeap, (outs GR256:$rd0), (ins GR256:$rs0),
-                  "ld.2", "$rs0, $rd0", []>;
+                  "ld.2", "$rs0, $rd0",
+                  [(set GR256:$rd0, (load_heapaux GR256:$rs0))]>;
 def LD2Inc  : IUMA <OpLoadAuxHeap, (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0),
                   "ld.2.inc", "$rs0, $rd0, $rd1", []>;
 def LD2i    : IUMA <OpLoadAuxHeap, (outs GR256:$rd0), (ins imm16:$addr),
-                  "ld.2", "$addr, $rd0", []>;
+                  "ld.2", "$addr, $rd0",
+                  [(set GR256:$rd0, (load_heapaux imm16:$addr))]>;
 def LD2iInc : IUMA <OpLoadAuxHeap, (outs GR256:$rd0, GR256:$rd1), (ins imm16:$addr),
                   "ld.2.inc", "$addr, $rd0, $rd1", []>;
 def LD      : IUMA <OpLoadPtr, (outs GR256:$rd0), (ins GRPTR:$rs0),
@@ -958,38 +962,28 @@ def FATPTR_LD : IUMA <OpLoadPtr, (outs GRPTR:$rd0), (ins GRPTR:$rs0),
                   "ld", "$rs0, $rd0 ;fat load", []>;
 }
 
-def     : Pat<(load_heap GR256:$rs0), (LD1 GR256:$rs0, 0)>;
-def     : Pat<(load_heap imm16:$addr), (LD1i imm16:$addr, 0)>;
-def     : Pat<(load_heapaux GR256:$rs0), (LD2 GR256:$rs0, 0)>;
-def     : Pat<(load_heapaux imm16:$addr), (LD2i imm16:$addr, 0)>;
-
-
 let mayStore = 1 in {
 def ST1     : IUMA <OpStoreHeap, (outs), (ins GR256:$rs0, GR256:$rs1),
-                  "st.1", "$rs0, $rs1", []>;
+                  "st.1", "$rs0, $rs1",
+                  [(store_heap GR256:$rs1, GR256:$rs0)]>;
 def ST1Inc  : IUMA <OpStoreHeap, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
                   "st.1.inc", "$rs0, $rs1, $rd0", []>;
 def ST1i  : IUMA <OpStoreHeap, (outs), (ins imm16:$addr, GR256:$rs1),
-                  "st.1", "$addr, $rs1", []>;
+                  "st.1", "$addr, $rs1",
+                  [(store_heap GR256:$rs1, imm16:$addr)]>;
 def ST1iInc : IUMA <OpStoreHeap, (outs GR256:$rd0), (ins imm16:$addr, GR256:$rs1),
                   "st.1.inc", "$addr, $rs1, $rd0", []>;
 def ST2  : IUMA <OpStoreAuxHeap, (outs), (ins GR256:$rs0, GR256:$rs1),
-                  "st.2", "$rs0, $rs1", []>;
+                  "st.2", "$rs0, $rs1",
+                  [(store_heapaux GR256:$rs1, GR256:$rs0)]>;
 def ST2Inc  : IUMA <OpStoreAuxHeap, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
                   "st.2.inc", "$rs0, $rs1, $rd0", []>;
 def ST2i  : IUMA <OpStoreAuxHeap, (outs), (ins imm16:$addr, GR256:$rs1),
-                  "st.2", "$addr, $rs1", []>;
+                  "st.2", "$addr, $rs1",
+                  [(store_heapaux GR256:$rs1, imm16:$addr)]>;
 def ST2iInc : IUMA <OpStoreAuxHeap, (outs GR256:$rd0), (ins imm16:$addr, GR256:$rs1),
                   "st.2.inc", "$addr, $rs1, $rd0", []>;
 }
-def     : Pat<(store_heap GR256:$rs1, GR256:$rs0),
-              (ST1 GR256:$rs0, $rs1, 0)>;
-def     : Pat<(store_heap GR256:$rs1, imm16:$addr),
-              (ST1i imm16:$addr, $rs1, 0)>;
-def     : Pat<(store_heapaux GR256:$rs1, GR256:$rs0),
-              (ST2 GR256:$rs0, $rs1, 0)>;
-def     : Pat<(store_heapaux GR256:$rs1, imm16:$addr),
-              (ST2i imm16:$addr, $rs1, 0)>;
 
 def : MnemonicAlias<"uma.fat_ptr_read", "ld">;
 def : MnemonicAlias<"uma.fat_ptr_read.inc", "ld.inc">;
@@ -1108,61 +1102,50 @@ def : Pat<(int_eravm_setu128 GR256:$rs0), (CTXr_set GR256:$rs0, 9, 0)>;
 def : Pat<(int_eravm_inctx), (CTXr_se0 10, 0)>;
 def : Pat<(int_eravm_setpubdataprice GR256:$rs0), (CTXr_set GR256:$rs0, 11, 0)>;
 
-def SLDrr : ILogR<OpSload, DstReg, (outs GR256:$rd0), (ins GR256:$rs0),
-                  "sload", "$rs0, $rd0", []>;
-// FIXME: undefined instruction
-def TLDrr : ILogR<OpSload, DstReg, (outs GR256:$rd0), (ins GR256:$rs0),
-                  "tload", "$rs0, $rd0", []>;
-def : MnemonicAlias<"log.sread", "sload">;
-
 //===----------------------------------------------------------------------===//
 // Fat Pointer
 //===----------------------------------------------------------------------===//
-def : Pat<(load_storage GR256:$rs0), (SLDrr GR256:$rs0, 0)>;
-def : Pat<(load_transient GR256:$rs0), (TLDrr GR256:$rs0, 0)>;
+def SLDrr : ILogR<OpSload, DstReg, (outs GR256:$rd0), (ins GR256:$rs0),
+                  "sload", "$rs0, $rd0",
+                  [(set GR256:$rd0, (load_storage GR256:$rs0))]>;
+// FIXME: undefined instruction
+def TLDrr : ILogR<OpSload, DstReg, (outs GR256:$rd0), (ins GR256:$rs0),
+                  "tload", "$rs0, $rd0",
+                  [(set GR256:$rd0, (load_transient GR256:$rs0))]>;
+def : MnemonicAlias<"log.sread", "sload">;
 
 let hasSideEffects = 1 in {
   def SSTr : ILogR<OpSstore, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1),
-                   "sstore", "$rs0, $rs1", []>;
+                   "sstore", "$rs0, $rs1",
+                   [(store_storage GR256:$rs1, GR256:$rs0)]>;
   // FIXME: undefined instruction
   def TSTr : ILogR<OpSstore, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1),
-                   "tstore", "$rs0, $rs1", []>;
+                   "tstore", "$rs0, $rs1",
+                   [(store_transient GR256:$rs1, GR256:$rs0)]>;
 }
 def : MnemonicAlias<"log.swrite", "sstore">;
 
-def : Pat<(store_storage GR256:$rs1, GR256:$rs0),
-          (SSTr GR256:$rs0, GR256:$rs1, 0)>;
-def : Pat<(store_transient GR256:$rs1, GR256:$rs0),
-          (TSTr GR256:$rs0, GR256:$rs1, 0)>;
-
 let hasSideEffects = 1 in
 def L1r : ILogR<OpLogToL1, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first),
-                "to_l1$first", "$rs0, $rs1", []>;
-
-def : Pat<(int_eravm_tol1 GR256:$rs0, GR256:$rs1, first_op:$first),
-          (L1r GR256:$rs0, GR256:$rs1, first_op:$first, 0)>;
+                "to_l1$first", "$rs0, $rs1",
+                [(int_eravm_tol1 GR256:$rs0, GR256:$rs1, first_op:$first)]>;
 
 let hasSideEffects = 1 in
 def EVTr : ILogR<OpLogEvent, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first),
-                 "event$first", "$rs0, $rs1", []>;
-
-def : Pat<(int_eravm_event GR256:$rs0, GR256:$rs1, first_op:$first),
-          (EVTr GR256:$rs0, GR256:$rs1, first_op:$first, 0)>;
+                 "event$first", "$rs0, $rs1",
+                 [(int_eravm_event GR256:$rs0, GR256:$rs1, first_op:$first)]>;
 
 let hasSideEffects = 1 in {
 def PCOMPr : ILogR<OpLogPrecompile, DstNone, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
-                   "precompile", "$rs0, $rs1, $rd0", []> {
+                   "precompile", "$rs0, $rs1, $rd0",
+                   [(set GR256:$rd0, (int_eravm_precompile GR256:$rs0, GR256:$rs1))]> {
 }
 // FIXME: undefined instruction
 def DECOMMITr : ILogR<OpLogPrecompile, DstNone, (outs GRPTR:$rd0), (ins GR256:$rs0, GR256:$rs1),
-                      "log.decommit", "$rs0, $rs1, $rd0", []> {
+                      "log.decommit", "$rs0, $rs1, $rd0",
+                      [(set GRPTR:$rd0, (EraVMlog_decommit GR256:$rs0, GR256:$rs1))]> {
 }
 }
-
-def : Pat<(int_eravm_precompile GR256:$rs0, GR256:$rs1),
-          (PCOMPr GR256:$rs0, GR256:$rs1, 0)>;
-def : Pat<(EraVMlog_decommit GR256:$rs0, GR256:$rs1),
-          (DECOMMITr GR256:$rs0, GR256:$rs1, 0)>;
 
 multiclass FarCallInst<EraVMOpcode opcode, CallFlags flags, string asmstring> {
   def rrl : ICall<opcode, flags, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
