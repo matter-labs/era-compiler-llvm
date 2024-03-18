@@ -152,6 +152,39 @@ def withRegisterResult : InstrMapping {
 //===----------------------------------------------------------------------===//
 // EraVM Opcodes
 //===----------------------------------------------------------------------===//
+class SrcMode<bits<3> val> {
+  bits<3> Value = val;
+}
+def SrcReg : SrcMode<0>;
+def SrcSpRelativePop : SrcMode<1>;
+def SrcSpRelative : SrcMode<2>;
+def SrcStackAbsolute : SrcMode<3>;
+def SrcImm : SrcMode<4>;
+def SrcCodeAddr : SrcMode<5>;
+
+class isStackIn<SrcMode src> {
+  bit Value = !or(
+    !eq(src, SrcSpRelativePop),
+    !eq(src, SrcSpRelative),
+    !eq(src, SrcStackAbsolute));
+}
+
+class DstMode<bits<2> val> {
+  bits<2> Value = val;
+}
+
+def DstReg : DstMode<0>;
+def DstSpRelativePush : DstMode<1>;
+def DstSpRelative : DstMode<2>;
+def DstStackAbsolute : DstMode<3>;
+
+class isStackOut<DstMode dst> {
+  bit Value = !or(
+    !eq(dst, DstSpRelativePush),
+    !eq(dst, DstSpRelative),
+    !eq(dst, DstStackAbsolute));
+}
+
 class OpcodeEncoding<bits<4> val> {
   bits<4> Value = val;
 }
@@ -164,6 +197,17 @@ def ArithPtrEncoding   : OpcodeEncoding<4>; // opcode src dst swap ⇒ opcode + 
 // TODO: add more as necessary
 def FIXMEEncoding      : OpcodeEncoding<-1>; // To be clarified as implemented
 
+class ArithOpcEncoder<OpcodeEncoding encoding, bits<11> BaseOpcode,
+                      SrcMode src, DstMode dst,
+                      mod_swap swap, mod_set_flags set_flags> {
+  bits<11> Opcode =
+    !cond(!eq(encoding, NopEncoding)        : !add(BaseOpcode, !mul(4,  src.Value),         dst.Value),
+          !eq(encoding, ArithCommEncoding)  : !add(BaseOpcode, !mul(8,  src.Value), !mul(2, dst.Value), set_flags.Value),
+          !eq(encoding, ArithNCommEncoding) : !add(BaseOpcode, !mul(16, src.Value), !mul(4, dst.Value), !mul(set_flags.Value, 2), swap.Value),
+          !eq(encoding, ArithPtrEncoding)   : !add(BaseOpcode, !mul(8,  src.Value), !mul(2, dst.Value), swap.Value),
+          true: -1);
+}
+
 class EraVMOpcode<string name, bits<11> opc, OpcodeEncoding encoding> {
   string Name = name;
   bits<11> BaseOpcode = opc;
@@ -172,7 +216,7 @@ class EraVMOpcode<string name, bits<11> opc, OpcodeEncoding encoding> {
 def EraVMOpcodesList : GenericTable {
   let FilterClass = "EraVMOpcode";
   let Fields = [
-    "Name", "BaseOpcode", "Encoding"
+    "Name", "BaseOpcode",
   ];
   let PrimaryKey = [ "BaseOpcode" ];
   let PrimaryKeyName = "lookupEraVMOpcodeByValue";
@@ -245,24 +289,6 @@ def OpLoadPtrInc   : EraVMOpcode<"ld.inc",  1084, FIXMEEncoding>;
 //===----------------------------------------------------------------------===//
 // EraVM Instructions
 //===----------------------------------------------------------------------===//
-class SourceMode<bits<2> val> {
-  bits<2> Value = val;
-}
-
-def SrcNone     : SourceMode<0>; // r0
-def SrcReg      : SourceMode<0>; // r
-def SrcCode     : SourceMode<1>; // m
-def SrcStack    : SourceMode<2>; // m
-def SrcImm      : SourceMode<3>; // i
-
-class DestMode<bit val> {
-  bit Value = val;
-}
-
-def DstNone     : DestMode<0>;   // r0
-def DstReg      : DestMode<0>;   // r
-def DstStack    : DestMode<1>;   // m
-
 class RetFlags<bits<4> val> {
   bits<4> Value = val;
 }
@@ -333,7 +359,6 @@ def pred : PredicateOperand<i256, (ops i256imm), (ops (i256 0))> {
 
 // Real instructions (have encoding)
 class IForm <EraVMOpcode opcode,
-             SourceMode as, DestMode ad,
              dag oops, dag inops,
              string opc, string asmstr,
              list<dag> pattern> : EraVMInstruction, Encoding
@@ -347,44 +372,44 @@ class IForm <EraVMOpcode opcode,
   let Size           = 8;
 
   let Predicate = cc;
-  // FIXME: This is not correct, we need to calculate real opcode out of the base one
+  // FIXME: This should be overriden in the subclass
   let Opcode = opcode.BaseOpcode;
 }
 
 class IRet<EraVMOpcode opcode, RetFlags flags, dag ins, string opc, string asmstr, list<dag> pattern>
-  : IForm <opcode, SrcNone, DstNone, (outs), ins, opc, asmstr, pattern > {
+  : IForm <opcode, (outs), ins, opc, asmstr, pattern > {
 }
 
 // TODO: CPR-1360 SP change is currently only allowed in NOPs.
 // It should be fixed in accordance with the spec.
 class INop<dag ins, string opc, string asmstr, list<dag> pattern>
-  : IForm <OpNoOp, SrcNone, DstNone, (outs), ins, opc, asmstr, pattern > {
+  : IForm <OpNoOp, (outs), ins, opc, asmstr, pattern > {
 }
 
 class IJump<dag ins, string opc, string asmstr, list<dag> pattern>
-  : IForm <OpJump, SrcNone, DstNone, (outs), ins, opc, asmstr, pattern> {
+  : IForm <OpJump, (outs), ins, opc, asmstr, pattern> {
 }
 
 class IUMA<EraVMOpcode opcode, dag outs, dag ins, string opc, string asmstr, list<dag> pattern>
-  : IForm <opcode, SrcNone, DstNone, outs, ins, opc, asmstr, pattern> {
+  : IForm <opcode, outs, ins, opc, asmstr, pattern> {
 }
 
 class IContext<EraVMOpcode opcode, dag outs, dag ins, string opc, string asmstr, list<dag> pattern>
-  : IForm <opcode, SrcNone, DstReg, outs, ins, opc, asmstr, pattern> {
+  : IForm <opcode, outs, ins, opc, asmstr, pattern> {
 }
 
-class ILogR<EraVMOpcode opcode, DestMode ad, dag outs, dag ins,
+class ILogR<EraVMOpcode opcode, dag outs, dag ins,
             string opc, string asmstr, list<dag> pattern>
-  : IForm <opcode, SrcReg, ad, outs, ins, opc, asmstr, pattern> {
+  : IForm <opcode, outs, ins, opc, asmstr, pattern> {
 }
 
 class IBinary<EraVMOpcode opcode,
-              SourceMode as, DestMode ad,
+              SrcMode src, DstMode dst,
               mod_swap swap, mod_set_flags set_flags,
               dag outs, dag ins,
               string asmstr,
               list<dag> pattern>
-  : IForm <opcode, as, ad, outs, ins, "<invalid>", asmstr, pattern > {
+  : IForm <opcode, outs, ins, "<invalid>", asmstr, pattern > {
   string BaseOpcode;
   bit Silent = !eq(set_flags, PreserveFlags);
   bit ReverseOperands = !eq(swap, Swap);
@@ -398,17 +423,21 @@ class IBinary<EraVMOpcode opcode,
                              !if(!eq(set_flags, SetFlags), "!", ""),
                              "${cc}", "\t", asmstr);
   let Defs = !if(Silent, [], [Flags]);
-  let mayLoad = !or(!eq(as, SrcCode), !eq(as, SrcStack));
-  let mayStore = !eq(ad, DstStack);
+  let mayLoad = !or(isStackIn<src>.Value, !eq(src, SrcCodeAddr));
+  let mayStore = isStackOut<dst>.Value;
+
+  let Opcode = ArithOpcEncoder<opcode.Encoding, opcode.BaseOpcode,
+                               src, dst,
+                               swap, set_flags>.Opcode;
 }
 
 class IBinaryR<EraVMOpcode opcode,
-               SourceMode as,
+               SrcMode src,
                mod_swap swap_operands, mod_set_flags silent,
                dag outs, dag ins,
                string asmstr,
                list<dag> pattern>
-  : IBinary <opcode, as, DstReg, swap_operands, silent, outs, ins, asmstr, pattern > {
+  : IBinary <opcode, src, DstReg, swap_operands, silent, outs, ins, asmstr, pattern > {
   bits<4> rd0;
 
   let DestAddrMode = ToReg.Value;
@@ -418,12 +447,13 @@ class IBinaryR<EraVMOpcode opcode,
 }
 
 class IBinaryS<EraVMOpcode opcode,
-               SourceMode as,
-               mod_swap swap_operands, mod_set_flags silent,
+               SrcMode src,
+               mod_swap swap, mod_set_flags set_flags,
                dag outs, dag ins,
                string asmstr,
                list<dag> pattern>
-  : IBinary <opcode, as, DstStack, swap_operands, silent, outs, ins, asmstr, pattern > {
+  // FIXME: DstStackAbsolute is incorrect here, we need to be able to properly encode relative and post-increment
+  : IBinary <opcode, src, DstStackAbsolute, swap, set_flags, outs, ins, asmstr, pattern > {
   // Encode stack operand into 20 bits as reg + imm offset
   bits<20> dst0;
 
@@ -499,7 +529,7 @@ class Imr_r<EraVMOpcode opcode,
             dag outs, dag ins,
             string asmstr,
             list<dag> pattern>
-  : IBinaryR<opcode, SrcCode, swap_operands, silent, outs, ins, asmstr, pattern> {
+  : IBinaryR<opcode, SrcCodeAddr, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rs1;
   // FIXME: ensure we encode address mode properly
   bits<16> src0;
@@ -516,7 +546,8 @@ class Isr_r<EraVMOpcode opcode,
             dag outs, dag ins,
             string asmstr,
             list<dag> pattern>
-  : IBinaryR<opcode, SrcStack, swap_operands, silent, outs, ins, asmstr, pattern> {
+  // FIXME: SrcStackAbsolute is incorrect here, we need to be able to properly encode relative and post-increment
+  : IBinaryR<opcode, SrcStackAbsolute, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<20> src0;
   bits<4> rs1;
 
@@ -574,10 +605,10 @@ class Irr_s<EraVMOpcode opcode,
 }
 
 class Irr_sr<EraVMOpcode opcode,
-            mod_swap swap_operands, mod_set_flags silent,
-            dag outs, dag ins,
-            string asmstr,
-            list<dag> pattern>
+             mod_swap swap_operands, mod_set_flags silent,
+             dag outs, dag ins,
+             string asmstr,
+             list<dag> pattern>
   : Irr_s<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rd1;
 
@@ -622,7 +653,7 @@ class Imr_s<EraVMOpcode opcode,
             dag outs, dag ins,
             string asmstr,
             list<dag> pattern>
-  : IBinaryS<opcode, SrcCode, swap_operands, silent, outs, ins, asmstr, pattern> {
+  : IBinaryS<opcode, SrcCodeAddr, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rs1;
   // FIXME: ensure we encode address mode properly
   bits<16> src0;
@@ -639,7 +670,8 @@ class Isr_s<EraVMOpcode opcode,
             dag outs, dag ins,
             string asmstr,
             list<dag> pattern>
-  : IBinaryS<opcode, SrcStack, swap_operands, silent, outs, ins, asmstr, pattern> {
+  // FIXME: SrcStackAbsolute is incorrect here, we need to be able to properly encode relative and post-increment
+  : IBinaryS<opcode, SrcStackAbsolute, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<20> src0;
   bits<4> rs1;
 
@@ -687,5 +719,5 @@ def CFDelegate       : CallFlags<0b0001>;
 def CFMimic          : CallFlags<0b0010>;
 
 class ICall<EraVMOpcode opcode, CallFlags flags, dag ins, string opc, string asmstr, list<dag> pattern>
-  : IForm <opcode, SrcNone, DstNone, (outs), ins, opc, asmstr, pattern > {
+  : IForm <opcode, (outs), ins, opc, asmstr, pattern > {
 }
