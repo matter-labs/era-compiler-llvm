@@ -1,0 +1,4 @@
+# REQUIRES: eravm-registered-target
+
+# RUN: cp -f %S/Inputs/eravm-basic.ll %t.ll && %update_llc_test_checks %t.ll
+# RUN: diff -u %S/Inputs/eravm-basic.ll.expected %t.ll
