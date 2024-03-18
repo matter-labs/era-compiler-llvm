@@ -720,15 +720,10 @@ class Isr_sr<EraVMOpcode opcode,
   let Dst1 = rd1;
 }
 
-class CallFlags<bits<4> val> {
-  bits<4> Value = val;
-}
-def CFNormal         : CallFlags<0b0000>;
-def CFDelegate       : CallFlags<0b0001>;
-def CFMimic          : CallFlags<0b0010>;
-
-class ICall<EraVMOpcode opcode, CallFlags flags, dag ins, string opc, string asmstr, list<dag> pattern>
-  : IForm <opcode, (outs), ins, opc, asmstr, pattern > {
+class ICall<EraVMOpcode opcode, dag ins, string asmstr, list<dag> pattern>
+  : IForm <opcode, (outs), ins, "<invalid>", asmstr, pattern > {
+  // FIXME: Should should be default
+  let AsmString = !strconcat(opcode.Name, "${cc}", "\t", asmstr);
 }
 
 class IFarCall<EraVMOpcode opcode,
