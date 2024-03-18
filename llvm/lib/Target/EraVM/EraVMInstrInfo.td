@@ -1168,16 +1168,15 @@ let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Fl
   def NEAR_CALL : ICall<OpCall, (ins GR256:$in1, jmptarget:$callee, jmptarget:$unwind),
                         "$in1, $callee, $unwind", []>;
 
-  def NEAR_CALL_default_unwind : Pseudo<(outs), (ins GR256:$in1, jmptarget:$callee, pred:$cc), []>;
+  // Unfortunately, we cannot encode @DEFAULT_UNWIND_DEST here, so we have to alias to pseudo
+  def NEAR_CALL_default_unwind : AsmParserPseudo<(outs), (ins GR256:$in1, jmptarget:$callee),
+                                                 "near_call", "${in1} ${callee}">;
 
   defm FAR_CALL      : FarCallInst<OpFarcall>;
   defm DELEGATE_CALL : FarCallInst<OpDelegate>;
   defm MIMIC_CALL    : FarCallInst<OpMimic>;
 }
 
-// Unfortunately, we cannot encode @DEFAULT_UNWIND_DEST here, so we have to alias to pseudo
-def : InstAlias<"near_call${cc} ${in1} ${callee}",
-                (NEAR_CALL_default_unwind GR256:$in1, jmptarget:$callee, pred:$cc)>;
 def : InstAlias<"near_call${cc} ${callee}",
                 (NEAR_CALL_default_unwind R0, jmptarget:$callee, pred:$cc)>;
 
