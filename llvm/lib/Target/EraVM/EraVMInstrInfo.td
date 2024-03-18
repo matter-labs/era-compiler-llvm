@@ -1147,13 +1147,13 @@ def DECOMMITr : ILogR<OpLogPrecompile, (outs GRPTR:$rd0), (ins GR256:$rs0, GR256
 }
 }
 
-multiclass FarCallInst<EraVMOpcode opcode, CallFlags flags, string asmstring> {
-  def rrl : ICall<opcode, flags, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
-                  asmstring, "$rs0, $rs1, $unwind", []>;
-  def _STATICrrl : ICall<opcode, flags, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
-                         !strconcat(asmstring, ".static"), "$rs0, $rs1, $unwind", []>;
-  def _SHARDrrl  : ICall<opcode, flags, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
-                         !strconcat(asmstring, ".shard"), "$rs0, $rs1, $unwind", []>;
+multiclass FarCallInst<EraVMOpcode opcode> {
+  def rrl : IFarCall<opcode, 0, 0, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
+                    "$rs0, $rs1, $unwind", []>;
+  def _STATICrrl : IFarCall<opcode, 0, 1, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
+                           "$rs0, $rs1, $unwind", []>;
+  def _SHARDrrl  : IFarCall<opcode, 1, 0, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
+                           "$rs0, $rs1, $unwind", []>;
 }
 
 let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Flags],
@@ -1170,9 +1170,9 @@ let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Fl
   def NEAR_CALL_default_unwind_r0 : ICall<OpCall, CFNormal, (ins jmptarget:$callee),
                    "near_call", "$callee", []>;
 
-  defm FAR_CALL      : FarCallInst<OpFarcall, CFNormal, "far_call">;
-  defm DELEGATE_CALL : FarCallInst<OpDelegate, CFDelegate, "far_call.delegate">;
-  defm MIMIC_CALL    : FarCallInst<OpMimic, CFMimic, "far_call.mimic">;
+  defm FAR_CALL      : FarCallInst<OpFarcall>;
+  defm DELEGATE_CALL : FarCallInst<OpDelegate>;
+  defm MIMIC_CALL    : FarCallInst<OpMimic>;
 }
 
 def : Pat<(EraVMfarcall bb:$unwind), (FAR_CALLrrl R1, R2, bb:$unwind)>;
