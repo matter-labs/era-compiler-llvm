@@ -11,6 +11,7 @@ tablegen(LLVM EraVMGenInstrInfo.inc -gen-instr-info)
 tablegen(LLVM EraVMGenMCCodeEmitter.inc -gen-emitter)
 tablegen(LLVM EraVMGenRegisterInfo.inc -gen-register-info)
 tablegen(LLVM EraVMGenSubtargetInfo.inc -gen-subtarget)
+tablegen(LLVM EraVMGenSearchableTables.inc -gen-searchable-tables)
 
 add_public_tablegen_target(EraVMCommonTableGen)
 
