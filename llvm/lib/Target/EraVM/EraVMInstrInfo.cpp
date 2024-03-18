@@ -888,8 +888,7 @@ EraVMInstrInfo::getOutliningTypeImpl(MachineBasicBlock::iterator &MBBI,
   }
 
   // Don't outline context.gas_left instruction.
-  if (MI.getOpcode() == EraVM::CTXr_se &&
-      getImmOrCImm(MI.getOperand(1)) == EraVMCTX::GAS_LEFT)
+  if (MI.getOpcode() == EraVM::CTXGasLeft)
     return outliner::InstrType::Illegal;
 
   // Positions generally can't safely be outlined.
@@ -1132,6 +1131,10 @@ bool EraVMInstrInfo::isPredicated(const MachineInstr &MI) const {
 
 bool EraVMInstrInfo::isPredicable(const MachineInstr &MI) const {
   if (!isPredicatedInstr(MI))
+    return false;
+
+  // Do not predicate gas_left instruction
+  if (MI.getOpcode() == EraVM::CTXGasLeft)
     return false;
 
   // we cannot make a flag setting instruction predicated execute

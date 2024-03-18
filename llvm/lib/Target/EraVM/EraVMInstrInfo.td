@@ -121,17 +121,6 @@ def large_imm : Operand<i256>, IntImmLeaf<i256, [{
   return !Imm.abs().isIntN(16);
 }]> {}
 
-def context_op : Operand<i256>, IntImmLeaf<i256, [{
-  return Imm.getZExtValue() < 5;
-}]> {
-  let PrintMethod = "printContextOperand";
-}
-
-def context_se_op : Operand<i256>, IntImmLeaf<i256, [{
-  return Imm.getZExtValue() >= 6 && Imm.getZExtValue() < 8;
-}]> {
-  let PrintMethod = "printContextOperand";
-}
 
 def first_op : Operand<i256>, IntImmLeaf<i256, [{
   return Imm.getZExtValue() < 2;
@@ -1081,29 +1070,41 @@ def LOADCONST : Pseudo<(outs GR256:$val), (ins i256imm:$addr),
 //===----------------------------------------------------------------------===//
 
 // TODO: CPR-1505 Regroup instructions based on the attributes from IntrinsicsEraVM.td.
-def CTXr : IContext<OpContext, (outs GR256:$rd0), (ins context_op:$cop),
-                     "context$cop", "$rd0", []>;
+def CTXThis : IContext<OpContextThis, (outs GR256:$rd0), (ins),
+                       "$rd0",
+                       [(set GR256:$rd0, (int_eravm_this))]>;
+def CTXCaller : IContext<OpContextCaller, (outs GR256:$rd0), (ins),
+                        "$rd0",
+                        [(set GR256:$rd0, (int_eravm_caller))]>;
+def CTXCodeSource : IContext<OpContextCodeAddress, (outs GR256:$rd0), (ins),
+                            "$rd0",
+                            [(set GR256:$rd0, (int_eravm_codesource))]>;
+def CTXMeta : IContext<OpContextMeta, (outs GR256:$rd0), (ins),
+                        "$rd0",
+                        [(set GR256:$rd0, (int_eravm_meta))]>;
+
 let hasSideEffects = 1 in {
+def CTXSetU128 : IContext<OpContextSetContextU128, (outs), (ins GR256:$rs0),
+                          "$rs0",
+                          [(int_eravm_setu128 GR256:$rs0)]>;
+def CTXSetPubDP : IContext<OpContextSetErgsPerPubdataByte, (outs), (ins GR256:$rs0),
+                          "$rs0",
+                          [(int_eravm_setpubdataprice GR256:$rs0)]>;
 let hasPostISelHook = 1 in
-def CTXr_se : IContext<OpContext, (outs GR256:$rd0), (ins context_se_op:$cop),
-                       "context$cop", "$rd0", []>;
-def CTXr_set : IContext<OpContext, (outs), (ins GR256:$rs0, context_se_op:$cop),
-                        "context$cop", "$rs0", []>;
-def CTXr_se0 : IContext<OpContext, (outs), (ins context_se_op:$cop),
-                        "context$cop", "", []>;
+def CTXGasLeft : IContext<OpContextErgsLeft, (outs GR256:$rd0), (ins),
+                          "$rd0",
+                          [(set GR256:$rd0, (int_eravm_gasleft))]>;
+def CTXGetSp   : IContext<OpContextSp, (outs GR256:$rd0), (ins),
+                          "$rd0",
+                          [(set GR256:$rd0, (EraVMget_sp))]>;
+def CTXGetU128 : IContext<OpContextGetContextU128, (outs GR256:$rd0), (ins),
+                          "$rd0",
+                          [(set GR256:$rd0, (int_eravm_getu128))]>;
+def CTXIncTx   : IContext<OpContextIncrementTxNumber, (outs), (ins), "", [(int_eravm_inctx)]>;
 }
 
-def : Pat<(int_eravm_meta), (CTXr 3, 0)>;
-def : Pat<(int_eravm_this), (CTXr 0, 0)>;
-def : Pat<(int_eravm_caller), (CTXr 1, 0)>;
-def : Pat<(int_eravm_codesource), (CTXr 2, 0)>;
-def : Pat<(int_eravm_txorigin), (CTXr 4, 0)>;
-def : Pat<(int_eravm_gasleft), (CTXr_se 6, 0)>;
-def : Pat<(EraVMget_sp), (CTXr_se 7, 0)>;
-def : Pat<(int_eravm_getu128), (CTXr_se 8, 0)>;
-def : Pat<(int_eravm_setu128 GR256:$rs0), (CTXr_set GR256:$rs0, 9, 0)>;
-def : Pat<(int_eravm_inctx), (CTXr_se0 10, 0)>;
-def : Pat<(int_eravm_setpubdataprice GR256:$rs0), (CTXr_set GR256:$rs0, 11, 0)>;
+// FIXME: unknown instruction
+// def : Pat<(int_eravm_txorigin), (CTXr 4, 0)>;
 
 //===----------------------------------------------------------------------===//
 // Fat Pointer

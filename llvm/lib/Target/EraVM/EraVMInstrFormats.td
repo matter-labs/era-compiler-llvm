@@ -257,7 +257,17 @@ def OpPtrSub    : EraVMOpcode<"ptr.sub",    895, ArithPtrEncoding>;
 def OpPtrPack   : EraVMOpcode<"ptr.pack",   943, ArithPtrEncoding>;
 def OpPtrShrink : EraVMOpcode<"ptr.shrink", 991, ArithPtrEncoding>;
 def OpCall      : EraVMOpcode<"near_call",  1039, DirectEncoding>;
-def OpContext   : EraVMOpcode<"context",    1040, FIXMEEncoding>; // op ⇒ 1040 + op
+
+def OpContextThis              : EraVMOpcode<"context.this",             1040, DirectEncoding>;
+def OpContextCaller            : EraVMOpcode<"context.caller",           1041, DirectEncoding>;
+def OpContextCodeAddress       : EraVMOpcode<"context.code_source",      1042, DirectEncoding>;
+def OpContextMeta              : EraVMOpcode<"context.meta",             1043, DirectEncoding>;
+def OpContextErgsLeft          : EraVMOpcode<"context.gas_left",         1044, DirectEncoding>;
+def OpContextSp                : EraVMOpcode<"context.sp",               1045, DirectEncoding>;
+def OpContextGetContextU128    : EraVMOpcode<"context.get_context_u128", 1046, DirectEncoding>;
+def OpContextSetContextU128    : EraVMOpcode<"context.set_context_u128", 1047, DirectEncoding>;
+def OpContextSetErgsPerPubdataByte   : EraVMOpcode<"context.set_gas_per_pubdata",    1048, DirectEncoding>;
+def OpContextIncrementTxNumber : EraVMOpcode<"context.inc_tx_num",       1049, DirectEncoding>;
 
 // aliased as log.sread
 def OpSload     : EraVMOpcode<"sload",      1050, DirectEncoding>;
@@ -417,8 +427,11 @@ class IUMA<EraVMOpcode opcode, dag outs, dag ins, string opc, string asmstr, lis
   : IForm <opcode, outs, ins, opc, asmstr, pattern> {
 }
 
-class IContext<EraVMOpcode opcode, dag outs, dag ins, string opc, string asmstr, list<dag> pattern>
-  : IForm <opcode, outs, ins, opc, asmstr, pattern> {
+class IContext<EraVMOpcode opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : IForm <opcode, outs, ins, "<invalid>", asmstr, pattern> {
+
+  // FIXME: Should should be default
+  let AsmString = !strconcat(opcode.Name, "${cc}", "\t", asmstr);
 }
 
 class ILogR<EraVMOpcode opcode, dag outs, dag ins,
