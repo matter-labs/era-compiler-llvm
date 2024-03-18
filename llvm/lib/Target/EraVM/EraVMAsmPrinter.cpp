@@ -18,11 +18,9 @@
 #include "MCTargetDesc/EraVMInstPrinter.h"
 #include "MCTargetDesc/EraVMTargetStreamer.h"
 #include "TargetInfo/EraVMTargetInfo.h"
-#include "llvm/ADT/DenseMap.h"
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/CodeGen/MachineConstantPool.h"
-#include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstr.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/IR/Constants.h"
@@ -30,12 +28,12 @@
 #include "llvm/IR/Mangler.h"
 #include "llvm/IR/Module.h"
 #include "llvm/MC/MCAsmInfo.h"
+#include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCInst.h"
 #include "llvm/MC/MCSectionELF.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/MCSymbol.h"
 #include "llvm/MC/TargetRegistry.h"
-#include "llvm/Support/raw_ostream.h"
 #include "llvm/Target/TargetLoweringObjectFile.h"
 using namespace llvm;
 
@@ -102,7 +100,11 @@ void EraVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
 
   // Do some manual expansion
   unsigned Opc = MI->getOpcode();
-  if (Opc == EraVM::J_s) {
+  switch (Opc) {
+  default:
+    // Change nothing by default
+    break;
+  case EraVM::J_s: {
     MCOperand MCOp;
     TmpInst.setOpcode(EraVM::JCs);
     // Operand: dest
@@ -116,6 +118,26 @@ void EraVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
     TmpInst.addOperand(MCOperand::createImm(0));
     EmitToStreamer(*OutStreamer, TmpInst);
     return;
+  }
+  case EraVM::REVERT:
+  case EraVM::RETURN: {
+    MCSymbol *DefaultFarReturnSym = OutContext.getOrCreateSymbol(
+        Opc == EraVM::REVERT ? "DEFAULT_FAR_REVERT" : "DEFAULT_FAR_RETURN");
+    // Expand to: ret/revert.to_label $rs0, @DEFAULT_FAR_RETURN
+    MCOperand MCOp;
+    TmpInst.setOpcode(Opc == EraVM::REVERT ? EraVM::REVERTrl : EraVM::RETrl);
+    // Operand: rs0
+    lowerOperand(MI->getOperand(0), MCOp);
+    TmpInst.addOperand(MCOp);
+    // Operand: default dest
+    TmpInst.addOperand(MCOperand::createExpr(
+        MCSymbolRefExpr::create(DefaultFarReturnSym, OutContext)));
+    // Operand: cc
+    lowerOperand(MI->getOperand(1), MCOp);
+    TmpInst.addOperand(MCOp);
+    EmitToStreamer(*OutStreamer, TmpInst);
+    return;
+  }
   }
 
   if (MI->isPseudo()) {

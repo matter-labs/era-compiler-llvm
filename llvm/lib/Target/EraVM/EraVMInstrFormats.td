@@ -195,6 +195,7 @@ def ArithCommEncoding  : OpcodeEncoding<2>; // opcode src dst set_flags ⇒ opco
 def ArithNCommEncoding : OpcodeEncoding<3>; // opcode src dst swap set_flags ⇒ opcode + 16 × src + 4 × dst + 2 × set_flags + swap
 def ArithPtrEncoding   : OpcodeEncoding<4>; // opcode src dst swap ⇒ opcode + 8 × src + 2 × dst + swap
 def FarCallEncoding    : OpcodeEncoding<5>; // opcode is_shard is_static ⇒ opcode + 2 × is_static + is_shard
+def RetEncoding        : OpcodeEncoding<6>; // opcode to_label ⇒ opcode + to_label
 // TODO: add more as necessary
 def FIXMEEncoding      : OpcodeEncoding<-1>; // To be clarified as implemented
 
@@ -212,6 +213,11 @@ class ArithOpcEncoder<OpcodeEncoding encoding, bits<11> BaseOpcode,
 class FarCallEncoder<bits<11> BaseOpcode,
                      bit is_shard, bit is_static> {
   bits<11> Opcode = !add(BaseOpcode, !mul(2, is_static), is_shard);
+}
+
+class RetEncoder<bits<11> BaseOpcode,
+                 bit to_label> {
+  bits<11> Opcode = !add(BaseOpcode, to_label);
 }
 
 class EraVMOpcode<string name, bits<11> opc, OpcodeEncoding encoding> {
@@ -269,9 +275,9 @@ def OpFarcall  : EraVMOpcode<"far_call",     1057, FarCallEncoding>; // is_shard
 def OpDelegate : EraVMOpcode<"far_call.delegate", 1061, FarCallEncoding>; // is_shard is_static ⇒ 1061 + 2 × is_static + is_shard
 def OpMimic    : EraVMOpcode<"far_call.mimic",    1065, FarCallEncoding>; // is_shard is_static ⇒ 1065 + 2 × is_static + is_shard
 
-def OpRet      : EraVMOpcode<"ret.ok",    1069, FIXMEEncoding>; // to_label ⇒ 1069 + to_label
-def OpRevert   : EraVMOpcode<"ret.revert", 1071, FIXMEEncoding>; // to_label ⇒ 1071 + to_label
-def OpPanic    : EraVMOpcode<"ret.panic",  1073, FIXMEEncoding>; // to_label ⇒ 1073 + to_label
+def OpRet      : EraVMOpcode<"ret.ok",     1069, RetEncoding>; // to_label ⇒ 1069 + to_label
+def OpRevert   : EraVMOpcode<"ret.revert", 1071, RetEncoding>; // to_label ⇒ 1071 + to_label
+def OpPanic    : EraVMOpcode<"ret.panic",  1073, RetEncoding>; // to_label ⇒ 1073 + to_label
 
 // aliased as uma.heap_read
 def OpLoadHeap     : EraVMOpcode<"ld1", 1075, FIXMEEncoding>; // src inc ⇒ 1075 + 10 × src + inc
@@ -380,10 +386,6 @@ class IForm <EraVMOpcode opcode,
   let Predicate = cc;
   // FIXME: This should be overriden in the subclass
   let Opcode = opcode.BaseOpcode;
-}
-
-class IRet<EraVMOpcode opcode, RetFlags flags, dag ins, string opc, string asmstr, list<dag> pattern>
-  : IForm <opcode, (outs), ins, opc, asmstr, pattern > {
 }
 
 // TODO: CPR-1360 SP change is currently only allowed in NOPs.
@@ -718,6 +720,25 @@ class Isr_sr<EraVMOpcode opcode,
   let OperandAM = 3;
 
   let Dst1 = rd1;
+}
+
+class IRet<EraVMOpcode opcode,
+           bit to_label,
+           dag ins,
+           string asmstr,
+           list<dag> pattern>
+  : IForm <opcode, (outs), ins, "<invalid>", asmstr, pattern > {
+
+  let isReturn = 1;
+  let isTerminator = 1;
+  let isBarrier = 1;
+
+  let AsmString = !strconcat(opcode.Name,
+                             !if(to_label, ".to_label", ""),
+                             "${cc}", "\t", asmstr);
+
+  let Opcode = RetEncoder<opcode.BaseOpcode, to_label>.Opcode;
+
 }
 
 class ICall<EraVMOpcode opcode, dag ins, string asmstr, list<dag> pattern>
