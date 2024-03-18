@@ -26,6 +26,7 @@
 #include "llvm/Support/Debug.h"
 
 #include "EraVMSubtarget.h"
+#include "MCTargetDesc/EraVMMCTargetDesc.h"
 
 using namespace llvm;
 
@@ -195,7 +196,7 @@ bool EraVMBytesToCells::convertStackMachineInstr(
 
     // corner case: as per spec, stack pointer retrieved from context.sp is
     // cell-addressed, while everything else is byte-addressed.
-    if (DefMI->getOpcode() == EraVM::CTXr)
+    if (DefMI->getOpcode() == EraVM::CTXGetSp)
       return false;
 
     // FRAMEirrr is doing sp + reg + imm, and since sp is cell-addressed we only

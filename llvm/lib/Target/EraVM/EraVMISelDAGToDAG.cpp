@@ -12,6 +12,7 @@
 
 #include "EraVM.h"
 #include "EraVMTargetMachine.h"
+#include "MCTargetDesc/EraVMMCTargetDesc.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
@@ -290,10 +291,8 @@ bool EraVMDAGToDAGISel::SelectStackAddrCommon(SDValue Addr, SDValue &Base1,
       // context.sp and FRAMEirrr instructions.
       SDValue CurrentSP = SDValue(
           CurDAG->getMachineNode(
-              EraVM::CTXr_se, Loc, MVT::i256,
-              CurDAG->getTargetConstant(EraVMCTX::SP, Loc, MVT::i256),
-              CurDAG->getTargetConstant(EraVMCC::COND_NONE, Loc,
-                                        MVT::i256)),
+              EraVM::CTXGetSp, Loc, MVT::i256,
+              CurDAG->getTargetConstant(EraVMCC::COND_NONE, Loc, MVT::i256)),
           0);
       Base2 =
           SDValue(CurDAG->getMachineNode(EraVM::FRAMEirrr, Loc, MVT::i256,
