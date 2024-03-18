@@ -369,6 +369,21 @@ def pred : PredicateOperand<i256, (ops i256imm), (ops (i256 0))> {
   let EncoderMethod = "getCCOpValue";
 }
 
+// Pseudo instructions (do not have encoding information, only for asmparser)
+class AsmParserPseudo<dag outs, dag inops, string opc, string asmstr>
+  : EraVMInstruction {
+  bits<3> cc;
+
+  dag InOperandList  = !con(inops, (ins pred:$cc));
+  dag OutOperandList = outs;
+  let Size           = 8;
+  let AsmString      = !strconcat(opc, "${cc}", "\t", asmstr);
+
+  let isCodeGenOnly = 0;
+  let isAsmParserOnly = 1;
+  let isPseudo = 1;
+}
+
 // Real instructions (have encoding)
 class IForm <EraVMOpcode opcode,
              dag oops, dag inops,
