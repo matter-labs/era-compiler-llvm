@@ -21,9 +21,9 @@ foo:
 ; CHECK:foo:
 
 ; CHECK:  near_call    r3, @callee, @exception_handler
-; CHECK:  near_call    r3, @callee
-; CHECK:  near_call    @callee
+; CHECK:  near_call    r3, @callee, @DEFAULT_UNWIND_DEST
+; CHECK:  near_call    @callee, @DEFAULT_UNWIND_DEST
 
 ; CHECK:  near_call.lt r3, @callee, @exception_handler
-; CHECK:  near_call.lt r3, @callee
-; CHECK:  near_call.lt @callee
+; CHECK:  near_call.lt r3, @callee, @DEFAULT_UNWIND_DEST
+; CHECK:  near_call.lt @callee, @DEFAULT_UNWIND_DEST

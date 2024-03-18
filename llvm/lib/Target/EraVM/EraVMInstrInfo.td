@@ -1160,20 +1160,23 @@ let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Fl
     Uses = [SP], isCall = 1 in {
   def CALL : Pseudo<(outs), (ins GR256:$in1, imm16:$callee),
                      [(EraVMcall GR256:$in1, (EraVMGAStack tglobaladdr:$callee))]>;
-  // FIXME: Expand to NEAR_CALL
   def INVOKE : Pseudo<(outs), (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
                       [(EraVMinvoke GR256:$in1, (EraVMGAStack tglobaladdr:$callee), bb:$unwind)]>;
-  def NEAR_CALL : ICall<OpCall, CFNormal, (ins GR256:$in1, jmptarget:$callee, jmptarget:$unwind),
-                        "near_call", "$in1, $callee, $unwind", []>;
-  def NEAR_CALL_default_unwind : ICall<OpCall, CFNormal, (ins GR256:$in1, jmptarget:$callee),
-                   "near_call", "$in1, $callee", []>;
-  def NEAR_CALL_default_unwind_r0 : ICall<OpCall, CFNormal, (ins jmptarget:$callee),
-                   "near_call", "$callee", []>;
+  def NEAR_CALL : ICall<OpCall, (ins GR256:$in1, jmptarget:$callee, jmptarget:$unwind),
+                        "$in1, $callee, $unwind", []>;
+
+  def NEAR_CALL_default_unwind : Pseudo<(outs), (ins GR256:$in1, jmptarget:$callee, pred:$cc), []>;
 
   defm FAR_CALL      : FarCallInst<OpFarcall>;
   defm DELEGATE_CALL : FarCallInst<OpDelegate>;
   defm MIMIC_CALL    : FarCallInst<OpMimic>;
 }
+
+// Unfortunately, we cannot encode @DEFAULT_UNWIND_DEST here, so we have to alias to pseudo
+def : InstAlias<"near_call${cc} ${in1} ${callee}",
+                (NEAR_CALL_default_unwind GR256:$in1, jmptarget:$callee, pred:$cc)>;
+def : InstAlias<"near_call${cc} ${callee}",
+                (NEAR_CALL_default_unwind R0, jmptarget:$callee, pred:$cc)>;
 
 def : Pat<(EraVMfarcall bb:$unwind), (FAR_CALLrrl R1, R2, bb:$unwind)>;
 def : Pat<(EraVMstaticcall bb:$unwind), (FAR_CALL_STATICrrl R1, R2, bb:$unwind)>;
