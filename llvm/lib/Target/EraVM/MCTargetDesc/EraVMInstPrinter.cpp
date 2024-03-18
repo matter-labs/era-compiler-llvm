@@ -105,52 +105,6 @@ void EraVMInstPrinter::printCCOperand(const MCInst *MI, unsigned OpNo,
   }
 }
 
-void EraVMInstPrinter::printContextOperand(const MCInst *MI, unsigned OpNo,
-                                           raw_ostream &O) {
-  unsigned COp = MI->getOperand(OpNo).getImm();
-
-  switch (COp) {
-  default:
-    llvm_unreachable("Unsupported Context parameter");
-  case EraVMCTX::THIS:
-    O << ".this";
-    break;
-  case EraVMCTX::CALLER:
-    O << ".caller";
-    break;
-  case EraVMCTX::CODE_SOURCE:
-    O << ".code_source";
-    break;
-  case EraVMCTX::META:
-    O << ".meta";
-    break;
-  case EraVMCTX::TX_ORIGIN:
-    O << ".tx_origin";
-    break;
-  case EraVMCTX::GAS_LEFT:
-    O << ".gas_left";
-    break;
-  case EraVMCTX::SP:
-    O << ".sp";
-    break;
-  case EraVMCTX::COINBASE:
-    O << ".coinbase";
-    break;
-  case EraVMCTX::GET_U128:
-    O << ".get_context_u128";
-    break;
-  case EraVMCTX::SET_U128:
-    O << ".set_context_u128";
-    break;
-  case EraVMCTX::INC_CTX:
-    O << ".inc_tx_num";
-    break;
-  case EraVMCTX::SET_PUBDATAPRICE:
-    O << ".set_gas_per_pubdata";
-    break;
-  }
-}
-
 void EraVMInstPrinter::printFirstOperand(const MCInst *MI, unsigned OpNo,
                                          raw_ostream &O) {
   const MCOperand &EAF = MI->getOperand(OpNo);

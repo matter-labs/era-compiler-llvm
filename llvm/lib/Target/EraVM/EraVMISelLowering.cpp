@@ -470,7 +470,6 @@ SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   SmallVector<std::pair<unsigned, SDValue>, 4> RegsToPass;
   SmallVector<SDValue, 12> MemOpChains;
   SDValue Zero = DAG.getTargetConstant(0, DL, MVT::i256);
-  SDValue SPCtx = DAG.getTargetConstant(EraVMCTX::SP, DL, MVT::i256);
 
   SDValue AbiData = CLI.EraVMAbiData ? DAG.getRegister(EraVM::R15, MVT::i256)
                                      : DAG.getRegister(EraVM::R0, MVT::i256);
@@ -481,7 +480,7 @@ SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
     if (!VA.isRegLoc()) {
       assert(VA.isMemLoc());
       SDNode *StackPtr =
-          DAG.getMachineNode(EraVM::CTXr, DL, MVT::i256, SPCtx, Zero);
+          DAG.getMachineNode(EraVM::CTXGetSp, DL, MVT::i256, Zero);
 
       SDValue offset =
           DAG.getConstant(VA.getLocMemOffset() / 32, DL, MVT::i256);
@@ -1338,7 +1337,6 @@ void EraVMTargetLowering::AdjustInstrPostInstrSelection(MachineInstr &MI,
 
   // Set NoMerge to gasleft instructions. This has to be in sync with nomerge
   // attribute in IntrinsicsEraVM.td for this intrinsic.
-  if (MI.getOpcode() == EraVM::CTXr_se &&
-      getImmOrCImm(MI.getOperand(1)) == EraVMCTX::GAS_LEFT)
+  if (MI.getOpcode() == EraVM::CTXGasLeft)
     MI.setFlag(MachineInstr::MIFlag::NoMerge);
 }

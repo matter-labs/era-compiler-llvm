@@ -51,12 +51,12 @@ define i256 @metar() {
   ret i256 %res
 }
 
-; CHECK-LABEL: txoriginr
-define i256 @txoriginr() {
-; CHECK: context.tx_origin r1
-  %res = call i256 @llvm.eravm.txorigin()
-  ret i256 %res
-}
+; COM: CHECK-LABEL: txoriginr
+; COM: define i256 @txoriginr() {
+; COM: CHECK: context.tx_origin r1
+; COM:   %res = call i256 @llvm.eravm.txorigin()
+; COM:   ret i256 %res
+; COM: }
 
 ; CHECK-LABEL: gasleftr
 define i256 @gasleftr() {

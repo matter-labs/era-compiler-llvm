@@ -93,9 +93,8 @@ bool EraVMRegisterInfo::eliminateFrameIndex(MachineBasicBlock::iterator II,
   }
 
   if (MI.getOpcode() == EraVM::ADDframe) {
-    auto *SPInst = BuildMI(MBB, II, DL, TII.get(EraVM::CTXr_se))
+    auto *SPInst = BuildMI(MBB, II, DL, TII.get(EraVM::CTXGetSp))
                        .addDef(MI.getOperand(0).getReg())
-                       .addImm(EraVMCTX::SP)
                        .addImm(EraVMCC::COND_NONE)
                        .getInstr();
     assert(Offset < 0 && "On EraVM, offset cannot be positive");

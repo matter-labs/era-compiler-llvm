@@ -66,12 +66,12 @@ body:             |
 # CHECK-LABEL: bar
 # CHECK-LABEL: bb.0:
 # CHECK: NOPSP 1, 0, implicit-def $sp, implicit $sp
-# CHECK-NEXT: $r3 = CTXr_se i256 6, i256 0
+# CHECK-NEXT: $r3 = CTXGasLeft i256 0
 # CHECK-NEXT: ADDcrs_s target-flags(<unknown>) <mcsymbol >, 0, $r0, $sp, 0, -1, 0
 # CHECK-NEXT: JCALL @OUTLINED_FUNCTION_1, implicit-def $r1, implicit $r2, implicit $r1, post-instr-symbol <mcsymbol >
 
 # CHECK-LABEL: bb.1:
-# CHECK: $r3 = CTXr_se i256 6, i256 0
+# CHECK: $r3 = CTXGasLeft i256 0
 # CHECK-NEXT: ADDcrs_s target-flags(<unknown>) <mcsymbol >, 0, $r0, $sp, 0, -1, 0
 # CHECK-NEXT: JCALL @OUTLINED_FUNCTION_1, implicit-def $r1, implicit $r2, implicit $r1, post-instr-symbol <mcsymbol >
 # CHECK-NEXT: RET
@@ -80,7 +80,7 @@ tracksRegLiveness: true
 body:             |
   bb.0:
     liveins: $r1, $r2
-    $r3 = CTXr_se i256 6, i256 0
+    $r3 = CTXGasLeft i256 0
     $r1 = ORrrr_s $r1, $r2, 0
     $r1 = ORrrr_s $r1, $r2, 0
     $r1 = ORrrr_s $r1, $r2, 0
@@ -91,7 +91,7 @@ body:             |
     $r1 = ORrrr_s $r1, $r2, 0
   bb.1:
     liveins: $r1, $r2
-    $r3 = CTXr_se i256 6, i256 0
+    $r3 = CTXGasLeft i256 0
     $r1 = ORrrr_s $r1, $r2, 0
     $r1 = ORrrr_s $r1, $r2, 0
     $r1 = ORrrr_s $r1, $r2, 0
