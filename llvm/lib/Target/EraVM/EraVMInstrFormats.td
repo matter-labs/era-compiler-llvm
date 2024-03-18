@@ -194,6 +194,7 @@ def NopEncoding        : OpcodeEncoding<1>; // opcode src dst ⇒ opcode + 4 × 
 def ArithCommEncoding  : OpcodeEncoding<2>; // opcode src dst set_flags ⇒ opcode + 8 × src + 2 × dst + set_flags
 def ArithNCommEncoding : OpcodeEncoding<3>; // opcode src dst swap set_flags ⇒ opcode + 16 × src + 4 × dst + 2 × set_flags + swap
 def ArithPtrEncoding   : OpcodeEncoding<4>; // opcode src dst swap ⇒ opcode + 8 × src + 2 × dst + swap
+def FarCallEncoding    : OpcodeEncoding<5>; // opcode is_shard is_static ⇒ opcode + 2 × is_static + is_shard
 // TODO: add more as necessary
 def FIXMEEncoding      : OpcodeEncoding<-1>; // To be clarified as implemented
 
@@ -206,6 +207,11 @@ class ArithOpcEncoder<OpcodeEncoding encoding, bits<11> BaseOpcode,
           !eq(encoding, ArithNCommEncoding) : !add(BaseOpcode, !mul(16, src.Value), !mul(4, dst.Value), !mul(set_flags.Value, 2), swap.Value),
           !eq(encoding, ArithPtrEncoding)   : !add(BaseOpcode, !mul(8,  src.Value), !mul(2, dst.Value), swap.Value),
           true: -1);
+}
+
+class FarCallEncoder<bits<11> BaseOpcode,
+                     bit is_shard, bit is_static> {
+  bits<11> Opcode = !add(BaseOpcode, !mul(2, is_static), is_shard);
 }
 
 class EraVMOpcode<string name, bits<11> opc, OpcodeEncoding encoding> {
@@ -259,9 +265,9 @@ def OpLogEvent  : EraVMOpcode<"event",      1054, FIXMEEncoding>; // is_first �
 // aliased as log.precompile
 def OpLogPrecompile : EraVMOpcode<"precompile", 1056, DirectEncoding>;
 
-def OpFarcall  : EraVMOpcode<"far_call",          1057, FIXMEEncoding>; // is_shard is_static ⇒ 1057 + 2 × is_static + is_shard
-def OpDelegate : EraVMOpcode<"far_call.delegate", 1061, FIXMEEncoding>; // is_shard is_static ⇒ 1061 + 2 × is_static + is_shard
-def OpMimic    : EraVMOpcode<"far_call.mimic",    1065, FIXMEEncoding>; // is_shard is_static ⇒ 1065 + 2 × is_static + is_shard
+def OpFarcall  : EraVMOpcode<"far_call",     1057, FarCallEncoding>; // is_shard is_static ⇒ 1057 + 2 × is_static + is_shard
+def OpDelegate : EraVMOpcode<"far_call.delegate", 1061, FarCallEncoding>; // is_shard is_static ⇒ 1061 + 2 × is_static + is_shard
+def OpMimic    : EraVMOpcode<"far_call.mimic",    1065, FarCallEncoding>; // is_shard is_static ⇒ 1065 + 2 × is_static + is_shard
 
 def OpRet      : EraVMOpcode<"ret.ok",    1069, FIXMEEncoding>; // to_label ⇒ 1069 + to_label
 def OpRevert   : EraVMOpcode<"ret.revert", 1071, FIXMEEncoding>; // to_label ⇒ 1071 + to_label
@@ -453,6 +459,7 @@ class IBinaryS<EraVMOpcode opcode,
                string asmstr,
                list<dag> pattern>
   // FIXME: DstStackAbsolute is incorrect here, we need to be able to properly encode relative and post-increment
+  // FIXME: Does encoding via post-fixup, does disassembly manually
   : IBinary <opcode, src, DstStackAbsolute, swap, set_flags, outs, ins, asmstr, pattern > {
   // Encode stack operand into 20 bits as reg + imm offset
   bits<20> dst0;
@@ -547,6 +554,7 @@ class Isr_r<EraVMOpcode opcode,
             string asmstr,
             list<dag> pattern>
   // FIXME: SrcStackAbsolute is incorrect here, we need to be able to properly encode relative and post-increment
+  // FIXME: Does encoding via post-fixup, does disassembly manually
   : IBinaryR<opcode, SrcStackAbsolute, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<20> src0;
   bits<4> rs1;
@@ -671,6 +679,7 @@ class Isr_s<EraVMOpcode opcode,
             string asmstr,
             list<dag> pattern>
   // FIXME: SrcStackAbsolute is incorrect here, we need to be able to properly encode relative and post-increment
+  // FIXME: Does encoding via post-fixup, does disassembly manually
   : IBinaryS<opcode, SrcStackAbsolute, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<20> src0;
   bits<4> rs1;
@@ -720,4 +729,18 @@ def CFMimic          : CallFlags<0b0010>;
 
 class ICall<EraVMOpcode opcode, CallFlags flags, dag ins, string opc, string asmstr, list<dag> pattern>
   : IForm <opcode, (outs), ins, opc, asmstr, pattern > {
+}
+
+class IFarCall<EraVMOpcode opcode,
+               bit is_shard, bit is_static,
+               dag ins,
+               string asmstr, list<dag> pattern>
+  : IForm <opcode, (outs), ins, "<invalid>", asmstr, pattern > {
+
+  let AsmString = !strconcat(opcode.Name,
+                             !if(is_shard, ".shard", ""),
+                             !if(is_static, ".static", ""),
+                             "${cc}", "\t", asmstr);
+
+  let Opcode = FarCallEncoder<opcode.BaseOpcode, is_shard, is_static>.Opcode;
 }
