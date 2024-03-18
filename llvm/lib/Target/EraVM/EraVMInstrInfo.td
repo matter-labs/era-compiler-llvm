@@ -1105,43 +1105,43 @@ def : Pat<(int_eravm_setpubdataprice GR256:$rs0), (CTXr_set GR256:$rs0, 11, 0)>;
 //===----------------------------------------------------------------------===//
 // Fat Pointer
 //===----------------------------------------------------------------------===//
-def SLDrr : ILogR<OpSload, DstReg, (outs GR256:$rd0), (ins GR256:$rs0),
+def SLDrr : ILogR<OpSload, (outs GR256:$rd0), (ins GR256:$rs0),
                   "sload", "$rs0, $rd0",
                   [(set GR256:$rd0, (load_storage GR256:$rs0))]>;
 // FIXME: undefined instruction
-def TLDrr : ILogR<OpSload, DstReg, (outs GR256:$rd0), (ins GR256:$rs0),
+def TLDrr : ILogR<OpSload, (outs GR256:$rd0), (ins GR256:$rs0),
                   "tload", "$rs0, $rd0",
                   [(set GR256:$rd0, (load_transient GR256:$rs0))]>;
 def : MnemonicAlias<"log.sread", "sload">;
 
 let hasSideEffects = 1 in {
-  def SSTr : ILogR<OpSstore, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1),
+  def SSTr : ILogR<OpSstore, (outs), (ins GR256:$rs0, GR256:$rs1),
                    "sstore", "$rs0, $rs1",
                    [(store_storage GR256:$rs1, GR256:$rs0)]>;
   // FIXME: undefined instruction
-  def TSTr : ILogR<OpSstore, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1),
+  def TSTr : ILogR<OpSstore, (outs), (ins GR256:$rs0, GR256:$rs1),
                    "tstore", "$rs0, $rs1",
                    [(store_transient GR256:$rs1, GR256:$rs0)]>;
 }
 def : MnemonicAlias<"log.swrite", "sstore">;
 
 let hasSideEffects = 1 in
-def L1r : ILogR<OpLogToL1, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first),
+def L1r : ILogR<OpLogToL1, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first),
                 "to_l1$first", "$rs0, $rs1",
                 [(int_eravm_tol1 GR256:$rs0, GR256:$rs1, first_op:$first)]>;
 
 let hasSideEffects = 1 in
-def EVTr : ILogR<OpLogEvent, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first),
+def EVTr : ILogR<OpLogEvent, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first),
                  "event$first", "$rs0, $rs1",
                  [(int_eravm_event GR256:$rs0, GR256:$rs1, first_op:$first)]>;
 
 let hasSideEffects = 1 in {
-def PCOMPr : ILogR<OpLogPrecompile, DstNone, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
+def PCOMPr : ILogR<OpLogPrecompile, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
                    "precompile", "$rs0, $rs1, $rd0",
                    [(set GR256:$rd0, (int_eravm_precompile GR256:$rs0, GR256:$rs1))]> {
 }
 // FIXME: undefined instruction
-def DECOMMITr : ILogR<OpLogPrecompile, DstNone, (outs GRPTR:$rd0), (ins GR256:$rs0, GR256:$rs1),
+def DECOMMITr : ILogR<OpLogPrecompile, (outs GRPTR:$rd0), (ins GR256:$rs0, GR256:$rs1),
                       "log.decommit", "$rs0, $rs1, $rd0",
                       [(set GRPTR:$rd0, (EraVMlog_decommit GR256:$rs0, GR256:$rs1))]> {
 }
