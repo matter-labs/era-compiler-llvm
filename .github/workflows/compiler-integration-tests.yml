@@ -67,6 +67,7 @@ jobs:
           which -a clang-tidy-15
           clang-tidy --version
           clang-tidy-15 --version
+          ls -l ../target-llvm/build-final/compile_commands.json
           clang-tidy-15 --verify-config  lld/ELF/Driver.cpp
           clang-tidy-15 --dump-config  lld/ELF/Driver.cpp
           git status
