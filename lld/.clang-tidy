@@ -1,7 +1,9 @@
 InheritParentConfig: false
 Checks: >
+        -*,
         -clang-diagnostic-unused-function,
         -clang-diagnostic-error,
+        clang-analyzer-osx.cocoa.MissingSuperCall,
 CheckOptions:
   - key:             readability-identifier-naming.MemberCase
     value:           camelBack
