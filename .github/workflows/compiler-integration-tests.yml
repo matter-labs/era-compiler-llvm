@@ -68,8 +68,8 @@ jobs:
           clang-tidy --version
           clang-tidy-15 --version
           ls -l ../target-llvm/build-final/compile_commands.json
-          clang-tidy-15 --verify-config  lld/ELF/Driver.cpp
-          clang-tidy-15 --dump-config  lld/ELF/Driver.cpp
+          clang-tidy-15 -p ../target-llvm/build-final/compile_commands.json --verify-config  lld/ELF/Driver.cpp
+          clang-tidy-15 -p ../target-llvm/build-final/compile_commands.json --dump-config  lld/ELF/Driver.cpp
           git status
           git branch
           set -euxo pipefail
