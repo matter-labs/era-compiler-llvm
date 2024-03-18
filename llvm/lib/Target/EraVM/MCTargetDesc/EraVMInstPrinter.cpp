@@ -12,6 +12,7 @@
 
 #include "EraVMInstPrinter.h"
 #include "EraVM.h"
+#include "EraVMMCTargetDesc.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCInst.h"
@@ -30,6 +31,26 @@ using namespace llvm;
 void EraVMInstPrinter::printInst(const MCInst *MI, uint64_t Address,
                                  StringRef Annot, const MCSubtargetInfo &STI,
                                  raw_ostream &O) {
+  unsigned Opcode = MI->getOpcode();
+
+  // Print some default versions here and there
+  if (Opcode == EraVM::NEAR_CALL_default_unwind) {
+    const MCOperand &Reg = MI->getOperand(0);
+
+    O << "\tnear_call";
+    printCCOperand(MI, 2, O);
+    O << '\t';
+    if (Reg.getReg() != EraVM::R0) {
+      printOperand(MI, 0, O);
+      O << ",\t";
+    }
+    printOperand(MI, 1, O);
+    O << ",\t@DEFAULT_UNWIND_DEST";
+
+    printAnnotation(O, Annot);
+    return;
+  }
+
   if (!printAliasInstr(MI, Address, O))
     printInstruction(MI, Address, O);
   printAnnotation(O, Annot);
