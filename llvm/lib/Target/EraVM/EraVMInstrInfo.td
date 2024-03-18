@@ -1027,18 +1027,20 @@ let isCall = 1 in
 def JCALL: Pseudo<(outs), (ins jmptarget:$dest), []>,
            PseudoInstExpansion<(JC jmptarget:$dest, 0)>;
 
-let isReturn = 1, isTerminator = 1, isBarrier = 1  in {
-// FIXME: Split IRet to register and label variants, make multiclass
-def RETr : IRet<OpRet, RFNone, (ins GR256:$rs0), "ret.ok", "$rs0", []>;
-def RET  : Pseudo<(outs), (ins pred:$cc), [(EraVMret)]>,
-           PseudoInstExpansion<(RETr R1, pred:$cc)>;
-
-def REVERTr : IRet<OpRevert, RFErr, (ins GR256:$rs0), "ret.revert", "$rs0", []>;
-
-def PANICr : IRet<OpPanic, RFPanic, (ins GR256:$rs0), "ret.panic", "$rs0", []>;
+multiclass RetLike<EraVMOpcode opcode> {
+  def r : IRet<opcode, 0, (ins GR256:$rs0), "$rs0", []>;
+  def rl : IRet<opcode, 1, (ins GR256:$rs0, jmptarget:$dest), "$rs0, $dest", []>;
 }
 
-// FIXME Are "revert" and "error" the same?
+defm RET    : RetLike<OpRet>;
+defm REVERT : RetLike<OpRevert>;
+defm PANIC  : RetLike<OpPanic>;
+
+let isReturn = 1, isTerminator = 1, isBarrier = 1  in {
+def RET  : Pseudo<(outs), (ins pred:$cc), [(EraVMret)]>,
+           PseudoInstExpansion<(RETr R1, pred:$cc)>;
+}
+
 // FIXME Check if isTrap is handled properly.
 let isTerminator = 1, isBarrier = 1, isTrap = 1 in
 def THROW : Pseudo<(outs), (ins GR256:$rs0, pred:$cc), [(EraVMthrow GR256:$rs0)]>,
@@ -1049,10 +1051,8 @@ def : InstAlias<"revert${cc}", (REVERTr R1, pred:$cc)>;
 def : InstAlias<"panic${cc}", (PANICr R0, pred:$cc)>;
 
 let isTerminator = 1, isBarrier = 1, isReturn = 1 in {
-def RETURN : IRet<OpRet, RFErr, (ins GR256:$rs0), "ret.ok.to_label", "$rs0, @DEFAULT_FAR_RETURN",
-                  [(EraVMreturn GR256:$rs0)]>;
-def REVERT : IRet<OpRevert, RFErr, (ins GR256:$rs0), "ret.revert.to_label", "$rs0, @DEFAULT_FAR_REVERT",
-                  [(EraVMrevert GR256:$rs0)]>;
+def RETURN : Pseudo<(outs), (ins GR256:$rs0, pred:$cc), [(EraVMreturn GR256:$rs0)]>;
+def REVERT : Pseudo<(outs), (ins GR256:$rs0, pred:$cc), [(EraVMrevert GR256:$rs0)]>;
 }
 
 // FIXME At now, standalone assembler does not treat "ret" and "ret.ok" as
@@ -1061,6 +1061,9 @@ def REVERT : IRet<OpRevert, RFErr, (ins GR256:$rs0), "ret.revert.to_label", "$rs
 // def : MnemonicAlias<"ret", "ret.ok">;
 // def : MnemonicAlias<"revert", "ret.revert">;
 // def : MnemonicAlias<"ret.panic", "panic">;
+def : MnemonicAlias<"ret.to_label", "ret.ok.to_label">;
+def : MnemonicAlias<"revert.to_label", "ret.revert.to_label">;
+def : MnemonicAlias<"panic.to_label", "ret.panic.to_label">;
 
 //===----------------------------------------------------------------------===//
 // Constants materialization
