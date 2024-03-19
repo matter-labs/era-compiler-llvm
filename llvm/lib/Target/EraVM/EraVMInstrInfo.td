@@ -921,58 +921,57 @@ def : Pat<(EraVMcmp GR256:$lhs, (load_stack stackaddr:$rhs)), (SUBzrr_v stackadd
 //===----------------------------------------------------------------------===//
 
 let mayLoad = 1 in {
-def LD1     : IUMA <OpLoadHeap, (outs GR256:$rd0), (ins GR256:$rs0),
-                  "ld.1", "$rs0, $rd0",
-                  [(set GR256:$rd0, (load_heap GR256:$rs0))]>;
-def LD1Inc  : IUMA <OpLoadHeapInc, (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0),
-                  "ld.1.inc", "$rs0, $rd0, $rd1", []>;
-def LD1i    : IUMA <OpLoadHeap, (outs GR256:$rd0), (ins imm16:$addr),
-                  "ld.1", "$addr, $rd0",
-                  [(set GR256:$rd0, (load_heap imm16:$addr))]>;
-def LD1iInc : IUMA <OpLoadHeapInc, (outs GR256:$rd0, GR256:$rd1), (ins imm16:$addr),
-                  "ld.1.inc", "$addr, $rd0, $rd1", []>;
-def LD2     : IUMA <OpLoadAuxHeap, (outs GR256:$rd0), (ins GR256:$rs0),
-                  "ld.2", "$rs0, $rd0",
-                  [(set GR256:$rd0, (load_heapaux GR256:$rs0))]>;
-def LD2Inc  : IUMA <OpLoadAuxHeapInc, (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0),
-                  "ld.2.inc", "$rs0, $rd0, $rd1", []>;
-def LD2i    : IUMA <OpLoadAuxHeap, (outs GR256:$rd0), (ins imm16:$addr),
-                  "ld.2", "$addr, $rd0",
-                  [(set GR256:$rd0, (load_heapaux imm16:$addr))]>;
-def LD2iInc : IUMA <OpLoadAuxHeapInc, (outs GR256:$rd0, GR256:$rd1), (ins imm16:$addr),
-                  "ld.2.inc", "$addr, $rd0, $rd1", []>;
-def LD      : IUMA <OpLoadPtr, (outs GR256:$rd0), (ins GRPTR:$rs0),
-                  "ld", "$rs0, $rd0", []>;
-def LDInc   : IUMA <OpLoadPtrInc, (outs GR256:$rd0, GRPTR:$rd1), (ins GRPTR:$rs0),
-                  "ld.inc", "$rs0, $rd0, $rd1", []>;
-// Pseudo alias version of `LD` which has different type than `LD`
-// We will manually select it when we see that we are loading a fat pointer
-def FATPTR_LD : IUMA <OpLoadPtr, (outs GRPTR:$rd0), (ins GRPTR:$rs0),
-                  "ld", "$rs0, $rd0 ;fat load", []>;
+multiclass HeapLoad<EraVMOpcode opcode, SDPatternOperator node> {
+  def r : IUMAr_r<opcode, (outs GR256:$rd0), (ins GR256:$rs0),
+                 "$rs0, $rd0",
+                 [(set GR256:$rd0, (node GR256:$rs0))]>;
+  def i : IUMAi_r<opcode, (outs GR256:$rd0), (ins imm16:$addr),
+                 "$addr, $rd0",
+                 [(set GR256:$rd0, (node imm16:$addr))]>;
+}
+
+multiclass HeapLoadInc<EraVMOpcode opcode> {
+  def r : IUMAr_rr<opcode, (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0),
+                 "$rs0, $rd0, $rd1", []>;
+  def i : IUMAi_rr<opcode, (outs GR256:$rd0, GR256:$rd1), (ins imm16:$addr),
+                  "$addr, $rd0, $rd1", []>;
+}
+}
+
+defm LD1 : HeapLoad<OpLoadHeap, load_heap>;
+defm LD2 : HeapLoad<OpLoadAuxHeap, load_heapaux>;
+defm LD1Inc : HeapLoadInc<OpLoadHeap>;
+defm LD2Inc : HeapLoadInc<OpLoadAuxHeap>;
+
+let mayLoad = 1 in {
+def LD      : IUMAr_r<OpLoadPtr, (outs GR256:$rd0), (ins GRPTR:$rs0),
+                     "$rs0, $rd0", []>;
+def LDInc   : IUMAr_rr<OpLoadPtr, (outs GR256:$rd0, GRPTR:$rd1), (ins GRPTR:$rs0),
+                      "$rs0, $rd0, $rd1", []>;
 }
 
 let mayStore = 1 in {
-def ST1     : IUMA <OpStoreHeap, (outs), (ins GR256:$rs0, GR256:$rs1),
-                  "st.1", "$rs0, $rs1",
-                  [(store_heap GR256:$rs1, GR256:$rs0)]>;
-def ST1Inc  : IUMA <OpStoreHeapInc, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
-                  "st.1.inc", "$rs0, $rs1, $rd0", []>;
-def ST1i  : IUMA <OpStoreHeap, (outs), (ins imm16:$addr, GR256:$rs1),
-                  "st.1", "$addr, $rs1",
-                  [(store_heap GR256:$rs1, imm16:$addr)]>;
-def ST1iInc : IUMA <OpStoreHeapInc, (outs GR256:$rd0), (ins imm16:$addr, GR256:$rs1),
-                  "st.1.inc", "$addr, $rs1, $rd0", []>;
-def ST2  : IUMA <OpStoreAuxHeap, (outs), (ins GR256:$rs0, GR256:$rs1),
-                  "st.2", "$rs0, $rs1",
-                  [(store_heapaux GR256:$rs1, GR256:$rs0)]>;
-def ST2Inc  : IUMA <OpStoreAuxHeapInc, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
-                  "st.2.inc", "$rs0, $rs1, $rd0", []>;
-def ST2i  : IUMA <OpStoreAuxHeap, (outs), (ins imm16:$addr, GR256:$rs1),
-                  "st.2", "$addr, $rs1",
-                  [(store_heapaux GR256:$rs1, imm16:$addr)]>;
-def ST2iInc : IUMA <OpStoreAuxHeapInc, (outs GR256:$rd0), (ins imm16:$addr, GR256:$rs1),
-                  "st.2.inc", "$addr, $rs1, $rd0", []>;
+multiclass HeapStore<EraVMOpcode opcode, SDPatternOperator node> {
+  def r : IUMArr_<opcode, (outs), (ins GR256:$rs0, GR256:$rs1),
+                  "$rs0, $rs1",
+                  [(node GR256:$rs1, GR256:$rs0)]>;
+  def i : IUMAir_<opcode, (outs), (ins imm16:$addr, GR256:$rs1),
+                  "$addr, $rs1",
+                  [(node GR256:$rs1, imm16:$addr)]>;
 }
+
+multiclass HeapStoreInc<EraVMOpcode opcode> {
+  def r : IUMArr_r<opcode, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
+                  "$rs0, $rs1, $rd0", []>;
+  def i : IUMAir_r<opcode, (outs GR256:$rd0), (ins imm16:$addr, GR256:$rs1),
+                  "$addr, $rs1, $rd0", []>;
+}
+}
+
+defm ST1 : HeapStore<OpStoreHeap, store_heap>;
+defm ST2 : HeapStore<OpStoreAuxHeap, store_heapaux>;
+defm ST1Inc : HeapStoreInc<OpStoreHeap>;
+defm ST2Inc : HeapStoreInc<OpStoreAuxHeap>;
 
 def : MnemonicAlias<"uma.fat_ptr_read", "ld">;
 def : MnemonicAlias<"uma.fat_ptr_read.inc", "ld.inc">;
