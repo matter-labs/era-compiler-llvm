@@ -72,17 +72,17 @@ public:
 private:
   // map <non-inc opcode> -> <inc opcode>
   const DenseMap<unsigned, unsigned> PostIncOpcMap = {
-      {EraVM::LD, EraVM::LDInc},   {EraVM::LD1, EraVM::LD1Inc},
-      {EraVM::LD2, EraVM::LD2Inc}, {EraVM::ST1, EraVM::ST1Inc},
-      {EraVM::ST2, EraVM::ST2Inc},
+      {EraVM::LD, EraVM::LDInc},     {EraVM::LD1r, EraVM::LD1Incr},
+      {EraVM::LD2r, EraVM::LD2Incr}, {EraVM::ST1r, EraVM::ST1Incr},
+      {EraVM::ST2r, EraVM::ST2Incr},
   };
 
   llvm::Register getLoadStoreOffsetRegister(MachineInstr *MI) const {
-    if (MI->getOpcode() == EraVM::LD1 || MI->getOpcode() == EraVM::LD2 ||
+    if (MI->getOpcode() == EraVM::LD1r || MI->getOpcode() == EraVM::LD2r ||
         MI->getOpcode() == EraVM::LD) {
       return MI->getOperand(1).getReg();
     }
-    if (MI->getOpcode() == EraVM::ST1 || MI->getOpcode() == EraVM::ST2) {
+    if (MI->getOpcode() == EraVM::ST1r || MI->getOpcode() == EraVM::ST2r) {
       return MI->getOperand(0).getReg();
     }
     llvm_unreachable("unexpected opcode");
