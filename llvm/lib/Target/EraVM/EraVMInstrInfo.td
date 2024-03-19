@@ -1103,9 +1103,6 @@ def CTXGetU128 : IContext<OpContextGetContextU128, (outs GR256:$rd0), (ins),
 def CTXIncTx   : IContext<OpContextIncrementTxNumber, (outs), (ins), "", [(int_eravm_inctx)]>;
 }
 
-// FIXME: unknown instruction
-// def : Pat<(int_eravm_txorigin), (CTXr 4, 0)>;
-
 //===----------------------------------------------------------------------===//
 // Fat Pointer
 //===----------------------------------------------------------------------===//
