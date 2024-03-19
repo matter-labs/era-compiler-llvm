@@ -146,10 +146,10 @@ static bool isValidCandidate(const MachineInstr &MI, const EraVMInstrInfo *TII,
     default:
       break;
     case EraVM::LDInc:
-    case EraVM::LD1Inc:
-    case EraVM::LD2Inc:
-    case EraVM::ST1Inc:
-    case EraVM::ST2Inc:
+    case EraVM::LD1Incr:
+    case EraVM::LD2Incr:
+    case EraVM::ST1Incr:
+    case EraVM::ST2Incr:
       return true;
     }
   }

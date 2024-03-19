@@ -197,6 +197,8 @@ def ArithPtrEncoding   : OpcodeEncoding<4>; // opcode src dst swap ⇒ opcode + 
 def FarCallEncoding    : OpcodeEncoding<5>; // opcode is_shard is_static ⇒ opcode + 2 × is_static + is_shard
 def RetEncoding        : OpcodeEncoding<6>; // opcode to_label ⇒ opcode + to_label
 def JumpEncoding       : OpcodeEncoding<7>; // opcode src ⇒ opcode + 1 × src
+def LoadPtrEncoding    : OpcodeEncoding<8>; // opcode inc ⇒ opcode + inc
+def HeapOpEncoding     : OpcodeEncoding<9>; // opcode src inc ⇒ opcode + 10 × src + inc
 // TODO: add more as necessary
 def FIXMEEncoding      : OpcodeEncoding<-1>; // To be clarified as implemented
 
@@ -224,6 +226,14 @@ class RetOpcEncoder<bits<11> BaseOpcode,
 class JumpOpcEncoder<bits<11> BaseOpcode,
                      SrcMode src> {
   bits<11> Opcode = !add(BaseOpcode, src.Value);
+}
+
+class UMAOpcEncoder<OpcodeEncoding encoding, bits<11> BaseOpcode,
+                    SrcMode src, bit is_inc> {
+  bits<11> Opcode =
+    !cond(!eq(encoding, LoadPtrEncoding) : !add(BaseOpcode, is_inc),
+          !eq(encoding, HeapOpEncoding)  : !add(BaseOpcode, !mul(10, src.Value), is_inc),
+          true : -1);
 }
 
 class EraVMOpcode<string name, bits<11> opc, OpcodeEncoding encoding> {
@@ -297,23 +307,16 @@ def OpRevert   : EraVMOpcode<"ret.revert", 1071, RetEncoding>; // to_label ⇒ 1
 def OpPanic    : EraVMOpcode<"ret.panic",  1073, RetEncoding>; // to_label ⇒ 1073 + to_label
 
 // aliased as uma.heap_read
-def OpLoadHeap     : EraVMOpcode<"ld1", 1075, FIXMEEncoding>; // src inc ⇒ 1075 + 10 × src + inc
-def OpLoadHeapInc  : EraVMOpcode<"ld1.inc", 1076, FIXMEEncoding>;
-
+def OpLoadHeap     : EraVMOpcode<"ld.1", 1075, HeapOpEncoding>; // src inc ⇒ 1075 + 10 × src + inc
 // aliased as uma.heap_write
-def OpStoreHeap    : EraVMOpcode<"st1", 1077, FIXMEEncoding>; // src inc ⇒ 1077 + 10 × src + inc
-def OpStoreHeapInc : EraVMOpcode<"st1.inc", 1078, FIXMEEncoding>;
-
+def OpStoreHeap    : EraVMOpcode<"st.1", 1077, HeapOpEncoding>; // src inc ⇒ 1077 + 10 × src + inc
 // aliased as uma.aux_heap_read
-def OpLoadAuxHeap  : EraVMOpcode<"ld2", 1079, FIXMEEncoding>; // src inc ⇒ 1079 + 10 × src + inc
-def OpLoadAuxHeapInc  : EraVMOpcode<"ld2.inc", 1080, FIXMEEncoding>;
+def OpLoadAuxHeap  : EraVMOpcode<"ld.2", 1079, HeapOpEncoding>; // src inc ⇒ 1079 + 10 × src + inc
 // aliased as uma.aux_heap_write
-def OpStoreAuxHeap : EraVMOpcode<"st2", 1081, FIXMEEncoding>; // src inc ⇒ 1081 + 10 × src + inc
-def OpStoreAuxHeapInc : EraVMOpcode<"st2.inc", 1082, FIXMEEncoding>;
+def OpStoreAuxHeap : EraVMOpcode<"st.2", 1081, HeapOpEncoding>; // src inc ⇒ 1081 + 10 × src + inc
 
 // aliased as uma.fat_ptr_read
-def OpLoadPtr      : EraVMOpcode<"ld",  1083, FIXMEEncoding>; // inc ⇒ 1083 + inc
-def OpLoadPtrInc   : EraVMOpcode<"ld.inc",  1084, FIXMEEncoding>;
+def OpLoadPtr      : EraVMOpcode<"ld",  1083, LoadPtrEncoding>; // inc ⇒ 1083 + inc
 
 //===----------------------------------------------------------------------===//
 // EraVM Instructions
@@ -435,10 +438,6 @@ class IJump<EraVMOpcode opcode,
   let AsmString = !strconcat(opcode.Name, "${cc}", "\t", asmstr);
   let mayLoad = !or(isStackIn<src>.Value, !eq(src, SrcCodeAddr));
   let Opcode = JumpOpcEncoder<opcode.BaseOpcode, src>.Opcode;
-}
-
-class IUMA<EraVMOpcode opcode, dag outs, dag ins, string opc, string asmstr, list<dag> pattern>
-  : IForm <opcode, outs, ins, opc, asmstr, pattern> {
 }
 
 class IContext<EraVMOpcode opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
@@ -800,3 +799,75 @@ class IFarCall<EraVMOpcode opcode,
                              "${cc}", "\t", asmstr);
   let Opcode = FarCallOpcEncoder<opcode.BaseOpcode, is_shard, is_static>.Opcode;
 }
+
+class IUMA<EraVMOpcode opcode,
+           SrcMode src, bit is_inc,
+           dag outs, dag ins,
+           string asmstr,
+           list<dag> pattern>
+  : IForm <opcode, outs, ins, "<invalid>", asmstr, pattern> {
+
+  let AsmString = !strconcat(opcode.Name,
+                             !if(is_inc, ".inc", ""),
+                             "${cc}", "\t", asmstr);
+  let Opcode = UMAOpcEncoder<opcode.Encoding, opcode.BaseOpcode,
+                             src, is_inc>.Opcode;
+}
+
+class IUMAr_r<EraVMOpcode opcode,
+              dag outs, dag ins,
+              string asmstr,
+              list<dag> pattern>
+ : IUMA<opcode, SrcReg, 0, outs, ins, asmstr, pattern> {
+}
+
+class IUMAr_rr<EraVMOpcode opcode,
+               dag outs, dag ins,
+               string asmstr,
+               list<dag> pattern>
+ : IUMA<opcode, SrcReg, 1, outs, ins, asmstr, pattern> {
+}
+
+class IUMAi_r<EraVMOpcode opcode,
+              dag outs, dag ins,
+              string asmstr,
+              list<dag> pattern>
+ : IUMA<opcode, SrcImm, 0, outs, ins, asmstr, pattern> {
+}
+
+class IUMAi_rr<EraVMOpcode opcode,
+               dag outs, dag ins,
+               string asmstr,
+               list<dag> pattern>
+ : IUMA<opcode, SrcImm, 1, outs, ins, asmstr, pattern> {
+}
+
+class IUMArr_<EraVMOpcode opcode,
+              dag outs, dag ins,
+              string asmstr,
+              list<dag> pattern>
+ : IUMA<opcode, SrcReg, 0, outs, ins, asmstr, pattern> {
+}
+
+class IUMArr_r<EraVMOpcode opcode,
+               dag outs, dag ins,
+               string asmstr,
+               list<dag> pattern>
+ : IUMA<opcode, SrcReg, 1, outs, ins, asmstr, pattern> {
+}
+
+class IUMAir_<EraVMOpcode opcode,
+              dag outs, dag ins,
+              string asmstr,
+              list<dag> pattern>
+ : IUMA<opcode, SrcImm, 0, outs, ins, asmstr, pattern> {
+}
+
+class IUMAir_r<EraVMOpcode opcode,
+               dag outs, dag ins,
+               string asmstr,
+               list<dag> pattern>
+ : IUMA<opcode, SrcImm, 1, outs, ins, asmstr, pattern> {
+}
+
+// FIXME: There should be IUMAs / IUMAc
