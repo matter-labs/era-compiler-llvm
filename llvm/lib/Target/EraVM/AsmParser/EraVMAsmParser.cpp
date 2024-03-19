@@ -62,7 +62,8 @@ class EraVMAsmParser : public MCTargetAsmParser {
   bool parseRegOperand(OperandVector &Operands);
   OperandMatchResultTy tryParseUImm16Operand(OperandVector &Operands);
   OperandMatchResultTy tryParseJumpTargetOperand(OperandVector &Operands);
-  bool parseRegisterWithAddend(MCRegister &RegNo, int &Addend);
+  bool parseRegisterWithAddend(MCRegister &RegNo, MCSymbol *&Symbol,
+                               int &Addend);
   bool parseOperand(StringRef Mnemonic, OperandVector &Operands);
 
   OperandMatchResultTy tryParseStackOperand(OperandVector &Operands);
@@ -452,7 +453,8 @@ EraVMAsmParser::tryParseJumpTargetOperand(OperandVector &Operands) {
   return MatchOperand_Success;
 }
 
-bool EraVMAsmParser::parseRegisterWithAddend(MCRegister &RegNo, int &Addend) {
+bool EraVMAsmParser::parseRegisterWithAddend(MCRegister &RegNo,
+                                             MCSymbol *&Symbol, int &Addend) {
   auto ParseAddend = [this, &Addend](bool SignRequired) {
     int Multiplier = 1;
 
@@ -487,7 +489,31 @@ bool EraVMAsmParser::parseRegisterWithAddend(MCRegister &RegNo, int &Addend) {
   };
 
   RegNo = 0;
+  Symbol = nullptr;
   Addend = 0;
+
+  // For simplicity, only accept @global at the beginning of [...] expression
+  if (getTok().is(AsmToken::At)) {
+    Lex(); // eat "@" token
+    if (!getTok().is(AsmToken::Identifier))
+      return TokError("symbol name expected");
+
+    Symbol = getContext().getOrCreateSymbol(getTok().getString());
+    Lex(); // eat symbol name token
+
+    switch (getTok().getKind()) {
+    case AsmToken::Plus:
+      Lex(); // eat "+" token
+      break; // ... then just parse any remaining tokens
+    case AsmToken::Minus:
+      // process "-" as always
+      break;
+    case AsmToken::RBrac:
+      return false; // keep "]" token for the caller
+    default:
+      return TokError("'+' or '-' expected");
+    }
+  }
 
   if (getLexer().is(AsmToken::Identifier)) {
     if (ParseRegister())
@@ -533,6 +559,7 @@ OperandMatchResultTy
 EraVMAsmParser::tryParseStackOperand(OperandVector &Operands) {
   EraVM::MemOperandKind MemOpKind = EraVM::OperandStackAbsolute;
   MCRegister RegNo = 0;
+  MCSymbol *Symbol = nullptr;
   int Addend = 0;
 
   if (!getLexer().is(AsmToken::Identifier))
@@ -573,7 +600,7 @@ EraVMAsmParser::tryParseStackOperand(OperandVector &Operands) {
   }
   Lex(); // eat "[" token
 
-  if (parseRegisterWithAddend(RegNo, Addend))
+  if (parseRegisterWithAddend(RegNo, Symbol, Addend))
     return MatchOperand_ParseFail;
 
   // FIXME Should we support negative addends?
@@ -582,8 +609,13 @@ EraVMAsmParser::tryParseStackOperand(OperandVector &Operands) {
   if (parseToken(AsmToken::RBrac, "']' expected"))
     return MatchOperand_ParseFail;
 
+  if (Symbol && MemOpKind != EraVM::OperandStackAbsolute) {
+    TokError("global stack symbols only supported with absolute addressing");
+    return MatchOperand_ParseFail;
+  }
+
   Operands.push_back(EraVMOperand::CreateMem(&getContext(), MemOpKind, RegNo,
-                                             nullptr, Addend, StartOfOperand,
+                                             Symbol, Addend, StartOfOperand,
                                              getTok().getEndLoc()));
 
   return MatchOperand_Success;
@@ -593,6 +625,7 @@ OperandMatchResultTy
 EraVMAsmParser::tryParseCodeOperand(OperandVector &Operands) {
   SMLoc StartOfOperand = getLexer().getLoc();
   MCSymbol *Symbol = nullptr;
+  MCSymbol *SymbolInSubscript = nullptr;
   MCRegister RegNo = 0;
   int Addend = 0;
 
@@ -619,7 +652,7 @@ EraVMAsmParser::tryParseCodeOperand(OperandVector &Operands) {
     Lex(); // eat "[" token
   }
 
-  if (parseRegisterWithAddend(RegNo, Addend))
+  if (parseRegisterWithAddend(RegNo, SymbolInSubscript, Addend))
     return MatchOperand_ParseFail;
 
   // FIXME Should we support negative addends?
@@ -630,13 +663,17 @@ EraVMAsmParser::tryParseCodeOperand(OperandVector &Operands) {
 
   if (Symbol) {
     // @symbol_name[reg + imm]
+    if (SymbolInSubscript) {
+      Error(StartOfOperand, "two symbols in a single operand");
+      return MatchOperand_ParseFail;
+    }
     Operands.push_back(EraVMOperand::CreateMem(
         &getContext(), EraVM::OperandCode, RegNo, Symbol, Addend,
         StartOfOperand, getTok().getEndLoc()));
   } else {
     // code[...]
     Operands.push_back(EraVMOperand::CreateMem(
-        &getContext(), EraVM::OperandCode, RegNo, nullptr, Addend,
+        &getContext(), EraVM::OperandCode, RegNo, SymbolInSubscript, Addend,
         StartOfOperand, getTok().getEndLoc()));
   }
 
