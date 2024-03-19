@@ -51,13 +51,6 @@ define i256 @metar() {
   ret i256 %res
 }
 
-; COM: CHECK-LABEL: txoriginr
-; COM: define i256 @txoriginr() {
-; COM: CHECK: context.tx_origin r1
-; COM:   %res = call i256 @llvm.eravm.txorigin()
-; COM:   ret i256 %res
-; COM: }
-
 ; CHECK-LABEL: gasleftr
 define i256 @gasleftr() {
 ; CHECK: context.gas_left r1
@@ -391,7 +384,6 @@ declare i256 @llvm.eravm.this()
 declare i256 @llvm.eravm.caller()
 declare i256 @llvm.eravm.codesource()
 declare i256 @llvm.eravm.meta()
-declare i256 @llvm.eravm.txorigin()
 declare i256 @llvm.eravm.gasleft()
 declare i256 @llvm.eravm.getu128()
 declare void @llvm.eravm.setu128(i256)
