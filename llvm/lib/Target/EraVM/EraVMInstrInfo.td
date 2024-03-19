@@ -990,20 +990,21 @@ def : MnemonicAlias<"uma.inc.aux_heap_write", "st.2.inc">;
 //===----------------------------------------------------------------------===//
 // Conditional jump
 let isTerminator = 1, isBranch = 1, Uses = [Flags] in
-def JC: IJump<(ins jmptarget:$dest), "jump", "$dest",
+def JC: IJump<OpJump, SrcImm, (ins jmptarget:$dest), "$dest",
               [(EraVMbrcc bb:$dest, imm:$cc)]>;
 
 let isTerminator = 1, isBranch = 1, Uses = [Flags], isIndirectBranch = 1 in {
-def JCr: IJump<(ins GR256:$dest), "jump", "$dest", []>;
-def JCc: IJump<(ins memop:$dest), "jump", "$dest", []>;
-def JCs: IJump<(ins stackin:$dest), "jump", "$dest", []>;
+def JCr: IJump<OpJump, SrcReg, (ins GR256:$dest), "$dest", []>;
+def JCc: IJump<OpJump, SrcCodeAddr, (ins memop:$dest), "$dest", []>;
+// FIXME: This would require postprocessing
+def JCs: IJump<OpJump, SrcStackAbsolute, (ins stackin:$dest), "$dest", []>;
 }
 
 // Unconditional jump
 let isTerminator = 1, isBranch = 1, isBarrier = 1 in {
 def J: Pseudo<(outs), (ins jmptarget:$dest), [(EraVMbrcc bb:$dest, 0)]>,
        PseudoInstExpansion<(JC jmptarget:$dest, 0)>;
-def J_s: Pseudo<(outs), (ins stackin:$dest), [] >;
+def J_s: Pseudo<(outs), (ins stackin:$dest), []>;
 }
 def : Pat<(br bb:$dst), (J bb:$dst)>;
 
