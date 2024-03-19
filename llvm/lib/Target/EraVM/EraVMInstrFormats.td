@@ -278,9 +278,13 @@ class IContext<EraVMOpcode opcode, dag outs, dag ins, string asmstr, list<dag> p
   let AsmString = !strconcat(opcode.Name, "${cc}", "\t", asmstr);
 }
 
+// FIXME: This needs to be split into ILogRrr, ILogRrr_r and ILogRr_r versions
 class ILogR<EraVMOpcode opcode, dag outs, dag ins,
-            string opc, string asmstr, list<dag> pattern>
-  : IForm <opcode, outs, ins, opc, asmstr, pattern> {
+            string asmstr, list<dag> pattern>
+  : IForm <opcode, outs, ins, "<invalid>", asmstr, pattern> {
+
+  // FIXME: Should should be default
+  let AsmString = !strconcat(opcode.Name, "${cc}", "\t", asmstr);
 }
 
 class ILogRFirst<EraVMOpcode opcode, bit is_first,
