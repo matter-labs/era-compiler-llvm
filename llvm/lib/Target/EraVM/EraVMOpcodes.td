@@ -188,3 +188,10 @@ def OpStoreAuxHeap : EraVMOpcode<"st.2", 1081, HeapOpEncoding>; // src inc ⇒ 1
 // aliased as uma.fat_ptr_read
 def OpLoadPtr      : EraVMOpcode<"ld",  1083, LoadPtrEncoding>; // inc ⇒ 1083 + inc
 
+def OpDecommit       : EraVMOpcode<"log.decommit", 1093, DirectEncoding>;
+def OpTransientLoad  : EraVMOpcode<"tload",    1094, DirectEncoding>;
+def OpTransientStore : EraVMOpcode<"tstore",   1095, DirectEncoding>;
+
+// FIXME: Add those
+// def OpStaticRead src inc ⇒ 1096 + 2 × src + inc
+// def OpStaticWrite src inc ⇒ 1100 + 2 × src + inc
