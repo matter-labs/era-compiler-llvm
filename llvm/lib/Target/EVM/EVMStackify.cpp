@@ -251,8 +251,6 @@ private:
 
   void allocateXStack();
 
-  void allocateFrameObjects();
-
   std::optional<StackLocation> getStackLocation(const Register &Reg) const;
 
   bool isRegisterKill(const Register &Reg, const MachineInstr *MI) const;
@@ -295,8 +293,6 @@ private:
 
   void handleInstrDefs(MachineInstr *MI);
 
-  void handleArgument(MachineInstr *MI);
-
   void handleLStackAtJump(MachineBasicBlock *MBB, MachineInstr *MI,
                           const Register &Reg);
 
@@ -307,10 +303,6 @@ private:
   void handleReturn(MachineInstr *MI);
 
   void handleCall(MachineInstr *MI);
-
-  void handleStackLoad(MachineInstr *MI);
-
-  void handleStackStore(MachineInstr *MI);
 
   void clearFrameObjsAtInst(MachineInstr *MI);
 
@@ -367,7 +359,7 @@ void StackModel::handleInstruction(MachineInstr *MI) {
     handleCondJump(MI);
     return;
   case EVM::ARGUMENT:
-    handleArgument(MI);
+    // Already handled in X-stack allocation.
     return;
   case EVM::RET:
     // TODO: handle RETURN, REVERT, STOP
@@ -380,7 +372,7 @@ void StackModel::handleInstruction(MachineInstr *MI) {
   assert(EStack.empty());
 
   if (MI->getOpcode() == EVM::STACK_LOAD)
-    handleStackLoad(MI);
+    llvm_unreachable("alloca is currently unsupported");
 
   handleInstrDefs(MI);
 }
@@ -407,7 +399,8 @@ void StackModel::handleInstrUses(MachineInstr *MI) {
   // If MI has two args, both are on stack top and at least one of them is
   // killed, try to swap them to minimize the number of used DUP instructions.
   bool NeedsSwap = false;
-  if (RegLocs.size() == 2) {
+  if (RegLocs.size() == 2 && RegLocs[0].second.Type == StackType::L &&
+      RegLocs[1].second.Type == StackType::L) {
     const Register &Use1 = RegLocs[0].first;
     const Register &Use2 = RegLocs[1].first;
     const unsigned Depth1 = getPhysRegDepth(Use1);
@@ -442,7 +435,7 @@ void StackModel::handleInstrUses(MachineInstr *MI) {
     BuildMI(*MI->getParent(), MI, MI->getDebugLoc(), TII->get(EVM::SWAP1));
 
   if (MI->getOpcode() == EVM::STACK_STORE)
-    handleStackStore(MI);
+    llvm_unreachable("alloca is currently unsupported");
 
   // Pop from the E-stack the registers consumed by the MI.
   EStack.erase(EStack.begin(), EStack.begin() + RegLocs.size());
@@ -707,15 +700,6 @@ StackLocation StackModel::allocateStackModelLoc(const Register &Reg) {
   return pushRegToStackModel(StackType::X, Reg);
 }
 
-void StackModel::handleArgument(MachineInstr *MI) {
-  const auto ArgIdx = MI->getOperand(1).getImm();
-  // 1 - because of the return address.
-  unsigned Depth = 1 + static_cast<unsigned>(ArgIdx) + getStackSize();
-  loadRegToPhysStackTop(Depth, MI);
-  storeRegToPhysStack(MI->getOperand(0).getReg(), MI);
-  ToErase.push_back(MI);
-}
-
 void StackModel::handleLStackAtJump(MachineBasicBlock *MBB, MachineInstr *MI,
                                     const Register &Reg) {
   // If the condition register is in the L-stack, we need to move it to
@@ -752,109 +736,78 @@ void StackModel::handleReturn(MachineInstr *MI) {
   BuildMI(*MI->getParent(), std::next(MIIter(MI)), DebugLoc(),
           TII->get(EVM::JUMP));
 
+  MIIter Insert = MI;
+  const DebugLoc &DL = MI->getDebugLoc();
+  MachineBasicBlock *MBB = MI->getParent();
+  if (MI->explicit_uses().empty()) {
+    for (unsigned I = 0; I < getStackSize(); ++I)
+      BuildMI(*MBB, Insert, DL, TII->get(EVM::POP));
+
+    LStack.clear();
+    return;
+  }
+
   // Collect the use registers of the RET instruction.
   SmallVector<Register> ReturnRegs;
-  for (const auto &MO : MI->explicit_uses()) {
+  for (const auto &MO : reverse(MI->explicit_uses())) {
     assert(MO.isReg());
     ReturnRegs.push_back(MO.getReg());
   }
 
-  auto *MFI = MF->getInfo<EVMFunctionInfo>();
-  if (MFI->getNumParams() >= ReturnRegs.size()) {
-    // Move the return registers to the stack location where
-    // arguments were resided.
-    unsigned RegCount = 0;
-    for (const auto &Reg : reverse(ReturnRegs)) {
-      loadRegToPhysStackTop(Reg, MI);
-      unsigned Depth = getStackSize() + MFI->getNumParams() - RegCount;
-      storeRegToPhysStackAt(Depth, MI->getParent(), MI, MI->getDebugLoc());
-      ++RegCount;
+  // Load return address to the stack top.
+  loadRegToPhysStackTop(getStackSize(), MI);
+
+  // Represent the full stack to track register locations when swapping them.
+  SmallVector<Register> StackView;
+  // StackView.resize(getStackSize());
+  assert(EStack.size() == 1);
+  StackView.push_back(EVM::NoRegister);
+  for (const Register &Reg : LStack)
+    StackView.push_back(Reg);
+  for (const Register &Reg : XStack)
+    StackView.push_back(Reg);
+
+  auto regDepth = [&StackView](const Register &Reg) {
+    auto It = std::find(StackView.begin(), StackView.end(), Reg);
+    assert(It != StackView.end());
+    assert(std::count(StackView.begin(), StackView.end(), Reg) == 1);
+    return std::distance(StackView.begin(), It);
+  };
+
+  // Move the last register to the final location, where the return register
+  // was.
+  const Register LastReg = ReturnRegs.front();
+  unsigned FromDepth = regDepth(LastReg);
+  unsigned ToDepth = StackView.size();
+  Insert = loadRegToPhysStackTop(FromDepth, MBB, std::next(Insert), DL);
+  Insert = storeRegToPhysStackAt(ToDepth + 1, MBB, std::next(Insert), DL);
+  --ToDepth;
+
+  // Now move the remaining return registers to their final locations.
+  for (const Register &RetReg :
+       make_range(std::next(ReturnRegs.begin()), ReturnRegs.end())) {
+    FromDepth = regDepth(RetReg);
+    assert(ToDepth >= FromDepth);
+    // Swapping an element with itself is no-op.
+    if (FromDepth != ToDepth) {
+      Insert = loadRegToPhysStackTop(ToDepth, MBB, std::next(Insert), DL);
+      Insert = loadRegToPhysStackTop(FromDepth + 1, MBB, std::next(Insert), DL);
+      Insert = storeRegToPhysStackAt(ToDepth + 2, MBB, std::next(Insert), DL);
+      Insert = storeRegToPhysStackAt(FromDepth + 1, MBB, std::next(Insert), DL);
+      std::swap(StackView[FromDepth], StackView[ToDepth]);
     }
-
-    if (MFI->getNumParams() != ReturnRegs.size()) {
-      // Now move the return address to the final location.
-      loadRegToPhysStackTop(getStackSize(), MI);
-      storeRegToPhysStackAt(getStackSize() + MFI->getNumParams() - RegCount,
-                            MI->getParent(), MI, MI->getDebugLoc());
-    }
-
-    // Clear the phys stack.
-    // Save both NumFrameObjs and X-tack model to restore after clearing the
-    // stack, because this BB may not be the last in the CFG layout.
-    std::deque<Register> CopyXStack = XStack;
-    unsigned CopyNumFrameObjs = NumFrameObjs;
-
-    // First clear the L and X  areas.
-    clearPhysStackAtInst(StackType::X, MI, EVM::NoRegister);
-    clearFrameObjsAtInst(MI);
-    // Then clear a stack part corresponding to the arguments area.
-    unsigned NumSlotsToPop = MFI->getNumParams() - RegCount;
-    while (NumSlotsToPop--)
-      BuildMI(*MI->getParent(), MI, MI->getDebugLoc(), TII->get(EVM::POP));
-
-    XStack = CopyXStack;
-    NumFrameObjs = CopyNumFrameObjs;
-  } else {
-    // Load return address to the top, as its old location will be overwritten.
-    loadRegToPhysStackTop(getStackSize(), MI);
-
-    // Move the last 'MFI->getNumParams() + 1' return registers to the final
-    // locations.
-    // (1 - because we also overwrite the return address stack location)
-    for (unsigned RegCount = 0; RegCount < MFI->getNumParams() + 1;
-         ++RegCount) {
-      loadRegToPhysStackTop(ReturnRegs.pop_back_val(), MI);
-      unsigned Depth = getStackSize() + MFI->getNumParams() - RegCount;
-      storeRegToPhysStackAt(Depth, MI->getParent(), MI, MI->getDebugLoc());
-    }
-
-    // Save X-tack model and restore it later, because this BB may not be the
-    // last in the CFG layout.
-    std::deque<Register> CopyXStack = XStack;
-    unsigned CopyNumFrameObjs = NumFrameObjs;
-
-    // Copy all the remaining return registers to the top
-    // locations of the stack.
-    for (const auto &Reg : ReturnRegs)
-      loadRegToPhysStackTop(Reg, MI);
-
-    // Now copy them and the return address to the final locations.
-    for (unsigned RegCount = 0; RegCount < ReturnRegs.size() + 1; ++RegCount) {
-      unsigned Depth = getStackSize() - RegCount - 1;
-      storeRegToPhysStackAt(Depth, MI->getParent(), MI, MI->getDebugLoc());
-    }
-
-    // Clear the phys stack.
-    assert(getStackSize() >= ReturnRegs.size() + 1);
-    unsigned NumSlotsToPop = getStackSize() - ReturnRegs.size() - 1;
-    while (NumSlotsToPop--)
-      BuildMI(*MI->getParent(), MI, MI->getDebugLoc(), TII->get(EVM::POP));
-
-    LStack.clear();
-    XStack = CopyXStack;
-    NumFrameObjs = CopyNumFrameObjs;
+    assert(EStack.size() == 1);
+    --ToDepth;
   }
-}
 
-void StackModel::handleStackLoad(MachineInstr *MI) {
-  APInt Offset = MI->getOperand(2).getCImm()->getValue();
-  assert((Offset.getZExtValue() % 32) == 0);
-  unsigned Depth =
-      getStackSize() - static_cast<unsigned>(Offset.getZExtValue() / 32) - 1;
-  BuildMI(*MI->getParent(), *MI, MI->getDebugLoc(),
-          TII->get(getDUPOpcode(Depth)));
-  ToErase.push_back(MI);
-}
+  // Put return address to the right location.
+  Insert = storeRegToPhysStackAt(ToDepth, MBB, std::next(Insert), DL);
 
-void StackModel::handleStackStore(MachineInstr *MI) {
-  APInt Offset = MI->getOperand(1).getCImm()->getValue();
-  assert((Offset.getZExtValue() % 32) == 0);
-  unsigned Depth =
-      getStackSize() - static_cast<unsigned>(Offset.getZExtValue() / 32) - 1;
-  const unsigned SWAPOpc = getSWAPOpcode(Depth);
-  BuildMI(*MI->getParent(), MI, MI->getDebugLoc(), TII->get(SWAPOpc));
-  BuildMI(*MI->getParent(), MI, MI->getDebugLoc(), TII->get(EVM::POP));
-  ToErase.push_back(MI);
+  unsigned NumSlotsToPop = getStackSize() - ReturnRegs.size();
+  while (NumSlotsToPop--)
+    BuildMI(*MBB, Insert, DL, TII->get(EVM::POP));
+
+  LStack.clear();
 }
 
 void StackModel::handleCall(MachineInstr *MI) {
@@ -945,41 +898,74 @@ void StackModel::peelPhysStack(StackType Type, unsigned NumItems,
 void StackModel::allocateXStack() {
   MachineRegisterInfo &MRI = MF->getRegInfo();
   MachineBasicBlock &Entry = MF->front();
+
+  // Handle input arguments. We first need to swap return address with the last
+  // argument to form the following stack layout:
+  //   ARGUMENT N
+  //   ARGUMENT 1
+  //   ...
+  //
+  //   ARGUMENT N - 1
+  //   RET_ADDR
+  //
+  // Then logically move arguments to X-stack.
+  auto *MFI = MF->getInfo<EVMFunctionInfo>();
+  SmallVector<std::pair<Register, unsigned>, 8> ArgRegs;
+  for (MachineInstr &MI : Entry) {
+    if (MI.getOpcode() != EVM::ARGUMENT)
+      break;
+
+    ToErase.push_back(&MI);
+    const Register &Reg = MI.getOperand(0).getReg();
+    unsigned ArgIdx = static_cast<unsigned>(MI.getOperand(1).getImm());
+    ArgRegs.push_back({Reg, ArgIdx});
+    LLVM_DEBUG(dbgs() << "\tmoving argument to X-stack: " << Reg << ", "
+                      << LIS.getInterval(Reg) << '\n');
+  }
+
+  if (ArgRegs.size() > 1) {
+    std::sort(ArgRegs.begin(), ArgRegs.end(),
+              [](const auto &LHS, const auto &RHS) {
+                return LHS.second < RHS.second;
+              });
+    std::rotate(ArgRegs.rbegin(), ArgRegs.rbegin() + 1, ArgRegs.rend());
+  }
+
+  // Move ARGUMENT defs to X-stack
+  for (const auto &ArgReg : ArgRegs)
+    XStack.push_back(ArgReg.first);
+
+  // Insert actual instructions to swap stack items
+  MIIter Insert = Entry.instr_begin();
+  if (ArgRegs.size() > 0) {
+    Insert = BuildMI(Entry, Insert, DebugLoc(),
+                     TII->get(getSWAPOpcode(MFI->getNumParams())));
+    ++Insert;
+  }
+
   for (unsigned I = 0; I < MRI.getNumVirtRegs(); ++I) {
     const Register &Reg = Register::index2VirtReg(I);
+    // We have already handled these register above.
+    if (std::count_if(
+            ArgRegs.begin(), ArgRegs.end(),
+            [&Reg](const auto &ArgReg) { return Reg == ArgReg.first; }) > 0)
+      continue;
+
     const LiveInterval *LI = &LIS.getInterval(Reg);
     if (LI->empty())
       continue;
 
     if (!LIS.intervalIsInOneMBB(*LI)) {
-      LLVM_DEBUG(dbgs() << "\tallocation X-stack for: " << *LI << '\n');
-      BuildMI(Entry, Entry.begin(), DebugLoc(), TII->get(EVM::PUSH0));
+      LLVM_DEBUG(dbgs() << "\tallocation X-stack for: " << Reg << ", " << *LI
+                        << '\n');
+      BuildMI(Entry, Insert, DebugLoc(), TII->get(EVM::PUSH0));
       XStack.push_front(Reg);
     }
   }
 }
 
-void StackModel::allocateFrameObjects() {
-  MachineBasicBlock &Entry = MF->front();
-  const MachineFrameInfo &MFI = MF->getFrameInfo();
-  unsigned FrameSize = 0;
-  for (unsigned I = 0, E = MFI.getObjectIndexEnd(); I != E; ++I) {
-    // We don't have variable sized objects that have size 0.
-    assert(MFI.getObjectSize(I));
-    FrameSize += static_cast<unsigned>(MFI.getObjectSize(I));
-  }
-  assert((FrameSize % 32) == 0);
-
-  NumFrameObjs = FrameSize / 32;
-  for (unsigned I = 0; I < NumFrameObjs; ++I) {
-    LLVM_DEBUG(dbgs() << "\tallocating frame object\n");
-    BuildMI(Entry, Entry.begin(), DebugLoc(), TII->get(EVM::PUSH0));
-  }
-}
-
 void StackModel::preProcess() {
   assert(!MF->empty());
-  allocateFrameObjects();
   allocateXStack();
   // Add JUMPDEST at the beginning of the first MBB,
   // so this function can be jumped to.
