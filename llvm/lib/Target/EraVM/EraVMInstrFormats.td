@@ -196,6 +196,7 @@ def ArithNCommEncoding : OpcodeEncoding<3>; // opcode src dst swap set_flags ⇒
 def ArithPtrEncoding   : OpcodeEncoding<4>; // opcode src dst swap ⇒ opcode + 8 × src + 2 × dst + swap
 def FarCallEncoding    : OpcodeEncoding<5>; // opcode is_shard is_static ⇒ opcode + 2 × is_static + is_shard
 def RetEncoding        : OpcodeEncoding<6>; // opcode to_label ⇒ opcode + to_label
+def JumpEncoding       : OpcodeEncoding<7>; // opcode src ⇒ opcode + 1 × src
 // TODO: add more as necessary
 def FIXMEEncoding      : OpcodeEncoding<-1>; // To be clarified as implemented
 
@@ -210,14 +211,19 @@ class ArithOpcEncoder<OpcodeEncoding encoding, bits<11> BaseOpcode,
           true: -1);
 }
 
-class FarCallEncoder<bits<11> BaseOpcode,
-                     bit is_shard, bit is_static> {
+class FarCallOpcEncoder<bits<11> BaseOpcode,
+                        bit is_shard, bit is_static> {
   bits<11> Opcode = !add(BaseOpcode, !mul(2, is_static), is_shard);
 }
 
-class RetEncoder<bits<11> BaseOpcode,
-                 bit to_label> {
+class RetOpcEncoder<bits<11> BaseOpcode,
+                    bit to_label> {
   bits<11> Opcode = !add(BaseOpcode, to_label);
+}
+
+class JumpOpcEncoder<bits<11> BaseOpcode,
+                     SrcMode src> {
+  bits<11> Opcode = !add(BaseOpcode, src.Value);
 }
 
 class EraVMOpcode<string name, bits<11> opc, OpcodeEncoding encoding> {
@@ -273,6 +279,7 @@ def OpContextIncrementTxNumber : EraVMOpcode<"context.inc_tx_num",       1049, D
 def OpSload     : EraVMOpcode<"sload",      1050, DirectEncoding>;
 // aliased as log.swrite
 def OpSstore    : EraVMOpcode<"sstore",     1051, DirectEncoding>;
+
 // FIXME: Split those
 // aliased as log.to_l1
 def OpLogToL1   : EraVMOpcode<"to_l1",      1052, FIXMEEncoding>; // is_first ⇒ 1052 + is_first
@@ -419,8 +426,15 @@ class INop<dag ins, string opc, string asmstr, list<dag> pattern>
   : IForm <OpNoOp, (outs), ins, opc, asmstr, pattern > {
 }
 
-class IJump<dag ins, string opc, string asmstr, list<dag> pattern>
-  : IForm <OpJump, (outs), ins, opc, asmstr, pattern> {
+class IJump<EraVMOpcode opcode,
+            SrcMode src,
+            dag ins, string asmstr, list<dag> pattern>
+  : IForm <opcode, (outs), ins, "<invalid>", asmstr, pattern> {
+
+  // FIXME: Should should be default
+  let AsmString = !strconcat(opcode.Name, "${cc}", "\t", asmstr);
+  let mayLoad = !or(isStackIn<src>.Value, !eq(src, SrcCodeAddr));
+  let Opcode = JumpOpcEncoder<opcode.BaseOpcode, src>.Opcode;
 }
 
 class IUMA<EraVMOpcode opcode, dag outs, dag ins, string opc, string asmstr, list<dag> pattern>
@@ -764,8 +778,7 @@ class IRet<EraVMOpcode opcode,
   let AsmString = !strconcat(opcode.Name,
                              !if(to_label, ".to_label", ""),
                              "${cc}", "\t", asmstr);
-
-  let Opcode = RetEncoder<opcode.BaseOpcode, to_label>.Opcode;
+  let Opcode = RetOpcEncoder<opcode.BaseOpcode, to_label>.Opcode;
 
 }
 
@@ -785,6 +798,5 @@ class IFarCall<EraVMOpcode opcode,
                              !if(is_shard, ".shard", ""),
                              !if(is_static, ".static", ""),
                              "${cc}", "\t", asmstr);
-
-  let Opcode = FarCallEncoder<opcode.BaseOpcode, is_shard, is_static>.Opcode;
+  let Opcode = FarCallOpcEncoder<opcode.BaseOpcode, is_shard, is_static>.Opcode;
 }
