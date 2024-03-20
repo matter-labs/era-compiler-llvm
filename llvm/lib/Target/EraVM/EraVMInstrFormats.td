@@ -284,18 +284,67 @@ class IJump<EraVMOpcode opcode,
   let Opcode = JumpOpcEncoder<opcode.BaseOpcode, src>.Opcode;
 }
 
-class IContext<EraVMOpcode opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+class IContextBase<EraVMOpcode opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
   : IForm <opcode, outs, ins, asmstr, pattern> { }
 
-// TODO: This needs to be split into ILogRrr, ILogRrr_r and ILogRr_r versions
-class ILogR<EraVMOpcode opcode, dag outs, dag ins,
-            string asmstr, list<dag> pattern>
+class IContext_<EraVMOpcode opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : IContextBase<opcode, outs, ins, asmstr, pattern>;
+class IContextr_<EraVMOpcode opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : IContextBase<opcode, outs, ins, asmstr, pattern> {
+  bits<4> rs0;
+  let Src0 = rs0;
+}
+class IContext_r<EraVMOpcode opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
+  : IContextBase<opcode, outs, ins, asmstr, pattern> {
+  bits<4> rd0;
+  let Dst0 = rd0;
+}
+
+class ILogRBase<EraVMOpcode opcode, dag outs, dag ins,
+                string asmstr, list<dag> pattern>
   : IForm <opcode, outs, ins, asmstr, pattern> { }
 
-class ILogRFirst<EraVMOpcode opcode, bit is_first,
-                 dag outs, dag ins,
-                 string asmstr, list<dag> pattern>
+class ILogRr_r<EraVMOpcode opcode, dag outs, dag ins,
+               string asmstr, list<dag> pattern>
+  : ILogRBase<opcode, outs, ins, asmstr, pattern> {
+  bits<4> rs0;
+  bits<4> rd0;
+
+  let Src0 = rs0;
+  let Dst0 = rd0;
+}
+
+class ILogRrr_<EraVMOpcode opcode, dag outs, dag ins,
+               string asmstr, list<dag> pattern>
+  : ILogRBase<opcode, outs, ins, asmstr, pattern> {
+  bits<4> rs0;
+  bits<4> rs1;
+
+  let Src0 = rs0;
+  let Src1 = rs1;
+}
+
+class ILogRrr_r<EraVMOpcode opcode, dag outs, dag ins,
+                string asmstr, list<dag> pattern>
+  : ILogRBase<opcode, outs, ins, asmstr, pattern> {
+  bits<4> rs0;
+  bits<4> rs1;
+  bits<4> rd0;
+
+  let Src0 = rs0;
+  let Src1 = rs1;
+  let Dst0 = rd0;
+}
+
+class ILogRFirstrr_<EraVMOpcode opcode, bit is_first,
+                    dag outs, dag ins,
+                    string asmstr, list<dag> pattern>
   : IForm <opcode, outs, ins, asmstr, pattern> {
+  bits<4> rs0;
+  bits<4> rs1;
+
+  let Src0 = rs0;
+  let Src1 = rs1;
 
   let AsmString = !strconcat(opcode.Name,
                              !if(is_first, ".first", ""),
@@ -607,11 +656,11 @@ class Isr_sr<EraVMOpcode opcode,
   let Dst1 = rd1;
 }
 
-class IRet<EraVMOpcode opcode,
-           bit to_label,
-           dag ins,
-           string asmstr,
-           list<dag> pattern>
+class IRetBase<EraVMOpcode opcode,
+               bit to_label,
+               dag ins,
+               string asmstr,
+               list<dag> pattern>
   : IForm <opcode, (outs), ins, asmstr, pattern > {
 
   let isReturn = 1;
@@ -622,7 +671,28 @@ class IRet<EraVMOpcode opcode,
                              !if(to_label, ".to_label", ""),
                              "${cc}", "\t", asmstr);
   let Opcode = RetOpcEncoder<opcode.BaseOpcode, to_label>.Opcode;
+}
 
+class IRet<EraVMOpcode opcode,
+           dag ins,
+           string asmstr,
+           list<dag> pattern>
+  : IRetBase <opcode, false, ins, asmstr, pattern > {
+  bits<4> rs0;
+
+  let Src0 = rs0;
+}
+
+class IRetToLabel<EraVMOpcode opcode,
+                  dag ins,
+                  string asmstr,
+                  list<dag> pattern>
+  : IRetBase <opcode, true, ins, asmstr, pattern > {
+  bits<4> rs0;
+  bits<16> dest;
+
+  let Src0 = rs0;
+  let Imm0 = dest;
 }
 
 class ICall<EraVMOpcode opcode, dag ins, string asmstr, list<dag> pattern>
@@ -642,7 +712,7 @@ class IFarCall<EraVMOpcode opcode,
 }
 
 class IUMA<EraVMOpcode opcode,
-           SrcMode src, bit is_inc,
+           SrcSpecialMode src, bit is_inc,
            dag outs, dag ins,
            string asmstr,
            list<dag> pattern>
@@ -659,56 +729,102 @@ class IUMAr_r<EraVMOpcode opcode,
               dag outs, dag ins,
               string asmstr,
               list<dag> pattern>
- : IUMA<opcode, SrcReg, 0, outs, ins, asmstr, pattern> {
+ : IUMA<opcode, SrcSpecialReg, 0, outs, ins, asmstr, pattern> {
+  bits<4> rs0;
+  bits<4> rd0;
+
+  let Src0 = rs0;
+  let Dst0 = rd0;
 }
 
 class IUMAr_rr<EraVMOpcode opcode,
                dag outs, dag ins,
                string asmstr,
                list<dag> pattern>
- : IUMA<opcode, SrcReg, 1, outs, ins, asmstr, pattern> {
+ : IUMA<opcode, SrcSpecialReg, 1, outs, ins, asmstr, pattern> {
+  bits<4> rs0;
+  bits<4> rd0;
+  bits<4> rd1;
+
+  let Src0 = rs0;
+  let Dst0 = rd0;
+  let Dst1 = rd1;
 }
 
 class IUMAi_r<EraVMOpcode opcode,
               dag outs, dag ins,
               string asmstr,
               list<dag> pattern>
- : IUMA<opcode, SrcImm, 0, outs, ins, asmstr, pattern> {
+ : IUMA<opcode, SrcSpecialImm, 0, outs, ins, asmstr, pattern> {
+  bits<16> addr;
+  bits<4> rd0;
+
+  let Imm0 = addr;
+  let Dst0 = rd0;
 }
 
 class IUMAi_rr<EraVMOpcode opcode,
                dag outs, dag ins,
                string asmstr,
                list<dag> pattern>
- : IUMA<opcode, SrcImm, 1, outs, ins, asmstr, pattern> {
+ : IUMA<opcode, SrcSpecialImm, 1, outs, ins, asmstr, pattern> {
+  bits<16> addr;
+  bits<4> rd0;
+  bits<4> rd1;
+
+  let Imm0 = addr;
+  let Dst0 = rd0;
+  let Dst1 = rd1;
 }
 
 class IUMArr_<EraVMOpcode opcode,
               dag outs, dag ins,
               string asmstr,
               list<dag> pattern>
- : IUMA<opcode, SrcReg, 0, outs, ins, asmstr, pattern> {
+ : IUMA<opcode, SrcSpecialReg, 0, outs, ins, asmstr, pattern> {
+  bits<4> rs0;
+  bits<4> rs1;
+
+  let Src0 = rs0;
+  let Src1 = rs1;
 }
 
 class IUMArr_r<EraVMOpcode opcode,
                dag outs, dag ins,
                string asmstr,
                list<dag> pattern>
- : IUMA<opcode, SrcReg, 1, outs, ins, asmstr, pattern> {
+ : IUMA<opcode, SrcSpecialReg, 1, outs, ins, asmstr, pattern> {
+  bits<4> rs0;
+  bits<4> rs1;
+  bits<4> rd0;
+
+  let Src0 = rs0;
+  let Src1 = rs1;
+  let Dst0 = rd0;
 }
 
 class IUMAir_<EraVMOpcode opcode,
               dag outs, dag ins,
               string asmstr,
               list<dag> pattern>
- : IUMA<opcode, SrcImm, 0, outs, ins, asmstr, pattern> {
+ : IUMA<opcode, SrcSpecialImm, 0, outs, ins, asmstr, pattern> {
+  bits<16> addr;
+  bits<4> rs1;
+
+  let Imm0 = addr;
+  let Src1 = rs1;
 }
 
 class IUMAir_r<EraVMOpcode opcode,
                dag outs, dag ins,
                string asmstr,
                list<dag> pattern>
- : IUMA<opcode, SrcImm, 1, outs, ins, asmstr, pattern> {
-}
+ : IUMA<opcode, SrcSpecialImm, 1, outs, ins, asmstr, pattern> {
+  bits<16> addr;
+  bits<4> rs1;
+  bits<4> rd0;
 
-// TODO: There should be IUMAs / IUMAc
+  let Imm0 = addr;
+  let Src1 = rs1;
+  let Dst0 = rd0;
+}

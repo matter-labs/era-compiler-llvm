@@ -33,6 +33,8 @@
 namespace llvm {
 
 class EraVMMCCodeEmitter : public MCCodeEmitter {
+  MCContext &Ctx;
+
   /// TableGen'erated function for getting the binary encoding for an
   /// instruction.
   uint64_t getBinaryCodeForInstr(const MCInst &MI,
@@ -40,7 +42,7 @@ class EraVMMCCodeEmitter : public MCCodeEmitter {
                                  const MCSubtargetInfo &STI) const;
 
 public:
-  EraVMMCCodeEmitter(MCContext &ctx, MCInstrInfo const &MCII) {}
+  EraVMMCCodeEmitter(MCContext &Ctx, MCInstrInfo const &MCII) : Ctx(Ctx) {}
 
   uint64_t getMachineOpValue(const MCInst &MI, const MCOperand &MO,
                              SmallVectorImpl<MCFixup> &Fixups,
@@ -66,14 +68,20 @@ public:
 void EraVMMCCodeEmitter::encodeInstruction(const MCInst &MI, raw_ostream &OS,
                                            SmallVectorImpl<MCFixup> &Fixups,
                                            const MCSubtargetInfo &STI) const {
-  llvm_unreachable("Unable to encode MCInst!");
+  uint64_t EncodedInstr = getBinaryCodeForInstr(MI, Fixups, STI);
+  support::endian::write(OS, EncodedInstr, support::big);
 }
 
 uint64_t
 EraVMMCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
                                       SmallVectorImpl<MCFixup> &Fixups,
                                       const MCSubtargetInfo &STI) const {
-  llvm_unreachable("Unable to encode MCOperand!");
+  if (MO.isReg())
+    return Ctx.getRegisterInfo()->getEncodingValue(MO.getReg());
+  if (MO.isImm())
+    return MO.getImm();
+
+  llvm_unreachable("Unexpected generic operand type");
 }
 
 uint64_t EraVMMCCodeEmitter::getStackOpValue(const MCInst &MI, unsigned Idx,
@@ -91,7 +99,12 @@ uint64_t EraVMMCCodeEmitter::getMemOpValue(const MCInst &MI, unsigned Idx,
 uint64_t EraVMMCCodeEmitter::getCCOpValue(const MCInst &MI, unsigned Idx,
                                           SmallVectorImpl<MCFixup> &Fixups,
                                           const MCSubtargetInfo &STI) const {
-  llvm_unreachable("Unable to encode predicate operand!");
+  uint64_t CC = MI.getOperand(Idx).getImm();
+  assert(CC < 8 && "Invalid condition code");
+  assert(CC != (uint64_t)EraVMCC::COND_INVALID && "Cannot encode COND_INVALID");
+  // EraVMCC::CondCodes are defined so that enumerator values are actual
+  // predicate's binary encodings.
+  return CC & 0x7;
 }
 
 MCCodeEmitter *createEraVMMCCodeEmitter(const MCInstrInfo &MCII,

@@ -1,0 +1,17 @@
+; RUN: llvm-mc -arch=eravm --show-encoding < %s | FileCheck %s
+
+  .text
+foo:
+
+  event           r3, r4
+  event.first     r3, r4
+  to_l1           r3, r4
+  to_l1.first     r3, r4
+
+; CHECK:  .text
+; CHECK:foo:
+
+; CHECK:  event r3, r4                          ; encoding: [0x00,0x00,0x00,0x00,0x00,0x43,0x04,0x1e]
+; CHECK:  event.first   r3, r4                  ; encoding: [0x00,0x00,0x00,0x00,0x00,0x43,0x04,0x1f]
+; CHECK:  to_l1 r3, r4                          ; encoding: [0x00,0x00,0x00,0x00,0x00,0x43,0x04,0x1c]
+; CHECK:  to_l1.first   r3, r4                  ; encoding: [0x00,0x00,0x00,0x00,0x00,0x43,0x04,0x1d]

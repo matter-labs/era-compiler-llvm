@@ -26,6 +26,12 @@ def SrcStackAbsolute : SrcMode<3>;
 def SrcImm : SrcMode<4>;
 def SrcCodeAddr : SrcMode<5>;
 
+class SrcSpecialMode<bits<3> val> {
+  bits<3> Value = val;
+}
+def SrcSpecialReg : SrcSpecialMode<0>;
+def SrcSpecialImm : SrcSpecialMode<1>;
+
 class isStackIn<SrcMode src> {
   bit Value = !or(
     !eq(src, SrcSpRelativePop),
@@ -92,7 +98,7 @@ class JumpOpcEncoder<bits<11> BaseOpcode,
 }
 
 class UMAOpcEncoder<OpcodeEncoding encoding, bits<11> BaseOpcode,
-                    SrcMode src, bit is_inc> {
+                    SrcSpecialMode src, bit is_inc> {
   bits<11> Opcode =
     !cond(!eq(encoding, LoadPtrEncoding) : !add(BaseOpcode, is_inc),
           !eq(encoding, HeapOpEncoding)  : !add(BaseOpcode, !mul(10, src.Value), is_inc),
