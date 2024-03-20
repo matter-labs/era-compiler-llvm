@@ -284,6 +284,16 @@ bool EraVMAsmParser::ParseInstruction(ParseInstructionInfo &Info,
 }
 
 bool EraVMAsmParser::ParseDirective(AsmToken DirectiveID) {
+  if (DirectiveID.getString() == ".note.GNU") {
+    // Make print-then-parse round-trip work out of box.
+    // FIXME Do not produce .note.GNU-stack
+    if (parseToken(AsmToken::Minus, "'-' expected"))
+      return true;
+    if (!getTok().is(AsmToken::Identifier) || getTok().getString() != "stack")
+      return TokError("invalid directive");
+    Lex();
+    return false;
+  }
   if (DirectiveID.getString() == ".cell") {
     // At now, assume exactly one signed integer follows.
     // If an arbitrary MCExpr should be accepted as well, an MCTargetExpr
