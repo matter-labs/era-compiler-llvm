@@ -76,7 +76,9 @@ jobs:
           git diff -U0 remotes/origin/${{ github.event.repository.default_branch }} \
             | ./clang-tools-extra/clang-tidy/tool/clang-tidy-diff_Zegar.py \
               -p1 -clang-tidy-binary $(which clang-tidy-15) \
-              -path ../target-llvm/build-final/compile_commands.json
+              -path ../target-llvm/build-final/compile_commands.json \
+              --extra-arg="-I$PWD/llvm/utils/unittest/googlemock/include/" \
+              --extra-arg="-I$PWD/llvm/utils/unittest/googletest/include/"
 
       - name: Running Lit tests with default options
         run: |
