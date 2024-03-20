@@ -105,6 +105,8 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
   // Provide all sorts of operation actions
   setStackPointerRegisterToSaveRestore(EraVM::SP);
 
+  setBooleanContents(ZeroOrOneBooleanContent);
+
   // By default, expand all i256bit operations
   for (unsigned Opc = 0; Opc < ISD::BUILTIN_OP_END; ++Opc)
     setOperationAction(Opc, MVT::i256, Expand);
