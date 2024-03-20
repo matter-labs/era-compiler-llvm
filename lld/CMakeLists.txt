@@ -122,9 +122,6 @@ if(LLD_BUILT_STANDALONE)
           AND NOT EXISTS ${LLVM_LIBRARY_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}gtest${CMAKE_STATIC_LIBRARY_SUFFIX}
           AND EXISTS ${UNITTEST_DIR}/CMakeLists.txt)
         add_subdirectory(${UNITTEST_DIR} utils/unittest)
-        # EraVM local begin
-        add_subdirectory(${UNITTEST_DIR} utils/unittest/googlemock/include)
-        # EraVM local end
       endif()
     else()
       # Seek installed Lit.
