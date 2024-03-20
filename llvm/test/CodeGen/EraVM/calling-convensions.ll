@@ -127,7 +127,7 @@ define i256 @caller3.abi(i256 %a1, i256 %a2, i256 %a3, i256 %abi) nounwind {
 
 ; CHECK-LABEL: caller_argtypes
 define i256 @caller_argtypes(i1 %a1, i8 %a2, i16 %a3, i32 %a4, i64 %a5, i128 %a6) nounwind {
-  ; CHECK: nop stack+=[7]
+  ; CHECK: nop stack+=[7 + r0]
   ; CHECK: add r6, r0, stack-[6]
   ; CHECK: add r5, r0, stack-[5]
   ; CHECK: add r4, r0, stack-[4]

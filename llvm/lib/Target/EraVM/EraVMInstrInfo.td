@@ -128,12 +128,6 @@ def first_op : Operand<i256>, IntImmLeaf<i256, [{
   let PrintMethod = "printFirstOperand";
 }
 
-def spadv_op : Operand<i256>, IntImmLeaf<i256, [{
-  return Imm.getZExtValue() < 2;
-}]> {
-  let PrintMethod = "printSPAdvanceOperand";
-}
-
 // This operand class represents those jump targets described
 // as imm_in operand in the spec.
 def JumpTargetOperand : AsmOperandClass {
@@ -374,12 +368,13 @@ def NOPrrs : Irr_s<OpNoOp, NoSwap, PreserveFlags,
 def NOPsrs : Isr_s<OpNoOp, NoSwap, PreserveFlags,
                    (outs), (ins stackin:$src0, GR256:$rs1, stackout:$dst0),
                    "$src0, $rs1, $dst0", []>;
-// FIXME Convert to NOP(srr|rrs|srs)
-def NOPSP : INop<(ins spadv_op:$sp_change), "nop", "$sp_change", [] >;
-def NOPSPr : INop<(ins GR256:$sp_change), "nop", "stack+=[$sp_change]", [] >;
+def NOPSP : Pseudo<(outs), (ins imm16:$sp_change), [(EraVMchange_sp imm16:$sp_change)] >;
+def NOPSPr : Pseudo<(outs), (ins GR256:$sp_change), [(EraVMchange_sp GR256:$sp_change)] >;
 }
-def : Pat<(EraVMchange_sp spadv_op:$size), (NOPSP spadv_op:$size)>;
-def : Pat<(EraVMchange_sp GR256:$size), (NOPSPr GR256:$size)>;
+
+def : InstAlias<"nop${cc}\t${dst0}", (NOPrrs R0, R0, stackout:$dst0, pred:$cc)>;
+def : InstAlias<"nop${cc}\t${src0}", (NOPsrr R0, stackin:$src0, R0, pred:$cc)>;
+def : InstAlias<"nop${cc}",          (NOPrrr R0, R0, R0, pred:$cc)>;
 
 // Note that while technically commutative arithmetic instructions are not swappable,
 // it is not a problem as there will be no corresponding instruction defined with SwapOperand = 1

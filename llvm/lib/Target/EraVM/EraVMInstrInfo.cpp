@@ -671,11 +671,24 @@ static bool isOutliningCandidateTailCall(const MachineInstr &MI) {
           Callee->getName() == "__exit_revert");
 }
 
-/// Return true if the first instruction in a function is stack advance.
-static bool hasStackAdvanceInstruction(MachineFunction &MF) {
+/// Return true if the first instruction in a function is stack advance
+/// instruction accepting an immediate operand.
+static bool hasTrivialStackAdvanceInstruction(MachineFunction &MF,
+                                              MachineOperand *&StackAdvanceOp) {
   auto EntryBB = MF.begin();
   auto FirstMI = EntryBB->getFirstNonDebugInstr();
-  return FirstMI != EntryBB->end() && FirstMI->getOpcode() == EraVM::NOPSP;
+
+  StackAdvanceOp = nullptr;
+  if (FirstMI == EntryBB->end())
+    return false;
+
+  switch (FirstMI->getOpcode()) {
+  case EraVM::NOPSP:
+    StackAdvanceOp = &FirstMI->getOperand(0);
+    return true;
+  default:
+    return false;
+  }
 }
 
 /// Sets the offsets on instructions in [Start, End) which use SP, so that they
@@ -724,15 +737,13 @@ void EraVMInstrInfo::fixupStackPostOutline(MachineFunction &MF) const {
     return;
 
   // Reserve stack slot for return address from outlined function.
-  if (hasStackAdvanceInstruction(MF)) {
-    auto NopIt = MF.begin()->getFirstNonDebugInstr();
-    auto &StackAdvanceOp = NopIt->getOperand(0);
-    StackAdvanceOp.setImm(StackAdvanceOp.getImm() + 1 /* StackSlotSize */);
+  MachineOperand *StackAdvanceOp = nullptr;
+  if (hasTrivialStackAdvanceInstruction(MF, StackAdvanceOp)) {
+    StackAdvanceOp->setImm(StackAdvanceOp->getImm() + 1 /* StackSlotSize */);
   } else {
     auto EntryBB = MF.begin();
     BuildMI(*EntryBB, EntryBB->begin(), DebugLoc(), get(EraVM::NOPSP))
-        .addImm(1 /* StackSlotSize */)
-        .addImm(EraVMCC::COND_NONE);
+        .addImm(1 /* StackSlotSize */);
   }
 
   // Adjust instructions which use SP in this function.
@@ -944,8 +955,10 @@ EraVMInstrInfo::getOutliningCandidateInfo(
     // once for each function.
     // Add this overhead also for tail calls, as we can end up adjusting stack
     // in caller just to align stack accesses with other callers.
-    if (!hasStackAdvanceInstruction(*MF) && NoStackAdvance.insert(MF).second)
-      Overhead += get(EraVM::NOPSP).getSize();
+    MachineOperand *UnusedOp = nullptr;
+    if (!hasTrivialStackAdvanceInstruction(*MF, UnusedOp) &&
+        NoStackAdvance.insert(MF).second)
+      Overhead += get(EraVM::NOPrrs).getSize();
 
     C.setCallInfo(FrameID, Overhead);
   }

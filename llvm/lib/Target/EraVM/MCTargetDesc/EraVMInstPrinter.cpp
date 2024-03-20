@@ -229,14 +229,3 @@ void EraVMInstPrinter::printStackOperand(const MCInst *MI, unsigned OpNo,
   }
   O << "]";
 }
-
-void EraVMInstPrinter::printSPAdvanceOperand(const MCInst *MI, unsigned OpNo,
-                                             raw_ostream &O) {
-  const MCOperand &Val = MI->getOperand(OpNo);
-  int Advance = Val.getImm();
-  assert(Advance != 0);
-
-  O << "stack";
-  O << ((Advance < 0) ? "-" : "+");
-  O << "=[" << std::abs(Advance) << "]";
-}

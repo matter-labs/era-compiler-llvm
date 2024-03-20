@@ -7,7 +7,7 @@ target triple = "eravm"
 
 ; CHECK-LABEL: alloca
 define void @alloca(i256 %a1, i256 %a2, i256 %a3, i256 %a4) nounwind {
-  ; CHECK: nop stack+=[4]
+  ; CHECK: nop stack+=[4 + r0]
   %var1 = alloca i256
   %var2 = alloca i256
   %var3 = alloca i256
@@ -60,7 +60,7 @@ fail:
 
 ; CHECK-LABEL: stack.obj.passing
 define i256 @stack.obj.passing() {
-; CHECK: nop stack+=[12]
+; CHECK: nop stack+=[12 + r0]
   %unused1 = alloca [3 x i256]
   %par1 = alloca i256
   %unused2 = alloca [2 x i256]
