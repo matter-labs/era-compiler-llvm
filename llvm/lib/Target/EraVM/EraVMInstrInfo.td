@@ -1010,8 +1010,8 @@ def JCALL: Pseudo<(outs), (ins jmptarget:$dest), []>,
            PseudoInstExpansion<(JC jmptarget:$dest, 0)>;
 
 multiclass RetLike<EraVMOpcode opcode> {
-  def r : IRet<opcode, 0, (ins GR256:$rs0), "$rs0", []>;
-  def rl : IRet<opcode, 1, (ins GR256:$rs0, jmptarget:$dest), "$rs0, $dest", []>;
+  def r : IRet<opcode, (ins GR256:$rs0), "$rs0", []>;
+  def rl : IRetToLabel<opcode, (ins GR256:$rs0, jmptarget:$dest), "$rs0, $dest", []>;
 }
 
 defm RET    : RetLike<OpRet>;
@@ -1068,86 +1068,86 @@ def MOVEIMM : Pseudo<(outs GR256:$out), (ins i256imm:$val),
 //===----------------------------------------------------------------------===//
 
 let isReMaterializable = 1, hasSideEffects = 0 in {
-def CTXThis : IContext<OpContextThis, (outs GR256:$rd0), (ins),
-                       "$rd0",
-                       [(set GR256:$rd0, (int_eravm_this))]>;
-def CTXCaller : IContext<OpContextCaller, (outs GR256:$rd0), (ins),
-                        "$rd0",
-                        [(set GR256:$rd0, (int_eravm_caller))]>;
-def CTXCodeSource : IContext<OpContextCodeAddress, (outs GR256:$rd0), (ins),
+def CTXThis : IContext_r<OpContextThis, (outs GR256:$rd0), (ins),
+                         "$rd0",
+                         [(set GR256:$rd0, (int_eravm_this))]>;
+def CTXCaller : IContext_r<OpContextCaller, (outs GR256:$rd0), (ins),
+                           "$rd0",
+                           [(set GR256:$rd0, (int_eravm_caller))]>;
+def CTXCodeSource : IContext_r<OpContextCodeAddress, (outs GR256:$rd0), (ins),
+                               "$rd0",
+                               [(set GR256:$rd0, (int_eravm_codesource))]>;
+def CTXGetU128 : IContext_r<OpContextGetContextU128, (outs GR256:$rd0), (ins),
                             "$rd0",
-                            [(set GR256:$rd0, (int_eravm_codesource))]>;
-def CTXGetU128 : IContext<OpContextGetContextU128, (outs GR256:$rd0), (ins),
-                          "$rd0",
-                          [(set GR256:$rd0, (int_eravm_getu128))]>;
+                            [(set GR256:$rd0, (int_eravm_getu128))]>;
 }
 
-def CTXMeta : IContext<OpContextMeta, (outs GR256:$rd0), (ins),
-                        "$rd0",
-                        [(set GR256:$rd0, (int_eravm_meta))]>;
+def CTXMeta : IContext_r<OpContextMeta, (outs GR256:$rd0), (ins),
+                         "$rd0",
+                         [(set GR256:$rd0, (int_eravm_meta))]>;
 
 let hasSideEffects = 1 in {
-def CTXSetU128 : IContext<OpContextSetContextU128, (outs), (ins GR256:$rs0),
-                          "$rs0",
-                          [(int_eravm_setu128 GR256:$rs0)]>;
-def CTXSetPubDP : IContext<OpContextSetErgsPerPubdataByte, (outs), (ins GR256:$rs0),
-                          "$rs0",
-                          [(int_eravm_setpubdataprice GR256:$rs0)]>;
+def CTXSetU128 : IContextr_<OpContextSetContextU128, (outs), (ins GR256:$rs0),
+                            "$rs0",
+                            [(int_eravm_setu128 GR256:$rs0)]>;
+def CTXSetPubDP : IContextr_<OpContextSetErgsPerPubdataByte, (outs), (ins GR256:$rs0),
+                             "$rs0",
+                             [(int_eravm_setpubdataprice GR256:$rs0)]>;
 let hasPostISelHook = 1 in
-def CTXGasLeft : IContext<OpContextErgsLeft, (outs GR256:$rd0), (ins),
-                          "$rd0",
-                          [(set GR256:$rd0, (int_eravm_gasleft))]>;
-def CTXGetSp   : IContext<OpContextSp, (outs GR256:$rd0), (ins),
-                          "$rd0",
-                          [(set GR256:$rd0, (EraVMget_sp))]>;
-def CTXIncTx   : IContext<OpContextIncrementTxNumber, (outs), (ins), "", [(int_eravm_inctx)]>;
+def CTXGasLeft : IContext_r<OpContextErgsLeft, (outs GR256:$rd0), (ins),
+                            "$rd0",
+                            [(set GR256:$rd0, (int_eravm_gasleft))]>;
+def CTXGetSp   : IContext_r<OpContextSp, (outs GR256:$rd0), (ins),
+                            "$rd0",
+                            [(set GR256:$rd0, (EraVMget_sp))]>;
+def CTXIncTx   : IContext_<OpContextIncrementTxNumber, (outs), (ins), "", [(int_eravm_inctx)]>;
 }
 
 //===----------------------------------------------------------------------===//
 // Fat Pointer
 //===----------------------------------------------------------------------===//
-def SLDrr : ILogR<OpSload, (outs GR256:$rd0), (ins GR256:$rs0),
-                  "$rs0, $rd0",
-                  [(set GR256:$rd0, (load_storage GR256:$rs0))]>;
-def TLDrr : ILogR<OpTransientLoad, (outs GR256:$rd0), (ins GR256:$rs0),
-                  "$rs0, $rd0",
-                  [(set GR256:$rd0, (load_transient GR256:$rs0))]>;
+def SLDrr : ILogRr_r<OpSload, (outs GR256:$rd0), (ins GR256:$rs0),
+                     "$rs0, $rd0",
+                     [(set GR256:$rd0, (load_storage GR256:$rs0))]>;
+def TLDrr : ILogRr_r<OpTransientLoad, (outs GR256:$rd0), (ins GR256:$rs0),
+                     "$rs0, $rd0",
+                     [(set GR256:$rd0, (load_transient GR256:$rs0))]>;
 def : MnemonicAlias<"log.sread", "sload">;
 
 let hasSideEffects = 1 in {
-  def SSTr : ILogR<OpSstore, (outs), (ins GR256:$rs0, GR256:$rs1),
-                   "$rs0, $rs1",
-                   [(store_storage GR256:$rs1, GR256:$rs0)]>;
-  def TSTr : ILogR<OpTransientStore, (outs), (ins GR256:$rs0, GR256:$rs1),
-                   "$rs0, $rs1",
-                   [(store_transient GR256:$rs1, GR256:$rs0)]>;
+  def SSTr : ILogRrr_<OpSstore, (outs), (ins GR256:$rs0, GR256:$rs1),
+                      "$rs0, $rs1",
+                      [(store_storage GR256:$rs1, GR256:$rs0)]>;
+  def TSTr : ILogRrr_<OpTransientStore, (outs), (ins GR256:$rs0, GR256:$rs1),
+                      "$rs0, $rs1",
+                      [(store_transient GR256:$rs1, GR256:$rs0)]>;
 }
 def : MnemonicAlias<"log.swrite", "sstore">;
 
 let hasSideEffects = 1 in {
-def L1r : ILogRFirst<OpLogToL1, 0, (outs), (ins GR256:$rs0, GR256:$rs1),
-                     "$rs0, $rs1",
-                     [(int_eravm_tol1 GR256:$rs0, GR256:$rs1, 0)]>;
-def L1Firstr : ILogRFirst<OpLogToL1, 1, (outs), (ins GR256:$rs0, GR256:$rs1),
-                     "$rs0, $rs1",
-                     [(int_eravm_tol1 GR256:$rs0, GR256:$rs1, 1)]>;
+def L1r : ILogRFirstrr_<OpLogToL1, 0, (outs), (ins GR256:$rs0, GR256:$rs1),
+                        "$rs0, $rs1",
+                        [(int_eravm_tol1 GR256:$rs0, GR256:$rs1, 0)]>;
+def L1Firstr : ILogRFirstrr_<OpLogToL1, 1, (outs), (ins GR256:$rs0, GR256:$rs1),
+                             "$rs0, $rs1",
+                             [(int_eravm_tol1 GR256:$rs0, GR256:$rs1, 1)]>;
 
-def EVTr : ILogRFirst<OpLogEvent, 0, (outs), (ins GR256:$rs0, GR256:$rs1),
-                      "$rs0, $rs1",
-                      [(int_eravm_event GR256:$rs0, GR256:$rs1, 0)]>;
+def EVTr : ILogRFirstrr_<OpLogEvent, 0, (outs), (ins GR256:$rs0, GR256:$rs1),
+                         "$rs0, $rs1",
+                         [(int_eravm_event GR256:$rs0, GR256:$rs1, 0)]>;
 
-def EVTFirstr : ILogRFirst<OpLogEvent, 1, (outs), (ins GR256:$rs0, GR256:$rs1),
-                          "$rs0, $rs1",
-                         [(int_eravm_event GR256:$rs0, GR256:$rs1, 1)]>;
+def EVTFirstr : ILogRFirstrr_<OpLogEvent, 1, (outs), (ins GR256:$rs0, GR256:$rs1),
+                              "$rs0, $rs1",
+                              [(int_eravm_event GR256:$rs0, GR256:$rs1, 1)]>;
 
-def PCOMPr : ILogR<OpLogPrecompile, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
-                   "$rs0, $rs1, $rd0",
-                   [(set GR256:$rd0, (int_eravm_precompile GR256:$rs0, GR256:$rs1))]>;
+def PCOMPr : ILogRrr_r<OpLogPrecompile, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
+                       "$rs0, $rs1, $rd0",
+                       [(set GR256:$rd0, (int_eravm_precompile GR256:$rs0, GR256:$rs1))]>;
 }
 
-def DECOMMITr : ILogR<OpDecommit, (outs GRPTR:$rd0), (ins GR256:$rs0, GR256:$rs1),
-                      "$rs0, $rs1, $rd0",
-                      [(set GRPTR:$rd0, (EraVMlog_decommit GR256:$rs0, GR256:$rs1))]>;
+def DECOMMITr : ILogRrr_r<OpDecommit, (outs GRPTR:$rd0), (ins GR256:$rs0, GR256:$rs1),
+                          "$rs0, $rs1, $rd0",
+                          [(set GRPTR:$rd0, (EraVMlog_decommit GR256:$rs0, GR256:$rs1))]>;
 
 multiclass FarCallInst<EraVMOpcode opcode> {
   def rrl : IFarCall<opcode, 0, 0, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
