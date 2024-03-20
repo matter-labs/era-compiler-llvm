@@ -18,7 +18,7 @@ define i8* @stacksave() {
 define void @stackrestore(i8* %ptr) noinline optnone {
 ; CHECK: context.sp r2
 ; CHECK-NEXT: sub r1, r2, r1
-; CHECK-NEXT: nop stack+=[r1]
+; CHECK-NEXT: nop stack+=[0 + r1]
   call void @llvm.stackrestore(i8* %ptr)
   ret void
 }

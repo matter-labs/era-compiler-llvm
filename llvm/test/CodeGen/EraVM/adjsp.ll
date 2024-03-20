@@ -4,7 +4,7 @@ target triple = "eravm"
 
 ; CHECK-LABEL: array_ldst_to_parameter
 define void @array_ldst_to_parameter([10 x i256]* %array, i256 %val) {
-  ; CHECK: nop stack+=[10]
+  ; CHECK: nop stack+=[10 + r0]
   %starr = alloca [10 x i256]
   %idx = getelementptr inbounds [10 x i256], [10 x i256]* %starr, i256 0, i256 6
   %1 = load i256, i256* %idx

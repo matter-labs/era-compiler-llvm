@@ -138,6 +138,29 @@ void EraVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
     EmitToStreamer(*OutStreamer, TmpInst);
     return;
   }
+  case EraVM::NOPSP: {
+    auto AppendSPModOperand = [&TmpInst](int64_t Imm) {
+      assert(Imm >= 0);
+      TmpInst.addOperand(MCOperand::createReg(EraVM::R0));
+      TmpInst.addOperand(MCOperand::createReg(EraVM::R0));
+      TmpInst.addOperand(MCOperand::createImm(Imm));
+    };
+    int64_t Addend = MI->getOperand(0).getImm();
+    if (Addend <= 0) {
+      TmpInst.setOpcode(EraVM::NOPsrr);
+      TmpInst.addOperand(MCOperand::createReg(EraVM::R0)); // rd0
+      AppendSPModOperand(-Addend);
+      TmpInst.addOperand(MCOperand::createReg(EraVM::R0)); // rs1
+    } else {
+      TmpInst.setOpcode(EraVM::NOPrrs);
+      TmpInst.addOperand(MCOperand::createReg(EraVM::R0)); // rs0
+      TmpInst.addOperand(MCOperand::createReg(EraVM::R0)); // rs1
+      AppendSPModOperand(Addend);
+    }
+    TmpInst.addOperand(MCOperand::createImm(0)); // predicate
+    EmitToStreamer(*OutStreamer, TmpInst);
+    return;
+  }
   }
 
   if (MI->isPseudo()) {
