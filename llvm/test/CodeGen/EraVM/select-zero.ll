@@ -174,7 +174,7 @@ entry:
 
 ; CHECK-LABEL: @select_zero_add_stack
 define i256 @select_zero_add_stack(i256 %0, i256 %1) {
-; CHECK:       nop    stack+=[1]
+; CHECK:       nop    stack+=[1 + r0]
 ; CHECK-NEXT:  sub!   r1, r2, r1
 ; CHECK-NEXT:  add.eq stack-[1],  r2, r2
 ; CHECK-NEXT:  add    r2, r0, r1
@@ -203,7 +203,7 @@ entry:
 
 ; CHECK-LABEL: @select_zero_not_folded_1
 define i256 @select_zero_not_folded_1(i256 %0, i256 %1) {
-; CHECK:       nop    stack+=[1]
+; CHECK:       nop    stack+=[1 + r0]
 ; CHECK-NEXT:  add    r1, r2, r3
 ; CHECK-NEXT:  sub!   r1, r2, r1
 ; CHECK-NEXT:  add    0,  r0, r1

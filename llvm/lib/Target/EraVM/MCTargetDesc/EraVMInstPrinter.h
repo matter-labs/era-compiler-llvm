@@ -42,7 +42,6 @@ private:
   void printMemOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
   template <bool IsInput>
   void printStackOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
-  void printSPAdvanceOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
   /// Print first flag
   void printFirstOperand(const MCInst *MI, unsigned OpNo, raw_ostream &O);
 };

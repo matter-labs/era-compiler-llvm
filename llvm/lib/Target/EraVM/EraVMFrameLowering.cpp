@@ -46,9 +46,7 @@ void EraVMFrameLowering::emitPrologue(MachineFunction &MF,
   uint64_t NumCells = MFI.getStackSize() / 32;
 
   if (NumCells)
-    BuildMI(MBB, MBBI, DL, TII.get(EraVM::NOPSP))
-        .addImm(NumCells)
-        .addImm(EraVMCC::COND_NONE);
+    BuildMI(MBB, MBBI, DL, TII.get(EraVM::NOPSP)).addImm(NumCells);
 }
 
 void EraVMFrameLowering::emitEpilogue(MachineFunction &MF,
@@ -77,16 +75,14 @@ MachineBasicBlock::iterator EraVMFrameLowering::eliminateCallFramePseudoInstr(
       MachineInstr *New = nullptr;
       if (Old.getOpcode() == TII.getCallFrameSetupOpcode()) {
         New = BuildMI(MF, Old.getDebugLoc(), TII.get(EraVM::NOPSP))
-                  .addImm(Amount)
-                  .addImm(0);
+                  .addImm(Amount);
       } else {
         assert(Old.getOpcode() == TII.getCallFrameDestroyOpcode());
         // factor out the amount the callee already popped.
         Amount -= TII.getFramePoppedByCallee(Old);
         if (Amount)
           New = BuildMI(MF, Old.getDebugLoc(), TII.get(EraVM::NOPSP))
-                    .addImm(-Amount)
-                    .addImm(EraVMCC::COND_NONE);
+                    .addImm(-Amount);
       }
 
       if (New) {
@@ -103,8 +99,7 @@ MachineBasicBlock::iterator EraVMFrameLowering::eliminateCallFramePseudoInstr(
     if (uint64_t CalleeAmt = TII.getFramePoppedByCallee(*I)) {
       MachineInstr &Old = *I;
       MachineInstr *New = BuildMI(MF, Old.getDebugLoc(), TII.get(EraVM::NOPSP))
-                              .addImm(CalleeAmt)
-                              .addImm(EraVMCC::COND_NONE);
+                              .addImm(CalleeAmt);
       // The SRW implicit def is dead.
       New->getOperand(3).setIsDead();
 
