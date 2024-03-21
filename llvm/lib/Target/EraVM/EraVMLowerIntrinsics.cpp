@@ -160,7 +160,6 @@ static void createEraVMMemMoveLoop(Instruction *InsertBefore, Value *SrcAddr,
   Align PartDstAlign(commonAlignment(DstAlign, LoopOpSize));
 
   // Copying backwards preheader.
-  // TODO: CPR-1553 Remove two -LoopOpSize GEPs.
   IRBuilder<> BwdLoopPreheaderBuilder(CopyBwdLoopPreheaderBB);
   Value *SrcBwdAddr = BwdLoopPreheaderBuilder.CreateInBoundsGEP(
       Int8Type,
@@ -175,7 +174,6 @@ static void createEraVMMemMoveLoop(Instruction *InsertBefore, Value *SrcAddr,
   BwdLoopPreheaderBuilder.CreateBr(CopyBwdLoopBB);
 
   // Copying backwards.
-  // TODO: CPR-1553 Update generation of this loop.
   IRBuilder<> BwdLoopBuilder(CopyBwdLoopBB);
   PHINode *BwdLoopPhi = BwdLoopBuilder.CreatePHI(LoopOpType, 2, "bytes-count");
   Value *BwdElement = BwdLoopBuilder.CreateAlignedLoad(
