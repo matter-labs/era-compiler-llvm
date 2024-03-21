@@ -352,30 +352,6 @@ bool EraVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
       continue;
     }
 
-    // Handle unconditional branches.
-    if (getImmOrCImm(I->getOperand(1)) == 0) {
-      // TBB is used to indicate the unconditional destination.
-      TBB = I->getOperand(0).getMBB();
-
-      if (AllowModify) {
-        // If the block has any instructions after a JMP, delete them.
-        while (std::next(I) != MBB.end())
-          std::next(I)->eraseFromParent();
-        Cond.clear();
-        FBB = nullptr;
-
-        // Delete the JMP if it's equivalent to a fall-through.
-        if (MBB.isLayoutSuccessor(I->getOperand(0).getMBB())) {
-          TBB = nullptr;
-          I->eraseFromParent();
-          I = MBB.end();
-          continue;
-        }
-      }
-
-      continue;
-    }
-
     auto BranchCode =
         static_cast<EraVMCC::CondCodes>(getImmOrCImm(I->getOperand(1)));
     if (BranchCode == EraVMCC::COND_INVALID)
