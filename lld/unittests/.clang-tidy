@@ -1,5 +1,6 @@
-InheritParentConfig: true
+InheritParentConfig: false
 Checks: >
+        -*,
         -clang-diagnostic-unused-function,
         -clang-diagnostic-error,
         clang-analyzer-osx.cocoa.MissingSuperCall,
