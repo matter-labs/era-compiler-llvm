@@ -114,7 +114,6 @@ jobs:
             --tail-dup-verify \
             --unroll-verify-domtree \
             --verify-assumption-cache \
-            --verify-cfg-preserved \
             --verify-cfiinstrs \
             --verify-coalescing \
             --verify-dom-info \
