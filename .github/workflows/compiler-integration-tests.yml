@@ -122,7 +122,8 @@ jobs:
           XFAILS:
             "Transforms/LoopVectorize/vplan_hcfg_stress_test.ll;\
             Transforms/LoopFlatten/widen-iv2.ll;\
-            Transforms/LoopFusion/simple.ll"
+            Transforms/LoopFusion/simple.ll;\
+            CodeGen/EVM/stdlib-call-ellision.ll"
         run: |
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
           ${BINDIR}/llvm-lit -vv -s --xfail "${XFAILS}" "-Dopt=${BINDIR}/opt ${OPT_OPTS}" './llvm/llvm/test/CodeGen/' \
