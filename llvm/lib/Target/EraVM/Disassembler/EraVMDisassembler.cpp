@@ -39,7 +39,52 @@ public:
                               ArrayRef<uint8_t> Bytes, uint64_t Address,
                               raw_ostream &CStream) const override;
 };
+
+Register decodeGR256(const MCDisassembler *D, unsigned EncodedReg) {
+  const auto *MCRI = D->getContext().getRegisterInfo();
+  const auto &RC = MCRI->getRegClass(EraVM::GR256RegClassID);
+  assert(RC.getNumRegs() == 16 && "Unexpected change to register class");
+  return RC.getRegister(EncodedReg);
+}
+
+int64_t decodeCC(unsigned EncodedCC) {
+  const unsigned EncodingForIfGTOrLT = 7;
+  if (EncodedCC == EncodingForIfGTOrLT)
+    return EraVMCC::COND_INVALID;
+
+  // EraVMCC::CondCodes are defined so that enumerator values are actual
+  // predicate's binary encodings.
+  assert(EncodedCC < 8 && "Too wide field to decode");
+  return EncodedCC & 0x7;
+}
+
+DecodeStatus DecodeGR256RegisterClass(MCInst &Inst, unsigned EncodedReg,
+                                      uint64_t, const MCDisassembler *D) {
+  Inst.addOperand(MCOperand::createReg(decodeGR256(D, EncodedReg)));
+  return DecodeStatus::Success;
+}
+
+DecodeStatus DecodeCCOperand(MCInst &Inst, unsigned EncodedCC, uint64_t,
+                             const MCDisassembler *) {
+  Inst.addOperand(MCOperand::createImm(decodeCC(EncodedCC)));
+  return DecodeStatus::Success;
+}
+
+DecodeStatus DecodeStackOperand(MCInst &Inst, unsigned EncodedStackOp, uint64_t,
+                                const MCDisassembler *D) {
+  // TODO Implement decoding stack operands
+  return DecodeStatus::Fail;
+}
+
+DecodeStatus DecodeCodeOperand(MCInst &Inst, unsigned EncodedStackOp, uint64_t,
+                               const MCDisassembler *D) {
+  // TODO Implement decoding code operands
+  return DecodeStatus::Fail;
+}
+
 } // end anonymous namespace
+
+#include "EraVMGenDisassemblerTables.inc"
 
 static MCDisassembler *createEraVMDisassembler(const Target &T,
                                                const MCSubtargetInfo &STI,
@@ -56,9 +101,13 @@ DecodeStatus EraVMDisassembler::getInstruction(MCInst &MI, uint64_t &Size,
                                                ArrayRef<uint8_t> Bytes,
                                                uint64_t Address,
                                                raw_ostream &CStream) const {
-  MI.setOpcode(EraVM::NOPSP);
+  // The instruction is always 8 bytes.
+  Size = 0;
+  if (Bytes.size() < 8)
+    return Fail;
+  Size = 8;
 
-  Size = 32;
+  uint64_t Insn = support::endian::read64be(Bytes.begin());
 
-  return DecodeStatus::Success;
+  return decodeInstruction(DecoderTableEraVM64, MI, Insn, Address, this, STI);
 }

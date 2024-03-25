@@ -152,6 +152,7 @@ def memop : Operand<i256> {
   let PrintMethod = "printMemOperand";
   let EncoderMethod = "getMemOpValue";
   let ParserMatchClass = CodeOperand;
+  let DecoderMethod = "DecodeCodeOperand";
   let MIOperandInfo = (ops GR256, i16imm);
 }
 
@@ -171,6 +172,7 @@ def stackin : Operand<i256> {
   let PrintMethod = "printStackOperand<true>";
   let EncoderMethod = "getStackOpValue";
   let ParserMatchClass = StackInOperand;
+  let DecoderMethod = "DecodeStackOperand";
   let MIOperandInfo = (ops GRStackRefMarker, GR256, i16imm);
 }
 
@@ -178,6 +180,7 @@ def stackout : Operand<i256> {
   let PrintMethod = "printStackOperand<false>";
   let EncoderMethod = "getStackOpValue";
   let ParserMatchClass = StackOutOperand;
+  let DecoderMethod = "DecodeStackOperand";
   let MIOperandInfo = (ops GRStackRefMarker, GR256, i16imm);
 }
 

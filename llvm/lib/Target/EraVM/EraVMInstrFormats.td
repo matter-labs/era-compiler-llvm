@@ -218,6 +218,7 @@ def i256imm : Operand<i256>;
 def pred : PredicateOperand<i256, (ops i256imm), (ops (i256 0))> {
   let PrintMethod = "printCCOperand";
   let EncoderMethod = "getCCOpValue";
+  let DecoderMethod = "DecodeCCOperand";
 }
 
 class EraVMCondCode<int val> {
