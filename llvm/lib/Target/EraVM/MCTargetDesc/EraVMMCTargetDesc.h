@@ -83,6 +83,19 @@ struct EraVMOpcodeInfo {
   /// Note that the stackout operand is input operand of the instruction as it
   /// provides an address to write the result to.
   unsigned IndexOfStackDstUse;
+
+  static unsigned getMCOperandIndexForUseIndex(const MCInstrDesc &Desc,
+                                               unsigned UseIndex);
+
+  /// Computes index of the first MCOperand corresponding to stackin operand.
+  unsigned getMCOperandIndexOfStackSrc(const MCInstrDesc &Desc) const {
+    return getMCOperandIndexForUseIndex(Desc, 0);
+  }
+
+  /// Computes index of the first MCOperand corresponding to stackout operand.
+  unsigned getMCOperandIndexOfStackDst(const MCInstrDesc &Desc) const {
+    return getMCOperandIndexForUseIndex(Desc, IndexOfStackDstUse);
+  }
 };
 
 namespace EraVM {

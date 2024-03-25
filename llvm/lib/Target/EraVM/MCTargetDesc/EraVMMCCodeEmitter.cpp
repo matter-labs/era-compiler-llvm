@@ -30,9 +30,6 @@
 
 #define DEBUG_TYPE "mccodeemitter"
 
-#define GET_INSTRINFO_LOGICAL_OPERAND_SIZE_MAP
-#include "EraVMGenInstrInfo.inc"
-
 namespace llvm {
 
 class EraVMMCCodeEmitter : public MCCodeEmitter {
@@ -103,10 +100,6 @@ static int modeEncodingByMarker(const MCOperand &Op) {
 uint64_t EraVMMCCodeEmitter::adjustForStackOperands(
     const MCInst &MI, uint64_t EncodedInstr, const MCSubtargetInfo &STI) const {
   const MCInstrDesc &Desc = MCII.get(MI.getOpcode());
-  auto GetOpIndex = [&Desc](unsigned UseIndex) {
-    return EraVM::getLogicalOperandIdx(Desc.getOpcode(),
-                                       Desc.getNumDefs() + UseIndex);
-  };
 
   int OldSrcMode = -1;
   int OldDstMode = -1;
@@ -119,12 +112,14 @@ uint64_t EraVMMCCodeEmitter::adjustForStackOperands(
   assert(Info && "Incorrect EncodedOpcode produced by the encoder");
 
   if (OldSrcMode == EraVM::ModeStackAbs) {
-    const MCOperand &Op = MI.getOperand(GetOpIndex(0));
+    const MCOperand &Op =
+        MI.getOperand(Info->getMCOperandIndexOfStackSrc(Desc));
     int NewSrcMode = modeEncodingByMarker(Op);
     EncodedOpcode += (NewSrcMode - OldSrcMode) * (int)Info->SrcMultiplier;
   }
   if (OldDstMode == EraVM::ModeStackAbs) {
-    const MCOperand &Op = MI.getOperand(GetOpIndex(Info->IndexOfStackDstUse));
+    const MCOperand &Op =
+        MI.getOperand(Info->getMCOperandIndexOfStackDst(Desc));
     int NewDstMode = modeEncodingByMarker(Op);
     EncodedOpcode += (NewDstMode - OldDstMode) * (int)Info->DstMultiplier;
   }
