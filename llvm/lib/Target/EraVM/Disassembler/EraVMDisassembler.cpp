@@ -17,10 +17,14 @@
 #include "llvm/MC/MCDecoderOps.h"
 #include "llvm/MC/MCDisassembler/MCDisassembler.h"
 #include "llvm/MC/MCInst.h"
+#include "llvm/MC/MCInstrInfo.h"
 #include "llvm/MC/MCRegisterInfo.h"
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/Endian.h"
+
+#include <memory>
+#include <optional>
 
 using namespace llvm;
 
@@ -30,10 +34,11 @@ using DecodeStatus = MCDisassembler::DecodeStatus;
 
 namespace {
 class EraVMDisassembler : public MCDisassembler {
+  std::unique_ptr<MCInstrInfo> MCII;
 
 public:
-  EraVMDisassembler(const MCSubtargetInfo &STI, MCContext &Ctx)
-      : MCDisassembler(STI, Ctx) {}
+  EraVMDisassembler(const Target &T, const MCSubtargetInfo &STI, MCContext &Ctx)
+      : MCDisassembler(STI, Ctx), MCII(T.createMCInstrInfo()) {}
 
   DecodeStatus getInstruction(MCInst &MI, uint64_t &Size,
                               ArrayRef<uint8_t> Bytes, uint64_t Address,
@@ -72,14 +77,21 @@ DecodeStatus DecodeCCOperand(MCInst &Inst, unsigned EncodedCC, uint64_t,
 
 DecodeStatus DecodeStackOperand(MCInst &Inst, unsigned EncodedStackOp, uint64_t,
                                 const MCDisassembler *D) {
-  // TODO Implement decoding stack operands
-  return DecodeStatus::Fail;
+  unsigned EncodedReg = EncodedStackOp & 0xf;
+  unsigned EncodedAddend = (EncodedStackOp >> 4) & 0xffff;
+  Inst.addOperand(MCOperand::createImm(0)); // Will be replaced later
+  Inst.addOperand(MCOperand::createReg(decodeGR256(D, EncodedReg)));
+  Inst.addOperand(MCOperand::createImm(EncodedAddend));
+  return DecodeStatus::Success;
 }
 
 DecodeStatus DecodeCodeOperand(MCInst &Inst, unsigned EncodedStackOp, uint64_t,
                                const MCDisassembler *D) {
-  // TODO Implement decoding code operands
-  return DecodeStatus::Fail;
+  unsigned EncodedReg = EncodedStackOp & 0xf;
+  unsigned EncodedAddend = (EncodedStackOp >> 4) & 0xffff;
+  Inst.addOperand(MCOperand::createReg(decodeGR256(D, EncodedReg)));
+  Inst.addOperand(MCOperand::createImm(EncodedAddend));
+  return DecodeStatus::Success;
 }
 
 } // end anonymous namespace
@@ -89,12 +101,25 @@ DecodeStatus DecodeCodeOperand(MCInst &Inst, unsigned EncodedStackOp, uint64_t,
 static MCDisassembler *createEraVMDisassembler(const Target &T,
                                                const MCSubtargetInfo &STI,
                                                MCContext &Ctx) {
-  return new EraVMDisassembler(STI, Ctx);
+  return new EraVMDisassembler(T, STI, Ctx);
 }
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMDisassembler() {
   TargetRegistry::RegisterMCDisassembler(getTheEraVMTarget(),
                                          createEraVMDisassembler);
+}
+
+static std::optional<MCOperand> createStackMarker(int Mode) {
+  switch (Mode) {
+  case EraVM::ModeSpMod:
+    return MCOperand::createReg(EraVM::R0);
+  case EraVM::ModeSpRel:
+    return MCOperand::createReg(EraVM::SP);
+  case EraVM::ModeStackAbs:
+    return MCOperand::createImm(0);
+  default:
+    return std::nullopt;
+  }
 }
 
 DecodeStatus EraVMDisassembler::getInstruction(MCInst &MI, uint64_t &Size,
@@ -108,6 +133,34 @@ DecodeStatus EraVMDisassembler::getInstruction(MCInst &MI, uint64_t &Size,
   Size = 8;
 
   uint64_t Insn = support::endian::read64be(Bytes.begin());
+  const uint64_t OldOpcode = Insn & EraVM::EncodedOpcodeMask;
+  uint64_t NewOpcode = OldOpcode;
+  Insn &= ~EraVM::EncodedOpcodeMask;
 
-  return decodeInstruction(DecoderTableEraVM64, MI, Insn, Address, this, STI);
+  int SrcMode = EraVM::OperandCode, DstMode = EraVM::OperandCode;
+  const EraVMOpcodeInfo *Info =
+      EraVM::analyzeEncodedOpcode(OldOpcode, SrcMode, DstMode);
+  if (!Info)
+    return Fail;
+
+  std::optional<MCOperand> StackSrcMarker = createStackMarker(SrcMode);
+  std::optional<MCOperand> StackDstMarker = createStackMarker(DstMode);
+  if (StackSrcMarker)
+    NewOpcode += (EraVM::ModeStackAbs - SrcMode) * Info->SrcMultiplier;
+  if (StackDstMarker)
+    NewOpcode += (EraVM::ModeStackAbs - DstMode) * Info->DstMultiplier;
+
+  Insn |= NewOpcode;
+
+  DecodeStatus Result =
+      decodeInstruction(DecoderTableEraVM64, MI, Insn, Address, this, STI);
+  if (Result == DecodeStatus::Success) {
+    const MCInstrDesc &Desc = MCII->get(MI.getOpcode());
+    // TODO Make use of appendMCOperands(...).
+    if (StackSrcMarker)
+      MI.getOperand(Info->getMCOperandIndexOfStackSrc(Desc)) = *StackSrcMarker;
+    if (StackDstMarker)
+      MI.getOperand(Info->getMCOperandIndexOfStackDst(Desc)) = *StackDstMarker;
+  }
+  return Result;
 }

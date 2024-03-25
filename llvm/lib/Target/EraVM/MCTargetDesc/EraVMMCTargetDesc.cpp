@@ -86,6 +86,12 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTargetMC() {
 #define GET_INSTRINFO_LOGICAL_OPERAND_SIZE_MAP
 #include "EraVMGenInstrInfo.inc"
 
+unsigned EraVMOpcodeInfo::getMCOperandIndexForUseIndex(const MCInstrDesc &Desc,
+                                                       unsigned UseIndex) {
+  return EraVM::getLogicalOperandIdx(Desc.getOpcode(),
+                                     Desc.getNumDefs() + UseIndex);
+}
+
 const EraVMOpcodeInfo *llvm::EraVM::findOpcodeInfo(unsigned Opcode) {
   auto Table = ArrayRef(EraVMOpcodesList);
   const auto *It =
