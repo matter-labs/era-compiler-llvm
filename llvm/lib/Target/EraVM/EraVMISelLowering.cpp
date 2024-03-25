@@ -123,7 +123,7 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
   // Legal operations
   setOperationAction({ISD::ADD, ISD::SUB, ISD::AND, ISD::OR, ISD::XOR, ISD::SHL,
                       ISD::SRL, ISD::UDIVREM, ISD::UMUL_LOHI, ISD::Constant,
-                      ISD::UNDEF, ISD::FRAMEADDR},
+                      ISD::UNDEF, ISD::FRAMEADDR, ISD::ROTR, ISD::ROTL},
                      MVT::i256, Legal);
 
   // custom lowering operations
