@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMSubtarget.h"
+#include "llvm/CodeGen/MachineScheduler.h"
 
 using namespace llvm;
 
@@ -22,6 +23,13 @@ using namespace llvm;
 
 EVMSubtarget::EVMSubtarget(const Triple &TT, const std::string &CPU,
                            const std::string &FS, const TargetMachine &TM)
-    : EVMGenSubtargetInfo(TT, CPU, /*TuneCPU*/ CPU, FS), TLInfo(TM, *this) {}
+    : EVMGenSubtargetInfo(TT, CPU, /*TuneCPU*/ CPU, FS), TLInfo(TM, *this) {
+  SchedModel.init(this);
+}
 
 bool EVMSubtarget::useAA() const { return true; }
+
+void EVMSubtarget::overrideSchedPolicy(MachineSchedPolicy &Policy,
+                                       unsigned NumRegionInstrs) const {
+  Policy.ShouldTrackPressure = true;
+}

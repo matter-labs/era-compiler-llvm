@@ -16,6 +16,10 @@
 
 include "llvm/Target/Target.td"
 
+//===----------------------------------------------------------------------===//
+// scheduling information
+//===----------------------------------------------------------------------===//
+include "EVMSchedule.td"
 
 //===----------------------------------------------------------------------===//
 // Register File Description
@@ -41,8 +45,7 @@ def EVMAsmWriter : AsmWriter {
   string AsmWriterClassName = "InstPrinter";
 }
 
-
-def : ProcessorModel<"evm", NoSchedModel, []>;
+def : ProcessorModel<"evm", EVMModel, []>;
 
 //===----------------------------------------------------------------------===//
 // Target Declaration

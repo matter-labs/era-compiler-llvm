@@ -30,6 +30,10 @@ EVMTargetLowering::EVMTargetLowering(const TargetMachine &TM,
   // Booleans always contain 0 or 1.
   setBooleanContents(ZeroOrOneBooleanContent);
 
+  // EVM is a single-issue, inorder architecture, so the goal it to minimize
+  // register pressure.
+  setSchedulingPreference(Sched::RegPressure);
+
   // Set up the register classes.
   addRegisterClass(MVT::i256, &EVM::GPRRegClass);
 

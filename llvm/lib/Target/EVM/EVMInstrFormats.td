@@ -45,7 +45,7 @@ class EVMInst<string asmstr, bit stack, int cost>
 // Normal instructions. Default instantiation of a EVMInst.
 class NI<dag oops, dag iops, list<dag> pattern, bit stack,
          string asmstr = "", bits<8> inst = 0, int cost = 0>
-    : EVMInst<asmstr, stack, cost> {
+    : EVMInst<asmstr, stack, cost>, Sched<[WriteRes]> {
   dag OutOperandList = oops;
   dag InOperandList  = iops;
   let Pattern        = pattern;
