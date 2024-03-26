@@ -71,7 +71,7 @@ protected:
   BasicBlock *ExitBB;
 };
 
-static void expectNoDiags(const DiagnosticInfo &DI, void *C) {
+static void expectNoDiags(const DiagnosticInfo *DI, void *C) {
   llvm_unreachable("expectNoDiags called!");
 }
 
