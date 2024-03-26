@@ -395,6 +395,9 @@ FUNCTION_PASS("make-guards-explicit", MakeGuardsExplicitPass())
 FUNCTION_PASS("mem2reg", PromotePass())
 FUNCTION_PASS("memcpyopt", MemCpyOptPass())
 FUNCTION_PASS("memprof", MemProfilerPass())
+// EraVM local begin
+FUNCTION_PASS("mergebb", MergeIdenticalBBPass())
+// EraVM local end
 FUNCTION_PASS("mergeicmps", MergeICmpsPass())
 FUNCTION_PASS("mergereturn", UnifyFunctionExitNodesPass())
 FUNCTION_PASS("move-auto-init", MoveAutoInitPass())

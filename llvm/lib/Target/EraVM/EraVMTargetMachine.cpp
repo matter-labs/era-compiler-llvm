@@ -26,6 +26,7 @@
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Scalar/DeadStoreElimination.h"
+#include "llvm/Transforms/Scalar/MergeIdenticalBB.h"
 #include "llvm/Transforms/Utils.h"
 
 #include "EraVM.h"
@@ -132,6 +133,12 @@ void EraVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
       [](ModulePassManager &PM, OptimizationLevel Level) {
         if (Level != OptimizationLevel::O0)
           PM.addPass(createModuleToFunctionPassAdaptor(EraVMCSEPass()));
+      });
+
+  PB.registerScalarOptimizerLateEPCallback(
+      [](FunctionPassManager &PM, OptimizationLevel Level) {
+        if (Level.getSizeLevel() || Level.getSpeedupLevel() > 1)
+          PM.addPass(MergeIdenticalBBPass());
       });
 
   PB.registerAnalysisRegistrationCallback([](FunctionAnalysisManager &FAM) {
