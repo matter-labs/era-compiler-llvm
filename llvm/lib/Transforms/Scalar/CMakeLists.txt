@@ -56,6 +56,9 @@ add_llvm_component_library(LLVMScalarOpts
   MakeGuardsExplicit.cpp
   MemCpyOptimizer.cpp
   MergeICmps.cpp
+  # EVM local begin
+  MergeIdenticalBB.cpp
+  # EVM local end
   MergedLoadStoreMotion.cpp
   NaryReassociate.cpp
   NewGVN.cpp
