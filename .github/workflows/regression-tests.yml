@@ -1,0 +1,197 @@
+name: Regression tests
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      commits-to-test:
+        description: "Number of commits to test"
+        required: true
+        default: '1'
+      # For more information about the supported sanitizers in LLVM, see `LLVM_USE_SANITIZER` option in:
+      # https://www.llvm.org/docs/CMake.html
+      llvm-sanitizer:
+        required: false
+        default: 'Address'
+        type: string
+        description: 'A sanitizer to build LLVM with. Possible values are Address, Memory, MemoryWithOrigins, Undefined, Thread, DataFlow, and Address;Undefined'
+      enable-valgrind:
+        required: false
+        default: 'false'
+        type: string
+        description: 'Run LLVM regression tests under valgrind.'
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: ${{ github.repository_id }}-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  target-machine:
+    runs-on: ubuntu-latest
+    outputs:
+      evm: ${{ steps.evm.outputs.machine }}
+      eravm: ${{ steps.eravm.outputs.machine }}
+      default: ${{ steps.default.outputs.machine }}
+    steps:
+
+      - name: Check for EraVM target
+        id: eravm
+        if: contains(github.event.pull_request.title, '[eravm]') || contains(github.event.pull_request.title, '[EraVM]')
+        run: echo "machine=eravm" | tee -a "${GITHUB_OUTPUT}"
+
+      - name: Check for EVM target
+        id: evm
+        if: contains(github.event.pull_request.title, '[evm]') || contains(github.event.pull_request.title, '[EVM]')
+        run: echo "machine=evm" | tee -a "${GITHUB_OUTPUT}"
+
+      - name: Check for default target
+        id: default
+        shell: bash -ex {0}
+        run: |
+          if [[ "${{ join(steps.*.outputs.*) }}" == "" ]]; then
+            echo "machine=default" | tee -a "${GITHUB_OUTPUT}"
+          fi
+
+  prepare-test-matrix:
+    needs: target-machine
+    runs-on: ubuntu-latest
+    outputs:
+      matrix-formatting: ${{ steps.prepare.outputs.matrix-formatting }}
+      matrix-tests: ${{ steps.prepare.outputs.matrix-tests }}
+      fetch_depth: ${{ steps.extract_branch.outputs.fetch_depth }}
+
+    steps:
+
+      - name: Extract branch name
+        id: extract_branch
+        run: |
+          echo "head_ref=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" | tee -a "${GITHUB_OUTPUT}"
+          echo "base_ref=${{ github.base_ref || github.event.repository.default_branch }}" | tee -a "${GITHUB_OUTPUT}"
+          echo "fetch_depth=$(( ${{ github.event.pull_request.commits || github.event.inputs.commits-to-test }} + 1 ))" | tee -a "${GITHUB_OUTPUT}"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.extract_branch.outputs.head_ref }}
+          fetch-depth: ${{ github.event.pull_request.commits || github.event.inputs.commits-to-test }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
+      - name: Prepare commits
+        id: prepare
+        shell: bash -ex {0}
+        env:
+          TEST_COMMITS_LIMIT: 25 # Limit the number of commits to test
+        run: |
+          COMMITS_TO_TEST=$(git log -n ${{ github.event.pull_request.commits || github.event.inputs.commits-to-test }} --pretty='"%H"' | head -n ${TEST_COMMITS_LIMIT})
+          echo "matrix-formatting={ \"commit\": [${COMMITS_TO_TEST//$'\n'/, }] }" | tee -a "${GITHUB_OUTPUT}"
+          TARGETS=$(echo '${{ toJSON(needs.target-machine.outputs) }}' | jq '.[]')
+          echo "matrix-tests={ \"commit\": [${COMMITS_TO_TEST//$'\n'/, }], \"target\": [${TARGETS//$'\n'/, }] }" | tee -a "${GITHUB_OUTPUT}"
+
+  check-formatting:
+    if: github.event_name == 'pull_request'
+    runs-on: [ci-runner-compiler, Linux]
+    container:
+      image: ghcr.io/matter-labs/zksync-llvm-runner:latest
+      options: -m 110g
+    needs: prepare-test-matrix
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix: ${{ fromJson(needs.prepare-test-matrix.outputs.matrix-formatting) }}
+    steps:
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.commit }}
+          fetch-depth: ${{ needs.prepare-test-matrix.outputs.fetch_depth }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
+      - name: Define previous commit
+        id: previous-commit
+        run: echo "sha=$(git show --quiet --pretty='%H' ${{ matrix.commit }}^1)" | tee -a "${GITHUB_OUTPUT}"
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@2f7c5bfce28377bc069a65ba478de0a74aa0ca32 # v46.0.1
+        with:
+          separator: ","
+          sha: ${{ matrix.commit }}
+          base_sha: ${{ steps.previous-commit.outputs.sha }}
+
+      - name: Install formatting requirements
+        run: python3 -m pip install -r ./llvm/utils/git/requirements_formatting_era_llvm.txt
+
+      - name: Run code formatter
+        run: |
+          set -x
+          if [ '${{ github.event.pull_request.head.repo.fork }}' = 'true' ]; then
+            TOKEN_PARAM=""
+          else
+            TOKEN_PARAM="--token ${{ secrets.GITHUB_TOKEN }}"
+          fi
+          python3 ./llvm/utils/git/code-format-helper-era-llvm.py ${TOKEN_PARAM} \
+            --issue-number ${{ github.event.pull_request.number }} \
+            --start-rev ${{ steps.previous-commit.outputs.sha }} \
+            --end-rev ${{ matrix.commit }} \
+            --changed-files ${{ steps.changed-files.outputs.all_changed_files }}
+
+  regression-tests:
+    runs-on: [ci-runner-compiler, Linux]
+    container:
+      image: ghcr.io/matter-labs/zksync-llvm-runner:latest
+      options: -m 110g
+    needs: prepare-test-matrix
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix: ${{ fromJson(needs.prepare-test-matrix.outputs.matrix-tests) }}
+    steps:
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.commit }}
+          fetch-depth: ${{ needs.prepare-test-matrix.outputs.fetch_depth }}
+          path: "llvm"
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
+      - name: Define previous commit
+        if: github.event_name == 'pull_request'
+        working-directory: llvm
+        id: previous-commit
+        run: echo "sha=$(git show --quiet --pretty='%H' ${{ matrix.commit }}^1)" | tee -a "${GITHUB_OUTPUT}"
+
+      - name: Build LLVM
+        uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
+        with:
+          default-target-triple: ${{ matrix.target }}
+          enable-tests: true
+          enable-assertions: true
+          clone-llvm: false
+          ccache-key-type: 'static' # rotate ccache key every month
+          sanitizer: ${{ inputs.llvm-sanitizer }}
+          enable-valgrind: ${{ inputs.enable-valgrind }}
+
+      # `verify-llvm` is a special target that runs all the regression tests
+      # it includes `check-llvm` and special codegen tests
+      # called via `verify-llvm-codegen-opt` and `verify-llvm-codegen-llc` targets
+      - name: Running Lit tests
+        run: |
+          ninja -C './target-llvm/build-final' verify-llvm -v
+          ninja -C './target-llvm/build-final' check-lld-unit -v
+
+      - name: clang-tidy
+        if: github.event_name == 'pull_request'
+        working-directory: llvm
+        run: |
+          CHANGES=$(git diff -U0 ${{ steps.previous-commit.outputs.sha }})
+          echo "Running clang-tidy on the following changes: ${CHANGES}"
+          echo "${CHANGES}" | \
+             ./clang-tools-extra/clang-tidy/tool/clang-tidy-diff_Zegar.py \
+              -p1 -clang-tidy-binary $(which clang-tidy) \
+              -path ../target-llvm/build-final/compile_commands.json

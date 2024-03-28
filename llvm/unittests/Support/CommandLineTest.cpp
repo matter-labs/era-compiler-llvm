@@ -938,6 +938,11 @@ TEST(CommandLineTest, ResponseFiles) {
 }
 
 TEST(CommandLineTest, RecursiveResponseFiles) {
+  // EVM local begin
+  // Temporary disable on Windows due to issues with paths on MSYS2.
+  if (Triple(sys::getProcessTriple()).isOSWindows())
+    GTEST_SKIP();
+  // EVM local end
   vfs::InMemoryFileSystem FS;
 #ifdef _WIN32
   const char *TestRoot = "C:\\";
