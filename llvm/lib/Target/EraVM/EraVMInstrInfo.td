@@ -1204,7 +1204,7 @@ def LD2i    : IUMA < 142, (outs GR256:$rd0), (ins imm16:$addr, cc:$cc),
                   "ld.2$cc\t$addr, $rd0", []>;
 def LD      : IUMA <45, (outs GR256:$rd0), (ins GRPTR:$rs0, cc:$cc),
                   "ld$cc\t$rs0, $rd0", []>;
-def LDInc   : IUMA <46, (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, cc:$cc),
+def LDInc   : IUMA <46, (outs GR256:$rd0, GRPTR:$rd1), (ins GRPTR:$rs0, cc:$cc),
                   "ld.inc$cc\t$rs0, $rd0, $rd1", []>;
 // Pseudo alias version of `LD` which has different type than `LD`
 // We will manually select it when we see that we are loading a fat pointer
