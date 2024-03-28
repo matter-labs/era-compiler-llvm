@@ -33,11 +33,11 @@
 ---
 # CHECK-LABEL: test
 # CHECK-LABEL: bb.1.bb1:
-# CHECK: %7:grptr = COPY %0
+# CHECK: %7:grptr = fatptr COPY %0
 # CHECK-LABEL: bb.2.bb2:
-# CHECK: %7:grptr = COPY %1
+# CHECK: %7:grptr = fatptr COPY %1
 # CHECK-LABEL: bb.3.exit:
-# CHECK: %2:grptr = COPY %7
+# CHECK: %2:grptr = fatptr COPY %7
 
 name:            test
 alignment:       1
