@@ -227,8 +227,9 @@ bool EraVMCombineToIndexedMemops::runOnMachineFunction(MachineFunction &MF) {
       // add 32, x, y.
       ++NumIndexedMemOpCombined;
       Changed = true;
-      Register IncrementedOffsetReg =
-          RegInfo->createVirtualRegister(&EraVM::GR256RegClass);
+      Register IncrementedOffsetReg = RegInfo->createVirtualRegister(
+          MI.getOpcode() == EraVM::LD ? &EraVM::GRPTRRegClass
+                                      : &EraVM::GR256RegClass);
       MachineInstr *MemIncInst = replaceWithIndexed(MI, IncrementedOffsetReg);
       eraseAndReplaceUses(Add32ToRemove, IncrementedOffsetReg);
 

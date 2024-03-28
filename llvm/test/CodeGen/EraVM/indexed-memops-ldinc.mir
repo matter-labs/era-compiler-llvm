@@ -24,7 +24,7 @@
 ...
 ---
 # CHECK-LABEL: test
-# CHECK: %1:gr256, %5:gr256 = LDInc %0, 0
+# CHECK: %1:gr256, %5:grptr = LDInc %0, 0
 
 name:            test
 alignment:       1
