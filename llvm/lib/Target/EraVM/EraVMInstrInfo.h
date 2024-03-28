@@ -352,6 +352,21 @@ public:
 
   bool isSilent(const MachineInstr &MI) const;
 
+  // This function is calling base class implementation and properly tagging
+  // fatptr copies if needed.
+  MachineInstr *createPHIDestinationCopy(MachineBasicBlock &MBB,
+                                         MachineBasicBlock::iterator InsPt,
+                                         const DebugLoc &DL, Register Src,
+                                         Register Dst) const override;
+
+  // This function is calling base class implementation and properly tagging
+  // fatptr copies if needed.
+  MachineInstr *createPHISourceCopy(MachineBasicBlock &MBB,
+                                    MachineBasicBlock::iterator InsPt,
+                                    const DebugLoc &DL, Register Src,
+                                    unsigned SrcSubReg,
+                                    Register Dst) const override;
+
   void tagFatPointerCopy(MachineInstr &) const override;
 
   static bool isFlagSettingInstruction(uint16_t opcode) {
