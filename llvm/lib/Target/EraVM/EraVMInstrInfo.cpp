@@ -583,6 +583,24 @@ void EraVMInstrInfo::tagFatPointerCopy(MachineInstr &MI) const {
     MI.setFlag(MachineInstr::MIFlag::IsFatPtr);
 }
 
+MachineInstr *EraVMInstrInfo::createPHIDestinationCopy(
+    MachineBasicBlock &MBB, MachineBasicBlock::iterator InsPt,
+    const DebugLoc &DL, Register Src, Register Dst) const {
+  auto *Copy =
+      TargetInstrInfo::createPHIDestinationCopy(MBB, InsPt, DL, Src, Dst);
+  tagFatPointerCopy(*Copy);
+  return Copy;
+}
+
+MachineInstr *EraVMInstrInfo::createPHISourceCopy(
+    MachineBasicBlock &MBB, MachineBasicBlock::iterator InsPt,
+    const DebugLoc &DL, Register Src, unsigned SrcSubReg, Register Dst) const {
+  auto *Copy =
+      TargetInstrInfo::createPHISourceCopy(MBB, InsPt, DL, Src, SrcSubReg, Dst);
+  tagFatPointerCopy(*Copy);
+  return Copy;
+}
+
 bool EraVMInstrInfo::isPredicatedInstr(const MachineInstr &MI) const {
   if (MI.isBranch())
     return !MI.isUnconditionalBranch();
