@@ -1,17 +1,9 @@
-# Contributing to LLVM
+# Contribution Guidelines
 
-Thank you for your interest in contributing to LLVM! There are many ways to
-contribute, and we appreciate all contributions.
+Thank you for considering helping out with the source code! We are extremely grateful for any consideration of
+contributions to this repository. However, at this time, we generally do not accept external contributions. This policy
+will change in the future, so please check back regularly for updates.
 
-To get started with contributing, please take a look at the
-[Contributing to LLVM](https://llvm.org/docs/Contributing.html) guide. It
-describes how to get involved, raise issues and submit patches.
+For security issues, please contact us at [security@matterlabs.dev](mailto:security@matterlabs.dev).
 
-## Getting in touch
-
-Join the [LLVM Discourse forums](https://discourse.llvm.org/), [Discord
-chat](https://discord.gg/xS7Z362), or #llvm IRC channel on
-[OFTC](https://oftc.net/).
-
-The LLVM project has adopted a [code of conduct](https://llvm.org/docs/CodeOfConduct.html) for
-participants to all modes of communication within the project.
+Thank you for your support in accelerating the mass adoption of crypto for personal sovereignty!
