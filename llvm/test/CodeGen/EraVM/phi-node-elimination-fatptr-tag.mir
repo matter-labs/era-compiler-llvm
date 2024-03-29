@@ -1,0 +1,124 @@
+# RUN: llc -x mir -run-pass=phi-node-elimination -verify-machineinstrs -compile-twice=false < %s | FileCheck %s
+
+--- |
+  ; ModuleID = 'test.ll'
+  source_filename = "test.ll"
+  target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
+  target triple = "eravm"
+
+  define i256 @test(ptr addrspace(3) %addr, i1 %cond) {
+  entry:
+    br i1 %cond, label %bb1, label %bb2
+
+  bb1:                                              ; preds = %entry
+    %0 = call ptr addrspace(3) @llvm.eravm.ptr.add(ptr addrspace(3) %addr, i256 32)
+    br label %exit
+
+  bb2:                                              ; preds = %entry
+    %1 = call ptr addrspace(3) @llvm.eravm.ptr.add(ptr addrspace(3) %addr, i256 64)
+    br label %exit
+
+  exit:                                             ; preds = %bb2, %bb1
+    %phi = phi ptr addrspace(3) [ %0, %bb1 ], [ %1, %bb2 ]
+    %load = load i256, ptr addrspace(3) %phi, align 32
+    ret i256 %load
+  }
+
+  ; Function Attrs: nounwind readnone
+  declare ptr addrspace(3) @llvm.eravm.ptr.add(ptr addrspace(3), i256) #0
+
+  attributes #0 = { nounwind readnone }
+
+...
+---
+# CHECK-LABEL: test
+# CHECK-LABEL: bb.1.bb1:
+# CHECK: %7:grptr = COPY %0
+# CHECK-LABEL: bb.2.bb2:
+# CHECK: %7:grptr = COPY %1
+# CHECK-LABEL: bb.3.exit:
+# CHECK: %2:grptr = COPY %7
+
+name:            test
+alignment:       1
+exposesReturnsTwice: false
+legalized:       false
+regBankSelected: false
+selected:        false
+failedISel:      false
+tracksRegLiveness: true
+hasWinCFI:       false
+callsEHReturn:   false
+callsUnwindInit: false
+hasEHCatchret:   false
+hasEHScopes:     false
+hasEHFunclets:   false
+failsVerification: false
+tracksDebugUserValues: false
+registers:
+  - { id: 0, class: grptr, preferred-register: '' }
+  - { id: 1, class: grptr, preferred-register: '' }
+  - { id: 2, class: grptr, preferred-register: '' }
+  - { id: 3, class: grptr, preferred-register: '' }
+  - { id: 4, class: gr256, preferred-register: '' }
+  - { id: 5, class: gr256, preferred-register: '' }
+  - { id: 6, class: gr256, preferred-register: '' }
+liveins:
+  - { reg: '$r1', virtual-reg: '%3' }
+  - { reg: '$r2', virtual-reg: '%4' }
+frameInfo:
+  isFrameAddressTaken: false
+  isReturnAddressTaken: false
+  hasStackMap:     false
+  hasPatchPoint:   false
+  stackSize:       0
+  offsetAdjustment: 0
+  maxAlignment:    1
+  adjustsStack:    false
+  hasCalls:        false
+  stackProtector:  ''
+  functionContext: ''
+  maxCallFrameSize: 4294967295
+  cvBytesOfCalleeSavedRegisters: 0
+  hasOpaqueSPAdjustment: false
+  hasVAStart:      false
+  hasMustTailInVarArgFunc: false
+  hasTailCall:     false
+  localFrameSize:  0
+  savePoint:       ''
+  restorePoint:    ''
+fixedStack:      []
+stack:           []
+callSites:       []
+debugValueSubstitutions: []
+constants:       []
+machineFunctionInfo: {}
+body:             |
+  bb.0.entry:
+    successors: %bb.1(0x40000000), %bb.2(0x40000000)
+    liveins: $r1, $r2
+
+    %4:gr256 = COPY killed $r2
+    %3:grptr = fatptr COPY killed $r1
+    dead %5:gr256 = SUBrrr_v killed %4, $r0, i256 0, implicit-def $flags
+    JC %bb.2, i256 2, implicit $flags
+    J %bb.1
+
+  bb.1.bb1:
+    successors: %bb.3(0x80000000)
+
+    %0:grptr = PTR_ADDxrr_s i256 32, killed %3, 0
+    J %bb.3
+
+  bb.2.bb2:
+    successors: %bb.3(0x80000000)
+
+    %1:grptr = PTR_ADDxrr_s i256 64, killed %3, 0
+
+  bb.3.exit:
+    %2:grptr = PHI %1, %bb.2, %0, %bb.1
+    %6:gr256 = LD killed %2, i256 0
+    $r1 = COPY killed %6
+    RET implicit killed $r1
+
+...
