@@ -3827,14 +3827,10 @@ SDValue DAGCombiner::visitSUB(SDNode *N) {
   if (SDValue NewSel = foldBinOpIntoSelect(N))
     return NewSel;
 
-  // EraVM local begin
-  // TODO: Better to do it on ISel.
-  if (!DAG.getTarget().getTargetTriple().isEraVM()) {
   // fold (sub x, c) -> (add x, -c)
   if (ConstantSDNode *N1C = getAsNonOpaqueConstant(N1))
     return DAG.getNode(ISD::ADD, DL, VT, N0,
                        DAG.getConstant(-N1C->getAPIntValue(), DL, VT));
-  }
 
   if (isNullOrNullSplat(N0)) {
     // Right-shifting everything out but the sign bit followed by negation is
@@ -6641,11 +6637,6 @@ bool DAGCombiner::SearchForAndLoads(SDNode *N,
 }
 
 bool DAGCombiner::BackwardsPropagateMask(SDNode *N) {
-  // EraVM local begin
-  // TODO: Consider removing when non-i256 UMA works.
-  if (DAG.getTarget().getTargetTriple().isEraVM())
-    return false;
-  // EraVM local end
   auto *Mask = dyn_cast<ConstantSDNode>(N->getOperand(1));
   if (!Mask)
     return false;
