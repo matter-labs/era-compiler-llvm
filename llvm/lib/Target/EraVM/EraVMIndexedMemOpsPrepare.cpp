@@ -224,7 +224,15 @@ bool EraVMIndexedMemOpsPrepare::isValidGEPAndIncByOneCell(
   // can be increased along with loop iteration.
   const unsigned LastIndexOperandId = BasePtr->getNumOperands() - 1;
   Value *LastIndexOperand = BasePtr->getOperand(LastIndexOperandId);
-  return isa<PHINode>(LastIndexOperand);
+  const PHINode *PHI = dyn_cast<PHINode>(LastIndexOperand);
+  if (!PHI)
+    return false;
+
+  // In rewriteToFavorIndexedMemOps, new PHI is created with incoming values
+  // from preheader and latch. Check that this PHI has the same incoming BBs.
+  return PHI->getNumIncomingValues() == 2 &&
+         PHI->getBasicBlockIndex(CurrentLoop->getLoopPreheader()) >= 0 &&
+         PHI->getBasicBlockIndex(CurrentLoop->getLoopLatch()) >= 0;
 }
 
 bool EraVMIndexedMemOpsPrepare::runOnLoop(Loop *L, LPPassManager &) {
@@ -236,11 +244,16 @@ bool EraVMIndexedMemOpsPrepare::runOnLoop(Loop *L, LPPassManager &) {
   if (!L->isLoopSimplifyForm())
     return false;
 
+  auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
   Ctx = &L->getLoopPreheader()->getContext();
   CurrentLoop = L;
 
   for (auto *const BB : L->blocks()) {
+    // Ignore blocks in subloops.
+    if (LI.getLoopFor(BB) != L)
+      continue;
+
     for (auto &I : *BB) {
       GetElementPtrInst *BasePtrValue = nullptr;
       if (auto *LMemI = dyn_cast<LoadInst>(&I)) {
