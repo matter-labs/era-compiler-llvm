@@ -1,0 +1,92 @@
+# RUN: llc -x mir -run-pass=eravm-generate-indexed-memops -verify-machineinstrs -compile-twice=false < %s | FileCheck %s
+
+--- |
+  ; ModuleID = 'test.ll'
+  source_filename = "test.ll"
+  target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
+  target triple = "eravm-unknown-unknown"
+
+  define i256 @test(i256 addrspace(3)* %addr) {
+    %val = load i256, i256 addrspace(3)* %addr, align 32
+    %1 = bitcast i256 addrspace(3)* %addr to i8 addrspace(3)*
+    %2 = call i8 addrspace(3)* @llvm.eravm.ptr.add(i8 addrspace(3)* %1, i256 32)
+    %3 = bitcast i8 addrspace(3)* %2 to i256 addrspace(3)*
+    %val1 = load i256, i256 addrspace(3)* %3, align 32
+    %sum = add i256 %val, %val1
+    ret i256 %sum
+  }
+
+  ; Function Attrs: nounwind readnone
+  declare i8 addrspace(3)* @llvm.eravm.ptr.add(i8 addrspace(3)*, i256) #0
+
+  attributes #0 = { nounwind readnone }
+
+...
+---
+# CHECK-LABEL: test
+# CHECK: %1:gr256, %5:gr256 = LDInc %0, 0
+
+name:            test
+alignment:       1
+exposesReturnsTwice: false
+legalized:       false
+regBankSelected: false
+selected:        false
+failedISel:      false
+tracksRegLiveness: true
+hasWinCFI:       false
+callsEHReturn:   false
+callsUnwindInit: false
+hasEHCatchret:   false
+hasEHScopes:     false
+hasEHFunclets:   false
+failsVerification: false
+tracksDebugUserValues: false
+registers:
+  - { id: 0, class: grptr, preferred-register: '' }
+  - { id: 1, class: gr256, preferred-register: '' }
+  - { id: 2, class: grptr, preferred-register: '' }
+  - { id: 3, class: gr256, preferred-register: '' }
+  - { id: 4, class: gr256, preferred-register: '' }
+liveins:
+  - { reg: '$r1', virtual-reg: '%0' }
+frameInfo:
+  isFrameAddressTaken: false
+  isReturnAddressTaken: false
+  hasStackMap:     false
+  hasPatchPoint:   false
+  stackSize:       0
+  offsetAdjustment: 0
+  maxAlignment:    1
+  adjustsStack:    false
+  hasCalls:        false
+  stackProtector:  ''
+  functionContext: ''
+  maxCallFrameSize: 4294967295
+  cvBytesOfCalleeSavedRegisters: 0
+  hasOpaqueSPAdjustment: false
+  hasVAStart:      false
+  hasMustTailInVarArgFunc: false
+  hasTailCall:     false
+  localFrameSize:  0
+  savePoint:       ''
+  restorePoint:    ''
+fixedStack:      []
+stack:           []
+callSites:       []
+debugValueSubstitutions: []
+constants:       []
+machineFunctionInfo: {}
+body:             |
+  bb.0 (%ir-block.0):
+    liveins: $r1
+
+    %0:grptr = COPY $r1
+    %1:gr256 = LD %0, i256 0
+    %2:grptr = PTR_ADDxrr_s i256 32, %0, 0
+    %3:gr256 = LD killed %2, i256 0
+    %4:gr256 = ADDrrr_s killed %1, killed %3, 0
+    $r1 = COPY %4
+    RET implicit $r1
+
+...
