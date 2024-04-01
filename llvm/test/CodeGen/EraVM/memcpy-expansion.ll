@@ -32,22 +32,26 @@ define fastcc void @expand-unknown(i256 addrspace(1)* %dest, i256 addrspace(3)* 
 ; CHECK:   %loop-count = udiv i256 %size, 32
 ; CHECK:   %residual-bytes = urem i256 %size, 32
 ; CHECK:   [[COND1:%[0-9]+]] = icmp ne i256 %loop-count, 0
-; CHECK:   br i1 [[COND1]], label %load-store-loop, label %memcpy-residual-cond
+; CHECK:   br i1 [[COND1]], label %load-store-loop-preheader, label %memcpy-residual-cond
+; CHECK: load-store-loop-preheader:
+; CHECK:   br label %load-store-loop
 ; CHECK: load-store-loop:
 ; CHECK:   %loop-index = phi i256 [ 0, %{{.*}} ], [ [[NEWCTR:%[0-9]+]], %load-store-loop ]
 ; CHECK:   [[REG:%[0-9]+]] = load i256, ptr addrspace(3) %{{[0-9]+}}, align 1
 ; CHECK:   store i256 [[REG]], ptr addrspace(1) %{{[0-9]+}}, align 1
 ; CHECK:   [[NEWCTR]] = add i256 %loop-index, 1
-; CHECK:   br i1 %{{[0-9]+}}, label %load-store-loop, label %memcpy-residual-cond
+; CHECK:   br i1 %{{[0-9]+}}, label %load-store-loop, label %load-store-loop-exit
+; CHECK: load-store-loop-exit:
+; CHECK:   br label %memcpy-residual-cond
+; CHECK: memcpy-residual-cond:
+; CHECK:   [[COND2:%[0-9]+]] = icmp ne i256 %residual-bytes, 0
+; CHECK:   br i1 [[COND2]], label %memcpy-residual, label %memcpy-split
 ; CHECK: memcpy-residual:
 ; CHECK:   %{{[0-9]+}} = load i256, ptr addrspace(3) %{{[0-9]+}}, align 1
 ; CHECK:   %{{[0-9]+}} = load i256, ptr addrspace(1) %{{[0-9]+}}, align 1
 ; CHECK:   [[RES:%[0-9]+]] = or i256 %{{[0-9]+}}, %{{[0-9]+}}
 ; CHECK:   store i256 [[RES]], ptr addrspace(1) %{{[0-9]+}}, align 1
 ; CHECK:   br label %memcpy-split
-; CHECK: memcpy-residual-cond:
-; CHECK:   [[COND2:%[0-9]+]] = icmp ne i256 %residual-bytes, 0
-; CHECK:   br i1 [[COND2]], label %memcpy-residual, label %memcpy-split
   call void @llvm.memcpy.p1i256.p3i256.i256(i256 addrspace(1)* %dest, i256 addrspace(3)* %src, i256 %size, i1 false)
   ret void
 }
@@ -56,14 +60,13 @@ define fastcc void @expand-unknown(i256 addrspace(1)* %dest, i256 addrspace(3)* 
 define fastcc void @expand-unknown-instrs(i256 addrspace(1)* %dest, i256 addrspace(1)* %src, i256 %size) {
 ; Preheader and loop.
 ; CHECK-INSTRS:       add r0, r0, r5
+; CHECK-INSTRS-NEXT:  add r2, r0, r6
+; CHECK-INSTRS-NEXT:  add r1, r0, r7
 ; CHECK-INSTRS-NEXT:  .BB2_2:
-; CHECK-INSTRS:       shl.s 5, r5, r6
-; CHECK-INSTRS-NEXT:  add r1, r6, r7
-; CHECK-INSTRS-NEXT:  add r2, r6, r6
-; CHECK-INSTRS-NEXT:  ld.1 r6, r6
-; CHECK-INSTRS-NEXT:  st.1 r7, r6
+; CHECK-INSTRS:       ld.1.inc r6, r8, r6
+; CHECK-INSTRS-NEXT:  st.1.inc r7, r8, r7
 ; CHECK-INSTRS-NEXT:  add 1, r5, r5
-; CHECK-INSTRS-NEXT:  sub! r5, r3, r6
+; CHECK-INSTRS-NEXT:  sub! r5, r3, r8
 ; CHECK-INSTRS-NEXT:  jump.lt @.BB2_2
   call void @llvm.memcpy.p1i256.p1i256.i256(i256 addrspace(1)* %dest, i256 addrspace(1)* %src, i256 %size, i1 false)
   ret void
