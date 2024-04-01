@@ -130,6 +130,10 @@ struct MIToken {
     kw_unknown_size,
     kw_unknown_address,
 
+    // EraVM local begin
+    kw_isfatptr,
+    // EraVM local end
+
     // Metadata types.
     kw_distinct,
 

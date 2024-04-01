@@ -1608,6 +1608,10 @@ void MachineInstr::print(raw_ostream &OS, ModuleSlotTracker &MST,
     OS << "nofpexcept ";
   if (getFlag(MachineInstr::NoMerge))
     OS << "nomerge ";
+  // EraVM local begin
+  if (getFlag(MachineInstr::IsFatPtr))
+    OS << "fatptr ";
+  // EraVM local end
 
   // Print the opcode name.
   if (TII)
