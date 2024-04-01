@@ -782,6 +782,10 @@ void MIPrinter::print(const MachineInstr &MI) {
     OS << "nofpexcept ";
   if (MI.getFlag(MachineInstr::NoMerge))
     OS << "nomerge ";
+  // EraVM local begin
+  if (MI.getFlag(MachineInstr::IsFatPtr))
+    OS << "fatptr ";
+  // EraVM local end
 
   OS << TII->getName(MI.getOpcode());
   if (I < E)

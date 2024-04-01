@@ -275,6 +275,9 @@ static MIToken::TokenKind getIdentifierKind(StringRef Identifier) {
       .Case("unknown-size", MIToken::kw_unknown_size)
       .Case("unknown-address", MIToken::kw_unknown_address)
       .Case("distinct", MIToken::kw_distinct)
+      // EraVM local begin
+      .Case("fatptr", MIToken::kw_isfatptr)
+      // EraVM local end
       .Default(MIToken::Identifier);
 }
 

@@ -1383,6 +1383,7 @@ bool MIParser::verifyImplicitOperands(ArrayRef<ParsedMachineOperand> Operands,
 
 bool MIParser::parseInstruction(unsigned &OpCode, unsigned &Flags) {
   // Allow frame and fast math flags for OPCODE
+  // clang-format off
   while (Token.is(MIToken::kw_frame_setup) ||
          Token.is(MIToken::kw_frame_destroy) ||
          Token.is(MIToken::kw_nnan) ||
@@ -1395,7 +1396,11 @@ bool MIParser::parseInstruction(unsigned &OpCode, unsigned &Flags) {
          Token.is(MIToken::kw_nuw) ||
          Token.is(MIToken::kw_nsw) ||
          Token.is(MIToken::kw_exact) ||
+         // EraVM local begin
+         Token.is(MIToken::kw_isfatptr) ||
+         // EraVM local end
          Token.is(MIToken::kw_nofpexcept)) {
+    // clang-format on
     // Mine frame and fast math flags
     if (Token.is(MIToken::kw_frame_setup))
       Flags |= MachineInstr::FrameSetup;
@@ -1423,6 +1428,10 @@ bool MIParser::parseInstruction(unsigned &OpCode, unsigned &Flags) {
       Flags |= MachineInstr::IsExact;
     if (Token.is(MIToken::kw_nofpexcept))
       Flags |= MachineInstr::NoFPExcept;
+    // EraVM local begin
+    if (Token.is(MIToken::kw_isfatptr))
+      Flags |= MachineInstr::IsFatPtr;
+    // EraVM local end
 
     lex();
   }
