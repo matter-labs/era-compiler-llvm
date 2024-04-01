@@ -37,15 +37,15 @@ define fastcc void @expand-unknown(i256 addrspace(1)* %dest, i256 addrspace(3)* 
 ; CHECK:   store i256 [[REG]], i256 addrspace(1)* %{{[0-9]+}}, align 1
 ; CHECK:   br i1 %{{[0-9]+}}, label %{{.*}}, label %{{.*}}
 
+; Residual condition:
+; CHECK:   [[COND2:%[0-9]+]] = icmp ne i256 %residual-bytes, 0
+; CHECK:   br i1 [[COND2]], label %{{.*}}, label %{{.*}}
+
 ; Residual
 ; CHECK:   %{{[0-9]+}} = load i256, i256 addrspace(3)* %{{[0-9]+}}, align 1
 ; CHECK:   %{{[0-9]+}} = load i256, i256 addrspace(1)* %{{[0-9]+}}, align 1
 ; CHECK:   [[RES:%[0-9]+]] = or i256 %{{[0-9]+}}, %{{[0-9]+}}
 ; CHECK:   store i256 [[RES]], i256 addrspace(1)* %{{[0-9]+}}, align 1
-
-; Residual condition:
-; CHECK:   [[COND2:%[0-9]+]] = icmp ne i256 %residual-bytes, 0
-; CHECK:   br i1 [[COND2]], label %{{.*}}, label %{{.*}}
   call void @llvm.memcpy.p1i256.p3i256.i256(i256 addrspace(1)* %dest, i256 addrspace(3)* %src, i256 %size, i1 false)
   ret void
 }

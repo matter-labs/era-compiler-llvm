@@ -495,15 +495,19 @@ void llvm::createEraVMMemCpyLoopUnknownSize(Instruction *InsertBefore,
   Value *LoopCount = PLBuilder.CreateUDiv(CopyLen, CILoopOpSize, "loop-count");
   Value *ResidualBytes =
       PLBuilder.CreateURem(CopyLen, CILoopOpSize, "residual-bytes");
+  BasicBlock *LoopPreheaderBB = BasicBlock::Create(
+      Ctx, "load-store-loop-preheader", ParentFunc, PostLoopBB);
   BasicBlock *LoopBB =
       BasicBlock::Create(Ctx, "load-store-loop", ParentFunc, PostLoopBB);
+  BasicBlock *LoopExitBB =
+      BasicBlock::Create(Ctx, "load-store-loop-exit", ParentFunc, PostLoopBB);
   IRBuilder<> LoopBuilder(LoopBB);
 
   Align PartSrcAlign(commonAlignment(SrcAlign, LoopOpSize));
   Align PartDstAlign(commonAlignment(DstAlign, LoopOpSize));
 
   PHINode *LoopIndex = LoopBuilder.CreatePHI(CopyLenType, 2, "loop-index");
-  LoopIndex->addIncoming(ConstantInt::get(CopyLenType, 0U), PreLoopBB);
+  LoopIndex->addIncoming(ConstantInt::get(CopyLenType, 0U), LoopPreheaderBB);
 
   Value *SrcGEP = LoopBuilder.CreateInBoundsGEP(LoopOpType, SrcAddr, LoopIndex);
   Value *Load = LoopBuilder.CreateAlignedLoad(LoopOpType, SrcGEP, PartSrcAlign,
@@ -514,13 +518,18 @@ void llvm::createEraVMMemCpyLoopUnknownSize(Instruction *InsertBefore,
   Value *NewIndex =
       LoopBuilder.CreateAdd(LoopIndex, ConstantInt::get(CopyLenType, 1U));
   LoopIndex->addIncoming(NewIndex, LoopBB);
+  LoopBuilder.CreateCondBr(LoopBuilder.CreateICmpULT(NewIndex, LoopCount),
+                           LoopBB, LoopExitBB);
 
+  // Condition check if residual copy is needed.
+  BasicBlock *ResCondBB = BasicBlock::Create(
+      Ctx, "memcpy-residual-cond", PreLoopBB->getParent(), PostLoopBB);
   // BB for the residual copy.
   BasicBlock *ResBB = BasicBlock::Create(Ctx, "memcpy-residual",
                                          PreLoopBB->getParent(), PostLoopBB);
-  // Condition check if residual copy is needed.
-  BasicBlock *ResCondBB = BasicBlock::Create(Ctx, "memcpy-residual-cond",
-                                             PreLoopBB->getParent(), nullptr);
+
+  BranchInst::Create(LoopBB, LoopPreheaderBB);
+  BranchInst::Create(ResCondBB, LoopExitBB);
 
   // Need to update the pre-loop basic block to branch to the correct place.
   // branch to the main loop if the count is non-zero, branch to the residual
@@ -528,12 +537,9 @@ void llvm::createEraVMMemCpyLoopUnknownSize(Instruction *InsertBefore,
   // non-zero and finally branch to after the residual copy if the memcpy
   //  size is zero.
   ConstantInt *Zero = ConstantInt::get(ILengthType, 0U);
-  PLBuilder.CreateCondBr(PLBuilder.CreateICmpNE(LoopCount, Zero), LoopBB,
-                         ResCondBB);
+  PLBuilder.CreateCondBr(PLBuilder.CreateICmpNE(LoopCount, Zero),
+                         LoopPreheaderBB, ResCondBB);
   PreLoopBB->getTerminator()->eraseFromParent();
-
-  LoopBuilder.CreateCondBr(LoopBuilder.CreateICmpULT(NewIndex, LoopCount),
-                           LoopBB, ResCondBB);
 
   // Determine if we need to branch to the residual copy or bypass it.
   IRBuilder<> RHBuilder(ResCondBB);
