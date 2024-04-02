@@ -52,10 +52,10 @@
 ; CHECK-NEXT:       Machine Optimization Remark Emitter
 ; CHECK-NEXT:       Prologue/Epilogue Insertion & Frame Finalization
 ; CHECK-NEXT:       Post-RA pseudo instruction expansion pass
+; CHECK-NEXT:       EraVM expand pseudo instructions
 ; CHECK-NEXT:       Analyze Machine Code For Garbage Collection
 ; CHECK-NEXT:       Insert fentry calls
 ; CHECK-NEXT:       Insert XRay ops
-; CHECK-NEXT:       EraVM expand pseudo instructions
 ; CHECK-NEXT:       ReachingDefAnalysis
 ; CHECK-NEXT:       MachineDominator Tree Construction
 ; CHECK-NEXT:       EraVM combine instuctions to use complex addressing modes
