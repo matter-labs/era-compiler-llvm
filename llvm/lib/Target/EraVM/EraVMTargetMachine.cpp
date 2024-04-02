@@ -207,7 +207,6 @@ public:
   void addIRPasses() override;
   bool addInstSelector() override;
   void addPreRegAlloc() override;
-  void addPreEmitPass() override;
   void addPreSched2() override;
 };
 } // namespace
@@ -283,14 +282,11 @@ void EraVMPassConfig::addPreRegAlloc() {
 }
 
 void EraVMPassConfig::addPreSched2() {
-  if (getOptLevel() != CodeGenOpt::None) {
-    addPass(createIfConverter([](const MachineFunction &MF) { return true; }));
-  }
-}
-
-void EraVMPassConfig::addPreEmitPass() {
   addPass(createEraVMExpandPseudoPass());
   addPass(createEraVMCombineAddressingModePass());
   addPass(createEraVMExpandSelectPass());
   addPass(createEraVMOptimizeSelectPostRAPass());
+  if (getOptLevel() != CodeGenOpt::None) {
+    addPass(createIfConverter([](const MachineFunction &MF) { return true; }));
+  }
 }
