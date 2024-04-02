@@ -184,6 +184,7 @@ target triple = "eravm"
 ; CHECK-NEXT:       Tail Duplication
 ; CHECK-NEXT:       Machine Copy Propagation Pass
 ; CHECK-NEXT:       Post-RA pseudo instruction expansion pass
+; CHECK-NEXT:       EraVM expand pseudo instructions
 ; CHECK-NEXT:       MachineDominator Tree Construction
 ; CHECK-NEXT:       Machine Natural Loop Construction
 ; CHECK-NEXT:       Machine Block Frequency Analysis
@@ -197,7 +198,6 @@ target triple = "eravm"
 ; CHECK-NEXT:       Branch Probability Basic Block Placement
 ; CHECK-NEXT:       Insert fentry calls
 ; CHECK-NEXT:       Insert XRay ops
-; CHECK-NEXT:       EraVM expand pseudo instructions
 ; CHECK-NEXT:       ReachingDefAnalysis
 ; CHECK-NEXT:       MachineDominator Tree Construction
 ; CHECK-NEXT:       EraVM combine instuctions to use complex addressing modes
