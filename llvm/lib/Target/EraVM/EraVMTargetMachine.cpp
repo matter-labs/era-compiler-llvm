@@ -69,6 +69,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMHoistFlagSettingPass(PR);
   initializeEraVMOptimizeSelectPreRAPass(PR);
   initializeEraVMFoldSimilarInstructionsPass(PR);
+  initializeEraVMCombineToIndexedMemopsPass(PR);
 }
 
 static std::string computeDataLayout() {
