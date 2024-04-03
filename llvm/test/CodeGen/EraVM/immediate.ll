@@ -38,6 +38,14 @@ define i256 @materialize_negative_imm_2(i256 %par) nounwind {
   ret i256 -32767
 }
 
+define i256 @materialize_negative_imm_3(i256 %par) nounwind {
+; CHECK-LABEL: materialize_negative_imm_3:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    add @CPI4_0[0], r0, r1
+; CHECK-NEXT:    ret
+  ret i256 -65535
+}
+
 define i256 @materialize_smallimm_in_operation(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_smallimm_in_operation:
 ; CHECK:       ; %bb.0:
@@ -117,7 +125,7 @@ define i256 @materialize_zero() nounwind {
 define i256 @materialize_bigimm_1(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_bigimm_1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub @CPI12_0[0], r1, r1
+; CHECK-NEXT:    sub @CPI13_0[0], r1, r1
 ; CHECK-NEXT:    ret
   %res = sub i256 12345678901234567890, %par
   ret i256 %res
@@ -126,7 +134,7 @@ define i256 @materialize_bigimm_1(i256 %par) nounwind {
 define i256 @materialize_bigimm_2(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_bigimm_2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub @CPI13_0[0], r1, r1
+; CHECK-NEXT:    sub @CPI14_0[0], r1, r1
 ; CHECK-NEXT:    ret
   %res = sub i256 12345678901234567890, %par
   ret i256 %res
@@ -140,7 +148,11 @@ define i256 @materialize_bigimm_2(i256 %par) nounwind {
 ; CHECK-LABEL: CPI1_0:
 ; CHECK: .cell 65536
 
+; materialize_negative_imm_3
+; CHECK:      CPI4_0:
+; CHECK-NEXT: .cell -65535
+
 ; constants with same value but from different functions share a single slot
-; CHECK-LABEL: CPI12_0:
-; CHECK-NEXT: CPI13_0:
+; CHECK-LABEL: CPI13_0:
+; CHECK-NEXT: CPI14_0:
 ; CHECK-NEXT: .cell 12345678901234567890
