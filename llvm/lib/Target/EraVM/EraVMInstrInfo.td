@@ -1288,7 +1288,7 @@ def LOADCONST : Pseudo<(outs GR256:$val), (ins i256imm:$addr),
                          [(set GR256:$val, (load tconstpool:$addr))]>;
 }
 
-let isReMaterializable = 1, hasSideEffects = 0, isPseudo = 1 in {
+let isReMaterializable = 1, hasSideEffects = 0, isPseudo = 1, isAsCheapAsAMove = 1 in {
 def MOVEIMM : Pseudo<(outs GR256:$out), (ins i256imm:$val),
                       "MOVEIMM\t$val, $out",
                       [(set GR256:$out, imm:$val)]>;
