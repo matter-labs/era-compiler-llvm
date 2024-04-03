@@ -35,6 +35,12 @@ define i256 @materialize_negative_imm_2(i256 %par) nounwind {
   ret i256 -32767
 }
 
+; CHECK-LABEL: materialize_negative_imm_3
+define i256 @materialize_negative_imm_3(i256 %par) nounwind {
+  ; CHECK: add @CPI5_0[0], r0, r1
+  ret i256 -65535
+}
+
 ; CHECK-LABEL: materialize_smallimm_in_operation
 define i256 @materialize_smallimm_in_operation(i256 %par) nounwind {
   ; CHECK: add 42, r1, r1
@@ -91,14 +97,14 @@ define i256 @materialize_bigimm_in_sub_operation_2(i256 %par) nounwind {
 
 ; CHECK-LABEL: materialize_bigimm_1
 define i256 @materialize_bigimm_1(i256 %par) nounwind {
-  ; CHECK: sub @CPI12_0[0], r1, r1
+  ; CHECK: sub @CPI13_0[0], r1, r1
   %res = sub i256 12345678901234567890, %par
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_2
 define i256 @materialize_bigimm_2(i256 %par) nounwind {
-  ; CHECK: sub @CPI13_0[0], r1, r1
+  ; CHECK: sub @CPI14_0[0], r1, r1
   %res = sub i256 12345678901234567890, %par
   ret i256 %res
 }
@@ -110,3 +116,7 @@ define i256 @materialize_bigimm_2(i256 %par) nounwind {
 ; materialize_big_imm
 ; CHECK-LABEL: CPI2_0:
 ; CHECK: .cell 65536
+
+; materialize_negative_imm_3
+; CHECK:      CPI5_0:
+; CHECK-NEXT: .cell -65535
