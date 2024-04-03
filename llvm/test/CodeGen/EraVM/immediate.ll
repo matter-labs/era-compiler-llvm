@@ -41,7 +41,7 @@ define i256 @materialize_negative_imm_2(i256 %par) nounwind {
 define i256 @materialize_negative_imm_3(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_negative_imm_3:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add @CPI4_0[0], r0, r1
+; CHECK-NEXT:    sub.s 65535, r0, r1
 ; CHECK-NEXT:    ret
   ret i256 -65535
 }
@@ -149,8 +149,8 @@ define i256 @materialize_bigimm_2(i256 %par) nounwind {
 ; CHECK: .cell 65536
 
 ; materialize_negative_imm_3
-; CHECK:      CPI4_0:
-; CHECK-NEXT: .cell -65535
+; CHECK-NOT: CPI4_0:
+; CHECK-NOT: .cell -65535
 
 ; constants with same value but from different functions share a single slot
 ; CHECK-LABEL: CPI13_0:

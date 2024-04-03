@@ -127,7 +127,7 @@ define i256 @caller3.abi(i256 %a1, i256 %a2, i256 %a3, i256 %abi) nounwind {
 
 ; CHECK-LABEL: caller_argtypes
 define i256 @caller_argtypes(i1 %a1, i8 %a2, i16 %a3, i32 %a4, i64 %a5, i128 %a6) nounwind {
-  ; CHECK: nop stack+=[7 + r0]
+  ; CHECK: nop stack+=[6 + r0]
   ; CHECK: add r6, r0, stack-[6]
   ; CHECK: add r5, r0, stack-[5]
   ; CHECK: add r4, r0, stack-[4]
@@ -161,28 +161,27 @@ define i256 @caller_argtypes(i1 %a1, i8 %a2, i16 %a3, i32 %a4, i64 %a5, i128 %a6
   %6 = call i256 @i128.arg(i128 %a6)
 
 	; CHECK: add 42, r0, r15
-	; CHECK: add r15, r0, stack-[7]
 	; CHECK: add stack-[1], r0, r1
 	; CHECK: near_call r15, @i1.arg, @DEFAULT_UNWIND
   %7 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr1, i256 42, i1 %a1)
 	; CHECK: add stack-[2], r0, r1
-	; CHECK: add stack-[7], r0, r15
+	; CHECK: add 42, r0, r15
 	; CHECK: near_call r15, @i8.arg, @DEFAULT_UNWIND
   %8 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr8, i256 42, i8 %a2)
 	; CHECK: add stack-[3], r0, r1
-	; CHECK: add stack-[7], r0, r15
+	; CHECK: add 42, r0, r15
 	; CHECK: near_call r15, @i16.arg, @DEFAULT_UNWIND
   %9 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr16, i256 42, i16 %a3)
 	; CHECK: add stack-[4], r0, r1
-	; CHECK: add stack-[7], r0, r15
+	; CHECK: add 42, r0, r15
 	; CHECK: near_call r15, @i32.arg, @DEFAULT_UNWIND
   %10 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr32, i256 42, i32 %a4)
 	; CHECK: add stack-[5], r0, r1
-	; CHECK: add stack-[7], r0, r15
+	; CHECK: add 42, r0, r15
 	; CHECK: near_call r15, @i64.arg, @DEFAULT_UNWIND
   %11 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr64, i256 42, i64 %a5)
 	; CHECK: add stack-[6], r0, r1
-	; CHECK: add stack-[7], r0, r15
+	; CHECK: add 42, r0, r15
 	; CHECK: near_call r15, @i128.arg, @DEFAULT_UNWIND
   %12 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr128, i256 42, i128 %a6)
 
