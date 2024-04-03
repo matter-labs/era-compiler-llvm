@@ -9,11 +9,9 @@ declare void @use(i256)
 define i256 @test_small_imm_pos() {
 ; CHECK-LABEL: test_small_imm_pos:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    add 12345, r0, r1
-; CHECK-NEXT:    add r1, r0, stack-[1] ; 32-byte Folded Spill
 ; CHECK-NEXT:    near_call r0, @use, @DEFAULT_UNWIND
-; CHECK-NEXT:    add stack-[1], r0, r1 ; 32-byte Folded Reload
+; CHECK-NEXT:    add 12345, r0, r1
 ; CHECK-NEXT:    ret
 entry:
   call void @use(i256 12345)
@@ -23,11 +21,9 @@ entry:
 define i256 @test_small_imm_neg() {
 ; CHECK-LABEL: test_small_imm_neg:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    sub.s 12345, r0, r1
-; CHECK-NEXT:    add r1, r0, stack-[1] ; 32-byte Folded Spill
 ; CHECK-NEXT:    near_call r0, @use, @DEFAULT_UNWIND
-; CHECK-NEXT:    add stack-[1], r0, r1 ; 32-byte Folded Reload
+; CHECK-NEXT:    sub.s 12345, r0, r1
 ; CHECK-NEXT:    ret
 entry:
   call void @use(i256 -12345)
