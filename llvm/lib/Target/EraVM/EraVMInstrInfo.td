@@ -1145,7 +1145,6 @@ defm PTR_SHRINK : PtrInstr<161, "ptr.shrink", EraVMptr_shrink>;
 // MOV patterns
 def : Pat<(store_stack (load_code memaddr:$src), stackaddr:$dst),  (ADDcrs_p memaddr:$src, R0, stackaddr:$dst)>;
 def : Pat<(store_stack (load_stack stackaddr:$src), stackaddr:$dst),  (ADDsrs_p stackaddr:$src, R0, stackaddr:$dst)>;
-def : Pat<(imm16:$val),  (ADDirr_p imm16:$val, R0)>;
 def : Pat<(load_code memaddr:$addr),  (ADDcrr_p memaddr:$addr, R0)>;
 def : Pat<(load_stack stackaddr:$addr),  (ADDsrr_p stackaddr:$addr, R0)>;
 def : Pat<(store_stack GR256:$src, stackaddr:$dst),  (ADDrrs_p GR256:$src, R0, stackaddr:$dst)>;
@@ -1291,6 +1290,12 @@ let isAsCheapAsAMove = 1, mayLoad = 1, isReMaterializable = 1,
 def LOADCONST : Pseudo<(outs GR256:$val), (ins i256imm:$addr),
                          "LOADCONST\t$addr, $val",
                          [(set GR256:$val, (load tconstpool:$addr))]>;
+}
+
+let isReMaterializable = 1, hasSideEffects = 0, isPseudo = 1 in {
+def MOVEIMM : Pseudo<(outs GR256:$out), (ins i256imm:$val),
+                      "MOVEIMM\t$val, $out",
+                      [(set GR256:$out, imm:$val)]>;
 }
 
 //===----------------------------------------------------------------------===//

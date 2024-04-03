@@ -131,6 +131,25 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
             .addImm(0)
             .getInstr();
         PseudoInst.push_back(&MI);
+      } else if (MI.getOpcode() == EraVM::MOVEIMM) {
+        unsigned Opcode = EraVM::ADDirr_s;
+        auto ImmVal = MI.getOperand(1).getCImm()->getValue();
+        if (ImmVal.isNegative()) {
+          // Use sub instead of add for negative offsets, as negative immediate
+          // values are not valid in addressing mode.
+          Opcode = EraVM::SUBxrr_s;
+          ImmVal = -ImmVal;
+        }
+        assert(ImmVal.isIntN(16) &&
+               "Immediate value is too large to fit into instruction");
+        assert(ImmVal.getBitWidth() == 256 && "Immediate value is not 256-bit");
+
+        BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(Opcode),
+                MI.getOperand(0).getReg())
+            .addCImm(ConstantInt::get(*Context, ImmVal))
+            .addReg(EraVM::R0)
+            .addImm(EraVMCC::COND_NONE);
+        PseudoInst.push_back(&MI);
       }
     }
 

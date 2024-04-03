@@ -37,7 +37,7 @@ define i256 @materialize_negative_imm_2(i256 %par) nounwind {
 
 ; CHECK-LABEL: materialize_negative_imm_3
 define i256 @materialize_negative_imm_3(i256 %par) nounwind {
-  ; CHECK: add @CPI5_0[0], r0, r1
+  ; CHECK: sub.s 65535, r0, r1
   ret i256 -65535
 }
 
@@ -118,5 +118,5 @@ define i256 @materialize_bigimm_2(i256 %par) nounwind {
 ; CHECK: .cell 65536
 
 ; materialize_negative_imm_3
-; CHECK:      CPI5_0:
-; CHECK-NEXT: .cell -65535
+; CHECK-NOT: CPI5_0:
+; CHECK-NOT: .cell -65535
