@@ -351,21 +351,9 @@ void EraVMDAGToDAGISel::Select(SDNode *Node) {
       return;
     }
 
-    // if it is small negative values, use SUB instruction to materialize it
-    if (val.isNegative() && val.isSignedIntN(16)) {
-      auto negated = -(val.getSExtValue());
-      auto R0 = CurDAG->getRegister(EraVM::R0, MVT::i256);
-      auto *SUB = CurDAG->getMachineNode(
-          EraVM::SUBxrr_s, DL, MVT::i256,
-          CurDAG->getTargetConstant(negated, DL, MVT::i256), R0,
-          CurDAG->getTargetConstant(EraVMCC::COND_NONE, DL, MVT::i256));
-      ReplaceNode(Node, SUB);
-      return;
-    }
-
     // if it cannot fit into the imm field of an instruction ... put it into
     // pool
-    if (!val.isIntN(16) || val.isNegative()) {
+    if (!val.abs().isIntN(16)) {
       MVT PtrVT = getTargetLowering()->getPointerTy(CurDAG->getDataLayout());
       SDValue CP =
           CurDAG->getTargetConstantPool(cn->getConstantIntValue(), PtrVT);
