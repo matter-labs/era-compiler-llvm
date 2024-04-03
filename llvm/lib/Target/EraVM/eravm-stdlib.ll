@@ -519,9 +519,9 @@ declare i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)*, i256)
 declare i32 @__personality()
 declare { i8 addrspace(3)*, i1 } @__staticcall(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256) #1
 
-attributes #0 = { mustprogress nofree norecurse nosync nounwind readnone willreturn }
-attributes #1 = { argmemonly readonly nofree null_pointer_is_valid }
-attributes #2 = { argmemonly mustprogress nofree norecurse nosync nounwind willreturn null_pointer_is_valid }
+attributes #0 = { mustprogress nofree norecurse nosync nounwind willreturn memory(none)}
+attributes #1 = { memory(argmem: read) nofree null_pointer_is_valid }
+attributes #2 = { memory(argmem: readwrite) mustprogress nofree norecurse nosync nounwind willreturn null_pointer_is_valid }
 attributes #3 = { noinline noreturn }
-attributes #4 = { alwaysinline mustprogress nofree norecurse nosync nounwind readnone willreturn }
+attributes #4 = { alwaysinline mustprogress nofree norecurse nosync nounwind willreturn memory(none) }
 attributes #5 = { noreturn nounwind }

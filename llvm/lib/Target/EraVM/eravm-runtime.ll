@@ -329,7 +329,7 @@ declare i8 addrspace(3)* @__delegatecall_int(i256, i256, i256, i256, i256, i256,
 declare i8 addrspace(3)* @__mimiccall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
 declare i32 @__personality()
 
-attributes #0 = { mustprogress nofree norecurse nosync nounwind readonly willreturn }
+attributes #0 = { mustprogress nofree norecurse nosync nounwind willreturn memory(read) }
 attributes #1 = { mustprogress nofree norecurse nosync nounwind willreturn }
 attributes #2 = { nofree norecurse nosync nounwind }
 attributes #3 = { noinline nounwind willreturn }
