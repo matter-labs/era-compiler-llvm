@@ -103,6 +103,7 @@ void EraVMTargetMachine::registerDefaultAliasAnalyses(AAManager &AAM) {
 
 void EraVMTargetMachine::adjustPassManager(PassManagerBuilder &Builder) {
   bool EnableOpt = getOptLevel() > CodeGenOpt::None;
+  bool EnableOptUnused = getOptLevel() > CodeGenOpt::None;
   Builder.addExtension(
       PassManagerBuilder::EP_ModuleOptimizerEarly,
       [EnableOpt](const PassManagerBuilder &, legacy::PassManagerBase &PM) {
