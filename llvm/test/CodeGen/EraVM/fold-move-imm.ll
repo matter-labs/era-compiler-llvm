@@ -10,17 +10,12 @@ define i256 @test_pos(i256 %arg) {
 ; CHECK-NEXT:    sub! r1, r0, r2
 ; CHECK-NEXT:    jump.eq @.BB0_1
 ; CHECK-NEXT:  ; %bb.2: ; %loop-bb1.preheader
-; CHECK-NEXT:    add 100, r0, r3
-; CHECK-NEXT:    add 114, r0, r4
-; CHECK-NEXT:    add 25, r0, r5
-; CHECK-NEXT:    add 36, r0, r6
-; CHECK-NEXT:    add 47, r0, r7
 ; CHECK-NEXT:    add r0, r0, r8
 ; CHECK-NEXT:    add r0, r0, r2
 ; CHECK-NEXT:    jump @.BB0_4
 ; CHECK-NEXT:  .BB0_8: ; %loop-bb5
 ; CHECK-NEXT:    ; in Loop: Header=BB0_4 Depth=1
-; CHECK-NEXT:    add r7, r0, r9
+; CHECK-NEXT:    add 47, r0, r9
 ; CHECK-NEXT:  .BB0_9: ; %loop-bb6
 ; CHECK-NEXT:    ; in Loop: Header=BB0_4 Depth=1
 ; CHECK-NEXT:    add r2, r9, r2
@@ -30,20 +25,20 @@ define i256 @test_pos(i256 %arg) {
 ; CHECK-NEXT:  .BB0_4: ; %loop-bb1
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    sub.s! 3, r8, r9
-; CHECK-NEXT:    add r3, r0, r9
+; CHECK-NEXT:    add 100, r0, r9
 ; CHECK-NEXT:    jump.le @JTI0_0[r8]
 ; CHECK-NEXT:    jump @.BB0_9
 ; CHECK-NEXT:  .BB0_5: ; %loop-bb2
 ; CHECK-NEXT:    ; in Loop: Header=BB0_4 Depth=1
-; CHECK-NEXT:    add r4, r0, r9
+; CHECK-NEXT:    add 114, r0, r9
 ; CHECK-NEXT:    jump @.BB0_9
 ; CHECK-NEXT:  .BB0_6: ; %loop-bb3
 ; CHECK-NEXT:    ; in Loop: Header=BB0_4 Depth=1
-; CHECK-NEXT:    add r5, r0, r9
+; CHECK-NEXT:    add 25, r0, r9
 ; CHECK-NEXT:    jump @.BB0_9
 ; CHECK-NEXT:  .BB0_7: ; %loop-bb4
 ; CHECK-NEXT:    ; in Loop: Header=BB0_4 Depth=1
-; CHECK-NEXT:    add r6, r0, r9
+; CHECK-NEXT:    add 36, r0, r9
 ; CHECK-NEXT:    jump @.BB0_9
 ; CHECK-NEXT:  .BB0_3: ; %exit
 ; CHECK-NEXT:    add r2, r0, r1
@@ -103,17 +98,12 @@ define i256 @test_neg(i256 %arg) {
 ; CHECK-NEXT:    sub! r1, r0, r2
 ; CHECK-NEXT:    jump.eq @.BB1_1
 ; CHECK-NEXT:  ; %bb.2: ; %loop-bb1.preheader
-; CHECK-NEXT:    sub.s 100, r0, r3
-; CHECK-NEXT:    sub.s 114, r0, r4
-; CHECK-NEXT:    sub.s 25, r0, r5
-; CHECK-NEXT:    sub.s 36, r0, r6
-; CHECK-NEXT:    sub.s 47, r0, r7
 ; CHECK-NEXT:    add r0, r0, r8
 ; CHECK-NEXT:    add r0, r0, r2
 ; CHECK-NEXT:    jump @.BB1_4
 ; CHECK-NEXT:  .BB1_8: ; %loop-bb5
 ; CHECK-NEXT:    ; in Loop: Header=BB1_4 Depth=1
-; CHECK-NEXT:    add r7, r0, r9
+; CHECK-NEXT:    add @CPI1_4[0], r0, r9
 ; CHECK-NEXT:  .BB1_9: ; %loop-bb6
 ; CHECK-NEXT:    ; in Loop: Header=BB1_4 Depth=1
 ; CHECK-NEXT:    add r2, r9, r2
@@ -123,20 +113,20 @@ define i256 @test_neg(i256 %arg) {
 ; CHECK-NEXT:  .BB1_4: ; %loop-bb1
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    sub.s! 3, r8, r9
-; CHECK-NEXT:    add r3, r0, r9
+; CHECK-NEXT:    add @CPI1_0[0], r0, r9
 ; CHECK-NEXT:    jump.le @JTI1_0[r8]
 ; CHECK-NEXT:    jump @.BB1_9
 ; CHECK-NEXT:  .BB1_5: ; %loop-bb2
 ; CHECK-NEXT:    ; in Loop: Header=BB1_4 Depth=1
-; CHECK-NEXT:    add r4, r0, r9
+; CHECK-NEXT:    add @CPI1_1[0], r0, r9
 ; CHECK-NEXT:    jump @.BB1_9
 ; CHECK-NEXT:  .BB1_6: ; %loop-bb3
 ; CHECK-NEXT:    ; in Loop: Header=BB1_4 Depth=1
-; CHECK-NEXT:    add r5, r0, r9
+; CHECK-NEXT:    add @CPI1_2[0], r0, r9
 ; CHECK-NEXT:    jump @.BB1_9
 ; CHECK-NEXT:  .BB1_7: ; %loop-bb4
 ; CHECK-NEXT:    ; in Loop: Header=BB1_4 Depth=1
-; CHECK-NEXT:    add r6, r0, r9
+; CHECK-NEXT:    add @CPI1_3[0], r0, r9
 ; CHECK-NEXT:    jump @.BB1_9
 ; CHECK-NEXT:  .BB1_3: ; %exit
 ; CHECK-NEXT:    add r2, r0, r1
@@ -189,3 +179,14 @@ loop-bb6:
   %cmp2 = icmp eq i256 %add2, %arg
   br i1 %cmp2, label %exit, label %loop-bb1
 }
+
+; CHECK: CPI1_0:
+; CHECK:  .cell -100
+; CHECK: CPI1_1:
+; CHECK:  .cell -114
+; CHECK: CPI1_2:
+; CHECK:  .cell -25
+; CHECK: CPI1_3:
+; CHECK:  .cell -36
+; CHECK: CPI1_4:
+; CHECK:  .cell -47

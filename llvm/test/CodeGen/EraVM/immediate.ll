@@ -64,18 +64,14 @@ define i256 @materialize_small_negimm_in_operation_2(i256 %par) nounwind {
 
 ; CHECK-LABEL: materialize_bigimm_in_and_operation
 define i256 @materialize_bigimm_in_and_operation(i256 %par) nounwind {
-  ; TODO: CPR-1365 Consider to trade size for cycles in O3 / hot code
-  ; CHECK: sub.s 42, r0, r2
-  ; CHECK: and r1, r2, r1
+  ; CHECK: and @CPI9_0[0], r1, r1
   %res = and i256 %par, -42
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_in_xor_operation
 define i256 @materialize_bigimm_in_xor_operation(i256 %par) nounwind {
-  ; TODO: CPR-1365 Consider to trade size for cycles in O3 / hot code
-  ; CHECK: sub.s 42, r0, r2
-  ; CHECK: xor r1, r2, r1
+  ; CHECK: xor @CPI10_0[0], r1, r1
   %res = xor i256 -42, %par
   ret i256 %res
 }
@@ -89,6 +85,13 @@ define i256 @materialize_bigimm_in_sub_operation(i256 %par) nounwind {
 
 ; CHECK-LABEL: materialize_bigimm_in_sub_operation_2
 define i256 @materialize_bigimm_in_sub_operation_2(i256 %par) nounwind {
+  ; CHECK: sub @CPI12_0[0], r1, r1
+  %res = sub i256 -42, %par
+  ret i256 %res
+}
+
+; CHECK-LABEL: materialize_bigimm_in_sub_operation_2_minsize
+define i256 @materialize_bigimm_in_sub_operation_2_minsize(i256 %par) nounwind minsize {
   ; CHECK: sub.s 42, r0, r2
   ; CHECK: sub r2, r1, r1
   %res = sub i256 -42, %par
@@ -97,14 +100,14 @@ define i256 @materialize_bigimm_in_sub_operation_2(i256 %par) nounwind {
 
 ; CHECK-LABEL: materialize_bigimm_1
 define i256 @materialize_bigimm_1(i256 %par) nounwind {
-  ; CHECK: sub @CPI13_0[0], r1, r1
+  ; CHECK: sub @CPI14_0[0], r1, r1
   %res = sub i256 12345678901234567890, %par
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_2
 define i256 @materialize_bigimm_2(i256 %par) nounwind {
-  ; CHECK: sub @CPI14_0[0], r1, r1
+  ; CHECK: sub @CPI15_0[0], r1, r1
   %res = sub i256 12345678901234567890, %par
   ret i256 %res
 }
@@ -116,6 +119,14 @@ define i256 @materialize_bigimm_2(i256 %par) nounwind {
 ; materialize_big_imm
 ; CHECK-LABEL: CPI2_0:
 ; CHECK: .cell 65536
+
+; materialize_bigimm_in_and_operation
+; materialize_bigimm_in_xor_operation
+; materialize_bigimm_in_sub_operation_2
+; CHECK: CPI9_0:
+; CHECK: CPI10_0:
+; CHECK: CPI12_0:
+; CHECK:  .cell -42
 
 ; materialize_negative_imm_3
 ; CHECK-NOT: CPI5_0:
