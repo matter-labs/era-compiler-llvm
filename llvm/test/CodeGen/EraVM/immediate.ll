@@ -74,22 +74,18 @@ define i256 @materialize_bigimm_in_operation_2(i256 %par) nounwind {
 }
 
 define i256 @materialize_bigimm_in_and_operation(i256 %par) nounwind {
-; TODO: CPR-1365 Consider to trade size for cycles in O3 / hot code
 ; CHECK-LABEL: materialize_bigimm_in_and_operation:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s 42, r0, r2
-; CHECK-NEXT:    and r1, r2, r1
+; CHECK-NEXT:    and @CPI8_0[0], r1, r1
 ; CHECK-NEXT:    ret
   %res = and i256 %par, -42
   ret i256 %res
 }
 
 define i256 @materialize_bigimm_in_xor_operation(i256 %par) nounwind {
-; TODO: CPR-1365 Consider to trade size for cycles in O3 / hot code
 ; CHECK-LABEL: materialize_bigimm_in_xor_operation:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s 42, r0, r2
-; CHECK-NEXT:    xor r1, r2, r1
+; CHECK-NEXT:    xor @CPI9_0[0], r1, r1
 ; CHECK-NEXT:    ret
   %res = xor i256 -42, %par
   ret i256 %res
@@ -106,6 +102,15 @@ define i256 @materialize_bigimm_in_sub_operation(i256 %par) nounwind {
 
 define i256 @materialize_bigimm_in_sub_operation_2(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_bigimm_in_sub_operation_2:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    sub @CPI11_0[0], r1, r1
+; CHECK-NEXT:    ret
+  %res = sub i256 -42, %par
+  ret i256 %res
+}
+
+define i256 @materialize_bigimm_in_sub_operation_2_minsize(i256 %par) nounwind minsize {
+; CHECK-LABEL: materialize_bigimm_in_sub_operation_2_minsize:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub.s 42, r0, r2
 ; CHECK-NEXT:    sub r2, r1, r1
@@ -125,7 +130,7 @@ define i256 @materialize_zero() nounwind {
 define i256 @materialize_bigimm_1(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_bigimm_1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub @CPI13_0[0], r1, r1
+; CHECK-NEXT:    sub @CPI14_0[0], r1, r1
 ; CHECK-NEXT:    ret
   %res = sub i256 12345678901234567890, %par
   ret i256 %res
@@ -134,7 +139,7 @@ define i256 @materialize_bigimm_1(i256 %par) nounwind {
 define i256 @materialize_bigimm_2(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_bigimm_2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub @CPI14_0[0], r1, r1
+; CHECK-NEXT:    sub @CPI15_0[0], r1, r1
 ; CHECK-NEXT:    ret
   %res = sub i256 12345678901234567890, %par
   ret i256 %res
@@ -148,11 +153,19 @@ define i256 @materialize_bigimm_2(i256 %par) nounwind {
 ; CHECK-LABEL: CPI1_0:
 ; CHECK: .cell 65536
 
+; materialize_bigimm_in_and_operation
+; materialize_bigimm_in_xor_operation
+; materialize_bigimm_in_sub_operation_2
+; CHECK: CPI8_0:
+; CHECK: CPI9_0:
+; CHECK: CPI11_0:
+; CHECK:  .cell -42
+
 ; materialize_negative_imm_3
 ; CHECK-NOT: CPI4_0:
 ; CHECK-NOT: .cell -65535
 
 ; constants with same value but from different functions share a single slot
-; CHECK-LABEL: CPI13_0:
-; CHECK-NEXT: CPI14_0:
+; CHECK-LABEL: CPI14_0:
+; CHECK-NEXT: CPI15_0:
 ; CHECK-NEXT: .cell 12345678901234567890

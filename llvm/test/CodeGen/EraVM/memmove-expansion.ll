@@ -134,9 +134,8 @@ define i256 @test_known_forward() {
 ; CHECK-INSTRS-NEXT:  add 1, r3, r3
 ; CHECK-INSTRS-NEXT:  sub.s! 2, r3, r4
 ; CHECK-INSTRS-NEXT:  jump.lt @.BB1_1
-; CHECK-INSTRS:       sub.s 256, r0, r1
-; CHECK-INSTRS-NEXT:  ld.1 164, r2
-; CHECK-INSTRS-NEXT:  and r2, r1, r1
+; CHECK-INSTRS:       ld.1 164, r2
+; CHECK-INSTRS-NEXT:  and @CPI1_0[0], r2, r1
 ; CHECK-INSTRS-NEXT:  ld.1 74, r2
 ; CHECK-INSTRS-NEXT:  and 255, r2, r2
 ; CHECK-INSTRS-NEXT:  or r1, r2, r1
@@ -162,9 +161,8 @@ define i256 @test_known_backward() {
 ; CHECK-INSTRS-NEXT:  st.1 r3, r2
 ; CHECK-INSTRS-NEXT:  sub.s! 32, r1, r1
 ; CHECK-INSTRS-NEXT:  jump.ne @.BB2_2
-; CHECK-INSTRS:       sub.s 256, r0, r1
-; CHECK-INSTRS-NEXT:  ld.1 10, r2
-; CHECK-INSTRS-NEXT:  and r2, r1, r1
+; CHECK-INSTRS:       ld.1 10, r2
+; CHECK-INSTRS-NEXT:  and @CPI2_0[0], r2, r1
 ; CHECK-INSTRS-NEXT:  ld.1 100, r2
 ; CHECK-INSTRS-NEXT:  and 255, r2, r2
 ; CHECK-INSTRS-NEXT:  or r1, r2, r1
@@ -176,3 +174,7 @@ entry:
   tail call void @llvm.memmove.p1.p1.i256(ptr addrspace(1) inttoptr (i256 100 to ptr addrspace(1)), ptr addrspace(1) inttoptr (i256 10 to ptr addrspace(1)), i256 95, i1 false)
   ret i256 0
 }
+
+; CHECK-INSTRS: CPI1_0:
+; CHECK-INSTRS: CPI2_0:
+; CHECK-INSTRS:  .cell -256

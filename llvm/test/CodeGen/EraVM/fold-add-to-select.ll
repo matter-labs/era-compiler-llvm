@@ -51,8 +51,7 @@ define i256 @test_large_imm4(i256 %a) {
 
 define i256 @test_small_imm1(i256 %a) {
 ; CHECK-LABEL: test_small_imm1
-; CHECK:       sub.s 5, r0, r2
-; CHECK-NEXT:  sub! r1, r2, r2
+; CHECK:       sub.s! @CPI4_0[0], r1, r2
 ; CHECK-NEXT:  add.lt 10, r1, r1
 ; CHECK-NEXT:  ret
   %add = add i256 %a, 10
@@ -63,8 +62,7 @@ define i256 @test_small_imm1(i256 %a) {
 
 define i256 @test_small_imm2(i256 %a) {
 ; CHECK-LABEL: test_small_imm2
-; CHECK:       sub.s 5, r0, r2
-; CHECK-NEXT:  sub! r1, r2, r2
+; CHECK:       sub.s! @CPI5_0[0], r1, r2
 ; CHECK-NEXT:  add.ge 10, r1, r1
 ; CHECK-NEXT:  ret
   %add = add i256 %a, 10
@@ -186,3 +184,7 @@ else:
   %select = select i1 %cmp, i256 %add, i256 %a
   ret i256 %select
 }
+
+; CHECK: CPI4_0:
+; CHECK: CPI5_0:
+; CHECK:  .cell -5
