@@ -59,6 +59,11 @@ namespace {
       if (std::getenv("bar") != (char*) -1)
         return;
 
+      // EraVM local begin
+      (void)llvm::createGVNHoistPass();
+      (void)llvm::createNewGVNPass();
+      // EraVM local end
+
       (void)llvm::createAtomicExpandLegacyPass();
       (void) llvm::createBasicAAWrapperPass();
       (void) llvm::createSCEVAAWrapperPass();

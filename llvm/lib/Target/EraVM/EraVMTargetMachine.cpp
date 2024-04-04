@@ -24,6 +24,7 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/GlobalDCE.h"
 #include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Scalar/DeadStoreElimination.h"
 #include "llvm/Transforms/Utils.h"
 
@@ -33,6 +34,14 @@
 #include "EraVMTargetTransformInfo.h"
 
 using namespace llvm;
+
+// FIXME: Improve codegen tests so that the passes doesn't optimizated
+// the interesting code away making the tests useless.
+static cl::opt<bool> DisableStraightLineScalarOptPasses(
+    "disable-eravm-scalar-opt-passes",
+    cl::desc("Disable the sequence of scalar pre-ISel passes (for testing "
+             "purpose only)"),
+    cl::init(false), cl::Hidden);
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   // Register the target.
@@ -172,7 +181,16 @@ namespace {
 class EraVMPassConfig : public TargetPassConfig {
 public:
   EraVMPassConfig(EraVMTargetMachine &TM, PassManagerBase &PM)
-      : TargetPassConfig(TM, PM) {}
+      : TargetPassConfig(TM, PM) {
+    // Exceptions and StackMaps are not supported,
+    // so these passes will never do anything.
+    disablePass(&StackMapLivenessID);
+    disablePass(&FuncletLayoutID);
+    disablePass(&PatchableFunctionID);
+    // Garbage collection is not supported.
+    disablePass(&GCLoweringID);
+    disablePass(&ShadowStackGCLoweringID);
+  }
 
   EraVMTargetMachine &getEraVMTargetMachine() const {
     return getTM<EraVMTargetMachine>();
@@ -205,6 +223,29 @@ void EraVMPassConfig::addIRPasses() {
   addPass(createGlobalDCEPass());
   addPass(createEraVMAllocaHoistingPass());
   if (TM->getOptLevel() != CodeGenOptLevel::None) {
+    if (!DisableStraightLineScalarOptPasses) {
+      // Call SeparateConstOffsetFromGEP pass to extract constants within
+      // indices and lower a GEP with multiple indices to either arithmetic
+      // operations or multiple GEPs with single index.
+      addPass(createSeparateConstOffsetFromGEPPass(true));
+      // ReassociateGEPs exposes more opportunites for SLSR. See
+      // the example in reassociate-geps-and-slsr.ll.
+      addPass(createStraightLineStrengthReducePass());
+      // SeparateConstOffsetFromGEP and SLSR creates common expressions which
+      // GVN or EarlyCSE can reuse. GVN generates significantly better code than
+      // EarlyCSE for some of our benchmarks.
+      addPass(createNewGVNPass());
+      addPass(createGVNHoistPass());
+      // Run NaryReassociate after EarlyCSE/GVN to be more effective.
+      addPass(createNaryReassociatePass());
+      // Call EarlyCSE pass to find and remove subexpressions in the lowered
+      // result.
+      addPass(createEarlyCSEPass());
+      // Do loop invariant code motion in case part of the lowered result is
+      // invariant.
+      addPass(createLICMPass());
+    }
+
     addPass(createEraVMAAWrapperPass());
     addPass(createExternalAAWrapperPass([](Pass &P, Function &,
                                            AAResults &AAR) {

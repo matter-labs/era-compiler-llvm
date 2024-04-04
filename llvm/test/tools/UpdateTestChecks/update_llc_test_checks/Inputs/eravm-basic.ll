@@ -1,4 +1,4 @@
-; RUN: llc < %s -mtriple=eravm-unknown-unknown | FileCheck %s
+; RUN: llc --disable-eravm-scalar-opt-passes < %s -mtriple=eravm-unknown-unknown | FileCheck %s
 
 @val = addrspace(4) global i256 42
 
