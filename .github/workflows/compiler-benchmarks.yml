@@ -61,13 +61,12 @@ jobs:
             echo "COMPILER_LLVM_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_reference_branch || 'main' }}" >> $GITHUB_ENV
           fi
 
-      - name: Checkout compiler-tester
+      - name: Checkout era-compiler-tester
         uses: actions/checkout@v4
         with:
-          repository: matter-labs/compiler-tester
+          repository: matter-labs/era-compiler-tester
           ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
           submodules: recursive
-          token: ${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}
 
       - name: Checkout LLVM
         uses: actions/checkout@v4
@@ -86,7 +85,6 @@ jobs:
           RUST_BACKTRACE: full
         run: |
           export LLVM_SYS_150_PREFIX="$(pwd)/target-llvm/target-final/"
-          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
           cargo build --verbose --release --bin 'compiler-tester'
           cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/era-compiler-solidity-*/*/Cargo.toml --target-dir './target-zksolc/'
           cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/era-compiler-vyper-*/*/Cargo.toml --target-dir './target-zkvyper/'
@@ -105,17 +103,18 @@ jobs:
   analysis:
     name: "Benchmark comparison"
     runs-on: matterlabs-ci-runner
+    permissions:
+      pull-requests: write
     container:
       image: matterlabs/llvm_runner:ubuntu22-llvm15-latest
     needs: benchmarks
     steps:
-      - name: Checking out the compiler-tester repository
+      - name: Checking out the era-compiler-tester
         uses: actions/checkout@v4
         with:
-          repository: matter-labs/compiler-tester
+          repository: matter-labs/era-compiler-tester
           ref: ${{ github.event.inputs.compiler_tester_candidate_branch || 'main' }}
           submodules: recursive
-          token: ${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}
 
       - uses: actions/download-artifact@v4
         with:
@@ -124,7 +123,6 @@ jobs:
 
       - name: Comparing the LLVM framework benchmark results
         run: |
-          git config --global --add url."https://${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}:x-oauth-basic@github.com/".insteadOf https://github.com/
           cargo run --release --bin benchmark-analyzer -- \
             --reference reference.json --candidate candidate.json --output-file result.txt
 
@@ -139,7 +137,5 @@ jobs:
       - name: Posting the LLVM benchmark results to a PR comment
         if: github.event_name == 'pull_request'
         uses: mshick/add-pr-comment@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.ZKSYNC_ADMIN_BOT_ORG_REPO_WRITE }}
         with:
           message-path: result.txt
