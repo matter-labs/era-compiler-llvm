@@ -15,6 +15,7 @@
 
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/Statistic.h"
+#include "llvm/CodeGen/MachineConstantPool.h"
 #include "llvm/CodeGen/MachineDominators.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
@@ -128,7 +129,9 @@ INITIALIZE_PASS_END(EraVMCombineAddressingMode, DEBUG_TYPE,
                     ERAVM_COMBINE_ADDRESSING_MODE_NAME, false, false)
 
 bool EraVMCombineAddressingMode::isConstLoad(const MachineInstr &MI) const {
-  return MI.getOpcode() == EraVM::ADDcrr_s &&
+  return (MI.getOpcode() == EraVM::ADDcrr_s ||
+          MI.getOpcode() == EraVM::ADDirr_s ||
+          MI.getOpcode() == EraVM::SUBxrr_s) &&
          EraVM::in1Iterator(MI)->getReg() == EraVM::R0 &&
          TII->getCCCode(MI) == EraVMCC::COND_NONE;
 }
@@ -524,6 +527,12 @@ bool EraVMCombineAddressingMode::combineConstantUse(MachineFunction &MF) {
     for (auto &MI : MBB) {
       if (!isConstLoad(MI))
         continue;
+      // Skip combining sub with its uses in optisize mode. For this to work, we
+      // need to emit constant pool entry for negative values, which increases
+      // code size.
+      if (MI.getOpcode() == EraVM::SUBxrr_s && MF.getFunction().hasOptSize())
+        continue;
+
       Register Def = MI.getOperand(0).getReg();
       SmallPtrSet<MachineInstr *, 4> Uses;
       RDA->getGlobalUses(&MI, Def, Uses);
@@ -554,19 +563,31 @@ bool EraVMCombineAddressingMode::combineConstantUse(MachineFunction &MF) {
 
   // 2. Combine.
   for (auto [LoadConst, Uses] : Deleted) {
+    SmallVector<MachineOperand, 2> In0Ops;
+    if (LoadConst->getOpcode() == EraVM::SUBxrr_s) {
+      auto ImmVal = -EraVM::in0Iterator(*LoadConst)->getCImm()->getValue();
+      MachineConstantPool *ConstantPool = MF.getConstantPool();
+      const Constant *C =
+          ConstantInt::get(MF.getFunction().getContext(), ImmVal);
+      unsigned Idx = ConstantPool->getConstantPoolIndex(C, Align(32));
+      In0Ops.emplace_back(MachineOperand::CreateImm(0));
+      In0Ops.emplace_back(MachineOperand::CreateCPI(Idx, 0));
+    } else {
+      append_range(In0Ops, EraVM::in0Range(*LoadConst));
+    }
+
     for (auto *Use : Uses) {
+      int NewOpcode = LoadConst->getOpcode() == EraVM::ADDirr_s
+                          ? EraVM::getWithIRInAddrMode(Use->getOpcode())
+                          : EraVM::getWithCRInAddrMode(Use->getOpcode());
       if (EraVM::in0Iterator(*Use)->getReg() ==
           LoadConst->getOperand(0).getReg()) {
-        replaceArgument(*Use, EraVM::ArgumentKind::In0,
-                        EraVM::in0Range(*LoadConst),
-                        EraVM::getWithCRInAddrMode(Use->getOpcode()));
+        replaceArgument(*Use, EraVM::ArgumentKind::In0, In0Ops, NewOpcode);
       } else {
-        int NewOpcode = EraVM::getWithCRInAddrMode(Use->getOpcode());
         if (!Use->isCommutable())
           NewOpcode = EraVM::getWithInsSwapped(NewOpcode);
         assert(NewOpcode != -1);
-        replaceArgument(*Use, EraVM::ArgumentKind::In1,
-                        EraVM::in0Range(*LoadConst), NewOpcode);
+        replaceArgument(*Use, EraVM::ArgumentKind::In1, In0Ops, NewOpcode);
       }
       LLVM_DEBUG(dbgs() << "== Combine load const"; LoadConst->dump();
                  dbgs() << "   and use:"; Use->dump(); dbgs() << " into:";
