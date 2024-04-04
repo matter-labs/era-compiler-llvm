@@ -15,6 +15,7 @@
 
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/Statistic.h"
+#include "llvm/CodeGen/MachineConstantPool.h"
 #include "llvm/CodeGen/MachineDominators.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
@@ -38,7 +39,7 @@ static cl::opt<bool>
 
 STATISTIC(NumReloadFolded, "Number of reloads folded");
 STATISTIC(NumSpillsFolded, "Number of spills folded");
-STATISTIC(NumLoadConstFolded, "Number of load const folded");
+STATISTIC(NumMoveImmFolded, "Number of move imm folded");
 
 namespace {
 
@@ -82,9 +83,12 @@ private:
   /// mappings.
   void mergeSelect(MachineInstr &Base, MachineInstr &Def,
                    iterator_range<MachineInstr::const_mop_iterator> In);
-  /// Return whether \p MI is a load const.
-  /// I.e. an instruction of form `add const, r0, rN`.
-  bool isConstLoad(const MachineInstr &MI) const;
+  /// Return whether \p MI is a move immediate.
+  /// I.e. an instruction of form:
+  ///   `add const, r0, rN`.
+  ///   `add imm, r0, rN`.
+  ///   `sub.s imm, r0, rN`.
+  bool isMoveImm(const MachineInstr &MI) const;
   /// Return whether \p MI is a reload instruction.
   /// I.e. an instruction of form `add stack, r0, rN`.
   bool isReloadInst(const MachineInstr &MI) const;
@@ -113,8 +117,8 @@ private:
   /// Combine spill and spill-like instructions with definitions the register to
   /// spill.
   bool combineDefSpill(MachineFunction &MF);
-  /// Combine constant loading with its usage.
-  bool combineConstantUse(MachineFunction &MF);
+  /// Combine move immediate with its usage.
+  bool combineMoveImmUse(MachineFunction &MF);
 };
 
 char EraVMCombineAddressingMode::ID = 0;
@@ -127,8 +131,10 @@ INITIALIZE_PASS_DEPENDENCY(MachineDominatorTree)
 INITIALIZE_PASS_END(EraVMCombineAddressingMode, DEBUG_TYPE,
                     ERAVM_COMBINE_ADDRESSING_MODE_NAME, false, false)
 
-bool EraVMCombineAddressingMode::isConstLoad(const MachineInstr &MI) const {
-  return MI.getOpcode() == EraVM::ADDcrr_s &&
+bool EraVMCombineAddressingMode::isMoveImm(const MachineInstr &MI) const {
+  return (MI.getOpcode() == EraVM::ADDcrr_s ||
+          MI.getOpcode() == EraVM::ADDirr_s ||
+          MI.getOpcode() == EraVM::SUBxrr_s) &&
          EraVM::in1Iterator(MI)->getReg() == EraVM::R0 &&
          TII->getCCCode(MI) == EraVMCC::COND_NONE;
 }
@@ -513,7 +519,7 @@ bool EraVMCombineAddressingMode::combineDefSpill(MachineFunction &MF) {
   return !Deleted.empty();
 }
 
-bool EraVMCombineAddressingMode::combineConstantUse(MachineFunction &MF) {
+bool EraVMCombineAddressingMode::combineMoveImmUse(MachineFunction &MF) {
   std::vector<std::pair<MachineInstr *, SmallPtrSet<MachineInstr *, 4>>>
       Deleted;
   DenseSet<MachineInstr *> UsesToUpdate;
@@ -522,8 +528,15 @@ bool EraVMCombineAddressingMode::combineConstantUse(MachineFunction &MF) {
   // 1. Collect all instructions to be combined.
   for (auto &MBB : MF) {
     for (auto &MI : MBB) {
-      if (!isConstLoad(MI))
+      if (!isMoveImm(MI))
         continue;
+
+      // Skip combining sub with its uses in optsize mode. For this to work, we
+      // need to emit constant pool entry for negative values, which increases
+      // code size.
+      if (MI.getOpcode() == EraVM::SUBxrr_s && MF.getFunction().hasOptSize())
+        continue;
+
       Register Def = MI.getOperand(0).getReg();
       SmallPtrSet<MachineInstr *, 4> Uses;
       RDA->getGlobalUses(&MI, Def, Uses);
@@ -553,30 +566,46 @@ bool EraVMCombineAddressingMode::combineConstantUse(MachineFunction &MF) {
   }
 
   // 2. Combine.
-  for (auto [LoadConst, Uses] : Deleted) {
+  for (auto [MoveImm, Uses] : Deleted) {
+    SmallVector<MachineOperand, 2> In0Ops;
+    // TODO: CPR-1669 If all users are in form of `add rIn, r0, rOut`,
+    // don't create a constant pool entry.
+    if (MoveImm->getOpcode() == EraVM::SUBxrr_s) {
+      // Since negative immediate values are not valid in addressing mode,
+      // put it in a constant pool.
+      auto ImmVal = -EraVM::in0Iterator(*MoveImm)->getCImm()->getValue();
+      MachineConstantPool *ConstantPool = MF.getConstantPool();
+      const Constant *C =
+          ConstantInt::get(MF.getFunction().getContext(), ImmVal);
+      unsigned Idx = ConstantPool->getConstantPoolIndex(C, Align(32));
+      In0Ops.emplace_back(MachineOperand::CreateImm(0));
+      In0Ops.emplace_back(MachineOperand::CreateCPI(Idx, 0));
+    } else {
+      append_range(In0Ops, EraVM::in0Range(*MoveImm));
+    }
+
     for (auto *Use : Uses) {
+      int NewOpcode = MoveImm->getOpcode() == EraVM::ADDirr_s
+                          ? EraVM::getWithIRInAddrMode(Use->getOpcode())
+                          : EraVM::getWithCRInAddrMode(Use->getOpcode());
       if (EraVM::in0Iterator(*Use)->getReg() ==
-          LoadConst->getOperand(0).getReg()) {
-        replaceArgument(*Use, EraVM::ArgumentKind::In0,
-                        EraVM::in0Range(*LoadConst),
-                        EraVM::getWithCRInAddrMode(Use->getOpcode()));
+          MoveImm->getOperand(0).getReg()) {
+        replaceArgument(*Use, EraVM::ArgumentKind::In0, In0Ops, NewOpcode);
       } else {
-        int NewOpcode = EraVM::getWithCRInAddrMode(Use->getOpcode());
         if (!Use->isCommutable())
           NewOpcode = EraVM::getWithInsSwapped(NewOpcode);
         assert(NewOpcode != -1);
-        replaceArgument(*Use, EraVM::ArgumentKind::In1,
-                        EraVM::in0Range(*LoadConst), NewOpcode);
+        replaceArgument(*Use, EraVM::ArgumentKind::In1, In0Ops, NewOpcode);
       }
-      LLVM_DEBUG(dbgs() << "== Combine load const"; LoadConst->dump();
+      LLVM_DEBUG(dbgs() << "== Combine move imm"; MoveImm->dump();
                  dbgs() << "   and use:"; Use->dump(); dbgs() << " into:";
                  std::prev(Use->getIterator())->dump(););
       Use->eraseFromParent();
     }
-    LoadConst->eraseFromParent();
+    MoveImm->eraseFromParent();
   }
 
-  NumLoadConstFolded += Deleted.size();
+  NumMoveImmFolded += Deleted.size();
 
   return !Deleted.empty();
 }
@@ -594,7 +623,7 @@ bool EraVMCombineAddressingMode::runOnMachineFunction(MachineFunction &MF) {
   RDA->reset();
   Changed |= combineDefSpill(MF);
   RDA->reset();
-  Changed |= combineConstantUse(MF);
+  Changed |= combineMoveImmUse(MF);
   return Changed;
 }
 
