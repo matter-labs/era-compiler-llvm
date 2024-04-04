@@ -1,4 +1,4 @@
-; RUN: llc < %s | FileCheck %s
+; RUN: llc --disable-eravm-scalar-opt-passes < %s | FileCheck %s
 
 target triple = "eravm"
 

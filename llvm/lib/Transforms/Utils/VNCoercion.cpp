@@ -174,6 +174,11 @@ static int analyzeLoadFromClobberingWrite(Type *LoadTy, Value *LoadPtr,
                                           Value *WritePtr,
                                           uint64_t WriteSizeInBits,
                                           const DataLayout &DL) {
+  // EraVM local begin
+  if (isa<IntegerType>(LoadTy) && cast<IntegerType>(LoadTy)->getBitWidth() > 64)
+    return -1;
+  // EraVM local end
+
   // If the loaded/stored value is a first class array/struct, or scalable type,
   // don't try to transform them. We need to be able to bitcast to integer.
   if (isFirstClassAggregateOrScalableType(LoadTy))
