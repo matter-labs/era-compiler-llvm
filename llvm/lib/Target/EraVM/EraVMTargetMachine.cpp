@@ -285,13 +285,13 @@ void EraVMPassConfig::addPreRegAlloc() {
 
 void EraVMPassConfig::addPreSched2() {
   addPass(createEraVMExpandPseudoPass());
+  addPass(createEraVMCombineAddressingModePass());
   if (getOptLevel() != CodeGenOpt::None) {
     addPass(createIfConverter([](const MachineFunction &MF) { return true; }));
   }
 }
 
 void EraVMPassConfig::addPreEmitPass() {
-  addPass(createEraVMCombineAddressingModePass());
   addPass(createEraVMExpandSelectPass());
   addPass(createEraVMOptimizeSelectPostRAPass());
 }
