@@ -105,15 +105,6 @@ void EraVMInstPrinter::printCCOperand(const MCInst *MI, unsigned OpNo,
   }
 }
 
-void EraVMInstPrinter::printFirstOperand(const MCInst *MI, unsigned OpNo,
-                                         raw_ostream &O) {
-  const MCOperand &EAF = MI->getOperand(OpNo);
-  assert(EAF.isImm() && "Expected immediate in init field");
-  if (EAF.getImm() == 1) {
-    O << ".first";
-  }
-}
-
 void EraVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
                                        raw_ostream &O) {
   const MCOperand &Base = MI->getOperand(OpNo);
