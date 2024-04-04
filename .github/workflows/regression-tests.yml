@@ -55,7 +55,7 @@ jobs:
             --token ${{ secrets.GITHUB_TOKEN }} \
             --issue-number ${{ github.event.pull_request.number }} \
             --start-rev ${{ github.event.pull_request.base.sha }} \
-            --end-rev ${{ github.event.pull_request.head.sha }} \
+            --end-rev ${{ matrix.commit }} \
             --changed-files "${CHANGED_FILES}"
 
       - name: clang-tidy
