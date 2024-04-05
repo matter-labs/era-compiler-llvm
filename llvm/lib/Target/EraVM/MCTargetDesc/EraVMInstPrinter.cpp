@@ -111,116 +111,98 @@ void EraVMInstPrinter::printCCOperand(const MCInst *MI, unsigned OpNo,
 
 void EraVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
                                        raw_ostream &O) {
-  const MCOperand &Base = MI->getOperand(OpNo);
-  const MCOperand &Disp = MI->getOperand(OpNo + 1);
+  unsigned BaseReg = 0;
+  const MCSymbol *Symbol = nullptr;
+  int Addend = 0;
 
-  // print constant pool memory
-  if (Base.isExpr()) {
-    Base.getExpr()->print(O, &MAI);
-    O << "[0]";
-    return;
+  EraVM::analyzeMCOperandsCode(*MI, OpNo, BaseReg, Symbol, Addend);
+  if (BaseReg == EraVM::R0)
+    BaseReg = 0;
+
+  if (Symbol)
+    O << "@" << Symbol->getName() << "[";
+  else
+    O << "code[";
+
+  if (!BaseReg && !Addend)
+    O << "0";
+
+  if (BaseReg)
+    O << getRegisterName(BaseReg);
+
+  if (Addend) {
+    if (Addend < 0)
+      O << "-";
+    else if (BaseReg)
+      O << "+";
+    O << std::abs(Addend);
   }
 
-  if (Base.isReg() && Disp.isImm()) {
-    if (Disp.getImm() == 0)
-      O << "code[" << getRegisterName(Base.getReg()) << "]";
-    else
-      O << "code[" << getRegisterName(Base.getReg()) << "+" << Disp.getImm()
-        << "]";
-    return;
-  }
-
-  // Print displacement first
-  if (Disp.isExpr()) {
-    const auto *expr = Disp.getExpr();
-    // handle the case where symbol has an offset
-    if (const auto *binExpr = dyn_cast<MCBinaryExpr>(expr)) {
-      assert(binExpr->getOpcode() == MCBinaryExpr::Add &&
-             "Unexpected binary expression type, check EraVMMCInstLower "
-             "for reference.");
-      const auto *sym = cast<MCSymbolRefExpr>(binExpr->getLHS());
-      const auto *offset = cast<MCConstantExpr>(binExpr->getRHS());
-      // print symbol
-      O << '@' << sym->getSymbol().getName() << "[";
-      // if there is a reg, print it before offset
-      if (Base.isReg())
-        O << getRegisterName(Base.getReg()) << "+";
-      // finally, print offset
-      O << offset->getValue() << "]";
-    } else if (const auto *symExpr = dyn_cast<MCSymbolRefExpr>(expr)) {
-      // handle the case where symbol has no imm offset but could have a reg
-      // index
-      if (Base.isReg())
-        O << '@' << symExpr->getSymbol().getName() << "["
-          << getRegisterName(Base.getReg()) << "]";
-      else
-        O << '@' << symExpr->getSymbol().getName() << "[0]";
-    }
-    return;
-  }
-
-  assert(Disp.isImm() && "Expected immediate in displacement field");
-  O << Disp.getImm();
+  O << "]";
 }
 
 template <bool IsInput>
 void EraVMInstPrinter::printStackOperand(const MCInst *MI, unsigned OpNo,
                                          raw_ostream &O) {
-  const MCOperand &Base1 = MI->getOperand(OpNo);
-  const MCOperand &Base2 = MI->getOperand(OpNo + 1);
-  const MCOperand &Disp = MI->getOperand(OpNo + 2);
+  using namespace EraVM;
 
-  // FIXME
-  bool ExprPermitted = !Base1.isReg();
-  if (Base1.isReg()) {
-    switch (Base1.getReg()) {
-    case EraVM::SP:
-      O << "stack-[";
-      break;
-    case EraVM::R0:
-      O << (IsInput ? "stack-=[" : "stack+=[");
-      break;
-    default:
-      llvm_unreachable("unexpected register operand");
-    }
-  } else {
+  unsigned BaseReg = 0;
+  MemOperandKind Kind = MemOperandKind::OperandCode;
+  const MCSymbol *Symbol = nullptr;
+  int Addend = 0;
+  analyzeMCOperandsStack(*MI, OpNo, IsInput, BaseReg, Kind, Symbol, Addend);
+
+  switch (Kind) {
+  default:
+    llvm_unreachable("Unexpected kind");
+  case MemOperandKind::OperandStackAbsolute:
     O << "stack[";
+    break;
+  case MemOperandKind::OperandStackSPRelative:
+    O << "stack-[";
+    break;
+  case MemOperandKind::OperandStackSPDecrement:
+    O << "stack-=[";
+    break;
+  case MemOperandKind::OperandStackSPIncrement:
+    O << "stack+=[";
+    break;
   }
 
-  if (Base2.isReg()) {
-    if (!ExprPermitted) {
-      // stack-[disp + reg];
-      // FIXME Check if any machine pass actually emits Disp < 0,
-      //       as it was asserted before.
-      assert(Disp.isImm() && Disp.getImm() >= 0); // don't support expr yet
-      O << Disp.getImm() << " + " << getRegisterName(Base2.getReg());
-    } else {
-      // print absolute address in format stack[disp + reg]:
-      if (Disp.isImm()) {
-        // skip the sign if disp is 0
-        if (Disp.getImm() > 0)
-          O << Disp.getImm();
-        else if (Disp.getImm() < 0)
-          O << " - " << std::abs(Disp.getImm());
-
-        // if disp is 0, don't print the + sign
-        if (Disp.getImm() != 0)
-          O << " + ";
-      } else {
-        assert(Disp.isExpr());
-        Disp.getExpr()->print(O, &MAI);
-        O << " + ";
-      }
-      O << getRegisterName(Base2.getReg());
-    }
-  } else {
-    // Print displacement first
-    if (Disp.isExpr())
-      Disp.getExpr()->print(O, &MAI);
-    else {
-      assert(Disp.isImm() && "Expected immediate in displacement field");
-      O << std::abs(Disp.getImm());
-    }
+  if (!Symbol && !Addend && !BaseReg) {
+    O << "0]";
+    return;
   }
+
+  bool PrintedSomething = false;
+
+  if (Symbol) {
+    O << "@" << Symbol->getName();
+    PrintedSomething = true;
+  }
+
+  if (Addend == 0 && Kind != MemOperandKind::OperandStackAbsolute) {
+    // Always print immediate addend in stack-[...], stack-=[...], stack+=[...].
+    // TODO Remove this special case and update the tests.
+    O << "0";
+    PrintedSomething = true;
+  }
+
+  if (Addend) {
+    if (Addend < 0)
+      O << " - ";
+    else if (PrintedSomething)
+      O << " + ";
+    O << std::abs(Addend);
+    PrintedSomething = true;
+  }
+
+  if (BaseReg) {
+    if (PrintedSomething)
+      O << " + ";
+    O << getRegisterName(BaseReg);
+    PrintedSomething = true;
+  }
+
   O << "]";
 }

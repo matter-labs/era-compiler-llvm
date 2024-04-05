@@ -53,6 +53,6 @@ foo:
 ; CHECK:  jump code[r1+1], r2
 
 ; CHECK:  jump @label
-; CHECK:  jump @jump_table[r0+1]
+; CHECK:  jump @jump_table[1]
 ; CHECK:  jump @label, r2
-; CHECK:  jump @jump_table[r0+1], r2
+; CHECK:  jump @jump_table[1], r2
