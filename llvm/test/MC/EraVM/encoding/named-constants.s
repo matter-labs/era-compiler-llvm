@@ -95,7 +95,7 @@ foo:
 ; CHECK:  ptr.add.s     @constant[r1+42], r2, stack+=[123 + r3] ; encoding: [0x00,0x7b,A,0x2a'A',0x03,0x21,0x03,0x7a]
 ; CHECK:  ;   fixup A - offset: 2, value: @constant, kind: fixup_16_scale_32
 
-; CHECK:  jump  @jump_table[r0+42]              ; encoding: [0x00,0x00,A,0x2a'A',0x00,0x00,0x01,0x3e]
+; CHECK:  jump  @jump_table[42]                 ; encoding: [0x00,0x00,A,0x2a'A',0x00,0x00,0x01,0x3e]
 ; CHECK:  ;   fixup A - offset: 2, value: @jump_table, kind: fixup_16_scale_32
 ; CHECK:  jump  @jump_table[r1+42]              ; encoding: [0x00,0x00,A,0x2a'A',0x00,0x01,0x01,0x3e]
 ; CHECK:  ;   fixup A - offset: 2, value: @jump_table, kind: fixup_16_scale_32

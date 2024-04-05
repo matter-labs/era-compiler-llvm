@@ -36,23 +36,23 @@ foo:
 ; CHECK:foo:
 
 ; CHECK:  add  @global[r1+1], r1, r2
-; CHECK:  add  stack[@global+1 + r1], r1, r2
-; CHECK:  add  stack[@global+1 + r1], r1, r2
+; CHECK:  add  stack[@global + 1 + r1], r1, r2
+; CHECK:  add  stack[@global + 1 + r1], r1, r2
 
-; CHECK:  add  r1, r2, stack[@global+1 + r1]
-; CHECK:  add  r1, r2, stack[@global+1 + r1]
+; CHECK:  add  r1, r2, stack[@global + 1 + r1]
+; CHECK:  add  r1, r2, stack[@global + 1 + r1]
 
-; CHECK:  add  stack[@global+65535 + r1], r2, r3
-; CHECK:  add  stack[@global+1], r2, r3
-; CHECK:  add  stack[@global+0 + r1], r2, r3
-; CHECK:  add  stack[@global+65535], r2, r3
-; CHECK:  add  stack[@global+0], r2, r3
+; CHECK:  add  stack[@global + 65535 + r1], r2, r3
+; CHECK:  add  stack[@global + 1], r2, r3
+; CHECK:  add  stack[@global + r1], r2, r3
+; CHECK:  add  stack[@global + 65535], r2, r3
+; CHECK:  add  stack[@global], r2, r3
 
 ; CHECK:  add  @global[r1+65535], r2, r3
-; CHECK:  add  @global[r0+1], r2, r3
-; CHECK:  add  @global[r1+0], r2, r3
-; CHECK:  add  @global[r0+65535], r2, r3
-; CHECK:  add  @global[r0+0], r2, r3
+; CHECK:  add  @global[1], r2, r3
+; CHECK:  add  @global[r1], r2, r3
+; CHECK:  add  @global[65535], r2, r3
+; CHECK:  add  @global[0], r2, r3
 
-; CHECK:  add  @global[r0+1], r1, r2
-; CHECK:  add  @global[r0+65535], r1, r2
+; CHECK:  add  @global[1], r1, r2
+; CHECK:  add  @global[65535], r1, r2

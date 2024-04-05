@@ -81,20 +81,20 @@ reloc_src_g:
   add stack[@array_var + 1], r1, r1
   ret
 ; INPUT-LABEL: <reloc_src_g>:
-; INPUT-NEXT:  00 00 00 00 01 10 00 41        add     code[r0], r1, r1
+; INPUT-NEXT:  00 00 00 00 01 10 00 41        add     code[0], r1, r1
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     scalar_const
 ; INPUT-NEXT:  00 00 00 00 01 10 00 31        add     stack[r0], r1, r1
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     scalar_var
-; INPUT-NEXT:  00 00 00 01 01 10 00 41        add     code[r0+1], r1, r1
+; INPUT-NEXT:  00 00 00 01 01 10 00 41        add     code[1], r1, r1
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     array_const
 ; INPUT-NEXT:  00 00 00 01 01 10 00 31        add     stack[1 + r0], r1, r1
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     array_var
 ; INPUT-NEXT:  00 00 00 00 00 01 04 2d        ret
 
 ; OUTPUT-LABEL: <reloc_src_g>:
-; OUTPUT-NEXT:  00 00 00 01 01 10 00 41        add     code[r0+1], r1, r1
+; OUTPUT-NEXT:  00 00 00 01 01 10 00 41        add     code[1], r1, r1
 ; OUTPUT-NEXT:  00 00 00 81 01 10 00 31        add     stack[129 + r0], r1, r1
-; OUTPUT-NEXT:  00 00 00 03 01 10 00 41        add     code[r0+3], r1, r1
+; OUTPUT-NEXT:  00 00 00 03 01 10 00 41        add     code[3], r1, r1
 ; OUTPUT-NEXT:  00 00 00 83 01 10 00 31        add     stack[131 + r0], r1, r1
 ; OUTPUT-NEXT:  00 00 00 00 00 01 04 2d        ret
 
@@ -105,20 +105,20 @@ reloc_src_l:
   add stack[@array_var_local + 1], r1, r1
   ret
 ; INPUT-LABEL: <reloc_src_l>:
-; INPUT-NEXT:  00 00 00 00 01 10 00 41        add     code[r0], r1, r1
+; INPUT-NEXT:  00 00 00 00 01 10 00 41        add     code[0], r1, r1
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     .rodata+0x20
 ; INPUT-NEXT:  00 00 00 00 01 10 00 31        add     stack[r0], r1, r1
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     .data+0x20
-; INPUT-NEXT:  00 00 00 01 01 10 00 41        add     code[r0+1], r1, r1
+; INPUT-NEXT:  00 00 00 01 01 10 00 41        add     code[1], r1, r1
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     .rodata+0x40
 ; INPUT-NEXT:  00 00 00 01 01 10 00 31        add     stack[1 + r0], r1, r1
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     .data+0x40
 ; INPUT-NEXT:  00 00 00 00 00 01 04 2d        ret
 
 ; OUTPUT-LABEL: <reloc_src_l>:
-; OUTPUT-NEXT:  00 00 00 01 01 10 00 41        add     code[r0+1], r1, r1
+; OUTPUT-NEXT:  00 00 00 01 01 10 00 41        add     code[1], r1, r1
 ; OUTPUT-NEXT:  00 00 00 81 01 10 00 31        add     stack[129 + r0], r1, r1
-; OUTPUT-NEXT:  00 00 00 03 01 10 00 41        add     code[r0+3], r1, r1
+; OUTPUT-NEXT:  00 00 00 03 01 10 00 41        add     code[3], r1, r1
 ; OUTPUT-NEXT:  00 00 00 83 01 10 00 31        add     stack[131 + r0], r1, r1
 ; OUTPUT-NEXT:  00 00 00 00 00 01 04 2d        ret
 
@@ -161,13 +161,13 @@ reloc_both_g:
   add stack[@array_var + 1], r1, stack[@scalar_var]
   ret
 ; INPUT-LABEL: <reloc_both_g>:
-; INPUT-NEXT:  00 01 00 00 00 10 00 47        add     code[r0], r1, stack[1 + r0]
+; INPUT-NEXT:  00 01 00 00 00 10 00 47        add     code[0], r1, stack[1 + r0]
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     array_var
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     scalar_const
 ; INPUT-NEXT:  00 01 00 00 00 10 00 37        add     stack[r0], r1, stack[1 + r0]
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     array_var
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     scalar_var
-; INPUT-NEXT:  00 00 00 01 00 10 00 47        add     code[r0+1], r1, stack[r0]
+; INPUT-NEXT:  00 00 00 01 00 10 00 47        add     code[1], r1, stack[r0]
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     scalar_var
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     array_const
 ; INPUT-NEXT:  00 00 00 01 00 10 00 37        add     stack[1 + r0], r1, stack[r0]
@@ -176,9 +176,9 @@ reloc_both_g:
 ; INPUT-NEXT:  00 00 00 00 00 01 04 2d        ret
 
 ; OUTPUT-LABEL:<reloc_both_g>:
-; OUTPUT-NEXT:  00 83 00 01 00 10 00 47        add     code[r0+1], r1, stack[131 + r0]
+; OUTPUT-NEXT:  00 83 00 01 00 10 00 47        add     code[1], r1, stack[131 + r0]
 ; OUTPUT-NEXT:  00 83 00 81 00 10 00 37        add     stack[129 + r0], r1, stack[131 + r0]
-; OUTPUT-NEXT:  00 81 00 03 00 10 00 47        add     code[r0+3], r1, stack[129 + r0]
+; OUTPUT-NEXT:  00 81 00 03 00 10 00 47        add     code[3], r1, stack[129 + r0]
 ; OUTPUT-NEXT:  00 81 00 83 00 10 00 37        add     stack[131 + r0], r1, stack[129 + r0]
 ; OUTPUT-NEXT:  00 00 00 00 00 01 04 2d        ret
 
@@ -189,13 +189,13 @@ reloc_both_l:
   add stack[@array_var_local + 1], r1, stack[@scalar_var_local]
   ret
 ; INPUT-LABEL: <reloc_both_l>:
-; INPUT-NEXT:  00 01 00 00 00 10 00 47        add     code[r0], r1, stack[1 + r0]
+; INPUT-NEXT:  00 01 00 00 00 10 00 47        add     code[0], r1, stack[1 + r0]
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     .data+0x40
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     .rodata+0x20
 ; INPUT-NEXT:  00 01 00 00 00 10 00 37        add     stack[r0], r1, stack[1 + r0]
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     .data+0x40
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     .data+0x20
-; INPUT-NEXT:  00 00 00 01 00 10 00 47        add     code[r0+1], r1, stack[r0]
+; INPUT-NEXT:  00 00 00 01 00 10 00 47        add     code[1], r1, stack[r0]
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     .data+0x20
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     .rodata+0x40
 ; INPUT-NEXT:  00 00 00 01 00 10 00 37        add     stack[1 + r0], r1, stack[r0]
@@ -204,8 +204,8 @@ reloc_both_l:
 ; INPUT-NEXT:  00 00 00 00 00 01 04 2d        ret
 
 ; OUTPUT-LABEL:<reloc_both_l>:
-; OUTPUT-NEXT:  00 83 00 01 00 10 00 47        add     code[r0+1], r1, stack[131 + r0]
+; OUTPUT-NEXT:  00 83 00 01 00 10 00 47        add     code[1], r1, stack[131 + r0]
 ; OUTPUT-NEXT:  00 83 00 81 00 10 00 37        add     stack[129 + r0], r1, stack[131 + r0]
-; OUTPUT-NEXT:  00 81 00 03 00 10 00 47        add     code[r0+3], r1, stack[129 + r0]
+; OUTPUT-NEXT:  00 81 00 03 00 10 00 47        add     code[3], r1, stack[129 + r0]
 ; OUTPUT-NEXT:  00 81 00 83 00 10 00 37        add     stack[131 + r0], r1, stack[129 + r0]
 ; OUTPUT-NEXT:  00 00 00 00 00 01 04 2d        ret

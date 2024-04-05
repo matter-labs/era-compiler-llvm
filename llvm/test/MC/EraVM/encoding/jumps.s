@@ -51,9 +51,9 @@ label:
 
 ; CHECK:  jump  @label                          ; encoding: [0x00,0x00,A,A,0x00,0x00,0x01,0x3d]
 ; CHECK:  ;   fixup A - offset: 2, value: @label, kind: fixup_16_scale_8
-; CHECK:  jump  @jump_table[r0+1]               ; encoding: [0x00,0x00,A,0x01'A',0x00,0x00,0x01,0x3e]
+; CHECK:  jump  @jump_table[1]                  ; encoding: [0x00,0x00,A,0x01'A',0x00,0x00,0x01,0x3e]
 ; CHECK:  ;   fixup A - offset: 2, value: @jump_table, kind: fixup_16_scale_32
 ; CHECK:  jump  @label, r2                      ; encoding: [0x00,0x00,A,A,0x02,0x00,0x01,0x3d]
 ; CHECK:  ;   fixup A - offset: 2, value: @label, kind: fixup_16_scale_8
-; CHECK:  jump  @jump_table[r0+1], r2           ; encoding: [0x00,0x00,A,0x01'A',0x02,0x00,0x01,0x3e]
+; CHECK:  jump  @jump_table[1], r2              ; encoding: [0x00,0x00,A,0x01'A',0x02,0x00,0x01,0x3e]
 ; CHECK:  ;   fixup A - offset: 2, value: @jump_table, kind: fixup_16_scale_32
