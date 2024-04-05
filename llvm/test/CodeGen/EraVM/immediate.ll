@@ -64,18 +64,14 @@ define i256 @materialize_small_negimm_in_operation_2(i256 %par) nounwind {
 
 ; CHECK-LABEL: materialize_bigimm_in_and_operation
 define i256 @materialize_bigimm_in_and_operation(i256 %par) nounwind {
-  ; TODO: CPR-1365 Consider to trade size for cycles in O3 / hot code
-  ; CHECK: sub.s 42, r0, r2
-  ; CHECK: and r1, r2, r1
+  ; CHECK: and @CPI9_0[0], r1, r1
   %res = and i256 %par, -42
   ret i256 %res
 }
 
 ; CHECK-LABEL: materialize_bigimm_in_xor_operation
 define i256 @materialize_bigimm_in_xor_operation(i256 %par) nounwind {
-  ; TODO: CPR-1365 Consider to trade size for cycles in O3 / hot code
-  ; CHECK: sub.s 42, r0, r2
-  ; CHECK: xor r1, r2, r1
+  ; CHECK: xor @CPI10_0[0], r1, r1
   %res = xor i256 -42, %par
   ret i256 %res
 }
@@ -89,8 +85,7 @@ define i256 @materialize_bigimm_in_sub_operation(i256 %par) nounwind {
 
 ; CHECK-LABEL: materialize_bigimm_in_sub_operation_2
 define i256 @materialize_bigimm_in_sub_operation_2(i256 %par) nounwind {
-  ; CHECK: sub.s 42, r0, r2
-  ; CHECK: sub r2, r1, r1
+  ; CHECK: sub @CPI12_0[0], r1, r1
   %res = sub i256 -42, %par
   ret i256 %res
 }

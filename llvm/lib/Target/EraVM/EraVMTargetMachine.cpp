@@ -62,6 +62,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMOptimizeSelectPreRAPass(PR);
   initializeEraVMFoldSimilarInstructionsPass(PR);
   initializeEraVMCombineToIndexedMemopsPass(PR);
+  initializeEraVMFoldImmPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -273,6 +274,7 @@ void EraVMPassConfig::addPreRegAlloc() {
     // DAG. Every pass that break this assumption is expected to be sequenced
     // after EraVMCombineFlagSetting.
     addPass(createEraVMCombineFlagSettingPass());
+    addPass(createEraVMFoldImmPass());
     // This pass emits indexed loads and stores
     addPass(createEraVMCombineToIndexedMemopsPass());
     addPass(createEraVMFoldSimilarInstructionsPass());

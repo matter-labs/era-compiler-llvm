@@ -10,8 +10,7 @@ define i256 @test(i256 %a) {
 ; CHECK-NEXT:    sub! r1, r0, r1
 ; CHECK-NEXT:    add 0, r0, r1
 ; CHECK-NEXT:    add.ne 1, r0, r1
-; CHECK-NEXT:    sub.s 1, r0, r2
-; CHECK-NEXT:    xor r1, r2, r1
+; CHECK-NEXT:    xor @CPI0_0[0], r1, r1
 ; CHECK-NEXT:    ret
   %cmp = icmp ne i256 %a, 0
   %zext = zext i1 %cmp to i256
