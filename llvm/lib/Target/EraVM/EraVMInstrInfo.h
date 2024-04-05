@@ -238,6 +238,15 @@ inline StackAccess classifyStackAccess(MachineInstr::const_mop_iterator Op) {
 
 bool hasInvalidRelativeStackAccess(MachineInstr::const_mop_iterator Op);
 
+/// Replace in0 or in1 of \p Base with \p NewArg.
+/// For in1 swap operands as stack addressing mode is only supported for in0,
+/// and if the instruction is not commutable replace the opcode by reversing
+/// `.s` flag.
+/// Put the resulting instruction before \p Base.
+/// ArgNo: must be either in0 or in1.
+void replaceArgument(MachineInstr &Base, ArgumentKind ArgNo,
+                     iterator_range<MachineInstr::const_mop_iterator> NewArg,
+                     const MCInstrDesc &MCID);
 } // namespace EraVM
 
 class EraVMInstrInfo : public EraVMGenInstrInfo {

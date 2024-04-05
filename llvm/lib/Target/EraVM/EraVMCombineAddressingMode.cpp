@@ -66,15 +66,6 @@ private:
   const EraVMInstrInfo *TII{};
   ReachingDefAnalysis *RDA{};
   const MachineDominatorTree *MDT{};
-  /// Replace in0 or in1 of \p Base with \p NewArg.
-  /// For in1 swap operands as stack addressing mode is only supported for in0,
-  /// and if the instruction is not commutable replace the opcode by reversing
-  /// `.s` flag.
-  /// Put the resulting instruction before \p Base.
-  /// ArgNo: must be either in0 or in1.
-  void replaceArgument(MachineInstr &Base, EraVM::ArgumentKind ArgNo,
-                       iterator_range<MachineInstr::const_mop_iterator> NewArg,
-                       unsigned NewOpcode);
   /// Replace an input of Select \p Base corresponding to the register
   /// defined by \p Def with \p In.
   /// Put the resulting instruction before \p Base.
@@ -149,23 +140,6 @@ bool EraVMCombineAddressingMode::isSpillInst(const MachineInstr &MI) const {
          !(EraVM::out0Iterator(MI) + 1)->isReg() &&
          EraVM::in1Iterator(MI)->getReg() == EraVM::R0 &&
          TII->getCCCode(MI) == EraVMCC::COND_NONE;
-}
-
-void EraVMCombineAddressingMode::replaceArgument(
-    MachineInstr &Base, EraVM::ArgumentKind ArgNo,
-    iterator_range<MachineInstr::const_mop_iterator> NewArg,
-    unsigned NewOpcode) {
-  assert(ArgNo == EraVM::ArgumentKind::In0 ||
-         ArgNo == EraVM::ArgumentKind::In1);
-  auto NewMI =
-      BuildMI(*Base.getParent(), Base, Base.getDebugLoc(), TII->get(NewOpcode));
-  EraVM::copyOperands(NewMI, Base.operands_begin(), EraVM::in0Iterator(Base));
-  EraVM::copyOperands(NewMI, NewArg);
-  EraVM::copyOperands(NewMI, (ArgNo == EraVM::ArgumentKind::In1)
-                                 ? EraVM::in0Range(Base)
-                                 : EraVM::in1Range(Base));
-  EraVM::copyOperands(NewMI, EraVM::in1Iterator(Base) + 1,
-                      Base.operands_begin() + Base.getNumExplicitOperands());
 }
 
 void EraVMCombineAddressingMode::mergeSelect(
@@ -383,16 +357,16 @@ bool EraVMCombineAddressingMode::combineReloadUse(MachineFunction &MF) {
       } else {
         if (EraVM::in0Iterator(*Use)->getReg() ==
             Reload->getOperand(0).getReg()) {
-          replaceArgument(*Use, EraVM::ArgumentKind::In0,
-                          EraVM::in0Range(*Reload),
-                          EraVM::getWithSRInAddrMode(Use->getOpcode()));
+          EraVM::replaceArgument(
+              *Use, EraVM::ArgumentKind::In0, EraVM::in0Range(*Reload),
+              TII->get(EraVM::getWithSRInAddrMode(Use->getOpcode())));
         } else {
           int NewOpcode = EraVM::getWithSRInAddrMode(Use->getOpcode());
           if (!Use->isCommutable())
             NewOpcode = EraVM::getWithInsSwapped(NewOpcode);
           assert(NewOpcode != -1);
-          replaceArgument(*Use, EraVM::ArgumentKind::In1,
-                          EraVM::in0Range(*Reload), NewOpcode);
+          EraVM::replaceArgument(*Use, EraVM::ArgumentKind::In1,
+                                 EraVM::in0Range(*Reload), TII->get(NewOpcode));
         }
       }
       LLVM_DEBUG(dbgs() << "== Combine reload"; Reload->dump();
@@ -488,16 +462,16 @@ bool EraVMCombineAddressingMode::combineDefSpill(MachineFunction &MF) {
         mergeSelect(*Use, *Def, EraVM::out0Range(*Spill));
       } else {
         if (EraVM::in0Iterator(*Use)->getReg() == Def->getOperand(0).getReg())
-          replaceArgument(*Use, EraVM::ArgumentKind::In0,
-                          EraVM::out0Range(*Spill),
-                          EraVM::getWithSRInAddrMode(Use->getOpcode()));
+          EraVM::replaceArgument(
+              *Use, EraVM::ArgumentKind::In0, EraVM::out0Range(*Spill),
+              TII->get(EraVM::getWithSRInAddrMode(Use->getOpcode())));
         else {
           int NewOpcode = EraVM::getWithSRInAddrMode(Use->getOpcode());
           if (!Use->isCommutable())
             NewOpcode = EraVM::getWithInsSwapped(NewOpcode);
           assert(NewOpcode != -1);
-          replaceArgument(*Use, EraVM::ArgumentKind::In1,
-                          EraVM::out0Range(*Spill), NewOpcode);
+          EraVM::replaceArgument(*Use, EraVM::ArgumentKind::In1,
+                                 EraVM::out0Range(*Spill), TII->get(NewOpcode));
         }
       }
       LLVM_DEBUG(dbgs() << "== Replace use"; Use->dump(); dbgs() << "   with:";
@@ -557,16 +531,17 @@ bool EraVMCombineAddressingMode::combineConstantUse(MachineFunction &MF) {
     for (auto *Use : Uses) {
       if (EraVM::in0Iterator(*Use)->getReg() ==
           LoadConst->getOperand(0).getReg()) {
-        replaceArgument(*Use, EraVM::ArgumentKind::In0,
-                        EraVM::in0Range(*LoadConst),
-                        EraVM::getWithCRInAddrMode(Use->getOpcode()));
+        EraVM::replaceArgument(
+            *Use, EraVM::ArgumentKind::In0, EraVM::in0Range(*LoadConst),
+            TII->get(EraVM::getWithCRInAddrMode(Use->getOpcode())));
       } else {
         int NewOpcode = EraVM::getWithCRInAddrMode(Use->getOpcode());
         if (!Use->isCommutable())
           NewOpcode = EraVM::getWithInsSwapped(NewOpcode);
         assert(NewOpcode != -1);
-        replaceArgument(*Use, EraVM::ArgumentKind::In1,
-                        EraVM::in0Range(*LoadConst), NewOpcode);
+        EraVM::replaceArgument(*Use, EraVM::ArgumentKind::In1,
+                               EraVM::in0Range(*LoadConst),
+                               TII->get(NewOpcode));
       }
       LLVM_DEBUG(dbgs() << "== Combine load const"; LoadConst->dump();
                  dbgs() << "   and use:"; Use->dump(); dbgs() << " into:";

@@ -240,6 +240,19 @@ bool hasInvalidRelativeStackAccess(MachineInstr::const_mop_iterator Op) {
   return false;
 }
 
+void replaceArgument(MachineInstr &Base, ArgumentKind ArgNo,
+                     iterator_range<MachineInstr::const_mop_iterator> NewArg,
+                     const MCInstrDesc &MCID) {
+  assert(ArgNo == ArgumentKind::In0 || ArgNo == ArgumentKind::In1);
+  auto NewMI = BuildMI(*Base.getParent(), Base, Base.getDebugLoc(), MCID);
+  copyOperands(NewMI, Base.operands_begin(), in0Iterator(Base));
+  copyOperands(NewMI, NewArg);
+  copyOperands(NewMI,
+               (ArgNo == ArgumentKind::In1) ? in0Range(Base) : in1Range(Base));
+  copyOperands(NewMI, in1Iterator(Base) + 1,
+               Base.operands_begin() + Base.getNumExplicitOperands());
+}
+
 } // namespace EraVM
 } // namespace llvm
 
