@@ -38,7 +38,7 @@ define i256 @load.fromarray2(i256 %i) nounwind {
   %elem = getelementptr [4 x i256], [4 x i256]* @val2.arr, i256 0, i256 1
   %elem2 = getelementptr i256, i256* %elem, i256 %i
   ; TODO: CPR-1280: assembler to support this stack access pattern
-  ; CHECK: add stack[@val2.arr+1 + r1], r0, r1
+  ; CHECK: add stack[@val2.arr + 1 + r1], r0, r1
   %res = load i256, i256* %elem2
   ret i256 %res
 }
@@ -47,7 +47,7 @@ define i256 @load.fromarray2(i256 %i) nounwind {
 define void @store.toarray2(i256 %i) nounwind {
   %elem = getelementptr [4 x i256], [4 x i256]* @val2.arr, i256 0, i256 1
   %elem2 = getelementptr i256, i256* %elem, i256 %i
-  ; CHECK: add 1024, r0, stack[@val2.arr+1 + r1]
+  ; CHECK: add 1024, r0, stack[@val2.arr + 1 + r1]
   store i256 1024, i256* %elem2
   ret void
 }

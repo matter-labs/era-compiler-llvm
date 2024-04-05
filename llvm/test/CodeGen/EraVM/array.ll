@@ -19,7 +19,7 @@ define i256 @consti_loadconst_neg_offset(i256 %idx) nounwind {
 
 ; CHECK-LABEL: consti_loadconst_storeglobal
 define void @consti_loadconst_storeglobal() nounwind {
-  ; CHECK: add @const[1], r0, stack[@val+1]
+  ; CHECK: add @const[1], r0, stack[@val + 1]
   %1 = load i256, ptr addrspace(4) getelementptr inbounds ([10 x i256], ptr addrspace(4) @const, i256 0, i256 1), align 32
   store i256 %1, ptr getelementptr inbounds ([10 x i256], ptr @val, i256 0, i256 1), align 32
   ret void
@@ -27,7 +27,7 @@ define void @consti_loadconst_storeglobal() nounwind {
 
 ; CHECK-LABEL: consti_loadglobal_storeglobal
 define void @consti_loadglobal_storeglobal() nounwind {
-  ; CHECK: add stack[@val+7], r0, stack[@val+1]
+  ; CHECK: add stack[@val + 7], r0, stack[@val + 1]
   %1 = load i256, ptr getelementptr inbounds ([10 x i256], ptr @val, i256 0, i256 7), align 32
   store i256 %1, ptr getelementptr inbounds ([10 x i256], ptr @val, i256 0, i256 1), align 32
   ret void

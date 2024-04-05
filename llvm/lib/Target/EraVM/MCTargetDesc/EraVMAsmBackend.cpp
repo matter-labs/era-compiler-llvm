@@ -168,7 +168,7 @@ static void analyzeMCOperands(const MCInst &MI, unsigned Idx, unsigned &Reg,
   Addend = 0;
 
   if (AddendOp.isImm())
-    Addend = AddendOp.getImm() & 0xFFFF;
+    Addend = AddendOp.getImm();
   else if (const auto *E = dyn_cast<MCSymbolRefExpr>(AddendOp.getExpr()))
     Symbol = &E->getSymbol();
   else if (const auto *E = dyn_cast<MCBinaryExpr>(AddendOp.getExpr())) {
@@ -177,7 +177,7 @@ static void analyzeMCOperands(const MCInst &MI, unsigned Idx, unsigned &Reg,
     const auto *Imm = dyn_cast<MCConstantExpr>(E->getRHS());
     assert(Sym && Imm && "Expected symbol+imm expression");
     Symbol = &Sym->getSymbol();
-    Addend = Imm->getValue() & 0xFFFF;
+    Addend = Imm->getValue();
   } else {
     llvm_unreachable("Unexpected Addend operand");
   }
@@ -192,6 +192,19 @@ void EraVM::analyzeMCOperandsStack(const MCInst &MI, unsigned Idx, bool IsSrc,
                                    unsigned &Reg, MemOperandKind &Kind,
                                    const MCSymbol *&Symbol, int &Addend) {
   const MCOperand &MarkerOp = MI.getOperand(Idx);
+
+  if (MarkerOp.isExpr()) {
+    // Handle (@SYM, i256 0, 0)
+    assert(MI.getOperand(Idx + 1).getImm() == 0);
+    assert(MI.getOperand(Idx + 2).getImm() == 0);
+    const MCExpr *Expr = MarkerOp.getExpr();
+    Reg = EraVM::R0;
+    Kind = OperandStackAbsolute;
+    Symbol = &cast<MCSymbolRefExpr>(Expr)->getSymbol();
+    Addend = 0;
+    return;
+  }
+
   assert(MarkerOp.isImm() || MarkerOp.isReg());
 
   if (MarkerOp.isImm()) {
