@@ -165,6 +165,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVM.h"
+#include "EVMControlFlowGraphBuilder.h"
 #include "EVMMachineFunctionInfo.h"
 #include "EVMSubtarget.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
@@ -1155,6 +1156,13 @@ bool EVMStackify::runOnMachineFunction(MachineFunction &MF) {
   MRI.leaveSSA();
 
   assert(MRI.tracksLiveness() && "Stackify expects liveness");
+
+  std::unique_ptr<CFG> Cfg = ControlFlowGraphBuilder::build(MF, LIS);
+  SmallString<1024> StringBuf;
+  llvm::raw_svector_ostream OStream(StringBuf);
+  ControlFlowGraphPrinter CfgPrinter(OStream);
+  CfgPrinter(*Cfg);
+  LLVM_DEBUG(dbgs() << StringBuf << '\n');
 
   LLVM_DEBUG(dbgs() << "ALL register intervals:\n");
   for (unsigned I = 0; I < MRI.getNumVirtRegs(); ++I) {

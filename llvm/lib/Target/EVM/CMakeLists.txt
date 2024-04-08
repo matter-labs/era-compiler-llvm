@@ -21,6 +21,7 @@ add_llvm_target(EVMCodeGen
   EVMArgumentMove.cpp
   EVMAsmPrinter.cpp
   EVMCodegenPrepare.cpp
+  EVMControlFlowGraphBuilder.cpp
   EVMFrameLowering.cpp
   EVMISelDAGToDAG.cpp
   EVMISelLowering.cpp
