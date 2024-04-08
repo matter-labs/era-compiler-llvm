@@ -48,10 +48,64 @@ void EraVMAAWrapperPass::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesAll();
 }
 
+// Get the base pointer and the offset by looking through the
+// ptrtoint+arithmetic+inttoptr sequence.
+static std::pair<const Value *, APInt>
+getBaseWithOffset(const Value *V, unsigned BitWidth, unsigned MaxLookup = 6) {
+  auto Offset = APInt::getZero(BitWidth);
+
+  // Bail out if this is not an inttoptr instruction.
+  if (!isa<IntToPtrInst>(V))
+    return {nullptr, Offset};
+
+  V = cast<IntToPtrInst>(V)->getOperand(0);
+
+  for (unsigned I = 0; I < MaxLookup; ++I) {
+    // If this is a ptrtoint, get the operand and stop the lookup.
+    if (const auto *PtrToInt = dyn_cast<PtrToIntInst>(V)) {
+      V = PtrToInt->getOperand(0);
+      break;
+    }
+
+    // We only handle binary operations.
+    const auto *BOp = dyn_cast<BinaryOperator>(V);
+    if (!BOp)
+      break;
+
+    // With constant operand.
+    const auto *CI = dyn_cast<ConstantInt>(BOp->getOperand(1));
+    if (!CI)
+      break;
+
+    auto Val = CI->getValue();
+
+    // If the value is larger than the current bitwidth, extend the offset
+    // and remember the new bitwidth.
+    if (Val.getBitWidth() > BitWidth) {
+      BitWidth = Val.getBitWidth();
+      Offset = Offset.sext(BitWidth);
+    } else {
+      // Otherwise, extend the value to the current bitwidth.
+      Val = Val.sext(BitWidth);
+    }
+
+    // TODO: CPR-1652 Support more instructions.
+    if (BOp->getOpcode() == Instruction::Add)
+      Offset += Val;
+    else if (BOp->getOpcode() == Instruction::Sub)
+      Offset -= Val;
+    else
+      break;
+
+    V = BOp->getOperand(0);
+  }
+  return {V, Offset};
+}
+
 static std::optional<APInt> getConstStartLoc(const MemoryLocation &Loc,
-                                             const DataLayout &DL) {
+                                             unsigned BitWidth) {
   if (const auto *CPN = dyn_cast<ConstantPointerNull>(Loc.Ptr))
-    return APInt::getZero(DL.getPointerTypeSizeInBits(CPN->getType()));
+    return APInt::getZero(BitWidth);
 
   if (const auto *CE = dyn_cast<ConstantExpr>(Loc.Ptr)) {
     if (CE->getOpcode() == Instruction::IntToPtr) {
@@ -99,19 +153,29 @@ AliasResult EraVMAAResult::alias(const MemoryLocation &LocA,
       return AAResultBase::alias(LocA, LocB, AAQI, I);
   }
 
-  auto StartA = getConstStartLoc(LocA, DL);
-  auto StartB = getConstStartLoc(LocB, DL);
+  unsigned BitWidth = DL.getPointerSizeInBits(ASA);
+  auto StartA = getConstStartLoc(LocA, BitWidth);
+  auto StartB = getConstStartLoc(LocB, BitWidth);
 
-  // Forward the query to the next alias analysis, if we don't have constant
-  // start locations.
-  if (!StartA || !StartB)
-    return AAResultBase::alias(LocA, LocB, AAQI, I);
+  // If we don't have constant start locations, try to get the base pointer and
+  // the offset. In case we managed to find them and pointers have the same
+  // base, we can compare offsets to prove aliasing. Otherwise, forward the
+  // query to the next alias analysis.
+  if (!StartA || !StartB) {
+    auto [BaseA, OffsetA] = getBaseWithOffset(LocA.Ptr, BitWidth);
+    auto [BaseB, OffsetB] = getBaseWithOffset(LocB.Ptr, BitWidth);
+    if (!BaseA || !BaseB || BaseA != BaseB)
+      return AAResultBase::alias(LocA, LocB, AAQI, I);
+
+    StartA = OffsetA;
+    StartB = OffsetB;
+  }
 
   // Extend start locations to the same bitwidth and not less than pointer size.
   unsigned MaxBitWidth = std::max(StartA->getBitWidth(), StartB->getBitWidth());
-  MaxBitWidth = std::max(MaxBitWidth, DL.getPointerSizeInBits(ASA));
-  const APInt StartAVal = StartA->zext(MaxBitWidth);
-  const APInt StartBVal = StartB->zext(MaxBitWidth);
+  MaxBitWidth = std::max(MaxBitWidth, BitWidth);
+  const APInt StartAVal = StartA->sext(MaxBitWidth);
+  const APInt StartBVal = StartB->sext(MaxBitWidth);
 
   // Keys in storage can't overlap.
   if (ASA == EraVMAS::AS_STORAGE || ASA == EraVMAS::AS_TRANSIENT) {
@@ -129,7 +193,7 @@ AliasResult EraVMAAResult::alias(const MemoryLocation &LocA,
   }
 
   auto DoesOverlap = [](const APInt &X, const APInt &XEnd, const APInt &Y) {
-    return Y.uge(X) && Y.ult(XEnd);
+    return Y.sge(X) && Y.slt(XEnd);
   };
 
   // For heap accesses, if locations don't overlap, they are not aliasing.
