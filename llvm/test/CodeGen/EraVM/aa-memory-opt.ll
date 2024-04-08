@@ -12,8 +12,7 @@ define i256 @test_offset(ptr addrspace(1) %addr) {
 ; CHECK-NEXT:    [[ADD2:%.*]] = add i256 [[PTRTOINT]], 64
 ; CHECK-NEXT:    [[INTTOPTR2:%.*]] = inttoptr i256 [[ADD2]] to ptr addrspace(1)
 ; CHECK-NEXT:    store i256 58, ptr addrspace(1) [[INTTOPTR2]], align 1
-; CHECK-NEXT:    [[LOAD:%.*]] = load i256, ptr addrspace(1) [[INTTOPTR1]], align 1
-; CHECK-NEXT:    ret i256 [[LOAD]]
+; CHECK-NEXT:    ret i256 3
 ;
   %ptrtoint = ptrtoint ptr addrspace(1) %addr to i256
   %add1 = add i256 %ptrtoint, 32
