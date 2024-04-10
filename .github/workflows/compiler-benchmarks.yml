@@ -78,6 +78,7 @@ jobs:
         uses: ./llvm/.github/actions/build
         with:
           extra-args: "\\-DLLVM_ENABLE_WERROR=On"
+          enable-assertions: true
           debug: ${{ github.event.inputs.llvm_build_type || 'release' }}
 
       - name: Benchmark

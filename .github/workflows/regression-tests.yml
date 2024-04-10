@@ -1,0 +1,182 @@
+name: Regression tests
+
+on:
+  pull_request:
+    branches:
+      - main
+
+defaults:
+  run:
+    shell: bash
+
+# Workflow configuration
+env:
+  TEST_COMMITS_LIMIT: 25 # # of last commits to run regression tests on
+
+jobs:
+  prepare-commits:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.prepare.outputs.matrix }}
+    steps:
+      # Special setup for PRs to extract all commits in PR
+      # with the maximum checkout speed
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+          fetch-depth: ${{ github.event.pull_request.commits }}
+      - name: Prepare commits
+        id: prepare
+        run: |
+          git fetch --depth=1 origin +refs/heads/${{github.base_ref}}:refs/remotes/origin/${{github.base_ref}}
+          COMMITS_TO_TEST=$(git rev-list origin/${{ github.base_ref }}..${{ github.head_ref }} --pretty='"%H"' --no-commit-header | tail -n ${TEST_COMMITS_LIMIT})
+          echo "matrix={ \"commit\": [${COMMITS_TO_TEST//$'\n'/, }] }" | tee -a ${GITHUB_OUTPUT}
+
+  regression-tests:
+    runs-on: [ self-hosted, ci-runner-compiler ]
+    container:
+      image: matterlabs/llvm_runner:ubuntu22-llvm15-latest
+      options: -m 110g
+    needs: prepare-commits
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix: ${{ fromJson(needs.prepare-commits.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.commit }}
+          path: "llvm"
+
+      - name: Checkout through merge base
+        working-directory: llvm
+        run: |
+          BASE_REF=${{github.base_ref}}
+          HEAD_REF=${{matrix.commit}}
+          DEEPEN_LENGTH=$((${TEST_COMMITS_LIMIT} + 1))
+          git fetch --progress --depth=1 origin "+refs/heads/$BASE_REF:refs/heads/$BASE_REF"
+          while [ -z "$( git merge-base "$BASE_REF" "$HEAD_REF" )" ]; do
+            git fetch -q --deepen="$DEEPEN_LENGTH" origin "$BASE_REF" "$HEAD_REF";
+          done
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v39
+        with:
+          separator: ","
+          path: "llvm"
+          skip_initial_fetch: true
+
+      - name: Install formatting requirements
+        working-directory: llvm
+        run: python3 -m pip install -r ./llvm/utils/git/requirements_formatting_era_llvm.txt
+
+      - name: Install clang-format
+        uses: aminya/setup-cpp@v1
+        with:
+          clangformat: 17.0.1
+
+      - name: Run code formatter
+        working-directory: llvm
+        env:
+          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
+          START_REV: ${{ github.event.pull_request.base.sha }}
+          END_REV: ${{matrix.commit}}
+          CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: |
+          python3 ./llvm/utils/git/code-format-helper-era-llvm.py \
+            --token ${{ secrets.GITHUB_TOKEN }} \
+            --issue-number $GITHUB_PR_NUMBER \
+            --start-rev $(git merge-base $START_REV $END_REV) \
+            --end-rev $END_REV \
+            --changed-files "$CHANGED_FILES"
+
+      - name: clang-tidy
+        working-directory: llvm
+        shell: bash
+        run: |
+          set -euxo pipefail
+          BASE_REF=$(git merge-base ${{ github.event.pull_request.base.sha }} ${{matrix.commit}})
+          CHANGES=$(git diff -U0 ${BASE_REF})
+          echo "Running clang-tidy on the following changes:"
+          echo "${CHANGES}"
+          echo "${CHANGES}" | \
+             ./clang-tools-extra/clang-tidy/tool/clang-tidy-diff_Zegar.py \
+              -p1 -clang-tidy-binary $(which clang-tidy) \
+              -path ../target-llvm/build-final/compile_commands.json
+
+      - name: Build LLVM
+        uses: ./llvm/.github/actions/build
+        with:
+          extra-args: "\\-DLLVM_ENABLE_WERROR=On \\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+          enable-tests: true
+          enable-assertions: true
+
+      - name: Running Lit tests with default options
+        run: |
+          ninja -C './target-llvm/build-final' check-llvm
+
+      - name: Running Lit EraVM tests with llc verification options
+        env:
+          LLC_OPTS:
+            "--cgp-verify-bfi-updates \
+            --compile-twice \
+            --earlycse-debug-hash \
+            --loop-distribute-verify \
+            --machine-combiner-verify-pattern-order \
+            --phicse-debug-hash \
+            --reassociate-geps-verify-no-dead-code \
+            --safepoint-ir-verifier-print-only \
+            --scev-verify-ir \
+            --tail-dup-verify \
+            --unroll-verify-domtree \
+            --verify-regalloc \
+            --vplan-verify-hcfg \
+            --march=eravm"
+          XFAILS:
+            "CodeGen/EraVM/memcpy-expansion.ll;\
+            CodeGen/EraVM/flag-setting-set-implicit-flags.ll;\
+            CodeGen/EraVM/indexed-ld-in-a-loop-bug.ll;\
+            CodeGen/EraVM/machine-outliner.mir;\
+            CodeGen/EraVM/machine-outliner-tail.mir;\
+            CodeGen/EraVM/select_fold.mir;\
+            CodeGen/EraVM/select_tie.mir;\
+            CodeGen/EraVM/select-zero-bitrot.mir;\
+            CodeGen/EraVM/select-zero-flags.mir;\
+            CodeGen/EraVM/hoist-flag-setting.mir;\
+            CodeGen/EraVM/fold-similar-instructions.mir"
+        run: |
+          BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
+          ${BINDIR}/llvm-lit -vv -s --xfail "${XFAILS}" \
+            "-Dllc=${BINDIR}/llc ${LLC_OPTS}" './llvm/llvm/test/CodeGen/EraVM/'
+
+      - name: Running Lit tests with opt verification options
+        env:
+          OPT_OPTS:
+            "--cgp-verify-bfi-updates \
+            --earlycse-debug-hash \
+            --loop-distribute-verify \
+            --machine-combiner-verify-pattern-order \
+            --phicse-debug-hash \
+            --scev-verify-ir \
+            --tail-dup-verify \
+            --unroll-verify-domtree \
+            --verify-assumption-cache \
+            --verify-cfg-preserved \
+            --verify-cfiinstrs \
+            --verify-coalescing \
+            --verify-dom-info \
+            --verify-loop-info \
+            --verify-loop-lcssa \
+            --verify-machine-dom-info \
+            --verify-machineinstrs \
+            --verify-memoryssa \
+            --verify-misched \
+            --verify-regalloc \
+            --verify-scev-strict \
+            --vplan-verify-hcfg \
+            --march=eravm"
+        run: |
+          BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
+          ${BINDIR}/llvm-lit -vv -s "-Dopt=${BINDIR}/opt ${OPT_OPTS}" \
+            './llvm/llvm/test/CodeGen/'

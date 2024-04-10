@@ -46,94 +46,14 @@ jobs:
         with:
           path: "llvm"
           ref: ${{ github.event.inputs.compiler_llvm_branch || github.head_ref }}
-          fetch-depth: 0
 
       - name: Build LLVM
         uses: ./llvm/.github/actions/build
         with:
           extra-args: "\\-DLLVM_ENABLE_WERROR=On \\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
           enable-tests: true
+          enable-assertions: true
           debug: ${{ github.event.inputs.llvm_build_type || 'release' }}
-
-      - name: Running Lit tests with default options
-        run: |
-          BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
-          ${BINDIR}/llvm-lit -vv -s './target-llvm/build-final/test' --xunit-xml-output test-results-default.xml
-
-      - name: Running Lit EraVM tests with llc verification options
-        env:
-          LLC_OPTS:
-            "--cgp-verify-bfi-updates \
-            --compile-twice \
-            --earlycse-debug-hash \
-            --machine-combiner-verify-pattern-order \
-            --phicse-debug-hash \
-            --reassociate-geps-verify-no-dead-code \
-            --safepoint-ir-verifier-print-only \
-            --scev-verify-ir \
-            --tail-dup-verify \
-            --unroll-verify-domtree \
-            --verify-regalloc \
-            --march=eravm"
-          XFAILS:
-            "CodeGen/EraVM/memcpy-expansion.ll;\
-             CodeGen/EraVM/flag-setting-set-implicit-flags.ll;\
-             CodeGen/EraVM/indexed-ld-in-a-loop-bug.ll;\
-             CodeGen/EraVM/machine-outliner.mir;\
-             CodeGen/EraVM/machine-outliner-tail.mir;\
-             CodeGen/EraVM/select_fold.mir;\
-             CodeGen/EraVM/select_tie.mir;\
-             CodeGen/EraVM/select-zero-bitrot.mir;\
-             CodeGen/EraVM/select-zero-flags.mir;\
-             CodeGen/EraVM/hoist-flag-setting.mir;\
-             CodeGen/EraVM/fold-similar-instructions.mir"
-
-        run: |
-          BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
-          ${BINDIR}/llvm-lit -vv -s --xfail "${XFAILS}" "-Dllc=${BINDIR}/llc ${LLC_OPTS}" './llvm/llvm/test/CodeGen/EraVM/' \
-            --xunit-xml-output test-results-llc.xml
-
-      - name: Running Lit tests with opt verification options
-        env:
-          OPT_OPTS:
-            "--cgp-verify-bfi-updates \
-            --earlycse-debug-hash \
-            --loop-distribute-verify \
-            --machine-combiner-verify-pattern-order \
-            --phicse-debug-hash \
-            --scev-verify-ir \
-            --tail-dup-verify \
-            --unroll-verify-domtree \
-            --verify-assumption-cache \
-            --verify-cfiinstrs \
-            --verify-coalescing \
-            --verify-dom-info \
-            --verify-loop-info \
-            --verify-loop-lcssa \
-            --verify-machine-dom-info \
-            --verify-machineinstrs \
-            --verify-memoryssa \
-            --verify-misched \
-            --verify-regalloc \
-            --verify-scev-strict \
-            --vplan-verify-hcfg \
-            --march=eravm"
-          XFAILS:
-            "Transforms/LoopVectorize/vplan_hcfg_stress_test.ll;\
-            Transforms/LoopFlatten/widen-iv2.ll;\
-            Transforms/LoopFusion/simple.ll;\
-            CodeGen/EVM/stdlib-call-ellision.ll"
-        run: |
-          BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
-          ${BINDIR}/llvm-lit -vv -s --xfail "${XFAILS}" "-Dopt=${BINDIR}/opt ${OPT_OPTS}" './llvm/llvm/test/CodeGen/' \
-            --xunit-xml-output test-results-opt.xml
-
-      - name: Upload results (Linux)
-        uses: EnricoMi/publish-unit-test-result-action@v2.12.0
-        with:
-          check_name: Lit Tests Results
-          files: test-results-*.xml
-          action_fail_on_inconclusive: true
 
       - name: Building and running the compiler tester
         id: compiler_tester_run
@@ -149,10 +69,10 @@ jobs:
             --zkvyper './target-zkvyper/release/zkvyper'
 
       - uses: 8398a7/action-slack@v3
+        if: always()
         with:
           status: ${{ job.status }}
           job_name: 'Integration tests' # required if job name is explicitly set
           fields: repo,commit,author,action,eventName,ref,workflow,job,took,pullRequest
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
-        if: always()
