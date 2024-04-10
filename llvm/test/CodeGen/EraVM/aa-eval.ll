@@ -3,6 +3,121 @@
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm"
 
+; CHECK-LABEL: Function: test_offset_i8_noalias
+; CHECK: MayAlias: i8 addrspace(1)* %inttoptr1, i8 addrspace(1)* %inttoptr2
+define void @test_offset_i8_noalias(ptr addrspace(1) %addr) {
+  %ptrtoint = ptrtoint ptr addrspace(1) %addr to i8
+  %add1 = add i8 %ptrtoint, 32
+  %inttoptr1 = inttoptr i8 %add1 to ptr addrspace(1)
+  store i8 3, ptr addrspace(1) %inttoptr1, align 1
+  %add2 = add i8 %ptrtoint, 33
+  %inttoptr2 = inttoptr i8 %add2 to ptr addrspace(1)
+  store i8 58, ptr addrspace(1) %inttoptr2, align 1
+  ret void
+}
+
+; CHECK-LABEL: Function: test_offset_i512_noalias
+; CHECK: MayAlias: i512 addrspace(1)* %inttoptr1, i512 addrspace(1)* %inttoptr2
+define void @test_offset_i512_noalias(ptr addrspace(1) %addr) {
+  %ptrtoint = ptrtoint ptr addrspace(1) %addr to i512
+  %add1 = add i512 %ptrtoint, 32
+  %inttoptr1 = inttoptr i512 %add1 to ptr addrspace(1)
+  store i512 3, ptr addrspace(1) %inttoptr1, align 1
+  %add2 = add i512 %ptrtoint, 96
+  %inttoptr2 = inttoptr i512 %add2 to ptr addrspace(1)
+  store i512 58, ptr addrspace(1) %inttoptr2, align 1
+  ret void
+}
+
+; CHECK-LABEL: Function: test_offset_mustalias
+; CHECK: MayAlias: i256 addrspace(1)* %inttoptr1, i256 addrspace(1)* %inttoptr2
+define void @test_offset_mustalias(ptr addrspace(1) %addr) {
+  %ptrtoint = ptrtoint ptr addrspace(1) %addr to i256
+  %inttoptr1 = inttoptr i256 %ptrtoint to ptr addrspace(1)
+  store i256 3, ptr addrspace(1) %inttoptr1, align 1
+  %inttoptr2 = inttoptr i256 %ptrtoint to ptr addrspace(1)
+  store i256 58, ptr addrspace(1) %inttoptr2, align 1
+  ret void
+}
+
+; CHECK-LABEL: Function: test_offset_noalias1
+; CHECK: MayAlias: i256 addrspace(1)* %inttoptr1, i256 addrspace(1)* %inttoptr2
+define void @test_offset_noalias1(ptr addrspace(1) %addr) {
+  %ptrtoint = ptrtoint ptr addrspace(1) %addr to i256
+  %add1 = add i256 %ptrtoint, 32
+  %inttoptr1 = inttoptr i256 %add1 to ptr addrspace(1)
+  store i256 3, ptr addrspace(1) %inttoptr1, align 1
+  %add2 = add i256 %ptrtoint, 64
+  %inttoptr2 = inttoptr i256 %add2 to ptr addrspace(1)
+  store i256 58, ptr addrspace(1) %inttoptr2, align 1
+  ret void
+}
+
+; CHECK-LABEL: Function: test_offset_noalias2
+; CHECK: MayAlias: i256 addrspace(1)* %inttoptr1, i256 addrspace(1)* %inttoptr2
+define void @test_offset_noalias2(ptr addrspace(1) %addr) {
+  %ptrtoint = ptrtoint ptr addrspace(1) %addr to i256
+  %add1 = add i256 %ptrtoint, -32
+  %inttoptr1 = inttoptr i256 %add1 to ptr addrspace(1)
+  store i256 3, ptr addrspace(1) %inttoptr1, align 1
+  %add2 = add i256 %ptrtoint, -64
+  %inttoptr2 = inttoptr i256 %add2 to ptr addrspace(1)
+  store i256 58, ptr addrspace(1) %inttoptr2, align 1
+  ret void
+}
+
+; CHECK-LABEL: Function: test_offset_noalias3
+; CHECK: MayAlias: i256 addrspace(1)* %inttoptr1, i256 addrspace(1)* %inttoptr2
+define void @test_offset_noalias3(ptr addrspace(1) %addr) {
+  %ptrtoint = ptrtoint ptr addrspace(1) %addr to i256
+  %add1 = sub i256 %ptrtoint, 32
+  %inttoptr1 = inttoptr i256 %add1 to ptr addrspace(1)
+  store i256 3, ptr addrspace(1) %inttoptr1, align 1
+  %add2 = sub i256 %ptrtoint, 64
+  %inttoptr2 = inttoptr i256 %add2 to ptr addrspace(1)
+  store i256 58, ptr addrspace(1) %inttoptr2, align 1
+  ret void
+}
+
+; CHECK-LABEL: Function: test_offset_partialalias1
+; CHECK: MayAlias: i256 addrspace(1)* %inttoptr1, i256 addrspace(1)* %inttoptr2
+define void @test_offset_partialalias1(ptr addrspace(1) %addr) {
+  %ptrtoint = ptrtoint ptr addrspace(1) %addr to i256
+  %add1 = add i256 %ptrtoint, 32
+  %inttoptr1 = inttoptr i256 %add1 to ptr addrspace(1)
+  store i256 3, ptr addrspace(1) %inttoptr1, align 1
+  %add2 = add i256 %ptrtoint, 48
+  %inttoptr2 = inttoptr i256 %add2 to ptr addrspace(1)
+  store i256 58, ptr addrspace(1) %inttoptr2, align 1
+  ret void
+}
+
+; CHECK-LABEL: Function: test_offset_partialalias2
+; CHECK: MayAlias: i256 addrspace(1)* %inttoptr1, i256 addrspace(1)* %inttoptr2
+define void @test_offset_partialalias2(ptr addrspace(1) %addr) {
+  %ptrtoint = ptrtoint ptr addrspace(1) %addr to i256
+  %add1 = add i256 %ptrtoint, -32
+  %inttoptr1 = inttoptr i256 %add1 to ptr addrspace(1)
+  store i256 3, ptr addrspace(1) %inttoptr1, align 1
+  %add2 = add i256 %ptrtoint, -48
+  %inttoptr2 = inttoptr i256 %add2 to ptr addrspace(1)
+  store i256 58, ptr addrspace(1) %inttoptr2, align 1
+  ret void
+}
+
+; CHECK-LABEL: Function: test_offset_partialalias3
+; CHECK: MayAlias: i256 addrspace(1)* %inttoptr1, i256 addrspace(1)* %inttoptr2
+define void @test_offset_partialalias3(ptr addrspace(1) %addr) {
+  %ptrtoint = ptrtoint ptr addrspace(1) %addr to i256
+  %add1 = sub i256 %ptrtoint, 32
+  %inttoptr1 = inttoptr i256 %add1 to ptr addrspace(1)
+  store i256 3, ptr addrspace(1) %inttoptr1, align 1
+  %add2 = sub i256 %ptrtoint, 48
+  %inttoptr2 = inttoptr i256 %add2 to ptr addrspace(1)
+  store i256 58, ptr addrspace(1) %inttoptr2, align 1
+  ret void
+}
+
 ; CHECK-LABEL: Function: test_as1_i8_noalias
 ; CHECK: NoAlias: i8 addrspace(1)* %ptr1, i8 addrspace(1)* %ptr2
 define void @test_as1_i8_noalias() {

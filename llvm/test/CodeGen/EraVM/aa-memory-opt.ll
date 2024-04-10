@@ -3,6 +3,29 @@
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm"
 
+define i256 @test_offset(ptr addrspace(1) %addr) {
+; CHECK-LABEL: @test_offset(
+; CHECK-NEXT:    [[PTRTOINT:%.*]] = ptrtoint ptr addrspace(1) [[ADDR:%.*]] to i256
+; CHECK-NEXT:    [[ADD1:%.*]] = add i256 [[PTRTOINT]], 32
+; CHECK-NEXT:    [[INTTOPTR1:%.*]] = inttoptr i256 [[ADD1]] to ptr addrspace(1)
+; CHECK-NEXT:    store i256 3, ptr addrspace(1) [[INTTOPTR1]], align 1
+; CHECK-NEXT:    [[ADD2:%.*]] = add i256 [[PTRTOINT]], 64
+; CHECK-NEXT:    [[INTTOPTR2:%.*]] = inttoptr i256 [[ADD2]] to ptr addrspace(1)
+; CHECK-NEXT:    store i256 58, ptr addrspace(1) [[INTTOPTR2]], align 1
+; CHECK-NEXT:    [[LOAD:%.*]] = load i256, ptr addrspace(1) [[INTTOPTR1]], align 1
+; CHECK-NEXT:    ret i256 [[LOAD]]
+;
+  %ptrtoint = ptrtoint ptr addrspace(1) %addr to i256
+  %add1 = add i256 %ptrtoint, 32
+  %inttoptr1 = inttoptr i256 %add1 to ptr addrspace(1)
+  store i256 3, ptr addrspace(1) %inttoptr1, align 1
+  %add2 = add i256 %ptrtoint, 64
+  %inttoptr2 = inttoptr i256 %add2 to ptr addrspace(1)
+  store i256 58, ptr addrspace(1) %inttoptr2, align 1
+  %load = load i256, ptr addrspace(1) %inttoptr1, align 1
+  ret i256 %load
+}
+
 define i256 @test_memcpy() {
 ; CHECK-LABEL: @test_memcpy(
 ; CHECK-NEXT:    store i256 2, ptr addrspace(1) inttoptr (i256 2 to ptr addrspace(1)), align 64
