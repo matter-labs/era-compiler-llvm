@@ -108,17 +108,6 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
         }
 
         PseudoInst.push_back(&MI);
-      } else if (MI.getOpcode() == EraVM::LOADCONST) {
-        // expand load const
-        BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
-                TII->get(EraVM::ADDcrr_s))
-            .add(MI.getOperand(0))
-            .addImm(0)
-            .add(MI.getOperand(1))
-            .addReg(EraVM::R0)
-            .addImm(0)
-            .getInstr();
-        PseudoInst.push_back(&MI);
       } else if (MI.getOpcode() == EraVM::PTR_TO_INT) {
         // Eliminate PTR_TO_INT if from and to registers are the same
         Register ToReg = MI.getOperand(0).getReg();
@@ -130,9 +119,20 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
                       TII->get(EraVM::ADDrrr_s), ToReg)
                   .addReg(FromReg)
                   .addReg(EraVM::R0)
-                  .addImm(0);
+                  .addImm(EraVMCC::COND_NONE);
           LLVM_DEBUG(dbgs() << "Converting PTR_TO_INT to: "; NewMI->dump());
         }
+        PseudoInst.push_back(&MI);
+      } else if (MI.getOpcode() == EraVM::LOADCONST) {
+        // expand load const
+        BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
+                TII->get(EraVM::ADDcrr_s))
+            .add(MI.getOperand(0))
+            .addImm(0)
+            .add(MI.getOperand(1))
+            .addReg(EraVM::R0)
+            .addImm(EraVMCC::COND_NONE)
+            .getInstr();
         PseudoInst.push_back(&MI);
       } else if (MI.getOpcode() == EraVM::NOPSPr) {
         BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(EraVM::NOPrrs))

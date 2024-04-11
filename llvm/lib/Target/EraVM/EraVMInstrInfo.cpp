@@ -440,7 +440,7 @@ void EraVMInstrInfo::storeRegToStackSlot(
         .addFrameIndex(FrameIndex)
         .addImm(32)
         .addImm(0)
-        .addImm(0)
+        .addImm(EraVMCC::COND_NONE)
         .addMemOperand(MMO);
   } else if (RC == &EraVM::GRPTRRegClass) {
     BuildMI(MBB, MI, DL, get(EraVM::PTR_ADDrrs_s))
@@ -449,7 +449,7 @@ void EraVMInstrInfo::storeRegToStackSlot(
         .addFrameIndex(FrameIndex)
         .addImm(32)
         .addImm(0)
-        .addImm(0)
+        .addImm(EraVMCC::COND_NONE)
         .addMemOperand(MMO);
   } else {
     llvm_unreachable("Cannot store this register to stack slot!");
@@ -480,7 +480,7 @@ void EraVMInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
         .addImm(32)
         .addImm(0)
         .addReg(EraVM::R0)
-        .addImm(0)
+        .addImm(EraVMCC::COND_NONE)
         .addMemOperand(MMO);
   } else if (RC == &EraVM::GRPTRRegClass) {
     BuildMI(MBB, MI, DL, get(EraVM::PTR_ADDsrr_s))
@@ -489,7 +489,7 @@ void EraVMInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
         .addImm(32)
         .addImm(0)
         .addReg(EraVM::R0)
-        .addImm(0)
+        .addImm(EraVMCC::COND_NONE)
         .addMemOperand(MMO);
   } else {
     llvm_unreachable("Cannot store this register to stack slot!");
@@ -507,7 +507,7 @@ void EraVMInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
   BuildMI(MBB, I, DL, get(opcode), DestReg)
       .addReg(SrcReg, getKillRegState(KillSrc))
       .addReg(EraVM::R0)
-      .addImm(0);
+      .addImm(EraVMCC::COND_NONE);
 }
 
 /// GetInstSize - Return the number of bytes of code the specified
