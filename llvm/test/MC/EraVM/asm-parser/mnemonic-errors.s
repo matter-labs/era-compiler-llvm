@@ -26,6 +26,12 @@
   sub!.s         42, r3, r3
 
 ; invalid instruction-specific modifiers
+  event.abc          r3, r4
+  event.first.abc    r3, r4
+  event.first.first  r3, r4
+  to_l1.abc          r3, r4
+  to_l1.first.abc    r3, r4
+  to_l1.first.first  r3, r4
   context            r3
   context.sp.sp      r3
   context.sp.abc     r3
@@ -68,6 +74,24 @@
 ; CHECK:       <stdin>:{{[0-9]+}}:7: error: cannot parse operand
 ; CHECK-NEXT:    sub!.s         42, r3, r3
 ; CHECK-NEXT:        ^
+; CHECK:       <stdin>:{{[0-9]+}}:3: error: unknown mnemonic: event.abc
+; CHECK-NEXT:    event.abc          r3, r4
+; CHECK-NEXT:    ^
+; CHECK:       <stdin>:{{[0-9]+}}:3: error: unknown mnemonic: event.first.abc
+; CHECK-NEXT:    event.first.abc    r3, r4
+; CHECK-NEXT:    ^
+; CHECK:       <stdin>:{{[0-9]+}}:3: error: unknown mnemonic: event.first.first
+; CHECK-NEXT:    event.first.first  r3, r4
+; CHECK-NEXT:    ^
+; CHECK:       <stdin>:{{[0-9]+}}:3: error: unknown mnemonic: to_l1.abc
+; CHECK-NEXT:    to_l1.abc          r3, r4
+; CHECK-NEXT:    ^
+; CHECK:       <stdin>:{{[0-9]+}}:3: error: unknown mnemonic: to_l1.first.abc
+; CHECK-NEXT:    to_l1.first.abc    r3, r4
+; CHECK-NEXT:    ^
+; CHECK:       <stdin>:{{[0-9]+}}:3: error: unknown mnemonic: to_l1.first.first
+; CHECK-NEXT:    to_l1.first.first  r3, r4
+; CHECK-NEXT:    ^
 ; CHECK:       <stdin>:{{[0-9]+}}:3: error: unknown mnemonic: context
 ; CHECK-NEXT:    context            r3
 ; CHECK-NEXT:    ^
