@@ -1129,27 +1129,31 @@ let hasSideEffects = 1 in {
 }
 def : MnemonicAlias<"log.swrite", "sstore">;
 
-let hasSideEffects = 1 in
-def L1r : ILogR<OpLogToL1, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first),
-                "to_l1$first", "$rs0, $rs1",
-                [(int_eravm_tol1 GR256:$rs0, GR256:$rs1, first_op:$first)]>;
-
-let hasSideEffects = 1 in
-def EVTr : ILogR<OpLogEvent, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$first),
-                 "event$first", "$rs0, $rs1",
-                 [(int_eravm_event GR256:$rs0, GR256:$rs1, first_op:$first)]>;
-
 let hasSideEffects = 1 in {
+def L1r : ILogRFirst<OpLogToL1, 0, (outs), (ins GR256:$rs0, GR256:$rs1),
+                     "$rs0, $rs1",
+                     [(int_eravm_tol1 GR256:$rs0, GR256:$rs1, 0)]>;
+def L1Firstr : ILogRFirst<OpLogToL1, 1, (outs), (ins GR256:$rs0, GR256:$rs1),
+                     "$rs0, $rs1",
+                     [(int_eravm_tol1 GR256:$rs0, GR256:$rs1, 1)]>;
+
+def EVTr : ILogRFirst<OpLogEvent, 0, (outs), (ins GR256:$rs0, GR256:$rs1),
+                      "$rs0, $rs1",
+                      [(int_eravm_event GR256:$rs0, GR256:$rs1, 0)]>;
+
+def EVTFirstr : ILogRFirst<OpLogEvent, 1, (outs), (ins GR256:$rs0, GR256:$rs1),
+                          "$rs0, $rs1",
+                         [(int_eravm_event GR256:$rs0, GR256:$rs1, 1)]>;
+
 def PCOMPr : ILogR<OpLogPrecompile, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
                    "precompile", "$rs0, $rs1, $rd0",
-                   [(set GR256:$rd0, (int_eravm_precompile GR256:$rs0, GR256:$rs1))]> {
+                   [(set GR256:$rd0, (int_eravm_precompile GR256:$rs0, GR256:$rs1))]>;
 }
+
 // FIXME: undefined instruction
 def DECOMMITr : ILogR<OpLogPrecompile, (outs GRPTR:$rd0), (ins GR256:$rs0, GR256:$rs1),
                       "log.decommit", "$rs0, $rs1, $rd0",
-                      [(set GRPTR:$rd0, (EraVMlog_decommit GR256:$rs0, GR256:$rs1))]> {
-}
-}
+                      [(set GRPTR:$rd0, (EraVMlog_decommit GR256:$rs0, GR256:$rs1))]>;
 
 multiclass FarCallInst<EraVMOpcode opcode> {
   def rrl : IFarCall<opcode, 0, 0, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),

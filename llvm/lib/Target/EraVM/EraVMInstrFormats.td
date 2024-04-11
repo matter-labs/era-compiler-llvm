@@ -199,8 +199,7 @@ def RetEncoding        : OpcodeEncoding<6>; // opcode to_label ⇒ opcode + to_l
 def JumpEncoding       : OpcodeEncoding<7>; // opcode src ⇒ opcode + 1 × src
 def LoadPtrEncoding    : OpcodeEncoding<8>; // opcode inc ⇒ opcode + inc
 def HeapOpEncoding     : OpcodeEncoding<9>; // opcode src inc ⇒ opcode + 10 × src + inc
-// TODO: add more as necessary
-def FIXMEEncoding      : OpcodeEncoding<-1>; // To be clarified as implemented
+def LogEncoding        : OpcodeEncoding<10>;// opcode is_first ⇒ opcode + is_first
 
 class ArithOpcEncoder<OpcodeEncoding encoding, bits<11> BaseOpcode,
                       SrcMode src, DstMode dst,
@@ -236,6 +235,14 @@ class UMAOpcEncoder<OpcodeEncoding encoding, bits<11> BaseOpcode,
           true : -1);
 }
 
+class LogROpcEncoder<OpcodeEncoding encoding, bits<11> BaseOpcode,
+                     bit is_first> {
+  bits<11> Opcode =
+    !cond(!eq(encoding, LogEncoding) : !add(BaseOpcode, is_first),
+          !eq(encoding, DirectEncoding) : BaseOpcode,
+          true : -1);
+}
+
 class EraVMOpcode<string name, bits<11> opc, OpcodeEncoding encoding> {
   string Name = name;
   bits<11> BaseOpcode = opc;
@@ -260,7 +267,7 @@ def OpAdd  : EraVMOpcode<"add",  25,  ArithCommEncoding>;
 def OpSub  : EraVMOpcode<"sub",  73,  ArithNCommEncoding>;
 def OpMul  : EraVMOpcode<"mul",  169, ArithCommEncoding>;
 def OpDiv  : EraVMOpcode<"div",  217, ArithNCommEncoding>;
-def OpJump : EraVMOpcode<"jump", 313, FIXMEEncoding>; // src ⇒ 313 + 1 × src
+def OpJump : EraVMOpcode<"jump", 313, JumpEncoding>; // src ⇒ 313 + 1 × src
 def OpXor  : EraVMOpcode<"xor",  319, ArithCommEncoding>;
 def OpAnd  : EraVMOpcode<"and",  367, ArithCommEncoding>;
 def OpOr   : EraVMOpcode<"or",   415, ArithCommEncoding>;
@@ -290,11 +297,10 @@ def OpSload     : EraVMOpcode<"sload",      1050, DirectEncoding>;
 // aliased as log.swrite
 def OpSstore    : EraVMOpcode<"sstore",     1051, DirectEncoding>;
 
-// FIXME: Split those
 // aliased as log.to_l1
-def OpLogToL1   : EraVMOpcode<"to_l1",      1052, FIXMEEncoding>; // is_first ⇒ 1052 + is_first
+def OpLogToL1   : EraVMOpcode<"to_l1",      1052, LogEncoding>; // is_first ⇒ 1052 + is_first
 // aliased as log.event
-def OpLogEvent  : EraVMOpcode<"event",      1054, FIXMEEncoding>; // is_first ⇒ 1054 + is_first
+def OpLogEvent  : EraVMOpcode<"event",      1054, LogEncoding>; // is_first ⇒ 1054 + is_first
 // aliased as log.precompile
 def OpLogPrecompile : EraVMOpcode<"precompile", 1056, DirectEncoding>;
 
@@ -450,6 +456,19 @@ class IContext<EraVMOpcode opcode, dag outs, dag ins, string asmstr, list<dag> p
 class ILogR<EraVMOpcode opcode, dag outs, dag ins,
             string opc, string asmstr, list<dag> pattern>
   : IForm <opcode, outs, ins, opc, asmstr, pattern> {
+}
+
+class ILogRFirst<EraVMOpcode opcode, bit is_first,
+                 dag outs, dag ins,
+                 string asmstr, list<dag> pattern>
+  : IForm <opcode, outs, ins, "<invalid>", asmstr, pattern> {
+
+  // FIXME: Should should be default
+  let AsmString = !strconcat(opcode.Name,
+                             !if(is_first, ".first", ""),
+                             "${cc}", "\t", asmstr);
+  let Opcode = LogROpcEncoder<opcode.Encoding, opcode.BaseOpcode,
+                              is_first>.Opcode;
 }
 
 class IBinary<EraVMOpcode opcode,
