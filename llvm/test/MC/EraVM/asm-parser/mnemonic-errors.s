@@ -25,6 +25,17 @@
   sub.lt!        42, r3, r3
   sub!.s         42, r3, r3
 
+; reject duplicated modifiers (note that immediate operands are only parsed for
+; relevant mnemonics)
+  sub.s.s.s      r1, r2, r3
+  sub.lt.lt      r1, r2, r3
+  sub.s.lt.s     r1, r2, r3
+  sub.s!!.lt     r1, r2, r3
+  sub.s.s.s      42, r2, r3
+  sub.lt.lt      42, r2, r3
+  sub.s.lt.s     42, r2, r3
+  sub.s!!.lt     42, r2, r3
+
 ; invalid instruction-specific modifiers
   event.abc          r3, r4
   event.first.abc    r3, r4
@@ -74,6 +85,30 @@
 ; CHECK:       <stdin>:{{[0-9]+}}:7: error: cannot parse operand
 ; CHECK-NEXT:    sub!.s         42, r3, r3
 ; CHECK-NEXT:        ^
+; CHECK:       <stdin>:{{[0-9]+}}:3: error: unknown mnemonic: sub.s.s.s
+; CHECK-NEXT:    sub.s.s.s      r1, r2, r3
+; CHECK-NEXT:    ^
+; CHECK:       <stdin>:{{[0-9]+}}:3: error: unknown mnemonic: sub.lt
+; CHECK-NEXT:    sub.lt.lt      r1, r2, r3
+; CHECK-NEXT:    ^
+; CHECK:       <stdin>:{{[0-9]+}}:3: error: unknown mnemonic: sub.s.lt.s
+; CHECK-NEXT:    sub.s.lt.s     r1, r2, r3
+; CHECK-NEXT:    ^
+; CHECK:       <stdin>:{{[0-9]+}}:9: error: cannot parse operand
+; CHECK-NEXT:    sub.s!!.lt     r1, r2, r3
+; CHECK-NEXT:          ^
+; CHECK:       <stdin>:{{[0-9]+}}:18: error: cannot parse operand
+; CHECK-NEXT:    sub.s.s.s      42, r2, r3
+; CHECK-NEXT:                   ^
+; CHECK:       <stdin>:{{[0-9]+}}:18: error: cannot parse operand
+; CHECK-NEXT:    sub.lt.lt      42, r2, r3
+; CHECK-NEXT:                   ^
+; CHECK:       <stdin>:{{[0-9]+}}:18: error: cannot parse operand
+; CHECK-NEXT:    sub.s.lt.s     42, r2, r3
+; CHECK-NEXT:                   ^
+; CHECK:       <stdin>:{{[0-9]+}}:9: error: cannot parse operand
+; CHECK-NEXT:    sub.s!!.lt     42, r2, r3
+; CHECK-NEXT:          ^
 ; CHECK:       <stdin>:{{[0-9]+}}:3: error: unknown mnemonic: event.abc
 ; CHECK-NEXT:    event.abc          r3, r4
 ; CHECK-NEXT:    ^
