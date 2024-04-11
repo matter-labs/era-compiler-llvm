@@ -1,9 +1,8 @@
-; XFAIL: eravm
-; TODO: CPR-916 Fix the test.
 ; RUN: llc < %s > %t
 
 ; NVPTX does not support arbitrary integer types and has acceptable subset tested in NVPTX/APIntLoadStore.ll
-; UNSUPPORTED: nvptx
+; TODO: CPR-916 Fix the test.
+; UNSUPPORTED: nvptx, eravm
 
 @i1_l = external global i1		; <i1*> [#uses=1]
 @i1_s = external global i1		; <i1*> [#uses=1]
