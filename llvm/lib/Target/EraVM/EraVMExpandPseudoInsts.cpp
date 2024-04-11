@@ -119,7 +119,7 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
                       TII->get(EraVM::ADDrrr_s), ToReg)
                   .addReg(FromReg)
                   .addReg(EraVM::R0)
-                  .addImm(0);
+                  .addImm(EraVMCC::COND_NONE);
           LLVM_DEBUG(dbgs() << "Converting PTR_TO_INT to: "; NewMI->dump());
         }
         PseudoInst.push_back(&MI);
@@ -131,7 +131,7 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
             .addImm(0)
             .add(MI.getOperand(1))
             .addReg(EraVM::R0)
-            .addImm(0)
+            .addImm(EraVMCC::COND_NONE)
             .getInstr();
         PseudoInst.push_back(&MI);
       } else if (MI.getOpcode() == EraVM::NOPSPr) {
