@@ -168,3 +168,34 @@ load-store-loop:                                  ; preds = %load-store-loop, %0
 memcpy-split:                                     ; preds = %load-store-loop
   ret void
 }
+
+define void @loop6(i256 addrspace(1)* %dest, i256 addrspace(3)* %src, i256 %size) {
+; CHECK-LABEL: loop6:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    add r0, r0, r4
+; CHECK-NEXT:  .BB5_1: ; %load-store-loop
+; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
+; CHECK-NEXT:    shl.s 5, r4, r5
+; CHECK-NEXT:    ptr.add r2, r5, r5
+; CHECK-NEXT:    ld r5, r5
+; CHECK-NEXT:    st.1.inc r1, r5, r1
+; CHECK-NEXT:    add 1, r4, r4
+; CHECK-NEXT:    sub! r4, r3, r5
+; CHECK-NEXT:    jump.lt @.BB5_1
+; CHECK-NEXT:  ; %bb.2: ; %memcpy-split
+; CHECK-NEXT:    ret
+  br label %load-store-loop
+
+load-store-loop:                                  ; preds = %load-store-loop, %0
+  %loop-index = phi i256 [ 0, %0 ], [ %4, %load-store-loop ]
+  %1 = getelementptr inbounds i256, i256 addrspace(3)* %src, i256 %loop-index
+  %2 = load i256, i256 addrspace(3)* %1, align 1
+  %3 = getelementptr inbounds i256, i256 addrspace(1)* %dest, i256 %loop-index
+  store i256 %2, i256 addrspace(1)* %3, align 1
+  %4 = add i256 %loop-index, 1
+  %5 = icmp ult i256 %4, %size
+  br i1 %5, label %load-store-loop, label %memcpy-split
+
+memcpy-split:                                     ; preds = %load-store-loop
+  ret void
+}
