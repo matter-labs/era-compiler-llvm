@@ -194,10 +194,6 @@ bool EraVMIndexedMemOpsPrepare::rewriteToFavorIndexedMemOps(
 
 bool EraVMIndexedMemOpsPrepare::isValidGEPAndIncByOneCell(
     GetElementPtrInst *BasePtr) const {
-  // FIXME: Once we support address space generic, we can remove it.
-  if (BasePtr->getPointerAddressSpace() == EraVMAS::AS_GENERIC)
-    return false;
-
   // Use SCEV info to check whether this BasePtr is increased
   // by one cell per iteration.
   const SCEV *SCEVPtr = SE->getSCEVAtScope(BasePtr, CurrentLoop);

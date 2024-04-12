@@ -175,9 +175,7 @@ define void @loop6(i256 addrspace(1)* %dest, i256 addrspace(3)* %src, i256 %size
 ; CHECK-NEXT:    add r0, r0, r4
 ; CHECK-NEXT:  .BB5_1: ; %load-store-loop
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    shl.s 5, r4, r5
-; CHECK-NEXT:    ptr.add r2, r5, r5
-; CHECK-NEXT:    ld r5, r5
+; CHECK-NEXT:    ld.inc r2, r5, r2
 ; CHECK-NEXT:    st.1.inc r1, r5, r1
 ; CHECK-NEXT:    add 1, r4, r4
 ; CHECK-NEXT:    sub! r4, r3, r5
