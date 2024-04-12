@@ -1284,6 +1284,12 @@ let isTerminator = 1, isBranch = 1, Uses = [Flags] in
 def JC: ICondJump<10, (ins jmptarget:$dest), "jump", "$dest",
              [(EraVMbrcc bb:$dest, imm:$cc)]>;
 
+let isTerminator = 1, isBranch = 1, Uses = [Flags], isIndirectBranch = 1 in {
+def JCr: ICondJump<-1, (ins GR256:$dest), "jump", "$dest", []>;
+def JCc: ICondJump<-1, (ins memop:$dest), "jump", "$dest", []>;
+def JCs: ICondJump<-1, (ins stackop:$dest), "jump", "$dest", []>;
+}
+
 // Unconditional jump
 let isTerminator = 1, isBranch = 1, isBarrier = 1 in {
 def J: IJump<10, SrcNone, (ins jmptarget:$dest), "jump", "$dest",
