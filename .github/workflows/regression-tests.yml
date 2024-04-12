@@ -18,20 +18,40 @@ jobs:
   prepare-commits:
     runs-on: ubuntu-latest
     outputs:
+      head_ref: ${{ steps.extract_branch.outputs.head_ref }}
+      base_ref: ${{ steps.extract_branch.outputs.base_ref }}
+      base_sha: ${{ steps.prepare.outputs.base_sha }}
       matrix: ${{ steps.prepare.outputs.matrix }}
     steps:
-      # Special setup for PRs to extract all commits in PR
-      # with the maximum checkout speed
+
+      - name: Extract branch name
+        id: extract_branch
+        shell: bash
+        run: |
+          echo "head_ref=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" | tee -a "${GITHUB_OUTPUT}"
+          echo "base_ref=${{ github.base_ref || github.event.repository.default_branch }}" | tee -a "${GITHUB_OUTPUT}"
+
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: ${{ github.event.pull_request.commits }}
+          ref: ${{ steps.extract_branch.outputs.head_ref }}
+
+      - name: Checkout through merge base
+        run: |
+          BASE_REF=${{ steps.extract_branch.outputs.base_ref }}
+          HEAD_REF=${{ steps.extract_branch.outputs.head_ref }}
+          DEEPEN_LENGTH=$((${TEST_COMMITS_LIMIT} + 1))
+          git fetch --progress --depth=1 origin "+refs/heads/$BASE_REF:refs/heads/$BASE_REF"
+          while [ -z "$( git merge-base "$BASE_REF" "$HEAD_REF" )" ]; do
+            git fetch -q --deepen="$DEEPEN_LENGTH" origin "$BASE_REF" "$HEAD_REF";
+          done
+
       - name: Prepare commits
         id: prepare
         run: |
-          git fetch --depth=1 origin +refs/heads/${{github.base_ref}}:refs/remotes/origin/${{github.base_ref}}
-          COMMITS_TO_TEST=$(git rev-list origin/${{ github.base_ref }}..${{ github.head_ref }} --pretty='"%H"' --no-commit-header | tail -n ${TEST_COMMITS_LIMIT})
-          echo "matrix={ \"commit\": [${COMMITS_TO_TEST//$'\n'/, }] }" | tee -a ${GITHUB_OUTPUT}
+          git fetch --depth=1 origin +refs/heads/${{ steps.extract_branch.outputs.base_ref }}:refs/remotes/origin/${{ steps.extract_branch.outputs.base_ref }}
+          COMMITS_TO_TEST=$(git rev-list ${{ steps.extract_branch.outputs.base_ref }}..${{ steps.extract_branch.outputs.head_ref }} --pretty='"%H"' --no-commit-header | tail -n ${TEST_COMMITS_LIMIT})
+          echo "matrix={ \"commit\": [${COMMITS_TO_TEST//$'\n'/, }] }" | tee -a "${GITHUB_OUTPUT}"
+          echo "base_sha=$(git rev-parse ${{ steps.extract_branch.outputs.base_ref }})" | tee -a "${GITHUB_OUTPUT}"
 
   regression-tests:
     runs-on: [ self-hosted, ci-runner-compiler ]
@@ -52,8 +72,8 @@ jobs:
       - name: Checkout through merge base
         working-directory: llvm
         run: |
-          BASE_REF=${{github.base_ref}}
-          HEAD_REF=${{matrix.commit}}
+          BASE_REF=${{ needs.prepare-commits.outputs.base_ref }}
+          HEAD_REF=${{ matrix.commit }}
           DEEPEN_LENGTH=$((${TEST_COMMITS_LIMIT} + 1))
           git fetch --progress --depth=1 origin "+refs/heads/$BASE_REF:refs/heads/$BASE_REF"
           while [ -z "$( git merge-base "$BASE_REF" "$HEAD_REF" )" ]; do
@@ -61,28 +81,33 @@ jobs:
           done
 
       - name: Get changed files
+        if: github.event_name == 'pull_request'
         id: changed-files
         uses: tj-actions/changed-files@v39
         with:
           separator: ","
           path: "llvm"
+          sha: ${{ matrix.commit }}
           skip_initial_fetch: true
 
       - name: Install formatting requirements
+        if: github.event_name == 'pull_request'
         working-directory: llvm
         run: python3 -m pip install -r ./llvm/utils/git/requirements_formatting_era_llvm.txt
 
       - name: Install clang-format
+        if: github.event_name == 'pull_request'
         uses: aminya/setup-cpp@v1
         with:
           clangformat: 17.0.1
 
       - name: Run code formatter
+        if: github.event_name == 'pull_request'
         working-directory: llvm
         env:
           GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
           START_REV: ${{ github.event.pull_request.base.sha }}
-          END_REV: ${{matrix.commit}}
+          END_REV: ${{ matrix.commit }}
           CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
           python3 ./llvm/utils/git/code-format-helper-era-llvm.py \
@@ -92,12 +117,19 @@ jobs:
             --end-rev $END_REV \
             --changed-files "$CHANGED_FILES"
 
+      - name: Build LLVM
+        uses: ./llvm/.github/actions/build
+        with:
+          extra-args: "\\-DLLVM_ENABLE_WERROR=On \\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+          enable-tests: true
+          enable-assertions: true
+
       - name: clang-tidy
         working-directory: llvm
         shell: bash
         run: |
           set -euxo pipefail
-          BASE_REF=$(git merge-base ${{ github.event.pull_request.base.sha }} ${{matrix.commit}})
+          BASE_REF=$(git merge-base ${{ github.event.pull_request.base.sha || needs.prepare-commits.outputs.base_sha }} ${{matrix.commit}})
           CHANGES=$(git diff -U0 ${BASE_REF})
           echo "Running clang-tidy on the following changes:"
           echo "${CHANGES}"
@@ -105,13 +137,6 @@ jobs:
              ./clang-tools-extra/clang-tidy/tool/clang-tidy-diff_Zegar.py \
               -p1 -clang-tidy-binary $(which clang-tidy) \
               -path ../target-llvm/build-final/compile_commands.json
-
-      - name: Build LLVM
-        uses: ./llvm/.github/actions/build
-        with:
-          extra-args: "\\-DLLVM_ENABLE_WERROR=On \\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
-          enable-tests: true
-          enable-assertions: true
 
       - name: Running Lit tests with default options
         run: |
