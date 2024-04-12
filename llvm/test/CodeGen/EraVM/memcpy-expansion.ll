@@ -1,4 +1,5 @@
 ; RUN: llc --disable-eravm-scalar-opt-passes -stop-before verify < %s | FileCheck %s
+; RUN: llc -O3 < %s | FileCheck --check-prefix=CHECK-INSTRS %s
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm-unknown-unknown"
 
@@ -48,5 +49,22 @@ define fastcc void @expand-unknown(i256 addrspace(1)* %dest, i256 addrspace(3)* 
 ; CHECK:   [[COND2:%[0-9]+]] = icmp ne i256 %residual-bytes, 0
 ; CHECK:   br i1 [[COND2]], label %memcpy-residual, label %memcpy-split
   call void @llvm.memcpy.p1i256.p3i256.i256(i256 addrspace(1)* %dest, i256 addrspace(3)* %src, i256 %size, i1 false)
+  ret void
+}
+
+; CHECK-INSTRS-LABEL: expand-unknown-instrs
+define fastcc void @expand-unknown-instrs(i256 addrspace(1)* %dest, i256 addrspace(1)* %src, i256 %size) {
+; Preheader and loop.
+; CHECK-INSTRS:       add r0, r0, r5
+; CHECK-INSTRS-NEXT:  .BB2_2:
+; CHECK-INSTRS:       shl.s 5, r5, r6
+; CHECK-INSTRS-NEXT:  add r1, r6, r7
+; CHECK-INSTRS-NEXT:  add r2, r6, r6
+; CHECK-INSTRS-NEXT:  ld.1 r6, r6
+; CHECK-INSTRS-NEXT:  st.1 r7, r6
+; CHECK-INSTRS-NEXT:  add 1, r5, r5
+; CHECK-INSTRS-NEXT:  sub! r5, r3, r6
+; CHECK-INSTRS-NEXT:  jump.lt @.BB2_2
+  call void @llvm.memcpy.p1i256.p1i256.i256(i256 addrspace(1)* %dest, i256 addrspace(1)* %src, i256 %size, i1 false)
   ret void
 }
