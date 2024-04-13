@@ -990,7 +990,6 @@ def JC: IJump<OpJump, SrcImm, (ins jmptarget:$dest), "$dest",
 let isTerminator = 1, isBranch = 1, Uses = [Flags], isIndirectBranch = 1 in {
 def JCr: IJump<OpJump, SrcReg, (ins GR256:$dest), "$dest", []>;
 def JCc: IJump<OpJump, SrcCodeAddr, (ins memop:$dest), "$dest", []>;
-// FIXME: This would require postprocessing
 def JCs: IJump<OpJump, SrcStackAbsolute, (ins stackin:$dest), "$dest", []>;
 }
 

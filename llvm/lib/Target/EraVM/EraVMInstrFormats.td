@@ -238,59 +238,46 @@ class AsmParserPseudo<dag outs, dag inops, string opc, string asmstr>
 // Real instructions (have encoding)
 class IForm <EraVMOpcode opcode,
              dag oops, dag inops,
-             string opc, string asmstr,
-             list<dag> pattern> : EraVMInstruction, Encoding
-{
+             string asmstr,
+             list<dag> pattern> : EraVMInstruction, Encoding {
   bits<3> cc;
 
   dag InOperandList  = !con(inops, (ins pred:$cc));
   dag OutOperandList = oops;
-  let AsmString      = !strconcat(opc, "${cc}", "\t", asmstr);
   let Pattern        = pattern;
   let Size           = 8;
 
   let Predicate = cc;
-  // FIXME: This should be overriden in the subclass
   let Opcode = opcode.BaseOpcode;
+  let AsmString = !strconcat(opcode.Name, "${cc}", "\t", asmstr);
 }
 
-class INop<dag ins, string opc, string asmstr, list<dag> pattern>
-  : IForm <OpNoOp, (outs), ins, opc, asmstr, pattern > {
+class INop<dag ins, string asmstr, list<dag> pattern>
+  : IForm <OpNoOp, (outs), ins, asmstr, pattern > {
 }
 
 class IJump<EraVMOpcode opcode,
             SrcMode src,
             dag ins, string asmstr, list<dag> pattern>
-  : IForm <opcode, (outs), ins, "<invalid>", asmstr, pattern> {
+  : IForm <opcode, (outs), ins, asmstr, pattern> {
 
-  // FIXME: Should should be default
-  let AsmString = !strconcat(opcode.Name, "${cc}", "\t", asmstr);
   let mayLoad = !or(isStackIn<src>.Value, !eq(src, SrcCodeAddr));
   let Opcode = JumpOpcEncoder<opcode.BaseOpcode, src>.Opcode;
 }
 
 class IContext<EraVMOpcode opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-  : IForm <opcode, outs, ins, "<invalid>", asmstr, pattern> {
+  : IForm <opcode, outs, ins, asmstr, pattern> { }
 
-  // FIXME: Should should be default
-  let AsmString = !strconcat(opcode.Name, "${cc}", "\t", asmstr);
-}
-
-// FIXME: This needs to be split into ILogRrr, ILogRrr_r and ILogRr_r versions
+// TODO: This needs to be split into ILogRrr, ILogRrr_r and ILogRr_r versions
 class ILogR<EraVMOpcode opcode, dag outs, dag ins,
             string asmstr, list<dag> pattern>
-  : IForm <opcode, outs, ins, "<invalid>", asmstr, pattern> {
-
-  // FIXME: Should should be default
-  let AsmString = !strconcat(opcode.Name, "${cc}", "\t", asmstr);
-}
+  : IForm <opcode, outs, ins, asmstr, pattern> { }
 
 class ILogRFirst<EraVMOpcode opcode, bit is_first,
                  dag outs, dag ins,
                  string asmstr, list<dag> pattern>
-  : IForm <opcode, outs, ins, "<invalid>", asmstr, pattern> {
+  : IForm <opcode, outs, ins, asmstr, pattern> {
 
-  // FIXME: Should should be default
   let AsmString = !strconcat(opcode.Name,
                              !if(is_first, ".first", ""),
                              "${cc}", "\t", asmstr);
@@ -304,7 +291,7 @@ class IBinary<EraVMOpcode opcode,
               dag outs, dag ins,
               string asmstr,
               list<dag> pattern>
-  : IForm <opcode, outs, ins, "<invalid>", asmstr, pattern > {
+  : IForm <opcode, outs, ins, asmstr, pattern > {
   string BaseOpcode;
   bit Silent = !eq(set_flags, PreserveFlags);
   bit ReverseOperands = !eq(swap, Swap);
@@ -347,8 +334,6 @@ class IBinaryS<EraVMOpcode opcode,
                dag outs, dag ins,
                string asmstr,
                list<dag> pattern>
-  // FIXME: DstStackAbsolute is incorrect here, we need to be able to properly encode relative and post-increment
-  // FIXME: Does encoding via post-fixup, does disassembly manually
   : IBinary <opcode, src, DstStackAbsolute, swap, set_flags, outs, ins, asmstr, pattern > {
   // Encode stack operand into 20 bits as reg + imm offset
   bits<20> dst0;
@@ -427,7 +412,6 @@ class Imr_r<EraVMOpcode opcode,
             list<dag> pattern>
   : IBinaryR<opcode, SrcCodeAddr, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rs1;
-  // FIXME: ensure we encode address mode properly
   bits<16> src0;
 
   let OperandAddrMode = OpndCR.Value;
@@ -442,8 +426,6 @@ class Isr_r<EraVMOpcode opcode,
             dag outs, dag ins,
             string asmstr,
             list<dag> pattern>
-  // FIXME: SrcStackAbsolute is incorrect here, we need to be able to properly encode relative and post-increment
-  // FIXME: Does encoding via post-fixup, does disassembly manually
   : IBinaryR<opcode, SrcStackAbsolute, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<20> src0;
   bits<4> rs1;
@@ -552,7 +534,6 @@ class Imr_s<EraVMOpcode opcode,
             list<dag> pattern>
   : IBinaryS<opcode, SrcCodeAddr, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rs1;
-  // FIXME: ensure we encode address mode properly
   bits<16> src0;
 
   let OperandAddrMode = OpndCR.Value;
@@ -567,8 +548,6 @@ class Isr_s<EraVMOpcode opcode,
             dag outs, dag ins,
             string asmstr,
             list<dag> pattern>
-  // FIXME: SrcStackAbsolute is incorrect here, we need to be able to properly encode relative and post-increment
-  // FIXME: Does encoding via post-fixup, does disassembly manually
   : IBinaryS<opcode, SrcStackAbsolute, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<20> src0;
   bits<4> rs1;
@@ -614,7 +593,7 @@ class IRet<EraVMOpcode opcode,
            dag ins,
            string asmstr,
            list<dag> pattern>
-  : IForm <opcode, (outs), ins, "<invalid>", asmstr, pattern > {
+  : IForm <opcode, (outs), ins, asmstr, pattern > {
 
   let isReturn = 1;
   let isTerminator = 1;
@@ -628,16 +607,13 @@ class IRet<EraVMOpcode opcode,
 }
 
 class ICall<EraVMOpcode opcode, dag ins, string asmstr, list<dag> pattern>
-  : IForm <opcode, (outs), ins, "<invalid>", asmstr, pattern > {
-  // FIXME: Should should be default
-  let AsmString = !strconcat(opcode.Name, "${cc}", "\t", asmstr);
-}
+  : IForm <opcode, (outs), ins, asmstr, pattern > { }
 
 class IFarCall<EraVMOpcode opcode,
                bit is_shard, bit is_static,
                dag ins,
                string asmstr, list<dag> pattern>
-  : IForm <opcode, (outs), ins, "<invalid>", asmstr, pattern > {
+  : IForm <opcode, (outs), ins, asmstr, pattern > {
 
   let AsmString = !strconcat(opcode.Name,
                              !if(is_shard, ".shard", ""),
@@ -651,7 +627,7 @@ class IUMA<EraVMOpcode opcode,
            dag outs, dag ins,
            string asmstr,
            list<dag> pattern>
-  : IForm <opcode, outs, ins, "<invalid>", asmstr, pattern> {
+  : IForm <opcode, outs, ins, asmstr, pattern> {
 
   let AsmString = !strconcat(opcode.Name,
                              !if(is_inc, ".inc", ""),
@@ -716,4 +692,4 @@ class IUMAir_r<EraVMOpcode opcode,
  : IUMA<opcode, SrcImm, 1, outs, ins, asmstr, pattern> {
 }
 
-// FIXME: There should be IUMAs / IUMAc
+// TODO: There should be IUMAs / IUMAc
