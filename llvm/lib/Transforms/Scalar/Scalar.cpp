@@ -64,4 +64,9 @@ void llvm::initializeScalarOpts(PassRegistry &Registry) {
   initializeStraightLineStrengthReduceLegacyPassPass(Registry);
   initializePlaceBackedgeSafepointsLegacyPassPass(Registry);
   initializeLoopSimplifyCFGLegacyPassPass(Registry);
+
+  // EraVM local begin
+  initializeNewGVNLegacyPassPass(Registry);
+  initializeGVNHoistLegacyPassPass(Registry);
+  // EraVM local end
 }

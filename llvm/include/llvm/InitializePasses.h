@@ -344,6 +344,11 @@ void initializeWinEHPreparePass(PassRegistry&);
 void initializeWriteBitcodePassPass(PassRegistry&);
 void initializeXRayInstrumentationPass(PassRegistry&);
 
+// EraVM local begin
+void initializeGVNHoistLegacyPassPass(PassRegistry &);
+void initializeNewGVNLegacyPassPass(PassRegistry &);
+// EraVM local end
+
 } // end namespace llvm
 
 #endif // LLVM_INITIALIZEPASSES_H

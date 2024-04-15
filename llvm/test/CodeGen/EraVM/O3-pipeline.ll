@@ -8,11 +8,11 @@
 ; CHECK-NEXT: Machine Module Information
 ; CHECK-NEXT: Target Transform Information
 ; CHECK-NEXT: Assumption Cache Tracker
-; CHECK-NEXT: Profile summary info
 ; CHECK-NEXT: EraVM Address space based Alias Analysis
 ; CHECK-NEXT: External Alias Analysis
 ; CHECK-NEXT: Type-Based Alias Analysis
 ; CHECK-NEXT: Scoped NoAlias Alias Analysis
+; CHECK-NEXT: Profile summary info
 ; CHECK-NEXT: Create Garbage Collector Module Metadata
 ; CHECK-NEXT: Machine Branch Probability Analysis
 ; CHECK-NEXT: Default Regalloc Eviction Advisor
@@ -39,11 +39,15 @@
 ; CHECK-NEXT:       Straight line strength reduction
 ; CHECK-NEXT:       Basic Alias Analysis (stateless AA impl)
 ; CHECK-NEXT:       Function Alias Analysis Results
-; CHECK-NEXT:       Memory Dependence Analysis
-; CHECK-NEXT:       Lazy Branch Probability Analysis
-; CHECK-NEXT:       Lazy Block Frequency Analysis
-; CHECK-NEXT:       Optimization Remark Emitter
+; CHECK-NEXT:       Memory SSA
 ; CHECK-NEXT:       Global Value Numbering
+; CHECK-NEXT:       Post-Dominator Tree Construction
+; CHECK-NEXT:       Basic Alias Analysis (stateless AA impl)
+; CHECK-NEXT:       Function Alias Analysis Results
+; CHECK-NEXT:       Memory Dependence Analysis
+; CHECK-NEXT:       Memory SSA
+; CHECK-NEXT:       Early GVN Hoisting of Expressions
+; CHECK-NEXT:       Natural Loop Information
 ; CHECK-NEXT:       Scalar Evolution Analysis
 ; CHECK-NEXT:       Nary reassociation
 ; CHECK-NEXT:       Early CSE

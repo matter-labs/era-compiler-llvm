@@ -1,5 +1,4 @@
 ; RUN: opt -passes=eravm-lower-intrinsics -S < %s | FileCheck %s
-; XFAIL: *
 ; RUN: llc -O3 --cgp-verify-bfi-updates=false < %s | FileCheck --check-prefix=CHECK-INSTRS %s
 ; Verification of BFI updates is disabled because of https://github.com/llvm/llvm-project/issues/64197
 

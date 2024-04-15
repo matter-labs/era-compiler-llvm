@@ -240,7 +240,8 @@ void EraVMPassConfig::addIRPasses() {
       // SeparateConstOffsetFromGEP and SLSR creates common expressions which
       // GVN or EarlyCSE can reuse. GVN generates significantly better code than
       // EarlyCSE for some of our benchmarks.
-      addPass(createGVNPass());
+      addPass(createNewGVNPass());
+      addPass(createGVNHoistPass());
       // Run NaryReassociate after EarlyCSE/GVN to be more effective.
       addPass(createNaryReassociatePass());
       // Call EarlyCSE pass to find and remove subexpressions in the lowered

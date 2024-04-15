@@ -23,6 +23,22 @@ class Function;
 class FunctionPass;
 class Pass;
 
+// EraVM local begin
+//===----------------------------------------------------------------------===//
+//
+// GVNHoist - This pass performs a simple and fast GVN pass over the dominator
+// tree to hoist common expressions from sibling branches.
+//
+FunctionPass *createGVNHoistPass();
+
+//===----------------------------------------------------------------------===//
+//
+// GVN - This pass performs global value numbering and redundant load
+// elimination cotemporaneously.
+//
+FunctionPass *createNewGVNPass();
+// EraVM local end
+
 //===----------------------------------------------------------------------===//
 //
 // RedundantDbgInstElimination - This pass removes redundant dbg intrinsics
