@@ -38,6 +38,9 @@
 #include "llvm/IR/Value.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/CommandLine.h"
+// EraVM local begin
+#include "llvm/TargetParser/Triple.h"
+// EraVM local end
 #include "llvm/Transforms/Utils/Local.h"
 #include <cassert>
 #include <optional>
@@ -770,6 +773,12 @@ static bool expandUDivOrURem(BinaryOperator *Instr, const ConstantRange &XCR,
     else
       ExpandedOp = ConstantInt::get(Instr->getType(), 1);
   } else if (IsRem) {
+    // EraVM local begin
+    Triple TT(Instr->getFunction()->getParent()->getTargetTriple());
+    if (TT.isEraVM())
+      return false;
+    // EraVM local end
+
     // NOTE: this transformation introduces two uses of X,
     //       but it may be undef so we must freeze it first.
     Value *FrozenX = X;
