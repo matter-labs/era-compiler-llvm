@@ -17,6 +17,9 @@
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/Support/KnownBits.h"
+// EraVM local begin
+#include "llvm/TargetParser/Triple.h"
+// EraVM local end
 #include "llvm/Transforms/InstCombine/InstCombiner.h"
 #include <optional>
 
@@ -904,9 +907,13 @@ Instruction *InstCombinerImpl::transformZExtICmp(ICmpInst *Cmp,
     // zext (X == 0) to i32 --> (X>>1)^1 iff X has only the 2nd bit set.
     // zext (X != 0) to i32 --> X        iff X has only the low bit set.
     // zext (X != 0) to i32 --> X>>1     iff X has only the 2nd bit set.
+    // EraVM local begin
+    Triple TT(Cmp->getFunction()->getParent()->getTargetTriple());
     if (Op1CV->isZero() && Cmp->isEquality() &&
         (Cmp->getOperand(0)->getType() == Zext.getType() ||
-         Cmp->getPredicate() == ICmpInst::ICMP_NE)) {
+         Cmp->getPredicate() == ICmpInst::ICMP_NE) &&
+        !TT.isEraVM()) {
+      // EraVM local end
       // If Op1C some other power of two, convert:
       KnownBits Known = computeKnownBits(Cmp->getOperand(0), 0, &Zext);
 
