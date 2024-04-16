@@ -3712,6 +3712,13 @@ bool llvm::FoldBranchToCommonDest(BranchInst *BI, DomTreeUpdater *DTU,
   if (is_contained(successors(BB), BB))
     return false;
 
+  // EraVM local begin
+  unsigned FoldThreshold = BranchFoldThreshold;
+  if (!BranchFoldThreshold.getNumOccurrences() &&
+      Triple(BB->getModule()->getTargetTriple()).isEraVM())
+    FoldThreshold = 1;
+  // EraVM local end
+
   // With which predecessors will we want to deal with?
   SmallVector<BasicBlock *, 8> Preds;
   for (BasicBlock *PredBlock : predecessors(BB)) {
@@ -3741,8 +3748,10 @@ bool llvm::FoldBranchToCommonDest(BranchInst *BI, DomTreeUpdater *DTU,
                              !isa<CmpInst>(PBI->getCondition())))
         Cost += TTI->getArithmeticInstrCost(Instruction::Xor, Ty, CostKind);
 
-      if (Cost > BranchFoldThreshold)
+      // EraVM local begin
+      if (Cost > FoldThreshold)
         continue;
+      // EraVM local end
     }
 
     // Ok, we do want to deal with this predecessor. Record it.
