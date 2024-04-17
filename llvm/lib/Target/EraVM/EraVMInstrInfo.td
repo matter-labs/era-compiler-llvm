@@ -870,6 +870,7 @@ multiclass PtrInstr<bits<8> opcode, string asmstring, SDPatternOperator node> {
 }
 
 // This is a bridge to convert GRPTR type to GR256 type. It will get eliminated in a post RA pass.
+let isBitcast = 1 in
 def PTR_TO_INT : Pseudo<(outs GR256:$rd0), (ins GRPTR:$rs0),
                         "ptrtoint\t$rs0, $rd0",
                         [(set GR256:$rd0, (EraVMptr_to_int GRPTR:$rs0))]>;
