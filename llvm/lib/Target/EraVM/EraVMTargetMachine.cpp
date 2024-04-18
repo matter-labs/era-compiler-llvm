@@ -71,6 +71,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMOptimizeSelectPreRAPass(PR);
   initializeEraVMFoldSimilarInstructionsPass(PR);
   initializeEraVMCombineToIndexedMemopsPass(PR);
+  initializeEraVMPostCodegenPreparePass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -207,6 +208,7 @@ public:
   void addPreRegAlloc() override;
   void addPreEmitPass() override;
   void addPreSched2() override;
+  void addCodeGenPrepare() override;
 };
 } // namespace
 
@@ -260,6 +262,12 @@ void EraVMPassConfig::addIRPasses() {
     }));
   }
   TargetPassConfig::addIRPasses();
+}
+
+void EraVMPassConfig::addCodeGenPrepare() {
+  TargetPassConfig::addCodeGenPrepare();
+  if (getOptLevel() != CodeGenOpt::None)
+    addPass(createEraVMPostCodegenPreparePass());
 }
 
 bool EraVMPassConfig::addInstSelector() {

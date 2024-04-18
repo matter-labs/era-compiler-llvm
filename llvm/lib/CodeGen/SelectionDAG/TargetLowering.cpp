@@ -4860,7 +4860,10 @@ SDValue TargetLowering::SimplifySetCC(EVT VT, SDValue N0, SDValue N1,
     // If we have "setcc X, C0", check to see if we can shrink the immediate
     // by changing cc.
     // TODO: Support this for vectors after legalize ops.
-    if (!VT.isVector() || DCI.isBeforeLegalizeOps()) {
+    // EraVM local begin
+    if (!DAG.getTarget().getTargetTriple().isEraVM() &&
+        (!VT.isVector() || DCI.isBeforeLegalizeOps())) {
+      // EraVM local end
       // SETUGT X, SINTMAX  -> SETLT X, 0
       // SETUGE X, SINTMIN -> SETLT X, 0
       if ((Cond == ISD::SETUGT && C1.isMaxSignedValue()) ||

@@ -90,6 +90,7 @@ target triple = "eravm"
 ; CHECK-NEXT:       Natural Loop Information
 ; CHECK-NEXT:       TLS Variable Hoist
 ; CHECK-NEXT:       CodeGen Prepare
+; CHECK-NEXT:       EraVM optimizations after CodeGenPrepare pass
 ; CHECK-NEXT:       Prepare callbr
 ; CHECK-NEXT:       Safe Stack instrumentation pass
 ; CHECK-NEXT:       Insert stack protectors
