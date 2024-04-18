@@ -1,5 +1,8 @@
-#include "EVMControlFlowGraphBuilder.h"
 #include "EVM.h"
+
+#include "EVMControlFlowGraphBuilder.h"
+#include "EVMHelperUtilities.h"
+#include "EVMStackHelpers.h"
 #include "EVMSubtarget.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "llvm/CodeGen/MachineFunction.h"
@@ -8,68 +11,6 @@
 #include <variant>
 
 using namespace llvm;
-
-template <class... Ts> struct Overload : Ts... {
-  using Ts::operator()...;
-};
-template <class... Ts> Overload(Ts...) -> Overload<Ts...>;
-
-static StringRef getInstName(const MachineInstr *MI) {
-  const MachineFunction *MF = MI->getParent()->getParent();
-  const TargetInstrInfo *TII = MF->getSubtarget().getInstrInfo();
-  return TII->getName(MI->getOpcode());
-}
-
-static const Function *getCalledFunction(const MachineInstr &MI) {
-  for (const MachineOperand &MO : MI.operands()) {
-    if (!MO.isGlobal())
-      continue;
-    const Function *Func = dyn_cast<Function>(MO.getGlobal());
-    if (Func != nullptr)
-      return Func;
-  }
-  return nullptr;
-}
-
-inline std::string stackSlotToString(const StackSlot &Slot) {
-  return std::visit(
-      Overload{
-          [](const FunctionCallReturnLabelSlot &Ret) -> std::string {
-            return "RET[" +
-                   std::string(getCalledFunction(*Ret.Call)->getName()) + "]";
-          },
-          [](const FunctionReturnLabelSlot &) -> std::string { return "RET"; },
-          [](const VariableSlot &Var) -> std::string {
-            SmallString<64> S;
-            llvm::raw_svector_ostream OS(S);
-            OS << printReg(Var.VirtualReg, nullptr, 0, nullptr);
-            return std::string(S);
-            ;
-          },
-          [](const LiteralSlot &Lit) -> std::string {
-            SmallString<64> S;
-            Lit.Value.toStringSigned(S);
-            return std::string(S);
-          },
-          [](const TemporarySlot &Tmp) -> std::string {
-            SmallString<128> S;
-            llvm::raw_svector_ostream OS(S);
-            OS << "TMP[" << getInstName(Tmp.MI) << ", ";
-            OS << std::to_string(Tmp.Index) + "]";
-            return std::string(S);
-          },
-          [](const JunkSlot &Junk) -> std::string { return "JUNK"; }},
-      Slot);
-  ;
-}
-
-inline std::string stackToString(Stack const &S) {
-  std::string Result("[ ");
-  for (auto const &Slot : S)
-    Result += stackSlotToString(Slot) + ' ';
-  Result += ']';
-  return Result;
-}
 
 void ControlFlowGraphPrinter::operator()(CFG &Cfg) {
   (*this)(Cfg.FuncInfo);
@@ -134,7 +75,8 @@ void ControlFlowGraphPrinter::printBlock(CFG::BasicBlock const &Block) {
                  OS << "Block" << getBlockId(Block) << " -> Block"
                     << getBlockId(Block) << "Exit [arrowhead=none];\n";
                  OS << "Block" << getBlockId(Block) << "Exit [label=\"";
-                 OS << "Jump\" shape=oval];\n";
+                 OS << "Jump\" FallThrough:" << Jump.FallThrough;
+                 OS << " shape=oval];\n";
                  OS << "Block" << getBlockId(Block) << "Exit -> Block"
                     << getBlockId(*Jump.Target) << ";\n";
                },
@@ -143,7 +85,8 @@ void ControlFlowGraphPrinter::printBlock(CFG::BasicBlock const &Block) {
                     << getBlockId(Block) << "Exit;\n";
                  OS << "Block" << getBlockId(Block) << "Exit [label=\"{ ";
                  OS << stackSlotToString(CondJump.Condition);
-                 OS << "| { <0> Zero | <1> NonZero }}\" shape=Mrecord];\n";
+                 OS << "| { <0> Zero | <1> NonZero }}\" FallThrough:";
+                 OS << CondJump.FallThrough << " shape=Mrecord];\n";
                  OS << "Block" << getBlockId(Block);
                  OS << "Exit:0 -> Block" << getBlockId(*CondJump.Zero) << ";\n";
                  OS << "Block" << getBlockId(Block);
@@ -156,6 +99,7 @@ void ControlFlowGraphPrinter::printBlock(CFG::BasicBlock const &Block) {
                     << Return.Info->MF->getName() << "]\"];\n";
                  OS << "Block" << getBlockId(Block) << " -> Block"
                     << getBlockId(Block) << "Exit;\n";
+                 OS << "Return values: " << stackToString(Return.RetValues);
                },
                [&](const CFG::BasicBlock::Terminated &) {
                  OS << "Block" << getBlockId(Block)
@@ -170,10 +114,84 @@ void ControlFlowGraphPrinter::printBlock(CFG::BasicBlock const &Block) {
   OS << "\n";
 }
 
+/// Marks each block that needs to maintain a clean stack. That is each block
+/// that has an outgoing path to a function return.
+static void markNeedsCleanStack(CFG &_cfg) {
+  for (CFG::BasicBlock *exit : _cfg.FuncInfo.Exits)
+    EVMUtils::BreadthFirstSearch<CFG::BasicBlock *>{{exit}}.run(
+        [&](CFG::BasicBlock *_block, auto _addChild) {
+          _block->NeedsCleanStack = true;
+          for (CFG::BasicBlock *entry : _block->Entries)
+            _addChild(entry);
+        });
+}
+
+/// Marks each cut-vertex in the CFG, i.e. each block that begins a disconnected
+/// sub-graph of the CFG. Entering such a block means that control flow will
+/// never return to a previously visited block.
+static void markStartsOfSubGraphs(CFG &_cfg) {
+  CFG::BasicBlock *entry = _cfg.FuncInfo.Entry;
+  /**
+   * Detect bridges following Algorithm 1 in
+   * https://arxiv.org/pdf/2108.07346.pdf and mark the bridge targets as starts
+   * of sub-graphs.
+   */
+  std::set<CFG::BasicBlock *> visited;
+  std::map<CFG::BasicBlock *, size_t> disc;
+  std::map<CFG::BasicBlock *, size_t> low;
+  std::map<CFG::BasicBlock *, CFG::BasicBlock *> parent;
+  size_t time = 0;
+  auto dfs = [&](CFG::BasicBlock *_u, auto _recurse) -> void {
+    visited.insert(_u);
+    disc[_u] = low[_u] = time;
+    time++;
+
+    std::vector<CFG::BasicBlock *> children = _u->Entries;
+    std::visit(Overload{[&](CFG::BasicBlock::Jump const &_jump) {
+                          children.emplace_back(_jump.Target);
+                        },
+                        [&](CFG::BasicBlock::ConditionalJump const &_jump) {
+                          children.emplace_back(_jump.Zero);
+                          children.emplace_back(_jump.NonZero);
+                        },
+                        [&](CFG::BasicBlock::FunctionReturn const &) {},
+                        [&](CFG::BasicBlock::Terminated const &) {
+                          _u->IsStartOfSubGraph = true;
+                        },
+                        [&](CFG::BasicBlock::InvalidExit const &) {
+                          llvm_unreachable("Unexpected BB terminator");
+                        }},
+               _u->Exit);
+    assert(!EVMUtils::contains(children, _u));
+
+    for (CFG::BasicBlock *v : children) {
+      if (!visited.count(v)) {
+        parent[v] = _u;
+        _recurse(v, _recurse);
+        low[_u] = std::min(low[_u], low[v]);
+        if (low[v] > disc[_u]) {
+          // _u <-> v is a cut edge in the undirected graph
+          bool edgeVtoU = EVMUtils::contains(_u->Entries, v);
+          bool edgeUtoV = EVMUtils::contains(v->Entries, _u);
+          if (edgeVtoU && !edgeUtoV)
+            // Cut edge v -> _u
+            _u->IsStartOfSubGraph = true;
+          else if (edgeUtoV && !edgeVtoU)
+            // Cut edge _u -> v
+            v->IsStartOfSubGraph = true;
+        }
+      } else if (v != parent[_u])
+        low[_u] = std::min(low[_u], disc[v]);
+    }
+  };
+  dfs(entry, dfs);
+}
+
 std::unique_ptr<CFG> ControlFlowGraphBuilder::build(MachineFunction &MF,
-                                                    const LiveIntervals &LIS) {
+                                                    const LiveIntervals &LIS,
+                                                    MachineLoopInfo *MLI) {
   auto Result = std::make_unique<CFG>();
-  ControlFlowGraphBuilder Builder(*Result, MF, LIS);
+  ControlFlowGraphBuilder Builder(*Result, MF, LIS, MLI);
 
   for (MachineBasicBlock &MBB : MF)
     Result->createBlock(&MBB);
@@ -186,6 +204,9 @@ std::unique_ptr<CFG> ControlFlowGraphBuilder::build(MachineFunction &MF,
   for (MachineBasicBlock &MBB : MF)
     Builder.handleBasicBlockSuccessors(MBB);
 
+  markStartsOfSubGraphs(*Result);
+  markNeedsCleanStack(*Result);
+
   return Result;
 }
 
@@ -197,7 +218,7 @@ void ControlFlowGraphBuilder::handleBasicBlock(const MachineBasicBlock &MBB) {
 
 void ControlFlowGraphBuilder::collectInOut(const MachineInstr &MI, Stack &Input,
                                            Stack &Output) {
-  for (const auto &MO : reverse(MI.explicit_uses())) {
+  for (const auto &MO : MI.explicit_uses()) {
     if (!MO.isReg())
       continue;
 
@@ -234,6 +255,10 @@ void ControlFlowGraphBuilder::handleMachineInstr(const MachineInstr &MI) {
   // First, handle instruction itself.
   unsigned Opc = MI.getOpcode();
   switch (Opc) {
+  case EVM::ARGUMENT:
+    Cfg.FuncInfo.Parameters.emplace_back(
+        VariableSlot{MI.getOperand(0).getReg()});
+    break;
   case EVM::FCALL:
     handleFunctionCall(MI);
     break;
@@ -325,7 +350,10 @@ void ControlFlowGraphBuilder::handleFunctionCall(const MachineInstr &MI) {
 
 void ControlFlowGraphBuilder::handleReturn(const MachineInstr &MI) {
   Cfg.FuncInfo.Exits.emplace_back(CurrentBlock);
-  CurrentBlock->Exit = CFG::BasicBlock::FunctionReturn{&Cfg.FuncInfo};
+  Stack Input, Output;
+  collectInOut(MI, Input, Output);
+  CurrentBlock->Exit =
+      CFG::BasicBlock::FunctionReturn{std::move(Input), &Cfg.FuncInfo};
 }
 
 void ControlFlowGraphBuilder::handleBasicBlockSuccessors(
@@ -344,6 +372,16 @@ void ControlFlowGraphBuilder::handleBasicBlockSuccessors(
   }
 
   CurrentBlock = &Cfg.getBlock(&MBB);
+  bool IsLatch = false;
+  MachineLoop *ML = MLI->getLoopFor(&MBB);
+  if (ML) {
+    SmallVector<MachineBasicBlock *, 8> Latches;
+    ML->getLoopLatches(Latches);
+    IsLatch = std::any_of(
+        Latches.begin(), Latches.end(),
+        [&MBB](const MachineBasicBlock *Latch) { return &MBB == Latch; });
+  }
+
   if (!TBB || (TBB && Cond.empty())) {
     // Fall through, or unconditional jump.
     bool FallThrough = !TBB;
@@ -353,8 +391,11 @@ void ControlFlowGraphBuilder::handleBasicBlockSuccessors(
       assert(TBB);
     }
     CFG::BasicBlock &Target = Cfg.getBlock(TBB);
-    CurrentBlock->Exit = CFG::BasicBlock::Jump{&Target, FallThrough};
-    Target.Entries.insert(CurrentBlock);
+    if (IsLatch)
+      assert(ML->getHeader() == &MBB && !FallThrough);
+    CurrentBlock->Exit = CFG::BasicBlock::Jump{&Target, FallThrough,
+                                               IsLatch ? &Target : nullptr};
+    EVMUtils::push_if_noexist(Target.Entries, CurrentBlock);
   } else if (TBB && !Cond.empty()) {
     // Conditional jump + fallthrough or unconditional jump.
     bool FallThrough = !FBB;
@@ -362,13 +403,25 @@ void ControlFlowGraphBuilder::handleBasicBlockSuccessors(
       FBB = MBB.getFallThrough();
       assert(FBB);
     }
+
     CFG::BasicBlock &NonZeroTarget = Cfg.getBlock(TBB);
     CFG::BasicBlock &ZeroTarget = Cfg.getBlock(FBB);
     assert(Cond[0].isReg());
     auto CondSlot = VariableSlot{Cond[0].getReg()};
+
+    CFG::BasicBlock *Header = nullptr;
+    if (IsLatch) {
+      if (ML->getHeader() == TBB)
+        Header = &NonZeroTarget;
+      else if (ML->getHeader() == FBB)
+        Header = &ZeroTarget;
+
+      assert(Header);
+    }
     CurrentBlock->Exit = CFG::BasicBlock::ConditionalJump{
-        std::move(CondSlot), &NonZeroTarget, &ZeroTarget, FallThrough};
-    NonZeroTarget.Entries.insert(CurrentBlock);
-    ZeroTarget.Entries.insert(CurrentBlock);
+        std::move(CondSlot), &NonZeroTarget, &ZeroTarget, FallThrough, Header};
+
+    EVMUtils::push_if_noexist(NonZeroTarget.Entries, CurrentBlock);
+    EVMUtils::push_if_noexist(ZeroTarget.Entries, CurrentBlock);
   }
 }

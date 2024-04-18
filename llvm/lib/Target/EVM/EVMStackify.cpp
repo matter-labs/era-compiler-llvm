@@ -167,6 +167,7 @@
 #include "EVM.h"
 #include "EVMControlFlowGraphBuilder.h"
 #include "EVMMachineFunctionInfo.h"
+#include "EVMStackLayoutGenerator.h"
 #include "EVMSubtarget.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "TargetInfo/EVMTargetInfo.h"
@@ -176,8 +177,10 @@
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
+#include "llvm/CodeGen/MachineLoopInfo.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/Passes.h"
+#include "llvm/InitializePasses.h"
 #include "llvm/MC/MCContext.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
@@ -1115,6 +1118,7 @@ private:
     AU.setPreservesCFG();
     AU.addRequired<MachineDominatorTree>();
     AU.addRequired<LiveIntervals>();
+    AU.addRequired<MachineLoopInfo>();
     AU.addPreserved<MachineBlockFrequencyInfo>();
     AU.addPreserved<SlotIndexes>();
     AU.addPreserved<LiveIntervals>();
@@ -1135,10 +1139,17 @@ private:
 } // end anonymous namespace
 
 char EVMStackify::ID = 0;
-INITIALIZE_PASS(EVMStackify, DEBUG_TYPE,
-                "Insert stack manipulation instructions to execute the code in "
-                "stack environment",
-                false, false)
+INITIALIZE_PASS_BEGIN(
+    EVMStackify, DEBUG_TYPE,
+    "Insert stack manipulation instructions to execute the code in "
+    "stack environment",
+    false, false)
+INITIALIZE_PASS_DEPENDENCY(MachineLoopInfo)
+INITIALIZE_PASS_END(
+    EVMStackify, DEBUG_TYPE,
+    "Insert stack manipulation instructions to execute the code in "
+    "stack environment",
+    false, false)
 
 FunctionPass *llvm::createEVMStackify() { return new EVMStackify(); }
 
@@ -1151,18 +1162,26 @@ bool EVMStackify::runOnMachineFunction(MachineFunction &MF) {
   MachineRegisterInfo &MRI = MF.getRegInfo();
   const auto *TII = MF.getSubtarget<EVMSubtarget>().getInstrInfo();
   auto &LIS = getAnalysis<LiveIntervals>();
+  MachineLoopInfo *MLI = &getAnalysis<MachineLoopInfo>();
 
   // We don't preserve SSA form.
   MRI.leaveSSA();
 
   assert(MRI.tracksLiveness() && "Stackify expects liveness");
 
-  std::unique_ptr<CFG> Cfg = ControlFlowGraphBuilder::build(MF, LIS);
+  std::unique_ptr<CFG> Cfg = ControlFlowGraphBuilder::build(MF, LIS, MLI);
   SmallString<1024> StringBuf;
   llvm::raw_svector_ostream OStream(StringBuf);
   ControlFlowGraphPrinter CfgPrinter(OStream);
   CfgPrinter(*Cfg);
-  LLVM_DEBUG(dbgs() << StringBuf << '\n');
+  // LLVM_DEBUG(dbgs() << StringBuf << '\n');
+  StackLayout stackLayout = StackLayoutGenerator::run(*Cfg);
+  // std::string Out = StackLayoutGenerator::Test(&MF.front());
+  OStream << "*** Stack layout ***\n";
+  StackLayoutPrinter LayoutPrinter{OStream, stackLayout};
+  LayoutPrinter(Cfg->FuncInfo);
+  LLVM_DEBUG(dbgs() << StringBuf << "\n");
+  // return true;
 
   LLVM_DEBUG(dbgs() << "ALL register intervals:\n");
   for (unsigned I = 0; I < MRI.getNumVirtRegs(); ++I) {

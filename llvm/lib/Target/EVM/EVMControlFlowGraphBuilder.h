@@ -4,6 +4,7 @@
 #include "EVMControlFlowGraph.h"
 #include "llvm/ADT/DenseSet.h"
 #include "llvm/CodeGen/LiveIntervals.h"
+#include "llvm/CodeGen/MachineLoopInfo.h"
 
 namespace llvm {
 
@@ -28,13 +29,13 @@ class ControlFlowGraphBuilder {
 public:
   ControlFlowGraphBuilder(ControlFlowGraphBuilder const &) = delete;
   ControlFlowGraphBuilder &operator=(ControlFlowGraphBuilder const &) = delete;
-  static std::unique_ptr<CFG> build(MachineFunction &MF,
-                                    const LiveIntervals &LIS);
+  static std::unique_ptr<CFG>
+  build(MachineFunction &MF, const LiveIntervals &LIS, MachineLoopInfo *MLI);
 
 private:
   ControlFlowGraphBuilder(CFG &Cfg, MachineFunction &MF,
-                          const LiveIntervals &LIS)
-      : Cfg(Cfg), MF(MF), LIS(LIS) {}
+                          const LiveIntervals &LIS, MachineLoopInfo *MLI)
+      : Cfg(Cfg), MF(MF), LIS(LIS), MLI(MLI) {}
 
   void handleBasicBlock(const MachineBasicBlock &MBB);
   void handleMachineInstr(const MachineInstr &MI);
@@ -47,6 +48,7 @@ private:
   CFG &Cfg;
   const MachineFunction &MF;
   const LiveIntervals &LIS;
+  MachineLoopInfo *MLI = nullptr;
   CFG::BasicBlock *CurrentBlock = nullptr;
   DenseSet<const MachineInstr *> InstrToSkip;
 };

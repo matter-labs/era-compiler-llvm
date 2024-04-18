@@ -147,6 +147,7 @@ struct CFG {
     /// literal arguments. Literal arguments (like the literal string in
     /// ``datasize``) do not have a location on the stack, but are handled
     /// internally by the builtin's code generation function.
+    // TODO: figure out what to do with this.
     size_t Arguments = 0;
   };
 
@@ -182,21 +183,24 @@ struct CFG {
       BasicBlock *NonZero = nullptr;
       BasicBlock *Zero = nullptr;
       bool FallThrough = false;
+      BasicBlock *Header = nullptr;
     };
 
     struct Jump {
       BasicBlock *Target = nullptr;
       bool FallThrough = false;
+      BasicBlock *Header = nullptr;
     };
 
     struct FunctionReturn {
+      Stack RetValues;
       CFG::FunctionInfo *Info = nullptr;
     };
 
     struct Terminated {};
 
     const MachineBasicBlock *MBB;
-    DenseSet<BasicBlock *> Entries;
+    std::vector<BasicBlock *> Entries;
     std::vector<Operation> Operations;
     /// True, if the block is the beginning of a disconnected subgraph. That is,
     /// if no block that is reachable from this block is an ancestor of this
