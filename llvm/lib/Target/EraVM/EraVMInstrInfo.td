@@ -1187,19 +1187,17 @@ defm ROR  : ArithINonCommutable<39, "ror", rotr>;
 // Memory operations
 //===----------------------------------------------------------------------===//
 
-let mayLoad = 1, rs1 = 0 in {
+let mayLoad = 1 in {
 def LD1     : IUMA <41, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
                   "ld.1$cc\t$rs0, $rd0", []>;
 def LD1Inc  : IUMA <42, (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, cc:$cc),
                   "ld.1.inc$cc\t$rs0, $rd0, $rd1", []>;
-let rs0 = 0 in
 def LD1i    : IUMA < 141, (outs GR256:$rd0), (ins imm16:$addr, cc:$cc),
                   "ld.1$cc\t$addr, $rd0", []>;
 def LD2     : IUMA < 43, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
                   "ld.2$cc\t$rs0, $rd0", []>;
 def LD2Inc  : IUMA <44, (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, cc:$cc),
                   "ld.2.inc$cc\t$rs0, $rd0, $rd1", []>;
-let rs0 = 0 in
 def LD2i    : IUMA < 142, (outs GR256:$rd0), (ins imm16:$addr, cc:$cc),
                   "ld.2$cc\t$addr, $rd0", []>;
 def LD      : IUMA <45, (outs GR256:$rd0), (ins GRPTR:$rs0, cc:$cc),
@@ -1217,19 +1215,17 @@ def     : Pat<(load_heap imm16:$addr), (LD1i imm16:$addr, 0)>;
 def     : Pat<(load_heapaux GR256:$rs0), (LD2 GR256:$rs0, 0)>;
 def     : Pat<(load_heapaux imm16:$addr), (LD2i imm16:$addr, 0)>;
 
-let mayStore = 1, rd0 = 0 in {
+let mayStore = 1 in {
 def ST1     : IUMA <49, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
                   "st.1$cc\t$rs0, $rs1", []>;
 def ST1Inc  : IUMA <50, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
                   "st.1.inc$cc\t$rs0, $rs1, $rd0", []>;
-let rs0 = 0 in
 def ST1i  : IUMA < 144, (outs), (ins imm16:$addr, GR256:$rs1, cc:$cc),
                   "st.1$cc\t$addr, $rs1", []>;
 def ST2  : IUMA < 54, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
                   "st.2$cc\t$rs0, $rs1", []>;
 def ST2Inc  : IUMA <53, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
                   "st.2.inc$cc\t$rs0, $rs1, $rd0", []>;
-let rs0 = 0 in
 def ST2i  : IUMA < 154, (outs), (ins imm16:$addr, GR256:$rs1, cc:$cc),
                   "st.2$cc\t$addr, $rs1", []>;
 }
@@ -1304,10 +1300,8 @@ let hasSideEffects = 1 in {
 let hasPostISelHook = 1 in
 def CTXr_se : IContextR<46, (outs GR256:$rd0), (ins context_se_op:$cop, cc:$cc),
                         "context$cop$cc\t$rd0", []>;
-let rd0 = 0 in
 def CTXr_set : IContextR<52, (outs), (ins GR256:$rs0, context_se_op:$cop, cc:$cc),
                          "context$cop$cc\t$rs0", []>;
-let rd0 = 0 in
 def CTXr_se0 : IContextR<152, (outs), (ins context_se_op:$cop, cc:$cc),
                          "context$cop$cc", []>;
 }
@@ -1324,20 +1318,12 @@ def : Pat<(int_eravm_setu128 GR256:$rs0), (CTXr_set GR256:$rs0, 9, 0)>;
 def : Pat<(int_eravm_inctx), (CTXr_se0 10, 0)>;
 def : Pat<(int_eravm_setpubdataprice GR256:$rs0), (CTXr_set GR256:$rs0, 11, 0)>;
 
-let first = 0 in
 def SLDrr : ILogR<47, DstReg, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
                   "sload$cc\t$rs0, $rd0", []> {
-  bits<4> rd0;
-  let rs1 = 0;
-  let Inst{40-43} = rd0;
 }
 
-let first = 0 in
 def TLDrr : ILogR<471, DstReg, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
                   "tload$cc\t$rs0, $rd0", []> {
-  bits<4> rd0;
-  let rs1 = 0;
-  let Inst{40-43} = rd0;
 }
 //===----------------------------------------------------------------------===//
 // Fat Pointer
@@ -1345,7 +1331,7 @@ def TLDrr : ILogR<471, DstReg, (outs GR256:$rd0), (ins GR256:$rs0, cc:$cc),
 def : Pat<(load_storage GR256:$rs0), (SLDrr GR256:$rs0, 0)>;
 def : Pat<(load_transient GR256:$rs0), (TLDrr GR256:$rs0, 0)>;
 
-let hasSideEffects = 1, first = 0 in {
+let hasSideEffects = 1 in {
   def SSTr : ILogR<48, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
       "sstore$cc\t$rs0, $rs1", []>;
   def TSTr : ILogR<481, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
@@ -1371,14 +1357,12 @@ def EVTr : ILogR<50, DstNone, (outs), (ins GR256:$rs0, GR256:$rs1, first_op:$fir
 def : Pat<(int_eravm_event GR256:$rs0, GR256:$rs1, first_op:$first),
           (EVTr GR256:$rs0, GR256:$rs1, first_op:$first, 0)>;
 
-let hasSideEffects = 1, first = 0 in {
+let hasSideEffects = 1 in {
 def PCOMPr : ILogR<51, DstNone, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
                    "precompile$cc\t$rs0, $rs1, $rd0", []> {
-  let rs1 = 0;
 }
 def DECOMMITr : ILogR<511, DstNone, (outs GRPTR:$rd0), (ins GR256:$rs0, GR256:$rs1, cc:$cc),
                       "log.decommit$cc\t$rs0, $rs1, $rd0", []> {
-  let rs1 = 0;
 }
 }
 
