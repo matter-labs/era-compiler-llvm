@@ -77,6 +77,7 @@ add_llvm_target(EraVMCodeGen
   EraVMOptimizeSelectPostRA.cpp
   EraVMOptimizeSelectPreRA.cpp
   EraVMOptimizeStdLibCalls.cpp
+  EraVMPostCodegenPrepare.cpp
   EraVMRegisterInfo.cpp
   EraVMSHA3ConstFolding.cpp
   EraVMStackAddressConstantPropagation.cpp

@@ -62,68 +62,28 @@ bool EraVMCodegenPrepare::runOnFunction(Function &F) {
   std::vector<Instruction *> Replaced;
   for (auto &BB : F)
     for (auto &I : BB) {
-      switch (I.getOpcode()) {
-      default:
-        break;
-      case Instruction::ICmp: {
-        auto &Cmp = cast<ICmpInst>(I);
-        IRBuilder<> Builder(&I);
-        // unsigned cmp is ok
-        if (Cmp.isUnsigned())
-          break;
-        CmpInst::Predicate P = Cmp.getPredicate();
-        auto *CmpVal = dyn_cast<ConstantInt>(I.getOperand(1));
-        if (CmpVal &&
-            (CmpVal->getValue().isZero() || CmpVal->getValue().isOne())) {
-          unsigned NumBits = CmpVal->getType()->getIntegerBitWidth();
-          APInt Val = APInt(NumBits, -1, true).lshr(1);
-          if (P == CmpInst::ICMP_SLT)
-            P = CmpInst::ICMP_UGT;
-          else
-            break;
+      auto *Call = dyn_cast<CallInst>(&I);
+      if (!Call)
+        continue;
 
-          if (P == CmpInst::ICMP_UGT) {
-            auto *Val256 =
-                Builder.CreateZExt(Builder.getInt(Val), Builder.getIntNTy(256));
-            auto *Op256 =
-                Builder.CreateZExt(I.getOperand(0), Builder.getIntNTy(256));
-            auto *NewCmp = Builder.CreateICmp(P, Op256, Val256);
-            if (CmpVal->getValue().isOne()) {
-              auto *Cmp0 =
-                  Builder.CreateICmp(CmpInst::ICMP_EQ, Op256,
-                                     Builder.getInt(APInt(256, 0, false)));
-              NewCmp = Builder.CreateOr(NewCmp, Cmp0);
-            }
-            I.replaceAllUsesWith(NewCmp);
-            Replaced.push_back(&I);
-            Changed = true;
-          }
+      // TODO: CPR-1353 Move to the constant folding pass.
+      Function *Callee = Call->getCalledFunction();
+      if (!Callee && isa<BitCastOperator>(Call->getCalledOperand()))
+        Callee = dyn_cast<Function>(
+            cast<BitCastOperator>(Call->getCalledOperand())->getOperand(0));
+      if (Callee && Callee->hasName()) {
+        auto IsOpNZeroConst = [&Call](unsigned N) {
+          return isa<ConstantInt>(Call->getOperand(N)) &&
+                 cast<ConstantInt>(Call->getOperand(N))->isZero();
+        };
+        if ((Callee->getName() == "__memset_uma_as1" && IsOpNZeroConst(2)) ||
+            (Callee->getName() == "__memset_uma_as2" && IsOpNZeroConst(2)) ||
+            (Callee->getName() == "__small_store_as1" && IsOpNZeroConst(2)) ||
+            (Callee->getName() == "__small_store_as2" && IsOpNZeroConst(2)) ||
+            (Callee->getName() == "__small_store_as0" && IsOpNZeroConst(1))) {
+          Changed = true;
+          Replaced.push_back(&I);
         }
-        break;
-      }
-      case Instruction::Call: {
-        // TODO: CPR-1353 Move to the constant folding pass.
-        auto &Call = cast<CallInst>(I);
-        Function *Callee = Call.getCalledFunction();
-        if (!Callee && isa<BitCastOperator>(Call.getCalledOperand()))
-          Callee = dyn_cast<Function>(
-              cast<BitCastOperator>(Call.getCalledOperand())->getOperand(0));
-        if (Callee && Callee->hasName()) {
-          auto IsOpNZeroConst = [&Call](unsigned N) {
-            return isa<ConstantInt>(Call.getOperand(N)) &&
-                   cast<ConstantInt>(Call.getOperand(N))->isZero();
-          };
-          if ((Callee->getName() == "__memset_uma_as1" && IsOpNZeroConst(2)) ||
-              (Callee->getName() == "__memset_uma_as2" && IsOpNZeroConst(2)) ||
-              (Callee->getName() == "__small_store_as1" && IsOpNZeroConst(2)) ||
-              (Callee->getName() == "__small_store_as2" && IsOpNZeroConst(2)) ||
-              (Callee->getName() == "__small_store_as0" && IsOpNZeroConst(1))) {
-            Changed = true;
-            Replaced.push_back(&I);
-          }
-        }
-        break;
-      }
       }
     }
   for (auto *I : Replaced)

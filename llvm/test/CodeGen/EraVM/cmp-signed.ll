@@ -49,27 +49,9 @@ define i1 @sgt_not(i256 %a) {
 define i1 @slt_i8_1(i8 %a) {
 ; CHECK-LABEL: slt_i8_1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    shl.s 248, r1, r2
-; CHECK-NEXT:    and @CPI2_0[0], r2, r3
-; CHECK-NEXT:    sub.s 1, r0, r4
-; CHECK-NEXT:    sub.s! @CPI2_0[0], r3, r3
-; CHECK-NEXT:    add.ne r0, r0, r4
-; CHECK-NEXT:    shl.s 8, r4, r3
-; CHECK-NEXT:    or r1, r3, r1
-; CHECK-NEXT:    sub! 248, r0, r3
-; CHECK-NEXT:    add.ne r1, r0, r2
-; CHECK-NEXT:    add @CPI2_0[0], r0, r1
-; CHECK-NEXT:    sub! r2, r0, r3
-; CHECK-NEXT:    add r0, r0, r3
-; CHECK-NEXT:    add.lt r1, r0, r3
-; CHECK-NEXT:    and @CPI2_0[0], r2, r2
-; CHECK-NEXT:    sub! r2, r0, r4
-; CHECK-NEXT:    add.le r0, r0, r1
-; CHECK-NEXT:    sub.s! @CPI2_0[0], r2, r2
-; CHECK-NEXT:    add.ne r3, r0, r1
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub.s! 127, r1, r1
 ; CHECK-NEXT:    add 0, r0, r1
-; CHECK-NEXT:    add.ne 1, r0, r1
+; CHECK-NEXT:    add.gt 1, r0, r1
 ; CHECK-NEXT:    ret
   %ret = icmp slt i8 %a, 0
   ret i1 %ret
@@ -78,27 +60,12 @@ define i1 @slt_i8_1(i8 %a) {
 define i1 @slt_i8_2(i8 %a) {
 ; CHECK-LABEL: slt_i8_2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    shl.s 248, r1, r2
-; CHECK-NEXT:    and @CPI3_0[0], r2, r3
-; CHECK-NEXT:    sub.s 1, r0, r4
-; CHECK-NEXT:    sub.s! @CPI3_0[0], r3, r3
-; CHECK-NEXT:    add.ne r0, r0, r4
-; CHECK-NEXT:    shl.s 8, r4, r3
-; CHECK-NEXT:    or r1, r3, r1
-; CHECK-NEXT:    sub! 248, r0, r3
-; CHECK-NEXT:    add.ne r1, r0, r2
-; CHECK-NEXT:    add @CPI3_0[0], r0, r1
-; CHECK-NEXT:    sub.s! 1, r2, r3
-; CHECK-NEXT:    add r0, r0, r3
-; CHECK-NEXT:    add.lt r1, r0, r3
-; CHECK-NEXT:    and @CPI3_0[0], r2, r2
-; CHECK-NEXT:    sub! r2, r0, r4
-; CHECK-NEXT:    add.le r0, r0, r1
-; CHECK-NEXT:    sub.s! @CPI3_0[0], r2, r2
-; CHECK-NEXT:    add.ne r3, r0, r1
-; CHECK-NEXT:    sub! r1, r0, r1
-; CHECK-NEXT:    add 0, r0, r1
-; CHECK-NEXT:    add.ne 1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r2
+; CHECK-NEXT:    add 0, r0, r2
+; CHECK-NEXT:    add.eq 1, r0, r2
+; CHECK-NEXT:    sub.s! 127, r1, r1
+; CHECK-NEXT:    or.gt 1, r2, r2
+; CHECK-NEXT:    add r2, r0, r1
 ; CHECK-NEXT:    ret
   %ret = icmp slt i8 %a, 1
   ret i1 %ret
@@ -107,27 +74,12 @@ define i1 @slt_i8_2(i8 %a) {
 define i1 @slt_i8_3(i8 %a) {
 ; CHECK-LABEL: slt_i8_3:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    shl.s 248, r1, r2
-; CHECK-NEXT:    and @CPI4_0[0], r2, r3
-; CHECK-NEXT:    sub.s 1, r0, r4
-; CHECK-NEXT:    sub.s! @CPI4_0[0], r3, r3
-; CHECK-NEXT:    add.ne r0, r0, r4
-; CHECK-NEXT:    shl.s 8, r4, r3
-; CHECK-NEXT:    or r1, r3, r1
-; CHECK-NEXT:    sub! 248, r0, r3
-; CHECK-NEXT:    add.ne r1, r0, r2
-; CHECK-NEXT:    add @CPI4_0[0], r0, r1
-; CHECK-NEXT:    sub.s! 31, r2, r3
-; CHECK-NEXT:    add r0, r0, r3
-; CHECK-NEXT:    add.lt r1, r0, r3
-; CHECK-NEXT:    and @CPI4_0[0], r2, r2
-; CHECK-NEXT:    sub! r2, r0, r4
-; CHECK-NEXT:    add.le r0, r0, r1
-; CHECK-NEXT:    sub.s! @CPI4_0[0], r2, r2
-; CHECK-NEXT:    add.ne r3, r0, r1
-; CHECK-NEXT:    sub! r1, r0, r1
-; CHECK-NEXT:    add 0, r0, r1
-; CHECK-NEXT:    add.ne 1, r0, r1
+; CHECK-NEXT:    sub.s! 31, r1, r2
+; CHECK-NEXT:    add 0, r0, r2
+; CHECK-NEXT:    add.lt 1, r0, r2
+; CHECK-NEXT:    sub.s! 127, r1, r1
+; CHECK-NEXT:    or.gt 1, r2, r2
+; CHECK-NEXT:    add r2, r0, r1
 ; CHECK-NEXT:    ret
   %ret = icmp slt i8 %a, 31
   ret i1 %ret
@@ -136,29 +88,9 @@ define i1 @slt_i8_3(i8 %a) {
 define i1 @sgt_i8_1(i8 %a) {
 ; CHECK-LABEL: sgt_i8_1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    shl.s 248, r1, r2
-; CHECK-NEXT:    and @CPI5_0[0], r2, r3
-; CHECK-NEXT:    sub.s 1, r0, r4
-; CHECK-NEXT:    sub.s! @CPI5_0[0], r3, r3
-; CHECK-NEXT:    add r0, r0, r3
-; CHECK-NEXT:    add.eq r4, r0, r3
-; CHECK-NEXT:    shl.s 8, r3, r3
-; CHECK-NEXT:    or r1, r3, r1
-; CHECK-NEXT:    sub! 248, r0, r3
-; CHECK-NEXT:    add.ne r1, r0, r2
-; CHECK-NEXT:    add @CPI5_0[0], r0, r1
-; CHECK-NEXT:    sub! r2, r4, r3
-; CHECK-NEXT:    add r0, r0, r3
-; CHECK-NEXT:    add.gt r1, r0, r3
-; CHECK-NEXT:    and @CPI5_0[0], r2, r2
-; CHECK-NEXT:    sub.s! @CPI5_0[0], r2, r4
-; CHECK-NEXT:    add.ge r0, r0, r1
-; CHECK-NEXT:    xor @CPI5_0[0], r2, r2
-; CHECK-NEXT:    sub.s! @CPI5_0[0], r2, r2
-; CHECK-NEXT:    add.ne r3, r0, r1
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub.s! 128, r1, r1
 ; CHECK-NEXT:    add 0, r0, r1
-; CHECK-NEXT:    add.ne 1, r0, r1
+; CHECK-NEXT:    add.lt 1, r0, r1
 ; CHECK-NEXT:    ret
   %ret = icmp sgt i8 %a, -1
   ret i1 %ret
@@ -167,27 +99,13 @@ define i1 @sgt_i8_1(i8 %a) {
 define i1 @sgt_i8_2(i8 %a) {
 ; CHECK-LABEL: sgt_i8_2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    shl.s 248, r1, r2
-; CHECK-NEXT:    and @CPI6_0[0], r2, r3
-; CHECK-NEXT:    sub.s 1, r0, r4
-; CHECK-NEXT:    sub.s! @CPI6_0[0], r3, r3
-; CHECK-NEXT:    add.ne r0, r0, r4
-; CHECK-NEXT:    shl.s 8, r4, r3
-; CHECK-NEXT:    or r1, r3, r1
-; CHECK-NEXT:    sub! 248, r0, r3
-; CHECK-NEXT:    add.ne r1, r0, r2
-; CHECK-NEXT:    add @CPI6_0[0], r0, r1
-; CHECK-NEXT:    sub! r2, r0, r3
-; CHECK-NEXT:    add r0, r0, r3
-; CHECK-NEXT:    add.gt r1, r0, r3
-; CHECK-NEXT:    and @CPI6_0[0], r2, r2
-; CHECK-NEXT:    sub! r2, r0, r4
-; CHECK-NEXT:    add.ge r0, r0, r1
-; CHECK-NEXT:    sub.s! @CPI6_0[0], r2, r2
-; CHECK-NEXT:    add.ne r3, r0, r1
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r2
+; CHECK-NEXT:    add 0, r0, r2
+; CHECK-NEXT:    add.ne 1, r0, r2
+; CHECK-NEXT:    sub.s! 128, r1, r1
 ; CHECK-NEXT:    add 0, r0, r1
-; CHECK-NEXT:    add.ne 1, r0, r1
+; CHECK-NEXT:    add.lt 1, r0, r1
+; CHECK-NEXT:    and r1, r2, r1
 ; CHECK-NEXT:    ret
   %ret = icmp sgt i8 %a, 0
   ret i1 %ret
@@ -196,27 +114,13 @@ define i1 @sgt_i8_2(i8 %a) {
 define i1 @sgt_i8_3(i8 %a) {
 ; CHECK-LABEL: sgt_i8_3:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    shl.s 248, r1, r2
-; CHECK-NEXT:    and @CPI7_0[0], r2, r3
-; CHECK-NEXT:    sub.s 1, r0, r4
-; CHECK-NEXT:    sub.s! @CPI7_0[0], r3, r3
-; CHECK-NEXT:    add.ne r0, r0, r4
-; CHECK-NEXT:    shl.s 8, r4, r3
-; CHECK-NEXT:    or r1, r3, r1
-; CHECK-NEXT:    sub! 248, r0, r3
-; CHECK-NEXT:    add.ne r1, r0, r2
-; CHECK-NEXT:    add @CPI7_0[0], r0, r1
-; CHECK-NEXT:    sub.s! 31, r2, r3
-; CHECK-NEXT:    add r0, r0, r3
-; CHECK-NEXT:    add.gt r1, r0, r3
-; CHECK-NEXT:    and @CPI7_0[0], r2, r2
-; CHECK-NEXT:    sub! r2, r0, r4
-; CHECK-NEXT:    add.ge r0, r0, r1
-; CHECK-NEXT:    sub.s! @CPI7_0[0], r2, r2
-; CHECK-NEXT:    add.ne r3, r0, r1
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub.s! 31, r1, r2
+; CHECK-NEXT:    add 0, r0, r2
+; CHECK-NEXT:    add.gt 1, r0, r2
+; CHECK-NEXT:    sub.s! 128, r1, r1
 ; CHECK-NEXT:    add 0, r0, r1
-; CHECK-NEXT:    add.ne 1, r0, r1
+; CHECK-NEXT:    add.lt 1, r0, r1
+; CHECK-NEXT:    and r1, r2, r1
 ; CHECK-NEXT:    ret
   %ret = icmp sgt i8 %a, 31
   ret i1 %ret
@@ -225,18 +129,9 @@ define i1 @sgt_i8_3(i8 %a) {
 define i1 @slt_i256_1(i256 %a) {
 ; CHECK-LABEL: slt_i256_1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add @CPI8_0[0], r0, r2
-; CHECK-NEXT:    sub! r1, r0, r3
-; CHECK-NEXT:    add r0, r0, r3
-; CHECK-NEXT:    add.lt r2, r0, r3
-; CHECK-NEXT:    and @CPI8_0[0], r1, r1
-; CHECK-NEXT:    sub! r1, r0, r4
-; CHECK-NEXT:    add.le r0, r0, r2
 ; CHECK-NEXT:    sub.s! @CPI8_0[0], r1, r1
-; CHECK-NEXT:    add.ne r3, r0, r2
-; CHECK-NEXT:    sub! r2, r0, r1
 ; CHECK-NEXT:    add 0, r0, r1
-; CHECK-NEXT:    add.ne 1, r0, r1
+; CHECK-NEXT:    add.gt 1, r0, r1
 ; CHECK-NEXT:    ret
   %ret = icmp slt i256 %a, 0
   ret i1 %ret
@@ -245,18 +140,12 @@ define i1 @slt_i256_1(i256 %a) {
 define i1 @slt_i256_2(i256 %a) {
 ; CHECK-LABEL: slt_i256_2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add @CPI9_0[0], r0, r2
-; CHECK-NEXT:    sub.s! 1, r1, r3
-; CHECK-NEXT:    add r0, r0, r3
-; CHECK-NEXT:    add.lt r2, r0, r3
-; CHECK-NEXT:    and @CPI9_0[0], r1, r1
-; CHECK-NEXT:    sub! r1, r0, r4
-; CHECK-NEXT:    add.le r0, r0, r2
+; CHECK-NEXT:    sub! r1, r0, r2
+; CHECK-NEXT:    add 0, r0, r2
+; CHECK-NEXT:    add.eq 1, r0, r2
 ; CHECK-NEXT:    sub.s! @CPI9_0[0], r1, r1
-; CHECK-NEXT:    add.ne r3, r0, r2
-; CHECK-NEXT:    sub! r2, r0, r1
-; CHECK-NEXT:    add 0, r0, r1
-; CHECK-NEXT:    add.ne 1, r0, r1
+; CHECK-NEXT:    or.gt 1, r2, r2
+; CHECK-NEXT:    add r2, r0, r1
 ; CHECK-NEXT:    ret
   %ret = icmp slt i256 %a, 1
   ret i1 %ret
@@ -265,18 +154,12 @@ define i1 @slt_i256_2(i256 %a) {
 define i1 @slt_i256_3(i256 %a) {
 ; CHECK-LABEL: slt_i256_3:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add @CPI10_0[0], r0, r2
-; CHECK-NEXT:    sub.s! 31, r1, r3
-; CHECK-NEXT:    add r0, r0, r3
-; CHECK-NEXT:    add.lt r2, r0, r3
-; CHECK-NEXT:    and @CPI10_0[0], r1, r1
-; CHECK-NEXT:    sub! r1, r0, r4
-; CHECK-NEXT:    add.le r0, r0, r2
+; CHECK-NEXT:    sub.s! 31, r1, r2
+; CHECK-NEXT:    add 0, r0, r2
+; CHECK-NEXT:    add.lt 1, r0, r2
 ; CHECK-NEXT:    sub.s! @CPI10_0[0], r1, r1
-; CHECK-NEXT:    add.ne r3, r0, r2
-; CHECK-NEXT:    sub! r2, r0, r1
-; CHECK-NEXT:    add 0, r0, r1
-; CHECK-NEXT:    add.ne 1, r0, r1
+; CHECK-NEXT:    or.gt 1, r2, r2
+; CHECK-NEXT:    add r2, r0, r1
 ; CHECK-NEXT:    ret
   %ret = icmp slt i256 %a, 31
   ret i1 %ret
@@ -285,19 +168,9 @@ define i1 @slt_i256_3(i256 %a) {
 define i1 @sgt_i256_1(i256 %a) {
 ; CHECK-LABEL: sgt_i256_1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add @CPI11_0[0], r0, r3
-; CHECK-NEXT:    sub.s! @CPI11_1[0], r1, r2
-; CHECK-NEXT:    add r0, r0, r2
-; CHECK-NEXT:    add.gt r3, r0, r2
-; CHECK-NEXT:    and @CPI11_0[0], r1, r1
-; CHECK-NEXT:    sub.s! @CPI11_0[0], r1, r4
-; CHECK-NEXT:    add.ge r0, r0, r3
-; CHECK-NEXT:    xor @CPI11_0[0], r1, r1
 ; CHECK-NEXT:    sub.s! @CPI11_0[0], r1, r1
-; CHECK-NEXT:    add.ne r2, r0, r3
-; CHECK-NEXT:    sub! r3, r0, r1
 ; CHECK-NEXT:    add 0, r0, r1
-; CHECK-NEXT:    add.ne 1, r0, r1
+; CHECK-NEXT:    add.lt 1, r0, r1
 ; CHECK-NEXT:    ret
   %ret = icmp sgt i256 %a, -1
   ret i1 %ret
@@ -306,18 +179,13 @@ define i1 @sgt_i256_1(i256 %a) {
 define i1 @sgt_i256_2(i256 %a) {
 ; CHECK-LABEL: sgt_i256_2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add @CPI12_0[0], r0, r2
-; CHECK-NEXT:    sub! r1, r0, r3
-; CHECK-NEXT:    add r0, r0, r3
-; CHECK-NEXT:    add.gt r2, r0, r3
-; CHECK-NEXT:    and @CPI12_0[0], r1, r1
-; CHECK-NEXT:    sub! r1, r0, r4
-; CHECK-NEXT:    add.ge r0, r0, r2
+; CHECK-NEXT:    sub! r1, r0, r2
+; CHECK-NEXT:    add 0, r0, r2
+; CHECK-NEXT:    add.ne 1, r0, r2
 ; CHECK-NEXT:    sub.s! @CPI12_0[0], r1, r1
-; CHECK-NEXT:    add.ne r3, r0, r2
-; CHECK-NEXT:    sub! r2, r0, r1
 ; CHECK-NEXT:    add 0, r0, r1
-; CHECK-NEXT:    add.ne 1, r0, r1
+; CHECK-NEXT:    add.lt 1, r0, r1
+; CHECK-NEXT:    and r1, r2, r1
 ; CHECK-NEXT:    ret
   %ret = icmp sgt i256 %a, 0
   ret i1 %ret
@@ -326,18 +194,13 @@ define i1 @sgt_i256_2(i256 %a) {
 define i1 @sgt_i256_3(i256 %a) {
 ; CHECK-LABEL: sgt_i256_3:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add @CPI13_0[0], r0, r2
-; CHECK-NEXT:    sub.s! 31, r1, r3
-; CHECK-NEXT:    add r0, r0, r3
-; CHECK-NEXT:    add.gt r2, r0, r3
-; CHECK-NEXT:    and @CPI13_0[0], r1, r1
-; CHECK-NEXT:    sub! r1, r0, r4
-; CHECK-NEXT:    add.ge r0, r0, r2
+; CHECK-NEXT:    sub.s! 31, r1, r2
+; CHECK-NEXT:    add 0, r0, r2
+; CHECK-NEXT:    add.gt 1, r0, r2
 ; CHECK-NEXT:    sub.s! @CPI13_0[0], r1, r1
-; CHECK-NEXT:    add.ne r3, r0, r2
-; CHECK-NEXT:    sub! r2, r0, r1
 ; CHECK-NEXT:    add 0, r0, r1
-; CHECK-NEXT:    add.ne 1, r0, r1
+; CHECK-NEXT:    add.lt 1, r0, r1
+; CHECK-NEXT:    and r1, r2, r1
 ; CHECK-NEXT:    ret
   %ret = icmp sgt i256 %a, 31
   ret i1 %ret
