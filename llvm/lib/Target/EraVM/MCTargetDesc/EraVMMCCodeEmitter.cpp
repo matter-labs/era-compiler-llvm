@@ -42,10 +42,9 @@ class EraVMMCCodeEmitter : public MCCodeEmitter {
 public:
   EraVMMCCodeEmitter(MCContext &ctx, MCInstrInfo const &MCII) {}
 
-  unsigned getMachineOpValue(const MCInst &MI, const MCOperand &MO,
-                             const APInt &Opcode,
-                             SmallVectorImpl<MCFixup> &Fixups,
-                             const MCSubtargetInfo &STI) const;
+  uint64_t getBinaryCodeForInstr(const MCInst &MI,
+                                 SmallVectorImpl<MCFixup> &Fixups,
+                                 const MCSubtargetInfo &STI) const;
 
   void encodeInstruction(const MCInst &MI, raw_ostream &OS,
                          SmallVectorImpl<MCFixup> &Fixups,
@@ -55,12 +54,6 @@ public:
 void EraVMMCCodeEmitter::encodeInstruction(const MCInst &MI, raw_ostream &OS,
                                            SmallVectorImpl<MCFixup> &Fixups,
                                            const MCSubtargetInfo &STI) const {}
-
-unsigned EraVMMCCodeEmitter::getMachineOpValue(
-    const MCInst &MI, const MCOperand &MO, const APInt &Opcode,
-    SmallVectorImpl<MCFixup> &Fixups, const MCSubtargetInfo &STI) const {
-  return 0;
-}
 
 MCCodeEmitter *createEraVMMCCodeEmitter(const MCInstrInfo &MCII,
                                         MCContext &Ctx) {
