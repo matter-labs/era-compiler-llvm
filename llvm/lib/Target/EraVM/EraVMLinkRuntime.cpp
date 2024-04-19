@@ -170,6 +170,7 @@ PreservedAnalyses EraVMLinkRuntimePass::run(Module &M,
                                             ModuleAnalysisManager &AM) {
   FunctionAnalysisManager *FAM =
       &AM.getResult<FunctionAnalysisManagerModuleProxy>(M).getManager();
-  EraVMLinkRuntimeImpl(M, STDLIB_DATA, FAM, Level == OptimizationLevel::Oz);
+  if (EraVMLinkRuntimeImpl(M, STDLIB_DATA, FAM, Level == OptimizationLevel::Oz))
+    return PreservedAnalyses::none();
   return PreservedAnalyses::all();
 }
