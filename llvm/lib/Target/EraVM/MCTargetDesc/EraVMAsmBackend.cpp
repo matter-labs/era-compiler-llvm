@@ -179,6 +179,80 @@ MCAsmBackend *llvm::createEraVMMCAsmBackend(const Target &T,
   return new EraVMAsmBackend(STI, ELF::ELFOSABI_STANDALONE);
 }
 
+static void analyzeMCOperands(const MCInst &MI, unsigned Idx, unsigned &Reg,
+                              const MCSymbol *&Symbol, int &Addend) {
+  MCOperand BaseOp = MI.getOperand(Idx);
+  MCOperand AddendOp = MI.getOperand(Idx + 1);
+
+  if (BaseOp.isExpr() && AddendOp.isImm()) {
+    assert(AddendOp.getImm() == 0);
+    std::swap(BaseOp, AddendOp);
+  }
+
+  if (BaseOp.isReg()) {
+    Reg = BaseOp.getReg();
+  } else {
+    // TODO Refactor internal encoding used by the backend and
+    //      get rid of the "else" branch.
+    assert(BaseOp.isImm());
+    assert(BaseOp.getImm() == 0 || BaseOp.getImm() == 32);
+    Reg = 0; // NoRegister
+  }
+
+  Symbol = nullptr;
+  Addend = 0;
+
+  if (AddendOp.isImm())
+    Addend = AddendOp.getImm() & 0xFFFF;
+  else if (const auto *E = dyn_cast<MCSymbolRefExpr>(AddendOp.getExpr()))
+    Symbol = &E->getSymbol();
+  else if (const auto *E = dyn_cast<MCBinaryExpr>(AddendOp.getExpr())) {
+    assert(E->getOpcode() == MCBinaryExpr::Add);
+    const auto *Sym = dyn_cast<MCSymbolRefExpr>(E->getLHS());
+    const auto *Imm = dyn_cast<MCConstantExpr>(E->getRHS());
+    assert(Sym && Imm && "Expected symbol+imm expression");
+    Symbol = &Sym->getSymbol();
+    Addend = Imm->getValue() & 0xFFFF;
+  } else {
+    llvm_unreachable("Unexpected Addend operand");
+  }
+}
+
+void EraVM::analyzeMCOperandsCode(const MCInst &MI, unsigned Idx, unsigned &Reg,
+                                  const MCSymbol *&Symbol, int &Addend) {
+  analyzeMCOperands(MI, Idx, Reg, Symbol, Addend);
+}
+
+void EraVM::analyzeMCOperandsStack(const MCInst &MI, unsigned Idx, bool IsSrc,
+                                   unsigned &Reg, MemOperandKind &Kind,
+                                   const MCSymbol *&Symbol, int &Addend) {
+  const MCOperand &MarkerOp = MI.getOperand(Idx);
+  assert(MarkerOp.isImm() || MarkerOp.isReg());
+
+  if (MarkerOp.isImm()) {
+    Kind = OperandStackAbsolute;
+  } else {
+    switch (MarkerOp.getReg()) {
+    default:
+      llvm_unreachable("Expected R0 or SP as marker register operand");
+    case EraVM::R0:
+      Kind = IsSrc ? OperandStackSPDecrement : OperandStackSPIncrement;
+      break;
+    case EraVM::SP:
+      Kind = OperandStackSPRelative;
+      break;
+    }
+  }
+
+  analyzeMCOperands(MI, Idx + 1, Reg, Symbol, Addend);
+
+  // TODO Refactor internal encoding used by the backend
+  if (Reg == 0 && !Symbol)
+    Addend *= -1;
+
+  Addend &= 0xFFFF;
+}
+
 static MCOperand createStackOperandMarker(EraVM::MemOperandKind Kind) {
   switch (Kind) {
   default:

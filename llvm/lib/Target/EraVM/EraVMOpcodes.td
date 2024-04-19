@@ -57,29 +57,46 @@ class isStackOut<DstMode dst> {
 
 class OpcodeEncoding<bits<4> val> {
   bits<4> Value = val;
+
+  bits<11> SrcMultiplier = 0; // No in_any operand by default.
+  bits<11> DstMultiplier = 0; // No out_any operand by default.
+
+  // Index of the stackout operand in InOperandList of the instruction, if any.
+  bits<4> IndexOfStackDstUse = 0;
+  // Note that if an instruction has a stackin operand, it is always at
+  // the beginning of InOperandList.
 }
 
 def DirectEncoding     : OpcodeEncoding<0>; // opcode ⇒ opcode
+let SrcMultiplier = 4, DstMultiplier = 1, IndexOfStackDstUse = 2 in
 def NopEncoding        : OpcodeEncoding<1>; // opcode src dst ⇒ opcode + 4 × src + 1 × dst
+let SrcMultiplier = 8, DstMultiplier = 2, IndexOfStackDstUse = 2 in
 def ArithCommEncoding  : OpcodeEncoding<2>; // opcode src dst set_flags ⇒ opcode + 8 × src + 2 × dst + set_flags
+let SrcMultiplier = 16, DstMultiplier = 4, IndexOfStackDstUse = 2 in
 def ArithNCommEncoding : OpcodeEncoding<3>; // opcode src dst swap set_flags ⇒ opcode + 16 × src + 4 × dst + 2 × set_flags + swap
+let SrcMultiplier = 8, DstMultiplier = 2, IndexOfStackDstUse = 2 in
 def ArithPtrEncoding   : OpcodeEncoding<4>; // opcode src dst swap ⇒ opcode + 8 × src + 2 × dst + swap
 def FarCallEncoding    : OpcodeEncoding<5>; // opcode is_shard is_static ⇒ opcode + 2 × is_static + is_shard
 def RetEncoding        : OpcodeEncoding<6>; // opcode to_label ⇒ opcode + to_label
+let SrcMultiplier = 1 in
 def JumpEncoding       : OpcodeEncoding<7>; // opcode src ⇒ opcode + 1 × src
 def LoadPtrEncoding    : OpcodeEncoding<8>; // opcode inc ⇒ opcode + inc
+let SrcMultiplier = 10 in
 def HeapOpEncoding     : OpcodeEncoding<9>; // opcode src inc ⇒ opcode + 10 × src + inc
 def LogEncoding        : OpcodeEncoding<10>;// opcode is_first ⇒ opcode + is_first
 
 class ArithOpcEncoder<OpcodeEncoding encoding, bits<11> BaseOpcode,
                       SrcMode src, DstMode dst,
                       mod_swap swap, mod_set_flags set_flags> {
-  bits<11> Opcode =
-    !cond(!eq(encoding, NopEncoding)        : !add(BaseOpcode, !mul(4,  src.Value),         dst.Value),
-          !eq(encoding, ArithCommEncoding)  : !add(BaseOpcode, !mul(8,  src.Value), !mul(2, dst.Value), set_flags.Value),
-          !eq(encoding, ArithNCommEncoding) : !add(BaseOpcode, !mul(16, src.Value), !mul(4, dst.Value), !mul(set_flags.Value, 2), swap.Value),
-          !eq(encoding, ArithPtrEncoding)   : !add(BaseOpcode, !mul(8,  src.Value), !mul(2, dst.Value), swap.Value),
-          true: -1);
+  bits<11> Opcode = !add(
+      BaseOpcode,
+      !mul(encoding.SrcMultiplier, src.Value),
+      !mul(encoding.DstMultiplier, dst.Value),
+      !cond(!eq(encoding, NopEncoding)        : 0,
+            !eq(encoding, ArithCommEncoding)  : set_flags.Value,
+            !eq(encoding, ArithNCommEncoding) : !add(!mul(set_flags.Value, 2), swap.Value),
+            !eq(encoding, ArithPtrEncoding)   : swap.Value,
+            true: -1000000));
 }
 
 class FarCallOpcEncoder<bits<11> BaseOpcode,
@@ -117,11 +134,15 @@ class EraVMOpcode<string name, bits<11> opc, OpcodeEncoding encoding> {
   string Name = name;
   bits<11> BaseOpcode = opc;
   OpcodeEncoding Encoding = encoding;
+  bits<11> SrcMultiplier = Encoding.SrcMultiplier;
+  bits<11> DstMultiplier = Encoding.DstMultiplier;
+  bits<4> IndexOfStackDstUse = Encoding.IndexOfStackDstUse;
 }
 def EraVMOpcodesList : GenericTable {
   let FilterClass = "EraVMOpcode";
+  let CppTypeName = "EraVMOpcodeInfo";
   let Fields = [
-    "Name", "BaseOpcode",
+    "Name", "BaseOpcode", "SrcMultiplier", "DstMultiplier", "IndexOfStackDstUse",
   ];
   let PrimaryKey = [ "BaseOpcode" ];
   let PrimaryKeyName = "lookupEraVMOpcodeByValue";
