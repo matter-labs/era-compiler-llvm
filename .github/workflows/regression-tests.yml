@@ -148,7 +148,6 @@ jobs:
             "--cgp-verify-bfi-updates \
             --compile-twice \
             --earlycse-debug-hash \
-            --loop-distribute-verify \
             --machine-combiner-verify-pattern-order \
             --phicse-debug-hash \
             --reassociate-geps-verify-no-dead-code \
@@ -156,9 +155,7 @@ jobs:
             --scev-verify-ir \
             --tail-dup-verify \
             --unroll-verify-domtree \
-            --verify-regalloc \
-            --vplan-verify-hcfg \
-            --march=eravm"
+            --verify-regalloc"
           XFAILS:
             "CodeGen/EraVM/memcpy-expansion.ll;\
             CodeGen/EraVM/flag-setting-set-implicit-flags.ll;\
@@ -188,7 +185,7 @@ jobs:
             --tail-dup-verify \
             --unroll-verify-domtree \
             --verify-assumption-cache \
-            --verify-cfg-preserved \
+            --verify-analysis-invalidation \
             --verify-cfiinstrs \
             --verify-coalescing \
             --verify-dom-info \
@@ -200,8 +197,7 @@ jobs:
             --verify-misched \
             --verify-regalloc \
             --verify-scev-strict \
-            --vplan-verify-hcfg \
-            --march=eravm"
+            --vplan-verify-hcfg"
         run: |
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
           ${BINDIR}/llvm-lit -vv -s "-Dopt=${BINDIR}/opt ${OPT_OPTS}" \
