@@ -9,8 +9,8 @@ define i256 @__entry() {
   unreachable
 }
 
-define private void @__runtime() {
+define private ptr addrspace(3) @__runtime() {
 entry:
   %active_pointer_shrunken = call align 32 ptr addrspace(3) @llvm.eravm.ptr.shrink(ptr addrspace(3) align 32 undef, i256 65535)
-  unreachable
+  ret ptr addrspace(3) %active_pointer_shrunken
 }
