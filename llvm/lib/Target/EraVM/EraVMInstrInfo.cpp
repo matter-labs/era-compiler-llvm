@@ -1170,8 +1170,12 @@ static bool probabilityIsProfitable(unsigned TrueCycles, unsigned FalseCycles,
   // calculated.
   if (TrueCycles < 2 || FalseCycles > 2)
     return false;
-  return Probability >=
-         BranchProbability((TrueCycles - 1), (TrueCycles - FalseCycles + 1));
+
+  unsigned Numerator = TrueCycles - 1;
+  unsigned Denominator = TrueCycles - FalseCycles + 1;
+  if (!Denominator || Numerator > Denominator)
+    return false;
+  return Probability >= BranchProbability(Numerator, Denominator);
 }
 
 static bool isOptimizeForSize(MachineFunction &MF) {
