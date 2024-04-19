@@ -21,6 +21,7 @@ class formatted_raw_ostream;
 class Target;
 class MCAsmBackend;
 class MCCodeEmitter;
+class MCInstrDesc;
 class MCInstrInfo;
 class MCInstPrinter;
 class MCSubtargetInfo;
@@ -49,6 +50,40 @@ MCAsmBackend *createEraVMMCAsmBackend(const Target &T,
                                       const MCTargetOptions &Options);
 
 std::unique_ptr<MCObjectTargetWriter> createEraVMELFObjectWriter(uint8_t OSABI);
+
+/// Describes an entry of the tablegen-erated table (see EraVMOpcodesList
+/// defined in EraVMOpcodes.td).
+///
+/// For example, "add" instruction is described as `{"add", 25, 8, 2, 2}` since
+/// the opcode formula for "add" is
+///
+///     OpAdd src dst set_flags ⇒ 25 + 8 × src + 2 × dst + set_flags
+///
+/// and depending on the operand kinds the instructions used by the backend are
+/// * ADDrrr_s for "add r1, r2, r3" (no stack operands at all) with
+///   OutOperandList being `(outs GR256:$rd0)` and InOperandList being
+///   `(ins GR256:$rs0, GR256:$rs1, pred:$cc)`
+/// * ADDsrs_s for "add stack-[r1], r2, stack+=[r3+1]" (no distinction is made
+///   for different stack input and different stack output variants) with
+///   OutOperandList being `(outs)` (empty) and InOperandList being
+///   `(ins stackin:$src0, GR256:$rs1, stackout:$dst0, pred:$cc)`
+/// * etc.
+struct EraVMOpcodeInfo {
+  /// Opcode name (such as "add").
+  const char *Name;
+  /// Base value for 11-bit opcode field (such as 25 for add).
+  unsigned BaseOpcode;
+  /// Multiplier corresponding to "src" in opcode formula (such as 8 for add).
+  unsigned SrcMultiplier;
+  /// Multiplier corresponding to "dst" in opcode formula (such as 2 for add).
+  unsigned DstMultiplier;
+  /// Index of the stackout operand in InOperandList of the instruction, if any
+  /// (such as 2 for both add and mul).
+  ///
+  /// Note that the stackout operand is input operand of the instruction as it
+  /// provides an address to write the result to.
+  unsigned IndexOfStackDstUse;
+};
 
 namespace EraVM {
 
@@ -84,10 +119,36 @@ enum MemOperandKind {
   OperandStackSPIncrement,
 };
 
+void analyzeMCOperandsCode(const MCInst &MI, unsigned Idx, unsigned &Reg,
+                           const MCSymbol *&Symbol, int &Addend);
+
+void analyzeMCOperandsStack(const MCInst &MI, unsigned Idx, bool IsSrc,
+                            unsigned &Reg, MemOperandKind &Kind,
+                            const MCSymbol *&Symbol, int &Addend);
+
 void appendMCOperands(MCContext &Ctx, MCInst &MI, MemOperandKind Kind,
                       unsigned Reg, const MCSymbol *Symbol, int Addend);
-} // namespace EraVM
 
+// encode_src_mode / encode_dst_mode
+enum OperandModes {
+  ModeNotApplicable = -1, // no such operand
+  ModeReg = 0,            // SrcReg, DstReg
+  ModeSpMod = 1,          // SrcSpRelativePop, DstSpRelativePush
+  ModeSpRel = 2,          // SrcSpRelative, DstSpRelative
+  ModeStackAbs = 3,       // SrcStackAbsolute, DstStackAbsolute
+  NumDstModes = 4,
+  ModeImm = 4,  // SrcImm
+  ModeCode = 5, // SrcCodeAddr
+  NumSrcModes = 6,
+};
+
+const uint64_t EncodedOpcodeMask = UINT64_C(0x7ff);
+
+const EraVMOpcodeInfo *findOpcodeInfo(unsigned Opcode);
+const EraVMOpcodeInfo *analyzeEncodedOpcode(unsigned EncodedOpcode,
+                                            int &SrcMode, int &DstMode);
+
+} // namespace EraVM
 } // namespace llvm
 
 // Defines symbolic names for EraVM registers.

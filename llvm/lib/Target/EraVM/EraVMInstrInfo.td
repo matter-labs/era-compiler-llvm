@@ -170,7 +170,7 @@ def StackOutOperand : AsmOperandClass {
 
 def stackin : Operand<i256> {
   let PrintMethod = "printStackOperand<true>";
-  let EncoderMethod = "getStackOpValue";
+  let EncoderMethod = "getStackOpValue<true>";
   let ParserMatchClass = StackInOperand;
   let DecoderMethod = "DecodeStackOperand";
   let MIOperandInfo = (ops GRStackRefMarker, GR256, i16imm);
@@ -178,7 +178,7 @@ def stackin : Operand<i256> {
 
 def stackout : Operand<i256> {
   let PrintMethod = "printStackOperand<false>";
-  let EncoderMethod = "getStackOpValue";
+  let EncoderMethod = "getStackOpValue<false>";
   let ParserMatchClass = StackOutOperand;
   let DecoderMethod = "DecodeStackOperand";
   let MIOperandInfo = (ops GRStackRefMarker, GR256, i16imm);

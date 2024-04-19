@@ -268,6 +268,8 @@ class IForm <EraVMOpcode opcode,
   let Predicate = cc;
   let Opcode = opcode.BaseOpcode;
   let AsmString = !strconcat(opcode.Name, "${cc}", "\t", asmstr);
+
+  let UseLogicalOperandMappings = true;
 }
 
 // TODO: CPR-1360 SP change is currently only allowed in NOPs.
@@ -480,14 +482,15 @@ class Imr_r<EraVMOpcode opcode,
             string asmstr,
             list<dag> pattern>
   : IBinaryR<opcode, SrcCodeAddr, swap_operands, silent, outs, ins, asmstr, pattern> {
+  bits<20> src0;
   bits<4> rs1;
-  bits<16> src0;
 
   let OperandAddrMode = OpndCR.Value;
   let OperandAM = 2;
 
+  let Src0 = src0{3-0};
+  let Imm0 = src0{19-4};
   let Src1 = rs1;
-  let Imm0 = src0;
 }
 
 class Isr_r<EraVMOpcode opcode,
@@ -602,14 +605,15 @@ class Imr_s<EraVMOpcode opcode,
             string asmstr,
             list<dag> pattern>
   : IBinaryS<opcode, SrcCodeAddr, swap_operands, silent, outs, ins, asmstr, pattern> {
+  bits<20> src0;
   bits<4> rs1;
-  bits<16> src0;
 
   let OperandAddrMode = OpndCR.Value;
   let OperandAM = 2;
 
+  let Src0 = src0{3-0};
+  let Imm0 = src0{19-4};
   let Src1 = rs1;
-  let Imm0 = src0;
 }
 
 class Isr_s<EraVMOpcode opcode,

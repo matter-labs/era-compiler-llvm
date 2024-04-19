@@ -79,3 +79,38 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTargetMC() {
                                                createEraVMObjectTargetStreamer);
   TargetRegistry::RegisterAsmTargetStreamer(T, createEraVMTargetAsmStreamer);
 }
+
+#define GET_EraVMOpcodesList_IMPL
+#include "EraVMGenSearchableTables.inc"
+
+#define GET_INSTRINFO_LOGICAL_OPERAND_SIZE_MAP
+#include "EraVMGenInstrInfo.inc"
+
+const EraVMOpcodeInfo *llvm::EraVM::findOpcodeInfo(unsigned Opcode) {
+  auto Table = ArrayRef(EraVMOpcodesList);
+  const auto *It =
+      std::upper_bound(Table.begin(), Table.end(), Opcode,
+                       [](unsigned LHS, const EraVMOpcodeInfo &RHS) {
+                         return LHS < RHS.BaseOpcode;
+                       });
+  assert(It != Table.begin() && "Was \"<invalid>\" sentinel removed?");
+  --It;
+
+  return It;
+}
+
+const EraVMOpcodeInfo *EraVM::analyzeEncodedOpcode(unsigned EncodedOpcode,
+                                                   int &SrcMode, int &DstMode) {
+  const EraVMOpcodeInfo *Info = findOpcodeInfo(EncodedOpcode);
+  int OpcodeDelta = EncodedOpcode - Info->BaseOpcode;
+
+  SrcMode = ModeNotApplicable;
+  DstMode = ModeNotApplicable;
+
+  if (Info->SrcMultiplier)
+    SrcMode = (OpcodeDelta / Info->SrcMultiplier) % NumSrcModes;
+  if (Info->DstMultiplier)
+    DstMode = (OpcodeDelta / Info->DstMultiplier) % NumDstModes;
+
+  return Info;
+}
