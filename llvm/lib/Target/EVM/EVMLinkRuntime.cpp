@@ -110,6 +110,7 @@ ModulePass *llvm::createEVMLinkRuntimePass() { return new EVMLinkRuntime(); }
 
 PreservedAnalyses EVMLinkRuntimePass::run(Module &M,
                                           ModuleAnalysisManager &AM) {
-  EVMLinkRuntimeImpl(M, STDLIB_DATA);
+  if (EVMLinkRuntimeImpl(M, STDLIB_DATA))
+    return PreservedAnalyses::none();
   return PreservedAnalyses::all();
 }
