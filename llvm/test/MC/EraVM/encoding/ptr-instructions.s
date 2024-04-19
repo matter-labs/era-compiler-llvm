@@ -1,0 +1,112 @@
+; RUN: llvm-mc -arch=eravm --show-encoding < %s | FileCheck %s
+
+  .text
+foo:
+
+; mnemonics (incl. ".s" modifier)
+  ptr.add       r1, r2, r3
+  ptr.sub       r1, r2, r3
+  ptr.shrink    r1, r2, r3
+  ptr.pack      r1, r2, r3
+  ptr.add.s     42, r2, r3
+  ptr.sub.s     42, r2, r3
+  ptr.shrink.s  42, r2, r3
+  ptr.pack.s    42, r2, r3
+
+; operands (non-swapped version: 4 src modes x 4 dst modes)
+  ptr.add       r1, r2, r3
+  ptr.add       stack[r1 + 1], r2, r3
+  ptr.add       stack-[r1 + 1], r2, r3
+  ptr.add       stack-=[r1 + 1], r2, r3
+  ptr.add       r1, r2, stack[r3 + 1]
+  ptr.add       stack[r1 + 1], r2, stack[r3 + 1]
+  ptr.add       stack-[r1 + 1], r2, stack[r3 + 1]
+  ptr.add       stack-=[r1 + 1], r2, stack[r3 + 1]
+  ptr.add       r1, r2, stack-[r3 + 1]
+  ptr.add       stack[r1 + 1], r2, stack-[r3 + 1]
+  ptr.add       stack-[r1 + 1], r2, stack-[r3 + 1]
+  ptr.add       stack-=[r1 + 1], r2, stack-[r3 + 1]
+  ptr.add       r1, r2, stack+=[r3 + 1]
+  ptr.add       stack[r1 + 1], r2, stack+=[r3 + 1]
+  ptr.add       stack-[r1 + 1], r2, stack+=[r3 + 1]
+  ptr.add       stack-=[r1 + 1], r2, stack+=[r3 + 1]
+
+; operands (swapped version: 6 src modes x 4 dst modes)
+  ptr.add.s    r1, r2, r3
+  ptr.add.s    42, r2, r3
+  ptr.add.s    stack[r1 + 1], r2, r3
+  ptr.add.s    stack-[r1 + 1], r2, r3
+  ptr.add.s    stack-=[r1 + 1], r2, r3
+  ptr.add.s    code[r1 + 1], r2, r3
+  ptr.add.s    r1, r2, stack[r3 + 1]
+  ptr.add.s    42, r2, stack[r3 + 1]
+  ptr.add.s    stack[r1 + 1], r2, stack[r3 + 1]
+  ptr.add.s    stack-[r1 + 1], r2, stack[r3 + 1]
+  ptr.add.s    stack-=[r1 + 1], r2, stack[r3 + 1]
+  ptr.add.s    code[r1 + 1], r2, stack[r3 + 1]
+  ptr.add.s    r1, r2, stack-[r3 + 1]
+  ptr.add.s    42, r2, stack-[r3 + 1]
+  ptr.add.s    stack[r1 + 1], r2, stack-[r3 + 1]
+  ptr.add.s    stack-[r1 + 1], r2, stack-[r3 + 1]
+  ptr.add.s    stack-=[r1 + 1], r2, stack-[r3 + 1]
+  ptr.add.s    code[r1 + 1], r2, stack-[r3 + 1]
+  ptr.add.s    r1, r2, stack+=[r3 + 1]
+  ptr.add.s    42, r2, stack+=[r3 + 1]
+  ptr.add.s    stack[r1 + 1], r2, stack+=[r3 + 1]
+  ptr.add.s    stack-[r1 + 1], r2, stack+=[r3 + 1]
+  ptr.add.s    stack-=[r1 + 1], r2, stack+=[r3 + 1]
+  ptr.add.s    code[r1 + 1], r2, stack+=[r3 + 1]
+
+; CHECK:  .text
+; CHECK:foo:
+
+; CHECK:  ptr.add       r1, r2, r3              ; encoding: [0x00,0x00,0x00,0x00,0x03,0x21,0x03,0x4f]
+; CHECK:  ptr.sub       r1, r2, r3              ; encoding: [0x00,0x00,0x00,0x00,0x03,0x21,0x03,0x7f]
+; CHECK:  ptr.shrink    r1, r2, r3              ; encoding: [0x00,0x00,0x00,0x00,0x03,0x21,0x03,0xdf]
+; CHECK:  ptr.pack      r1, r2, r3              ; encoding: [0x00,0x00,0x00,0x00,0x03,0x21,0x03,0xaf]
+; CHECK:  ptr.add.s     42, r2, r3              ; encoding: [0x00,0x00,0x00,0x2a,0x03,0x20,0x03,0x70]
+; CHECK:  ptr.sub.s     42, r2, r3              ; encoding: [0x00,0x00,0x00,0x2a,0x03,0x20,0x03,0xa0]
+; CHECK:  ptr.shrink.s  42, r2, r3              ; encoding: [0x00,0x00,0x00,0x2a,0x03,0x20,0x04,0x00]
+; CHECK:  ptr.pack.s    42, r2, r3              ; encoding: [0x00,0x00,0x00,0x2a,0x03,0x20,0x03,0xd0]
+
+; CHECK:  ptr.add       r1, r2, r3                           ; encoding: [0x00,0x00,0x00,0x00,0x03,0x21,0x03,0x4f]
+; CHECK:  ptr.add       stack[1 + r1], r2, r3                ; encoding: [0x00,0x00,0x00,0x01,0x03,0x21,0x03,0x67]
+; CHECK:  ptr.add       stack-[1 + r1], r2, r3               ; encoding: [0x00,0x00,0x00,0x01,0x03,0x21,0x03,0x5f]
+; CHECK:  ptr.add       stack-=[1 + r1], r2, r3              ; encoding: [0x00,0x00,0x00,0x01,0x03,0x21,0x03,0x57]
+; CHECK:  ptr.add       r1, r2, stack[1 + r3]                ; encoding: [0x00,0x01,0x00,0x00,0x03,0x21,0x03,0x55]
+; CHECK:  ptr.add       stack[1 + r1], r2, stack[1 + r3]     ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x6d]
+; CHECK:  ptr.add       stack-[1 + r1], r2, stack[1 + r3]    ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x65]
+; CHECK:  ptr.add       stack-=[1 + r1], r2, stack[1 + r3]   ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x5d]
+; CHECK:  ptr.add       r1, r2, stack-[1 + r3]               ; encoding: [0x00,0x01,0x00,0x00,0x03,0x21,0x03,0x53]
+; CHECK:  ptr.add       stack[1 + r1], r2, stack-[1 + r3]    ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x6b]
+; CHECK:  ptr.add       stack-[1 + r1], r2, stack-[1 + r3]   ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x63]
+; CHECK:  ptr.add       stack-=[1 + r1], r2, stack-[1 + r3]  ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x5b]
+; CHECK:  ptr.add       r1, r2, stack+=[1 + r3]              ; encoding: [0x00,0x01,0x00,0x00,0x03,0x21,0x03,0x51]
+; CHECK:  ptr.add       stack[1 + r1], r2, stack+=[1 + r3]   ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x69]
+; CHECK:  ptr.add       stack-[1 + r1], r2, stack+=[1 + r3]  ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x61]
+; CHECK:  ptr.add       stack-=[1 + r1], r2, stack+=[1 + r3] ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x59]
+
+; CHECK:  ptr.add.s     r1, r2, r3                           ; encoding: [0x00,0x00,0x00,0x00,0x03,0x21,0x03,0x50]
+; CHECK:  ptr.add.s     42, r2, r3                           ; encoding: [0x00,0x00,0x00,0x2a,0x03,0x20,0x03,0x70]
+; CHECK:  ptr.add.s     stack[1 + r1], r2, r3                ; encoding: [0x00,0x00,0x00,0x01,0x03,0x21,0x03,0x68]
+; CHECK:  ptr.add.s     stack-[1 + r1], r2, r3               ; encoding: [0x00,0x00,0x00,0x01,0x03,0x21,0x03,0x60]
+; CHECK:  ptr.add.s     stack-=[1 + r1], r2, r3              ; encoding: [0x00,0x00,0x00,0x01,0x03,0x21,0x03,0x58]
+; CHECK:  ptr.add.s     code[r1+1], r2, r3                   ; encoding: [0x00,0x00,0x00,0x01,0x03,0x21,0x03,0x78]
+; CHECK:  ptr.add.s     r1, r2, stack[1 + r3]                ; encoding: [0x00,0x01,0x00,0x00,0x03,0x21,0x03,0x56]
+; CHECK:  ptr.add.s     42, r2, stack[1 + r3]                ; encoding: [0x00,0x01,0x00,0x2a,0x03,0x20,0x03,0x76]
+; CHECK:  ptr.add.s     stack[1 + r1], r2, stack[1 + r3]     ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x6e]
+; CHECK:  ptr.add.s     stack-[1 + r1], r2, stack[1 + r3]    ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x66]
+; CHECK:  ptr.add.s     stack-=[1 + r1], r2, stack[1 + r3]   ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x5e]
+; CHECK:  ptr.add.s     code[r1+1], r2, stack[1 + r3]        ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x7e]
+; CHECK:  ptr.add.s     r1, r2, stack-[1 + r3]               ; encoding: [0x00,0x01,0x00,0x00,0x03,0x21,0x03,0x54]
+; CHECK:  ptr.add.s     42, r2, stack-[1 + r3]               ; encoding: [0x00,0x01,0x00,0x2a,0x03,0x20,0x03,0x74]
+; CHECK:  ptr.add.s     stack[1 + r1], r2, stack-[1 + r3]    ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x6c]
+; CHECK:  ptr.add.s     stack-[1 + r1], r2, stack-[1 + r3]   ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x64]
+; CHECK:  ptr.add.s     stack-=[1 + r1], r2, stack-[1 + r3]  ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x5c]
+; CHECK:  ptr.add.s     code[r1+1], r2, stack-[1 + r3]       ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x7c]
+; CHECK:  ptr.add.s     r1, r2, stack+=[1 + r3]              ; encoding: [0x00,0x01,0x00,0x00,0x03,0x21,0x03,0x52]
+; CHECK:  ptr.add.s     42, r2, stack+=[1 + r3]              ; encoding: [0x00,0x01,0x00,0x2a,0x03,0x20,0x03,0x72]
+; CHECK:  ptr.add.s     stack[1 + r1], r2, stack+=[1 + r3]   ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x6a]
+; CHECK:  ptr.add.s     stack-[1 + r1], r2, stack+=[1 + r3]  ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x62]
+; CHECK:  ptr.add.s     stack-=[1 + r1], r2, stack+=[1 + r3] ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x5a]
+; CHECK:  ptr.add.s     code[r1+1], r2, stack+=[1 + r3]      ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x7a]
