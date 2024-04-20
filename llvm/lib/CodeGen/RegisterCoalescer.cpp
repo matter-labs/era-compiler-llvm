@@ -3536,6 +3536,10 @@ bool RegisterCoalescer::isHighCostLiveInterval(LiveInterval &LI) {
 }
 
 bool RegisterCoalescer::joinVirtRegs(CoalescerPair &CP) {
+  // begin EraVM
+  // FIXME iz experiment: try to fix cross-class copying losing pointer tag
+  if (CP.isCrossClass()) return false;
+  // end EraVM ---
   SmallVector<VNInfo*, 16> NewVNInfo;
   LiveInterval &RHS = LIS->getInterval(CP.getSrcReg());
   LiveInterval &LHS = LIS->getInterval(CP.getDstReg());
