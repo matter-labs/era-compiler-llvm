@@ -1,4 +1,5 @@
 ; RUN: llc -O3 -debug-pass=Structure < %s -o /dev/null 2>&1 | FileCheck %s
+target triple = "eravm"
 
 ; REQUIRES: asserts
 
