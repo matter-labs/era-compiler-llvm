@@ -9,7 +9,7 @@ declare { i256, i1 } @llvm.usub.with.overflow.i256(i256, i256)
 define i256 @test_large_imm1(i256 %a) {
 ; CHECK-LABEL: test_large_imm1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI0_1[0], r1, r2
+; CHECK-NEXT:    sub.s! @CPI0_1[0], r1, r0
 ; CHECK-NEXT:    sub.lt @CPI0_0[0], r1, r1
 ; CHECK-NEXT:    ret
   %sub = sub i256 26959946660873538059280334323183841250350249843923952699046031785980, %a
@@ -21,7 +21,7 @@ define i256 @test_large_imm1(i256 %a) {
 define i256 @test_large_imm2(i256 %a) {
 ; CHECK-LABEL: test_large_imm2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI1_1[0], r1, r2
+; CHECK-NEXT:    sub.s! @CPI1_1[0], r1, r0
 ; CHECK-NEXT:    sub.ge @CPI1_0[0], r1, r1
 ; CHECK-NEXT:    ret
   %sub = sub i256 26959946660873538059280334323183841250350249843923952699046031785980, %a
@@ -33,7 +33,7 @@ define i256 @test_large_imm2(i256 %a) {
 define i256 @test_small_imm1(i256 %a) {
 ; CHECK-LABEL: test_small_imm1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI2_0[0], r1, r2
+; CHECK-NEXT:    sub.s! @CPI2_0[0], r1, r0
 ; CHECK-NEXT:    sub.lt 10, r1, r1
 ; CHECK-NEXT:    ret
   %sub = sub i256 10, %a
@@ -45,7 +45,7 @@ define i256 @test_small_imm1(i256 %a) {
 define i256 @test_small_imm2(i256 %a) {
 ; CHECK-LABEL: test_small_imm2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI3_0[0], r1, r2
+; CHECK-NEXT:    sub.s! @CPI3_0[0], r1, r0
 ; CHECK-NEXT:    sub.ge 10, r1, r1
 ; CHECK-NEXT:    ret
   %sub = sub i256 10, %a
@@ -82,7 +82,7 @@ define i256 @test_reg2(i256 %a, i256 %b) {
 define i256 @test_reg1_fold_cond_of(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: test_reg1_fold_cond_of:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub! r3, r4, r3
+; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    sub.lt r1, r2, r1
 ; CHECK-NEXT:    ret
   %sub = sub i256 %a, %b
@@ -95,7 +95,7 @@ define i256 @test_reg1_fold_cond_of(i256 %a, i256 %b, i256 %x, i256 %y) {
 define i256 @test_reg2_fold_cond_of(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: test_reg2_fold_cond_of:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub! r3, r4, r3
+; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    sub.ge r1, r2, r1
 ; CHECK-NEXT:    ret
   %sub = sub i256 %a, %b

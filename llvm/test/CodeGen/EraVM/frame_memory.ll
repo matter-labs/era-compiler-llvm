@@ -36,7 +36,7 @@ define void @store_to_frame_select(i256 %par, i1 %flag) nounwind {
 ; CHECK: sub.s 2, r4, r4
 ; CHECK: shl.s 5, r4, r4
 ; the select part
-; CHECK: sub! r2, r0, r2
+; CHECK: sub! r2, r0, r0
 ; CHECK: add.eq r3, r0, r4
 ; store
 ; CHECK: add r1, r0, stack[r2]

@@ -7,7 +7,7 @@ target triple = "eravm"
 define i256 @test_pos(i256 %arg) {
 ; CHECK-LABEL: test_pos:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r0, r2
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB0_1
 ; CHECK-NEXT:  ; %bb.2: ; %loop-bb1.preheader
 ; CHECK-NEXT:    add r0, r0, r8
@@ -20,11 +20,11 @@ define i256 @test_pos(i256 %arg) {
 ; CHECK-NEXT:    ; in Loop: Header=BB0_4 Depth=1
 ; CHECK-NEXT:    add r2, r9, r2
 ; CHECK-NEXT:    add 1, r8, r8
-; CHECK-NEXT:    sub! r8, r1, r9
+; CHECK-NEXT:    sub! r8, r1, r0
 ; CHECK-NEXT:    jump.eq @.BB0_3
 ; CHECK-NEXT:  .BB0_4: ; %loop-bb1
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    sub.s! 3, r8, r9
+; CHECK-NEXT:    sub.s! 3, r8, r0
 ; CHECK-NEXT:    add 100, r0, r9
 ; CHECK-NEXT:    jump.le @JTI0_0[r8]
 ; CHECK-NEXT:    jump @.BB0_9
@@ -48,12 +48,12 @@ define i256 @test_pos(i256 %arg) {
 ; CHECK-NEXT:    add r2, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:    .rodata
-; CHECK-NEXT:    .p2align 5
+; CHECK-NEXT:    .p2align 5, 0x0
 ; CHECK-NEXT:  JTI0_0:
-; CHECK-NEXT:  .cell @.BB0_5
-; CHECK-NEXT:  .cell @.BB0_6
-; CHECK-NEXT:  .cell @.BB0_7
-; CHECK-NEXT:  .cell @.BB0_8
+; CHECK-NEXT:    .cell @.BB0_5
+; CHECK-NEXT:    .cell @.BB0_6
+; CHECK-NEXT:    .cell @.BB0_7
+; CHECK-NEXT:    .cell @.BB0_8
 entry:
   %cmp1 = icmp eq i256 %arg, 0
   br i1 %cmp1, label %exit, label %loop-bb1
@@ -96,7 +96,7 @@ loop-bb6:
 define i256 @test_neg(i256 %arg) {
 ; CHECK-LABEL: test_neg:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r0, r2
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB1_1
 ; CHECK-NEXT:  ; %bb.2: ; %loop-bb1.preheader
 ; CHECK-NEXT:    add r0, r0, r8
@@ -109,11 +109,11 @@ define i256 @test_neg(i256 %arg) {
 ; CHECK-NEXT:    ; in Loop: Header=BB1_4 Depth=1
 ; CHECK-NEXT:    add r2, r9, r2
 ; CHECK-NEXT:    add 1, r8, r8
-; CHECK-NEXT:    sub! r8, r1, r9
+; CHECK-NEXT:    sub! r8, r1, r0
 ; CHECK-NEXT:    jump.eq @.BB1_3
 ; CHECK-NEXT:  .BB1_4: ; %loop-bb1
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    sub.s! 3, r8, r9
+; CHECK-NEXT:    sub.s! 3, r8, r0
 ; CHECK-NEXT:    add @CPI1_0[0], r0, r9
 ; CHECK-NEXT:    jump.le @JTI1_0[r8]
 ; CHECK-NEXT:    jump @.BB1_9
@@ -137,12 +137,12 @@ define i256 @test_neg(i256 %arg) {
 ; CHECK-NEXT:    add r2, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:    .rodata
-; CHECK-NEXT:    .p2align 5
+; CHECK-NEXT:    .p2align 5, 0x0
 ; CHECK-NEXT:  JTI1_0:
-; CHECK-NEXT:  .cell @.BB1_5
-; CHECK-NEXT:  .cell @.BB1_6
-; CHECK-NEXT:  .cell @.BB1_7
-; CHECK-NEXT:  .cell @.BB1_8
+; CHECK-NEXT:    .cell @.BB1_5
+; CHECK-NEXT:    .cell @.BB1_6
+; CHECK-NEXT:    .cell @.BB1_7
+; CHECK-NEXT:    .cell @.BB1_8
 entry:
   %cmp1 = icmp eq i256 %arg, 0
   br i1 %cmp1, label %exit, label %loop-bb1
