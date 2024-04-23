@@ -7,7 +7,7 @@ target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 define i256 @selsrr(i1 %cond, ptr %s, i256 %v1) {
 ; CHECK-LABEL: selsrr:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    shr.s 5, r2, r1
 ; CHECK-NEXT:    add.ne stack[r1], r0, r3
 ; CHECK-NEXT:    add r3, r0, r1
@@ -20,7 +20,7 @@ define i256 @selsrr(i1 %cond, ptr %s, i256 %v1) {
 define i256 @selrsr(i1 %cond, ptr %s, i256 %v1) {
 ; CHECK-LABEL: selrsr:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    shr.s 5, r2, r1
 ; CHECK-NEXT:    add.eq stack[r1], r0, r3
 ; CHECK-NEXT:    add r3, r0, r1
@@ -33,7 +33,7 @@ define i256 @selrsr(i1 %cond, ptr %s, i256 %v1) {
 define i256 @selsir(i1 %cond, ptr %s) {
 ; CHECK-LABEL: selsir:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    shr.s 5, r2, r2
 ; CHECK-NEXT:    add 12345, r0, r1
 ; CHECK-NEXT:    add.ne stack[r2], r0, r1
@@ -46,7 +46,7 @@ define i256 @selsir(i1 %cond, ptr %s) {
 define i256 @selisr(i1 %cond, ptr %s) {
 ; CHECK-LABEL: selisr:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    shr.s 5, r2, r2
 ; CHECK-NEXT:    add stack[r2], r0, r1
 ; CHECK-NEXT:    add.ne 12345, r0, r1
@@ -59,7 +59,7 @@ define i256 @selisr(i1 %cond, ptr %s) {
 define i256 @selssr(i1 %cond, ptr %s1, ptr %s2) {
 ; CHECK-LABEL: selssr:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    shr.s 5, r2, r2
 ; CHECK-NEXT:    shr.s 5, r3, r3
 ; CHECK-NEXT:    add stack[r3], r0, r1
@@ -74,7 +74,7 @@ define i256 @selssr(i1 %cond, ptr %s1, ptr %s2) {
 define i256 @selcrr(i1 %cond, ptr addrspace(4) %c, i256 %v1) {
 ; CHECK-LABEL: selcrr:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    shr.s 5, r2, r1
 ; CHECK-NEXT:    add.ne code[r1], r0, r3
 ; CHECK-NEXT:    add r3, r0, r1
@@ -87,7 +87,7 @@ define i256 @selcrr(i1 %cond, ptr addrspace(4) %c, i256 %v1) {
 define i256 @selrcr(i1 %cond, ptr addrspace(4) %c, i256 %v1) {
 ; CHECK-LABEL: selrcr:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    shr.s 5, r2, r1
 ; CHECK-NEXT:    add.eq code[r1], r0, r3
 ; CHECK-NEXT:    add r3, r0, r1
@@ -100,7 +100,7 @@ define i256 @selrcr(i1 %cond, ptr addrspace(4) %c, i256 %v1) {
 define i256 @selcir(i1 %cond, ptr addrspace(4) %c) {
 ; CHECK-LABEL: selcir:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    shr.s 5, r2, r2
 ; CHECK-NEXT:    add 12345, r0, r1
 ; CHECK-NEXT:    add.ne code[r2], r0, r1
@@ -113,7 +113,7 @@ define i256 @selcir(i1 %cond, ptr addrspace(4) %c) {
 define i256 @selicr(i1 %cond, ptr addrspace(4) %c) {
 ; CHECK-LABEL: selicr:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    shr.s 5, r2, r2
 ; CHECK-NEXT:    add code[r2], r0, r1
 ; CHECK-NEXT:    add.ne 12345, r0, r1
@@ -126,7 +126,7 @@ define i256 @selicr(i1 %cond, ptr addrspace(4) %c) {
 define i256 @selccr(i1 %cond, ptr addrspace(4) %c1, ptr addrspace(4) %c2) {
 ; CHECK-LABEL: selccr:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    shr.s 5, r2, r2
 ; CHECK-NEXT:    shr.s 5, r3, r3
 ; CHECK-NEXT:    add code[r3], r0, r1
@@ -141,7 +141,7 @@ define i256 @selccr(i1 %cond, ptr addrspace(4) %c1, ptr addrspace(4) %c2) {
 define i256 @selscr(i1 %cond, ptr %s, ptr addrspace(4) %c) {
 ; CHECK-LABEL: selscr:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    shr.s 5, r2, r2
 ; CHECK-NEXT:    shr.s 5, r3, r3
 ; CHECK-NEXT:    add code[r3], r0, r1
@@ -156,7 +156,7 @@ define i256 @selscr(i1 %cond, ptr %s, ptr addrspace(4) %c) {
 define i256 @selcsr(i1 %cond, ptr %s, ptr addrspace(4) %c) {
 ; CHECK-LABEL: selcsr:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    shr.s 5, r2, r2
 ; CHECK-NEXT:    shr.s 5, r3, r3
 ; CHECK-NEXT:    add stack[r2], r0, r1

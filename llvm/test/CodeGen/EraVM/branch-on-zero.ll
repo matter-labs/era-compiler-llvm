@@ -26,7 +26,7 @@ else:
 define i256 @lshr_not(i256 %a) {
 ; CHECK-LABEL: lshr_not:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub.s! 7, r1, r2
+; CHECK-NEXT:    sub.s! 7, r1, r0
 ; CHECK-NEXT:    shr.s.gt 4, r1, r1
 ; CHECK-NEXT:    add.le r0, r0, r1
 ; CHECK-NEXT:    ret
@@ -85,7 +85,7 @@ else:
 define i256 @add_not(i256 %a) {
 ; CHECK-LABEL: add_not:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub.s! 10, r1, r2
+; CHECK-NEXT:    sub.s! 10, r1, r0
 ; CHECK-NEXT:    add.ne 10, r1, r1
 ; CHECK-NEXT:    add.eq r0, r0, r1
 ; CHECK-NEXT:    ret
@@ -123,7 +123,7 @@ else:
 define i256 @sub_not(i256 %a) {
 ; CHECK-LABEL: sub_not:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub.s! 10, r1, r2
+; CHECK-NEXT:    sub.s! 10, r1, r0
 ; CHECK-NEXT:    add.ne 10, r1, r1
 ; CHECK-NEXT:    add.eq r0, r0, r1
 ; CHECK-NEXT:    ret

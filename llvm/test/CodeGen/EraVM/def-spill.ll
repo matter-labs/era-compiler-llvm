@@ -86,7 +86,7 @@ define i256 @spill_subs(i256 %a) nounwind {
 
 ; CHECK-LABEL: spill_mulr
 define i256 @spill_mulr(i256 %a, i256 %b) nounwind {
-  ; CHECK: mul r1, r2, stack-[1], r{{[0-9]}}
+  ; CHECK: mul r1, r2, stack-[1], r0
   %x = mul i256 %a, %b
   %c = call i256 @foo()
   %res = mul i256 %x, %c
@@ -115,7 +115,7 @@ define i256 @spill_mulc(i256 %a) nounwind {
 define i256 @spill_muls(i256 %a) nounwind {
   %slot = alloca i256
   %b = load i256, i256* %slot
-  ; CHECK: mul stack-[2], r1, stack-[1], r{{[0-9]}}
+  ; CHECK: mul stack-[2], r1, stack-[1], r0
   %x = mul i256 %a, %b
   %c = call i256 @foo()
   %res = mul i256 %x, %c
@@ -124,7 +124,7 @@ define i256 @spill_muls(i256 %a) nounwind {
 
 ; CHECK-LABEL: spill_divr
 define i256 @spill_divr(i256 %a, i256 %b) nounwind {
-  ; CHECK: div r1, r2, stack-[1], r{{[0-9]}}
+  ; CHECK: div r1, r2, stack-[1], r0
   %x = udiv i256 %a, %b
   %c = call i256 @foo()
   %res = udiv i256 %x, %c
@@ -133,7 +133,7 @@ define i256 @spill_divr(i256 %a, i256 %b) nounwind {
 
 ; CHECK-LABEL: spill_divi
 define i256 @spill_divi(i256 %a) nounwind {
-  ; CHECK: div.s 42, r1, stack-[1], r1
+  ; CHECK: div.s 42, r1, stack-[1], r0
   %x = udiv i256 %a, 42
   %c = call i256 @foo()
   %res = udiv i256 %x, %c
@@ -142,7 +142,7 @@ define i256 @spill_divi(i256 %a) nounwind {
 
 ; CHECK-LABEL: spill_divc
 define i256 @spill_divc(i256 %a) nounwind {
-  ; CHECK: div.s @CPI{{[0-9]+}}_0[0], r1, stack-[1], r1
+  ; CHECK: div.s @CPI{{[0-9]+}}_0[0], r1, stack-[1], r0
   %x = udiv i256 %a, 4200000000000000
   %c = call i256 @foo()
   %res = udiv i256 %x, %c
@@ -153,7 +153,7 @@ define i256 @spill_divc(i256 %a) nounwind {
 define i256 @spill_divs(i256 %a) nounwind {
   %slot = alloca i256
   %b = load i256, i256* %slot
-  ; CHECK: div.s stack-[2], r1, stack-[1], r{{[0-9]}}
+  ; CHECK: div.s stack-[2], r1, stack-[1], r0
   %x = udiv i256 %a, %b
   %c = call i256 @foo()
   %res = udiv i256 %x, %c

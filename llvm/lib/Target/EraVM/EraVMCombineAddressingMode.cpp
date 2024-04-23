@@ -430,6 +430,13 @@ bool EraVMCombineAddressingMode::combineDefSpill(MachineFunction &MF) {
       if (!isSpillInst(MI))
         continue;
       Register Spilled = EraVM::in0Iterator(MI)->getReg();
+
+      // If R0 is spilled, don't bother to try to combine it, since
+      // it is read only register that holds zero value. Also, R0 is
+      // used in cases where definitions are dead and not used.
+      if (Spilled == EraVM::R0)
+        continue;
+
       SmallPtrSet<MachineInstr *, 4> ReachingDefs;
       RDA->getGlobalReachingDefs(&MI, Spilled, ReachingDefs);
       // TODO: CPR-1225 While the transformation is local, multiple reaching def

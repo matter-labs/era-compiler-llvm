@@ -72,6 +72,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMOptimizeSelectPreRAPass(PR);
   initializeEraVMFoldSimilarInstructionsPass(PR);
   initializeEraVMPostCodegenPreparePass(PR);
+  initializeEraVMDeadRegisterDefinitionsPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -295,6 +296,7 @@ void EraVMPassConfig::addPreRegAlloc() {
     addPass(createEraVMHoistFlagSettingPass());
     addPass(&LiveVariablesID);
     addPass(createEraVMTieSelectOperandsPass());
+    addPass(createEraVMDeadRegisterDefinitionsPass());
   }
 }
 

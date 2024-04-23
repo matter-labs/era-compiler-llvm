@@ -6,7 +6,7 @@ target triple = "eravm"
 define i256 @test_hoist_1(i256 %0) {
 ; CHECK-LABEL: test_hoist_1
 ; CHECK:      .BB0_2:
-; CHECK:        and! 2, r1, r3
+; CHECK:        and! 2, r1, r0
 ; CHECK-NEXT:   shr.s 1, r1, r1
 ; CHECK-NEXT:   add 1, r2, r2
 ; CHECK-NEXT:   jump.ne @.BB0_2
@@ -32,7 +32,7 @@ define i256 @test_hoist_1(i256 %0) {
 define i256 @test_hoist_2(i256 %0, i256 %1, i256 addrspace(1)* %2, i256 addrspace(1)* %3) {
 ; CHECK-LABEL: test_hoist_2
 ; CHECK:      .BB1_5:
-; CHECK:        and! 2, r1, r8
+; CHECK:        and! 2, r1, r0
 ; CHECK-NEXT:   shr.s 1, r1, r1
 ; CHECK-NEXT:   add 1, r2, r2
 ; CHECK-NEXT:   add 1, r5, r5
@@ -75,8 +75,8 @@ define i256 @test_hoist_2(i256 %0, i256 %1, i256 addrspace(1)* %2, i256 addrspac
 define i256 @test_hoist_const(i256 %0) {
 ; CHECK-LABEL: test_hoist_const
 ; CHECK:      .BB2_2:
-; CHECK:        and! @CPI2_0[0], r1, r3
-; CHECK-NEXT:   mul @CPI2_0[0], r1, r1, r3
+; CHECK:        and! @CPI2_0[0], r1, r0
+; CHECK-NEXT:   mul @CPI2_0[0], r1, r1, r0
 ; CHECK-NEXT:   add 1, r2, r2
 ; CHECK-NEXT:   jump.ne @.BB2_2
 
@@ -101,7 +101,7 @@ define i256 @test_hoist_const(i256 %0) {
 define void @test_hoist_inc(i256 addrspace(1)* %dst, i256 %end) {
 ; CHECK-LABEL: test_hoist_inc
 ; CHECK:      .BB3_1:
-; CHECK:        sub! r1, r2, r4
+; CHECK:        sub! r1, r2, r0
 ; CHECK-NEXT:   st.1.inc r1, r3, r1
 ; CHECK-NEXT:   jump.ne @.BB3_1
 

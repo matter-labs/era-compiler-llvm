@@ -1,0 +1,27 @@
+# RUN: llc -x mir -run-pass=eravm-combine-addressing-mode -verify-machineinstrs -compile-twice=false < %s | FileCheck %s
+
+--- |
+
+  target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
+  target triple = "eravm"
+
+  define void @dont_combine_r0_spill(i256 %0, i256 %1) { ret void }
+
+...
+---
+# This test ensures that we don't combine r0 spill to a dead def.
+# CHECK-LABEL: dont_combine_r0_spill
+# CHECK-LABEL: bb.0:
+# CHECK:       dead $r0 = SUBrrr_v $r1, $r0, i256 0, implicit-def $flags
+# CHECK-NEXT:  ADDrrs_s $r0, $r0, $sp, 32, -1, 0
+name:            dont_combine_r0_spill
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    liveins: $r1
+
+    dead $r0 = SUBrrr_v $r1, $r0, i256 0, implicit-def $flags
+    ADDrrs_s $r0, $r0, $sp, 32, -1, 0
+    RET 0, implicit killed $r1
+
+...

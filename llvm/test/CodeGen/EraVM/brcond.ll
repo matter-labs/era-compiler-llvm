@@ -7,7 +7,7 @@ target triple = "eravm"
 define i256 @brcond(i256 %p1) nounwind {
 ; CHECK-LABEL: brcond:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    and! 1, r1, r1
+; CHECK-NEXT:    and! 1, r1, r0
 ; CHECK-NEXT:    add.eq 43, r0, r1
 ; CHECK-NEXT:    add.ne 42, r0, r1
 ; CHECK-NEXT:    ret

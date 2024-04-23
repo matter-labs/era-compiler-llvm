@@ -9,8 +9,8 @@ declare { i256, i1 } @llvm.umul.with.overflow.i256(i256, i256)
 define i256 @test_lo_large_imm1(i256 %a) {
 ; CHECK-LABEL: test_lo_large_imm1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI0_1[0], r1, r2
-; CHECK-NEXT:    mul.lt @CPI0_0[0], r1, r1, r2
+; CHECK-NEXT:    sub.s! @CPI0_1[0], r1, r0
+; CHECK-NEXT:    mul.lt @CPI0_0[0], r1, r1, r0
 ; CHECK-NEXT:    ret
   %mul = mul i256 %a, 26959946660873538059280334323183841250350249843923952699046031785980
   %cmp = icmp ult i256 %a, -26959946660873538059280334323183841250350249843923952699046031785985
@@ -21,8 +21,8 @@ define i256 @test_lo_large_imm1(i256 %a) {
 define i256 @test_hi_large_imm1(i256 %a) {
 ; CHECK-LABEL: test_hi_large_imm1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI1_1[0], r1, r2
-; CHECK-NEXT:    mul.lt @CPI1_0[0], r1, r2, r1
+; CHECK-NEXT:    sub.s! @CPI1_1[0], r1, r0
+; CHECK-NEXT:    mul.lt @CPI1_0[0], r1, r0, r1
 ; CHECK-NEXT:    ret
   %al = zext i256 %a to i512
   %mul = mul i512 %al, 26959946660873538059280334323183841250350249843923952699046031785980
@@ -36,8 +36,8 @@ define i256 @test_hi_large_imm1(i256 %a) {
 define i256 @test_lo_large_imm2(i256 %a) {
 ; CHECK-LABEL: test_lo_large_imm2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI2_1[0], r1, r2
-; CHECK-NEXT:    mul.ge @CPI2_0[0], r1, r1, r2
+; CHECK-NEXT:    sub.s! @CPI2_1[0], r1, r0
+; CHECK-NEXT:    mul.ge @CPI2_0[0], r1, r1, r0
 ; CHECK-NEXT:    ret
   %mul = mul i256 %a, 26959946660873538059280334323183841250350249843923952699046031785980
   %cmp = icmp ult i256 %a, -26959946660873538059280334323183841250350249843923952699046031785985
@@ -48,8 +48,8 @@ define i256 @test_lo_large_imm2(i256 %a) {
 define i256 @test_hi_large_imm2(i256 %a) {
 ; CHECK-LABEL: test_hi_large_imm2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI3_1[0], r1, r2
-; CHECK-NEXT:    mul.ge @CPI3_0[0], r1, r2, r1
+; CHECK-NEXT:    sub.s! @CPI3_1[0], r1, r0
+; CHECK-NEXT:    mul.ge @CPI3_0[0], r1, r0, r1
 ; CHECK-NEXT:    ret
   %al = zext i256 %a to i512
   %mul = mul i512 %al, 26959946660873538059280334323183841250350249843923952699046031785980
@@ -63,8 +63,8 @@ define i256 @test_hi_large_imm2(i256 %a) {
 define i256 @test_lo_small_imm1(i256 %a) {
 ; CHECK-LABEL: test_lo_small_imm1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI4_0[0], r1, r2
-; CHECK-NEXT:    mul.lt 10, r1, r1, r2
+; CHECK-NEXT:    sub.s! @CPI4_0[0], r1, r0
+; CHECK-NEXT:    mul.lt 10, r1, r1, r0
 ; CHECK-NEXT:    ret
   %mul = mul i256 %a, 10
   %cmp = icmp ult i256 %a, -5
@@ -75,8 +75,8 @@ define i256 @test_lo_small_imm1(i256 %a) {
 define i256 @test_hi_small_imm1(i256 %a) {
 ; CHECK-LABEL: test_hi_small_imm1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI5_0[0], r1, r2
-; CHECK-NEXT:    mul.lt 10, r1, r2, r1
+; CHECK-NEXT:    sub.s! @CPI5_0[0], r1, r0
+; CHECK-NEXT:    mul.lt 10, r1, r0, r1
 ; CHECK-NEXT:    ret
   %al = zext i256 %a to i512
   %mul = mul i512 %al, 10
@@ -90,8 +90,8 @@ define i256 @test_hi_small_imm1(i256 %a) {
 define i256 @test_lo_small_imm2(i256 %a) {
 ; CHECK-LABEL: test_lo_small_imm2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI6_0[0], r1, r2
-; CHECK-NEXT:    mul.ge 10, r1, r1, r2
+; CHECK-NEXT:    sub.s! @CPI6_0[0], r1, r0
+; CHECK-NEXT:    mul.ge 10, r1, r1, r0
 ; CHECK-NEXT:    ret
   %mul = mul i256 %a, 10
   %cmp = icmp ult i256 %a, -5
@@ -102,8 +102,8 @@ define i256 @test_lo_small_imm2(i256 %a) {
 define i256 @test_hi_small_imm2(i256 %a) {
 ; CHECK-LABEL: test_hi_small_imm2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI7_0[0], r1, r2
-; CHECK-NEXT:    mul.ge 10, r1, r2, r1
+; CHECK-NEXT:    sub.s! @CPI7_0[0], r1, r0
+; CHECK-NEXT:    mul.ge 10, r1, r0, r1
 ; CHECK-NEXT:    ret
   %al = zext i256 %a to i512
   %mul = mul i512 %al, 10
@@ -117,8 +117,8 @@ define i256 @test_hi_small_imm2(i256 %a) {
 define i256 @test_lo_reg1(i256 %a, i256 %b) {
 ; CHECK-LABEL: test_lo_reg1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub! r1, r2, r3
-; CHECK-NEXT:    mul.lt r1, r2, r1, r2
+; CHECK-NEXT:    sub! r1, r2, r0
+; CHECK-NEXT:    mul.lt r1, r2, r1, r0
 ; CHECK-NEXT:    ret
   %mul = mul i256 %a, %b
   %cmp = icmp ult i256 %a, %b
@@ -129,8 +129,8 @@ define i256 @test_lo_reg1(i256 %a, i256 %b) {
 define i256 @test_hi_reg1(i256 %a, i256 %b) {
 ; CHECK-LABEL: test_hi_reg1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub! r1, r2, r3
-; CHECK-NEXT:    mul.lt r1, r2, r2, r1
+; CHECK-NEXT:    sub! r1, r2, r0
+; CHECK-NEXT:    mul.lt r1, r2, r0, r1
 ; CHECK-NEXT:    ret
   %al = zext i256 %a to i512
   %bl = zext i256 %b to i512
@@ -145,8 +145,8 @@ define i256 @test_hi_reg1(i256 %a, i256 %b) {
 define i256 @test_lo_reg2(i256 %a, i256 %b) {
 ; CHECK-LABEL: test_lo_reg2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub! r1, r2, r3
-; CHECK-NEXT:    mul.ge r1, r2, r1, r2
+; CHECK-NEXT:    sub! r1, r2, r0
+; CHECK-NEXT:    mul.ge r1, r2, r1, r0
 ; CHECK-NEXT:    ret
   %mul = mul i256 %a, %b
   %cmp = icmp ult i256 %a, %b
@@ -157,8 +157,8 @@ define i256 @test_lo_reg2(i256 %a, i256 %b) {
 define i256 @test_hi_reg2(i256 %a, i256 %b) {
 ; CHECK-LABEL: test_hi_reg2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub! r1, r2, r3
-; CHECK-NEXT:    mul.ge r1, r2, r2, r1
+; CHECK-NEXT:    sub! r1, r2, r0
+; CHECK-NEXT:    mul.ge r1, r2, r0, r1
 ; CHECK-NEXT:    ret
   %al = zext i256 %a to i512
   %bl = zext i256 %b to i512
@@ -173,8 +173,8 @@ define i256 @test_hi_reg2(i256 %a, i256 %b) {
 define i256 @test_lo_reg1_fold_cond_of(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: test_lo_reg1_fold_cond_of:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    mul! r3, r4, r3, r4
-; CHECK-NEXT:    mul.lt r1, r2, r1, r2
+; CHECK-NEXT:    mul! r3, r4, r0, r0
+; CHECK-NEXT:    mul.lt r1, r2, r1, r0
 ; CHECK-NEXT:    ret
   %mul = mul i256 %a, %b
   %res = call {i256, i1} @llvm.umul.with.overflow.i256(i256 %x, i256 %y)
@@ -186,8 +186,8 @@ define i256 @test_lo_reg1_fold_cond_of(i256 %a, i256 %b, i256 %x, i256 %y) {
 define i256 @test_lo_reg2_dont_fold_cond_of(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: test_lo_reg2_dont_fold_cond_of:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    mul r1, r2, r2, r5
-; CHECK-NEXT:    mul! r3, r4, r3, r4
+; CHECK-NEXT:    mul r1, r2, r2, r0
+; CHECK-NEXT:    mul! r3, r4, r0, r0
 ; CHECK-NEXT:    add.lt r1, r0, r2
 ; CHECK-NEXT:    add r2, r0, r1
 ; CHECK-NEXT:    ret
@@ -202,7 +202,7 @@ define i256 @test_hi_lo_dont_fold(i256 %a, i256 %b) {
 ; CHECK-LABEL: test_hi_lo_dont_fold:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    mul r1, r2, r3, r4
-; CHECK-NEXT:    sub! r1, r2, r2
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    add.ge r4, r0, r1
 ; CHECK-NEXT:    add r1, r3, r1
 ; CHECK-NEXT:    ret
