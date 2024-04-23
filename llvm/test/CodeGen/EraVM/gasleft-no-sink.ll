@@ -5,7 +5,7 @@ target triple = "eravm"
 
 define i256 @no_sink(i1 %cond) {
 ; CHECK-LABEL: no_sink
-; CHECK:        sub! r1, r0, r1
+; CHECK:        sub! r1, r0, r0
 ; CHECK-NEXT:   jump.eq @.BB0_2
 ; CHECK:        add 2, r0, r1
 ; CHECK-NEXT:   st.2 3, r1

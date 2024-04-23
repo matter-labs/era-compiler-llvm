@@ -7,7 +7,7 @@ target triple = "eravm"
 define i256 @test_add_code(i256 %0, i256 %1) {
 ; CHECK-LABEL: test_add_code:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB0_2
 ; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    add 1024, r0, r1
@@ -17,10 +17,10 @@ define i256 @test_add_code(i256 %0, i256 %1) {
 ; CHECK-NEXT:    and 2, r2, r2
 ; CHECK-NEXT:  .BB0_3: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    and! 1, r1, r3
+; CHECK-NEXT:    and! 1, r1, r0
 ; CHECK-NEXT:    sub.s.ne @CPI0_0[0], r1, r1
 ; CHECK-NEXT:    shr.s 1, r1, r1
-; CHECK-NEXT:    sub! r2, r0, r3
+; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB0_3
 ; CHECK-NEXT:  ; %bb.4: ; %exit_label
 ; CHECK-NEXT:    ret
@@ -48,7 +48,7 @@ exit_label:
 define i256 @test_add_imm(i256 %0, i256 %1) {
 ; CHECK-LABEL: test_add_imm:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB1_2
 ; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    add 1024, r0, r1
@@ -58,10 +58,10 @@ define i256 @test_add_imm(i256 %0, i256 %1) {
 ; CHECK-NEXT:    and 2, r2, r2
 ; CHECK-NEXT:  .BB1_3: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    and! 1, r1, r3
+; CHECK-NEXT:    and! 1, r1, r0
 ; CHECK-NEXT:    add.ne 1024, r1, r1
 ; CHECK-NEXT:    shr.s 1, r1, r1
-; CHECK-NEXT:    sub! r2, r0, r3
+; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB1_3
 ; CHECK-NEXT:  ; %bb.4: ; %exit_label
 ; CHECK-NEXT:    ret
@@ -89,7 +89,7 @@ exit_label:
 define i256 @test_add_reg(i256 %0, i256 %1) {
 ; CHECK-LABEL: test_add_reg:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB2_2
 ; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    add 1024, r0, r1
@@ -99,10 +99,10 @@ define i256 @test_add_reg(i256 %0, i256 %1) {
 ; CHECK-NEXT:    and 2, r2, r2
 ; CHECK-NEXT:  .BB2_3: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    and! 1, r1, r3
+; CHECK-NEXT:    and! 1, r1, r0
 ; CHECK-NEXT:    add.ne r1, r1, r1
 ; CHECK-NEXT:    shr.s 1, r1, r1
-; CHECK-NEXT:    sub! r2, r0, r3
+; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB2_3
 ; CHECK-NEXT:  ; %bb.4: ; %exit_label
 ; CHECK-NEXT:    ret
@@ -130,7 +130,7 @@ exit_label:
 define i256 @test_sub_reg(i256 %0, i256 %1, i256 %a) {
 ; CHECK-LABEL: test_sub_reg:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB3_2
 ; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    add 1024, r0, r1
@@ -140,10 +140,10 @@ define i256 @test_sub_reg(i256 %0, i256 %1, i256 %a) {
 ; CHECK-NEXT:    and 2, r2, r2
 ; CHECK-NEXT:  .BB3_3: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    and! 1, r1, r4
+; CHECK-NEXT:    and! 1, r1, r0
 ; CHECK-NEXT:    sub.ne r3, r1, r1
 ; CHECK-NEXT:    shr.s 1, r1, r1
-; CHECK-NEXT:    sub! r2, r0, r4
+; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB3_3
 ; CHECK-NEXT:  ; %bb.4: ; %exit_label
 ; CHECK-NEXT:    ret
@@ -171,7 +171,7 @@ exit_label:
 define i256 @test_sub_imm(i256 %0, i256 %1) {
 ; CHECK-LABEL: test_sub_imm:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB4_2
 ; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    add 1024, r0, r1
@@ -181,10 +181,10 @@ define i256 @test_sub_imm(i256 %0, i256 %1) {
 ; CHECK-NEXT:    and 2, r2, r2
 ; CHECK-NEXT:  .BB4_3: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    and! 1, r1, r3
+; CHECK-NEXT:    and! 1, r1, r0
 ; CHECK-NEXT:    sub.s.ne 1024, r1, r1
 ; CHECK-NEXT:    shr.s 1, r1, r1
-; CHECK-NEXT:    sub! r2, r0, r3
+; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB4_3
 ; CHECK-NEXT:  ; %bb.4: ; %exit_label
 ; CHECK-NEXT:    ret
@@ -212,7 +212,7 @@ exit_label:
 define i256 @test_sub_imm2(i256 %0, i256 %1) {
 ; CHECK-LABEL: test_sub_imm2:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB5_2
 ; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    add 1024, r0, r1
@@ -222,10 +222,10 @@ define i256 @test_sub_imm2(i256 %0, i256 %1) {
 ; CHECK-NEXT:    and 2, r2, r2
 ; CHECK-NEXT:  .BB5_3: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    and! 1, r1, r3
+; CHECK-NEXT:    and! 1, r1, r0
 ; CHECK-NEXT:    sub.ne 1024, r1, r1
 ; CHECK-NEXT:    shr.s 1, r1, r1
-; CHECK-NEXT:    sub! r2, r0, r3
+; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB5_3
 ; CHECK-NEXT:  ; %bb.4: ; %exit_label
 ; CHECK-NEXT:    ret
@@ -253,7 +253,7 @@ exit_label:
 define i256 @test_sub_code(i256 %0, i256 %1) {
 ; CHECK-LABEL: test_sub_code:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB6_2
 ; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    add 1024, r0, r1
@@ -263,10 +263,10 @@ define i256 @test_sub_code(i256 %0, i256 %1) {
 ; CHECK-NEXT:    and 2, r2, r2
 ; CHECK-NEXT:  .BB6_3: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    and! 1, r1, r3
+; CHECK-NEXT:    and! 1, r1, r0
 ; CHECK-NEXT:    sub.s.ne @CPI6_0[0], r1, r1
 ; CHECK-NEXT:    shr.s 1, r1, r1
-; CHECK-NEXT:    sub! r2, r0, r3
+; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB6_3
 ; CHECK-NEXT:  ; %bb.4: ; %exit_label
 ; CHECK-NEXT:    ret
@@ -294,7 +294,7 @@ exit_label:
 define i256 @test_sub_code2(i256 %0, i256 %1) {
 ; CHECK-LABEL: test_sub_code2:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB7_2
 ; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    add 1024, r0, r1
@@ -304,10 +304,10 @@ define i256 @test_sub_code2(i256 %0, i256 %1) {
 ; CHECK-NEXT:    and 2, r2, r2
 ; CHECK-NEXT:  .BB7_3: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    and! 1, r1, r3
+; CHECK-NEXT:    and! 1, r1, r0
 ; CHECK-NEXT:    sub.ne @CPI7_0[0], r1, r1
 ; CHECK-NEXT:    shr.s 1, r1, r1
-; CHECK-NEXT:    sub! r2, r0, r3
+; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB7_3
 ; CHECK-NEXT:  ; %bb.4: ; %exit_label
 ; CHECK-NEXT:    ret
@@ -335,7 +335,7 @@ exit_label:
 define i256 @test_sub_mul_code(i256 %0, i256 %1) {
 ; CHECK-LABEL: test_sub_mul_code:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB8_2
 ; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    add 1024, r0, r1
@@ -345,10 +345,10 @@ define i256 @test_sub_mul_code(i256 %0, i256 %1) {
 ; CHECK-NEXT:    and 2, r2, r2
 ; CHECK-NEXT:  .BB8_3: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    and! 1, r1, r3
-; CHECK-NEXT:    mul.ne @CPI8_0[0], r1, r1, r3
+; CHECK-NEXT:    and! 1, r1, r0
+; CHECK-NEXT:    mul.ne @CPI8_0[0], r1, r1, r0
 ; CHECK-NEXT:    shr.s 1, r1, r1
-; CHECK-NEXT:    sub! r2, r0, r3
+; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB8_3
 ; CHECK-NEXT:  ; %bb.4: ; %exit_label
 ; CHECK-NEXT:    ret
@@ -376,7 +376,7 @@ exit_label:
 define i256 @test_sub_mul_imm(i256 %0, i256 %1) {
 ; CHECK-LABEL: test_sub_mul_imm:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB9_2
 ; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    add 1024, r0, r1
@@ -386,10 +386,10 @@ define i256 @test_sub_mul_imm(i256 %0, i256 %1) {
 ; CHECK-NEXT:    and 2, r2, r2
 ; CHECK-NEXT:  .BB9_3: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    and! 1, r1, r3
-; CHECK-NEXT:    mul.ne 1025, r1, r1, r3
+; CHECK-NEXT:    and! 1, r1, r0
+; CHECK-NEXT:    mul.ne 1025, r1, r1, r0
 ; CHECK-NEXT:    shr.s 1, r1, r1
-; CHECK-NEXT:    sub! r2, r0, r3
+; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB9_3
 ; CHECK-NEXT:  ; %bb.4: ; %exit_label
 ; CHECK-NEXT:    ret
@@ -417,7 +417,7 @@ exit_label:
 define i256 @test_sub_mul_reg(i256 %0, i256 %1, i256 %a) {
 ; CHECK-LABEL: test_sub_mul_reg:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB10_2
 ; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    add 1024, r0, r1
@@ -427,10 +427,10 @@ define i256 @test_sub_mul_reg(i256 %0, i256 %1, i256 %a) {
 ; CHECK-NEXT:    and 2, r2, r2
 ; CHECK-NEXT:  .BB10_3: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    and! 1, r1, r4
-; CHECK-NEXT:    mul.ne r3, r1, r1, r4
+; CHECK-NEXT:    and! 1, r1, r0
+; CHECK-NEXT:    mul.ne r3, r1, r1, r0
 ; CHECK-NEXT:    shr.s 1, r1, r1
-; CHECK-NEXT:    sub! r2, r0, r4
+; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB10_3
 ; CHECK-NEXT:  ; %bb.4: ; %exit_label
 ; CHECK-NEXT:    ret
@@ -458,7 +458,7 @@ exit_label:
 define i256 @test_sub_div_imm(i256 %0, i256 %1) {
 ; CHECK-LABEL: test_sub_div_imm:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB11_2
 ; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    add 1024, r0, r1
@@ -468,10 +468,10 @@ define i256 @test_sub_div_imm(i256 %0, i256 %1) {
 ; CHECK-NEXT:    and 2, r2, r2
 ; CHECK-NEXT:  .BB11_3: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    and! 1, r1, r3
-; CHECK-NEXT:    div.ne 1025, r1, r1, r3
+; CHECK-NEXT:    and! 1, r1, r0
+; CHECK-NEXT:    div.ne 1025, r1, r1, r0
 ; CHECK-NEXT:    shr.s 1, r1, r1
-; CHECK-NEXT:    sub! r2, r0, r3
+; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB11_3
 ; CHECK-NEXT:  ; %bb.4: ; %exit_label
 ; CHECK-NEXT:    ret
@@ -499,7 +499,7 @@ exit_label:
 define i256 @test_sub_div_imm2(i256 %0, i256 %1) {
 ; CHECK-LABEL: test_sub_div_imm2:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB12_2
 ; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    add 1024, r0, r1
@@ -509,10 +509,10 @@ define i256 @test_sub_div_imm2(i256 %0, i256 %1) {
 ; CHECK-NEXT:    and 2, r2, r2
 ; CHECK-NEXT:  .BB12_3: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    and! 1, r1, r3
-; CHECK-NEXT:    div.s.ne 1025, r1, r1, r3
+; CHECK-NEXT:    and! 1, r1, r0
+; CHECK-NEXT:    div.s.ne 1025, r1, r1, r0
 ; CHECK-NEXT:    shr.s 1, r1, r1
-; CHECK-NEXT:    sub! r2, r0, r3
+; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB12_3
 ; CHECK-NEXT:  ; %bb.4: ; %exit_label
 ; CHECK-NEXT:    ret
@@ -540,7 +540,7 @@ exit_label:
 define i256 @test_sub_div_code(i256 %0, i256 %1) {
 ; CHECK-LABEL: test_sub_div_code:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB13_2
 ; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    add 1024, r0, r1
@@ -550,10 +550,10 @@ define i256 @test_sub_div_code(i256 %0, i256 %1) {
 ; CHECK-NEXT:    and 2, r2, r2
 ; CHECK-NEXT:  .BB13_3: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    and! 1, r1, r3
-; CHECK-NEXT:    div.ne @CPI13_0[0], r1, r1, r3
+; CHECK-NEXT:    and! 1, r1, r0
+; CHECK-NEXT:    div.ne @CPI13_0[0], r1, r1, r0
 ; CHECK-NEXT:    shr.s 1, r1, r1
-; CHECK-NEXT:    sub! r2, r0, r3
+; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB13_3
 ; CHECK-NEXT:  ; %bb.4: ; %exit_label
 ; CHECK-NEXT:    ret
@@ -581,7 +581,7 @@ exit_label:
 define i256 @test_sub_div_code2(i256 %0, i256 %1) {
 ; CHECK-LABEL: test_sub_div_code2:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB14_2
 ; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    add 1024, r0, r1
@@ -591,10 +591,10 @@ define i256 @test_sub_div_code2(i256 %0, i256 %1) {
 ; CHECK-NEXT:    and 2, r2, r2
 ; CHECK-NEXT:  .BB14_3: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    and! 1, r1, r3
-; CHECK-NEXT:    div.s.ne @CPI14_0[0], r1, r1, r3
+; CHECK-NEXT:    and! 1, r1, r0
+; CHECK-NEXT:    div.s.ne @CPI14_0[0], r1, r1, r0
 ; CHECK-NEXT:    shr.s 1, r1, r1
-; CHECK-NEXT:    sub! r2, r0, r3
+; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB14_3
 ; CHECK-NEXT:  ; %bb.4: ; %exit_label
 ; CHECK-NEXT:    ret
@@ -622,7 +622,7 @@ exit_label:
 define i256 @test_sub_div_reg(i256 %0, i256 %1, i256 %a) {
 ; CHECK-LABEL: test_sub_div_reg:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB15_2
 ; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    add 1024, r0, r1
@@ -632,10 +632,10 @@ define i256 @test_sub_div_reg(i256 %0, i256 %1, i256 %a) {
 ; CHECK-NEXT:    and 2, r2, r2
 ; CHECK-NEXT:  .BB15_3: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    and! 1, r1, r4
-; CHECK-NEXT:    div.ne r1, r3, r1, r4
+; CHECK-NEXT:    and! 1, r1, r0
+; CHECK-NEXT:    div.ne r1, r3, r1, r0
 ; CHECK-NEXT:    shr.s 1, r1, r1
-; CHECK-NEXT:    sub! r2, r0, r4
+; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB15_3
 ; CHECK-NEXT:  ; %bb.4: ; %exit_label
 ; CHECK-NEXT:    ret

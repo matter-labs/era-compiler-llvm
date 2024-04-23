@@ -13,7 +13,7 @@ declare void @has_no_overflow()
 define void @uaddo_branch_1(i256 %x, i256 %y) {
 ; CHECK-LABEL: uaddo_branch_1:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r1, r2, r1
+; CHECK-NEXT:    add! r1, r2, r0
 ; CHECK-NEXT:    jump.lt @.BB0_2
 ; CHECK-NEXT:  ; %bb.1: ; %no_overflow_detected
 ; CHECK-NEXT:    near_call r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -41,7 +41,7 @@ exit:
 define void @uadd_branch_2(i256 %x, i256 %y) {
 ; CHECK-LABEL: uadd_branch_2:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r1, r2, r1
+; CHECK-NEXT:    add! r1, r2, r0
 ; CHECK-NEXT:    jump.lt @.BB1_2
 ; CHECK-NEXT:  ; %bb.1: ; %no_overflow_detected
 ; CHECK-NEXT:    near_call r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -71,7 +71,7 @@ define i256 @uadd_branch_3(i256 %x, i256 %y) {
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    add r1, r2, stack-[1]
-; CHECK-NEXT:    add! r1, r2, r1
+; CHECK-NEXT:    add! r1, r2, r0
 ; CHECK-NEXT:    jump.lt @.BB2_2
 ; CHECK-NEXT:  ; %bb.1: ; %no_overflow_detected
 ; CHECK-NEXT:    near_call r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -104,10 +104,10 @@ define i256 @uadd_branch_complicated(i256 %a, i256 %b, i256 %c, i256 %x, i256 %y
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    add r4, r5, r6
-; CHECK-NEXT:    sub! r1, r2, r1
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    add.lt r3, r0, r6
 ; CHECK-NEXT:    add r6, r0, stack-[1] ; 32-byte Folded Spill
-; CHECK-NEXT:    add! r4, r5, r1
+; CHECK-NEXT:    add! r4, r5, r0
 ; CHECK-NEXT:    jump.lt @.BB3_2
 ; CHECK-NEXT:  ; %bb.1: ; %no_overflow_detected
 ; CHECK-NEXT:    near_call r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -140,7 +140,7 @@ exit:
 define void @usub_branch_1(i256 %x, i256 %y) {
 ; CHECK-LABEL: usub_branch_1:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r2, r1
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    jump.lt @.BB4_2
 ; CHECK-NEXT:  ; %bb.1: ; %no_overflow_detected
 ; CHECK-NEXT:    near_call r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -168,7 +168,7 @@ exit:
 define void @usub_branch_2(i256 %x, i256 %y) {
 ; CHECK-LABEL: usub_branch_2:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r2, r1
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    jump.lt @.BB5_2
 ; CHECK-NEXT:  ; %bb.1: ; %no_overflow_detected
 ; CHECK-NEXT:    near_call r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -228,7 +228,7 @@ exit:
 define void @umul_branch_1(i256 %x, i256 %y) {
 ; CHECK-LABEL: umul_branch_1:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    mul! r1, r2, r1, r2
+; CHECK-NEXT:    mul! r1, r2, r0, r0
 ; CHECK-NEXT:    jump.lt @.BB7_2
 ; CHECK-NEXT:  ; %bb.1: ; %no_overflow_detected
 ; CHECK-NEXT:    near_call r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -256,7 +256,7 @@ exit:
 define void @umul_branch_2(i256 %x, i256 %y) {
 ; CHECK-LABEL: umul_branch_2:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    mul! r1, r2, r1, r2
+; CHECK-NEXT:    mul! r1, r2, r0, r0
 ; CHECK-NEXT:    jump.lt @.BB8_2
 ; CHECK-NEXT:  ; %bb.1: ; %no_overflow_detected
 ; CHECK-NEXT:    near_call r0, @has_no_overflow, @DEFAULT_UNWIND
@@ -285,8 +285,8 @@ define i256 @umul_branch_3(i256 %x, i256 %y) {
 ; CHECK-LABEL: umul_branch_3:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    mul r1, r2, stack-[1], r3
-; CHECK-NEXT:    mul! r1, r2, r1, r2
+; CHECK-NEXT:    mul r1, r2, stack-[1], r0
+; CHECK-NEXT:    mul! r1, r2, r0, r0
 ; CHECK-NEXT:    jump.lt @.BB9_2
 ; CHECK-NEXT:  ; %bb.1: ; %no_overflow_detected
 ; CHECK-NEXT:    near_call r0, @has_no_overflow, @DEFAULT_UNWIND

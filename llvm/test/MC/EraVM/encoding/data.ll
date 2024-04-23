@@ -33,7 +33,7 @@ define ptr addrspace(3) @get() nounwind {
 }
 ; CHECK-LABEL: get:
 ; CHECK:         add     stack[@var2], r0, r1
-; CHECK-NEXT:    mul     stack[@var1], r1, r1, r2
+; CHECK-NEXT:    mul     stack[@var1], r1, r1, r0
 ; CHECK-NEXT:    ptr.add stack[@ptr], r1, r1
 ; CHECK-NEXT:    ret
 

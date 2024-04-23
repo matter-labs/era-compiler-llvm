@@ -10,7 +10,7 @@ define i256 @test_small_imm(i256 %a) {
 ; CHECK-LABEL: test_small_imm:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub.s! 10, r1, r2
-; CHECK-NEXT:    mul 10, r1, r1, r3
+; CHECK-NEXT:    mul 10, r1, r1, r0
 ; CHECK-NEXT:    add.ge r2, r0, r1
 ; CHECK-NEXT:    ret
   %sub = sub i256 %a, 10
@@ -24,7 +24,7 @@ define i256 @test_large_imm(i256 %a) {
 ; CHECK-LABEL: test_large_imm:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub.s! @CPI1_0[0], r1, r2
-; CHECK-NEXT:    mul @CPI1_0[0], r1, r1, r3
+; CHECK-NEXT:    mul @CPI1_0[0], r1, r1, r0
 ; CHECK-NEXT:    add.ge r2, r0, r1
 ; CHECK-NEXT:    ret
   %sub = sub i256 %a, 123456789
@@ -38,7 +38,7 @@ define i256 @test_reg(i256 %a, i256 %b) {
 ; CHECK-LABEL: test_reg:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub! r1, r2, r3
-; CHECK-NEXT:    mul r1, r2, r1, r2
+; CHECK-NEXT:    mul r1, r2, r1, r0
 ; CHECK-NEXT:    add.ge r3, r0, r1
 ; CHECK-NEXT:    ret
   %sub = sub i256 %a, %b
@@ -92,7 +92,7 @@ define i256 @test_with_call_not(i256 %a) {
 ; CHECK-NEXT:    sub.s 10, r1, r1
 ; CHECK-NEXT:    near_call r0, @use, @DEFAULT_UNWIND
 ; CHECK-NEXT:    add stack-[1], r0, r1 ; 32-byte Folded Reload
-; CHECK-NEXT:    sub.s! 10, r1, r1
+; CHECK-NEXT:    sub.s! 10, r1, r0
 ; CHECK-NEXT:    add 10, r0, r1
 ; CHECK-NEXT:    add.lt 15, r0, r1
 ; CHECK-NEXT:    ret
@@ -106,7 +106,7 @@ define i256 @test_with_call_not(i256 %a) {
 define i256 @test_elim_identical_cmps(i256 %a, ptr addrspace(1) %ptr) {
 ; CHECK-LABEL: test_elim_identical_cmps:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! 10, r1, r3
+; CHECK-NEXT:    sub.s! 10, r1, r0
 ; CHECK-NEXT:    add 10, r0, r3
 ; CHECK-NEXT:    add.lt 15, r0, r3
 ; CHECK-NEXT:    sub r3, r1, r1
@@ -128,14 +128,14 @@ define i256 @test_dont_elim_identical_cmps(i256 %a, ptr addrspace(1) %ptr) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    add r1, r0, stack-[1] ; 32-byte Folded Spill
-; CHECK-NEXT:    sub.s! 10, r1, r3
+; CHECK-NEXT:    sub.s! 10, r1, r0
 ; CHECK-NEXT:    add 10, r0, r3
 ; CHECK-NEXT:    add.lt 15, r0, r3
 ; CHECK-NEXT:    sub r3, r1, r1
 ; CHECK-NEXT:    st.1 r2, r1
 ; CHECK-NEXT:    near_call r0, @use, @DEFAULT_UNWIND
 ; CHECK-NEXT:    add stack-[1], r0, r1 ; 32-byte Folded Reload
-; CHECK-NEXT:    sub.s! 10, r1, r1
+; CHECK-NEXT:    sub.s! 10, r1, r0
 ; CHECK-NEXT:    add 15, r0, r1
 ; CHECK-NEXT:    add.lt 10, r0, r1
 ; CHECK-NEXT:    ret

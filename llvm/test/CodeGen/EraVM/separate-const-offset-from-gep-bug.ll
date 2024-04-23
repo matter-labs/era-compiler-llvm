@@ -5,7 +5,7 @@ target triple = "eravm"
 
 define void @test(ptr addrspace(1) %0, ptr addrspace(1) %1, i256 %2) {
 ; CHECK-LABEL: test:
-; CHECK:       sub! r3, r0, r4
+; CHECK:       sub! r3, r0, r0
 ; CHECK-NEXT:  jump.eq @.BB0_3
 ; CHECK:       .BB0_2:
 ; CHECK:       sub.s! 32, r3, r3

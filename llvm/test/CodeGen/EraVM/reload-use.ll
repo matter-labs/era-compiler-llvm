@@ -49,7 +49,7 @@ define void @spill_subs(i256 %a) nounwind {
 ; CHECK-LABEL: spill_mulr
 define i256 @spill_mulr(i256 %a) nounwind {
   %b = call i256 @foo()
-  ; CHECK: mul stack-[1], r1, r1, r2
+  ; CHECK: mul stack-[1], r1, r1, r0
   %res = mul i256 %a, %b
   ret i256 %res
 }
@@ -58,7 +58,7 @@ define i256 @spill_mulr(i256 %a) nounwind {
 define void @spill_muls(i256 %a) nounwind {
   %slot = alloca i256
   %b = call i256 @foo()
-  ; CHECK: mul stack-[1], r1, stack-[2], r2
+  ; CHECK: mul stack-[1], r1, stack-[2], r0
   %res = mul i256 %a, %b
   store i256 %res, i256* %slot
   ret void
@@ -72,7 +72,7 @@ define i256 @spill_mulhr(i256 %a) nounwind {
   %resl = mul i512 %aext, %bext
   %res2l = lshr i512 %resl, 256
   %res2 = trunc i512 %res2l to i256
-  ; CHECK: mul stack-[1], r1, r2, r1
+  ; CHECK: mul stack-[1], r1, r0, r1
   ret i256 %res2
 }
 
@@ -85,8 +85,8 @@ define void @spill_mulhs(i256 %a) nounwind {
   %resl = mul i512 %aext, %bext
   %res2l = lshr i512 %resl, 256
   %res2 = trunc i512 %res2l to i256
-  ; CHECK: mul stack-[1], r1, r1, r2
-  ; CHECK: add r2, r0, stack-[2]
+  ; CHECK: mul stack-[1], r1, r0, r1
+  ; CHECK: add r1, r0, stack-[2]
   store i256 %res2, i256* %slot
   ret void
 }
@@ -94,7 +94,7 @@ define void @spill_mulhs(i256 %a) nounwind {
 ; CHECK-LABEL: spill_divr
 define i256 @spill_divr(i256 %a) nounwind {
   %b = call i256 @foo()
-  ; CHECK: div stack-[1], r1, r1, r2
+  ; CHECK: div stack-[1], r1, r1, r0
   %res = udiv i256 %a, %b
   ret i256 %res
 }
@@ -103,7 +103,7 @@ define i256 @spill_divr(i256 %a) nounwind {
 define void @spill_divs(i256 %a) nounwind {
   %slot = alloca i256
   %b = call i256 @foo()
-  ; CHECK: div stack-[1], r1, stack-[2], r2
+  ; CHECK: div stack-[1], r1, stack-[2], r0
   %res = udiv i256 %a, %b
   store i256 %res, i256* %slot
   ret void
@@ -112,7 +112,7 @@ define void @spill_divs(i256 %a) nounwind {
 ; CHECK-LABEL: spill_remr
 define i256 @spill_remr(i256 %a) nounwind {
   %b = call i256 @foo()
-  ; CHECK: div stack-[1], r1, r2, r1
+  ; CHECK: div stack-[1], r1, r0, r1
   %res = urem i256 %a, %b
   ret i256 %res
 }
@@ -121,8 +121,8 @@ define i256 @spill_remr(i256 %a) nounwind {
 define void @spill_rems(i256 %a) nounwind {
   %slot = alloca i256
   %b = call i256 @foo()
-  ; CHECK: div stack-[1], r1, r1, r2
-  ; CHECK: add r2, r0, stack-[2]
+  ; CHECK: div stack-[1], r1, r0, r1
+  ; CHECK: add r1, r0, stack-[2]
   %res = urem i256 %a, %b
   store i256 %res, i256* %slot
   ret void
@@ -293,7 +293,7 @@ define i256 @spill_subrx(i256 %a) nounwind {
 ; CHECK-LABEL: spill_mulx
 define i256 @spill_mulx(i256 %a) nounwind {
   %b = call i256 @foo()
-  ; CHECK: mul stack-[1], r1, r1, r2
+  ; CHECK: mul stack-[1], r1, r1, r0
   %res = mul i256 %b, %a
   ret i256 %res
 }
@@ -306,14 +306,14 @@ define i256 @spill_mulhx(i256 %a) nounwind {
   %resl = mul i512 %bext, %aext
   %res2l = lshr i512 %resl, 256
   %res2 = trunc i512 %res2l to i256
-  ; CHECK: mul stack-[1], r1, r2, r1
+  ; CHECK: mul stack-[1], r1, r0, r1
   ret i256 %res2
 }
 
 ; CHECK-LABEL: spill_divx
 define i256 @spill_divx(i256 %a) nounwind {
   %b = call i256 @foo()
-  ; CHECK: div.s stack-[1], r1, r1, r2
+  ; CHECK: div.s stack-[1], r1, r1, r0
   %res = udiv i256 %b, %a
   ret i256 %res
 }
@@ -321,7 +321,7 @@ define i256 @spill_divx(i256 %a) nounwind {
 ; CHECK-LABEL: spill_remx
 define i256 @spill_remx(i256 %a) nounwind {
   %b = call i256 @foo()
-  ; CHECK: div.s stack-[1], r1, r2, r1
+  ; CHECK: div.s stack-[1], r1, r0, r1
   %res = urem i256 %b, %a
   ret i256 %res
 }
@@ -395,7 +395,7 @@ define i8 addrspace(3)* @spill_ptrshrinkx(i256 %a) nounwind {
 define i256 @spill_subv(i256 %a, i256 %b, i256 %c) nounwind {
   %d = call i256 @foo()
   %cmp = icmp ugt i256 %c, %d
-  ; CHECK: sub!	stack-[2], r1, r1
+  ; CHECK: sub!	stack-[2], r1, r0
   %res = select i1 %cmp, i256 %a, i256 %b
   ret i256 %res
 }
@@ -405,7 +405,7 @@ define i256 @spill_andv(i256 %a, i256 %b, i256 %c) nounwind {
   %d = call i256 @foo()
   %andres = and i256 %c, %d
   %cmp = icmp eq i256 %andres, 0
-  ; CHECK: and!	stack-[2], r1, r1
+  ; CHECK: and!	stack-[2], r1, r0
   %res = select i1 %cmp, i256 %a, i256 %b
   ret i256 %res
 }
@@ -414,7 +414,7 @@ define i256 @spill_andv(i256 %a, i256 %b, i256 %c) nounwind {
 ; CHECK-LABEL: spill_select
 define i256 @spill_select(i256 %a, i1 %cond) nounwind {
   %b = call i256 @foo()
-; CHECK: sub! stack-[1], r0, r2
+; CHECK: sub! stack-[1], r0, r0
 ; CHECK: add.ne stack-[2], r0, r2
   %res = select i1 %cond, i256 %a, i256 %b
   ret i256 %res
@@ -471,7 +471,7 @@ define i256 @dont_combine_predicated_use(i256 %a, i1 %cond) nounwind {
   %s1val = load i256, i256* %slot1
   br i1 %cond, label %ltrue, label %lfalse
 ; CHECK: add stack-[2], r0, r2
-; CHECK: sub! stack-[1], r0, r3
+; CHECK: sub! stack-[1], r0, r0
 ; TODO: CPR-1367 In that particular case we can combine, but it isn't analyzed in the pass.
 ; CHECK: add.eq r2, r0, r1
 ; CHECK: add.ne r2, r1, r1
