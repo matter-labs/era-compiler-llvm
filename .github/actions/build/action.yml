@@ -76,4 +76,4 @@ runs:
           [ "${{ inputs.enable-tests }}" != "" ] && ENABLE_TESTS="--enable-tests"
           [ "${{ inputs.enable-assertions }}" != "" ] && ENABLE_ASSERTIONS="--enable-assertions"
           [ "${{ inputs.extra-args }}" != "" ] && EXTRA_ARGS="--extra-args ${{ inputs.extra-args }}"
-          zkevm-llvm build --targets EVM --use-ccache ${ENABLE_TESTS} ${ENABLE_ASSERTIONS} ${EXTRA_ARGS}
+          zkevm-llvm build --use-ccache ${ENABLE_TESTS} ${ENABLE_ASSERTIONS} ${EXTRA_ARGS}

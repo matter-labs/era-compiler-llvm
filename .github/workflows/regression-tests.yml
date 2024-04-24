@@ -56,7 +56,7 @@ jobs:
   regression-tests:
     runs-on: [ self-hosted, ci-runner-compiler ]
     container:
-      image: matterlabs/llvm_runner:ubuntu22-llvm15-latest
+      image: matterlabs/llvm_runner:ubuntu22-llvm17-latest
       options: -m 110g
     needs: prepare-commits
     strategy:
@@ -64,6 +64,9 @@ jobs:
       max-parallel: 3
       matrix: ${{ fromJson(needs.prepare-commits.outputs.matrix) }}
     steps:
+
+      - uses: AutoModality/action-clean@v1
+
       - uses: actions/checkout@v4
         with:
           ref: ${{ matrix.commit }}
