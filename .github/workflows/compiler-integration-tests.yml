@@ -30,9 +30,11 @@ jobs:
     name: Integration tests
     runs-on: [ self-hosted, ci-runner-compiler ]
     container:
-      image: matterlabs/llvm_runner:ubuntu22-llvm15-latest
+      image: matterlabs/llvm_runner:ubuntu22-llvm17-latest
       options: -m 110g
     steps:
+
+      - uses: AutoModality/action-clean@v1
 
       - name: Checkout era-compiler-tester
         uses: actions/checkout@v4

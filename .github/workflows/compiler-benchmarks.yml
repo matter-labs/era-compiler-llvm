@@ -45,7 +45,7 @@ jobs:
     name: ${{ matrix.type }}
     runs-on: matterlabs-ci-runner
     container:
-      image: matterlabs/llvm_runner:ubuntu22-llvm15-latest
+      image: matterlabs/llvm_runner:ubuntu22-llvm17-latest
       options: -m 110g
     env:
       LLVM_BENCHMARK_MODE: ${{ github.event.inputs.compiler_llvm_benchmark_mode || '^M^B3' }}
@@ -60,6 +60,8 @@ jobs:
             echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_reference_branch || 'main' }}" >> $GITHUB_ENV
             echo "COMPILER_LLVM_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_reference_branch || 'main' }}" >> $GITHUB_ENV
           fi
+
+      - uses: AutoModality/action-clean@v1
 
       - name: Checkout era-compiler-tester
         uses: actions/checkout@v4
@@ -107,9 +109,12 @@ jobs:
     permissions:
       pull-requests: write
     container:
-      image: matterlabs/llvm_runner:ubuntu22-llvm15-latest
+      image: matterlabs/llvm_runner:ubuntu22-llvm17-latest
     needs: benchmarks
     steps:
+
+      - uses: AutoModality/action-clean@v1
+
       - name: Checking out the era-compiler-tester
         uses: actions/checkout@v4
         with:
