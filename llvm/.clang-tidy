@@ -33,6 +33,7 @@ Checks: >
         misc-static-assert,
         misc-unused-using-decls,
         -misc-const-correctness,
+        -misc-include-cleaner,
         modernize-loop-convert,
         modernize-make-unique,
         modernize-raw-string-literal,
