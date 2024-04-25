@@ -1,5 +1,5 @@
 ; RUN: llvm-mc -arch=eravm -filetype=obj -o %t.o < %s
-; RUN: llvm-readelf --symbols %t.o | FileCheck %s
+; RUN: llvm-readelf --relocs --symbols %t.o | FileCheck %s
 ; RUN: llvm-readelf --hex-dump=.rodata %t.o | FileCheck --check-prefix=RODATA %s
 ; RUN: llvm-readelf --hex-dump=.data   %t.o | FileCheck --check-prefix=DATA   %s
 
@@ -18,6 +18,10 @@ global_const:
 local_const:
   .cell 123
 
+jump_table:
+  .cell 1
+  .cell 2
+
   .data
 b:
   .cell  0xabcdef0123456789abcdef0123456789aabbccddeeff00112233445566778899
@@ -34,15 +38,36 @@ global_var:
 local_var:
   .cell 321
 
-; CHECK:      Symbol table '.symtab' contains 7 entries:
+  .text
+  .globl foo
+  .type  foo,@function
+foo:
+  add code[@global_const], r2, stack[@global_var + 2]
+  add code[@local_const], r2, stack[@local_var + 1]
+  jump @jump_table[1]
+  ret
+
+; CHECK:      Relocation section '.rela.text' at offset {{0x[0-9a-f]+}} contains 5 entries:
+; CHECK-NEXT:  Offset     Info    Type                Sym. Value  Symbol's Name + Addend
+; CHECK-NEXT: 00000000  00000901 R_ERAVM_16_SCALE_32    00000020   global_var + 0
+; CHECK-NEXT: 00000002  00000801 R_ERAVM_16_SCALE_32    00000040   global_const + 0
+; CHECK-NEXT: 00000008  00000501 R_ERAVM_16_SCALE_32    00000000   .data + 80
+; CHECK-NEXT: 0000000a  00000101 R_ERAVM_16_SCALE_32    00000000   .rodata + 60
+; CHECK-NEXT: 00000012  00000101 R_ERAVM_16_SCALE_32    00000000   .rodata + 80
+
+; CHECK:      Symbol table '.symtab' contains 11 entries:
 ; CHECK-NEXT:    Num:    Value  Size Type    Bind   Vis       Ndx         Name
 ; CHECK-NEXT:      0: 00000000     0 NOTYPE  LOCAL  DEFAULT   UND
-; CHECK-NEXT:      1: 00000000     0 NOTYPE  LOCAL  DEFAULT [[RO:[0-9]+]] a
-; CHECK-NEXT:      2: 00000060     0 OBJECT  LOCAL  DEFAULT [[RO]]        local_const
-; CHECK-NEXT:      3: 00000000     0 NOTYPE  LOCAL  DEFAULT [[RW:[0-9]+]] b
-; CHECK-NEXT:      4: 00000080     0 OBJECT  LOCAL  DEFAULT [[RW]]        local_var
-; CHECK-NEXT:      5: 00000040     0 OBJECT  GLOBAL DEFAULT [[RO]]        global_const
-; CHECK-NEXT:      6: 00000020     0 OBJECT  GLOBAL DEFAULT [[RW]]        global_var
+; CHECK-NEXT:      1: 00000000     0 SECTION LOCAL  DEFAULT [[RO:[0-9]+]] .rodata
+; CHECK-NEXT:      2: 00000000     0 NOTYPE  LOCAL  DEFAULT [[RO]]        a
+; CHECK-NEXT:      3: 00000060     0 OBJECT  LOCAL  DEFAULT [[RO]]        local_const
+; CHECK-NEXT:      4: 00000080     0 NOTYPE  LOCAL  DEFAULT [[RO]]        jump_table
+; CHECK-NEXT:      5: 00000000     0 SECTION LOCAL  DEFAULT [[RW:[0-9]+]] .data
+; CHECK-NEXT:      6: 00000000     0 NOTYPE  LOCAL  DEFAULT [[RW]]        b
+; CHECK-NEXT:      7: 00000080     0 OBJECT  LOCAL  DEFAULT [[RW]]        local_var
+; CHECK-NEXT:      8: 00000040     0 OBJECT  GLOBAL DEFAULT [[RO]]        global_const
+; CHECK-NEXT:      9: 00000020     0 OBJECT  GLOBAL DEFAULT [[RW]]        global_var
+; CHECK-NEXT:     10: 00000000     0 FUNC    GLOBAL DEFAULT {{[0-9]+}}    foo
 
 ; RODATA:      Hex dump of section '.rodata':
 ; RODATA-NEXT: 0x00000000 2a000000 00000000 00000000 00000000 *...............
@@ -53,6 +78,10 @@ local_var:
 ; RODATA-NEXT: 0x00000050 abcdef01 23456789 abcdef01 23456789 ....#Eg.....#Eg.
 ; RODATA-NEXT: 0x00000060 00000000 00000000 00000000 00000000 ................
 ; RODATA-NEXT: 0x00000070 00000000 00000000 00000000 0000007b ...............{
+; RODATA-NEXT: 0x00000080 00000000 00000000 00000000 00000000 ................
+; RODATA-NEXT: 0x00000090 00000000 00000000 00000000 00000001 ................
+; RODATA-NEXT: 0x000000a0 00000000 00000000 00000000 00000000 ................
+; RODATA-NEXT: 0x000000b0 00000000 00000000 00000000 00000002 ................
 
 ; DATA:      Hex dump of section '.data':
 ; DATA-NEXT: 0x00000000 abcdef01 23456789 abcdef01 23456789 ....#Eg.....#Eg.

@@ -20,31 +20,21 @@
 namespace llvm {
 namespace EraVM {
 
+// At now, two fixups are defined as stack and const operands operate in 32-byte
+// units and jump target operands point to an 8-byte instruction.
+// The semantics of fixup_16_scale_N is "take the big-endian value P in place
+// and overwrite it with P + AbsAddr(@sym) / N. If AbsAddr(@sym) is not
+// multiple of N, error should be emitted".
+
 // This table must be in the same order of
 // MCFixupKindInfo Infos[EraVM::NumTargetFixupKinds]
 // in EraVMAsmBackend.cpp.
 //
 enum Fixups {
-  // A 32 bit absolute fixup.
-  fixup_32 = FirstTargetFixupKind,
-  // A 10 bit PC relative fixup.
-  fixup_10_pcrel,
-  // A 16 bit absolute fixup.
-  fixup_16,
-  // A 16 bit PC relative fixup.
-  fixup_16_pcrel,
-  // A 16 bit absolute fixup for byte operations.
-  fixup_16_byte,
-  // A 16 bit PC relative fixup for command address.
-  fixup_16_pcrel_byte,
-  // A 10 bit PC relative fixup for complicated polymorphs.
-  fixup_2x_pcrel,
-  // A 16 bit relaxable fixup.
-  fixup_rl_pcrel,
-  // A 8 bit absolute fixup.
-  fixup_8,
-  // A 32 bit symbol difference fixup.
-  fixup_sym_diff,
+  // A 16 bit absolute fixup for stack and const operands.
+  fixup_16_scale_32 = FirstTargetFixupKind,
+  // A 16 bit absolute fixup for jump target operands.
+  fixup_16_scale_8,
 
   // Marker
   LastTargetFixupKind,
