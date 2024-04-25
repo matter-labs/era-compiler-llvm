@@ -4062,6 +4062,155 @@ void IndexSwitchOp::getRegionInvocationBounds(
 }
 
 //===----------------------------------------------------------------------===//
+// IntSwitchOp
+//===----------------------------------------------------------------------===//
+
+ParseResult IntSwitchOp::parse(OpAsmParser &p, OperationState &result) {
+  // Parse arg and its type.
+  OpAsmParser::UnresolvedOperand arg;
+  IntegerType argTy;
+  if (succeeded(p.parseOperand(arg))) {
+    if (p.parseColon())
+      return failure();
+    if (p.parseType(argTy))
+      return failure();
+    if (p.resolveOperand(arg, argTy, result.operands))
+      return failure();
+  }
+
+  // Parse result types.
+  if (p.parseOptionalArrowTypeList(result.types))
+    return failure();
+
+  // Parse case regions.
+  SmallVector<APInt> caseVals;
+  while (succeeded(p.parseOptionalKeyword("case"))) {
+    APInt value(argTy.getWidth(), 0);
+    Region *region = result.addRegion();
+    if (p.parseInteger(value) || p.parseRegion(*region))
+      return failure();
+    caseVals.push_back(value);
+  }
+  auto caseValsAttr = DenseIntElementsAttr::get(
+      RankedTensorType::get(static_cast<int64_t>(caseVals.size()), argTy),
+      caseVals);
+  result.getOrAddProperties<Properties>().cases = caseValsAttr;
+
+  // Parse default region.
+  if (p.parseKeyword("default"))
+    return failure();
+  Region *defRegion = result.addRegion();
+  if (p.parseRegion(*defRegion))
+    return failure();
+
+  return success();
+}
+
+void IntSwitchOp::print(OpAsmPrinter &p) {
+  p << ' ' << getArg() << " : " << getArg().getType();
+  p.printOptionalArrowTypeList(getResultTypes());
+  p.printOptionalAttrDict((*this)->getAttrs(),
+                          /*elidedAttrs=*/getCasesAttrName().getValue());
+
+  for (auto [value, region] : llvm::zip(getCases(), getCaseRegions())) {
+    p.printNewline();
+    p << "case " << value << ' ';
+    p.printRegion(region, /*printEntryBlockArgs=*/false);
+  }
+
+  p.printNewline();
+  p << "default ";
+  p.printRegion(getDefaultRegion(), /*printEntryBlockArgs=*/false);
+}
+
+LogicalResult IntSwitchOp::verify() {
+  if (static_cast<size_t>(getCases().size()) != getCaseRegions().size()) {
+    return emitOpError("has ")
+           << getCaseRegions().size() << " case regions but "
+           << getCases().size() << " case values";
+  }
+
+  DenseSet<llvm::APInt> valueSet;
+  for (llvm::APInt value : getCases())
+    if (!valueSet.insert(value).second)
+      return emitOpError("has duplicate case value");
+  auto verifyRegion = [&](Region &region, const Twine &name) -> LogicalResult {
+    auto yield = dyn_cast<YieldOp>(region.front().back());
+    if (!yield)
+      return emitOpError("expected region to end with scf.yield, but got ")
+             << region.front().back().getName();
+
+    if (yield.getNumOperands() != getNumResults()) {
+      return (emitOpError("expected each region to return ")
+              << getNumResults() << " values, but " << name << " returns "
+              << yield.getNumOperands())
+                 .attachNote(yield.getLoc())
+             << "see yield operation here";
+    }
+    for (auto [idx, result, operand] :
+         llvm::zip(llvm::seq<unsigned>(0, getNumResults()), getResultTypes(),
+                   yield.getOperandTypes())) {
+      if (result == operand)
+        continue;
+      return (emitOpError("expected result #")
+              << idx << " of each region to be " << result)
+                 .attachNote(yield.getLoc())
+             << name << " returns " << operand << " here";
+    }
+    return success();
+  };
+
+  if (failed(verifyRegion(getDefaultRegion(), "default region")))
+    return failure();
+  for (auto &caseRegion : getCaseRegions())
+    if (failed(verifyRegion(
+            caseRegion, "case region #" + Twine(caseRegion.getRegionNumber()))))
+      return failure();
+
+  return success();
+}
+
+size_t IntSwitchOp::getNumCases() {
+  return static_cast<size_t>(getCases().size());
+}
+
+Block &IntSwitchOp::getDefaultBlock() { return getDefaultRegion().front(); }
+
+Block &IntSwitchOp::getCaseBlock(size_t idx) {
+  assert(idx < getNumCases() && "case int out-of-bounds");
+  return getCaseRegions()[idx].front();
+}
+
+void IntSwitchOp::getSuccessorRegions(
+    std::optional<unsigned> index, ArrayRef<Attribute> operands,
+    SmallVectorImpl<RegionSuccessor> &regions) {
+  // All regions branch back to the parent op.
+  if (index) {
+    regions.push_back(RegionSuccessor(getResults()));
+    return;
+  }
+
+  llvm::copy(getRegions(), std::back_inserter(regions));
+}
+
+void IntSwitchOp::getRegionInvocationBounds(
+    ArrayRef<Attribute> operands, SmallVectorImpl<InvocationBounds> &bounds) {
+  auto operandValue = operands.front().dyn_cast_or_null<IntegerAttr>();
+  if (!operandValue) {
+    // All regions are invoked at most once.
+    bounds.append(getNumRegions(), InvocationBounds(/*lb=*/0, /*ub=*/1));
+    return;
+  }
+
+  unsigned liveIndex = getNumRegions() - 1;
+  const auto it = llvm::find(getCases(), operandValue.getValue());
+  if (it != getCases().end())
+    liveIndex = std::distance(getCases().begin(), it);
+  for (unsigned i = 0, e = getNumRegions(); i < e; ++i)
+    bounds.emplace_back(/*lb=*/0, /*ub=*/i == liveIndex);
+}
+
+//===----------------------------------------------------------------------===//
 // TableGen'd op method definitions
 //===----------------------------------------------------------------------===//
 
