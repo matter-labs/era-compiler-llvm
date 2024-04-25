@@ -443,3 +443,36 @@ func.func @switch(%arg0: index) -> i32 {
 
   return %0 : i32
 }
+
+// CHECK-LABEL: @int_switch
+func.func @int_switch(%arg0: i64) -> i32 {
+  // CHECK: %{{.*}} = scf.int_switch %arg0 : i64 -> i32
+  %0 = scf.int_switch %arg0 : i64 -> i32
+  // CHECK-NEXT: case 2 {
+  case 2 {
+    // CHECK-NEXT: arith.constant
+    %c10_i32 = arith.constant 10 : i32
+    // CHECK-NEXT: scf.yield %{{.*}} : i32
+    scf.yield %c10_i32 : i32
+    // CHECK-NEXT: }
+  }
+  // CHECK-NEXT: case 5 {
+  case 5 {
+    %c20_i32 = arith.constant 20 : i32
+    scf.yield %c20_i32 : i32
+  }
+  // CHECK: default {
+  default {
+    %c30_i32 = arith.constant 30 : i32
+    scf.yield %c30_i32 : i32
+  }
+
+  // CHECK: scf.int_switch %arg0 : i64
+  scf.int_switch %arg0 : i64
+  // CHECK-NEXT: default {
+  default {
+    scf.yield
+  }
+
+  return %0 : i32
+}
