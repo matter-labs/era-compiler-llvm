@@ -39,6 +39,10 @@ protected:
                         const MCFixup &Fixup, bool IsPCRel) const override {
     // Translate fixup kind to ELF relocation type.
     switch (Fixup.getTargetKind()) {
+    case EraVM::fixup_16_scale_32:
+      return ELF::R_ERAVM_16_SCALE_32;
+    case EraVM::fixup_16_scale_8:
+      return ELF::R_ERAVM_16_SCALE_8;
     default:
       llvm_unreachable("Invalid fixup kind");
     }

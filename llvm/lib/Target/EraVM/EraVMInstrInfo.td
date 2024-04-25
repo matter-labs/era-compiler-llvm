@@ -139,6 +139,7 @@ def JumpTargetOperand : AsmOperandClass {
 
 def jmptarget : Operand<OtherVT> {
   let ParserMatchClass = JumpTargetOperand;
+  let EncoderMethod = "getJumpTargetValue";
 }
 
 // Address operands
@@ -987,12 +988,26 @@ def : MnemonicAlias<"uma.inc.aux_heap_write", "st.2.inc">;
 // Conditional jump
 let isTerminator = 1, isBranch = 1, Uses = [Flags] in
 def JC: IJump<OpJump, SrcImm, (ins jmptarget:$dest), "$dest",
-              [(EraVMbrcc bb:$dest, imm:$cc)]>;
+              [(EraVMbrcc bb:$dest, imm:$cc)]> {
+  bits<16> dest;
+  let Imm0 = dest;
+}
 
 let isTerminator = 1, isBranch = 1, Uses = [Flags], isIndirectBranch = 1 in {
-def JCr: IJump<OpJump, SrcReg, (ins GR256:$dest), "$dest", []>;
-def JCc: IJump<OpJump, SrcCodeAddr, (ins memop:$dest), "$dest", []>;
-def JCs: IJump<OpJump, SrcStackAbsolute, (ins stackin:$dest), "$dest", []>;
+def JCr: IJump<OpJump, SrcReg, (ins GR256:$dest), "$dest", []> {
+  bits<4> dest;
+  let Src0 = dest;
+}
+def JCc: IJump<OpJump, SrcCodeAddr, (ins memop:$dest), "$dest", []> {
+  bits<20> dest;
+  let Src0 = dest{3-0};
+  let Imm0 = dest{19-4};
+}
+def JCs: IJump<OpJump, SrcStackAbsolute, (ins stackin:$dest), "$dest", []> {
+  bits<20> dest;
+  let Src0 = dest{3-0};
+  let Imm0 = dest{19-4};
+}
 }
 
 // Unconditional jump

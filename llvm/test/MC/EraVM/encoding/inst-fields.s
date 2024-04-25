@@ -1,5 +1,14 @@
 ; RUN: llvm-mc -arch=eravm --show-encoding < %s | FileCheck %s
 
+; define symbols at zero offsets inside the corresponding sections
+  .rodata
+constant:
+  .cell 42
+
+  .data
+variable:
+  .cell 123
+
   .text
 foo:
 
@@ -46,6 +55,21 @@ foo:
   add       r1, r2, stack[17185]
   add       r1, r2, stack[r3 + 17185]
 
+; src: code symbol
+  add  code[@constant + r1],          r2, r3
+  add  code[@constant + 17185],       r2, r3
+  add  code[@constant + 17185 + r1],  r2, r3
+
+; src: stack symbol
+  add  stack[@variable + r1],         r2, r3
+  add  stack[@variable + 17185],      r2, r3
+  add  stack[@variable + 17185 + r1], r2, r3
+
+; dst: stack symbol
+  add  r1, r2, stack[@variable + r3]
+  add  r1, r2, stack[@variable + 17185]
+  add  r1, r2, stack[@variable + 17185 + r3]
+
 ; CHECK:  .text
 ; CHECK:foo:
 
@@ -84,3 +108,24 @@ foo:
 ; CHECK:  add   r1, r2, stack[r3]                 ; encoding: [0x00,0x00,0x00,0x00,0x03,0x21,0x00,0x1f]
 ; CHECK:  add   r1, r2, stack[17185]              ; encoding: [0x43,0x21,0x00,0x00,0x00,0x21,0x00,0x1f]
 ; CHECK:  add   r1, r2, stack[17185 + r3]         ; encoding: [0x43,0x21,0x00,0x00,0x03,0x21,0x00,0x1f]
+
+; CHECK:  add   @constant[r1+0], r2, r3             ; encoding: [0x00,0x00,A,A,0x03,0x21,0x00,0x41]
+; CHECK:  ;   fixup A - offset: 2, value: @constant, kind: fixup_16_scale_32
+; CHECK:  add   @constant[r0+17185], r2, r3         ; encoding: [0x00,0x00,0x43'A',0x21'A',0x03,0x20,0x00,0x41]
+; CHECK:  ;   fixup A - offset: 2, value: @constant, kind: fixup_16_scale_32
+; CHECK:  add   @constant[r1+17185], r2, r3         ; encoding: [0x00,0x00,0x43'A',0x21'A',0x03,0x21,0x00,0x41]
+; CHECK:  ;   fixup A - offset: 2, value: @constant, kind: fixup_16_scale_32
+
+; CHECK:  add   stack[@variable+0 + r1], r2, r3     ; encoding: [0x00,0x00,A,A,0x03,0x21,0x00,0x31]
+; CHECK:  ;   fixup A - offset: 2, value: @variable, kind: fixup_16_scale_32
+; CHECK:  add   stack[@variable+17185], r2, r3      ; encoding: [0x00,0x00,0x43'A',0x21'A',0x03,0x20,0x00,0x31]
+; CHECK:  ;   fixup A - offset: 2, value: @variable, kind: fixup_16_scale_32
+; CHECK:  add   stack[@variable+17185 + r1], r2, r3 ; encoding: [0x00,0x00,0x43'A',0x21'A',0x03,0x21,0x00,0x31]
+; CHECK:  ;   fixup A - offset: 2, value: @variable, kind: fixup_16_scale_32
+
+; CHECK:  add   r1, r2, stack[@variable+0 + r3]     ; encoding: [A,A,0x00,0x00,0x03,0x21,0x00,0x1f]
+; CHECK:  ;   fixup A - offset: 0, value: @variable, kind: fixup_16_scale_32
+; CHECK:  add   r1, r2, stack[@variable+17185]      ; encoding: [0x43'A',0x21'A',0x00,0x00,0x00,0x21,0x00,0x1f]
+; CHECK:  ;   fixup A - offset: 0, value: @variable, kind: fixup_16_scale_32
+; CHECK:  add   r1, r2, stack[@variable+17185 + r3] ; encoding: [0x43'A',0x21'A',0x00,0x00,0x03,0x21,0x00,0x1f]
+; CHECK:  ;   fixup A - offset: 0, value: @variable, kind: fixup_16_scale_32
