@@ -1185,12 +1185,72 @@ def IndexSwitchOp : SCF_Op<"index_switch", [RecursiveMemoryEffects,
 }
 
 //===----------------------------------------------------------------------===//
+// IntSwitchOp
+// (Copied and modified from IndexSwitchOp)
+//===----------------------------------------------------------------------===//
+
+def IntSwitchOp : SCF_Op<"int_switch", [RecursiveMemoryEffects,
+    SingleBlockImplicitTerminator<"scf::YieldOp">,
+    DeclareOpInterfaceMethods<RegionBranchOpInterface,
+                              ["getRegionInvocationBounds"]>]> {
+  let summary = "switch-case operation on an integer argument";
+  let description = [{
+    The `scf.int_switch` is a control-flow operation that branches to one of the
+    given regions based on the values of the argument and the cases. The
+    argument is an integral type.
+
+    The operation always has a "default" region and any number of case regions
+    denoted by integer constants. Control-flow transfers to the case region
+    whose constant value equals the value of the argument. If the argument does
+    not equal any of the case values, control-flow transfer to the "default"
+    region.
+
+    Example:
+
+    ```mlir
+    %0 = scf.int_switch %arg0 : i32 -> i32
+    case 2 {
+      %1 = arith.constant 10 : i32
+      scf.yield %1 : i32
+    }
+    case 5 {
+      %2 = arith.constant 20 : i32
+      scf.yield %2 : i32
+    }
+    default {
+      %3 = arith.constant 30 : i32
+      scf.yield %3 : i32
+    }
+    ```
+  }];
+
+  let arguments = (ins AnyInteger:$arg, AnyIntElementsAttr:$cases);
+  let results = (outs Variadic<AnyType>:$results);
+  let regions = (region SizedRegion<1>:$defaultRegion,
+                        VariadicRegion<SizedRegion<1>>:$caseRegions);
+
+  let extraClassDeclaration = [{
+    /// Get the number of cases.
+    size_t getNumCases();
+
+    /// Get the default region body.
+    Block &getDefaultBlock();
+
+    /// Get the body of a case region.
+    Block &getCaseBlock(size_t idx);
+  }];
+
+  let hasCustomAssemblyFormat = 1;
+  let hasVerifier = 1;
+}
+
+//===----------------------------------------------------------------------===//
 // YieldOp
 //===----------------------------------------------------------------------===//
 
 def YieldOp : SCF_Op<"yield", [Pure, ReturnLike, Terminator,
     ParentOneOf<["ExecuteRegionOp, ForOp", "IfOp", "IndexSwitchOp",
-                 "ParallelOp", "WhileOp"]>]> {
+                 "IntSwitchOp", "ParallelOp", "WhileOp"]>]> {
   let summary = "loop yield and termination operation";
   let description = [{
     "scf.yield" yields an SSA value from the SCF dialect op region and
