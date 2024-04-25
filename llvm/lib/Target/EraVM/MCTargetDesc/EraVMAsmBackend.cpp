@@ -32,9 +32,6 @@ namespace {
 class EraVMAsmBackend : public MCAsmBackend {
   uint8_t OSABI;
 
-  uint64_t adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
-                            MCContext &Ctx) const;
-
 public:
   EraVMAsmBackend(const MCSubtargetInfo &STI, uint8_t OSABI)
       : MCAsmBackend(support::little), OSABI(OSABI) {}
@@ -77,16 +74,9 @@ public:
         // This table must be in the same order of enum in EraVMFixupKinds.h.
         //
         // name            offset bits flags
-        {"fixup_32", 0, 32, 0},
-        {"fixup_10_pcrel", 0, 10, MCFixupKindInfo::FKF_IsPCRel},
-        {"fixup_16", 0, 16, 0},
-        {"fixup_16_pcrel", 0, 16, MCFixupKindInfo::FKF_IsPCRel},
-        {"fixup_16_byte", 0, 16, 0},
-        {"fixup_16_pcrel_byte", 0, 16, MCFixupKindInfo::FKF_IsPCRel},
-        {"fixup_2x_pcrel", 0, 10, MCFixupKindInfo::FKF_IsPCRel},
-        {"fixup_rl_pcrel", 0, 16, MCFixupKindInfo::FKF_IsPCRel},
-        {"fixup_8", 0, 8, 0},
-        {"fixup_sym_diff", 0, 32, 0},
+        // FIXME Should MCFixupKindInfo::FKF_IsTarget flag be set?
+        {"fixup_16_scale_32", 0, 16, 0},
+        {"fixup_16_scale_8", 0, 16, 0},
     };
     static_assert((std::size(Infos)) == EraVM::NumTargetFixupKinds,
                   "Not all fixup kinds added to Infos array");
@@ -106,37 +96,11 @@ public:
                     const MCSubtargetInfo *STI) const override;
 };
 
-uint64_t EraVMAsmBackend::adjustFixupValue(const MCFixup &Fixup, uint64_t Value,
-                                           MCContext &Ctx) const {
-  unsigned Kind = Fixup.getKind();
-  if (Kind == EraVM::fixup_10_pcrel) {
-    if (Value & 0x1)
-      Ctx.reportError(Fixup.getLoc(), "fixup value must be 2-byte aligned");
-
-    // Offset is signed
-    int16_t Offset = Value;
-    // Jumps are in words
-    Offset >>= 1;
-    // PC points to the next instruction so decrement by one
-    --Offset;
-
-    if (Offset < -512 || Offset > 511)
-      Ctx.reportError(Fixup.getLoc(), "fixup value out of range");
-
-    // Mask 10 bits
-    Offset &= 0x3ff;
-
-    return Offset;
-  }
-  return Value;
-}
-
 void EraVMAsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
                                  const MCValue &Target,
                                  MutableArrayRef<char> Data, uint64_t Value,
                                  bool IsResolved,
                                  const MCSubtargetInfo *STI) const {
-  Value = adjustFixupValue(Fixup, Value, Asm.getContext());
   MCFixupKindInfo Info = getFixupKindInfo(Fixup.getKind());
   if (!Value)
     return; // Doesn't change encoding.

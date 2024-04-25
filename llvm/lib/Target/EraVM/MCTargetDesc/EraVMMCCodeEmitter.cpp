@@ -59,6 +59,10 @@ public:
                            SmallVectorImpl<MCFixup> &Fixups,
                            const MCSubtargetInfo &STI) const;
 
+  uint64_t getJumpTargetValue(const MCInst &MI, unsigned Idx,
+                              SmallVectorImpl<MCFixup> &Fixups,
+                              const MCSubtargetInfo &STI) const;
+
   uint64_t getCCOpValue(const MCInst &MI, unsigned Idx,
                         SmallVectorImpl<MCFixup> &Fixups,
                         const MCSubtargetInfo &STI) const;
@@ -83,7 +87,8 @@ public:
 
 private:
   uint64_t getRegWithAddend(const MCInst &MI, unsigned BaseReg,
-                            int Addend) const;
+                            const MCSymbol *Symbol, int Addend, bool IsSrc,
+                            SmallVectorImpl<MCFixup> &Fixups) const;
 };
 
 static int modeEncodingByMarker(const MCOperand &Op) {
@@ -133,8 +138,18 @@ uint64_t EraVMMCCodeEmitter::adjustForStackOperands(
 void EraVMMCCodeEmitter::encodeInstruction(const MCInst &MI, raw_ostream &OS,
                                            SmallVectorImpl<MCFixup> &Fixups,
                                            const MCSubtargetInfo &STI) const {
-  uint64_t EncodedInstr = getBinaryCodeForInstr(MI, Fixups, STI);
-  EncodedInstr = adjustForStackOperands(MI, EncodedInstr, STI);
+  MCInst ExpandedMI(MI);
+
+  if (ExpandedMI.getOpcode() == EraVM::NEAR_CALL_default_unwind) {
+    ExpandedMI.setOpcode(EraVM::NEAR_CALL);
+    MCSymbol *Sym = Ctx.getOrCreateSymbol("DEFAULT_UNWIND_DEST");
+    const MCExpr *Expr = MCSymbolRefExpr::create(Sym, Ctx);
+    auto *OptionalCC = std::next(ExpandedMI.begin(), 2);
+    ExpandedMI.insert(OptionalCC, MCOperand::createExpr(Expr));
+  }
+
+  uint64_t EncodedInstr = getBinaryCodeForInstr(ExpandedMI, Fixups, STI);
+  EncodedInstr = adjustForStackOperands(ExpandedMI, EncodedInstr, STI);
   support::endian::write(OS, EncodedInstr, support::big);
 }
 
@@ -150,9 +165,16 @@ EraVMMCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
   llvm_unreachable("Unexpected generic operand type");
 }
 
-uint64_t EraVMMCCodeEmitter::getRegWithAddend(const MCInst &MI,
-                                              unsigned BaseReg,
-                                              int Addend) const {
+uint64_t EraVMMCCodeEmitter::getRegWithAddend(
+    const MCInst &MI, unsigned BaseReg, const MCSymbol *Symbol, int Addend,
+    bool IsSrc, SmallVectorImpl<MCFixup> &Fixups) const {
+  if (Symbol) {
+    unsigned Offset = IsSrc ? 2 : 0;
+    const MCExpr *Expr = MCSymbolRefExpr::create(Symbol, Ctx);
+    auto FK = static_cast<MCFixupKind>(EraVM::fixup_16_scale_32);
+    Fixups.push_back(MCFixup::create(Offset, Expr, FK, MI.getLoc()));
+  }
+
   uint64_t Result = 0;
   Result |= Ctx.getRegisterInfo()->getEncodingValue(BaseReg);
   Result |= Addend << 4;
@@ -169,9 +191,8 @@ uint64_t EraVMMCCodeEmitter::getStackOpValue(const MCInst &MI, unsigned Idx,
   int Addend = 0;
   EraVM::MemOperandKind Kind = EraVM::OperandStackAbsolute;
   EraVM::analyzeMCOperandsStack(MI, Idx, IsSrc, BaseReg, Kind, Symbol, Addend);
-  assert(Symbol == nullptr && "Not yet supported");
 
-  return getRegWithAddend(MI, BaseReg, Addend);
+  return getRegWithAddend(MI, BaseReg, Symbol, Addend, IsSrc, Fixups);
 }
 
 uint64_t EraVMMCCodeEmitter::getMemOpValue(const MCInst &MI, unsigned Idx,
@@ -181,9 +202,25 @@ uint64_t EraVMMCCodeEmitter::getMemOpValue(const MCInst &MI, unsigned Idx,
   const MCSymbol *Symbol = nullptr;
   int Addend = 0;
   EraVM::analyzeMCOperandsCode(MI, Idx, BaseReg, Symbol, Addend);
-  assert(Symbol == nullptr && "Not yet supported");
 
-  return getRegWithAddend(MI, BaseReg, Addend);
+  return getRegWithAddend(MI, BaseReg, Symbol, Addend, /*IsSrc=*/true, Fixups);
+}
+
+uint64_t
+EraVMMCCodeEmitter::getJumpTargetValue(const MCInst &MI, unsigned Idx,
+                                       SmallVectorImpl<MCFixup> &Fixups,
+                                       const MCSubtargetInfo &STI) const {
+  const MCOperand &Op = MI.getOperand(Idx);
+  assert(Op.isExpr());
+
+  unsigned Offset = 2;
+  if (MI.getOpcode() == EraVM::NEAR_CALL && Idx == 2) {
+    // NEAR_CALL has two jmptarget operands and this is the second.
+    Offset = 0;
+  }
+  auto FK = static_cast<MCFixupKind>(EraVM::fixup_16_scale_8);
+  Fixups.push_back(MCFixup::create(Offset, Op.getExpr(), FK, MI.getLoc()));
+  return 0;
 }
 
 uint64_t EraVMMCCodeEmitter::getCCOpValue(const MCInst &MI, unsigned Idx,

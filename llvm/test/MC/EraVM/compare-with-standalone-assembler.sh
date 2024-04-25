@@ -9,6 +9,26 @@ assembler_dir="$(realpath "$llvm_dir/../era-zkEVM-assembly")"
 llvm_mc="$llvm_dir/build/bin/llvm-mc"
 reader="$assembler_dir/target/debug/reader"
 
+# The standalone assembler arranges output binary, so that .rodata contents are
+# placed after the instructions in .text section, so it is not possible to
+# simply define a label at the beginning of section and make assembler fill its
+# address with zeros. Note that the assembler checks the section where symbol
+# is defined, so cannot define constants at the beginning of .text section
+# instead of .rodata. Thus, implement a dummy "linker" in this shell script
+# that replaces exactly one output string with exactly one another.
+
+# For example, if the only test file containing constant pool operands only
+# mentions "@constant[r1 + 42]" and contains 21 instructions, pass "A,0x2a'A'"
+# as reloc_from environment variable and "0x00,0x31" as reloc_to variable.
+# 0x0031 here is a manually computed value: there are 21 instructions in the
+# test file, they occupy ceil(21 / 4) == 6 words on code/constant page.
+# It seems the assembler always adds three instructions at the end of .text:
+# ret.panic.to_label, ret.ok.to_label, ret.revert.to_label and eight zero bytes,
+# which adds exactly one more 32-byte word: 0x0031 == 6 + 1 + 42.
+
+[ ! -v reloc_from ] && reloc_from=NONEXISTENT
+[ ! -v reloc_to ] && reloc_to=NONEXISTENT
+
 echo "Paths to be used:"
 echo "llvm-mc: $llvm_mc"
 echo "reader:  $reader"
@@ -34,12 +54,14 @@ filter_common() {
 # ...
 #
 # First, only select lines containing "...; encoding: [...]" and drop everything
-# except the "encoding" payload. Then, drop commas and "0x" prefixes.
+# except the "encoding" payload. Then, drop commas, "0x" prefixes and replace
+# relocation placeholders ('A's and 'B's) as if they are no-op.
 mc_bytes() {
   "$llvm_mc" -arch=eravm --show-encoding | \
       grep -F '; encoding: [' | \
       sed -E 's/^.*; encoding: \[(.*)\].*$/\1/' |
-      sed -E -e 's/0x//g' -e 's/,/ /g'
+      sed -E "s/$reloc_from/$reloc_to/g" |
+      sed -E -e 's/0x//g' -e 's/,/ /g' -e 's/(A A|B B)/00 00/g' -e "s/'A'//g"
 }
 
 # Assemble stdin with the standalone assembler and format its output in lines

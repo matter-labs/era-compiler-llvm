@@ -701,19 +701,34 @@ class IRetToLabel<EraVMOpcode opcode,
 }
 
 class ICall<EraVMOpcode opcode, dag ins, string asmstr, list<dag> pattern>
-  : IForm <opcode, (outs), ins, asmstr, pattern > { }
+  : IForm <opcode, (outs), ins, asmstr, pattern > {
+  bits<4> in1;
+  bits<16> callee;
+  bits<16> unwind;
+
+  let Src0 = in1;
+  let Imm0 = callee;
+  let Imm1 = unwind;
+}
 
 class IFarCall<EraVMOpcode opcode,
                bit is_shard, bit is_static,
                dag ins,
                string asmstr, list<dag> pattern>
   : IForm <opcode, (outs), ins, asmstr, pattern > {
+  bits<4> rs0;
+  bits<4> rs1;
+  bits<16> unwind;
 
   let AsmString = !strconcat(opcode.Name,
                              !if(is_shard, ".shard", ""),
                              !if(is_static, ".static", ""),
                              "${cc}", "\t", asmstr);
   let Opcode = FarCallOpcEncoder<opcode.BaseOpcode, is_shard, is_static>.Opcode;
+
+  let Src0 = rs0;
+  let Src1 = rs1;
+  let Imm0 = unwind;
 }
 
 class IUMA<EraVMOpcode opcode,

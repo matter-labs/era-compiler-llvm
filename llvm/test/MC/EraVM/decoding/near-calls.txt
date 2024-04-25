@@ -1,0 +1,10 @@
+# RUN: llvm-mc -arch=eravm --disassemble < %s | FileCheck %s
+
+# CHECK:  .text
+
+# FIXME: Labels are not checked on input, integer literals are not valid syntax
+#        for jump targets on output.
+# FIXME: Simplified forms not tested.
+
+[0xab,0xcd,0x10,0x01,0x00,0x03,0x04,0x0f]
+# CHECK:  near_call      r3, 4097, 43981
