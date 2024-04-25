@@ -298,6 +298,15 @@ struct IndexSwitchLowering : public OpRewritePattern<IndexSwitchOp> {
   LogicalResult matchAndRewrite(IndexSwitchOp op,
                                 PatternRewriter &rewriter) const override;
 };
+
+/// Lower an `scf.int_switch` operation to a `cf.switch` operation.
+struct IntSwitchLowering : public OpRewritePattern<IntSwitchOp> {
+  using OpRewritePattern::OpRewritePattern;
+
+  LogicalResult matchAndRewrite(IntSwitchOp op,
+                                PatternRewriter &rewriter) const override;
+};
+
 } // namespace
 
 LogicalResult ForLowering::matchAndRewrite(ForOp forOp,
@@ -680,10 +689,75 @@ IndexSwitchLowering::matchAndRewrite(IndexSwitchOp op,
   return success();
 }
 
+LogicalResult
+IntSwitchLowering::matchAndRewrite(IntSwitchOp op,
+                                   PatternRewriter &rewriter) const {
+  // Split the block at the op.
+  Block *condBlock = rewriter.getInsertionBlock();
+  Block *continueBlock = rewriter.splitBlock(condBlock, Block::iterator(op));
+
+  // Create the arguments on the continue block with which to replace the
+  // results of the op.
+  SmallVector<Value> results;
+  results.reserve(op.getNumResults());
+  for (Type resultType : op.getResultTypes())
+    results.push_back(continueBlock->addArgument(resultType, op.getLoc()));
+
+  // Handle the regions.
+  auto convertRegion = [&](Region &region) -> FailureOr<Block *> {
+    Block *block = &region.front();
+
+    // Convert the yield terminator to a branch to the continue block.
+    auto yield = cast<scf::YieldOp>(block->getTerminator());
+    rewriter.setInsertionPoint(yield);
+    rewriter.replaceOpWithNewOp<cf::BranchOp>(yield, continueBlock,
+                                              yield.getOperands());
+
+    // Inline the region.
+    rewriter.inlineRegionBefore(region, continueBlock);
+    return block;
+  };
+
+  // Convert the case regions.
+  SmallVector<Block *> caseSuccessors;
+  SmallVector<llvm::APInt> caseValues;
+  caseSuccessors.reserve(op.getCases().size());
+  caseValues.reserve(op.getCases().size());
+  for (auto [region, value] : llvm::zip(op.getCaseRegions(), op.getCases())) {
+    FailureOr<Block *> block = convertRegion(region);
+    if (failed(block))
+      return failure();
+    caseSuccessors.push_back(*block);
+    caseValues.push_back(value);
+  }
+
+  // Convert the default region.
+  FailureOr<Block *> defaultBlock = convertRegion(op.getDefaultRegion());
+  if (failed(defaultBlock))
+    return failure();
+
+  // Create the switch.
+  rewriter.setInsertionPointToEnd(condBlock);
+  SmallVector<ValueRange> caseOperands(caseSuccessors.size(), {});
+
+  // Create the attribute for the case values.
+  Value caseValue = op.getArg();
+  auto caseValuesAttr = DenseIntElementsAttr::get(
+      VectorType::get(static_cast<int64_t>(caseValues.size()),
+                      op.getArg().getType()),
+      caseValues);
+
+  rewriter.create<cf::SwitchOp>(op.getLoc(), caseValue, *defaultBlock,
+                                ValueRange(), caseValuesAttr, caseSuccessors,
+                                caseOperands);
+  rewriter.replaceOp(op, continueBlock->getArguments());
+  return success();
+}
+
 void mlir::populateSCFToControlFlowConversionPatterns(
     RewritePatternSet &patterns) {
   patterns.add<ForLowering, IfLowering, ParallelLowering, WhileLowering,
-               ExecuteRegionLowering, IndexSwitchLowering>(
+               ExecuteRegionLowering, IndexSwitchLowering, IntSwitchLowering>(
       patterns.getContext());
   patterns.add<DoWhileLowering>(patterns.getContext(), /*benefit=*/2);
 }
@@ -695,7 +769,7 @@ void SCFToControlFlowPass::runOnOperation() {
   // Configure conversion to lower out SCF operations.
   ConversionTarget target(getContext());
   target.addIllegalOp<scf::ForOp, scf::IfOp, scf::ParallelOp, scf::WhileOp,
-                      scf::ExecuteRegionOp>();
+                      scf::IntSwitchOp, scf::ExecuteRegionOp>();
   target.markUnknownOpDynamicallyLegal([](Operation *) { return true; });
   if (failed(
           applyPartialConversion(getOperation(), target, std::move(patterns))))
