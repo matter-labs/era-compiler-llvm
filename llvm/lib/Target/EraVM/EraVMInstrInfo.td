@@ -1063,7 +1063,6 @@ def LOADCONST : Pseudo<(outs GR256:$val), (ins i256imm:$addr),
 // Intrinsics lowering
 //===----------------------------------------------------------------------===//
 
-// TODO: CPR-1505 Regroup instructions based on the attributes from IntrinsicsEraVM.td.
 def CTXThis : IContext<OpContextThis, (outs GR256:$rd0), (ins),
                        "$rd0",
                        [(set GR256:$rd0, (int_eravm_this))]>;
