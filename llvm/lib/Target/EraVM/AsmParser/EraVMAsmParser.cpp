@@ -322,12 +322,12 @@ OperandMatchResultTy EraVMAsmParser::tryParseRegister(MCRegister &RegNo,
 
 static int parseExplicitCondition(StringRef Code) {
   return StringSwitch<int>(Code)
-      .Cases("eq", "if_eq", EraVMCC::COND_E)
-      .Cases("lt", "if_lt", EraVMCC::COND_LT)
-      .Cases("gt", "if_gt", EraVMCC::COND_GT)
-      .Cases("ne", "if_not_eq", EraVMCC::COND_NE)
-      .Cases("ge", "if_ge", "if_gt_or_eq", EraVMCC::COND_GE)
-      .Cases("le", "if_le", EraVMCC::COND_LE)
+      .Case("eq", EraVMCC::COND_E)
+      .Case("lt", EraVMCC::COND_LT)
+      .Case("gt", EraVMCC::COND_GT)
+      .Case("ne", EraVMCC::COND_NE)
+      .Case("ge", EraVMCC::COND_GE)
+      .Case("le", EraVMCC::COND_LE)
       .Default(EraVMCC::COND_INVALID);
 }
 
