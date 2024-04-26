@@ -1225,6 +1225,10 @@ StringRef ELFObjectFile<ELFT>::getFileFormatName() const {
       return "elf32-loongarch";
     case ELF::EM_XTENSA:
       return "elf32-xtensa";
+    // EraVM local begin
+    case ELF::EM_ERAVM:
+      return "elf32-eravm";
+    // EraVM local end
     default:
       return "elf32-unknown";
     }
@@ -1351,6 +1355,11 @@ template <class ELFT> Triple::ArchType ELFObjectFile<ELFT>::getArch() const {
 
   case ELF::EM_XTENSA:
     return Triple::xtensa;
+
+  // EraVM local begin
+  case ELF::EM_ERAVM:
+    return Triple::eravm;
+  // EraVM local end
 
   default:
     return Triple::UnknownArch;

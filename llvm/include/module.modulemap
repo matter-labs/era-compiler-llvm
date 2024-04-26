@@ -89,6 +89,7 @@ module LLVM_BinaryFormat {
     textual header "llvm/BinaryFormat/ELFRelocs/AVR.def"
     textual header "llvm/BinaryFormat/ELFRelocs/BPF.def"
     textual header "llvm/BinaryFormat/ELFRelocs/CSKY.def"
+    textual header "llvm/BinaryFormat/ELFRelocs/EraVM.def"
     textual header "llvm/BinaryFormat/ELFRelocs/Hexagon.def"
     textual header "llvm/BinaryFormat/ELFRelocs/i386.def"
     textual header "llvm/BinaryFormat/ELFRelocs/Lanai.def"

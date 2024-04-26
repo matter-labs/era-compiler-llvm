@@ -181,6 +181,15 @@ StringRef llvm::object::getELFRelocationTypeName(uint32_t Machine,
       break;
     }
     break;
+  // EraVM local begin
+  case ELF::EM_ERAVM:
+    switch (Type) { // NOLINT until non-trivial relocation types are defined
+#include "llvm/BinaryFormat/ELFRelocs/EraVM.def"
+    default:
+      break;
+    }
+    break;
+  // EraVM local end
   default:
     break;
   }

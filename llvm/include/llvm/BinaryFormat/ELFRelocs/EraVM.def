@@ -1,0 +1,8 @@
+
+#ifndef ELF_RELOC
+#error "ELF_RELOC must be defined"
+#endif
+
+ELF_RELOC(R_ERAVM_NONE,               0)
+// TODO Remove nolint comment from llvm/lib/Object/ELF.cpp after adding
+//      non-trivial relocation types.

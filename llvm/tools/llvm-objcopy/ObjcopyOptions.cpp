@@ -337,6 +337,9 @@ static const StringMap<MachineInfo> TargetMap{
     // LoongArch
     {"elf32-loongarch", {ELF::EM_LOONGARCH, false, true}},
     {"elf64-loongarch", {ELF::EM_LOONGARCH, true, true}},
+    // EraVM local begin
+    {"elf32-eravm", {ELF::EM_ERAVM, false, false}},
+    // EraVM local end
 };
 
 static Expected<TargetInfo>
