@@ -1,0 +1,8 @@
+
+#ifndef ELF_RELOC
+#error "ELF_RELOC must be defined"
+#endif
+
+ELF_RELOC(R_ERAVM_NONE,               0)
+ELF_RELOC(R_ERAVM_16_SCALE_32,        1)
+ELF_RELOC(R_ERAVM_16_SCALE_8,         2)

@@ -313,6 +313,15 @@ TEST(ELFObjectFileTest, CheckOSAndTriple) {
   }
 }
 
+// EraVM local begin
+TEST(ELFObjectFileTest, MachineTestForEraVM) {
+  std::array<StringRef, 4> Formats = {"elf32-eravm", "elf32-eravm",
+                                      "elf64-unknown", "elf64-unknown"};
+  for (auto [Idx, Data] : enumerate(generateData(ELF::EM_ERAVM)))
+    checkFormatAndArch(Data, Formats[Idx], Triple::eravm);
+}
+// EraVM local end
+
 // ELF relative relocation type test.
 TEST(ELFObjectFileTest, RelativeRelocationTypeTest) {
   EXPECT_EQ(ELF::R_CKCORE_RELATIVE, getELFRelativeRelocationType(ELF::EM_CSKY));

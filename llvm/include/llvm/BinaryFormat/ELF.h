@@ -321,6 +321,9 @@ enum {
   EM_VE = 251,            // NEC SX-Aurora VE
   EM_CSKY = 252,          // C-SKY 32-bit processor
   EM_LOONGARCH = 258,     // LoongArch
+  // EraVM local begin
+  EM_ERAVM = 260,         // EraVM
+  // EraVM local end
 };
 
 // Object file classes.
@@ -1016,6 +1019,11 @@ enum : unsigned {
 // ELF Relocation types for Xtensa
 enum {
 #include "ELFRelocs/Xtensa.def"
+};
+
+// ELF Relocation types for EraVM
+enum {
+#include "ELFRelocs/EraVM.def"
 };
 
 #undef ELF_RELOC
