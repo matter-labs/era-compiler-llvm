@@ -355,6 +355,9 @@ void ScalarEnumerationTraits<ELFYAML::ELF_EM>::enumeration(
   ECase(EM_VE);
   ECase(EM_CSKY);
   ECase(EM_LOONGARCH);
+  // EraVM local begin
+  ECase(EM_ERAVM);
+  // EraVM local end
 #undef ECase
   IO.enumFallback<Hex16>(Value);
 }
@@ -918,6 +921,11 @@ void ScalarEnumerationTraits<ELFYAML::ELF_REL>::enumeration(
   case ELF::EM_XTENSA:
 #include "llvm/BinaryFormat/ELFRelocs/Xtensa.def"
     break;
+  // EraVM local begin
+  case ELF::EM_ERAVM:
+#include "llvm/BinaryFormat/ELFRelocs/EraVM.def"
+    break;
+  // EraVM local end
   default:
     // Nothing to do.
     break;

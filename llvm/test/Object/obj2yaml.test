@@ -697,6 +697,24 @@ FileHeader:
   Machine:         EM_XTENSA
   Flags:           [ EF_XTENSA_XT_INSN, EF_XTENSA_XT_LIT ]
 
+# RUN: yaml2obj --docnum=3 %s -o %t-eravm
+# RUN: obj2yaml %t-eravm | FileCheck %s --check-prefix ELF-ERAVM
+
+# ELF-ERAVM:      FileHeader:
+# ELF-ERAVM-NEXT:   Class:           ELFCLASS32
+# ELF-ERAVM-NEXT:   Data:            ELFDATA2MSB
+# ELF-ERAVM-NEXT:   Type:            ET_EXEC
+# ELF-ERAVM-NEXT:   Machine:         EM_ERAVM
+# ELF-ERAVM-NOT:    Flags
+
+--- !ELF
+FileHeader:
+  Class:           ELFCLASS32
+  Data:            ELFDATA2MSB
+  Type:            ET_EXEC
+  Machine:         EM_ERAVM
+  Flags:           [ ]
+
 # RUN: obj2yaml %p/Inputs/trivial-object-test.elf-avr | FileCheck %s --check-prefix ELF-AVR
 
 # ELF-AVR:      FileHeader:
