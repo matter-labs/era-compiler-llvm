@@ -1,0 +1,23 @@
+## Test that llvm-readobj shows proper relocation type
+## names and values for the EraVM target.
+
+# RUN: yaml2obj %s -o %t-eravm.o
+# RUN: llvm-readobj -r --expand-relocs %t-eravm.o | FileCheck %s
+
+# CHECK: Type: R_ERAVM_NONE (0)
+# CHECK: Type: R_ERAVM_16_SCALE_32 (1)
+# CHECK: Type: R_ERAVM_16_SCALE_8 (2)
+
+--- !ELF
+FileHeader:
+  Class:   ELFCLASS32
+  Data:    ELFDATA2MSB
+  Type:    ET_REL
+  Machine: EM_ERAVM
+Sections:
+  - Name:         .rel.text
+    Type:         SHT_REL
+    Relocations:
+       - Type:   R_ERAVM_NONE
+       - Type:   R_ERAVM_16_SCALE_32
+       - Type:   R_ERAVM_16_SCALE_8

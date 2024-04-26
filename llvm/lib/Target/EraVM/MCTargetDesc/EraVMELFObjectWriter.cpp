@@ -25,7 +25,7 @@ namespace {
 class EraVMELFObjectWriter : public MCELFObjectTargetWriter {
 public:
   explicit EraVMELFObjectWriter(uint8_t OSABI)
-      : MCELFObjectTargetWriter(false, OSABI, ELF::EM_NONE,
+      : MCELFObjectTargetWriter(false, OSABI, ELF::EM_ERAVM,
                                 /*HasRelocationAddend*/ true) {}
 
   ~EraVMELFObjectWriter() override = default;
