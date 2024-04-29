@@ -1067,6 +1067,7 @@ def MOVEIMM : Pseudo<(outs GR256:$out), (ins i256imm:$val),
 // Intrinsics lowering
 //===----------------------------------------------------------------------===//
 
+let isReMaterializable = 1, hasSideEffects = 0 in {
 def CTXThis : IContext<OpContextThis, (outs GR256:$rd0), (ins),
                        "$rd0",
                        [(set GR256:$rd0, (int_eravm_this))]>;
@@ -1076,6 +1077,11 @@ def CTXCaller : IContext<OpContextCaller, (outs GR256:$rd0), (ins),
 def CTXCodeSource : IContext<OpContextCodeAddress, (outs GR256:$rd0), (ins),
                             "$rd0",
                             [(set GR256:$rd0, (int_eravm_codesource))]>;
+def CTXGetU128 : IContext<OpContextGetContextU128, (outs GR256:$rd0), (ins),
+                          "$rd0",
+                          [(set GR256:$rd0, (int_eravm_getu128))]>;
+}
+
 def CTXMeta : IContext<OpContextMeta, (outs GR256:$rd0), (ins),
                         "$rd0",
                         [(set GR256:$rd0, (int_eravm_meta))]>;
@@ -1094,9 +1100,6 @@ def CTXGasLeft : IContext<OpContextErgsLeft, (outs GR256:$rd0), (ins),
 def CTXGetSp   : IContext<OpContextSp, (outs GR256:$rd0), (ins),
                           "$rd0",
                           [(set GR256:$rd0, (EraVMget_sp))]>;
-def CTXGetU128 : IContext<OpContextGetContextU128, (outs GR256:$rd0), (ins),
-                          "$rd0",
-                          [(set GR256:$rd0, (int_eravm_getu128))]>;
 def CTXIncTx   : IContext<OpContextIncrementTxNumber, (outs), (ins), "", [(int_eravm_inctx)]>;
 }
 
