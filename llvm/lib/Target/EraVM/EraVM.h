@@ -24,18 +24,13 @@
 #include "llvm/Target/TargetMachine.h"
 
 namespace EraVMCC {
-// EraVM specific condition code.
-enum CondCodes {
-  COND_NONE = 0, /// unconditional
-  COND_E = 2,    /// EQ flag is set
-  COND_LT = 4,   /// LT flag is set
-  COND_GT = 8,   /// GT flag is set
-  COND_NE,
-  COND_LE,
-  COND_GE,
 
-  COND_INVALID = -1
-};
+// EraVM-specific condition codes - shared between hand-written C++ and
+// tablegen-erated code. The values of COND_* constants are their binary
+// encodings, except for COND_INVALID which is not encodable.
+#define GET_CondCodes_DECL
+#include "EraVMGenSearchableTables.inc"
+
 } // namespace EraVMCC
 
 namespace EraVMAS {

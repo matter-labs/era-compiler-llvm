@@ -347,13 +347,13 @@ def : Pat<(load_code(EraVMselectcc memaddr:$addr1, memaddr:$addr2, imm:$cc)),
           (SELccr memaddr:$addr1, memaddr:$addr2, imm:$cc)>;
 
 // TODO: CPR-1356 stack and code forms
-def : Pat<(int_eravm_ifeq GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, 2 /*COND_EQ*/)>;
-def : Pat<(int_eravm_iflt GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, 4 /*COND_LT*/)>;
-def : Pat<(int_eravm_ifgt GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, 8 /*COND_GT*/)>;
+def : Pat<(int_eravm_ifeq GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, COND_E.Encoding)>;
+def : Pat<(int_eravm_iflt GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, COND_LT.Encoding)>;
+def : Pat<(int_eravm_ifgt GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, COND_GT.Encoding)>;
 
-def : Pat<(int_eravm_ifeq imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, 2 /*COND_EQ*/)>;
-def : Pat<(int_eravm_iflt imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, 4 /*COND_LT*/)>;
-def : Pat<(int_eravm_ifgt imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, 8 /*COND_GT*/)>;
+def : Pat<(int_eravm_ifeq imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, COND_E.Encoding)>;
+def : Pat<(int_eravm_iflt imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, COND_LT.Encoding)>;
+def : Pat<(int_eravm_ifgt imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, COND_GT.Encoding)>;
 
 let hasSideEffects = 1, Defs = [SP], Uses = [SP] in {
 def NOPrrr : Irr_r<OpNoOp, NoSwap, PreserveFlags,
