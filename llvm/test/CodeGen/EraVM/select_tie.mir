@@ -18,7 +18,7 @@
 ---
 # CHECK-LABEL: BothKilled
 # CHECK-LABEL: body
-# CHECK: %5:gr256 = SELrrr killed %0, killed %1, 2, implicit $flags, implicit killed %0(tied-def 0)
+# CHECK: %5:gr256 = SELrrr killed %0, killed %1, i256 2, implicit $flags, implicit killed %0(tied-def 0)
 name: BothKilled
 alignment:       1
 tracksRegLiveness: true
@@ -53,7 +53,7 @@ body:             |
 ---
 # CHECK-LABEL: LeftKilled
 # CHECK-LABEL: body
-# CHECK: %5:gr256 = SELrrr killed %0, %1, 2, implicit $flags, implicit killed %0(tied-def 0)
+# CHECK: %5:gr256 = SELrrr killed %0, %1, i256 2, implicit $flags, implicit killed %0(tied-def 0)
 name: LeftKilled
 alignment:       1
 tracksRegLiveness: true
@@ -88,7 +88,7 @@ body:             |
 ---
 # CHECK-LABEL: RightKilled
 # CHECK-LABEL: body
-# CHECK: %5:gr256 = SELrrr %0, killed %1, 2, implicit $flags, implicit killed %1(tied-def 0)
+# CHECK: %5:gr256 = SELrrr %0, killed %1, i256 2, implicit $flags, implicit killed %1(tied-def 0)
 name: RightKilled
 alignment:       1
 tracksRegLiveness: true

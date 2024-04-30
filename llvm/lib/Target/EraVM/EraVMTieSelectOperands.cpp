@@ -45,7 +45,7 @@ public:
   }
 
 private:
-  /// if MI is a pseudo SELrrr instruction (which is the most common case),
+  /// If MI is a pseudo SELrrr instruction (which is the most common case),
   /// then try to ask RA to coalesce an input register with the output, so that
   /// EraVMExpandSelectPass can have better results.
   /// \par Arg which argument to tie (in0 or in1).
@@ -58,9 +58,9 @@ char EraVMTieSelectOperands::ID = 0;
 INITIALIZE_PASS(EraVMTieSelectOperands, DEBUG_TYPE,
                 ERAVM_TIE_SELECT_OPERANDS_NAME, false, false)
 
-/// try to emit a new select instruction which contains an implicit tie
-/// so that the register allocator can coalesce both registers.
-/// Return true if a new instruction was emitted.
+/// Try to create an implicit tie so that the register allocator can coalesce
+/// both registers.
+/// Return true if we managed to do so.
 bool EraVMTieSelectOperands::tryPlacingTie(MachineInstr &MI,
                                            EraVM::ArgumentKind Arg) const {
   assert(Arg == EraVM::ArgumentKind::In0 || Arg == EraVM::ArgumentKind::In1);
@@ -71,42 +71,20 @@ bool EraVMTieSelectOperands::tryPlacingTie(MachineInstr &MI,
   if (MI.getOpcode() != EraVM::SELrrr)
     return false;
 
-  MachineOperand &In0Opnd = *EraVM::in0Iterator(MI);
-  const Register In0Reg = In0Opnd.getReg();
-  MachineOperand &In1Opnd = *EraVM::in1Iterator(MI);
-  const Register In1Reg = In1Opnd.getReg();
-  const Register Out0Reg = EraVM::out0Iterator(MI)->getReg();
-  const auto CC = getImmOrCImm(*EraVM::ccIterator(MI));
-
-  MachineOperand &Opnd = (Arg == EraVM::ArgumentKind::In0) ? In0Opnd : In1Opnd;
+  MachineOperand &Opnd = (Arg == EraVM::ArgumentKind::In0)
+                             ? *EraVM::in0Iterator(MI)
+                             : *EraVM::in1Iterator(MI);
   if (!Opnd.getReg().isVirtual() || !Opnd.isKill())
     return false;
 
-  // Cannot tie of both are physical registers
-  if (Out0Reg.isPhysical() && Opnd.getReg().isPhysical())
+  // Cannot tie if output is physical register.
+  if (EraVM::out0Iterator(MI)->getReg().isPhysical())
     return false;
 
-  // place an implicit tie with the killed input and the output, if
-  // either one of the input is kill
-  auto NewMI =
-      BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), MI.getDesc(), Out0Reg)
-          .addReg(In0Reg)
-          .addReg(In1Reg)
-          .addImm(CC);
-
-  // restore kill flags
-  if (Arg == EraVM::ArgumentKind::In0) {
-    NewMI->getOperand(1).setIsKill();
-    NewMI->getOperand(2).setIsKill(In1Opnd.isKill());
-  } else {
-    NewMI->getOperand(1).setIsKill(In0Opnd.isKill());
-    NewMI->getOperand(2).setIsKill();
-  }
-
-  // Add an implicit tie
-  Opnd.setImplicit();
-  NewMI.add(Opnd);
-  NewMI->tieOperands(0, NewMI->getNumOperands() - 1);
+  // Add an implicit tie.
+  MI.addOperand(MachineOperand::CreateReg(Opnd.getReg(), /*isDef=*/false,
+                                          /*isImp=*/true, /*isKill=*/true));
+  MI.tieOperands(0, MI.getNumOperands() - 1);
 
   return true;
 }
@@ -115,17 +93,14 @@ bool EraVMTieSelectOperands::runOnMachineFunction(MachineFunction &MF) {
   LLVM_DEBUG(dbgs() << "********** EraVM Tie Select Operands **********\n"
                     << "********** Function: " << MF.getName() << '\n');
 
-  std::vector<MachineInstr *> ToBeRemoved;
+  bool Changed = false;
   for (MachineBasicBlock &MBB : MF)
     for (MachineInstr &MI : MBB)
       if (tryPlacingTie(MI, EraVM::ArgumentKind::In0) ||
           tryPlacingTie(MI, EraVM::ArgumentKind::In1))
-        ToBeRemoved.push_back(&MI);
+        Changed = true;
 
-  for (MachineInstr *MI : ToBeRemoved)
-    MI->eraseFromParent();
-
-  return !ToBeRemoved.empty();
+  return Changed;
 }
 
 /// createEraVMTieSelectOperandsPass - returns an instance of the Tie Select
