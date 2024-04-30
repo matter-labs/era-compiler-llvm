@@ -7,17 +7,17 @@ target triple = "eravm"
 define i1 @slt_not(i256 %a) {
 ; CHECK-LABEL: slt_not:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add @CPI0_0[0], r0, r3
 ; CHECK-NEXT:    sub.s! @CPI0_1[0], r1, r2
 ; CHECK-NEXT:    add r0, r0, r2
-; CHECK-NEXT:    add.lt r3, r0, r2
+; CHECK-NEXT:    add.lt @CPI0_0[0], r0, r2
 ; CHECK-NEXT:    and @CPI0_0[0], r1, r1
-; CHECK-NEXT:    sub.s! @CPI0_0[0], r1, r4
-; CHECK-NEXT:    add.le r0, r0, r3
-; CHECK-NEXT:    xor @CPI0_0[0], r1, r1
+; CHECK-NEXT:    xor @CPI0_0[0], r1, r3
 ; CHECK-NEXT:    sub.s! @CPI0_0[0], r1, r1
-; CHECK-NEXT:    add.ne r2, r0, r3
-; CHECK-NEXT:    sub! r3, r0, r1
+; CHECK-NEXT:    add r0, r0, r1
+; CHECK-NEXT:    add.gt @CPI0_0[0], r0, r1
+; CHECK-NEXT:    sub.s! @CPI0_0[0], r3, r3
+; CHECK-NEXT:    add.ne r2, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r1
 ; CHECK-NEXT:    add 0, r0, r1
 ; CHECK-NEXT:    add.ne 1, r0, r1
 ; CHECK-NEXT:    ret
@@ -28,17 +28,17 @@ define i1 @slt_not(i256 %a) {
 define i1 @sgt_not(i256 %a) {
 ; CHECK-LABEL: sgt_not:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add @CPI1_0[0], r0, r3
 ; CHECK-NEXT:    sub.s! @CPI1_1[0], r1, r2
 ; CHECK-NEXT:    add r0, r0, r2
-; CHECK-NEXT:    add.gt r3, r0, r2
+; CHECK-NEXT:    add.gt @CPI1_0[0], r0, r2
 ; CHECK-NEXT:    and @CPI1_0[0], r1, r1
-; CHECK-NEXT:    sub.s! @CPI1_0[0], r1, r4
-; CHECK-NEXT:    add.ge r0, r0, r3
-; CHECK-NEXT:    xor @CPI1_0[0], r1, r1
+; CHECK-NEXT:    xor @CPI1_0[0], r1, r3
 ; CHECK-NEXT:    sub.s! @CPI1_0[0], r1, r1
-; CHECK-NEXT:    add.ne r2, r0, r3
-; CHECK-NEXT:    sub! r3, r0, r1
+; CHECK-NEXT:    add r0, r0, r1
+; CHECK-NEXT:    add.lt @CPI1_0[0], r0, r1
+; CHECK-NEXT:    sub.s! @CPI1_0[0], r3, r3
+; CHECK-NEXT:    add.ne r2, r0, r1
+; CHECK-NEXT:    sub! r1, r0, r1
 ; CHECK-NEXT:    add 0, r0, r1
 ; CHECK-NEXT:    add.ne 1, r0, r1
 ; CHECK-NEXT:    ret
