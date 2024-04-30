@@ -284,9 +284,7 @@ let isSelect = 1, Uses = [Flags] in {
 let mayLoad = 1 in {
   def SELcrr : Pseudo<(outs GR256:$dst), (ins memop:$src, GR256:$src2, i256imm:$cc),
                        [(set GR256:$dst,
-                          (EraVMselectcc (load_code memaddr:$src), GR256:$src2, imm:$cc))]> {
-                            let Constraints = "$dst = $src2";
-                          }
+                          (EraVMselectcc (load_code memaddr:$src), GR256:$src2, imm:$cc))]>;
   def SELsrr : Pseudo<(outs GR256:$dst), (ins stackin:$src, GR256:$src2, i256imm:$cc),
                        [(set GR256:$dst,
                           (EraVMselectcc (load_stack stackaddr:$src), GR256:$src2, imm:$cc))]> {
@@ -310,9 +308,7 @@ let mayLoad = 1 in {
                           (EraVMselectcc (load_stack stackaddr:$src), imm16:$src2, imm:$cc))]>;
   def SELrcr : Pseudo<(outs GR256:$dst), (ins GR256:$src, memop:$src2, i256imm:$cc),
                        [(set GR256:$dst,
-                          (EraVMselectcc GR256:$src, (load_code memaddr:$src2), imm:$cc))]> {
-                            let Constraints = "$dst = $src";
-                          }
+                          (EraVMselectcc GR256:$src, (load_code memaddr:$src2), imm:$cc))]>;
   def SELicr : Pseudo<(outs GR256:$dst), (ins imm16:$src, memop:$src2, i256imm:$cc),
                        [(set GR256:$dst,
                           (EraVMselectcc imm16:$src, (load_code memaddr:$src2), imm:$cc))]>;
@@ -349,6 +345,31 @@ def : Pat<(load_stack(EraVMselectcc stackaddr:$addr1, stackaddr:$addr2, imm:$cc)
           (SELssr stackaddr:$addr1, stackaddr:$addr2, imm:$cc)>;
 def : Pat<(load_code(EraVMselectcc memaddr:$addr1, memaddr:$addr2, imm:$cc)),
           (SELccr memaddr:$addr1, memaddr:$addr2, imm:$cc)>;
+
+// Patterns for selectcc instructions with large immediates that will be loaded from constant pool.
+// Following two patterns are to put zero immediate to R0 register.
+def : Pat<(EraVMselectcc 0, large_imm:$src2, imm:$cc),
+          (SELrcr R0, (constant_pool imm:$src2), 0, imm:$cc)>;
+def : Pat<(EraVMselectcc large_imm:$src1, 0, imm:$cc),
+          (SELcrr (constant_pool imm:$src1), 0, R0, imm:$cc)>;
+def : Pat<(EraVMselectcc large_imm:$src1, GR256:$src2, imm:$cc),
+          (SELcrr (constant_pool imm:$src1), 0, GR256:$src2, imm:$cc)>;
+def : Pat<(EraVMselectcc GR256:$src1, large_imm:$src2, imm:$cc),
+          (SELrcr GR256:$src1, (constant_pool imm:$src2), 0, imm:$cc)>;
+def : Pat<(EraVMselectcc large_imm:$src1, imm16:$src2, imm:$cc),
+          (SELcir (constant_pool imm:$src1), 0, imm16:$src2, imm:$cc)>;
+def : Pat<(EraVMselectcc imm16:$src1, large_imm:$src2, imm:$cc),
+          (SELicr imm16:$src1, (constant_pool imm:$src2), 0, imm:$cc)>;
+def : Pat<(EraVMselectcc (load_code memaddr:$src1), large_imm:$src2, imm:$cc),
+          (SELccr memaddr:$src1, (constant_pool imm:$src2), 0, imm:$cc)>;
+def : Pat<(EraVMselectcc large_imm:$src1, (load_code memaddr:$src2), imm:$cc),
+          (SELccr (constant_pool imm:$src1), 0, memaddr:$src2, imm:$cc)>;
+def : Pat<(EraVMselectcc large_imm:$src1, large_imm:$src2, imm:$cc),
+          (SELccr (constant_pool imm:$src1), 0, (constant_pool imm:$src2), 0, imm:$cc)>;
+def : Pat<(EraVMselectcc large_imm:$src1, (load_stack stackaddr:$src2), imm:$cc),
+          (SELcsr (constant_pool imm:$src1), 0, stackaddr:$src2, imm:$cc)>;
+def : Pat<(EraVMselectcc (load_stack stackaddr:$src1), large_imm:$src2, imm:$cc),
+          (SELscr stackaddr:$src1, (constant_pool imm:$src2), 0, imm:$cc)>;
 
 // TODO: CPR-1356 stack and code forms
 def : Pat<(int_eravm_ifeq GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, COND_E.Encoding)>;
