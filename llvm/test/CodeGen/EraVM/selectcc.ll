@@ -54,6 +54,30 @@ define i256 @selcrr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ret i256 %2
 }
 
+define i256 @selcrr_zero_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
+; CHECK-LABEL: selcrr_zero_cp:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    add @CPI4_0[0], r0, r1
+; CHECK-NEXT:    sub! r3, r4, r2
+; CHECK-NEXT:    add.ge r0, r0, r1
+; CHECK-NEXT:    ret
+  %1 = icmp ult i256 %v3, %v4
+  %2 = select i1 %1, i256 123456789, i256 0
+  ret i256 %2
+}
+
+define i256 @selcrr_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
+; CHECK-LABEL: selcrr_cp:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    add @CPI5_0[0], r0, r2
+; CHECK-NEXT:    sub! r3, r4, r3
+; CHECK-NEXT:    add.ge r1, r0, r2
+; CHECK-NEXT:    add r2, r0, r1
+; CHECK-NEXT:    ret
+  %1 = icmp ult i256 %v3, %v4
+  %2 = select i1 %1, i256 123456789, i256 %v1
+  ret i256 %2
+}
 define i256 @selsrr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selsrr:
 ; CHECK:       ; %bb.0:
@@ -105,6 +129,18 @@ define i256 @selcir(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ret i256 %2
 }
 
+define i256 @selcir_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
+; CHECK-LABEL: selcir_cp:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    add @CPI10_0[0], r0, r1
+; CHECK-NEXT:    sub! r3, r4, r2
+; CHECK-NEXT:    add.le 42, r0, r1
+; CHECK-NEXT:    ret
+  %1 = icmp ugt i256 %v3, %v4
+  %2 = select i1 %1, i256 123456789, i256 42
+  ret i256 %2
+}
+
 define i256 @selsir(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selsir:
 ; CHECK:       ; %bb.0:
@@ -132,6 +168,30 @@ define i256 @selrcr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ret i256 %2
 }
 
+define i256 @selrcr_zero_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
+; CHECK-LABEL: selrcr_zero_cp:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    add @CPI13_0[0], r0, r1
+; CHECK-NEXT:    sub! r3, r4, r2
+; CHECK-NEXT:    add.lt r0, r0, r1
+; CHECK-NEXT:    ret
+  %1 = icmp ult i256 %v3, %v4
+  %2 = select i1 %1, i256 0, i256 123456789
+  ret i256 %2
+}
+
+define i256 @selrcr_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
+; CHECK-LABEL: selrcr_cp:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    add @CPI14_0[0], r0, r2
+; CHECK-NEXT:    sub! r3, r4, r3
+; CHECK-NEXT:    add.ge r2, r0, r1
+; CHECK-NEXT:    ret
+  %1 = icmp ult i256 %v3, %v4
+  %2 = select i1 %1, i256 %v1, i256 123456789
+  ret i256 %2
+}
+
 define i256 @selicr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selicr:
 ; CHECK:       ; %bb.0:
@@ -145,8 +205,20 @@ define i256 @selicr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   ret i256 %2
 }
 
-define i256 @selccr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
-; CHECK-LABEL: selccr:
+define i256 @selicr_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
+; CHECK-LABEL: selicr_cp:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    add @CPI16_0[0], r0, r1
+; CHECK-NEXT:    sub! r3, r4, r2
+; CHECK-NEXT:    add.lt 42, r0, r1
+; CHECK-NEXT:    ret
+  %1 = icmp ult i256 %v3, %v4
+  %2 = select i1 %1, i256 42, i256 123456789
+  ret i256 %2
+}
+
+define i256 @selccr_cl_cl(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
+; CHECK-LABEL: selccr_cl_cl:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub! r3, r4, r1
 ; CHECK-NEXT:    add @val[0], r0, r1
@@ -156,6 +228,45 @@ define i256 @selccr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   %const = load i256, i256 addrspace(4)* @val
   %const2 = load i256, i256 addrspace(4)* @val2
   %2 = select i1 %1, i256 %const2, i256 %const
+  ret i256 %2
+}
+
+define i256 @selccr_cl_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
+; CHECK-LABEL: selccr_cl_cp:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    add @CPI18_0[0], r0, r1
+; CHECK-NEXT:    sub! r3, r4, r2
+; CHECK-NEXT:    add.lt @val[0], r0, r1
+; CHECK-NEXT:    ret
+  %1 = icmp ult i256 %v3, %v4
+  %const = load i256, i256 addrspace(4)* @val
+  %2 = select i1 %1, i256 %const, i256 12345678
+  ret i256 %2
+}
+
+define i256 @selccr_cp_cl(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
+; CHECK-LABEL: selccr_cp_cl:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    add @CPI19_0[0], r0, r1
+; CHECK-NEXT:    sub! r3, r4, r2
+; CHECK-NEXT:    add.ge @val[0], r0, r1
+; CHECK-NEXT:    ret
+  %1 = icmp ult i256 %v3, %v4
+  %const = load i256, i256 addrspace(4)* @val
+  %2 = select i1 %1, i256 12345678, i256 %const
+  ret i256 %2
+}
+
+define i256 @selccr_cp_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
+; CHECK-LABEL: selccr_cp_cp:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    add @CPI20_0[0], r0, r2
+; CHECK-NEXT:    add @CPI20_1[0], r0, r1
+; CHECK-NEXT:    sub! r3, r4, r3
+; CHECK-NEXT:    add.ge r2, r0, r1
+; CHECK-NEXT:    ret
+  %1 = icmp ult i256 %v3, %v4
+  %2 = select i1 %1, i256 12345678, i256 123456789
   ret i256 %2
 }
 
@@ -172,6 +283,21 @@ define i256 @selscr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   %const = load i256, i256 addrspace(4)* @val
   %val2 = load i256, i256* %ptr
   %2 = select i1 %1, i256 %val2, i256 %const
+  ret i256 %2
+}
+
+define i256 @selscr_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
+; CHECK-LABEL: selscr_cp:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    add @CPI22_0[0], r0, r1
+; CHECK-NEXT:    sub! r3, r4, r2
+; CHECK-NEXT:    add.lt stack-[1], r0, r1
+; CHECK-NEXT:    ret
+  %ptr = alloca i256
+  %1 = icmp ult i256 %v3, %v4
+  %val2 = load i256, i256* %ptr
+  %2 = select i1 %1, i256 %val2, i256 123456789
   ret i256 %2
 }
 
@@ -217,6 +343,21 @@ define i256 @selcsr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
   %val = load i256, i256* %data
   %const = load i256, i256 addrspace(4)* @val
   %2 = select i1 %1, i256 %const, i256 %val
+  ret i256 %2
+}
+
+define i256 @selcsr_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
+; CHECK-LABEL: selcsr_cp:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    add @CPI26_0[0], r0, r1
+; CHECK-NEXT:    sub! r3, r4, r2
+; CHECK-NEXT:    add.ge stack-[1], r0, r1
+; CHECK-NEXT:    ret
+  %data = alloca i256
+  %1 = icmp ult i256 %v3, %v4
+  %val = load i256, i256* %data
+  %2 = select i1 %1, i256 123456789, i256 %val
   ret i256 %2
 }
 
