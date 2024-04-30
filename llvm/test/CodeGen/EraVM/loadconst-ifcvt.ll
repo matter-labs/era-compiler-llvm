@@ -7,11 +7,9 @@ target triple = "eravm"
 define i256 @test(i1 %cond) {
 ; CHECK-LABEL: test:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add r1, r0, r2
-; CHECK-NEXT:    add @CPI0_0[0], r0, r1
-; CHECK-NEXT:    sub! r2, r0, r2
+; CHECK-NEXT:    sub! r1, r0, r1
 ; CHECK-NEXT:    add.ne @CPI0_1[0], r0, r1
-; CHECK-NEXT:  ; %bb.1: ; %exit
+; CHECK-NEXT:    add.eq @CPI0_0[0], r0, r1
 ; CHECK-NEXT:    ret
 entry:
   br i1 %cond, label %bb1, label %exit

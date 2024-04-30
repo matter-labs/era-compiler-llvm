@@ -1051,8 +1051,7 @@ def : MnemonicAlias<"panic.to_label", "ret.panic.to_label">;
 // Constants materialization
 //===----------------------------------------------------------------------===//
 
-let isAsCheapAsAMove = 1, mayLoad = 1, isReMaterializable = 1,
-    hasSideEffects = 0 in {
+let mayLoad = 1, isReMaterializable = 1, hasSideEffects = 0 in {
 // FIXME: expand pseudo
 def LOADCONST : Pseudo<(outs GR256:$val), (ins i256imm:$addr),
                        [(set GR256:$val, (load tconstpool:$addr))]>;
