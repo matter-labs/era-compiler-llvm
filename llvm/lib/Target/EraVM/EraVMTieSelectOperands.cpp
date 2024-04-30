@@ -45,11 +45,17 @@ public:
   }
 
 private:
-  /// If MI is a pseudo SELrrr instruction (which is the most common case),
+  /// If MI is a pseudo select instruction (which is the most common case),
   /// then try to ask RA to coalesce an input register with the output, so that
   /// EraVMExpandSelectPass can have better results.
   /// \par Arg which argument to tie (in0 or in1).
   bool tryPlacingTie(MachineInstr &MI, EraVM::ArgumentKind Arg) const;
+
+  /// Return true if we can place a tie for the given instruction and argument.
+  /// Given that we have already handled the majority of cases for single
+  /// register operand SELECTs, we will now focus on those with a code and
+  /// register operands and two register operands.
+  bool canPlaceTie(MachineInstr &MI, EraVM::ArgumentKind Arg) const;
 };
 
 char EraVMTieSelectOperands::ID = 0;
@@ -58,17 +64,22 @@ char EraVMTieSelectOperands::ID = 0;
 INITIALIZE_PASS(EraVMTieSelectOperands, DEBUG_TYPE,
                 ERAVM_TIE_SELECT_OPERANDS_NAME, false, false)
 
+bool EraVMTieSelectOperands::canPlaceTie(MachineInstr &MI,
+                                         EraVM::ArgumentKind Arg) const {
+  return MI.getOpcode() == EraVM::SELrrr ||
+         (MI.getOpcode() == EraVM::SELcrr && Arg == EraVM::ArgumentKind::In1) ||
+         (MI.getOpcode() == EraVM::SELrcr && Arg == EraVM::ArgumentKind::In0);
+}
+
 /// Try to create an implicit tie so that the register allocator can coalesce
 /// both registers.
 /// Return true if we managed to do so.
 bool EraVMTieSelectOperands::tryPlacingTie(MachineInstr &MI,
                                            EraVM::ArgumentKind Arg) const {
   assert(Arg == EraVM::ArgumentKind::In0 || Arg == EraVM::ArgumentKind::In1);
-  // Given that we've already made constraints on the case of single
-  // register operand SELECTs, we will now focus only on the case of two
-  // register selects. Also note that majority of the opportunities come
-  // from reg-reg selects.
-  if (MI.getOpcode() != EraVM::SELrrr)
+
+  // Bail out if we cannot place a tie for the given instruction.
+  if (!canPlaceTie(MI, Arg))
     return false;
 
   // Skip if the output register is already tied to an input register.
