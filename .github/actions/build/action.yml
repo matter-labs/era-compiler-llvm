@@ -44,9 +44,7 @@ runs:
 
     - name: Install LLVM builder
       shell: ${{ runner.os == 'Windows' && 'msys2 {0}' || 'bash' }}
-      run: |
-        cargo install compiler-llvm-builder ${{ steps.build-target.outputs.target }} \
-          --git https://github.com/matter-labs/era-compiler-llvm-builder
+      run: cargo install compiler-llvm-builder
 
     - name: Set up compiler cache
       uses: hendrikmuhs/ccache-action@v1.2
@@ -63,17 +61,14 @@ runs:
         save: ${{ github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/v') }}
 
     - name: Build LLVM
-      uses: nick-fields/retry@v3
+      shell: ${{ runner.os == 'Windows' && 'msys2 {0}' || 'bash' }}
       env:
         CCACHE_BASEDIR: ${{ github.workspace }}
         CCACHE_NOHASHDIR: "true"
         CCACHE_COMPILERCHECK: "content"
         LIBSTDCPP_SOURCE_PATH: "C:/a/_temp/msys64/mingw64/lib/libstdc++.a"
-      with:
-        timeout_minutes: 60
-        max_attempts: 2 # protection mechanism for sporadic dependencies download failure
-        command: |
-          [ "${{ inputs.enable-tests }}" != "" ] && ENABLE_TESTS="--enable-tests"
-          [ "${{ inputs.enable-assertions }}" != "" ] && ENABLE_ASSERTIONS="--enable-assertions"
-          [ "${{ inputs.extra-args }}" != "" ] && EXTRA_ARGS="--extra-args ${{ inputs.extra-args }}"
-          zkevm-llvm build --use-ccache ${ENABLE_TESTS} ${ENABLE_ASSERTIONS} ${EXTRA_ARGS}
+      run: |
+        [ "${{ inputs.enable-tests }}" != "" ] && ENABLE_TESTS="--enable-tests"
+        [ "${{ inputs.enable-assertions }}" != "" ] && ENABLE_ASSERTIONS="--enable-assertions"
+        [ "${{ inputs.extra-args }}" != "" ] && EXTRA_ARGS="--extra-args ${{ inputs.extra-args }}"
+        zkevm-llvm build --use-ccache ${ENABLE_TESTS} ${ENABLE_ASSERTIONS} ${EXTRA_ARGS}
