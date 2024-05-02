@@ -110,7 +110,7 @@ void StackLayoutPrinter::printBlock(CFG::BasicBlock const &_block) {
                  OS << "Block" << getBlockId(_block) << " -> Block"
                     << getBlockId(_block) << "Exit [arrowhead=none];\n";
                  OS << "Block" << getBlockId(_block) << "Exit [label=\"";
-                 if (_jump.Header)
+                 if (_jump.Backwards)
                    OS << "Backwards";
                  OS << "Jump\" shape=oval];\n";
                  OS << "Block" << getBlockId(_block) << "Exit -> Block"
@@ -542,7 +542,7 @@ std::optional<Stack> StackLayoutGenerator::getExitLayoutOrStageDependencies(
   return std::visit(
       Overload{
           [&](CFG::BasicBlock::Jump const &_jump) -> std::optional<Stack> {
-            if (_jump.Header) {
+            if (_jump.Backwards) {
               // Choose the best currently known entry layout of the jump target
               // as initial exit. Note that this may not yet be the final
               // layout.
@@ -563,34 +563,9 @@ std::optional<Stack> StackLayoutGenerator::getExitLayoutOrStageDependencies(
           },
           [&](CFG::BasicBlock::ConditionalJump const &_conditionalJump)
               -> std::optional<Stack> {
-            if (_conditionalJump.Header) {
-              // Choose the best currently known entry layout of the jump target
-              // as initial exit. Note that this may not yet be the final
-              // layout.
-              CFG::BasicBlock *NonBackwardsTarget =
-                  _conditionalJump.Header == _conditionalJump.Zero
-                      ? _conditionalJump.NonZero
-                      : _conditionalJump.Zero;
-              Stack NonBackwardsTargetStack;
-              if (_visited.count(NonBackwardsTarget)) {
-                NonBackwardsTargetStack =
-                    Layout.blockInfos.at(NonBackwardsTarget).entryLayout;
-              } else {
-                NonBackwardsTargetStack = Stack{};
-                _toVisit.emplace_front(NonBackwardsTarget);
-              }
-              auto It = Layout.blockInfos.find(_conditionalJump.Header);
-              Stack BackwardsStack = (It == Layout.blockInfos.end())
-                                         ? Stack{}
-                                         : It->second.entryLayout;
-              Stack stack =
-                  combineStack(BackwardsStack, NonBackwardsTargetStack);
-              stack.emplace_back(_conditionalJump.Condition);
-              return stack;
-            }
-
             bool zeroVisited = _visited.count(_conditionalJump.Zero);
             bool nonZeroVisited = _visited.count(_conditionalJump.NonZero);
+
             if (zeroVisited && nonZeroVisited) {
               // If the current iteration has already visited both jump targets,
               // start from its entry layout.
@@ -646,20 +621,11 @@ StackLayoutGenerator::collectBackwardsJumps(
                   llvm_unreachable("Unexpected BB terminator");
                 },
                 [&](CFG::BasicBlock::Jump const &_jump) {
-                  if (_jump.Header) {
-                    assert(_jump.Header == _jump.Target);
+                  if (_jump.Backwards)
                     backwardsJumps.emplace_back(_block, _jump.Target);
-                  }
                   _addChild(_jump.Target);
                 },
                 [&](CFG::BasicBlock::ConditionalJump const &_conditionalJump) {
-                  if (_conditionalJump.Header) {
-                    assert(_conditionalJump.Header == _conditionalJump.Zero ||
-                           _conditionalJump.Header == _conditionalJump.NonZero);
-                    backwardsJumps.emplace_back(_block,
-                                                _conditionalJump.Header);
-                  }
-
                   _addChild(_conditionalJump.Zero);
                   _addChild(_conditionalJump.NonZero);
                 },
@@ -683,7 +649,7 @@ void StackLayoutGenerator::stitchConditionalJumps(
               llvm_unreachable("Unexpected BB terminator");
             },
             [&](CFG::BasicBlock::Jump const &_jump) {
-              if (!_jump.Header)
+              if (!_jump.Backwards)
                 _addChild(_jump.Target);
             },
             [&](CFG::BasicBlock::ConditionalJump const &_conditionalJump) {

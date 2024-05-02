@@ -77,6 +77,8 @@ void ControlFlowGraphPrinter::printBlock(CFG::BasicBlock const &Block) {
                  OS << "Block" << getBlockId(Block) << "Exit [label=\"";
                  OS << "Jump\" FallThrough:" << Jump.FallThrough;
                  OS << " shape=oval];\n";
+                 if (Jump.Backwards)
+                   OS << "Backwards";
                  OS << "Block" << getBlockId(Block) << "Exit -> Block"
                     << getBlockId(*Jump.Target) << ";\n";
                },
@@ -393,10 +395,10 @@ void ControlFlowGraphBuilder::handleBasicBlockSuccessors(
     CFG::BasicBlock &Target = Cfg.getBlock(TBB);
     if (IsLatch)
       assert(ML->getHeader() == &MBB && !FallThrough);
-    CurrentBlock->Exit = CFG::BasicBlock::Jump{&Target, FallThrough,
-                                               IsLatch ? &Target : nullptr};
+    CurrentBlock->Exit = CFG::BasicBlock::Jump{&Target, FallThrough, IsLatch};
     EVMUtils::push_if_noexist(Target.Entries, CurrentBlock);
   } else if (TBB && !Cond.empty()) {
+    assert(!IsLatch);
     // Conditional jump + fallthrough or unconditional jump.
     bool FallThrough = !FBB;
     if (!FBB) {
@@ -408,18 +410,8 @@ void ControlFlowGraphBuilder::handleBasicBlockSuccessors(
     CFG::BasicBlock &ZeroTarget = Cfg.getBlock(FBB);
     assert(Cond[0].isReg());
     auto CondSlot = VariableSlot{Cond[0].getReg()};
-
-    CFG::BasicBlock *Header = nullptr;
-    if (IsLatch) {
-      if (ML->getHeader() == TBB)
-        Header = &NonZeroTarget;
-      else if (ML->getHeader() == FBB)
-        Header = &ZeroTarget;
-
-      assert(Header);
-    }
     CurrentBlock->Exit = CFG::BasicBlock::ConditionalJump{
-        std::move(CondSlot), &NonZeroTarget, &ZeroTarget, FallThrough, Header};
+        std::move(CondSlot), &NonZeroTarget, &ZeroTarget, FallThrough};
 
     EVMUtils::push_if_noexist(NonZeroTarget.Entries, CurrentBlock);
     EVMUtils::push_if_noexist(ZeroTarget.Entries, CurrentBlock);

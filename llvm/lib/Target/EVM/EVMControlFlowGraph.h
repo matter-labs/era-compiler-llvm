@@ -183,13 +183,12 @@ struct CFG {
       BasicBlock *NonZero = nullptr;
       BasicBlock *Zero = nullptr;
       bool FallThrough = false;
-      BasicBlock *Header = nullptr;
     };
 
     struct Jump {
       BasicBlock *Target = nullptr;
       bool FallThrough = false;
-      BasicBlock *Header = nullptr;
+      bool Backwards = false;
     };
 
     struct FunctionReturn {
