@@ -248,7 +248,7 @@ void EraVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
       Constant *C = CVA->getAggregateElement(i);
       auto *CI = cast<ConstantInt>(C);
       assert(CI && CI->getBitWidth() == 256);
-      Streamer->emitGlobalConst(CI->getValue());
+      Streamer->emitCell(CI->getValue());
     }
     return;
   }
@@ -259,7 +259,7 @@ void EraVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
 
     for (size_t i = 0; i < elem_size; ++i) {
       APInt val = CDS->getElementAsAPInt(i);
-      Streamer->emitGlobalConst(val);
+      Streamer->emitCell(val);
     }
     return;
   }
@@ -275,7 +275,7 @@ void EraVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
       Constant *C = CVS->getAggregateElement(i);
       // TODO: CPR-920 support operators.
       const ConstantInt *CI = cast<ConstantInt>(C);
-      Streamer->emitGlobalConst(CI->getValue());
+      Streamer->emitCell(CI->getValue());
     }
 
     return;
@@ -290,7 +290,7 @@ void EraVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
     return;
 
   if (const auto *CI = dyn_cast<ConstantInt>(CV)) {
-    Streamer->emitGlobalConst(CI->getValue());
+    Streamer->emitCell(CI->getValue());
     return;
   }
 

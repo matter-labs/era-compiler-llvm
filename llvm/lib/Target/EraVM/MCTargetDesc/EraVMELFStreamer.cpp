@@ -27,6 +27,7 @@ class EraVMTargetELFStreamer : public EraVMTargetStreamer {
 public:
   MCELFStreamer &getStreamer();
   EraVMTargetELFStreamer(MCStreamer &S, const MCSubtargetInfo &STI);
+  void emitCell(const APInt &Value) override;
 };
 
 // This part is for ELF object output.
@@ -38,7 +39,25 @@ class EraVMTargetAsmStreamer : public EraVMTargetStreamer {
 public:
   EraVMTargetAsmStreamer(MCStreamer &S, formatted_raw_ostream &OS,
                          MCInstPrinter &InstPrinter, bool VerboseAsm);
+  void emitCell(const APInt &Value) override;
 };
+
+void EraVMTargetELFStreamer::emitCell(const APInt &Value) {
+  assert(Value.getBitWidth() <= EraVM::CellBitWidth);
+  // aligned by 256 bit
+  Streamer.emitValueToAlignment(Align(EraVM::CellBitWidth / 8));
+  Streamer.emitIntValue(Value.sext(EraVM::CellBitWidth));
+}
+
+void EraVMTargetAsmStreamer::emitCell(const APInt &Value) {
+  assert(Value.getBitWidth() <= EraVM::CellBitWidth);
+
+  SmallString<86> Str;
+  raw_svector_ostream OS(Str);
+  OS << "\t.cell\t" << Value;
+
+  Streamer.emitRawText(OS.str());
+}
 
 EraVMTargetAsmStreamer::EraVMTargetAsmStreamer(MCStreamer &S,
                                                formatted_raw_ostream &OS,

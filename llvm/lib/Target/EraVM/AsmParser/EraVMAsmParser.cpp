@@ -13,6 +13,7 @@
 #include "EraVM.h"
 #include "EraVMRegisterInfo.h"
 #include "MCTargetDesc/EraVMMCTargetDesc.h"
+#include "MCTargetDesc/EraVMTargetStreamer.h"
 #include "TargetInfo/EraVMTargetInfo.h"
 
 #include "llvm/ADT/APInt.h"
@@ -72,7 +73,6 @@ class EraVMAsmParser : public MCTargetAsmParser {
   bool ParseInstruction(ParseInstructionInfo &Info, StringRef Name,
                         SMLoc NameLoc, OperandVector &Operands) override;
 
-  const unsigned CellBitWidth = 256;
   bool ParseDirective(AsmToken DirectiveID) override;
 
   unsigned validateTargetOperandClass(MCParsedAsmOperand &Op,
@@ -722,12 +722,12 @@ bool EraVMAsmParser::ParseDirective(AsmToken DirectiveID) {
       return TokError("integer literal expected");
 
     APInt Value = getTok().getAPIntVal();
-    if (Value.getActiveBits() > CellBitWidth)
+    if (Value.getActiveBits() > EraVM::CellBitWidth)
       return TokError("integer too wide");
 
     // emitIntValue(APInt Value) emits the amount of data based on
     // the bit width of Value, so extend to exactly 256 bits.
-    Value = Value.zextOrTrunc(CellBitWidth);
+    Value = Value.zextOrTrunc(EraVM::CellBitWidth);
     if (IsNegated)
       Value = -Value;
 
@@ -736,7 +736,8 @@ bool EraVMAsmParser::ParseDirective(AsmToken DirectiveID) {
     if (parseEOL())
       return true;
 
-    getStreamer().emitIntValue(Value);
+    auto *TS = getStreamer().getTargetStreamer();
+    static_cast<EraVMTargetStreamer *>(TS)->emitCell(Value);
 
     return false;
   }
