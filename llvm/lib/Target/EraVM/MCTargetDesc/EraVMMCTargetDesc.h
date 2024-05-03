@@ -51,6 +51,10 @@ MCAsmBackend *createEraVMMCAsmBackend(const Target &T,
 std::unique_ptr<MCObjectTargetWriter> createEraVMELFObjectWriter(uint8_t OSABI);
 
 namespace EraVM {
+
+/// Width of the value emitted by .cell N in bits.
+constexpr unsigned CellBitWidth = 256;
+
 /// At now, stack operands are handled specially:
 /// * At the machine instruction level, many instructions may have 6 source
 ///   operand kinds and 4 destination operand kinds, with each combination
