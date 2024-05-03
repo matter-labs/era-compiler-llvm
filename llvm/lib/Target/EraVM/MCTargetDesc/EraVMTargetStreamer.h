@@ -24,10 +24,9 @@ public:
   EraVMTargetStreamer &operator=(EraVMTargetStreamer &) = delete;
   EraVMTargetStreamer(EraVMTargetStreamer &&) = delete;
   EraVMTargetStreamer &&operator=(EraVMTargetStreamer &&) = delete;
-  virtual void emitGlobalConst(APInt Value);
 
-private:
-  std::unique_ptr<AssemblerConstantPools> ConstantPools;
+  /// Emit .cell N (naturally-aligned 256-bit value).
+  virtual void emitCell(const APInt &Value) {}
 };
 } // namespace llvm
 
