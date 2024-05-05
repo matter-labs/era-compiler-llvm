@@ -259,7 +259,7 @@ static cl::opt<bool> EnableConstraintElimination(
         "Enable pass to eliminate conditions based on linear constraints"));
 
 static cl::opt<AttributorRunOption> AttributorRun(
-    "attributor-enable", cl::Hidden, cl::init(AttributorRunOption::NONE),
+    "attributor-enable", cl::Hidden, cl::init(AttributorRunOption::ALL),
     cl::desc("Enable the attributor inter-procedural deduction pass"),
     cl::values(clEnumValN(AttributorRunOption::ALL, "all",
                           "enable all attributor runs"),
