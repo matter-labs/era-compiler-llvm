@@ -161,20 +161,6 @@ jobs:
           enable-tests: true
           enable-assertions: true
 
-      - name: clang-tidy
-        working-directory: llvm
-        shell: bash
-        run: |
-          set -euxo pipefail
-          BASE_REF=$(git merge-base ${{ github.event.pull_request.base.sha || needs.prepare-commits.outputs.base_sha }} ${{matrix.commit}})
-          CHANGES=$(git diff -U0 ${BASE_REF})
-          echo "Running clang-tidy on the following changes:"
-          echo "${CHANGES}"
-          echo "${CHANGES}" | \
-             ./clang-tools-extra/clang-tidy/tool/clang-tidy-diff_Zegar.py \
-              -p1 -clang-tidy-binary $(which clang-tidy) \
-              -path ../target-llvm/build-final/compile_commands.json
-
       - name: Running Lit tests with default options
         run: |
           ninja -C './target-llvm/build-final' check-llvm
@@ -239,3 +225,17 @@ jobs:
           BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
           ${BINDIR}/llvm-lit -vv -s "-Dopt=${BINDIR}/opt ${OPT_OPTS}" \
             './llvm/llvm/test/CodeGen/'
+
+      - name: clang-tidy
+        working-directory: llvm
+        shell: bash
+        run: |
+          set -euxo pipefail
+          BASE_REF=$(git merge-base ${{ github.event.pull_request.base.sha || needs.prepare-commits.outputs.base_sha }} ${{matrix.commit}})
+          CHANGES=$(git diff -U0 ${BASE_REF})
+          echo "Running clang-tidy on the following changes:"
+          echo "${CHANGES}"
+          echo "${CHANGES}" | \
+             ./clang-tools-extra/clang-tidy/tool/clang-tidy-diff_Zegar.py \
+              -p1 -clang-tidy-binary $(which clang-tidy) \
+              -path ../target-llvm/build-final/compile_commands.json
