@@ -161,7 +161,7 @@ jobs:
           enable-tests: true
           enable-assertions: true
 
-      - name: clang-tidy
+      - name: clang-tidy-test-test
         working-directory: llvm
         shell: bash
         run: |
