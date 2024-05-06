@@ -193,6 +193,7 @@ bool EraVMBytesToCells::convertStackMachineInstr(
     const Register Reg = MO0Reg.getReg();
     assert(Reg.isVirtual() && "Physical registers are not expected");
     MachineInstr *DefMI = MRI->getVRegDef(Reg);
+    assert(DefMI);
 
     // corner case: as per spec, stack pointer retrieved from context.sp is
     // cell-addressed, while everything else is byte-addressed.
