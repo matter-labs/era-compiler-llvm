@@ -40,6 +40,8 @@ def SDT_EraVMPtrToInt     : SDTypeProfile<1, 1, [SDTCisVT<0, i256>, SDTCisVT<1, 
 def SDT_EraVMPtrOp        : SDTypeProfile<1, 2, [SDTCisVT<0, fatptr>, SDTCisVT<1, fatptr>, SDTCisVT<2, i256>]>;
 def SDT_EraVMLogDecommit  : SDTypeProfile<1, 2, [SDTCisVT<0, fatptr>, SDTCisVT<1, i256>, SDTCisVT<2, i256>]>;
 
+def SDT_EraVMArith  : SDTypeProfile<1, 2, [SDTCisVT<0, i256>, SDTCisVT<1, i256>, SDTCisVT<2, i256>]>;
+
 //===----------------------------------------------------------------------===//
 // EraVM Specific Node Definitions.
 //===----------------------------------------------------------------------===//
@@ -95,6 +97,15 @@ def EraVMlog_decommit : SDNode<"EraVMISD::LOG_DECOMMIT", SDT_EraVMLogDecommit, [
 
 def EraVMTrap : SDNode<"EraVMISD::TRAP", SDTNone,
     [SDNPHasChain, SDNPOptInGlue]>;
+
+// Those instructions will set flag register. The DAG schedule shouldn't schedule another
+// flag-setting instruction betweem them and their users. The original patch uses Glue to
+// ensure this, which is a correct way, but forgot to add SDNPOutGlue attribute. Without
+// SDNPOutGlue attribute, the Glue in the generated instruction will be dropped during the
+// isel stage.
+def EraVMAdd_v : SDNode<"EraVMISD::ADD_V", SDT_EraVMArith, [SDNPHasChain, SDNPOutGlue]>;
+def EraVMSub_v : SDNode<"EraVMISD::SUB_V", SDT_EraVMArith, [SDNPHasChain, SDNPOutGlue]>;
+def EraVMMul_v : SDNode<"EraVMISD::MUL_V", SDT_EraVMArith, [SDNPHasChain, SDNPOutGlue]>;
 
 //===----------------------------------------------------------------------===//
 // EraVM Operand Definitions.
@@ -1225,3 +1236,95 @@ def : Pat<(EraVMTrap), (PANICr R0)>;
 
 def : Pat<(EraVMselectcc GRPTR:$rs0, GRPTR:$rs1, imm:$cc),
           (FATPTR_SELrrr GRPTR:$rs0, GRPTR:$rs1, imm:$cc)>;
+
+// ============================ Overflow ADDs =====================================
+// to register
+def : Pat<(EraVMAdd_v GR256:$rs0, GR256:$rs1),
+          (ADDrrr_v GR256:$rs0, GR256:$rs1, 0)>;
+def : Pat<(EraVMAdd_v GR256:$rs0, imm16:$rs1),
+          (ADDirr_v imm16:$rs1, GR256:$rs0, 0)>;
+def : Pat<(EraVMAdd_v GR256:$rs0, (load_code memaddr:$rs1)),
+          (ADDcrr_v memop:$rs1, GR256:$rs0, 0)>;
+def : Pat<(EraVMAdd_v (load_code memaddr:$rs0), GR256:$rs1),
+          (ADDcrr_v memop:$rs0, GR256:$rs1, 0)>;
+def : Pat<(EraVMAdd_v GR256:$rs0, (load_stack stackaddr:$rs1)),
+          (ADDsrr_v stackin:$rs1, GR256:$rs0, 0)>;
+def : Pat<(EraVMAdd_v (load_stack stackaddr:$rs0), GR256:$rs1),
+          (ADDsrr_v stackin:$rs0, GR256:$rs1, 0)>;
+
+// to stack
+def : Pat<(store_stack (EraVMAdd_v GR256:$rs0, GR256:$rs1), stackaddr:$stack),
+          (ADDrrs_v GR256:$rs0, GR256:$rs1, stackaddr:$stack, 0)>;
+def : Pat<(store_stack (EraVMAdd_v GR256:$rs0, imm16:$rs1), stackaddr:$stack),
+          (ADDirs_v imm16:$rs1, GR256:$rs0, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMAdd_v GR256:$rs0, (load_code memaddr:$rs1)), stackaddr:$stack),
+          (ADDcrs_v memop:$rs1, GR256:$rs0, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMAdd_v (load_code memaddr:$rs0), GR256:$rs1), stackaddr:$stack),
+          (ADDcrs_v memop:$rs0, GR256:$rs1, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMAdd_v (load_stack stackaddr:$rs0), GR256:$rs1), stackaddr:$stack),
+          (ADDsrs_v stackin:$rs0, GR256:$rs1, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMAdd_v GR256:$rs0, (load_stack stackaddr:$rs1)), stackaddr:$stack),
+          (ADDsrs_v stackin:$rs1, GR256:$rs0, stackin:$stack, 0)>;
+
+// ============================ Overflow SUBs =====================================
+// to register
+def : Pat<(EraVMSub_v GR256:$rs0, GR256:$rs1), (SUBrrr_v GR256:$rs0, GR256:$rs1, 0)>;
+def : Pat<(EraVMSub_v imm16:$rs0, GR256:$rs1), (SUBirr_v imm16:$rs0, GR256:$rs1, 0)>;
+def : Pat<(EraVMSub_v (load_code memaddr:$rs0), GR256:$rs1),
+          (SUBcrr_v memop:$rs0, GR256:$rs1, 0)>;
+def : Pat<(EraVMSub_v (load_stack stackaddr:$rs0), GR256:$rs1),
+          (SUBsrr_v stackin:$rs0, GR256:$rs1, 0)>;
+
+def : Pat<(EraVMSub_v GR256:$rs0, imm16:$rs1),
+          (SUBxrr_v imm16:$rs1, GR256:$rs0, 0)>;
+def : Pat<(EraVMSub_v GR256:$rs0, (load_code memaddr:$rs1)),
+          (SUByrr_v memop:$rs1, GR256:$rs0, 0)>;
+def : Pat<(EraVMSub_v GR256:$rs0, (load_stack stackaddr:$rs1)),
+          (SUBzrr_v stackin:$rs1, GR256:$rs0, 0)>;
+
+// to stack
+def : Pat<(store_stack (EraVMSub_v GR256:$rs0, GR256:$rs1), stackaddr:$stack),
+          (SUBrrs_v GR256:$rs0, GR256:$rs1, stackin:$stack, 0)>;
+
+def : Pat<(store_stack (EraVMSub_v imm16:$rs0, GR256:$rs1), stackaddr:$stack),
+          (SUBirs_v imm16:$rs0, GR256:$rs1, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMSub_v (load_code memaddr:$rs0), GR256:$rs1), stackaddr:$stack),
+          (SUBcrs_v memop:$rs0, GR256:$rs1, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMSub_v (load_stack stackaddr:$rs0), GR256:$rs1), stackaddr:$stack),
+          (SUBsrs_v stackin:$rs0, GR256:$rs1, stackin:$stack, 0)>;
+
+def : Pat<(store_stack (EraVMSub_v GR256:$rs0, imm16:$rs1), stackaddr:$stack),
+          (SUBxrs_v imm16:$rs1, GR256:$rs0, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMSub_v GR256:$rs0, (load_code memaddr:$rs1)), stackaddr:$stack),
+          (SUByrs_v memop:$rs1, GR256:$rs0, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMSub_v GR256:$rs0, (load_stack stackaddr:$rs1)), stackaddr:$stack),
+          (SUBzrs_v stackin:$rs1, GR256:$rs0, stackin:$stack, 0)>;
+
+// ============================ Overflow ADDs =====================================
+// to register
+def : Pat<(EraVMMul_v GR256:$rs0, GR256:$rs1),
+          (MULrrrr_v GR256:$rs0, GR256:$rs1, 0)>;
+def : Pat<(EraVMMul_v GR256:$rs0, imm16:$rs1),
+          (MULirrr_v imm16:$rs1, GR256:$rs0, 0)>;
+def : Pat<(EraVMMul_v (load_code memaddr:$rs0), GR256:$rs1),
+          (MULcrrr_v memaddr:$rs0, GR256:$rs1, 0)>;
+def : Pat<(EraVMMul_v GR256:$rs0, (load_code memaddr:$rs1)),
+          (MULcrrr_v memaddr:$rs1, GR256:$rs0, 0)>;
+def : Pat<(EraVMMul_v (load_stack stackaddr:$rs0), GR256:$rs1),
+          (MULsrrr_v stackaddr:$rs0, GR256:$rs1, 0)>;
+def : Pat<(EraVMMul_v GR256:$rs0, (load_stack stackaddr:$rs1)),
+          (MULsrrr_v stackaddr:$rs1, GR256:$rs0, 0)>;
+
+// to stack
+def : Pat<(store_stack (EraVMMul_v GR256:$rs0, GR256:$rs1), stackaddr:$stack),
+          (MULrrsr_v GR256:$rs0, GR256:$rs1, stackaddr:$stack, 0)>;
+def : Pat<(store_stack (EraVMMul_v GR256:$rs0, imm16:$rs1), stackaddr:$stack),
+          (MULirsr_v imm16:$rs1, GR256:$rs0, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMMul_v GR256:$rs0, (load_code memaddr:$rs1)), stackaddr:$stack),
+          (MULcrsr_v memop:$rs1, GR256:$rs0, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMMul_v (load_code memaddr:$rs0) ,GR256:$rs1), stackaddr:$stack),
+          (MULcrsr_v memop:$rs0, GR256:$rs1, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMMul_v GR256:$rs0, (load_stack stackaddr:$rs1)), stackaddr:$stack),
+          (MULsrsr_v stackin:$rs1, GR256:$rs0, stackin:$stack, 0)>;
+def : Pat<(store_stack (EraVMMul_v (load_stack stackaddr:$rs0) ,GR256:$rs1), stackaddr:$stack),
+          (MULsrsr_v stackin:$rs0, GR256:$rs1, stackin:$stack, 0)>;

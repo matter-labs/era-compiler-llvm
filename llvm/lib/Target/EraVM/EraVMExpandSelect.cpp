@@ -105,6 +105,7 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
       auto In0Range = EraVM::in0Range(MI);
       auto In1Range = EraVM::in1Range(MI);
       auto Out = EraVM::out0Iterator(MI);
+      auto CCVal = getImmOrCImm(*EraVM::ccIterator(MI));
 
       // For rN = cc ? rN : y it's profitable to reverse (rN = reverse_cc ? y :
       // rN) It allows to lower select to a single instruction rN =
@@ -134,13 +135,10 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
 
       if (ShouldInverse) {
         buildMOV(EraVM::ArgumentKind::In0, EraVMCC::COND_NONE);
-        buildMOV(EraVM::ArgumentKind::In1,
-                 InverseCond[getImmOrCImm(
-                     MI.getOperand(MI.getNumExplicitOperands() - 1))]);
+        buildMOV(EraVM::ArgumentKind::In1, InverseCond[CCVal]);
       } else {
         buildMOV(EraVM::ArgumentKind::In1, EraVMCC::COND_NONE);
-        buildMOV(EraVM::ArgumentKind::In0,
-                 getImmOrCImm(MI.getOperand(MI.getNumExplicitOperands() - 1)));
+        buildMOV(EraVM::ArgumentKind::In0, CCVal);
       }
 
       PseudoInst.push_back(&MI);

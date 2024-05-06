@@ -141,6 +141,7 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
           ISD::ANY_EXTEND,
           ISD::GlobalAddress,
           ISD::BR_CC,
+          ISD::SELECT,
           ISD::SELECT_CC,
           ISD::BSWAP,
           ISD::CTPOP,
@@ -682,6 +683,7 @@ SDValue EraVMTargetLowering::LowerOperation(SDValue Op,
   case ISD::ExternalSymbol:     return LowerExternalSymbol(Op, DAG);
   case ISD::BR_CC:              return LowerBR_CC(Op, DAG);
   case ISD::BR_JT:              return LowerBR_JT(Op, DAG);
+  case ISD::SELECT:             return LowerSELECT(Op, DAG);
   case ISD::SELECT_CC:          return LowerSELECT_CC(Op, DAG);
   case ISD::SRA:                return LowerSRA(Op, DAG);
   case ISD::SDIV:               return LowerSDIV(Op, DAG);
@@ -991,6 +993,20 @@ SDValue EraVMTargetLowering::LowerBlockAddress(SDValue Op,
   return DAG.getNode(EraVMISD::GACode, dl, PtrVT, Result);
 }
 
+static const std::unordered_map<uint64_t, uint64_t> OpcodeMap = {
+    {ISD::UADDO, EraVMISD::ADD_V},
+    {ISD::USUBO, EraVMISD::SUB_V},
+    {ISD::UMULO, EraVMISD::MUL_V},
+};
+
+static SDValue matchingOverflowArithmeticOperation(SDValue Op) {
+  // match of Op is the 2nd result of u{add|sub|mul}.with.overflow
+  if (Op.getResNo() == 1)
+    if (OpcodeMap.count(Op.getOpcode()))
+      return Op.getValue(0);
+  return SDValue();
+}
+
 SDValue EraVMTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
   SDValue Chain = Op.getOperand(0);
   ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(1))->get();
@@ -1027,6 +1043,61 @@ SDValue EraVMTargetLowering::LowerBR_JT(SDValue Op, SelectionDAG &DAG) const {
   std::array Ops = {Index, TargetJT, CC, Chain};
   SDNode *Res = DAG.getMachineNode(EraVM::J_jt, DL, MVT::Other, Ops);
   return SDValue(Res, 0);
+}
+
+// If the condition of SELECT instruction comes from a overflow intrinsic, then
+// it can be expanded to check reversed condition (which is GE). A simple case
+// is as below:
+//
+//   %res1 = call {i256, i1} @llvm.uadd.with.overflow.i256(i256 %x, i256 %y)
+//   %overflow = extractvalue {i256, i1} %res1, 1
+//   %selected = select i1 %overflow, i256 %a, i256 %b
+//
+// which can be lowered to
+//
+//   add!	r4, r5, r3
+//   add.ge	r2, r0, r1
+//
+SDValue EraVMTargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
+  SDValue Cond = Op.getOperand(0);
+  SDValue TrueV = Op.getOperand(1);
+  SDValue FalseV = Op.getOperand(2);
+
+  SDValue MatchedUArithO = matchingOverflowArithmeticOperation(Cond);
+  if (!MatchedUArithO)
+    return SDValue();
+
+  SDValue FoldedArith;
+  auto Opc = MatchedUArithO.getOpcode();
+  auto LoweredOpc = OpcodeMap.at(Opc);
+  SDLoc DL(Op);
+  SDVTList FoldedVT = DAG.getVTList(MVT::i256, MVT::Other, MVT::Glue);
+  int OFGlueResult = 2;
+  // MUL has 2 results
+  if (LoweredOpc == EraVMISD::MUL_V) {
+    FoldedVT = DAG.getVTList(MVT::i256, MVT::i256, MVT::Other, MVT::Glue);
+    OFGlueResult = 3;
+  }
+  FoldedArith = DAG.getNode(LoweredOpc, DL, FoldedVT,
+                            {DAG.getEntryNode(), MatchedUArithO.getOperand(0),
+                             MatchedUArithO.getOperand(1)});
+  // Deliberately comment out this call in the original patch to support below
+  // case
+  //
+  // result, of = uaddo a, b
+  // another_flag = cmp x, y
+  // c = another_flag ? result : d
+  // e = of ? c : f
+  //
+  // We need to keep the original `uaddo` for generating `result` and use the
+  // new `FoldedArith` for generating `of` flag (which is LT in fact).
+  //
+  // DAG.ReplaceAllUsesOfValueWith(MatchedUArithO.getValue(0),
+  //                               FoldedArith.getValue(0));
+  SDVTList VTs = DAG.getVTList(Op.getValueType(), MVT::Glue);
+  SDValue CC = DAG.getConstant(EraVMCC::COND_LT, DL, MVT::i256);
+  std::array Ops = {TrueV, FalseV, CC, FoldedArith.getValue(OFGlueResult)};
+  return DAG.getNode(EraVMISD::SELECT_CC, DL, VTs, Ops);
 }
 
 SDValue EraVMTargetLowering::LowerSELECT_CC(SDValue Op,
