@@ -52,9 +52,6 @@ private:
   bool tryPlacingTie(MachineInstr &MI, EraVM::ArgumentKind Arg) const;
 
   /// Return true if we can place a tie for the given instruction and argument.
-  /// Given that we have already handled the majority of cases for single
-  /// register operand SELECTs, we will now focus on those with a code and
-  /// register operands and two register operands.
   bool canPlaceTie(MachineInstr &MI, EraVM::ArgumentKind Arg) const;
 };
 
@@ -66,9 +63,11 @@ INITIALIZE_PASS(EraVMTieSelectOperands, DEBUG_TYPE,
 
 bool EraVMTieSelectOperands::canPlaceTie(MachineInstr &MI,
                                          EraVM::ArgumentKind Arg) const {
-  return MI.getOpcode() == EraVM::SELrrr ||
-         (MI.getOpcode() == EraVM::SELcrr && Arg == EraVM::ArgumentKind::In1) ||
-         (MI.getOpcode() == EraVM::SELrcr && Arg == EraVM::ArgumentKind::In0);
+  if (!EraVM::isSelect(MI) || MI.getOpcode() == EraVM::FATPTR_SELrrr)
+    return false;
+
+  return EraVM::argumentType(Arg, MI.getOpcode()) ==
+         EraVM::ArgumentType::Register;
 }
 
 /// Try to create an implicit tie so that the register allocator can coalesce
@@ -84,6 +83,23 @@ bool EraVMTieSelectOperands::tryPlacingTie(MachineInstr &MI,
 
   // Skip if the output register is already tied to an input register.
   if (MI.isRegTiedToUseOperand(0))
+    return false;
+
+  // Since COND_OF hasn't reversal version, we have to tie the output register
+  // to the second input operand, otherwise the pass eravm-exapnd-select will
+  // generate bad code. For example, for below IR
+  //   $r1 = SELrrr killed $r1, killed $r6, COND_OF, implicit $flags, implicit
+  //   $r1(tied-def 0)
+  //
+  // The eravm-exapnd-select pass will expand it into:
+  //   $r1 = ADDrrr_s killed $r6, $r0, 0
+  //   $r1 = ADDrrr_s killed $r1, $r0, COND_OF, implicit $flags
+  //
+  // This is an incorrect sequence. If the condition is true, the $r1 won't get
+  // its original value. Hence we need to tie the output register to the second
+  // input operand and skip attempting to tie to the first input operand.
+  const auto CC = getImmOrCImm(*EraVM::ccIterator(MI));
+  if (CC == EraVMCC::COND_OF && Arg == EraVM::ArgumentKind::In0)
     return false;
 
   MachineOperand &Opnd = (Arg == EraVM::ArgumentKind::In0)
@@ -103,8 +119,7 @@ bool EraVMTieSelectOperands::tryPlacingTie(MachineInstr &MI,
   // for the output and input register operand, so if there is a register in
   // code operand, it won't be overwritten with the output register and we can
   // do proper expansion PostRA.
-  if ((MI.getOpcode() == EraVM::SELcrr || MI.getOpcode() == EraVM::SELrcr) &&
-      EraVM::out0Iterator(MI)->isEarlyClobber())
+  if (EraVM::out0Iterator(MI)->isEarlyClobber())
     EraVM::out0Iterator(MI)->setIsEarlyClobber(false);
 
   // Add an implicit tie.

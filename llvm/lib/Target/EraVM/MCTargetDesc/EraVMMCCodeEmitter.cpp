@@ -227,6 +227,9 @@ uint64_t EraVMMCCodeEmitter::getCCOpValue(const MCInst &MI, unsigned Idx,
                                           SmallVectorImpl<MCFixup> &Fixups,
                                           const MCSubtargetInfo &STI) const {
   uint64_t CC = MI.getOperand(Idx).getImm();
+  // When comes to encoding, the COND_OF equals COND_LT;
+  if (CC == EraVMCC::COND_OF)
+    CC = EraVMCC::COND_LT;
   assert(CC < 8 && "Invalid condition code");
   assert(CC != (uint64_t)EraVMCC::COND_INVALID && "Cannot encode COND_INVALID");
   // EraVMCC::CondCodes are defined so that enumerator values are actual

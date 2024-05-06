@@ -114,7 +114,6 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
   setOperationAction(
       {
           ISD::BRIND,
-          ISD::BRCOND,
           ISD::VASTART,
           ISD::VAARG,
           ISD::VAEND,
@@ -141,6 +140,7 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
           ISD::ANY_EXTEND,
           ISD::GlobalAddress,
           ISD::BR_CC,
+          ISD::SELECT,
           ISD::SELECT_CC,
           ISD::BSWAP,
           ISD::CTPOP,
@@ -149,7 +149,7 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
 
   setOperationAction({ISD::INTRINSIC_VOID, ISD::INTRINSIC_WO_CHAIN,
                       ISD::INTRINSIC_W_CHAIN, ISD::STACKSAVE, ISD::STACKRESTORE,
-                      ISD::TRAP, ISD::BR_JT},
+                      ISD::TRAP, ISD::BR_JT, ISD::BRCOND},
                      MVT::Other, Custom);
 
   for (MVT VT : {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}) {
@@ -682,6 +682,8 @@ SDValue EraVMTargetLowering::LowerOperation(SDValue Op,
   case ISD::ExternalSymbol:     return LowerExternalSymbol(Op, DAG);
   case ISD::BR_CC:              return LowerBR_CC(Op, DAG);
   case ISD::BR_JT:              return LowerBR_JT(Op, DAG);
+  case ISD::BRCOND:             return LowerBRCOND(Op, DAG);
+  case ISD::SELECT:             return LowerSELECT(Op, DAG);
   case ISD::SELECT_CC:          return LowerSELECT_CC(Op, DAG);
   case ISD::SRA:                return LowerSRA(Op, DAG);
   case ISD::SDIV:               return LowerSDIV(Op, DAG);
@@ -991,6 +993,20 @@ SDValue EraVMTargetLowering::LowerBlockAddress(SDValue Op,
   return DAG.getNode(EraVMISD::GACode, dl, PtrVT, Result);
 }
 
+static const std::unordered_map<uint64_t, uint64_t> OpcodeMap = {
+    {ISD::UADDO, EraVMISD::ADD_V},
+    {ISD::USUBO, EraVMISD::SUB_V},
+    {ISD::UMULO, EraVMISD::MUL_V},
+};
+
+static SDValue matchingOverflowArithmeticOperation(SDValue Op) {
+  // match of Op is the 2nd result of u{add|sub|mul}.with.overflow
+  if (Op.getResNo() == 1)
+    if (OpcodeMap.count(Op.getOpcode()))
+      return Op.getValue(0);
+  return SDValue();
+}
+
 SDValue EraVMTargetLowering::LowerBR_CC(SDValue Op, SelectionDAG &DAG) const {
   SDValue Chain = Op.getOperand(0);
   ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(1))->get();
@@ -1027,6 +1043,89 @@ SDValue EraVMTargetLowering::LowerBR_JT(SDValue Op, SelectionDAG &DAG) const {
   std::array Ops = {Index, TargetJT, CC, Chain};
   SDNode *Res = DAG.getMachineNode(EraVM::J_jt, DL, MVT::Other, Ops);
   return SDValue(Res, 0);
+}
+
+// If the condition of SELECT instruction comes from a overflow intrinsic, lower
+// it into conditional move.  A simple case is as below:
+//
+//   %res1 = call {i256, i1} @llvm.uadd.with.overflow.i256(i256 %x, i256 %y)
+//   %overflow = extractvalue {i256, i1} %res1, 1
+//   %selected = select i1 %overflow, i256 %a, i256 %b
+//
+// which can be lowered to
+//
+//   add!	  %x, %y, r3
+//   add    %b, r0, %selected
+//   add.of	%a, r0, %selected
+//
+// Please be noted that it is incorrect to use GE as negation
+// code for overflow LT.
+SDValue EraVMTargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
+  SDValue Cond = Op.getOperand(0);
+  SDValue TrueV = Op.getOperand(1);
+  SDValue FalseV = Op.getOperand(2);
+
+  SDValue MatchedUArithO = matchingOverflowArithmeticOperation(Cond);
+  if (!MatchedUArithO)
+    return SDValue();
+
+  SDValue FoldedArith;
+  auto Opc = MatchedUArithO.getOpcode();
+  auto LoweredOpc = OpcodeMap.at(Opc);
+  SDLoc DL(Op);
+  SDVTList FoldedVT = DAG.getVTList(MVT::i256, MVT::Other, MVT::Glue);
+  int OFGlueResult = 2;
+  // MUL has 2 results
+  if (LoweredOpc == EraVMISD::MUL_V) {
+    FoldedVT = DAG.getVTList(MVT::i256, MVT::i256, MVT::Other, MVT::Glue);
+    OFGlueResult = 3;
+  }
+  // Create a new node to set flag for SELECT_CC node. Here we will keep the
+  // original node by not calling DAG.ReplaceAllUsesOfValueWith. This is to
+  // support below case
+  //
+  // result, of = uaddo a, b
+  // another_flag = cmp x, y
+  // c = another_flag ? result : d
+  // e = of ? c : f
+  //
+  // In the end we will have the original node for generating result and the new
+  // one for setting flag. If the result of the original node isn't used, then
+  // it will be optimized out.
+  FoldedArith = DAG.getNode(LoweredOpc, DL, FoldedVT,
+                            {DAG.getEntryNode(), MatchedUArithO.getOperand(0),
+                             MatchedUArithO.getOperand(1)});
+  SDVTList VTs = DAG.getVTList(Op.getValueType(), MVT::Glue);
+  SDValue CC = DAG.getConstant(EraVMCC::COND_OF, DL, MVT::i256);
+  std::array Ops = {TrueV, FalseV, CC, FoldedArith.getValue(OFGlueResult)};
+  return DAG.getNode(EraVMISD::SELECT_CC, DL, VTs, Ops);
+}
+
+// try to custom lower U{add|sub|mul}.with.overflow feeding into a branch
+// into {ADD|SUB|MUL}! and jump.of
+SDValue EraVMTargetLowering::LowerBRCOND(SDValue Op, SelectionDAG &DAG) const {
+  SDValue Chain = Op.getOperand(0);
+  SDValue Cond = Op.getOperand(1);
+  SDValue Dest = Op.getOperand(2);
+  SDLoc DL(Op);
+  SDValue MatchedUArithO = matchingOverflowArithmeticOperation(Cond);
+  if (!MatchedUArithO)
+    return SDValue();
+
+  auto OPC = MatchedUArithO.getOpcode();
+  auto LoweredOPC = OpcodeMap.at(OPC);
+  SDValue FoldedArith = DAG.getNode(
+      LoweredOPC, DL, {MVT::i256, MVT::Other, MVT::Glue},
+      {Chain, MatchedUArithO.getOperand(0), MatchedUArithO.getOperand(1)});
+  // DAG.ReplaceAllUsesOfValueWith(MatchedUArithO.getValue(0),
+  //                               FoldedArith.getValue(0));
+
+  // auto TF = DAG.getNode(ISD::TokenFactor, DL, MVT::Other,
+  //                       {Chain, FoldedArith.getValue(1)});
+  auto OFCC = DAG.getConstant(EraVMCC::COND_OF, DL, MVT::i256);
+  return DAG.getNode(EraVMISD::BRCOND, DL, Op.getValueType(),
+                     FoldedArith.getValue(1), Dest, OFCC,
+                     FoldedArith.getValue(2));
 }
 
 SDValue EraVMTargetLowering::LowerSELECT_CC(SDValue Op,
@@ -1339,4 +1438,20 @@ void EraVMTargetLowering::AdjustInstrPostInstrSelection(MachineInstr &MI,
   // attribute in IntrinsicsEraVM.td for this intrinsic.
   if (MI.getOpcode() == EraVM::CTXGasLeft)
     MI.setFlag(MachineInstr::MIFlag::NoMerge);
+
+  // The overflow LT aka COND_OF hasn't reversal version actually, the GE can't
+  // be used according to the spec. We need to add early-clobber attribute to
+  // the output register to prevent the RegAlloc from allocating same register
+  // for output and input operands, otherwise we may get below case which can't
+  // be expanded correctly:
+  //
+  // out = SELrrr i1 %ov, in1, in2, COND_OF
+  //
+  // where out and in1 are assigned to same register.
+  if (EraVM::isSelect(MI) &&
+      (EraVM::argumentType(EraVM::ArgumentKind::In0, MI.getOpcode()) ==
+       EraVM::ArgumentType::Register) &&
+      getImmOrCImm(*EraVM::ccIterator(MI)) == EraVMCC::COND_OF) {
+    EraVM::out0Iterator(MI)->setIsEarlyClobber();
+  }
 }
