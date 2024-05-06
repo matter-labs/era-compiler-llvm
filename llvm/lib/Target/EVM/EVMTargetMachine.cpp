@@ -48,6 +48,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   initializeEVMOptimizeLiveIntervalsPass(PR);
   initializeEVMRegColoringPass(PR);
   initializeEVMSingleUseExpressionPass(PR);
+  initializeEVMSplitLatchBlocksPass(PR);
   initializeEVMStackifyPass(PR);
 }
 
@@ -173,6 +174,7 @@ void EVMPassConfig::addPreEmitPass() {
 
   // FIXME: enable all the passes below, but the Stackify with EVMKeepRegisters.
   if (!EVMKeepRegisters) {
+    addPass(createEVMSplitLatchBlocks());
     addPass(createEVMOptimizeLiveIntervals());
     addPass(createEVMSingleUseExpression());
     // Run the register coloring pass to reduce the total number of registers.

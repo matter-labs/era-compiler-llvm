@@ -393,8 +393,6 @@ void ControlFlowGraphBuilder::handleBasicBlockSuccessors(
       assert(TBB);
     }
     CFG::BasicBlock &Target = Cfg.getBlock(TBB);
-    if (IsLatch)
-      assert(ML->getHeader() == &MBB && !FallThrough);
     CurrentBlock->Exit = CFG::BasicBlock::Jump{&Target, FallThrough, IsLatch};
     EVMUtils::push_if_noexist(Target.Entries, CurrentBlock);
   } else if (TBB && !Cond.empty()) {

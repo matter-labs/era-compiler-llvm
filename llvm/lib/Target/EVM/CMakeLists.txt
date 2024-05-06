@@ -34,6 +34,7 @@ add_llvm_target(EVMCodeGen
   EVMRegColoring.cpp
   EVMRegisterInfo.cpp
   EVMSingleUseExpression.cpp
+  EVMSplitLatchBlocks.cpp
   EVMStackHelpers.cpp
   EVMStackLayoutGenerator.cpp
   EVMStackify.cpp
