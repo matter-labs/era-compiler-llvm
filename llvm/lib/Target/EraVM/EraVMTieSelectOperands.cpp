@@ -71,6 +71,10 @@ bool EraVMTieSelectOperands::tryPlacingTie(MachineInstr &MI,
   if (MI.getOpcode() != EraVM::SELrrr)
     return false;
 
+  // Skip if the output register is already tied to an input register.
+  if (MI.isRegTiedToUseOperand(0))
+    return false;
+
   MachineOperand &Opnd = (Arg == EraVM::ArgumentKind::In0)
                              ? *EraVM::in0Iterator(MI)
                              : *EraVM::in1Iterator(MI);
