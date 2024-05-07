@@ -27,6 +27,7 @@ The zkEVM back-end is called `EraVM`, and the architecture is called `eravm`.
 
 ## Building
 
+
 The zkEVM LLVM framework must be built with our tool called `zkevm-llvm`:
 
 1. Install some tools system-wide:
