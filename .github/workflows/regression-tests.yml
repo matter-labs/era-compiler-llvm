@@ -2,8 +2,6 @@ name: Regression tests
 
 on:
   pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 defaults:
@@ -77,7 +75,6 @@ jobs:
           BASE_REF=${{ needs.prepare-commits.outputs.base_ref }}
           HEAD_REF=${{ matrix.commit }}
           DEEPEN_LENGTH=$((${TEST_COMMITS_LIMIT} + 1))
-          git config --global --add safe.directory ${GITHUB_WORKSPACE}
           git fetch --progress --depth=1 origin "+refs/heads/$BASE_REF:refs/heads/$BASE_REF"
           while [ -z "$( git merge-base "$BASE_REF" "$HEAD_REF" )" ]; do
             git fetch -q --deepen="$DEEPEN_LENGTH" origin "$BASE_REF" "$HEAD_REF";
@@ -125,8 +122,6 @@ jobs:
       matrix: ${{ fromJson(needs.prepare-commits.outputs.matrix) }}
     steps:
 
-      - uses: AutoModality/action-clean@v1
-
       - uses: actions/checkout@v4
         with:
           ref: ${{ matrix.commit }}
@@ -138,7 +133,6 @@ jobs:
           BASE_REF=${{ needs.prepare-commits.outputs.base_ref }}
           HEAD_REF=${{ matrix.commit }}
           DEEPEN_LENGTH=$((${TEST_COMMITS_LIMIT} + 1))
-          git config --global --add safe.directory ${GITHUB_WORKSPACE}
           git fetch --progress --depth=1 origin "+refs/heads/$BASE_REF:refs/heads/$BASE_REF"
           while [ -z "$( git merge-base "$BASE_REF" "$HEAD_REF" )" ]; do
             git fetch -q --deepen="$DEEPEN_LENGTH" origin "$BASE_REF" "$HEAD_REF";
