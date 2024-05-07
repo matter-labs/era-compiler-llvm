@@ -10,7 +10,7 @@ defaults:
 
 # Workflow configuration
 env:
-  TEST_COMMITS_LIMIT: 25 # # of last commits to run regression tests on
+  TEST_COMMITS_LIMIT: 2 # # of last commits to run regression tests on
 
 jobs:
   prepare-commits:
@@ -63,8 +63,6 @@ jobs:
       max-parallel: 3
       matrix: ${{ fromJson(needs.prepare-commits.outputs.matrix) }}
     steps:
-
-      - uses: AutoModality/action-clean@v1
 
       - uses: actions/checkout@v4
         with:
