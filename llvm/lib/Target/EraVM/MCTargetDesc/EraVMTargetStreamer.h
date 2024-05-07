@@ -27,6 +27,9 @@ public:
 
   /// Emit .cell N (naturally-aligned 256-bit value).
   virtual void emitCell(const APInt &Value) {}
+
+  /// Emit `.cell @tgt` where `@tgt` is an instruction address.
+  virtual void emitJumpTarget(const MCExpr *Expr) {}
 };
 } // namespace llvm
 
