@@ -1,8 +1,6 @@
 ; RUN: llc -O0 < %s | FileCheck %s
 
-; ModuleID = 'Test_65'
-source_filename = "Test_65"
-target datalayout = "E-p:256:256-i8:256:256:256-i256:256:256-S32-a:256:256"
+target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm"
 
 ; CHECK-LABEL: test_length
