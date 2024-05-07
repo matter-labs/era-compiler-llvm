@@ -10,6 +10,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "EraVMFixupKinds.h"
 #include "EraVMMCTargetDesc.h"
 #include "EraVMTargetStreamer.h"
 #include "llvm/BinaryFormat/ELF.h"
@@ -18,6 +19,7 @@
 #include "llvm/MC/MCSectionELF.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/MCSubtargetInfo.h"
+#include "llvm/Support/Casting.h"
 
 using namespace llvm;
 
@@ -28,6 +30,7 @@ public:
   MCELFStreamer &getStreamer();
   EraVMTargetELFStreamer(MCStreamer &S, const MCSubtargetInfo &STI);
   void emitCell(const APInt &Value) override;
+  void emitJumpTarget(const MCExpr *Expr) override;
 };
 
 // This part is for ELF object output.
@@ -40,6 +43,7 @@ public:
   EraVMTargetAsmStreamer(MCStreamer &S, formatted_raw_ostream &OS,
                          MCInstPrinter &InstPrinter, bool VerboseAsm);
   void emitCell(const APInt &Value) override;
+  void emitJumpTarget(const MCExpr *Expr) override;
 };
 
 void EraVMTargetELFStreamer::emitCell(const APInt &Value) {
@@ -47,6 +51,26 @@ void EraVMTargetELFStreamer::emitCell(const APInt &Value) {
   // aligned by 256 bit
   Streamer.emitValueToAlignment(Align(EraVM::CellBitWidth / 8));
   Streamer.emitIntValue(Value.sext(EraVM::CellBitWidth));
+}
+
+void EraVMTargetELFStreamer::emitJumpTarget(const MCExpr *Expr) {
+  // The code is similar to MCObjectStreamer::emitValueImpl, but takes the
+  // specifics of code labels into account: the instruction index is actually
+  // only 16 bits in size and is counted in 8-byte units.
+
+  constexpr auto FK = static_cast<MCFixupKind>(EraVM::fixup_16_scale_8);
+  auto &S = static_cast<MCObjectStreamer &>(Streamer);
+
+  S.visitUsedExpr(*Expr);
+
+  // Emit the placeholder.
+  emitCell(APInt::getZero(EraVM::CellBitWidth));
+
+  // Emit the fixup.
+  auto *DF = cast<MCDataFragment>(S.getCurrentFragment());
+  // Offset of the 16 least significant bits of 256-bit value.
+  unsigned Offset = DF->getContents().size() - 2;
+  DF->getFixups().push_back(MCFixup::create(Offset, Expr, FK));
 }
 
 void EraVMTargetAsmStreamer::emitCell(const APInt &Value) {
@@ -57,6 +81,10 @@ void EraVMTargetAsmStreamer::emitCell(const APInt &Value) {
   OS << "\t.cell\t" << Value;
 
   Streamer.emitRawText(OS.str());
+}
+
+void EraVMTargetAsmStreamer::emitJumpTarget(const MCExpr *Expr) {
+  Streamer.emitValue(Expr, EraVM::CellBitWidth / 8);
 }
 
 EraVMTargetAsmStreamer::EraVMTargetAsmStreamer(MCStreamer &S,
