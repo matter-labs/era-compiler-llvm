@@ -13,6 +13,9 @@
   define i256 @RightKilled(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
     ret i256 %v1
   }
+  define i256 @AlreadyTied(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
+    ret i256 %v1
+  }
 
 ...
 ---
@@ -117,6 +120,41 @@ body:             |
     %0:gr256 = COPY killed $r1
     dead %4:gr256 = SUBrrr_v killed %2, %3, i256 0, implicit-def $flags
     %5:gr256 = SELrrr %0, killed %1, i256 2, implicit $flags
+    $r1 = COPY killed %5
+    RET 0, implicit killed $r1
+...
+---
+# CHECK-LABEL: AlreadyTied
+# CHECK-LABEL: body
+# CHECK: %5:gr256 = SELrrr %0, killed %1, i256 2, implicit $flags, implicit killed %1(tied-def 0)
+name: AlreadyTied
+alignment:       1
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gr256 }
+  - { id: 1, class: gr256 }
+  - { id: 2, class: gr256 }
+  - { id: 3, class: gr256 }
+  - { id: 4, class: gr256 }
+  - { id: 5, class: gr256 }
+liveins:
+  - { reg: '$r1', virtual-reg: '%0' }
+  - { reg: '$r2', virtual-reg: '%1' }
+  - { reg: '$r3', virtual-reg: '%2' }
+  - { reg: '$r4', virtual-reg: '%3' }
+frameInfo:
+  maxAlignment:    1
+machineFunctionInfo: {}
+body:             |
+  bb.0 (%ir-block.0):
+    liveins: $r1, $r2, $r3, $r4
+
+    %3:gr256 = COPY killed $r4
+    %2:gr256 = COPY killed $r3
+    %1:gr256 = COPY killed $r2
+    %0:gr256 = COPY killed $r1
+    dead %4:gr256 = SUBrrr_v killed %2, %3, i256 0, implicit-def $flags
+    %5:gr256 = SELrrr %0, killed %1, i256 2, implicit $flags, implicit killed %1(tied-def 0)
     $r1 = COPY killed %5
     RET 0, implicit killed $r1
 ...
