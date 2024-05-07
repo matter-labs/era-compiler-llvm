@@ -22,6 +22,7 @@
 #include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/CodeGen/MachineConstantPool.h"
 #include "llvm/CodeGen/MachineInstr.h"
+#include "llvm/CodeGen/MachineJumpTableInfo.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
@@ -81,6 +82,7 @@ public:
     return MCInstLowering.lowerOperand(MO, MCOp);
   }
 
+  void emitJumpTableInfo() override;
   void emitConstantPool() override;
   void emitEndOfAsmFile(Module &) override;
 };
@@ -172,6 +174,48 @@ void EraVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
 
   MCInstLowering.Lower(MI, TmpInst);
   EmitToStreamer(*OutStreamer, TmpInst);
+}
+
+void EraVMAsmPrinter::emitJumpTableInfo() {
+  // The default implementation would try to emit 256-bit fixup, so provide
+  // custom implementation based on emitJumpTableInfo and emitJumpTableEntry
+  // from AsmPrinter (the latter is not virtual) that emits 16-bit relocation
+  // and takes scaling into account.
+
+  auto *TS =
+      static_cast<EraVMTargetStreamer *>(OutStreamer->getTargetStreamer());
+  const DataLayout &DL = MF->getDataLayout();
+  const MachineJumpTableInfo *MJTI = MF->getJumpTableInfo();
+  if (!MJTI)
+    return;
+  assert(MJTI->getEntryKind() == MachineJumpTableInfo::EK_BlockAddress);
+  const std::vector<MachineJumpTableEntry> &JT = MJTI->getJumpTables();
+  if (JT.empty())
+    return;
+
+  // Switch section.
+  const Function &F = MF->getFunction();
+  MCSection *Section = getObjFileLowering().getSectionForJumpTable(F, TM);
+  OutStreamer->switchSection(Section);
+
+  emitAlignment(Align(MJTI->getEntryAlignment(DL)));
+
+  for (unsigned JTI = 0, e = JT.size(); JTI != e; ++JTI) {
+    const std::vector<MachineBasicBlock *> &JTBBs = JT[JTI].MBBs;
+
+    // If this jump table was deleted, ignore it.
+    if (JTBBs.empty())
+      continue;
+
+    OutStreamer->emitLabel(GetJTISymbol(JTI));
+
+    for (const MachineBasicBlock *MBB : JTBBs) {
+      assert(MBB && MBB->getNumber() >= 0 && "Invalid basic block");
+      const MCExpr *Value =
+          MCSymbolRefExpr::create(MBB->getSymbol(), OutContext);
+      TS->emitJumpTarget(Value);
+    }
+  }
 }
 
 bool EraVMAsmPrinter::runOnMachineFunction(MachineFunction &MF) {
