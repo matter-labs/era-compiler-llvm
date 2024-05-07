@@ -1,6 +1,6 @@
 ; RUN: llc --disable-eravm-scalar-opt-passes < %s | FileCheck %s
 
-target datalayout = "E-p:256:256-i8:256:256:256-i256:256:256-S32-a:256:256"
+target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm"
 
 @val = global [10 x i256] zeroinitializer
