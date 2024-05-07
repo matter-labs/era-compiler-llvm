@@ -30,6 +30,7 @@ The zkEVM back-end is called `EraVM`, and the architecture is called `eravm`.
 
 The zkEVM LLVM framework must be built with our tool called `zkevm-llvm`:
 
+
 1. Install some tools system-wide:
    1.a. `apt install cmake ninja-build clang-13 lld-13` on a Debian-based Linux, with optional `musl-tools` if you need a `musl` build
    1.b. `pacman -S cmake ninja clang lld` on an Arch-based Linux
