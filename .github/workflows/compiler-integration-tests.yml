@@ -34,8 +34,6 @@ jobs:
       options: -m 110g
     steps:
 
-      - uses: AutoModality/action-clean@v1
-
       - name: Checkout era-compiler-tester
         uses: actions/checkout@v4
         with:
@@ -62,7 +60,6 @@ jobs:
         env:
           RUST_BACKTRACE: "full"
         run: |
-          export LLVM_SYS_150_PREFIX="$(pwd)/target-llvm/target-final"
           cargo build --verbose --release --bin 'compiler-tester'
           cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/era-compiler-solidity-*/*/Cargo.toml --target-dir './target-zksolc/'
           cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/era-compiler-vyper-*/*/Cargo.toml --target-dir './target-zkvyper/'
