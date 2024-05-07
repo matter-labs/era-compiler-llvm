@@ -82,15 +82,17 @@ EraVMStackAddressConstantPropagation::tryPropagateConstant(MachineInstr &MI) {
   auto *In0 = EraVM::in0Iterator(MI);
   auto *In1 = EraVM::in1Iterator(MI);
   Register In1Reg = In1->getReg();
-  MachineInstr &In1Def = *RegInfo->getVRegDef(In1Reg);
-  auto In1Res = tryPropagateConstant(In1Def);
+  MachineInstr *In1Def = RegInfo->getVRegDef(In1Reg);
+  assert(In1Def);
+  auto In1Res = tryPropagateConstant(*In1Def);
 
   // If Base = VR1 + VR2, try to propagate constant from VR1 and VR2
   // recursively.
   if (EraVM::hasRRInAddressingMode(MI)) {
     Register In0Reg = In0->getReg();
-    MachineInstr &LHS = *RegInfo->getVRegDef(In0Reg);
-    auto LHSRes = tryPropagateConstant(LHS);
+    MachineInstr *LHS = RegInfo->getVRegDef(In0Reg);
+    assert(LHS);
+    auto LHSRes = tryPropagateConstant(*LHS);
     if (!LHSRes && In1Res)
       return {};
     In0Reg = LHSRes ? LHSRes->Base : In0Reg;
@@ -146,6 +148,7 @@ bool EraVMStackAddressConstantPropagation::runOnMachineFunction(
       if (!RegInfo->hasOneNonDBGUse(Base))
         continue;
       MachineInstr *DefMI = RegInfo->getVRegDef(Base);
+      assert(DefMI);
       auto ConstPropagationResult = tryPropagateConstant(*DefMI);
       if (!ConstPropagationResult)
         continue;
