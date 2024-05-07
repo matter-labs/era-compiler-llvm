@@ -294,6 +294,11 @@ void EraVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
     return;
   }
 
+  if (isa<ConstantPointerNull>(CV)) {
+    Streamer->emitCell(APInt::getZero(256));
+    return;
+  }
+
   AsmPrinter::emitGlobalConstant(DL, CV);
 }
 
