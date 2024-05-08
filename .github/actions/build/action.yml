@@ -21,6 +21,10 @@ inputs:
     description: 'Specific build target triplet.'
     required: false
     default: ''
+  llvm-builder-version:
+    description: 'Version of the LLVM builder to use.'
+    required: false
+    default: '1.0.24'
 runs:
   using: "composite"
   steps:
@@ -44,7 +48,7 @@ runs:
 
     - name: Install LLVM builder
       shell: ${{ runner.os == 'Windows' && 'msys2 {0}' || 'bash' }}
-      run: cargo install compiler-llvm-builder
+      run: cargo install compiler-llvm-builder@${{ inputs.llvm-builder-version }}
 
     - name: Set up compiler cache
       uses: hendrikmuhs/ccache-action@v1.2
