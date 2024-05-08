@@ -1,4 +1,4 @@
-# zkSync Era: The zkEVM LLVM Framework
+# zkSync Era: The ZKsync LLVM Framework
 
 [![Logo](eraLogo.svg)](https://zksync.io/)
 
@@ -7,71 +7,114 @@ or decentralization. As it's EVM-compatible (with Solidity/Vyper), 99% of Ethere
 needing to refactor or re-audit any code. zkSync Era also uses an LLVM-based compiler that will eventually enable
 developers to write smart contracts in popular languages such as C++ and Rust.
 
-This directory and its sub-directories contain the source code for the zkEVM fork of the [LLVM](https://llvm.org) framework,
+This directory and its sub-directories contain the source code for the ZKsync fork of the [LLVM](https://llvm.org) framework,
 a toolkit for the construction of highly optimized compilers, optimizers, and run-time environments
 used by the Solidity and Vyper compilers developed by Matter Labs.
 
 ## Overview
 
-Welcome to the zkEVM LLVM project!
+Welcome to the ZKsync LLVM project!
 
 The project has multiple components. The core of the project is
 the `llvm` directory. This contains all of the tools, libraries, and header
 files needed to process intermediate representations and convert them into
 object files. Tools include an assembler, disassembler, bitcode analyzer, and
 bitcode optimizer. These tools are not yet officially supported for third-party front-ends.
-It also contains zkEVM modifications of the standard [LLVM regression tests](https://llvm.org/docs/TestingGuide.html#regression-tests).
-
-The zkEVM back-end is called `EraVM`, and the architecture is called `eravm`.
+It also contains ZKsync modifications of the standard [LLVM regression tests](https://llvm.org/docs/TestingGuide.html#regression-tests).
 
 ## Building
 
-The zkEVM LLVM framework must be built with our tool called `zkevm-llvm`:
+The ZKsync LLVM framework must be built with our tool called `zkevm-llvm`:
 
-1. Install some tools system-wide:
-   1.a. `apt install cmake ninja-build clang-13 lld-13` on a Debian-based Linux, with optional `musl-tools` if you need a `musl` build
-   1.b. `pacman -S cmake ninja clang lld` on an Arch-based Linux
-   1.c. On MacOS, install the [HomeBrew](https://brew.sh) package manager (being careful to install it as the appropriate user), then `brew install cmake ninja coreutils`. Install your choice of a recent LLVM/[Clang](https://clang.llvm.org) compiler, e.g. via [Xcode](https://developer.apple.com/xcode/), [Apple’s Command Line Tools](https://developer.apple.com/library/archive/technotes/tn2339/_index.html), or your preferred package manager.
-   1.d. Their equivalents with other package managers
+<details>
+<summary>1. Install the system prerequisites.</summary>
 
-2. [Install Rust](https://www.rust-lang.org/tools/install)
+   * Linux (Debian):
 
-   Currently we are not pinned to any specific version of Rust, so just install the latest stable build for your platform.
-   Also install the `musl` target if you are compiling on Linux in order to distribute the binaries:
-   `rustup target add x86_64-unknown-linux-musl`
+      Install the following packages:
+      ```shell
+      apt install cmake ninja-build curl git libssl-dev pkg-config clang lld
+      ```
+   * Linux (Arch):
 
-3. Install the zkEVM LLVM framework builder:
+      Install the following packages:
+      ```shell
+      pacman -Syu which cmake ninja curl git pkg-config clang lld
+      ```
 
-   3.a. `cargo install compiler-llvm-builder` on MacOS, or Linux for personal use
-   3.b. `cargo install compiler-llvm-builder --target x86_64-unknown-linux-musl` on Linux for distribution
+   * MacOS:
 
-   The builder is not the zkEVM LLVM framework itself, but a tool that clones its repository and runs the sequence of build commands.
-   By default it is installed in `~/.cargo/bin/`, which is recommended to be added to your `$PATH`.
+      * Install the [HomeBrew](https://brew.sh) package manager.
+      * Install the following packages:
 
-4. In a directory in which you want the `llvm` directory, create an `LLVM.lock` file with the URL and branch or tag you want to build. For example:
+         ```shell
+         brew install cmake ninja coreutils
+         ```
 
-  ```
-  url = "<THIS REPO URL>"
-  branch = "<THIS REPO BRANCH>"
-  ```
+      * Install your choice of a recent LLVM/[Clang](https://clang.llvm.org) compiler, e.g. via [Xcode](https://developer.apple.com/xcode/), [Apple’s Command Line Tools](https://developer.apple.com/library/archive/technotes/tn2339/_index.html), or your preferred package manager.
+</details>
 
-5. Run the builder to clone and build the zkevm LLVM framework:
-   5.1. `zkevm-llvm clone`
-   5.2. `zkevm-llvm build`
+<details>
+<summary>2. Install Rust.</summary>
 
-   The build artifacts will end up in the `./target-llvm/target-final/` directory.
-   You may point your `LLVM_SYS_150_PREFIX` to that directory to use this build as a compiler dependency.
-   If built with the `--enable-tests` option, test tools will be in the `./target-llvm/build-final/` directory, along with copies of the build artifacts.
+   * Follow the latest [official instructions]((https://www.rust-lang.org/tools/install)):
+      ```shell
+      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+      . ${HOME}/.cargo/env
+      ```
+
+      > Currently we are not pinned to any specific version of Rust, so just install the latest stable build for your   platform.
+</details>
+
+<details>
+<summary>3. Install the ZKsync LLVM framework builder.</summary>
+
+   * Install the builder using `cargo`:
+      ```shell
+      cargo install compiler-llvm-builder
+      ```
+
+      > The builder is not the ZKsync LLVM framework itself, but a tool that clones its repository and runs a sequence of build commands. By default it is installed in `~/.cargo/bin/`, which is recommended to be added to your `$PATH`.
+
+</details>
+
+<details>
+<summary>4. Create the `LLVM.lock` file.</summary>
+
+   * In a directory in which you want the `llvm` directory, create an `LLVM.lock` file with the URL and branch or tag you want to build, for example:
+
+      ```properties
+      url = "https://github.com/matter-labs/era-compiler-llvm"
+      branch = "main"
+      ```
+
+</details>
+
+<details>
+<summary>5. Build LLVM.</summary>
+
+   * Clone and build the ZKsync LLVM framework using the `zkevm-llvm` tool:
+      ```shell
+      zkevm-llvm clone
+      zkevm-llvm build
+      ```
+
+      The build artifacts will end up in the `./target-llvm/target-final/` directory.
+      You may point your `LLVM_SYS_170_PREFIX` to that directory to use this build as a compiler dependency.
+      If built with the `--enable-tests` option, test tools will be in the `./target-llvm/build-final/` directory, along   with copies of the build artifacts. For all supported build options, run `zkevm-llvm build --help`.
+
+</details>
 
 ## Troubleshooting
 
-- If you get a “failed to authenticate when downloading repository… if the git CLI succeeds then net.git-fetch-with-cli may help here” error,
-then prepending the `cargo` command with `CARGO_NET_GIT_FETCH_WITH_CLI=true` may help.
+- Make sure your system is up-to-date.
+- Make sure you have the required system prerequisites installed.
 - Unset any LLVM-related environment variables you may have set.
+- If you encounter any problems with the building process, please open an issue in the [era-compiler-llvm](https://github.com/matter-labs/era-compiler-llvm/issues) repository.
 
 ## License
 
-The zkEVM fork of the LLVM framework is distributed under the terms of
+The ZKsync fork of the LLVM framework is distributed under the terms of
 Apache License, Version 2.0 with LLVM Exceptions, ([LICENSE](LICENSE) or <https://llvm.org/LICENSE.txt>)
 
 ## Resources
