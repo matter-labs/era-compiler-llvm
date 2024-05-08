@@ -1119,6 +1119,9 @@ bool EraVMInstrInfo::PredicateInstruction(MachineInstr &MI,
 
 std::optional<EraVMCC::CondCodes>
 EraVMInstrInfo::getReversedCondition(EraVMCC::CondCodes CC) {
+  // Be careful: do not add COND_OF into this map because COND_GE doesn't mean
+  // there was no overflow happened. In another word, we don't have a proper
+  // reverse code for COND_OF.
   const std::unordered_map<EraVMCC::CondCodes, EraVMCC::CondCodes> ReverseMap =
       {
           {EraVMCC::COND_E, EraVMCC::COND_NE},

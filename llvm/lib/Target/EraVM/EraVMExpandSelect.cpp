@@ -81,6 +81,8 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
       {EraVM::SELrsr, EraVM::SELsrr},
   };
 
+  // Be careful: do not add COND_OF into this map as COND_GE doesn't indicate
+  // there was no overflow happend.
   DenseMap<unsigned, unsigned> InverseCond{
       {EraVMCC::COND_E, EraVMCC::COND_NE},
       {EraVMCC::COND_NE, EraVMCC::COND_E},

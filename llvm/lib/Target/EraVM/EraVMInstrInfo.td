@@ -28,6 +28,8 @@ def SDT_EraVMChangeSP     : SDTypeProfile<0,  1, [SDTCisVT<0, i256>]>;
 def SDT_EraVMGetSP        : SDTypeProfile<1,  0, []>;
 def SDT_EraVMBrCC         : SDTypeProfile<0,  2, [SDTCisVT<0, OtherVT>,
                                                    SDTCisVT<1, i256>]>;
+def SDT_EraVMBrCOND       : SDTypeProfile<0,  2, [SDTCisVT<0, OtherVT>,
+                                                   SDTCisVT<1, i256>]>;
 def SDT_EraVMSelectCC     : SDTypeProfile<1, 3, [SDTCisSameAs<0, 1>,
                                                   SDTCisSameAs<1, 2>,
                                                   SDTCisVT<3, i256>]>;
@@ -61,6 +63,8 @@ def EraVMdelegatecall: SDNode<"EraVMISD::DELEGATECALL", SDT_EraVMFarCall,
 def EraVMmimiccall: SDNode<"EraVMISD::MIMICCALL", SDT_EraVMFarCall,
                     [SDNPHasChain, SDNPOutGlue, SDNPOptInGlue, SDNPVariadic]>;
 def EraVMbrcc   : SDNode<"EraVMISD::BR_CC", SDT_EraVMBrCC,
+                    [SDNPHasChain, SDNPInGlue]>;
+def EraVMbrcond : SDNode<"EraVMISD::BRCOND", SDT_EraVMBrCOND,
                     [SDNPHasChain, SDNPInGlue]>;
 def EraVMselectcc: SDNode<"EraVMISD::SELECT_CC", SDT_EraVMSelectCC,
                            [SDNPInGlue]>;
@@ -1237,6 +1241,8 @@ def : Pat<(EraVMTrap), (PANICr R0)>;
 def : Pat<(EraVMselectcc GRPTR:$rs0, GRPTR:$rs1, imm:$cc),
           (FATPTR_SELrrr GRPTR:$rs0, GRPTR:$rs1, imm:$cc)>;
 
+// our own version of brcond
+def : Pat<(EraVMbrcond bb:$unwind, imm:$cc), (JC bb:$unwind, imm:$cc)>;
 // ============================ Overflow ADDs =====================================
 // to register
 def : Pat<(EraVMAdd_v GR256:$rs0, GR256:$rs1),

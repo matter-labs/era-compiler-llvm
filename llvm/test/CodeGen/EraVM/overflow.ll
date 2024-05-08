@@ -12,7 +12,8 @@ define i256 @add_test(i256 %a, i256 %b, i256 %x, i256 %y) {
 entry:
   %res1 = call {i256, i1} @llvm.uadd.with.overflow.i256(i256 %x, i256 %y)
 ; CHECK:      add!    r3, r4, r{{[0-9]+}}
-; CHECK-NEXT: add.ge  r2, r0, r1
+; CHECK-NEXT: add.lt  r1, r0, r2
+; CHECK-NEXT: add     r2, r0, r1
   %overflow = extractvalue {i256, i1} %res1, 1
   %selected = select i1 %overflow, i256 %a, i256 %b
   ret i256 %selected
@@ -62,7 +63,8 @@ entry:
 ; CHECK-NEXT: sub!    r1, r2, r1
 ; CHECK-NEXT: add.lt  r3, r0, r7
 ; CHECK-NEXT: add!    r4, r5, r1
-; CHECK-NEXT: add.ge  r2, r0, r7
+; CHECK-NEXT: add.lt  r7, r0, r2
+; CHECK-NEXT: add     r6, r2, r1
   ret i256 %sum
 }
 
@@ -71,7 +73,8 @@ define i256 @sub_test(i256 %a, i256 %b, i256 %x, i256 %y) {
 entry:
   %res1 = call {i256, i1} @llvm.usub.with.overflow.i256(i256 %x, i256 %y)
 ; CHECK:      sub!    r3, r4, r{{[0-9]+}}
-; CHECK-NEXT: add.ge  r2, r0, r1
+; CHECK-NEXT: add.lt  r1, r0, r2
+; CHECK-NEXT: add     r2, r0, r1
   %overflow = extractvalue {i256, i1} %res1, 1
   %selected = select i1 %overflow, i256 %a, i256 %b
   ret i256 %selected
@@ -94,7 +97,8 @@ define i256 @mul_test(i256 %a, i256 %b, i256 %x, i256 %y) {
 entry:
   %res1 = call {i256, i1} @llvm.umul.with.overflow.i256(i256 %x, i256 %y)
 ; CHECK:      mul!    r3, r4, r{{[0-9]+}}, r{{[0-9]+}}
-; CHECK-NEXT: add.ge  r2, r0, r1
+; CHECK-NEXT: add.lt  r1, r0, r2
+; CHECK-NEXT: add     r2, r0, r1
   %overflow = extractvalue {i256, i1} %res1, 1
   %selected = select i1 %overflow, i256 %a, i256 %b
   ret i256 %selected

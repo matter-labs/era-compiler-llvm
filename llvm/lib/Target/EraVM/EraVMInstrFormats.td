@@ -231,6 +231,7 @@ def COND_E    : EraVMCondCode<3>;
 def COND_GE   : EraVMCondCode<4>;
 def COND_LE   : EraVMCondCode<5>;
 def COND_NE   : EraVMCondCode<6>;
+def COND_OF   : EraVMCondCode<7>;
 def COND_INVALID : EraVMCondCode<-1>;
 
 def CondCodes : GenericEnum {

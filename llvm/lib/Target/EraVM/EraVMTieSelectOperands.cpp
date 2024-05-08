@@ -106,7 +106,25 @@ bool EraVMTieSelectOperands::tryPlacingTie(MachineInstr &MI,
   // Add an implicit tie
   Opnd.setImplicit();
   NewMI.add(Opnd);
-  NewMI->tieOperands(0, NewMI->getNumOperands() - 1);
+
+  // Since COND_OF hasn't reversal version, we have to tie the output register
+  // to the second input operand, otherwise the pass eravm-exapnd-select will
+  // generate bad code. For example, for below IR (7 means COND_OF)
+  //   $r1 = SELrrr killed $r1, killed $r6, 7, implicit $flags, implicit
+  //   $r1(tied-def 0)
+  //
+  // After disable inversing for COND_OF in eravm-exapnd-select pass, it will
+  // expand SELrrr into:
+  //   $r1 = ADDrrr_s killed $r6, $r0, 0
+  //   $r1 = ADDrrr_s killed $r1, $r0, 7, implicit $flags
+  //
+  // This is an incorrect sequence. If the condition is true, the $r1 won't get
+  // its original value. Hence we need to tie the output register to the second
+  // input operand.
+  if (CC == EraVMCC::COND_OF)
+    NewMI->tieOperands(0, 2);
+  else
+    NewMI->tieOperands(0, NewMI->getNumOperands() - 1);
 
   return true;
 }
