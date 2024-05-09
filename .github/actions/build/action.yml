@@ -24,7 +24,7 @@ inputs:
   llvm-builder-version:
     description: 'Version of the LLVM builder to use.'
     required: false
-    default: '1.0.24'
+    default: '1.0.25'
 runs:
   using: "composite"
   steps:
@@ -75,4 +75,4 @@ runs:
         [ "${{ inputs.enable-tests }}" != "" ] && ENABLE_TESTS="--enable-tests"
         [ "${{ inputs.enable-assertions }}" != "" ] && ENABLE_ASSERTIONS="--enable-assertions"
         [ "${{ inputs.extra-args }}" != "" ] && EXTRA_ARGS="--extra-args ${{ inputs.extra-args }}"
-        zkevm-llvm build --use-ccache ${ENABLE_TESTS} ${ENABLE_ASSERTIONS} ${EXTRA_ARGS}
+        zksync-llvm build --use-ccache ${ENABLE_TESTS} ${ENABLE_ASSERTIONS} ${EXTRA_ARGS}

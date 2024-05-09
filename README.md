@@ -1,10 +1,10 @@
-# zkSync Era: The ZKsync LLVM Framework
+# ZKsync Era: The ZKsync LLVM Framework
 
 [![Logo](eraLogo.svg)](https://zksync.io/)
 
-zkSync Era is a layer 2 rollup that uses zero-knowledge proofs to scale Ethereum without compromising on security
+ZKsync Era is a layer 2 rollup that uses zero-knowledge proofs to scale Ethereum without compromising on security
 or decentralization. As it's EVM-compatible (with Solidity/Vyper), 99% of Ethereum projects can redeploy without
-needing to refactor or re-audit any code. zkSync Era also uses an LLVM-based compiler that will eventually enable
+needing to refactor or re-audit any code. ZKsync Era also uses an LLVM-based compiler that will eventually enable
 developers to write smart contracts in popular languages such as C++ and Rust.
 
 This directory and its sub-directories contain the source code for the ZKsync fork of the [LLVM](https://llvm.org) framework,
@@ -24,7 +24,7 @@ It also contains ZKsync modifications of the standard [LLVM regression tests](ht
 
 ## Building
 
-The ZKsync LLVM framework must be built with our tool called `zkevm-llvm`:
+The ZKsync LLVM framework must be built with our tool called `zksync-llvm`:
 
 <details>
 <summary>1. Install the system prerequisites.</summary>
@@ -93,15 +93,15 @@ The ZKsync LLVM framework must be built with our tool called `zkevm-llvm`:
 <details>
 <summary>5. Build LLVM.</summary>
 
-   * Clone and build the ZKsync LLVM framework using the `zkevm-llvm` tool:
+   * Clone and build the ZKsync LLVM framework using the `zksync-llvm` tool:
       ```shell
-      zkevm-llvm clone
-      zkevm-llvm build
+      zksync-llvm clone
+      zksync-llvm build
       ```
 
       The build artifacts will end up in the `./target-llvm/target-final/` directory.
       You may point your `LLVM_SYS_170_PREFIX` to that directory to use this build as a compiler dependency.
-      If built with the `--enable-tests` option, test tools will be in the `./target-llvm/build-final/` directory, along   with copies of the build artifacts. For all supported build options, run `zkevm-llvm build --help`.
+      If built with the `--enable-tests` option, test tools will be in the `./target-llvm/build-final/` directory, along   with copies of the build artifacts. For all supported build options, run `zksync-llvm build --help`.
 
 </details>
 
@@ -131,7 +131,7 @@ Apache License, Version 2.0 with LLVM Exceptions, ([LICENSE](LICENSE) or <https:
 
 ## Disclaimer
 
-zkSync Era has been through extensive testing and audits, and although it is live, it is still in alpha state and
+ZKsync Era has been through extensive testing and audits, and although it is live, it is still in alpha state and
 will undergo further audits and bug bounty programs. We would love to hear our community's thoughts and suggestions
 about it!
 It's important to note that forking it now could potentially lead to missing important
