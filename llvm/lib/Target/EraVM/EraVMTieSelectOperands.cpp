@@ -96,6 +96,17 @@ bool EraVMTieSelectOperands::tryPlacingTie(MachineInstr &MI,
   if (EraVM::out0Iterator(MI)->getReg().isPhysical())
     return false;
 
+  // Since RegisterCoalescer works well when we have both early clobber and
+  // explicit tied register, but not with implicit tied register, remove the
+  // early clobber flag so RegisterCoalescer can remove unneeded copies.
+  // This is safe to do because the regalloc will allocate the same register
+  // for the output and input register operand, so if there is a register in
+  // code operand, it won't be overwritten with the output register and we can
+  // do proper expansion PostRA.
+  if ((MI.getOpcode() == EraVM::SELcrr || MI.getOpcode() == EraVM::SELrcr) &&
+      EraVM::out0Iterator(MI)->isEarlyClobber())
+    EraVM::out0Iterator(MI)->setIsEarlyClobber(false);
+
   // Add an implicit tie.
   MI.addOperand(MachineOperand::CreateReg(Opnd.getReg(), /*isDef=*/false,
                                           /*isImp=*/true, /*isKill=*/true));
