@@ -7,6 +7,7 @@
 #include "llvm/Support/FormatVariadic.h"
 #include "llvm/Support/MemoryBuffer.h"
 
+#include <iostream>
 LLD_HAS_DRIVER_MEM_BUF(elf)
 
 LLVMBool LLVMLinkMemoryBuffers(LLVMMemoryBufferRef *inMemBufs, size_t numInBufs,
@@ -56,8 +57,7 @@ LLVMBool LLVMLinkMemoryBuffers(LLVMMemoryBufferRef *inMemBufs, size_t numInBufs,
 ///   SECTIONS {
 ///     . = 0;
 ///     .text : SUBALIGN(1) {
-///       __dataoffset_D_105 = .;
-///       D_105_deploy(.text);
+///       D_105(.text);
 ///       __dataoffset_D_105_deployed = .;
 ///       D_105_deployed(.text);
 ///       __datasize_D_105_deployed = . - __dataoffset_D_105_deployed;
@@ -77,18 +77,13 @@ creteEVMLinkerScript(llvm::ArrayRef<LLVMMemoryBufferRef> memBufs,
   llvm::Twine dfPrefix("__dataoffset_");
 
   // Define the script part related to top-level contract.
-  llvm::StringRef deploy(bufIDs[0]);
+  llvm::StringRef topName(bufIDs[0]);
+  llvm::StringRef deploy = topName;
   llvm::StringRef deployed(bufIDs[1]);
 
-  size_t pos = deploy.find("_deploy");
-  assert(pos != llvm::StringRef::npos);
-  llvm::StringRef topName = deploy.take_front(pos);
-  assert(topName == deployed.take_front(pos));
-
-  llvm::Twine topLevel = dfPrefix + topName + " = .;\n" + deploy +
-                         "(.text);\n" + dfPrefix + deployed + " = .;\n" +
-                         deployed + "(.text);\n" + dzPrefix + deployed +
-                         " = . - " + dfPrefix + deployed + ";\n";
+  llvm::Twine topLevel = deploy + "(.text);\n" + dfPrefix + deployed +
+                         " = .;\n" + deployed + "(.text);\n" + dzPrefix +
+                         deployed + " = . - " + dfPrefix + deployed + ";\n";
 
   std::string symDatasizeDeps;
   std::string symDataOffsetDeps;
@@ -158,6 +153,7 @@ LLVMBool LLVMLinkEVM(LLVMMemoryBufferRef inMemBufs[], const char *inMemBufIDs[],
   std::string linkerScript =
       creteEVMLinkerScript(llvm::ArrayRef(inMemBufs, numInBufs),
                            llvm::ArrayRef(inMemBufIDs, numInBufs));
+  std::cerr << linkerScript << "\n";
   std::unique_ptr<llvm::MemoryBuffer> ScriptBuf =
       llvm::MemoryBuffer::getMemBuffer(linkerScript, "script.x");
   localInMemBufRefs[2] = ScriptBuf->getMemBufferRef();
@@ -191,6 +187,10 @@ LLVMBool LLVMLinkEVM(LLVMMemoryBufferRef inMemBufs[], const char *inMemBufIDs[],
   const lld::Result s =
       lld::lldMainMemBuf(localInMemBufRefs, &ostream, lldArgs, llvm::outs(),
                          llvm::errs(), {{lld::Gnu, &lld::elf::linkMemBuf}});
+  bool isOK = !s.retCode && s.canRunAgain;
+  if (!isOK)
+    return isOK;
+
   llvm::StringRef data = ostream.str();
   // Linker script adds size of the deploy code as a 8-byte BE unsigned to the
   // end of .text section. Knowing this, we can extract final deploy and
@@ -206,5 +206,5 @@ LLVMBool LLVMLinkEVM(LLVMMemoryBufferRef inMemBufs[], const char *inMemBufIDs[],
   outMemBuf[1] = LLVMCreateMemoryBufferWithMemoryRangeCopy(
       data.data() + deploySize, deployedSize, "deployed");
 
-  return !s.retCode && s.canRunAgain;
+  return isOK;
 }
