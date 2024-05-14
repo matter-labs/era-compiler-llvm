@@ -898,10 +898,19 @@ void StackLayoutGenerator::fillInJunk(CFG::BasicBlock const &_block,
           // This has to be a previously unassigned return variable.
           // We at least sanity-check that it is among the return variables at
           // all.
+          bool VarExists = false;
           assert(std::holds_alternative<VariableSlot>(_slot));
-          // FIXME:
-          // assert(EVMUtils::contains(m_currentFunctionInfo->returnVariables,
-          // std::get<VariableSlot>(_slot))); Strictly speaking the cost of the
+          for (CFG::BasicBlock *exit : _functionInfo->Exits) {
+            const Stack &RetValues =
+                std::get<CFG::BasicBlock::FunctionReturn>(exit->Exit).RetValues;
+            for (const StackSlot &Val : RetValues) {
+              if (const VariableSlot *VarSlot = std::get_if<VariableSlot>(&Val))
+                if (*VarSlot == std::get<VariableSlot>(_slot))
+                  VarExists = true;
+            }
+          }
+          assert(VarExists);
+          // Strictly speaking the cost of the
           // PUSH0 depends on the targeted EVM version, but the difference will
           // not matter here.
           opGas += 2;
@@ -916,8 +925,7 @@ void StackLayoutGenerator::fillInJunk(CFG::BasicBlock const &_block,
   };
 
   /// @returns the number of junk slots to be prepended to @a _targetLayout for
-  /// an optimal transition from
-  /// @a _entryLayout to @a _targetLayout.
+  /// an optimal transition from @a _entryLayout to @a _targetLayout.
   auto getBestNumJunk = [&](Stack const &_entryLayout,
                             Stack const &_targetLayout) -> size_t {
     size_t bestCost = evaluateTransform(_entryLayout, _targetLayout);

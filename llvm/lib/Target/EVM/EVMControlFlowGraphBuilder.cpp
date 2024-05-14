@@ -123,6 +123,8 @@ static void markNeedsCleanStack(CFG &_cfg) {
     EVMUtils::BreadthFirstSearch<CFG::BasicBlock *>{{exit}}.run(
         [&](CFG::BasicBlock *_block, auto _addChild) {
           _block->NeedsCleanStack = true;
+          // TODO: it seems this is not needed, as the return block has
+          // no childs.
           for (CFG::BasicBlock *entry : _block->Entries)
             _addChild(entry);
         });
@@ -272,15 +274,6 @@ void ControlFlowGraphBuilder::handleMachineInstr(const MachineInstr &MI) {
   case EVM::JUMPI:
     // Branch instructions are handled separetly.
     return;
-  case EVM::REVERT:
-    [[fallthrough]];
-  case EVM::RETURN:
-    [[fallthrough]];
-  case EVM::STOP:
-    [[fallthrough]];
-  case EVM::INVALID:
-    CurrentBlock->Exit = CFG::BasicBlock::Terminated{};
-    break;
   case EVM::COPY_I256:
     // The copy instructions represnt just an assignment that is handled below.
     break;
@@ -291,6 +284,15 @@ void ControlFlowGraphBuilder::handleMachineInstr(const MachineInstr &MI) {
     if (LI->containsOneValue())
       return;
   } break;
+  case EVM::REVERT:
+    [[fallthrough]];
+  case EVM::RETURN:
+    [[fallthrough]];
+  case EVM::STOP:
+    [[fallthrough]];
+  case EVM::INVALID:
+    CurrentBlock->Exit = CFG::BasicBlock::Terminated{};
+    [[fallthrough]];
   default: {
     Stack Input, Output;
     collectInOut(MI, Input, Output);
@@ -304,8 +306,6 @@ void ControlFlowGraphBuilder::handleMachineInstr(const MachineInstr &MI) {
   std::vector<VariableSlot> Variables;
   switch (MI.getOpcode()) {
   case EVM::CONST_I256: {
-    if (InstrToSkip.count(&MI) > 0)
-      return;
     const Register DefReg = MI.getOperand(0).getReg();
     const APInt Imm = MI.getOperand(1).getCImm()->getValue();
     Input.push_back(LiteralSlot{std::move(Imm)});

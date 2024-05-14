@@ -50,7 +50,6 @@ private:
   const LiveIntervals &LIS;
   MachineLoopInfo *MLI = nullptr;
   CFG::BasicBlock *CurrentBlock = nullptr;
-  DenseSet<const MachineInstr *> InstrToSkip;
 };
 
 } // namespace llvm
