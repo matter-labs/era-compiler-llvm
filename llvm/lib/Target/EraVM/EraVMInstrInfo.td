@@ -1195,6 +1195,8 @@ multiclass FarCallInst<EraVMOpcode opcode> {
                            "$rs0, $rs1, $unwind", []>;
   def _SHARDrrl  : IFarCall<opcode, 1, 0, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
                            "$rs0, $rs1, $unwind", []>;
+  def _STATIC_SHARDrrl : IFarCall<opcode, 1, 1, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
+                                 "$rs0, $rs1, $unwind", []>;
 }
 
 let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Flags],

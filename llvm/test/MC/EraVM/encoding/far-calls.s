@@ -18,6 +18,10 @@ foo:
   far_call.delegate.shard       r3, r4, @handler
   far_call.mimic.shard          r3, r4, @handler
 
+  far_call.static.shard               r3, r4, @handler
+  far_call.delegate.static.shard      r3, r4, @handler
+  far_call.mimic.static.shard         r3, r4, @handler
+
 ; CHECK:  .text
 ; CHECK:handler:
 ; CHECK:foo:
@@ -41,4 +45,11 @@ foo:
 ; CHECK:  far_call.delegate.shard    r3, r4, @handler        ; encoding: [0x00,0x00,A,A,0x00,0x43,0x04,0x26]
 ; CHECK:  ;   fixup A - offset: 2, value: @handler, kind: fixup_16_scale_8
 ; CHECK:  far_call.mimic.shard       r3, r4, @handler        ; encoding: [0x00,0x00,A,A,0x00,0x43,0x04,0x2a]
+; CHECK:  ;   fixup A - offset: 2, value: @handler, kind: fixup_16_scale_8
+
+; CHECK:  far_call.static.shard            r3, r4, @handler  ; encoding: [0x00,0x00,A,A,0x00,0x43,0x04,0x24]
+; CHECK:  ;   fixup A - offset: 2, value: @handler, kind: fixup_16_scale_8
+; CHECK:  far_call.delegate.static.shard   r3, r4, @handler  ; encoding: [0x00,0x00,A,A,0x00,0x43,0x04,0x28]
+; CHECK:  ;   fixup A - offset: 2, value: @handler, kind: fixup_16_scale_8
+; CHECK:  far_call.mimic.static.shard      r3, r4, @handler  ; encoding: [0x00,0x00,A,A,0x00,0x43,0x04,0x2c]
 ; CHECK:  ;   fixup A - offset: 2, value: @handler, kind: fixup_16_scale_8
