@@ -6,7 +6,7 @@
 ; RUN: llvm-objdump --no-leading-addr  --disassemble-all --disassemble-zeroes --reloc --syms %t   | FileCheck --check-prefix=OUTPUT-HASH %s
 
         .text
-	nop	stack+=[2 + r0]
+	incsp 2
 	add	code[@glob_initializer], r0, stack[@glob]
 
 	.globl	get_glob
@@ -16,11 +16,11 @@ get_glob:
 	ret
 
 DEFAULT_UNWIND:
-	ret.panic.to_label @DEFAULT_UNWIND
+	pncl @DEFAULT_UNWIND
 DEFAULT_FAR_RETURN:
-	ret.ok.to_label	r1, @DEFAULT_FAR_RETURN
+	retl r1, @DEFAULT_FAR_RETURN
 DEFAULT_FAR_REVERT:
-	ret.revert.to_label r1, @DEFAULT_FAR_REVERT
+	revl r1, @DEFAULT_FAR_REVERT
 
 	.data
 	.globl	glob                            ; @glob
@@ -45,7 +45,7 @@ glob_initializer:
 ; OUTPUT-NEXT: 00000010 g       .code	00000000 get_glob
 ; OUTPUT-EMPTY:
 ; OUTPUT-LABEL: <.code>:
-; OUTPUT-NEXT: 00 02 00 00 00 00 00 02       	nop	stack+=[2 + r0]
+; OUTPUT-NEXT: 00 02 00 00 00 00 00 02       	incsp 2
 ; OUTPUT-NEXT: 00 00 00 02 00 00 00 47       	add	code[2], r0, stack[r0]
 ; OUTPUT-EMPTY:
 ; OUTPUT-NEXT: <get_glob>:
@@ -54,13 +54,13 @@ glob_initializer:
 ; OUTPUT-NEXT: 00 00 00 00 00 01 04 2d       	ret
 ; OUTPUT-EMPTY:
 ; OUTPUT-NEXT: <DEFAULT_UNWIND>:
-; OUTPUT-NEXT: 00 00 00 05 00 00 04 32       	ret.panic.to_label  5
+; OUTPUT-NEXT: 00 00 00 05 00 00 04 32       	pncl  5
 ; OUTPUT-EMPTY:
 ; OUTPUT-NEXT: <DEFAULT_FAR_RETURN>:
-; OUTPUT-NEXT: 00 00 00 06 00 01 04 2e       	ret.ok.to_label	r1, 6
+; OUTPUT-NEXT: 00 00 00 06 00 01 04 2e       	retl  6
 ; OUTPUT-EMPTY:
 ; OUTPUT-NEXT: <DEFAULT_FAR_REVERT>:
-; OUTPUT-NEXT: 00 00 00 07 00 01 04 30       	ret.revert.to_label	r1, 7
+; OUTPUT-NEXT: 00 00 00 07 00 01 04 30       	revl  7
 ; OUTPUT-EMPTY:
 ; OUTPUT-NEXT: <glob_initializer>:
 ; OUTPUT-NEXT: 00 00 00 00 00 00 00 00

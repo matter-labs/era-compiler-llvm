@@ -79,7 +79,7 @@ define i256 @selcrr_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define i256 @selsrr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selsrr:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    add r2, r0, r1
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add.gt stack-[1], r0, r1
@@ -142,7 +142,7 @@ define i256 @selcir_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define i256 @selsir(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selsir:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add 42, r0, r1
 ; CHECK-NEXT:    add.gt stack-[1], r0, r1
@@ -269,7 +269,7 @@ define i256 @selccr_cp_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define i256 @selscr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selscr:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add code[@val], r0, r1
 ; CHECK-NEXT:    add.lt stack-[1], r0, r1
@@ -285,7 +285,7 @@ define i256 @selscr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define i256 @selscr_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selscr_cp:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add code[@CPI22_0], r0, r1
 ; CHECK-NEXT:    add.lt stack-[1], r0, r1
@@ -300,7 +300,7 @@ define i256 @selscr_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define i256 @selrsr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selrsr:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add.ge stack-[1], r0, r1
 ; CHECK-NEXT:    ret
@@ -314,7 +314,7 @@ define i256 @selrsr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define i256 @selisr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selisr:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add stack-[1], r0, r1
 ; CHECK-NEXT:    add.lt 42, r0, r1
@@ -329,7 +329,7 @@ define i256 @selisr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define i256 @selcsr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selcsr:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add stack-[1], r0, r1
 ; CHECK-NEXT:    add.lt code[@val], r0, r1
@@ -345,7 +345,7 @@ define i256 @selcsr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define i256 @selcsr_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selcsr_cp:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add stack-[1], r0, r1
 ; CHECK-NEXT:    add.lt code[@CPI26_0], r0, r1
@@ -360,7 +360,7 @@ define i256 @selcsr_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define i256 @selssr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selssr:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[2 + r0]
+; CHECK-NEXT:    incsp 2
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add stack-[2], r0, r1
 ; CHECK-NEXT:    add.lt stack-[1], r0, r1
@@ -377,7 +377,7 @@ define i256 @selssr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define void @selrrs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selrrs:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add r2, r0, stack-[1]
 ; CHECK-NEXT:    add.eq r1, r0, stack-[1]
@@ -393,7 +393,7 @@ define void @selrrs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define void @selirs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selirs:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add r2, r0, stack-[1]
 ; CHECK-NEXT:    add.gt 42, r0, stack-[1]
@@ -409,7 +409,7 @@ define void @selirs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define void @selcrs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selcrs:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add r2, r0, stack-[1]
 ; CHECK-NEXT:    add.gt code[@val], r0, stack-[1]
@@ -426,7 +426,7 @@ define void @selcrs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define void @selsrs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selsrs:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[2 + r0]
+; CHECK-NEXT:    incsp 2
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add r2, r0, stack-[2]
 ; CHECK-NEXT:    add.gt stack-[1], r0, stack-[2]
@@ -444,7 +444,7 @@ define void @selsrs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define void @selris(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selris:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add 42, r0, stack-[1]
 ; CHECK-NEXT:    add.lt r1, r0, stack-[1]
@@ -460,7 +460,7 @@ define void @selris(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define void @seliis(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: seliis:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add 42, r0, stack-[1]
 ; CHECK-NEXT:    add.lt 17, r0, stack-[1]
@@ -476,7 +476,7 @@ define void @seliis(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define void @selcis(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selcis:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add 42, r0, stack-[1]
 ; CHECK-NEXT:    add.gt code[@val], r0, stack-[1]
@@ -493,7 +493,7 @@ define void @selcis(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define void @selsis(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selsis:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[2 + r0]
+; CHECK-NEXT:    incsp 2
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add 42, r0, stack-[2]
 ; CHECK-NEXT:    add.gt stack-[1], r0, stack-[2]
@@ -511,7 +511,7 @@ define void @selsis(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define void @selrcs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selrcs:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add code[@val], r0, stack-[1]
 ; CHECK-NEXT:    add.lt r1, r0, stack-[1]
@@ -528,7 +528,7 @@ define void @selrcs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define void @selics(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selics:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add code[@val], r0, stack-[1]
 ; CHECK-NEXT:    add.lt 42, r0, stack-[1]
@@ -545,7 +545,7 @@ define void @selics(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define void @selccs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selccs:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    add code[@val2], r0, r1
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add code[@val], r0, stack-[1]
@@ -564,7 +564,7 @@ define void @selccs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define void @selscs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selscs:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[2 + r0]
+; CHECK-NEXT:    incsp 2
 ; CHECK-NEXT:    add code[@val], r0, r1
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add r1, r0, stack-[2]
@@ -584,7 +584,7 @@ define void @selscs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define void @selrss(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selrss:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[2 + r0]
+; CHECK-NEXT:    incsp 2
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add stack-[1], r0, stack-[2]
 ; CHECK-NEXT:    add.lt r1, r0, stack-[2]
@@ -602,7 +602,7 @@ define void @selrss(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define void @seliss(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: seliss:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[2 + r0]
+; CHECK-NEXT:    incsp 2
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add stack-[1], r0, stack-[2]
 ; CHECK-NEXT:    add.lt 42, r0, stack-[2]
@@ -620,7 +620,7 @@ define void @seliss(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define void @selcss(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selcss:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[2 + r0]
+; CHECK-NEXT:    incsp 2
 ; CHECK-NEXT:    add code[@val], r0, r1
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add stack-[1], r0, stack-[2]
@@ -640,7 +640,7 @@ define void @selcss(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 define void @selsss(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selsss:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[3 + r0]
+; CHECK-NEXT:    incsp 3
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add stack-[2], r0, r1
 ; CHECK-NEXT:    add.lt stack-[1], r0, r1

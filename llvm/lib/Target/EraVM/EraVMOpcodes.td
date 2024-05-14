@@ -145,61 +145,64 @@ def OpShl  : EraVMOpcode<"shl",  463, ArithNCommEncoding>;
 def OpShr  : EraVMOpcode<"shr",  559, ArithNCommEncoding>;
 def OpRol  : EraVMOpcode<"rol",  655, ArithNCommEncoding>;
 def OpRor  : EraVMOpcode<"ror",  751, ArithNCommEncoding>;
-def OpPtrAdd    : EraVMOpcode<"ptr.add",    847, ArithPtrEncoding>;
-def OpPtrSub    : EraVMOpcode<"ptr.sub",    895, ArithPtrEncoding>;
-def OpPtrPack   : EraVMOpcode<"ptr.pack",   943, ArithPtrEncoding>;
-def OpPtrShrink : EraVMOpcode<"ptr.shrink", 991, ArithPtrEncoding>;
-def OpCall      : EraVMOpcode<"near_call",  1039, DirectEncoding>;
 
-def OpContextThis              : EraVMOpcode<"context.this",             1040, DirectEncoding>;
-def OpContextCaller            : EraVMOpcode<"context.caller",           1041, DirectEncoding>;
-def OpContextCodeAddress       : EraVMOpcode<"context.code_source",      1042, DirectEncoding>;
-def OpContextMeta              : EraVMOpcode<"context.meta",             1043, DirectEncoding>;
-def OpContextErgsLeft          : EraVMOpcode<"context.gas_left",         1044, DirectEncoding>;
-def OpContextSp                : EraVMOpcode<"context.sp",               1045, DirectEncoding>;
-def OpContextGetContextU128    : EraVMOpcode<"context.get_context_u128", 1046, DirectEncoding>;
-def OpContextSetContextU128    : EraVMOpcode<"context.set_context_u128", 1047, DirectEncoding>;
-def OpContextSetErgsPerPubdataByte   : EraVMOpcode<"context.set_gas_per_pubdata",    1048, DirectEncoding>;
-def OpContextIncrementTxNumber : EraVMOpcode<"context.inc_tx_num",       1049, DirectEncoding>;
+def OpPtrAdd    : EraVMOpcode<"addp",  847, ArithPtrEncoding>;
+def OpPtrSub    : EraVMOpcode<"subp",  895, ArithPtrEncoding>;
+def OpPtrPack   : EraVMOpcode<"pack",  943, ArithPtrEncoding>;
+def OpPtrShrink : EraVMOpcode<"shrnk", 991, ArithPtrEncoding>;
+def OpCall      : EraVMOpcode<"call",  1039, DirectEncoding>;
 
-def OpSload     : EraVMOpcode<"sload",      1050, DirectEncoding>;
-def OpSstore    : EraVMOpcode<"sstore",     1051, DirectEncoding>;
+def OpContextThis              : EraVMOpcode<"this", 1040, DirectEncoding>;
+def OpContextCaller            : EraVMOpcode<"par",  1041, DirectEncoding>;
+def OpContextCodeAddress       : EraVMOpcode<"code", 1042, DirectEncoding>;
+def OpContextMeta              : EraVMOpcode<"meta", 1043, DirectEncoding>;
+def OpContextErgsLeft          : EraVMOpcode<"ergs", 1044, DirectEncoding>;
+def OpContextSp                : EraVMOpcode<"sp",   1045, DirectEncoding>;
+def OpContextGetContextU128    : EraVMOpcode<"ldvl", 1046, DirectEncoding>;
+def OpContextSetContextU128    : EraVMOpcode<"stvl", 1047, DirectEncoding>;
+def OpContextIncrementTxNumber : EraVMOpcode<"inctx", 1049, DirectEncoding>;
 
-def OpLogToL1         : EraVMOpcode<"to_l1",       1052, DirectEncoding>; // is_first ⇒ 1052 + is_first
-def OpLogToL1Initial  : EraVMOpcode<"to_l1.first", 1053, DirectEncoding>;
-def OpLogEvent        : EraVMOpcode<"event",       1054, DirectEncoding>; // is_first ⇒ 1054 + is_first
-def OpLogEventInitial : EraVMOpcode<"event.first", 1055, DirectEncoding>;
-def OpLogPrecompile   : EraVMOpcode<"precompile",  1056, DirectEncoding>;
+// Removed in VM 1.5.0
+def OpContextSetErgsPerPubdataByte : EraVMOpcode<"stpub", 1048, DirectEncoding>;
 
-def OpFarcall  : EraVMOpcode<"far_call",     1057, FarCallEncoding>; // is_shard is_static ⇒ 1057 + 2 × is_static + is_shard
-def OpDelegate : EraVMOpcode<"far_call.delegate", 1061, FarCallEncoding>; // is_shard is_static ⇒ 1061 + 2 × is_static + is_shard
-def OpMimic    : EraVMOpcode<"far_call.mimic",    1065, FarCallEncoding>; // is_shard is_static ⇒ 1065 + 2 × is_static + is_shard
+def OpSload     : EraVMOpcode<"lds", 1050, DirectEncoding>;
+def OpSstore    : EraVMOpcode<"sts", 1051, DirectEncoding>;
 
-def OpRet           : EraVMOpcode<"ret.ok",              1069, DirectEncoding>; // to_label ⇒ 1069 + to_label
-def OpRetToLabel    : EraVMOpcode<"ret.ok.to_label",     1070, DirectEncoding>;
-def OpRevert        : EraVMOpcode<"ret.revert",          1071, DirectEncoding>; // to_label ⇒ 1071 + to_label
-def OpRevertToLabel : EraVMOpcode<"ret.revert.to_label", 1072, DirectEncoding>;
-def OpPanic         : EraVMOpcode<"panic",               1073, DirectEncoding>; // to_label ⇒ 1073 + to_label
-def OpPanicToLabel  : EraVMOpcode<"ret.panic.to_label",  1074, DirectEncoding>;
+def OpLogToL1         : EraVMOpcode<"logL1",   1052, DirectEncoding>; // is_initializer ⇒ 1052 + is_initializer
+def OpLogToL1Initial  : EraVMOpcode<"logL1.i", 1053, DirectEncoding>;
+def OpLogEvent        : EraVMOpcode<"log",     1054, DirectEncoding>; // is_initializer ⇒ 1054 + is_initializer
+def OpLogEventInitial : EraVMOpcode<"log.i",   1055, DirectEncoding>;
+def OpLogPrecompile   : EraVMOpcode<"callp",   1056, DirectEncoding>;
 
-def OpLoadHeap        : EraVMOpcode<"ld.1",     1075, HeapOpEncoding>; // src inc ⇒ 1075 + 10 × src + inc
-def OpLoadHeapInc     : EraVMOpcode<"ld.1.inc", 1076, HeapOpEncoding>;
-def OpStoreHeap       : EraVMOpcode<"st.1",     1077, HeapOpEncoding>; // src inc ⇒ 1077 + 10 × src + inc
-def OpStoreHeapInc    : EraVMOpcode<"st.1.inc", 1078, HeapOpEncoding>;
+def OpFarcall  : EraVMOpcode<"callf", 1057, FarCallEncoding>; // is_shard is_static ⇒ 1057 + 2 × is_static + is_shard
+def OpDelegate : EraVMOpcode<"calld", 1061, FarCallEncoding>; // is_shard is_static ⇒ 1061 + 2 × is_static + is_shard
+def OpMimic    : EraVMOpcode<"callm", 1065, FarCallEncoding>; // is_shard is_static ⇒ 1065 + 2 × is_static + is_shard
 
-def OpLoadAuxHeap     : EraVMOpcode<"ld.2",     1079, HeapOpEncoding>; // src inc ⇒ 1079 + 10 × src + inc
-def OpLoadAuxHeapInc  : EraVMOpcode<"ld.2.inc", 1080, HeapOpEncoding>;
-def OpStoreAuxHeap    : EraVMOpcode<"st.2",     1081, HeapOpEncoding>; // src inc ⇒ 1081 + 10 × src + inc
-def OpStoreAuxHeapInc : EraVMOpcode<"st.2.inc", 1082, HeapOpEncoding>;
+def OpRet           : EraVMOpcode<"ret",  1069, DirectEncoding>; // to_label ⇒ 1069 + to_label
+def OpRetToLabel    : EraVMOpcode<"retl", 1070, DirectEncoding>;
+def OpRevert        : EraVMOpcode<"rev",  1071, DirectEncoding>; // to_label ⇒ 1071 + to_label
+def OpRevertToLabel : EraVMOpcode<"revl", 1072, DirectEncoding>;
+def OpPanic         : EraVMOpcode<"pnc",  1073, DirectEncoding>; // to_label ⇒ 1073 + to_label
+def OpPanicToLabel  : EraVMOpcode<"pncl", 1074, DirectEncoding>;
+
+def OpLoadHeap        : EraVMOpcode<"ldm.h",   1075, HeapOpEncoding>; // src inc ⇒ 1075 + 10 × src + inc
+def OpLoadHeapInc     : EraVMOpcode<"ldmi.h",  1076, HeapOpEncoding>;
+def OpStoreHeap       : EraVMOpcode<"stm.h",   1077, HeapOpEncoding>; // src inc ⇒ 1077 + 10 × src + inc
+def OpStoreHeapInc    : EraVMOpcode<"stmi.h",  1078, HeapOpEncoding>;
+
+def OpLoadAuxHeap     : EraVMOpcode<"ldm.ah",  1079, HeapOpEncoding>; // src inc ⇒ 1079 + 10 × src + inc
+def OpLoadAuxHeapInc  : EraVMOpcode<"ldmi.ah", 1080, HeapOpEncoding>;
+def OpStoreAuxHeap    : EraVMOpcode<"stm.ah",  1081, HeapOpEncoding>; // src inc ⇒ 1081 + 10 × src + inc
+def OpStoreAuxHeapInc : EraVMOpcode<"stmi.ah", 1082, HeapOpEncoding>;
 
 def OpStaticRead        : EraVMOpcode<"ldm.st",  1096, StaticOpEncoding>; // src inc ⇒ 1096 + 2 × src + inc
 def OpStaticReadInc     : EraVMOpcode<"ldmi.st", 1097, StaticOpEncoding>;
 def OpStaticWrite       : EraVMOpcode<"stm.st",  1100, StaticOpEncoding>; // src inc ⇒ 1100 + 2 × src + inc
 def OpStaticWriteInc    : EraVMOpcode<"stmi.st", 1101, StaticOpEncoding>;
 
-def OpLoadPtr      : EraVMOpcode<"ld",     1083, DirectEncoding>; // inc ⇒ 1083 + inc
-def OpLoadPtrInc   : EraVMOpcode<"ld.inc", 1084, DirectEncoding>;
+def OpLoadPtr      : EraVMOpcode<"ldp",  1083, DirectEncoding>; // inc ⇒ 1083 + inc
+def OpLoadPtrInc   : EraVMOpcode<"ldpi", 1084, DirectEncoding>;
 
-def OpDecommit       : EraVMOpcode<"log.decommit", 1093, DirectEncoding>;
-def OpTransientLoad  : EraVMOpcode<"tload",    1094, DirectEncoding>;
-def OpTransientStore : EraVMOpcode<"tstore",   1095, DirectEncoding>;
+def OpDecommit       : EraVMOpcode<"dcmt", 1093, DirectEncoding>;
+def OpTransientLoad  : EraVMOpcode<"ldt",  1094, DirectEncoding>;
+def OpTransientStore : EraVMOpcode<"stt",  1095, DirectEncoding>;
