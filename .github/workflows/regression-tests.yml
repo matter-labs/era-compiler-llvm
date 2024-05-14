@@ -206,6 +206,7 @@ jobs:
             --verify-cfiinstrs \
             --verify-coalescing \
             --verify-dom-info \
+            --verify-each \
             --verify-loop-info \
             --verify-loop-lcssa \
             --verify-machine-dom-info \
