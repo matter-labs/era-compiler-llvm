@@ -55,7 +55,8 @@ filter_common() {
 #
 # First, only select lines containing "...; encoding: [...]" and drop everything
 # except the "encoding" payload. Then, drop commas, "0x" prefixes and replace
-# relocation placeholders ('A's and 'B's) as if they are no-op.
+# relocation placeholders ('A's and 'B's) as if they are no-op (after processing
+# manually-specified relocations).
 mc_bytes() {
   "$llvm_mc" -arch=eravm --show-encoding | \
       grep -F '; encoding: [' | \

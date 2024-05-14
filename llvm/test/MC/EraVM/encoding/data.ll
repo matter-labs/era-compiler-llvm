@@ -2,7 +2,7 @@
 ; RUN: llc -filetype=obj -o %t.o < %s
 ; RUN: llvm-readelf --syms --hex-dump=.data %t.o | FileCheck --check-prefix=DATA %s
 
-target datalayout = "E-p:256:256-i8:256:256:256-i256:256:256-S32-a:256:256"
+target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm"
 
 ; Test zero and non-zero initializers
