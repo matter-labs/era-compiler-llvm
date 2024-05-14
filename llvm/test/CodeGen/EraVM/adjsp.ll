@@ -4,7 +4,7 @@ target triple = "eravm"
 
 ; CHECK-LABEL: array_ldst_to_parameter
 define void @array_ldst_to_parameter([10 x i256]* %array, i256 %val) {
-  ; CHECK: nop stack+=[10 + r0]
+  ; CHECK: incsp 10
   %starr = alloca [10 x i256]
   %idx = getelementptr inbounds [10 x i256], [10 x i256]* %starr, i256 0, i256 6
   %1 = load i256, i256* %idx
@@ -42,8 +42,8 @@ join:                                             ; preds = %entry
 define i256* @caller() {
   %alloc = alloca i256
   %alloc2 = alloca i256
-; CHECK: context.sp r1
-; CHECK: context.sp r2
+; CHECK: sp r1
+; CHECK: sp r2
 ; CHECK: sub.s 3, r2, r2
 ; CHECK: shl.s 5, r2, r2
 ; CHECK: add r2, r0, stack[1 + r1]

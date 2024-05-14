@@ -347,7 +347,8 @@ void EraVMAsmPrinter::emitDefaultLandingPads() {
 
 // Creates instruction:
 //
-//   nop  stack+=[StackSize + r0]
+//   incsp StackSize
+//
 static MCInst createIncSPInst(int64_t StackSize) {
   assert(StackSize >= 0);
   MCInst MCI;

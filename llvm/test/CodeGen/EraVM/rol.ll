@@ -88,7 +88,7 @@ entry:
 define i256 @rolsrr(i256 %rs1) {
 ; CHECK-LABEL: rolsrr:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    rol stack-[1], r1, r1
 ; CHECK-NEXT:    ret
 entry:
@@ -104,7 +104,7 @@ entry:
 define i256 @rolzrr(i256 %rs1) {
 ; CHECK-LABEL: rolzrr:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    rol.s stack-[1], r1, r1
 ; CHECK-NEXT:    ret
 entry:
@@ -120,7 +120,7 @@ entry:
 define void @rolrrs(i256 %rs1, i256 %rs2) {
 ; CHECK-LABEL: rolrrs:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    rol r1, r2, stack-[1]
 ; CHECK-NEXT:    ret
 entry:
@@ -136,7 +136,7 @@ entry:
 define void @rolirs(i256 %rs1) {
 ; CHECK-LABEL: rolirs:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    rol 20, r1, stack-[1]
 ; CHECK-NEXT:    ret
 entry:
@@ -152,7 +152,7 @@ entry:
 define void @rolxrs(i256 %rs1) {
 ; CHECK-LABEL: rolxrs:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    rol.s 20, r1, stack-[1]
 ; CHECK-NEXT:    ret
 entry:
@@ -167,7 +167,7 @@ entry:
 define void @rolcrs(i256 %rs1) {
 ; CHECK-LABEL: rolcrs:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    rol code[@val], r1, stack-[1]
 ; CHECK-NEXT:    ret
 entry:
@@ -184,7 +184,7 @@ entry:
 define void @rolcrs_cp(i256 %rs1) {
 ; CHECK-LABEL: rolcrs_cp:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    rol code[@CPI12_0], r1, stack-[1]
 ; CHECK-NEXT:    ret
 entry:
@@ -200,7 +200,7 @@ entry:
 define void @rolyrs(i256 %rs1) {
 ; CHECK-LABEL: rolyrs:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    rol.s code[@val], r1, stack-[1]
 ; CHECK-NEXT:    ret
 entry:
@@ -217,7 +217,7 @@ entry:
 define void @rolsrs(i256 %rs1) {
 ; CHECK-LABEL: rolsrs:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[2 + r0]
+; CHECK-NEXT:    incsp 2
 ; CHECK-NEXT:    rol stack-[1], r1, stack-[2]
 ; CHECK-NEXT:    ret
 entry:
@@ -235,7 +235,7 @@ entry:
 define void @rolzrs(i256 %rs1) {
 ; CHECK-LABEL: rolzrs:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[2 + r0]
+; CHECK-NEXT:    incsp 2
 ; CHECK-NEXT:    rol.s stack-[1], r1, stack-[2]
 ; CHECK-NEXT:    ret
 entry:

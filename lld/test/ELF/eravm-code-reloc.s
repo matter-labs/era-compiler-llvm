@@ -66,24 +66,24 @@ foo_local:
   .type caller_g,@function
   .globl caller_g
 caller_g:
-  near_call r1, @foo, @handler
-  far_call  r3, r4, @foo
+  call r1, @foo, @handler
+  callf  r3, r4, @foo
   add   @.OUTLINED_FUNCTION_RET0, r0, stack-[1]
   jump  @foo_local
 .OUTLINED_FUNCTION_RET0:
   jump @label
-  ret.ok.to_label    r1, @label
-  ret.revert.to_label r1, @label
-  ret.panic.to_label @label
+  retl r1, @label
+  revl r1, @label
+  pncl @label
   .globl label
 label:
   jump code[@jump_table + 1]
   ret
 ; INPUT-LABEL: <caller_g>:
-; INPUT-NEXT:  00 00 00 00 00 01 04 0f        near_call       r1, 0, 0
+; INPUT-NEXT:  00 00 00 00 00 01 04 0f        call       r1, 0, 0
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      handler
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      foo
-; INPUT-NEXT:  00 00 00 00 00 43 04 21        far_call        r3, r4, 0
+; INPUT-NEXT:  00 00 00 00 00 43 04 21        callf        r3, r4, 0
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      foo
 ; INPUT-NEXT:  00 01 00 00 00 00 00 3d add 0, r0, stack-[1 + r0]
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8 .text+0x40
@@ -91,11 +91,11 @@ label:
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8  .text+0x18
 ; INPUT-NEXT:  00 00 00 00 00 00 01 3d        jump    0
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      label
-; INPUT-NEXT:  00 00 00 00 00 01 04 2e        ret.ok.to_label r1, 0
+; INPUT-NEXT:  00 00 00 00 00 01 04 2e        retl 0
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      label
-; INPUT-NEXT:  00 00 00 00 00 01 04 30        ret.revert.to_label     r1, 0
+; INPUT-NEXT:  00 00 00 00 00 01 04 30        revl 0
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      label
-; INPUT-NEXT:  00 00 00 00 00 00 04 32        ret.panic.to_label      0
+; INPUT-NEXT:  00 00 00 00 00 00 04 32        pncl      0
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      label
 ; INPUT-LABEL: <label>:
 ; INPUT-NEXT:  00 00 00 01 00 00 01 3e        jump    code[1]
@@ -103,14 +103,14 @@ label:
 ; INPUT-NEXT:  00 00 00 00 00 01 04 2d        ret
 
 ; OUTPUT-LABEL: <caller_g>:
-; OUTPUT-NEXT:  00 12 00 13 00 01 04 0f        near_call       r1, 19, 18
-; OUTPUT-NEXT:  00 00 00 13 00 43 04 21        far_call        r3, r4, 19
+; OUTPUT-NEXT:  00 12 00 13 00 01 04 0f        call       r1, 19, 18
+; OUTPUT-NEXT:  00 00 00 13 00 43 04 21        callf        r3, r4, 19
 ; OUTPUT-NEXT:  00 01 00 18 00 00 00 3d        add     24, r0, stack-[1 + r0]
 ; OUTPUT-NEXT:  00 00 00 13 00 00 01 3d        jump    19
 ; OUTPUT-NEXT:  00 00 00 1c 00 00 01 3d        jump    28
-; OUTPUT-NEXT:  00 00 00 1c 00 01 04 2e        ret.ok.to_label r1, 28
-; OUTPUT-NEXT:  00 00 00 1c 00 01 04 30        ret.revert.to_label     r1, 28
-; OUTPUT-NEXT:  00 00 00 1c 00 00 04 32        ret.panic.to_label      28
+; OUTPUT-NEXT:  00 00 00 1c 00 01 04 2e        retl    28
+; OUTPUT-NEXT:  00 00 00 1c 00 01 04 30        revl    28
+; OUTPUT-NEXT:  00 00 00 1c 00 00 04 32        pncl    28
 ; OUTPUT-LABEL: <label>:
 ; OUTPUT-NEXT:  00 00 00 02 00 00 01 3e        jump    code[2]
 ; OUTPUT-NEXT:  00 00 00 00 00 01 04 2d        ret
@@ -119,30 +119,30 @@ label:
   .type caller_l,@function
   .globl caller_l
 caller_l:
-  near_call r1, @foo_local, @handler_local
-  far_call  r3, r4, @foo_local
+  call r1, @foo_local, @handler_local
+  callf  r3, r4, @foo_local
   jump @label_local
-  ret.ok.to_label    r1, @label_local
-  ret.revert.to_label r1, @label_local
-  ret.panic.to_label @label_local
+  retl r1, @label_local
+  revl r1, @label_local
+  pncl @label_local
   .local label_local
 label_local:
   jump code[@jump_table_local + 1]
   ret
 
 ; INPUT-LABEL: <caller_l>:
-; INPUT-NEXT:  00 00 00 00 00 01 04 0f        near_call       r1, 0, 0
+; INPUT-NEXT:  00 00 00 00 00 01 04 0f        call       r1, 0, 0
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      .text+0x10
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      .text+0x18
-; INPUT-NEXT:  00 00 00 00 00 43 04 21        far_call        r3, r4, 0
+; INPUT-NEXT:  00 00 00 00 00 43 04 21        callf        r3, r4, 0
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      .text+0x18
 ; INPUT-NEXT:  00 00 00 00 00 00 01 3d        jump    0
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      .text+0xa0
-; INPUT-NEXT:  00 00 00 00 00 01 04 2e        ret.ok.to_label r1, 0
+; INPUT-NEXT:  00 00 00 00 00 01 04 2e        retl    0
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      .text+0xa0
-; INPUT-NEXT:  00 00 00 00 00 01 04 30        ret.revert.to_label     r1, 0
+; INPUT-NEXT:  00 00 00 00 00 01 04 30        revl    0
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      .text+0xa0
-; INPUT-NEXT:  00 00 00 00 00 00 04 32        ret.panic.to_label     0
+; INPUT-NEXT:  00 00 00 00 00 00 04 32        pncl     0
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      .text+0xa0
 ; INPUT-LABEL: <label_local>:
 ; INPUT-NEXT:  00 00 00 01 00 00 01 3e        jump    code[1]
@@ -150,12 +150,12 @@ label_local:
 ; INPUT-NEXT:  00 00 00 00 00 01 04 2d        ret
 
 ; OUTPUT-LABEL: <caller_l>:
-; OUTPUT-NEXT:  00 12 00 13 00 01 04 0f        near_call       r1, 19, 18
-; OUTPUT-NEXT:  00 00 00 13 00 43 04 21        far_call        r3, r4, 19
+; OUTPUT-NEXT:  00 12 00 13 00 01 04 0f        call    r1, 19, 18
+; OUTPUT-NEXT:  00 00 00 13 00 43 04 21        callf   r3, r4, 19
 ; OUTPUT-NEXT:  00 00 00 24 00 00 01 3d        jump    36
-; OUTPUT-NEXT:  00 00 00 24 00 01 04 2e        ret.ok.to_label r1, 36
-; OUTPUT-NEXT:  00 00 00 24 00 01 04 30        ret.revert.to_label     r1, 36
-; OUTPUT-NEXT:  00 00 00 24 00 00 04 32        ret.panic.to_label      36
+; OUTPUT-NEXT:  00 00 00 24 00 01 04 2e        retl    36
+; OUTPUT-NEXT:  00 00 00 24 00 01 04 30        revl    36
+; OUTPUT-NEXT:  00 00 00 24 00 00 04 32        pncl    36
 ; OUTPUT-LABEL: <label_local>:
 ; OUTPUT-NEXT:  00 00 00 02 00 00 01 3e        jump    code[2]
 ; OUTPUT-NEXT:  00 00 00 00 00 01 04 2d        ret
