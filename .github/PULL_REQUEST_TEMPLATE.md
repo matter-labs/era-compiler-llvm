@@ -119,6 +119,7 @@ understandable?
 ## Documentation
 - [ ] Is there sufficient documentation?
 - [ ] Is the ReadMe.md file up to date?
+- [ ] Have you run a spelling and grammar checker?
 
 ## Best Practices
 - [ ] Follow Single Responsibility principle?
