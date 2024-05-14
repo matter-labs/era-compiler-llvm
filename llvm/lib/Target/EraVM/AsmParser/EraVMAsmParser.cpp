@@ -71,6 +71,8 @@ class EraVMAsmParser : public MCTargetAsmParser {
   OperandMatchResultTy tryParseStackOperand(OperandVector &Operands);
   OperandMatchResultTy tryParseCodeOperand(OperandVector &Operands);
 
+  bool parseAdjSP(OperandVector &Operands);
+
   bool ParseInstruction(ParseInstructionInfo &Info, StringRef Name,
                         SMLoc NameLoc, OperandVector &Operands) override;
 
@@ -684,6 +686,36 @@ EraVMAsmParser::tryParseCodeOperand(OperandVector &Operands) {
   return MatchOperand_Success;
 }
 
+bool EraVMAsmParser::parseAdjSP(OperandVector &Operands) {
+  SMLoc S, E;
+  MCRegister Reg;
+  int Addend = 0;
+
+  while (!parseOptionalToken(AsmToken::EndOfStatement)) {
+    switch (getTok().getKind()) {
+    default:
+      return TokError("unexpected token");
+    case AsmToken::Identifier:
+      if (tryParseRegister(Reg, S, E))
+        return Error(getTok().getLoc(), "cannot parse register");
+      Operands.push_back(EraVMOperand::CreateReg(Reg, S, E));
+      break;
+    case AsmToken::Plus:
+      Operands.push_back(EraVMOperand::CreateToken("+", getTok().getLoc()));
+      Lex(); // eat "+" token
+      break;
+    case AsmToken::Integer:
+      Addend = getTok().getIntVal();
+      S = getTok().getLoc();
+      E = getTok().getEndLoc();
+      Operands.push_back(EraVMOperand::CreateImm(createConstant(Addend), S, E));
+      Lex(); // eat integer token
+      break;
+    }
+  }
+  return false;
+}
+
 bool EraVMAsmParser::ParseInstruction(ParseInstructionInfo &Info,
                                       StringRef Name, SMLoc NameLoc,
                                       OperandVector &Operands) {
@@ -692,6 +724,10 @@ bool EraVMAsmParser::ParseInstruction(ParseInstructionInfo &Info,
 
   StringRef Mnemonic = static_cast<EraVMOperand &>(*Operands[0]).getToken();
   applyMnemonicAliases(Mnemonic, getAvailableFeatures(), /*VariantID=*/0);
+
+  if (Mnemonic == "incsp" || Mnemonic == "decsp")
+    return parseAdjSP(Operands);
+
   auto ParseOne = [this, Mnemonic, &Operands]() {
     return parseOperand(Mnemonic, Operands);
   };

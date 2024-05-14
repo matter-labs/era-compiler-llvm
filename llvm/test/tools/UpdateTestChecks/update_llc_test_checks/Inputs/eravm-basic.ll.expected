@@ -6,7 +6,7 @@
 define void @test1(i256 %rs1) {
 ; CHECK-LABEL: test1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    add @val[0], r1, stack-[1]
 ; CHECK-NEXT:    ret
   %valptr = alloca i256
@@ -19,7 +19,7 @@ define void @test1(i256 %rs1) {
 define void @test2(i256 %rs1) {
 ; CHECK-LABEL: test2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[2 + r0]
+; CHECK-NEXT:    incsp 2
 ; CHECK-NEXT:    add stack-[2], r1, stack-[1]
 ; CHECK-NEXT:    ret
   %valptr = alloca i256

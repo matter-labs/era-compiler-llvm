@@ -7,4 +7,4 @@
 # FIXME: Simplified forms not tested.
 
 [0xab,0xcd,0x10,0x01,0x00,0x03,0x04,0x0f]
-# CHECK:  near_call      r3, 4097, 43981
+# CHECK:  call      r3, 4097, 43981

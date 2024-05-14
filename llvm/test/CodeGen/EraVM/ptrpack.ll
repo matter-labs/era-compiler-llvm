@@ -8,14 +8,14 @@ target triple = "eravm"
 
 ; CHECK-LABEL: ptrpackrrr
 define i8 addrspace(3)* @ptrpackrrr(i8 addrspace(3)* %rs1, i256 %rs2) nounwind {
-; CHECK: ptr.pack r1, r2, r1
+; CHECK: pack r1, r2, r1
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %rs1, i256 %rs2)
   ret i8 addrspace(3)* %res1
 }
 
 ; CHECK-LABEL: ptrpackrir
 define i8 addrspace(3)* @ptrpackrir(i8 addrspace(3)* %rs1) nounwind {
-; CHECK: ptr.pack.s 42, r1, r1
+; CHECK: pack.s 42, r1, r1
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %rs1, i256 42)
   ret i8 addrspace(3)* %res1
 }
@@ -23,7 +23,7 @@ define i8 addrspace(3)* @ptrpackrir(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK-LABEL: ptrpackrsr
 define i8 addrspace(3)* @ptrpackrsr(i8 addrspace(3)* %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: ptr.pack.s stack-[1], r1, r1
+; CHECK: pack.s stack-[1], r1, r1
   %val = load i256, i256* %valptr
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %rs1, i256 %val)
   ret i8 addrspace(3)* %res1
@@ -31,7 +31,7 @@ define i8 addrspace(3)* @ptrpackrsr(i8 addrspace(3)* %rs1) nounwind {
 
 ; CHECK-LABEL: ptrpackrcr
 define i8 addrspace(3)* @ptrpackrcr(i8 addrspace(3)* %rs1) nounwind {
-; CHECK: ptr.pack.s @val[0], r1, r1
+; CHECK: pack.s @val[0], r1, r1
   %val = load i256, i256 addrspace(4)* @val
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %rs1, i256 %val)
   ret i8 addrspace(3)* %res1
@@ -39,7 +39,7 @@ define i8 addrspace(3)* @ptrpackrcr(i8 addrspace(3)* %rs1) nounwind {
 
 ; CHECK-LABEL: ptrpackgrr
 define i8 addrspace(3)* @ptrpackgrr(i256 %rs2) nounwind {
-; CHECK: ptr.pack stack[@ptr], r1, r1
+; CHECK: pack stack[@ptr], r1, r1
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** @ptr
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %ptr, i256 %rs2)
   ret i8 addrspace(3)* %res1
@@ -47,7 +47,7 @@ define i8 addrspace(3)* @ptrpackgrr(i256 %rs2) nounwind {
 
 ; CHECK-LABEL: ptrpackgir
 define i8 addrspace(3)* @ptrpackgir(i8 addrspace(3)* %rs1) nounwind {
-; CHECK: ptr.pack stack[@ptr], r1, r1
+; CHECK: pack stack[@ptr], r1, r1
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** @ptr
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %ptr, i256 42)
   ret i8 addrspace(3)* %res1
@@ -55,7 +55,7 @@ define i8 addrspace(3)* @ptrpackgir(i8 addrspace(3)* %rs1) nounwind {
 
 ; CHECK-LABEL: ptrpackgsr
 define i8 addrspace(3)* @ptrpackgsr(i8 addrspace(3)* %rs1) nounwind {
-; CHECK: ptr.pack stack[@ptr], r1, r1
+; CHECK: pack stack[@ptr], r1, r1
   %valptr = alloca i256
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** @ptr
   %val = load i256, i256* %valptr
@@ -66,7 +66,7 @@ define i8 addrspace(3)* @ptrpackgsr(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK-LABEL: ptrpackgcr
 define i8 addrspace(3)* @ptrpackgcr(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK: add @val[0], r0, r1
-; CHECK: ptr.pack stack[@ptr], r1, r1
+; CHECK: pack stack[@ptr], r1, r1
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** @ptr
   %val = load i256, i256 addrspace(4)* @val
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %ptr, i256 %val)
@@ -75,7 +75,7 @@ define i8 addrspace(3)* @ptrpackgcr(i8 addrspace(3)* %rs1) nounwind {
 
 ; CHECK-LABEL: ptrpacksrr
 define i8 addrspace(3)* @ptrpacksrr(i256 %rs2) nounwind {
-; CHECK: ptr.pack stack-[1], r1, r1
+; CHECK: pack stack-[1], r1, r1
   %ptrptr = alloca i8 addrspace(3)*
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** %ptrptr
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %ptr, i256 %rs2)
@@ -85,7 +85,7 @@ define i8 addrspace(3)* @ptrpacksrr(i256 %rs2) nounwind {
 ; CHECK-LABEL: ptrpacksir
 define i8 addrspace(3)* @ptrpacksir(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK: add 42, r0, r1
-; CHECK: ptr.pack stack-[1], r1, r1
+; CHECK: pack stack-[1], r1, r1
   %ptrptr = alloca i8 addrspace(3)*
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** %ptrptr
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %ptr, i256 42)
@@ -95,7 +95,7 @@ define i8 addrspace(3)* @ptrpacksir(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK-LABEL: ptrpackssr
 define i8 addrspace(3)* @ptrpackssr(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK: add     stack-[2], r0, r1
-; CHECK: ptr.pack        stack-[1], r1, r1
+; CHECK: pack        stack-[1], r1, r1
   %valptr = alloca i256
   %ptrptr = alloca i8 addrspace(3)*
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** %ptrptr
@@ -107,7 +107,7 @@ define i8 addrspace(3)* @ptrpackssr(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK-LABEL: ptrpackscr
 define i8 addrspace(3)* @ptrpackscr(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK: add     @val[0], r0, r1
-; CHECK: ptr.pack        stack-[1], r1, r1
+; CHECK: pack        stack-[1], r1, r1
   %ptrptr = alloca i8 addrspace(3)*
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** %ptrptr
   %val = load i256, i256 addrspace(4)* @val
@@ -118,7 +118,7 @@ define i8 addrspace(3)* @ptrpackscr(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK-LABEL: ptrpackrrs
 define void @ptrpackrrs(i8 addrspace(3)* %rs1, i256 %rs2) nounwind {
   %result = alloca i8 addrspace(3)*
-; CHECK: ptr.pack r1, r2, stack-[1]
+; CHECK: pack r1, r2, stack-[1]
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %rs1, i256 %rs2)
   store i8 addrspace(3)* %res1, i8 addrspace(3)** %result
   ret void
@@ -127,7 +127,7 @@ define void @ptrpackrrs(i8 addrspace(3)* %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: ptrpackris
 define void @ptrpackris(i8 addrspace(3)* %rs1) nounwind {
   %result = alloca i8 addrspace(3)*
-; CHECK: ptr.pack.s 42, r1, stack-[1]
+; CHECK: pack.s 42, r1, stack-[1]
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %rs1, i256 42)
   store i8 addrspace(3)* %res1, i8 addrspace(3)** %result
   ret void
@@ -137,7 +137,7 @@ define void @ptrpackris(i8 addrspace(3)* %rs1) nounwind {
 define void @ptrpackrss(i8 addrspace(3)* %rs1) nounwind {
   %result = alloca i8 addrspace(3)*
   %valptr = alloca i256
-; CHECK: ptr.pack.s stack-[1], r1, stack-[2]
+; CHECK: pack.s stack-[1], r1, stack-[2]
   %val = load i256, i256* %valptr
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %rs1, i256 %val)
   store i8 addrspace(3)* %res1, i8 addrspace(3)** %result
@@ -147,7 +147,7 @@ define void @ptrpackrss(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK-LABEL: ptrpackrcs
 define void @ptrpackrcs(i8 addrspace(3)* %rs1) nounwind {
   %result = alloca i8 addrspace(3)*
-; CHECK: ptr.pack.s @val[0], r1, stack-[1]
+; CHECK: pack.s @val[0], r1, stack-[1]
   %val = load i256, i256 addrspace(4)* @val
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %rs1, i256 %val)
   store i8 addrspace(3)* %res1, i8 addrspace(3)** %result
@@ -157,7 +157,7 @@ define void @ptrpackrcs(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK-LABEL: ptrpackgrs
 define void @ptrpackgrs(i256 %rs2) nounwind {
   %result = alloca i8 addrspace(3)*
-; CHECK: ptr.pack stack[@ptr], r1, stack-[1]
+; CHECK: pack stack[@ptr], r1, stack-[1]
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** @ptr
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %ptr, i256 %rs2)
   store i8 addrspace(3)* %res1, i8 addrspace(3)** %result
@@ -168,7 +168,7 @@ define void @ptrpackgrs(i256 %rs2) nounwind {
 define void @ptrpackgis(i8 addrspace(3)* %rs1) nounwind {
   %result = alloca i8 addrspace(3)*
   ; CHECK: add 42, r0, r1
-	; CHECK: ptr.pack stack[@ptr], r1, stack-[1]
+  ; CHECK: pack stack[@ptr], r1, stack-[1]
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** @ptr
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %ptr, i256 42)
   store i8 addrspace(3)* %res1, i8 addrspace(3)** %result
@@ -179,7 +179,7 @@ define void @ptrpackgis(i8 addrspace(3)* %rs1) nounwind {
 define void @ptrpackgss(i8 addrspace(3)* %rs1) nounwind {
   %result = alloca i8 addrspace(3)*
 ; CHECK: add stack-[1], r0, r1
-; CHECK: ptr.pack stack[@ptr], r1, stack-[2]
+; CHECK: pack stack[@ptr], r1, stack-[2]
   %valptr = alloca i256
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** @ptr
   %val = load i256, i256* %valptr
@@ -192,7 +192,7 @@ define void @ptrpackgss(i8 addrspace(3)* %rs1) nounwind {
 define void @ptrpackgcs(i8 addrspace(3)* %rs1) nounwind {
   %result = alloca i8 addrspace(3)*
   ; CHECK: add @val[0], r0, r1
-  ; CHECK: ptr.pack stack[@ptr], r1, stack-[1]
+  ; CHECK: pack stack[@ptr], r1, stack-[1]
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** @ptr
   %val = load i256, i256 addrspace(4)* @val
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %ptr, i256 %val)
@@ -203,7 +203,7 @@ define void @ptrpackgcs(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK-LABEL: ptrpacksrs
 define void @ptrpacksrs(i256 %rs2) nounwind {
   %result = alloca i8 addrspace(3)*
-; CHECK: ptr.pack stack-[1], r1, stack-[2]
+; CHECK: pack stack-[1], r1, stack-[2]
   %ptrptr = alloca i8 addrspace(3)*
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** %ptrptr
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %ptr, i256 %rs2)
@@ -215,7 +215,7 @@ define void @ptrpacksrs(i256 %rs2) nounwind {
 define void @ptrpacksis(i8 addrspace(3)* %rs1) nounwind {
   %result = alloca i8 addrspace(3)*
   ; CHECK: add 42, r0, r1
-  ; CHECK: ptr.pack stack-[1], r1, stack-[2]
+  ; CHECK: pack stack-[1], r1, stack-[2]
   %ptrptr = alloca i8 addrspace(3)*
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** %ptrptr
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %ptr, i256 42)
@@ -227,7 +227,7 @@ define void @ptrpacksis(i8 addrspace(3)* %rs1) nounwind {
 define void @ptrpacksss(i8 addrspace(3)* %rs1) nounwind {
   %result = alloca i8 addrspace(3)*
   ; CHECK: add stack-[2], r0, r1
-  ; CHECK: ptr.pack stack-[1], r1, stack-[3]
+  ; CHECK: pack stack-[1], r1, stack-[3]
   %valptr = alloca i256
   %ptrptr = alloca i8 addrspace(3)*
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** %ptrptr
@@ -241,7 +241,7 @@ define void @ptrpacksss(i8 addrspace(3)* %rs1) nounwind {
 define void @ptrpackscs(i8 addrspace(3)* %rs1) nounwind {
   %result = alloca i8 addrspace(3)*
   ; CHECK: add @val[0], r0, r1
-  ; CHECK: ptr.pack stack-[1], r1, stack-[2]
+  ; CHECK: pack stack-[1], r1, stack-[2]
   %ptrptr = alloca i8 addrspace(3)*
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** %ptrptr
   %val = load i256, i256 addrspace(4)* @val
@@ -252,7 +252,7 @@ define void @ptrpackscs(i8 addrspace(3)* %rs1) nounwind {
 
 ; CHECK-LABEL: ptrpackgrg
 define void @ptrpackgrg(i256 %rs2) nounwind {
-; CHECK: ptr.pack stack[@ptr], r1, stack[@ptr]
+; CHECK: pack stack[@ptr], r1, stack[@ptr]
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** @ptr
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %ptr, i256 %rs2)
   store i8 addrspace(3)* %res1, i8 addrspace(3)** @ptr
@@ -262,7 +262,7 @@ define void @ptrpackgrg(i256 %rs2) nounwind {
 ; CHECK-LABEL: ptrpackgig
 define void @ptrpackgig(i8 addrspace(3)* %rs1) nounwind {
   ; CHECK: add 42, r0, r1
-  ; CHECK: ptr.pack stack[@ptr], r1, stack[@ptr]
+  ; CHECK: pack stack[@ptr], r1, stack[@ptr]
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** @ptr
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %ptr, i256 42)
   store i8 addrspace(3)* %res1, i8 addrspace(3)** @ptr
@@ -272,7 +272,7 @@ define void @ptrpackgig(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK-LABEL: ptrpackgsg
 define void @ptrpackgsg(i8 addrspace(3)* %rs1) nounwind {
   ; CHECK: add stack-[1], r0, r1
-  ; CHECK: ptr.pack stack[@ptr], r1, stack[@ptr]
+  ; CHECK: pack stack[@ptr], r1, stack[@ptr]
   %valptr = alloca i256
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** @ptr
   %val = load i256, i256* %valptr
@@ -284,7 +284,7 @@ define void @ptrpackgsg(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK-LABEL: ptrpackgcg
 define void @ptrpackgcg(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK: add @val[0], r0, r1
-; CHECK: ptr.pack stack[@ptr], r1, stack[@ptr]
+; CHECK: pack stack[@ptr], r1, stack[@ptr]
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** @ptr
   %val = load i256, i256 addrspace(4)* @val
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %ptr, i256 %val)
@@ -294,7 +294,7 @@ define void @ptrpackgcg(i8 addrspace(3)* %rs1) nounwind {
 
 ; CHECK-LABEL: ptrpacksrg
 define void @ptrpacksrg(i256 %rs2) nounwind {
-; CHECK: ptr.pack stack-[1], r1, stack[@ptr]
+; CHECK: pack stack-[1], r1, stack[@ptr]
   %ptrptr = alloca i8 addrspace(3)*
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** %ptrptr
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %ptr, i256 %rs2)
@@ -305,7 +305,7 @@ define void @ptrpacksrg(i256 %rs2) nounwind {
 ; CHECK-LABEL: ptrpacksig
 define void @ptrpacksig(i8 addrspace(3)* %rs1) nounwind {
   ; CHECK: add 42, r0, r1
-  ; CHECK: ptr.pack stack-[1], r1, stack[@ptr]
+  ; CHECK: pack stack-[1], r1, stack[@ptr]
   %ptrptr = alloca i8 addrspace(3)*
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** %ptrptr
   %res1 = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %ptr, i256 42)
@@ -316,7 +316,7 @@ define void @ptrpacksig(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK-LABEL: ptrpackssg
 define void @ptrpackssg(i8 addrspace(3)* %rs1) nounwind {
   ; CHECK: add stack-[2], r0, r1
-  ; CHECK: ptr.pack stack-[1], r1, stack[@ptr]
+  ; CHECK: pack stack-[1], r1, stack[@ptr]
   %valptr = alloca i256
   %ptrptr = alloca i8 addrspace(3)*
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** %ptrptr
@@ -329,7 +329,7 @@ define void @ptrpackssg(i8 addrspace(3)* %rs1) nounwind {
 ; CHECK-LABEL: ptrpackscg
 define void @ptrpackscg(i8 addrspace(3)* %rs1) nounwind {
   ; CHECK: add @val[0], r0, r1
-  ; CHECK: ptr.pack stack-[1], r1, stack[@ptr]
+  ; CHECK: pack stack-[1], r1, stack[@ptr]
   %ptrptr = alloca i8 addrspace(3)*
   %ptr = load i8 addrspace(3)*, i8 addrspace(3)** %ptrptr
   %val = load i256, i256 addrspace(4)* @val

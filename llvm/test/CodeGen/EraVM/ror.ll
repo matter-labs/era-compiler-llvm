@@ -86,7 +86,7 @@ entry:
 define i256 @rorsrr(i256 %rs1) {
 ; CHECK-LABEL: rorsrr:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    ror stack-[1], r1, r1
 ; CHECK-NEXT:    ret
 entry:
@@ -102,7 +102,7 @@ entry:
 define i256 @rorzrr(i256 %rs1) {
 ; CHECK-LABEL: rorzrr:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    ror.s stack-[1], r1, r1
 ; CHECK-NEXT:    ret
 entry:
@@ -118,7 +118,7 @@ entry:
 define void @rorrrs(i256 %rs1, i256 %rs2) {
 ; CHECK-LABEL: rorrrs:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    ror r1, r2, stack-[1]
 ; CHECK-NEXT:    ret
 entry:
@@ -134,7 +134,7 @@ entry:
 define void @rorirs(i256 %rs1) {
 ; CHECK-LABEL: rorirs:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    ror 20, r1, stack-[1]
 ; CHECK-NEXT:    ret
 entry:
@@ -150,7 +150,7 @@ entry:
 define void @rorxrs(i256 %rs1) {
 ; CHECK-LABEL: rorxrs:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    ror.s 20, r1, stack-[1]
 ; CHECK-NEXT:    ret
 entry:
@@ -163,7 +163,7 @@ entry:
 define void @rorcrs(i256 %rs1) {
 ; CHECK-LABEL: rorcrs:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    ror @val[0], r1, stack-[1]
 ; CHECK-NEXT:    ret
 entry:
@@ -180,7 +180,7 @@ entry:
 define void @rorcrs_cp(i256 %rs1) {
 ; CHECK-LABEL: rorcrs_cp:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp	1
 ; CHECK-NEXT:    ror @CPI12_0[0], r1, stack-[1]
 ; CHECK-NEXT:    ret
 entry:
@@ -196,7 +196,7 @@ entry:
 define void @roryrs(i256 %rs1) {
 ; CHECK-LABEL: roryrs:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    ror.s @val[0], r1, stack-[1]
 ; CHECK-NEXT:    ret
 entry:
@@ -213,7 +213,7 @@ entry:
 define void @rorsrs(i256 %rs1) {
 ; CHECK-LABEL: rorsrs:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[2 + r0]
+; CHECK-NEXT:    incsp 2
 ; CHECK-NEXT:    ror stack-[1], r1, stack-[2]
 ; CHECK-NEXT:    ret
 entry:
@@ -231,7 +231,7 @@ entry:
 define void @rorzrs(i256 %rs1) {
 ; CHECK-LABEL: rorzrs:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[2 + r0]
+; CHECK-NEXT:    incsp 2
 ; CHECK-NEXT:    ror.s stack-[1], r1, stack-[2]
 ; CHECK-NEXT:    ret
 entry:

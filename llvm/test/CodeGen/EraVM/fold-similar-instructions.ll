@@ -256,7 +256,7 @@ define i256 @test_reg2(i256 %a, i256 %b, i1 %cond) {
 define i256 @test_stack1(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_stack1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    sub.s! stack-[1], r1, r3
 ; CHECK-NEXT:    add.lt r3, r0, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
@@ -274,7 +274,7 @@ define i256 @test_stack1(i256 %a, i1 %cond) {
 define i256 @test_stack2(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_stack2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    sub! stack-[1], r1, r3
 ; CHECK-NEXT:    add.lt r3, r0, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
