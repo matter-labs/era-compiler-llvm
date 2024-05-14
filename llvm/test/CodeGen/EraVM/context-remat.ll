@@ -9,9 +9,9 @@ declare void @use(i256)
 define i256 @test_this() {
 ; CHECK-LABEL: test_this:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    context.this r1
-; CHECK-NEXT:    near_call r0, @use, @DEFAULT_UNWIND
-; CHECK-NEXT:    context.this r1
+; CHECK-NEXT:    this r1
+; CHECK-NEXT:    call r0, @use, @DEFAULT_UNWIND
+; CHECK-NEXT:    this r1
 ; CHECK-NEXT:    ret
 entry:
   %ret = call i256 @llvm.eravm.this()
@@ -22,9 +22,9 @@ entry:
 define i256 @test_caller() {
 ; CHECK-LABEL: test_caller:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    context.caller r1
-; CHECK-NEXT:    near_call r0, @use, @DEFAULT_UNWIND
-; CHECK-NEXT:    context.caller r1
+; CHECK-NEXT:    par r1
+; CHECK-NEXT:    call r0, @use, @DEFAULT_UNWIND
+; CHECK-NEXT:    par r1
 ; CHECK-NEXT:    ret
 entry:
   %ret = call i256 @llvm.eravm.caller()
@@ -35,9 +35,9 @@ entry:
 define i256 @test_codesource() {
 ; CHECK-LABEL: test_codesource:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    context.code_source r1
-; CHECK-NEXT:    near_call r0, @use, @DEFAULT_UNWIND
-; CHECK-NEXT:    context.code_source r1
+; CHECK-NEXT:    code r1
+; CHECK-NEXT:    call r0, @use, @DEFAULT_UNWIND
+; CHECK-NEXT:    code r1
 ; CHECK-NEXT:    ret
 entry:
   %ret = call i256 @llvm.eravm.codesource()
@@ -48,9 +48,9 @@ entry:
 define i256 @test_getu128() {
 ; CHECK-LABEL: test_getu128:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    context.get_context_u128 r1
-; CHECK-NEXT:    near_call r0, @use, @DEFAULT_UNWIND
-; CHECK-NEXT:    context.get_context_u128 r1
+; CHECK-NEXT:    ldvl r1
+; CHECK-NEXT:    call r0, @use, @DEFAULT_UNWIND
+; CHECK-NEXT:    ldvl r1
 ; CHECK-NEXT:    ret
 entry:
   %ret = call i256 @llvm.eravm.getu128()

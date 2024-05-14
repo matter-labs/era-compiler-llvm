@@ -11,14 +11,14 @@
 [0x00,0x00,0x00,0x2a,0x03,0x20,0x03,0xa0]
 [0x00,0x00,0x00,0x2a,0x03,0x20,0x04,0x00]
 [0x00,0x00,0x00,0x2a,0x03,0x20,0x03,0xd0]
-# CHECK:  ptr.add       r1, r2, r3
-# CHECK:  ptr.sub       r1, r2, r3
-# CHECK:  ptr.shrink    r1, r2, r3
-# CHECK:  ptr.pack      r1, r2, r3
-# CHECK:  ptr.add.s     42, r2, r3
-# CHECK:  ptr.sub.s     42, r2, r3
-# CHECK:  ptr.shrink.s  42, r2, r3
-# CHECK:  ptr.pack.s    42, r2, r3
+# CHECK:  addp      r1, r2, r3
+# CHECK:  subp      r1, r2, r3
+# CHECK:  shrnk     r1, r2, r3
+# CHECK:  pack      r1, r2, r3
+# CHECK:  addp.s    42, r2, r3
+# CHECK:  subp.s    42, r2, r3
+# CHECK:  shrnk.s   42, r2, r3
+# CHECK:  pack.s    42, r2, r3
 
 # operands (non-swapped version: 4 src modes x 4 dst modes)
 [0x00,0x00,0x00,0x00,0x03,0x21,0x03,0x4f]
@@ -37,22 +37,22 @@
 [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x69]
 [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x61]
 [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x59]
-# CHECK:  ptr.add       r1, r2, r3
-# CHECK:  ptr.add       stack[1 + r1], r2, r3
-# CHECK:  ptr.add       stack-[1 + r1], r2, r3
-# CHECK:  ptr.add       stack-=[1 + r1], r2, r3
-# CHECK:  ptr.add       r1, r2, stack[1 + r3]
-# CHECK:  ptr.add       stack[1 + r1], r2, stack[1 + r3]
-# CHECK:  ptr.add       stack-[1 + r1], r2, stack[1 + r3]
-# CHECK:  ptr.add       stack-=[1 + r1], r2, stack[1 + r3]
-# CHECK:  ptr.add       r1, r2, stack-[1 + r3]
-# CHECK:  ptr.add       stack[1 + r1], r2, stack-[1 + r3]
-# CHECK:  ptr.add       stack-[1 + r1], r2, stack-[1 + r3]
-# CHECK:  ptr.add       stack-=[1 + r1], r2, stack-[1 + r3]
-# CHECK:  ptr.add       r1, r2, stack+=[1 + r3]
-# CHECK:  ptr.add       stack[1 + r1], r2, stack+=[1 + r3]
-# CHECK:  ptr.add       stack-[1 + r1], r2, stack+=[1 + r3]
-# CHECK:  ptr.add       stack-=[1 + r1], r2, stack+=[1 + r3]
+# CHECK:  addp      r1, r2, r3
+# CHECK:  addp      stack[1 + r1], r2, r3
+# CHECK:  addp      stack-[1 + r1], r2, r3
+# CHECK:  addp      stack-=[1 + r1], r2, r3
+# CHECK:  addp      r1, r2, stack[1 + r3]
+# CHECK:  addp      stack[1 + r1], r2, stack[1 + r3]
+# CHECK:  addp      stack-[1 + r1], r2, stack[1 + r3]
+# CHECK:  addp      stack-=[1 + r1], r2, stack[1 + r3]
+# CHECK:  addp      r1, r2, stack-[1 + r3]
+# CHECK:  addp      stack[1 + r1], r2, stack-[1 + r3]
+# CHECK:  addp      stack-[1 + r1], r2, stack-[1 + r3]
+# CHECK:  addp      stack-=[1 + r1], r2, stack-[1 + r3]
+# CHECK:  addp      r1, r2, stack+=[1 + r3]
+# CHECK:  addp      stack[1 + r1], r2, stack+=[1 + r3]
+# CHECK:  addp      stack-[1 + r1], r2, stack+=[1 + r3]
+# CHECK:  addp      stack-=[1 + r1], r2, stack+=[1 + r3]
 
 # operands (swapped version: 6 src modes x 4 dst modes)
 [0x00,0x00,0x00,0x00,0x03,0x21,0x03,0x50]
@@ -79,27 +79,27 @@
 [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x62]
 [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x5a]
 [0x00,0x01,0x00,0x01,0x03,0x21,0x03,0x7a]
-# CHECK:  ptr.add.s    r1, r2, r3
-# CHECK:  ptr.add.s    42, r2, r3
-# CHECK:  ptr.add.s    stack[1 + r1], r2, r3
-# CHECK:  ptr.add.s    stack-[1 + r1], r2, r3
-# CHECK:  ptr.add.s    stack-=[1 + r1], r2, r3
-# CHECK:  ptr.add.s    code[r1+1], r2, r3
-# CHECK:  ptr.add.s    r1, r2, stack[1 + r3]
-# CHECK:  ptr.add.s    42, r2, stack[1 + r3]
-# CHECK:  ptr.add.s    stack[1 + r1], r2, stack[1 + r3]
-# CHECK:  ptr.add.s    stack-[1 + r1], r2, stack[1 + r3]
-# CHECK:  ptr.add.s    stack-=[1 + r1], r2, stack[1 + r3]
-# CHECK:  ptr.add.s    code[r1+1], r2, stack[1 + r3]
-# CHECK:  ptr.add.s    r1, r2, stack-[1 + r3]
-# CHECK:  ptr.add.s    42, r2, stack-[1 + r3]
-# CHECK:  ptr.add.s    stack[1 + r1], r2, stack-[1 + r3]
-# CHECK:  ptr.add.s    stack-[1 + r1], r2, stack-[1 + r3]
-# CHECK:  ptr.add.s    stack-=[1 + r1], r2, stack-[1 + r3]
-# CHECK:  ptr.add.s    code[r1+1], r2, stack-[1 + r3]
-# CHECK:  ptr.add.s    r1, r2, stack+=[1 + r3]
-# CHECK:  ptr.add.s    42, r2, stack+=[1 + r3]
-# CHECK:  ptr.add.s    stack[1 + r1], r2, stack+=[1 + r3]
-# CHECK:  ptr.add.s    stack-[1 + r1], r2, stack+=[1 + r3]
-# CHECK:  ptr.add.s    stack-=[1 + r1], r2, stack+=[1 + r3]
-# CHECK:  ptr.add.s    code[r1+1], r2, stack+=[1 + r3]
+# CHECK:  addp.s    r1, r2, r3
+# CHECK:  addp.s    42, r2, r3
+# CHECK:  addp.s    stack[1 + r1], r2, r3
+# CHECK:  addp.s    stack-[1 + r1], r2, r3
+# CHECK:  addp.s    stack-=[1 + r1], r2, r3
+# CHECK:  addp.s    code[r1+1], r2, r3
+# CHECK:  addp.s    r1, r2, stack[1 + r3]
+# CHECK:  addp.s    42, r2, stack[1 + r3]
+# CHECK:  addp.s    stack[1 + r1], r2, stack[1 + r3]
+# CHECK:  addp.s    stack-[1 + r1], r2, stack[1 + r3]
+# CHECK:  addp.s    stack-=[1 + r1], r2, stack[1 + r3]
+# CHECK:  addp.s    code[r1+1], r2, stack[1 + r3]
+# CHECK:  addp.s    r1, r2, stack-[1 + r3]
+# CHECK:  addp.s    42, r2, stack-[1 + r3]
+# CHECK:  addp.s    stack[1 + r1], r2, stack-[1 + r3]
+# CHECK:  addp.s    stack-[1 + r1], r2, stack-[1 + r3]
+# CHECK:  addp.s    stack-=[1 + r1], r2, stack-[1 + r3]
+# CHECK:  addp.s    code[r1+1], r2, stack-[1 + r3]
+# CHECK:  addp.s    r1, r2, stack+=[1 + r3]
+# CHECK:  addp.s    42, r2, stack+=[1 + r3]
+# CHECK:  addp.s    stack[1 + r1], r2, stack+=[1 + r3]
+# CHECK:  addp.s    stack-[1 + r1], r2, stack+=[1 + r3]
+# CHECK:  addp.s    stack-=[1 + r1], r2, stack+=[1 + r3]
+# CHECK:  addp.s    code[r1+1], r2, stack+=[1 + r3]

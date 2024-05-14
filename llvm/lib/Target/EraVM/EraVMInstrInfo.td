@@ -401,9 +401,15 @@ def NOPsrs : Isr_s<OpNoOp, NoSwap, PreserveFlags, []>;
 
 def : Pat<(EraVMadd_to_sp GR256:$reg), (NOPrrs R0, R0, R0, $reg, 0, 0)>;
 
-def : InstAlias<"nop${cc}\t${dst0}", (NOPrrs R0, R0, stackout:$dst0, pred:$cc)>;
-def : InstAlias<"nop${cc}\t${src0}", (NOPsrr R0, stackin:$src0, R0, pred:$cc)>;
-def : InstAlias<"nop${cc}",          (NOPrrr R0, R0, R0, pred:$cc)>;
+def : InstAlias<"incsp${cc}\t${reg}",        (NOPrrs R0, R0, R0, GR256:$reg, 0, pred:$cc)>;
+def : InstAlias<"incsp${cc}\t${imm}",        (NOPrrs R0, R0, R0, R0, i16imm:$imm, pred:$cc)>;
+def : InstAlias<"incsp${cc}\t${reg}+${imm}", (NOPrrs R0, R0, R0, GR256:$reg, i16imm:$imm, pred:$cc)>;
+
+def : InstAlias<"decsp${cc}\t${reg}",        (NOPsrr R0, R0, GR256:$reg, 0, R0, pred:$cc)>;
+def : InstAlias<"decsp${cc}\t${imm}",        (NOPsrr R0, R0, R0, i16imm:$imm, R0, pred:$cc)>;
+def : InstAlias<"decsp${cc}\t${reg}+${imm}", (NOPsrr R0, R0, GR256:$reg, i16imm:$imm, R0, pred:$cc)>;
+
+def : InstAlias<"nop${cc}",                  (NOPrrr R0, R0, R0, pred:$cc)>;
 
 // Note that while technically commutative arithmetic instructions are not swappable,
 // it is not a problem as there will be no corresponding instruction defined with SwapOperand = 1
@@ -945,13 +951,10 @@ def THROW : Pseudo<(outs), (ins GR256:$rs0, pred:$cc), [(EraVMthrow GR256:$rs0)]
             PseudoInstExpansion<(REVERTr GR256:$rs0, pred:$cc)>;
 
 def : InstAlias<"ret${cc}", (RETr R1, pred:$cc)>;
-def : InstAlias<"revert${cc}", (REVERTr R1, pred:$cc)>;
+def : InstAlias<"rev${cc}", (REVERTr R1, pred:$cc)>;
 
-// TODO Make these aliases preferred for printing after switching to the new syntax.
-let EmitPriority = 0 in {
-def : InstAlias<"ret.ok.to_label${cc} $dest", (RETrl R1, jmptarget:$dest, pred:$cc)>;
-def : InstAlias<"ret.revert.to_label${cc} $dest", (REVERTrl R1, jmptarget:$dest, pred:$cc)>;
-}
+def : InstAlias<"retl${cc} $dest", (RETrl R1, jmptarget:$dest, pred:$cc)>;
+def : InstAlias<"revl${cc} $dest", (REVERTrl R1, jmptarget:$dest, pred:$cc)>;
 
 def : Pat<(EraVMreturn GR256:$rs0), (RETrl GR256:$rs0, (default_far_return 0))>;
 def : Pat<(EraVMrevert GR256:$rs0), (REVERTrl GR256:$rs0, (default_far_revert 0))>;
@@ -1034,7 +1037,7 @@ let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Fl
 
   // Unfortunately, we cannot encode @DEFAULT_UNWIND_DEST here, so we have to alias to pseudo
   def NEAR_CALL_default_unwind : AsmParserPseudo<(outs), (ins GR256:$in1, jmptarget:$callee),
-                                                 "near_call", "${in1} ${callee}">;
+                                                 "call", "${in1} ${callee}">;
 
   defm FAR_CALL      : FarCallInst<OpFarcall>;
   defm DELEGATE_CALL : FarCallInst<OpDelegate>;
@@ -1049,7 +1052,7 @@ foreach Op = [OpFarcall, OpDelegate, OpMimic] in {
                       !strconcat(Op.Name, ".st.sh")>;
 }
 
-def : InstAlias<"near_call${cc} ${callee}",
+def : InstAlias<"call${cc} ${callee}",
                 (NEAR_CALL_default_unwind R0, jmptarget:$callee, pred:$cc)>;
 
 def : Pat<(EraVMfarcall bb:$unwind), (FAR_CALLrrl R1, R2, bb:$unwind)>;
