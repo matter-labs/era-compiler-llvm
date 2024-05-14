@@ -115,10 +115,10 @@ class JumpOpcEncoder<bits<11> BaseOpcode,
 }
 
 class UMAOpcEncoder<OpcodeEncoding encoding, bits<11> BaseOpcode,
-                    SrcSpecialMode src, bit is_inc> {
+                    SrcSpecialMode src> {
   bits<11> Opcode =
-    !cond(!eq(encoding, LoadPtrEncoding) : !add(BaseOpcode, is_inc),
-          !eq(encoding, HeapOpEncoding)  : !add(BaseOpcode, !mul(10, src.Value), is_inc),
+    !cond(!eq(encoding, LoadPtrEncoding) : BaseOpcode,
+          !eq(encoding, HeapOpEncoding)  : !add(BaseOpcode, !mul(10, src.Value)),
           true : -1);
 }
 
@@ -204,16 +204,21 @@ def OpRevert   : EraVMOpcode<"ret.revert", 1071, RetEncoding>; // to_label ⇒ 1
 def OpPanic    : EraVMOpcode<"ret.panic",  1073, RetEncoding>; // to_label ⇒ 1073 + to_label
 
 // aliased as uma.heap_read
-def OpLoadHeap     : EraVMOpcode<"ld.1", 1075, HeapOpEncoding>; // src inc ⇒ 1075 + 10 × src + inc
+def OpLoadHeap        : EraVMOpcode<"ld.1",     1075, HeapOpEncoding>; // src inc ⇒ 1075 + 10 × src + inc
+def OpLoadHeapInc     : EraVMOpcode<"ld.1.inc", 1076, HeapOpEncoding>;
 // aliased as uma.heap_write
-def OpStoreHeap    : EraVMOpcode<"st.1", 1077, HeapOpEncoding>; // src inc ⇒ 1077 + 10 × src + inc
+def OpStoreHeap       : EraVMOpcode<"st.1",     1077, HeapOpEncoding>; // src inc ⇒ 1077 + 10 × src + inc
+def OpStoreHeapInc    : EraVMOpcode<"st.1.inc", 1078, HeapOpEncoding>;
 // aliased as uma.aux_heap_read
-def OpLoadAuxHeap  : EraVMOpcode<"ld.2", 1079, HeapOpEncoding>; // src inc ⇒ 1079 + 10 × src + inc
+def OpLoadAuxHeap     : EraVMOpcode<"ld.2",     1079, HeapOpEncoding>; // src inc ⇒ 1079 + 10 × src + inc
+def OpLoadAuxHeapInc  : EraVMOpcode<"ld.2.inc", 1080, HeapOpEncoding>;
 // aliased as uma.aux_heap_write
-def OpStoreAuxHeap : EraVMOpcode<"st.2", 1081, HeapOpEncoding>; // src inc ⇒ 1081 + 10 × src + inc
+def OpStoreAuxHeap    : EraVMOpcode<"st.2",     1081, HeapOpEncoding>; // src inc ⇒ 1081 + 10 × src + inc
+def OpStoreAuxHeapInc : EraVMOpcode<"st.2.inc", 1082, HeapOpEncoding>;
 
 // aliased as uma.fat_ptr_read
-def OpLoadPtr      : EraVMOpcode<"ld",  1083, LoadPtrEncoding>; // inc ⇒ 1083 + inc
+def OpLoadPtr      : EraVMOpcode<"ld",     1083, LoadPtrEncoding>; // inc ⇒ 1083 + inc
+def OpLoadPtrInc   : EraVMOpcode<"ld.inc", 1084, LoadPtrEncoding>;
 
 def OpDecommit       : EraVMOpcode<"log.decommit", 1093, DirectEncoding>;
 def OpTransientLoad  : EraVMOpcode<"tload",    1094, DirectEncoding>;
