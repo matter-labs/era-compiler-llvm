@@ -7,7 +7,7 @@ target triple = "eravm"
 
 ; CHECK-LABEL: alloca
 define void @alloca(i256 %a1, i256 %a2, i256 %a3, i256 %a4) nounwind {
-  ; CHECK: nop stack+=[4 + r0]
+  ; CHECK: incsp 4
   %var1 = alloca i256
   %var2 = alloca i256
   %var3 = alloca i256
@@ -60,30 +60,30 @@ fail:
 
 ; CHECK-LABEL: stack.obj.passing
 define i256 @stack.obj.passing() {
-; CHECK: nop stack+=[12 + r0]
+; CHECK: incsp 12
   %unused1 = alloca [3 x i256]
   %par1 = alloca i256
   %unused2 = alloca [2 x i256]
   %elem.cont = alloca [2 x i256]
   %arr = alloca [4 x i256]
   %elem = getelementptr [2 x i256], [2 x i256]* %elem.cont, i256 0, i256 0
-; CHECK: context.sp r1
+; CHECK: sp r1
 ; CHECK: sub.s 9, r1, r1
 ; CHECK: shl.s 5, r1, r1
-; CHECK: context.sp r2
+; CHECK: sp r2
 ; CHECK: sub.s 4, r2, r2
 ; CHECK: shl.s 5, r2, r2
-; CHECK: context.sp r3
+; CHECK: sp r3
 ; CHECK: sub.s 6, r3, r3
 ; CHECK: shl.s 5, r3, r3
-; CHECK: near_call	r0, @stack.obj.accessing, @DEFAULT_UNWIND
+; CHECK: call	r0, @stack.obj.accessing, @DEFAULT_UNWIND
   %res = call i256 @stack.obj.accessing(i256* %par1, [4 x i256]* %arr, i256* %elem)
   ret i256 %res
 }
 
 ; CHECK-LABEL: load_fat_ptr
 define void @load_fat_ptr(i8 addrspace(3)** %ptr) {
-; CHECK: ptr.add stack[r1], r0, stack[@fatptr]
+; CHECK: addp stack[r1], r0, stack[@fatptr]
   %val = load i8 addrspace(3)*, i8 addrspace(3)** %ptr, align 32
   store i8 addrspace(3)* %val, i8 addrspace(3)** @fatptr
   ret void
@@ -91,7 +91,7 @@ define void @load_fat_ptr(i8 addrspace(3)** %ptr) {
 
 ; CHECK-LABEL: store_fat_ptr
 define void @store_fat_ptr(i8 addrspace(3)** %ptr) {
-; CHECK: ptr.add stack[@fatptr], r0, stack[r1]
+; CHECK: addp stack[@fatptr], r0, stack[r1]
   %val = load i8 addrspace(3)*, i8 addrspace(3)** @fatptr, align 32
   store i8 addrspace(3)* %val, i8 addrspace(3)** %ptr
   ret void

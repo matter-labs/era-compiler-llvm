@@ -16,10 +16,10 @@ define void @uaddo_branch_1(i256 %x, i256 %y) {
 ; CHECK-NEXT:    add! r1, r2, r0
 ; CHECK-NEXT:    jump.lt @.BB0_2
 ; CHECK-NEXT:  ; %bb.1: ; %no_overflow_detected
-; CHECK-NEXT:    near_call r0, @has_no_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_no_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB0_2: ; %overflow_detected
-; CHECK-NEXT:    near_call r0, @has_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    ret
 entry:
   %res1 = call {i256, i1} @llvm.uadd.with.overflow.i256(i256 %x, i256 %y)
@@ -44,10 +44,10 @@ define void @uadd_branch_2(i256 %x, i256 %y) {
 ; CHECK-NEXT:    add! r1, r2, r0
 ; CHECK-NEXT:    jump.lt @.BB1_2
 ; CHECK-NEXT:  ; %bb.1: ; %no_overflow_detected
-; CHECK-NEXT:    near_call r0, @has_no_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_no_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB1_2: ; %overflow_detected
-; CHECK-NEXT:    near_call r0, @has_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    ret
 entry:
   %res1 = call {i256, i1} @llvm.uadd.with.overflow.i256(i256 %x, i256 %y)
@@ -69,16 +69,16 @@ exit:
 define i256 @uadd_branch_3(i256 %x, i256 %y) {
 ; CHECK-LABEL: uadd_branch_3:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    add r1, r2, stack-[1]
 ; CHECK-NEXT:    add! r1, r2, r0
 ; CHECK-NEXT:    jump.lt @.BB2_2
 ; CHECK-NEXT:  ; %bb.1: ; %no_overflow_detected
-; CHECK-NEXT:    near_call r0, @has_no_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_no_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    add stack-[1], r0, r1 ; 32-byte Folded Reload
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB2_2: ; %overflow_detected
-; CHECK-NEXT:    near_call r0, @has_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    add stack-[1], r0, r1 ; 32-byte Folded Reload
 ; CHECK-NEXT:    ret
 entry:
@@ -102,7 +102,7 @@ exit:
 define i256 @uadd_branch_complicated(i256 %a, i256 %b, i256 %c, i256 %x, i256 %y) {
 ; CHECK-LABEL: uadd_branch_complicated:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    add r4, r5, r6
 ; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    add.lt r3, r0, r6
@@ -110,11 +110,11 @@ define i256 @uadd_branch_complicated(i256 %a, i256 %b, i256 %c, i256 %x, i256 %y
 ; CHECK-NEXT:    add! r4, r5, r0
 ; CHECK-NEXT:    jump.lt @.BB3_2
 ; CHECK-NEXT:  ; %bb.1: ; %no_overflow_detected
-; CHECK-NEXT:    near_call r0, @has_no_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_no_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    add stack-[1], r0, r1 ; 32-byte Folded Reload
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB3_2: ; %overflow_detected
-; CHECK-NEXT:    near_call r0, @has_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    add stack-[1], r0, r1 ; 32-byte Folded Reload
 ; CHECK-NEXT:    ret
 entry:
@@ -143,10 +143,10 @@ define void @usub_branch_1(i256 %x, i256 %y) {
 ; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    jump.lt @.BB4_2
 ; CHECK-NEXT:  ; %bb.1: ; %no_overflow_detected
-; CHECK-NEXT:    near_call r0, @has_no_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_no_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB4_2: ; %overflow_detected
-; CHECK-NEXT:    near_call r0, @has_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    ret
 entry:
   %res1 = call {i256, i1} @llvm.usub.with.overflow.i256(i256 %x, i256 %y)
@@ -171,10 +171,10 @@ define void @usub_branch_2(i256 %x, i256 %y) {
 ; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    jump.lt @.BB5_2
 ; CHECK-NEXT:  ; %bb.1: ; %no_overflow_detected
-; CHECK-NEXT:    near_call r0, @has_no_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_no_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB5_2: ; %overflow_detected
-; CHECK-NEXT:    near_call r0, @has_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    ret
 entry:
   %res1 = call {i256, i1} @llvm.usub.with.overflow.i256(i256 %x, i256 %y)
@@ -196,15 +196,15 @@ exit:
 define i256 @usub_branch_3(i256 %x, i256 %y) {
 ; CHECK-LABEL: usub_branch_3:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    sub! r1, r2, stack-[1]
 ; CHECK-NEXT:    jump.lt @.BB6_2
 ; CHECK-NEXT:  ; %bb.1: ; %no_overflow_detected
-; CHECK-NEXT:    near_call r0, @has_no_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_no_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    add stack-[1], r0, r1 ; 32-byte Folded Reload
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB6_2: ; %overflow_detected
-; CHECK-NEXT:    near_call r0, @has_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    add stack-[1], r0, r1 ; 32-byte Folded Reload
 ; CHECK-NEXT:    ret
 entry:
@@ -231,10 +231,10 @@ define void @umul_branch_1(i256 %x, i256 %y) {
 ; CHECK-NEXT:    mul! r1, r2, r0, r0
 ; CHECK-NEXT:    jump.lt @.BB7_2
 ; CHECK-NEXT:  ; %bb.1: ; %no_overflow_detected
-; CHECK-NEXT:    near_call r0, @has_no_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_no_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB7_2: ; %overflow_detected
-; CHECK-NEXT:    near_call r0, @has_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    ret
 entry:
   %res1 = call {i256, i1} @llvm.umul.with.overflow.i256(i256 %x, i256 %y)
@@ -259,10 +259,10 @@ define void @umul_branch_2(i256 %x, i256 %y) {
 ; CHECK-NEXT:    mul! r1, r2, r0, r0
 ; CHECK-NEXT:    jump.lt @.BB8_2
 ; CHECK-NEXT:  ; %bb.1: ; %no_overflow_detected
-; CHECK-NEXT:    near_call r0, @has_no_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_no_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB8_2: ; %overflow_detected
-; CHECK-NEXT:    near_call r0, @has_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    ret
 entry:
   %res1 = call {i256, i1} @llvm.umul.with.overflow.i256(i256 %x, i256 %y)
@@ -284,16 +284,16 @@ exit:
 define i256 @umul_branch_3(i256 %x, i256 %y) {
 ; CHECK-LABEL: umul_branch_3:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    mul r1, r2, stack-[1], r0
 ; CHECK-NEXT:    mul! r1, r2, r0, r0
 ; CHECK-NEXT:    jump.lt @.BB9_2
 ; CHECK-NEXT:  ; %bb.1: ; %no_overflow_detected
-; CHECK-NEXT:    near_call r0, @has_no_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_no_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    add stack-[1], r0, r1 ; 32-byte Folded Reload
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB9_2: ; %overflow_detected
-; CHECK-NEXT:    near_call r0, @has_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    add stack-[1], r0, r1 ; 32-byte Folded Reload
 ; CHECK-NEXT:    ret
 entry:

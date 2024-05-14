@@ -7,7 +7,7 @@ target triple = "eravm"
 
 ; CHECK-LABEL: call1.i256
 define i256 @call1.i256(i256 %a1) nounwind {
-; CHECK: near_call r0, @onearg, @DEFAULT_UNWIND
+; CHECK: call r0, @onearg, @DEFAULT_UNWIND
   %1 = call i256 @onearg(i256 %a1)
   ret i256 %1
 }
@@ -16,14 +16,14 @@ define i256 @call1.i256(i256 %a1) nounwind {
 define i256 @call1.i256abi(i256 %a1, i256 %abi_data) nounwind {
   %ptr = bitcast i256(i256)* @onearg to i256*
 ; CHECK: add r2, r0, r15
-; CHECK: near_call r15, @onearg, @DEFAULT_UNWIND
+; CHECK: call r15, @onearg, @DEFAULT_UNWIND
   %1 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr, i256 %abi_data, i256 %a1)
   ret i256 %1
 }
 
 ; CHECK-LABEL: call1.i256p
 define i256* @call1.i256p(i256 %a1) nounwind {
-; CHECK: near_call r0, @onearg.i256p, @DEFAULT_UNWIND
+; CHECK: call r0, @onearg.i256p, @DEFAULT_UNWIND
   %1 = call i256* @onearg.i256p(i256 %a1)
   ret i256* %1
 }
@@ -31,7 +31,7 @@ define i256* @call1.i256p(i256 %a1) nounwind {
 ; CHECK-LABEL: call1.i256pabi
 define i256* @call1.i256pabi(i256 %a1, i256 %abi_data) nounwind {
 ; CHECK: add r2, r0, r15
-; CHECK: near_call r15, @onearg.i256p, @DEFAULT_UNWIND
+; CHECK: call r15, @onearg.i256p, @DEFAULT_UNWIND
   %1 = call i256 (i256*, i256, ...) @llvm.eravm.nearcall(i256* bitcast (i256*(i256)* @onearg.i256p to i256*), i256 %abi_data, i256 %a1)
   %2 = inttoptr i256 %1 to i256*
   ret i256* %2
@@ -39,7 +39,7 @@ define i256* @call1.i256pabi(i256 %a1, i256 %abi_data) nounwind {
 
 ; CHECK-LABEL: call1.void
 define void @call1.void(i256 %a1) nounwind {
-; CHECK: near_call r0, @onearg.void, @DEFAULT_UNWIND
+; CHECK: call r0, @onearg.void, @DEFAULT_UNWIND
   call void @onearg.void(i256 %a1)
   ret void
 }
@@ -48,14 +48,14 @@ define void @call1.void(i256 %a1) nounwind {
 define void @call1.i256voidabi(i256 %a1, i256 %abi_data) nounwind {
   %ptr = bitcast void(i256)* @onearg.void to i256*
 ; CHECK: add r2, r0, r15
-; CHECK: near_call r15, @onearg.void, @DEFAULT_UNWIND
+; CHECK: call r15, @onearg.void, @DEFAULT_UNWIND
   call i256 (i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr, i256 %abi_data, i256 %a1)
   ret void
 }
 
 ; CHECK-LABEL: invoke1.i256
 define i256 @invoke1.i256(i256 %a1) personality i256()* @__personality {
-; CHECK: near_call r0, @onearg, @.BB6_2
+; CHECK: call r0, @onearg, @.BB6_2
   %res = invoke i256 @onearg(i256 %a1) to label %success unwind label %failure
 success:
 ; CHECK: ret
@@ -71,7 +71,7 @@ failure:
 define i256 @invoke1.i256abi(i256 %a1, i256 %abi_data) personality i256()* @__personality {
   %ptr = bitcast i256(i256)* @onearg to i256*
 ; CHECK: add r2, r0, r15
-; CHECK: near_call r15, @onearg, @.BB7_2
+; CHECK: call r15, @onearg, @.BB7_2
   %res = invoke i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr, i256 %abi_data, i256 %a1) to label %success unwind label %failure
 success:
 ; CHECK: ret
@@ -85,7 +85,7 @@ failure:
 
 ; CHECK-LABEL: caller2
 define i256 @caller2(i256 %a1, i256 %a2) nounwind {
-; CHECK: near_call r0, @twoarg, @DEFAULT_UNWIND
+; CHECK: call r0, @twoarg, @DEFAULT_UNWIND
   %1 = call i256 @twoarg(i256 %a1, i256 %a2)
   ret i256 %1
 }
@@ -94,7 +94,7 @@ define i256 @caller2(i256 %a1, i256 %a2) nounwind {
 define i256 @caller2.abi(i256 %a1, i256 %a2, i256 %abi) nounwind {
   %ptr = bitcast i256(i256, i256)* @twoarg to i256*
 ; CHECK: add r3, r0, r15
-; CHECK: near_call r15, @twoarg, @DEFAULT_UNWIND
+; CHECK: call r15, @twoarg, @DEFAULT_UNWIND
   %1 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr, i256 %abi, i256 %a1, i256 %a2)
   ret i256 %1
 }
@@ -104,7 +104,7 @@ define i256 @caller2.swp(i256 %a1, i256 %a2) nounwind {
 ; CHECK: add	r1, r0, r3
 ; CHECK: add	r2, r0, r1
 ; CHECK: add	r3, r0, r2
-; CHECK: near_call r0, @twoarg, @DEFAULT_UNWIND
+; CHECK: call r0, @twoarg, @DEFAULT_UNWIND
   %1 = call i256 @twoarg(i256 %a2, i256 %a1)
   ret i256 %1
 }
@@ -127,7 +127,7 @@ define i256 @caller3.abi(i256 %a1, i256 %a2, i256 %a3, i256 %abi) nounwind {
 
 ; CHECK-LABEL: caller_argtypes
 define i256 @caller_argtypes(i1 %a1, i8 %a2, i16 %a3, i32 %a4, i64 %a5, i128 %a6) nounwind {
-  ; CHECK: nop stack+=[6 + r0]
+  ; CHECK: incsp 6
   ; CHECK: add r6, r0, stack-[6]
   ; CHECK: add r5, r0, stack-[5]
   ; CHECK: add r4, r0, stack-[4]
@@ -142,47 +142,47 @@ define i256 @caller_argtypes(i1 %a1, i8 %a2, i16 %a3, i32 %a4, i64 %a5, i128 %a6
   %ptr64 = bitcast i256(i64)* @i64.arg to i256*
   %ptr128 = bitcast i256(i128)* @i128.arg to i256*
 
-	; CHECK: near_call r0, @i1.arg, @DEFAULT_UNWIND
+	; CHECK: call r0, @i1.arg, @DEFAULT_UNWIND
   %1 = call i256 @i1.arg(i1 %a1)
 	; CHECK: add stack-[2], r0, r1
-	; CHECK: near_call r0, @i8.arg, @DEFAULT_UNWIND
+	; CHECK: call r0, @i8.arg, @DEFAULT_UNWIND
   %2 = call i256 @i8.arg(i8 %a2)
 	; CHECK: add stack-[3], r0, r1
-	; CHECK: near_call r0, @i16.arg, @DEFAULT_UNWIND
+	; CHECK: call r0, @i16.arg, @DEFAULT_UNWIND
   %3 = call i256 @i16.arg(i16 %a3)
 	; CHECK: add stack-[4], r0, r1
-	; CHECK: near_call r0, @i32.arg, @DEFAULT_UNWIND
+	; CHECK: call r0, @i32.arg, @DEFAULT_UNWIND
   %4 = call i256 @i32.arg(i32 %a4)
 	; CHECK: add stack-[5], r0, r1
-	; CHECK: near_call r0, @i64.arg, @DEFAULT_UNWIND
+	; CHECK: call r0, @i64.arg, @DEFAULT_UNWIND
   %5 = call i256 @i64.arg(i64 %a5)
 	; CHECK: add stack-[6], r0, r1
-	; CHECK: near_call r0, @i128.arg, @DEFAULT_UNWIND
+	; CHECK: call r0, @i128.arg, @DEFAULT_UNWIND
   %6 = call i256 @i128.arg(i128 %a6)
 
 	; CHECK: add 42, r0, r15
 	; CHECK: add stack-[1], r0, r1
-	; CHECK: near_call r15, @i1.arg, @DEFAULT_UNWIND
+	; CHECK: call r15, @i1.arg, @DEFAULT_UNWIND
   %7 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr1, i256 42, i1 %a1)
 	; CHECK: add stack-[2], r0, r1
 	; CHECK: add 42, r0, r15
-	; CHECK: near_call r15, @i8.arg, @DEFAULT_UNWIND
+	; CHECK: call r15, @i8.arg, @DEFAULT_UNWIND
   %8 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr8, i256 42, i8 %a2)
 	; CHECK: add stack-[3], r0, r1
 	; CHECK: add 42, r0, r15
-	; CHECK: near_call r15, @i16.arg, @DEFAULT_UNWIND
+	; CHECK: call r15, @i16.arg, @DEFAULT_UNWIND
   %9 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr16, i256 42, i16 %a3)
 	; CHECK: add stack-[4], r0, r1
 	; CHECK: add 42, r0, r15
-	; CHECK: near_call r15, @i32.arg, @DEFAULT_UNWIND
+	; CHECK: call r15, @i32.arg, @DEFAULT_UNWIND
   %10 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr32, i256 42, i32 %a4)
 	; CHECK: add stack-[5], r0, r1
 	; CHECK: add 42, r0, r15
-	; CHECK: near_call r15, @i64.arg, @DEFAULT_UNWIND
+	; CHECK: call r15, @i64.arg, @DEFAULT_UNWIND
   %11 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr64, i256 42, i64 %a5)
 	; CHECK: add stack-[6], r0, r1
 	; CHECK: add 42, r0, r15
-	; CHECK: near_call r15, @i128.arg, @DEFAULT_UNWIND
+	; CHECK: call r15, @i128.arg, @DEFAULT_UNWIND
   %12 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr128, i256 42, i128 %a6)
 
   ret i256 %12
@@ -190,7 +190,7 @@ define i256 @caller_argtypes(i1 %a1, i8 %a2, i16 %a3, i32 %a4, i64 %a5, i128 %a6
 
 ; CHECK: @caller_i1.ret
 define i256 @caller_i1.ret(i256 %a1) nounwind {
-; CHECK: near_call r0, @i1.ret, @DEFAULT_UNWIND
+; CHECK: call r0, @i1.ret, @DEFAULT_UNWIND
   %1 = call i1 @i1.ret(i256 %a1)
 ; CHECK-NOT: and 1, r1, r1
   %2 = zext i1 %1 to i256
@@ -200,14 +200,14 @@ define i256 @caller_i1.ret(i256 %a1) nounwind {
 ; CHECK: @caller_i1.retabi
 define i256 @caller_i1.retabi(i256 %a1) nounwind {
   %ptr = bitcast i1(i256)* @i1.ret to i256*
-; CHECK: near_call r15, @i1.ret, @DEFAULT_UNWIND
+; CHECK: call r15, @i1.ret, @DEFAULT_UNWIND
   %1 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr, i256 42, i256 %a1)
   ret i256 %1
 }
 
 ; CHECK: @caller_i8.ret
 define i256 @caller_i8.ret(i256 %a1) nounwind {
-; CHECK: near_call r0, @i8.ret, @DEFAULT_UNWIND
+; CHECK: call r0, @i8.ret, @DEFAULT_UNWIND
   %1 = call i8 @i8.ret(i256 %a1)
 ; CHECK-NOT: and 255, r1, r1
   %2 = zext i8 %1 to i256
@@ -217,14 +217,14 @@ define i256 @caller_i8.ret(i256 %a1) nounwind {
 ; CHECK: @caller_i8.retabi
 define i256 @caller_i8.retabi(i256 %a1) nounwind {
   %ptr = bitcast i8(i256)* @i8.ret to i256*
-; CHECK: near_call r15, @i8.ret, @DEFAULT_UNWIND
+; CHECK: call r15, @i8.ret, @DEFAULT_UNWIND
   %1 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr, i256 42, i256 %a1)
   ret i256 %1
 }
 
 ; CHECK: @caller_i16.ret
 define i256 @caller_i16.ret(i256 %a1) nounwind {
-; CHECK: near_call r0, @i16.ret, @DEFAULT_UNWIND
+; CHECK: call r0, @i16.ret, @DEFAULT_UNWIND
   %1 = call i16 @i16.ret(i256 %a1)
 ; CHECK-NOT: and 65535, r1, r1
   %2 = zext i16 %1 to i256
@@ -234,14 +234,14 @@ define i256 @caller_i16.ret(i256 %a1) nounwind {
 ; CHECK: @caller_i16.retabi
 define i256 @caller_i16.retabi(i256 %a1) nounwind {
   %ptr = bitcast i16(i256)* @i16.ret to i256*
-; CHECK: near_call r15, @i16.ret, @DEFAULT_UNWIND
+; CHECK: call r15, @i16.ret, @DEFAULT_UNWIND
   %1 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr, i256 42, i256 %a1)
   ret i256 %1
 }
 
 ; CHECK: @caller_i32.ret
 define i256 @caller_i32.ret(i256 %a1) nounwind {
-; CHECK: near_call r0, @i32.ret, @DEFAULT_UNWIND
+; CHECK: call r0, @i32.ret, @DEFAULT_UNWIND
   %1 = call i32 @i32.ret(i256 %a1)
   %2 = zext i32 %1 to i256
   ret i256 %2
@@ -250,14 +250,14 @@ define i256 @caller_i32.ret(i256 %a1) nounwind {
 ; CHECK: @caller_i32.retabi
 define i256 @caller_i32.retabi(i256 %a1) nounwind {
   %ptr = bitcast i32(i256)* @i32.ret to i256*
-; CHECK: near_call r15, @i32.ret, @DEFAULT_UNWIND
+; CHECK: call r15, @i32.ret, @DEFAULT_UNWIND
   %1 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr, i256 42, i256 %a1)
   ret i256 %1
 }
 
 ; CHECK: @caller_i64.ret
 define i256 @caller_i64.ret(i256 %a1) nounwind {
-; CHECK: near_call r0, @i64.ret, @DEFAULT_UNWIND
+; CHECK: call r0, @i64.ret, @DEFAULT_UNWIND
   %1 = call i64 @i64.ret(i256 %a1)
   %2 = zext i64 %1 to i256
   ret i256 %2
@@ -266,14 +266,14 @@ define i256 @caller_i64.ret(i256 %a1) nounwind {
 ; CHECK: @caller_i64.retabi
 define i256 @caller_i64.retabi(i256 %a1) nounwind {
   %ptr = bitcast i64(i256)* @i64.ret to i256*
-; CHECK: near_call r15, @i64.ret, @DEFAULT_UNWIND
+; CHECK: call r15, @i64.ret, @DEFAULT_UNWIND
   %1 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr, i256 42, i256 %a1)
   ret i256 %1
 }
 
 ; CHECK: @caller_i128.ret
 define i256 @caller_i128.ret(i256 %a1) nounwind {
-; CHECK: near_call r0, @i128.ret
+; CHECK: call r0, @i128.ret
   %1 = call i128 @i128.ret(i256 %a1)
   %2 = zext i128 %1 to i256
   ret i256 %2
@@ -282,14 +282,14 @@ define i256 @caller_i128.ret(i256 %a1) nounwind {
 ; CHECK: @caller_i128.retabi
 define i256 @caller_i128.retabi(i256 %a1) nounwind {
   %ptr = bitcast i128(i256)* @i128.ret to i256*
-; CHECK: near_call r15, @i128.ret, @DEFAULT_UNWIND
+; CHECK: call r15, @i128.ret, @DEFAULT_UNWIND
   %1 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr, i256 42, i256 %a1)
   ret i256 %1
 }
 
 ; CHECK-LABEL: call.onestack
 define i256 @call.onestack() nounwind {
-; CHECK: context.sp r1
+; CHECK: sp r1
 ; CHECK: add 0, r0, stack[r1]
 ; CHECK: add r0, r0, r1
 ; CHECK: add r0, r0, r2
@@ -305,7 +305,7 @@ define i256 @call.onestack() nounwind {
 ; CHECK: add r0, r0, r12
 ; CHECK: add r0, r0, r13
 ; CHECK: add r0, r0, r14
-; CHECK: near_call r0, @onestack
+; CHECK: call r0, @onestack
   %1 = call i256 @onestack(i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0)
   ret i256 %1
 }
@@ -314,7 +314,7 @@ define i256 @call.onestack() nounwind {
 ; CHECK-LABEL: call.onestackabi
 define i256 @call.onestackabi() nounwind {
   %ptr = bitcast i256(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)* @onestack to i256*
-; CHECK: context.sp r1
+; CHECK: sp r1
 ; CHECK: add 0, r0, stack[r1]
 ; CHECK: add 42, r0, r15
 ; CHECK: add r0, r0, r2
@@ -330,7 +330,7 @@ define i256 @call.onestackabi() nounwind {
 ; CHECK: add r0, r0, r12
 ; CHECK: add r0, r0, r13
 ; CHECK: add r0, r0, r14
-; CHECK: near_call r15, @onestack, @DEFAULT_UNWIND
+; CHECK: call r15, @onestack, @DEFAULT_UNWIND
   %1 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr, i256 42, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0)
   ret i256 %1
 }
@@ -338,7 +338,7 @@ define i256 @call.onestackabi() nounwind {
 ; CHECK-LABEL: call.twostackabi
 define i256 @call.twostackabi() nounwind {
   %ptr = bitcast i256(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)* @twostack to i256*
-; CHECK: context.sp      r1
+; CHECK: sp r1
 ; CHECK: add 2, r0, stack[1 + r1]
 ; CHECK: add 1, r0, stack[r1]
 ; CHECK: add 42, r0, r15
@@ -355,7 +355,7 @@ define i256 @call.twostackabi() nounwind {
 ; CHECK: add r0, r0, r12
 ; CHECK: add r0, r0, r13
 ; CHECK: add r0, r0, r14
-; CHECK: near_call r15, @twostack, @DEFAULT_UNWIND
+; CHECK: call r15, @twostack, @DEFAULT_UNWIND
   %1 = call i256(i256*, i256, ...) @llvm.eravm.nearcall(i256* %ptr, i256 42, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 0, i256 1, i256 2)
   ret i256 %1
 }
@@ -386,11 +386,11 @@ define i256 @sum17(i256 %a1, i256 %a2, i256 %a3, i256 %a4, i256 %a5, i256 %a6, i
 
 ; CHECK-LABEL: checkcc
 define void @checkcc(i256 %arg) nounwind {
-; CHECK: near_call r0, @ccc, @DEFAULT_UNWIND
+; CHECK: call r0, @ccc, @DEFAULT_UNWIND
   call void @ccc(i256 %arg)
-; CHECK: near_call r0, @fastcc, @DEFAULT_UNWIND
+; CHECK: call r0, @fastcc, @DEFAULT_UNWIND
   call void @fastcc(i256 %arg)
-; CHECK: near_call r0, @coldcc, @DEFAULT_UNWIND
+; CHECK: call r0, @coldcc, @DEFAULT_UNWIND
   call void @coldcc(i256 %arg)
   ret void
 }
@@ -428,14 +428,14 @@ define i256 @callee_small_argtypes(i1 %a1, i2 %a2, i8 %a8, i16 %a16, i32 %a32, i
 ; CHECK-LABEL: fat.ptr.arg
 define void @fat.ptr.arg(i256 addrspace(3)* %ptr) {
   %slot = alloca i256 addrspace(3)*
-  ; CHECK: ptr.add r1, r0, stack-[1]
+  ; CHECK: addp r1, r0, stack-[1]
   store i256 addrspace(3)* %ptr, i256 addrspace(3)** %slot
   ret void
 }
 
 ; CHECK-LABEL: fat.ptr.call
 define void @fat.ptr.call(i256 %a1, i256 addrspace(3)* %ptr) {
-  ; CHECK: ptr.add r2, r0, r1
+  ; CHECK: addp r2, r0, r1
   call void @fat.ptr.arg(i256 addrspace(3)* %ptr)
   ret void
 }
@@ -453,7 +453,7 @@ define {i256, i256} @tworet(i256 %x1, i256 %x2, i256 %x3, i256 %x4) {
 
 ; CHECK-LABEL: tworet.call
 define i256 @tworet.call() {
-  ; CHECK: near_call r0, @tworet, @DEFAULT_UNWIND
+  ; CHECK: call r0, @tworet, @DEFAULT_UNWIND
   %res = call {i256, i256} @tworet(i256 0, i256 1, i256 2, i256 3)
   %x1 = extractvalue {i256, i256} %res, 0
   %x2 = extractvalue {i256, i256} %res, 1
@@ -465,7 +465,7 @@ define i256 @tworet.call() {
 ; CHECK-LABEL: call1.i256pabi.opaque
 define i256* @call1.i256pabi.opaque(i256 %a1, i256 %abi_data) nounwind {
 ; CHECK: add r2, r0, r15
-; CHECK: near_call r15, @onearg.i256p, @DEFAULT_UNWIND
+; CHECK: call r15, @onearg.i256p, @DEFAULT_UNWIND
   %1 = call i256 (ptr, i256, ...) @llvm.eravm.nearcall(ptr @onearg.i256p, i256 %abi_data, i256 %a1)
   %2 = inttoptr i256 %1 to i256*
   ret i256* %2
@@ -474,7 +474,7 @@ define i256* @call1.i256pabi.opaque(i256 %a1, i256 %abi_data) nounwind {
 ; CHECK-LABEL: toomanyret
 define {i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256} @toomanyret(i256 %arg1) {
   ; CHECK: add r2, r0, r1
-  ; CHECK: near_call       r0, @onearg, @DEFAULT_UNWIND
+  ; CHECK: call       r0, @onearg, @DEFAULT_UNWIND
   %x = call i256 @onearg(i256 %arg1)
   unreachable
 }

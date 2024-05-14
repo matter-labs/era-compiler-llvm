@@ -35,10 +35,10 @@ define void @add_branch_neg_1(i256 %x, i256 %y) {
 ; CHECK-NEXT:    add! r3, r2, r0
 ; CHECK-NEXT:    jump.lt @.BB1_2
 ; CHECK-NEXT:  ; %bb.1: ; %no_overflow_detected
-; CHECK-NEXT:    near_call r0, @has_no_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_no_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB1_2: ; %overflow_detected
-; CHECK-NEXT:    near_call r0, @has_overflow, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @has_overflow, @DEFAULT_UNWIND
 ; CHECK-NEXT:    ret
 entry:
   %res1 = call {i256, i1} @llvm.uadd.with.overflow.i256(i256 %x, i256 %y)

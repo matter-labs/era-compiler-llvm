@@ -13,17 +13,19 @@
 [0x00,0x00,0x00,0x00,0x00,0x03,0x04,0x17]
 [0x00,0x00,0x00,0x00,0x03,0x00,0x04,0x13]
 [0x00,0x00,0x00,0x00,0x00,0x00,0x04,0x19]
+# CHECK:  dcmt    r3, r4, r5
+# CHECK:  callp   r3, r4, r5
+# CHECK:  this    r3
+# CHECK:  par     r3
+# CHECK:  code    r3
+# CHECK:  ergs    r3
+# CHECK:  sp      r3
+# CHECK:  ldvl    r3
+# CHECK:  stvl    r3
+# CHECK:  meta    r3
+# CHECK:  inctx
+
+# Removed in VM 1.5.0
 [0x00,0x00,0x00,0x00,0x00,0x03,0x04,0x18]
-# CHECK:  log.decommit  r3, r4, r5
-# CHECK:  precompile    r3, r4, r5
-# CHECK:  context.this                  r3
-# CHECK:  context.caller                r3
-# CHECK:  context.code_source           r3
-# CHECK:  context.gas_left              r3
-# CHECK:  context.sp                    r3
-# CHECK:  context.get_context_u128      r3
-# CHECK:  context.set_context_u128      r3
-# CHECK:  context.meta                  r3
-# CHECK:  context.inc_tx_num
-# CHECK:  context.set_gas_per_pubdata   r3
+# CHECK:  stpub   r3
 

@@ -767,8 +767,8 @@ class IFarCall<EraVMOpcode opcode,
 
   string Modifiers =
       !cond(!eq({is_static, is_shard}, {0, 0}): "",
-            !eq({is_static, is_shard}, {1, 0}): ".static",
-            !eq({is_static, is_shard}, {0, 1}): ".shard",
+            !eq({is_static, is_shard}, {1, 0}): ".st",
+            !eq({is_static, is_shard}, {0, 1}): ".sh",
             !eq({is_static, is_shard}, {1, 1}): ".st.sh",
             true: ".INVALID");
   let AsmString = !strconcat(opcode.Name, Modifiers, "${cc}", "\t", asmstr);

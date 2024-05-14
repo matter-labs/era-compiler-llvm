@@ -4,18 +4,18 @@
 foo:
 
 ; mnemonics
-  ld      r3, r4
-  ld.inc  r3, r4, r5
+  ldp       r3, r4
+  ldpi      r3, r4, r5
 
-  ld.1      r3, r4
-  ld.2      r3, r4
-  ld.1.inc  r3, r4, r5
-  ld.2.inc  r3, r4, r5
+  ldm.h     r3, r4
+  ldm.ah    r3, r4
+  ldmi.h    r3, r4, r5
+  ldmi.ah   r3, r4, r5
 
-  st.1      r3, r4
-  st.2      r3, r4
-  st.1.inc  r3, r4, r5
-  st.2.inc  r3, r4, r5
+  stm.h     r3, r4
+  stm.ah    r3, r4
+  stmi.h    r3, r4, r5
+  stmi.ah   r3, r4, r5
 
   ldm.st    r3, r4
   ldmi.st   r3, r4, r5
@@ -24,30 +24,30 @@ foo:
 
 ; modifiers (condition code)
 
-  ld.lt        r3, r4
-  ld.inc.lt    r3, r4, r5
-  ld.1.lt      r3, r4
-  ld.2.lt      r3, r4
-  ld.1.inc.lt  r3, r4, r5
-  ld.2.inc.lt  r3, r4, r5
-  st.1.lt      r3, r4
-  st.2.lt      r3, r4
-  st.1.inc.lt  r3, r4, r5
-  st.2.inc.lt  r3, r4, r5
-  ldm.st.lt    r3, r4
-  ldmi.st.lt   r3, r4, r5
-  stm.st.lt    r3, r4
-  stmi.st.lt   r3, r4, r5
+  ldp.lt        r3, r4
+  ldpi.lt       r3, r4, r5
+  ldm.h.lt      r3, r4
+  ldm.ah.lt     r3, r4
+  ldmi.h.lt     r3, r4, r5
+  ldmi.ah.lt    r3, r4, r5
+  stm.h.lt      r3, r4
+  stm.ah.lt     r3, r4
+  stmi.h.lt     r3, r4, r5
+  stmi.ah.lt    r3, r4, r5
+  ldm.st.lt     r3, r4
+  ldmi.st.lt    r3, r4, r5
+  stm.st.lt     r3, r4
+  stmi.st.lt    r3, r4, r5
 
 ; operands (instructions operating on "local" heap can accept immediate addresses)
-  ld.1      42, r4
-  ld.2      42, r4
-  ld.1.inc  42, r4, r5
-  ld.2.inc  42, r4, r5
-  st.1      42, r4
-  st.2      42, r4
-  st.1.inc  42, r4, r5
-  st.2.inc  42, r4, r5
+  ldm.h     42, r4
+  ldm.ah    42, r4
+  ldmi.h    42, r4, r5
+  ldmi.ah   42, r4, r5
+  stm.h     42, r4
+  stm.ah    42, r4
+  stmi.h    42, r4, r5
+  stmi.ah   42, r4, r5
   ldm.st    42, r4
   ldmi.st   42, r4, r5
   stm.st    42, r4
@@ -57,47 +57,47 @@ foo:
 ; CHECK:  .text
 ; CHECK:foo:
 
-; CHECK:  ld   r3, r4
-; CHECK:  ld.inc       r3, r4, r5
+; CHECK:  ldp       r3, r4
+; CHECK:  ldpi      r3, r4, r5
 
-; CHECK:  ld.1 r3, r4
-; CHECK:  ld.2 r3, r4
-; CHECK:  ld.1.inc     r3, r4, r5
-; CHECK:  ld.2.inc     r3, r4, r5
+; CHECK:  ldm.h     r3, r4
+; CHECK:  ldm.ah    r3, r4
+; CHECK:  ldmi.h    r3, r4, r5
+; CHECK:  ldmi.ah   r3, r4, r5
 
-; CHECK:  st.1 r3, r4
-; CHECK:  st.2 r3, r4
-; CHECK:  st.1.inc     r3, r4, r5
-; CHECK:  st.2.inc     r3, r4, r5
+; CHECK:  stm.h     r3, r4
+; CHECK:  stm.ah    r3, r4
+; CHECK:  stmi.h    r3, r4, r5
+; CHECK:  stmi.ah   r3, r4, r5
 
 ; CHECK:  ldm.st    r3, r4
 ; CHECK:  ldmi.st   r3, r4, r5
 ; CHECK:  stm.st    r3, r4
 ; CHECK:  stmi.st   r3, r4, r5
 
-; CHECK:  ld.lt        r3, r4
-; CHECK:  ld.inc.lt    r3, r4, r5
-; CHECK:  ld.1.lt      r3, r4
-; CHECK:  ld.2.lt      r3, r4
-; CHECK:  ld.1.inc.lt  r3, r4, r5
-; CHECK:  ld.2.inc.lt  r3, r4, r5
-; CHECK:  st.1.lt      r3, r4
-; CHECK:  st.2.lt      r3, r4
-; CHECK:  st.1.inc.lt  r3, r4, r5
-; CHECK:  st.2.inc.lt  r3, r4, r5
-; CHECK:  ldm.st.lt    r3, r4
-; CHECK:  ldmi.st.lt   r3, r4, r5
-; CHECK:  stm.st.lt    r3, r4
-; CHECK:  stmi.st.lt   r3, r4, r5
+; CHECK:  ldp.lt        r3, r4
+; CHECK:  ldpi.lt       r3, r4, r5
+; CHECK:  ldm.h.lt      r3, r4
+; CHECK:  ldm.ah.lt     r3, r4
+; CHECK:  ldmi.h.lt     r3, r4, r5
+; CHECK:  ldmi.ah.lt    r3, r4, r5
+; CHECK:  stm.h.lt      r3, r4
+; CHECK:  stm.ah.lt     r3, r4
+; CHECK:  stmi.h.lt     r3, r4, r5
+; CHECK:  stmi.ah.lt    r3, r4, r5
+; CHECK:  ldm.st.lt     r3, r4
+; CHECK:  ldmi.st.lt    r3, r4, r5
+; CHECK:  stm.st.lt     r3, r4
+; CHECK:  stmi.st.lt    r3, r4, r5
 
-; CHECK:  ld.1 42, r4
-; CHECK:  ld.2 42, r4
-; CHECK:  ld.1.inc     42, r4, r5
-; CHECK:  ld.2.inc     42, r4, r5
-; CHECK:  st.1 42, r4
-; CHECK:  st.2 42, r4
-; CHECK:  st.1.inc     42, r4, r5
-; CHECK:  st.2.inc     42, r4, r5
+; CHECK:  ldm.h     42, r4
+; CHECK:  ldm.ah    42, r4
+; CHECK:  ldmi.h    42, r4, r5
+; CHECK:  ldmi.ah   42, r4, r5
+; CHECK:  stm.h     42, r4
+; CHECK:  stm.ah    42, r4
+; CHECK:  stmi.h    42, r4, r5
+; CHECK:  stmi.ah   42, r4, r5
 ; CHECK:  ldm.st    42, r4
 ; CHECK:  ldmi.st   42, r4, r5
 ; CHECK:  stm.st    42, r4
