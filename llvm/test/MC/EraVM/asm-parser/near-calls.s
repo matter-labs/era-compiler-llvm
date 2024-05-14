@@ -9,6 +9,7 @@ foo:
   near_call      r3, @callee
 ; 1-operand form
   near_call      @callee
+  near_call      r0, @callee ; the same as above
 
 ; modifiers (condition)
   near_call.lt   r3, @callee, @exception_handler
@@ -22,6 +23,7 @@ foo:
 
 ; CHECK:  near_call    r3, @callee, @exception_handler
 ; CHECK:  near_call    r3, @callee, @DEFAULT_UNWIND_DEST
+; CHECK:  near_call    @callee, @DEFAULT_UNWIND_DEST
 ; CHECK:  near_call    @callee, @DEFAULT_UNWIND_DEST
 
 ; CHECK:  near_call.lt r3, @callee, @exception_handler

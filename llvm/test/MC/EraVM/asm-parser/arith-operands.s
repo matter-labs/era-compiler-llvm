@@ -8,6 +8,7 @@ foo:
 ; src: unsigned 16-bit immediate
   add       42, r2, r3
   add       65535, r2, r3
+  add       0x4321, r2, r3
 ; src: code
   add       code[r1], r2, r3
   add       code[42], r2, r3
@@ -65,6 +66,7 @@ foo:
 ; CHECK:  add  r1, r2, r3
 ; CHECK:  add  42, r2, r3
 ; CHECK:  add  65535, r2, r3
+; CHECK:  add  17185, r2, r3
 ; CHECK:  add  code[r1], r2, r3
 ; CHECK:  add  code[r0+42], r2, r3
 ; CHECK:  add  code[r1+42], r2, r3
