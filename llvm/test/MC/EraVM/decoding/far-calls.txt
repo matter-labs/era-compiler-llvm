@@ -25,3 +25,10 @@
 # CHECK:  far_call.shard                r3, r4, 65535
 # CHECK:  far_call.delegate.shard       r3, r4, 65535
 # CHECK:  far_call.mimic.shard          r3, r4, 65535
+
+[0x00,0x00,0xff,0xff,0x00,0x43,0x04,0x24]
+[0x00,0x00,0xff,0xff,0x00,0x43,0x04,0x28]
+[0x00,0x00,0xff,0xff,0x00,0x43,0x04,0x2c]
+# CHECK:  far_call.static.shard               r3, r4, 65535
+# CHECK:  far_call.delegate.static.shard      r3, r4, 65535
+# CHECK:  far_call.mimic.static.shard         r3, r4, 65535
