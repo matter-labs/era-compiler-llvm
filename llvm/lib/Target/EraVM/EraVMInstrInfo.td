@@ -959,13 +959,13 @@ multiclass HeapLoadInc<EraVMOpcode opcode> {
 
 defm LD1 : HeapLoad<OpLoadHeap, load_heap>;
 defm LD2 : HeapLoad<OpLoadAuxHeap, load_heapaux>;
-defm LD1Inc : HeapLoadInc<OpLoadHeap>;
-defm LD2Inc : HeapLoadInc<OpLoadAuxHeap>;
+defm LD1Inc : HeapLoadInc<OpLoadHeapInc>;
+defm LD2Inc : HeapLoadInc<OpLoadAuxHeapInc>;
 
 let mayLoad = 1 in {
 def LD      : IUMAr_r<OpLoadPtr, (outs GR256:$rd0), (ins GRPTR:$rs0),
                      "$rs0, $rd0", []>;
-def LDInc   : IUMAr_rr<OpLoadPtr, (outs GR256:$rd0, GRPTR:$rd1), (ins GRPTR:$rs0),
+def LDInc   : IUMAr_rr<OpLoadPtrInc, (outs GR256:$rd0, GRPTR:$rd1), (ins GRPTR:$rs0),
                       "$rs0, $rd0, $rd1", []>;
 }
 
@@ -989,8 +989,8 @@ multiclass HeapStoreInc<EraVMOpcode opcode> {
 
 defm ST1 : HeapStore<OpStoreHeap, store_heap>;
 defm ST2 : HeapStore<OpStoreAuxHeap, store_heapaux>;
-defm ST1Inc : HeapStoreInc<OpStoreHeap>;
-defm ST2Inc : HeapStoreInc<OpStoreAuxHeap>;
+defm ST1Inc : HeapStoreInc<OpStoreHeapInc>;
+defm ST2Inc : HeapStoreInc<OpStoreAuxHeapInc>;
 
 def : MnemonicAlias<"uma.fat_ptr_read", "ld">;
 def : MnemonicAlias<"uma.fat_ptr_read.inc", "ld.inc">;

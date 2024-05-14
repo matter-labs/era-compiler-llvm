@@ -735,24 +735,22 @@ class IFarCall<EraVMOpcode opcode,
 }
 
 class IUMA<EraVMOpcode opcode,
-           SrcSpecialMode src, bit is_inc,
+           SrcSpecialMode src,
            dag outs, dag ins,
            string asmstr,
            list<dag> pattern>
   : IForm <opcode, outs, ins, asmstr, pattern> {
 
   let AsmString = !strconcat(opcode.Name,
-                             !if(is_inc, ".inc", ""),
                              "${cc}", "\t", asmstr);
-  let Opcode = UMAOpcEncoder<opcode.Encoding, opcode.BaseOpcode,
-                             src, is_inc>.Opcode;
+  let Opcode = UMAOpcEncoder<opcode.Encoding, opcode.BaseOpcode, src>.Opcode;
 }
 
 class IUMAr_r<EraVMOpcode opcode,
               dag outs, dag ins,
               string asmstr,
               list<dag> pattern>
- : IUMA<opcode, SrcSpecialReg, 0, outs, ins, asmstr, pattern> {
+ : IUMA<opcode, SrcSpecialReg, outs, ins, asmstr, pattern> {
   bits<4> rs0;
   bits<4> rd0;
 
@@ -764,7 +762,7 @@ class IUMAr_rr<EraVMOpcode opcode,
                dag outs, dag ins,
                string asmstr,
                list<dag> pattern>
- : IUMA<opcode, SrcSpecialReg, 1, outs, ins, asmstr, pattern> {
+ : IUMA<opcode, SrcSpecialReg, outs, ins, asmstr, pattern> {
   bits<4> rs0;
   bits<4> rd0;
   bits<4> rd1;
@@ -778,7 +776,7 @@ class IUMAi_r<EraVMOpcode opcode,
               dag outs, dag ins,
               string asmstr,
               list<dag> pattern>
- : IUMA<opcode, SrcSpecialImm, 0, outs, ins, asmstr, pattern> {
+ : IUMA<opcode, SrcSpecialImm, outs, ins, asmstr, pattern> {
   bits<16> addr;
   bits<4> rd0;
 
@@ -790,7 +788,7 @@ class IUMAi_rr<EraVMOpcode opcode,
                dag outs, dag ins,
                string asmstr,
                list<dag> pattern>
- : IUMA<opcode, SrcSpecialImm, 1, outs, ins, asmstr, pattern> {
+ : IUMA<opcode, SrcSpecialImm, outs, ins, asmstr, pattern> {
   bits<16> addr;
   bits<4> rd0;
   bits<4> rd1;
@@ -804,7 +802,7 @@ class IUMArr_<EraVMOpcode opcode,
               dag outs, dag ins,
               string asmstr,
               list<dag> pattern>
- : IUMA<opcode, SrcSpecialReg, 0, outs, ins, asmstr, pattern> {
+ : IUMA<opcode, SrcSpecialReg, outs, ins, asmstr, pattern> {
   bits<4> rs0;
   bits<4> rs1;
 
@@ -816,7 +814,7 @@ class IUMArr_r<EraVMOpcode opcode,
                dag outs, dag ins,
                string asmstr,
                list<dag> pattern>
- : IUMA<opcode, SrcSpecialReg, 1, outs, ins, asmstr, pattern> {
+ : IUMA<opcode, SrcSpecialReg, outs, ins, asmstr, pattern> {
   bits<4> rs0;
   bits<4> rs1;
   bits<4> rd0;
@@ -830,7 +828,7 @@ class IUMAir_<EraVMOpcode opcode,
               dag outs, dag ins,
               string asmstr,
               list<dag> pattern>
- : IUMA<opcode, SrcSpecialImm, 0, outs, ins, asmstr, pattern> {
+ : IUMA<opcode, SrcSpecialImm, outs, ins, asmstr, pattern> {
   bits<16> addr;
   bits<4> rs1;
 
@@ -842,7 +840,7 @@ class IUMAir_r<EraVMOpcode opcode,
                dag outs, dag ins,
                string asmstr,
                list<dag> pattern>
- : IUMA<opcode, SrcSpecialImm, 1, outs, ins, asmstr, pattern> {
+ : IUMA<opcode, SrcSpecialImm, outs, ins, asmstr, pattern> {
   bits<16> addr;
   bits<4> rs1;
   bits<4> rd0;
