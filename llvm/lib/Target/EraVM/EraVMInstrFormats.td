@@ -720,10 +720,13 @@ class IFarCall<EraVMOpcode opcode,
   bits<4> rs1;
   bits<16> unwind;
 
-  let AsmString = !strconcat(opcode.Name,
-                             !if(is_shard, ".shard", ""),
-                             !if(is_static, ".static", ""),
-                             "${cc}", "\t", asmstr);
+  string Modifiers =
+      !cond(!eq({is_static, is_shard}, {0, 0}): "",
+            !eq({is_static, is_shard}, {1, 0}): ".static",
+            !eq({is_static, is_shard}, {0, 1}): ".shard",
+            !eq({is_static, is_shard}, {1, 1}): ".static.shard",
+            true: ".INVALID");
+  let AsmString = !strconcat(opcode.Name, Modifiers, "${cc}", "\t", asmstr);
   let Opcode = FarCallOpcEncoder<opcode.BaseOpcode, is_shard, is_static>.Opcode;
 
   let Src0 = rs0;
