@@ -1174,7 +1174,7 @@ bool MemCpyOptPass::processMemCpyMemCpyDependence(MemCpyInst *M,
   }
 
   // EraVM local begin
-  // TODO: CPR-1418 Fix memmove lowering.
+  // memmove is more expensive for EraVM than memcpy, so don't convert for EraVM
   const Triple TT(M->getFunction()->getParent()->getTargetTriple());
   if (TT.isEraVM() && UseMemMove)
     return false;
