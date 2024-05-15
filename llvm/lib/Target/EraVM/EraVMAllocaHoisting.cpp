@@ -44,7 +44,7 @@ public:
 };
 } // namespace
 
-bool EraVMAllocaHoisting::runOnFunction(Function &function) {
+static bool runImpl(Function &function) {
   bool functionModified = false;
   Function::iterator I = function.begin();
   Instruction *firstTerminatorInst = (I++)->getTerminator();
@@ -62,6 +62,10 @@ bool EraVMAllocaHoisting::runOnFunction(Function &function) {
   return functionModified;
 }
 
+bool EraVMAllocaHoisting::runOnFunction(Function &function) {
+  return runImpl(function);
+}
+
 char EraVMAllocaHoisting::ID = 0;
 
 INITIALIZE_PASS(
@@ -71,4 +75,9 @@ INITIALIZE_PASS(
 
 FunctionPass *llvm::createEraVMAllocaHoistingPass() {
   return new EraVMAllocaHoisting;
+}
+
+PreservedAnalyses EraVMAllocaHoistingPass::run(Function &F,
+                                               FunctionAnalysisManager &AM) {
+  return runImpl(F) ? PreservedAnalyses::none() : PreservedAnalyses::all();
 }

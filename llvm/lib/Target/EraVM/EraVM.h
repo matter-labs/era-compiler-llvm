@@ -179,6 +179,11 @@ struct EraVMLowerIntrinsicsPass : PassInfoMixin<EraVMLowerIntrinsicsPass> {
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
 };
 
+struct EraVMAllocaHoistingPass : PassInfoMixin<EraVMAllocaHoistingPass> {
+  EraVMAllocaHoistingPass() = default;
+  PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
+};
+
 } // namespace llvm
 
 #endif

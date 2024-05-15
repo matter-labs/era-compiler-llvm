@@ -114,8 +114,10 @@ void EraVMTargetMachine::registerDefaultAliasAnalyses(AAManager &AAM) {
 void EraVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
   PB.registerPipelineEarlySimplificationEPCallback([](ModulePassManager &PM,
                                                       OptimizationLevel Level) {
-    if (Level != OptimizationLevel::O0)
+    if (Level != OptimizationLevel::O0) {
       PM.addPass(EraVMAlwaysInlinePass());
+      PM.addPass(createModuleToFunctionPassAdaptor(EraVMAllocaHoistingPass()));
+    }
 
     PM.addPass(EraVMLinkRuntimePass(Level));
     if (Level != OptimizationLevel::O0) {
