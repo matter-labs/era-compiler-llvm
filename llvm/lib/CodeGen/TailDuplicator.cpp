@@ -1038,9 +1038,6 @@ void TailDuplicator::appendCopies(MachineBasicBlock *MBB,
       SmallVectorImpl<std::pair<Register, RegSubRegPair>> &CopyInfos,
       SmallVectorImpl<MachineInstr*> &Copies) {
   MachineBasicBlock::iterator Loc = MBB->getFirstTerminator();
-  // EraVM local begin
-  //const MCInstrDesc &CopyD = TII->get(TargetOpcode::COPY);
-  // EraVM local end
   for (auto &CI : CopyInfos) {
     // EraVM local begin
     auto C = BuildCOPY(*MBB, Loc, DebugLoc(), TII, CI.first)
