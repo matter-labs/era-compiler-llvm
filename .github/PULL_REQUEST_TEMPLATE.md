@@ -115,11 +115,11 @@ better?
 understandable?
 - [ ] Could some comments be removed by making the code itself more readable?
 - [ ] Is there any commented-out code?
+- [ ] Have you run a spelling and grammar checker?
 
 ## Documentation
 - [ ] Is there sufficient documentation?
 - [ ] Is the ReadMe.md file up to date?
-- [ ] Have you run a spelling and grammar checker?
 
 ## Best Practices
 - [ ] Follow Single Responsibility principle?
