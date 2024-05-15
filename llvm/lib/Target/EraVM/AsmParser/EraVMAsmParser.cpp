@@ -58,8 +58,14 @@ class EraVMAsmParser : public MCTargetAsmParser {
     return MCConstantExpr::create(Value, getContext());
   }
 
+  /// Handle the ".{st,sh}" modifier of far call instructions (other
+  /// combinations do not require custom handling).
+  template <typename T>
+  bool handleStaticShardModifier(StringRef Name, SMLoc NameLoc,
+                                 OperandVector &Operands, T IsSeparatedBySpace);
   bool parseNameWithSuffixes(StringRef Name, SMLoc NameLoc,
                              OperandVector &Operands);
+
   bool parseRegOperand(OperandVector &Operands);
   OperandMatchResultTy tryParseUImm16Operand(OperandVector &Operands);
   OperandMatchResultTy tryParseJumpTargetOperand(OperandVector &Operands);
@@ -329,6 +335,44 @@ static int parseExplicitCondition(StringRef Code) {
       .Default(EraVMCC::COND_INVALID);
 }
 
+template <typename T>
+bool EraVMAsmParser::handleStaticShardModifier(StringRef Name, SMLoc NameLoc,
+                                               OperandVector &Operands,
+                                               T IsSeparatedBySpace) {
+  // Far calls can have static and shard modifiers, in any combinations.
+  // When both are used at the same time, it is written as ".{st,sh}" - in that
+  // case Name ends with "." and "{" comes as the first parsed token.
+  // No- and single-modifier variants of far calls are handled by the generic
+  // logic of parseNameWithSuffixes function: in these cases Name looks like
+  // "far_call" or "far_call.static".
+
+  if (Name != "far_call." && Name != "far_call.delegate." &&
+      Name != "far_call.mimic.")
+    return false; // Nothing to do, no errors.
+
+  // Name ends with a dot, so the next input tokens should form the "{st,sh}"
+  // modifier.
+
+  // Note: OutputTokens do not contain comma.
+  const std::array InputTokens = {"{", "st", ",", "sh", "}"};
+  const std::array OutputTokens = {"{", "st", "sh", "}"};
+
+  for (const char *In : InputTokens) {
+    if (getTok().getString() != In)
+      return TokError("'.{st,sh}' modifier expected");
+    if (IsSeparatedBySpace(getTok()))
+      return TokError("no space allowed before or inside modifier");
+    Lex();
+  }
+
+  // If the input tokens matched the expected sequence, produce the output
+  // tokens, as expected by tablegen-erated matcher code.
+  for (const char *Out : OutputTokens)
+    Operands.push_back(EraVMOperand::CreateToken(Out, NameLoc));
+
+  return false;
+}
+
 bool EraVMAsmParser::parseNameWithSuffixes(StringRef Name, SMLoc NameLoc,
                                            OperandVector &Operands) {
   // Parses "<name>[!][.<cond>]", where name includes ".s" and possibly
@@ -336,12 +380,12 @@ bool EraVMAsmParser::parseNameWithSuffixes(StringRef Name, SMLoc NameLoc,
 
   // Make sure no spaces are between the tokens.
   const char *ExpectedNextLocPtr = NameLoc.getPointer() + Name.size();
-  auto CheckNoSpaces = [&ExpectedNextLocPtr](const AsmToken &Tok) {
+  auto IsSeparatedBySpace = [&ExpectedNextLocPtr](const AsmToken &Tok) {
     if (ExpectedNextLocPtr != Tok.getLoc().getPointer())
-      return false;
+      return true;
 
     ExpectedNextLocPtr = Tok.getEndLoc().getPointer();
-    return true;
+    return false;
   };
 
   // From the lexer point of view, condition code can either be part of
@@ -367,8 +411,15 @@ bool EraVMAsmParser::parseNameWithSuffixes(StringRef Name, SMLoc NameLoc,
 
   Operands.push_back(EraVMOperand::CreateToken(Name, NameLoc));
 
+  if (CondCode == EraVMCC::COND_INVALID) {
+    // Valid CondCode at this point would mean something like
+    // far_call.lt.{st,sh}, which is not permitted.
+    if (handleStaticShardModifier(Name, NameLoc, Operands, IsSeparatedBySpace))
+      return true;
+  }
+
   if (getTok().is(AsmToken::Exclaim)) {
-    if (!CheckNoSpaces(getTok()))
+    if (IsSeparatedBySpace(getTok()))
       return TokError("unexpected whitespace before '!'");
     if (CondCode != EraVMCC::COND_INVALID)
       return TokError("unexpected '!' after condition code");
@@ -380,7 +431,7 @@ bool EraVMAsmParser::parseNameWithSuffixes(StringRef Name, SMLoc NameLoc,
   if (getTok().is(AsmToken::Identifier) &&
       getTok().getString().startswith(".") &&
       TryParseCC(getTok().getString().drop_front(1))) {
-    if (!CheckNoSpaces(getTok()))
+    if (IsSeparatedBySpace(getTok()))
       return TokError("unexpected whitespace before condition code");
     Lex(); // eat ".<cond>" token
   }
