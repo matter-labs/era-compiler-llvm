@@ -224,7 +224,8 @@ def Address_generic       : AddressSpace<"AS_GENERIC",   3>;
 def Address_code          : AddressSpace<"AS_CODE",      4>;
 def Address_storage       : AddressSpace<"AS_STORAGE",   5>;
 def Address_transient     : AddressSpace<"AS_TRANSIENT", 6>;
-def Address_max_id        : AddressSpace<"MAX_ADDRESS",  Address_transient.Id>;
+def Address_static        : AddressSpace<"AS_STATIC",    7>;
+def Address_max_id        : AddressSpace<"MAX_ADDRESS",  Address_static.Id>;
 
 def AddressSpaces : GenericEnum {
   let FilterClass = "AddressSpace";
@@ -232,7 +233,7 @@ def AddressSpaces : GenericEnum {
   let ValueField = "Id";
 }
 
-foreach as_name = [ "stack", "heap", "heapaux", "generic", "code", "storage", "transient" ] in {
+foreach as_name = [ "stack", "heap", "heapaux", "generic", "code", "storage", "transient", "static" ] in {
   defvar as = !cast<AddressSpace>("Address_"#as_name);
 
   let AddressSpaces = [as.Id] in {
@@ -960,6 +961,9 @@ defm LD2 : HeapLoad<OpLoadAuxHeap, load_heapaux>;
 defm LD1Inc : HeapLoadInc<OpLoadHeapInc>;
 defm LD2Inc : HeapLoadInc<OpLoadAuxHeapInc>;
 
+defm LDst : HeapLoad<OpStaticRead, load_static>;
+defm LDstInc : HeapLoadInc<OpStaticReadInc>;
+
 let mayLoad = 1 in {
 def LD      : IUMAr_r<OpLoadPtr, (outs GR256:$rd0), (ins GRPTR:$rs0),
                      "$rs0, $rd0", []>;
@@ -989,6 +993,9 @@ defm ST1 : HeapStore<OpStoreHeap, store_heap>;
 defm ST2 : HeapStore<OpStoreAuxHeap, store_heapaux>;
 defm ST1Inc : HeapStoreInc<OpStoreHeapInc>;
 defm ST2Inc : HeapStoreInc<OpStoreAuxHeapInc>;
+
+defm STst : HeapStore<OpStaticWrite, store_static>;
+defm STstInc : HeapStoreInc<OpStaticWriteInc>;
 
 //===----------------------------------------------------------------------===//
 // Control flow instructions
