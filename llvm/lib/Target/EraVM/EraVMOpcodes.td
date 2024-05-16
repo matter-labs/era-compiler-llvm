@@ -81,9 +81,9 @@ def RetEncoding        : OpcodeEncoding<6>; // opcode to_label ⇒ opcode + to_l
 let SrcMultiplier = 1 in
 def JumpEncoding       : OpcodeEncoding<7>; // opcode src ⇒ opcode + 1 × src
 def LoadPtrEncoding    : OpcodeEncoding<8>; // opcode inc ⇒ opcode + inc
-let SrcMultiplier = 10 in
-def HeapOpEncoding     : OpcodeEncoding<9>; // opcode src inc ⇒ opcode + 10 × src + inc
+def HeapOpEncoding     : OpcodeEncoding<9>; // opcode src_special inc ⇒ opcode + 10 × src_special + inc
 def LogEncoding        : OpcodeEncoding<10>;// opcode is_first ⇒ opcode + is_first
+def StaticOpEncoding   : OpcodeEncoding<11>;// opcode src_special inc ⇒ opcode + 2 × src_special + inc
 
 class ArithOpcEncoder<OpcodeEncoding encoding, bits<11> BaseOpcode,
                       SrcMode src, DstMode dst,
@@ -119,6 +119,7 @@ class UMAOpcEncoder<OpcodeEncoding encoding, bits<11> BaseOpcode,
   bits<11> Opcode =
     !cond(!eq(encoding, LoadPtrEncoding) : BaseOpcode,
           !eq(encoding, HeapOpEncoding)  : !add(BaseOpcode, !mul(10, src.Value)),
+          !eq(encoding, StaticOpEncoding): !add(BaseOpcode, !mul(2, src.Value)),
           true : -1);
 }
 
@@ -202,13 +203,14 @@ def OpLoadAuxHeapInc  : EraVMOpcode<"ld.2.inc", 1080, HeapOpEncoding>;
 def OpStoreAuxHeap    : EraVMOpcode<"st.2",     1081, HeapOpEncoding>; // src inc ⇒ 1081 + 10 × src + inc
 def OpStoreAuxHeapInc : EraVMOpcode<"st.2.inc", 1082, HeapOpEncoding>;
 
+def OpStaticRead        : EraVMOpcode<"ldm.st",  1096, StaticOpEncoding>; // src inc ⇒ 1096 + 2 × src + inc
+def OpStaticReadInc     : EraVMOpcode<"ldmi.st", 1097, StaticOpEncoding>;
+def OpStaticWrite       : EraVMOpcode<"stm.st",  1100, StaticOpEncoding>; // src inc ⇒ 1100 + 2 × src + inc
+def OpStaticWriteInc    : EraVMOpcode<"stmi.st", 1101, StaticOpEncoding>;
+
 def OpLoadPtr      : EraVMOpcode<"ld",     1083, LoadPtrEncoding>; // inc ⇒ 1083 + inc
 def OpLoadPtrInc   : EraVMOpcode<"ld.inc", 1084, LoadPtrEncoding>;
 
 def OpDecommit       : EraVMOpcode<"log.decommit", 1093, DirectEncoding>;
 def OpTransientLoad  : EraVMOpcode<"tload",    1094, DirectEncoding>;
 def OpTransientStore : EraVMOpcode<"tstore",   1095, DirectEncoding>;
-
-// FIXME: Add those
-// def OpStaticRead src inc ⇒ 1096 + 2 × src + inc
-// def OpStaticWrite src inc ⇒ 1100 + 2 × src + inc
