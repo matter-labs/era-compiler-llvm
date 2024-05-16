@@ -34,36 +34,12 @@ namespace EraVMCC {
 } // namespace EraVMCC
 
 namespace EraVMAS {
-// EraVM address spaces
-enum AddressSpaces {
-  AS_STACK = 0,
-  AS_HEAP = 1,
-  AS_HEAP_AUX = 2,
-  AS_GENERIC = 3,
-  AS_CODE = 4,
-  AS_STORAGE = 5,
-  AS_TRANSIENT = 6,
-  MAX_ADDRESS = AS_TRANSIENT,
-};
-} // namespace EraVMAS
 
-namespace EraVMCTX {
-// EraVM context operands
-enum Context {
-  THIS = 0,
-  CALLER = 1,
-  CODE_SOURCE = 2,
-  META = 3,
-  TX_ORIGIN = 4,
-  COINBASE = 5,
-  GAS_LEFT = 6,
-  SP = 7,
-  GET_U128 = 8,
-  SET_U128 = 9,
-  INC_CTX = 10,
-  SET_PUBDATAPRICE = 11,
-};
-} // namespace EraVMCTX
+// EraVM address spaces
+#define GET_AddressSpaces_DECL
+#include "EraVMGenSearchableTables.inc"
+
+} // namespace EraVMAS
 
 /// This namespace holds all of the target specific flags that instruction info
 /// tracks.
