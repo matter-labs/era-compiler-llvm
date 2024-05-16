@@ -212,40 +212,38 @@ def adjstackaddr : ComplexPattern<iPTR, 3, "SelectAdjStackAddr", [], []>;
 // Pattern Fragments Definitions.
 //===----------------------------------------------------------------------===//
 
-class AddressSpacesImpl {
-  int Stack = 0;
-  int Heap = 1;
-  int HeapAux = 2;
-  int Generic = 3;
-  int Code = 4;
-  int Storage = 5;
-  int Transient = 6;
+class AddressSpace<string name, int id> {
+  string Name = name;
+  int Id = id;
 }
 
-def AddrSpaces : AddressSpacesImpl;
+def Address_stack         : AddressSpace<"AS_STACK",     0>;
+def Address_heap          : AddressSpace<"AS_HEAP",      1>;
+def Address_heapaux       : AddressSpace<"AS_HEAP_AUX",  2>;
+def Address_generic       : AddressSpace<"AS_GENERIC",   3>;
+def Address_code          : AddressSpace<"AS_CODE",      4>;
+def Address_storage       : AddressSpace<"AS_STORAGE",   5>;
+def Address_transient     : AddressSpace<"AS_TRANSIENT", 6>;
+def Address_max_id        : AddressSpace<"MAX_ADDRESS",  Address_transient.Id>;
 
-class AddressSpaceList<list<int> AS> {
-  list<int> AddrSpaces = AS;
+def AddressSpaces : GenericEnum {
+  let FilterClass = "AddressSpace";
+  let NameField = "Name";
+  let ValueField = "Id";
 }
 
-def Address_stack         : AddressSpaceList<[ AddrSpaces.Stack ]>;
-def Address_heap          : AddressSpaceList<[ AddrSpaces.Heap ]>;
-def Address_heapaux       : AddressSpaceList<[ AddrSpaces.HeapAux ]>;
-def Address_generic       : AddressSpaceList<[ AddrSpaces.Generic ]>;
-def Address_code          : AddressSpaceList<[ AddrSpaces.Code ]>;
-def Address_storage       : AddressSpaceList<[ AddrSpaces.Storage ]>;
-def Address_transient     : AddressSpaceList<[ AddrSpaces.Transient ]>;
+foreach as_name = [ "stack", "heap", "heapaux", "generic", "code", "storage", "transient" ] in {
+  defvar as = !cast<AddressSpace>("Address_"#as_name);
 
-foreach as = [ "stack", "heap", "heapaux", "generic", "code", "storage", "transient" ] in {
-let AddressSpaces = !cast<AddressSpaceList>("Address_"#as).AddrSpaces in {
-def load_#as : PatFrag<(ops node:$ptr), (unindexedload node:$ptr)> {
-  let IsLoad = 1;
-}
-def store_#as : PatFrag<(ops node:$val, node:$ptr),
-                        (unindexedstore node:$val, node:$ptr)> {
-  let IsStore = 1;
-}
-}
+  let AddressSpaces = [as.Id] in {
+  def load_#as_name : PatFrag<(ops node:$ptr), (unindexedload node:$ptr)> {
+    let IsLoad = 1;
+  }
+  def store_#as_name : PatFrag<(ops node:$val, node:$ptr),
+                               (unindexedstore node:$val, node:$ptr)> {
+    let IsStore = 1;
+  }
+  }
 }
 
 //===----------------------------------------------------------------------===//
