@@ -9,9 +9,9 @@ label:
   ret
   revert
   panic
-  ret.to_label     r1, @label
-  revert.to_label  r1, @label
-  panic.to_label   r1, @label
+  ret.ok.to_label     r1, @label
+  ret.revert.to_label  r1, @label
+  ret.panic.to_label   r1, @label
 
 ; far
   ret.ok      r3
