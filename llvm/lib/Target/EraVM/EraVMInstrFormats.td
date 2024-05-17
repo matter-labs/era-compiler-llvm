@@ -152,14 +152,6 @@ include "EraVMOpcodes.td"
 //===----------------------------------------------------------------------===//
 // EraVM Instructions
 //===----------------------------------------------------------------------===//
-class RetFlags<bits<4> val> {
-  bits<4> Value = val;
-}
-
-def RFNone           : RetFlags<0b0000>;
-def RFErr            : RetFlags<0b0001>;
-def RFPanic          : RetFlags<0b0010>;
-def RFTransitRetData : RetFlags<0b0100>;
 
 // Generic EraVM instruction
 class EraVMInstruction : Instruction {
