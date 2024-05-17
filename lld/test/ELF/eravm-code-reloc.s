@@ -69,9 +69,9 @@ caller_g:
   near_call r1, @foo, @handler
   far_call  r3, r4, @foo
   jump @label
-  ret.to_label    r1, @label
-  revert.to_label r1, @label
-  panic.to_label  r1, @label
+  ret.ok.to_label    r1, @label
+  ret.revert.to_label r1, @label
+  ret.panic.to_label  r1, @label
   .globl label
 label:
   jump @jump_table[1]
@@ -113,9 +113,9 @@ caller_l:
   near_call r1, @foo_local, @handler_local
   far_call  r3, r4, @foo_local
   jump @label_local
-  ret.to_label    r1, @label_local
-  revert.to_label r1, @label_local
-  panic.to_label  r1, @label_local
+  ret.ok.to_label    r1, @label_local
+  ret.revert.to_label r1, @label_local
+  ret.panic.to_label  r1, @label_local
   .local label_local
 label_local:
   jump @jump_table_local[1]

@@ -1074,16 +1074,6 @@ def RETURN : Pseudo<(outs), (ins GR256:$rs0, pred:$cc), [(EraVMreturn GR256:$rs0
 def REVERT : Pseudo<(outs), (ins GR256:$rs0, pred:$cc), [(EraVMrevert GR256:$rs0)]>;
 }
 
-// FIXME At now, standalone assembler does not treat "ret" and "ret.ok" as
-//       *mnemonic* aliases: "ret.ok r1" is accepted, "ret" is accepted as well
-//       (as an alias to "ret.ok r1"), but "ret.ok" (without operand) is not.
-// def : MnemonicAlias<"ret", "ret.ok">;
-// def : MnemonicAlias<"revert", "ret.revert">;
-// def : MnemonicAlias<"ret.panic", "panic">;
-def : MnemonicAlias<"ret.to_label", "ret.ok.to_label">;
-def : MnemonicAlias<"revert.to_label", "ret.revert.to_label">;
-def : MnemonicAlias<"panic.to_label", "ret.panic.to_label">;
-
 //===----------------------------------------------------------------------===//
 // Constants materialization
 //===----------------------------------------------------------------------===//
