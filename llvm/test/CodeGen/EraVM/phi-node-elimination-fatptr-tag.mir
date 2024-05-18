@@ -101,7 +101,7 @@ body:             |
     %4:gr256 = COPY killed $r2
     %3:grptr = fatptr COPY killed $r1
     dead %5:gr256 = SUBrrr_v killed %4, $r0, i256 0, implicit-def $flags
-    JC %bb.2, i256 2, implicit $flags
+    JCl %bb.2, i256 2, implicit $flags
     J %bb.1
 
   bb.1.bb1:

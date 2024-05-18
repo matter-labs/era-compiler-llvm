@@ -52,7 +52,7 @@
 # CHECK-NEXT: %4:gr256, %15:gr256 = MULrrrr_s killed %14, %1, 0
 # CHECK-NEXT: %5:gr256, %16:gr256 = MULrrrr_s %3, %3, 0
 # CHECK-NEXT: %17:gr256 = SUBxrr_v i256 2, %2, i256 0, implicit-def $flags
-# CHECK-NEXT: JC %bb.2, i256 4, implicit $flags
+# CHECK-NEXT: JCl %bb.2, i256 4, implicit $flags
 # CHECK-NEXT: J %bb.3
 name:            test_no_hoist
 alignment:       1
@@ -128,7 +128,7 @@ body:             |
     %7:gr256 = COPY $r1
     %9:gr256 = ADDirr_s i256 1, $r0, 0
     %10:gr256 = SUBrrr_v %8, $r0, i256 0, implicit-def $flags
-    JC %bb.2, i256 2, implicit $flags
+    JCl %bb.2, i256 2, implicit $flags
     J %bb.1
 
   bb.1.exponent_loop_body.preheader:
@@ -154,7 +154,7 @@ body:             |
     %4:gr256, %15:gr256 = MULrrrr_s killed %14, %1, 0
     %5:gr256, %16:gr256 = MULrrrr_s %3, %3, 0
     %17:gr256 = SUBxrr_v i256 2, %2, i256 0, implicit-def $flags
-    JC %bb.2, i256 4, implicit $flags
+    JCl %bb.2, i256 4, implicit $flags
     J %bb.3
 
 ...

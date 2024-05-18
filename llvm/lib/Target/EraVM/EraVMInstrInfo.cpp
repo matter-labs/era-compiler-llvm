@@ -406,7 +406,7 @@ unsigned EraVMInstrInfo::insertBranch(
   // Conditional branch.
   unsigned Count = 0;
   auto cond_code = getImmOrCImm(Cond[0]);
-  BuildMI(&MBB, DL, get(EraVM::JC)).addMBB(TBB).addImm(cond_code);
+  BuildMI(&MBB, DL, get(EraVM::JCl)).addMBB(TBB).addImm(cond_code);
   ++Count;
 
   if (FBB) {

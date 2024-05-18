@@ -272,9 +272,10 @@ class INop<dag ins, string asmstr, list<dag> pattern>
 
 class IJump<EraVMOpcode opcode,
             SrcMode src,
-            dag ins, string asmstr, list<dag> pattern>
-  : IForm <opcode, (outs), ins, asmstr, pattern> {
+            dag outs, dag ins, string asmstr, list<dag> pattern>
+  : IForm <opcode, outs, ins, asmstr, pattern> {
 
+  let isIndirectBranch = !ne(src, SrcImm);
   let mayLoad = !or(isStackIn<src>.Value, !eq(src, SrcCodeAddr));
   let Opcode = JumpOpcEncoder<opcode.BaseOpcode, src>.Opcode;
 }

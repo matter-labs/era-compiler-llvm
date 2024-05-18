@@ -1005,34 +1005,66 @@ def : MnemonicAlias<"uma.inc.aux_heap_write", "st.2.inc">;
 // Control flow instructions
 //===----------------------------------------------------------------------===//
 // Conditional jump
-let isTerminator = 1, isBranch = 1, Uses = [Flags] in
-def JC: IJump<OpJump, SrcImm, (ins jmptarget:$dest), "$dest",
-              [(EraVMbrcc bb:$dest, imm:$cc)]> {
-  bits<16> dest;
-  let Imm0 = dest;
-}
 
-let isTerminator = 1, isBranch = 1, Uses = [Flags], isIndirectBranch = 1 in {
-def JCr: IJump<OpJump, SrcReg, (ins GR256:$dest), "$dest", []> {
+// Mix-ins: has return address operand or not.
+class JumpWithoutRetAddr {
+  bit isTerminator = 1;
+  bit isBranch = 1;
+}
+class JumpWithRetAddr {
+  bit isTerminator = 1; // May be relaxed in the future.
+  bit isBranch = 1;
+
+  bits<4> ret_addr;
+  bits<4> Dst0 = ret_addr;
+}
+// Mix-ins: specifying jump targets via different kinds of operands.
+class JumpViaReg {
   bits<4> dest;
-  let Src0 = dest;
+  bits<4> Src0 = dest;
 }
-def JCc: IJump<OpJump, SrcCodeAddr, (ins memop:$dest), "$dest", []> {
+class JumpViaLabel {
+  bits<16> dest;
+  bits<16> Imm0 = dest;
+}
+class JumpViaConst {
   bits<20> dest;
-  let Src0 = dest{3-0};
-  let Imm0 = dest{19-4};
+  bits<4> Src0 = dest{3-0};
+  bits<16> Imm0 = dest{19-4};
 }
-def JCs: IJump<OpJump, SrcStackAbsolute, (ins stackin:$dest), "$dest", []> {
-  bits<20> dest;
-  let Src0 = dest{3-0};
-  let Imm0 = dest{19-4};
-}
-}
+class JumpViaStack : JumpViaConst;
+
+// Below, two instructions are defined for each input operand kind: one with
+// a return address output operand and one without. This is because "jump" with
+// a return address operand can be used as a cheaper replacement for "call",
+// so it may be worth making it non-terminator in the future.
+
+let Uses = [Flags] in // TODO Do not set implicit use unconditionally.
+def JCl  : IJump<OpJump, SrcImm, (outs), (ins jmptarget:$dest), "$dest",
+                 [(EraVMbrcc bb:$dest, imm:$cc)]>,
+           JumpWithoutRetAddr, JumpViaLabel;
+def JClr : IJump<OpJump, SrcImm, (outs GR256:$ret_addr), (ins jmptarget:$dest), "$dest, $ret_addr", []>,
+           JumpWithRetAddr, JumpViaLabel;
+
+def JCr  : IJump<OpJump, SrcReg, (outs), (ins GR256:$dest), "$dest", []>,
+           JumpWithoutRetAddr, JumpViaReg;
+def JCrr : IJump<OpJump, SrcReg, (outs GR256:$ret_addr), (ins GR256:$dest), "$dest, $ret_addr", []>,
+           JumpWithRetAddr, JumpViaReg;
+
+def JCc  : IJump<OpJump, SrcCodeAddr, (outs), (ins memop:$dest), "$dest", []>,
+           JumpWithoutRetAddr, JumpViaConst;
+def JCcr : IJump<OpJump, SrcCodeAddr, (outs GR256:$ret_addr), (ins memop:$dest), "$dest, $ret_addr", []>,
+           JumpWithRetAddr, JumpViaConst;
+
+def JCs  : IJump<OpJump, SrcStackAbsolute, (outs), (ins stackin:$dest), "$dest", []>,
+           JumpWithoutRetAddr, JumpViaStack;
+def JCsr : IJump<OpJump, SrcStackAbsolute, (outs GR256:$ret_addr), (ins stackin:$dest), "$dest, $ret_addr", []>,
+           JumpWithRetAddr, JumpViaStack;
 
 // Unconditional jump
 let isTerminator = 1, isBranch = 1, isBarrier = 1 in {
 def J: Pseudo<(outs), (ins jmptarget:$dest), [(EraVMbrcc bb:$dest, 0)]>,
-       PseudoInstExpansion<(JC jmptarget:$dest, 0)>;
+       PseudoInstExpansion<(JCl jmptarget:$dest, 0)>;
 def J_s: Pseudo<(outs), (ins stackin:$dest), []>;
 }
 def : Pat<(br bb:$dst), (J bb:$dst)>;
@@ -1044,7 +1076,7 @@ def J_jt: Pseudo<(outs), (ins memop:$dest, pred:$cc), []>,
 // Dynamic jumps
 let isCall = 1 in
 def JCALL: Pseudo<(outs), (ins jmptarget:$dest), []>,
-           PseudoInstExpansion<(JC jmptarget:$dest, 0)>;
+           PseudoInstExpansion<(JCl jmptarget:$dest, 0)>;
 
 multiclass RetLike<EraVMOpcode opcode> {
   def r : IRet<opcode, (ins GR256:$rs0), "$rs0", []>;
