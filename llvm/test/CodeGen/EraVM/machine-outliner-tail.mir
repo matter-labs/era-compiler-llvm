@@ -74,14 +74,14 @@ body:             |
 # CHECK-LABEL: bb.0:
 # CHECK: NOPSP 2, implicit-def $sp, implicit $sp
 # CHECK-NEXT: dead $r3 = SUBrrr_v $r1, $r2, i256 0, implicit-def $flags
-# CHECK-NEXT: JC %bb.2, i256 10, implicit $flags
+# CHECK-NEXT: JCl %bb.2, i256 10, implicit $flags
 
 # CHECK-LABEL: bb.1:
 # CHECK: JCALL @OUTLINED_FUNCTION_2, implicit-def $r1, implicit $sp, implicit $r1, implicit $r2
 
 # CHECK-LABEL: bb.2:
 # CHECK: dead $r3 = SUBrrr_v $r1, $r0, i256 0, implicit-def $flags
-# CHECK-NEXT: JC %bb.4, 2, implicit $flags
+# CHECK-NEXT: JCl %bb.4, 2, implicit $flags
 
 # CHECK-LABEL: bb.3:
 # CHECK: JCALL @OUTLINED_FUNCTION_0, implicit-def $r1, implicit $sp, implicit $r0, implicit $r1, implicit $r2
@@ -95,7 +95,7 @@ body:             |
     liveins: $r1, $r2
     NOPSP 1, implicit-def $sp, implicit $sp
     dead $r3 = SUBrrr_v $r1, $r2, i256 0, implicit-def $flags
-    JC %bb.2, i256 10, implicit $flags
+    JCl %bb.2, i256 10, implicit $flags
   bb.1:
     liveins: $r1, $r2
     ADDsrs_s $sp, 0, -1, $r1, $sp, 0, -1, 0
@@ -105,7 +105,7 @@ body:             |
   bb.2:
     liveins: $r1, $r2
     dead $r3 = SUBrrr_v $r1, $r0, i256 0, implicit-def $flags
-    JC %bb.4, 2, implicit $flags
+    JCl %bb.4, 2, implicit $flags
   bb.3:
     liveins: $r1, $r2
     ADDrrs_s $r1, $r0, $sp, 0, -1, 0
