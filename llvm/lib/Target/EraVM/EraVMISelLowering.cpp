@@ -13,6 +13,7 @@
 #include "EraVMISelLowering.h"
 
 #include "EraVM.h"
+#include "EraVMInstrInfo.h"
 #include "EraVMMachineFunctionInfo.h"
 #include "EraVMSubtarget.h"
 #include "EraVMTargetMachine.h"
@@ -1331,6 +1332,42 @@ bool EraVMTargetLowering::areJTsAllowed(const Function *Fn) const {
   return TargetLowering::areJTsAllowed(Fn);
 }
 
+static bool needEarlyClobber(MachineInstr &MI) {
+  if (EraVM::isSelect(MI)) {
+    auto *StackIt = EraVMInstrInfo::getStackAccess(MI);
+    if (StackIt) {
+      MachineOperand &MO0Reg = *(StackIt + 1);
+      if (MO0Reg.isReg())
+        return true;
+
+      StackIt = EraVMInstrInfo::getSecondStackAccess(MI);
+      if (StackIt) {
+        MachineOperand &SecondMO0Reg = *(StackIt + 1);
+        if (SecondMO0Reg.isReg())
+          return true;
+      }
+    }
+
+    auto *CodeIt = EraVMInstrInfo::getCodeAccess(MI);
+    if (CodeIt) {
+      MachineOperand &MO0Reg = *CodeIt;
+      if (MO0Reg.isReg())
+        return true;
+
+      CodeIt = EraVMInstrInfo::getSecondCodeAccess(MI);
+      if (CodeIt) {
+        MachineOperand &SecondMO0Reg = *CodeIt;
+        if (SecondMO0Reg.isReg())
+          return true;
+      }
+    }
+
+    // TODO: handle COND_OF here
+  }
+
+  return false;
+}
+
 void EraVMTargetLowering::AdjustInstrPostInstrSelection(MachineInstr &MI,
                                                         SDNode *Node) const {
   assert(MI.hasPostISelHook() && "Expected instruction to have post-isel hook");
@@ -1339,4 +1376,10 @@ void EraVMTargetLowering::AdjustInstrPostInstrSelection(MachineInstr &MI,
   // attribute in IntrinsicsEraVM.td for this intrinsic.
   if (MI.getOpcode() == EraVM::CTXGasLeft)
     MI.setFlag(MachineInstr::MIFlag::NoMerge);
+
+  // Use early-clobber attribute to prevent RegAlloc from allocating same
+  // register to output register and input register.
+  if (needEarlyClobber(MI)) {
+    MI.getOperand(0).setIsEarlyClobber();
+  }
 }

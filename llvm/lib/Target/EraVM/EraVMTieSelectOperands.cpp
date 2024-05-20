@@ -52,9 +52,6 @@ private:
   bool tryPlacingTie(MachineInstr &MI, EraVM::ArgumentKind Arg) const;
 
   /// Return true if we can place a tie for the given instruction and argument.
-  /// Given that we have already handled the majority of cases for single
-  /// register operand SELECTs, we will now focus on those with a code and
-  /// register operands and two register operands.
   bool canPlaceTie(MachineInstr &MI, EraVM::ArgumentKind Arg) const;
 };
 
@@ -66,9 +63,11 @@ INITIALIZE_PASS(EraVMTieSelectOperands, DEBUG_TYPE,
 
 bool EraVMTieSelectOperands::canPlaceTie(MachineInstr &MI,
                                          EraVM::ArgumentKind Arg) const {
-  return MI.getOpcode() == EraVM::SELrrr ||
-         (MI.getOpcode() == EraVM::SELcrr && Arg == EraVM::ArgumentKind::In1) ||
-         (MI.getOpcode() == EraVM::SELrcr && Arg == EraVM::ArgumentKind::In0);
+  if (!EraVM::isSelect(MI) || MI.getOpcode() == EraVM::FATPTR_SELrrr)
+    return false;
+
+  return EraVM::argumentType(Arg, MI.getOpcode()) ==
+         EraVM::ArgumentType::Register;
 }
 
 /// Try to create an implicit tie so that the register allocator can coalesce
@@ -96,15 +95,7 @@ bool EraVMTieSelectOperands::tryPlacingTie(MachineInstr &MI,
   if (EraVM::out0Iterator(MI)->getReg().isPhysical())
     return false;
 
-  // Since RegisterCoalescer works well when we have both early clobber and
-  // explicit tied register, but not with implicit tied register, remove the
-  // early clobber flag so RegisterCoalescer can remove unneeded copies.
-  // This is safe to do because the regalloc will allocate the same register
-  // for the output and input register operand, so if there is a register in
-  // code operand, it won't be overwritten with the output register and we can
-  // do proper expansion PostRA.
-  if ((MI.getOpcode() == EraVM::SELcrr || MI.getOpcode() == EraVM::SELrcr) &&
-      EraVM::out0Iterator(MI)->isEarlyClobber())
+  if (EraVM::out0Iterator(MI)->isEarlyClobber())
     EraVM::out0Iterator(MI)->setIsEarlyClobber(false);
 
   // Add an implicit tie.

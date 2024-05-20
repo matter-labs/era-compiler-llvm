@@ -1275,3 +1275,62 @@ bool EraVMInstrInfo::updateCCCode(MachineInstr &MI,
     Opnd.setCImm(ConstantInt::get(Opnd.getCImm()->getType(), CC, false));
   return true;
 }
+
+MachineInstr::mop_iterator EraVMInstrInfo::getStackAccess(MachineInstr &MI) {
+  // check if the stack access is in input operands
+  if (EraVM::hasSRInAddressingMode(MI))
+    return EraVM::in0Iterator(MI);
+
+  // check if the stack access is in output operands
+  if (EraVM::hasSROutAddressingMode(MI))
+    return EraVM::out0Iterator(MI);
+
+  // Check if stack access is in the first operand of the select instruction.
+  const DenseSet<unsigned> In0S = {EraVM::SELsrr, EraVM::SELsir, EraVM::SELscr,
+                                   EraVM::SELssr};
+  if (In0S.count(MI.getOpcode()))
+    return EraVM::in0Iterator(MI);
+
+  // Check if stack access is in the second operand of the select instruction.
+  const DenseSet<unsigned> In1S = {EraVM::SELrsr, EraVM::SELisr, EraVM::SELcsr};
+  if (In1S.count(MI.getOpcode()))
+    return EraVM::in1Iterator(MI);
+
+  return {};
+}
+
+MachineInstr::mop_iterator
+EraVMInstrInfo::getSecondStackAccess(MachineInstr &MI) {
+  if (EraVM::hasSRInAddressingMode(MI) && EraVM::hasSROutAddressingMode(MI))
+    return EraVM::out0Iterator(MI);
+
+  if (MI.getOpcode() == EraVM::SELssr)
+    return EraVM::in1Iterator(MI);
+
+  return {};
+}
+
+MachineInstr::mop_iterator EraVMInstrInfo::getCodeAccess(MachineInstr &MI) {
+  if (EraVM::hasCRInAddressingMode(MI))
+    return EraVM::in0Iterator(MI);
+
+  // Check if code access is in the first operand of the select instruction.
+  const DenseSet<unsigned> In0C = {EraVM::SELcrr, EraVM::SELcir, EraVM::SELcsr,
+                                   EraVM::SELccr};
+  if (In0C.count(MI.getOpcode()))
+    return EraVM::in0Iterator(MI);
+
+  // Check if code access is in the second operand of the select instruction.
+  const DenseSet<unsigned> In1C = {EraVM::SELrcr, EraVM::SELicr, EraVM::SELscr};
+  if (In1C.count(MI.getOpcode()))
+    return EraVM::in1Iterator(MI);
+
+  return {};
+}
+
+MachineInstr::mop_iterator
+EraVMInstrInfo::getSecondCodeAccess(MachineInstr &MI) {
+  if (MI.getOpcode() == EraVM::SELccr)
+    return EraVM::in1Iterator(MI);
+  return {};
+}

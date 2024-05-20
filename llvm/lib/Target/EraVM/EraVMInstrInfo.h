@@ -452,6 +452,22 @@ public:
   static std::optional<EraVMCC::CondCodes>
   getReversedCondition(EraVMCC::CondCodes CC);
 
+  /// return iterator to the stack access operand of \p MI. If there is no stack
+  /// accesses, return default constructed iterator.
+  static MachineInstr::mop_iterator getStackAccess(MachineInstr &MI);
+
+  /// return iterator to the second stack access operand of \p MI. If there is
+  /// no second stack access, return default constructed iterator.
+  static MachineInstr::mop_iterator getSecondStackAccess(MachineInstr &MI);
+
+  /// return iterator to the code operand of \p MI. If there is no code operand
+  /// return default constructed iterator.
+  static MachineInstr::mop_iterator getCodeAccess(MachineInstr &MI);
+
+  /// return iterator to the second code operand of \p MI. If there is no code
+  /// operand return default constructed iterator.
+  static MachineInstr::mop_iterator getSecondCodeAccess(MachineInstr &MI);
+
   // The maximum size of a MBB that should be considered for if-conversion.
   // On EraVM, the benefit of if-conversion comes from eliminating the
   // conditional jump.

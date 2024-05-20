@@ -25,6 +25,7 @@
 #include "llvm/CodeGen/TargetInstrInfo.h"
 #include "llvm/Support/Debug.h"
 
+#include "EraVMInstrInfo.h"
 #include "EraVMSubtarget.h"
 #include "MCTargetDesc/EraVMMCTargetDesc.h"
 
@@ -59,22 +60,6 @@ private:
   /// Convert an operand of a code page accessing to cell addressing. Return
   /// true if a conversion has been done.
   void convertCodeAddressMachineInstr(MachineInstr::mop_iterator OpIt);
-
-  /// return iterator to the stack access operand of \p MI. If there is no stack
-  /// accesses, return default constructed iterator.
-  MachineInstr::mop_iterator getStackAccess(MachineInstr &MI);
-
-  /// return iterator to the second stack access operand of \p MI. If there is
-  /// no second stack access, return default constructed iterator.
-  MachineInstr::mop_iterator getSecondStackAccess(MachineInstr &MI);
-
-  /// return iterator to the code operand of \p MI. If there is no code operand
-  /// return default constructed iterator.
-  MachineInstr::mop_iterator getCodeAccess(MachineInstr &MI);
-
-  /// return iterator to the second code operand of \p MI. If there is no code
-  /// operand return default constructed iterator.
-  MachineInstr::mop_iterator getSecondCodeAccess(MachineInstr &MI);
 
   /// Fold conversion to cells with shift left: If the source of the
   /// byte-addressed pointer is from a shift left, we can simply remove the
@@ -217,12 +202,6 @@ bool EraVMBytesToCells::convertStackMachineInstr(
                         << Reg.virtRegIndex() << '\n');
       MO0Reg.ChangeToRegister(NewVR, false);
     }
-
-    // If the stack access is in select instruction, set early clobber flag
-    // to prevent regalloc from assigning output register to the same register
-    // as input register in the stack operand.
-    if (EraVM::isSelect(*MO0Reg.getParent()))
-      MO0Reg.getParent()->getOperand(0).setIsEarlyClobber();
   }
 
   // convert global and immediate offsets to cell addressing
@@ -233,65 +212,6 @@ bool EraVMBytesToCells::convertStackMachineInstr(
   if (Const.isImm() || Const.isCImm())
     Const.ChangeToImmediate(getImmOrCImm(Const) / CellSizeInBytes);
   return true;
-}
-
-MachineInstr::mop_iterator EraVMBytesToCells::getStackAccess(MachineInstr &MI) {
-  // check if the stack access is in input operands
-  if (EraVM::hasSRInAddressingMode(MI))
-    return EraVM::in0Iterator(MI);
-
-  // check if the stack access is in output operands
-  if (EraVM::hasSROutAddressingMode(MI))
-    return EraVM::out0Iterator(MI);
-
-  // Check if stack access is in the first operand of the select instruction.
-  const DenseSet<unsigned> In0S = {EraVM::SELsrr, EraVM::SELsir, EraVM::SELscr,
-                                   EraVM::SELssr};
-  if (In0S.count(MI.getOpcode()))
-    return EraVM::in0Iterator(MI);
-
-  // Check if stack access is in the second operand of the select instruction.
-  const DenseSet<unsigned> In1S = {EraVM::SELrsr, EraVM::SELisr, EraVM::SELcsr};
-  if (In1S.count(MI.getOpcode()))
-    return EraVM::in1Iterator(MI);
-
-  return {};
-}
-
-MachineInstr::mop_iterator
-EraVMBytesToCells::getSecondStackAccess(MachineInstr &MI) {
-  if (EraVM::hasSRInAddressingMode(MI) && EraVM::hasSROutAddressingMode(MI))
-    return EraVM::out0Iterator(MI);
-
-  if (MI.getOpcode() == EraVM::SELssr)
-    return EraVM::in1Iterator(MI);
-
-  return {};
-}
-
-MachineInstr::mop_iterator EraVMBytesToCells::getCodeAccess(MachineInstr &MI) {
-  if (EraVM::hasCRInAddressingMode(MI))
-    return EraVM::in0Iterator(MI);
-
-  // Check if code access is in the first operand of the select instruction.
-  const DenseSet<unsigned> In0C = {EraVM::SELcrr, EraVM::SELcir, EraVM::SELcsr,
-                                   EraVM::SELccr};
-  if (In0C.count(MI.getOpcode()))
-    return EraVM::in0Iterator(MI);
-
-  // Check if code access is in the second operand of the select instruction.
-  const DenseSet<unsigned> In1C = {EraVM::SELrcr, EraVM::SELicr, EraVM::SELscr};
-  if (In1C.count(MI.getOpcode()))
-    return EraVM::in1Iterator(MI);
-
-  return {};
-}
-
-MachineInstr::mop_iterator
-EraVMBytesToCells::getSecondCodeAccess(MachineInstr &MI) {
-  if (MI.getOpcode() == EraVM::SELccr)
-    return EraVM::in1Iterator(MI);
-  return {};
 }
 
 void EraVMBytesToCells::convertCodeAddressMachineInstr(
@@ -308,12 +228,6 @@ void EraVMBytesToCells::convertCodeAddressMachineInstr(
     const Register NewVR = convertRegisterPointerToCells(MO0Reg);
     BytesToCellsRegs[MO0Reg.getReg()] = NewVR;
     MO0Reg.ChangeToRegister(NewVR, false);
-
-    // If the code access is in select instruction, set early clobber flag
-    // to prevent regalloc from assigning output register to the same register
-    // as input register in the code operand.
-    if (EraVM::isSelect(*MO0Reg.getParent()))
-      MO0Reg.getParent()->getOperand(0).setIsEarlyClobber();
   }
 
   // if we have this kinds of pattern: `code[@var + 1 + r1]`
@@ -345,24 +259,24 @@ void EraVMBytesToCells::convertCodeAddressMachineInstr(
 }
 
 bool EraVMBytesToCells::convertCodeAccess(MachineInstr &MI) {
-  auto *CodeIt = getCodeAccess(MI);
+  auto *CodeIt = EraVMInstrInfo::getCodeAccess(MI);
   if (!CodeIt)
     return false;
 
   convertCodeAddressMachineInstr(CodeIt);
-  CodeIt = getSecondCodeAccess(MI);
+  CodeIt = EraVMInstrInfo::getSecondCodeAccess(MI);
   if (CodeIt)
     convertCodeAddressMachineInstr(CodeIt);
   return true;
 }
 
 bool EraVMBytesToCells::convertStackAccesses(MachineInstr &MI) {
-  auto *StackIt = getStackAccess(MI);
+  auto *StackIt = EraVMInstrInfo::getStackAccess(MI);
   if (!StackIt)
     return false;
 
   convertStackMachineInstr(StackIt);
-  StackIt = getSecondStackAccess(MI);
+  StackIt = EraVMInstrInfo::getSecondStackAccess(MI);
   if (StackIt)
     convertStackMachineInstr(StackIt);
   return true;
