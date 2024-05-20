@@ -239,6 +239,67 @@ add_lit_testsuite(check-llvm "Running the LLVM regression tests"
   )
 set_target_properties(check-llvm PROPERTIES FOLDER "Tests")
 
+add_lit_testsuite(verify-llvm-codegen-opt "Running CodeGen LLVM regression tests with ZKsync opt options set"
+  ${CMAKE_CURRENT_BINARY_DIR}
+  ${exclude_from_check_all}
+  PARAMS "opt=${LLVM_BINARY_DIR}/bin/opt \
+--cgp-verify-bfi-updates \
+--earlycse-debug-hash \
+--loop-distribute-verify \
+--machine-combiner-verify-pattern-order \
+--phicse-debug-hash \
+--scev-verify-ir \
+--tail-dup-verify \
+--unroll-verify-domtree \
+--verify-assumption-cache \
+--verify-analysis-invalidation \
+--verify-cfiinstrs \
+--verify-coalescing \
+--verify-dom-info \
+--verify-each \
+--verify-loop-info \
+--verify-loop-lcssa \
+--verify-machine-dom-info \
+--verify-machineinstrs \
+--verify-memoryssa \
+--verify-misched \
+--verify-regalloc \
+--verify-scev-strict \
+--vplan-verify-hcfg"
+  ARGS "--filter CodeGen"
+  DEPENDS ${LLVM_TEST_DEPENDS}
+  )
+
+add_lit_testsuite(verify-llvm-codegen-llc "Running EraVM LLVM regression tests with ZKsync llc options set"
+  ${CMAKE_CURRENT_BINARY_DIR}
+  ${exclude_from_check_all}
+  PARAMS "llc=${LLVM_BINARY_DIR}/bin/llc \
+--cgp-verify-bfi-updates \
+--compile-twice \
+--earlycse-debug-hash \
+--machine-combiner-verify-pattern-order \
+--phicse-debug-hash \
+--reassociate-geps-verify-no-dead-code \
+--safepoint-ir-verifier-print-only \
+--scev-verify-ir \
+--tail-dup-verify \
+--unroll-verify-domtree \
+--verify-regalloc"
+  ARGS "--filter CodeGen/EraVM --xfail \
+'CodeGen/EraVM/fold-similar-instructions.mir$<SEMICOLON>\
+CodeGen/EraVM/flag-setting-set-implicit-flags.ll$<SEMICOLON>\
+CodeGen/EraVM/hoist-flag-setting.mir$<SEMICOLON>\
+CodeGen/EraVM/indexed-ld-in-a-loop-bug.ll$<SEMICOLON>\
+CodeGen/EraVM/machine-outliner-tail.mir$<SEMICOLON>\
+CodeGen/EraVM/machine-outliner.mir$<SEMICOLON>\
+CodeGen/EraVM/memcpy-expansion.ll$<SEMICOLON>\
+CodeGen/EraVM/select-zero-bitrot.mir$<SEMICOLON>\
+CodeGen/EraVM/select-zero-flags.mir$<SEMICOLON>\
+CodeGen/EraVM/select_fold.mir$<SEMICOLON>\
+CodeGen/EraVM/select_tie.mir'"
+  DEPENDS ${LLVM_TEST_DEPENDS}
+  )
+
 add_lit_testsuites(LLVM ${CMAKE_CURRENT_SOURCE_DIR}
   ${exclude_from_check_all}
   DEPENDS ${LLVM_TEST_DEPENDS}
@@ -249,3 +310,8 @@ add_lit_testsuites(LLVM ${CMAKE_CURRENT_SOURCE_DIR}
 add_custom_target(check)
 add_dependencies(check check-all)
 set_target_properties(check PROPERTIES FOLDER "Tests")
+
+# Setup an alias for 'verify-llvm'.
+add_custom_target(verify-llvm DEPENDS check-llvm verify-llvm-codegen-opt verify-llvm-codegen-llc)
+add_dependencies(check-llvm verify-llvm-codegen-opt verify-llvm-codegen-llc)
+set_target_properties(verify-llvm PROPERTIES FOLDER "Tests")
