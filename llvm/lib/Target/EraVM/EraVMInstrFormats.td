@@ -264,8 +264,6 @@ class IForm <EraVMOpcode opcode,
   let UseLogicalOperandMappings = true;
 }
 
-// TODO: CPR-1360 SP change is currently only allowed in NOPs.
-// It should be fixed in accordance with the spec.
 class INop<dag ins, string asmstr, list<dag> pattern>
   : IForm <OpNoOp, (outs), ins, asmstr, pattern > {
 }
