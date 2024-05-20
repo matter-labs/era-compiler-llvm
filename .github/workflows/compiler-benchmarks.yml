@@ -33,111 +33,19 @@ on:
         required: false
         default: ""
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
+
+  # Benchmarks workflow call from the era-compiler-ci repository
+  # This is a common part of the benchmarks workflow for all repositories
+  # If you would like to make a change to the benchmarks workflow, please do it in the era-compiler-ci repository
   benchmarks:
-    strategy:
-      matrix:
-        type: ["reference", "candidate"]
-    name: ${{ matrix.type }}
-    runs-on: matterlabs-ci-runner
-    container:
-      image: matterlabs/llvm_runner:ubuntu22-llvm17-latest
-      options: -m 110g
-    env:
-      LLVM_BENCHMARK_MODE: ${{ github.event.inputs.compiler_llvm_benchmark_mode || '^M^B3' }}
-      LLVM_BENCHMARK_PATH: ${{ github.event.inputs.compiler_llvm_benchmark_path || '' }}
-    steps:
-      - name: Define branches
-        run: |
-          if [ "${{ matrix.type }}" = "candidate" ]; then
-            echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_candidate_branch || 'main' }}" >> $GITHUB_ENV
-            echo "COMPILER_LLVM_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_candidate_branch || github.head_ref }}" >> $GITHUB_ENV
-          else
-            echo "COMPILER_TESTER_BRANCH_NAME=${{ github.event.inputs.compiler_tester_reference_branch || 'main' }}" >> $GITHUB_ENV
-            echo "COMPILER_LLVM_BRANCH_NAME=${{ github.event.inputs.compiler_llvm_reference_branch || 'main' }}" >> $GITHUB_ENV
-          fi
-
-      - name: Checkout era-compiler-tester
-        uses: actions/checkout@v4
-        with:
-          repository: matter-labs/era-compiler-tester
-          ref: ${{ env.COMPILER_TESTER_BRANCH_NAME }}
-          submodules: recursive
-
-      - name: Checkout LLVM
-        uses: actions/checkout@v4
-        with:
-          path: "llvm"
-          ref: ${{ env.COMPILER_LLVM_BRANCH_NAME }}
-
-      - name: Build LLVM
-        uses: ./llvm/.github/actions/build
-        with:
-          extra-args: "\\-DLLVM_ENABLE_WERROR=On"
-          enable-assertions: true
-          debug: ${{ github.event.inputs.llvm_build_type || 'release' }}
-
-      - name: Benchmark
-        env:
-          RUST_BACKTRACE: full
-        run: |
-          export LLVM_SYS_150_PREFIX="$(pwd)/target-llvm/target-final/"
-          cargo build --verbose --release --bin 'compiler-tester'
-          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/era-compiler-solidity-*/*/Cargo.toml --target-dir './target-zksolc/'
-          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/era-compiler-vyper-*/*/Cargo.toml --target-dir './target-zkvyper/'
-          ./target/release/compiler-tester \
-            --zksolc './target-zksolc/release/zksolc' \
-            --zkvyper './target-zkvyper/release/zkvyper' \
-            --path=${{ env.LLVM_BENCHMARK_PATH }} \
-            --mode=${{ env.LLVM_BENCHMARK_MODE }} \
-            --benchmark=${{ matrix.type }}.json
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: compiler-llvm-${{ matrix.type }}-benchmark
-          path: ${{ matrix.type }}.json
-
-  analysis:
-    name: "Benchmark comparison"
-    runs-on: matterlabs-ci-runner
-    permissions:
-      pull-requests: write
-    container:
-      image: matterlabs/llvm_runner:ubuntu22-llvm17-latest
-    needs: benchmarks
-    steps:
-
-      - name: Checking out the era-compiler-tester
-        uses: actions/checkout@v4
-        with:
-          repository: matter-labs/era-compiler-tester
-          ref: ${{ github.event.inputs.compiler_tester_candidate_branch || 'main' }}
-          submodules: recursive
-
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: compiler-llvm-*
-          merge-multiple: true
-
-      - name: Comparing the LLVM framework benchmark results
-        run: |
-          cargo run --release --bin benchmark-analyzer -- \
-            --reference reference.json --candidate candidate.json --output-file result.txt
-
-      - name: Posting the LLVM benchmark results to the summary
-        run: |
-          printf "Benchmark results:\n" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat result.txt >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          cat $GITHUB_STEP_SUMMARY > result.txt
-
-      - name: Posting the LLVM benchmark results to a PR comment
-        if: github.event_name == 'pull_request'
-        uses: mshick/add-pr-comment@v2
-        with:
-          message-path: result.txt
+    uses: matter-labs/era-compiler-ci/.github/workflows/benchmarks.yml@v1
+    secrets: inherit
+    with:
+      llvm_build_type: ${{ github.event.inputs.llvm_build_type }}
+      compiler_tester_reference_branch: ${{ github.event.inputs.compiler_tester_reference_branch || 'main' }}
+      compiler_tester_candidate_branch: ${{ github.event.inputs.compiler_tester_candidate_branch || 'main' }}
+      compiler_llvm_reference_branch: ${{ github.event.inputs.compiler_llvm_reference_branch || github.event.repository.default_branch }}
+      compiler_llvm_candidate_branch: ${{ github.event.inputs.compiler_llvm_candidate_branch || github.head_ref }}
+      compiler_llvm_benchmark_mode: ${{ github.event.inputs.compiler_llvm_benchmark_mode || '^M^B3' }}
+      compiler_llvm_benchmark_path: ${{ github.event.inputs.compiler_llvm_benchmark_path || '' }}
