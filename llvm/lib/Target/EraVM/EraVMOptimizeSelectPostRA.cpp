@@ -232,8 +232,7 @@ bool EraVMOptimizeSelectPostRA::runOnMachineFunction(MachineFunction &MF) {
   for (auto [CMov, FoldInst] : Deleted) {
     LLVM_DEBUG(dbgs() << "== Folding cond move:"; CMov->dump();
                dbgs() << "                into:"; FoldInst->dump(););
-    EraVM::ccIterator(*FoldInst)->ChangeToImmediate(
-        getImmOrCImm(*EraVM::ccIterator(*CMov)));
+    TII->PredicateInstruction(*FoldInst, ArrayRef(*EraVM::ccIterator(*CMov)));
     EraVM::out0Iterator(*FoldInst)->setReg(
         EraVM::out0Iterator(*CMov)->getReg());
     CMov->eraseFromParent();

@@ -150,6 +150,17 @@ void EraVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
     llvm_unreachable("pseudo opcode found in emitInstruction()");
   }
 
+  // All non-pseudo instructions can be predicated.
+  const auto *CCOperand = EraVM::ccIterator(*MI);
+  unsigned CondCode = getImmOrCImm(*CCOperand);
+  assert(CondCode != (unsigned)EraVMCC::COND_INVALID);
+  if (CondCode && !MI->hasRegisterImplicitUseOperand(EraVM::Flags)) {
+#ifndef NDEBUG
+    MI->dump();
+#endif
+    llvm_unreachable("Predicated instruction should use Flags register");
+  }
+
   MCInstLowering.Lower(MI, TmpInst);
   EmitToStreamer(*OutStreamer, TmpInst);
 }

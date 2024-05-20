@@ -46,7 +46,7 @@
 ---
 # CHECK-LABEL: test_add_reg
 # CHECK-LABEL: bb.0:
-# CHECK: $r1 = ADDrrr_s $r1, $r1, 9
+# CHECK: $r1 = ADDrrr_s $r1, $r1, i256 9, implicit $flags
 name: test_add_reg
 tracksRegLiveness: true
 body:             |

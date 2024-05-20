@@ -1411,11 +1411,6 @@ void EraVMTargetLowering::AdjustInstrPostInstrSelection(MachineInstr &MI,
                                                         SDNode *Node) const {
   assert(MI.hasPostISelHook() && "Expected instruction to have post-isel hook");
 
-  // Set NoMerge to gasleft instructions. This has to be in sync with nomerge
-  // attribute in IntrinsicsEraVM.td for this intrinsic.
-  if (MI.getOpcode() == EraVM::CTXGasLeft)
-    MI.setFlag(MachineInstr::MIFlag::NoMerge);
-
   // The overflow LT aka COND_OF caused by uaddo and umulo hasn't reversal
   // version actually, the GE can't be used according to the spec. We need to
   // add early-clobber attribute to the output register to prevent the RegAlloc
@@ -1425,12 +1420,35 @@ void EraVMTargetLowering::AdjustInstrPostInstrSelection(MachineInstr &MI,
   // out = SELrrr i1 %ov, in0, in1, COND_OF
   //
   // when out and in0 are assigned to same register.
-  if (EraVM::isSelect(MI) &&
-      getImmOrCImm(*EraVM::ccIterator(MI)) == EraVMCC::COND_OF) {
+  if (EraVM::isSelect(MI)) {
+    if (getImmOrCImm(*EraVM::ccIterator(MI)) != EraVMCC::COND_OF)
+      return;
     assert(
         (EraVM::argumentType(EraVM::ArgumentKind::In0, MI.getOpcode()) ==
          EraVM::ArgumentType::Register) &&
         "Expect register operand for the 1st input of SELECT with overflow LT");
     EraVM::out0Iterator(MI)->setIsEarlyClobber();
+    return;
+  }
+
+  switch (MI.getOpcode()) {
+  default:
+    llvm_unreachable("Unexpected instruction passed to post-isel hook");
+  case EraVM::JCl: {
+    const auto *CCOperand = EraVM::ccIterator(MI);
+    if (getImmOrCImm(*CCOperand) == EraVMCC::COND_NONE) {
+      // Instruction is not predicated - drop implicit use of Flags register.
+      int FlagsUseIdx = MI.findRegisterUseOperandIdx(EraVM::Flags);
+      assert(FlagsUseIdx < 0 && "Conservative Uses=[Flags] expected");
+      assert(MI.getOperand(FlagsUseIdx).isImplicit());
+      MI.removeOperand(FlagsUseIdx);
+    }
+    break;
+  }
+  case EraVM::CTXGasLeft:
+    // Set NoMerge to gasleft instructions. This has to be in sync with nomerge
+    // attribute in IntrinsicsEraVM.td for this intrinsic.
+    MI.setFlag(MachineInstr::MIFlag::NoMerge);
+    break;
   }
 }
