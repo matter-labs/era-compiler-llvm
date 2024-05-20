@@ -5,80 +5,66 @@ on:
     branches:
       - main
   workflow_dispatch:
+    inputs:
+      commits-to-test:
+        description: "Number of commits to test"
+        required: true
+        default: '1'
 
 defaults:
   run:
     shell: bash
 
-# Workflow configuration
-env:
-  TEST_COMMITS_LIMIT: 25 # # of last commits to run regression tests on
+concurrency:
+  group: ${{ github.repository_id }}-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  prepare-commits:
+  prepare-test-matrix:
     runs-on: ubuntu-latest
     outputs:
-      head_ref: ${{ steps.extract_branch.outputs.head_ref }}
-      base_ref: ${{ steps.extract_branch.outputs.base_ref }}
-      base_sha: ${{ steps.prepare.outputs.base_sha }}
       matrix: ${{ steps.prepare.outputs.matrix }}
+      fetch_depth: ${{ steps.extract_branch.outputs.fetch_depth }}
+
     steps:
 
       - name: Extract branch name
         id: extract_branch
-        shell: bash
         run: |
           echo "head_ref=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" | tee -a "${GITHUB_OUTPUT}"
           echo "base_ref=${{ github.base_ref || github.event.repository.default_branch }}" | tee -a "${GITHUB_OUTPUT}"
+          echo "fetch_depth=$(( ${{ github.event.pull_request.commits || github.event.inputs.commits-to-test }} + 1 ))" | tee -a "${GITHUB_OUTPUT}"
 
       - uses: actions/checkout@v4
         with:
           ref: ${{ steps.extract_branch.outputs.head_ref }}
-
-      - name: Checkout through merge base
-        run: |
-          BASE_REF=${{ steps.extract_branch.outputs.base_ref }}
-          HEAD_REF=${{ steps.extract_branch.outputs.head_ref }}
-          DEEPEN_LENGTH=$((${TEST_COMMITS_LIMIT} + 1))
-          git fetch --progress --depth=1 origin "+refs/heads/$BASE_REF:refs/heads/$BASE_REF"
-          while [ -z "$( git merge-base "$BASE_REF" "$HEAD_REF" )" ]; do
-            git fetch -q --deepen="$DEEPEN_LENGTH" origin "$BASE_REF" "$HEAD_REF";
-          done
+          fetch-depth: ${{ github.event.pull_request.commits || github.event.inputs.commits-to-test }}
 
       - name: Prepare commits
         id: prepare
+        env:
+          TEST_COMMITS_LIMIT: 25 # Limit the number of commits to test
         run: |
-          git fetch --depth=1 origin +refs/heads/${{ steps.extract_branch.outputs.base_ref }}:refs/remotes/origin/${{ steps.extract_branch.outputs.base_ref }}
-          COMMITS_TO_TEST=$(git rev-list ${{ steps.extract_branch.outputs.base_ref }}..${{ steps.extract_branch.outputs.head_ref }} --pretty='"%H"' --no-commit-header | tail -n ${TEST_COMMITS_LIMIT})
+          COMMITS_TO_TEST=$(git log -n ${{ github.event.pull_request.commits || github.event.inputs.commits-to-test }} --pretty='"%H"' | head -n ${TEST_COMMITS_LIMIT})
           echo "matrix={ \"commit\": [${COMMITS_TO_TEST//$'\n'/, }] }" | tee -a "${GITHUB_OUTPUT}"
-          echo "base_sha=$(git rev-parse ${{ steps.extract_branch.outputs.base_ref }})" | tee -a "${GITHUB_OUTPUT}"
 
   check-formatting:
     if: github.event_name == 'pull_request'
-    runs-on: [ self-hosted, ci-runner-compiler ]
+    runs-on: ci-runner-compiler
     container:
       image: matterlabs/llvm_runner:ubuntu22-llvm17-latest
       options: -m 110g
-    needs: prepare-commits
+    needs: prepare-test-matrix
     strategy:
       fail-fast: false
       max-parallel: 3
-      matrix: ${{ fromJson(needs.prepare-commits.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.prepare-test-matrix.outputs.matrix) }}
     steps:
 
       - uses: actions/checkout@v4
         with:
           ref: ${{ matrix.commit }}
-
-      - name: Checkout through merge base
-        run: |
-          BASE_REF=${{ needs.prepare-commits.outputs.base_ref }}
-          HEAD_REF=${{ matrix.commit }}
-          DEEPEN_LENGTH=$((${TEST_COMMITS_LIMIT} + 1))
-          git fetch --progress --depth=1 origin "+refs/heads/$BASE_REF:refs/heads/$BASE_REF"
-          while [ -z "$( git merge-base "$BASE_REF" "$HEAD_REF" )" ]; do
-            git fetch -q --deepen="$DEEPEN_LENGTH" origin "$BASE_REF" "$HEAD_REF";
-          done
+          fetch-depth: ${{ needs.prepare-test-matrix.outputs.fetch_depth }}
 
       - name: Get changed files
         id: changed-files
@@ -86,40 +72,31 @@ jobs:
         with:
           separator: ","
           sha: ${{ matrix.commit }}
-          skip_initial_fetch: true
+          base_sha: ${{ github.event.pull_request.base.sha }}
 
       - name: Install formatting requirements
         run: python3 -m pip install -r ./llvm/utils/git/requirements_formatting_era_llvm.txt
 
-      - name: Install clang-format
-        uses: aminya/setup-cpp@v1
-        with:
-          clangformat: 17.0.1
-
       - name: Run code formatter
-        env:
-          GITHUB_PR_NUMBER: ${{ github.event.pull_request.number }}
-          START_REV: ${{ github.event.pull_request.base.sha }}
-          END_REV: ${{ matrix.commit }}
-          CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
         run: |
+          set -x
           python3 ./llvm/utils/git/code-format-helper-era-llvm.py \
             --token ${{ secrets.GITHUB_TOKEN }} \
-            --issue-number $GITHUB_PR_NUMBER \
-            --start-rev $(git merge-base $START_REV $END_REV) \
-            --end-rev $END_REV \
-            --changed-files "$CHANGED_FILES"
+            --issue-number ${{ github.event.pull_request.number }} \
+            --start-rev ${{ github.event.pull_request.base.sha }} \
+            --end-rev ${{ matrix.commit }} \
+            --changed-files ${{ steps.changed-files.outputs.all_changed_files }}
 
   regression-tests:
-    runs-on: [ self-hosted, ci-runner-compiler ]
+    runs-on: ci-runner-compiler
     container:
       image: matterlabs/llvm_runner:ubuntu22-llvm17-latest
       options: -m 110g
-    needs: prepare-commits
+    needs: prepare-test-matrix
     strategy:
       fail-fast: false
       max-parallel: 3
-      matrix: ${{ fromJson(needs.prepare-commits.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.prepare-test-matrix.outputs.matrix) }}
     steps:
 
       - uses: actions/checkout@v4
@@ -127,109 +104,36 @@ jobs:
           ref: ${{ matrix.commit }}
           path: "llvm"
 
-      - name: Checkout through merge base
-        working-directory: llvm
-        run: |
-          BASE_REF=${{ needs.prepare-commits.outputs.base_ref }}
-          HEAD_REF=${{ matrix.commit }}
-          DEEPEN_LENGTH=$((${TEST_COMMITS_LIMIT} + 1))
-          git fetch --progress --depth=1 origin "+refs/heads/$BASE_REF:refs/heads/$BASE_REF"
-          while [ -z "$( git merge-base "$BASE_REF" "$HEAD_REF" )" ]; do
-            git fetch -q --deepen="$DEEPEN_LENGTH" origin "$BASE_REF" "$HEAD_REF";
-          done
-
-      - name: Get changed files
-        if: github.event_name == 'pull_request'
-        id: changed-files
-        uses: tj-actions/changed-files@v39
-        with:
-          separator: ","
-          path: "llvm"
-          sha: ${{ matrix.commit }}
-          skip_initial_fetch: true
+      # Ccache will be updated each month
+      # Older caches will be deprecated automatically after 7 days of inactivity
+      - name: Define ccache key
+        id: ccache-key
+        run: echo "key=llvm-${{ github.event.repository.default_branch }}-$(date +'%Y-%m')" | tee -a "${GITHUB_OUTPUT}"
 
       - name: Build LLVM
-        uses: ./llvm/.github/actions/build
+        uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
         with:
           extra-args: "\\-DLLVM_ENABLE_WERROR=On \\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
           enable-tests: true
           enable-assertions: true
+          clone-llvm: false
+          ccache-key: ${{ steps.ccache-key.outputs.key }}
 
-      - name: Running Lit tests with default options
-        run: |
-          ninja -C './target-llvm/build-final' check-llvm
 
-      - name: Running Lit EraVM tests with llc verification options
-        env:
-          LLC_OPTS:
-            "--cgp-verify-bfi-updates \
-            --compile-twice \
-            --earlycse-debug-hash \
-            --machine-combiner-verify-pattern-order \
-            --phicse-debug-hash \
-            --reassociate-geps-verify-no-dead-code \
-            --safepoint-ir-verifier-print-only \
-            --scev-verify-ir \
-            --tail-dup-verify \
-            --unroll-verify-domtree \
-            --verify-regalloc"
-          XFAILS:
-            "CodeGen/EraVM/memcpy-expansion.ll;\
-            CodeGen/EraVM/flag-setting-set-implicit-flags.ll;\
-            CodeGen/EraVM/indexed-ld-in-a-loop-bug.ll;\
-            CodeGen/EraVM/machine-outliner.mir;\
-            CodeGen/EraVM/machine-outliner-tail.mir;\
-            CodeGen/EraVM/select_fold.mir;\
-            CodeGen/EraVM/select_tie.mir;\
-            CodeGen/EraVM/select-zero-bitrot.mir;\
-            CodeGen/EraVM/select-zero-flags.mir;\
-            CodeGen/EraVM/hoist-flag-setting.mir;\
-            CodeGen/EraVM/fold-similar-instructions.mir"
-        run: |
-          BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
-          ${BINDIR}/llvm-lit -vv -s --xfail "${XFAILS}" \
-            "-Dllc=${BINDIR}/llc ${LLC_OPTS}" './llvm/llvm/test/CodeGen/EraVM/'
-
-      - name: Running Lit tests with opt verification options
-        env:
-          OPT_OPTS:
-            "--cgp-verify-bfi-updates \
-            --earlycse-debug-hash \
-            --loop-distribute-verify \
-            --machine-combiner-verify-pattern-order \
-            --phicse-debug-hash \
-            --scev-verify-ir \
-            --tail-dup-verify \
-            --unroll-verify-domtree \
-            --verify-assumption-cache \
-            --verify-analysis-invalidation \
-            --verify-cfiinstrs \
-            --verify-coalescing \
-            --verify-dom-info \
-            --verify-each \
-            --verify-loop-info \
-            --verify-loop-lcssa \
-            --verify-machine-dom-info \
-            --verify-machineinstrs \
-            --verify-memoryssa \
-            --verify-misched \
-            --verify-regalloc \
-            --verify-scev-strict \
-            --vplan-verify-hcfg"
-        run: |
-          BINDIR=$(target-llvm/build-final/bin/llvm-config --bindir)
-          ${BINDIR}/llvm-lit -vv -s "-Dopt=${BINDIR}/opt ${OPT_OPTS}" \
-            './llvm/llvm/test/CodeGen/'
+      # `verify-llvm` is a special target that runs all the regression tests
+      # it includes `check-llvm` and special codegen tests
+      # called via `verify-llvm-codegen-opt` and `verify-llvm-codegen-llc` targets
+      - name: Running Lit tests
+        run: ninja -C './target-llvm/build-final' verify-llvm -v
 
       - name: clang-tidy
+        if: github.event_name == 'pull_request'
         working-directory: llvm
-        shell: bash
         run: |
-          set -euxo pipefail
-          BASE_REF=$(git merge-base ${{ github.event.pull_request.base.sha || needs.prepare-commits.outputs.base_sha }} ${{matrix.commit}})
-          CHANGES=$(git diff -U0 ${BASE_REF})
-          echo "Running clang-tidy on the following changes:"
-          echo "${CHANGES}"
+          git fetch --progress --depth=1 origin \
+            "+refs/heads/${{ github.event.pull_request.base.ref }}:refs/heads/${{ github.event.pull_request.base.ref }}"
+          CHANGES=$(git diff -U0 ${{ github.event.pull_request.base.sha }})
+          echo "Running clang-tidy on the following changes: ${CHANGES}"
           echo "${CHANGES}" | \
              ./clang-tools-extra/clang-tidy/tool/clang-tidy-diff_Zegar.py \
               -p1 -clang-tidy-binary $(which clang-tidy) \

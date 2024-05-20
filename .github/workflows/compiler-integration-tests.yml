@@ -7,10 +7,6 @@ on:
   pull_request:
   workflow_dispatch:
     inputs:
-      llvm_build_type:
-        description: "LLVM build type: debug | release"
-        required: true
-        default: "release"
       compiler_tester_branch:
         description: "compiler-tester branch"
         required: true
@@ -20,58 +16,19 @@ on:
         required: true
         default: "main"
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
 
-  test:
-    name: Integration tests
-    runs-on: [ self-hosted, ci-runner-compiler ]
-    container:
-      image: matterlabs/llvm_runner:ubuntu22-llvm17-latest
-      options: -m 110g
-    steps:
+  # Check for secrets leak in the repository
+  secrets-scanner:
+    uses: matter-labs/era-compiler-ci/.github/workflows/secrets-scanner.yaml@v1
+    secrets: inherit
 
-      - name: Checkout era-compiler-tester
-        uses: actions/checkout@v4
-        with:
-          repository: matter-labs/era-compiler-tester
-          ref: ${{ github.event.inputs.compiler_tester_branch || 'main' }}
-          submodules: recursive
-
-      - name: Checkout LLVM
-        uses: actions/checkout@v4
-        with:
-          path: "llvm"
-          ref: ${{ github.event.inputs.compiler_llvm_branch || github.head_ref }}
-
-      - name: Build LLVM
-        uses: ./llvm/.github/actions/build
-        with:
-          extra-args: "\\-DLLVM_ENABLE_WERROR=On \\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
-          enable-tests: true
-          enable-assertions: true
-          debug: ${{ github.event.inputs.llvm_build_type || 'release' }}
-
-      - name: Building and running the compiler tester
-        id: compiler_tester_run
-        env:
-          RUST_BACKTRACE: "full"
-        run: |
-          cargo build --verbose --release --bin 'compiler-tester'
-          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/era-compiler-solidity-*/*/Cargo.toml --target-dir './target-zksolc/'
-          cargo build --verbose --release --manifest-path /usr/local/cargo/git/checkouts/era-compiler-vyper-*/*/Cargo.toml --target-dir './target-zkvyper/'
-          ./target/release/compiler-tester \
-            --zksolc './target-zksolc/release/zksolc' \
-            --zkvyper './target-zkvyper/release/zkvyper'
-
-      - uses: 8398a7/action-slack@v3
-        if: always()
-        with:
-          status: ${{ job.status }}
-          job_name: 'Integration tests' # required if job name is explicitly set
-          fields: repo,commit,author,action,eventName,ref,workflow,job,took,pullRequest
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+  # Integration tests workflow call from the era-compiler-ci repository
+  # This is a common part of the integration tests workflow for all repositories
+  # If you would like to make a change to the integration tests workflow, please do it in the era-compiler-ci repository
+  integration-tests:
+    uses: matter-labs/era-compiler-ci/.github/workflows/integration-tests.yaml@v1
+    secrets: inherit
+    with:
+      compiler-tester-ref: ${{ github.event.inputs.compiler_tester_branch || 'main' }}
+      llvm-ref: ${{ github.event.inputs.compiler_llvm_branch || github.head_ref }}
