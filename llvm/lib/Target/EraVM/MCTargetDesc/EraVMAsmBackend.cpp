@@ -84,6 +84,7 @@ public:
     if (Kind < FirstTargetFixupKind)
       return MCAsmBackend::getFixupKindInfo(Kind);
 
+    assert(Kind - FirstTargetFixupKind < std::size(Infos));
     return Infos[Kind - FirstTargetFixupKind];
   }
 
