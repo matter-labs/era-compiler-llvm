@@ -10,7 +10,8 @@ define i256 @test_srequest_noelim(i256 %address, i256 %sig, i256 %size, ptr noal
 ; CHECK-SAME: (i256 [[ADDRESS:%.*]], i256 [[SIG:%.*]], i256 [[SIZE:%.*]], ptr noalias nocapture nofree noundef nonnull readonly align 32 [[PTR1:%.*]]) local_unnamed_addr #[[ATTR0:[0-9]+]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[VAL1:%.*]] = tail call fastcc i256 @__system_request(i256 [[ADDRESS]], i256 [[SIG]], i256 [[SIZE]], ptr noalias nocapture nofree noundef nonnull align 32 [[PTR1]])
-; CHECK-NEXT:    [[RES:%.*]] = shl nuw nsw i256 [[VAL1]], 1
+; CHECK-NEXT:    [[VAL2:%.*]] = tail call fastcc i256 @__system_request(i256 [[ADDRESS]], i256 [[SIG]], i256 [[SIZE]], ptr noalias nocapture nofree noundef nonnull align 32 [[PTR1]])
+; CHECK-NEXT:    [[RES:%.*]] = add nuw nsw i256 [[VAL2]], [[VAL1]]
 ; CHECK-NEXT:    ret i256 [[RES]]
 ;
 entry:
@@ -25,8 +26,10 @@ define i256 @test_srequest_slice_fallback_noelim(i256 %address, i256 %size, ptr 
 ; CHECK-SAME: (i256 [[ADDRESS:%.*]], i256 [[SIZE:%.*]], ptr noalias nocapture nofree noundef nonnull readonly align 32 [[PTR1:%.*]]) local_unnamed_addr #[[ATTR1:[0-9]+]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[RET1:%.*]] = tail call fastcc ptr addrspace(3) @__system_request_slice_fallback(i256 [[ADDRESS]], i256 [[SIZE]], ptr noalias nocapture nofree noundef nonnull align 32 [[PTR1]])
+; CHECK-NEXT:    [[RET2:%.*]] = tail call fastcc ptr addrspace(3) @__system_request_slice_fallback(i256 [[ADDRESS]], i256 [[SIZE]], ptr noalias nocapture nofree noundef nonnull align 32 [[PTR1]])
 ; CHECK-NEXT:    [[VAL1:%.*]] = load i256, ptr addrspace(3) [[RET1]], align 32
-; CHECK-NEXT:    [[RES:%.*]] = shl nuw nsw i256 [[VAL1]], 1
+; CHECK-NEXT:    [[VAL2:%.*]] = load i256, ptr addrspace(3) [[RET2]], align 32
+; CHECK-NEXT:    [[RES:%.*]] = add nuw nsw i256 [[VAL2]], [[VAL1]]
 ; CHECK-NEXT:    ret i256 [[RES]]
 ;
 entry:
@@ -43,7 +46,8 @@ define i256 @test_sha3_noelim1(ptr addrspace(1) nocapture %addr) {
 ; CHECK-SAME: (ptr addrspace(1) nocapture readonly [[ADDR:%.*]]) local_unnamed_addr #[[ATTR0]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    [[VAL1:%.*]] = tail call fastcc i256 @__sha3(ptr addrspace(1) [[ADDR]])
-; CHECK-NEXT:    [[RES:%.*]] = shl nuw nsw i256 [[VAL1]], 1
+; CHECK-NEXT:    [[VAL2:%.*]] = tail call fastcc i256 @__sha3(ptr addrspace(1) [[ADDR]])
+; CHECK-NEXT:    [[RES:%.*]] = add nuw nsw i256 [[VAL2]], [[VAL1]]
 ; CHECK-NEXT:    ret i256 [[RES]]
 ;
 entry:
