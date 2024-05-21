@@ -39,6 +39,20 @@ ret:
   ret i256 %phi2
 }
 
+define i256 @test_srequest_slice_fallback_noelim(i256 %address, i256 %size, ptr noalias nocapture nofree noundef nonnull align 32 %ptr1) {
+; CHECK-LABEL: @test_srequest_slice_fallback_noelim(
+; CHECK:         call ptr addrspace(3) @__system_request_slice_fallback
+; CHECK-NEXT:    call ptr addrspace(3) @__system_request_slice_fallback
+;
+entry:
+  %ret1 = call i8 addrspace(3)* @__system_request_slice_fallback(i256 %address, i256 %size, ptr noalias nocapture nofree noundef nonnull align 32 %ptr1)
+  %ret2 = call i8 addrspace(3)* @__system_request_slice_fallback(i256 %address, i256 %size, ptr noalias nocapture nofree noundef nonnull align 32 %ptr1)
+  %val1 = load i256, i8 addrspace(3)* addrspace(3)* %ret1
+  %val2 = load i256, i8 addrspace(3)* addrspace(3)* %ret2
+  %res = add nuw nsw i256 %val1, %val2
+  ret i256 %res
+}
+
 define i256 @test_sha3_noelim1(ptr addrspace(1) nocapture %addr) {
 ; CHECK-LABEL: @test_sha3_noelim1(
 ; CHECK:         call i256 @__sha3
@@ -53,6 +67,7 @@ entry:
 
 declare void @dummy()
 declare i256 @__system_request(i256, i256, i256, ptr) #0
+declare i8 addrspace(3)* @__system_request_slice_fallback(i256, i256, ptr) #0
 declare i256 @__sha3(i8 addrspace(1)* %0, i256 %1, i1 %throw_at_failure) #0
 
 attributes #0 = { argmemonly nofree null_pointer_is_valid readonly }
