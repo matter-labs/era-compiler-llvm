@@ -53,10 +53,6 @@ Register decodeGR256(const MCDisassembler *D, unsigned EncodedReg) {
 }
 
 int64_t decodeCC(unsigned EncodedCC) {
-  const unsigned EncodingForIfGTOrLT = 7;
-  if (EncodedCC == EncodingForIfGTOrLT)
-    return EraVMCC::COND_INVALID;
-
   // EraVMCC::CondCodes are defined so that enumerator values are actual
   // predicate's binary encodings.
   assert(EncodedCC < 8 && "Too wide field to decode");
