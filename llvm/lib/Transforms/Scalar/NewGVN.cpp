@@ -1629,6 +1629,16 @@ NewGVN::ExprResult NewGVN::performSymbolicCallEvaluation(Instruction *I) const {
   if (CI->isConvergent())
     return ExprResult::none();
 
+  // EraVM local begin
+  // NewGVN doesn't know how to identify preventers for the following calls, so
+  // they are handled in EraVMCSE pass.
+  if (const auto *Callee = CI->getCalledFunction())
+    if (Callee->getName() == "__system_request" ||
+        Callee->getName() == "__system_request_slice_fallback" ||
+        Callee->getName() == "__sha3")
+      return ExprResult::none();
+  // EraVM local end
+
   if (AA->doesNotAccessMemory(CI)) {
     return ExprResult::some(
         createCallExpression(CI, TOPClass->getMemoryLeader()));
