@@ -313,6 +313,19 @@ public:
                         const DebugLoc &DL,
                         int *BytesAdded = nullptr) const override;
 
+  // Return true if this is a compare instruction (sub instruction that
+  // sets flags).
+  bool analyzeCompare(const MachineInstr &MI, Register &SrcReg,
+                      Register &SrcReg2, int64_t &CmpMask,
+                      int64_t &CmpValue) const override;
+
+  // In case flags register is not used, convert compare instruction (sub
+  // instruction that sets flag) into sub instruction that does not set flags.
+  // Also, try to remove redundant compare instruction.
+  bool optimizeCompareInstr(MachineInstr &CmpInstr, Register SrcReg,
+                            Register SrcReg2, int64_t CmpMask, int64_t CmpValue,
+                            const MachineRegisterInfo *MRI) const override;
+
   int64_t getFramePoppedByCallee(const MachineInstr &I) const { return 0; }
 
   unsigned int getTailDuplicateSize(CodeGenOpt::Level OptLevel) const override;

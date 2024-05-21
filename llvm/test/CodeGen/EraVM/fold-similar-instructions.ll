@@ -7,7 +7,7 @@ target triple = "eravm"
 
 define i256 @test_large_imm_no_fold1(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_large_imm_no_fold1
-; CHECK:       add @CPI0_0[0], r1, r3
+; CHECK:       sub.s @CPI0_0[0], r1, r3
 ; CHECK-NEXT:  sub.s! @CPI0_1[0], r1, r4
 ; CHECK-NEXT:  add.lt r3, r0, r1
 ; CHECK-NEXT:  sub! r2, r0, r2
@@ -22,7 +22,7 @@ define i256 @test_large_imm_no_fold1(i256 %a, i1 %cond) {
 
 define i256 @test_large_imm_no_fold2(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_large_imm_no_fold2
-; CHECK:       add @CPI1_0[0], r1, r3
+; CHECK:       sub.s @CPI1_0[0], r1, r3
 ; CHECK-NEXT:  sub.s! @CPI1_1[0], r1, r4
 ; CHECK-NEXT:  add.lt r3, r0, r1
 ; CHECK-NEXT:  sub! r2, r0, r2
@@ -52,7 +52,7 @@ define i256 @test_small_imm_no_fold(i256 %a, i1 %cond) {
 
 define i256 @test_large_imm_ult1(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_large_imm_ult1
-; CHECK:       sub.s! @CPI3_1[0], r1, r3
+; CHECK:       sub.s! @CPI3_0[0], r1, r3
 ; CHECK-NEXT:  add.lt r3, r0, r1
 ; CHECK-NEXT:  sub! r2, r0, r2
 ; CHECK-NEXT:  add.eq r3, r0, r1
@@ -66,7 +66,7 @@ define i256 @test_large_imm_ult1(i256 %a, i1 %cond) {
 
 define i256 @test_large_imm_ult2(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_large_imm_ult2
-; CHECK:       sub.s! @CPI4_1[0], r1, r3
+; CHECK:       sub.s! @CPI4_0[0], r1, r3
 ; CHECK-NEXT:  add.lt r3, r0, r1
 ; CHECK-NEXT:  sub! r2, r0, r2
 ; CHECK-NEXT:  add.eq r3, r0, r1
@@ -81,7 +81,7 @@ define i256 @test_large_imm_ult2(i256 %a, i1 %cond) {
 ; TODO: CPR-1543 This can be folded.
 define i256 @test_large_imm_ule1(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_large_imm_ule1
-; CHECK:       add @CPI5_0[0], r1, r3
+; CHECK:       sub.s @CPI5_0[0], r1, r3
 ; CHECK-NEXT:  sub.s! @CPI5_1[0], r1, r4
 ; CHECK-NEXT:  add.lt r3, r0, r1
 ; CHECK-NEXT:  sub! r2, r0, r2
@@ -97,7 +97,7 @@ define i256 @test_large_imm_ule1(i256 %a, i1 %cond) {
 ; TODO: CPR-1543 This can be folded.
 define i256 @test_large_imm_ule2(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_large_imm_ule2
-; CHECK:       add @CPI6_0[0], r1, r3
+; CHECK:       sub.s @CPI6_0[0], r1, r3
 ; CHECK-NEXT:  sub.s! @CPI6_1[0], r1, r4
 ; CHECK-NEXT:  add.lt r3, r0, r1
 ; CHECK-NEXT:  sub! r2, r0, r2
@@ -113,7 +113,7 @@ define i256 @test_large_imm_ule2(i256 %a, i1 %cond) {
 ; TODO: CPR-1543 This can be folded.
 define i256 @test_large_imm_uge1(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_large_imm_uge1
-; CHECK:       add @CPI7_0[0], r1, r3
+; CHECK:       sub.s @CPI7_0[0], r1, r3
 ; CHECK-NEXT:  sub.s! @CPI7_1[0], r1, r4
 ; CHECK-NEXT:  add.gt r3, r0, r1
 ; CHECK-NEXT:  sub! r2, r0, r2
@@ -129,7 +129,7 @@ define i256 @test_large_imm_uge1(i256 %a, i1 %cond) {
 ; TODO: CPR-1543 This can be folded.
 define i256 @test_large_imm_uge2(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_large_imm_uge2
-; CHECK:       add @CPI8_0[0], r1, r3
+; CHECK:       sub.s @CPI8_0[0], r1, r3
 ; CHECK-NEXT:  sub.s! @CPI8_1[0], r1, r4
 ; CHECK-NEXT:  add.gt r3, r0, r1
 ; CHECK-NEXT:  sub! r2, r0, r2
