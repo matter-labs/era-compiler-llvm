@@ -202,6 +202,10 @@ std::unique_ptr<CFG> ControlFlowGraphBuilder::build(MachineFunction &MF,
 
   Result->FuncInfo.MF = &MF;
   Result->FuncInfo.Entry = &Result->getBlock(&MF.front());
+  const Function &F = MF.getFunction();
+  if (F.hasFnAttribute(Attribute::NoReturn))
+    Result->FuncInfo.CanContinue = false;
+
   for (MachineBasicBlock &MBB : MF)
     Builder.handleBasicBlock(MBB);
 
@@ -214,15 +218,15 @@ std::unique_ptr<CFG> ControlFlowGraphBuilder::build(MachineFunction &MF,
   return Result;
 }
 
-void ControlFlowGraphBuilder::handleBasicBlock(const MachineBasicBlock &MBB) {
+void ControlFlowGraphBuilder::handleBasicBlock(MachineBasicBlock &MBB) {
   CurrentBlock = &Cfg.getBlock(&MBB);
-  for (const MachineInstr &MI : MBB)
+  for (MachineInstr &MI : MBB)
     handleMachineInstr(MI);
 }
 
 void ControlFlowGraphBuilder::collectInOut(const MachineInstr &MI, Stack &Input,
                                            Stack &Output) {
-  for (const auto &MO : MI.explicit_uses()) {
+  for (const auto &MO : reverse(MI.explicit_uses())) {
     if (!MO.isReg())
       continue;
 
@@ -255,14 +259,15 @@ void ControlFlowGraphBuilder::collectInOut(const MachineInstr &MI, Stack &Input,
   }
 }
 
-void ControlFlowGraphBuilder::handleMachineInstr(const MachineInstr &MI) {
+void ControlFlowGraphBuilder::handleMachineInstr(MachineInstr &MI) {
   // First, handle instruction itself.
+  bool TerminatesOrReverts = false;
   unsigned Opc = MI.getOpcode();
   switch (Opc) {
   case EVM::ARGUMENT:
     Cfg.FuncInfo.Parameters.emplace_back(
         VariableSlot{MI.getOperand(0).getReg()});
-    break;
+    return;
   case EVM::FCALL:
     handleFunctionCall(MI);
     break;
@@ -292,12 +297,14 @@ void ControlFlowGraphBuilder::handleMachineInstr(const MachineInstr &MI) {
     [[fallthrough]];
   case EVM::INVALID:
     CurrentBlock->Exit = CFG::BasicBlock::Terminated{};
+    TerminatesOrReverts = true;
     [[fallthrough]];
   default: {
     Stack Input, Output;
     collectInOut(MI, Input, Output);
-    CurrentBlock->Operations.emplace_back(CFG::Operation{
-        std::move(Input), std::move(Output), CFG::BuiltinCall{&MI}});
+    CurrentBlock->Operations.emplace_back(
+        CFG::Operation{std::move(Input), std::move(Output),
+                       CFG::BuiltinCall{&MI, TerminatesOrReverts}});
   } break;
   }
 
@@ -342,12 +349,15 @@ void ControlFlowGraphBuilder::handleMachineInstr(const MachineInstr &MI) {
 
 void ControlFlowGraphBuilder::handleFunctionCall(const MachineInstr &MI) {
   Stack Input, Output;
-  Input.push_back(FunctionCallReturnLabelSlot{&MI});
-  collectInOut(MI, Input, Output);
   const Function *Called = getCalledFunction(MI);
+  if (!Called->hasFnAttribute(Attribute::NoReturn))
+    Input.push_back(FunctionCallReturnLabelSlot{&MI});
+  collectInOut(MI, Input, Output);
   CurrentBlock->Operations.emplace_back(CFG::Operation{
       Input, Output,
-      CFG::FunctionCall{&MI, !Called->hasFnAttribute(Attribute::NoReturn)}});
+      CFG::FunctionCall{&MI, !Called->hasFnAttribute(Attribute::NoReturn),
+                        // -1, because of the global value argument.
+                        Input.size() - 1}});
 }
 
 void ControlFlowGraphBuilder::handleReturn(const MachineInstr &MI) {

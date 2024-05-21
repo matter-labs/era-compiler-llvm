@@ -58,28 +58,11 @@ std::optional<size_t> findOffset(Range &&range, Value &&value) {
   return std::distance(begin, it);
 }
 
-template <typename T>
-iterator_range<typename T::const_iterator> take_last(const T &t, size_t N) {
-  auto It = t.end();
-  assert(N <= t.size());
+template <typename Cont>
+auto take_last(Cont &&c, size_t N) -> iterator_range<decltype(c.begin())> {
+  auto It = c.end();
   std::advance(It, -N);
-  return make_range(It, t.end());
-}
-
-template <typename Range>
-auto take_last(Range &&r,
-               size_t N) -> iterator_range<decltype(Range::begin())> {
-  auto It = r.end();
-  std::advance(It, -N);
-  return make_range(It, r.end());
-}
-
-template <typename T>
-iterator_range<typename T::const_iterator> drop_first(const T &t, size_t N) {
-  auto It = t.begin();
-  assert(N <= t.size());
-  std::advance(It, N);
-  return make_range(It, t.end());
+  return make_range(It, c.end());
 }
 
 template <typename Range>
@@ -94,6 +77,50 @@ iterator_range<typename T::const_reverse_iterator> get_reverse(const T &t) {
   return llvm::make_range(t.rbegin(), t.rend());
 }
 
+// Returns a pointer to the entry of @a Map at @a Key,
+// if there is one, and nullptr otherwise.
+template <typename MapType, typename KeyType>
+decltype(auto) valueOrNullptr(MapType &&Map, KeyType const &Key) {
+  auto it = Map.find(Key);
+  return (it == Map.end()) ? nullptr : &it->second;
+}
+
+template <typename Rng> auto to_vector(Rng &&r) {
+  std::vector<typename decltype(r.begin())::value_type> c;
+  c.assign(r.begin(), r.end());
+  return c;
+}
+
+/// RAII utility class whose destructor calls a given function.
+class ScopeGuard {
+public:
+  explicit ScopeGuard(std::function<void(void)> Func) : Func(std::move(Func)) {}
+  ~ScopeGuard() { Func(); }
+
+private:
+  std::function<void(void)> Func;
+};
+/*
+/// RAII utility class that sets the value of a variable for the current scope
+/// and restores it to its old value during its destructor.
+template<typename V>
+class ScopedSaveAndRestore {
+public:
+  explicit ScopedSaveAndRestore(V& _variable, V&& _value)
+    : m_variable(_variable), m_oldValue(std::move(_value)) {
+        std::swap(m_variable, m_oldValue);
+  }
+  ScopedSaveAndRestore(ScopedSaveAndRestore const&) = delete;
+  ScopedSaveAndRestore& operator=(ScopedSaveAndRestore const&) = delete;
+  ~ScopedSaveAndRestore() {
+    std::swap(m_variable, m_oldValue);
+  }
+
+private:
+  V& m_variable;
+  V m_oldValue;
+};
+*/
 template <typename T, typename Value>
 void push_if_noexist(T &t, Value &&value) {
   if (t.end() == std::find(t.begin(), t.end(), value))

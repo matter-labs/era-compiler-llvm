@@ -142,19 +142,23 @@ struct CFG {
   ~CFG() = default;
 
   struct BuiltinCall {
-    const MachineInstr *Builtin;
+    MachineInstr *Builtin;
     /// Number of proper arguments with a position on the stack, excluding
     /// literal arguments. Literal arguments (like the literal string in
     /// ``datasize``) do not have a location on the stack, but are handled
     /// internally by the builtin's code generation function.
     // TODO: figure out what to do with this.
-    size_t Arguments = 0;
+    bool TerminatesOrReverts = false;
+    // size_t NumArguments = 0;
+    // size_t NumResults = 0;
   };
 
   struct FunctionCall {
     const MachineInstr *Call;
     /// True, if the call can return.
     bool CanContinue = true;
+    size_t NumArguments = 0;
+    // size_t NumResults = 0;
   };
 
   struct Assignment {
@@ -198,7 +202,7 @@ struct CFG {
 
     struct Terminated {};
 
-    const MachineBasicBlock *MBB;
+    MachineBasicBlock *MBB;
     std::vector<BasicBlock *> Entries;
     std::vector<Operation> Operations;
     /// True, if the block is the beginning of a disconnected subgraph. That is,
@@ -237,7 +241,7 @@ struct CFG {
     return *It->second;
   }
 
-  void createBlock(const MachineBasicBlock *MBB) {
+  void createBlock(MachineBasicBlock *MBB) {
     auto It = MachineBBToBB.find(MBB);
     if (It == MachineBBToBB.end()) {
       BasicBlock &Block = Blocks.emplace_back(BasicBlock{MBB, {}, {}});

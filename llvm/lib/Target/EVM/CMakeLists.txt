@@ -20,6 +20,7 @@ add_llvm_target(EVMCodeGen
   EVMAllocaHoisting.cpp
   EVMArgumentMove.cpp
   EVMAsmPrinter.cpp
+  EVMAssembly.cpp
   EVMCodegenPrepare.cpp
   EVMControlFlowGraphBuilder.cpp
   EVMFrameLowering.cpp
@@ -31,6 +32,7 @@ add_llvm_target(EVMCodeGen
   EVMMachineFunctionInfo.cpp
   EVMMCInstLower.cpp
   EVMOptimizeLiveIntervals.cpp
+  EVMOptimizedCodeTransform.cpp
   EVMRegColoring.cpp
   EVMRegisterInfo.cpp
   EVMSingleUseExpression.cpp

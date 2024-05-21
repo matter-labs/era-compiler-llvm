@@ -37,8 +37,8 @@ private:
                           const LiveIntervals &LIS, MachineLoopInfo *MLI)
       : Cfg(Cfg), MF(MF), LIS(LIS), MLI(MLI) {}
 
-  void handleBasicBlock(const MachineBasicBlock &MBB);
-  void handleMachineInstr(const MachineInstr &MI);
+  void handleBasicBlock(MachineBasicBlock &MBB);
+  void handleMachineInstr(MachineInstr &MI);
   void handleFunctionCall(const MachineInstr &MI);
   void handleReturn(const MachineInstr &MI);
   void handleBasicBlockSuccessors(MachineBasicBlock &MBB);

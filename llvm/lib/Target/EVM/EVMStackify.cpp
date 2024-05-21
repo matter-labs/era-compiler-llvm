@@ -165,8 +165,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVM.h"
+#include "EVMAssembly.h"
 #include "EVMControlFlowGraphBuilder.h"
 #include "EVMMachineFunctionInfo.h"
+#include "EVMOptimizedCodeTransform.h"
 #include "EVMStackLayoutGenerator.h"
 #include "EVMSubtarget.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
@@ -1169,19 +1171,9 @@ bool EVMStackify::runOnMachineFunction(MachineFunction &MF) {
 
   assert(MRI.tracksLiveness() && "Stackify expects liveness");
 
-  std::unique_ptr<CFG> Cfg = ControlFlowGraphBuilder::build(MF, LIS, MLI);
-  SmallString<1024> StringBuf;
-  llvm::raw_svector_ostream OStream(StringBuf);
-  ControlFlowGraphPrinter CfgPrinter(OStream);
-  CfgPrinter(*Cfg);
-  // LLVM_DEBUG(dbgs() << StringBuf << '\n');
-  StackLayout stackLayout = StackLayoutGenerator::run(*Cfg);
-  // std::string Out = StackLayoutGenerator::Test(&MF.front());
-  OStream << "*** Stack layout ***\n";
-  StackLayoutPrinter LayoutPrinter{OStream, stackLayout};
-  LayoutPrinter(Cfg->FuncInfo);
-  LLVM_DEBUG(dbgs() << StringBuf << "\n");
-  // return true;
+  EVMAssembly Assembly(&MF, TII);
+  EVMOptimizedCodeTransform::run(Assembly, MF, LIS, MLI);
+  return true;
 
   LLVM_DEBUG(dbgs() << "ALL register intervals:\n");
   for (unsigned I = 0; I < MRI.getNumVirtRegs(); ++I) {
