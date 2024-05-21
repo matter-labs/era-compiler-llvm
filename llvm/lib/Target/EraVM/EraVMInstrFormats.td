@@ -216,13 +216,14 @@ def pred : PredicateOperand<i256, (ops i256imm), (ops (i256 0))> {
 class EraVMCondCode<int val> {
   int Encoding = val;
 }
-def COND_NONE : EraVMCondCode<0>;
-def COND_GT   : EraVMCondCode<1>;
-def COND_LT   : EraVMCondCode<2>;
-def COND_E    : EraVMCondCode<3>;
-def COND_GE   : EraVMCondCode<4>;
-def COND_LE   : EraVMCondCode<5>;
-def COND_NE   : EraVMCondCode<6>;
+def COND_NONE    : EraVMCondCode<0>;
+def COND_GT      : EraVMCondCode<1>;
+def COND_LT      : EraVMCondCode<2>;
+def COND_E       : EraVMCondCode<3>;
+def COND_GE      : EraVMCondCode<4>;
+def COND_LE      : EraVMCondCode<5>;
+def COND_NE      : EraVMCondCode<6>;
+def COND_GTOrLT  : EraVMCondCode<7>;
 def COND_INVALID : EraVMCondCode<-1>;
 
 def CondCodes : GenericEnum {
