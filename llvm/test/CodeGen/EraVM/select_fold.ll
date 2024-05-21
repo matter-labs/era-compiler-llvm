@@ -18,7 +18,7 @@ define i256 @test_add_code(i256 %0, i256 %1) {
 ; CHECK-NEXT:  .BB0_3: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r3
-; CHECK-NEXT:    add.ne @CPI0_0[0], r1, r1
+; CHECK-NEXT:    sub.s.ne @CPI0_0[0], r1, r1
 ; CHECK-NEXT:    shr.s 1, r1, r1
 ; CHECK-NEXT:    sub! r2, r0, r3
 ; CHECK-NEXT:    jump.eq @.BB0_3
@@ -264,7 +264,7 @@ define i256 @test_sub_code(i256 %0, i256 %1) {
 ; CHECK-NEXT:  .BB6_3: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r3
-; CHECK-NEXT:    add.ne @CPI6_0[0], r1, r1
+; CHECK-NEXT:    sub.s.ne @CPI6_0[0], r1, r1
 ; CHECK-NEXT:    shr.s 1, r1, r1
 ; CHECK-NEXT:    sub! r2, r0, r3
 ; CHECK-NEXT:    jump.eq @.BB6_3

@@ -41,7 +41,6 @@ EraVMRegisterInfo::getCalleeSavedRegs(const MachineFunction *MF) const {
 BitVector EraVMRegisterInfo::getReservedRegs(const MachineFunction &MF) const {
   BitVector Reserved(getNumRegs());
   Reserved.set(EraVM::SP);
-  Reserved.set(EraVM::Flags);
   Reserved.set(EraVM::R0);
   return Reserved;
 }

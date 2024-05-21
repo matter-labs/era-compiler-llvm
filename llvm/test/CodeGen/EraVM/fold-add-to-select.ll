@@ -12,7 +12,7 @@ define i256 @test_large_imm1(i256 %a) {
 ; CHECK-LABEL: test_large_imm1:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub.s! @CPI0_1[0], r1, r2
-; CHECK-NEXT:    add.lt @CPI0_0[0], r1, r1
+; CHECK-NEXT:    sub.s.lt @CPI0_0[0], r1, r1
 ; CHECK-NEXT:    ret
   %add = add i256 %a, 26959946660873538059280334323183841250350249843923952699046031785980
   %cmp = icmp ult i256 %a, -26959946660873538059280334323183841250350249843923952699046031785985
@@ -24,7 +24,7 @@ define i256 @test_large_imm2(i256 %a) {
 ; CHECK-LABEL: test_large_imm2:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub.s! @CPI1_1[0], r1, r2
-; CHECK-NEXT:    add.lt @CPI1_0[0], r1, r1
+; CHECK-NEXT:    sub.s.lt @CPI1_0[0], r1, r1
 ; CHECK-NEXT:    ret
   %add = add i256 %a, -26959946660873538059280334323183841250350249843923952699046031785985
   %cmp = icmp ult i256 %a, 26959946660873538059280334323183841250350249843923952699046031785980
@@ -36,7 +36,7 @@ define i256 @test_large_imm3(i256 %a) {
 ; CHECK-LABEL: test_large_imm3:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub.s! @CPI2_1[0], r1, r2
-; CHECK-NEXT:    add.ge @CPI2_0[0], r1, r1
+; CHECK-NEXT:    sub.s.ge @CPI2_0[0], r1, r1
 ; CHECK-NEXT:    ret
   %add = add i256 %a, 26959946660873538059280334323183841250350249843923952699046031785980
   %cmp = icmp ult i256 %a, -26959946660873538059280334323183841250350249843923952699046031785985
@@ -48,7 +48,7 @@ define i256 @test_large_imm4(i256 %a) {
 ; CHECK-LABEL: test_large_imm4:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub.s! @CPI3_1[0], r1, r2
-; CHECK-NEXT:    add.ge @CPI3_0[0], r1, r1
+; CHECK-NEXT:    sub.s.ge @CPI3_0[0], r1, r1
 ; CHECK-NEXT:    ret
   %add = add i256 %a, -26959946660873538059280334323183841250350249843923952699046031785985
   %cmp = icmp ult i256 %a, 26959946660873538059280334323183841250350249843923952699046031785980
@@ -253,7 +253,7 @@ define i256 @test_use_in_other_bb(i256 %a, i1 %cond) {
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB18_2: ; %else
 ; CHECK-NEXT:    sub.s! @CPI18_1[0], r1, r2
-; CHECK-NEXT:    add.lt @CPI18_0[0], r1, r1
+; CHECK-NEXT:    sub.s.lt @CPI18_0[0], r1, r1
 ; CHECK-NEXT:    ret
   %add = add i256 %a, 26959946660873538059280334323183841250350249843923952699046031785980
   br i1 %cond, label %then, label %else

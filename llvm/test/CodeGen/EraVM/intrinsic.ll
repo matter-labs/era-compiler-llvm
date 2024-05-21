@@ -1,4 +1,5 @@
-; RUN: opt -O3 < %s | llc | FileCheck %s
+; RUN: opt -O3 < %s | llc --verify-regalloc=false | FileCheck %s
+; Don't verify regalloc, because there is no definition of flags register in flags intrinsics functions (e.g. ifeqrr).
 
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm"

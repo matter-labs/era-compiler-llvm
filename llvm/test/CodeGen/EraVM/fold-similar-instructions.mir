@@ -170,7 +170,7 @@ frameInfo:
 machineFunctionInfo: {}
 body:             |
   bb.0:
-    liveins: $r1, $r2
+    liveins: $r1, $r2, $flags
 
     %0:gr256 = COPY killed $r1
     %1:gr256 = COPY killed $r2
@@ -305,7 +305,7 @@ frameInfo:
 machineFunctionInfo: {}
 body:             |
   bb.0:
-    liveins: $r1, $r2
+    liveins: $r1, $r2, $flags
 
     %0:gr256 = COPY killed $r1
     %1:gr256 = COPY killed $r2
