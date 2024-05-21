@@ -375,7 +375,7 @@ define i1 @NoCombine(i256 %p1, i1 %sel, i256 %random) nounwind {
   %val = load i256, i256* %valptr
   %p2 =  xor i256 %val, %p1
 ; We cannot combine xor with icmp because `select` will overwrite flags
-; CHECK: xor stack-[1], r{{[0-9]+}}, r{{[0-9]+}}
+; CHECK: xor.eq stack-[1], r{{[0-9]+}}, r{{[0-9]+}}
   %s = select i1 %sel, i256 %p1, i256 %p2
   %cmp = icmp eq i256 %s, 0
   ret i1 %cmp

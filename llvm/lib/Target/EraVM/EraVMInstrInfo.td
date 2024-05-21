@@ -202,6 +202,13 @@ def constant_pool : SDNodeXForm<imm, [{
   return CurDAG->getTargetConstantPool(N->getConstantIntValue(), PtrVT);
 }]>;
 
+def negate_constant_pool : SDNodeXForm<imm, [{
+  APInt Val = -N->getAPIntValue();
+  const Constant *C = ConstantInt::get(*CurDAG->getContext(), Val);
+  MVT PtrVT = getTargetLowering()->getPointerTy(CurDAG->getDataLayout());
+  return CurDAG->getTargetConstantPool(C, PtrVT);
+}]>;
+
 //===----------------------------------------------------------------------===//
 // Complex Pattern Definitions.
 //===----------------------------------------------------------------------===//
@@ -616,7 +623,7 @@ multiclass ArithINonCommutable<EraVMOpcode opcode, SDPatternOperator node> : Ari
   }
 
   // non-commutative: irr_s -> crr_s
-  def : Pat<(node GR256:$rs1, large_imm:$imm),
+  def : Pat<(node large_imm:$imm, GR256:$rs1),
             (!cast<Instruction>(NAME # crr_s) (constant_pool imm:$imm), 0, GR256:$rs1, 0)>;
 
   // xrr_s -> yrr_s
@@ -624,7 +631,7 @@ multiclass ArithINonCommutable<EraVMOpcode opcode, SDPatternOperator node> : Ari
             (!cast<Instruction>(NAME # yrr_s) (constant_pool imm:$imm), 0, GR256:$rs1, 0)>;
 
   // non-commutative: irs_s -> crs_s
-  def : Pat<(store_stack (node GR256:$rs1, large_imm:$imm), stackaddr:$dst0),
+  def : Pat<(store_stack (node large_imm:$imm, GR256:$rs1), stackaddr:$dst0),
             (!cast<Instruction>(NAME # crs_s) (constant_pool imm:$imm), 0, GR256:$rs1, stackaddr:$dst0, 0)>;
 
   // xrs_s -> yrs_s
@@ -939,6 +946,22 @@ def : Pat<(store_stack GRPTR:$src, stackaddr:$dst),  (PTR_ADDrrs_s GRPTR:$src, R
 def : Pat<(store_stack GRPTR:$src, stackaddr:$dst), (PTR_ADDrrs_s GRPTR:$src, R0, stackaddr:$dst, 0)>;
 
 def : Pat<(EraVMcopy_from_ptrreg GRPTR:$src), (PTR_ADDrrr_s GRPTR:$src, R0, 0)>;
+
+def Optimize : Predicate<"!MF->getFunction().hasOptNone()">;
+
+let Predicates = [Optimize], AddedComplexity = 1 in {
+  def : Pat<(sub GR256:$lhs, GR256:$rhs), (SUBrrr_v GR256:$lhs, GR256:$rhs, 0)>;
+  def : Pat<(sub GR256:$lhs, imm16:$rhs), (SUBxrr_v imm:$rhs, GR256:$lhs, 0)>;
+  def : Pat<(sub GR256:$lhs, large_imm:$rhs), (SUByrr_v (constant_pool imm:$rhs), 0, GR256:$lhs, 0)>;
+
+  def : Pat<(sub (load_code memaddr:$lhs), GR256:$rhs), (SUBcrr_v memaddr:$lhs, GR256:$rhs, 0)>;
+  def : Pat<(sub GR256:$lhs, (load_code memaddr:$rhs)), (SUByrr_v memaddr:$rhs, GR256:$lhs, 0)>;
+  def : Pat<(sub (load_stack stackaddr:$lhs), GR256:$rhs), (SUBsrr_v stackaddr:$lhs, GR256:$rhs, 0)>;
+  def : Pat<(sub GR256:$lhs, (load_stack stackaddr:$rhs)), (SUBzrr_v stackaddr:$rhs, GR256:$lhs, 0)>;
+
+  def : Pat<(add GR256:$rs0, neg_imm16:$imm), (SUBxrr_v (negate_imm imm:$imm), GR256:$rs0, 0)>;
+  def : Pat<(add GR256:$lhs, large_imm:$rhs), (SUByrr_v (negate_constant_pool imm:$rhs), 0, GR256:$lhs, 0)>;
+}
 
 // SelecCC, BR_CC supplement
 def : Pat<(EraVMcmp GR256:$lhs, GR256:$rhs), (SUBrrr_v GR256:$lhs, GR256:$rhs, 0)>;

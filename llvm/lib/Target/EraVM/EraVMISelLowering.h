@@ -204,6 +204,8 @@ public:
   void AdjustInstrPostInstrSelection(MachineInstr &MI,
                                      SDNode *Node) const override;
 
+  void finalizeLowering(MachineFunction &MF) const override;
+
 private:
   SDValue LowerFormalArguments(SDValue Chain, CallingConv::ID CallConv,
                                bool isVarArg,

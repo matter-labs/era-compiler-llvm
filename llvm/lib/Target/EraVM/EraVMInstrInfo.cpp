@@ -417,6 +417,54 @@ unsigned EraVMInstrInfo::insertBranch(
   return Count;
 }
 
+bool EraVMInstrInfo::analyzeCompare(const MachineInstr &MI, Register &SrcReg,
+                                    Register &SrcReg2, int64_t &CmpMask,
+                                    int64_t &CmpValue) const {
+  return isSub(MI) && isFlagSettingInstruction(MI);
+}
+
+bool EraVMInstrInfo::optimizeCompareInstr(
+    MachineInstr &CmpInstr, Register SrcReg, Register SrcReg2, int64_t CmpMask,
+    int64_t CmpValue, const MachineRegisterInfo *MRI) const {
+  assert(CmpInstr.getParent() && "CmpInstr must be in a basic block");
+  assert(MRI && "MachineRegisterInfo is required");
+
+  // Replace _v SUB variants with _s, if Flags is not used.
+  int DeadFlagsIdx = CmpInstr.findRegisterDefOperandIdx(EraVM::Flags, true);
+  if (DeadFlagsIdx != -1) {
+    int NewOpc = EraVM::getNonFlagSettingOpcode(CmpInstr.getOpcode());
+    assert(NewOpc != -1 && "Invalid opcode for compare instruction");
+    CmpInstr.setDesc(get(NewOpc));
+    CmpInstr.removeOperand(DeadFlagsIdx);
+    return true;
+  }
+
+  if (!MRI->use_nodbg_empty(CmpInstr.getOperand(0).getReg()))
+    return false;
+
+  auto From = std::next(MachineBasicBlock::reverse_iterator(CmpInstr));
+  for (MachineInstr &MI : make_range(From, CmpInstr.getParent()->rend())) {
+    if (isFlagSettingInstruction(MI)) {
+      if (CmpInstr.isIdenticalTo(MI, MachineInstr::IgnoreVRegDefs)) {
+        CmpInstr.eraseFromParent();
+        return true;
+      }
+
+      // Stop the search, since the nearest flag setting instruction is not
+      // identical to the compare instruction.
+      break;
+    }
+
+    // Don't search past instructions that define the flags register
+    // (e.g. call instructions).
+    if (any_of(MI.implicit_operands(), [](const MachineOperand &MO) {
+          return MO.isReg() && MO.isDef() && MO.getReg() == EraVM::Flags;
+        }))
+      break;
+  }
+  return false;
+}
+
 void EraVMInstrInfo::storeRegToStackSlot(
     MachineBasicBlock &MBB, MachineBasicBlock::iterator MI, Register SrcReg,
     bool isKill, int FrameIndex, const TargetRegisterClass *RC,

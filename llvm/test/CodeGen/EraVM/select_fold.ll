@@ -10,7 +10,7 @@ entry:
   br i1 %comparison_result, label %for_body, label %exit_label
 
 ; CHECK-NOT: add.ne r{{[0-9]+}}, r0, r{{[0-9]+}}
-; CHECK: add.ne @CPI0_0[0], r[[REG:[0-9]+]], r[[REG]]
+; CHECK: sub.s.ne @CPI0_0[0], r[[REG:[0-9]+]], r[[REG]]
 
 for_body:
   %bb = phi i256 [ %b_merge_shifted, %for_body ], [ %b, %entry ]
@@ -88,7 +88,7 @@ entry:
   br i1 %comparison_result, label %for_body, label %exit_label
 
 ; TODO CPR-1404: better scheduling
-; CHECK: add.ne r{{[0-9]+}}, r0, r{{[0-9]+}}
+; CHECK: sub.ne r{{[0-9]+}}, r{{[0-9]+}}, r{{[0-9]+}}
 ; TODO: sub.s.ne 1024, r[[REG:[0-9]+]], r[[REG]]
 
 for_body:
@@ -166,7 +166,7 @@ entry:
   %comparison_result = icmp eq i256 %0, 0
   br i1 %comparison_result, label %for_body, label %exit_label
 
-; CHECK: add.ne @CPI6_0[0], r[[REG:[0-9]+]], r[[REG]]
+; CHECK: sub.s.ne @CPI6_0[0], r[[REG:[0-9]+]], r[[REG]]
 
 for_body:
   %bb = phi i256 [ %b_merge_shifted, %for_body ], [ %b, %entry ]

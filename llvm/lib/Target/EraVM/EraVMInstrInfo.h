@@ -313,6 +313,14 @@ public:
                         const DebugLoc &DL,
                         int *BytesAdded = nullptr) const override;
 
+  bool analyzeCompare(const MachineInstr &MI, Register &SrcReg,
+                      Register &SrcReg2, int64_t &CmpMask,
+                      int64_t &CmpValue) const override;
+
+  bool optimizeCompareInstr(MachineInstr &CmpInstr, Register SrcReg,
+                            Register SrcReg2, int64_t CmpMask, int64_t CmpValue,
+                            const MachineRegisterInfo *MRI) const override;
+
   int64_t getFramePoppedByCallee(const MachineInstr &I) const { return 0; }
 
   unsigned int getTailDuplicateSize(CodeGenOpt::Level OptLevel) const override;

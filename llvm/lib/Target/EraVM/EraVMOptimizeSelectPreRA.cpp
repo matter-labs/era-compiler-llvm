@@ -8,8 +8,9 @@
 //
 // This file implements a pre-ra pass to optimize SELECT instructions. It tries
 // to fold SELECT with its user in case one of the input operands of SELECT
-// is immediate zero and it tries to fold ADD with SELECT if one of the inputs
-// of ADD matches with the input of SELECT.
+// is immediate zero and it tries to fold arithmetic or bitwise instruction
+// with SELECT if one of the inputs of these instructions matches with the input
+// of SELECT.
 //
 //===----------------------------------------------------------------------===//
 
@@ -98,9 +99,10 @@ private:
   /// if z and y can be allocated to same reg. The tie is used to ensure this.
   bool tryFoldSelectZero(MachineBasicBlock &MBB);
 
-  /// In case ADD is fed into a SELECT, and one of the inputs of ADD matches
-  /// with the input of SELECT, then it is possible to fold ADD with SELECT
-  /// to result in just one folded instruction.
+  /// In case arithmetic or bitwise instruction is fed into a SELECT, and one of
+  /// the inputs of these instructions matches with the input of SELECT, then it
+  /// is possible to fold them with SELECT to result in just one folded
+  /// instruction.
   ///
   /// A typical case is like below:
   ///
@@ -113,7 +115,7 @@ private:
   ///
   /// if outSEL and x/y can be allocated to same reg.
   /// The tie is used to ensure this.
-  bool tryFoldAddToSelect(MachineBasicBlock &MBB);
+  bool tryFoldArithOrBitwiseToSelect(MachineBasicBlock &MBB);
 };
 
 char EraVMOptimizeSelectPreRA::ID = 0;
@@ -189,6 +191,8 @@ MachineInstr *EraVMOptimizeSelectPreRA::getFoldedInst(
   auto NewMI =
       BuildMI(*ToFold.getParent(), ToFold, ToFold.getDebugLoc(),
               TII->get(NewOpcode), EraVM::out0Iterator(ToFold)->getReg());
+  if (FlagMI.getNumExplicitDefs() == 2)
+    NewMI.add(*EraVM::out1Iterator(FlagMI));
   EraVM::copyOperands(NewMI, In0);
   NewMI.addReg(In1)
       .addImm(NewCC)
@@ -297,58 +301,64 @@ bool EraVMOptimizeSelectPreRA::tryFoldSelectZero(MachineBasicBlock &MBB) {
   return !ToRemove.empty();
 }
 
-bool EraVMOptimizeSelectPreRA::tryFoldAddToSelect(MachineBasicBlock &MBB) {
+bool EraVMOptimizeSelectPreRA::tryFoldArithOrBitwiseToSelect(
+    MachineBasicBlock &MBB) {
   SmallVector<MachineInstr *, 16> ToRemove;
   SmallPtrSet<MachineInstr *, 16> UsesToUpdate;
 
   // 1. Collect all instructions to be combined.
   for (auto &MI : MBB) {
-    if (!TII->isAdd(MI) || TII->getCCCode(MI) != EraVMCC::COND_NONE ||
+    if ((!TII->isArithmetic(MI) && !TII->isBitwise(MI)) ||
+        TII->getCCCode(MI) != EraVMCC::COND_NONE ||
         EraVMInstrInfo::isFlagSettingInstruction(MI) ||
         !EraVM::hasRROutAddressingMode(MI))
       continue;
 
-    // It's expected that if there are more uses of add, it's very unlikely that
+    // It's expected that if there are more uses, it's very unlikely that
     // all of them are select instruction where folding is feasible.
-    Register OutAddReg = EraVM::out0Iterator(MI)->getReg();
-    if (!RegInfo->hasOneNonDBGUser(OutAddReg))
+    Register OutReg = EraVM::out0Iterator(MI)->getReg();
+    if (!RegInfo->hasOneNonDBGUser(OutReg))
       continue;
 
-    MachineInstr &UseMI = *RegInfo->use_instr_nodbg_begin(OutAddReg);
+    // Skip folding if instruction has two outputs and the second one is used.
+    if (MI.getNumExplicitDefs() == 2 &&
+        !RegInfo->use_nodbg_empty(EraVM::out1Iterator(MI)->getReg()))
+      continue;
+
+    MachineInstr &UseMI = *RegInfo->use_instr_nodbg_begin(OutReg);
     if (UsesToUpdate.count(&UseMI))
       continue;
 
-    SmallSet<Register, 2> InAddRegs;
-    InAddRegs.insert(EraVM::in1Iterator(MI)->getReg());
+    SmallSet<Register, 2> InRegs;
+    InRegs.insert(EraVM::in1Iterator(MI)->getReg());
     if (EraVM::hasRRInAddressingMode(MI))
-      InAddRegs.insert(EraVM::in0Iterator(MI)->getReg());
+      InRegs.insert(EraVM::in0Iterator(MI)->getReg());
 
-    // In order to fold add to select, we expect that other input of a select
-    // instruction is matching with one of the add inputs.
+    // In order to do the folding, we expect that other input of a select
+    // instruction is matching with one of the MI inputs.
     if (UseMI.getOpcode() != EraVM::SELrrr ||
-        (!InAddRegs.count(EraVM::in0Iterator(UseMI)->getReg()) &&
-         !InAddRegs.count(EraVM::in1Iterator(UseMI)->getReg())))
+        (!InRegs.count(EraVM::in0Iterator(UseMI)->getReg()) &&
+         !InRegs.count(EraVM::in1Iterator(UseMI)->getReg())))
       continue;
 
-    bool OutAddIsIn1Use = EraVM::out0Iterator(MI)->getReg() ==
-                          EraVM::in1Iterator(UseMI)->getReg();
+    bool OutIsIn1Use = EraVM::out0Iterator(MI)->getReg() ==
+                       EraVM::in1Iterator(UseMI)->getReg();
     auto CC = getImmOrCImm(*EraVM::ccIterator(UseMI));
 
     // The COND_OF is overflow LT which hasn't reversal version, so we don't
     //  attempt to inverse it.
-    if (OutAddIsIn1Use && CC == EraVMCC::COND_OF)
+    if (OutIsIn1Use && CC == EraVMCC::COND_OF)
       continue;
 
-    auto CCNewMI = OutAddIsIn1Use ? InverseCond[CC] : CC;
-    Register TieReg = OutAddIsIn1Use ? EraVM::in0Iterator(UseMI)->getReg()
-                                     : EraVM::in1Iterator(UseMI)->getReg();
+    auto CCNewMI = OutIsIn1Use ? InverseCond[CC] : CC;
+    Register TieReg = OutIsIn1Use ? EraVM::in0Iterator(UseMI)->getReg()
+                                  : EraVM::in1Iterator(UseMI)->getReg();
 
     [[maybe_unused]] auto *NewMI = getFoldedInst(
         UseMI, MI, EraVM::in0Range(MI), EraVM::in1Iterator(MI)->getReg(),
         MI.getOpcode(), CCNewMI, TieReg);
-    LLVM_DEBUG(dbgs() << "== Folding add:"; MI.dump();
-               dbgs() << "       and use:"; UseMI.dump();
-               dbgs() << "          into:"; NewMI->dump(););
+    LLVM_DEBUG(dbgs() << "== Folding:"; MI.dump(); dbgs() << "   and use:";
+               UseMI.dump(); dbgs() << "      into:"; NewMI->dump(););
 
     UsesToUpdate.insert(&UseMI);
     ToRemove.emplace_back(&MI);
@@ -373,7 +383,7 @@ bool EraVMOptimizeSelectPreRA::runOnMachineFunction(MachineFunction &MF) {
   bool Changed = false;
   for (MachineBasicBlock &MBB : MF) {
     Changed |= tryFoldSelectZero(MBB);
-    Changed |= tryFoldAddToSelect(MBB);
+    Changed |= tryFoldArithOrBitwiseToSelect(MBB);
   }
   return Changed;
 }
