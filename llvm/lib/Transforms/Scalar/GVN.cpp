@@ -487,6 +487,19 @@ uint32_t GVNPass::ValueTable::lookupOrAddCall(CallInst *C) {
     return nextValueNumber++;
   }
 
+  // EraVM local begin
+  // GVN doesn't know how to identify preventers for the following calls, so
+  // they are handled in EraVMCSE pass.
+  if (const auto *Callee = C->getCalledFunction()) {
+    if (Callee->getName() == "__system_request" ||
+        Callee->getName() == "__system_request_slice_fallback" ||
+        Callee->getName() == "__sha3") {
+      valueNumbering[C] = nextValueNumber;
+      return nextValueNumber++;
+    }
+  }
+  // EraVM local end
+
   if (AA->doesNotAccessMemory(C)) {
     Expression exp = createExpr(C);
     uint32_t e = assignExpNewValueNum(exp).first;
