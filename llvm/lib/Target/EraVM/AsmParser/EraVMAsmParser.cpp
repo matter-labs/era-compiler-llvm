@@ -328,6 +328,7 @@ static int parseExplicitCondition(StringRef Code) {
       .Case("ne", EraVMCC::COND_NE)
       .Case("ge", EraVMCC::COND_GE)
       .Case("le", EraVMCC::COND_LE)
+      .Case("gtlt", EraVMCC::COND_GTOrLT)
       .Default(EraVMCC::COND_INVALID);
 }
 
