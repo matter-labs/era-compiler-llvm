@@ -498,6 +498,7 @@ struct CallValue {
   static bool isEraVMNoCSECall(const CallInst *Call) {
     if (const auto *Callee = Call->getCalledFunction())
       return Callee->getName() == "__system_request" ||
+             Callee->getName() == "__system_request_slice_fallback" ||
              Callee->getName() == "__sha3";
     return false;
   }
