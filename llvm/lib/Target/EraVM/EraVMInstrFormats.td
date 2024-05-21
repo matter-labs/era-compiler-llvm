@@ -392,6 +392,7 @@ class IBinary<EraVMOpcode opcode,
   let Defs = !if(!eq(set_flags, PreserveFlags), [], [Flags]);
   let mayLoad = !or(isStackIn<src>.Value, !eq(src, SrcCodeAddr));
   let mayStore = isStackOut<dst>.Value;
+  let isCompare = !and(!eq(opcode, OpSub), !eq(set_flags, SetFlags));
 
   let Opcode = ArithOpcEncoder<opcode.Encoding, opcode.BaseOpcode,
                                src, dst,
