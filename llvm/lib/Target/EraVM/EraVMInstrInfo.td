@@ -124,6 +124,13 @@ def constant_pool : SDNodeXForm<imm, [{
   return CurDAG->getTargetConstantPool(N->getConstantIntValue(), PtrVT);
 }]>;
 
+def negate_constant_pool : SDNodeXForm<imm, [{
+  APInt Val = -N->getAPIntValue();
+  const Constant *C = ConstantInt::get(*CurDAG->getContext(), Val);
+  MVT PtrVT = getTargetLowering()->getPointerTy(CurDAG->getDataLayout());
+  return CurDAG->getTargetConstantPool(C, PtrVT);
+}]>;
+
 def default_far_return : SDNodeXForm<imm, [{
   (void)N;
   MVT PtrVT = getTargetLowering()->getPointerTy(CurDAG->getDataLayout());
@@ -689,6 +696,32 @@ def : Pat<(store_stack GRPTR:$src, stackaddr:$dst),  (PTR_ADDrrs_s GRPTR:$src, R
 def : Pat<(store_stack GRPTR:$src, stackaddr:$dst), (PTR_ADDrrs_s GRPTR:$src, R0, stackaddr:$dst, 0)>;
 
 def : Pat<(EraVMcopy_from_ptrreg GRPTR:$src), (PTR_ADDrrr_s GRPTR:$src, R0, 0)>;
+
+// In order to support CSE between sub and cmp, we need to generate _v variants
+// of the sub instructions. These patterns are similar to the cmp patterns
+// below, so we can enable CSE between them. Complexity is added in order to
+// select _v instead of _s variants.
+// After MachineCSE, we convert _v to _s variants in PeepholeOptimizer if
+// the definition of the flags register is dead. Whether the flags register is
+// dead or not, is calculated during generation of MI instructions.
+// The PeepholeOptimizer is not invoked for OptNone functions, preventing the
+// conversion of _v to _s variants. As a result, these patterns are disabled
+// for OptNone functions.
+def Optimize : Predicate<"!MF->getFunction().hasOptNone()">;
+let Predicates = [Optimize], AddedComplexity = 1 in {
+  def : Pat<(sub GR256:$lhs, GR256:$rhs), (SUBrrr_v GR256:$lhs, GR256:$rhs, 0)>;
+  def : Pat<(sub GR256:$lhs, imm16:$rhs), (SUBxrr_v imm:$rhs, GR256:$lhs, 0)>;
+  def : Pat<(sub GR256:$lhs, large_imm:$rhs), (SUByrr_v (constant_pool imm:$rhs), 0, GR256:$lhs, 0)>;
+
+  def : Pat<(sub (load_code memaddr:$lhs), GR256:$rhs), (SUBcrr_v memaddr:$lhs, GR256:$rhs, 0)>;
+  def : Pat<(sub GR256:$lhs, (load_code memaddr:$rhs)), (SUByrr_v memaddr:$rhs, GR256:$lhs, 0)>;
+  def : Pat<(sub (load_stack stackaddr:$lhs), GR256:$rhs), (SUBsrr_v stackaddr:$lhs, GR256:$rhs, 0)>;
+  def : Pat<(sub GR256:$lhs, (load_stack stackaddr:$rhs)), (SUBzrr_v stackaddr:$rhs, GR256:$lhs, 0)>;
+
+  // Generate sub instructions from add, so these instructions can be CSE'd with cmp.
+  def : Pat<(add GR256:$rs0, neg_imm16:$imm), (SUBxrr_v (negate_imm imm:$imm), GR256:$rs0, 0)>;
+  def : Pat<(add GR256:$lhs, large_imm:$rhs), (SUByrr_v (negate_constant_pool imm:$rhs), 0, GR256:$lhs, 0)>;
+}
 
 // SelecCC, BR_CC supplement
 def : Pat<(EraVMcmp GR256:$lhs, GR256:$rhs), (SUBrrr_v GR256:$lhs, GR256:$rhs, 0)>;

@@ -417,6 +417,69 @@ unsigned EraVMInstrInfo::insertBranch(
   return Count;
 }
 
+bool EraVMInstrInfo::analyzeCompare(const MachineInstr &MI, Register &SrcReg,
+                                    Register &SrcReg2, int64_t &CmpMask,
+                                    int64_t &CmpValue) const {
+  return isSub(MI) && isFlagSettingInstruction(MI);
+}
+
+bool EraVMInstrInfo::optimizeCompareInstr(
+    MachineInstr &CmpInstr, Register SrcReg, Register SrcReg2, int64_t CmpMask,
+    int64_t CmpValue, const MachineRegisterInfo *MRI) const {
+  assert(CmpInstr.getParent() && "CmpInstr must be in a basic block");
+  assert(MRI && "MachineRegisterInfo is required");
+
+  // If Flags register is not used, convert this compare instruction (sub
+  // instruction that sets flags) to a sub that doesn't set flags.
+  int DeadFlagsIdx = CmpInstr.findRegisterDefOperandIdx(EraVM::Flags, true);
+  if (DeadFlagsIdx != -1) {
+    int NewOpc = EraVM::getNonFlagSettingOpcode(CmpInstr.getOpcode());
+    assert(NewOpc != -1 && "Invalid opcode for compare instruction");
+    CmpInstr.setDesc(get(NewOpc));
+    CmpInstr.removeOperand(DeadFlagsIdx);
+    return true;
+  }
+
+  // TODO: #621 Support removing compare instruction which output is used if the
+  // nearest flag setting instruction is identical.
+  if (!EraVM::hasRROutAddressingMode(CmpInstr) ||
+      !MRI->use_nodbg_empty(CmpInstr.getOperand(0).getReg()))
+    return false;
+
+  // In some cases, we can have the following sequence:
+  //   Out1 = SUB_v In1, In2, CondCC1, implicit-def $flags
+  //   ...
+  //   Out2 = SUB_v In3, In4, CondCC2, implicit-def dead $flags
+  //   ...
+  //   Out3 = SUB_v In1, In2, CondCC1, implicit-def $flags
+  //
+  // In this case, `Out2 = SUB_v` prevents MachineCSE to remove
+  // `Out3 = SUB_v` in favor of `Out1 = SUB_v`, just because of
+  // `implicit-def dead $flags`.
+  // Since in this function we will convert `Out2 = SUB_v` to
+  // `Out2 = SUB_s` and implicit dead $flags will be dropped,
+  // we can try to find identical compare instruction and remove it here.
+  //
+  // Search backwards in order to find the nearest flag setting instruction that
+  // can be identical to this compare instruction.
+  auto From = std::next(MachineBasicBlock::reverse_iterator(CmpInstr));
+  auto FlagSettingInst = std::find_if(
+      From, CmpInstr.getParent()->rend(), [](const MachineInstr &MI) {
+        return any_of(MI.implicit_operands(), [](const MachineOperand &MO) {
+          return MO.isReg() && MO.isDef() && MO.getReg() == EraVM::Flags;
+        });
+      });
+
+  // Bail out if we didn't find identical compare instruction.
+  if (FlagSettingInst == CmpInstr.getParent()->rend() ||
+      !isFlagSettingInstruction(*FlagSettingInst) ||
+      !FlagSettingInst->isIdenticalTo(CmpInstr, MachineInstr::IgnoreVRegDefs))
+    return false;
+
+  CmpInstr.eraseFromParent();
+  return true;
+}
+
 void EraVMInstrInfo::storeRegToStackSlot(
     MachineBasicBlock &MBB, MachineBasicBlock::iterator MI, Register SrcReg,
     bool isKill, int FrameIndex, const TargetRegisterClass *RC,
