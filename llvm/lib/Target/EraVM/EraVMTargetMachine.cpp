@@ -140,6 +140,8 @@ void EraVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
       [](FunctionPassManager &PM, OptimizationLevel Level) {
         if (Level.getSizeLevel() || Level.getSpeedupLevel() > 1)
           PM.addPass(MergeIdenticalBBPass());
+        if (Level != OptimizationLevel::O0)
+          PM.addPass(EraVMCSEPass());
       });
 
   PB.registerAnalysisRegistrationCallback([](FunctionAnalysisManager &FAM) {
