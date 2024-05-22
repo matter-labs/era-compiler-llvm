@@ -4,7 +4,8 @@
 foo:
 
 ; mnemonics
-  precompile  r3, r4, r5
+  log.decommit  r3, r4, r5
+  precompile    r3, r4, r5
   context.this                  r3
   context.caller                r3
   context.code_source           r3
@@ -17,7 +18,8 @@ foo:
   context.set_gas_per_pubdata   r3
 
 ; modifiers (condition)
-  precompile.lt  r3, r4, r5
+  log.decommit.lt  r3, r4, r5
+  precompile.lt    r3, r4, r5
   context.this.lt                  r3
   context.caller.lt                r3
   context.code_source.lt           r3
@@ -34,7 +36,8 @@ foo:
 ; CHECK:  .text
 ; CHECK:foo:
 
-; CHECK:  precompile   r3, r4, r5
+; CHECK:  log.decommit  r3, r4, r5
+; CHECK:  precompile    r3, r4, r5
 ; CHECK:  context.this r3
 ; CHECK:  context.caller       r3
 ; CHECK:  context.code_source  r3
@@ -46,6 +49,7 @@ foo:
 ; CHECK:  context.inc_tx_num
 ; CHECK:  context.set_gas_per_pubdata  r3
 
+; CHECK:  log.decommit.lt      r3, r4, r5
 ; CHECK:  precompile.lt        r3, r4, r5
 ; CHECK:  context.this.lt      r3
 ; CHECK:  context.caller.lt    r3

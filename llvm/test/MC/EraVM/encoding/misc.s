@@ -3,7 +3,8 @@
   .text
 foo:
 
-  precompile  r3, r4, r5
+  log.decommit  r3, r4, r5
+  precompile    r3, r4, r5
   context.this                  r3
   context.caller                r3
   context.code_source           r3
@@ -18,6 +19,7 @@ foo:
 ; CHECK:  .text
 ; CHECK:foo:
 
+; CHECK:  log.decommit  r3, r4, r5              ; encoding: [0x00,0x00,0x00,0x00,0x05,0x43,0x04,0x45]
 ; CHECK:  precompile    r3, r4, r5              ; encoding: [0x00,0x00,0x00,0x00,0x05,0x43,0x04,0x20]
 ; CHECK:  context.this  r3                      ; encoding: [0x00,0x00,0x00,0x00,0x03,0x00,0x04,0x10]
 ; CHECK:  context.caller        r3              ; encoding: [0x00,0x00,0x00,0x00,0x03,0x00,0x04,0x11]
