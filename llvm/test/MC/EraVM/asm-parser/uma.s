@@ -6,26 +6,16 @@ foo:
 ; mnemonics
   ld      r3, r4
   ld.inc  r3, r4, r5
-  uma.fat_ptr_read      r3, r4      ; aliased to "ld      r3, r4"
-  uma.fat_ptr_read.inc  r3, r4, r5  ; aliased to "ld.inc  r3, r4, r5"
 
   ld.1      r3, r4
   ld.2      r3, r4
   ld.1.inc  r3, r4, r5
   ld.2.inc  r3, r4, r5
-  uma.heap_read          r3, r4     ; aliased to "ld.1      r3, r4"
-  uma.aux_heap_read      r3, r4     ; aliased to "ld.2      r3, r4"
-  uma.inc.heap_read      r3, r4, r5 ; aliased to "ld.1.inc  r3, r4, r5"
-  uma.inc.aux_heap_read  r3, r4, r5 ; aliased to "ld.2.inc  r3, r4, r5"
 
   st.1      r3, r4
   st.2      r3, r4
   st.1.inc  r3, r4, r5
   st.2.inc  r3, r4, r5
-  uma.heap_write          r3, r4     ; aliased to "st.1      r3, r4"
-  uma.aux_heap_write      r3, r4     ; aliased to "st.2      r3, r4"
-  uma.inc.heap_write      r3, r4, r5 ; aliased to "st.1.inc  r3, r4, r5"
-  uma.inc.aux_heap_write  r3, r4, r5 ; aliased to "st.2.inc  r3, r4, r5"
 
 ; modifiers (condition code)
 
@@ -56,13 +46,7 @@ foo:
 
 ; CHECK:  ld   r3, r4
 ; CHECK:  ld.inc       r3, r4, r5
-; CHECK:  ld   r3, r4
-; CHECK:  ld.inc       r3, r4, r5
 
-; CHECK:  ld.1 r3, r4
-; CHECK:  ld.2 r3, r4
-; CHECK:  ld.1.inc     r3, r4, r5
-; CHECK:  ld.2.inc     r3, r4, r5
 ; CHECK:  ld.1 r3, r4
 ; CHECK:  ld.2 r3, r4
 ; CHECK:  ld.1.inc     r3, r4, r5
@@ -72,11 +56,6 @@ foo:
 ; CHECK:  st.2 r3, r4
 ; CHECK:  st.1.inc     r3, r4, r5
 ; CHECK:  st.2.inc     r3, r4, r5
-; CHECK:  st.1 r3, r4
-; CHECK:  st.2 r3, r4
-; CHECK:  st.1.inc     r3, r4, r5
-; CHECK:  st.2.inc     r3, r4, r5
-
 
 ; CHECK:  ld.lt        r3, r4
 ; CHECK:  ld.inc.lt    r3, r4, r5

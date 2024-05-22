@@ -6,8 +6,6 @@ foo:
 ; mnemonics
   sload       r3, r4
   sstore      r3, r4
-  log.sread   r3, r4 ; aliased to "sload  r3, r4"
-  log.swrite  r3, r4 ; aliased to "sstore r3, r4"
 
 ; modifiers (condition)
   sload.lt    r3, r4
@@ -17,8 +15,6 @@ foo:
 ; CHECK:  .text
 ; CHECK:foo:
 
-; CHECK:  sload        r3, r4
-; CHECK:  sstore       r3, r4
 ; CHECK:  sload        r3, r4
 ; CHECK:  sstore       r3, r4
 

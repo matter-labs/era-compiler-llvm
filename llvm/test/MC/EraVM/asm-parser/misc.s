@@ -4,7 +4,6 @@
 foo:
 
 ; mnemonics
-  ; FIXME log.precompile  r3, r4, r5
   precompile  r3, r4, r5
   context.this                  r3
   context.caller                r3
@@ -18,7 +17,6 @@ foo:
   context.set_gas_per_pubdata   r3
 
 ; modifiers (condition)
-  ; FIXME log.precompile.lt  r3, r4, r5
   precompile.lt  r3, r4, r5
   context.this.lt                  r3
   context.caller.lt                r3

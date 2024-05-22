@@ -183,16 +183,11 @@ def OpContextSetContextU128    : EraVMOpcode<"context.set_context_u128", 1047, D
 def OpContextSetErgsPerPubdataByte   : EraVMOpcode<"context.set_gas_per_pubdata",    1048, DirectEncoding>;
 def OpContextIncrementTxNumber : EraVMOpcode<"context.inc_tx_num",       1049, DirectEncoding>;
 
-// aliased as log.sread
 def OpSload     : EraVMOpcode<"sload",      1050, DirectEncoding>;
-// aliased as log.swrite
 def OpSstore    : EraVMOpcode<"sstore",     1051, DirectEncoding>;
 
-// aliased as log.to_l1
 def OpLogToL1   : EraVMOpcode<"to_l1",      1052, LogEncoding>; // is_first ⇒ 1052 + is_first
-// aliased as log.event
 def OpLogEvent  : EraVMOpcode<"event",      1054, LogEncoding>; // is_first ⇒ 1054 + is_first
-// aliased as log.precompile
 def OpLogPrecompile : EraVMOpcode<"precompile", 1056, DirectEncoding>;
 
 def OpFarcall  : EraVMOpcode<"far_call",     1057, FarCallEncoding>; // is_shard is_static ⇒ 1057 + 2 × is_static + is_shard
@@ -203,20 +198,16 @@ def OpRet      : EraVMOpcode<"ret.ok",     1069, RetEncoding>; // to_label ⇒ 1
 def OpRevert   : EraVMOpcode<"ret.revert", 1071, RetEncoding>; // to_label ⇒ 1071 + to_label
 def OpPanic    : EraVMOpcode<"ret.panic",  1073, RetEncoding>; // to_label ⇒ 1073 + to_label
 
-// aliased as uma.heap_read
 def OpLoadHeap        : EraVMOpcode<"ld.1",     1075, HeapOpEncoding>; // src inc ⇒ 1075 + 10 × src + inc
 def OpLoadHeapInc     : EraVMOpcode<"ld.1.inc", 1076, HeapOpEncoding>;
-// aliased as uma.heap_write
 def OpStoreHeap       : EraVMOpcode<"st.1",     1077, HeapOpEncoding>; // src inc ⇒ 1077 + 10 × src + inc
 def OpStoreHeapInc    : EraVMOpcode<"st.1.inc", 1078, HeapOpEncoding>;
-// aliased as uma.aux_heap_read
+
 def OpLoadAuxHeap     : EraVMOpcode<"ld.2",     1079, HeapOpEncoding>; // src inc ⇒ 1079 + 10 × src + inc
 def OpLoadAuxHeapInc  : EraVMOpcode<"ld.2.inc", 1080, HeapOpEncoding>;
-// aliased as uma.aux_heap_write
 def OpStoreAuxHeap    : EraVMOpcode<"st.2",     1081, HeapOpEncoding>; // src inc ⇒ 1081 + 10 × src + inc
 def OpStoreAuxHeapInc : EraVMOpcode<"st.2.inc", 1082, HeapOpEncoding>;
 
-// aliased as uma.fat_ptr_read
 def OpLoadPtr      : EraVMOpcode<"ld",     1083, LoadPtrEncoding>; // inc ⇒ 1083 + inc
 def OpLoadPtrInc   : EraVMOpcode<"ld.inc", 1084, LoadPtrEncoding>;
 
