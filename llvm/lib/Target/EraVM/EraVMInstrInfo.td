@@ -990,17 +990,6 @@ defm ST2 : HeapStore<OpStoreAuxHeap, store_heapaux>;
 defm ST1Inc : HeapStoreInc<OpStoreHeapInc>;
 defm ST2Inc : HeapStoreInc<OpStoreAuxHeapInc>;
 
-def : MnemonicAlias<"uma.fat_ptr_read", "ld">;
-def : MnemonicAlias<"uma.fat_ptr_read.inc", "ld.inc">;
-def : MnemonicAlias<"uma.heap_read", "ld.1">;
-def : MnemonicAlias<"uma.aux_heap_read", "ld.2">;
-def : MnemonicAlias<"uma.inc.heap_read", "ld.1.inc">;
-def : MnemonicAlias<"uma.inc.aux_heap_read", "ld.2.inc">;
-def : MnemonicAlias<"uma.heap_write", "st.1">;
-def : MnemonicAlias<"uma.aux_heap_write", "st.2">;
-def : MnemonicAlias<"uma.inc.heap_write", "st.1.inc">;
-def : MnemonicAlias<"uma.inc.aux_heap_write", "st.2.inc">;
-
 //===----------------------------------------------------------------------===//
 // Control flow instructions
 //===----------------------------------------------------------------------===//
@@ -1171,7 +1160,6 @@ def SLDrr : ILogRr_r<OpSload, (outs GR256:$rd0), (ins GR256:$rs0),
 def TLDrr : ILogRr_r<OpTransientLoad, (outs GR256:$rd0), (ins GR256:$rs0),
                      "$rs0, $rd0",
                      [(set GR256:$rd0, (load_transient GR256:$rs0))]>;
-def : MnemonicAlias<"log.sread", "sload">;
 
 let hasSideEffects = 1 in {
   def SSTr : ILogRrr_<OpSstore, (outs), (ins GR256:$rs0, GR256:$rs1),
@@ -1181,7 +1169,6 @@ let hasSideEffects = 1 in {
                       "$rs0, $rs1",
                       [(store_transient GR256:$rs1, GR256:$rs0)]>;
 }
-def : MnemonicAlias<"log.swrite", "sstore">;
 
 let hasSideEffects = 1 in {
 def L1r : ILogRFirstrr_<OpLogToL1, 0, (outs), (ins GR256:$rs0, GR256:$rs1),
@@ -1244,9 +1231,6 @@ def : Pat<(EraVMfarcall bb:$unwind), (FAR_CALLrrl R1, R2, bb:$unwind)>;
 def : Pat<(EraVMstaticcall bb:$unwind), (FAR_CALL_STATICrrl R1, R2, bb:$unwind)>;
 def : Pat<(EraVMdelegatecall bb:$unwind), (DELEGATE_CALLrrl R1, R2, bb:$unwind)>;
 def : Pat<(EraVMmimiccall bb:$unwind), (MIMIC_CALLrrl R1, R2, bb:$unwind)>;
-
-def : MnemonicAlias<"delegatecall", "far_call.delegate">;
-def : MnemonicAlias<"mimiccall", "far_call.mimic">;
 
 def : Pat<(store_stack (add GR256:$rs0, neg_imm16:$imm), stackaddr:$dst0),
           (SUBxrs_s (negate_imm imm:$imm), GR256:$rs0, stackaddr:$dst0, 0)>;
