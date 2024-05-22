@@ -381,10 +381,25 @@ static bool canHandleStdlibCall(const Instruction *Inst) {
 
 /// Return whether we can handle __system_request call.
 static bool canHandleSystemRequestCall(Instruction *Inst) {
+  const auto *Call = dyn_cast<CallInst>(Inst);
+  if (!Call)
+    return false;
+
   // __system_request returns value, so filter out instructions that
   // don't return anything.
-  return !Inst->getType()->isVoidTy() &&
-         isLibFuncCall(Inst, {"__system_request"});
+  // Because EraVMCSE might be run after passes that change a function signature
+  // (e.g. DeadArgumentElimination), check that __system_request signature
+  // remained unchanged.
+  return !Call->getType()->isVoidTy() &&
+         isLibFuncCall(Call, {"__system_request"}) && Call->arg_size() == 4 &&
+         // i256 %index_address
+         Call->getArgOperand(0)->getType()->isIntegerTy(256) &&
+         // i256 %index_signature
+         Call->getArgOperand(1)->getType()->isIntegerTy(256) &&
+         // i256 %calldata_size
+         Call->getArgOperand(2)->getType()->isIntegerTy(256) &&
+         // i256* %calldata_pointer
+         Call->getArgOperand(3)->getType()->isPointerTy();
 }
 
 /// Return whether we can handle __sha3 call.
