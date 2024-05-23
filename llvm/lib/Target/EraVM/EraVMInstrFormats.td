@@ -331,23 +331,6 @@ class ILogRrr_r<EraVMOpcode opcode, dag outs, dag ins,
   let Dst0 = rd0;
 }
 
-class ILogRFirstrr_<EraVMOpcode opcode, bit is_first,
-                    dag outs, dag ins,
-                    string asmstr, list<dag> pattern>
-  : IForm <opcode, outs, ins, asmstr, pattern> {
-  bits<4> rs0;
-  bits<4> rs1;
-
-  let Src0 = rs0;
-  let Src1 = rs1;
-
-  let AsmString = !strconcat(opcode.Name,
-                             !if(is_first, ".first", ""),
-                             "${cc}", "\t", asmstr);
-  let Opcode = LogROpcEncoder<opcode.Encoding, opcode.BaseOpcode,
-                              is_first>.Opcode;
-}
-
 class IBinary<EraVMOpcode opcode,
               SrcMode src, DstMode dst,
               mod_swap swap, mod_set_flags set_flags,
