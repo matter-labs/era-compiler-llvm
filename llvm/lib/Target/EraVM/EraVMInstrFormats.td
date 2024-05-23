@@ -637,7 +637,6 @@ class Isr_sr<EraVMOpcode opcode,
 }
 
 class IRetBase<EraVMOpcode opcode,
-               bit to_label,
                dag ins,
                string asmstr,
                list<dag> pattern>
@@ -646,18 +645,13 @@ class IRetBase<EraVMOpcode opcode,
   let isReturn = 1;
   let isTerminator = 1;
   let isBarrier = 1;
-
-  let AsmString = !strconcat(opcode.Name,
-                             !if(to_label, ".to_label", ""),
-                             "${cc}", "\t", asmstr);
-  let Opcode = RetOpcEncoder<opcode.BaseOpcode, to_label>.Opcode;
 }
 
 class IRet<EraVMOpcode opcode,
            dag ins,
            string asmstr,
            list<dag> pattern>
-  : IRetBase <opcode, false, ins, asmstr, pattern > {
+  : IRetBase <opcode, ins, asmstr, pattern > {
   bits<4> rs0;
 
   let Src0 = rs0;
@@ -667,7 +661,7 @@ class IRetToLabel<EraVMOpcode opcode,
                   dag ins,
                   string asmstr,
                   list<dag> pattern>
-  : IRetBase <opcode, true, ins, asmstr, pattern > {
+  : IRetBase <opcode, ins, asmstr, pattern > {
   bits<4> rs0;
   bits<16> dest;
 

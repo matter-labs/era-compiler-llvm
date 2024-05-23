@@ -104,11 +104,6 @@ class FarCallOpcEncoder<bits<11> BaseOpcode,
   bits<11> Opcode = !add(BaseOpcode, !mul(2, is_static), is_shard);
 }
 
-class RetOpcEncoder<bits<11> BaseOpcode,
-                    bit to_label> {
-  bits<11> Opcode = !add(BaseOpcode, to_label);
-}
-
 class JumpOpcEncoder<bits<11> BaseOpcode,
                      SrcMode src> {
   bits<11> Opcode = !add(BaseOpcode, src.Value);
@@ -189,9 +184,12 @@ def OpFarcall  : EraVMOpcode<"far_call",     1057, FarCallEncoding>; // is_shard
 def OpDelegate : EraVMOpcode<"far_call.delegate", 1061, FarCallEncoding>; // is_shard is_static ⇒ 1061 + 2 × is_static + is_shard
 def OpMimic    : EraVMOpcode<"far_call.mimic",    1065, FarCallEncoding>; // is_shard is_static ⇒ 1065 + 2 × is_static + is_shard
 
-def OpRet      : EraVMOpcode<"ret.ok",     1069, RetEncoding>; // to_label ⇒ 1069 + to_label
-def OpRevert   : EraVMOpcode<"ret.revert", 1071, RetEncoding>; // to_label ⇒ 1071 + to_label
-def OpPanic    : EraVMOpcode<"ret.panic",  1073, RetEncoding>; // to_label ⇒ 1073 + to_label
+def OpRet           : EraVMOpcode<"ret.ok",              1069, DirectEncoding>; // to_label ⇒ 1069 + to_label
+def OpRetToLabel    : EraVMOpcode<"ret.ok.to_label",     1070, DirectEncoding>;
+def OpRevert        : EraVMOpcode<"ret.revert",          1071, DirectEncoding>; // to_label ⇒ 1071 + to_label
+def OpRevertToLabel : EraVMOpcode<"ret.revert.to_label", 1072, DirectEncoding>;
+def OpPanic         : EraVMOpcode<"ret.panic",           1073, DirectEncoding>; // to_label ⇒ 1073 + to_label
+def OpPanicToLabel  : EraVMOpcode<"ret.panic.to_label",  1074, DirectEncoding>;
 
 def OpLoadHeap        : EraVMOpcode<"ld.1",     1075, HeapOpEncoding>; // src inc ⇒ 1075 + 10 × src + inc
 def OpLoadHeapInc     : EraVMOpcode<"ld.1.inc", 1076, HeapOpEncoding>;
