@@ -17,6 +17,7 @@
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/MC/MCAsmInfo.h"
+#include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCInst.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/TargetRegistry.h"
@@ -32,6 +33,8 @@ class EVMAsmPrinter : public AsmPrinter {
   using VRegMap = DenseMap<unsigned, unsigned>;
   using VRegRCMap = DenseMap<const TargetRegisterClass *, VRegMap>;
   VRegRCMap VRegMapping;
+  // MCSymbol *BeginCodeSectionSym = nullptr;
+  // MCSymbol *EndCodeSectionSym = nullptr;
 
 public:
   EVMAsmPrinter(TargetMachine &TM, std::unique_ptr<MCStreamer> Streamer)
@@ -42,6 +45,8 @@ public:
   void emitInstruction(const MachineInstr *MI) override;
 
   void emitFunctionEntryLabel() override;
+  void emitStartOfAsmFile(Module &M) override;
+  void emitEndOfAsmFile(Module &M) override;
 };
 } // end of anonymous namespace
 
@@ -65,6 +70,13 @@ void EVMAsmPrinter::emitFunctionEntryLabel() {
     const unsigned N = VRegMap.size();
     VRegMap.insert(std::make_pair(Vr, N + 1));
   }
+
+  MCSection *Sec = OutStreamer->getCurrentSectionOnly();
+  if (!Sec->getBeginSymbol()) {
+    MCSymbol *SectionStartSym = OutContext.createTempSymbol();
+    OutStreamer->emitLabel(SectionStartSym);
+    Sec->setBeginSymbol(SectionStartSym);
+  }
 }
 
 void EVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
@@ -74,6 +86,27 @@ void EVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
   MCInst TmpInst;
   MCInstLowering.Lower(MI, TmpInst);
   EmitToStreamer(*OutStreamer, TmpInst);
+}
+
+void EVMAsmPrinter::emitStartOfAsmFile(Module &M) {
+  MCSymbol *RuntimeSizeSym =
+      OutContext.getOrCreateSymbol("__datasize_D.D_runtime");
+  OutStreamer->emitLabel(RuntimeSizeSym);
+
+  // BeginCodeSectionSym = OutContext.createTempSymbol();
+  // OutStreamer->emitLabel(BeginCodeSectionSym);
+}
+
+void EVMAsmPrinter::emitEndOfAsmFile(Module &M) {
+  /*EndCodeSectionSym = OutContext.createTempSymbol();
+  OutStreamer->emitLabel(EndCodeSectionSym);
+  const MCExpr *CodeSizeExp = MCBinaryExpr::createSub(
+       MCSymbolRefExpr::create(EndCodeSectionSym, OutContext),
+       MCSymbolRefExpr::create(EndCodeSectionSym, OutContext),
+       OutContext);
+  MCSymbol *SectionSizeSym = OutContext.getOrCreateSymbol("__codesec_size__");
+  OutStreamer->emitELFSize(SectionSizeSym, CodeSizeExp);
+  */
 }
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMAsmPrinter() {

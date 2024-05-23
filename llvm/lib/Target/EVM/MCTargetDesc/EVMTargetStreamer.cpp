@@ -11,6 +11,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "MCTargetDesc/EVMTargetStreamer.h"
+#include "llvm/MC/MCContext.h"
+#include "llvm/MC/MCELFStreamer.h"
+#include "llvm/MC/MCExpr.h"
+#include "llvm/MC/MCObjectFileInfo.h"
+#include "llvm/MC/MCSymbol.h"
 
 using namespace llvm;
 
@@ -19,6 +24,26 @@ using namespace llvm;
 EVMTargetStreamer::EVMTargetStreamer(MCStreamer &S) : MCTargetStreamer(S) {}
 
 EVMTargetStreamer::~EVMTargetStreamer() = default;
+
+void EVMTargetStreamer::finish() {
+  MCContext &Ctx = Streamer.getContext();
+  MCSection *TextSection = Ctx.getObjectFileInfo()->getTextSection();
+  Streamer.switchSection /*NoChange*/ (TextSection);
+  MCSymbol *TextEndSym =
+      getStreamer().getCurrentSectionOnly()->getEndSymbol(Ctx);
+  if (!TextEndSym->isInSection())
+    Streamer.emitLabel(TextEndSym);
+
+  const MCExpr *TextEndExp =
+      MCSymbolRefExpr::create(TextEndSym, MCSymbolRefExpr::VK_None, Ctx);
+  const MCExpr *TextStartExp = MCSymbolRefExpr::create(
+      TextSection->getBeginSymbol(), MCSymbolRefExpr::VK_None, Ctx);
+
+  const MCExpr *Size = MCBinaryExpr::createSub(TextEndExp, TextStartExp, Ctx);
+  MCSymbol *TextSizeSym = Ctx.getOrCreateSymbol("__text_size__");
+  TextSizeSym->setVariableValue(Size);
+  Streamer.emitELFSize(TextSizeSym, Size);
+}
 
 EVMTargetObjStreamer::EVMTargetObjStreamer(MCStreamer &S)
     : EVMTargetStreamer(S) {}

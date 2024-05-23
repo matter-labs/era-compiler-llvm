@@ -131,10 +131,19 @@ bool EVMAsmBackend::evaluateTargetFixup(const MCAssembler &Asm,
 
   // The following fixups should be emited as relocations,
   // as they can only be resolved at link time.
-  unsigned FixUpKind = Fixup.getTargetKind();
-  if (FixUpKind == EVM::fixup_Data_i32)
-    return false;
+  // unsigned FixUpKind = Fixup.getTargetKind();
+  // if (FixUpKind == EVM::fixup_Data_i32)
+  // return false;
+  int64_t ResVal;
+  if (Fixup.getValue()->evaluateAsAbsolute(ResVal, Layout)) {
+    Value += ResVal;
+    return true;
+  }
 
+  MCValue Res;
+  if (!Fixup.getValue()->evaluateAsRelocatable(Res, &Layout, &Fixup))
+    return false;
+  Res.dump();
   Value = Target.getConstant();
   if (const MCSymbolRefExpr *A = Target.getSymA()) {
     const MCSymbol &Sym = A->getSymbol();
@@ -164,7 +173,8 @@ void EVMAsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
 
   LLVM_DEBUG(dbgs() << "applyFixup: value: " << Value
                     << ", nbytes: " << NumBytes << ", sym: ");
-  LLVM_DEBUG(Target.getSymA()->print(dbgs(), nullptr));
+  if (Target.getSymA())
+    LLVM_DEBUG(Target.getSymA()->print(dbgs(), nullptr));
   LLVM_DEBUG(dbgs() << '\n');
 
   // For each byte of the fragment that the fixup touches, mask in the
@@ -212,8 +222,8 @@ bool EVMAsmBackend::fixupNeedsRelaxationAdvanced(const MCFixup &Fixup,
   unsigned FixUpKind = Fixup.getTargetKind();
   // The following fixups shouls always be emited as relocations,
   // as they can only be resolved at linking time.
-  if (FixUpKind == EVM::fixup_Data_i32)
-    return false;
+  //  if (FixUpKind == EVM::fixup_Data_i32)
+  //    return false;
 
   assert(Resolved);
   unsigned Opcode = EVM::getPUSHOpcode(APInt(256, Value));

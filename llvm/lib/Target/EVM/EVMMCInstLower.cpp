@@ -22,6 +22,7 @@
 #include "llvm/IR/Constants.h"
 #include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCInst.h"
+#include "llvm/MC/MCStreamer.h"
 
 using namespace llvm;
 
@@ -136,11 +137,22 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
     case MachineOperand::MO_MCSymbol: {
       MCSymbolRefExpr::VariantKind Kind = MCSymbolRefExpr::VariantKind::VK_None;
       unsigned Opc = MI->getOpcode();
-      if (Opc == EVM::DATA)
+      if (Opc == EVM::DATA) {
         Kind = MCSymbolRefExpr::VariantKind::VK_EVM_DATA;
+        MCSymbol *TextSizeSym = Ctx.getOrCreateSymbol("__text_size__");
+        const MCExpr *TextSizeExp = MCSymbolRefExpr::create(TextSizeSym, Ctx);
+        const MCExpr *OffExp = MCBinaryExpr::createAdd(
+            TextSizeExp, MCConstantExpr::create(696, Ctx), Ctx);
+        MCOp = MCOperand::createExpr(OffExp);
 
-      MCOp = MCOperand::createExpr(
-          MCSymbolRefExpr::create(MO.getMCSymbol(), Kind, Ctx));
+        //   MCSymbol *TextEndSym =
+        //   Printer.OutStreamer->getCurrentSectionOnly()->getEndSymbol(Ctx);
+        //   MCOp = MCOperand::createExpr(MCSymbolRefExpr::create(TextEndSym,
+        //   Ctx));
+      } else {
+        MCOp = MCOperand::createExpr(
+            MCSymbolRefExpr::create(MO.getMCSymbol(), Kind, Ctx));
+      }
     } break;
     case MachineOperand::MO_MachineBasicBlock:
       MCOp = MCOperand::createExpr(

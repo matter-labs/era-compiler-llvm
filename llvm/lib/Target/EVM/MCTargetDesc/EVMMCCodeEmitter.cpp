@@ -67,7 +67,7 @@ EVM::Fixups getFixupForOpc(unsigned Opcode, MCSymbolRefExpr::VariantKind Kind) {
     default:
       llvm_unreachable("Unexpected variant kind for MI");
     case MCSymbolRefExpr::VariantKind::VK_EVM_DATA:
-      return EVM::fixup_Data_i32;
+      return EVM::fixup_SecRel_i32;
     case MCSymbolRefExpr::VariantKind::VK_None:
       return EVM::fixup_SecRel_i32;
     }
@@ -127,6 +127,13 @@ unsigned EVMMCCodeEmitter::getMachineOpValue(const MCInst &MI,
       // we need to skip the instruction opcode which is always one byte.
       Fixups.push_back(
           MCFixup::create(1, MO.getExpr(), MCFixupKind(Fixup), MI.getLoc()));
+    } else if (Kind == MCExpr::ExprKind::Binary) {
+      EVM::Fixups Fixup = getFixupForOpc(
+          MI.getOpcode(), MCSymbolRefExpr::VariantKind::VK_EVM_DATA);
+      Fixups.push_back(
+          MCFixup::create(1, MO.getExpr(), MCFixupKind(Fixup), MI.getLoc()));
+    } else {
+      llvm_unreachable("Unexpected MC operand type");
     }
   } else {
     llvm_unreachable("Unexpected MC operand type");

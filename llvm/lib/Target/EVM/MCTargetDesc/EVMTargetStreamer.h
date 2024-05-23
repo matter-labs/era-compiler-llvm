@@ -25,6 +25,8 @@ public:
   EVMTargetStreamer &operator=(const EVMTargetStreamer &) = delete;
   EVMTargetStreamer &operator=(EVMTargetStreamer &&) = delete;
   ~EVMTargetStreamer() override;
+
+  void finish() override;
 };
 
 /// This part is for ASCII assembly output

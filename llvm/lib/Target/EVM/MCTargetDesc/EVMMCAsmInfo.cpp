@@ -18,7 +18,7 @@ using namespace llvm;
 EVMMCAsmInfo::EVMMCAsmInfo(const Triple &TT) {
   IsLittleEndian = false;
   HasFunctionAlignment = false;
-  HasDotTypeDotSizeDirective = false;
+  HasDotTypeDotSizeDirective = true;
   HasFourStringsDotFile = false;
   PrivateGlobalPrefix = ".";
   PrivateLabelPrefix = ".";
