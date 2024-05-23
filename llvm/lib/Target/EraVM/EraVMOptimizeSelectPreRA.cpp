@@ -298,6 +298,7 @@ bool EraVMOptimizeSelectPreRA::tryFoldAddToSelect(MachineBasicBlock &MBB) {
   // 1. Collect all instructions to be combined.
   for (auto &MI : MBB) {
     if (!TII->isAdd(MI) || TII->getCCCode(MI) != EraVMCC::COND_NONE ||
+        EraVMInstrInfo::isFlagSettingInstruction(MI) ||
         !EraVM::hasRROutAddressingMode(MI))
       continue;
 

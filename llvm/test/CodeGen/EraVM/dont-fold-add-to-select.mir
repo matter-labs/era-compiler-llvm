@@ -1,0 +1,41 @@
+# RUN: llc -x mir -run-pass=eravm-opt-select-prera -compile-twice=false -verify-machineinstrs < %s | FileCheck %s
+
+--- |
+
+  target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
+  target triple = "eravm"
+
+  define void @dont_fold_add_to_select(i256 %0, i256 %1) { ret void }
+
+...
+---
+# CHECK-LABEL: dont_fold_add_to_select
+# CHECK-LABEL: bb.0:
+# CHECK:       %2:gr256 = ADDrrr_v %0, %1, i256 0, implicit-def $flags
+# CHECK-NEXT:  %3:gr256 = SELrrr killed %2, %0, i256 2, implicit $flags
+name:            dont_fold_add_to_select
+alignment:       1
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gr256 }
+  - { id: 1, class: gr256 }
+  - { id: 2, class: gr256 }
+  - { id: 3, class: gr256 }
+liveins:
+  - { reg: '$r1', virtual-reg: '%0' }
+  - { reg: '$r2', virtual-reg: '%1' }
+frameInfo:
+  maxAlignment:    1
+machineFunctionInfo: {}
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+
+    %0:gr256 = COPY killed $r1
+    %1:gr256 = COPY killed $r2
+    %2:gr256 = ADDrrr_v %0:gr256, %1:gr256, i256 0, implicit-def $flags
+    %3:gr256 = SELrrr killed %2:gr256, %0:gr256, i256 2, implicit $flags
+    $r1 = COPY killed %3
+    RET 0, implicit killed $r1
+
+...
