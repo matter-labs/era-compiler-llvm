@@ -664,14 +664,14 @@ class IRet<EraVMOpcode opcode,
 }
 
 class IRetToLabel<EraVMOpcode opcode,
+                  bits<4> rs0_value,
                   dag ins,
                   string asmstr,
                   list<dag> pattern>
   : IRetBase <opcode, true, ins, asmstr, pattern > {
-  bits<4> rs0;
   bits<16> dest;
 
-  let Src0 = rs0;
+  let Src0 = rs0_value;
   let Imm0 = dest;
 }
 

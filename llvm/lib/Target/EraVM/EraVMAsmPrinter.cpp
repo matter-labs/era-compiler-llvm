@@ -127,10 +127,7 @@ void EraVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
         Opc == EraVM::REVERT ? "DEFAULT_FAR_REVERT" : "DEFAULT_FAR_RETURN");
     // Expand to: ret/revert.to_label $rs0, @DEFAULT_FAR_RETURN
     MCOperand MCOp;
-    TmpInst.setOpcode(Opc == EraVM::REVERT ? EraVM::REVERTrl : EraVM::RETrl);
-    // Operand: rs0
-    lowerOperand(MI->getOperand(0), MCOp);
-    TmpInst.addOperand(MCOp);
+    TmpInst.setOpcode(Opc == EraVM::REVERT ? EraVM::REVERTl : EraVM::RETl);
     // Operand: default dest
     TmpInst.addOperand(MCOperand::createExpr(
         MCSymbolRefExpr::create(DefaultFarReturnSym, OutContext)));

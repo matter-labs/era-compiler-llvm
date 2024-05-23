@@ -51,6 +51,19 @@ void EraVMInstPrinter::printInst(const MCInst *MI, uint64_t Address,
     return;
   }
 
+  // TODO Remove after switching to new asm syntax
+  if (Opcode == EraVM::RETl || Opcode == EraVM::REVERTl) {
+    if (Opcode == EraVM::RETl)
+      O << "\tret.ok.to_label";
+    else
+      O << "\tret.revert.to_label";
+    printCCOperand(MI, 1, O);
+    O << "\tr1,\t";
+    printOperand(MI, 0, O);
+    printAnnotation(O, Annot);
+    return;
+  }
+
   if (!printAliasInstr(MI, Address, O))
     printInstruction(MI, Address, O);
   printAnnotation(O, Annot);

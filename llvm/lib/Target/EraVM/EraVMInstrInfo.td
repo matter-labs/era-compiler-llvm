@@ -1074,14 +1074,15 @@ let isCall = 1 in
 def JCALL: Pseudo<(outs), (ins jmptarget:$dest), []>,
            PseudoInstExpansion<(JCl jmptarget:$dest, 0)>;
 
-multiclass RetLike<EraVMOpcode opcode> {
-  def r : IRet<opcode, (ins GR256:$rs0), "$rs0", []>;
-  def rl : IRetToLabel<opcode, (ins GR256:$rs0, jmptarget:$dest), "$rs0, $dest", []>;
-}
+def RETr : IRet<OpRet, (ins GR256:$rs0), "$rs0", []>;
+def RETl : IRetToLabel<OpRet, 1, (ins jmptarget:$dest), "$dest", []>;
 
-defm RET    : RetLike<OpRet>;
-defm REVERT : RetLike<OpRevert>;
-defm PANIC  : RetLike<OpPanic>;
+def REVERTr : IRet<OpRevert, (ins GR256:$rs0), "$rs0", []>;
+def REVERTl : IRetToLabel<OpRevert, 1, (ins jmptarget:$dest), "$dest", []>;
+
+let rs0 = 0 in
+def PANICr : IRet<OpPanic, (ins), "", []>;
+def PANICl : IRetToLabel<OpPanic, 0, (ins jmptarget:$dest), "$dest", []>;
 
 let isReturn = 1, isTerminator = 1, isBarrier = 1  in {
 def RET  : Pseudo<(outs), (ins pred:$cc), [(EraVMret)]>,
@@ -1095,7 +1096,7 @@ def THROW : Pseudo<(outs), (ins GR256:$rs0, pred:$cc), [(EraVMthrow GR256:$rs0)]
 
 def : InstAlias<"ret${cc}", (RETr R1, pred:$cc)>;
 def : InstAlias<"revert${cc}", (REVERTr R1, pred:$cc)>;
-def : InstAlias<"panic${cc}", (PANICr R0, pred:$cc)>;
+def : InstAlias<"panic${cc}", (PANICr pred:$cc)>;
 
 let isTerminator = 1, isBarrier = 1, isReturn = 1 in {
 def RETURN : Pseudo<(outs), (ins GR256:$rs0, pred:$cc), [(EraVMreturn GR256:$rs0)]>;
@@ -1255,7 +1256,7 @@ def : Pat<(i256 (EraVMGACode texternalsym:$dst)), (ADDcrr_s texternalsym:$dst, 0
 def : Pat<(i256 (EraVMGACode tblockaddress:$dst)), (ADDcrr_s tblockaddress:$dst, 0, R0, 0)>;
 
 // Exceptions
-def : Pat<(EraVMTrap), (PANICr R0)>;
+def : Pat<(EraVMTrap), (PANICr 0)>;
 
 def : Pat<(EraVMselectcc GRPTR:$rs0, GRPTR:$rs1, imm:$cc),
           (FATPTR_SELrrr GRPTR:$rs0, GRPTR:$rs1, imm:$cc)>;
