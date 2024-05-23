@@ -1171,18 +1171,18 @@ let hasSideEffects = 1 in {
 }
 
 let hasSideEffects = 1 in {
-def L1r : ILogRFirstrr_<OpLogToL1, 0, (outs), (ins GR256:$rs0, GR256:$rs1),
+def L1r : ILogRrr_<OpLogToL1, (outs), (ins GR256:$rs0, GR256:$rs1),
                         "$rs0, $rs1",
                         [(int_eravm_tol1 GR256:$rs0, GR256:$rs1, 0)]>;
-def L1Firstr : ILogRFirstrr_<OpLogToL1, 1, (outs), (ins GR256:$rs0, GR256:$rs1),
+def L1Firstr : ILogRrr_<OpLogToL1First, (outs), (ins GR256:$rs0, GR256:$rs1),
                              "$rs0, $rs1",
                              [(int_eravm_tol1 GR256:$rs0, GR256:$rs1, 1)]>;
 
-def EVTr : ILogRFirstrr_<OpLogEvent, 0, (outs), (ins GR256:$rs0, GR256:$rs1),
+def EVTr : ILogRrr_<OpLogEvent, (outs), (ins GR256:$rs0, GR256:$rs1),
                          "$rs0, $rs1",
                          [(int_eravm_event GR256:$rs0, GR256:$rs1, 0)]>;
 
-def EVTFirstr : ILogRFirstrr_<OpLogEvent, 1, (outs), (ins GR256:$rs0, GR256:$rs1),
+def EVTFirstr : ILogRrr_<OpLogEventFirst, (outs), (ins GR256:$rs0, GR256:$rs1),
                               "$rs0, $rs1",
                               [(int_eravm_event GR256:$rs0, GR256:$rs1, 1)]>;
 
