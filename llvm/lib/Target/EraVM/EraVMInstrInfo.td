@@ -1075,14 +1075,14 @@ def JCALL: Pseudo<(outs), (ins jmptarget:$dest), []>,
            PseudoInstExpansion<(JCl jmptarget:$dest, 0)>;
 
 def RETr : IRet<OpRet, (ins GR256:$rs0), "$rs0", []>;
-def RETl : IRetToLabel<OpRet, 1, (ins jmptarget:$dest), "$dest", []>;
+def RETl : IRetToLabel<OpRetToLabel, 1, (ins jmptarget:$dest), "$dest", []>;
 
 def REVERTr : IRet<OpRevert, (ins GR256:$rs0), "$rs0", []>;
-def REVERTl : IRetToLabel<OpRevert, 1, (ins jmptarget:$dest), "$dest", []>;
+def REVERTl : IRetToLabel<OpRevertToLabel, 1, (ins jmptarget:$dest), "$dest", []>;
 
 let rs0 = 0 in
 def PANICr : IRet<OpPanic, (ins), "", []>;
-def PANICl : IRetToLabel<OpPanic, 0, (ins jmptarget:$dest), "$dest", []>;
+def PANICl : IRetToLabel<OpPanicToLabel, 0, (ins jmptarget:$dest), "$dest", []>;
 
 let isReturn = 1, isTerminator = 1, isBarrier = 1  in {
 def RET  : Pseudo<(outs), (ins pred:$cc), [(EraVMret)]>,
