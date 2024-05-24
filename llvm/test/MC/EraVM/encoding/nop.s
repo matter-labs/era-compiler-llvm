@@ -1,0 +1,65 @@
+; RUN: llvm-mc -arch=eravm --show-encoding < %s | FileCheck %s
+
+; See sp-changes.s for special cases.
+
+  .text
+foo:
+
+; mnemonic, predicates
+  nop     r1, r2, r3
+
+; operands (6 src modes x 4 dst modes)
+  nop       r1, r2, r3
+  nop       42, r2, r3
+  nop       stack[r1 + 1], r2, r3
+  nop       stack-[r1 + 1], r2, r3
+  nop       stack-=[r1 + 1], r2, r3
+  nop       code[r1 + 1], r2, r3
+  nop       r1, r2, stack[r3 + 1]
+  nop       42, r2, stack[r3 + 1]
+  nop       stack[r1 + 1], r2, stack[r3 + 1]
+  nop       stack-[r1 + 1], r2, stack[r3 + 1]
+  nop       stack-=[r1 + 1], r2, stack[r3 + 1]
+  nop       code[r1 + 1], r2, stack[r3 + 1]
+  nop       r1, r2, stack-[r3 + 1]
+  nop       42, r2, stack-[r3 + 1]
+  nop       stack[r1 + 1], r2, stack-[r3 + 1]
+  nop       stack-[r1 + 1], r2, stack-[r3 + 1]
+  nop       stack-=[r1 + 1], r2, stack-[r3 + 1]
+  nop       code[r1 + 1], r2, stack-[r3 + 1]
+  nop       r1, r2, stack+=[r3 + 1]
+  nop       42, r2, stack+=[r3 + 1]
+  nop       stack[r1 + 1], r2, stack+=[r3 + 1]
+  nop       stack-[r1 + 1], r2, stack+=[r3 + 1]
+  nop       stack-=[r1 + 1], r2, stack+=[r3 + 1]
+  nop       code[r1 + 1], r2, stack+=[r3 + 1]
+
+; CHECK:  .text
+; CHECK:foo:
+
+; CHECK:  nop   r1, r2, r3                              ; encoding: [0x00,0x00,0x00,0x00,0x03,0x21,0x00,0x01]
+
+; CHECK:  nop   r1, r2, r3                              ; encoding: [0x00,0x00,0x00,0x00,0x03,0x21,0x00,0x01]
+; CHECK:  nop   42, r2, r3                              ; encoding: [0x00,0x00,0x00,0x2a,0x03,0x20,0x00,0x11]
+; CHECK:  nop   stack[1 + r1], r2, r3                   ; encoding: [0x00,0x00,0x00,0x01,0x03,0x21,0x00,0x0d]
+; CHECK:  nop   stack-[1 + r1], r2, r3                  ; encoding: [0x00,0x00,0x00,0x01,0x03,0x21,0x00,0x09]
+; CHECK:  nop   stack-=[1 + r1], r2, r3                 ; encoding: [0x00,0x00,0x00,0x01,0x03,0x21,0x00,0x05]
+; CHECK:  nop   code[r1+1], r2, r3                      ; encoding: [0x00,0x00,0x00,0x01,0x03,0x21,0x00,0x15]
+; CHECK:  nop   r1, r2, stack[1 + r3]                   ; encoding: [0x00,0x01,0x00,0x00,0x03,0x21,0x00,0x04]
+; CHECK:  nop   42, r2, stack[1 + r3]                   ; encoding: [0x00,0x01,0x00,0x2a,0x03,0x20,0x00,0x14]
+; CHECK:  nop   stack[1 + r1], r2, stack[1 + r3]        ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x00,0x10]
+; CHECK:  nop   stack-[1 + r1], r2, stack[1 + r3]       ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x00,0x0c]
+; CHECK:  nop   stack-=[1 + r1], r2, stack[1 + r3]      ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x00,0x08]
+; CHECK:  nop   code[r1+1], r2, stack[1 + r3]           ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x00,0x18]
+; CHECK:  nop   r1, r2, stack-[1 + r3]                  ; encoding: [0x00,0x01,0x00,0x00,0x03,0x21,0x00,0x03]
+; CHECK:  nop   42, r2, stack-[1 + r3]                  ; encoding: [0x00,0x01,0x00,0x2a,0x03,0x20,0x00,0x13]
+; CHECK:  nop   stack[1 + r1], r2, stack-[1 + r3]       ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x00,0x0f]
+; CHECK:  nop   stack-[1 + r1], r2, stack-[1 + r3]      ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x00,0x0b]
+; CHECK:  nop   stack-=[1 + r1], r2, stack-[1 + r3]     ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x00,0x07]
+; CHECK:  nop   code[r1+1], r2, stack-[1 + r3]          ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x00,0x17]
+; CHECK:  nop   r1, r2, stack+=[1 + r3]                 ; encoding: [0x00,0x01,0x00,0x00,0x03,0x21,0x00,0x02]
+; CHECK:  nop   42, r2, stack+=[1 + r3]                 ; encoding: [0x00,0x01,0x00,0x2a,0x03,0x20,0x00,0x12]
+; CHECK:  nop   stack[1 + r1], r2, stack+=[1 + r3]      ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x00,0x0e]
+; CHECK:  nop   stack-[1 + r1], r2, stack+=[1 + r3]     ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x00,0x0a]
+; CHECK:  nop   stack-=[1 + r1], r2, stack+=[1 + r3]    ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x00,0x06]
+; CHECK:  nop   code[r1+1], r2, stack+=[1 + r3]         ; encoding: [0x00,0x01,0x00,0x01,0x03,0x21,0x00,0x16]
