@@ -396,12 +396,24 @@ let hasSideEffects = 1, Defs = [SP], Uses = [SP] in {
 def NOPrrr : Irr_r<OpNoOp, NoSwap, PreserveFlags,
                    (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
                    "$rs0, $rs1, $rd0", []>;
+def NOPirr : Iir_r<OpNoOp, NoSwap, PreserveFlags,
+                   (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
+                   "$imm, $rs1, $rd0", []>;
+def NOPcrr : Imr_r<OpNoOp, NoSwap, PreserveFlags,
+                   (outs GR256:$rd0), (ins memop:$src0, GR256:$rs1),
+                   "$src0, $rs1, $rd0", []>;
 def NOPsrr : Isr_r<OpNoOp, NoSwap, PreserveFlags,
                    (outs GR256:$rd0), (ins stackin:$src0, GR256:$rs1),
                    "$src0, $rs1, $rd0", []>;
 def NOPrrs : Irr_s<OpNoOp, NoSwap, PreserveFlags,
                    (outs), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
                    "$rs0, $rs1, $dst0", []>;
+def NOPirs : Iir_s<OpNoOp, NoSwap, PreserveFlags,
+                   (outs), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
+                   "$imm, $rs1, $dst0", []>;
+def NOPcrs : Imr_s<OpNoOp, NoSwap, PreserveFlags,
+                   (outs), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
+                   "$src0, $rs1, $dst0", []>;
 def NOPsrs : Isr_s<OpNoOp, NoSwap, PreserveFlags,
                    (outs), (ins stackin:$src0, GR256:$rs1, stackout:$dst0),
                    "$src0, $rs1, $dst0", []>;
