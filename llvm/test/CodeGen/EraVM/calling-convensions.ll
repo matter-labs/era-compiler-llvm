@@ -435,7 +435,7 @@ define void @fat.ptr.arg(i256 addrspace(3)* %ptr) {
 
 ; CHECK-LABEL: fat.ptr.call
 define void @fat.ptr.call(i256 %a1, i256 addrspace(3)* %ptr) {
-  ; CHECK: add r2, r0, r1
+  ; CHECK: ptr.add r2, r0, r1
   call void @fat.ptr.arg(i256 addrspace(3)* %ptr)
   ret void
 }
