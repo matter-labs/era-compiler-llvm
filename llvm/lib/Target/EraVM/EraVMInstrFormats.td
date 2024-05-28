@@ -224,6 +224,10 @@ def COND_GE      : EraVMCondCode<4>;
 def COND_LE      : EraVMCondCode<5>;
 def COND_NE      : EraVMCondCode<6>;
 def COND_GTOrLT  : EraVMCondCode<7>;
+// This is a pseudo flag, alias of LT and used to distinguish between
+// normal LT set by sub instruction which is reversible and LT set to
+// indicate overflow caused by add/mul which are not reversible.
+def COND_OF   : EraVMCondCode<8>;
 def COND_INVALID : EraVMCondCode<-1>;
 
 def CondCodes : GenericEnum {
