@@ -188,7 +188,7 @@ def OpRet           : EraVMOpcode<"ret.ok",              1069, DirectEncoding>; 
 def OpRetToLabel    : EraVMOpcode<"ret.ok.to_label",     1070, DirectEncoding>;
 def OpRevert        : EraVMOpcode<"ret.revert",          1071, DirectEncoding>; // to_label ⇒ 1071 + to_label
 def OpRevertToLabel : EraVMOpcode<"ret.revert.to_label", 1072, DirectEncoding>;
-def OpPanic         : EraVMOpcode<"ret.panic",           1073, DirectEncoding>; // to_label ⇒ 1073 + to_label
+def OpPanic         : EraVMOpcode<"panic",               1073, DirectEncoding>; // to_label ⇒ 1073 + to_label
 def OpPanicToLabel  : EraVMOpcode<"ret.panic.to_label",  1074, DirectEncoding>;
 
 def OpLoadHeap        : EraVMOpcode<"ld.1",     1075, HeapOpEncoding>; // src inc ⇒ 1075 + 10 × src + inc
