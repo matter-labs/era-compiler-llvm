@@ -95,12 +95,8 @@ define i256 @test_reg1(i256 %a, i256 %b) {
 define i256 @test_reg1_fold_cond_of(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: test_reg1_fold_cond_of:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add r3, r4, r4
-; CHECK-NEXT:    sub! r4, r3, r3
-; CHECK-NEXT:    add 0, r0, r3
-; CHECK-NEXT:    add.lt 1, r0, r3
-; CHECK-NEXT:    sub! r3, r0, r3
-; CHECK-NEXT:    add.ne r1, r2, r1
+; CHECK-NEXT:    add! r3, r4, r3
+; CHECK-NEXT:    add.lt r1, r2, r1
 ; CHECK-NEXT:    ret
   %add = add i256 %a, %b
   %res = call {i256, i1} @llvm.uadd.with.overflow.i256(i256 %x, i256 %y)
@@ -124,12 +120,10 @@ define i256 @test_reg2(i256 %a, i256 %b) {
 define i256 @test_reg2_dont_fold_cond_of(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: test_reg2_dont_fold_cond_of:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add r3, r4, r4
-; CHECK-NEXT:    sub! r4, r3, r3
-; CHECK-NEXT:    add 0, r0, r3
-; CHECK-NEXT:    add.lt 1, r0, r3
-; CHECK-NEXT:    sub! r3, r0, r3
-; CHECK-NEXT:    add.eq r1, r2, r1
+; CHECK-NEXT:    add r1, r2, r2
+; CHECK-NEXT:    add! r3, r4, r3
+; CHECK-NEXT:    add.lt r1, r0, r2
+; CHECK-NEXT:    add r2, r0, r1
 ; CHECK-NEXT:    ret
   %add = add i256 %a, %b
   %res = call {i256, i1} @llvm.uadd.with.overflow.i256(i256 %x, i256 %y)
@@ -154,13 +148,9 @@ define i256 @test_reg3(i256 %a, i256 %b) {
 define i256 @test_reg3_fold_cond_of(i256 %a, i256 %b) {
 ; CHECK-LABEL: test_reg3_fold_cond_of:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add r1, r2, r3
-; CHECK-NEXT:    sub! r3, r1, r1
-; CHECK-NEXT:    add 0, r0, r1
-; CHECK-NEXT:    add.lt 1, r0, r1
-; CHECK-NEXT:    sub! r1, r0, r1
-; CHECK-NEXT:    add.eq r2, r0, r3
-; CHECK-NEXT:    add r3, r0, r1
+; CHECK-NEXT:    add! r1, r2, r3
+; CHECK-NEXT:    add.lt r1, r2, r2
+; CHECK-NEXT:    add r2, r0, r1
 ; CHECK-NEXT:    ret
   %add = add i256 %a, %b
   %res = call {i256, i1} @llvm.uadd.with.overflow.i256(i256 %a, i256 %b)
@@ -186,12 +176,9 @@ define i256 @test_reg4_dont_fold_cond_of(i256 %a, i256 %b) {
 ; CHECK-LABEL: test_reg4_dont_fold_cond_of:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    add r1, r2, r3
-; CHECK-NEXT:    sub! r3, r1, r1
-; CHECK-NEXT:    add 0, r0, r1
-; CHECK-NEXT:    add.lt 1, r0, r1
-; CHECK-NEXT:    sub! r1, r0, r1
-; CHECK-NEXT:    add.eq r3, r0, r2
-; CHECK-NEXT:    add r2, r0, r1
+; CHECK-NEXT:    add! r1, r2, r1
+; CHECK-NEXT:    add.lt r2, r0, r3
+; CHECK-NEXT:    add r3, r0, r1
 ; CHECK-NEXT:    ret
   %add = add i256 %a, %b
   %res = call {i256, i1} @llvm.uadd.with.overflow.i256(i256 %a, i256 %b)
