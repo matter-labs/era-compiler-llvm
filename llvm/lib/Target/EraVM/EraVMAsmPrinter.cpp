@@ -121,13 +121,14 @@ void EraVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
     EmitToStreamer(*OutStreamer, TmpInst);
     return;
   }
-  case EraVM::REVERT:
-  case EraVM::RETURN: {
+  case EraVM::DEFAULT_FAR_REVERT:
+  case EraVM::DEFAULT_FAR_RETURN: {
+    bool IsRevert = Opc == EraVM::DEFAULT_FAR_REVERT;
     MCSymbol *DefaultFarReturnSym = OutContext.getOrCreateSymbol(
-        Opc == EraVM::REVERT ? "DEFAULT_FAR_REVERT" : "DEFAULT_FAR_RETURN");
+        IsRevert ? "DEFAULT_FAR_REVERT" : "DEFAULT_FAR_RETURN");
     // Expand to: ret/revert.to_label $rs0, @DEFAULT_FAR_RETURN
     MCOperand MCOp;
-    TmpInst.setOpcode(Opc == EraVM::REVERT ? EraVM::REVERTrl : EraVM::RETrl);
+    TmpInst.setOpcode(IsRevert ? EraVM::REVERTrl : EraVM::RETrl);
     // Operand: rs0
     lowerOperand(MI->getOperand(0), MCOp);
     TmpInst.addOperand(MCOp);

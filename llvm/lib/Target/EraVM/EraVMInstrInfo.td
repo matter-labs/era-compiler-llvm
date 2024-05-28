@@ -1122,7 +1122,6 @@ def THROW : Pseudo<(outs), (ins GR256:$rs0, pred:$cc), [(EraVMthrow GR256:$rs0)]
 
 def : InstAlias<"ret${cc}", (RETr R1, pred:$cc)>;
 def : InstAlias<"revert${cc}", (REVERTr R1, pred:$cc)>;
-def : InstAlias<"panic${cc}", (PANIC pred:$cc)>;
 
 // TODO Make these aliases preferred for printing after switching to the new syntax.
 let EmitPriority = 0 in {
@@ -1131,8 +1130,8 @@ def : InstAlias<"ret.revert.to_label${cc} $dest", (REVERTrl R1, jmptarget:$dest,
 }
 
 let isTerminator = 1, isBarrier = 1, isReturn = 1 in {
-def RETURN : Pseudo<(outs), (ins GR256:$rs0, pred:$cc), [(EraVMreturn GR256:$rs0)]>;
-def REVERT : Pseudo<(outs), (ins GR256:$rs0, pred:$cc), [(EraVMrevert GR256:$rs0)]>;
+def DEFAULT_FAR_RETURN : Pseudo<(outs), (ins GR256:$rs0, pred:$cc), [(EraVMreturn GR256:$rs0)]>;
+def DEFAULT_FAR_REVERT : Pseudo<(outs), (ins GR256:$rs0, pred:$cc), [(EraVMrevert GR256:$rs0)]>;
 }
 
 //===----------------------------------------------------------------------===//
