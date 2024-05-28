@@ -254,6 +254,12 @@ bool EraVMOptimizeSelectPreRA::tryFoldSelectZero(MachineBasicBlock &MBB) {
                             In0Select->getCImm()->isZero());
 
     auto CCSelect = getImmOrCImm(*EraVM::ccIterator(MI));
+
+    // The COND_OF is overflow LT which hasn't reversal version, so we don't
+    // attempt to inverse it.
+    if (In0IsZeroSelect && CCSelect == EraVMCC::COND_OF)
+      continue;
+
     auto CCNewMI = In0IsZeroSelect ? InverseCond[CCSelect] : CCSelect;
 
     // Pick the non-zero input operand of SELECT.
@@ -327,6 +333,12 @@ bool EraVMOptimizeSelectPreRA::tryFoldAddToSelect(MachineBasicBlock &MBB) {
     bool OutAddIsIn1Use = EraVM::out0Iterator(MI)->getReg() ==
                           EraVM::in1Iterator(UseMI)->getReg();
     auto CC = getImmOrCImm(*EraVM::ccIterator(UseMI));
+
+    // The COND_OF is overflow LT which hasn't reversal version, so we don't
+    //  attempt to inverse it.
+    if (OutAddIsIn1Use && CC == EraVMCC::COND_OF)
+      continue;
+
     auto CCNewMI = OutAddIsIn1Use ? InverseCond[CC] : CC;
     Register TieReg = OutAddIsIn1Use ? EraVM::in0Iterator(UseMI)->getReg()
                                      : EraVM::in1Iterator(UseMI)->getReg();
