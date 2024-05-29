@@ -114,7 +114,6 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
   setOperationAction(
       {
           ISD::BRIND,
-          ISD::BRCOND,
           ISD::VASTART,
           ISD::VAARG,
           ISD::VAEND,
@@ -150,7 +149,7 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
 
   setOperationAction({ISD::INTRINSIC_VOID, ISD::INTRINSIC_WO_CHAIN,
                       ISD::INTRINSIC_W_CHAIN, ISD::STACKSAVE, ISD::STACKRESTORE,
-                      ISD::TRAP, ISD::BR_JT},
+                      ISD::TRAP, ISD::BR_JT, ISD::BRCOND},
                      MVT::Other, Custom);
 
   for (MVT VT : {MVT::i1, MVT::i8, MVT::i16, MVT::i32, MVT::i64, MVT::i128}) {
@@ -683,6 +682,7 @@ SDValue EraVMTargetLowering::LowerOperation(SDValue Op,
   case ISD::ExternalSymbol:     return LowerExternalSymbol(Op, DAG);
   case ISD::BR_CC:              return LowerBR_CC(Op, DAG);
   case ISD::BR_JT:              return LowerBR_JT(Op, DAG);
+  case ISD::BRCOND:             return LowerBRCOND(Op, DAG);
   case ISD::SELECT:             return LowerSELECT(Op, DAG);
   case ISD::SELECT_CC:          return LowerSELECT_CC(Op, DAG);
   case ISD::SRA:                return LowerSRA(Op, DAG);
@@ -1103,6 +1103,51 @@ SDValue EraVMTargetLowering::LowerSELECT(SDValue Op, SelectionDAG &DAG) const {
   SDValue CC = DAG.getConstant(CCVal, DL, MVT::i256);
   std::array Ops = {TrueV, FalseV, CC, FoldedArith.getValue(OFGlueResult)};
   return DAG.getNode(EraVMISD::SELECT_CC, DL, VTs, Ops);
+}
+
+/// Lower U{add|sub|mul}.with.overflow feeding into a branch
+/// into {ADD|SUB|MUL}! and jump.of or jump.lt.
+SDValue EraVMTargetLowering::LowerBRCOND(SDValue Op, SelectionDAG &DAG) const {
+  SDValue Chain = Op.getOperand(0);
+  SDValue Cond = Op.getOperand(1);
+  SDValue Dest = Op.getOperand(2);
+  SDLoc DL(Op);
+  SDValue MatchedUArithO = matchingOverflowArithmeticOperation(Cond);
+  if (!MatchedUArithO)
+    return SDValue();
+
+  // Create a new node to set flag for BRCOND node and GLUE them together.
+  // Here we will keep the original node by not calling
+  // DAG.ReplaceAllUsesOfValueWith. This is to support below case
+  //
+  // result, of = uaddo a, b
+  // another_flag = cmp x, y
+  // c = another_flag ? result : d
+  // brcond of, L1, L2
+  // ...
+  // ... some inst using c
+  //
+  // In the end we will have the original node for generating result and the new
+  // one for setting flag. If the result of the original node isn't used, then
+  // it will be optimized out.
+  auto OPC = MatchedUArithO.getOpcode();
+  auto LoweredOPC = OpcodeMap.at(OPC);
+  SDValue FoldedArith = DAG.getNode(
+      LoweredOPC, DL, {MVT::i256, MVT::Other, MVT::Glue},
+      {Chain, MatchedUArithO.getOperand(0), MatchedUArithO.getOperand(1)});
+
+  // For overflow caused by USUBO, it is safe to use COND_LT and COND_GE as its
+  // reversal code, but for UADDO and UMULO, we have to distinguish them with
+  // COND_OF because COND_GE can't be used as reversal code.
+  // Using COND_LT for USUBO case will allow other passes to do optimization via
+  // inversing the conditional code. Using COND_OF for UADDO and UMULO cases
+  // will prevent other passes from attempting to inverse conditional code, thus
+  // ensure the correctness.
+  auto CCVal = (OPC == ISD::USUBO) ? EraVMCC::COND_LT : EraVMCC::COND_OF;
+  auto OFCC = DAG.getConstant(CCVal, DL, MVT::i256);
+  return DAG.getNode(EraVMISD::BRCOND, DL, Op.getValueType(),
+                     FoldedArith.getValue(1), Dest, OFCC,
+                     FoldedArith.getValue(2));
 }
 
 SDValue EraVMTargetLowering::LowerSELECT_CC(SDValue Op,
