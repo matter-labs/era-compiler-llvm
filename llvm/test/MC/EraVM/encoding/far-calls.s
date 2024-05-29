@@ -18,9 +18,9 @@ foo:
   far_call.delegate.shard       r3, r4, @handler
   far_call.mimic.shard          r3, r4, @handler
 
-  far_call.{st,sh}               r3, r4, @handler
-  far_call.delegate.{st,sh}      r3, r4, @handler
-  far_call.mimic.{st,sh}         r3, r4, @handler
+  far_call.st.sh               r3, r4, @handler
+  far_call.delegate.st.sh      r3, r4, @handler
+  far_call.mimic.st.sh         r3, r4, @handler
 
 ; CHECK:  .text
 ; CHECK:handler:
@@ -47,9 +47,9 @@ foo:
 ; CHECK:  far_call.mimic.shard       r3, r4, @handler        ; encoding: [0x00,0x00,A,A,0x00,0x43,0x04,0x2a]
 ; CHECK:  ;   fixup A - offset: 2, value: @handler, kind: fixup_16_scale_8
 
-; CHECK:  far_call.{st,sh}                 r3, r4, @handler  ; encoding: [0x00,0x00,A,A,0x00,0x43,0x04,0x24]
+; CHECK:  far_call.st.sh                 r3, r4, @handler    ; encoding: [0x00,0x00,A,A,0x00,0x43,0x04,0x24]
 ; CHECK:  ;   fixup A - offset: 2, value: @handler, kind: fixup_16_scale_8
-; CHECK:  far_call.delegate.{st,sh}        r3, r4, @handler  ; encoding: [0x00,0x00,A,A,0x00,0x43,0x04,0x28]
+; CHECK:  far_call.delegate.st.sh        r3, r4, @handler    ; encoding: [0x00,0x00,A,A,0x00,0x43,0x04,0x28]
 ; CHECK:  ;   fixup A - offset: 2, value: @handler, kind: fixup_16_scale_8
-; CHECK:  far_call.mimic.{st,sh}           r3, r4, @handler  ; encoding: [0x00,0x00,A,A,0x00,0x43,0x04,0x2c]
+; CHECK:  far_call.mimic.st.sh           r3, r4, @handler    ; encoding: [0x00,0x00,A,A,0x00,0x43,0x04,0x2c]
 ; CHECK:  ;   fixup A - offset: 2, value: @handler, kind: fixup_16_scale_8

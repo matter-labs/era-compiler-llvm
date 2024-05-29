@@ -1252,6 +1252,14 @@ let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Fl
   defm MIMIC_CALL    : FarCallInst<OpMimic>;
 }
 
+// Static and shard modifiers are technically part of far call's mnemonic,
+// so using `MnemonicAlias`es to accept them in both orders.
+// Note: using foreach, otherwise typos would be very hard to spot.
+foreach Op = [OpFarcall, OpDelegate, OpMimic] in {
+  def : MnemonicAlias<!strconcat(Op.Name, ".sh.st"),
+                      !strconcat(Op.Name, ".st.sh")>;
+}
+
 def : InstAlias<"near_call${cc} ${callee}",
                 (NEAR_CALL_default_unwind R0, jmptarget:$callee, pred:$cc)>;
 
