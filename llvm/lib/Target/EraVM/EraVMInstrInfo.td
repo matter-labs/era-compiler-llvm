@@ -24,7 +24,7 @@ def SDT_EraVMCallSeqEnd   : SDCallSeqEnd<[SDTCisVT<0, i256>,
                                            SDTCisVT<1, i256>]>;
 def SDT_EraVMWrapper      : SDTypeProfile<1, 1, [SDTCisSameAs<0, 1>,
                                                   SDTCisPtrTy<0>]>;
-def SDT_EraVMChangeSP     : SDTypeProfile<0,  1, [SDTCisVT<0, i256>]>;
+def SDT_EraVMAddToSP      : SDTypeProfile<0,  1, [SDTCisVT<0, i256>]>;
 def SDT_EraVMGetSP        : SDTypeProfile<1,  0, []>;
 def SDT_EraVMBrCC         : SDTypeProfile<0,  2, [SDTCisVT<0, OtherVT>,
                                                    SDTCisVT<1, i256>]>;
@@ -75,7 +75,7 @@ def EraVMGAStack : SDNode<"EraVMISD::GAStack", SDT_EraVMWrapper>;
 def EraVMGACode : SDNode<"EraVMISD::GACode", SDT_EraVMWrapper>;
 def EraVMget_sp : SDNode<"EraVMISD::GET_SP", SDT_EraVMGetSP,
                           [SDNPHasChain]>;
-def EraVMchange_sp : SDNode<"EraVMISD::CHANGE_SP", SDT_EraVMChangeSP,
+def EraVMadd_to_sp : SDNode<"EraVMISD::ADD_TO_SP", SDT_EraVMAddToSP,
                              [SDNPHasChain]>;
 def EraVMthrow : SDNode<"EraVMISD::THROW", SDT_EraVMThrow,
                          [SDNPHasChain, SDNPInGlue]>;
@@ -392,7 +392,7 @@ def : Pat<(int_eravm_ifeq imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:
 def : Pat<(int_eravm_iflt imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, COND_LT.Encoding)>;
 def : Pat<(int_eravm_ifgt imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, COND_GT.Encoding)>;
 
-let hasSideEffects = 1, Defs = [SP], Uses = [SP] in {
+let hasSideEffects = 1, Defs = [SP], Uses = [SP], mayStore = 0 in {
 def NOPrrr : Irr_r<OpNoOp, NoSwap, PreserveFlags,
                    (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
                    "$rs0, $rs1, $rd0", []>;
@@ -417,9 +417,9 @@ def NOPcrs : Imr_s<OpNoOp, NoSwap, PreserveFlags,
 def NOPsrs : Isr_s<OpNoOp, NoSwap, PreserveFlags,
                    (outs), (ins stackin:$src0, GR256:$rs1, stackout:$dst0),
                    "$src0, $rs1, $dst0", []>;
-def NOPSP : Pseudo<(outs), (ins imm16:$sp_change), [(EraVMchange_sp imm16:$sp_change)] >;
-def NOPSPr : Pseudo<(outs), (ins GR256:$sp_change), [(EraVMchange_sp GR256:$sp_change)] >;
 }
+
+def : Pat<(EraVMadd_to_sp GR256:$reg), (NOPrrs R0, R0, R0, $reg, 0, 0)>;
 
 def : InstAlias<"nop${cc}\t${dst0}", (NOPrrs R0, R0, stackout:$dst0, pred:$cc)>;
 def : InstAlias<"nop${cc}\t${src0}", (NOPsrr R0, stackin:$src0, R0, pred:$cc)>;

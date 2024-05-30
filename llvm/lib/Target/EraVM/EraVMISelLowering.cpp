@@ -1210,7 +1210,7 @@ SDValue EraVMTargetLowering::LowerSTACKRESTORE(SDValue Op,
       DAG.getNode(EraVMISD::GET_SP, DL, GetSPTys, Op.getOperand(0));
   SDValue SPDelta =
       DAG.getNode(ISD::SUB, DL, MVT::i256, Op.getOperand(1), CurrentSP);
-  return DAG.getNode(EraVMISD::CHANGE_SP, DL, MVT::Other, CurrentSP.getValue(1),
+  return DAG.getNode(EraVMISD::ADD_TO_SP, DL, MVT::Other, CurrentSP.getValue(1),
                      SPDelta);
 }
 
