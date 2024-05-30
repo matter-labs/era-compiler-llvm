@@ -495,6 +495,36 @@ void EraVMInstrInfo::loadRegFromStackSlot(MachineBasicBlock &MBB,
   }
 }
 
+MachineInstr *EraVMInstrInfo::insertIncSP(MachineBasicBlock &MBB,
+                                          MachineBasicBlock::iterator MI,
+                                          const DebugLoc &DL,
+                                          unsigned Increment) const {
+  assert(Increment == (uint16_t)Increment &&
+         "Increment does not fit into uint16_t. Is it negative integer?");
+  return BuildMI(MBB, MI, DL, get(EraVM::NOPrrs))
+      .addReg(EraVM::R0)           // rs0
+      .addReg(EraVM::R0)           // rs1
+      .addReg(EraVM::R0)           // dst0: marker
+      .addReg(EraVM::R0)           // dst0: base
+      .addImm(Increment)           // dst0: addend
+      .addImm(EraVMCC::COND_NONE); // pred
+}
+
+MachineInstr *EraVMInstrInfo::insertDecSP(MachineBasicBlock &MBB,
+                                          MachineBasicBlock::iterator MI,
+                                          const DebugLoc &DL,
+                                          unsigned Decrement) const {
+  assert(Decrement == (uint16_t)Decrement &&
+         "Decrement does not fit into uint16_t. Is it negative integer?");
+  return BuildMI(MBB, MI, DL, get(EraVM::NOPsrr))
+      .addReg(EraVM::R0)           // rd0
+      .addReg(EraVM::R0)           // src0: marker
+      .addReg(EraVM::R0)           // src0: base
+      .addImm(Decrement)           // src0: addend
+      .addReg(EraVM::R0)           // rs1
+      .addImm(EraVMCC::COND_NONE); // pred
+}
+
 void EraVMInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                  MachineBasicBlock::iterator I,
                                  const DebugLoc &DL, MCRegister DestReg,
@@ -682,13 +712,21 @@ static bool hasTrivialStackAdvanceInstruction(MachineFunction &MF,
   if (FirstMI == EntryBB->end())
     return false;
 
-  switch (FirstMI->getOpcode()) {
-  case EraVM::NOPSP:
-    StackAdvanceOp = &FirstMI->getOperand(0);
-    return true;
-  default:
+  if (FirstMI->getOpcode() != EraVM::NOPrrs)
     return false;
-  }
+
+  // Expected stack+=[r0 + imm]
+  MachineOperand &MarkerOp = FirstMI->getOperand(2);
+  MachineOperand &BaseOp = FirstMI->getOperand(3);
+  MachineOperand &AddendOp = FirstMI->getOperand(4);
+
+  if (!MarkerOp.isReg() || MarkerOp.getReg() != EraVM::R0)
+    return false;
+  if (!BaseOp.isReg() || BaseOp.getReg() != EraVM::R0)
+    return false;
+
+  StackAdvanceOp = &AddendOp;
+  return true;
 }
 
 /// Sets the offsets on instructions in [Start, End) which use SP, so that they
@@ -742,8 +780,7 @@ void EraVMInstrInfo::fixupStackPostOutline(MachineFunction &MF) const {
     StackAdvanceOp->setImm(StackAdvanceOp->getImm() + 1 /* StackSlotSize */);
   } else {
     auto EntryBB = MF.begin();
-    BuildMI(*EntryBB, EntryBB->begin(), DebugLoc(), get(EraVM::NOPSP))
-        .addImm(1 /* StackSlotSize */);
+    insertIncSP(*EntryBB, EntryBB->begin(), DebugLoc(), 1 /* StackSlotSize */);
   }
 
   // Adjust instructions which use SP in this function.
