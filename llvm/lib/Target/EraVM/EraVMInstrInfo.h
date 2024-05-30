@@ -270,6 +270,13 @@ public:
                             const TargetRegisterInfo *TRI,
                             Register VReg) const override;
 
+  MachineInstr *insertIncSP(MachineBasicBlock &MBB,
+                            MachineBasicBlock::iterator MI, const DebugLoc &DL,
+                            unsigned Increment) const;
+  MachineInstr *insertDecSP(MachineBasicBlock &MBB,
+                            MachineBasicBlock::iterator MI, const DebugLoc &DL,
+                            unsigned Decrement) const;
+
   unsigned getInstSizeInBytes(const MachineInstr &MI) const override;
 
   bool isPredicated(const MachineInstr &MI) const override;

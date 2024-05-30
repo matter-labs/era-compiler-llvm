@@ -46,7 +46,7 @@ void EraVMFrameLowering::emitPrologue(MachineFunction &MF,
   uint64_t NumCells = MFI.getStackSize() / 32;
 
   if (NumCells)
-    BuildMI(MBB, MBBI, DL, TII.get(EraVM::NOPSP)).addImm(NumCells);
+    TII.insertIncSP(MBB, MBBI, DL, NumCells);
 }
 
 void EraVMFrameLowering::emitEpilogue(MachineFunction &MF,
@@ -60,12 +60,13 @@ MachineBasicBlock::iterator EraVMFrameLowering::eliminateCallFramePseudoInstr(
     MachineBasicBlock::iterator I) const {
   const EraVMInstrInfo &TII =
       *static_cast<const EraVMInstrInfo *>(MF.getSubtarget().getInstrInfo());
+  const DebugLoc &DL = I->getDebugLoc();
+
   if (!hasReservedCallFrame(MF)) {
     // If the stack pointer can be changed after prologue, turn the
     // adjcallstackup instruction into a 'sub SP, <amt>' and the
     // adjcallstackdown instruction into 'add SP, <amt>'
-    MachineInstr &Old = *I;
-    uint64_t Amount = TII.getFrameSize(Old);
+    uint64_t Amount = TII.getFrameSize(*I);
     if (Amount != 0) {
       // We need to keep the stack aligned properly.  To do this, we round the
       // amount of space needed for the outgoing arguments up to the next
@@ -73,37 +74,28 @@ MachineBasicBlock::iterator EraVMFrameLowering::eliminateCallFramePseudoInstr(
       Amount = alignTo(Amount, getStackAlign());
 
       MachineInstr *New = nullptr;
-      if (Old.getOpcode() == TII.getCallFrameSetupOpcode()) {
-        New = BuildMI(MF, Old.getDebugLoc(), TII.get(EraVM::NOPSP))
-                  .addImm(Amount);
+      if (I->getOpcode() == TII.getCallFrameSetupOpcode()) {
+        New = TII.insertIncSP(MBB, I, DL, Amount);
       } else {
-        assert(Old.getOpcode() == TII.getCallFrameDestroyOpcode());
+        assert(I->getOpcode() == TII.getCallFrameDestroyOpcode());
         // factor out the amount the callee already popped.
-        Amount -= TII.getFramePoppedByCallee(Old);
+        Amount -= TII.getFramePoppedByCallee(*I);
         if (Amount)
-          New = BuildMI(MF, Old.getDebugLoc(), TII.get(EraVM::NOPSP))
-                    .addImm(-Amount);
+          New = TII.insertDecSP(MBB, I, DL, Amount);
       }
 
       if (New) {
         // The SRW implicit def is dead.
-        New->getOperand(3).setIsDead();
-
-        // Replace the pseudo instruction with a new instruction...
-        MBB.insert(I, New);
+        New->implicit_operands().begin()->setIsDead();
       }
     }
   } else if (I->getOpcode() == TII.getCallFrameDestroyOpcode()) {
     // If we are performing frame pointer elimination and if the callee pops
     // something off the stack pointer, add it back.
     if (uint64_t CalleeAmt = TII.getFramePoppedByCallee(*I)) {
-      MachineInstr &Old = *I;
-      MachineInstr *New = BuildMI(MF, Old.getDebugLoc(), TII.get(EraVM::NOPSP))
-                              .addImm(CalleeAmt);
+      MachineInstr *New = TII.insertIncSP(MBB, I, DL, CalleeAmt);
       // The SRW implicit def is dead.
-      New->getOperand(3).setIsDead();
-
-      MBB.insert(I, New);
+      New->implicit_operands().begin()->setIsDead();
     }
   }
 

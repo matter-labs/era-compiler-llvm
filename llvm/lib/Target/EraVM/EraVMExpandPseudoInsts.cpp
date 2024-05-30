@@ -153,17 +153,7 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
             .addReg(EraVM::R0)
             .addImm(EraVMCC::COND_NONE);
         PseudoInst.push_back(&MI);
-      } else if (MI.getOpcode() == EraVM::NOPSPr) {
-        BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(EraVM::NOPrrs))
-            .addReg(EraVM::R0)
-            .addReg(EraVM::R0)
-            .addReg(EraVM::R0)
-            .add(MI.getOperand(0))
-            .addImm(0)
-            .addImm(EraVMCC::COND_NONE);
-        PseudoInst.push_back(&MI);
       }
-      // NOPSP is expanded in AsmPrinter as it can be inserted later.
     }
 
   for (auto *I : PseudoInst)
