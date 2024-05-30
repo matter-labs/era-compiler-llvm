@@ -209,6 +209,17 @@ def constant_pool : SDNodeXForm<imm, [{
   return CurDAG->getTargetConstantPool(N->getConstantIntValue(), PtrVT);
 }]>;
 
+def default_far_return : SDNodeXForm<imm, [{
+  (void)N;
+  MVT PtrVT = getTargetLowering()->getPointerTy(CurDAG->getDataLayout());
+  return CurDAG->getExternalSymbol("DEFAULT_FAR_RETURN", PtrVT);
+}]>;
+def default_far_revert : SDNodeXForm<imm, [{
+  (void)N;
+  MVT PtrVT = getTargetLowering()->getPointerTy(CurDAG->getDataLayout());
+  return CurDAG->getExternalSymbol("DEFAULT_FAR_REVERT", PtrVT);
+}]>;
+
 //===----------------------------------------------------------------------===//
 // Complex Pattern Definitions.
 //===----------------------------------------------------------------------===//
@@ -1129,10 +1140,8 @@ def : InstAlias<"ret.ok.to_label${cc} $dest", (RETrl R1, jmptarget:$dest, pred:$
 def : InstAlias<"ret.revert.to_label${cc} $dest", (REVERTrl R1, jmptarget:$dest, pred:$cc)>;
 }
 
-let isTerminator = 1, isBarrier = 1, isReturn = 1 in {
-def DEFAULT_FAR_RETURN : Pseudo<(outs), (ins GR256:$rs0, pred:$cc), [(EraVMreturn GR256:$rs0)]>;
-def DEFAULT_FAR_REVERT : Pseudo<(outs), (ins GR256:$rs0, pred:$cc), [(EraVMrevert GR256:$rs0)]>;
-}
+def : Pat<(EraVMreturn GR256:$rs0), (RETrl GR256:$rs0, (default_far_return 0))>;
+def : Pat<(EraVMrevert GR256:$rs0), (REVERTrl GR256:$rs0, (default_far_revert 0))>;
 
 //===----------------------------------------------------------------------===//
 // Constants materialization
