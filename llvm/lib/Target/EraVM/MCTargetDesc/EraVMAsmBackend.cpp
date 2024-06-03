@@ -231,6 +231,19 @@ void EraVM::analyzeMCOperandsStack(const MCInst &MI, unsigned Idx, bool IsSrc,
   Addend &= 0xFFFF;
 }
 
+EraVM::MemOperandKind EraVM::getStackOperandKind(const MCInst &MI, unsigned Idx,
+                                                 bool IsSrc) {
+  // TODO After refactoring, make analyzeMCOperandsStack() call this function.
+  // For now, calling this way to not reimplement handling of (@SYM, 0, 0) here.
+  unsigned Reg = 0;
+  MemOperandKind Kind = MemOperandKind::OperandInvalid;
+  const MCSymbol *Symbol = nullptr;
+  int Addend = 0;
+
+  analyzeMCOperandsStack(MI, Idx, IsSrc, Reg, Kind, Symbol, Addend);
+  return Kind;
+}
+
 static MCOperand createStackOperandMarker(EraVM::MemOperandKind Kind) {
   switch (Kind) {
   default:
