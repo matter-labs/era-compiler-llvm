@@ -6949,6 +6949,22 @@ static bool ReduceLoopStrength(Loop *L, IVUsers &IU, ScalarEvolution &SE,
     }
   }
 
+  // EraVM local begin
+  // For the reason why this option is default to false, please refer to
+  // https://reviews.llvm.org/D132443
+  // Per the comment from the original author:
+  //  Since LSR is used on many targets, adding this transformation will affect
+  //  many testcases and it will make this patch hard to review. For now we can
+  //  open up an option for the added transformation and only observe on the
+  //  middle-end testcases.
+  //
+  //  After this patch lands, we can then go on and create a TTI to allow
+  //  reviewers from each target to see if they want this transformation in
+  //  their backend.
+  if (Triple(L->getHeader()->getModule()->getTargetTriple()).isEraVM())
+    AllowTerminatingConditionFoldingAfterLSR = true;
+  // EraVM local end
+
   if (AllowTerminatingConditionFoldingAfterLSR) {
     if (auto Opt = canFoldTermCondOfLoop(L, SE, DT, LI)) {
       auto [ToFold, ToHelpFold, TermValueS, MustDrop] = *Opt;
