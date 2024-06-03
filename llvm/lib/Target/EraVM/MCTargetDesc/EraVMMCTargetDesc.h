@@ -140,6 +140,9 @@ void analyzeMCOperandsStack(const MCInst &MI, unsigned Idx, bool IsSrc,
                             unsigned &Reg, MemOperandKind &Kind,
                             const MCSymbol *&Symbol, int &Addend);
 
+// Returns the same Kind as analyzeMCOperandsStack returns, without other info.
+MemOperandKind getStackOperandKind(const MCInst &MI, unsigned Idx, bool IsSrc);
+
 void appendMCOperands(MCContext &Ctx, MCInst &MI, MemOperandKind Kind,
                       unsigned Reg, const MCSymbol *Symbol, int Addend);
 
@@ -155,6 +158,23 @@ enum EncodedOperandMode {
   ModeCode = 5, // SrcCodeAddr
   NumSrcModes = 6,
 };
+
+static inline EncodedOperandMode
+getModeEncodingForOperandKind(MemOperandKind Kind) {
+  switch (Kind) {
+  case OperandInvalid:
+    return ModeNotApplicable;
+  case OperandCode:
+    return ModeCode;
+  case OperandStackAbsolute:
+    return ModeStackAbs;
+  case OperandStackSPRelative:
+    return ModeSpRel;
+  case OperandStackSPDecrement:
+  case OperandStackSPIncrement:
+    return ModeSpMod;
+  }
+}
 
 const uint64_t EncodedOpcodeMask = UINT64_C(0x7ff);
 
