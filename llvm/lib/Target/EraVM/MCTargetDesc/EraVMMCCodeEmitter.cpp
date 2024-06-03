@@ -91,15 +91,9 @@ private:
                             SmallVectorImpl<MCFixup> &Fixups) const;
 };
 
-static int modeEncodingByMarker(const MCOperand &Op) {
-  assert((Op.isImm() || Op.isReg()) && "Unexpected marker operand");
-
-  if (Op.isImm())
-    return EraVM::ModeStackAbs;
-
-  unsigned MarkerReg = Op.getReg();
-  assert(MarkerReg == EraVM::R0 || MarkerReg == EraVM::SP);
-  return (MarkerReg == EraVM::SP) ? EraVM::ModeSpRel : EraVM::ModeSpMod;
+static int getStackModeEncoding(const MCInst &MI, unsigned Idx, bool IsSrc) {
+  EraVM::MemOperandKind Kind = EraVM::getStackOperandKind(MI, Idx, IsSrc);
+  return EraVM::getModeEncodingForOperandKind(Kind);
 }
 
 uint64_t EraVMMCCodeEmitter::adjustForStackOperands(
@@ -117,15 +111,13 @@ uint64_t EraVMMCCodeEmitter::adjustForStackOperands(
   assert(Info && "Incorrect EncodedOpcode produced by the encoder");
 
   if (OldSrcMode == EraVM::ModeStackAbs) {
-    const MCOperand &Op =
-        MI.getOperand(Info->getMCOperandIndexOfStackSrc(Desc));
-    int NewSrcMode = modeEncodingByMarker(Op);
+    unsigned SrcIdx = Info->getMCOperandIndexOfStackSrc(Desc);
+    int NewSrcMode = getStackModeEncoding(MI, SrcIdx, /*IsSrc=*/true);
     EncodedOpcode += (NewSrcMode - (int)OldSrcMode) * (int)Info->SrcMultiplier;
   }
   if (OldDstMode == EraVM::ModeStackAbs) {
-    const MCOperand &Op =
-        MI.getOperand(Info->getMCOperandIndexOfStackDst(Desc));
-    int NewDstMode = modeEncodingByMarker(Op);
+    unsigned DstIdx = Info->getMCOperandIndexOfStackDst(Desc);
+    int NewDstMode = getStackModeEncoding(MI, DstIdx, /*IsSrc=*/false);
     EncodedOpcode += (NewDstMode - (int)OldDstMode) * (int)Info->DstMultiplier;
   }
 
