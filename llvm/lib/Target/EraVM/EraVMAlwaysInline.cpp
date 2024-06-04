@@ -24,7 +24,8 @@ public:
   static char ID; // Pass ID
   EraVMAlwaysInline() : ModulePass(ID) {}
 
-        StringRef getPassName() const override { return "EraVM always inline"; }
+  // Add comment to pass
+  StringRef getPassName() const override { return "EraVM always inline"; }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     ModulePass::getAnalysisUsage(AU);
