@@ -80,8 +80,12 @@ jobs:
       - name: Run code formatter
         run: |
           set -x
-          python3 ./llvm/utils/git/code-format-helper-era-llvm.py \
-            --token ${{ secrets.GITHUB_TOKEN }} \
+          if [ '${{ github.event.pull_request.head.repo.fork }}' = 'true' ]; then
+            TOKEN_PARAM=""
+          else
+            TOKEN_PARAM="--token ${{ secrets.GITHUB_TOKEN }}"
+          fi
+          python3 ./llvm/utils/git/code-format-helper-era-llvm.py ${TOKEN_PARAM} \
             --issue-number ${{ github.event.pull_request.number }} \
             --start-rev ${{ github.event.pull_request.base.sha }} \
             --end-rev ${{ matrix.commit }} \
@@ -104,12 +108,6 @@ jobs:
           ref: ${{ matrix.commit }}
           path: "llvm"
 
-      # Ccache will be updated each month
-      # Older caches will be deprecated automatically after 7 days of inactivity
-      - name: Define ccache key
-        id: ccache-key
-        run: echo "key=llvm-${{ github.event.repository.default_branch }}-$(date +'%Y-%m')" | tee -a "${GITHUB_OUTPUT}"
-
       - name: Build LLVM
         uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
         with:
@@ -117,8 +115,7 @@ jobs:
           enable-tests: true
           enable-assertions: true
           clone-llvm: false
-          ccache-key: ${{ steps.ccache-key.outputs.key }}
-
+          ccache-key-type: 'static' # rotate ccache key every month
 
       # `verify-llvm` is a special target that runs all the regression tests
       # it includes `check-llvm` and special codegen tests
