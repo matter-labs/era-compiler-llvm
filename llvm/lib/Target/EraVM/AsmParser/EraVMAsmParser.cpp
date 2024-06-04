@@ -152,13 +152,15 @@ public:
       return false;
 
     switch (Mem.Kind) {
+    case EraVM::OperandInvalid:
     case EraVM::OperandCode:
       return false;
+    case EraVM::OperandStackAbsolute:
+    case EraVM::OperandStackSPRelative:
+      return true;
     case EraVM::OperandStackSPDecrement:
     case EraVM::OperandStackSPIncrement:
       return IsInput == (Mem.Kind == EraVM::OperandStackSPDecrement);
-    default:
-      return true;
     }
   }
 

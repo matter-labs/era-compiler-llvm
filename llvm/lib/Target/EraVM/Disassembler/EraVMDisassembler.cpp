@@ -133,7 +133,8 @@ DecodeStatus EraVMDisassembler::getInstruction(MCInst &MI, uint64_t &Size,
   uint64_t NewOpcode = OldOpcode;
   Insn &= ~EraVM::EncodedOpcodeMask;
 
-  int SrcMode = EraVM::OperandCode, DstMode = EraVM::OperandCode;
+  EraVM::EncodedOperandMode SrcMode = EraVM::ModeNotApplicable;
+  EraVM::EncodedOperandMode DstMode = EraVM::ModeNotApplicable;
   const EraVMOpcodeInfo *Info =
       EraVM::analyzeEncodedOpcode(OldOpcode, SrcMode, DstMode);
   if (!Info)

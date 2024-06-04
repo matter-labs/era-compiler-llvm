@@ -124,6 +124,7 @@ constexpr unsigned CellBitWidth = 256;
 ///     and dummy integer immediate for absolute addressing
 ///   * a few special cases exist - see appendMCOperands function.
 enum MemOperandKind {
+  OperandInvalid,
   OperandCode,
   OperandStackAbsolute,
   OperandStackSPRelative,
@@ -142,7 +143,7 @@ void appendMCOperands(MCContext &Ctx, MCInst &MI, MemOperandKind Kind,
                       unsigned Reg, const MCSymbol *Symbol, int Addend);
 
 // encode_src_mode / encode_dst_mode
-enum OperandModes {
+enum EncodedOperandMode {
   ModeNotApplicable = -1, // no such operand
   ModeReg = 0,            // SrcReg, DstReg
   ModeSpMod = 1,          // SrcSpRelativePop, DstSpRelativePush
@@ -158,7 +159,8 @@ const uint64_t EncodedOpcodeMask = UINT64_C(0x7ff);
 
 const EraVMOpcodeInfo *findOpcodeInfo(unsigned Opcode);
 const EraVMOpcodeInfo *analyzeEncodedOpcode(unsigned EncodedOpcode,
-                                            int &SrcMode, int &DstMode);
+                                            EncodedOperandMode &SrcMode,
+                                            EncodedOperandMode &DstMode);
 
 } // namespace EraVM
 } // namespace llvm
