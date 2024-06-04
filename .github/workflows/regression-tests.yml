@@ -2,8 +2,8 @@ name: Regression tests
 
 on:
   pull_request:
-    branches:
-      - main
+    # branches:
+    #   - main
   workflow_dispatch:
     inputs:
       commits-to-test:
@@ -39,6 +39,7 @@ jobs:
         with:
           ref: ${{ steps.extract_branch.outputs.head_ref }}
           fetch-depth: ${{ github.event.pull_request.commits || github.event.inputs.commits-to-test }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
 
       - name: Prepare commits
         id: prepare
@@ -65,6 +66,7 @@ jobs:
         with:
           ref: ${{ matrix.commit }}
           fetch-depth: ${{ needs.prepare-test-matrix.outputs.fetch_depth }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
 
       - name: Get changed files
         id: changed-files
@@ -80,8 +82,12 @@ jobs:
       - name: Run code formatter
         run: |
           set -x
-          python3 ./llvm/utils/git/code-format-helper-era-llvm.py \
-            --token ${{ secrets.GITHUB_TOKEN }} \
+          if [ '${{ github.event.pull_request.head.repo.fork }}' = 'true' ]; then
+            TOKEN_PARAM=""
+          else
+            TOKEN_PARAM="--token ${{ secrets.GITHUB_TOKEN }}"
+          fi
+          python3 ./llvm/utils/git/code-format-helper-era-llvm.py ${TOKEN_PARAM} \
             --issue-number ${{ github.event.pull_request.number }} \
             --start-rev ${{ github.event.pull_request.base.sha }} \
             --end-rev ${{ matrix.commit }} \
@@ -103,12 +109,7 @@ jobs:
         with:
           ref: ${{ matrix.commit }}
           path: "llvm"
-
-      # Ccache will be updated each month
-      # Older caches will be deprecated automatically after 7 days of inactivity
-      - name: Define ccache key
-        id: ccache-key
-        run: echo "key=llvm-${{ github.event.repository.default_branch }}-$(date +'%Y-%m')" | tee -a "${GITHUB_OUTPUT}"
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
 
       - name: Build LLVM
         uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
@@ -117,8 +118,7 @@ jobs:
           enable-tests: true
           enable-assertions: true
           clone-llvm: false
-          ccache-key: ${{ steps.ccache-key.outputs.key }}
-
+          ccache-key-type: 'static' # rotate ccache key every month
 
       # `verify-llvm` is a special target that runs all the regression tests
       # it includes `check-llvm` and special codegen tests
