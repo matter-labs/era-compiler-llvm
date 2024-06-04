@@ -1,0 +1,100 @@
+name: Build LLVM binaries
+
+on:
+  schedule:
+    - cron: '0 0 * * *' # every month to regenerate ccache
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Git REF to use for the build"
+        required: false
+        type: string
+      build_macos_amd64:
+        description: "Build for MacOS amd64?"
+        required: false
+        type: boolean
+        default: true
+      build_macos_arm64:
+        description: "Build for MacOS arm64?"
+        required: false
+        type: boolean
+        default: true
+      build_linux_amd64:
+        description: "Build for Linux amd64?"
+        required: false
+        type: boolean
+        default: true
+      build_linux_arm64:
+        description: "Build for Linux arm64?"
+        required: false
+        type: boolean
+        default: true
+      build_windows_amd64:
+        description: "Build for Windows amd64?"
+        required: false
+        type: boolean
+        default: true
+
+
+jobs:
+
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: "MacOS x86"
+            runner: macos-12-large
+            required: ${{ github.event.inputs.build_macos_amd64 }}
+          - name: "MacOS arm64"
+            runner: [self-hosted, macOS, ARM64]
+            required: ${{ github.event.inputs.build_macos_arm64 }}
+          - name: "Linux x86"
+            runner: matterlabs-ci-runner
+            image: matterlabs/llvm_runner:ubuntu22-llvm17-latest
+            required: ${{ github.event.inputs.build_linux_amd64 }}
+          - name: "Linux ARM64"
+            runner: matterlabs-ci-runner-arm
+            image: matterlabs/llvm_runner:ubuntu22-llvm17-latest
+            required: ${{ github.event.inputs.build_linux_arm64 }}
+          - name: "Windows"
+            runner: windows-2022-github-hosted-64core
+            required: ${{ github.event.inputs.build_windows_amd64 }}
+    runs-on: ${{ matrix.runner }}
+    container:
+      image: ${{ matrix.image || '' }} # Special workaround to allow matrix builds with optional container
+    name: ${{ matrix.name }}
+    steps:
+      - name: Checkout source
+        if: matrix.required == 'true'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          path: "llvm"
+
+      - name: Prepare Windows env
+        if: matrix.required == 'true' && runner.os == 'Windows'
+        uses: matter-labs/era-compiler-ci/.github/actions/prepare-msys@v1
+
+      - name: Build LLVM
+        if: matrix.required == 'true'
+        uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
+        with:
+          extra-args: "\\-DLLVM_ENABLE_WERROR=On \\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+          enable-tests: true
+          enable-assertions: true
+          clone-llvm: false
+          ccache-key-type: 'static'
+          save-ccache: ${{ matrix.name == 'Linux x86' }}
+
+      # Required to keep executable permissions for binaries
+      - name: Prepare tarball
+        if: matrix.required == 'true'
+        run: tar -czf ${{ runner.os }}-${{ runner.arch }}-target-final.tar.gz ./target-llvm/target-final
+
+      - name: Upload LLVM binaries
+        if: matrix.required == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: llvm-bins-${{ runner.os }}-${{ runner.arch }}
+          path: ./${{ runner.os }}-${{ runner.arch }}-target-final.tar.gz

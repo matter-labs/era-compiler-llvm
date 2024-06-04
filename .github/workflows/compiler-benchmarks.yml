@@ -33,6 +33,10 @@ on:
         required: false
         default: ""
 
+concurrency:
+  group: ${{ github.repository_id }}-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
 
   # Benchmarks workflow call from the era-compiler-ci repository
@@ -49,3 +53,5 @@ jobs:
       compiler_llvm_candidate_branch: ${{ github.event.inputs.compiler_llvm_candidate_branch || github.head_ref }}
       compiler_llvm_benchmark_mode: ${{ github.event.inputs.compiler_llvm_benchmark_mode || '^M^B3' }}
       compiler_llvm_benchmark_path: ${{ github.event.inputs.compiler_llvm_benchmark_path || '' }}
+      ccache-key-type: 'static' # rotate ccache key every month
+      compiler-llvm-repo: ${{ github.event.pull_request.head.repo.full_name }} # required to properly test forks

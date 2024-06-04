@@ -1,9 +1,6 @@
 name: Integration tests
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
   workflow_dispatch:
     inputs:
@@ -15,6 +12,10 @@ on:
         description: "compiler-llvm branch"
         required: true
         default: "main"
+
+concurrency:
+  group: ${{ github.repository_id }}-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
 
@@ -31,4 +32,6 @@ jobs:
     secrets: inherit
     with:
       compiler-tester-ref: ${{ github.event.inputs.compiler_tester_branch || 'main' }}
-      llvm-ref: ${{ github.event.inputs.compiler_llvm_branch || github.head_ref }}
+      llvm-ref: ${{ github.event.inputs.compiler_llvm_branch || github.head_ref || github.event.repository.default_branch }}
+      ccache-key-type: 'static' # rotate ccache key every month
+      compiler-llvm-repo: ${{ github.event.pull_request.head.repo.full_name }} # required to properly test forks

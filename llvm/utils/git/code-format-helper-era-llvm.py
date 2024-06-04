@@ -327,7 +327,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--token", type=str, required=True, help="GitHub authentiation token"
+        "--token", type=str, required=False, help="GitHub authentiation token"
     )
     parser.add_argument(
         "--repo",
