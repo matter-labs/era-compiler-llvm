@@ -105,8 +105,9 @@ const EraVMOpcodeInfo *llvm::EraVM::findOpcodeInfo(unsigned Opcode) {
   return It;
 }
 
-const EraVMOpcodeInfo *EraVM::analyzeEncodedOpcode(unsigned EncodedOpcode,
-                                                   int &SrcMode, int &DstMode) {
+const EraVMOpcodeInfo *
+EraVM::analyzeEncodedOpcode(unsigned EncodedOpcode, EncodedOperandMode &SrcMode,
+                            EncodedOperandMode &DstMode) {
   const EraVMOpcodeInfo *Info = findOpcodeInfo(EncodedOpcode);
   int OpcodeDelta = EncodedOpcode - Info->BaseOpcode;
 
@@ -114,9 +115,11 @@ const EraVMOpcodeInfo *EraVM::analyzeEncodedOpcode(unsigned EncodedOpcode,
   DstMode = ModeNotApplicable;
 
   if (Info->SrcMultiplier)
-    SrcMode = (OpcodeDelta / Info->SrcMultiplier) % NumSrcModes;
+    SrcMode =
+        EncodedOperandMode((OpcodeDelta / Info->SrcMultiplier) % NumSrcModes);
   if (Info->DstMultiplier)
-    DstMode = (OpcodeDelta / Info->DstMultiplier) % NumDstModes;
+    DstMode =
+        EncodedOperandMode((OpcodeDelta / Info->DstMultiplier) % NumDstModes);
 
   return Info;
 }
