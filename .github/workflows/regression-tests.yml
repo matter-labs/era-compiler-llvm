@@ -39,6 +39,7 @@ jobs:
         with:
           ref: ${{ steps.extract_branch.outputs.head_ref }}
           fetch-depth: ${{ github.event.pull_request.commits || github.event.inputs.commits-to-test }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
 
       - name: Prepare commits
         id: prepare
@@ -65,6 +66,7 @@ jobs:
         with:
           ref: ${{ matrix.commit }}
           fetch-depth: ${{ needs.prepare-test-matrix.outputs.fetch_depth }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
 
       - name: Get changed files
         id: changed-files
@@ -107,6 +109,7 @@ jobs:
         with:
           ref: ${{ matrix.commit }}
           path: "llvm"
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
 
       - name: Build LLVM
         uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
