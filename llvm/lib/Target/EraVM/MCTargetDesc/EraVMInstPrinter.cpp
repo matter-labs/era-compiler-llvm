@@ -147,7 +147,7 @@ void EraVMInstPrinter::printStackOperand(const MCInst *MI, unsigned OpNo,
   using namespace EraVM;
 
   unsigned BaseReg = 0;
-  MemOperandKind Kind = MemOperandKind::OperandCode;
+  MemOperandKind Kind = MemOperandKind::OperandInvalid;
   const MCSymbol *Symbol = nullptr;
   int Addend = 0;
   analyzeMCOperandsStack(*MI, OpNo, IsInput, BaseReg, Kind, Symbol, Addend);
