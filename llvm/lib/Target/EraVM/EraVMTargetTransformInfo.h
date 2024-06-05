@@ -136,6 +136,8 @@ public:
   // Since we prefer inlining, use larger threshold multiplier.
   unsigned getInliningThresholdMultiplier() const { return 11; }
 
+  bool shouldFoldTerminatingConditionAfterLSR() const { return true; }
+
   /// @}
 };
 

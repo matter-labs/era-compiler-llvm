@@ -7180,8 +7180,8 @@ canFoldTermCondOfLoop(Loop *L, ScalarEvolution &SE, DominatorTree &DT,
       continue;
     }
 
-    if (Expander.isHighCostExpansion(TermValueSLocal, L, ExpansionBudget,
-                                     &TTI, InsertPt)) {
+    if (false && Expander.isHighCostExpansion( // EraVM local
+                     TermValueSLocal, L, ExpansionBudget, &TTI, InsertPt)) {
       LLVM_DEBUG(
           dbgs() << "Is too expensive to expand terminating value for phi node"
                  << PN << "\n");
