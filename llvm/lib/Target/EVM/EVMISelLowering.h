@@ -133,8 +133,8 @@ private:
 
   SDValue lowerINTRINSIC_WO_CHAIN(SDValue Op, SelectionDAG &DAG) const;
 
-  SDValue lowerIntrinsicDataSize(unsigned IntrID, SDValue Op,
-                                 SelectionDAG &DAG) const;
+  SDValue lowerLinkerIntrinsic(unsigned IntrID, SDValue Op,
+                               SelectionDAG &DAG) const;
 
   SDValue LowerLOAD(SDValue Op, SelectionDAG &DAG) const;
 

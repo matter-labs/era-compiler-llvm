@@ -724,10 +724,10 @@ void StackModel::handleLStackAtJump(MachineBasicBlock *MBB, MachineInstr *MI,
   // EVM::NoRegister.
   clearPhysStackAtInst(StackType::L, MI, Reg);
 
-  // Insert "PUSH8_LABEL %bb" instruction that should be be replaced with
+  // Insert "PUSH_LABEL %bb" instruction that should be be replaced with
   // the actual PUSH* one in the MC layer to contain actual jump target
   // offset.
-  BuildMI(*MI->getParent(), MI, DebugLoc(), TII->get(EVM::PUSH8_LABEL))
+  BuildMI(*MI->getParent(), MI, DebugLoc(), TII->get(EVM::PUSH_LABEL))
       .addMBB(MBB);
 
   // Add JUMPDEST at the beginning of the target MBB.
@@ -874,13 +874,12 @@ void StackModel::handleCall(MachineInstr *MI) {
   It->setPostInstrSymbol(*MF, RetSym);
 
   // Create push of the return address.
-  BuildMI(MBB, It, MI->getDebugLoc(), TII->get(EVM::PUSH8_LABEL))
-      .addSym(RetSym);
+  BuildMI(MBB, It, MI->getDebugLoc(), TII->get(EVM::PUSH_LABEL)).addSym(RetSym);
 
   // Create push of the callee's address.
   const MachineOperand *CalleeOp = MI->explicit_uses().begin();
   assert(CalleeOp->isGlobal());
-  BuildMI(MBB, It, MI->getDebugLoc(), TII->get(EVM::PUSH8_LABEL))
+  BuildMI(MBB, It, MI->getDebugLoc(), TII->get(EVM::PUSH_LABEL))
       .addGlobalAddress(CalleeOp->getGlobal());
 }
 

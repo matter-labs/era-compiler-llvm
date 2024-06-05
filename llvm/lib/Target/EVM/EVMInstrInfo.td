@@ -794,7 +794,7 @@ foreach I = {1-16} in {
 
 defm PUSH0 : I<(outs), (ins), [], "PUSH0", "", 0x5F, 2>;
 
-def PUSH8_LABEL : NI<(outs), (ins jmptarget:$dst), [], false, "", 0, 0> {
+def PUSH_LABEL : NI<(outs), (ins jmptarget:$dst), [], false, "", 0, 0> {
     let isCodeGenOnly = 1;
 }
 
@@ -1122,7 +1122,8 @@ def PUSH32_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH32 $imm",
 }
 
 // Pseudo instructions for linkage
-let isCodeGenOnly = 1 in
-defm DATA
-  : I<(outs GPR:$dst), (ins jmptarget:$reloc), [], "",
-       "", 0, 0>;
+def DATASIZE
+  : EVMPseudo<(outs GPR:$dst), (ins i256imm:$imm), []>;
+
+def DATAOFFSET
+  : EVMPseudo<(outs GPR:$dst), (ins i256imm:$imm), []>;

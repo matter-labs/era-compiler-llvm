@@ -154,25 +154,21 @@ SDValue EVMTargetLowering::lowerINTRINSIC_WO_CHAIN(SDValue Op,
     return SDValue();
   case Intrinsic::evm_datasize:
   case Intrinsic::evm_dataoffset:
-    return lowerIntrinsicDataSize(IntrID, Op, DAG);
+    return lowerLinkerIntrinsic(IntrID, Op, DAG);
   }
 }
 
-SDValue EVMTargetLowering::lowerIntrinsicDataSize(unsigned IntrID, SDValue Op,
-                                                  SelectionDAG &DAG) const {
+SDValue EVMTargetLowering::lowerLinkerIntrinsic(unsigned IntrID, SDValue Op,
+                                                SelectionDAG &DAG) const {
   const SDLoc DL(Op);
   EVT Ty = Op.getValueType();
 
-  MachineFunction &MF = DAG.getMachineFunction();
-  const MDNode *Metadata = cast<MDNodeSDNode>(Op.getOperand(1))->getMD();
-  StringRef ContractID = cast<MDString>(Metadata->getOperand(0))->getString();
-  bool IsDataSize = IntrID == Intrinsic::evm_datasize;
-  Twine SymbolReloc =
-      Twine(IsDataSize ? "__datasize_" : "__dataoffset_") + ContractID;
-  MCSymbol *Sym = MF.getContext().getOrCreateSymbol(SymbolReloc);
-  return SDValue(
-      DAG.getMachineNode(EVM::DATA, DL, Ty, DAG.getMCSymbol(Sym, MVT::i256)),
-      0);
+  uint64_t Value = cast<ConstantSDNode>(Op.getOperand(1))->getZExtValue();
+  unsigned Opc =
+      (IntrID == Intrinsic::evm_dataoffset) ? EVM::DATAOFFSET : EVM::DATASIZE;
+  return SDValue(DAG.getMachineNode(
+                     Opc, DL, Ty, DAG.getTargetConstant(Value, DL, MVT::i256)),
+                 0);
 }
 
 SDValue EVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {

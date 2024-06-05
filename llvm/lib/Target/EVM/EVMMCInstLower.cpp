@@ -24,9 +24,15 @@
 #include "llvm/MC/MCInst.h"
 #include "llvm/MC/MCStreamer.h"
 
+#include <limits>
+
 using namespace llvm;
 
 extern cl::opt<bool> EVMKeepRegisters;
+
+static bool IsLinkerOpcode(unsigned Opc) {
+  return Opc == EVM::DATASIZE || Opc == EVM::DATAOFFSET;
+}
 
 static void removeRegisterOperands(const MachineInstr *MI, MCInst &OutMI) {
   // Remove all uses of stackified registers to bring the instruction format
@@ -37,9 +43,9 @@ static void removeRegisterOperands(const MachineInstr *MI, MCInst &OutMI) {
 
   // Transform 'register' instruction to 'stack' one.
   unsigned RegOpcode = OutMI.getOpcode();
-  if (RegOpcode == EVM::PUSH8_LABEL) {
-    // Replace PUSH8_LABEL with PUSH8_S opcode.
-    OutMI.setOpcode(EVM::PUSH8_S);
+  if (RegOpcode == EVM::PUSH_LABEL || IsLinkerOpcode(RegOpcode)) {
+    // Replace PUSH_LABEL with PUSH4_S opcode.
+    OutMI.setOpcode(EVM::PUSH4_S);
   } else {
     unsigned StackOpcode = EVM::getStackOpcode(RegOpcode);
     OutMI.setOpcode(StackOpcode);
@@ -52,9 +58,6 @@ static void removeRegisterOperands(const MachineInstr *MI, MCInst &OutMI) {
       OutMI.erase(&MO);
     }
   }
-
-  if (RegOpcode == EVM::DATA)
-    OutMI.setOpcode(EVM::PUSH4_S);
 }
 
 MCSymbol *
@@ -98,9 +101,21 @@ MCOperand EVMMCInstLower::LowerSymbolOperand(const MachineOperand &MO,
   return MCOperand::createExpr(Expr);
 }
 
+MCOperand
+EVMMCInstLower::LowerLinkerInstrOperand(const MachineOperand &MO) const {
+  assert(MO.getCImm()->getValue().getSignificantBits() <= 32);
+  MCSymbol *TextSizeSym = Ctx.getOrCreateSymbol("__text_size__");
+  const MCExpr *TextSizeExp = MCSymbolRefExpr::create(TextSizeSym, Ctx);
+  const MCExpr *OffExp = MCBinaryExpr::createAdd(
+      TextSizeExp, MCConstantExpr::create(MO.getCImm()->getZExtValue(), Ctx),
+      Ctx);
+  return MCOperand::createExpr(OffExp);
+}
+
 void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
   OutMI.setOpcode(MI->getOpcode());
   const MCInstrDesc &Desc = MI->getDesc();
+  unsigned Opc = MI->getOpcode();
   for (unsigned I = 0, E = MI->getNumOperands(); I != E; ++I) {
     const MachineOperand &MO = MI->getOperand(I);
     MCOperand MCOp;
@@ -116,6 +131,7 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
       MCOp = MCOperand::createReg(EncodeVReg(MO.getReg()));
       break;
     case MachineOperand::MO_Immediate:
+      assert(!IsLinkerOpcode(Opc));
       MCOp = MCOperand::createImm(MO.getImm());
       break;
     case MachineOperand::MO_CImmediate: {
@@ -123,8 +139,12 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
       // Check for the max number of significant bits - 64, otherwise
       // the assertion in getZExtValue() is failed.
       if (CImmVal.getSignificantBits() <= 64 && CImmVal.isNonNegative()) {
-        MCOp = MCOperand::createImm(MO.getCImm()->getZExtValue());
+        if (IsLinkerOpcode(Opc))
+          MCOp = LowerLinkerInstrOperand(MO);
+        else
+          MCOp = MCOperand::createImm(MO.getCImm()->getZExtValue());
       } else {
+        assert(!IsLinkerOpcode(Opc));
         // To avoid a memory leak, initial size of the SmallString should be
         // chosen enough for the entire string. Otherwise, its internal memory
         // will be reallocated into the generic heap but not into the Ctx
@@ -135,24 +155,8 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
       }
     } break;
     case MachineOperand::MO_MCSymbol: {
-      MCSymbolRefExpr::VariantKind Kind = MCSymbolRefExpr::VariantKind::VK_None;
-      unsigned Opc = MI->getOpcode();
-      if (Opc == EVM::DATA) {
-        Kind = MCSymbolRefExpr::VariantKind::VK_EVM_DATA;
-        MCSymbol *TextSizeSym = Ctx.getOrCreateSymbol("__text_size__");
-        const MCExpr *TextSizeExp = MCSymbolRefExpr::create(TextSizeSym, Ctx);
-        const MCExpr *OffExp = MCBinaryExpr::createAdd(
-            TextSizeExp, MCConstantExpr::create(696, Ctx), Ctx);
-        MCOp = MCOperand::createExpr(OffExp);
-
-        //   MCSymbol *TextEndSym =
-        //   Printer.OutStreamer->getCurrentSectionOnly()->getEndSymbol(Ctx);
-        //   MCOp = MCOperand::createExpr(MCSymbolRefExpr::create(TextEndSym,
-        //   Ctx));
-      } else {
-        MCOp = MCOperand::createExpr(
-            MCSymbolRefExpr::create(MO.getMCSymbol(), Kind, Ctx));
-      }
+      MCOp =
+          MCOperand::createExpr(MCSymbolRefExpr::create(MO.getMCSymbol(), Ctx));
     } break;
     case MachineOperand::MO_MachineBasicBlock:
       MCOp = MCOperand::createExpr(

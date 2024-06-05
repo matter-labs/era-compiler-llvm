@@ -50,28 +50,12 @@ public:
   EVMMCCodeEmitter(MCContext &Ctx, MCInstrInfo const &MCII) : MCII(MCII) {}
 };
 
-EVM::Fixups getFixupForOpc(unsigned Opcode, MCSymbolRefExpr::VariantKind Kind) {
+EVM::Fixups getFixupForOpc(unsigned Opcode) {
   switch (Opcode) {
   default:
     llvm_unreachable("Unexpected MI for the SymbolRef MO");
-  case EVM::PUSH8_S:
-    return EVM::fixup_SecRel_i64;
-  case EVM::PUSH7_S:
-    return EVM::fixup_SecRel_i56;
-  case EVM::PUSH6_S:
-    return EVM::fixup_SecRel_i48;
-  case EVM::PUSH5_S:
-    return EVM::fixup_SecRel_i40;
   case EVM::PUSH4_S:
-    switch (Kind) {
-    default:
-      llvm_unreachable("Unexpected variant kind for MI");
-    case MCSymbolRefExpr::VariantKind::VK_EVM_DATA:
-      return EVM::fixup_SecRel_i32;
-    case MCSymbolRefExpr::VariantKind::VK_None:
-      return EVM::fixup_SecRel_i32;
-    }
-    break;
+    return EVM::fixup_SecRel_i32;
   case EVM::PUSH3_S:
     return EVM::fixup_SecRel_i24;
   case EVM::PUSH2_S:
@@ -119,19 +103,20 @@ unsigned EVMMCCodeEmitter::getMachineOpValue(const MCInst &MI,
     if (Kind == MCExpr::ExprKind::Target) {
       const auto *CImmExp = cast<EVMCImmMCExpr>(MO.getExpr());
       Op = APInt(Op.getBitWidth(), CImmExp->getString(), /*radix=*/10);
-    } else if (Kind == MCExpr::ExprKind::SymbolRef) {
-      const auto *RefExpr = cast<MCSymbolRefExpr>(MO.getExpr());
-      MCSymbolRefExpr::VariantKind Kind = RefExpr->getKind();
-      EVM::Fixups Fixup = getFixupForOpc(MI.getOpcode(), Kind);
+    } else if (Kind == MCExpr::ExprKind::SymbolRef ||
+               Kind == MCExpr::ExprKind::Binary) {
+      // const auto *RefExpr = cast<MCSymbolRefExpr>(MO.getExpr());
+      EVM::Fixups Fixup = getFixupForOpc(MI.getOpcode());
       // The byte index of start of the relocation is always 1, as
       // we need to skip the instruction opcode which is always one byte.
       Fixups.push_back(
           MCFixup::create(1, MO.getExpr(), MCFixupKind(Fixup), MI.getLoc()));
+      /*
     } else if (Kind == MCExpr::ExprKind::Binary) {
-      EVM::Fixups Fixup = getFixupForOpc(
-          MI.getOpcode(), MCSymbolRefExpr::VariantKind::VK_EVM_DATA);
+      EVM::Fixups Fixup = getFixupForOpc(MI.getOpcode());
       Fixups.push_back(
           MCFixup::create(1, MO.getExpr(), MCFixupKind(Fixup), MI.getLoc()));
+          */
     } else {
       llvm_unreachable("Unexpected MC operand type");
     }

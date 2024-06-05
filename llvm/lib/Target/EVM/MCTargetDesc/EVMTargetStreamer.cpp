@@ -28,7 +28,7 @@ EVMTargetStreamer::~EVMTargetStreamer() = default;
 void EVMTargetStreamer::finish() {
   MCContext &Ctx = Streamer.getContext();
   MCSection *TextSection = Ctx.getObjectFileInfo()->getTextSection();
-  Streamer.switchSection /*NoChange*/ (TextSection);
+  Streamer.switchSection(TextSection);
   MCSymbol *TextEndSym =
       getStreamer().getCurrentSectionOnly()->getEndSymbol(Ctx);
   if (!TextEndSym->isInSection())

@@ -251,15 +251,15 @@ def int_evm_memcpyas1as4
 // Returns a code size of the Yul object with the name
 // passed in the metadata.
 def int_evm_datasize : DefaultAttrsIntrinsic<
-  [llvm_i256_ty], [llvm_metadata_ty],
-  [IntrNoMem, IntrSpeculatable]
+  [llvm_i256_ty], [llvm_i32_ty],
+  [IntrNoMem, IntrSpeculatable, ImmArg<ArgIndex<0>>]
 >;
 
 // Returns a code offset of the Yul object with the name
 // passed in the metadata.
 def int_evm_dataoffset : DefaultAttrsIntrinsic<
-  [llvm_i256_ty], [llvm_metadata_ty],
-  [IntrNoMem, IntrSpeculatable]
+  [llvm_i256_ty], [llvm_i32_ty],
+  [IntrNoMem, IntrSpeculatable, ImmArg<ArgIndex<0>>]
 >;
 
 } // TargetPrefix = "evm"

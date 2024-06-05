@@ -52,8 +52,6 @@ unsigned EVMELFObjectWriter::getRelocType(MCContext &Ctx, const MCValue &Target,
   switch (Fixup.getTargetKind()) {
   default:
     llvm_unreachable("Unexpected EVM fixup");
-    //  case EVM::fixup_Data_i32:
-    //    return ELF::R_EVM_DATA;
   }
 }
 
