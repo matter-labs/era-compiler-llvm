@@ -145,11 +145,11 @@ static bool isValidCandidate(const MachineInstr &MI, const EraVMInstrInfo *TII,
     switch (MI.getOpcode()) {
     default:
       break;
-    case EraVM::LDInc:
-    case EraVM::LD1Incr:
-    case EraVM::LD2Incr:
-    case EraVM::ST1Incr:
-    case EraVM::ST2Incr:
+    case EraVM::LDPI:
+    case EraVM::LDMIhr:
+    case EraVM::LDMIahr:
+    case EraVM::STMIhr:
+    case EraVM::STMIahr:
       return true;
     }
   }
