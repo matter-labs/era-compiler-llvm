@@ -10,14 +10,16 @@ target triple = "eravm"
 define void @loop1(i256 addrspace(1)* %dest, i256 addrspace(1)* %src, i256 %size) {
 ; CHECK-LABEL: loop1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add r0, r0, r4
+; CHECK-NEXT:    sub.s! 1, r3, r4
+; CHECK-NEXT:    add.le 1, r0, r3
+; CHECK-NEXT:    shl.s 5, r3, r3
+; CHECK-NEXT:    add r1, r3, r3
 ; CHECK-NEXT:  .BB0_1: ; %load-store-loop
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    ld.1.inc r2, r5, r2
-; CHECK-NEXT:    st.1.inc r1, r5, r1
-; CHECK-NEXT:    add 1, r4, r4
-; CHECK-NEXT:    sub! r4, r3, r5
-; CHECK-NEXT:    jump.lt @.BB0_1
+; CHECK-NEXT:    ld.1.inc r2, r4, r2
+; CHECK-NEXT:    st.1.inc r1, r4, r1
+; CHECK-NEXT:    sub! r1, r3, r4
+; CHECK-NEXT:    jump.ne @.BB0_1
 ; CHECK-NEXT:  ; %bb.2: ; %memcpy-split
 ; CHECK-NEXT:    ret
 
@@ -40,16 +42,18 @@ memcpy-split:                                     ; preds = %load-store-loop
 define void @loop2(i256 addrspace(1)* %dest, i256 addrspace(1)* %src, i256 %size) {
 ; CHECK-LABEL: loop2:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add 10, r0, r4
+; CHECK-NEXT:    sub.s! 11, r3, r4
+; CHECK-NEXT:    add.le 11, r0, r3
+; CHECK-NEXT:    shl.s 5, r3, r3
+; CHECK-NEXT:    add r1, r3, r3
 ; CHECK-NEXT:    add 320, r1, r1
 ; CHECK-NEXT:    add 320, r2, r2
 ; CHECK-NEXT:  .BB1_1: ; %load-store-loop
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    ld.1.inc r2, r5, r2
-; CHECK-NEXT:    st.1.inc r1, r5, r1
-; CHECK-NEXT:    add 1, r4, r4
-; CHECK-NEXT:    sub! r4, r3, r5
-; CHECK-NEXT:    jump.lt @.BB1_1
+; CHECK-NEXT:    ld.1.inc r2, r4, r2
+; CHECK-NEXT:    st.1.inc r1, r4, r1
+; CHECK-NEXT:    sub! r1, r3, r4
+; CHECK-NEXT:    jump.ne @.BB1_1
 ; CHECK-NEXT:  ; %bb.2: ; %memcpy-split
 ; CHECK-NEXT:    ret
 
@@ -172,14 +176,16 @@ memcpy-split:                                     ; preds = %load-store-loop
 define void @loop6(i256 addrspace(1)* %dest, i256 addrspace(3)* %src, i256 %size) {
 ; CHECK-LABEL: loop6:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add r0, r0, r4
+; CHECK-NEXT:    sub.s! 1, r3, r4
+; CHECK-NEXT:    add.le 1, r0, r3
+; CHECK-NEXT:    shl.s 5, r3, r3
+; CHECK-NEXT:    add r1, r3, r3
 ; CHECK-NEXT:  .BB5_1: ; %load-store-loop
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    ld.inc r2, r5, r2
-; CHECK-NEXT:    st.1.inc r1, r5, r1
-; CHECK-NEXT:    add 1, r4, r4
-; CHECK-NEXT:    sub! r4, r3, r5
-; CHECK-NEXT:    jump.lt @.BB5_1
+; CHECK-NEXT:    ld.inc r2, r4, r2
+; CHECK-NEXT:    st.1.inc r1, r4, r1
+; CHECK-NEXT:    sub! r1, r3, r4
+; CHECK-NEXT:    jump.ne @.BB5_1
 ; CHECK-NEXT:  ; %bb.2: ; %memcpy-split
 ; CHECK-NEXT:    ret
   br label %load-store-loop

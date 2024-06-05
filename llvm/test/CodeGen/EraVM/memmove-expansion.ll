@@ -89,14 +89,14 @@ define i256 @test_unknown(ptr addrspace(1) %dst, ptr addrspace(1) %src, i256 %si
 ; CHECK-INSTRS-NEXT:  jump.ne @.BB0_4
 
 ; Preheader and forward loop.
-; CHECK-INSTRS:       add r0, r0, r5
+; CHECK-INSTRS:       add r5, r1, r5
+; CHECK-INSTRS-NEXT:  add 32, r5, r5
 ; CHECK-INSTRS-NEXT:  add r2, r0, r6
 ; CHECK-INSTRS-NEXT:  add r1, r0, r7
 ; CHECK-INSTRS-NEXT:  .BB0_8:
 ; CHECK-INSTRS:       ld.1.inc r6, r8, r6
 ; CHECK-INSTRS-NEXT:  st.1.inc r7, r8, r7
-; CHECK-INSTRS-NEXT:  add 32, r5, r5
-; CHECK-INSTRS-NEXT:  sub! r5, r4, r8
+; CHECK-INSTRS-NEXT:  sub! r7, r5, r8
 ; CHECK-INSTRS-NEXT:  jump.ne @.BB0_8
 
 ; Copy forward residual and residual.
@@ -127,13 +127,11 @@ define i256 @test_known_forward() {
 ; CHECK-INSTRS-LABEL: test_known_forward:
 ; CHECK-INSTRS:       add 10, r0, r1
 ; CHECK-INSTRS-NEXT:  add 100, r0, r2
-; CHECK-INSTRS-NEXT:  add r0, r0, r3
 ; CHECK-INSTRS-NEXT:  .BB1_1:
-; CHECK-INSTRS:       ld.1.inc r2, r4, r2
-; CHECK-INSTRS-NEXT:  st.1.inc r1, r4, r1
-; CHECK-INSTRS-NEXT:  add 1, r3, r3
-; CHECK-INSTRS-NEXT:  sub.s! 2, r3, r4
-; CHECK-INSTRS-NEXT:  jump.lt @.BB1_1
+; CHECK-INSTRS:       ld.1.inc r2, r3, r2
+; CHECK-INSTRS-NEXT:  st.1.inc r1, r3, r1
+; CHECK-INSTRS-NEXT:  sub.s! 74, r1, r3
+; CHECK-INSTRS-NEXT:  jump.ne @.BB1_1
 ; CHECK-INSTRS:       ld.1 164, r2
 ; CHECK-INSTRS-NEXT:  and @CPI1_0[0], r2, r1
 ; CHECK-INSTRS-NEXT:  ld.1 74, r2
