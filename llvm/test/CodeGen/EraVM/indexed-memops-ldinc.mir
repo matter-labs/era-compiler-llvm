@@ -24,7 +24,7 @@
 ...
 ---
 # CHECK-LABEL: test
-# CHECK: %1:gr256, %5:grptr = LDInc %0, 0
+# CHECK: %1:gr256, %5:grptr = LDPI %0, 0
 
 name:            test
 alignment:       1
@@ -82,9 +82,9 @@ body:             |
     liveins: $r1
 
     %0:grptr = COPY $r1
-    %1:gr256 = LD %0, i256 0
+    %1:gr256 = LDP %0, i256 0
     %2:grptr = PTR_ADDxrr_s i256 32, %0, 0
-    %3:gr256 = LD killed %2, i256 0
+    %3:gr256 = LDP killed %2, i256 0
     %4:gr256 = ADDrrr_s killed %1, killed %3, 0
     $r1 = COPY %4
     RET i256 0, implicit $r1

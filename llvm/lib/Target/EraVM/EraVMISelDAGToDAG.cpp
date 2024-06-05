@@ -403,7 +403,7 @@ void EraVMDAGToDAGISel::Select(SDNode *Node) {
       SDValue Chain = ld->getChain();
       SDValue Ptr = ld->getBasePtr();
       auto Zero = CurDAG->getTargetConstant(0, DL, MVT::i256);
-      auto *LD = CurDAG->getMachineNode(EraVM::LD, DL, ld->getMemoryVT(),
+      auto *LD = CurDAG->getMachineNode(EraVM::LDP, DL, ld->getMemoryVT(),
                                         MVT::Other, Ptr, Zero, Chain);
       ReplaceNode(Node, LD);
       return;
