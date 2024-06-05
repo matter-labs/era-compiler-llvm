@@ -72,17 +72,17 @@ public:
 private:
   // map <non-inc opcode> -> <inc opcode>
   const DenseMap<unsigned, unsigned> PostIncOpcMap = {
-      {EraVM::LD, EraVM::LDInc},     {EraVM::LD1r, EraVM::LD1Incr},
-      {EraVM::LD2r, EraVM::LD2Incr}, {EraVM::ST1r, EraVM::ST1Incr},
-      {EraVM::ST2r, EraVM::ST2Incr},
+      {EraVM::LDP, EraVM::LDPI},       {EraVM::LDMhr, EraVM::LDMIhr},
+      {EraVM::LDMahr, EraVM::LDMIahr}, {EraVM::STMhr, EraVM::STMIhr},
+      {EraVM::STMahr, EraVM::STMIahr},
   };
 
   llvm::Register getLoadStoreOffsetRegister(MachineInstr *MI) const {
-    if (MI->getOpcode() == EraVM::LD1r || MI->getOpcode() == EraVM::LD2r ||
-        MI->getOpcode() == EraVM::LD) {
+    if (MI->getOpcode() == EraVM::LDMhr || MI->getOpcode() == EraVM::LDMahr ||
+        MI->getOpcode() == EraVM::LDP) {
       return MI->getOperand(1).getReg();
     }
-    if (MI->getOpcode() == EraVM::ST1r || MI->getOpcode() == EraVM::ST2r) {
+    if (MI->getOpcode() == EraVM::STMhr || MI->getOpcode() == EraVM::STMahr) {
       return MI->getOperand(0).getReg();
     }
     llvm_unreachable("unexpected opcode");
@@ -203,7 +203,7 @@ bool EraVMCombineToIndexedMemops::runOnMachineFunction(MachineFunction &MF) {
         map_range(
           make_filter_range(RegInfo->use_instructions(OffsetReg),
                             [&MI, this](MachineInstr &CurrentMI) {
-                              bool checkFatPtr = MI.getOpcode() == EraVM::LD;
+                              bool checkFatPtr = MI.getOpcode() == EraVM::LDP;
                               unsigned addOpcode = checkFatPtr ?
                                                    EraVM::PTR_ADDxrr_s :
                                                    EraVM::ADDirr_s;
@@ -228,8 +228,8 @@ bool EraVMCombineToIndexedMemops::runOnMachineFunction(MachineFunction &MF) {
       ++NumIndexedMemOpCombined;
       Changed = true;
       Register IncrementedOffsetReg = RegInfo->createVirtualRegister(
-          MI.getOpcode() == EraVM::LD ? &EraVM::GRPTRRegClass
-                                      : &EraVM::GR256RegClass);
+          MI.getOpcode() == EraVM::LDP ? &EraVM::GRPTRRegClass
+                                       : &EraVM::GR256RegClass);
       MachineInstr *MemIncInst = replaceWithIndexed(MI, IncrementedOffsetReg);
       eraseAndReplaceUses(Add32ToRemove, IncrementedOffsetReg);
 

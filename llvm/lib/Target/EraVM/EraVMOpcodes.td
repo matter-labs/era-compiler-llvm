@@ -174,11 +174,11 @@ def OpContextIncrementTxNumber : EraVMOpcode<"context.inc_tx_num",       1049, D
 def OpSload     : EraVMOpcode<"sload",      1050, DirectEncoding>;
 def OpSstore    : EraVMOpcode<"sstore",     1051, DirectEncoding>;
 
-def OpLogToL1       : EraVMOpcode<"to_l1",       1052, DirectEncoding>; // is_first ⇒ 1052 + is_first
-def OpLogToL1First  : EraVMOpcode<"to_l1.first", 1053, DirectEncoding>;
-def OpLogEvent      : EraVMOpcode<"event",       1054, DirectEncoding>; // is_first ⇒ 1054 + is_first
-def OpLogEventFirst : EraVMOpcode<"event.first", 1055, DirectEncoding>;
-def OpLogPrecompile : EraVMOpcode<"precompile", 1056, DirectEncoding>;
+def OpLogToL1         : EraVMOpcode<"to_l1",       1052, DirectEncoding>; // is_first ⇒ 1052 + is_first
+def OpLogToL1Initial  : EraVMOpcode<"to_l1.first", 1053, DirectEncoding>;
+def OpLogEvent        : EraVMOpcode<"event",       1054, DirectEncoding>; // is_first ⇒ 1054 + is_first
+def OpLogEventInitial : EraVMOpcode<"event.first", 1055, DirectEncoding>;
+def OpLogPrecompile   : EraVMOpcode<"precompile",  1056, DirectEncoding>;
 
 def OpFarcall  : EraVMOpcode<"far_call",     1057, FarCallEncoding>; // is_shard is_static ⇒ 1057 + 2 × is_static + is_shard
 def OpDelegate : EraVMOpcode<"far_call.delegate", 1061, FarCallEncoding>; // is_shard is_static ⇒ 1061 + 2 × is_static + is_shard

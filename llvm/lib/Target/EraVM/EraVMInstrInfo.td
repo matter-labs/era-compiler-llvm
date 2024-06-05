@@ -981,18 +981,18 @@ multiclass HeapLoadInc<EraVMOpcode opcode> {
 }
 }
 
-defm LD1 : HeapLoad<OpLoadHeap, load_heap>;
-defm LD2 : HeapLoad<OpLoadAuxHeap, load_heapaux>;
-defm LD1Inc : HeapLoadInc<OpLoadHeapInc>;
-defm LD2Inc : HeapLoadInc<OpLoadAuxHeapInc>;
+defm LDMh   : HeapLoad<OpLoadHeap, load_heap>;
+defm LDMah  : HeapLoad<OpLoadAuxHeap, load_heapaux>;
+defm LDMIh  : HeapLoadInc<OpLoadHeapInc>;
+defm LDMIah : HeapLoadInc<OpLoadAuxHeapInc>;
 
-defm LDst : HeapLoad<OpStaticRead, load_static>;
-defm LDstInc : HeapLoadInc<OpStaticReadInc>;
+defm LDMst  : HeapLoad<OpStaticRead, load_static>;
+defm LDMIst : HeapLoadInc<OpStaticReadInc>;
 
 let mayLoad = 1 in {
-def LD      : IUMAr_r<OpLoadPtr, (outs GR256:$rd0), (ins GRPTR:$rs0),
+def LDP      : IUMAr_r<OpLoadPtr, (outs GR256:$rd0), (ins GRPTR:$rs0),
                      "$rs0, $rd0", []>;
-def LDInc   : IUMAr_rr<OpLoadPtrInc, (outs GR256:$rd0, GRPTR:$rd1), (ins GRPTR:$rs0),
+def LDPI   : IUMAr_rr<OpLoadPtrInc, (outs GR256:$rd0, GRPTR:$rd1), (ins GRPTR:$rs0),
                       "$rs0, $rd0, $rd1", []>;
 }
 
@@ -1014,13 +1014,13 @@ multiclass HeapStoreInc<EraVMOpcode opcode> {
 }
 }
 
-defm ST1 : HeapStore<OpStoreHeap, store_heap>;
-defm ST2 : HeapStore<OpStoreAuxHeap, store_heapaux>;
-defm ST1Inc : HeapStoreInc<OpStoreHeapInc>;
-defm ST2Inc : HeapStoreInc<OpStoreAuxHeapInc>;
+defm STMh   : HeapStore<OpStoreHeap, store_heap>;
+defm STMah  : HeapStore<OpStoreAuxHeap, store_heapaux>;
+defm STMIh  : HeapStoreInc<OpStoreHeapInc>;
+defm STMIah : HeapStoreInc<OpStoreAuxHeapInc>;
 
-defm STst : HeapStore<OpStaticWrite, store_static>;
-defm STstInc : HeapStoreInc<OpStaticWriteInc>;
+defm STMst  : HeapStore<OpStaticWrite, store_static>;
+defm STMIst : HeapStoreInc<OpStaticWriteInc>;
 
 //===----------------------------------------------------------------------===//
 // Control flow instructions
@@ -1193,44 +1193,44 @@ def CTXIncTx   : IContext_<OpContextIncrementTxNumber, (outs), (ins), "", [(int_
 //===----------------------------------------------------------------------===//
 // Fat Pointer
 //===----------------------------------------------------------------------===//
-def SLDrr : ILogRr_r<OpSload, (outs GR256:$rd0), (ins GR256:$rs0),
+def LDS : ILogRr_r<OpSload, (outs GR256:$rd0), (ins GR256:$rs0),
                      "$rs0, $rd0",
                      [(set GR256:$rd0, (load_storage GR256:$rs0))]>;
-def TLDrr : ILogRr_r<OpTransientLoad, (outs GR256:$rd0), (ins GR256:$rs0),
+def LDT : ILogRr_r<OpTransientLoad, (outs GR256:$rd0), (ins GR256:$rs0),
                      "$rs0, $rd0",
                      [(set GR256:$rd0, (load_transient GR256:$rs0))]>;
 
 let hasSideEffects = 1 in {
-  def SSTr : ILogRrr_<OpSstore, (outs), (ins GR256:$rs0, GR256:$rs1),
+  def STS : ILogRrr_<OpSstore, (outs), (ins GR256:$rs0, GR256:$rs1),
                       "$rs0, $rs1",
                       [(store_storage GR256:$rs1, GR256:$rs0)]>;
-  def TSTr : ILogRrr_<OpTransientStore, (outs), (ins GR256:$rs0, GR256:$rs1),
+  def STT : ILogRrr_<OpTransientStore, (outs), (ins GR256:$rs0, GR256:$rs1),
                       "$rs0, $rs1",
                       [(store_transient GR256:$rs1, GR256:$rs0)]>;
 }
 
 let hasSideEffects = 1 in {
-def L1r : ILogRrr_<OpLogToL1, (outs), (ins GR256:$rs0, GR256:$rs1),
+def LOGL1 : ILogRrr_<OpLogToL1, (outs), (ins GR256:$rs0, GR256:$rs1),
                         "$rs0, $rs1",
                         [(int_eravm_tol1 GR256:$rs0, GR256:$rs1, 0)]>;
-def L1Firstr : ILogRrr_<OpLogToL1First, (outs), (ins GR256:$rs0, GR256:$rs1),
+def LOGL1I : ILogRrr_<OpLogToL1Initial, (outs), (ins GR256:$rs0, GR256:$rs1),
                              "$rs0, $rs1",
                              [(int_eravm_tol1 GR256:$rs0, GR256:$rs1, 1)]>;
 
-def EVTr : ILogRrr_<OpLogEvent, (outs), (ins GR256:$rs0, GR256:$rs1),
+def LOG : ILogRrr_<OpLogEvent, (outs), (ins GR256:$rs0, GR256:$rs1),
                          "$rs0, $rs1",
                          [(int_eravm_event GR256:$rs0, GR256:$rs1, 0)]>;
 
-def EVTFirstr : ILogRrr_<OpLogEventFirst, (outs), (ins GR256:$rs0, GR256:$rs1),
+def LOGI : ILogRrr_<OpLogEventInitial, (outs), (ins GR256:$rs0, GR256:$rs1),
                               "$rs0, $rs1",
                               [(int_eravm_event GR256:$rs0, GR256:$rs1, 1)]>;
 
-def PCOMPr : ILogRrr_r<OpLogPrecompile, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
+def CALLP : ILogRrr_r<OpLogPrecompile, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
                        "$rs0, $rs1, $rd0",
                        [(set GR256:$rd0, (int_eravm_precompile GR256:$rs0, GR256:$rs1))]>;
 }
 
-def DECOMMITr : ILogRrr_r<OpDecommit, (outs GRPTR:$rd0), (ins GR256:$rs0, GR256:$rs1),
+def DCMT : ILogRrr_r<OpDecommit, (outs GRPTR:$rd0), (ins GR256:$rs0, GR256:$rs1),
                           "$rs0, $rs1, $rd0",
                           [(set GRPTR:$rd0, (EraVMlog_decommit GR256:$rs0, GR256:$rs1))]>;
 
