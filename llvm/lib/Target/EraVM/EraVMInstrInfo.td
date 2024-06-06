@@ -304,30 +304,14 @@ def : Pat<(int_eravm_iflt imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:
 def : Pat<(int_eravm_ifgt imm16:$src0, imm16:$src1), (SELiir imm16:$src0, imm16:$src1, COND_GT.Encoding)>;
 
 let hasSideEffects = 1, Defs = [SP], Uses = [SP], mayStore = 0 in {
-def NOPrrr : Irr_r<OpNoOp, NoSwap, PreserveFlags,
-                   (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
-                   "$rs0, $rs1, $rd0", []>;
-def NOPirr : Iir_r<OpNoOp, NoSwap, PreserveFlags,
-                   (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
-                   "$imm, $rs1, $rd0", []>;
-def NOPcrr : Imr_r<OpNoOp, NoSwap, PreserveFlags,
-                   (outs GR256:$rd0), (ins memop:$src0, GR256:$rs1),
-                   "$src0, $rs1, $rd0", []>;
-def NOPsrr : Isr_r<OpNoOp, NoSwap, PreserveFlags,
-                   (outs GR256:$rd0), (ins stackin:$src0, GR256:$rs1),
-                   "$src0, $rs1, $rd0", []>;
-def NOPrrs : Irr_s<OpNoOp, NoSwap, PreserveFlags,
-                   (outs), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
-                   "$rs0, $rs1, $dst0", []>;
-def NOPirs : Iir_s<OpNoOp, NoSwap, PreserveFlags,
-                   (outs), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                   "$imm, $rs1, $dst0", []>;
-def NOPcrs : Imr_s<OpNoOp, NoSwap, PreserveFlags,
-                   (outs), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
-                   "$src0, $rs1, $dst0", []>;
-def NOPsrs : Isr_s<OpNoOp, NoSwap, PreserveFlags,
-                   (outs), (ins stackin:$src0, GR256:$rs1, stackout:$dst0),
-                   "$src0, $rs1, $dst0", []>;
+def NOPrrr : Irr_r<OpNoOp, NoSwap, PreserveFlags, []>;
+def NOPirr : Iir_r<OpNoOp, NoSwap, PreserveFlags, []>;
+def NOPcrr : Imr_r<OpNoOp, NoSwap, PreserveFlags, []>;
+def NOPsrr : Isr_r<OpNoOp, NoSwap, PreserveFlags, []>;
+def NOPrrs : Irr_s<OpNoOp, NoSwap, PreserveFlags, []>;
+def NOPirs : Iir_s<OpNoOp, NoSwap, PreserveFlags, []>;
+def NOPcrs : Imr_s<OpNoOp, NoSwap, PreserveFlags, []>;
+def NOPsrs : Isr_s<OpNoOp, NoSwap, PreserveFlags, []>;
 }
 
 def : Pat<(EraVMadd_to_sp GR256:$reg), (NOPrrs R0, R0, R0, $reg, 0, 0)>;
@@ -343,62 +327,38 @@ multiclass Arith<EraVMOpcode opcode, SDPatternOperator node, bit commutes> {
   let BaseOpcode = opcode.Name, isCommutable = commutes in {
 
   def rrr_s : Irr_r<opcode, NoSwap, PreserveFlags,
-                   (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
-                   "$rs0, $rs1, $rd0",
                    [(set GR256:$rd0, (node GR256:$rs0, GR256:$rs1))]>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  def rrr_v : Irr_r<opcode, NoSwap, SetFlags,
-                   (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
-                   "$rs0, $rs1, $rd0", []>,
+  def rrr_v : Irr_r<opcode, NoSwap, SetFlags, []>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
 
   def crr_s : Imr_r<opcode, NoSwap, PreserveFlags,
-                   (outs GR256:$rd0), (ins memop:$src0, GR256:$rs1),
-                   "$src0, $rs1, $rd0",
                    [(set GR256:$rd0, (node (load_code memaddr:$src0), GR256:$rs1))]>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  def crr_v : Imr_r<opcode, NoSwap, SetFlags,
-                   (outs GR256:$rd0), (ins memop:$src0, GR256:$rs1),
-                   "$src0, $rs1, $rd0", []>,
+  def crr_v : Imr_r<opcode, NoSwap, SetFlags, []>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
   def srr_s : Isr_r<opcode, NoSwap, PreserveFlags,
-                   (outs GR256:$rd0), (ins stackin:$src0, GR256:$rs1),
-                   "$src0, $rs1, $rd0",
                    [(set GR256:$rd0, (node (load_stack stackaddr:$src0), GR256:$rs1))]>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  def srr_v : Isr_r<opcode, NoSwap, SetFlags,
-                   (outs GR256:$rd0), (ins stackin:$src0, GR256:$rs1),
-                   "$src0, $rs1, $rd0", []>,
+  def srr_v : Isr_r<opcode, NoSwap, SetFlags, []>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
 
   def rrs_s : Irr_s<opcode, NoSwap, PreserveFlags,
-                   (outs), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
-                   "$rs0, $rs1, $dst0",
                    [(store_stack (node GR256:$rs0, GR256:$rs1), stackaddr:$dst0)]>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  def rrs_v : Irr_s<opcode, NoSwap, SetFlags,
-                   (outs), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
-                   "$rs0, $rs1, $dst0", []>,
+  def rrs_v : Irr_s<opcode, NoSwap, SetFlags, []>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
 
   def crs_s : Imr_s<opcode, NoSwap, PreserveFlags,
-                   (outs), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
-                   "$src0, $rs1, $dst0",
                    [(store_stack (node (load_code memaddr:$src0), GR256:$rs1), stackaddr:$dst0)]>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  def crs_v : Imr_s<opcode, NoSwap, SetFlags,
-                   (outs), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
-                   "$src0, $rs1, $dst0", []>,
+  def crs_v : Imr_s<opcode, NoSwap, SetFlags, []>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
 
   def srs_s : Isr_s<opcode, NoSwap, PreserveFlags,
-                   (outs), (ins stackin:$src0, GR256:$rs1, stackout:$dst0),
-                   "$src0, $rs1, $dst0",
                    [(store_stack (node (load_stack stackaddr:$src0), GR256:$rs1), stackaddr:$dst0)]>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  def srs_v : Isr_s<opcode, NoSwap, SetFlags,
-                   (outs), (ins stackin:$src0, GR256:$rs1, stackout:$dst0),
-                   "$src0, $rs1, $dst0", []>,
+  def srs_v : Isr_s<opcode, NoSwap, SetFlags, []>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
   }
 }
@@ -406,21 +366,14 @@ multiclass Arith<EraVMOpcode opcode, SDPatternOperator node, bit commutes> {
 multiclass ArithICommutable<EraVMOpcode opcode, SDPatternOperator node> : Arith<opcode, node, 1> {
   let BaseOpcode = opcode.Name, isCommutable = 1 in {
   def irr_s : Iir_r<opcode, NoSwap, PreserveFlags,
-                   (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
-                   "$imm, $rs1, $rd0", [(set GR256:$rd0, (node GR256:$rs1, imm16:$imm))]>,
+                   [(set GR256:$rd0, (node GR256:$rs1, imm16:$imm))]>,
                    FlagSetting, AddrModeRel, RetAddrModeRel;
-  def irr_v : Iir_r<opcode, NoSwap, SetFlags,
-                   (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
-                   "$imm, $rs1, $rd0", []>,
+  def irr_v : Iir_r<opcode, NoSwap, SetFlags, []>,
                    FlagSetting, AddrModeRel, RetAddrModeRel;
   def irs_s : Iir_s<opcode, NoSwap, PreserveFlags,
-                   (outs), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                   "$imm, $rs1, $dst0",
                    [(store_stack (node GR256:$rs1, imm16:$imm), stackaddr:$dst0)]>,
                    FlagSetting, AddrModeRel, RetAddrModeRel;
-  def irs_v : Iir_s<opcode, NoSwap, SetFlags,
-                   (outs), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                   "$imm, $rs1, $dst0", []>,
+  def irs_v : Iir_s<opcode, NoSwap, SetFlags, []>,
                    FlagSetting, AddrModeRel, RetAddrModeRel;
   } // end isCommutable = 1
 
@@ -435,13 +388,9 @@ multiclass ArithICommutable<EraVMOpcode opcode, SDPatternOperator node> : Arith<
 multiclass ArithINonCommutable<EraVMOpcode opcode, SDPatternOperator node> : Arith<opcode, node, 0> {
   let BaseOpcode = opcode.Name in {
   def irr_s : Iir_r<opcode, NoSwap, PreserveFlags,
-                   (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
-                   "$imm, $rs1, $rd0",
                    [(set GR256:$rd0, (node imm16:$imm, GR256:$rs1))]>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
   def xrr_s : Iir_r<opcode, Swap, PreserveFlags,
-                   (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
-                   "$imm, $rs1, $rd0",
                    [(set GR256:$rd0, (node GR256:$rs1, imm16:$imm))]>,
                    FlagSetting, Swappable, RetAddrModeRel;
 
@@ -449,87 +398,51 @@ multiclass ArithINonCommutable<EraVMOpcode opcode, SDPatternOperator node> : Ari
   // "mnemonic.s rs0, rs1, rd0" instructions for the sake of uniformity, that
   // are otherwise redundant. *Rel base classes are dropped, as these
   // instructions are not intended to participate in InstrMappings.
-  def rrr_s_alias : Irr_r<opcode, Swap, PreserveFlags,
-                          (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
-                          "$rs0, $rs1, $rd0", []>;
-  def rrr_v_alias : Irr_r<opcode, Swap, SetFlags,
-                          (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
-                          "$rs0, $rs1, $rd0", []>;
-  def rrs_s_alias : Irr_s<opcode, Swap, PreserveFlags,
-                          (outs), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
-                          "$rs0, $rs1, $dst0", []>;
-  def rrs_v_alias : Irr_s<opcode, Swap, SetFlags,
-                          (outs), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
-                          "$rs0, $rs1, $dst0", []>;
+  def rrr_s_alias : Irr_r<opcode, Swap, PreserveFlags, []>;
+  def rrr_v_alias : Irr_r<opcode, Swap, SetFlags, []>;
+  def rrs_s_alias : Irr_s<opcode, Swap, PreserveFlags, []>;
+  def rrs_v_alias : Irr_s<opcode, Swap, SetFlags, []>;
 
-  def irr_v : Iir_r<opcode, NoSwap, SetFlags,
-                   (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
-                   "$imm, $rs1, $rd0", []>,
+  def irr_v : Iir_r<opcode, NoSwap, SetFlags, []>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  def xrr_v : Iir_r<opcode, Swap, SetFlags,
-                   (outs GR256:$rd0), (ins imm16:$imm, GR256:$rs1),
-                   "$imm, $rs1, $rd0", []>,
+  def xrr_v : Iir_r<opcode, Swap, SetFlags, []>,
                    FlagSetting, Swappable, RetAddrModeRel;
 
   def yrr_s : Imr_r<opcode, Swap, PreserveFlags,
-                   (outs GR256:$rd0), (ins memop:$src0, GR256:$rs1),
-                   "$src0, $rs1, $rd0",
                    [(set GR256:$rd0, (node GR256:$rs1, (load_code memaddr:$src0)))]>,
                    FlagSetting, Swappable, RetAddrModeRel;
-  def yrr_v : Imr_r<opcode, Swap, SetFlags,
-                   (outs GR256:$rd0), (ins memop:$src0, GR256:$rs1),
-                   "$src0, $rs1, $rd0", []>,
+  def yrr_v : Imr_r<opcode, Swap, SetFlags, []>,
                    FlagSetting, Swappable, RetAddrModeRel;
   def zrr_s : Isr_r<opcode, Swap, PreserveFlags,
-                   (outs GR256:$rd0), (ins stackin:$src0, GR256:$rs1),
-                   "$src0, $rs1, $rd0",
                    [(set GR256:$rd0, (node GR256:$rs1, (load_stack stackaddr:$src0)))]>,
                    FlagSetting, Swappable, RetAddrModeRel;
-  def zrr_v : Isr_r<opcode, Swap, SetFlags,
-                   (outs GR256:$rd0), (ins stackin:$src0, GR256:$rs1),
-                   "$src0, $rs1, $rd0", []>,
+  def zrr_v : Isr_r<opcode, Swap, SetFlags, []>,
                    FlagSetting, Swappable, RetAddrModeRel;
 
   def irs_s : Iir_s<opcode, NoSwap, PreserveFlags,
-                   (outs), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                   "$imm, $rs1, $dst0",
                    [(store_stack (node imm16:$imm, GR256:$rs1), stackaddr:$dst0)]>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
 
   def xrs_s : Iir_s<opcode, Swap, PreserveFlags,
-                   (outs), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                   "$imm, $rs1, $dst0",
                    [(store_stack (node GR256:$rs1, imm16:$imm), stackaddr:$dst0)]>,
                    FlagSetting, Swappable, RetAddrModeRel;
 
-  def irs_v : Iir_s<opcode, NoSwap, SetFlags,
-                   (outs), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                   "$imm, $rs1, $dst0", []>,
+  def irs_v : Iir_s<opcode, NoSwap, SetFlags, []>,
                    FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  def xrs_v : Iir_s<opcode, Swap, SetFlags,
-                   (outs), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                   "$imm, $rs1, $dst0", []>,
+  def xrs_v : Iir_s<opcode, Swap, SetFlags, []>,
                    FlagSetting, Swappable, RetAddrModeRel;
 
   def yrs_s : Imr_s<opcode, Swap, PreserveFlags,
-                   (outs), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
-                   "$src0, $rs1, $dst0",
                    [(store_stack (node GR256:$rs1, (load_code memaddr:$src0)), stackaddr:$dst0)]>,
                    FlagSetting, Swappable, RetAddrModeRel;
 
-  def yrs_v : Imr_s<opcode, Swap, SetFlags,
-                   (outs), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
-                   "$src0, $rs1, $dst0", []>,
+  def yrs_v : Imr_s<opcode, Swap, SetFlags, []>,
                    FlagSetting, Swappable, RetAddrModeRel;
 
   def zrs_s : Isr_s<opcode, Swap, PreserveFlags,
-                   (outs), (ins stackin:$src0, GR256:$rs1, stackout:$dst0),
-                   "$src0, $rs1, $dst0",
                    [(store_stack (node GR256:$rs1, (load_stack stackaddr:$src0)), stackaddr:$dst0)]>,
                    FlagSetting, Swappable, RetAddrModeRel;
-  def zrs_v : Isr_s<opcode, Swap, SetFlags,
-                   (outs), (ins stackin:$src0, GR256:$rs1, stackout:$dst0),
-                   "$src0, $rs1, $dst0", []>,
+  def zrs_v : Isr_s<opcode, Swap, SetFlags, []>,
                    FlagSetting, Swappable, RetAddrModeRel;
   }
 
@@ -553,9 +466,7 @@ multiclass ArithINonCommutable<EraVMOpcode opcode, SDPatternOperator node> : Ari
 multiclass PtrInstr<EraVMOpcode opcode, SDPatternOperator node> {
   let BaseOpcode = opcode.Name in {
 
-  def rrr_s : Irr_r<opcode, NoSwap, PreserveFlags,
-                   (outs GRPTR:$rd0), (ins GRPTR:$rs0, GR256:$rs1),
-                   "$rs0, $rs1, $rd0",
+  def rrr_s : Ipr_p<opcode, NoSwap, PreserveFlags,
                    [(set GRPTR:$rd0, (node GRPTR:$rs0, GR256:$rs1))]>,
                    Swappable, AddrModeRel, RetAddrModeRel;
 
@@ -563,64 +474,42 @@ multiclass PtrInstr<EraVMOpcode opcode, SDPatternOperator node> {
   // "ptr.<op>.s rs0, rs1, rd0" instructions for the sake of uniformity, that
   // are otherwise redundant. *Rel base classes are dropped, as these
   // instructions are not intended to participate in InstrMappings.
-  def rrr_s_alias : Irr_r<opcode, Swap, PreserveFlags,
-                          (outs GRPTR:$rd0), (ins GRPTR:$rs0, GR256:$rs1),
-                          "$rs0, $rs1, $rd0", []>;
-  def rrs_s_alias : Irr_s<opcode, Swap, PreserveFlags,
-                          (outs), (ins GRPTR:$rs0, GR256:$rs1, stackout:$dst0),
-                          "$rs0, $rs1, $dst0", []>;
+  def rrr_s_alias : Ipr_p<opcode, Swap, PreserveFlags, []>;
+  def rrs_s_alias : Ipr_s<opcode, Swap, PreserveFlags, []>;
 
-  def srr_s : Isr_r<opcode, NoSwap, PreserveFlags,
-                   (outs GRPTR:$rd0), (ins stackin:$src0, GR256:$rs1),
-                   "$src0, $rs1, $rd0",
+  def srr_s : Isr_p<opcode, NoSwap, PreserveFlags,
                    [(set GRPTR:$rd0, (node (load_stack stackaddr:$src0), GR256:$rs1))]>,
                    Swappable, AddrModeRel, RetAddrModeRel;
 
-  def rrs_s : Irr_s<opcode, NoSwap, PreserveFlags,
-                   (outs), (ins GRPTR:$rs0, GR256:$rs1, stackout:$dst0),
-                   "$rs0, $rs1, $dst0",
+  def rrs_s : Ipr_s<opcode, NoSwap, PreserveFlags,
                    [(store_stack (node GRPTR:$rs0, GR256:$rs1), stackaddr:$dst0)]>,
                    Swappable, AddrModeRel, RetAddrModeRel;
 
   def srs_s : Isr_s<opcode, NoSwap, PreserveFlags,
-                   (outs), (ins stackin:$src0, GR256:$rs1, stackout:$dst0),
-                   "$src0, $rs1, $dst0",
                    [(store_stack (node (load_stack stackaddr:$src0), GR256:$rs1), stackaddr:$dst0)]>,
                    Swappable, AddrModeRel, RetAddrModeRel;
 
-  def xrr_s : Iir_r<opcode, Swap, PreserveFlags,
-                   (outs GRPTR:$rd0), (ins imm16:$imm, GRPTR:$rs1),
-                   "$imm, $rs1, $rd0",
+  def xrr_s : Iip_p<opcode, Swap, PreserveFlags,
                    [(set GRPTR:$rd0, (node GRPTR:$rs1, imm16:$imm))]>,
                    Swappable, AddrModeRel, RetAddrModeRel;
 
-  def yrr_s : Imr_r<opcode, Swap, PreserveFlags,
-                   (outs GRPTR:$rd0), (ins memop:$src0, GRPTR:$rs1),
-                   "$src0, $rs1, $rd0",
+  def yrr_s : Imp_p<opcode, Swap, PreserveFlags,
                    [(set GRPTR:$rd0, (node GRPTR:$rs1, (load_code memaddr:$src0)))]>,
                    Swappable, AddrModeRel, RetAddrModeRel;
 
-  def zrr_s : Isr_r<opcode, Swap, PreserveFlags,
-                   (outs GRPTR:$rd0), (ins stackin:$src0, GRPTR:$rs1),
-                   "$src0, $rs1, $rd0",
+  def zrr_s : Isp_p<opcode, Swap, PreserveFlags,
                    [(set GRPTR:$rd0, (node GRPTR:$rs1, (load_stack stackaddr:$src0)))]>,
                    Swappable, RetAddrModeRel;
 
-  def xrs_s : Iir_s<opcode, Swap, PreserveFlags,
-                   (outs), (ins imm16:$imm, GRPTR:$rs1, stackout:$dst0),
-                   "$imm, $rs1, $dst0",
+  def xrs_s : Iip_s<opcode, Swap, PreserveFlags,
                    [(store_stack (node GRPTR:$rs1, imm16:$imm), stackaddr:$dst0)]>,
                    Swappable, AddrModeRel, RetAddrModeRel;
 
-  def yrs_s : Imr_s<opcode, Swap, PreserveFlags,
-                   (outs), (ins memop:$src0, GRPTR:$rs1, stackout:$dst0),
-                   "$src0, $rs1, $dst0",
+  def yrs_s : Imp_s<opcode, Swap, PreserveFlags,
                    [(store_stack (node GRPTR:$rs1, (load_code memaddr:$src0)), stackaddr:$dst0)]>,
                    Swappable, AddrModeRel, RetAddrModeRel;
 
-  def zrs_s : Isr_s<opcode, Swap, PreserveFlags,
-                   (outs), (ins stackin:$src0, GRPTR:$rs1, stackout:$dst0),
-                   "$src0, $rs1, $dst0",
+  def zrs_s : Isp_s<opcode, Swap, PreserveFlags,
                    [(store_stack (node GRPTR:$rs1, (load_stack stackaddr:$src0)), stackaddr:$dst0)]>,
                    Swappable, RetAddrModeRel;
   }
@@ -641,57 +530,33 @@ def PTR_TO_INT : Pseudo<(outs GR256:$rd0), (ins GRPTR:$rs0),
 multiclass Arith2<EraVMOpcode opcode, SDPatternOperator node, bit commutes> {
   let BaseOpcode = opcode.Name, isCommutable = commutes in {
   def rrrr_s : Irr_rr<opcode, NoSwap, PreserveFlags,
-                     (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, GR256:$rs1),
-                     "$rs0, $rs1, $rd0, $rd1",
                      [(set GR256:$rd0, GR256:$rd1, (node GR256:$rs0, GR256:$rs1))]>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  def rrrr_v : Irr_rr<opcode, NoSwap, SetFlags,
-                     (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, GR256:$rs1),
-                     "$rs0, $rs1, $rd0, $rd1", []>,
+  def rrrr_v : Irr_rr<opcode, NoSwap, SetFlags, []>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
 
   def crrr_s : Imr_rr<opcode, NoSwap, PreserveFlags,
-                     (outs GR256:$rd0, GR256:$rd1), (ins memop:$src0, GR256:$rs1),
-                     "$src0, $rs1, $rd0, $rd1",
                      [(set GR256:$rd0, GR256:$rd1, (node (load_code memaddr:$src0), GR256:$rs1))]>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  def crrr_v : Imr_rr<opcode, NoSwap, SetFlags,
-                     (outs GR256:$rd0, GR256:$rd1), (ins memop:$src0, GR256:$rs1),
-                     "$src0, $rs1, $rd0, $rd1", []>,
+  def crrr_v : Imr_rr<opcode, NoSwap, SetFlags, []>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
   def srrr_s : Isr_rr<opcode, NoSwap, PreserveFlags,
-                     (outs GR256:$rd0, GR256:$rd1), (ins stackin:$src0, GR256:$rs1),
-                     "$src0, $rs1, $rd0, $rd1",
                      [(set GR256:$rd0, GR256:$rd1, (node (load_stack stackaddr:$src0), GR256:$rs1))]>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  def srrr_v : Isr_rr<opcode, NoSwap, SetFlags,
-                     (outs GR256:$rd0, GR256:$rd1), (ins stackin:$src0, GR256:$rs1),
-                     "$src0, $rs1, $rd0, $rd1", []>,
+  def srrr_v : Isr_rr<opcode, NoSwap, SetFlags, []>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
 
-  def rrsr_s : Irr_sr<opcode, NoSwap, PreserveFlags,
-                     (outs GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
-                     "$rs0, $rs1, $dst0, $rd1", []>,
+  def rrsr_s : Irr_sr<opcode, NoSwap, PreserveFlags, []>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  def rrsr_v : Irr_sr<opcode, NoSwap, SetFlags,
-                     (outs GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
-                     "$rs0, $rs1, $dst0, $rd1", []>,
+  def rrsr_v : Irr_sr<opcode, NoSwap, SetFlags, []>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  def crsr_s : Imr_sr<opcode, NoSwap, PreserveFlags,
-                     (outs GR256:$rd1), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
-                     "$src0, $rs1, $dst0, $rd1", []>,
+  def crsr_s : Imr_sr<opcode, NoSwap, PreserveFlags, []>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  def crsr_v : Imr_sr<opcode, NoSwap, SetFlags,
-                     (outs GR256:$rd1), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
-                     "$src0, $rs1, $dst0, $rd1", []>,
+  def crsr_v : Imr_sr<opcode, NoSwap, SetFlags, []>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  def srsr_s : Isr_sr<opcode, NoSwap, PreserveFlags,
-                     (outs GR256:$rd1), (ins stackin:$src0, GR256:$rs1, stackout:$dst0),
-                     "$src0, $rs1, $dst0, $rd1", []>,
+  def srsr_s : Isr_sr<opcode, NoSwap, PreserveFlags, []>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  def srsr_v : Isr_sr<opcode, NoSwap, SetFlags,
-                     (outs GR256:$rd1), (ins stackin:$src0, GR256:$rs1, stackout:$dst0),
-                     "$src0, $rs1, $dst0, $rd1", []>,
+  def srsr_v : Isr_sr<opcode, NoSwap, SetFlags, []>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
   }
 }
@@ -700,21 +565,13 @@ multiclass Arith2ICommutable<EraVMOpcode opcode, SDPatternOperator node>
          : Arith2<opcode, node, 1> {
   let BaseOpcode = opcode.Name, isCommutable = 1 in {
   def irrr_s : Iir_rr<opcode, NoSwap, PreserveFlags,
-                     (outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1),
-                     "$imm, $rs1, $rd0, $rd1",
                      [(set GR256:$rd0, GR256:$rd1, (node GR256:$rs1, imm16:$imm))]>,
                      FlagSetting, AddrModeRel, RetAddrModeRel;
-  def irrr_v : Iir_rr<opcode, NoSwap, SetFlags,
-                     (outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1),
-                     "$imm, $rs1, $rd0, $rd1", []>,
+  def irrr_v : Iir_rr<opcode, NoSwap, SetFlags, []>,
                      FlagSetting, AddrModeRel, RetAddrModeRel;
-  def irsr_s : Iir_sr<opcode, NoSwap, PreserveFlags,
-                     (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                     "$imm, $rs1, $dst0, $rd1", []>,
+  def irsr_s : Iir_sr<opcode, NoSwap, PreserveFlags, []>,
                      FlagSetting, AddrModeRel, RetAddrModeRel;
-  def irsr_v : Iir_sr<opcode, NoSwap, SetFlags,
-                     (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                     "$imm, $rs1, $dst0, $rd1", []>,
+  def irsr_v : Iir_sr<opcode, NoSwap, SetFlags, []>,
                      FlagSetting, AddrModeRel, RetAddrModeRel;
   }
 
@@ -727,91 +584,51 @@ multiclass Arith2INonCommutable<EraVMOpcode opcode, SDPatternOperator node>
          : Arith2<opcode, node, 0> {
   let BaseOpcode = opcode.Name in {
   def irrr_s : Iir_rr<opcode, NoSwap, PreserveFlags,
-                     (outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1),
-                     "$imm, $rs1, $rd0, $rd1",
                      [(set GR256:$rd0, GR256:$rd1, (node imm16:$imm, GR256:$rs1))]>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
   def xrrr_s : Iir_rr<opcode, Swap, PreserveFlags,
-                     (outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1),
-                     "$imm, $rs1, $rd0, $rd1",
                      [(set GR256:$rd0, GR256:$rd1, (node GR256:$rs1, imm16:$imm))]>,
                      FlagSetting, Swappable, RetAddrModeRel;
-  def irrr_v : Iir_rr<opcode, NoSwap, SetFlags,
-                     (outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1),
-                     "$imm, $rs1, $rd0, $rd1", []>,
+  def irrr_v : Iir_rr<opcode, NoSwap, SetFlags, []>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  def xrrr_v : Iir_rr<opcode, Swap, SetFlags,
-                     (outs GR256:$rd0, GR256:$rd1), (ins imm16:$imm, GR256:$rs1),
-                     "$imm, $rs1, $rd0, $rd1", []>,
+  def xrrr_v : Iir_rr<opcode, Swap, SetFlags, []>,
                      FlagSetting, Swappable, RetAddrModeRel;
 
   // The four *_alias instructions below are defined to make asm parser handle
   // "mnemonic.s rs0, rs1, rd0, rd1" instructions for the sake of uniformity, that
   // are otherwise redundant. *Rel base classes are dropped, as these
   // instructions are not intended to participate in InstrMappings.
-  def rrrr_s_alias : Irr_rr<opcode, Swap, PreserveFlags,
-                           (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, GR256:$rs1),
-                           "$rs0, $rs1, $rd0, $rd1", []>;
-  def rrrr_v_alias : Irr_rr<opcode, Swap, SetFlags,
-                           (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0, GR256:$rs1),
-                           "$rs0, $rs1, $rd0, $rd1", []>;
-  def rrsr_s_alias : Irr_sr<opcode, Swap, PreserveFlags,
-                           (outs GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
-                           "$rs0, $rs1, $dst0, $rd1", []>;
-  def rrsr_v_alias : Irr_sr<opcode, Swap, SetFlags,
-                           (outs GR256:$rd1), (ins GR256:$rs0, GR256:$rs1, stackout:$dst0),
-                           "$rs0, $rs1, $dst0, $rd1", []>;
+  def rrrr_s_alias : Irr_rr<opcode, Swap, PreserveFlags, []>;
+  def rrrr_v_alias : Irr_rr<opcode, Swap, SetFlags, []>;
+  def rrsr_s_alias : Irr_sr<opcode, Swap, PreserveFlags, []>;
+  def rrsr_v_alias : Irr_sr<opcode, Swap, SetFlags, []>;
 
   def yrrr_s : Imr_rr<opcode, Swap, PreserveFlags,
-                     (outs GR256:$rd0, GR256:$rd1), (ins memop:$src0, GR256:$rs1),
-                     "$src0, $rs1, $rd0, $rd1",
                      [(set GR256:$rd0, GR256:$rd1, (node GR256:$rs1, (load_code memaddr:$src0)))]>,
                      FlagSetting, Swappable, RetAddrModeRel;
-  def yrrr_v : Imr_rr<opcode, Swap, SetFlags,
-                     (outs GR256:$rd0, GR256:$rd1), (ins memop:$src0, GR256:$rs1),
-                     "$src0, $rs1, $rd0, $rd1", []>,
+  def yrrr_v : Imr_rr<opcode, Swap, SetFlags, []>,
                      FlagSetting, Swappable, RetAddrModeRel;
   def zrrr_s : Isr_rr<opcode, Swap, PreserveFlags,
-                     (outs GR256:$rd0, GR256:$rd1), (ins stackin:$src0, GR256:$rs1),
-                     "$src0, $rs1, $rd0, $rd1",
                      [(set GR256:$rd0, GR256:$rd1, (node GR256:$rs1, (load_stack stackaddr:$src0)))]>,
                      FlagSetting, Swappable, RetAddrModeRel;
-  def zrrr_v : Isr_rr<opcode, Swap, SetFlags,
-                     (outs GR256:$rd0, GR256:$rd1), (ins stackin:$src0, GR256:$rs1),
-                     "$src0, $rs1, $rd0, $rd1", []>,
+  def zrrr_v : Isr_rr<opcode, Swap, SetFlags, []>,
                      FlagSetting, Swappable, RetAddrModeRel;
 
-  def irsr_s : Iir_sr<opcode, NoSwap, PreserveFlags,
-                     (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                     "$imm, $rs1, $dst0, $rd1", []>,
+  def irsr_s : Iir_sr<opcode, NoSwap, PreserveFlags, []>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  def xrsr_s : Iir_sr<opcode, Swap, PreserveFlags,
-                     (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                     "$imm, $rs1, $dst0, $rd1", []>,
+  def xrsr_s : Iir_sr<opcode, Swap, PreserveFlags, []>,
                      FlagSetting, Swappable, RetAddrModeRel;
-  def irsr_v : Iir_sr<opcode, NoSwap, SetFlags,
-                     (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                     "$imm, $rs1, $dst0, $rd1", []>,
+  def irsr_v : Iir_sr<opcode, NoSwap, SetFlags, []>,
                      FlagSetting, Swappable, AddrModeRel, RetAddrModeRel;
-  def xrsr_v : Iir_sr<opcode, Swap, SetFlags,
-                     (outs GR256:$rd1), (ins imm16:$imm, GR256:$rs1, stackout:$dst0),
-                     "$imm, $rs1, $dst0, $rd1", []>,
+  def xrsr_v : Iir_sr<opcode, Swap, SetFlags, []>,
                      FlagSetting, Swappable, RetAddrModeRel;
-  def yrsr_s : Imr_sr<opcode, Swap, PreserveFlags,
-                     (outs GR256:$rd1), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
-                     "$src0, $rs1, $dst0, $rd1", []>,
+  def yrsr_s : Imr_sr<opcode, Swap, PreserveFlags, []>,
                      FlagSetting, Swappable, RetAddrModeRel;
-  def yrsr_v : Imr_sr<opcode, Swap, SetFlags,
-                     (outs GR256:$rd1), (ins memop:$src0, GR256:$rs1, stackout:$dst0),
-                     "$src0, $rs1, $dst0, $rd1", []>,
+  def yrsr_v : Imr_sr<opcode, Swap, SetFlags, []>,
                      FlagSetting, Swappable, RetAddrModeRel;
-  def zrsr_s : Isr_sr<opcode, Swap, PreserveFlags,
-                     (outs GR256:$rd1), (ins stackin:$src0, GR256:$rs1, stackout:$dst0),
-                     "$src0, $rs1, $dst0, $rd1", []>,
+  def zrsr_s : Isr_sr<opcode, Swap, PreserveFlags, []>,
                      FlagSetting, Swappable, RetAddrModeRel;
-  def zrsr_v : Isr_sr<opcode, Swap, SetFlags,
-                     (outs GR256:$rd1), (ins stackin:$src0, GR256:$rs1, stackout:$dst0),
-                     "$src0, $rs1, $dst0, $rd1", []>,
+  def zrsr_v : Isr_sr<opcode, Swap, SetFlags, []>,
                      FlagSetting, Swappable, RetAddrModeRel;
   }
 
@@ -876,19 +693,13 @@ def : Pat<(EraVMcmp GR256:$lhs, (load_stack stackaddr:$rhs)), (SUBzrr_v stackadd
 
 let mayLoad = 1 in {
 multiclass HeapLoad<EraVMOpcode opcode, SDPatternOperator node> {
-  def r : IUMAr_r<opcode, (outs GR256:$rd0), (ins GR256:$rs0),
-                 "$rs0, $rd0",
-                 [(set GR256:$rd0, (node GR256:$rs0))]>;
-  def i : IUMAi_r<opcode, (outs GR256:$rd0), (ins imm16:$addr),
-                 "$addr, $rd0",
-                 [(set GR256:$rd0, (node imm16:$addr))]>;
+  def r : IUMAr_r<opcode, [(set GR256:$rd0, (node GR256:$rs0))]>;
+  def i : IUMAi_r<opcode, [(set GR256:$rd0, (node imm16:$addr))]>;
 }
 
 multiclass HeapLoadInc<EraVMOpcode opcode> {
-  def r : IUMAr_rr<opcode, (outs GR256:$rd0, GR256:$rd1), (ins GR256:$rs0),
-                 "$rs0, $rd0, $rd1", []>;
-  def i : IUMAi_rr<opcode, (outs GR256:$rd0, GR256:$rd1), (ins imm16:$addr),
-                  "$addr, $rd0, $rd1", []>;
+  def r : IUMAr_rr<opcode, []>;
+  def i : IUMAi_rr<opcode, []>;
 }
 }
 
@@ -901,27 +712,19 @@ defm LDMst  : HeapLoad<OpStaticRead, load_static>;
 defm LDMIst : HeapLoadInc<OpStaticReadInc>;
 
 let mayLoad = 1 in {
-def LDP      : IUMAr_r<OpLoadPtr, (outs GR256:$rd0), (ins GRPTR:$rs0),
-                     "$rs0, $rd0", []>;
-def LDPI   : IUMAr_rr<OpLoadPtrInc, (outs GR256:$rd0, GRPTR:$rd1), (ins GRPTR:$rs0),
-                      "$rs0, $rd0, $rd1", []>;
+def LDP     : IUMAp_r<OpLoadPtr, []>;
+def LDPI    : IUMAp_rp<OpLoadPtrInc, []>;
 }
 
 let mayStore = 1 in {
 multiclass HeapStore<EraVMOpcode opcode, SDPatternOperator node> {
-  def r : IUMArr_<opcode, (outs), (ins GR256:$rs0, GR256:$rs1),
-                  "$rs0, $rs1",
-                  [(node GR256:$rs1, GR256:$rs0)]>;
-  def i : IUMAir_<opcode, (outs), (ins imm16:$addr, GR256:$rs1),
-                  "$addr, $rs1",
-                  [(node GR256:$rs1, imm16:$addr)]>;
+  def r : IUMArr_<opcode, [(node GR256:$rs1, GR256:$rs0)]>;
+  def i : IUMAir_<opcode, [(node GR256:$rs1, imm16:$addr)]>;
 }
 
 multiclass HeapStoreInc<EraVMOpcode opcode> {
-  def r : IUMArr_r<opcode, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
-                  "$rs0, $rs1, $rd0", []>;
-  def i : IUMAir_r<opcode, (outs GR256:$rd0), (ins imm16:$addr, GR256:$rs1),
-                  "$addr, $rs1, $rd0", []>;
+  def r : IUMArr_r<opcode, []>;
+  def i : IUMAir_r<opcode, []>;
 }
 }
 
@@ -972,25 +775,24 @@ class JumpViaStack : JumpViaConst;
 // so it may be worth making it non-terminator in the future.
 
 let Uses = [Flags] in // TODO Do not set implicit use unconditionally.
-def JCl  : IJump<OpJump, SrcImm, (outs), (ins jmptarget:$dest), "$dest",
-                 [(EraVMbrcc bb:$dest, imm:$cc)]>,
+def JCl  : IJump<OpJump, SrcImm, [dest_label], [(EraVMbrcc bb:$dest, imm:$cc)]>,
            JumpWithoutRetAddr, JumpViaLabel;
-def JClr : IJump<OpJump, SrcImm, (outs GR256:$ret_addr), (ins jmptarget:$dest), "$dest, $ret_addr", []>,
+def JClr : IJump<OpJump, SrcImm, [dest_label, ret_addr], []>,
            JumpWithRetAddr, JumpViaLabel;
 
-def JCr  : IJump<OpJump, SrcReg, (outs), (ins GR256:$dest), "$dest", []>,
+def JCr  : IJump<OpJump, SrcReg, [dest_reg], []>,
            JumpWithoutRetAddr, JumpViaReg;
-def JCrr : IJump<OpJump, SrcReg, (outs GR256:$ret_addr), (ins GR256:$dest), "$dest, $ret_addr", []>,
+def JCrr : IJump<OpJump, SrcReg, [dest_reg, ret_addr], []>,
            JumpWithRetAddr, JumpViaReg;
 
-def JCc  : IJump<OpJump, SrcCodeAddr, (outs), (ins memop:$dest), "$dest", []>,
+def JCc  : IJump<OpJump, SrcCodeAddr, [dest_code], []>,
            JumpWithoutRetAddr, JumpViaConst;
-def JCcr : IJump<OpJump, SrcCodeAddr, (outs GR256:$ret_addr), (ins memop:$dest), "$dest, $ret_addr", []>,
+def JCcr : IJump<OpJump, SrcCodeAddr, [dest_code, ret_addr], []>,
            JumpWithRetAddr, JumpViaConst;
 
-def JCs  : IJump<OpJump, SrcStackAbsolute, (outs), (ins stackin:$dest), "$dest", []>,
+def JCs  : IJump<OpJump, SrcStackAbsolute, [dest_stack], []>,
            JumpWithoutRetAddr, JumpViaStack;
-def JCsr : IJump<OpJump, SrcStackAbsolute, (outs GR256:$ret_addr), (ins stackin:$dest), "$dest, $ret_addr", []>,
+def JCsr : IJump<OpJump, SrcStackAbsolute, [dest_stack, ret_addr], []>,
            JumpWithRetAddr, JumpViaStack;
 
 // Unconditional jump
@@ -1010,15 +812,15 @@ let isCall = 1 in
 def JCALL: Pseudo<(outs), (ins jmptarget:$dest), []>,
            PseudoInstExpansion<(JCl jmptarget:$dest, 0)>;
 
-def RETr : IRet<OpRet, (ins GR256:$rs0), "$rs0", []>;
-def RETrl : IRetToLabel<OpRetToLabel, (ins GR256:$rs0, jmptarget:$dest), "$rs0, $dest", []>;
+def RETr : IRet<OpRet, [rs0], []>;
+def RETrl : IRetToLabel<OpRetToLabel, [rs0, dest_label], []>;
 
-def REVERTr : IRet<OpRevert, (ins GR256:$rs0), "$rs0", []>;
-def REVERTrl : IRetToLabel<OpRevertToLabel, (ins GR256:$rs0, jmptarget:$dest), "$rs0, $dest", []>;
+def REVERTr : IRet<OpRevert, [rs0], []>;
+def REVERTrl : IRetToLabel<OpRevertToLabel, [rs0, dest_label], []>;
 
 let rs0 = 0 in {
-def PANIC  : IRet<OpPanic, (ins), "", []>;
-def PANICl : IRetToLabel<OpPanicToLabel, (ins jmptarget:$dest), "$dest", []>;
+def PANIC  : IRet<OpPanic, [], []>;
+def PANICl : IRetToLabel<OpPanicToLabel, [dest_label], []>;
 }
 
 let isReturn = 1, isTerminator = 1, isBarrier = 1  in {
@@ -1066,94 +868,51 @@ def MOVEIMM : Pseudo<(outs GR256:$out), (ins i256imm:$val),
 //===----------------------------------------------------------------------===//
 
 let isReMaterializable = 1, hasSideEffects = 0 in {
-def CTXThis : IContext_r<OpContextThis, (outs GR256:$rd0), (ins),
-                         "$rd0",
-                         [(set GR256:$rd0, (int_eravm_this))]>;
-def CTXCaller : IContext_r<OpContextCaller, (outs GR256:$rd0), (ins),
-                           "$rd0",
-                           [(set GR256:$rd0, (int_eravm_caller))]>;
-def CTXCodeSource : IContext_r<OpContextCodeAddress, (outs GR256:$rd0), (ins),
-                               "$rd0",
-                               [(set GR256:$rd0, (int_eravm_codesource))]>;
-def CTXGetU128 : IContext_r<OpContextGetContextU128, (outs GR256:$rd0), (ins),
-                            "$rd0",
-                            [(set GR256:$rd0, (int_eravm_getu128))]>;
+def CTXThis : IContext_r<OpContextThis, [(set GR256:$rd0, (int_eravm_this))]>;
+def CTXCaller : IContext_r<OpContextCaller, [(set GR256:$rd0, (int_eravm_caller))]>;
+def CTXCodeSource : IContext_r<OpContextCodeAddress, [(set GR256:$rd0, (int_eravm_codesource))]>;
+def CTXGetU128 : IContext_r<OpContextGetContextU128, [(set GR256:$rd0, (int_eravm_getu128))]>;
 }
 
-def CTXMeta : IContext_r<OpContextMeta, (outs GR256:$rd0), (ins),
-                         "$rd0",
-                         [(set GR256:$rd0, (int_eravm_meta))]>;
+def CTXMeta : IContext_r<OpContextMeta, [(set GR256:$rd0, (int_eravm_meta))]>;
 
 let hasSideEffects = 1 in {
-def CTXSetU128 : IContextr_<OpContextSetContextU128, (outs), (ins GR256:$rs0),
-                            "$rs0",
-                            [(int_eravm_setu128 GR256:$rs0)]>;
-def CTXSetPubDP : IContextr_<OpContextSetErgsPerPubdataByte, (outs), (ins GR256:$rs0),
-                             "$rs0",
-                             [(int_eravm_setpubdataprice GR256:$rs0)]>;
+def CTXSetU128 : IContextr_<OpContextSetContextU128, [(int_eravm_setu128 GR256:$rs0)]>;
+def CTXSetPubDP : IContextr_<OpContextSetErgsPerPubdataByte, [(int_eravm_setpubdataprice GR256:$rs0)]>;
 let hasPostISelHook = 1 in
-def CTXGasLeft : IContext_r<OpContextErgsLeft, (outs GR256:$rd0), (ins),
-                            "$rd0",
-                            [(set GR256:$rd0, (int_eravm_gasleft))]>;
-def CTXGetSp   : IContext_r<OpContextSp, (outs GR256:$rd0), (ins),
-                            "$rd0",
-                            [(set GR256:$rd0, (EraVMget_sp))]>;
-def CTXIncTx   : IContext_<OpContextIncrementTxNumber, (outs), (ins), "", [(int_eravm_inctx)]>;
+def CTXGasLeft : IContext_r<OpContextErgsLeft, [(set GR256:$rd0, (int_eravm_gasleft))]>;
+def CTXGetSp   : IContext_r<OpContextSp, [(set GR256:$rd0, (EraVMget_sp))]>;
+def CTXIncTx   : IContext_<OpContextIncrementTxNumber, [(int_eravm_inctx)]>;
 }
 
 //===----------------------------------------------------------------------===//
 // Fat Pointer
 //===----------------------------------------------------------------------===//
-def LDS : ILogRr_r<OpSload, (outs GR256:$rd0), (ins GR256:$rs0),
-                     "$rs0, $rd0",
-                     [(set GR256:$rd0, (load_storage GR256:$rs0))]>;
-def LDT : ILogRr_r<OpTransientLoad, (outs GR256:$rd0), (ins GR256:$rs0),
-                     "$rs0, $rd0",
-                     [(set GR256:$rd0, (load_transient GR256:$rs0))]>;
+def LDS : ILogRr_r<OpSload, [(set GR256:$rd0, (load_storage GR256:$rs0))]>;
+def LDT : ILogRr_r<OpTransientLoad, [(set GR256:$rd0, (load_transient GR256:$rs0))]>;
 
 let hasSideEffects = 1 in {
-  def STS : ILogRrr_<OpSstore, (outs), (ins GR256:$rs0, GR256:$rs1),
-                      "$rs0, $rs1",
-                      [(store_storage GR256:$rs1, GR256:$rs0)]>;
-  def STT : ILogRrr_<OpTransientStore, (outs), (ins GR256:$rs0, GR256:$rs1),
-                      "$rs0, $rs1",
-                      [(store_transient GR256:$rs1, GR256:$rs0)]>;
+  def STS : ILogRrr_<OpSstore, [(store_storage GR256:$rs1, GR256:$rs0)]>;
+  def STT : ILogRrr_<OpTransientStore, [(store_transient GR256:$rs1, GR256:$rs0)]>;
 }
 
 let hasSideEffects = 1 in {
-def LOGL1 : ILogRrr_<OpLogToL1, (outs), (ins GR256:$rs0, GR256:$rs1),
-                        "$rs0, $rs1",
-                        [(int_eravm_tol1 GR256:$rs0, GR256:$rs1, 0)]>;
-def LOGL1I : ILogRrr_<OpLogToL1Initial, (outs), (ins GR256:$rs0, GR256:$rs1),
-                             "$rs0, $rs1",
-                             [(int_eravm_tol1 GR256:$rs0, GR256:$rs1, 1)]>;
+def LOGL1 : ILogRrr_<OpLogToL1, [(int_eravm_tol1 GR256:$rs0, GR256:$rs1, 0)]>;
+def LOGL1I : ILogRrr_<OpLogToL1Initial, [(int_eravm_tol1 GR256:$rs0, GR256:$rs1, 1)]>;
 
-def LOG : ILogRrr_<OpLogEvent, (outs), (ins GR256:$rs0, GR256:$rs1),
-                         "$rs0, $rs1",
-                         [(int_eravm_event GR256:$rs0, GR256:$rs1, 0)]>;
+def LOG : ILogRrr_<OpLogEvent, [(int_eravm_event GR256:$rs0, GR256:$rs1, 0)]>;
+def LOGI : ILogRrr_<OpLogEventInitial, [(int_eravm_event GR256:$rs0, GR256:$rs1, 1)]>;
 
-def LOGI : ILogRrr_<OpLogEventInitial, (outs), (ins GR256:$rs0, GR256:$rs1),
-                              "$rs0, $rs1",
-                              [(int_eravm_event GR256:$rs0, GR256:$rs1, 1)]>;
-
-def CALLP : ILogRrr_r<OpLogPrecompile, (outs GR256:$rd0), (ins GR256:$rs0, GR256:$rs1),
-                       "$rs0, $rs1, $rd0",
-                       [(set GR256:$rd0, (int_eravm_precompile GR256:$rs0, GR256:$rs1))]>;
+def CALLP : ILogRrr_r<OpLogPrecompile, [rs0, rs1, rd0], [(set GR256:$rd0, (int_eravm_precompile GR256:$rs0, GR256:$rs1))]>;
 }
 
-def DCMT : ILogRrr_r<OpDecommit, (outs GRPTR:$rd0), (ins GR256:$rs0, GR256:$rs1),
-                          "$rs0, $rs1, $rd0",
-                          [(set GRPTR:$rd0, (EraVMlog_decommit GR256:$rs0, GR256:$rs1))]>;
+def DCMT : ILogRrr_r<OpDecommit, [rs0, rs1, rd0_ptr], [(set GRPTR:$rd0, (EraVMlog_decommit GR256:$rs0, GR256:$rs1))]>;
 
 multiclass FarCallInst<EraVMOpcode opcode> {
-  def rrl : IFarCall<opcode, 0, 0, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
-                    "$rs0, $rs1, $unwind", []>;
-  def _STATICrrl : IFarCall<opcode, 0, 1, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
-                           "$rs0, $rs1, $unwind", []>;
-  def _SHARDrrl  : IFarCall<opcode, 1, 0, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
-                           "$rs0, $rs1, $unwind", []>;
-  def _STATIC_SHARDrrl : IFarCall<opcode, 1, 1, (ins GR256:$rs0, GR256:$rs1, jmptarget:$unwind),
-                                 "$rs0, $rs1, $unwind", []>;
+  def rrl : IFarCall<opcode, 0, 0, []>;
+  def _STATICrrl : IFarCall<opcode, 0, 1, []>;
+  def _SHARDrrl  : IFarCall<opcode, 1, 0, []>;
+  def _STATIC_SHARDrrl : IFarCall<opcode, 1, 1, []>;
 }
 
 let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Flags],
@@ -1162,8 +921,7 @@ let Defs = [R1, R2, R3, R4, R5, R6, R7, R8, R9, R10, R11, R12, R13, R14, R15, Fl
                      [(EraVMcall GR256:$in1, (EraVMGAStack tglobaladdr:$callee))]>;
   def INVOKE : Pseudo<(outs), (ins GR256:$in1, imm16:$callee, jmptarget:$unwind),
                       [(EraVMinvoke GR256:$in1, (EraVMGAStack tglobaladdr:$callee), bb:$unwind)]>;
-  def NEAR_CALL : ICall<OpCall, (ins GR256:$in1, jmptarget:$callee, jmptarget:$unwind),
-                        "$in1, $callee, $unwind", []>;
+  def NEAR_CALL : ICall<OpCall, []>;
 
   // Unfortunately, we cannot encode @DEFAULT_UNWIND_DEST here, so we have to alias to pseudo
   def NEAR_CALL_default_unwind : AsmParserPseudo<(outs), (ins GR256:$in1, jmptarget:$callee),

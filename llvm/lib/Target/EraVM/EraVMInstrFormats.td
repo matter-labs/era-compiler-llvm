@@ -191,6 +191,44 @@ def stackout : Operand<i256> {
 }
 
 //===----------------------------------------------------------------------===//
+// EraVM Instruction Operands - helper definitions.
+//===----------------------------------------------------------------------===//
+
+// Description of EraVM instruction operand, except for ${cc}.
+class EraVMOperand<string str, dag ins, dag outs = (outs)> {
+  string AsmOps = str;
+  dag InOps = ins;
+  dag OutOps = outs;
+}
+
+def rs0 : EraVMOperand<"$rs0", (ins GR256:$rs0)>;
+def rs1 : EraVMOperand<"$rs1", (ins GR256:$rs1)>;
+def rd0 : EraVMOperand<"$rd0", (ins), (outs GR256:$rd0)>;
+def rd1 : EraVMOperand<"$rd1", (ins), (outs GR256:$rd1)>;
+
+def rs0_ptr : EraVMOperand<"$rs0", (ins GRPTR:$rs0)>;
+def rs1_ptr : EraVMOperand<"$rs1", (ins GRPTR:$rs1)>;
+def rd0_ptr : EraVMOperand<"$rd0", (ins), (outs GRPTR:$rd0)>;
+def rd1_ptr : EraVMOperand<"$rd1", (ins), (outs GRPTR:$rd1)>;
+
+def src0_stack : EraVMOperand<"$src0", (ins stackin:$src0)>;
+def src0_code  : EraVMOperand<"$src0", (ins memop:$src0)>;
+def src0_imm   : EraVMOperand<"$imm", (ins imm16:$imm)>;
+
+def dst0_stack : EraVMOperand<"$dst0", (ins stackout:$dst0)>;
+
+def callee : EraVMOperand<"$callee", (ins jmptarget:$callee)>;
+def unwind : EraVMOperand<"$unwind", (ins jmptarget:$unwind)>;
+
+def addr : EraVMOperand<"$addr", (ins imm16:$addr)>;
+
+def ret_addr   : EraVMOperand<"$ret_addr", (ins), (outs GR256:$ret_addr)>;
+def dest_label : EraVMOperand<"$dest", (ins jmptarget:$dest)>;
+def dest_reg   : EraVMOperand<"$dest", (ins GR256:$dest)>;
+def dest_code  : EraVMOperand<"$dest", (ins memop:$dest)>;
+def dest_stack : EraVMOperand<"$dest", (ins stackin:$dest)>;
+
+//===----------------------------------------------------------------------===//
 // EraVM Instructions
 //===----------------------------------------------------------------------===//
 
@@ -293,12 +331,23 @@ class AsmParserPseudo<dag outs, dag inops, string opc, string asmstr>
 
 // Real instructions (have encoding)
 class IForm <EraVMOpcode opcode,
-             dag oops, dag inops,
-             string asmstr,
+             list<EraVMOperand> ops,
              list<dag> pattern> : EraVMInstruction, Encoding {
   bits<3> cc;
 
-  dag InOperandList  = !con(inops, (ins pred:$cc));
+  // Aggregate fields from `ops`, for example:
+  //   asmstr = "$src0, $rs1, $rd0"
+  //   iops = (ins stackin:$src0, GR256:$rs1)
+  //   oops = (outs GR256:$rd0)
+  // Note that asmstr is a field instead of defvar, as it is used by this class
+  // to define AsmString as well as by subclasses to redefine it.
+  string asmstr = !if(!empty(ops), "",
+                      !foldl(ops[0].AsmOps, !tail(ops),
+                             acc, x, !strconcat(acc, ", ", x.AsmOps)));
+  defvar iops = !foldl((ins),  ops, acc, x, !con(acc, x.InOps));
+  defvar oops = !foldl((outs), ops, acc, x, !con(acc, x.OutOps));
+
+  dag InOperandList  = !con(iops, (ins pred:$cc));
   dag OutOperandList = oops;
   let Pattern        = pattern;
   let Size           = 8;
@@ -310,39 +359,36 @@ class IForm <EraVMOpcode opcode,
   let UseLogicalOperandMappings = true;
 }
 
-class IJump<EraVMOpcode opcode,
-            SrcMode src,
-            dag outs, dag ins, string asmstr, list<dag> pattern>
-  : IForm <opcode, outs, ins, asmstr, pattern> {
+class IJump<EraVMOpcode opcode, SrcMode src,
+            list<EraVMOperand> ops, list<dag> pattern>
+  : IForm <opcode, ops, pattern> {
 
   let isIndirectBranch = !ne(src, SrcImm);
   let mayLoad = !or(isStackIn<src>.Value, !eq(src, SrcCodeAddr));
   let Opcode = JumpOpcEncoder<opcode.BaseOpcode, src>.Opcode;
 }
 
-class IContextBase<EraVMOpcode opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-  : IForm <opcode, outs, ins, asmstr, pattern> { }
+class IContextBase<EraVMOpcode opcode, list<EraVMOperand> ops, list<dag> pattern>
+  : IForm <opcode, ops, pattern>;
 
-class IContext_<EraVMOpcode opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-  : IContextBase<opcode, outs, ins, asmstr, pattern>;
-class IContextr_<EraVMOpcode opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-  : IContextBase<opcode, outs, ins, asmstr, pattern> {
+class IContext_<EraVMOpcode opcode, list<dag> pattern>
+  : IContextBase<opcode, [], pattern>;
+class IContextr_<EraVMOpcode opcode, list<dag> pattern>
+  : IContextBase<opcode, [rs0], pattern> {
   bits<4> rs0;
   let Src0 = rs0;
 }
-class IContext_r<EraVMOpcode opcode, dag outs, dag ins, string asmstr, list<dag> pattern>
-  : IContextBase<opcode, outs, ins, asmstr, pattern> {
+class IContext_r<EraVMOpcode opcode, list<dag> pattern>
+  : IContextBase<opcode, [rd0], pattern> {
   bits<4> rd0;
   let Dst0 = rd0;
 }
 
-class ILogRBase<EraVMOpcode opcode, dag outs, dag ins,
-                string asmstr, list<dag> pattern>
-  : IForm <opcode, outs, ins, asmstr, pattern> { }
+class ILogRBase<EraVMOpcode opcode, list<EraVMOperand> ops, list<dag> pattern>
+  : IForm <opcode, ops, pattern>;
 
-class ILogRr_r<EraVMOpcode opcode, dag outs, dag ins,
-               string asmstr, list<dag> pattern>
-  : ILogRBase<opcode, outs, ins, asmstr, pattern> {
+class ILogRr_r<EraVMOpcode opcode, list<dag> pattern>
+  : ILogRBase<opcode, [rs0, rd0], pattern> {
   bits<4> rs0;
   bits<4> rd0;
 
@@ -350,9 +396,8 @@ class ILogRr_r<EraVMOpcode opcode, dag outs, dag ins,
   let Dst0 = rd0;
 }
 
-class ILogRrr_<EraVMOpcode opcode, dag outs, dag ins,
-               string asmstr, list<dag> pattern>
-  : ILogRBase<opcode, outs, ins, asmstr, pattern> {
+class ILogRrr_<EraVMOpcode opcode, list<dag> pattern>
+  : ILogRBase<opcode, [rs0, rs1], pattern> {
   bits<4> rs0;
   bits<4> rs1;
 
@@ -360,9 +405,8 @@ class ILogRrr_<EraVMOpcode opcode, dag outs, dag ins,
   let Src1 = rs1;
 }
 
-class ILogRrr_r<EraVMOpcode opcode, dag outs, dag ins,
-                string asmstr, list<dag> pattern>
-  : ILogRBase<opcode, outs, ins, asmstr, pattern> {
+class ILogRrr_r<EraVMOpcode opcode, list<EraVMOperand> ops, list<dag> pattern>
+  : ILogRBase<opcode, ops, pattern> {
   bits<4> rs0;
   bits<4> rs1;
   bits<4> rd0;
@@ -375,10 +419,9 @@ class ILogRrr_r<EraVMOpcode opcode, dag outs, dag ins,
 class IBinary<EraVMOpcode opcode,
               SrcMode src, DstMode dst,
               mod_swap swap, mod_set_flags set_flags,
-              dag outs, dag ins,
-              string asmstr,
+              list<EraVMOperand> ops,
               list<dag> pattern>
-  : IForm <opcode, outs, ins, asmstr, pattern > {
+  : IForm <opcode, ops, pattern> {
   string BaseOpcode;
   mod_set_flags Silent = set_flags;
   mod_swap ReverseOperands = swap;
@@ -401,10 +444,9 @@ class IBinary<EraVMOpcode opcode,
 class IBinaryR<EraVMOpcode opcode,
                SrcMode src,
                mod_swap swap_operands, mod_set_flags silent,
-               dag outs, dag ins,
-               string asmstr,
+               list<EraVMOperand> ops,
                list<dag> pattern>
-  : IBinary <opcode, src, DstReg, swap_operands, silent, outs, ins, asmstr, pattern > {
+  : IBinary <opcode, src, DstReg, swap_operands, silent, ops, pattern> {
   bits<4> rd0;
 
   let DestAddrMode = ToReg;
@@ -412,13 +454,23 @@ class IBinaryR<EraVMOpcode opcode,
   let Dst0 = rd0;
 }
 
+class IBinaryRR<EraVMOpcode opcode,
+                SrcMode src,
+                mod_swap swap_operands, mod_set_flags silent,
+                list<EraVMOperand> ops,
+                list<dag> pattern>
+  : IBinaryR <opcode, src, swap_operands, silent, ops, pattern> {
+  bits<4> rd1;
+
+  let Dst1 = rd1;
+}
+
 class IBinaryS<EraVMOpcode opcode,
                SrcMode src,
                mod_swap swap, mod_set_flags set_flags,
-               dag outs, dag ins,
-               string asmstr,
+               list<EraVMOperand> ops,
                list<dag> pattern>
-  : IBinary <opcode, src, DstStackAbsolute, swap, set_flags, outs, ins, asmstr, pattern > {
+  : IBinary <opcode, src, DstStackAbsolute, swap, set_flags, ops, pattern> {
   // Encode stack operand into 20 bits as reg + imm offset
   bits<20> dst0;
 
@@ -426,6 +478,17 @@ class IBinaryS<EraVMOpcode opcode,
 
   let Dst0 = dst0{3-0};
   let Imm1 = dst0{19-4};
+}
+
+class IBinarySR<EraVMOpcode opcode,
+               SrcMode src,
+               mod_swap swap, mod_set_flags set_flags,
+               list<EraVMOperand> ops,
+               list<dag> pattern>
+  : IBinaryS <opcode, src, swap, set_flags, ops, pattern> {
+  bits<4> rd1;
+
+  let Dst1 = rd1;
 }
 
 // Mix-in classes to hook standard fields for different combinations
@@ -475,161 +538,159 @@ class SrcOperandsSR {
 
 class Irr_r<EraVMOpcode opcode,
             mod_swap swap_operands, mod_set_flags silent,
-            dag outs, dag ins,
-            string asmstr,
             list<dag> pattern>
-  : IBinaryR<opcode, SrcReg, swap_operands, silent, outs, ins, asmstr, pattern>,
+  : IBinaryR<opcode, SrcReg, swap_operands, silent, [rs0, rs1, rd0], pattern>,
+    SrcOperandsRR;
+
+class Ipr_p<EraVMOpcode opcode,
+            mod_swap swap_operands, mod_set_flags silent,
+            list<dag> pattern>
+  : IBinaryR<opcode, SrcReg, swap_operands, silent, [rs0_ptr, rs1, rd0_ptr], pattern>,
     SrcOperandsRR;
 
 class Irr_rr<EraVMOpcode opcode,
              mod_swap swap_operands, mod_set_flags silent,
-             dag outs, dag ins,
-             string asmstr,
              list<dag> pattern>
-  : Irr_r<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
-  bits<4> rd1;
-
-  let Dst1 = rd1;
-}
+  : IBinaryRR<opcode, SrcReg, swap_operands, silent, [rs0, rs1, rd0, rd1], pattern>,
+    SrcOperandsRR;
 
 class Iir_r<EraVMOpcode opcode,
             mod_swap swap_operands, mod_set_flags silent,
-            dag outs, dag ins,
-            string asmstr,
             list<dag> pattern>
-  : IBinaryR<opcode, SrcImm, swap_operands, silent, outs, ins, asmstr, pattern>,
+  : IBinaryR<opcode, SrcImm, swap_operands, silent, [src0_imm, rs1, rd0], pattern>,
+    SrcOperandsIR;
+
+class Iip_p<EraVMOpcode opcode,
+            mod_swap swap_operands, mod_set_flags silent,
+            list<dag> pattern>
+  : IBinaryR<opcode, SrcImm, swap_operands, silent, [src0_imm, rs1_ptr, rd0_ptr], pattern>,
     SrcOperandsIR;
 
 class Iir_rr<EraVMOpcode opcode,
              mod_swap swap_operands, mod_set_flags silent,
-             dag outs, dag ins,
-             string asmstr,
              list<dag> pattern>
-  : Iir_r<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
-  bits<4> rd1;
+  : IBinaryRR<opcode, SrcImm, swap_operands, silent, [src0_imm, rs1, rd0, rd1], pattern>,
+    SrcOperandsIR;
 
-  let Dst1 = rd1;
-}
 
 class Imr_r<EraVMOpcode opcode,
             mod_swap swap_operands, mod_set_flags silent,
-            dag outs, dag ins,
-            string asmstr,
             list<dag> pattern>
-  : IBinaryR<opcode, SrcCodeAddr, swap_operands, silent, outs, ins, asmstr, pattern>,
+  : IBinaryR<opcode, SrcCodeAddr, swap_operands, silent, [src0_code, rs1, rd0], pattern>,
+    SrcOperandsMR;
+
+class Imp_p<EraVMOpcode opcode,
+            mod_swap swap_operands, mod_set_flags silent,
+            list<dag> pattern>
+  : IBinaryR<opcode, SrcCodeAddr, swap_operands, silent, [src0_code, rs1_ptr, rd0_ptr], pattern>,
     SrcOperandsMR;
 
 class Isr_r<EraVMOpcode opcode,
             mod_swap swap_operands, mod_set_flags silent,
-            dag outs, dag ins,
-            string asmstr,
             list<dag> pattern>
-  : IBinaryR<opcode, SrcStackAbsolute, swap_operands, silent, outs, ins, asmstr, pattern>,
+  : IBinaryR<opcode, SrcStackAbsolute, swap_operands, silent, [src0_stack, rs1, rd0], pattern>,
+    SrcOperandsSR;
+
+class Isr_p<EraVMOpcode opcode,
+            mod_swap swap_operands, mod_set_flags silent,
+            list<dag> pattern>
+  : IBinaryR<opcode, SrcStackAbsolute, swap_operands, silent, [src0_stack, rs1, rd0_ptr], pattern>,
+    SrcOperandsSR;
+
+class Isp_p<EraVMOpcode opcode,
+            mod_swap swap_operands, mod_set_flags silent,
+            list<dag> pattern>
+  : IBinaryR<opcode, SrcStackAbsolute, swap_operands, silent, [src0_stack, rs1_ptr, rd0_ptr], pattern>,
     SrcOperandsSR;
 
 class Imr_rr<EraVMOpcode opcode,
              mod_swap swap_operands, mod_set_flags silent,
-             dag outs, dag ins,
-             string asmstr,
              list<dag> pattern>
-  : Imr_r<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
-  bits<4> rd1;
-
-  let Dst1 = rd1;
-}
+  : IBinaryRR<opcode, SrcCodeAddr, swap_operands, silent, [src0_code, rs1, rd0, rd1], pattern>,
+    SrcOperandsMR;
 
 class Isr_rr<EraVMOpcode opcode,
              mod_swap swap_operands, mod_set_flags silent,
-             dag outs, dag ins,
-             string asmstr,
              list<dag> pattern>
-  : Isr_r<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
-  bits<4> rd1;
-
-  let Dst1 = rd1;
-}
+  : IBinaryRR<opcode, SrcStackAbsolute, swap_operands, silent, [src0_stack, rs1, rd0, rd1], pattern>,
+    SrcOperandsSR;
 
 class Irr_s<EraVMOpcode opcode,
             mod_swap swap_operands, mod_set_flags silent,
-            dag outs, dag ins,
-            string asmstr,
             list<dag> pattern>
-  : IBinaryS<opcode, SrcReg, swap_operands, silent, outs, ins, asmstr, pattern>,
+  : IBinaryS<opcode, SrcReg, swap_operands, silent, [rs0, rs1, dst0_stack], pattern>,
+    SrcOperandsRR;
+
+class Ipr_s<EraVMOpcode opcode,
+            mod_swap swap_operands, mod_set_flags silent,
+            list<dag> pattern>
+  : IBinaryS<opcode, SrcReg, swap_operands, silent, [rs0_ptr, rs1, dst0_stack], pattern>,
     SrcOperandsRR;
 
 class Irr_sr<EraVMOpcode opcode,
              mod_swap swap_operands, mod_set_flags silent,
-             dag outs, dag ins,
-             string asmstr,
              list<dag> pattern>
-  : Irr_s<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
-  bits<4> rd1;
-
-  let Dst1 = rd1;
-}
+  : IBinarySR<opcode, SrcReg, swap_operands, silent, [rs0, rs1, dst0_stack, rd1], pattern>,
+    SrcOperandsRR;
 
 class Iir_s<EraVMOpcode opcode,
             mod_swap swap_operands, mod_set_flags silent,
-            dag outs, dag ins,
-            string asmstr,
             list<dag> pattern>
-  : IBinaryS<opcode, SrcImm, swap_operands, silent, outs, ins, asmstr, pattern>,
+  : IBinaryS<opcode, SrcImm, swap_operands, silent, [src0_imm, rs1, dst0_stack], pattern>,
+    SrcOperandsIR;
+
+class Iip_s<EraVMOpcode opcode,
+            mod_swap swap_operands, mod_set_flags silent,
+            list<dag> pattern>
+  : IBinaryS<opcode, SrcImm, swap_operands, silent, [src0_imm, rs1_ptr, dst0_stack], pattern>,
     SrcOperandsIR;
 
 class Iir_sr<EraVMOpcode opcode,
              mod_swap swap_operands, mod_set_flags silent,
-             dag outs, dag ins,
-             string asmstr,
              list<dag> pattern>
-  : Iir_s<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
-  bits<4> rd1;
-
-  let Dst1 = rd1;
-}
+  : IBinarySR<opcode, SrcImm, swap_operands, silent, [src0_imm, rs1, dst0_stack, rd1], pattern>,
+    SrcOperandsIR;
 
 class Imr_s<EraVMOpcode opcode,
             mod_swap swap_operands, mod_set_flags silent,
-            dag outs, dag ins,
-            string asmstr,
             list<dag> pattern>
-  : IBinaryS<opcode, SrcCodeAddr, swap_operands, silent, outs, ins, asmstr, pattern>,
+  : IBinaryS<opcode, SrcCodeAddr, swap_operands, silent, [src0_code, rs1, dst0_stack], pattern>,
+    SrcOperandsMR;
+
+class Imp_s<EraVMOpcode opcode,
+            mod_swap swap_operands, mod_set_flags silent,
+            list<dag> pattern>
+  : IBinaryS<opcode, SrcCodeAddr, swap_operands, silent, [src0_code, rs1_ptr, dst0_stack], pattern>,
     SrcOperandsMR;
 
 class Isr_s<EraVMOpcode opcode,
             mod_swap swap_operands, mod_set_flags silent,
-            dag outs, dag ins,
-            string asmstr,
             list<dag> pattern>
-  : IBinaryS<opcode, SrcStackAbsolute, swap_operands, silent, outs, ins, asmstr, pattern>,
+  : IBinaryS<opcode, SrcStackAbsolute, swap_operands, silent, [src0_stack, rs1, dst0_stack], pattern>,
+    SrcOperandsSR;
+
+class Isp_s<EraVMOpcode opcode,
+            mod_swap swap_operands, mod_set_flags silent,
+            list<dag> pattern>
+  : IBinaryS<opcode, SrcStackAbsolute, swap_operands, silent, [src0_stack, rs1_ptr, dst0_stack], pattern>,
     SrcOperandsSR;
 
 class Imr_sr<EraVMOpcode opcode,
              mod_swap swap_operands, mod_set_flags silent,
-             dag outs, dag ins,
-             string asmstr,
              list<dag> pattern>
-  : Imr_s<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
-  bits<4> rd1;
-
-  let Dst1 = rd1;
-}
+  : IBinarySR<opcode, SrcCodeAddr, swap_operands, silent, [src0_code, rs1, dst0_stack, rd1], pattern>,
+    SrcOperandsMR;
 
 class Isr_sr<EraVMOpcode opcode,
              mod_swap swap_operands, mod_set_flags silent,
-             dag outs, dag ins,
-             string asmstr,
              list<dag> pattern>
-  : Isr_s<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
-  bits<4> rd1;
-
-  let Dst1 = rd1;
-}
+  : IBinarySR<opcode, SrcStackAbsolute, swap_operands, silent, [src0_stack, rs1, dst0_stack, rd1], pattern>,
+    SrcOperandsSR;
 
 class IRetBase<EraVMOpcode opcode,
-               dag ins,
-               string asmstr,
+               list<EraVMOperand> ops,
                list<dag> pattern>
-  : IForm <opcode, (outs), ins, asmstr, pattern > {
+  : IForm <opcode, ops, pattern> {
 
   let isReturn = 1;
   let isTerminator = 1;
@@ -637,20 +698,18 @@ class IRetBase<EraVMOpcode opcode,
 }
 
 class IRet<EraVMOpcode opcode,
-           dag ins,
-           string asmstr,
+           list<EraVMOperand> ops,
            list<dag> pattern>
-  : IRetBase <opcode, ins, asmstr, pattern > {
+  : IRetBase <opcode, ops, pattern> {
   bits<4> rs0;
 
   let Src0 = rs0;
 }
 
 class IRetToLabel<EraVMOpcode opcode,
-                  dag ins,
-                  string asmstr,
+                  list<EraVMOperand> ops,
                   list<dag> pattern>
-  : IRetBase <opcode, ins, asmstr, pattern > {
+  : IRetBase <opcode, ops, pattern> {
   bits<4> rs0;
   bits<16> dest;
 
@@ -658,22 +717,21 @@ class IRetToLabel<EraVMOpcode opcode,
   let Imm0 = dest;
 }
 
-class ICall<EraVMOpcode opcode, dag ins, string asmstr, list<dag> pattern>
-  : IForm <opcode, (outs), ins, asmstr, pattern > {
-  bits<4> in1;
+class ICall<EraVMOpcode opcode, list<dag> pattern>
+  : IForm <opcode, [rs0, callee, unwind], pattern> {
+  bits<4> rs0;
   bits<16> callee;
   bits<16> unwind;
 
-  let Src0 = in1;
+  let Src0 = rs0;
   let Imm0 = callee;
   let Imm1 = unwind;
 }
 
 class IFarCall<EraVMOpcode opcode,
                bit is_shard, bit is_static,
-               dag ins,
-               string asmstr, list<dag> pattern>
-  : IForm <opcode, (outs), ins, asmstr, pattern > {
+               list<dag> pattern>
+  : IForm <opcode, [rs0, rs1, unwind], pattern> {
   bits<4> rs0;
   bits<4> rs1;
   bits<16> unwind;
@@ -694,21 +752,15 @@ class IFarCall<EraVMOpcode opcode,
 
 class IUMA<EraVMOpcode opcode,
            SrcSpecialMode src,
-           dag outs, dag ins,
-           string asmstr,
+           list<EraVMOperand> ops,
            list<dag> pattern>
-  : IForm <opcode, outs, ins, asmstr, pattern> {
+  : IForm <opcode, ops, pattern> {
 
-  let AsmString = !strconcat(opcode.Name,
-                             "${cc}", "\t", asmstr);
   let Opcode = UMAOpcEncoder<opcode.Encoding, opcode.BaseOpcode, src>.Opcode;
 }
 
-class IUMAr_r<EraVMOpcode opcode,
-              dag outs, dag ins,
-              string asmstr,
-              list<dag> pattern>
- : IUMA<opcode, SrcSpecialReg, outs, ins, asmstr, pattern> {
+class IUMAr_r<EraVMOpcode opcode, list<dag> pattern>
+ : IUMA<opcode, SrcSpecialReg, [rs0, rd0], pattern> {
   bits<4> rs0;
   bits<4> rd0;
 
@@ -716,11 +768,17 @@ class IUMAr_r<EraVMOpcode opcode,
   let Dst0 = rd0;
 }
 
-class IUMAr_rr<EraVMOpcode opcode,
-               dag outs, dag ins,
-               string asmstr,
-               list<dag> pattern>
- : IUMA<opcode, SrcSpecialReg, outs, ins, asmstr, pattern> {
+class IUMAp_r<EraVMOpcode opcode, list<dag> pattern>
+ : IUMA<opcode, SrcSpecialReg, [rs0_ptr, rd0], pattern> {
+  bits<4> rs0;
+  bits<4> rd0;
+
+  let Src0 = rs0;
+  let Dst0 = rd0;
+}
+
+class IUMAr_rr<EraVMOpcode opcode, list<dag> pattern>
+ : IUMA<opcode, SrcSpecialReg, [rs0, rd0, rd1], pattern> {
   bits<4> rs0;
   bits<4> rd0;
   bits<4> rd1;
@@ -730,11 +788,19 @@ class IUMAr_rr<EraVMOpcode opcode,
   let Dst1 = rd1;
 }
 
-class IUMAi_r<EraVMOpcode opcode,
-              dag outs, dag ins,
-              string asmstr,
-              list<dag> pattern>
- : IUMA<opcode, SrcSpecialImm, outs, ins, asmstr, pattern> {
+class IUMAp_rp<EraVMOpcode opcode, list<dag> pattern>
+ : IUMA<opcode, SrcSpecialReg, [rs0_ptr, rd0, rd1_ptr], pattern> {
+  bits<4> rs0;
+  bits<4> rd0;
+  bits<4> rd1;
+
+  let Src0 = rs0;
+  let Dst0 = rd0;
+  let Dst1 = rd1;
+}
+
+class IUMAi_r<EraVMOpcode opcode, list<dag> pattern>
+ : IUMA<opcode, SrcSpecialImm, [addr, rd0], pattern> {
   bits<16> addr;
   bits<4> rd0;
 
@@ -742,11 +808,8 @@ class IUMAi_r<EraVMOpcode opcode,
   let Dst0 = rd0;
 }
 
-class IUMAi_rr<EraVMOpcode opcode,
-               dag outs, dag ins,
-               string asmstr,
-               list<dag> pattern>
- : IUMA<opcode, SrcSpecialImm, outs, ins, asmstr, pattern> {
+class IUMAi_rr<EraVMOpcode opcode, list<dag> pattern>
+ : IUMA<opcode, SrcSpecialImm, [addr, rd0, rd1], pattern> {
   bits<16> addr;
   bits<4> rd0;
   bits<4> rd1;
@@ -756,11 +819,8 @@ class IUMAi_rr<EraVMOpcode opcode,
   let Dst1 = rd1;
 }
 
-class IUMArr_<EraVMOpcode opcode,
-              dag outs, dag ins,
-              string asmstr,
-              list<dag> pattern>
- : IUMA<opcode, SrcSpecialReg, outs, ins, asmstr, pattern> {
+class IUMArr_<EraVMOpcode opcode, list<dag> pattern>
+ : IUMA<opcode, SrcSpecialReg, [rs0, rs1], pattern> {
   bits<4> rs0;
   bits<4> rs1;
 
@@ -768,11 +828,8 @@ class IUMArr_<EraVMOpcode opcode,
   let Src1 = rs1;
 }
 
-class IUMArr_r<EraVMOpcode opcode,
-               dag outs, dag ins,
-               string asmstr,
-               list<dag> pattern>
- : IUMA<opcode, SrcSpecialReg, outs, ins, asmstr, pattern> {
+class IUMArr_r<EraVMOpcode opcode, list<dag> pattern>
+ : IUMA<opcode, SrcSpecialReg, [rs0, rs1, rd0], pattern> {
   bits<4> rs0;
   bits<4> rs1;
   bits<4> rd0;
@@ -782,11 +839,8 @@ class IUMArr_r<EraVMOpcode opcode,
   let Dst0 = rd0;
 }
 
-class IUMAir_<EraVMOpcode opcode,
-              dag outs, dag ins,
-              string asmstr,
-              list<dag> pattern>
- : IUMA<opcode, SrcSpecialImm, outs, ins, asmstr, pattern> {
+class IUMAir_<EraVMOpcode opcode, list<dag> pattern>
+ : IUMA<opcode, SrcSpecialImm, [addr, rs1], pattern> {
   bits<16> addr;
   bits<4> rs1;
 
@@ -794,11 +848,8 @@ class IUMAir_<EraVMOpcode opcode,
   let Src1 = rs1;
 }
 
-class IUMAir_r<EraVMOpcode opcode,
-               dag outs, dag ins,
-               string asmstr,
-               list<dag> pattern>
- : IUMA<opcode, SrcSpecialImm, outs, ins, asmstr, pattern> {
+class IUMAir_r<EraVMOpcode opcode, list<dag> pattern>
+ : IUMA<opcode, SrcSpecialImm, [addr, rs1, rd0], pattern> {
   bits<16> addr;
   bits<4> rs1;
   bits<4> rd0;
