@@ -1434,3 +1434,21 @@ void EraVMTargetLowering::AdjustInstrPostInstrSelection(MachineInstr &MI,
     EraVM::out0Iterator(MI)->setIsEarlyClobber();
   }
 }
+
+void EraVMTargetLowering::finalizeLowering(MachineFunction &MF) const {
+  for (MachineBasicBlock &MBB : MF) {
+    for (MachineInstr &MI : MBB) {
+      if (none_of(MI.operands(),
+                  [](const MachineOperand &MO) { return MO.isCPI(); }))
+        continue;
+
+      // Annotate this instruction with memory operand information so that
+      // MachineInstr queries work properly.
+      MachineMemOperand *MemOp =
+          MF.getMachineMemOperand(MachinePointerInfo::getConstantPool(MF),
+                                  MachineMemOperand::MOLoad, 32, Align(32));
+      MI.addMemOperand(MF, MemOp);
+    }
+  }
+  TargetLoweringBase::finalizeLowering(MF);
+}
