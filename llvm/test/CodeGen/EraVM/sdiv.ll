@@ -9,12 +9,12 @@ define i256 @srem(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: srem:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    div.s! @CPI0_0[0], r2, r2, r3
-; CHECK-NEXT:    sub @CPI0_0[0], r3, r4
-; CHECK-NEXT:    add.eq r3, r0, r4
-; CHECK-NEXT:    div.s! @CPI0_0[0], r1, r3, r5
-; CHECK-NEXT:    sub @CPI0_0[0], r5, r2
-; CHECK-NEXT:    add.eq r5, r0, r2
-; CHECK-NEXT:    div r2, r4, r3, r2
+; CHECK-NEXT:    sub @CPI0_0[0], r3, r2
+; CHECK-NEXT:    add.eq r3, r0, r2
+; CHECK-NEXT:    div.s! @CPI0_0[0], r1, r3, r4
+; CHECK-NEXT:    sub @CPI0_0[0], r4, r3
+; CHECK-NEXT:    add.eq r4, r0, r3
+; CHECK-NEXT:    div r3, r2, r3, r2
 ; CHECK-NEXT:    and! @CPI0_0[0], r1, r1
 ; CHECK-NEXT:    sub 0, r2, r1
 ; CHECK-NEXT:    add.eq r2, r0, r1
@@ -31,13 +31,13 @@ define i256 @sdiv(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: sdiv:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    div.s! @CPI1_0[0], r2, r2, r3
-; CHECK-NEXT:    sub @CPI1_0[0], r3, r5
-; CHECK-NEXT:    add.eq r3, r0, r5
+; CHECK-NEXT:    sub @CPI1_0[0], r3, r4
+; CHECK-NEXT:    add.eq r3, r0, r4
 ; CHECK-NEXT:    div.s! @CPI1_0[0], r1, r1, r3
 ; CHECK-NEXT:    xor r1, r2, r2
 ; CHECK-NEXT:    sub @CPI1_0[0], r3, r1
 ; CHECK-NEXT:    add.eq r3, r0, r1
-; CHECK-NEXT:    div r1, r5, r1, r3
+; CHECK-NEXT:    div r1, r4, r1, r3
 ; CHECK-NEXT:    shl.s! 255, r2, r2
 ; CHECK-NEXT:    sub r2, r1, r3
 ; CHECK-NEXT:    or r3, r2, r2
@@ -54,13 +54,13 @@ define i256 @sdivrem(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: sdivrem:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    div.s! @CPI2_0[0], r2, r2, r3
-; CHECK-NEXT:    sub @CPI2_0[0], r3, r5
-; CHECK-NEXT:    add.eq r3, r0, r5
-; CHECK-NEXT:    div.s! @CPI2_0[0], r1, r3, r6
+; CHECK-NEXT:    sub @CPI2_0[0], r3, r4
+; CHECK-NEXT:    add.eq r3, r0, r4
+; CHECK-NEXT:    div.s! @CPI2_0[0], r1, r3, r5
 ; CHECK-NEXT:    xor r3, r2, r2
-; CHECK-NEXT:    sub @CPI2_0[0], r6, r3
-; CHECK-NEXT:    add.eq r6, r0, r3
-; CHECK-NEXT:    div r3, r5, r4, r3
+; CHECK-NEXT:    sub @CPI2_0[0], r5, r3
+; CHECK-NEXT:    add.eq r5, r0, r3
+; CHECK-NEXT:    div r3, r4, r4, r3
 ; CHECK-NEXT:    shl.s! 255, r2, r2
 ; CHECK-NEXT:    sub r2, r4, r5
 ; CHECK-NEXT:    or r5, r2, r2

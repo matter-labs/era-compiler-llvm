@@ -43,7 +43,7 @@ define i256 @subcrr(i256 %rs1) nounwind {
 
 ; CHECK-LABEL: subcrr_cp
 define i256 @subcrr_cp(i256 %rs1) nounwind {
-; CHECK: sub r2, r1, r1
+; CHECK: sub @CPI5_0[0], r1, r1
   %res = sub i256 123456789, %rs1
   ret i256 %res
 }
@@ -114,7 +114,7 @@ define void @subcrs(i256 %rs1) nounwind {
 ; CHECK-LABEL: subcrs_cp
 define void @subcrs_cp(i256 %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: sub r2, r1, stack-[1]
+; CHECK: sub @CPI13_0[0], r1, stack-[1]
   %res = sub i256 123456789, %rs1
   store i256 %res, i256* %valptr
   ret void

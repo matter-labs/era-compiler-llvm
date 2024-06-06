@@ -462,7 +462,7 @@ multiclass ArithINonCommutable<EraVMOpcode opcode, SDPatternOperator node> : Ari
   }
 
   // non-commutative: irr_s -> crr_s
-  def : Pat<(node GR256:$rs1, large_imm:$imm),
+  def : Pat<(node large_imm:$imm, GR256:$rs1),
             (!cast<Instruction>(NAME # crr_s) (constant_pool imm:$imm), 0, GR256:$rs1, 0)>;
 
   // xrr_s -> yrr_s
@@ -470,7 +470,7 @@ multiclass ArithINonCommutable<EraVMOpcode opcode, SDPatternOperator node> : Ari
             (!cast<Instruction>(NAME # yrr_s) (constant_pool imm:$imm), 0, GR256:$rs1, 0)>;
 
   // non-commutative: irs_s -> crs_s
-  def : Pat<(store_stack (node GR256:$rs1, large_imm:$imm), stackaddr:$dst0),
+  def : Pat<(store_stack (node large_imm:$imm, GR256:$rs1), stackaddr:$dst0),
             (!cast<Instruction>(NAME # crs_s) (constant_pool imm:$imm), 0, GR256:$rs1, stackaddr:$dst0, 0)>;
 
   // xrs_s -> yrs_s

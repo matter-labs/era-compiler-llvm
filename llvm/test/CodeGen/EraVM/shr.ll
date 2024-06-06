@@ -36,7 +36,7 @@ define i256 @shrcrr(i256 %rs1) nounwind {
 
 ; CHECK-LABEL: shrcrr_cp
 define i256 @shrcrr_cp(i256 %rs1) nounwind {
-; CHECK: shr r2, r1, r1
+; CHECK: shr @CPI4_0[0], r1, r1
   %res = lshr i256 123456789, %rs1
   ret i256 %res
 }
@@ -107,7 +107,7 @@ define void @shrcrs(i256 %rs1) nounwind {
 ; CHECK-LABEL: shrcrs_cp
 define void @shrcrs_cp(i256 %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: shr r2, r1, stack-[1]
+; CHECK: shr @CPI12_0[0], r1, stack-[1]
   %res = lshr i256 123456789, %rs1
   store i256 %res, i256* %valptr
   ret void
