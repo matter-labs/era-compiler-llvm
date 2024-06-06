@@ -59,8 +59,7 @@ entry:
 define i256 @rorcrr_cp(i256 %rs1) {
 ; CHECK-LABEL: rorcrr_cp:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add @CPI4_0[0], r0, r2
-; CHECK-NEXT:    ror r2, r1, r1
+; CHECK-NEXT:    ror @CPI4_0[0], r1, r1
 ; CHECK-NEXT:    ret
 entry:
   %sub = sub i256 256, %rs1
@@ -182,8 +181,7 @@ define void @rorcrs_cp(i256 %rs1) {
 ; CHECK-LABEL: rorcrs_cp:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    add @CPI12_0[0], r0, r2
-; CHECK-NEXT:    ror r2, r1, stack-[1]
+; CHECK-NEXT:    ror @CPI12_0[0], r1, stack-[1]
 ; CHECK-NEXT:    ret
 entry:
   %destptr = alloca i256
