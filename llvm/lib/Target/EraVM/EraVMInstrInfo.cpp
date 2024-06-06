@@ -116,46 +116,46 @@ MachineInstr::mop_iterator ccIterator(MachineInstr &MI) {
 
 int getWithRRInAddrMode(uint16_t Opcode) {
   Opcode = getWithInsNotSwapped(Opcode);
-  if (int Result = mapRRInputTo(Opcode, OperandAM_0); Result != -1)
+  if (int Result = mapRRInputTo(Opcode, OperandAddrMode_OpndRR); Result != -1)
     return Result;
-  if (int Result = mapIRInputTo(Opcode, OperandAM_0); Result != -1)
+  if (int Result = mapIRInputTo(Opcode, OperandAddrMode_OpndRR); Result != -1)
     return Result;
-  if (int Result = mapCRInputTo(Opcode, OperandAM_0); Result != -1)
+  if (int Result = mapCRInputTo(Opcode, OperandAddrMode_OpndRR); Result != -1)
     return Result;
-  return mapSRInputTo(Opcode, OperandAM_0);
+  return mapSRInputTo(Opcode, OperandAddrMode_OpndRR);
 }
 
 int getWithIRInAddrMode(uint16_t Opcode) {
   Opcode = getWithInsNotSwapped(Opcode);
-  if (int Result = mapRRInputTo(Opcode, OperandAM_1); Result != -1)
+  if (int Result = mapRRInputTo(Opcode, OperandAddrMode_OpndIR); Result != -1)
     return Result;
-  if (int Result = mapIRInputTo(Opcode, OperandAM_1); Result != -1)
+  if (int Result = mapIRInputTo(Opcode, OperandAddrMode_OpndIR); Result != -1)
     return Result;
-  if (int Result = mapCRInputTo(Opcode, OperandAM_1); Result != -1)
+  if (int Result = mapCRInputTo(Opcode, OperandAddrMode_OpndIR); Result != -1)
     return Result;
-  return mapSRInputTo(Opcode, OperandAM_1);
+  return mapSRInputTo(Opcode, OperandAddrMode_OpndIR);
 }
 
 int getWithCRInAddrMode(uint16_t Opcode) {
   Opcode = getWithInsNotSwapped(Opcode);
-  if (int Result = mapRRInputTo(Opcode, OperandAM_2); Result != -1)
+  if (int Result = mapRRInputTo(Opcode, OperandAddrMode_OpndCR); Result != -1)
     return Result;
-  if (int Result = mapIRInputTo(Opcode, OperandAM_2); Result != -1)
+  if (int Result = mapIRInputTo(Opcode, OperandAddrMode_OpndCR); Result != -1)
     return Result;
-  if (int Result = mapCRInputTo(Opcode, OperandAM_2); Result != -1)
+  if (int Result = mapCRInputTo(Opcode, OperandAddrMode_OpndCR); Result != -1)
     return Result;
-  return mapSRInputTo(Opcode, OperandAM_2);
+  return mapSRInputTo(Opcode, OperandAddrMode_OpndCR);
 }
 
 int getWithSRInAddrMode(uint16_t Opcode) {
   Opcode = getWithInsNotSwapped(Opcode);
-  if (int Result = mapRRInputTo(Opcode, OperandAM_3); Result != -1)
+  if (int Result = mapRRInputTo(Opcode, OperandAddrMode_OpndSR); Result != -1)
     return Result;
-  if (int Result = mapIRInputTo(Opcode, OperandAM_3); Result != -1)
+  if (int Result = mapIRInputTo(Opcode, OperandAddrMode_OpndSR); Result != -1)
     return Result;
-  if (int Result = mapCRInputTo(Opcode, OperandAM_3); Result != -1)
+  if (int Result = mapCRInputTo(Opcode, OperandAddrMode_OpndSR); Result != -1)
     return Result;
-  return mapSRInputTo(Opcode, OperandAM_3);
+  return mapSRInputTo(Opcode, OperandAddrMode_OpndSR);
 }
 
 int getWithRROutAddrMode(uint16_t Opcode) {
@@ -184,22 +184,22 @@ int getWithInsSwapped(uint16_t Opcode) {
 
 bool hasRRInAddressingMode(unsigned Opcode) {
   Opcode = getWithInsNotSwapped(Opcode);
-  return (unsigned)mapRRInputTo(Opcode, OperandAM_0) == Opcode;
+  return (unsigned)mapRRInputTo(Opcode, OperandAddrMode_OpndRR) == Opcode;
 }
 
 bool hasIRInAddressingMode(unsigned Opcode) {
   Opcode = getWithInsNotSwapped(Opcode);
-  return (unsigned)mapIRInputTo(Opcode, OperandAM_1) == Opcode;
+  return (unsigned)mapIRInputTo(Opcode, OperandAddrMode_OpndIR) == Opcode;
 }
 
 bool hasCRInAddressingMode(unsigned Opcode) {
   Opcode = getWithInsNotSwapped(Opcode);
-  return (unsigned)mapCRInputTo(Opcode, OperandAM_2) == Opcode;
+  return (unsigned)mapCRInputTo(Opcode, OperandAddrMode_OpndCR) == Opcode;
 }
 
 bool hasSRInAddressingMode(unsigned Opcode) {
   Opcode = getWithInsNotSwapped(Opcode);
-  return (unsigned)mapSRInputTo(Opcode, OperandAM_3) == Opcode;
+  return (unsigned)mapSRInputTo(Opcode, OperandAddrMode_OpndSR) == Opcode;
 }
 
 bool hasAnyInAddressingMode(unsigned Opcode) {

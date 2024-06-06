@@ -17,14 +17,12 @@
 // The addressing mode can be categorized into operand addressing and destination addressing
 // OperandAddrMode:
 // RR : Reg Reg; SR : Stack Reg; CR : Code Reg; IR : Imm Reg;
-class OperandAddrModeValue<bits<3> val> {
-  bits<3> Value = val;
-}
-def OpndAddrNotSet : OperandAddrModeValue<0>;
-def OpndRR         : OperandAddrModeValue<1>;
-def OpndIR         : OperandAddrModeValue<2>;
-def OpndSR         : OperandAddrModeValue<3>;
-def OpndCR         : OperandAddrModeValue<4>;
+class SrcOperandMode;
+def OpndAddrNotSet : SrcOperandMode;
+def OpndRR         : SrcOperandMode;
+def OpndIR         : SrcOperandMode;
+def OpndSR         : SrcOperandMode;
+def OpndCR         : SrcOperandMode;
 
 // DestAddrMode:
 class DestAddrModeValue<bits<3> val> {
@@ -98,38 +96,18 @@ def withInsNotSwapped : InstrMapping {
 class AddrModeRel; // generic map of addressing mode of operands
 class RetAddrModeRel; // generic map of addressing mode of results
 
-
-def mapRRInputTo : InstrMapping {
+class MapInputFrom<string from> : InstrMapping {
   let FilterClass = "AddrModeRel";
   let RowFields = ["BaseOpcode", "DestAddrMode", "Silent"];
-  let ColFields = ["OperandAM"];
-  let KeyCol = ["0"];
-  let ValueCols = [["0"], ["1"], ["2"], ["3"]];
+  let ColFields = ["OperandAddrMode"];
+  let KeyCol = [from];
+  let ValueCols = [["OpndRR"], ["OpndIR"], ["OpndCR"], ["OpndSR"]];
 }
 
-def mapIRInputTo : InstrMapping {
-  let FilterClass = "AddrModeRel";
-  let RowFields = ["BaseOpcode", "DestAddrMode", "Silent"];
-  let ColFields = ["OperandAM"];
-  let KeyCol = ["1"];
-  let ValueCols = [["0"], ["1"], ["2"], ["3"]];
-}
-
-def mapCRInputTo : InstrMapping {
-  let FilterClass = "AddrModeRel";
-  let RowFields = ["BaseOpcode", "DestAddrMode", "Silent"];
-  let ColFields = ["OperandAM"];
-  let KeyCol = ["2"];
-  let ValueCols = [["0"], ["1"], ["2"], ["3"]];
-}
-
-def mapSRInputTo : InstrMapping {
-  let FilterClass = "AddrModeRel";
-  let RowFields = ["BaseOpcode", "DestAddrMode", "Silent"];
-  let ColFields = ["OperandAM"];
-  let KeyCol = ["3"];
-  let ValueCols = [["0"], ["1"], ["2"], ["3"]];
-}
+def mapRRInputTo : MapInputFrom<"OpndRR">;
+def mapIRInputTo : MapInputFrom<"OpndIR">;
+def mapCRInputTo : MapInputFrom<"OpndCR">;
+def mapSRInputTo : MapInputFrom<"OpndSR">;
 
 def withStackResult : InstrMapping {
   let FilterClass = "RetAddrModeRel";
@@ -345,9 +323,8 @@ class IBinary<EraVMOpcode opcode,
   string BaseOpcode;
   bit Silent = !eq(set_flags, PreserveFlags);
   bit ReverseOperands = !eq(swap, Swap);
-  bits<3> OperandAddrMode = OpndAddrNotSet.Value;
+  SrcOperandMode OperandAddrMode = OpndAddrNotSet;
   bits<3> DestAddrMode = DestAddrNotSet.Value;
-  int OperandAM = 0;
   int ResultAM = 0;
 
   let AsmString = !strconcat(opcode.Name,
@@ -404,8 +381,7 @@ class Irr_r<EraVMOpcode opcode,
   bits<4> rs0;
   bits<4> rs1;
 
-  let OperandAddrMode = OpndRR.Value;
-  let OperandAM = 0;
+  let OperandAddrMode = OpndRR;
 
   let Src0 = rs0;
   let Src1 = rs1;
@@ -420,7 +396,6 @@ class Irr_rr<EraVMOpcode opcode,
   bits<4> rd1;
 
   let DestAddrMode = ToRegReg.Value;
-  let OperandAM = 0;
 
   let Dst1 = rd1;
 }
@@ -434,8 +409,7 @@ class Iir_r<EraVMOpcode opcode,
   bits<4> rs1;
   bits<16> imm;
 
-  let OperandAddrMode = OpndIR.Value;
-  let OperandAM = 1;
+  let OperandAddrMode = OpndIR;
 
   let Src1 = rs1;
   let Imm0 = imm;
@@ -450,7 +424,6 @@ class Iir_rr<EraVMOpcode opcode,
   bits<4> rd1;
 
   let DestAddrMode = ToRegReg.Value;
-  let OperandAM = 1;
 
   let Dst1 = rd1;
 }
@@ -464,8 +437,7 @@ class Imr_r<EraVMOpcode opcode,
   bits<20> src0;
   bits<4> rs1;
 
-  let OperandAddrMode = OpndCR.Value;
-  let OperandAM = 2;
+  let OperandAddrMode = OpndCR;
 
   let Src0 = src0{3-0};
   let Imm0 = src0{19-4};
@@ -481,8 +453,7 @@ class Isr_r<EraVMOpcode opcode,
   bits<20> src0;
   bits<4> rs1;
 
-  let OperandAddrMode = OpndSR.Value;
-  let OperandAM = 3;
+  let OperandAddrMode = OpndSR;
 
   let Src0 = src0{3-0};
   let Src1 = rs1;
@@ -498,8 +469,6 @@ class Imr_rr<EraVMOpcode opcode,
   bits<4> rd1;
 
   let DestAddrMode = ToRegReg.Value;
-  let OperandAddrMode = OpndCR.Value;
-  let OperandAM = 2;
 
   let Dst1 = rd1;
 }
@@ -513,7 +482,6 @@ class Isr_rr<EraVMOpcode opcode,
   bits<4> rd1;
 
   let DestAddrMode = ToRegReg.Value;
-  let OperandAM = 3;
 
   let Dst1 = rd1;
 }
@@ -527,8 +495,7 @@ class Irr_s<EraVMOpcode opcode,
   bits<4> rs0;
   bits<4> rs1;
 
-  let OperandAddrMode = OpndRR.Value;
-  let OperandAM = 0;
+  let OperandAddrMode = OpndRR;
 
   let Src0 = rs0;
   let Src1 = rs1;
@@ -543,7 +510,6 @@ class Irr_sr<EraVMOpcode opcode,
   bits<4> rd1;
 
   let DestAddrMode = ToStackReg.Value;
-  let OperandAM = 0;
 
   let Dst1 = rd1;
 }
@@ -557,8 +523,7 @@ class Iir_s<EraVMOpcode opcode,
   bits<16> imm;
   bits<4> rs1;
 
-  let OperandAddrMode = OpndIR.Value;
-  let OperandAM = 1;
+  let OperandAddrMode = OpndIR;
 
   let Imm0 = imm;
   let Src1 = rs1;
@@ -573,7 +538,6 @@ class Iir_sr<EraVMOpcode opcode,
   bits<4> rd1;
 
   let DestAddrMode = ToStackReg.Value;
-  let OperandAM = 1;
 
   let Dst1 = rd1;
 }
@@ -587,8 +551,7 @@ class Imr_s<EraVMOpcode opcode,
   bits<20> src0;
   bits<4> rs1;
 
-  let OperandAddrMode = OpndCR.Value;
-  let OperandAM = 2;
+  let OperandAddrMode = OpndCR;
 
   let Src0 = src0{3-0};
   let Imm0 = src0{19-4};
@@ -604,8 +567,7 @@ class Isr_s<EraVMOpcode opcode,
   bits<20> src0;
   bits<4> rs1;
 
-  let OperandAddrMode = OpndSR.Value;
-  let OperandAM = 3;
+  let OperandAddrMode = OpndSR;
 
   let Src0 = src0{3-0};
   let Src1 = rs1;
@@ -621,7 +583,6 @@ class Imr_sr<EraVMOpcode opcode,
   bits<4> rd1;
 
   let DestAddrMode = ToStackReg.Value;
-  let OperandAM = 2;
 
   let Dst1 = rd1;
 }
@@ -635,7 +596,6 @@ class Isr_sr<EraVMOpcode opcode,
   bits<4> rd1;
 
   let DestAddrMode = ToStackReg.Value;
-  let OperandAM = 3;
 
   let Dst1 = rd1;
 }
