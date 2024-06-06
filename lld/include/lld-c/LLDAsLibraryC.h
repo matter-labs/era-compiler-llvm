@@ -26,8 +26,8 @@ LLVMBool LLVMLinkMemoryBuffers(LLVMMemoryBufferRef *inMemBufs, size_t numInBufs,
                                LLVMMemoryBufferRef *outMemBuf,
                                const char **lldArgs, size_t numLldArgs);
 
-LLVMBool LLVMLinkEVM(LLVMMemoryBufferRef inMemBufs[], const char *inMemBufIDs[],
-                     size_t numInBufs, LLVMMemoryBufferRef outMemBuf[2]);
+LLVMBool LLVMLinkEVM(LLVMMemoryBufferRef inMemBuf,
+                     LLVMMemoryBufferRef *outMemBuf);
 LLVM_C_EXTERN_C_END
 
 #endif // LLD_C_LLDASLIBRARYC_H
