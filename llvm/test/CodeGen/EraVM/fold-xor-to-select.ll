@@ -7,10 +7,8 @@ target triple = "eravm"
 define i256 @test_large_imm1(i256 %a) {
 ; CHECK-LABEL: test_large_imm1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    xor @CPI0_0[0], r1, r2
-; CHECK-NEXT:    sub.s! @CPI0_1[0], r1, r3
-; CHECK-NEXT:    add.ge r1, r0, r2
-; CHECK-NEXT:    add r2, r0, r1
+; CHECK-NEXT:    sub.s! @CPI0_1[0], r1, r2
+; CHECK-NEXT:    xor.lt @CPI0_0[0], r1, r1
 ; CHECK-NEXT:    ret
   %xor = xor i256 26959946660873538059280334323183841250350249843923952699046031785980, %a
   %cmp = icmp ult i256 %a, -26959946660873538059280334323183841250350249843923952699046031785985
@@ -21,9 +19,8 @@ define i256 @test_large_imm1(i256 %a) {
 define i256 @test_large_imm2(i256 %a) {
 ; CHECK-LABEL: test_large_imm2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    xor @CPI1_0[0], r1, r2
-; CHECK-NEXT:    sub.s! @CPI1_1[0], r1, r3
-; CHECK-NEXT:    add.ge r2, r0, r1
+; CHECK-NEXT:    sub.s! @CPI1_1[0], r1, r2
+; CHECK-NEXT:    xor.ge @CPI1_0[0], r1, r1
 ; CHECK-NEXT:    ret
   %xor = xor i256 26959946660873538059280334323183841250350249843923952699046031785980, %a
   %cmp = icmp ult i256 %a, -26959946660873538059280334323183841250350249843923952699046031785985
@@ -34,10 +31,8 @@ define i256 @test_large_imm2(i256 %a) {
 define i256 @test_small_imm1(i256 %a) {
 ; CHECK-LABEL: test_small_imm1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    xor 10, r1, r2
-; CHECK-NEXT:    sub.s! @CPI2_0[0], r1, r3
-; CHECK-NEXT:    add.ge r1, r0, r2
-; CHECK-NEXT:    add r2, r0, r1
+; CHECK-NEXT:    sub.s! @CPI2_0[0], r1, r2
+; CHECK-NEXT:    xor.lt 10, r1, r1
 ; CHECK-NEXT:    ret
   %xor = xor i256 10, %a
   %cmp = icmp ult i256 %a, -5
@@ -48,9 +43,8 @@ define i256 @test_small_imm1(i256 %a) {
 define i256 @test_small_imm2(i256 %a) {
 ; CHECK-LABEL: test_small_imm2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    xor 10, r1, r2
-; CHECK-NEXT:    sub.s! @CPI3_0[0], r1, r3
-; CHECK-NEXT:    add.ge r2, r0, r1
+; CHECK-NEXT:    sub.s! @CPI3_0[0], r1, r2
+; CHECK-NEXT:    xor.ge 10, r1, r1
 ; CHECK-NEXT:    ret
   %xor = xor i256 10, %a
   %cmp = icmp ult i256 %a, -5
@@ -61,10 +55,8 @@ define i256 @test_small_imm2(i256 %a) {
 define i256 @test_reg1(i256 %a, i256 %b) {
 ; CHECK-LABEL: test_reg1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    xor r1, r2, r3
-; CHECK-NEXT:    sub! r1, r2, r2
-; CHECK-NEXT:    add.ge r1, r0, r3
-; CHECK-NEXT:    add r3, r0, r1
+; CHECK-NEXT:    sub! r1, r2, r3
+; CHECK-NEXT:    xor.lt r1, r2, r1
 ; CHECK-NEXT:    ret
   %xor = xor i256 %a, %b
   %cmp = icmp ult i256 %a, %b
@@ -75,9 +67,8 @@ define i256 @test_reg1(i256 %a, i256 %b) {
 define i256 @test_reg2(i256 %a, i256 %b) {
 ; CHECK-LABEL: test_reg2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    xor r1, r2, r3
-; CHECK-NEXT:    sub! r1, r2, r2
-; CHECK-NEXT:    add.ge r3, r0, r1
+; CHECK-NEXT:    sub! r1, r2, r3
+; CHECK-NEXT:    xor.ge r1, r2, r1
 ; CHECK-NEXT:    ret
   %xor = xor i256 %a, %b
   %cmp = icmp ult i256 %a, %b
