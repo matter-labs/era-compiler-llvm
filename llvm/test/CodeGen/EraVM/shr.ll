@@ -1,4 +1,4 @@
-; RUN: llc --disable-eravm-scalar-opt-passes < %s | FileCheck %s
+; RUN: llc --disable-eravm-scalar-opt-passes -enable-eravm-combine-addressing-mode=false < %s | FileCheck %s
 
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm"
@@ -31,6 +31,13 @@ define i256 @shrcrr(i256 %rs1) nounwind {
 ; CHECK: shr @val[0], r1, r1
   %val = load i256, i256 addrspace(4)* @val
   %res = lshr i256 %val, %rs1
+  ret i256 %res
+}
+
+; CHECK-LABEL: shrcrr_cp
+define i256 @shrcrr_cp(i256 %rs1) nounwind {
+; CHECK: shr r2, r1, r1
+  %res = lshr i256 123456789, %rs1
   ret i256 %res
 }
 
@@ -93,6 +100,15 @@ define void @shrcrs(i256 %rs1) nounwind {
 ; CHECK: shr @val[0], r1, stack-[1]
   %val = load i256, i256 addrspace(4)* @val
   %res = lshr i256 %val, %rs1
+  store i256 %res, i256* %valptr
+  ret void
+}
+
+; CHECK-LABEL: shrcrs_cp
+define void @shrcrs_cp(i256 %rs1) nounwind {
+  %valptr = alloca i256
+; CHECK: shr r2, r1, stack-[1]
+  %res = lshr i256 123456789, %rs1
   store i256 %res, i256* %valptr
   ret void
 }
