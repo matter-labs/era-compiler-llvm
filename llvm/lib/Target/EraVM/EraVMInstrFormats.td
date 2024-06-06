@@ -25,14 +25,10 @@ def OpndSR         : SrcOperandMode;
 def OpndCR         : SrcOperandMode;
 
 // DestAddrMode:
-class DestAddrModeValue<bits<3> val> {
-  bits<3> Value = val;
-}
-def DestAddrNotSet : DestAddrModeValue<0>;
-def ToReg          : DestAddrModeValue<1>;
-def ToStack        : DestAddrModeValue<2>;
-def ToRegReg       : DestAddrModeValue<3>;
-def ToStackReg     : DestAddrModeValue<4>;
+class DestOperandMode;
+def DestAddrNotSet : DestOperandMode;
+def ToReg          : DestOperandMode;
+def ToStack        : DestOperandMode;
 
 //===----------------------------------------------------------------------===//
 // Instruction mapping tables
@@ -49,21 +45,16 @@ class mod_set_flags<bit silent> {
 def PreserveFlags : mod_set_flags<0>;
 def SetFlags : mod_set_flags<1>;
 
-def getFlagSettingOpcode : InstrMapping {
+class FlipFlagSetting<string from, string to> : InstrMapping {
   let FilterClass = "FlagSetting";
   let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode", "ReverseOperands"];
   let ColFields = ["Silent"];
-  let KeyCol = ["1"];
-  let ValueCols = [["0"]];
+  let KeyCol = [from];
+  let ValueCols = [[to]];
 }
 
-def getNonFlagSettingOpcode : InstrMapping {
-  let FilterClass = "FlagSetting";
-  let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode", "ReverseOperands"];
-  let ColFields = ["Silent"];
-  let KeyCol = ["0"];
-  let ValueCols = [["1"]];
-}
+def getFlagSettingOpcode : FlipFlagSetting<"PreserveFlags", "SetFlags">;
+def getNonFlagSettingOpcode : FlipFlagSetting<"SetFlags", "PreserveFlags">;
 
 // Instructions that support swapping arguments
 // This included non-commutative arithmetic ones: sub, shl, shr, rol, ror, div and
@@ -77,21 +68,16 @@ class mod_swap<bit swap> {
 def NoSwap : mod_swap<0>;
 def Swap : mod_swap<1>;
 
-def withInsSwapped : InstrMapping {
+class FlipInsSwapped<string from, string to> : InstrMapping {
   let FilterClass = "Swappable";
   let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode", "Silent"];
   let ColFields = ["ReverseOperands"];
-  let KeyCol = ["0"];
-  let ValueCols = [["1"]];
+  let KeyCol = [from];
+  let ValueCols = [[to]];
 }
 
-def withInsNotSwapped : InstrMapping {
-  let FilterClass = "Swappable";
-  let RowFields = ["BaseOpcode", "OperandAddrMode", "DestAddrMode", "Silent"];
-  let ColFields = ["ReverseOperands"];
-  let KeyCol = ["1"];
-  let ValueCols = [["0"]];
-}
+def withInsSwapped : FlipInsSwapped<"NoSwap", "Swap">;
+def withInsNotSwapped : FlipInsSwapped<"Swap", "NoSwap">;
 
 class AddrModeRel; // generic map of addressing mode of operands
 class RetAddrModeRel; // generic map of addressing mode of results
@@ -109,21 +95,16 @@ def mapIRInputTo : MapInputFrom<"OpndIR">;
 def mapCRInputTo : MapInputFrom<"OpndCR">;
 def mapSRInputTo : MapInputFrom<"OpndSR">;
 
-def withStackResult : InstrMapping {
+class WithDifferentResult<string from, string to> : InstrMapping {
   let FilterClass = "RetAddrModeRel";
   let RowFields = ["BaseOpcode", "OperandAddrMode", "Silent", "ReverseOperands"];
-  let ColFields = ["ResultAM"];
-  let KeyCol = ["0"];
-  let ValueCols = [["3"]];
+  let ColFields = ["DestAddrMode"];
+  let KeyCol = [from];
+  let ValueCols = [[to]];
 }
 
-def withRegisterResult : InstrMapping {
-  let FilterClass = "RetAddrModeRel";
-  let RowFields = ["BaseOpcode", "OperandAddrMode", "Silent", "ReverseOperands"];
-  let ColFields = ["ResultAM"];
-  let KeyCol = ["3"];
-  let ValueCols = [["0"]];
-}
+def withStackResult : WithDifferentResult<"ToReg", "ToStack">;
+def withRegisterResult : WithDifferentResult<"ToStack", "ToReg">;
 
 include "EraVMOpcodes.td"
 
@@ -317,17 +298,16 @@ class IBinary<EraVMOpcode opcode,
               list<dag> pattern>
   : IForm <opcode, outs, ins, asmstr, pattern > {
   string BaseOpcode;
-  bit Silent = !eq(set_flags, PreserveFlags);
-  bit ReverseOperands = !eq(swap, Swap);
+  mod_set_flags Silent = set_flags;
+  mod_swap ReverseOperands = swap;
   SrcOperandMode OperandAddrMode = OpndAddrNotSet;
-  bits<3> DestAddrMode = DestAddrNotSet.Value;
-  int ResultAM = 0;
+  DestOperandMode DestAddrMode = DestAddrNotSet;
 
   let AsmString = !strconcat(opcode.Name,
                              !if(!eq(swap, Swap), ".s", ""),
                              !if(!eq(set_flags, SetFlags), "!", ""),
                              "${cc}", "\t", asmstr);
-  let Defs = !if(Silent, [], [Flags]);
+  let Defs = !if(!eq(set_flags, PreserveFlags), [], [Flags]);
   let mayLoad = !or(isStackIn<src>.Value, !eq(src, SrcCodeAddr));
   let mayStore = isStackOut<dst>.Value;
 
@@ -345,8 +325,7 @@ class IBinaryR<EraVMOpcode opcode,
   : IBinary <opcode, src, DstReg, swap_operands, silent, outs, ins, asmstr, pattern > {
   bits<4> rd0;
 
-  let DestAddrMode = ToReg.Value;
-  let ResultAM = 0;
+  let DestAddrMode = ToReg;
 
   let Dst0 = rd0;
 }
@@ -361,8 +340,7 @@ class IBinaryS<EraVMOpcode opcode,
   // Encode stack operand into 20 bits as reg + imm offset
   bits<20> dst0;
 
-  let DestAddrMode = ToStack.Value;
-  let ResultAM = 3;
+  let DestAddrMode = ToStack;
 
   let Dst0 = dst0{3-0};
   let Imm1 = dst0{19-4};
@@ -391,8 +369,6 @@ class Irr_rr<EraVMOpcode opcode,
   : Irr_r<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rd1;
 
-  let DestAddrMode = ToRegReg.Value;
-
   let Dst1 = rd1;
 }
 
@@ -418,8 +394,6 @@ class Iir_rr<EraVMOpcode opcode,
              list<dag> pattern>
   : Iir_r<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rd1;
-
-  let DestAddrMode = ToRegReg.Value;
 
   let Dst1 = rd1;
 }
@@ -464,8 +438,6 @@ class Imr_rr<EraVMOpcode opcode,
   : Imr_r<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rd1;
 
-  let DestAddrMode = ToRegReg.Value;
-
   let Dst1 = rd1;
 }
 
@@ -476,8 +448,6 @@ class Isr_rr<EraVMOpcode opcode,
              list<dag> pattern>
   : Isr_r<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rd1;
-
-  let DestAddrMode = ToRegReg.Value;
 
   let Dst1 = rd1;
 }
@@ -505,8 +475,6 @@ class Irr_sr<EraVMOpcode opcode,
   : Irr_s<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rd1;
 
-  let DestAddrMode = ToStackReg.Value;
-
   let Dst1 = rd1;
 }
 
@@ -532,8 +500,6 @@ class Iir_sr<EraVMOpcode opcode,
              list<dag> pattern>
   : Iir_s<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rd1;
-
-  let DestAddrMode = ToStackReg.Value;
 
   let Dst1 = rd1;
 }
@@ -578,8 +544,6 @@ class Imr_sr<EraVMOpcode opcode,
   : Imr_s<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rd1;
 
-  let DestAddrMode = ToStackReg.Value;
-
   let Dst1 = rd1;
 }
 
@@ -590,8 +554,6 @@ class Isr_sr<EraVMOpcode opcode,
              list<dag> pattern>
   : Isr_s<opcode, swap_operands, silent, outs, ins, asmstr, pattern> {
   bits<4> rd1;
-
-  let DestAddrMode = ToStackReg.Value;
 
   let Dst1 = rd1;
 }
