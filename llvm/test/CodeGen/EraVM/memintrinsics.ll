@@ -32,22 +32,20 @@ define fastcc void @huge_copysize1(i256 addrspace(1)* %dest, i256 addrspace(1)* 
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    add @CPI1_0[0], r1, r3
 ; CHECK-NEXT:    add r2, r0, r4
-; CHECK-NEXT:    add r1, r0, r5
 ; CHECK-NEXT:  .BB1_1: ; %load-store-loop
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    ld.1.inc r4, r6, r4
-; CHECK-NEXT:    st.1.inc r5, r6, r5
-; CHECK-NEXT:    sub! r5, r3, r6
+; CHECK-NEXT:    ld.1.inc r4, r5, r4
+; CHECK-NEXT:    st.1.inc r1, r5, r1
+; CHECK-NEXT:    sub! r1, r3, r5
 ; CHECK-NEXT:    jump.ne @.BB1_1
 ; CHECK-NEXT:  ; %bb.2: ; %memcpy-split
-; CHECK-NEXT:    add @CPI1_0[0], r1, r1
-; CHECK-NEXT:    ld.1 r1, r3
-; CHECK-NEXT:    and @CPI1_1[0], r3, r3
+; CHECK-NEXT:    ld.1 r3, r1
+; CHECK-NEXT:    and @CPI1_1[0], r1, r1
 ; CHECK-NEXT:    add @CPI1_0[0], r2, r2
 ; CHECK-NEXT:    ld.1 r2, r2
 ; CHECK-NEXT:    and @CPI1_2[0], r2, r2
-; CHECK-NEXT:    or r2, r3, r2
-; CHECK-NEXT:    st.1 r1, r2
+; CHECK-NEXT:    or r2, r1, r1
+; CHECK-NEXT:    st.1 r3, r1
 ; CHECK-NEXT:    ret
   call void @llvm.memcpy.p1i256.p1i256.i256(i256 addrspace(1)* %dest, i256 addrspace(1)* %src, i256 81129638414606681695789005144065, i1 false)
   ret void
@@ -58,22 +56,20 @@ define fastcc void @huge_copysize2(i256 addrspace(2)* %dest, i256 addrspace(2)* 
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    add @CPI2_0[0], r1, r3
 ; CHECK-NEXT:    add r2, r0, r4
-; CHECK-NEXT:    add r1, r0, r5
 ; CHECK-NEXT:  .BB2_1: ; %load-store-loop
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    ld.2.inc r4, r6, r4
-; CHECK-NEXT:    st.2.inc r5, r6, r5
-; CHECK-NEXT:    sub! r5, r3, r6
+; CHECK-NEXT:    ld.2.inc r4, r5, r4
+; CHECK-NEXT:    st.2.inc r1, r5, r1
+; CHECK-NEXT:    sub! r1, r3, r5
 ; CHECK-NEXT:    jump.ne @.BB2_1
 ; CHECK-NEXT:  ; %bb.2: ; %memcpy-split
-; CHECK-NEXT:    add @CPI2_0[0], r1, r1
-; CHECK-NEXT:    ld.2 r1, r3
-; CHECK-NEXT:    and @CPI2_1[0], r3, r3
+; CHECK-NEXT:    ld.2 r3, r1
+; CHECK-NEXT:    and @CPI2_1[0], r1, r1
 ; CHECK-NEXT:    add @CPI2_0[0], r2, r2
 ; CHECK-NEXT:    ld.2 r2, r2
 ; CHECK-NEXT:    and @CPI2_2[0], r2, r2
-; CHECK-NEXT:    or r2, r3, r2
-; CHECK-NEXT:    st.2 r1, r2
+; CHECK-NEXT:    or r2, r1, r1
+; CHECK-NEXT:    st.2 r3, r1
 ; CHECK-NEXT:    ret
   call void @llvm.memcpy.p2i256.p2i256.i256(i256 addrspace(2)* %dest, i256 addrspace(2)* %src, i256 81129638414606681695789005144065, i1 false)
   ret void
