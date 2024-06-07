@@ -135,10 +135,6 @@ def EraVMOpcodesList : GenericTable {
   let PrimaryKey = [ "BaseOpcode" ];
   let PrimaryKeyName = "lookupEraVMOpcodeByValue";
 }
-def lookupEraVMOpcodeByName : SearchIndex {
-  let Table = EraVMOpcodesList;
-  let Key = [ "Name" ];
-}
 
 def OpInvalid : EraVMOpcode<"<invalid>", 0, DirectEncoding>;
 def OpNoOp : EraVMOpcode<"nop",  1,   NopEncoding>;

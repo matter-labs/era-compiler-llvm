@@ -56,11 +56,6 @@ void EraVMInstPrinter::printInst(const MCInst *MI, uint64_t Address,
   printAnnotation(O, Annot);
 }
 
-void EraVMInstPrinter::printPCRelImmOperand(const MCInst *MI, unsigned OpNo,
-                                            raw_ostream &O) {
-  llvm_unreachable("Not implemented yet!");
-}
-
 void EraVMInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
                                     raw_ostream &O, const char *Modifier) {
   assert((Modifier == nullptr || Modifier[0] == 0) && "No modifiers supported");

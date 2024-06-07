@@ -130,13 +130,6 @@ def large_imm : Operand<i256>, IntImmLeaf<i256, [{
   return !Imm.abs().isIntN(16);
 }]> {}
 
-
-def first_op : Operand<i256>, IntImmLeaf<i256, [{
-  return Imm.getZExtValue() < 2;
-}]> {
-  let PrintMethod = "printFirstOperand";
-}
-
 // This operand class represents those jump targets described
 // as imm_in operand in the spec.
 def JumpTargetOperand : AsmOperandClass {
