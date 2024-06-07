@@ -2,7 +2,7 @@ name: Build LLVM binaries
 
 on:
   schedule:
-    - cron: '0 0 * * *' # every month to regenerate ccache
+    - cron: '0 0 1 * *' # every month to regenerate ccache
   workflow_dispatch:
     inputs:
       ref:
@@ -38,46 +38,52 @@ on:
 
 jobs:
 
+  prepare-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.prepare-matrix.outputs.matrix }}
+    steps:
+      - name: Prepare matrix
+        id: prepare-matrix
+        run: |
+          # Define general matrix parameters
+          WINDOWS='{"name":"Windows","runner":"windows-2022-github-hosted-64core"}'
+          MACOS_AMD64='{"name":"MacOS-x86","runner":"macos-12-large"}'
+          MACOS_ARM64='{"name":"MacOS-arm64","runner":["self-hosted","macOS","ARM64"]}'
+          LINUX_AMD64='{"name":"Linux-AMD64","runner":"matterlabs-ci-runner","image":"matterlabs/llvm_runner:ubuntu22-llvm17-latest"}'
+          LINUX_ARM64='{"name":"Linux-ARM64","runner":"matterlabs-ci-runner-arm","image":"matterlabs/llvm_runner:ubuntu22-llvm17-latest"}'
+          # Disable platforms for non-tag builds if user requested
+          if [ ${GITHUB_EVENT_NAME} = workflow_dispatch ]; then
+            [ ${{ github.event.inputs.build_windows_amd64 }} != true ] && WINDOWS=
+            [ ${{ github.event.inputs.build_macos_amd64 }} != true ] && MACOS_AMD64=
+            [ ${{ github.event.inputs.build_macos_arm64 }} != true ] && MACOS_ARM64=
+            [ ${{ github.event.inputs.build_linux_amd64 }} != true ] && LINUX_AMD64=
+            [ ${{ github.event.inputs.build_linux_arm64 }} != true ] && LINUX_ARM64=
+          fi
+          PLATFORMS=(${WINDOWS} ${MACOS_AMD64} ${MACOS_ARM64} ${LINUX_AMD64} ${LINUX_ARM64})
+          echo "matrix={ \"include\": [ $(IFS=, ; echo "${PLATFORMS[*]}") ] }" | tee -a "${GITHUB_OUTPUT}"
+
   build:
+    needs: prepare-matrix
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - name: "MacOS x86"
-            runner: macos-12-large
-            required: ${{ github.event.inputs.build_macos_amd64 }}
-          - name: "MacOS arm64"
-            runner: [self-hosted, macOS, ARM64]
-            required: ${{ github.event.inputs.build_macos_arm64 }}
-          - name: "Linux x86"
-            runner: matterlabs-ci-runner
-            image: matterlabs/llvm_runner:ubuntu22-llvm17-latest
-            required: ${{ github.event.inputs.build_linux_amd64 }}
-          - name: "Linux ARM64"
-            runner: matterlabs-ci-runner-arm
-            image: matterlabs/llvm_runner:ubuntu22-llvm17-latest
-            required: ${{ github.event.inputs.build_linux_arm64 }}
-          - name: "Windows"
-            runner: windows-2022-github-hosted-64core
-            required: ${{ github.event.inputs.build_windows_amd64 }}
+      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
     runs-on: ${{ matrix.runner }}
     container:
       image: ${{ matrix.image || '' }} # Special workaround to allow matrix builds with optional container
     name: ${{ matrix.name }}
     steps:
       - name: Checkout source
-        if: matrix.required == 'true'
         uses: actions/checkout@v4
         with:
           ref: ${{ inputs.ref }}
           path: "llvm"
 
       - name: Prepare Windows env
-        if: matrix.required == 'true' && runner.os == 'Windows'
+        if: runner.os == 'Windows'
         uses: matter-labs/era-compiler-ci/.github/actions/prepare-msys@v1
 
       - name: Build LLVM
-        if: matrix.required == 'true'
         uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
         with:
           extra-args: "\\-DLLVM_ENABLE_WERROR=On \\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
@@ -89,11 +95,9 @@ jobs:
 
       # Required to keep executable permissions for binaries
       - name: Prepare tarball
-        if: matrix.required == 'true'
         run: tar -czf ${{ runner.os }}-${{ runner.arch }}-target-final.tar.gz ./target-llvm/target-final
 
       - name: Upload LLVM binaries
-        if: matrix.required == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: llvm-bins-${{ runner.os }}-${{ runner.arch }}
