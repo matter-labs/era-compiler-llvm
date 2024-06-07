@@ -269,10 +269,6 @@ class IForm <EraVMOpcode opcode,
   let UseLogicalOperandMappings = true;
 }
 
-class INop<dag ins, string asmstr, list<dag> pattern>
-  : IForm <OpNoOp, (outs), ins, asmstr, pattern > {
-}
-
 class IJump<EraVMOpcode opcode,
             SrcMode src,
             dag outs, dag ins, string asmstr, list<dag> pattern>
