@@ -75,12 +75,9 @@ def ArithNCommEncoding : OpcodeEncoding; // opcode src dst swap set_flags ⇒ op
 let SrcMultiplier = 8, DstMultiplier = 2, IndexOfStackDstUse = 2 in
 def ArithPtrEncoding   : OpcodeEncoding; // opcode src dst swap ⇒ opcode + 8 × src + 2 × dst + swap
 def FarCallEncoding    : OpcodeEncoding; // opcode is_shard is_static ⇒ opcode + 2 × is_static + is_shard
-def RetEncoding        : OpcodeEncoding; // opcode to_label ⇒ opcode + to_label
 let SrcMultiplier = 1 in
 def JumpEncoding       : OpcodeEncoding; // opcode src ⇒ opcode + 1 × src
-def LoadPtrEncoding    : OpcodeEncoding; // opcode inc ⇒ opcode + inc
 def HeapOpEncoding     : OpcodeEncoding; // opcode src_special inc ⇒ opcode + 10 × src_special + inc
-def LogEncoding        : OpcodeEncoding; // opcode is_first ⇒ opcode + is_first
 def StaticOpEncoding   : OpcodeEncoding; // opcode src_special inc ⇒ opcode + 2 × src_special + inc
 
 class ArithOpcEncoder<OpcodeEncoding encoding, bits<11> BaseOpcode,
@@ -110,7 +107,7 @@ class JumpOpcEncoder<bits<11> BaseOpcode,
 class UMAOpcEncoder<OpcodeEncoding encoding, bits<11> BaseOpcode,
                     SrcSpecialMode src> {
   bits<11> Opcode =
-    !cond(!eq(encoding, LoadPtrEncoding) : BaseOpcode,
+    !cond(!eq(encoding, DirectEncoding)  : BaseOpcode,
           !eq(encoding, HeapOpEncoding)  : !add(BaseOpcode, !mul(10, src.Value)),
           !eq(encoding, StaticOpEncoding): !add(BaseOpcode, !mul(2, src.Value)),
           true : -1);
@@ -204,8 +201,8 @@ def OpStaticReadInc     : EraVMOpcode<"ldmi.st", 1097, StaticOpEncoding>;
 def OpStaticWrite       : EraVMOpcode<"stm.st",  1100, StaticOpEncoding>; // src inc ⇒ 1100 + 2 × src + inc
 def OpStaticWriteInc    : EraVMOpcode<"stmi.st", 1101, StaticOpEncoding>;
 
-def OpLoadPtr      : EraVMOpcode<"ld",     1083, LoadPtrEncoding>; // inc ⇒ 1083 + inc
-def OpLoadPtrInc   : EraVMOpcode<"ld.inc", 1084, LoadPtrEncoding>;
+def OpLoadPtr      : EraVMOpcode<"ld",     1083, DirectEncoding>; // inc ⇒ 1083 + inc
+def OpLoadPtrInc   : EraVMOpcode<"ld.inc", 1084, DirectEncoding>;
 
 def OpDecommit       : EraVMOpcode<"log.decommit", 1093, DirectEncoding>;
 def OpTransientLoad  : EraVMOpcode<"tload",    1094, DirectEncoding>;
