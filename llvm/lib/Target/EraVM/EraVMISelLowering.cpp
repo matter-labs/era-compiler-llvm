@@ -1418,6 +1418,13 @@ SDValue EraVMTargetLowering::PerformDAGCombine(SDNode *N,
   return Val;
 }
 
+bool EraVMTargetLowering::shouldFormOverflowOp(unsigned Opcode, EVT VT,
+                                               bool) const {
+  // Form add and sub with overflow intrinsics regardless of any extra
+  // users of the math result.
+  return VT == MVT::i256;
+}
+
 Register
 EraVMTargetLowering::getRegisterByName(const char *RegName, LLT VT,
                                        const MachineFunction &MF) const {
