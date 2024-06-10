@@ -253,6 +253,9 @@ private:
     return TargetLowering::getPointerTy(DL, AS);
   }
 
+  bool shouldFormOverflowOp(unsigned Opcode, EVT VT,
+                            bool MathUsed) const override;
+
   Register getRegisterByName(const char *RegName, LLT VT,
                              const MachineFunction &MF) const override;
 
