@@ -109,6 +109,88 @@ def withRegisterResult : WithDifferentResult<"ToStack", "ToReg">;
 include "EraVMOpcodes.td"
 
 //===----------------------------------------------------------------------===//
+// EraVM Operand Definitions.
+//===----------------------------------------------------------------------===//
+
+def UImm16Operand : AsmOperandClass {
+  let Name = "UImm16";
+  let ParserMethod = "tryParseUImm16Operand";
+  let PredicateMethod = "isImm";
+  let RenderMethod = "addImmOperands";
+}
+
+def imm16 : Operand<i256>, IntImmLeaf<i256, [{
+  return Imm.isIntN(16);
+}]> {
+  let ParserMatchClass = UImm16Operand;
+}
+
+def neg_imm16 : Operand<i256>, IntImmLeaf<i256, [{
+  return Imm.isNegative() && Imm.abs().isIntN(16);
+}]> {}
+
+def large_imm : Operand<i256>, IntImmLeaf<i256, [{
+  return !Imm.abs().isIntN(16);
+}]> {}
+
+// This operand class represents those jump targets described
+// as imm_in operand in the spec.
+def JumpTargetOperand : AsmOperandClass {
+  let Name = "JumpTarget";
+  let ParserMethod = "tryParseJumpTargetOperand";
+  let PredicateMethod = "isImm";
+  let RenderMethod = "addImmOperands";
+}
+
+def jmptarget : Operand<OtherVT> {
+  let ParserMatchClass = JumpTargetOperand;
+  let EncoderMethod = "getJumpTargetValue";
+}
+
+// Address operands
+
+def CodeOperand : AsmOperandClass {
+  let Name = "CodeReference";
+  let ParserMethod = "tryParseCodeOperand";
+}
+
+def memop : Operand<i256> {
+  let PrintMethod = "printMemOperand";
+  let EncoderMethod = "getMemOpValue";
+  let ParserMatchClass = CodeOperand;
+  let DecoderMethod = "DecodeCodeOperand";
+  let MIOperandInfo = (ops GR256, i16imm);
+}
+
+let ParserMethod = "tryParseStackOperand",
+    RenderMethod = "addStackReferenceOperands" in {
+def StackInOperand : AsmOperandClass {
+  let Name = "StackInReference";
+  let PredicateMethod = "isStackReference<true>";
+}
+def StackOutOperand : AsmOperandClass {
+  let Name = "StackOutReference";
+  let PredicateMethod = "isStackReference<false>";
+}
+}
+
+def stackin : Operand<i256> {
+  let PrintMethod = "printStackOperand<true>";
+  let EncoderMethod = "getStackOpValue<true>";
+  let ParserMatchClass = StackInOperand;
+  let DecoderMethod = "DecodeStackOperand";
+  let MIOperandInfo = (ops GRStackRefMarker, GR256, i16imm);
+}
+
+def stackout : Operand<i256> {
+  let PrintMethod = "printStackOperand<false>";
+  let EncoderMethod = "getStackOpValue<false>";
+  let ParserMatchClass = StackOutOperand;
+  let DecoderMethod = "DecodeStackOperand";
+  let MIOperandInfo = (ops GRStackRefMarker, GR256, i16imm);
+}
+
+//===----------------------------------------------------------------------===//
 // EraVM Instructions
 //===----------------------------------------------------------------------===//
 
@@ -346,20 +428,58 @@ class IBinaryS<EraVMOpcode opcode,
   let Imm1 = dst0{19-4};
 }
 
+// Mix-in classes to hook standard fields for different combinations
+// of input operands.
+
+class SrcOperandsRR {
+  SrcOperandMode OperandAddrMode = OpndRR;
+
+  bits<4> rs0;
+  bits<4> rs1;
+
+  bits<4> Src0 = rs0;
+  bits<4> Src1 = rs1;
+}
+
+class SrcOperandsIR {
+  SrcOperandMode OperandAddrMode = OpndIR;
+
+  bits<16> imm;
+  bits<4>  rs1;
+
+  bits<16> Imm0 = imm;
+  bits<4>  Src1 = rs1;
+}
+
+class SrcOperandsMR {
+  SrcOperandMode OperandAddrMode = OpndCR;
+
+  bits<20> src0;
+  bits<4>  rs1;
+
+  bits<4>  Src0 = src0{3-0};
+  bits<16> Imm0 = src0{19-4};
+  bits<4>  Src1 = rs1;
+}
+
+class SrcOperandsSR {
+  SrcOperandMode OperandAddrMode = OpndSR;
+
+  bits<20> src0;
+  bits<4>  rs1;
+
+  bits<4>  Src0 = src0{3-0};
+  bits<16> Imm0 = src0{19-4};
+  bits<4>  Src1 = rs1;
+}
+
 class Irr_r<EraVMOpcode opcode,
             mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
             string asmstr,
             list<dag> pattern>
-  : IBinaryR<opcode, SrcReg, swap_operands, silent, outs, ins, asmstr, pattern> {
-  bits<4> rs0;
-  bits<4> rs1;
-
-  let OperandAddrMode = OpndRR;
-
-  let Src0 = rs0;
-  let Src1 = rs1;
-}
+  : IBinaryR<opcode, SrcReg, swap_operands, silent, outs, ins, asmstr, pattern>,
+    SrcOperandsRR;
 
 class Irr_rr<EraVMOpcode opcode,
              mod_swap swap_operands, mod_set_flags silent,
@@ -377,15 +497,8 @@ class Iir_r<EraVMOpcode opcode,
             dag outs, dag ins,
             string asmstr,
             list<dag> pattern>
-  : IBinaryR<opcode, SrcImm, swap_operands, silent, outs, ins, asmstr, pattern> {
-  bits<4> rs1;
-  bits<16> imm;
-
-  let OperandAddrMode = OpndIR;
-
-  let Src1 = rs1;
-  let Imm0 = imm;
-}
+  : IBinaryR<opcode, SrcImm, swap_operands, silent, outs, ins, asmstr, pattern>,
+    SrcOperandsIR;
 
 class Iir_rr<EraVMOpcode opcode,
              mod_swap swap_operands, mod_set_flags silent,
@@ -403,32 +516,16 @@ class Imr_r<EraVMOpcode opcode,
             dag outs, dag ins,
             string asmstr,
             list<dag> pattern>
-  : IBinaryR<opcode, SrcCodeAddr, swap_operands, silent, outs, ins, asmstr, pattern> {
-  bits<20> src0;
-  bits<4> rs1;
-
-  let OperandAddrMode = OpndCR;
-
-  let Src0 = src0{3-0};
-  let Imm0 = src0{19-4};
-  let Src1 = rs1;
-}
+  : IBinaryR<opcode, SrcCodeAddr, swap_operands, silent, outs, ins, asmstr, pattern>,
+    SrcOperandsMR;
 
 class Isr_r<EraVMOpcode opcode,
             mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
             string asmstr,
             list<dag> pattern>
-  : IBinaryR<opcode, SrcStackAbsolute, swap_operands, silent, outs, ins, asmstr, pattern> {
-  bits<20> src0;
-  bits<4> rs1;
-
-  let OperandAddrMode = OpndSR;
-
-  let Src0 = src0{3-0};
-  let Src1 = rs1;
-  let Imm0 = src0{19-4};
-}
+  : IBinaryR<opcode, SrcStackAbsolute, swap_operands, silent, outs, ins, asmstr, pattern>,
+    SrcOperandsSR;
 
 class Imr_rr<EraVMOpcode opcode,
              mod_swap swap_operands, mod_set_flags silent,
@@ -457,15 +554,8 @@ class Irr_s<EraVMOpcode opcode,
             dag outs, dag ins,
             string asmstr,
             list<dag> pattern>
-  : IBinaryS<opcode, SrcReg, swap_operands, silent, outs, ins, asmstr, pattern> {
-  bits<4> rs0;
-  bits<4> rs1;
-
-  let OperandAddrMode = OpndRR;
-
-  let Src0 = rs0;
-  let Src1 = rs1;
-}
+  : IBinaryS<opcode, SrcReg, swap_operands, silent, outs, ins, asmstr, pattern>,
+    SrcOperandsRR;
 
 class Irr_sr<EraVMOpcode opcode,
              mod_swap swap_operands, mod_set_flags silent,
@@ -483,15 +573,8 @@ class Iir_s<EraVMOpcode opcode,
             dag outs, dag ins,
             string asmstr,
             list<dag> pattern>
-  : IBinaryS<opcode, SrcImm, swap_operands, silent, outs, ins, asmstr, pattern> {
-  bits<16> imm;
-  bits<4> rs1;
-
-  let OperandAddrMode = OpndIR;
-
-  let Imm0 = imm;
-  let Src1 = rs1;
-}
+  : IBinaryS<opcode, SrcImm, swap_operands, silent, outs, ins, asmstr, pattern>,
+    SrcOperandsIR;
 
 class Iir_sr<EraVMOpcode opcode,
              mod_swap swap_operands, mod_set_flags silent,
@@ -509,32 +592,16 @@ class Imr_s<EraVMOpcode opcode,
             dag outs, dag ins,
             string asmstr,
             list<dag> pattern>
-  : IBinaryS<opcode, SrcCodeAddr, swap_operands, silent, outs, ins, asmstr, pattern> {
-  bits<20> src0;
-  bits<4> rs1;
-
-  let OperandAddrMode = OpndCR;
-
-  let Src0 = src0{3-0};
-  let Imm0 = src0{19-4};
-  let Src1 = rs1;
-}
+  : IBinaryS<opcode, SrcCodeAddr, swap_operands, silent, outs, ins, asmstr, pattern>,
+    SrcOperandsMR;
 
 class Isr_s<EraVMOpcode opcode,
             mod_swap swap_operands, mod_set_flags silent,
             dag outs, dag ins,
             string asmstr,
             list<dag> pattern>
-  : IBinaryS<opcode, SrcStackAbsolute, swap_operands, silent, outs, ins, asmstr, pattern> {
-  bits<20> src0;
-  bits<4> rs1;
-
-  let OperandAddrMode = OpndSR;
-
-  let Src0 = src0{3-0};
-  let Src1 = rs1;
-  let Imm0 = src0{19-4};
-}
+  : IBinaryS<opcode, SrcStackAbsolute, swap_operands, silent, outs, ins, asmstr, pattern>,
+    SrcOperandsSR;
 
 class Imr_sr<EraVMOpcode opcode,
              mod_swap swap_operands, mod_set_flags silent,
