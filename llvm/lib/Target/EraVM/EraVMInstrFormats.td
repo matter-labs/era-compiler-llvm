@@ -310,6 +310,19 @@ class IForm <EraVMOpcode opcode,
   let UseLogicalOperandMappings = true;
 }
 
+// Mix-in class for IForm instances that can be predicated by the
+// tablegen-erated instruction selector rules.
+// Note: if marking an instruction with this mix-in, add one more `case` line
+//       to EraVMTargetLowering::AdjustInstrPostInstrSelection.
+class MayBePredicatedViaPattern {
+  // Make ISel conservatively assume Flags register is used by this instruction
+  // and drop this Use in AdjustInstrPostInstrSelection as needed.
+  // This prevents incorrecly marking previous Defs as dead if the instruction
+  // is actually predicated.
+  list<Register> Uses = [Flags];
+  bit hasPostISelHook = true;
+}
+
 class IJump<EraVMOpcode opcode,
             SrcMode src,
             dag outs, dag ins, string asmstr, list<dag> pattern>

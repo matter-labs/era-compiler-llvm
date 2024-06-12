@@ -971,10 +971,9 @@ class JumpViaStack : JumpViaConst;
 // a return address operand can be used as a cheaper replacement for "call",
 // so it may be worth making it non-terminator in the future.
 
-let Uses = [Flags] in // TODO Do not set implicit use unconditionally.
 def JCl  : IJump<OpJump, SrcImm, (outs), (ins jmptarget:$dest), "$dest",
                  [(EraVMbrcc bb:$dest, imm:$cc)]>,
-           JumpWithoutRetAddr, JumpViaLabel;
+           JumpWithoutRetAddr, JumpViaLabel, MayBePredicatedViaPattern;
 def JClr : IJump<OpJump, SrcImm, (outs GR256:$ret_addr), (ins jmptarget:$dest), "$dest, $ret_addr", []>,
            JumpWithRetAddr, JumpViaLabel;
 

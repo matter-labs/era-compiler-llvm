@@ -405,8 +405,12 @@ unsigned EraVMInstrInfo::insertBranch(
   }
   // Conditional branch.
   unsigned Count = 0;
-  auto cond_code = getImmOrCImm(Cond[0]);
-  BuildMI(&MBB, DL, get(EraVM::JCl)).addMBB(TBB).addImm(cond_code);
+  auto CondCode = getImmOrCImm(Cond[0]);
+  const MachineInstrBuilder &MIB =
+      BuildMI(&MBB, DL, get(EraVM::JCl)).addMBB(TBB).addImm(CondCode);
+  // Do not accidentally use a dead register.
+  if (CondCode != EraVMCC::COND_NONE)
+    MIB.addUse(EraVM::Flags, RegState::Implicit);
   ++Count;
 
   if (FBB) {
