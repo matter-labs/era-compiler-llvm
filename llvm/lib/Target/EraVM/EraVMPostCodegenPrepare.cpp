@@ -21,8 +21,10 @@
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstrTypes.h"
+#include "llvm/IR/PatternMatch.h"
 
 using namespace llvm;
+using namespace llvm::PatternMatch;
 
 #define DEBUG_TYPE "eravm-post-codegen-prepare"
 #define ERAVM_POST_CODEGEN_PREPARE_NAME                                        \
@@ -129,12 +131,107 @@ static bool optimizeICmp(ICmpInst &Cmp) {
   return true;
 }
 
+// This optimization tries to convert:
+//  %c = icmp ult %x, imm
+//  br %c, bla, blb
+//  %tc = lshr %x, LogBase2(imm)
+// to
+//  %tc = lshr %x, LogBase2(imm)
+//  %c = icmp eq %tc, 0
+//  br %c, bla, blb
+//
+// or
+//
+//  %c = icmp eq/ne %x, imm
+//  br %c, bla, blb
+//  %tc = add/sub %x, -imm/imm
+// to
+//  %tc = add/sub %x, -imm/imm
+//  %c = icmp eq/ne %tc, 0
+//  br %c, bla, blb
+//
+// It is beneficial to do this transformation since lshr/add/sub produce flags
+// and cmp eq/ne 0 can be combined with them.
+// This is the same implementation as in the CodeGenPrepare pass (function
+// optimizeBranch) with the fix from upstream to drop poison generating
+// flags (PR #90382, commit ab12bba). Since this optimization can
+// create opportunities to generate overflow intrinsics (in
+// CodeGenPrepare::combineToUAddWithOverflow and
+// CodeGenPrepare::combineToUSubWithOverflow functions, where the latter is not
+// enabled atm since TLI->shouldFormOverflowOp returns true only for add), we
+// are moving this optimization here to prevent that. Benchmarks have shown that
+// creating more overflow intrinsics is not beneficial.
+// TODO #625: When ticket is resolved, remove this function and use
+// preferZeroCompareBranch TLI hook.
+static bool optimizeBranch(BranchInst *Branch) {
+  if (!Branch->isConditional())
+    return false;
+
+  auto *Cmp = dyn_cast<ICmpInst>(Branch->getCondition());
+  if (!Cmp || !isa<ConstantInt>(Cmp->getOperand(1)) || !Cmp->hasOneUse())
+    return false;
+
+  Value *X = Cmp->getOperand(0);
+  APInt CmpC = cast<ConstantInt>(Cmp->getOperand(1))->getValue();
+
+  for (auto *U : X->users()) {
+    auto *UI = dyn_cast<Instruction>(U);
+    // A quick dominance check
+    if (!UI ||
+        (UI->getParent() != Branch->getParent() &&
+         UI->getParent() != Branch->getSuccessor(0) &&
+         UI->getParent() != Branch->getSuccessor(1)) ||
+        (UI->getParent() != Branch->getParent() &&
+         !UI->getParent()->getSinglePredecessor()))
+      continue;
+
+    if (CmpC.isPowerOf2() && Cmp->getPredicate() == ICmpInst::ICMP_ULT &&
+        match(UI, m_Shr(m_Specific(X), m_SpecificInt(CmpC.logBase2())))) {
+      IRBuilder<> Builder(Branch);
+      if (UI->getParent() != Branch->getParent())
+        UI->moveBefore(Branch);
+      UI->dropPoisonGeneratingFlags();
+      Value *NewCmp = Builder.CreateCmp(ICmpInst::ICMP_EQ, UI,
+                                        ConstantInt::get(UI->getType(), 0));
+      LLVM_DEBUG(dbgs() << "Converting " << *Cmp << "\n");
+      LLVM_DEBUG(dbgs() << " to compare on zero: " << *NewCmp << "\n");
+      Cmp->replaceAllUsesWith(NewCmp);
+      return true;
+    }
+    if (Cmp->isEquality() &&
+        (match(UI, m_Add(m_Specific(X), m_SpecificInt(-CmpC))) ||
+         match(UI, m_Sub(m_Specific(X), m_SpecificInt(CmpC))))) {
+      IRBuilder<> Builder(Branch);
+      if (UI->getParent() != Branch->getParent())
+        UI->moveBefore(Branch);
+      UI->dropPoisonGeneratingFlags();
+      Value *NewCmp = Builder.CreateCmp(Cmp->getPredicate(), UI,
+                                        ConstantInt::get(UI->getType(), 0));
+      LLVM_DEBUG(dbgs() << "Converting " << *Cmp << "\n");
+      LLVM_DEBUG(dbgs() << " to compare on zero: " << *NewCmp << "\n");
+      Cmp->replaceAllUsesWith(NewCmp);
+      return true;
+    }
+  }
+  return false;
+}
+
 bool EraVMPostCodegenPrepare::runOnFunction(Function &F) {
   bool Changed = false;
-  for (auto &BB : F)
-    for (auto &I : llvm::make_early_inc_range(BB))
-      if (auto *Cmp = dyn_cast<ICmpInst>(&I))
-        Changed |= optimizeICmp(*Cmp);
+  for (auto &BB : F) {
+    for (auto &I : llvm::make_early_inc_range(BB)) {
+      switch (I.getOpcode()) {
+      default:
+        break;
+      case Instruction::ICmp:
+        Changed |= optimizeICmp(cast<ICmpInst>(I));
+        break;
+      case Instruction::Br:
+        Changed |= optimizeBranch(cast<BranchInst>(&I));
+        break;
+      }
+    }
+  }
 
   Changed |= rearrangeOverflowHandlingBranches(F);
   return Changed;
