@@ -173,6 +173,12 @@ public:
            AddrSpace == EraVMAS::AS_GENERIC;
   }
 
+  /// Return true if the addressing mode represented by AM is legal for this
+  /// target, for a load/store of the specified type.
+  bool isLegalAddressingMode(const DataLayout &DL, const AddrMode &AM, Type *Ty,
+                             unsigned AS,
+                             Instruction *I = nullptr) const override;
+
   /// If a physical register, this returns the register that receives the
   /// exception address on entry to an EH pad.
   Register

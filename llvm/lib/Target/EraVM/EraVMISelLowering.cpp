@@ -178,6 +178,59 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
   setJumpIsExpensive(false);
 }
 
+/// isLegalAddressingMode - Return true if the addressing mode represented
+/// by AM is legal for this target, for a load/store of the specified type.
+bool EraVMTargetLowering::isLegalAddressingMode(const DataLayout &DL,
+                                                const AddrMode &AMode, Type *Ty,
+                                                unsigned AS,
+                                                Instruction *I) const {
+  // Bail out if the address space is not supported.
+  if (AS > EraVMAS::MAX_ADDRESS)
+    return TargetLoweringBase::isLegalAddressingMode(DL, AMode, Ty, AS, I);
+
+  // We don't support negative offsets.
+  if (AMode.BaseOffs < 0)
+    return false;
+
+  unsigned OpNum = AMode.HasBaseReg + (AMode.BaseGV != nullptr) + AMode.Scale;
+
+  // If we have more than two operands, bail out.
+  if (OpNum > 2)
+    return false;
+
+  // For stack and code address spaces, we can support:
+  //   r + glob + i
+  // where i has to be cell aligned and 16-bit unsigned.
+  if (AS == EraVMAS::AS_STACK || AS == EraVMAS::AS_CODE) {
+    // In case we have two operands, one of them must be a global value.
+    if (OpNum == 2 && !AMode.BaseGV)
+      return false;
+    return (AMode.BaseOffs % 32 == 0) && isUInt<16>(AMode.BaseOffs / 32);
+  }
+
+  // We only support BaseGV for stack and code address spaces.
+  if (AMode.BaseGV)
+    return false;
+
+  // Benchmarks show that for generic address space we should
+  // use default implementation, so we support:
+  //   r + r or r + i or i
+  // where i has to be 16-bit unsigned.
+  if (AS == EraVMAS::AS_GENERIC)
+    return (OpNum == 2 && AMode.BaseOffs == 0) ||
+           (OpNum != 2 && isUInt<16>(AMode.BaseOffs));
+
+  // For heap and heap aux address spaces, we can support:
+  //   r or i
+  // for i, i must be 16-bit unsigned.
+  if (AS == EraVMAS::AS_HEAP || AS == EraVMAS::AS_HEAP_AUX)
+    return (OpNum == 1 && AMode.BaseOffs == 0) ||
+           (!OpNum && isUInt<16>(AMode.BaseOffs));
+
+  // For other address spaces, we only support r.
+  return OpNum == 1 && AMode.BaseOffs == 0;
+}
+
 //===----------------------------------------------------------------------===//
 //                      Calling Convention Implementation
 //===----------------------------------------------------------------------===//
