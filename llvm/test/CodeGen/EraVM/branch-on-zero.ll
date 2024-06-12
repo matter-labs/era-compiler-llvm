@@ -7,9 +7,9 @@ target triple = "eravm"
 define i256 @lshr(i256 %a) {
 ; CHECK-LABEL: lshr:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub.s! 7, r1, r2
-; CHECK-NEXT:    shr.s.gt 3, r1, r1
-; CHECK-NEXT:    add.le r0, r0, r1
+; CHECK-NEXT:    shr.s! 3, r1, r1
+; CHECK-NEXT:    add.eq r0, r0, r1
+; CHECK-NEXT:  ; %bb.1: ; %else
 ; CHECK-NEXT:    ret
 entry:
   %c = icmp ult i256 %a, 8
@@ -47,9 +47,9 @@ else:
 define i256 @add_overflow(i256 %a) {
 ; CHECK-LABEL: add_overflow:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub.s! @CPI2_0[0], r1, r2
-; CHECK-NEXT:    add.ne 1, r1, r1
+; CHECK-NEXT:    add! 1, r1, r1
 ; CHECK-NEXT:    add.eq r0, r0, r1
+; CHECK-NEXT:  ; %bb.1: ; %else
 ; CHECK-NEXT:    ret
 entry:
   %c = icmp eq i256 %a, -1
@@ -66,9 +66,9 @@ else:
 define i256 @add(i256 %a) {
 ; CHECK-LABEL: add:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub.s! 10, r1, r2
-; CHECK-NEXT:    sub.s.ne 10, r1, r1
+; CHECK-NEXT:    sub.s! 10, r1, r1
 ; CHECK-NEXT:    add.eq r0, r0, r1
+; CHECK-NEXT:  ; %bb.1: ; %else
 ; CHECK-NEXT:    ret
 entry:
   %c = icmp eq i256 %a, 10
@@ -104,9 +104,9 @@ else:
 define i256 @sub(i256 %a) {
 ; CHECK-LABEL: sub:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub.s! 10, r1, r2
-; CHECK-NEXT:    sub.s.ne 10, r1, r1
+; CHECK-NEXT:    sub.s! 10, r1, r1
 ; CHECK-NEXT:    add.eq r0, r0, r1
+; CHECK-NEXT:  ; %bb.1: ; %else
 ; CHECK-NEXT:    ret
 entry:
   %c = icmp eq i256 %a, 10
