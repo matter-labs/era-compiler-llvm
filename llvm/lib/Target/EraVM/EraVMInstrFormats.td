@@ -23,6 +23,18 @@ def OpndRR         : SrcOperandMode;
 def OpndIR         : SrcOperandMode;
 def OpndSR         : SrcOperandMode;
 def OpndCR         : SrcOperandMode;
+def OpndRI         : SrcOperandMode;
+def OpndRS         : SrcOperandMode;
+def OpndRC         : SrcOperandMode;
+def OpndII         : SrcOperandMode;
+def OpndIS         : SrcOperandMode;
+def OpndIC         : SrcOperandMode;
+def OpndCI         : SrcOperandMode;
+def OpndCS         : SrcOperandMode;
+def OpndCC         : SrcOperandMode;
+def OpndSI         : SrcOperandMode;
+def OpndSC         : SrcOperandMode;
+def OpndSS         : SrcOperandMode;
 
 // DestAddrMode:
 class DestOperandMode;
@@ -212,6 +224,101 @@ class Pseudo<dag outs, dag ins, list<dag> pattern>
   let isCodeGenOnly = 1;
   let isPseudo = 1;
 }
+
+class SELPseudo<dag outs, dag ins, list<dag> pattern>
+    : Pseudo<outs, ins, pattern>, RetAddrModeRel {
+  let isSelect = 1;
+  let Uses = [Flags];
+
+  string BaseOpcode = "SEL";
+  mod_set_flags Silent = PreserveFlags;
+  mod_swap ReverseOperands = NoSwap;
+
+  SrcOperandMode OperandAddrMode = OpndAddrNotSet;
+  DestOperandMode DestAddrMode = DestAddrNotSet;
+}
+
+class SELRRPseudo<dag outs, dag ins, list<dag> pattern>
+    : SELPseudo<outs, ins, pattern> {
+  SrcOperandMode OperandAddrMode = OpndRR;
+}
+
+class SELRIPseudo<dag outs, dag ins, list<dag> pattern>
+    : SELPseudo<outs, ins, pattern> {
+  SrcOperandMode OperandAddrMode = OpndRI;
+}
+
+class SELRCPseudo<dag outs, dag ins, list<dag> pattern>
+    : SELPseudo<outs, ins, pattern> {
+  SrcOperandMode OperandAddrMode = OpndRC;
+}
+
+class SELRSPseudo<dag outs, dag ins, list<dag> pattern>
+    : SELPseudo<outs, ins, pattern> {
+  SrcOperandMode OperandAddrMode = OpndRS;
+}
+
+class SELIRPseudo<dag outs, dag ins, list<dag> pattern>
+    : SELPseudo<outs, ins, pattern> {
+  SrcOperandMode OperandAddrMode = OpndIR;
+}
+
+class SELIIPseudo<dag outs, dag ins, list<dag> pattern>
+    : SELPseudo<outs, ins, pattern> {
+  SrcOperandMode OperandAddrMode = OpndII;
+}
+
+class SELICPseudo<dag outs, dag ins, list<dag> pattern>
+    : SELPseudo<outs, ins, pattern> {
+  SrcOperandMode OperandAddrMode = OpndIC;
+}
+
+class SELISPseudo<dag outs, dag ins, list<dag> pattern>
+    : SELPseudo<outs, ins, pattern> {
+  SrcOperandMode OperandAddrMode = OpndIS;
+}
+
+class SELCRPseudo<dag outs, dag ins, list<dag> pattern>
+    : SELPseudo<outs, ins, pattern> {
+  SrcOperandMode OperandAddrMode = OpndCR;
+}
+
+class SELCIPseudo<dag outs, dag ins, list<dag> pattern>
+    : SELPseudo<outs, ins, pattern> {
+  SrcOperandMode OperandAddrMode = OpndCI;
+}
+
+class SELCCPseudo<dag outs, dag ins, list<dag> pattern>
+    : SELPseudo<outs, ins, pattern> {
+  SrcOperandMode OperandAddrMode = OpndCC;
+}
+
+class SELCSPseudo<dag outs, dag ins, list<dag> pattern>
+    : SELPseudo<outs, ins, pattern> {
+  SrcOperandMode OperandAddrMode = OpndCS;
+}
+
+class SELSRPseudo<dag outs, dag ins, list<dag> pattern>
+    : SELPseudo<outs, ins, pattern> {
+  SrcOperandMode OperandAddrMode = OpndSR;
+}
+
+class SELSIPseudo<dag outs, dag ins, list<dag> pattern>
+    : SELPseudo<outs, ins, pattern> {
+  SrcOperandMode OperandAddrMode = OpndSI;
+}
+
+class SELSCPseudo<dag outs, dag ins, list<dag> pattern>
+    : SELPseudo<outs, ins, pattern> {
+  SrcOperandMode OperandAddrMode = OpndSC;
+}
+
+class SELSSPseudo<dag outs, dag ins, list<dag> pattern>
+    : SELPseudo<outs, ins, pattern> {
+  SrcOperandMode OperandAddrMode = OpndSS;
+}
+
+
 
 class Encoding {
   // 10:0  mach_opcode (11 bits)

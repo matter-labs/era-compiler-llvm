@@ -186,77 +186,76 @@ def ADDframe  : Pseudo<(outs GR256:$dst), (ins i256imm:$base, i256imm:$offset), 
 def FRAMEirrr : Pseudo<(outs GR256:$dst), (ins i256imm:$imm, GR256:$src, GR256:$sp), []>;
 }
 
-let isSelect = 1, Uses = [Flags] in {
-  def SELrrr : Pseudo<(outs GR256:$dst), (ins GR256:$src, GR256:$src2, i256imm:$cc),
-                       [(set GR256:$dst,
-                          (EraVMselectcc GR256:$src, GR256:$src2, imm:$cc))]> {
-                            let hasPostISelHook = 1;
-                          }
+let DestAddrMode = ToReg in {
+  def SELrrr : SELRRPseudo<(outs GR256:$dst), (ins GR256:$src, GR256:$src2, i256imm:$cc),
+                            [(set GR256:$dst,
+                               (EraVMselectcc GR256:$src, GR256:$src2, imm:$cc))]> {
+                                 let hasPostISelHook = 1;
+                               }
 
-  def FATPTR_SELrrr : Pseudo<(outs GRPTR:$dst), (ins GRPTR:$src, GRPTR:$src2, i256imm:$cc),
-                             [(set GRPTR:$dst,
-                               (EraVMselectcc GRPTR:$src, GRPTR:$src2, imm:$cc))]>;
+  def FATPTR_SELrrr : SELPseudo<(outs GRPTR:$dst), (ins GRPTR:$src, GRPTR:$src2, i256imm:$cc),
+                                 [(set GRPTR:$dst,
+                                    (EraVMselectcc GRPTR:$src, GRPTR:$src2, imm:$cc))]>;
 
-  def SELirr : Pseudo<(outs GR256:$dst), (ins imm16:$src, GR256:$src2, i256imm:$cc),
-                       [(set GR256:$dst,
-                          (EraVMselectcc imm16:$src, GR256:$src2, imm:$cc))]> {
-                            let Constraints = "$dst = $src2";
-                          }
+  def SELirr : SELIRPseudo<(outs GR256:$dst), (ins imm16:$src, GR256:$src2, i256imm:$cc),
+                            [(set GR256:$dst,
+                               (EraVMselectcc imm16:$src, GR256:$src2, imm:$cc))]> {
+                                 let Constraints = "$dst = $src2";
+                               }
 let mayLoad = 1 in {
-  def SELcrr : Pseudo<(outs GR256:$dst), (ins memop:$src, GR256:$src2, i256imm:$cc),
-                       [(set GR256:$dst,
-                          (EraVMselectcc (load_code memaddr:$src), GR256:$src2, imm:$cc))]>;
-  def SELsrr : Pseudo<(outs GR256:$dst), (ins stackin:$src, GR256:$src2, i256imm:$cc),
-                       [(set GR256:$dst,
-                          (EraVMselectcc (load_stack stackaddr:$src), GR256:$src2, imm:$cc))]> {
-                            let Constraints = "$dst = $src2";
-                          }
+  def SELcrr : SELCRPseudo<(outs GR256:$dst), (ins memop:$src, GR256:$src2, i256imm:$cc),
+                            [(set GR256:$dst,
+                               (EraVMselectcc (load_code memaddr:$src), GR256:$src2, imm:$cc))]>;
+  def SELsrr : SELSRPseudo<(outs GR256:$dst), (ins stackin:$src, GR256:$src2, i256imm:$cc),
+                            [(set GR256:$dst,
+                               (EraVMselectcc (load_stack stackaddr:$src), GR256:$src2, imm:$cc))]> {
+                                 let Constraints = "$dst = $src2";
+                               }
 }
-  def SELrir : Pseudo<(outs GR256:$dst), (ins GR256:$src, imm16:$src2, i256imm:$cc),
-                       [(set GR256:$dst,
-                          (EraVMselectcc GR256:$src, imm16:$src2, imm:$cc))]> {
-                            let hasPostISelHook = 1;
-                          }
-  def SELiir : Pseudo<(outs GR256:$dst), (ins imm16:$src, imm16:$src2, i256imm:$cc),
-                       [(set GR256:$dst,
-                          (EraVMselectcc imm16:$src, imm16:$src2, imm:$cc))]>;
+  def SELrir : SELRIPseudo<(outs GR256:$dst), (ins GR256:$src, imm16:$src2, i256imm:$cc),
+                            [(set GR256:$dst,
+                               (EraVMselectcc GR256:$src, imm16:$src2, imm:$cc))]> {
+                                 let hasPostISelHook = 1;
+                               }
+  def SELiir : SELIIPseudo<(outs GR256:$dst), (ins imm16:$src, imm16:$src2, i256imm:$cc),
+                         [(set GR256:$dst,
+                            (EraVMselectcc imm16:$src, imm16:$src2, imm:$cc))]>;
 let mayLoad = 1 in {
-  def SELcir : Pseudo<(outs GR256:$dst), (ins memop:$src, imm16:$src2, i256imm:$cc),
-                       [(set GR256:$dst,
-                          (EraVMselectcc (load_code memaddr:$src), imm16:$src2, imm:$cc))]>;
-  def SELsir : Pseudo<(outs GR256:$dst), (ins stackin:$src, imm16:$src2, i256imm:$cc),
-                       [(set GR256:$dst,
-                          (EraVMselectcc (load_stack stackaddr:$src), imm16:$src2, imm:$cc))]>;
-  def SELrcr : Pseudo<(outs GR256:$dst), (ins GR256:$src, memop:$src2, i256imm:$cc),
-                       [(set GR256:$dst,
-                          (EraVMselectcc GR256:$src, (load_code memaddr:$src2), imm:$cc))]> {
-                            let hasPostISelHook = 1;
-                          }
-  def SELicr : Pseudo<(outs GR256:$dst), (ins imm16:$src, memop:$src2, i256imm:$cc),
-                       [(set GR256:$dst,
-                          (EraVMselectcc imm16:$src, (load_code memaddr:$src2), imm:$cc))]>;
-  def SELccr : Pseudo<(outs GR256:$dst), (ins memop:$src, memop:$src2, i256imm:$cc),
-                       [(set GR256:$dst,
-                          (EraVMselectcc (load_code memaddr:$src), (load_code memaddr:$src2), imm:$cc))]>;
-  def SELscr : Pseudo<(outs GR256:$dst), (ins stackin:$src, memop:$src2, i256imm:$cc),
-                       [(set GR256:$dst,
-                          (EraVMselectcc (load_stack stackaddr:$src), (load_code memaddr:$src2), imm:$cc))]>;
-  def SELrsr : Pseudo<(outs GR256:$dst), (ins GR256:$src, stackin:$src2, i256imm:$cc),
-                       [(set GR256:$dst,
-                          (EraVMselectcc GR256:$src, (load_stack stackaddr:$src2), imm:$cc))]> {
-                            let hasPostISelHook = 1;
-                          }
-  def SELisr : Pseudo<(outs GR256:$dst), (ins imm16:$src, stackin:$src2, i256imm:$cc),
-                       [(set GR256:$dst,
-                          (EraVMselectcc imm16:$src, (load_stack stackaddr:$src2), imm:$cc))]>;
-  def SELcsr : Pseudo<(outs GR256:$dst), (ins memop:$src, stackin:$src2, i256imm:$cc),
-                       [(set GR256:$dst,
-                          (EraVMselectcc (load_code memaddr:$src), (load_stack stackaddr:$src2), imm:$cc))]>;
-  def SELssr : Pseudo<(outs GR256:$dst), (ins stackin:$src, stackin:$src2, i256imm:$cc),
-                       [(set GR256:$dst,
-                          (EraVMselectcc (load_stack stackaddr:$src), (load_stack stackaddr:$src2), imm:$cc))]>;
+  def SELcir : SELCIPseudo<(outs GR256:$dst), (ins memop:$src, imm16:$src2, i256imm:$cc),
+                         [(set GR256:$dst,
+                            (EraVMselectcc (load_code memaddr:$src), imm16:$src2, imm:$cc))]>;
+  def SELsir : SELSIPseudo<(outs GR256:$dst), (ins stackin:$src, imm16:$src2, i256imm:$cc),
+                         [(set GR256:$dst,
+                            (EraVMselectcc (load_stack stackaddr:$src), imm16:$src2, imm:$cc))]>;
+  def SELrcr : SELRCPseudo<(outs GR256:$dst), (ins GR256:$src, memop:$src2, i256imm:$cc),
+                         [(set GR256:$dst,
+                            (EraVMselectcc GR256:$src, (load_code memaddr:$src2), imm:$cc))]> {
+                              let hasPostISelHook = 1;
+                            }
+  def SELicr : SELICPseudo<(outs GR256:$dst), (ins imm16:$src, memop:$src2, i256imm:$cc),
+                         [(set GR256:$dst,
+                            (EraVMselectcc imm16:$src, (load_code memaddr:$src2), imm:$cc))]>;
+  def SELccr : SELCCPseudo<(outs GR256:$dst), (ins memop:$src, memop:$src2, i256imm:$cc),
+                         [(set GR256:$dst,
+                            (EraVMselectcc (load_code memaddr:$src), (load_code memaddr:$src2), imm:$cc))]>;
+  def SELscr : SELSCPseudo<(outs GR256:$dst), (ins stackin:$src, memop:$src2, i256imm:$cc),
+                         [(set GR256:$dst,
+                            (EraVMselectcc (load_stack stackaddr:$src), (load_code memaddr:$src2), imm:$cc))]>;
+  def SELrsr : SELRSPseudo<(outs GR256:$dst), (ins GR256:$src, stackin:$src2, i256imm:$cc),
+                         [(set GR256:$dst,
+                            (EraVMselectcc GR256:$src, (load_stack stackaddr:$src2), imm:$cc))]> {
+                              let hasPostISelHook = 1;
+                            }
+  def SELisr : SELISPseudo<(outs GR256:$dst), (ins imm16:$src, stackin:$src2, i256imm:$cc),
+                         [(set GR256:$dst,
+                            (EraVMselectcc imm16:$src, (load_stack stackaddr:$src2), imm:$cc))]>;
+  def SELcsr : SELCSPseudo<(outs GR256:$dst), (ins memop:$src, stackin:$src2, i256imm:$cc),
+                         [(set GR256:$dst,
+                            (EraVMselectcc (load_code memaddr:$src), (load_stack stackaddr:$src2), imm:$cc))]>;
+  def SELssr : SELSSPseudo<(outs GR256:$dst), (ins stackin:$src, stackin:$src2, i256imm:$cc),
+                         [(set GR256:$dst,
+                            (EraVMselectcc (load_stack stackaddr:$src), (load_stack stackaddr:$src2), imm:$cc))]>;
 }
-
 }
 
 // To be able to fold (op in0, (select.cc x, y)) to (op in0, y) + (op.cc in0, y) for
