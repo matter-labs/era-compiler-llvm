@@ -14,6 +14,7 @@
 
 #include "EVM.h"
 #include "EVMMachineFunctionInfo.h"
+#include "llvm/ADT/SetVector.h"
 #include "llvm/CodeGen/MachineLoopInfo.h"
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
@@ -50,6 +51,8 @@ private:
 
   void createNewLatchBlock(MachineInstr *CondBr, MachineBasicBlock *Latch,
                            MachineBasicBlock *LoopHeader);
+
+  bool splitCriticalEdges();
 
   MachineFunction *MF = nullptr;
   const TargetInstrInfo *TII = nullptr;
@@ -163,6 +166,35 @@ bool EVMSplitLatchBlocks::splitLatch(MachineBasicBlock *Latch,
   return true;
 }
 
+bool EVMSplitLatchBlocks::splitCriticalEdges() {
+  SetVector<std::pair<MachineBasicBlock *, MachineBasicBlock *>> ToSplit;
+  for (MachineBasicBlock &MBB : *MF) {
+    if (MBB.pred_size() > 1) {
+      for (MachineBasicBlock *Pred : MBB.predecessors()) {
+        if (Pred->succ_size() > 1)
+          ToSplit.insert(std::make_pair(Pred, &MBB));
+      }
+    }
+  }
+
+  bool MadeChange = false;
+  for (const auto &Pair : ToSplit) {
+    auto NewSucc = Pair.first->SplitCriticalEdge(Pair.second, *this);
+    if (NewSucc != nullptr) {
+      Pair.first->updateTerminator(NewSucc);
+      NewSucc->updateTerminator(Pair.second);
+      LLVM_DEBUG(dbgs() << " *** Splitting critical edge: "
+                        << printMBBReference(*Pair.first) << " -- "
+                        << printMBBReference(*NewSucc) << " -- "
+                        << printMBBReference(*Pair.second) << '\n');
+      MadeChange = true;
+    } else {
+      llvm_unreachable(" Cannot break critical edge");
+    }
+  }
+  return MadeChange;
+}
+
 bool EVMSplitLatchBlocks::runOnMachineFunction(MachineFunction &Mf) {
   MF = &Mf;
   LLVM_DEBUG({
@@ -173,7 +205,8 @@ bool EVMSplitLatchBlocks::runOnMachineFunction(MachineFunction &Mf) {
   const TargetSubtargetInfo &ST = MF->getSubtarget();
   TII = ST.getInstrInfo();
 
-  bool Changed = false;
+  bool Changed = splitCriticalEdges();
+  /*
   MachineLoopInfo *MLI = &getAnalysis<MachineLoopInfo>();
   SmallVector<MachineLoop *, 8> Worklist(MLI->begin(), MLI->end());
   while (!Worklist.empty()) {
@@ -184,6 +217,6 @@ bool EVMSplitLatchBlocks::runOnMachineFunction(MachineFunction &Mf) {
     for (MachineBasicBlock *Latch : Latches)
       Changed |= splitLatch(Latch, ML->getHeader());
   }
-
+*/
   return Changed;
 }

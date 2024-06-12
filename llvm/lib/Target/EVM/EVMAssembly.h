@@ -55,7 +55,13 @@ public:
 
   void appendJump(int stackAdj);
 
+  void appendCondJump(MachineInstr *MI, MachineBasicBlock *Target);
+
+  void appendUncondJump(MachineInstr *MI, MachineBasicBlock *Target);
+
   void appendLabelReference(MCSymbol *Label);
+
+  void appendMBBReference(MachineBasicBlock *MBB);
 
   // Create a function return symbol
   MCSymbol *createFuncRetSymbol();

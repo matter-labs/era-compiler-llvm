@@ -158,8 +158,8 @@ std::string StackLayoutPrinter::getBlockId(CFG::BasicBlock const &_block) {
 
 StackLayout StackLayoutGenerator::run(const CFG &Cfg) {
   StackLayout stackLayout;
-  StackLayoutGenerator{stackLayout, &Cfg.FuncInfo}.processEntryPoint(
-      *Cfg.FuncInfo.Entry, &Cfg.FuncInfo);
+  StackLayoutGenerator LayoutGenerator{stackLayout, &Cfg.FuncInfo};
+  LayoutGenerator.processEntryPoint(*Cfg.FuncInfo.Entry, &Cfg.FuncInfo);
   return stackLayout;
 }
 /*
@@ -452,6 +452,11 @@ void StackLayoutGenerator::processEntryPoint(
   std::list<CFG::BasicBlock const *> toVisit{&_entry};
   std::set<CFG::BasicBlock const *> visited;
 
+  auto printBBName = [](CFG::BasicBlock const *block) {
+    LLVM_DEBUG(dbgs() << block->MBB->getNumber() << "."
+                      << block->MBB->getName());
+  };
+
   // TODO: check whether visiting only a subset of these in the outer iteration
   // below is enough.
   std::list<std::pair<CFG::BasicBlock const *, CFG::BasicBlock const *>>
@@ -464,9 +469,15 @@ void StackLayoutGenerator::processEntryPoint(
       CFG::BasicBlock const *block = *toVisit.begin();
       toVisit.pop_front();
 
-      LLVM_DEBUG(dbgs() << "Process: " << block->MBB->getNumber() << "."
-                        << block->MBB->getName());
+      LLVM_DEBUG(dbgs() << "Process: ");
+      printBBName(block);
       LLVM_DEBUG(dbgs() << " (BBs queue size: " << toVisit.size() << ")");
+      for (const auto *B : toVisit) {
+        printBBName(B);
+        LLVM_DEBUG(dbgs() << " (" << (visited.count(block) ? "v" : "nv") << ")"
+                          << ", ");
+      }
+
       if (visited.count(block)) {
         LLVM_DEBUG(dbgs() << "\n");
         continue;
@@ -481,6 +492,8 @@ void StackLayoutGenerator::processEntryPoint(
         auto &info = Layout.blockInfos[block];
         info.exitLayout = *exitLayout;
         info.entryLayout = propagateStackThroughBlock(info.exitLayout, *block);
+        LLVM_DEBUG(dbgs() << ", entry layout: "
+                          << stackToString(info.entryLayout));
         for (auto entry : block->Entries)
           toVisit.emplace_back(entry);
       }

@@ -103,10 +103,12 @@ void EVMOptimizedCodeTransform::operator()(CFG::FunctionCall const &_call) {
 }
 
 void EVMOptimizedCodeTransform::operator()(CFG::BuiltinCall const &_call) {
+  size_t NumArgs = _call.Builtin->getNumExplicitOperands() -
+                   _call.Builtin->getNumExplicitDefs();
   // Validate stack.
   {
     assert(m_assembly.getStackHeight() == static_cast<int>(m_stack.size()));
-    assert(m_stack.size() >= _call.Builtin->getNumExplicitDefs());
+    assert(m_stack.size() >= NumArgs);
     /*
     // Assert that we got a correct stack for the call.
     for (auto &&[arg, slot] : ranges::zip_view(
@@ -134,8 +136,6 @@ void EVMOptimizedCodeTransform::operator()(CFG::BuiltinCall const &_call) {
   // Update stack.
   {
     // Remove arguments from m_stack.
-    size_t NumArgs = _call.Builtin->getNumExplicitOperands() -
-                     _call.Builtin->getNumExplicitDefs();
     for (size_t i = 0; i < NumArgs; ++i)
       m_stack.pop_back();
 
@@ -308,6 +308,7 @@ void EVMOptimizedCodeTransform::createStackLayout(Stack _targetStack) {
                        if (!CallToReturnMCSymbol.count(ReturnLabel.Call))
                          CallToReturnMCSymbol[ReturnLabel.Call] =
                              m_assembly.createFuncRetSymbol();
+
                        m_assembly.appendLabelReference(
                            CallToReturnMCSymbol[ReturnLabel.Call]);
                      },
@@ -371,6 +372,10 @@ void EVMOptimizedCodeTransform::createStackLayout(Stack _targetStack) {
 }
 
 void EVMOptimizedCodeTransform::operator()(CFG::BasicBlock const &_block) {
+  // Current location for the entry BB was set up in operator()().
+  if (&_block != m_funcInfo->Entry)
+    m_assembly.setCurrentLocation(_block.MBB);
+
   // Assert that this is the first visit of the block and mark as generated.
   auto It = m_generated.insert(&_block);
   assert(It.second);
@@ -445,14 +450,17 @@ void EVMOptimizedCodeTransform::operator()(CFG::BasicBlock const &_block) {
 
             // If this is the only jump to the block which is a fallthrought
             // we can directly continue with the target block.
-            if (_jump.Target->Entries.size() == 1 && _jump.FallThrough) {
+            if (_jump.Target->Entries.size() == 1 && _jump.FallThrough)
               assert(!_jump.Backwards && !m_blockLabels.count(_jump.Target));
-            } else {
-              // Generate a jumpdest for the target, if not already present.
-              if (!m_blockLabels.count(_jump.Target))
-                m_blockLabels[_jump.Target] = _jump.Target->MBB->getSymbol();
-            }
-            (*this)(*_jump.Target);
+
+            if (!m_blockLabels.count(_jump.Target))
+              m_blockLabels[_jump.Target] = _jump.Target->MBB->getSymbol();
+
+            if (_jump.UncondJump)
+              m_assembly.appendUncondJump(_jump.UncondJump, _jump.Target->MBB);
+
+            if (!m_generated.count(_jump.Target))
+              (*this)(*_jump.Target);
           },
           [&](CFG::BasicBlock::ConditionalJump const &_conditionalJump) {
             // Create the shared entry layout of the jump targets, which is
@@ -463,6 +471,7 @@ void EVMOptimizedCodeTransform::operator()(CFG::BasicBlock const &_block) {
             if (!m_blockLabels.count(_conditionalJump.NonZero))
               m_blockLabels[_conditionalJump.NonZero] =
                   _conditionalJump.NonZero->MBB->getSymbol();
+
             if (!m_blockLabels.count(_conditionalJump.Zero))
               m_blockLabels[_conditionalJump.Zero] =
                   _conditionalJump.Zero->MBB->getSymbol();
@@ -473,7 +482,9 @@ void EVMOptimizedCodeTransform::operator()(CFG::BasicBlock const &_block) {
 
             // Emit the conditional jump to the non-zero label and update the
             // stored stack.
-            // m_assembly.appendJumpToIf(m_blockLabels[_conditionalJump.nonZero]);
+            assert(_conditionalJump.CondJump);
+            m_assembly.appendCondJump(_conditionalJump.CondJump,
+                                      _conditionalJump.NonZero->MBB);
             m_stack.pop_back();
 
             // Assert that we have a valid stack for both jump targets.
@@ -494,6 +505,10 @@ void EVMOptimizedCodeTransform::operator()(CFG::BasicBlock const &_block) {
 
               // If we have already generated the zero case, jump to it,
               // otherwise generate it in place.
+              if (_conditionalJump.UncondJump)
+                m_assembly.appendUncondJump(_conditionalJump.UncondJump,
+                                            _conditionalJump.Zero->MBB);
+
               if (!m_generated.count(_conditionalJump.Zero))
                 (*this)(*_conditionalJump.Zero);
             }
@@ -547,6 +562,9 @@ void EVMOptimizedCodeTransform::operator()() {
   assert(m_stack.empty() && m_assembly.getStackHeight() == 0);
   m_assembly.setCurrentLocation(m_funcInfo->Entry->MBB);
 
+  assert(!m_blockLabels.count(m_funcInfo->Entry));
+  // m_blockLabels[m_funcInfo->Entry] = m_funcInfo->Entry->MBB->getSymbol();
+
   // Create function entry layout in m_stack.
   if (m_funcInfo->CanContinue)
     m_stack.emplace_back(FunctionReturnLabelSlot{m_funcInfo->MF});
@@ -555,7 +573,6 @@ void EVMOptimizedCodeTransform::operator()() {
     m_stack.emplace_back(param);
 
   m_assembly.setStackHeight(static_cast<int>(m_stack.size()));
-
   m_assembly.appendLabel();
 
   // Create the entry layout of the function body block and visit.

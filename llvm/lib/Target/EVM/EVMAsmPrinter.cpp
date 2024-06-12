@@ -42,6 +42,12 @@ public:
   void emitInstruction(const MachineInstr *MI) override;
 
   void emitFunctionEntryLabel() override;
+
+  /// Return true if the basic block has exactly one predecessor and the control
+  /// transfer mechanism between the predecessor and this block is a
+  /// fall-through.
+  bool isBlockOnlyReachableByFallthrough(
+      const MachineBasicBlock *MBB) const override;
 };
 } // end of anonymous namespace
 
@@ -74,6 +80,37 @@ void EVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
   MCInst TmpInst;
   MCInstLowering.Lower(MI, TmpInst);
   EmitToStreamer(*OutStreamer, TmpInst);
+}
+
+bool EVMAsmPrinter::isBlockOnlyReachableByFallthrough(
+    const MachineBasicBlock *MBB) const {
+  if (!AsmPrinter::isBlockOnlyReachableByFallthrough(MBB))
+    return false;
+
+  // Check terminators in more details. After the stackification we may have the
+  // following case:
+
+  //   PUSH_LABEL %bb.11
+  //   JUMPI %bb.11, %27:gpr..
+  //   PUSH_LABEL %bb.9
+  //   JUMP %bb.9
+  // bb.11:
+  //
+  // Default implementation checks only the first terminator, JUMP %bb.9
+  // and mistakenly concludes MBB is only reachable by fallthrough.
+  // There should be only one predecessor, otherwise
+  // AsmPrinter::isBlockOnlyReachableByFallthrough() should have returned false.
+  MachineBasicBlock *Pred = *MBB->pred_begin();
+  MachineBasicBlock::const_reverse_iterator I = Pred->rbegin(),
+                                            E = Pred->rend();
+  while (I != E) {
+    if (I->isUnconditionalBranch() || I->isConditionalBranch())
+      for (const auto &MO : I->explicit_uses())
+        if (MO.isMBB() && MO.getMBB() == MBB)
+          return false;
+    ++I;
+  }
+  return true;
 }
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMAsmPrinter() {

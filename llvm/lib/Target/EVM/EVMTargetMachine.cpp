@@ -73,7 +73,7 @@ EVMTargetMachine::EVMTargetMachine(const Target &T, const Triple &TT,
                         getEffectiveCodeModel(CM, CodeModel::Small), OL),
       TLOF(std::make_unique<TargetLoweringObjectFileELF>()),
       Subtarget(TT, std::string(CPU), std::string(FS), *this) {
-  setRequiresStructuredCFG(true);
+  // setRequiresStructuredCFG(true);
   initAsmInfo();
 }
 
@@ -175,6 +175,7 @@ void EVMPassConfig::addPreEmitPass() {
   // FIXME: enable all the passes below, but the Stackify with EVMKeepRegisters.
   if (!EVMKeepRegisters) {
     addPass(createEVMSplitLatchBlocks());
+    addPass(&MachineBlockPlacementID);
     addPass(createEVMOptimizeLiveIntervals());
     addPass(createEVMSingleUseExpression());
     // Run the register coloring pass to reduce the total number of registers.

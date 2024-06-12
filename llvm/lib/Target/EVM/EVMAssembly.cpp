@@ -27,6 +27,9 @@ void EVMAssembly::setStackHeight(int Height) {
 void EVMAssembly::setCurrentLocation(MachineBasicBlock *MBB) {
   CurMBB = MBB;
   CurMIIt = MBB->begin();
+
+  LLVM_DEBUG(dbgs() << "Setting current location to: " << MBB->getNumber()
+                    << "." << MBB->getName() << "\n");
 }
 
 void EVMAssembly::appendInstruction(MachineInstr *MI) {
@@ -98,9 +101,17 @@ void EVMAssembly::appendLabel() {
 }
 
 void EVMAssembly::appendLabelReference(MCSymbol *Label) {
-  // Create push of the return address.
   CurMIIt = BuildMI(*CurMBB, CurMIIt, DebugLoc(), TII->get(EVM::PUSH8_LABEL))
                 .addSym(Label);
+  StackHeight += 1;
+  AssemblyInstrs.insert(&*CurMIIt);
+  dumpInst(&*CurMIIt);
+  CurMIIt = std::next(CurMIIt);
+}
+
+void EVMAssembly::appendMBBReference(MachineBasicBlock *MBB) {
+  CurMIIt = BuildMI(*CurMBB, CurMIIt, DebugLoc(), TII->get(EVM::PUSH8_LABEL))
+                .addMBB(MBB);
   StackHeight += 1;
   AssemblyInstrs.insert(&*CurMIIt);
   dumpInst(&*CurMIIt);
@@ -141,6 +152,31 @@ void EVMAssembly::appendJump(int stackAdj) {
   StackHeight += stackAdj;
   AssemblyInstrs.insert(&*CurMIIt);
   dumpInst(&*CurMIIt);
+  CurMIIt = std::next(CurMIIt);
+}
+
+void EVMAssembly::appendUncondJump(MachineInstr *MI,
+                                   MachineBasicBlock *Target) {
+  assert(MI->getOpcode() == EVM::JUMP);
+  appendMBBReference(Target);
+  auto Ret = AssemblyInstrs.insert(MI);
+  assert(Ret.second);
+  assert(StackHeight > 0);
+  StackHeight -= 1;
+  dumpInst(MI);
+  CurMIIt = MIIter(MI);
+  CurMIIt = std::next(CurMIIt);
+}
+
+void EVMAssembly::appendCondJump(MachineInstr *MI, MachineBasicBlock *Target) {
+  assert(MI->getOpcode() == EVM::JUMPI);
+  appendMBBReference(Target);
+  auto Ret = AssemblyInstrs.insert(MI);
+  assert(Ret.second);
+  assert(StackHeight > 1);
+  StackHeight -= 2;
+  dumpInst(MI);
+  CurMIIt = MIIter(MI);
   CurMIIt = std::next(CurMIIt);
 }
 

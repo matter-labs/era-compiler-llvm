@@ -187,12 +187,15 @@ struct CFG {
       BasicBlock *NonZero = nullptr;
       BasicBlock *Zero = nullptr;
       bool FallThrough = false;
+      MachineInstr *CondJump = nullptr;
+      MachineInstr *UncondJump = nullptr;
     };
 
     struct Jump {
       BasicBlock *Target = nullptr;
       bool FallThrough = false;
       bool Backwards = false;
+      MachineInstr *UncondJump = nullptr;
     };
 
     struct FunctionReturn {

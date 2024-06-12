@@ -322,9 +322,12 @@ void ControlFlowGraphBuilder::handleMachineInstr(MachineInstr &MI) {
   case EVM::COPY_I256: {
     // Copy instruction corresponds to the assignment operator, so
     // we do not need to create intermadiate TmpSlots.
-    const Register UseReg = MI.getOperand(1).getReg();
+    // const Register UseReg = MI.getOperand(1).getReg();
+    Stack In, Out;
+    collectInOut(MI, In, Out);
+    Input = In;
     const Register DefReg = MI.getOperand(0).getReg();
-    Input.push_back(VariableSlot{UseReg});
+    // Input.push_back(VariableSlot{UseReg});
     Output.push_back(VariableSlot{DefReg});
     Variables.push_back(VariableSlot{DefReg});
   } break;
@@ -350,14 +353,16 @@ void ControlFlowGraphBuilder::handleMachineInstr(MachineInstr &MI) {
 void ControlFlowGraphBuilder::handleFunctionCall(const MachineInstr &MI) {
   Stack Input, Output;
   const Function *Called = getCalledFunction(MI);
-  if (!Called->hasFnAttribute(Attribute::NoReturn))
+  bool IsNoReturn = Called->hasFnAttribute(Attribute::NoReturn);
+  if (IsNoReturn)
+    CurrentBlock->Exit = CFG::BasicBlock::Terminated{};
+  else
     Input.push_back(FunctionCallReturnLabelSlot{&MI});
   collectInOut(MI, Input, Output);
-  CurrentBlock->Operations.emplace_back(CFG::Operation{
-      Input, Output,
-      CFG::FunctionCall{&MI, !Called->hasFnAttribute(Attribute::NoReturn),
-                        // -1, because of the global value argument.
-                        Input.size() - 1}});
+  CurrentBlock->Operations.emplace_back(
+      CFG::Operation{Input, Output,
+                     CFG::FunctionCall{&MI, !IsNoReturn,
+                                       Input.size() - (IsNoReturn ? 0 : 1)}});
 }
 
 void ControlFlowGraphBuilder::handleReturn(const MachineInstr &MI) {
@@ -366,6 +371,21 @@ void ControlFlowGraphBuilder::handleReturn(const MachineInstr &MI) {
   collectInOut(MI, Input, Output);
   CurrentBlock->Exit =
       CFG::BasicBlock::FunctionReturn{std::move(Input), &Cfg.FuncInfo};
+}
+
+static std::pair<MachineInstr *, MachineInstr *>
+getMBBJumps(MachineBasicBlock &MBB) {
+  MachineInstr *CondJump = nullptr;
+  MachineInstr *UncondJump = nullptr;
+  MachineBasicBlock::reverse_iterator I = MBB.rbegin(), E = MBB.rend();
+  while (I != E) {
+    if (I->isUnconditionalBranch())
+      UncondJump = &*I;
+    else if (I->isConditionalBranch())
+      CondJump = &*I;
+    ++I;
+  }
+  return std::make_pair(CondJump, UncondJump);
 }
 
 void ControlFlowGraphBuilder::handleBasicBlockSuccessors(
@@ -383,6 +403,16 @@ void ControlFlowGraphBuilder::handleBasicBlockSuccessors(
     return;
   }
 
+  // This corresponds to a noreturn functions at the end of the MBB.
+  if (std::holds_alternative<CFG::BasicBlock::Terminated>(CurrentBlock->Exit)) {
+#ifndef NDEBUG
+    CFG::FunctionCall *Call = std::get_if<CFG::FunctionCall>(
+        &CurrentBlock->Operations.back().Operation);
+    assert(Call && !Call->CanContinue);
+#endif // NDEBUG
+    return;
+  }
+
   CurrentBlock = &Cfg.getBlock(&MBB);
   bool IsLatch = false;
   MachineLoop *ML = MLI->getLoopFor(&MBB);
@@ -394,6 +424,7 @@ void ControlFlowGraphBuilder::handleBasicBlockSuccessors(
         [&MBB](const MachineBasicBlock *Latch) { return &MBB == Latch; });
   }
 
+  std::pair<MachineInstr *, MachineInstr *> MBBJumps = getMBBJumps(MBB);
   if (!TBB || (TBB && Cond.empty())) {
     // Fall through, or unconditional jump.
     bool FallThrough = !TBB;
@@ -403,7 +434,10 @@ void ControlFlowGraphBuilder::handleBasicBlockSuccessors(
       assert(TBB);
     }
     CFG::BasicBlock &Target = Cfg.getBlock(TBB);
-    CurrentBlock->Exit = CFG::BasicBlock::Jump{&Target, FallThrough, IsLatch};
+    assert(!MBBJumps.first);
+    assert((FallThrough && !MBBJumps.second) || !FallThrough);
+    CurrentBlock->Exit =
+        CFG::BasicBlock::Jump{&Target, FallThrough, IsLatch, MBBJumps.second};
     EVMUtils::push_if_noexist(Target.Entries, CurrentBlock);
   } else if (TBB && !Cond.empty()) {
     assert(!IsLatch);
@@ -419,7 +453,8 @@ void ControlFlowGraphBuilder::handleBasicBlockSuccessors(
     assert(Cond[0].isReg());
     auto CondSlot = VariableSlot{Cond[0].getReg()};
     CurrentBlock->Exit = CFG::BasicBlock::ConditionalJump{
-        std::move(CondSlot), &NonZeroTarget, &ZeroTarget, FallThrough};
+        std::move(CondSlot), &NonZeroTarget, &ZeroTarget,
+        FallThrough,         MBBJumps.first, MBBJumps.second};
 
     EVMUtils::push_if_noexist(NonZeroTarget.Entries, CurrentBlock);
     EVMUtils::push_if_noexist(ZeroTarget.Entries, CurrentBlock);
