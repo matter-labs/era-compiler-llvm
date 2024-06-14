@@ -60,12 +60,6 @@
 //       functions of memory intrinsic, hence this pass is supposed to be run
 //       after the memory intrinsic expansion pass, the generated loops can
 //       benefit from this pass.
-//
-// TODO: CPR-1421 Remove loop index
-//       The pointers inside the loop will be increased per iteration.
-//       We can use them to judge whether loop should exit. In this way, if
-//       loop index isn't used by any other places, we can optimize out loop
-//       index along with instruction used to increase its value.
 //===----------------------------------------------------------------------===//
 
 #include "EraVM.h"

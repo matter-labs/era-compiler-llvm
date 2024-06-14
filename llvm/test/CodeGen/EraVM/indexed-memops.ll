@@ -3,10 +3,6 @@
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm"
 
-; TODO: CPR-1421 Remove loop index
-; The register r2 and r1 are pointers and will be increased per iteration,
-; we can use them to judge whether loop should exit, the add instruction used
-; to increase loop index r4 can be optimized out.
 define void @loop1(i256 addrspace(1)* %dest, i256 addrspace(1)* %src, i256 %size) {
 ; CHECK-LABEL: loop1:
 ; CHECK:       ; %bb.0:
