@@ -1007,7 +1007,7 @@ def executeScriptInternal(test, litConfig, tmpBase, commands, cwd):
                 commands[i] = re.sub(kTripleRegex, kTripleFlag+kForceTriple, commands[i])
             if kForceArch:
                 commands[i] = re.sub(kMArchRegex, kMArchFlag+kForceArch, commands[i])
-        # print("\n\n(Flash) executeScriptInternal commands[i] (after): \n", i, str(commands[i]))
+        print("\n\n(Flash) executeScriptInternal commands[i] (after): \n", i, str(commands[i]))
     cmds = []
     for i, ln in enumerate(commands):
         match = re.match(kPdbgRegex, ln)
