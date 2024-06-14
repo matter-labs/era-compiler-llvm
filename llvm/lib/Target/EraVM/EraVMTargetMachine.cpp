@@ -207,6 +207,7 @@ public:
 
   void addIRPasses() override;
   bool addInstSelector() override;
+  void addMachineSSAOptimization() override;
   void addPreRegAlloc() override;
   void addPreEmitPass() override;
   void addPreSched2() override;
@@ -277,6 +278,11 @@ bool EraVMPassConfig::addInstSelector() {
   // Install an instruction selector.
   addPass(createEraVMISelDag(getEraVMTargetMachine(), getOptLevel()));
   return false;
+}
+
+void EraVMPassConfig::addMachineSSAOptimization() {
+  TargetPassConfig::addMachineSSAOptimization();
+  addPass(&MachineCSEID);
 }
 
 void EraVMPassConfig::addPreRegAlloc() {

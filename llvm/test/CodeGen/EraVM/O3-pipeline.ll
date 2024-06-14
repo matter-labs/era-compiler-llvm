@@ -125,6 +125,9 @@ target triple = "eravm"
 ; CHECK-NEXT:       Machine code sinking
 ; CHECK-NEXT:       Peephole Optimizations
 ; CHECK-NEXT:       Remove dead machine instructions
+; CHECK-NEXT:       MachineDominator Tree Construction
+; CHECK-NEXT:       Machine Block Frequency Analysis
+; CHECK-NEXT:       Machine Common Subexpression Elimination
 ; CHECK-NEXT:       EraVM stack address constant propagation
 ; CHECK-NEXT:       EraVM bytes to cells
 ; CHECK-NEXT:       EraVM combine flag setting

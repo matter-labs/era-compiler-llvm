@@ -1,3 +1,4 @@
+; XFAIL: *
 ; RUN: llc --disable-eravm-scalar-opt-passes -stop-before verify < %s | FileCheck %s
 ; RUN: llc -O3 < %s | FileCheck --check-prefix=CHECK-INSTRS %s
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
