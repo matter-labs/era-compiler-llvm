@@ -52,21 +52,30 @@ INITIALIZE_PASS(EraVMExpandSelect, DEBUG_TYPE, ERAVM_EXPAND_SELECT_NAME, false,
 /// For given \p Select and argument \p Kind return corresponding mov opcode
 /// for conditional or unconditional mov.
 static unsigned movOpcode(EraVM::ArgumentKind Kind, unsigned Select) {
-  switch (EraVM::argumentType(Kind, Select)) {
-  case EraVM::ArgumentType::Register:
-    if (Select == EraVM::FATPTR_SELrrr)
-      return EraVM::PTR_ADDrrr_s;
-    return EraVM::ADDrrr_s;
-  case EraVM::ArgumentType::Immediate:
-    return EraVM::ADDirr_s;
-  case EraVM::ArgumentType::Code:
-    return EraVM::ADDcrr_s;
-  case EraVM::ArgumentType::Stack:
-    return EraVM::ADDsrr_s;
-  default:
-    break;
-  }
-  llvm_unreachable("Unexpected argument type");
+  auto getOpcode = [Kind, Select] {
+    switch (EraVM::argumentType(Kind, Select)) {
+    case EraVM::ArgumentType::Register:
+      if (Select == EraVM::FATPTR_SELrrr)
+        return EraVM::PTR_ADDrrr_s;
+      return EraVM::ADDrrr_s;
+    case EraVM::ArgumentType::Immediate:
+      return EraVM::ADDirr_s;
+    case EraVM::ArgumentType::Code:
+      return EraVM::ADDcrr_s;
+    case EraVM::ArgumentType::Stack:
+      return EraVM::ADDsrr_s;
+    default:
+      break;
+    }
+    llvm_unreachable("Unexpected argument type");
+  };
+
+  unsigned Op = getOpcode();
+
+  if (EraVM::hasSROutAddressingMode(Select))
+    Op = EraVM::getWithSROutAddrMode(Op);
+
+  return Op;
 }
 
 bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
@@ -122,11 +131,22 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
         unsigned MovOpc = movOpcode(OpNo, Opc);
         // Avoid unconditional mov rN, rN
         if (CC == EraVMCC::COND_NONE && IsRegister &&
+            EraVM::hasRROutAddressingMode(MI) &&
             OperandIt->getReg() == Out->getReg())
           return;
-        auto Mov = BuildMI(MBB, &MI, DL, TII->get(MovOpc), Out->getReg());
+
+        MachineInstrBuilder Mov;
+        if (EraVM::hasSROutAddressingMode(MI))
+          Mov = BuildMI(MBB, &MI, DL, TII->get(MovOpc));
+        else
+          Mov = BuildMI(MBB, &MI, DL, TII->get(MovOpc), Out->getReg());
+
         EraVM::copyOperands(Mov, OperandRange);
         Mov.addReg(EraVM::R0);
+
+        if (EraVM::hasSROutAddressingMode(MI))
+          EraVM::copyOperands(Mov, EraVM::out0Range(MI));
+
         Mov.addImm(CC);
         if (CC != EraVMCC::COND_NONE)
           Mov.addReg(EraVM::Flags, RegState::Implicit);

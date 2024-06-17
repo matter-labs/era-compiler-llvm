@@ -221,7 +221,8 @@ bool EraVMBytesToCells::convertStackMachineInstr(
     // If the stack access is in select instruction, set early clobber flag
     // to prevent regalloc from assigning output register to the same register
     // as input register in the stack operand.
-    if (EraVM::isSelect(*MO0Reg.getParent()))
+    if (EraVM::isSelect(*MO0Reg.getParent()) &&
+        EraVM::hasRROutAddressingMode(*MO0Reg.getParent()))
       MO0Reg.getParent()->getOperand(0).setIsEarlyClobber();
   }
 

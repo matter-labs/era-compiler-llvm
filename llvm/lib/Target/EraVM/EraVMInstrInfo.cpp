@@ -38,22 +38,32 @@ ArgumentType argumentType(ArgumentKind Kind, unsigned Opcode) {
   Opcode = getWithInsNotSwapped(Opcode);
   // TODO: CPR-1355 Mappings for Select.
   // Select is not a part of a mapping, so have to handle it manually.
-  const DenseSet<unsigned> In0R = {EraVM::SELrrr, EraVM::SELrir, EraVM::SELrcr,
-                                   EraVM::SELrsr, EraVM::FATPTR_SELrrr};
+  const DenseSet<unsigned> In0R = {
+      EraVM::SELrrr, EraVM::SELrir,        EraVM::SELrcr,
+      EraVM::SELrsr, EraVM::FATPTR_SELrrr, EraVM::SELrrs,
+      EraVM::SELris, EraVM::SELrcs,        EraVM::SELrss};
   const DenseSet<unsigned> In0I = {EraVM::SELirr, EraVM::SELiir, EraVM::SELicr,
-                                   EraVM::SELisr};
+                                   EraVM::SELisr, EraVM::SELirs, EraVM::SELiis,
+                                   EraVM::SELics, EraVM::SELiss};
   const DenseSet<unsigned> In0C = {EraVM::SELcrr, EraVM::SELcir, EraVM::SELccr,
-                                   EraVM::SELcsr};
+                                   EraVM::SELcsr, EraVM::SELcrs, EraVM::SELcis,
+                                   EraVM::SELccs, EraVM::SELcss};
   const DenseSet<unsigned> In0S = {EraVM::SELsrr, EraVM::SELsir, EraVM::SELscr,
-                                   EraVM::SELssr};
-  const DenseSet<unsigned> In1R = {EraVM::SELrrr, EraVM::SELirr, EraVM::SELcrr,
-                                   EraVM::SELsrr, EraVM::FATPTR_SELrrr};
+                                   EraVM::SELssr, EraVM::SELsrs, EraVM::SELsis,
+                                   EraVM::SELscs, EraVM::SELsss};
+  const DenseSet<unsigned> In1R = {
+      EraVM::SELrrr, EraVM::SELirr,        EraVM::SELcrr,
+      EraVM::SELsrr, EraVM::FATPTR_SELrrr, EraVM::SELrrs,
+      EraVM::SELirs, EraVM::SELcrs,        EraVM::SELsrs};
   const DenseSet<unsigned> In1I = {EraVM::SELrir, EraVM::SELiir, EraVM::SELcir,
-                                   EraVM::SELsir};
+                                   EraVM::SELsir, EraVM::SELris, EraVM::SELiis,
+                                   EraVM::SELcis, EraVM::SELsis};
   const DenseSet<unsigned> In1C = {EraVM::SELrcr, EraVM::SELicr, EraVM::SELccr,
-                                   EraVM::SELscr};
+                                   EraVM::SELscr, EraVM::SELrcs, EraVM::SELics,
+                                   EraVM::SELccs, EraVM::SELscs};
   const DenseSet<unsigned> In1S = {EraVM::SELrsr, EraVM::SELisr, EraVM::SELcsr,
-                                   EraVM::SELssr};
+                                   EraVM::SELssr, EraVM::SELrss, EraVM::SELiss,
+                                   EraVM::SELcss, EraVM::SELsss};
   if (Kind == ArgumentKind::Out1) {
     // TODO: CPR-986 Support stack output for Select.
     return ArgumentType::Register;
@@ -226,6 +236,10 @@ bool isSelect(unsigned Opcode) {
       EraVM::SELirr,       EraVM::SELiir, EraVM::SELicr, EraVM::SELisr,
       EraVM::SELcrr,       EraVM::SELcir, EraVM::SELccr, EraVM::SELcsr,
       EraVM::SELsrr,       EraVM::SELsir, EraVM::SELscr, EraVM::SELssr,
+      EraVM::SELrrs,       EraVM::SELris, EraVM::SELrcs, EraVM::SELrss,
+      EraVM::SELirs,       EraVM::SELiis, EraVM::SELics, EraVM::SELiss,
+      EraVM::SELcrs,       EraVM::SELcis, EraVM::SELccs, EraVM::SELcss,
+      EraVM::SELsrs,       EraVM::SELsis, EraVM::SELscs, EraVM::SELsss,
       EraVM::FATPTR_SELrrr};
   return Members.count(Opcode);
 }
