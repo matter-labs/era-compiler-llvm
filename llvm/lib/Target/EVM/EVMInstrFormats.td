@@ -40,6 +40,7 @@ class EVMInst<string asmstr, bit stack, int cost>
   let Pattern     = [];
   let AsmString   = asmstr;
   let TSFlags{0}  = stack;
+  let Defs        = [ARGUMENTS];
 }
 
 // Normal instructions. Default instantiation of a EVMInst.

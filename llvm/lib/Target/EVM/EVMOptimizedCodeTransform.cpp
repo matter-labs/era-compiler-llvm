@@ -569,7 +569,7 @@ void EVMOptimizedCodeTransform::operator()() {
   if (m_funcInfo->CanContinue)
     m_stack.emplace_back(FunctionReturnLabelSlot{m_funcInfo->MF});
 
-  for (auto const &param : m_funcInfo->Parameters)
+  for (auto const &param : reverse(m_funcInfo->Parameters))
     m_stack.emplace_back(param);
 
   m_assembly.setStackHeight(static_cast<int>(m_stack.size()));
