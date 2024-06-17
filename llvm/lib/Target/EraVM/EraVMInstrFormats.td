@@ -23,6 +23,21 @@ def OpndRR         : SrcOperandMode;
 def OpndIR         : SrcOperandMode;
 def OpndSR         : SrcOperandMode;
 def OpndCR         : SrcOperandMode;
+// The following addressing modes aren't supported by EraVM. They are only used
+// to allow SEL pseudo to operate with the second non-register input argument.
+// When SEL is expanded these modes are converted to the once that supported.
+def OpndRI         : SrcOperandMode;
+def OpndRS         : SrcOperandMode;
+def OpndRC         : SrcOperandMode;
+def OpndII         : SrcOperandMode;
+def OpndIS         : SrcOperandMode;
+def OpndIC         : SrcOperandMode;
+def OpndCI         : SrcOperandMode;
+def OpndCS         : SrcOperandMode;
+def OpndCC         : SrcOperandMode;
+def OpndSI         : SrcOperandMode;
+def OpndSC         : SrcOperandMode;
+def OpndSS         : SrcOperandMode;
 
 // DestAddrMode:
 class DestOperandMode;
@@ -249,6 +264,19 @@ class Pseudo<dag outs, dag ins, list<dag> pattern>
 
   let isCodeGenOnly = 1;
   let isPseudo = 1;
+}
+
+class SELPseudo<dag outs, dag ins, list<dag> pattern, SrcOperandMode opmode>
+    : Pseudo<outs, ins, pattern>, RetAddrModeRel {
+  let isSelect = 1;
+  let Uses = [Flags];
+
+  string BaseOpcode = "SEL";
+  mod_set_flags Silent = PreserveFlags;
+  mod_swap ReverseOperands = NoSwap;
+
+  SrcOperandMode OperandAddrMode = opmode;
+  DestOperandMode DestAddrMode = DestAddrNotSet;
 }
 
 class Encoding {

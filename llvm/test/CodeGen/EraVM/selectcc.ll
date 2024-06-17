@@ -379,8 +379,8 @@ define void @selrrs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add.ne r2, r0, r1
-; CHECK-NEXT:    add r1, r0, stack-[1]
+; CHECK-NEXT:    add r2, r0, stack-[1]
+; CHECK-NEXT:    add.eq r1, r0, stack-[1]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
   ; TODO: CPR-986
@@ -395,8 +395,8 @@ define void @selirs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add.gt 42, r0, r2
 ; CHECK-NEXT:    add r2, r0, stack-[1]
+; CHECK-NEXT:    add.gt 42, r0, stack-[1]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
   %1 = icmp ugt i256 %v3, %v4
@@ -411,8 +411,8 @@ define void @selcrs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add.gt @val[0], r0, r2
 ; CHECK-NEXT:    add r2, r0, stack-[1]
+; CHECK-NEXT:    add.gt @val[0], r0, stack-[1]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
   %1 = icmp ugt i256 %v3, %v4
@@ -428,8 +428,8 @@ define void @selsrs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[2 + r0]
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add.gt stack-[1], r0, r2
 ; CHECK-NEXT:    add r2, r0, stack-[2]
+; CHECK-NEXT:    add.gt stack-[1], r0, stack-[2]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
   %data = alloca i256
@@ -446,8 +446,8 @@ define void @selris(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add.ge 42, r0, r1
-; CHECK-NEXT:    add r1, r0, stack-[1]
+; CHECK-NEXT:    add 42, r0, stack-[1]
+; CHECK-NEXT:    add.lt r1, r0, stack-[1]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
   %1 = icmp ult i256 %v3, %v4
@@ -462,9 +462,8 @@ define void @seliis(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add 42, r0, r1
-; CHECK-NEXT:    add.lt 17, r0, r1
-; CHECK-NEXT:    add r1, r0, stack-[1]
+; CHECK-NEXT:    add 42, r0, stack-[1]
+; CHECK-NEXT:    add.lt 17, r0, stack-[1]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
   %1 = icmp ult i256 %v3, %v4
@@ -479,9 +478,8 @@ define void @selcis(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add 42, r0, r1
-; CHECK-NEXT:    add.gt @val[0], r0, r1
-; CHECK-NEXT:    add r1, r0, stack-[1]
+; CHECK-NEXT:    add 42, r0, stack-[1]
+; CHECK-NEXT:    add.gt @val[0], r0, stack-[1]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
   %1 = icmp ugt i256 %v3, %v4
@@ -497,9 +495,8 @@ define void @selsis(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[2 + r0]
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add 42, r0, r1
-; CHECK-NEXT:    add.gt stack-[1], r0, r1
-; CHECK-NEXT:    add r1, r0, stack-[2]
+; CHECK-NEXT:    add 42, r0, stack-[2]
+; CHECK-NEXT:    add.gt stack-[1], r0, stack-[2]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
   %data = alloca i256
@@ -516,8 +513,8 @@ define void @selrcs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add.ge @val[0], r0, r1
-; CHECK-NEXT:    add r1, r0, stack-[1]
+; CHECK-NEXT:    add @val[0], r0, stack-[1]
+; CHECK-NEXT:    add.lt r1, r0, stack-[1]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
   %1 = icmp ult i256 %v3, %v4
@@ -533,9 +530,8 @@ define void @selics(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add @val[0], r0, r1
-; CHECK-NEXT:    add.lt 42, r0, r1
-; CHECK-NEXT:    add r1, r0, stack-[1]
+; CHECK-NEXT:    add @val[0], r0, stack-[1]
+; CHECK-NEXT:    add.lt 42, r0, stack-[1]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
   %1 = icmp ult i256 %v3, %v4
@@ -550,10 +546,10 @@ define void @selccs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selccs:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    add @val2[0], r0, r1
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add @val[0], r0, r1
-; CHECK-NEXT:    add.lt @val2[0], r0, r1
-; CHECK-NEXT:    add r1, r0, stack-[1]
+; CHECK-NEXT:    add @val[0], r0, stack-[1]
+; CHECK-NEXT:    add.lt r1, r0, stack-[1]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
   %1 = icmp ult i256 %v3, %v4
@@ -569,10 +565,10 @@ define void @selscs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selscs:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[2 + r0]
-; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add @val[0], r0, r1
-; CHECK-NEXT:    add.lt stack-[1], r0, r1
+; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add r1, r0, stack-[2]
+; CHECK-NEXT:    add.lt stack-[1], r0, stack-[2]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
   %ptr = alloca i256
@@ -590,8 +586,8 @@ define void @selrss(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[2 + r0]
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add.ge stack-[1], r0, r1
-; CHECK-NEXT:    add r1, r0, stack-[2]
+; CHECK-NEXT:    add stack-[1], r0, stack-[2]
+; CHECK-NEXT:    add.lt r1, r0, stack-[2]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
   %data = alloca i256
@@ -608,9 +604,8 @@ define void @seliss(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[2 + r0]
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add stack-[1], r0, r1
-; CHECK-NEXT:    add.lt 42, r0, r1
-; CHECK-NEXT:    add r1, r0, stack-[2]
+; CHECK-NEXT:    add stack-[1], r0, stack-[2]
+; CHECK-NEXT:    add.lt 42, r0, stack-[2]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
   %data = alloca i256
@@ -626,10 +621,10 @@ define void @selcss(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selcss:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[2 + r0]
+; CHECK-NEXT:    add @val[0], r0, r1
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add stack-[1], r0, r1
-; CHECK-NEXT:    add.lt @val[0], r0, r1
-; CHECK-NEXT:    add r1, r0, stack-[2]
+; CHECK-NEXT:    add stack-[1], r0, stack-[2]
+; CHECK-NEXT:    add.lt r1, r0, stack-[2]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
   %data = alloca i256

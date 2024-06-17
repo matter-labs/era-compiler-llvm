@@ -183,16 +183,16 @@ void EraVMCombineAddressingMode::mergeSelect(
   bool IsIn0 =
       In0It->isReg() && In0It->getReg() == EraVM::out0Iterator(Def)->getReg();
   DenseMap<unsigned, unsigned> In0Map = {
-      {EraVM::SELrrr, EraVM::SELsrr},
-      {EraVM::SELrir, EraVM::SELsir},
-      {EraVM::SELrcr, EraVM::SELscr},
-      {EraVM::SELrsr, EraVM::SELssr},
+      {EraVM::SELrrr, EraVM::SELsrr}, {EraVM::SELrir, EraVM::SELsir},
+      {EraVM::SELrcr, EraVM::SELscr}, {EraVM::SELrsr, EraVM::SELssr},
+      {EraVM::SELrrs, EraVM::SELsrs}, {EraVM::SELris, EraVM::SELsis},
+      {EraVM::SELrcs, EraVM::SELscs}, {EraVM::SELrss, EraVM::SELsss},
   };
   DenseMap<unsigned, unsigned> In1Map = {
-      {EraVM::SELrrr, EraVM::SELrsr},
-      {EraVM::SELirr, EraVM::SELisr},
-      {EraVM::SELcrr, EraVM::SELcsr},
-      {EraVM::SELsrr, EraVM::SELssr},
+      {EraVM::SELrrr, EraVM::SELrsr}, {EraVM::SELirr, EraVM::SELisr},
+      {EraVM::SELcrr, EraVM::SELcsr}, {EraVM::SELsrr, EraVM::SELssr},
+      {EraVM::SELrrs, EraVM::SELrss}, {EraVM::SELirs, EraVM::SELiss},
+      {EraVM::SELcrs, EraVM::SELcss}, {EraVM::SELsrs, EraVM::SELsss},
   };
   auto NewMI = BuildMI(
       *Base.getParent(), Base, Base.getDebugLoc(),
