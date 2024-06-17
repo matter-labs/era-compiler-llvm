@@ -302,7 +302,7 @@ EraVMOptimizeSelectPreRA::getOutRegToFold(const MachineInstr &MI) const {
 bool EraVMOptimizeSelectPreRA::tryFoldSelectZero(MachineBasicBlock &MBB) {
   SmallPtrSet<MachineInstr *, 4> ToRemove;
   for (auto &MI : MBB) {
-    if (!TII->isSel(MI))
+    if (!TII->isSel(MI) || EraVM::hasSROutAddressingMode(MI))
       continue;
 
     const auto *const In0Select = EraVM::in0Iterator(MI);
