@@ -8,13 +8,13 @@ define i256 @no_sink(i1 %cond) {
 ; CHECK:        sub! r1, r0, r1
 ; CHECK-NEXT:   jump.eq @.BB0_2
 ; CHECK:        add 2, r0, r1
-; CHECK-NEXT:   st.2 3, r1
-; CHECK-NEXT:   context.gas_left r1
+; CHECK-NEXT:   stm.ah 3, r1
+; CHECK-NEXT:   ergs r1
 ; CHECK-NEXT:   ret
 ; CHECK:       .BB0_2:
 ; CHECK:        add 2, r0, r1
-; CHECK-NEXT:   st.1 2, r1
-; CHECK-NEXT:   context.gas_left r1
+; CHECK-NEXT:   stm.h 2, r1
+; CHECK-NEXT:   ergs r1
 ; CHECK-NEXT:   ret
 ;
 entry:

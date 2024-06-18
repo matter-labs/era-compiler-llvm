@@ -190,7 +190,7 @@ define i256 @test_reg4_dont_fold_cond_of(i256 %a, i256 %b) {
 define i256 @test_stack1(i256 %a) {
 ; CHECK-LABEL: test_stack1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    sub.s! 5, r1, r2
 ; CHECK-NEXT:    add.lt stack-[1], r1, r1
 ; CHECK-NEXT:    ret
@@ -205,7 +205,7 @@ define i256 @test_stack1(i256 %a) {
 define i256 @test_stack2(i256 %a) {
 ; CHECK-LABEL: test_stack2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    nop stack+=[1 + r0]
+; CHECK-NEXT:    incsp 1
 ; CHECK-NEXT:    sub.s! 5, r1, r2
 ; CHECK-NEXT:    add.ge stack-[1], r1, r1
 ; CHECK-NEXT:    ret

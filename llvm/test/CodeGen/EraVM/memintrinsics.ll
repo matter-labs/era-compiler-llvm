@@ -28,20 +28,20 @@ define fastcc void @huge-copysize1(i256 addrspace(1)* %dest, i256 addrspace(1)* 
 ; CHECK:  add     r2, r0, [[LDBASE:r[0-9]+]]
 ; CHECK:  add     r1, r0, [[STBASE:r[0-9]+]]
 ; CHECK:.BB1_1:
-; CHECK:  ld.1.inc   [[LDBASE]], [[LDVAL:r[0-9]+]], [[LDBASE]]
-; CHECK:  st.1.inc   [[STBASE]], [[LDVAL]], [[STBASE]]
+; CHECK:  ldmi.h  [[LDBASE]], [[LDVAL:r[0-9]+]], [[LDBASE]]
+; CHECK:  stmi.h  [[STBASE]], [[LDVAL]], [[STBASE]]
 ; CHECK:  sub!    [[STBASE]], [[LCOND]], r{{[0-9]+}}
 ; CHECK:  jump.ne @.BB1_1
   
 ; trailing part:
 ; CHECK:  add     @CPI1_0[0], r1, r1
-; CHECK:  ld.1    r1, [[TRAILING_PART1:r[0-9]+]]
+; CHECK:  ldm.h   r1, [[TRAILING_PART1:r[0-9]+]]
 ; CHECK:  and     @CPI1_1[0], [[TRAILING_DST1:r[0-9]+]], [[TRAILING_DST1]]
 ; CHECK:  add     @CPI1_0[0], r2, r2
-; CHECK:  ld.1    r2, [[TRAILING_SRC1:r[0-9]+]]
+; CHECK:  ldm.h   r2, [[TRAILING_SRC1:r[0-9]+]]
 ; CHECK:  and     @CPI1_2[0], [[TRAILING_SRC1]], [[TRAILING_SRC1]]
 ; CHECK:  or      [[TRAILING_SRC1]], [[TRAILING_DST1]], [[MERGED1:r[0-9]+]]
-; CHECK:  st.1    r1, [[MERGED1:r[0-9]+]]
+; CHECK:  stm.h   r1, [[MERGED1:r[0-9]+]]
 ; CHECK:  ret
 
   ; the test explicitly has some trailing part to be copied.
@@ -55,20 +55,20 @@ define fastcc void @huge-copysize2(i256 addrspace(2)* %dest, i256 addrspace(2)* 
 ; CHECK:  add     r2, r0, [[LDBASE:r[0-9]+]]
 ; CHECK:  add     r1, r0, [[STBASE:r[0-9]+]]
 ; CHECK:.BB2_1:
-; CHECK:  ld.2.inc   [[LDBASE]], [[LDVAL:r[0-9]+]], [[LDBASE]]
-; CHECK:  st.2.inc   [[STBASE]], [[LDVAL]], [[STBASE]]
+; CHECK:  ldmi.ah [[LDBASE]], [[LDVAL:r[0-9]+]], [[LDBASE]]
+; CHECK:  stmi.ah [[STBASE]], [[LDVAL]], [[STBASE]]
 ; CHECK:  sub!    [[STBASE]], [[LCOND]], r{{[0-9]+}}
 ; CHECK:  jump.ne @.BB2_1
 
 ; trailing part:
 ; CHECK:  add     @CPI2_0[0], r1, r1
-; CHECK:  ld.2    r1, [[TRAILING_PART2:r[0-9]+]]
+; CHECK:  ldm.ah  r1, [[TRAILING_PART2:r[0-9]+]]
 ; CHECK:  and     @CPI2_1[0], [[TRAILING_DST2:r[0-9]+]], [[TRAILING_DST2]]
 ; CHECK:  add     @CPI2_0[0], r2, r2
-; CHECK:  ld.2    r2, [[TRAILING_SRC2:r[0-9]+]]
+; CHECK:  ldm.ah  r2, [[TRAILING_SRC2:r[0-9]+]]
 ; CHECK:  and     @CPI2_2[0], [[TRAILING_SRC2]], [[TRAILING_SRC2]]
 ; CHECK:  or      [[TRAILING_SRC2]], [[TRAILING_DST2]], [[MERGED2:r[0-9]+]]
-; CHECK:  st.2    r1, [[MERGED2:r[0-9]+]]
+; CHECK:  stm.ah  r1, [[MERGED2:r[0-9]+]]
 ; CHECK:  ret
 
   ; the test explicitly has some trailing part to be copied.

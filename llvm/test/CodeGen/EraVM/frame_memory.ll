@@ -28,11 +28,11 @@ define void @store_to_frame_select(i256 %par, i1 %flag) nounwind {
   %2 = alloca i256
   %3 = select i1 %flag, i256* %1, i256*%2
 ; get pointer to %1
-; CHECK: context.sp r3
+; CHECK: sp r3
 ; CHECK: sub.s 1, r3, r3
 ; CHECK: shl.s 5, r3, r3
 ; get pointer to %2
-; CHECK: context.sp r4
+; CHECK: sp r4
 ; CHECK: sub.s 2, r4, r4
 ; CHECK: shl.s 5, r4, r4
 ; the select part

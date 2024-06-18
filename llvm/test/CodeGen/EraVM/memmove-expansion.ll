@@ -83,8 +83,8 @@ define i256 @test_unknown(ptr addrspace(1) %dst, ptr addrspace(1) %src, i256 %si
 ; CHECK-INSTRS-NEXT:  .BB0_4:
 ; CHECK-INSTRS:       add r5, r4, r7
 ; CHECK-INSTRS-NEXT:  add r6, r4, r8
-; CHECK-INSTRS-NEXT:  ld.1 r8, r8
-; CHECK-INSTRS-NEXT:  st.1 r7, r8
+; CHECK-INSTRS-NEXT:  ldm.h r8, r8
+; CHECK-INSTRS-NEXT:  stm.h r7, r8
 ; CHECK-INSTRS-NEXT:  sub.s! 32, r4, r4
 ; CHECK-INSTRS-NEXT:  jump.ne @.BB0_4
 
@@ -94,8 +94,8 @@ define i256 @test_unknown(ptr addrspace(1) %dst, ptr addrspace(1) %src, i256 %si
 ; CHECK-INSTRS-NEXT:  add r2, r0, r6
 ; CHECK-INSTRS-NEXT:  add r1, r0, r7
 ; CHECK-INSTRS-NEXT:  .BB0_8:
-; CHECK-INSTRS:       ld.1.inc r6, r8, r6
-; CHECK-INSTRS-NEXT:  st.1.inc r7, r8, r7
+; CHECK-INSTRS:       ldmi.h r6, r8, r6
+; CHECK-INSTRS-NEXT:  stmi.h r7, r8, r7
 ; CHECK-INSTRS-NEXT:  sub! r7, r5, r8
 ; CHECK-INSTRS-NEXT:  jump.ne @.BB0_8
 
@@ -104,15 +104,15 @@ define i256 @test_unknown(ptr addrspace(1) %dst, ptr addrspace(1) %src, i256 %si
 ; CHECK-INSTRS-NEXT:  add r2, r4, r2
 ; CHECK-INSTRS-NEXT:  .BB0_10:
 ; CHECK-INSTRS:       shl.s 3, r3, r3
-; CHECK-INSTRS-NEXT:  ld.1 r1, r4
+; CHECK-INSTRS-NEXT:  ldm.h r1, r4
 ; CHECK-INSTRS-NEXT:  shl r4, r3, r4
 ; CHECK-INSTRS-NEXT:  shr r4, r3, r4
-; CHECK-INSTRS-NEXT:  ld.1 r2, r2
+; CHECK-INSTRS-NEXT:  ldm.h r2, r2
 ; CHECK-INSTRS-NEXT:  sub 256, r3, r3
 ; CHECK-INSTRS-NEXT:  shr r2, r3, r2
 ; CHECK-INSTRS-NEXT:  shl r2, r3, r2
 ; CHECK-INSTRS-NEXT:  or r2, r4, r2
-; CHECK-INSTRS-NEXT:  st.1 r1, r2
+; CHECK-INSTRS-NEXT:  stm.h r1, r2
 ;
 entry:
   tail call void @llvm.memmove.p1.p1.i256(ptr addrspace(1) %dst, ptr addrspace(1) %src, i256 %size, i1 false)
@@ -128,16 +128,16 @@ define i256 @test_known_forward() {
 ; CHECK-INSTRS:       add 10, r0, r1
 ; CHECK-INSTRS-NEXT:  add 100, r0, r2
 ; CHECK-INSTRS-NEXT:  .BB1_1:
-; CHECK-INSTRS:       ld.1.inc r2, r3, r2
-; CHECK-INSTRS-NEXT:  st.1.inc r1, r3, r1
+; CHECK-INSTRS:       ldmi.h r2, r3, r2
+; CHECK-INSTRS-NEXT:  stmi.h r1, r3, r1
 ; CHECK-INSTRS-NEXT:  sub.s! 74, r1, r3
 ; CHECK-INSTRS-NEXT:  jump.ne @.BB1_1
-; CHECK-INSTRS:       ld.1 164, r2
+; CHECK-INSTRS:       ldm.h 164, r2
 ; CHECK-INSTRS-NEXT:  and @CPI1_0[0], r2, r1
-; CHECK-INSTRS-NEXT:  ld.1 74, r2
+; CHECK-INSTRS-NEXT:  ldm.h 74, r2
 ; CHECK-INSTRS-NEXT:  and 255, r2, r2
 ; CHECK-INSTRS-NEXT:  or r1, r2, r1
-; CHECK-INSTRS-NEXT:  st.1 74, r1
+; CHECK-INSTRS-NEXT:  stm.h 74, r1
 ; CHECK-INSTRS-NEXT:  add r0, r0, r1
 ; CHECK-INSTRS-NEXT:  ret
 ;
@@ -154,17 +154,17 @@ define i256 @test_known_backward() {
 ; CHECK-INSTRS:       add 64, r0, r1
 ; CHECK-INSTRS-NEXT:  .BB2_2:
 ; CHECK-INSTRS:       add 9, r1, r2
-; CHECK-INSTRS-NEXT:  ld.1 r2, r2
+; CHECK-INSTRS-NEXT:  ldm.h r2, r2
 ; CHECK-INSTRS-NEXT:  add 99, r1, r3
-; CHECK-INSTRS-NEXT:  st.1 r3, r2
+; CHECK-INSTRS-NEXT:  stm.h r3, r2
 ; CHECK-INSTRS-NEXT:  sub.s! 32, r1, r1
 ; CHECK-INSTRS-NEXT:  jump.ne @.BB2_2
-; CHECK-INSTRS:       ld.1 10, r2
+; CHECK-INSTRS:       ldm.h 10, r2
 ; CHECK-INSTRS-NEXT:  and @CPI2_0[0], r2, r1
-; CHECK-INSTRS-NEXT:  ld.1 100, r2
+; CHECK-INSTRS-NEXT:  ldm.h 100, r2
 ; CHECK-INSTRS-NEXT:  and 255, r2, r2
 ; CHECK-INSTRS-NEXT:  or r1, r2, r1
-; CHECK-INSTRS-NEXT:  st.1 100, r1
+; CHECK-INSTRS-NEXT:  stm.h 100, r1
 ; CHECK-INSTRS-NEXT:  add r0, r0, r1
 ; CHECK-INSTRS-NEXT:  ret
 ;

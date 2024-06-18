@@ -9,11 +9,11 @@ target triple = "eravm"
 define void @test1() personality i32 ()* @__personality {
   %fptr = invoke i8 addrspace(3)* @__farcall_int(i256 0, i256 1, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef)
     to label %ok unwind label %fail
-  ; CHECK: far_call	r1, r2, @.BB0_2
-  ; CHECK: ptr.add r1, r0, stack-[1]
+  ; CHECK: callf	r1, r2, @.BB0_2
+  ; CHECK: addp r1, r0, stack-[1]
 ok:
   call void @spill()
-  ; CHECK: ptr.add stack-[1], r0, r1
+  ; CHECK: addp stack-[1], r0, r1
   store i8 addrspace(3)* %fptr, i8 addrspace(3)** @ptr
   ret void
 fail:
@@ -27,18 +27,18 @@ define void @test2(i1 %cond) personality i32 ()* @__personality {
 staticcall:
   %fptrs = invoke i8 addrspace(3)* @__staticcall_int(i256 0, i256 1, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef)
     to label %ok unwind label %fail
-  ; CHECK: far_call.static r1, r2, @.BB1_6
+  ; CHECK: callf.st r1, r2, @.BB1_6
   ; CHECK: jump @.BB1_4
 delegatecall:
   %fptrd = invoke i8 addrspace(3)* @__delegatecall_int(i256 0, i256 1, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef)
     to label %ok unwind label %fail
-  ; CHECK: far_call.delegate r1, r2, @.BB1_6
+  ; CHECK: calld r1, r2, @.BB1_6
 ok:
   %fptr = phi i8 addrspace(3)* [%fptrs, %staticcall], [%fptrd, %delegatecall]
   ; CHECK: .BB1_4:
-  ; CHECK: ptr.add r1, r0, stack-[1]
+  ; CHECK: addp r1, r0, stack-[1]
   call void @spill()
-  ; CHECK: ptr.add stack-[1], r0, r1
+  ; CHECK: addp stack-[1], r0, r1
   store i8 addrspace(3)* %fptr, i8 addrspace(3)** @ptr
   ret void
 fail:

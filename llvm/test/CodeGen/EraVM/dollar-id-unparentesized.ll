@@ -12,17 +12,17 @@ declare void @"_."()
 
 ; CHECK-LABEL: test
 define void @test() {
-; CHECK: near_call r0, @$_, @DEFAULT_UNWIND
+; CHECK: call r0, @$_, @DEFAULT_UNWIND
   call void @"$_"()
-; CHECK: near_call r0, @_$_, @DEFAULT_UNWIND
+; CHECK: call r0, @_$_, @DEFAULT_UNWIND
   call void @"_$_"()
-; CHECK: near_call r0, @_$, @DEFAULT_UNWIND
+; CHECK: call r0, @_$, @DEFAULT_UNWIND
   call void @"_$"()
-; CHECK: near_call r0, @._, @DEFAULT_UNWIND
+; CHECK: call r0, @._, @DEFAULT_UNWIND
   call void @"._"()
-; CHECK: near_call r0, @_._, @DEFAULT_UNWIND
+; CHECK: call r0, @_._, @DEFAULT_UNWIND
   call void @"_._"()
-; CHECK: near_call r0, @_., @DEFAULT_UNWIND
+; CHECK: call r0, @_., @DEFAULT_UNWIND
   call void @"_."()
   ret void
 }

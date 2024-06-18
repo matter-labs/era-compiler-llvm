@@ -18,7 +18,7 @@ define void @set(ptr addrspace(3) %p, i256 %v1, i256 %v2) nounwind {
 }
 ; CHECK-LABEL: set:
 ; CHECK:         add     r2, r0, stack[@var1]
-; CHECK-NEXT:    ptr.add r1, r0, stack[@ptr]
+; CHECK-NEXT:    addp    r1, r0, stack[@ptr]
 ; CHECK-NEXT:    add     r3, r0, stack[@var2]
 ; CHECK-NEXT:    ret
 
@@ -34,7 +34,7 @@ define ptr addrspace(3) @get() nounwind {
 ; CHECK-LABEL: get:
 ; CHECK:         add     stack[@var2], r0, r1
 ; CHECK-NEXT:    mul     stack[@var1], r1, r1, r2
-; CHECK-NEXT:    ptr.add stack[@ptr], r1, r1
+; CHECK-NEXT:    addp    stack[@ptr], r1, r1
 ; CHECK-NEXT:    ret
 
 ; CHECK:       .data

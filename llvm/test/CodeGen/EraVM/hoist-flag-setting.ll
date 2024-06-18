@@ -102,7 +102,7 @@ define void @test_hoist_inc(i256 addrspace(1)* %dst, i256 %end) {
 ; CHECK-LABEL: test_hoist_inc
 ; CHECK:      .BB3_1:
 ; CHECK:        sub! r1, r2, r4
-; CHECK-NEXT:   st.1.inc r1, r3, r1
+; CHECK-NEXT:   stmi.h r1, r3, r1
 ; CHECK-NEXT:   jump.ne @.BB3_1
 
 entry:

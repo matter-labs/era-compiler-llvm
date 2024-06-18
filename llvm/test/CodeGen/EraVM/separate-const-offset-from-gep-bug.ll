@@ -11,8 +11,8 @@ define void @test(ptr addrspace(1) %0, ptr addrspace(1) %1, i256 %2) {
 ; CHECK:       sub.s! 32, r3, r3
 ; CHECK-NEXT:  add r3, r1, r4
 ; CHECK-NEXT:  add r3, r2, r5
-; CHECK-NEXT:  ld.1 r5, r5
-; CHECK-NEXT:  st.1 r4, r5
+; CHECK-NEXT:  ldm.h r5, r5
+; CHECK-NEXT:  stm.h r4, r5
 ; CHECK-NEXT:  jump.ne @.BB0_2
 ; CHECK:       .BB0_3:
 ; CHECK-NEXT:  ret
