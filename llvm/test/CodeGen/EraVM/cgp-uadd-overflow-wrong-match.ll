@@ -9,14 +9,13 @@ define i256 @dont_match(i256 %a) {
 ; CHECK-LABEL: define i256 @dont_match
 ; CHECK-SAME: (i256 [[A:%.*]]) {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[TMP0:%.*]] = call { i256, i1 } @llvm.uadd.with.overflow.i256(i256 [[A]], i256 18446744073709551615)
-; CHECK-NEXT:    [[MATH:%.*]] = extractvalue { i256, i1 } [[TMP0]], 0
-; CHECK-NEXT:    [[OV:%.*]] = extractvalue { i256, i1 } [[TMP0]], 1
-; CHECK-NEXT:    br i1 [[OV]], label [[THEN:%.*]], label [[ELSE:%.*]]
+; CHECK-NEXT:    [[ADD:%.*]] = add i256 [[A]], 18446744073709551615
+; CHECK-NEXT:    [[CMP:%.*]] = icmp ne i256 [[A]], 0
+; CHECK-NEXT:    br i1 [[CMP]], label [[THEN:%.*]], label [[ELSE:%.*]]
 ; CHECK:       then:
 ; CHECK-NEXT:    ret i256 0
 ; CHECK:       else:
-; CHECK-NEXT:    ret i256 [[MATH]]
+; CHECK-NEXT:    ret i256 [[ADD]]
 ;
 entry:
   %add = add i256 %a, 18446744073709551615
@@ -34,13 +33,14 @@ define i256 @match(i256 %a) {
 ; CHECK-LABEL: define i256 @match
 ; CHECK-SAME: (i256 [[A:%.*]]) {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[ADD:%.*]] = add i256 [[A]], -1
-; CHECK-NEXT:    [[CMP:%.*]] = icmp ne i256 [[A]], 0
-; CHECK-NEXT:    br i1 [[CMP]], label [[THEN:%.*]], label [[ELSE:%.*]]
+; CHECK-NEXT:    [[TMP0:%.*]] = call { i256, i1 } @llvm.uadd.with.overflow.i256(i256 [[A]], i256 -1)
+; CHECK-NEXT:    [[MATH:%.*]] = extractvalue { i256, i1 } [[TMP0]], 0
+; CHECK-NEXT:    [[OV:%.*]] = extractvalue { i256, i1 } [[TMP0]], 1
+; CHECK-NEXT:    br i1 [[OV]], label [[THEN:%.*]], label [[ELSE:%.*]]
 ; CHECK:       then:
 ; CHECK-NEXT:    ret i256 0
 ; CHECK:       else:
-; CHECK-NEXT:    ret i256 [[ADD]]
+; CHECK-NEXT:    ret i256 [[MATH]]
 ;
 entry:
   %add = add i256 %a, -1
