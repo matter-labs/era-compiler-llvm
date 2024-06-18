@@ -9,7 +9,7 @@ target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 define i1 @test_noinbounds(i256 %X) {
 ; CHECK-LABEL: define i1 @test_noinbounds
 ; CHECK-SAME: (i256 [[X:%.*]]) {
-; CHECK-NEXT:    [[TMP1:%.*]] = and i256 [[X]], 576460752303423487
+; CHECK-NEXT:    [[TMP1:%.*]] = and i256 [[X]], 3618502788666131106986593281521497120414687020801267626233049500247285301247
 ; CHECK-NEXT:    [[R:%.*]] = icmp eq i256 [[TMP1]], 9
 ; CHECK-NEXT:    ret i1 [[R]]
 ;
