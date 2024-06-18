@@ -11,7 +11,7 @@ define i1 @dont_optimize(i256 %a, i256 %b) {
 ; CHECK-NEXT:    [[C:%.*]] = icmp sgt i256 [[A]], [[B]]
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[C]])
 ; CHECK-NEXT:    [[RES:%.*]] = icmp uge i256 [[A]], 0
-; CHECK-NEXT:    ret i1 true
+; CHECK-NEXT:    ret i1 [[RES]]
 ;
   %a.pos = icmp sge i256 %b, 18446744073709551615
   call void @llvm.assume(i1 %a.pos)
@@ -29,7 +29,7 @@ define i1 @optimize(i256 %a, i256 %b) {
 ; CHECK-NEXT:    [[C:%.*]] = icmp sgt i256 [[A]], [[B]]
 ; CHECK-NEXT:    call void @llvm.assume(i1 [[C]])
 ; CHECK-NEXT:    [[RES:%.*]] = icmp uge i256 [[A]], 0
-; CHECK-NEXT:    ret i1 [[RES]]
+; CHECK-NEXT:    ret i1 true
 ;
   %a.pos = icmp sge i256 %b, -1
   call void @llvm.assume(i1 %a.pos)

@@ -746,7 +746,10 @@ void ConstraintInfo::transferToOtherSystem(
       addFact(CmpInst::ICMP_ULT, A, B, NumIn, NumOut, DFSInStack);
     break;
   case CmpInst::ICMP_SGT: {
-    if (doesHold(CmpInst::ICMP_SGE, B, ConstantInt::get(B->getType(), -1)))
+    // EraVM local begin
+    if (doesHold(CmpInst::ICMP_SGE, B,
+                 ConstantInt::get(B->getType(), -1, true)))
+      // EraVM local end
       addFact(CmpInst::ICMP_UGE, A, ConstantInt::get(B->getType(), 0), NumIn,
               NumOut, DFSInStack);
     if (doesHold(CmpInst::ICMP_SGE, B, ConstantInt::get(B->getType(), 0)))
