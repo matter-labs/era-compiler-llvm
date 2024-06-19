@@ -53,9 +53,9 @@ define ptr addrspace(3) @get() nounwind {
 
 ; Check symbol values only, ignore "Num" column as well as unrelated symbols.
 ; DATA: Symbol table '.symtab' {{.*}}
+; DATA: 00000020     0 NOTYPE  GLOBAL DEFAULT     4 var2
 ; DATA: 00000000     0 NOTYPE  GLOBAL DEFAULT     4 var1
 ; DATA: 00000040     0 NOTYPE  GLOBAL DEFAULT     4 ptr
-; DATA: 00000020     0 NOTYPE  GLOBAL DEFAULT     4 var2
 
 ; DATA:      Hex dump of section '.data':
 ; DATA-NEXT: 0x00000000 00000000 00000000 00000000 00000000 ................
