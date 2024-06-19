@@ -1159,7 +1159,7 @@ def IndexSwitchOp : SCF_Op<"index_switch", [RecursiveMemoryEffects,
     ```
   }];
 
-  let arguments = (ins Index:$arg, DenseI64ArrayAttr:$cases);
+  let arguments = (ins Index:$arg, IndexElementsAttr:$cases);
   let results = (outs Variadic<AnyType>:$results);
   let regions = (region SizedRegion<1>:$defaultRegion,
                         VariadicRegion<SizedRegion<1>>:$caseRegions);

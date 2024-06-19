@@ -622,7 +622,7 @@ func.func @switch_wrong_case_count(%arg0: index) {
   // expected-error @below {{'scf.index_switch' op has 0 case regions but 1 case values}}
   "scf.index_switch"(%arg0) ({
     scf.yield
-  }) {cases = array<i64: 1>} : (index) -> ()
+  }) {cases = dense<[1]> : tensor<1 x index>} : (index) -> ()
   return
 }
 
@@ -678,7 +678,7 @@ func.func @switch_missing_terminator(%arg0: index, %arg1: i32) {
     "scf.yield"() : () -> ()
   }, {
     return
-  }) {cases = array<i64: 1>} : (index) -> ()
+  }) {cases = dense<[1]> : tensor<1 x index>} : (index) -> ()
 }
 
 // -----

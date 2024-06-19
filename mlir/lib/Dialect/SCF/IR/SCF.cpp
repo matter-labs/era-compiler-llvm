@@ -3934,24 +3934,25 @@ void WhileOp::getCanonicalizationPatterns(RewritePatternSet &results,
 
 /// Parse the case regions and values.
 static ParseResult
-parseSwitchCases(OpAsmParser &p, DenseI64ArrayAttr &cases,
+parseSwitchCases(OpAsmParser &p, DenseIntElementsAttr &cases,
                  SmallVectorImpl<std::unique_ptr<Region>> &caseRegions) {
-  SmallVector<int64_t> caseValues;
+  SmallVector<APInt> caseValues;
   while (succeeded(p.parseOptionalKeyword("case"))) {
-    int64_t value;
+    APInt value;
     Region &region = *caseRegions.emplace_back(std::make_unique<Region>());
     if (p.parseInteger(value) || p.parseRegion(region, /*arguments=*/{}))
       return failure();
     caseValues.push_back(value);
   }
-  cases = p.getBuilder().getDenseI64ArrayAttr(caseValues);
+  cases = p.getBuilder().getIndexTensorAttr(caseValues);
   return success();
 }
 
 /// Print the case regions and values.
 static void printSwitchCases(OpAsmPrinter &p, Operation *op,
-                             DenseI64ArrayAttr cases, RegionRange caseRegions) {
-  for (auto [value, region] : llvm::zip(cases.asArrayRef(), caseRegions)) {
+                             DenseIntElementsAttr cases,
+                             RegionRange caseRegions) {
+  for (auto [value, region] : llvm::zip(cases, caseRegions)) {
     p.printNewline();
     p << "case " << value << ' ';
     p.printRegion(*region, /*printEntryBlockArgs=*/false);
@@ -3959,16 +3960,19 @@ static void printSwitchCases(OpAsmPrinter &p, Operation *op,
 }
 
 LogicalResult scf::IndexSwitchOp::verify() {
-  if (getCases().size() != getCaseRegions().size()) {
+  if (static_cast<size_t>(getCases().size()) != getCaseRegions().size()) {
     return emitOpError("has ")
            << getCaseRegions().size() << " case regions but "
            << getCases().size() << " case values";
   }
 
-  DenseSet<int64_t> valueSet;
-  for (int64_t value : getCases())
-    if (!valueSet.insert(value).second)
-      return emitOpError("has duplicate case value: ") << value;
+  DenseSet<APInt> valueSet;
+  for (APInt value : getCases())
+    if (!valueSet.insert(value).second) {
+      SmallVector<char, 4> valueStr;
+      value.toStringUnsigned(valueStr);
+      return emitOpError("has duplicate case value: ") << valueStr;
+    }
   auto verifyRegion = [&](Region &region, const Twine &name) -> LogicalResult {
     auto yield = dyn_cast<YieldOp>(region.front().back());
     if (!yield)
@@ -4054,7 +4058,7 @@ void IndexSwitchOp::getRegionInvocationBounds(
   }
 
   unsigned liveIndex = getNumRegions() - 1;
-  const auto *it = llvm::find(getCases(), operandValue.getInt());
+  const auto it = llvm::find(getCases(), operandValue.getInt());
   if (it != getCases().end())
     liveIndex = std::distance(getCases().begin(), it);
   for (unsigned i = 0, e = getNumRegions(); i < e; ++i)
