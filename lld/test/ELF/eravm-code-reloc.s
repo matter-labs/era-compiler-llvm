@@ -69,9 +69,9 @@ caller_g:
   near_call r1, @foo, @handler
   far_call  r3, r4, @foo
   jump @label
-  ret.to_label    r1, @label
-  revert.to_label r1, @label
-  panic.to_label  r1, @label
+  ret.ok.to_label    r1, @label
+  ret.revert.to_label r1, @label
+  ret.panic.to_label @label
   .globl label
 label:
   jump @jump_table[1]
@@ -88,10 +88,10 @@ label:
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      label
 ; INPUT-NEXT:  00 00 00 00 00 01 04 30        ret.revert.to_label     r1, 0
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      label
-; INPUT-NEXT:  00 00 00 00 00 01 04 32        ret.panic.to_label      r1, 0
+; INPUT-NEXT:  00 00 00 00 00 00 04 32        ret.panic.to_label      0
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      label
 ; INPUT-LABEL: <label>:
-; INPUT-NEXT:  00 00 00 01 00 00 01 3e        jump    code[r0+1]
+; INPUT-NEXT:  00 00 00 01 00 00 01 3e        jump    code[1]
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     jump_table
 ; INPUT-NEXT:  00 00 00 00 00 01 04 2d        ret
 
@@ -101,9 +101,9 @@ label:
 ; OUTPUT-NEXT:  00 00 00 1a 00 00 01 3d        jump    26
 ; OUTPUT-NEXT:  00 00 00 1a 00 01 04 2e        ret.ok.to_label r1, 26
 ; OUTPUT-NEXT:  00 00 00 1a 00 01 04 30        ret.revert.to_label     r1, 26
-; OUTPUT-NEXT:  00 00 00 1a 00 01 04 32        ret.panic.to_label      r1, 26
+; OUTPUT-NEXT:  00 00 00 1a 00 00 04 32        ret.panic.to_label      26
 ; OUTPUT-LABEL: <label>:
-; OUTPUT-NEXT:  00 00 00 02 00 00 01 3e        jump    code[r0+2]
+; OUTPUT-NEXT:  00 00 00 02 00 00 01 3e        jump    code[2]
 ; OUTPUT-NEXT:  00 00 00 00 00 01 04 2d        ret
 
 ; Test relocations referring local symbols.
@@ -113,9 +113,9 @@ caller_l:
   near_call r1, @foo_local, @handler_local
   far_call  r3, r4, @foo_local
   jump @label_local
-  ret.to_label    r1, @label_local
-  revert.to_label r1, @label_local
-  panic.to_label  r1, @label_local
+  ret.ok.to_label    r1, @label_local
+  ret.revert.to_label r1, @label_local
+  ret.panic.to_label @label_local
   .local label_local
 label_local:
   jump @jump_table_local[1]
@@ -133,10 +133,10 @@ label_local:
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      .text+0x90
 ; INPUT-NEXT:  00 00 00 00 00 01 04 30        ret.revert.to_label     r1, 0
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      .text+0x90
-; INPUT-NEXT:  00 00 00 00 00 01 04 32        ret.panic.to_label      r1, 0
+; INPUT-NEXT:  00 00 00 00 00 00 04 32        ret.panic.to_label      0
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      .text+0x90
 ; INPUT-LABEL: <label_local>:
-; INPUT-NEXT:  00 00 00 01 00 00 01 3e        jump    code[r0+1]
+; INPUT-NEXT:  00 00 00 01 00 00 01 3e        jump    code[1]
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     .rodata+0x20
 ; INPUT-NEXT:  00 00 00 00 00 01 04 2d        ret
 
@@ -146,7 +146,7 @@ label_local:
 ; OUTPUT-NEXT:  00 00 00 22 00 00 01 3d        jump    34
 ; OUTPUT-NEXT:  00 00 00 22 00 01 04 2e        ret.ok.to_label r1, 34
 ; OUTPUT-NEXT:  00 00 00 22 00 01 04 30        ret.revert.to_label     r1, 34
-; OUTPUT-NEXT:  00 00 00 22 00 01 04 32        ret.panic.to_label      r1, 34
+; OUTPUT-NEXT:  00 00 00 22 00 00 04 32        ret.panic.to_label      34
 ; OUTPUT-LABEL: <label_local>:
-; OUTPUT-NEXT:  00 00 00 02 00 00 01 3e        jump    code[r0+2]
+; OUTPUT-NEXT:  00 00 00 02 00 00 01 3e        jump    code[2]
 ; OUTPUT-NEXT:  00 00 00 00 00 01 04 2d        ret
