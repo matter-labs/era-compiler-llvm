@@ -43,6 +43,7 @@ using namespace llvm;
 namespace {
 class EraVMAsmPrinter : public AsmPrinter {
   EraVMMCInstLower MCInstLowering;
+  const MCSubtargetInfo *STI;
 
   // In a compiled machine module, there might be multiple instances of a
   // same constant values (across different compiled functions), however,
@@ -50,7 +51,7 @@ class EraVMAsmPrinter : public AsmPrinter {
 
   // Notice that constants are interned internally in LLVM, so we maintain a
   // map <constant -> SymbolList> to record and combine same constants with
-  // different symbols. when we walk through the MCInst format.
+  // different symbols when we walk through the MCInst format.
   // To keep the order and maintain determinism, we actually use std::vector
   // so when emitting constants, the one that got inserted first will be printed
   // first
@@ -59,11 +60,12 @@ class EraVMAsmPrinter : public AsmPrinter {
       std::map<const Constant *, std::vector<MCSymbol *>>;
   std::vector<const Constant *> UniqueConstants;
   ConstantPoolMapType ConstantPoolMap;
+  DenseMap<const Constant *, MCSymbol *> GlobInitializerMap;
 
 public:
   EraVMAsmPrinter(TargetMachine &TM, std::unique_ptr<MCStreamer> Streamer)
-      : AsmPrinter(TM, std::move(Streamer)), MCInstLowering(OutContext, *this) {
-  }
+      : AsmPrinter(TM, std::move(Streamer)), MCInstLowering(OutContext, *this),
+        STI(TM.getMCSubtargetInfo()) {}
 
   StringRef getPassName() const override { return "EraVM Assembly Printer"; }
 
@@ -82,6 +84,13 @@ public:
     return MCInstLowering.lowerOperand(MO, MCOp);
   }
 
+  size_t createInitializeInsts(const GlobalVariable *G,
+                               SmallVector<MCInst> &InitInsts);
+
+  void insertSymbolToConstantMap(const Constant *C, MCSymbol *Sym);
+  void emitDefaultLandingPads();
+
+  void emitStartOfAsmFile(Module &) override;
   void emitJumpTableInfo() override;
   void emitConstantPool() override;
   void emitEndOfAsmFile(Module &) override;
@@ -194,9 +203,28 @@ void EraVMAsmPrinter::emitEndOfAsmFile(Module &) {
     emitGlobalConstant(getDataLayout(), C);
   }
 
+  // Emit a section with the default landing pads.
+  emitDefaultLandingPads();
+
   // after emitting all the things, we also need to clear symbol cache
   UniqueConstants.clear();
   ConstantPoolMap.clear();
+  GlobInitializerMap.clear();
+}
+
+void EraVMAsmPrinter::insertSymbolToConstantMap(const Constant *C,
+                                                MCSymbol *Sym) {
+  auto result = std::find(UniqueConstants.begin(), UniqueConstants.end(), C);
+  if (result == UniqueConstants.end()) {
+    std::vector<MCSymbol *> symbol_vector;
+    symbol_vector.push_back(Sym);
+    ConstantPoolMap.insert({C, std::move(symbol_vector)});
+    UniqueConstants.push_back(C);
+  } else {
+    auto m = ConstantPoolMap.find(C);
+    assert(m != ConstantPoolMap.end());
+    m->second.push_back(Sym);
+  }
 }
 
 void EraVMAsmPrinter::emitConstantPool() {
@@ -213,19 +241,8 @@ void EraVMAsmPrinter::emitConstantPool() {
     const Constant *C = CPE.Val.ConstVal;
 
     MCSymbol *Sym = GetCPISymbol(i);
-
     // Insert the symbol to constant pool map
-    auto result = std::find(UniqueConstants.begin(), UniqueConstants.end(), C);
-    if (result == UniqueConstants.end()) {
-      std::vector<MCSymbol *> symbol_vector;
-      symbol_vector.push_back(Sym);
-      ConstantPoolMap.insert({C, std::move(symbol_vector)});
-      UniqueConstants.push_back(C);
-    } else {
-      auto m = ConstantPoolMap.find(C);
-      assert(m != ConstantPoolMap.end());
-      m->second.push_back(Sym);
-    }
+    insertSymbolToConstantMap(C, Sym);
   }
 }
 
@@ -297,6 +314,193 @@ void EraVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
   }
 
   AsmPrinter::emitGlobalConstant(DL, CV);
+}
+
+void EraVMAsmPrinter::emitDefaultLandingPads() {
+  auto EmitLandingPadInst = [this](unsigned Opc, const Twine &LabelName) {
+    MCInst MCI;
+    MCI.setOpcode(Opc);
+    if (Opc != EraVM::PANICl)
+      MCI.addOperand(MCOperand::createReg(EraVM::R1)); // rs0
+    MCSymbol *Sym = OutContext.getOrCreateSymbol(LabelName);
+    const MCExpr *SymbolExpr = MCSymbolRefExpr::create(Sym, OutContext);
+    MCI.addOperand(MCOperand::createExpr(SymbolExpr));
+    MCI.addOperand(MCOperand::createImm(0)); // CCode
+    OutStreamer->emitLabel(Sym);
+    OutStreamer->emitInstruction(MCI, *STI);
+  };
+
+  SmallVector<std::pair<unsigned, const char *>> LandingPags = {
+      {EraVM::PANICl, "DEFAULT_UNWIND"},
+      {EraVM::RETrl, "DEFAULT_FAR_RETURN"},
+      {EraVM::REVERTrl, "DEFAULT_FAR_REVERT"}};
+
+  OutStreamer->switchSection(OutContext.getObjectFileInfo()->getTextSection());
+
+  for (const auto &LP : LandingPags) {
+    if (MCSymbol *S = OutContext.lookupSymbol(LP.second);
+        !S || S->isUndefined())
+      EmitLandingPadInst(LP.first, LP.second);
+  }
+}
+
+// Creates instruction:
+//
+//   nop  stack+=[StackSize + r0]
+static MCInst createIncSPInst(int64_t StackSize) {
+  assert(StackSize >= 0);
+  MCInst MCI;
+  MCI.setOpcode(EraVM::NOPrrs);
+  MCI.addOperand(MCOperand::createReg(EraVM::R0)); // rs0
+  MCI.addOperand(MCOperand::createReg(EraVM::R0)); // rs1
+  MCI.addOperand(MCOperand::createReg(EraVM::R0));
+  MCI.addOperand(MCOperand::createReg(EraVM::R0));
+  MCI.addOperand(MCOperand::createImm(StackSize));
+  MCI.addOperand(MCOperand::createImm(0)); // predicate
+  return MCI;
+}
+
+// TODO: this function was copied from EraVMAsmBackend.
+static MCOperand createSymbolWithAddend(MCContext &Ctx, const MCSymbol *Symbol,
+                                        int64_t Addend) {
+  // Use just an immediate operand, if possible.
+  if (!Symbol)
+    return MCOperand::createImm(Addend);
+
+  // Fallback to constructing Symbol + Addend expression.
+  const MCExpr *SymbolExpr = MCSymbolRefExpr::create(Symbol, Ctx);
+  if (Addend == 0)
+    return MCOperand::createExpr(SymbolExpr);
+
+  const MCExpr *AddendExpr = MCConstantExpr::create(Addend, Ctx);
+  const MCExpr *Expr = MCBinaryExpr::createAdd(SymbolExpr, AddendExpr, Ctx);
+  return MCOperand::createExpr(Expr);
+}
+
+// Creates instruction:
+//
+//   add  code[@glob_var_initializer + Idx], r0, stack[@glob_var + Idx]
+//
+// where Idx - is the index of the @glob_var component. It has meaning for
+// aggregates.
+static MCInst createMoveInst(MCContext &Ctx, MCSymbol *Initializer,
+                             MCSymbol *GlobVariable, int64_t Idx = 0) {
+  MCInst MCI;
+  MCOperand GlobalRef = createSymbolWithAddend(Ctx, GlobVariable, Idx);
+  MCOperand InitializerRef = createSymbolWithAddend(Ctx, Initializer, Idx);
+
+  MCI.setOpcode(EraVM::ADDcrs_s);
+  MCI.addOperand(MCOperand::createReg(EraVM::R0));
+  // Code reference.
+  MCI.addOperand(InitializerRef);
+  MCI.addOperand(MCOperand::createReg(EraVM::R0));
+  // Marker that denotes the stack reference is absolute.
+  MCI.addOperand(MCOperand::createImm(0));
+  // Marker that denotes absence of a base register.
+  MCI.addOperand(MCOperand::createImm(0));
+  // Stack reference.
+  MCI.addOperand(GlobalRef);
+  // Predicate.
+  MCI.addOperand(MCOperand::createImm(0));
+  return MCI;
+}
+
+// Adds MOV instructions to the InitInsts for non-zero elements of
+// G's initializer. Returns the number of elements of G's initializer.
+// (We don't need to create MOVs for zero-initializers, as the stack already
+// zero initialized.
+size_t EraVMAsmPrinter::createInitializeInsts(const GlobalVariable *G,
+                                              SmallVector<MCInst> &InitInsts) {
+  const Constant *CV = G->getInitializer();
+  MCSymbol *GlobalSym = getSymbol(G);
+  auto InitIt = GlobInitializerMap.find(G->getInitializer());
+  assert(InitIt != GlobInitializerMap.end());
+  MCSymbol *InitializerSym = InitIt->second;
+  size_t NumElements = 0;
+
+  auto addInstr = [this, &GlobalSym, InitializerSym,
+                   &InitInsts](size_t ItemIdx) {
+    MCInst MovInst =
+        createMoveInst(OutContext, InitializerSym, GlobalSym, ItemIdx);
+    InitInsts.push_back(MovInst);
+  };
+
+  if (const auto *CVA = dyn_cast<ConstantArray>(CV)) {
+    auto *Aty = CVA->getType();
+    NumElements = static_cast<size_t>(Aty->getNumElements());
+    for (size_t Idx = 0; Idx < NumElements; ++Idx) {
+      const auto *Item = cast<Constant>(CVA->getOperand(Idx));
+      if (!Item->isZeroValue())
+        addInstr(Idx);
+    }
+
+  } else if (const auto *CDS = dyn_cast<ConstantDataSequential>(CV)) {
+    NumElements = static_cast<size_t>(CDS->getNumElements());
+    for (size_t Idx = 0; Idx < NumElements; ++Idx) {
+      const Constant *Elm = CDS->getElementAsConstant(Idx);
+      if (!Elm->isZeroValue())
+        addInstr(Idx);
+    }
+  } else if (const auto *CA = dyn_cast<ConstantAggregateZero>(CV)) {
+    NumElements = static_cast<size_t>(CA->getElementCount().getKnownMinValue());
+  } else if (const auto *CI = dyn_cast<ConstantInt>(CV)) {
+    NumElements = 1;
+    if (!CI->isZeroValue())
+      addInstr(0);
+  } else if (isa<ConstantPointerNull>(CV)) {
+    NumElements = 1;
+  } else {
+    // Other CV types are not expected: ConstantStruct,
+    // ConstantVector, ConstantExpr.
+    // TODO: It seems that emitGlobalConstant() expects more initializer types.
+    // For example, ConstantStruct type, but there are no clear evidences
+    // of this. In particular, there are no corresponding LIT tests and
+    // llvm_unreachable here triggers no CI errors.
+    llvm_unreachable("Unexpected initializer type");
+  }
+
+  return NumElements;
+}
+
+void EraVMAsmPrinter::emitStartOfAsmFile(Module &M) {
+  // Create global variables' initializers in the .rodata section.
+  //   .data: .glob_var  ->  .rodata: .glob_var_initializer
+  SmallVector<const GlobalVariable *> GlobalsToInitialize;
+  for (const auto &G : M.globals()) {
+    // EraVM doesn't have a notion of separate compilation units, so all the
+    // global variables are definitions (not declaration) that must have
+    // initializers. The checks for linkage and the presence of an initializer
+    // are mainly to pass target independent LLVM IR tests.
+    // The 'constant' globals go to .rodata section, so skip them.
+    if ((G.getLinkage() != GlobalValue::AvailableExternallyLinkage) &&
+        !G.isConstant() && G.hasInitializer()) {
+      MCSymbol *InitSym =
+          OutContext.getOrCreateSymbol(G.getName() + Twine("_initializer"));
+      insertSymbolToConstantMap(G.getInitializer(), InitSym);
+      GlobInitializerMap.insert({G.getInitializer(), InitSym});
+      GlobalsToInitialize.emplace_back(&G);
+    }
+  }
+
+  size_t NumStackElmsToReserve = 0;
+  SmallVector<MCInst> InitInsts;
+  for (const GlobalVariable *G : GlobalsToInitialize)
+    NumStackElmsToReserve += createInitializeInsts(G, InitInsts);
+
+  if (NumStackElmsToReserve) {
+    OutStreamer->switchSection(
+        OutContext.getObjectFileInfo()->getTextSection());
+
+    // Emit instruction that allocates the stack space by incrementing SP.
+    MCInst IncSPInst =
+        createIncSPInst(static_cast<int64_t>(NumStackElmsToReserve));
+    OutStreamer->emitInstruction(IncSPInst, *STI);
+
+    // Emit instructions that move initializers to corresponding stack
+    // locations.
+    for (const MCInst &MI : InitInsts)
+      OutStreamer->emitInstruction(MI, *STI);
+  }
 }
 
 // Force static initialization.
