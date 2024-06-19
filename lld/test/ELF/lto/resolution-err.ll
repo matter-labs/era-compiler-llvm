@@ -1,5 +1,6 @@
 ; UNSUPPORTED: system-windows
 ; REQUIRES: shell, non-root-user
+; UNSUPPORTED: target=eravm{{.*}}, target=evm{{.*}}
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: touch %t.resolution.txt
 ; RUN: chmod u-w %t.resolution.txt
