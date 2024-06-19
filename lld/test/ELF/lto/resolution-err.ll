@@ -1,4 +1,6 @@
 ; UNSUPPORTED: system-windows
+; UNSUPPORTED: target=eravm
+; UNSUPPORTED: target=evm
 ; REQUIRES: shell
 ; RUN: llvm-as %s -o %t.bc
 ; RUN: touch %t.resolution.txt
