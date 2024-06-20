@@ -109,7 +109,55 @@ private:
   size_t BufferSize;
   unsigned Mode;
 };
+
+// EVM local begin
+// A FileOutputBuffer which keeps data in memory and writes to the final
+// output stream on commit().
+class InMemoryStreamBuffer : public FileOutputBuffer {
+public:
+  InMemoryStreamBuffer(StringRef Path, MemoryBlock Buf, std::size_t BufSize,
+                       raw_pwrite_stream &Out)
+      : FileOutputBuffer(Path), Buffer(Buf), BufferSize(BufSize),
+        OutStream(Out) {}
+
+  uint8_t *getBufferStart() const override {
+    return static_cast<uint8_t *>(Buffer.base());
+  }
+
+  uint8_t *getBufferEnd() const override {
+    return static_cast<uint8_t *>(Buffer.base()) + BufferSize;
+  }
+
+  size_t getBufferSize() const override { return BufferSize; }
+
+  Error commit() override {
+    OutStream << StringRef(static_cast<const char *>(Buffer.base()),
+                           BufferSize);
+    OutStream.flush();
+    return Error::success();
+  }
+
+private:
+  // Buffer may actually contain a larger memory block than BufferSize
+  OwningMemoryBlock Buffer;
+  size_t BufferSize;
+  raw_pwrite_stream &OutStream;
+};
+// EVM local end
 } // namespace
+
+// EVM local begin
+static Expected<std::unique_ptr<InMemoryStreamBuffer>>
+createInMemoryStreamBuffer(StringRef Path, size_t Size,
+                           raw_pwrite_stream &Out) {
+  std::error_code EC;
+  MemoryBlock MB = Memory::allocateMappedMemory(
+      Size, nullptr, sys::Memory::MF_READ | sys::Memory::MF_WRITE, EC);
+  if (EC)
+    return errorCodeToError(EC);
+  return std::make_unique<InMemoryStreamBuffer>(Path, MB, Size, Out);
+}
+// EVM local end
 
 static Expected<std::unique_ptr<InMemoryBuffer>>
 createInMemoryBuffer(StringRef Path, size_t Size, unsigned Mode) {
@@ -150,6 +198,14 @@ createOnDiskBuffer(StringRef Path, size_t Size, unsigned Mode) {
   return std::make_unique<OnDiskBuffer>(Path, std::move(File),
                                          std::move(MappedFile));
 }
+
+// EVM local begin
+// Create an instance of FileOutputBuffer.
+Expected<std::unique_ptr<FileOutputBuffer>>
+FileOutputBuffer::create(size_t Size, raw_pwrite_stream &Out) {
+  return createInMemoryStreamBuffer("-", Size, Out);
+}
+// EVM local end
 
 // Create an instance of FileOutputBuffer.
 Expected<std::unique_ptr<FileOutputBuffer>>

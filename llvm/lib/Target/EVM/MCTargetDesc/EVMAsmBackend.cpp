@@ -97,18 +97,14 @@ bool EVMAsmBackend::writeNopData(raw_ostream &OS, uint64_t Count,
 const MCFixupKindInfo &EVMAsmBackend::getFixupKindInfo(MCFixupKind Kind) const {
   const static std::array<MCFixupKindInfo, EVM::NumTargetFixupKinds> Infos = {
       {// This table *must* be in the order that the fixup_* kinds are defined
-       // in
-       // EVMFixupKinds.h.
+       // in EVMFixupKinds.h.
        //
        // Name             Offset (bits) Size (bits) Flags
-       {"fixup_SecRel_i64", 8, 8 * 8, MCFixupKindInfo::FKF_IsTarget},
-       {"fixup_SecRel_i56", 8, 8 * 7, MCFixupKindInfo::FKF_IsTarget},
-       {"fixup_SecRel_i48", 8, 8 * 6, MCFixupKindInfo::FKF_IsTarget},
-       {"fixup_SecRel_i40", 8, 8 * 5, MCFixupKindInfo::FKF_IsTarget},
-       {"fixup_SecRel_i32", 8, 8 * 4, MCFixupKindInfo::FKF_IsTarget},
-       {"fixup_SecRel_i24", 8, 8 * 3, MCFixupKindInfo::FKF_IsTarget},
-       {"fixup_SecRel_i16", 8, 8 * 2, MCFixupKindInfo::FKF_IsTarget},
-       {"fixup_SecRel_i8", 8, 8 * 1, MCFixupKindInfo::FKF_IsTarget}}};
+       {"fixup_SecRel_i32", 0, 8 * 4, MCFixupKindInfo::FKF_IsTarget},
+       {"fixup_SecRel_i24", 0, 8 * 3, MCFixupKindInfo::FKF_IsTarget},
+       {"fixup_SecRel_i16", 0, 8 * 2, MCFixupKindInfo::FKF_IsTarget},
+       {"fixup_SecRel_i8", 0, 8 * 1, MCFixupKindInfo::FKF_IsTarget},
+       {"fixup_Data_i32", 0, 8 * 4, MCFixupKindInfo::FKF_IsTarget}}};
 
   if (Kind < FirstTargetFixupKind)
     llvm_unreachable("Unexpected fixup kind");
@@ -128,6 +124,12 @@ bool EVMAsmBackend::evaluateTargetFixup(const MCAssembler &Asm,
   assert(unsigned(Fixup.getTargetKind() - FirstTargetFixupKind) <
              getNumFixupKinds() &&
          "Invalid kind!");
+
+  if (int64_t ResVal; Fixup.getValue()->evaluateAsAbsolute(ResVal, Layout)) {
+    Value = ResVal;
+    return true;
+  }
+
   Value = Target.getConstant();
   if (const MCSymbolRefExpr *A = Target.getSymA()) {
     const MCSymbol &Sym = A->getSymbol();
@@ -143,19 +145,22 @@ void EVMAsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
                                MutableArrayRef<char> Data, uint64_t Value,
                                bool IsResolved,
                                const MCSubtargetInfo *STI) const {
-  const MCFixupKindInfo &Info = getFixupKindInfo(Fixup.getKind());
-  unsigned NumBytes = alignTo(Info.TargetSize, 8) / 8;
+  if (!IsResolved)
+    return;
 
   // Doesn't change encoding.
   if (Value == 0)
     return;
 
-  unsigned Offset = Fixup.getOffset() + Info.TargetOffset / 8;
+  const MCFixupKindInfo &Info = getFixupKindInfo(Fixup.getKind());
+  unsigned NumBytes = alignTo(Info.TargetSize, 8) / 8;
+  unsigned Offset = Fixup.getOffset();
   assert(Offset + NumBytes <= Data.size() && "Invalid fixup offset!");
 
   LLVM_DEBUG(dbgs() << "applyFixup: value: " << Value
                     << ", nbytes: " << NumBytes << ", sym: ");
-  LLVM_DEBUG(Target.getSymA()->print(dbgs(), nullptr));
+  if (Target.getSymA())
+    LLVM_DEBUG(Target.getSymA()->print(dbgs(), nullptr));
   LLVM_DEBUG(dbgs() << '\n');
 
   // For each byte of the fragment that the fixup touches, mask in the
@@ -171,18 +176,6 @@ void EVMAsmBackend::relaxInstruction(MCInst &Inst,
   switch (Inst.getOpcode()) {
   default:
     llvm_unreachable("Unexpected instruction for relaxation");
-  case EVM::PUSH8_S:
-    Inst.setOpcode(EVM::PUSH7_S);
-    break;
-  case EVM::PUSH7_S:
-    Inst.setOpcode(EVM::PUSH6_S);
-    break;
-  case EVM::PUSH6_S:
-    Inst.setOpcode(EVM::PUSH5_S);
-    break;
-  case EVM::PUSH5_S:
-    Inst.setOpcode(EVM::PUSH4_S);
-    break;
   case EVM::PUSH4_S:
     Inst.setOpcode(EVM::PUSH3_S);
     break;
@@ -200,6 +193,7 @@ bool EVMAsmBackend::fixupNeedsRelaxationAdvanced(const MCFixup &Fixup,
                                                  const MCRelaxableFragment *DF,
                                                  const MCAsmLayout &Layout,
                                                  const bool WasForced) const {
+  unsigned FixUpKind = Fixup.getTargetKind();
   assert(Resolved);
   unsigned Opcode = EVM::getPUSHOpcode(APInt(256, Value));
   // The first byte of an instruction is an opcode, so
@@ -211,17 +205,9 @@ bool EVMAsmBackend::fixupNeedsRelaxationAdvanced(const MCFixup &Fixup,
   LLVM_DEBUG(Fixup.getValue()->print(dbgs(), nullptr));
   LLVM_DEBUG(dbgs() << '\n');
 
-  switch (Fixup.getTargetKind()) {
+  switch (FixUpKind) {
   default:
     llvm_unreachable("Unexpected target fixup kind");
-  case EVM::fixup_SecRel_i64:
-    return OffsetByteWidth < 8;
-  case EVM::fixup_SecRel_i56:
-    return OffsetByteWidth < 7;
-  case EVM::fixup_SecRel_i48:
-    return OffsetByteWidth < 6;
-  case EVM::fixup_SecRel_i40:
-    return OffsetByteWidth < 5;
   case EVM::fixup_SecRel_i32:
     return OffsetByteWidth < 4;
   case EVM::fixup_SecRel_i24:
@@ -236,10 +222,6 @@ bool EVMAsmBackend::mayNeedRelaxation(const MCInst &Inst,
   switch (Inst.getOpcode()) {
   default:
     return false;
-  case EVM::PUSH8_S:
-  case EVM::PUSH7_S:
-  case EVM::PUSH6_S:
-  case EVM::PUSH5_S:
   case EVM::PUSH4_S:
   case EVM::PUSH3_S:
   case EVM::PUSH2_S:

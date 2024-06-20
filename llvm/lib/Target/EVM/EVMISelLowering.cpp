@@ -18,6 +18,8 @@
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/IntrinsicsEVM.h"
+#include "llvm/MC/MCContext.h"
+#include "llvm/MC/MCSymbol.h"
 
 using namespace llvm;
 
@@ -82,6 +84,7 @@ EVMTargetLowering::EVMTargetLowering(const TargetMachine &TM,
                      Custom);
 
   setOperationAction(ISD::INTRINSIC_VOID, MVT::Other, Custom);
+  setOperationAction(ISD::INTRINSIC_WO_CHAIN, MVT::Other, Custom);
 
   setJumpIsExpensive(false);
   setMaximumJumpTableSize(0);
@@ -117,6 +120,8 @@ SDValue EVMTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
     llvm_unreachable("Unimplemented operation lowering");
   case ISD::GlobalAddress:
     return LowerGlobalAddress(Op, DAG);
+  case ISD::INTRINSIC_WO_CHAIN:
+    return lowerINTRINSIC_WO_CHAIN(Op, DAG);
   case ISD::LOAD:
     return LowerLOAD(Op, DAG);
   case ISD::STORE:
@@ -139,6 +144,31 @@ SDValue EVMTargetLowering::LowerGlobalAddress(SDValue Op,
   return DAG.getNode(
       EVMISD::TARGET_ADDR_WRAPPER, DL, VT,
       DAG.getTargetGlobalAddress(GA->getGlobal(), DL, VT, GA->getOffset()));
+}
+
+SDValue EVMTargetLowering::lowerINTRINSIC_WO_CHAIN(SDValue Op,
+                                                   SelectionDAG &DAG) const {
+  unsigned IntrID = cast<ConstantSDNode>(Op.getOperand(0))->getZExtValue();
+  switch (IntrID) {
+  default:
+    return SDValue();
+  case Intrinsic::evm_datasize:
+  case Intrinsic::evm_dataoffset:
+    return lowerLinkerIntrinsic(IntrID, Op, DAG);
+  }
+}
+
+SDValue EVMTargetLowering::lowerLinkerIntrinsic(unsigned IntrID, SDValue Op,
+                                                SelectionDAG &DAG) const {
+  const SDLoc DL(Op);
+  EVT Ty = Op.getValueType();
+
+  uint64_t Value = cast<ConstantSDNode>(Op.getOperand(1))->getZExtValue();
+  unsigned Opc =
+      (IntrID == Intrinsic::evm_dataoffset) ? EVM::DATAOFFSET : EVM::DATASIZE;
+  return SDValue(DAG.getMachineNode(
+                     Opc, DL, Ty, DAG.getTargetConstant(Value, DL, MVT::i256)),
+                 0);
 }
 
 SDValue EVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {

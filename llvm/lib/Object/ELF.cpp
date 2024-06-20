@@ -185,11 +185,20 @@ StringRef llvm::object::getELFRelocationTypeName(uint32_t Machine,
   case ELF::EM_ERAVM:
     switch (Type) {
 #include "llvm/BinaryFormat/ELFRelocs/EraVM.def"
-    default:
+  default:
       break;
     }
     break;
   // EraVM local end
+  // EVM local begin
+  case ELF::EM_EVM:
+    switch (Type) {
+#include "llvm/BinaryFormat/ELFRelocs/EVM.def"
+    default:
+      break;
+    }
+    break;
+  // EVM local end
   default:
     break;
   }
@@ -242,6 +251,10 @@ uint32_t llvm::object::getELFRelativeRelocationType(uint32_t Machine) {
     break;
   case ELF::EM_LOONGARCH:
     return ELF::R_LARCH_RELATIVE;
+  // EVM local begin
+  case ELF::EM_EVM:
+    break;
+  // EVM local end
   default:
     break;
   }

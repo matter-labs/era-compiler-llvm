@@ -18,10 +18,10 @@ OUTPUT = """struct AvailableComponent {
     bool IsInstalled;
 
     /// The list of libraries required when linking this component.
-    const char *RequiredLibraries[84];
-  } AvailableComponents[84] = {
+    const char *RequiredLibraries[88];
+  } AvailableComponents[88] = {
   { "aggressiveinstcombine", "LLVMAggressiveInstCombine", true, {"analysis", "core", "support", "transformutils"} },
-{ "all", nullptr, true, {"demangle", "support", "tablegen", "core", "fuzzmutate", "filecheck", "interfacestub", "irreader", "codegen", "selectiondag", "asmprinter", "mirparser", "globalisel", "binaryformat", "bitreader", "bitwriter", "bitstreamreader", "dwarflinker", "extensions", "frontendopenmp", "transformutils", "instrumentation", "aggressiveinstcombine", "instcombine", "scalaropts", "ipo", "vectorize", "objcarcopts", "coroutines", "cfguard", "linker", "analysis", "lto", "mc", "mcparser", "mcdisassembler", "mca", "object", "objectyaml", "option", "remarks", "debuginfodwarf", "debuginfogsym", "debuginfomsf", "debuginfocodeview", "debuginfopdb", "symbolize", "executionengine", "interpreter", "jitlink", "mcjit", "orcjit", "orcshared", "orctargetprocess", "runtimedyld", "target", "asmparser", "lineeditor", "profiledata", "coverage", "passes", "textapi", "dlltooldriver", "libdriver", "xray", "windowsmanifest"} },
+{ "all", nullptr, true, {"demangle", "support", "tablegen", "core", "fuzzmutate", "filecheck", "interfacestub", "irreader", "codegen", "selectiondag", "asmprinter", "mirparser", "globalisel", "binaryformat", "bitreader", "bitwriter", "bitstreamreader", "dwarflinker", "extensions", "frontendopenmp", "transformutils", "instrumentation", "aggressiveinstcombine", "instcombine", "scalaropts", "ipo", "vectorize", "objcarcopts", "coroutines", "cfguard", "linker", "analysis", "lto", "mc", "mcparser", "mcdisassembler", "mca", "object", "objectyaml", "option", "remarks", "debuginfodwarf", "debuginfogsym", "debuginfomsf", "debuginfocodeview", "debuginfopdb", "symbolize", "executionengine", "interpreter", "jitlink", "mcjit", "orcjit", "orcshared", "orctargetprocess", "runtimedyld", "target", "asmparser", "lineeditor", "profiledata", "coverage", "passes", "textapi", "dlltooldriver", "libdriver", "xray", "windowsmanifest", "lld"} },
 { "all-targets", nullptr, true, {} },
 { "analysis", "LLVMAnalysis", true, {"binaryformat", "core", "object", "profiledata", "support"} },
 { "asmparser", "LLVMAsmParser", true, {"binaryformat", "core", "support"} },
@@ -91,6 +91,10 @@ OUTPUT = """struct AvailableComponent {
 { "vectorize", "LLVMVectorize", true, {"analysis", "core", "support", "transformutils"} },
 { "windowsmanifest", "LLVMWindowsManifest", true, {"support"} },
 { "xray", "LLVMXRay", true, {"support", "object"} },
+{ "lldcommon", "lldCommon", true, {} },
+{ "lldelf", "lldELF", true, {} },
+{ "lldc", "lldC", true, {} },
+{ "lld", "null", true, {"lldcommon", "lldelf", "lldc"} },
 };
 """
 
