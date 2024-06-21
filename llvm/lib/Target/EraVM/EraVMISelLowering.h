@@ -56,6 +56,7 @@ public:
   SDValue LowerBlockAddress(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerExternalSymbol(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerBR_CC(SDValue Op, SelectionDAG &DAG) const;
+  SDValue LowerBRCOND(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerBR_JT(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSELECT(SDValue Op, SelectionDAG &DAG) const;
   SDValue LowerSELECT_CC(SDValue Op, SelectionDAG &DAG) const;
@@ -203,6 +204,8 @@ public:
 
   void AdjustInstrPostInstrSelection(MachineInstr &MI,
                                      SDNode *Node) const override;
+
+  void finalizeLowering(MachineFunction &MF) const override;
 
 private:
   SDValue LowerFormalArguments(SDValue Chain, CallingConv::ID CallConv,

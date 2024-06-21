@@ -102,11 +102,7 @@ void EraVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
 
   // Do some manual expansion
   unsigned Opc = MI->getOpcode();
-  switch (Opc) {
-  default:
-    // Change nothing by default
-    break;
-  case EraVM::J_s: {
+  if (Opc == EraVM::J_s) {
     MCOperand MCOp;
     TmpInst.setOpcode(EraVM::JCs);
     // Operand: dest
@@ -120,27 +116,6 @@ void EraVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
     TmpInst.addOperand(MCOperand::createImm(0));
     EmitToStreamer(*OutStreamer, TmpInst);
     return;
-  }
-  case EraVM::DEFAULT_FAR_REVERT:
-  case EraVM::DEFAULT_FAR_RETURN: {
-    bool IsRevert = Opc == EraVM::DEFAULT_FAR_REVERT;
-    MCSymbol *DefaultFarReturnSym = OutContext.getOrCreateSymbol(
-        IsRevert ? "DEFAULT_FAR_REVERT" : "DEFAULT_FAR_RETURN");
-    // Expand to: ret/revert.to_label $rs0, @DEFAULT_FAR_RETURN
-    MCOperand MCOp;
-    TmpInst.setOpcode(IsRevert ? EraVM::REVERTrl : EraVM::RETrl);
-    // Operand: rs0
-    lowerOperand(MI->getOperand(0), MCOp);
-    TmpInst.addOperand(MCOp);
-    // Operand: default dest
-    TmpInst.addOperand(MCOperand::createExpr(
-        MCSymbolRefExpr::create(DefaultFarReturnSym, OutContext)));
-    // Operand: cc
-    lowerOperand(MI->getOperand(1), MCOp);
-    TmpInst.addOperand(MCOp);
-    EmitToStreamer(*OutStreamer, TmpInst);
-    return;
-  }
   }
 
   if (MI->isPseudo()) {

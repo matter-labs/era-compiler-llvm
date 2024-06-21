@@ -8,8 +8,9 @@
 //
 // This file implements a pre-ra pass to optimize SELECT instructions. It tries
 // to fold SELECT with its user in case one of the input operands of SELECT
-// is immediate zero and it tries to fold ADD with SELECT if one of the inputs
-// of ADD matches with the input of SELECT.
+// is immediate zero and it tries to fold arithmetic and bitwise instructions
+// with SELECT if one of the inputs of these instructions matches with the input
+// of SELECT.
 //
 //===----------------------------------------------------------------------===//
 
@@ -82,6 +83,34 @@ private:
                 Register In1, unsigned NewOpcode, unsigned NewCC,
                 Register TieReg) const;
 
+  /// Fold MI into SelectMI and return a folded instruction. To do this,
+  /// we clone MI and placing new instruction just before the select,
+  /// change its output with the output register of the SelectMI
+  /// instruction, update conditional code with NewCC, tie the TieReg
+  /// with the output register and add implicit flags because we are
+  /// updating conditional code.
+  ///
+  /// Example:
+  ///
+  ///  folding
+  ///    %2:gr256 = ADDrrr_s %0:gr256, %1:gr256, i256 0
+  ///    %4:gr256 = SELrrr %2:gr256, %0:gr256, i256 2, implicit $flags
+  ///  into
+  ///    %4:gr256 = ADDrrr_s %0:gr256, %1:gr256, 2,
+  ///               implicit %0:gr256(tied-def 0), implicit $flags
+  ///
+  MachineInstr *foldToSelect(MachineInstr &MI, MachineInstr &SelectMI,
+                             unsigned NewCC, Register TieReg) const;
+
+  /// Return an out register of a folding-candidate MI. In case MI has two
+  /// outputs, we can only fold instruction iff one output is used and the
+  /// other is not.
+  /// In case both outputs are used and one of them is used by a SELECT,
+  /// folding will make this instruction to execute conditionally meaning
+  /// that other output will be calculated iff the condition is met, thus
+  /// the folded instruction will not always produce the expected results.
+  Register getOutRegToFold(const MachineInstr &MI) const;
+
   /// In case one of the input operand of SELECT is immediate zero, then it is
   /// possible to fold it with its sole user to result in just one folded
   /// instruction.
@@ -98,9 +127,10 @@ private:
   /// if z and y can be allocated to same reg. The tie is used to ensure this.
   bool tryFoldSelectZero(MachineBasicBlock &MBB);
 
-  /// In case ADD is fed into a SELECT, and one of the inputs of ADD matches
-  /// with the input of SELECT, then it is possible to fold ADD with SELECT
-  /// to result in just one folded instruction.
+  /// In case an arithmetic or a bitwise instruction is fed into a SELECT, and
+  /// one of the inputs of these instructions matches with the input of SELECT,
+  /// then it is possible to fold it with SELECT to result in just one folded
+  /// instruction.
   ///
   /// A typical case is like below:
   ///
@@ -113,7 +143,7 @@ private:
   ///
   /// if outSEL and x/y can be allocated to same reg.
   /// The tie is used to ensure this.
-  bool tryFoldAddToSelect(MachineBasicBlock &MBB);
+  bool tryFoldToSelect(MachineBasicBlock &MBB);
 };
 
 char EraVMOptimizeSelectPreRA::ID = 0;
@@ -208,6 +238,67 @@ MachineInstr *EraVMOptimizeSelectPreRA::getFoldedInst(
   return NewMI;
 }
 
+MachineInstr *EraVMOptimizeSelectPreRA::foldToSelect(MachineInstr &MI,
+                                                     MachineInstr &SelectMI,
+                                                     unsigned NewCC,
+                                                     Register TieReg) const {
+  // Clone the original instruction.
+  auto &MF = *MI.getMF();
+  auto *NewMI = MF.CloneMachineInstr(&MI);
+
+  // Place the new instruction right before the SELECT instruction.
+  SelectMI.getParent()->insert(SelectMI, NewMI);
+
+  Register OutReg = getOutRegToFold(*NewMI);
+  assert(OutReg != EraVM::NoRegister && "Unexpected output register.");
+
+  // Find the def that needs to be updated.
+  auto *DefMOToUpdate =
+      llvm::find_if(NewMI->defs(), [OutReg](MachineOperand &MO) {
+        return MO.getReg() == OutReg;
+      });
+  assert(DefMOToUpdate != NewMI->defs().end() &&
+         "Didn't find the def register to update.");
+
+  // Change the def register to the def register of the select instruction.
+  DefMOToUpdate->setReg(SelectMI.getOperand(0).getReg());
+
+  // Get the def operand idx to tie.
+  unsigned DefIdxToTie = DefMOToUpdate->getOperandNo();
+
+  EraVM::ccIterator(*NewMI)->ChangeToImmediate(NewCC);
+  MachineInstrBuilder(MF, NewMI)
+      .addReg(TieReg, RegState::Implicit)
+      .addReg(EraVM::Flags, RegState::Implicit);
+
+  // Add tie to ensure those two operands will get same reg
+  // after RA pass. This is the key to make transformation in this pass
+  // correct.
+  NewMI->tieOperands(DefIdxToTie, NewMI->getNumOperands() - 2);
+  return NewMI;
+}
+
+Register
+EraVMOptimizeSelectPreRA::getOutRegToFold(const MachineInstr &MI) const {
+  assert((MI.getNumExplicitDefs() == 1 || MI.getNumExplicitDefs() == 2) &&
+         "Unexpected number of register outputs");
+
+  if (MI.getNumExplicitDefs() == 2) {
+    // In case both outputs are used, bail out.
+    if (!RegInfo->use_nodbg_empty(EraVM::out0Iterator(MI)->getReg()) &&
+        !RegInfo->use_nodbg_empty(EraVM::out1Iterator(MI)->getReg()))
+      return EraVM::NoRegister;
+
+    // Return the output that should have the use.
+    return RegInfo->use_nodbg_empty(EraVM::out0Iterator(MI)->getReg())
+               ? EraVM::out1Iterator(MI)->getReg()
+               : EraVM::out0Iterator(MI)->getReg();
+  }
+
+  // Return an output for single register output.
+  return EraVM::out0Iterator(MI)->getReg();
+}
+
 bool EraVMOptimizeSelectPreRA::tryFoldSelectZero(MachineBasicBlock &MBB) {
   SmallPtrSet<MachineInstr *, 4> ToRemove;
   for (auto &MI : MBB) {
@@ -297,58 +388,59 @@ bool EraVMOptimizeSelectPreRA::tryFoldSelectZero(MachineBasicBlock &MBB) {
   return !ToRemove.empty();
 }
 
-bool EraVMOptimizeSelectPreRA::tryFoldAddToSelect(MachineBasicBlock &MBB) {
+bool EraVMOptimizeSelectPreRA::tryFoldToSelect(MachineBasicBlock &MBB) {
   SmallVector<MachineInstr *, 16> ToRemove;
   SmallPtrSet<MachineInstr *, 16> UsesToUpdate;
 
-  // 1. Collect all instructions to be combined.
   for (auto &MI : MBB) {
-    if (!TII->isAdd(MI) || TII->getCCCode(MI) != EraVMCC::COND_NONE ||
+    if ((!TII->isArithmetic(MI) && !TII->isBitwise(MI)) ||
+        TII->getCCCode(MI) != EraVMCC::COND_NONE ||
         EraVMInstrInfo::isFlagSettingInstruction(MI) ||
         !EraVM::hasRROutAddressingMode(MI))
       continue;
 
-    // It's expected that if there are more uses of add, it's very unlikely that
-    // all of them are select instruction where folding is feasible.
-    Register OutAddReg = EraVM::out0Iterator(MI)->getReg();
-    if (!RegInfo->hasOneNonDBGUser(OutAddReg))
+    // If there are more than one output, we have to make sure the
+    // other output is not used before we can fold this instruction.
+    Register OutReg = getOutRegToFold(MI);
+    if (OutReg == EraVM::NoRegister)
       continue;
 
-    MachineInstr &UseMI = *RegInfo->use_instr_nodbg_begin(OutAddReg);
+    // It's expected that if there are more uses, it's very unlikely that
+    // all of them are select instruction where folding is feasible.
+    if (!RegInfo->hasOneNonDBGUser(OutReg))
+      continue;
+
+    MachineInstr &UseMI = *RegInfo->use_instr_nodbg_begin(OutReg);
     if (UsesToUpdate.count(&UseMI))
       continue;
 
-    SmallSet<Register, 2> InAddRegs;
-    InAddRegs.insert(EraVM::in1Iterator(MI)->getReg());
+    SmallSet<Register, 2> InRegs;
+    InRegs.insert(EraVM::in1Iterator(MI)->getReg());
     if (EraVM::hasRRInAddressingMode(MI))
-      InAddRegs.insert(EraVM::in0Iterator(MI)->getReg());
+      InRegs.insert(EraVM::in0Iterator(MI)->getReg());
 
-    // In order to fold add to select, we expect that other input of a select
-    // instruction is matching with one of the add inputs.
+    // In order to fold, we expect that other input of a select instruction
+    // is matching with one of the MI inputs.
     if (UseMI.getOpcode() != EraVM::SELrrr ||
-        (!InAddRegs.count(EraVM::in0Iterator(UseMI)->getReg()) &&
-         !InAddRegs.count(EraVM::in1Iterator(UseMI)->getReg())))
+        (!InRegs.count(EraVM::in0Iterator(UseMI)->getReg()) &&
+         !InRegs.count(EraVM::in1Iterator(UseMI)->getReg())))
       continue;
 
-    bool OutAddIsIn1Use = EraVM::out0Iterator(MI)->getReg() ==
-                          EraVM::in1Iterator(UseMI)->getReg();
+    bool OutIsIn1Use = OutReg == EraVM::in1Iterator(UseMI)->getReg();
     auto CC = getImmOrCImm(*EraVM::ccIterator(UseMI));
 
     // The COND_OF is overflow LT which hasn't reversal version, so we don't
-    //  attempt to inverse it.
-    if (OutAddIsIn1Use && CC == EraVMCC::COND_OF)
+    // attempt to inverse it.
+    if (OutIsIn1Use && CC == EraVMCC::COND_OF)
       continue;
 
-    auto CCNewMI = OutAddIsIn1Use ? InverseCond[CC] : CC;
-    Register TieReg = OutAddIsIn1Use ? EraVM::in0Iterator(UseMI)->getReg()
-                                     : EraVM::in1Iterator(UseMI)->getReg();
+    auto CCNewMI = OutIsIn1Use ? InverseCond[CC] : CC;
+    Register TieReg = OutIsIn1Use ? EraVM::in0Iterator(UseMI)->getReg()
+                                  : EraVM::in1Iterator(UseMI)->getReg();
 
-    [[maybe_unused]] auto *NewMI = getFoldedInst(
-        UseMI, MI, EraVM::in0Range(MI), EraVM::in1Iterator(MI)->getReg(),
-        MI.getOpcode(), CCNewMI, TieReg);
-    LLVM_DEBUG(dbgs() << "== Folding add:"; MI.dump();
-               dbgs() << "       and use:"; UseMI.dump();
-               dbgs() << "          into:"; NewMI->dump(););
+    [[maybe_unused]] auto *NewMI = foldToSelect(MI, UseMI, CCNewMI, TieReg);
+    LLVM_DEBUG(dbgs() << "== Folding:"; MI.dump(); dbgs() << "   and use:";
+               UseMI.dump(); dbgs() << "      into:"; NewMI->dump(););
 
     UsesToUpdate.insert(&UseMI);
     ToRemove.emplace_back(&MI);
@@ -373,7 +465,7 @@ bool EraVMOptimizeSelectPreRA::runOnMachineFunction(MachineFunction &MF) {
   bool Changed = false;
   for (MachineBasicBlock &MBB : MF) {
     Changed |= tryFoldSelectZero(MBB);
-    Changed |= tryFoldAddToSelect(MBB);
+    Changed |= tryFoldToSelect(MBB);
   }
   return Changed;
 }
