@@ -2858,6 +2858,22 @@ template <class ELFT> void Writer<ELFT>::openFile() {
     return;
   }
 
+  // EVM local begin
+  if (config->useMemoryBuffer) {
+    Expected<std::unique_ptr<FileOutputBuffer>> bufferOrErr =
+        FileOutputBuffer::create(fileSize, *config->outBuffer);
+
+    if (!bufferOrErr) {
+      error("failed to create memory buffer for the result: " +
+            llvm::toString(bufferOrErr.takeError()));
+      return;
+    }
+
+    buffer = std::move(*bufferOrErr);
+    Out::bufferStart = buffer->getBufferStart();
+    return;
+  }
+  // EVM local end
   unlinkAsync(config->outputFile);
   unsigned flags = 0;
   if (!config->relocatable)
