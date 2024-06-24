@@ -146,39 +146,39 @@ define void @expand_unknown_p1_p3(ptr addrspace(1) %dst, ptr addrspace(3) %src, 
 ; CHECK-LABEL: define void @expand_unknown_p1_p3
 ; CHECK-SAME: (ptr addrspace(1) [[DST:%.*]], ptr addrspace(3) [[SRC:%.*]], i256 [[SIZE:%.*]]) {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    [[LOOP_COUNT:%.*]] = udiv i256 [[SIZE]], 32
-; CHECK-NEXT:    [[RESIDUAL_BYTES:%.*]] = urem i256 [[SIZE]], 32
-; CHECK-NEXT:    [[TMP0:%.*]] = icmp ne i256 [[LOOP_COUNT]], 0
+; CHECK-NEXT:    [[LOOP_BYTES_COUNT:%.*]] = and i256 [[SIZE]], -32
+; CHECK-NEXT:    [[RESIDUAL_BYTES:%.*]] = and i256 [[SIZE]], 31
+; CHECK-NEXT:    [[DST_ADDR_END:%.*]] = getelementptr inbounds i8, ptr addrspace(1) [[DST]], i256 [[LOOP_BYTES_COUNT]]
+; CHECK-NEXT:    [[TMP0:%.*]] = icmp ne i256 [[LOOP_BYTES_COUNT]], 0
 ; CHECK-NEXT:    br i1 [[TMP0]], label [[LOAD_STORE_LOOP_PREHEADER:%.*]], label [[MEMCPY_RESIDUAL_COND:%.*]]
 ; CHECK:       load-store-loop-preheader:
 ; CHECK-NEXT:    br label [[LOAD_STORE_LOOP:%.*]]
 ; CHECK:       load-store-loop:
-; CHECK-NEXT:    [[LOOP_INDEX:%.*]] = phi i256 [ 0, [[LOAD_STORE_LOOP_PREHEADER]] ], [ [[TMP4:%.*]], [[LOAD_STORE_LOOP]] ]
-; CHECK-NEXT:    [[TMP1:%.*]] = getelementptr inbounds i256, ptr addrspace(3) [[SRC]], i256 [[LOOP_INDEX]]
-; CHECK-NEXT:    [[TMP2:%.*]] = load i256, ptr addrspace(3) [[TMP1]], align 1
-; CHECK-NEXT:    [[TMP3:%.*]] = getelementptr inbounds i256, ptr addrspace(1) [[DST]], i256 [[LOOP_INDEX]]
-; CHECK-NEXT:    store i256 [[TMP2]], ptr addrspace(1) [[TMP3]], align 1
-; CHECK-NEXT:    [[TMP4]] = add i256 [[LOOP_INDEX]], 1
-; CHECK-NEXT:    [[TMP5:%.*]] = icmp ult i256 [[TMP4]], [[LOOP_COUNT]]
-; CHECK-NEXT:    br i1 [[TMP5]], label [[LOAD_STORE_LOOP]], label [[LOAD_STORE_LOOP_EXIT:%.*]]
+; CHECK-NEXT:    [[SRC_ADDR:%.*]] = phi ptr addrspace(3) [ [[SRC]], [[LOAD_STORE_LOOP_PREHEADER]] ], [ [[TMP1:%.*]], [[LOAD_STORE_LOOP]] ]
+; CHECK-NEXT:    [[DST_ADDR:%.*]] = phi ptr addrspace(1) [ [[DST]], [[LOAD_STORE_LOOP_PREHEADER]] ], [ [[TMP2:%.*]], [[LOAD_STORE_LOOP]] ]
+; CHECK-NEXT:    [[TMP1]] = getelementptr inbounds i8, ptr addrspace(3) [[SRC_ADDR]], i256 32
+; CHECK-NEXT:    [[TMP2]] = getelementptr inbounds i8, ptr addrspace(1) [[DST_ADDR]], i256 32
+; CHECK-NEXT:    [[TMP3:%.*]] = load i256, ptr addrspace(3) [[SRC_ADDR]], align 1
+; CHECK-NEXT:    store i256 [[TMP3]], ptr addrspace(1) [[DST_ADDR]], align 1
+; CHECK-NEXT:    [[TMP4:%.*]] = icmp eq ptr addrspace(1) [[TMP2]], [[DST_ADDR_END]]
+; CHECK-NEXT:    br i1 [[TMP4]], label [[LOAD_STORE_LOOP_EXIT:%.*]], label [[LOAD_STORE_LOOP]]
 ; CHECK:       load-store-loop-exit:
 ; CHECK-NEXT:    br label [[MEMCPY_RESIDUAL_COND]]
 ; CHECK:       memcpy-residual-cond:
-; CHECK-NEXT:    [[TMP6:%.*]] = icmp ne i256 [[RESIDUAL_BYTES]], 0
-; CHECK-NEXT:    br i1 [[TMP6]], label [[MEMCPY_RESIDUAL:%.*]], label [[MEMCPY_SPLIT:%.*]]
+; CHECK-NEXT:    [[TMP5:%.*]] = icmp ne i256 [[RESIDUAL_BYTES]], 0
+; CHECK-NEXT:    br i1 [[TMP5]], label [[MEMCPY_RESIDUAL:%.*]], label [[MEMCPY_SPLIT:%.*]]
 ; CHECK:       memcpy-residual:
-; CHECK-NEXT:    [[TMP7:%.*]] = getelementptr inbounds i256, ptr addrspace(3) [[SRC]], i256 [[LOOP_COUNT]]
-; CHECK-NEXT:    [[TMP8:%.*]] = load i256, ptr addrspace(3) [[TMP7]], align 1
-; CHECK-NEXT:    [[TMP9:%.*]] = mul i256 8, [[RESIDUAL_BYTES]]
-; CHECK-NEXT:    [[TMP10:%.*]] = sub i256 256, [[TMP9]]
-; CHECK-NEXT:    [[TMP11:%.*]] = shl i256 -1, [[TMP10]]
-; CHECK-NEXT:    [[TMP12:%.*]] = and i256 [[TMP8]], [[TMP11]]
-; CHECK-NEXT:    [[TMP13:%.*]] = getelementptr inbounds i256, ptr addrspace(1) [[DST]], i256 [[LOOP_COUNT]]
-; CHECK-NEXT:    [[TMP14:%.*]] = load i256, ptr addrspace(1) [[TMP13]], align 1
-; CHECK-NEXT:    [[TMP15:%.*]] = lshr i256 -1, [[TMP9]]
-; CHECK-NEXT:    [[TMP16:%.*]] = and i256 [[TMP14]], [[TMP15]]
-; CHECK-NEXT:    [[TMP17:%.*]] = or i256 [[TMP12]], [[TMP16]]
-; CHECK-NEXT:    store i256 [[TMP17]], ptr addrspace(1) [[TMP13]], align 1
+; CHECK-NEXT:    [[TMP6:%.*]] = getelementptr inbounds i8, ptr addrspace(3) [[SRC]], i256 [[LOOP_BYTES_COUNT]]
+; CHECK-NEXT:    [[TMP7:%.*]] = load i256, ptr addrspace(3) [[TMP6]], align 1
+; CHECK-NEXT:    [[TMP8:%.*]] = shl i256 [[RESIDUAL_BYTES]], 3
+; CHECK-NEXT:    [[TMP9:%.*]] = sub i256 256, [[TMP8]]
+; CHECK-NEXT:    [[TMP10:%.*]] = shl i256 -1, [[TMP9]]
+; CHECK-NEXT:    [[TMP11:%.*]] = and i256 [[TMP7]], [[TMP10]]
+; CHECK-NEXT:    [[TMP12:%.*]] = load i256, ptr addrspace(1) [[DST_ADDR_END]], align 1
+; CHECK-NEXT:    [[TMP13:%.*]] = lshr i256 -1, [[TMP8]]
+; CHECK-NEXT:    [[TMP14:%.*]] = and i256 [[TMP12]], [[TMP13]]
+; CHECK-NEXT:    [[TMP15:%.*]] = or i256 [[TMP11]], [[TMP14]]
+; CHECK-NEXT:    store i256 [[TMP15]], ptr addrspace(1) [[DST_ADDR_END]], align 1
 ; CHECK-NEXT:    br label [[MEMCPY_SPLIT]]
 ; CHECK:       memcpy-split:
 ; CHECK-NEXT:    ret void
