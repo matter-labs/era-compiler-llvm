@@ -125,15 +125,13 @@ static void createEraVMMemMoveLoop(Instruction *InsertBefore, Value *SrcAddr,
   auto *CopyFwdBB = BasicBlock::Create(Ctx, "copy-forward", F, ExitBB);
   auto *CopyFwdResidualCondBB =
       BasicBlock::Create(Ctx, "copy-forward-residual-cond", F, ExitBB);
-  // Create an empty preheader BB for copy-forward-loop since in this loop
-  // we can use indexed instructions and EraVMIndexedMemOpsPrepare
-  // requires loops to be in a simplify form.
+  // Create an empty preheader BB for copy-forward-loop so this loop is in a
+  // simplify form. Maybe some future loop optimizations will require this.
   auto *CopyFwdLoopPreheaderBB =
       BasicBlock::Create(Ctx, "copy-forward-loop-preheader", F, ExitBB);
   auto *CopyFwdLoopBB = BasicBlock::Create(Ctx, "copy-forward-loop", F, ExitBB);
-  // Create an empty exit BB for copy-forward-loop since in this loop
-  // we can use indexed instructions and EraVMIndexedMemOpsPrepare
-  // requires loops to be in a simplify form.
+  // Create an empty exit BB for copy-forward-loop so this loop is in a
+  // simplify form. Maybe some future loop optimizations will require this.
   auto *CopyFwdLoopExitBB =
       BasicBlock::Create(Ctx, "copy-forward-loop-exit", F, ExitBB);
   auto *CopyFwdResidualBB =
@@ -147,8 +145,6 @@ static void createEraVMMemMoveLoop(Instruction *InsertBefore, Value *SrcAddr,
   BranchInst::Create(CopyBwdBB, CopyFwdBB, PtrCompare, OrigBB);
   BranchInst::Create(CopyBwdResidualCondBB, CopyBwdLoopPreheaderBB,
                      CompareLoopBytesCount, CopyBwdBB);
-  BranchInst::Create(CopyFwdResidualCondBB, CopyFwdLoopPreheaderBB,
-                     CompareLoopBytesCount, CopyFwdBB);
   BranchInst::Create(ExitBB, ResBB, CompareResidualBytes,
                      CopyBwdResidualCondBB);
   BranchInst::Create(ExitBB, CopyFwdResidualBB, CompareResidualBytes,
@@ -173,7 +169,7 @@ static void createEraVMMemMoveLoop(Instruction *InsertBefore, Value *SrcAddr,
       ConstantInt::get(LoopOpType, -LoopOpSize, true), "dst-bwd-start");
   BwdLoopPreheaderBuilder.CreateBr(CopyBwdLoopBB);
 
-  // Copying backwards.
+  // Copying backwards loop.
   IRBuilder<> BwdLoopBuilder(CopyBwdLoopBB);
   PHINode *BwdLoopPhi = BwdLoopBuilder.CreatePHI(LoopOpType, 2, "bytes-count");
   Value *BwdElement = BwdLoopBuilder.CreateAlignedLoad(
@@ -186,8 +182,9 @@ static void createEraVMMemMoveLoop(Instruction *InsertBefore, Value *SrcAddr,
       BwdLoopBuilder.CreateInBoundsGEP(Int8Type, DstBwdAddr, BwdLoopPhi,
                                        "store-addr"),
       PartDstAlign, DstIsVolatile);
-  Value *BytesDecrement = BwdLoopBuilder.CreateSub(
-      BwdLoopPhi, ConstantInt::get(LoopOpType, LoopOpSize), "decrement-bytes");
+  Value *BytesDecrement = BwdLoopBuilder.CreateAdd(
+      BwdLoopPhi, ConstantInt::get(LoopOpType, -LoopOpSize, true),
+      "decrement-bytes");
   BwdLoopBuilder.CreateCondBr(
       BwdLoopBuilder.CreateICmpEQ(
           BytesDecrement, ConstantInt::get(LoopOpType, 0), "compare-bytes"),
@@ -195,34 +192,41 @@ static void createEraVMMemMoveLoop(Instruction *InsertBefore, Value *SrcAddr,
   BwdLoopPhi->addIncoming(BytesDecrement, CopyBwdLoopBB);
   BwdLoopPhi->addIncoming(LoopCount, CopyBwdLoopPreheaderBB);
 
-  // Copying forward.
+  // Copy forward.
+  IRBuilder<> FwdCopyBuilder(CopyFwdBB);
+  Value *FwdDstAddrEnd = FwdCopyBuilder.CreateInBoundsGEP(
+      Int8Type, DstAddr, LoopCount, "dst-fwd-addr-end");
+  FwdCopyBuilder.CreateCondBr(CompareLoopBytesCount, CopyFwdResidualCondBB,
+                              CopyFwdLoopPreheaderBB);
+
+  // Copying forward loop.
   IRBuilder<> FwdLoopBuilder(CopyFwdLoopBB);
-  PHINode *FwdCopyPhi = FwdLoopBuilder.CreatePHI(LoopOpType, 2, "bytes-count");
+  PHINode *FwdSrcAddrPhi =
+      FwdLoopBuilder.CreatePHI(SrcOpType, 2, "fwd-src-addr");
+  PHINode *FwdDstAddrPhi =
+      FwdLoopBuilder.CreatePHI(DstOpType, 2, "fwd-dst-addr");
+  Value *FwdSrcGEP = FwdLoopBuilder.CreateInBoundsGEP(
+      Int8Type, FwdSrcAddrPhi, ConstantInt::get(LoopOpType, LoopOpSize),
+      "src-fwd-gep");
+  Value *FwdDstGEP = FwdLoopBuilder.CreateInBoundsGEP(
+      Int8Type, FwdDstAddrPhi, ConstantInt::get(LoopOpType, LoopOpSize),
+      "dst-fwd-gep");
   Value *FwdElement = FwdLoopBuilder.CreateAlignedLoad(
-      LoopOpType,
-      FwdLoopBuilder.CreateInBoundsGEP(Int8Type, SrcAddr, FwdCopyPhi,
-                                       "load-addr"),
-      PartSrcAlign, SrcIsVolatile, "element");
-  FwdLoopBuilder.CreateAlignedStore(
-      FwdElement,
-      FwdLoopBuilder.CreateInBoundsGEP(Int8Type, DstAddr, FwdCopyPhi,
-                                       "store-addr"),
-      PartDstAlign, DstIsVolatile);
-  Value *BytesIncrement = FwdLoopBuilder.CreateAdd(
-      FwdCopyPhi, ConstantInt::get(LoopOpType, LoopOpSize), "increment-bytes");
+      LoopOpType, FwdSrcAddrPhi, PartSrcAlign, SrcIsVolatile, "fwd-element");
+  FwdLoopBuilder.CreateAlignedStore(FwdElement, FwdDstAddrPhi, PartDstAlign,
+                                    DstIsVolatile);
   FwdLoopBuilder.CreateCondBr(
-      FwdLoopBuilder.CreateICmpEQ(BytesIncrement, LoopCount, "compare-bytes"),
-      CopyFwdLoopExitBB, CopyFwdLoopBB);
-  FwdCopyPhi->addIncoming(BytesIncrement, CopyFwdLoopBB);
-  FwdCopyPhi->addIncoming(ConstantInt::get(LoopOpType, 0),
-                          CopyFwdLoopPreheaderBB);
+      FwdLoopBuilder.CreateICmpEQ(FwdDstGEP, FwdDstAddrEnd), CopyFwdLoopExitBB,
+      CopyFwdLoopBB);
+  FwdSrcAddrPhi->addIncoming(SrcAddr, CopyFwdLoopPreheaderBB);
+  FwdSrcAddrPhi->addIncoming(FwdSrcGEP, CopyFwdLoopBB);
+  FwdDstAddrPhi->addIncoming(DstAddr, CopyFwdLoopPreheaderBB);
+  FwdDstAddrPhi->addIncoming(FwdDstGEP, CopyFwdLoopBB);
 
   // Residual forward.
   IRBuilder<> FwdResBuilder(CopyFwdResidualBB);
   Value *SrcFwdResAddr = FwdResBuilder.CreateInBoundsGEP(
       Int8Type, SrcAddr, LoopCount, "src-fwd-res-addr");
-  Value *DstFwdResAddr = FwdResBuilder.CreateInBoundsGEP(
-      Int8Type, DstAddr, LoopCount, "dst-fwd-res-adr");
   FwdResBuilder.CreateBr(ResBB);
 
   // Residual.
@@ -232,13 +236,13 @@ static void createEraVMMemMoveLoop(Instruction *InsertBefore, Value *SrcAddr,
   SrcResPhi->addIncoming(SrcAddr, CopyBwdResidualCondBB);
 
   PHINode *DstResPhi = ResBuilder.CreatePHI(DstOpType, 2, "dst-res-addr");
-  DstResPhi->addIncoming(DstFwdResAddr, CopyFwdResidualBB);
+  DstResPhi->addIncoming(FwdDstAddrEnd, CopyFwdResidualBB);
   DstResPhi->addIncoming(DstAddr, CopyBwdResidualCondBB);
 
   Value *SrcLoad = ResBuilder.CreateAlignedLoad(
       LoopOpType, SrcResPhi, PartSrcAlign, SrcIsVolatile, "src-load");
-  Value *ResidualBits = ResBuilder.CreateMul(ConstantInt::get(LoopOpType, 8),
-                                             ResidualBytes, "res-bits");
+  Value *ResidualBits = ResBuilder.CreateShl(
+      ResidualBytes, ConstantInt::get(LoopOpType, 3), "res-bits");
   Value *UpperBits = ResBuilder.CreateSub(
       ConstantInt::get(LoopOpType, LoopOpSize * 8), ResidualBits, "upper-bits");
   Value *SrcMask = ResBuilder.CreateShl(ConstantInt::get(LoopOpType, -1, true),

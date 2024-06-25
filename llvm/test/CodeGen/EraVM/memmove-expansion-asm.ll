@@ -37,27 +37,23 @@ define i256 @expand_unknown(ptr addrspace(1) %dst, ptr addrspace(1) %src, i256 %
 ; CHECK-NEXT:    add r0, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB0_5: ; %copy-forward
+; CHECK-NEXT:    add r1, r4, r5
 ; CHECK-NEXT:    sub! r4, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB0_6
 ; CHECK-NEXT:  ; %bb.7: ; %copy-forward-loop-preheader
-; CHECK-NEXT:    sub.s 32, r4, r6
-; CHECK-NEXT:    and @CPI0_0[0], r6, r5
-; CHECK-NEXT:    add r5, r1, r5
-; CHECK-NEXT:    add 32, r5, r5
 ; CHECK-NEXT:    add r2, r0, r6
-; CHECK-NEXT:    add r1, r0, r7
 ; CHECK-NEXT:  .BB0_8: ; %copy-forward-loop
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    ld.1.inc r6, r8, r6
-; CHECK-NEXT:    st.1.inc r7, r8, r7
-; CHECK-NEXT:    sub! r7, r5, r0
+; CHECK-NEXT:    ld.1.inc r6, r7, r6
+; CHECK-NEXT:    st.1.inc r1, r7, r1
+; CHECK-NEXT:    sub! r1, r5, r0
 ; CHECK-NEXT:    jump.ne @.BB0_8
 ; CHECK-NEXT:  .BB0_6: ; %copy-forward-residual-cond
 ; CHECK-NEXT:    sub! r3, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB0_11
 ; CHECK-NEXT:  ; %bb.9: ; %copy-forward-residual
-; CHECK-NEXT:    add r1, r4, r1
 ; CHECK-NEXT:    add r2, r4, r2
+; CHECK-NEXT:    add r5, r0, r1
 ; CHECK-NEXT:  .BB0_10: ; %memmove-residual
 ; CHECK-NEXT:    shl.s 3, r3, r3
 ; CHECK-NEXT:    ld.1 r1, r4
