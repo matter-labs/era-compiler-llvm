@@ -33,35 +33,35 @@ define void @expand_unknown_p1_p1(ptr addrspace(1) %dst, ptr addrspace(1) %src, 
 ; CHECK-NEXT:    [[ELEMENT:%.*]] = load i256, ptr addrspace(1) [[LOAD_ADDR]], align 1
 ; CHECK-NEXT:    [[STORE_ADDR:%.*]] = getelementptr inbounds i8, ptr addrspace(1) [[DST_BWD_START]], i256 [[BYTES_COUNT]]
 ; CHECK-NEXT:    store i256 [[ELEMENT]], ptr addrspace(1) [[STORE_ADDR]], align 1
-; CHECK-NEXT:    [[DECREMENT_BYTES]] = sub i256 [[BYTES_COUNT]], 32
+; CHECK-NEXT:    [[DECREMENT_BYTES]] = add i256 [[BYTES_COUNT]], -32
 ; CHECK-NEXT:    [[COMPARE_BYTES:%.*]] = icmp eq i256 [[DECREMENT_BYTES]], 0
 ; CHECK-NEXT:    br i1 [[COMPARE_BYTES]], label [[COPY_BACKWARDS_RESIDUAL_COND]], label [[COPY_BACKWARDS_LOOP]]
 ; CHECK:       copy-forward:
+; CHECK-NEXT:    [[DST_FWD_ADDR_END:%.*]] = getelementptr inbounds i8, ptr addrspace(1) [[DST]], i256 [[LOOP_BYTES_COUNT]]
 ; CHECK-NEXT:    br i1 [[COMPARE_LCB_TO_0]], label [[COPY_FORWARD_RESIDUAL_COND:%.*]], label [[COPY_FORWARD_LOOP_PREHEADER:%.*]]
 ; CHECK:       copy-forward-residual-cond:
 ; CHECK-NEXT:    br i1 [[COMPARE_RB_TO_0]], label [[MEMMOVE_DONE]], label [[COPY_FORWARD_RESIDUAL:%.*]]
 ; CHECK:       copy-forward-loop-preheader:
 ; CHECK-NEXT:    br label [[COPY_FORWARD_LOOP:%.*]]
 ; CHECK:       copy-forward-loop:
-; CHECK-NEXT:    [[BYTES_COUNT1:%.*]] = phi i256 [ [[INCREMENT_BYTES:%.*]], [[COPY_FORWARD_LOOP]] ], [ 0, [[COPY_FORWARD_LOOP_PREHEADER]] ]
-; CHECK-NEXT:    [[LOAD_ADDR2:%.*]] = getelementptr inbounds i8, ptr addrspace(1) [[SRC]], i256 [[BYTES_COUNT1]]
-; CHECK-NEXT:    [[ELEMENT3:%.*]] = load i256, ptr addrspace(1) [[LOAD_ADDR2]], align 1
-; CHECK-NEXT:    [[STORE_ADDR4:%.*]] = getelementptr inbounds i8, ptr addrspace(1) [[DST]], i256 [[BYTES_COUNT1]]
-; CHECK-NEXT:    store i256 [[ELEMENT3]], ptr addrspace(1) [[STORE_ADDR4]], align 1
-; CHECK-NEXT:    [[INCREMENT_BYTES]] = add i256 [[BYTES_COUNT1]], 32
-; CHECK-NEXT:    [[COMPARE_BYTES5:%.*]] = icmp eq i256 [[INCREMENT_BYTES]], [[LOOP_BYTES_COUNT]]
-; CHECK-NEXT:    br i1 [[COMPARE_BYTES5]], label [[COPY_FORWARD_LOOP_EXIT:%.*]], label [[COPY_FORWARD_LOOP]]
+; CHECK-NEXT:    [[FWD_SRC_ADDR:%.*]] = phi ptr addrspace(1) [ [[SRC]], [[COPY_FORWARD_LOOP_PREHEADER]] ], [ [[SRC_FWD_GEP:%.*]], [[COPY_FORWARD_LOOP]] ]
+; CHECK-NEXT:    [[FWD_DST_ADDR:%.*]] = phi ptr addrspace(1) [ [[DST]], [[COPY_FORWARD_LOOP_PREHEADER]] ], [ [[DST_FWD_GEP:%.*]], [[COPY_FORWARD_LOOP]] ]
+; CHECK-NEXT:    [[SRC_FWD_GEP]] = getelementptr inbounds i8, ptr addrspace(1) [[FWD_SRC_ADDR]], i256 32
+; CHECK-NEXT:    [[DST_FWD_GEP]] = getelementptr inbounds i8, ptr addrspace(1) [[FWD_DST_ADDR]], i256 32
+; CHECK-NEXT:    [[FWD_ELEMENT:%.*]] = load i256, ptr addrspace(1) [[FWD_SRC_ADDR]], align 1
+; CHECK-NEXT:    store i256 [[FWD_ELEMENT]], ptr addrspace(1) [[FWD_DST_ADDR]], align 1
+; CHECK-NEXT:    [[TMP0:%.*]] = icmp eq ptr addrspace(1) [[DST_FWD_GEP]], [[DST_FWD_ADDR_END]]
+; CHECK-NEXT:    br i1 [[TMP0]], label [[COPY_FORWARD_LOOP_EXIT:%.*]], label [[COPY_FORWARD_LOOP]]
 ; CHECK:       copy-forward-loop-exit:
 ; CHECK-NEXT:    br label [[COPY_FORWARD_RESIDUAL_COND]]
 ; CHECK:       copy-forward-residual:
 ; CHECK-NEXT:    [[SRC_FWD_RES_ADDR:%.*]] = getelementptr inbounds i8, ptr addrspace(1) [[SRC]], i256 [[LOOP_BYTES_COUNT]]
-; CHECK-NEXT:    [[DST_FWD_RES_ADR:%.*]] = getelementptr inbounds i8, ptr addrspace(1) [[DST]], i256 [[LOOP_BYTES_COUNT]]
 ; CHECK-NEXT:    br label [[MEMMOVE_RESIDUAL]]
 ; CHECK:       memmove-residual:
 ; CHECK-NEXT:    [[SRC_RES_ADDR:%.*]] = phi ptr addrspace(1) [ [[SRC_FWD_RES_ADDR]], [[COPY_FORWARD_RESIDUAL]] ], [ [[SRC]], [[COPY_BACKWARDS_RESIDUAL_COND]] ]
-; CHECK-NEXT:    [[DST_RES_ADDR:%.*]] = phi ptr addrspace(1) [ [[DST_FWD_RES_ADR]], [[COPY_FORWARD_RESIDUAL]] ], [ [[DST]], [[COPY_BACKWARDS_RESIDUAL_COND]] ]
+; CHECK-NEXT:    [[DST_RES_ADDR:%.*]] = phi ptr addrspace(1) [ [[DST_FWD_ADDR_END]], [[COPY_FORWARD_RESIDUAL]] ], [ [[DST]], [[COPY_BACKWARDS_RESIDUAL_COND]] ]
 ; CHECK-NEXT:    [[SRC_LOAD:%.*]] = load i256, ptr addrspace(1) [[SRC_RES_ADDR]], align 1
-; CHECK-NEXT:    [[RES_BITS:%.*]] = mul i256 8, [[RESIDUAL_BYTES]]
+; CHECK-NEXT:    [[RES_BITS:%.*]] = shl i256 [[RESIDUAL_BYTES]], 3
 ; CHECK-NEXT:    [[UPPER_BITS:%.*]] = sub i256 256, [[RES_BITS]]
 ; CHECK-NEXT:    [[SRC_MASK:%.*]] = shl i256 -1, [[UPPER_BITS]]
 ; CHECK-NEXT:    [[SRC_MASKED:%.*]] = and i256 [[SRC_LOAD]], [[SRC_MASK]]
@@ -101,7 +101,7 @@ define i256 @expand_known_backward() {
 ; CHECK-NEXT:    [[ELEMENT:%.*]] = load i256, ptr addrspace(1) [[LOAD_ADDR]], align 1
 ; CHECK-NEXT:    [[STORE_ADDR:%.*]] = getelementptr inbounds i8, ptr addrspace(1) getelementptr inbounds (i8, ptr addrspace(1) inttoptr (i256 100 to ptr addrspace(1)), i256 -1), i256 [[BYTES_COUNT]]
 ; CHECK-NEXT:    store i256 [[ELEMENT]], ptr addrspace(1) [[STORE_ADDR]], align 1
-; CHECK-NEXT:    [[DECREMENT_BYTES]] = sub i256 [[BYTES_COUNT]], 32
+; CHECK-NEXT:    [[DECREMENT_BYTES]] = add i256 [[BYTES_COUNT]], -32
 ; CHECK-NEXT:    [[COMPARE_BYTES:%.*]] = icmp eq i256 [[DECREMENT_BYTES]], 0
 ; CHECK-NEXT:    br i1 [[COMPARE_BYTES]], label [[COPY_BACKWARDS_RESIDUAL_COND]], label [[COPY_BACKWARDS_LOOP]]
 ; CHECK:       copy-forward:
@@ -111,14 +111,14 @@ define i256 @expand_known_backward() {
 ; CHECK:       copy-forward-loop-preheader:
 ; CHECK-NEXT:    br label [[COPY_FORWARD_LOOP:%.*]]
 ; CHECK:       copy-forward-loop:
-; CHECK-NEXT:    [[BYTES_COUNT1:%.*]] = phi i256 [ [[INCREMENT_BYTES:%.*]], [[COPY_FORWARD_LOOP]] ], [ 0, [[COPY_FORWARD_LOOP_PREHEADER]] ]
-; CHECK-NEXT:    [[LOAD_ADDR2:%.*]] = getelementptr inbounds i8, ptr addrspace(1) inttoptr (i256 10 to ptr addrspace(1)), i256 [[BYTES_COUNT1]]
-; CHECK-NEXT:    [[ELEMENT3:%.*]] = load i256, ptr addrspace(1) [[LOAD_ADDR2]], align 1
-; CHECK-NEXT:    [[STORE_ADDR4:%.*]] = getelementptr inbounds i8, ptr addrspace(1) inttoptr (i256 100 to ptr addrspace(1)), i256 [[BYTES_COUNT1]]
-; CHECK-NEXT:    store i256 [[ELEMENT3]], ptr addrspace(1) [[STORE_ADDR4]], align 1
-; CHECK-NEXT:    [[INCREMENT_BYTES]] = add i256 [[BYTES_COUNT1]], 32
-; CHECK-NEXT:    [[COMPARE_BYTES5:%.*]] = icmp eq i256 [[INCREMENT_BYTES]], 64
-; CHECK-NEXT:    br i1 [[COMPARE_BYTES5]], label [[COPY_FORWARD_LOOP_EXIT:%.*]], label [[COPY_FORWARD_LOOP]]
+; CHECK-NEXT:    [[FWD_SRC_ADDR:%.*]] = phi ptr addrspace(1) [ inttoptr (i256 10 to ptr addrspace(1)), [[COPY_FORWARD_LOOP_PREHEADER]] ], [ [[SRC_FWD_GEP:%.*]], [[COPY_FORWARD_LOOP]] ]
+; CHECK-NEXT:    [[FWD_DST_ADDR:%.*]] = phi ptr addrspace(1) [ inttoptr (i256 100 to ptr addrspace(1)), [[COPY_FORWARD_LOOP_PREHEADER]] ], [ [[DST_FWD_GEP:%.*]], [[COPY_FORWARD_LOOP]] ]
+; CHECK-NEXT:    [[SRC_FWD_GEP]] = getelementptr inbounds i8, ptr addrspace(1) [[FWD_SRC_ADDR]], i256 32
+; CHECK-NEXT:    [[DST_FWD_GEP]] = getelementptr inbounds i8, ptr addrspace(1) [[FWD_DST_ADDR]], i256 32
+; CHECK-NEXT:    [[FWD_ELEMENT:%.*]] = load i256, ptr addrspace(1) [[FWD_SRC_ADDR]], align 1
+; CHECK-NEXT:    store i256 [[FWD_ELEMENT]], ptr addrspace(1) [[FWD_DST_ADDR]], align 1
+; CHECK-NEXT:    [[TMP0:%.*]] = icmp eq ptr addrspace(1) [[DST_FWD_GEP]], getelementptr inbounds (i8, ptr addrspace(1) inttoptr (i256 100 to ptr addrspace(1)), i256 64)
+; CHECK-NEXT:    br i1 [[TMP0]], label [[COPY_FORWARD_LOOP_EXIT:%.*]], label [[COPY_FORWARD_LOOP]]
 ; CHECK:       copy-forward-loop-exit:
 ; CHECK-NEXT:    br label [[COPY_FORWARD_RESIDUAL_COND]]
 ; CHECK:       copy-forward-residual:
