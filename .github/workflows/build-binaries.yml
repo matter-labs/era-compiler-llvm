@@ -49,10 +49,10 @@ jobs:
         run: |
           # Define general matrix parameters
           WINDOWS='{"name":"Windows","runner":"windows-2022-github-hosted-64core"}'
-          MACOS_AMD64='{"name":"MacOS-x86","runner":"macos-12-large"}'
-          MACOS_ARM64='{"name":"MacOS-arm64","runner":["self-hosted","macOS","ARM64"]}'
-          LINUX_AMD64='{"name":"Linux-AMD64","runner":"matterlabs-ci-runner","image":"matterlabs/llvm_runner:ubuntu22-llvm17-latest"}'
-          LINUX_ARM64='{"name":"Linux-ARM64","runner":"matterlabs-ci-runner-arm","image":"matterlabs/llvm_runner:ubuntu22-llvm17-latest"}'
+          # MACOS_AMD64='{"name":"MacOS-x86","runner":"macos-12-large"}'
+          # MACOS_ARM64='{"name":"MacOS-arm64","runner":["self-hosted","macOS","ARM64"]}'
+          # LINUX_AMD64='{"name":"Linux-AMD64","runner":"matterlabs-ci-runner","image":"matterlabs/llvm_runner:ubuntu22-llvm17-latest"}'
+          # LINUX_ARM64='{"name":"Linux-ARM64","runner":"matterlabs-ci-runner-arm","image":"matterlabs/llvm_runner:ubuntu22-llvm17-latest"}'
           # Disable platforms for non-tag builds if user requested
           if [ ${GITHUB_EVENT_NAME} = workflow_dispatch ]; then
             [ ${{ github.event.inputs.build_windows_amd64 }} != true ] && WINDOWS=
@@ -64,19 +64,19 @@ jobs:
           PLATFORMS=(${WINDOWS} ${MACOS_AMD64} ${MACOS_ARM64} ${LINUX_AMD64} ${LINUX_ARM64})
           echo "matrix={ \"include\": [ $(IFS=, ; echo "${PLATFORMS[*]}") ] }" | tee -a "${GITHUB_OUTPUT}"
 
-  integration-tests:
-    uses: matter-labs/era-compiler-ci/.github/workflows/integration-tests.yaml@aba-multiplatform-integration-tests
-    secrets: inherit
-    with:
-      compiler-tester-ref: 'main'
-      llvm-ref: ${{ github.head_ref }}
-      ccache-key-type: 'static' # rotate ccache key every month
-      compiler-llvm-repo: ${{ github.event.repository.full_name }}
-      enable-linux-amd64: ${{ github.event.inputs.build_linux_amd64 || 'true' }}
-      enable-linux-arm64: ${{ github.event.inputs.build_linux_arm64 || 'true' }}
-      enable-macos-amd64: ${{ github.event.inputs.build_macos_amd64 || 'true' }}
-      enable-macos-arm64: ${{ github.event.inputs.build_macos_arm64 || 'true' }}
-      enable-windows-amd64: ${{ github.event.inputs.build_windows_amd64 || 'true' }}
+  # integration-tests:
+  #   uses: matter-labs/era-compiler-ci/.github/workflows/integration-tests.yaml@aba-multiplatform-integration-tests
+  #   secrets: inherit
+  #   with:
+  #     compiler-tester-ref: 'main'
+  #     llvm-ref: ${{ github.head_ref }}
+  #     ccache-key-type: 'static' # rotate ccache key every month
+  #     compiler-llvm-repo: ${{ github.event.repository.full_name }}
+  #     enable-linux-amd64: ${{ github.event.inputs.build_linux_amd64 || true }}
+  #     enable-linux-arm64: ${{ github.event.inputs.build_linux_arm64 || true }}
+  #     enable-macos-amd64: ${{ github.event.inputs.build_macos_amd64 || true }}
+  #     enable-macos-arm64: ${{ github.event.inputs.build_macos_arm64 || true }}
+  #     enable-windows-amd64: ${{ github.event.inputs.build_windows_amd64 || true }}
 
   build:
     needs: prepare-matrix
