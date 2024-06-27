@@ -13,7 +13,7 @@ foo:
   panic
   ret.ok.to_label @label
   ret.revert.to_label @label
-  ret.panic.to_label @label
+  ret.panic.to_label r0, @label
 
 ; modifiers (condition)
   ret.lt
@@ -23,7 +23,7 @@ foo:
   panic.lt
   ret.ok.to_label.lt @label
   ret.revert.to_label.lt @label
-  ret.panic.to_label.lt @label
+  ret.panic.to_label.lt r0, @label
 
 ; aliases
   ret.ok.to_label         r1, @label
@@ -49,7 +49,7 @@ foo:
 ; CHECK:  panic
 ; CHECK:  ret.ok.to_label  r1, @label
 ; CHECK:  revert.to_label  r1, @label
-; CHECK:  panic.to_label   @label
+; CHECK:  panic.to_label r0,   @label
 
 ; CHECK:  ret.lt
 ; CHECK:  revert.lt
@@ -58,7 +58,7 @@ foo:
 ; CHECK:  panic.lt
 ; CHECK:  ret.ok.to_label.lt r1, @label
 ; CHECK:  ret.revert.to_label.lt r1, @label
-; CHECK:  panic.to_label.lt @label
+; CHECK:  panic.to_label.lt r0, @label
 
 ; CHECK:  ret.ok.to_label       r1, @label
 ; CHECK:  ret.revert.to_label   r1, @label
