@@ -73,10 +73,10 @@ jobs:
       llvm-ref: ${{ github.head_ref }}
       ccache-key-type: 'static' # rotate ccache key every month
       compiler-llvm-repo: ${{ github.event.repository.full_name }}
-      enable-linux-amd64: ${{ github.event.inputs.build_linux_amd64 || true }}
+      enable-linux-amd64: ${{ github.event.inputs.build_linux_amd64 || false }}
       enable-linux-arm64: ${{ github.event.inputs.build_linux_arm64 || true }}
-      enable-macos-amd64: ${{ github.event.inputs.build_macos_amd64 || true }}
-      enable-macos-arm64: ${{ github.event.inputs.build_macos_arm64 || true }}
+      enable-macos-amd64: ${{ github.event.inputs.build_macos_amd64 || false }}
+      enable-macos-arm64: ${{ github.event.inputs.build_macos_arm64 || false }}
       enable-windows-amd64: ${{ github.event.inputs.build_windows_amd64 || true }}
 
   # build:
