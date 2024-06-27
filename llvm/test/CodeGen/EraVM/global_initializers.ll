@@ -33,7 +33,7 @@ target triple = "eravm"
 ; CHECK-NOT: glob.const_initializer:
 
 ; CHECK-LABEL: DEFAULT_UNWIND:
-; CHECK-NEXT:  ret.panic.to_label	@DEFAULT_UNWIND
+; CHECK-NEXT:  ret.panic.to_label r0,	@DEFAULT_UNWIND
 
 ; CHECK-LABEL: DEFAULT_FAR_RETURN:
 ; CHECK-LABEL: ret.ok.to_label	r1, @DEFAULT_FAR_RETURN

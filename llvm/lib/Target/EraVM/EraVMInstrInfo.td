@@ -866,10 +866,9 @@ def RETrl : IRetToLabel<OpRetToLabel, [rs0, dest_label], []>;
 def REVERTr : IRet<OpRevert, [rs0], []>;
 def REVERTrl : IRetToLabel<OpRevertToLabel, [rs0, dest_label], []>;
 
-let rs0 = 0 in {
+let rs0 = 0 in
 def PANIC  : IRet<OpPanic, [], []>;
-def PANICl : IRetToLabel<OpPanicToLabel, [dest_label], []>;
-}
+def PANICl : IRetToLabel<OpPanicToLabel, [rs0, dest_label], []>;
 
 let isReturn = 1, isTerminator = 1, isBarrier = 1  in {
 def RET  : Pseudo<(outs), (ins pred:$cc), [(EraVMret)]>,

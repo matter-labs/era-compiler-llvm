@@ -16,7 +16,7 @@ get_glob:
 	ret
 
 DEFAULT_UNWIND:
-	ret.panic.to_label @DEFAULT_UNWIND
+	ret.panic.to_label r0,  @DEFAULT_UNWIND
 DEFAULT_FAR_RETURN:
 	ret.ok.to_label	r1, @DEFAULT_FAR_RETURN
 DEFAULT_FAR_REVERT:
@@ -54,7 +54,7 @@ glob_initializer:
 ; OUTPUT-NEXT: 00 00 00 00 00 01 04 2d       	ret
 ; OUTPUT-EMPTY:
 ; OUTPUT-NEXT: <DEFAULT_UNWIND>:
-; OUTPUT-NEXT: 00 00 00 05 00 00 04 32       	ret.panic.to_label  5
+; OUTPUT-NEXT: 00 00 00 05 00 00 04 32       	ret.panic.to_label r0,	5
 ; OUTPUT-EMPTY:
 ; OUTPUT-NEXT: <DEFAULT_FAR_RETURN>:
 ; OUTPUT-NEXT: 00 00 00 06 00 01 04 2e       	ret.ok.to_label	r1, 6

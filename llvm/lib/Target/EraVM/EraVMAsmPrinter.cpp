@@ -323,6 +323,9 @@ void EraVMAsmPrinter::emitDefaultLandingPads() {
     MCI.setOpcode(Opc);
     if (Opc != EraVM::PANICl)
       MCI.addOperand(MCOperand::createReg(EraVM::R1)); // rs0
+    else
+      MCI.addOperand(MCOperand::createReg(EraVM::R0)); // rs0
+
     MCSymbol *Sym = OutContext.getOrCreateSymbol(LabelName);
     const MCExpr *SymbolExpr = MCSymbolRefExpr::create(Sym, OutContext);
     MCI.addOperand(MCOperand::createExpr(SymbolExpr));
