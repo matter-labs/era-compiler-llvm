@@ -281,6 +281,9 @@ let mayLoad = 1 in {
 
 }
 
+def OptForSpeed  : Predicate<"!shouldOptForSize(MF)">;
+def Optimize : Predicate<"!MF->getFunction().hasOptNone()">;
+
 // To be able to fold (op in0, (select.cc x, y)) to (op in0, y) + (op.cc in0, y) for
 // non-register in0 reduce immediate 0 to r0 in select.
 def : Pat<(EraVMselectcc 0, GR256:$src2, imm:$cc), (SELrrr R0, GR256:$src2, imm:$cc)>;
@@ -291,30 +294,36 @@ def : Pat<(load_stack(EraVMselectcc stackaddr:$addr1, stackaddr:$addr2, imm:$cc)
 def : Pat<(load_code(EraVMselectcc memaddr:$addr1, memaddr:$addr2, imm:$cc)),
           (SELccr memaddr:$addr1, memaddr:$addr2, imm:$cc)>;
 
-// Patterns for selectcc instructions with large immediates that will be loaded from constant pool.
-// Following two patterns are to put zero immediate to R0 register.
-def : Pat<(EraVMselectcc 0, large_imm:$src2, imm:$cc),
-          (SELrcr R0, (constant_pool imm:$src2), 0, imm:$cc)>;
-def : Pat<(EraVMselectcc large_imm:$src1, 0, imm:$cc),
-          (SELcrr (constant_pool imm:$src1), 0, R0, imm:$cc)>;
-def : Pat<(EraVMselectcc large_imm:$src1, GR256:$src2, imm:$cc),
-          (SELcrr (constant_pool imm:$src1), 0, GR256:$src2, imm:$cc)>;
-def : Pat<(EraVMselectcc GR256:$src1, large_imm:$src2, imm:$cc),
-          (SELrcr GR256:$src1, (constant_pool imm:$src2), 0, imm:$cc)>;
-def : Pat<(EraVMselectcc large_imm:$src1, imm16:$src2, imm:$cc),
-          (SELcir (constant_pool imm:$src1), 0, imm16:$src2, imm:$cc)>;
-def : Pat<(EraVMselectcc imm16:$src1, large_imm:$src2, imm:$cc),
-          (SELicr imm16:$src1, (constant_pool imm:$src2), 0, imm:$cc)>;
-def : Pat<(EraVMselectcc (load_code memaddr:$src1), large_imm:$src2, imm:$cc),
-          (SELccr memaddr:$src1, (constant_pool imm:$src2), 0, imm:$cc)>;
-def : Pat<(EraVMselectcc large_imm:$src1, (load_code memaddr:$src2), imm:$cc),
-          (SELccr (constant_pool imm:$src1), 0, memaddr:$src2, imm:$cc)>;
-def : Pat<(EraVMselectcc large_imm:$src1, large_imm:$src2, imm:$cc),
-          (SELccr (constant_pool imm:$src1), 0, (constant_pool imm:$src2), 0, imm:$cc)>;
-def : Pat<(EraVMselectcc large_imm:$src1, (load_stack stackaddr:$src2), imm:$cc),
-          (SELcsr (constant_pool imm:$src1), 0, stackaddr:$src2, imm:$cc)>;
-def : Pat<(EraVMselectcc (load_stack stackaddr:$src1), large_imm:$src2, imm:$cc),
-          (SELscr stackaddr:$src1, (constant_pool imm:$src2), 0, imm:$cc)>;
+// Patterns for selectcc instructions with immediates that will be loaded from constant pool.
+multiclass SelectImmCPPat<Operand ImmOp> {
+  // Following two patterns are to put zero immediate to R0 register.
+  def : Pat<(EraVMselectcc 0, ImmOp:$src2, imm:$cc),
+            (SELrcr R0, (constant_pool imm:$src2), 0, imm:$cc)>;
+  def : Pat<(EraVMselectcc ImmOp:$src1, 0, imm:$cc),
+            (SELcrr (constant_pool imm:$src1), 0, R0, imm:$cc)>;
+  def : Pat<(EraVMselectcc ImmOp:$src1, GR256:$src2, imm:$cc),
+            (SELcrr (constant_pool imm:$src1), 0, GR256:$src2, imm:$cc)>;
+  def : Pat<(EraVMselectcc GR256:$src1, ImmOp:$src2, imm:$cc),
+            (SELrcr GR256:$src1, (constant_pool imm:$src2), 0, imm:$cc)>;
+  def : Pat<(EraVMselectcc ImmOp:$src1, imm16:$src2, imm:$cc),
+            (SELcir (constant_pool imm:$src1), 0, imm16:$src2, imm:$cc)>;
+  def : Pat<(EraVMselectcc imm16:$src1, ImmOp:$src2, imm:$cc),
+            (SELicr imm16:$src1, (constant_pool imm:$src2), 0, imm:$cc)>;
+  def : Pat<(EraVMselectcc (load_code memaddr:$src1), ImmOp:$src2, imm:$cc),
+            (SELccr memaddr:$src1, (constant_pool imm:$src2), 0, imm:$cc)>;
+  def : Pat<(EraVMselectcc ImmOp:$src1, (load_code memaddr:$src2), imm:$cc),
+            (SELccr (constant_pool imm:$src1), 0, memaddr:$src2, imm:$cc)>;
+  def : Pat<(EraVMselectcc ImmOp:$src1, ImmOp:$src2, imm:$cc),
+            (SELccr (constant_pool imm:$src1), 0, (constant_pool imm:$src2), 0, imm:$cc)>;
+  def : Pat<(EraVMselectcc ImmOp:$src1, (load_stack stackaddr:$src2), imm:$cc),
+            (SELcsr (constant_pool imm:$src1), 0, stackaddr:$src2, imm:$cc)>;
+  def : Pat<(EraVMselectcc (load_stack stackaddr:$src1), ImmOp:$src2, imm:$cc),
+            (SELscr stackaddr:$src1, (constant_pool imm:$src2), 0, imm:$cc)>;
+}
+
+defm : SelectImmCPPat<large_imm>;
+let Predicates = [OptForSpeed] in
+defm : SelectImmCPPat<neg_imm16>;
 
 // TODO: CPR-1356 stack and code forms
 def : Pat<(int_eravm_ifeq GR256:$src0, GR256:$src1), (SELrrr GR256:$src0, GR256:$src1, COND_E.Encoding)>;
@@ -405,6 +414,15 @@ multiclass ArithICommutable<EraVMOpcode opcode, SDPatternOperator node> : Arith<
   // commutative: irs_s -> crs_s
   def : Pat<(store_stack (node GR256:$rs1, large_imm:$imm), stackaddr:$dst0),
             (!cast<Instruction>(NAME # crs_s) (constant_pool imm:$imm), 0, GR256:$rs1, stackaddr:$dst0, 0)>;
+
+  let Predicates = [OptForSpeed] in {
+    // commutative: irr_s -> crr_s
+    def : Pat<(node GR256:$rs1, neg_imm16:$imm),
+              (!cast<Instruction>(NAME # crr_s) (constant_pool imm:$imm), 0, GR256:$rs1, 0)>;
+    // commutative: irs_s -> crs_s
+    def : Pat<(store_stack (node GR256:$rs1, neg_imm16:$imm), stackaddr:$dst0),
+              (!cast<Instruction>(NAME # crs_s) (constant_pool imm:$imm), 0, GR256:$rs1, stackaddr:$dst0, 0)>;
+  }
 }
 
 multiclass ArithINonCommutable<EraVMOpcode opcode, SDPatternOperator node> : Arith<opcode, node, 0> {
@@ -483,6 +501,24 @@ multiclass ArithINonCommutable<EraVMOpcode opcode, SDPatternOperator node> : Ari
   // xrs_s -> yrs_s
   def : Pat<(store_stack (node GR256:$rs1, large_imm:$imm), stackaddr:$dst0),
             (!cast<Instruction>(NAME # yrs_s) (constant_pool imm:$imm), 0, GR256:$rs1, stackaddr:$dst0, 0)>;
+
+  let Predicates = [OptForSpeed] in {
+    // non-commutative: irr_s -> crr_s
+    def : Pat<(node neg_imm16:$imm, GR256:$rs1),
+              (!cast<Instruction>(NAME # crr_s) (constant_pool imm:$imm), 0, GR256:$rs1, 0)>;
+
+    // xrr_s -> yrr_s
+    def : Pat<(node GR256:$rs1, neg_imm16:$imm),
+              (!cast<Instruction>(NAME # yrr_s) (constant_pool imm:$imm), 0, GR256:$rs1, 0)>;
+
+    // non-commutative: irs_s -> crs_s
+    def : Pat<(store_stack (node neg_imm16:$imm, GR256:$rs1), stackaddr:$dst0),
+              (!cast<Instruction>(NAME # crs_s) (constant_pool imm:$imm), 0, GR256:$rs1, stackaddr:$dst0, 0)>;
+
+    // xrs_s -> yrs_s
+    def : Pat<(store_stack (node GR256:$rs1, neg_imm16:$imm), stackaddr:$dst0),
+              (!cast<Instruction>(NAME # yrs_s) (constant_pool imm:$imm), 0, GR256:$rs1, stackaddr:$dst0, 0)>;
+  }
 }
 
 multiclass PtrInstr<EraVMOpcode opcode, SDPatternOperator node> {
@@ -543,6 +579,16 @@ multiclass PtrInstr<EraVMOpcode opcode, SDPatternOperator node> {
   // xrs_s -> yrs_s
   def : Pat<(store_stack (node GRPTR:$rs1, large_imm:$imm), stackaddr:$dst0),
             (!cast<Instruction>(NAME # yrs_s) (constant_pool imm:$imm), 0, GRPTR:$rs1, stackaddr:$dst0, 0)>;
+
+  let Predicates = [OptForSpeed] in {
+    // xrr_s -> yrr_s
+    def : Pat<(node GRPTR:$rs1, neg_imm16:$imm),
+              (!cast<Instruction>(NAME # yrr_s) (constant_pool imm:$imm), 0, GRPTR:$rs1, 0)>;
+
+    // xrs_s -> yrs_s
+    def : Pat<(store_stack (node GRPTR:$rs1, neg_imm16:$imm), stackaddr:$dst0),
+              (!cast<Instruction>(NAME # yrs_s) (constant_pool imm:$imm), 0, GRPTR:$rs1, stackaddr:$dst0, 0)>;
+  }
 }
 
 // This is a bridge to convert GRPTR type to GR256 type. It will get eliminated in a post RA pass.
@@ -599,6 +645,11 @@ multiclass Arith2ICommutable<EraVMOpcode opcode, SDPatternOperator node>
 
   // commutative: rrrr_p -> crrr_p
   def : Pat<(node GR256:$rs1, large_imm:$imm),
+            (!cast<Instruction>(NAME # crrr_s) (constant_pool imm:$imm), 0, GR256:$rs1, 0)>;
+
+  // commutative: rrrr_p -> crrr_p
+  let Predicates = [OptForSpeed] in
+  def : Pat<(node GR256:$rs1, neg_imm16:$imm),
             (!cast<Instruction>(NAME # crrr_s) (constant_pool imm:$imm), 0, GR256:$rs1, 0)>;
 }
 
@@ -659,6 +710,13 @@ multiclass Arith2INonCommutable<EraVMOpcode opcode, SDPatternOperator node>
             (!cast<Instruction>(NAME # crrr_s) (constant_pool imm:$imm), 0, GR256:$rs1, 0)>;
   def : Pat<(node GR256:$rs1, large_imm:$imm),
             (!cast<Instruction>(NAME # yrrr_s) (constant_pool imm:$imm), 0, GR256:$rs1, 0)>;
+
+  let Predicates = [OptForSpeed] in {
+    def : Pat<(node neg_imm16:$imm, GR256:$rs1),
+              (!cast<Instruction>(NAME # crrr_s) (constant_pool imm:$imm), 0, GR256:$rs1, 0)>;
+    def : Pat<(node GR256:$rs1, neg_imm16:$imm),
+              (!cast<Instruction>(NAME # yrrr_s) (constant_pool imm:$imm), 0, GR256:$rs1, 0)>;
+  }
 }
 
 defm ADD  : ArithICommutable<OpAdd, add>;
@@ -707,7 +765,6 @@ def : Pat<(EraVMcopy_from_ptrreg GRPTR:$src), (PTR_ADDrrr_s GRPTR:$src, R0, 0)>;
 // The PeepholeOptimizer is not invoked for OptNone functions, preventing the
 // conversion of _v to _s variants. As a result, these patterns are disabled
 // for OptNone functions.
-def Optimize : Predicate<"!MF->getFunction().hasOptNone()">;
 let Predicates = [Optimize], AddedComplexity = 1 in {
   def : Pat<(sub GR256:$lhs, GR256:$rhs), (SUBrrr_v GR256:$lhs, GR256:$rhs, 0)>;
   def : Pat<(sub GR256:$lhs, imm16:$rhs), (SUBxrr_v imm:$rhs, GR256:$lhs, 0)>;
@@ -729,6 +786,8 @@ def : Pat<(EraVMcmp GR256:$lhs, GR256:$rhs), (SUBrrr_v GR256:$lhs, GR256:$rhs, 0
 def : Pat<(EraVMcmp GR256:$lhs, 0), (SUBrrr_v GR256:$lhs, R0, 0)>;
 def : Pat<(EraVMcmp GR256:$lhs, imm16:$rhs), (SUBxrr_v imm:$rhs, GR256:$lhs, 0)>;
 def : Pat<(EraVMcmp GR256:$lhs, large_imm:$rhs), (SUByrr_v (constant_pool imm:$rhs), 0, GR256:$lhs, 0)>;
+let Predicates = [OptForSpeed] in
+def : Pat<(EraVMcmp GR256:$lhs, neg_imm16:$rhs), (SUByrr_v (constant_pool imm:$rhs), 0, GR256:$lhs, 0)>;
 
 def : Pat<(EraVMcmp (load_code memaddr:$lhs), GR256:$rhs), (SUBcrr_v memaddr:$lhs, GR256:$rhs, 0)>;
 def : Pat<(EraVMcmp GR256:$lhs, (load_code memaddr:$rhs)), (SUByrr_v memaddr:$rhs, GR256:$lhs, 0)>;
@@ -994,6 +1053,7 @@ def : Pat<(EraVMstaticcall bb:$unwind), (FAR_CALL_STATICrrl R1, R2, bb:$unwind)>
 def : Pat<(EraVMdelegatecall bb:$unwind), (DELEGATE_CALLrrl R1, R2, bb:$unwind)>;
 def : Pat<(EraVMmimiccall bb:$unwind), (MIMIC_CALLrrl R1, R2, bb:$unwind)>;
 
+let AddedComplexity = 1 in
 def : Pat<(store_stack (add GR256:$rs0, neg_imm16:$imm), stackaddr:$dst0),
           (SUBxrs_s (negate_imm imm:$imm), GR256:$rs0, stackaddr:$dst0, 0)>;
 def : Pat<(sub GR256:$rs0, neg_imm16:$imm), (ADDirr_s (negate_imm imm:$imm), GR256:$rs0, 0)>;

@@ -76,16 +76,16 @@ define i256 @test_unknown(ptr addrspace(1) %dst, ptr addrspace(1) %src, i256 %si
 ; CHECK-INSTRS-LABEL: test_unknown:
 
 ; Preheader and backwards loop.
-; CHECK-INSTRS:       add r2, r3, r6
-; CHECK-INSTRS-NEXT:  add r1, r3, r5
+; CHECK-INSTRS:       add r2, r4, r6
+; CHECK-INSTRS-NEXT:  add r1, r4, r5
 ; CHECK-INSTRS-NEXT:  sub.s 32, r5, r5
 ; CHECK-INSTRS-NEXT:  sub.s 32, r6, r6
 ; CHECK-INSTRS-NEXT:  .BB0_4:
-; CHECK-INSTRS:       add r5, r4, r7
-; CHECK-INSTRS-NEXT:  add r6, r4, r8
+; CHECK-INSTRS:       add r5, r3, r7
+; CHECK-INSTRS-NEXT:  add r6, r3, r8
 ; CHECK-INSTRS-NEXT:  ld.1 r8, r8
 ; CHECK-INSTRS-NEXT:  st.1 r7, r8
-; CHECK-INSTRS-NEXT:  sub.s! 32, r4, r4
+; CHECK-INSTRS-NEXT:  sub.s! 32, r3, r3
 ; CHECK-INSTRS-NEXT:  jump.ne @.BB0_4
 
 ; Preheader and forward loop.
@@ -100,10 +100,10 @@ define i256 @test_unknown(ptr addrspace(1) %dst, ptr addrspace(1) %src, i256 %si
 ; CHECK-INSTRS-NEXT:  jump.ne @.BB0_8
 
 ; Copy forward residual and residual.
-; CHECK-INSTRS:       add r1, r4, r1
-; CHECK-INSTRS-NEXT:  add r2, r4, r2
+; CHECK-INSTRS:       add r1, r3, r1
+; CHECK-INSTRS-NEXT:  add r2, r3, r2
 ; CHECK-INSTRS-NEXT:  .BB0_10:
-; CHECK-INSTRS:       shl.s 3, r3, r3
+; CHECK-INSTRS:       shl.s 3, r4, r3
 ; CHECK-INSTRS-NEXT:  ld.1 r1, r4
 ; CHECK-INSTRS-NEXT:  shl r4, r3, r4
 ; CHECK-INSTRS-NEXT:  shr r4, r3, r4
@@ -132,11 +132,11 @@ define i256 @test_known_forward() {
 ; CHECK-INSTRS-NEXT:  st.1.inc r1, r3, r1
 ; CHECK-INSTRS-NEXT:  sub.s! 74, r1, r0
 ; CHECK-INSTRS-NEXT:  jump.ne @.BB1_1
-; CHECK-INSTRS:       ld.1 164, r2
-; CHECK-INSTRS-NEXT:  and @CPI1_0[0], r2, r1
-; CHECK-INSTRS-NEXT:  ld.1 74, r2
-; CHECK-INSTRS-NEXT:  and 255, r2, r2
-; CHECK-INSTRS-NEXT:  or r1, r2, r1
+; CHECK-INSTRS:       ld.1 74, r1
+; CHECK-INSTRS-NEXT:  and 255, r1, r1
+; CHECK-INSTRS-NEXT:  ld.1 164, r2
+; CHECK-INSTRS-NEXT:  and @CPI1_0[0], r2, r2
+; CHECK-INSTRS-NEXT:  or r2, r1, r1
 ; CHECK-INSTRS-NEXT:  st.1 74, r1
 ; CHECK-INSTRS-NEXT:  add r0, r0, r1
 ; CHECK-INSTRS-NEXT:  ret
@@ -159,11 +159,11 @@ define i256 @test_known_backward() {
 ; CHECK-INSTRS-NEXT:  st.1 r3, r2
 ; CHECK-INSTRS-NEXT:  sub.s! 32, r1, r1
 ; CHECK-INSTRS-NEXT:  jump.ne @.BB2_2
-; CHECK-INSTRS:       ld.1 10, r2
-; CHECK-INSTRS-NEXT:  and @CPI2_0[0], r2, r1
-; CHECK-INSTRS-NEXT:  ld.1 100, r2
-; CHECK-INSTRS-NEXT:  and 255, r2, r2
-; CHECK-INSTRS-NEXT:  or r1, r2, r1
+; CHECK-INSTRS:       ld.1 100, r1
+; CHECK-INSTRS-NEXT:  and 255, r1, r1
+; CHECK-INSTRS-NEXT:  ld.1 10, r2
+; CHECK-INSTRS-NEXT:  and @CPI2_0[0], r2, r2
+; CHECK-INSTRS-NEXT:  or r2, r1, r1
 ; CHECK-INSTRS-NEXT:  st.1 100, r1
 ; CHECK-INSTRS-NEXT:  add r0, r0, r1
 ; CHECK-INSTRS-NEXT:  ret
