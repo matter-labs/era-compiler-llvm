@@ -1,6 +1,7 @@
 name: Build LLVM binaries
 
 on:
+  pull_request:
   schedule:
     - cron: '0 0 1 * *' # every month to regenerate ccache
   workflow_dispatch:
@@ -102,3 +103,6 @@ jobs:
         with:
           name: llvm-bins-${{ runner.os }}-${{ runner.arch }}
           path: ./${{ runner.os }}-${{ runner.arch }}-target-final.tar.gz
+
+      - name: Running Lit tests
+        run: ninja -C './target-llvm/build-final' verify-llvm -v
