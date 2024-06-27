@@ -104,5 +104,11 @@ jobs:
           name: llvm-bins-${{ runner.os }}-${{ runner.arch }}
           path: ./${{ runner.os }}-${{ runner.arch }}-target-final.tar.gz
 
+      - name: Running Lit tests (Windows)
+        if: runner.os == 'Windows'
+        shell: 'msys2 {0}'
+        run: ninja -C './target-llvm/build-final' verify-llvm -v
+
       - name: Running Lit tests
+        if: runner.os != 'Windows'
         run: ninja -C './target-llvm/build-final' verify-llvm -v
