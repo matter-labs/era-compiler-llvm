@@ -286,7 +286,7 @@ add_lit_testsuite(verify-llvm-codegen-llc "Running EraVM LLVM regression tests w
 --unroll-verify-domtree \
 --verify-regalloc"
   ARGS "--filter CodeGen/EraVM --xfail \
-'CodeGen\\EraVM\\fold-similar-instructions.mir$<SEMICOLON>\
+CodeGen\\EraVM\\fold-similar-instructions.mir$<SEMICOLON>\
 CodeGen\\EraVM\\flag-setting-set-implicit-flags.ll$<SEMICOLON>\
 CodeGen\\EraVM\\hoist-flag-setting.mir$<SEMICOLON>\
 CodeGen\\EraVM\\indexed-ld-in-a-loop-bug.ll$<SEMICOLON>\
@@ -296,7 +296,7 @@ CodeGen\\EraVM\\memcpy-expansion.ll$<SEMICOLON>\
 CodeGen\\EraVM\\select-zero-bitrot.mir$<SEMICOLON>\
 CodeGen\\EraVM\\select-zero-flags.mir$<SEMICOLON>\
 CodeGen\\EraVM\\select_fold.mir$<SEMICOLON>\
-CodeGen\\EraVM\\select_tie.mir'"
+CodeGen\\EraVM\\select_tie.mir$<SEMICOLON>"
   DEPENDS ${LLVM_TEST_DEPENDS}
   )
 
