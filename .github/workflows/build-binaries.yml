@@ -39,99 +39,100 @@ on:
 
 jobs:
 
-  prepare-matrix:
-    runs-on: ubuntu-latest
-    outputs:
-      matrix: ${{ steps.prepare-matrix.outputs.matrix }}
-    steps:
-      - name: Prepare matrix
-        id: prepare-matrix
-        run: |
-          # Define general matrix parameters
-          WINDOWS='{"name":"Windows","runner":"windows-2022-github-hosted-64core"}'
-          # MACOS_AMD64='{"name":"MacOS-x86","runner":"macos-12-large"}'
-          # MACOS_ARM64='{"name":"MacOS-arm64","runner":["self-hosted","macOS","ARM64"]}'
-          # LINUX_AMD64='{"name":"Linux-AMD64","runner":"matterlabs-ci-runner","image":"matterlabs/llvm_runner:ubuntu22-llvm17-latest"}'
-          # LINUX_ARM64='{"name":"Linux-ARM64","runner":"matterlabs-ci-runner-arm","image":"matterlabs/llvm_runner:ubuntu22-llvm17-latest"}'
-          # Disable platforms for non-tag builds if user requested
-          if [ ${GITHUB_EVENT_NAME} = workflow_dispatch ]; then
-            [ ${{ github.event.inputs.build_windows_amd64 }} != true ] && WINDOWS=
-            [ ${{ github.event.inputs.build_macos_amd64 }} != true ] && MACOS_AMD64=
-            [ ${{ github.event.inputs.build_macos_arm64 }} != true ] && MACOS_ARM64=
-            [ ${{ github.event.inputs.build_linux_amd64 }} != true ] && LINUX_AMD64=
-            [ ${{ github.event.inputs.build_linux_arm64 }} != true ] && LINUX_ARM64=
-          fi
-          PLATFORMS=(${WINDOWS} ${MACOS_AMD64} ${MACOS_ARM64} ${LINUX_AMD64} ${LINUX_ARM64})
-          echo "matrix={ \"include\": [ $(IFS=, ; echo "${PLATFORMS[*]}") ] }" | tee -a "${GITHUB_OUTPUT}"
+  # prepare-matrix:
+  #   runs-on: ubuntu-latest
+  #   outputs:
+  #     matrix: ${{ steps.prepare-matrix.outputs.matrix }}
+  #   steps:
+  #     - name: Prepare matrix
+  #       id: prepare-matrix
+  #       run: |
+  #         # Define general matrix parameters
+  #         # Uncomment after fixing llvm-check on Windows
+  #         # WINDOWS='{"name":"Windows","runner":"windows-2022-github-hosted-64core"}'
+  #         MACOS_AMD64='{"name":"MacOS-x86","runner":"macos-12-large"}'
+  #         MACOS_ARM64='{"name":"MacOS-arm64","runner":["self-hosted","macOS","ARM64"]}'
+  #         LINUX_AMD64='{"name":"Linux-AMD64","runner":"matterlabs-ci-runner","image":"matterlabs/llvm_runner:ubuntu22-llvm17-latest"}'
+  #         LINUX_ARM64='{"name":"Linux-ARM64","runner":"matterlabs-ci-runner-arm","image":"matterlabs/llvm_runner:ubuntu22-llvm17-latest"}'
+  #         # Disable platforms for non-tag builds if user requested
+  #         if [ ${GITHUB_EVENT_NAME} = workflow_dispatch ]; then
+  #           [ ${{ github.event.inputs.build_windows_amd64 }} != true ] && WINDOWS=
+  #           [ ${{ github.event.inputs.build_macos_amd64 }} != true ] && MACOS_AMD64=
+  #           [ ${{ github.event.inputs.build_macos_arm64 }} != true ] && MACOS_ARM64=
+  #           [ ${{ github.event.inputs.build_linux_amd64 }} != true ] && LINUX_AMD64=
+  #           [ ${{ github.event.inputs.build_linux_arm64 }} != true ] && LINUX_ARM64=
+  #         fi
+  #         PLATFORMS=(${WINDOWS} ${MACOS_AMD64} ${MACOS_ARM64} ${LINUX_AMD64} ${LINUX_ARM64})
+  #         echo "matrix={ \"include\": [ $(IFS=, ; echo "${PLATFORMS[*]}") ] }" | tee -a "${GITHUB_OUTPUT}"
 
-  # integration-tests:
-  #   uses: matter-labs/era-compiler-ci/.github/workflows/integration-tests.yaml@aba-multiplatform-integration-tests
-  #   secrets: inherit
-  #   with:
-  #     compiler-tester-ref: 'main'
-  #     llvm-ref: ${{ github.head_ref }}
-  #     ccache-key-type: 'static' # rotate ccache key every month
-  #     compiler-llvm-repo: ${{ github.event.repository.full_name }}
-  #     enable-linux-amd64: ${{ github.event.inputs.build_linux_amd64 || true }}
-  #     enable-linux-arm64: ${{ github.event.inputs.build_linux_arm64 || true }}
-  #     enable-macos-amd64: ${{ github.event.inputs.build_macos_amd64 || true }}
-  #     enable-macos-arm64: ${{ github.event.inputs.build_macos_arm64 || true }}
-  #     enable-windows-amd64: ${{ github.event.inputs.build_windows_amd64 || true }}
+  integration-tests:
+    uses: matter-labs/era-compiler-ci/.github/workflows/integration-tests.yaml@aba-multiplatform-integration-tests
+    secrets: inherit
+    with:
+      compiler-tester-ref: 'main'
+      llvm-ref: ${{ github.head_ref }}
+      ccache-key-type: 'static' # rotate ccache key every month
+      compiler-llvm-repo: ${{ github.event.repository.full_name }}
+      enable-linux-amd64: ${{ github.event.inputs.build_linux_amd64 || true }}
+      enable-linux-arm64: ${{ github.event.inputs.build_linux_arm64 || true }}
+      enable-macos-amd64: ${{ github.event.inputs.build_macos_amd64 || true }}
+      enable-macos-arm64: ${{ github.event.inputs.build_macos_arm64 || true }}
+      enable-windows-amd64: ${{ github.event.inputs.build_windows_amd64 || true }}
 
-  build:
-    needs: prepare-matrix
-    strategy:
-      fail-fast: false
-      matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
-    runs-on: ${{ matrix.runner }}
-    container:
-      image: ${{ matrix.image || '' }} # Special workaround to allow matrix builds with optional container
-    name: ${{ matrix.name }}
-    steps:
-      - name: Checkout source
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.ref }}
-          path: "llvm"
+  # build:
+  #   needs: prepare-matrix
+  #   strategy:
+  #     fail-fast: false
+  #     matrix: ${{ fromJson(needs.prepare-matrix.outputs.matrix) }}
+  #   runs-on: ${{ matrix.runner }}
+  #   container:
+  #     image: ${{ matrix.image || '' }} # Special workaround to allow matrix builds with optional container
+  #   name: ${{ matrix.name }}
+  #   steps:
+  #     - name: Checkout source
+  #       uses: actions/checkout@v4
+  #       with:
+  #         ref: ${{ inputs.ref }}
+  #         path: "llvm"
 
-      - name: Prepare Windows env
-        if: runner.os == 'Windows'
-        uses: matter-labs/era-compiler-ci/.github/actions/prepare-msys@v1
+  #     - name: Prepare Windows env
+  #       if: runner.os == 'Windows'
+  #       uses: matter-labs/era-compiler-ci/.github/actions/prepare-msys@v1
 
-      - name: Build LLVM
-        uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
-        with:
-          extra-args: "\\-DLLVM_ENABLE_WERROR=On \\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
-          enable-tests: true
-          enable-assertions: true
-          clone-llvm: false
-          ccache-key-type: 'static'
-          save-ccache: ${{ matrix.name == 'Linux x86' }}
+  #     - name: Build LLVM
+  #       uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
+  #       with:
+  #         extra-args: "\\-DLLVM_ENABLE_WERROR=On \\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+  #         enable-tests: true
+  #         enable-assertions: true
+  #         clone-llvm: false
+  #         ccache-key-type: 'static'
+  #         save-ccache: ${{ matrix.name == 'Linux x86' }}
 
-      # Required to keep executable permissions for binaries
-      - name: Prepare tarball
-        run: tar -czf ${{ runner.os }}-${{ runner.arch }}-target-final.tar.gz ./target-llvm/target-final
+  #     # Required to keep executable permissions for binaries
+  #     - name: Prepare tarball
+  #       run: tar -czf ${{ runner.os }}-${{ runner.arch }}-target-final.tar.gz ./target-llvm/target-final
 
-      - name: Upload LLVM binaries
-        uses: actions/upload-artifact@v4
-        with:
-          name: llvm-bins-${{ runner.os }}-${{ runner.arch }}
-          path: ./${{ runner.os }}-${{ runner.arch }}-target-final.tar.gz
+  #     - name: Upload LLVM binaries
+  #       uses: actions/upload-artifact@v4
+  #       with:
+  #         name: llvm-bins-${{ runner.os }}-${{ runner.arch }}
+  #         path: ./${{ runner.os }}-${{ runner.arch }}-target-final.tar.gz
 
-      - name: Running Lit tests (Windows)
-        if: runner.os == 'Windows'
-        shell: 'msys2 {0}'
-        run: ninja -C './target-llvm/build-final' verify-llvm -v
+  #     - name: Running Lit tests (Windows)
+  #       if: runner.os == 'Windows'
+  #       shell: 'msys2 {0}'
+  #       run: ninja -C './target-llvm/build-final' verify-llvm -v
 
-      - name: Running Lit tests
-        if: runner.os != 'Windows'
-        run: ninja -C './target-llvm/build-final' verify-llvm -v
+  #     - name: Running Lit tests
+  #       if: runner.os != 'Windows'
+  #       run: ninja -C './target-llvm/build-final' verify-llvm -v
 
-      - name: Send Slack notification
-        uses: 8398a7/action-slack@v3
-        if: failure() && github.event_name == 'schedule'
-        with:
-          status: ${{ job.status }}
-          fields: repo,commit,author,action,eventName,ref,workflow,job,took
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+  #     - name: Send Slack notification
+  #       uses: 8398a7/action-slack@v3
+  #       if: failure() && github.event_name == 'schedule'
+  #       with:
+  #         status: ${{ job.status }}
+  #         fields: repo,commit,author,action,eventName,ref,workflow,job,took
+  #       env:
+  #         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
