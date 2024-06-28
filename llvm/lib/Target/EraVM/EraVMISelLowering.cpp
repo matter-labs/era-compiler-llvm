@@ -1150,6 +1150,34 @@ SDValue EraVMTargetLowering::LowerBRCOND(SDValue Op, SelectionDAG &DAG) const {
                      FoldedArith.getValue(2));
 }
 
+static bool isConditionTrue(const APInt &LHS, const APInt &RHS,
+                            ISD::CondCode CC) {
+  switch (CC) {
+  default:
+    llvm_unreachable("Invalid integer condition!");
+  case ISD::SETNE:
+    return LHS.ne(RHS);
+  case ISD::SETEQ:
+    return LHS.eq(RHS);
+  case ISD::SETUGE:
+    return LHS.uge(RHS);
+  case ISD::SETULT:
+    return LHS.ult(RHS);
+  case ISD::SETULE:
+    return LHS.ule(RHS);
+  case ISD::SETUGT:
+    return LHS.ugt(RHS);
+  case ISD::SETGT:
+    return LHS.sgt(RHS);
+  case ISD::SETGE:
+    return LHS.sge(RHS);
+  case ISD::SETLT:
+    return LHS.slt(RHS);
+  case ISD::SETLE:
+    return LHS.sle(RHS);
+  }
+}
+
 SDValue EraVMTargetLowering::LowerSELECT_CC(SDValue Op,
                                             SelectionDAG &DAG) const {
   SDValue LHS = Op.getOperand(0);
@@ -1158,6 +1186,12 @@ SDValue EraVMTargetLowering::LowerSELECT_CC(SDValue Op,
   SDValue FalseV = Op.getOperand(3);
   ISD::CondCode CC = cast<CondCodeSDNode>(Op.getOperand(4))->get();
   SDLoc DL(Op);
+
+  if (isa<ConstantSDNode>(LHS) && isa<ConstantSDNode>(RHS)) {
+    const APInt &LHSVal = cast<ConstantSDNode>(LHS)->getAPIntValue();
+    const APInt &RHSVal = cast<ConstantSDNode>(RHS)->getAPIntValue();
+    return isConditionTrue(LHSVal, RHSVal, CC) ? TrueV : FalseV;
+  }
 
   SDValue TargetCC = EmitCMP(LHS, RHS, CC, DL, DAG);
   SDValue Cmp = DAG.getNode(EraVMISD::CMP, DL, MVT::Glue, LHS, RHS);
