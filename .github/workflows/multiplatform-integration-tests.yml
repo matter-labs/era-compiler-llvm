@@ -1,4 +1,4 @@
-name: Build LLVM binaries
+name: Multiplatform integration tests
 
 on:
   pull_request:
@@ -44,7 +44,7 @@ jobs:
     secrets: inherit
     with:
       compiler-tester-ref: 'main'
-      llvm-ref: ${{ inputs.ref || github.head_ref }}
+      llvm-ref: ${{ inputs.ref }}
       ccache-key-type: 'static'
       compiler-llvm-repo: ${{ github.event.repository.full_name }}
       enable-linux-amd64: ${{ inputs.enable_linux_amd64 || true }}
