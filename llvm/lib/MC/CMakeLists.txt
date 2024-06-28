@@ -85,3 +85,4 @@ add_llvm_component_library(LLVMMC
 
 add_subdirectory(MCParser)
 add_subdirectory(MCDisassembler)
+add_subdirectory(MCC)
