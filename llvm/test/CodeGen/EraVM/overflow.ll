@@ -14,7 +14,7 @@ declare { i256, i1 } @llvm.umul.with.overflow.i256(i256, i256)
 define i256 @add_test(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r3, r4, r3
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add.lt r1, r0, r2
 ; CHECK-NEXT:    add r2, r0, r1
 ; CHECK-NEXT:    ret
@@ -28,11 +28,11 @@ entry:
 define i256 @add_test_1(i256 %a, i256 %b, i256 %c, i256 %x, i256 %y, i256 %z) {
 ; CHECK-LABEL: add_test_1:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r4, r5, r6
+; CHECK-NEXT:    add! r4, r5, r0
 ; CHECK-NEXT:    add r2, r0, r6
 ; CHECK-NEXT:    add.lt r1, r0, r6
 ; CHECK-NEXT:    add r4, r5, r4
-; CHECK-NEXT:    sub! r1, r2, r1
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    add.lt r3, r0, r4
 ; CHECK-NEXT:    add r4, r6, r1
 ; CHECK-NEXT:    ret
@@ -51,9 +51,9 @@ define i256 @add_test_2(i256 %a, i256 %b, i256 %c, i256 %x, i256 %y, i256 %z) {
 ; CHECK-LABEL: add_test_2:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    add r4, r5, r7
-; CHECK-NEXT:    sub! r1, r2, r1
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    add.lt r3, r0, r7
-; CHECK-NEXT:    add! r4, r5, r1
+; CHECK-NEXT:    add! r4, r5, r0
 ; CHECK-NEXT:    add.lt r7, r0, r2
 ; CHECK-NEXT:    add r6, r2, r1
 ; CHECK-NEXT:    ret
@@ -71,7 +71,7 @@ entry:
 define i256 @add_test_large_imm(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_large_imm:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! @CPI3_0[0], r3, r3
+; CHECK-NEXT:    add! @CPI3_0[0], r3, r0
 ; CHECK-NEXT:    add.lt r1, r0, r2
 ; CHECK-NEXT:    add r2, r0, r1
 ; CHECK-NEXT:    ret
@@ -85,7 +85,7 @@ entry:
 define i256 @add_test_crr(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_crr:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r3, r4, r2
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add @val[0], r0, r2
 ; CHECK-NEXT:    add.lt r1, r0, r2
 ; CHECK-NEXT:    add r2, r0, r1
@@ -101,7 +101,7 @@ entry:
 define i256 @add_test_crr_zero_cp(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_crr_zero_cp:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add r0, r0, r1
 ; CHECK-NEXT:    add.lt @CPI5_0[0], r0, r1
 ; CHECK-NEXT:    ret
@@ -115,7 +115,7 @@ entry:
 define i256 @add_test_crr_cp(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_crr_cp:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add r0, r0, r1
 ; CHECK-NEXT:    add.lt @CPI6_0[0], r0, r1
 ; CHECK-NEXT:    ret
@@ -130,7 +130,7 @@ define i256 @add_test_srr(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_srr:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    add! r3, r4, r2
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add.lt stack-[1], r0, r1
 ; CHECK-NEXT:    ret
 entry:
@@ -145,7 +145,7 @@ entry:
 define i256 @add_test_rir(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_rir:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r3, r4, r2
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add 42, r0, r2
 ; CHECK-NEXT:    add.lt r1, r0, r2
 ; CHECK-NEXT:    add r2, r0, r1
@@ -160,7 +160,7 @@ entry:
 define i256 @add_test_iir(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_iir:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add 42, r0, r1
 ; CHECK-NEXT:    add.lt 17, r0, r1
 ; CHECK-NEXT:    ret
@@ -174,7 +174,7 @@ entry:
 define i256 @add_test_cir(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_cir:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add 42, r0, r1
 ; CHECK-NEXT:    add.lt @val[0], r0, r1
 ; CHECK-NEXT:    ret
@@ -189,7 +189,7 @@ entry:
 define i256 @add_test_cir_cp(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_cir_cp:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add 42, r0, r1
 ; CHECK-NEXT:    add.lt @CPI11_0[0], r0, r1
 ; CHECK-NEXT:    ret
@@ -204,7 +204,7 @@ define i256 @add_test_sir(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_sir:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add 42, r0, r1
 ; CHECK-NEXT:    add.lt stack-[1], r0, r1
 ; CHECK-NEXT:    ret
@@ -220,7 +220,7 @@ entry:
 define i256 @add_test_rcr(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_rcr:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r3, r4, r2
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add @val[0], r0, r2
 ; CHECK-NEXT:    add.lt r1, r0, r2
 ; CHECK-NEXT:    add r2, r0, r1
@@ -236,7 +236,7 @@ entry:
 define i256 @add_test_rcr_zero_cp(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_rcr_zero_cp:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add @CPI14_0[0], r0, r1
 ; CHECK-NEXT:    add.lt r0, r0, r1
 ; CHECK-NEXT:    ret
@@ -250,7 +250,7 @@ entry:
 define i256 @add_test_rcr_cp(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_rcr_cp:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r3, r4, r2
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add @CPI15_0[0], r0, r2
 ; CHECK-NEXT:    add.lt r1, r0, r2
 ; CHECK-NEXT:    add r2, r0, r1
@@ -265,7 +265,7 @@ entry:
 define i256 @add_test_icr(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_icr:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add @val[0], r0, r1
 ; CHECK-NEXT:    add.lt 42, r0, r1
 ; CHECK-NEXT:    ret
@@ -280,7 +280,7 @@ entry:
 define i256 @add_test_icr_cp(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_icr_cp:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add @CPI17_0[0], r0, r1
 ; CHECK-NEXT:    add.lt 42, r0, r1
 ; CHECK-NEXT:    ret
@@ -294,7 +294,7 @@ entry:
 define i256 @add_test_ccr_cl_cl(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_ccr_cl_cl:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add @val[0], r0, r1
 ; CHECK-NEXT:    add.lt @val2[0], r0, r1
 ; CHECK-NEXT:    ret
@@ -310,7 +310,7 @@ entry:
 define i256 @add_test_ccr_cl_cp(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_ccr_cl_cp:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add @CPI19_0[0], r0, r1
 ; CHECK-NEXT:    add.lt @val[0], r0, r1
 ; CHECK-NEXT:    ret
@@ -325,7 +325,7 @@ entry:
 define i256 @add_test_ccr_cp_cl(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_ccr_cp_cl:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add @val[0], r0, r1
 ; CHECK-NEXT:    add.lt @CPI20_0[0], r0, r1
 ; CHECK-NEXT:    ret
@@ -340,7 +340,7 @@ entry:
 define i256 @add_test_ccr_cp_cp(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_ccr_cp_cp:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add @CPI21_1[0], r0, r1
 ; CHECK-NEXT:    add.lt @CPI21_0[0], r0, r1
 ; CHECK-NEXT:    ret
@@ -355,7 +355,7 @@ define i256 @add_test_scr(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_scr:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add @val[0], r0, r1
 ; CHECK-NEXT:    add.lt stack-[1], r0, r1
 ; CHECK-NEXT:    ret
@@ -373,7 +373,7 @@ define i256 @add_test_scr_cp(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_scr_cp:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add @CPI23_0[0], r0, r1
 ; CHECK-NEXT:    add.lt stack-[1], r0, r1
 ; CHECK-NEXT:    ret
@@ -390,7 +390,7 @@ define i256 @add_test_rsr(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_rsr:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    add! r3, r4, r2
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add stack-[1], r0, r2
 ; CHECK-NEXT:    add.lt r1, r0, r2
 ; CHECK-NEXT:    add r2, r0, r1
@@ -408,7 +408,7 @@ define i256 @add_test_isr(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_isr:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add stack-[1], r0, r1
 ; CHECK-NEXT:    add.lt 42, r0, r1
 ; CHECK-NEXT:    ret
@@ -425,7 +425,7 @@ define i256 @add_test_csr(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_csr:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add stack-[1], r0, r1
 ; CHECK-NEXT:    add.lt @val[0], r0, r1
 ; CHECK-NEXT:    ret
@@ -443,7 +443,7 @@ define i256 @add_test_csr_cp(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_csr_cp:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add stack-[1], r0, r1
 ; CHECK-NEXT:    add.lt @CPI27_0[0], r0, r1
 ; CHECK-NEXT:    ret
@@ -460,7 +460,7 @@ define i256 @add_test_ssr(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_ssr:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[2 + r0]
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add stack-[2], r0, r1
 ; CHECK-NEXT:    add.lt stack-[1], r0, r1
 ; CHECK-NEXT:    ret
@@ -479,7 +479,7 @@ define i256 @add_test_rrs(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_rrs:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    add! r3, r4, r3
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add.lt r1, r0, r2
 ; CHECK-NEXT:    add r2, r0, stack-[1]
 ; CHECK-NEXT:    add r2, r0, r1
@@ -498,7 +498,7 @@ define i256 @add_test_irs(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    add r2, r0, r1
-; CHECK-NEXT:    add! r3, r4, r2
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add.lt 42, r0, r1
 ; CHECK-NEXT:    add r1, r0, stack-[1]
 ; CHECK-NEXT:    ret
@@ -516,7 +516,7 @@ define i256 @add_test_crs(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    add r2, r0, r1
-; CHECK-NEXT:    add! r3, r4, r2
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add.lt @val[0], r0, r1
 ; CHECK-NEXT:    add r1, r0, stack-[1]
 ; CHECK-NEXT:    ret
@@ -535,7 +535,7 @@ define i256 @add_test_srs(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[2 + r0]
 ; CHECK-NEXT:    add r2, r0, r1
-; CHECK-NEXT:    add! r3, r4, r2
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add.lt stack-[1], r0, r1
 ; CHECK-NEXT:    add r1, r0, stack-[2]
 ; CHECK-NEXT:    ret
@@ -554,7 +554,7 @@ define i256 @add_test_ris(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_ris:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    add! r3, r4, r2
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add 42, r0, r2
 ; CHECK-NEXT:    add.lt r1, r0, r2
 ; CHECK-NEXT:    add r2, r0, stack-[1]
@@ -573,7 +573,7 @@ define i256 @add_test_iis(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_iis:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add 42, r0, r1
 ; CHECK-NEXT:    add.lt 17, r0, r1
 ; CHECK-NEXT:    add r1, r0, stack-[1]
@@ -591,7 +591,7 @@ define i256 @add_test_cis(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_cis:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add 42, r0, r1
 ; CHECK-NEXT:    add.lt @val[0], r0, r1
 ; CHECK-NEXT:    add r1, r0, stack-[1]
@@ -610,7 +610,7 @@ define i256 @add_test_sis(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_sis:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[2 + r0]
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add 42, r0, r1
 ; CHECK-NEXT:    add.lt stack-[1], r0, r1
 ; CHECK-NEXT:    add r1, r0, stack-[2]
@@ -630,7 +630,7 @@ define i256 @add_test_rcs(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_rcs:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    add! r3, r4, r2
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add @val[0], r0, r2
 ; CHECK-NEXT:    add.lt r1, r0, r2
 ; CHECK-NEXT:    add r2, r0, stack-[1]
@@ -650,7 +650,7 @@ define i256 @add_test_ics(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_ics:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add @val[0], r0, r1
 ; CHECK-NEXT:    add.lt 42, r0, r1
 ; CHECK-NEXT:    add r1, r0, stack-[1]
@@ -669,7 +669,7 @@ define i256 @add_test_ccs(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_ccs:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add @val[0], r0, r1
 ; CHECK-NEXT:    add.lt @val2[0], r0, r1
 ; CHECK-NEXT:    add r1, r0, stack-[1]
@@ -689,7 +689,7 @@ define i256 @add_test_scs(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_scs:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[2 + r0]
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add @val[0], r0, r1
 ; CHECK-NEXT:    add.lt stack-[1], r0, r1
 ; CHECK-NEXT:    add r1, r0, stack-[2]
@@ -710,7 +710,7 @@ define i256 @add_test_rss(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_rss:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[2 + r0]
-; CHECK-NEXT:    add! r3, r4, r2
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add stack-[1], r0, r2
 ; CHECK-NEXT:    add.lt r1, r0, r2
 ; CHECK-NEXT:    add r2, r0, stack-[2]
@@ -731,7 +731,7 @@ define i256 @add_test_iss(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_iss:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[2 + r0]
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add stack-[1], r0, r1
 ; CHECK-NEXT:    add.lt 42, r0, r1
 ; CHECK-NEXT:    add r1, r0, stack-[2]
@@ -751,7 +751,7 @@ define i256 @add_test_css(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_css:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[2 + r0]
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add stack-[1], r0, r1
 ; CHECK-NEXT:    add.lt @val[0], r0, r1
 ; CHECK-NEXT:    add r1, r0, stack-[2]
@@ -772,7 +772,7 @@ define i256 @add_test_sss(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: add_test_sss:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[3 + r0]
-; CHECK-NEXT:    add! r3, r4, r1
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add stack-[2], r0, r1
 ; CHECK-NEXT:    add.lt stack-[1], r0, r1
 ; CHECK-NEXT:    add r1, r0, stack-[3]
@@ -793,7 +793,7 @@ entry:
 define i256 @sub_test(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: sub_test:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r3, r4, r3
+; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add.ge r2, r0, r1
 ; CHECK-NEXT:    ret
 entry:
@@ -806,7 +806,7 @@ entry:
 define i256 @sub_test_large_imm(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: sub_test_large_imm:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub.s! @CPI46_0[0], r3, r3
+; CHECK-NEXT:    sub.s! @CPI46_0[0], r3, r0
 ; CHECK-NEXT:    add.ge r2, r0, r1
 ; CHECK-NEXT:    ret
 entry:
@@ -819,7 +819,7 @@ entry:
 define i256 @sub_test_large_immx(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: sub_test_large_immx:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! @CPI47_0[0], r1, r3
+; CHECK-NEXT:    sub! @CPI47_0[0], r1, r0
 ; CHECK-NEXT:    add.ge r2, r0, r1
 ; CHECK-NEXT:    ret
 entry:
@@ -832,7 +832,7 @@ entry:
 define i256 @mul_test(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: mul_test:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    mul! r3, r4, r3, r4
+; CHECK-NEXT:    mul! r3, r4, r0, r0
 ; CHECK-NEXT:    add.lt r1, r0, r2
 ; CHECK-NEXT:    add r2, r0, r1
 ; CHECK-NEXT:    ret
@@ -846,7 +846,7 @@ entry:
 define i256 @mul_test_large_imm(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: mul_test_large_imm:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    mul! @CPI49_0[0], r3, r3, r4
+; CHECK-NEXT:    mul! @CPI49_0[0], r3, r0, r0
 ; CHECK-NEXT:    add.lt r1, r0, r2
 ; CHECK-NEXT:    add r2, r0, r1
 ; CHECK-NEXT:    ret

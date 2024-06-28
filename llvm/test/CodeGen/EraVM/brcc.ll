@@ -7,7 +7,7 @@ target triple = "eravm"
 
 ; CHECK-LABEL: ugt
 define i256 @ugt(i256 %p1, i256 %p2) nounwind {
-; CHECK: sub! r1, r2, r{{[0-9]+}}
+; CHECK: sub! r1, r2, r0
 ; CHECK-NEXT: add.le 72, r0, r1
 ; CHECK-NEXT: add.gt  42, r0, r1
 ; CHECK-NEXT: ret
@@ -21,7 +21,7 @@ l2:
 
 ; CHECK-LABEL: uge
 define i256 @uge(i256 %p1, i256 %p2) nounwind {
-; CHECK: sub! r1, r2, r{{[0-9]+}}
+; CHECK: sub! r1, r2, r0
 ; CHECK-NEXT: add.lt 72, r0, r1
 ; CHECK-NEXT: add.ge 42, r0, r1
 ; CHECK-NEXT: ret
@@ -35,7 +35,7 @@ l2:
 
 ; CHECK-LABEL: ult
 define i256 @ult(i256 %p1, i256 %p2) nounwind {
-; CHECK: sub! r1, r2, r{{[0-9]+}}
+; CHECK: sub! r1, r2, r0
 ; CHECK-NEXT: add.ge 72, r0, r1
 ; CHECK-NEXT: add.lt  42, r0, r1
 ; CHECK-NEXT: ret
@@ -49,7 +49,7 @@ l2:
 
 ; CHECK-LABEL: ule
 define i256 @ule(i256 %p1, i256 %p2) nounwind {
-; CHECK: sub! r1, r2, r{{[0-9]+}}
+; CHECK: sub! r1, r2, r0
 ; CHECK-NEXT: add.gt  72, r0, r1
 ; CHECK-NEXT: add.le  42, r0, r1
 ; CHECK-NEXT: ret
@@ -63,7 +63,7 @@ l2:
 
 ; CHECK-LABEL: eq
 define i256 @eq(i256 %p1, i256 %p2) nounwind {
-; CHECK: sub! r1, r2, r{{[0-9]+}}
+; CHECK: sub! r1, r2, r0
 ; CHECK-NEXT: add.ne  72, r0, r1
 ; CHECK-NEXT: add.eq  42, r0, r1
 ; CHECK-NEXT: ret
@@ -77,7 +77,7 @@ l2:
 
 ; CHECK-LABEL: cmpne
 define i256 @cmpne(i256 %p1, i256 %p2) nounwind {
-; CHECK: sub! r1, r2, r{{[0-9]+}}
+; CHECK: sub! r1, r2, r0
 ; CHECK-NEXT: add.eq  72, r0, r1
 ; CHECK-NEXT: add.ne  42, r0, r1
 ; CHECK-NEXT: ret
@@ -108,7 +108,7 @@ loop.exit:
 
 ; CHECK-LABEL: cmpir
 define i256 @cmpir(i256 %p1, i256 %p2) nounwind {
-; CHECK: sub.s! 43, r{{[0-9]+}}, r{{[0-9]+}}
+; CHECK: sub.s! 43, r{{[0-9]+}}, r0
 ; CHECK-NEXT: add.lt  72, r0, r1
 ; CHECK-NEXT: add.ge  42, r0, r1
 ; CHECK-NEXT: ret
@@ -122,7 +122,7 @@ l2:
 
 ; CHECK-LABEL: cmpcr
 define i256 @cmpcr(i256 %p1, i256 %p2) nounwind {
-; CHECK: sub.s! @val[0], r1, r{{[0-9]+}}
+; CHECK: sub.s! @val[0], r1, r0
 ; CHECK-NEXT: add.le  72, r0, r1
 ; CHECK-NEXT: add.gt  42, r0, r1
 ; CHECK-NEXT: ret
@@ -138,7 +138,7 @@ l2:
 ; CHECK-LABEL: cmpsr
 define i256 @cmpsr(i256 %p1, i256 %p2) nounwind {
   %ptr = alloca i256
-; CHECK: sub.s! stack-[1], r1, r1
+; CHECK: sub.s! stack-[1], r1, r0
   %data = load i256, i256* %ptr
   %1 = icmp ugt i256 %p1, %data
   br i1 %1, label %l1, label %l2
@@ -150,7 +150,7 @@ l2:
 
 ; CHECK-LABEL: cmpri
 define i256 @cmpri(i256 %p1, i256 %p2) nounwind {
-; CHECK: sub.s! 41, r1, r1
+; CHECK: sub.s! 41, r1, r0
 ; CHECK-NEXT: add.gt  72, r0, r1
 ; CHECK-NEXT: add.le  42, r0, r1
 ; CHECK-NEXT: ret
@@ -164,7 +164,7 @@ l2:
 
 ; CHECK-LABEL: cmprc
 define i256 @cmprc(i256 %p1, i256 %p2) nounwind {
-; CHECK: sub! @val[0], r1, r{{[0-9]+}}
+; CHECK: sub! @val[0], r1, r0
 ; CHECK-NEXT: add.le  72, r0, r1
 ; CHECK-NEXT: add.gt  42, r0, r1
 ; CHECK-NEXT: ret
@@ -180,7 +180,7 @@ l2:
 ; CHECK-LABEL: cmprs
 define i256 @cmprs(i256 %p1, i256 %p2) nounwind {
   %ptr = alloca i256
-; CHECK: sub! stack-[1], r1, r{{[0-9]+}}
+; CHECK: sub! stack-[1], r1, r0
   %data = load i256, i256* %ptr
   %1 = icmp ugt i256 %data, %p1
   br i1 %1, label %l1, label %l2

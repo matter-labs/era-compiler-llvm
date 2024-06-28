@@ -138,6 +138,7 @@ target triple = "eravm"
 ; CHECK-NEXT:       Remove unreachable machine basic blocks
 ; CHECK-NEXT:       Live Variable Analysis
 ; CHECK-NEXT:       EraVM tie select operands pass
+; CHECK-NEXT:       EraVM dead register definitions
 ; CHECK-NEXT:       Detect Dead Lanes
 ; CHECK-NEXT:       Process Implicit Definitions
 ; CHECK-NEXT:       Remove unreachable machine basic blocks

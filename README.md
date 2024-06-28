@@ -57,7 +57,7 @@ The ZKsync LLVM framework must be built with our tool called `zksync-llvm`:
 <details>
 <summary>2. Install Rust.</summary>
 
-   * Follow the latest [official instructions]((https://www.rust-lang.org/tools/install)):
+   * Follow the latest [official instructions](https://www.rust-lang.org/tools/install:
       ```shell
       curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
       . ${HOME}/.cargo/env

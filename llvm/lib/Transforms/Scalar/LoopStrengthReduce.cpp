@@ -4046,7 +4046,7 @@ void LSRInstance::GenerateICmpZeroScales(LSRUse &LU, unsigned LUIdx,
     // Compensate for the use having MinOffset built into it.
     F.BaseOffset = (uint64_t)F.BaseOffset + Offset - LU.MinOffset;
 
-    const SCEV *FactorS = SE.getConstant(IntTy, Factor);
+    const SCEV *FactorS = SE.getConstant(IntTy, Factor, /*isSigned*/ true);
 
     // Check that multiplying with each base register doesn't overflow.
     for (size_t i = 0, e = F.BaseRegs.size(); i != e; ++i) {
@@ -4122,7 +4122,7 @@ void LSRInstance::GenerateScales(LSRUse &LU, unsigned LUIdx, Formula Base) {
     for (size_t i = 0, e = Base.BaseRegs.size(); i != e; ++i) {
       const SCEVAddRecExpr *AR = dyn_cast<SCEVAddRecExpr>(Base.BaseRegs[i]);
       if (AR && (AR->getLoop() == L || LU.AllFixupsOutsideLoop)) {
-        const SCEV *FactorS = SE.getConstant(IntTy, Factor);
+        const SCEV *FactorS = SE.getConstant(IntTy, Factor, true);
         if (FactorS->isZero())
           continue;
         // Divide out the factor, ignoring high bits, since we'll be
@@ -4356,7 +4356,8 @@ void LSRInstance::GenerateCrossUseConstantOffsets() {
     const SCEV *OrigReg = WI.OrigReg;
 
     Type *IntTy = SE.getEffectiveSCEVType(OrigReg->getType());
-    const SCEV *NegImmS = SE.getSCEV(ConstantInt::get(IntTy, -(uint64_t)Imm));
+    const SCEV *NegImmS =
+        SE.getSCEV(ConstantInt::getSigned(IntTy, -(uint64_t)Imm));
     unsigned BitWidth = SE.getTypeSizeInBits(IntTy);
 
     // TODO: Use a more targeted data structure.
@@ -4371,8 +4372,8 @@ void LSRInstance::GenerateCrossUseConstantOffsets() {
       if (F.ScaledReg == OrigReg) {
         int64_t Offset = (uint64_t)F.BaseOffset + Imm * (uint64_t)F.Scale;
         // Don't create 50 + reg(-50).
-        if (F.referencesReg(SE.getSCEV(
-                   ConstantInt::get(IntTy, -(uint64_t)Offset))))
+        if (F.referencesReg(
+                SE.getSCEV(ConstantInt::getSigned(IntTy, -(uint64_t)Offset))))
           continue;
         Formula NewF = F;
         NewF.BaseOffset = Offset;

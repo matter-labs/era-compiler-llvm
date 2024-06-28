@@ -9,7 +9,7 @@ declare { i256, i1 } @llvm.uadd.with.overflow.i256(i256, i256)
 define i256 @select_zero_1(i256 %0, i256 %1) {
 ; CHECK-LABEL: select_zero_1:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r2, r3
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    add r1, r2, r1
 ; CHECK-NEXT:    add.eq 1, r1, r1
 ; CHECK-NEXT:    ret
@@ -24,7 +24,7 @@ entry:
 define i256 @select_zero_1_fold_cond_of(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: select_zero_1_fold_cond_of:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r3, r4, r3
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add r1, r2, r1
 ; CHECK-NEXT:    add.lt 123, r1, r1
 ; CHECK-NEXT:    ret
@@ -40,7 +40,7 @@ entry:
 define i256 @select_zero_2(i256 %0, i256 %1) {
 ; CHECK-LABEL: select_zero_2:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r2, r3
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    add r1, r2, r1
 ; CHECK-NEXT:    add.ne 1, r1, r1
 ; CHECK-NEXT:    ret
@@ -55,7 +55,7 @@ entry:
 define i256 @select_zero_2_dont_fold_cond_of(i256 %a, i256 %b, i256 %x, i256 %y) {
 ; CHECK-LABEL: select_zero_2_dont_fold_cond_of:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add! r3, r4, r3
+; CHECK-NEXT:    add! r3, r4, r0
 ; CHECK-NEXT:    add 123, r0, r3
 ; CHECK-NEXT:    add.lt 0, r0, r3
 ; CHECK-NEXT:    add r1, r2, r1
@@ -74,7 +74,7 @@ define i256 @select_zero_3(i256 %0, i256 %1) {
 ; CHECK-LABEL: select_zero_3:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    add r1, r2, r3
-; CHECK-NEXT:    sub! r1, r2, r1
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    add.eq 1, r3, r3
 ; CHECK-NEXT:    add r3, r0, r1
 ; CHECK-NEXT:    ret
@@ -90,7 +90,7 @@ define i256 @select_zero_4(i256 %0, i256 %1) {
 ; CHECK-LABEL: select_zero_4:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    add r1, r2, r3
-; CHECK-NEXT:    sub! r1, r2, r1
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    add.ne 1, r3, r3
 ; CHECK-NEXT:    add r3, r0, r1
 ; CHECK-NEXT:    ret
@@ -105,10 +105,10 @@ entry:
 define i256 @select_zero_5(i256 %0, i256 %1, i256 %2, i256 %3) {
 ; CHECK-LABEL: select_zero_5:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r3, r4, r3
+; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add 0, r0, r3
 ; CHECK-NEXT:    add.ne 1, r0, r3
-; CHECK-NEXT:    sub! r1, r2, r1
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    add.ne 1, r3, r3
 ; CHECK-NEXT:    add r3, r0, r1
 ; CHECK-NEXT:    ret
@@ -124,7 +124,7 @@ entry:
 define i256 @select_zero_or_1(i256 %0, i256 %1, i256 %2) {
 ; CHECK-LABEL: select_zero_or_1:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r2, r1
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    or.ne 1, r3, r3
 ; CHECK-NEXT:    add r3, r0, r1
 ; CHECK-NEXT:    ret
@@ -138,7 +138,7 @@ entry:
 define i256 @select_zero_or_2(i256 %0, i256 %1, i256 %2) {
 ; CHECK-LABEL: select_zero_or_2:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r2, r1
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    or.ne 1, r3, r3
 ; CHECK-NEXT:    add r3, r0, r1
 ; CHECK-NEXT:    ret
@@ -152,7 +152,7 @@ entry:
 define i256 @select_zero_sub(i256 %0, i256 %1, i256 %2) {
 ; CHECK-LABEL: select_zero_sub:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r2, r1
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    sub.s.ne 1, r3, r3
 ; CHECK-NEXT:    add r3, r0, r1
 ; CHECK-NEXT:    ret
@@ -166,7 +166,7 @@ entry:
 define i256 @select_zero_sub_not(i256 %0, i256 %1, i256 %2) {
 ; CHECK-LABEL: select_zero_sub_not:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r2, r1
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    add 0, r0, r1
 ; CHECK-NEXT:    add.ne 1, r0, r1
 ; CHECK-NEXT:    sub r1, r3, r1
@@ -181,7 +181,7 @@ entry:
 define i256 @select_zero_shl(i256 %0, i256 %1, i256 %2) {
 ; CHECK-LABEL: select_zero_shl:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r2, r1
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    shl.s.ne 1, r3, r3
 ; CHECK-NEXT:    add r3, r0, r1
 ; CHECK-NEXT:    ret
@@ -195,7 +195,7 @@ entry:
 define i256 @select_zero_shl_not(i256 %0, i256 %1, i256 %2) {
 ; CHECK-LABEL: select_zero_shl_not:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r2, r1
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    add 0, r0, r1
 ; CHECK-NEXT:    add.ne 1, r0, r1
 ; CHECK-NEXT:    shl r1, r3, r1
@@ -210,7 +210,7 @@ entry:
 define i256 @select_zero_shr(i256 %0, i256 %1, i256 %2) {
 ; CHECK-LABEL: select_zero_shr:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r2, r1
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    shr.s.ne 1, r3, r3
 ; CHECK-NEXT:    add r3, r0, r1
 ; CHECK-NEXT:    ret
@@ -224,7 +224,7 @@ entry:
 define i256 @select_zero_shr_not(i256 %0, i256 %1, i256 %2) {
 ; CHECK-LABEL: select_zero_shr_not:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r2, r1
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    add 0, r0, r1
 ; CHECK-NEXT:    add.ne 1, r0, r1
 ; CHECK-NEXT:    shr r1, r3, r1
@@ -240,7 +240,7 @@ define i256 @select_zero_add_stack(i256 %0, i256 %1) {
 ; CHECK-LABEL: select_zero_add_stack:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    sub! r1, r2, r1
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    add.eq stack-[1], r2, r2
 ; CHECK-NEXT:    add r2, r0, r1
 ; CHECK-NEXT:    ret
@@ -257,7 +257,7 @@ entry:
 define i256 @select_zero_add_code(i256 %0, i256 %1) {
 ; CHECK-LABEL: select_zero_add_code:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    sub! r1, r2, r1
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    add.eq @val[0], r2, r2
 ; CHECK-NEXT:    add r2, r0, r1
 ; CHECK-NEXT:    ret
@@ -274,7 +274,7 @@ define i256 @select_zero_not_folded_1(i256 %0, i256 %1) {
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    add r1, r2, r3
-; CHECK-NEXT:    sub! r1, r2, r1
+; CHECK-NEXT:    sub! r1, r2, r0
 ; CHECK-NEXT:    add 0, r0, r1
 ; CHECK-NEXT:    add.eq 1, r0, r1
 ; CHECK-NEXT:    add r1, r0, stack-[1]
