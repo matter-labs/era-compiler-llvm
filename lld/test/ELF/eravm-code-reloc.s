@@ -54,13 +54,13 @@ foo_local:
 ; OUTPUT-NEXT: 00000080 l     F .code  00000000 dummy_function
 ; OUTPUT-NEXT: 00000090 l     F .code  00000000 handler_local
 ; OUTPUT-NEXT: 00000098 l     F .code  00000000 foo_local
-; OUTPUT-NEXT: 00000110 l       .code  00000000 label_local
+; OUTPUT-NEXT: 00000120 l       .code  00000000 label_local
 ; OUTPUT-NEXT: 00000020 g     O .code  00000000 jump_table
 ; OUTPUT-NEXT: 00000090 g     F .code  00000000 handler
 ; OUTPUT-NEXT: 00000098 g     F .code  00000000 foo
 ; OUTPUT-NEXT: 000000a0 g     F .code  00000000 caller_g
-; OUTPUT-NEXT: 000000d0 g       .code  00000000 label
-; OUTPUT-NEXT: 000000e0 g     F .code  00000000 caller_l
+; OUTPUT-NEXT: 000000e0 g       .code  00000000 label
+; OUTPUT-NEXT: 000000f0 g     F .code  00000000 caller_l
 
 ; Test relocations referring global symbols.
   .type caller_g,@function
@@ -68,6 +68,9 @@ foo_local:
 caller_g:
   near_call r1, @foo, @handler
   far_call  r3, r4, @foo
+  add   @.OUTLINED_FUNCTION_RET0[0], r0, stack-[1]
+  jump  @foo_local
+.OUTLINED_FUNCTION_RET0:
   jump @label
   ret.ok.to_label    r1, @label
   ret.revert.to_label r1, @label
@@ -82,6 +85,10 @@ label:
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      foo
 ; INPUT-NEXT:  00 00 00 00 00 43 04 21        far_call        r3, r4, 0
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      foo
+; INPUT-NEXT:  00 01 00 00 00 00 00 45 add code[0], r0, stack-[1 + r0]
+; INPUT-NEXT:                 R_ERAVM_16_SCALE_32 .text+0x40
+; INPUT-NEXT:  00 00 00 00 00 00 01 3d        jump    0
+; INPUT-NEXT:                 R_ERAVM_16_SCALE_8  .text+0x18
 ; INPUT-NEXT:  00 00 00 00 00 00 01 3d        jump    0
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      label
 ; INPUT-NEXT:  00 00 00 00 00 01 04 2e        ret.ok.to_label r1, 0
@@ -98,10 +105,12 @@ label:
 ; OUTPUT-LABEL: <caller_g>:
 ; OUTPUT-NEXT:  00 12 00 13 00 01 04 0f        near_call       r1, 19, 18
 ; OUTPUT-NEXT:  00 00 00 13 00 43 04 21        far_call        r3, r4, 19
-; OUTPUT-NEXT:  00 00 00 1a 00 00 01 3d        jump    26
-; OUTPUT-NEXT:  00 00 00 1a 00 01 04 2e        ret.ok.to_label r1, 26
-; OUTPUT-NEXT:  00 00 00 1a 00 01 04 30        ret.revert.to_label     r1, 26
-; OUTPUT-NEXT:  00 00 00 1a 00 00 04 32        ret.panic.to_label r0,      26
+; OUTPUT-NEXT:  00 01 00 18 00 00 00 45        add     code[24], r0, stack-[1 + r0]
+; OUTPUT-NEXT:  00 00 00 13 00 00 01 3d        jump    19
+; OUTPUT-NEXT:  00 00 00 1c 00 00 01 3d        jump    28
+; OUTPUT-NEXT:  00 00 00 1c 00 01 04 2e        ret.ok.to_label r1, 28
+; OUTPUT-NEXT:  00 00 00 1c 00 01 04 30        ret.revert.to_label     r1, 28
+; OUTPUT-NEXT:  00 00 00 1c 00 00 04 32        ret.panic.to_label r0,      28
 ; OUTPUT-LABEL: <label>:
 ; OUTPUT-NEXT:  00 00 00 02 00 00 01 3e        jump    code[2]
 ; OUTPUT-NEXT:  00 00 00 00 00 01 04 2d        ret
@@ -128,13 +137,13 @@ label_local:
 ; INPUT-NEXT:  00 00 00 00 00 43 04 21        far_call        r3, r4, 0
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      .text+0x18
 ; INPUT-NEXT:  00 00 00 00 00 00 01 3d        jump    0
-; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      .text+0x90
+; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      .text+0xa0
 ; INPUT-NEXT:  00 00 00 00 00 01 04 2e        ret.ok.to_label r1, 0
-; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      .text+0x90
+; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      .text+0xa0
 ; INPUT-NEXT:  00 00 00 00 00 01 04 30        ret.revert.to_label     r1, 0
-; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      .text+0x90
+; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      .text+0xa0
 ; INPUT-NEXT:  00 00 00 00 00 00 04 32        ret.panic.to_label r0,     0
-; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      .text+0x90
+; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      .text+0xa0
 ; INPUT-LABEL: <label_local>:
 ; INPUT-NEXT:  00 00 00 01 00 00 01 3e        jump    code[1]
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_32     .rodata+0x20
@@ -143,10 +152,10 @@ label_local:
 ; OUTPUT-LABEL: <caller_l>:
 ; OUTPUT-NEXT:  00 12 00 13 00 01 04 0f        near_call       r1, 19, 18
 ; OUTPUT-NEXT:  00 00 00 13 00 43 04 21        far_call        r3, r4, 19
-; OUTPUT-NEXT:  00 00 00 22 00 00 01 3d        jump    34
-; OUTPUT-NEXT:  00 00 00 22 00 01 04 2e        ret.ok.to_label r1, 34
-; OUTPUT-NEXT:  00 00 00 22 00 01 04 30        ret.revert.to_label     r1, 34
-; OUTPUT-NEXT:  00 00 00 22 00 00 04 32        ret.panic.to_label r0,      34
+; OUTPUT-NEXT:  00 00 00 24 00 00 01 3d        jump    36
+; OUTPUT-NEXT:  00 00 00 24 00 01 04 2e        ret.ok.to_label r1, 36
+; OUTPUT-NEXT:  00 00 00 24 00 01 04 30        ret.revert.to_label     r1, 36
+; OUTPUT-NEXT:  00 00 00 24 00 00 04 32        ret.panic.to_label r0,      36
 ; OUTPUT-LABEL: <label_local>:
 ; OUTPUT-NEXT:  00 00 00 02 00 00 01 3e        jump    code[2]
 ; OUTPUT-NEXT:  00 00 00 00 00 01 04 2d        ret
