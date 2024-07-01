@@ -55,6 +55,18 @@ void EraVMTTIImpl::getPeelingPreferences(Loop *L, ScalarEvolution &SE,
   BaseT::getPeelingPreferences(L, SE, PP);
 }
 
+InstructionCost EraVMTTIImpl::getIntImmCodeSizeCost(unsigned Opcode,
+                                                    unsigned Idx,
+                                                    const APInt &Imm,
+                                                    Type *Ty) {
+  // if it can fit into the imm field of an instruction then we return zero cost
+  // and 1 otherwise.
+  if (Imm.abs().isIntN(16))
+    return 0;
+
+  return 1;
+}
+
 InstructionCost EraVMTTIImpl::getIntImmCost(const APInt &Imm, Type *Ty,
                                             TTI::TargetCostKind CostKind) {
   assert(Ty->isIntegerTy());
