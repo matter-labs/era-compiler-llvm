@@ -77,6 +77,9 @@ bool EraVMTieSelectOperands::tryPlacingTie(MachineInstr &MI,
                                            EraVM::ArgumentKind Arg) const {
   assert(Arg == EraVM::ArgumentKind::In0 || Arg == EraVM::ArgumentKind::In1);
 
+  if (EraVM::hasSROutAddressingMode(MI))
+    return false;
+
   // Bail out if we cannot place a tie for the given instruction.
   if (!canPlaceTie(MI, Arg))
     return false;
