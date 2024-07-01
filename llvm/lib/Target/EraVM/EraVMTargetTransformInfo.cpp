@@ -50,6 +50,11 @@ void EraVMTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
   UP.PartialOptSizeThreshold = 0;
 }
 
+void EraVMTTIImpl::getPeelingPreferences(Loop *L, ScalarEvolution &SE,
+                                         TTI::PeelingPreferences &PP) {
+  BaseT::getPeelingPreferences(L, SE, PP);
+}
+
 InstructionCost EraVMTTIImpl::getIntImmCost(const APInt &Imm, Type *Ty,
                                             TTI::TargetCostKind CostKind) {
   assert(Ty->isIntegerTy());
