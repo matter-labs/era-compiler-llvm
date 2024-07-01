@@ -1,0 +1,110 @@
+name: Benchmarks and integration tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      llvm_build_type:
+        description: "LLVM build type: debug | release"
+        required: true
+        default: "release"
+      compiler_tester_reference_rev:
+        description: "compiler-tester revision to use as a benchmark reference"
+        required: true
+        default: "main"
+      compiler_tester_candidate_rev:
+        description: "compiler-tester revision to use as a benchmark candidate. Defaults to `main` branch if the `era-compiler-llvm-test` tag doesn't exist"
+        required: true
+        default: "era-compiler-llvm-test"
+      compiler_llvm_reference_branch:
+        description: "compiler-llvm branch to use as a benchmark reference"
+        required: true
+        default: "main"
+      compiler_llvm_candidate_branch:
+        description: "compiler-llvm branch to use as a benchmark candidate"
+        required: true
+        default: "main"
+      compiler_llvm_benchmark_mode:
+        description: "Mode filter for compiler-llvm benchmarks"
+        required: false
+        default: "^M^B3"
+      compiler_llvm_benchmark_path:
+        description: "Path filter for compiler-llvm benchmarks"
+        required: false
+        default: ""
+
+concurrency:
+  group: ${{ github.repository_id }}-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  # Check for secrets leak in the repository
+  secrets-scanner:
+    uses: matter-labs/era-compiler-ci/.github/workflows/secrets-scanner.yaml@v1
+    secrets: inherit
+
+  compiler-tester-ref:
+    runs-on: ubuntu-latest
+    name: Compiler tester ref
+    outputs:
+      reference-ref: ${{ steps.compiler_tester_ref.outputs.reference-ref }}
+      candidate-ref: ${{ steps.compiler_tester_ref.outputs.candidate-ref }}
+    env:
+      ERA_COMPILER_LLVM_TEST_TAG: era-compiler-llvm-test
+      ERA_COMPILER_LLVM_REF_DEFAULT: main
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: matter-labs/era-compiler-tester
+
+      - name: Define compiler tester ref
+        id: compiler_tester_ref
+        shell: bash
+        run: |
+          REFERENCE_REF=${{ inputs.compiler_tester_reference_rev || env.ERA_COMPILER_LLVM_REF_DEFAULT }}
+          if [ -n "$(git ls-remote --tags --heads --refs origin ${REFERENCE_REF})" ]; then
+            echo "reference-ref=${REFERENCE_REF}" | tee -a "${GITHUB_OUTPUT}"
+          else
+            echo "reference-ref=${{ env.ERA_COMPILER_LLVM_REF_DEFAULT }}" | tee -a "${GITHUB_OUTPUT}"
+          fi
+          CANDIDATE_REF=${{ inputs.compiler_tester_candidate_rev || env.ERA_COMPILER_LLVM_TEST_TAG }}
+          if [ -n "$(git ls-remote --tags --heads --refs origin ${CANDIDATE_REF})" ]; then
+            echo "candidate-ref=${CANDIDATE_REF}" | tee -a "${GITHUB_OUTPUT}"
+          else
+            echo "candidate-ref=${{ env.ERA_COMPILER_LLVM_REF_DEFAULT }}" | tee -a "${GITHUB_OUTPUT}"
+          fi
+
+
+  # Benchmarks workflow call from the era-compiler-ci repository
+  # This is a common part of the benchmarks workflow for all repositories
+  # If you would like to make a change to the benchmarks workflow, please do it in the era-compiler-ci repository
+  benchmarks:
+    needs: compiler-tester-ref
+    uses: matter-labs/era-compiler-ci/.github/workflows/benchmarks.yml@v1
+    secrets: inherit
+    with:
+      llvm_build_type: ${{ github.event.inputs.llvm_build_type }}
+      compiler_tester_reference_rev: ${{ needs.compiler-tester-ref.outputs.reference-ref }}
+      compiler_tester_candidate_rev: ${{ needs.compiler-tester-ref.outputs.candidate-ref }}
+      compiler_llvm_reference_branch: ${{ github.event.inputs.compiler_llvm_reference_branch || github.event.repository.default_branch }}
+      compiler_llvm_candidate_branch: ${{ github.event.inputs.compiler_llvm_candidate_branch || github.head_ref }}
+      compiler_llvm_benchmark_mode: ${{ github.event.inputs.compiler_llvm_benchmark_mode || '^M^B3' }}
+      compiler_llvm_benchmark_path: ${{ github.event.inputs.compiler_llvm_benchmark_path || '' }}
+      ccache-key-type: 'static' # rotate ccache key every month
+      compiler-llvm-repo: ${{ github.event.pull_request.head.repo.full_name }} # required to properly test forks
+
+  # Integration tests workflow call from the era-compiler-ci repository
+  # This is a common part of the integration tests workflow for all repositories
+  # If you would like to make a change to the integration tests workflow, please do it in the era-compiler-ci repository
+  integration-tests:
+    needs: compiler-tester-ref
+    uses: matter-labs/era-compiler-ci/.github/workflows/integration-tests.yaml@v1
+    secrets: inherit
+    with:
+      compiler-tester-ref: ${{ needs.compiler-tester-ref.outputs.candidate-ref }}
+      llvm-ref: ${{ github.event.inputs.compiler_llvm_candidate_branch || github.head_ref || github.event.repository.default_branch }}
+      ccache-key-type: 'static' # rotate ccache key every month
+      compiler-llvm-repo: ${{ github.event.pull_request.head.repo.full_name }} # required to properly test forks
