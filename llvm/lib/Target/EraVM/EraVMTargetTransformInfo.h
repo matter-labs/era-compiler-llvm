@@ -42,6 +42,9 @@ public:
 
   TTI::PopcntSupportKind getPopcntSupport(unsigned TyWidth) const;
 
+  InstructionCost getIntImmCodeSizeCost(unsigned Opcode, unsigned Idx,
+                                        const APInt &Imm, Type *Ty);
+
   InstructionCost getIntImmCost(const APInt &Imm, Type *Ty,
                                 TTI::TargetCostKind CostKind);
 
@@ -74,6 +77,8 @@ public:
                                TTI::UnrollingPreferences &UP,
                                OptimizationRemarkEmitter *ORE);
 
+  void getPeelingPreferences(Loop *L, ScalarEvolution &SE,
+                             TTI::PeelingPreferences &PP);
   /// @}
 
   /// \name Vector TTI Implementations
@@ -100,6 +105,9 @@ public:
     }
     llvm_unreachable("unknown register class");
   }
+
+  bool isLSRCostLess(const TargetTransformInfo::LSRCost &C1,
+                     const TargetTransformInfo::LSRCost &C2);
 
   InstructionCost getArithmeticInstrCost(
       unsigned Opcode, Type *Ty,
