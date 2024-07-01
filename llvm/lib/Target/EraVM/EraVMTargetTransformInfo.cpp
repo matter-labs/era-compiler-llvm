@@ -188,3 +188,9 @@ InstructionCost EraVMTTIImpl::getVectorInstrCost(unsigned Opcode, Type *Val,
       Opcode, Val, CostKind, Index, nullptr, nullptr);
   return Cost + 25 * TargetTransformInfo::TCC_Expensive;
 }
+
+TTI::AddressingModeKind
+EraVMTTIImpl::getPreferredAddressingMode(const Loop *L,
+                                         ScalarEvolution *SE) const {
+  return TTI::AMK_PostIndexed;
+}
