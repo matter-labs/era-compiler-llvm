@@ -40,6 +40,10 @@ public:
 
   // TODO: CPR-1358 Implement more Scalar TTI for EraVM
 
+  /// Bias LSR towards creating post-increment opportunities.
+  TTI::AddressingModeKind getPreferredAddressingMode(const Loop *L,
+                                                     ScalarEvolution *SE) const;
+
   TTI::PopcntSupportKind getPopcntSupport(unsigned TyWidth) const;
 
   InstructionCost getIntImmCost(const APInt &Imm, Type *Ty,
