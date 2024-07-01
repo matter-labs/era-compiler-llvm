@@ -36,6 +36,20 @@ void EraVMTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
                                            OptimizationRemarkEmitter *ORE) {
   BaseT::getUnrollingPreferences(L, SE, UP, ORE);
 
+  // Scan the loop: don't unroll loops with calls as this could prevent
+  // inlining.
+  for (auto *BB : L->getBlocks()) {
+    for (auto &I : *BB) {
+      if (isa<CallInst>(I) || isa<InvokeInst>(I)) {
+        if (const Function *F = cast<CallBase>(I).getCalledFunction()) {
+          if (!isLoweredToCall(F))
+            continue;
+        }
+        return;
+      }
+    }
+  }
+
   // Only allow unrolling small loops.
   UP.Threshold = 40;
   UP.MaxIterationsCountToAnalyze = 32;
