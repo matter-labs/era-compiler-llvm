@@ -87,8 +87,8 @@ jobs:
     secrets: inherit
     with:
       llvm_build_type: ${{ github.event.inputs.llvm_build_type }}
-      compiler_tester_reference_rev: ${{ needs.compiler-tester-ref.outputs.reference-ref }}
-      compiler_tester_candidate_rev: ${{ needs.compiler-tester-ref.outputs.candidate-ref }}
+      compiler_tester_reference_branch: ${{ needs.compiler-tester-ref.outputs.reference-ref }}
+      compiler_tester_candidate_branch: ${{ needs.compiler-tester-ref.outputs.candidate-ref }}
       compiler_llvm_reference_branch: ${{ github.event.inputs.compiler_llvm_reference_branch || github.event.repository.default_branch }}
       compiler_llvm_candidate_branch: ${{ github.event.inputs.compiler_llvm_candidate_branch || github.head_ref }}
       compiler_llvm_benchmark_mode: ${{ github.event.inputs.compiler_llvm_benchmark_mode || '^M^B3' }}
