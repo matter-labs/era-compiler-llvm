@@ -52,17 +52,37 @@ void EraVM::relocate(uint8_t *loc, const Relocation &rel, uint64_t val) const {
     write16be(loc, read16be(loc) + scaledValue);
   };
 
+  uint64_t scale = 0;
   switch (rel.type) {
   case R_ERAVM_16_SCALE_32:
-    add16scaled(val, /*scale=*/32);
+    scale = 32;
     break;
   case R_ERAVM_16_SCALE_8:
-    add16scaled(val, /*scale=*/8);
+    scale = 8;
     break;
-  default:
+  default: {
     error(getErrorLocation(loc) + "unrecognized relocation " +
           toString(rel.type));
+    return;
   }
+  }
+
+  // HACK: there may be cases where the relocation represents the code offset
+  // (measured in 8-byte units), for example:
+  //
+  //     add   @.OUTLINED_FUNCTION_RET0[0], r0, stack-[1]
+  //     jump  @OUTLINED_FUNCTION_0
+  //   .OUTLINED_FUNCTION_RET0:
+  //     jump.ge @.BB1_16
+  //     jump  @.BB1_23
+  //
+  // In such cases the actual relocation type should be R_ERAVM_16_SCALE_8.
+  // TODO: check if this can be done properly done on the LLVM MC layer?
+  auto *sec = cast<InputSection>(cast<Defined>(rel.sym)->section);
+  if (sec->name == ".text" && rel.type == R_ERAVM_16_SCALE_32)
+    scale = 8;
+
+  add16scaled(val, scale);
 }
 
 TargetInfo *elf::getEraVMTargetInfo() {
