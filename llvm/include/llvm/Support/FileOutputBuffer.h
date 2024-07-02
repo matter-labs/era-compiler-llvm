@@ -48,6 +48,14 @@ public:
   static Expected<std::unique_ptr<FileOutputBuffer>>
   create(StringRef FilePath, size_t Size, unsigned Flags = 0);
 
+  // EVM local begin
+  /// Factory method to create an OutputBuffer object which manages a read/write
+  /// buffer of the specified size. When committed, the buffer will be written
+  /// to the stream p\ Out.
+  static Expected<std::unique_ptr<FileOutputBuffer>>
+  create(size_t Size, raw_pwrite_stream &Out);
+  // EVM local end
+
   /// Returns a pointer to the start of the buffer.
   virtual uint8_t *getBufferStart() const = 0;
 

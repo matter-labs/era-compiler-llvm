@@ -230,15 +230,31 @@ std::optional<MemoryBufferRef> elf::readFile(StringRef path) {
   log(path);
   config->dependencyFiles.insert(llvm::CachedHashString(path));
 
-  auto mbOrErr = MemoryBuffer::getFile(path, /*IsText=*/false,
-                                       /*RequiresNullTerminator=*/false);
-  if (auto ec = mbOrErr.getError()) {
-    error("cannot open " + path + ": " + ec.message());
-    return std::nullopt;
+  // EVM local begin
+  MemoryBufferRef mbref;
+  if (config->useMemoryBuffer) {
+    unsigned idx = 0;
+    if (path.getAsInteger(10, idx)) {
+      error(path + ": path should be an index");
+      return std::nullopt;
+    }
+    if (idx >= config->inBuffers.size()) {
+      error("memory buffer index is out of range");
+      return std::nullopt;
+    }
+    mbref = config->inBuffers[idx];
+    // Don't take MB ownership, because it's owned externally.
+  } else {
+    auto mbOrErr = MemoryBuffer::getFile(path, /*IsText=*/false,
+                                         /*RequiresNullTerminator=*/false);
+    if (auto ec = mbOrErr.getError()) {
+      error("cannot open " + path + ": " + ec.message());
+      return std::nullopt;
+    }
+    mbref = (*mbOrErr)->getMemBufferRef();
+    ctx.memoryBuffers.push_back(std::move(*mbOrErr)); // take MB ownership
   }
-
-  MemoryBufferRef mbref = (*mbOrErr)->getMemBufferRef();
-  ctx.memoryBuffers.push_back(std::move(*mbOrErr)); // take MB ownership
+  // EVM local end
 
   if (tar)
     tar->append(relativeToRoot(path), mbref.getBuffer());

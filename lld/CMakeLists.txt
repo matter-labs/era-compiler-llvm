@@ -187,6 +187,7 @@ if (NOT LLVM_INSTALL_TOOLCHAIN_ONLY)
     )
 endif()
 
+add_subdirectory(lld-c)
 add_subdirectory(Common)
 add_subdirectory(tools/lld)
 
