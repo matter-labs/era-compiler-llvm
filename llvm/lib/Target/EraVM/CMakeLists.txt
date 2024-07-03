@@ -88,6 +88,7 @@ add_llvm_target(EraVMCodeGen
   EraVMTargetTransformInfo.cpp
   EraVMIndexedMemOpsPrepare.cpp
   EraVMTieSelectOperands.cpp
+  EraVMReplaceNearCallPrepare.cpp
 
   LINK_COMPONENTS
   Analysis

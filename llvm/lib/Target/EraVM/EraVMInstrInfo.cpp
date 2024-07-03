@@ -840,6 +840,15 @@ static void fixupStackAccessOffsetPostOutline(MachineBasicBlock::iterator Start,
       auto &StackSlotOP = MI.getOperand(1);
       StackSlotOP.setImm(StackSlotOP.getImm() - FixupOffset);
     }
+
+    // This instruction is used to restore SP after we replace normal RET with
+    // jump. The caller of outlined function will allocate a new stack slot
+    // in its stack, so here the amount to restore SP needs to be udpated.
+    if (MI.getOpcode() == EraVM::NOPsrr &&
+        MI.getFlag(MachineInstr::FrameDestroy)) {
+      auto &StackAdjustOP = MI.getOperand(3);
+      StackAdjustOP.setImm(StackAdjustOP.getImm() - FixupOffset);
+    }
   }
 }
 
@@ -858,6 +867,26 @@ void EraVMInstrInfo::fixupStackPostOutline(MachineFunction &MF) const {
   } else {
     auto EntryBB = MF.begin();
     insertIncSP(*EntryBB, EntryBB->begin(), DebugLoc(), 1 /* StackSlotSize */);
+
+    // This ELSE branch means the caller of outlined function doesn't use any
+    // stack originally, now in order to call newly created outlined function,
+    // the above SP increasing instruction will create a stack slot for being
+    // used to store return address before calling into outlined function.
+    //
+    // So if this caller is using jump to return, we need to insert another
+    // instruction to decrease (or restore) the SP before we use jump to
+    // return. The decrease amount is set to 0, the later fixupStackAccessOffset
+    // function will fix it to right value.
+    for (MachineBasicBlock &MBB : MF) {
+      for (auto &MI : MBB) {
+        if (MI.getOpcode() == EraVM::J_s &&
+            MI.getOperand(2).getTargetFlags() ==
+                EraVMII::MO_STACK_SLOT_IDX_RET) {
+          MachineInstr *SPRestoreMI = insertDecSP(MBB, MI, MI.getDebugLoc(), 0);
+          SPRestoreMI->setFlag(MachineInstr::FrameDestroy);
+        }
+      }
+    }
   }
 
   // Adjust instructions which use SP in this function.
