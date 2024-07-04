@@ -114,6 +114,7 @@ target triple = "eravm"
 ; CHECK-NEXT:       Local Stack Slot Allocation
 ; CHECK-NEXT:       Remove dead machine instructions
 ; CHECK-NEXT:       MachineDominator Tree Construction
+; CHECK-NEXT:       EraVM condition optimizer
 ; CHECK-NEXT:       Machine Natural Loop Construction
 ; CHECK-NEXT:       Machine Block Frequency Analysis
 ; CHECK-NEXT:       Early Machine Loop Invariant Code Motion
