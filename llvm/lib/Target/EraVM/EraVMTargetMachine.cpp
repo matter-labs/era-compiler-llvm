@@ -73,6 +73,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMCombineToIndexedMemopsPass(PR);
   initializeEraVMPostCodegenPreparePass(PR);
   initializeEraVMDeadRegisterDefinitionsPass(PR);
+  initializeEraVMConditionOptimizerPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -208,6 +209,7 @@ public:
 
   void addIRPasses() override;
   bool addInstSelector() override;
+  bool addILPOpts() override;
   void addPreRegAlloc() override;
   void addPreEmitPass() override;
   void addPreSched2() override;
@@ -278,6 +280,11 @@ bool EraVMPassConfig::addInstSelector() {
   // Install an instruction selector.
   addPass(createEraVMISelDag(getEraVMTargetMachine(), getOptLevel()));
   return false;
+}
+
+bool EraVMPassConfig::addILPOpts() {
+  addPass(createEraVMConditionOptimizerPass());
+  return true;
 }
 
 void EraVMPassConfig::addPreRegAlloc() {
