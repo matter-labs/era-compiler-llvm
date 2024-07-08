@@ -118,12 +118,28 @@ define i256 @test_large_imm_ule2(i256 %a, i1 %cond) {
   ret i256 %select2
 }
 
+define i256 @test_small_large_imm_ule(i256 %a, i1 %cond) {
+; CHECK-LABEL: test_small_large_imm_ule:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    sub.s 65535, r1, r3
+; CHECK-NEXT:    sub.s! @CPI7_0[0], r1, r0
+; CHECK-NEXT:    add.lt r3, r0, r1
+; CHECK-NEXT:    sub! r2, r0, r0
+; CHECK-NEXT:    add.eq r3, r0, r1
+; CHECK-NEXT:    ret
+  %add = add i256 %a, -65535
+  %cmp = icmp ule i256 %a, 65535
+  %select1 = select i1 %cmp, i256 %add, i256 %a
+  %select2 = select i1 %cond, i256 %select1, i256 %add
+  ret i256 %select2
+}
+
 ; TODO: CPR-1543 This can be folded.
 define i256 @test_large_imm_uge1(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_large_imm_uge1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s @CPI7_0[0], r1, r3
-; CHECK-NEXT:    sub.s! @CPI7_1[0], r1, r0
+; CHECK-NEXT:    sub.s @CPI8_0[0], r1, r3
+; CHECK-NEXT:    sub.s! @CPI8_1[0], r1, r0
 ; CHECK-NEXT:    add.gt r3, r0, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    add.eq r3, r0, r1
@@ -139,14 +155,30 @@ define i256 @test_large_imm_uge1(i256 %a, i1 %cond) {
 define i256 @test_large_imm_uge2(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_large_imm_uge2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s @CPI8_0[0], r1, r3
-; CHECK-NEXT:    sub.s! @CPI8_1[0], r1, r0
+; CHECK-NEXT:    sub.s @CPI9_0[0], r1, r3
+; CHECK-NEXT:    sub.s! @CPI9_1[0], r1, r0
 ; CHECK-NEXT:    add.gt r3, r0, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    add.eq r3, r0, r1
 ; CHECK-NEXT:    ret
   %add = add i256 %a, -26959946660873538059280334323183841250350249843923952699046031785985
   %cmp = icmp uge i256 %a, 26959946660873538059280334323183841250350249843923952699046031785985
+  %select1 = select i1 %cmp, i256 %add, i256 %a
+  %select2 = select i1 %cond, i256 %select1, i256 %add
+  ret i256 %select2
+}
+
+define i256 @test_small_large_imm_uge(i256 %a, i1 %cond) {
+; CHECK-LABEL: test_small_large_imm_uge:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    sub.s @CPI10_0[0], r1, r3
+; CHECK-NEXT:    sub.s! 65535, r1, r0
+; CHECK-NEXT:    add.gt r3, r0, r1
+; CHECK-NEXT:    sub! r2, r0, r0
+; CHECK-NEXT:    add.eq r3, r0, r1
+; CHECK-NEXT:    ret
+  %add = add i256 %a, -65536
+  %cmp = icmp uge i256 %a, 65536
   %select1 = select i1 %cmp, i256 %add, i256 %a
   %select2 = select i1 %cond, i256 %select1, i256 %add
   ret i256 %select2

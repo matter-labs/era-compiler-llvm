@@ -66,6 +66,24 @@ bb2:
   ret i256 %sub
 }
 
+define i256 @test_imm_in_different_bb(i256 %a) {
+; CHECK-LABEL: test_imm_in_different_bb:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    sub.s! 9, r1, r0
+; CHECK-NEXT:    sub.s.gt 10, r1, r1
+; CHECK-NEXT:    add.le r0, r0, r1
+; CHECK-NEXT:    ret
+  %cmp = icmp ult i256 %a, 10
+  br i1 %cmp, label %bb1, label %bb2
+
+bb1:
+  ret i256 0
+
+bb2:
+  %sub = sub i256 %a, 10
+  ret i256 %sub
+}
+
 define i256 @test_with_call(i256 %a, i256 %b) {
 ; CHECK-LABEL: test_with_call:
 ; CHECK:       ; %bb.0:
