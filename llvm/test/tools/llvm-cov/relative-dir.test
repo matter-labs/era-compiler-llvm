@@ -1,3 +1,6 @@
+## Temporary disabled on Windows due to path issues with backslashes '\' on MSYS2.
+# UNSUPPORTED: system-windows
+
 # RUN: llvm-profdata merge %S/Inputs/relative_dir/main.proftext \
 # RUN:   -o %t.profdata
 # RUN: llvm-cov report %S/Inputs/relative_dir/main.covmapping \

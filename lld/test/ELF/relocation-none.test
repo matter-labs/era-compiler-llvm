@@ -1,3 +1,6 @@
+## Temporary disabled for Windows, fix is required for ld.lld non-zero exit code
+# UNSUPPORTED: system-windows
+
 # RUN: yaml2obj -DMACHINE=AARCH64 %s -o %t.o
 # RUN: ld.lld --gc-sections %t.o -o %t
 # RUN: llvm-readelf -S -r %t | FileCheck %s

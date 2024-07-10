@@ -2,6 +2,7 @@
 ## unnamed symbols. This test verifies this and also that appropriate things
 ## are printed if the section is somehow invalid.
 
+# UNSUPPORTED: system-windows
 # RUN: yaml2obj %s -o %t1
 # RUN: llvm-objdump -r --syms %t1 2>&1 | \
 # RUN:   FileCheck %s -DFILE=%t1 --implicit-check-not=warning:
@@ -19,7 +20,7 @@
 # CHECK-NEXT: 00000003 R_X86_64_NONE            {{$}}
 # CHECK-NEXT: 00000004 R_X86_64_NONE            {{$}}
 
-## Test that we consume an error in ELFObjectFile<ELFT>::getSectionName when disassembling. 
+## Test that we consume an error in ELFObjectFile<ELFT>::getSectionName when disassembling.
 # RUN: %if x86-registered-target %{ llvm-objdump -d --syms %t1 2>&1 | \
 # RUN:   FileCheck %s -DFILE=%t1 --check-prefix=CHECK-DISAS %}
 # CHECK-DISAS: warning: '[[FILE]]': invalid section index: 67

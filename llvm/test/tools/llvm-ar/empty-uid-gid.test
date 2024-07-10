@@ -1,3 +1,6 @@
+## Disable on Windows due to `BAD-DATE-FORMAT` issue in Chrono library on MSYS2
+UNSUPPORTED: system-windows
+
 RUN: env TZ=GMT llvm-ar tv %S/Inputs/msvc-import.lib | FileCheck %s
 
 CHECK: --------- 0/0      0 Jan 1 {{[0-9:.]+}} 1970 library.dll

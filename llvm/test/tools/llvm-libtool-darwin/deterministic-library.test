@@ -4,6 +4,9 @@
 ## We only test timestamps as a proxy for full deterministic writing; i.e. we
 ## assume UID/GIDs are preserved if timestamps are preserved.
 
+## Disable on Windows due to `BAD-DATE-FORMAT` issue in Chrono library on MSYS2
+# UNSUPPORTED: system-windows
+
 # RUN: yaml2obj %S/Inputs/input1.yaml -o %t-input1.o
 # RUN: touch -t 199505050555.55 %t-input1.o
 

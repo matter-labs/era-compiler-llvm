@@ -1,5 +1,9 @@
 ## When changing the assembly input, uncomment these lines to re-generate the
 ## YAML.
+
+## Disable on Windows due to *.tbd: unsupported file type issue with MSYS2
+# UNSUPPORTED: system-windows
+
 # COM: llvm-mc --emit-dwarf-unwind=always -filetype=obj -triple=x86_64-apple-macos10.15 %s -o %t.o
 # COM: ld -r %t.o -o %t-r.o
 # COM: obj2yaml %t-r.o > %S/Inputs/double-unwind-info.yaml

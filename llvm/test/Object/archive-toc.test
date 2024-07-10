@@ -1,3 +1,6 @@
+Disable on Windows due to `BAD-DATE-FORMAT` issue in Chrono library on MSYS2
+UNSUPPORTED: system-windows
+
 RUN: cd %p
 
 Test reading an archive created by gnu ar

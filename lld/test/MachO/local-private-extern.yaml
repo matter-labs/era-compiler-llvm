@@ -3,6 +3,9 @@
 ## which emits an object file. Since LLD does not yet support `-r`, we use
 ## yaml2obj to construct the input.
 
+# Disable on Windows due to *.tbd: unsupported file type issue with MSYS2
+# UNSUPPORTED: system-windows
+
 # RUN: rm -rf %t; mkdir %t
 # RUN: yaml2obj %s > %t/foo.o
 ## No duplicate symbol conflict since _foo is not extern

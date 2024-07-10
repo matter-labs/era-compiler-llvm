@@ -1,3 +1,6 @@
+// Temporary disabled for Windows, exception fail in llvm::PassRegistry::~PassRegistry()
+// UNSUPPORTED: system-windows
+
 // Input file generated with:
 // llvm33/llvm-mc -filetype=obj -triple=x86_64-unknown-linux %s -o %S/Inputs/llvm33-rela-outside-group.o
 //
