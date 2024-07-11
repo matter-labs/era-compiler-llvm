@@ -473,10 +473,11 @@ void llvm::createEraVMMemCpyLoopUnknownSize(Instruction *InsertBefore,
   LLVMContext &Ctx = PreLoopBB->getContext();
   unsigned SrcAS = cast<PointerType>(SrcAddr->getType())->getAddressSpace();
   unsigned DstAS = cast<PointerType>(DstAddr->getType())->getAddressSpace();
+  Type *Int8Type = Type::getInt8Ty(Ctx);
 
   Type *LoopOpType = TTI.getMemcpyLoopLoweringType(
       Ctx, CopyLen, SrcAS, DstAS, SrcAlign.value(), DstAlign.value());
-  unsigned LoopOpSize = DL.getTypeStoreSize(LoopOpType);
+  int LoopOpSize = DL.getTypeStoreSize(LoopOpType);
 
   IRBuilder<> PLBuilder(PreLoopBB->getTerminator());
 
@@ -491,20 +492,23 @@ void llvm::createEraVMMemCpyLoopUnknownSize(Instruction *InsertBefore,
   Type *CopyLenType = CopyLen->getType();
   IntegerType *ILengthType = dyn_cast<IntegerType>(CopyLenType);
 
-  ConstantInt *CILoopOpSize = ConstantInt::get(ILengthType, LoopOpSize);
-  Value *LoopCount = PLBuilder.CreateUDiv(CopyLen, CILoopOpSize, "loop-count");
-  Value *ResidualBytes =
-      PLBuilder.CreateURem(CopyLen, CILoopOpSize, "residual-bytes");
-  // Create an empty preheader BB for load-store-loop since in this loop
-  // we can use indexed instructions and EraVMIndexedMemOpsPrepare
-  // requires loops to be in a simplify form.
+  // Calculate the loop byte count, and remaining bytes to copy after the loops.
+  Value *LoopCount = PLBuilder.CreateAnd(
+      CopyLen, ConstantInt::get(LoopOpType, -LoopOpSize, true),
+      "loop-bytes-count");
+  Value *ResidualBytes = PLBuilder.CreateAnd(
+      CopyLen, ConstantInt::get(LoopOpType, LoopOpSize - 1), "residual-bytes");
+  Value *DstAddrEnd =
+      PLBuilder.CreateInBoundsGEP(Int8Type, DstAddr, LoopCount, "dst-addr-end");
+
+  // Create an empty preheader BB for load-store-loop so this loop is in a
+  // simplify form. Maybe some future loop optimizations will require this
   BasicBlock *LoopPreheaderBB = BasicBlock::Create(
       Ctx, "load-store-loop-preheader", ParentFunc, PostLoopBB);
   BasicBlock *LoopBB =
       BasicBlock::Create(Ctx, "load-store-loop", ParentFunc, PostLoopBB);
-  // Create an empty exit BB for load-store-loop since in this loop
-  // we can use indexed instructions and EraVMIndexedMemOpsPrepare
-  // requires loops to be in a simplify form.
+  // Create an empty exit BB for load-store-loop so this loop is in a
+  // simplify form. Maybe some future loop optimizations will require this
   BasicBlock *LoopExitBB =
       BasicBlock::Create(Ctx, "load-store-loop-exit", ParentFunc, PostLoopBB);
   IRBuilder<> LoopBuilder(LoopBB);
@@ -512,20 +516,22 @@ void llvm::createEraVMMemCpyLoopUnknownSize(Instruction *InsertBefore,
   Align PartSrcAlign(commonAlignment(SrcAlign, LoopOpSize));
   Align PartDstAlign(commonAlignment(DstAlign, LoopOpSize));
 
-  PHINode *LoopIndex = LoopBuilder.CreatePHI(CopyLenType, 2, "loop-index");
-  LoopIndex->addIncoming(ConstantInt::get(CopyLenType, 0U), LoopPreheaderBB);
+  PHINode *SrcAddrPhi = LoopBuilder.CreatePHI(SrcOpType, 2, "src-addr");
+  PHINode *DstAddrPhi = LoopBuilder.CreatePHI(DstOpType, 2, "dst-addr");
 
-  Value *SrcGEP = LoopBuilder.CreateInBoundsGEP(LoopOpType, SrcAddr, LoopIndex);
-  Value *Load = LoopBuilder.CreateAlignedLoad(LoopOpType, SrcGEP, PartSrcAlign,
-                                              SrcIsVolatile);
-  Value *DstGEP = LoopBuilder.CreateInBoundsGEP(LoopOpType, DstAddr, LoopIndex);
-  LoopBuilder.CreateAlignedStore(Load, DstGEP, PartDstAlign, DstIsVolatile);
-
-  Value *NewIndex =
-      LoopBuilder.CreateAdd(LoopIndex, ConstantInt::get(CopyLenType, 1U));
-  LoopIndex->addIncoming(NewIndex, LoopBB);
-  LoopBuilder.CreateCondBr(LoopBuilder.CreateICmpULT(NewIndex, LoopCount),
-                           LoopBB, LoopExitBB);
+  Value *SrcGEP = LoopBuilder.CreateInBoundsGEP(
+      Int8Type, SrcAddrPhi, ConstantInt::get(LoopOpType, LoopOpSize));
+  Value *DstGEP = LoopBuilder.CreateInBoundsGEP(
+      Int8Type, DstAddrPhi, ConstantInt::get(LoopOpType, LoopOpSize));
+  Value *Load = LoopBuilder.CreateAlignedLoad(LoopOpType, SrcAddrPhi,
+                                              PartSrcAlign, SrcIsVolatile);
+  LoopBuilder.CreateAlignedStore(Load, DstAddrPhi, PartDstAlign, DstIsVolatile);
+  LoopBuilder.CreateCondBr(LoopBuilder.CreateICmpEQ(DstGEP, DstAddrEnd),
+                           LoopExitBB, LoopBB);
+  SrcAddrPhi->addIncoming(SrcAddr, LoopPreheaderBB);
+  SrcAddrPhi->addIncoming(SrcGEP, LoopBB);
+  DstAddrPhi->addIncoming(DstAddr, LoopPreheaderBB);
+  DstAddrPhi->addIncoming(DstGEP, LoopBB);
 
   // Condition check if residual copy is needed.
   BasicBlock *ResCondBB = BasicBlock::Create(
@@ -556,25 +562,24 @@ void llvm::createEraVMMemCpyLoopUnknownSize(Instruction *InsertBefore,
   // Copy the residual load/store and bitwise operations.
   IRBuilder<> ResBuilder(ResBB);
 
-  SrcAddr = ResBuilder.CreateInBoundsGEP(LoopOpType, SrcAddr, LoopCount);
+  SrcAddr = ResBuilder.CreateInBoundsGEP(Int8Type, SrcAddr, LoopCount);
   Load = ResBuilder.CreateAlignedLoad(LoopOpType, SrcAddr, PartSrcAlign,
                                       SrcIsVolatile);
-  Value *ResidualBits = ResBuilder.CreateMul(
-      ResBuilder.getInt(APInt(256, 8, false)), ResidualBytes);
+  Value *ResidualBits = ResBuilder.CreateShl(
+      ResidualBytes, ResBuilder.getInt(APInt(256, 3, false)));
   Value *ResidualBitsI = ResBuilder.CreateSub(
       ResBuilder.getInt(APInt(256, 256, false)), ResidualBits);
   Value *LoadMask = ResBuilder.CreateShl(
       ResBuilder.getInt(APInt(256, -1, true)), ResidualBitsI);
   Load = ResBuilder.CreateAnd(Load, LoadMask);
 
-  DstAddr = ResBuilder.CreateInBoundsGEP(LoopOpType, DstAddr, LoopCount);
-  Value *Origin = ResBuilder.CreateAlignedLoad(LoopOpType, DstAddr,
+  Value *Origin = ResBuilder.CreateAlignedLoad(LoopOpType, DstAddrEnd,
                                                PartDstAlign, DstIsVolatile);
   Value *OriginMask = ResBuilder.CreateLShr(
       ResBuilder.getInt(APInt(256, -1, true)), ResidualBits);
   Origin = ResBuilder.CreateAnd(Origin, OriginMask);
   Load = ResBuilder.CreateOr(Load, Origin);
-  ResBuilder.CreateAlignedStore(Load, DstAddr, PartDstAlign, DstIsVolatile);
+  ResBuilder.CreateAlignedStore(Load, DstAddrEnd, PartDstAlign, DstIsVolatile);
   ResBuilder.CreateBr(PostLoopBB);
 }
 // EraVM local end

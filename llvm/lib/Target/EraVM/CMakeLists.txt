@@ -60,6 +60,7 @@ add_llvm_target(EraVMCodeGen
   EraVMCombineAddressingMode.cpp
   EraVMCombineFlagSetting.cpp
   EraVMCombineToIndexedMemops.cpp
+  EraVMConditionOptimizer.cpp
   EraVMCSE.cpp
   EraVMDeadRegisterDefinitions.cpp
   EraVMExpandPseudoInsts.cpp
