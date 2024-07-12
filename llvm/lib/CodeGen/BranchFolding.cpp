@@ -1207,7 +1207,7 @@ bool BranchFolder::OptimizeBranches(MachineFunction &MF) {
 
   for (MachineBasicBlock &MBB :
        llvm::make_early_inc_range(llvm::drop_begin(MF))) {
-    //MadeChange |= OptimizeBlock(&MBB);
+    MadeChange |= OptimizeBlock(&MBB);
 
     // If it is dead, remove it.
     if (MBB.pred_empty() && !MBB.isMachineBlockAddressTaken()) {

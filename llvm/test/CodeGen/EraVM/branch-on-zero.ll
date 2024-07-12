@@ -9,7 +9,6 @@ define i256 @lshr(i256 %a) {
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    shr.s! 3, r1, r1
 ; CHECK-NEXT:    add.eq r0, r0, r1
-; CHECK-NEXT:  ; %bb.1: ; %else
 ; CHECK-NEXT:    ret
 entry:
   %c = icmp ult i256 %a, 8
@@ -49,7 +48,6 @@ define i256 @add_overflow(i256 %a) {
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    add! 1, r1, r1
 ; CHECK-NEXT:    add.eq r0, r0, r1
-; CHECK-NEXT:  ; %bb.1: ; %else
 ; CHECK-NEXT:    ret
 entry:
   %c = icmp eq i256 %a, -1
@@ -68,7 +66,6 @@ define i256 @add(i256 %a) {
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    sub.s! 10, r1, r1
 ; CHECK-NEXT:    add.eq r0, r0, r1
-; CHECK-NEXT:  ; %bb.1: ; %else
 ; CHECK-NEXT:    ret
 entry:
   %c = icmp eq i256 %a, 10
@@ -106,7 +103,6 @@ define i256 @sub(i256 %a) {
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    sub.s! 10, r1, r1
 ; CHECK-NEXT:    add.eq r0, r0, r1
-; CHECK-NEXT:  ; %bb.1: ; %else
 ; CHECK-NEXT:    ret
 entry:
   %c = icmp eq i256 %a, 10

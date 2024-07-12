@@ -6,15 +6,15 @@ target triple = "eravm"
 define void @test(ptr addrspace(1) %0, ptr addrspace(1) %1, i256 %2) {
 ; CHECK-LABEL: test:
 ; CHECK:       sub! r3, r0, r0
-; CHECK-NEXT:  jump.eq @.BB0_3
-; CHECK:       .BB0_2:
+; CHECK-NEXT:  jump.eq @.BB0_2
+; CHECK:       .BB0_1:
 ; CHECK:       sub.s! 32, r3, r3
 ; CHECK-NEXT:  add r3, r1, r4
 ; CHECK-NEXT:  add r3, r2, r5
 ; CHECK-NEXT:  ld.1 r5, r5
 ; CHECK-NEXT:  st.1 r4, r5
-; CHECK-NEXT:  jump.ne @.BB0_2
-; CHECK:       .BB0_3:
+; CHECK-NEXT:  jump.ne @.BB0_1
+; CHECK:       .BB0_2:
 ; CHECK-NEXT:  ret
   %4 = icmp eq i256 %2, 0
   br i1 %4, label %12, label %5
