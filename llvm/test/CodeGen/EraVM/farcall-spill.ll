@@ -27,15 +27,15 @@ define void @test2(i1 %cond) personality i32 ()* @__personality {
 staticcall:
   %fptrs = invoke i8 addrspace(3)* @__staticcall_int(i256 0, i256 1, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef)
     to label %ok unwind label %fail
-  ; CHECK: far_call.static r1, r2, @.BB1_6
-  ; CHECK: jump @.BB1_4
+  ; CHECK: far_call.static r1, r2, @.BB1_4
+  ; CHECK: jump @.BB1_3
 delegatecall:
   %fptrd = invoke i8 addrspace(3)* @__delegatecall_int(i256 0, i256 1, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef, i256 undef)
     to label %ok unwind label %fail
-  ; CHECK: far_call.delegate r1, r2, @.BB1_6
+  ; CHECK: far_call.delegate r1, r2, @.BB1_4
 ok:
   %fptr = phi i8 addrspace(3)* [%fptrs, %staticcall], [%fptrd, %delegatecall]
-  ; CHECK: .BB1_4:
+  ; CHECK: .BB1_3:
   ; CHECK: ptr.add r1, r0, stack-[1]
   call void @spill()
   ; CHECK: ptr.add stack-[1], r0, r1
