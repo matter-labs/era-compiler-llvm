@@ -10,7 +10,7 @@ define i256 @test_pos(i256 %arg) {
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB0_1
-; CHECK-NEXT:  ; %bb.2: ; %loop-bb1.preheader
+; CHECK-NEXT:  ; %bb.3: ; %loop-bb1.preheader
 ; CHECK-NEXT:    add r0, r0, r8
 ; CHECK-NEXT:    add r0, r0, r2
 ; CHECK-NEXT:    jump @.BB0_4
@@ -22,7 +22,7 @@ define i256 @test_pos(i256 %arg) {
 ; CHECK-NEXT:    add r2, r9, r2
 ; CHECK-NEXT:    add 1, r8, r8
 ; CHECK-NEXT:    sub! r8, r1, r0
-; CHECK-NEXT:    jump.eq @.BB0_3
+; CHECK-NEXT:    jump.eq @.BB0_2
 ; CHECK-NEXT:  .BB0_4: ; %loop-bb1
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    sub.s! 3, r8, r0
@@ -41,11 +41,9 @@ define i256 @test_pos(i256 %arg) {
 ; CHECK-NEXT:    ; in Loop: Header=BB0_4 Depth=1
 ; CHECK-NEXT:    add 36, r0, r9
 ; CHECK-NEXT:    jump @.BB0_9
-; CHECK-NEXT:  .BB0_3: ; %exit
-; CHECK-NEXT:    add r2, r0, r1
-; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB0_1:
 ; CHECK-NEXT:    add r0, r0, r2
+; CHECK-NEXT:  .BB0_2: ; %exit
 ; CHECK-NEXT:    add r2, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:    .rodata
@@ -99,7 +97,7 @@ define i256 @test_neg(i256 %arg) {
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB1_1
-; CHECK-NEXT:  ; %bb.2: ; %loop-bb1.preheader
+; CHECK-NEXT:  ; %bb.3: ; %loop-bb1.preheader
 ; CHECK-NEXT:    add r0, r0, r8
 ; CHECK-NEXT:    add r0, r0, r2
 ; CHECK-NEXT:    jump @.BB1_4
@@ -111,7 +109,7 @@ define i256 @test_neg(i256 %arg) {
 ; CHECK-NEXT:    add r2, r9, r2
 ; CHECK-NEXT:    add 1, r8, r8
 ; CHECK-NEXT:    sub! r8, r1, r0
-; CHECK-NEXT:    jump.eq @.BB1_3
+; CHECK-NEXT:    jump.eq @.BB1_2
 ; CHECK-NEXT:  .BB1_4: ; %loop-bb1
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    sub.s! 3, r8, r0
@@ -130,11 +128,9 @@ define i256 @test_neg(i256 %arg) {
 ; CHECK-NEXT:    ; in Loop: Header=BB1_4 Depth=1
 ; CHECK-NEXT:    add @CPI1_3[0], r0, r9
 ; CHECK-NEXT:    jump @.BB1_9
-; CHECK-NEXT:  .BB1_3: ; %exit
-; CHECK-NEXT:    add r2, r0, r1
-; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB1_1:
 ; CHECK-NEXT:    add r0, r0, r2
+; CHECK-NEXT:  .BB1_2: ; %exit
 ; CHECK-NEXT:    add r2, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:    .rodata

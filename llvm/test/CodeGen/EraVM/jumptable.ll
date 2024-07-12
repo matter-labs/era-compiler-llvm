@@ -6,7 +6,7 @@ target triple = "eravm"
 define i256 @test(i256 %a, i256 %b, i256 %cond) {
 ; CHECK-LABEL: test:
 ; CHECK:         jump.le @JTI0_0[r3]
-; CHECK-NEXT:    jump @.BB0_7
+; CHECK-NEXT:    jump @.BB0_6
 entry:
   switch i256 %cond, label %return [
     i256 0, label %add
@@ -44,11 +44,11 @@ return:
 ; CHECK-NEXT:  .cell @.BB0_1
 ; CHECK-NEXT:  .cell @.BB0_2
 ; CHECK-NEXT:  .cell @.BB0_3
-; CHECK-NEXT:  .cell @.BB0_7
-; CHECK-NEXT:  .cell @.BB0_7
-; CHECK-NEXT:  .cell @.BB0_7
-; CHECK-NEXT:  .cell @.BB0_7
-; CHECK-NEXT:  .cell @.BB0_7
-; CHECK-NEXT:  .cell @.BB0_7
-; CHECK-NEXT:  .cell @.BB0_7
+; CHECK-NEXT:  .cell @.BB0_6
+; CHECK-NEXT:  .cell @.BB0_6
+; CHECK-NEXT:  .cell @.BB0_6
+; CHECK-NEXT:  .cell @.BB0_6
+; CHECK-NEXT:  .cell @.BB0_6
+; CHECK-NEXT:  .cell @.BB0_6
+; CHECK-NEXT:  .cell @.BB0_6
 ; CHECK-NEXT:  .cell @.BB0_4

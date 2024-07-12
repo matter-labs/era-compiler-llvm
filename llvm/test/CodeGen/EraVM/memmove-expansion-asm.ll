@@ -16,21 +16,21 @@ define i256 @expand_unknown(ptr addrspace(1) %dst, ptr addrspace(1) %src, i256 %
 ; CHECK-NEXT:    jump.ge @.BB0_5
 ; CHECK-NEXT:  ; %bb.1: ; %copy-backwards
 ; CHECK-NEXT:    sub! r4, r0, r0
-; CHECK-NEXT:    jump.eq @.BB0_2
-; CHECK-NEXT:  ; %bb.3: ; %copy-backwards-loop-preheader
+; CHECK-NEXT:    jump.eq @.BB0_4
+; CHECK-NEXT:  ; %bb.2: ; %copy-backwards-loop-preheader
 ; CHECK-NEXT:    add r2, r3, r6
 ; CHECK-NEXT:    add r1, r3, r5
 ; CHECK-NEXT:    sub.s 32, r5, r5
 ; CHECK-NEXT:    sub.s 32, r6, r6
-; CHECK-NEXT:  .BB0_4: ; %copy-backwards-loop
+; CHECK-NEXT:  .BB0_3: ; %copy-backwards-loop
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    add r5, r4, r7
 ; CHECK-NEXT:    add r6, r4, r8
 ; CHECK-NEXT:    ld.1 r8, r8
 ; CHECK-NEXT:    st.1 r7, r8
 ; CHECK-NEXT:    sub.s! 32, r4, r4
-; CHECK-NEXT:    jump.ne @.BB0_4
-; CHECK-NEXT:  .BB0_2: ; %copy-backwards-residual-cond
+; CHECK-NEXT:    jump.ne @.BB0_3
+; CHECK-NEXT:  .BB0_4: ; %copy-backwards-residual-cond
 ; CHECK-NEXT:    sub! r3, r0, r0
 ; CHECK-NEXT:    jump.ne @.BB0_10
 ; CHECK-NEXT:  .BB0_11: ; %memmove-done
@@ -39,16 +39,16 @@ define i256 @expand_unknown(ptr addrspace(1) %dst, ptr addrspace(1) %src, i256 %
 ; CHECK-NEXT:  .BB0_5: ; %copy-forward
 ; CHECK-NEXT:    add r1, r4, r5
 ; CHECK-NEXT:    sub! r4, r0, r0
-; CHECK-NEXT:    jump.eq @.BB0_6
-; CHECK-NEXT:  ; %bb.7: ; %copy-forward-loop-preheader
+; CHECK-NEXT:    jump.eq @.BB0_8
+; CHECK-NEXT:  ; %bb.6: ; %copy-forward-loop-preheader
 ; CHECK-NEXT:    add r2, r0, r6
-; CHECK-NEXT:  .BB0_8: ; %copy-forward-loop
+; CHECK-NEXT:  .BB0_7: ; %copy-forward-loop
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ld.1.inc r6, r7, r6
 ; CHECK-NEXT:    st.1.inc r1, r7, r1
 ; CHECK-NEXT:    sub! r1, r5, r0
-; CHECK-NEXT:    jump.ne @.BB0_8
-; CHECK-NEXT:  .BB0_6: ; %copy-forward-residual-cond
+; CHECK-NEXT:    jump.ne @.BB0_7
+; CHECK-NEXT:  .BB0_8: ; %copy-forward-residual-cond
 ; CHECK-NEXT:    sub! r3, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB0_11
 ; CHECK-NEXT:  ; %bb.9: ; %copy-forward-residual
@@ -76,15 +76,15 @@ define i256 @expand_known_backward() {
 ; CHECK-LABEL: expand_known_backward:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    add 64, r0, r1
-; CHECK-NEXT:  .BB1_2: ; %copy-backwards-loop
+; CHECK-NEXT:  .BB1_1: ; %copy-backwards-loop
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    add 9, r1, r2
 ; CHECK-NEXT:    ld.1 r2, r2
 ; CHECK-NEXT:    add 99, r1, r3
 ; CHECK-NEXT:    st.1 r3, r2
 ; CHECK-NEXT:    sub.s! 32, r1, r1
-; CHECK-NEXT:    jump.ne @.BB1_2
-; CHECK-NEXT:  ; %bb.1: ; %copy-backwards-residual-cond
+; CHECK-NEXT:    jump.ne @.BB1_1
+; CHECK-NEXT:  ; %bb.2: ; %copy-backwards-residual-cond
 ; CHECK-NEXT:    ld.1 10, r2
 ; CHECK-NEXT:    and @CPI1_0[0], r2, r1
 ; CHECK-NEXT:    ld.1 100, r2
@@ -149,13 +149,13 @@ define i256 @expand_known_loop_iter2(ptr addrspace(1) %dst, ptr addrspace(1) %sr
 ; CHECK-NEXT:  .BB3_4: ; %copy-forward
 ; CHECK-NEXT:    add 64, r1, r3
 ; CHECK-NEXT:    add r2, r0, r4
-; CHECK-NEXT:  .BB3_6: ; %copy-forward-loop
+; CHECK-NEXT:  .BB3_5: ; %copy-forward-loop
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ld.1.inc r4, r5, r4
 ; CHECK-NEXT:    st.1.inc r1, r5, r1
 ; CHECK-NEXT:    sub! r1, r3, r0
-; CHECK-NEXT:    jump.ne @.BB3_6
-; CHECK-NEXT:  ; %bb.5: ; %copy-forward-residual-cond
+; CHECK-NEXT:    jump.ne @.BB3_5
+; CHECK-NEXT:  ; %bb.6: ; %copy-forward-residual-cond
 ; CHECK-NEXT:    add 64, r2, r2
 ; CHECK-NEXT:  .BB3_7: ; %memmove-residual
 ; CHECK-NEXT:    ld.1 r3, r1
