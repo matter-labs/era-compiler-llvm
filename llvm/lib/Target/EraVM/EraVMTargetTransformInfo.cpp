@@ -37,17 +37,17 @@ void EraVMTTIImpl::getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
   BaseT::getUnrollingPreferences(L, SE, UP, ORE);
 
   // Only allow unrolling small loops.
-  UP.Threshold = 40;
-  UP.MaxIterationsCountToAnalyze = 32;
+//  UP.Threshold = 40;
+//  UP.MaxIterationsCountToAnalyze = 32;
 
   // Disable runtime, partial unrolling and unrolling using
   // trip count upper bound.
-  UP.Partial = UP.Runtime = UP.UpperBound = false;
-  UP.PartialThreshold = 0;
+  UP.Partial = UP.Runtime = UP.UpperBound = true;
+  UP.PartialThreshold = UP.Threshold;
 
   // Avoid unrolling when optimizing for size.
-  UP.OptSizeThreshold = 0;
-  UP.PartialOptSizeThreshold = 0;
+//  UP.OptSizeThreshold = 0;
+//  UP.PartialOptSizeThreshold = 0;
 }
 
 void EraVMTTIImpl::getPeelingPreferences(Loop *L, ScalarEvolution &SE,
