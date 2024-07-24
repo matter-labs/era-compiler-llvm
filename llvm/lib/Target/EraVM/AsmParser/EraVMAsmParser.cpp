@@ -219,6 +219,11 @@ public:
     Reg = RegNo;
   }
 
+  const MCExpr *getImm() const {
+    assert(Kind == k_Imm && "Invalid access!");
+    return Imm;
+  }
+
   static std::unique_ptr<EraVMOperand> CreateToken(StringRef Str, SMLoc S) {
     return std::make_unique<EraVMOperand>(S, S, Str);
   }
@@ -710,11 +715,26 @@ bool EraVMAsmParser::ParseDirective(AsmToken DirectiveID) {
     return false;
   }
   if (DirectiveID.getString() == ".cell") {
-    // At now, assume exactly one signed integer follows.
+    // At now, assume either one signed integer or a BB name follows.
     // If an arbitrary MCExpr should be accepted as well, an MCTargetExpr
     // for 256-bit integer constant can be implemented and provided to
     // parseExpression machinery by overriding the parsePrimaryExpr
     // function in this class.
+
+    SmallVector<std::unique_ptr<MCParsedAsmOperand>, 1> Operands;
+    if (MatchOperand_Success == tryParseJumpTargetOperand(Operands)) {
+      assert(Operands.size() == 1);
+      const MCExpr *Imm =
+          static_cast<EraVMOperand *>(Operands[0].get())->getImm();
+
+      if (parseEOL())
+        return true;
+
+      auto *TS = getStreamer().getTargetStreamer();
+      static_cast<EraVMTargetStreamer *>(TS)->emitJumpTarget(Imm);
+
+      return false;
+    }
 
     bool IsNegated = false;
     if (getTok().is(AsmToken::Minus)) {

@@ -1,6 +1,9 @@
 ; RUN: llc < %s | FileCheck %s
 ; RUN: llc -filetype=obj -o %t.o < %s
 ; RUN: llvm-readelf --sections --relocs --syms %t.o | FileCheck --check-prefix=ELF %s
+; RUN: llc -filetype=asm -o %t.s < %s
+; RUN: llvm-mc -arch=eravm -filetype=obj -o %t2.o < %t.s
+; RUN: llvm-readelf --sections --relocs --syms %t2.o | FileCheck --check-prefix=ASM-ELF %s
 
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm"
@@ -54,6 +57,14 @@ default:
 ; ELF-NEXT: 0000003e  00000202 R_ERAVM_16_SCALE_8     00000000   .text + 40
 ; ELF-NEXT: 0000005e  00000202 R_ERAVM_16_SCALE_8     00000000   .text + 50
 ; ELF-NEXT: 0000007e  00000202 R_ERAVM_16_SCALE_8     00000000   .text + 60
+
+; JTI0_0 is filled by R_ERAVM_16_SCALE_8 relocations
+; ASM-ELF:      Relocation section '.rela.rodata' at offset {{0x[0-9a-f]+}} contains 4 entries:
+; ASM-ELF-NEXT:  Offset     Info    Type                Sym. Value  Symbol's Name + Addend
+; ASM-ELF-NEXT: 0000001e  00000202 R_ERAVM_16_SCALE_8     00000000   .text + 20
+; ASM-ELF-NEXT: 0000003e  00000202 R_ERAVM_16_SCALE_8     00000000   .text + 40
+; ASM-ELF-NEXT: 0000005e  00000202 R_ERAVM_16_SCALE_8     00000000   .text + 50
+; ASM-ELF-NEXT: 0000007e  00000202 R_ERAVM_16_SCALE_8     00000000   .text + 60
 
 ; JTI0_0 starts at zero offset inside .rodata, as expected by the above checks
 ; ELF: Symbol table '.symtab' contains {{[0-9]+}} entries:
