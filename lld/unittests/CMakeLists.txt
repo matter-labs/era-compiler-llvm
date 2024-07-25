@@ -6,3 +6,6 @@ endfunction()
 
 add_subdirectory(AsLibAll)
 add_subdirectory(AsLibELF)
+# EraVM local begin
+add_subdirectory(EraVM)
+# EraVM local End
