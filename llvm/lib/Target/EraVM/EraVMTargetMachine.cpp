@@ -24,8 +24,8 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/GlobalDCE.h"
 #include "llvm/Transforms/Scalar.h"
-#include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Scalar/DeadStoreElimination.h"
+#include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Scalar/MergeIdenticalBB.h"
 #include "llvm/Transforms/Utils.h"
 
@@ -42,6 +42,12 @@ static cl::opt<bool> DisableStraightLineScalarOptPasses(
     "disable-eravm-scalar-opt-passes",
     cl::desc("Disable the sequence of scalar pre-ISel passes (for testing "
              "purpose only)"),
+    cl::init(false), cl::Hidden);
+
+static cl::opt<bool> UseNearCalls(
+    "use-near-calls",
+    cl::desc(
+        "Use near calls and rets instead of jumps for local function calls "),
     cl::init(false), cl::Hidden);
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
@@ -278,7 +284,8 @@ void EraVMPassConfig::addCodeGenPrepare() {
 }
 
 void EraVMPassConfig::addPostRegAlloc() {
-  addPass(createEraVMReplaceNearCallPreparePass());
+  if (getOptLevel() != CodeGenOpt::None && !UseNearCalls)
+    addPass(createEraVMReplaceNearCallPreparePass());
 }
 
 bool EraVMPassConfig::addInstSelector() {

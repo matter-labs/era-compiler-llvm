@@ -46,6 +46,7 @@ public:
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     ModulePass::getAnalysisUsage(AU);
+    AU.setPreservesAll();
   }
 
   bool runOnModule(Module &M) override;
