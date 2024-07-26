@@ -122,7 +122,7 @@ l2:
 
 ; CHECK-LABEL: cmpcr
 define i256 @cmpcr(i256 %p1, i256 %p2) nounwind {
-; CHECK: sub.s! @val[0], r1, r0
+; CHECK: sub.s! code[@val], r1, r0
 ; CHECK-NEXT: add.le  72, r0, r1
 ; CHECK-NEXT: add.gt  42, r0, r1
 ; CHECK-NEXT: ret
@@ -164,7 +164,7 @@ l2:
 
 ; CHECK-LABEL: cmprc
 define i256 @cmprc(i256 %p1, i256 %p2) nounwind {
-; CHECK: sub! @val[0], r1, r0
+; CHECK: sub! code[@val], r1, r0
 ; CHECK-NEXT: add.le  72, r0, r1
 ; CHECK-NEXT: add.gt  42, r0, r1
 ; CHECK-NEXT: ret

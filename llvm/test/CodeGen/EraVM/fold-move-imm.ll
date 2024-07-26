@@ -26,7 +26,7 @@ define i256 @test_pos(i256 %arg) {
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    sub.s! 3, r8, r0
 ; CHECK-NEXT:    add 100, r0, r9
-; CHECK-NEXT:    jump.le @JTI0_0[r8]
+; CHECK-NEXT:    jump.le code[@JTI0_0+r8]
 ; CHECK-NEXT:    jump @.BB0_9
 ; CHECK-NEXT:  .BB0_5: ; %loop-bb2
 ; CHECK-NEXT:    ; in Loop: Header=BB0_4 Depth=1
@@ -102,7 +102,7 @@ define i256 @test_neg(i256 %arg) {
 ; CHECK-NEXT:    jump @.BB1_4
 ; CHECK-NEXT:  .BB1_8: ; %loop-bb5
 ; CHECK-NEXT:    ; in Loop: Header=BB1_4 Depth=1
-; CHECK-NEXT:    add @CPI1_4[0], r0, r9
+; CHECK-NEXT:    add code[@CPI1_4], r0, r9
 ; CHECK-NEXT:  .BB1_9: ; %loop-bb6
 ; CHECK-NEXT:    ; in Loop: Header=BB1_4 Depth=1
 ; CHECK-NEXT:    add r2, r9, r2
@@ -112,20 +112,20 @@ define i256 @test_neg(i256 %arg) {
 ; CHECK-NEXT:  .BB1_4: ; %loop-bb1
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    sub.s! 3, r8, r0
-; CHECK-NEXT:    add @CPI1_0[0], r0, r9
-; CHECK-NEXT:    jump.le @JTI1_0[r8]
+; CHECK-NEXT:    add code[@CPI1_0], r0, r9
+; CHECK-NEXT:    jump.le code[@JTI1_0+r8]
 ; CHECK-NEXT:    jump @.BB1_9
 ; CHECK-NEXT:  .BB1_5: ; %loop-bb2
 ; CHECK-NEXT:    ; in Loop: Header=BB1_4 Depth=1
-; CHECK-NEXT:    add @CPI1_1[0], r0, r9
+; CHECK-NEXT:    add code[@CPI1_1], r0, r9
 ; CHECK-NEXT:    jump @.BB1_9
 ; CHECK-NEXT:  .BB1_6: ; %loop-bb3
 ; CHECK-NEXT:    ; in Loop: Header=BB1_4 Depth=1
-; CHECK-NEXT:    add @CPI1_2[0], r0, r9
+; CHECK-NEXT:    add code[@CPI1_2], r0, r9
 ; CHECK-NEXT:    jump @.BB1_9
 ; CHECK-NEXT:  .BB1_7: ; %loop-bb4
 ; CHECK-NEXT:    ; in Loop: Header=BB1_4 Depth=1
-; CHECK-NEXT:    add @CPI1_3[0], r0, r9
+; CHECK-NEXT:    add code[@CPI1_3], r0, r9
 ; CHECK-NEXT:    jump @.BB1_9
 ; CHECK-NEXT:  .BB1_1:
 ; CHECK-NEXT:    add r0, r0, r2
