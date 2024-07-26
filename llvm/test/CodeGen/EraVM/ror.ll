@@ -45,7 +45,7 @@ entry:
 define i256 @rorcrr(i256 %rs1) {
 ; CHECK-LABEL: rorcrr:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    ror @val[0], r1, r1
+; CHECK-NEXT:    ror code[@val], r1, r1
 ; CHECK-NEXT:    ret
 entry:
   %val = load i256, i256 addrspace(4)* @val
@@ -59,7 +59,7 @@ entry:
 define i256 @rorcrr_cp(i256 %rs1) {
 ; CHECK-LABEL: rorcrr_cp:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    ror @CPI4_0[0], r1, r1
+; CHECK-NEXT:    ror code[@CPI4_0], r1, r1
 ; CHECK-NEXT:    ret
 entry:
   %sub = sub i256 256, %rs1
@@ -72,7 +72,7 @@ entry:
 define i256 @roryrr(i256 %rs1) {
 ; CHECK-LABEL: roryrr:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    ror.s @val[0], r1, r1
+; CHECK-NEXT:    ror.s code[@val], r1, r1
 ; CHECK-NEXT:    ret
 entry:
   %val = load i256, i256 addrspace(4)* @val
@@ -164,7 +164,7 @@ define void @rorcrs(i256 %rs1) {
 ; CHECK-LABEL: rorcrs:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    ror @val[0], r1, stack-[1]
+; CHECK-NEXT:    ror code[@val], r1, stack-[1]
 ; CHECK-NEXT:    ret
 entry:
   %destptr = alloca i256
@@ -181,7 +181,7 @@ define void @rorcrs_cp(i256 %rs1) {
 ; CHECK-LABEL: rorcrs_cp:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    ror @CPI12_0[0], r1, stack-[1]
+; CHECK-NEXT:    ror code[@CPI12_0], r1, stack-[1]
 ; CHECK-NEXT:    ret
 entry:
   %destptr = alloca i256
@@ -197,7 +197,7 @@ define void @roryrs(i256 %rs1) {
 ; CHECK-LABEL: roryrs:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    ror.s @val[0], r1, stack-[1]
+; CHECK-NEXT:    ror.s code[@val], r1, stack-[1]
 ; CHECK-NEXT:    ret
 entry:
   %destptr = alloca i256

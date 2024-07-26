@@ -7,8 +7,8 @@ target triple = "eravm"
 define i256 @test_large_imm1(i256 %a) {
 ; CHECK-LABEL: test_large_imm1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI0_1[0], r1, r0
-; CHECK-NEXT:    ror.lt @CPI0_0[0], r1, r1
+; CHECK-NEXT:    sub.s! code[@CPI0_1], r1, r0
+; CHECK-NEXT:    ror.lt code[@CPI0_0], r1, r1
 ; CHECK-NEXT:    ret
   %sub = sub i256 256, %a
   %lshr = lshr i256 26959946660873538059280334323183841250350249843923952699046031785980, %a
@@ -22,8 +22,8 @@ define i256 @test_large_imm1(i256 %a) {
 define i256 @test_large_imm2(i256 %a) {
 ; CHECK-LABEL: test_large_imm2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI1_1[0], r1, r0
-; CHECK-NEXT:    ror.ge @CPI1_0[0], r1, r1
+; CHECK-NEXT:    sub.s! code[@CPI1_1], r1, r0
+; CHECK-NEXT:    ror.ge code[@CPI1_0], r1, r1
 ; CHECK-NEXT:    ret
   %sub = sub i256 256, %a
   %lshr = lshr i256 26959946660873538059280334323183841250350249843923952699046031785980, %a
@@ -37,7 +37,7 @@ define i256 @test_large_imm2(i256 %a) {
 define i256 @test_small_imm1(i256 %a) {
 ; CHECK-LABEL: test_small_imm1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI2_0[0], r1, r0
+; CHECK-NEXT:    sub.s! code[@CPI2_0], r1, r0
 ; CHECK-NEXT:    ror.lt 10, r1, r1
 ; CHECK-NEXT:    ret
   %sub = sub i256 256, %a
@@ -52,7 +52,7 @@ define i256 @test_small_imm1(i256 %a) {
 define i256 @test_small_imm2(i256 %a) {
 ; CHECK-LABEL: test_small_imm2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI3_0[0], r1, r0
+; CHECK-NEXT:    sub.s! code[@CPI3_0], r1, r0
 ; CHECK-NEXT:    ror.ge 10, r1, r1
 ; CHECK-NEXT:    ret
   %sub = sub i256 256, %a

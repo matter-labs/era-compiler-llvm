@@ -6,7 +6,7 @@ test:
   add  r1, r0, r4
   add  r0, r0, r1
   sub.s! 10, r3, r5
-  jump.le @JTI0_0[r3]
+  jump.le code[@JTI0_0 + r3]
   jump @.BB0_7
 .BB0_1:
   add r4, r2, r1
@@ -47,7 +47,7 @@ JTI0_0:
 ; CHECK:  	add	r1, r0, r4
 ; CHECK:  	add	r0, r0, r1
 ; CHECK:  	sub.s!	10, r3, r5
-; CHECK:  	jump.le	@JTI0_0[r3]
+; CHECK:  	jump.le	code[@JTI0_0+r3]
 ; CHECK:  	jump	@.BB0_7
 ; CHECK:  .BB0_1:
 ; CHECK:  	add	r4, r2, r1

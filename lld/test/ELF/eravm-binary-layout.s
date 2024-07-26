@@ -7,7 +7,7 @@
 
         .text
 	nop	stack+=[2 + r0]
-	add	@glob_initializer[0], r0, stack[@glob]
+	add	code[@glob_initializer], r0, stack[@glob]
 
 	.globl	get_glob
 get_glob:

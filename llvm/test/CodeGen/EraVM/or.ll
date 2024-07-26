@@ -21,7 +21,7 @@ define i256 @orirr(i256 %rs1) nounwind {
 
 ; CHECK-LABEL: orcrr
 define i256 @orcrr(i256 %rs1) nounwind {
-; CHECK: or @val[0], r1, r1
+; CHECK: or code[@val], r1, r1
   %val = load i256, i256 addrspace(4)* @val
   %res = or i256 %rs1, %val
   ret i256 %res
@@ -57,7 +57,7 @@ define void @orirs(i256 %rs1) nounwind {
 ; CHECK-LABEL: orcrs
 define void @orcrs(i256 %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: or @val[0], r1, stack-[1]
+; CHECK: or code[@val], r1, stack-[1]
   %val = load i256, i256 addrspace(4)* @val
   %res = or i256 %rs1, %val
   store i256 %res, i256* %valptr

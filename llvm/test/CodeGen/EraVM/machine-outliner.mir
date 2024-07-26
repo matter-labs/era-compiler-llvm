@@ -19,12 +19,12 @@
 # CHECK-LABEL: foo
 # CHECK-LABEL: bb.0:
 # CHECK: NOPrrs $r0, $r0, $r0, $r0, 1, 0, implicit-def $sp, implicit $sp
-# CHECK-NEXT: ADDcrs_s target-flags(<unknown>) <mcsymbol >, 0, $r0, $sp, 0, -1, 0
+# CHECK-NEXT: ADDirs_s target-flags(<unknown>) <mcsymbol >, $r0, $sp, 0, -1, 0
 # CHECK-NEXT: JCALL @OUTLINED_FUNCTION_2, implicit-def $r1, implicit-def $flags, implicit $r2, implicit $r1, post-instr-symbol <mcsymbol >
 # CHECK-NEXT: $r1 = ADDirr_s i256 1, $r0, 2, implicit $flags
 
 # CHECK-LABEL: bb.1:
-# CHECK: ADDcrs_s target-flags(<unknown>) <mcsymbol >, 0, $r0, $sp, 0, -1, 0
+# CHECK: ADDirs_s target-flags(<unknown>) <mcsymbol >, $r0, $sp, 0, -1, 0
 # CHECK-NEXT: JCALL @OUTLINED_FUNCTION_2, implicit-def $r1, implicit-def $flags, implicit $r2, implicit $r1, post-instr-symbol <mcsymbol >
 # CHECK-NEXT: $r1 = ORrrr_s $r1, $r2, 0
 # CHECK-NEXT: $r1 = ADDirr_s i256 1, $r0, 2, implicit $flags
@@ -67,12 +67,12 @@ body:             |
 # CHECK-LABEL: bb.0:
 # CHECK: NOPrrs $r0, $r0, $r0, $r0, 1, 0, implicit-def $sp, implicit $sp
 # CHECK-NEXT: $r3 = CTXGasLeft i256 0
-# CHECK-NEXT: ADDcrs_s target-flags(<unknown>) <mcsymbol >, 0, $r0, $sp, 0, -1, 0
+# CHECK-NEXT: ADDirs_s target-flags(<unknown>) <mcsymbol >, $r0, $sp, 0, -1, 0
 # CHECK-NEXT: JCALL @OUTLINED_FUNCTION_1, implicit-def $r1, implicit $r2, implicit $r1, post-instr-symbol <mcsymbol >
 
 # CHECK-LABEL: bb.1:
 # CHECK: $r3 = CTXGasLeft i256 0
-# CHECK-NEXT: ADDcrs_s target-flags(<unknown>) <mcsymbol >, 0, $r0, $sp, 0, -1, 0
+# CHECK-NEXT: ADDirs_s target-flags(<unknown>) <mcsymbol >, $r0, $sp, 0, -1, 0
 # CHECK-NEXT: JCALL @OUTLINED_FUNCTION_1, implicit-def $r1, implicit $r2, implicit $r1, post-instr-symbol <mcsymbol >
 # CHECK-NEXT: RET
 name:            bar
@@ -114,11 +114,11 @@ body:             |
 # CHECK-NEXT: ADDsrs_s $sp, 0, -2, $r1, $sp, 0, -2, 0
 # CHECK-NEXT: SHRxrs_s i256 224, $r2, $sp, i256 0, -2, 0
 # CHECK-NEXT: $r1 = SUBzrr_s $sp, i256 0, -2, $r2, 0
-# CHECK-NEXT: ADDcrs_s target-flags(<unknown>) <mcsymbol >, 0, $r0, $sp, 0, -1, 0
+# CHECK-NEXT: ADDirs_s target-flags(<unknown>) <mcsymbol >, $r0, $sp, 0, -1, 0
 # CHECK-NEXT: JCALL @OUTLINED_FUNCTION_0, implicit-def $r2, implicit $sp, implicit $r0, implicit $r1, post-instr-symbol <mcsymbol >
 
 # CHECK-LABEL: bb.1:
-# CHECK: ADDcrs_s target-flags(<unknown>) <mcsymbol >, 0, $r0, $sp, 0, -1, 0
+# CHECK: ADDirs_s target-flags(<unknown>) <mcsymbol >, $r0, $sp, 0, -1, 0
 # CHECK-NEXT: JCALL @OUTLINED_FUNCTION_0, implicit-def $r2, implicit $sp, implicit $r0, implicit $r1, post-instr-symbol <mcsymbol >
 # CHECK-NEXT: RET
 name:            baz

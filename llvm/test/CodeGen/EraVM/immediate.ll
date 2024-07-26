@@ -17,7 +17,7 @@ define i256 @materialize_small_imm() nounwind {
 define i256 @materialize_big_imm() nounwind {
 ; CHECK-LABEL: materialize_big_imm:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add @CPI1_0[0], r0, r1
+; CHECK-NEXT:    add code[@CPI1_0], r0, r1
 ; CHECK-NEXT:    ret
   ret i256 65536
 }
@@ -76,7 +76,7 @@ define i256 @materialize_bigimm_in_operation_2(i256 %par) nounwind {
 define i256 @materialize_bigimm_in_and_operation(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_bigimm_in_and_operation:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    and @CPI8_0[0], r1, r1
+; CHECK-NEXT:    and code[@CPI8_0], r1, r1
 ; CHECK-NEXT:    ret
   %res = and i256 %par, -42
   ret i256 %res
@@ -85,7 +85,7 @@ define i256 @materialize_bigimm_in_and_operation(i256 %par) nounwind {
 define i256 @materialize_bigimm_in_xor_operation(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_bigimm_in_xor_operation:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    xor @CPI9_0[0], r1, r1
+; CHECK-NEXT:    xor code[@CPI9_0], r1, r1
 ; CHECK-NEXT:    ret
   %res = xor i256 -42, %par
   ret i256 %res
@@ -103,7 +103,7 @@ define i256 @materialize_bigimm_in_sub_operation(i256 %par) nounwind {
 define i256 @materialize_bigimm_in_sub_operation_2(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_bigimm_in_sub_operation_2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub @CPI11_0[0], r1, r1
+; CHECK-NEXT:    sub code[@CPI11_0], r1, r1
 ; CHECK-NEXT:    ret
   %res = sub i256 -42, %par
   ret i256 %res
@@ -130,7 +130,7 @@ define i256 @materialize_zero() nounwind {
 define i256 @materialize_bigimm_1(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_bigimm_1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub @CPI14_0[0], r1, r1
+; CHECK-NEXT:    sub code[@CPI14_0], r1, r1
 ; CHECK-NEXT:    ret
   %res = sub i256 12345678901234567890, %par
   ret i256 %res
@@ -139,7 +139,7 @@ define i256 @materialize_bigimm_1(i256 %par) nounwind {
 define i256 @materialize_bigimm_2(i256 %par) nounwind {
 ; CHECK-LABEL: materialize_bigimm_2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub @CPI15_0[0], r1, r1
+; CHECK-NEXT:    sub code[@CPI15_0], r1, r1
 ; CHECK-NEXT:    ret
   %res = sub i256 12345678901234567890, %par
   ret i256 %res

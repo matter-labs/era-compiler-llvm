@@ -10,7 +10,7 @@ target triple = "eravm"
 ; CHECK-LABEL: consti_loadconst_neg_offset
 define i256 @consti_loadconst_neg_offset(i256 %idx) nounwind {
   ; CHECK: sub.s 1, r1, r1
-  ; CHECK: add @const[r1], r0, r1
+  ; CHECK: add code[@const+r1], r0, r1
   %sub = add nsw i256 %idx, -1
   %gep = getelementptr inbounds [10 x i256], ptr addrspace(4) @const, i256 0, i256 %sub
   %load = load i256, ptr addrspace(4) %gep, align 32
@@ -19,7 +19,7 @@ define i256 @consti_loadconst_neg_offset(i256 %idx) nounwind {
 
 ; CHECK-LABEL: consti_loadconst_storeglobal
 define void @consti_loadconst_storeglobal() nounwind {
-  ; CHECK: add @const[1], r0, stack[@val + 1]
+  ; CHECK: add code[@const+1], r0, stack[@val + 1]
   %1 = load i256, ptr addrspace(4) getelementptr inbounds ([10 x i256], ptr addrspace(4) @const, i256 0, i256 1), align 32
   store i256 %1, ptr getelementptr inbounds ([10 x i256], ptr @val, i256 0, i256 1), align 32
   ret void
@@ -39,7 +39,7 @@ define void @vari_loadconst_storeglobal(i256 %i) nounwind {
   %addrg = getelementptr inbounds [10 x i256], ptr @val, i256 0, i256 %i
   %1 = load i256, ptr addrspace(4) %addrc, align 32
   ; CHECK-NOT: shr.s 5, r1, {{r[0-9]+}}
-  ; CHECK: add @const2[r1], r0, stack[@val + r1]
+  ; CHECK: add code[@const2+r1], r0, stack[@val + r1]
   store i256 %1, ptr %addrg, align 32
   ret void
 }

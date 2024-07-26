@@ -114,24 +114,27 @@ void EraVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
   if (BaseReg == EraVM::R0)
     BaseReg = 0;
 
+  O << "code[";
+
   if (Symbol)
-    O << "@" << Symbol->getName() << "[";
-  else
-    O << "code[";
+    O << "@" << Symbol->getName();
 
-  if (!BaseReg && !Addend)
-    O << "0";
-
-  if (BaseReg)
+  if (BaseReg) {
+    if (Symbol)
+      O << "+";
     O << getRegisterName(BaseReg);
+  }
 
   if (Addend) {
     if (Addend < 0)
       O << "-";
-    else if (BaseReg)
+    else if (Symbol || BaseReg)
       O << "+";
     O << std::abs(Addend);
   }
+
+  if (!Symbol && !BaseReg && !Addend)
+    O << "0";
 
   O << "]";
 }

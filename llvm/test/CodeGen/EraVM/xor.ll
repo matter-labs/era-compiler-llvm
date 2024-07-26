@@ -21,7 +21,7 @@ define i256 @xorirr(i256 %rs1) nounwind {
 
 ; CHECK-LABEL: xorcrr
 define i256 @xorcrr(i256 %rs1) nounwind {
-; CHECK: xor @val[0], r1, r1
+; CHECK: xor code[@val], r1, r1
   %val = load i256, i256 addrspace(4)* @val
   %res = xor i256 %rs1, %val
   ret i256 %res
@@ -57,7 +57,7 @@ define void @xorirs(i256 %rs1) nounwind {
 ; CHECK-LABEL: xorcrs
 define void @xorcrs(i256 %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: xor @val[0], r1, stack-[1]
+; CHECK: xor code[@val], r1, stack-[1]
   %val = load i256, i256 addrspace(4)* @val
   %res = xor i256 %rs1, %val
   store i256 %res, i256* %valptr

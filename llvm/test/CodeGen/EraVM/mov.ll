@@ -19,7 +19,7 @@ define i256 @movirr() nounwind {
 
 ; CHECK-LABEL: movcrr
 define i256 @movcrr() nounwind {
-; CHECK: add @val[0], r0, r1
+; CHECK: add code[@val], r0, r1
   %val = load i256, i256 addrspace(4)* @val
   ret i256 %val
 }
@@ -51,7 +51,7 @@ define void @movirs(i256 %rs1) nounwind {
 ; CHECK-LABEL: movcrs
 define void @movcrs() nounwind {
   %valptr = alloca i256
-; CHECK: add @val[0], r0, stack-[1]
+; CHECK: add code[@val], r0, stack-[1]
   %val = load i256, i256 addrspace(4)* @val
   store i256 %val, i256* %valptr
   ret void

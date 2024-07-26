@@ -7,7 +7,7 @@ define void @test1(i256 %rs1) {
 ; CHECK-LABEL: test1:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    add @val[0], r1, stack-[1]
+; CHECK-NEXT:    add code[@val], r1, stack-[1]
 ; CHECK-NEXT:    ret
   %valptr = alloca i256
   %val = load i256, i256 addrspace(4)* @val

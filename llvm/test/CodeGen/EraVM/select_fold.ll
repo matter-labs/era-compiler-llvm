@@ -18,7 +18,7 @@ define i256 @test_add_code(i256 %0, i256 %1) {
 ; CHECK-NEXT:  .BB0_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0
-; CHECK-NEXT:    sub.s.ne @CPI0_0[0], r1, r1
+; CHECK-NEXT:    sub.s.ne code[@CPI0_0], r1, r1
 ; CHECK-NEXT:    shr.s 1, r1, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB0_2
@@ -264,7 +264,7 @@ define i256 @test_sub_code(i256 %0, i256 %1) {
 ; CHECK-NEXT:  .BB6_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0
-; CHECK-NEXT:    sub.s.ne @CPI6_0[0], r1, r1
+; CHECK-NEXT:    sub.s.ne code[@CPI6_0], r1, r1
 ; CHECK-NEXT:    shr.s 1, r1, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB6_2
@@ -305,7 +305,7 @@ define i256 @test_sub_code2(i256 %0, i256 %1) {
 ; CHECK-NEXT:  .BB7_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0
-; CHECK-NEXT:    sub.ne @CPI7_0[0], r1, r1
+; CHECK-NEXT:    sub.ne code[@CPI7_0], r1, r1
 ; CHECK-NEXT:    shr.s 1, r1, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB7_2
@@ -346,7 +346,7 @@ define i256 @test_sub_mul_code(i256 %0, i256 %1) {
 ; CHECK-NEXT:  .BB8_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0
-; CHECK-NEXT:    mul.ne @CPI8_0[0], r1, r1, r0
+; CHECK-NEXT:    mul.ne code[@CPI8_0], r1, r1, r0
 ; CHECK-NEXT:    shr.s 1, r1, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB8_2
@@ -551,7 +551,7 @@ define i256 @test_sub_div_code(i256 %0, i256 %1) {
 ; CHECK-NEXT:  .BB13_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0
-; CHECK-NEXT:    div.ne @CPI13_0[0], r1, r1, r0
+; CHECK-NEXT:    div.ne code[@CPI13_0], r1, r1, r0
 ; CHECK-NEXT:    shr.s 1, r1, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB13_2
@@ -592,7 +592,7 @@ define i256 @test_sub_div_code2(i256 %0, i256 %1) {
 ; CHECK-NEXT:  .BB14_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0
-; CHECK-NEXT:    div.s.ne @CPI14_0[0], r1, r1, r0
+; CHECK-NEXT:    div.s.ne code[@CPI14_0], r1, r1, r0
 ; CHECK-NEXT:    shr.s 1, r1, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB14_2

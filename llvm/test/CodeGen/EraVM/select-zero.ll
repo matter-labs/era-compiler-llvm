@@ -258,7 +258,7 @@ define i256 @select_zero_add_code(i256 %0, i256 %1) {
 ; CHECK-LABEL: select_zero_add_code:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    sub! r1, r2, r0
-; CHECK-NEXT:    add.eq @val[0], r2, r2
+; CHECK-NEXT:    add.eq code[@val], r2, r2
 ; CHECK-NEXT:    add r2, r0, r1
 ; CHECK-NEXT:    ret
 entry:

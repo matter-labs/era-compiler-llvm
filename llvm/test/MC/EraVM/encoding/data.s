@@ -44,7 +44,7 @@ local_var:
 foo:
   add code[@global_const], r2, stack[@global_var + 2]
   add code[@local_const], r2, stack[@local_var + 1]
-  jump @jump_table[1]
+  jump code[@jump_table + 1]
   ret
 
 ; CHECK:      Relocation section '.rela.text' at offset {{0x[0-9a-f]+}} contains 5 entries:
