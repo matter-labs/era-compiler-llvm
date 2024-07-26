@@ -64,6 +64,7 @@ class EraVMAsmParser : public MCTargetAsmParser {
   bool parseRegOperand(OperandVector &Operands);
   OperandMatchResultTy tryParseUImm16Operand(OperandVector &Operands);
   OperandMatchResultTy tryParseJumpTargetOperand(OperandVector &Operands);
+  bool parseAddend(int &Addend, bool SignRequired);
   bool parseRegisterWithAddend(MCRegister &RegNo, MCSymbol *&Symbol,
                                int &Addend);
   bool parseOperand(StringRef Mnemonic, OperandVector &Operands);
@@ -418,6 +419,31 @@ bool EraVMAsmParser::parseRegOperand(OperandVector &Operands) {
 
 OperandMatchResultTy
 EraVMAsmParser::tryParseUImm16Operand(OperandVector &Operands) {
+  // First check if this is a symbol + addend.
+  if (getTok().is(AsmToken::At)) {
+    MCSymbol *Symbol = nullptr;
+    SMLoc StartOfOperand = getLexer().getLoc();
+    int Addend = 0;
+
+    Lex(); // eat "@" token
+    Symbol = getContext().getOrCreateSymbol(getTok().getString());
+    Lex(); // eat symbol name
+    if (getTok().is(AsmToken::Plus) || getTok().is(AsmToken::Minus))
+      if (parseAddend(Addend, /*SignRequired=*/true))
+        return MatchOperand_ParseFail;
+
+    const MCExpr *Expr = MCSymbolRefExpr::create(Symbol, getContext());
+    // FIXME Should we support negative addends?
+    Addend &= (unsigned)0xffff;
+    if (Addend) {
+      const MCExpr *AddendExpr = createConstant(Addend);
+      Expr = MCBinaryExpr::createAdd(Expr, AddendExpr, getContext());
+    }
+    Operands.push_back(
+        EraVMOperand::CreateImm(Expr, StartOfOperand, getTok().getEndLoc()));
+    return MatchOperand_Success;
+  }
+
   if (getLexer().is(AsmToken::Minus) &&
       getLexer().peekTok().is(AsmToken::Integer)) {
     TokError("negative immediate operands are not supported");
@@ -462,34 +488,33 @@ EraVMAsmParser::tryParseJumpTargetOperand(OperandVector &Operands) {
   return MatchOperand_Success;
 }
 
+bool EraVMAsmParser::parseAddend(int &Addend, bool SignRequired) {
+  int Multiplier = 1;
+  switch (getTok().getKind()) {
+  case AsmToken::Plus:
+    Multiplier = 1;
+    Lex(); // eat "+" token
+    break;
+  case AsmToken::Minus:
+    Multiplier = -1;
+    Lex(); // eat "-" token
+    break;
+  default:
+    if (SignRequired)
+      return TokError("'+' or '-' expected");
+    break;
+  }
+
+  if (!getLexer().is(AsmToken::Integer))
+    return TokError("integer addend expected");
+  Addend = Multiplier * getTok().getIntVal();
+  Lex(); // eat integer token
+
+  return false;
+}
+
 bool EraVMAsmParser::parseRegisterWithAddend(MCRegister &RegNo,
                                              MCSymbol *&Symbol, int &Addend) {
-  auto ParseAddend = [this, &Addend](bool SignRequired) {
-    int Multiplier = 1;
-
-    switch (getTok().getKind()) {
-    case AsmToken::Plus:
-      Multiplier = 1;
-      Lex(); // eat "+" token
-      break;
-    case AsmToken::Minus:
-      Multiplier = -1;
-      Lex(); // eat "-" token
-      break;
-    default:
-      if (SignRequired)
-        return TokError("'+' or '-' expected");
-      break;
-    }
-
-    if (!getLexer().is(AsmToken::Integer))
-      return TokError("integer addend expected");
-    Addend = Multiplier * getTok().getIntVal();
-    Lex(); // eat integer token
-
-    return false;
-  };
-
   auto ParseRegister = [this, &RegNo]() {
     SMLoc S, E;
     if (tryParseRegister(RegNo, S, E))
@@ -529,10 +554,10 @@ bool EraVMAsmParser::parseRegisterWithAddend(MCRegister &RegNo,
       return true;
     if (getTok().is(AsmToken::RBrac))
       return false; // keep "]" token for the caller
-    return ParseAddend(/*SignRequired=*/true);
+    return parseAddend(Addend, /*SignRequired=*/true);
   }
 
-  if (ParseAddend(/*SignRequired=*/false))
+  if (parseAddend(Addend, /*SignRequired=*/false))
     return true;
   if (getTok().is(AsmToken::RBrac))
     return false; // keep "]" token for the caller
@@ -633,33 +658,18 @@ EraVMAsmParser::tryParseStackOperand(OperandVector &Operands) {
 OperandMatchResultTy
 EraVMAsmParser::tryParseCodeOperand(OperandVector &Operands) {
   SMLoc StartOfOperand = getLexer().getLoc();
-  MCSymbol *Symbol = nullptr;
   MCSymbol *SymbolInSubscript = nullptr;
   MCRegister RegNo = 0;
   int Addend = 0;
 
-  // Decide if this is a code operand
-  SmallVector<AsmToken, 2> PeekedTokens(2);
-  getLexer().peekTokens(PeekedTokens);
-  if (getTok().is(AsmToken::At)) {
-    // "@symbol_name[...]"
-    if (!PeekedTokens[0].is(AsmToken::Identifier) ||
-        !PeekedTokens[1].is(AsmToken::LBrac))
-      return MatchOperand_NoMatch;
+  // "code[...]"
+  if (!getTok().is(AsmToken::Identifier) ||
+      !getLexer().peekTok().is(AsmToken::LBrac) ||
+      getTok().getString() != "code")
+    return MatchOperand_NoMatch;
 
-    Lex(); // eat "@" token
-    Symbol = getContext().getOrCreateSymbol(getTok().getString());
-    Lex(); // eat constant symbol name
-    Lex(); // eat "[" token
-  } else {
-    // "code[...]"
-    if (!getTok().is(AsmToken::Identifier) ||
-        !PeekedTokens[0].is(AsmToken::LBrac) || getTok().getString() != "code")
-      return MatchOperand_NoMatch;
-
-    Lex(); // eat "code" token
-    Lex(); // eat "[" token
-  }
+  Lex(); // eat "code" token
+  Lex(); // eat "[" token
 
   if (parseRegisterWithAddend(RegNo, SymbolInSubscript, Addend))
     return MatchOperand_ParseFail;
@@ -670,21 +680,9 @@ EraVMAsmParser::tryParseCodeOperand(OperandVector &Operands) {
   if (parseToken(AsmToken::RBrac, "']' expected"))
     return MatchOperand_ParseFail;
 
-  if (Symbol) {
-    // @symbol_name[reg + imm]
-    if (SymbolInSubscript) {
-      Error(StartOfOperand, "two symbols in a single operand");
-      return MatchOperand_ParseFail;
-    }
-    Operands.push_back(EraVMOperand::CreateMem(
-        &getContext(), EraVM::OperandCode, RegNo, Symbol, Addend,
-        StartOfOperand, getTok().getEndLoc()));
-  } else {
-    // code[...]
-    Operands.push_back(EraVMOperand::CreateMem(
-        &getContext(), EraVM::OperandCode, RegNo, SymbolInSubscript, Addend,
-        StartOfOperand, getTok().getEndLoc()));
-  }
+  Operands.push_back(EraVMOperand::CreateMem(
+      &getContext(), EraVM::OperandCode, RegNo, SymbolInSubscript, Addend,
+      StartOfOperand, getTok().getEndLoc()));
 
   return MatchOperand_Success;
 }

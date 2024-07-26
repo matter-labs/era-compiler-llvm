@@ -33,9 +33,9 @@ entry:
 define i256 @test_large_imm_pos() {
 ; CHECK-LABEL: test_large_imm_pos:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add @CPI2_0[0], r0, r1
+; CHECK-NEXT:    add code[@CPI2_0], r0, r1
 ; CHECK-NEXT:    near_call r0, @use, @DEFAULT_UNWIND
-; CHECK-NEXT:    add @CPI2_0[0], r0, r1
+; CHECK-NEXT:    add code[@CPI2_0], r0, r1
 ; CHECK-NEXT:    ret
 entry:
   call void @use(i256 123456789)
@@ -45,9 +45,9 @@ entry:
 define i256 @test_large_imm_neg() {
 ; CHECK-LABEL: test_large_imm_neg:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    add @CPI3_0[0], r0, r1
+; CHECK-NEXT:    add code[@CPI3_0], r0, r1
 ; CHECK-NEXT:    near_call r0, @use, @DEFAULT_UNWIND
-; CHECK-NEXT:    add @CPI3_0[0], r0, r1
+; CHECK-NEXT:    add code[@CPI3_0], r0, r1
 ; CHECK-NEXT:    ret
 entry:
   call void @use(i256 -123456789)

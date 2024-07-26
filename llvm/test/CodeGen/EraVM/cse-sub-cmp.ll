@@ -23,8 +23,8 @@ define i256 @test_small_imm(i256 %a) {
 define i256 @test_large_imm(i256 %a) {
 ; CHECK-LABEL: test_large_imm:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI1_0[0], r1, r2
-; CHECK-NEXT:    mul @CPI1_0[0], r1, r1, r0
+; CHECK-NEXT:    sub.s! code[@CPI1_0], r1, r2
+; CHECK-NEXT:    mul code[@CPI1_0], r1, r1, r0
 ; CHECK-NEXT:    add.ge r2, r0, r1
 ; CHECK-NEXT:    ret
   %sub = sub i256 %a, 123456789

@@ -75,9 +75,9 @@ array_const_local:
   .text
   .p2align 3
 reloc_src_g:
-  add @scalar_const[0], r1, r1
+  add code[@scalar_const], r1, r1
   add stack[@scalar_var], r1, r1
-  add @array_const[1], r1, r1
+  add code[@array_const + 1], r1, r1
   add stack[@array_var + 1], r1, r1
   ret
 ; INPUT-LABEL: <reloc_src_g>:
@@ -99,9 +99,9 @@ reloc_src_g:
 ; OUTPUT-NEXT:  00 00 00 00 00 01 04 2d        ret
 
 reloc_src_l:
-  add @scalar_const_local[0], r1, r1
+  add code[@scalar_const_local], r1, r1
   add stack[@scalar_var_local], r1, r1
-  add @array_const_local[1], r1, r1
+  add code[@array_const_local + 1], r1, r1
   add stack[@array_var_local + 1], r1, r1
   ret
 ; INPUT-LABEL: <reloc_src_l>:
@@ -155,9 +155,9 @@ reloc_dst_l:
 ; OUTPUT-NEXT:  00 00 00 00 00 01 04 2d        ret
 
 reloc_both_g:
-  add @scalar_const[0], r1, stack[@array_var + 1]
+  add code[@scalar_const], r1, stack[@array_var + 1]
   add stack[@scalar_var], r1, stack[@array_var + 1]
-  add @array_const[1], r1, stack[@scalar_var]
+  add code[@array_const + 1], r1, stack[@scalar_var]
   add stack[@array_var + 1], r1, stack[@scalar_var]
   ret
 ; INPUT-LABEL: <reloc_both_g>:
@@ -183,9 +183,9 @@ reloc_both_g:
 ; OUTPUT-NEXT:  00 00 00 00 00 01 04 2d        ret
 
 reloc_both_l:
-  add @scalar_const_local[0], r1, stack[@array_var_local + 1]
+  add code[@scalar_const_local], r1, stack[@array_var_local + 1]
   add stack[@scalar_var_local], r1, stack[@array_var_local + 1]
-  add @array_const_local[1], r1, stack[@scalar_var_local]
+  add code[@array_const_local + 1], r1, stack[@scalar_var_local]
   add stack[@array_var_local + 1], r1, stack[@scalar_var_local]
   ret
 ; INPUT-LABEL: <reloc_both_l>:

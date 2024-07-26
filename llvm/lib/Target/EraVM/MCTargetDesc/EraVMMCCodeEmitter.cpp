@@ -153,6 +153,13 @@ EraVMMCCodeEmitter::getMachineOpValue(const MCInst &MI, const MCOperand &MO,
     return Ctx.getRegisterInfo()->getEncodingValue(MO.getReg());
   if (MO.isImm())
     return MO.getImm();
+  if (MO.isExpr()) {
+    // This corresponds to the cases where the operand
+    // is an expression of the form: @symbol + imm.
+    auto FK = static_cast<MCFixupKind>(EraVM::fixup_16_scale_8);
+    Fixups.push_back(MCFixup::create(2, MO.getExpr(), FK, MI.getLoc()));
+    return 0;
+  }
 
   llvm_unreachable("Unexpected generic operand type");
 }
