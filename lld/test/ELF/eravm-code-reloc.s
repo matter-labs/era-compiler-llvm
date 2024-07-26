@@ -68,7 +68,7 @@ foo_local:
 caller_g:
   near_call r1, @foo, @handler
   far_call  r3, r4, @foo
-  add   @.OUTLINED_FUNCTION_RET0[0], r0, stack-[1]
+  add   @.OUTLINED_FUNCTION_RET0, r0, stack-[1]
   jump  @foo_local
 .OUTLINED_FUNCTION_RET0:
   jump @label
@@ -77,7 +77,7 @@ caller_g:
   ret.panic.to_label @label
   .globl label
 label:
-  jump @jump_table[1]
+  jump code[@jump_table + 1]
   ret
 ; INPUT-LABEL: <caller_g>:
 ; INPUT-NEXT:  00 00 00 00 00 01 04 0f        near_call       r1, 0, 0
@@ -85,7 +85,7 @@ label:
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      foo
 ; INPUT-NEXT:  00 00 00 00 00 43 04 21        far_call        r3, r4, 0
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8      foo
-; INPUT-NEXT:  00 01 00 00 00 00 00 45 add code[0], r0, stack-[1 + r0]
+; INPUT-NEXT:  00 01 00 00 00 00 00 3d add 0, r0, stack-[1 + r0]
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8 .text+0x40
 ; INPUT-NEXT:  00 00 00 00 00 00 01 3d        jump    0
 ; INPUT-NEXT:                 R_ERAVM_16_SCALE_8  .text+0x18
@@ -105,7 +105,7 @@ label:
 ; OUTPUT-LABEL: <caller_g>:
 ; OUTPUT-NEXT:  00 12 00 13 00 01 04 0f        near_call       r1, 19, 18
 ; OUTPUT-NEXT:  00 00 00 13 00 43 04 21        far_call        r3, r4, 19
-; OUTPUT-NEXT:  00 01 00 18 00 00 00 45        add     code[24], r0, stack-[1 + r0]
+; OUTPUT-NEXT:  00 01 00 18 00 00 00 3d        add     24, r0, stack-[1 + r0]
 ; OUTPUT-NEXT:  00 00 00 13 00 00 01 3d        jump    19
 ; OUTPUT-NEXT:  00 00 00 1c 00 00 01 3d        jump    28
 ; OUTPUT-NEXT:  00 00 00 1c 00 01 04 2e        ret.ok.to_label r1, 28
@@ -127,7 +127,7 @@ caller_l:
   ret.panic.to_label @label_local
   .local label_local
 label_local:
-  jump @jump_table_local[1]
+  jump code[@jump_table_local + 1]
   ret
 
 ; INPUT-LABEL: <caller_l>:

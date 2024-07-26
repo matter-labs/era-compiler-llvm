@@ -75,7 +75,7 @@ define void @store_to_frame.i64(i64 %par) nounwind {
   store i64 %par, i64* %1, align 32
   store i64 %par, i64* %2, align 32
 ; TODO: CPR-1003
-; CHECK: add @CPI5_0[0], r0, r2
+; CHECK: add code[@CPI5_0], r0, r2
 ; CHECK: and stack-[1], r2, r3
 ; CHECK: or  r1, r3, stack-[1]
 ; CHECK: and stack-[2], r2, r2
@@ -88,7 +88,7 @@ define i64 @load_from_frame.i64(i64 %par) nounwind {
   %1 = alloca i64, align 32
 ; TODO: CPR-1003
 ; store i64 to stack
-; CHECK: add   @CPI6_0[0], r0, r2
+; CHECK: add   code[@CPI6_0], r0, r2
 ; CHECK: and   stack-[1], r2, r2
 ; CHECK: shl.s 192, r1, r1
 ; CHECK: or    r1, r2, stack-[1]

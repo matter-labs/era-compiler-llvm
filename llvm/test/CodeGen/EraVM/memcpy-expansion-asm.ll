@@ -10,7 +10,7 @@ declare void @llvm.memcpy.p1.p3.i256(ptr addrspace(1), ptr addrspace(3), i256, i
 define void @expand_unknown_p1_p3(ptr addrspace(1) %dest, ptr addrspace(3) %src, i256 %size) {
 ; CHECK-LABEL: expand_unknown_p1_p3:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    and! @CPI0_0[0], r3, r4
+; CHECK-NEXT:    and! code[@CPI0_0], r3, r4
 ; CHECK-NEXT:    and 31, r3, r5
 ; CHECK-NEXT:    add r1, r4, r3
 ; CHECK-NEXT:    jump.eq @.BB0_3
@@ -47,7 +47,7 @@ entry:
 define void @expand_unknown_p1_p1(ptr addrspace(1) %dest, ptr addrspace(1) %src, i256 %size) {
 ; CHECK-LABEL: expand_unknown_p1_p1:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    and! @CPI1_0[0], r3, r4
+; CHECK-NEXT:    and! code[@CPI1_0], r3, r4
 ; CHECK-NEXT:    and 31, r3, r5
 ; CHECK-NEXT:    add r1, r4, r3
 ; CHECK-NEXT:    jump.eq @.BB1_3
@@ -87,9 +87,9 @@ define void @expand_known_p1_p3_loop_iter1(ptr addrspace(1) %dest, ptr addrspace
 ; CHECK-NEXT:    ld.inc r2, r2, r3
 ; CHECK-NEXT:    st.1.inc r1, r2, r1
 ; CHECK-NEXT:    ld.1 r1, r2
-; CHECK-NEXT:    and @CPI2_0[0], r2, r2
+; CHECK-NEXT:    and code[@CPI2_0], r2, r2
 ; CHECK-NEXT:    ld r3, r3
-; CHECK-NEXT:    and @CPI2_1[0], r3, r3
+; CHECK-NEXT:    and code[@CPI2_1], r3, r3
 ; CHECK-NEXT:    or r3, r2, r2
 ; CHECK-NEXT:    st.1 r1, r2
 ; CHECK-NEXT:    ret
@@ -104,9 +104,9 @@ define void @expand_known_p1_p1_loop_iter1(ptr addrspace(1) %dest, ptr addrspace
 ; CHECK-NEXT:    ld.1.inc r2, r2, r3
 ; CHECK-NEXT:    st.1.inc r1, r2, r1
 ; CHECK-NEXT:    ld.1 r1, r2
-; CHECK-NEXT:    and @CPI3_0[0], r2, r2
+; CHECK-NEXT:    and code[@CPI3_0], r2, r2
 ; CHECK-NEXT:    ld.1 r3, r3
-; CHECK-NEXT:    and @CPI3_1[0], r3, r3
+; CHECK-NEXT:    and code[@CPI3_1], r3, r3
 ; CHECK-NEXT:    or r3, r2, r2
 ; CHECK-NEXT:    st.1 r1, r2
 ; CHECK-NEXT:    ret
@@ -128,10 +128,10 @@ define void @expand_known_p1_p3_loop_iter2(ptr addrspace(1) %dest, ptr addrspace
 ; CHECK-NEXT:    jump.ne @.BB4_1
 ; CHECK-NEXT:  ; %bb.2: ; %memcpy-split
 ; CHECK-NEXT:    ld.1 r3, r1
-; CHECK-NEXT:    and @CPI4_0[0], r1, r1
+; CHECK-NEXT:    and code[@CPI4_0], r1, r1
 ; CHECK-NEXT:    ptr.add.s 64, r2, r2
 ; CHECK-NEXT:    ld r2, r2
-; CHECK-NEXT:    and @CPI4_1[0], r2, r2
+; CHECK-NEXT:    and code[@CPI4_1], r2, r2
 ; CHECK-NEXT:    or r2, r1, r1
 ; CHECK-NEXT:    st.1 r3, r1
 ; CHECK-NEXT:    ret
@@ -153,10 +153,10 @@ define void @expand_known_p1_p1_loop_iter2(ptr addrspace(1) %dest, ptr addrspace
 ; CHECK-NEXT:    jump.ne @.BB5_1
 ; CHECK-NEXT:  ; %bb.2: ; %memcpy-split
 ; CHECK-NEXT:    ld.1 r3, r1
-; CHECK-NEXT:    and @CPI5_0[0], r1, r1
+; CHECK-NEXT:    and code[@CPI5_0], r1, r1
 ; CHECK-NEXT:    add 64, r2, r2
 ; CHECK-NEXT:    ld.1 r2, r2
-; CHECK-NEXT:    and @CPI5_1[0], r2, r2
+; CHECK-NEXT:    and code[@CPI5_1], r2, r2
 ; CHECK-NEXT:    or r2, r1, r1
 ; CHECK-NEXT:    st.1 r3, r1
 ; CHECK-NEXT:    ret

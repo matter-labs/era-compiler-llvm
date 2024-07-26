@@ -57,7 +57,7 @@ define i256 @load.fromcodearray(i256 %i) nounwind {
   %elem = getelementptr [4 x i256], [4 x i256] addrspace(4)* @val.code.arr, i256 0, i256 1
   %elem2 = getelementptr i256, i256 addrspace(4)* %elem, i256 %i
 ; CHECK: add 1, r1, r[[REG:[0-9]+]]
-; CHECK: add @val.code.arr[r[[REG]]], r0, r1
+; CHECK: add code[@val.code.arr+r[[REG]]], r0, r1
   %res = load i256, i256 addrspace(4)* %elem2
   ret i256 %res
 }

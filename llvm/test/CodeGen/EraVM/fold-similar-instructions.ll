@@ -9,8 +9,8 @@ target triple = "eravm"
 define i256 @test_large_imm_no_fold1(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_large_imm_no_fold1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s @CPI0_0[0], r1, r3
-; CHECK-NEXT:    sub.s! @CPI0_1[0], r1, r0
+; CHECK-NEXT:    sub.s code[@CPI0_0], r1, r3
+; CHECK-NEXT:    sub.s! code[@CPI0_1], r1, r0
 ; CHECK-NEXT:    add.lt r3, r0, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    add.eq r3, r0, r1
@@ -25,8 +25,8 @@ define i256 @test_large_imm_no_fold1(i256 %a, i1 %cond) {
 define i256 @test_large_imm_no_fold2(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_large_imm_no_fold2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s @CPI1_0[0], r1, r3
-; CHECK-NEXT:    sub.s! @CPI1_1[0], r1, r0
+; CHECK-NEXT:    sub.s code[@CPI1_0], r1, r3
+; CHECK-NEXT:    sub.s! code[@CPI1_1], r1, r0
 ; CHECK-NEXT:    add.lt r3, r0, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    add.eq r3, r0, r1
@@ -57,7 +57,7 @@ define i256 @test_small_imm_no_fold(i256 %a, i1 %cond) {
 define i256 @test_large_imm_ult1(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_large_imm_ult1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI3_0[0], r1, r3
+; CHECK-NEXT:    sub.s! code[@CPI3_0], r1, r3
 ; CHECK-NEXT:    add.lt r3, r0, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    add.eq r3, r0, r1
@@ -72,7 +72,7 @@ define i256 @test_large_imm_ult1(i256 %a, i1 %cond) {
 define i256 @test_large_imm_ult2(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_large_imm_ult2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI4_0[0], r1, r3
+; CHECK-NEXT:    sub.s! code[@CPI4_0], r1, r3
 ; CHECK-NEXT:    add.lt r3, r0, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    add.eq r3, r0, r1
@@ -87,7 +87,7 @@ define i256 @test_large_imm_ult2(i256 %a, i1 %cond) {
 define i256 @test_large_imm_ule1(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_large_imm_ule1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI5_0[0], r1, r3
+; CHECK-NEXT:    sub.s! code[@CPI5_0], r1, r3
 ; CHECK-NEXT:    add.le r3, r0, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    add.eq r3, r0, r1
@@ -102,7 +102,7 @@ define i256 @test_large_imm_ule1(i256 %a, i1 %cond) {
 define i256 @test_large_imm_ule2(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_large_imm_ule2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI6_0[0], r1, r3
+; CHECK-NEXT:    sub.s! code[@CPI6_0], r1, r3
 ; CHECK-NEXT:    add.le r3, r0, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    add.eq r3, r0, r1
@@ -119,7 +119,7 @@ define i256 @test_small_large_imm_ule(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_small_large_imm_ule:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub.s 65535, r1, r3
-; CHECK-NEXT:    sub.s! @CPI7_0[0], r1, r0
+; CHECK-NEXT:    sub.s! code[@CPI7_0], r1, r0
 ; CHECK-NEXT:    add.lt r3, r0, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    add.eq r3, r0, r1
@@ -134,7 +134,7 @@ define i256 @test_small_large_imm_ule(i256 %a, i1 %cond) {
 define i256 @test_large_imm_uge1(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_large_imm_uge1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI8_0[0], r1, r3
+; CHECK-NEXT:    sub.s! code[@CPI8_0], r1, r3
 ; CHECK-NEXT:    add.ge r3, r0, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    add.eq r3, r0, r1
@@ -149,7 +149,7 @@ define i256 @test_large_imm_uge1(i256 %a, i1 %cond) {
 define i256 @test_large_imm_uge2(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_large_imm_uge2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @CPI9_0[0], r1, r3
+; CHECK-NEXT:    sub.s! code[@CPI9_0], r1, r3
 ; CHECK-NEXT:    add.ge r3, r0, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    add.eq r3, r0, r1
@@ -165,7 +165,7 @@ define i256 @test_large_imm_uge2(i256 %a, i1 %cond) {
 define i256 @test_small_large_imm_uge(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_small_large_imm_uge:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s @CPI10_0[0], r1, r3
+; CHECK-NEXT:    sub.s code[@CPI10_0], r1, r3
 ; CHECK-NEXT:    sub.s! 65535, r1, r0
 ; CHECK-NEXT:    add.gt r3, r0, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
@@ -292,7 +292,7 @@ define i256 @test_stack2(i256 %a, i1 %cond) {
 define i256 @test_code1(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_code1:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub.s! @val[0], r1, r3
+; CHECK-NEXT:    sub.s! code[@val], r1, r3
 ; CHECK-NEXT:    add.lt r3, r0, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    add.eq r3, r0, r1
@@ -308,7 +308,7 @@ define i256 @test_code1(i256 %a, i1 %cond) {
 define i256 @test_code2(i256 %a, i1 %cond) {
 ; CHECK-LABEL: test_code2:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    sub! @val[0], r1, r3
+; CHECK-NEXT:    sub! code[@val], r1, r3
 ; CHECK-NEXT:    add.lt r3, r0, r1
 ; CHECK-NEXT:    sub! r2, r0, r0
 ; CHECK-NEXT:    add.eq r3, r0, r1

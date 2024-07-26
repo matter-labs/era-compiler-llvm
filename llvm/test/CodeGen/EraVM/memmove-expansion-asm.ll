@@ -10,7 +10,7 @@ declare void @llvm.memmove.p1.p1.i256(ptr addrspace(1), ptr addrspace(1), i256, 
 define i256 @expand_unknown(ptr addrspace(1) %dst, ptr addrspace(1) %src, i256 %size) {
 ; CHECK-LABEL: expand_unknown:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    and @CPI0_0[0], r3, r4
+; CHECK-NEXT:    and code[@CPI0_0], r3, r4
 ; CHECK-NEXT:    and 31, r3, r3
 ; CHECK-NEXT:    sub! r2, r1, r0
 ; CHECK-NEXT:    jump.ge @.BB0_5
@@ -86,7 +86,7 @@ define i256 @expand_known_backward() {
 ; CHECK-NEXT:    jump.ne @.BB1_1
 ; CHECK-NEXT:  ; %bb.2: ; %copy-backwards-residual-cond
 ; CHECK-NEXT:    ld.1 10, r2
-; CHECK-NEXT:    and @CPI1_0[0], r2, r1
+; CHECK-NEXT:    and code[@CPI1_0], r2, r1
 ; CHECK-NEXT:    ld.1 100, r2
 ; CHECK-NEXT:    and 255, r2, r2
 ; CHECK-NEXT:    or r1, r2, r1
@@ -114,9 +114,9 @@ define i256 @expand_known_loop_iter1(ptr addrspace(1) %dst, ptr addrspace(1) %sr
 ; CHECK-NEXT:    st.1.inc r1, r3, r1
 ; CHECK-NEXT:  .BB2_3: ; %memmove-residual
 ; CHECK-NEXT:    ld.1 r1, r3
-; CHECK-NEXT:    and @CPI2_0[0], r3, r3
+; CHECK-NEXT:    and code[@CPI2_0], r3, r3
 ; CHECK-NEXT:    ld.1 r2, r2
-; CHECK-NEXT:    and @CPI2_1[0], r2, r2
+; CHECK-NEXT:    and code[@CPI2_1], r2, r2
 ; CHECK-NEXT:    or r2, r3, r2
 ; CHECK-NEXT:    st.1 r1, r2
 ; CHECK-NEXT:    add r0, r0, r1
@@ -159,9 +159,9 @@ define i256 @expand_known_loop_iter2(ptr addrspace(1) %dst, ptr addrspace(1) %sr
 ; CHECK-NEXT:    add 64, r2, r2
 ; CHECK-NEXT:  .BB3_7: ; %memmove-residual
 ; CHECK-NEXT:    ld.1 r3, r1
-; CHECK-NEXT:    and @CPI3_0[0], r1, r1
+; CHECK-NEXT:    and code[@CPI3_0], r1, r1
 ; CHECK-NEXT:    ld.1 r2, r2
-; CHECK-NEXT:    and @CPI3_1[0], r2, r2
+; CHECK-NEXT:    and code[@CPI3_1], r2, r2
 ; CHECK-NEXT:    or r2, r1, r1
 ; CHECK-NEXT:    st.1 r3, r1
 ; CHECK-NEXT:    add r0, r0, r1

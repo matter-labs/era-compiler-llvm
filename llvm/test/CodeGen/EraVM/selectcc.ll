@@ -46,7 +46,7 @@ define i256 @selcrr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    add r2, r0, r1
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add.gt @val[0], r0, r1
+; CHECK-NEXT:    add.gt code[@val], r0, r1
 ; CHECK-NEXT:    ret
   %1 = icmp ugt i256 %v3, %v4
   %const = load i256, i256 addrspace(4)* @val
@@ -59,7 +59,7 @@ define i256 @selcrr_zero_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add r0, r0, r1
-; CHECK-NEXT:    add.lt @CPI4_0[0], r0, r1
+; CHECK-NEXT:    add.lt code[@CPI4_0], r0, r1
 ; CHECK-NEXT:    ret
   %1 = icmp ult i256 %v3, %v4
   %2 = select i1 %1, i256 123456789, i256 0
@@ -70,7 +70,7 @@ define i256 @selcrr_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selcrr_cp:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add.lt @CPI5_0[0], r0, r1
+; CHECK-NEXT:    add.lt code[@CPI5_0], r0, r1
 ; CHECK-NEXT:    ret
   %1 = icmp ult i256 %v3, %v4
   %2 = select i1 %1, i256 123456789, i256 %v1
@@ -119,7 +119,7 @@ define i256 @selcir(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add 42, r0, r1
-; CHECK-NEXT:    add.gt @val[0], r0, r1
+; CHECK-NEXT:    add.gt code[@val], r0, r1
 ; CHECK-NEXT:    ret
   %1 = icmp ugt i256 %v3, %v4
   %const = load i256, i256 addrspace(4)* @val
@@ -132,7 +132,7 @@ define i256 @selcir_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add 42, r0, r1
-; CHECK-NEXT:    add.gt @CPI10_0[0], r0, r1
+; CHECK-NEXT:    add.gt code[@CPI10_0], r0, r1
 ; CHECK-NEXT:    ret
   %1 = icmp ugt i256 %v3, %v4
   %2 = select i1 %1, i256 123456789, i256 42
@@ -158,7 +158,7 @@ define i256 @selrcr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selrcr:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add.ge @val[0], r0, r1
+; CHECK-NEXT:    add.ge code[@val], r0, r1
 ; CHECK-NEXT:    ret
   %1 = icmp ult i256 %v3, %v4
   %const = load i256, i256 addrspace(4)* @val
@@ -170,7 +170,7 @@ define i256 @selrcr_zero_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selrcr_zero_cp:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add @CPI13_0[0], r0, r1
+; CHECK-NEXT:    add code[@CPI13_0], r0, r1
 ; CHECK-NEXT:    add.lt r0, r0, r1
 ; CHECK-NEXT:    ret
   %1 = icmp ult i256 %v3, %v4
@@ -182,7 +182,7 @@ define i256 @selrcr_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selrcr_cp:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add.ge @CPI14_0[0], r0, r1
+; CHECK-NEXT:    add.ge code[@CPI14_0], r0, r1
 ; CHECK-NEXT:    ret
   %1 = icmp ult i256 %v3, %v4
   %2 = select i1 %1, i256 %v1, i256 123456789
@@ -193,7 +193,7 @@ define i256 @selicr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selicr:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add @val[0], r0, r1
+; CHECK-NEXT:    add code[@val], r0, r1
 ; CHECK-NEXT:    add.lt 42, r0, r1
 ; CHECK-NEXT:    ret
   %1 = icmp ult i256 %v3, %v4
@@ -206,7 +206,7 @@ define i256 @selicr_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selicr_cp:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add @CPI16_0[0], r0, r1
+; CHECK-NEXT:    add code[@CPI16_0], r0, r1
 ; CHECK-NEXT:    add.lt 42, r0, r1
 ; CHECK-NEXT:    ret
   %1 = icmp ult i256 %v3, %v4
@@ -218,8 +218,8 @@ define i256 @selccr_cl_cl(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selccr_cl_cl:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add @val[0], r0, r1
-; CHECK-NEXT:    add.lt @val2[0], r0, r1
+; CHECK-NEXT:    add code[@val], r0, r1
+; CHECK-NEXT:    add.lt code[@val2], r0, r1
 ; CHECK-NEXT:    ret
   %1 = icmp ult i256 %v3, %v4
   %const = load i256, i256 addrspace(4)* @val
@@ -232,8 +232,8 @@ define i256 @selccr_cl_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selccr_cl_cp:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add @CPI18_0[0], r0, r1
-; CHECK-NEXT:    add.lt @val[0], r0, r1
+; CHECK-NEXT:    add code[@CPI18_0], r0, r1
+; CHECK-NEXT:    add.lt code[@val], r0, r1
 ; CHECK-NEXT:    ret
   %1 = icmp ult i256 %v3, %v4
   %const = load i256, i256 addrspace(4)* @val
@@ -245,8 +245,8 @@ define i256 @selccr_cp_cl(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selccr_cp_cl:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add @val[0], r0, r1
-; CHECK-NEXT:    add.lt @CPI19_0[0], r0, r1
+; CHECK-NEXT:    add code[@val], r0, r1
+; CHECK-NEXT:    add.lt code[@CPI19_0], r0, r1
 ; CHECK-NEXT:    ret
   %1 = icmp ult i256 %v3, %v4
   %const = load i256, i256 addrspace(4)* @val
@@ -258,8 +258,8 @@ define i256 @selccr_cp_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selccr_cp_cp:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add @CPI20_1[0], r0, r1
-; CHECK-NEXT:    add.lt @CPI20_0[0], r0, r1
+; CHECK-NEXT:    add code[@CPI20_1], r0, r1
+; CHECK-NEXT:    add.lt code[@CPI20_0], r0, r1
 ; CHECK-NEXT:    ret
   %1 = icmp ult i256 %v3, %v4
   %2 = select i1 %1, i256 12345678, i256 123456789
@@ -271,7 +271,7 @@ define i256 @selscr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add @val[0], r0, r1
+; CHECK-NEXT:    add code[@val], r0, r1
 ; CHECK-NEXT:    add.lt stack-[1], r0, r1
 ; CHECK-NEXT:    ret
   %ptr = alloca i256
@@ -287,7 +287,7 @@ define i256 @selscr_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add @CPI22_0[0], r0, r1
+; CHECK-NEXT:    add code[@CPI22_0], r0, r1
 ; CHECK-NEXT:    add.lt stack-[1], r0, r1
 ; CHECK-NEXT:    ret
   %ptr = alloca i256
@@ -332,7 +332,7 @@ define i256 @selcsr(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add stack-[1], r0, r1
-; CHECK-NEXT:    add.lt @val[0], r0, r1
+; CHECK-NEXT:    add.lt code[@val], r0, r1
 ; CHECK-NEXT:    ret
   %data = alloca i256
   %1 = icmp ult i256 %v3, %v4
@@ -348,7 +348,7 @@ define i256 @selcsr_cp(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add stack-[1], r0, r1
-; CHECK-NEXT:    add.lt @CPI26_0[0], r0, r1
+; CHECK-NEXT:    add.lt code[@CPI26_0], r0, r1
 ; CHECK-NEXT:    ret
   %data = alloca i256
   %1 = icmp ult i256 %v3, %v4
@@ -412,7 +412,7 @@ define void @selcrs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add r2, r0, stack-[1]
-; CHECK-NEXT:    add.gt @val[0], r0, stack-[1]
+; CHECK-NEXT:    add.gt code[@val], r0, stack-[1]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
   %1 = icmp ugt i256 %v3, %v4
@@ -479,7 +479,7 @@ define void @selcis(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add 42, r0, stack-[1]
-; CHECK-NEXT:    add.gt @val[0], r0, stack-[1]
+; CHECK-NEXT:    add.gt code[@val], r0, stack-[1]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
   %1 = icmp ugt i256 %v3, %v4
@@ -513,7 +513,7 @@ define void @selrcs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add @val[0], r0, stack-[1]
+; CHECK-NEXT:    add code[@val], r0, stack-[1]
 ; CHECK-NEXT:    add.lt r1, r0, stack-[1]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
@@ -530,7 +530,7 @@ define void @selics(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[1 + r0]
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add @val[0], r0, stack-[1]
+; CHECK-NEXT:    add code[@val], r0, stack-[1]
 ; CHECK-NEXT:    add.lt 42, r0, stack-[1]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
@@ -546,9 +546,9 @@ define void @selccs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selccs:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    add @val2[0], r0, r1
+; CHECK-NEXT:    add code[@val2], r0, r1
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add @val[0], r0, stack-[1]
+; CHECK-NEXT:    add code[@val], r0, stack-[1]
 ; CHECK-NEXT:    add.lt r1, r0, stack-[1]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
@@ -565,7 +565,7 @@ define void @selscs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selscs:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[2 + r0]
-; CHECK-NEXT:    add @val[0], r0, r1
+; CHECK-NEXT:    add code[@val], r0, r1
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add r1, r0, stack-[2]
 ; CHECK-NEXT:    add.lt stack-[1], r0, stack-[2]
@@ -621,7 +621,7 @@ define void @selcss(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-LABEL: selcss:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    nop stack+=[2 + r0]
-; CHECK-NEXT:    add @val[0], r0, r1
+; CHECK-NEXT:    add code[@val], r0, r1
 ; CHECK-NEXT:    sub! r3, r4, r0
 ; CHECK-NEXT:    add stack-[1], r0, stack-[2]
 ; CHECK-NEXT:    add.lt r1, r0, stack-[2]

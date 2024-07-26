@@ -11,9 +11,9 @@ target triple = "eravm"
 
 ; CHECK-LABEL: .text
 ; CHECK-NEXT: nop	stack+=[10 + r0]
-; CHECK-NEXT: add	@glob_initializer_0[0], r0, stack[@glob]
-; CHECK-NEXT: add	@glob.arr_initializer_1[0], r0, stack[@glob.arr + 1]
-; CHECK-NEXT: add	@glob.arr_initializer_3[0], r0, stack[@glob.arr + 3]
+; CHECK-NEXT: add	code[@glob_initializer_0], r0, stack[@glob]
+; CHECK-NEXT: add	code[@glob.arr_initializer_1], r0, stack[@glob.arr + 1]
+; CHECK-NEXT: add	code[@glob.arr_initializer_3], r0, stack[@glob.arr + 3]
 
 
 ; CHECK-LABEL: glob_initializer_0:

@@ -23,7 +23,7 @@ define i256 @small_imm2(i256 %par) nounwind {
 
 ; CHECK-LABEL: large_imm1
 define i256 @large_imm1(i256 %par) nounwind {
-  ; CHECK: sub.s!  @CPI{{[0-9]+_[0-9]+}}[0], r{{[0-9]}}, r{{[0-9]}}
+  ; CHECK: sub.s!  code[@CPI{{[0-9]+_[0-9]+}}], r{{[0-9]}}, r{{[0-9]}}
   %1 = icmp ugt i256 %par, 1234567890123456789
   ; CHECK: add.gt 1, r{{[0-9]}}, r{{[0-9]}}
   %2 = zext i1 %1 to i256
@@ -32,7 +32,7 @@ define i256 @large_imm1(i256 %par) nounwind {
 
 ; CHECK-LABEL: large_imm2
 define i256 @large_imm2(i256 %par) nounwind {
-  ; CHECK: sub.s!  @CPI{{[0-9]+_[0-9]+}}[0], r{{[0-9]}}, r{{[0-9]}}
+  ; CHECK: sub.s!  code[@CPI{{[0-9]+_[0-9]+}}], r{{[0-9]}}, r{{[0-9]}}
   %1 = icmp ugt i256 1234567890123456789, %par
   ; CHECK: add.lt 1, r{{[0-9]}}, r{{[0-9]}}
   %2 = zext i1 %1 to i256
