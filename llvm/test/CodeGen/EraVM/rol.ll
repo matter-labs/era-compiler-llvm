@@ -47,7 +47,7 @@ entry:
 define i256 @rolcrr(i256 %rs1) {
 ; CHECK-LABEL: rolcrr:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    rol @val[0], r1, r1
+; CHECK-NEXT:    rol code[@val], r1, r1
 ; CHECK-NEXT:    ret
 entry:
   %val = load i256, i256 addrspace(4)* @val
@@ -61,7 +61,7 @@ entry:
 define i256 @rolcrr_cp(i256 %rs1) {
 ; CHECK-LABEL: rolcrr_cp:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    rol @CPI4_0[0], r1, r1
+; CHECK-NEXT:    rol code[@CPI4_0], r1, r1
 ; CHECK-NEXT:    ret
 entry:
   %sub = sub i256 256, %rs1
@@ -74,7 +74,7 @@ entry:
 define i256 @rolyrr(i256 %rs1) {
 ; CHECK-LABEL: rolyrr:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    rol.s @val[0], r1, r1
+; CHECK-NEXT:    rol.s code[@val], r1, r1
 ; CHECK-NEXT:    ret
 entry:
   %val = load i256, i256 addrspace(4)* @val
@@ -168,7 +168,7 @@ define void @rolcrs(i256 %rs1) {
 ; CHECK-LABEL: rolcrs:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    rol @val[0], r1, stack-[1]
+; CHECK-NEXT:    rol code[@val], r1, stack-[1]
 ; CHECK-NEXT:    ret
 entry:
   %destptr = alloca i256
@@ -185,7 +185,7 @@ define void @rolcrs_cp(i256 %rs1) {
 ; CHECK-LABEL: rolcrs_cp:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    rol @CPI12_0[0], r1, stack-[1]
+; CHECK-NEXT:    rol code[@CPI12_0], r1, stack-[1]
 ; CHECK-NEXT:    ret
 entry:
   %destptr = alloca i256
@@ -201,7 +201,7 @@ define void @rolyrs(i256 %rs1) {
 ; CHECK-LABEL: rolyrs:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    nop stack+=[1 + r0]
-; CHECK-NEXT:    rol.s @val[0], r1, stack-[1]
+; CHECK-NEXT:    rol.s code[@val], r1, stack-[1]
 ; CHECK-NEXT:    ret
 entry:
   %destptr = alloca i256

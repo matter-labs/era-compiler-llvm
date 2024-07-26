@@ -49,9 +49,9 @@
 ; CHECK:       <stdin>:{{[0-9]+}}:20: error: register name expected
 ; CHECK-NEXT:    add    stack[1 + 2], r1, r2
 ; CHECK-NEXT:                     ^
-; CHECK:       <stdin>:{{[0-9]+}}:8: error: two symbols in a single operand
+; CHECK:       <stdin>:{{[0-9]+}}:10: error: unexpected token
 ; CHECK-NEXT:    add  @a[@b + 1], r2, r3
-; CHECK-NEXT:         ^
+; CHECK-NEXT:           ^
 ; CHECK:       <stdin>:{{[0-9]+}}:32: error: global stack symbols only supported with absolute addressing
 ; CHECK-NEXT:    add  stack-[@global + 1 + r1], r2, r3
 ; CHECK-NEXT:                                 ^
