@@ -1,6 +1,9 @@
 ; This test just makes sure that llvm-ar can extract bytecode members
 ; from various style archives.
 
+; Disable on Windows due to `BAD-DATE-FORMAT` issue in Chrono library on MSYS2
+; UNSUPPORTED: system-windows
+
 ; RUN: rm -rf %t && mkdir -p %t && cd %t
 
 ; RUN: rm -f very_long_bytecode_file_name.bc

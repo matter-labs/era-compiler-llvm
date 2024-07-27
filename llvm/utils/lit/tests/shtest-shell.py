@@ -1,5 +1,8 @@
 # Check the internal shell handling component of the ShTest format.
 
+# Disable on Windows, Linux/MacOS-specific test
+# UNSUPPORTED: system-windows
+
 # RUN: not %{lit} -v %{inputs}/shtest-shell > %t.out
 # FIXME: Temporarily dump test output so we can debug failing tests on
 # buildbots.

@@ -3,6 +3,10 @@
 // This test is Windows-only. It checks that all paths, which are generated
 // in the index and source coverage reports, are native path. For example,
 // on Windows all '/' are converted to '\'.
+
+// Temporary disabled on Windows due to path separator differences on \tmp MSYS2.
+// UNSUPPORTED: system-windows
+
 // REQUIRES: system-windows
 
 // RUN: llvm-profdata merge %S/Inputs/double_dots.proftext -o %t.profdata

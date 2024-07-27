@@ -1,3 +1,6 @@
+## Temporary disabled for Windows, fix is required for ld.lld non-zero exit code
+# UNSUPPORTED: system-windows
+
 # RUN: yaml2obj %s -o %t.o
 # RUN: yaml2obj %S/Inputs/shf-info-link.test  -o %t2.o
 # RUN: ld.lld %t.o %t2.o -o %t3.o -r

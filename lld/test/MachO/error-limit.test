@@ -2,6 +2,9 @@
 ## when main is run twice.
 XFAIL: main-run-twice
 
+## Disable on Windows due to *.tbd: unsupported file type issue with MSYS2
+UNSUPPORTED: system-windows
+
 ## Check that we only see 20 (the default error-limit) "cannot open" errors
 RUN: not %lld A B C D E F G H I J K L M N O P Q R S T U V W X Y Z 2>&1 | \
 RUN:     FileCheck -check-prefix=DEFAULT %s

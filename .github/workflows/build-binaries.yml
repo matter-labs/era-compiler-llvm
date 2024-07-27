@@ -34,6 +34,16 @@ on:
         required: false
         type: boolean
         default: true
+      run_regression_tests:
+        description: "Run regression tests?"
+        required: false
+        type: boolean
+        default: false
+      enable_assertions:
+        description: "Enable assertions?"
+        required: false
+        type: boolean
+        default: true
 
 
 jobs:
@@ -47,7 +57,7 @@ jobs:
         id: prepare-matrix
         run: |
           # Define general matrix parameters
-          WINDOWS='{"name":"Windows","runner":"windows-2022-github-hosted-64core"}'
+          WINDOWS='{"name":"Windows-x86","runner":"windows-2022-github-hosted-64core"}'
           MACOS_AMD64='{"name":"MacOS-x86","runner":"macos-12-large"}'
           MACOS_ARM64='{"name":"MacOS-arm64","runner":["self-hosted","macOS","ARM64"]}'
           LINUX_AMD64='{"name":"Linux-AMD64","runner":"matterlabs-ci-runner","image":"matterlabs/llvm_runner:ubuntu22-llvm17-latest"}'
@@ -88,7 +98,7 @@ jobs:
         with:
           extra-args: "\\-DLLVM_ENABLE_WERROR=On \\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
           enable-tests: true
-          enable-assertions: true
+          enable-assertions: ${{ inputs.enable_assertions }}
           clone-llvm: false
           ccache-key-type: 'static'
           save-ccache: ${{ matrix.name == 'Linux x86' }}
@@ -102,3 +112,24 @@ jobs:
         with:
           name: llvm-bins-${{ runner.os }}-${{ runner.arch }}
           path: ./${{ runner.os }}-${{ runner.arch }}-target-final.tar.gz
+
+      - name: Lit tests (Windows)
+        if: inputs.run_regression_tests && runner.os == 'Windows'
+        shell: 'msys2 {0}'
+        run: |
+          # Specify explicit targets on Windows to avoid Windows issues on MSYS2 platform
+          ninja -C './target-llvm/build-final' -v \
+            check-all verify-llvm-codegen-opt
+
+      - name: Lit tests (MacOS/Linux)
+        if: inputs.run_regression_tests && runner.os != 'Windows'
+        run: ninja -C './target-llvm/build-final' verify-llvm -v
+
+      - name: Send Slack notification
+        uses: 8398a7/action-slack@v3
+        if: failure() && github.event_name == 'schedule'
+        with:
+          status: ${{ job.status }}
+          fields: repo,commit,author,action,eventName,ref,workflow,job,took
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}

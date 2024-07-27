@@ -1,5 +1,8 @@
+; Disable on Windows due to *.tbd: unsupported file type issue with MSYS2
+; UNSUPPORTED: system-windows
+
 ; RUN: rm -rf %t
-; RUN: split-file %s %t  
+; RUN: split-file %s %t
 ; RUN: llvm-tapi-diff %t/Simple_v5.tbd  %t/Simple_v5.tbd 2>&1 | FileCheck %s --allow-empty
 ; RUN: llvm-tapi-diff %t/Simple_v5.tbd  %t/Simple_v4.tbd 2>&1 | FileCheck %s --allow-empty
 

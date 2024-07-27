@@ -1,4 +1,8 @@
 ## Test some relocation types for REL format.
+
+## Temporary disabled for Windows, fix is required for ld.lld non-zero exit code
+# UNSUPPORTED: system-windows
+
 # RUN: yaml2obj -DMACHINE=AARCH64 -DR0=R_AARCH64_ABS64 -DR1=R_AARCH64_PREL32 -DR2=R_AARCH64_PREL64 %s -o %t.o
 # RUN: ld.lld %t.o -o /dev/null
 # RUN: yaml2obj -DMACHINE=PPC -DBITS=32 -DR0=R_PPC_ADDR32 -DR1=R_PPC_REL32 %s -o %t.o

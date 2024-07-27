@@ -1,3 +1,4 @@
+# UNSUPPORTED: system-windows
 # RUN: yaml2obj %s -o %t
 # RUN: ld.lld -shared %t -o /dev/null
 

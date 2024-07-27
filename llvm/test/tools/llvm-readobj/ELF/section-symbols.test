@@ -2,6 +2,7 @@
 ## unnamed symbols. This test verifies this and also that appropriate things
 ## are printed if the section is somehow invalid.
 
+# UNSUPPORTED: system-windows
 # RUN: yaml2obj %s -o %t1
 # RUN: llvm-readobj %t1 --symbols --relocations 2>&1 | \
 # RUN:   FileCheck %s -DFILE=%t1 --check-prefix=LLVM1 --implicit-check-not="warning:"

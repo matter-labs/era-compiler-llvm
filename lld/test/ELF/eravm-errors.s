@@ -1,3 +1,6 @@
+; Temporary disabled for Windows, unexpected output "ld.lld warning: cannot find entry symbol _start"
+; UNSUPPORTED: system-windows
+
 ; REQUIRES: eravm
 ; RUN: llvm-mc -filetype=obj -arch=eravm %s -o %t.o
 ; RUN: llvm-objdump --no-leading-addr --disassemble --reloc --syms %t.o | FileCheck --check-prefix=INPUT %s

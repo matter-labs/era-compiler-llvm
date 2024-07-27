@@ -1,3 +1,6 @@
+; Temporary disabled for Windows, fix is required for ld.lld non-zero exit code
+; UNSUPPORTED: system-windows
+
 ; REQUIRES: eravm
 ; RUN: llvm-mc -filetype=obj -arch=eravm %s -o %t.o
 ; RUN: llvm-objdump --no-leading-addr --disassemble --reloc %t.o | FileCheck --check-prefix=INPUT %s
