@@ -25,13 +25,19 @@
 
 #include "EraVM.h"
 #include "EraVMMachineFunctionInfo.h"
+#include "llvm/CodeGen/MachineFunction.h"
+#include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/Pass.h"
 
 #define DEBUG_TYPE "eravm-replace-near-call-prepare"
 
 using namespace llvm;
+
+#define ERAVM_REPLACE_NEAR_CALL_PREPARE_NAME                                   \
+  "EraVM replace near_call prepare pass"
 
 namespace {
 
@@ -41,12 +47,14 @@ public:
   EraVMReplaceNearCallPrepare() : ModulePass(ID) {}
 
   StringRef getPassName() const override {
-    return "EraVM replace near-call prepare";
+    return ERAVM_REPLACE_NEAR_CALL_PREPARE_NAME;
   }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
-    ModulePass::getAnalysisUsage(AU);
+    AU.addRequired<MachineModuleInfoWrapperPass>();
+    AU.addPreserved<MachineModuleInfoWrapperPass>();
     AU.setPreservesAll();
+    ModulePass::getAnalysisUsage(AU);
   }
 
   bool runOnModule(Module &M) override;
@@ -54,7 +62,7 @@ public:
 
 } // end anonymous namespace
 
-static bool runImpl(Module &M) {
+static bool runImpl(Module &M, MachineModuleInfo *MMI) {
   bool Changed = false;
 
   // Check whether current function is called via INVOKE, if none, then
@@ -64,10 +72,14 @@ static bool runImpl(Module &M) {
         F.getName() == "__cxa_throw")
       continue;
 
-    if (any_of(F.uses(), [](const Use &U) {
-          if (auto *II = dyn_cast<InvokeInst>(U.getUser()))
-            return true;
-          return false;
+    if (any_of(F.uses(),
+               [](const Use &U) { return isa<InvokeInst>(U.getUser()); }))
+      continue;
+
+    if (any_of(F.uses(), [MMI](const Use &U) {
+          auto &CallerFunc = *cast<Instruction>(U.getUser())->getFunction();
+          auto *CallerMF = MMI->getMachineFunction(CallerFunc);
+          return !CallerMF->getFrameInfo().getNumObjects();
         }))
       continue;
 
@@ -99,22 +111,18 @@ static bool runImpl(Module &M) {
 bool EraVMReplaceNearCallPrepare::runOnModule(Module &M) {
   if (skipModule(M))
     return false;
+  MachineModuleInfo *MMI =
+      &getAnalysis<MachineModuleInfoWrapperPass>().getMMI();
 
-  return runImpl(M);
+  return runImpl(M, MMI);
 }
 
 char EraVMReplaceNearCallPrepare::ID = 0;
 
 INITIALIZE_PASS(EraVMReplaceNearCallPrepare, "eravm-replace-near-call-prepare",
-                "Check whether a near-call can be replaced by jump", false,
+                ERAVM_REPLACE_NEAR_CALL_PREPARE_NAME, false,
                 false)
 
 ModulePass *llvm::createEraVMReplaceNearCallPreparePass() {
   return new EraVMReplaceNearCallPrepare;
-}
-
-PreservedAnalyses
-EraVMReplaceNearCallPreparePass::run(Module &M, ModuleAnalysisManager &AM) {
-  runImpl(M);
-  return PreservedAnalyses::all();
 }
