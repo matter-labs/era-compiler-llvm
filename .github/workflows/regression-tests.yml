@@ -20,10 +20,39 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  prepare-test-matrix:
+
+  target-machine:
     runs-on: ubuntu-latest
     outputs:
-      matrix: ${{ steps.prepare.outputs.matrix }}
+      evm: ${{ steps.evm.outputs.machine }}
+      eravm: ${{ steps.eravm.outputs.machine }}
+      default: ${{ steps.default.outputs.machine }}
+    steps:
+
+      - name: Check for EraVM target
+        id: eravm
+        if: contains(github.event.pull_request.title, '[EraVM]')
+        run: echo "machine=eravm" | tee -a "${GITHUB_OUTPUT}"
+
+      - name: Check for EVM target
+        id: evm
+        if: contains(github.event.pull_request.title, '[EVM]')
+        run: echo "machine=evm" | tee -a "${GITHUB_OUTPUT}"
+
+      - name: Check for default target
+        id: default
+        shell: bash -ex {0}
+        run: |
+          if [[ "${{ join(steps.*.outputs.*) }}" == "" ]]; then
+            echo "machine=default" | tee -a "${GITHUB_OUTPUT}"
+          fi
+
+  prepare-test-matrix:
+    needs: target-machine
+    runs-on: ubuntu-latest
+    outputs:
+      matrix-formatting: ${{ steps.prepare.outputs.matrix-formatting }}
+      matrix-tests: ${{ steps.prepare.outputs.matrix-tests }}
       fetch_depth: ${{ steps.extract_branch.outputs.fetch_depth }}
 
     steps:
@@ -43,11 +72,14 @@ jobs:
 
       - name: Prepare commits
         id: prepare
+        shell: bash -ex {0}
         env:
           TEST_COMMITS_LIMIT: 25 # Limit the number of commits to test
         run: |
           COMMITS_TO_TEST=$(git log -n ${{ github.event.pull_request.commits || github.event.inputs.commits-to-test }} --pretty='"%H"' | head -n ${TEST_COMMITS_LIMIT})
-          echo "matrix={ \"commit\": [${COMMITS_TO_TEST//$'\n'/, }] }" | tee -a "${GITHUB_OUTPUT}"
+          echo "matrix-formatting={ \"commit\": [${COMMITS_TO_TEST//$'\n'/, }] }" | tee -a "${GITHUB_OUTPUT}"
+          TARGETS=$(echo '${{ toJSON(needs.target-machine.outputs) }}' | jq '.[]')
+          echo "matrix-tests={ \"commit\": [${COMMITS_TO_TEST//$'\n'/, }], \"target\": [${TARGETS//$'\n'/, }] }" | tee -a "${GITHUB_OUTPUT}"
 
   check-formatting:
     if: github.event_name == 'pull_request'
@@ -59,7 +91,7 @@ jobs:
     strategy:
       fail-fast: false
       max-parallel: 3
-      matrix: ${{ fromJson(needs.prepare-test-matrix.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.prepare-test-matrix.outputs.matrix-formatting) }}
     steps:
 
       - uses: actions/checkout@v4
@@ -106,7 +138,7 @@ jobs:
     strategy:
       fail-fast: false
       max-parallel: 3
-      matrix: ${{ fromJson(needs.prepare-test-matrix.outputs.matrix) }}
+      matrix: ${{ fromJson(needs.prepare-test-matrix.outputs.matrix-tests) }}
     steps:
 
       - uses: actions/checkout@v4
@@ -125,7 +157,7 @@ jobs:
       - name: Build LLVM
         uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
         with:
-          extra-args: "\\-DLLVM_ENABLE_WERROR=On \\-DCMAKE_EXPORT_COMPILE_COMMANDS=ON"
+          default-target-triple: ${{ matrix.target }}
           enable-tests: true
           enable-assertions: true
           clone-llvm: false
