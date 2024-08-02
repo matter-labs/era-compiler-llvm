@@ -454,6 +454,9 @@ bool EraVMOptimizeSelectPreRA::tryFoldToSelect(MachineBasicBlock &MBB) {
 }
 
 bool EraVMOptimizeSelectPreRA::runOnMachineFunction(MachineFunction &MF) {
+  if (skipFunction(MF.getFunction()))
+    return false;
+
   LLVM_DEBUG(dbgs() << "********** EraVM OPTIMIZE SELECT PRERA **********\n"
                     << "********** Function: " << MF.getName() << '\n');
 

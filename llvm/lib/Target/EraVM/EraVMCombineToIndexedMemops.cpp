@@ -154,6 +154,9 @@ EraVMCombineToIndexedMemops::replaceWithIndexed(MachineInstr &MI,
 }
 
 bool EraVMCombineToIndexedMemops::runOnMachineFunction(MachineFunction &MF) {
+  if (skipFunction(MF.getFunction()))
+    return false;
+
   LLVM_DEBUG(dbgs() << "********** EraVM COMBINE LOAD and STORE **********\n"
                     << "********** Function: " << MF.getName() << '\n');
 

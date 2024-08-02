@@ -618,6 +618,9 @@ bool EraVMCombineAddressingMode::combineMoveImmUse(MachineFunction &MF) {
 }
 
 bool EraVMCombineAddressingMode::runOnMachineFunction(MachineFunction &MF) {
+  if (skipFunction(MF.getFunction()))
+    return false;
+
   LLVM_DEBUG(dbgs() << "********** EraVM COMBINE ADDRESSING MODE **********\n"
                     << "********** Function: " << MF.getName() << '\n');
   bool Changed = false;

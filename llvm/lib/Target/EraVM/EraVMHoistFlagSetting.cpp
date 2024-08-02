@@ -244,6 +244,9 @@ bool EraVMHoistFlagSetting::hoistFlagSettingInsts(MachineLoop *L) const {
 }
 
 bool EraVMHoistFlagSetting::runOnMachineFunction(MachineFunction &MF) {
+  if (skipFunction(MF.getFunction()))
+    return false;
+
   LLVM_DEBUG(
       dbgs() << "********** EraVM HOIST FLAG SETTING INSTRUCTIONS **********\n"
              << "********** Function: " << MF.getName() << '\n');

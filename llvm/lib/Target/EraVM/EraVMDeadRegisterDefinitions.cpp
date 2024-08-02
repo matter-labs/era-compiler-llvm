@@ -57,6 +57,9 @@ INITIALIZE_PASS(EraVMDeadRegisterDefinitions, DEBUG_TYPE,
                 ERAVM_DEAD_REG_DEF_NAME, false, false)
 
 bool EraVMDeadRegisterDefinitions::runOnMachineFunction(MachineFunction &MF) {
+  if (skipFunction(MF.getFunction()))
+    return false;
+
   LLVM_DEBUG(dbgs() << "********** EraVM DEAD REGISTER DEFINITIONS **********\n"
                     << "********** Function: " << MF.getName() << '\n');
 

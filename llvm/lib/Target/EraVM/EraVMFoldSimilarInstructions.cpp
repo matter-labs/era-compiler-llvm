@@ -189,6 +189,9 @@ bool EraVMFoldSimilarInstructions::isConstAddSimilarToConstSubSWithFlags(
 }
 
 bool EraVMFoldSimilarInstructions::runOnMachineFunction(MachineFunction &MF) {
+  if (skipFunction(MF.getFunction()))
+    return false;
+
   LLVM_DEBUG(dbgs() << "********** EraVM FOLD SIMILAR INSTRUCTIONS **********\n"
                     << "********** Function: " << MF.getName() << '\n');
 

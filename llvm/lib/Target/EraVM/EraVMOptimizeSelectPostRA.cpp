@@ -210,6 +210,9 @@ EraVMOptimizeSelectPostRA::getFoldingInst(MachineInstr &MI) const {
 }
 
 bool EraVMOptimizeSelectPostRA::runOnMachineFunction(MachineFunction &MF) {
+  if (skipFunction(MF.getFunction()))
+    return false;
+
   LLVM_DEBUG(dbgs() << "********** EraVM OPTIMIZE SELECT POSTRA **********\n"
                     << "********** Function: " << MF.getName() << '\n');
 
