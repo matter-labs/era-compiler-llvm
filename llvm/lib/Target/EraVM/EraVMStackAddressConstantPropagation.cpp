@@ -127,6 +127,9 @@ EraVMStackAddressConstantPropagation::tryPropagateConstant(MachineInstr &MI) {
 
 bool EraVMStackAddressConstantPropagation::runOnMachineFunction(
     MachineFunction &MF) {
+  if (skipFunction(MF.getFunction()))
+    return false;
+
   LLVM_DEBUG(dbgs() << "********** EraVM convert bytes to cells **********\n"
                     << "********** Function: " << MF.getName() << '\n');
   RegInfo = &MF.getRegInfo();

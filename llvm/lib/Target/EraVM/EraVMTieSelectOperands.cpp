@@ -127,6 +127,9 @@ bool EraVMTieSelectOperands::tryPlacingTie(MachineInstr &MI,
 }
 
 bool EraVMTieSelectOperands::runOnMachineFunction(MachineFunction &MF) {
+  if (skipFunction(MF.getFunction()))
+    return false;
+
   LLVM_DEBUG(dbgs() << "********** EraVM Tie Select Operands **********\n"
                     << "********** Function: " << MF.getName() << '\n');
 

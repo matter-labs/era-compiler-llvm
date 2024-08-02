@@ -267,6 +267,9 @@ bool EraVMConditionOptimizer::tryToAdjustCompareWithImm(
 }
 
 bool EraVMConditionOptimizer::runOnMachineFunction(MachineFunction &MF) {
+  if (skipFunction(MF.getFunction()))
+    return false;
+
   LLVM_DEBUG(dbgs() << "********** EraVM CONDITION OPTIMIZER **********\n"
                     << "********** Function: " << MF.getName() << '\n');
 
