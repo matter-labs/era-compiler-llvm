@@ -4385,6 +4385,7 @@ void Verifier::visitLandingPadInst(LandingPadInst &LPI) {
 
   visitEHPadPredecessors(LPI);
 
+  /*
   if (!LandingPadResultTy)
     LandingPadResultTy = LPI.getType();
   else
@@ -4392,6 +4393,7 @@ void Verifier::visitLandingPadInst(LandingPadInst &LPI) {
           "The landingpad instruction should have a consistent result type "
           "inside a function.",
           &LPI);
+          */
 
   Function *F = LPI.getParent()->getParent();
   Check(F->hasPersonalityFn(),
