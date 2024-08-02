@@ -124,6 +124,9 @@ bool EraVMCombineFlagSetting::hasFlagsDefOrUseBetween(
 }
 
 bool EraVMCombineFlagSetting::runOnMachineFunction(MachineFunction &MF) {
+  if (skipFunction(MF.getFunction()))
+    return false;
+
   LLVM_DEBUG(dbgs() << "********** EraVM COMBINE INSTRUCTIONS **********\n"
                     << "********** Function: " << MF.getName() << '\n');
 
