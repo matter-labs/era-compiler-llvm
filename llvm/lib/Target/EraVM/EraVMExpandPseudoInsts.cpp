@@ -14,9 +14,14 @@
 
 #include "EraVM.h"
 
+#include "EraVMInstrInfo.h"
+#include "EraVMMachineFunctionInfo.h"
+#include "llvm/CodeGen/MachineFrameInfo.h"
+#include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
+#include "llvm/MC/MCContext.h"
 #include "llvm/Support/Debug.h"
 
 #include "EraVMSubtarget.h"
@@ -40,7 +45,7 @@ public:
   StringRef getPassName() const override { return ERAVM_EXPAND_PSEUDO_NAME; }
 
 private:
-  const TargetInstrInfo *TII{};
+  const EraVMInstrInfo *TII{};
   LLVMContext *Context{};
 };
 
@@ -59,6 +64,7 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
   TII = MF.getSubtarget<EraVMSubtarget>().getInstrInfo();
   assert(TII && "TargetInstrInfo must be a valid object");
 
+  MachineFrameInfo &MFI = MF.getFrameInfo();
   Context = &MF.getFunction().getContext();
 
   std::vector<MachineInstr *> PseudoInst;
@@ -95,16 +101,40 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
           // emit calls (Should we reinforce it?) so this route is needed. If a
           // call is generated, it is incomplete as it misses EH label info, pad
           // 0 instead.
-          Register ABIReg = MI.getOperand(0).getReg();
-          BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
-                  TII->get(EraVM::NEAR_CALL))
-              .addReg(ABIReg)
-              .add(MI.getOperand(1))
-              .addExternalSymbol(
-                  "DEFAULT_UNWIND") // Linker inserts a basic block
-                                    // which bubbles up the exception.
-              .addImm(EraVMCC::COND_NONE)
-              .copyImplicitOps(MI);
+          const auto *Callee = dyn_cast<Function>(MI.getOperand(1).getGlobal());
+          if (!Callee->hasFnAttribute("UseJumpReturn")) {
+            Register ABIReg = MI.getOperand(0).getReg();
+            BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
+                    TII->get(EraVM::NEAR_CALL))
+                .addReg(ABIReg)
+                .add(MI.getOperand(1))
+                .addExternalSymbol(
+                    "DEFAULT_UNWIND") // Linker inserts a basic block
+                                      // which bubbles up the exception.
+                .addImm(EraVMCC::COND_NONE)
+                .copyImplicitOps(MI);
+          } else {
+            MachineInstr *NewMI =
+                BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
+                        TII->get(EraVM::JCALL))
+                    .add(MI.getOperand(1))
+                    .copyImplicitOps(MI);
+
+            MCSymbol *RetSym =
+                MF.getContext().createTempSymbol("JCALL_FUNCTION_RET", true);
+            NewMI->setPostInstrSymbol(MF, RetSym);
+
+            // Add instruction to store return address onto the top of the
+            // stack.
+            BuildMI(MBB, NewMI, MI.getDebugLoc(), TII->get(EraVM::ADDcrs_s))
+                .addSym(RetSym, EraVMII::MO_SYM_RET_ADDRESS)
+                .addImm(0 /* RetSymOffset */)
+                .addReg(EraVM::R0)
+                .addReg(EraVM::SP)
+                .addImm(0 /* AMBase2 */)
+                .addImm(-1 /* StackOffset */)
+                .addImm(EraVMCC::COND_NONE);
+          }
         }
 
         PseudoInst.push_back(&MI);
@@ -153,6 +183,27 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
             .addReg(EraVM::R0)
             .addImm(EraVMCC::COND_NONE);
         PseudoInst.push_back(&MI);
+      } else if (MI.getOpcode() == EraVM::RET) {
+        if (MF.getFunction().hasFnAttribute("UseJumpReturn")) {
+          MachineInstr *NewMI = BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
+                                        TII->get(EraVM::J_s))
+                                    .addReg(EraVM::SP)
+                                    .addImm(0)
+                                    .addImm(-1)
+                                    .copyImplicitOps(MI);
+
+          // Distinguish this jump is specific for return.
+          NewMI->getOperand(2).setTargetFlags(EraVMII::MO_STACK_SLOT_IDX_RET);
+
+          if (MFI.getStackSize()) {
+            MachineInstr *SPRestoreMI =
+                TII->insertDecSP(*MI.getParent(), NewMI, MI.getDebugLoc(),
+                                 MFI.getStackSize() / 32);
+            SPRestoreMI->setFlag(MachineInstr::FrameDestroy);
+          }
+
+          PseudoInst.push_back(&MI);
+        }
       }
     }
 

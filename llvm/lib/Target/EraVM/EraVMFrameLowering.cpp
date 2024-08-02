@@ -43,6 +43,15 @@ void EraVMFrameLowering::emitPrologue(MachineFunction &MF,
   MachineBasicBlock::iterator MBBI = MBB.begin();
   DebugLoc DL = MBBI != MBB.end() ? MBBI->getDebugLoc() : DebugLoc();
 
+  // If current function has at least one near_call which can be replaced
+  // with jump, we reserve the top of the stack for saving return address.
+  // Even if we have more than one qualified near_call, one TOP slot is
+  // good enough.
+  if (MF.getFunction().hasFnAttribute("HasJumpCall")) {
+    MFI.CreateFixedObject(32, 0, true);
+    MFI.setStackSize(MFI.getStackSize() + 32);
+  }
+
   uint64_t NumCells = MFI.getStackSize() / 32;
 
   if (NumCells)

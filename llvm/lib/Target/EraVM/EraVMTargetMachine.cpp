@@ -24,8 +24,8 @@
 #include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/GlobalDCE.h"
 #include "llvm/Transforms/Scalar.h"
-#include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Scalar/DeadStoreElimination.h"
+#include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Scalar/MergeIdenticalBB.h"
 #include "llvm/Transforms/Utils.h"
 
@@ -44,6 +44,12 @@ static cl::opt<bool> DisableStraightLineScalarOptPasses(
              "purpose only)"),
     cl::init(false), cl::Hidden);
 
+static cl::opt<bool> UseNearCalls(
+    "use-near-calls",
+    cl::desc(
+        "Use near calls and rets instead of jumps for local function calls "),
+    cl::init(false), cl::Hidden);
+
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   // Register the target.
   RegisterTargetMachine<EraVMTargetMachine> X(getTheEraVMTarget());
@@ -58,6 +64,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMLowerIntrinsicsPass(PR);
   initializeEraVMLinkRuntimePass(PR);
   initializeEraVMAllocaHoistingPass(PR);
+  initializeEraVMReplaceNearCallPreparePass(PR);
   initializeEraVMStackAddressConstantPropagationPass(PR);
   initializeEraVMDAGToDAGISelPass(PR);
   initializeEraVMOptimizeStdLibCallsPass(PR);
@@ -214,6 +221,7 @@ public:
   void addPreEmitPass() override;
   void addPreSched2() override;
   void addCodeGenPrepare() override;
+  void addPostRegAlloc() override;
 };
 } // namespace
 
@@ -273,6 +281,11 @@ void EraVMPassConfig::addCodeGenPrepare() {
   TargetPassConfig::addCodeGenPrepare();
   if (getOptLevel() != CodeGenOpt::None)
     addPass(createEraVMPostCodegenPreparePass());
+}
+
+void EraVMPassConfig::addPostRegAlloc() {
+  if (getOptLevel() != CodeGenOpt::None && !UseNearCalls)
+    addPass(createEraVMReplaceNearCallPreparePass());
 }
 
 bool EraVMPassConfig::addInstSelector() {

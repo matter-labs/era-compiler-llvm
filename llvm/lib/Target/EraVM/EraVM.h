@@ -51,6 +51,13 @@ enum TargetOperandFlags {
   /// Immediate that represents stack slot index.
   MO_STACK_SLOT_IDX,
 
+  /// Immediate that represents stack slot index for return address.
+  /// Once we replace near_call with cheaper jump, the caller will
+  /// store return address in the top of the stack, later in the callee
+  /// we will use J_s with such slot index to finish return just like
+  /// the original RET does.
+  MO_STACK_SLOT_IDX_RET,
+
   /// Represents return address symbol.
   MO_SYM_RET_ADDRESS,
 }; // enum TargetOperandFlags
@@ -68,6 +75,7 @@ class PassRegistry;
 
 FunctionPass *createEraVMISelDag(EraVMTargetMachine &TM,
                                  CodeGenOpt::Level OptLevel);
+ModulePass *createEraVMReplaceNearCallPreparePass();
 ModulePass *createEraVMLowerIntrinsicsPass();
 ModulePass *createEraVMLinkRuntimePass(bool);
 FunctionPass *createEraVMAllocaHoistingPass();
@@ -96,6 +104,7 @@ FunctionPass *createEraVMPostCodegenPreparePass();
 FunctionPass *createEraVMDeadRegisterDefinitionsPass();
 FunctionPass *createEraVMConditionOptimizerPass();
 
+void initializeEraVMReplaceNearCallPreparePass(PassRegistry &);
 void initializeEraVMLowerIntrinsicsPass(PassRegistry &);
 void initializeEraVMAllocaHoistingPass(PassRegistry &);
 void initializeEraVMBytesToCellsPass(PassRegistry &);
@@ -156,6 +165,12 @@ struct EraVMCSEPass : PassInfoMixin<EraVMCSEPass> {
 
 struct EraVMLowerIntrinsicsPass : PassInfoMixin<EraVMLowerIntrinsicsPass> {
   EraVMLowerIntrinsicsPass() = default;
+  PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
+};
+
+struct EraVMReplaceNearCallPreparePass
+    : PassInfoMixin<EraVMReplaceNearCallPreparePass> {
+  EraVMReplaceNearCallPreparePass() = default;
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
 };
 

@@ -60,7 +60,7 @@ fail:
 
 ; CHECK-LABEL: stack.obj.passing
 define i256 @stack.obj.passing() {
-; CHECK: nop stack+=[12 + r0]
+; CHECK: nop stack+=[13 + r0]
   %unused1 = alloca [3 x i256]
   %par1 = alloca i256
   %unused2 = alloca [2 x i256]
@@ -68,15 +68,16 @@ define i256 @stack.obj.passing() {
   %arr = alloca [4 x i256]
   %elem = getelementptr [2 x i256], [2 x i256]* %elem.cont, i256 0, i256 0
 ; CHECK: context.sp r1
-; CHECK: sub.s 9, r1, r1
+; CHECK: sub.s 10, r1, r1
 ; CHECK: shl.s 5, r1, r1
 ; CHECK: context.sp r2
-; CHECK: sub.s 4, r2, r2
+; CHECK: sub.s 5, r2, r2
 ; CHECK: shl.s 5, r2, r2
 ; CHECK: context.sp r3
-; CHECK: sub.s 6, r3, r3
+; CHECK: sub.s 7, r3, r3
 ; CHECK: shl.s 5, r3, r3
-; CHECK: near_call	r0, @stack.obj.accessing, @DEFAULT_UNWIND
+; CHECK: add     @.JCALL_FUNCTION_RET0[0], r0, stack-[1]
+; CHECK: jump    @stack.obj.accessing
   %res = call i256 @stack.obj.accessing(i256* %par1, [4 x i256]* %arr, i256* %elem)
   ret i256 %res
 }
