@@ -11803,7 +11803,7 @@ ScalarEvolution::computeConstantDifference(const SCEV *More, const SCEV *Less) {
   Decompose(Less, -1);
 
   // Check whether all the non-constants cancel out.
-  for (const auto [_, Mul] : Multiplicity)
+  for (const auto &[_, Mul] : Multiplicity)
     if (Mul != 0)
       return std::nullopt;
 
