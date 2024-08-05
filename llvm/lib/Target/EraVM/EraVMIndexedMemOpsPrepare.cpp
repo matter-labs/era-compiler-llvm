@@ -71,6 +71,7 @@
 #include "llvm/Analysis/LoopPass.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
+#include "llvm/IR/Dominators.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Support/CommandLine.h"
@@ -85,7 +86,7 @@ using namespace llvm;
 namespace {
 
 class EraVMIndexedMemOpsPrepare : public LoopPass {
-
+  DominatorTree *DT = nullptr;
   ScalarEvolution *SE = nullptr;
   LLVMContext *Ctx = nullptr;
   Loop *CurrentLoop = nullptr;
@@ -102,8 +103,10 @@ public:
   }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<ScalarEvolutionWrapperPass>();
     AU.addRequired<LoopInfoWrapperPass>();
+    AU.addPreserved<DominatorTreeWrapperPass>();
     AU.addPreserved<LoopInfoWrapperPass>();
     AU.setPreservesCFG();
   }
@@ -208,6 +211,12 @@ bool EraVMIndexedMemOpsPrepare::isValidGEPAndIncByOneCell(
   if (!PHI)
     return false;
 
+  // The PHI node must be in the loop header, and BasePtr BB must dominate
+  // the latch BB.
+  if (CurrentLoop->getHeader() != PHI->getParent() ||
+      !DT->dominates(BasePtr->getParent(), CurrentLoop->getLoopLatch()))
+    return false;
+
   // In rewriteToFavorIndexedMemOps, new PHI is created with incoming values
   // from preheader and latch. Check that this PHI has the same incoming BBs.
   return PHI->getNumIncomingValues() == 2 &&
@@ -225,6 +234,7 @@ bool EraVMIndexedMemOpsPrepare::runOnLoop(Loop *L, LPPassManager &) {
     return false;
 
   auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+  DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
   Ctx = &L->getLoopPreheader()->getContext();
   CurrentLoop = L;
@@ -268,6 +278,7 @@ char EraVMIndexedMemOpsPrepare::ID = 0;
 
 INITIALIZE_PASS_BEGIN(EraVMIndexedMemOpsPrepare, DEBUG_TYPE,
                       ERAVM_PREPARE_INDEXED_MEMOPS_NAME, false, false)
+INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
 INITIALIZE_PASS_END(EraVMIndexedMemOpsPrepare, DEBUG_TYPE,
