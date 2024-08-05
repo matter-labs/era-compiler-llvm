@@ -75,6 +75,7 @@
 #include "llvm/Analysis/TargetTransformInfo.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
+#include "llvm/IR/Dominators.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Support/CommandLine.h"
@@ -89,7 +90,7 @@ using namespace llvm;
 namespace {
 
 class EraVMIndexedMemOpsPrepare : public LoopPass {
-
+  DominatorTree *DT = nullptr;
   ScalarEvolution *SE = nullptr;
   LLVMContext *Ctx = nullptr;
   Loop *CurrentLoop = nullptr;
@@ -106,10 +107,12 @@ public:
   }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<ScalarEvolutionWrapperPass>();
     AU.addRequired<LoopInfoWrapperPass>();
     AU.addRequired<TargetPassConfig>();
     AU.addRequired<TargetTransformInfoWrapperPass>();
+    AU.addPreserved<DominatorTreeWrapperPass>();
     AU.addPreserved<LoopInfoWrapperPass>();
     AU.setPreservesCFG();
   }
@@ -219,6 +222,12 @@ bool EraVMIndexedMemOpsPrepare::isValidGEPAndIncByOneCell(
   if (!PHI)
     return false;
 
+  // The PHI node must be in the loop header, and BasePtr BB must dominate
+  // the header BB.
+  if (CurrentLoop->getHeader() != PHI->getParent() ||
+      !DT->dominates(BasePtr->getParent(), CurrentLoop->getHeader()))
+    return false;
+
   // In rewriteToFavorIndexedMemOps, new PHI is created with incoming values
   // from preheader and latch. Check that this PHI has the same incoming BBs.
   return PHI->getNumIncomingValues() == 2 &&
@@ -236,6 +245,7 @@ bool EraVMIndexedMemOpsPrepare::runOnLoop(Loop *L, LPPassManager &) {
     return false;
 
   auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+  DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
   Ctx = &L->getLoopPreheader()->getContext();
   CurrentLoop = L;
