@@ -34,10 +34,10 @@ foo:
   div    @constant[r1 + 42], r2, stack+=[r3 + 123], r4
 
   ; pointer arithmetics (only swapped version is supported)
-  ptr.add.s    @constant[r1 + 42], r2, r3
-  ptr.add.s    @constant[r1 + 42], r2, stack[r3 + 123]
-  ptr.add.s    @constant[r1 + 42], r2, stack-[r3 + 123]
-  ptr.add.s    @constant[r1 + 42], r2, stack+=[r3 + 123]
+  addp.s    @constant[r1 + 42], r2, r3
+  addp.s    @constant[r1 + 42], r2, stack[r3 + 123]
+  addp.s    @constant[r1 + 42], r2, stack-[r3 + 123]
+  addp.s    @constant[r1 + 42], r2, stack+=[r3 + 123]
 
   ; jumps
   jump       @jump_table[42]
@@ -86,13 +86,13 @@ foo:
 ; CHECK:  div   @constant[r1+42], r2, stack+=[123 + r3], r4 ; encoding: [0x00,0x7b,A,0x2a'A',0x43,0x21,0x01,0x2d]
 ; CHECK:  ;   fixup A - offset: 2, value: @constant, kind: fixup_16_scale_32
 
-; CHECK:  ptr.add.s     @constant[r1+42], r2, r3 ; encoding: [0x00,0x00,A,0x2a'A',0x03,0x21,0x03,0x78]
+; CHECK:  addp.s     @constant[r1+42], r2, r3 ; encoding: [0x00,0x00,A,0x2a'A',0x03,0x21,0x03,0x78]
 ; CHECK:  ;   fixup A - offset: 2, value: @constant, kind: fixup_16_scale_32
-; CHECK:  ptr.add.s     @constant[r1+42], r2, stack[123 + r3] ; encoding: [0x00,0x7b,A,0x2a'A',0x03,0x21,0x03,0x7e]
+; CHECK:  addp.s     @constant[r1+42], r2, stack[123 + r3] ; encoding: [0x00,0x7b,A,0x2a'A',0x03,0x21,0x03,0x7e]
 ; CHECK:  ;   fixup A - offset: 2, value: @constant, kind: fixup_16_scale_32
-; CHECK:  ptr.add.s     @constant[r1+42], r2, stack-[123 + r3] ; encoding: [0x00,0x7b,A,0x2a'A',0x03,0x21,0x03,0x7c]
+; CHECK:  addp.s     @constant[r1+42], r2, stack-[123 + r3] ; encoding: [0x00,0x7b,A,0x2a'A',0x03,0x21,0x03,0x7c]
 ; CHECK:  ;   fixup A - offset: 2, value: @constant, kind: fixup_16_scale_32
-; CHECK:  ptr.add.s     @constant[r1+42], r2, stack+=[123 + r3] ; encoding: [0x00,0x7b,A,0x2a'A',0x03,0x21,0x03,0x7a]
+; CHECK:  addp.s     @constant[r1+42], r2, stack+=[123 + r3] ; encoding: [0x00,0x7b,A,0x2a'A',0x03,0x21,0x03,0x7a]
 ; CHECK:  ;   fixup A - offset: 2, value: @constant, kind: fixup_16_scale_32
 
 ; CHECK:  jump  @jump_table[42]                 ; encoding: [0x00,0x00,A,0x2a'A',0x00,0x00,0x01,0x3e]

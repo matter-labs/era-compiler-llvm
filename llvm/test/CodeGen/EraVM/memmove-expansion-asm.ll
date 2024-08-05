@@ -26,8 +26,8 @@ define i256 @expand_unknown(ptr addrspace(1) %dst, ptr addrspace(1) %src, i256 %
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    add r5, r4, r7
 ; CHECK-NEXT:    add r6, r4, r8
-; CHECK-NEXT:    ld.1 r8, r8
-; CHECK-NEXT:    st.1 r7, r8
+; CHECK-NEXT:    ldm.h r8, r8
+; CHECK-NEXT:    stm.h r7, r8
 ; CHECK-NEXT:    sub.s! 32, r4, r4
 ; CHECK-NEXT:    jump.ne @.BB0_3
 ; CHECK-NEXT:  .BB0_4: ; %copy-backwards-residual-cond
@@ -44,8 +44,8 @@ define i256 @expand_unknown(ptr addrspace(1) %dst, ptr addrspace(1) %src, i256 %
 ; CHECK-NEXT:    add r2, r0, r6
 ; CHECK-NEXT:  .BB0_7: ; %copy-forward-loop
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    ld.1.inc r6, r7, r6
-; CHECK-NEXT:    st.1.inc r1, r7, r1
+; CHECK-NEXT:    ldmi.h r6, r7, r6
+; CHECK-NEXT:    stmi.h r1, r7, r1
 ; CHECK-NEXT:    sub! r1, r5, r0
 ; CHECK-NEXT:    jump.ne @.BB0_7
 ; CHECK-NEXT:  .BB0_8: ; %copy-forward-residual-cond
@@ -56,15 +56,15 @@ define i256 @expand_unknown(ptr addrspace(1) %dst, ptr addrspace(1) %src, i256 %
 ; CHECK-NEXT:    add r5, r0, r1
 ; CHECK-NEXT:  .BB0_10: ; %memmove-residual
 ; CHECK-NEXT:    shl.s 3, r3, r3
-; CHECK-NEXT:    ld.1 r1, r4
+; CHECK-NEXT:    ldm.h r1, r4
 ; CHECK-NEXT:    shl r4, r3, r4
 ; CHECK-NEXT:    shr r4, r3, r4
-; CHECK-NEXT:    ld.1 r2, r2
+; CHECK-NEXT:    ldm.h r2, r2
 ; CHECK-NEXT:    sub 256, r3, r3
 ; CHECK-NEXT:    shr r2, r3, r2
 ; CHECK-NEXT:    shl r2, r3, r2
 ; CHECK-NEXT:    or r2, r4, r2
-; CHECK-NEXT:    st.1 r1, r2
+; CHECK-NEXT:    stm.h r1, r2
 ; CHECK-NEXT:    add r0, r0, r1
 ; CHECK-NEXT:    ret
 entry:
@@ -79,18 +79,18 @@ define i256 @expand_known_backward() {
 ; CHECK-NEXT:  .BB1_1: ; %copy-backwards-loop
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    add 9, r1, r2
-; CHECK-NEXT:    ld.1 r2, r2
+; CHECK-NEXT:    ldm.h r2, r2
 ; CHECK-NEXT:    add 99, r1, r3
-; CHECK-NEXT:    st.1 r3, r2
+; CHECK-NEXT:    stm.h r3, r2
 ; CHECK-NEXT:    sub.s! 32, r1, r1
 ; CHECK-NEXT:    jump.ne @.BB1_1
 ; CHECK-NEXT:  ; %bb.2: ; %copy-backwards-residual-cond
-; CHECK-NEXT:    ld.1 10, r2
+; CHECK-NEXT:    ldm.h 10, r2
 ; CHECK-NEXT:    and @CPI1_0[0], r2, r1
-; CHECK-NEXT:    ld.1 100, r2
+; CHECK-NEXT:    ldm.h 100, r2
 ; CHECK-NEXT:    and 255, r2, r2
 ; CHECK-NEXT:    or r1, r2, r1
-; CHECK-NEXT:    st.1 100, r1
+; CHECK-NEXT:    stm.h 100, r1
 ; CHECK-NEXT:    add r0, r0, r1
 ; CHECK-NEXT:    ret
 entry:
@@ -106,19 +106,19 @@ define i256 @expand_known_loop_iter1(ptr addrspace(1) %dst, ptr addrspace(1) %sr
 ; CHECK-NEXT:  ; %bb.1: ; %copy-backwards
 ; CHECK-NEXT:    add 10, r1, r3
 ; CHECK-NEXT:    add 10, r2, r4
-; CHECK-NEXT:    ld.1 r4, r4
-; CHECK-NEXT:    st.1 r3, r4
+; CHECK-NEXT:    ldm.h r4, r4
+; CHECK-NEXT:    stm.h r3, r4
 ; CHECK-NEXT:    jump @.BB2_3
 ; CHECK-NEXT:  .BB2_2: ; %copy-forward
-; CHECK-NEXT:    ld.1.inc r2, r3, r2
-; CHECK-NEXT:    st.1.inc r1, r3, r1
+; CHECK-NEXT:    ldmi.h r2, r3, r2
+; CHECK-NEXT:    stmi.h r1, r3, r1
 ; CHECK-NEXT:  .BB2_3: ; %memmove-residual
-; CHECK-NEXT:    ld.1 r1, r3
+; CHECK-NEXT:    ldm.h r1, r3
 ; CHECK-NEXT:    and @CPI2_0[0], r3, r3
-; CHECK-NEXT:    ld.1 r2, r2
+; CHECK-NEXT:    ldm.h r2, r2
 ; CHECK-NEXT:    and @CPI2_1[0], r2, r2
 ; CHECK-NEXT:    or r2, r3, r2
-; CHECK-NEXT:    st.1 r1, r2
+; CHECK-NEXT:    stm.h r1, r2
 ; CHECK-NEXT:    add r0, r0, r1
 ; CHECK-NEXT:    ret
 entry:
@@ -139,8 +139,8 @@ define i256 @expand_known_loop_iter2(ptr addrspace(1) %dst, ptr addrspace(1) %sr
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    add r4, r3, r6
 ; CHECK-NEXT:    add r5, r3, r7
-; CHECK-NEXT:    ld.1 r7, r7
-; CHECK-NEXT:    st.1 r6, r7
+; CHECK-NEXT:    ldm.h r7, r7
+; CHECK-NEXT:    stm.h r6, r7
 ; CHECK-NEXT:    sub.s! 32, r3, r3
 ; CHECK-NEXT:    jump.ne @.BB3_2
 ; CHECK-NEXT:  ; %bb.3:
@@ -151,19 +151,19 @@ define i256 @expand_known_loop_iter2(ptr addrspace(1) %dst, ptr addrspace(1) %sr
 ; CHECK-NEXT:    add r2, r0, r4
 ; CHECK-NEXT:  .BB3_5: ; %copy-forward-loop
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    ld.1.inc r4, r5, r4
-; CHECK-NEXT:    st.1.inc r1, r5, r1
+; CHECK-NEXT:    ldmi.h r4, r5, r4
+; CHECK-NEXT:    stmi.h r1, r5, r1
 ; CHECK-NEXT:    sub! r1, r3, r0
 ; CHECK-NEXT:    jump.ne @.BB3_5
 ; CHECK-NEXT:  ; %bb.6: ; %copy-forward-residual-cond
 ; CHECK-NEXT:    add 64, r2, r2
 ; CHECK-NEXT:  .BB3_7: ; %memmove-residual
-; CHECK-NEXT:    ld.1 r3, r1
+; CHECK-NEXT:    ldm.h r3, r1
 ; CHECK-NEXT:    and @CPI3_0[0], r1, r1
-; CHECK-NEXT:    ld.1 r2, r2
+; CHECK-NEXT:    ldm.h r2, r2
 ; CHECK-NEXT:    and @CPI3_1[0], r2, r2
 ; CHECK-NEXT:    or r2, r1, r1
-; CHECK-NEXT:    st.1 r3, r1
+; CHECK-NEXT:    stm.h r3, r1
 ; CHECK-NEXT:    add r0, r0, r1
 ; CHECK-NEXT:    ret
 entry:

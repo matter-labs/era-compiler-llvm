@@ -72,14 +72,14 @@ define void @store.toarray(i256 %val, i256 %i) nounwind {
 
 ; CHECK-LABEL: load.as3
 define i8 addrspace(3)* @load.as3() nounwind {
-  ; CHECK: ptr.add stack[@as3_ptr], r0, r1
+  ; CHECK: addp stack[@as3_ptr], r0, r1
   %res = load i8 addrspace(3)*, i8 addrspace(3)** @as3_ptr
   ret i8 addrspace(3)* %res
 }
 
 ; CHECK-LABEL: store.as3
 define void @store.as3(i8 addrspace(3)* %val) nounwind {
-  ; CHECK: ptr.add r1, r0, stack[@as3_ptr]
+  ; CHECK: addp r1, r0, stack[@as3_ptr]
   store i8 addrspace(3)* %val, i8 addrspace(3)** @as3_ptr
   ret void
 }

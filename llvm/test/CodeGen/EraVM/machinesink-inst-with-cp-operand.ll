@@ -13,12 +13,12 @@ define i256 @test(i256 %in, i1 %cond) {
 ; CHECK-NEXT:    jump.eq @.BB0_2
 ; CHECK-NEXT:  ; %bb.1: ; %bb1
 ; CHECK-NEXT:    and @CPI0_0[0], r1, r1
-; CHECK-NEXT:    near_call r0, @use, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @use, @DEFAULT_UNWIND
 ; CHECK-NEXT:    add r0, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB0_2: ; %bb2
 ; CHECK-NEXT:    add 5, r0, r1
-; CHECK-NEXT:    near_call r0, @use, @DEFAULT_UNWIND
+; CHECK-NEXT:    call r0, @use, @DEFAULT_UNWIND
 ; CHECK-NEXT:    add 1, r0, r1
 ; CHECK-NEXT:    ret
 entry:
