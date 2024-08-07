@@ -80,6 +80,7 @@
 #include "llvm/InitializePasses.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Transforms/Utils.h"
 
 using namespace llvm;
 
@@ -107,11 +108,11 @@ public:
   }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequiredID(LoopSimplifyID);
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<ScalarEvolutionWrapperPass>();
     AU.addRequired<LoopInfoWrapperPass>();
-    AU.addRequired<TargetPassConfig>();
-    AU.addRequired<TargetTransformInfoWrapperPass>();
+    AU.addPreservedID(LoopSimplifyID);
     AU.addPreserved<DominatorTreeWrapperPass>();
     AU.addPreserved<LoopInfoWrapperPass>();
     AU.setPreservesCFG();
@@ -289,5 +290,9 @@ char EraVMIndexedMemOpsPrepare::ID = 0;
 
 INITIALIZE_PASS_BEGIN(EraVMIndexedMemOpsPrepare, DEBUG_TYPE,
                       ERAVM_PREPARE_INDEXED_MEMOPS_NAME, false, false)
+INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(LoopSimplify)
 INITIALIZE_PASS_END(EraVMIndexedMemOpsPrepare, DEBUG_TYPE,
                     ERAVM_PREPARE_INDEXED_MEMOPS_NAME, false, false)
