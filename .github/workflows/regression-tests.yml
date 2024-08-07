@@ -10,6 +10,13 @@ on:
         description: "Number of commits to test"
         required: true
         default: '1'
+      # For more information about the supported sanitizers in LLVM, see `LLVM_USE_SANITIZER` option in:
+      # https://www.llvm.org/docs/CMake.html
+      llvm-sanitizer:
+        required: false
+        default: 'Address'
+        type: string
+        description: 'A sanitizer to build LLVM with. Possible values are Address, Memory, MemoryWithOrigins, Undefined, Thread, DataFlow, and Address;Undefined'
 
 defaults:
   run:
@@ -162,6 +169,7 @@ jobs:
           enable-assertions: true
           clone-llvm: false
           ccache-key-type: 'static' # rotate ccache key every month
+          sanitizer: ${{ inputs.llvm-sanitizer }}
 
       # `verify-llvm` is a special target that runs all the regression tests
       # it includes `check-llvm` and special codegen tests

@@ -81,7 +81,6 @@ jobs:
     outputs:
       evm: ${{ steps.evm.outputs.machine }}
       eravm: ${{ steps.eravm.outputs.machine }}
-      evmemulator: ${{ steps.eravm.outputs.machine }}
       default: ${{ steps.default.outputs.machine }}
     steps:
 
