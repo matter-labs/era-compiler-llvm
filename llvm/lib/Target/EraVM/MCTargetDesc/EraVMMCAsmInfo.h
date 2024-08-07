@@ -13,19 +13,20 @@
 #ifndef LLVM_LIB_TARGET_ERAVM_MCTARGETDESC_ERAVMMCASMINFO_H
 #define LLVM_LIB_TARGET_ERAVM_MCTARGETDESC_ERAVMMCASMINFO_H
 
+#include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCAsmInfoCOFF.h"
 #include "llvm/MC/MCAsmInfoDarwin.h"
-#include "llvm/MC/MCAsmInfoELF.h"
 
 namespace llvm {
 class Triple;
 
-class EraVMMCAsmInfo : public MCAsmInfoELF {
-  void anchor() override;
-
+class EraVMMCAsmInfo : public MCAsmInfo {
 public:
   explicit EraVMMCAsmInfo(const Triple &TheTriple);
   bool shouldOmitSectionDirective(StringRef) const override { return true; }
+  MCSection *getNonexecutableStackSection(MCContext &Ctx) const override {
+    return nullptr;
+  }
 };
 
 } // namespace llvm
