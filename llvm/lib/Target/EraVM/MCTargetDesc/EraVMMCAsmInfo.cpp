@@ -15,8 +15,6 @@
 
 using namespace llvm;
 
-void EraVMMCAsmInfo::anchor() {}
-
 EraVMMCAsmInfo::EraVMMCAsmInfo(const Triple &TheTriple) {
   IsLittleEndian = false;
   HasFunctionAlignment = false;
