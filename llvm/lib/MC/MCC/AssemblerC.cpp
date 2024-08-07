@@ -120,7 +120,7 @@ LLVMBool LLVMAssembleEraVM(LLVMTargetMachineRef T, LLVMMemoryBufferRef InBuffer,
       MCOptions.MCRelaxAll, MCOptions.MCIncrementalLinkerCompatible,
       /*DWARFMustBeAtTheEnd*/ false));
 
-  Str->initSections(true, *STI);
+  Str->initSections(/*NoExecStack*/ false, *STI);
 
   // Use Assembler information for parsing.
   Str->setUseAssemblerInfoForParsing(true);
