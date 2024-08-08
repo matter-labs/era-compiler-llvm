@@ -81,6 +81,7 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Transforms/Utils.h"
+#include "llvm/Transforms/Utils/Local.h"
 
 using namespace llvm;
 
@@ -95,6 +96,7 @@ class EraVMIndexedMemOpsPrepare : public LoopPass {
   ScalarEvolution *SE = nullptr;
   LLVMContext *Ctx = nullptr;
   Loop *CurrentLoop = nullptr;
+  TargetLibraryInfo *TLI = nullptr;
 
 public:
   static char ID;
@@ -109,6 +111,7 @@ public:
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequiredID(LoopSimplifyID);
+    AU.addRequired<TargetLibraryInfoWrapperPass>();
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<ScalarEvolutionWrapperPass>();
     AU.addRequired<LoopInfoWrapperPass>();
@@ -122,12 +125,17 @@ private:
   /// Check whether \p BasePtr is valid and increased by one cell.
   bool isValidGEPAndIncByOneCell(GetElementPtrInst *BasePtr) const;
 
+  bool isValidIntToPtrIncByOneCell(IntToPtrInst *BasePtr) const;
+
   /// The \p BasePtr is defined by a GEP instruction. The \p MemOpInst
   /// is the load or store instruction that uses \p BasePtr as a base
   /// address. If this \p BasePtr matches our requirements, then this
   /// function will rewrite it into patterns that can be recognized by
   /// the subsequent Combine pass to generate indexed load/store.
   bool rewriteToFavorIndexedMemOps(GetElementPtrInst *BasePtr,
+                                   Instruction *MemOpInst);
+
+  bool rewriteToFavorIndexedMemOps(IntToPtrInst *BasePtr,
                                    Instruction *MemOpInst);
 };
 
@@ -236,6 +244,53 @@ bool EraVMIndexedMemOpsPrepare::isValidGEPAndIncByOneCell(
          PHI->getBasicBlockIndex(CurrentLoop->getLoopLatch()) >= 0;
 }
 
+bool EraVMIndexedMemOpsPrepare::rewriteToFavorIndexedMemOps(
+    IntToPtrInst *BasePtr, Instruction *MemOpInst) {
+  BasicBlock *LoopPreheader = CurrentLoop->getLoopPreheader();
+  BasicBlock *LoopLatch = CurrentLoop->getLoopLatch();
+  assert(LoopPreheader && LoopLatch && "Expected a loop in a simplified form");
+
+  const auto *AddRec = cast<SCEVAddRecExpr>(
+      SE->getSCEVAtScope(BasePtr->getOperand(0), CurrentLoop));
+  auto *StartVal = cast<SCEVUnknown>(AddRec->getStart())->getValue();
+
+  IRBuilder<> Builder(BasePtr);
+  Builder.SetInsertPoint(CurrentLoop->getHeader()->getFirstNonPHI());
+  auto *NewBasePtrPHI = Builder.CreatePHI(StartVal->getType(), 2);
+  NewBasePtrPHI->addIncoming(StartVal, LoopPreheader);
+
+  // Add ADD instruction to increase the NewBasePtrPHI by one cell.
+  Builder.SetInsertPoint(MemOpInst);
+  auto *IncNewBasePtr = Builder.CreateAdd(
+      NewBasePtrPHI, ConstantInt::get(Type::getInt256Ty(*Ctx), 32));
+
+  // Add to the PHI
+  NewBasePtrPHI->addIncoming(IncNewBasePtr, LoopLatch);
+
+  auto *NewBasePtr = Builder.CreateIntToPtr(NewBasePtrPHI, BasePtr->getType());
+  BasePtr->replaceAllUsesWith(NewBasePtr);
+  return true;
+}
+
+bool EraVMIndexedMemOpsPrepare::isValidIntToPtrIncByOneCell(
+    IntToPtrInst *BasePtr) const {
+  if (isa<PHINode>(BasePtr->getOperand(0)) ||
+      !DT->dominates(BasePtr->getParent(), CurrentLoop->getHeader()))
+    return false;
+
+  const auto *AddRec = dyn_cast<SCEVAddRecExpr>(
+      SE->getSCEVAtScope(BasePtr->getOperand(0), CurrentLoop));
+  if (!AddRec || !AddRec->isAffine() || AddRec->getLoop() != CurrentLoop)
+    return false;
+
+  const auto *Step = dyn_cast<SCEVConstant>(AddRec->getStepRecurrence(*SE));
+  if (!Step || Step->getAPInt() != 32)
+    return false;
+
+  const auto *Start = dyn_cast<SCEVUnknown>(AddRec->getStart());
+  return Start && CurrentLoop->isLoopInvariant(Start->getValue());
+}
+
 bool EraVMIndexedMemOpsPrepare::runOnLoop(Loop *L, LPPassManager &) {
   bool Changed = false;
 
@@ -246,10 +301,13 @@ bool EraVMIndexedMemOpsPrepare::runOnLoop(Loop *L, LPPassManager &) {
     return false;
 
   auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+  TLI = &getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(
+      *L->getHeader()->getParent());
   DT = &getAnalysis<DominatorTreeWrapperPass>().getDomTree();
   SE = &getAnalysis<ScalarEvolutionWrapperPass>().getSE();
   Ctx = &L->getLoopPreheader()->getContext();
   CurrentLoop = L;
+  SmallVector<Instruction *, 8> ToDelete;
 
   for (auto *const BB : L->blocks()) {
     // Ignore blocks in subloops.
@@ -257,27 +315,31 @@ bool EraVMIndexedMemOpsPrepare::runOnLoop(Loop *L, LPPassManager &) {
       continue;
 
     for (auto &I : *BB) {
-      GetElementPtrInst *BasePtrValue = nullptr;
+      Value *BasePtrValue = nullptr;
       if (auto *LMemI = dyn_cast<LoadInst>(&I)) {
-        BasePtrValue = dyn_cast<GetElementPtrInst>(LMemI->getPointerOperand());
+        BasePtrValue = LMemI->getPointerOperand();
       } else if (auto *SMemI = dyn_cast<StoreInst>(&I)) {
-        BasePtrValue = dyn_cast<GetElementPtrInst>(SMemI->getPointerOperand());
+        BasePtrValue = SMemI->getPointerOperand();
       } else {
         continue; // Skip if current inst isn't load nor store inst.
       }
 
-      if (!BasePtrValue)
-        continue;
-
-      // Use SCEV info to check whether baseptr is increased by one cell
-      if (!isValidGEPAndIncByOneCell(BasePtrValue))
-        continue;
-
-      // Let's try to rewrite the GEP instruction in a way that will
-      // favor the subsequent CombineToIndexedMemops pass.
-      Changed |= rewriteToFavorIndexedMemOps(BasePtrValue, &I);
+      if (auto *GEP = dyn_cast<GetElementPtrInst>(BasePtrValue)) {
+        if (isValidGEPAndIncByOneCell(GEP) &&
+            rewriteToFavorIndexedMemOps(GEP, &I))
+          Changed = true;
+      } else if (auto *IntToPtr = dyn_cast<IntToPtrInst>(BasePtrValue)) {
+        if (isValidIntToPtrIncByOneCell(IntToPtr) &&
+            rewriteToFavorIndexedMemOps(IntToPtr, &I)) {
+          ToDelete.push_back(IntToPtr);
+          Changed = true;
+        }
+      }
     }
   }
+
+  for (auto *I : ToDelete)
+    RecursivelyDeleteTriviallyDeadInstructions(I, TLI);
 
   return Changed;
 }
@@ -290,6 +352,7 @@ char EraVMIndexedMemOpsPrepare::ID = 0;
 
 INITIALIZE_PASS_BEGIN(EraVMIndexedMemOpsPrepare, DEBUG_TYPE,
                       ERAVM_PREPARE_INDEXED_MEMOPS_NAME, false, false)
+INITIALIZE_PASS_DEPENDENCY(TargetLibraryInfoWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(ScalarEvolutionWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
