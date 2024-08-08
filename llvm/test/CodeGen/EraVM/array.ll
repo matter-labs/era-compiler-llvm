@@ -10,7 +10,7 @@ target triple = "eravm"
 ; CHECK-LABEL: consti_loadconst_neg_offset
 define i256 @consti_loadconst_neg_offset(i256 %idx) nounwind {
   ; CHECK: sub.s 1, r1, r1
-  ; CHECK: add @const[r1], r0, r1
+  ; CHECK: add code[@const+r1], r0, r1
   %sub = add nsw i256 %idx, -1
   %gep = getelementptr inbounds [10 x i256], ptr addrspace(4) @const, i256 0, i256 %sub
   %load = load i256, ptr addrspace(4) %gep, align 32
@@ -19,7 +19,7 @@ define i256 @consti_loadconst_neg_offset(i256 %idx) nounwind {
 
 ; CHECK-LABEL: consti_loadconst_storeglobal
 define void @consti_loadconst_storeglobal() nounwind {
-  ; CHECK: add @const[1], r0, stack[@val + 1]
+  ; CHECK: add code[@const+1], r0, stack[@val + 1]
   %1 = load i256, ptr addrspace(4) getelementptr inbounds ([10 x i256], ptr addrspace(4) @const, i256 0, i256 1), align 32
   store i256 %1, ptr getelementptr inbounds ([10 x i256], ptr @val, i256 0, i256 1), align 32
   ret void
@@ -39,7 +39,7 @@ define void @vari_loadconst_storeglobal(i256 %i) nounwind {
   %addrg = getelementptr inbounds [10 x i256], ptr @val, i256 0, i256 %i
   %1 = load i256, ptr addrspace(4) %addrc, align 32
   ; CHECK-NOT: shr.s 5, r1, {{r[0-9]+}}
-  ; CHECK: add @const2[r1], r0, stack[@val + r1]
+  ; CHECK: add code[@const2+r1], r0, stack[@val + r1]
   store i256 %1, ptr %addrg, align 32
   ret void
 }
@@ -71,8 +71,8 @@ define void @stack_register_addressing_storing([10 x i256]* %array, i256 %idx, i
 
 ; CHECK-LABEL: alloca_reg_storing
 define void @alloca_reg_storing(i256 %idx, i256 %val) {
-  ; CHECK:  nop     stack+=[10 + r0]
-  ; CHECK-NEXT:  context.sp r3
+  ; CHECK:  incsp     10
+  ; CHECK-NEXT:  sp r3
   ; CHECK-NEXT:  add     r3, r1, r1
   ; CHECK-NEXT:  sub.s   10, r1, r1
   ; CHECK-NEXT:  add     r2, r0, stack[r1]
@@ -87,7 +87,7 @@ define void @alloca_reg_storing(i256 %idx, i256 %val) {
 
 ; CHECK-LABEL: alloca_const_storing
 define void @alloca_const_storing(i256 %idx, i256 %val) {
-  ; CHECK:  nop     stack+=[10 + r0]
+  ; CHECK:  incsp     10
   ; CHECK:  add     r2, r0, stack-[5]
   %array = alloca [10 x i256], align 32
   %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 5
@@ -108,8 +108,8 @@ define i256 @stack_register_addressing_loading([10 x i256]* %array, i256 %idx) {
 
 ; CHECK-LABEL: alloca_reg_loading
 define i256 @alloca_reg_loading(i256 %idx, i256 %val) {
-  ; CHECK:  nop     stack+=[10 + r0]
-  ; CHECK-NEXT:  context.sp r2
+  ; CHECK:  incsp     10
+  ; CHECK-NEXT:  sp r2
   ; CHECK-NEXT:  add     r2, r1, r1
   ; CHECK-NEXT:  sub.s   10, r1, r1
   ; CHECK-NEXT:  add     stack[r1], r0, r1
@@ -124,7 +124,7 @@ define i256 @alloca_reg_loading(i256 %idx, i256 %val) {
 
 ; CHECK-LABEL: alloca_const_loading
 define i256 @alloca_const_loading(i256 %val) {
-  ; CHECK:  nop     stack+=[10 + r0]
+  ; CHECK:  incsp     10
   ; CHECK:  add     stack-[5], r0, r1
   %array = alloca [10 x i256], align 32
   %idx_slot = getelementptr inbounds [10 x i256], [10 x i256]* %array, i256 0, i256 5
@@ -174,11 +174,11 @@ define i256 @arg_ptr_loading2(i256* %array, i256 %idx) {
 
 ; CHECK-LABEL: stack_array_passing
 define void @stack_array_passing() {
-  ; CHECK:  nop     stack+=[10 + r0]
-  ; CHECK:  context.sp      r[[REG3:[0-9]+]]
+  ; CHECK:  incsp     10
+  ; CHECK:  sp      r[[REG3:[0-9]+]]
   ; CHECK:  sub.s   10, r[[REG3]], r[[REG4:[0-9]+]]
   ; CHECK:  shl.s    5, r[[REG4]], r1
-  ; CHECK:  near_call       r0, @array_arg, @DEFAULT_UNWIND
+  ; CHECK:  call       r0, @array_arg, @DEFAULT_UNWIND
   %array = alloca [10 x i256], align 32
   call void @array_arg([10 x i256]* %array)
   ret void
@@ -186,8 +186,8 @@ define void @stack_array_passing() {
 
 ; CHECK-LABEL: stack_pointer_passing
 define void @stack_pointer_passing() {
-  ; CHECK:  nop     stack+=[10 + r0]
-  ; CHECK:  context.sp      r[[REG5:[0-9]+]]
+  ; CHECK:  incsp     10
+  ; CHECK:  sp      r[[REG5:[0-9]+]]
   ; CHECK:  sub.s   10, r[[REG5]], r[[REG5]]
   ; CHECK:  shl.s    5, r[[REG5]], r[[REG5]]
   ; CHECK:  add     160, r[[REG5]], r1
@@ -199,8 +199,8 @@ define void @stack_pointer_passing() {
 
 ; CHECK-LABEL: stack_pointer_passing2
 define void @stack_pointer_passing2() {
-  ; CHECK: nop     stack+=[10 + r0]
-  ; CHECK: context.sp      r[[REG6:[0-9]+]]
+  ; CHECK: incsp     10
+  ; CHECK: sp      r[[REG6:[0-9]+]]
   ; CHECK: sub.s   10, r[[REG6]], r[[REG6]]
   ; CHECK: shl.s    5, r[[REG6]], r1
   %array = alloca [10 x i256], align 32

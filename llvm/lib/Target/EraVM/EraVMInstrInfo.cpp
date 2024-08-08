@@ -1125,9 +1125,8 @@ MachineBasicBlock::iterator EraVMInstrInfo::insertOutlinedCall(
     It->setPostInstrSymbol(MF, RetSym);
 
     // Add instruction to store return address onto the top of the stack.
-    BuildMI(MBB, It, DL, get(EraVM::ADDcrs_s))
+    BuildMI(MBB, It, DL, get(EraVM::ADDirs_s))
         .addSym(RetSym, EraVMII::MO_SYM_RET_ADDRESS)
-        .addImm(0 /* RetSymOffset */)
         .addReg(EraVM::R0)
         .addReg(EraVM::SP)
         .addImm(0 /* AMBase2 */)

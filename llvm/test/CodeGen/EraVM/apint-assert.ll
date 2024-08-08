@@ -6,7 +6,7 @@ target triple = "eravm"
 ; CHECK-LABEL: test
 define i256 @test(i256 %0) {
 entry:
-; CHECK: st.1	r1, r2
+; CHECK: stm.h	r1, r2
   %1 = add i256 %0, 18446744073709551615
   %2 = inttoptr i256 %1 to ptr addrspace(1)
   store i8 0, ptr addrspace(1) %2, align 1

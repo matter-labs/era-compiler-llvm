@@ -9,7 +9,7 @@ declare i32 @__personality()
 ; Function Attrs: null_pointer_is_valid
 define ptr addrspace(3) @test256bit() #0 personality ptr @__personality {
 entry:
-  ; CHECK: ptr.add.s
+  ; CHECK: addp.s
   %val = getelementptr i8, ptr addrspace(3) undef, i256 3334353453452342342354355544445321191012012
   ret ptr addrspace(3) %val
 }
@@ -18,7 +18,7 @@ entry:
 ; Function Attrs: null_pointer_is_valid
 define ptr addrspace(3) @test128bit() #0 personality ptr @__personality {
 entry:
-  ; CHECK: ptr.add.s
+  ; CHECK: addp.s
   %val = getelementptr i8, ptr addrspace(3) undef, i128 170141183460469231731687303715884105727
   ret ptr addrspace(3) %val
 }

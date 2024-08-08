@@ -21,7 +21,7 @@ define i256 @addirr(i256 %rs1) nounwind {
 
 ; CHECK-LABEL: addcrr
 define i256 @addcrr(i256 %rs1) nounwind {
-; CHECK: add @val[0], r1, r1
+; CHECK: add code[@val], r1, r1
   %val = load i256, i256 addrspace(4)* @val
   %res = add i256 %rs1, %val
   ret i256 %res
@@ -57,7 +57,7 @@ define void @addirs(i256 %rs1) nounwind {
 ; CHECK-LABEL: addcrs
 define void @addcrs(i256 %rs1) nounwind {
   %valptr = alloca i256
-; CHECK: add @val[0], r1, stack-[1]
+; CHECK: add code[@val], r1, stack-[1]
   %val = load i256, i256 addrspace(4)* @val
   %res = add i256 %rs1, %val
   store i256 %res, i256* %valptr

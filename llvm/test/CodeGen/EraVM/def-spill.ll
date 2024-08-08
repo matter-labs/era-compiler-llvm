@@ -28,7 +28,7 @@ define i256 @spill_addi(i256 %a) nounwind {
 
 ; CHECK-LABEL: spill_addc
 define i256 @spill_addc(i256 %a) nounwind {
-  ; TODO: CPR-1221 add @CPI2_0[0], r2, stack-[1]
+  ; TODO: CPR-1221 add code[@CPI2_0], r2, stack-[1]
   %x = add i256 %a, 4200000000000000
   %c = call i256 @foo()
   %res = add i256 %x, %c
@@ -66,7 +66,7 @@ define i256 @spill_subi(i256 %a) nounwind {
 
 ; CHECK-LABEL: spill_subc
 define i256 @spill_subc(i256 %a) nounwind {
-  ; TODO: CPR-1221 sub @CPI2_0[0], r2, stack-[1]
+  ; TODO: CPR-1221 sub code[@CPI2_0], r2, stack-[1]
   %x = sub i256 %a, 4200000000000000
   %c = call i256 @foo()
   %res = sub i256 %x, %c
@@ -104,7 +104,7 @@ define i256 @spill_muli(i256 %a) nounwind {
 
 ; CHECK-LABEL: spill_mulc
 define i256 @spill_mulc(i256 %a) nounwind {
-  ; TODO: CPR-1221 mul @CPI2_0[0], r2, stack-[1]
+  ; TODO: CPR-1221 mul code[@CPI2_0], r2, stack-[1]
   %x = mul i256 %a, 4200000000000000
   %c = call i256 @foo()
   %res = mul i256 %x, %c
@@ -142,7 +142,7 @@ define i256 @spill_divi(i256 %a) nounwind {
 
 ; CHECK-LABEL: spill_divc
 define i256 @spill_divc(i256 %a) nounwind {
-  ; CHECK: div.s @CPI{{[0-9]+}}_0[0], r1, stack-[1], r0
+  ; CHECK: div.s code[@CPI{{[0-9]+}}_0], r1, stack-[1], r0
   %x = udiv i256 %a, 4200000000000000
   %c = call i256 @foo()
   %res = udiv i256 %x, %c
@@ -180,7 +180,7 @@ define i256 @spill_andi(i256 %a) nounwind {
 
 ; CHECK-LABEL: spill_andc
 define i256 @spill_andc(i256 %a) nounwind {
-  ; TODO: CPR-1221 and @CPI2_0[0], r2, stack-[1]
+  ; TODO: CPR-1221 and code[@CPI2_0], r2, stack-[1]
   %x = and i256 %a, 4200000000000000
   %c = call i256 @foo()
   %res = and i256 %x, %c
@@ -218,7 +218,7 @@ define i256 @spill_ori(i256 %a) nounwind {
 
 ; CHECK-LABEL: spill_orc
 define i256 @spill_orc(i256 %a) nounwind {
-  ; TODO: CPR-1221 or @CPI2_0[0], r2, stack-[1]
+  ; TODO: CPR-1221 or code[@CPI2_0], r2, stack-[1]
   %x = or i256 %a, 4200000000000000
   %c = call i256 @foo()
   %res = or i256 %x, %c
@@ -256,7 +256,7 @@ define i256 @spill_xori(i256 %a) nounwind {
 
 ; CHECK-LABEL: spill_xorc
 define i256 @spill_xorc(i256 %a) nounwind {
-  ; TODO: CPR-1221 xor @CPI2_0[0], r2, stack-[1]
+  ; TODO: CPR-1221 xor code[@CPI2_0], r2, stack-[1]
   %x = xor i256 %a, 4200000000000000
   %c = call i256 @foo()
   %res = xor i256 %x, %c
@@ -334,7 +334,7 @@ define i256 @spill_shrs(i256 %a) nounwind {
 
 ; CHECK-LABEL: spill_ptraddr
 define i8 addrspace(3)* @spill_ptraddr(i8 addrspace(3)* %a, i256 %b) nounwind {
-  ; CHECK: ptr.add r1, r2, stack-[1]
+  ; CHECK: addp r1, r2, stack-[1]
   %x = call i8 addrspace(3)* @llvm.eravm.ptr.add(i8 addrspace(3)* %a, i256 %b)
   %c = call i256 @foo()
   %res = call i8 addrspace(3)* @llvm.eravm.ptr.add(i8 addrspace(3)* %x, i256 %c)
@@ -343,7 +343,7 @@ define i8 addrspace(3)* @spill_ptraddr(i8 addrspace(3)* %a, i256 %b) nounwind {
 
 ; CHECK-LABEL: spill_ptraddi
 define i8 addrspace(3)* @spill_ptraddi(i8 addrspace(3)* %a) nounwind {
-  ; CHECK: ptr.add.s 42, r1, stack-[1]
+  ; CHECK: addp.s 42, r1, stack-[1]
   %x = call i8 addrspace(3)* @llvm.eravm.ptr.add(i8 addrspace(3)* %a, i256 42)
   %c = call i256 @foo()
   %res = call i8 addrspace(3)* @llvm.eravm.ptr.add(i8 addrspace(3)* %x, i256 %c)
@@ -352,7 +352,7 @@ define i8 addrspace(3)* @spill_ptraddi(i8 addrspace(3)* %a) nounwind {
 
 ; CHECK-LABEL: spill_ptraddc
 define i8 addrspace(3)* @spill_ptraddc(i8 addrspace(3)* %a) nounwind {
-  ; CHECK: ptr.add.s @CPI{{[0-9]+}}_0[0], r1, stack-[1]
+  ; CHECK: addp.s code[@CPI{{[0-9]+}}_0], r1, stack-[1]
   %x = call i8 addrspace(3)* @llvm.eravm.ptr.add(i8 addrspace(3)* %a, i256 4200000000000000)
   %c = call i256 @foo()
   %res = call i8 addrspace(3)* @llvm.eravm.ptr.add(i8 addrspace(3)* %x, i256 %c)
@@ -363,7 +363,7 @@ define i8 addrspace(3)* @spill_ptraddc(i8 addrspace(3)* %a) nounwind {
 define i8 addrspace(3)* @spill_ptradds(i8 addrspace(3)* %a) nounwind {
   %slot = alloca i256
   %b = load i256, i256* %slot
-  ; CHECK: ptr.add.s stack-[2], r1, stack-[1]
+  ; CHECK: addp.s stack-[2], r1, stack-[1]
   %x = call i8 addrspace(3)* @llvm.eravm.ptr.add(i8 addrspace(3)* %a, i256 %b)
   %c = call i256 @foo()
   %res = call i8 addrspace(3)* @llvm.eravm.ptr.add(i8 addrspace(3)* %x, i256 %c)
@@ -372,7 +372,7 @@ define i8 addrspace(3)* @spill_ptradds(i8 addrspace(3)* %a) nounwind {
 
 ; CHECK-LABEL: spill_ptrpackr
 define i8 addrspace(3)* @spill_ptrpackr(i8 addrspace(3)* %a, i256 %b) nounwind {
-  ; CHECK: ptr.pack r1, r2, stack-[1]
+  ; CHECK: pack r1, r2, stack-[1]
   %x = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %a, i256 %b)
   %c = call i256 @foo()
   %res = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %x, i256 %c)
@@ -381,7 +381,7 @@ define i8 addrspace(3)* @spill_ptrpackr(i8 addrspace(3)* %a, i256 %b) nounwind {
 
 ; CHECK-LABEL: spill_ptrpacki
 define i8 addrspace(3)* @spill_ptrpacki(i8 addrspace(3)* %a) nounwind {
-  ; CHECK: ptr.pack.s 42, r1, stack-[1]
+  ; CHECK: pack.s 42, r1, stack-[1]
   %x = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %a, i256 42)
   %c = call i256 @foo()
   %res = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %x, i256 %c)
@@ -390,7 +390,7 @@ define i8 addrspace(3)* @spill_ptrpacki(i8 addrspace(3)* %a) nounwind {
 
 ; CHECK-LABEL: spill_ptrpackc
 define i8 addrspace(3)* @spill_ptrpackc(i8 addrspace(3)* %a) nounwind {
-  ; CHECK: ptr.pack.s @CPI{{[0-9]+}}_0[0], r1, stack-[1]
+  ; CHECK: pack.s code[@CPI{{[0-9]+}}_0], r1, stack-[1]
   %x = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %a, i256 4200000000000000)
   %c = call i256 @foo()
   %res = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %x, i256 %c)
@@ -401,7 +401,7 @@ define i8 addrspace(3)* @spill_ptrpackc(i8 addrspace(3)* %a) nounwind {
 define i8 addrspace(3)* @spill_ptrpacks(i8 addrspace(3)* %a) nounwind {
   %slot = alloca i256
   %b = load i256, i256* %slot
-  ; CHECK: ptr.pack.s stack-[2], r1, stack-[1]
+  ; CHECK: pack.s stack-[2], r1, stack-[1]
   %x = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %a, i256 %b)
   %c = call i256 @foo()
   %res = call i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)* %x, i256 %c)
@@ -410,7 +410,7 @@ define i8 addrspace(3)* @spill_ptrpacks(i8 addrspace(3)* %a) nounwind {
 
 ; CHECK-LABEL: spill_ptrshrinkr
 define i8 addrspace(3)* @spill_ptrshrinkr(i8 addrspace(3)* %a, i256 %b) nounwind {
-  ; CHECK: ptr.shrink r1, r2, stack-[1]
+  ; CHECK: shrnk r1, r2, stack-[1]
   %x = call i8 addrspace(3)* @llvm.eravm.ptr.shrink(i8 addrspace(3)* %a, i256 %b)
   %c = call i256 @foo()
   %res = call i8 addrspace(3)* @llvm.eravm.ptr.shrink(i8 addrspace(3)* %x, i256 %c)
@@ -419,7 +419,7 @@ define i8 addrspace(3)* @spill_ptrshrinkr(i8 addrspace(3)* %a, i256 %b) nounwind
 
 ; CHECK-LABEL: spill_ptrshrinki
 define i8 addrspace(3)* @spill_ptrshrinki(i8 addrspace(3)* %a) nounwind {
-  ; CHECK: ptr.shrink.s 42, r1, stack-[1]
+  ; CHECK: shrnk.s 42, r1, stack-[1]
   %x = call i8 addrspace(3)* @llvm.eravm.ptr.shrink(i8 addrspace(3)* %a, i256 42)
   %c = call i256 @foo()
   %res = call i8 addrspace(3)* @llvm.eravm.ptr.shrink(i8 addrspace(3)* %x, i256 %c)
@@ -428,7 +428,7 @@ define i8 addrspace(3)* @spill_ptrshrinki(i8 addrspace(3)* %a) nounwind {
 
 ; CHECK-LABEL: spill_ptrshrinkc
 define i8 addrspace(3)* @spill_ptrshrinkc(i8 addrspace(3)* %a) nounwind {
-  ; CHECK: ptr.shrink.s @CPI{{[0-9]+}}_0[0], r1, stack-[1]
+  ; CHECK: shrnk.s code[@CPI{{[0-9]+}}_0], r1, stack-[1]
   %x = call i8 addrspace(3)* @llvm.eravm.ptr.shrink(i8 addrspace(3)* %a, i256 4200000000000000)
   %c = call i256 @foo()
   %res = call i8 addrspace(3)* @llvm.eravm.ptr.shrink(i8 addrspace(3)* %x, i256 %c)
@@ -439,7 +439,7 @@ define i8 addrspace(3)* @spill_ptrshrinkc(i8 addrspace(3)* %a) nounwind {
 define i8 addrspace(3)* @spill_ptrshrinks(i8 addrspace(3)* %a) nounwind {
   %slot = alloca i256
   %b = load i256, i256* %slot
-  ; CHECK: ptr.shrink.s stack-[2], r1, stack-[1]
+  ; CHECK: shrnk.s stack-[2], r1, stack-[1]
   %x = call i8 addrspace(3)* @llvm.eravm.ptr.shrink(i8 addrspace(3)* %a, i256 %b)
   %c = call i256 @foo()
   %res = call i8 addrspace(3)* @llvm.eravm.ptr.shrink(i8 addrspace(3)* %x, i256 %c)

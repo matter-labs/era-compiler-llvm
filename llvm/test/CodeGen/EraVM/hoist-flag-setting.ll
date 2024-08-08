@@ -75,8 +75,8 @@ define i256 @test_hoist_2(i256 %0, i256 %1, i256 addrspace(1)* %2, i256 addrspac
 define i256 @test_hoist_const(i256 %0) {
 ; CHECK-LABEL: test_hoist_const
 ; CHECK:      .BB2_2:
-; CHECK:        and! @CPI2_0[0], r1, r0
-; CHECK-NEXT:   mul @CPI2_0[0], r1, r1, r0
+; CHECK:        and! code[@CPI2_0], r1, r0
+; CHECK-NEXT:   mul code[@CPI2_0], r1, r1, r0
 ; CHECK-NEXT:   add 1, r2, r2
 ; CHECK-NEXT:   jump.ne @.BB2_2
 
@@ -102,7 +102,7 @@ define void @test_hoist_inc(i256 addrspace(1)* %dst, i256 %end) {
 ; CHECK-LABEL: test_hoist_inc
 ; CHECK:      .BB3_1:
 ; CHECK:        sub! r1, r2, r0
-; CHECK-NEXT:   st.1.inc r1, r3, r1
+; CHECK-NEXT:   stmi.h r1, r3, r1
 ; CHECK-NEXT:   jump.ne @.BB3_1
 
 entry:
