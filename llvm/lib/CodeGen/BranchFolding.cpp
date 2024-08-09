@@ -86,6 +86,13 @@ TailMergeSize("tail-merge-size",
               cl::desc("Min number of instructions to consider tail merging"),
               cl::init(3), cl::Hidden);
 
+// EraVM local begin
+static cl::opt<bool> TailMergeOnlyBBsWithoutSucc(
+    "tail-merge-only-bbs-without-succ",
+    cl::desc("Tail merge only basic blocks without successors"),
+    cl::init(false), cl::Hidden);
+// EraVM local end
+
 namespace {
 
   /// BranchFolderPass - Wrap branch folder in a machine function pass.
@@ -1026,6 +1033,11 @@ bool BranchFolder::TailMergeBlocks(MachineFunction &MF) {
   // See if we can do any tail merging on those.
   if (MergePotentials.size() >= 2)
     MadeChange |= TryTailMergeBlocks(nullptr, nullptr, MinCommonTailLength);
+
+  // EraVM local begin
+  if (TailMergeOnlyBBsWithoutSucc)
+    return MadeChange;
+  // EraVM local end
 
   // Look at blocks (IBB) with multiple predecessors (PBB).
   // We change each predecessor to a canonical form, by
