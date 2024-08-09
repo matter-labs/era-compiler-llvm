@@ -546,6 +546,130 @@ system_request_error_block:
   unreachable
 }
 
+define {i8 addrspace(3)*, i1} @__farcall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #6 personality i32 ()* @__personality {
+entry:
+  %invoke_res = invoke i8 addrspace(3)* @__farcall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
+    to label %ok unwind label %err
+ok:
+  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
+  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
+  ret {i8 addrspace(3)*, i1} %res.1f
+
+err:
+  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
+  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
+  ret {i8 addrspace(3)*, i1} %res.2f
+}
+
+define {i8 addrspace(3)*, i1} @__staticcall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #6 personality i32 ()* @__personality {
+entry:
+  %invoke_res = invoke i8 addrspace(3)* @__staticcall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
+    to label %ok unwind label %err
+ok:
+  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
+  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
+  ret {i8 addrspace(3)*, i1} %res.1f
+
+err:
+  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
+  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
+  ret {i8 addrspace(3)*, i1} %res.2f
+}
+
+define {i8 addrspace(3)*, i1} @__delegatecall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #6 personality i32 ()* @__personality {
+entry:
+  %invoke_res = invoke i8 addrspace(3)* @__delegatecall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
+    to label %ok unwind label %err
+ok:
+  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
+  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
+  ret {i8 addrspace(3)*, i1} %res.1f
+
+err:
+  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
+  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
+  ret {i8 addrspace(3)*, i1} %res.2f
+}
+
+define {i8 addrspace(3)*, i1} @__mimiccall(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic) #6 personality i32 ()* @__personality {
+entry:
+  %invoke_res = invoke i8 addrspace(3)* @__mimiccall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic)
+    to label %ok unwind label %err
+ok:
+  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
+  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
+  ret {i8 addrspace(3)*, i1} %res.1f
+
+err:
+  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
+  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
+  ret {i8 addrspace(3)*, i1} %res.2f
+}
+
+define {i8 addrspace(3)*, i1} @__farcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #6 personality i32 ()* @__personality {
+entry:
+  %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
+  %invoke_res = invoke i8 addrspace(3)* @__farcall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
+    to label %ok unwind label %err
+ok:
+  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
+  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
+  ret {i8 addrspace(3)*, i1} %res.1f
+
+err:
+  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
+  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
+  ret {i8 addrspace(3)*, i1} %res.2f
+}
+
+define {i8 addrspace(3)*, i1} @__staticcall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #6 personality i32 ()* @__personality {
+entry:
+  %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
+  %invoke_res = invoke i8 addrspace(3)* @__staticcall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
+    to label %ok unwind label %err
+ok:
+  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
+  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
+  ret {i8 addrspace(3)*, i1} %res.1f
+
+err:
+  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
+  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
+  ret {i8 addrspace(3)*, i1} %res.2f
+}
+
+define {i8 addrspace(3)*, i1} @__delegatecall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12) #6 personality i32 ()* @__personality {
+entry:
+  %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
+  %invoke_res = invoke i8 addrspace(3)* @__delegatecall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12)
+    to label %ok unwind label %err
+ok:
+  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
+  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
+  ret {i8 addrspace(3)*, i1} %res.1f
+
+err:
+  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
+  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
+  ret {i8 addrspace(3)*, i1} %res.2f
+}
+
+define {i8 addrspace(3)*, i1} @__mimiccall_byref(i8 addrspace(3)* %abi_params.r, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic) #6 personality i32 ()* @__personality {
+entry:
+  %abi_params = ptrtoint i8 addrspace(3)* %abi_params.r to i256
+  %invoke_res = invoke i8 addrspace(3)* @__mimiccall_int(i256 %abi_params, i256 %address, i256 %p3, i256 %p4, i256 %p5, i256 %p6, i256 %p7, i256 %p8, i256 %p9, i256 %p10, i256 %p11, i256 %p12, i256 %mimic)
+    to label %ok unwind label %err
+ok:
+  %res.1u = insertvalue {i8 addrspace(3)*, i1} undef, i8 addrspace(3)* %invoke_res, 0
+  %res.1f = insertvalue {i8 addrspace(3)*, i1} %res.1u, i1 1, 1
+  ret {i8 addrspace(3)*, i1} %res.1f
+
+err:
+  %res.2u = landingpad {i8 addrspace(3)*, i1} cleanup
+  %res.2f = insertvalue {i8 addrspace(3)*, i1} %res.2u, i1 0, 1
+  ret {i8 addrspace(3)*, i1} %res.2f
+}
+
 declare void @llvm.eravm.throw(i256)
 declare i256 @llvm.umin.i256(i256, i256)
 declare i256 @llvm.eravm.gasleft()
@@ -555,7 +679,11 @@ declare void @llvm.eravm.revert.ptr(i8 addrspace(3)*)
 declare void @llvm.eravm.return.ptr(i8 addrspace(3)*)
 declare i8 addrspace(3)* @llvm.eravm.ptr.pack(i8 addrspace(3)*, i256)
 declare i32 @__personality()
-declare { i8 addrspace(3)*, i1 } @__staticcall(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256) #1
+
+declare i8 addrspace(3)* @__farcall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
+declare i8 addrspace(3)* @__staticcall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
+declare i8 addrspace(3)* @__delegatecall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
+declare i8 addrspace(3)* @__mimiccall_int(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
 
 attributes #0 = { mustprogress nofree norecurse nosync nounwind willreturn memory(none)}
 attributes #1 = { memory(argmem: read) nofree null_pointer_is_valid }
@@ -563,3 +691,4 @@ attributes #2 = { memory(argmem: readwrite) mustprogress nofree norecurse nosync
 attributes #3 = { noinline noreturn }
 attributes #4 = { alwaysinline mustprogress nofree norecurse nosync nounwind willreturn memory(none) }
 attributes #5 = { noreturn nounwind }
+attributes #6 = { alwaysinline nounwind willreturn }
