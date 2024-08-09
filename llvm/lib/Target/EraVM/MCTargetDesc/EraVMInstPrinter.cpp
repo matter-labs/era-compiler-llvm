@@ -37,7 +37,7 @@ void EraVMInstPrinter::printInst(const MCInst *MI, uint64_t Address,
   if (Opcode == EraVM::NEAR_CALL_default_unwind) {
     const MCOperand &Reg = MI->getOperand(0);
 
-    O << "\tnear_call";
+    O << "\tcall";
     printCCOperand(MI, 2, O);
     O << '\t';
     if (Reg.getReg() != EraVM::R0) {
@@ -47,6 +47,29 @@ void EraVMInstPrinter::printInst(const MCInst *MI, uint64_t Address,
     printOperand(MI, 1, O);
     O << ",\t@DEFAULT_UNWIND_DEST";
 
+    printAnnotation(O, Annot);
+    return;
+  }
+
+  if (Opcode == EraVM::NOPrrs || Opcode == EraVM::NOPsrr) {
+    // TODO Refactor the internal encoding of stack operand in the backend and
+    //      remove this fixup.
+    MCInst NormalizedMI = *MI;
+    unsigned StackOpIdx = Opcode == EraVM::NOPrrs ? 2 : 1;
+
+    MCOperand &MarkerOp = NormalizedMI.getOperand(StackOpIdx);
+    MCOperand &BaseOp = NormalizedMI.getOperand(StackOpIdx + 1);
+    MCOperand &AddendOp = NormalizedMI.getOperand(StackOpIdx + 2);
+
+    if (MarkerOp.isReg() && MarkerOp.getReg() == EraVM::R0 && BaseOp.isImm()) {
+      // (stackop R0, 0, -addend) -> (stackop R0, R0, addend)
+      assert(BaseOp.getImm() == 0 && "Unexpected marker immediate operand");
+      BaseOp = MCOperand::createReg(EraVM::R0);
+      AddendOp.setImm(-AddendOp.getImm());
+    }
+
+    if (!printAliasInstr(&NormalizedMI, Address, O))
+      printInstruction(&NormalizedMI, Address, O);
     printAnnotation(O, Annot);
     return;
   }
@@ -114,24 +137,27 @@ void EraVMInstPrinter::printMemOperand(const MCInst *MI, unsigned OpNo,
   if (BaseReg == EraVM::R0)
     BaseReg = 0;
 
+  O << "code[";
+
   if (Symbol)
-    O << "@" << Symbol->getName() << "[";
-  else
-    O << "code[";
+    O << "@" << Symbol->getName();
 
-  if (!BaseReg && !Addend)
-    O << "0";
-
-  if (BaseReg)
+  if (BaseReg) {
+    if (Symbol)
+      O << "+";
     O << getRegisterName(BaseReg);
+  }
 
   if (Addend) {
     if (Addend < 0)
       O << "-";
-    else if (BaseReg)
+    else if (Symbol || BaseReg)
       O << "+";
     O << std::abs(Addend);
   }
+
+  if (!Symbol && !BaseReg && !Addend)
+    O << "0";
 
   O << "]";
 }

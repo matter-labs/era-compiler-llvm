@@ -25,9 +25,9 @@ label:
 
 ; do not confuse @jump_target and @indirect_via_const[1]
   jump       @label
-  jump       @jump_table[1]
+  jump       code[@jump_table+1]
   jump       @label, r2
-  jump       @jump_table[1], r2
+  jump       code[@jump_table+1], r2
 
 ; CHECK:  .text
 ; CHECK:foo:
@@ -51,9 +51,9 @@ label:
 
 ; CHECK:  jump  @label                          ; encoding: [0x00,0x00,A,A,0x00,0x00,0x01,0x3d]
 ; CHECK:  ;   fixup A - offset: 2, value: @label, kind: fixup_16_scale_8
-; CHECK:  jump  @jump_table[1]                  ; encoding: [0x00,0x00,A,0x01'A',0x00,0x00,0x01,0x3e]
+; CHECK:  jump  code[@jump_table+1]             ; encoding: [0x00,0x00,A,0x01'A',0x00,0x00,0x01,0x3e]
 ; CHECK:  ;   fixup A - offset: 2, value: @jump_table, kind: fixup_16_scale_32
 ; CHECK:  jump  @label, r2                      ; encoding: [0x00,0x00,A,A,0x02,0x00,0x01,0x3d]
 ; CHECK:  ;   fixup A - offset: 2, value: @label, kind: fixup_16_scale_8
-; CHECK:  jump  @jump_table[1], r2              ; encoding: [0x00,0x00,A,0x01'A',0x02,0x00,0x01,0x3e]
+; CHECK:  jump  code[@jump_table+1], r2         ; encoding: [0x00,0x00,A,0x01'A',0x02,0x00,0x01,0x3e]
 ; CHECK:  ;   fixup A - offset: 2, value: @jump_table, kind: fixup_16_scale_32

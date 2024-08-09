@@ -39,10 +39,10 @@ declare void @foo(ptr %val);
 ; passing stack pointer in cells as argument, without unnecessary scaling
 ; CHECK-LABEL: call_foo
 define void @call_foo() nounwind {
-; CHECK: context.sp [[REG:r[0-9]+]]
+; CHECK: sp [[REG:r[0-9]+]]
 ; CHECK: sub.s 1, [[REG]], [[REG2:r[0-9]+]]
 ; CHECK-NOT: shr.s
-; CHECK: near_call
+; CHECK: call
   %p = alloca i256
   call void @foo(ptr %p)
   ret void

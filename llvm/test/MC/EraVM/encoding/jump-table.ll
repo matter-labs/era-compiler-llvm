@@ -28,7 +28,7 @@ default:
 ; CHECK:     foo:
 ; Make sure raw values from the jump table are used as-is, so R_ERAVM_16_SCALE_8
 ; is the right relocation to use for jump table entry emission.
-; CHECK:       jump.le @JTI0_0[r1]
+; CHECK:       jump.le code[@JTI0_0+r1]
 
 ; CHECK:       .rodata
 ; CHECK-NEXT:  .p2align 5, 0x0
