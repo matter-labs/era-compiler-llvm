@@ -92,7 +92,7 @@ jobs:
     if: github.event_name == 'pull_request'
     runs-on: [ci-runner-compiler, Linux]
     container:
-      image: ghcr.io/matter-labs/llvm_runner/ubuntu22-llvm17:latest
+      image: ghcr.io/matter-labs/zksync-llvm-runner:latest
       options: -m 110g
     needs: prepare-test-matrix
     strategy:
@@ -139,7 +139,7 @@ jobs:
   regression-tests:
     runs-on: [ci-runner-compiler, Linux]
     container:
-      image: ghcr.io/matter-labs/llvm_runner/ubuntu22-llvm17:latest
+      image: ghcr.io/matter-labs/zksync-llvm-runner:latest
       options: -m 110g
     needs: prepare-test-matrix
     strategy:
