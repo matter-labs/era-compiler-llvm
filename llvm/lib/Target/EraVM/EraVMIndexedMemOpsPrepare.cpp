@@ -184,19 +184,14 @@ bool EraVMIndexedMemOpsPrepare::isValidGEPAndIncByOneCell(
     GetElementPtrInst *BasePtr) const {
   // Use SCEV info to check whether this BasePtr is increased
   // by one cell per iteration.
-  const SCEV *SCEVPtr = SE->getSCEVAtScope(BasePtr, CurrentLoop);
+  const auto *AddRec =
+      dyn_cast<SCEVAddRecExpr>(SE->getSCEVAtScope(BasePtr, CurrentLoop));
+  if (!AddRec)
+    return false;
 
-  if (SCEVPtr) {
-    const auto *AddRec = dyn_cast<SCEVAddRecExpr>(SCEVPtr);
-    if (!AddRec)
-      return false;
-    const auto *Step = dyn_cast<SCEVConstant>(AddRec->getStepRecurrence(*SE));
-    if (!Step)
-      return false;
-    const APInt StrideVal = Step->getAPInt();
-    if (StrideVal != 32)
-      return false;
-  }
+  const auto *Step = dyn_cast<SCEVConstant>(AddRec->getStepRecurrence(*SE));
+  if (!Step || Step->getAPInt() != 32)
+    return false;
 
   if (!std::all_of(
           BasePtr->op_begin(), std::prev(BasePtr->op_end()),
