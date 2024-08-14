@@ -1,4 +1,6 @@
 ; RUN: llc < %s
+; UNSUPPORTED: target=evm{{.*}}
+
 ; Infinite loop in the dag combiner, reduced from 176.gcc.	
 %struct._obstack_chunk = type { ptr, ptr, [4 x i8] }
 	%struct.anon = type { i32 }

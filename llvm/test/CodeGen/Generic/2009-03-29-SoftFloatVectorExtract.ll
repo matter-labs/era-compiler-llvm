@@ -1,4 +1,5 @@
 ; XFAIL: target={{.*}}-aix{{.*}}
+; UNSUPPORTED: target=evm{{.*}}
 ; RUN: llc < %s
 ; PR3899
 

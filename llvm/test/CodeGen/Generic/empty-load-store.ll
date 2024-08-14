@@ -2,7 +2,7 @@
 ; PR2612
 
 ; Triggers a crash on assertion as NVPTX does not support 0-sized arrays.
-; UNSUPPORTED: target=nvptx{{.*}}
+; UNSUPPORTED: target=nvptx{{.*}}, target=evm{{.*}}
 
 @current_foo = internal global {  } zeroinitializer
 

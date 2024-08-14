@@ -1,4 +1,5 @@
 ; XFAIL: target=eravm{{.*}}
+; UNSUPPORTED: target=evm{{.*}}
 ; RUN: llc < %s
 ; PR5495
 

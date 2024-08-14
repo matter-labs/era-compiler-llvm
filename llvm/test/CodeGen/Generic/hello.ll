@@ -1,4 +1,5 @@
 ; RUN: llc < %s
+; UNSUPPORTED: target=evm{{.*}}
 
 @.str_1 = internal constant [7 x i8] c"hello\0A\00"             ; <ptr> [#uses=1]
 

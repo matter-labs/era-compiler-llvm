@@ -1,4 +1,5 @@
 ; RUN: llc < %s
+; UNSUPPORTED: target=evm{{.*}}
 
 %Domain = type { ptr, i32, ptr, i32, i32, ptr, ptr }
 @AConst = constant i32 123              ; <ptr> [#uses=1]

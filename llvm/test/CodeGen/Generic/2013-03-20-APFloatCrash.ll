@@ -1,4 +1,4 @@
-; UNSUPPORTED: evm
+; UNSUPPORTED: target=evm{{.*}}
 ; EVM doesn't support floats.
 
 ; RUN: llc < %s

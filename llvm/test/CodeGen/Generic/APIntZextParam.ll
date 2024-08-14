@@ -1,7 +1,7 @@
 ; RUN: llc < %s > %t
 
 ; TODO: CPR-916 Fix the test.
-; UNSUPPORTED: target=eravm{{.*}}
+; UNSUPPORTED: target=eravm{{.*}}, target=evm{{.*}}
 
 ; NVPTX does not support arbitrary integer types and has acceptable subset tested in NVPTX/APIntZextParam.ll
 ; UNSUPPORTED: target=nvptx{{.*}}

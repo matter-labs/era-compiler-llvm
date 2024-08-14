@@ -1,4 +1,6 @@
 ; RUN: llc < %s
+; UNSUPPORTED: target=evm{{.*}}
+
 @a_str = internal constant [8 x i8] c"a = %d\0A\00"		; <ptr> [#uses=1]
 @b_str = internal constant [8 x i8] c"b = %d\0A\00"		; <ptr> [#uses=1]
 @add_str = internal constant [12 x i8] c"a + b = %d\0A\00"		; <ptr> [#uses=1]

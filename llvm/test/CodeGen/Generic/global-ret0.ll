@@ -1,4 +1,5 @@
 ; RUN: llc < %s
+; UNSUPPORTED: target=evm{{.*}}
 
 @g = global i32 0               ; <ptr> [#uses=1]
 

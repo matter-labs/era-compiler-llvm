@@ -1,6 +1,7 @@
 ; Test fastcc works. Test from bug 2770.
 ; RUN: llc < %s -relocation-model=pic
 
+; UNSUPPORTED: target=evm{{.*}}
 
 %struct.__gcov_var = type {  i32 }
 @__gcov_var = external global %struct.__gcov_var

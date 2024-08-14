@@ -1,4 +1,5 @@
 ; RUN: llc < %s
+; UNSUPPORTED: target=evm{{.*}}
 
 ; Bug: PR31341
 

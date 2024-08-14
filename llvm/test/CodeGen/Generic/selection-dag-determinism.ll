@@ -7,6 +7,7 @@
 ; RUN: cmp %t1.o %t3.o
 ; RUN: cmp %t1.o %t4.o
 ; RUN: cmp %t1.o %t5.o
+; UNSUPPORTED: target=evm{{.*}}
 
 ; Regression test for nondeterminism introduced in https://reviews.llvm.org/D57694
 

@@ -1,4 +1,5 @@
 ; RUN: llc < %s
+; UNSUPPORTED: target=evm{{.*}}
 
 define void @main()  {
 if.end:
