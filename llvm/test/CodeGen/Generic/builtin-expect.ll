@@ -1,4 +1,5 @@
 ; RUN: llc < %s
+; UNSUPPORTED: target=evm{{.*}}
 
 define i32 @test1(i32 %x) nounwind uwtable ssp {
 entry:

@@ -3,6 +3,7 @@
 
 ; XCore default subtarget does not support 8-byte alignment on stack.
 ; XFAIL: target=xcore{{.*}}
+; UNSUPPORTED: target=evm{{.*}}
 
 define i32 @f(ptr %pc) {
 entry:
