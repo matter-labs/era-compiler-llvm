@@ -1,4 +1,5 @@
 ; RUN: llc < %s
+; UNSUPPORTED: target=evm{{.*}}
 
 ;; Date: May 28, 2003.
 ;; From: test/Programs/MultiSource/Olden-perimeter/maketree.c

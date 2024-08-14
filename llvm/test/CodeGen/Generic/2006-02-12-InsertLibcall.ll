@@ -1,4 +1,6 @@
 ; RUN: llc < %s
+; UNSUPPORTED: target=evm{{.*}}
+
 @G = external global i32		; <ptr> [#uses=1]
 
 define void @encode_one_frame(i64 %tmp.2i) {

@@ -1,4 +1,6 @@
 ; RUN: llc < %s
+; UNSUPPORTED: target=evm{{.*}}
+
 ; PR2625
 
 define i32 @main(ptr) {

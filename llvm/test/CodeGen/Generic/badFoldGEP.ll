@@ -1,4 +1,5 @@
 ; RUN: llc < %s
+; UNSUPPORTED: target=evm{{.*}}
 
 ;; GetMemInstArgs() folded the two getElementPtr instructions together,
 ;; producing an illegal getElementPtr.  That's because the type generated
