@@ -13,8 +13,8 @@ define i256 @test_add_code(i256 %0, i256 %1) {
 ; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB0_1: ; %for_body.preheader
-; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    and 2, r2, r2
+; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:  .BB0_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0
@@ -54,8 +54,8 @@ define i256 @test_add_imm(i256 %0, i256 %1) {
 ; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB1_1: ; %for_body.preheader
-; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    and 2, r2, r2
+; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:  .BB1_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0
@@ -95,8 +95,8 @@ define i256 @test_add_reg(i256 %0, i256 %1) {
 ; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB2_1: ; %for_body.preheader
-; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    and 2, r2, r2
+; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:  .BB2_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0
@@ -136,8 +136,8 @@ define i256 @test_sub_reg(i256 %0, i256 %1, i256 %a) {
 ; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB3_1: ; %for_body.preheader
-; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    and 2, r2, r2
+; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:  .BB3_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0
@@ -177,8 +177,8 @@ define i256 @test_sub_imm(i256 %0, i256 %1) {
 ; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB4_1: ; %for_body.preheader
-; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    and 2, r2, r2
+; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:  .BB4_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0
@@ -218,8 +218,8 @@ define i256 @test_sub_imm2(i256 %0, i256 %1) {
 ; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB5_1: ; %for_body.preheader
-; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    and 2, r2, r2
+; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:  .BB5_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0
@@ -259,8 +259,8 @@ define i256 @test_sub_code(i256 %0, i256 %1) {
 ; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB6_1: ; %for_body.preheader
-; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    and 2, r2, r2
+; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:  .BB6_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0
@@ -300,8 +300,8 @@ define i256 @test_sub_code2(i256 %0, i256 %1) {
 ; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB7_1: ; %for_body.preheader
-; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    and 2, r2, r2
+; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:  .BB7_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0
@@ -341,8 +341,8 @@ define i256 @test_sub_mul_code(i256 %0, i256 %1) {
 ; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB8_1: ; %for_body.preheader
-; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    and 2, r2, r2
+; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:  .BB8_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0
@@ -382,8 +382,8 @@ define i256 @test_sub_mul_imm(i256 %0, i256 %1) {
 ; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB9_1: ; %for_body.preheader
-; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    and 2, r2, r2
+; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:  .BB9_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0
@@ -423,8 +423,8 @@ define i256 @test_sub_mul_reg(i256 %0, i256 %1, i256 %a) {
 ; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB10_1: ; %for_body.preheader
-; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    and 2, r2, r2
+; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:  .BB10_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0
@@ -464,8 +464,8 @@ define i256 @test_sub_div_imm(i256 %0, i256 %1) {
 ; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB11_1: ; %for_body.preheader
-; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    and 2, r2, r2
+; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:  .BB11_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0
@@ -505,8 +505,8 @@ define i256 @test_sub_div_imm2(i256 %0, i256 %1) {
 ; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB12_1: ; %for_body.preheader
-; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    and 2, r2, r2
+; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:  .BB12_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0
@@ -546,8 +546,8 @@ define i256 @test_sub_div_code(i256 %0, i256 %1) {
 ; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB13_1: ; %for_body.preheader
-; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    and 2, r2, r2
+; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:  .BB13_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0
@@ -587,8 +587,8 @@ define i256 @test_sub_div_code2(i256 %0, i256 %1) {
 ; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB14_1: ; %for_body.preheader
-; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    and 2, r2, r2
+; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:  .BB14_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0
@@ -628,8 +628,8 @@ define i256 @test_sub_div_reg(i256 %0, i256 %1, i256 %a) {
 ; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    ret
 ; CHECK-NEXT:  .BB15_1: ; %for_body.preheader
-; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:    and 2, r2, r2
+; CHECK-NEXT:    add 1024, r0, r1
 ; CHECK-NEXT:  .BB15_2: ; %for_body
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    and! 1, r1, r0

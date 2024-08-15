@@ -10,9 +10,9 @@ declare void @llvm.memcpy.p1.p3.i256(ptr addrspace(1), ptr addrspace(3), i256, i
 define void @expand_unknown_p1_p3(ptr addrspace(1) %dest, ptr addrspace(3) %src, i256 %size) {
 ; CHECK-LABEL: expand_unknown_p1_p3:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    and! code[@CPI0_0], r3, r4
-; CHECK-NEXT:    and 31, r3, r5
-; CHECK-NEXT:    add r1, r4, r3
+; CHECK-NEXT:    and! code[@CPI0_0], r3, r5
+; CHECK-NEXT:    add r1, r5, r4
+; CHECK-NEXT:    and 31, r3, r3
 ; CHECK-NEXT:    jump.eq @.BB0_3
 ; CHECK-NEXT:  ; %bb.1: ; %load-store-loop-preheader
 ; CHECK-NEXT:    addp r2, r0, r6
@@ -20,23 +20,23 @@ define void @expand_unknown_p1_p3(ptr addrspace(1) %dest, ptr addrspace(3) %src,
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ldpi r6, r7, r6
 ; CHECK-NEXT:    stmi.h r1, r7, r1
-; CHECK-NEXT:    sub! r1, r3, r0
+; CHECK-NEXT:    sub! r1, r4, r0
 ; CHECK-NEXT:    jump.ne @.BB0_2
 ; CHECK-NEXT:  .BB0_3: ; %memcpy-residual-cond
-; CHECK-NEXT:    sub! r5, r0, r0
+; CHECK-NEXT:    sub! r3, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB0_5
 ; CHECK-NEXT:  ; %bb.4: ; %memcpy-residual
-; CHECK-NEXT:    addp r2, r4, r1
-; CHECK-NEXT:    shl.s 3, r5, r2
-; CHECK-NEXT:    ldm.h r3, r4
-; CHECK-NEXT:    shl r4, r2, r4
-; CHECK-NEXT:    shr r4, r2, r4
-; CHECK-NEXT:    ldp r1, r1
-; CHECK-NEXT:    sub 256, r2, r2
-; CHECK-NEXT:    shr r1, r2, r1
-; CHECK-NEXT:    shl r1, r2, r1
-; CHECK-NEXT:    or r1, r4, r1
-; CHECK-NEXT:    stm.h r3, r1
+; CHECK-NEXT:    shl.s 3, r3, r1
+; CHECK-NEXT:    ldm.h r4, r3
+; CHECK-NEXT:    shl r3, r1, r3
+; CHECK-NEXT:    shr r3, r1, r3
+; CHECK-NEXT:    addp r2, r5, r2
+; CHECK-NEXT:    ldp r2, r2
+; CHECK-NEXT:    sub 256, r1, r1
+; CHECK-NEXT:    shr r2, r1, r2
+; CHECK-NEXT:    shl r2, r1, r1
+; CHECK-NEXT:    or r1, r3, r1
+; CHECK-NEXT:    stm.h r4, r1
 ; CHECK-NEXT:  .BB0_5: ; %memcpy-split
 ; CHECK-NEXT:    ret
 entry:
@@ -47,9 +47,9 @@ entry:
 define void @expand_unknown_p1_p1(ptr addrspace(1) %dest, ptr addrspace(1) %src, i256 %size) {
 ; CHECK-LABEL: expand_unknown_p1_p1:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    and! code[@CPI1_0], r3, r4
-; CHECK-NEXT:    and 31, r3, r5
-; CHECK-NEXT:    add r1, r4, r3
+; CHECK-NEXT:    and! code[@CPI1_0], r3, r5
+; CHECK-NEXT:    add r1, r5, r4
+; CHECK-NEXT:    and 31, r3, r3
 ; CHECK-NEXT:    jump.eq @.BB1_3
 ; CHECK-NEXT:  ; %bb.1: ; %load-store-loop-preheader
 ; CHECK-NEXT:    add r2, r0, r6
@@ -57,23 +57,23 @@ define void @expand_unknown_p1_p1(ptr addrspace(1) %dest, ptr addrspace(1) %src,
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    ldmi.h r6, r7, r6
 ; CHECK-NEXT:    stmi.h r1, r7, r1
-; CHECK-NEXT:    sub! r1, r3, r0
+; CHECK-NEXT:    sub! r1, r4, r0
 ; CHECK-NEXT:    jump.ne @.BB1_2
 ; CHECK-NEXT:  .BB1_3: ; %memcpy-residual-cond
-; CHECK-NEXT:    sub! r5, r0, r0
+; CHECK-NEXT:    sub! r3, r0, r0
 ; CHECK-NEXT:    jump.eq @.BB1_5
 ; CHECK-NEXT:  ; %bb.4: ; %memcpy-residual
-; CHECK-NEXT:    add r2, r4, r1
-; CHECK-NEXT:    shl.s 3, r5, r2
-; CHECK-NEXT:    ldm.h r3, r4
-; CHECK-NEXT:    shl r4, r2, r4
-; CHECK-NEXT:    shr r4, r2, r4
-; CHECK-NEXT:    ldm.h r1, r1
-; CHECK-NEXT:    sub 256, r2, r2
-; CHECK-NEXT:    shr r1, r2, r1
-; CHECK-NEXT:    shl r1, r2, r1
-; CHECK-NEXT:    or r1, r4, r1
-; CHECK-NEXT:    stm.h r3, r1
+; CHECK-NEXT:    shl.s 3, r3, r1
+; CHECK-NEXT:    ldm.h r4, r3
+; CHECK-NEXT:    shl r3, r1, r3
+; CHECK-NEXT:    shr r3, r1, r3
+; CHECK-NEXT:    add r2, r5, r2
+; CHECK-NEXT:    ldm.h r2, r2
+; CHECK-NEXT:    sub 256, r1, r1
+; CHECK-NEXT:    shr r2, r1, r2
+; CHECK-NEXT:    shl r2, r1, r1
+; CHECK-NEXT:    or r1, r3, r1
+; CHECK-NEXT:    stm.h r4, r1
 ; CHECK-NEXT:  .BB1_5: ; %memcpy-split
 ; CHECK-NEXT:    ret
 entry:

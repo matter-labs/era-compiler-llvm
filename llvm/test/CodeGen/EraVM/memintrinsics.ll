@@ -17,8 +17,8 @@ define fastcc void @huge_copysize0(i256 addrspace(0)* %dest, i256 addrspace(0)* 
 ; CHECK-NEXT:    add stack[r4], r0, r4
 ; CHECK-NEXT:    shr.s 5, r1, r5
 ; CHECK-NEXT:    add r4, r0, stack[r5]
-; CHECK-NEXT:    add 32, r2, r2
 ; CHECK-NEXT:    add 32, r1, r1
+; CHECK-NEXT:    add 32, r2, r2
 ; CHECK-NEXT:    sub! r1, r3, r0
 ; CHECK-NEXT:    jump.ne @.BB0_1
 ; CHECK-NEXT:  ; %bb.2: ; %memcpy-split
@@ -85,8 +85,8 @@ define fastcc void @normal_known_size(i256* %dest, i256* %src) {
 ; CHECK-NEXT:    add stack[r4], r0, r4
 ; CHECK-NEXT:    shr.s 5, r1, r5
 ; CHECK-NEXT:    add r4, r0, stack[r5]
-; CHECK-NEXT:    add 32, r2, r2
 ; CHECK-NEXT:    add 32, r1, r1
+; CHECK-NEXT:    add 32, r2, r2
 ; CHECK-NEXT:    sub! r1, r3, r0
 ; CHECK-NEXT:    jump.ne @.BB3_1
 ; CHECK-NEXT:  ; %bb.2: ; %memcpy-split
@@ -107,17 +107,17 @@ define fastcc void @normal_known_size_2(i256* %dest, i256* %src) {
 ; CHECK-NEXT:    add stack[r6], r0, r6
 ; CHECK-NEXT:    shr.s 5, r5, r7
 ; CHECK-NEXT:    add r6, r0, stack[r7]
-; CHECK-NEXT:    add 32, r4, r4
 ; CHECK-NEXT:    add 32, r5, r5
+; CHECK-NEXT:    add 32, r4, r4
 ; CHECK-NEXT:    sub! r5, r3, r0
 ; CHECK-NEXT:    jump.ne @.BB4_1
 ; CHECK-NEXT:  ; %bb.2: ; %memcpy-split
 ; CHECK-NEXT:    add code[@CPI4_0], r0, r3
-; CHECK-NEXT:    shr.s 5, r2, r2
-; CHECK-NEXT:    and stack[33 + r2], r3, r2
-; CHECK-NEXT:    add code[@CPI4_1], r0, r3
 ; CHECK-NEXT:    shr.s 5, r1, r1
 ; CHECK-NEXT:    and stack[33 + r1], r3, r3
+; CHECK-NEXT:    add code[@CPI4_1], r0, r4
+; CHECK-NEXT:    shr.s 5, r2, r2
+; CHECK-NEXT:    and stack[33 + r2], r4, r2
 ; CHECK-NEXT:    or r2, r3, stack[33 + r1]
 ; CHECK-NEXT:    ret
   call void @llvm.memcpy.p0i256.p0i256.i256(i256* %dest, i256* %src, i256 1060, i1 false)

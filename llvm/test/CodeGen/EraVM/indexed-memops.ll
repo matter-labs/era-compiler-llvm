@@ -74,17 +74,17 @@ define void @loop3(i256 addrspace(1)* %dest, i256 addrspace(1)* %src, i256 %size
 ; CHECK-LABEL: loop3:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    shl.s 5, r4, r4
-; CHECK-NEXT:    add r4, r2, r4
-; CHECK-NEXT:    add 10, r0, r2
-; CHECK-NEXT:    add 32, r4, r4
+; CHECK-NEXT:    add r4, r2, r2
+; CHECK-NEXT:    add 32, r2, r2
+; CHECK-NEXT:    add 10, r0, r4
 ; CHECK-NEXT:  .BB2_1: ; %load-store-loop
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
-; CHECK-NEXT:    shl.s 5, r2, r5
+; CHECK-NEXT:    shl.s 5, r4, r5
 ; CHECK-NEXT:    add r1, r5, r5
-; CHECK-NEXT:    ldmi.h r4, r6, r4
+; CHECK-NEXT:    ldmi.h r2, r6, r2
 ; CHECK-NEXT:    stm.h r5, r6
-; CHECK-NEXT:    add 2, r2, r2
-; CHECK-NEXT:    sub! r2, r3, r0
+; CHECK-NEXT:    add 2, r4, r4
+; CHECK-NEXT:    sub! r4, r3, r0
 ; CHECK-NEXT:    jump.lt @.BB2_1
 ; CHECK-NEXT:  ; %bb.2: ; %memcpy-split
 ; CHECK-NEXT:    ret

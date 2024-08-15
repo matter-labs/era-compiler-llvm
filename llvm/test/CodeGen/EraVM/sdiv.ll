@@ -30,10 +30,10 @@ define i256 @sdiv(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    div.s! code[@CPI1_0], r2, r2, r3
 ; CHECK-NEXT:    sub.ne code[@CPI1_0], r3, r3
-; CHECK-NEXT:    div.s! code[@CPI1_0], r1, r1, r4
-; CHECK-NEXT:    xor r1, r2, r2
-; CHECK-NEXT:    sub.ne code[@CPI1_0], r4, r4
-; CHECK-NEXT:    div r4, r3, r1, r0
+; CHECK-NEXT:    div.s! code[@CPI1_0], r1, r4, r1
+; CHECK-NEXT:    sub.ne code[@CPI1_0], r1, r1
+; CHECK-NEXT:    div r1, r3, r1, r0
+; CHECK-NEXT:    xor r4, r2, r2
 ; CHECK-NEXT:    shl.s! 255, r2, r2
 ; CHECK-NEXT:    sub r2, r1, r3
 ; CHECK-NEXT:    or r3, r2, r2
@@ -52,21 +52,21 @@ define i256 @sdivrem(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-NEXT:    div.s! code[@CPI2_0], r2, r2, r3
 ; CHECK-NEXT:    sub.ne code[@CPI2_0], r3, r3
 ; CHECK-NEXT:    div.s! code[@CPI2_0], r1, r4, r5
-; CHECK-NEXT:    xor r4, r2, r2
 ; CHECK-NEXT:    sub.ne code[@CPI2_0], r5, r5
-; CHECK-NEXT:    div r5, r3, r4, r3
-; CHECK-NEXT:    shl.s! 255, r2, r2
-; CHECK-NEXT:    sub r2, r4, r5
-; CHECK-NEXT:    or r5, r2, r2
-; CHECK-NEXT:    add.eq r4, r0, r2
+; CHECK-NEXT:    div r5, r3, r5, r3
 ; CHECK-NEXT:    and! code[@CPI2_0], r1, r0
 ; CHECK-NEXT:    add r3, r0, r1
 ; CHECK-NEXT:    sub.ne 0, r1, r1
 ; CHECK-NEXT:    sub! r3, r0, r0
 ; CHECK-NEXT:    add.ne r1, r0, r3
-; CHECK-NEXT:    sub! r4, r0, r0
-; CHECK-NEXT:    add.ne r2, r0, r4
-; CHECK-NEXT:    add r3, r4, r1
+; CHECK-NEXT:    xor r4, r2, r1
+; CHECK-NEXT:    shl.s! 255, r1, r1
+; CHECK-NEXT:    sub r1, r5, r2
+; CHECK-NEXT:    or r2, r1, r1
+; CHECK-NEXT:    add.eq r5, r0, r1
+; CHECK-NEXT:    sub! r5, r0, r0
+; CHECK-NEXT:    add.ne r1, r0, r5
+; CHECK-NEXT:    add r3, r5, r1
 ; CHECK-NEXT:    ret
   %res1 = srem i256 %rs1, %rs2
   %res2 = sdiv i256 %rs1, %rs2

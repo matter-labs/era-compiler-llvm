@@ -99,6 +99,8 @@ EraVMTargetLowering::EraVMTargetLowering(const TargetMachine &TM,
   addRegisterClass(MVT::i256, &EraVM::GR256RegClass);
   addRegisterClass(MVT::fatptr, &EraVM::GRPTRRegClass);
 
+  setSchedulingPreference(Sched::RegPressure);
+
   // Compute derived properties from the register classes
   computeRegisterProperties(STI.getRegisterInfo());
 
