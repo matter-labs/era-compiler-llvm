@@ -13,6 +13,7 @@
 #ifndef LLVM_LIB_TARGET_ERAVM_MCTARGETDESC_ERAVMMCTARGETDESC_H
 #define LLVM_LIB_TARGET_ERAVM_MCTARGETDESC_ERAVMMCTARGETDESC_H
 
+#include "llvm/ADT/StringRef.h"
 #include "llvm/Support/DataTypes.h"
 #include <memory>
 
@@ -182,7 +183,10 @@ const EraVMOpcodeInfo *findOpcodeInfo(unsigned Opcode);
 const EraVMOpcodeInfo *analyzeEncodedOpcode(unsigned EncodedOpcode,
                                             EncodedOperandMode &SrcMode,
                                             EncodedOperandMode &DstMode);
-
+std::string getLinkerSymbolHash(StringRef SymName);
+std::string getLinkerIndexedName(StringRef Name, unsigned SubIdx);
+std::string getLinkerSymbolSectionName(StringRef Name);
+std::string stripLinkerSymbolNameIndex(StringRef Name);
 } // namespace EraVM
 } // namespace llvm
 

@@ -6,3 +6,4 @@
 ELF_RELOC(R_ERAVM_NONE,               0)
 ELF_RELOC(R_ERAVM_16_SCALE_32,        1)
 ELF_RELOC(R_ERAVM_16_SCALE_8,         2)
+ELF_RELOC(R_ERAVM_32,                 3)

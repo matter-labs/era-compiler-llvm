@@ -1753,6 +1753,11 @@ const EnumEntry<unsigned> ElfMips16SymOtherFlags[] = {
 const EnumEntry<unsigned> ElfRISCVSymOtherFlags[] = {
     LLVM_READOBJ_ENUM_ENT(ELF, STO_RISCV_VARIANT_CC)};
 
+// EraVM local begin
+const EnumEntry<unsigned> ElfEraVMSymOtherFlags[] = {
+    LLVM_READOBJ_ENUM_ENT(ELF, STO_ERAVM_LINKER_SYMBOL)};
+// EraVM local end
+
 static const char *getElfMipsOptionsOdkType(unsigned Odk) {
   switch (Odk) {
   LLVM_READOBJ_ENUM_CASE(ELF, ODK_NULL);
@@ -3466,6 +3471,11 @@ ELFDumper<ELFT>::getOtherFlagsFromSymbol(const Elf_Ehdr &Header,
   } else if (Header.e_machine == EM_RISCV) {
     SymOtherFlags.insert(SymOtherFlags.end(), std::begin(ElfRISCVSymOtherFlags),
                          std::end(ElfRISCVSymOtherFlags));
+    // EraVM local begin
+  } else if (Header.e_machine == EM_ERAVM) {
+    SymOtherFlags.insert(SymOtherFlags.end(), std::begin(ElfEraVMSymOtherFlags),
+                         std::end(ElfEraVMSymOtherFlags));
+    // EraVM local end
   }
   return SymOtherFlags;
 }
@@ -4111,6 +4121,12 @@ void GNUELFDumper<ELFT>::printSymbol(const Elf_Sym &Symbol, unsigned SymIndex,
           Fields[5].Str.append(" | " + utohexstr(Other, /*LowerCase=*/true));
         Fields[5].Str.append("]");
       }
+      // EraVM local begin
+    } else if (this->Obj.getHeader().e_machine == ELF::EM_ERAVM) {
+      uint8_t Other = Symbol.st_other & ~0x3;
+      if (Other & STO_ERAVM_LINKER_SYMBOL)
+        Fields[5].Str += " [LINKER_SYMBOL]";
+      // EraVM local end
     } else {
       Fields[5].Str +=
           " [<other: " + to_string(format_hex(Symbol.st_other, 2)) + ">]";

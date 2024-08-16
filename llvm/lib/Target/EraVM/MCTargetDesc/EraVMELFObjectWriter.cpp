@@ -43,6 +43,8 @@ protected:
       return ELF::R_ERAVM_16_SCALE_32;
     case EraVM::fixup_16_scale_8:
       return ELF::R_ERAVM_16_SCALE_8;
+    case FK_Data_4:
+      return ELF::R_ERAVM_32;
     default:
       llvm_unreachable("Invalid fixup kind");
     }

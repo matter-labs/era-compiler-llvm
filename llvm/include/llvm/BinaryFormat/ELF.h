@@ -958,6 +958,12 @@ enum {
 #include "ELFRelocs/EraVM.def"
 };
 
+// Special values for the st_other field in the symbol table entry for EraVM.
+enum {
+  // Symbol denotes a sub symbol of a linker symbol.
+  STO_ERAVM_LINKER_SYMBOL = 0x80
+};
+
 #undef ELF_RELOC
 
 // Section header.
