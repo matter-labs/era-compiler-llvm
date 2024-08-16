@@ -14,10 +14,13 @@
 #include "EraVMInstPrinter.h"
 #include "EraVMMCAsmInfo.h"
 #include "TargetInfo/EraVMTargetInfo.h"
+#include "llvm/ADT/StringExtras.h"
 #include "llvm/MC/MCInstrInfo.h"
 #include "llvm/MC/MCRegisterInfo.h"
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/MC/TargetRegistry.h"
+#include "llvm/Support/KECCAK.h"
+#include "llvm/Support/Regex.h"
 
 using namespace llvm;
 
@@ -122,4 +125,32 @@ EraVM::analyzeEncodedOpcode(unsigned EncodedOpcode, EncodedOperandMode &SrcMode,
         EncodedOperandMode((OpcodeDelta / Info->DstMultiplier) % NumDstModes);
 
   return Info;
+}
+
+// Returs the string of the following format:
+//   '__$KECCAK256(SymName.substr(0, 34))$__'
+std::string EraVM::getLinkerSymbolHash(StringRef SymName) {
+  std::array<uint8_t, 32> Hash = KECCAK::KECCAK_256(SymName);
+  SmallString<72> HexHash;
+  toHex(Hash, /*LowerCase*/ true, HexHash);
+  return (Twine("__$") + HexHash.substr(0, 34) + "$__").str();
+}
+
+// Returns concatenation of the Name with the SubIdx.
+std::string EraVM::getLinkerIndexedName(StringRef Name, unsigned SubIdx) {
+  return (Twine(Name) + std::to_string(SubIdx)).str();
+}
+
+// Returns concatenation of '.linker_symbol_name' of the \p Name.
+std::string EraVM::getLinkerSymbolSectionName(StringRef Name) {
+  return (Twine(".linker_symbol_name") + Name).str();
+}
+
+// Strips index from the \p Name.
+std::string EraVM::stripLinkerSymbolNameIndex(StringRef Name) {
+  Regex suffixRegex(R"(.*[0-4]$)");
+  if (!suffixRegex.match(Name))
+    llvm_unreachable("Unexpected indexed linker symbol name");
+
+  return Name.drop_back().str();
 }

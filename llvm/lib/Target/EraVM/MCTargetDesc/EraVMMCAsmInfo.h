@@ -23,7 +23,7 @@ class Triple;
 class EraVMMCAsmInfo : public MCAsmInfo {
 public:
   explicit EraVMMCAsmInfo(const Triple &TheTriple);
-  bool shouldOmitSectionDirective(StringRef) const override { return true; }
+  bool shouldOmitSectionDirective(StringRef Name) const override;
   MCSection *getNonexecutableStackSection(MCContext &Ctx) const override {
     return nullptr;
   }

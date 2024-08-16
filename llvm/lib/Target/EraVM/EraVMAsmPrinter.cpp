@@ -73,6 +73,8 @@ public:
   bool emitPseudoExpansionLowering(MCStreamer &OutStreamer,
                                    const MachineInstr *MI);
 
+  void emitLibraryAddressSymbol(const MachineInstr *MI);
+
   void emitInstruction(const MachineInstr *MI) override;
   using AliasMapTy = DenseMap<uint64_t, SmallVector<const GlobalAlias *, 1>>;
   void emitGlobalConstant(const DataLayout &DL, const Constant *CV,
@@ -128,6 +130,10 @@ void EraVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
     EmitToStreamer(*OutStreamer, TmpInst);
     return;
   }
+  if (Opc == EraVM::LinkerSymbol) {
+    emitLibraryAddressSymbol(MI);
+    return;
+  }
 
   if (MI->isPseudo()) {
 #ifndef NDEBUG
@@ -138,6 +144,59 @@ void EraVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
 
   MCInstLowering.Lower(MI, TmpInst);
   EmitToStreamer(*OutStreamer, TmpInst);
+}
+
+// The LinkerSymbol instruction is lowered in the following:
+//
+//   .rodata
+//   .linker_symbol0:
+//       .linker_symbol_cell     @"__$KECCAK256(SymbolName)$__"
+//
+//   .section ".linker_symbol_name__$KECCAK256(SymbolName)$__","S",@progbits
+//          .ascii "~ \".%%^ [];,<.>?  .sol:GreaterHelper"
+
+void EraVMAsmPrinter::emitLibraryAddressSymbol(const MachineInstr *MI) {
+  MCInst MCI;
+  MCI.setOpcode(EraVM::ADDcrr_s);
+  // Code reference.
+  MCSymbol *Label = OutContext.createNamedTempSymbol("linker_symbol");
+  const MCExpr *LabelExpr = MCSymbolRefExpr::create(Label, OutContext);
+  auto *TS =
+      static_cast<EraVMTargetStreamer *>(OutStreamer->getTargetStreamer());
+
+  // Dest register
+  MCI.addOperand(MCOperand::createReg(MI->getOperand(0).getReg()));
+  MCI.addOperand(MCOperand::createReg(EraVM::R0));
+  MCI.addOperand(MCOperand::createExpr(LabelExpr));
+  MCI.addOperand(MCOperand::createReg(EraVM::R0));
+  // Operand: cc
+  MCI.addOperand(MCOperand::createImm(0));
+  EmitToStreamer(*OutStreamer, MCI);
+
+  MCSymbol *LinkerSymbol = MI->getOperand(1).getMCSymbol();
+  StringRef SymbolName = LinkerSymbol->getName();
+  std::string SymbolNameHash = EraVM::getLinkerSymbolHash(SymbolName);
+  MCSymbol *LinkerSymbolHash = OutContext.getOrCreateSymbol(SymbolNameHash);
+
+  // Emit the .rodata entry.
+  MCSection *CurrentSection = OutStreamer->getCurrentSectionOnly();
+  MCSection *ReadOnlySection =
+      OutContext.getELFSection(".rodata", ELF::SHT_PROGBITS, ELF::SHF_ALLOC);
+  OutStreamer->switchSection(ReadOnlySection);
+  OutStreamer->emitLabel(Label);
+  TS->emitLinkerSymbol(LinkerSymbolHash);
+
+  // Emit the .linker_symbol_name section that contains the actual symbol
+  // name.
+  std::string LinkerSymbolSectionName =
+      EraVM::getLinkerSymbolSectionName(EraVM::getLinkerSymbolHash(SymbolName));
+
+  MCSection *LinkerSymbolSection = OutContext.getELFSection(
+      LinkerSymbolSectionName, ELF::SHT_PROGBITS, ELF::SHF_STRINGS);
+  OutStreamer->switchSection(LinkerSymbolSection);
+  OutStreamer->emitBytes(SymbolName);
+
+  OutStreamer->switchSection(CurrentSection);
 }
 
 void EraVMAsmPrinter::emitJumpTableInfo() {

@@ -203,6 +203,13 @@ define i256 @ifgtii() {
   ret i256 %res
 }
 
+; CHECK-LABEL: linkersymbol
+define i256 @linkersymbol() {
+  ; CHECK: add code[@.linker_symbol0], r0, r1
+  %res = call i256 @llvm.eravm.linkersymbol(metadata !0)
+  ret i256 %res
+}
+
 ; CHECK-LABEL: invoke.farcall
 define {i8 addrspace(3)*, i1} @invoke.farcall() noinline {
   ; CHECK: call r0, @__farcall, @DEFAULT_UNWIND
@@ -403,6 +410,8 @@ declare i256 @llvm.eravm.ifeq(i256, i256)
 declare i256 @llvm.eravm.iflt(i256, i256)
 declare i256 @llvm.eravm.ifgt(i256, i256)
 
+declare i256 @llvm.eravm.linkersymbol(metadata)
+
 declare {i8 addrspace(3)*, i1} @__farcall(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
 declare {i8 addrspace(3)*, i1} @__staticcall(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
 declare {i8 addrspace(3)*, i1} @__delegatecall(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
@@ -412,3 +421,5 @@ declare {i8 addrspace(3)*, i1} @__farcall_byref(i8 addrspace(3)*, i256, i256, i2
 declare {i8 addrspace(3)*, i1} @__staticcall_byref(i8 addrspace(3)*, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
 declare {i8 addrspace(3)*, i1} @__delegatecall_byref(i8 addrspace(3)*, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
 declare {i8 addrspace(3)*, i1} @__mimiccall_byref(i8 addrspace(3)*, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
+
+!0 = !{!"linker_symbol"}

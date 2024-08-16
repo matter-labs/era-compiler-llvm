@@ -19,7 +19,9 @@
 #include "llvm/MC/MCSectionELF.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/MCSubtargetInfo.h"
+#include "llvm/MC/MCSymbolELF.h"
 #include "llvm/Support/Casting.h"
+#include "llvm/Support/ErrorHandling.h"
 
 using namespace llvm;
 
@@ -31,6 +33,7 @@ public:
   EraVMTargetELFStreamer(MCStreamer &S, const MCSubtargetInfo &STI);
   void emitCell(const APInt &Value) override;
   void emitJumpTarget(const MCExpr *Expr) override;
+  void emitLinkerSymbol(const MCSymbol *Symbol) override;
 };
 
 // This part is for ELF object output.
@@ -44,6 +47,7 @@ public:
                          MCInstPrinter &InstPrinter, bool VerboseAsm);
   void emitCell(const APInt &Value) override;
   void emitJumpTarget(const MCExpr *Expr) override;
+  void emitLinkerSymbol(const MCSymbol *Symbol) override;
 };
 
 void EraVMTargetELFStreamer::emitCell(const APInt &Value) {
@@ -73,6 +77,37 @@ void EraVMTargetELFStreamer::emitJumpTarget(const MCExpr *Expr) {
   DF->getFixups().push_back(MCFixup::create(Offset, Expr, FK));
 }
 
+void EraVMTargetELFStreamer::emitLinkerSymbol(const MCSymbol *Symbol) {
+  // Emit the placeholder.
+  emitCell(APInt::getZero(EraVM::CellBitWidth));
+
+  constexpr unsigned SymbolSize = 20;
+  MCContext &Ctx = Streamer.getContext();
+  auto &S = static_cast<MCObjectStreamer &>(Streamer);
+  auto *DF = cast<MCDataFragment>(S.getCurrentFragment());
+  StringRef SymName = Symbol->getName();
+
+  // Emits 4-byte fixup to cover a part of the 20-byte linker symbol value.
+  auto EmitFixup = [&S, &Ctx, &SymName, &DF](unsigned Idx) {
+    std::string SubSymName = EraVM::getLinkerIndexedName(SymName, Idx);
+
+    if (Ctx.lookupSymbol(SubSymName))
+      report_fatal_error("Duplicating library sub-symbols");
+
+    auto *Sym = cast<MCSymbolELF>(Ctx.getOrCreateSymbol(SubSymName));
+    Sym->setOther(ELF::STO_ERAVM_LINKER_SYMBOL);
+    const MCExpr *Expr = MCSymbolRefExpr::create(Sym, Ctx);
+    S.visitUsedExpr(*Expr);
+
+    assert(DF->getContents().size() == 32 && SymbolSize > Idx * 4);
+    unsigned Offset = DF->getContents().size() - (SymbolSize - Idx * 4);
+    DF->getFixups().push_back(MCFixup::create(Offset, Expr, FK_Data_4));
+  };
+
+  for (unsigned Idx = 0; Idx < SymbolSize / sizeof(uint32_t); ++Idx)
+    EmitFixup(Idx);
+}
+
 void EraVMTargetAsmStreamer::emitCell(const APInt &Value) {
   assert(Value.getBitWidth() <= EraVM::CellBitWidth);
 
@@ -85,6 +120,17 @@ void EraVMTargetAsmStreamer::emitCell(const APInt &Value) {
 
 void EraVMTargetAsmStreamer::emitJumpTarget(const MCExpr *Expr) {
   Streamer.emitValue(Expr, EraVM::CellBitWidth / 8);
+}
+
+void EraVMTargetAsmStreamer::emitLinkerSymbol(const MCSymbol *Symbol) {
+  // This is almost a copy of MCTargetStreamer::emitValue() implementation.
+  MCContext &Ctx = Streamer.getContext();
+  const MCExpr *Expr = MCSymbolRefExpr::create(Symbol, Ctx);
+  SmallString<128> Str;
+  raw_svector_ostream OS(Str);
+  OS << "\t.linker_symbol_cell\t";
+  Expr->print(OS, Ctx.getAsmInfo());
+  Streamer.emitRawText(OS.str());
 }
 
 EraVMTargetAsmStreamer::EraVMTargetAsmStreamer(MCStreamer &S,
