@@ -1369,6 +1369,46 @@ bool EraVMInstrInfo::isProfitableToIfCvt(MachineBasicBlock &MBB,
   return probabilityIsProfitable(NumCycles, 0, Probability);
 }
 
+bool EraVMInstrInfo::canInsertSelect(const MachineBasicBlock &MBB,
+                                     ArrayRef<MachineOperand> Cond,
+                                     Register DstReg, Register TrueReg,
+                                     Register FalseReg, int &CondCycles,
+                                     int &TrueCycles, int &FalseCycles) const {
+  if (Cond.size() != 1)
+    return false;
+
+  // Check register classes.
+  const MachineRegisterInfo &MRI = MBB.getParent()->getRegInfo();
+  const TargetRegisterClass *RC =
+      RI.getCommonSubClass(MRI.getRegClass(TrueReg), MRI.getRegClass(FalseReg));
+  if (!RC)
+    return false;
+
+  // Accept regular integer GPRs only.
+  if (!EraVM::GR256RegClass.hasSubClassEq(RC))
+    return false;
+
+  CondCycles = 1;
+  TrueCycles = 1;
+  FalseCycles = 1;
+  return true;
+}
+
+void EraVMInstrInfo::insertSelect(MachineBasicBlock &MBB,
+                                  MachineBasicBlock::iterator I,
+                                  const DebugLoc &DL, Register DstReg,
+                                  ArrayRef<MachineOperand> Cond,
+                                  Register TrueReg, Register FalseReg) const {
+  assert(Cond.size() == 1 && "Invalid condition");
+  auto CC = static_cast<EraVMCC::CondCodes>(getImmOrCImm(Cond[0]));
+
+  BuildMI(MBB, I, DL, get(EraVM::SELrrr), DstReg)
+      .addReg(TrueReg)
+      .addReg(FalseReg)
+      .addImm(CC)
+      .addReg(EraVM::Flags, RegState::Implicit);
+}
+
 bool EraVMInstrInfo::updateCCCode(MachineInstr &MI,
                                   EraVMCC::CondCodes CC) const {
   // cannot update CC code to invalid

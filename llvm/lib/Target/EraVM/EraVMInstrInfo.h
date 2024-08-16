@@ -298,6 +298,16 @@ public:
   bool PredicateInstruction(MachineInstr &MI,
                             ArrayRef<MachineOperand> Pred) const override;
 
+  bool canInsertSelect(const MachineBasicBlock &MBB,
+                       ArrayRef<MachineOperand> Cond, Register DstReg,
+                       Register TrueReg, Register FalseReg, int &CondCycles,
+                       int &TrueCycles, int &FalseCycles) const override;
+
+  void insertSelect(MachineBasicBlock &MBB, MachineBasicBlock::iterator I,
+                    const DebugLoc &DL, Register DstReg,
+                    ArrayRef<MachineOperand> Cond, Register TrueReg,
+                    Register FalseReg) const override;
+
   // Branch folding goodness
   bool
   reverseBranchCondition(SmallVectorImpl<MachineOperand> &Cond) const override;

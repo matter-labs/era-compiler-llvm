@@ -116,6 +116,8 @@ target triple = "eravm"
 ; CHECK-NEXT:       MachineDominator Tree Construction
 ; CHECK-NEXT:       EraVM condition optimizer
 ; CHECK-NEXT:       Machine Natural Loop Construction
+; CHECK-NEXT:       Machine Trace Metrics
+; CHECK-NEXT:       Early If-Conversion
 ; CHECK-NEXT:       Machine Block Frequency Analysis
 ; CHECK-NEXT:       Early Machine Loop Invariant Code Motion
 ; CHECK-NEXT:       MachineDominator Tree Construction

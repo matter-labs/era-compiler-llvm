@@ -284,6 +284,7 @@ bool EraVMPassConfig::addInstSelector() {
 
 bool EraVMPassConfig::addILPOpts() {
   addPass(createEraVMConditionOptimizerPass());
+  addPass(&EarlyIfConverterID);
   return true;
 }
 

@@ -62,6 +62,7 @@ public:
     return &TSInfo;
   }
   Align getStackAlignment() const { return Align(32); }
+  bool enableEarlyIfConversion() const override { return true; }
 };
 } // namespace llvm
 
