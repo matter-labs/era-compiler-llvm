@@ -1,6 +1,7 @@
 ; REQUIRES: eravm
 ; RUN: llvm-mc -filetype=obj -arch=eravm %s -o %t.o
 ; RUN: llvm-objdump --no-leading-addr --disassemble --reloc %t.o | FileCheck --check-prefix=INPUT %s
+; RUN: llvm-objdump --no-leading-addr --reloc %t.o | FileCheck --check-prefix=INPUT-LIBSYM %s
 ; RUN: ld.lld -T %S/Inputs/eravm.lds %t.o -o %t
 ; RUN: llvm-objdump --no-leading-addr --disassemble --reloc --syms %t   | FileCheck --check-prefix=OUTPUT %s
 
@@ -61,16 +62,21 @@ array_const_local:
 ; OUTPUT-NEXT: 00000000 l     O .code  00000000 dummy_const
 ; OUTPUT-NEXT: 00000020 l     O .code  00000000 scalar_const_local
 ; OUTPUT-NEXT: 00000040 l     O .code  00000000 array_const_local
-; OUTPUT-NEXT: 000000a0 l       .code  00000000 reloc_src_g
-; OUTPUT-NEXT: 000000c8 l       .code  00000000 reloc_src_l
-; OUTPUT-NEXT: 000000f0 l       .code  00000000 reloc_dst_g
-; OUTPUT-NEXT: 00000108 l       .code  00000000 reloc_dst_l
-; OUTPUT-NEXT: 00000120 l       .code  00000000 reloc_both_g
-; OUTPUT-NEXT: 00000148 l       .code  00000000 reloc_both_l
+; OUTPUT-NEXT: 000000c0 l       .code  00000000 reloc_src_g
+; OUTPUT-NEXT: 000000e8 l       .code  00000000 reloc_src_l
+; OUTPUT-NEXT: 00000110 l       .code  00000000 reloc_dst_g
+; OUTPUT-NEXT: 00000128 l       .code  00000000 reloc_dst_l
+; OUTPUT-NEXT: 00000140 l       .code  00000000 reloc_both_g
+; OUTPUT-NEXT: 00000168 l       .code  00000000 reloc_both_l
 ; OUTPUT-NEXT: 00001020 g     O .stack 00000000 scalar_var
 ; OUTPUT-NEXT: 00001040 g     O .stack 00000000 array_var
 ; OUTPUT-NEXT: 00000020 g     O .code  00000000 scalar_const
 ; OUTPUT-NEXT: 00000040 g     O .code  00000000 array_const
+; OUTPUT-NEXT: 01010101 g       *ABS*	00000000 __$9d134d75c24f6705416dcd739f310469be$__0
+; OUTPUT-NEXT: 02020202 g       *ABS*	00000000 __$9d134d75c24f6705416dcd739f310469be$__1
+; OUTPUT-NEXT: 03030303 g       *ABS*	00000000 __$9d134d75c24f6705416dcd739f310469be$__2
+; OUTPUT-NEXT: 04040404 g       *ABS*	00000000 __$9d134d75c24f6705416dcd739f310469be$__3
+; OUTPUT-NEXT: 05050505 g       *ABS*	00000000 __$9d134d75c24f6705416dcd739f310469be$__4
 
   .text
   .p2align 3
@@ -209,3 +215,17 @@ reloc_both_l:
 ; OUTPUT-NEXT:  00 81 00 03 00 10 00 47        add     code[3], r1, stack[129 + r0]
 ; OUTPUT-NEXT:  00 81 00 83 00 10 00 37        add     stack[131 + r0], r1, stack[129 + r0]
 ; OUTPUT-NEXT:  00 00 00 00 00 01 04 2d        ret
+
+  .rodata
+.linker_symbol:
+  .linker_symbol_cell @__$9d134d75c24f6705416dcd739f310469be$__
+.section  ".linker_symbol_name__$9d134d75c24f6705416dcd739f310469be$__","S",@progbits
+  .ascii  "/()`~!@#$%^&*-+=|\\{}[ ]:;'<>,?/_library:id2"
+
+; INPUT-LIBSYM: RELOCATION RECORDS FOR [.rodata]:
+; INPUT-LIBSYM-NEXT: OFFSET   TYPE                     VALUE
+; INPUT-LIBSYM-NEXT: 000000ac R_ERAVM_32               __$9d134d75c24f6705416dcd739f310469be$__0
+; INPUT-LIBSYM-NEXT: 000000b0 R_ERAVM_32               __$9d134d75c24f6705416dcd739f310469be$__1
+; INPUT-LIBSYM-NEXT: 000000b4 R_ERAVM_32               __$9d134d75c24f6705416dcd739f310469be$__2
+; INPUT-LIBSYM-NEXT: 000000b8 R_ERAVM_32               __$9d134d75c24f6705416dcd739f310469be$__3
+; INPUT-LIBSYM-NEXT: 000000bc R_ERAVM_32               __$9d134d75c24f6705416dcd739f310469be$__4

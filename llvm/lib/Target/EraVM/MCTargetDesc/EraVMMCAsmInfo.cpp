@@ -32,3 +32,7 @@ EraVMMCAsmInfo::EraVMMCAsmInfo(const Triple &TheTriple) {
   AllowDollarAtStartOfIdentifier = true;
   UseParensForDollarSignNames = false;
 }
+
+bool EraVMMCAsmInfo::shouldOmitSectionDirective(StringRef Name) const {
+  return Name.starts_with(".linker_symbol_name") ? false : true;
+}

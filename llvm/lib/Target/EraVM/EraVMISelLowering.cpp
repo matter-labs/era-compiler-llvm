@@ -34,6 +34,8 @@
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/IntrinsicsEraVM.h"
+#include "llvm/MC/MCContext.h"
+#include "llvm/MC/MCSymbol.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -1203,6 +1205,14 @@ SDValue EraVMTargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
   case Intrinsic::eravm_ptr_pack: {
     return DAG.getNode(EraVMISD::PTR_PACK, DL, VT, Op.getOperand(1),
                        Op.getOperand(2));
+  }
+  case Intrinsic::eravm_linkersymbol: {
+    MachineFunction &MF = DAG.getMachineFunction();
+    const MDNode *Metadata = cast<MDNodeSDNode>(Op.getOperand(1))->getMD();
+    StringRef SymStr = cast<MDString>(Metadata->getOperand(0))->getString();
+    MCSymbol *Sym = MF.getContext().getOrCreateSymbol(SymStr);
+    return DAG.getNode(EraVMISD::LINKER_SYMBOL, DL, VT,
+                       DAG.getMCSymbol(Sym, MVT::i256));
   }
   }
   return SDValue();

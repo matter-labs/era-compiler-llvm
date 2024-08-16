@@ -30,6 +30,8 @@ public:
 
   /// Emit `.cell @tgt` where `@tgt` is an instruction address.
   virtual void emitJumpTarget(const MCExpr *Expr) {}
+
+  virtual void emitLinkerSymbol(const MCSymbol *Symbol) {}
 };
 } // namespace llvm
 

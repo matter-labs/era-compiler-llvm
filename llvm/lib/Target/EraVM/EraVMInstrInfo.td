@@ -44,6 +44,7 @@ def SDT_EraVMLogDecommit  : SDTypeProfile<1, 2, [SDTCisVT<0, fatptr>, SDTCisVT<1
 
 def SDT_EraVMArith  : SDTypeProfile<1, 2, [SDTCisVT<0, i256>, SDTCisVT<1, i256>, SDTCisVT<2, i256>]>;
 
+def SDT_EraVMLinkerSymbol : SDTypeProfile<1, 1, [SDTCisVT<0, i256>, SDTCisPtrTy<1>]>;
 //===----------------------------------------------------------------------===//
 // EraVM Specific Node Definitions.
 //===----------------------------------------------------------------------===//
@@ -102,6 +103,7 @@ def EraVMptr_sub      : SDNode<"EraVMISD::PTR_SUB", SDT_EraVMPtrOp, []>;
 def EraVMptr_pack     : SDNode<"EraVMISD::PTR_PACK", SDT_EraVMPtrOp, []>;
 def EraVMptr_shrink   : SDNode<"EraVMISD::PTR_SHRINK", SDT_EraVMPtrOp, []>;
 def EraVMlog_decommit : SDNode<"EraVMISD::LOG_DECOMMIT", SDT_EraVMLogDecommit, [SDNPHasChain]>;
+def EraVMLinkerSymbol : SDNode<"EraVMISD::LINKER_SYMBOL", SDT_EraVMLinkerSymbol, []>;
 
 def EraVMTrap : SDNode<"EraVMISD::TRAP", SDTNone,
     [SDNPHasChain, SDNPOptInGlue]>;
@@ -968,6 +970,9 @@ let isAsCheapAsAMove = 1, mayLoad = 1, isReMaterializable = 1,
 // FIXME: expand pseudo
 def LOADCONST : Pseudo<(outs GR256:$val), (ins i256imm:$addr),
                        [(set GR256:$val, (load tconstpool:$addr))]>;
+
+def LinkerSymbol : Pseudo<(outs GR256:$val), (ins i256imm:$sym),
+                          [(set GR256:$val, (EraVMLinkerSymbol mcsym:$sym))]>;
 }
 
 let isReMaterializable = 1, hasSideEffects = 0 in {

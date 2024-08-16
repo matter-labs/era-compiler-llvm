@@ -59,4 +59,13 @@ def int_eravm_ptr_pack : Intrinsic<[LLVMQualPointerType<3>], [LLVMQualPointerTyp
 def int_eravm_ptr_shrink : Intrinsic<[LLVMQualPointerType<3>], [LLVMQualPointerType<3>, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
 def int_eravm_ptr_add : Intrinsic<[LLVMQualPointerType<3>], [LLVMQualPointerType<3>, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
 def int_eravm_ptrtoint : Intrinsic<[llvm_i256_ty], [LLVMQualPointerType<3>], [IntrNoMem, IntrWillReturn]>;
+
+// Linking of libraries.
+
+// Inserts a library address placeholder, which will be replced with
+// the finall library address by the linker.
+def int_eravm_linkersymbol : DefaultAttrsIntrinsic<
+  [llvm_i256_ty], [llvm_metadata_ty],
+  [IntrNoMem, IntrWillReturn]
+>;
 }

@@ -59,6 +59,9 @@ void EraVM::relocate(uint8_t *loc, const Relocation &rel, uint64_t val) const {
   case R_ERAVM_16_SCALE_8:
     add16scaled(val, /*scale=*/8);
     break;
+  case R_ERAVM_32:
+    write32be(loc, static_cast<uint32_t>(val));
+    break;
   default:
     error(getErrorLocation(loc) + "unrecognized relocation " +
           toString(rel.type));
