@@ -691,4 +691,4 @@ attributes #2 = { memory(argmem: readwrite) mustprogress nofree norecurse nosync
 attributes #3 = { noinline noreturn }
 attributes #4 = { alwaysinline mustprogress nofree norecurse nosync nounwind willreturn memory(none) }
 attributes #5 = { noreturn nounwind }
-attributes #6 = { alwaysinline nounwind willreturn }
+attributes #6 = { nounwind willreturn }
