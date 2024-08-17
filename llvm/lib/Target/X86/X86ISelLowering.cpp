@@ -26034,7 +26034,7 @@ static SDValue LowerVSETCC(SDValue Op, const X86Subtarget &Subtarget,
 
       if (!FlipSigns && !Invert && ISD::isBuildVectorAllOnes(Op1.getNode())) {
         Op0 = DAG.getBitcast(MVT::v4i32, Op0);
-        Op1 = DAG.getConstant(-1, dl, MVT::v4i32);
+        Op1 = DAG.getAllOnesConstant(dl, MVT::v4i32);
 
         SDValue GT = DAG.getNode(X86ISD::PCMPGT, dl, MVT::v4i32, Op0, Op1);
         static const int MaskHi[] = { 1, 1, 3, 3 };
@@ -26801,7 +26801,7 @@ static SDValue LowerSIGN_EXTEND_Mask(SDValue Op,
       (Subtarget.hasBWI() && WideEltVT.getSizeInBits() <= 16)) {
     V = DAG.getNode(Op.getOpcode(), dl, WideVT, In);
   } else {
-    SDValue NegOne = DAG.getConstant(-1, dl, WideVT);
+    SDValue NegOne = DAG.getAllOnesConstant(dl, WideVT);
     SDValue Zero = DAG.getConstant(0, dl, WideVT);
     V = DAG.getSelect(dl, WideVT, In, NegOne, Zero);
   }
@@ -28508,7 +28508,7 @@ SDValue X86TargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
                           Op.getOperand(3));
       } else {
         SDValue GenCF = DAG.getNode(X86ISD::ADD, dl, CFVTs, Op.getOperand(1),
-                                    DAG.getConstant(-1, dl, MVT::i8));
+                                    DAG.getAllOnesConstant(dl, MVT::i8));
         Res = DAG.getNode(IntrData->Opc0, dl, VTs, Op.getOperand(2),
                           Op.getOperand(3), GenCF.getValue(1));
       }
@@ -31695,7 +31695,7 @@ static SDValue LowerShiftByScalarVariable(SDValue Op, SelectionDAG &DAG,
 
         // Create the mask using vXi16 shifts. For shift-rights we need to move
         // the upper byte down before splatting the vXi8 mask.
-        SDValue BitMask = DAG.getConstant(-1, dl, ExtVT);
+        SDValue BitMask = DAG.getAllOnesConstant(dl, ExtVT);
         BitMask = getTargetVShiftNode(LogicalX86Op, dl, ExtVT, BitMask,
                                       BaseShAmt, BaseShAmtIdx, Subtarget, DAG);
         if (Opcode != ISD::SHL)
@@ -51705,7 +51705,7 @@ static SDValue combineAddOrSubToADCOrSBB(bool IsSub, const SDLoc &DL, EVT VT,
     // X - SETAE --> adc X, -1
     return DAG.getNode(IsSub ? X86ISD::ADC : X86ISD::SBB, DL,
                        DAG.getVTList(VT, MVT::i32), X,
-                       DAG.getConstant(-1, DL, VT), EFLAGS);
+                       DAG.getAllOnesConstant(DL, VT), EFLAGS);
   }
 
   if (CC == X86::COND_BE) {
@@ -51726,7 +51726,7 @@ static SDValue combineAddOrSubToADCOrSBB(bool IsSub, const SDLoc &DL, EVT VT,
       SDValue NewEFLAGS = NewSub.getValue(EFLAGS.getResNo());
       return DAG.getNode(IsSub ? X86ISD::ADC : X86ISD::SBB, DL,
                          DAG.getVTList(VT, MVT::i32), X,
-                         DAG.getConstant(-1, DL, VT), NewEFLAGS);
+                         DAG.getAllOnesConstant(DL, VT), NewEFLAGS);
     }
   }
 
@@ -51785,7 +51785,7 @@ static SDValue combineAddOrSubToADCOrSBB(bool IsSub, const SDLoc &DL, EVT VT,
   // X + (Z != 0) --> add X, (zext(setne Z, 0)) --> sbb X, -1, (cmp Z, 1)
   if (CC == X86::COND_NE)
     return DAG.getNode(IsSub ? X86ISD::ADC : X86ISD::SBB, DL, VTs, X,
-                       DAG.getConstant(-1ULL, DL, VT), Cmp1.getValue(1));
+                       DAG.getAllOnesConstant(DL, VT), Cmp1.getValue(1));
 
   // X - (Z == 0) --> sub X, (zext(sete  Z, 0)) --> sbb X, 0, (cmp Z, 1)
   // X + (Z == 0) --> add X, (zext(sete  Z, 0)) --> adc X, 0, (cmp Z, 1)
@@ -52046,8 +52046,9 @@ static SDValue foldXorTruncShiftIntoCmp(SDNode *N, SelectionDAG &DAG) {
   const TargetLowering &TLI = DAG.getTargetLoweringInfo();
   EVT SetCCResultType = TLI.getSetCCResultType(DAG.getDataLayout(),
                                                *DAG.getContext(), ResultType);
-  SDValue Cond = DAG.getSetCC(DL, SetCCResultType, ShiftOp,
-                              DAG.getConstant(-1, DL, ShiftOpTy), ISD::SETGT);
+  SDValue Cond =
+      DAG.getSetCC(DL, SetCCResultType, ShiftOp,
+                   DAG.getAllOnesConstant(DL, ShiftOpTy), ISD::SETGT);
   if (SetCCResultType != ResultType)
     Cond = DAG.getNode(ISD::ZERO_EXTEND, DL, ResultType, Cond);
   return Cond;
