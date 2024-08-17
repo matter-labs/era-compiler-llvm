@@ -11922,7 +11922,7 @@ void SelectionDAGBuilder::visitVectorSplice(const CallInst &I) {
   if (VT.isScalableVector()) {
     MVT IdxVT = TLI.getVectorIdxTy(DAG.getDataLayout());
     setValue(&I, DAG.getNode(ISD::VECTOR_SPLICE, DL, VT, V1, V2,
-                             DAG.getConstant(Imm, DL, IdxVT)));
+                             DAG.getSignedConstant(Imm, DL, IdxVT)));
     return;
   }
 
