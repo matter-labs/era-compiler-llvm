@@ -527,6 +527,12 @@ size_t EraVMAsmPrinter::createInitializeInsts(const GlobalVariable *GV,
     appendInitializeInst(GV, CI, 0, InitInsts);
   } else if (isa<ConstantPointerNull>(CV)) {
     NumElements = 1;
+  } else if (const auto *UV = dyn_cast<UndefValue>(CV)) {
+    auto *UVTy = UV->getType();
+    if (UVTy->isIntegerTy() || UVTy->isPointerTy())
+      NumElements = 1;
+    else
+      NumElements = UV->getNumElements();
   } else {
     // Other CV types are not expected: ConstantStruct,
     // ConstantVector, ConstantExpr.
