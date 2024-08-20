@@ -38,12 +38,12 @@ jobs:
 
       - name: Check for EraVM target
         id: eravm
-        if: contains(github.event.pull_request.title, '[EraVM]')
+        if: contains(github.event.pull_request.title, '[eravm]') || contains(github.event.pull_request.title, '[EraVM]')
         run: echo "machine=eravm" | tee -a "${GITHUB_OUTPUT}"
 
       - name: Check for EVM target
         id: evm
-        if: contains(github.event.pull_request.title, '[EVM]')
+        if: contains(github.event.pull_request.title, '[evm]') || contains(github.event.pull_request.title, '[EVM]')
         run: echo "machine=evm" | tee -a "${GITHUB_OUTPUT}"
 
       - name: Check for default target
