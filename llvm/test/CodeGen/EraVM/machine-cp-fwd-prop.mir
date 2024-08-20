@@ -18,8 +18,7 @@ body:             |
     ; CHECK-LABEL: name: test
     ; CHECK: liveins: $r2, $r3
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: $r4 = COPY killed $r2
-    ; CHECK-NEXT: $r1 = SUBrrr_s killed $r4, killed $r3, i256 0
+    ; CHECK-NEXT: renamable $r1 = SUBrrr_s $r2, killed renamable $r3, i256 0
     ; CHECK-NEXT: RET 0, implicit $r1
     renamable $r4 = COPY killed renamable $r2
     renamable $r1 = SUBrrr_s killed renamable $r4, killed renamable $r3, i256 0
