@@ -31,7 +31,7 @@ define void @add_branch_neg_1(i256 %x, i256 %y) {
 ; CHECK-LABEL: add_branch_neg_1:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    add r1, r0, r3
-; CHECK-NEXT:    add r3, r2, r1
+; CHECK-NEXT:    add r1, r2, r1
 ; CHECK-NEXT:    add! r3, r2, r0
 ; CHECK-NEXT:    jump.lt @.BB1_2
 ; CHECK-NEXT:  ; %bb.1: ; %no_overflow_detected
