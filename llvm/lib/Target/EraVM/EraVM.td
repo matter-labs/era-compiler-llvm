@@ -62,4 +62,5 @@ def EraVMAsmParser : AsmParser {
 def EraVM : Target {
   let InstructionSet = EraVMInstrInfo;
   let AssemblyParsers = [EraVMAsmParser];
+  let AllowRegisterRenaming = 1;
 }
