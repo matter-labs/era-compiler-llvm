@@ -37,11 +37,12 @@ class EVMFunctionInfo final : public MachineFunctionInfo {
 public:
   explicit EVMFunctionInfo(MachineFunction &MF) {}
   EVMFunctionInfo(const Function &F, const TargetSubtargetInfo *STI) {}
-  EVMFunctionInfo(const EVMFunctionInfo &) = delete;
-  EVMFunctionInfo(EVMFunctionInfo &&) = delete;
-  EVMFunctionInfo &operator=(const EVMFunctionInfo &) = delete;
-  EVMFunctionInfo &operator=(EVMFunctionInfo &&) = delete;
   ~EVMFunctionInfo() override;
+
+  MachineFunctionInfo *
+  clone(BumpPtrAllocator &Allocator, MachineFunction &DestMF,
+        const DenseMap<MachineBasicBlock *, MachineBasicBlock *> &Src2DstMBB)
+      const override;
 
   void stackifyVReg(MachineRegisterInfo &MRI, unsigned VReg) {
     assert(MRI.getUniqueVRegDef(VReg));

@@ -14,3 +14,10 @@
 using namespace llvm;
 
 EVMFunctionInfo::~EVMFunctionInfo() = default; // anchor.
+
+MachineFunctionInfo *
+EVMFunctionInfo::clone(BumpPtrAllocator &Allocator, MachineFunction &DestMF,
+                       const DenseMap<MachineBasicBlock *, MachineBasicBlock *>
+                           &Src2DstMBB) const {
+  return DestMF.cloneInfo<EVMFunctionInfo>(*this);
+}

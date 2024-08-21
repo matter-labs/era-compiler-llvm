@@ -1,5 +1,3 @@
-# TODO: CPR-1629 EVM does not implement MachineFunctionInfo cloning
-# XFAIL: target=evm{{.*}}
 # REQUIRES: default_triple
 # RUN: rm -rf %t.dir && mkdir %t.dir  && cd %t.dir
 
