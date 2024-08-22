@@ -126,6 +126,34 @@ TEST_F(AssemblerCTest, AsmParserError) {
 }
 
 // NOLINTNEXTLINE(cppcoreguidelines-special-member-functions)
+TEST_F(AssemblerCTest, NoBufferNullTerminator) {
+  StringRef Asm = "                                  \
+    .text                                          \n\
+    get_glob:                                      \n\
+        add  r1, r1, r1                            \n\
+        ret";
+
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays, hicpp-avoid-c-arrays)
+  auto Buffer = std::make_unique<char[]>(Asm.size());
+  std::memcpy(Buffer.get(), Asm.data(), Asm.size());
+  StringRef StrBuffer(Buffer.get(), Asm.size());
+  std::unique_ptr<MemoryBuffer> MemBuffer =
+      MemoryBuffer::getMemBuffer(StrBuffer, "",
+                                 /*RequiresNullTerminator=*/false);
+
+  LLVMMemoryBufferRef AsmMemBuffer = llvm::wrap(MemBuffer.get());
+  LLVMMemoryBufferRef ObjMemBuffer = nullptr;
+  char *ErrMsg = nullptr;
+  // Return code 'true' denotes an error.
+  if (LLVMAssembleEraVM(TM, AsmMemBuffer, &ObjMemBuffer, &ErrMsg)) {
+    FAIL() << "Failed to assembly:" << ErrMsg;
+    LLVMDisposeMessage(ErrMsg);
+    return;
+  }
+  LLVMDisposeMemoryBuffer(ObjMemBuffer);
+}
+
+// NOLINTNEXTLINE(cppcoreguidelines-special-member-functions)
 TEST_F(AssemblerCTest, ToManyInstructionsError) {
   std::string Asm = ".text";
   // Max number of instructions is 2^16.

@@ -77,10 +77,10 @@ LLVMBool LLVMAssembleEraVM(LLVMTargetMachineRef T, LLVMMemoryBufferRef InBuffer,
   MemoryBuffer *InMemBuf = unwrap(InBuffer);
   // Create a copy of the input buffer because SourceMgr will take
   // ownership of the memory buffer.
-  // The buffer we pass to AsmParser doesn't need to be null-terminated.
-  std::unique_ptr<MemoryBuffer> BufferPtr =
-      MemoryBuffer::getMemBuffer(InMemBuf->getMemBufferRef(),
-                                 /*RequiresNullTerminator=*/false);
+  // The buffer we pass to AsmParser needs to be null-terminated, which is
+  // ensured by the getMemBufferCopy implementation.
+  std::unique_ptr<MemoryBuffer> BufferPtr = MemoryBuffer::getMemBufferCopy(
+      InMemBuf->getBuffer(), InMemBuf->getBufferIdentifier());
 
   llvm::SmallString<0> ErrorMsgBuffer;
   llvm::raw_svector_ostream ErrorMsgOS(ErrorMsgBuffer);
