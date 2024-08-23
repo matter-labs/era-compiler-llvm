@@ -10,7 +10,7 @@ target triple = "eravm"
 @glob.const = constant i256 737
 
 ; CHECK-LABEL: .text
-; CHECK-NEXT: incsp 10
+; CHECK-NEXT: incsp 6
 ; CHECK-NEXT: add	code[@glob_initializer_0], r0, stack[@glob]
 ; CHECK-NEXT: add	code[@glob.arr_initializer_1], r0, stack[@glob.arr + 1]
 ; CHECK-NEXT: add	code[@glob.arr_initializer_3], r0, stack[@glob.arr + 3]

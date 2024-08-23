@@ -12,10 +12,14 @@
 
 #include "llvm-c/Assembler.h"
 #include "llvm-c/Core.h"
+#include "llvm-c/Disassembler.h"
 #include "llvm-c/Object.h"
+#include "llvm/ADT/APInt.h"
+#include "llvm/ADT/StringExtras.h"
 #include "llvm/MC/MCAsmBackend.h"
 #include "llvm/MC/MCCodeEmitter.h"
 #include "llvm/MC/MCContext.h"
+#include "llvm/MC/MCInstPrinter.h"
 #include "llvm/MC/MCObjectWriter.h"
 #include "llvm/MC/MCParser/MCTargetAsmParser.h"
 #include "llvm/MC/MCStreamer.h"
@@ -24,8 +28,13 @@
 #include "llvm/Object/Binary.h"
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Support/MemoryBuffer.h"
+#include "llvm/Support/Regex.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Target/TargetMachine.h"
+
+#include <algorithm>
+#include <limits>
+#include <set>
 
 using namespace llvm;
 using namespace object;
@@ -184,5 +193,145 @@ LLVMBool LLVMExceedsSizeLimitEraVM(LLVMMemoryBufferRef MemBuf,
   if (BinarySize > ((uint64_t(1) << 16) - 1) * 32)
     return true;
 
+  return false;
+}
+
+static const char *symbolLookupCallback(void *DisInfo, uint64_t ReferenceValue,
+                                        uint64_t *ReferenceType,
+                                        uint64_t ReferencePC,
+                                        const char **ReferenceName) {
+  *ReferenceType = LLVMDisassembler_ReferenceType_InOut_None;
+  return nullptr;
+}
+
+LLVMBool LLVMDisassembleEraVM(LLVMTargetMachineRef T,
+                              LLVMMemoryBufferRef InBuffer, uint64_t PC,
+                              uint64_t Options, LLVMMemoryBufferRef *OutBuffer,
+                              char **ErrorMessage) {
+  TargetMachine *TM = unwrap(T);
+  const Triple &TheTriple = TM->getTargetTriple();
+  constexpr size_t InstrSize = 8;
+  constexpr size_t WordSize = 32;
+  constexpr size_t OutStringSize = 1024;
+  MemoryBuffer *InMemBuf = unwrap(InBuffer);
+  const auto *Bytes =
+      // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+      reinterpret_cast<const uint8_t *>(InMemBuf->getBuffer().data());
+  const size_t BytesNum = InMemBuf->getBufferSize();
+
+  if (PC > BytesNum) {
+    *ErrorMessage = strdup("Starting address exceeds the bytecode size");
+    return true;
+  }
+
+  if (PC % InstrSize) {
+    *ErrorMessage =
+        strdup("Starting address isn't multiple of 8 (instruction size)");
+    return true;
+  }
+
+  if (BytesNum % WordSize) {
+    *ErrorMessage = strdup("Bytecode size isn't multiple of 32 (word size)");
+    return true;
+  }
+
+  LLVMDisasmContextRef DCR = LLVMCreateDisasm(
+      TheTriple.getTriple().c_str(), nullptr, 0, nullptr, symbolLookupCallback);
+  assert(DCR && "Unable to create disassembler");
+
+  std::string Disassembly;
+  raw_string_ostream OS(Disassembly);
+  formatted_raw_ostream FOS(OS);
+  bool ShoulOutputEncoding =
+      Options & LLVMDisassemblerEraVM_Option_OutputEncoding;
+
+  auto PrintEncoding = [&FOS](uint64_t PC, ArrayRef<uint8_t> InstrBytes) {
+    FOS << format("%8" PRIx64 ":", PC);
+    FOS << ' ';
+    dumpBytes(ArrayRef<uint8_t>(InstrBytes), FOS);
+  };
+
+  // First, parse the section with instructions. Stop at the beginning
+  // of the section with constants (if any).
+  uint64_t ConstantSectionStart = std::numeric_limits<uint64_t>::max();
+  Regex CodeRegex(R"(code\[(r[0-9]+\+)?([0-9]+)\])");
+  bool FoundMetadata = false;
+  while (PC < BytesNum) {
+    std::array<uint8_t, InstrSize> InstrBytes{};
+    std::memcpy(InstrBytes.data(), Bytes + PC, InstrSize);
+
+    if (ShoulOutputEncoding)
+      PrintEncoding(PC, InstrBytes);
+
+    std::array<char, OutStringSize> OutString{};
+    size_t NumRead =
+        LLVMDisasmInstruction(DCR, InstrBytes.data(), InstrBytes.size(),
+                              /*PC=*/0, OutString.data(), OutString.size());
+
+    // We are inside the instructions section, i.e before the constants.
+    // Figure out if the current octet is the real instruction, or a
+    // zero-filled padding.
+    if (!NumRead) {
+      if (std::all_of(InstrBytes.begin(), InstrBytes.end(),
+                      [](uint8_t Byte) { return Byte == 0; })) {
+        FOS << (FoundMetadata ? "\t<unknown>" : "\t<padding>");
+      } else {
+        FoundMetadata = true;
+        FOS << "\t<metadata>";
+      }
+    } else {
+      FOS << OutString.data();
+      // Check if the instruction contains a code reference. If so,
+      // extract the word number and add it to the WordRefs set.
+      SmallVector<StringRef, 3> Matches;
+      if (CodeRegex.match(OutString.data(), &Matches)) {
+        uint64_t WordNum = 0;
+        // Match Idx = 0 corresponds to whole pattern, Idx = 1
+        // to an optional register and Idx = 2 to the displacement.
+        to_integer<uint64_t>(Matches[2], WordNum, /*Base=*/10);
+        ConstantSectionStart = std::min(ConstantSectionStart, WordNum);
+      }
+    }
+    FOS << '\n';
+
+    PC += InstrSize;
+    // If we are at the word boundary and the word is being referenced,
+    // this is a beginning of the constant section, so break the cycle.
+    if (!(PC % WordSize) && ConstantSectionStart == PC / WordSize)
+      break;
+  }
+
+#ifndef NDEBUG
+  if (ConstantSectionStart != std::numeric_limits<uint64_t>::max())
+    assert(PC == ConstantSectionStart * WordSize);
+#endif
+
+  while (PC + WordSize <= BytesNum) {
+    uint64_t Word = PC / WordSize;
+    assert(PC % WordSize == 0);
+
+    // Emit the numeric label and the .cell directive.
+    FOS << std::to_string(Word) << ":\n";
+    FOS << "\t.cell ";
+
+    // Collect four octets constituting the word value.
+    SmallVector<uint8_t, 32> CellBytes(
+        llvm::make_range(Bytes + PC, Bytes + PC + WordSize));
+
+    // Emit the cell value as a signed integer.
+    llvm::SmallString<WordSize> CellHexStr;
+    llvm::toHex(llvm::ArrayRef<uint8_t>(CellBytes.data(), CellBytes.size()),
+                /*LowerCase=*/false, CellHexStr);
+    APInt CellInt(WordSize * 8, CellHexStr.str(), /*radix=*/16);
+    CellInt.print(OS, /*isSigned=*/true);
+    FOS << '\n';
+    PC += WordSize;
+  }
+  assert(PC == BytesNum);
+
+  *OutBuffer = LLVMCreateMemoryBufferWithMemoryRangeCopy(
+      Disassembly.data(), Disassembly.size(), "result");
+
+  LLVMDisasmDispose(DCR);
   return false;
 }
