@@ -953,8 +953,8 @@ def THROW : Pseudo<(outs), (ins GR256:$rs0, pred:$cc), [(EraVMthrow GR256:$rs0)]
 def : InstAlias<"ret${cc}", (RETr R1, pred:$cc)>;
 def : InstAlias<"rev${cc}", (REVERTr R1, pred:$cc)>;
 
-def : InstAlias<"retl${cc} $dest", (RETrl R1, jmptarget:$dest, pred:$cc)>;
-def : InstAlias<"revl${cc} $dest", (REVERTrl R1, jmptarget:$dest, pred:$cc)>;
+def : InstAlias<"retl${cc}\t$dest", (RETrl R1, jmptarget:$dest, pred:$cc)>;
+def : InstAlias<"revl${cc}\t$dest", (REVERTrl R1, jmptarget:$dest, pred:$cc)>;
 
 def : Pat<(EraVMreturn GR256:$rs0), (RETrl GR256:$rs0, (default_far_return 0))>;
 def : Pat<(EraVMrevert GR256:$rs0), (REVERTrl GR256:$rs0, (default_far_revert 0))>;
@@ -1052,7 +1052,7 @@ foreach Op = [OpFarcall, OpDelegate, OpMimic] in {
                       !strconcat(Op.Name, ".st.sh")>;
 }
 
-def : InstAlias<"call${cc} ${callee}",
+def : InstAlias<"call${cc}\t${callee}",
                 (NEAR_CALL_default_unwind R0, jmptarget:$callee, pred:$cc)>;
 
 def : Pat<(EraVMfarcall bb:$unwind), (FAR_CALLrrl R1, R2, bb:$unwind)>;
