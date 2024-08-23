@@ -3,11 +3,13 @@ include_directories(
   )
 
 set(LLVM_LINK_COMPONENTS
+  Core
   EraVM
   MC
   MCC
   Object
   Support
+  Target
   TargetParser
   )
 

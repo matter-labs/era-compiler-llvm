@@ -5,6 +5,7 @@ add_llvm_component_library(LLVMMCC
   AsmParser
   Core
   MC
+  MCDisassembler
   MCParser
   Object
   Support

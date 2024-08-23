@@ -469,8 +469,11 @@ void EraVMAsmPrinter::emitStartOfAsmFile(Module &M) {
     // initializers. The checks for linkage and the presense of an initilizer
     // are mainly to pass target independent LLVM IR tests.
     // The 'constant' globals go to .rodata section, so skip them.
+    // Only variables with the default address space (AS_STACK) should be
+    // initialized this way.
     if ((G.getLinkage() != GlobalValue::AvailableExternallyLinkage) &&
-        !G.isConstant() && G.hasInitializer())
+        !G.isConstant() && G.hasInitializer() &&
+        G.getAddressSpace() == EraVMAS::AS_STACK)
       NumStackElmsToReserve += createInitializeInsts(&G, InitInsts);
   }
 

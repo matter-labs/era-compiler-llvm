@@ -32,6 +32,19 @@ LLVMBool LLVMAssembleEraVM(LLVMTargetMachineRef T, LLVMMemoryBufferRef InBuffer,
 LLVMBool LLVMExceedsSizeLimitEraVM(LLVMMemoryBufferRef MemBuf,
                                    uint64_t MetadataSize);
 
+/** Disassembles the bytecode passed in \p InBuffer starting at
+ *  the offset \p PC. The result is returned via \p OutBuffer.
+ *  In case of an error the function returns 'true' and an error
+ *  message is passes via \p ErrorMessage. The message should be disposed
+ *  by LLVMDisposeMessage. **/
+LLVMBool LLVMDisassembleEraVM(LLVMTargetMachineRef T,
+                              LLVMMemoryBufferRef InBuffer, uint64_t PC,
+                              uint64_t Options, LLVMMemoryBufferRef *OutBuffer,
+                              char **ErrorMessage);
+
+/* The option to output offset and encoding of a instruction. */
+#define LLVMDisassemblerEraVM_Option_OutputEncoding 1
+
 LLVM_C_EXTERN_C_END
 
 #endif // LLVM_C_ASSEMBLER_H
