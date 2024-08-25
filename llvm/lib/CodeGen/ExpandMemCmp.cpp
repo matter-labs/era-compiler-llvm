@@ -537,7 +537,7 @@ void MemCmpExpansion::emitMemCmpResultBlock() {
                                   ResBlock.PhiSrc2);
 
   Value *Res =
-      Builder.CreateSelect(Cmp, Constant::getAllOnesValue(Builder.getInt32Ty()),
+      Builder.CreateSelect(Cmp, ConstantInt::get(Builder.getInt32Ty(), -1),
                            ConstantInt::get(Builder.getInt32Ty(), 1));
 
   PhiRes->addIncoming(Res, ResBlock.BB);

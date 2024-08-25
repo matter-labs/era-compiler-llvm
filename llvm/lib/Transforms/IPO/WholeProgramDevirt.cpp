@@ -1615,20 +1615,17 @@ Constant *DevirtModule::importConstant(VTableSlot Slot, ArrayRef<uint64_t> Args,
   if (GV->hasMetadata(LLVMContext::MD_absolute_symbol))
     return C;
 
-  auto SetAbsRange = [&](const APInt &Min, const APInt &Max) {
+  auto SetAbsRange = [&](uint64_t Min, uint64_t Max) {
     auto *MinC = ConstantAsMetadata::get(ConstantInt::get(IntPtrTy, Min));
     auto *MaxC = ConstantAsMetadata::get(ConstantInt::get(IntPtrTy, Max));
     GV->setMetadata(LLVMContext::MD_absolute_symbol,
                     MDNode::get(M.getContext(), {MinC, MaxC}));
   };
   unsigned AbsWidth = IntTy->getBitWidth();
-  unsigned IntPtrWidth = IntPtrTy->getBitWidth();
-  if (AbsWidth == IntPtrWidth)
-    // Full set.
-    SetAbsRange(APInt::getAllOnes(IntPtrWidth), APInt::getAllOnes(IntPtrWidth));
+  if (AbsWidth == IntPtrTy->getBitWidth())
+    SetAbsRange(~0ull, ~0ull); // Full set.
   else
-    SetAbsRange(APInt::getZero(IntPtrWidth),
-                APInt::getOneBitSet(IntPtrWidth, AbsWidth));
+    SetAbsRange(0, 1ull << AbsWidth);
   return C;
 }
 
@@ -1835,7 +1832,7 @@ bool DevirtModule::tryVirtualConstProp(
     }
 
     // Rewrite each call to a load from OffsetByte/OffsetBit.
-    Constant *ByteConst = ConstantInt::get(Int32Ty, OffsetByte, true);
+    Constant *ByteConst = ConstantInt::get(Int32Ty, OffsetByte);
     Constant *BitConst = ConstantInt::get(Int8Ty, 1ULL << OffsetBit);
     applyVirtualConstProp(CSByConstantArg.second,
                           TargetsForSlot[0].Fn->getName(), ByteConst, BitConst);
