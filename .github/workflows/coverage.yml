@@ -1,0 +1,116 @@
+name: Code coverage
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Mode filter for era-compiler-tester"
+        required: true
+        default: "0.8"
+      path:
+        description: "Path filter for era-compiler-tester"
+        required: true
+        default: "tests/solidity/complex/defi"
+
+defaults:
+  run:
+    shell: bash -ex {0}
+
+concurrency:
+  group: ${{ github.repository_id }}-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PROFDATA_FILE: zksolc.profdata
+  LCOV_FILE: codecov.lcov
+  OUTPUT_HTML_DIR: COVERAGE
+
+jobs:
+  run-with-coverage:
+    runs-on: [ci-runner-compiler, Linux]
+    container:
+      image: ghcr.io/matter-labs/zksync-llvm-runner:latest
+      options: -m 110g
+    env:
+      TARGET: x86_64-unknown-linux-gnu
+      RUSTC_BOOTSTRAP: 1
+      LATEST_SOLC_VERSION: 0.8
+      DEFAULT_BENCHMARKS_PATH: tests/solidity/complex/defi
+    steps:
+
+      - name: Checkout compiler-tester
+        uses: actions/checkout@v4
+        with:
+          ref: 'main'
+          repository: matter-labs/era-compiler-tester
+          submodules: recursive
+
+      - name: Checkout llvm
+        uses: actions/checkout@v4
+        with:
+          repository: matter-labs/era-compiler-llvm
+          path: llvm
+
+      - name: Build LLVM for tester
+        uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
+        with:
+          clone-llvm: false
+
+      - name: Build compiler-tester
+        run: |
+          cargo build --release --target ${TARGET} --bin 'compiler-tester'
+          rm -rf target-llvm
+
+      - name: Build LLVM with coverage
+        uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
+        with:
+          clone-llvm: false
+          enable-coverage: true
+
+      - name: Build compilers with coverage
+        env:
+          CARGO_CHECKOUT_DIR: /usr/local/cargo/git/checkouts
+          RUSTFLAGS: "-C instrument-coverage"
+        run: |
+          cargo build --target ${TARGET} \
+            --manifest-path ${CARGO_CHECKOUT_DIR}/era-compiler-solidity-*/*/Cargo.toml \
+            --target-dir './target-zksolc/'
+          cargo build --target ${TARGET} \
+            --manifest-path ${CARGO_CHECKOUT_DIR}/era-compiler-vyper-*/*/Cargo.toml \
+            --target-dir './target-zkvyper/'
+
+      - name: Run tests with coverage for EraVM
+        run: |
+          ./target/${TARGET}/release/compiler-tester \
+            --zksolc "./target-zksolc/${TARGET}/debug/zksolc" \
+            --zkvyper "./target-zksolc/${TARGET}/debug/zkvyper" \
+            --path '${{ inputs.path || env.DEFAULT_BENCHMARKS_PATH }}' \
+            --mode '${{ inputs.mode || env.LATEST_SOLC_VERSION }}' \
+            --workflow build
+
+      - name: Generate coverage reports
+        run: |
+          llvm-profdata merge -sparse -o ${PROFDATA_FILE} *.profraw
+          llvm-cov show --show-directory-coverage \
+            --format=html --output-dir=${OUTPUT_HTML_DIR} \
+            -instr-profile=${PROFDATA_FILE} ./target-zksolc/${TARGET}/debug/zksolc
+          llvm-cov export --format=lcov -instr-profile=${PROFDATA_FILE} \
+            ./target-zksolc/${TARGET}/debug/zksolc > ./llvm/${LCOV_FILE}
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'Coverage HTML'
+          path: ${{ env.OUTPUT_HTML_DIR}}
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        with:
+          working-directory: ${{ github.workspace }}/llvm # Mandatory if main repo is in different directory
+          directory: ${{ github.workspace }} # Mandatory if main repo is in different directory
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: ${{ env.LCOV_FILE }}
+          slug: ${{ github.repository }}
