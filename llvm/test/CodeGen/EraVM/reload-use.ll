@@ -420,6 +420,30 @@ define i256 @spill_select(i256 %a, i1 %cond) nounwind {
   ret i256 %res
 }
 
+; CHECK-LABEL: spill_selrrs1
+define void @spill_selrrs1(i256 %a, i1 %cond) nounwind {
+  %slot = alloca i256
+  %b = call i256 @foo()
+; CHECK: sub! stack-[1], r0, r0
+; CHECK: add r1, r0, stack-[3]
+; CHECK: add.ne stack-[2], r0, stack-[3]
+  %sel = select i1 %cond, i256 %a, i256 %b
+  store i256 %sel, i256* %slot
+  ret void
+}
+
+; CHECK-LABEL: spill_selrrs2
+define void @spill_selrrs2(i256 %a, i1 %cond) nounwind {
+  %slot = alloca i256
+  %b = call i256 @foo()
+; CHECK: sub! stack-[1], r0, r0
+; CHECK: add stack-[2], r0, stack-[3]
+; CHECK: add.ne r1, r0, stack-[3]
+  %sel = select i1 %cond, i256 %b, i256 %a
+  store i256 %sel, i256* %slot
+  ret void
+}
+
 ; ==============================================================================
 ; CHECK-LABEL: spill_multiple_use
 define void @spill_multiple_use(i256 %a) nounwind {
