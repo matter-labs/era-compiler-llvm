@@ -198,17 +198,21 @@ void EraVMCombineAddressingMode::mergeSelect(
       *Base.getParent(), Base, Base.getDebugLoc(),
       TII->get(IsIn0 ? In0Map[Base.getOpcode()] : In1Map[Base.getOpcode()]));
   EraVM::copyOperands(NewMI, Base.operands_begin(), EraVM::in0Iterator(Base));
-  if (IsIn0)
+  if (IsIn0) {
     EraVM::copyOperands(NewMI, In);
-  else
+    EraVM::copyOperands(NewMI, EraVM::in1Range(Base));
+  } else {
     EraVM::copyOperands(NewMI, EraVM::in0Range(Base));
-  if (!IsIn0)
     EraVM::copyOperands(NewMI, In);
-  else
-    EraVM::copyOperands(NewMI, EraVM::in1Iterator(Base),
-                        Base.operands_begin() + Base.getNumExplicitOperands() -
-                            1);
-  NewMI.add(Base.getOperand(Base.getNumExplicitOperands() - 1));
+  }
+
+  // Copy the rest of the operands. For select with register output it will be
+  // only condition code operand, whereas for stack output it will also be the
+  // output operand.
+  EraVM::copyOperands(NewMI,
+                      EraVM::in1Iterator(Base) +
+                          argumentSize(EraVM::ArgumentKind::In1, Base),
+                      Base.operands_begin() + Base.getNumExplicitOperands());
 }
 
 static bool areEqualStackSlots(MachineInstr::const_mop_iterator It1,

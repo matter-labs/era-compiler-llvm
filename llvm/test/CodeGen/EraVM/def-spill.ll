@@ -17,6 +17,36 @@ define i256 @spill_addr(i256 %a, i256 %b) nounwind {
   ret i256 %res
 }
 
+; CHECK-LABEL: spill_addr_selirs_use
+define i256 @spill_addr_selirs_use(i256 %a, i256 %b, i1 %cond) nounwind {
+  %slot = alloca i256
+  ; CHECK: add r1, r2, stack-[1]
+  %x = add i256 %a, %b
+  ; CHECK: sub! r3, r0, r0
+  ; CHECK: add stack-[1], r0, stack-[2]
+  ; CHECK: add.ne 1234, r0, stack-[2]
+  %sel = select i1 %cond, i256 1234, i256 %x
+  store i256 %sel, i256* %slot
+  %c = call i256 @foo()
+  %res = add i256 %x, %c
+  ret i256 %res
+}
+
+; CHECK-LABEL: spill_addr_selris_use
+define i256 @spill_addr_selris_use(i256 %a, i256 %b, i1 %cond) nounwind {
+  %slot = alloca i256
+  ; CHECK: add r1, r2, stack-[1]
+  %x = add i256 %a, %b
+  ; CHECK: sub! r3, r0, r0
+  ; CHECK: add 1234, r0, stack-[2]
+  ; CHECK: add.ne stack-[1], r0, stack-[2]
+  %sel = select i1 %cond, i256 %x, i256 1234
+  store i256 %sel, i256* %slot
+  %c = call i256 @foo()
+  %res = add i256 %x, %c
+  ret i256 %res
+}
+
 ; CHECK-LABEL: spill_addi
 define i256 @spill_addi(i256 %a) nounwind {
   ; TODO: CPR-1221 add 42, r2, stack-[1]
