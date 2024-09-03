@@ -22,7 +22,6 @@ LLVM_C_EXTERN_C_BEGIN
 /** Performs linkage operation of an object code via lld-as-a-library.
     Input/output files are transferred via memory buffers. */
 LLVMBool LLVMLinkEraVM(LLVMMemoryBufferRef inBuf, LLVMMemoryBufferRef *outBuf,
-                       const char *metadataPtr, uint64_t metadataSize,
                        char **ErrorMessage);
 LLVM_C_EXTERN_C_END
 
