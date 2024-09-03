@@ -7,4 +7,6 @@ target_link_libraries(EraVMLLDTests
   lldCommon
   lldC
   lldELF
+  LLVMObjCopy
+  LLVMObjCopyC
 )
