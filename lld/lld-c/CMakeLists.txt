@@ -5,6 +5,7 @@ add_lld_library(lldC
 
   LINK_COMPONENTS
   Core
+  Object
   Support
 
   LINK_LIBS

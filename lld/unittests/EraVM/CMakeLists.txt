@@ -13,5 +13,7 @@ target_link_libraries(EraVMLLDTests
   LLVMEraVMInfo
   LLVMEraVMDesc
   LLVMIRReader
+  LLVMObjCopy
+  LLVMObjCopyC
   LLVMTarget
 )
