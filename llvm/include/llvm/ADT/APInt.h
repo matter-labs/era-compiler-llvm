@@ -16,6 +16,9 @@
 #define LLVM_ADT_APINT_H
 
 #include "llvm/Support/Compiler.h"
+// EraVM local begin
+#include "llvm/Support/ErrorHandling.h"
+// EraVM local end
 #include "llvm/Support/MathExtras.h"
 #include <cassert>
 #include <climits>
@@ -113,13 +116,21 @@ public:
       : BitWidth(numBits) {
     if (!implicitTrunc) {
       if (BitWidth == 0) {
-        assert(val == 0 && "Value must be zero for 0-bit APInt");
+        // EraVM local begin
+        if (val != 0)
+          report_fatal_error("APInt error: Value must be zero for 0-bit APInt");
+        // EraVM local end
       } else if (isSigned) {
-        assert(llvm::isIntN(BitWidth, val) &&
-               "Value is not an N-bit signed value");
+        // EraVM local begin
+        if (!llvm::isIntN(BitWidth, val))
+          report_fatal_error("APInt error: Value is not an N-bit signed value");
+        // EraVM local end
       } else {
-        assert(llvm::isUIntN(BitWidth, val) &&
-               "Value is not an N-bit unsigned value");
+        // EraVM local begin
+        if (!llvm::isUIntN(BitWidth, val))
+          report_fatal_error(
+              "APInt error: Value is not an N-bit unsigned value");
+        // EraVM local end
       }
     }
     if (isSingleWord()) {

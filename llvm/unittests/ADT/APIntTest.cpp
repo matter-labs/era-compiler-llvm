@@ -3193,4 +3193,13 @@ TEST(APIntTest, TryExt) {
   ASSERT_EQ(42, APInt(128, -1).trySExtValue().value_or(42));
 }
 
+// EraVM local begin
+#ifdef GTEST_HAS_DEATH_TEST
+TEST(APIntTest, DiagnoseZExt) {
+  EXPECT_DEATH((void)APInt(32, -1, false),
+               "Value is not an N-bit unsigned value");
+}
+#endif
+// EraVM local end
+
 } // end anonymous namespace
