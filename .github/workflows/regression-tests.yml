@@ -17,6 +17,11 @@ on:
         default: 'Address'
         type: string
         description: 'A sanitizer to build LLVM with. Possible values are Address, Memory, MemoryWithOrigins, Undefined, Thread, DataFlow, and Address;Undefined'
+      enable-valgrind:
+        required: false
+        default: 'false'
+        type: string
+        description: 'Run LLVM regression tests under valgrind.'
 
 defaults:
   run:
@@ -170,6 +175,7 @@ jobs:
           clone-llvm: false
           ccache-key-type: 'static' # rotate ccache key every month
           sanitizer: ${{ inputs.llvm-sanitizer }}
+          enable-valgrind: ${{ inputs.enable-valgrind }}
 
       # `verify-llvm` is a special target that runs all the regression tests
       # it includes `check-llvm` and special codegen tests

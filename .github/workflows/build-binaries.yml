@@ -34,6 +34,11 @@ on:
         required: false
         type: boolean
         default: true
+      enable-valgrind:
+        required: false
+        default: 'false'
+        type: string
+        description: 'Run LLVM regression tests under valgrind.'
 
 
 jobs:
@@ -91,6 +96,7 @@ jobs:
           clone-llvm: false
           ccache-key-type: 'static'
           save-ccache: ${{ matrix.name == 'Linux x86' }}
+          enable-valgrind: ${{ inputs.enable-valgrind }}
 
       # Required to keep executable permissions for binaries
       - name: Prepare tarball
