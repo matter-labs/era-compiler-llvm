@@ -55,7 +55,7 @@ jobs:
           WINDOWS='{"name":"Windows","runner":"windows-2022-github-hosted-64core"}'
           MACOS_AMD64='{"name":"MacOS-x86","runner":"macos-12-large"}'
           MACOS_ARM64='{"name":"MacOS-arm64","runner":["self-hosted","macOS","ARM64"]}'
-          LINUX_AMD64='{"name":"Linux-AMD64","runner":"matterlabs-ci-runner","image":"ghcr.io/matter-labs/zksync-llvm-runner:latest"}'
+          LINUX_AMD64='{"name":"Linux-AMD64","runner":"matterlabs-ci-runner-high-performance","image":"ghcr.io/matter-labs/zksync-llvm-runner:latest"}'
           LINUX_ARM64='{"name":"Linux-ARM64","runner":"matterlabs-ci-runner-arm","image":"ghcr.io/matter-labs/zksync-llvm-runner:latest"}'
           # Disable platforms for non-tag builds if user requested
           if [ ${GITHUB_EVENT_NAME} = workflow_dispatch ]; then
