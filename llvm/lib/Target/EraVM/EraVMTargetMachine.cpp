@@ -319,6 +319,8 @@ void EraVMPassConfig::addPreSched2() {
 }
 
 void EraVMPassConfig::addPreEmitPass() {
+  if (getOptLevel() != CodeGenOptLevel::None)
+    addPass(createMachineCopyPropagationPass(true));
   addPass(createEraVMCombineAddressingModePass());
   addPass(createEraVMExpandSelectPass());
   addPass(createEraVMOptimizeSelectPostRAPass());
