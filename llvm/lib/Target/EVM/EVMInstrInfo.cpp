@@ -35,7 +35,8 @@ bool EVMInstrInfo::isReallyTriviallyReMaterializable(
 void EVMInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                MachineBasicBlock::iterator I,
                                const DebugLoc &DL, MCRegister DestReg,
-                               MCRegister SrcReg, bool KillSrc) const {
+                               MCRegister SrcReg, bool KillSrc,
+                               bool RenamableDest, bool RenamableSrc) const {
   // This method is called by post-RA expansion, which expects only
   // phys registers to exist. However we expect only virtual here.
   assert(Register::isVirtualRegister(DestReg) &&
