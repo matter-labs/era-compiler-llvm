@@ -19,9 +19,12 @@
 
 #include "EraVM.h"
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/Analysis/LoopInfo.h"
+#include "llvm/IR/Dominators.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/PatternMatch.h"
+#include "llvm/InitializePasses.h"
 
 using namespace llvm;
 using namespace llvm::PatternMatch;
@@ -29,6 +32,14 @@ using namespace llvm::PatternMatch;
 #define DEBUG_TYPE "eravm-post-codegen-prepare"
 #define ERAVM_POST_CODEGEN_PREPARE_NAME                                        \
   "EraVM optimizations after CodeGenPrepare pass"
+
+static cl::opt<bool> EnableSplitLoopPHILiveRanges(
+    "eravm-enable-split-loop-phi-live-ranges", cl::Hidden, cl::init(true),
+    cl::desc("Enable splitting live ranges of PHI nodes in loops"));
+
+static cl::opt<unsigned> NumOfPHIUsesToSplitLiveRanges(
+    "eravm-num-of-phi-uses-to-split-live-ranges", cl::Hidden, cl::init(20),
+    cl::desc("Number of uses of PHI node to consider splitting live ranges"));
 
 namespace {
 struct EraVMPostCodegenPrepare : public FunctionPass {
@@ -44,6 +55,9 @@ public:
   }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<DominatorTreeWrapperPass>();
+    AU.addRequired<LoopInfoWrapperPass>();
+    AU.addPreserved<LoopInfoWrapperPass>();
     FunctionPass::getAnalysisUsage(AU);
   }
 };
@@ -303,7 +317,229 @@ static bool rearrangeOverflowHandlingBranches(Function &F) {
   return Changed;
 }
 
-static bool runImpl(Function &F) {
+struct InstSplitInfo {
+  using InstInfo = std::pair<Instruction *, APInt>;
+  // Vector of instructions with their original constant operand.
+  SmallVector<InstInfo, 4> Insts;
+  // Index of the last instruction that will be used to split the live range
+  // in the dominatee blocks.
+  uint64_t LastSplitIdx = UINT64_MAX;
+
+  // Add instruction and update the last split index if needed.
+  void addInst(Instruction *I) {
+    assert(isa<ConstantInt>(I->getOperand(1)) && "Expected constant operand");
+
+    // Update the index if this instruction is closer to the end of the block.
+    if (LastSplitIdx == UINT64_MAX ||
+        !I->comesBefore(Insts[LastSplitIdx].first))
+      LastSplitIdx = Insts.size();
+
+    Insts.push_back({I, cast<ConstantInt>(I->getOperand(1))->getValue()});
+  }
+
+  // Get the last instruction that will be used to split the live range.
+  InstInfo &getLastSplitInst() {
+    assert(LastSplitIdx < Insts.size() && "Expected valid index");
+    return Insts[LastSplitIdx];
+  }
+};
+
+// Update operands of instruction in InstInfo with the instruction in
+// DomInstInfo. Basically, we are doing the following transformation:
+//   %Dominator = add %In, DomImm
+//   %I         = add %In, Imm
+// to
+//   %Dominator = add %In, DomImm
+//   %I         = add %Dominator, Imm - DomImm
+void updateInstOperands(InstSplitInfo::InstInfo &InstInfo,
+                        InstSplitInfo::InstInfo &DomInstInfo,
+                        const DominatorTree &DT) {
+  auto [Inst, Imm] = InstInfo;
+  auto [DomInst, DomImm] = DomInstInfo;
+  assert(DT.dominates(DomInst, Inst) && "Expected dominator instruction");
+
+  Inst->setOperand(0, DomInst);
+  Inst->setOperand(1, ConstantInt::get(Inst->getType(), Imm - DomImm));
+
+  // TODO: Relax this check, since we don't need to drop poison
+  // flags in all cases.
+  Inst->dropPoisonGeneratingFlags();
+}
+
+// This function splits PHI nodes live ranges, if users are add instructions
+// with a constant operand. This is useful for loops with large switch
+// statements where PHI nodes are used frequently, and we want to keep these
+// variables in a single register.
+// In case regalloc is not able to keep these variables in a single register,
+// we will get something like this in all cases of the switch where variable
+// is used:
+//   preheader:
+//     %r1 = def
+//   header:
+//     jump @JTI
+//   ...
+//   bb1:
+//     %r2 = add %r1, 1
+//     bcc bb2
+//   bb2:
+//     %r1 = copy %r2 <- regalloc is not able to keep variable in the same reg
+//     b latch
+//   ...
+//   latch:
+//     bcc header
+//
+// Ideally, we would like to have something like this:
+//   preheader:
+//     %r1 = def
+//   header:
+//     jump @JTI
+//   ...
+//   bb1:
+//     %r1 = add %r1, 1 <- regalloc managed to keep variable in the same reg
+//     bcc bb2
+//   bb2:
+//                      <- no need for copy instruction
+//     b latch
+//   ...
+//   latch:
+//     bcc header
+//
+// To help regalloc to try to preserve frequently used PHI nodes in a single
+// register we are finding add instructions with constant operands that are
+// users of the PHI, and changing first operand of the add instruction to the
+// nearest dominating add instruction while updating the constant operand. This
+// way, regalloc will have a better chance to keep the variable in the same
+// register, since we changed the intervals of the variable.
+// For example, we are transforming this:
+//   header:
+//     %phi = phi
+//     ...
+//   bb1:
+//     %add1 = add %phi, 64
+//     ...
+//     %add2 = add %phi, -64
+//     bcc bb2
+//   bb2:
+//     %add3 = add %phi, -32
+//     ...
+//     %add4 = add %phi, -96
+//     ...
+//     b latch
+//   latch:
+//     bcc header
+//
+// To this (where add3 and add4 are updated with the nearest dominating add,
+// which is add2):
+//   header:
+//     %phi = phi
+//     ...
+//   bb1:
+//     %add1 = add %phi, 64
+//     ...
+//     %add2 = add %phi, -64
+//     bcc bb2
+//   bb2:
+//     %add3 = add %add2, 32
+//     ...
+//     %add4 = add %add2, -32
+//     ...
+//     b latch
+//   latch:
+//     bcc header
+//
+// In order to do so, we are doing the following steps:
+//   1. Find all users of the PHI node in the loop that are add instructions
+//      with constant operands, and updating the index of the instruction that
+//      is closer to the end of the block. This instruction will be used to
+//      split ranges in the dominatee blocks.
+//   2. For each block, we are finding the nearest dominator block from which
+//      we can split the live range.
+//   3. Update the instructions in the block with the nearest dominator by
+//      changing the first operands to the dominator instruction and updating
+//      the constant operands.
+static bool splitPHILiveRange(PHINode &Phi, const LoopInfo &LI, const Loop &L,
+                              const DominatorTree &DT) {
+  assert(Phi.getParent() == L.getHeader() &&
+         "Expected PHI node in a loop header");
+  DomTreeNode *LoopHeaderNode = DT.getNode(L.getHeader());
+  if (!LoopHeaderNode)
+    return false;
+
+  DenseMap<BasicBlock *, InstSplitInfo> Splits;
+  for (auto *U : Phi.users()) {
+    // Only collect add instructions with constant operands.
+    auto *UI = cast<Instruction>(U);
+    if (!UI || UI->getOpcode() != Instruction::Add ||
+        !isa<ConstantInt>(UI->getOperand(1)) ||
+        LI.getLoopFor(UI->getParent()) != &L)
+      continue;
+    Splits[UI->getParent()].addInst(UI);
+  }
+
+  // If there are no at least two blocks, we can't split the live range,
+  // since we need dominator and dominatee blocks to do so.
+  if (Splits.size() < 2)
+    return false;
+
+  // Split ranges across blocks. This is done by finding the nearest
+  // dominator block, from which we can split the live range.
+  bool Changed = false;
+  for (auto &[BB, Infos] : Splits) {
+    DomTreeNode *Node = DT.getNode(BB);
+    if (!Node)
+      continue;
+
+    // Find the nearest dominator, from which we can split the live range.
+    InstSplitInfo::InstInfo *NearestDominator = nullptr;
+    while ((Node = Node->getIDom())) {
+      auto I = Splits.find(Node->getBlock());
+      if (I != Splits.end()) {
+        // We found the nearest dominator block, so take the last
+        // instruction from it.
+        NearestDominator = &I->second.getLastSplitInst();
+        break;
+      }
+
+      // Bail out if we reached the start of the loop.
+      if (Node == LoopHeaderNode)
+        break;
+    }
+
+    // If we didn't find any dominator, skip this BB.
+    if (!NearestDominator)
+      continue;
+
+    // Update instructions in the block with the nearest dominator.
+    for (auto &Info : Infos.Insts)
+      updateInstOperands(Info, *NearestDominator, DT);
+
+    // TODO: Relax this check, since we don't need to drop poison
+    // flags in all cases.
+    NearestDominator->first->dropPoisonGeneratingFlags();
+    Changed = true;
+  }
+  return Changed;
+}
+
+// This optimization tries to split live ranges of PHI nodes in a loop,
+// with a large number of users.
+static bool splitLoopPHILiveRanges(Function &F, LoopInfo &LI,
+                                   DominatorTree &DT) {
+  if (!EnableSplitLoopPHILiveRanges)
+    return false;
+
+  bool Changed = false;
+  for (auto *L : LI) {
+    for (auto &Phi : L->getHeader()->phis()) {
+      if (Phi.getNumUses() <= NumOfPHIUsesToSplitLiveRanges)
+        continue;
+      Changed |= splitPHILiveRange(Phi, LI, *L, DT);
+    }
+  }
+  return Changed;
+}
+
+static bool runImpl(Function &F, LoopInfo &LI, DominatorTree &DT) {
   bool Changed = false;
   for (auto &BB : F) {
     for (auto &I : llvm::make_early_inc_range(BB)) {
@@ -320,6 +556,7 @@ static bool runImpl(Function &F) {
     }
   }
 
+  Changed |= splitLoopPHILiveRanges(F, LI, DT);
   Changed |= rearrangeOverflowHandlingBranches(F);
   return Changed;
 }
@@ -327,13 +564,20 @@ static bool runImpl(Function &F) {
 bool EraVMPostCodegenPrepare::runOnFunction(Function &F) {
   if (skipFunction(F))
     return false;
-  return runImpl(F);
+
+  auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
+  auto &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
+  return runImpl(F, LI, DT);
 }
 
 char EraVMPostCodegenPrepare::ID = 0;
 
-INITIALIZE_PASS(EraVMPostCodegenPrepare, DEBUG_TYPE,
-                ERAVM_POST_CODEGEN_PREPARE_NAME, false, false)
+INITIALIZE_PASS_BEGIN(EraVMPostCodegenPrepare, DEBUG_TYPE,
+                      ERAVM_POST_CODEGEN_PREPARE_NAME, false, false)
+INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
+INITIALIZE_PASS_END(EraVMPostCodegenPrepare, DEBUG_TYPE,
+                    ERAVM_POST_CODEGEN_PREPARE_NAME, false, false)
 
 FunctionPass *llvm::createEraVMPostCodegenPreparePass() {
   return new EraVMPostCodegenPrepare();
@@ -341,7 +585,9 @@ FunctionPass *llvm::createEraVMPostCodegenPreparePass() {
 
 PreservedAnalyses
 EraVMPostCodegenPreparePass::run(Function &F, FunctionAnalysisManager &AM) {
-  if (runImpl(F))
+  auto &LI = AM.getResult<LoopAnalysis>(F);
+  auto &DT = AM.getResult<DominatorTreeAnalysis>(F);
+  if (runImpl(F, LI, DT))
     return PreservedAnalyses::none();
   return PreservedAnalyses::all();
 }
