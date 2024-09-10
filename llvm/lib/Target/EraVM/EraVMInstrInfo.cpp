@@ -605,13 +605,15 @@ MachineInstr *EraVMInstrInfo::insertDecSP(MachineBasicBlock &MBB,
 void EraVMInstrInfo::copyPhysReg(MachineBasicBlock &MBB,
                                  MachineBasicBlock::iterator I,
                                  const DebugLoc &DL, MCRegister DestReg,
-                                 MCRegister SrcReg, bool KillSrc) const {
+                                 MCRegister SrcReg, bool KillSrc,
+                                 bool RenamableDest, bool RenamableSrc) const {
   unsigned opcode = I->getFlag(MachineInstr::MIFlag::IsFatPtr)
                         ? EraVM::PTR_ADDrrr_s
                         : EraVM::ADDrrr_s;
 
   BuildMI(MBB, I, DL, get(opcode), DestReg)
-      .addReg(SrcReg, getKillRegState(KillSrc))
+      .addReg(SrcReg,
+              getKillRegState(KillSrc) | getRenamableRegState(RenamableSrc))
       .addReg(EraVM::R0)
       .addImm(EraVMCC::COND_NONE);
 }
