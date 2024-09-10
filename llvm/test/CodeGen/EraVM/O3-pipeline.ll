@@ -200,6 +200,7 @@ target triple = "eravm"
 ; CHECK-NEXT:       Branch Probability Basic Block Placement
 ; CHECK-NEXT:       Insert fentry calls
 ; CHECK-NEXT:       Insert XRay ops
+; CHECK-NEXT:       Machine Copy Propagation Pass
 ; CHECK-NEXT:       ReachingDefAnalysis
 ; CHECK-NEXT:       MachineDominator Tree Construction
 ; CHECK-NEXT:       EraVM combine instuctions to use complex addressing modes

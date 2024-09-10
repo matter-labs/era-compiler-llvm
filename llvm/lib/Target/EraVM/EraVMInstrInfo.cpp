@@ -732,6 +732,16 @@ EraVMCC::CondCodes EraVMInstrInfo::getCCCode(const MachineInstr &MI) const {
   return EraVMCC::COND_INVALID;
 }
 
+std::optional<DestSourcePair>
+EraVMInstrInfo::isCopyInstrImpl(const MachineInstr &MI) const {
+  if (MI.getOpcode() == EraVM::ADDrrr_s &&
+      MI.getOperand(2).getReg() == EraVM::R0 &&
+      getCCCode(MI) == EraVMCC::COND_NONE) {
+    return DestSourcePair{MI.getOperand(0), MI.getOperand(1)};
+  }
+  return std::nullopt;
+}
+
 /// Return whether outlining candidate ends with a tail call. This is true only
 /// if it is a terminator that ends function, call to outlined function that
 /// ends with a tail call, or call to a no return function.

@@ -406,6 +406,9 @@ public:
   // return true if the update is successful
   bool updateCCCode(MachineInstr &MI, EraVMCC::CondCodes CC) const;
 
+  std::optional<DestSourcePair>
+  isCopyInstrImpl(const MachineInstr &MI) const override;
+
   unsigned defaultOutlineReruns() const override { return 5; }
 
   bool shouldOutlineFromFunctionByDefault(MachineFunction &MF) const override;
