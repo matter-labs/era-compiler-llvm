@@ -7,8 +7,7 @@ target triple = "eravm"
 define i256 @test(i256 %dummy, ptr addrspace(3) %0) {
 ; CHECK-LABEL: test:
 ; CHECK:       ; %bb.0:
-; CHECK-NEXT:    add r2, r0, r1
-; CHECK-NEXT:    and 255, r1, r1
+; CHECK-NEXT:    and 255, r2, r1
 ; CHECK-NEXT:    ret
   %ptrtoint = ptrtoint ptr addrspace(3) %0 to i256
   %and = and i256 %ptrtoint, 255
