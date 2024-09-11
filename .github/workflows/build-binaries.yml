@@ -34,11 +34,21 @@ on:
         required: false
         type: boolean
         default: true
+      run_regression_tests:
+        description: "Run regression tests?"
+        required: false
+        type: boolean
+        default: false
       enable-valgrind:
         required: false
-        default: 'false'
-        type: string
-        description: 'Run LLVM regression tests under valgrind.'
+        default: false
+        type: boolean
+        description: 'Enable valgrind for regression tests?'
+      enable_assertions:
+        description: "Enable assertions?"
+        required: false
+        type: boolean
+        default: true
 
 
 jobs:
@@ -52,7 +62,7 @@ jobs:
         id: prepare-matrix
         run: |
           # Define general matrix parameters
-          WINDOWS='{"name":"Windows","runner":"windows-2022-github-hosted-64core"}'
+          WINDOWS='{"name":"Windows-x86","runner":"windows-2019-github-hosted-64core"}'
           MACOS_AMD64='{"name":"MacOS-x86","runner":"macos-12-large"}'
           MACOS_ARM64='{"name":"MacOS-arm64","runner":["self-hosted","macOS","ARM64"]}'
           LINUX_AMD64='{"name":"Linux-AMD64","runner":"matterlabs-ci-runner-high-performance","image":"ghcr.io/matter-labs/zksync-llvm-runner:latest"}'
@@ -92,7 +102,7 @@ jobs:
         uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
         with:
           enable-tests: true
-          enable-assertions: true
+          enable-assertions: ${{ inputs.enable_assertions }}
           clone-llvm: false
           ccache-key-type: 'static'
           save-ccache: ${{ matrix.name == 'Linux x86' }}
@@ -107,3 +117,43 @@ jobs:
         with:
           name: llvm-bins-${{ runner.os }}-${{ runner.arch }}
           path: ./${{ runner.os }}-${{ runner.arch }}-target-final.tar.gz
+
+      # On Windows, run `llvm-lit` directly with xfail parameter
+      # due to different incompatibilities in tests and MSYS2 environment
+      - name: Lit tests (Windows)
+        if: ${{ (inputs.run_regression_tests || github.event_name == 'schedule') && runner.os == 'Windows' }}
+        shell: 'msys2 {0}'
+        env:
+          LLVM_XFAILS:
+            "Object/archive-big-read.test;\
+             Object/archive-extract.test;\
+             Object/archive-toc.test;\
+             TableGen/x86-fold-tables.td;\
+             tools/llvm-ar/empty-uid-gid.test;\
+             tools/llvm-cov/native_separators.c;\
+             tools/llvm-libtool-darwin/deterministic-library.test;\
+             tools/llvm-nm/invalid-tapi-files.test;\
+             tools/llvm-nm/tapi-files.test;\
+             tools/llvm-objcopy/ELF/deterministic-archive.test;\
+             tools/llvm-ranlib/D-flag.test;\
+             tools/llvm-tapi-diff/v5.test"
+          LLD_XFAILS:
+            "MachO/double-unwind-info.s;\
+             MachO/error-limit.test;\
+             MachO/local-private-extern.yaml"
+        run: |
+          ./target-llvm/build-final/bin/llvm-lit.py -sv ./target-llvm/build-final/test --xfail ${LLVM_XFAILS}
+          ./target-llvm/build-final/bin/llvm-lit.py -sv ./target-llvm/build-final/tools/lld/test --xfail ${LLD_XFAILS}
+
+      - name: Lit tests (MacOS/Linux)
+        if: ${{ (inputs.run_regression_tests || github.event_name == 'schedule') && runner.os != 'Windows' }}
+        run: ninja -C './target-llvm/build-final' verify-llvm -v
+
+      - name: Send Slack notification
+        uses: 8398a7/action-slack@v3
+        if: failure() && github.event_name == 'schedule'
+        with:
+          status: ${{ job.status }}
+          fields: repo,commit,author,action,eventName,ref,workflow,job,took
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
