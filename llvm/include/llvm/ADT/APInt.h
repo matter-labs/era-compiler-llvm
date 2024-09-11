@@ -130,6 +130,9 @@ public:
         if (!llvm::isUIntN(BitWidth, val))
           report_fatal_error(
               "APInt error: Value is not an N-bit unsigned value");
+        if (BitWidth > 64)
+          if (static_cast<int64_t>(val) < 0)
+            report_fatal_error("Potential zext of a signed value");
         // EraVM local end
       }
     }
