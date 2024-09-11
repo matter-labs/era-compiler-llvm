@@ -175,6 +175,10 @@ void EraVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
           PM.addPass(EraVMCSEPass());
           return true;
         }
+        if (PassName == "eravm-post-codegen-prepare") {
+          PM.addPass(EraVMPostCodegenPreparePass());
+          return true;
+        }
         return false;
       });
 

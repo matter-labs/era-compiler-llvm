@@ -39,21 +39,6 @@ public:
   }
   bool runOnFunction(Function &F) override;
 
-  // This function is an optimization for overflow arithmetic intrinsics.
-  // For every branch that utilizes the overflow i1 output of the
-  // intrinsic, it does two things:
-  // 1. make sure FBB is adjacent to the branch in layout. This is
-  //    required to make sure ISEL not going to flip the branch
-  //    condition by adding XOR to the result. ISEL does this to create a
-  //    fallthrough optimization opportunity for MachineBlockPlacement pass.
-  //    In ISEL we have a specific pattern to match so that we can custom lower
-  //    the overflow handling, so we do not want ISEL do extra work for us.
-  // 2. move TBB out of the way to cold section. This is needed to achieve
-  //    good code sequence for non-overflow handling.
-  //    This is done by giving minimal probability to TBB so that
-  //    MachineBlockPlacement pass will rearrange it to cold section.
-  bool rearrangeOverflowHandlingBranches(Function &F);
-
   StringRef getPassName() const override {
     return ERAVM_POST_CODEGEN_PREPARE_NAME;
   }
@@ -216,27 +201,6 @@ static bool optimizeBranch(BranchInst *Branch) {
   return false;
 }
 
-bool EraVMPostCodegenPrepare::runOnFunction(Function &F) {
-  bool Changed = false;
-  for (auto &BB : F) {
-    for (auto &I : llvm::make_early_inc_range(BB)) {
-      switch (I.getOpcode()) {
-      default:
-        break;
-      case Instruction::ICmp:
-        Changed |= optimizeICmp(cast<ICmpInst>(I));
-        break;
-      case Instruction::Br:
-        Changed |= optimizeBranch(cast<BranchInst>(&I));
-        break;
-      }
-    }
-  }
-
-  Changed |= rearrangeOverflowHandlingBranches(F);
-  return Changed;
-}
-
 static bool isUnsignedArithmeticOverflowInstruction(Instruction &I) {
   auto *Call = dyn_cast<CallInst>(&I);
   if (!Call)
@@ -250,7 +214,20 @@ static bool isUnsignedArithmeticOverflowInstruction(Instruction &I) {
   return true;
 }
 
-bool EraVMPostCodegenPrepare::rearrangeOverflowHandlingBranches(Function &F) {
+// This function is an optimization for overflow arithmetic intrinsics.
+// For every branch that utilizes the overflow i1 output of the
+// intrinsic, it does two things:
+// 1. make sure FBB is adjacent to the branch in layout. This is
+//    required to make sure ISEL not going to flip the branch
+//    condition by adding XOR to the result. ISEL does this to create a
+//    fallthrough optimization opportunity for MachineBlockPlacement pass.
+//    In ISEL we have a specific pattern to match so that we can custom lower
+//    the overflow handling, so we do not want ISEL do extra work for us.
+// 2. move TBB out of the way to cold section. This is needed to achieve
+//    good code sequence for non-overflow handling.
+//    This is done by giving minimal probability to TBB so that
+//    MachineBlockPlacement pass will rearrange it to cold section.
+static bool rearrangeOverflowHandlingBranches(Function &F) {
   bool Changed = false;
   // iterate over all basic blocks:
   auto BBI = F.begin();
@@ -326,6 +303,33 @@ bool EraVMPostCodegenPrepare::rearrangeOverflowHandlingBranches(Function &F) {
   return Changed;
 }
 
+static bool runImpl(Function &F) {
+  bool Changed = false;
+  for (auto &BB : F) {
+    for (auto &I : llvm::make_early_inc_range(BB)) {
+      switch (I.getOpcode()) {
+      default:
+        break;
+      case Instruction::ICmp:
+        Changed |= optimizeICmp(cast<ICmpInst>(I));
+        break;
+      case Instruction::Br:
+        Changed |= optimizeBranch(cast<BranchInst>(&I));
+        break;
+      }
+    }
+  }
+
+  Changed |= rearrangeOverflowHandlingBranches(F);
+  return Changed;
+}
+
+bool EraVMPostCodegenPrepare::runOnFunction(Function &F) {
+  if (skipFunction(F))
+    return false;
+  return runImpl(F);
+}
+
 char EraVMPostCodegenPrepare::ID = 0;
 
 INITIALIZE_PASS(EraVMPostCodegenPrepare, DEBUG_TYPE,
@@ -333,4 +337,11 @@ INITIALIZE_PASS(EraVMPostCodegenPrepare, DEBUG_TYPE,
 
 FunctionPass *llvm::createEraVMPostCodegenPreparePass() {
   return new EraVMPostCodegenPrepare();
+}
+
+PreservedAnalyses
+EraVMPostCodegenPreparePass::run(Function &F, FunctionAnalysisManager &AM) {
+  if (runImpl(F))
+    return PreservedAnalyses::none();
+  return PreservedAnalyses::all();
 }
