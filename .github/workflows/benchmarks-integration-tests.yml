@@ -99,7 +99,7 @@ jobs:
         shell: bash -ex {0}
         run: |
           if [[ "${{ join(steps.*.outputs.*) }}" == "" ]]; then
-            echo "machine=default" | tee -a "${GITHUB_OUTPUT}"
+            echo "machine=eravm" | tee -a "${GITHUB_OUTPUT}"
           fi
 
   # Benchmarks workflow call from the era-compiler-ci repository
