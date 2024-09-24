@@ -85,6 +85,7 @@ jobs:
       - name: Run tests with coverage for EraVM
         run: |
           ./target/${TARGET}/release/compiler-tester \
+            --target "${TARGET}" \
             --zksolc "./target-zksolc/${TARGET}/debug/zksolc" \
             --zkvyper "./target-zksolc/${TARGET}/debug/zkvyper" \
             --path '${{ inputs.path || env.DEFAULT_BENCHMARKS_PATH }}' \

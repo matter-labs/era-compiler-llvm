@@ -1,8 +1,14 @@
-name: Build LLVM binaries
+name: Scheduled build
+
+# This workflow is triggered by a schedule or manually
+# It allows to build LLVM, run regression tests and integration tests
+# for all supported platforms by user's choice
+# It also allows to enable assertions and/or valgrind for regression tests
+# and regenerates ccache
 
 on:
   schedule:
-    - cron: '0 0 1 * *' # every month to regenerate ccache
+    - cron: '0 0 * * 0' # every week
   workflow_dispatch:
     inputs:
       ref:
@@ -39,6 +45,11 @@ on:
         required: false
         type: boolean
         default: false
+      run_integration_tests:
+        description: "Run integration tests?"
+        required: false
+        type: boolean
+        default: false
       enable-valgrind:
         required: false
         default: false
@@ -62,7 +73,8 @@ jobs:
         id: prepare-matrix
         run: |
           # Define general matrix parameters
-          WINDOWS='{"name":"Windows-x86","runner":"windows-2019-github-hosted-64core"}'
+          # Windows is not supported yet on era-compiler-tester side
+          # WINDOWS='{"name":"Windows-x86","runner":"windows-2019-github-hosted-64core"}'
           MACOS_AMD64='{"name":"MacOS-x86","runner":"macos-12-large"}'
           MACOS_ARM64='{"name":"MacOS-arm64","runner":["self-hosted","macOS","ARM64"]}'
           LINUX_AMD64='{"name":"Linux-AMD64","runner":"matterlabs-ci-runner-high-performance","image":"ghcr.io/matter-labs/zksync-llvm-runner:latest"}'
@@ -77,6 +89,19 @@ jobs:
           fi
           PLATFORMS=(${WINDOWS} ${MACOS_AMD64} ${MACOS_ARM64} ${LINUX_AMD64} ${LINUX_ARM64})
           echo "matrix={ \"include\": [ $(IFS=, ; echo "${PLATFORMS[*]}") ] }" | tee -a "${GITHUB_OUTPUT}"
+
+
+  integration-tests:
+    needs: prepare-matrix
+    uses: matter-labs/era-compiler-ci/.github/workflows/integration-tests.yaml@main
+    secrets: inherit
+    if: ${{ inputs.run_integration_tests || github.event_name == 'schedule' }}
+    with:
+      ccache-key-type: 'static' # rotate ccache key every month
+      llvm-ref: ${{ inputs.ref }}
+      target-machine: 'eravm' # TODO: add `evm` target when LLVM EVM BE is ready
+      platforms-matrix: ${{ needs.prepare-matrix.outputs.matrix }}
+
 
   build:
     needs: prepare-matrix
