@@ -130,7 +130,7 @@ jobs:
   # If you would like to make a change to the integration tests workflow, please do it in the era-compiler-ci repository
   integration-tests:
     needs: [compiler-tester-ref, target-machine]
-    uses: matter-labs/era-compiler-ci/.github/workflows/integration-tests.yaml@v1
+    uses: matter-labs/era-compiler-ci/.github/workflows/integration-tests.yaml@aba-fix-job-url
     secrets: inherit
     strategy:
       fail-fast: false
