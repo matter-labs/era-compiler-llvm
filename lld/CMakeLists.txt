@@ -187,6 +187,8 @@ include_directories(BEFORE
   ${CMAKE_CURRENT_SOURCE_DIR}/include
   )
 
+
+add_subdirectory(lld-c)
 add_subdirectory(Common)
 add_subdirectory(tools/lld)
 
