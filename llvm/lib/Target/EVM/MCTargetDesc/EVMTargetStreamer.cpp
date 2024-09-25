@@ -11,6 +11,9 @@
 //===----------------------------------------------------------------------===//
 
 #include "MCTargetDesc/EVMTargetStreamer.h"
+#include "llvm/BinaryFormat/ELF.h"
+#include "llvm/MC/MCSymbolELF.h"
+#include "llvm/Support/Casting.h"
 
 using namespace llvm;
 
@@ -18,7 +21,12 @@ using namespace llvm;
 
 EVMTargetStreamer::EVMTargetStreamer(MCStreamer &S) : MCTargetStreamer(S) {}
 
-EVMTargetStreamer::~EVMTargetStreamer() = default;
+void EVMTargetStreamer::emitLabel(MCSymbol *Symbol) {
+  // This is mostly a workaround for the current linking scheme.
+  // Mark all the symbols as local to their translation units.
+  auto *ELFSymbol = cast<MCSymbolELF>(Symbol);
+  ELFSymbol->setBinding(ELF::STB_LOCAL);
+}
 
 EVMTargetObjStreamer::EVMTargetObjStreamer(MCStreamer &S)
     : EVMTargetStreamer(S) {}

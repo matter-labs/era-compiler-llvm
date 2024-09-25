@@ -24,7 +24,8 @@ public:
   EVMTargetStreamer(EVMTargetStreamer &&) = delete;
   EVMTargetStreamer &operator=(const EVMTargetStreamer &) = delete;
   EVMTargetStreamer &operator=(EVMTargetStreamer &&) = delete;
-  ~EVMTargetStreamer() override;
+
+  void emitLabel(MCSymbol *Symbol) override;
 };
 
 /// This part is for ASCII assembly output

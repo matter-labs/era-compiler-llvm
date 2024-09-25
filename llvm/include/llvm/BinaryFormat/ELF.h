@@ -435,7 +435,7 @@ enum {
 
 // EVM local begin
 // ELF Relocation types for EVM
-enum {
+enum : uint8_t {
 #include "ELFRelocs/EVM.def"
 };
 // EVM local end
