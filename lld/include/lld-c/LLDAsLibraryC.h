@@ -123,6 +123,32 @@ char **LLVMGetUndefinedLinkerSymbolsEraVM(LLVMMemoryBufferRef inBuffer,
  *  LLVMGetUndefinedSymbolsEraVM(). */
 void LLVMDisposeUndefinedLinkerSymbolsEraVM(char *linkerSymbolNames[],
                                             uint64_t numLinkerSymbols);
+
+/** Links the deploy and runtime ELF object files using the information about
+ *  dependencies.
+ *  \p inBuffers - array of input memory buffers with following structure:
+ *
+ *   inBuffers[0] - deploy ELF object code
+ *   inBuffers[1] - deployed (runtime) ELF object code
+ *   --------------------------
+ *   inBuffers[2] - 1-st sub-contract (final EVM bytecode)
+ *   ...
+ *   inBuffers[N] - N-st sub-contract (final EVM bytecode)
+ *
+ *  Sub-contracts are optional. They should have the same ordering as in
+ *  the YUL layout.
+ *
+ *  \p inBuffersIDs - array of string identifiers of the buffers. IDs correspond
+ *  to the object names in the YUL layout.
+ *  On success, outBuffers[0] will contain the deploy bytecode and outBuffers[1]
+ *  the runtime bytecode.
+ *  In case of an error the function returns 'true' and the error message is
+ *  passes in \p errorMessage. The message should be disposed by
+ *  'LLVMDisposeMessage'. */
+LLVMBool LLVMLinkEVM(LLVMMemoryBufferRef *inBuffers, const char *inBuffersIDs[],
+                     uint64_t numInBuffers, LLVMMemoryBufferRef outBuffers[2],
+                     char **errorMessage);
+
 LLVM_C_EXTERN_C_END
 
 #endif // LLD_C_LLDASLIBRARYC_H
