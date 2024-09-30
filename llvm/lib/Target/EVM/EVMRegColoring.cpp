@@ -80,7 +80,7 @@ bool EVMRegColoring::runOnMachineFunction(MachineFunction &MF) {
   LiveIntervals *Liveness = &getAnalysis<LiveIntervalsWrapperPass>().getLIS();
   const MachineBlockFrequencyInfo *MBFI =
       &getAnalysis<MachineBlockFrequencyInfoWrapperPass>().getMBFI();
-  EVMFunctionInfo &MFI = *MF.getInfo<EVMFunctionInfo>();
+  EVMMachineFunctionInfo &MFI = *MF.getInfo<EVMMachineFunctionInfo>();
 
   // Gather all register intervals into a list and sort them.
   unsigned NumVRegs = MRI->getNumVirtRegs();
