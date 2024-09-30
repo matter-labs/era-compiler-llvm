@@ -268,7 +268,8 @@ static bool shouldRematerialize(const MachineInstr &Def,
 // TODO: Compute memory dependencies in a way that uses AliasAnalysis to be
 // more precise.
 static bool isSafeToMove(const MachineOperand *Def, const MachineOperand *Use,
-                         const MachineInstr *Insert, const EVMFunctionInfo &MFI,
+                         const MachineInstr *Insert,
+                         const EVMMachineFunctionInfo &MFI,
                          const MachineRegisterInfo &MRI) {
   const MachineInstr *DefI = Def->getParent();
   const MachineInstr *UseI = Use->getParent();
@@ -390,7 +391,7 @@ static void shrinkToUses(LiveInterval &LI, LiveIntervals &LIS) {
 static MachineInstr *moveForSingleUse(unsigned Reg, MachineOperand &Op,
                                       MachineInstr *Def, MachineBasicBlock &MBB,
                                       MachineInstr *Insert, LiveIntervals &LIS,
-                                      EVMFunctionInfo &MFI,
+                                      EVMMachineFunctionInfo &MFI,
                                       MachineRegisterInfo &MRI) {
   LLVM_DEBUG(dbgs() << "Move for single use: "; Def->dump());
 
@@ -430,8 +431,8 @@ static MachineInstr *moveForSingleUse(unsigned Reg, MachineOperand &Op,
 static MachineInstr *rematerializeCheapDef(
     unsigned Reg, MachineOperand &Op, MachineInstr &Def, MachineBasicBlock &MBB,
     MachineBasicBlock::instr_iterator Insert, LiveIntervals &LIS,
-    EVMFunctionInfo &MFI, MachineRegisterInfo &MRI, const EVMInstrInfo *TII,
-    const EVMRegisterInfo *TRI) {
+    EVMMachineFunctionInfo &MFI, MachineRegisterInfo &MRI,
+    const EVMInstrInfo *TII, const EVMRegisterInfo *TRI) {
   LLVM_DEBUG(dbgs() << "Rematerializing cheap def: "; Def.dump());
   LLVM_DEBUG(dbgs() << " - for use in "; Op.getParent()->dump());
 
@@ -593,7 +594,7 @@ bool EVMSingleUseExpression::runOnMachineFunction(MachineFunction &MF) {
 
   bool Changed = false;
   MachineRegisterInfo &MRI = MF.getRegInfo();
-  EVMFunctionInfo &MFI = *MF.getInfo<EVMFunctionInfo>();
+  EVMMachineFunctionInfo &MFI = *MF.getInfo<EVMMachineFunctionInfo>();
   const auto *TII = MF.getSubtarget<EVMSubtarget>().getInstrInfo();
   const auto *TRI = MF.getSubtarget<EVMSubtarget>().getRegisterInfo();
   auto &MDT = getAnalysis<MachineDominatorTree>();

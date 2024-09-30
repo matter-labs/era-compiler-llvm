@@ -14,11 +14,7 @@
 namespace llvm {
 namespace EVM {
 enum Fixups {
-  fixup_SecRel_i64 = FirstTargetFixupKind, // 64-bit unsigned
-  fixup_SecRel_i56,                        // 56-bit unsigned
-  fixup_SecRel_i48,                        // 48-bit unsigned
-  fixup_SecRel_i40,                        // 40-bit unsigned
-  fixup_SecRel_i32,                        // 32-bit unsigned
+  fixup_SecRel_i32 = FirstTargetFixupKind, // 32-bit unsigned
   fixup_SecRel_i24,                        // 24-bit unsigned
   fixup_SecRel_i16,                        // 16-bit unsigned
   fixup_SecRel_i8,                         // 8-bit unsigned

@@ -17,6 +17,8 @@
 #include "EVMTargetObjectFile.h"
 #include "EVMTargetTransformInfo.h"
 #include "TargetInfo/EVMTargetInfo.h"
+#include "llvm/CodeGen/MIRParser/MIParser.h"
+#include "llvm/CodeGen/MIRYamlMapping.h"
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/InitializePasses.h"
@@ -84,7 +86,26 @@ EVMTargetMachine::getTargetTransformInfo(const Function &F) const {
 MachineFunctionInfo *EVMTargetMachine::createMachineFunctionInfo(
     BumpPtrAllocator &Allocator, const Function &F,
     const TargetSubtargetInfo *STI) const {
-  return EVMFunctionInfo::create<EVMFunctionInfo>(Allocator, F, STI);
+  return EVMMachineFunctionInfo::create<EVMMachineFunctionInfo>(Allocator, F,
+                                                                STI);
+}
+
+yaml::MachineFunctionInfo *EVMTargetMachine::createDefaultFuncInfoYAML() const {
+  return new yaml::EVMMachineFunctionInfo();
+}
+
+yaml::MachineFunctionInfo *
+EVMTargetMachine::convertFuncInfoToYAML(const MachineFunction &MF) const {
+  const auto *MFI = MF.getInfo<EVMMachineFunctionInfo>();
+  return new yaml::EVMMachineFunctionInfo(*MFI);
+}
+
+bool EVMTargetMachine::parseMachineFunctionInfo(
+    const yaml::MachineFunctionInfo &MFI, PerFunctionMIParsingState &PFS,
+    SMDiagnostic &Error, SMRange &SourceRange) const {
+  const auto &YamlMFI = static_cast<const yaml::EVMMachineFunctionInfo &>(MFI);
+  PFS.MF.getInfo<EVMMachineFunctionInfo>()->initializeBaseYamlFields(YamlMFI);
+  return false;
 }
 
 void EVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {

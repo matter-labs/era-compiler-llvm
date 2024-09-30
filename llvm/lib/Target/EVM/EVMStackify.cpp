@@ -320,6 +320,8 @@ private:
   void peelPhysStack(StackType Type, unsigned NumItems, MachineBasicBlock *BB,
                      MIIter Pos);
 
+  void stackifyInstruction(MachineInstr *MI);
+
   static unsigned getDUPOpcode(unsigned Depth);
 
   static unsigned getSWAPOpcode(unsigned Depth);
@@ -724,10 +726,10 @@ void StackModel::handleLStackAtJump(MachineBasicBlock *MBB, MachineInstr *MI,
   // EVM::NoRegister.
   clearPhysStackAtInst(StackType::L, MI, Reg);
 
-  // Insert "PUSH8_LABEL %bb" instruction that should be be replaced with
+  // Insert "PUSH_LABEL %bb" instruction that should be be replaced with
   // the actual PUSH* one in the MC layer to contain actual jump target
   // offset.
-  BuildMI(*MI->getParent(), MI, DebugLoc(), TII->get(EVM::PUSH8_LABEL))
+  BuildMI(*MI->getParent(), MI, DebugLoc(), TII->get(EVM::PUSH_LABEL))
       .addMBB(MBB);
 
   // Add JUMPDEST at the beginning of the target MBB.
@@ -759,7 +761,7 @@ void StackModel::handleReturn(MachineInstr *MI) {
     ReturnRegs.push_back(MO.getReg());
   }
 
-  auto *MFI = MF->getInfo<EVMFunctionInfo>();
+  auto *MFI = MF->getInfo<EVMMachineFunctionInfo>();
   if (MFI->getNumParams() >= ReturnRegs.size()) {
     // Move the return registers to the stack location where
     // arguments were resided.
@@ -874,13 +876,12 @@ void StackModel::handleCall(MachineInstr *MI) {
   It->setPostInstrSymbol(*MF, RetSym);
 
   // Create push of the return address.
-  BuildMI(MBB, It, MI->getDebugLoc(), TII->get(EVM::PUSH8_LABEL))
-      .addSym(RetSym);
+  BuildMI(MBB, It, MI->getDebugLoc(), TII->get(EVM::PUSH_LABEL)).addSym(RetSym);
 
   // Create push of the callee's address.
   const MachineOperand *CalleeOp = MI->explicit_uses().begin();
   assert(CalleeOp->isGlobal());
-  BuildMI(MBB, It, MI->getDebugLoc(), TII->get(EVM::PUSH8_LABEL))
+  BuildMI(MBB, It, MI->getDebugLoc(), TII->get(EVM::PUSH_LABEL))
       .addGlobalAddress(CalleeOp->getGlobal());
 }
 
@@ -987,6 +988,29 @@ void StackModel::preProcess() {
   BuildMI(MBB, MBB.begin(), DebugLoc(), TII->get(EVM::JUMPDEST));
 }
 
+// Remove all registers operands of the \p MI and repaces the opcode with
+// the stack variant variant.
+void StackModel::stackifyInstruction(MachineInstr *MI) {
+  if (MI->isDebugInstr() || MI->isLabel() || MI->isInlineAsm())
+    return;
+
+  unsigned RegOpcode = MI->getOpcode();
+  if (RegOpcode == EVM::PUSH_LABEL)
+    return;
+
+  // Remove register operands.
+  for (unsigned I = MI->getNumOperands(); I > 0; --I) {
+    auto &MO = MI->getOperand(I - 1);
+    if (MO.isReg()) {
+      MI->removeOperand(I - 1);
+    }
+  }
+
+  // Transform 'register' instruction to the 'stack' one.
+  unsigned StackOpcode = EVM::getStackOpcode(RegOpcode);
+  MI->setDesc(TII->get(StackOpcode));
+}
+
 void StackModel::postProcess() {
   for (MachineBasicBlock &MBB : *MF) {
     for (MachineInstr &MI : MBB) {
@@ -1013,6 +1037,42 @@ void StackModel::postProcess() {
 
   for (auto *MI : ToErase)
     MI->eraseFromParent();
+
+  for (MachineBasicBlock &MBB : *MF)
+    for (MachineInstr &MI : MBB)
+      stackifyInstruction(&MI);
+
+  auto *MFI = MF->getInfo<EVMMachineFunctionInfo>();
+  MFI->setIsStackified();
+
+  // In a stackified code register liveness has no meaning.
+  MachineRegisterInfo &MRI = MF->getRegInfo();
+  MRI.invalidateLiveness();
+
+  // In EVM architecture jump target is set up using one of PUSH* instructions
+  // that come right before the jump instruction.
+  // For example:
+
+  //   PUSH_LABEL %bb.10
+  //   JUMPI_S
+  //   PUSH_LABEL %bb.9
+  //   JUMP_S
+  //
+  // The problem here is that such MIR is not valid. There should not be
+  // non-terminator (PUSH) instructions between terminator (JUMP) ones.
+  // To overcome this issue, we bundle adjacent <PUSH_LABEL, JUMP> instructions
+  // together and unbundle them in the AsmPrinter.
+  for (MachineBasicBlock &MBB : *MF) {
+    MachineBasicBlock::instr_iterator I = MBB.instr_begin(),
+                                      E = MBB.instr_end();
+    for (; I != E; ++I) {
+      if (I->isBranch()) {
+        auto P = std::next(I);
+        if (P != E && P->getOpcode() == EVM::PUSH_LABEL)
+          I->bundleWithPred();
+      }
+    }
+  }
 }
 
 void StackModel::dumpState() const {
@@ -1129,9 +1189,6 @@ private:
     AU.addRequired<MachineDominatorTree>();
     AU.addRequired<LiveIntervals>();
     AU.addPreserved<MachineBlockFrequencyInfo>();
-    AU.addPreserved<SlotIndexes>();
-    AU.addPreserved<LiveIntervals>();
-    AU.addPreservedID(LiveVariablesID);
     AU.addPreserved<MachineDominatorTree>();
     MachineFunctionPass::getAnalysisUsage(AU);
   }
