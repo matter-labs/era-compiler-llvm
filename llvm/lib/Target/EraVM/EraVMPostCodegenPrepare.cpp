@@ -34,7 +34,7 @@ using namespace llvm::PatternMatch;
   "EraVM optimizations after CodeGenPrepare pass"
 
 static cl::opt<bool> EnableSplitLoopPHILiveRanges(
-    "eravm-enable-split-loop-phi-live-ranges", cl::Hidden, cl::init(true),
+    "eravm-enable-split-loop-phi-live-ranges", cl::Hidden, cl::init(false),
     cl::desc("Enable splitting live ranges of PHI nodes in loops"));
 
 static cl::opt<unsigned> NumOfPHIUsesToSplitLiveRanges(
