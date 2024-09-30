@@ -54,14 +54,6 @@ EVM::Fixups getFixupForOpc(unsigned Opcode, MCSymbolRefExpr::VariantKind Kind) {
   switch (Opcode) {
   default:
     llvm_unreachable("Unexpected MI for the SymbolRef MO");
-  case EVM::PUSH8_S:
-    return EVM::fixup_SecRel_i64;
-  case EVM::PUSH7_S:
-    return EVM::fixup_SecRel_i56;
-  case EVM::PUSH6_S:
-    return EVM::fixup_SecRel_i48;
-  case EVM::PUSH5_S:
-    return EVM::fixup_SecRel_i40;
   case EVM::PUSH4_S:
     switch (Kind) {
     default:
