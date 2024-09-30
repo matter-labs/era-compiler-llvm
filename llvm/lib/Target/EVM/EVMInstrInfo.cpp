@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMInstrInfo.h"
+#include "EVMMachineFunctionInfo.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 using namespace llvm;
 
@@ -64,6 +65,12 @@ bool EVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
   TBB = nullptr;
   FBB = nullptr;
   Cond.clear();
+
+  const auto *MFI = MBB.getParent()->getInfo<EVMMachineFunctionInfo>();
+  if (MFI->getIsStackified()) {
+    LLVM_DEBUG(dbgs() << "Can't analyze terminators in stackified code");
+    return true;
+  }
 
   // Iterate backwards and analyze all terminators.
   MachineBasicBlock::reverse_iterator I = MBB.rbegin(), E = MBB.rend();

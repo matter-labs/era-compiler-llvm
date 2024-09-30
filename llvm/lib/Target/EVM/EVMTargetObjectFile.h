@@ -22,7 +22,9 @@ class EVMELFTargetObjectFile final : public TargetLoweringObjectFileELF {
 public:
   EVMELFTargetObjectFile() = default;
 
-  unsigned getTextSectionAlignment() const override;
+  // Code sections need to be aligned on 1, otherwise linker will add padding
+  // between .text sections of the object files being linked.
+  unsigned getTextSectionAlignment() const override { return 1; }
 };
 
 } // end namespace llvm

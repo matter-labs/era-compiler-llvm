@@ -27,33 +27,23 @@ using namespace llvm;
 
 extern cl::opt<bool> EVMKeepRegisters;
 
-static void removeRegisterOperands(const MachineInstr *MI, MCInst &OutMI) {
-  // Remove all uses of stackified registers to bring the instruction format
-  // into its final stack form used throughout MC, and transition opcodes to
-  // their _S variant.
+// Stackify instruction that were not stackified before.
+// Only two instructions need to be stackified here: PUSH_LABEL and DATA_S,
+static void stackifyInstruction(const MachineInstr *MI, MCInst &OutMI) {
   if (MI->isDebugInstr() || MI->isLabel() || MI->isInlineAsm())
     return;
 
-  // Transform 'register' instruction to 'stack' one.
-  unsigned RegOpcode = OutMI.getOpcode();
-  if (RegOpcode == EVM::PUSH8_LABEL) {
-    // Replace PUSH8_LABEL with PUSH8_S opcode.
-    OutMI.setOpcode(EVM::PUSH8_S);
-  } else {
-    unsigned StackOpcode = EVM::getStackOpcode(RegOpcode);
-    OutMI.setOpcode(StackOpcode);
-  }
+  // Check there are no register operands.
+  assert(std::all_of(OutMI.begin(), OutMI.end(),
+                     [](const MCOperand &MO) { return !MO.isReg(); }));
 
-  // Remove register operands.
-  for (auto I = OutMI.getNumOperands(); I; --I) {
-    auto &MO = OutMI.getOperand(I - 1);
-    if (MO.isReg()) {
-      OutMI.erase(&MO);
-    }
-  }
-
-  if (RegOpcode == EVM::DATA)
+  // Set up final opcodes for the following codegen-only instructions.
+  unsigned Opcode = OutMI.getOpcode();
+  if (Opcode == EVM::PUSH_LABEL || Opcode == EVM::DATA_S)
     OutMI.setOpcode(EVM::PUSH4_S);
+
+  // Check that all the instructions are in the 'stack' form.
+  assert(EVM::getRegisterOpcode(OutMI.getOpcode()));
 }
 
 MCSymbol *
@@ -136,7 +126,7 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
     case MachineOperand::MO_MCSymbol: {
       MCSymbolRefExpr::VariantKind Kind = MCSymbolRefExpr::VariantKind::VK_None;
       unsigned Opc = MI->getOpcode();
-      if (Opc == EVM::DATA)
+      if (Opc == EVM::DATA_S)
         Kind = MCSymbolRefExpr::VariantKind::VK_EVM_DATA;
 
       MCOp = MCOperand::createExpr(
@@ -156,7 +146,7 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
     OutMI.addOperand(MCOp);
   }
   if (!EVMKeepRegisters)
-    removeRegisterOperands(MI, OutMI);
+    stackifyInstruction(MI, OutMI);
   else if (Desc.variadicOpsAreDefs())
     OutMI.insert(OutMI.begin(), MCOperand::createImm(MI->getNumExplicitDefs()));
 }

@@ -36,7 +36,6 @@ add_llvm_target(EVMCodeGen
   EVMStackify.cpp
   EVMSubtarget.cpp
   EVMTargetMachine.cpp
-  EVMTargetObjectFile.cpp
   EVMTargetTransformInfo.cpp
 
   LINK_COMPONENTS
