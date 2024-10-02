@@ -21,11 +21,11 @@ def int_eravm_mimiccall: Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty, 
 def int_eravm_nearcall: Intrinsic<[llvm_i256_ty], [llvm_ptr_ty, llvm_i256_ty, llvm_vararg_ty], [Throws]>;
 
 // Read-only access of inaccessible EraVM context data immutable within the current contract execution frame.
-def int_eravm_this: Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
-def int_eravm_caller: Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
-def int_eravm_codesource: Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
-def int_eravm_txorigin: Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
-def int_eravm_getu128: Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
+def int_eravm_this: Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn, IntrSpeculatable]>;
+def int_eravm_caller: Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn, IntrSpeculatable]>;
+def int_eravm_codesource: Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn, IntrSpeculatable]>;
+def int_eravm_txorigin: Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn, IntrSpeculatable]>;
+def int_eravm_getu128: Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn, IntrSpeculatable]>;
 
 // Read-only access of inaccessible EraVM context data mutable within the current contract execution frame.
 def int_eravm_meta: Intrinsic<[llvm_i256_ty], [], [IntrInaccessibleMemOnly, IntrWillReturn]>;
@@ -50,15 +50,15 @@ def int_eravm_return_ptr: Intrinsic<[], [LLVMQualPointerType<3>], [IntrNoReturn]
 def int_eravm_revert_ptr: Intrinsic<[], [LLVMQualPointerType<3>], [IntrNoReturn]>;
 
 // Access to flags.
-def int_eravm_iflt  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
-def int_eravm_ifgt  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
-def int_eravm_ifeq  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
+def int_eravm_iflt  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem, IntrWillReturn, IntrSpeculatable]>;
+def int_eravm_ifgt  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem, IntrWillReturn, IntrSpeculatable]>;
+def int_eravm_ifeq  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem, IntrWillReturn, IntrSpeculatable]>;
 
 // Pointer arithmetics
-def int_eravm_ptr_pack : Intrinsic<[LLVMQualPointerType<3>], [LLVMQualPointerType<3>, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
-def int_eravm_ptr_shrink : Intrinsic<[LLVMQualPointerType<3>], [LLVMQualPointerType<3>, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
-def int_eravm_ptr_add : Intrinsic<[LLVMQualPointerType<3>], [LLVMQualPointerType<3>, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
-def int_eravm_ptrtoint : Intrinsic<[llvm_i256_ty], [LLVMQualPointerType<3>], [IntrNoMem, IntrWillReturn]>;
+def int_eravm_ptr_pack : Intrinsic<[LLVMQualPointerType<3>], [LLVMQualPointerType<3>, llvm_i256_ty], [IntrNoMem, IntrWillReturn, IntrSpeculatable]>;
+def int_eravm_ptr_shrink : Intrinsic<[LLVMQualPointerType<3>], [LLVMQualPointerType<3>, llvm_i256_ty], [IntrNoMem, IntrWillReturn, IntrSpeculatable]>;
+def int_eravm_ptr_add : Intrinsic<[LLVMQualPointerType<3>], [LLVMQualPointerType<3>, llvm_i256_ty], [IntrNoMem, IntrWillReturn, IntrSpeculatable]>;
+def int_eravm_ptrtoint : Intrinsic<[llvm_i256_ty], [LLVMQualPointerType<3>], [IntrNoMem, IntrWillReturn, IntrSpeculatable]>;
 
 // Linking of libraries.
 
@@ -66,6 +66,6 @@ def int_eravm_ptrtoint : Intrinsic<[llvm_i256_ty], [LLVMQualPointerType<3>], [In
 // the finall library address by the linker.
 def int_eravm_linkersymbol : DefaultAttrsIntrinsic<
   [llvm_i256_ty], [llvm_metadata_ty],
-  [IntrNoMem, IntrWillReturn]
+  [IntrNoMem, IntrWillReturn, IntrSpeculatable]
 >;
 }
