@@ -18,9 +18,8 @@ body:             |
     ; CHECK-LABEL: name: test
     ; CHECK: liveins: $r2, $r3
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: renamable $r4 = COPY $r0
     ; CHECK-NEXT: dead $r0 = SUBrrr_v renamable $r2, renamable $r3, i256 0, implicit-def $flags
-    ; CHECK-NEXT: renamable $r1 = COPY killed renamable $r4
+    ; CHECK-NEXT: renamable $r1 = COPY $r0
     ; CHECK-NEXT: RET 0, implicit $r1
     renamable $r4 = COPY $r0
     dead $r0 = SUBrrr_v renamable $r2, renamable $r3, i256 0, implicit-def $flags
