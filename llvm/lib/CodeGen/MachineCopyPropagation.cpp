@@ -109,6 +109,9 @@ class CopyTracker {
   struct CopyInfo {
     MachineInstr *MI = nullptr;
     MachineInstr *LastSeenUseInCopy = nullptr;
+    // EraVM local begin
+    SmallPtrSet<MachineInstr *, 4> SrcUsers;
+    // EraVM local end
     SmallVector<MCRegister, 4> DefRegs;
     bool Avail = false;
   };
@@ -182,6 +185,45 @@ public:
     }
   }
 
+  // EraVM local begin
+  /// Track copy's src users, and return false if that can't be done.
+  /// We can only track if we have a COPY instruction which source is
+  /// the same as the Reg.
+  bool trackSrcUsers(MCRegister Reg, MachineInstr &MI,
+                     const TargetRegisterInfo &TRI, const TargetInstrInfo &TII,
+                     bool UseCopyInstr) {
+    MCRegUnit RU = *TRI.regunits(Reg).begin();
+    MachineInstr *AvailCopy = findCopyDefViaUnit(RU, TRI);
+    if (!AvailCopy)
+      return false;
+
+    std::optional<DestSourcePair> CopyOperands =
+        isCopyInstr(*AvailCopy, TII, UseCopyInstr);
+    Register Src = CopyOperands->Source->getReg();
+
+    // Bail out, if the source of the copy is not the same as the Reg.
+    if (Src != Reg)
+      return false;
+
+    auto I = Copies.find(RU);
+    if (I == Copies.end())
+      return false;
+
+    I->second.SrcUsers.insert(&MI);
+    return true;
+  }
+
+  /// Return the users for a given register.
+  SmallPtrSet<MachineInstr *, 4> getSrcUsers(MCRegister Reg,
+                                             const TargetRegisterInfo &TRI) {
+    MCRegUnit RU = *TRI.regunits(Reg).begin();
+    auto I = Copies.find(RU);
+    if (I == Copies.end())
+      return {};
+    return I->second.SrcUsers;
+  }
+  // EraVM local end
+
   /// Add this copy's registers into the tracker's copy maps.
   void trackCopy(MachineInstr *MI, const TargetRegisterInfo &TRI,
                  const TargetInstrInfo &TII, bool UseCopyInstr) {
@@ -194,7 +236,9 @@ public:
 
     // Remember Def is defined by the copy.
     for (MCRegUnit Unit : TRI.regunits(Def))
-      Copies[Unit] = {MI, nullptr, {}, true};
+      // EraVM local begin
+      Copies[Unit] = {MI, nullptr, {}, {}, true};
+    // EraVM local end
 
     // Remember source that's copied to Def. Once it's clobbered, then
     // it's no longer available for copy propagation.
@@ -385,6 +429,10 @@ private:
   bool hasImplicitOverlap(const MachineInstr &MI, const MachineOperand &Use);
   bool hasOverlappingMultipleDef(const MachineInstr &MI,
                                  const MachineOperand &MODef, Register Def);
+  // EraVM local begin
+  bool canUpdateSrcUsers(const MachineInstr &Copy,
+                         const MachineOperand &CopySrc);
+  // EraVM local end
 
   /// Candidates for deletion.
   SmallSetVector<MachineInstr *, 8> MaybeDeadCopies;
@@ -624,6 +672,28 @@ bool MachineCopyPropagation::hasOverlappingMultipleDef(
 
   return false;
 }
+
+// EraVM local begin
+/// Return true if it is safe to update the users of the source register of the
+/// copy.
+bool MachineCopyPropagation::canUpdateSrcUsers(const MachineInstr &Copy,
+                                               const MachineOperand &CopySrc) {
+  for (auto *SrcUser : Tracker.getSrcUsers(CopySrc.getReg(), *TRI)) {
+    if (hasImplicitOverlap(*SrcUser, CopySrc))
+      return false;
+
+    for (MachineOperand &MO : SrcUser->uses()) {
+      if (!MO.isReg() || !MO.isUse() || MO.getReg() != CopySrc.getReg())
+        continue;
+      if (MO.isTied() || !MO.isRenamable() ||
+          !isBackwardPropagatableRegClassCopy(Copy, *SrcUser,
+                                              MO.getOperandNo()))
+        return false;
+    }
+  }
+  return true;
+}
+// EraVM local end
 
 /// Look for available copies whose destination register is used by \p MI and
 /// replace the use in \p MI with the copy's source register.
@@ -995,12 +1065,28 @@ void MachineCopyPropagation::propagateDefs(MachineInstr &MI) {
     if (hasOverlappingMultipleDef(MI, MODef, Def))
       continue;
 
+    // EraVM local begin
+    if (!canUpdateSrcUsers(*Copy, *CopyOperands->Source))
+      continue;
+    // EraVM local end
+
     LLVM_DEBUG(dbgs() << "MCP: Replacing " << printReg(MODef.getReg(), TRI)
                       << "\n     with " << printReg(Def, TRI) << "\n     in "
                       << MI << "     from " << *Copy);
 
     MODef.setReg(Def);
     MODef.setIsRenamable(CopyOperands->Destination->isRenamable());
+
+    // EraVM local begin
+    for (auto *SrcUser : Tracker.getSrcUsers(Src, *TRI)) {
+      for (MachineOperand &MO : SrcUser->uses()) {
+        if (!MO.isReg() || !MO.isUse() || MO.getReg() != Src)
+          continue;
+        MO.setReg(Def);
+        MO.setIsRenamable(CopyOperands->Destination->isRenamable());
+      }
+    }
+    // EraVM local end
 
     LLVM_DEBUG(dbgs() << "MCP: After replacement: " << MI << "\n");
     MaybeDeadCopies.insert(Copy);
@@ -1067,7 +1153,11 @@ void MachineCopyPropagation::BackwardCopyPropagateBlock(
               CopyDbgUsers[Copy].insert(&MI);
             }
           }
-        } else {
+          // EraVM local begin
+        } else if (!Tracker.trackSrcUsers(MO.getReg().asMCReg(), MI, *TRI, *TII,
+                                          UseCopyInstr)) {
+          // If we can't track the source users, invalidate the register.
+          // EraVM local end
           Tracker.invalidateRegister(MO.getReg().asMCReg(), *TRI, *TII,
                                      UseCopyInstr);
         }
