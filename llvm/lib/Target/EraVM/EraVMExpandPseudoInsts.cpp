@@ -116,8 +116,9 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
           LLVM_DEBUG(dbgs() << "Found PTR_TO_INT: "; MI.dump());
           [[maybe_unused]] auto NewMI =
               BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(),
-                      TII->get(EraVM::ADDrrr_s), ToReg)
-                  .addReg(FromReg)
+                      TII->get(EraVM::ADDrrr_s))
+                  .add(MI.getOperand(0))
+                  .add(MI.getOperand(1))
                   .addReg(EraVM::R0)
                   .addImm(EraVMCC::COND_NONE);
           LLVM_DEBUG(dbgs() << "Converting PTR_TO_INT to: "; NewMI->dump());
@@ -147,8 +148,8 @@ bool EraVMExpandPseudo::runOnMachineFunction(MachineFunction &MF) {
                "Immediate value is too large to fit into instruction");
         assert(ImmVal.getBitWidth() == 256 && "Immediate value is not 256-bit");
 
-        BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(Opcode),
-                MI.getOperand(0).getReg())
+        BuildMI(*MI.getParent(), &MI, MI.getDebugLoc(), TII->get(Opcode))
+            .add(MI.getOperand(0))
             .addCImm(ConstantInt::get(*Context, ImmVal))
             .addReg(EraVM::R0)
             .addImm(EraVMCC::COND_NONE);
