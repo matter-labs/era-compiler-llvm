@@ -18,9 +18,8 @@ body:             |
     ; CHECK-LABEL: name: test
     ; CHECK: liveins: $r1, $r2, $r4
     ; CHECK-NEXT: {{  $}}
-    ; CHECK-NEXT: renamable $r3 = ADDirr_s i256 1, killed renamable $r1, i256 0
-    ; CHECK-NEXT: dead $r0 = SUBrrr_v renamable $r3, renamable $r2, i256 0, implicit-def $flags
-    ; CHECK-NEXT: renamable $r1 = COPY killed renamable $r3
+    ; CHECK-NEXT: renamable $r1 = ADDirr_s i256 1, killed renamable $r1, i256 0
+    ; CHECK-NEXT: dead $r0 = SUBrrr_v renamable $r1, renamable $r2, i256 0, implicit-def $flags
     ; CHECK-NEXT: RET 0, implicit $r1
     renamable $r3 = ADDirr_s i256 1, killed renamable $r1, i256 0
     dead $r0 = SUBrrr_v renamable $r3, renamable $r2, i256 0, implicit-def $flags
