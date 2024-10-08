@@ -62,6 +62,7 @@ public:
     return &TSInfo;
   }
   Align getStackAlignment() const { return Align(32); }
+  bool enableJoinGlobalCopies() const override { return true; }
 };
 } // namespace llvm
 
