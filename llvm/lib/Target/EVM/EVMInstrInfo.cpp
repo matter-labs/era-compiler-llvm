@@ -173,7 +173,7 @@ unsigned EVMInstrInfo::insertBranch(MachineBasicBlock &MBB,
                                     MachineBasicBlock *FBB,
                                     ArrayRef<MachineOperand> Cond,
                                     const DebugLoc &DL, int *BytesAdded) const {
-  assert(!BytesAdded && "Code is size not handled");
+  assert(!BytesAdded && "Code size not handled");
 
   // The number of instructions inserted.
   unsigned InstrCount = 0;

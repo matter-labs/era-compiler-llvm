@@ -81,6 +81,8 @@ static bool EVMLinkRuntimeImpl(Module &M, const char *ModuleToLink) {
     exit(1);
   }
 
+  // TODO: remove this after ensuring the stackification
+  // algorithm can deal with a high register pressure.
   for (auto &F : M.functions()) {
     if (!F.isDeclaration()) {
       F.addFnAttr(Attribute::NoInline);
