@@ -53,6 +53,7 @@ class NI<dag oops, dag iops, list<dag> pattern, bit stack,
   let Opc            = inst;
   let Inst{7-0}      = Opc;
   let GasCost        = cost;
+  let Defs           = [ARGUMENTS];
 }
 
 // Generates both register and stack based versions of one actual instruction.
@@ -61,7 +62,7 @@ multiclass I<dag oops_r, dag iops_r, list<dag> pattern_r,
              int cost = 0, dag oops_s = (outs), dag iops_s = (ins), string argstr_s = ""> {
   let isCodeGenOnly = 1 in
   def "" : NI<oops_r, iops_r, pattern_r, false, opcstr#argstr_r, inst, cost>;
-  let BaseName = NAME in
+  let BaseName = NAME, Defs = []<Register> in
   def _S : NI<oops_s, iops_s, [], true, opcstr#argstr_s, inst, cost>;
 }
 
