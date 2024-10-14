@@ -975,7 +975,7 @@ def LinkerSymbol : Pseudo<(outs GR256:$val), (ins i256imm:$sym),
                           [(set GR256:$val, (EraVMLinkerSymbol mcsym:$sym))]>;
 }
 
-let isReMaterializable = 1, hasSideEffects = 0 in {
+let isReMaterializable = 1, isAsCheapAsAMove = 1, hasSideEffects = 0 in {
 def MOVEIMM : Pseudo<(outs GR256:$out), (ins i256imm:$val),
                       [(set GR256:$out, imm:$val)]>;
 }
