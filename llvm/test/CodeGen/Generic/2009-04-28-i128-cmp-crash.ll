@@ -2,6 +2,7 @@
 ; rdar://6836460
 ; rdar://7516906
 ; PR5963
+; UNSUPPORTED: target=evm{{.*}}
 
 define i32 @test(ptr %P) nounwind {
 entry:

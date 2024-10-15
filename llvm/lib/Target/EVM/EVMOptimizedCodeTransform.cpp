@@ -386,6 +386,9 @@ void EVMOptimizedCodeTransform::operator()(CFG::BasicBlock const &Block) {
             createStackLayout(ExitStack);
             Assembly.appendJump(0);
           },
+          [&](CFG::BasicBlock::Unreachable const &) {
+            assert(Block.Operations.empty());
+          },
           [&](CFG::BasicBlock::Terminated const &) {
             assert(!Block.Operations.empty());
             if (const CFG::BuiltinCall *BuiltinCall =

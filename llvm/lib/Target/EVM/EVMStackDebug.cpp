@@ -166,6 +166,10 @@ void ControlFlowGraphPrinter::printBlock(CFG::BasicBlock const &Block) {
                  OS << "Block" << getBlockId(Block)
                     << "Exit [label=\"Terminated\"];\n";
                },
+               [&](const CFG::BasicBlock::Unreachable &) {
+                 OS << "Block" << getBlockId(Block)
+                    << "Exit [label=\"Unreachable\"];\n";
+               },
                [&](const CFG::BasicBlock::InvalidExit &) {
                  assert(0 && "Invalid basic block exit");
                }},
@@ -278,6 +282,10 @@ void StackLayoutPrinter::printBlock(CFG::BasicBlock const &Block) {
                [&](CFG::BasicBlock::Terminated const &) {
                  OS << "Block" << getBlockId(Block)
                     << "Exit [label=\"Terminated\"];\n";
+               },
+               [&](CFG::BasicBlock::Unreachable const &) {
+                 OS << "Block" << getBlockId(Block)
+                    << "Exit [label=\"Unreachable\"];\n";
                }},
       Block.Exit);
   OS << "\n";

@@ -463,6 +463,10 @@ std::optional<Stack> StackLayoutGenerator::getExitLayoutOrStageDependencies(
             // A terminating block can have an empty stack on exit.
             return Stack{};
           },
+          [&](CFG::BasicBlock::Unreachable const &) -> std::optional<Stack> {
+            // A unreachable block can have an empty stack on exit.
+            return Stack{};
+          },
           [](CFG::BasicBlock::InvalidExit const &) -> std::optional<Stack> {
             llvm_unreachable("Unexpected BB terminator");
           }},
@@ -492,6 +496,7 @@ StackLayoutGenerator::collectBackwardsJumps(
                 },
                 [&](CFG::BasicBlock::FunctionReturn const &) {},
                 [&](CFG::BasicBlock::Terminated const &) {},
+                [&](CFG::BasicBlock::Unreachable const &) {},
             },
             Block->Exit);
       });
@@ -550,6 +555,7 @@ void StackLayoutGenerator::stitchConditionalJumps(
             },
             [&](CFG::BasicBlock::FunctionReturn const &) {},
             [&](CFG::BasicBlock::Terminated const &) {},
+            [&](CFG::BasicBlock::Unreachable const &) {},
         },
         Block->Exit);
   });
@@ -727,6 +733,7 @@ void StackLayoutGenerator::fillInJunk(CFG::BasicBlock const &Block,
                 llvm_unreachable("FunctionReturn : unexpected BB terminator");
               },
               [&](CFG::BasicBlock::Terminated const &) {},
+              [&](CFG::BasicBlock::Unreachable const &) {},
           },
           Block->Exit);
     });
@@ -851,6 +858,7 @@ void StackLayoutGenerator::fillInJunk(CFG::BasicBlock const &Block,
                 },
                 [&](CFG::BasicBlock::FunctionReturn const &) {},
                 [&](CFG::BasicBlock::Terminated const &) {},
+                [&](CFG::BasicBlock::Unreachable const &) {},
             },
             Block->Exit);
       });

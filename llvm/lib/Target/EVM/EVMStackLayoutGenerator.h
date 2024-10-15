@@ -112,8 +112,8 @@ private:
   /// amount of operations to reconstruct the original stack \p Stack.
   static Stack compressStack(Stack Stack);
 
-  //// Fills in junk when entering branches that do not need a clean stack in
-  ///case the result is cheaper.
+  /// Fills in junk when entering branches that do not need a clean stack in
+  /// case the result is cheaper.
   void fillInJunk(CFG::BasicBlock const &Block,
                   CFG::FunctionInfo const *FunctionInfo = nullptr);
 

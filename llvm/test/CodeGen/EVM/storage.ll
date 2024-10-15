@@ -5,8 +5,8 @@ target triple = "evm"
 
 define void @sstore(ptr addrspace(5) %key, i256 %val) nounwind {
 ; CHECK-LABEL: @sstore
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: SSTORE [[IN1]], [[IN2]]
 
   store i256 %val, ptr addrspace(5) %key, align 32

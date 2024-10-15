@@ -41,8 +41,10 @@ private:
   void handleFunctionCall(const MachineInstr &MI);
   void handleReturn(const MachineInstr &MI);
   void handleBasicBlockSuccessors(MachineBasicBlock &MBB);
+  StackSlot getDefiningSlot(const MachineInstr &MI, Register Reg) const;
+
   void collectInstrOperands(const MachineInstr &MI, Stack &Input,
-                            Stack &Output);
+                            Stack &Output) const;
 
   CFG &Cfg;
   const LiveIntervals &LIS;

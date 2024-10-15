@@ -73,19 +73,25 @@ static void markStartsOfSubGraphs(CFG &Cfg) {
                         [&](CFG::BasicBlock::Terminated const &) {
                           U->IsStartOfSubGraph = true;
                         },
+                        [&](CFG::BasicBlock::Unreachable const &) {
+                          U->IsStartOfSubGraph = true;
+                        },
                         [&](CFG::BasicBlock::InvalidExit const &) {
                           llvm_unreachable("Unexpected BB terminator");
                         }},
                U->Exit);
-    assert(!EVMUtils::contains(Children, U));
 
     for (CFG::BasicBlock *V : Children) {
+      // Ignore the loop edge, as it cannot be the bridge.
+      if (V == U)
+        continue;
+
       if (!Visited.count(V)) {
         Parent[V] = U;
         Recurse(V, Recurse);
         Low[U] = std::min(Low[U], Low[V]);
         if (Low[V] > Disc[U]) {
-          // U <-> v is a cut edge in the undirected graph
+          // U <-> V is a cut edge in the undirected graph
           bool EdgeVtoU = EVMUtils::contains(U->Entries, V);
           bool EdgeUtoV = EVMUtils::contains(V->Entries, U);
           if (EdgeVtoU && !EdgeUtoV)
@@ -141,9 +147,30 @@ void ControlFlowGraphBuilder::handleBasicBlock(MachineBasicBlock &MBB) {
     handleMachineInstr(MI);
 }
 
+StackSlot ControlFlowGraphBuilder::getDefiningSlot(const MachineInstr &MI,
+                                                   Register Reg) const {
+  StackSlot Slot = VariableSlot{Reg};
+  SlotIndex Idx = LIS.getInstructionIndex(MI);
+  const LiveInterval *LI = &LIS.getInterval(Reg);
+  LiveQueryResult LRQ = LI->Query(Idx);
+  const VNInfo *VNI = LRQ.valueIn();
+  assert(VNI && "Use of non-existing value");
+  if (LI->containsOneValue()) {
+    assert(!VNI->isPHIDef());
+    const MachineInstr *DefMI = LIS.getInstructionFromIndex(VNI->def);
+    assert(DefMI && "Dead valno in interval");
+    if (DefMI->getOpcode() == EVM::CONST_I256) {
+      const APInt Imm = DefMI->getOperand(1).getCImm()->getValue();
+      Slot = LiteralSlot{std::move(Imm)};
+    }
+  }
+
+  return Slot;
+}
+
 void ControlFlowGraphBuilder::collectInstrOperands(const MachineInstr &MI,
                                                    Stack &Input,
-                                                   Stack &Output) {
+                                                   Stack &Output) const {
   for (const auto &MO : reverse(MI.explicit_uses())) {
     if (!MO.isReg()) {
       if (MO.isMCSymbol())
@@ -156,22 +183,7 @@ void ControlFlowGraphBuilder::collectInstrOperands(const MachineInstr &MI,
     if (Reg == EVM::SP)
       continue;
 
-    StackSlot Slot = VariableSlot{Reg};
-    SlotIndex Idx = LIS.getInstructionIndex(MI);
-    const LiveInterval *LI = &LIS.getInterval(Reg);
-    LiveQueryResult LRQ = LI->Query(Idx);
-    const VNInfo *VNI = LRQ.valueIn();
-    assert(VNI && "Use of non-existing value");
-    if (LI->containsOneValue()) {
-      assert(!VNI->isPHIDef());
-      const MachineInstr *DefMI = LIS.getInstructionFromIndex(VNI->def);
-      assert(DefMI && "Dead valno in interval");
-      if (DefMI->getOpcode() == EVM::CONST_I256) {
-        const APInt Imm = DefMI->getOperand(1).getCImm()->getValue();
-        Slot = LiteralSlot{std::move(Imm)};
-      }
-    }
-    Input.push_back(Slot);
+    Input.push_back(getDefiningSlot(MI, Reg));
   }
 
   unsigned ArgsNumber = 0;
@@ -184,6 +196,11 @@ void ControlFlowGraphBuilder::handleMachineInstr(MachineInstr &MI) {
   bool TerminatesOrReverts = false;
   unsigned Opc = MI.getOpcode();
   switch (Opc) {
+  case EVM::STACK_LOAD:
+    [[fallthrough]];
+  case EVM::STACK_STORE:
+    llvm_unreachable("Unexpected stack memory instruction");
+    return;
   case EVM::ARGUMENT:
     Cfg.FuncInfo.Parameters.emplace_back(
         VariableSlot{MI.getOperand(0).getReg()});
@@ -197,11 +214,11 @@ void ControlFlowGraphBuilder::handleMachineInstr(MachineInstr &MI) {
   case EVM::JUMP:
     [[fallthrough]];
   case EVM::JUMPI:
-    // Branch instructions are handled separetly.
+    // Branch instructions are handled separately.
     return;
   case EVM::COPY_I256:
   case EVM::DATA:
-    // The copy/data instructions just represnt an assignment. This case is
+    // The copy/data instructions just represent an assignment. This case is
     // handled below.
     break;
   case EVM::CONST_I256: {
@@ -340,6 +357,12 @@ void ControlFlowGraphBuilder::handleBasicBlockSuccessors(
     return;
   }
 
+  // This corresponds to 'unreachable' at the BB end.
+  if (!TBB && !FBB && MBB.succ_empty()) {
+    CurrentBlock->Exit = CFG::BasicBlock::Unreachable{};
+    return;
+  }
+
   CurrentBlock = &Cfg.getBlock(&MBB);
   bool IsLatch = false;
   MachineLoop *ML = MLI->getLoopFor(&MBB);
@@ -378,7 +401,7 @@ void ControlFlowGraphBuilder::handleBasicBlockSuccessors(
     CFG::BasicBlock &NonZeroTarget = Cfg.getBlock(TBB);
     CFG::BasicBlock &ZeroTarget = Cfg.getBlock(FBB);
     assert(Cond[0].isReg());
-    auto CondSlot = VariableSlot{Cond[0].getReg()};
+    auto CondSlot = getDefiningSlot(*Cond[0].getParent(), Cond[0].getReg());
     CurrentBlock->Exit = CFG::BasicBlock::ConditionalJump{
         std::move(CondSlot), &NonZeroTarget, &ZeroTarget,
         FallThrough,         MBBJumps.first, MBBJumps.second};

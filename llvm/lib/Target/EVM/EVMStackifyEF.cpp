@@ -35,7 +35,9 @@ public:
   EVMStackifyEF() : MachineFunctionPass(ID) {}
 
 private:
-  StringRef getPassName() const override { return "EVM spliting latch blocks"; }
+  StringRef getPassName() const override {
+    return "EVM Ethereum stackification";
+  }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<LiveIntervals>();

@@ -199,6 +199,8 @@ struct CFG {
   struct BasicBlock {
     struct InvalidExit {};
 
+    struct Unreachable {};
+
     struct ConditionalJump {
       StackSlot Condition;
       BasicBlock *NonZero = nullptr;
@@ -236,7 +238,8 @@ struct CFG {
     /// we are free to add junk to it.
     bool AllowsJunk() const { return IsStartOfSubGraph && !NeedsCleanStack; }
 
-    std::variant<InvalidExit, Jump, ConditionalJump, FunctionReturn, Terminated>
+    std::variant<InvalidExit, Unreachable, Jump, ConditionalJump,
+                 FunctionReturn, Terminated>
         Exit = InvalidExit{};
   };
 
