@@ -712,6 +712,20 @@ MachineInstr *EraVMInstrInfo::createPHISourceCopy(
 bool EraVMInstrInfo::isPredicatedInstr(const MachineInstr &MI) const {
   if (MI.isBranch())
     return !MI.isUnconditionalBranch();
+  switch (MI.getOpcode()) {
+  default:
+    break;
+  case EraVM::CTXThis:
+  case EraVM::CTXCaller:
+  case EraVM::CTXCodeSource:
+  case EraVM::CTXGetU128:
+  case EraVM::CTXMeta:
+  case EraVM::CTXSetU128:
+  case EraVM::CTXGasLeft:
+  case EraVM::CTXGetSp:
+  case EraVM::CTXIncTx:
+    return true;
+  }
   return isArithmetic(MI) || isBitwise(MI) || isShift(MI) || isRotate(MI) ||
          isLoad(MI) || isFatLoad(MI) || isStore(MI) || isNOP(MI) || isSel(MI) ||
          isPtr(MI);
