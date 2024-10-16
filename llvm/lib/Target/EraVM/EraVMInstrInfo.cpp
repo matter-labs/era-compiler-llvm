@@ -1285,10 +1285,6 @@ bool EraVMInstrInfo::isPredicable(const MachineInstr &MI) const {
   if (!isPredicatedInstr(MI))
     return false;
 
-  // Do not predicate gas_left instruction
-  if (MI.getOpcode() == EraVM::CTXGasLeft)
-    return false;
-
   // we cannot make a flag setting instruction predicated execute
   if (EraVMInstrInfo::isFlagSettingInstruction(MI.getOpcode()))
     return false;
