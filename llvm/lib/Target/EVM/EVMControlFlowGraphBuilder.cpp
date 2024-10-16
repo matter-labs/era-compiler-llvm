@@ -187,9 +187,8 @@ void ControlFlowGraphBuilder::collectInstrOperands(const MachineInstr &MI,
   }
 
   unsigned ArgsNumber = 0;
-  for (const auto &MO : MI.defs()) {
+  for (const auto &MO : MI.defs())
     Output.push_back(TemporarySlot{&MI, MO.getReg(), ArgsNumber++});
-  }
 }
 
 void ControlFlowGraphBuilder::handleMachineInstr(MachineInstr &MI) {
@@ -313,6 +312,9 @@ void ControlFlowGraphBuilder::handleReturn(const MachineInstr &MI) {
   Cfg.FuncInfo.Exits.emplace_back(CurrentBlock);
   Stack Input, Output;
   collectInstrOperands(MI, Input, Output);
+  // We need to reverse input operands to restore original ordering,
+  // as it is in the instruction.
+  std::reverse(Input.begin(), Input.end());
   CurrentBlock->Exit =
       CFG::BasicBlock::FunctionReturn{std::move(Input), &Cfg.FuncInfo};
 }
