@@ -3452,7 +3452,8 @@ static std::optional<VIDSequence> isSimpleVIDSequence(SDValue Op,
     if (!Elt)
       continue;
     uint64_t ExpectedVal =
-        (int64_t)(Idx * (uint64_t)*SeqStepNum) / *SeqStepDenom;
+        (APInt(EltSizeInBits, Idx, /*isSigned=*/false, /*implicitTrunc=*/true) *
+         *SeqStepNum) / *SeqStepDenom;
     int64_t Addend = SignExtend64(*Elt - ExpectedVal, EltSizeInBits);
     if (!SeqAddend)
       SeqAddend = Addend;

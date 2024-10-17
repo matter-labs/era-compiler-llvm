@@ -889,15 +889,11 @@ Constant *SymbolicallyEvaluateGEP(const GEPOperator *GEP,
       return nullptr;
 
   unsigned BitWidth = DL.getTypeSizeInBits(IntIdxTy);
-  // EraVM local begin
-  APInt Offset =
-      APInt(BitWidth,
-            DL.getIndexedOffsetInType(
-                SrcElemTy,
-                // NOLINTNEXTLINE(cppcoreguidelines-pro-type-cstyle-cast)
-                ArrayRef((Value *const *)Ops.data() + 1, Ops.size() - 1)),
-            true);
-  // EraVM local end
+  APInt Offset = APInt(
+      BitWidth,
+      DL.getIndexedOffsetInType(
+          SrcElemTy, ArrayRef((Value *const *)Ops.data() + 1, Ops.size() - 1)),
+      /*isSigned=*/true, /*implicitTrunc=*/true);
 
   std::optional<ConstantRange> InRange = GEP->getInRange();
   if (InRange)
