@@ -1537,13 +1537,21 @@ public:
   /// looking through to the attributes on the called function when necessary).
   ///@{
 
-  /// Return the parameter attributes for this call.
-  ///
+  /// Return the attributes for this call.
   AttributeList getAttributes() const { return Attrs; }
 
-  /// Set the parameter attributes for this call.
-  ///
+  /// Set the attributes for this call.
   void setAttributes(AttributeList A) { Attrs = A; }
+
+  /// Return the return attributes for this call.
+  AttributeSet getRetAttributes() const {
+    return getAttributes().getRetAttrs();
+  }
+
+  /// Return the param attributes for this call.
+  AttributeSet getParamAttributes(unsigned ArgNo) const {
+    return getAttributes().getParamAttrs(ArgNo);
+  }
 
   /// Determine whether this call has the given attribute. If it does not
   /// then determine if the called function has the attribute, but only if
