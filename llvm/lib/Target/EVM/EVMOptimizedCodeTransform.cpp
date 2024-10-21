@@ -168,13 +168,13 @@ void EVMOptimizedCodeTransform::createStackLayout(Stack TargetStack) {
           std::string VarNameDeep = SlotVariableName(DeepSlot);
           std::string VarNameTop = SlotVariableName(CurrentStack.back());
           std::string Msg =
-              (Twine("Cannot swap ") +
-               (VarNameDeep.empty() ? ("Slot " + stackSlotToString(DeepSlot))
-                                    : (Twine("Variable ") + VarNameDeep)) +
+              (Twine("cannot swap ") +
+               (VarNameDeep.empty() ? ("slot " + stackSlotToString(DeepSlot))
+                                    : (Twine("variable ") + VarNameDeep)) +
                " with " +
                (VarNameTop.empty()
-                    ? ("Slot " + stackSlotToString(CurrentStack.back()))
-                    : (Twine("Variable ") + VarNameTop)) +
+                    ? ("slot " + stackSlotToString(CurrentStack.back()))
+                    : (Twine("variable ") + VarNameTop)) +
                ": too deep in the stack by " + std::to_string(Deficit) +
                " slots in " + stackToString(CurrentStack))
                   .str();
@@ -194,9 +194,9 @@ void EVMOptimizedCodeTransform::createStackLayout(Stack TargetStack) {
             return;
           } else if (!canBeFreelyGenerated(Slot)) {
             std::string VarName = SlotVariableName(Slot);
-            Twine Msg =
-                ((VarName.empty() ? "Slot " + stackSlotToString(Slot)
-                                  : Twine("Variable ") + VarName) +
+            std::string Msg =
+                ((VarName.empty() ? "slot " + stackSlotToString(Slot)
+                                  : Twine("variable ") + VarName) +
                  " is " + std::to_string(*Depth - 15) +
                  " too deep in the stack " + stackToString(CurrentStack))
                     .str();

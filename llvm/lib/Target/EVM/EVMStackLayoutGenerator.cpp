@@ -272,7 +272,7 @@ Stack StackLayoutGenerator::propagateStackThroughOperation(
       if (auto const *VarSlot = std::get_if<VariableSlot>(&StackSlot))
         assert(!EVMUtils::contains(Assignment->Variables, *VarSlot));
 
-  // Since stack+Operation.output can be easily shuffled to _exitLayout, the
+  // Since stack+Operation.output can be easily shuffled to ExitLayout, the
   // desired layout before the operation is stack+Operation.input;
   IdealStack += Operation.Input;
 
