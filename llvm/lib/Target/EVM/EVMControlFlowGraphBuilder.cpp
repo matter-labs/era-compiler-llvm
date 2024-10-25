@@ -15,6 +15,7 @@
 
 #include "EVMControlFlowGraphBuilder.h"
 #include "EVMHelperUtilities.h"
+#include "EVMMachineFunctionInfo.h"
 #include "EVMStackDebug.h"
 #include "EVMSubtarget.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
@@ -123,6 +124,18 @@ std::unique_ptr<CFG> ControlFlowGraphBuilder::build(MachineFunction &MF,
   if (F.hasFnAttribute(Attribute::NoReturn))
     Result->FuncInfo.CanContinue = false;
 
+  // Handle function parameters
+  auto *MFI = MF.getInfo<EVMMachineFunctionInfo>();
+  Result->FuncInfo.Parameters =
+      std::vector<StackSlot>(MFI->getNumParams(), JunkSlot{});
+  for (const MachineInstr &MI : MF.front()) {
+    if (MI.getOpcode() == EVM::ARGUMENT) {
+      int64_t ArgIdx = MI.getOperand(1).getImm();
+      Result->FuncInfo.Parameters[ArgIdx] =
+          VariableSlot{MI.getOperand(0).getReg()};
+    }
+  }
+
   for (MachineBasicBlock &MBB : MF)
     Builder.handleBasicBlock(MBB);
 
@@ -201,8 +214,7 @@ void ControlFlowGraphBuilder::handleMachineInstr(MachineInstr &MI) {
     llvm_unreachable("Unexpected stack memory instruction");
     return;
   case EVM::ARGUMENT:
-    Cfg.FuncInfo.Parameters.emplace_back(
-        VariableSlot{MI.getOperand(0).getReg()});
+    // Is handled above.
     return;
   case EVM::FCALL:
     handleFunctionCall(MI);
@@ -314,6 +326,8 @@ void ControlFlowGraphBuilder::handleReturn(const MachineInstr &MI) {
   collectInstrOperands(MI, Input, Output);
   // We need to reverse input operands to restore original ordering,
   // as it is in the instruction.
+  // Calling convention: return values are passed in stack such that the
+  // last one specified in the RET instruction is passed on the stack TOP.
   std::reverse(Input.begin(), Input.end());
   CurrentBlock->Exit =
       CFG::BasicBlock::FunctionReturn{std::move(Input), &Cfg.FuncInfo};

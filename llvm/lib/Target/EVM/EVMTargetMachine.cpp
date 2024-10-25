@@ -203,12 +203,13 @@ void EVMPassConfig::addPreEmitPass() {
     addPass(&MachineBlockPlacementID);
     addPass(createEVMOptimizeLiveIntervals());
     addPass(createEVMSingleUseExpression());
-    // Run the register coloring pass to reduce the total number of registers.
-    addPass(createEVMRegColoring());
-    if (EVMUseLocalStakify)
+    if (EVMUseLocalStakify) {
+      // Run the register coloring pass to reduce the total number of registers.
+      addPass(createEVMRegColoring());
       addPass(createEVMStackify());
-    else
+    } else {
       addPass(createEVMStackifyEF());
+    }
   }
 }
 

@@ -246,7 +246,7 @@ struct CFG {
   struct FunctionInfo {
     MachineFunction *MF = nullptr;
     BasicBlock *Entry = nullptr;
-    std::vector<VariableSlot> Parameters;
+    std::vector<StackSlot> Parameters;
     std::vector<BasicBlock *> Exits;
     bool CanContinue = true;
   };

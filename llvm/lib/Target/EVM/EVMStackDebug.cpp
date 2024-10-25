@@ -192,8 +192,14 @@ void StackLayoutPrinter::operator()(CFG::BasicBlock const &Block,
 
 void StackLayoutPrinter::operator()(CFG::FunctionInfo const &Info) {
   OS << "Function: " << Info.MF->getName() << "(";
-  for (const auto &Param : Info.Parameters)
-    OS << printReg(Param.VirtualReg, nullptr, 0, nullptr);
+  for (const StackSlot &ParamSlot : Info.Parameters) {
+    if (const auto *Slot = std::get_if<VariableSlot>(&ParamSlot))
+      OS << printReg(Slot->VirtualReg, nullptr, 0, nullptr) << ' ';
+    else if (const auto *Slot = std::get_if<JunkSlot>(&ParamSlot))
+      OS << "[unused param] ";
+    else
+      llvm_unreachable("Unexpected stack slot");
+  }
   OS << ");\n";
   OS << "FunctionEntry " << " -> Block" << getBlockId(*Info.Entry) << ";\n";
   (*this)(*Info.Entry, false);

@@ -420,6 +420,8 @@ void EVMOptimizedCodeTransform::operator()() {
   if (FuncInfo->CanContinue)
     CurrentStack.emplace_back(FunctionReturnLabelSlot{FuncInfo->MF});
 
+  // Calling convention: input arguments are passed in stack such that the
+  // first one specified in the function declaration is passed on the stack TOP.
   for (auto const &Param : reverse(FuncInfo->Parameters))
     CurrentStack.emplace_back(Param);
 
