@@ -6,8 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file builds the Control Flow Graph used for the stackification
-// algorithm.
+// This file builds the Control Flow Graph used for the backward propagation
+// stackification algorithm.
 //
 //===----------------------------------------------------------------------===//
 
@@ -168,6 +168,8 @@ StackSlot ControlFlowGraphBuilder::getDefiningSlot(const MachineInstr &MI,
   LiveQueryResult LRQ = LI->Query(Idx);
   const VNInfo *VNI = LRQ.valueIn();
   assert(VNI && "Use of non-existing value");
+  // If the virtual register defines a constant and this is the only
+  // definition, emit the literal slot as MI's input.
   if (LI->containsOneValue()) {
     assert(!VNI->isPHIDef());
     const MachineInstr *DefMI = LIS.getInstructionFromIndex(VNI->def);
@@ -182,26 +184,30 @@ StackSlot ControlFlowGraphBuilder::getDefiningSlot(const MachineInstr &MI,
 }
 
 void ControlFlowGraphBuilder::collectInstrOperands(const MachineInstr &MI,
-                                                   Stack &Input,
-                                                   Stack &Output) const {
-  for (const auto &MO : reverse(MI.explicit_uses())) {
-    if (!MO.isReg()) {
-      if (MO.isMCSymbol())
-        Input.push_back(SymbolSlot{MO.getMCSymbol()});
-      continue;
+                                                   Stack *Input,
+                                                   Stack *Output) const {
+  if (Input) {
+    for (const auto &MO : reverse(MI.explicit_uses())) {
+      if (!MO.isReg()) {
+        if (MO.isMCSymbol())
+          Input->push_back(SymbolSlot{MO.getMCSymbol()});
+        continue;
+      }
+
+      const Register Reg = MO.getReg();
+      // SP is not used anyhow.
+      if (Reg == EVM::SP)
+        continue;
+
+      Input->push_back(getDefiningSlot(MI, Reg));
     }
-
-    const Register Reg = MO.getReg();
-    // SP is not used anyhow.
-    if (Reg == EVM::SP)
-      continue;
-
-    Input.push_back(getDefiningSlot(MI, Reg));
   }
 
-  unsigned ArgsNumber = 0;
-  for (const auto &MO : MI.defs())
-    Output.push_back(TemporarySlot{&MI, MO.getReg(), ArgsNumber++});
+  if (Output) {
+    unsigned ArgsNumber = 0;
+    for (const auto &MO : MI.defs())
+      Output->push_back(TemporarySlot{&MI, MO.getReg(), ArgsNumber++});
+  }
 }
 
 void ControlFlowGraphBuilder::handleMachineInstr(MachineInstr &MI) {
@@ -234,8 +240,8 @@ void ControlFlowGraphBuilder::handleMachineInstr(MachineInstr &MI) {
     break;
   case EVM::CONST_I256: {
     const LiveInterval *LI = &LIS.getInterval(MI.getOperand(0).getReg());
-    // We can ignore this instruction, as we will directly create the literal
-    // slot from the immediate value;
+    // If the virtual register has the only definition, ignore this instruction,
+    // as we create literal slots from the immediate value at the register uses.
     if (LI->containsOneValue())
       return;
   } break;
@@ -251,10 +257,10 @@ void ControlFlowGraphBuilder::handleMachineInstr(MachineInstr &MI) {
     [[fallthrough]];
   default: {
     Stack Input, Output;
-    collectInstrOperands(MI, Input, Output);
-    CurrentBlock->Operations.emplace_back(
-        CFG::Operation{std::move(Input), std::move(Output),
-                       CFG::BuiltinCall{&MI, TerminatesOrReverts}});
+    collectInstrOperands(MI, &Input, &Output);
+    CurrentBlock->Operations.emplace_back(CFG::Operation{
+        std::move(Input), std::move(Output),
+        CFG::BuiltinCall{&MI, MI.isCommutable(), TerminatesOrReverts}});
   } break;
   }
 
@@ -279,8 +285,8 @@ void ControlFlowGraphBuilder::handleMachineInstr(MachineInstr &MI) {
   case EVM::COPY_I256: {
     // Copy instruction corresponds to the assignment operator, so
     // we do not need to create intermediate TmpSlots.
-    Stack In, Out;
-    collectInstrOperands(MI, In, Out);
+    Stack In;
+    collectInstrOperands(MI, &In, nullptr);
     Input = In;
     const Register DefReg = MI.getOperand(0).getReg();
     Output.push_back(VariableSlot{DefReg});
@@ -313,7 +319,7 @@ void ControlFlowGraphBuilder::handleFunctionCall(const MachineInstr &MI) {
     CurrentBlock->Exit = CFG::BasicBlock::Terminated{};
   else
     Input.push_back(FunctionCallReturnLabelSlot{&MI});
-  collectInstrOperands(MI, Input, Output);
+  collectInstrOperands(MI, &Input, &Output);
   CurrentBlock->Operations.emplace_back(
       CFG::Operation{Input, Output,
                      CFG::FunctionCall{&MI, !IsNoReturn,
@@ -322,8 +328,8 @@ void ControlFlowGraphBuilder::handleFunctionCall(const MachineInstr &MI) {
 
 void ControlFlowGraphBuilder::handleReturn(const MachineInstr &MI) {
   Cfg.FuncInfo.Exits.emplace_back(CurrentBlock);
-  Stack Input, Output;
-  collectInstrOperands(MI, Input, Output);
+  Stack Input;
+  collectInstrOperands(MI, &Input, nullptr);
   // We need to reverse input operands to restore original ordering,
   // as it is in the instruction.
   // Calling convention: return values are passed in stack such that the
@@ -363,15 +369,15 @@ void ControlFlowGraphBuilder::handleBasicBlockSuccessors(
     return;
   }
 
+#ifndef NDEBUG
   // This corresponds to a noreturn functions at the end of the MBB.
   if (std::holds_alternative<CFG::BasicBlock::Terminated>(CurrentBlock->Exit)) {
-#ifndef NDEBUG
     CFG::FunctionCall *Call = std::get_if<CFG::FunctionCall>(
         &CurrentBlock->Operations.back().Operation);
     assert(Call && !Call->CanContinue);
-#endif // NDEBUG
     return;
   }
+#endif // NDEBUG
 
   // This corresponds to 'unreachable' at the BB end.
   if (!TBB && !FBB && MBB.succ_empty()) {

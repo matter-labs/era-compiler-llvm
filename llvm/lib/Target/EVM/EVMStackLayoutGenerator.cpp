@@ -260,7 +260,7 @@ Stack StackLayoutGenerator::propagateStackThroughOperation(
 
   // Determine the ideal permutation of the slots in ExitLayout that are not
   // operation outputs (and not to be generated on the fly), s.t. shuffling the
-  // `IdealStack + Operation.output` to ExitLayout is cheap.
+  // 'IdealStack + Operation.output' to ExitLayout is cheap.
   Stack IdealStack =
       createIdealLayout(Operation.Output, ExitStack, generateSlotOnTheFly);
 
@@ -354,7 +354,7 @@ void StackLayoutGenerator::processEntryPoint(
     for (auto [JumpingBlock, Target] : BackwardsJumps) {
       // This block jumps backwards, but does not provide all slots required by
       // the jump target on exit. Therefore we need to visit the subgraph
-      // between ``Target`` and ``JumpingBlock`` again.
+      // between 'Target' and 'JumpingBlock' again.
       auto StartIt = std::begin(Layout.blockInfos[Target].entryLayout);
       auto EndIt = std::end(Layout.blockInfos[Target].entryLayout);
       if (std::any_of(StartIt, EndIt,
@@ -362,10 +362,10 @@ void StackLayoutGenerator::processEntryPoint(
                           StackSlot const &Slot) {
                         return !EVMUtils::contains(exitLayout, Slot);
                       })) {
-        // In particular we can visit backwards starting from ``JumpingBlock``
-        // and mark all entries to-be-visited again until we hit ``Target``.
+        // In particular we can visit backwards starting from 'JumpingBlock'
+        // and mark all entries to-be-visited again until we hit 'Target'.
         ToVisit.emplace_front(JumpingBlock);
-        // Since we are likely to permute the entry layout of ``Target``, we
+        // Since we are likely to permute the entry layout of 'Target', we
         // also visit its entries again. This is not required for correctness,
         // since the set of stack slots will match, but it may move some
         // required stack shuffling from the loop condition to outside the loop.
@@ -381,7 +381,7 @@ void StackLayoutGenerator::processEntryPoint(
               for (auto const *Entry : Block->Entries)
                 AddChild(Entry);
             });
-        // While the shuffled layout for ``Target`` will be compatible, it can
+        // While the shuffled layout for 'Target' will be compatible, it can
         // be worthwhile propagating it further up once more. This would mean
         // not stopping at Block == Target above, resp. even doing
         // Visited.clear() here, revisiting the entire graph. This is a tradeoff
@@ -538,11 +538,13 @@ void StackLayoutGenerator::stitchConditionalJumps(
                 for (auto &Slot : NewEntryLayout)
                   if (!EVMUtils::contains(OriginalEntryLayout, Slot))
                     Slot = JunkSlot{};
+#ifndef NDEBUG
                 // Make sure everything the block being jumped to requires is
                 // actually present or can be generated.
                 for (auto const &Slot : OriginalEntryLayout)
                   assert(canBeFreelyGenerated(Slot) ||
                          EVMUtils::contains(NewEntryLayout, Slot));
+#endif // NDEBUG
                 return NewEntryLayout;
               };
 
@@ -654,7 +656,7 @@ Stack StackLayoutGenerator::combineStack(Stack const &Stack1,
       }
       ++C[I];
       // Note that for a proper implementation of the Heap algorithm this would
-      // need to revert back to ``I = 1.`` However, the incorrect implementation
+      // need to revert back to 'I = 1'. However, the incorrect implementation
       // produces decent result and the proper version would have N! complexity
       // and is thereby not feasible.
       ++I;
@@ -698,6 +700,37 @@ Stack StackLayoutGenerator::compressStack(Stack CurStack) {
   return CurStack;
 }
 
+/// Returns the number of operations required to transform stack \p Source to
+/// \p Target.
+size_t llvm::EvaluateStackTransform(Stack Source, Stack const &Target) {
+  size_t OpGas = 0;
+  auto Swap = [&](unsigned SwapDepth) {
+    if (SwapDepth > 16)
+      OpGas += 1000;
+    else
+      OpGas += 3; // SWAP* gas price;
+  };
+
+  auto DupOrPush = [&](StackSlot const &Slot) {
+    if (canBeFreelyGenerated(Slot))
+      OpGas += 3;
+    else {
+      auto Depth = EVMUtils::findOffset(EVMUtils::get_reverse(Source), Slot);
+      if (!Depth)
+        llvm_unreachable("No slot in the stack");
+
+      if (*Depth < 16)
+        OpGas += 3; // DUP* gas price
+      else
+        OpGas += 1000;
+    }
+  };
+  auto Pop = [&]() { OpGas += 2; };
+
+  createStackLayout(Source, Target, Swap, DupOrPush, Pop);
+  return OpGas;
+}
+
 void StackLayoutGenerator::fillInJunk(CFG::BasicBlock const &Block,
                                       CFG::FunctionInfo const *FunctionInfo) {
   /// Recursively adds junk to the subgraph starting on \p Entry.
@@ -739,70 +772,16 @@ void StackLayoutGenerator::fillInJunk(CFG::BasicBlock const &Block,
     });
   };
 
-  /// Returns the number of operations required to transform \p  Source to \p
-  /// Target.
-  auto EvaluateTransform = [&](Stack Source, Stack const &Target) -> size_t {
-    size_t OpGas = 0;
-    auto Swap = [&](unsigned SwapDepth) {
-      if (SwapDepth > 16)
-        OpGas += 1000;
-      else
-        OpGas += 3; // SWAP* gas price;
-    };
-
-    auto DupOrPush = [&](StackSlot const &Slot) {
-      if (canBeFreelyGenerated(Slot))
-        OpGas += 3;
-      else {
-        if (auto Depth =
-                EVMUtils::findOffset(EVMUtils::get_reverse(Source), Slot)) {
-          if (*Depth < 16)
-            OpGas += 3; // gas price for DUP
-          else
-            OpGas += 1000;
-        } else {
-          // This has to be a previously unassigned return variable.
-          // We at least sanity-check that it is among the return variables at
-          // all.
-#ifndef NDEBUG
-          bool VarExists = false;
-          assert(std::holds_alternative<VariableSlot>(Slot));
-          for (CFG::BasicBlock *Exit : FunctionInfo->Exits) {
-            const Stack &RetValues =
-                std::get<CFG::BasicBlock::FunctionReturn>(Exit->Exit).RetValues;
-
-            for (const StackSlot &Val : RetValues) {
-              if (const VariableSlot *VarSlot = std::get_if<VariableSlot>(&Val))
-                if (*VarSlot == std::get<VariableSlot>(Slot))
-                  VarExists = true;
-            }
-          }
-          assert(VarExists);
-#endif // NDEBUG
-       // Strictly speaking the cost of the
-       // PUSH0 depends on the targeted EVM version, but the difference will
-       // not matter here.
-          OpGas += 2;
-        }
-      }
-    };
-
-    auto Pop = [&]() { OpGas += 2; };
-
-    createStackLayout(Source, Target, Swap, DupOrPush, Pop);
-    return OpGas;
-  };
-
   /// Returns the number of junk slots to be prepended to \p TargetLayout for
   /// an optimal transition from \p EntryLayout to \p TargetLayout.
   auto GetBestNumJunk = [&](Stack const &EntryLayout,
                             Stack const &TargetLayout) -> size_t {
-    size_t BestCost = EvaluateTransform(EntryLayout, TargetLayout);
+    size_t BestCost = EvaluateStackTransform(EntryLayout, TargetLayout);
     size_t BestNumJunk = 0;
     size_t MaxJunk = EntryLayout.size();
     for (size_t NumJunk = 1; NumJunk <= MaxJunk; ++NumJunk) {
-      size_t Cost = EvaluateTransform(EntryLayout, Stack{NumJunk, JunkSlot{}} +
-                                                       TargetLayout);
+      size_t Cost = EvaluateStackTransform(
+          EntryLayout, Stack{NumJunk, JunkSlot{}} + TargetLayout);
       if (Cost < BestCost) {
         BestCost = Cost;
         BestNumJunk = NumJunk;

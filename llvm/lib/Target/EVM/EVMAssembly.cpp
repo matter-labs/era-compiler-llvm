@@ -6,12 +6,10 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file implements the EVMAssembly class that generates machine IR
-// with all the required stack manipulation instructions.
-// Resulting machine instructions still have explicit operands, but some of the
-// auxiliary instructions (ARGUMENT, RET, EVM::CONST_I256, COPY_I256
-// FCALLARGUMENT) are removed after this step, beaking use-def chains. So, the
-// resulting Machine IR breaks the MachineVerifier checks.
+// This file creates Machine IR in stackified form. It provides different
+// callbacks when the EVMOptimizedCodeTransform needs to emit operation,
+// stack manipulation instruction, and so on. It the end, it walks over MIR
+// instructions removing register operands.
 //
 //===----------------------------------------------------------------------===//
 
@@ -51,12 +49,14 @@ void EVMAssembly::setCurrentLocation(MachineBasicBlock *MBB) {
 }
 
 void EVMAssembly::appendInstruction(MachineInstr *MI) {
+#ifndef NDEBUG
   unsigned Opc = MI->getOpcode();
   assert(Opc != EVM::JUMP && Opc != EVM::JUMPI && Opc != EVM::ARGUMENT &&
          Opc != EVM::RET && Opc != EVM::CONST_I256 && Opc != EVM::COPY_I256 &&
          Opc != EVM::FCALL);
+#endif // NDEBUG
 
-  auto Ret = AssemblyInstrs.insert(MI);
+  [[maybe_unused]] auto Ret = AssemblyInstrs.insert(MI);
   assert(Ret.second);
   int StackAdj = (2 * static_cast<int>(MI->getNumExplicitDefs())) -
                  static_cast<int>(MI->getNumExplicitOperands());
@@ -69,7 +69,7 @@ void EVMAssembly::appendSWAPInstruction(unsigned Depth) {
   unsigned Opc = EVM::getSWAPOpcode(Depth);
   CurMIIt = BuildMI(*CurMBB, CurMIIt, DebugLoc(), TII->get(Opc));
   AssemblyInstrs.insert(&*CurMIIt);
-  dumpInst(&*CurMIIt);
+  LLVM_DEBUG(dumpInst(&*CurMIIt));
   CurMIIt = std::next(CurMIIt);
 }
 

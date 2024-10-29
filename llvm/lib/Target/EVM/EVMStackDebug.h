@@ -26,11 +26,11 @@ namespace llvm {
 
 struct StackLayout;
 
-#ifndef NDEBUG
 const Function *getCalledFunction(const MachineInstr &MI);
 std::string stackSlotToString(const StackSlot &Slot);
 std::string stackToString(Stack const &S);
 
+#ifndef NDEBUG
 class ControlFlowGraphPrinter {
 public:
   ControlFlowGraphPrinter(raw_ostream &OS) : OS(OS) {}

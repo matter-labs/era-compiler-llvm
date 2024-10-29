@@ -195,7 +195,7 @@ SDValue EVMTargetLowering::LowerLOAD(SDValue Op, SelectionDAG &DAG) const {
   assert(MemVT.isScalarInteger() && "Expected scalar load");
   assert(MemVTSize < 256 && "Expected < 256-bits sized loads");
 
-  LLVM_DEBUG(errs() << "Special handling of extended LOAD node:\n";
+  LLVM_DEBUG(dbgs() << "Special handling of extended LOAD node:\n";
              Op.dump(&DAG));
 
   // As the EVM architecture has only 256-bits load, additional handling
@@ -238,7 +238,7 @@ SDValue EVMTargetLowering::LowerSTORE(SDValue Op, SelectionDAG &DAG) const {
 
   assert(MemVTSize < 256 && "Expected < 256-bits sized stores");
 
-  LLVM_DEBUG(errs() << "Special handling of STORE node:\n"; Op.dump(&DAG));
+  LLVM_DEBUG(dbgs() << "Special handling of STORE node:\n"; Op.dump(&DAG));
 
   // As the EVM architecture has only 256-bits stores, additional handling
   // is required to store smaller types.

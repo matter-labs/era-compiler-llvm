@@ -24,6 +24,10 @@
 
 namespace llvm {
 
+/// Returns the number of operations required to transform stack \p Source to
+/// \p Target.
+size_t EvaluateStackTransform(Stack Source, Stack const &Target);
+
 struct StackLayout {
   struct BlockInfo {
     /// Complete stack layout that is required for entering a block.
@@ -84,7 +88,7 @@ private:
       std::set<CFG::BasicBlock const *> const &Visited,
       std::list<CFG::BasicBlock const *> &DependencyList) const;
 
-  /// Returns a pair of ``{jumpingBlock, targetBlock}`` for each backwards jump
+  /// Returns a pair of '{jumpingBlock, targetBlock}' for each backwards jump
   /// in the graph starting at \p Eentry.
   std::list<std::pair<CFG::BasicBlock const *, CFG::BasicBlock const *>>
   collectBackwardsJumps(CFG::BasicBlock const &Entry) const;
@@ -92,12 +96,12 @@ private:
   /// After the main algorithms, layouts at conditional jumps are merely
   /// compatible, i.e. the exit layout of the jumping block is a superset of the
   /// entry layout of the target block. This function modifies the entry layouts
-  /// of conditional jump targets, s.t. the entry layout of target blocks match
+  /// of conditional jump targets, s.t., the entry layout of target blocks match
   /// the exit layout of the jumping block exactly, except that slots not
-  /// required after the jump are marked as `JunkSlot`s.
+  /// required after the jump are marked as 'JunkSlot's.
   void stitchConditionalJumps(CFG::BasicBlock const &Block);
 
-  /// Calculates the ideal stack layout, s.t. both \p Stack1 and \p Stack2 can
+  /// Calculates the ideal stack layout, s.t., both \p Stack1 and \p Stack2 can
   /// be achieved with minimal stack shuffling when starting from the returned
   /// layout.
   static Stack combineStack(Stack const &Stack1, Stack const &Stack2);

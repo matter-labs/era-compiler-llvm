@@ -1,4 +1,4 @@
-//===--- EVMOptimizedCodeTransform.h - Stack layout generator ---*- C++ -*-===//
+//===--- EVMOptimizedCodeTransform.h - Create stackified MIR  ---*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -6,8 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file transforms the stack layout back into the Machine IR instructions
-// in 'stackified' form using the EVMAssembly class.
+// This file transforms MIR to the 'stackified' MIR using CFG, StackLayout
+// and EVMAssembly classes.
 //
 //===----------------------------------------------------------------------===//
 
@@ -20,7 +20,6 @@
 #include "llvm/CodeGen/LiveIntervals.h"
 #include "llvm/CodeGen/MachineLoopInfo.h"
 
-#include <optional>
 #include <stack>
 
 namespace llvm {
@@ -47,15 +46,19 @@ private:
   EVMOptimizedCodeTransform(EVMAssembly &Assembly, const CFG &Cfg,
                             const StackLayout &Layout, MachineFunction &MF);
 
-  /// Assert that it is valid to transition from \p SourceStack to \p
-  /// TargetStack. That is \p SourceStack matches each slot in \p
+  /// Checks if it's valid to transition from \p SourceStack to \p
+  /// TargetStack, that is \p SourceStack matches each slot in \p
   /// TargetStack that is not a JunkSlot exactly.
-  static void assertLayoutCompatibility(Stack const &SourceStack,
-                                        Stack const &TargetStack);
+  static bool AreLayoutsCompatible(Stack const &SourceStack,
+                                   Stack const &TargetStack);
 
   /// Shuffles CurrentStack to the desired \p TargetStack while emitting the
   /// shuffling code to Assembly.
   void createStackLayout(Stack TargetStack);
+
+  /// Creates the Op.Input stack layout from the 'CurrentStack' taking into
+  /// account commutative property of the operation.
+  void createOperationEntryLayout(const CFG::Operation &Op);
 
   /// Generate code for the given block \p Block.
   /// Expects the current stack layout 'CurrentStack' to be a stack layout that

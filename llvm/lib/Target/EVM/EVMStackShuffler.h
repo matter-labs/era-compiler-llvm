@@ -232,8 +232,10 @@ private:
         })) {
       // Bring up all remaining target slots, if any, or terminate otherwise.
       if (Ops.sourceSize() < Ops.targetSize()) {
-        if (!dupDeepSlotIfRequired(Ops))
-          assert(bringUpTargetSlot(Ops, Ops.sourceSize()));
+        if (!dupDeepSlotIfRequired(Ops)) {
+          [[maybe_unused]] bool Res = bringUpTargetSlot(Ops, Ops.sourceSize());
+          assert(Res);
+        }
         return true;
       }
       return false;
@@ -303,8 +305,10 @@ private:
               Ops.targetSize() && // There is a target slot at this position.
           !Ops.targetIsArbitrary(
               Offset)) { // And that target slot is not arbitrary.
-        if (!dupDeepSlotIfRequired(Ops))
-          assert(bringUpTargetSlot(Ops, Offset));
+        if (!dupDeepSlotIfRequired(Ops)) {
+          [[maybe_unused]] bool Res = bringUpTargetSlot(Ops, Offset);
+          assert(Res);
+        }
         return true;
       }
 
@@ -326,8 +330,10 @@ private:
 
     // If we still need more slots, produce a suitable one.
     if (Ops.sourceSize() < Ops.targetSize()) {
-      if (!dupDeepSlotIfRequired(Ops))
-        assert(bringUpTargetSlot(Ops, Ops.sourceSize()));
+      if (!dupDeepSlotIfRequired(Ops)) {
+        [[maybe_unused]] bool Res = bringUpTargetSlot(Ops, Ops.sourceSize());
+        assert(Res);
+      }
       return true;
     }
 
