@@ -88,6 +88,13 @@ static cl::opt<bool>
 static cl::opt<unsigned> TailDupLimit("tail-dup-limit", cl::init(~0U),
                                       cl::Hidden);
 
+// EraVM local begin
+static cl::opt<bool>
+    TailDupFallthroughBBs("tail-dup-fallthrough-bbs",
+                          cl::desc("Tail duplicate fallthrough basic blocks"),
+                          cl::init(false), cl::Hidden);
+// EraVM local end
+
 void TailDuplicator::initMF(MachineFunction &MFin, bool PreRegAlloc,
                             const MachineBranchProbabilityInfo *MBPIin,
                             MBFIWrapper *MBFIin,
@@ -568,8 +575,10 @@ bool TailDuplicator::shouldTailDuplicate(bool IsSimple,
   // When doing tail-duplication during layout, the block ordering is in flux,
   // so canFallThrough returns a result based on incorrect information and
   // should just be ignored.
-  if (!LayoutMode && TailBB.canFallThrough())
+  // EraVM local begin
+  if (!TailDupFallthroughBBs && !LayoutMode && TailBB.canFallThrough())
     return false;
+  // EraVM local end
 
   // Don't try to tail-duplicate single-block loops.
   if (TailBB.isSuccessor(&TailBB))
