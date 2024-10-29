@@ -22,15 +22,14 @@ env:
 jobs:
 
   integration-tests-coverage:
-    runs-on: matterlabs-ci-runner-high-performance
+    runs-on: matterlabs-ci-runner-highdisk
     container:
       image: ghcr.io/matter-labs/zksync-llvm-runner:main
     env:
       BOOST_PREFIX: ${{ github.workspace }}/era-solidity/boost/lib
       SOLC_PREFIX: ${{ github.workspace }}/era-solidity/build
       TARGET: 'x86_64-unknown-linux-gnu'
-      LATEST_SOLC_VERSION: 0.8
-      DEFAULT_BENCHMARKS_PATH: tests/solidity/complex/defi
+      DEFAULT_BENCHMARKS_PATH: tests/solidity/simple
     steps:
 
       - name: Checkout compiler-tester
@@ -90,9 +89,9 @@ jobs:
           cargo build --target ${TARGET} \
             --manifest-path ${CARGO_CHECKOUT_DIR}/solx-*/*/Cargo.toml \
             --target-dir './target-solx/'
-          cargo build --target ${TARGET} \
-            --manifest-path ${CARGO_CHECKOUT_DIR}/era-compiler-solidity-*/*/Cargo.toml \
-            --target-dir './target-zksolc/'
+#          cargo build --target ${TARGET} \
+#            --manifest-path ${CARGO_CHECKOUT_DIR}/era-compiler-solidity-*/*/Cargo.toml \
+#            --target-dir './target-zksolc/'
 
 #      - name: Running Lit tests
 #        run: |
@@ -106,25 +105,37 @@ jobs:
       # it was used later because compilation with coverage was very very slow
       # --path '${{ inputs.path || env.DEFAULT_BENCHMARKS_PATH }}' \
       # --mode '${{ inputs.mode || env.LATEST_SOLC_VERSION }}' \
+      # --zksolc "./target-zksolc/${TARGET}/debug/zksolc" \
       - name: Run integration tests with coverage
         run: |
-          ./target/${TARGET}/release/compiler-tester \
-            --target evm \
-            --toolchain ir-llvm \
-            --solx "./target-solx/${TARGET}/debug/solx" \
-            --zksolc "./target-zksolc/${TARGET}/debug/zksolc" \
-            --load-system-contracts ./system-contracts-stable-build \
-            --path '${{ inputs.path || env.DEFAULT_BENCHMARKS_PATH }}' \
-            --mode '${{ inputs.mode || env.LATEST_SOLC_VERSION }}' \
-            --workflow build
+          TMP="${PROFDATA_FILE}.tmp"
+          for TEST_PATH in tests/solidity/complex/* tests/solidity/simple/*; do
+            WORKDIR=$(basename ${TEST_PATH})
+            mkdir -p "${GITHUB_WORKSPACE}/${WORKDIR}"
+
+            ./target/${TARGET}/release/compiler-tester \
+              --target evm \
+              --toolchain ir-llvm \
+              --solx "./target-solx/${TARGET}/debug/solx" \
+              --load-system-contracts ./system-contracts-stable-build \
+              --path ${TEST_PATH} \
+              --workflow build \
+              --verbose
+          
+            mv *.profraw "${GITHUB_WORKSPACE}/${WORKDIR}/" || true
+            du -hs "${GITHUB_WORKSPACE}/${WORKDIR}"
+            find ${GITHUB_WORKSPACE}/${WORKDIR} -type f -name '*.profraw' -print > profiles.lst
+            if [[ -f "${PROFDATA_FILE}" ]]; then
+              llvm-profdata merge -sparse -num-threads="$(nproc)" -o "${TMP}" "${PROFDATA_FILE}" @profiles.lst
+            else
+              llvm-profdata merge -sparse -num-threads="$(nproc)" -o "${TMP}" @profiles.lst
+            fi
+            mv -f "${TMP}" "${PROFDATA_FILE}"
+            rm -rf "${GITHUB_WORKSPACE}/${WORKDIR}"
+          done
 
       - name: Generate coverage reports
         run: |
-          find . -type f -name '*.profraw' -print > profiles.lst
-          ls -la ./target-llvm/build-final/bin
-          llvm-profdata --version
-          llvm-cov --version
-          llvm-profdata merge -sparse -o ${PROFDATA_FILE} @profiles.lst
           llvm-cov show --show-directory-coverage \
             --format=html --output-dir=${OUTPUT_HTML_DIR} \
             -instr-profile=${PROFDATA_FILE} ./target-solx/${TARGET}/debug/solx
