@@ -47,6 +47,14 @@ jobs:
           git config --global --add safe.directory '*'
           git submodule update --init --force --depth=1 --recursive --checkout
 
+      - name: Remove llvm submodule
+        run: rm -rf llvm
+
+      - name: Checkout llvm
+        uses: actions/checkout@v4
+        with:
+          path: llvm
+
       - name: Build LLVM for tester
         uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
         with:
@@ -57,14 +65,6 @@ jobs:
           cargo build --release --target ${TARGET} --bin 'compiler-tester'
           # Clean-up LLVM for the coverage build
           rm -rf target-llvm
-
-      - name: Remove llvm submodule
-        run: rm -rf llvm
-
-      - name: Checkout llvm
-        uses: actions/checkout@v4
-        with:
-          path: llvm
 
       - name: Building solc
         uses: matter-labs/era-compiler-ci/.github/actions/build-solc@v1
