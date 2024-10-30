@@ -698,6 +698,37 @@ Stack StackLayoutGenerator::compressStack(Stack CurStack) {
   return CurStack;
 }
 
+/// Returns the number of operations required to transform stack \p Source to
+/// \p Target.
+size_t llvm::EvaluateStackTransform(Stack Source, Stack const &Target) {
+  size_t OpGas = 0;
+  auto Swap = [&](unsigned SwapDepth) {
+    if (SwapDepth > 16)
+      OpGas += 1000;
+    else
+      OpGas += 3; // SWAP* gas price;
+  };
+
+  auto DupOrPush = [&](StackSlot const &Slot) {
+    if (canBeFreelyGenerated(Slot))
+      OpGas += 3;
+    else {
+      auto Depth = EVMUtils::findOffset(EVMUtils::get_reverse(Source), Slot);
+      if (!Depth)
+        llvm_unreachable("No slot in the stack");
+
+      if (*Depth < 16)
+        OpGas += 3; // DUP* gas price
+      else
+        OpGas += 1000;
+    }
+  };
+  auto Pop = [&]() { OpGas += 2; };
+
+  createStackLayout(Source, Target, Swap, DupOrPush, Pop);
+  return OpGas;
+}
+
 void StackLayoutGenerator::fillInJunk(CFG::BasicBlock const &Block,
                                       CFG::FunctionInfo const *FunctionInfo) {
   /// Recursively adds junk to the subgraph starting on \p Entry.
@@ -739,70 +770,16 @@ void StackLayoutGenerator::fillInJunk(CFG::BasicBlock const &Block,
     });
   };
 
-  /// Returns the number of operations required to transform \p  Source to \p
-  /// Target.
-  auto EvaluateTransform = [&](Stack Source, Stack const &Target) -> size_t {
-    size_t OpGas = 0;
-    auto Swap = [&](unsigned SwapDepth) {
-      if (SwapDepth > 16)
-        OpGas += 1000;
-      else
-        OpGas += 3; // SWAP* gas price;
-    };
-
-    auto DupOrPush = [&](StackSlot const &Slot) {
-      if (canBeFreelyGenerated(Slot))
-        OpGas += 3;
-      else {
-        if (auto Depth =
-                EVMUtils::findOffset(EVMUtils::get_reverse(Source), Slot)) {
-          if (*Depth < 16)
-            OpGas += 3; // gas price for DUP
-          else
-            OpGas += 1000;
-        } else {
-          // This has to be a previously unassigned return variable.
-          // We at least sanity-check that it is among the return variables at
-          // all.
-#ifndef NDEBUG
-          bool VarExists = false;
-          assert(std::holds_alternative<VariableSlot>(Slot));
-          for (CFG::BasicBlock *Exit : FunctionInfo->Exits) {
-            const Stack &RetValues =
-                std::get<CFG::BasicBlock::FunctionReturn>(Exit->Exit).RetValues;
-
-            for (const StackSlot &Val : RetValues) {
-              if (const VariableSlot *VarSlot = std::get_if<VariableSlot>(&Val))
-                if (*VarSlot == std::get<VariableSlot>(Slot))
-                  VarExists = true;
-            }
-          }
-          assert(VarExists);
-#endif // NDEBUG
-       // Strictly speaking the cost of the
-       // PUSH0 depends on the targeted EVM version, but the difference will
-       // not matter here.
-          OpGas += 2;
-        }
-      }
-    };
-
-    auto Pop = [&]() { OpGas += 2; };
-
-    createStackLayout(Source, Target, Swap, DupOrPush, Pop);
-    return OpGas;
-  };
-
   /// Returns the number of junk slots to be prepended to \p TargetLayout for
   /// an optimal transition from \p EntryLayout to \p TargetLayout.
   auto GetBestNumJunk = [&](Stack const &EntryLayout,
                             Stack const &TargetLayout) -> size_t {
-    size_t BestCost = EvaluateTransform(EntryLayout, TargetLayout);
+    size_t BestCost = EvaluateStackTransform(EntryLayout, TargetLayout);
     size_t BestNumJunk = 0;
     size_t MaxJunk = EntryLayout.size();
     for (size_t NumJunk = 1; NumJunk <= MaxJunk; ++NumJunk) {
-      size_t Cost = EvaluateTransform(EntryLayout, Stack{NumJunk, JunkSlot{}} +
-                                                       TargetLayout);
+      size_t Cost = EvaluateStackTransform(
+          EntryLayout, Stack{NumJunk, JunkSlot{}} + TargetLayout);
       if (Cost < BestCost) {
         BestCost = Cost;
         BestNumJunk = NumJunk;

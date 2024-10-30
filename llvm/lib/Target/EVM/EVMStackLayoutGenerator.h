@@ -24,6 +24,10 @@
 
 namespace llvm {
 
+/// Returns the number of operations required to transform stack \p Source to
+/// \p Target.
+size_t EvaluateStackTransform(Stack Source, Stack const &Target);
+
 struct StackLayout {
   struct BlockInfo {
     /// Complete stack layout that is required for entering a block.

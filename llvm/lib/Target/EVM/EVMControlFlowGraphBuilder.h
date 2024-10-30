@@ -42,7 +42,8 @@ private:
   void handleReturn(const MachineInstr &MI);
   void handleBasicBlockSuccessors(MachineBasicBlock &MBB);
   StackSlot getDefiningSlot(const MachineInstr &MI, Register Reg) const;
-
+  std::optional<std::pair<unsigned, unsigned>>
+  getCommutableOpIndexes(const MachineInstr &MI) const;
   void collectInstrOperands(const MachineInstr &MI, Stack &Input,
                             Stack &Output) const;
 

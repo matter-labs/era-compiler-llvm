@@ -21,6 +21,7 @@
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "llvm/CodeGen/MachineFunction.h"
 
+#include <optional>
 #include <ostream>
 #include <variant>
 
@@ -204,6 +205,19 @@ void ControlFlowGraphBuilder::collectInstrOperands(const MachineInstr &MI,
     Output.push_back(TemporarySlot{&MI, MO.getReg(), ArgsNumber++});
 }
 
+std::optional<std::pair<unsigned, unsigned>>
+ControlFlowGraphBuilder::getCommutableOpIndexes(const MachineInstr &MI) const {
+  unsigned Opc = MI.getOpcode();
+  if (MI.isCommutable() || Opc == EVM::ADDMOD || Opc == EVM::MULMOD)
+    // Operand indexes correspond to the stack layout. In all the cases,
+    // commutable operands take two top stack slots. Even for ADDMOD and
+    // MULMOD instructions, because their MOD operand takes third slot from the
+    // TOS.
+    return std::pair<unsigned, unsigned>(0, 1);
+
+  return std::nullopt;
+}
+
 void ControlFlowGraphBuilder::handleMachineInstr(MachineInstr &MI) {
   bool TerminatesOrReverts = false;
   unsigned Opc = MI.getOpcode();
@@ -252,9 +266,11 @@ void ControlFlowGraphBuilder::handleMachineInstr(MachineInstr &MI) {
   default: {
     Stack Input, Output;
     collectInstrOperands(MI, Input, Output);
-    CurrentBlock->Operations.emplace_back(
-        CFG::Operation{std::move(Input), std::move(Output),
-                       CFG::BuiltinCall{&MI, TerminatesOrReverts}});
+    std::optional<std::pair<unsigned, unsigned>> CommutableOpIndexes =
+        getCommutableOpIndexes(MI);
+    CurrentBlock->Operations.emplace_back(CFG::Operation{
+        std::move(Input), std::move(Output),
+        CFG::BuiltinCall{&MI, CommutableOpIndexes, TerminatesOrReverts}});
   } break;
   }
 

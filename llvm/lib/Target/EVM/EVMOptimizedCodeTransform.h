@@ -20,7 +20,6 @@
 #include "llvm/CodeGen/LiveIntervals.h"
 #include "llvm/CodeGen/MachineLoopInfo.h"
 
-#include <optional>
 #include <stack>
 
 namespace llvm {
@@ -47,11 +46,11 @@ private:
   EVMOptimizedCodeTransform(EVMAssembly &Assembly, const CFG &Cfg,
                             const StackLayout &Layout, MachineFunction &MF);
 
-  /// Assert that it is valid to transition from \p SourceStack to \p
-  /// TargetStack. That is \p SourceStack matches each slot in \p
+  /// Checks if it's valid to transition from \p SourceStack to \p
+  /// TargetStack, that is \p SourceStack matches each slot in \p
   /// TargetStack that is not a JunkSlot exactly.
-  static void assertLayoutCompatibility(Stack const &SourceStack,
-                                        Stack const &TargetStack);
+  static bool AreLayoutsCompatible(Stack const &SourceStack,
+                                   Stack const &TargetStack);
 
   /// Shuffles CurrentStack to the desired \p TargetStack while emitting the
   /// shuffling code to Assembly.

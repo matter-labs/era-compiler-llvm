@@ -168,6 +168,12 @@ struct CFG {
 
   struct BuiltinCall {
     MachineInstr *Builtin = nullptr;
+    // This contains commutable operand indexes, if any.
+    // Operand indexes correspond to a stack layout, i.e., the first use
+    // operand in the instruction definition is located on the stack top
+    // and has zero index.
+    std::optional<std::pair<unsigned, unsigned>> CommutableOpIndexes =
+        std::nullopt;
     bool TerminatesOrReverts = false;
   };
 

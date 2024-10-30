@@ -122,12 +122,17 @@ EVMOptimizedCodeTransform::EVMOptimizedCodeTransform(EVMAssembly &Assembly,
                                                      MachineFunction &MF)
     : Assembly(Assembly), Layout(Layout), FuncInfo(&Cfg.FuncInfo), MF(MF) {}
 
-void EVMOptimizedCodeTransform::assertLayoutCompatibility(
-    Stack const &SourceStack, Stack const &TargetStack) {
-  assert(SourceStack.size() == TargetStack.size());
+bool EVMOptimizedCodeTransform::AreLayoutsCompatible(Stack const &SourceStack,
+                                                     Stack const &TargetStack) {
+  if (SourceStack.size() != TargetStack.size())
+    return false;
+
   for (unsigned Idx = 0; Idx < SourceStack.size(); ++Idx)
-    assert(std::holds_alternative<JunkSlot>(TargetStack[Idx]) ||
-           SourceStack[Idx] == TargetStack[Idx]);
+    if (!std::holds_alternative<JunkSlot>(TargetStack[Idx]) &&
+        !(SourceStack[Idx] == TargetStack[Idx]))
+      return false;
+
+  return true;
 }
 
 void EVMOptimizedCodeTransform::createStackLayout(Stack TargetStack) {
@@ -248,7 +253,7 @@ void EVMOptimizedCodeTransform::createStackLayout(Stack TargetStack) {
   assert(Assembly.getStackHeight() == static_cast<int>(CurrentStack.size()));
 }
 
-void EVMOptimizedCodeTransform::operator()(CFG::BasicBlock const &Block) {
+void EVMOptimizedCodeTransform::operator()(const CFG::BasicBlock &Block) {
   // Current location for the entry BB was set up in operator()().
   if (&Block != FuncInfo->Entry)
     Assembly.setCurrentLocation(Block.MBB);
@@ -260,7 +265,7 @@ void EVMOptimizedCodeTransform::operator()(CFG::BasicBlock const &Block) {
   auto const &BlockInfo = Layout.blockInfos.at(&Block);
 
   // Assert that the stack is valid for entering the block.
-  assertLayoutCompatibility(CurrentStack, BlockInfo.entryLayout);
+  assert(AreLayoutsCompatible(CurrentStack, BlockInfo.entryLayout));
 
   // Might set some slots to junk, if not required by the block.
   CurrentStack = BlockInfo.entryLayout;
@@ -270,17 +275,63 @@ void EVMOptimizedCodeTransform::operator()(CFG::BasicBlock const &Block) {
   if (EVMUtils::valueOrNullptr(BlockLabels, &Block))
     Assembly.appendLabel();
 
-  for (auto const &Operation : Block.Operations) {
+  for (const auto &Operation : Block.Operations) {
+    // Check if we can choose cheaper stack shuffling if the Operation is an
+    // instruction with commutable arguments.
     // Create required layout for entering the Operation.
-    createStackLayout(Layout.operationEntryLayout.at(&Operation));
+    if (const auto *Inst = std::get_if<CFG::BuiltinCall>(&Operation.Operation);
+        Inst && Inst->CommutableOpIndexes) {
+      // Get the stack layout before the instruction.
+      const Stack &DefaultTargetStack =
+          Layout.operationEntryLayout.at(&Operation);
+      size_t DefaultCost =
+          EvaluateStackTransform(CurrentStack, DefaultTargetStack);
+      unsigned OpIdx1 = Inst->CommutableOpIndexes->first;
+      unsigned OpIdx2 = Inst->CommutableOpIndexes->second;
+      // Swap the commutable stack items and measure the stack shuffling cost
+      // again.
+      assert(DefaultTargetStack.size() > OpIdx1 &&
+             DefaultTargetStack.size() > OpIdx2);
+      Stack CommutedTargetStack = DefaultTargetStack;
+      std::swap(CommutedTargetStack[CommutedTargetStack.size() - OpIdx1 - 1],
+                CommutedTargetStack[CommutedTargetStack.size() - OpIdx2 - 1]);
+      size_t CommutedCost =
+          EvaluateStackTransform(CurrentStack, CommutedTargetStack);
+      // Choose the cheapest transformation.
+      createStackLayout(CommutedCost < DefaultCost ? CommutedTargetStack
+                                                   : DefaultTargetStack);
 
-    // Assert that we have the inputs of the Operation on stack top.
-    assert(static_cast<int>(CurrentStack.size()) == Assembly.getStackHeight());
-    assert(CurrentStack.size() >= Operation.Input.size());
+#ifndef NDEBUG
+      // Assert that we have the inputs of the Operation on stack top.
+      assert(static_cast<int>(CurrentStack.size()) ==
+             Assembly.getStackHeight());
+      assert(CurrentStack.size() >= Operation.Input.size());
+      Stack StackInput = EVMUtils::to_vector(
+          EVMUtils::take_last(CurrentStack, Operation.Input.size()));
+      // Adjust the StackInput to match the commuted stack.
+      if (CommutedCost < DefaultCost) {
+        std::swap(StackInput[StackInput.size() - OpIdx1 - 1],
+                  StackInput[StackInput.size() - OpIdx2 - 1]);
+      }
+      assert(AreLayoutsCompatible(StackInput, Operation.Input));
+#endif // NDEBUG
+    } else {
+      createStackLayout(Layout.operationEntryLayout.at(&Operation));
+
+#ifndef NDEBUG
+      // Assert that we have the inputs of the Operation on stack top.
+      assert(static_cast<int>(CurrentStack.size()) ==
+             Assembly.getStackHeight());
+      assert(CurrentStack.size() >= Operation.Input.size());
+      const Stack StackInput = EVMUtils::to_vector(
+          EVMUtils::take_last(CurrentStack, Operation.Input.size()));
+      assert(AreLayoutsCompatible(StackInput, Operation.Input));
+#endif // NDEBUG
+    }
+
+#ifndef NDEBUG
     size_t BaseHeight = CurrentStack.size() - Operation.Input.size();
-    assertLayoutCompatibility(EVMUtils::to_vector(EVMUtils::take_last(
-                                  CurrentStack, Operation.Input.size())),
-                              Operation.Input);
+#endif // NDEBUG
 
     // Perform the Operation.
     std::visit(*this, Operation.Operation);
@@ -289,9 +340,9 @@ void EVMOptimizedCodeTransform::operator()(CFG::BasicBlock const &Block) {
     assert(static_cast<int>(CurrentStack.size()) == Assembly.getStackHeight());
     assert(CurrentStack.size() == BaseHeight + Operation.Output.size());
     assert(CurrentStack.size() >= Operation.Output.size());
-    assertLayoutCompatibility(EVMUtils::to_vector(EVMUtils::take_last(
-                                  CurrentStack, Operation.Output.size())),
-                              Operation.Output);
+    assert(AreLayoutsCompatible(EVMUtils::to_vector(EVMUtils::take_last(
+                                    CurrentStack, Operation.Output.size())),
+                                Operation.Output));
   }
 
   // Exit the block.
@@ -342,11 +393,11 @@ void EVMOptimizedCodeTransform::operator()(CFG::BasicBlock const &Block) {
             CurrentStack.pop_back();
 
             // Assert that we have a valid stack for both jump targets.
-            assertLayoutCompatibility(
+            assert(AreLayoutsCompatible(
                 CurrentStack,
-                Layout.blockInfos.at(CondJump.NonZero).entryLayout);
-            assertLayoutCompatibility(
-                CurrentStack, Layout.blockInfos.at(CondJump.Zero).entryLayout);
+                Layout.blockInfos.at(CondJump.NonZero).entryLayout));
+            assert(AreLayoutsCompatible(
+                CurrentStack, Layout.blockInfos.at(CondJump.Zero).entryLayout));
 
             {
               // Restore the stack afterwards for the non-zero case below.
