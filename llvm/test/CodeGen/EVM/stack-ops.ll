@@ -88,6 +88,20 @@ define i256 @swap_first_no_junk(i256 %a1, i256 %a2, i256 %a3, i256 %a4) nounwind
 ; CHECK-LABEL: swap_first_no_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    SUB
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %x1 = sub i256 %a3, %a2
+  ret i256 %x1
+}
+
+define i256 @swap_second_no_junk(i256 %a1, i256 %a2, i256 %a3, i256 %a4) nounwind {
+; CHECK-LABEL: swap_second_no_junk:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    POP
 ; CHECK-NEXT:    POP
@@ -98,18 +112,30 @@ define i256 @swap_first_no_junk(i256 %a1, i256 %a2, i256 %a3, i256 %a4) nounwind
   ret i256 %x1
 }
 
-define i256 @swap_second_no_junk(i256 %a1, i256 %a2, i256 %a3, i256 %a4) nounwind {
-; CHECK-LABEL: swap_second_no_junk:
+define void @swap_both_with_junk(i256 %a1, i256 %a2, i256 %a3, i256 %a4) noreturn {
+; CHECK-LABEL: swap_both_with_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    DUP4
+; CHECK-NEXT:    SUB
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
+  %x1 = sub i256 %a4, %a1
+  call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x1)
+  unreachable
+}
+
+define i256 @swap_both_no_junk(i256 %a1, i256 %a2, i256 %a3, i256 %a4) nounwind {
+; CHECK-LABEL: swap_both_no_junk:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    POP
 ; CHECK-NEXT:    POP
 ; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
-  %x1 = sub i256 %a4, %a1
+  %x1 = sub i256 %a1, %a4
   ret i256 %x1
 }
 
