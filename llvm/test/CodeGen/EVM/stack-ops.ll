@@ -129,13 +129,14 @@ define i256 @swap_both_no_junk(i256 %a1, i256 %a2, i256 %a3, i256 %a4) nounwind 
 ; CHECK-LABEL: swap_both_no_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP3
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    POP
 ; CHECK-NEXT:    POP
 ; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
-  %x1 = sub i256 %a1, %a4
+  %x1 = sub i256 %a4, %a1
   ret i256 %x1
 }
 
