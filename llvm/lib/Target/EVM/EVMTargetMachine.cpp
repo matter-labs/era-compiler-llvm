@@ -26,6 +26,7 @@
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Transforms/IPO/GlobalDCE.h"
+#include "llvm/Transforms/Scalar/MergeIdenticalBB.h"
 #include "llvm/Transforms/Utils.h"
 
 using namespace llvm;
@@ -114,6 +115,11 @@ void EVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
         PM.addPass(EVMLinkRuntimePass());
         PM.addPass(GlobalDCEPass());
         PM.addPass(createModuleToFunctionPassAdaptor(EVMAllocaHoistingPass()));
+      });
+  PB.registerScalarOptimizerLateEPCallback(
+      [](FunctionPassManager &PM, OptimizationLevel Level) {
+        if (Level.getSizeLevel() || Level.getSpeedupLevel() > 1)
+          PM.addPass(MergeIdenticalBBPass());
       });
 }
 
