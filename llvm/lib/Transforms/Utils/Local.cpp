@@ -59,6 +59,9 @@
 // EraVM local begin
 #include "llvm/IR/IntrinsicsEraVM.h"
 // EraVM local end
+// EVM local begin
+#include "llvm/IR/IntrinsicsEVM.h"
+// EVM local end
 #include "llvm/IR/IntrinsicsWebAssembly.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/MDBuilder.h"
@@ -443,6 +446,17 @@ bool llvm::wouldInstructionBeTriviallyDead(Instruction *I,
         II->getIntrinsicID() == Intrinsic::eravm_meta)
       return true;
   // EraVM local end
+
+  // EVM local begin
+  if (auto *II = dyn_cast<IntrinsicInst>(I))
+    if (II->getIntrinsicID() == Intrinsic::evm_msize ||
+        II->getIntrinsicID() == Intrinsic::evm_pc ||
+        II->getIntrinsicID() == Intrinsic::evm_gas ||
+        II->getIntrinsicID() == Intrinsic::evm_balance ||
+        II->getIntrinsicID() == Intrinsic::evm_returndatasize ||
+        II->getIntrinsicID() == Intrinsic::evm_selfbalance)
+      return true;
+  // EVM local end
 
   if (auto *CB = dyn_cast<CallBase>(I))
     if (isRemovableAlloc(CB, TLI))
