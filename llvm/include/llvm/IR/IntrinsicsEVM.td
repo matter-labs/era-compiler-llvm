@@ -25,47 +25,47 @@ let TargetPrefix = "evm" in {
 
 // Arithmetical operations.
 def int_evm_div
-  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
+  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
 
 def int_evm_sdiv
-  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
+  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
 
 def int_evm_mod
-  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
+  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
 
 def int_evm_smod
-  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
+  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
 
 def int_evm_shl
-  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
+  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
 
 def int_evm_shr
-  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
+  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
 
 def int_evm_sar
-  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
+  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
 
 def int_evm_addmod
   : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty],
-              [IntrNoMem]>;
+              [IntrNoMem, IntrWillReturn]>;
 
 def int_evm_mulmod
   : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty],
-              [IntrNoMem]>;
+              [IntrNoMem, IntrWillReturn]>;
 
 def int_evm_exp
-  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
+  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
 
 def int_evm_sha3
   : Intrinsic<[llvm_i256_ty],
-              [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty], [IntrReadMem]>;
+              [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty], [IntrReadMem, IntrWillReturn]>;
 
 def int_evm_signextend
-  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem]>;
+  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
 
 def int_evm_byte
   : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty],
-              [IntrNoMem]>;
+              [IntrNoMem, IntrWillReturn]>;
 
 // Memory operations.
 def int_evm_mstore8
@@ -73,86 +73,86 @@ def int_evm_mstore8
 
 // TODO: CPR-1555.
 //       Review system intrinsics attributes taking into account EraVM.
-def int_evm_msize : Intrinsic<[llvm_i256_ty], [], []>;
+def int_evm_msize : Intrinsic<[llvm_i256_ty], [], [IntrInaccessibleMemOnly, IntrWillReturn]>;
 
-def int_evm_pc : Intrinsic<[llvm_i256_ty], [], []>;
+def int_evm_pc : Intrinsic<[llvm_i256_ty], [], [IntrInaccessibleMemOnly, IntrWillReturn]>;
 
-def int_evm_gas : Intrinsic<[llvm_i256_ty], [], []>;
+def int_evm_gas : Intrinsic<[llvm_i256_ty], [], [IntrInaccessibleMemOnly, IntrWillReturn]>;
 
 
 // Getting values from the context.
-def int_evm_address : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_evm_address : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
 
-def int_evm_origin : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_evm_origin : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
 
-def int_evm_caller : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_evm_caller : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
 
-def int_evm_balance : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], []>;
+def int_evm_balance : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrInaccessibleMemOnly, IntrWillReturn]>;
 
-def int_evm_callvalue : Intrinsic<[llvm_i256_ty], [], []>;
+def int_evm_callvalue : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
 
-def int_evm_calldatasize : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_evm_calldatasize : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
 
 def int_evm_calldataload
   : Intrinsic<[llvm_i256_ty], [LLVMQualPointerType<AS.CALL_DATA>], []>;
 
-def int_evm_codesize : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_evm_codesize : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
 
 // TODO: Ensure the gasprice is fixed while a function execution.
-def int_evm_gasprice : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_evm_gasprice : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
 
 def int_evm_extcodesize
-  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrNoMem]>;
+  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
 
 def int_evm_extcodecopy
   : Intrinsic<[], [llvm_i256_ty, LLVMQualPointerType<AS.HEAP>,
                    LLVMQualPointerType<AS.CODE>, llvm_i256_ty], [IntrWriteMem]>;
 
-def int_evm_returndatasize : Intrinsic<[llvm_i256_ty], [], []>;
+def int_evm_returndatasize : Intrinsic<[llvm_i256_ty], [], [IntrInaccessibleMemOnly, IntrWillReturn]>;
 
 def int_evm_extcodehash
-  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrNoMem]>;
+  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
 
-def int_evm_blockhash : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrNoMem]>;
+def int_evm_blockhash : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
 
-def int_evm_blobhash : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrNoMem]>;
+def int_evm_blobhash : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
 
-def int_evm_coinbase : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_evm_coinbase : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
 
-def int_evm_timestamp : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_evm_timestamp : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
 
-def int_evm_number : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_evm_number : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
 
-def int_evm_difficulty : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_evm_difficulty : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
 
-def int_evm_gaslimit : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_evm_gaslimit : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
 
-def int_evm_chainid : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_evm_chainid : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
 
-def int_evm_selfbalance : Intrinsic<[llvm_i256_ty], [], []>;
+def int_evm_selfbalance : Intrinsic<[llvm_i256_ty], [], [IntrInaccessibleMemOnly]>;
 
-def int_evm_basefee : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_evm_basefee : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
 
-def int_evm_blobbasefee : Intrinsic<[llvm_i256_ty], [], [IntrNoMem]>;
+def int_evm_blobbasefee : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
 
 // Logging.
 def int_evm_log0
-  : Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty], []>;
+  : Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty], [IntrReadMem]>;
 
 def int_evm_log1
-  : Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty, llvm_i256_ty], []>;
+  : Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty, llvm_i256_ty], [IntrReadMem]>;
 
 def int_evm_log2
   : Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty, llvm_i256_ty,
-                   llvm_i256_ty], []>;
+                   llvm_i256_ty], [IntrReadMem]>;
 
 def int_evm_log3
   : Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty, llvm_i256_ty,
-                   llvm_i256_ty, llvm_i256_ty], []>;
+                   llvm_i256_ty, llvm_i256_ty], [IntrReadMem]>;
 
 def int_evm_log4
   : Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty, llvm_i256_ty,
-                   llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], []>;
+                   llvm_i256_ty, llvm_i256_ty, llvm_i256_ty], [IntrReadMem]>;
 
 // System calls
 def int_evm_create
@@ -252,14 +252,14 @@ def int_evm_memcpyas1as4
 // passed in the metadata.
 def int_evm_datasize : DefaultAttrsIntrinsic<
   [llvm_i256_ty], [llvm_metadata_ty],
-  [IntrNoMem, IntrSpeculatable]
+  [IntrNoMem, IntrWillReturn, IntrSpeculatable]
 >;
 
 // Returns a code offset of the Yul object with the name
 // passed in the metadata.
 def int_evm_dataoffset : DefaultAttrsIntrinsic<
   [llvm_i256_ty], [llvm_metadata_ty],
-  [IntrNoMem, IntrSpeculatable]
+  [IntrNoMem, IntrWillReturn, IntrSpeculatable]
 >;
 
 
