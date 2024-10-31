@@ -16,6 +16,7 @@
 
 #include "llvm/IR/PassManager.h"
 #include "llvm/MC/TargetRegistry.h"
+#include "llvm/Pass.h"
 
 namespace llvm {
 class EVMTargetMachine;
@@ -31,13 +32,17 @@ enum AddressSpaces {
   AS_CALL_DATA = 2,
   AS_RETURN_DATA = 3,
   AS_CODE = 4,
-  AS_STORAGE = 5
+  AS_STORAGE = 5,
+  AS_TSTORAGE = 6,
+  MAX_ADDRESS = AS_TSTORAGE
 };
 } // namespace EVMAS
 
 // LLVM IR passes.
 ModulePass *createEVMLowerIntrinsicsPass();
 FunctionPass *createEVMCodegenPreparePass();
+ImmutablePass *createEVMAAWrapperPass();
+ImmutablePass *createEVMExternalAAWrapperPass();
 
 // ISel and immediate followup passes.
 FunctionPass *createEVMISelDag(EVMTargetMachine &TM,
@@ -66,6 +71,8 @@ void initializeEVMSingleUseExpressionPass(PassRegistry &);
 void initializeEVMSplitCriticalEdgesPass(PassRegistry &);
 void initializeEVMStackifyPass(PassRegistry &);
 void initializeEVMBPStackificationPass(PassRegistry &);
+void initializeEVMAAWrapperPassPass(PassRegistry &);
+void initializeEVMExternalAAWrapperPass(PassRegistry &);
 
 struct EVMLinkRuntimePass : PassInfoMixin<EVMLinkRuntimePass> {
   EVMLinkRuntimePass() = default;

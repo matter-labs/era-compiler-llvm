@@ -14,8 +14,7 @@ define i256 @test_offset(ptr addrspace(1) %addr) {
 ; CHECK-NEXT:    [[ADD2:%.*]] = add i256 [[PTRTOINT]], 64
 ; CHECK-NEXT:    [[INTTOPTR2:%.*]] = inttoptr i256 [[ADD2]] to ptr addrspace(1)
 ; CHECK-NEXT:    store i256 58, ptr addrspace(1) [[INTTOPTR2]], align 1
-; CHECK-NEXT:    [[LOAD:%.*]] = load i256, ptr addrspace(1) [[INTTOPTR1]], align 1
-; CHECK-NEXT:    ret i256 [[LOAD]]
+; CHECK-NEXT:    ret i256 3
 ;
   %ptrtoint = ptrtoint ptr addrspace(1) %addr to i256
   %add1 = add i256 %ptrtoint, 32
@@ -33,8 +32,7 @@ define i256 @test_memcpy() {
 ; CHECK-SAME: () local_unnamed_addr #[[ATTR1:[0-9]+]] {
 ; CHECK-NEXT:    store i256 2, ptr addrspace(1) inttoptr (i256 2 to ptr addrspace(1)), align 64
 ; CHECK-NEXT:    tail call void @llvm.memcpy.p1.p1.i256(ptr addrspace(1) noundef nonnull align 32 dereferenceable(53) inttoptr (i256 96 to ptr addrspace(1)), ptr addrspace(1) noundef nonnull align 256 dereferenceable(53) inttoptr (i256 256 to ptr addrspace(1)), i256 53, i1 false)
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(1) inttoptr (i256 2 to ptr addrspace(1)), align 64
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(1) inttoptr (i256 2 to ptr addrspace(1)), align 64
   tail call void @llvm.memcpy.p1.p1.i256(ptr addrspace(1) inttoptr (i256 96 to ptr addrspace(1)), ptr addrspace(1) inttoptr (i256 256 to ptr addrspace(1)), i256 53, i1 false)
@@ -47,8 +45,7 @@ define i256 @test_different_locsizes() {
 ; CHECK-SAME: () local_unnamed_addr #[[ATTR0]] {
 ; CHECK-NEXT:    store i256 2, ptr addrspace(1) inttoptr (i256 2 to ptr addrspace(1)), align 64
 ; CHECK-NEXT:    store i8 1, ptr addrspace(1) inttoptr (i8 1 to ptr addrspace(1)), align 64
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(1) inttoptr (i256 2 to ptr addrspace(1)), align 64
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(1) inttoptr (i256 2 to ptr addrspace(1)), align 64
   store i8 1, ptr addrspace(1) inttoptr (i8 1 to ptr addrspace(1)), align 64
@@ -62,8 +59,7 @@ define i256 @test_gas() {
 ; CHECK-NEXT:    store i256 2, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
 ; CHECK-NEXT:    [[GAS:%.*]] = tail call i256 @llvm.evm.gas()
 ; CHECK-NEXT:    store i256 [[GAS]], ptr addrspace(1) inttoptr (i256 1 to ptr addrspace(1)), align 64
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
   %gas = call i256 @llvm.evm.gas()
@@ -90,8 +86,7 @@ define i256 @test_as() {
 ; CHECK-SAME: () local_unnamed_addr #[[ATTR0]] {
 ; CHECK-NEXT:    store i256 2, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
 ; CHECK-NEXT:    store i256 1, ptr addrspace(1) inttoptr (i256 1 to ptr addrspace(1)), align 64
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
   store i256 1, ptr addrspace(1) inttoptr (i256 1 to ptr addrspace(1)), align 64
@@ -101,7 +96,7 @@ define i256 @test_as() {
 
 define i256 @test_as1_overlap() {
 ; CHECK-LABEL: define i256 @test_as1_overlap
-; CHECK-SAME: () local_unnamed_addr #[[ATTR0]] {
+; CHECK-SAME: () local_unnamed_addr #[[ATTR4:[0-9]+]] {
 ; CHECK-NEXT:    store i256 2, ptr addrspace(1) null, align 4294967296
 ; CHECK-NEXT:    store i256 1, ptr addrspace(1) inttoptr (i256 31 to ptr addrspace(1)), align 64
 ; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(1) null, align 4294967296
@@ -118,8 +113,7 @@ define i256 @test_as1_null() {
 ; CHECK-SAME: () local_unnamed_addr #[[ATTR0]] {
 ; CHECK-NEXT:    store i256 2, ptr addrspace(1) null, align 4294967296
 ; CHECK-NEXT:    store i256 1, ptr addrspace(1) inttoptr (i256 32 to ptr addrspace(1)), align 64
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(1) null, align 4294967296
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(1) null, align 64
   store i256 1, ptr addrspace(1) inttoptr (i256 32 to ptr addrspace(1)), align 64
@@ -132,8 +126,7 @@ define i256 @test_as1_small() {
 ; CHECK-SAME: () local_unnamed_addr #[[ATTR0]] {
 ; CHECK-NEXT:    store i256 2, ptr addrspace(1) inttoptr (i256 33 to ptr addrspace(1)), align 64
 ; CHECK-NEXT:    store i256 1, ptr addrspace(1) inttoptr (i256 1 to ptr addrspace(1)), align 64
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(1) inttoptr (i256 33 to ptr addrspace(1)), align 64
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(1) inttoptr (i256 33 to ptr addrspace(1)), align 64
   store i256 1, ptr addrspace(1) inttoptr (i256 1 to ptr addrspace(1)), align 64
@@ -146,8 +139,7 @@ define i256 @test_as1_large() {
 ; CHECK-SAME: () local_unnamed_addr #[[ATTR0]] {
 ; CHECK-NEXT:    store i256 2, ptr addrspace(1) inttoptr (i256 53919893334301279589334030174039261352344891250716429051063678533664 to ptr addrspace(1)), align 64
 ; CHECK-NEXT:    store i256 1, ptr addrspace(1) inttoptr (i256 53919893334301279589334030174039261352344891250716429051063678533632 to ptr addrspace(1)), align 4294967296
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(1) inttoptr (i256 53919893334301279589334030174039261352344891250716429051063678533664 to ptr addrspace(1)), align 64
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(1) inttoptr (i256 53919893334301279589334030174039261352344891250716429051063678533664 to ptr addrspace(1)), align 64
   store i256 1, ptr addrspace(1) inttoptr (i256 53919893334301279589334030174039261352344891250716429051063678533632 to ptr addrspace(1)), align 64
@@ -160,8 +152,7 @@ define i256 @test_as5_null() {
 ; CHECK-SAME: () local_unnamed_addr #[[ATTR0]] {
 ; CHECK-NEXT:    store i256 2, ptr addrspace(5) null, align 4294967296
 ; CHECK-NEXT:    store i256 1, ptr addrspace(5) inttoptr (i256 1 to ptr addrspace(5)), align 64
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(5) null, align 4294967296
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(5) null, align 64
   store i256 1, ptr addrspace(5) inttoptr (i256 1 to ptr addrspace(5)), align 64
@@ -174,8 +165,7 @@ define i256 @test_as5_small() {
 ; CHECK-SAME: () local_unnamed_addr #[[ATTR0]] {
 ; CHECK-NEXT:    store i256 2, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
 ; CHECK-NEXT:    store i256 1, ptr addrspace(5) inttoptr (i256 1 to ptr addrspace(5)), align 64
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
   store i256 1, ptr addrspace(5) inttoptr (i256 1 to ptr addrspace(5)), align 64
@@ -188,8 +178,7 @@ define i256 @test_as5_large() {
 ; CHECK-SAME: () local_unnamed_addr #[[ATTR0]] {
 ; CHECK-NEXT:    store i256 2, ptr addrspace(5) inttoptr (i256 53919893334301279589334030174039261352344891250716429051063678533632 to ptr addrspace(5)), align 4294967296
 ; CHECK-NEXT:    store i256 1, ptr addrspace(5) inttoptr (i256 1 to ptr addrspace(5)), align 64
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(5) inttoptr (i256 53919893334301279589334030174039261352344891250716429051063678533632 to ptr addrspace(5)), align 4294967296
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(5) inttoptr (i256 53919893334301279589334030174039261352344891250716429051063678533632 to ptr addrspace(5)), align 64
   store i256 1, ptr addrspace(5) inttoptr (i256 1 to ptr addrspace(5)), align 64
@@ -202,8 +191,7 @@ define i256 @test_as6_small() {
 ; CHECK-SAME: () local_unnamed_addr #[[ATTR0]] {
 ; CHECK-NEXT:    store i256 2, ptr addrspace(6) inttoptr (i256 2 to ptr addrspace(6)), align 64
 ; CHECK-NEXT:    store i256 1, ptr addrspace(6) inttoptr (i256 1 to ptr addrspace(6)), align 64
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(6) inttoptr (i256 2 to ptr addrspace(6)), align 64
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(6) inttoptr (i256 2 to ptr addrspace(6)), align 64
   store i256 1, ptr addrspace(6) inttoptr (i256 1 to ptr addrspace(6)), align 64
@@ -216,8 +204,7 @@ define i256 @test_as6_large() {
 ; CHECK-SAME: () local_unnamed_addr #[[ATTR0]] {
 ; CHECK-NEXT:    store i256 2, ptr addrspace(6) inttoptr (i256 53919893334301279589334030174039261352344891250716429051063678533632 to ptr addrspace(6)), align 4294967296
 ; CHECK-NEXT:    store i256 1, ptr addrspace(6) inttoptr (i256 1 to ptr addrspace(6)), align 64
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(6) inttoptr (i256 53919893334301279589334030174039261352344891250716429051063678533632 to ptr addrspace(6)), align 4294967296
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(6) inttoptr (i256 53919893334301279589334030174039261352344891250716429051063678533632 to ptr addrspace(6)), align 64
   store i256 1, ptr addrspace(6) inttoptr (i256 1 to ptr addrspace(6)), align 64
