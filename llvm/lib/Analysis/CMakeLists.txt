@@ -139,6 +139,9 @@ add_llvm_component_library(LLVMAnalysis
   ValueLatticeUtils.cpp
   ValueTracking.cpp
   VectorUtils.cpp
+  # EVM local begin
+  VMAliasAnalysis.cpp
+  # EVM local end
   ${GeneratedMLSources}
 
   ADDITIONAL_HEADER_DIRS
