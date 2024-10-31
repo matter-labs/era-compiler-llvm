@@ -17,6 +17,7 @@ set (STDLIB_CONTENT "R\"(${STDLIB_CONTENT})\"")
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/EVMStdLib.inc ${STDLIB_CONTENT})
 
 add_llvm_target(EVMCodeGen
+  EVMAliasAnalysis.cpp
   EVMAllocaHoisting.cpp
   EVMArgumentMove.cpp
   EVMAsmPrinter.cpp
