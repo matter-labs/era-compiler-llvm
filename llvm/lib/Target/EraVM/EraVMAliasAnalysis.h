@@ -13,32 +13,9 @@
 #ifndef LLVM_LIB_TARGET_ERAVM_ERAVMALIASANALYSIS_H
 #define LLVM_LIB_TARGET_ERAVM_ERAVMALIASANALYSIS_H
 
-#include "llvm/Analysis/AliasAnalysis.h"
+#include "llvm/Analysis/VMAliasAnalysis.h"
 
 namespace llvm {
-
-class DataLayout;
-class MemoryLocation;
-
-/// A simple AA result that uses address space info to answer queries.
-class EraVMAAResult : public AAResultBase {
-  const DataLayout &DL;
-
-public:
-  explicit EraVMAAResult(const DataLayout &DL) : DL(DL) {}
-
-  /// Handle invalidation events from the new pass manager.
-  ///
-  /// By definition, this result is stateless and so remains valid.
-  bool invalidate(Function &, const PreservedAnalyses &,
-                  FunctionAnalysisManager::Invalidator &) {
-    return false;
-  }
-
-  AliasResult alias(const MemoryLocation &LocA, const MemoryLocation &LocB,
-                    AAQueryInfo &AAQI, const Instruction *I);
-};
-
 /// Analysis pass providing a never-invalidated alias analysis result.
 class EraVMAA : public AnalysisInfoMixin<EraVMAA> {
   friend AnalysisInfoMixin<EraVMAA>;
@@ -46,35 +23,28 @@ class EraVMAA : public AnalysisInfoMixin<EraVMAA> {
   static AnalysisKey Key;
 
 public:
-  using Result = EraVMAAResult;
-
-  EraVMAAResult run(Function &F, AnalysisManager<Function> &AM) {
-    return EraVMAAResult(F.getParent()->getDataLayout());
-  }
+  using Result = VMAAResult;
+  VMAAResult run(Function &F, AnalysisManager<Function> &AM);
 };
 
-/// Legacy wrapper pass to provide the EraVMAAResult object.
+/// Legacy wrapper pass to provide the VMAAResult object.
 class EraVMAAWrapperPass : public ImmutablePass {
-  std::unique_ptr<EraVMAAResult> Result;
+  std::unique_ptr<VMAAResult> Result;
 
 public:
   static char ID;
 
   EraVMAAWrapperPass();
 
-  EraVMAAResult &getResult() { return *Result; }
-  const EraVMAAResult &getResult() const { return *Result; }
-
-  bool doInitialization(Module &M) override {
-    Result = std::make_unique<EraVMAAResult>(M.getDataLayout());
-    return false;
-  }
+  VMAAResult &getResult() { return *Result; }
+  const VMAAResult &getResult() const { return *Result; }
 
   bool doFinalization(Module &M) override {
     Result.reset();
     return false;
   }
 
+  bool doInitialization(Module &M) override;
   void getAnalysisUsage(AnalysisUsage &AU) const override;
 };
 
