@@ -140,6 +140,9 @@ add_llvm_component_library(LLVMAnalysis
   ValueTracking.cpp
   VectorUtils.cpp
   VFABIDemangling.cpp
+  # EraVM local begin
+  VMAliasAnalysis.cpp
+  # EraVM local end
   ${GeneratedMLSources}
 
   ADDITIONAL_HEADER_DIRS
