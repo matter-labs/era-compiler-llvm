@@ -18,6 +18,7 @@
 #include "MCTargetDesc/EraVMInstPrinter.h"
 #include "MCTargetDesc/EraVMTargetStreamer.h"
 #include "TargetInfo/EraVMTargetInfo.h"
+#include "llvm/ADT/StringMap.h"
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/CodeGen/MachineConstantPool.h"
@@ -60,6 +61,8 @@ class EraVMAsmPrinter : public AsmPrinter {
       std::map<const Constant *, std::vector<MCSymbol *>>;
   std::vector<const Constant *> UniqueConstants;
   ConstantPoolMapType ConstantPoolMap;
+  // Maps linker symbol name to corresponding MCSymbol.
+  StringMap<MCSymbol *> LinkerSymbolMap;
 
 public:
   EraVMAsmPrinter(TargetMachine &TM, std::unique_ptr<MCStreamer> Streamer)
@@ -146,7 +149,7 @@ void EraVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
   EmitToStreamer(*OutStreamer, TmpInst);
 }
 
-// The LinkerSymbol instruction is lowered in the following:
+// The LinkerSymbol instruction is lowered to the following:
 //
 //   .rodata
 //   .linker_symbol0:
@@ -158,8 +161,13 @@ void EraVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
 void EraVMAsmPrinter::emitLibraryAddressSymbol(const MachineInstr *MI) {
   MCInst MCI;
   MCI.setOpcode(EraVM::ADDcrr_s);
+
   // Code reference.
-  MCSymbol *Label = OutContext.createNamedTempSymbol("linker_symbol");
+  MCSymbol *LinkerSymbol = MI->getOperand(1).getMCSymbol();
+  StringRef LinkerSymbolName = LinkerSymbol->getName();
+  MCSymbol *Label = LinkerSymbolMap.contains(LinkerSymbolName)
+                        ? LinkerSymbolMap[LinkerSymbolName]
+                        : OutContext.createNamedTempSymbol("linker_symbol");
   const MCExpr *LabelExpr = MCSymbolRefExpr::create(Label, OutContext);
   auto *TS =
       static_cast<EraVMTargetStreamer *>(OutStreamer->getTargetStreamer());
@@ -173,9 +181,13 @@ void EraVMAsmPrinter::emitLibraryAddressSymbol(const MachineInstr *MI) {
   MCI.addOperand(MCOperand::createImm(0));
   EmitToStreamer(*OutStreamer, MCI);
 
-  MCSymbol *LinkerSymbol = MI->getOperand(1).getMCSymbol();
-  StringRef SymbolName = LinkerSymbol->getName();
-  std::string SymbolNameHash = EraVM::getLinkerSymbolHash(SymbolName);
+  // The linker symbol and the related section already exist, so just exit.
+  if (LinkerSymbolMap.contains(LinkerSymbolName))
+    return;
+
+  LinkerSymbolMap[LinkerSymbolName] = Label;
+
+  std::string SymbolNameHash = EraVM::getLinkerSymbolHash(LinkerSymbolName);
   MCSymbol *LinkerSymbolHash = OutContext.getOrCreateSymbol(SymbolNameHash);
 
   // Emit the .rodata entry.
@@ -188,13 +200,13 @@ void EraVMAsmPrinter::emitLibraryAddressSymbol(const MachineInstr *MI) {
 
   // Emit the .linker_symbol_name section that contains the actual symbol
   // name.
-  std::string LinkerSymbolSectionName =
-      EraVM::getLinkerSymbolSectionName(EraVM::getLinkerSymbolHash(SymbolName));
+  std::string LinkerSymbolSectionName = EraVM::getLinkerSymbolSectionName(
+      EraVM::getLinkerSymbolHash(LinkerSymbolName));
 
   MCSection *LinkerSymbolSection = OutContext.getELFSection(
       LinkerSymbolSectionName, ELF::SHT_PROGBITS, ELF::SHF_STRINGS);
   OutStreamer->switchSection(LinkerSymbolSection);
-  OutStreamer->emitBytes(SymbolName);
+  OutStreamer->emitBytes(LinkerSymbolName);
 
   OutStreamer->switchSection(CurrentSection);
 }
@@ -270,6 +282,7 @@ void EraVMAsmPrinter::emitEndOfAsmFile(Module &) {
   // after emitting all the things, we also need to clear symbol cache
   UniqueConstants.clear();
   ConstantPoolMap.clear();
+  LinkerSymbolMap.clear();
 }
 
 void EraVMAsmPrinter::insertSymbolToConstantMap(const Constant *C,

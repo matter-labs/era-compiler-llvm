@@ -296,11 +296,6 @@ LLVMBool LLVMDisassembleEraVM(LLVMTargetMachineRef T,
       break;
   }
 
-#ifndef NDEBUG
-  if (ConstantSectionStart != std::numeric_limits<uint64_t>::max())
-    assert(PC == ConstantSectionStart * WordSize);
-#endif
-
   while (PC + WordSize <= BytesNum) {
     uint64_t Word = PC / WordSize;
     assert(PC % WordSize == 0);

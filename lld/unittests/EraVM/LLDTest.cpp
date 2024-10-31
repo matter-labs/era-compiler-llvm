@@ -564,6 +564,126 @@ define i256 @test() {                                             \n\
   LLVMDisposeMemoryBuffer(BinMemBuffer);
 }
 
+TEST_F(LLDCTest, IterativeLinkageRepeatedLibraries) {
+  StringRef LLVMIr = "\
+target datalayout = \"E-p:256:256-i256:256:256-S32-a:256:256\"    \n\
+target triple = \"eravm\"                                         \n\
+declare i256 @llvm.eravm.linkersymbol(metadata)                   \n\
+                                                                  \n\
+define i256 @foo() {                                              \n\
+  %res = call i256 @llvm.eravm.linkersymbol(metadata !1)          \n\
+  %res2 = call i256 @llvm.eravm.linkersymbol(metadata !3)         \n\
+  %res3 = add i256 %res, %res2                                    \n\
+  ret i256 %res3                                                  \n\
+}                                                                 \n\
+                                                                  \n\
+define i256 @bar() {                                              \n\
+  %res = call i256 @llvm.eravm.linkersymbol(metadata !1)          \n\
+  %res2 = call i256 @llvm.eravm.linkersymbol(metadata !2)         \n\
+  %res3 = add i256 %res, %res2                                    \n\
+  ret i256 %res3                                                  \n\
+}                                                                 \n\
+                                                                  \n\
+!1 = !{!\"library_id\"}                                           \n\
+!2 = !{!\"library_id\"}                                           \n\
+!3 = !{!\"library_id2\"}";
+
+  // Wrap Source in a MemoryBuffer
+  LLVMMemoryBufferRef IrMemBuffer = LLVMCreateMemoryBufferWithMemoryRange(
+      LLVMIr.data(), LLVMIr.size(), "test", 1);
+  char *ErrMsg = nullptr;
+  LLVMModuleRef M;
+  if (LLVMParseIRInContext(Context, IrMemBuffer, &M, &ErrMsg)) {
+    FAIL() << "Failed to parse llvm ir:" << ErrMsg;
+    LLVMDisposeMessage(ErrMsg);
+    return;
+  }
+
+  // Run CodeGen to produce the buffer.
+  LLVMMemoryBufferRef ObjMemBuffer;
+  if (LLVMTargetMachineEmitToMemoryBuffer(TM, M, LLVMObjectFile, &ErrMsg,
+                                          &ObjMemBuffer)) {
+    FAIL() << "Failed to compile llvm ir:" << ErrMsg;
+    LLVMDisposeModule(M);
+    LLVMDisposeMessage(ErrMsg);
+    return;
+  }
+  LLVMDisposeModule(M);
+
+  EXPECT_TRUE(LLVMIsELFEraVM(ObjMemBuffer));
+
+  uint64_t NumUndefLinkerSymbols = 0;
+  const char *LinkerSymbols[2] = {"library_id", "library_id2"};
+  const char LinkerSymbolVals[2][20] = {
+      {1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5},
+      {6, 6, 6, 6, 7, 7, 7, 7, 8, 8, 8, 8, 9, 9, 9, 9, 10, 11, 12, 13}};
+
+  char **UndefLinkerSymbols =
+      LLVMGetUndefinedLinkerSymbolsEraVM(ObjMemBuffer, &NumUndefLinkerSymbols);
+  EXPECT_TRUE(NumUndefLinkerSymbols == 2);
+  EXPECT_TRUE((std::strcmp(UndefLinkerSymbols[0], LinkerSymbols[0]) == 0) ||
+              (std::strcmp(UndefLinkerSymbols[0], LinkerSymbols[1]) == 0));
+  EXPECT_TRUE((std::strcmp(UndefLinkerSymbols[1], LinkerSymbols[0]) == 0) ||
+              (std::strcmp(UndefLinkerSymbols[1], LinkerSymbols[1]) == 0));
+
+  LLVMDisposeUndefinedLinkerSymbolsEraVM(UndefLinkerSymbols,
+                                         NumUndefLinkerSymbols);
+
+  // Pass only the first linker symbol.
+  LLVMMemoryBufferRef Obj2MemBuffer;
+  if (LLVMLinkEraVM(ObjMemBuffer, &Obj2MemBuffer, LinkerSymbols,
+                    LinkerSymbolVals, 1, &ErrMsg)) {
+    FAIL() << "Failed to link:" << ErrMsg;
+    LLVMDisposeMessage(ErrMsg);
+    return;
+  }
+
+  EXPECT_TRUE(LLVMIsELFEraVM(Obj2MemBuffer));
+  UndefLinkerSymbols =
+      LLVMGetUndefinedLinkerSymbolsEraVM(Obj2MemBuffer, &NumUndefLinkerSymbols);
+  EXPECT_TRUE(NumUndefLinkerSymbols == 1);
+  EXPECT_TRUE(std::strcmp(UndefLinkerSymbols[0], LinkerSymbols[1]) == 0);
+
+  LLVMDisposeUndefinedLinkerSymbolsEraVM(UndefLinkerSymbols,
+                                         NumUndefLinkerSymbols);
+
+  // Pass only the second linker symbol. This time
+  // the linker should emit the final bytecode, as all the
+  // symbols are resolved.
+  LLVMMemoryBufferRef BinMemBuffer;
+  if (LLVMLinkEraVM(Obj2MemBuffer, &BinMemBuffer, &LinkerSymbols[1],
+                    &LinkerSymbolVals[1], 1, &ErrMsg)) {
+    FAIL() << "Failed to link:" << ErrMsg;
+    LLVMDisposeMessage(ErrMsg);
+    return;
+  }
+
+  {
+    LLVMMemoryBufferRef Bin2MemBuffer;
+    EXPECT_TRUE(LLVMLinkEraVM(BinMemBuffer, &Bin2MemBuffer, nullptr, nullptr, 0,
+                              &ErrMsg));
+    EXPECT_TRUE(
+        StringRef(ErrMsg).contains("Input binary is not an EraVM ELF file"));
+    LLVMDisposeMessage(ErrMsg);
+  }
+
+  EXPECT_FALSE(LLVMIsELFEraVM(BinMemBuffer));
+  UndefLinkerSymbols =
+      LLVMGetUndefinedLinkerSymbolsEraVM(BinMemBuffer, &NumUndefLinkerSymbols);
+  EXPECT_TRUE(NumUndefLinkerSymbols == 0);
+
+  StringRef Val1(LinkerSymbolVals[0], 20);
+  StringRef Val2(LinkerSymbolVals[1], 20);
+  StringRef Binary(LLVMGetBufferStart(BinMemBuffer),
+                   LLVMGetBufferSize(BinMemBuffer));
+  EXPECT_TRUE(Binary.count(Val1) == 1);
+  EXPECT_TRUE(Binary.count(Val2) == 1);
+  EXPECT_TRUE(LLVMGetBufferSize(BinMemBuffer) % 64 == 32);
+  LLVMDisposeMemoryBuffer(ObjMemBuffer);
+  LLVMDisposeMemoryBuffer(Obj2MemBuffer);
+  LLVMDisposeMemoryBuffer(BinMemBuffer);
+}
+
 TEST_F(LLDCTest, LinkError) {
   StringRef LLVMIr = "\
 target datalayout = \"E-p:256:256-i256:256:256-S32-a:256:256\"    \n\
