@@ -128,12 +128,12 @@ EraVM::analyzeEncodedOpcode(unsigned EncodedOpcode, EncodedOperandMode &SrcMode,
 }
 
 // Returs the string of the following format:
-//   '__$KECCAK256(SymName.substr(0, 34))$__'
+//   '__$KECCAK256(SymName)$__'
 std::string EraVM::getLinkerSymbolHash(StringRef SymName) {
   std::array<uint8_t, 32> Hash = KECCAK::KECCAK_256(SymName);
   SmallString<72> HexHash;
   toHex(Hash, /*LowerCase*/ true, HexHash);
-  return (Twine("__$") + HexHash.substr(0, 34) + "$__").str();
+  return (Twine("__$") + HexHash + "$__").str();
 }
 
 // Returns concatenation of the Name with the SubIdx.
