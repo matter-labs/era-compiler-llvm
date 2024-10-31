@@ -12,6 +12,7 @@
 
 #include "EVM.h"
 
+#include "EVMAliasAnalysis.h"
 #include "EVMMachineFunctionInfo.h"
 #include "EVMTargetMachine.h"
 #include "EVMTargetObjectFile.h"
@@ -57,6 +58,8 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   initializeEVMSplitCriticalEdgesPass(PR);
   initializeEVMStackifyPass(PR);
   initializeEVMBPStackificationPass(PR);
+  initializeEVMAAWrapperPassPass(PR);
+  initializeEVMExternalAAWrapperPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -113,6 +116,10 @@ bool EVMTargetMachine::parseMachineFunctionInfo(
   return false;
 }
 
+void EVMTargetMachine::registerDefaultAliasAnalyses(AAManager &AAM) {
+  AAM.registerFunctionAnalysis<EVMAA>();
+}
+
 void EVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
   PB.registerPipelineStartEPCallback(
       [](ModulePassManager &PM, OptimizationLevel Level) {
@@ -125,6 +132,18 @@ void EVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
         if (Level.getSizeLevel() || Level.getSpeedupLevel() > 1)
           PM.addPass(MergeIdenticalBBPass());
       });
+
+  PB.registerAnalysisRegistrationCallback([](FunctionAnalysisManager &FAM) {
+    FAM.registerPass([] { return EVMAA(); });
+  });
+
+  PB.registerParseAACallback([](StringRef AAName, AAManager &AAM) {
+    if (AAName == "evm-aa") {
+      AAM.registerFunctionAnalysis<EVMAA>();
+      return true;
+    }
+    return false;
+  });
 }
 
 namespace {
@@ -159,6 +178,14 @@ public:
 
 void EVMPassConfig::addIRPasses() {
   addPass(createEVMLowerIntrinsicsPass());
+  if (TM->getOptLevel() != CodeGenOptLevel::None) {
+    addPass(createEVMAAWrapperPass());
+    addPass(
+        createExternalAAWrapperPass([](Pass &P, Function &, AAResults &AAR) {
+          if (auto *WrapperPass = P.getAnalysisIfAvailable<EVMAAWrapperPass>())
+            AAR.addAAResult(WrapperPass->getResult());
+        }));
+  }
   TargetPassConfig::addIRPasses();
 }
 
