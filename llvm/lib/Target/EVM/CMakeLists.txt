@@ -37,6 +37,7 @@ add_custom_command(
 add_custom_target(EVMStdLib DEPENDS "${EVM_STDLIB_PATH_OUT}")
 
 add_llvm_target(EVMCodeGen
+  EVMAliasAnalysis.cpp
   EVMAllocaHoisting.cpp
   EVMArgumentMove.cpp
   EVMAsmPrinter.cpp
