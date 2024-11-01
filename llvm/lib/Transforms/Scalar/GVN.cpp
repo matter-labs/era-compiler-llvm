@@ -2202,6 +2202,16 @@ bool GVNPass::processAssumeIntrinsic(AssumeInst *IntrinsicI) {
   return Changed;
 }
 
+// Return true iff V1 can be replaced with V2.
+static bool canBeReplacedBy(Value *V1, Value *V2) {
+  if (auto *CB1 = dyn_cast<CallBase>(V1))
+    if (auto *CB2 = dyn_cast<CallBase>(V2))
+      return CB1->getAttributes()
+          .intersectWith(CB2->getContext(), CB2->getAttributes())
+          .has_value();
+  return true;
+}
+
 static void patchAndReplaceAllUsesWith(Instruction *I, Value *Repl) {
   patchReplacementInstruction(I, Repl);
   I->replaceAllUsesWith(Repl);
@@ -2747,7 +2757,7 @@ bool GVNPass::processInstruction(Instruction *I) {
   // Perform fast-path value-number based elimination of values inherited from
   // dominators.
   Value *Repl = findLeader(I->getParent(), Num);
-  if (!Repl) {
+  if (!Repl || !canBeReplacedBy(I, Repl)) {
     // Failure, just remember this instance for future use.
     LeaderTable.insert(Num, I, I->getParent());
     return false;
@@ -3013,7 +3023,7 @@ bool GVNPass::performScalarPRE(Instruction *CurInst) {
 
     uint32_t TValNo = VN.phiTranslate(P, CurrentBlock, ValNo, *this);
     Value *predV = findLeader(P, TValNo);
-    if (!predV) {
+    if (!predV || !canBeReplacedBy(CurInst, predV)) {
       predMap.push_back(std::make_pair(static_cast<Value *>(nullptr), P));
       PREPred = P;
       ++NumWithout;
