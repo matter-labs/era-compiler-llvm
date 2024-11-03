@@ -6,8 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file builds the Control Flow Graph used for the stackification
-// algorithm.
+// This file builds the Control Flow Graph used for the backward propagation
+// stackification algorithm.
 //
 //===----------------------------------------------------------------------===//
 
@@ -44,8 +44,8 @@ private:
   StackSlot getDefiningSlot(const MachineInstr &MI, Register Reg) const;
   std::optional<std::pair<unsigned, unsigned>>
   getCommutableOpIndexes(const MachineInstr &MI) const;
-  void collectInstrOperands(const MachineInstr &MI, Stack &Input,
-                            Stack &Output) const;
+  void collectInstrOperands(const MachineInstr &MI, Stack *Input,
+                            Stack *Output) const;
 
   CFG &Cfg;
   const LiveIntervals &LIS;

@@ -1,4 +1,4 @@
-//===----- EVMStackifyEF.cpp - Split Critical Edges ------*- C++ -*--===//
+//===----- EVMBPStackification.cpp - BP stackification ---------*- C++ -*--===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -6,7 +6,20 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file performs spliting of critical edges.
+// This file implements backward propagation (BP) stackification.
+// Original idea was taken from the Ethereum's compiler (solc) stackification
+// algorithm.
+// The algorithm is broken into following components:
+//   - CFG (Control Flow Graph) and CFG builder. Stackification CFG has similar
+//     structure to LLVM CFG one, but employs wider notion of instruction.
+//   - Stack layout generator. Contains information about the stack layout at
+//     entry and exit of each CFG::BasicBlock. It also contains input/output
+//     stack layout for each operation.
+//   - Code transformation into stakified form. This component uses both CFG
+//     and the stack layout information to get stackified LLVM MIR.
+//   - Stack shuffler. Finds optimal (locally) transformation between two stack
+//     layouts using three primitives: POP, PUSHn, DUPn. The stack shuffler
+//     is used by the components above.
 //
 //===----------------------------------------------------------------------===//
 
@@ -28,11 +41,11 @@ using namespace llvm;
 #define DEBUG_TYPE "evm-ethereum-stackify"
 
 namespace {
-class EVMStackifyEF final : public MachineFunctionPass {
+class EVMBPStackification final : public MachineFunctionPass {
 public:
   static char ID; // Pass identification, replacement for typeid
 
-  EVMStackifyEF() : MachineFunctionPass(ID) {}
+  EVMBPStackification() : MachineFunctionPass(ID) {}
 
 private:
   StringRef getPassName() const override {
@@ -54,19 +67,21 @@ private:
 };
 } // end anonymous namespace
 
-char EVMStackifyEF::ID = 0;
+char EVMBPStackification::ID = 0;
 
-INITIALIZE_PASS_BEGIN(EVMStackifyEF, DEBUG_TYPE, "Ethereum stackification",
-                      false, false)
+INITIALIZE_PASS_BEGIN(EVMBPStackification, DEBUG_TYPE,
+                      "Backward propagation stackification", false, false)
 INITIALIZE_PASS_DEPENDENCY(MachineLoopInfo)
-INITIALIZE_PASS_END(EVMStackifyEF, DEBUG_TYPE, "Ethereum stackification", false,
-                    false)
+INITIALIZE_PASS_END(EVMBPStackification, DEBUG_TYPE,
+                    "Backward propagation stackification", false, false)
 
-FunctionPass *llvm::createEVMStackifyEF() { return new EVMStackifyEF(); }
+FunctionPass *llvm::createEVMBPStackification() {
+  return new EVMBPStackification();
+}
 
-bool EVMStackifyEF::runOnMachineFunction(MachineFunction &MF) {
+bool EVMBPStackification::runOnMachineFunction(MachineFunction &MF) {
   LLVM_DEBUG({
-    dbgs() << "********** Ethereum stackification **********\n"
+    dbgs() << "********** Backward propagation stackification **********\n"
            << "********** Function: " << MF.getName() << '\n';
   });
 
@@ -78,7 +93,7 @@ bool EVMStackifyEF::runOnMachineFunction(MachineFunction &MF) {
   // We don't preserve SSA form.
   MRI.leaveSSA();
 
-  assert(MRI.tracksLiveness() && "Stackify expects liveness");
+  assert(MRI.tracksLiveness() && "Stackification expects liveness");
 
   EVMAssembly Assembly(&MF, TII);
   EVMOptimizedCodeTransform::run(Assembly, MF, LIS, MLI);

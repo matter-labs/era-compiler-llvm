@@ -6,12 +6,10 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file implements the EVMAssembly class that generates machine IR
-// with all the required stack manipulation instructions.
-// Resulting machine instructions still have explicit operands, but some of the
-// auxiliary instructions (ARGUMENT, RET, EVM::CONST_I256, COPY_I256
-// FCALLARGUMENT) are removed after this step, beaking use-def chains. So, the
-// resulting Machine IR breaks the MachineVerifier checks.
+// This file creates Machine IR in stackified form. It provides different
+// callbacks when the EVMOptimizedCodeTransform needs to emit operation,
+// stack manipulation instruction, and so on. It the end, it walks over MIR
+// instructions removing register operands.
 //
 //===----------------------------------------------------------------------===//
 
@@ -46,7 +44,8 @@ public:
       : MF(MF), TII(TII) {}
 
   // Retrieve the current height of the stack.
-  // This does not have to be zero at the beginning.
+  // This does not have to be zero at the MF beginning because of
+  // possible arguments.
   int getStackHeight() const;
 
   void setStackHeight(int Height);
@@ -84,8 +83,8 @@ public:
 
   MCSymbol *createFuncRetSymbol();
 
-  // Removes unused codegen-only instructions and
-  // stackifies remaining ones.
+  // Erases unused codegen-only instructions and removes register operands
+  // of the remaining ones.
   void finalize();
 
 private:

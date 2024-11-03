@@ -1,4 +1,4 @@
-//===--- EVMOptimizedCodeTransform.h - Stack layout generator ---*- C++ -*-===//
+//===--- EVMOptimizedCodeTransform.h - Create stackified MIR  ---*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -6,8 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file transforms the stack layout back into the Machine IR instructions
-// in 'stackified' form using the EVMAssembly class.
+// This file transforms MIR to the 'stackified' MIR using CFG, StackLayout
+// and EVMAssembly classes.
 //
 //===----------------------------------------------------------------------===//
 

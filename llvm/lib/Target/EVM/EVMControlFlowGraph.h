@@ -1,4 +1,4 @@
-//===----- EVMControlFlowGraph.h - CFG for stackification -------*- C++ -*-===//
+//===----- EVMControlFlowGraph.h - CFG for BP stackification ----*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -6,7 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file defines Control Flow Graph used for the stackification algorithm.
+// This file defines Control Flow Graph used for the backward propagation
+// stackification algorithm.
 //
 //===----------------------------------------------------------------------===//
 
@@ -31,7 +32,7 @@ class MachineBasicBlock;
 class MachineInstr;
 /// The following structs describe different kinds of stack slots.
 /// Each stack slot is equality- and less-than-comparable and
-/// specifies an attribute ``canBeFreelyGenerated`` that is true,
+/// specifies an attribute 'canBeFreelyGenerated' that is true,
 /// if a slot of this kind always has a known value at compile time and
 /// therefore can safely be removed from the stack at any time and then
 /// regenerated later.
@@ -53,8 +54,8 @@ struct FunctionCallReturnLabelSlot {
 
 /// The return jump target of a function while generating the code of the
 /// function body. I.e. the caller of a function pushes a
-/// ``FunctionCallReturnLabelSlot`` (see above) before jumping to the function
-/// and this very slot is viewed as ``FunctionReturnLabelSlot`` inside the
+/// 'FunctionCallReturnLabelSlot' (see above) before jumping to the function
+/// and this very slot is viewed as 'FunctionReturnLabelSlot' inside the
 /// function body and jumped to when returning from the function.
 struct FunctionReturnLabelSlot {
   const MachineFunction *MF = nullptr;
@@ -99,7 +100,7 @@ struct LiteralSlot {
   bool operator<(LiteralSlot const &Rhs) const { return Value.ult(Rhs.Value); }
 };
 
-/// A slot containing a Symbol.
+/// A slot containing a MCSymbol.
 struct SymbolSlot {
   MCSymbol *Symbol;
   static constexpr bool canBeFreelyGenerated = true;
@@ -156,7 +157,7 @@ inline bool canBeFreelyGenerated(StackSlot const &Slot) {
       Slot);
 }
 
-/// Control flow graph consisting of ``CFG::BasicBlock``s connected by control
+/// Control flow graph consisting of 'CFG::BasicBlock`s' connected by control
 /// flow.
 struct CFG {
   explicit CFG() {}
@@ -185,8 +186,8 @@ struct CFG {
   };
 
   struct Assignment {
-    /// The variables being assigned to also occur as ``output`` in the
-    /// ``Operation`` containing the assignment, but are also stored here for
+    /// The variables being assigned to also occur as 'Output' in the
+    /// 'Operation' containing the assignment, but are also stored here for
     /// convenience.
     std::vector<VariableSlot> Variables;
   };
@@ -200,7 +201,7 @@ struct CFG {
   };
 
   struct FunctionInfo;
-  /// A basic control flow block containing ``Operation``s acting on the stack.
+  /// A basic control flow block containing 'Operation`s' acting on the stack.
   /// Maintains a list of entry blocks and a typed exit.
   struct BasicBlock {
     struct InvalidExit {};

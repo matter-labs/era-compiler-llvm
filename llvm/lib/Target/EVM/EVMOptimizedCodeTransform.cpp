@@ -1,4 +1,4 @@
-//===--- EVMOptimizedCodeTransform.h - Stack layout generator ---*- C++ -*-===//
+//===--- EVMOptimizedCodeTransform.h - Create stackified MIR ---*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -6,8 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file transforms the stack layout back into the Machine IR instructions
-// in 'stackified' form using the EVMAssembly class.
+// This file transforms MIR to the 'stackified' MIR using CFG, StackLayout
+// and EVMAssembly classes.
 //
 //===----------------------------------------------------------------------===//
 
@@ -35,6 +35,7 @@ void EVMOptimizedCodeTransform::run(EVMAssembly &Assembly, MachineFunction &MF,
 }
 
 void EVMOptimizedCodeTransform::operator()(CFG::FunctionCall const &Call) {
+#ifndef NDEBUG
   // Validate stack.
   assert(Assembly.getStackHeight() == static_cast<int>(CurrentStack.size()));
   assert(CurrentStack.size() >= Call.NumArguments + (Call.CanContinue ? 1 : 0));
@@ -45,6 +46,7 @@ void EVMOptimizedCodeTransform::operator()(CFG::FunctionCall const &Call) {
         &CurrentStack.at(CurrentStack.size() - Call.NumArguments - 1));
     assert(returnLabelSlot && returnLabelSlot->Call == Call.Call);
   }
+#endif // NDEBUG
 
   // Emit code.
   const MachineOperand *CalleeOp = Call.Call->explicit_uses().begin();
@@ -57,8 +59,7 @@ void EVMOptimizedCodeTransform::operator()(CFG::FunctionCall const &Call) {
   if (Call.CanContinue)
     Assembly.appendLabel();
 
-  // Update stack.
-  // Remove arguments and return label from CurrentStack.
+  // Update stack, remove arguments and return label from CurrentStack.
   for (size_t I = 0; I < Call.NumArguments + (Call.CanContinue ? 1 : 0); ++I)
     CurrentStack.pop_back();
 
@@ -82,8 +83,7 @@ void EVMOptimizedCodeTransform::operator()(CFG::BuiltinCall const &Call) {
   // Emit code.
   Assembly.appendInstruction(Call.Builtin);
 
-  // Update stack.
-  // Remove arguments from CurrentStack.
+  // Update stack and remove arguments from CurrentStack.
   for (size_t i = 0; i < NumArgs; ++i)
     CurrentStack.pop_back();
 
@@ -259,7 +259,7 @@ void EVMOptimizedCodeTransform::operator()(const CFG::BasicBlock &Block) {
     Assembly.setCurrentLocation(Block.MBB);
 
   // Assert that this is the first visit of the block and mark as generated.
-  auto It = GeneratedBlocks.insert(&Block);
+  [[maybe_unused]] auto It = GeneratedBlocks.insert(&Block);
   assert(It.second);
 
   auto const &BlockInfo = Layout.blockInfos.at(&Block);

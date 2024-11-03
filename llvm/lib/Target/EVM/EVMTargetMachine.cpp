@@ -56,7 +56,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   initializeEVMSingleUseExpressionPass(PR);
   initializeEVMSplitCriticalEdgesPass(PR);
   initializeEVMStackifyPass(PR);
-  initializeEVMStackifyEFPass(PR);
+  initializeEVMBPStackificationPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -208,7 +208,7 @@ void EVMPassConfig::addPreEmitPass() {
       addPass(createEVMRegColoring());
       addPass(createEVMStackify());
     } else {
-      addPass(createEVMStackifyEF());
+      addPass(createEVMBPStackification());
     }
   }
 }

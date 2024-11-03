@@ -21,6 +21,7 @@ add_llvm_target(EVMCodeGen
   EVMArgumentMove.cpp
   EVMAsmPrinter.cpp
   EVMAssembly.cpp
+  EVMBackwardPropagationStackification.cpp
   EVMCodegenPrepare.cpp
   EVMControlFlowGraphBuilder.cpp
   EVMFrameLowering.cpp
@@ -40,7 +41,6 @@ add_llvm_target(EVMCodeGen
   EVMStackDebug.cpp
   EVMStackLayoutGenerator.cpp
   EVMStackify.cpp
-  EVMStackifyEF.cpp
   EVMSubtarget.cpp
   EVMTargetMachine.cpp
   EVMTargetTransformInfo.cpp

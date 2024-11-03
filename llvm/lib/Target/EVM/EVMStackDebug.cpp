@@ -20,7 +20,6 @@
 
 using namespace llvm;
 
-#ifndef NDEBUG
 static StringRef getInstName(const MachineInstr *MI) {
   const MachineFunction *MF = MI->getParent()->getParent();
   const TargetInstrInfo *TII = MF->getSubtarget().getInstrInfo();
@@ -81,6 +80,7 @@ std::string llvm::stackSlotToString(const StackSlot &Slot) {
   ;
 }
 
+#ifndef NDEBUG
 void ControlFlowGraphPrinter::operator()(const CFG &Cfg) {
   (*this)(Cfg.FuncInfo);
   for (const auto &Block : Cfg.Blocks)
@@ -307,5 +307,4 @@ std::string StackLayoutPrinter::getBlockId(CFG::BasicBlock const &Block) {
   BlocksToPrint.emplace_back(&Block);
   return std::to_string(Id) + "(" + Name + ")";
 }
-
 #endif // NDEBUG
