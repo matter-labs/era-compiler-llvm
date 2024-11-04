@@ -73,6 +73,9 @@ add_llvm_component_library(LLVMScalarOpts
   Scalarizer.cpp
   ScalarizeMaskedMemIntrin.cpp
   SeparateConstOffsetFromGEP.cpp
+  # EraVM local begin
+  SHA3ConstFolding.cpp
+  # EraVM local end
   SimpleLoopUnswitch.cpp
   SimplifyCFGPass.cpp
   Sink.cpp
