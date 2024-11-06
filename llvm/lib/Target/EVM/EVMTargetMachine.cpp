@@ -131,11 +131,23 @@ void EVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
       [](FunctionPassManager &PM, OptimizationLevel Level) {
         if (Level.getSizeLevel() || Level.getSpeedupLevel() > 1)
           PM.addPass(MergeIdenticalBBPass());
+        if (Level.isOptimizingForSpeed())
+          PM.addPass(EVMSHA3ConstFoldingPass());
       });
 
   PB.registerAnalysisRegistrationCallback([](FunctionAnalysisManager &FAM) {
     FAM.registerPass([] { return EVMAA(); });
   });
+
+  PB.registerPipelineParsingCallback(
+      [](StringRef PassName, FunctionPassManager &PM,
+         ArrayRef<PassBuilder::PipelineElement>) {
+        if (PassName == "evm-sha3-constant-folding") {
+          PM.addPass(EVMSHA3ConstFoldingPass());
+          return true;
+        }
+        return false;
+      });
 
   PB.registerParseAACallback([](StringRef AAName, AAManager &AAM) {
     if (AAName == "evm-aa") {
