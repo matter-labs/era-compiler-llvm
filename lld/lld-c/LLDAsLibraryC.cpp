@@ -224,7 +224,7 @@ createEraVMExeLinkerScript(uint64_t metadataSize,
               std::to_string(alignedMDSize), std::to_string(metadataSize))
           .str();
 
-  Twine scriptPart1 = Twine("\
+  std::string scriptPart1 = "\
 ENTRY(0);                                                                   \n\
 SECTIONS {                                                                  \n\
   .code : SUBALIGN(1) {                                                     \n\
@@ -241,9 +241,9 @@ SECTIONS {                                                                  \n\
                                                                             \n\
     ASSERT(. % 32 == 0, \"size isn't multiple of 32\");                     \n\
                                                                             \n\
-    /* Add padding before the metadata */\n");
+    /* Add padding before the metadata */\n";
 
-  Twine scriptPart2 = Twine("\
+  std::string scriptPart2 = "\
     *(.eravm-metadata)                                                      \n\
                                                                             \n\
     ASSERT(. % 64 == 32, \"size isn't odd number of words\");               \n\
@@ -256,9 +256,9 @@ SECTIONS {                                                                  \n\
      is not needed. */                                                      \n\
   /DISCARD/ : {                                                             \n\
     *(.data)                                                                \n\
-  }}");
+  }}";
 
-  return (linkerSymbolNamesStr + scriptPart1 + padding + scriptPart2).str();
+  return linkerSymbolNamesStr + scriptPart1 + padding + scriptPart2;
 }
 
 /// Performs linkage of the ELF object file passed in \p inBuffer, as
@@ -499,9 +499,11 @@ static std::string creteEVMLinkerScript(ArrayRef<LLVMMemoryBufferRef> memBufs,
   //   __dataoffset_D_105_deployed = .;
   //   D_105_deployed(.text);
   //   __datasize_D_105_deployed = . - __dataoffset_D_105_deployed;
-  Twine topLevel = topName + "(.text);\n" + dataOffsetPrefix + deployed +
-                   " = .;\n" + deployed + "(.text);\n" + dataSizePrefix +
-                   deployed + " = . - " + dataOffsetPrefix + deployed + ";\n";
+  std::string topLevel =
+      (topName + "(.text);\n" + dataOffsetPrefix + deployed + " = .;\n" +
+       deployed + "(.text);\n" + dataSizePrefix + deployed + " = . - " +
+       dataOffsetPrefix + deployed + ";\n")
+          .str();
 
   // Contains symbols whose values are the sizes of the dependent contracts.
   // For the example above, this contains:
@@ -541,9 +543,10 @@ static std::string creteEVMLinkerScript(ArrayRef<LLVMMemoryBufferRef> memBufs,
   // Emit size of the deploy code offset as the 4-byte unsigned integer.
   // This is needed to determine which offset the deployed code starts at
   // in the linked binary.
-  Twine deploySize = "LONG(" + dataOffsetPrefix + deployed + ");\n";
+  std::string deploySize =
+      ("LONG(" + dataOffsetPrefix + deployed + ");\n").str();
 
-  Twine script = formatv("{0}\n\
+  std::string script = formatv("{0}\n\
 ENTRY(0);\n\
 SECTIONS {\n\
   . = 0;\n\
@@ -555,10 +558,10 @@ SECTIONS {\n\
   }\n\
 }\n\
 ",
-                         symDatasizeDeps, topLevel, symDataOffsetDeps,
-                         symDatasizeTop, deploySize);
+                               symDatasizeDeps, topLevel, symDataOffsetDeps,
+                               symDatasizeTop, deploySize);
 
-  return script.str();
+  return script;
 }
 
 LLVMBool LLVMLinkEVM(LLVMMemoryBufferRef inBuffers[],
@@ -588,11 +591,11 @@ LLVMBool LLVMLinkEVM(LLVMMemoryBufferRef inBuffers[],
 
   // Use remapping of file names (a linker feature) to replace file names with
   // indexes in the array of memory buffers.
-  Twine remapStr("--remap-inputs=");
-  std::string remapDeployStr = (remapStr + inBuffersIDs[0] + "=0").str();
+  const std::string remapStr("--remap-inputs=");
+  std::string remapDeployStr = remapStr + inBuffersIDs[0] + "=0";
   lldArgs.push_back(remapDeployStr.c_str());
 
-  std::string remapDeployedStr = (remapStr + inBuffersIDs[1] + "=1").str();
+  std::string remapDeployedStr = remapStr + inBuffersIDs[1] + "=1";
   lldArgs.push_back(remapDeployedStr.c_str());
 
   lldArgs.push_back("--remap-inputs=script.x=2");
