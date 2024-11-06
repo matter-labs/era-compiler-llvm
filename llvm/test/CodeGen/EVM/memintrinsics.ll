@@ -3,6 +3,7 @@
 target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
 target triple = "evm"
 
+declare void @llvm.memcpy.p1.p1.i256(ptr addrspace(1) noalias nocapture writeonly, ptr addrspace(1) noalias nocapture readonly, i256, i1 immarg)
 declare void @llvm.memcpy.p1.p2.i256(ptr addrspace(1) noalias nocapture writeonly, ptr addrspace(2) noalias nocapture readonly, i256, i1 immarg)
 declare void @llvm.memcpy.p1.p3.i256(ptr addrspace(1) noalias nocapture writeonly, ptr addrspace(3) noalias nocapture readonly, i256, i1 immarg)
 declare void @llvm.memcpy.p1.p4.i256(ptr addrspace(1) noalias nocapture writeonly, ptr addrspace(4) noalias nocapture readonly, i256, i1 immarg)
@@ -66,6 +67,14 @@ define fastcc void @normal-known-size-2(ptr addrspace(1) %dest, ptr addrspace(1)
 ; CHECK: MCOPY
 
   call void @llvm.memmove.p1.p1.i256(ptr addrspace(1) %dest, ptr addrspace(1) %src, i256 1060, i1 false)
+  ret void
+}
+
+define fastcc void @heap_to_heap(ptr addrspace(1) %dest, ptr addrspace(1) %src, i256 %len) {
+; CHECK-LABEL: heap_to_heap
+; CHECK: MCOPY
+
+  call void @llvm.memcpy.p1.p1.i256(ptr addrspace(1) %dest, ptr addrspace(1) %src, i256 %len, i1 false)
   ret void
 }
 
