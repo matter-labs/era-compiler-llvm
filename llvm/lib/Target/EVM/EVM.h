@@ -91,5 +91,10 @@ struct EVMAllocaHoistingPass : PassInfoMixin<EVMAllocaHoistingPass> {
   PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
 };
 
+struct EVMSHA3ConstFoldingPass : PassInfoMixin<EVMSHA3ConstFoldingPass> {
+  EVMSHA3ConstFoldingPass() = default;
+  PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
+};
+
 } // namespace llvm
 #endif // LLVM_LIB_TARGET_EVM_EVM_H
