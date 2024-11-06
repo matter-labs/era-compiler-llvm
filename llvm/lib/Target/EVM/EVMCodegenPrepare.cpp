@@ -81,12 +81,6 @@ void EVMCodegenPrepare::processMemTransfer(MemTransferInst *M) {
     }
   }
 
-  assert((SrcAS == EVMAS::AS_HEAP && isa<MemMoveInst>(M)) ||
-         ((SrcAS == EVMAS::AS_CALL_DATA || SrcAS == EVMAS::AS_RETURN_DATA ||
-           SrcAS == EVMAS::AS_CODE) &&
-              isa<MemCpyInst>(M) ||
-          isa<MemMoveInst>(M)));
-
   Intrinsic::ID IntrID = Intrinsic::not_intrinsic;
   switch (SrcAS) {
   default:
