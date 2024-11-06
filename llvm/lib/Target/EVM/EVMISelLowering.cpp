@@ -167,8 +167,8 @@ SDValue EVMTargetLowering::lowerIntrinsicDataSize(unsigned IntrID, SDValue Op,
   const MDNode *Metadata = cast<MDNodeSDNode>(Op.getOperand(1))->getMD();
   StringRef ContractID = cast<MDString>(Metadata->getOperand(0))->getString();
   bool IsDataSize = IntrID == Intrinsic::evm_datasize;
-  Twine SymbolReloc =
-      Twine(IsDataSize ? "__datasize_" : "__dataoffset_") + ContractID;
+  std::string SymbolReloc =
+      (Twine(IsDataSize ? "__datasize_" : "__dataoffset_") + ContractID).str();
   MCSymbol *Sym = MF.getContext().getOrCreateSymbol(SymbolReloc);
   return SDValue(
       DAG.getMachineNode(EVM::DATA, DL, Ty, DAG.getMCSymbol(Sym, MVT::i256)),
