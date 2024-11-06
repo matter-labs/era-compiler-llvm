@@ -54,6 +54,7 @@ add_llvm_target(EVMCodeGen
   EVMOptimizeLiveIntervals.cpp
   EVMRegisterInfo.cpp
   EVMSelectionDAGInfo.cpp
+  EVMSHA3ConstFolding.cpp
   EVMSingleUseExpression.cpp
   EVMSplitCriticalEdges.cpp
   EVMStackSolver.cpp
