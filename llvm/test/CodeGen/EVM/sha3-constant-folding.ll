@@ -24,13 +24,12 @@ entry:
 
 ; Both the store instructions and the sha3 call has constexpr addresses.
 define i256 @sha3_test_1() nounwind {
-; CHECK-LABEL: define i256 @sha3_test_1
+; CHECK-LABEL: define noundef i256 @sha3_test_1
 ; CHECK-SAME: () local_unnamed_addr #[[ATTR1:[0-9]+]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    store i256 304594385234, ptr addrspace(1) null, align 4294967296
 ; CHECK-NEXT:    store i256 56457598675863654, ptr addrspace(1) inttoptr (i256 32 to ptr addrspace(1)), align 32
-; CHECK-NEXT:    [[HASH:%.*]] = tail call i256 @llvm.evm.sha3(ptr addrspace(1) null, i256 64)
-; CHECK-NEXT:    ret i256 [[HASH]]
+; CHECK-NEXT:    ret i256 -53675409633959416604748946233496653964072736789863655143901645101595015023086
 ;
 entry:
   store i256 304594385234, ptr addrspace(1) null, align 4294967296
@@ -41,14 +40,13 @@ entry:
 
 ; Both the store instructions and the sha3 call has runtime addresses.
 define i256 @sha3_test_2(ptr addrspace(1) nocapture %addr) nounwind {
-; CHECK-LABEL: define i256 @sha3_test_2
-; CHECK-SAME: (ptr addrspace(1) nocapture [[ADDR:%.*]]) local_unnamed_addr #[[ATTR2:[0-9]+]] {
+; CHECK-LABEL: define noundef i256 @sha3_test_2
+; CHECK-SAME: (ptr addrspace(1) nocapture writeonly [[ADDR:%.*]]) local_unnamed_addr #[[ATTR2:[0-9]+]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    store i256 304594385234, ptr addrspace(1) [[ADDR]], align 1
 ; CHECK-NEXT:    [[NEXT_ADDR:%.*]] = getelementptr i8, ptr addrspace(1) [[ADDR]], i256 32
 ; CHECK-NEXT:    store i256 56457598675863654, ptr addrspace(1) [[NEXT_ADDR]], align 1
-; CHECK-NEXT:    [[HASH:%.*]] = tail call i256 @llvm.evm.sha3(ptr addrspace(1) [[ADDR]], i256 64)
-; CHECK-NEXT:    ret i256 [[HASH]]
+; CHECK-NEXT:    ret i256 -53675409633959416604748946233496653964072736789863655143901645101595015023086
 ;
 entry:
   store i256 304594385234, ptr addrspace(1) %addr, align 1
@@ -61,7 +59,7 @@ entry:
 ; Store instructions don't cover sha3 memory location, so no constant folding.
 define i256 @sha3_test_3(ptr addrspace(1) nocapture %addr) nounwind {
 ; CHECK-LABEL: define i256 @sha3_test_3
-; CHECK-SAME: (ptr addrspace(1) nocapture [[ADDR:%.*]]) local_unnamed_addr #[[ATTR2]] {
+; CHECK-SAME: (ptr addrspace(1) nocapture [[ADDR:%.*]]) local_unnamed_addr #[[ATTR3:[0-9]+]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    store i256 0, ptr addrspace(1) [[ADDR]], align 1
 ; CHECK-NEXT:    [[NEXT_ADDR:%.*]] = getelementptr i8, ptr addrspace(1) [[ADDR]], i256 32
@@ -85,7 +83,7 @@ entry:
 ; so no constant folding.
 define i256 @sha3_test_4(ptr addrspace(1) nocapture %addr) nounwind {
 ; CHECK-LABEL: define i256 @sha3_test_4
-; CHECK-SAME: (ptr addrspace(1) nocapture [[ADDR:%.*]]) local_unnamed_addr #[[ATTR2]] {
+; CHECK-SAME: (ptr addrspace(1) nocapture [[ADDR:%.*]]) local_unnamed_addr #[[ATTR3]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    store i256 0, ptr addrspace(1) [[ADDR]], align 1
 ; CHECK-NEXT:    [[NEXT_ADDR:%.*]] = getelementptr i8, ptr addrspace(1) [[ADDR]], i256 32
@@ -103,16 +101,15 @@ entry:
 
 ; Store instructions have different store sizes.
 define i256 @sha3_test_5(ptr addrspace(1) nocapture %addr) nounwind {
-; CHECK-LABEL: define i256 @sha3_test_5
-; CHECK-SAME: (ptr addrspace(1) nocapture [[ADDR:%.*]]) local_unnamed_addr #[[ATTR2]] {
+; CHECK-LABEL: define noundef i256 @sha3_test_5
+; CHECK-SAME: (ptr addrspace(1) nocapture writeonly [[ADDR:%.*]]) local_unnamed_addr #[[ATTR2]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    store i128 0, ptr addrspace(1) [[ADDR]], align 1
 ; CHECK-NEXT:    [[NEXT_ADDR:%.*]] = getelementptr i8, ptr addrspace(1) [[ADDR]], i256 16
 ; CHECK-NEXT:    store i128 304594385234, ptr addrspace(1) [[NEXT_ADDR]], align 1
 ; CHECK-NEXT:    [[NEXT_ADDR2:%.*]] = getelementptr i8, ptr addrspace(1) [[ADDR]], i256 32
 ; CHECK-NEXT:    store i256 56457598675863654, ptr addrspace(1) [[NEXT_ADDR2]], align 1
-; CHECK-NEXT:    [[HASH:%.*]] = tail call i256 @llvm.evm.sha3(ptr addrspace(1) [[ADDR]], i256 64)
-; CHECK-NEXT:    ret i256 [[HASH]]
+; CHECK-NEXT:    ret i256 -53675409633959416604748946233496653964072736789863655143901645101595015023086
 ;
 entry:
   store i128 0, ptr addrspace(1) %addr, align 1
@@ -126,14 +123,13 @@ entry:
 
 ; Only the first store is used for the constant folding.
 define i256 @sha3_test_6(ptr addrspace(1) nocapture %addr) nounwind {
-; CHECK-LABEL: define i256 @sha3_test_6
-; CHECK-SAME: (ptr addrspace(1) nocapture [[ADDR:%.*]]) local_unnamed_addr #[[ATTR2]] {
+; CHECK-LABEL: define noundef i256 @sha3_test_6
+; CHECK-SAME: (ptr addrspace(1) nocapture writeonly [[ADDR:%.*]]) local_unnamed_addr #[[ATTR2]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    store i256 304594385234, ptr addrspace(1) [[ADDR]], align 1
 ; CHECK-NEXT:    [[NEXT_ADDR:%.*]] = getelementptr i8, ptr addrspace(1) [[ADDR]], i256 32
 ; CHECK-NEXT:    store i256 56457598675863654, ptr addrspace(1) [[NEXT_ADDR]], align 1
-; CHECK-NEXT:    [[HASH:%.*]] = tail call i256 @llvm.evm.sha3(ptr addrspace(1) [[ADDR]], i256 32)
-; CHECK-NEXT:    ret i256 [[HASH]]
+; CHECK-NEXT:    ret i256 -1651279235167815098054286291856006982035426946965232889084721396369881222887
 ;
 entry:
   store i256 304594385234, ptr addrspace(1) %addr, align 1
@@ -147,15 +143,14 @@ entry:
 ; non-analyzable clobber.
 define i256 @sha3_test_7(ptr addrspace(1) nocapture %addr, ptr addrspace(1) nocapture %addr2) nounwind {
 ; CHECK-LABEL: define i256 @sha3_test_7
-; CHECK-SAME: (ptr addrspace(1) nocapture [[ADDR:%.*]], ptr addrspace(1) nocapture writeonly [[ADDR2:%.*]]) local_unnamed_addr #[[ATTR2]] {
+; CHECK-SAME: (ptr addrspace(1) nocapture [[ADDR:%.*]], ptr addrspace(1) nocapture writeonly [[ADDR2:%.*]]) local_unnamed_addr #[[ATTR3]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    store i256 304594385234, ptr addrspace(1) [[ADDR]], align 1
 ; CHECK-NEXT:    [[NEXT_ADDR:%.*]] = getelementptr i8, ptr addrspace(1) [[ADDR]], i256 32
 ; CHECK-NEXT:    store i256 111, ptr addrspace(1) [[ADDR2]], align 1
 ; CHECK-NEXT:    store i256 56457598675863654, ptr addrspace(1) [[NEXT_ADDR]], align 1
 ; CHECK-NEXT:    [[HASH1:%.*]] = tail call i256 @llvm.evm.sha3(ptr addrspace(1) [[ADDR]], i256 64)
-; CHECK-NEXT:    [[HASH2:%.*]] = tail call i256 @llvm.evm.sha3(ptr addrspace(1) [[NEXT_ADDR]], i256 32)
-; CHECK-NEXT:    [[HASH:%.*]] = add i256 [[HASH2]], [[HASH1]]
+; CHECK-NEXT:    [[HASH:%.*]] = add i256 [[HASH1]], 28454950007360609575222453380260700122861180288886985272557645317297017637223
 ; CHECK-NEXT:    ret i256 [[HASH]]
 ;
 entry:
@@ -173,7 +168,7 @@ entry:
 ; constant folding. Theoretically we can support this case. TODO: CPR-1370.
 define i256 @sha3_test_8(ptr addrspace(1) nocapture %addr) nounwind {
 ; CHECK-LABEL: define i256 @sha3_test_8
-; CHECK-SAME: (ptr addrspace(1) nocapture [[ADDR:%.*]]) local_unnamed_addr #[[ATTR2]] {
+; CHECK-SAME: (ptr addrspace(1) nocapture [[ADDR:%.*]]) local_unnamed_addr #[[ATTR3]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    store i256 0, ptr addrspace(1) [[ADDR]], align 1
 ; CHECK-NEXT:    [[NEXT_ADDR:%.*]] = getelementptr i8, ptr addrspace(1) [[ADDR]], i256 31
@@ -195,18 +190,14 @@ entry:
 
 ; We have two sha3 calls where the second call gets folded on the second iteration.
 define i256 @sha3_test_9(ptr addrspace(1) %addr) nounwind {
-; CHECK-LABEL: define i256 @sha3_test_9
-; CHECK-SAME: (ptr addrspace(1) [[ADDR:%.*]]) local_unnamed_addr #[[ATTR2]] {
+; CHECK-LABEL: define noundef i256 @sha3_test_9
+; CHECK-SAME: (ptr addrspace(1) nocapture writeonly [[ADDR:%.*]]) local_unnamed_addr #[[ATTR2]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    store i256 304594385234, ptr addrspace(1) [[ADDR]], align 1
 ; CHECK-NEXT:    [[NEXT_ADDR:%.*]] = getelementptr i8, ptr addrspace(1) [[ADDR]], i256 32
-; CHECK-NEXT:    store i256 56457598675863654, ptr addrspace(1) [[NEXT_ADDR]], align 1
-; CHECK-NEXT:    [[HASH:%.*]] = tail call i256 @llvm.evm.sha3(ptr addrspace(1) [[ADDR]], i256 64)
-; CHECK-NEXT:    [[SUM:%.*]] = add i256 [[HASH]], 10
-; CHECK-NEXT:    store i256 [[SUM]], ptr addrspace(1) [[NEXT_ADDR]], align 1
+; CHECK-NEXT:    store i256 -53675409633959416604748946233496653964072736789863655143901645101595015023076, ptr addrspace(1) [[NEXT_ADDR]], align 1
 ; CHECK-NEXT:    store i256 111111111111, ptr addrspace(1) [[ADDR]], align 1
-; CHECK-NEXT:    [[HASH2:%.*]] = tail call i256 @llvm.evm.sha3(ptr addrspace(1) [[ADDR]], i256 64)
-; CHECK-NEXT:    ret i256 [[HASH2]]
+; CHECK-NEXT:    ret i256 -28502626979061174856046376292559402895813043346926066817140289137910599757723
 ;
 entry:
   store i256 304594385234, ptr addrspace(1) %addr, align 1
@@ -223,7 +214,7 @@ entry:
 ; Offset of the second store is too big (requires > 64 bits), so no constant folding.
 define i256 @sha3_test_10() nounwind {
 ; CHECK-LABEL: define i256 @sha3_test_10
-; CHECK-SAME: () local_unnamed_addr #[[ATTR1]] {
+; CHECK-SAME: () local_unnamed_addr #[[ATTR4:[0-9]+]] {
 ; CHECK-NEXT:  entry:
 ; CHECK-NEXT:    store i256 304594385234, ptr addrspace(1) null, align 4294967296
 ; CHECK-NEXT:    store i256 56457598675863654, ptr addrspace(1) inttoptr (i256 18446744073709551616 to ptr addrspace(1)), align 4294967296
