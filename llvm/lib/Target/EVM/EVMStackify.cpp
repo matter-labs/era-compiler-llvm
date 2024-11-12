@@ -703,7 +703,7 @@ StackLocation StackModel::allocateStackModelLoc(const Register &Reg) {
   // on reg's live interval. The register goes to X stack if its live interval
   // spawns across a BB boundary, otherwise put it to L-stack.
   const auto *LI = &LIS.getInterval(Reg);
-  if (const auto *BB = LIS.intervalIsInOneMBB(*LI))
+  if (LIS.intervalIsInOneMBB(*LI))
     return pushRegToStackModel(StackType::L, Reg);
 
   return pushRegToStackModel(StackType::X, Reg);
@@ -1236,7 +1236,7 @@ bool EVMStackify::runOnMachineFunction(MachineFunction &MF) {
 
     LIS.shrinkToUses(LI);
     LLVM_DEBUG(LI->dump());
-    if (const auto *BB = LIS.intervalIsInOneMBB(*LI)) {
+    if ([[maybe_unused]] const auto *BB = LIS.intervalIsInOneMBB(*LI)) {
       LLVM_DEBUG(dbgs() << "\tIs live in: (" << BB->getName() << ")\n");
     }
   }
