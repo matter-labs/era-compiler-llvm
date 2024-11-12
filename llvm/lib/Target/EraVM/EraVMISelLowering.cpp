@@ -502,9 +502,9 @@ SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   // If the callee is a GlobalAddress node (quite common, every direct call is)
   // turn it into a TargetGlobalAddress node so that legalize doesn't hack it.
   // Likewise ExternalSymbol -> TargetExternalSymbol.
-  if (auto *G = dyn_cast<GlobalAddressSDNode>(Callee))
+  if (isa<GlobalAddressSDNode>(Callee))
     Callee = wrapGlobalAddress(Callee, DAG, DL);
-  else if (auto *E = dyn_cast<ExternalSymbolSDNode>(Callee))
+  else if (isa<ExternalSymbolSDNode>(Callee))
     Callee = wrapExternalSymbol(Callee, DAG, DL);
 
 
@@ -544,7 +544,7 @@ SDValue EraVMTargetLowering::LowerCall(TargetLowering::CallLoweringInfo &CLI,
   if (InFlag.getNode())
     Ops.push_back(InFlag);
 
-  if (const auto *Invoke = dyn_cast_or_null<InvokeInst>(CLI.CB))
+  if (dyn_cast_or_null<InvokeInst>(CLI.CB))
     Chain = DAG.getNode(EraVMISD::INVOKE, DL, NodeTys, Ops);
   else
     Chain = DAG.getNode(EraVMISD::CALL, DL, NodeTys, Ops);

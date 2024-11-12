@@ -233,14 +233,14 @@ bool EraVMDAGToDAGISel::SelectMemAddr(SDValue Addr, SDValue &Base,
 
   // EraVM doesn't support offsets by unaligned number of bytes, so add
   // the displacement to the base register.
-  if (unsigned Unaligned = AM.Disp % 32) {
+  if (unsigned Offset = AM.Disp % 32) {
     if (AM.Base.Reg.getNode()) {
-      auto AddToReg = CurDAG->getTargetConstant(AM.Disp % 32, Loc, MVT::i256);
+      auto AddToReg = CurDAG->getTargetConstant(Offset, Loc, MVT::i256);
       auto *AddrNode = CurDAG->getMachineNode(EraVM::ADDirr_s, Loc, MVT::i256,
                                               AM.Base.Reg, AddToReg, Zero);
       AM.Base.Reg = SDValue(AddrNode, 0);
     }
-    AM.Disp -= AM.Disp % 32;
+    AM.Disp -= Offset;
   }
 
   // TODO: CPR-1354 Hack (constant is used to designate immediate addressing
