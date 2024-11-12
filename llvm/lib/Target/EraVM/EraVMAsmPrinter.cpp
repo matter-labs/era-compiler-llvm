@@ -368,12 +368,12 @@ void EraVMAsmPrinter::emitGlobalConstant(const DataLayout &DL,
     return;
   }
 
-  if (const auto *V = dyn_cast<ConstantVector>(CV)) {
+  if (isa<ConstantVector>(CV)) {
     assert(false);
     return;
   }
 
-  if (const auto *CE = dyn_cast<ConstantExpr>(CV))
+  if (isa<ConstantExpr>(CV))
     return;
 
   if (const auto *CI = dyn_cast<ConstantInt>(CV)) {

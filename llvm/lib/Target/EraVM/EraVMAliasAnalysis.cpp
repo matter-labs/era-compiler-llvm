@@ -104,7 +104,7 @@ getBaseWithOffset(const Value *V, unsigned BitWidth, unsigned MaxLookup = 6) {
 
 static std::optional<APInt> getConstStartLoc(const MemoryLocation &Loc,
                                              unsigned BitWidth) {
-  if (const auto *CPN = dyn_cast<ConstantPointerNull>(Loc.Ptr))
+  if (isa<ConstantPointerNull>(Loc.Ptr))
     return APInt::getZero(BitWidth);
 
   if (const auto *CE = dyn_cast<ConstantExpr>(Loc.Ptr)) {
