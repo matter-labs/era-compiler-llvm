@@ -59,6 +59,9 @@
 //   "__linker_symbol_id_3" = 0xDDDDDDDD
 //   "__linker_symbol_id_4" = 0xEEEEEEEE
 //
+//  There are also factory dependency symbols, which behave the same way as
+//  linker ones. The only difference is that factory dependency symbols are
+//  32-byte size.
 //===----------------------------------------------------------------------===//
 
 #ifndef LLD_C_LLDASLIBRARYC_H
@@ -72,6 +75,7 @@ LLVM_C_EXTERN_C_BEGIN
 // Currently, the size of a linker symbol is limited to 20 bytes, as its the
 // only usage is to represent Ethereum addresses which are of 160 bit width.
 #define LINKER_SYMBOL_SIZE 20
+#define FACTORYDEPENDENCY_SYMBOL_SIZE 32
 
 /** Performs linkage of the ELF object code passed in \p inBuffer. The result
  *  is returned in \p outBuffer.
@@ -91,19 +95,24 @@ LLVM_C_EXTERN_C_BEGIN
  *  at the second call, then the function returns the final bytecode.
  *  In case of an error the function returns 'true' and the error message
  *  is passes in \p errorMessage. The message should be disposed by
- *  'LLVMDisposeMessage'. */
-LLVMBool LLVMLinkEraVM(LLVMMemoryBufferRef inBuffer,
-                       LLVMMemoryBufferRef *outBuffer,
-                       const char *const *linkerSymbolNames,
-                       const char linkerSymbolValues[][LINKER_SYMBOL_SIZE],
-                       uint64_t numLinkerSymbols, char **errorMessage);
+ *  'LLVMDisposeMessage'.
+ *  All the above is true for factory dependency symbols. */
+LLVMBool LLVMLinkEraVM(
+    LLVMMemoryBufferRef inBuffer, LLVMMemoryBufferRef *outBuffer,
+    const char *const *linkerSymbolNames,
+    const char linkerSymbolValues[][LINKER_SYMBOL_SIZE],
+    uint64_t numLinkerSymbols, const char *const *factoryDependencySymbolNames,
+    const char factoryDependencySymbolValues[][FACTORYDEPENDENCY_SYMBOL_SIZE],
+    uint64_t numFactoryDependencySymbols, char **errorMessage);
 
 /** Returns true if the \p inBuffer contains an ELF object file. */
 LLVMBool LLVMIsELFEraVM(LLVMMemoryBufferRef inBuffer);
 
-/** Returns an array of undefined linker symbol names (null-terminating strings)
- *  of the ELF object file passed in \p inBuffer. The \p numLinkerSymbols
- *  contains the number of returned names.
+/** Returns an array of undefined linker/factory dependency symbol names in
+ *  \p linkerSymbols and \p factoryDepSymbols (null-terminating strings) of
+ *  the ELF object file passed in \p inBuffer.
+ *  The \p numLinkerSymbols and \p numFactoryDepSymbols contain the number of
+ *  symbol names.
  *  For example, if an ELF file has an undefined symbol which is represented
  *  via five sub-symbols:
  *    '__linker_symbol_id_0'
@@ -116,13 +125,16 @@ LLVMBool LLVMIsELFEraVM(LLVMMemoryBufferRef inBuffer);
  *  result.
  *  Caller should dispose the memory allocated for the returned array
  *  using 'LLVMDisposeUndefinedSymbolsEraVM' */
-char **LLVMGetUndefinedLinkerSymbolsEraVM(LLVMMemoryBufferRef inBuffer,
-                                          uint64_t *numLinkerSymbols);
+void LLVMGetUndefinedReferencesEraVM(LLVMMemoryBufferRef inBuffer,
+                                     char ***linkerSymbols,
+                                     uint64_t *numLinkerSymbols,
+                                     char ***factoryDepSymbols,
+                                     uint64_t *numFactoryDepSymbols);
 
 /** Disposes an array with linker symbols returned by the
- *  LLVMGetUndefinedSymbolsEraVM(). */
-void LLVMDisposeUndefinedLinkerSymbolsEraVM(char *linkerSymbolNames[],
-                                            uint64_t numLinkerSymbols);
+ *  LLVMGetUndefinedReferencesEraVM(). */
+void LLVMDisposeUndefinedReferencesEraVM(char *linkerSymbolNames[],
+                                         uint64_t numLinkerSymbols);
 
 /** Links the deploy and runtime ELF object files using the information about
  *  dependencies.

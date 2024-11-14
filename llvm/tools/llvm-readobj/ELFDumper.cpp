@@ -1758,7 +1758,8 @@ const EnumEntry<unsigned> ElfRISCVSymOtherFlags[] = {
 
 // EraVM local begin
 const EnumEntry<unsigned> ElfEraVMSymOtherFlags[] = {
-    LLVM_READOBJ_ENUM_ENT(ELF, STO_ERAVM_LINKER_SYMBOL)};
+    LLVM_READOBJ_ENUM_ENT(ELF, STO_ERAVM_REFERENCE_SYMBOL)};
+
 // EraVM local end
 
 static const char *getElfMipsOptionsOdkType(unsigned Odk) {
@@ -4127,8 +4128,8 @@ void GNUELFDumper<ELFT>::printSymbol(const Elf_Sym &Symbol, unsigned SymIndex,
       // EraVM local begin
     } else if (this->Obj.getHeader().e_machine == ELF::EM_ERAVM) {
       uint8_t Other = Symbol.st_other & ~0x3;
-      if (Other & STO_ERAVM_LINKER_SYMBOL)
-        Fields[5].Str += " [LINKER_SYMBOL]";
+      if (Other == STO_ERAVM_REFERENCE_SYMBOL)
+        Fields[5].Str += " [REFERENCE_SYMBOL]";
       // EraVM local end
     } else {
       Fields[5].Str +=

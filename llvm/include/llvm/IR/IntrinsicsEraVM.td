@@ -68,4 +68,11 @@ def int_eravm_linkersymbol : DefaultAttrsIntrinsic<
   [llvm_i256_ty], [llvm_metadata_ty],
   [IntrNoMem, IntrWillReturn]
 >;
+
+// Inserts a factory dependency placeholder, which will be replced with
+// a 32-byte hash by the linker.
+def int_eravm_factorydependency : DefaultAttrsIntrinsic<
+  [llvm_i256_ty], [llvm_metadata_ty],
+  [IntrNoMem, IntrWillReturn]
+>;
 }

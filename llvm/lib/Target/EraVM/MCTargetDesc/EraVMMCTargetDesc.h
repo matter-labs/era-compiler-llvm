@@ -183,10 +183,14 @@ const EraVMOpcodeInfo *findOpcodeInfo(unsigned Opcode);
 const EraVMOpcodeInfo *analyzeEncodedOpcode(unsigned EncodedOpcode,
                                             EncodedOperandMode &SrcMode,
                                             EncodedOperandMode &DstMode);
-std::string getLinkerSymbolHash(StringRef SymName);
-std::string getLinkerIndexedName(StringRef Name, unsigned SubIdx);
-std::string getLinkerSymbolSectionName(StringRef Name);
-std::string stripLinkerSymbolNameIndex(StringRef Name);
+std::string getSymbolHash(StringRef Name);
+std::string getSymbolIndexedName(StringRef Name, unsigned SubIdx);
+std::string getSymbolSectionName(StringRef Name);
+std::string getNonIndexedSymbolName(StringRef Name);
+std::string getLinkerSymbolName(StringRef Name);
+std::string getFactoryDependencySymbolName(StringRef BaseName);
+bool isLinkerSymbolName(StringRef Name);
+bool isFactoryDependencySymbolName(StringRef Name);
 } // namespace EraVM
 } // namespace llvm
 

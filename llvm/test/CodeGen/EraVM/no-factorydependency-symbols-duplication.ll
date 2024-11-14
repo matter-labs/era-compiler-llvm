@@ -3,18 +3,18 @@
 target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
 target triple = "eravm"
 
-declare i256 @llvm.eravm.linkersymbol(metadata)
+declare i256 @llvm.eravm.factorydependency(metadata)
 
 ; CHECK: .wide_reloc_symbol0:
 ; CHECK-NOT: .wide_reloc_symbol1:
 
 define i256 @foo() {
-  %res = call i256 @llvm.eravm.linkersymbol(metadata !1)
+  %res = call i256 @llvm.eravm.factorydependency(metadata !1)
   ret i256 %res
 }
 
 define i256 @bar() {
-  %res = call i256 @llvm.eravm.linkersymbol(metadata !2)
+  %res = call i256 @llvm.eravm.factorydependency(metadata !2)
   ret i256 %res
 }
 
