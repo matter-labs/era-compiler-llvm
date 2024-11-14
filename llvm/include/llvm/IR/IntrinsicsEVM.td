@@ -262,4 +262,14 @@ def int_evm_dataoffset : DefaultAttrsIntrinsic<
   [IntrNoMem, IntrSpeculatable]
 >;
 
+
+// Linking of libraries.
+
+// Inserts a library address placeholder to be replaced with
+// a library address at linkage time.
+def int_evm_linkersymbol : DefaultAttrsIntrinsic<
+  [llvm_i256_ty], [llvm_metadata_ty],
+  [IntrNoMem, IntrWillReturn]
+>;
+
 } // TargetPrefix = "evm"

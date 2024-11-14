@@ -88,8 +88,8 @@ void MCExpr::print(raw_ostream &OS, const MCAsmInfo *MAI,
   case MCExpr::SymbolRef: {
     // EVM local begin
     if (MAI && MAI->prependSymbolRefWithAt())
-    // EVM local end
       OS << '@';
+    // EVM local end
     const MCSymbolRefExpr &SRE = cast<MCSymbolRefExpr>(*this);
     const MCSymbol &Sym = SRE.getSymbol();
     Sym.print(OS, MAI);

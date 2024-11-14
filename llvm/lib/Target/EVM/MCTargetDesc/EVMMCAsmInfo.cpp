@@ -37,8 +37,6 @@ EVMMCAsmInfo::EVMMCAsmInfo(const Triple &TT) {
   initializeAtSpecifiers(atSpecifiers);
 }
 
-bool EVMMCAsmInfo::shouldOmitSectionDirective(StringRef) const { return true; }
-
 void EVMMCAsmInfo::printSpecifierExpr(raw_ostream &OS,
                                       const MCSpecifierExpr &Expr) const {
   StringRef S = EVM::getSpecifierName(Expr.getSpecifier());
@@ -47,4 +45,8 @@ void EVMMCAsmInfo::printSpecifierExpr(raw_ostream &OS,
   printExpr(OS, *Expr.getSubExpr());
   if (!S.empty())
     OS << ')';
+}
+
+bool EVMMCAsmInfo::shouldOmitSectionDirective(StringRef Name) const {
+  return !Name.starts_with(".symbol_name");
 }
