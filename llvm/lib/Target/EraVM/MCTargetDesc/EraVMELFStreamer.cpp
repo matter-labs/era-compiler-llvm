@@ -16,12 +16,15 @@
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCELFStreamer.h"
+#include "llvm/MC/MCExpr.h"
 #include "llvm/MC/MCSectionELF.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/MC/MCSymbolELF.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/ErrorHandling.h"
+
+#include <functional>
 
 using namespace llvm;
 
@@ -33,7 +36,13 @@ public:
   EraVMTargetELFStreamer(MCStreamer &S, const MCSubtargetInfo &STI);
   void emitCell(const APInt &Value) override;
   void emitJumpTarget(const MCExpr *Expr) override;
-  void emitLinkerSymbol(const MCSymbol *Symbol) override;
+  void emitLinkerSymbol(StringRef Symbol) override;
+  void emitFactoryDependencySymbol(StringRef SymbolName) override;
+
+private:
+  void emitWideRelocatableSymbol(
+      StringRef SymbolName, unsigned SymbolSize,
+      std::function<std::string(StringRef, unsigned)> SubName);
 };
 
 // This part is for ELF object output.
@@ -47,7 +56,8 @@ public:
                          MCInstPrinter &InstPrinter, bool VerboseAsm);
   void emitCell(const APInt &Value) override;
   void emitJumpTarget(const MCExpr *Expr) override;
-  void emitLinkerSymbol(const MCSymbol *Symbol) override;
+  void emitLinkerSymbol(StringRef Symbol) override;
+  void emitFactoryDependencySymbol(StringRef SymbolName) override;
 };
 
 void EraVMTargetELFStreamer::emitCell(const APInt &Value) {
@@ -77,25 +87,32 @@ void EraVMTargetELFStreamer::emitJumpTarget(const MCExpr *Expr) {
   DF->getFixups().push_back(MCFixup::create(Offset, Expr, FK));
 }
 
-void EraVMTargetELFStreamer::emitLinkerSymbol(const MCSymbol *Symbol) {
+// Emits a relocatable symbol of the size up to 32 bytes. The symbol
+// value is represented as an array of 4-byte relocatable
+// sub-symbols.
+void EraVMTargetELFStreamer::emitWideRelocatableSymbol(
+    StringRef SymbolName, unsigned SymbolSize,
+    std::function<std::string(StringRef, unsigned)> SubNameFunc) {
+  if (SymbolSize * 8 > EraVM::CellBitWidth)
+    report_fatal_error("MC: relocatable symbol size exceeds the cell width");
+
   // Emit the placeholder.
   emitCell(APInt::getZero(EraVM::CellBitWidth));
 
-  constexpr unsigned SymbolSize = 20;
   MCContext &Ctx = Streamer.getContext();
   auto &S = static_cast<MCObjectStreamer &>(Streamer);
   auto *DF = cast<MCDataFragment>(S.getCurrentFragment());
-  StringRef SymName = Symbol->getName();
 
-  // Emits 4-byte fixup to cover a part of the 20-byte linker symbol value.
-  auto EmitFixup = [&S, &Ctx, &SymName, &DF](unsigned Idx) {
-    std::string SubSymName = EraVM::getLinkerIndexedName(SymName, Idx);
-
+  // Emits 4-byte fixup to cover a part of the wide symbol value.
+  auto EmitFixup = [&S, &Ctx, &SymbolName, &SubNameFunc, SymbolSize,
+                    &DF](unsigned Idx) {
+    std::string SubSymName = SubNameFunc(SymbolName, Idx);
     if (Ctx.lookupSymbol(SubSymName))
-      report_fatal_error("Duplicating library sub-symbols");
+      report_fatal_error(Twine("MC: duplicating reference sub-symbol ") +
+                         SubSymName);
 
     auto *Sym = cast<MCSymbolELF>(Ctx.getOrCreateSymbol(SubSymName));
-    Sym->setOther(ELF::STO_ERAVM_LINKER_SYMBOL);
+    Sym->setOther(ELF::STO_ERAVM_REFERENCE_SYMBOL);
     const MCExpr *Expr = MCSymbolRefExpr::create(Sym, Ctx);
     S.visitUsedExpr(*Expr);
 
@@ -106,6 +123,18 @@ void EraVMTargetELFStreamer::emitLinkerSymbol(const MCSymbol *Symbol) {
 
   for (unsigned Idx = 0; Idx < SymbolSize / sizeof(uint32_t); ++Idx)
     EmitFixup(Idx);
+}
+
+void EraVMTargetELFStreamer::emitFactoryDependencySymbol(StringRef SymbolName) {
+  constexpr unsigned SymbolSize = 32;
+  emitWideRelocatableSymbol(SymbolName, SymbolSize,
+                            &EraVM::getSymbolIndexedName);
+}
+
+void EraVMTargetELFStreamer::emitLinkerSymbol(StringRef SymbolName) {
+  constexpr unsigned SymbolSize = 20;
+  emitWideRelocatableSymbol(SymbolName, SymbolSize,
+                            &EraVM::getSymbolIndexedName);
 }
 
 void EraVMTargetAsmStreamer::emitCell(const APInt &Value) {
@@ -122,15 +151,21 @@ void EraVMTargetAsmStreamer::emitJumpTarget(const MCExpr *Expr) {
   Streamer.emitValue(Expr, EraVM::CellBitWidth / 8);
 }
 
-void EraVMTargetAsmStreamer::emitLinkerSymbol(const MCSymbol *Symbol) {
+void EraVMTargetAsmStreamer::emitLinkerSymbol(StringRef SymbolName) {
   // This is almost a copy of MCTargetStreamer::emitValue() implementation.
   MCContext &Ctx = Streamer.getContext();
-  const MCExpr *Expr = MCSymbolRefExpr::create(Symbol, Ctx);
+  const MCExpr *Expr = MCSymbolRefExpr::create(
+      SymbolName, MCSymbolRefExpr::VariantKind::VK_None, Ctx);
   SmallString<128> Str;
   raw_svector_ostream OS(Str);
-  OS << "\t.linker_symbol_cell\t";
+  OS << "\t.reference_symbol_cell\t";
   Expr->print(OS, Ctx.getAsmInfo());
   Streamer.emitRawText(OS.str());
+}
+
+void EraVMTargetAsmStreamer::emitFactoryDependencySymbol(StringRef SymbolName) {
+  // The asm syntax of both reference symbol types is the same.
+  emitLinkerSymbol(SymbolName);
 }
 
 EraVMTargetAsmStreamer::EraVMTargetAsmStreamer(MCStreamer &S,

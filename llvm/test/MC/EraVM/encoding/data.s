@@ -48,10 +48,17 @@ foo:
   ret
 
 .rodata
-.linker_symbol:
-  .linker_symbol_cell  @__$9d134d75c24f6705416dcd739f310469be$__
-.section  ".linker_symbol_name__$9d134d75c24f6705416dcd739f310469be$__","S",@progbits
+.wide_reloc_symbol0:
+  .reference_symbol_cell  @__linker_symbol__$9d134d75c24f6705416dcd739f310469be$__
+.section  ".symbol_name__linker_symbol__$9d134d75c24f6705416dcd739f310469be$__","S",@progbits
   .ascii  "/()`~!@#$%^&*-+=|\\{}[ ]:;'<>,?/_library:id2"
+
+.rodata
+.wide_reloc_symbol1:
+  .reference_symbol_cell  @__factory_dependency__$9d134d75c24f6705416dcd739f310469be$__
+.section  ".symbol_name__factory_dependency__$9d134d75c24f6705416dcd739f310469be$__","S",@progbits
+  .ascii  "/()`~!@#$%^&*-+=|\\{}[ ]:;'<>,?/_library:id2"
+
 
 
 ; CHECK:      Relocation section '.rela.text' at offset {{0x[0-9a-f]+}} contains 5 entries:
@@ -62,15 +69,23 @@ foo:
 ; CHECK-NEXT: 0000000a  00000101 R_ERAVM_16_SCALE_32    00000000   .rodata + 60
 ; CHECK-NEXT: 00000012  00000101 R_ERAVM_16_SCALE_32    00000000   .rodata + 80
 
-; CHECK:     Relocation section '.rela.rodata' at offset {{0x[0-9a-f]+}} contains 5 entries:
+; CHECK:     Relocation section '.rela.rodata' at offset {{0x[0-9a-f]+}} contains 13 entries:
 ; CHECK-NEXT: Offset     Info    Type                Sym. Value  Symbol's Name + Addend
-; CHECK-NEXT: 000000cc  00000b03 R_ERAVM_32             00000000   __$9d134d75c24f6705416dcd739f310469be$__0 + 0
-; CHECK-NEXT: 000000d0  00000c03 R_ERAVM_32             00000000   __$9d134d75c24f6705416dcd739f310469be$__1 + 0
-; CHECK-NEXT: 000000d4  00000d03 R_ERAVM_32             00000000   __$9d134d75c24f6705416dcd739f310469be$__2 + 0
-; CHECK-NEXT: 000000d8  00000e03 R_ERAVM_32             00000000   __$9d134d75c24f6705416dcd739f310469be$__3 + 0
-; CHECK-NEXT: 000000dc  00000f03 R_ERAVM_32             00000000   __$9d134d75c24f6705416dcd739f310469be$__4 + 0
+; CHECK-NEXT: 000000cc  00000b03 R_ERAVM_32             00000000   __linker_symbol__$9d134d75c24f6705416dcd739f310469be$__0 + 0
+; CHECK-NEXT: 000000d0  00000c03 R_ERAVM_32             00000000   __linker_symbol__$9d134d75c24f6705416dcd739f310469be$__1 + 0
+; CHECK-NEXT: 000000d4  00000d03 R_ERAVM_32             00000000   __linker_symbol__$9d134d75c24f6705416dcd739f310469be$__2 + 0
+; CHECK-NEXT: 000000d8  00000e03 R_ERAVM_32             00000000   __linker_symbol__$9d134d75c24f6705416dcd739f310469be$__3 + 0
+; CHECK-NEXT: 000000dc  00000f03 R_ERAVM_32             00000000   __linker_symbol__$9d134d75c24f6705416dcd739f310469be$__4 + 0
+; CHECK-NEXT: 000000e0  00001003 R_ERAVM_32             00000000   __factory_dependency__$9d134d75c24f6705416dcd739f310469be$__0 + 0
+; CHECK-NEXT: 000000e4  00001103 R_ERAVM_32             00000000   __factory_dependency__$9d134d75c24f6705416dcd739f310469be$__1 + 0
+; CHECK-NEXT: 000000e8  00001203 R_ERAVM_32             00000000   __factory_dependency__$9d134d75c24f6705416dcd739f310469be$__2 + 0
+; CHECK-NEXT: 000000ec  00001303 R_ERAVM_32             00000000   __factory_dependency__$9d134d75c24f6705416dcd739f310469be$__3 + 0
+; CHECK-NEXT: 000000f0  00001403 R_ERAVM_32             00000000   __factory_dependency__$9d134d75c24f6705416dcd739f310469be$__4 + 0
+; CHECK-NEXT: 000000f4  00001503 R_ERAVM_32             00000000   __factory_dependency__$9d134d75c24f6705416dcd739f310469be$__5 + 0
+; CHECK-NEXT: 000000f8  00001603 R_ERAVM_32             00000000   __factory_dependency__$9d134d75c24f6705416dcd739f310469be$__6 + 0
+; CHECK-NEXT: 000000fc  00001703 R_ERAVM_32             00000000   __factory_dependency__$9d134d75c24f6705416dcd739f310469be$__7 + 0
 
-; CHECK:      Symbol table '.symtab' contains 16 entries:
+; CHECK:      Symbol table '.symtab' contains 24 entries:
 ; CHECK-NEXT:    Num:    Value  Size Type    Bind   Vis       Ndx         Name
 ; CHECK-NEXT:      0: 00000000     0 NOTYPE  LOCAL  DEFAULT   UND
 ; CHECK-NEXT:      1: 00000000     0 SECTION LOCAL  DEFAULT [[RO:[0-9]+]] .rodata
@@ -83,11 +98,20 @@ foo:
 ; CHECK-NEXT:      8: 00000040     0 OBJECT  GLOBAL DEFAULT [[RO]]        global_const
 ; CHECK-NEXT:      9: 00000020     0 OBJECT  GLOBAL DEFAULT [[RW]]        global_var
 ; CHECK-NEXT:     10: 00000000     0 FUNC    GLOBAL DEFAULT {{[0-9]+}}    fo
-; CHECK-NEXT:     11: 00000000     0 NOTYPE  GLOBAL DEFAULT [LINKER_SYMBOL] UND __$9d134d75c24f6705416dcd739f310469be$__0
-; CHECK-NEXT:     12: 00000000     0 NOTYPE  GLOBAL DEFAULT [LINKER_SYMBOL] UND __$9d134d75c24f6705416dcd739f310469be$__1
-; CHECK-NEXT:     13: 00000000     0 NOTYPE  GLOBAL DEFAULT [LINKER_SYMBOL] UND __$9d134d75c24f6705416dcd739f310469be$__2
-; CHECK-NEXT:     14: 00000000     0 NOTYPE  GLOBAL DEFAULT [LINKER_SYMBOL] UND __$9d134d75c24f6705416dcd739f310469be$__3
-; CHECK-NEXT:     15: 00000000     0 NOTYPE  GLOBAL DEFAULT [LINKER_SYMBOL] UND __$9d134d75c24f6705416dcd739f310469be$__4
+; CHECK-NEXT:     11: 00000000     0 NOTYPE  GLOBAL DEFAULT [REFERENCE_SYMBOL] UND __linker_symbol__$9d134d75c24f6705416dcd739f310469be$__0
+; CHECK-NEXT:     12: 00000000     0 NOTYPE  GLOBAL DEFAULT [REFERENCE_SYMBOL] UND __linker_symbol__$9d134d75c24f6705416dcd739f310469be$__1
+; CHECK-NEXT:     13: 00000000     0 NOTYPE  GLOBAL DEFAULT [REFERENCE_SYMBOL] UND __linker_symbol__$9d134d75c24f6705416dcd739f310469be$__2
+; CHECK-NEXT:     14: 00000000     0 NOTYPE  GLOBAL DEFAULT [REFERENCE_SYMBOL] UND __linker_symbol__$9d134d75c24f6705416dcd739f310469be$__3
+; CHECK-NEXT:     15: 00000000     0 NOTYPE  GLOBAL DEFAULT [REFERENCE_SYMBOL] UND __linker_symbol__$9d134d75c24f6705416dcd739f310469be$__4
+; CHECK-NEXT:     16: 00000000     0 NOTYPE  GLOBAL DEFAULT [REFERENCE_SYMBOL] UND __factory_dependency__$9d134d75c24f6705416dcd739f310469be$__0
+; CHECK-NEXT:     17: 00000000     0 NOTYPE  GLOBAL DEFAULT [REFERENCE_SYMBOL] UND __factory_dependency__$9d134d75c24f6705416dcd739f310469be$__1
+; CHECK-NEXT:     18: 00000000     0 NOTYPE  GLOBAL DEFAULT [REFERENCE_SYMBOL] UND __factory_dependency__$9d134d75c24f6705416dcd739f310469be$__2
+; CHECK-NEXT:     19: 00000000     0 NOTYPE  GLOBAL DEFAULT [REFERENCE_SYMBOL] UND __factory_dependency__$9d134d75c24f6705416dcd739f310469be$__3
+; CHECK-NEXT:     20: 00000000     0 NOTYPE  GLOBAL DEFAULT [REFERENCE_SYMBOL] UND __factory_dependency__$9d134d75c24f6705416dcd739f310469be$__4
+; CHECK-NEXT:     21: 00000000     0 NOTYPE  GLOBAL DEFAULT [REFERENCE_SYMBOL] UND __factory_dependency__$9d134d75c24f6705416dcd739f310469be$__5
+; CHECK-NEXT:     22: 00000000     0 NOTYPE  GLOBAL DEFAULT [REFERENCE_SYMBOL] UND __factory_dependency__$9d134d75c24f6705416dcd739f310469be$__6
+; CHECK-NEXT:     23: 00000000     0 NOTYPE  GLOBAL DEFAULT [REFERENCE_SYMBOL] UND __factory_dependency__$9d134d75c24f6705416dcd739f310469be$__7
+
 
 
 ; RODATA:      Hex dump of section '.rodata':

@@ -46,7 +46,7 @@ namespace {
 /// Parses EraVM assembly from a stream.
 class EraVMAsmParser : public MCTargetAsmParser {
   const MCRegisterInfo *MRI;
-  StringSet<> LinkerSymbolNames;
+  StringSet<> WideRelocSymbolNames;
 
   bool MatchAndEmitInstruction(SMLoc IDLoc, unsigned &Opcode,
                                OperandVector &Operands, MCStreamer &Out,
@@ -804,29 +804,33 @@ bool EraVMAsmParser::ParseDirective(AsmToken DirectiveID) {
 
     return false;
   }
+
   // Parses directive:
-  // ::= .library_address_cell @(@identificator | "string")
-  if (DirectiveID.getString() == ".linker_symbol_cell") {
+  // ::= .reference_symbol_cell @(@identificator | "string")
+  if (DirectiveID.getString() == ".reference_symbol_cell") {
     if (!getLexer().is(AsmToken::At))
       return TokError("expected symbol name starting with @");
     Lex(); // eat "@" token
 
     StringRef SymbolName;
+    SMLoc Loc = getTok().getLoc();
     if (getParser().parseIdentifier(SymbolName))
       return TokError("expected symbol name");
 
     if (parseEOL())
       return true;
 
-    if (getContext().lookupSymbol(SymbolName))
-      return TokError("duplicating library symbols");
+    if (!WideRelocSymbolNames.insert(SymbolName).second)
+      return Error(Loc, "duplicating reference symbol");
 
-    [[maybe_unused]] auto It = LinkerSymbolNames.insert(SymbolName);
-    assert(It.second);
-
-    MCSymbol *Symbol = getContext().getOrCreateSymbol(SymbolName);
-    auto *TS = getStreamer().getTargetStreamer();
-    static_cast<EraVMTargetStreamer *>(TS)->emitLinkerSymbol(Symbol);
+    auto *TS =
+        static_cast<EraVMTargetStreamer *>(getStreamer().getTargetStreamer());
+    if (EraVM::isLinkerSymbolName(SymbolName))
+      TS->emitLinkerSymbol(SymbolName);
+    else if (EraVM::isFactoryDependencySymbolName(SymbolName))
+      TS->emitFactoryDependencySymbol(SymbolName);
+    else
+      return Error(Loc, "unexpected reference symbol name");
 
     return false;
   }
@@ -842,12 +846,12 @@ void EraVMAsmParser::onEndOfFile() {
   for (const auto &Sec : llvm::make_range(MCAsm->begin(), MCAsm->end()))
     SectionNames.insert(Sec.getName());
 
-  for (const StringSet<>::value_type &Entry : LinkerSymbolNames) {
-    StringRef LinkerSymName = Entry.first();
-    std::string SecName = EraVM::getLinkerSymbolSectionName(LinkerSymName);
+  for (const StringSet<>::value_type &Entry : WideRelocSymbolNames) {
+    StringRef SymbolName = Entry.first();
+    std::string SecName = EraVM::getSymbolSectionName(SymbolName);
     getParser().check(!SectionNames.count(SecName),
                       "No section corresponding to the linker symbol: " +
-                          LinkerSymName);
+                          SymbolName);
   }
 }
 

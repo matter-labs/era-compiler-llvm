@@ -970,8 +970,8 @@ enum {
 
 // Special values for the st_other field in the symbol table entry for EraVM.
 enum {
-  // Symbol denotes a sub symbol of a linker symbol.
-  STO_ERAVM_LINKER_SYMBOL = 0x80
+  // Symbol denotes a sub symbol of a wide reference.
+  STO_ERAVM_REFERENCE_SYMBOL = 0x80,
 };
 
 #undef ELF_RELOC

@@ -1206,13 +1206,16 @@ SDValue EraVMTargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
     return DAG.getNode(EraVMISD::PTR_PACK, DL, VT, Op.getOperand(1),
                        Op.getOperand(2));
   }
-  case Intrinsic::eravm_linkersymbol: {
+  case Intrinsic::eravm_linkersymbol:
+  case Intrinsic::eravm_factorydependency: {
     MachineFunction &MF = DAG.getMachineFunction();
     const MDNode *Metadata = cast<MDNodeSDNode>(Op.getOperand(1))->getMD();
     StringRef SymStr = cast<MDString>(Metadata->getOperand(0))->getString();
     MCSymbol *Sym = MF.getContext().getOrCreateSymbol(SymStr);
-    return DAG.getNode(EraVMISD::LINKER_SYMBOL, DL, VT,
-                       DAG.getMCSymbol(Sym, MVT::i256));
+    unsigned Opc = (IntrinsicID == Intrinsic::eravm_linkersymbol)
+                       ? EraVMISD::LINKER_SYMBOL
+                       : EraVMISD::FACTORY_DEPENDENCY;
+    return DAG.getNode(Opc, DL, VT, DAG.getMCSymbol(Sym, MVT::i256));
   }
   }
   return SDValue();
