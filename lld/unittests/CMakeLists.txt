@@ -4,3 +4,6 @@ endfunction()
 
 add_subdirectory(AsLibAll)
 add_subdirectory(AsLibELF)
+# EVM local begin
+add_subdirectory(EVM)
+# EVM local End

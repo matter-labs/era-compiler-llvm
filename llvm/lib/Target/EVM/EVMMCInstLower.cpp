@@ -28,7 +28,6 @@ using namespace llvm;
 extern cl::opt<bool> EVMKeepRegisters;
 
 // Stackify instruction that were not stackified before.
-// Only two instructions need to be stackified here: PUSH_LABEL and DATA_S,
 static void stackifyInstruction(const MachineInstr *MI, MCInst &OutMI) {
   if (MI->isDebugInstr() || MI->isLabel() || MI->isInlineAsm())
     return;

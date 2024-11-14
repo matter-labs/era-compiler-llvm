@@ -1452,6 +1452,11 @@ template <class ELFT> Triple::ArchType ELFObjectFile<ELFT>::getArch() const {
   case ELF::EM_XTENSA:
     return Triple::xtensa;
 
+  // EVM local begin
+  case ELF::EM_EVM:
+    return Triple::evm;
+    // EVM local end
+
   default:
     return Triple::UnknownArch;
   }

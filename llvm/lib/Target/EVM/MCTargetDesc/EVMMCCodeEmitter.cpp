@@ -51,19 +51,14 @@ public:
 };
 
 EVM::Fixups getFixupForOpc(unsigned Opcode, MCSymbolRefExpr::VariantKind Kind) {
+  if (Kind == MCSymbolRefExpr::VariantKind::VK_EVM_DATA)
+    return EVM::fixup_Data_i32;
+
   switch (Opcode) {
   default:
     llvm_unreachable("Unexpected MI for the SymbolRef MO");
   case EVM::PUSH4_S:
-    switch (Kind) {
-    default:
-      llvm_unreachable("Unexpected variant kind for MI");
-    case MCSymbolRefExpr::VariantKind::VK_EVM_DATA:
-      return EVM::fixup_Data_i32;
-    case MCSymbolRefExpr::VariantKind::VK_None:
-      return EVM::fixup_SecRel_i32;
-    }
-    break;
+    return EVM::fixup_SecRel_i32;
   case EVM::PUSH3_S:
     return EVM::fixup_SecRel_i24;
   case EVM::PUSH2_S:

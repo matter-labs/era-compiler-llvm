@@ -28,4 +28,6 @@ EVMMCAsmInfo::EVMMCAsmInfo(const Triple &TT) {
   SupportsDebugInformation = true;
 }
 
-bool EVMMCAsmInfo::shouldOmitSectionDirective(StringRef) const { return true; }
+bool EVMMCAsmInfo::shouldOmitSectionDirective(StringRef Name) const {
+  return !Name.starts_with(".symbol_name");
+}

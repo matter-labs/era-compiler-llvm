@@ -1028,6 +1028,13 @@ enum {
 #include "ELFRelocs/Xtensa.def"
 };
 
+
+// Special values for the st_other field in the symbol table entry for EVM.
+enum {
+  // Symbol denotes a sub symbol of a wide reference.
+  STO_EVM_REFERENCE_SYMBOL = 0x80,
+};
+
 #undef ELF_RELOC
 
 // Section header.
