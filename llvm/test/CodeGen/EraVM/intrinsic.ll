@@ -205,8 +205,15 @@ define i256 @ifgtii() {
 
 ; CHECK-LABEL: linkersymbol
 define i256 @linkersymbol() {
-  ; CHECK: add code[@.linker_symbol0], r0, r1
+  ; CHECK: add code[@.wide_reloc_symbol0], r0, r1
   %res = call i256 @llvm.eravm.linkersymbol(metadata !0)
+  ret i256 %res
+}
+
+; CHECK-LABEL: factorydependency
+define i256 @factorydependency() {
+  ; CHECK: add code[@.wide_reloc_symbol1], r0, r1
+  %res = call i256 @llvm.eravm.factorydependency(metadata !0)
   ret i256 %res
 }
 
@@ -411,6 +418,7 @@ declare i256 @llvm.eravm.iflt(i256, i256)
 declare i256 @llvm.eravm.ifgt(i256, i256)
 
 declare i256 @llvm.eravm.linkersymbol(metadata)
+declare i256 @llvm.eravm.factorydependency(metadata)
 
 declare {i8 addrspace(3)*, i1} @__farcall(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)
 declare {i8 addrspace(3)*, i1} @__staticcall(i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256, i256)

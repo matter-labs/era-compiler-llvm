@@ -62,7 +62,7 @@ class EraVMAsmPrinter : public AsmPrinter {
   std::vector<const Constant *> UniqueConstants;
   ConstantPoolMapType ConstantPoolMap;
   // Maps linker symbol name to corresponding MCSymbol.
-  StringMap<MCSymbol *> LinkerSymbolMap;
+  StringMap<MCSymbol *> WideRelocSymbolsMap;
 
 public:
   EraVMAsmPrinter(TargetMachine &TM, std::unique_ptr<MCStreamer> Streamer)
@@ -75,8 +75,6 @@ public:
 
   bool emitPseudoExpansionLowering(MCStreamer &OutStreamer,
                                    const MachineInstr *MI);
-
-  void emitLibraryAddressSymbol(const MachineInstr *MI);
 
   void emitInstruction(const MachineInstr *MI) override;
   using AliasMapTy = DenseMap<uint64_t, SmallVector<const GlobalAlias *, 1>>;
@@ -101,6 +99,9 @@ public:
   void emitJumpTableInfo() override;
   void emitConstantPool() override;
   void emitEndOfAsmFile(Module &) override;
+
+private:
+  void emitWideRelocatableSymbol(const MachineInstr *MI);
 };
 } // end of anonymous namespace
 
@@ -133,8 +134,8 @@ void EraVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
     EmitToStreamer(*OutStreamer, TmpInst);
     return;
   }
-  if (Opc == EraVM::LinkerSymbol) {
-    emitLibraryAddressSymbol(MI);
+  if (Opc == EraVM::LinkerSymbol || Opc == EraVM::FactoryDependency) {
+    emitWideRelocatableSymbol(MI);
     return;
   }
 
@@ -149,29 +150,39 @@ void EraVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
   EmitToStreamer(*OutStreamer, TmpInst);
 }
 
-// The LinkerSymbol instruction is lowered to the following:
+// Lowers LinkerSymbol/FactoryDependency instructions as shown below:
+//
+//   LinkerSymbol @BaseSymbol
+//
+//   ->
 //
 //   .rodata
-//   .linker_symbol0:
-//       .linker_symbol_cell     @"__$KECCAK256(SymbolName)$__"
+//   .wide_reloc_symbol:
+//     .linker_symbol_cell    @"__linker_symbol__$KECCAK256(BaseSymbol)$__"
 //
-//   .section ".linker_symbol_name__$KECCAK256(SymbolName)$__","S",@progbits
+//   .section ".symbol_name__$KECCAK256(BaseName)$__","S",@progbits
 //          .ascii "~ \".%%^ [];,<.>?  .sol:GreaterHelper"
 
-void EraVMAsmPrinter::emitLibraryAddressSymbol(const MachineInstr *MI) {
+void EraVMAsmPrinter::emitWideRelocatableSymbol(const MachineInstr *MI) {
+  assert(MI->getOpcode() == EraVM::LinkerSymbol ||
+         MI->getOpcode() == EraVM::FactoryDependency);
+  bool IsLinkerSymbol = MI->getOpcode() == EraVM::LinkerSymbol;
+  MCSymbol *BaseSymbol = MI->getOperand(1).getMCSymbol();
+  StringRef BaseSymbolName = BaseSymbol->getName();
+
+  std::string BaseSymbolNameHash = EraVM::getSymbolHash(BaseSymbolName);
+  std::string SymbolName =
+      IsLinkerSymbol
+          ? EraVM::getLinkerSymbolName(BaseSymbolNameHash)
+          : EraVM::getFactoryDependencySymbolName(BaseSymbolNameHash);
+
+  MCSymbol *SymbolLabel =
+      WideRelocSymbolsMap.contains(SymbolName)
+          ? WideRelocSymbolsMap[SymbolName]
+          : OutContext.createNamedTempSymbol("wide_reloc_symbol");
+  const MCExpr *LabelExpr = MCSymbolRefExpr::create(SymbolLabel, OutContext);
   MCInst MCI;
   MCI.setOpcode(EraVM::ADDcrr_s);
-
-  // Code reference.
-  MCSymbol *LinkerSymbol = MI->getOperand(1).getMCSymbol();
-  StringRef LinkerSymbolName = LinkerSymbol->getName();
-  MCSymbol *Label = LinkerSymbolMap.contains(LinkerSymbolName)
-                        ? LinkerSymbolMap[LinkerSymbolName]
-                        : OutContext.createNamedTempSymbol("linker_symbol");
-  const MCExpr *LabelExpr = MCSymbolRefExpr::create(Label, OutContext);
-  auto *TS =
-      static_cast<EraVMTargetStreamer *>(OutStreamer->getTargetStreamer());
-
   // Dest register
   MCI.addOperand(MCOperand::createReg(MI->getOperand(0).getReg()));
   MCI.addOperand(MCOperand::createReg(EraVM::R0));
@@ -182,32 +193,31 @@ void EraVMAsmPrinter::emitLibraryAddressSymbol(const MachineInstr *MI) {
   EmitToStreamer(*OutStreamer, MCI);
 
   // The linker symbol and the related section already exist, so just exit.
-  if (LinkerSymbolMap.contains(LinkerSymbolName))
+  if (WideRelocSymbolsMap.contains(SymbolName))
     return;
 
-  LinkerSymbolMap[LinkerSymbolName] = Label;
-
-  std::string SymbolNameHash = EraVM::getLinkerSymbolHash(LinkerSymbolName);
-  MCSymbol *LinkerSymbolHash = OutContext.getOrCreateSymbol(SymbolNameHash);
+  WideRelocSymbolsMap[SymbolName] = SymbolLabel;
 
   // Emit the .rodata entry.
+  auto *TS =
+      static_cast<EraVMTargetStreamer *>(OutStreamer->getTargetStreamer());
   MCSection *CurrentSection = OutStreamer->getCurrentSectionOnly();
   MCSection *ReadOnlySection =
       OutContext.getELFSection(".rodata", ELF::SHT_PROGBITS, ELF::SHF_ALLOC);
   OutStreamer->switchSection(ReadOnlySection);
-  OutStreamer->emitLabel(Label);
-  TS->emitLinkerSymbol(LinkerSymbolHash);
+  OutStreamer->emitLabel(SymbolLabel);
+  if (IsLinkerSymbol)
+    TS->emitLinkerSymbol(SymbolName);
+  else
+    TS->emitFactoryDependencySymbol(SymbolName);
 
-  // Emit the .linker_symbol_name section that contains the actual symbol
+  // Emit the .symbol_name section that contains the actual symbol
   // name.
-  std::string LinkerSymbolSectionName = EraVM::getLinkerSymbolSectionName(
-      EraVM::getLinkerSymbolHash(LinkerSymbolName));
-
-  MCSection *LinkerSymbolSection = OutContext.getELFSection(
-      LinkerSymbolSectionName, ELF::SHT_PROGBITS, ELF::SHF_STRINGS);
-  OutStreamer->switchSection(LinkerSymbolSection);
-  OutStreamer->emitBytes(LinkerSymbolName);
-
+  std::string SymbolSectionName = EraVM::getSymbolSectionName(SymbolName);
+  MCSection *SymbolSection = OutContext.getELFSection(
+      SymbolSectionName, ELF::SHT_PROGBITS, ELF::SHF_STRINGS);
+  OutStreamer->switchSection(SymbolSection);
+  OutStreamer->emitBytes(BaseSymbolName);
   OutStreamer->switchSection(CurrentSection);
 }
 
@@ -282,7 +292,7 @@ void EraVMAsmPrinter::emitEndOfAsmFile(Module &) {
   // after emitting all the things, we also need to clear symbol cache
   UniqueConstants.clear();
   ConstantPoolMap.clear();
-  LinkerSymbolMap.clear();
+  WideRelocSymbolsMap.clear();
 }
 
 void EraVMAsmPrinter::insertSymbolToConstantMap(const Constant *C,

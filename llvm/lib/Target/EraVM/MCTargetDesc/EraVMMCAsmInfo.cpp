@@ -34,5 +34,5 @@ EraVMMCAsmInfo::EraVMMCAsmInfo(const Triple &TheTriple) {
 }
 
 bool EraVMMCAsmInfo::shouldOmitSectionDirective(StringRef Name) const {
-  return Name.starts_with(".linker_symbol_name") ? false : true;
+  return Name.starts_with(".symbol_name") ? false : true;
 }

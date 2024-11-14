@@ -127,30 +127,46 @@ EraVM::analyzeEncodedOpcode(unsigned EncodedOpcode, EncodedOperandMode &SrcMode,
   return Info;
 }
 
-// Returs the string of the following format:
-//   '__$KECCAK256(SymName)$__'
-std::string EraVM::getLinkerSymbolHash(StringRef SymName) {
-  std::array<uint8_t, 32> Hash = KECCAK::KECCAK_256(SymName);
+// Returns a string of the following format:
+//   '__$KECCAK256(SymbolName)$__'
+std::string EraVM::getSymbolHash(StringRef Name) {
+  std::array<uint8_t, 32> Hash = KECCAK::KECCAK_256(Name);
   SmallString<72> HexHash;
   toHex(Hash, /*LowerCase*/ true, HexHash);
   return (Twine("__$") + HexHash + "$__").str();
 }
 
-// Returns concatenation of the Name with the SubIdx.
-std::string EraVM::getLinkerIndexedName(StringRef Name, unsigned SubIdx) {
+// Returns concatenation of the \p Name with the \p SubIdx.
+std::string EraVM::getSymbolIndexedName(StringRef Name, unsigned SubIdx) {
   return (Twine(Name) + std::to_string(SubIdx)).str();
 }
 
-// Returns concatenation of '.linker_symbol_name' of the \p Name.
-std::string EraVM::getLinkerSymbolSectionName(StringRef Name) {
-  return (Twine(".linker_symbol_name") + Name).str();
+// Returns concatenation of '.symbol_name' with the \p Name.
+std::string EraVM::getSymbolSectionName(StringRef Name) {
+  return (Twine(".symbol_name") + Name).str();
 }
 
 // Strips index from the \p Name.
-std::string EraVM::stripLinkerSymbolNameIndex(StringRef Name) {
-  Regex suffixRegex(R"(.*[0-4]$)");
+std::string EraVM::getNonIndexedSymbolName(StringRef Name) {
+  Regex suffixRegex(R"(.*[0-7]$)");
   if (!suffixRegex.match(Name))
-    llvm_unreachable("Unexpected indexed linker symbol name");
+    llvm_unreachable("Unexpected indexed symbol name");
 
   return Name.drop_back().str();
+}
+
+std::string EraVM::getLinkerSymbolName(StringRef Name) {
+  return (Twine("__linker_symbol") + Name).str();
+}
+
+bool EraVM::isLinkerSymbolName(StringRef Name) {
+  return Name.find("__linker_symbol") == 0;
+}
+
+std::string EraVM::getFactoryDependencySymbolName(StringRef Name) {
+  return (Twine("__factory_dependency") + Name).str();
+}
+
+bool EraVM::isFactoryDependencySymbolName(StringRef Name) {
+  return Name.find("__factory_dependency") == 0;
 }
