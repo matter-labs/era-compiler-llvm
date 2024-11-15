@@ -8,13 +8,81 @@ define void @no_manipulations_needed_with_junk(i256 %a1, i256 %a2, i256 %a3) nor
 ; CHECK-LABEL: no_manipulations_needed_with_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    REVERT
   %x1 = add i256 %a1, %a2
   call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x1)
   unreachable
+}
+
+define void @no_manipulations_needed_with_junk_eq(i256 %a1, i256 %a2, i256 %a3) noreturn {
+  %cmp = icmp eq i256 %a1, %a2
+  %x1 = zext i1 %cmp to i256
+  call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x1)
+  unreachable
+
+; CHECK-LABEL: no_manipulations_needed_with_junk_eq:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    EQ
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
+}
+
+define i256 @no_manipulations_needed_no_junk_addmod(i256 %a1, i256 %a2, i256 %a3) {
+; CHECK-LABEL: no_manipulations_needed_no_junk_addmod:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    ADDMOD
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %x1 = call i256 @llvm.evm.addmod(i256 %a2, i256 %a1, i256 %a3)
+  ret i256 %x1
+}
+
+define i256 @no_manipulations_needed_no_junk_mulmod(i256 %a1, i256 %a2, i256 %a3) {
+; CHECK-LABEL: no_manipulations_needed_no_junk_mulmod:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    MULMOD
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %x1 = call i256 @llvm.evm.mulmod(i256 %a2, i256 %a1, i256 %a3)
+  ret i256 %x1
+}
+
+define i256 @no_manipulations_needed_no_junk_and(i256 %a1, i256 %a2) {
+; CHECK-LABEL: no_manipulations_needed_no_junk_and:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %x1 = and i256 %a2, %a1
+  ret i256 %x1
+}
+
+define i256 @no_manipulations_needed_no_junk_or(i256 %a1, i256 %a2) {
+; CHECK-LABEL: no_manipulations_needed_no_junk_or:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    OR
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %x1 = or i256 %a2, %a1
+  ret i256 %x1
+}
+
+define i256 @no_manipulations_needed_no_junk_xor(i256 %a1, i256 %a2) {
+; CHECK-LABEL: no_manipulations_needed_no_junk_xor:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    XOR
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %x1 = xor i256 %a2, %a1
+  ret i256 %x1
 }
 
 define i256 @no_manipulations_needed_no_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
@@ -34,7 +102,6 @@ define void @reorder_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
 ; CHECK-LABEL: reorder_with_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    REVERT
@@ -61,13 +128,26 @@ define void @swap_first_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    REVERT
   %x1 = add i256 %a3, %a2
   call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x1)
   unreachable
+}
+
+define i256 @two_commutable(i256 %a1, i256 %a2, i256 %a3) {
+  %x1 = add i256 %a3, %a2
+  %x2 = add i256 %a1, %x1
+  ret i256 %x2
+; CHECK-LABEL: two_commutable:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    ADD
+; CHECK-NEXT:    ADD
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
 }
 
 define void @swap_second_with_junk(i256 %a1, i256 %a2, i256 %a3, i256 %a4) noreturn {
@@ -87,7 +167,6 @@ define i256 @swap_first_no_junk(i256 %a1, i256 %a2, i256 %a3, i256 %a4) nounwind
 ; CHECK-LABEL: swap_first_no_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    SWAP3
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    POP
 ; CHECK-NEXT:    POP
@@ -102,7 +181,6 @@ define i256 @swap_second_no_junk(i256 %a1, i256 %a2, i256 %a3, i256 %a4) nounwin
 ; CHECK-LABEL: swap_second_no_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    SWAP3
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    POP
 ; CHECK-NEXT:    POP
@@ -179,11 +257,10 @@ define i256 @second_arg_alive_no_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    DUP2
-; CHECK-NEXT:    SWAP3
-; CHECK-NEXT:    POP
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    PUSH1 4
-; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    SWAP4
+; CHECK-NEXT:    POP
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    SUB
@@ -220,9 +297,9 @@ define i256 @both_arg_alive_no_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
 ; CHECK-LABEL: both_arg_alive_no_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    DUP1
+; CHECK-NEXT:    SWAP3
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    DUP2
 ; CHECK-NEXT:    DUP2
 ; CHECK-NEXT:    DIV
 ; CHECK-NEXT:    SWAP2
@@ -241,9 +318,9 @@ define i256 @same_arg_dead_with_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    SWAP1
-; CHECK-NEXT:    POP
 ; CHECK-NEXT:    DUP1
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    POP
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    DUP2
@@ -255,4 +332,40 @@ define i256 @same_arg_dead_with_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
   ret i256 %x1
 }
 
+define void @commutable_not_in_function_entry() noreturn {
+
+; CHECK-LABEL: .BB{{[0-9]+}}_3:
+; CHECK:       JUMPDEST
+; CHECK-NEXT:  PUSH4 4294967295
+; CHECK-NEXT:  AND
+; CHECK-NEXT:  PUSH0
+
+enter:
+  %offset = inttoptr i256 0 to ptr addrspace(2)
+  %load = call i256 @llvm.evm.calldataload(ptr addrspace(2) %offset)
+  %calldata = trunc i256 %load to i32
+  br label %header
+
+header:
+  %phi = phi i32 [ %calldata, %enter ], [ %inc, %do ]
+  %phi2 = phi i32 [ 1, %enter ], [ %mul, %do ]
+  %cmp = icmp sgt i32 %phi, 0
+  br i1 %cmp, label %do, label %exit
+
+do:
+  %mul = mul nsw i32 %phi2, %phi
+  %inc = add nsw i32 %phi, -1
+  br label %header
+
+exit:
+  %res = zext i32 %phi2 to i256
+  store i256 %res, ptr addrspace(1) null, align 4
+  call void @llvm.evm.return(ptr addrspace(1) null, i256 32)
+  unreachable
+}
+
+declare i256 @llvm.evm.addmod(i256, i256, i256)
+declare i256 @llvm.evm.mulmod(i256, i256, i256)
+declare i256 @llvm.evm.calldataload(ptr addrspace(2))
+declare void @llvm.evm.return(ptr addrspace(1), i256)
 declare void @llvm.evm.revert(ptr addrspace(1), i256)

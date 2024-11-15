@@ -258,16 +258,54 @@ void EVMOptimizedCodeTransform::createStackLayout(Stack TargetStack) {
 void EVMOptimizedCodeTransform::createOperationEntryLayout(
     const CFG::Operation &Op) {
   // Create required layout for entering the Operation.
-  createStackLayout(Layout.operationEntryLayout.at(&Op));
+  // Check if we can choose cheaper stack shuffling if the Operation is an
+  // instruction with commutable arguments.
+  if (const auto *Inst = std::get_if<CFG::BuiltinCall>(&Op.Operation);
+      Inst && Inst->IsCommutable) {
+    // Get the stack layout before the instruction.
+    const Stack &DefaultTargetStack = Layout.operationEntryLayout.at(&Op);
+    size_t DefaultCost =
+        EvaluateStackTransform(CurrentStack, DefaultTargetStack);
+
+    // Commutable operands always take top two stack slots.
+    const unsigned OpIdx1 = 0, OpIdx2 = 1;
+    assert(DefaultTargetStack.size() > 1);
+
+    // Swap the commutable stack items and measure the stack shuffling cost
+    // again.
+    Stack CommutedTargetStack = DefaultTargetStack;
+    std::swap(CommutedTargetStack[CommutedTargetStack.size() - OpIdx1 - 1],
+              CommutedTargetStack[CommutedTargetStack.size() - OpIdx2 - 1]);
+    size_t CommutedCost =
+        EvaluateStackTransform(CurrentStack, CommutedTargetStack);
+    // Choose the cheapest transformation.
+    createStackLayout(CommutedCost < DefaultCost ? CommutedTargetStack
+                                                 : DefaultTargetStack);
+#ifndef NDEBUG
+    // Assert that we have the inputs of the Operation on stack top.
+    assert(static_cast<int>(CurrentStack.size()) == Assembly.getStackHeight());
+    assert(CurrentStack.size() >= Op.Input.size());
+    Stack StackInput =
+        EVMUtils::to_vector(EVMUtils::take_last(CurrentStack, Op.Input.size()));
+    // Adjust the StackInput to match the commuted stack.
+    if (CommutedCost < DefaultCost) {
+      std::swap(StackInput[StackInput.size() - OpIdx1 - 1],
+                StackInput[StackInput.size() - OpIdx2 - 1]);
+    }
+    assert(AreLayoutsCompatible(StackInput, Op.Input));
+#endif // NDEBUG
+  } else {
+    createStackLayout(Layout.operationEntryLayout.at(&Op));
 
 #ifndef NDEBUG
-  // Assert that we have the inputs of the Operation on stack top.
-  assert(static_cast<int>(CurrentStack.size()) == Assembly.getStackHeight());
-  assert(CurrentStack.size() >= Op.Input.size());
-  const Stack StackInput =
-      EVMUtils::to_vector(EVMUtils::take_last(CurrentStack, Op.Input.size()));
-  assert(AreLayoutsCompatible(StackInput, Op.Input));
+    // Assert that we have the inputs of the Operation on stack top.
+    assert(static_cast<int>(CurrentStack.size()) == Assembly.getStackHeight());
+    assert(CurrentStack.size() >= Op.Input.size());
+    const Stack StackInput =
+        EVMUtils::to_vector(EVMUtils::take_last(CurrentStack, Op.Input.size()));
+    assert(AreLayoutsCompatible(StackInput, Op.Input));
 #endif // NDEBUG
+  }
 }
 
 void EVMOptimizedCodeTransform::operator()(const CFG::BasicBlock &Block) {
@@ -281,12 +319,14 @@ void EVMOptimizedCodeTransform::operator()(const CFG::BasicBlock &Block) {
 
   auto const &BlockInfo = Layout.blockInfos.at(&Block);
 
-  // Assert that the stack is valid for entering the block.
-  assert(AreLayoutsCompatible(CurrentStack, BlockInfo.entryLayout));
-
-  // Might set some slots to junk, if not required by the block.
-  CurrentStack = BlockInfo.entryLayout;
-
+  // Assert that the stack is valid for entering the block. The entry layout
+  // of the function entry block should is fully determined by the first
+  // instruction, so we can ignore 'BlockInfo.entryLayout'.
+  if (&Block != FuncInfo->Entry) {
+    assert(AreLayoutsCompatible(CurrentStack, BlockInfo.entryLayout));
+    // Might set some slots to junk, if not required by the block.
+    CurrentStack = BlockInfo.entryLayout;
+  }
   assert(static_cast<int>(CurrentStack.size()) == Assembly.getStackHeight());
 
   // Emit jumpdest, if required.
@@ -447,9 +487,7 @@ void EVMOptimizedCodeTransform::operator()() {
   Assembly.setStackHeight(static_cast<int>(CurrentStack.size()));
   Assembly.appendLabel();
 
-  // Create the entry layout of the function body block and visit.
-  createStackLayout(Layout.blockInfos.at(FuncInfo->Entry).entryLayout);
-
+  // Visit the function entry block.
   (*this)(*FuncInfo->Entry);
 
   Assembly.finalize();

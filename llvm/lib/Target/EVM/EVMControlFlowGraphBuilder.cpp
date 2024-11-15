@@ -258,9 +258,9 @@ void ControlFlowGraphBuilder::handleMachineInstr(MachineInstr &MI) {
   default: {
     Stack Input, Output;
     collectInstrOperands(MI, &Input, &Output);
-    CurrentBlock->Operations.emplace_back(
-        CFG::Operation{std::move(Input), std::move(Output),
-                       CFG::BuiltinCall{&MI, TerminatesOrReverts}});
+    CurrentBlock->Operations.emplace_back(CFG::Operation{
+        std::move(Input), std::move(Output),
+        CFG::BuiltinCall{&MI, MI.isCommutable(), TerminatesOrReverts}});
   } break;
   }
 

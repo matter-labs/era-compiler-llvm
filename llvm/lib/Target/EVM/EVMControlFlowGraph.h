@@ -176,6 +176,9 @@ struct CFG {
 
   struct BuiltinCall {
     MachineInstr *Builtin = nullptr;
+    // True if this instruction has commutable operands. In EVM ISA
+    // commutable operands always take top two stack slots.
+    bool IsCommutable = false;
     bool TerminatesOrReverts = false;
   };
 
