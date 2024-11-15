@@ -1,5 +1,6 @@
 ; RUN: llc < %s
 ; PR1114
+; UNSUPPORTED: target=evm{{.*}} 
 
 declare i1 @foo()
 

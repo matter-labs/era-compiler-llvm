@@ -39,6 +39,10 @@ cl::opt<bool>
                       cl::desc("EVM: output stack registers in"
                                " instruction output for test purposes only."),
                       cl::init(false));
+cl::opt<bool>
+    EVMUseLocalStakify("evm-use-local-stackify", cl::Hidden,
+                       cl::desc("EVM: use the local stackification algorithm"),
+                       cl::init(false));
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   // Register the target.
@@ -53,6 +57,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   initializeEVMSingleUseExpressionPass(PR);
   initializeEVMSplitCriticalEdgesPass(PR);
   initializeEVMStackifyPass(PR);
+  initializeEVMBPStackificationPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -204,9 +209,13 @@ void EVMPassConfig::addPreEmitPass() {
     addPass(&MachineBlockPlacementID);
     addPass(createEVMOptimizeLiveIntervals());
     addPass(createEVMSingleUseExpression());
-    // Run the register coloring pass to reduce the total number of registers.
-    addPass(createEVMRegColoring());
-    addPass(createEVMStackify());
+    if (EVMUseLocalStakify) {
+      // Run the register coloring pass to reduce the total number of registers.
+      addPass(createEVMRegColoring());
+      addPass(createEVMStackify());
+    } else {
+      addPass(createEVMBPStackification());
+    }
   }
 }
 

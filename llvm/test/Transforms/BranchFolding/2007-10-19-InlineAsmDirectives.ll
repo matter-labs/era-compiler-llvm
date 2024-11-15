@@ -1,6 +1,7 @@
 ; RUN: opt < %s -O3 | llc -no-integrated-as | FileCheck %s
 ; REQUIRES: default_triple
 ; XFAIL: target=eravm{{.*}}
+; UNSUPPORTED: target=evm{{.*}}
 
 ;; We don't want branch folding to fold asm directives.
 
