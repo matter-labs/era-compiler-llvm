@@ -35,7 +35,7 @@ class EVMTTIImpl final : public BasicTTIImplBase<EVMTTIImpl> {
   const EVMTargetLowering *getTLI() const { return TLI; }
 
 public:
-  enum SyncVMRegisterClass { Vector /* Unsupported */, GPR };
+  enum EVMRegisterClass { Vector /* Unsupported */, GPR };
 
   EVMTTIImpl(const EVMTargetMachine *TM, const Function &F)
       : BaseT(TM, F.getParent()->getDataLayout()), ST(TM->getSubtargetImpl(F)),
@@ -99,9 +99,6 @@ public:
     assert(RemainingBytes < 32);
     OpsOut.push_back(Type::getIntNTy(Context, RemainingBytes * 8));
   }
-
-  // TODO: The value is copied from SyncVM, needs to be checked.
-  unsigned getInliningThresholdMultiplier() const { return 11; }
 
   void getUnrollingPreferences(Loop *L, ScalarEvolution &SE,
                                TTI::UnrollingPreferences &UP,
