@@ -81,12 +81,6 @@ static bool EVMLinkRuntimeImpl(Module &M, const char *ModuleToLink) {
     exit(1);
   }
 
-  for (auto &F : M.functions()) {
-    if (!F.isDeclaration()) {
-      F.addFnAttr(Attribute::NoInline);
-    }
-  }
-
   bool LinkErr = false;
   LinkErr = L.linkInModule(
       std::move(RTM), Flags, [](Module &M, const StringSet<> &GVS) {
