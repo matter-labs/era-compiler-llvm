@@ -50,6 +50,7 @@ ModulePass *createEVMLinkRuntimePass();
 FunctionPass *createEVMOptimizeLiveIntervals();
 FunctionPass *createEVMRegColoring();
 FunctionPass *createEVMSingleUseExpression();
+FunctionPass *createEVMSplitCriticalEdges();
 FunctionPass *createEVMStackify();
 
 // PassRegistry initialization declarations.
@@ -61,6 +62,7 @@ void initializeEVMLinkRuntimePass(PassRegistry &);
 void initializeEVMOptimizeLiveIntervalsPass(PassRegistry &);
 void initializeEVMRegColoringPass(PassRegistry &);
 void initializeEVMSingleUseExpressionPass(PassRegistry &);
+void initializeEVMSplitCriticalEdgesPass(PassRegistry &);
 void initializeEVMStackifyPass(PassRegistry &);
 
 struct EVMLinkRuntimePass : PassInfoMixin<EVMLinkRuntimePass> {
