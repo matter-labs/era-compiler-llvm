@@ -5,8 +5,8 @@ target triple = "evm"
 
 define i256 @sdiv(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: @sdiv
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: SDIV [[TMP:\$[0-9]+]], [[IN1]], [[IN2]]
 
   %res = call i256 @llvm.evm.sdiv(i256 %rs1, i256 %rs2)
@@ -15,8 +15,8 @@ define i256 @sdiv(i256 %rs1, i256 %rs2) nounwind {
 
 define i256 @div(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: @div
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: DIV [[TMP:\$[0-9]+]], [[IN1]], [[IN2]]
 
   %res = call i256 @llvm.evm.div(i256 %rs1, i256 %rs2)
@@ -25,8 +25,8 @@ define i256 @div(i256 %rs1, i256 %rs2) nounwind {
 
 define i256 @smod(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: @smod
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: SMOD [[TMP:\$[0-9]+]], [[IN1]], [[IN2]]
 
   %res = call i256 @llvm.evm.smod(i256 %rs1, i256 %rs2)
@@ -35,8 +35,8 @@ define i256 @smod(i256 %rs1, i256 %rs2) nounwind {
 
 define i256 @mod(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: @mod
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: MOD [[TMP:\$[0-9]+]], [[IN1]], [[IN2]]
 
   %res = call i256 @llvm.evm.mod(i256 %rs1, i256 %rs2)
@@ -45,8 +45,8 @@ define i256 @mod(i256 %rs1, i256 %rs2) nounwind {
 
 define i256 @shl(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: @shl
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: SHL [[TMP:\$[0-9]+]], [[IN2]], [[IN1]]
 
   %res = call i256 @llvm.evm.shl(i256 %rs1, i256 %rs2)
@@ -55,8 +55,8 @@ define i256 @shl(i256 %rs1, i256 %rs2) nounwind {
 
 define i256 @shr(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: @shr
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: SHR [[TMP:\$[0-9]+]], [[IN2]], [[IN1]]
 
   %res = call i256 @llvm.evm.shr(i256 %rs1, i256 %rs2)
@@ -65,8 +65,8 @@ define i256 @shr(i256 %rs1, i256 %rs2) nounwind {
 
 define i256 @sar(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: @sar
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: SAR [[TMP:\$[0-9]+]], [[IN2]], [[IN1]]
 
   %res = call i256 @llvm.evm.sar(i256 %rs1, i256 %rs2)
@@ -75,9 +75,9 @@ define i256 @sar(i256 %rs1, i256 %rs2) nounwind {
 
 define i256 @addmod(i256 %rs1, i256 %rs2, i256 %rs3) nounwind {
 ; CHECK-LABEL: @addmod
-; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
+; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
 ; CHECK: ADDMOD [[TMP:\$[0-9]+]], [[IN1]], [[IN2]], [[IN3]]
 
   %res = call i256 @llvm.evm.addmod(i256 %rs1, i256 %rs2, i256 %rs3)
@@ -86,9 +86,9 @@ define i256 @addmod(i256 %rs1, i256 %rs2, i256 %rs3) nounwind {
 
 define i256 @mulmod(i256 %rs1, i256 %rs2, i256 %rs3) nounwind {
 ; CHECK-LABEL: @mulmod
-; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
+; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
 ; CHECK: MULMOD [[TMP:\$[0-9]+]], [[IN1]], [[IN2]], [[IN3]]
 
   %res = call i256 @llvm.evm.mulmod(i256 %rs1, i256 %rs2, i256 %rs3)
@@ -97,8 +97,8 @@ define i256 @mulmod(i256 %rs1, i256 %rs2, i256 %rs3) nounwind {
 
 define i256 @exp(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: @exp
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: EXP [[TMP:\$[0-9]+]], [[IN1]], [[IN2]]
 
   %res = call i256 @llvm.evm.exp(i256 %rs1, i256 %rs2)
@@ -107,8 +107,8 @@ define i256 @exp(i256 %rs1, i256 %rs2) nounwind {
 
 define i256 @sha3(ptr addrspace(1) %offset, i256 %size) nounwind {
 ; CHECK-LABEL: @sha3
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: SHA3 [[RES1:\$[0-9]+]], [[IN1]], [[IN2]]
 
   %res = call i256 @llvm.evm.sha3(ptr addrspace(1) %offset, i256 %size)
@@ -117,8 +117,8 @@ define i256 @sha3(ptr addrspace(1) %offset, i256 %size) nounwind {
 
 define i256 @signextend(i256 %bytesize, i256 %val) nounwind {
 ; CHECK-LABEL: @signextend
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: SIGNEXTEND [[RES1:\$[0-9]+]], [[IN1]], [[IN2]]
 
   %res = call i256 @llvm.evm.signextend(i256 %bytesize, i256 %val)
@@ -127,8 +127,8 @@ define i256 @signextend(i256 %bytesize, i256 %val) nounwind {
 
 define i256 @byte(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: @byte
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: BYTE [[TMP:\$[0-9]+]], [[IN1]], [[IN2]]
 
   %res = call i256 @llvm.evm.byte(i256 %rs1, i256 %rs2)
@@ -236,10 +236,10 @@ define i256 @extcodesize(i256 %rs1) nounwind {
 
 define void @extcodecopy(i256 %addr, ptr addrspace(1) %dst, ptr addrspace(4) %src, i256 %size) nounwind {
 ; CHECK-LABEL: @extcodecopy
-; CHECK: ARGUMENT [[IN4:\$[0-9]+]], 3
-; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
+; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
+; CHECK: ARGUMENT [[IN4:\$[0-9]+]], 3
 ; CHECK: EXTCODECOPY [[IN1]], [[IN2]], [[IN3]], [[IN4]]
 
   call void @llvm.evm.extcodecopy(i256 %addr, ptr addrspace(1) %dst, ptr addrspace(4) %src, i256 %size)
@@ -355,8 +355,8 @@ define i256 @blobbasefee() nounwind {
 
 define void @log0(ptr addrspace(1) %off, i256 %size) nounwind {
 ; CHECK-LABEL: @log0
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: LOG0 [[IN1]], [[IN2]]
 
   call void @llvm.evm.log0(ptr addrspace(1) %off, i256 %size)
@@ -365,9 +365,9 @@ define void @log0(ptr addrspace(1) %off, i256 %size) nounwind {
 
 define void @log1(ptr addrspace(1) %off, i256 %size, i256 %t1) nounwind {
 ; CHECK-LABEL: @log1
-; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
+; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
 ; CHECK: LOG1 [[IN1]], [[IN2]], [[IN3]]
 
   call void @llvm.evm.log1(ptr addrspace(1) %off, i256 %size, i256 %t1)
@@ -376,10 +376,10 @@ define void @log1(ptr addrspace(1) %off, i256 %size, i256 %t1) nounwind {
 
 define void @log2(ptr addrspace(1) %off, i256 %size, i256 %t1, i256 %t2) nounwind {
 ; CHECK-LABEL: @log2
-; CHECK: ARGUMENT [[IN4:\$[0-9]+]], 3
-; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
+; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
+; CHECK: ARGUMENT [[IN4:\$[0-9]+]], 3
 ; CHECK: LOG2 [[IN1]], [[IN2]], [[IN3]], [[IN4]]
 
   call void @llvm.evm.log2(ptr addrspace(1) %off, i256 %size, i256 %t1, i256 %t2)
@@ -388,11 +388,11 @@ define void @log2(ptr addrspace(1) %off, i256 %size, i256 %t1, i256 %t2) nounwin
 
 define void @log3(ptr addrspace(1) %off, i256 %size, i256 %t1, i256 %t2, i256 %t3) nounwind {
 ; CHECK-LABEL: @log3
-; CHECK: ARGUMENT [[IN5:\$[0-9]+]], 4
-; CHECK: ARGUMENT [[IN4:\$[0-9]+]], 3
-; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
+; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
+; CHECK: ARGUMENT [[IN4:\$[0-9]+]], 3
+; CHECK: ARGUMENT [[IN5:\$[0-9]+]], 4
 ; CHECK: LOG3 [[IN1]], [[IN2]], [[IN3]], [[IN4]], [[IN5]]
 
   call void @llvm.evm.log3(ptr addrspace(1) %off, i256 %size, i256 %t1, i256 %t2, i256 %t3)
@@ -401,12 +401,12 @@ define void @log3(ptr addrspace(1) %off, i256 %size, i256 %t1, i256 %t2, i256 %t
 
 define void @log4(ptr addrspace(1) %off, i256 %size, i256 %t1, i256 %t2, i256 %t3, i256 %t4) nounwind {
 ; CHECK-LABEL: @log4
-; CHECK: ARGUMENT [[IN6:\$[0-9]+]], 5
-; CHECK: ARGUMENT [[IN5:\$[0-9]+]], 4
-; CHECK: ARGUMENT [[IN4:\$[0-9]+]], 3
-; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
+; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
+; CHECK: ARGUMENT [[IN4:\$[0-9]+]], 3
+; CHECK: ARGUMENT [[IN5:\$[0-9]+]], 4
+; CHECK: ARGUMENT [[IN6:\$[0-9]+]], 5
 ; CHECK: LOG4 [[IN1]], [[IN2]], [[IN3]], [[IN4]], [[IN5]], [[IN6]]
 
   call void @llvm.evm.log4(ptr addrspace(1) %off, i256 %size, i256 %t1, i256 %t2, i256 %t3, i256 %t4)
@@ -415,9 +415,9 @@ define void @log4(ptr addrspace(1) %off, i256 %size, i256 %t1, i256 %t2, i256 %t
 
 define i256 @create(i256 %val, ptr addrspace(1) %off, i256 %size) nounwind {
 ; CHECK-LABEL: @create
-; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
+; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
 ; CHECK: CREATE [[RES1:\$[0-9]+]], [[IN1]], [[IN2]], [[IN3]]
 
   %ret = call i256 @llvm.evm.create(i256 %val, ptr addrspace(1) %off, i256 %size)
@@ -426,13 +426,13 @@ define i256 @create(i256 %val, ptr addrspace(1) %off, i256 %size) nounwind {
 
 define i256 @call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %arg_off, i256 %arg_size, ptr addrspace(1) %ret_off, i256 %ret_size) nounwind {
 ; CHECK-LABEL: @call
-; CHECK: ARGUMENT [[IN7:\$[0-9]+]], 6
-; CHECK: ARGUMENT [[IN6:\$[0-9]+]], 5
-; CHECK: ARGUMENT [[IN5:\$[0-9]+]], 4
-; CHECK: ARGUMENT [[IN4:\$[0-9]+]], 3
-; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
+; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
+; CHECK: ARGUMENT [[IN4:\$[0-9]+]], 3
+; CHECK: ARGUMENT [[IN5:\$[0-9]+]], 4
+; CHECK: ARGUMENT [[IN6:\$[0-9]+]], 5
+; CHECK: ARGUMENT [[IN7:\$[0-9]+]], 6
 ; CHECK: CALL [[RES:\$[0-9]+]], [[IN1]], [[IN2]], [[IN3]], [[IN4]], [[IN5]], [[IN6]], [[IN7]]
 
   %ret = call i256 @llvm.evm.call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %arg_off, i256 %arg_size, ptr addrspace(1) %ret_off, i256 %ret_size)
@@ -441,12 +441,12 @@ define i256 @call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %arg_off, i
 
 define i256 @delegatecall(i256 %gas, i256 %addr, ptr addrspace(1) %arg_off, i256 %arg_size, ptr addrspace(1) %ret_off, i256 %ret_size) nounwind {
 ; CHECK-LABEL: @delegatecall
-; CHECK: ARGUMENT [[IN6:\$[0-9]+]], 5
-; CHECK: ARGUMENT [[IN5:\$[0-9]+]], 4
-; CHECK: ARGUMENT [[IN4:\$[0-9]+]], 3
-; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
+; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
+; CHECK: ARGUMENT [[IN4:\$[0-9]+]], 3
+; CHECK: ARGUMENT [[IN5:\$[0-9]+]], 4
+; CHECK: ARGUMENT [[IN6:\$[0-9]+]], 5
 ; CHECK: DELEGATECALL [[RES:\$[0-9]+]], [[IN1]], [[IN2]], [[IN3]], [[IN4]], [[IN5]], [[IN6]]
 
   %ret = call i256 @llvm.evm.delegatecall(i256 %gas, i256 %addr, ptr addrspace(1) %arg_off, i256 %arg_size, ptr addrspace (1) %ret_off, i256 %ret_size)
@@ -455,10 +455,10 @@ define i256 @delegatecall(i256 %gas, i256 %addr, ptr addrspace(1) %arg_off, i256
 
 define i256 @create2(i256 %val, ptr addrspace(1) %off, i256 %size, i256 %salt) nounwind {
 ; CHECK-LABEL: @create2
-; CHECK: ARGUMENT [[IN4:\$[0-9]+]], 3
-; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
+; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
+; CHECK: ARGUMENT [[IN4:\$[0-9]+]], 3
 ; CHECK: CREATE2 [[RES1:\$[0-9]+]], [[IN1]], [[IN2]], [[IN3]], [[IN4]]
 
   %ret = call i256 @llvm.evm.create2(i256 %val, ptr addrspace(1) %off, i256 %size, i256 %salt)
@@ -467,12 +467,12 @@ define i256 @create2(i256 %val, ptr addrspace(1) %off, i256 %size, i256 %salt) n
 
 define i256 @staticcall(i256 %gas, i256 %addr, ptr addrspace(1) %arg_off, i256 %arg_size, ptr addrspace(1) %ret_off, i256 %ret_size) nounwind {
 ; CHECK-LABEL: @staticcall
-; CHECK: ARGUMENT [[IN6:\$[0-9]+]], 5
-; CHECK: ARGUMENT [[IN5:\$[0-9]+]], 4
-; CHECK: ARGUMENT [[IN4:\$[0-9]+]], 3
-; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
+; CHECK: ARGUMENT [[IN3:\$[0-9]+]], 2
+; CHECK: ARGUMENT [[IN4:\$[0-9]+]], 3
+; CHECK: ARGUMENT [[IN5:\$[0-9]+]], 4
+; CHECK: ARGUMENT [[IN6:\$[0-9]+]], 5
 ; CHECK: STATICCALL [[RES:\$[0-9]+]], [[IN1]], [[IN2]], [[IN3]], [[IN4]], [[IN5]], [[IN6]]
 
   %ret = call i256 @llvm.evm.staticcall(i256 %gas, i256 %addr, ptr addrspace(1) %arg_off, i256 %arg_size, ptr addrspace(1) %ret_off, i256 %ret_size)
@@ -490,8 +490,8 @@ define void @selfdestruct(i256 %addr) nounwind {
 
 define void @return(ptr addrspace(1) %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: @return
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: RETURN [[IN1]], [[IN2]]
 
   call void @llvm.evm.return(ptr addrspace(1) %rs1, i256 %rs2)
@@ -500,8 +500,8 @@ define void @return(ptr addrspace(1) %rs1, i256 %rs2) nounwind {
 
 define void @revert(ptr addrspace(1) %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: @revert
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: REVERT [[IN1]], [[IN2]]
 
   call void @llvm.evm.revert(ptr addrspace(1) %rs1, i256 %rs2)

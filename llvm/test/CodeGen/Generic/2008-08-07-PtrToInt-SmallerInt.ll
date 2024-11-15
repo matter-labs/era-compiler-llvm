@@ -1,4 +1,5 @@
-; XFAIL: target=eravm{{.*}}, target=evm{{.*}}
+; XFAIL: target=eravm{{.*}}
+; UNSUPPORTED: target=evm{{.*}}
 ; TODO: CPR-920 support operators
 ; RUN: llc < %s
 ; PR2603

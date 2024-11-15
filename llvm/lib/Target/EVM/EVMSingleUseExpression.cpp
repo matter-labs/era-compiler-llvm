@@ -311,6 +311,10 @@ static bool isSafeToMove(const MachineOperand *Def, const MachineOperand *Use,
   if (NextI == Insert)
     return true;
 
+  // Don't move ARGUMENT instructions, as stackification pass relies on this.
+  if (DefI->getOpcode() == EVM::ARGUMENT)
+    return false;
+
   // Check for register dependencies.
   SmallVector<unsigned, 4> MutableRegisters;
   for (const MachineOperand &MO : DefI->operands()) {
