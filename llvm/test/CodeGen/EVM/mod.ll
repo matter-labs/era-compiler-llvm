@@ -5,8 +5,8 @@ target triple = "evm"
 
 define i256 @umodrrr(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: @umodrrr
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: MOD [[TMP:\$[0-9]+]], [[IN1]], [[IN2]]
 
   %res = urem i256 %rs1, %rs2
@@ -15,8 +15,8 @@ define i256 @umodrrr(i256 %rs1, i256 %rs2) nounwind {
 
 define i256 @smodrrr(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: @smodrrr
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: SMOD [[TMP:\$[0-9]+]], [[IN1]], [[IN2]]
 
   %res = srem i256 %rs1, %rs2

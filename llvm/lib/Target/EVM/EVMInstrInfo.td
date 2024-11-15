@@ -200,8 +200,7 @@ def ADJCALLSTACKUP
               [(EVMcallseq_end timm:$amt1, timm:$amt2)]>;
 }
 
-let isCodeGenOnly = 1 in {
-let hasSideEffects = 1 in
+let hasSideEffects = 1, Defs = []<Register>, Uses = [ARGUMENTS] in
 def ARGUMENT
   : NRI<(outs GPR:$res), (ins i256imm:$argno),
        [(set GPR:$res, (EVMargument timm:$argno))],
@@ -219,7 +218,6 @@ def CONST_I256
 let isAsCheapAsAMove = 1 in
 def COPY_I256
   : NRI<(outs GPR:$res), (ins GPR:$src), [], "COPY_I256 $res, $src">;
-}
 
 def : Pat<(i256 (EVMTargetAddrWrapper tglobaladdr:$addr)),
           (CONST_I256 tglobaladdr:$addr)>;

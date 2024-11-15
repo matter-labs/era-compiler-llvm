@@ -22,10 +22,10 @@ machineFunctionInfo:
 body:             |
   bb.0:
       JUMPDEST_S
-      PUSH_LABEL %bb.10 {
+      PUSH_LABEL %bb.10, implicit-def $arguments {
         JUMPI_S
       }
-      PUSH_LABEL %bb.13 {
+      PUSH_LABEL %bb.13, implicit-def $arguments {
         JUMP_S
       }
 
