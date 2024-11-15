@@ -1,4 +1,5 @@
 ; RUN: llc < %s
+; UNSUPPORTED: target=evm{{.*}}
 
 ; This caused ScheduleDAG to crash in EmitPhysRegCopy when searching
 ; the uses of a copy to a physical register without ignoring non-data

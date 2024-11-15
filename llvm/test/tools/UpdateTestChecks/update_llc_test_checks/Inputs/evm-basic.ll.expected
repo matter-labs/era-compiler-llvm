@@ -5,17 +5,12 @@ define i256 @swap_second_no_junk(i256 %a1, i256 %a2, i256 %a3, i256 %a4) nounwin
 ; CHECK-LABEL: swap_second_no_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    DUP2
-; CHECK-NEXT:    DUP6
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    POP
 ; CHECK-NEXT:    SUB
-; CHECK-NEXT:    SWAP5
-; CHECK-NEXT:    POP
-; CHECK-NEXT:    DUP1
-; CHECK-NEXT:    SWAP4
-; CHECK-NEXT:    POP
-; CHECK-NEXT:    POP
-; CHECK-NEXT:    POP
-; CHECK-NEXT:    POP
+; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %x1 = sub i256 %a4, %a1
   ret i256 %x1
