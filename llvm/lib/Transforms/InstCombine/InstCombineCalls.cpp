@@ -166,8 +166,13 @@ Instruction *InstCombinerImpl::SimplifyAnyMemTransfer(AnyMemTransferInst *MI) {
   assert(Size && "0-sized memory transferring should be removed already.");
 
   // EraVM local begin
-  uint64_t SizeLimit = 8;
+  // For EVM we do not need to expand memcpy at all, as the possible memcpy
+  // operations are 1 to 1 mapped to corresponding instructions.
   Triple TT(MI->getFunction()->getParent()->getTargetTriple());
+  if (TT.isEVM())
+    return nullptr;
+
+  uint64_t SizeLimit = 8;
   if (TT.isEraVM())
     SizeLimit = 32;
 
