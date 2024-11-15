@@ -51,6 +51,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   initializeEVMOptimizeLiveIntervalsPass(PR);
   initializeEVMRegColoringPass(PR);
   initializeEVMSingleUseExpressionPass(PR);
+  initializeEVMSplitCriticalEdgesPass(PR);
   initializeEVMStackifyPass(PR);
 }
 
@@ -75,7 +76,6 @@ EVMTargetMachine::EVMTargetMachine(const Target &T, const Triple &TT,
                         getEffectiveCodeModel(CM, CodeModel::Small), OL),
       TLOF(std::make_unique<EVMELFTargetObjectFile>()),
       Subtarget(TT, std::string(CPU), std::string(FS), *this) {
-  setRequiresStructuredCFG(true);
   initAsmInfo();
 }
 
@@ -200,6 +200,8 @@ void EVMPassConfig::addPreEmitPass() {
 
   // FIXME: enable all the passes below, but the Stackify with EVMKeepRegisters.
   if (!EVMKeepRegisters) {
+    addPass(createEVMSplitCriticalEdges());
+    addPass(&MachineBlockPlacementID);
     addPass(createEVMOptimizeLiveIntervals());
     addPass(createEVMSingleUseExpression());
     // Run the register coloring pass to reduce the total number of registers.
