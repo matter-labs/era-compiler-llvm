@@ -64,6 +64,9 @@
 #include "llvm/Support/KnownBits.h"
 #include "llvm/Support/MathExtras.h"
 #include "llvm/Support/raw_ostream.h"
+// EVM local begin
+#include "llvm/TargetParser/Triple.h"
+// EVM local end
 #include "llvm/Transforms/InstCombine/InstCombiner.h"
 #include "llvm/Transforms/Utils/AssumeBundleBuilder.h"
 #include "llvm/Transforms/Utils/Local.h"
@@ -155,6 +158,14 @@ Instruction *InstCombinerImpl::SimplifyAnyMemTransfer(AnyMemTransferInst *MI) {
   // case.
   uint64_t Size = MemOpLength->getLimitedValue();
   assert(Size && "0-sized memory transferring should be removed already.");
+
+  // EVM local begin
+  // For EVM we do not need to expand memcpy at all, as the possible memcpy
+  // operations are 1 to 1 mapped to corresponding instructions.
+  Triple TT(MI->getFunction()->getParent()->getTargetTriple());
+  if (TT.isEVM())
+    return nullptr;
+  // EVM local end
 
   if (Size > 8 || (Size&(Size-1)))
     return nullptr;  // If not 1/2/4/8 bytes, exit.
