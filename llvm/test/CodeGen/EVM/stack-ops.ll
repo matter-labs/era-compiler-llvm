@@ -247,9 +247,9 @@ define i256 @both_arg_alive_no_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
 ; CHECK-LABEL: both_arg_alive_no_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    DUP1
+; CHECK-NEXT:    SWAP3
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    DUP2
 ; CHECK-NEXT:    DUP2
 ; CHECK-NEXT:    DIV
 ; CHECK-NEXT:    SWAP2
@@ -268,9 +268,9 @@ define i256 @same_arg_dead_with_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    SWAP1
-; CHECK-NEXT:    POP
 ; CHECK-NEXT:    DUP1
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    POP
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    DUP2
@@ -287,9 +287,9 @@ define i256 @same_arg_dead_no_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    SWAP1
-; CHECK-NEXT:    POP
 ; CHECK-NEXT:    DUP1
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    POP
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -302,10 +302,10 @@ define i256 @same_arg_alive_with_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    DUP1
+; CHECK-NEXT:    DUP1
+; CHECK-NEXT:    SWAP3
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    DUP1
-; CHECK-NEXT:    DUP1
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    SWAP1
@@ -324,10 +324,10 @@ define i256 @same_arg_alive_no_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    DUP1
+; CHECK-NEXT:    DUP1
+; CHECK-NEXT:    SWAP3
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    DUP1
-; CHECK-NEXT:    DUP1
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    SWAP1
