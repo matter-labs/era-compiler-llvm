@@ -26,5 +26,6 @@ add_llvm_component_library(LLVMInstCombine
   Analysis
   Core
   Support
+  TargetParser # EVM local
   TransformUtils
   )
