@@ -6,7 +6,8 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file moves ARGUMENT instructions after ScheduleDAG scheduling.
+// This file moves and orders ARGUMENT instructions after ScheduleDAG
+// scheduling.
 //
 // Arguments are really live-in registers, however, since we use virtual
 // registers and LLVM doesn't support live-in virtual registers, we're
@@ -67,21 +68,24 @@ bool EVMArgumentMove::runOnMachineFunction(MachineFunction &MF) {
 
   bool Changed = false;
   MachineBasicBlock &EntryMBB = MF.front();
-
-  // Look for the first NonArg instruction.
-  const auto InsertPt =
-      std::find_if_not(EntryMBB.begin(), EntryMBB.end(), [](auto &MI) {
-        return EVM::ARGUMENT == MI.getOpcode();
-      });
-
-  // Now move any argument instructions later in the block
-  // to before our first NonArg instruction.
-  for (MachineInstr &MI : llvm::make_range(InsertPt, EntryMBB.end())) {
-    if (EVM::ARGUMENT == MI.getOpcode()) {
-      EntryMBB.insert(InsertPt, MI.removeFromParent());
-      Changed = true;
-    }
+  SmallVector<MachineInstr *> Args;
+  for (MachineInstr &MI : EntryMBB) {
+    if (EVM::ARGUMENT == MI.getOpcode())
+      Args.push_back(&MI);
   }
 
+  // Sort ARGUMENT instructions in ascending order of their arguments.
+  std::sort(Args.begin(), Args.end(),
+            [](const MachineInstr *MI1, const MachineInstr *MI2) {
+              int64_t Arg1Idx = MI1->getOperand(1).getImm();
+              int64_t Arg2Idx = MI2->getOperand(1).getImm();
+              return Arg1Idx < Arg2Idx;
+            });
+
+  for (MachineInstr *MI : reverse(Args)) {
+    MachineInstr *Arg = MI->removeFromParent();
+    EntryMBB.insert(EntryMBB.begin(), Arg);
+    Changed = true;
+  }
   return Changed;
 }
