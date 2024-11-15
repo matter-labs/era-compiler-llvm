@@ -122,3 +122,81 @@ unsigned llvm::EVM::getPUSHOpcode(const APInt &Imm) {
     llvm_unreachable("Unexpected stack depth");
   }
 }
+
+unsigned llvm::EVM::getDUPOpcode(unsigned Depth) {
+  switch (Depth) {
+  case 1:
+    return EVM::DUP1;
+  case 2:
+    return EVM::DUP2;
+  case 3:
+    return EVM::DUP3;
+  case 4:
+    return EVM::DUP4;
+  case 5:
+    return EVM::DUP5;
+  case 6:
+    return EVM::DUP6;
+  case 7:
+    return EVM::DUP7;
+  case 8:
+    return EVM::DUP8;
+  case 9:
+    return EVM::DUP9;
+  case 10:
+    return EVM::DUP10;
+  case 11:
+    return EVM::DUP11;
+  case 12:
+    return EVM::DUP12;
+  case 13:
+    return EVM::DUP13;
+  case 14:
+    return EVM::DUP14;
+  case 15:
+    return EVM::DUP15;
+  case 16:
+    return EVM::DUP16;
+  default:
+    llvm_unreachable("Unexpected stack depth");
+  }
+}
+
+unsigned llvm::EVM::getSWAPOpcode(unsigned Depth) {
+  switch (Depth) {
+  case 1:
+    return EVM::SWAP1;
+  case 2:
+    return EVM::SWAP2;
+  case 3:
+    return EVM::SWAP3;
+  case 4:
+    return EVM::SWAP4;
+  case 5:
+    return EVM::SWAP5;
+  case 6:
+    return EVM::SWAP6;
+  case 7:
+    return EVM::SWAP7;
+  case 8:
+    return EVM::SWAP8;
+  case 9:
+    return EVM::SWAP9;
+  case 10:
+    return EVM::SWAP10;
+  case 11:
+    return EVM::SWAP11;
+  case 12:
+    return EVM::SWAP12;
+  case 13:
+    return EVM::SWAP13;
+  case 14:
+    return EVM::SWAP14;
+  case 15:
+    return EVM::SWAP15;
+  case 16:
+    return EVM::SWAP16;
+  default:
+    llvm_unreachable("Unexpected stack depth");
+  }
+}
