@@ -270,17 +270,19 @@ defm SDIV : BinaryInst<sdiv, "SDIV", 0x05, 5>;
 defm MOD : BinaryInst<urem, "MOD", 0x06, 5>;
 defm SMOD : BinaryInst<srem, "SMOD", 0x07, 5>;
 
-defm ADDMOD
-  : I<(outs GPR:$dst), (ins GPR:$add_op1, GPR:$add_op2, GPR:$denom),
-      [(set GPR:$dst,
-       (int_evm_addmod GPR:$add_op1, GPR:$add_op2, GPR:$denom))],
-      "ADDMOD", " $dst, $add_op1, $add_op2, $denom", 0x08, 8>;
+let isCommutable = 1 in {
+  defm ADDMOD
+    : I<(outs GPR:$dst), (ins GPR:$add_op1, GPR:$add_op2, GPR:$denom),
+        [(set GPR:$dst,
+         (int_evm_addmod GPR:$add_op1, GPR:$add_op2, GPR:$denom))],
+        "ADDMOD", " $dst, $add_op1, $add_op2, $denom", 0x08, 8>;
 
-defm MULMOD
-  : I<(outs GPR:$dst), (ins GPR:$mul_op1, GPR:$mul_op2, GPR:$denom),
-      [(set GPR:$dst,
-       (int_evm_mulmod GPR:$mul_op1, GPR:$mul_op2, GPR:$denom))],
-      "MULMOD", " $dst, $mul_op1, $mul_op2, $denom", 0x09, 8>;
+  defm MULMOD
+    : I<(outs GPR:$dst), (ins GPR:$mul_op1, GPR:$mul_op2, GPR:$denom),
+        [(set GPR:$dst,
+         (int_evm_mulmod GPR:$mul_op1, GPR:$mul_op2, GPR:$denom))],
+        "MULMOD", " $dst, $mul_op1, $mul_op2, $denom", 0x09, 8>;
+}
 
 defm EXP
   : I<(outs GPR:$dst), (ins GPR:$base, GPR:$exp),
