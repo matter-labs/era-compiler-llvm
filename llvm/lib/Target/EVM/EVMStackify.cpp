@@ -1065,10 +1065,12 @@ void StackModel::postProcess() {
   for (MachineBasicBlock &MBB : *MF) {
     MachineBasicBlock::instr_iterator I = MBB.instr_begin(),
                                       E = MBB.instr_end();
+    // Skip the first instruction, as it's not interested anyway.
+    ++I;
     for (; I != E; ++I) {
       if (I->isBranch()) {
-        auto P = std::next(I);
-        if (P != E && P->getOpcode() == EVM::PUSH_LABEL)
+        auto P = std::prev(I);
+        if (P->getOpcode() == EVM::PUSH_LABEL)
           I->bundleWithPred();
       }
     }
