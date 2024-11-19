@@ -5,6 +5,8 @@ add_lld_library(lldC
 
   LINK_COMPONENTS
   Core
+  EVMDesc
+  Object
   Support
 
   LINK_LIBS

@@ -13,6 +13,7 @@
 #ifndef LLVM_LIB_TARGET_EVM_MCTARGETDESC_EVMMCTARGETDESC_H
 #define LLVM_LIB_TARGET_EVM_MCTARGETDESC_EVMMCTARGETDESC_H
 
+#include "llvm/ADT/StringRef.h"
 #include "llvm/Support/DataTypes.h"
 #include <memory>
 
@@ -36,6 +37,11 @@ MCAsmBackend *createEVMMCAsmBackend(const Target &T, const MCSubtargetInfo &STI,
 
 std::unique_ptr<MCObjectTargetWriter> createEVMELFObjectWriter(uint8_t OSABI);
 
+namespace EVM {
+std::string getLinkerSymbolHash(StringRef SymName);
+std::string getDataSizeSymbol(StringRef SymbolName);
+std::string getDataOffsetSymbol(StringRef SymbolName);
+} // namespace EVM
 } // namespace llvm
 
 // Defines symbolic names for EVM registers.
