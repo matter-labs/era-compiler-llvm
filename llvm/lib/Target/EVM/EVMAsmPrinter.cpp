@@ -13,13 +13,20 @@
 
 #include "EVMMCInstLower.h"
 #include "EVMTargetMachine.h"
+#include "MCTargetDesc/EVMMCTargetDesc.h"
+#include "MCTargetDesc/EVMTargetStreamer.h"
 #include "TargetInfo/EVMTargetInfo.h"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/BinaryFormat/ELF.h"
 #include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/MC/MCAsmInfo.h"
+#include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCInst.h"
+#include "llvm/MC/MCSectionELF.h"
 #include "llvm/MC/MCStreamer.h"
+#include "llvm/MC/MCSymbol.h"
 #include "llvm/MC/TargetRegistry.h"
+
 using namespace llvm;
 
 #define DEBUG_TYPE "asm-printer"
@@ -50,6 +57,9 @@ public:
   /// fall-through.
   bool isBlockOnlyReachableByFallthrough(
       const MachineBasicBlock *MBB) const override;
+
+private:
+  void emitLinkerSymbol(const MachineInstr *MI);
 };
 } // end of anonymous namespace
 
@@ -94,6 +104,13 @@ void EVMAsmPrinter::emitFunctionEntryLabel() {
 void EVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
   EVMMCInstLower MCInstLowering(OutContext, *this, VRegMapping,
                                 MF->getRegInfo());
+
+  unsigned Opc = MI->getOpcode();
+  if (Opc == EVM::DATASIZE_S || Opc == EVM::DATAOFFSET_S) {
+    emitLinkerSymbol(MI);
+    return;
+  }
+
   MCInst TmpInst;
   MCInstLowering.Lower(MI, TmpInst);
   EmitToStreamer(*OutStreamer, TmpInst);
@@ -103,6 +120,26 @@ bool EVMAsmPrinter::isBlockOnlyReachableByFallthrough(
     const MachineBasicBlock *MBB) const {
   // For simplicity, always emit BB labels.
   return false;
+}
+
+void EVMAsmPrinter::emitLinkerSymbol(const MachineInstr *MI) {
+  MCSymbol *LinkerSymbol = MI->getOperand(0).getMCSymbol();
+  StringRef LinkerSymbolName = LinkerSymbol->getName();
+  unsigned Opc = MI->getOpcode();
+  assert(Opc == EVM::DATASIZE_S || Opc == EVM::DATAOFFSET_S);
+
+  std::string SymbolNameHash = EVM::getLinkerSymbolHash(LinkerSymbolName);
+  std::string DataSymbolNameHash =
+      (Opc == EVM::DATASIZE_S) ? EVM::getDataSizeSymbol(SymbolNameHash)
+                               : EVM::getDataOffsetSymbol(SymbolNameHash);
+
+  MCInst MCI;
+  MCI.setOpcode(EVM::PUSH4_S);
+  MCSymbolRefExpr::VariantKind Kind = MCSymbolRefExpr::VariantKind::VK_EVM_DATA;
+  MCOperand MCOp = MCOperand::createExpr(
+      MCSymbolRefExpr::create(DataSymbolNameHash, Kind, OutContext));
+  MCI.addOperand(MCOp);
+  EmitToStreamer(*OutStreamer, MCI);
 }
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMAsmPrinter() {

@@ -36,6 +36,13 @@ std::string getLinkerIndexedName(StringRef Name, unsigned SubIdx);
 std::string getLinkerSymbolSectionName(StringRef Name);
 std::string stripLinkerSymbolNameIndex(StringRef Name);
 } // namespace EraVM
+
+namespace EVM {
+std::string getLinkerSymbolHash(StringRef SymName);
+std::string getLinkerSymbolSectionName(StringRef Name);
+std::string getDataSizeSymbol(StringRef SymbolName);
+std::string getDataOffsetSymbol(StringRef SymbolName);
+} // namespace EVM
 } // namespace llvm
 
 constexpr static unsigned linkerSubSymbolRelocSize = sizeof(uint32_t);
@@ -486,12 +493,17 @@ static std::string creteEVMLinkerScript(ArrayRef<LLVMMemoryBufferRef> memBufs,
                                         ArrayRef<const char *> bufIDs) {
   assert(memBufs.size() == bufIDs.size());
   size_t numObjectsToLink = memBufs.size();
-  StringRef dataSizePrefix("__datasize_");
-  StringRef dataOffsetPrefix("__dataoffset_");
+
+  auto getDataOffsetName = [](StringRef name) {
+    return EVM::getDataOffsetSymbol(EVM::getLinkerSymbolHash(name));
+  };
+  auto getDataSizeName = [](StringRef name) {
+    return EVM::getDataSizeSymbol(EVM::getLinkerSymbolHash(name));
+  };
 
   // Define the script part related to the top-level contract.
-  StringRef topName(bufIDs[0]);
-  StringRef deployed(bufIDs[1]);
+  std::string topName = EVM::getLinkerSymbolHash(bufIDs[0]);
+  std::string deployed = EVM::getLinkerSymbolHash(bufIDs[1]);
 
   // Contains the linker script part corresponding to the top-level contract.
   // For the example above, this contains:
@@ -499,54 +511,58 @@ static std::string creteEVMLinkerScript(ArrayRef<LLVMMemoryBufferRef> memBufs,
   //   __dataoffset_D_105_deployed = .;
   //   D_105_deployed(.text);
   //   __datasize_D_105_deployed = . - __dataoffset_D_105_deployed;
-  std::string topLevel =
-      (topName + "(.text);\n" + dataOffsetPrefix + deployed + " = .;\n" +
-       deployed + "(.text);\n" + dataSizePrefix + deployed + " = . - " +
-       dataOffsetPrefix + deployed + ";\n")
-          .str();
+  std::string topLevelBuf;
+  raw_string_ostream topLevel(topLevelBuf);
+  topLevel << topName << "(.text);\n"
+           << EVM::getDataOffsetSymbol(deployed) << " = .;\n"
+           << deployed << "(.text);\n"
+           << EVM::getDataSizeSymbol(deployed) << " = . - "
+           << EVM::getDataOffsetSymbol(deployed) + ";\n";
 
   // Contains symbols whose values are the sizes of the dependent contracts.
   // For the example above, this contains:
   //   __datasize_B_40 = 1384;
-  std::string symDatasizeDeps;
+  std::string dataSizeBuf;
+  raw_string_ostream symDatasizeDeps(dataSizeBuf);
 
   // Contains symbols whose values are the offsets of the dependent contracts.
   // For the example above, this contains:
   //   __dataoffset_B_40 = .;
-  std::string symDataOffsetDeps;
+  std::string dataOffsetBuf;
+  raw_string_ostream symDataOffsetDeps(dataOffsetBuf);
   if (numObjectsToLink > 2) {
     // Define datasize symbols for the dependent contracts. They start after
     // {deploy, deployed} pair of the top-level contract, i.e. at index 2.
     for (unsigned idx = 2; idx < numObjectsToLink; ++idx)
-      symDatasizeDeps += (dataSizePrefix + bufIDs[idx] + " = " +
-                          Twine(LLVMGetBufferSize(memBufs[idx])) + ";\n")
-                             .str();
+      symDatasizeDeps << getDataSizeName(bufIDs[idx]) << " = "
+                      << LLVMGetBufferSize(memBufs[idx]) << ";\n";
 
-    symDataOffsetDeps = (dataOffsetPrefix + bufIDs[2] + " = .;\n").str();
+    symDataOffsetDeps << getDataOffsetName(bufIDs[2]) << " = .;\n";
     for (unsigned idx = 3; idx < numObjectsToLink; ++idx)
-      symDataOffsetDeps +=
-          (dataOffsetPrefix + bufIDs[idx] + " = " + dataOffsetPrefix +
-           bufIDs[idx - 1] + " + " + dataSizePrefix + bufIDs[idx - 1] + ";\n")
-              .str();
+      symDataOffsetDeps << getDataOffsetName(bufIDs[idx]) << " = "
+                        << getDataOffsetName(bufIDs[idx - 1]) << " + "
+                        << getDataSizeName(bufIDs[idx - 1]) << ";\n";
   }
 
   // Contains a symbol whose value is the total size of the top-level contract
   // with all the dependencies.
-  std::string symDatasizeTop = (dataSizePrefix + topName + " = ").str();
+  std::string dataSizeTopBuf;
+  raw_string_ostream symDatasizeTop(dataSizeTopBuf);
+  symDatasizeTop << EVM::getDataSizeSymbol(topName) << " = ";
   if (numObjectsToLink > 2)
-    symDatasizeTop += (dataOffsetPrefix + bufIDs.back() + " + " +
-                       dataSizePrefix + bufIDs.back() + ";\n")
-                          .str();
+    symDatasizeTop << getDataOffsetName(bufIDs.back()) << " + "
+                   << getDataSizeName(bufIDs.back()) << ";\n";
   else
-    symDatasizeTop += ".;\n";
+    symDatasizeTop << ".;\n";
 
   // Emit size of the deploy code offset as the 4-byte unsigned integer.
   // This is needed to determine which offset the deployed code starts at
   // in the linked binary.
   std::string deploySize =
-      ("LONG(" + dataOffsetPrefix + deployed + ");\n").str();
+      "LONG(" + EVM::getDataOffsetSymbol(deployed) + ");\n";
 
-  std::string script = formatv("{0}\n\
+  std::string script =
+      formatv("{0}\n\
 ENTRY(0);\n\
 SECTIONS {\n\
   . = 0;\n\
@@ -558,8 +574,8 @@ SECTIONS {\n\
   }\n\
 }\n\
 ",
-                               symDatasizeDeps, topLevel, symDataOffsetDeps,
-                               symDatasizeTop, deploySize);
+              symDatasizeDeps.str(), topLevel.str(), symDataOffsetDeps.str(),
+              symDatasizeTop.str(), deploySize);
 
   return script;
 }
@@ -570,16 +586,21 @@ LLVMBool LLVMLinkEVM(LLVMMemoryBufferRef inBuffers[],
   assert(numInBuffers > 1);
   SmallVector<MemoryBufferRef> localInMemBufRefs(3);
   SmallVector<std::unique_ptr<MemoryBuffer>> localInMemBufs(3);
+
+  // TODO: #740. Verify that the object files contain sections with original
+  // inBuffersIDs, i.e. before taking hash.
   for (unsigned idx = 0; idx < 2; ++idx) {
     MemoryBufferRef ref = *unwrap(inBuffers[idx]);
-    localInMemBufs[idx] =
-        MemoryBuffer::getMemBuffer(ref.getBuffer(), inBuffersIDs[idx],
-                                   /*RequiresNullTerminator*/ false);
+    // We need to copy buffers to be able to change their names, as this matters
+    // for the linker.
+    localInMemBufs[idx] = MemoryBuffer::getMemBufferCopy(
+        ref.getBuffer(), EVM::getLinkerSymbolHash(inBuffersIDs[idx]));
     localInMemBufRefs[idx] = localInMemBufs[idx]->getMemBufferRef();
   }
 
   std::string linkerScript = creteEVMLinkerScript(
       ArrayRef(inBuffers, numInBuffers), ArrayRef(inBuffersIDs, numInBuffers));
+
   std::unique_ptr<MemoryBuffer> scriptBuf =
       MemoryBuffer::getMemBuffer(linkerScript, "script.x");
   localInMemBufRefs[2] = scriptBuf->getMemBufferRef();
@@ -592,19 +613,20 @@ LLVMBool LLVMLinkEVM(LLVMMemoryBufferRef inBuffers[],
   // Use remapping of file names (a linker feature) to replace file names with
   // indexes in the array of memory buffers.
   const std::string remapStr("--remap-inputs=");
-  std::string remapDeployStr = remapStr + inBuffersIDs[0] + "=0";
+  std::string topHash = EVM::getLinkerSymbolHash(inBuffersIDs[0]);
+  std::string deployedHash = EVM::getLinkerSymbolHash(inBuffersIDs[1]);
+  std::string remapDeployStr = remapStr + topHash + "=0";
   lldArgs.push_back(remapDeployStr.c_str());
 
-  std::string remapDeployedStr = remapStr + inBuffersIDs[1] + "=1";
+  std::string remapDeployedStr = remapStr + deployedHash + "=1";
   lldArgs.push_back(remapDeployedStr.c_str());
 
   lldArgs.push_back("--remap-inputs=script.x=2");
 
   // Deploy code
-  lldArgs.push_back(inBuffersIDs[0]);
+  lldArgs.push_back(topHash.c_str());
   // Deployed code
-  lldArgs.push_back(inBuffersIDs[1]);
-
+  lldArgs.push_back(deployedHash.c_str());
   lldArgs.push_back("--oformat=binary");
 
   SmallString<0> codeString;
