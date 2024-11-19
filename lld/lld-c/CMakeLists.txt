@@ -6,6 +6,7 @@ add_lld_library(lldC
   LINK_COMPONENTS
   Core
   EraVMDesc
+  EVMDesc
   Object
   Support
 
