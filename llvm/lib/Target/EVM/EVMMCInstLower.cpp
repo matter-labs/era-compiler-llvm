@@ -39,7 +39,7 @@ static void stackifyInstruction(const MachineInstr *MI, MCInst &OutMI) {
 
   // Set up final opcodes for the following codegen-only instructions.
   unsigned Opcode = OutMI.getOpcode();
-  if (Opcode == EVM::PUSH_LABEL || Opcode == EVM::DATA_S)
+  if (Opcode == EVM::PUSH_LABEL)
     OutMI.setOpcode(EVM::PUSH4_S);
 
   // Check that all the instructions are in the 'stack' form.
@@ -124,10 +124,14 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
       }
     } break;
     case MachineOperand::MO_MCSymbol: {
-      EVM::Specifier Spec =
-          MI->getOpcode() == EVM::DATA_S ? EVM::S_DATA : EVM::S_None;
+#ifndef NDEBUG
+      unsigned Opc = MI->getOpcode();
+      // We handle the linkage-related instructions in the EVMAsmPrinter.
+      assert(Opc != EVM::DATASIZE_S && Opc != EVM::DATAOFFSET_S);
+#endif // NDEBUG
+
       MCOp = MCOperand::createExpr(
-          MCSymbolRefExpr::create(MO.getMCSymbol(), Spec, Ctx));
+          MCSymbolRefExpr::create(MO.getMCSymbol(), Ctx));
     } break;
     case MachineOperand::MO_MachineBasicBlock:
       MCOp = MCOperand::createExpr(

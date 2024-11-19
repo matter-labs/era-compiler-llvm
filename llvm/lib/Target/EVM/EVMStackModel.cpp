@@ -17,7 +17,7 @@
 using namespace llvm;
 
 bool llvm::isLinkerPseudoMI(const MachineInstr &MI) {
-  return MI.getOpcode() == EVM::DATA;
+  return MI.getOpcode() == EVM::DATASIZE || MI.getOpcode() == EVM::DATAOFFSET;
 }
 bool llvm::isPushOrDupLikeMI(const MachineInstr &MI) {
   return isLinkerPseudoMI(MI) || MI.getOpcode() == EVM::CONST_I256 ||

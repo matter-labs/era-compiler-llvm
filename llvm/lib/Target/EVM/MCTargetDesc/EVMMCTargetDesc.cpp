@@ -15,10 +15,12 @@
 #include "EVMMCAsmInfo.h"
 #include "EVMTargetStreamer.h"
 #include "TargetInfo/EVMTargetInfo.h"
+#include "llvm/ADT/StringExtras.h"
 #include "llvm/MC/MCInstrInfo.h"
 #include "llvm/MC/MCRegisterInfo.h"
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/MC/TargetRegistry.h"
+#include "llvm/Support/KECCAK.h"
 
 using namespace llvm;
 
@@ -112,4 +114,21 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTargetMC() {
 
   // Register the null target streamer.
   TargetRegistry::RegisterNullTargetStreamer(T, createEVMNullTargetStreamer);
+}
+
+// Returs a string of the following format:
+//   '__$KECCAK256(SymName)$__'
+std::string EVM::getLinkerSymbolHash(StringRef SymName) {
+  std::array<uint8_t, 32> Hash = KECCAK::KECCAK_256(SymName);
+  SmallString<72> HexHash;
+  toHex(Hash, /*LowerCase*/ true, HexHash);
+  return (Twine("__$") + HexHash + "$__").str();
+}
+
+std::string EVM::getDataSizeSymbol(StringRef SymbolName) {
+  return (Twine("__datasize") + SymbolName).str();
+}
+
+std::string EVM::getDataOffsetSymbol(StringRef SymbolName) {
+  return (Twine("__dataoffset") + SymbolName).str();
 }

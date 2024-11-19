@@ -11,16 +11,24 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "EVM.h"
 #include "EVMMCInstLower.h"
 #include "EVMTargetMachine.h"
+#include "MCTargetDesc/EVMMCAsmInfo.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
+#include "MCTargetDesc/EVMTargetStreamer.h"
 #include "TargetInfo/EVMTargetInfo.h"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/BinaryFormat/ELF.h"
 #include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/MC/MCAsmInfo.h"
+#include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCInst.h"
+#include "llvm/MC/MCSectionELF.h"
 #include "llvm/MC/MCStreamer.h"
+#include "llvm/MC/MCSymbol.h"
 #include "llvm/MC/TargetRegistry.h"
+
 using namespace llvm;
 
 extern cl::opt<bool> EVMKeepRegisters;
@@ -50,6 +58,7 @@ public:
 
 private:
   void emitJumpDest();
+  void emitLinkerSymbol(const MachineInstr *MI);
 };
 } // end of anonymous namespace
 
@@ -145,6 +154,10 @@ void EVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
     EmitToStreamer(*OutStreamer, Jump);
     return;
   }
+  case EVM::DATASIZE_S:
+  case EVM::DATAOFFSET_S:
+    emitLinkerSymbol(MI);
+    return;
   }
 
   MCInst TmpInst;
@@ -156,6 +169,26 @@ void EVMAsmPrinter::emitJumpDest() {
   MCInst JumpDest;
   JumpDest.setOpcode(EVM::JUMPDEST_S);
   EmitToStreamer(*OutStreamer, JumpDest);
+}
+
+void EVMAsmPrinter::emitLinkerSymbol(const MachineInstr *MI) {
+  MCSymbol *LinkerSymbol = MI->getOperand(0).getMCSymbol();
+  StringRef LinkerSymbolName = LinkerSymbol->getName();
+  unsigned Opc = MI->getOpcode();
+  assert(Opc == EVM::DATASIZE_S || Opc == EVM::DATAOFFSET_S);
+
+  std::string SymbolNameHash = EVM::getLinkerSymbolHash(LinkerSymbolName);
+  std::string DataSymbolNameHash =
+      (Opc == EVM::DATASIZE_S) ? EVM::getDataSizeSymbol(SymbolNameHash)
+                               : EVM::getDataOffsetSymbol(SymbolNameHash);
+  auto *Symbol = OutContext.getOrCreateSymbol(DataSymbolNameHash);
+
+  MCInst MCI;
+  MCI.setOpcode(EVM::PUSH4_S);
+  MCOperand MCOp = MCOperand::createExpr(
+      MCSymbolRefExpr::create(Symbol, EVM::S_DATA, OutContext));
+  MCI.addOperand(MCOp);
+  EmitToStreamer(*OutStreamer, MCI);
 }
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMAsmPrinter() {
