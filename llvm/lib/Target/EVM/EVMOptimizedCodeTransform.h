@@ -76,6 +76,7 @@ private:
   StackLayout const &Layout;
   CFG::FunctionInfo const *FuncInfo = nullptr;
   MachineFunction &MF;
+  const CFG::BasicBlock &EntryBB;
 
   Stack CurrentStack;
   DenseMap<const MachineInstr *, MCSymbol *> CallToReturnMCSymbol;

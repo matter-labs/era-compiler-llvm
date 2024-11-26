@@ -256,7 +256,6 @@ struct CFG {
 
   struct FunctionInfo {
     MachineFunction *MF = nullptr;
-    BasicBlock *Entry = nullptr;
     std::vector<StackSlot> Parameters;
   };
 
@@ -266,7 +265,7 @@ struct CFG {
   std::list<BasicBlock> Blocks;
   DenseMap<const MachineBasicBlock *, BasicBlock *> MachineBBToBB;
 
-  BasicBlock &getBlock(const MachineBasicBlock *MBB) {
+  BasicBlock &getBlock(const MachineBasicBlock *MBB) const {
     auto It = MachineBBToBB.find(MBB);
     assert(It != MachineBBToBB.end());
     return *It->second;

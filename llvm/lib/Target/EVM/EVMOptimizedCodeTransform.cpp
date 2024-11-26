@@ -121,7 +121,8 @@ EVMOptimizedCodeTransform::EVMOptimizedCodeTransform(EVMAssembly &Assembly,
                                                      CFG const &Cfg,
                                                      StackLayout const &Layout,
                                                      MachineFunction &MF)
-    : Assembly(Assembly), Layout(Layout), FuncInfo(&Cfg.FuncInfo), MF(MF) {}
+    : Assembly(Assembly), Layout(Layout), FuncInfo(&Cfg.FuncInfo), MF(MF),
+      EntryBB(Cfg.getBlock(&MF.front())) {}
 
 bool EVMOptimizedCodeTransform::AreLayoutsCompatible(Stack const &SourceStack,
                                                      Stack const &TargetStack) {
@@ -310,7 +311,7 @@ void EVMOptimizedCodeTransform::createOperationEntryLayout(
 
 void EVMOptimizedCodeTransform::operator()(const CFG::BasicBlock &Block) {
   // Current location for the entry BB was set up in operator()().
-  if (&Block != FuncInfo->Entry)
+  if (&Block != &EntryBB)
     Assembly.setCurrentLocation(Block.MBB);
 
   // Assert that this is the first visit of the block and mark as generated.
@@ -322,7 +323,7 @@ void EVMOptimizedCodeTransform::operator()(const CFG::BasicBlock &Block) {
   // Assert that the stack is valid for entering the block. The entry layout
   // of the function entry block should is fully determined by the first
   // instruction, so we can ignore 'BlockInfo.entryLayout'.
-  if (&Block != FuncInfo->Entry) {
+  if (&Block != &EntryBB) {
     assert(AreLayoutsCompatible(CurrentStack, BlockInfo.entryLayout));
     // Might set some slots to junk, if not required by the block.
     CurrentStack = BlockInfo.entryLayout;
@@ -471,9 +472,9 @@ void EVMOptimizedCodeTransform::operator()(const CFG::BasicBlock &Block) {
 
 void EVMOptimizedCodeTransform::operator()() {
   assert(CurrentStack.empty() && Assembly.getStackHeight() == 0);
-  Assembly.setCurrentLocation(FuncInfo->Entry->MBB);
+  Assembly.setCurrentLocation(EntryBB.MBB);
 
-  assert(!BlockLabels.count(FuncInfo->Entry));
+  assert(!BlockLabels.count(&EntryBB));
 
   // Create function entry layout in CurrentStack.
   if (!MF.getFunction().hasFnAttribute(Attribute::NoReturn))
@@ -488,7 +489,7 @@ void EVMOptimizedCodeTransform::operator()() {
   Assembly.appendLabel();
 
   // Visit the function entry block.
-  (*this)(*FuncInfo->Entry);
+  (*this)(EntryBB);
 
   Assembly.finalize();
 }

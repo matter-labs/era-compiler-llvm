@@ -39,6 +39,7 @@ public:
 private:
   void operator()(const CFG::FunctionInfo &Info);
   std::string getBlockId(const CFG::BasicBlock &Block);
+  std::string getBlockId(const MachineBasicBlock &MBB);
   void printBlock(const CFG::BasicBlock &Block);
 
   raw_ostream &OS;
@@ -50,7 +51,8 @@ public:
       : OS(OS), Layout(StackLayout) {}
 
   void operator()(CFG::BasicBlock const &Block, bool IsMainEntry = true);
-  void operator()(CFG::FunctionInfo const &Info);
+  void operator()(CFG::FunctionInfo const &Info,
+                  CFG::BasicBlock const &EntryBB);
 
 private:
   void printBlock(CFG::BasicBlock const &Block);

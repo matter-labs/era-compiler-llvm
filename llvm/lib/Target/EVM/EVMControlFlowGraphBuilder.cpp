@@ -44,8 +44,7 @@ static void markNeedsCleanStack(std::vector<CFG::BasicBlock *> &Exits) {
 /// Marks each cut-vertex in the CFG, i.e. each block that begins a disconnected
 /// sub-graph of the CFG. Entering such a block means that control flow will
 /// never return to a previously visited block.
-static void markStartsOfSubGraphs(CFG &Cfg) {
-  CFG::BasicBlock *Entry = Cfg.FuncInfo.Entry;
+static void markStartsOfSubGraphs(CFG::BasicBlock *Entry) {
   /**
    * Detect bridges following Algorithm 1 in
    * https://arxiv.org/pdf/2108.07346.pdf and mark the bridge targets as starts
@@ -118,7 +117,6 @@ std::unique_ptr<CFG> ControlFlowGraphBuilder::build(MachineFunction &MF,
     Result->createBlock(&MBB);
 
   Result->FuncInfo.MF = &MF;
-  Result->FuncInfo.Entry = &Result->getBlock(&MF.front());
 
   // Handle function parameters
   auto *MFI = MF.getInfo<EVMMachineFunctionInfo>();
@@ -138,7 +136,7 @@ std::unique_ptr<CFG> ControlFlowGraphBuilder::build(MachineFunction &MF,
   for (MachineBasicBlock &MBB : MF)
     Builder.handleBasicBlockSuccessors(MBB);
 
-  markStartsOfSubGraphs(*Result);
+  markStartsOfSubGraphs(&Result->getBlock(&MF.front()));
   markNeedsCleanStack(Builder.Exits);
 
   LLVM_DEBUG({

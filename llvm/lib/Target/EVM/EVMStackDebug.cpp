@@ -90,12 +90,15 @@ void ControlFlowGraphPrinter::operator()(const CFG &Cfg) {
 
 void ControlFlowGraphPrinter::operator()(CFG::FunctionInfo const &Info) {
   OS << "Function: " << Info.MF->getName() << '\n';
-  OS << "Entry block: " << getBlockId(*Info.Entry) << ";\n";
+  OS << "Entry block: " << getBlockId(Info.MF->front()) << ";\n";
 }
 
 std::string ControlFlowGraphPrinter::getBlockId(CFG::BasicBlock const &Block) {
-  return std::to_string(Block.MBB->getNumber()) + "." +
-         std::string(Block.MBB->getName());
+  return getBlockId(*Block.MBB);
+}
+
+std::string ControlFlowGraphPrinter::getBlockId(const MachineBasicBlock &MBB) {
+  return std::to_string(MBB.getNumber()) + "." + std::string(MBB.getName());
 }
 
 void ControlFlowGraphPrinter::printBlock(CFG::BasicBlock const &Block) {
@@ -191,7 +194,8 @@ void StackLayoutPrinter::operator()(CFG::BasicBlock const &Block,
   }
 }
 
-void StackLayoutPrinter::operator()(CFG::FunctionInfo const &Info) {
+void StackLayoutPrinter::operator()(CFG::FunctionInfo const &Info,
+                                    CFG::BasicBlock const &EntryBB) {
   OS << "Function: " << Info.MF->getName() << "(";
   for (const StackSlot &ParamSlot : Info.Parameters) {
     if (const auto *Slot = std::get_if<VariableSlot>(&ParamSlot))
@@ -202,8 +206,9 @@ void StackLayoutPrinter::operator()(CFG::FunctionInfo const &Info) {
       llvm_unreachable("Unexpected stack slot");
   }
   OS << ");\n";
-  OS << "FunctionEntry " << " -> Block" << getBlockId(*Info.Entry) << ";\n";
-  (*this)(*Info.Entry, false);
+  OS << "FunctionEntry "
+     << " -> Block" << getBlockId(EntryBB) << ";\n";
+  (*this)(EntryBB, false);
 }
 
 void StackLayoutPrinter::printBlock(CFG::BasicBlock const &Block) {

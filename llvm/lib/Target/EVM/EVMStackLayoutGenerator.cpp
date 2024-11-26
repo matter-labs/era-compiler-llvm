@@ -34,12 +34,14 @@ using namespace llvm;
 StackLayout StackLayoutGenerator::run(const CFG &Cfg) {
   StackLayout Layout;
   StackLayoutGenerator LayoutGenerator{Layout, &Cfg.FuncInfo};
-  LayoutGenerator.processEntryPoint(*Cfg.FuncInfo.Entry, &Cfg.FuncInfo);
+
+  auto &EntryBB = Cfg.getBlock(&Cfg.FuncInfo.MF->front());
+  LayoutGenerator.processEntryPoint(EntryBB, &Cfg.FuncInfo);
 
   LLVM_DEBUG({
     dbgs() << "************* Stack Layout *************\n";
     StackLayoutPrinter P(dbgs(), Layout);
-    P(Cfg.FuncInfo);
+    P(Cfg.FuncInfo, EntryBB);
   });
 
   return Layout;
