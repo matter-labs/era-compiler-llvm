@@ -49,6 +49,7 @@ private:
   const LiveIntervals &LIS;
   MachineLoopInfo *MLI = nullptr;
   CFG::BasicBlock *CurrentBlock = nullptr;
+  std::vector<CFG::BasicBlock *> Exits;
 };
 
 } // namespace llvm

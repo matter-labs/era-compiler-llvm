@@ -30,13 +30,12 @@ using namespace llvm;
 
 /// Marks each block that needs to maintain a clean stack. That is each block
 /// that has an outgoing path to a function return.
-static void markNeedsCleanStack(CFG &Cfg) {
-  for (CFG::BasicBlock *Exit : Cfg.FuncInfo.Exits)
+static void markNeedsCleanStack(std::vector<CFG::BasicBlock *> &Exits) {
+  for (CFG::BasicBlock *Exit : Exits)
     EVMUtils::BreadthFirstSearch<CFG::BasicBlock *>{{Exit}}.run(
         [&](CFG::BasicBlock *Block, auto AddChild) {
           Block->NeedsCleanStack = true;
-          // TODO: it seems this is not needed, as the return block has
-          // no childs.
+          // Traverse over predecessors to mark them as well.
           for (CFG::BasicBlock *Entry : Block->Entries)
             AddChild(Entry);
         });
@@ -143,7 +142,7 @@ std::unique_ptr<CFG> ControlFlowGraphBuilder::build(MachineFunction &MF,
     Builder.handleBasicBlockSuccessors(MBB);
 
   markStartsOfSubGraphs(*Result);
-  markNeedsCleanStack(*Result);
+  markNeedsCleanStack(Builder.Exits);
 
   LLVM_DEBUG({
     dbgs() << "************* CFG *************\n";
@@ -328,7 +327,7 @@ void ControlFlowGraphBuilder::handleFunctionCall(const MachineInstr &MI) {
 }
 
 void ControlFlowGraphBuilder::handleReturn(const MachineInstr &MI) {
-  Cfg.FuncInfo.Exits.emplace_back(CurrentBlock);
+  Exits.emplace_back(CurrentBlock);
   Stack Input;
   collectInstrOperands(MI, &Input, nullptr);
   // We need to reverse input operands to restore original ordering,

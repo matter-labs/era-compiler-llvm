@@ -258,7 +258,6 @@ struct CFG {
     MachineFunction *MF = nullptr;
     BasicBlock *Entry = nullptr;
     std::vector<StackSlot> Parameters;
-    std::vector<BasicBlock *> Exits;
     bool CanContinue = true;
   };
 
