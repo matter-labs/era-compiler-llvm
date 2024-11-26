@@ -256,7 +256,6 @@ struct CFG {
 
   struct FunctionInfo {
     MachineFunction *MF = nullptr;
-    std::vector<StackSlot> Parameters;
   };
 
   FunctionInfo FuncInfo;
@@ -264,6 +263,7 @@ struct CFG {
   /// Container for blocks for explicit ownership.
   std::list<BasicBlock> Blocks;
   DenseMap<const MachineBasicBlock *, BasicBlock *> MachineBBToBB;
+  std::vector<StackSlot> Parameters;
 
   BasicBlock &getBlock(const MachineBasicBlock *MBB) const {
     auto It = MachineBBToBB.find(MBB);

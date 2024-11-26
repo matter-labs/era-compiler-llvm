@@ -33,7 +33,7 @@ using namespace llvm;
 
 StackLayout StackLayoutGenerator::run(const CFG &Cfg) {
   StackLayout Layout;
-  StackLayoutGenerator LayoutGenerator{Layout, &Cfg.FuncInfo};
+  StackLayoutGenerator LayoutGenerator{Layout, &Cfg.FuncInfo, Cfg.Parameters};
 
   auto &EntryBB = Cfg.getBlock(&Cfg.FuncInfo.MF->front());
   LayoutGenerator.processEntryPoint(EntryBB, &Cfg.FuncInfo);
@@ -41,15 +41,17 @@ StackLayout StackLayoutGenerator::run(const CFG &Cfg) {
   LLVM_DEBUG({
     dbgs() << "************* Stack Layout *************\n";
     StackLayoutPrinter P(dbgs(), Layout);
-    P(Cfg.FuncInfo, EntryBB);
+    P(Cfg.FuncInfo, EntryBB, Cfg.Parameters);
   });
 
   return Layout;
 }
 
 StackLayoutGenerator::StackLayoutGenerator(
-    StackLayout &Layout, CFG::FunctionInfo const *FunctionInfo)
-    : Layout(Layout), CurrentFunctionInfo(FunctionInfo) {}
+    StackLayout &Layout, CFG::FunctionInfo const *FunctionInfo,
+    const std::vector<StackSlot> &Parameters)
+    : Layout(Layout), CurrentFunctionInfo(FunctionInfo),
+      Parameters(Parameters) {}
 
 namespace {
 
@@ -795,7 +797,7 @@ void StackLayoutGenerator::fillInJunk(CFG::BasicBlock const &Block,
   auto &F = FunctionInfo->MF->getFunction();
   if (F.hasFnAttribute(Attribute::NoReturn) && Block.AllowsJunk()) {
     Stack Params;
-    for (const auto &Param : FunctionInfo->Parameters)
+    for (const auto &Param : Parameters)
       Params.emplace_back(Param);
     std::reverse(Params.begin(), Params.end());
     size_t BestNumJunk =

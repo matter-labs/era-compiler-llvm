@@ -58,7 +58,8 @@ public:
 
 private:
   StackLayoutGenerator(StackLayout &Context,
-                       CFG::FunctionInfo const *FunctionInfo);
+                       CFG::FunctionInfo const *FunctionInfo,
+                       const std::vector<StackSlot> &Parameters);
 
   /// Returns the optimal entry stack layout, s.t. \p Operation can be applied
   /// to it and the result can be transformed to \p ExitStack with minimal stack
@@ -123,6 +124,7 @@ private:
 
   StackLayout &Layout;
   CFG::FunctionInfo const *CurrentFunctionInfo = nullptr;
+  const std::vector<StackSlot> &Parameters;
 };
 
 } // end namespace llvm

@@ -122,7 +122,7 @@ EVMOptimizedCodeTransform::EVMOptimizedCodeTransform(EVMAssembly &Assembly,
                                                      StackLayout const &Layout,
                                                      MachineFunction &MF)
     : Assembly(Assembly), Layout(Layout), FuncInfo(&Cfg.FuncInfo), MF(MF),
-      EntryBB(Cfg.getBlock(&MF.front())) {}
+      EntryBB(Cfg.getBlock(&MF.front())), Parameters(Cfg.Parameters) {}
 
 bool EVMOptimizedCodeTransform::AreLayoutsCompatible(Stack const &SourceStack,
                                                      Stack const &TargetStack) {
@@ -482,7 +482,7 @@ void EVMOptimizedCodeTransform::operator()() {
 
   // Calling convention: input arguments are passed in stack such that the
   // first one specified in the function declaration is passed on the stack TOP.
-  for (auto const &Param : reverse(FuncInfo->Parameters))
+  for (auto const &Param : reverse(Parameters))
     CurrentStack.emplace_back(Param);
 
   Assembly.setStackHeight(static_cast<int>(CurrentStack.size()));

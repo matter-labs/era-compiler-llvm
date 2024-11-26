@@ -120,13 +120,11 @@ std::unique_ptr<CFG> ControlFlowGraphBuilder::build(MachineFunction &MF,
 
   // Handle function parameters
   auto *MFI = MF.getInfo<EVMMachineFunctionInfo>();
-  Result->FuncInfo.Parameters =
-      std::vector<StackSlot>(MFI->getNumParams(), JunkSlot{});
+  Result->Parameters = std::vector<StackSlot>(MFI->getNumParams(), JunkSlot{});
   for (const MachineInstr &MI : MF.front()) {
     if (MI.getOpcode() == EVM::ARGUMENT) {
       int64_t ArgIdx = MI.getOperand(1).getImm();
-      Result->FuncInfo.Parameters[ArgIdx] =
-          VariableSlot{MI.getOperand(0).getReg()};
+      Result->Parameters[ArgIdx] = VariableSlot{MI.getOperand(0).getReg()};
     }
   }
 

@@ -195,9 +195,10 @@ void StackLayoutPrinter::operator()(CFG::BasicBlock const &Block,
 }
 
 void StackLayoutPrinter::operator()(CFG::FunctionInfo const &Info,
-                                    CFG::BasicBlock const &EntryBB) {
+                                    CFG::BasicBlock const &EntryBB,
+                                    const std::vector<StackSlot> &Parameters) {
   OS << "Function: " << Info.MF->getName() << "(";
-  for (const StackSlot &ParamSlot : Info.Parameters) {
+  for (const StackSlot &ParamSlot : Parameters) {
     if (const auto *Slot = std::get_if<VariableSlot>(&ParamSlot))
       OS << printReg(Slot->VirtualReg, nullptr, 0, nullptr) << ' ';
     else if (std::holds_alternative<JunkSlot>(ParamSlot))

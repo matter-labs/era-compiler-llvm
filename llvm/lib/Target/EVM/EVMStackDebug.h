@@ -51,8 +51,8 @@ public:
       : OS(OS), Layout(StackLayout) {}
 
   void operator()(CFG::BasicBlock const &Block, bool IsMainEntry = true);
-  void operator()(CFG::FunctionInfo const &Info,
-                  CFG::BasicBlock const &EntryBB);
+  void operator()(CFG::FunctionInfo const &Info, CFG::BasicBlock const &EntryBB,
+                  const std::vector<StackSlot> &Parameters);
 
 private:
   void printBlock(CFG::BasicBlock const &Block);
