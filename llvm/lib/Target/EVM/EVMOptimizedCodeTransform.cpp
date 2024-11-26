@@ -431,7 +431,7 @@ void EVMOptimizedCodeTransform::operator()(const CFG::BasicBlock &Block) {
               (*this)(*CondJump.NonZero);
           },
           [&](CFG::BasicBlock::FunctionReturn const &FuncReturn) {
-            assert(FuncInfo->CanContinue);
+            assert(!MF.getFunction().hasFnAttribute(Attribute::NoReturn));
 
             // Construct the function return layout, which is fully determined
             // by the function signature.
@@ -476,7 +476,7 @@ void EVMOptimizedCodeTransform::operator()() {
   assert(!BlockLabels.count(FuncInfo->Entry));
 
   // Create function entry layout in CurrentStack.
-  if (FuncInfo->CanContinue)
+  if (!MF.getFunction().hasFnAttribute(Attribute::NoReturn))
     CurrentStack.emplace_back(FunctionReturnLabelSlot{FuncInfo->MF});
 
   // Calling convention: input arguments are passed in stack such that the

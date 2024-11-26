@@ -119,9 +119,6 @@ std::unique_ptr<CFG> ControlFlowGraphBuilder::build(MachineFunction &MF,
 
   Result->FuncInfo.MF = &MF;
   Result->FuncInfo.Entry = &Result->getBlock(&MF.front());
-  const Function &F = MF.getFunction();
-  if (F.hasFnAttribute(Attribute::NoReturn))
-    Result->FuncInfo.CanContinue = false;
 
   // Handle function parameters
   auto *MFI = MF.getInfo<EVMMachineFunctionInfo>();

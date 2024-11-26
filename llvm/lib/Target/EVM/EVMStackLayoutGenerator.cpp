@@ -789,7 +789,9 @@ void StackLayoutGenerator::fillInJunk(CFG::BasicBlock const &Block,
     return BestNumJunk;
   };
 
-  if (FunctionInfo && !FunctionInfo->CanContinue && Block.AllowsJunk()) {
+  assert(FunctionInfo && "FunctionInfo must be provided");
+  auto &F = FunctionInfo->MF->getFunction();
+  if (F.hasFnAttribute(Attribute::NoReturn) && Block.AllowsJunk()) {
     Stack Params;
     for (const auto &Param : FunctionInfo->Parameters)
       Params.emplace_back(Param);
