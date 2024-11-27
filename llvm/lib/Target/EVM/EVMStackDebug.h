@@ -33,24 +33,29 @@ std::string stackToString(Stack const &S);
 #ifndef NDEBUG
 class ControlFlowGraphPrinter {
 public:
-  ControlFlowGraphPrinter(raw_ostream &OS) : OS(OS) {}
+  ControlFlowGraphPrinter(raw_ostream &OS, const MachineFunction &MF)
+      : OS(OS), MF(MF) {}
   void operator()(const CFG &Cfg);
 
 private:
-  void operator()(const CFG::FunctionInfo &Info);
+  void operator()();
   std::string getBlockId(const CFG::BasicBlock &Block);
+  std::string getBlockId(const MachineBasicBlock &MBB);
   void printBlock(const CFG::BasicBlock &Block);
 
   raw_ostream &OS;
+  const MachineFunction &MF;
 };
 
 class StackLayoutPrinter {
 public:
-  StackLayoutPrinter(raw_ostream &OS, const StackLayout &StackLayout)
-      : OS(OS), Layout(StackLayout) {}
+  StackLayoutPrinter(raw_ostream &OS, const StackLayout &StackLayout,
+                     const MachineFunction &MF)
+      : OS(OS), Layout(StackLayout), MF(MF) {}
 
   void operator()(CFG::BasicBlock const &Block, bool IsMainEntry = true);
-  void operator()(CFG::FunctionInfo const &Info);
+  void operator()(CFG::BasicBlock const &EntryBB,
+                  const std::vector<StackSlot> &Parameters);
 
 private:
   void printBlock(CFG::BasicBlock const &Block);
@@ -58,6 +63,7 @@ private:
 
   raw_ostream &OS;
   const StackLayout &Layout;
+  const MachineFunction &MF;
   std::map<CFG::BasicBlock const *, size_t> BlockIds;
   size_t BlockCount = 0;
   std::list<CFG::BasicBlock const *> BlocksToPrint;
