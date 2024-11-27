@@ -30,13 +30,12 @@ using namespace llvm;
 
 /// Marks each block that needs to maintain a clean stack. That is each block
 /// that has an outgoing path to a function return.
-static void markNeedsCleanStack(CFG &Cfg) {
-  for (CFG::BasicBlock *Exit : Cfg.FuncInfo.Exits)
+static void markNeedsCleanStack(std::vector<CFG::BasicBlock *> &Exits) {
+  for (CFG::BasicBlock *Exit : Exits)
     EVMUtils::BreadthFirstSearch<CFG::BasicBlock *>{{Exit}}.run(
         [&](CFG::BasicBlock *Block, auto AddChild) {
           Block->NeedsCleanStack = true;
-          // TODO: it seems this is not needed, as the return block has
-          // no childs.
+          // Traverse over predecessors to mark them as well.
           for (CFG::BasicBlock *Entry : Block->Entries)
             AddChild(Entry);
         });
@@ -45,8 +44,7 @@ static void markNeedsCleanStack(CFG &Cfg) {
 /// Marks each cut-vertex in the CFG, i.e. each block that begins a disconnected
 /// sub-graph of the CFG. Entering such a block means that control flow will
 /// never return to a previously visited block.
-static void markStartsOfSubGraphs(CFG &Cfg) {
-  CFG::BasicBlock *Entry = Cfg.FuncInfo.Entry;
+static void markStartsOfSubGraphs(CFG::BasicBlock *Entry) {
   /**
    * Detect bridges following Algorithm 1 in
    * https://arxiv.org/pdf/2108.07346.pdf and mark the bridge targets as starts
@@ -112,27 +110,19 @@ static void markStartsOfSubGraphs(CFG &Cfg) {
 std::unique_ptr<CFG> ControlFlowGraphBuilder::build(MachineFunction &MF,
                                                     const LiveIntervals &LIS,
                                                     MachineLoopInfo *MLI) {
-  auto Result = std::make_unique<CFG>();
+  auto Result = std::make_unique<CFG>(MF);
   ControlFlowGraphBuilder Builder(*Result, LIS, MLI);
 
   for (MachineBasicBlock &MBB : MF)
     Result->createBlock(&MBB);
 
-  Result->FuncInfo.MF = &MF;
-  Result->FuncInfo.Entry = &Result->getBlock(&MF.front());
-  const Function &F = MF.getFunction();
-  if (F.hasFnAttribute(Attribute::NoReturn))
-    Result->FuncInfo.CanContinue = false;
-
   // Handle function parameters
   auto *MFI = MF.getInfo<EVMMachineFunctionInfo>();
-  Result->FuncInfo.Parameters =
-      std::vector<StackSlot>(MFI->getNumParams(), JunkSlot{});
+  Result->Parameters = std::vector<StackSlot>(MFI->getNumParams(), JunkSlot{});
   for (const MachineInstr &MI : MF.front()) {
     if (MI.getOpcode() == EVM::ARGUMENT) {
       int64_t ArgIdx = MI.getOperand(1).getImm();
-      Result->FuncInfo.Parameters[ArgIdx] =
-          VariableSlot{MI.getOperand(0).getReg()};
+      Result->Parameters[ArgIdx] = VariableSlot{MI.getOperand(0).getReg()};
     }
   }
 
@@ -142,12 +132,12 @@ std::unique_ptr<CFG> ControlFlowGraphBuilder::build(MachineFunction &MF,
   for (MachineBasicBlock &MBB : MF)
     Builder.handleBasicBlockSuccessors(MBB);
 
-  markStartsOfSubGraphs(*Result);
-  markNeedsCleanStack(*Result);
+  markStartsOfSubGraphs(&Result->getBlock(&MF.front()));
+  markNeedsCleanStack(Builder.Exits);
 
   LLVM_DEBUG({
     dbgs() << "************* CFG *************\n";
-    ControlFlowGraphPrinter P(dbgs());
+    ControlFlowGraphPrinter P(dbgs(), MF);
     P(*Result);
   });
 
@@ -328,7 +318,7 @@ void ControlFlowGraphBuilder::handleFunctionCall(const MachineInstr &MI) {
 }
 
 void ControlFlowGraphBuilder::handleReturn(const MachineInstr &MI) {
-  Cfg.FuncInfo.Exits.emplace_back(CurrentBlock);
+  Exits.emplace_back(CurrentBlock);
   Stack Input;
   collectInstrOperands(MI, &Input, nullptr);
   // We need to reverse input operands to restore original ordering,
@@ -336,8 +326,7 @@ void ControlFlowGraphBuilder::handleReturn(const MachineInstr &MI) {
   // Calling convention: return values are passed in stack such that the
   // last one specified in the RET instruction is passed on the stack TOP.
   std::reverse(Input.begin(), Input.end());
-  CurrentBlock->Exit =
-      CFG::BasicBlock::FunctionReturn{std::move(Input), &Cfg.FuncInfo};
+  CurrentBlock->Exit = CFG::BasicBlock::FunctionReturn{std::move(Input)};
 }
 
 static std::pair<MachineInstr *, MachineInstr *>

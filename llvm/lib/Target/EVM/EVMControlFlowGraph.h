@@ -167,7 +167,7 @@ inline bool canBeFreelyGenerated(StackSlot const &Slot) {
 /// Control flow graph consisting of 'CFG::BasicBlock`s' connected by control
 /// flow.
 struct CFG {
-  explicit CFG() {}
+  explicit CFG(const MachineFunction &MF) : MF(MF) {}
   CFG(CFG const &) = delete;
   CFG(CFG &&) = delete;
   CFG &operator=(CFG const &) = delete;
@@ -204,7 +204,6 @@ struct CFG {
     std::variant<FunctionCall, BuiltinCall, Assignment> Operation;
   };
 
-  struct FunctionInfo;
   /// A basic control flow block containing 'Operation`s' acting on the stack.
   /// Maintains a list of entry blocks and a typed exit.
   struct BasicBlock {
@@ -230,7 +229,6 @@ struct CFG {
 
     struct FunctionReturn {
       Stack RetValues;
-      CFG::FunctionInfo *Info = nullptr;
     };
 
     struct Terminated {};
@@ -254,21 +252,13 @@ struct CFG {
         Exit = InvalidExit{};
   };
 
-  struct FunctionInfo {
-    MachineFunction *MF = nullptr;
-    BasicBlock *Entry = nullptr;
-    std::vector<StackSlot> Parameters;
-    std::vector<BasicBlock *> Exits;
-    bool CanContinue = true;
-  };
-
-  FunctionInfo FuncInfo;
-
   /// Container for blocks for explicit ownership.
   std::list<BasicBlock> Blocks;
   DenseMap<const MachineBasicBlock *, BasicBlock *> MachineBBToBB;
+  std::vector<StackSlot> Parameters;
+  const MachineFunction &MF;
 
-  BasicBlock &getBlock(const MachineBasicBlock *MBB) {
+  BasicBlock &getBlock(const MachineBasicBlock *MBB) const {
     auto It = MachineBBToBB.find(MBB);
     assert(It != MachineBBToBB.end());
     return *It->second;

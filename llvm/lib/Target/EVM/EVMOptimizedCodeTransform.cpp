@@ -121,7 +121,8 @@ EVMOptimizedCodeTransform::EVMOptimizedCodeTransform(EVMAssembly &Assembly,
                                                      CFG const &Cfg,
                                                      StackLayout const &Layout,
                                                      MachineFunction &MF)
-    : Assembly(Assembly), Layout(Layout), FuncInfo(&Cfg.FuncInfo), MF(MF) {}
+    : Assembly(Assembly), Layout(Layout), MF(MF),
+      EntryBB(Cfg.getBlock(&MF.front())), Parameters(Cfg.Parameters) {}
 
 bool EVMOptimizedCodeTransform::AreLayoutsCompatible(Stack const &SourceStack,
                                                      Stack const &TargetStack) {
@@ -185,7 +186,7 @@ void EVMOptimizedCodeTransform::createStackLayout(Stack TargetStack) {
                " slots in " + stackToString(CurrentStack))
                   .str();
 
-          report_fatal_error(FuncInfo->MF->getName() + Twine(": ") + Msg);
+          report_fatal_error(MF.getName() + Twine(": ") + Msg);
         }
       },
       // Push or dup callback.
@@ -310,7 +311,7 @@ void EVMOptimizedCodeTransform::createOperationEntryLayout(
 
 void EVMOptimizedCodeTransform::operator()(const CFG::BasicBlock &Block) {
   // Current location for the entry BB was set up in operator()().
-  if (&Block != FuncInfo->Entry)
+  if (&Block != &EntryBB)
     Assembly.setCurrentLocation(Block.MBB);
 
   // Assert that this is the first visit of the block and mark as generated.
@@ -322,7 +323,7 @@ void EVMOptimizedCodeTransform::operator()(const CFG::BasicBlock &Block) {
   // Assert that the stack is valid for entering the block. The entry layout
   // of the function entry block should is fully determined by the first
   // instruction, so we can ignore 'BlockInfo.entryLayout'.
-  if (&Block != FuncInfo->Entry) {
+  if (&Block != &EntryBB) {
     assert(AreLayoutsCompatible(CurrentStack, BlockInfo.entryLayout));
     // Might set some slots to junk, if not required by the block.
     CurrentStack = BlockInfo.entryLayout;
@@ -431,14 +432,13 @@ void EVMOptimizedCodeTransform::operator()(const CFG::BasicBlock &Block) {
               (*this)(*CondJump.NonZero);
           },
           [&](CFG::BasicBlock::FunctionReturn const &FuncReturn) {
-            assert(FuncInfo->CanContinue);
+            assert(!MF.getFunction().hasFnAttribute(Attribute::NoReturn));
 
             // Construct the function return layout, which is fully determined
             // by the function signature.
             Stack ExitStack = FuncReturn.RetValues;
 
-            ExitStack.emplace_back(
-                FunctionReturnLabelSlot{FuncReturn.Info->MF});
+            ExitStack.emplace_back(FunctionReturnLabelSlot{&MF});
 
             // Create the function return layout and jump.
             createStackLayout(ExitStack);
@@ -471,24 +471,24 @@ void EVMOptimizedCodeTransform::operator()(const CFG::BasicBlock &Block) {
 
 void EVMOptimizedCodeTransform::operator()() {
   assert(CurrentStack.empty() && Assembly.getStackHeight() == 0);
-  Assembly.setCurrentLocation(FuncInfo->Entry->MBB);
+  Assembly.setCurrentLocation(EntryBB.MBB);
 
-  assert(!BlockLabels.count(FuncInfo->Entry));
+  assert(!BlockLabels.count(&EntryBB));
 
   // Create function entry layout in CurrentStack.
-  if (FuncInfo->CanContinue)
-    CurrentStack.emplace_back(FunctionReturnLabelSlot{FuncInfo->MF});
+  if (!MF.getFunction().hasFnAttribute(Attribute::NoReturn))
+    CurrentStack.emplace_back(FunctionReturnLabelSlot{&MF});
 
   // Calling convention: input arguments are passed in stack such that the
   // first one specified in the function declaration is passed on the stack TOP.
-  for (auto const &Param : reverse(FuncInfo->Parameters))
+  for (auto const &Param : reverse(Parameters))
     CurrentStack.emplace_back(Param);
 
   Assembly.setStackHeight(static_cast<int>(CurrentStack.size()));
   Assembly.appendLabel();
 
   // Visit the function entry block.
-  (*this)(*FuncInfo->Entry);
+  (*this)(EntryBB);
 
   Assembly.finalize();
 }
