@@ -83,19 +83,22 @@ std::string llvm::stackSlotToString(const StackSlot &Slot) {
 
 #ifndef NDEBUG
 void ControlFlowGraphPrinter::operator()(const CFG &Cfg) {
-  (*this)(Cfg.FuncInfo);
+  (*this)();
   for (const auto &Block : Cfg.Blocks)
     printBlock(Block);
 }
 
-void ControlFlowGraphPrinter::operator()(CFG::FunctionInfo const &Info) {
-  OS << "Function: " << Info.MF->getName() << '\n';
-  OS << "Entry block: " << getBlockId(*Info.Entry) << ";\n";
+void ControlFlowGraphPrinter::operator()() {
+  OS << "Function: " << MF.getName() << '\n';
+  OS << "Entry block: " << getBlockId(MF.front()) << ";\n";
 }
 
 std::string ControlFlowGraphPrinter::getBlockId(CFG::BasicBlock const &Block) {
-  return std::to_string(Block.MBB->getNumber()) + "." +
-         std::string(Block.MBB->getName());
+  return getBlockId(*Block.MBB);
+}
+
+std::string ControlFlowGraphPrinter::getBlockId(const MachineBasicBlock &MBB) {
+  return std::to_string(MBB.getNumber()) + "." + std::string(MBB.getName());
 }
 
 void ControlFlowGraphPrinter::printBlock(CFG::BasicBlock const &Block) {
@@ -159,8 +162,8 @@ void ControlFlowGraphPrinter::printBlock(CFG::BasicBlock const &Block) {
                },
                [&](const CFG::BasicBlock::FunctionReturn &Return) {
                  OS << "Block" << getBlockId(Block)
-                    << "Exit [label=\"FunctionReturn["
-                    << Return.Info->MF->getName() << "]\"];\n";
+                    << "Exit [label=\"FunctionReturn[" << MF.getName()
+                    << "]\"];\n";
                  OS << "Return values: " << stackToString(Return.RetValues);
                },
                [&](const CFG::BasicBlock::Terminated &) {
@@ -191,9 +194,10 @@ void StackLayoutPrinter::operator()(CFG::BasicBlock const &Block,
   }
 }
 
-void StackLayoutPrinter::operator()(CFG::FunctionInfo const &Info) {
-  OS << "Function: " << Info.MF->getName() << "(";
-  for (const StackSlot &ParamSlot : Info.Parameters) {
+void StackLayoutPrinter::operator()(CFG::BasicBlock const &EntryBB,
+                                    const std::vector<StackSlot> &Parameters) {
+  OS << "Function: " << MF.getName() << "(";
+  for (const StackSlot &ParamSlot : Parameters) {
     if (const auto *Slot = std::get_if<VariableSlot>(&ParamSlot))
       OS << printReg(Slot->VirtualReg, nullptr, 0, nullptr) << ' ';
     else if (std::holds_alternative<JunkSlot>(ParamSlot))
@@ -202,8 +206,9 @@ void StackLayoutPrinter::operator()(CFG::FunctionInfo const &Info) {
       llvm_unreachable("Unexpected stack slot");
   }
   OS << ");\n";
-  OS << "FunctionEntry " << " -> Block" << getBlockId(*Info.Entry) << ";\n";
-  (*this)(*Info.Entry, false);
+  OS << "FunctionEntry "
+     << " -> Block" << getBlockId(EntryBB) << ";\n";
+  (*this)(EntryBB, false);
 }
 
 void StackLayoutPrinter::printBlock(CFG::BasicBlock const &Block) {
@@ -283,8 +288,8 @@ void StackLayoutPrinter::printBlock(CFG::BasicBlock const &Block) {
                },
                [&](CFG::BasicBlock::FunctionReturn const &Return) {
                  OS << "Block" << getBlockId(Block)
-                    << "Exit [label=\"FunctionReturn["
-                    << Return.Info->MF->getName() << "]\"];\n";
+                    << "Exit [label=\"FunctionReturn[" << MF.getName()
+                    << "]\"];\n";
                },
                [&](CFG::BasicBlock::Terminated const &) {
                  OS << "Block" << getBlockId(Block)
