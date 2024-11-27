@@ -121,7 +121,7 @@ EVMOptimizedCodeTransform::EVMOptimizedCodeTransform(EVMAssembly &Assembly,
                                                      CFG const &Cfg,
                                                      StackLayout const &Layout,
                                                      MachineFunction &MF)
-    : Assembly(Assembly), Layout(Layout), FuncInfo(&Cfg.FuncInfo), MF(MF),
+    : Assembly(Assembly), Layout(Layout), MF(MF),
       EntryBB(Cfg.getBlock(&MF.front())), Parameters(Cfg.Parameters) {}
 
 bool EVMOptimizedCodeTransform::AreLayoutsCompatible(Stack const &SourceStack,
@@ -186,7 +186,7 @@ void EVMOptimizedCodeTransform::createStackLayout(Stack TargetStack) {
                " slots in " + stackToString(CurrentStack))
                   .str();
 
-          report_fatal_error(FuncInfo->MF->getName() + Twine(": ") + Msg);
+          report_fatal_error(MF.getName() + Twine(": ") + Msg);
         }
       },
       // Push or dup callback.
@@ -438,8 +438,7 @@ void EVMOptimizedCodeTransform::operator()(const CFG::BasicBlock &Block) {
             // by the function signature.
             Stack ExitStack = FuncReturn.RetValues;
 
-            ExitStack.emplace_back(
-                FunctionReturnLabelSlot{FuncReturn.Info->MF});
+            ExitStack.emplace_back(FunctionReturnLabelSlot{&MF});
 
             // Create the function return layout and jump.
             createStackLayout(ExitStack);
@@ -478,7 +477,7 @@ void EVMOptimizedCodeTransform::operator()() {
 
   // Create function entry layout in CurrentStack.
   if (!MF.getFunction().hasFnAttribute(Attribute::NoReturn))
-    CurrentStack.emplace_back(FunctionReturnLabelSlot{FuncInfo->MF});
+    CurrentStack.emplace_back(FunctionReturnLabelSlot{&MF});
 
   // Calling convention: input arguments are passed in stack such that the
   // first one specified in the function declaration is passed on the stack TOP.

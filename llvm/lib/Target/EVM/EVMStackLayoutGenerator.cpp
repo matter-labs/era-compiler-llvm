@@ -33,25 +33,24 @@ using namespace llvm;
 
 StackLayout StackLayoutGenerator::run(const CFG &Cfg) {
   StackLayout Layout;
-  StackLayoutGenerator LayoutGenerator{Layout, &Cfg.FuncInfo, Cfg.Parameters};
+  StackLayoutGenerator LayoutGenerator{Layout, Cfg.MF, Cfg.Parameters};
 
-  auto &EntryBB = Cfg.getBlock(&Cfg.FuncInfo.MF->front());
-  LayoutGenerator.processEntryPoint(EntryBB, &Cfg.FuncInfo);
+  auto &EntryBB = Cfg.getBlock(&Cfg.MF.front());
+  LayoutGenerator.processEntryPoint(EntryBB);
 
   LLVM_DEBUG({
     dbgs() << "************* Stack Layout *************\n";
-    StackLayoutPrinter P(dbgs(), Layout);
-    P(Cfg.FuncInfo, EntryBB, Cfg.Parameters);
+    StackLayoutPrinter P(dbgs(), Layout, Cfg.MF);
+    P(EntryBB, Cfg.Parameters);
   });
 
   return Layout;
 }
 
 StackLayoutGenerator::StackLayoutGenerator(
-    StackLayout &Layout, CFG::FunctionInfo const *FunctionInfo,
+    StackLayout &Layout, const MachineFunction &MF,
     const std::vector<StackSlot> &Parameters)
-    : Layout(Layout), CurrentFunctionInfo(FunctionInfo),
-      Parameters(Parameters) {}
+    : Layout(Layout), Parameters(Parameters), MF(MF) {}
 
 namespace {
 
@@ -321,8 +320,7 @@ Stack StackLayoutGenerator::propagateStackThroughBlock(
   return CurrentStack;
 }
 
-void StackLayoutGenerator::processEntryPoint(
-    CFG::BasicBlock const &Entry, CFG::FunctionInfo const *FunctionInfo) {
+void StackLayoutGenerator::processEntryPoint(CFG::BasicBlock const &Entry) {
   std::list<CFG::BasicBlock const *> ToVisit{&Entry};
   std::set<CFG::BasicBlock const *> Visited;
 
@@ -396,7 +394,7 @@ void StackLayoutGenerator::processEntryPoint(
   }
 
   stitchConditionalJumps(Entry);
-  fillInJunk(Entry, FunctionInfo);
+  fillInJunk(Entry);
 }
 
 std::optional<Stack> StackLayoutGenerator::getExitLayoutOrStageDependencies(
@@ -456,10 +454,8 @@ std::optional<Stack> StackLayoutGenerator::getExitLayoutOrStageDependencies(
               -> std::optional<Stack> {
             // A function return needs the return variables and the function
             // return label slot on stack.
-            assert(FunctionReturn.Info);
             Stack ReturnStack = FunctionReturn.RetValues;
-            ReturnStack.emplace_back(
-                FunctionReturnLabelSlot{FunctionReturn.Info->MF});
+            ReturnStack.emplace_back(FunctionReturnLabelSlot{&MF});
             return ReturnStack;
           },
           [&](CFG::BasicBlock::Terminated const &) -> std::optional<Stack> {
@@ -734,8 +730,7 @@ size_t llvm::EvaluateStackTransform(Stack Source, Stack const &Target) {
   return OpGas;
 }
 
-void StackLayoutGenerator::fillInJunk(CFG::BasicBlock const &Block,
-                                      CFG::FunctionInfo const *FunctionInfo) {
+void StackLayoutGenerator::fillInJunk(CFG::BasicBlock const &Block) {
   /// Recursively adds junk to the subgraph starting on \p Entry.
   /// Since it is only called on cut-vertices, the full subgraph retains proper
   /// stack balance.
@@ -793,9 +788,8 @@ void StackLayoutGenerator::fillInJunk(CFG::BasicBlock const &Block,
     return BestNumJunk;
   };
 
-  assert(FunctionInfo && "FunctionInfo must be provided");
-  auto &F = FunctionInfo->MF->getFunction();
-  if (F.hasFnAttribute(Attribute::NoReturn) && Block.AllowsJunk()) {
+  if (MF.getFunction().hasFnAttribute(Attribute::NoReturn) &&
+      Block.AllowsJunk()) {
     Stack Params;
     for (const auto &Param : Parameters)
       Params.emplace_back(Param);

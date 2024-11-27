@@ -74,8 +74,7 @@ private:
 
   EVMAssembly &Assembly;
   StackLayout const &Layout;
-  CFG::FunctionInfo const *FuncInfo = nullptr;
-  MachineFunction &MF;
+  const MachineFunction &MF;
   const CFG::BasicBlock &EntryBB;
   const std::vector<StackSlot> &Parameters;
 

@@ -110,13 +110,11 @@ static void markStartsOfSubGraphs(CFG::BasicBlock *Entry) {
 std::unique_ptr<CFG> ControlFlowGraphBuilder::build(MachineFunction &MF,
                                                     const LiveIntervals &LIS,
                                                     MachineLoopInfo *MLI) {
-  auto Result = std::make_unique<CFG>();
+  auto Result = std::make_unique<CFG>(MF);
   ControlFlowGraphBuilder Builder(*Result, LIS, MLI);
 
   for (MachineBasicBlock &MBB : MF)
     Result->createBlock(&MBB);
-
-  Result->FuncInfo.MF = &MF;
 
   // Handle function parameters
   auto *MFI = MF.getInfo<EVMMachineFunctionInfo>();
@@ -139,7 +137,7 @@ std::unique_ptr<CFG> ControlFlowGraphBuilder::build(MachineFunction &MF,
 
   LLVM_DEBUG({
     dbgs() << "************* CFG *************\n";
-    ControlFlowGraphPrinter P(dbgs());
+    ControlFlowGraphPrinter P(dbgs(), MF);
     P(*Result);
   });
 
@@ -328,8 +326,7 @@ void ControlFlowGraphBuilder::handleReturn(const MachineInstr &MI) {
   // Calling convention: return values are passed in stack such that the
   // last one specified in the RET instruction is passed on the stack TOP.
   std::reverse(Input.begin(), Input.end());
-  CurrentBlock->Exit =
-      CFG::BasicBlock::FunctionReturn{std::move(Input), &Cfg.FuncInfo};
+  CurrentBlock->Exit = CFG::BasicBlock::FunctionReturn{std::move(Input)};
 }
 
 static std::pair<MachineInstr *, MachineInstr *>

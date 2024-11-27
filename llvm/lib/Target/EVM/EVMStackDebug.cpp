@@ -83,14 +83,14 @@ std::string llvm::stackSlotToString(const StackSlot &Slot) {
 
 #ifndef NDEBUG
 void ControlFlowGraphPrinter::operator()(const CFG &Cfg) {
-  (*this)(Cfg.FuncInfo);
+  (*this)();
   for (const auto &Block : Cfg.Blocks)
     printBlock(Block);
 }
 
-void ControlFlowGraphPrinter::operator()(CFG::FunctionInfo const &Info) {
-  OS << "Function: " << Info.MF->getName() << '\n';
-  OS << "Entry block: " << getBlockId(Info.MF->front()) << ";\n";
+void ControlFlowGraphPrinter::operator()() {
+  OS << "Function: " << MF.getName() << '\n';
+  OS << "Entry block: " << getBlockId(MF.front()) << ";\n";
 }
 
 std::string ControlFlowGraphPrinter::getBlockId(CFG::BasicBlock const &Block) {
@@ -162,8 +162,8 @@ void ControlFlowGraphPrinter::printBlock(CFG::BasicBlock const &Block) {
                },
                [&](const CFG::BasicBlock::FunctionReturn &Return) {
                  OS << "Block" << getBlockId(Block)
-                    << "Exit [label=\"FunctionReturn["
-                    << Return.Info->MF->getName() << "]\"];\n";
+                    << "Exit [label=\"FunctionReturn[" << MF.getName()
+                    << "]\"];\n";
                  OS << "Return values: " << stackToString(Return.RetValues);
                },
                [&](const CFG::BasicBlock::Terminated &) {
@@ -194,10 +194,9 @@ void StackLayoutPrinter::operator()(CFG::BasicBlock const &Block,
   }
 }
 
-void StackLayoutPrinter::operator()(CFG::FunctionInfo const &Info,
-                                    CFG::BasicBlock const &EntryBB,
+void StackLayoutPrinter::operator()(CFG::BasicBlock const &EntryBB,
                                     const std::vector<StackSlot> &Parameters) {
-  OS << "Function: " << Info.MF->getName() << "(";
+  OS << "Function: " << MF.getName() << "(";
   for (const StackSlot &ParamSlot : Parameters) {
     if (const auto *Slot = std::get_if<VariableSlot>(&ParamSlot))
       OS << printReg(Slot->VirtualReg, nullptr, 0, nullptr) << ' ';
@@ -289,8 +288,8 @@ void StackLayoutPrinter::printBlock(CFG::BasicBlock const &Block) {
                },
                [&](CFG::BasicBlock::FunctionReturn const &Return) {
                  OS << "Block" << getBlockId(Block)
-                    << "Exit [label=\"FunctionReturn["
-                    << Return.Info->MF->getName() << "]\"];\n";
+                    << "Exit [label=\"FunctionReturn[" << MF.getName()
+                    << "]\"];\n";
                },
                [&](CFG::BasicBlock::Terminated const &) {
                  OS << "Block" << getBlockId(Block)
