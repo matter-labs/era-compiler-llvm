@@ -57,8 +57,8 @@ public:
   static std::vector<StackTooDeep> reportStackTooDeep(CFG const &Cfg);
 
 private:
-  StackLayoutGenerator(StackLayout &Context,
-                       CFG::FunctionInfo const *FunctionInfo);
+  StackLayoutGenerator(StackLayout &Layout, const MachineFunction &MF,
+                       const std::vector<StackSlot> &Parameters);
 
   /// Returns the optimal entry stack layout, s.t. \p Operation can be applied
   /// to it and the result can be transformed to \p ExitStack with minimal stack
@@ -77,8 +77,7 @@ private:
   /// Main algorithm walking the graph from entry to exit and propagating back
   /// the stack layouts to the entries. Iteratively reruns itself along
   /// backwards jumps until the layout is stabilized.
-  void processEntryPoint(CFG::BasicBlock const &Entry,
-                         CFG::FunctionInfo const *FunctionInfo = nullptr);
+  void processEntryPoint(CFG::BasicBlock const &Entry);
 
   /// Returns the best known exit layout of \p Block, if all dependencies are
   /// already \p Visited. If not, adds the dependencies to \p DependencyList and
@@ -118,11 +117,11 @@ private:
 
   /// Fills in junk when entering branches that do not need a clean stack in
   /// case the result is cheaper.
-  void fillInJunk(CFG::BasicBlock const &Block,
-                  CFG::FunctionInfo const *FunctionInfo = nullptr);
+  void fillInJunk(CFG::BasicBlock const &Block);
 
   StackLayout &Layout;
-  CFG::FunctionInfo const *CurrentFunctionInfo = nullptr;
+  const std::vector<StackSlot> &Parameters;
+  const MachineFunction &MF;
 };
 
 } // end namespace llvm
