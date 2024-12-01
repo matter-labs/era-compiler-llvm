@@ -2132,6 +2132,9 @@ private:
   bool isGuaranteedToTransferExecutionTo(const Instruction *A,
                                          const Instruction *B);
 
+  /// Returns true if \p Op is guaranteed not to cause immediate UB.
+  bool isGuaranteedNotToCauseUB(const SCEV *Op);
+
   /// Returns true if \p Op is guaranteed to not be poison.
   static bool isGuaranteedNotToBePoison(const SCEV *Op);
 
