@@ -32,7 +32,8 @@ jobs:
   run-with-coverage:
     runs-on: matterlabs-ci-runner-high-performance
     container:
-      image: ghcr.io/matter-labs/zksync-llvm-runner:latest
+      # Use LLVM 18 image for coverage for compatible profraw formats
+      image: ghcr.io/matter-labs/zksync-llvm-runner:1.0.2
       options: -m 110g
     env:
       TARGET: x86_64-unknown-linux-gnu
