@@ -720,16 +720,20 @@ void StackModel::handleArgument(MachineInstr *MI) {
 
 void StackModel::handleLStackAtJump(MachineBasicBlock *MBB, MachineInstr *MI,
                                     const Register &Reg) {
+  assert(MI->getOpcode() == EVM::JUMP || MI->getOpcode() == EVM::JUMPI);
+
   // If the condition register is in the L-stack, we need to move it to
   // the bottom of the L-stack. After that we should clean clean the L-stack.
   // In case of an unconditional jump, the Reg value should be
   // EVM::NoRegister.
   clearPhysStackAtInst(StackType::L, MI, Reg);
 
-  // Insert "PUSH_LABEL %bb" instruction that should be be replaced with
-  // the actual PUSH* one in the MC layer to contain actual jump target
-  // offset.
-  BuildMI(*MI->getParent(), MI, DebugLoc(), TII->get(EVM::PUSH_LABEL))
+  // Insert pseudo jump instruciton that will be replaced with PUSH and JUMP
+  // instructions in AsmPrinter.
+  ToErase.push_back(MI);
+  unsigned PseudoJumpOpc =
+      MI->getOpcode() == EVM::JUMP ? EVM::PseudoJUMP : EVM::PseudoJUMPI;
+  BuildMI(*MI->getParent(), MI, DebugLoc(), TII->get(PseudoJumpOpc))
       .addMBB(MBB);
 
   // Add JUMPDEST at the beginning of the target MBB.
@@ -752,7 +756,7 @@ void StackModel::handleJump(MachineInstr *MI) {
 void StackModel::handleReturn(MachineInstr *MI) {
   ToErase.push_back(MI);
   BuildMI(*MI->getParent(), std::next(MIIter(MI)), DebugLoc(),
-          TII->get(EVM::JUMP));
+          TII->get(EVM::PseudoRET));
 
   // Collect the use registers of the RET instruction.
   SmallVector<Register> ReturnRegs;
@@ -872,7 +876,7 @@ void StackModel::handleCall(MachineInstr *MI) {
   MCSymbol *RetSym = MF->getContext().createTempSymbol("FUNC_RET", true);
 
   // Create jump to the callee.
-  It = BuildMI(MBB, It, MI->getDebugLoc(), TII->get(EVM::JUMP));
+  It = BuildMI(MBB, It, MI->getDebugLoc(), TII->get(EVM::PseudoCALL));
   It->setPostInstrSymbol(*MF, RetSym);
 
   // Create push of the return address.
@@ -995,7 +999,9 @@ void StackModel::stackifyInstruction(MachineInstr *MI) {
     return;
 
   unsigned RegOpcode = MI->getOpcode();
-  if (RegOpcode == EVM::PUSH_LABEL)
+  if (RegOpcode == EVM::PUSH_LABEL || RegOpcode == EVM::PseudoJUMP ||
+      RegOpcode == EVM::PseudoJUMPI || RegOpcode == EVM::PseudoCALL ||
+      RegOpcode == EVM::PseudoRET)
     return;
 
   // Remove register operands.
@@ -1048,33 +1054,6 @@ void StackModel::postProcess() {
   // In a stackified code register liveness has no meaning.
   MachineRegisterInfo &MRI = MF->getRegInfo();
   MRI.invalidateLiveness();
-
-  // In EVM architecture jump target is set up using one of PUSH* instructions
-  // that come right before the jump instruction.
-  // For example:
-
-  //   PUSH_LABEL %bb.10
-  //   JUMPI_S
-  //   PUSH_LABEL %bb.9
-  //   JUMP_S
-  //
-  // The problem here is that such MIR is not valid. There should not be
-  // non-terminator (PUSH) instructions between terminator (JUMP) ones.
-  // To overcome this issue, we bundle adjacent <PUSH_LABEL, JUMP> instructions
-  // together and unbundle them in the AsmPrinter.
-  for (MachineBasicBlock &MBB : *MF) {
-    MachineBasicBlock::instr_iterator I = MBB.instr_begin(),
-                                      E = MBB.instr_end();
-    // Skip the first instruction, as it's not interested anyway.
-    ++I;
-    for (; I != E; ++I) {
-      if (I->isBranch()) {
-        auto P = std::prev(I);
-        if (P->getOpcode() == EVM::PUSH_LABEL)
-          I->bundleWithPred();
-      }
-    }
-  }
 }
 
 void StackModel::dumpState() const {
