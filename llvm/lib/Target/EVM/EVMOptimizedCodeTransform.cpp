@@ -442,7 +442,7 @@ void EVMOptimizedCodeTransform::operator()(const CFG::BasicBlock &Block) {
 
             // Create the function return layout and jump.
             createStackLayout(ExitStack);
-            Assembly.appendJump(0);
+            Assembly.appendRet();
           },
           [&](CFG::BasicBlock::Unreachable const &) {
             assert(Block.Operations.empty());
