@@ -136,15 +136,6 @@ void EVMAssembly::appendLabelReference(MCSymbol *Label) {
   CurMIIt = std::next(CurMIIt);
 }
 
-void EVMAssembly::appendMBBReference(MachineBasicBlock *MBB) {
-  CurMIIt = BuildMI(*CurMBB, CurMIIt, DebugLoc(), TII->get(EVM::PUSH_LABEL))
-                .addMBB(MBB);
-  StackHeight += 1;
-  AssemblyInstrs.insert(&*CurMIIt);
-  LLVM_DEBUG(dumpInst(&*CurMIIt));
-  CurMIIt = std::next(CurMIIt);
-}
-
 MCSymbol *EVMAssembly::createFuncRetSymbol() {
   return MF->getContext().createTempSymbol("FUNC_RET", true);
 }
@@ -165,9 +156,9 @@ void EVMAssembly::appendFuncCall(const MachineInstr *MI,
   LLVM_DEBUG(dumpInst(&*CurMIIt));
 
   CurMIIt = std::next(CurMIIt);
-  // Create jump to the callee. Note, we don't add the 'target' operand to JUMP.
-  // This should be fine, unless we run MachineVerifier after this step
-  CurMIIt = BuildMI(*CurMBB, CurMIIt, MI->getDebugLoc(), TII->get(EVM::JUMP));
+  // Create jump to the callee.
+  CurMIIt =
+      BuildMI(*CurMBB, CurMIIt, MI->getDebugLoc(), TII->get(EVM::PseudoCALL));
   if (RetSym)
     CurMIIt->setPostInstrSymbol(*MF, RetSym);
   AssemblyInstrs.insert(&*CurMIIt);
@@ -175,9 +166,8 @@ void EVMAssembly::appendFuncCall(const MachineInstr *MI,
   CurMIIt = std::next(CurMIIt);
 }
 
-void EVMAssembly::appendJump(int StackAdj) {
-  CurMIIt = BuildMI(*CurMBB, CurMIIt, DebugLoc(), TII->get(EVM::JUMP));
-  StackHeight += StackAdj;
+void EVMAssembly::appendRet() {
+  CurMIIt = BuildMI(*CurMBB, CurMIIt, DebugLoc(), TII->get(EVM::PseudoRET));
   AssemblyInstrs.insert(&*CurMIIt);
   LLVM_DEBUG(dumpInst(&*CurMIIt));
   CurMIIt = std::next(CurMIIt);
@@ -186,22 +176,25 @@ void EVMAssembly::appendJump(int StackAdj) {
 void EVMAssembly::appendUncondJump(MachineInstr *MI,
                                    MachineBasicBlock *Target) {
   assert(MI->getOpcode() == EVM::JUMP);
-  appendMBBReference(Target);
-  [[maybe_unused]] auto It = AssemblyInstrs.insert(MI);
-  assert(It.second && StackHeight > 0);
-  StackHeight -= 1;
-  LLVM_DEBUG(dumpInst(MI));
-  CurMIIt = std::next(MIIter(MI));
+  CurMIIt =
+      BuildMI(*CurMBB, CurMIIt, MI->getDebugLoc(), TII->get(EVM::PseudoJUMP))
+          .addMBB(Target);
+  assert(StackHeight >= 0);
+  AssemblyInstrs.insert(&*CurMIIt);
+  LLVM_DEBUG(dumpInst(&*CurMIIt));
+  CurMIIt = std::next(CurMIIt);
 }
 
 void EVMAssembly::appendCondJump(MachineInstr *MI, MachineBasicBlock *Target) {
   assert(MI->getOpcode() == EVM::JUMPI);
-  appendMBBReference(Target);
-  [[maybe_unused]] auto It = AssemblyInstrs.insert(MI);
-  assert(It.second && StackHeight > 1);
-  StackHeight -= 2;
-  LLVM_DEBUG(dumpInst(MI));
-  CurMIIt = std::next(MIIter(MI));
+  CurMIIt =
+      BuildMI(*CurMBB, CurMIIt, MI->getDebugLoc(), TII->get(EVM::PseudoJUMPI))
+          .addMBB(Target);
+  StackHeight -= 1;
+  assert(StackHeight >= 0);
+  AssemblyInstrs.insert(&*CurMIIt);
+  LLVM_DEBUG(dumpInst(&*CurMIIt));
+  CurMIIt = std::next(CurMIIt);
 }
 
 // Remove all registers operands of the \p MI and repaces the opcode with
@@ -211,7 +204,9 @@ void EVMAssembly::stackifyInstruction(MachineInstr *MI) {
     return;
 
   unsigned RegOpcode = MI->getOpcode();
-  if (RegOpcode == EVM::PUSH_LABEL)
+  if (RegOpcode == EVM::PUSH_LABEL || RegOpcode == EVM::PseudoJUMP ||
+      RegOpcode == EVM::PseudoJUMPI || RegOpcode == EVM::PseudoCALL ||
+      RegOpcode == EVM::PseudoRET)
     return;
 
   // Remove register operands.
@@ -233,8 +228,7 @@ void EVMAssembly::finalize() {
   SmallVector<MachineInstr *, 128> ToRemove;
   for (MachineBasicBlock &MBB : *MF) {
     for (MachineInstr &MI : MBB) {
-      if (!AssemblyInstrs.count(&MI) && MI.getOpcode() != EVM::JUMP &&
-          MI.getOpcode() != EVM::JUMPI)
+      if (!AssemblyInstrs.count(&MI))
         ToRemove.emplace_back(&MI);
     }
   }
@@ -253,31 +247,4 @@ void EVMAssembly::finalize() {
   // In a stackified code register liveness has no meaning.
   MachineRegisterInfo &MRI = MF->getRegInfo();
   MRI.invalidateLiveness();
-
-  // In EVM architecture jump target is set up using one of PUSH* instructions
-  // that come right before the jump instruction.
-  // For example:
-
-  //   PUSH_LABEL %bb.10
-  //   JUMPI_S
-  //   PUSH_LABEL %bb.9
-  //   JUMP_S
-  //
-  // The problem here is that such MIR is not valid. There should not be
-  // non-terminator (PUSH) instructions between terminator (JUMP) ones.
-  // To overcome this issue, we bundle adjacent <PUSH_LABEL, JUMP> instructions
-  // together and unbundle them in the AsmPrinter.
-  for (MachineBasicBlock &MBB : *MF) {
-    MachineBasicBlock::instr_iterator I = MBB.instr_begin(),
-                                      E = MBB.instr_end();
-    // Skip the first instruction, as it's not interested anyway.
-    ++I;
-    for (; I != E; ++I) {
-      if (I->isBranch()) {
-        auto P = std::prev(I);
-        if (P->getOpcode() == EVM::PUSH_LABEL)
-          I->bundleWithPred();
-      }
-    }
-  }
 }

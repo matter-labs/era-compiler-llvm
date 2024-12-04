@@ -71,15 +71,13 @@ public:
   void appendFuncCall(const MachineInstr *MI, const llvm::GlobalValue *Func,
                       int stackAdj, MCSymbol *RetSym = nullptr);
 
-  void appendJump(int stackAdj);
+  void appendRet();
 
   void appendCondJump(MachineInstr *MI, MachineBasicBlock *Target);
 
   void appendUncondJump(MachineInstr *MI, MachineBasicBlock *Target);
 
   void appendLabelReference(MCSymbol *Label);
-
-  void appendMBBReference(MachineBasicBlock *MBB);
 
   MCSymbol *createFuncRetSymbol();
 
