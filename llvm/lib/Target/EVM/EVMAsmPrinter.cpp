@@ -46,38 +46,14 @@ public:
 
   StringRef getPassName() const override { return "EVM Assembly "; }
 
-  void SetupMachineFunction(MachineFunction &MF) override;
-
   void emitInstruction(const MachineInstr *MI) override;
 
   void emitFunctionEntryLabel() override;
-
-  /// Return true if the basic block has exactly one predecessor and the control
-  /// transfer mechanism between the predecessor and this block is a
-  /// fall-through.
-  bool isBlockOnlyReachableByFallthrough(
-      const MachineBasicBlock *MBB) const override;
 
 private:
   void emitLinkerSymbol(const MachineInstr *MI);
 };
 } // end of anonymous namespace
-
-void EVMAsmPrinter::SetupMachineFunction(MachineFunction &MF) {
-  // Unbundle <push_label, jump> bundles.
-  for (MachineBasicBlock &MBB : MF) {
-    MachineBasicBlock::instr_iterator I = MBB.instr_begin(),
-                                      E = MBB.instr_end();
-    for (; I != E; ++I) {
-      if (I->isBundledWithPred()) {
-        assert(I->isConditionalBranch() || I->isUnconditionalBranch());
-        I->unbundleFromPred();
-      }
-    }
-  }
-
-  AsmPrinter::SetupMachineFunction(MF);
-}
 
 void EVMAsmPrinter::emitFunctionEntryLabel() {
   AsmPrinter::emitFunctionEntryLabel();
@@ -105,8 +81,37 @@ void EVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
   EVMMCInstLower MCInstLowering(OutContext, *this, VRegMapping,
                                 MF->getRegInfo());
 
-  unsigned Opc = MI->getOpcode();
-  if (Opc == EVM::DATASIZE_S || Opc == EVM::DATAOFFSET_S) {
+  switch (MI->getOpcode()) {
+  default:
+    break;
+  case EVM::PseudoCALL:
+  case EVM::PseudoRET: {
+    // TODO: #746: Use PseudoInstExpansion and do this expansion in tblgen.
+    MCInst Jump;
+    Jump.setOpcode(EVM::JUMP_S);
+    EmitToStreamer(*OutStreamer, Jump);
+    return;
+  }
+  case EVM::PseudoJUMP:
+  case EVM::PseudoJUMPI: {
+    MCInst Push;
+    Push.setOpcode(EVM::PUSH4_S);
+
+    // TODO: #745: Refactor EVMMCInstLower::Lower so we could use lowerOperand
+    // instead of creating a MCOperand directly.
+    MCOperand MCOp = MCOperand::createExpr(MCSymbolRefExpr::create(
+        MI->getOperand(0).getMBB()->getSymbol(), OutContext));
+    Push.addOperand(MCOp);
+    EmitToStreamer(*OutStreamer, Push);
+
+    MCInst Jump;
+    Jump.setOpcode(MI->getOpcode() == EVM::PseudoJUMP ? EVM::JUMP_S
+                                                      : EVM::JUMPI_S);
+    EmitToStreamer(*OutStreamer, Jump);
+    return;
+  }
+  case EVM::DATASIZE_S:
+  case EVM::DATAOFFSET_S:
     emitLinkerSymbol(MI);
     return;
   }
@@ -114,12 +119,6 @@ void EVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
   MCInst TmpInst;
   MCInstLowering.Lower(MI, TmpInst);
   EmitToStreamer(*OutStreamer, TmpInst);
-}
-
-bool EVMAsmPrinter::isBlockOnlyReachableByFallthrough(
-    const MachineBasicBlock *MBB) const {
-  // For simplicity, always emit BB labels.
-  return false;
 }
 
 void EVMAsmPrinter::emitLinkerSymbol(const MachineInstr *MI) {
