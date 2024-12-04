@@ -248,6 +248,8 @@ let variadicOpsAreDefs = 1 in
 def FCALL
   : NRI<(outs), (ins jmptarget:$callee, variable_ops), [],
         "FCALL\t$callee">;
+let isPseudo = 1 in
+def PseudoCALL : EVMPseudo<(outs), (ins), []>;
 } // Uses = [SP], isCall = 1
 
 
@@ -405,18 +407,26 @@ let isBranch = 1, isTerminator = 1 in {
 defm JUMPI
   : I<(outs), (ins jmptarget:$dst, GPR:$cond), [(brcond GPR:$cond, bb:$dst)],
       "JUMPI", " $dst, $cond", 0x57, 10>;
+let isPseudo = 1 in
+def PseudoJUMPI : EVMPseudo<(outs), (ins jmptarget:$dst), []>;
 
-let isBarrier = 1 in
+let isBarrier = 1 in {
 defm JUMP
   : I<(outs), (ins jmptarget:$dst), [(br bb:$dst)], "JUMP", " $dst", 0x56, 8>;
+let isPseudo = 1 in
+def PseudoJUMP : EVMPseudo<(outs), (ins jmptarget:$dst), []>;
+} // isBarrier = 1
 } // isBranch = 1, isTerminator = 1
 
 // This isn't really a control flow instruction, but it should be used to mark
 // destination of jump instructions.
 defm JUMPDEST : I<(outs), (ins), [], "JUMPDEST", "", 0x5B, 1>;
 
-let isBarrier = 1, isTerminator = 1, isReturn = 1 in
+let isBarrier = 1, isTerminator = 1, isReturn = 1 in {
 def RET : NRI<(outs), (ins variable_ops), [(EVMret)], "RET">;
+let isPseudo = 1 in
+def PseudoRET : EVMPseudo<(outs), (ins), []>;
+}
 
 
 //===----------------------------------------------------------------------===//
