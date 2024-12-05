@@ -249,7 +249,7 @@ def FCALL
   : NRI<(outs), (ins jmptarget:$callee, variable_ops), [],
         "FCALL\t$callee">;
 let isPseudo = 1 in
-def PseudoCALL : EVMPseudo<(outs), (ins), []>;
+def PseudoCALL : EVMPseudo<(outs), (ins jmptarget:$callee, variable_ops), []>;
 } // Uses = [SP], isCall = 1
 
 

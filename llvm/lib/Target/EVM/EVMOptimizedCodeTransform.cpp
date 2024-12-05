@@ -57,8 +57,6 @@ void EVMOptimizedCodeTransform::operator()(CFG::FunctionCall const &Call) {
                               (Call.CanContinue ? 1 : 0),
                           Call.CanContinue ? CallToReturnMCSymbol.at(Call.Call)
                                            : nullptr);
-  if (Call.CanContinue)
-    Assembly.appendLabel();
 
   // Update stack, remove arguments and return label from CurrentStack.
   for (size_t I = 0; I < Call.NumArguments + (Call.CanContinue ? 1 : 0); ++I)
@@ -330,10 +328,6 @@ void EVMOptimizedCodeTransform::operator()(const CFG::BasicBlock &Block) {
   }
   assert(static_cast<int>(CurrentStack.size()) == Assembly.getStackHeight());
 
-  // Emit jumpdest, if required.
-  if (EVMUtils::valueOrNullptr(BlockLabels, &Block))
-    Assembly.appendLabel();
-
   for (const auto &Operation : Block.Operations) {
     createOperationEntryLayout(Operation);
 
@@ -485,7 +479,6 @@ void EVMOptimizedCodeTransform::operator()() {
     CurrentStack.emplace_back(Param);
 
   Assembly.setStackHeight(static_cast<int>(CurrentStack.size()));
-  Assembly.appendLabel();
 
   // Visit the function entry block.
   (*this)(EntryBB);
