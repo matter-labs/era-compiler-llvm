@@ -31,6 +31,8 @@
 
 using namespace llvm;
 
+extern cl::opt<bool> EVMKeepRegisters;
+
 #define DEBUG_TYPE "asm-printer"
 
 namespace {
@@ -54,6 +56,8 @@ public:
 
   void emitInstruction(const MachineInstr *MI) override;
 
+  void emitBasicBlockStart(const MachineBasicBlock &MBB) override;
+
   void emitFunctionEntryLabel() override;
 
   void emitEndOfAsmFile(Module &) override;
@@ -62,6 +66,7 @@ private:
   void emitAssemblySymbol(const MachineInstr *MI);
   void emitWideRelocatableSymbol(const MachineInstr *MI);
   void emitLoadImmutableLabel(const MachineInstr *MI);
+  void emitJumpDest();
 };
 } // end of anonymous namespace
 
@@ -87,6 +92,15 @@ void EVMAsmPrinter::emitFunctionEntryLabel() {
   }
 }
 
+void EVMAsmPrinter::emitBasicBlockStart(const MachineBasicBlock &MBB) {
+  AsmPrinter::emitBasicBlockStart(MBB);
+
+  // Emit JUMPDEST instruction at the beginning of the basic block, if
+  // this is not a block that is only reachable by fallthrough.
+  if (!EVMKeepRegisters && !AsmPrinter::isBlockOnlyReachableByFallthrough(&MBB))
+    emitJumpDest();
+}
+
 void EVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
   EVMMCInstLower MCInstLowering(OutContext, *this, VRegMapping,
                                 MF->getRegInfo());
@@ -94,7 +108,39 @@ void EVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
   switch (MI->getOpcode()) {
   default:
     break;
-  case EVM::PseudoCALL:
+  case EVM::PseudoCALL: {
+    // Generate push instruction with the address of a function.
+    MCInst Push;
+    Push.setOpcode(EVM::PUSH4_S);
+    assert(MI->getOperand(0).isGlobal() &&
+           "The first operand of PseudoCALL should be a GlobalValue.");
+
+    // TODO: #745: Refactor EVMMCInstLower::Lower so we could use lowerOperand
+    // instead of creating a MCOperand directly.
+    MCOperand MCOp = MCOperand::createExpr(MCSymbolRefExpr::create(
+        getSymbol(MI->getOperand(0).getGlobal()), OutContext));
+    Push.addOperand(MCOp);
+    EmitToStreamer(*OutStreamer, Push);
+
+    // Jump to a function.
+    MCInst Jump;
+    Jump.setOpcode(EVM::JUMP_S);
+    EmitToStreamer(*OutStreamer, Jump);
+
+    // In case a function has a return label, emit it, and also
+    // emit a JUMPDEST instruction.
+    if (MI->getNumExplicitOperands() > 1) {
+      // We need to emit ret label after JUMP instruction, so we couldn't
+      // use setPostInstrSymbol since label would be created after
+      // JUMPDEST instruction. To overcome this, we added MCSymbol operand
+      // and we are emitting label manually here.
+      assert(MI->getOperand(1).isMCSymbol() &&
+             "The second operand of PseudoCALL should be a MCSymbol.");
+      OutStreamer->emitLabel(MI->getOperand(1).getMCSymbol());
+      emitJumpDest();
+    }
+    return;
+  }
   case EVM::PseudoRET: {
     // TODO: #746: Use PseudoInstExpansion and do this expansion in tblgen.
     MCInst Jump;
@@ -243,6 +289,12 @@ void EVMAsmPrinter::emitWideRelocatableSymbol(const MachineInstr *MI) {
 void EVMAsmPrinter::emitEndOfAsmFile(Module &) {
   WideRelocSymbolsSet.clear();
   ImmutablesMap.clear();
+}
+
+void EVMAsmPrinter::emitJumpDest() {
+  MCInst JumpDest;
+  JumpDest.setOpcode(EVM::JUMPDEST_S);
+  EmitToStreamer(*OutStreamer, JumpDest);
 }
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMAsmPrinter() {
