@@ -735,10 +735,6 @@ void StackModel::handleLStackAtJump(MachineBasicBlock *MBB, MachineInstr *MI,
       MI->getOpcode() == EVM::JUMP ? EVM::PseudoJUMP : EVM::PseudoJUMPI;
   BuildMI(*MI->getParent(), MI, DebugLoc(), TII->get(PseudoJumpOpc))
       .addMBB(MBB);
-
-  // Add JUMPDEST at the beginning of the target MBB.
-  if (MBB->empty() || MBB->begin()->getOpcode() != EVM::JUMPDEST)
-    BuildMI(*MBB, MBB->begin(), DebugLoc(), TII->get(EVM::JUMPDEST));
 }
 
 void StackModel::handleCondJump(MachineInstr *MI) {
@@ -868,25 +864,21 @@ void StackModel::handleCall(MachineInstr *MI) {
   // Callee removes them form the stack and pushes return values.
 
   MachineBasicBlock &MBB = *MI->getParent();
-  // Create return destination.
-  MIIter It = BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(EVM::JUMPDEST));
 
   // Add symbol just after the jump that will be used as the return
   // address from the function.
   MCSymbol *RetSym = MF->getContext().createTempSymbol("FUNC_RET", true);
 
-  // Create jump to the callee.
-  It = BuildMI(MBB, It, MI->getDebugLoc(), TII->get(EVM::PseudoCALL));
-  It->setPostInstrSymbol(*MF, RetSym);
+  // Create pseudo jump to the callee, that will be expanded into PUSH, JUMP
+  // return label and JUMPDEST instructions in the AsmPrinter.
+  const MachineOperand *CalleeOp = MI->explicit_uses().begin();
+  assert(CalleeOp->isGlobal());
+  MIIter It = BuildMI(MBB, MI, MI->getDebugLoc(), TII->get(EVM::PseudoCALL))
+                  .addGlobalAddress(CalleeOp->getGlobal())
+                  .addSym(RetSym);
 
   // Create push of the return address.
   BuildMI(MBB, It, MI->getDebugLoc(), TII->get(EVM::PUSH_LABEL)).addSym(RetSym);
-
-  // Create push of the callee's address.
-  const MachineOperand *CalleeOp = MI->explicit_uses().begin();
-  assert(CalleeOp->isGlobal());
-  BuildMI(MBB, It, MI->getDebugLoc(), TII->get(EVM::PUSH_LABEL))
-      .addGlobalAddress(CalleeOp->getGlobal());
 }
 
 void StackModel::clearFrameObjsAtInst(MachineInstr *MI) {
@@ -986,10 +978,6 @@ void StackModel::preProcess() {
   assert(!MF->empty());
   allocateFrameObjects();
   allocateXStack();
-  // Add JUMPDEST at the beginning of the first MBB,
-  // so this function can be jumped to.
-  MachineBasicBlock &MBB = MF->front();
-  BuildMI(MBB, MBB.begin(), DebugLoc(), TII->get(EVM::JUMPDEST));
 }
 
 // Remove all registers operands of the \p MI and repaces the opcode with
