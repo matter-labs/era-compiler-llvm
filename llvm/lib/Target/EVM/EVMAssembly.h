@@ -66,8 +66,6 @@ public:
 
   void appendConstant(uint64_t Val);
 
-  void appendLabel();
-
   void appendFuncCall(const MachineInstr *MI, const llvm::GlobalValue *Func,
                       int stackAdj, MCSymbol *RetSym = nullptr);
 

@@ -120,13 +120,6 @@ void EVMAssembly::appendConstant(uint64_t Val) {
   appendConstant(APInt(256, Val));
 }
 
-void EVMAssembly::appendLabel() {
-  CurMIIt = BuildMI(*CurMBB, CurMIIt, DebugLoc(), TII->get(EVM::JUMPDEST));
-  AssemblyInstrs.insert(&*CurMIIt);
-  LLVM_DEBUG(dumpInst(&*CurMIIt));
-  CurMIIt = std::next(CurMIIt);
-}
-
 void EVMAssembly::appendLabelReference(MCSymbol *Label) {
   CurMIIt = BuildMI(*CurMBB, CurMIIt, DebugLoc(), TII->get(EVM::PUSH_LABEL))
                 .addSym(Label);
@@ -145,22 +138,25 @@ void EVMAssembly::appendFuncCall(const MachineInstr *MI,
                                  MCSymbol *RetSym) {
   // Push the function label
   assert(CurMBB == MI->getParent());
+
+  // Create pseudo jump to the callee, that will be expanded into PUSH and JUMP
+  // instructions in the AsmPrinter.
   CurMIIt =
-      BuildMI(*CurMBB, CurMIIt, MI->getDebugLoc(), TII->get(EVM::PUSH_LABEL))
+      BuildMI(*CurMBB, CurMIIt, MI->getDebugLoc(), TII->get(EVM::PseudoCALL))
           .addGlobalAddress(Func);
+
+  // If this function returns, we need to create a label after JUMP instruction
+  // that is followed by JUMPDEST and this is taken care in the AsmPrinter.
+  // In case we use setPostInstrSymbol here, the label will be created
+  // after the JUMPDEST instruction, which is not what we want.
+  if (RetSym)
+    MachineInstrBuilder(*CurMIIt->getParent()->getParent(), CurMIIt)
+        .addSym(RetSym);
+
   // PUSH_LABEL technically increases the stack height on 1, but we don't
   // increase it explicitly here, as the label will be consumed by the following
   // JUMP.
-  AssemblyInstrs.insert(&*CurMIIt);
   StackHeight += StackAdj;
-  LLVM_DEBUG(dumpInst(&*CurMIIt));
-
-  CurMIIt = std::next(CurMIIt);
-  // Create jump to the callee.
-  CurMIIt =
-      BuildMI(*CurMBB, CurMIIt, MI->getDebugLoc(), TII->get(EVM::PseudoCALL));
-  if (RetSym)
-    CurMIIt->setPostInstrSymbol(*MF, RetSym);
   AssemblyInstrs.insert(&*CurMIIt);
   LLVM_DEBUG(dumpInst(&*CurMIIt));
   CurMIIt = std::next(CurMIIt);
