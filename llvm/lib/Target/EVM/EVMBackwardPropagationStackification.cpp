@@ -25,7 +25,7 @@
 
 #include "EVM.h"
 #include "EVMControlFlowGraphBuilder.h"
-#include "EVMOptimizedCodeTransform.h"
+#include "EVMStackifyCodeEmitter.h"
 #include "EVMSubtarget.h"
 #include "llvm/CodeGen/LiveIntervals.h"
 #include "llvm/CodeGen/MachineLoopInfo.h"
@@ -95,6 +95,6 @@ bool EVMBPStackification::runOnMachineFunction(MachineFunction &MF) {
 
   std::unique_ptr<CFG> Cfg = ControlFlowGraphBuilder::build(MF, LIS, MLI);
   StackLayout Layout = StackLayoutGenerator::run(*Cfg);
-  EVMOptimizedCodeTransform(Layout, MF).run(Cfg->getBlock(&Cfg->MF.front()));
+  EVMStackifyCodeEmitter(Layout, MF).run(Cfg->getBlock(&Cfg->MF.front()));
   return true;
 }

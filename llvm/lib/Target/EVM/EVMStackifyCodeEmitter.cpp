@@ -1,4 +1,4 @@
-//===--- EVMOptimizedCodeTransform.h - Create stackified MIR ---*- C++ -*-===//
+//===--- EVMStackifyCodeEmitter.h - Create stackified MIR -------*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -6,22 +6,207 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file transforms MIR to the 'stackified' MIR using CFG, StackLayout
-// and EVMAssembly classes.
+// This file transforms MIR to the 'stackified' MIR.
 //
 //===----------------------------------------------------------------------===//
 
-#include "EVMOptimizedCodeTransform.h"
+#include "EVMStackifyCodeEmitter.h"
+#include "EVMMachineFunctionInfo.h"
 #include "EVMStackDebug.h"
 #include "EVMStackShuffler.h"
+#include "TargetInfo/EVMTargetInfo.h"
+#include "llvm/MC/MCContext.h"
 
 using namespace llvm;
 
-#define DEBUG_TYPE "evm-optimized-code-transform"
+#define DEBUG_TYPE "evm-stackify-code-emitter"
 
-void EVMOptimizedCodeTransform::visitCall(const CFG::FunctionCall &Call) {
+int EVMStackifyCodeEmitter::CodeEmitter::getStackHeight() const {
+  return StackHeight;
+}
+
+void EVMStackifyCodeEmitter::CodeEmitter::init(MachineBasicBlock *MBB,
+                                               int Height) {
+  StackHeight = Height;
+  CurMBB = MBB;
+  LLVM_DEBUG(dbgs() << "\n"
+                    << "Set stack height: " << StackHeight << "\n");
+  LLVM_DEBUG(dbgs() << "Setting current location to: " << MBB->getNumber()
+                    << "." << MBB->getName() << "\n");
+}
+
+void EVMStackifyCodeEmitter::CodeEmitter::emitInst(const MachineInstr *MI) {
+  unsigned Opc = MI->getOpcode();
+  assert(Opc != EVM::JUMP && Opc != EVM::JUMPI && Opc != EVM::ARGUMENT &&
+         Opc != EVM::RET && Opc != EVM::CONST_I256 && Opc != EVM::COPY_I256 &&
+         Opc != EVM::FCALL && "Unexpected instruction");
+
+  // The stack height is increased by the number of defs and decreased
+  // by the number of inputs. To get the number of inputs, we subtract
+  // the total number of operands from the number of defs, so the
+  // calculation is as follows:
+  // Defs - (Ops - Defs) = 2 * Defs - Ops
+  int StackAdj = (2 * static_cast<int>(MI->getNumExplicitDefs())) -
+                 static_cast<int>(MI->getNumExplicitOperands());
+  StackHeight += StackAdj;
+
+  auto NewMI = BuildMI(*CurMBB, CurMBB->end(), MI->getDebugLoc(),
+                       TII->get(EVM::getStackOpcode(Opc)));
+  verify(NewMI);
+}
+
+void EVMStackifyCodeEmitter::CodeEmitter::emitSWAP(unsigned Depth) {
+  unsigned Opc = EVM::getSWAPOpcode(Depth);
+  auto NewMI = BuildMI(*CurMBB, CurMBB->end(), DebugLoc(),
+                       TII->get(EVM::getStackOpcode(Opc)));
+  verify(NewMI);
+}
+
+void EVMStackifyCodeEmitter::CodeEmitter::emitDUP(unsigned Depth) {
+  StackHeight += 1;
+  unsigned Opc = EVM::getDUPOpcode(Depth);
+  auto NewMI = BuildMI(*CurMBB, CurMBB->end(), DebugLoc(),
+                       TII->get(EVM::getStackOpcode(Opc)));
+  verify(NewMI);
+}
+
+void EVMStackifyCodeEmitter::CodeEmitter::emitPOP() {
+  StackHeight -= 1;
+  assert(StackHeight >= 0);
+  auto NewMI =
+      BuildMI(*CurMBB, CurMBB->end(), DebugLoc(), TII->get(EVM::POP_S));
+  verify(NewMI);
+}
+
+void EVMStackifyCodeEmitter::CodeEmitter::emitConstant(const APInt &Val) {
+  StackHeight += 1;
+  unsigned Opc = EVM::getPUSHOpcode(Val);
+  auto NewMI = BuildMI(*CurMBB, CurMBB->end(), DebugLoc(),
+                       TII->get(EVM::getStackOpcode(Opc)));
+  if (Opc != EVM::PUSH0)
+    NewMI.addCImm(ConstantInt::get(MF.getFunction().getContext(), Val));
+  verify(NewMI);
+}
+
+void EVMStackifyCodeEmitter::CodeEmitter::emitSymbol(const MachineInstr *MI,
+                                                     MCSymbol *Symbol) {
+  unsigned Opc = MI->getOpcode();
+  assert(Opc == EVM::DATASIZE ||
+         Opc == EVM::DATAOFFSET && "Unexpected symbol instruction");
+  StackHeight += 1;
+  // This is codegen-only instruction, that will be converted into PUSH4.
+  auto NewMI = BuildMI(*CurMBB, CurMBB->end(), MI->getDebugLoc(),
+                       TII->get(EVM::getStackOpcode(Opc)))
+                   .addSym(Symbol);
+  verify(NewMI);
+}
+
+void EVMStackifyCodeEmitter::CodeEmitter::emitConstant(uint64_t Val) {
+  emitConstant(APInt(256, Val));
+}
+
+void EVMStackifyCodeEmitter::CodeEmitter::emitLabelReference(
+    const MachineInstr *Call) {
+  assert(Call->getOpcode() == EVM::FCALL && "Unexpected call instruction");
+  StackHeight += 1;
+  auto [It, Inserted] = CallReturnSyms.try_emplace(Call);
+  if (Inserted)
+    It->second = MF.getContext().createTempSymbol("FUNC_RET", true);
+  auto NewMI =
+      BuildMI(*CurMBB, CurMBB->end(), DebugLoc(), TII->get(EVM::PUSH_LABEL))
+          .addSym(It->second);
+  verify(NewMI);
+}
+
+void EVMStackifyCodeEmitter::CodeEmitter::emitFuncCall(const MachineInstr *MI,
+                                                       const GlobalValue *Func,
+                                                       int StackAdj,
+                                                       bool WillReturn) {
+  assert(MI->getOpcode() == EVM::FCALL && "Unexpected call instruction");
+  assert(CurMBB == MI->getParent());
+
+  // PUSH_LABEL technically increases the stack height on 1, but we don't
+  // increase it explicitly here, as the label will be consumed by the following
+  // JUMP.
+  StackHeight += StackAdj;
+
+  // Create pseudo jump to the callee, that will be expanded into PUSH and JUMP
+  // instructions in the AsmPrinter.
+  auto NewMI = BuildMI(*CurMBB, CurMBB->end(), MI->getDebugLoc(),
+                       TII->get(EVM::PseudoCALL))
+                   .addGlobalAddress(Func);
+
+  // If this function returns, we need to create a label after JUMP instruction
+  // that is followed by JUMPDEST and this is taken care in the AsmPrinter.
+  // In case we use setPostInstrSymbol here, the label will be created
+  // after the JUMPDEST instruction, which is not what we want.
+  if (WillReturn)
+    NewMI.addSym(CallReturnSyms.at(MI));
+  verify(NewMI);
+}
+
+void EVMStackifyCodeEmitter::CodeEmitter::emitRet(const MachineInstr *MI) {
+  assert(MI->getOpcode() == EVM::RET && "Unexpected ret instruction");
+  auto NewMI = BuildMI(*CurMBB, CurMBB->end(), MI->getDebugLoc(),
+                       TII->get(EVM::PseudoRET));
+  verify(NewMI);
+}
+
+void EVMStackifyCodeEmitter::CodeEmitter::emitUncondJump(
+    const MachineInstr *MI, MachineBasicBlock *Target) {
+  assert(MI->getOpcode() == EVM::JUMP &&
+         "Unexpected unconditional jump instruction");
+  assert(StackHeight >= 0);
+  auto NewMI = BuildMI(*CurMBB, CurMBB->end(), MI->getDebugLoc(),
+                       TII->get(EVM::PseudoJUMP))
+                   .addMBB(Target);
+  verify(NewMI);
+}
+
+void EVMStackifyCodeEmitter::CodeEmitter::emitCondJump(
+    const MachineInstr *MI, MachineBasicBlock *Target) {
+  assert(MI->getOpcode() == EVM::JUMPI &&
+         "Unexpected conditional jump instruction");
+  StackHeight -= 1;
+  assert(StackHeight >= 0);
+  auto NewMI = BuildMI(*CurMBB, CurMBB->end(), MI->getDebugLoc(),
+                       TII->get(EVM::PseudoJUMPI))
+                   .addMBB(Target);
+  verify(NewMI);
+}
+
+// Verify that a stackified instruction doesn't have registers and dump it.
+void EVMStackifyCodeEmitter::CodeEmitter::verify(const MachineInstr *MI) const {
+  assert(EVMInstrInfo::isStack(MI) &&
+         "Only stackified instructions are allowed");
+  assert(all_of(MI->operands(),
+                [](const MachineOperand &MO) { return !MO.isReg(); }) &&
+         "Registers are not allowed in stackified instructions");
+
+  LLVM_DEBUG(dbgs() << "Adding: " << *MI << "stack height: " << StackHeight
+                    << "\n");
+}
+
+void EVMStackifyCodeEmitter::CodeEmitter::finalize() {
+  for (MachineBasicBlock &MBB : MF)
+    for (MachineInstr &MI : make_early_inc_range(MBB))
+      // Remove all the instructions that are not stackified.
+      // FIXME: Fix debug info for stackified instructions and don't
+      // remove debug instructions.
+      if (!EVMInstrInfo::isStack(&MI))
+        MI.eraseFromParent();
+
+  auto *MFI = MF.getInfo<EVMMachineFunctionInfo>();
+  MFI->setIsStackified();
+
+  // In a stackified code register liveness has no meaning.
+  MachineRegisterInfo &MRI = MF.getRegInfo();
+  MRI.invalidateLiveness();
+}
+
+void EVMStackifyCodeEmitter::visitCall(const CFG::FunctionCall &Call) {
   // Validate stack.
-  assert(Assembly.getStackHeight() == static_cast<int>(CurrentStack.size()));
+  assert(Emitter.getStackHeight() == static_cast<int>(CurrentStack.size()));
   assert(CurrentStack.size() >= Call.NumArguments + (Call.CanContinue ? 1 : 0));
 
   // Assert that we got the correct return label on stack.
@@ -35,10 +220,10 @@ void EVMOptimizedCodeTransform::visitCall(const CFG::FunctionCall &Call) {
   // Emit code.
   const MachineOperand *CalleeOp = Call.Call->explicit_uses().begin();
   assert(CalleeOp->isGlobal());
-  Assembly.emitFuncCall(Call.Call, CalleeOp->getGlobal(),
-                        Call.Call->getNumExplicitDefs() - Call.NumArguments -
-                            (Call.CanContinue ? 1 : 0),
-                        Call.CanContinue);
+  Emitter.emitFuncCall(Call.Call, CalleeOp->getGlobal(),
+                       Call.Call->getNumExplicitDefs() - Call.NumArguments -
+                           (Call.CanContinue ? 1 : 0),
+                       Call.CanContinue);
 
   // Update stack, remove arguments and return label from CurrentStack.
   for (size_t I = 0; I < Call.NumArguments + (Call.CanContinue ? 1 : 0); ++I)
@@ -50,19 +235,19 @@ void EVMOptimizedCodeTransform::visitCall(const CFG::FunctionCall &Call) {
     assert(MO.isReg());
     CurrentStack.emplace_back(TemporarySlot{Call.Call, MO.getReg(), Idx++});
   }
-  assert(Assembly.getStackHeight() == static_cast<int>(CurrentStack.size()));
+  assert(Emitter.getStackHeight() == static_cast<int>(CurrentStack.size()));
 }
 
-void EVMOptimizedCodeTransform::visitInst(const CFG::BuiltinCall &Call) {
+void EVMStackifyCodeEmitter::visitInst(const CFG::BuiltinCall &Call) {
   size_t NumArgs = Call.Builtin->getNumExplicitOperands() -
                    Call.Builtin->getNumExplicitDefs();
   // Validate stack.
-  assert(Assembly.getStackHeight() == static_cast<int>(CurrentStack.size()));
+  assert(Emitter.getStackHeight() == static_cast<int>(CurrentStack.size()));
   assert(CurrentStack.size() >= NumArgs);
   // TODO: assert that we got a correct stack for the call.
 
   // Emit code.
-  Assembly.emitInst(Call.Builtin);
+  Emitter.emitInst(Call.Builtin);
 
   // Update stack and remove arguments from CurrentStack.
   for (size_t i = 0; i < NumArgs; ++i)
@@ -74,11 +259,11 @@ void EVMOptimizedCodeTransform::visitInst(const CFG::BuiltinCall &Call) {
     assert(MO.isReg());
     CurrentStack.emplace_back(TemporarySlot{Call.Builtin, MO.getReg(), Idx++});
   }
-  assert(Assembly.getStackHeight() == static_cast<int>(CurrentStack.size()));
+  assert(Emitter.getStackHeight() == static_cast<int>(CurrentStack.size()));
 }
 
-void EVMOptimizedCodeTransform::visitAssign(const CFG::Assignment &Assignment) {
-  assert(Assembly.getStackHeight() == static_cast<int>(CurrentStack.size()));
+void EVMStackifyCodeEmitter::visitAssign(const CFG::Assignment &Assignment) {
+  assert(Emitter.getStackHeight() == static_cast<int>(CurrentStack.size()));
 
   // Invalidate occurrences of the assigned variables.
   for (auto &CurrentSlot : CurrentStack)
@@ -97,8 +282,8 @@ void EVMOptimizedCodeTransform::visitAssign(const CFG::Assignment &Assignment) {
     *RangeIt = *VarsIt;
 }
 
-bool EVMOptimizedCodeTransform::areLayoutsCompatible(const Stack &SourceStack,
-                                                     const Stack &TargetStack) {
+bool EVMStackifyCodeEmitter::areLayoutsCompatible(const Stack &SourceStack,
+                                                  const Stack &TargetStack) {
   return SourceStack.size() == TargetStack.size() &&
          all_of(zip_equal(SourceStack, TargetStack), [](const auto &Pair) {
            const auto &[Src, Tgt] = Pair;
@@ -106,7 +291,7 @@ bool EVMOptimizedCodeTransform::areLayoutsCompatible(const Stack &SourceStack,
          });
 }
 
-void EVMOptimizedCodeTransform::createStackLayout(const Stack &TargetStack) {
+void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
   auto SlotVariableName = [](const StackSlot &Slot) {
     return std::visit(
         Overload{
@@ -125,7 +310,7 @@ void EVMOptimizedCodeTransform::createStackLayout(const Stack &TargetStack) {
         Slot);
   };
 
-  assert(Assembly.getStackHeight() == static_cast<int>(CurrentStack.size()));
+  assert(Emitter.getStackHeight() == static_cast<int>(CurrentStack.size()));
   // ::createStackLayout asserts that it has successfully achieved the target
   // layout.
   ::createStackLayout(
@@ -133,10 +318,10 @@ void EVMOptimizedCodeTransform::createStackLayout(const Stack &TargetStack) {
       // Swap callback.
       [&](unsigned I) {
         assert(static_cast<int>(CurrentStack.size()) ==
-               Assembly.getStackHeight());
+               Emitter.getStackHeight());
         assert(I > 0 && I < CurrentStack.size());
         if (I <= 16) {
-          Assembly.emitSWAP(I);
+          Emitter.emitSWAP(I);
         } else {
           int Deficit = static_cast<int>(I) - 16;
           const StackSlot &DeepSlot =
@@ -161,14 +346,14 @@ void EVMOptimizedCodeTransform::createStackLayout(const Stack &TargetStack) {
       // Push or dup callback.
       [&](const StackSlot &Slot) {
         assert(static_cast<int>(CurrentStack.size()) ==
-               Assembly.getStackHeight());
+               Emitter.getStackHeight());
 
         // Dup the slot, if already on stack and reachable.
         auto SlotIt = llvm::find(llvm::reverse(CurrentStack), Slot);
         if (SlotIt != CurrentStack.rend()) {
           unsigned Depth = std::distance(CurrentStack.rbegin(), SlotIt);
           if (Depth < 16) {
-            Assembly.emitDUP(static_cast<unsigned>(Depth + 1));
+            Emitter.emitDUP(static_cast<unsigned>(Depth + 1));
             return;
           }
           if (!canBeFreelyGenerated(Slot)) {
@@ -191,16 +376,16 @@ void EVMOptimizedCodeTransform::createStackLayout(const Stack &TargetStack) {
         // Push it.
         std::visit(
             Overload{[&](const LiteralSlot &Literal) {
-                       Assembly.emitConstant(Literal.Value);
+                       Emitter.emitConstant(Literal.Value);
                      },
                      [&](const SymbolSlot &Symbol) {
-                       Assembly.emitSymbol(Symbol.MI, Symbol.Symbol);
+                       Emitter.emitSymbol(Symbol.MI, Symbol.Symbol);
                      },
                      [&](const FunctionReturnLabelSlot &) {
                        llvm_unreachable("Cannot produce function return label");
                      },
                      [&](const FunctionCallReturnLabelSlot &ReturnLabel) {
-                       Assembly.emitLabelReference(ReturnLabel.Call);
+                       Emitter.emitLabelReference(ReturnLabel.Call);
                      },
                      [&](const VariableSlot &Variable) {
                        llvm_unreachable("Variable not found on stack");
@@ -212,18 +397,17 @@ void EVMOptimizedCodeTransform::createStackLayout(const Stack &TargetStack) {
                      [&](const JunkSlot &) {
                        // Note: this will always be popped, so we can push
                        // anything.
-                       Assembly.emitConstant(0);
+                       Emitter.emitConstant(0);
                      }},
             Slot);
       },
       // Pop callback.
-      [&]() { Assembly.emitPOP(); });
+      [&]() { Emitter.emitPOP(); });
 
-  assert(Assembly.getStackHeight() == static_cast<int>(CurrentStack.size()));
+  assert(Emitter.getStackHeight() == static_cast<int>(CurrentStack.size()));
 }
 
-void EVMOptimizedCodeTransform::createOperationLayout(
-    const CFG::Operation &Op) {
+void EVMStackifyCodeEmitter::createOperationLayout(const CFG::Operation &Op) {
   // Create required layout for entering the Operation.
   // Check if we can choose cheaper stack shuffling if the Operation is an
   // instruction with commutable arguments.
@@ -255,7 +439,7 @@ void EVMOptimizedCodeTransform::createOperationLayout(
   }
 
   // Assert that we have the inputs of the Operation on stack top.
-  assert(static_cast<int>(CurrentStack.size()) == Assembly.getStackHeight());
+  assert(static_cast<int>(CurrentStack.size()) == Emitter.getStackHeight());
   assert(CurrentStack.size() >= Op.Input.size());
   Stack StackInput(CurrentStack.end() - Op.Input.size(), CurrentStack.end());
   // Adjust the StackInput if needed.
@@ -266,8 +450,8 @@ void EVMOptimizedCodeTransform::createOperationLayout(
   assert(areLayoutsCompatible(StackInput, Op.Input));
 }
 
-void EVMOptimizedCodeTransform::run(CFG::BasicBlock &EntryBB) {
-  assert(CurrentStack.empty() && Assembly.getStackHeight() == 0);
+void EVMStackifyCodeEmitter::run(CFG::BasicBlock &EntryBB) {
+  assert(CurrentStack.empty() && Emitter.getStackHeight() == 0);
 
   SmallPtrSet<CFG::BasicBlock *, 32> Visited;
   SmallVector<CFG::BasicBlock *, 32> WorkList{&EntryBB};
@@ -280,7 +464,7 @@ void EVMOptimizedCodeTransform::run(CFG::BasicBlock &EntryBB) {
 
     // Might set some slots to junk, if not required by the block.
     CurrentStack = BlockInfo.entryLayout;
-    Assembly.init(Block->MBB, static_cast<int>(CurrentStack.size()));
+    Emitter.init(Block->MBB, static_cast<int>(CurrentStack.size()));
 
     for (const auto &Operation : Block->Operations) {
       createOperationLayout(Operation);
@@ -298,8 +482,7 @@ void EVMOptimizedCodeTransform::run(CFG::BasicBlock &EntryBB) {
           Operation.Operation);
 
       // Assert that the Operation produced its proclaimed output.
-      assert(static_cast<int>(CurrentStack.size()) ==
-             Assembly.getStackHeight());
+      assert(static_cast<int>(CurrentStack.size()) == Emitter.getStackHeight());
       assert(CurrentStack.size() == BaseHeight + Operation.Output.size());
       assert(CurrentStack.size() >= Operation.Output.size());
       assert(areLayoutsCompatible(
@@ -323,7 +506,7 @@ void EVMOptimizedCodeTransform::run(CFG::BasicBlock &EntryBB) {
                   CurrentStack, Layout.blockInfos.at(Jump.Target).entryLayout));
 
               if (Jump.UncondJump)
-                Assembly.emitUncondJump(Jump.UncondJump, Jump.Target->MBB);
+                Emitter.emitUncondJump(Jump.UncondJump, Jump.Target->MBB);
               WorkList.emplace_back(Jump.Target);
             },
             [&](CFG::BasicBlock::ConditionalJump const &CondJump) {
@@ -338,7 +521,7 @@ void EVMOptimizedCodeTransform::run(CFG::BasicBlock &EntryBB) {
               // Emit the conditional jump to the non-zero label and update the
               // stored stack.
               assert(CondJump.CondJump);
-              Assembly.emitCondJump(CondJump.CondJump, CondJump.NonZero->MBB);
+              Emitter.emitCondJump(CondJump.CondJump, CondJump.NonZero->MBB);
               CurrentStack.pop_back();
 
               // Assert that we have a valid stack for both jump targets.
@@ -351,8 +534,7 @@ void EVMOptimizedCodeTransform::run(CFG::BasicBlock &EntryBB) {
 
               // Generate unconditional jump if needed.
               if (CondJump.UncondJump)
-                Assembly.emitUncondJump(CondJump.UncondJump,
-                                        CondJump.Zero->MBB);
+                Emitter.emitUncondJump(CondJump.UncondJump, CondJump.Zero->MBB);
               WorkList.emplace_back(CondJump.NonZero);
               WorkList.emplace_back(CondJump.Zero);
             },
@@ -367,7 +549,7 @@ void EVMOptimizedCodeTransform::run(CFG::BasicBlock &EntryBB) {
 
               // Create the function return layout and jump.
               createStackLayout(ExitStack);
-              Assembly.emitRet(FuncReturn.Ret);
+              Emitter.emitRet(FuncReturn.Ret);
             },
             [&](CFG::BasicBlock::Unreachable const &) {
               assert(Block->Operations.empty());
@@ -388,5 +570,5 @@ void EVMOptimizedCodeTransform::run(CFG::BasicBlock &EntryBB) {
         Block->Exit);
   }
 
-  Assembly.finalize();
+  Emitter.finalize();
 }
