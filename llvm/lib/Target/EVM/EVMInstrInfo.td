@@ -248,10 +248,10 @@ let variadicOpsAreDefs = 1 in
 def FCALL
   : NRI<(outs), (ins jmptarget:$callee, variable_ops), [],
         "FCALL\t$callee">;
-let isPseudo = 1 in
-def PseudoCALL : EVMPseudo<(outs), (ins jmptarget:$callee, variable_ops), []>;
 } // Uses = [SP], isCall = 1
 
+let isCall = 1 in
+def PseudoCALL : EVMPseudo<(outs), (ins jmptarget:$callee, variable_ops), [], true>;
 
 //===----------------------------------------------------------------------===//
 // EVM arithmetic instructions.
@@ -407,14 +407,12 @@ let isBranch = 1, isTerminator = 1 in {
 defm JUMPI
   : I<(outs), (ins jmptarget:$dst, GPR:$cond), [(brcond GPR:$cond, bb:$dst)],
       "JUMPI", " $dst, $cond", 0x57, 10>;
-let isPseudo = 1 in
-def PseudoJUMPI : EVMPseudo<(outs), (ins jmptarget:$dst), []>;
+def PseudoJUMPI : EVMPseudo<(outs), (ins jmptarget:$dst), [], true>;
 
 let isBarrier = 1 in {
 defm JUMP
   : I<(outs), (ins jmptarget:$dst), [(br bb:$dst)], "JUMP", " $dst", 0x56, 8>;
-let isPseudo = 1 in
-def PseudoJUMP : EVMPseudo<(outs), (ins jmptarget:$dst), []>;
+def PseudoJUMP : EVMPseudo<(outs), (ins jmptarget:$dst), [], true>;
 } // isBarrier = 1
 } // isBranch = 1, isTerminator = 1
 
@@ -424,8 +422,7 @@ defm JUMPDEST : I<(outs), (ins), [], "JUMPDEST", "", 0x5B, 1>;
 
 let isBarrier = 1, isTerminator = 1, isReturn = 1 in {
 def RET : NRI<(outs), (ins variable_ops), [(EVMret)], "RET">;
-let isPseudo = 1 in
-def PseudoRET : EVMPseudo<(outs), (ins), []>;
+def PseudoRET : EVMPseudo<(outs), (ins), [], true>;
 }
 
 
@@ -804,7 +801,7 @@ foreach I = {1-16} in {
 
 defm PUSH0 : I<(outs), (ins), [], "PUSH0", "", 0x5F, 2>;
 
-def PUSH_LABEL : NI<(outs), (ins jmptarget:$dst), [], false, "", 0, 0> {
+def PUSH_LABEL : NI<(outs), (ins jmptarget:$dst), [], true, "", 0, 0> {
     let isCodeGenOnly = 1;
 }
 
