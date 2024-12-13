@@ -395,6 +395,17 @@ void StackLayoutGenerator::processEntryPoint(CFG::BasicBlock const &Entry) {
 
   stitchConditionalJumps(Entry);
   fillInJunk(Entry);
+
+  // Create function entry layout.
+  Stack EntryStack;
+  if (!MF.getFunction().hasFnAttribute(Attribute::NoReturn))
+    EntryStack.emplace_back(FunctionReturnLabelSlot{&MF});
+
+  // Calling convention: input arguments are passed in stack such that the
+  // first one specified in the function declaration is passed on the stack TOP.
+  for (auto const &Param : reverse(Parameters))
+    EntryStack.emplace_back(Param);
+  Layout.blockInfos[&Entry].entryLayout = EntryStack;
 }
 
 std::optional<Stack> StackLayoutGenerator::getExitLayoutOrStageDependencies(
