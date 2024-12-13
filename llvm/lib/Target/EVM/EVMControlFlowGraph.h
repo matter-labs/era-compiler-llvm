@@ -229,6 +229,7 @@ struct CFG {
 
     struct FunctionReturn {
       Stack RetValues;
+      const MachineInstr *Ret = nullptr;
     };
 
     struct Terminated {};
