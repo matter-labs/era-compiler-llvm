@@ -24,19 +24,17 @@ class MCSymbol;
 
 class EVMOptimizedCodeTransform {
 public:
-  EVMOptimizedCodeTransform(EVMAssembly &Assembly, const StackLayout &Layout,
-                            MachineFunction &MF)
-      : Assembly(Assembly), Layout(Layout), MF(MF) {}
+  EVMOptimizedCodeTransform(const StackLayout &Layout, MachineFunction &MF)
+      : Assembly(MF), Layout(Layout), MF(MF) {}
 
   /// Stackify instructions, starting from the \p EntryBB.
   void run(CFG::BasicBlock &EntryBB);
 
 private:
-  EVMAssembly &Assembly;
+  EVMAssembly Assembly;
   const StackLayout &Layout;
   const MachineFunction &MF;
   Stack CurrentStack;
-  DenseMap<const MachineInstr *, MCSymbol *> CallToReturnMCSymbol;
 
   /// Checks if it's valid to transition from \p SourceStack to \p
   /// TargetStack, that is \p SourceStack matches each slot in \p

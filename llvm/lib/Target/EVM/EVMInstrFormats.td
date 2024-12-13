@@ -53,7 +53,7 @@ class NI<dag oops, dag iops, list<dag> pattern, bit stack,
   let Opc            = inst;
   let Inst{7-0}      = Opc;
   let GasCost        = cost;
-  let Defs           = [ARGUMENTS];
+  let Defs           = !if(stack, [], [ARGUMENTS]);
 }
 
 // Generates both register and stack based versions of one actual instruction.
@@ -74,8 +74,8 @@ class NRI<dag oops, dag iops, list<dag> pattern, string asmstr>
   : NI<oops, iops, pattern, false, asmstr> {
 }
 
-class EVMPseudo<dag oops, dag iops, list<dag> pattern>
-  : NI<oops, iops, pattern, false> {
+class EVMPseudo<dag oops, dag iops, list<dag> pattern, bit stack = 0>
+  : NI<oops, iops, pattern, stack> {
   let isPseudo = 1;
   let isCodeGenOnly = 1;
 }
