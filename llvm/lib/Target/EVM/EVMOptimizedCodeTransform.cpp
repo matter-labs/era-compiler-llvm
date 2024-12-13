@@ -12,42 +12,25 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMOptimizedCodeTransform.h"
-#include "EVMControlFlowGraphBuilder.h"
-#include "EVMHelperUtilities.h"
 #include "EVMStackDebug.h"
-#include "EVMStackLayoutGenerator.h"
 #include "EVMStackShuffler.h"
-#include "llvm/ADT/STLExtras.h"
-#include "llvm/Support/ErrorHandling.h"
-
-#include <cassert>
 
 using namespace llvm;
 
 #define DEBUG_TYPE "evm-optimized-code-transform"
 
-void EVMOptimizedCodeTransform::run(EVMAssembly &Assembly, MachineFunction &MF,
-                                    const LiveIntervals &LIS,
-                                    MachineLoopInfo *MLI) {
-  std::unique_ptr<CFG> Cfg = ControlFlowGraphBuilder::build(MF, LIS, MLI);
-  StackLayout Layout = StackLayoutGenerator::run(*Cfg);
-  EVMOptimizedCodeTransform optimizedCodeTransform(Assembly, *Cfg, Layout, MF);
-  optimizedCodeTransform();
-}
-
-void EVMOptimizedCodeTransform::operator()(CFG::FunctionCall const &Call) {
-#ifndef NDEBUG
+void EVMOptimizedCodeTransform::visitCall(const CFG::FunctionCall &Call) {
   // Validate stack.
   assert(Assembly.getStackHeight() == static_cast<int>(CurrentStack.size()));
   assert(CurrentStack.size() >= Call.NumArguments + (Call.CanContinue ? 1 : 0));
 
   // Assert that we got the correct return label on stack.
   if (Call.CanContinue) {
-    auto const *returnLabelSlot = std::get_if<FunctionCallReturnLabelSlot>(
-        &CurrentStack.at(CurrentStack.size() - Call.NumArguments - 1));
+    [[maybe_unused]] const auto *returnLabelSlot =
+        std::get_if<FunctionCallReturnLabelSlot>(
+            &CurrentStack.at(CurrentStack.size() - Call.NumArguments - 1));
     assert(returnLabelSlot && returnLabelSlot->Call == Call.Call);
   }
-#endif // NDEBUG
 
   // Emit code.
   const MachineOperand *CalleeOp = Call.Call->explicit_uses().begin();
@@ -71,7 +54,7 @@ void EVMOptimizedCodeTransform::operator()(CFG::FunctionCall const &Call) {
   assert(Assembly.getStackHeight() == static_cast<int>(CurrentStack.size()));
 }
 
-void EVMOptimizedCodeTransform::operator()(CFG::BuiltinCall const &Call) {
+void EVMOptimizedCodeTransform::visitInst(const CFG::BuiltinCall &Call) {
   size_t NumArgs = Call.Builtin->getNumExplicitOperands() -
                    Call.Builtin->getNumExplicitDefs();
   // Validate stack.
@@ -95,19 +78,19 @@ void EVMOptimizedCodeTransform::operator()(CFG::BuiltinCall const &Call) {
   assert(Assembly.getStackHeight() == static_cast<int>(CurrentStack.size()));
 }
 
-void EVMOptimizedCodeTransform::operator()(CFG::Assignment const &Assignment) {
+void EVMOptimizedCodeTransform::visitAssign(const CFG::Assignment &Assignment) {
   assert(Assembly.getStackHeight() == static_cast<int>(CurrentStack.size()));
 
   // Invalidate occurrences of the assigned variables.
   for (auto &CurrentSlot : CurrentStack)
-    if (VariableSlot const *VarSlot = std::get_if<VariableSlot>(&CurrentSlot))
-      if (EVMUtils::contains(Assignment.Variables, *VarSlot))
+    if (const VariableSlot *VarSlot = std::get_if<VariableSlot>(&CurrentSlot))
+      if (is_contained(Assignment.Variables, *VarSlot))
         CurrentSlot = JunkSlot{};
 
   // Assign variables to current stack top.
   assert(CurrentStack.size() >= Assignment.Variables.size());
-  auto StackRange =
-      EVMUtils::take_last(CurrentStack, Assignment.Variables.size());
+  auto StackRange = make_range(CurrentStack.end() - Assignment.Variables.size(),
+                               CurrentStack.end());
   auto RangeIt = StackRange.begin(), RangeE = StackRange.end();
   auto VarsIt = Assignment.Variables.begin(),
        VarsE = Assignment.Variables.end();
@@ -115,33 +98,22 @@ void EVMOptimizedCodeTransform::operator()(CFG::Assignment const &Assignment) {
     *RangeIt = *VarsIt;
 }
 
-EVMOptimizedCodeTransform::EVMOptimizedCodeTransform(EVMAssembly &Assembly,
-                                                     CFG const &Cfg,
-                                                     StackLayout const &Layout,
-                                                     MachineFunction &MF)
-    : Assembly(Assembly), Layout(Layout), MF(MF),
-      EntryBB(Cfg.getBlock(&MF.front())), Parameters(Cfg.Parameters) {}
-
-bool EVMOptimizedCodeTransform::AreLayoutsCompatible(Stack const &SourceStack,
-                                                     Stack const &TargetStack) {
-  if (SourceStack.size() != TargetStack.size())
-    return false;
-
-  for (auto [Src, Tgt] : zip_equal(SourceStack, TargetStack)) {
-    if (!std::holds_alternative<JunkSlot>(Tgt) && !(Src == Tgt))
-      return false;
-  }
-
-  return true;
+bool EVMOptimizedCodeTransform::areLayoutsCompatible(const Stack &SourceStack,
+                                                     const Stack &TargetStack) {
+  return SourceStack.size() == TargetStack.size() &&
+         all_of(zip_equal(SourceStack, TargetStack), [](const auto &Pair) {
+           const auto &[Src, Tgt] = Pair;
+           return std::holds_alternative<JunkSlot>(Tgt) || (Src == Tgt);
+         });
 }
 
-void EVMOptimizedCodeTransform::createStackLayout(Stack TargetStack) {
-  auto SlotVariableName = [](StackSlot const &Slot) {
+void EVMOptimizedCodeTransform::createStackLayout(const Stack &TargetStack) {
+  auto SlotVariableName = [](const StackSlot &Slot) {
     return std::visit(
         Overload{
-            [&](VariableSlot const &Var) {
+            [&](const VariableSlot &Var) {
               SmallString<1024> StrBuf;
-              llvm::raw_svector_ostream OS(StrBuf);
+              raw_svector_ostream OS(StrBuf);
               OS << printReg(Var.VirtualReg, nullptr, 0, nullptr);
               return std::string(StrBuf.c_str());
             },
@@ -168,7 +140,7 @@ void EVMOptimizedCodeTransform::createStackLayout(Stack TargetStack) {
           Assembly.appendSWAPInstruction(I);
         } else {
           int Deficit = static_cast<int>(I) - 16;
-          StackSlot const &DeepSlot =
+          const StackSlot &DeepSlot =
               CurrentStack.at(CurrentStack.size() - I - 1);
           std::string VarNameDeep = SlotVariableName(DeepSlot);
           std::string VarNameTop = SlotVariableName(CurrentStack.back());
@@ -188,21 +160,24 @@ void EVMOptimizedCodeTransform::createStackLayout(Stack TargetStack) {
         }
       },
       // Push or dup callback.
-      [&](StackSlot const &Slot) {
+      [&](const StackSlot &Slot) {
         assert(static_cast<int>(CurrentStack.size()) ==
                Assembly.getStackHeight());
+
         // Dup the slot, if already on stack and reachable.
-        if (auto Depth = EVMUtils::findOffset(
-                EVMUtils::get_reverse(CurrentStack), Slot)) {
-          if (*Depth < 16) {
-            Assembly.appendDUPInstruction(static_cast<unsigned>(*Depth + 1));
+        auto SlotIt = llvm::find(llvm::reverse(CurrentStack), Slot);
+        if (SlotIt != CurrentStack.rend()) {
+          unsigned Depth = std::distance(CurrentStack.rbegin(), SlotIt);
+          if (Depth < 16) {
+            Assembly.appendDUPInstruction(static_cast<unsigned>(Depth + 1));
             return;
-          } else if (!canBeFreelyGenerated(Slot)) {
+          }
+          if (!canBeFreelyGenerated(Slot)) {
             std::string VarName = SlotVariableName(Slot);
             std::string Msg =
                 ((VarName.empty() ? "slot " + stackSlotToString(Slot)
                                   : Twine("variable ") + VarName) +
-                 " is " + std::to_string(*Depth - 15) +
+                 " is " + std::to_string(Depth - 15) +
                  " too deep in the stack " + stackToString(CurrentStack))
                     .str();
 
@@ -216,14 +191,14 @@ void EVMOptimizedCodeTransform::createStackLayout(Stack TargetStack) {
         // The slot can be freely generated or is an unassigned return variable.
         // Push it.
         std::visit(
-            Overload{[&](LiteralSlot const &Literal) {
+            Overload{[&](const LiteralSlot &Literal) {
                        Assembly.appendConstant(Literal.Value);
                      },
-                     [&](SymbolSlot const &Symbol) {
+                     [&](const SymbolSlot &Symbol) {
                        Assembly.appendSymbol(Symbol.Symbol,
                                              Symbol.MI->getOpcode());
                      },
-                     [&](FunctionReturnLabelSlot const &) {
+                     [&](const FunctionReturnLabelSlot &) {
                        llvm_unreachable("Cannot produce function return label");
                      },
                      [&](const FunctionCallReturnLabelSlot &ReturnLabel) {
@@ -254,13 +229,14 @@ void EVMOptimizedCodeTransform::createStackLayout(Stack TargetStack) {
   assert(Assembly.getStackHeight() == static_cast<int>(CurrentStack.size()));
 }
 
-void EVMOptimizedCodeTransform::createOperationEntryLayout(
+void EVMOptimizedCodeTransform::createOperationLayout(
     const CFG::Operation &Op) {
   // Create required layout for entering the Operation.
   // Check if we can choose cheaper stack shuffling if the Operation is an
   // instruction with commutable arguments.
+  bool SwapCommutable = false;
   if (const auto *Inst = std::get_if<CFG::BuiltinCall>(&Op.Operation);
-      Inst && Inst->IsCommutable) {
+      Inst && Inst->Builtin->isCommutable()) {
     // Get the stack layout before the instruction.
     const Stack &DefaultTargetStack = Layout.operationEntryLayout.at(&Op);
     size_t DefaultCost =
@@ -278,210 +254,147 @@ void EVMOptimizedCodeTransform::createOperationEntryLayout(
     size_t CommutedCost =
         EvaluateStackTransform(CurrentStack, CommutedTargetStack);
     // Choose the cheapest transformation.
-    createStackLayout(CommutedCost < DefaultCost ? CommutedTargetStack
-                                                 : DefaultTargetStack);
-#ifndef NDEBUG
-    // Assert that we have the inputs of the Operation on stack top.
-    assert(static_cast<int>(CurrentStack.size()) == Assembly.getStackHeight());
-    assert(CurrentStack.size() >= Op.Input.size());
-    Stack StackInput =
-        EVMUtils::to_vector(EVMUtils::take_last(CurrentStack, Op.Input.size()));
-    // Adjust the StackInput to match the commuted stack.
-    if (CommutedCost < DefaultCost) {
-      std::swap(StackInput[StackInput.size() - OpIdx1 - 1],
-                StackInput[StackInput.size() - OpIdx2 - 1]);
-    }
-    assert(AreLayoutsCompatible(StackInput, Op.Input));
-#endif // NDEBUG
+    SwapCommutable = CommutedCost < DefaultCost;
+    createStackLayout(SwapCommutable ? CommutedTargetStack
+                                     : DefaultTargetStack);
   } else {
     createStackLayout(Layout.operationEntryLayout.at(&Op));
-
-#ifndef NDEBUG
-    // Assert that we have the inputs of the Operation on stack top.
-    assert(static_cast<int>(CurrentStack.size()) == Assembly.getStackHeight());
-    assert(CurrentStack.size() >= Op.Input.size());
-    const Stack StackInput =
-        EVMUtils::to_vector(EVMUtils::take_last(CurrentStack, Op.Input.size()));
-    assert(AreLayoutsCompatible(StackInput, Op.Input));
-#endif // NDEBUG
   }
+
+  // Assert that we have the inputs of the Operation on stack top.
+  assert(static_cast<int>(CurrentStack.size()) == Assembly.getStackHeight());
+  assert(CurrentStack.size() >= Op.Input.size());
+  Stack StackInput(CurrentStack.end() - Op.Input.size(), CurrentStack.end());
+  // Adjust the StackInput if needed.
+  if (SwapCommutable) {
+    std::swap(StackInput[StackInput.size() - 1],
+              StackInput[StackInput.size() - 2]);
+  }
+  assert(areLayoutsCompatible(StackInput, Op.Input));
 }
 
-void EVMOptimizedCodeTransform::operator()(const CFG::BasicBlock &Block) {
-  // Current location for the entry BB was set up in operator()().
-  if (&Block != &EntryBB)
-    Assembly.setCurrentLocation(Block.MBB);
+void EVMOptimizedCodeTransform::run(CFG::BasicBlock &EntryBB) {
+  assert(CurrentStack.empty() && Assembly.getStackHeight() == 0);
 
-  // Assert that this is the first visit of the block and mark as generated.
-  [[maybe_unused]] auto It = GeneratedBlocks.insert(&Block);
-  assert(It.second);
+  SmallPtrSet<CFG::BasicBlock *, 32> Visited;
+  SmallVector<CFG::BasicBlock *, 32> WorkList{&EntryBB};
+  while (!WorkList.empty()) {
+    auto *Block = WorkList.pop_back_val();
+    if (!Visited.insert(Block).second)
+      continue;
 
-  auto const &BlockInfo = Layout.blockInfos.at(&Block);
+    const auto &BlockInfo = Layout.blockInfos.at(Block);
 
-  // Assert that the stack is valid for entering the block. The entry layout
-  // of the function entry block should is fully determined by the first
-  // instruction, so we can ignore 'BlockInfo.entryLayout'.
-  if (&Block != &EntryBB) {
-    assert(AreLayoutsCompatible(CurrentStack, BlockInfo.entryLayout));
     // Might set some slots to junk, if not required by the block.
     CurrentStack = BlockInfo.entryLayout;
-  }
-  assert(static_cast<int>(CurrentStack.size()) == Assembly.getStackHeight());
+    Assembly.setStackHeight(static_cast<int>(CurrentStack.size()));
+    Assembly.setCurrentLocation(Block->MBB);
 
-  for (const auto &Operation : Block.Operations) {
-    createOperationEntryLayout(Operation);
+    for (const auto &Operation : Block->Operations) {
+      createOperationLayout(Operation);
 
-#ifndef NDEBUG
-    size_t BaseHeight = CurrentStack.size() - Operation.Input.size();
-#endif // NDEBUG
+      [[maybe_unused]] size_t BaseHeight =
+          CurrentStack.size() - Operation.Input.size();
 
-    // Perform the Operation.
-    std::visit(*this, Operation.Operation);
+      // Perform the Operation.
+      std::visit(
+          Overload{[this](const CFG::FunctionCall &Call) { visitCall(Call); },
+                   [this](const CFG::BuiltinCall &Call) { visitInst(Call); },
+                   [this](const CFG::Assignment &Assignment) {
+                     visitAssign(Assignment);
+                   }},
+          Operation.Operation);
 
-    // Assert that the Operation produced its proclaimed output.
-    assert(static_cast<int>(CurrentStack.size()) == Assembly.getStackHeight());
-    assert(CurrentStack.size() == BaseHeight + Operation.Output.size());
-    assert(CurrentStack.size() >= Operation.Output.size());
-    assert(AreLayoutsCompatible(EVMUtils::to_vector(EVMUtils::take_last(
-                                    CurrentStack, Operation.Output.size())),
-                                Operation.Output));
-  }
+      // Assert that the Operation produced its proclaimed output.
+      assert(static_cast<int>(CurrentStack.size()) ==
+             Assembly.getStackHeight());
+      assert(CurrentStack.size() == BaseHeight + Operation.Output.size());
+      assert(CurrentStack.size() >= Operation.Output.size());
+      assert(areLayoutsCompatible(
+          Stack(CurrentStack.end() - Operation.Output.size(),
+                CurrentStack.end()),
+          Operation.Output));
+    }
 
-  // Exit the block.
-  std::visit(
-      Overload{
-          [&](const CFG::BasicBlock::InvalidExit &) {
-            llvm_unreachable("Unexpected BB terminator");
-          },
-          [&](const CFG::BasicBlock::Jump &Jump) {
-            // Create the stack expected at the jump target.
-            createStackLayout(Layout.blockInfos.at(Jump.Target).entryLayout);
+    // Exit the block.
+    std::visit(
+        Overload{
+            [&](const CFG::BasicBlock::InvalidExit &) {
+              llvm_unreachable("Unexpected BB terminator");
+            },
+            [&](const CFG::BasicBlock::Jump &Jump) {
+              // Create the stack expected at the jump target.
+              createStackLayout(Layout.blockInfos.at(Jump.Target).entryLayout);
 
-            // If this is the only jump to the block which is a fallthrought
-            // we can directly continue with the target block.
-            if (Jump.Target->Entries.size() == 1 && Jump.FallThrough)
-              assert(!Jump.Backwards && !BlockLabels.count(Jump.Target));
+              // Assert that we have a valid stack for the target.
+              assert(areLayoutsCompatible(
+                  CurrentStack, Layout.blockInfos.at(Jump.Target).entryLayout));
 
-            if (!BlockLabels.count(Jump.Target))
-              BlockLabels[Jump.Target] = Jump.Target->MBB->getSymbol();
+              if (Jump.UncondJump)
+                Assembly.appendUncondJump(Jump.UncondJump, Jump.Target->MBB);
+              WorkList.emplace_back(Jump.Target);
+            },
+            [&](CFG::BasicBlock::ConditionalJump const &CondJump) {
+              // Create the shared entry layout of the jump targets, which is
+              // stored as exit layout of the current block.
+              createStackLayout(BlockInfo.exitLayout);
 
-            if (Jump.UncondJump)
-              Assembly.appendUncondJump(Jump.UncondJump, Jump.Target->MBB);
+              // Assert that we have the correct condition on stack.
+              assert(!CurrentStack.empty());
+              assert(CurrentStack.back() == CondJump.Condition);
 
-            if (!GeneratedBlocks.count(Jump.Target))
-              (*this)(*Jump.Target);
-          },
-          [&](CFG::BasicBlock::ConditionalJump const &CondJump) {
-            // Create the shared entry layout of the jump targets, which is
-            // stored as exit layout of the current block.
-            createStackLayout(BlockInfo.exitLayout);
+              // Emit the conditional jump to the non-zero label and update the
+              // stored stack.
+              assert(CondJump.CondJump);
+              Assembly.appendCondJump(CondJump.CondJump, CondJump.NonZero->MBB);
+              CurrentStack.pop_back();
 
-            // Create labels for the targets, if not already present.
-            if (!BlockLabels.count(CondJump.NonZero))
-              BlockLabels[CondJump.NonZero] =
-                  CondJump.NonZero->MBB->getSymbol();
+              // Assert that we have a valid stack for both jump targets.
+              assert(areLayoutsCompatible(
+                  CurrentStack,
+                  Layout.blockInfos.at(CondJump.NonZero).entryLayout));
+              assert(areLayoutsCompatible(
+                  CurrentStack,
+                  Layout.blockInfos.at(CondJump.Zero).entryLayout));
 
-            if (!BlockLabels.count(CondJump.Zero))
-              BlockLabels[CondJump.Zero] = CondJump.Zero->MBB->getSymbol();
-
-            // Assert that we have the correct condition on stack.
-            assert(!CurrentStack.empty());
-            assert(CurrentStack.back() == CondJump.Condition);
-
-            // Emit the conditional jump to the non-zero label and update the
-            // stored stack.
-            assert(CondJump.CondJump);
-            Assembly.appendCondJump(CondJump.CondJump, CondJump.NonZero->MBB);
-            CurrentStack.pop_back();
-
-            // Assert that we have a valid stack for both jump targets.
-            assert(AreLayoutsCompatible(
-                CurrentStack,
-                Layout.blockInfos.at(CondJump.NonZero).entryLayout));
-            assert(AreLayoutsCompatible(
-                CurrentStack, Layout.blockInfos.at(CondJump.Zero).entryLayout));
-
-            {
-              // Restore the stack afterwards for the non-zero case below.
-              EVMUtils::ScopeGuard stackRestore([storedStack = CurrentStack,
-                                                 this]() {
-                CurrentStack = std::move(storedStack);
-                Assembly.setStackHeight(static_cast<int>(CurrentStack.size()));
-              });
-
-              // If we have already generated the zero case, jump to it,
-              // otherwise generate it in place.
+              // Generate unconditional jump if needed.
               if (CondJump.UncondJump)
                 Assembly.appendUncondJump(CondJump.UncondJump,
                                           CondJump.Zero->MBB);
+              WorkList.emplace_back(CondJump.NonZero);
+              WorkList.emplace_back(CondJump.Zero);
+            },
+            [&](CFG::BasicBlock::FunctionReturn const &FuncReturn) {
+              assert(!MF.getFunction().hasFnAttribute(Attribute::NoReturn));
 
-              if (!GeneratedBlocks.count(CondJump.Zero))
-                (*this)(*CondJump.Zero);
-            }
-            // Note that each block visit terminates control flow, so we cannot
-            // fall through from the zero case.
+              // Construct the function return layout, which is fully determined
+              // by the function signature.
+              Stack ExitStack = FuncReturn.RetValues;
 
-            // Generate the non-zero block, if not done already.
-            if (!GeneratedBlocks.count(CondJump.NonZero))
-              (*this)(*CondJump.NonZero);
-          },
-          [&](CFG::BasicBlock::FunctionReturn const &FuncReturn) {
-            assert(!MF.getFunction().hasFnAttribute(Attribute::NoReturn));
+              ExitStack.emplace_back(FunctionReturnLabelSlot{&MF});
 
-            // Construct the function return layout, which is fully determined
-            // by the function signature.
-            Stack ExitStack = FuncReturn.RetValues;
-
-            ExitStack.emplace_back(FunctionReturnLabelSlot{&MF});
-
-            // Create the function return layout and jump.
-            createStackLayout(ExitStack);
-            Assembly.appendRet();
-          },
-          [&](CFG::BasicBlock::Unreachable const &) {
-            assert(Block.Operations.empty());
-          },
-          [&](CFG::BasicBlock::Terminated const &) {
-            assert(!Block.Operations.empty());
-            if (const CFG::BuiltinCall *BuiltinCall =
-                    std::get_if<CFG::BuiltinCall>(
-                        &Block.Operations.back().Operation))
-              assert(BuiltinCall->TerminatesOrReverts);
-            else if (CFG::FunctionCall const *FunctionCall =
-                         std::get_if<CFG::FunctionCall>(
-                             &Block.Operations.back().Operation))
-              assert(!FunctionCall->CanContinue);
-            else
-              llvm_unreachable("Unexpected BB terminator");
-          }},
-      Block.Exit);
-
-  // TODO:
-  // We could assert that the last emitted assembly item terminated or was
-  // an (unconditional) jump.
-  CurrentStack.clear();
-  Assembly.setStackHeight(0);
-}
-
-void EVMOptimizedCodeTransform::operator()() {
-  assert(CurrentStack.empty() && Assembly.getStackHeight() == 0);
-  Assembly.setCurrentLocation(EntryBB.MBB);
-
-  assert(!BlockLabels.count(&EntryBB));
-
-  // Create function entry layout in CurrentStack.
-  if (!MF.getFunction().hasFnAttribute(Attribute::NoReturn))
-    CurrentStack.emplace_back(FunctionReturnLabelSlot{&MF});
-
-  // Calling convention: input arguments are passed in stack such that the
-  // first one specified in the function declaration is passed on the stack TOP.
-  for (auto const &Param : reverse(Parameters))
-    CurrentStack.emplace_back(Param);
-
-  Assembly.setStackHeight(static_cast<int>(CurrentStack.size()));
-
-  // Visit the function entry block.
-  (*this)(EntryBB);
+              // Create the function return layout and jump.
+              createStackLayout(ExitStack);
+              Assembly.appendRet();
+            },
+            [&](CFG::BasicBlock::Unreachable const &) {
+              assert(Block->Operations.empty());
+            },
+            [&](CFG::BasicBlock::Terminated const &) {
+              assert(!Block->Operations.empty());
+              if (const CFG::BuiltinCall *BuiltinCall =
+                      std::get_if<CFG::BuiltinCall>(
+                          &Block->Operations.back().Operation))
+                assert(BuiltinCall->TerminatesOrReverts);
+              else if (CFG::FunctionCall const *FunctionCall =
+                           std::get_if<CFG::FunctionCall>(
+                               &Block->Operations.back().Operation))
+                assert(!FunctionCall->CanContinue);
+              else
+                llvm_unreachable("Unexpected BB terminator");
+            }},
+        Block->Exit);
+  }
 
   Assembly.finalize();
 }
