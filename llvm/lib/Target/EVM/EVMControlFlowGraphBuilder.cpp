@@ -326,7 +326,7 @@ void ControlFlowGraphBuilder::handleReturn(const MachineInstr &MI) {
   // Calling convention: return values are passed in stack such that the
   // last one specified in the RET instruction is passed on the stack TOP.
   std::reverse(Input.begin(), Input.end());
-  CurrentBlock->Exit = CFG::BasicBlock::FunctionReturn{std::move(Input)};
+  CurrentBlock->Exit = CFG::BasicBlock::FunctionReturn{std::move(Input), &MI};
 }
 
 static std::pair<MachineInstr *, MachineInstr *>

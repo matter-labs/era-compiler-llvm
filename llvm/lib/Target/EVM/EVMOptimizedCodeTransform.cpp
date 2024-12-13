@@ -35,11 +35,10 @@ void EVMOptimizedCodeTransform::visitCall(const CFG::FunctionCall &Call) {
   // Emit code.
   const MachineOperand *CalleeOp = Call.Call->explicit_uses().begin();
   assert(CalleeOp->isGlobal());
-  Assembly.appendFuncCall(Call.Call, CalleeOp->getGlobal(),
-                          Call.Call->getNumExplicitDefs() - Call.NumArguments -
-                              (Call.CanContinue ? 1 : 0),
-                          Call.CanContinue ? CallToReturnMCSymbol.at(Call.Call)
-                                           : nullptr);
+  Assembly.emitFuncCall(Call.Call, CalleeOp->getGlobal(),
+                        Call.Call->getNumExplicitDefs() - Call.NumArguments -
+                            (Call.CanContinue ? 1 : 0),
+                        Call.CanContinue);
 
   // Update stack, remove arguments and return label from CurrentStack.
   for (size_t I = 0; I < Call.NumArguments + (Call.CanContinue ? 1 : 0); ++I)
@@ -63,7 +62,7 @@ void EVMOptimizedCodeTransform::visitInst(const CFG::BuiltinCall &Call) {
   // TODO: assert that we got a correct stack for the call.
 
   // Emit code.
-  Assembly.appendInstruction(Call.Builtin);
+  Assembly.emitInst(Call.Builtin);
 
   // Update stack and remove arguments from CurrentStack.
   for (size_t i = 0; i < NumArgs; ++i)
@@ -137,7 +136,7 @@ void EVMOptimizedCodeTransform::createStackLayout(const Stack &TargetStack) {
                Assembly.getStackHeight());
         assert(I > 0 && I < CurrentStack.size());
         if (I <= 16) {
-          Assembly.appendSWAPInstruction(I);
+          Assembly.emitSWAP(I);
         } else {
           int Deficit = static_cast<int>(I) - 16;
           const StackSlot &DeepSlot =
@@ -169,7 +168,7 @@ void EVMOptimizedCodeTransform::createStackLayout(const Stack &TargetStack) {
         if (SlotIt != CurrentStack.rend()) {
           unsigned Depth = std::distance(CurrentStack.rbegin(), SlotIt);
           if (Depth < 16) {
-            Assembly.appendDUPInstruction(static_cast<unsigned>(Depth + 1));
+            Assembly.emitDUP(static_cast<unsigned>(Depth + 1));
             return;
           }
           if (!canBeFreelyGenerated(Slot)) {
@@ -192,22 +191,16 @@ void EVMOptimizedCodeTransform::createStackLayout(const Stack &TargetStack) {
         // Push it.
         std::visit(
             Overload{[&](const LiteralSlot &Literal) {
-                       Assembly.appendConstant(Literal.Value);
+                       Assembly.emitConstant(Literal.Value);
                      },
                      [&](const SymbolSlot &Symbol) {
-                       Assembly.appendSymbol(Symbol.Symbol,
-                                             Symbol.MI->getOpcode());
+                       Assembly.emitSymbol(Symbol.MI, Symbol.Symbol);
                      },
                      [&](const FunctionReturnLabelSlot &) {
                        llvm_unreachable("Cannot produce function return label");
                      },
                      [&](const FunctionCallReturnLabelSlot &ReturnLabel) {
-                       if (!CallToReturnMCSymbol.count(ReturnLabel.Call))
-                         CallToReturnMCSymbol[ReturnLabel.Call] =
-                             Assembly.createFuncRetSymbol();
-
-                       Assembly.appendLabelReference(
-                           CallToReturnMCSymbol[ReturnLabel.Call]);
+                       Assembly.emitLabelReference(ReturnLabel.Call);
                      },
                      [&](const VariableSlot &Variable) {
                        llvm_unreachable("Variable not found on stack");
@@ -219,12 +212,12 @@ void EVMOptimizedCodeTransform::createStackLayout(const Stack &TargetStack) {
                      [&](const JunkSlot &) {
                        // Note: this will always be popped, so we can push
                        // anything.
-                       Assembly.appendConstant(0);
+                       Assembly.emitConstant(0);
                      }},
             Slot);
       },
       // Pop callback.
-      [&]() { Assembly.appendPOPInstruction(); });
+      [&]() { Assembly.emitPOP(); });
 
   assert(Assembly.getStackHeight() == static_cast<int>(CurrentStack.size()));
 }
@@ -287,8 +280,7 @@ void EVMOptimizedCodeTransform::run(CFG::BasicBlock &EntryBB) {
 
     // Might set some slots to junk, if not required by the block.
     CurrentStack = BlockInfo.entryLayout;
-    Assembly.setStackHeight(static_cast<int>(CurrentStack.size()));
-    Assembly.setCurrentLocation(Block->MBB);
+    Assembly.init(Block->MBB, static_cast<int>(CurrentStack.size()));
 
     for (const auto &Operation : Block->Operations) {
       createOperationLayout(Operation);
@@ -331,7 +323,7 @@ void EVMOptimizedCodeTransform::run(CFG::BasicBlock &EntryBB) {
                   CurrentStack, Layout.blockInfos.at(Jump.Target).entryLayout));
 
               if (Jump.UncondJump)
-                Assembly.appendUncondJump(Jump.UncondJump, Jump.Target->MBB);
+                Assembly.emitUncondJump(Jump.UncondJump, Jump.Target->MBB);
               WorkList.emplace_back(Jump.Target);
             },
             [&](CFG::BasicBlock::ConditionalJump const &CondJump) {
@@ -346,7 +338,7 @@ void EVMOptimizedCodeTransform::run(CFG::BasicBlock &EntryBB) {
               // Emit the conditional jump to the non-zero label and update the
               // stored stack.
               assert(CondJump.CondJump);
-              Assembly.appendCondJump(CondJump.CondJump, CondJump.NonZero->MBB);
+              Assembly.emitCondJump(CondJump.CondJump, CondJump.NonZero->MBB);
               CurrentStack.pop_back();
 
               // Assert that we have a valid stack for both jump targets.
@@ -359,8 +351,8 @@ void EVMOptimizedCodeTransform::run(CFG::BasicBlock &EntryBB) {
 
               // Generate unconditional jump if needed.
               if (CondJump.UncondJump)
-                Assembly.appendUncondJump(CondJump.UncondJump,
-                                          CondJump.Zero->MBB);
+                Assembly.emitUncondJump(CondJump.UncondJump,
+                                        CondJump.Zero->MBB);
               WorkList.emplace_back(CondJump.NonZero);
               WorkList.emplace_back(CondJump.Zero);
             },
@@ -375,7 +367,7 @@ void EVMOptimizedCodeTransform::run(CFG::BasicBlock &EntryBB) {
 
               // Create the function return layout and jump.
               createStackLayout(ExitStack);
-              Assembly.appendRet();
+              Assembly.emitRet(FuncReturn.Ret);
             },
             [&](CFG::BasicBlock::Unreachable const &) {
               assert(Block->Operations.empty());

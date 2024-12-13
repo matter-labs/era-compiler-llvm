@@ -16,10 +16,7 @@
 #ifndef LLVM_LIB_TARGET_EVM_EVMASSEMBLY_H
 #define LLVM_LIB_TARGET_EVM_EVMASSEMBLY_H
 
-#include "EVM.h"
-
 #include "EVMSubtarget.h"
-#include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "llvm/CodeGen/MachineFunction.h"
 
 namespace llvm {
@@ -29,66 +26,53 @@ class MCSymbol;
 
 class EVMAssembly {
 private:
-  using MIIter = MachineBasicBlock::iterator;
-
-  MachineFunction *MF;
+  MachineFunction &MF;
   const EVMInstrInfo *TII;
-
   int StackHeight = 0;
-  MIIter CurMIIt;
-  MachineBasicBlock *CurMBB;
-  DenseSet<const MachineInstr *> AssemblyInstrs;
+  MachineBasicBlock *CurMBB{};
+  DenseMap<const MachineInstr *, MCSymbol *> CallReturnSyms;
 
 public:
-  EVMAssembly(MachineFunction *MF, const EVMInstrInfo *TII)
-      : MF(MF), TII(TII) {}
+  explicit EVMAssembly(MachineFunction &MF)
+      : MF(MF), TII(MF.getSubtarget<EVMSubtarget>().getInstrInfo()) {}
 
   // Retrieve the current height of the stack.
   // This does not have to be zero at the MF beginning because of
   // possible arguments.
   int getStackHeight() const;
 
-  void setStackHeight(int Height);
+  void init(MachineBasicBlock *MBB, int Height);
 
-  void setCurrentLocation(MachineBasicBlock *MBB);
+  void emitInst(const MachineInstr *MI);
 
-  void appendInstruction(MachineInstr *MI);
+  void emitSWAP(unsigned Depth);
 
-  void appendSWAPInstruction(unsigned Depth);
+  void emitDUP(unsigned Depth);
 
-  void appendDUPInstruction(unsigned Depth);
+  void emitPOP();
 
-  void appendPOPInstruction();
+  void emitConstant(const APInt &Val);
 
-  void appendConstant(const APInt &Val);
+  void emitSymbol(const MachineInstr *MI, MCSymbol *Symbol);
 
-  void appendSymbol(MCSymbol *Symbol, unsigned Opcode);
+  void emitConstant(uint64_t Val);
 
-  void appendConstant(uint64_t Val);
+  void emitFuncCall(const MachineInstr *MI, const GlobalValue *Func,
+                    int stackAdj, bool WillReturn);
 
-  void appendFuncCall(const MachineInstr *MI, const llvm::GlobalValue *Func,
-                      int stackAdj, MCSymbol *RetSym = nullptr);
+  void emitRet(const MachineInstr *MI);
 
-  void appendRet();
+  void emitCondJump(const MachineInstr *MI, MachineBasicBlock *Target);
 
-  void appendCondJump(MachineInstr *MI, MachineBasicBlock *Target);
+  void emitUncondJump(const MachineInstr *MI, MachineBasicBlock *Target);
 
-  void appendUncondJump(MachineInstr *MI, MachineBasicBlock *Target);
+  void emitLabelReference(const MachineInstr *Call);
 
-  void appendLabelReference(MCSymbol *Label);
-
-  MCSymbol *createFuncRetSymbol();
-
-  // Erases unused codegen-only instructions and removes register operands
-  // of the remaining ones.
+  // Erases unused codegen-only instructions.
   void finalize();
 
 private:
-  void stackifyInstruction(MachineInstr *MI);
-
-#ifndef NDEBUG
-  void dumpInst(const MachineInstr *MI) const;
-#endif // NDEBUG
+  void verify(const MachineInstr *MI) const;
 };
 
 } // namespace llvm
