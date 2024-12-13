@@ -103,29 +103,11 @@ iterator_range<typename T::const_reverse_iterator> get_reverse(const T &t) {
   return llvm::make_range(t.rbegin(), t.rend());
 }
 
-// Returns a pointer to the entry of map \p m at the key \p k,
-// if there is one, and nullptr otherwise.
-template <typename M, typename K>
-decltype(auto) valueOrNullptr(M &&m, K const &k) {
-  auto it = m.find(k);
-  return (it == m.end()) ? nullptr : &it->second;
-}
-
 template <typename R> auto to_vector(R &&r) {
   std::vector<typename decltype(r.begin())::value_type> v;
   v.assign(r.begin(), r.end());
   return v;
 }
-
-/// RAII utility class whose destructor calls a given function.
-class ScopeGuard {
-public:
-  explicit ScopeGuard(std::function<void(void)> Func) : Func(std::move(Func)) {}
-  ~ScopeGuard() { Func(); }
-
-private:
-  std::function<void(void)> Func;
-};
 
 template <typename T, typename V> void emplace_back_unique(T &t, V &&v) {
   if (t.end() == std::find(t.begin(), t.end(), v))
