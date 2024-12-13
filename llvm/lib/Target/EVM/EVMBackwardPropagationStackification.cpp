@@ -24,7 +24,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVM.h"
-#include "EVMAssembly.h"
 #include "EVMControlFlowGraphBuilder.h"
 #include "EVMOptimizedCodeTransform.h"
 #include "EVMSubtarget.h"
@@ -86,7 +85,6 @@ bool EVMBPStackification::runOnMachineFunction(MachineFunction &MF) {
   });
 
   MachineRegisterInfo &MRI = MF.getRegInfo();
-  const EVMInstrInfo *TII = MF.getSubtarget<EVMSubtarget>().getInstrInfo();
   auto &LIS = getAnalysis<LiveIntervals>();
   MachineLoopInfo *MLI = &getAnalysis<MachineLoopInfo>();
 
@@ -95,10 +93,8 @@ bool EVMBPStackification::runOnMachineFunction(MachineFunction &MF) {
 
   assert(MRI.tracksLiveness() && "Stackification expects liveness");
 
-  EVMAssembly Assembly(&MF, TII);
   std::unique_ptr<CFG> Cfg = ControlFlowGraphBuilder::build(MF, LIS, MLI);
   StackLayout Layout = StackLayoutGenerator::run(*Cfg);
-  EVMOptimizedCodeTransform(Assembly, Layout, MF)
-      .run(Cfg->getBlock(&Cfg->MF.front()));
+  EVMOptimizedCodeTransform(Layout, MF).run(Cfg->getBlock(&Cfg->MF.front()));
   return true;
 }
