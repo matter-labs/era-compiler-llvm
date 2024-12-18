@@ -34,27 +34,29 @@ private:
   public:
     explicit CodeEmitter(MachineFunction &MF)
         : MF(MF), TII(MF.getSubtarget<EVMSubtarget>().getInstrInfo()) {}
-    int getStackHeight() const;
-    void init(MachineBasicBlock *MBB, int Height);
+    size_t stackHeight() const;
+    void enterMBB(MachineBasicBlock *MBB, int Height);
     void emitInst(const MachineInstr *MI);
     void emitSWAP(unsigned Depth);
     void emitDUP(unsigned Depth);
     void emitPOP();
     void emitConstant(const APInt &Val);
-    void emitSymbol(const MachineInstr *MI, MCSymbol *Symbol);
     void emitConstant(uint64_t Val);
-    void emitFuncCall(const MachineInstr *MI, const GlobalValue *Func,
-                      int StackAdj, bool WillReturn);
+    void emitSymbol(const MachineInstr *MI, MCSymbol *Symbol);
+    void emitFuncCall(const MachineInstr *MI);
     void emitRet(const MachineInstr *MI);
     void emitCondJump(const MachineInstr *MI, MachineBasicBlock *Target);
     void emitUncondJump(const MachineInstr *MI, MachineBasicBlock *Target);
     void emitLabelReference(const MachineInstr *Call);
+    /// Remove all the instructions that are not stackified and set that all
+    /// instructions are stackified in a function from now on. Also, invalidate
+    /// the register liveness, as it has no meaning in a stackified code.
     void finalize();
 
   private:
     MachineFunction &MF;
     const EVMInstrInfo *TII;
-    int StackHeight = 0;
+    size_t StackHeight = 0;
     MachineBasicBlock *CurMBB{};
     DenseMap<const MachineInstr *, MCSymbol *> CallReturnSyms;
 
@@ -77,6 +79,9 @@ private:
   /// Creates the Op.Input stack layout from the 'CurrentStack' taking into
   /// account commutative property of the operation.
   void createOperationLayout(const CFG::Operation &Op);
+
+  /// Remove the arguments from the stack and push the return values.
+  void adjustStackForInst(const MachineInstr *MI, size_t NumArgs);
 
   /// Generate code for the function call \p Call.
   void visitCall(const CFG::FunctionCall &Call);
