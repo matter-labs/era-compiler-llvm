@@ -120,10 +120,6 @@ void EVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
     // In case a function has a return label, emit it, and also
     // emit a JUMPDEST instruction.
     if (MI->getNumExplicitOperands() > 1) {
-      // We need to emit ret label after JUMP instruction, so we couldn't
-      // use setPostInstrSymbol since label would be created after
-      // JUMPDEST instruction. To overcome this, we added MCSymbol operand
-      // and we are emitting label manually here.
       assert(MI->getOperand(1).isMCSymbol() &&
              "The second operand of PseudoCALL should be a MCSymbol.");
       OutStreamer->emitLabel(MI->getOperand(1).getMCSymbol());
