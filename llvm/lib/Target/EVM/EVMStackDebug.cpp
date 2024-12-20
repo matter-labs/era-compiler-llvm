@@ -130,7 +130,7 @@ void StackLayoutPrinter::printBlock(MachineBasicBlock const &Block) {
     assert(Operation.Input.size() <= EntryLayout.size());
     for (size_t i = 0; i < Operation.Input.size(); ++i)
       EntryLayout.pop_back();
-    EntryLayout += Operation.Output;
+    EntryLayout.append(Operation.Output);
     OS << stackToString(EntryLayout) << "\n";
   }
   OS << "\n";
