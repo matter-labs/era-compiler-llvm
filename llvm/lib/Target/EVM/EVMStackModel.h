@@ -157,7 +157,7 @@ using StackSlot =
                  JunkSlot>;
 
 /// The stack top is the last element of the vector.
-using Stack = std::vector<StackSlot>;
+using Stack = SmallVector<StackSlot>;
 
 /// Returns true if Slot can be materialized on the stack at any time.
 inline bool isRematerializable(const StackSlot &Slot) {
@@ -181,7 +181,7 @@ struct Assignment {
   /// The variables being assigned to also occur as 'Output' in the
   /// 'Operation' containing the assignment, but are also stored here for
   /// convenience.
-  std::vector<VariableSlot> Variables;
+  SmallVector<VariableSlot> Variables;
 };
 
 struct Operation {
@@ -200,17 +200,17 @@ public:
   Stack getInstrInput(const MachineInstr &MI) const;
   Stack getInstrOutput(const MachineInstr &MI) const;
   Stack getReturnArguments(const MachineInstr &MI) const;
-  const std::vector<Operation> &
+  const SmallVector<Operation> &
   getOperations(const MachineBasicBlock *MBB) const {
     return OperationsMap.at(MBB);
   }
 
 private:
-  void createOperation(MachineInstr &MI, std::vector<Operation> &Ops) const;
+  void createOperation(MachineInstr &MI, SmallVector<Operation> &Ops) const;
 
   MachineFunction &MF;
   const LiveIntervals &LIS;
-  std::map<const MachineBasicBlock *, std::vector<Operation>> OperationsMap;
+  DenseMap<const MachineBasicBlock *, SmallVector<Operation>> OperationsMap;
 };
 
 } // namespace llvm
