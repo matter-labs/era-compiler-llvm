@@ -24,7 +24,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVM.h"
-#include "EVMControlFlowGraphBuilder.h"
 #include "EVMStackifyCodeEmitter.h"
 #include "EVMSubtarget.h"
 #include "llvm/CodeGen/LiveIntervals.h"
@@ -92,9 +91,10 @@ bool EVMBPStackification::runOnMachineFunction(MachineFunction &MF) {
   MRI.leaveSSA();
 
   assert(MRI.tracksLiveness() && "Stackification expects liveness");
-
-  std::unique_ptr<CFG> Cfg = ControlFlowGraphBuilder::build(MF, LIS, MLI);
-  StackLayout Layout = StackLayoutGenerator::run(*Cfg);
-  EVMStackifyCodeEmitter(Layout, MF).run(Cfg->getBlock(&Cfg->MF.front()));
+  EVMMachineCFGInfo CFGInfo(MF, MLI);
+  EVMStackModel StackModel(MF, LIS);
+  std::unique_ptr<EVMStackLayout> Layout =
+      EVMStackLayoutGenerator(MF, StackModel, CFGInfo).run();
+  EVMStackifyCodeEmitter(*Layout, StackModel, CFGInfo, MF).run();
   return true;
 }
