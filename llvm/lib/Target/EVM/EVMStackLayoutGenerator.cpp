@@ -34,16 +34,16 @@ using namespace llvm;
 namespace {
 /// Returns all stack too deep errors that would occur when shuffling \p Source
 /// to \p Target.
-std::vector<EVMStackLayoutGenerator::StackTooDeep>
+SmallVector<EVMStackLayoutGenerator::StackTooDeep>
 findStackTooDeep(Stack const &Source, Stack const &Target) {
   Stack CurrentStack = Source;
-  std::vector<EVMStackLayoutGenerator::StackTooDeep> Errors;
+  SmallVector<EVMStackLayoutGenerator::StackTooDeep> Errors;
 
   auto getVariableChoices = [](auto &&SlotRange) {
-    std::vector<Register> Result;
+    SmallVector<Register> Result;
     for (auto const &Slot : SlotRange)
       if (auto const *VarSlot = std::get_if<VariableSlot>(&Slot))
-        if (!EVMUtils::contains(Result, VarSlot->VirtualReg))
+        if (!is_contained(Result, VarSlot->VirtualReg))
           Result.push_back(VarSlot->VirtualReg);
     return Result;
   };
@@ -54,18 +54,17 @@ findStackTooDeep(Stack const &Source, Stack const &Target) {
         if (I > 16)
           Errors.emplace_back(EVMStackLayoutGenerator::StackTooDeep{
               I - 16,
-              getVariableChoices(EVMUtils::take_last(CurrentStack, I + 1))});
+              getVariableChoices(EVMUtils::take_back(CurrentStack, I + 1))});
       },
       [&](StackSlot const &Slot) {
         if (isRematerializable(Slot))
           return;
 
-        if (auto depth =
-                EVMUtils::findOffset(EVMUtils::get_reverse(CurrentStack), Slot);
-            depth && *depth >= 16)
+        if (auto Depth = EVMUtils::offset(reverse(CurrentStack), Slot);
+            Depth && *Depth >= 16)
           Errors.emplace_back(EVMStackLayoutGenerator::StackTooDeep{
-              *depth - 15, getVariableChoices(
-                               EVMUtils::take_last(CurrentStack, *depth + 1))});
+              *Depth - 15, getVariableChoices(
+                               EVMUtils::take_back(CurrentStack, *Depth + 1))});
       },
       [&]() {});
   return Errors;
@@ -82,7 +81,7 @@ Stack createIdealLayout(const Stack &OperationOutput, const Stack &Post,
   struct PreviousSlot {
     size_t slot;
   };
-  using LayoutT = std::vector<std::variant<PreviousSlot, StackSlot>>;
+  using LayoutT = SmallVector<std::variant<PreviousSlot, StackSlot>>;
 
   // Determine the number of slots that have to be on stack before executing the
   // operation (excluding the inputs of the operation itself). That is slots
@@ -90,7 +89,7 @@ Stack createIdealLayout(const Stack &OperationOutput, const Stack &Post,
   // operation.
   size_t PreOperationLayoutSize = Post.size();
   for (auto const &Slot : Post)
-    if (EVMUtils::contains(OperationOutput, Slot) || GenerateSlotOnTheFly(Slot))
+    if (is_contained(OperationOutput, Slot) || GenerateSlotOnTheFly(Slot))
       --PreOperationLayoutSize;
 
   // The symbolic layout directly after the operation has the form
@@ -98,7 +97,7 @@ Stack createIdealLayout(const Stack &OperationOutput, const Stack &Post,
   LayoutT Layout;
   for (size_t Index = 0; Index < PreOperationLayoutSize; ++Index)
     Layout.emplace_back(PreviousSlot{Index});
-  Layout += OperationOutput;
+  Layout.append(OperationOutput.begin(), OperationOutput.end());
 
   // Shortcut for trivial case.
   if (Layout.empty())
@@ -131,16 +130,15 @@ Stack createIdealLayout(const Stack &OperationOutput, const Stack &Post,
 
     bool isCompatible(size_t Source, size_t Target) {
       return Source < Layout.size() && Target < Post.size() &&
-             (std::holds_alternative<JunkSlot>(Post.at(Target)) ||
+             (std::holds_alternative<JunkSlot>(Post[Target]) ||
               std::visit(Overload{[&](const PreviousSlot &) {
-                                    return !Outputs.count(Post.at(Target)) &&
-                                           !GenerateSlotOnTheFly(
-                                               Post.at(Target));
+                                    return !Outputs.count(Post[Target]) &&
+                                           !GenerateSlotOnTheFly(Post[Target]);
                                   },
                                   [&](const StackSlot &S) {
-                                    return S == Post.at(Target);
+                                    return S == Post[Target];
                                   }},
-                         Layout.at(Source)));
+                         Layout[Source]));
     }
 
     bool sourceIsSame(size_t Lhs, size_t Rhs) {
@@ -151,33 +149,32 @@ Stack createIdealLayout(const Stack &OperationOutput, const Stack &Post,
                 return Lhs == Rhs;
               },
               [&](auto const &, auto const &) { return false; }},
-          Layout.at(Lhs), Layout.at(Rhs));
+          Layout[Lhs], Layout[Rhs]);
     }
 
     int sourceMultiplicity(size_t Offset) {
       return std::visit(
           Overload{[&](PreviousSlot const &) { return 0; },
                    [&](StackSlot const &S) { return Mult.at(S); }},
-          Layout.at(Offset));
+          Layout[Offset]);
     }
 
     int targetMultiplicity(size_t Offset) {
-      if (!Outputs.count(Post.at(Offset)) &&
-          !GenerateSlotOnTheFly(Post.at(Offset)))
+      if (!Outputs.count(Post[Offset]) && !GenerateSlotOnTheFly(Post[Offset]))
         return 0;
-      return Mult.at(Post.at(Offset));
+      return Mult.at(Post[Offset]);
     }
 
     bool targetIsArbitrary(size_t Offset) {
       return Offset < Post.size() &&
-             std::holds_alternative<JunkSlot>(Post.at(Offset));
+             std::holds_alternative<JunkSlot>(Post[Offset]);
     }
 
     void swap(size_t I) {
       assert(!std::holds_alternative<PreviousSlot>(
-                 Layout.at(Layout.size() - I - 1)) ||
+                 Layout[Layout.size() - I - 1]) ||
              !std::holds_alternative<PreviousSlot>(Layout.back()));
-      std::swap(Layout.at(Layout.size() - I - 1), Layout.back());
+      std::swap(Layout[Layout.size() - I - 1], Layout.back());
     }
 
     size_t sourceSize() { return Layout.size(); }
@@ -186,7 +183,7 @@ Stack createIdealLayout(const Stack &OperationOutput, const Stack &Post,
 
     void pop() { Layout.pop_back(); }
 
-    void pushOrDupTarget(size_t Offset) { Layout.push_back(Post.at(Offset)); }
+    void pushOrDupTarget(size_t Offset) { Layout.push_back(Post[Offset]); }
   };
 
   Shuffler<ShuffleOperations>::shuffle(Layout, Post, GenerateSlotOnTheFly);
@@ -199,12 +196,12 @@ Stack createIdealLayout(const Stack &OperationOutput, const Stack &Post,
   // VariableSlot{"tmp"}, then we want the variable tmp in the slot at offset 2
   // in the layout before the operation.
   assert(Layout.size() == Post.size());
-  std::vector<std::optional<StackSlot>> IdealLayout(Post.size(), std::nullopt);
+  SmallVector<std::optional<StackSlot>> IdealLayout(Post.size(), std::nullopt);
   for (unsigned Idx = 0; Idx < std::min(Layout.size(), Post.size()); ++Idx) {
     auto &Slot = Post[Idx];
     auto &IdealPosition = Layout[Idx];
     if (PreviousSlot *PrevSlot = std::get_if<PreviousSlot>(&IdealPosition))
-      IdealLayout.at(PrevSlot->slot) = Slot;
+      IdealLayout[PrevSlot->slot] = Slot;
   }
 
   // The tail of layout must have contained the operation outputs and will not
@@ -268,11 +265,11 @@ Stack EVMStackLayoutGenerator::propagateStackThroughOperation(
   if (auto const *Assign = std::get_if<Assignment>(&Operation.Operation))
     for (auto &StackSlot : IdealStack)
       if (auto const *VarSlot = std::get_if<VariableSlot>(&StackSlot))
-        assert(!EVMUtils::contains(Assign->Variables, *VarSlot));
+        assert(!is_contained(Assign->Variables, *VarSlot));
 
   // Since stack+Operation.output can be easily shuffled to ExitLayout, the
   // desired layout before the operation is stack+Operation.input;
-  IdealStack += Operation.Input;
+  IdealStack.append(Operation.Input);
 
   // Store the exact desired operation entry layout. The stored layout will be
   // recreated by the code transform before executing the operation. However,
@@ -286,9 +283,8 @@ Stack EVMStackLayoutGenerator::propagateStackThroughOperation(
   while (!IdealStack.empty()) {
     if (isRematerializable(IdealStack.back()))
       IdealStack.pop_back();
-    else if (auto Offset = EVMUtils::findOffset(
-                 EVMUtils::drop_first(EVMUtils::get_reverse(IdealStack), 1),
-                 IdealStack.back())) {
+    else if (auto Offset = EVMUtils::offset(drop_begin(reverse(IdealStack), 1),
+                                            IdealStack.back())) {
       if (*Offset + 2 < 16)
         IdealStack.pop_back();
       else
@@ -304,10 +300,8 @@ Stack EVMStackLayoutGenerator::propagateStackThroughBlock(
     Stack ExitStack, const MachineBasicBlock *Block,
     bool AggressiveStackCompression) {
   Stack CurrentStack = ExitStack;
-  const std::vector<Operation> &Operations = StackModel.getOperations(Block);
-  auto I = Operations.crbegin(), E = Operations.crend();
-  for (; I != E; ++I) {
-    Stack NewStack = propagateStackThroughOperation(CurrentStack, *I,
+  for (const Operation &Op : reverse(StackModel.getOperations(Block))) {
+    Stack NewStack = propagateStackThroughOperation(CurrentStack, Op,
                                                     AggressiveStackCompression);
     if (!AggressiveStackCompression &&
         !findStackTooDeep(NewStack, CurrentStack).empty())
@@ -359,8 +353,7 @@ void EVMStackLayoutGenerator::processEntryPoint(
       auto B = EntryLayout.begin(), E = EntryLayout.end();
       const Stack &ExitLayout = MBBExitLayoutMap[JumpingBlock];
       if (std::any_of(B, E, [ExitLayout](const StackSlot &Slot) {
-            return std::find(ExitLayout.begin(), ExitLayout.end(), Slot) ==
-                   ExitLayout.end();
+            return find(ExitLayout, Slot) == ExitLayout.end();
           })) {
         // In particular we can visit backwards starting from 'JumpingBlock'
         // and mark all entries to-be-visited again until we hit 'Target'.
@@ -403,7 +396,7 @@ void EVMStackLayoutGenerator::processEntryPoint(
 
   // Calling convention: input arguments are passed in stack such that the
   // first one specified in the function declaration is passed on the stack TOP.
-  EntryStack += StackModel.getFunctionParameters();
+  EntryStack.append(StackModel.getFunctionParameters());
   std::reverse(IsNoReturn ? EntryStack.begin() : std::next(EntryStack.begin()),
                EntryStack.end());
   MBBEntryLayoutMap[Entry] = std::move(EntryStack);
@@ -517,8 +510,7 @@ void EVMStackLayoutGenerator::stitchConditionalJumps(
         // Whatever the block being jumped to does not actually require,
         // can be marked as junk.
         for (StackSlot &Slot : NewEntryLayout) {
-          if (std::find(OriginalEntryLayout.begin(), OriginalEntryLayout.end(),
-                        Slot) == OriginalEntryLayout.end())
+          if (find(OriginalEntryLayout, Slot) == OriginalEntryLayout.end())
             Slot = JunkSlot{};
         }
 #ifndef NDEBUG
@@ -526,8 +518,7 @@ void EVMStackLayoutGenerator::stitchConditionalJumps(
         // actually present or can be generated.
         for (StackSlot const &Slot : OriginalEntryLayout)
           assert(isRematerializable(Slot) ||
-                 std::find(NewEntryLayout.begin(), NewEntryLayout.end(),
-                           Slot) != NewEntryLayout.end());
+                 find(NewEntryLayout, Slot) != NewEntryLayout.end());
 #endif // NDEBUG
         return NewEntryLayout;
       };
@@ -558,25 +549,29 @@ Stack EVMStackLayoutGenerator::combineStack(Stack const &Stack1,
   }
 
   Stack Stack1Tail, Stack2Tail;
-  for (auto Slot : EVMUtils::drop_first(Stack1, CommonPrefix.size()))
+  for (const auto &Slot : drop_begin(Stack1, CommonPrefix.size()))
     Stack1Tail.emplace_back(Slot);
 
-  for (auto Slot : EVMUtils::drop_first(Stack2, CommonPrefix.size()))
+  for (const auto &Slot : drop_begin(Stack2, CommonPrefix.size()))
     Stack2Tail.emplace_back(Slot);
 
-  if (Stack1Tail.empty())
-    return CommonPrefix + compressStack(Stack2Tail);
+  if (Stack1Tail.empty()) {
+    CommonPrefix.append(compressStack(Stack2Tail));
+    return CommonPrefix;
+  }
 
-  if (Stack2Tail.empty())
-    return CommonPrefix + compressStack(Stack1Tail);
+  if (Stack2Tail.empty()) {
+    CommonPrefix.append(compressStack(Stack1Tail));
+    return CommonPrefix;
+  }
 
   Stack Candidate;
   for (auto Slot : Stack1Tail)
-    if (!EVMUtils::contains(Candidate, Slot))
+    if (!is_contained(Candidate, Slot))
       Candidate.emplace_back(Slot);
 
   for (auto Slot : Stack2Tail)
-    if (!EVMUtils::contains(Candidate, Slot))
+    if (!is_contained(Candidate, Slot))
       Candidate.emplace_back(Slot);
 
   {
@@ -603,8 +598,8 @@ Stack EVMStackLayoutGenerator::combineStack(Stack const &Stack1,
         return;
 
       Stack Tmp = CommonPrefix;
-      Tmp += TestStack;
-      auto Depth = EVMUtils::findOffset(EVMUtils::get_reverse(Tmp), Slot);
+      Tmp.append(TestStack);
+      auto Depth = EVMUtils::offset(reverse(Tmp), Slot);
       if (Depth && *Depth >= 16)
         NumOps += 1000;
     };
@@ -618,7 +613,7 @@ Stack EVMStackLayoutGenerator::combineStack(Stack const &Stack1,
   size_t N = Candidate.size();
   Stack BestCandidate = Candidate;
   size_t BestCost = evaluate(Candidate);
-  std::vector<size_t> C(N, 0);
+  SmallVector<size_t> C(N, 0);
   size_t I = 1;
   while (I < N) {
     if (C[I] < I) {
@@ -644,7 +639,8 @@ Stack EVMStackLayoutGenerator::combineStack(Stack const &Stack1,
     }
   }
 
-  return CommonPrefix + BestCandidate;
+  CommonPrefix.append(BestCandidate);
+  return CommonPrefix;
 }
 
 Stack EVMStackLayoutGenerator::compressStack(Stack CurStack) {
@@ -652,7 +648,7 @@ Stack EVMStackLayoutGenerator::compressStack(Stack CurStack) {
   do {
     if (FirstDupOffset) {
       if (*FirstDupOffset != (CurStack.size() - 1))
-        std::swap(CurStack.at(*FirstDupOffset), CurStack.back());
+        std::swap(CurStack[*FirstDupOffset], CurStack.back());
       CurStack.pop_back();
       FirstDupOffset.reset();
     }
@@ -665,9 +661,8 @@ Stack EVMStackLayoutGenerator::compressStack(Stack CurStack) {
         break;
       }
 
-      if (auto DupDepth = EVMUtils::findOffset(
-              EVMUtils::drop_first(EVMUtils::get_reverse(CurStack), Depth + 1),
-              Slot)) {
+      if (auto DupDepth = EVMUtils::offset(
+              drop_begin(reverse(CurStack), Depth + 1), Slot)) {
         if (Depth + *DupDepth <= 16) {
           FirstDupOffset = CurStack.size() - Depth - 1;
           break;
@@ -693,7 +688,7 @@ size_t llvm::EvaluateStackTransform(Stack Source, Stack const &Target) {
     if (isRematerializable(Slot))
       OpGas += 3;
     else {
-      auto Depth = EVMUtils::findOffset(EVMUtils::get_reverse(Source), Slot);
+      auto Depth = EVMUtils::offset(reverse(Source), Slot);
       if (!Depth)
         llvm_unreachable("No slot in the stack");
 
@@ -717,17 +712,19 @@ void EVMStackLayoutGenerator::fillInJunk(const MachineBasicBlock *Block) {
     EVMUtils::BreadthFirstSearch<const MachineBasicBlock *> BFS{{Entry}};
 
     BFS.run([&](const MachineBasicBlock *Block, auto VisitSucc) {
-      const Stack &EntryLayout = MBBEntryLayoutMap.at(Block);
-      MBBEntryLayoutMap[Block] = Stack(NumJunk, JunkSlot{}) + EntryLayout;
+      Stack EntryTmp(NumJunk, JunkSlot{});
+      EntryTmp.append(MBBEntryLayoutMap.at(Block));
+      MBBEntryLayoutMap[Block] = std::move(EntryTmp);
 
       for (const Operation &Operation : StackModel.getOperations(Block)) {
-        const Stack &OpEntryLayout = OperationEntryLayoutMap.at(&Operation);
-        OperationEntryLayoutMap[&Operation] =
-            Stack(NumJunk, JunkSlot{}) + OpEntryLayout;
+        Stack OpEntryTmp(NumJunk, JunkSlot{});
+        OpEntryTmp.append(OperationEntryLayoutMap.at(&Operation));
+        OperationEntryLayoutMap[&Operation] = std::move(OpEntryTmp);
       }
 
-      const Stack &ExitLayout = MBBExitLayoutMap.at(Block);
-      MBBExitLayoutMap[Block] = Stack(NumJunk, JunkSlot{}) + ExitLayout;
+      Stack ExitTmp(NumJunk, JunkSlot{});
+      ExitTmp.append(MBBExitLayoutMap.at(Block));
+      MBBExitLayoutMap[Block] = std::move(ExitTmp);
 
       for (const MachineBasicBlock *Succ : Block->successors())
         VisitSucc(Succ);
@@ -742,8 +739,9 @@ void EVMStackLayoutGenerator::fillInJunk(const MachineBasicBlock *Block) {
     size_t BestNumJunk = 0;
     size_t MaxJunk = EntryLayout.size();
     for (size_t NumJunk = 1; NumJunk <= MaxJunk; ++NumJunk) {
-      size_t Cost = EvaluateStackTransform(
-          EntryLayout, Stack{NumJunk, JunkSlot{}} + TargetLayout);
+      Stack JunkedTarget(NumJunk, JunkSlot{});
+      JunkedTarget.append(TargetLayout);
+      size_t Cost = EvaluateStackTransform(EntryLayout, JunkedTarget);
       if (Cost < BestCost) {
         BestCost = Cost;
         BestNumJunk = NumJunk;
@@ -770,7 +768,7 @@ void EVMStackLayoutGenerator::fillInJunk(const MachineBasicBlock *Block) {
             !CFGInfo.isOnPathToFuncReturn(Block)) {
           const Stack EntryLayout = MBBEntryLayoutMap.at(Block);
           const Stack &ExitLayout = MBBExitLayoutMap.at(Block);
-          const std::vector<Operation> &Ops = StackModel.getOperations(Block);
+          const SmallVector<Operation> &Ops = StackModel.getOperations(Block);
           Stack const &NextLayout =
               Ops.empty() ? ExitLayout
                           : OperationEntryLayoutMap.at(&Ops.front());

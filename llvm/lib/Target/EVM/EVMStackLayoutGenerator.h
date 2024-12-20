@@ -66,7 +66,7 @@ public:
     /// Number of slots that need to be saved.
     size_t deficit = 0;
     /// Set of variables, eliminating which would decrease the stack deficit.
-    std::vector<Register> variableChoices;
+    SmallVector<Register> variableChoices;
   };
 
   EVMStackLayoutGenerator(const MachineFunction &MF,
@@ -123,7 +123,7 @@ private:
 
   /// Walks through the CFG and reports any stack too deep errors that would
   /// occur when generating code for it without countermeasures.
-  std::vector<StackTooDeep>
+  SmallVector<StackTooDeep>
   reportStackTooDeep(const MachineBasicBlock &Entry) const;
 
   /// Returns a copy of \p Stack stripped of all duplicates and slots that can
