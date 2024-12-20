@@ -235,7 +235,7 @@ void EVMStackifyCodeEmitter::visitCall(const FunctionCall &Call) {
   if (EVMUtils::callWillReturn(Call.MI)) {
     [[maybe_unused]] const auto *returnLabelSlot =
         std::get_if<FunctionCallReturnLabelSlot>(
-            &CurrentStack.at(CurrentStack.size() - NumArgs));
+            &CurrentStack[CurrentStack.size() - NumArgs]);
     assert(returnLabelSlot && returnLabelSlot->Call == Call.MI);
   }
 
@@ -313,8 +313,7 @@ void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
           Emitter.emitSWAP(I);
         } else {
           int Deficit = static_cast<int>(I) - 16;
-          const StackSlot &DeepSlot =
-              CurrentStack.at(CurrentStack.size() - I - 1);
+          const StackSlot &DeepSlot = CurrentStack[CurrentStack.size() - I - 1];
           std::string VarNameDeep = SlotVariableName(DeepSlot);
           std::string VarNameTop = SlotVariableName(CurrentStack.back());
           std::string Msg =

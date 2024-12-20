@@ -15,14 +15,13 @@
 #ifndef LLVM_LIB_TARGET_EVM_EVMHELPERUTILITIES_H
 #define LLVM_LIB_TARGET_EVM_EVMHELPERUTILITIES_H
 
+#include "llvm/ADT/DenseSet.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/iterator_range.h"
-#include <algorithm>
-#include <cassert>
-#include <list>
+#include <deque>
 #include <numeric>
 #include <optional>
-#include <set>
 
 namespace llvm {
 
@@ -33,90 +32,32 @@ template <class... Ts> struct Overload : Ts... {
 };
 template <class... Ts> Overload(Ts...) -> Overload<Ts...>;
 
-template <class T> static inline SmallVector<T> iota17(T begin, T end) {
-  SmallVector<T> R(end - begin);
-  std::iota(R.begin(), R.end(), begin);
+namespace EVMUtils {
+bool callWillReturn(const MachineInstr *Call);
+
+/// Return a vector, containing sequentially increasing values from \p Begin
+/// to \p End.
+template <class T> static inline SmallVector<T> iota(T Begin, T End) {
+  SmallVector<T> R(End - Begin);
+  std::iota(R.begin(), R.end(), Begin);
   return R;
 }
 
-/// Concatenate the contents of a container into a vector
-template <class T, class U>
-std::vector<T> &operator+=(std::vector<T> &lhs, U &rhs) {
-  for (auto const &elm : rhs)
-    lhs.push_back(T(elm));
-  return lhs;
-}
-
-template <class T, class U>
-std::vector<T> &operator+=(std::vector<T> &lhs, U &&rhs) {
-  std::move(rhs.begin(), rhs.end(), std::back_inserter(lhs));
-  return lhs;
-}
-
-/// Concatenate two vectors of elements.
-template <class T>
-inline std::vector<T> operator+(std::vector<T> const &lhs,
-                                std::vector<T> const &rhs) {
-  std::vector<T> result(lhs);
-  result += rhs;
-  return result;
-}
-
-/// Concatenate two vectors of elements, moving them.
-template <class T>
-inline std::vector<T> operator+(std::vector<T> &&lhs, std::vector<T> &&rhs) {
-  std::vector<T> result(std::move(lhs));
-  assert(&lhs != &rhs);
-  result += std::move(rhs);
-  return result;
-}
-
-namespace EVMUtils {
-
-bool callWillReturn(const MachineInstr *Call);
-
-template <class T, class V> bool contains(const T &t, const V &v) {
-  return std::end(t) != std::find(std::begin(t), std::end(t), v);
-}
-
+/// Return the number of hops from the beginning of the \p RangeOrContainer
+/// to the \p Item. If no \p Item is found in the \p RangeOrContainer,
+/// std::nullopt is returned.
 template <typename T, typename V>
-std::optional<size_t> findOffset(T &&t, V &&v) {
-  auto begin = std::begin(t);
-  auto end = std::end(t);
-  auto it = std::find(begin, end, std::forward<V>(v));
-  if (it == end)
-    return std::nullopt;
-  return std::distance(begin, it);
+std::optional<size_t> offset(T &&RangeOrContainer, V &&Item) {
+  auto It = find(RangeOrContainer, Item);
+  return (It == adl_end(RangeOrContainer))
+             ? std::nullopt
+             : std::optional(std::distance(adl_begin(RangeOrContainer), It));
 }
 
-template <typename T>
-auto take_last(T &&t, size_t N) -> iterator_range<decltype(t.begin())> {
-  auto it = t.end();
-  std::advance(it, -N);
-  return make_range(it, t.end());
-}
-
-template <typename T>
-auto drop_first(T &&t, size_t N) -> iterator_range<decltype(t.begin())> {
-  auto it = t.begin();
-  std::advance(it, N);
-  return make_range(it, t.end());
-}
-
-template <typename T>
-iterator_range<typename T::const_reverse_iterator> get_reverse(const T &t) {
-  return llvm::make_range(t.rbegin(), t.rend());
-}
-
-template <typename R> auto to_vector(R &&r) {
-  std::vector<typename decltype(r.begin())::value_type> v;
-  v.assign(r.begin(), r.end());
-  return v;
-}
-
-template <typename T, typename V> void emplace_back_unique(T &t, V &&v) {
-  if (t.end() == std::find(t.begin(), t.end(), v))
-    t.emplace_back(v);
+/// Return a range covering  the last N elements of \p RangeOrContainer.
+template <typename T> auto take_back(T &&RangeOrContainer, size_t N = 1) {
+  return make_range(std::prev(adl_end(RangeOrContainer), N),
+                    adl_end(RangeOrContainer));
 }
 
 /// Generic breadth first search.
@@ -159,8 +100,8 @@ template <typename V> struct BreadthFirstSearch {
 
   void abort() { verticesToTraverse.clear(); }
 
-  std::list<V> verticesToTraverse;
-  std::set<V> visited{};
+  std::deque<V> verticesToTraverse;
+  DenseSet<V> visited{};
 };
 
 } // namespace EVMUtils
