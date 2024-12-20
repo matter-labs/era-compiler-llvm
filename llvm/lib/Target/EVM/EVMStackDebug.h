@@ -14,7 +14,8 @@
 #ifndef LLVM_LIB_TARGET_EVM_EVMSTACKDEBUG_H
 #define LLVM_LIB_TARGET_EVM_EVMSTACKDEBUG_H
 
-#include "EVMControlFlowGraph.h"
+#include "EVMMachineCFGInfo.h"
+#include "EVMStackModel.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include <cassert>
 #include <map>
@@ -24,49 +25,34 @@
 
 namespace llvm {
 
-struct StackLayout;
+class EVMStackLayout;
 
 const Function *getCalledFunction(const MachineInstr &MI);
 std::string stackSlotToString(const StackSlot &Slot);
 std::string stackToString(Stack const &S);
 
 #ifndef NDEBUG
-class ControlFlowGraphPrinter {
-public:
-  ControlFlowGraphPrinter(raw_ostream &OS, const MachineFunction &MF)
-      : OS(OS), MF(MF) {}
-  void operator()(const CFG &Cfg);
-
-private:
-  void operator()();
-  std::string getBlockId(const CFG::BasicBlock &Block);
-  std::string getBlockId(const MachineBasicBlock &MBB);
-  void printBlock(const CFG::BasicBlock &Block);
-
-  raw_ostream &OS;
-  const MachineFunction &MF;
-};
-
 class StackLayoutPrinter {
 public:
-  StackLayoutPrinter(raw_ostream &OS, const StackLayout &StackLayout,
-                     const MachineFunction &MF)
-      : OS(OS), Layout(StackLayout), MF(MF) {}
-
-  void operator()(CFG::BasicBlock const &Block, bool IsMainEntry = true);
-  void operator()(CFG::BasicBlock const &EntryBB,
-                  const std::vector<StackSlot> &Parameters);
+  StackLayoutPrinter(raw_ostream &OS, const MachineFunction &MF,
+                     const EVMStackLayout &EVMStackLayout,
+                     const EVMMachineCFGInfo &CFGInfo,
+                     const EVMStackModel &StackModel)
+      : OS(OS), MF(MF), Layout(EVMStackLayout), CFGInfo(CFGInfo),
+        StackModel(StackModel) {}
+  void operator()();
 
 private:
-  void printBlock(CFG::BasicBlock const &Block);
-  std::string getBlockId(CFG::BasicBlock const &Block);
+  void printBlock(MachineBasicBlock const &Block);
+  std::string getBlockId(MachineBasicBlock const &Block);
 
   raw_ostream &OS;
-  const StackLayout &Layout;
   const MachineFunction &MF;
-  std::map<CFG::BasicBlock const *, size_t> BlockIds;
+  const EVMStackLayout &Layout;
+  const EVMMachineCFGInfo &CFGInfo;
+  const EVMStackModel &StackModel;
   size_t BlockCount = 0;
-  std::list<CFG::BasicBlock const *> BlocksToPrint;
+  std::map<const MachineBasicBlock *, size_t> BlockIds;
 };
 #endif // NDEBUG
 

@@ -6,9 +6,9 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "EVMControlFlowGraph.h"
 #include "EVMRegisterInfo.h"
 #include "EVMStackDebug.h"
+#include "EVMStackModel.h"
 #include "EVMStackShuffler.h"
 #include "EVMTargetMachine.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
@@ -172,7 +172,7 @@ PUSH JUNK\n\
       },
       [&](StackSlot const &Slot) { // dupOrPush
         Output << stackToString(SourceStack) << '\n';
-        if (canBeFreelyGenerated(Slot))
+        if (isRematerializable(Slot))
           Output << "PUSH " << stackSlotToString(Slot) << '\n';
         else {
           Stack TmpStack = SourceStack;

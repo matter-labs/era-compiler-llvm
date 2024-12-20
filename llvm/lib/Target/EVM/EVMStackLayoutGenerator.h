@@ -18,9 +18,9 @@
 #ifndef LLVM_LIB_TARGET_EVM_EVMSTACKLAYOUTGENERATOR_H
 #define LLVM_LIB_TARGET_EVM_EVMSTACKLAYOUTGENERATOR_H
 
-#include "EVMControlFlowGraph.h"
-#include <map>
-#include <set>
+#include "EVMMachineCFGInfo.h"
+#include "EVMStackModel.h"
+#include "llvm/ADT/DenseMap.h"
 
 namespace llvm {
 
@@ -28,22 +28,39 @@ namespace llvm {
 /// \p Target.
 size_t EvaluateStackTransform(Stack Source, Stack const &Target);
 
-struct StackLayout {
-  struct BlockInfo {
-    /// Complete stack layout that is required for entering a block.
-    Stack entryLayout;
-    /// The resulting stack layout after executing the block.
-    Stack exitLayout;
-  };
-  std::map<CFG::BasicBlock const *, BlockInfo> blockInfos;
-  /// For each operation the complete stack layout that:
-  /// - has the slots required for the operation at the stack top.
-  /// - will have the operation result in a layout that makes it easy to achieve
-  /// the next desired layout.
-  std::map<CFG::Operation const *, Stack> operationEntryLayout;
+class EVMStackLayout {
+public:
+  EVMStackLayout(DenseMap<const MachineBasicBlock *, Stack> &MBBEntryLayout,
+                 DenseMap<const MachineBasicBlock *, Stack> &MBBExitLayout,
+                 DenseMap<const Operation *, Stack> &OpsEntryLayout)
+      : MBBEntryLayoutMap(MBBEntryLayout), MBBExitLayoutMap(MBBExitLayout),
+        OperationEntryLayoutMap(OpsEntryLayout) {}
+  EVMStackLayout(const EVMStackLayout &) = delete;
+  EVMStackLayout &operator=(const EVMStackLayout &) = delete;
+
+  const Stack &getMBBEntryLayout(const MachineBasicBlock *MBB) const {
+    return MBBEntryLayoutMap.at(MBB);
+  }
+
+  const Stack &getMBBExitLayout(const MachineBasicBlock *MBB) const {
+    return MBBExitLayoutMap.at(MBB);
+  }
+
+  const Stack &getOperationEntryLayout(const Operation *Op) const {
+    return OperationEntryLayoutMap.at(Op);
+  }
+
+private:
+  // Complete stack layout required at MBB entry.
+  DenseMap<const MachineBasicBlock *, Stack> MBBEntryLayoutMap;
+  // Complete stack layout required at MBB exit.
+  DenseMap<const MachineBasicBlock *, Stack> MBBExitLayoutMap;
+  // Complete stack layout that
+  // has the slots required for the operation at the stack top.
+  DenseMap<const Operation *, Stack> OperationEntryLayoutMap;
 };
 
-class StackLayoutGenerator {
+class EVMStackLayoutGenerator {
 public:
   struct StackTooDeep {
     /// Number of slots that need to be saved.
@@ -52,45 +69,44 @@ public:
     std::vector<Register> variableChoices;
   };
 
-  static StackLayout run(CFG const &Cfg);
-  /// Returns all stack too deep errors for the given CFG.
-  static std::vector<StackTooDeep> reportStackTooDeep(CFG const &Cfg);
+  EVMStackLayoutGenerator(const MachineFunction &MF,
+                          const EVMStackModel &StackModel,
+                          const EVMMachineCFGInfo &CFGInfo);
+
+  std::unique_ptr<EVMStackLayout> run();
 
 private:
-  StackLayoutGenerator(StackLayout &Layout, const MachineFunction &MF,
-                       const std::vector<StackSlot> &Parameters);
-
   /// Returns the optimal entry stack layout, s.t. \p Operation can be applied
   /// to it and the result can be transformed to \p ExitStack with minimal stack
   /// shuffling. Simultaneously stores the entry layout required for executing
-  /// the operation in Layout.
+  /// the operation in the map.
   Stack propagateStackThroughOperation(Stack ExitStack,
-                                       CFG::Operation const &Operation,
+                                       Operation const &Operation,
                                        bool AggressiveStackCompression = false);
 
   /// Returns the desired stack layout at the entry of \p Block, assuming the
   /// layout after executing the block should be \p ExitStack.
   Stack propagateStackThroughBlock(Stack ExitStack,
-                                   CFG::BasicBlock const &block,
+                                   const MachineBasicBlock *Block,
                                    bool AggressiveStackCompression = false);
 
   /// Main algorithm walking the graph from entry to exit and propagating back
   /// the stack layouts to the entries. Iteratively reruns itself along
   /// backwards jumps until the layout is stabilized.
-  void processEntryPoint(CFG::BasicBlock const &Entry);
+  void processEntryPoint(const MachineBasicBlock *Entry);
 
   /// Returns the best known exit layout of \p Block, if all dependencies are
   /// already \p Visited. If not, adds the dependencies to \p DependencyList and
   /// returns std::nullopt.
   std::optional<Stack> getExitLayoutOrStageDependencies(
-      CFG::BasicBlock const &Block,
-      std::set<CFG::BasicBlock const *> const &Visited,
-      std::list<CFG::BasicBlock const *> &DependencyList) const;
+      const MachineBasicBlock *Block,
+      const DenseSet<const MachineBasicBlock *> &Visited,
+      std::list<const MachineBasicBlock *> &DependencyList) const;
 
   /// Returns a pair of '{jumpingBlock, targetBlock}' for each backwards jump
-  /// in the graph starting at \p Eentry.
-  std::list<std::pair<CFG::BasicBlock const *, CFG::BasicBlock const *>>
-  collectBackwardsJumps(CFG::BasicBlock const &Entry) const;
+  /// in the graph starting at \p Entry.
+  std::list<std::pair<const MachineBasicBlock *, const MachineBasicBlock *>>
+  collectBackwardsJumps(const MachineBasicBlock *Entry) const;
 
   /// After the main algorithms, layouts at conditional jumps are merely
   /// compatible, i.e. the exit layout of the jumping block is a superset of the
@@ -98,17 +114,17 @@ private:
   /// of conditional jump targets, s.t., the entry layout of target blocks match
   /// the exit layout of the jumping block exactly, except that slots not
   /// required after the jump are marked as 'JunkSlot's.
-  void stitchConditionalJumps(CFG::BasicBlock const &Block);
+  void stitchConditionalJumps(const MachineBasicBlock *Block);
 
   /// Calculates the ideal stack layout, s.t., both \p Stack1 and \p Stack2 can
   /// be achieved with minimal stack shuffling when starting from the returned
   /// layout.
-  static Stack combineStack(Stack const &Stack1, Stack const &Stack2);
+  static Stack combineStack(const Stack &Stack1, const Stack &Stack2);
 
   /// Walks through the CFG and reports any stack too deep errors that would
   /// occur when generating code for it without countermeasures.
   std::vector<StackTooDeep>
-  reportStackTooDeep(CFG::BasicBlock const &Entry) const;
+  reportStackTooDeep(const MachineBasicBlock &Entry) const;
 
   /// Returns a copy of \p Stack stripped of all duplicates and slots that can
   /// be freely generated. Attempts to create a layout that requires a minimal
@@ -117,11 +133,15 @@ private:
 
   /// Fills in junk when entering branches that do not need a clean stack in
   /// case the result is cheaper.
-  void fillInJunk(CFG::BasicBlock const &Block);
+  void fillInJunk(const MachineBasicBlock *Block);
 
-  StackLayout &Layout;
-  const std::vector<StackSlot> &Parameters;
   const MachineFunction &MF;
+  const EVMStackModel &StackModel;
+  const EVMMachineCFGInfo &CFGInfo;
+
+  DenseMap<const MachineBasicBlock *, Stack> MBBEntryLayoutMap;
+  DenseMap<const MachineBasicBlock *, Stack> MBBExitLayoutMap;
+  DenseMap<const Operation *, Stack> OperationEntryLayoutMap;
 };
 
 } // end namespace llvm

@@ -16,8 +16,8 @@
 #ifndef LLVM_LIB_TARGET_EVM_EVMSTACKSHUFFLER_H
 #define LLVM_LIB_TARGET_EVM_EVMSTACKSHUFFLER_H
 
-#include "EVMControlFlowGraph.h"
 #include "EVMHelperUtilities.h"
+#include "EVMStackModel.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include <cassert>
 #include <map>

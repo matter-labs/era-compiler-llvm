@@ -82,122 +82,10 @@ std::string llvm::stackSlotToString(const StackSlot &Slot) {
 }
 
 #ifndef NDEBUG
-void ControlFlowGraphPrinter::operator()(const CFG &Cfg) {
-  (*this)();
-  for (const auto &Block : Cfg.Blocks)
-    printBlock(Block);
-}
 
-void ControlFlowGraphPrinter::operator()() {
-  OS << "Function: " << MF.getName() << '\n';
-  OS << "Entry block: " << getBlockId(MF.front()) << ";\n";
-}
-
-std::string ControlFlowGraphPrinter::getBlockId(CFG::BasicBlock const &Block) {
-  return getBlockId(*Block.MBB);
-}
-
-std::string ControlFlowGraphPrinter::getBlockId(const MachineBasicBlock &MBB) {
-  return std::to_string(MBB.getNumber()) + "." + std::string(MBB.getName());
-}
-
-void ControlFlowGraphPrinter::printBlock(CFG::BasicBlock const &Block) {
-  OS << "Block" << getBlockId(Block) << " [\n";
-
-  // Verify that the entries of this block exit into this block.
-  for (auto const &Entry : Block.Entries) {
-    std::visit(
-        Overload{
-            [&](CFG::BasicBlock::Jump &Jump) {
-              assert((Jump.Target == &Block) && "Invalid control flow graph");
-            },
-            [&](CFG::BasicBlock::ConditionalJump &CondJump) {
-              assert((CondJump.Zero == &Block || CondJump.NonZero == &Block) &&
-                     "Invalid control flow graph");
-            },
-            [&](const auto &) { assert(0 && "Invalid control flow graph."); }},
-        Entry->Exit);
-  }
-
-  for (auto const &Op : Block.Operations) {
-    std::visit(Overload{[&](const CFG::FunctionCall &FuncCall) {
-                          const MachineOperand *Callee =
-                              FuncCall.Call->explicit_uses().begin();
-                          OS << Callee->getGlobal()->getName() << ": ";
-                        },
-                        [&](const CFG::BuiltinCall &BuiltinCall) {
-                          OS << getInstName(BuiltinCall.Builtin) << ": ";
-                        },
-                        [&](const CFG::Assignment &Assignment) {
-                          OS << "Assignment(";
-                          for (const auto &Var : Assignment.Variables)
-                            OS << printReg(Var.VirtualReg, nullptr, 0, nullptr)
-                               << ", ";
-                          OS << "): ";
-                        }},
-               Op.Operation);
-    OS << stackToString(Op.Input) << " => " << stackToString(Op.Output) << '\n';
-  }
-  OS << "];\n";
-
-  std::visit(
-      Overload{[&](const CFG::BasicBlock::Jump &Jump) {
-                 OS << "Block" << getBlockId(Block) << "Exit [label=\"";
-                 OS << "Jump\" FallThrough:" << Jump.FallThrough << "];\n";
-                 if (Jump.Backwards)
-                   OS << "Backwards";
-                 OS << "Block" << getBlockId(Block) << "Exit -> Block"
-                    << getBlockId(*Jump.Target) << ";\n";
-               },
-               [&](const CFG::BasicBlock::ConditionalJump &CondJump) {
-                 OS << "Block" << getBlockId(Block) << "Exit [label=\"{ ";
-                 OS << stackSlotToString(CondJump.Condition);
-                 OS << "| { <0> Zero | <1> NonZero }}\" FallThrough:";
-                 OS << CondJump.FallThrough << "];\n";
-                 OS << "Block" << getBlockId(Block);
-                 OS << "Exit:0 -> Block" << getBlockId(*CondJump.Zero) << ";\n";
-                 OS << "Block" << getBlockId(Block);
-                 OS << "Exit:1 -> Block" << getBlockId(*CondJump.NonZero)
-                    << ";\n";
-               },
-               [&](const CFG::BasicBlock::FunctionReturn &Return) {
-                 OS << "Block" << getBlockId(Block)
-                    << "Exit [label=\"FunctionReturn[" << MF.getName()
-                    << "]\"];\n";
-                 OS << "Return values: " << stackToString(Return.RetValues);
-               },
-               [&](const CFG::BasicBlock::Terminated &) {
-                 OS << "Block" << getBlockId(Block)
-                    << "Exit [label=\"Terminated\"];\n";
-               },
-               [&](const CFG::BasicBlock::Unreachable &) {
-                 OS << "Block" << getBlockId(Block)
-                    << "Exit [label=\"Unreachable\"];\n";
-               },
-               [&](const CFG::BasicBlock::InvalidExit &) {
-                 assert(0 && "Invalid basic block exit");
-               }},
-      Block.Exit);
-  OS << "\n";
-}
-
-void StackLayoutPrinter::operator()(CFG::BasicBlock const &Block,
-                                    bool IsMainEntry) {
-  if (IsMainEntry) {
-    OS << "Entry [label=\"Entry\"];\n";
-    OS << "Entry -> Block" << getBlockId(Block) << ";\n";
-  }
-  while (!BlocksToPrint.empty()) {
-    CFG::BasicBlock const *block = *BlocksToPrint.begin();
-    BlocksToPrint.erase(BlocksToPrint.begin());
-    printBlock(*block);
-  }
-}
-
-void StackLayoutPrinter::operator()(CFG::BasicBlock const &EntryBB,
-                                    const std::vector<StackSlot> &Parameters) {
+void StackLayoutPrinter::operator()() {
   OS << "Function: " << MF.getName() << "(";
-  for (const StackSlot &ParamSlot : Parameters) {
+  for (const StackSlot &ParamSlot : StackModel.getFunctionParameters()) {
     if (const auto *Slot = std::get_if<VariableSlot>(&ParamSlot))
       OS << printReg(Slot->VirtualReg, nullptr, 0, nullptr) << ' ';
     else if (std::holds_alternative<JunkSlot>(ParamSlot))
@@ -207,43 +95,29 @@ void StackLayoutPrinter::operator()(CFG::BasicBlock const &EntryBB,
   }
   OS << ");\n";
   OS << "FunctionEntry "
-     << " -> Block" << getBlockId(EntryBB) << ";\n";
-  (*this)(EntryBB, false);
+     << " -> Block" << getBlockId(MF.front()) << ";\n";
+
+  for (const auto &MBB : MF) {
+    printBlock(MBB);
+  }
 }
 
-void StackLayoutPrinter::printBlock(CFG::BasicBlock const &Block) {
+void StackLayoutPrinter::printBlock(MachineBasicBlock const &Block) {
   OS << "Block" << getBlockId(Block) << " [\n";
-  // Verify that the entries of this block exit into this block.
-  for (auto const &entry : Block.Entries) {
-    std::visit(
-        Overload{[&](CFG::BasicBlock::Jump const &Jump) {
-                   assert(Jump.Target == &Block);
-                 },
-                 [&](CFG::BasicBlock::ConditionalJump const &ConditionalJump) {
-                   assert(ConditionalJump.Zero == &Block ||
-                          ConditionalJump.NonZero == &Block);
-                 },
-                 [&](auto const &) {
-                   llvm_unreachable("Invalid control flow graph");
-                 }},
-        entry->Exit);
-  }
-
-  auto const &BlockInfo = Layout.blockInfos.at(&Block);
-  OS << stackToString(BlockInfo.entryLayout) << "\n";
-  for (auto const &Operation : Block.Operations) {
+  OS << stackToString(Layout.getMBBEntryLayout(&Block)) << "\n";
+  for (auto const &Operation : StackModel.getOperations(&Block)) {
     OS << "\n";
-    auto EntryLayout = Layout.operationEntryLayout.at(&Operation);
+    Stack EntryLayout = Layout.getOperationEntryLayout(&Operation);
     OS << stackToString(EntryLayout) << "\n";
-    std::visit(Overload{[&](CFG::FunctionCall const &Call) {
+    std::visit(Overload{[&](FunctionCall const &Call) {
                           const MachineOperand *Callee =
-                              Call.Call->explicit_uses().begin();
+                              Call.MI->explicit_uses().begin();
                           OS << Callee->getGlobal()->getName();
                         },
-                        [&](CFG::BuiltinCall const &Call) {
-                          OS << getInstName(Call.Builtin);
+                        [&](BuiltinCall const &Call) {
+                          OS << getInstName(Call.MI);
                         },
-                        [&](CFG::Assignment const &Assignment) {
+                        [&](Assignment const &Assignment) {
                           OS << "Assignment(";
                           for (const auto &Var : Assignment.Variables)
                             OS << printReg(Var.VirtualReg, nullptr, 0, nullptr)
@@ -260,57 +134,48 @@ void StackLayoutPrinter::printBlock(CFG::BasicBlock const &Block) {
     OS << stackToString(EntryLayout) << "\n";
   }
   OS << "\n";
-  OS << stackToString(BlockInfo.exitLayout) << "\n";
+  OS << stackToString(Layout.getMBBExitLayout(&Block)) << "\n";
   OS << "];\n";
 
-  std::visit(
-      Overload{[&](CFG::BasicBlock::InvalidExit const &) {
-                 assert(0 && "Invalid basic block exit");
-               },
-               [&](CFG::BasicBlock::Jump const &Jump) {
-                 OS << "Block" << getBlockId(Block) << "Exit [label=\"";
-                 if (Jump.Backwards)
-                   OS << "Backwards";
-                 OS << "Jump\"];\n";
-                 OS << "Block" << getBlockId(Block) << "Exit -> Block"
-                    << getBlockId(*Jump.Target) << ";\n";
-               },
-               [&](CFG::BasicBlock::ConditionalJump const &ConditionalJump) {
-                 OS << "Block" << getBlockId(Block) << "Exit [label=\"{ ";
-                 OS << stackSlotToString(ConditionalJump.Condition);
-                 OS << "| { <0> Zero | <1> NonZero }}\"];\n";
-                 OS << "Block" << getBlockId(Block);
-                 OS << "Exit:0 -> Block" << getBlockId(*ConditionalJump.Zero)
-                    << ";\n";
-                 OS << "Block" << getBlockId(Block);
-                 OS << "Exit:1 -> Block" << getBlockId(*ConditionalJump.NonZero)
-                    << ";\n";
-               },
-               [&](CFG::BasicBlock::FunctionReturn const &Return) {
-                 OS << "Block" << getBlockId(Block)
-                    << "Exit [label=\"FunctionReturn[" << MF.getName()
-                    << "]\"];\n";
-               },
-               [&](CFG::BasicBlock::Terminated const &) {
-                 OS << "Block" << getBlockId(Block)
-                    << "Exit [label=\"Terminated\"];\n";
-               },
-               [&](CFG::BasicBlock::Unreachable const &) {
-                 OS << "Block" << getBlockId(Block)
-                    << "Exit [label=\"Unreachable\"];\n";
-               }},
-      Block.Exit);
+  const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(&Block);
+  MBBExitType ExitType = TermInfo->getExitType();
+  if (ExitType == MBBExitType::UnconditionalBranch) {
+    auto [BranchInstr, Target, IsLatch] = TermInfo->getUnconditionalBranch();
+    OS << "Block" << getBlockId(Block) << "Exit [label=\"";
+    OS << "Jump\"];\n";
+    if (IsLatch)
+      OS << "Backwards";
+    OS << "Block" << getBlockId(Block) << "Exit -> Block" << getBlockId(*Target)
+       << ";\n";
+  } else if (ExitType == MBBExitType::ConditionalBranch) {
+    auto [CondBr, UncondBr, TrueBB, FalseBB, Condition] =
+        TermInfo->getConditionalBranch();
+    OS << "Block" << getBlockId(Block) << "Exit [label=\"{ ";
+    OS << stackSlotToString(StackModel.getStackSlot(*Condition));
+    OS << "| { <0> Zero | <1> NonZero }}\"];\n";
+    OS << "Block" << getBlockId(Block);
+    OS << "Exit:0 -> Block" << getBlockId(*FalseBB) << ";\n";
+    OS << "Block" << getBlockId(Block);
+    OS << "Exit:1 -> Block" << getBlockId(*TrueBB) << ";\n";
+  } else if (ExitType == MBBExitType::FunctionReturn) {
+    OS << "Block" << getBlockId(Block) << "Exit [label=\"FunctionReturn["
+       << MF.getName() << "]\"];\n";
+    const MachineInstr &MI = Block.back();
+    OS << "Return values: " << stackToString(StackModel.getReturnArguments(MI))
+       << ";\n";
+  } else if (ExitType == MBBExitType::Terminate) {
+    OS << "Block" << getBlockId(Block) << "Exit [label=\"Terminated\"];\n";
+  }
   OS << "\n";
 }
 
-std::string StackLayoutPrinter::getBlockId(CFG::BasicBlock const &Block) {
-  std::string Name = std::to_string(Block.MBB->getNumber()) + "." +
-                     std::string(Block.MBB->getName());
+std::string StackLayoutPrinter::getBlockId(MachineBasicBlock const &Block) {
+  std::string Name =
+      std::to_string(Block.getNumber()) + "." + std::string(Block.getName());
   if (auto It = BlockIds.find(&Block); It != BlockIds.end())
     return std::to_string(It->second) + "(" + Name + ")";
 
   size_t Id = BlockIds[&Block] = BlockCount++;
-  BlocksToPrint.emplace_back(&Block);
   return std::to_string(Id) + "(" + Name + ")";
 }
 #endif // NDEBUG
