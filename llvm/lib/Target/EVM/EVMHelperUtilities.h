@@ -1,4 +1,4 @@
-//===----- EVMHelperUtilities.h - CFG for stackification --------*- C++ -*-===//
+//===----------- EVMHelperUtilities.h - Helper utilities --------*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -15,6 +15,7 @@
 #ifndef LLVM_LIB_TARGET_EVM_EVMHELPERUTILITIES_H
 #define LLVM_LIB_TARGET_EVM_EVMHELPERUTILITIES_H
 
+#include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/iterator_range.h"
 #include <algorithm>
 #include <cassert>
@@ -24,6 +25,8 @@
 #include <set>
 
 namespace llvm {
+
+class MachineInstr;
 
 template <class... Ts> struct Overload : Ts... {
   using Ts::operator()...;
@@ -69,6 +72,8 @@ inline std::vector<T> operator+(std::vector<T> &&lhs, std::vector<T> &&rhs) {
 }
 
 namespace EVMUtils {
+
+bool callWillReturn(const MachineInstr *Call);
 
 template <class T, class V> bool contains(const T &t, const V &v) {
   return std::end(t) != std::find(std::begin(t), std::end(t), v);

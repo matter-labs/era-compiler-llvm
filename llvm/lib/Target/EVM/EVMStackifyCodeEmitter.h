@@ -23,11 +23,14 @@ class MCSymbol;
 
 class EVMStackifyCodeEmitter {
 public:
-  EVMStackifyCodeEmitter(const StackLayout &Layout, MachineFunction &MF)
-      : Emitter(MF), Layout(Layout), MF(MF) {}
+  EVMStackifyCodeEmitter(const EVMStackLayout &Layout,
+                         const EVMStackModel &StackModel,
+                         const EVMMachineCFGInfo &CFGInfo, MachineFunction &MF)
+      : Emitter(MF), Layout(Layout), StackModel(StackModel), CFGInfo(CFGInfo),
+        MF(MF) {}
 
-  /// Stackify instructions, starting from the \p EntryBB.
-  void run(CFG::BasicBlock &EntryBB);
+  /// Stackify instructions, starting from the first MF's MBB.
+  void run();
 
 private:
   class CodeEmitter {
@@ -64,8 +67,10 @@ private:
   };
 
   CodeEmitter Emitter;
-  const StackLayout &Layout;
-  const MachineFunction &MF;
+  const EVMStackLayout &Layout;
+  const EVMStackModel &StackModel;
+  const EVMMachineCFGInfo &CFGInfo;
+  MachineFunction &MF;
   Stack CurrentStack;
 
   /// Checks if it's valid to transition from \p SourceStack to \p
@@ -78,17 +83,17 @@ private:
 
   /// Creates the Op.Input stack layout from the 'CurrentStack' taking into
   /// account commutative property of the operation.
-  void createOperationLayout(const CFG::Operation &Op);
+  void createOperationLayout(const Operation &Op);
 
   /// Remove the arguments from the stack and push the return values.
   void adjustStackForInst(const MachineInstr *MI, size_t NumArgs);
 
   /// Generate code for the function call \p Call.
-  void visitCall(const CFG::FunctionCall &Call);
+  void visitCall(const FunctionCall &Call);
   /// Generate code for the builtin call \p Call.
-  void visitInst(const CFG::BuiltinCall &Call);
+  void visitInst(const BuiltinCall &Call);
   /// Generate code for the assignment \p Assignment.
-  void visitAssign(const CFG::Assignment &Assignment);
+  void visitAssign(const Assignment &Assignment);
 };
 
 } // namespace llvm
