@@ -24,7 +24,7 @@ using namespace llvm;
 EVMStackModel::EVMStackModel(MachineFunction &MF, const LiveIntervals &LIS)
     : MF(MF), LIS(LIS) {
   for (MachineBasicBlock &MBB : MF) {
-    std::vector<Operation> Ops;
+    SmallVector<Operation> Ops;
     for (MachineInstr &MI : MBB)
       createOperation(MI, Ops);
     OperationsMap[&MBB] = std::move(Ops);
@@ -33,7 +33,7 @@ EVMStackModel::EVMStackModel(MachineFunction &MF, const LiveIntervals &LIS)
 
 Stack EVMStackModel::getFunctionParameters() const {
   auto *MFI = MF.getInfo<EVMMachineFunctionInfo>();
-  std::vector<StackSlot> Parameters(MFI->getNumParams(), JunkSlot{});
+  SmallVector<StackSlot> Parameters(MFI->getNumParams(), JunkSlot{});
   for (const MachineInstr &MI : MF.front()) {
     if (MI.getOpcode() == EVM::ARGUMENT) {
       int64_t ArgIdx = MI.getOperand(1).getImm();
@@ -92,7 +92,7 @@ Stack EVMStackModel::getInstrOutput(const MachineInstr &MI) const {
 }
 
 void EVMStackModel::createOperation(MachineInstr &MI,
-                                    std::vector<Operation> &Ops) const {
+                                    SmallVector<Operation> &Ops) const {
   unsigned Opc = MI.getOpcode();
   switch (Opc) {
   case EVM::STACK_LOAD:
@@ -147,7 +147,7 @@ void EVMStackModel::createOperation(MachineInstr &MI,
 
   // Cretae CFG::Assignment object for the MI.
   Stack Input, Output;
-  std::vector<VariableSlot> Variables;
+  SmallVector<VariableSlot> Variables;
   switch (MI.getOpcode()) {
   case EVM::CONST_I256: {
     const Register DefReg = MI.getOperand(0).getReg();

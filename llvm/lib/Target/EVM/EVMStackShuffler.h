@@ -18,7 +18,6 @@
 
 #include "EVMHelperUtilities.h"
 #include "EVMStackModel.h"
-#include "llvm/CodeGen/MachineFunction.h"
 #include <cassert>
 #include <map>
 #include <set>
@@ -26,18 +25,6 @@
 
 namespace llvm {
 
-/*
-template <class... Ts> struct Overload : Ts... {
-using Ts::operator()...;
-};
-template <class... Ts> Overload(Ts...) -> Overload<Ts...>;
-
-template <class T> static inline SmallVector<T> iota17(T begin, T end) {
-SmallVector<T> R(end - begin);
-std::iota(R.begin(), R.end(), begin);
-return R;
-}
-*/
 // Abstraction of stack shuffling operations. Can be defined as actual concept
 // once we switch to C++20. Used as an interface for the stack shuffler below.
 // The shuffle operation class is expected to internally keep track of a current
@@ -164,7 +151,8 @@ private:
       else if (Ops.sourceMultiplicity(SourceOffset) > 0) {
         // If this slot occurs again later, we skip this occurrence.
         // TODO: use C++ 20 ranges::views::iota
-        if (const auto &R = iota17<size_t>(SourceOffset + 1, Ops.sourceSize());
+        if (const auto &R =
+                EVMUtils::iota<size_t>(SourceOffset + 1, Ops.sourceSize());
             std::any_of(R.begin(), R.end(), [&](size_t Offset) {
               return Ops.sourceIsSame(SourceOffset, Offset);
             }))
@@ -226,7 +214,7 @@ private:
     ShuffleOperations Ops{std::forward<Args>(args)...};
 
     // All source slots are final.
-    if (const auto &R = iota17<size_t>(0u, Ops.sourceSize());
+    if (const auto &R = EVMUtils::iota<size_t>(0u, Ops.sourceSize());
         std::all_of(R.begin(), R.end(), [&](size_t Index) {
           return Ops.isCompatible(Index, Index);
         })) {
@@ -346,7 +334,8 @@ private:
              (Ops.targetIsArbitrary(I) || Ops.targetMultiplicity(I) == 0));
     assert(Ops.isCompatible(SourceTop, SourceTop));
 
-    const auto &SwappableOffsets = iota17(Size > 17 ? Size - 17 : 0u, Size);
+    const auto &SwappableOffsets =
+        EVMUtils::iota(Size > 17 ? Size - 17 : 0u, Size);
 
     // If we find a lower slot that is out of position, but also compatible with
     // the top, swap that up.
@@ -486,7 +475,7 @@ void createStackLayout(Stack &CurrentStack, Stack const &TargetStack,
         auto &Slot = targetStack[Offset];
         if (std::holds_alternative<JunkSlot>(Slot) &&
             Offset < currentStack.size())
-          ++multiplicity[currentStack.at(Offset)];
+          ++multiplicity[currentStack[Offset]];
         else
           ++multiplicity[Slot];
       }
@@ -494,31 +483,30 @@ void createStackLayout(Stack &CurrentStack, Stack const &TargetStack,
 
     bool isCompatible(size_t Source, size_t Target) {
       return Source < currentStack.size() && Target < targetStack.size() &&
-             (std::holds_alternative<JunkSlot>(targetStack.at(Target)) ||
-              currentStack.at(Source) == targetStack.at(Target));
+             (std::holds_alternative<JunkSlot>(targetStack[Target]) ||
+              currentStack[Source] == targetStack[Target]);
     }
 
     bool sourceIsSame(size_t Lhs, size_t Rhs) {
-      return currentStack.at(Lhs) == currentStack.at(Rhs);
+      return currentStack[Lhs] == currentStack[Rhs];
     }
 
     int sourceMultiplicity(size_t Offset) {
-      return multiplicity.at(currentStack.at(Offset));
+      return multiplicity.at(currentStack[Offset]);
     }
 
     int targetMultiplicity(size_t Offset) {
-      return multiplicity.at(targetStack.at(Offset));
+      return multiplicity.at(targetStack[Offset]);
     }
 
     bool targetIsArbitrary(size_t Offset) {
       return Offset < targetStack.size() &&
-             std::holds_alternative<JunkSlot>(targetStack.at(Offset));
+             std::holds_alternative<JunkSlot>(targetStack[Offset]);
     }
 
     void swap(size_t I) {
       swapCallback(static_cast<unsigned>(I));
-      std::swap(currentStack.at(currentStack.size() - I - 1),
-                currentStack.back());
+      std::swap(currentStack[currentStack.size() - I - 1], currentStack.back());
     }
 
     size_t sourceSize() { return currentStack.size(); }
@@ -531,7 +519,7 @@ void createStackLayout(Stack &CurrentStack, Stack const &TargetStack,
     }
 
     void pushOrDupTarget(size_t Offset) {
-      auto const &targetSlot = targetStack.at(Offset);
+      auto const &targetSlot = targetStack[Offset];
       pushOrDupCallback(targetSlot);
       currentStack.push_back(targetSlot);
     }
