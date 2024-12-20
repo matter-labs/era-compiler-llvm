@@ -757,7 +757,7 @@ defm CREATE2
 // EVM instructions to return with error.
 //===----------------------------------------------------------------------===//
 
-let isTerminator = 1, isBarrier = 1, isReturn = 1 in {
+let isTerminator = 1, isBarrier = 1 in {
   defm REVERT
     : I<(outs), (ins GPR:$offset, GPR:$size),
         [(int_evm_revert GPR:$offset, GPR:$size)],
@@ -774,7 +774,7 @@ let hasSideEffects = 1 in {
       : I<(outs), (ins GPR:$addr), [(int_evm_selfdestruct GPR:$addr)],
           "SELFDESTRUCT", " $addr", 0xFF, 5000>;
 
-  let isTerminator = 1, isBarrier = 1, isReturn = 1 in {
+  let isTerminator = 1, isBarrier = 1 in {
     defm STOP : I<(outs), (ins), [(int_evm_stop)], "STOP", "", 0x00, 0>;
     defm INVALID : I<(outs), (ins), [(int_evm_invalid)], "INVALID", "", 0xFE, 0>;
   }
