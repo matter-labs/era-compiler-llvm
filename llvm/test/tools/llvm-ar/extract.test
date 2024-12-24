@@ -1,5 +1,4 @@
 ## Test extract operation.
-# XFAIL: system-darwin
 
 # RUN: rm -rf %t && mkdir -p %t/extracted/
 
