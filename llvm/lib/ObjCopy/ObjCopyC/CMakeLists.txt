@@ -6,7 +6,9 @@ add_llvm_component_library(LLVMObjCopyC
 
   LINK_COMPONENTS
   BinaryFormat
+  Core
+  MC
+  ObjCopy
   Object
   Support
-  MC
 )

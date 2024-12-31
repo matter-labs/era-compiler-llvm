@@ -3,8 +3,11 @@ add_llvm_component_library(LLVMMCC
 
   LINK_COMPONENTS
   AsmParser
+  Core
   MC
+  MCDisassembler
   MCParser
+  Object
   Support
 
   DEPENDS
