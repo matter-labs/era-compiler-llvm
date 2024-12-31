@@ -4,6 +4,7 @@ add_llvm_component_library(LLVMEraVMDisassembler
   LINK_COMPONENTS
   EraVMDesc
   EraVMInfo
+  MC
   MCDisassembler
   Support
 
