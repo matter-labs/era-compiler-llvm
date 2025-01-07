@@ -14,7 +14,7 @@ with further discussion on the [RFC].
 ## Dependencies between pseudoparser and clang
 
 Dependencies are limited because they don't make sense, but also to avoid
-placing a burden on clang mantainers.
+placing a burden on clang maintainers.
 
 The pseudoparser reuses the clang lexer (clangLex and clangBasic libraries) but
 not the higher-level libraries (Parse, Sema, AST, Frontend...).
