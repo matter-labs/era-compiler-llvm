@@ -94,7 +94,7 @@ will soon die, as will the parent GSS Node - the latter should trigger recovery.
 ```
      "the static cast's type starts at foo"
 ---> {expr := static_cast < . type > ( expr )}
-         |     "`foo bar baz` is an unparseable type"
+         |     "`foo bar baz` is an unparsable type"
          +---- {expr := static_cast < type . > (expr)}
 ```
 
