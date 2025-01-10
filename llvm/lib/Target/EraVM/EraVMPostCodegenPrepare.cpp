@@ -19,10 +19,12 @@
 
 #include "EraVM.h"
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/LoopInfo.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/InstrTypes.h"
+#include "llvm/IR/IntrinsicsEraVM.h"
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/InitializePasses.h"
 
@@ -41,6 +43,10 @@ static cl::opt<unsigned> NumOfPHIUsesToSplitLiveRanges(
     "eravm-num-of-phi-uses-to-split-live-ranges", cl::Hidden, cl::init(20),
     cl::desc("Number of uses of PHI node to consider splitting live ranges"));
 
+static cl::opt<bool>
+    EnableSinkLoads("eravm-enable-load-sinking", cl::Hidden, cl::init(false),
+                    cl::desc("Enable sinking loads to their users"));
+
 namespace {
 struct EraVMPostCodegenPrepare : public FunctionPass {
 public:
@@ -57,6 +63,7 @@ public:
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<DominatorTreeWrapperPass>();
     AU.addRequired<LoopInfoWrapperPass>();
+    AU.addRequired<AAResultsWrapperPass>();
     AU.addPreserved<LoopInfoWrapperPass>();
     FunctionPass::getAnalysisUsage(AU);
   }
@@ -317,6 +324,119 @@ static bool rearrangeOverflowHandlingBranches(Function &F) {
   return Changed;
 }
 
+// Return whether this instruction is a valid user to sink a load instruction.
+// Currently, we only allow addp instruction.
+static bool isValidUserToSinkLoad(const Instruction *I) {
+  if (const auto *II = dyn_cast<IntrinsicInst>(I))
+    return II->getIntrinsicID() == Intrinsic::eravm_ptr_add;
+  return false;
+}
+
+// Return true if there are no instructions that may clobber the memory between
+// a load and its users.
+static bool isSafeToSinkLoad(LoadInst *Load, BatchAAResults &BAA) {
+  const MemoryLocation Loc = MemoryLocation::get(Load);
+
+  // Check if there is any instruction that clobbers the memory in the range.
+  auto ClobbersMemory = [&Loc,
+                         &BAA](iterator_range<BasicBlock::iterator> Range) {
+    return any_of(Range, [&Loc, &BAA](const Instruction &I) {
+      return I.mayWriteToMemory() && isModSet(BAA.getModRefInfo(&I, Loc));
+    });
+  };
+
+  // First we need to check if there are any instructions that may clobber the
+  // memory in the same BB. If there are, we can't sink the load.
+  auto *LoadBB = Load->getParent();
+  if (ClobbersMemory(make_range(std::next(Load->getIterator()), LoadBB->end())))
+    return false;
+
+  SmallVector<BasicBlock *, 16> WorkList;
+  for (auto *U : Load->users()) {
+    auto *UI = dyn_cast<Instruction>(U);
+    if (!UI || !isValidUserToSinkLoad(UI))
+      return false;
+
+    // Skip users from the Load's BB. We already checked them above.
+    auto *UIBB = UI->getParent();
+    if (UIBB == LoadBB)
+      continue;
+
+    // Make sure that there are no instructions that may clobber the memory
+    // above the user.
+    if (ClobbersMemory(make_range(UIBB->begin(), UI->getIterator())))
+      return false;
+
+    // Add predecessors of the user to the worklist. We do this so we don't
+    // traverse the same path more than once.
+    append_range(WorkList, predecessors(UIBB));
+  }
+
+  // Add Load's BB to the visited, so we stop traversing when we reach to it.
+  SmallPtrSet<BasicBlock *, 16> Visited{LoadBB};
+  while (!WorkList.empty()) {
+    BasicBlock *BB = WorkList.pop_back_val();
+    if (!Visited.insert(BB).second)
+      continue;
+
+    // Bail out if there are any instructions that may clobber the memory.
+    if (ClobbersMemory(*BB))
+      return false;
+    append_range(WorkList, predecessors(BB));
+  }
+  return true;
+}
+
+// This function sinks load instructions to their users, if there are no
+// instructions that may clobber the memory between them. This is useful,
+// since loads in some cases can be combined with their users to reduce the
+// number of instructions. Currently, this support is limited to loads from
+// loop header that load from a global value that holds a pointer to the
+// generic address space, and if all users are addp instructions.
+static bool sinkLoadInsts(LoopInfo &LI, AAResults &AA) {
+  if (!EnableSinkLoads)
+    return false;
+
+  bool Changed = false;
+  SmallVector<LoadInst *, 2> LoadsToSink;
+  BatchAAResults BAA(AA);
+  for (auto *L : LI) {
+    for (auto &I : *L->getHeader()) {
+      // Only attempt to sink loads from a global value that holds
+      // a pointer to the generic address space:
+      //
+      // @glob = global ptr addrspace(3) null
+      // %load = load ptr addrspace(3), ptr @glob, align 32
+      auto *Load = dyn_cast<LoadInst>(&I);
+      if (!Load || Load->hasOneUse() || !Load->isSimple() ||
+          !isa<GlobalVariable>(Load->getPointerOperand()) ||
+          Load->getPointerAddressSpace() != EraVMAS::AS_STACK ||
+          !Load->getType()->isPointerTy() ||
+          Load->getType()->getPointerAddressSpace() != EraVMAS::AS_GENERIC)
+        continue;
+
+      if (isSafeToSinkLoad(Load, BAA))
+        // BatchAAResults works only if there are no IR changes inbetween
+        // queries, so defer the actual sinking.
+        LoadsToSink.push_back(Load);
+    }
+  }
+
+  // Perform the sinking and duplication.
+  for (auto *Load : LoadsToSink) {
+    for (auto *U : llvm::make_early_inc_range(Load->users())) {
+      auto *UI = dyn_cast<Instruction>(U);
+      assert(UI && "Expected instruction user of load");
+      auto *NewLoad = Load->clone();
+      NewLoad->insertBefore(UI);
+      UI->replaceUsesOfWith(Load, NewLoad);
+    }
+    Load->eraseFromParent();
+    Changed = true;
+  }
+  return Changed;
+}
+
 struct InstSplitInfo {
   using InstInfo = std::pair<Instruction *, APInt>;
   // Vector of instructions with their original constant operand.
@@ -539,7 +659,8 @@ static bool splitLoopPHILiveRanges(Function &F, LoopInfo &LI,
   return Changed;
 }
 
-static bool runImpl(Function &F, LoopInfo &LI, DominatorTree &DT) {
+static bool runImpl(Function &F, LoopInfo &LI, DominatorTree &DT,
+                    AAResults &AA) {
   bool Changed = false;
   for (auto &BB : F) {
     for (auto &I : llvm::make_early_inc_range(BB)) {
@@ -556,6 +677,7 @@ static bool runImpl(Function &F, LoopInfo &LI, DominatorTree &DT) {
     }
   }
 
+  Changed |= sinkLoadInsts(LI, AA);
   Changed |= splitLoopPHILiveRanges(F, LI, DT);
   Changed |= rearrangeOverflowHandlingBranches(F);
   return Changed;
@@ -567,7 +689,8 @@ bool EraVMPostCodegenPrepare::runOnFunction(Function &F) {
 
   auto &LI = getAnalysis<LoopInfoWrapperPass>().getLoopInfo();
   auto &DT = getAnalysis<DominatorTreeWrapperPass>().getDomTree();
-  return runImpl(F, LI, DT);
+  auto &AA = getAnalysis<AAResultsWrapperPass>().getAAResults();
+  return runImpl(F, LI, DT, AA);
 }
 
 char EraVMPostCodegenPrepare::ID = 0;
@@ -576,6 +699,7 @@ INITIALIZE_PASS_BEGIN(EraVMPostCodegenPrepare, DEBUG_TYPE,
                       ERAVM_POST_CODEGEN_PREPARE_NAME, false, false)
 INITIALIZE_PASS_DEPENDENCY(DominatorTreeWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(LoopInfoWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(AAResultsWrapperPass)
 INITIALIZE_PASS_END(EraVMPostCodegenPrepare, DEBUG_TYPE,
                     ERAVM_POST_CODEGEN_PREPARE_NAME, false, false)
 
@@ -587,7 +711,8 @@ PreservedAnalyses
 EraVMPostCodegenPreparePass::run(Function &F, FunctionAnalysisManager &AM) {
   auto &LI = AM.getResult<LoopAnalysis>(F);
   auto &DT = AM.getResult<DominatorTreeAnalysis>(F);
-  if (runImpl(F, LI, DT))
+  auto &AA = AM.getResult<AAManager>(F);
+  if (runImpl(F, LI, DT, AA))
     return PreservedAnalyses::none();
   return PreservedAnalyses::all();
 }
