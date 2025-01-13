@@ -786,20 +786,20 @@ void EVMStackLayoutGenerator::dump(raw_ostream &OS) {
 void EVMStackLayoutGenerator::printBlock(
     raw_ostream &OS, const MachineBasicBlock &Block) {
   OS << "Block" << getBlockId(Block) << " [\n";
-  OS << stackToString(MBBEntryLayoutMap.at(&Block)) << "\n";
+  OS << MBBEntryLayoutMap.at(&Block).toString() << "\n";
   for (auto const &Op : StackModel.getOperations(&Block)) {
     OS << "\n";
     Stack EntryLayout = OperationEntryLayoutMap.at(&Op);
-    OS << stackToString(EntryLayout) << "\n";
+    OS << EntryLayout.toString() << "\n";
     OS << Op.toString() << "\n";
     assert(Op.getInput().size() <= EntryLayout.size());
     EntryLayout.resize(EntryLayout.size() - Op.getInput().size());
     EntryLayout.append(
         StackModel.getSlotsForInstructionDefs(Op.getMachineInstr()));
-    OS << stackToString(EntryLayout) << "\n";
+    OS << EntryLayout.toString() << "\n";
   }
   OS << "\n";
-  OS << stackToString(MBBExitLayoutMap.at(&Block)) << "\n";
+  OS << MBBExitLayoutMap.at(&Block).toString() << "\n";
   OS << "];\n";
 
   const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(&Block);
@@ -824,7 +824,7 @@ void EVMStackLayoutGenerator::printBlock(
     OS << "Block" << getBlockId(Block) << "Exit [label=\"FunctionReturn["
        << MF.getName() << "]\"];\n";
     const MachineInstr &MI = Block.back();
-    OS << "Return values: " << stackToString(StackModel.getReturnArguments(MI))
+    OS << "Return values: " << StackModel.getReturnArguments(MI).toString()
        << ";\n";
   } else if (ExitType == MBBExitType::Terminate) {
     OS << "Block" << getBlockId(Block) << "Exit [label=\"Terminated\"];\n";
