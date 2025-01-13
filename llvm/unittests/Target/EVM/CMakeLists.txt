@@ -13,6 +13,7 @@ set(LLVM_LINK_COMPONENTS
   MIRParser
   SelectionDAG
   Support
+  Target
   TargetParser
 )
 
