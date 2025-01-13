@@ -314,8 +314,7 @@ void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
                (isa<RegisterSlot>(CurrentStack.back()) ? "variable "
                                                        : "slot ") +
                CurrentStack.back()->toString() + ": too deep in the stack by " +
-               std::to_string(Deficit) + " slots in " +
-               stackToString(CurrentStack))
+               std::to_string(Deficit) + " slots in " + CurrentStack.toString())
                   .str();
 
           report_fatal_error(MF.getName() + Twine(": ") + Msg);
@@ -337,7 +336,7 @@ void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
             std::string Msg =
                 (isa<RegisterSlot>(Slot) ? "variable " : "slot ") +
                 Slot->toString() + " is " + std::to_string(Depth - 15) +
-                " too deep in the stack " + stackToString(CurrentStack);
+                " too deep in the stack " + CurrentStack.toString();
 
             report_fatal_error(MF.getName() + ": " + Msg);
             return;

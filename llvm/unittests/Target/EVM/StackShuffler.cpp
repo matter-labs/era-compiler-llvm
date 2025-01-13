@@ -169,11 +169,11 @@ PUSH JUNK\n\
   createStackLayout(
       SourceStack, TargetStack,
       [&](unsigned SwapDepth) { // swap
-        Output << stackToString(SourceStack) << '\n';
+        Output << SourceStack.toString() << '\n';
         Output << "SWAP" << SwapDepth << '\n';
       },
       [&](const StackSlot *Slot) { // dupOrPush
-        Output << stackToString(SourceStack) << '\n';
+        Output << SourceStack.toString() << '\n';
         if (Slot->isRematerializable())
           Output << "PUSH " << Slot->toString() << '\n';
         else {
@@ -188,11 +188,11 @@ PUSH JUNK\n\
         }
       },
       [&]() { // pop
-        Output << stackToString(SourceStack) << '\n';
+        Output << SourceStack.toString() << '\n';
         Output << "POP" << '\n';
       });
 
-  Output << stackToString(SourceStack) << '\n';
+  Output << SourceStack.toString() << '\n';
   std::cerr << Output.str();
   EXPECT_TRUE(Reference == Output.str());
 }

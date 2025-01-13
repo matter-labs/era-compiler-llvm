@@ -18,14 +18,6 @@
 
 using namespace llvm;
 
-std::string llvm::stackToString(const Stack &S) {
-  std::string Result("[ ");
-  for (const auto *Slot : S)
-    Result += Slot->toString() + ' ';
-  Result += ']';
-  return Result;
-}
-
 static const Function *getCalledFunction(const MachineInstr &MI) {
   for (const MachineOperand &MO : MI.operands()) {
     if (!MO.isGlobal())
@@ -85,7 +77,7 @@ Stack EVMStackModel::getFunctionParameters() const {
       Parameters[ArgIdx] = getRegisterSlot(MI.getOperand(0).getReg());
     }
   }
-  return Parameters;
+  return Stack(Parameters);
 }
 
 StackSlot *EVMStackModel::getStackSlot(const MachineOperand &MO) const {

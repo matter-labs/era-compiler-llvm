@@ -169,9 +169,24 @@ public:
 };
 
 /// The stack top is the last element of the vector.
-using Stack = SmallVector<StackSlot *>;
+class Stack : public SmallVector<StackSlot *> {
+public:
+  explicit Stack(StackSlot **Start, StackSlot **End)
+      : SmallVector(Start, End) {}
+  explicit Stack(size_t Size, StackSlot *Value) : SmallVector(Size, Value) {}
+  explicit Stack(SmallVector<StackSlot *> &&Slots) : SmallVector(std::move(Slots)) {}
+  // TODO: should it be explicit? If yes, fix all build errors.
+  Stack(const SmallVector<StackSlot *> &Slots) : SmallVector(Slots) {}
+  Stack() = default;
 
-std::string stackToString(const Stack &S);
+  std::string toString() const {
+    std::string Result("[ ");
+    for (const auto *It = begin(); It != end(); ++It)
+      Result += (*It)->toString() + ' ';
+    Result += ']';
+    return Result;
+  }
+};
 
 class Operation {
 public:
