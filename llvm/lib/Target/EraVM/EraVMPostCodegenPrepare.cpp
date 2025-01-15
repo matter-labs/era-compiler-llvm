@@ -44,7 +44,7 @@ static cl::opt<unsigned> NumOfPHIUsesToSplitLiveRanges(
     cl::desc("Number of uses of PHI node to consider splitting live ranges"));
 
 static cl::opt<bool>
-    EnableSinkLoads("eravm-enable-load-sinking", cl::Hidden, cl::init(false),
+    EnableSinkLoads("eravm-enable-load-sinking", cl::Hidden, cl::init(true),
                     cl::desc("Enable sinking loads to their users"));
 
 namespace {
