@@ -395,50 +395,50 @@ private:
 /// A simple optimized map for mapping StackSlot to ints.
 class Multiplicity {
 public:
-  int &operator[](StackSlot const &Slot) {
-    if (auto *p = std::get_if<FunctionCallReturnLabelSlot>(&Slot))
-      return FunctionCallReturnLabelSlotMultiplicity[*p];
-    if (std::holds_alternative<FunctionReturnLabelSlot>(Slot))
+  int &operator[](const StackSlot *Slot) {
+    if (auto *p = dyn_cast<FunctionCallReturnLabelSlot>(Slot))
+      return FunctionCallReturnLabelSlotMultiplicity[p];
+    if (isa<FunctionReturnLabelSlot>(Slot))
       return FunctionReturnLabelSlotMultiplicity;
-    if (auto *p = std::get_if<VariableSlot>(&Slot))
-      return VariableSlotMultiplicity[*p];
-    if (auto *p = std::get_if<LiteralSlot>(&Slot))
-      return LiteralSlotMultiplicity[*p];
-    if (auto *p = std::get_if<SymbolSlot>(&Slot))
-      return SymbolSlotMultiplicity[*p];
-    if (auto *p = std::get_if<TemporarySlot>(&Slot))
-      return TemporarySlotMultiplicity[*p];
+    if (auto *p = dyn_cast<VariableSlot>(Slot))
+      return VariableSlotMultiplicity[p];
+    if (auto *p = dyn_cast<LiteralSlot>(Slot))
+      return LiteralSlotMultiplicity[p];
+    if (auto *p = dyn_cast<SymbolSlot>(Slot))
+      return SymbolSlotMultiplicity[p];
+    if (auto *p = dyn_cast<TemporarySlot>(Slot))
+      return TemporarySlotMultiplicity[p];
 
-    assert(std::holds_alternative<JunkSlot>(Slot));
+    assert(isa<JunkSlot>(Slot));
     return JunkSlotMultiplicity;
   }
 
-  int at(StackSlot const &Slot) const {
-    if (auto *p = std::get_if<FunctionCallReturnLabelSlot>(&Slot))
-      return FunctionCallReturnLabelSlotMultiplicity.at(*p);
-    if (std::holds_alternative<FunctionReturnLabelSlot>(Slot))
+  int at(const StackSlot *Slot) const {
+    if (auto *p = dyn_cast<FunctionCallReturnLabelSlot>(Slot))
+      return FunctionCallReturnLabelSlotMultiplicity.at(p);
+    if (isa<FunctionReturnLabelSlot>(Slot))
       return FunctionReturnLabelSlotMultiplicity;
-    if (auto *p = std::get_if<VariableSlot>(&Slot))
-      return VariableSlotMultiplicity.at(*p);
-    if (auto *p = std::get_if<LiteralSlot>(&Slot))
-      return LiteralSlotMultiplicity.at(*p);
-    if (auto *p = std::get_if<SymbolSlot>(&Slot))
-      return SymbolSlotMultiplicity.at(*p);
-    if (auto *p = std::get_if<TemporarySlot>(&Slot))
-      return TemporarySlotMultiplicity.at(*p);
+    if (auto *p = dyn_cast<VariableSlot>(Slot))
+      return VariableSlotMultiplicity.at(p);
+    if (auto *p = dyn_cast<LiteralSlot>(Slot))
+      return LiteralSlotMultiplicity.at(p);
+    if (auto *p = dyn_cast<SymbolSlot>(Slot))
+      return SymbolSlotMultiplicity.at(p);
+    if (auto *p = dyn_cast<TemporarySlot>(Slot))
+      return TemporarySlotMultiplicity.at(p);
 
-    assert(std::holds_alternative<JunkSlot>(Slot));
+    assert(isa<JunkSlot>(Slot));
     return JunkSlotMultiplicity;
   }
 
 private:
-  std::map<FunctionCallReturnLabelSlot, int>
+  std::map<const FunctionCallReturnLabelSlot *, int>
       FunctionCallReturnLabelSlotMultiplicity;
   int FunctionReturnLabelSlotMultiplicity = 0;
-  std::map<VariableSlot, int> VariableSlotMultiplicity;
-  std::map<LiteralSlot, int> LiteralSlotMultiplicity;
-  std::map<SymbolSlot, int> SymbolSlotMultiplicity;
-  std::map<TemporarySlot, int> TemporarySlotMultiplicity;
+  std::map<const VariableSlot *, int> VariableSlotMultiplicity;
+  std::map<const LiteralSlot *, int> LiteralSlotMultiplicity;
+  std::map<const SymbolSlot *, int> SymbolSlotMultiplicity;
+  std::map<const TemporarySlot *, int> TemporarySlotMultiplicity;
   int JunkSlotMultiplicity = 0;
 };
 
@@ -471,9 +471,8 @@ void createStackLayout(Stack &CurrentStack, Stack const &TargetStack,
         --multiplicity[slot];
 
       for (unsigned Offset = 0; Offset < targetStack.size(); ++Offset) {
-        auto &Slot = targetStack[Offset];
-        if (std::holds_alternative<JunkSlot>(Slot) &&
-            Offset < currentStack.size())
+        auto *Slot = targetStack[Offset];
+        if (isa<JunkSlot>(Slot) && Offset < currentStack.size())
           ++multiplicity[currentStack[Offset]];
         else
           ++multiplicity[Slot];
@@ -482,7 +481,7 @@ void createStackLayout(Stack &CurrentStack, Stack const &TargetStack,
 
     bool isCompatible(size_t Source, size_t Target) {
       return Source < currentStack.size() && Target < targetStack.size() &&
-             (std::holds_alternative<JunkSlot>(targetStack[Target]) ||
+             (isa<JunkSlot>(targetStack[Target]) ||
               currentStack[Source] == targetStack[Target]);
     }
 
@@ -499,8 +498,7 @@ void createStackLayout(Stack &CurrentStack, Stack const &TargetStack,
     }
 
     bool targetIsArbitrary(size_t Offset) {
-      return Offset < targetStack.size() &&
-             std::holds_alternative<JunkSlot>(targetStack[Offset]);
+      return Offset < targetStack.size() && isa<JunkSlot>(targetStack[Offset]);
     }
 
     void swap(size_t I) {
@@ -518,7 +516,7 @@ void createStackLayout(Stack &CurrentStack, Stack const &TargetStack,
     }
 
     void pushOrDupTarget(size_t Offset) {
-      auto const &targetSlot = targetStack[Offset];
+      auto *targetSlot = targetStack[Offset];
       pushOrDupCallback(targetSlot);
       currentStack.push_back(targetSlot);
     }
@@ -529,10 +527,10 @@ void createStackLayout(Stack &CurrentStack, Stack const &TargetStack,
 
   assert(CurrentStack.size() == TargetStack.size());
   for (unsigned I = 0; I < CurrentStack.size(); ++I) {
-    auto &Current = CurrentStack[I];
-    auto &Target = TargetStack[I];
-    if (std::holds_alternative<JunkSlot>(Target))
-      Current = JunkSlot{};
+    StackSlot *&Current = CurrentStack[I];
+    auto *Target = TargetStack[I];
+    if (isa<JunkSlot>(Target))
+      Current = EVMStackModel::getJunkSlot();
     else
       assert(Current == Target);
   }
