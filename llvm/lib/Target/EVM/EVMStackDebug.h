@@ -17,18 +17,12 @@
 #include "EVMMachineCFGInfo.h"
 #include "EVMStackModel.h"
 #include "llvm/CodeGen/MachineFunction.h"
-#include <cassert>
 #include <map>
-#include <numeric>
-#include <set>
-#include <variant>
 
 namespace llvm {
 
 class EVMStackLayout;
 
-const Function *getCalledFunction(const MachineInstr &MI);
-std::string stackSlotToString(const StackSlot &Slot);
 std::string stackToString(Stack const &S);
 
 #ifndef NDEBUG
