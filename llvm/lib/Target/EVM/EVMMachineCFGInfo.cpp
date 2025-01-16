@@ -11,7 +11,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMMachineCFGInfo.h"
-#include "EVMHelperUtilities.h"
 #include "EVMMachineFunctionInfo.h"
 #include "EVMSubtarget.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
@@ -98,9 +97,6 @@ void EVMMachineCFGInfo::collectTerminatorsInfo(const TargetInstrInfo *TII,
     return;
   }
 
-  bool IsLatch = false;
-  if (MachineLoop *ML = MLI->getLoopFor(&MBB))
-    IsLatch = ML->isLoopLatch(&MBB);
   auto [CondBr, UncondBr] = getBranchInstructions(MBB);
   if (!TBB || (TBB && Cond.empty())) {
     // Fall through, or unconditional jump.
@@ -111,10 +107,10 @@ void EVMMachineCFGInfo::collectTerminatorsInfo(const TargetInstrInfo *TII,
       TBB = MBB.getFallThrough();
       assert(TBB);
     }
+
     Info->ExitType = MBBExitType::UnconditionalBranch;
-    Info->BranchInfo.Unconditional = {TBB, UncondBr, IsLatch};
+    Info->BranchInfo.Unconditional = {TBB, UncondBr};
   } else if (TBB && !Cond.empty()) {
-    assert(!IsLatch);
     // Conditional jump + fallthrough, or
     // conditional jump followed by unconditional jump).
     if (!FBB) {
