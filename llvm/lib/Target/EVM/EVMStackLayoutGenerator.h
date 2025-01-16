@@ -22,6 +22,8 @@
 #include "EVMStackModel.h"
 #include "llvm/ADT/DenseMap.h"
 
+#include <deque>
+
 namespace llvm {
 
 /// Returns the number of operations required to transform stack \p Source to
@@ -69,7 +71,7 @@ public:
     SmallVector<Register> variableChoices;
   };
 
-  EVMStackLayoutGenerator(const MachineFunction &MF,
+  EVMStackLayoutGenerator(const MachineFunction &MF, const MachineLoopInfo *MLI,
                           const EVMStackModel &StackModel,
                           const EVMMachineCFGInfo &CFGInfo);
 
@@ -93,7 +95,11 @@ private:
   /// Main algorithm walking the graph from entry to exit and propagating back
   /// the stack layouts to the entries. Iteratively reruns itself along
   /// backwards jumps until the layout is stabilized.
-  void processEntryPoint(const MachineBasicBlock *Entry);
+  void runPropagation();
+
+  /// Adds junks to the subgraph starting at \p Entry. It should only be
+  /// called on cut-vertices, so the full subgraph retains proper stack balance.
+  void addJunksToStackBottom(const MachineBasicBlock *Entry, size_t NumJunk);
 
   /// Returns the best known exit layout of \p Block, if all dependencies are
   /// already \p Visited. If not, adds the dependencies to \p DependencyList and
@@ -101,20 +107,7 @@ private:
   std::optional<Stack> getExitLayoutOrStageDependencies(
       const MachineBasicBlock *Block,
       const DenseSet<const MachineBasicBlock *> &Visited,
-      std::list<const MachineBasicBlock *> &DependencyList) const;
-
-  /// Returns a pair of '{jumpingBlock, targetBlock}' for each backwards jump
-  /// in the graph starting at \p Entry.
-  std::list<std::pair<const MachineBasicBlock *, const MachineBasicBlock *>>
-  collectBackwardsJumps(const MachineBasicBlock *Entry) const;
-
-  /// After the main algorithms, layouts at conditional jumps are merely
-  /// compatible, i.e. the exit layout of the jumping block is a superset of the
-  /// entry layout of the target block. This function modifies the entry layouts
-  /// of conditional jump targets, s.t., the entry layout of target blocks match
-  /// the exit layout of the jumping block exactly, except that slots not
-  /// required after the jump are marked as 'JunkSlot's.
-  void stitchConditionalJumps(const MachineBasicBlock *Block);
+      std::deque<const MachineBasicBlock *> &DependencyList) const;
 
   /// Calculates the ideal stack layout, s.t., both \p Stack1 and \p Stack2 can
   /// be achieved with minimal stack shuffling when starting from the returned
@@ -131,11 +124,8 @@ private:
   /// amount of operations to reconstruct the original stack \p Stack.
   static Stack compressStack(Stack Stack);
 
-  /// Fills in junk when entering branches that do not need a clean stack in
-  /// case the result is cheaper.
-  void fillInJunk(const MachineBasicBlock *Block);
-
   const MachineFunction &MF;
+  const MachineLoopInfo *MLI;
   const EVMStackModel &StackModel;
   const EVMMachineCFGInfo &CFGInfo;
 
