@@ -234,7 +234,7 @@ void EVMStackifyCodeEmitter::adjustStackForInst(const MachineInstr *MI,
   unsigned Idx = 0;
   for (const auto &MO : MI->defs()) {
     assert(MO.isReg());
-    CurrentStack.emplace_back(TemporarySlot{MI, MO.getReg(), Idx++});
+    CurrentStack.push_back(StackModel.getTemporarySlot(MI, Idx++));
   }
   assert(Emitter.stackHeight() == CurrentStack.size());
 }
@@ -247,10 +247,10 @@ void EVMStackifyCodeEmitter::visitCall(const FunctionCall &Call) {
 
   // Assert that we got the correct return label on stack.
   if (callWillReturn(Call.MI)) {
-    [[maybe_unused]] const auto *returnLabelSlot =
-        std::get_if<FunctionCallReturnLabelSlot>(
-            &CurrentStack[CurrentStack.size() - NumArgs]);
-    assert(returnLabelSlot && returnLabelSlot->Call == Call.MI);
+    [[maybe_unused]] const auto *ReturnLabelSlot =
+        dyn_cast<FunctionCallReturnLabelSlot>(
+            CurrentStack[CurrentStack.size() - NumArgs]);
+    assert(ReturnLabelSlot && ReturnLabelSlot->getCall() == Call.MI);
   }
 
   // Emit call.
@@ -275,10 +275,10 @@ void EVMStackifyCodeEmitter::visitAssign(const Assignment &Assignment) {
   assert(Emitter.stackHeight() == CurrentStack.size());
 
   // Invalidate occurrences of the assigned variables.
-  for (auto &CurrentSlot : CurrentStack)
-    if (const VariableSlot *VarSlot = std::get_if<VariableSlot>(&CurrentSlot))
-      if (is_contained(Assignment.Variables, *VarSlot))
-        CurrentSlot = JunkSlot{};
+  for (auto *&CurrentSlot : CurrentStack)
+    if (const auto *VarSlot = dyn_cast<VariableSlot>(CurrentSlot))
+      if (is_contained(Assignment.Variables, VarSlot))
+        CurrentSlot = EVMStackModel::getJunkSlot();
 
   // Assign variables to current stack top.
   assert(CurrentStack.size() >= Assignment.Variables.size());
@@ -290,30 +290,12 @@ bool EVMStackifyCodeEmitter::areLayoutsCompatible(const Stack &SourceStack,
                                                   const Stack &TargetStack) {
   return SourceStack.size() == TargetStack.size() &&
          all_of(zip_equal(SourceStack, TargetStack), [](const auto &Pair) {
-           const auto &[Src, Tgt] = Pair;
-           return std::holds_alternative<JunkSlot>(Tgt) || (Src == Tgt);
+           const auto [Src, Tgt] = Pair;
+           return isa<JunkSlot>(Tgt) || (Src == Tgt);
          });
 }
 
 void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
-  auto SlotVariableName = [](const StackSlot &Slot) {
-    return std::visit(
-        Overload{
-            [&](const VariableSlot &Var) {
-              SmallString<1024> StrBuf;
-              raw_svector_ostream OS(StrBuf);
-              OS << printReg(Var.VirtualReg, nullptr, 0, nullptr);
-              return std::string(StrBuf.c_str());
-            },
-            [&](const FunctionCallReturnLabelSlot &) { return std::string(); },
-            [&](const FunctionReturnLabelSlot &) { return std::string(); },
-            [&](const LiteralSlot &) { return std::string(); },
-            [&](const SymbolSlot &) { return std::string(); },
-            [&](const TemporarySlot &) { return std::string(); },
-            [&](const JunkSlot &) { return std::string(); }},
-        Slot);
-  };
-
   assert(Emitter.stackHeight() == CurrentStack.size());
   // ::createStackLayout asserts that it has successfully achieved the target
   // layout.
@@ -327,26 +309,23 @@ void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
           Emitter.emitSWAP(I);
         } else {
           int Deficit = static_cast<int>(I) - 16;
-          const StackSlot &DeepSlot = CurrentStack[CurrentStack.size() - I - 1];
-          std::string VarNameDeep = SlotVariableName(DeepSlot);
-          std::string VarNameTop = SlotVariableName(CurrentStack.back());
+          const StackSlot *DeepSlot = CurrentStack[CurrentStack.size() - I - 1];
           std::string Msg =
               (Twine("cannot swap ") +
-               (VarNameDeep.empty() ? ("slot " + stackSlotToString(DeepSlot))
-                                    : (Twine("variable ") + VarNameDeep)) +
-               " with " +
-               (VarNameTop.empty()
-                    ? ("slot " + stackSlotToString(CurrentStack.back()))
-                    : (Twine("variable ") + VarNameTop)) +
-               ": too deep in the stack by " + std::to_string(Deficit) +
-               " slots in " + stackToString(CurrentStack))
+               (isa<VariableSlot>(DeepSlot) ? "variable " : "slot ") +
+               DeepSlot->toString() + " with " +
+               (isa<VariableSlot>(CurrentStack.back()) ? "variable "
+                                                       : "slot ") +
+               CurrentStack.back()->toString() + ": too deep in the stack by " +
+               std::to_string(Deficit) + " slots in " +
+               stackToString(CurrentStack))
                   .str();
 
           report_fatal_error(MF.getName() + Twine(": ") + Msg);
         }
       },
       // Push or dup callback.
-      [&](const StackSlot &Slot) {
+      [&](const StackSlot *Slot) {
         assert(CurrentStack.size() == Emitter.stackHeight());
 
         // Dup the slot, if already on stack and reachable.
@@ -357,14 +336,11 @@ void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
             Emitter.emitDUP(static_cast<unsigned>(Depth + 1));
             return;
           }
-          if (!isRematerializable(Slot)) {
-            std::string VarName = SlotVariableName(Slot);
+          if (!Slot->isRematerializable()) {
             std::string Msg =
-                ((VarName.empty() ? "slot " + stackSlotToString(Slot)
-                                  : Twine("variable ") + VarName) +
-                 " is " + std::to_string(Depth - 15) +
-                 " too deep in the stack " + stackToString(CurrentStack))
-                    .str();
+                (isa<VariableSlot>(Slot) ? "variable " : "slot ") +
+                Slot->toString() + " is " + std::to_string(Depth - 15) +
+                " too deep in the stack " + stackToString(CurrentStack);
 
             report_fatal_error(MF.getName() + ": " + Msg);
             return;
@@ -375,32 +351,25 @@ void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
 
         // The slot can be freely generated or is an unassigned return variable.
         // Push it.
-        std::visit(
-            Overload{[&](const LiteralSlot &Literal) {
-                       Emitter.emitConstant(Literal.Value);
-                     },
-                     [&](const SymbolSlot &Symbol) {
-                       Emitter.emitSymbol(Symbol.MI, Symbol.Symbol);
-                     },
-                     [&](const FunctionReturnLabelSlot &) {
-                       llvm_unreachable("Cannot produce function return label");
-                     },
-                     [&](const FunctionCallReturnLabelSlot &ReturnLabel) {
-                       Emitter.emitLabelReference(ReturnLabel.Call);
-                     },
-                     [&](const VariableSlot &Variable) {
-                       llvm_unreachable("Variable not found on stack");
-                     },
-                     [&](const TemporarySlot &) {
-                       llvm_unreachable("Function call result requested, but "
-                                        "not found on stack.");
-                     },
-                     [&](const JunkSlot &) {
-                       // Note: this will always be popped, so we can push
-                       // anything.
-                       Emitter.emitConstant(0);
-                     }},
-            Slot);
+        if (const auto *L = dyn_cast<LiteralSlot>(Slot)) {
+          Emitter.emitConstant(L->getValue());
+        } else if (const auto *S = dyn_cast<SymbolSlot>(Slot)) {
+          Emitter.emitSymbol(S->getMachineInstr(), S->getSymbol());
+        } else if (const auto *CallRet =
+                       dyn_cast<FunctionCallReturnLabelSlot>(Slot)) {
+          Emitter.emitLabelReference(CallRet->getCall());
+        } else if (isa<FunctionReturnLabelSlot>(Slot)) {
+          llvm_unreachable("Cannot produce function return label");
+        } else if (isa<VariableSlot>(Slot)) {
+          llvm_unreachable("Variable not found on stack");
+        } else if (isa<TemporarySlot>(Slot)) {
+          llvm_unreachable("Function call result requested, but "
+                           "not found on stack.");
+        } else {
+          assert(isa<JunkSlot>(Slot));
+          // Note: this will always be popped, so we can push anything.
+          Emitter.emitConstant(0);
+        }
       },
       // Pop callback.
       [&]() { Emitter.emitPOP(); });

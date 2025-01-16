@@ -17,9 +17,37 @@
 #include "llvm/CodeGen/MachineFunction.h"
 
 #include <ostream>
-#include <variant>
 
 using namespace llvm;
+
+static const Function *getCalledFunction(const MachineInstr &MI) {
+  for (const MachineOperand &MO : MI.operands()) {
+    if (!MO.isGlobal())
+      continue;
+    if (const auto *Func = dyn_cast<Function>(MO.getGlobal()))
+      return Func;
+  }
+  return nullptr;
+}
+// TODO: make it static once Operation gets rid of std::variant.
+std::string llvm::getInstName(const MachineInstr *MI) {
+  const MachineFunction *MF = MI->getParent()->getParent();
+  const TargetInstrInfo *TII = MF->getSubtarget().getInstrInfo();
+  return TII->getName(MI->getOpcode()).str();
+}
+
+std::string SymbolSlot::toString() const {
+  return getInstName(MI) + ":" + std::string(Symbol->getName());
+}
+std::string FunctionCallReturnLabelSlot::toString() const {
+  return "RET[" + std::string(getCalledFunction(*Call)->getName()) + "]";
+}
+std::string TemporarySlot::toString() const {
+  SmallString<128> S;
+  raw_svector_ostream OS(S);
+  OS << "TMP[" << getInstName(MI) << ", " << std::to_string(Index) + "]";
+  return std::string(S.str());
+}
 
 EVMStackModel::EVMStackModel(MachineFunction &MF, const LiveIntervals &LIS)
     : MF(MF), LIS(LIS) {
@@ -33,37 +61,34 @@ EVMStackModel::EVMStackModel(MachineFunction &MF, const LiveIntervals &LIS)
 
 Stack EVMStackModel::getFunctionParameters() const {
   auto *MFI = MF.getInfo<EVMMachineFunctionInfo>();
-  SmallVector<StackSlot> Parameters(MFI->getNumParams(), JunkSlot{});
+  SmallVector<StackSlot *> Parameters(MFI->getNumParams(),
+                                      EVMStackModel::getJunkSlot());
   for (const MachineInstr &MI : MF.front()) {
     if (MI.getOpcode() == EVM::ARGUMENT) {
       int64_t ArgIdx = MI.getOperand(1).getImm();
-      Parameters[ArgIdx] = VariableSlot{MI.getOperand(0).getReg()};
+      Parameters[ArgIdx] = getVariableSlot(MI.getOperand(0).getReg());
     }
   }
   return Parameters;
 }
 
-StackSlot EVMStackModel::getStackSlot(const MachineOperand &MO) const {
-  const MachineInstr *MI = MO.getParent();
-  StackSlot Slot = VariableSlot{MO.getReg()};
-  SlotIndex Idx = LIS.getInstructionIndex(*MI);
-  const LiveInterval *LI = &LIS.getInterval(MO.getReg());
-  LiveQueryResult LRQ = LI->Query(Idx);
-  const VNInfo *VNI = LRQ.valueIn();
-  assert(VNI && "Use of non-existing value");
+StackSlot *EVMStackModel::getStackSlot(const MachineOperand &MO) const {
   // If the virtual register defines a constant and this is the only
   // definition, emit the literal slot as MI's input.
+  const LiveInterval *LI = &LIS.getInterval(MO.getReg());
   if (LI->containsOneValue()) {
+    SlotIndex Idx = LIS.getInstructionIndex(*MO.getParent());
+    const VNInfo *VNI = LI->Query(Idx).valueIn();
+    assert(VNI && "Use of non-existing value");
     assert(!VNI->isPHIDef());
     const MachineInstr *DefMI = LIS.getInstructionFromIndex(VNI->def);
     assert(DefMI && "Dead valno in interval");
     if (DefMI->getOpcode() == EVM::CONST_I256) {
       const APInt Imm = DefMI->getOperand(1).getCImm()->getValue();
-      Slot = LiteralSlot{std::move(Imm)};
+      return getLiteralSlot(std::move(Imm));
     }
   }
-
-  return Slot;
+  return getVariableSlot(MO.getReg());
 }
 
 Stack EVMStackModel::getInstrInput(const MachineInstr &MI) const {
@@ -78,16 +103,15 @@ Stack EVMStackModel::getInstrInput(const MachineInstr &MI) const {
     if (MO.getReg() == EVM::SP)
       continue;
 
-    In.emplace_back(getStackSlot(MO));
+    In.push_back(getStackSlot(MO));
   }
   return In;
 }
 
 Stack EVMStackModel::getInstrOutput(const MachineInstr &MI) const {
   Stack Out;
-  unsigned ArgNumber = 0;
-  for (const auto &MO : MI.defs())
-    Out.push_back(TemporarySlot{&MI, MO.getReg(), ArgNumber++});
+  for (unsigned I = 0, E = MI.getNumExplicitDefs(); I < E; ++I)
+    Out.push_back(getTemporarySlot(&MI, I));
   return Out;
 }
 
@@ -111,7 +135,7 @@ void EVMStackModel::createOperation(MachineInstr &MI,
         assert(Func);
         IsNoReturn = Func->hasFnAttribute(Attribute::NoReturn);
         if (!IsNoReturn)
-          Input.push_back(FunctionCallReturnLabelSlot{&MI});
+          Input.push_back(getFunctionCallReturnLabelSlot(&MI));
         break;
       }
     }
@@ -146,42 +170,42 @@ void EVMStackModel::createOperation(MachineInstr &MI,
   } break;
   }
 
-  // Cretae CFG::Assignment object for the MI.
+  // Create CFG::Assignment object for the MI.
   Stack Input, Output;
-  SmallVector<VariableSlot> Variables;
+  SmallVector<VariableSlot *> Variables;
   switch (MI.getOpcode()) {
   case EVM::CONST_I256: {
     const Register DefReg = MI.getOperand(0).getReg();
     const APInt Imm = MI.getOperand(1).getCImm()->getValue();
-    Input.push_back(LiteralSlot{std::move(Imm)});
-    Output.push_back(VariableSlot{DefReg});
-    Variables.push_back(VariableSlot{DefReg});
+    Input.push_back(getLiteralSlot(std::move(Imm)));
+    Output.push_back(getVariableSlot(DefReg));
+    Variables.push_back(getVariableSlot(DefReg));
   } break;
   case EVM::DATASIZE:
   case EVM::DATAOFFSET:
   case EVM::LINKERSYMBOL: {
     const Register DefReg = MI.getOperand(0).getReg();
     MCSymbol *Sym = MI.getOperand(1).getMCSymbol();
-    Input.push_back(SymbolSlot{Sym, &MI});
-    Output.push_back(VariableSlot{DefReg});
-    Variables.push_back(VariableSlot{DefReg});
+    Input.push_back(getSymbolSlot(Sym, &MI));
+    Output.push_back(getVariableSlot(DefReg));
+    Variables.push_back(getVariableSlot(DefReg));
   } break;
   case EVM::COPY_I256: {
     // Copy instruction corresponds to the assignment operator, so
     // we do not need to create intermediate TmpSlots.
     Input = getInstrInput(MI);
     const Register DefReg = MI.getOperand(0).getReg();
-    Output.push_back(VariableSlot{DefReg});
-    Variables.push_back(VariableSlot{DefReg});
+    Output.push_back(getVariableSlot(DefReg));
+    Variables.push_back(getVariableSlot(DefReg));
   } break;
   default: {
     unsigned ArgsNumber = 0;
     for (const auto &MO : MI.defs()) {
       assert(MO.isReg());
       const Register Reg = MO.getReg();
-      Input.push_back(TemporarySlot{&MI, Reg, ArgsNumber++});
-      Output.push_back(VariableSlot{Reg});
-      Variables.push_back(VariableSlot{Reg});
+      Input.push_back(getTemporarySlot(&MI, ArgsNumber++));
+      Output.push_back(getVariableSlot(Reg));
+      Variables.push_back(getVariableSlot(Reg));
     }
   } break;
   }
@@ -200,6 +224,6 @@ Stack EVMStackModel::getReturnArguments(const MachineInstr &MI) const {
   // Calling convention: return values are passed in stack such that the
   // last one specified in the RET instruction is passed on the stack TOP.
   std::reverse(Input.begin(), Input.end());
-  Input.emplace_back(FunctionReturnLabelSlot{&MF});
+  Input.push_back(getFunctionReturnLabelSlot(&MF));
   return Input;
 }

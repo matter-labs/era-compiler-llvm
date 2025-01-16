@@ -67,6 +67,9 @@ class LLDCTest : public testing::Test {
     Function *const F = Function::Create(
         FunctionType, GlobalValue::InternalLinkage, "TestFunction", Mod.get());
     MF = &MMIWP->getMMI().getOrCreateMachineFunction(*F);
+
+    LIS = std::make_unique<LiveIntervals>();
+    StackModel = std::make_unique<EVMStackModel>(*MF, *LIS.get());
   }
 
   void TearDown() override { LLVMDisposeTargetMachine(TM); }
@@ -77,6 +80,8 @@ public:
   std::unique_ptr<LLVMContext> Context;
   std::unique_ptr<Module> Mod;
   std::unique_ptr<MachineModuleInfoWrapperPass> MMIWP;
+  std::unique_ptr<LiveIntervals> LIS;
+  std::unique_ptr<EVMStackModel> StackModel;
 };
 
 TEST_F(LLDCTest, Basic) {
@@ -101,46 +106,49 @@ TEST_F(LLDCTest, Basic) {
 
   // Create the source stack layout:
   //   [ %0 %1 %2 %3 %4 %5 %6 %7 %9 %10 %11 %12 %13 %14 %15 %16 RET RET %5 ]
-  SourceStack.emplace_back(VariableSlot{Instrs[0].second});
-  SourceStack.emplace_back(VariableSlot{Instrs[1].second});
-  SourceStack.emplace_back(VariableSlot{Instrs[2].second});
-  SourceStack.emplace_back(VariableSlot{Instrs[3].second});
-  SourceStack.emplace_back(VariableSlot{Instrs[4].second});
-  SourceStack.emplace_back(VariableSlot{Instrs[5].second});
-  SourceStack.emplace_back(VariableSlot{Instrs[6].second});
-  SourceStack.emplace_back(VariableSlot{Instrs[7].second});
-  SourceStack.emplace_back(VariableSlot{Instrs[9].second});
-  SourceStack.emplace_back(VariableSlot{Instrs[10].second});
-  SourceStack.emplace_back(VariableSlot{Instrs[11].second});
-  SourceStack.emplace_back(VariableSlot{Instrs[12].second});
-  SourceStack.emplace_back(VariableSlot{Instrs[13].second});
-  SourceStack.emplace_back(VariableSlot{Instrs[14].second});
-  SourceStack.emplace_back(VariableSlot{Instrs[15].second});
-  SourceStack.emplace_back(VariableSlot{Instrs[16].second});
-  SourceStack.emplace_back(FunctionReturnLabelSlot{MBB->getParent()});
-  SourceStack.emplace_back(FunctionReturnLabelSlot{MBB->getParent()});
-  SourceStack.emplace_back(VariableSlot{Instrs[5].second});
+  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[0].second));
+  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[1].second));
+  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[2].second));
+  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[3].second));
+  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[4].second));
+  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[5].second));
+  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[6].second));
+  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[7].second));
+  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[9].second));
+  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[10].second));
+  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[11].second));
+  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[12].second));
+  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[13].second));
+  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[14].second));
+  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[15].second));
+  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[16].second));
+  SourceStack.emplace_back(
+      StackModel->getFunctionReturnLabelSlot(MBB->getParent()));
+  SourceStack.emplace_back(
+      StackModel->getFunctionReturnLabelSlot(MBB->getParent()));
+  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[5].second));
 
   // [ %1 %0 %2 %3 %4 %5 %6 %7 %9 %10 %11 %12 %13 %14 %15 %16 RET JUNK JUNK ]
-  TargetStack.emplace_back(VariableSlot{Instrs[1].second});
-  TargetStack.emplace_back(VariableSlot{Instrs[0].second});
-  TargetStack.emplace_back(VariableSlot{Instrs[2].second});
-  TargetStack.emplace_back(VariableSlot{Instrs[3].second});
-  TargetStack.emplace_back(VariableSlot{Instrs[4].second});
-  TargetStack.emplace_back(VariableSlot{Instrs[5].second});
-  TargetStack.emplace_back(VariableSlot{Instrs[6].second});
-  TargetStack.emplace_back(VariableSlot{Instrs[7].second});
-  TargetStack.emplace_back(VariableSlot{Instrs[9].second});
-  TargetStack.emplace_back(VariableSlot{Instrs[10].second});
-  TargetStack.emplace_back(VariableSlot{Instrs[11].second});
-  TargetStack.emplace_back(VariableSlot{Instrs[12].second});
-  TargetStack.emplace_back(VariableSlot{Instrs[13].second});
-  TargetStack.emplace_back(VariableSlot{Instrs[14].second});
-  TargetStack.emplace_back(VariableSlot{Instrs[15].second});
-  TargetStack.emplace_back(VariableSlot{Instrs[16].second});
-  TargetStack.emplace_back(FunctionReturnLabelSlot{MBB->getParent()});
-  TargetStack.emplace_back(JunkSlot{});
-  TargetStack.emplace_back(JunkSlot{});
+  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[1].second));
+  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[0].second));
+  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[2].second));
+  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[3].second));
+  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[4].second));
+  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[5].second));
+  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[6].second));
+  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[7].second));
+  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[9].second));
+  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[10].second));
+  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[11].second));
+  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[12].second));
+  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[13].second));
+  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[14].second));
+  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[15].second));
+  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[16].second));
+  TargetStack.emplace_back(
+      StackModel->getFunctionReturnLabelSlot(MBB->getParent()));
+  TargetStack.emplace_back(StackModel->getJunkSlot());
+  TargetStack.emplace_back(StackModel->getJunkSlot());
 
   StringRef Reference("\
 [ %0 %1 %2 %3 %4 %5 %6 %7 %9 %10 %11 %12 %13 %14 %15 %16 RET RET %5 ]\n\
@@ -170,10 +178,10 @@ PUSH JUNK\n\
         Output << stackToString(SourceStack) << '\n';
         Output << "SWAP" << SwapDepth << '\n';
       },
-      [&](StackSlot const &Slot) { // dupOrPush
+      [&](const StackSlot *Slot) { // dupOrPush
         Output << stackToString(SourceStack) << '\n';
-        if (isRematerializable(Slot))
-          Output << "PUSH " << stackSlotToString(Slot) << '\n';
+        if (Slot->isRematerializable())
+          Output << "PUSH " << Slot->toString() << '\n';
         else {
           Stack TmpStack = SourceStack;
           std::reverse(TmpStack.begin(), TmpStack.end());

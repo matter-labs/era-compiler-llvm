@@ -24,82 +24,28 @@ template <class... Ts> struct Overload : Ts... {
 };
 template <class... Ts> Overload(Ts...) -> Overload<Ts...>;
 
-static std::string getInstName(const MachineInstr *MI) {
-  const MachineFunction *MF = MI->getParent()->getParent();
-  const TargetInstrInfo *TII = MF->getSubtarget().getInstrInfo();
-  return TII->getName(MI->getOpcode()).str();
-}
-
-const Function *llvm::getCalledFunction(const MachineInstr &MI) {
-  for (const MachineOperand &MO : MI.operands()) {
-    if (!MO.isGlobal())
-      continue;
-    const Function *Func = dyn_cast<Function>(MO.getGlobal());
-    if (Func != nullptr)
-      return Func;
-  }
-  return nullptr;
-}
-
 std::string llvm::stackToString(const Stack &S) {
   std::string Result("[ ");
-  for (auto const &Slot : S)
-    Result += stackSlotToString(Slot) + ' ';
+  for (const auto *Slot : S)
+    Result += Slot->toString() + ' ';
   Result += ']';
   return Result;
-}
-
-std::string llvm::stackSlotToString(const StackSlot &Slot) {
-  return std::visit(
-      Overload{
-          [](const FunctionCallReturnLabelSlot &Ret) -> std::string {
-            return "RET[" +
-                   std::string(getCalledFunction(*Ret.Call)->getName()) + "]";
-          },
-          [](const FunctionReturnLabelSlot &) -> std::string { return "RET"; },
-          [](const VariableSlot &Var) -> std::string {
-            SmallString<64> S;
-            raw_svector_ostream OS(S);
-            OS << printReg(Var.VirtualReg, nullptr, 0, nullptr);
-            return std::string(S);
-            ;
-          },
-          [](const LiteralSlot &Literal) -> std::string {
-            SmallString<64> S;
-            Literal.Value.toStringSigned(S);
-            return std::string(S);
-          },
-          [](const SymbolSlot &Symbol) -> std::string {
-            return getInstName(Symbol.MI) + ":" +
-                   std::string(Symbol.Symbol->getName());
-          },
-          [](const TemporarySlot &Tmp) -> std::string {
-            SmallString<128> S;
-            raw_svector_ostream OS(S);
-            OS << "TMP[" << getInstName(Tmp.MI) << ", ";
-            OS << std::to_string(Tmp.Index) + "]";
-            return std::string(S);
-          },
-          [](const JunkSlot &Junk) -> std::string { return "JUNK"; }},
-      Slot);
-  ;
 }
 
 #ifndef NDEBUG
 
 void StackLayoutPrinter::operator()() {
   OS << "Function: " << MF.getName() << "(";
-  for (const StackSlot &ParamSlot : StackModel.getFunctionParameters()) {
-    if (const auto *Slot = std::get_if<VariableSlot>(&ParamSlot))
-      OS << printReg(Slot->VirtualReg, nullptr, 0, nullptr) << ' ';
-    else if (std::holds_alternative<JunkSlot>(ParamSlot))
+  for (const StackSlot *ParamSlot : StackModel.getFunctionParameters()) {
+    if (const auto *Slot = dyn_cast<VariableSlot>(ParamSlot))
+      OS << printReg(Slot->getReg(), nullptr, 0, nullptr) << ' ';
+    else if (isa<JunkSlot>(ParamSlot))
       OS << "[unused param] ";
     else
       llvm_unreachable("Unexpected stack slot");
   }
   OS << ");\n";
-  OS << "FunctionEntry "
-     << " -> Block" << getBlockId(MF.front()) << ";\n";
+  OS << "FunctionEntry " << " -> Block" << getBlockId(MF.front()) << ";\n";
 
   for (const auto &MBB : MF) {
     printBlock(MBB);
@@ -123,8 +69,8 @@ void StackLayoutPrinter::printBlock(MachineBasicBlock const &Block) {
                         },
                         [&](Assignment const &Assignment) {
                           OS << "Assignment(";
-                          for (const auto &Var : Assignment.Variables)
-                            OS << printReg(Var.VirtualReg, nullptr, 0, nullptr)
+                          for (const auto *Var : Assignment.Variables)
+                            OS << printReg(Var->getReg(), nullptr, 0, nullptr)
                                << ", ";
                           OS << ")";
                         }},
@@ -153,7 +99,7 @@ void StackLayoutPrinter::printBlock(MachineBasicBlock const &Block) {
     auto [CondBr, UncondBr, TrueBB, FalseBB, Condition] =
         TermInfo->getConditionalBranch();
     OS << "Block" << getBlockId(Block) << "Exit [label=\"{ ";
-    OS << stackSlotToString(StackModel.getStackSlot(*Condition));
+    OS << StackModel.getStackSlot(*Condition)->toString();
     OS << "| { <0> Zero | <1> NonZero }}\"];\n";
     OS << "Block" << getBlockId(Block);
     OS << "Exit:0 -> Block" << getBlockId(*FalseBB) << ";\n";

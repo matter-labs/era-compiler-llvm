@@ -63,10 +63,10 @@ findStackTooDeep(Stack const &Source, Stack const &Target) {
 
   auto getVariableChoices = [](auto &&SlotRange) {
     SmallVector<Register> Result;
-    for (auto const &Slot : SlotRange)
-      if (auto const *VarSlot = std::get_if<VariableSlot>(&Slot))
-        if (!is_contained(Result, VarSlot->VirtualReg))
-          Result.push_back(VarSlot->VirtualReg);
+    for (auto const *Slot : SlotRange)
+      if (auto const *VarSlot = dyn_cast<VariableSlot>(Slot))
+        if (!is_contained(Result, VarSlot->getReg()))
+          Result.push_back(VarSlot->getReg());
     return Result;
   };
 
@@ -77,8 +77,8 @@ findStackTooDeep(Stack const &Source, Stack const &Target) {
           Errors.emplace_back(EVMStackLayoutGenerator::StackTooDeep{
               I - 16, getVariableChoices(take_back(CurrentStack, I + 1))});
       },
-      [&](StackSlot const &Slot) {
-        if (isRematerializable(Slot))
+      [&](const StackSlot *Slot) {
+        if (Slot->isRematerializable())
           return;
 
         if (auto Depth = offset(reverse(CurrentStack), Slot);
@@ -102,14 +102,14 @@ Stack createIdealLayout(const Stack &OperationOutput, const Stack &Post,
   struct PreviousSlot {
     size_t slot;
   };
-  using LayoutT = SmallVector<std::variant<PreviousSlot, StackSlot>>;
+  using LayoutT = SmallVector<std::variant<PreviousSlot, StackSlot *>>;
 
   // Determine the number of slots that have to be on stack before executing the
   // operation (excluding the inputs of the operation itself). That is slots
   // that should not be generated on the fly and are not outputs of the
   // operation.
   size_t PreOperationLayoutSize = Post.size();
-  for (auto const &Slot : Post)
+  for (const auto *Slot : Post)
     if (is_contained(OperationOutput, Slot) || GenerateSlotOnTheFly(Slot))
       --PreOperationLayoutSize;
 
@@ -129,54 +129,53 @@ Stack createIdealLayout(const Stack &OperationOutput, const Stack &Post,
   struct ShuffleOperations {
     LayoutT &Layout;
     const Stack &Post;
-    std::set<StackSlot> Outputs;
+    std::set<StackSlot *> Outputs;
     Multiplicity Mult;
     Callable GenerateSlotOnTheFly;
     ShuffleOperations(LayoutT &Layout, Stack const &Post,
                       Callable GenerateSlotOnTheFly)
         : Layout(Layout), Post(Post),
           GenerateSlotOnTheFly(GenerateSlotOnTheFly) {
-      for (auto const &LayoutSlot : Layout)
-        if (const StackSlot *Slot = std::get_if<StackSlot>(&LayoutSlot))
+      for (const auto &LayoutSlot : Layout)
+        if (auto Slot = std::get_if<StackSlot *>(&LayoutSlot))
           Outputs.insert(*Slot);
 
-      for (auto const &LayoutSlot : Layout)
-        if (const StackSlot *Slot = std::get_if<StackSlot>(&LayoutSlot))
+      for (const auto &LayoutSlot : Layout)
+        if (auto Slot = std::get_if<StackSlot *>(&LayoutSlot))
           --Mult[*Slot];
 
-      for (auto &&Slot : Post)
+      for (auto *Slot : Post)
         if (Outputs.count(Slot) || GenerateSlotOnTheFly(Slot))
           ++Mult[Slot];
     }
 
     bool isCompatible(size_t Source, size_t Target) {
       return Source < Layout.size() && Target < Post.size() &&
-             (std::holds_alternative<JunkSlot>(Post[Target]) ||
+             (isa<JunkSlot>(Post[Target]) ||
               std::visit(Overload{[&](const PreviousSlot &) {
                                     return !Outputs.count(Post[Target]) &&
                                            !GenerateSlotOnTheFly(Post[Target]);
                                   },
-                                  [&](const StackSlot &S) {
+                                  [&](const StackSlot *S) {
                                     return S == Post[Target];
                                   }},
                          Layout[Source]));
     }
 
     bool sourceIsSame(size_t Lhs, size_t Rhs) {
-      return std::visit(
-          Overload{
-              [&](PreviousSlot const &, PreviousSlot const &) { return true; },
-              [&](StackSlot const &Lhs, StackSlot const &Rhs) {
-                return Lhs == Rhs;
-              },
-              [&](auto const &, auto const &) { return false; }},
-          Layout[Lhs], Layout[Rhs]);
+      if (std::holds_alternative<PreviousSlot>(Layout[Lhs]) &&
+          std::holds_alternative<PreviousSlot>(Layout[Rhs]))
+        return true;
+
+      auto SlotLHS = std::get_if<StackSlot *>(&Layout[Lhs]);
+      auto SlotRHS = std::get_if<StackSlot *>(&Layout[Rhs]);
+      return SlotLHS && SlotRHS && *SlotLHS == *SlotRHS;
     }
 
     int sourceMultiplicity(size_t Offset) {
       return std::visit(
           Overload{[&](PreviousSlot const &) { return 0; },
-                   [&](StackSlot const &S) { return Mult.at(S); }},
+                   [&](const StackSlot *S) { return Mult.at(S); }},
           Layout[Offset]);
     }
 
@@ -187,8 +186,7 @@ Stack createIdealLayout(const Stack &OperationOutput, const Stack &Post,
     }
 
     bool targetIsArbitrary(size_t Offset) {
-      return Offset < Post.size() &&
-             std::holds_alternative<JunkSlot>(Post[Offset]);
+      return Offset < Post.size() && isa<JunkSlot>(Post[Offset]);
     }
 
     void swap(size_t I) {
@@ -217,9 +215,9 @@ Stack createIdealLayout(const Stack &OperationOutput, const Stack &Post,
   // VariableSlot{"tmp"}, then we want the variable tmp in the slot at offset 2
   // in the layout before the operation.
   assert(Layout.size() == Post.size());
-  SmallVector<std::optional<StackSlot>> IdealLayout(Post.size(), std::nullopt);
+  SmallVector<StackSlot *> IdealLayout(Post.size(), nullptr);
   for (unsigned Idx = 0; Idx < std::min(Layout.size(), Post.size()); ++Idx) {
-    auto &Slot = Post[Idx];
+    auto *Slot = Post[Idx];
     auto &IdealPosition = Layout[Idx];
     if (PreviousSlot *PrevSlot = std::get_if<PreviousSlot>(&IdealPosition))
       IdealLayout[PrevSlot->slot] = Slot;
@@ -233,9 +231,9 @@ Stack createIdealLayout(const Stack &OperationOutput, const Stack &Post,
   assert(IdealLayout.size() == PreOperationLayoutSize);
 
   Stack Result;
-  for (const auto &Item : IdealLayout) {
+  for (auto *Item : IdealLayout) {
     assert(Item);
-    Result.emplace_back(*Item);
+    Result.push_back(Item);
   }
 
   return Result;
@@ -271,8 +269,8 @@ Stack EVMStackLayoutGenerator::propagateStackThroughOperation(
     AggressiveStackCompression = false;
 
   // This is a huge tradeoff between code size, gas cost and stack size.
-  auto generateSlotOnTheFly = [&](StackSlot const &Slot) {
-    return AggressiveStackCompression && isRematerializable(Slot);
+  auto generateSlotOnTheFly = [&](const StackSlot *Slot) {
+    return AggressiveStackCompression && Slot->isRematerializable();
   };
 
   // Determine the ideal permutation of the slots in ExitLayout that are not
@@ -284,9 +282,9 @@ Stack EVMStackLayoutGenerator::propagateStackThroughOperation(
   // Make sure the resulting previous slots do not overlap with any assignmed
   // variables.
   if (auto const *Assign = std::get_if<Assignment>(&Operation.Operation))
-    for (auto &StackSlot : IdealStack)
-      if (auto const *VarSlot = std::get_if<VariableSlot>(&StackSlot))
-        assert(!is_contained(Assign->Variables, *VarSlot));
+    for (auto *StackSlot : IdealStack)
+      if (const auto *VarSlot = dyn_cast<VariableSlot>(StackSlot))
+        assert(!is_contained(Assign->Variables, VarSlot));
 
   // Since stack+Operation.output can be easily shuffled to ExitLayout, the
   // desired layout before the operation is stack+Operation.input;
@@ -302,7 +300,7 @@ Stack EVMStackLayoutGenerator::propagateStackThroughOperation(
   // Remove anything from the stack top that can be freely generated or dupped
   // from deeper on the stack.
   while (!IdealStack.empty()) {
-    if (isRematerializable(IdealStack.back()))
+    if (IdealStack.back()->isRematerializable())
       IdealStack.pop_back();
     else if (auto Offset = offset(drop_begin(reverse(IdealStack), 1),
                                   IdealStack.back())) {
@@ -341,7 +339,7 @@ static size_t getOptimalNumberOfJunks(const Stack &EntryLayout,
   size_t BestNumJunk = 0;
   size_t MaxJunk = EntryLayout.size();
   for (size_t NumJunk = 1; NumJunk <= MaxJunk; ++NumJunk) {
-    Stack JunkedTarget(NumJunk, JunkSlot{});
+    Stack JunkedTarget(NumJunk, EVMStackModel::getJunkSlot());
     JunkedTarget.append(TargetLayout);
     size_t Cost = EvaluateStackTransform(EntryLayout, JunkedTarget);
     if (Cost < BestCost) {
@@ -397,12 +395,11 @@ void EVMStackLayoutGenerator::runPropagation() {
       }
     }
 
-    // Check which latch blocks still require fixing of their exit layouts.
     // Revisit these blocks again.
     for (auto [Latch, Header] : Backedges) {
       const Stack &HeaderEntryLayout = MBBEntryLayoutMap[Header];
       const Stack &LatchExitLayout = MBBExitLayoutMap[Latch];
-      if (all_of(HeaderEntryLayout, [LatchExitLayout](const StackSlot &Slot) {
+      if (all_of(HeaderEntryLayout, [LatchExitLayout](const StackSlot *Slot) {
             return is_contained(LatchExitLayout, Slot);
           }))
         continue;
@@ -464,15 +461,15 @@ void EVMStackLayoutGenerator::runPropagation() {
       Stack NewSuccEntryLayout = ExitLayout;
       // Whatever the block being jumped to does not actually require,
       // can be marked as junk.
-      for (StackSlot &Slot : NewSuccEntryLayout)
+      for (StackSlot *&Slot : NewSuccEntryLayout)
         if (!is_contained(SuccEntryLayout, Slot))
-          Slot = JunkSlot{};
+          Slot = EVMStackModel::getJunkSlot();
 
 #ifndef NDEBUG
       // Make sure everything the block being jumped to requires is
       // actually present or can be generated.
-      for (const StackSlot &Slot : SuccEntryLayout)
-        assert(isRematerializable(Slot) ||
+      for (const StackSlot *Slot : SuccEntryLayout)
+        assert(Slot->isRematerializable() ||
                is_contained(NewSuccEntryLayout, Slot));
 #endif // NDEBUG
 
@@ -484,7 +481,7 @@ void EVMStackLayoutGenerator::runPropagation() {
   Stack EntryStack;
   bool IsNoReturn = MF.getFunction().hasFnAttribute(Attribute::NoReturn);
   if (!IsNoReturn)
-    EntryStack.emplace_back(FunctionReturnLabelSlot{&MF});
+    EntryStack.push_back(StackModel.getFunctionReturnLabelSlot(&MF));
 
   // Calling convention: input arguments are passed in stack such that the
   // first one specified in the function declaration is passed on the stack TOP.
@@ -585,19 +582,19 @@ Stack EVMStackLayoutGenerator::combineStack(Stack const &Stack1,
 
   Stack CommonPrefix;
   for (unsigned Idx = 0; Idx < std::min(Stack1.size(), Stack2.size()); ++Idx) {
-    const StackSlot &Slot1 = Stack1[Idx];
-    const StackSlot &Slot2 = Stack2[Idx];
+    StackSlot *Slot1 = Stack1[Idx];
+    const StackSlot *Slot2 = Stack2[Idx];
     if (!(Slot1 == Slot2))
       break;
-    CommonPrefix.emplace_back(Slot1);
+    CommonPrefix.push_back(Slot1);
   }
 
   Stack Stack1Tail, Stack2Tail;
-  for (const auto &Slot : drop_begin(Stack1, CommonPrefix.size()))
-    Stack1Tail.emplace_back(Slot);
+  for (auto *Slot : drop_begin(Stack1, CommonPrefix.size()))
+    Stack1Tail.push_back(Slot);
 
-  for (const auto &Slot : drop_begin(Stack2, CommonPrefix.size()))
-    Stack2Tail.emplace_back(Slot);
+  for (auto *Slot : drop_begin(Stack2, CommonPrefix.size()))
+    Stack2Tail.push_back(Slot);
 
   if (Stack1Tail.empty()) {
     CommonPrefix.append(compressStack(Stack2Tail));
@@ -610,20 +607,19 @@ Stack EVMStackLayoutGenerator::combineStack(Stack const &Stack1,
   }
 
   Stack Candidate;
-  for (auto Slot : Stack1Tail)
+  for (auto *Slot : Stack1Tail)
     if (!is_contained(Candidate, Slot))
-      Candidate.emplace_back(Slot);
+      Candidate.push_back(Slot);
 
-  for (auto Slot : Stack2Tail)
+  for (auto *Slot : Stack2Tail)
     if (!is_contained(Candidate, Slot))
-      Candidate.emplace_back(Slot);
+      Candidate.push_back(Slot);
 
   {
     auto RemIt = std::remove_if(
-        Candidate.begin(), Candidate.end(), [](StackSlot const &Slot) {
-          return std::holds_alternative<LiteralSlot>(Slot) ||
-                 std::holds_alternative<SymbolSlot>(Slot) ||
-                 std::holds_alternative<FunctionCallReturnLabelSlot>(Slot);
+        Candidate.begin(), Candidate.end(), [](const StackSlot *Slot) {
+          return isa<LiteralSlot>(Slot) || isa<SymbolSlot>(Slot) ||
+                 isa<FunctionCallReturnLabelSlot>(Slot);
         });
     Candidate.erase(RemIt, Candidate.end());
   }
@@ -637,8 +633,8 @@ Stack EVMStackLayoutGenerator::combineStack(Stack const &Stack1,
         NumOps += 1000;
     };
 
-    auto DupOrPush = [&](StackSlot const &Slot) {
-      if (isRematerializable(Slot))
+    auto DupOrPush = [&](const StackSlot *Slot) {
+      if (Slot->isRematerializable())
         return;
 
       Stack Tmp = CommonPrefix;
@@ -699,8 +695,8 @@ Stack EVMStackLayoutGenerator::compressStack(Stack CurStack) {
 
     auto I = CurStack.rbegin(), E = CurStack.rend();
     for (size_t Depth = 0; I < E; ++I, ++Depth) {
-      StackSlot &Slot = *I;
-      if (isRematerializable(Slot)) {
+      StackSlot *Slot = *I;
+      if (Slot->isRematerializable()) {
         FirstDupOffset = CurStack.size() - Depth - 1;
         break;
       }
@@ -728,8 +724,8 @@ size_t llvm::EvaluateStackTransform(Stack Source, Stack const &Target) {
       OpGas += 3; // SWAP* gas price;
   };
 
-  auto DupOrPush = [&](StackSlot const &Slot) {
-    if (isRematerializable(Slot))
+  auto DupOrPush = [&](const StackSlot *Slot) {
+    if (Slot->isRematerializable())
       OpGas += 3;
     else {
       auto Depth = offset(reverse(Source), Slot);
@@ -751,17 +747,17 @@ size_t llvm::EvaluateStackTransform(Stack Source, Stack const &Target) {
 void EVMStackLayoutGenerator::addJunksToStackBottom(
     const MachineBasicBlock *Entry, size_t NumJunk) {
   for (const MachineBasicBlock *MBB : depth_first(Entry)) {
-    Stack EntryTmp(NumJunk, JunkSlot{});
+    Stack EntryTmp(NumJunk, EVMStackModel::getJunkSlot());
     EntryTmp.append(MBBEntryLayoutMap.at(MBB));
     MBBEntryLayoutMap[MBB] = std::move(EntryTmp);
 
     for (const Operation &Operation : StackModel.getOperations(MBB)) {
-      Stack OpEntryTmp(NumJunk, JunkSlot{});
+      Stack OpEntryTmp(NumJunk, EVMStackModel::getJunkSlot());
       OpEntryTmp.append(OperationEntryLayoutMap.at(&Operation));
       OperationEntryLayoutMap[&Operation] = std::move(OpEntryTmp);
     }
 
-    Stack ExitTmp(NumJunk, JunkSlot{});
+    Stack ExitTmp(NumJunk, EVMStackModel::getJunkSlot());
     ExitTmp.append(MBBExitLayoutMap.at(MBB));
     MBBExitLayoutMap[MBB] = std::move(ExitTmp);
   }

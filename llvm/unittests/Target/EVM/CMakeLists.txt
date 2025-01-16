@@ -19,6 +19,7 @@ set(LLVM_LINK_COMPONENTS
 
 add_llvm_target_unittest(EVMTests
   StackShuffler.cpp
+  StackModel.cpp
   )
 
 set_property(TARGET EVMTests PROPERTY FOLDER "Tests/UnitTests/TargetTests")
