@@ -11,7 +11,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMStackifyCodeEmitter.h"
-#include "EVMHelperUtilities.h"
 #include "EVMMachineFunctionInfo.h"
 #include "EVMStackDebug.h"
 #include "EVMStackShuffler.h"
@@ -21,6 +20,21 @@
 using namespace llvm;
 
 #define DEBUG_TYPE "evm-stackify-code-emitter"
+
+template <class... Ts> struct Overload : Ts... {
+  using Ts::operator()...;
+};
+template <class... Ts> Overload(Ts...) -> Overload<Ts...>;
+
+// Return whether the function of the call instruction will return.
+bool callWillReturn(const MachineInstr *Call) {
+  assert(Call->getOpcode() == EVM::FCALL && "Unexpected call instruction");
+  const MachineOperand *FuncOp = Call->explicit_uses().begin();
+  assert(FuncOp->isGlobal() && "Expected a global value");
+  const auto *Func = cast<Function>(FuncOp->getGlobal());
+  assert(Func && "Expected a function");
+  return !Func->hasFnAttribute(Attribute::NoReturn);
+}
 
 // Return the number of input arguments of the call instruction.
 static size_t getCallArgCount(const MachineInstr *Call) {
@@ -33,7 +47,7 @@ static size_t getCallArgCount(const MachineInstr *Call) {
   // The first operand is a function, so don't count it. If function
   // will return, we need to account for the return label.
   constexpr size_t NumFuncOp = 1;
-  return NumExplicitInputs - NumFuncOp + EVMUtils::callWillReturn(Call);
+  return NumExplicitInputs - NumFuncOp + callWillReturn(Call);
 }
 
 size_t EVMStackifyCodeEmitter::CodeEmitter::stackHeight() const {
@@ -149,7 +163,7 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitFuncCall(const MachineInstr *MI) {
 
   // If this function returns, add a return label so we can emit it together
   // with JUMPDEST. This is taken care in the AsmPrinter.
-  if (EVMUtils::callWillReturn(MI))
+  if (callWillReturn(MI))
     NewMI.addSym(CallReturnSyms.at(MI));
   verify(NewMI);
 }
@@ -232,7 +246,7 @@ void EVMStackifyCodeEmitter::visitCall(const FunctionCall &Call) {
   assert(CurrentStack.size() >= NumArgs);
 
   // Assert that we got the correct return label on stack.
-  if (EVMUtils::callWillReturn(Call.MI)) {
+  if (callWillReturn(Call.MI)) {
     [[maybe_unused]] const auto *returnLabelSlot =
         std::get_if<FunctionCallReturnLabelSlot>(
             &CurrentStack[CurrentStack.size() - NumArgs]);
@@ -479,7 +493,7 @@ void EVMStackifyCodeEmitter::run() {
     const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(Block);
     MBBExitType ExitType = TermInfo->getExitType();
     if (ExitType == MBBExitType::UnconditionalBranch) {
-      auto [UncondBr, Target, _] = TermInfo->getUnconditionalBranch();
+      auto [UncondBr, Target] = TermInfo->getUnconditionalBranch();
       // Create the stack expected at the jump target.
       createStackLayout(Layout.getMBBEntryLayout(Target));
 

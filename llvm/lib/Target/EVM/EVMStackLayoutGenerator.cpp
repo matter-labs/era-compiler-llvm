@@ -16,11 +16,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMStackLayoutGenerator.h"
-#include "EVMHelperUtilities.h"
 #include "EVMRegisterInfo.h"
 #include "EVMStackDebug.h"
 #include "EVMStackShuffler.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
+#include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
 #include "llvm/IR/DebugLoc.h"
@@ -32,6 +32,28 @@ using namespace llvm;
 #define DEBUG_TYPE "evm-stack-layout-generator"
 
 namespace {
+template <class... Ts> struct Overload : Ts... {
+  using Ts::operator()...;
+};
+template <class... Ts> Overload(Ts...) -> Overload<Ts...>;
+
+/// Return the number of hops from the beginning of the \p RangeOrContainer
+/// to the \p Item. If no \p Item is found in the \p RangeOrContainer,
+/// std::nullopt is returned.
+template <typename T, typename V>
+std::optional<size_t> offset(T &&RangeOrContainer, V &&Item) {
+  auto It = find(RangeOrContainer, Item);
+  return (It == adl_end(RangeOrContainer))
+             ? std::nullopt
+             : std::optional(std::distance(adl_begin(RangeOrContainer), It));
+}
+
+/// Return a range covering  the last N elements of \p RangeOrContainer.
+template <typename T> auto take_back(T &&RangeOrContainer, size_t N = 1) {
+  return make_range(std::prev(adl_end(RangeOrContainer), N),
+                    adl_end(RangeOrContainer));
+}
+
 /// Returns all stack too deep errors that would occur when shuffling \p Source
 /// to \p Target.
 SmallVector<EVMStackLayoutGenerator::StackTooDeep>
@@ -53,18 +75,17 @@ findStackTooDeep(Stack const &Source, Stack const &Target) {
       [&](unsigned I) {
         if (I > 16)
           Errors.emplace_back(EVMStackLayoutGenerator::StackTooDeep{
-              I - 16,
-              getVariableChoices(EVMUtils::take_back(CurrentStack, I + 1))});
+              I - 16, getVariableChoices(take_back(CurrentStack, I + 1))});
       },
       [&](StackSlot const &Slot) {
         if (isRematerializable(Slot))
           return;
 
-        if (auto Depth = EVMUtils::offset(reverse(CurrentStack), Slot);
+        if (auto Depth = offset(reverse(CurrentStack), Slot);
             Depth && *Depth >= 16)
           Errors.emplace_back(EVMStackLayoutGenerator::StackTooDeep{
-              *Depth - 15, getVariableChoices(
-                               EVMUtils::take_back(CurrentStack, *Depth + 1))});
+              *Depth - 15,
+              getVariableChoices(take_back(CurrentStack, *Depth + 1))});
       },
       [&]() {});
   return Errors;
@@ -223,12 +244,12 @@ Stack createIdealLayout(const Stack &OperationOutput, const Stack &Post,
 } // end anonymous namespace
 
 EVMStackLayoutGenerator::EVMStackLayoutGenerator(
-    const MachineFunction &MF, const EVMStackModel &StackModel,
-    const EVMMachineCFGInfo &CFGInfo)
-    : MF(MF), StackModel(StackModel), CFGInfo(CFGInfo) {}
+    const MachineFunction &MF, const MachineLoopInfo *MLI,
+    const EVMStackModel &StackModel, const EVMMachineCFGInfo &CFGInfo)
+    : MF(MF), MLI(MLI), StackModel(StackModel), CFGInfo(CFGInfo) {}
 
 std::unique_ptr<EVMStackLayout> EVMStackLayoutGenerator::run() {
-  processEntryPoint(&MF.front());
+  runPropagation();
 
   auto Layout = std::make_unique<EVMStackLayout>(
       MBBEntryLayoutMap, MBBExitLayoutMap, OperationEntryLayoutMap);
@@ -283,8 +304,8 @@ Stack EVMStackLayoutGenerator::propagateStackThroughOperation(
   while (!IdealStack.empty()) {
     if (isRematerializable(IdealStack.back()))
       IdealStack.pop_back();
-    else if (auto Offset = EVMUtils::offset(drop_begin(reverse(IdealStack), 1),
-                                            IdealStack.back())) {
+    else if (auto Offset = offset(drop_begin(reverse(IdealStack), 1),
+                                  IdealStack.back())) {
       if (*Offset + 2 < 16)
         IdealStack.pop_back();
       else
@@ -312,15 +333,49 @@ Stack EVMStackLayoutGenerator::propagateStackThroughBlock(
   return CurrentStack;
 }
 
-void EVMStackLayoutGenerator::processEntryPoint(
-    const MachineBasicBlock *Entry) {
-  std::list<const MachineBasicBlock *> ToVisit{Entry};
+// Returns the number of junk slots to be prepended to \p TargetLayout for
+// an optimal transition from \p EntryLayout to \p TargetLayout.
+static size_t getOptimalNumberOfJunks(const Stack &EntryLayout,
+                                      const Stack &TargetLayout) {
+  size_t BestCost = EvaluateStackTransform(EntryLayout, TargetLayout);
+  size_t BestNumJunk = 0;
+  size_t MaxJunk = EntryLayout.size();
+  for (size_t NumJunk = 1; NumJunk <= MaxJunk; ++NumJunk) {
+    Stack JunkedTarget(NumJunk, JunkSlot{});
+    JunkedTarget.append(TargetLayout);
+    size_t Cost = EvaluateStackTransform(EntryLayout, JunkedTarget);
+    if (Cost < BestCost) {
+      BestCost = Cost;
+      BestNumJunk = NumJunk;
+    }
+  }
+  return BestNumJunk;
+}
+
+void EVMStackLayoutGenerator::runPropagation() {
+  std::deque<const MachineBasicBlock *> ToVisit{&MF.front()};
   DenseSet<const MachineBasicBlock *> Visited;
 
-  // TODO: check whether visiting only a subset of these in the outer iteration
-  // below is enough.
-  std::list<std::pair<const MachineBasicBlock *, const MachineBasicBlock *>>
-      BackwardsJumps = collectBackwardsJumps(Entry);
+  // Collect all the backedges in the MF.
+  // TODO: CPR-1847. Consider changing CFG before the stackification such that
+  // every loop has only one backedge.
+  SmallVector<std::pair<const MachineBasicBlock *, const MachineBasicBlock *>,
+              64>
+      Backedges;
+  for (const MachineLoop *TopLevelLoop : *MLI) {
+    // TODO: CPR-1847. Investigate in which order it's better to traverse
+    // loops.
+    for (const MachineLoop *L : depth_first(TopLevelLoop)) {
+      SmallVector<MachineBasicBlock *, 8> Latches;
+      L->getLoopLatches(Latches);
+      const MachineBasicBlock *Header = L->getHeader();
+      transform(Latches, std::back_inserter(Backedges),
+                [Header](const MachineBasicBlock *MBB) {
+                  return std::make_pair(MBB, Header);
+                });
+    }
+  }
+
   while (!ToVisit.empty()) {
     // First calculate stack layouts without walking backwards jumps, i.e.
     // assuming the current preliminary entry layout of the backwards jump
@@ -328,7 +383,6 @@ void EVMStackLayoutGenerator::processEntryPoint(
     while (!ToVisit.empty()) {
       const MachineBasicBlock *Block = *ToVisit.begin();
       ToVisit.pop_front();
-
       if (Visited.count(Block))
         continue;
 
@@ -343,52 +397,90 @@ void EVMStackLayoutGenerator::processEntryPoint(
       }
     }
 
-    // Determine which backwards jumps still require fixing and stage revisits
-    // of appropriate nodes.
-    for (auto [JumpingBlock, Target] : BackwardsJumps) {
-      // This block jumps backwards, but does not provide all slots required by
-      // the jump target on exit. Therefore we need to visit the subgraph
-      // between 'Target' and 'JumpingBlock' again.
-      const Stack &EntryLayout = MBBEntryLayoutMap[Target];
-      auto B = EntryLayout.begin(), E = EntryLayout.end();
-      const Stack &ExitLayout = MBBExitLayoutMap[JumpingBlock];
-      if (std::any_of(B, E, [ExitLayout](const StackSlot &Slot) {
-            return find(ExitLayout, Slot) == ExitLayout.end();
-          })) {
-        // In particular we can visit backwards starting from 'JumpingBlock'
-        // and mark all entries to-be-visited again until we hit 'Target'.
-        ToVisit.emplace_front(JumpingBlock);
-        // Since we are likely to permute the entry layout of 'Target', we
-        // also visit its entries again. This is not required for correctness,
-        // since the set of stack slots will match, but it may move some
-        // required stack shuffling from the loop condition to outside the loop.
-        for (const MachineBasicBlock *Pred : Target->predecessors())
-          Visited.erase(Pred);
+    // Check which latch blocks still require fixing of their exit layouts.
+    // Revisit these blocks again.
+    for (auto [Latch, Header] : Backedges) {
+      const Stack &HeaderEntryLayout = MBBEntryLayoutMap[Header];
+      const Stack &LatchExitLayout = MBBExitLayoutMap[Latch];
+      if (all_of(HeaderEntryLayout, [LatchExitLayout](const StackSlot &Slot) {
+            return is_contained(LatchExitLayout, Slot);
+          }))
+        continue;
 
-        EVMUtils::BreadthFirstSearch<const MachineBasicBlock *>{{JumpingBlock}}
-            .run([&Visited, Target = Target](const MachineBasicBlock *Block,
-                                             auto VisitPred) {
-              Visited.erase(Block);
-              if (Block == Target)
-                return;
-              for (auto const *Pred : Block->predecessors())
-                VisitPred(Pred);
-            });
-        // While the shuffled layout for 'Target' will be compatible, it can
-        // be worthwhile propagating it further up once more. This would mean
-        // not stopping at Block == Target above, resp. even doing
-        // Visited.clear() here, revisiting the entire graph. This is a tradeoff
-        // between the runtime of this process and the optimality of the result.
-        // Also note that while visiting the entire graph again *can* be
-        // helpful, it can also be detrimental.
+      // The latch block does not provide all slots required by the loop
+      // header. Therefore we need to visit the subgraph between the latch
+      // and header again. We will visit blocks backwards starting from latch
+      // and mark all MBBs to-be-visited again until we reach the header.
+
+      ToVisit.emplace_back(Latch);
+
+      // Since we are likely to permute the entry layout of 'Header', we
+      // also visit its entries again. This is not required for correctness,
+      // since the set of stack slots will match, but it may move some
+      // required stack shuffling from the loop condition to outside the loop.
+      for (const MachineBasicBlock *Pred : Header->predecessors())
+        Visited.erase(Pred);
+
+      // DFS upwards traversal from latch to the header.
+      for (auto I = idf_begin(Latch), E = idf_end(Latch); I != E;) {
+        const MachineBasicBlock *MBB = *I;
+        Visited.erase(MBB);
+        if (MBB == Header) {
+          I.skipChildren();
+          continue;
+        }
+        ++I;
       }
+      // TODO: Consider revisiting the entire graph to propagate the optimal
+      // layout above the loop.
     }
   }
 
-  stitchConditionalJumps(Entry);
-  fillInJunk(Entry);
+  // At this point layouts at conditional jumps are merely
+  // compatible, i.e. the exit layout of the jumping block is a superset of the
+  // entry layout of the target block. We need to modify the entry layouts
+  // of conditional jump targets, s.t., the entry layout of target blocks match
+  // the exit layout of the jumping block exactly, except that slots not
+  // required after the jump are marked as 'JunkSlot'.
+  for (const MachineBasicBlock &MBB : MF) {
+    const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(&MBB);
+    MBBExitType ExitType = TermInfo->getExitType();
+    if (ExitType != MBBExitType::ConditionalBranch)
+      continue;
 
-  // Create function entry layout.
+    Stack ExitLayout = MBBExitLayoutMap.at(&MBB);
+
+#ifndef NDEBUG
+    // The last block must have produced the condition at the stack top.
+    auto [CondBr, UncondBr, TrueBB, FalseBB, Condition] =
+        TermInfo->getConditionalBranch();
+    assert(ExitLayout.back() == StackModel.getStackSlot(*Condition));
+#endif // NDEBUG
+
+    // The condition is consumed by the conditional jump.
+    ExitLayout.pop_back();
+    for (const MachineBasicBlock *Succ : MBB.successors()) {
+      const Stack &SuccEntryLayout = MBBEntryLayoutMap.at(Succ);
+      Stack NewSuccEntryLayout = ExitLayout;
+      // Whatever the block being jumped to does not actually require,
+      // can be marked as junk.
+      for (StackSlot &Slot : NewSuccEntryLayout)
+        if (!is_contained(SuccEntryLayout, Slot))
+          Slot = JunkSlot{};
+
+#ifndef NDEBUG
+      // Make sure everything the block being jumped to requires is
+      // actually present or can be generated.
+      for (const StackSlot &Slot : SuccEntryLayout)
+        assert(isRematerializable(Slot) ||
+               is_contained(NewSuccEntryLayout, Slot));
+#endif // NDEBUG
+
+      MBBEntryLayoutMap[Succ] = NewSuccEntryLayout;
+    }
+  }
+
+  // Create the function entry layout.
   Stack EntryStack;
   bool IsNoReturn = MF.getFunction().hasFnAttribute(Attribute::NoReturn);
   if (!IsNoReturn)
@@ -399,18 +491,42 @@ void EVMStackLayoutGenerator::processEntryPoint(
   EntryStack.append(StackModel.getFunctionParameters());
   std::reverse(IsNoReturn ? EntryStack.begin() : std::next(EntryStack.begin()),
                EntryStack.end());
-  MBBEntryLayoutMap[Entry] = std::move(EntryStack);
+  MBBEntryLayoutMap[&MF.front()] = std::move(EntryStack);
+
+  // Traverse the CFG and at each block that allows junk, i.e. that is a
+  // cut-vertex that never leads to a function return, checks if adding junk
+  // reduces the shuffling cost upon entering and if so recursively adds junk
+  // to the spanned subgraph. This is needed only for optimization purposes,
+  // not for correctness.
+  for (const MachineBasicBlock &MBB : MF) {
+    if (!CFGInfo.isCutVertex(&MBB) || CFGInfo.isOnPathToFuncReturn(&MBB))
+      continue;
+
+    const Stack EntryLayout = MBBEntryLayoutMap.at(&MBB);
+    const Stack &ExitLayout = MBBExitLayoutMap.at(&MBB);
+    const SmallVector<Operation> &Ops = StackModel.getOperations(&MBB);
+    Stack const &NextLayout =
+        Ops.empty() ? ExitLayout : OperationEntryLayoutMap.at(&Ops.front());
+    if (EntryLayout != NextLayout) {
+      size_t OptimalNumJunks = getOptimalNumberOfJunks(EntryLayout, NextLayout);
+      if (OptimalNumJunks > 0) {
+        addJunksToStackBottom(&MBB, OptimalNumJunks);
+        MBBEntryLayoutMap[&MBB] = EntryLayout;
+      }
+    }
+  }
 }
 
 std::optional<Stack> EVMStackLayoutGenerator::getExitLayoutOrStageDependencies(
     const MachineBasicBlock *Block,
     const DenseSet<const MachineBasicBlock *> &Visited,
-    std::list<const MachineBasicBlock *> &ToVisit) const {
+    std::deque<const MachineBasicBlock *> &ToVisit) const {
   const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(Block);
   MBBExitType ExitType = TermInfo->getExitType();
   if (ExitType == MBBExitType::UnconditionalBranch) {
-    auto [_, Target, IsLatch] = TermInfo->getUnconditionalBranch();
-    if (IsLatch) {
+    auto [_, Target] = TermInfo->getUnconditionalBranch();
+    if (MachineLoop *ML = MLI->getLoopFor(Block);
+        ML && ML->isLoopLatch(Block)) {
       // Choose the best currently known entry layout of the jump target
       // as initial exit. Note that this may not yet be the final
       // layout.
@@ -459,78 +575,6 @@ std::optional<Stack> EVMStackLayoutGenerator::getExitLayoutOrStageDependencies(
   }
 
   return Stack{};
-}
-
-std::list<std::pair<const MachineBasicBlock *, const MachineBasicBlock *>>
-EVMStackLayoutGenerator::collectBackwardsJumps(
-    const MachineBasicBlock *Entry) const {
-  std::list<std::pair<const MachineBasicBlock *, const MachineBasicBlock *>>
-      BackwardsJumps;
-  EVMUtils::BreadthFirstSearch<MachineBasicBlock const *>{{Entry}}.run(
-      [&](const MachineBasicBlock *Block, auto VisitSucc) {
-        const EVMMBBTerminatorsInfo *TermInfo =
-            CFGInfo.getTerminatorsInfo(Block);
-        MBBExitType ExitType = TermInfo->getExitType();
-        if (ExitType == MBBExitType::UnconditionalBranch) {
-          auto [_, Target, IsLatch] = TermInfo->getUnconditionalBranch();
-          if (IsLatch)
-            BackwardsJumps.emplace_back(Block, Target);
-        }
-        for (const MachineBasicBlock *Succ : Block->successors())
-          VisitSucc(Succ);
-      });
-  return BackwardsJumps;
-}
-
-void EVMStackLayoutGenerator::stitchConditionalJumps(
-    const MachineBasicBlock *Block) {
-  EVMUtils::BreadthFirstSearch<MachineBasicBlock const *> BFS{{Block}};
-  BFS.run([&](const MachineBasicBlock *Block, auto VisitSucc) {
-    const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(Block);
-    MBBExitType ExitType = TermInfo->getExitType();
-    if (ExitType == MBBExitType::UnconditionalBranch) {
-      auto [_, Target, IsLatch] = TermInfo->getUnconditionalBranch();
-      if (!IsLatch)
-        VisitSucc(Target);
-      return;
-    }
-    if (ExitType == MBBExitType::ConditionalBranch) {
-      auto [CondBr, UncondBr, TrueBB, FalseBB, Condition] =
-          TermInfo->getConditionalBranch();
-      Stack ExitLayout = MBBExitLayoutMap.at(Block);
-      // The last block must have produced the condition at the stack
-      // top.
-      assert(!ExitLayout.empty());
-      assert(ExitLayout.back() == StackModel.getStackSlot(*Condition));
-      // The condition is consumed by the jump.
-      ExitLayout.pop_back();
-
-      auto FixJumpTargetEntry = [&](const Stack &OriginalEntryLayout) -> Stack {
-        Stack NewEntryLayout = ExitLayout;
-        // Whatever the block being jumped to does not actually require,
-        // can be marked as junk.
-        for (StackSlot &Slot : NewEntryLayout) {
-          if (find(OriginalEntryLayout, Slot) == OriginalEntryLayout.end())
-            Slot = JunkSlot{};
-        }
-#ifndef NDEBUG
-        // Make sure everything the block being jumped to requires is
-        // actually present or can be generated.
-        for (StackSlot const &Slot : OriginalEntryLayout)
-          assert(isRematerializable(Slot) ||
-                 find(NewEntryLayout, Slot) != NewEntryLayout.end());
-#endif // NDEBUG
-        return NewEntryLayout;
-      };
-
-      const Stack &ZeroTargetEntryLayout = MBBEntryLayoutMap.at(FalseBB);
-      MBBEntryLayoutMap[FalseBB] = FixJumpTargetEntry(ZeroTargetEntryLayout);
-      const Stack &NonZeroTargetEntryLayout = MBBEntryLayoutMap.at(TrueBB);
-      MBBEntryLayoutMap[TrueBB] = FixJumpTargetEntry(NonZeroTargetEntryLayout);
-      VisitSucc(FalseBB);
-      VisitSucc(TrueBB);
-    }
-  });
 }
 
 Stack EVMStackLayoutGenerator::combineStack(Stack const &Stack1,
@@ -599,7 +643,7 @@ Stack EVMStackLayoutGenerator::combineStack(Stack const &Stack1,
 
       Stack Tmp = CommonPrefix;
       Tmp.append(TestStack);
-      auto Depth = EVMUtils::offset(reverse(Tmp), Slot);
+      auto Depth = offset(reverse(Tmp), Slot);
       if (Depth && *Depth >= 16)
         NumOps += 1000;
     };
@@ -661,8 +705,8 @@ Stack EVMStackLayoutGenerator::compressStack(Stack CurStack) {
         break;
       }
 
-      if (auto DupDepth = EVMUtils::offset(
-              drop_begin(reverse(CurStack), Depth + 1), Slot)) {
+      if (auto DupDepth =
+              offset(drop_begin(reverse(CurStack), Depth + 1), Slot)) {
         if (Depth + *DupDepth <= 16) {
           FirstDupOffset = CurStack.size() - Depth - 1;
           break;
@@ -688,7 +732,7 @@ size_t llvm::EvaluateStackTransform(Stack Source, Stack const &Target) {
     if (isRematerializable(Slot))
       OpGas += 3;
     else {
-      auto Depth = EVMUtils::offset(reverse(Source), Slot);
+      auto Depth = offset(reverse(Source), Slot);
       if (!Depth)
         llvm_unreachable("No slot in the stack");
 
@@ -704,83 +748,21 @@ size_t llvm::EvaluateStackTransform(Stack Source, Stack const &Target) {
   return OpGas;
 }
 
-void EVMStackLayoutGenerator::fillInJunk(const MachineBasicBlock *Block) {
-  /// Recursively adds junk to the subgraph starting on \p Entry.
-  /// Since it is only called on cut-vertices, the full subgraph retains proper
-  /// stack balance.
-  auto AddJunkRecursive = [&](const MachineBasicBlock *Entry, size_t NumJunk) {
-    EVMUtils::BreadthFirstSearch<const MachineBasicBlock *> BFS{{Entry}};
+void EVMStackLayoutGenerator::addJunksToStackBottom(
+    const MachineBasicBlock *Entry, size_t NumJunk) {
+  for (const MachineBasicBlock *MBB : depth_first(Entry)) {
+    Stack EntryTmp(NumJunk, JunkSlot{});
+    EntryTmp.append(MBBEntryLayoutMap.at(MBB));
+    MBBEntryLayoutMap[MBB] = std::move(EntryTmp);
 
-    BFS.run([&](const MachineBasicBlock *Block, auto VisitSucc) {
-      Stack EntryTmp(NumJunk, JunkSlot{});
-      EntryTmp.append(MBBEntryLayoutMap.at(Block));
-      MBBEntryLayoutMap[Block] = std::move(EntryTmp);
-
-      for (const Operation &Operation : StackModel.getOperations(Block)) {
-        Stack OpEntryTmp(NumJunk, JunkSlot{});
-        OpEntryTmp.append(OperationEntryLayoutMap.at(&Operation));
-        OperationEntryLayoutMap[&Operation] = std::move(OpEntryTmp);
-      }
-
-      Stack ExitTmp(NumJunk, JunkSlot{});
-      ExitTmp.append(MBBExitLayoutMap.at(Block));
-      MBBExitLayoutMap[Block] = std::move(ExitTmp);
-
-      for (const MachineBasicBlock *Succ : Block->successors())
-        VisitSucc(Succ);
-    });
-  };
-
-  /// Returns the number of junk slots to be prepended to \p TargetLayout for
-  /// an optimal transition from \p EntryLayout to \p TargetLayout.
-  auto GetBestNumJunk = [&](const Stack &EntryLayout,
-                            const Stack &TargetLayout) -> size_t {
-    size_t BestCost = EvaluateStackTransform(EntryLayout, TargetLayout);
-    size_t BestNumJunk = 0;
-    size_t MaxJunk = EntryLayout.size();
-    for (size_t NumJunk = 1; NumJunk <= MaxJunk; ++NumJunk) {
-      Stack JunkedTarget(NumJunk, JunkSlot{});
-      JunkedTarget.append(TargetLayout);
-      size_t Cost = EvaluateStackTransform(EntryLayout, JunkedTarget);
-      if (Cost < BestCost) {
-        BestCost = Cost;
-        BestNumJunk = NumJunk;
-      }
+    for (const Operation &Operation : StackModel.getOperations(MBB)) {
+      Stack OpEntryTmp(NumJunk, JunkSlot{});
+      OpEntryTmp.append(OperationEntryLayoutMap.at(&Operation));
+      OperationEntryLayoutMap[&Operation] = std::move(OpEntryTmp);
     }
-    return BestNumJunk;
-  };
 
-  if (MF.getFunction().hasFnAttribute(Attribute::NoReturn) &&
-      (&MF.front() == Block)) {
-    Stack Params = StackModel.getFunctionParameters();
-    std::reverse(Params.begin(), Params.end());
-    size_t BestNumJunk = GetBestNumJunk(Params, MBBEntryLayoutMap.at(Block));
-    if (BestNumJunk > 0)
-      AddJunkRecursive(Block, BestNumJunk);
+    Stack ExitTmp(NumJunk, JunkSlot{});
+    ExitTmp.append(MBBExitLayoutMap.at(MBB));
+    MBBExitLayoutMap[MBB] = std::move(ExitTmp);
   }
-  /// Traverses the CFG and at each block that allows junk, i.e. that is a
-  /// cut-vertex that never leads to a function return, checks if adding junk
-  /// reduces the shuffling cost upon entering and if so recursively adds junk
-  /// to the spanned subgraph.
-  EVMUtils::BreadthFirstSearch<MachineBasicBlock const *>{{Block}}.run(
-      [&](MachineBasicBlock const *Block, auto VisitSucc) {
-        if (CFGInfo.isCutVertex(Block) &&
-            !CFGInfo.isOnPathToFuncReturn(Block)) {
-          const Stack EntryLayout = MBBEntryLayoutMap.at(Block);
-          const Stack &ExitLayout = MBBExitLayoutMap.at(Block);
-          const SmallVector<Operation> &Ops = StackModel.getOperations(Block);
-          Stack const &NextLayout =
-              Ops.empty() ? ExitLayout
-                          : OperationEntryLayoutMap.at(&Ops.front());
-          if (EntryLayout != NextLayout) {
-            size_t BestNumJunk = GetBestNumJunk(EntryLayout, NextLayout);
-            if (BestNumJunk > 0) {
-              AddJunkRecursive(Block, BestNumJunk);
-              MBBEntryLayoutMap[Block] = EntryLayout;
-            }
-          }
-        }
-        for (const MachineBasicBlock *Succ : Block->successors())
-          VisitSucc(Succ);
-      });
 }

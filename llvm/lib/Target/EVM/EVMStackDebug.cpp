@@ -12,13 +12,17 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMStackDebug.h"
-#include "EVMHelperUtilities.h"
 #include "EVMStackLayoutGenerator.h"
 #include "EVMSubtarget.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include <variant>
 
 using namespace llvm;
+
+template <class... Ts> struct Overload : Ts... {
+  using Ts::operator()...;
+};
+template <class... Ts> Overload(Ts...) -> Overload<Ts...>;
 
 static std::string getInstName(const MachineInstr *MI) {
   const MachineFunction *MF = MI->getParent()->getParent();
@@ -140,11 +144,9 @@ void StackLayoutPrinter::printBlock(MachineBasicBlock const &Block) {
   const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(&Block);
   MBBExitType ExitType = TermInfo->getExitType();
   if (ExitType == MBBExitType::UnconditionalBranch) {
-    auto [BranchInstr, Target, IsLatch] = TermInfo->getUnconditionalBranch();
+    auto [BranchInstr, Target] = TermInfo->getUnconditionalBranch();
     OS << "Block" << getBlockId(Block) << "Exit [label=\"";
     OS << "Jump\"];\n";
-    if (IsLatch)
-      OS << "Backwards";
     OS << "Block" << getBlockId(Block) << "Exit -> Block" << getBlockId(*Target)
        << ";\n";
   } else if (ExitType == MBBExitType::ConditionalBranch) {

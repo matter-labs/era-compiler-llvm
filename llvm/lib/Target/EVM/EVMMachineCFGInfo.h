@@ -51,7 +51,6 @@ class EVMMBBTerminatorsInfo {
     struct {
       MachineBasicBlock *TargetBB;
       MachineInstr *Br;
-      bool IsLatch;
     } Unconditional;
   } BranchInfo;
 
@@ -73,11 +72,10 @@ public:
             BranchInfo.Conditional.Condition};
   }
 
-  std::tuple<MachineInstr *, MachineBasicBlock *, bool>
+  std::pair<MachineInstr *, MachineBasicBlock *>
   getUnconditionalBranch() const {
     assert(ExitType == MBBExitType::UnconditionalBranch);
-    return {BranchInfo.Unconditional.Br, BranchInfo.Unconditional.TargetBB,
-            BranchInfo.Unconditional.IsLatch};
+    return {BranchInfo.Unconditional.Br, BranchInfo.Unconditional.TargetBB};
   }
 
   MachineInstr *getFunctionReturn() const {

@@ -94,7 +94,7 @@ bool EVMBPStackification::runOnMachineFunction(MachineFunction &MF) {
   EVMMachineCFGInfo CFGInfo(MF, MLI);
   EVMStackModel StackModel(MF, LIS);
   std::unique_ptr<EVMStackLayout> Layout =
-      EVMStackLayoutGenerator(MF, StackModel, CFGInfo).run();
+      EVMStackLayoutGenerator(MF, MLI, StackModel, CFGInfo).run();
   EVMStackifyCodeEmitter(*Layout, StackModel, CFGInfo, MF).run();
   return true;
 }

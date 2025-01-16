@@ -16,7 +16,6 @@
 #ifndef LLVM_LIB_TARGET_EVM_EVMSTACKSHUFFLER_H
 #define LLVM_LIB_TARGET_EVM_EVMSTACKSHUFFLER_H
 
-#include "EVMHelperUtilities.h"
 #include "EVMStackModel.h"
 #include <cassert>
 #include <map>
@@ -152,7 +151,7 @@ private:
         // If this slot occurs again later, we skip this occurrence.
         // TODO: use C++ 20 ranges::views::iota
         if (const auto &R =
-                EVMUtils::iota<size_t>(SourceOffset + 1, Ops.sourceSize());
+                llvm::seq<size_t>(SourceOffset + 1, Ops.sourceSize());
             std::any_of(R.begin(), R.end(), [&](size_t Offset) {
               return Ops.sourceIsSame(SourceOffset, Offset);
             }))
@@ -214,7 +213,7 @@ private:
     ShuffleOperations Ops{std::forward<Args>(args)...};
 
     // All source slots are final.
-    if (const auto &R = EVMUtils::iota<size_t>(0u, Ops.sourceSize());
+    if (const auto &R = llvm::seq<size_t>(0u, Ops.sourceSize());
         std::all_of(R.begin(), R.end(), [&](size_t Index) {
           return Ops.isCompatible(Index, Index);
         })) {
@@ -335,7 +334,7 @@ private:
     assert(Ops.isCompatible(SourceTop, SourceTop));
 
     const auto &SwappableOffsets =
-        EVMUtils::iota(Size > 17 ? Size - 17 : 0u, Size);
+        llvm::seq<size_t>(Size > 17 ? Size - 17 : 0u, Size);
 
     // If we find a lower slot that is out of position, but also compatible with
     // the top, swap that up.
