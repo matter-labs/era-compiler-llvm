@@ -86,7 +86,7 @@ EVMTargetLowering::EVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::INTRINSIC_VOID, MVT::Other, Custom);
   setOperationAction(ISD::INTRINSIC_WO_CHAIN, MVT::Other, Custom);
 
-  setJumpIsExpensive(false);
+  setJumpIsExpensive(true);
   setMaximumJumpTableSize(0);
 }
 
