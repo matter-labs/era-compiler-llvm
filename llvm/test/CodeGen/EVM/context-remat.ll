@@ -10,14 +10,14 @@ define i256 @test_address() {
 ; CHECK-LABEL: test_address:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    ADDRESS
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    PUSH4 @.FUNC_RET0
-; CHECK-NEXT:    DUP3
+; CHECK-NEXT:    ADDRESS
 ; CHECK-NEXT:    PUSH4 @use
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .FUNC_RET0:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    ADDRESS
+; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %ret = call i256 @llvm.evm.address()
   call void @use(i256 %ret)
@@ -28,14 +28,14 @@ define i256 @test_origin() {
 ; CHECK-LABEL: test_origin:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    ORIGIN
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    PUSH4 @.FUNC_RET1
-; CHECK-NEXT:    DUP3
+; CHECK-NEXT:    ORIGIN
 ; CHECK-NEXT:    PUSH4 @use
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .FUNC_RET1:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    ORIGIN
+; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %ret = call i256 @llvm.evm.origin()
   call void @use(i256 %ret)
@@ -46,14 +46,14 @@ define i256 @test_caller() {
 ; CHECK-LABEL: test_caller:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    CALLER
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    PUSH4 @.FUNC_RET2
-; CHECK-NEXT:    DUP3
+; CHECK-NEXT:    CALLER
 ; CHECK-NEXT:    PUSH4 @use
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .FUNC_RET2:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    CALLER
+; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %ret = call i256 @llvm.evm.caller()
   call void @use(i256 %ret)
@@ -64,14 +64,14 @@ define i256 @test_callvalue() {
 ; CHECK-LABEL: test_callvalue:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    CALLVALUE
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    PUSH4 @.FUNC_RET3
-; CHECK-NEXT:    DUP3
+; CHECK-NEXT:    CALLVALUE
 ; CHECK-NEXT:    PUSH4 @use
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .FUNC_RET3:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    CALLVALUE
+; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %ret = call i256 @llvm.evm.callvalue()
   call void @use(i256 %ret)
@@ -82,14 +82,14 @@ define i256 @test_calldatasize() {
 ; CHECK-LABEL: test_calldatasize:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    CALLDATASIZE
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    PUSH4 @.FUNC_RET4
-; CHECK-NEXT:    DUP3
+; CHECK-NEXT:    CALLDATASIZE
 ; CHECK-NEXT:    PUSH4 @use
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .FUNC_RET4:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    CALLDATASIZE
+; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %ret = call i256 @llvm.evm.calldatasize()
   call void @use(i256 %ret)
@@ -100,14 +100,14 @@ define i256 @test_codesize() {
 ; CHECK-LABEL: test_codesize:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    CODESIZE
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    PUSH4 @.FUNC_RET5
-; CHECK-NEXT:    DUP3
+; CHECK-NEXT:    CODESIZE
 ; CHECK-NEXT:    PUSH4 @use
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .FUNC_RET5:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    CODESIZE
+; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %ret = call i256 @llvm.evm.codesize()
   call void @use(i256 %ret)
@@ -118,14 +118,14 @@ define i256 @test_gasprice() {
 ; CHECK-LABEL: test_gasprice:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    GASPRICE
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    PUSH4 @.FUNC_RET6
-; CHECK-NEXT:    DUP3
+; CHECK-NEXT:    GASPRICE
 ; CHECK-NEXT:    PUSH4 @use
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .FUNC_RET6:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    GASPRICE
+; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %ret = call i256 @llvm.evm.gasprice()
   call void @use(i256 %ret)
@@ -136,14 +136,14 @@ define i256 @test_coinbase() {
 ; CHECK-LABEL: test_coinbase:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    COINBASE
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    PUSH4 @.FUNC_RET7
-; CHECK-NEXT:    DUP3
+; CHECK-NEXT:    COINBASE
 ; CHECK-NEXT:    PUSH4 @use
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .FUNC_RET7:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    COINBASE
+; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %ret = call i256 @llvm.evm.coinbase()
   call void @use(i256 %ret)
@@ -154,14 +154,14 @@ define i256 @test_timestamp() {
 ; CHECK-LABEL: test_timestamp:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    TIMESTAMP
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    PUSH4 @.FUNC_RET8
-; CHECK-NEXT:    DUP3
+; CHECK-NEXT:    TIMESTAMP
 ; CHECK-NEXT:    PUSH4 @use
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .FUNC_RET8:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    TIMESTAMP
+; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %ret = call i256 @llvm.evm.timestamp()
   call void @use(i256 %ret)
@@ -172,14 +172,14 @@ define i256 @test_number() {
 ; CHECK-LABEL: test_number:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    NUMBER
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    PUSH4 @.FUNC_RET9
-; CHECK-NEXT:    DUP3
+; CHECK-NEXT:    NUMBER
 ; CHECK-NEXT:    PUSH4 @use
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .FUNC_RET9:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    NUMBER
+; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %ret = call i256 @llvm.evm.number()
   call void @use(i256 %ret)
@@ -190,14 +190,14 @@ define i256 @test_difficulty() {
 ; CHECK-LABEL: test_difficulty:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    DIFFICULTY
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    PUSH4 @.FUNC_RET10
-; CHECK-NEXT:    DUP3
+; CHECK-NEXT:    DIFFICULTY
 ; CHECK-NEXT:    PUSH4 @use
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .FUNC_RET10:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    DIFFICULTY
+; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %ret = call i256 @llvm.evm.difficulty()
   call void @use(i256 %ret)
@@ -208,14 +208,14 @@ define i256 @test_gaslimit() {
 ; CHECK-LABEL: test_gaslimit:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    GASLIMIT
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    PUSH4 @.FUNC_RET11
-; CHECK-NEXT:    DUP3
+; CHECK-NEXT:    GASLIMIT
 ; CHECK-NEXT:    PUSH4 @use
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .FUNC_RET11:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    GASLIMIT
+; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %ret = call i256 @llvm.evm.gaslimit()
   call void @use(i256 %ret)
@@ -226,14 +226,14 @@ define i256 @test_chainid() {
 ; CHECK-LABEL: test_chainid:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    CHAINID
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    PUSH4 @.FUNC_RET12
-; CHECK-NEXT:    DUP3
+; CHECK-NEXT:    CHAINID
 ; CHECK-NEXT:    PUSH4 @use
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .FUNC_RET12:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    CHAINID
+; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %ret = call i256 @llvm.evm.chainid()
   call void @use(i256 %ret)
@@ -244,14 +244,14 @@ define i256 @test_basefee() {
 ; CHECK-LABEL: test_basefee:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    BASEFEE
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    PUSH4 @.FUNC_RET13
-; CHECK-NEXT:    DUP3
+; CHECK-NEXT:    BASEFEE
 ; CHECK-NEXT:    PUSH4 @use
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .FUNC_RET13:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    BASEFEE
+; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %ret = call i256 @llvm.evm.basefee()
   call void @use(i256 %ret)
@@ -262,14 +262,14 @@ define i256 @test_blobbasefee() {
 ; CHECK-LABEL: test_blobbasefee:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    BLOBBASEFEE
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    PUSH4 @.FUNC_RET14
-; CHECK-NEXT:    DUP3
+; CHECK-NEXT:    BLOBBASEFEE
 ; CHECK-NEXT:    PUSH4 @use
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .FUNC_RET14:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    BLOBBASEFEE
+; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %ret = call i256 @llvm.evm.blobbasefee()
   call void @use(i256 %ret)
