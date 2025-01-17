@@ -532,14 +532,10 @@ def : Pat<(truncstorei8 GPR:$val, GPR:$off), (STACK_STORE GPR:$off, 0, GPR:$val)
 // EVM instructions for retrieval values from context.
 //===----------------------------------------------------------------------===//
 
+let isAsCheapAsAMove = 1, isReMaterializable = 1 in {
 defm ADDRESS
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_address))],
       "ADDRESS", " $dst", 0x30, 2>;
-
-defm BALANCE
-  : I<(outs GPR:$dst), (ins GPR:$addr),
-      [(set GPR:$dst, (int_evm_balance GPR:$addr))],
-      "BALANCE", " $dst, $addr", 0x31, 100>;
 
 defm ORIGIN
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_origin))],
@@ -553,6 +549,56 @@ defm CALLVALUE
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_callvalue))],
       "CALLVALUE", " $dst", 0x34, 2>;
 
+defm CALLDATASIZE
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_calldatasize))],
+      "CALLDATASIZE", " $dst", 0x36, 2>;
+
+defm CODESIZE
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_codesize))],
+      "CODESIZE", " $dst", 0x38, 2>;
+
+defm GASPRICE
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_gasprice))],
+      "GASPRICE", " $dst", 0x3A, 2>;
+
+defm COINBASE
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_coinbase))],
+      "COINBASE", " $dst", 0x41, 2>;
+
+defm TIMESTAMP
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_timestamp))],
+      "TIMESTAMP", " $dst", 0x42, 2>;
+
+defm NUMBER
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_number))],
+      "NUMBER", " $dst", 0x43, 2>;
+
+defm DIFFICULTY
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_difficulty))],
+      "DIFFICULTY", " $dst", 0x44, 2>;
+
+defm GASLIMIT
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_gaslimit))],
+      "GASLIMIT", " $dst", 0x45, 2>;
+
+defm CHAINID
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_chainid))],
+      "CHAINID", " $dst", 0x46, 2>;
+
+defm BASEFEE
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_basefee))],
+      "BASEFEE", " $dst", 0x48, 2>;
+
+defm BLOBBASEFEE
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_blobbasefee))],
+      "BLOBBASEFEE", " $dst", 0x4A, 2>;
+}
+
+defm BALANCE
+  : I<(outs GPR:$dst), (ins GPR:$addr),
+      [(set GPR:$dst, (int_evm_balance GPR:$addr))],
+      "BALANCE", " $dst, $addr", 0x31, 100>;
+
 let mayLoad = 1 in
 defm CALLDATALOAD
   : I<(outs GPR:$dst), (ins GPR:$off),
@@ -560,10 +606,6 @@ defm CALLDATALOAD
       "CALLDATALOAD", " $dst, $off", 0x35, 2>;
 
 def : Pat<(load_call_data GPR:$off), (CALLDATALOAD GPR:$off)>;
-
-defm CALLDATASIZE
-  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_calldatasize))],
-      "CALLDATASIZE", " $dst", 0x36, 2>;
 
 let mayStore = 1 in
 defm CALLDATACOPY
@@ -573,10 +615,6 @@ defm CALLDATACOPY
 def : Pat<(EVMMemcpy_call_data GPR:$dst, GPR:$src, GPR:$size),
           (CALLDATACOPY GPR:$dst, GPR:$src, GPR:$size)>;
 
-defm CODESIZE
-  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_codesize))],
-      "CODESIZE", " $dst", 0x38, 2>;
-
 let mayStore = 1 in
 defm CODECOPY
   : I<(outs), (ins GPR:$dst_off, GPR:$src_off, GPR:$size), [],
@@ -584,10 +622,6 @@ defm CODECOPY
 
 def : Pat<(EVMMemcpy_code GPR:$dst, GPR:$src, GPR:$size),
           (CODECOPY GPR:$dst, GPR:$src, GPR:$size)>;
-
-defm GASPRICE
-  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_gasprice))],
-      "GASPRICE", " $dst", 0x3A, 2>;
 
 defm EXTCODESIZE
   : I<(outs GPR:$dst), (ins GPR:$addr),
@@ -622,48 +656,15 @@ defm BLOCKHASH
       [(set GPR:$dst, (int_evm_blockhash GPR:$addr))],
       "BLOCKHASH", " $dst, $addr", 0x40, 20>;
 
-defm COINBASE
-  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_coinbase))],
-      "COINBASE", " $dst", 0x41, 2>;
-
-defm TIMESTAMP
-  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_timestamp))],
-      "TIMESTAMP", " $dst", 0x42, 2>;
-
-defm NUMBER
-  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_number))],
-      "NUMBER", " $dst", 0x43, 2>;
-
-defm DIFFICULTY
-  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_difficulty))],
-      "DIFFICULTY", " $dst", 0x44, 2>;
-
-defm GASLIMIT
-  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_gaslimit))],
-      "GASLIMIT", " $dst", 0x45, 2>;
-
-defm CHAINID
-  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_chainid))],
-      "CHAINID", " $dst", 0x46, 2>;
-
 let hasSideEffects = 1 in
 defm SELFBALANCE
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_selfbalance))],
       "SELFBALANCE", " $dst", 0x47, 5>;
 
-defm BASEFEE
-  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_basefee))],
-      "BASEFEE", " $dst", 0x48, 2>;
-
 defm BLOBHASH
   : I<(outs GPR:$dst), (ins GPR:$index),
       [(set GPR:$dst, (int_evm_blobhash GPR:$index))],
       "BLOBHASH", " $dst, $index", 0x49, 3>;
-
-defm BLOBBASEFEE
-  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_blobbasefee))],
-      "BLOBBASEFEE", " $dst", 0x4A, 2>;
-
 
 //===----------------------------------------------------------------------===//
 // EVM instructions for logging.
