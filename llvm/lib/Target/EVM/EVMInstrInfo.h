@@ -50,6 +50,10 @@ public:
 
   bool isReallyTriviallyReMaterializable(const MachineInstr &MI) const override;
 
+  bool shouldBreakCriticalEdgeToSink(MachineInstr &MI) const override {
+    return true;
+  }
+
   void copyPhysReg(MachineBasicBlock &MBB, MachineBasicBlock::iterator MI,
                    const DebugLoc &DL, Register DestReg, Register SrcReg,
                    bool KillSrc, bool RenamableDest = false,
