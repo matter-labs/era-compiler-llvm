@@ -19,11 +19,6 @@
 
 using namespace llvm;
 
-template <class... Ts> struct Overload : Ts... {
-  using Ts::operator()...;
-};
-template <class... Ts> Overload(Ts...) -> Overload<Ts...>;
-
 std::string llvm::stackToString(const Stack &S) {
   std::string Result("[ ");
   for (const auto *Slot : S)
@@ -55,32 +50,14 @@ void StackLayoutPrinter::operator()() {
 void StackLayoutPrinter::printBlock(MachineBasicBlock const &Block) {
   OS << "Block" << getBlockId(Block) << " [\n";
   OS << stackToString(Layout.getMBBEntryLayout(&Block)) << "\n";
-  for (auto const &Operation : StackModel.getOperations(&Block)) {
+  for (auto const &Op : StackModel.getOperations(&Block)) {
     OS << "\n";
-    Stack EntryLayout = Layout.getOperationEntryLayout(&Operation);
+    Stack EntryLayout = Layout.getOperationEntryLayout(&Op);
     OS << stackToString(EntryLayout) << "\n";
-    std::visit(Overload{[&](FunctionCall const &Call) {
-                          const MachineOperand *Callee =
-                              Call.MI->explicit_uses().begin();
-                          OS << Callee->getGlobal()->getName();
-                        },
-                        [&](BuiltinCall const &Call) {
-                          OS << getInstName(Call.MI);
-                        },
-                        [&](Assignment const &Assignment) {
-                          OS << "Assignment(";
-                          for (const auto *Var : Assignment.Variables)
-                            OS << printReg(Var->getReg(), nullptr, 0, nullptr)
-                               << ", ";
-                          OS << ")";
-                        }},
-               Operation.Operation);
-    OS << "\n";
-
-    assert(Operation.Input.size() <= EntryLayout.size());
-    for (size_t i = 0; i < Operation.Input.size(); ++i)
-      EntryLayout.pop_back();
-    EntryLayout.append(Operation.Output);
+    OS << Op.toString() << "\n";
+    assert(Op.getInput().size() <= EntryLayout.size());
+    EntryLayout.resize(EntryLayout.size() - Op.getInput().size());
+    EntryLayout.append(Op.getOutput());
     OS << stackToString(EntryLayout) << "\n";
   }
   OS << "\n";

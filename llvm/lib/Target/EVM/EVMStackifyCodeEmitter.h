@@ -89,11 +89,11 @@ private:
   void adjustStackForInst(const MachineInstr *MI, size_t NumArgs);
 
   /// Generate code for the function call \p Call.
-  void visitCall(const FunctionCall &Call);
+  void processCall(const Operation &Call);
   /// Generate code for the builtin call \p Call.
-  void visitInst(const BuiltinCall &Call);
+  void processInst(const Operation &Call);
   /// Generate code for the assignment \p Assignment.
-  void visitAssign(const Assignment &Assignment);
+  void processAssign(const Operation &Assignment);
 };
 
 } // namespace llvm

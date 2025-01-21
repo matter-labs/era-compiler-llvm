@@ -29,8 +29,7 @@ static const Function *getCalledFunction(const MachineInstr &MI) {
   }
   return nullptr;
 }
-// TODO: make it static once Operation gets rid of std::variant.
-std::string llvm::getInstName(const MachineInstr *MI) {
+static std::string getInstName(const MachineInstr *MI) {
   const MachineFunction *MF = MI->getParent()->getParent();
   const TargetInstrInfo *TII = MF->getSubtarget().getInstrInfo();
   return TII->getName(MI->getOpcode()).str();
@@ -47,6 +46,24 @@ std::string TemporarySlot::toString() const {
   raw_svector_ostream OS(S);
   OS << "TMP[" << getInstName(MI) << ", " << std::to_string(Index) + "]";
   return std::string(S.str());
+}
+std::string Operation::toString() const {
+  if (isFunctionCall()) {
+    const MachineOperand *Callee = MI->explicit_uses().begin();
+    return Callee->getGlobal()->getName().str();
+  }
+  if (isBuiltinCall())
+    return getInstName(MI);
+
+  assert(isAssignment());
+  SmallString<128> S;
+  raw_svector_ostream OS(S);
+  OS << "Assignment(";
+  for (const auto *S : Output)
+    OS << printReg(cast<VariableSlot>(S)->getReg(), nullptr, 0, nullptr)
+       << ", ";
+  OS << ")";
+  return std::string(S);
 }
 
 EVMStackModel::EVMStackModel(MachineFunction &MF, const LiveIntervals &LIS)
@@ -128,22 +145,18 @@ void EVMStackModel::createOperation(MachineInstr &MI,
     return;
   case EVM::FCALL: {
     Stack Input;
-    bool IsNoReturn = false;
     for (const MachineOperand &MO : MI.operands()) {
       if (MO.isGlobal()) {
-        const auto *Func = dyn_cast<Function>(MO.getGlobal());
-        assert(Func);
-        IsNoReturn = Func->hasFnAttribute(Attribute::NoReturn);
-        if (!IsNoReturn)
+        const auto *Func = cast<Function>(MO.getGlobal());
+        if (!Func->hasFnAttribute(Attribute::NoReturn))
           Input.push_back(getFunctionCallReturnLabelSlot(&MI));
         break;
       }
     }
     const Stack &Tmp = getInstrInput(MI);
     Input.insert(Input.end(), Tmp.begin(), Tmp.end());
-    size_t NumArgs = Input.size() - (IsNoReturn ? 0 : 1);
-    Ops.emplace_back(Operation{std::move(Input), getInstrOutput(MI),
-                               FunctionCall{&MI, NumArgs}});
+    Ops.emplace_back(Operation::FunctionCall, std::move(Input),
+                     getInstrOutput(MI), &MI);
   } break;
   case EVM::RET:
   case EVM::JUMP:
@@ -165,21 +178,19 @@ void EVMStackModel::createOperation(MachineInstr &MI,
       return;
   } break;
   default: {
-    Ops.emplace_back(
-        Operation{getInstrInput(MI), getInstrOutput(MI), BuiltinCall{&MI}});
+    Ops.emplace_back(Operation::BuiltinCall, getInstrInput(MI),
+                     getInstrOutput(MI), &MI);
   } break;
   }
 
   // Create CFG::Assignment object for the MI.
   Stack Input, Output;
-  SmallVector<VariableSlot *> Variables;
   switch (MI.getOpcode()) {
   case EVM::CONST_I256: {
     const Register DefReg = MI.getOperand(0).getReg();
     const APInt Imm = MI.getOperand(1).getCImm()->getValue();
     Input.push_back(getLiteralSlot(std::move(Imm)));
     Output.push_back(getVariableSlot(DefReg));
-    Variables.push_back(getVariableSlot(DefReg));
   } break;
   case EVM::DATASIZE:
   case EVM::DATAOFFSET:
@@ -188,7 +199,6 @@ void EVMStackModel::createOperation(MachineInstr &MI,
     MCSymbol *Sym = MI.getOperand(1).getMCSymbol();
     Input.push_back(getSymbolSlot(Sym, &MI));
     Output.push_back(getVariableSlot(DefReg));
-    Variables.push_back(getVariableSlot(DefReg));
   } break;
   case EVM::COPY_I256: {
     // Copy instruction corresponds to the assignment operator, so
@@ -196,7 +206,6 @@ void EVMStackModel::createOperation(MachineInstr &MI,
     Input = getInstrInput(MI);
     const Register DefReg = MI.getOperand(0).getReg();
     Output.push_back(getVariableSlot(DefReg));
-    Variables.push_back(getVariableSlot(DefReg));
   } break;
   default: {
     unsigned ArgsNumber = 0;
@@ -205,15 +214,14 @@ void EVMStackModel::createOperation(MachineInstr &MI,
       const Register Reg = MO.getReg();
       Input.push_back(getTemporarySlot(&MI, ArgsNumber++));
       Output.push_back(getVariableSlot(Reg));
-      Variables.push_back(getVariableSlot(Reg));
     }
   } break;
   }
   // We don't need an assignment part of the instructions that do not write
   // results.
   if (!Input.empty() || !Output.empty())
-    Ops.emplace_back(Operation{std::move(Input), std::move(Output),
-                               Assignment{std::move(Variables)}});
+    Ops.emplace_back(Operation::Assignment, std::move(Input), std::move(Output),
+                     &MI);
 }
 
 Stack EVMStackModel::getReturnArguments(const MachineInstr &MI) const {
