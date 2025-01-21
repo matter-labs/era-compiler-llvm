@@ -261,10 +261,9 @@ std::unique_ptr<EVMStackLayout> EVMStackLayoutGenerator::run() {
 }
 
 Stack EVMStackLayoutGenerator::propagateStackThroughOperation(
-    Stack ExitStack, const Operation &Operation,
-    bool AggressiveStackCompression) {
+    Stack ExitStack, const Operation &Op, bool AggressiveStackCompression) {
   // Enable aggressive stack compression for recursive calls.
-  if (std::holds_alternative<FunctionCall>(Operation.Operation))
+  if (Op.isFunctionCall())
     // TODO: compress stack for recursive functions.
     AggressiveStackCompression = false;
 
@@ -277,25 +276,25 @@ Stack EVMStackLayoutGenerator::propagateStackThroughOperation(
   // operation outputs (and not to be generated on the fly), s.t. shuffling the
   // 'IdealStack + Operation.output' to ExitLayout is cheap.
   Stack IdealStack =
-      createIdealLayout(Operation.Output, ExitStack, generateSlotOnTheFly);
+      createIdealLayout(Op.getOutput(), ExitStack, generateSlotOnTheFly);
 
   // Make sure the resulting previous slots do not overlap with any assignmed
   // variables.
-  if (auto const *Assign = std::get_if<Assignment>(&Operation.Operation))
+  if (Op.isAssignment())
     for (auto *StackSlot : IdealStack)
       if (const auto *VarSlot = dyn_cast<VariableSlot>(StackSlot))
-        assert(!is_contained(Assign->Variables, VarSlot));
+        assert(!is_contained(Op.getOutput(), VarSlot));
 
   // Since stack+Operation.output can be easily shuffled to ExitLayout, the
   // desired layout before the operation is stack+Operation.input;
-  IdealStack.append(Operation.Input);
+  IdealStack.append(Op.getInput());
 
   // Store the exact desired operation entry layout. The stored layout will be
   // recreated by the code transform before executing the operation. However,
   // this recreation can produce slots that can be freely generated or are
   // duplicated, i.e. we can compress the stack afterwards without causing
   // problems for code generation later.
-  OperationEntryLayoutMap[&Operation] = IdealStack;
+  OperationEntryLayoutMap[&Op] = IdealStack;
 
   // Remove anything from the stack top that can be freely generated or dupped
   // from deeper on the stack.
@@ -751,10 +750,10 @@ void EVMStackLayoutGenerator::addJunksToStackBottom(
     EntryTmp.append(MBBEntryLayoutMap.at(MBB));
     MBBEntryLayoutMap[MBB] = std::move(EntryTmp);
 
-    for (const Operation &Operation : StackModel.getOperations(MBB)) {
+    for (const Operation &Op : StackModel.getOperations(MBB)) {
       Stack OpEntryTmp(NumJunk, EVMStackModel::getJunkSlot());
-      OpEntryTmp.append(OperationEntryLayoutMap.at(&Operation));
-      OperationEntryLayoutMap[&Operation] = std::move(OpEntryTmp);
+      OpEntryTmp.append(OperationEntryLayoutMap.at(&Op));
+      OperationEntryLayoutMap[&Op] = std::move(OpEntryTmp);
     }
 
     Stack ExitTmp(NumJunk, EVMStackModel::getJunkSlot());
