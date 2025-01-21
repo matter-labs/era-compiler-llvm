@@ -21,11 +21,6 @@ using namespace llvm;
 
 #define DEBUG_TYPE "evm-stackify-code-emitter"
 
-template <class... Ts> struct Overload : Ts... {
-  using Ts::operator()...;
-};
-template <class... Ts> Overload(Ts...) -> Overload<Ts...>;
-
 // Return whether the function of the call instruction will return.
 bool callWillReturn(const MachineInstr *Call) {
   assert(Call->getOpcode() == EVM::FCALL && "Unexpected call instruction");
@@ -239,51 +234,55 @@ void EVMStackifyCodeEmitter::adjustStackForInst(const MachineInstr *MI,
   assert(Emitter.stackHeight() == CurrentStack.size());
 }
 
-void EVMStackifyCodeEmitter::visitCall(const FunctionCall &Call) {
-  size_t NumArgs = getCallArgCount(Call.MI);
+void EVMStackifyCodeEmitter::processCall(const Operation &Call) {
+  assert(Call.isFunctionCall());
+  auto *MI = Call.getMachineInstr();
+  size_t NumArgs = getCallArgCount(MI);
   // Validate stack.
   assert(Emitter.stackHeight() == CurrentStack.size());
   assert(CurrentStack.size() >= NumArgs);
 
   // Assert that we got the correct return label on stack.
-  if (callWillReturn(Call.MI)) {
+  if (callWillReturn(MI)) {
     [[maybe_unused]] const auto *ReturnLabelSlot =
         dyn_cast<FunctionCallReturnLabelSlot>(
             CurrentStack[CurrentStack.size() - NumArgs]);
-    assert(ReturnLabelSlot && ReturnLabelSlot->getCall() == Call.MI);
+    assert(ReturnLabelSlot && ReturnLabelSlot->getCall() == MI);
   }
 
   // Emit call.
-  Emitter.emitFuncCall(Call.MI);
-  adjustStackForInst(Call.MI, NumArgs);
+  Emitter.emitFuncCall(MI);
+  adjustStackForInst(MI, NumArgs);
 }
 
-void EVMStackifyCodeEmitter::visitInst(const BuiltinCall &Call) {
-  size_t NumArgs =
-      Call.MI->getNumExplicitOperands() - Call.MI->getNumExplicitDefs();
+void EVMStackifyCodeEmitter::processInst(const Operation &Call) {
+  assert(Call.isBuiltinCall());
+  auto *MI = Call.getMachineInstr();
+  size_t NumArgs = MI->getNumExplicitOperands() - MI->getNumExplicitDefs();
   // Validate stack.
   assert(Emitter.stackHeight() == CurrentStack.size());
   assert(CurrentStack.size() >= NumArgs);
   // TODO: assert that we got a correct stack for the call.
 
   // Emit instruction.
-  Emitter.emitInst(Call.MI);
-  adjustStackForInst(Call.MI, NumArgs);
+  Emitter.emitInst(MI);
+  adjustStackForInst(MI, NumArgs);
 }
 
-void EVMStackifyCodeEmitter::visitAssign(const Assignment &Assignment) {
+void EVMStackifyCodeEmitter::processAssign(const Operation &Assignment) {
+  assert(Assignment.isAssignment());
   assert(Emitter.stackHeight() == CurrentStack.size());
 
   // Invalidate occurrences of the assigned variables.
   for (auto *&CurrentSlot : CurrentStack)
     if (const auto *VarSlot = dyn_cast<VariableSlot>(CurrentSlot))
-      if (is_contained(Assignment.Variables, VarSlot))
+      if (is_contained(Assignment.getOutput(), VarSlot))
         CurrentSlot = EVMStackModel::getJunkSlot();
 
   // Assign variables to current stack top.
-  assert(CurrentStack.size() >= Assignment.Variables.size());
-  llvm::copy(Assignment.Variables,
-             CurrentStack.end() - Assignment.Variables.size());
+  assert(CurrentStack.size() >= Assignment.getOutput().size());
+  llvm::copy(Assignment.getOutput(),
+             CurrentStack.end() - Assignment.getOutput().size());
 }
 
 bool EVMStackifyCodeEmitter::areLayoutsCompatible(const Stack &SourceStack,
@@ -382,8 +381,7 @@ void EVMStackifyCodeEmitter::createOperationLayout(const Operation &Op) {
   // Check if we can choose cheaper stack shuffling if the Operation is an
   // instruction with commutable arguments.
   bool SwapCommutable = false;
-  if (const auto *Inst = std::get_if<BuiltinCall>(&Op.Operation);
-      Inst && Inst->MI->isCommutable()) {
+  if (Op.isBuiltinCall() && Op.getMachineInstr()->isCommutable()) {
     // Get the stack layout before the instruction.
     const Stack &DefaultTargetStack = Layout.getOperationEntryLayout(&Op);
     size_t DefaultCost =
@@ -410,14 +408,15 @@ void EVMStackifyCodeEmitter::createOperationLayout(const Operation &Op) {
 
   // Assert that we have the inputs of the Operation on stack top.
   assert(CurrentStack.size() == Emitter.stackHeight());
-  assert(CurrentStack.size() >= Op.Input.size());
-  Stack StackInput(CurrentStack.end() - Op.Input.size(), CurrentStack.end());
+  assert(CurrentStack.size() >= Op.getInput().size());
+  Stack StackInput(CurrentStack.end() - Op.getInput().size(),
+                   CurrentStack.end());
   // Adjust the StackInput if needed.
   if (SwapCommutable) {
     std::swap(StackInput[StackInput.size() - 1],
               StackInput[StackInput.size() - 2]);
   }
-  assert(areLayoutsCompatible(StackInput, Op.Input));
+  assert(areLayoutsCompatible(StackInput, Op.getInput()));
 }
 
 void EVMStackifyCodeEmitter::run() {
@@ -434,28 +433,29 @@ void EVMStackifyCodeEmitter::run() {
     CurrentStack = Layout.getMBBEntryLayout(Block);
     Emitter.enterMBB(Block, CurrentStack.size());
 
-    for (const auto &Operation : StackModel.getOperations(Block)) {
-      createOperationLayout(Operation);
+    for (const auto &Op : StackModel.getOperations(Block)) {
+      createOperationLayout(Op);
 
       [[maybe_unused]] size_t BaseHeight =
-          CurrentStack.size() - Operation.Input.size();
+          CurrentStack.size() - Op.getInput().size();
 
       // Perform the Operation.
-      std::visit(Overload{[this](const FunctionCall &Call) { visitCall(Call); },
-                          [this](const BuiltinCall &Call) { visitInst(Call); },
-                          [this](const Assignment &Assignment) {
-                            visitAssign(Assignment);
-                          }},
-                 Operation.Operation);
+      if (Op.isFunctionCall())
+        processCall(Op);
+      else if (Op.isBuiltinCall())
+        processInst(Op);
+      else if (Op.isAssignment())
+        processAssign(Op);
+      else
+        llvm_unreachable("Unexpected operation type.");
 
       // Assert that the Operation produced its proclaimed output.
       assert(CurrentStack.size() == Emitter.stackHeight());
-      assert(CurrentStack.size() == BaseHeight + Operation.Output.size());
-      assert(CurrentStack.size() >= Operation.Output.size());
+      assert(CurrentStack.size() == BaseHeight + Op.getOutput().size());
+      assert(CurrentStack.size() >= Op.getOutput().size());
       assert(areLayoutsCompatible(
-          Stack(CurrentStack.end() - Operation.Output.size(),
-                CurrentStack.end()),
-          Operation.Output));
+          Stack(CurrentStack.end() - Op.getOutput().size(), CurrentStack.end()),
+          Op.getOutput()));
     }
 
     // Exit the block.

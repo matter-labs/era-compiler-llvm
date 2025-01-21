@@ -36,8 +36,6 @@ namespace llvm {
 class MachineFunction;
 class MachineBasicBlock;
 
-std::string getInstName(const MachineInstr *MI);
-
 class StackSlot {
 public:
   enum SlotKind {
@@ -203,28 +201,33 @@ public:
 /// The stack top is the last element of the vector.
 using Stack = SmallVector<StackSlot *>;
 
-struct BuiltinCall {
-  MachineInstr *MI = nullptr;
-};
+class Operation {
+public:
+  enum OpType { BuiltinCall, FunctionCall, Assignment };
 
-struct FunctionCall {
-  const MachineInstr *MI;
-  size_t NumArguments = 0;
-};
-
-struct Assignment {
-  /// The variables being assigned to also occur as 'Output' in the
-  /// 'Operation' containing the assignment, but are also stored here for
-  /// convenience.
-  SmallVector<VariableSlot *> Variables;
-};
-
-struct Operation {
-  /// Stack slots this operation expects at the top of the stack and consumes.
+private:
+  OpType Type;
+  // Stack slots this operation expects at the top of the stack and consumes.
   Stack Input;
-  /// Stack slots this operation leaves on the stack as output.
+  // Stack slots this operation leaves on the stack as output.
   Stack Output;
-  std::variant<FunctionCall, BuiltinCall, Assignment> Operation;
+  // The emulated machine instruction.
+  MachineInstr *MI = nullptr;
+
+public:
+  Operation(OpType Type, Stack Input, Stack Output, MachineInstr *MI)
+      : Type(Type), Input(std::move(Input)), Output(std::move(Output)), MI(MI) {
+  }
+
+  const Stack &getInput() const { return Input; }
+  const Stack &getOutput() const { return Output; }
+  MachineInstr *getMachineInstr() const { return MI; }
+
+  bool isBuiltinCall() const { return Type == BuiltinCall; }
+  bool isFunctionCall() const { return Type == FunctionCall; }
+  bool isAssignment() const { return Type == Assignment; }
+
+  std::string toString() const;
 };
 
 class EVMStackModel {
