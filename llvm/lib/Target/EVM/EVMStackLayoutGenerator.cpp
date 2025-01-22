@@ -100,10 +100,6 @@ findStackTooDeep(Stack const &Source, Stack const &Target) {
 template <typename Callable>
 Stack createIdealLayout(const SmallVector<StackSlot *> &OpDefs,
                         const Stack &Post, Callable GenerateSlotOnTheFly) {
-  struct PreviousSlot {
-    size_t slot;
-  };
-  using LayoutT = SmallVector<std::variant<PreviousSlot, StackSlot *>>;
 
   // Determine the number of slots that have to be on stack before executing the
   // operation (excluding the inputs of the operation itself). That is slots
@@ -114,11 +110,15 @@ Stack createIdealLayout(const SmallVector<StackSlot *> &OpDefs,
     if (is_contained(OpDefs, Slot) || GenerateSlotOnTheFly(Slot))
       --PreOperationLayoutSize;
 
+  SmallVector<UnknownSlot> UnknownSlots;
+  for (size_t Index = 0; Index < PreOperationLayoutSize; ++Index)
+    UnknownSlots.emplace_back(Index);
+
   // The symbolic layout directly after the operation has the form
   // PreviousSlot{0}, ..., PreviousSlot{n}, [output<0>], ..., [output<m>]
-  LayoutT Layout;
-  for (size_t Index = 0; Index < PreOperationLayoutSize; ++Index)
-    Layout.emplace_back(PreviousSlot{Index});
+  Stack Layout;
+  for (auto &S : UnknownSlots)
+    Layout.push_back(&S);
   append_range(Layout, OpDefs);
 
   // Shortcut for trivial case.
@@ -128,22 +128,22 @@ Stack createIdealLayout(const SmallVector<StackSlot *> &OpDefs,
   // Next we will shuffle the layout to the Post stack using ShuffleOperations
   // that are aware of PreviousSlot's.
   struct ShuffleOperations {
-    LayoutT &Layout;
+    Stack &Layout;
     const Stack &Post;
     std::set<StackSlot *> Outputs;
     Multiplicity Mult;
     Callable GenerateSlotOnTheFly;
-    ShuffleOperations(LayoutT &Layout, Stack const &Post,
+    ShuffleOperations(Stack &Layout, Stack const &Post,
                       Callable GenerateSlotOnTheFly)
         : Layout(Layout), Post(Post),
           GenerateSlotOnTheFly(GenerateSlotOnTheFly) {
-      for (const auto &LayoutSlot : Layout)
-        if (auto Slot = std::get_if<StackSlot *>(&LayoutSlot))
-          Outputs.insert(*Slot);
+      for (auto *Slot : Layout)
+        if (!isa<UnknownSlot>(Slot))
+          Outputs.insert(Slot);
 
-      for (const auto &LayoutSlot : Layout)
-        if (auto Slot = std::get_if<StackSlot *>(&LayoutSlot))
-          --Mult[*Slot];
+      for (const auto *Slot : Layout)
+        if (!isa<UnknownSlot>(Slot))
+          --Mult[Slot];
 
       for (auto *Slot : Post)
         if (Outputs.count(Slot) || GenerateSlotOnTheFly(Slot))
@@ -151,33 +151,22 @@ Stack createIdealLayout(const SmallVector<StackSlot *> &OpDefs,
     }
 
     bool isCompatible(size_t Source, size_t Target) {
-      return Source < Layout.size() && Target < Post.size() &&
-             (isa<JunkSlot>(Post[Target]) ||
-              std::visit(Overload{[&](const PreviousSlot &) {
-                                    return !Outputs.count(Post[Target]) &&
-                                           !GenerateSlotOnTheFly(Post[Target]);
-                                  },
-                                  [&](const StackSlot *S) {
-                                    return S == Post[Target];
-                                  }},
-                         Layout[Source]));
+      if (Source >= Layout.size() || Target >= Post.size())
+        return false;
+      if (isa<JunkSlot>(Post[Target]))
+        return true;
+      if (isa<UnknownSlot>(Layout[Source]))
+        return !Outputs.count(Post[Target]) &&
+               !GenerateSlotOnTheFly(Post[Target]);
+      return Layout[Source] == Post[Target];
     }
 
     bool sourceIsSame(size_t Lhs, size_t Rhs) {
-      if (std::holds_alternative<PreviousSlot>(Layout[Lhs]) &&
-          std::holds_alternative<PreviousSlot>(Layout[Rhs]))
-        return true;
-
-      auto SlotLHS = std::get_if<StackSlot *>(&Layout[Lhs]);
-      auto SlotRHS = std::get_if<StackSlot *>(&Layout[Rhs]);
-      return SlotLHS && SlotRHS && *SlotLHS == *SlotRHS;
+      return Layout[Lhs] == Layout[Rhs];
     }
 
     int sourceMultiplicity(size_t Offset) {
-      return std::visit(
-          Overload{[&](PreviousSlot const &) { return 0; },
-                   [&](const StackSlot *S) { return Mult.at(S); }},
-          Layout[Offset]);
+      return isa<UnknownSlot>(Layout[Offset]) ? 0 : Mult.at(Layout[Offset]);
     }
 
     int targetMultiplicity(size_t Offset) {
@@ -191,9 +180,8 @@ Stack createIdealLayout(const SmallVector<StackSlot *> &OpDefs,
     }
 
     void swap(size_t I) {
-      assert(!std::holds_alternative<PreviousSlot>(
-                 Layout[Layout.size() - I - 1]) ||
-             !std::holds_alternative<PreviousSlot>(Layout.back()));
+      assert(!isa<UnknownSlot>(Layout[Layout.size() - I - 1]) ||
+             !isa<UnknownSlot>(Layout.back()));
       std::swap(Layout[Layout.size() - I - 1], Layout.back());
     }
 
@@ -219,9 +207,9 @@ Stack createIdealLayout(const SmallVector<StackSlot *> &OpDefs,
   SmallVector<StackSlot *> IdealLayout(Post.size(), nullptr);
   for (unsigned Idx = 0; Idx < std::min(Layout.size(), Post.size()); ++Idx) {
     auto *Slot = Post[Idx];
-    auto &IdealPosition = Layout[Idx];
-    if (PreviousSlot *PrevSlot = std::get_if<PreviousSlot>(&IdealPosition))
-      IdealLayout[PrevSlot->slot] = Slot;
+    auto *IdealPosition = Layout[Idx];
+    if (auto *PrevSlot = dyn_cast<UnknownSlot>(IdealPosition))
+      IdealLayout[PrevSlot->getIndex()] = Slot;
   }
 
   // The tail of layout must have contained the operation outputs and will not

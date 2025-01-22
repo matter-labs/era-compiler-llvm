@@ -37,6 +37,7 @@ public:
     SK_FunctionCallReturnLabel,
     SK_FunctionReturnLabel,
     SK_Junk,
+    SK_Unknown
   };
 
 private:
@@ -165,6 +166,23 @@ public:
 
   static bool classof(const StackSlot *S) {
     return S->getSlotKind() == SK_Junk;
+  }
+};
+
+class UnknownSlot final : public StackSlot {
+  size_t Index = 0;
+
+public:
+  UnknownSlot(size_t Index) : StackSlot(SK_Unknown), Index(Index) {}
+
+  size_t getIndex() { return Index; }
+  bool isRematerializable() const override { return true; }
+  std::string toString() const override {
+    return "UNKNOWN";
+  }
+
+  static bool classof(const StackSlot *S) {
+    return S->getSlotKind() == SK_Unknown;
   }
 };
 
