@@ -155,7 +155,7 @@ BranchInfoTy llvm::getBranchInfo(const MachineBasicBlock *MBB) {
              "Condition should be defined for a condition branch.");
   assert(BranchInstrs.size() <= 2);
   return {BT, TBB, FBB, BranchInstrs,
-          Cond.empty() ? std::nullopt : std::optional(Cond[0])};
+          Cond.empty() ? std::nullopt : std::optional(Cond[1])};
 }
 
 /// Return cost of transformation in gas from \p Source to \p Target or

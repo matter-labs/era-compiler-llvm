@@ -65,6 +65,7 @@ FunctionPass *createEVMSingleUseExpression();
 FunctionPass *createEVMSplitCriticalEdges();
 FunctionPass *createEVMStackify();
 FunctionPass *createEVMBPStackification();
+FunctionPass *createEVMLowerJumpUnless();
 
 // PassRegistry initialization declarations.
 void initializeEVMCodegenPreparePass(PassRegistry &);
@@ -80,6 +81,7 @@ void initializeEVMStackifyPass(PassRegistry &);
 void initializeEVMBPStackificationPass(PassRegistry &);
 void initializeEVMAAWrapperPassPass(PassRegistry &);
 void initializeEVMExternalAAWrapperPass(PassRegistry &);
+void initializeEVMLowerJumpUnlessPass(PassRegistry &);
 
 struct EVMLinkRuntimePass : PassInfoMixin<EVMLinkRuntimePass> {
   EVMLinkRuntimePass() = default;

@@ -59,9 +59,10 @@ void EVMStackifyCodeEmitter::CodeEmitter::enterMBB(MachineBasicBlock *MBB,
 
 void EVMStackifyCodeEmitter::CodeEmitter::emitInst(const MachineInstr *MI) {
   unsigned Opc = MI->getOpcode();
-  assert(Opc != EVM::JUMP && Opc != EVM::JUMPI && Opc != EVM::ARGUMENT &&
-         Opc != EVM::RET && Opc != EVM::CONST_I256 && Opc != EVM::COPY_I256 &&
-         Opc != EVM::FCALL && "Unexpected instruction");
+  assert(Opc != EVM::JUMP && Opc != EVM::JUMPI && Opc != EVM::JUMP_UNLESS &&
+         Opc != EVM::ARGUMENT && Opc != EVM::RET && Opc != EVM::CONST_I256 &&
+         Opc != EVM::COPY_I256 && Opc != EVM::FCALL &&
+         "Unexpected instruction");
 
   size_t NumInputs = MI->getNumExplicitOperands() - MI->getNumExplicitDefs();
   assert(StackHeight >= NumInputs && "Not enough operands on the stack");
@@ -178,13 +179,16 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitUncondJump(
 
 void EVMStackifyCodeEmitter::CodeEmitter::emitCondJump(
     const MachineInstr *MI, MachineBasicBlock *Target) {
-  assert(MI->getOpcode() == EVM::JUMPI &&
-         "Unexpected conditional jump instruction");
+  assert(MI->getOpcode() == EVM::JUMPI ||
+         MI->getOpcode() == EVM::JUMP_UNLESS &&
+             "Unexpected conditional jump instruction");
   assert(StackHeight > 0 && "Expected at least one operand on the stack");
   StackHeight -= 1;
-  auto NewMI = BuildMI(*CurMBB, CurMBB->end(), MI->getDebugLoc(),
-                       TII->get(EVM::PseudoJUMPI))
-                   .addMBB(Target);
+  auto NewMI =
+      BuildMI(*CurMBB, CurMBB->end(), MI->getDebugLoc(),
+              TII->get(MI->getOpcode() == EVM::JUMPI ? EVM::PseudoJUMPI
+                                                     : EVM::PseudoJUMP_UNLESS))
+          .addMBB(Target);
   verify(NewMI);
 }
 

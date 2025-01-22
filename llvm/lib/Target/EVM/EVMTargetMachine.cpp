@@ -60,6 +60,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   initializeEVMBPStackificationPass(PR);
   initializeEVMAAWrapperPassPass(PR);
   initializeEVMExternalAAWrapperPass(PR);
+  initializeEVMLowerJumpUnlessPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -185,6 +186,7 @@ public:
   bool addInstSelector() override;
   void addPostRegAlloc() override;
   void addPreEmitPass() override;
+  void addPreEmitPass2() override;
 };
 } // namespace
 
@@ -254,8 +256,16 @@ void EVMPassConfig::addPreEmitPass() {
     } else {
       addPass(createEVMBPStackification());
     }
+
+    // Optimize branch instructions after stackification. This is done again
+    // here, since EVMSplitCriticalEdges may introduce new BBs that could
+    // contain only branches after stackification.
+    if (getOptLevel() != CodeGenOptLevel::None)
+      addPass(&BranchFolderPassID);
   }
 }
+
+void EVMPassConfig::addPreEmitPass2() { addPass(createEVMLowerJumpUnless()); }
 
 TargetPassConfig *EVMTargetMachine::createPassConfig(PassManagerBase &PM) {
   return new EVMPassConfig(*this, PM);
