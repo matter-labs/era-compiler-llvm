@@ -81,12 +81,8 @@ bool EVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
   TBB = nullptr;
   FBB = nullptr;
   Cond.clear();
-
-  const auto *MFI = MBB.getParent()->getInfo<EVMMachineFunctionInfo>();
-  if (MFI->getIsStackified()) {
-    LLVM_DEBUG(dbgs() << "Can't analyze terminators in stackified code");
-    return true;
-  }
+  const bool IsStackified =
+      MBB.getParent()->getInfo<EVMMachineFunctionInfo>()->getIsStackified();
 
   // Iterate backwards and analyze all terminators.
   MachineBasicBlock::reverse_iterator I = MBB.rbegin(), E = MBB.rend();
@@ -119,23 +115,14 @@ bool EVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
       FBB = TBB;
       TBB = I->getOperand(0).getMBB();
 
-      // Put the "use" of the condition into Cond[0].
-      const MachineOperand &UseMO = I->getOperand(1);
-      Cond.push_back(UseMO);
-
-      // reverseBranch needs the instruction which feeds the branch, but only
-      // supports comparisons. See if we can find one.
-      for (MachineBasicBlock::reverse_iterator CI = I; CI != E; ++CI) {
-        // If it is the right comparison, put its result into Cond[1].
-        // TODO: This info is required for branch reversing, but this
-        // is not yet implemented.
-        if (CI->isCompare()) {
-          const MachineOperand &DefMO = CI->getOperand(0);
-          if (DefMO.getReg() == UseMO.getReg())
-            Cond.push_back(DefMO);
-          // Only give it one shot, this should be enough.
-          break;
-        }
+      // Set from which instruction this condition comes from. It is needed for
+      // reversing and inserting of branches.
+      Cond.push_back(MachineOperand::CreateImm(
+          I->getOpcode() == EVM::JUMPI || I->getOpcode() == EVM::PseudoJUMPI));
+      if (!IsStackified) {
+        // Put the "use" of the condition into Cond[1].
+        const MachineOperand &UseMO = I->getOperand(1);
+        Cond.push_back(UseMO);
       }
     } else if (I->isTerminator()) {
       // Return, indirect branch, fall-through, or some other unrecognized
@@ -193,27 +180,39 @@ unsigned EVMInstrInfo::insertBranch(MachineBasicBlock &MBB,
 
   // The number of instructions inserted.
   unsigned InstrCount = 0;
-
-  const bool IsUncondBranch = Cond.empty();
-  const bool IsCondBranch =
-      (Cond.size() == 1 && Cond[0].isReg()) ||
-      (Cond.size() == 2 && Cond[0].isReg() && Cond[1].isReg());
+  const bool IsStackified =
+      MBB.getParent()->getInfo<EVMMachineFunctionInfo>()->getIsStackified();
+  unsigned UncondOpc = !IsStackified ? EVM::JUMP : EVM::PseudoJUMP;
 
   // Insert a branch to the "true" destination.
   assert(TBB && "A branch must have a destination");
-  if (IsUncondBranch)
-    BuildMI(&MBB, DL, get(EVM::JUMP)).addMBB(TBB);
-  else if (IsCondBranch)
-    BuildMI(&MBB, DL, get(EVM::JUMPI)).addMBB(TBB).add(Cond[0]);
-  else
-    llvm_unreachable("Unexpected branching condition");
+  if (Cond.empty()) {
+    BuildMI(&MBB, DL, get(UncondOpc)).addMBB(TBB);
+  } else {
+    // Destinguish between stackified and non-stackified instructions.
+    unsigned CondOpc = 0;
+    if (!IsStackified)
+      CondOpc = Cond[0].getImm() ? EVM::JUMPI : EVM::JUMP_UNLESS;
+    else
+      CondOpc = Cond[0].getImm() ? EVM::PseudoJUMPI : EVM::PseudoJUMP_UNLESS;
+
+    auto NewMI = BuildMI(&MBB, DL, get(CondOpc)).addMBB(TBB);
+
+    // Add a condition operand, if we are not in stackified form.
+    if (!IsStackified) {
+      assert(
+          Cond.size() == 2 &&
+          "Unexpected number of conditional operands in non-stackified code");
+      NewMI.add(Cond[1]);
+    }
+  }
 
   ++InstrCount;
 
   // If there is also a "false" destination, insert another branch.
   if (FBB) {
     assert(!Cond.empty() && "Unconditional branch can't have two destinations");
-    BuildMI(&MBB, DL, get(EVM::JUMP)).addMBB(FBB);
+    BuildMI(&MBB, DL, get(UncondOpc)).addMBB(FBB);
     ++InstrCount;
   }
 
@@ -222,16 +221,9 @@ unsigned EVMInstrInfo::insertBranch(MachineBasicBlock &MBB,
 
 bool EVMInstrInfo::reverseBranchCondition(
     SmallVectorImpl<MachineOperand> &Cond) const {
-  // TODO: CPR-1557. Try to add support for branch reversing. The main problem
-  // is that it may require insertion of additional instructions in the BB.
-  // For example,
-  //
-  //   NE $3, $2, $1
-  //
-  // should be transformed into
-  //
-  //   EQ $3, $2, $1
-  //   ISZERO $4, $3
-
-  return true;
+  assert((Cond.size() == 1 || Cond.size() == 2) &&
+         "Unexpected number of conditional operands");
+  assert(Cond[0].isImm() && "Unexpected condition type");
+  Cond.front() = MachineOperand::CreateImm(!Cond.front().getImm());
+  return false;
 }
