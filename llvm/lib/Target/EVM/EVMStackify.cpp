@@ -366,6 +366,7 @@ void StackModel::handleInstruction(MachineInstr *MI) {
     handleJump(MI);
     return;
   case EVM::JUMPI:
+  case EVM::JUMP_UNLESS:
     handleCondJump(MI);
     return;
   case EVM::ARGUMENT:
@@ -720,7 +721,15 @@ void StackModel::handleArgument(MachineInstr *MI) {
 
 void StackModel::handleLStackAtJump(MachineBasicBlock *MBB, MachineInstr *MI,
                                     const Register &Reg) {
-  assert(MI->getOpcode() == EVM::JUMP || MI->getOpcode() == EVM::JUMPI);
+  unsigned PseudoJumpOpc = 0;
+  if (MI->getOpcode() == EVM::JUMP)
+    PseudoJumpOpc = EVM::PseudoJUMP;
+  else if (MI->getOpcode() == EVM::JUMPI)
+    PseudoJumpOpc = EVM::PseudoJUMPI;
+  else if (MI->getOpcode() == EVM::JUMP_UNLESS)
+    PseudoJumpOpc = EVM::PseudoJUMP_UNLESS;
+  else
+    llvm_unreachable("Unexpected jump instruction");
 
   // If the condition register is in the L-stack, we need to move it to
   // the bottom of the L-stack. After that we should clean clean the L-stack.
@@ -731,8 +740,6 @@ void StackModel::handleLStackAtJump(MachineBasicBlock *MBB, MachineInstr *MI,
   // Insert pseudo jump instruciton that will be replaced with PUSH and JUMP
   // instructions in AsmPrinter.
   ToErase.push_back(MI);
-  unsigned PseudoJumpOpc =
-      MI->getOpcode() == EVM::JUMP ? EVM::PseudoJUMP : EVM::PseudoJUMPI;
   BuildMI(*MI->getParent(), MI, DebugLoc(), TII->get(PseudoJumpOpc))
       .addMBB(MBB);
 }
@@ -988,8 +995,8 @@ void StackModel::stackifyInstruction(MachineInstr *MI) {
 
   unsigned RegOpcode = MI->getOpcode();
   if (RegOpcode == EVM::PUSH_LABEL || RegOpcode == EVM::PseudoJUMP ||
-      RegOpcode == EVM::PseudoJUMPI || RegOpcode == EVM::PseudoCALL ||
-      RegOpcode == EVM::PseudoRET)
+      RegOpcode == EVM::PseudoJUMPI || RegOpcode == EVM::PseudoJUMP_UNLESS ||
+      RegOpcode == EVM::PseudoCALL || RegOpcode == EVM::PseudoRET)
     return;
 
   // Remove register operands.
