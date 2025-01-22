@@ -404,7 +404,9 @@ let isBranch = 1, isTerminator = 1 in {
 defm JUMPI
   : I<(outs), (ins jmptarget:$dst, GPR:$cond), [(brcond GPR:$cond, bb:$dst)],
       "JUMPI", " $dst, $cond", 0x57, 10>;
+def JUMP_UNLESS : EVMPseudo<(outs), (ins jmptarget:$dst, GPR:$cond), []>;
 def PseudoJUMPI : EVMPseudo<(outs), (ins jmptarget:$dst), [], true>;
+def PseudoJUMP_UNLESS : EVMPseudo<(outs), (ins jmptarget:$dst), [], true>;
 
 let isBarrier = 1 in {
   defm JUMP : I<(outs), (ins jmptarget:$dst), [(br bb:$dst)], "JUMP", " $dst",
@@ -412,6 +414,19 @@ let isBarrier = 1 in {
   def PseudoJUMP : EVMPseudo<(outs), (ins jmptarget:$dst), [], true>;
 } // isBarrier = 1
 } // isBranch = 1, isTerminator = 1
+
+def : Pat<(brcond (setcc GPR:$src, 0, SETEQ), bb:$dst),
+           (JUMP_UNLESS bb:$dst, GPR:$src)>;
+def : Pat<(brcond (setcc GPR:$rs0, GPR:$rs1, SETNE), bb:$dst),
+           (JUMP_UNLESS bb:$dst, (EQ GPR:$rs0, GPR:$rs1))>;
+def : Pat<(brcond (setcc GPR:$rs0, GPR:$rs1, SETGE), bb:$dst),
+           (JUMP_UNLESS bb:$dst, (LT GPR:$rs0, GPR:$rs1))>;
+def : Pat<(brcond (setcc GPR:$rs0, GPR:$rs1, SETLE), bb:$dst),
+           (JUMP_UNLESS bb:$dst, (GT GPR:$rs0, GPR:$rs1))>;
+def : Pat<(brcond (setcc GPR:$rs0, GPR:$rs1, SETULE), bb:$dst),
+           (JUMP_UNLESS bb:$dst, (UGT GPR:$rs0, GPR:$rs1))>;
+def : Pat<(brcond (setcc GPR:$rs0, GPR:$rs1, SETUGE), bb:$dst),
+           (JUMP_UNLESS bb:$dst, (ULT GPR:$rs0, GPR:$rs1))>;
 
 // This isn't really a control flow instruction, but it should be used to mark
 // destination of jump instructions.

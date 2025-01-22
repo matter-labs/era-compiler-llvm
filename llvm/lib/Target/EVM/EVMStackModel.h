@@ -321,7 +321,8 @@ public:
         LIS.getInterval(MI.getOperand(0).getReg()).containsOneValue())
       return true;
     return Opc == EVM::ARGUMENT || Opc == EVM::RET || Opc == EVM::JUMP ||
-           Opc == EVM::JUMPI || Opc == EVM::PUSHDEPLOYADDRESS;
+           Opc == EVM::JUMPI || Opc == EVM::PUSHDEPLOYADDRESS ||
+           Opc == EVM::JUMP_UNLESS;
   }
   auto instructionsToProcess(const MachineBasicBlock *MBB) const {
     return make_filter_range(
