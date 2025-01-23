@@ -131,10 +131,16 @@ void LLVMGetUndefinedReferencesEraVM(LLVMMemoryBufferRef inBuffer,
                                      char ***factoryDepSymbols,
                                      uint64_t *numFactoryDepSymbols);
 
-/** Disposes an array with linker symbols returned by the
- *  LLVMGetUndefinedReferencesEraVM(). */
-void LLVMDisposeUndefinedReferencesEraVM(char *linkerSymbolNames[],
-                                         uint64_t numLinkerSymbols);
+/** Returns true if the \p inBuffer contains an ELF object file. */
+LLVMBool LLVMIsELFEVM(LLVMMemoryBufferRef inBuffer);
+
+void LLVMGetUndefinedReferencesEVM(LLVMMemoryBufferRef inBuffer,
+                                   char ***linkerSymbols,
+                                   uint64_t *numLinkerSymbols);
+
+/** Disposes an array with symbols returned by the
+ *  LLVMGetUndefinedReferences* functions. */
+void LLVMDisposeUndefinedReferences(char *symbolNames[], uint64_t numSymbols);
 
 /** Links the deploy and runtime ELF object files using the information about
  *  dependencies.
@@ -154,13 +160,18 @@ void LLVMDisposeUndefinedReferencesEraVM(char *linkerSymbolNames[],
  *  to the object names in the YUL layout.
  *  On success, outBuffers[0] will contain the deploy bytecode and outBuffers[1]
  *  the runtime bytecode.
+ *  \p linkerSymbolNames has the same meaning as for LLVMLinkEraVM.
+ *  If at least one resulting binary contains unresolved linker symbols,
+ *  output binaries will be returned as ELF object files. See LLVMLinkEraVM
+ *  description.
  *  In case of an error the function returns 'true' and the error message is
  *  passes in \p errorMessage. The message should be disposed by
  *  'LLVMDisposeMessage'. */
 LLVMBool LLVMLinkEVM(LLVMMemoryBufferRef *inBuffers, const char *inBuffersIDs[],
                      uint64_t numInBuffers, LLVMMemoryBufferRef outBuffers[2],
-                     char **errorMessage);
-
+                     const char *const *linkerSymbolNames,
+                     const char linkerSymbolValues[][LINKER_SYMBOL_SIZE],
+                     uint64_t numLinkerSymbols, char **errorMessage);
 LLVM_C_EXTERN_C_END
 
 #endif // LLD_C_LLDASLIBRARYC_H
