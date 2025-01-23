@@ -153,17 +153,21 @@ SDValue EVMTargetLowering::lowerINTRINSIC_WO_CHAIN(SDValue Op,
   default:
     return SDValue();
   case Intrinsic::evm_datasize:
-  case Intrinsic::evm_dataoffset: {
+  case Intrinsic::evm_dataoffset:
+  case Intrinsic::evm_linkersymbol: {
     const SDLoc DL(Op);
     EVT Ty = Op.getValueType();
     MachineFunction &MF = DAG.getMachineFunction();
     const MDNode *Metadata = cast<MDNodeSDNode>(Op.getOperand(1))->getMD();
     StringRef ContractID = cast<MDString>(Metadata->getOperand(0))->getString();
     MCSymbol *Sym = MF.getContext().getOrCreateSymbol(ContractID);
-    unsigned Opc =
-        (IntrID == Intrinsic::evm_datasize) ? EVM::DATASIZE : EVM::DATAOFFSET;
-    return SDValue(
-        DAG.getMachineNode(Opc, DL, Ty, DAG.getMCSymbol(Sym, MVT::i256)), 0);
+    DenseMap<unsigned, unsigned> OpcMap = {
+        {Intrinsic::evm_datasize, EVM::DATASIZE},
+        {Intrinsic::evm_dataoffset, EVM::DATAOFFSET},
+        {Intrinsic::evm_linkersymbol, EVM::LINKERSYMBOL}};
+    return SDValue(DAG.getMachineNode(OpcMap.at(IntrID), DL, Ty,
+                                      DAG.getMCSymbol(Sym, MVT::i256)),
+                   0);
   } break;
   }
 }

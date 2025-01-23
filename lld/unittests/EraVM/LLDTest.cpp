@@ -442,8 +442,7 @@ define i256 @test() {                                             \n\
       BinMemBuffer, &UndefLinkerSymbols, &NumUndefLinkerSymbols,
       &UndefFactoryDepSymbols, &NumUndefFactoryDepSymbols);
   EXPECT_TRUE(NumUndefLinkerSymbols == 0);
-  LLVMDisposeUndefinedReferencesEraVM(UndefLinkerSymbols,
-                                      NumUndefLinkerSymbols);
+  LLVMDisposeUndefinedReferences(UndefLinkerSymbols, NumUndefLinkerSymbols);
 
   StringRef Binary(LLVMGetBufferStart(BinMemBuffer),
                    LLVMGetBufferSize(BinMemBuffer));
@@ -511,8 +510,7 @@ define i256 @test() {                                             \n\
   EXPECT_TRUE((std::strcmp(UndefLinkerSymbols[1], LinkerSymbols[0]) == 0) ||
               (std::strcmp(UndefLinkerSymbols[1], LinkerSymbols[1]) == 0));
 
-  LLVMDisposeUndefinedReferencesEraVM(UndefLinkerSymbols,
-                                      NumUndefLinkerSymbols);
+  LLVMDisposeUndefinedReferences(UndefLinkerSymbols, NumUndefLinkerSymbols);
 
   // Pass only the first linker symbol.
   LLVMMemoryBufferRef Obj2MemBuffer;
@@ -529,8 +527,7 @@ define i256 @test() {                                             \n\
   EXPECT_TRUE(NumUndefLinkerSymbols == 1);
   EXPECT_TRUE(std::strcmp(UndefLinkerSymbols[0], LinkerSymbols[1]) == 0);
 
-  LLVMDisposeUndefinedReferencesEraVM(UndefLinkerSymbols,
-                                      NumUndefLinkerSymbols);
+  LLVMDisposeUndefinedReferences(UndefLinkerSymbols, NumUndefLinkerSymbols);
 
   // Pass only the second linker symbol. This time
   // the linker should emit the final bytecode, as all the
@@ -632,8 +629,7 @@ define i256 @bar() {                                              \n\
   EXPECT_TRUE((std::strcmp(UndefLinkerSymbols[1], LinkerSymbols[0]) == 0) ||
               (std::strcmp(UndefLinkerSymbols[1], LinkerSymbols[1]) == 0));
 
-  LLVMDisposeUndefinedReferencesEraVM(UndefLinkerSymbols,
-                                      NumUndefLinkerSymbols);
+  LLVMDisposeUndefinedReferences(UndefLinkerSymbols, NumUndefLinkerSymbols);
 
   // Pass only the first linker symbol.
   LLVMMemoryBufferRef Obj2MemBuffer;
@@ -650,8 +646,7 @@ define i256 @bar() {                                              \n\
   EXPECT_TRUE(NumUndefLinkerSymbols == 1);
   EXPECT_TRUE(std::strcmp(UndefLinkerSymbols[0], LinkerSymbols[1]) == 0);
 
-  LLVMDisposeUndefinedReferencesEraVM(UndefLinkerSymbols,
-                                      NumUndefLinkerSymbols);
+  LLVMDisposeUndefinedReferences(UndefLinkerSymbols, NumUndefLinkerSymbols);
 
   // Pass only the second linker symbol. This time
   // the linker should emit the final bytecode, as all the
@@ -764,10 +759,8 @@ define i256 @bar() {                                              \n\
   EXPECT_TRUE(std::strcmp(UndefFactorySymbols[0], FactorySymbols[0]) == 0);
   EXPECT_TRUE(std::strcmp(UndefFactorySymbols[1], FactorySymbols[1]) == 0);
 
-  LLVMDisposeUndefinedReferencesEraVM(UndefLinkerSymbols,
-                                      NumUndefLinkerSymbols);
-  LLVMDisposeUndefinedReferencesEraVM(UndefFactorySymbols,
-                                      NumUndefFactorySymbols);
+  LLVMDisposeUndefinedReferences(UndefLinkerSymbols, NumUndefLinkerSymbols);
+  LLVMDisposeUndefinedReferences(UndefFactorySymbols, NumUndefFactorySymbols);
 
   // Pass only the first linker symbol.
   LLVMMemoryBufferRef Obj2MemBuffer;
@@ -788,8 +781,7 @@ define i256 @bar() {                                              \n\
   EXPECT_TRUE(std::strcmp(UndefFactorySymbols[0], FactorySymbols[0]) == 0);
   EXPECT_TRUE(std::strcmp(UndefFactorySymbols[1], FactorySymbols[1]) == 0);
 
-  LLVMDisposeUndefinedReferencesEraVM(UndefFactorySymbols,
-                                      NumUndefFactorySymbols);
+  LLVMDisposeUndefinedReferences(UndefFactorySymbols, NumUndefFactorySymbols);
 
   // Pass both factory symbols. This time the linker should emit the final
   // bytecode, as all the symbols should be resolved.

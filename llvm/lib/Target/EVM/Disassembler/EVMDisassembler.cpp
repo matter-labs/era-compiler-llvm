@@ -154,19 +154,24 @@ MCDisassembler::DecodeStatus
 EVMDisassembler::getInstruction(MCInst &Instr, uint64_t &Size,
                                 ArrayRef<uint8_t> Bytes, uint64_t Address,
                                 raw_ostream &CStream) const {
-
+  Size = 0;
   if (Bytes.empty())
-    return MCDisassembler::Fail;
+    return Fail;
 
-  for (unsigned InstSize = 1; InstSize <= 33; ++InstSize) {
-    Size = InstSize;
-    APInt Insn(33 * 8, toHex(ArrayRef(Bytes.begin(), Bytes.begin() + InstSize)),
+  const size_t BytesNum = Bytes.size();
+  for (Size = 1; Size <= 33; ++Size) {
+    if (Size > BytesNum)
+      break;
+
+    APInt Insn(33 * 8, toHex(ArrayRef(Bytes.begin(), Bytes.begin() + Size)),
                16);
-    DecodeStatus Result = decodeInstruction(getDecoderTable(InstSize), Instr,
-                                            Insn, Address, this, STI);
-    if (Result != MCDisassembler::Fail)
+    DecodeStatus Result = decodeInstruction(getDecoderTable(Size), Instr, Insn,
+                                            Address, this, STI);
+    if (Result != Fail)
       return Result;
   }
 
-  return MCDisassembler::Fail;
+  // Need to decrement after the loop.
+  --Size;
+  return Fail;
 }
