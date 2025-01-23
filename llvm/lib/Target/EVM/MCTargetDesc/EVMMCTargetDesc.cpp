@@ -21,6 +21,7 @@
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/KECCAK.h"
+#include "llvm/Support/Regex.h"
 
 using namespace llvm;
 
@@ -123,6 +124,29 @@ std::string EVM::getLinkerSymbolHash(StringRef SymName) {
   SmallString<72> HexHash;
   toHex(Hash, /*LowerCase*/ true, HexHash);
   return (Twine("__$") + HexHash + "$__").str();
+}
+
+// Returns concatenation of the \p Name with the \p SubIdx.
+std::string EVM::getSymbolIndexedName(StringRef Name, unsigned SubIdx) {
+  return (Twine(Name) + std::to_string(SubIdx)).str();
+}
+
+// Returns concatenation of '.symbol_name' with the \p Name.
+std::string EVM::getSymbolSectionName(StringRef Name) {
+  return (Twine(".symbol_name") + Name).str();
+}
+
+// Strips index from the \p Name.
+std::string EVM::getNonIndexedSymbolName(StringRef Name) {
+  Regex suffixRegex(R"(.*[0-4]$)");
+  if (!suffixRegex.match(Name))
+    llvm_unreachable("Unexpected indexed symbol name");
+
+  return Name.drop_back().str();
+}
+
+std::string EVM::getLinkerSymbolName(StringRef Name) {
+  return (Twine("__linker_symbol") + Name).str();
 }
 
 std::string EVM::getDataSizeSymbol(StringRef SymbolName) {

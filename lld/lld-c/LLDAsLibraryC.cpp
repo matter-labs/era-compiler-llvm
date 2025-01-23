@@ -154,7 +154,7 @@ static bool hasUndefinedReferenceSymbols(
 ///   __linker_symbol_id_4 = 0xEEEEEEEE
 ///
 /// The is true for \p factoryDependencySymbolNames. The only difference is
-/// that for a factory dependency symbol we reate eight symbols.
+/// that for a factory dependency symbol we read eight symbols.
 static std::string createSymbolDefinitions(
     const char *const *linkerSymbolNames,
     const char linkerSymbolValues[][LINKER_SYMBOL_SIZE],
@@ -543,13 +543,12 @@ void LLVMGetUndefinedReferencesEraVM(LLVMMemoryBufferRef inBuffer,
                                                  ReferenceSymbolType::Factory);
 }
 
-/// Disposes an array with linker symbols returned by the
-/// LLVMGetUndefinedReferencesEraVM().
-void LLVMDisposeUndefinedReferencesEraVM(char *linkerSymbolNames[],
-                                         uint64_t numLinkerSymbols) {
-  for (unsigned idx = 0; idx < numLinkerSymbols; ++idx)
-    std::free(linkerSymbolNames[idx]);
-  std::free(linkerSymbolNames);
+/// Disposes an array with symbols returned by the
+/// LLVMGetUndefinedReferences* functions.
+void LLVMDisposeUndefinedReferences(char *symbolNames[], uint64_t numSymbols) {
+  for (unsigned idx = 0; idx < numSymbols; ++idx)
+    std::free(symbolNames[idx]);
+  std::free(symbolNames);
 }
 
 //----------------------------------------------------------------------------//
@@ -681,9 +680,111 @@ SECTIONS {\n\
   return script;
 }
 
+/// Create linker script as described in the createEraVMRelLinkerScript.
+static std::string createEVMLinkerSymbolsDefinitions(
+    const char *const *linkerSymbolNames,
+    const char linkerSymbolValues[][LINKER_SYMBOL_SIZE],
+    uint64_t numLinkerSymbols) {
+  return createSymbolDefinitions(linkerSymbolNames, linkerSymbolValues,
+                                 numLinkerSymbols, nullptr, nullptr, 0);
+}
+
+/// Resolve undefined linker symbols in the ELF object file \inBuffer
+/// and return the obtained ELF object file.
+static bool
+resolveEVMLinkerSymbols(MemoryBufferRef inBuffer,
+                        LLVMMemoryBufferRef *outBuffer,
+                        const char *const *linkerSymbolNames,
+                        const char linkerSymbolValues[][LINKER_SYMBOL_SIZE],
+                        uint64_t numLinkerSymbols, char **errorMessage) {
+  SmallVector<MemoryBufferRef> localInMemBufRefs(2);
+  localInMemBufRefs[0] = inBuffer;
+  std::string linkerScript = createEVMLinkerSymbolsDefinitions(
+      linkerSymbolNames, linkerSymbolValues, numLinkerSymbols);
+
+  std::unique_ptr<MemoryBuffer> linkerScriptBuf =
+      MemoryBuffer::getMemBuffer(linkerScript, "1");
+
+  localInMemBufRefs[1] = linkerScriptBuf->getMemBufferRef();
+
+  SmallVector<const char *, 16> lldArgs;
+  lldArgs.push_back("ld.lld");
+  lldArgs.push_back("-T");
+  lldArgs.push_back("1");
+
+  lldArgs.push_back("--relocatable");
+
+  // Push the name of the input object file - '0'.
+  lldArgs.push_back("0");
+
+  SmallString<0> codeString;
+  raw_svector_ostream ostream(codeString);
+  SmallString<0> errorString;
+  raw_svector_ostream errorOstream(errorString);
+
+  // Lld-as-a-library is not thread safe, as it has a global state,
+  // so we need to protect lld from simultaneous access from different threads.
+  std::unique_lock<std::mutex> lock(lldMutex);
+  const lld::Result s =
+      lld::lldMainMemBuf(localInMemBufRefs, &ostream, lldArgs, outs(),
+                         errorOstream, {{lld::Gnu, &lld::elf::linkMemBuf}});
+  lock.unlock();
+
+  bool Ret = !s.retCode && s.canRunAgain;
+  // For unification with other LLVM C-API functions, return 'true' in case of
+  // an error.
+  if (!Ret) {
+    *errorMessage = strdup(errorString.c_str());
+    return true;
+  }
+
+  StringRef data = ostream.str();
+  *outBuffer = LLVMCreateMemoryBufferWithMemoryRangeCopy(data.data(),
+                                                         data.size(), "result");
+  return false;
+}
+
+/// Returns true if the \p inBuffer contains an ELF object file.
+LLVMBool LLVMIsELFEVM(LLVMMemoryBufferRef inBuffer) {
+  Expected<ELFObjectFile<ELF32BE>> inBinaryOrErr =
+      ELFObjectFile<ELF32BE>::create(unwrap(inBuffer)->getMemBufferRef());
+  if (!inBinaryOrErr) {
+    handleAllErrors(inBinaryOrErr.takeError(), [](const ErrorInfoBase &EI) {});
+    return false;
+  }
+  return inBinaryOrErr.get().getArch() == Triple::evm;
+}
+
+/// Returns an array of undefined linker symbol names
+/// of the ELF object passed in \p inBuffer.
+void LLVMGetUndefinedReferencesEVM(LLVMMemoryBufferRef inBuffer,
+                                   char ***linkerSymbols,
+                                   uint64_t *numLinkerSymbols) {
+  if (linkerSymbols) {
+    *numLinkerSymbols = 0;
+    *linkerSymbols = nullptr;
+  }
+
+  if (!LLVMIsELFEVM(inBuffer))
+    return;
+
+  std::unique_ptr<Binary> inBinary =
+      cantFail(createBinary(unwrap(inBuffer)->getMemBufferRef()));
+  const auto *oFile = static_cast<const ObjectFile *>(inBinary.get());
+
+  if (linkerSymbols)
+    *linkerSymbols = LLVMGetUndefinedSymbols(oFile, numLinkerSymbols,
+                                             ReferenceSymbolType::Linker);
+}
+
+/// Links the deploy and runtime ELF object files using the information about
+//  dependencies.
 LLVMBool LLVMLinkEVM(LLVMMemoryBufferRef inBuffers[],
                      const char *inBuffersIDs[], uint64_t numInBuffers,
-                     LLVMMemoryBufferRef outBuffers[2], char **errorMessage) {
+                     LLVMMemoryBufferRef outBuffers[2],
+                     const char *const *linkerSymbolNames,
+                     const char linkerSymbolValues[][LINKER_SYMBOL_SIZE],
+                     uint64_t numLinkerSymbols, char **errorMessage) {
   assert(numInBuffers > 1);
   SmallVector<MemoryBufferRef> localInMemBufRefs(3);
   SmallVector<std::unique_ptr<MemoryBuffer>> localInMemBufs(3);
@@ -699,8 +800,38 @@ LLVMBool LLVMLinkEVM(LLVMMemoryBufferRef inBuffers[],
     localInMemBufRefs[idx] = localInMemBufs[idx]->getMemBufferRef();
   }
 
-  std::string linkerScript = creteEVMLinkerScript(
-      ArrayRef(inBuffers, numInBuffers), ArrayRef(inBuffersIDs, numInBuffers));
+  // We need to check 'init' and 'deploy' ELF files for the undefined reference
+  // symbols. They are located at the beginning of the localInMemBufRefs.
+  bool shouldEmitRelocatable = std::any_of(
+      localInMemBufRefs.begin(), std::next(localInMemBufRefs.begin(), 2),
+      [linkerSymbolNames, numLinkerSymbols](MemoryBufferRef bufRef) {
+        std::unique_ptr<Binary> InBinary = cantFail(createBinary(bufRef));
+        assert(InBinary->isObject());
+        return hasUndefinedReferenceSymbols(
+            *static_cast<ObjectFile *>(InBinary.get()), linkerSymbolNames,
+            numLinkerSymbols, nullptr, 0);
+      });
+
+  if (shouldEmitRelocatable) {
+    for (unsigned idx = 0; idx < 2; ++idx) {
+      LLVMMemoryBufferRef outBuf = nullptr;
+      char *errMsg = nullptr;
+      if (resolveEVMLinkerSymbols(localInMemBufRefs[idx], &outBuf,
+                                  linkerSymbolNames, linkerSymbolValues,
+                                  numLinkerSymbols, &errMsg)) {
+        *errorMessage = errMsg;
+        return true;
+      }
+      outBuffers[idx] = outBuf;
+    }
+    return false;
+  }
+
+  std::string linkerScript = createEVMLinkerSymbolsDefinitions(
+      linkerSymbolNames, linkerSymbolValues, numLinkerSymbols);
+
+  linkerScript += creteEVMLinkerScript(ArrayRef(inBuffers, numInBuffers),
+                                       ArrayRef(inBuffersIDs, numInBuffers));
 
   std::unique_ptr<MemoryBuffer> scriptBuf =
       MemoryBuffer::getMemBuffer(linkerScript, "script.x");

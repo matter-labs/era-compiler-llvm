@@ -364,7 +364,7 @@ public:
     VK_TPREL,
     VK_DTPREL,
     // EVM local begin
-    VK_EVM_DATA,
+    VK_EVM_DATA
     // EVM local end
   };
 

@@ -1460,6 +1460,10 @@ template <class ELFT> Triple::ArchType ELFObjectFile<ELFT>::getArch() const {
   case ELF::EM_ERAVM:
     return Triple::eravm;
   // EraVM local end
+  // EVM local begin
+  case ELF::EM_EVM:
+    return Triple::evm;
+    // EVM local end
 
   default:
     return Triple::UnknownArch;

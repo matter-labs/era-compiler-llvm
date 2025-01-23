@@ -7,3 +7,6 @@ add_subdirectory(AsLibELF)
 # EraVM local begin
 add_subdirectory(EraVM)
 # EraVM local End
+# EVM local begin
+add_subdirectory(EVM)
+# EVM local End
