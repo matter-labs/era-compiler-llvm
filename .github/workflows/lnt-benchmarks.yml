@@ -1,0 +1,19 @@
+name: LNT benchmarks
+
+on:
+  pull_request:
+
+concurrency:
+  group: ${{ github.repository_id }}-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  lnt-benchmarks:
+    uses: matter-labs/era-compiler-ci/.github/workflows/lnt.yml@aba-lnt-support
+    secrets: inherit
+    with:
+      compiler_tester_branch: "aba-lnt-support"
+      compiler_llvm_branch: ${{ github.head_ref }}
+      ccache-key-type: 'static' # rotate ccache key every month
+      compiler-llvm-repo: ${{ github.event.pull_request.head.repo.full_name }} # required to properly test forks
