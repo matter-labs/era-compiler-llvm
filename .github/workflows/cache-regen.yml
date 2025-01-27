@@ -41,11 +41,17 @@ jobs:
     name: ${{ matrix.name }}
     steps:
 
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: "llvm"
+
       - name: Build LLVM for tests
         uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
         with:
           target-env: ${{ contains(matrix.target, 'musl') && 'musl' || 'gnu' }}
           build-type: RelWithDebInfo
+          clone-llvm: 'false'
           save-ccache: 'false'
           enable-tests: 'true'
           enable-assertions: 'true'
