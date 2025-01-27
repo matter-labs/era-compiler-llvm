@@ -41,6 +41,11 @@ jobs:
     name: ${{ matrix.name }}
     steps:
 
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          path: "llvm"
+
       - name: Build LLVM for tests
         uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
         with:
@@ -49,6 +54,7 @@ jobs:
           save-ccache: 'false'
           enable-tests: 'true'
           enable-assertions: 'true'
+          clone-llvm: 'false'
           ccache-key: ${{ format('llvm-{0}-{1}-{2}', runner.os, runner.arch, 'gnu') }}
 
       - name: Build LLVM for benchmarks
