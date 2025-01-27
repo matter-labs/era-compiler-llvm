@@ -235,6 +235,7 @@ void ControlFlowGraphBuilder::handleMachineInstr(MachineInstr &MI) {
   case EVM::COPY_I256:
   case EVM::DATASIZE:
   case EVM::DATAOFFSET:
+  case EVM::LINKERSYMBOL:
     // The copy/data instructions just represent an assignment. This case is
     // handled below.
     break;
@@ -276,7 +277,8 @@ void ControlFlowGraphBuilder::handleMachineInstr(MachineInstr &MI) {
     Variables.push_back(VariableSlot{DefReg});
   } break;
   case EVM::DATASIZE:
-  case EVM::DATAOFFSET: {
+  case EVM::DATAOFFSET:
+  case EVM::LINKERSYMBOL: {
     const Register DefReg = MI.getOperand(0).getReg();
     MCSymbol *Sym = MI.getOperand(1).getMCSymbol();
     Input.push_back(SymbolSlot{Sym, &MI});
