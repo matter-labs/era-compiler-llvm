@@ -60,9 +60,7 @@ RelExpr EVM::getRelExpr(RelType type, const Symbol &s,
 void EVM::relocate(uint8_t *loc, const Relocation &rel, uint64_t val) const {
   switch (rel.type) {
   case R_EVM_DATA: {
-    if (val > std::numeric_limits<uint32_t>::max())
-      llvm_unreachable("R_EVM_DATA: to big relocation value");
-    write32be(loc, val);
+    write32be(loc, static_cast<uint32_t>(val));
     break;
   }
   default:
