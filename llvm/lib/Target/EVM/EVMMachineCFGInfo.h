@@ -88,7 +88,7 @@ class EVMMachineCFGInfo {
 public:
   EVMMachineCFGInfo(const EVMMachineCFGInfo &) = delete;
   EVMMachineCFGInfo &operator=(const EVMMachineCFGInfo &) = delete;
-  EVMMachineCFGInfo(MachineFunction &MF, MachineLoopInfo *MLI);
+  EVMMachineCFGInfo(MachineFunction &MF, const MachineLoopInfo *MLI);
 
   const EVMMBBTerminatorsInfo *
   getTerminatorsInfo(const MachineBasicBlock *MBB) const;

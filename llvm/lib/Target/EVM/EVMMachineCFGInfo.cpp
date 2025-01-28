@@ -48,7 +48,7 @@ static bool isTerminate(const MachineInstr *MI) {
 }
 
 EVMMachineCFGInfo::EVMMachineCFGInfo(MachineFunction &MF,
-                                     MachineLoopInfo *MLI) {
+                                     const MachineLoopInfo *MLI) {
   const TargetInstrInfo *TII = MF.getSubtarget().getInstrInfo();
   for (MachineBasicBlock &MBB : MF)
     collectTerminatorsInfo(TII, MLI, MBB);
