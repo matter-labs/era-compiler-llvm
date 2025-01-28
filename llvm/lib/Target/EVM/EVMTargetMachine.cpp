@@ -246,7 +246,6 @@ void EVMPassConfig::addPreEmitPass() {
   // FIXME: enable all the passes below, but the Stackify with EVMKeepRegisters.
   if (!EVMKeepRegisters) {
     addPass(createEVMSplitCriticalEdges());
-    addPass(&MachineBlockPlacementID);
     addPass(createEVMOptimizeLiveIntervals());
     addPass(createEVMSingleUseExpression());
     if (EVMUseLocalStakify) {
