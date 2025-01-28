@@ -120,8 +120,8 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitConstant(uint64_t Val) {
 void EVMStackifyCodeEmitter::CodeEmitter::emitSymbol(const MachineInstr *MI,
                                                      MCSymbol *Symbol) {
   unsigned Opc = MI->getOpcode();
-  assert(Opc == EVM::DATASIZE ||
-         Opc == EVM::DATAOFFSET && "Unexpected symbol instruction");
+  assert(Opc == EVM::DATASIZE || Opc == EVM::DATAOFFSET ||
+         Opc == EVM::LINKERSYMBOL && "Unexpected symbol instruction");
   StackHeight += 1;
   // This is codegen-only instruction, that will be converted into PUSH4.
   auto NewMI = BuildMI(*CurMBB, CurMBB->end(), MI->getDebugLoc(),
