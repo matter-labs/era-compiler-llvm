@@ -15,5 +15,5 @@ jobs:
     with:
       compiler_tester_branch: "aba-lnt-support"
       compiler_llvm_branch: ${{ github.head_ref }}
-      ccache-key-type: 'static' # rotate ccache key every month
+      ccache-key: 'llvm-Linux-X64-gnu'
       compiler-llvm-repo: ${{ github.event.pull_request.head.repo.full_name }} # required to properly test forks
