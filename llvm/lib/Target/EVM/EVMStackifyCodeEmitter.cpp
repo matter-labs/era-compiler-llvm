@@ -11,8 +11,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMStackifyCodeEmitter.h"
+#include "EVMMachineCFGInfo.h"
 #include "EVMMachineFunctionInfo.h"
 #include "EVMStackDebug.h"
+#include "EVMStackLayoutPermutations.h"
 #include "EVMStackShuffler.h"
 #include "TargetInfo/EVMTargetInfo.h"
 #include "llvm/MC/MCContext.h"
@@ -386,8 +388,8 @@ void EVMStackifyCodeEmitter::createOperationLayout(const Operation &Op) {
       Inst && Inst->MI->isCommutable()) {
     // Get the stack layout before the instruction.
     const Stack &DefaultTargetStack = Layout.getOperationEntryLayout(&Op);
-    size_t DefaultCost =
-        EvaluateStackTransform(CurrentStack, DefaultTargetStack);
+    size_t DefaultCost = EVMStackLayoutPermutations::evaluateStackTransform(
+        CurrentStack, DefaultTargetStack);
 
     // Commutable operands always take top two stack slots.
     const unsigned OpIdx1 = 0, OpIdx2 = 1;
@@ -398,8 +400,8 @@ void EVMStackifyCodeEmitter::createOperationLayout(const Operation &Op) {
     Stack CommutedTargetStack = DefaultTargetStack;
     std::swap(CommutedTargetStack[CommutedTargetStack.size() - OpIdx1 - 1],
               CommutedTargetStack[CommutedTargetStack.size() - OpIdx2 - 1]);
-    size_t CommutedCost =
-        EvaluateStackTransform(CurrentStack, CommutedTargetStack);
+    size_t CommutedCost = EVMStackLayoutPermutations::evaluateStackTransform(
+        CurrentStack, CommutedTargetStack);
     // Choose the cheapest transformation.
     SwapCommutable = CommutedCost < DefaultCost;
     createStackLayout(SwapCommutable ? CommutedTargetStack

@@ -13,11 +13,12 @@
 #ifndef LLVM_LIB_TARGET_EVM_EVMSTACKIFYCODEEMITTER_H
 #define LLVM_LIB_TARGET_EVM_EVMSTACKIFYCODEEMITTER_H
 
-#include "EVMStackLayoutGenerator.h"
+#include "EVMStackLayout.h"
 #include "EVMSubtarget.h"
 
 namespace llvm {
 
+class EVMMachineCFGInfo;
 class MachineInstr;
 class MCSymbol;
 

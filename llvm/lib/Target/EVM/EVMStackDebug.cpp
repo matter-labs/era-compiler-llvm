@@ -12,7 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMStackDebug.h"
-#include "EVMStackLayoutGenerator.h"
+#include "EVMStackLayout.h"
 #include "EVMSubtarget.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include <variant>
