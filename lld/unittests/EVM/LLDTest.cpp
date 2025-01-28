@@ -136,7 +136,8 @@ define i256 @foo() {                                              \n\
   const char *LinkerSymbol[2] = {"library_id", "library_id2"};
   const char LinkerSymbolVal[2][20] = {
       {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1},
-      {7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7}};
+      {'\x9f', 0x1E, '\xBB', '\xF1', 7, 7, 7, 7, 7, 7,
+       7,      7,    7,      7,      7, 7, 7, 7, 7, 7}};
   StringRef SymVal1(LinkerSymbolVal[0], 20);
   StringRef SymVal2(LinkerSymbolVal[1], 20);
 
