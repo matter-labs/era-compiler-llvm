@@ -118,7 +118,8 @@ void EVMMachineCFGInfo::collectTerminatorsInfo(const TargetInstrInfo *TII,
       assert(FBB);
     }
     Info->ExitType = MBBExitType::ConditionalBranch;
-    assert(Cond[0].isIdenticalTo(CondBr->getOperand(1)));
+    assert(Cond.size() == 2 && "Unexpected number of conditional operands");
+    assert(Cond[1].isIdenticalTo(CondBr->getOperand(1)));
     Info->BranchInfo.Conditional = {&CondBr->getOperand(1), TBB, FBB, CondBr,
                                     UncondBr};
   }

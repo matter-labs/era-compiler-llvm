@@ -17,6 +17,7 @@ set (STDLIB_CONTENT "R\"(${STDLIB_CONTENT})\"")
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/EVMStdLib.inc ${STDLIB_CONTENT})
 
 add_llvm_target(EVMCodeGen
+  EVMAliasAnalysis.cpp
   EVMAllocaHoisting.cpp
   EVMArgumentMove.cpp
   EVMAsmPrinter.cpp
@@ -28,12 +29,14 @@ add_llvm_target(EVMCodeGen
   EVMInstrInfo.cpp
   EVMLinkRuntime.cpp
   EVMLowerIntrinsics.cpp
+  EVMLowerJumpUnless.cpp
   EVMMachineCFGInfo.cpp
   EVMMachineFunctionInfo.cpp
   EVMMCInstLower.cpp
   EVMOptimizeLiveIntervals.cpp
   EVMRegColoring.cpp
   EVMRegisterInfo.cpp
+  EVMSHA3ConstFolding.cpp
   EVMSingleUseExpression.cpp
   EVMSplitCriticalEdges.cpp
   EVMStackDebug.cpp

@@ -148,6 +148,7 @@ void EVMStackModel::createOperation(MachineInstr &MI,
   case EVM::RET:
   case EVM::JUMP:
   case EVM::JUMPI:
+  case EVM::JUMP_UNLESS:
     // These instructions are handled separately.
     return;
   case EVM::COPY_I256:
