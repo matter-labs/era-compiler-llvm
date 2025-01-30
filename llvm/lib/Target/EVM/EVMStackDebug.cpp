@@ -32,7 +32,7 @@ std::string llvm::stackToString(const Stack &S) {
 void StackLayoutPrinter::operator()() {
   OS << "Function: " << MF.getName() << "(";
   for (const StackSlot *ParamSlot : StackModel.getFunctionParameters()) {
-    if (const auto *Slot = dyn_cast<VariableSlot>(ParamSlot))
+    if (const auto *Slot = dyn_cast<RegisterSlot>(ParamSlot))
       OS << printReg(Slot->getReg(), nullptr, 0, nullptr) << ' ';
     else if (isa<JunkSlot>(ParamSlot))
       OS << "[unused param] ";

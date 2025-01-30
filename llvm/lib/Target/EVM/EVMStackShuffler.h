@@ -400,8 +400,8 @@ public:
       return FunctionCallReturnLabelSlotMultiplicity[p];
     if (isa<FunctionReturnLabelSlot>(Slot))
       return FunctionReturnLabelSlotMultiplicity;
-    if (auto *p = dyn_cast<VariableSlot>(Slot))
-      return VariableSlotMultiplicity[p];
+    if (auto *p = dyn_cast<RegisterSlot>(Slot))
+      return RegisterSlotMultiplicity[p];
     if (auto *p = dyn_cast<LiteralSlot>(Slot))
       return LiteralSlotMultiplicity[p];
     if (auto *p = dyn_cast<SymbolSlot>(Slot))
@@ -418,8 +418,8 @@ public:
       return FunctionCallReturnLabelSlotMultiplicity.at(p);
     if (isa<FunctionReturnLabelSlot>(Slot))
       return FunctionReturnLabelSlotMultiplicity;
-    if (auto *p = dyn_cast<VariableSlot>(Slot))
-      return VariableSlotMultiplicity.at(p);
+    if (auto *p = dyn_cast<RegisterSlot>(Slot))
+      return RegisterSlotMultiplicity.at(p);
     if (auto *p = dyn_cast<LiteralSlot>(Slot))
       return LiteralSlotMultiplicity.at(p);
     if (auto *p = dyn_cast<SymbolSlot>(Slot))
@@ -435,7 +435,7 @@ private:
   std::map<const FunctionCallReturnLabelSlot *, int>
       FunctionCallReturnLabelSlotMultiplicity;
   int FunctionReturnLabelSlotMultiplicity = 0;
-  std::map<const VariableSlot *, int> VariableSlotMultiplicity;
+  std::map<const RegisterSlot *, int> RegisterSlotMultiplicity;
   std::map<const LiteralSlot *, int> LiteralSlotMultiplicity;
   std::map<const SymbolSlot *, int> SymbolSlotMultiplicity;
   std::map<const TemporarySlot *, int> TemporarySlotMultiplicity;

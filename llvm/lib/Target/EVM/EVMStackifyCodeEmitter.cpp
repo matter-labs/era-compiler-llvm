@@ -226,11 +226,9 @@ void EVMStackifyCodeEmitter::adjustStackForInst(const MachineInstr *MI,
   CurrentStack.erase(CurrentStack.end() - NumArgs, CurrentStack.end());
 
   // Push return values to CurrentStack.
-  unsigned Idx = 0;
-  for (const auto &MO : MI->defs()) {
-    assert(MO.isReg());
-    CurrentStack.push_back(StackModel.getTemporarySlot(MI, Idx++));
-  }
+  for (const auto &MO : MI->defs())
+    CurrentStack.push_back(StackModel.getRegisterSlot(MO.getReg()));
+
   assert(Emitter.stackHeight() == CurrentStack.size());
 }
 
@@ -275,7 +273,7 @@ void EVMStackifyCodeEmitter::processAssign(const Operation &Assignment) {
 
   // Invalidate occurrences of the assigned variables.
   for (auto *&CurrentSlot : CurrentStack)
-    if (const auto *VarSlot = dyn_cast<VariableSlot>(CurrentSlot))
+    if (const auto *VarSlot = dyn_cast<RegisterSlot>(CurrentSlot))
       if (is_contained(Assignment.getOutput(), VarSlot))
         CurrentSlot = EVMStackModel::getJunkSlot();
 
@@ -311,9 +309,9 @@ void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
           const StackSlot *DeepSlot = CurrentStack[CurrentStack.size() - I - 1];
           std::string Msg =
               (Twine("cannot swap ") +
-               (isa<VariableSlot>(DeepSlot) ? "variable " : "slot ") +
+               (isa<RegisterSlot>(DeepSlot) ? "variable " : "slot ") +
                DeepSlot->toString() + " with " +
-               (isa<VariableSlot>(CurrentStack.back()) ? "variable "
+               (isa<RegisterSlot>(CurrentStack.back()) ? "variable "
                                                        : "slot ") +
                CurrentStack.back()->toString() + ": too deep in the stack by " +
                std::to_string(Deficit) + " slots in " +
@@ -337,7 +335,7 @@ void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
           }
           if (!Slot->isRematerializable()) {
             std::string Msg =
-                (isa<VariableSlot>(Slot) ? "variable " : "slot ") +
+                (isa<RegisterSlot>(Slot) ? "variable " : "slot ") +
                 Slot->toString() + " is " + std::to_string(Depth - 15) +
                 " too deep in the stack " + stackToString(CurrentStack);
 
@@ -359,7 +357,7 @@ void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
           Emitter.emitLabelReference(CallRet->getCall());
         } else if (isa<FunctionReturnLabelSlot>(Slot)) {
           llvm_unreachable("Cannot produce function return label");
-        } else if (isa<VariableSlot>(Slot)) {
+        } else if (isa<RegisterSlot>(Slot)) {
           llvm_unreachable("Variable not found on stack");
         } else if (isa<TemporarySlot>(Slot)) {
           llvm_unreachable("Function call result requested, but "

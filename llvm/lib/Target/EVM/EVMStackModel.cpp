@@ -60,7 +60,7 @@ std::string Operation::toString() const {
   raw_svector_ostream OS(S);
   OS << "Assignment(";
   for (const auto *S : Output)
-    OS << printReg(cast<VariableSlot>(S)->getReg(), nullptr, 0, nullptr)
+    OS << printReg(cast<RegisterSlot>(S)->getReg(), nullptr, 0, nullptr)
        << ", ";
   OS << ")";
   return std::string(S);
@@ -83,7 +83,7 @@ Stack EVMStackModel::getFunctionParameters() const {
   for (const MachineInstr &MI : MF.front()) {
     if (MI.getOpcode() == EVM::ARGUMENT) {
       int64_t ArgIdx = MI.getOperand(1).getImm();
-      Parameters[ArgIdx] = getVariableSlot(MI.getOperand(0).getReg());
+      Parameters[ArgIdx] = getRegisterSlot(MI.getOperand(0).getReg());
     }
   }
   return Parameters;
@@ -105,7 +105,7 @@ StackSlot *EVMStackModel::getStackSlot(const MachineOperand &MO) const {
       return getLiteralSlot(std::move(Imm));
     }
   }
-  return getVariableSlot(MO.getReg());
+  return getRegisterSlot(MO.getReg());
 }
 
 Stack EVMStackModel::getInstrInput(const MachineInstr &MI) const {
@@ -127,8 +127,8 @@ Stack EVMStackModel::getInstrInput(const MachineInstr &MI) const {
 
 Stack EVMStackModel::getInstrOutput(const MachineInstr &MI) const {
   Stack Out;
-  for (unsigned I = 0, E = MI.getNumExplicitDefs(); I < E; ++I)
-    Out.push_back(getTemporarySlot(&MI, I));
+  for (const MachineOperand &Def : MI.defs())
+    Out.push_back(getRegisterSlot(Def.getReg()));
   return Out;
 }
 
@@ -187,33 +187,28 @@ void EVMStackModel::createOperation(MachineInstr &MI,
   Stack Input, Output;
   switch (MI.getOpcode()) {
   case EVM::CONST_I256: {
-    const Register DefReg = MI.getOperand(0).getReg();
     const APInt Imm = MI.getOperand(1).getCImm()->getValue();
     Input.push_back(getLiteralSlot(std::move(Imm)));
-    Output.push_back(getVariableSlot(DefReg));
+    Output.push_back(getRegisterSlot(MI.getOperand(0).getReg()));
   } break;
   case EVM::DATASIZE:
   case EVM::DATAOFFSET:
   case EVM::LINKERSYMBOL: {
-    const Register DefReg = MI.getOperand(0).getReg();
     MCSymbol *Sym = MI.getOperand(1).getMCSymbol();
     Input.push_back(getSymbolSlot(Sym, &MI));
-    Output.push_back(getVariableSlot(DefReg));
+    Output.push_back(getRegisterSlot(MI.getOperand(0).getReg()));
   } break;
   case EVM::COPY_I256: {
     // Copy instruction corresponds to the assignment operator, so
     // we do not need to create intermediate TmpSlots.
     Input = getInstrInput(MI);
-    const Register DefReg = MI.getOperand(0).getReg();
-    Output.push_back(getVariableSlot(DefReg));
+    Output.push_back(getRegisterSlot(MI.getOperand(0).getReg()));
   } break;
   default: {
-    unsigned ArgsNumber = 0;
     for (const auto &MO : MI.defs()) {
-      assert(MO.isReg());
       const Register Reg = MO.getReg();
-      Input.push_back(getTemporarySlot(&MI, ArgsNumber++));
-      Output.push_back(getVariableSlot(Reg));
+      Input.push_back(getRegisterSlot(Reg));
+      Output.push_back(getRegisterSlot(Reg));
     }
   } break;
   }

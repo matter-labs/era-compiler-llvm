@@ -40,7 +40,7 @@ class StackSlot {
 public:
   enum SlotKind {
     SK_Literal,
-    SK_Variable,
+    SK_Register,
     SK_Symbol,
     SK_FunctionCallReturnLabel,
     SK_FunctionReturnLabel,
@@ -85,23 +85,23 @@ public:
   }
 };
 
-/// A slot containing the current value of a particular variable.
-class VariableSlot final : public StackSlot {
-  Register VirtualReg;
+/// A slot containing a register def.
+class RegisterSlot final : public StackSlot {
+  Register Reg;
 
 public:
-  VariableSlot(const Register &R) : StackSlot(SK_Variable), VirtualReg(R) {}
-  const Register &getReg() const { return VirtualReg; }
+  RegisterSlot(const Register &R) : StackSlot(SK_Register), Reg(R) {}
+  const Register &getReg() const { return Reg; }
 
   bool isRematerializable() const override { return false; }
   std::string toString() const override {
     SmallString<64> S;
     raw_svector_ostream OS(S);
-    OS << printReg(VirtualReg, nullptr, 0, nullptr);
+    OS << printReg(Reg, nullptr, 0, nullptr);
     return std::string(S.str());
   }
   static bool classof(const StackSlot *S) {
-    return S->getSlotKind() == SK_Variable;
+    return S->getSlotKind() == SK_Register;
   }
 };
 
@@ -237,7 +237,7 @@ class EVMStackModel {
 
   // Storage for stack slots.
   mutable DenseMap<APInt, std::unique_ptr<LiteralSlot>> LiteralStorage;
-  mutable DenseMap<Register, std::unique_ptr<VariableSlot>> VariableStorage;
+  mutable DenseMap<Register, std::unique_ptr<RegisterSlot>> RegStorage;
   mutable DenseMap<std::pair<MCSymbol *, const MachineInstr *>,
                    std::unique_ptr<SymbolSlot>>
       SymbolStorage;
@@ -269,10 +269,10 @@ public:
       LiteralStorage[V] = std::make_unique<LiteralSlot>(V);
     return LiteralStorage[V].get();
   }
-  VariableSlot *getVariableSlot(const Register &R) const {
-    if (VariableStorage.count(R) == 0)
-      VariableStorage[R] = std::make_unique<VariableSlot>(R);
-    return VariableStorage[R].get();
+  RegisterSlot *getRegisterSlot(const Register &R) const {
+    if (RegStorage.count(R) == 0)
+      RegStorage[R] = std::make_unique<RegisterSlot>(R);
+    return RegStorage[R].get();
   }
   SymbolSlot *getSymbolSlot(MCSymbol *S, const MachineInstr *MI) const {
     auto Key = std::make_pair(S, MI);

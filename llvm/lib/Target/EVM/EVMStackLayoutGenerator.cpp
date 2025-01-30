@@ -64,9 +64,9 @@ findStackTooDeep(Stack const &Source, Stack const &Target) {
   auto getVariableChoices = [](auto &&SlotRange) {
     SmallVector<Register> Result;
     for (auto const *Slot : SlotRange)
-      if (auto const *VarSlot = dyn_cast<VariableSlot>(Slot))
-        if (!is_contained(Result, VarSlot->getReg()))
-          Result.push_back(VarSlot->getReg());
+      if (auto const *RegSlot = dyn_cast<RegisterSlot>(Slot))
+        if (!is_contained(Result, RegSlot->getReg()))
+          Result.push_back(RegSlot->getReg());
     return Result;
   };
 
@@ -278,12 +278,14 @@ Stack EVMStackLayoutGenerator::propagateStackThroughOperation(
   Stack IdealStack =
       createIdealLayout(Op.getOutput(), ExitStack, generateSlotOnTheFly);
 
+#ifndef NDEBUG
   // Make sure the resulting previous slots do not overlap with any assignmed
   // variables.
   if (Op.isAssignment())
     for (auto *StackSlot : IdealStack)
-      if (const auto *VarSlot = dyn_cast<VariableSlot>(StackSlot))
-        assert(!is_contained(Op.getOutput(), VarSlot));
+      if (const auto *RegSlot = dyn_cast<RegisterSlot>(StackSlot))
+        assert(!is_contained(Op.getOutput(), RegSlot));
+#endif // NDEBUG
 
   // Since stack+Operation.output can be easily shuffled to ExitLayout, the
   // desired layout before the operation is stack+Operation.input;
