@@ -41,12 +41,6 @@ std::string SymbolSlot::toString() const {
 std::string FunctionCallReturnLabelSlot::toString() const {
   return "RET[" + std::string(getCalledFunction(*Call)->getName()) + "]";
 }
-std::string TemporarySlot::toString() const {
-  SmallString<128> S;
-  raw_svector_ostream OS(S);
-  OS << "TMP[" << getInstName(MI) << ", " << std::to_string(Index) + "]";
-  return std::string(S.str());
-}
 std::string Operation::toString() const {
   if (isFunctionCall()) {
     const MachineOperand *Callee = MI->explicit_uses().begin();
@@ -59,9 +53,8 @@ std::string Operation::toString() const {
   SmallString<128> S;
   raw_svector_ostream OS(S);
   OS << "Assignment(";
-  for (const auto *S : Output)
-    OS << printReg(cast<VariableSlot>(S)->getReg(), nullptr, 0, nullptr)
-       << ", ";
+  for (const auto &MO : MI->defs())
+    OS << printReg(MO.getReg(), nullptr, 0, nullptr) << ", ";
   OS << ")";
   return std::string(S);
 }
@@ -83,7 +76,7 @@ Stack EVMStackModel::getFunctionParameters() const {
   for (const MachineInstr &MI : MF.front()) {
     if (MI.getOpcode() == EVM::ARGUMENT) {
       int64_t ArgIdx = MI.getOperand(1).getImm();
-      Parameters[ArgIdx] = getVariableSlot(MI.getOperand(0).getReg());
+      Parameters[ArgIdx] = getRegisterSlot(MI.getOperand(0).getReg());
     }
   }
   return Parameters;
@@ -105,7 +98,7 @@ StackSlot *EVMStackModel::getStackSlot(const MachineOperand &MO) const {
       return getLiteralSlot(std::move(Imm));
     }
   }
-  return getVariableSlot(MO.getReg());
+  return getRegisterSlot(MO.getReg());
 }
 
 Stack EVMStackModel::getInstrInput(const MachineInstr &MI) const {
@@ -125,24 +118,38 @@ Stack EVMStackModel::getInstrInput(const MachineInstr &MI) const {
   return In;
 }
 
-Stack EVMStackModel::getInstrOutput(const MachineInstr &MI) const {
-  Stack Out;
-  for (unsigned I = 0, E = MI.getNumExplicitDefs(); I < E; ++I)
-    Out.push_back(getTemporarySlot(&MI, I));
-  return Out;
-}
-
 void EVMStackModel::createOperation(MachineInstr &MI,
                                     SmallVector<Operation> &Ops) const {
   unsigned Opc = MI.getOpcode();
+  assert(Opc != EVM::STACK_LOAD && Opc != EVM::STACK_STORE &&
+         "Unexpected stack memory instruction");
+  // These instructions are handled separately.
+  if (Opc == EVM::ARGUMENT || Opc == EVM::RET || Opc == EVM::JUMP ||
+      Opc == EVM::JUMPI)
+    return;
+  // If the virtual register has the only definition, ignore this instruction,
+  // as we create literal slots from the immediate value at the register uses.
+  if (Opc == EVM::CONST_I256 &&
+      LIS.getInterval(MI.getOperand(0).getReg()).containsOneValue())
+    return;
+
+  assert(all_of(MI.implicit_operands(),
+                [](const MachineOperand &MO) {
+                  return MO.getReg() == EVM::VALUE_STACK ||
+                         MO.getReg() == EVM::ARGUMENTS ||
+                         MO.getReg() == EVM::SP;
+                }) &&
+         "Unexpected implicit def or use");
+
+  assert(all_of(MI.explicit_operands(),
+                [](const MachineOperand &MO) {
+                  return !MO.isReg() ||
+                         Register::isVirtualRegister(MO.getReg());
+                }) &&
+         "Unexpected explicit def or use");
+
+  // Create FunctionCall or BuiltinCall operations.
   switch (Opc) {
-  case EVM::STACK_LOAD:
-  case EVM::STACK_STORE:
-    llvm_unreachable("Unexpected stack memory instruction");
-    return;
-  case EVM::ARGUMENT:
-    // Is handled above.
-    return;
   case EVM::FCALL: {
     Stack Input;
     for (const MachineOperand &MO : MI.operands()) {
@@ -155,75 +162,48 @@ void EVMStackModel::createOperation(MachineInstr &MI,
     }
     const Stack &Tmp = getInstrInput(MI);
     Input.insert(Input.end(), Tmp.begin(), Tmp.end());
-    Ops.emplace_back(Operation::FunctionCall, std::move(Input),
-                     getInstrOutput(MI), &MI);
+    Ops.emplace_back(Operation::FunctionCall, std::move(Input), &MI);
   } break;
-  case EVM::RET:
-  case EVM::JUMP:
-  case EVM::JUMPI:
-    // These instructions are handled separately.
-    return;
+  case EVM::CONST_I256:
   case EVM::COPY_I256:
   case EVM::DATASIZE:
   case EVM::DATAOFFSET:
-  case EVM::LINKERSYMBOL:
   case EVM::LOADIMMUTABLE:
-    // The copy/data instructions just represent an assignment. This case is
-    // handled below.
-    break;
-  case EVM::CONST_I256: {
-    const LiveInterval *LI = &LIS.getInterval(MI.getOperand(0).getReg());
-    // If the virtual register has the only definition, ignore this instruction,
-    // as we create literal slots from the immediate value at the register uses.
-    if (LI->containsOneValue())
-      return;
+  case EVM::LINKERSYMBOL: {
+    // The copy/data instructions just represent an assignment.
   } break;
   default: {
-    Ops.emplace_back(Operation::BuiltinCall, getInstrInput(MI),
-                     getInstrOutput(MI), &MI);
+    Ops.emplace_back(Operation::BuiltinCall, getInstrInput(MI), &MI);
   } break;
   }
 
-  // Create CFG::Assignment object for the MI.
-  Stack Input, Output;
+  // Create Assignment operation for the MI.
+  Stack Input;
   switch (MI.getOpcode()) {
   case EVM::CONST_I256: {
-    const Register DefReg = MI.getOperand(0).getReg();
     const APInt Imm = MI.getOperand(1).getCImm()->getValue();
     Input.push_back(getLiteralSlot(std::move(Imm)));
-    Output.push_back(getVariableSlot(DefReg));
   } break;
   case EVM::DATASIZE:
   case EVM::DATAOFFSET:
   case EVM::LINKERSYMBOL:
   case EVM::LOADIMMUTABLE: {
-    const Register DefReg = MI.getOperand(0).getReg();
     MCSymbol *Sym = MI.getOperand(1).getMCSymbol();
     Input.push_back(getSymbolSlot(Sym, &MI));
-    Output.push_back(getVariableSlot(DefReg));
   } break;
   case EVM::COPY_I256: {
     // Copy instruction corresponds to the assignment operator, so
     // we do not need to create intermediate TmpSlots.
     Input = getInstrInput(MI);
-    const Register DefReg = MI.getOperand(0).getReg();
-    Output.push_back(getVariableSlot(DefReg));
   } break;
   default: {
-    unsigned ArgsNumber = 0;
-    for (const auto &MO : MI.defs()) {
-      assert(MO.isReg());
-      const Register Reg = MO.getReg();
-      Input.push_back(getTemporarySlot(&MI, ArgsNumber++));
-      Output.push_back(getVariableSlot(Reg));
-    }
+    Input = getSlotsForInstructionDefs(&MI);
   } break;
   }
-  // We don't need an assignment part of the instructions that do not write
-  // results.
-  if (!Input.empty() || !Output.empty())
-    Ops.emplace_back(Operation::Assignment, std::move(Input), std::move(Output),
-                     &MI);
+
+  // Skip for the instructions that do not write results.
+  if (!Input.empty() || MI.getNumExplicitDefs())
+    Ops.emplace_back(Operation::Assignment, std::move(Input), &MI);
 }
 
 Stack EVMStackModel::getReturnArguments(const MachineInstr &MI) const {
