@@ -13,7 +13,7 @@
 #ifndef LLVM_LIB_TARGET_EVM_EVMSTACKIFYCODEEMITTER_H
 #define LLVM_LIB_TARGET_EVM_EVMSTACKIFYCODEEMITTER_H
 
-#include "EVMStackLayoutGenerator.h"
+#include "EVMBackwardStackLayoutGenerator.h"
 #include "EVMSubtarget.h"
 
 namespace llvm {

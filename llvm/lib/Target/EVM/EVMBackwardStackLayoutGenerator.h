@@ -1,4 +1,4 @@
-//===---- EVMStackLayoutGenerator.h - Stack layout generator ----*- C++ -*-===//
+//===---- EVMBackwardStackLayoutGenerator.h - Stack layout gen --*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -15,8 +15,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIB_TARGET_EVM_EVMSTACKLAYOUTGENERATOR_H
-#define LLVM_LIB_TARGET_EVM_EVMSTACKLAYOUTGENERATOR_H
+#ifndef LLVM_LIB_TARGET_EVM_EVMBACKWARDSTACKLAYOUTGENERATOR_H
+#define LLVM_LIB_TARGET_EVM_EVMBACKWARDSTACKLAYOUTGENERATOR_H
 
 #include "EVMMachineCFGInfo.h"
 #include "EVMStackModel.h"
@@ -62,7 +62,7 @@ private:
   DenseMap<const Operation *, Stack> OperationEntryLayoutMap;
 };
 
-class EVMStackLayoutGenerator {
+class EVMBackwardStackLayoutGenerator {
 public:
   struct StackTooDeep {
     /// Number of slots that need to be saved.
@@ -71,9 +71,10 @@ public:
     SmallVector<Register> variableChoices;
   };
 
-  EVMStackLayoutGenerator(const MachineFunction &MF, const MachineLoopInfo *MLI,
-                          const EVMStackModel &StackModel,
-                          const EVMMachineCFGInfo &CFGInfo);
+  EVMBackwardStackLayoutGenerator(const MachineFunction &MF,
+                                  const MachineLoopInfo *MLI,
+                                  const EVMStackModel &StackModel,
+                                  const EVMMachineCFGInfo &CFGInfo);
 
   std::unique_ptr<EVMStackLayout> run();
 
@@ -136,4 +137,4 @@ private:
 
 } // end namespace llvm
 
-#endif // LLVM_LIB_TARGET_EVM_EVMSTACKLAYOUTGENERATOR_H
+#endif // LLVM_LIB_TARGET_EVM_EVMBACKWARDSTACKLAYOUTGENERATOR_H

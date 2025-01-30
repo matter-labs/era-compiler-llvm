@@ -1,4 +1,4 @@
-//===---- EVMStackLayoutGenerator.h - Stack layout generator ----*- C++ -*-===//
+//===---- EVMBackwardStackLayoutGenerator.h - Stack layout gen --*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -15,7 +15,7 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "EVMStackLayoutGenerator.h"
+#include "EVMBackwardStackLayoutGenerator.h"
 #include "EVMRegisterInfo.h"
 #include "EVMStackDebug.h"
 #include "EVMStackShuffler.h"
@@ -56,10 +56,10 @@ template <typename T> auto take_back(T &&RangeOrContainer, size_t N = 1) {
 
 /// Returns all stack too deep errors that would occur when shuffling \p Source
 /// to \p Target.
-SmallVector<EVMStackLayoutGenerator::StackTooDeep>
+SmallVector<EVMBackwardStackLayoutGenerator::StackTooDeep>
 findStackTooDeep(Stack const &Source, Stack const &Target) {
   Stack CurrentStack = Source;
-  SmallVector<EVMStackLayoutGenerator::StackTooDeep> Errors;
+  SmallVector<EVMBackwardStackLayoutGenerator::StackTooDeep> Errors;
 
   auto getVariableChoices = [](auto &&SlotRange) {
     SmallVector<Register> Result;
@@ -74,7 +74,7 @@ findStackTooDeep(Stack const &Source, Stack const &Target) {
       CurrentStack, Target,
       [&](unsigned I) {
         if (I > 16)
-          Errors.emplace_back(EVMStackLayoutGenerator::StackTooDeep{
+          Errors.emplace_back(EVMBackwardStackLayoutGenerator::StackTooDeep{
               I - 16, getVariableChoices(take_back(CurrentStack, I + 1))});
       },
       [&](const StackSlot *Slot) {
@@ -83,7 +83,7 @@ findStackTooDeep(Stack const &Source, Stack const &Target) {
 
         if (auto Depth = offset(reverse(CurrentStack), Slot);
             Depth && *Depth >= 16)
-          Errors.emplace_back(EVMStackLayoutGenerator::StackTooDeep{
+          Errors.emplace_back(EVMBackwardStackLayoutGenerator::StackTooDeep{
               *Depth - 15,
               getVariableChoices(take_back(CurrentStack, *Depth + 1))});
       },
@@ -241,12 +241,12 @@ Stack createIdealLayout(const SmallVector<StackSlot *> &OpDefs,
 
 } // end anonymous namespace
 
-EVMStackLayoutGenerator::EVMStackLayoutGenerator(
+EVMBackwardStackLayoutGenerator::EVMBackwardStackLayoutGenerator(
     const MachineFunction &MF, const MachineLoopInfo *MLI,
     const EVMStackModel &StackModel, const EVMMachineCFGInfo &CFGInfo)
     : MF(MF), MLI(MLI), StackModel(StackModel), CFGInfo(CFGInfo) {}
 
-std::unique_ptr<EVMStackLayout> EVMStackLayoutGenerator::run() {
+std::unique_ptr<EVMStackLayout> EVMBackwardStackLayoutGenerator::run() {
   runPropagation();
 
   auto Layout = std::make_unique<EVMStackLayout>(
@@ -260,7 +260,7 @@ std::unique_ptr<EVMStackLayout> EVMStackLayoutGenerator::run() {
   return Layout;
 }
 
-Stack EVMStackLayoutGenerator::propagateStackThroughOperation(
+Stack EVMBackwardStackLayoutGenerator::propagateStackThroughOperation(
     Stack ExitStack, const Operation &Op, bool AggressiveStackCompression) {
   // Enable aggressive stack compression for recursive calls.
   if (Op.isFunctionCall())
@@ -318,7 +318,7 @@ Stack EVMStackLayoutGenerator::propagateStackThroughOperation(
   return IdealStack;
 }
 
-Stack EVMStackLayoutGenerator::propagateStackThroughBlock(
+Stack EVMBackwardStackLayoutGenerator::propagateStackThroughBlock(
     Stack ExitStack, const MachineBasicBlock *Block,
     bool AggressiveStackCompression) {
   Stack CurrentStack = ExitStack;
@@ -353,7 +353,7 @@ static size_t getOptimalNumberOfJunks(const Stack &EntryLayout,
   return BestNumJunk;
 }
 
-void EVMStackLayoutGenerator::runPropagation() {
+void EVMBackwardStackLayoutGenerator::runPropagation() {
   std::deque<const MachineBasicBlock *> ToVisit{&MF.front()};
   DenseSet<const MachineBasicBlock *> Visited;
 
@@ -517,7 +517,8 @@ void EVMStackLayoutGenerator::runPropagation() {
   }
 }
 
-std::optional<Stack> EVMStackLayoutGenerator::getExitLayoutOrStageDependencies(
+std::optional<Stack>
+EVMBackwardStackLayoutGenerator::getExitLayoutOrStageDependencies(
     const MachineBasicBlock *Block,
     const DenseSet<const MachineBasicBlock *> &Visited,
     std::deque<const MachineBasicBlock *> &ToVisit) const {
@@ -577,8 +578,8 @@ std::optional<Stack> EVMStackLayoutGenerator::getExitLayoutOrStageDependencies(
   return Stack{};
 }
 
-Stack EVMStackLayoutGenerator::combineStack(Stack const &Stack1,
-                                            Stack const &Stack2) {
+Stack EVMBackwardStackLayoutGenerator::combineStack(Stack const &Stack1,
+                                                    Stack const &Stack2) {
   // TODO: it would be nicer to replace this by a constructive algorithm.
   // Currently it uses a reduced version of the Heap Algorithm to partly
   // brute-force, which seems to work decently well.
@@ -686,7 +687,7 @@ Stack EVMStackLayoutGenerator::combineStack(Stack const &Stack1,
   return CommonPrefix;
 }
 
-Stack EVMStackLayoutGenerator::compressStack(Stack CurStack) {
+Stack EVMBackwardStackLayoutGenerator::compressStack(Stack CurStack) {
   std::optional<size_t> FirstDupOffset;
   do {
     if (FirstDupOffset) {
@@ -747,7 +748,7 @@ size_t llvm::EvaluateStackTransform(Stack Source, Stack const &Target) {
   return OpGas;
 }
 
-void EVMStackLayoutGenerator::addJunksToStackBottom(
+void EVMBackwardStackLayoutGenerator::addJunksToStackBottom(
     const MachineBasicBlock *Entry, size_t NumJunk) {
   for (const MachineBasicBlock *MBB : depth_first(Entry)) {
     Stack EntryTmp(NumJunk, EVMStackModel::getJunkSlot());
