@@ -57,7 +57,8 @@ void StackLayoutPrinter::printBlock(MachineBasicBlock const &Block) {
     OS << Op.toString() << "\n";
     assert(Op.getInput().size() <= EntryLayout.size());
     EntryLayout.resize(EntryLayout.size() - Op.getInput().size());
-    EntryLayout.append(Op.getOutput());
+    EntryLayout.append(
+        StackModel.getSlotsForInstructionDefs(Op.getMachineInstr()));
     OS << stackToString(EntryLayout) << "\n";
   }
   OS << "\n";

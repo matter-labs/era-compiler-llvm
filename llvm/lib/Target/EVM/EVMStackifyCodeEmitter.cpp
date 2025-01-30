@@ -271,16 +271,17 @@ void EVMStackifyCodeEmitter::processAssign(const Operation &Assignment) {
   assert(Assignment.isAssignment());
   assert(Emitter.stackHeight() == CurrentStack.size());
 
+  const auto *MI = Assignment.getMachineInstr();
   // Invalidate occurrences of the assigned variables.
   for (auto *&CurrentSlot : CurrentStack)
-    if (const auto *VarSlot = dyn_cast<RegisterSlot>(CurrentSlot))
-      if (is_contained(Assignment.getOutput(), VarSlot))
+    if (const auto *RegSlot = dyn_cast<RegisterSlot>(CurrentSlot))
+      if (MI->definesRegister(RegSlot->getReg()))
         CurrentSlot = EVMStackModel::getJunkSlot();
 
   // Assign variables to current stack top.
-  assert(CurrentStack.size() >= Assignment.getOutput().size());
-  llvm::copy(Assignment.getOutput(),
-             CurrentStack.end() - Assignment.getOutput().size());
+  assert(CurrentStack.size() >= MI->getNumExplicitDefs());
+  llvm::copy(StackModel.getSlotsForInstructionDefs(MI),
+             CurrentStack.end() - MI->getNumExplicitDefs());
 }
 
 bool EVMStackifyCodeEmitter::areLayoutsCompatible(const Stack &SourceStack,
@@ -444,13 +445,18 @@ void EVMStackifyCodeEmitter::run() {
       else
         llvm_unreachable("Unexpected operation type.");
 
+#ifndef NDEBUG
       // Assert that the Operation produced its proclaimed output.
-      assert(CurrentStack.size() == Emitter.stackHeight());
-      assert(CurrentStack.size() == BaseHeight + Op.getOutput().size());
-      assert(CurrentStack.size() >= Op.getOutput().size());
-      assert(areLayoutsCompatible(
-          Stack(CurrentStack.end() - Op.getOutput().size(), CurrentStack.end()),
-          Op.getOutput()));
+      size_t NumDefs = Op.getMachineInstr()->getNumExplicitDefs();
+      size_t StackSize = CurrentStack.size();
+      assert(StackSize == Emitter.stackHeight());
+      assert(StackSize == BaseHeight + NumDefs);
+      assert(StackSize >= NumDefs);
+      // Check that the top NumDefs slots are the MI defs.
+      for (size_t I = StackSize - NumDefs; I < StackSize; ++I)
+        assert(Op.getMachineInstr()->definesRegister(
+            cast<RegisterSlot>(CurrentStack[I])->getReg()));
+#endif // NDEBUG
     }
 
     // Exit the block.

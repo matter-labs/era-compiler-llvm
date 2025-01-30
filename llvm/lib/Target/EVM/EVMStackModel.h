@@ -187,18 +187,14 @@ private:
   OpType Type;
   // Stack slots this operation expects at the top of the stack and consumes.
   Stack Input;
-  // Stack slots this operation leaves on the stack as output.
-  Stack Output;
   // The emulated machine instruction.
   MachineInstr *MI = nullptr;
 
 public:
-  Operation(OpType Type, Stack Input, Stack Output, MachineInstr *MI)
-      : Type(Type), Input(std::move(Input)), Output(std::move(Output)), MI(MI) {
-  }
+  Operation(OpType Type, Stack Input, MachineInstr *MI)
+      : Type(Type), Input(std::move(Input)), MI(MI) {}
 
   const Stack &getInput() const { return Input; }
-  const Stack &getOutput() const { return Output; }
   MachineInstr *getMachineInstr() const { return MI; }
 
   bool isBuiltinCall() const { return Type == BuiltinCall; }
@@ -230,11 +226,17 @@ public:
   EVMStackModel(MachineFunction &MF, const LiveIntervals &LIS);
   Stack getFunctionParameters() const;
   Stack getInstrInput(const MachineInstr &MI) const;
-  Stack getInstrOutput(const MachineInstr &MI) const;
   Stack getReturnArguments(const MachineInstr &MI) const;
   const SmallVector<Operation> &
   getOperations(const MachineBasicBlock *MBB) const {
     return OperationsMap.at(MBB);
+  }
+  SmallVector<StackSlot *>
+  getSlotsForInstructionDefs(const MachineInstr *MI) const {
+    SmallVector<StackSlot *> Defs;
+    for (const auto &MO : MI->defs())
+      Defs.push_back(getRegisterSlot(MO.getReg()));
+    return Defs;
   }
 
   // Get or create a requested stack slot.

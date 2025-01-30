@@ -91,26 +91,32 @@ findStackTooDeep(Stack const &Source, Stack const &Target) {
   return Errors;
 }
 
-/// Returns the ideal stack to have before executing an operation that outputs
-/// \p OperationOutput, s.t. shuffling to \p Post is cheap (excluding the
-/// input of the operation itself). If \p GenerateSlotOnTheFly returns true for
-/// a slot, this slot should not occur in the ideal stack, but rather be
-/// generated on the fly during shuffling.
+/// Returns the ideal stack to have before executing the MachineInstr \p MI
+/// s.t. shuffling to \p Post is cheap (excluding the input of the operation
+/// itself). If \p GenerateSlotOnTheFly returns true for a slot, this slot
+/// should not occur in the ideal stack, but rather be generated on the fly
+/// during shuffling.
 template <typename Callable>
-Stack createIdealLayout(const Stack &OperationOutput, const Stack &Post,
+Stack createIdealLayout(const MachineInstr *MI, const Stack &Post,
                         Callable GenerateSlotOnTheFly) {
   struct PreviousSlot {
     size_t slot;
   };
   using LayoutT = SmallVector<std::variant<PreviousSlot, StackSlot *>>;
 
+  SmallVector<StackSlot *> OpDefs;
+  std::copy_if(Post.begin(), Post.end(), std::back_inserter(OpDefs),
+               [MI](const StackSlot *S) {
+                 return isa<RegisterSlot>(S) &&
+                        MI->definesRegister(cast<RegisterSlot>(S)->getReg());
+               });
   // Determine the number of slots that have to be on stack before executing the
   // operation (excluding the inputs of the operation itself). That is slots
   // that should not be generated on the fly and are not outputs of the
   // operation.
   size_t PreOperationLayoutSize = Post.size();
   for (const auto *Slot : Post)
-    if (is_contained(OperationOutput, Slot) || GenerateSlotOnTheFly(Slot))
+    if (is_contained(OpDefs, Slot) || GenerateSlotOnTheFly(Slot))
       --PreOperationLayoutSize;
 
   // The symbolic layout directly after the operation has the form
@@ -118,7 +124,7 @@ Stack createIdealLayout(const Stack &OperationOutput, const Stack &Post,
   LayoutT Layout;
   for (size_t Index = 0; Index < PreOperationLayoutSize; ++Index)
     Layout.emplace_back(PreviousSlot{Index});
-  Layout.append(OperationOutput.begin(), OperationOutput.end());
+  Layout.append(OpDefs.begin(), OpDefs.end());
 
   // Shortcut for trivial case.
   if (Layout.empty())
@@ -276,15 +282,15 @@ Stack EVMStackLayoutGenerator::propagateStackThroughOperation(
   // operation outputs (and not to be generated on the fly), s.t. shuffling the
   // 'IdealStack + Operation.output' to ExitLayout is cheap.
   Stack IdealStack =
-      createIdealLayout(Op.getOutput(), ExitStack, generateSlotOnTheFly);
+      createIdealLayout(Op.getMachineInstr(), ExitStack, generateSlotOnTheFly);
 
 #ifndef NDEBUG
-  // Make sure the resulting previous slots do not overlap with any assignmed
+  // Make sure the resulting previous slots do not overlap with any assigned
   // variables.
   if (Op.isAssignment())
     for (auto *StackSlot : IdealStack)
       if (const auto *RegSlot = dyn_cast<RegisterSlot>(StackSlot))
-        assert(!is_contained(Op.getOutput(), RegSlot));
+        assert(!Op.getMachineInstr()->definesRegister(RegSlot->getReg()));
 #endif // NDEBUG
 
   // Since stack+Operation.output can be easily shuffled to ExitLayout, the

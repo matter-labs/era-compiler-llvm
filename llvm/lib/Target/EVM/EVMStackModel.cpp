@@ -53,9 +53,8 @@ std::string Operation::toString() const {
   SmallString<128> S;
   raw_svector_ostream OS(S);
   OS << "Assignment(";
-  for (const auto *S : Output)
-    OS << printReg(cast<RegisterSlot>(S)->getReg(), nullptr, 0, nullptr)
-       << ", ";
+  for (const auto &MO : MI->defs())
+    OS << printReg(MO.getReg(), nullptr, 0, nullptr) << ", ";
   OS << ")";
   return std::string(S);
 }
@@ -119,13 +118,6 @@ Stack EVMStackModel::getInstrInput(const MachineInstr &MI) const {
   return In;
 }
 
-Stack EVMStackModel::getInstrOutput(const MachineInstr &MI) const {
-  Stack Out;
-  for (const MachineOperand &Def : MI.defs())
-    Out.push_back(getRegisterSlot(Def.getReg()));
-  return Out;
-}
-
 void EVMStackModel::createOperation(MachineInstr &MI,
                                     SmallVector<Operation> &Ops) const {
   unsigned Opc = MI.getOpcode();
@@ -155,8 +147,7 @@ void EVMStackModel::createOperation(MachineInstr &MI,
     }
     const Stack &Tmp = getInstrInput(MI);
     Input.insert(Input.end(), Tmp.begin(), Tmp.end());
-    Ops.emplace_back(Operation::FunctionCall, std::move(Input),
-                     getInstrOutput(MI), &MI);
+    Ops.emplace_back(Operation::FunctionCall, std::move(Input), &MI);
   } break;
   case EVM::CONST_I256:
   case EVM::COPY_I256:
@@ -166,8 +157,7 @@ void EVMStackModel::createOperation(MachineInstr &MI,
     // The copy/data instructions just represent an assignment.
   } break;
   default: {
-    Ops.emplace_back(Operation::BuiltinCall, getInstrInput(MI),
-                     getInstrOutput(MI), &MI);
+    Ops.emplace_back(Operation::BuiltinCall, getInstrInput(MI), &MI);
   } break;
   }
 
@@ -196,10 +186,8 @@ void EVMStackModel::createOperation(MachineInstr &MI,
   }
 
   // Skip for the instructions that do not write results.
-  Stack Output = getInstrOutput(MI);
-  if (!Input.empty() || !Output.empty())
-    Ops.emplace_back(Operation::Assignment, std::move(Input),
-                     std::move(Output), &MI);
+  if (!Input.empty() || !MI.getNumExplicitDefs())
+    Ops.emplace_back(Operation::Assignment, std::move(Input), &MI);
 }
 
 Stack EVMStackModel::getReturnArguments(const MachineInstr &MI) const {
