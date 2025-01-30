@@ -106,45 +106,45 @@ TEST_F(LLDCTest, Basic) {
 
   // Create the source stack layout:
   //   [ %0 %1 %2 %3 %4 %5 %6 %7 %9 %10 %11 %12 %13 %14 %15 %16 RET RET %5 ]
-  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[0].second));
-  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[1].second));
-  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[2].second));
-  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[3].second));
-  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[4].second));
-  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[5].second));
-  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[6].second));
-  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[7].second));
-  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[9].second));
-  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[10].second));
-  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[11].second));
-  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[12].second));
-  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[13].second));
-  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[14].second));
-  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[15].second));
-  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[16].second));
+  SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[0].second));
+  SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[1].second));
+  SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[2].second));
+  SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[3].second));
+  SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[4].second));
+  SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[5].second));
+  SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[6].second));
+  SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[7].second));
+  SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[9].second));
+  SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[10].second));
+  SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[11].second));
+  SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[12].second));
+  SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[13].second));
+  SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[14].second));
+  SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[15].second));
+  SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[16].second));
   SourceStack.emplace_back(
       StackModel->getFunctionReturnLabelSlot(MBB->getParent()));
   SourceStack.emplace_back(
       StackModel->getFunctionReturnLabelSlot(MBB->getParent()));
-  SourceStack.emplace_back(StackModel->getVariableSlot(Instrs[5].second));
+  SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[5].second));
 
   // [ %1 %0 %2 %3 %4 %5 %6 %7 %9 %10 %11 %12 %13 %14 %15 %16 RET JUNK JUNK ]
-  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[1].second));
-  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[0].second));
-  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[2].second));
-  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[3].second));
-  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[4].second));
-  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[5].second));
-  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[6].second));
-  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[7].second));
-  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[9].second));
-  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[10].second));
-  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[11].second));
-  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[12].second));
-  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[13].second));
-  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[14].second));
-  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[15].second));
-  TargetStack.emplace_back(StackModel->getVariableSlot(Instrs[16].second));
+  TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[1].second));
+  TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[0].second));
+  TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[2].second));
+  TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[3].second));
+  TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[4].second));
+  TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[5].second));
+  TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[6].second));
+  TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[7].second));
+  TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[9].second));
+  TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[10].second));
+  TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[11].second));
+  TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[12].second));
+  TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[13].second));
+  TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[14].second));
+  TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[15].second));
+  TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[16].second));
   TargetStack.emplace_back(
       StackModel->getFunctionReturnLabelSlot(MBB->getParent()));
   TargetStack.emplace_back(StackModel->getJunkSlot());

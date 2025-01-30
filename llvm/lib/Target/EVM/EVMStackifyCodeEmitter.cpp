@@ -227,11 +227,7 @@ void EVMStackifyCodeEmitter::adjustStackForInst(const MachineInstr *MI,
   CurrentStack.erase(CurrentStack.end() - NumArgs, CurrentStack.end());
 
   // Push return values to CurrentStack.
-  unsigned Idx = 0;
-  for (const auto &MO : MI->defs()) {
-    assert(MO.isReg());
-    CurrentStack.push_back(StackModel.getTemporarySlot(MI, Idx++));
-  }
+  append_range(CurrentStack, StackModel.getSlotsForInstructionDefs(MI));
   assert(Emitter.stackHeight() == CurrentStack.size());
 }
 
@@ -274,16 +270,17 @@ void EVMStackifyCodeEmitter::processAssign(const Operation &Assignment) {
   assert(Assignment.isAssignment());
   assert(Emitter.stackHeight() == CurrentStack.size());
 
+  const auto *MI = Assignment.getMachineInstr();
   // Invalidate occurrences of the assigned variables.
   for (auto *&CurrentSlot : CurrentStack)
-    if (const auto *VarSlot = dyn_cast<VariableSlot>(CurrentSlot))
-      if (is_contained(Assignment.getOutput(), VarSlot))
+    if (const auto *RegSlot = dyn_cast<RegisterSlot>(CurrentSlot))
+      if (MI->definesRegister(RegSlot->getReg()))
         CurrentSlot = EVMStackModel::getJunkSlot();
 
   // Assign variables to current stack top.
-  assert(CurrentStack.size() >= Assignment.getOutput().size());
-  llvm::copy(Assignment.getOutput(),
-             CurrentStack.end() - Assignment.getOutput().size());
+  assert(CurrentStack.size() >= MI->getNumExplicitDefs());
+  llvm::copy(StackModel.getSlotsForInstructionDefs(MI),
+             CurrentStack.end() - MI->getNumExplicitDefs());
 }
 
 bool EVMStackifyCodeEmitter::areLayoutsCompatible(const Stack &SourceStack,
@@ -312,9 +309,9 @@ void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
           const StackSlot *DeepSlot = CurrentStack[CurrentStack.size() - I - 1];
           std::string Msg =
               (Twine("cannot swap ") +
-               (isa<VariableSlot>(DeepSlot) ? "variable " : "slot ") +
+               (isa<RegisterSlot>(DeepSlot) ? "variable " : "slot ") +
                DeepSlot->toString() + " with " +
-               (isa<VariableSlot>(CurrentStack.back()) ? "variable "
+               (isa<RegisterSlot>(CurrentStack.back()) ? "variable "
                                                        : "slot ") +
                CurrentStack.back()->toString() + ": too deep in the stack by " +
                std::to_string(Deficit) + " slots in " +
@@ -338,7 +335,7 @@ void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
           }
           if (!Slot->isRematerializable()) {
             std::string Msg =
-                (isa<VariableSlot>(Slot) ? "variable " : "slot ") +
+                (isa<RegisterSlot>(Slot) ? "variable " : "slot ") +
                 Slot->toString() + " is " + std::to_string(Depth - 15) +
                 " too deep in the stack " + stackToString(CurrentStack);
 
@@ -360,11 +357,8 @@ void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
           Emitter.emitLabelReference(CallRet->getCall());
         } else if (isa<FunctionReturnLabelSlot>(Slot)) {
           llvm_unreachable("Cannot produce function return label");
-        } else if (isa<VariableSlot>(Slot)) {
+        } else if (isa<RegisterSlot>(Slot)) {
           llvm_unreachable("Variable not found on stack");
-        } else if (isa<TemporarySlot>(Slot)) {
-          llvm_unreachable("Function call result requested, but "
-                           "not found on stack.");
         } else {
           assert(isa<JunkSlot>(Slot));
           // Note: this will always be popped, so we can push anything.
@@ -450,13 +444,18 @@ void EVMStackifyCodeEmitter::run() {
       else
         llvm_unreachable("Unexpected operation type.");
 
+#ifndef NDEBUG
       // Assert that the Operation produced its proclaimed output.
-      assert(CurrentStack.size() == Emitter.stackHeight());
-      assert(CurrentStack.size() == BaseHeight + Op.getOutput().size());
-      assert(CurrentStack.size() >= Op.getOutput().size());
-      assert(areLayoutsCompatible(
-          Stack(CurrentStack.end() - Op.getOutput().size(), CurrentStack.end()),
-          Op.getOutput()));
+      size_t NumDefs = Op.getMachineInstr()->getNumExplicitDefs();
+      size_t StackSize = CurrentStack.size();
+      assert(StackSize == Emitter.stackHeight());
+      assert(StackSize == BaseHeight + NumDefs);
+      assert(StackSize >= NumDefs);
+      // Check that the top NumDefs slots are the MI defs.
+      for (size_t I = StackSize - NumDefs; I < StackSize; ++I)
+        assert(Op.getMachineInstr()->definesRegister(
+            cast<RegisterSlot>(CurrentStack[I])->getReg()));
+#endif // NDEBUG
     }
 
     // Exit the block.
