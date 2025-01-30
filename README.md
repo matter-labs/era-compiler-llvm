@@ -125,9 +125,12 @@ Apache License, Version 2.0 with LLVM Exceptions, ([LICENSE](LICENSE) or <https:
 
 - [Website](https://zksync.io/)
 - [GitHub](https://github.com/matter-labs)
-- [Twitter](https://twitter.com/zksync)
-- [Twitter for Devs](https://twitter.com/zkSyncDevs)
+- [ZK Credo](https://github.com/zksync/credo)
+- [Twitter](https://x.com/zksync)
+- [Twitter for Devs](https://x.com/zkSyncDevs)
 - [Discord](https://join.zksync.dev/)
+- [Mirror](https://zksync.mirror.xyz/)
+- [Youtube](https://www.youtube.com/@zkSync-era)
 
 ## Disclaimer
 
