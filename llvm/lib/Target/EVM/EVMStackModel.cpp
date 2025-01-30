@@ -129,14 +129,20 @@ Stack EVMStackModel::getInstrOutput(const MachineInstr &MI) const {
 void EVMStackModel::createOperation(MachineInstr &MI,
                                     SmallVector<Operation> &Ops) const {
   unsigned Opc = MI.getOpcode();
+  assert(Opc != EVM::STACK_LOAD && Opc != EVM::STACK_STORE &&
+         "Unexpected stack memory instruction");
+  // These instructions are handled separately.
+  if (Opc == EVM::ARGUMENT || Opc == EVM::RET || Opc == EVM::JUMP ||
+      Opc == EVM::JUMPI)
+    return;
+  // If the virtual register has the only definition, ignore this instruction,
+  // as we create literal slots from the immediate value at the register uses.
+  if (Opc == EVM::CONST_I256 &&
+      LIS.getInterval(MI.getOperand(0).getReg()).containsOneValue())
+    return;
+
+  // Create FunctionCall or BuiltinCall operations.
   switch (Opc) {
-  case EVM::STACK_LOAD:
-  case EVM::STACK_STORE:
-    llvm_unreachable("Unexpected stack memory instruction");
-    return;
-  case EVM::ARGUMENT:
-    // Is handled above.
-    return;
   case EVM::FCALL: {
     Stack Input;
     for (const MachineOperand &MO : MI.operands()) {
@@ -152,24 +158,12 @@ void EVMStackModel::createOperation(MachineInstr &MI,
     Ops.emplace_back(Operation::FunctionCall, std::move(Input),
                      getInstrOutput(MI), &MI);
   } break;
-  case EVM::RET:
-  case EVM::JUMP:
-  case EVM::JUMPI:
-    // These instructions are handled separately.
-    return;
+  case EVM::CONST_I256:
   case EVM::COPY_I256:
   case EVM::DATASIZE:
   case EVM::DATAOFFSET:
-  case EVM::LINKERSYMBOL:
-    // The copy/data instructions just represent an assignment. This case is
-    // handled below.
-    break;
-  case EVM::CONST_I256: {
-    const LiveInterval *LI = &LIS.getInterval(MI.getOperand(0).getReg());
-    // If the virtual register has the only definition, ignore this instruction,
-    // as we create literal slots from the immediate value at the register uses.
-    if (LI->containsOneValue())
-      return;
+  case EVM::LINKERSYMBOL: {
+    // The copy/data instructions just represent an assignment.
   } break;
   default: {
     Ops.emplace_back(Operation::BuiltinCall, getInstrInput(MI),
@@ -177,40 +171,35 @@ void EVMStackModel::createOperation(MachineInstr &MI,
   } break;
   }
 
-  // Create CFG::Assignment object for the MI.
-  Stack Input, Output;
+  // Create Assignment operation for the MI.
+  Stack Input;
   switch (MI.getOpcode()) {
   case EVM::CONST_I256: {
     const APInt Imm = MI.getOperand(1).getCImm()->getValue();
     Input.push_back(getLiteralSlot(std::move(Imm)));
-    Output.push_back(getRegisterSlot(MI.getOperand(0).getReg()));
   } break;
   case EVM::DATASIZE:
   case EVM::DATAOFFSET:
   case EVM::LINKERSYMBOL: {
     MCSymbol *Sym = MI.getOperand(1).getMCSymbol();
     Input.push_back(getSymbolSlot(Sym, &MI));
-    Output.push_back(getRegisterSlot(MI.getOperand(0).getReg()));
   } break;
   case EVM::COPY_I256: {
     // Copy instruction corresponds to the assignment operator, so
     // we do not need to create intermediate TmpSlots.
     Input = getInstrInput(MI);
-    Output.push_back(getRegisterSlot(MI.getOperand(0).getReg()));
   } break;
   default: {
-    for (const auto &MO : MI.defs()) {
-      const Register Reg = MO.getReg();
-      Input.push_back(getRegisterSlot(Reg));
-      Output.push_back(getRegisterSlot(Reg));
-    }
+    for (const auto &MO : MI.defs())
+      Input.push_back(getRegisterSlot(MO.getReg()));
   } break;
   }
-  // We don't need an assignment part of the instructions that do not write
-  // results.
+
+  // Skip for the instructions that do not write results.
+  Stack Output = getInstrOutput(MI);
   if (!Input.empty() || !Output.empty())
-    Ops.emplace_back(Operation::Assignment, std::move(Input), std::move(Output),
-                     &MI);
+    Ops.emplace_back(Operation::Assignment, std::move(Input),
+                     std::move(Output), &MI);
 }
 
 Stack EVMStackModel::getReturnArguments(const MachineInstr &MI) const {
