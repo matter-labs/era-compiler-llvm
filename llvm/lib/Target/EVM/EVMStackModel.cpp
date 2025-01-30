@@ -41,12 +41,6 @@ std::string SymbolSlot::toString() const {
 std::string FunctionCallReturnLabelSlot::toString() const {
   return "RET[" + std::string(getCalledFunction(*Call)->getName()) + "]";
 }
-std::string TemporarySlot::toString() const {
-  SmallString<128> S;
-  raw_svector_ostream OS(S);
-  OS << "TMP[" << getInstName(MI) << ", " << std::to_string(Index) + "]";
-  return std::string(S.str());
-}
 std::string Operation::toString() const {
   if (isFunctionCall()) {
     const MachineOperand *Callee = MI->explicit_uses().begin();

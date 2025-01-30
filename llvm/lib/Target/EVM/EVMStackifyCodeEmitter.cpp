@@ -359,9 +359,6 @@ void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
           llvm_unreachable("Cannot produce function return label");
         } else if (isa<RegisterSlot>(Slot)) {
           llvm_unreachable("Variable not found on stack");
-        } else if (isa<TemporarySlot>(Slot)) {
-          llvm_unreachable("Function call result requested, but "
-                           "not found on stack.");
         } else {
           assert(isa<JunkSlot>(Slot));
           // Note: this will always be popped, so we can push anything.

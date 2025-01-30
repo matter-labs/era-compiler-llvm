@@ -406,8 +406,6 @@ public:
       return LiteralSlotMultiplicity[p];
     if (auto *p = dyn_cast<SymbolSlot>(Slot))
       return SymbolSlotMultiplicity[p];
-    if (auto *p = dyn_cast<TemporarySlot>(Slot))
-      return TemporarySlotMultiplicity[p];
 
     assert(isa<JunkSlot>(Slot));
     return JunkSlotMultiplicity;
@@ -424,8 +422,6 @@ public:
       return LiteralSlotMultiplicity.at(p);
     if (auto *p = dyn_cast<SymbolSlot>(Slot))
       return SymbolSlotMultiplicity.at(p);
-    if (auto *p = dyn_cast<TemporarySlot>(Slot))
-      return TemporarySlotMultiplicity.at(p);
 
     assert(isa<JunkSlot>(Slot));
     return JunkSlotMultiplicity;
@@ -438,7 +434,6 @@ private:
   std::map<const RegisterSlot *, int> RegisterSlotMultiplicity;
   std::map<const LiteralSlot *, int> LiteralSlotMultiplicity;
   std::map<const SymbolSlot *, int> SymbolSlotMultiplicity;
-  std::map<const TemporarySlot *, int> TemporarySlotMultiplicity;
   int JunkSlotMultiplicity = 0;
 };
 

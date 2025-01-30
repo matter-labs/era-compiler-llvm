@@ -44,7 +44,6 @@ public:
     SK_Symbol,
     SK_FunctionCallReturnLabel,
     SK_FunctionReturnLabel,
-    SK_Temporary,
     SK_Junk,
   };
 
@@ -163,27 +162,6 @@ public:
   }
 };
 
-/// A slot containing the index-th return value of a previous call.
-class TemporarySlot final : public StackSlot {
-  /// The call that returned this slot.
-  const MachineInstr *MI = nullptr;
-
-  /// Specifies to which of the values returned by the call this slot refers.
-  /// index == 0 refers to the slot deepest in the stack after the call.
-  size_t Index = 0;
-
-public:
-  TemporarySlot(const MachineInstr *MI, size_t Idx)
-      : StackSlot(SK_Temporary), MI(MI), Index(Idx) {}
-
-  bool isRematerializable() const override { return false; }
-  std::string toString() const override;
-
-  static bool classof(const StackSlot *S) {
-    return S->getSlotKind() == SK_Temporary;
-  }
-};
-
 /// A slot containing an arbitrary value that is always eventually popped and
 /// never used. Used to maintain stack balance on control flow joins.
 class JunkSlot final : public StackSlot {
@@ -244,9 +222,6 @@ class EVMStackModel {
   mutable DenseMap<const MachineInstr *,
                    std::unique_ptr<FunctionCallReturnLabelSlot>>
       FunctionCallReturnLabelStorage;
-  mutable DenseMap<std::pair<const MachineInstr *, size_t>,
-                   std::unique_ptr<TemporarySlot>>
-      TemporaryStorage;
 
   // There should be a single FunctionReturnLabelSlot for the MF.
   mutable std::unique_ptr<FunctionReturnLabelSlot> TheFunctionReturnLabelSlot;
@@ -294,12 +269,6 @@ public:
           std::make_unique<FunctionReturnLabelSlot>(MF);
     assert(MF == TheFunctionReturnLabelSlot->getMachineFunction());
     return TheFunctionReturnLabelSlot.get();
-  }
-  TemporarySlot *getTemporarySlot(const MachineInstr *MI, size_t Idx) const {
-    auto Key = std::make_pair(MI, Idx);
-    if (TemporaryStorage.count(Key) == 0)
-      TemporaryStorage[Key] = std::make_unique<TemporarySlot>(MI, Idx);
-    return TemporaryStorage[Key].get();
   }
   // Junk is always the same slot.
   static JunkSlot *getJunkSlot() {

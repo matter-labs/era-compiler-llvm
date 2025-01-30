@@ -139,18 +139,6 @@ TEST_F(EVMStackModelTest, FunctionReturnLabelSlot) {
               StackModel->getFunctionReturnLabelSlot(MF));
 }
 
-TEST_F(EVMStackModelTest, TemporarySlot) {
-  MCInstrDesc MCID = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-  auto MI = MF->CreateMachineInstr(MCID, DebugLoc());
-
-  auto *TempSlot1 = StackModel->getTemporarySlot(MI, 0);
-  auto *TempSlot1Copy = StackModel->getTemporarySlot(MI, 0);
-  EXPECT_TRUE(TempSlot1 == TempSlot1Copy);
-
-  auto *TempSlot2 = StackModel->getTemporarySlot(MI, 1);
-  EXPECT_TRUE(TempSlot1 != TempSlot2);
-}
-
 TEST_F(EVMStackModelTest, JunkSlot) {
   // Be sure the JunkSlot is a single one.
   EXPECT_TRUE(EVMStackModel::getJunkSlot() == EVMStackModel::getJunkSlot());
