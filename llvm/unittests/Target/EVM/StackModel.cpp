@@ -92,13 +92,13 @@ TEST_F(EVMStackModelTest, VariableSlot) {
   Register Reg1 = MRI.createVirtualRegister(&EVM::GPRRegClass);
   Register Reg2 = MRI.createVirtualRegister(&EVM::GPRRegClass);
 
-  auto *VarSlot1 = StackModel->getVariableSlot(Reg1);
-  auto *VarSlot1Copy = StackModel->getVariableSlot(Reg1);
-  EXPECT_TRUE(VarSlot1 == VarSlot1Copy);
+  auto *RegSlot1 = StackModel->getRegisterSlot(Reg1);
+  auto *RegSlot1Copy = StackModel->getRegisterSlot(Reg1);
+  EXPECT_TRUE(RegSlot1 == RegSlot1Copy);
 
-  auto *VarSlot2 = StackModel->getVariableSlot(Reg2);
-  EXPECT_TRUE(VarSlot1 != VarSlot2);
-  EXPECT_TRUE(VarSlot1->getReg() != VarSlot2->getReg());
+  auto *RegSlot2 = StackModel->getRegisterSlot(Reg2);
+  EXPECT_TRUE(RegSlot1 != RegSlot2);
+  EXPECT_TRUE(RegSlot1->getReg() != RegSlot2->getReg());
 }
 
 TEST_F(EVMStackModelTest, SymbolSlot) {
@@ -137,18 +137,6 @@ TEST_F(EVMStackModelTest, FunctionReturnLabelSlot) {
   // Be sure the slot for function return label is a single one.
   EXPECT_TRUE(StackModel->getFunctionReturnLabelSlot(MF) ==
               StackModel->getFunctionReturnLabelSlot(MF));
-}
-
-TEST_F(EVMStackModelTest, TemporarySlot) {
-  MCInstrDesc MCID = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-  auto MI = MF->CreateMachineInstr(MCID, DebugLoc());
-
-  auto *TempSlot1 = StackModel->getTemporarySlot(MI, 0);
-  auto *TempSlot1Copy = StackModel->getTemporarySlot(MI, 0);
-  EXPECT_TRUE(TempSlot1 == TempSlot1Copy);
-
-  auto *TempSlot2 = StackModel->getTemporarySlot(MI, 1);
-  EXPECT_TRUE(TempSlot1 != TempSlot2);
 }
 
 TEST_F(EVMStackModelTest, JunkSlot) {

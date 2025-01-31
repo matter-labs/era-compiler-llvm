@@ -40,11 +40,10 @@ class StackSlot {
 public:
   enum SlotKind {
     SK_Literal,
-    SK_Variable,
+    SK_Register,
     SK_Symbol,
     SK_FunctionCallReturnLabel,
     SK_FunctionReturnLabel,
-    SK_Temporary,
     SK_Junk,
   };
 
@@ -85,23 +84,23 @@ public:
   }
 };
 
-/// A slot containing the current value of a particular variable.
-class VariableSlot final : public StackSlot {
-  Register VirtualReg;
+/// A slot containing a register def.
+class RegisterSlot final : public StackSlot {
+  Register Reg;
 
 public:
-  VariableSlot(const Register &R) : StackSlot(SK_Variable), VirtualReg(R) {}
-  const Register &getReg() const { return VirtualReg; }
+  RegisterSlot(const Register &R) : StackSlot(SK_Register), Reg(R) {}
+  const Register &getReg() const { return Reg; }
 
   bool isRematerializable() const override { return false; }
   std::string toString() const override {
     SmallString<64> S;
     raw_svector_ostream OS(S);
-    OS << printReg(VirtualReg, nullptr, 0, nullptr);
+    OS << printReg(Reg, nullptr, 0, nullptr);
     return std::string(S.str());
   }
   static bool classof(const StackSlot *S) {
-    return S->getSlotKind() == SK_Variable;
+    return S->getSlotKind() == SK_Register;
   }
 };
 
@@ -163,27 +162,6 @@ public:
   }
 };
 
-/// A slot containing the index-th return value of a previous call.
-class TemporarySlot final : public StackSlot {
-  /// The call that returned this slot.
-  const MachineInstr *MI = nullptr;
-
-  /// Specifies to which of the values returned by the call this slot refers.
-  /// index == 0 refers to the slot deepest in the stack after the call.
-  size_t Index = 0;
-
-public:
-  TemporarySlot(const MachineInstr *MI, size_t Idx)
-      : StackSlot(SK_Temporary), MI(MI), Index(Idx) {}
-
-  bool isRematerializable() const override { return false; }
-  std::string toString() const override;
-
-  static bool classof(const StackSlot *S) {
-    return S->getSlotKind() == SK_Temporary;
-  }
-};
-
 /// A slot containing an arbitrary value that is always eventually popped and
 /// never used. Used to maintain stack balance on control flow joins.
 class JunkSlot final : public StackSlot {
@@ -209,18 +187,14 @@ private:
   OpType Type;
   // Stack slots this operation expects at the top of the stack and consumes.
   Stack Input;
-  // Stack slots this operation leaves on the stack as output.
-  Stack Output;
   // The emulated machine instruction.
   MachineInstr *MI = nullptr;
 
 public:
-  Operation(OpType Type, Stack Input, Stack Output, MachineInstr *MI)
-      : Type(Type), Input(std::move(Input)), Output(std::move(Output)), MI(MI) {
-  }
+  Operation(OpType Type, Stack Input, MachineInstr *MI)
+      : Type(Type), Input(std::move(Input)), MI(MI) {}
 
   const Stack &getInput() const { return Input; }
-  const Stack &getOutput() const { return Output; }
   MachineInstr *getMachineInstr() const { return MI; }
 
   bool isBuiltinCall() const { return Type == BuiltinCall; }
@@ -237,16 +211,13 @@ class EVMStackModel {
 
   // Storage for stack slots.
   mutable DenseMap<APInt, std::unique_ptr<LiteralSlot>> LiteralStorage;
-  mutable DenseMap<Register, std::unique_ptr<VariableSlot>> VariableStorage;
+  mutable DenseMap<Register, std::unique_ptr<RegisterSlot>> RegStorage;
   mutable DenseMap<std::pair<MCSymbol *, const MachineInstr *>,
                    std::unique_ptr<SymbolSlot>>
       SymbolStorage;
   mutable DenseMap<const MachineInstr *,
                    std::unique_ptr<FunctionCallReturnLabelSlot>>
       FunctionCallReturnLabelStorage;
-  mutable DenseMap<std::pair<const MachineInstr *, size_t>,
-                   std::unique_ptr<TemporarySlot>>
-      TemporaryStorage;
 
   // There should be a single FunctionReturnLabelSlot for the MF.
   mutable std::unique_ptr<FunctionReturnLabelSlot> TheFunctionReturnLabelSlot;
@@ -255,11 +226,17 @@ public:
   EVMStackModel(MachineFunction &MF, const LiveIntervals &LIS);
   Stack getFunctionParameters() const;
   Stack getInstrInput(const MachineInstr &MI) const;
-  Stack getInstrOutput(const MachineInstr &MI) const;
   Stack getReturnArguments(const MachineInstr &MI) const;
   const SmallVector<Operation> &
   getOperations(const MachineBasicBlock *MBB) const {
     return OperationsMap.at(MBB);
+  }
+  SmallVector<StackSlot *>
+  getSlotsForInstructionDefs(const MachineInstr *MI) const {
+    SmallVector<StackSlot *> Defs;
+    for (const auto &MO : MI->defs())
+      Defs.push_back(getRegisterSlot(MO.getReg()));
+    return Defs;
   }
 
   // Get or create a requested stack slot.
@@ -269,10 +246,10 @@ public:
       LiteralStorage[V] = std::make_unique<LiteralSlot>(V);
     return LiteralStorage[V].get();
   }
-  VariableSlot *getVariableSlot(const Register &R) const {
-    if (VariableStorage.count(R) == 0)
-      VariableStorage[R] = std::make_unique<VariableSlot>(R);
-    return VariableStorage[R].get();
+  RegisterSlot *getRegisterSlot(const Register &R) const {
+    if (RegStorage.count(R) == 0)
+      RegStorage[R] = std::make_unique<RegisterSlot>(R);
+    return RegStorage[R].get();
   }
   SymbolSlot *getSymbolSlot(MCSymbol *S, const MachineInstr *MI) const {
     auto Key = std::make_pair(S, MI);
@@ -294,12 +271,6 @@ public:
           std::make_unique<FunctionReturnLabelSlot>(MF);
     assert(MF == TheFunctionReturnLabelSlot->getMachineFunction());
     return TheFunctionReturnLabelSlot.get();
-  }
-  TemporarySlot *getTemporarySlot(const MachineInstr *MI, size_t Idx) const {
-    auto Key = std::make_pair(MI, Idx);
-    if (TemporaryStorage.count(Key) == 0)
-      TemporaryStorage[Key] = std::make_unique<TemporarySlot>(MI, Idx);
-    return TemporaryStorage[Key].get();
   }
   // Junk is always the same slot.
   static JunkSlot *getJunkSlot() {
