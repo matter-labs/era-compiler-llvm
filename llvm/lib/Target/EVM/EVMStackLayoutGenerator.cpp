@@ -17,7 +17,6 @@
 
 #include "EVMStackLayoutGenerator.h"
 #include "EVMRegisterInfo.h"
-#include "EVMStackDebug.h"
 #include "EVMStackShuffler.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "llvm/ADT/DepthFirstIterator.h"
@@ -248,16 +247,13 @@ EVMStackLayoutGenerator::EVMStackLayoutGenerator(
 
 std::unique_ptr<EVMStackLayout> EVMStackLayoutGenerator::run() {
   runPropagation();
-
-  auto Layout = std::make_unique<EVMStackLayout>(
-      MBBEntryLayoutMap, MBBExitLayoutMap, OperationEntryLayoutMap);
-
   LLVM_DEBUG({
     dbgs() << "************* Stack Layout *************\n";
-    StackLayoutPrinter P(dbgs(), MF, *Layout, CFGInfo, StackModel);
-    P();
+    dump(dbgs());
   });
-  return Layout;
+
+  return std::make_unique<EVMStackLayout>(MBBEntryLayoutMap, MBBExitLayoutMap,
+                                          OperationEntryLayoutMap);
 }
 
 Stack EVMStackLayoutGenerator::propagateStackThroughOperation(
@@ -765,3 +761,83 @@ void EVMStackLayoutGenerator::addJunksToStackBottom(
     MBBExitLayoutMap[MBB] = std::move(ExitTmp);
   }
 }
+
+#ifndef NDEBUG
+void EVMStackLayoutGenerator::dump(raw_ostream &OS) {
+  OS << "Function: " << MF.getName() << "(";
+  for (const StackSlot *ParamSlot : StackModel.getFunctionParameters()) {
+    if (const auto *Slot = dyn_cast<RegisterSlot>(ParamSlot))
+      OS << printReg(Slot->getReg(), nullptr, 0, nullptr) << ' ';
+    else if (isa<JunkSlot>(ParamSlot))
+      OS << "[unused param] ";
+    else
+      llvm_unreachable("Unexpected stack slot");
+  }
+  OS << ");\n";
+  OS << "FunctionEntry "
+     << " -> Block" << getBlockId(MF.front()) << ";\n";
+
+  for (const auto &MBB : MF)
+    printBlock(OS, MBB);
+}
+
+void EVMStackLayoutGenerator::printBlock(
+    raw_ostream &OS, const MachineBasicBlock &Block) {
+  OS << "Block" << getBlockId(Block) << " [\n";
+  OS << stackToString(MBBEntryLayoutMap.at(&Block)) << "\n";
+  for (auto const &Op : StackModel.getOperations(&Block)) {
+    OS << "\n";
+    Stack EntryLayout = OperationEntryLayoutMap.at(&Op);
+    OS << stackToString(EntryLayout) << "\n";
+    OS << Op.toString() << "\n";
+    assert(Op.getInput().size() <= EntryLayout.size());
+    EntryLayout.resize(EntryLayout.size() - Op.getInput().size());
+    EntryLayout.append(
+        StackModel.getSlotsForInstructionDefs(Op.getMachineInstr()));
+    OS << stackToString(EntryLayout) << "\n";
+  }
+  OS << "\n";
+  OS << stackToString(MBBExitLayoutMap.at(&Block)) << "\n";
+  OS << "];\n";
+
+  const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(&Block);
+  MBBExitType ExitType = TermInfo->getExitType();
+  if (ExitType == MBBExitType::UnconditionalBranch) {
+    auto [BranchInstr, Target] = TermInfo->getUnconditionalBranch();
+    OS << "Block" << getBlockId(Block) << "Exit [label=\"";
+    OS << "Jump\"];\n";
+    OS << "Block" << getBlockId(Block) << "Exit -> Block" << getBlockId(*Target)
+       << ";\n";
+  } else if (ExitType == MBBExitType::ConditionalBranch) {
+    auto [CondBr, UncondBr, TrueBB, FalseBB, Condition] =
+        TermInfo->getConditionalBranch();
+    OS << "Block" << getBlockId(Block) << "Exit [label=\"{ ";
+    OS << StackModel.getStackSlot(*Condition)->toString();
+    OS << "| { <0> Zero | <1> NonZero }}\"];\n";
+    OS << "Block" << getBlockId(Block);
+    OS << "Exit:0 -> Block" << getBlockId(*FalseBB) << ";\n";
+    OS << "Block" << getBlockId(Block);
+    OS << "Exit:1 -> Block" << getBlockId(*TrueBB) << ";\n";
+  } else if (ExitType == MBBExitType::FunctionReturn) {
+    OS << "Block" << getBlockId(Block) << "Exit [label=\"FunctionReturn["
+       << MF.getName() << "]\"];\n";
+    const MachineInstr &MI = Block.back();
+    OS << "Return values: " << stackToString(StackModel.getReturnArguments(MI))
+       << ";\n";
+  } else if (ExitType == MBBExitType::Terminate) {
+    OS << "Block" << getBlockId(Block) << "Exit [label=\"Terminated\"];\n";
+  }
+  OS << "\n";
+}
+
+std::string
+EVMStackLayoutGenerator::getBlockId(const MachineBasicBlock &Block) {
+  std::string Name =
+      std::to_string(Block.getNumber()) + "." + std::string(Block.getName());
+  if (auto It = BlockIds.find(&Block); It != BlockIds.end())
+    return std::to_string(It->second) + "(" + Name + ")";
+
+  size_t Id = BlockIds[&Block] = BlockCount++;
+  return std::to_string(Id) + "(" + Name + ")";
+}
+#endif // NDEBUG

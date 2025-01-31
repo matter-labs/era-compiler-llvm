@@ -179,6 +179,8 @@ public:
 /// The stack top is the last element of the vector.
 using Stack = SmallVector<StackSlot *>;
 
+std::string stackToString(const Stack &S);
+
 class Operation {
 public:
   enum OpType { BuiltinCall, FunctionCall, Assignment };
