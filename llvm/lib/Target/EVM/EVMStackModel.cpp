@@ -20,6 +20,14 @@
 
 using namespace llvm;
 
+std::string llvm::stackToString(const Stack &S) {
+  std::string Result("[ ");
+  for (const auto *Slot : S)
+    Result += Slot->toString() + ' ';
+  Result += ']';
+  return Result;
+}
+
 static const Function *getCalledFunction(const MachineInstr &MI) {
   for (const MachineOperand &MO : MI.operands()) {
     if (!MO.isGlobal())
