@@ -1,6 +1,9 @@
 name: LNT benchmarks
 
 on:
+  push:
+    branches:
+      - main
   pull_request:
 
 concurrency:
@@ -13,7 +16,6 @@ jobs:
     uses: matter-labs/era-compiler-ci/.github/workflows/lnt.yml@aba-lnt-support
     secrets: inherit
     with:
-      compiler_tester_branch: "aba-lnt-support"
       compiler_llvm_branch: ${{ github.head_ref }}
       ccache-key: 'llvm-Linux-X64-gnu'
-      compiler-llvm-repo: ${{ github.event.pull_request.head.repo.full_name }} # required to properly test forks
+      compiler-llvm-repo: ${{ github.event.pull_request.head.repo.full_name }}
