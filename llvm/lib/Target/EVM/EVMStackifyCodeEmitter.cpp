@@ -12,7 +12,6 @@
 
 #include "EVMStackifyCodeEmitter.h"
 #include "EVMMachineFunctionInfo.h"
-#include "EVMStackDebug.h"
 #include "EVMStackLayoutPermutations.h"
 #include "TargetInfo/EVMTargetInfo.h"
 #include "llvm/MC/MCContext.h"

@@ -7,7 +7,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMRegisterInfo.h"
-#include "EVMStackDebug.h"
 #include "EVMStackLayoutPermutations.h"
 #include "EVMStackModel.h"
 #include "EVMTargetMachine.h"

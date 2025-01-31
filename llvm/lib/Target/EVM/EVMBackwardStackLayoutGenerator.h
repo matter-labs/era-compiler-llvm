@@ -91,6 +91,14 @@ private:
   /// called on cut-vertices, so the full subgraph retains proper stack balance.
   void addJunksToStackBottom(const MachineBasicBlock *Entry, size_t NumJunk);
 
+#ifndef NDEBUG
+  void dump(raw_ostream &OS);
+  void printBlock(raw_ostream &OS, const MachineBasicBlock &Block);
+  std::string getBlockId(const MachineBasicBlock &Block);
+  DenseMap<const MachineBasicBlock *, size_t> BlockIds;
+  size_t BlockCount = 0;
+#endif
+
   /// Returns the best known exit layout of \p Block, if all dependencies are
   /// already \p Visited. If not, adds the dependencies to \p DependencyList and
   /// returns std::nullopt.
