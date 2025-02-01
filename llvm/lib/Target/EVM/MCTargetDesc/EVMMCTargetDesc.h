@@ -45,6 +45,9 @@ std::string getNonIndexedSymbolName(StringRef Name);
 std::string getLinkerSymbolName(StringRef Name);
 std::string getDataSizeSymbol(StringRef SymbolName);
 std::string getDataOffsetSymbol(StringRef SymbolName);
+std::string getLoadImmutableSymbol(StringRef Name, unsigned Idx);
+bool isLoadImmutableSymbolName(StringRef Name);
+std::string getImmutableId(StringRef Name);
 } // namespace EVM
 } // namespace llvm
 

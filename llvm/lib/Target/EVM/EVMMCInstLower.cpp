@@ -127,7 +127,8 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
 #ifndef NDEBUG
       unsigned Opc = MI->getOpcode();
       // We handle the linkage-related instructions in the EVMAsmPrinter.
-      assert(Opc != EVM::DATASIZE_S && Opc != EVM::DATAOFFSET_S);
+      assert(Opc != EVM::DATASIZE_S && Opc != EVM::DATAOFFSET_S &&
+             Opc != EVM::LINKERSYMBOL_S && Opc != EVM::LOADIMMUTABLE_S);
 #endif // NDEBUG
 
       MCOp = MCOperand::createExpr(

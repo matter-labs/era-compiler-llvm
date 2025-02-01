@@ -272,4 +272,9 @@ def int_evm_linkersymbol : DefaultAttrsIntrinsic<
   [IntrNoMem, IntrWillReturn]
 >;
 
+// Loads immutable value. Should be used only in runtime code.
+def int_evm_loadimmutable : DefaultAttrsIntrinsic<
+  [llvm_i256_ty], [llvm_metadata_ty],
+  [IntrNoMem, IntrWillReturn]
+>;
 } // TargetPrefix = "evm"

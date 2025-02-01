@@ -157,3 +157,28 @@ std::string EVM::getDataSizeSymbol(StringRef SymbolName) {
 std::string EVM::getDataOffsetSymbol(StringRef SymbolName) {
   return (Twine("__dataoffset") + SymbolName).str();
 }
+
+std::string EVM::getLoadImmutableSymbol(StringRef Name, unsigned Idx) {
+  return (Twine("__load_immutable__") + Name + "." + std::to_string(Idx)).str();
+}
+
+bool EVM::isLoadImmutableSymbolName(StringRef Name) {
+  return Name.find("__load_immutable__") == 0;
+}
+
+std::string EVM::getImmutableId(StringRef Name) {
+  SmallVector<StringRef, 2> Matches;
+  Regex suffixRegex(R"(\.[0-9]+$)");
+  if (!suffixRegex.match(Name, &Matches))
+    llvm_unreachable("No immutable symbol index");
+  assert(Matches.size() == 1);
+
+  // Strip suffix
+  Name.consume_back(Matches[0]);
+
+  // Strip prefix
+  if (!Name.consume_front("__load_immutable__"))
+    llvm_unreachable("Unexpected load immutable symbol format");
+
+  return Name.str();
+}

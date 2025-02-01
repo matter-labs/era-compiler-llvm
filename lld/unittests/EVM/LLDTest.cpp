@@ -65,7 +65,7 @@ declare i256 @llvm.evm.linkersymbol(metadata)                     \n\
                                                                   \n\
 define i256 @foo() {                                              \n\
   %res = call i256 @llvm.evm.linkersymbol(metadata !1)            \n\
-  ret i256 %res                                                  \n\
+  ret i256 %res                                                   \n\
 }                                                                 \n\
                                                                   \n\
 define i256 @bar() {                                              \n\
@@ -83,12 +83,16 @@ define i256 @bar() {                                              \n\
 target datalayout = \"E-p:256:256-i256:256:256-S256-a:256:256\"   \n\
 target triple = \"evm\"                                           \n\
 declare i256 @llvm.evm.linkersymbol(metadata)                     \n\
+declare i256 @llvm.evm.loadimmutable(metadata)                    \n\
                                                                   \n\
 define i256 @foo() {                                              \n\
   %res = call i256 @llvm.evm.linkersymbol(metadata !1)            \n\
-  ret i256 %res                                                   \n\
+  %res2 = call i256 @llvm.evm.loadimmutable(metadata !2)          \n\
+  %res3 = add i256 %res, %res2                                    \n\
+  ret i256 %res3                                                  \n\
 }                                                                 \n\
-!1 = !{!\"library_id2\"}";
+!1 = !{!\"library_id2\"}                                          \n\
+!2 = !{!\"id\"}";
 
   // Wrap Source in a MemoryBuffer
   LLVMMemoryBufferRef DeployIrMemBuffer = LLVMCreateMemoryBufferWithMemoryRange(
@@ -145,6 +149,17 @@ define i256 @foo() {                                              \n\
                                                  DeployedObjMemBuffer};
   std::array<LLVMMemoryBufferRef, 2> OutMemBuf = {nullptr, nullptr};
   const char *InIDs[] = {"Test_26", "Test_26_deployed"};
+
+  // Check load immutable references
+  {
+    char **ImmutableIDs = nullptr;
+    uint64_t *ImmutableOffsets = nullptr;
+    uint64_t ImmCount =
+        LLVMGetImmutablesEVM(InMemBuf[1], &ImmutableIDs, &ImmutableOffsets);
+    EXPECT_TRUE(ImmCount == 1);
+    EXPECT_TRUE(std::strcmp(ImmutableIDs[0], "id") == 0);
+    LLVMDisposeImmutablesEVM(ImmutableIDs, ImmutableOffsets, ImmCount);
+  }
 
   // No linker symbol definitions are provided, so we have to receive two ELF
   // object files.

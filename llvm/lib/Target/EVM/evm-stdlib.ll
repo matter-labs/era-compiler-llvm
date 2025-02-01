@@ -66,6 +66,14 @@ define i256 @__sha3(ptr addrspace(1) %offset, i256 %len, i1 %unused) #1 {
   ret i256 %res
 }
 
+define void @__setimmutable(ptr addrspace(1) %base_offset, i256 %imm_offset, i256 %value) #2 {
+  %base_offset_int = ptrtoint ptr addrspace(1) %base_offset to i256
+  %offset = add nuw nsw i256 %base_offset_int, %imm_offset
+  %abs_ptr = inttoptr i256 %offset to ptr addrspace(1)
+  store i256 %value, ptr addrspace(1) %abs_ptr
+  ret void
+}
+
 declare i256 @llvm.evm.addmod(i256, i256, i256)
 declare i256 @llvm.evm.mulmod(i256, i256, i256)
 declare i256 @llvm.evm.signextend(i256, i256)
@@ -82,3 +90,4 @@ declare i256 @llvm.evm.sha3(ptr addrspace(1), i256)
 
 attributes #0 = { alwaysinline mustprogress nofree norecurse nosync nounwind readnone willreturn }
 attributes #1 = { alwaysinline argmemonly readonly nofree null_pointer_is_valid }
+attributes #2 = { alwaysinline mustprogress nofree norecurse nosync nounwind willreturn memory(argmem: write) }
