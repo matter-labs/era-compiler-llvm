@@ -17,6 +17,7 @@
 #include "MCTargetDesc/EVMTargetStreamer.h"
 #include "TargetInfo/EVMTargetInfo.h"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/StringMap.h"
 #include "llvm/ADT/StringSet.h"
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/CodeGen/AsmPrinter.h"
@@ -43,6 +44,7 @@ class EVMAsmPrinter : public AsmPrinter {
 
   // Maps a linker symbol name to corresponding MCSymbol.
   StringSet<> WideRelocSymbolsSet;
+  StringMap<unsigned> ImmutablesMap;
 
 public:
   EVMAsmPrinter(TargetMachine &TM, std::unique_ptr<MCStreamer> Streamer)
@@ -67,6 +69,7 @@ public:
 private:
   void emitAssemblySymbol(const MachineInstr *MI);
   void emitWideRelocatableSymbol(const MachineInstr *MI);
+  void emitLoadImmutableLabel(const MachineInstr *MI);
 };
 } // end of anonymous namespace
 
@@ -120,6 +123,10 @@ void EVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
     emitWideRelocatableSymbol(MI);
     return;
   }
+  if (Opc == EVM::LOADIMMUTABLE_S) {
+    emitLoadImmutableLabel(MI);
+    return;
+  }
 
   MCInst TmpInst;
   MCInstLowering.Lower(MI, TmpInst);
@@ -130,6 +137,36 @@ bool EVMAsmPrinter::isBlockOnlyReachableByFallthrough(
     const MachineBasicBlock *MBB) const {
   // For simplicity, always emit BB labels.
   return false;
+}
+
+// Lowers LOADIMMUTABLE_S as show below:
+//   LOADIMMUTABLE_S @immutable_id
+//    ->
+//   __load_immutable__immutable_id.N:
+//   PUSH32 0
+//
+// where N = 1 ... 'number of @immutable_id
+// references in the current module'.
+//
+void EVMAsmPrinter::emitLoadImmutableLabel(const MachineInstr *MI) {
+  assert(MI->getOpcode() == EVM::LOADIMMUTABLE_S);
+
+  const MCSymbol *Symbol = MI->getOperand(0).getMCSymbol();
+  StringRef ImmutableId = Symbol->getName();
+  std::string LoadImmutableLabel =
+      EVM::getLoadImmutableSymbol(ImmutableId, ++ImmutablesMap[ImmutableId]);
+  if (OutContext.lookupSymbol(LoadImmutableLabel))
+    report_fatal_error(Twine("MC: duplicating immutable label ") +
+                       LoadImmutableLabel);
+
+  MCSymbol *Sym = OutContext.getOrCreateSymbol(LoadImmutableLabel);
+  // Emit load immutable label right before PUSH32 instruction.
+  OutStreamer->emitLabel(Sym);
+
+  MCInst MCI;
+  MCI.setOpcode(EVM::PUSH32_S);
+  MCI.addOperand(MCOperand::createImm(0));
+  EmitToStreamer(*OutStreamer, MCI);
 }
 
 void EVMAsmPrinter::emitAssemblySymbol(const MachineInstr *MI) {
@@ -205,7 +242,10 @@ void EVMAsmPrinter::emitWideRelocatableSymbol(const MachineInstr *MI) {
   OutStreamer->switchSection(CurrentSection);
 }
 
-void EVMAsmPrinter::emitEndOfAsmFile(Module &) { WideRelocSymbolsSet.clear(); }
+void EVMAsmPrinter::emitEndOfAsmFile(Module &) {
+  WideRelocSymbolsSet.clear();
+  ImmutablesMap.clear();
+}
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMAsmPrinter() {
   const RegisterAsmPrinter<EVMAsmPrinter> X(getTheEVMTarget());

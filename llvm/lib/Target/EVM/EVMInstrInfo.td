@@ -1137,4 +1137,9 @@ let isAsCheapAsAMove = 1, isReMaterializable = 1, isCodeGenOnly = 1, hasSideEffe
     def LINKERSYMBOL : NI<(outs GPR:$dst), (ins jmptarget:$sym), [], false, "", 0, 0>;
     def LINKERSYMBOL_S : NI<(outs), (ins jmptarget:$sym), [], true, "", 0, 0>;
   }
+
+  let BaseName = "LOADIMMUTABLE" in {
+    def LOADIMMUTABLE : NI<(outs GPR:$dst), (ins jmptarget:$sym), [], false, "", 0, 0>;
+    def LOADIMMUTABLE_S : NI<(outs), (ins jmptarget:$sym), [], true, "", 0, 0>;
+  }
 }
