@@ -172,6 +172,17 @@ LLVMBool LLVMLinkEVM(LLVMMemoryBufferRef *inBuffers, const char *inBuffersIDs[],
                      const char *const *linkerSymbolNames,
                      const char linkerSymbolValues[][LINKER_SYMBOL_SIZE],
                      uint64_t numLinkerSymbols, char **errorMessage);
+
+/// Returns immutables and their offsets of the ELF object
+/// file passed in \p inBuffer.
+uint64_t LLVMGetImmutablesEVM(LLVMMemoryBufferRef inBuffer,
+                              char ***immutableIDs,
+                              uint64_t **immutableOffsets);
+
+/// Disposes immutable names and their offsets returned by the
+/// LLVMGetImmutablesEVM.
+void LLVMDisposeImmutablesEVM(char **immutableIDs, uint64_t *immutableOffsets,
+                              uint64_t numOfImmutables);
 LLVM_C_EXTERN_C_END
 
 #endif // LLD_C_LLDASLIBRARYC_H
