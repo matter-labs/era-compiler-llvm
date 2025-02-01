@@ -140,7 +140,7 @@ std::string EVM::getSymbolSectionName(StringRef Name) {
 std::string EVM::getNonIndexedSymbolName(StringRef Name) {
   Regex suffixRegex(R"(.*[0-4]$)");
   if (!suffixRegex.match(Name))
-    llvm_unreachable("Unexpected indexed symbol name");
+    report_fatal_error("Unexpected indexed symbol name");
 
   return Name.drop_back().str();
 }
@@ -155,4 +155,31 @@ std::string EVM::getDataSizeSymbol(StringRef SymbolName) {
 
 std::string EVM::getDataOffsetSymbol(StringRef SymbolName) {
   return (Twine("__dataoffset") + SymbolName).str();
+}
+
+std::string EVM::getLoadImmutableSymbol(StringRef Name, unsigned Idx) {
+  return (Twine("__load_immutable__") + Name + "." + std::to_string(Idx)).str();
+}
+
+bool EVM::isLoadImmutableSymbolName(StringRef Name) {
+  return Name.find("__load_immutable__") == 0;
+}
+
+// extract immutable ID from the load immutable symbol name.
+// '__load_immutable__ID.N' -> 'ID'.
+std::string EVM::getImmutableId(StringRef Name) {
+  SmallVector<StringRef, 2> Matches;
+  Regex suffixRegex(R"(\.[0-9]+$)");
+  if (!suffixRegex.match(Name, &Matches))
+    report_fatal_error("No immutable symbol index");
+  assert(Matches.size() == 1);
+
+  // Strip suffix
+  Name.consume_back(Matches[0]);
+
+  // Strip prefix
+  if (!Name.consume_front("__load_immutable__"))
+    report_fatal_error("Unexpected load immutable symbol format");
+
+  return Name.str();
 }

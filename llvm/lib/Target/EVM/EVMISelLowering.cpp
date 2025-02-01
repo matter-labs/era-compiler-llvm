@@ -154,6 +154,7 @@ SDValue EVMTargetLowering::lowerINTRINSIC_WO_CHAIN(SDValue Op,
     return SDValue();
   case Intrinsic::evm_datasize:
   case Intrinsic::evm_dataoffset:
+  case Intrinsic::evm_loadimmutable:
   case Intrinsic::evm_linkersymbol: {
     const SDLoc DL(Op);
     EVT Ty = Op.getValueType();
@@ -164,6 +165,7 @@ SDValue EVMTargetLowering::lowerINTRINSIC_WO_CHAIN(SDValue Op,
     DenseMap<unsigned, unsigned> OpcMap = {
         {Intrinsic::evm_datasize, EVM::DATASIZE},
         {Intrinsic::evm_dataoffset, EVM::DATAOFFSET},
+        {Intrinsic::evm_loadimmutable, EVM::LOADIMMUTABLE},
         {Intrinsic::evm_linkersymbol, EVM::LINKERSYMBOL}};
     return SDValue(DAG.getMachineNode(OpcMap.at(IntrID), DL, Ty,
                                       DAG.getMCSymbol(Sym, MVT::i256)),

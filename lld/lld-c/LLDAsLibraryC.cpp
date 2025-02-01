@@ -46,6 +46,8 @@ std::string getLinkerSymbolHash(StringRef SymName);
 std::string getLinkerSymbolSectionName(StringRef Name);
 std::string getDataSizeSymbol(StringRef SymbolName);
 std::string getDataOffsetSymbol(StringRef SymbolName);
+bool isLoadImmutableSymbolName(StringRef Name);
+std::string getImmutableId(StringRef Name);
 } // namespace EVM
 } // namespace llvm
 
@@ -895,4 +897,70 @@ LLVMBool LLVMLinkEVM(LLVMMemoryBufferRef inBuffers[],
       data.data() + deploySize, deployedSize, "deployed");
 
   return false;
+}
+
+/// Returns immutables and their offsets of the ELF object
+/// file passed in \p inBuffer.
+uint64_t LLVMGetImmutablesEVM(LLVMMemoryBufferRef inBuffer,
+                              char ***immutableIDs,
+                              uint64_t **immutableOffsets) {
+  std::unique_ptr<Binary> inBinary =
+      cantFail(createBinary(unwrap(inBuffer)->getMemBufferRef()));
+  const auto *objFile = static_cast<const ObjectFile *>(inBinary.get());
+
+  // Maps immutable IDs to their references in the object code.
+  StringMap<SmallVector<uint64_t>> immutablesMap;
+  for (const SymbolRef &sym : objFile->symbols()) {
+    section_iterator symSec = cantFail(sym.getSection());
+    if (symSec == objFile->section_end())
+      continue;
+
+    StringRef symName = cantFail(sym.getName());
+    if (EVM::isLoadImmutableSymbolName(symName)) {
+      std::string Id = EVM::getImmutableId(symName);
+      uint64_t symOffset = cantFail(sym.getValue());
+      // The symbol points to the beginning of a PUSH32 instruction.
+      // We have to add 1 (opcode size) to get offset to the PUSH32
+      // instruction operand.
+      immutablesMap[Id].push_back(symOffset + 1);
+    }
+  }
+
+  if (immutablesMap.empty()) {
+    *immutableIDs = nullptr;
+    *immutableOffsets = nullptr;
+    return 0;
+  }
+
+  uint64_t numOfImmutables = 0;
+  for (const auto &[id, offsets] : immutablesMap) {
+    numOfImmutables += offsets.size();
+  };
+
+  *immutableIDs =
+      reinterpret_cast<char **>(std::malloc(numOfImmutables * sizeof(char *)));
+  *immutableOffsets = reinterpret_cast<uint64_t *>(
+      std::malloc(numOfImmutables * sizeof(uint64_t)));
+
+  unsigned idx = 0;
+  for (const auto &[id, offsets] : immutablesMap) {
+    for (uint64_t offset : offsets) {
+      assert(idx < numOfImmutables);
+      (*immutableIDs)[idx] = strdup(id.str().c_str());
+      (*immutableOffsets)[idx++] = offset;
+    }
+  }
+
+  return numOfImmutables;
+}
+
+/// Disposes immutable names and their offsets returned by the
+/// LLVMGetImmutablesEVM.
+void LLVMDisposeImmutablesEVM(char **immutableIDs, uint64_t *immutableOffsets,
+                              uint64_t numOfImmutables) {
+  for (unsigned idx = 0; idx < numOfImmutables; ++idx)
+    std::free(immutableIDs[idx]);
+
+  std::free(immutableIDs);
+  std::free(immutableOffsets);
 }
