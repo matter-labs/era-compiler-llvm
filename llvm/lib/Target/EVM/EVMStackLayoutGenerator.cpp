@@ -92,23 +92,19 @@ findStackTooDeep(Stack const &Source, Stack const &Target) {
   return Errors;
 }
 
-/// Returns the ideal stack to have before executing the MachineInstr \p MI
-/// s.t. shuffling to \p Post is cheap (excluding the input of the operation
-/// itself). If \p GenerateSlotOnTheFly returns true for a slot, this slot
-/// should not occur in the ideal stack, but rather be generated on the fly
-/// during shuffling.
-template <typename Callable>
+/// Returns the ideal stack to have before executing a machine instruction that
+/// outputs \p OpDefs s.t. shuffling to \p Post is cheap (excluding the input of
+/// the operation itself). If \p CompressStack is true, rematerializable slots
+/// will not occur in the ideal stack, but rather be generated during shuffling.
 Stack createIdealLayout(const SmallVector<StackSlot *> &OpDefs,
-                        const Stack &Post, Callable GenerateSlotOnTheFly) {
-
+                        const Stack &Post, bool CompressStack) {
   // Determine the number of slots that have to be on stack before executing the
-  // operation (excluding the inputs of the operation itself). That is slots
-  // that should not be generated on the fly and are not outputs of the
-  // operation.
-  size_t PreOperationLayoutSize = Post.size();
-  for (const auto *Slot : Post)
-    if (is_contained(OpDefs, Slot) || GenerateSlotOnTheFly(Slot))
-      --PreOperationLayoutSize;
+  // operation (excluding the inputs of the operation itself), i.e. slots that
+  // cannot be rematerialized and that are not the instruction output.
+  size_t PreOperationLayoutSize = count_if(Post, [&](const StackSlot *S) {
+    return !is_contained(OpDefs, S) &&
+           !(CompressStack && S->isRematerializable());
+  });
 
   SmallVector<UnknownSlot> UnknownSlots;
   for (size_t Index = 0; Index < PreOperationLayoutSize; ++Index)
@@ -130,13 +126,11 @@ Stack createIdealLayout(const SmallVector<StackSlot *> &OpDefs,
   struct ShuffleOperations {
     Stack &Layout;
     const Stack &Post;
-    std::set<StackSlot *> Outputs;
+    std::set<const StackSlot *> Outputs;
     Multiplicity Mult;
-    Callable GenerateSlotOnTheFly;
-    ShuffleOperations(Stack &Layout, Stack const &Post,
-                      Callable GenerateSlotOnTheFly)
-        : Layout(Layout), Post(Post),
-          GenerateSlotOnTheFly(GenerateSlotOnTheFly) {
+    bool CompressStack = false;
+    ShuffleOperations(Stack &Layout, Stack const &Post, bool CompressStack)
+        : Layout(Layout), Post(Post), CompressStack(CompressStack) {
       for (auto *Slot : Layout)
         if (!isa<UnknownSlot>(Slot))
           Outputs.insert(Slot);
@@ -146,8 +140,16 @@ Stack createIdealLayout(const SmallVector<StackSlot *> &OpDefs,
           --Mult[Slot];
 
       for (auto *Slot : Post)
-        if (Outputs.count(Slot) || GenerateSlotOnTheFly(Slot))
+        if (!isSlotRequired(Slot))
           ++Mult[Slot];
+    }
+
+    // This is a huge tradeoff between code size, gas cost and stack size.
+    bool canRematerialize(const StackSlot *Slot) {
+      return CompressStack && Slot->isRematerializable();
+    }
+    bool isSlotRequired(const StackSlot *Slot) {
+      return !Outputs.count(Slot) && !canRematerialize(Slot);
     }
 
     bool isCompatible(size_t Source, size_t Target) {
@@ -156,8 +158,7 @@ Stack createIdealLayout(const SmallVector<StackSlot *> &OpDefs,
       if (isa<JunkSlot>(Post[Target]))
         return true;
       if (isa<UnknownSlot>(Layout[Source]))
-        return !Outputs.count(Post[Target]) &&
-               !GenerateSlotOnTheFly(Post[Target]);
+        return isSlotRequired(Post[Target]);
       return Layout[Source] == Post[Target];
     }
 
@@ -170,9 +171,7 @@ Stack createIdealLayout(const SmallVector<StackSlot *> &OpDefs,
     }
 
     int targetMultiplicity(size_t Offset) {
-      if (!Outputs.count(Post[Offset]) && !GenerateSlotOnTheFly(Post[Offset]))
-        return 0;
-      return Mult.at(Post[Offset]);
+      return isSlotRequired(Post[Offset]) ? 0 : Mult.at(Post[Offset]);
     }
 
     bool targetIsArbitrary(size_t Offset) {
@@ -194,7 +193,7 @@ Stack createIdealLayout(const SmallVector<StackSlot *> &OpDefs,
     void pushOrDupTarget(size_t Offset) { Layout.push_back(Post[Offset]); }
   };
 
-  Shuffler<ShuffleOperations>::shuffle(Layout, Post, GenerateSlotOnTheFly);
+  Shuffler<ShuffleOperations>::shuffle(Layout, Post, CompressStack);
 
   // Now we can construct the ideal layout before the operation.
   // "layout" has shuffled the PreviousSlot{x} to new places using minimal
@@ -253,18 +252,13 @@ Stack EVMStackLayoutGenerator::propagateStackThroughOperation(
     // TODO: compress stack for recursive functions.
     CompressStack = false;
 
-  // This is a huge tradeoff between code size, gas cost and stack size.
-  auto generateSlotOnTheFly = [&](const StackSlot *Slot) {
-    return CompressStack && Slot->isRematerializable();
-  };
-
   SmallVector<StackSlot *> OpDefs =
       StackModel.getSlotsForInstructionDefs(Op.getMachineInstr());
 
   // Determine the ideal permutation of the slots in ExitLayout that are not
   // operation outputs (and not to be generated on the fly), s.t. shuffling the
   // 'IdealStack + Operation.output' to ExitLayout is cheap.
-  Stack IdealStack = createIdealLayout(OpDefs, ExitStack, generateSlotOnTheFly);
+  Stack IdealStack = createIdealLayout(OpDefs, ExitStack, CompressStack);
 
 #ifndef NDEBUG
   // Make sure the resulting previous slots do not overlap with any assigned
