@@ -85,13 +85,13 @@ private:
   /// the operation in the map.
   Stack propagateStackThroughOperation(Stack ExitStack,
                                        Operation const &Operation,
-                                       bool AggressiveStackCompression = false);
+                                       bool CompressStack = false);
 
   /// Returns the desired stack layout at the entry of \p Block, assuming the
   /// layout after executing the block should be \p ExitStack.
   Stack propagateStackThroughBlock(Stack ExitStack,
                                    const MachineBasicBlock *Block,
-                                   bool AggressiveStackCompression = false);
+                                   bool CompressStack = false);
 
   /// Main algorithm walking the graph from entry to exit and propagating back
   /// the stack layouts to the entries. Iteratively reruns itself along

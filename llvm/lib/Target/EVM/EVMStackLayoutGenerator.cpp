@@ -247,15 +247,15 @@ std::unique_ptr<EVMStackLayout> EVMStackLayoutGenerator::run() {
 }
 
 Stack EVMStackLayoutGenerator::propagateStackThroughOperation(
-    Stack ExitStack, const Operation &Op, bool AggressiveStackCompression) {
+    Stack ExitStack, const Operation &Op, bool CompressStack) {
   // Enable aggressive stack compression for recursive calls.
   if (Op.isFunctionCall())
     // TODO: compress stack for recursive functions.
-    AggressiveStackCompression = false;
+    CompressStack = false;
 
   // This is a huge tradeoff between code size, gas cost and stack size.
   auto generateSlotOnTheFly = [&](const StackSlot *Slot) {
-    return AggressiveStackCompression && Slot->isRematerializable();
+    return CompressStack && Slot->isRematerializable();
   };
 
   SmallVector<StackSlot *> OpDefs =
@@ -305,16 +305,15 @@ Stack EVMStackLayoutGenerator::propagateStackThroughOperation(
 }
 
 Stack EVMStackLayoutGenerator::propagateStackThroughBlock(
-    Stack ExitStack, const MachineBasicBlock *Block,
-    bool AggressiveStackCompression) {
+    Stack ExitStack, const MachineBasicBlock *Block, bool CompressStack) {
   Stack CurrentStack = ExitStack;
   for (const Operation &Op : reverse(StackModel.getOperations(Block))) {
-    Stack NewStack = propagateStackThroughOperation(CurrentStack, Op,
-                                                    AggressiveStackCompression);
-    if (!AggressiveStackCompression &&
-        !findStackTooDeep(NewStack, CurrentStack).empty())
-      // If we had stack errors, run again with aggressive stack compression.
-      return propagateStackThroughBlock(std::move(ExitStack), Block, true);
+    Stack NewStack =
+        propagateStackThroughOperation(CurrentStack, Op, CompressStack);
+    if (!CompressStack && !findStackTooDeep(NewStack, CurrentStack).empty())
+      // If we had stack errors, run again with stack compression enabled.
+      return propagateStackThroughBlock(std::move(ExitStack), Block,
+                                        /*CompressStack*/ true);
     CurrentStack = std::move(NewStack);
   }
   return CurrentStack;
