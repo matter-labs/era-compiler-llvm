@@ -1,0 +1,21 @@
+name: LNT benchmarks
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.repository_id }}-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+
+  lnt-benchmarks:
+    uses: matter-labs/era-compiler-ci/.github/workflows/lnt.yml@v1
+    secrets: inherit
+    with:
+      compiler_llvm_branch: ${{ github.head_ref }}
+      ccache-key: 'llvm-Linux-X64-gnu'
+      compiler-llvm-repo: ${{ github.event.pull_request.head.repo.full_name }}
