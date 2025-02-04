@@ -15,13 +15,8 @@ on:
         description: "Git REF to use for the build"
         required: false
         type: string
-      build_macos_amd64:
-        description: "Build for MacOS amd64?"
-        required: false
-        type: boolean
-        default: true
-      build_macos_arm64:
-        description: "Build for MacOS arm64?"
+      build_macos:
+        description: "Build for MacOS?"
         required: false
         type: boolean
         default: true
@@ -35,8 +30,8 @@ on:
         required: false
         type: boolean
         default: true
-      build_windows_amd64:
-        description: "Build for Windows amd64?"
+      build_windows:
+        description: "Build for Windows?"
         required: false
         type: boolean
         default: true
@@ -55,6 +50,11 @@ on:
         default: false
         type: boolean
         description: 'Enable valgrind for regression tests?'
+      valgrind-options:
+        required: false
+        default: ''
+        type: string
+        description: 'Space-separated list of additional valgrind options.'
       enable_assertions:
         description: "Enable assertions?"
         required: false
@@ -81,9 +81,9 @@ jobs:
           LINUX_ARM64='{"name":"Linux-ARM64","runner":"matterlabs-ci-runner-arm","image":"ghcr.io/matter-labs/zksync-llvm-runner:latest"}'
           # Disable platforms for non-tag builds if user requested
           if [ ${GITHUB_EVENT_NAME} = workflow_dispatch ]; then
-            [ ${{ github.event.inputs.build_windows_amd64 }} != true ] && WINDOWS=
-            [ ${{ github.event.inputs.build_macos_amd64 }} != true ] && MACOS_AMD64=
-            [ ${{ github.event.inputs.build_macos_arm64 }} != true ] && MACOS_ARM64=
+            [ ${{ github.event.inputs.build_windows }} != true ] && WINDOWS=
+            [ ${{ github.event.inputs.build_macos }} != true ] && MACOS_AMD64=
+            [ ${{ github.event.inputs.build_macos }} != true ] && MACOS_ARM64=
             [ ${{ github.event.inputs.build_linux_amd64 }} != true ] && LINUX_AMD64=
             [ ${{ github.event.inputs.build_linux_arm64 }} != true ] && LINUX_ARM64=
           fi
@@ -132,6 +132,7 @@ jobs:
           ccache-key-type: 'static'
           save-ccache: ${{ matrix.name == 'Linux x86' }}
           enable-valgrind: ${{ inputs.enable-valgrind }}
+          valgrind-options: ${{ inputs.valgrind-options }}
 
       # Required to keep executable permissions for binaries
       - name: Prepare tarball
