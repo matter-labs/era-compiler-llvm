@@ -63,11 +63,12 @@ private:
   static bool dupDeepSlotIfRequired(ShuffleOperations &Ops) {
     // Check if the stack is large enough for anything to potentially become
     // unreachable.
-    if (Ops.sourceSize() < 15)
+    if (Ops.sourceSize() < (Ops.stackDepthLimit() - 1))
       return false;
     // Check whether any deep slot might still be needed later (i.e. we still
     // need to reach it with a DUP or SWAP).
-    for (size_t SourceOffset = 0; SourceOffset < (Ops.sourceSize() - 15);
+    for (size_t SourceOffset = 0;
+         SourceOffset < (Ops.sourceSize() - (Ops.stackDepthLimit() - 1));
          ++SourceOffset) {
       // This slot needs to be moved.
       if (!Ops.isCompatible(SourceOffset, SourceOffset)) {
@@ -194,10 +195,11 @@ private:
                 SourceTop,
                 Offset)) { // The lower position wants to have this slot.
           // We cannot swap that deep.
-          if (Ops.sourceSize() - Offset - 1 > 16) {
+          if (Ops.sourceSize() - Offset - 1 > Ops.stackDepthLimit()) {
             // If there is a reachable slot to be removed, park the current top
             // there.
-            for (size_t SwapDepth = 16; SwapDepth > 0; --SwapDepth)
+            for (size_t SwapDepth = Ops.stackDepthLimit(); SwapDepth > 0;
+                 --SwapDepth)
               if (Ops.sourceMultiplicity(Ops.sourceSize() - 1 - SwapDepth) <
                   0) {
                 Ops.swap(SwapDepth);
@@ -273,8 +275,10 @@ private:
              (Ops.targetIsArbitrary(I) || Ops.targetMultiplicity(I) == 0));
     assert(Ops.isCompatible(SourceTop, SourceTop));
 
-    const auto &SwappableOffsets =
-        llvm::seq<size_t>(Size > 17 ? Size - 17 : 0u, Size);
+    const auto &SwappableOffsets = llvm::seq<size_t>(
+        Size > (Ops.stackDepthLimit() + 1) ? Size - (Ops.stackDepthLimit() + 1)
+                                           : 0u,
+        Size);
 
     // If we find a lower slot that is out of position, but also compatible with
     // the top, swap that up.
@@ -380,7 +384,7 @@ private:
 /// Returns a copy of \p Stack stripped of all duplicates and slots that can
 /// be freely generated. Attempts to create a layout that requires a minimal
 /// amount of operations to reconstruct the original stack \p Stack.
-Stack compressStack(Stack CurStack) {
+Stack compressStack(Stack CurStack, unsigned StackDepthLimit) {
   std::optional<size_t> FirstDupOffset;
   do {
     if (FirstDupOffset) {
@@ -400,7 +404,7 @@ Stack compressStack(Stack CurStack) {
 
       if (auto DupDepth =
               offset(drop_begin(reverse(CurStack), Depth + 1), Slot)) {
-        if (Depth + *DupDepth <= 16) {
+        if (Depth + *DupDepth <= StackDepthLimit) {
           FirstDupOffset = CurStack.size() - Depth - 1;
           break;
         }
@@ -412,7 +416,7 @@ Stack compressStack(Stack CurStack) {
 } // namespace
 
 void EVMStackLayoutPermutations::createStackLayout(
-    Stack &CurrentStack, const Stack &TargetStack,
+    Stack &CurrentStack, const Stack &TargetStack, unsigned StackDepthLimit,
     const std::function<void(unsigned)> &Swap,
     const std::function<void(const StackSlot *)> &PushOrDup,
     const std::function<void()> &Pop) {
@@ -423,13 +427,16 @@ void EVMStackLayoutPermutations::createStackLayout(
     const std::function<void(const StackSlot *)> &pushOrDupCallback;
     const std::function<void()> &popCallback;
     Multiplicity multiplicity;
+    unsigned StackDepthLimit;
 
     ShuffleOperations(Stack &CurrentStack, const Stack &TargetStack,
+                      unsigned StackDepthLimit,
                       const std::function<void(unsigned)> &Swap,
                       const std::function<void(const StackSlot *)> &PushOrDup,
                       const std::function<void()> &Pop)
         : currentStack(CurrentStack), targetStack(TargetStack),
-          swapCallback(Swap), pushOrDupCallback(PushOrDup), popCallback(Pop) {
+          swapCallback(Swap), pushOrDupCallback(PushOrDup), popCallback(Pop),
+          StackDepthLimit(StackDepthLimit) {
       for (const auto &slot : currentStack)
         --multiplicity[slot];
 
@@ -483,10 +490,12 @@ void EVMStackLayoutPermutations::createStackLayout(
       pushOrDupCallback(targetSlot);
       currentStack.push_back(targetSlot);
     }
+
+    unsigned stackDepthLimit() const { return StackDepthLimit; }
   };
 
-  Shuffler<ShuffleOperations>::shuffle(CurrentStack, TargetStack, Swap,
-                                       PushOrDup, Pop);
+  Shuffler<ShuffleOperations>::shuffle(CurrentStack, TargetStack,
+                                       StackDepthLimit, Swap, PushOrDup, Pop);
 
   assert(CurrentStack.size() == TargetStack.size());
   for (unsigned I = 0; I < CurrentStack.size(); ++I) {
@@ -499,11 +508,11 @@ void EVMStackLayoutPermutations::createStackLayout(
   }
 }
 
-size_t EVMStackLayoutPermutations::evaluateStackTransform(Stack Source,
-                                                          const Stack &Target) {
+size_t EVMStackLayoutPermutations::evaluateStackTransform(
+    Stack Source, const Stack &Target, unsigned StackDepthLimit) {
   size_t OpGas = 0;
   auto Swap = [&](unsigned SwapDepth) {
-    if (SwapDepth > 16)
+    if (SwapDepth > StackDepthLimit)
       OpGas += 1000;
     else
       OpGas += 3; // SWAP* gas price;
@@ -517,7 +526,7 @@ size_t EVMStackLayoutPermutations::evaluateStackTransform(Stack Source,
       if (!Depth)
         llvm_unreachable("No slot in the stack");
 
-      if (*Depth < 16)
+      if (*Depth < StackDepthLimit)
         OpGas += 3; // DUP* gas price
       else
         OpGas += 1000;
@@ -525,18 +534,19 @@ size_t EVMStackLayoutPermutations::evaluateStackTransform(Stack Source,
   };
   auto Pop = [&]() { OpGas += 2; };
 
-  createStackLayout(Source, Target, Swap, DupOrPush, Pop);
+  createStackLayout(Source, Target, StackDepthLimit, Swap, DupOrPush, Pop);
   return OpGas;
 }
 
 bool EVMStackLayoutPermutations::hasStackTooDeep(const Stack &Source,
-                                                 const Stack &Target) {
+                                                 const Stack &Target,
+                                                 unsigned StackDepthLimit) {
   Stack CurrentStack = Source;
   bool HasError = false;
   createStackLayout(
-      CurrentStack, Target,
+      CurrentStack, Target, StackDepthLimit,
       [&](unsigned I) {
-        if (I > 16)
+        if (I > StackDepthLimit)
           HasError = true;
       },
       [&](const StackSlot *Slot) {
@@ -544,7 +554,7 @@ bool EVMStackLayoutPermutations::hasStackTooDeep(const Stack &Source,
           return;
 
         if (auto Depth = offset(reverse(CurrentStack), Slot);
-            Depth && *Depth >= 16)
+            Depth && *Depth >= StackDepthLimit)
           HasError = true;
       },
       [&]() {});
@@ -553,6 +563,7 @@ bool EVMStackLayoutPermutations::hasStackTooDeep(const Stack &Source,
 
 Stack EVMStackLayoutPermutations::createIdealLayout(
     const SmallVector<StackSlot *> &OpDefs, const Stack &Post,
+    unsigned StackDepthLimit,
     const std::function<bool(const StackSlot *)> &RematerializeSlot) {
   struct PreviousSlot {
     size_t slot;
@@ -587,10 +598,12 @@ Stack EVMStackLayoutPermutations::createIdealLayout(
     DenseSet<StackSlot *> Outputs;
     Multiplicity Mult;
     const std::function<bool(const StackSlot *)> &RematerializeSlot;
+    unsigned StackDepthLimit;
     ShuffleOperations(
-        LayoutT &Layout, const Stack &Post,
+        LayoutT &Layout, const Stack &Post, unsigned StackDepthLimit,
         const std::function<bool(const StackSlot *)> &RematerializeSlot)
-        : Layout(Layout), Post(Post), RematerializeSlot(RematerializeSlot) {
+        : Layout(Layout), Post(Post), RematerializeSlot(RematerializeSlot),
+          StackDepthLimit(StackDepthLimit) {
       for (const auto &LayoutSlot : Layout)
         if (const auto *Slot = std::get_if<StackSlot *>(&LayoutSlot))
           Outputs.insert(*Slot);
@@ -658,9 +671,12 @@ Stack EVMStackLayoutPermutations::createIdealLayout(
     void pop() { Layout.pop_back(); }
 
     void pushOrDupTarget(size_t Offset) { Layout.push_back(Post[Offset]); }
+
+    unsigned stackDepthLimit() const { return StackDepthLimit; }
   };
 
-  Shuffler<ShuffleOperations>::shuffle(Layout, Post, RematerializeSlot);
+  Shuffler<ShuffleOperations>::shuffle(Layout, Post, StackDepthLimit,
+                                       RematerializeSlot);
 
   // Now we can construct the ideal layout before the operation.
   // "layout" has shuffled the PreviousSlot{x} to new places using minimal
@@ -695,7 +711,8 @@ Stack EVMStackLayoutPermutations::createIdealLayout(
 }
 
 Stack EVMStackLayoutPermutations::combineStack(const Stack &Stack1,
-                                               const Stack &Stack2) {
+                                               const Stack &Stack2,
+                                               unsigned StackDepthLimit) {
   // TODO: it would be nicer to replace this by a constructive algorithm.
   // Currently it uses a reduced version of the Heap Algorithm to partly
   // brute-force, which seems to work decently well.
@@ -717,12 +734,12 @@ Stack EVMStackLayoutPermutations::combineStack(const Stack &Stack1,
     Stack2Tail.push_back(Slot);
 
   if (Stack1Tail.empty()) {
-    CommonPrefix.append(compressStack(Stack2Tail));
+    CommonPrefix.append(compressStack(Stack2Tail, StackDepthLimit));
     return CommonPrefix;
   }
 
   if (Stack2Tail.empty()) {
-    CommonPrefix.append(compressStack(Stack1Tail));
+    CommonPrefix.append(compressStack(Stack1Tail, StackDepthLimit));
     return CommonPrefix;
   }
 
@@ -745,7 +762,7 @@ Stack EVMStackLayoutPermutations::combineStack(const Stack &Stack1,
     Stack TestStack = Candidate;
     auto Swap = [&](unsigned SwapDepth) {
       ++NumOps;
-      if (SwapDepth > 16)
+      if (SwapDepth > StackDepthLimit)
         NumOps += 1000;
     };
 
@@ -756,12 +773,14 @@ Stack EVMStackLayoutPermutations::combineStack(const Stack &Stack1,
       Stack Tmp = CommonPrefix;
       Tmp.append(TestStack);
       auto Depth = offset(reverse(Tmp), Slot);
-      if (Depth && *Depth >= 16)
+      if (Depth && *Depth >= StackDepthLimit)
         NumOps += 1000;
     };
-    createStackLayout(TestStack, Stack1Tail, Swap, DupOrPush, [&]() {});
+    createStackLayout(TestStack, Stack1Tail, StackDepthLimit, Swap, DupOrPush,
+                      [&]() {});
     TestStack = Candidate;
-    createStackLayout(TestStack, Stack2Tail, Swap, DupOrPush, [&]() {});
+    createStackLayout(TestStack, Stack2Tail, StackDepthLimit, Swap, DupOrPush,
+                      [&]() {});
     return NumOps;
   };
 

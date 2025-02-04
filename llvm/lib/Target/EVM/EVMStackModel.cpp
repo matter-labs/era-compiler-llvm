@@ -65,8 +65,9 @@ std::string Operation::toString() const {
   return std::string(S);
 }
 
-EVMStackModel::EVMStackModel(MachineFunction &MF, const LiveIntervals &LIS)
-    : MF(MF), LIS(LIS) {
+EVMStackModel::EVMStackModel(MachineFunction &MF, const LiveIntervals &LIS,
+                             unsigned StackDepthLimit)
+    : MF(MF), LIS(LIS), StackDepthLimit(StackDepthLimit) {
   for (MachineBasicBlock &MBB : MF) {
     SmallVector<Operation> Ops;
     for (MachineInstr &MI : MBB)

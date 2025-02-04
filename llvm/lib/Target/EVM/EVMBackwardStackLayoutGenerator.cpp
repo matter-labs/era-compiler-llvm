@@ -75,12 +75,13 @@ Stack EVMBackwardStackLayoutGenerator::propagateStackThroughOperation(
 
   SmallVector<StackSlot *> OpDefs =
       StackModel.getSlotsForInstructionDefs(Op.getMachineInstr());
+  const unsigned StackDepthLimit = StackModel.stackDepthLimit();
 
   // Determine the ideal permutation of the slots in ExitLayout that are not
   // operation outputs (and not to be generated on the fly), s.t. shuffling the
   // 'IdealStack + Operation.output' to ExitLayout is cheap.
   Stack IdealStack = EVMStackLayoutPermutations::createIdealLayout(
-      OpDefs, ExitStack, RematerializeSlot);
+      OpDefs, ExitStack, StackDepthLimit, RematerializeSlot);
 
 #ifndef NDEBUG
   // Make sure the resulting previous slots do not overlap with any assigned
@@ -109,7 +110,7 @@ Stack EVMBackwardStackLayoutGenerator::propagateStackThroughOperation(
       IdealStack.pop_back();
     else if (auto Offset = offset(drop_begin(reverse(IdealStack), 1),
                                   IdealStack.back())) {
-      if (*Offset + 2 < 16)
+      if (*Offset + 2 < StackDepthLimit)
         IdealStack.pop_back();
       else
         break;
@@ -128,7 +129,8 @@ Stack EVMBackwardStackLayoutGenerator::propagateStackThroughBlock(
     Stack NewStack = propagateStackThroughOperation(CurrentStack, Op,
                                                     AggressiveStackCompression);
     if (!AggressiveStackCompression &&
-        EVMStackLayoutPermutations::hasStackTooDeep(NewStack, CurrentStack))
+        EVMStackLayoutPermutations::hasStackTooDeep(
+            NewStack, CurrentStack, StackModel.stackDepthLimit()))
       // If we had stack errors, run again with aggressive stack compression.
       return propagateStackThroughBlock(std::move(ExitStack), Block, true);
     CurrentStack = std::move(NewStack);
@@ -139,16 +141,17 @@ Stack EVMBackwardStackLayoutGenerator::propagateStackThroughBlock(
 // Returns the number of junk slots to be prepended to \p TargetLayout for
 // an optimal transition from \p EntryLayout to \p TargetLayout.
 static size_t getOptimalNumberOfJunks(const Stack &EntryLayout,
-                                      const Stack &TargetLayout) {
+                                      const Stack &TargetLayout,
+                                      unsigned StackDepthLimit) {
   size_t BestCost = EVMStackLayoutPermutations::evaluateStackTransform(
-      EntryLayout, TargetLayout);
+      EntryLayout, TargetLayout, StackDepthLimit);
   size_t BestNumJunk = 0;
   size_t MaxJunk = EntryLayout.size();
   for (size_t NumJunk = 1; NumJunk <= MaxJunk; ++NumJunk) {
     Stack JunkedTarget(NumJunk, EVMStackModel::getJunkSlot());
     JunkedTarget.append(TargetLayout);
     size_t Cost = EVMStackLayoutPermutations::evaluateStackTransform(
-        EntryLayout, JunkedTarget);
+        EntryLayout, JunkedTarget, StackDepthLimit);
     if (Cost < BestCost) {
       BestCost = Cost;
       BestNumJunk = NumJunk;
@@ -311,7 +314,8 @@ void EVMBackwardStackLayoutGenerator::runPropagation() {
     const Stack &NextLayout =
         Ops.empty() ? ExitLayout : OperationEntryLayoutMap.at(&Ops.front());
     if (EntryLayout != NextLayout) {
-      size_t OptimalNumJunks = getOptimalNumberOfJunks(EntryLayout, NextLayout);
+      size_t OptimalNumJunks = getOptimalNumberOfJunks(
+          EntryLayout, NextLayout, StackModel.stackDepthLimit());
       if (OptimalNumJunks > 0) {
         addJunksToStackBottom(&MBB, OptimalNumJunks);
         MBBEntryLayoutMap[&MBB] = EntryLayout;
@@ -356,7 +360,8 @@ EVMBackwardStackLayoutGenerator::getExitLayoutOrStageDependencies(
       // If the current iteration has already Visited both jump targets,
       // start from its entry layout.
       Stack CombinedStack = EVMStackLayoutPermutations::combineStack(
-          MBBEntryLayoutMap.at(FalseBB), MBBEntryLayoutMap.at(TrueBB));
+          MBBEntryLayoutMap.at(FalseBB), MBBEntryLayoutMap.at(TrueBB),
+          StackModel.stackDepthLimit());
       // Additionally, the jump condition has to be at the stack top at
       // exit.
       CombinedStack.emplace_back(StackModel.getStackSlot(*Condition));

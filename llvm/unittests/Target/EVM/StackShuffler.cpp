@@ -9,6 +9,7 @@
 #include "EVMRegisterInfo.h"
 #include "EVMStackLayoutPermutations.h"
 #include "EVMStackModel.h"
+#include "EVMSubtarget.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "llvm-c/TargetMachine.h"
 #include "llvm/CodeGen/LiveIntervals.h"
@@ -63,7 +64,8 @@ class LLDCTest : public testing::Test {
     MF = &MMIWP->getMMI().getOrCreateMachineFunction(*F);
 
     LIS = std::make_unique<LiveIntervals>();
-    StackModel = std::make_unique<EVMStackModel>(*MF, *LIS.get());
+    StackModel = std::make_unique<EVMStackModel>(
+        *MF, *LIS.get(), MF->getSubtarget<EVMSubtarget>().stackDepthLimit());
   }
 
   void TearDown() override { LLVMDisposeTargetMachine(TM); }
@@ -168,6 +170,7 @@ PUSH JUNK\n\
   std::ostringstream Output;
   EVMStackLayoutPermutations::createStackLayout(
       SourceStack, TargetStack,
+      MF->getSubtarget<EVMSubtarget>().stackDepthLimit(),
       [&](unsigned SwapDepth) { // swap
         Output << stackToString(SourceStack) << '\n';
         Output << "SWAP" << SwapDepth << '\n';

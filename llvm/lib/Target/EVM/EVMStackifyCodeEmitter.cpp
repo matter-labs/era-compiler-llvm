@@ -296,16 +296,17 @@ void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
   assert(Emitter.stackHeight() == CurrentStack.size());
   // EVMStackLayoutPermutations::createStackLayout asserts that it has
   // successfully achieved the target layout.
+  const unsigned StackDepthLimit = StackModel.stackDepthLimit();
   EVMStackLayoutPermutations::createStackLayout(
-      CurrentStack, TargetStack,
+      CurrentStack, TargetStack, StackDepthLimit,
       // Swap callback.
       [&](unsigned I) {
         assert(CurrentStack.size() == Emitter.stackHeight());
         assert(I > 0 && I < CurrentStack.size());
-        if (I <= 16) {
+        if (I <= StackDepthLimit) {
           Emitter.emitSWAP(I);
         } else {
-          int Deficit = static_cast<int>(I) - 16;
+          int Deficit = static_cast<int>(I) - StackDepthLimit;
           const StackSlot *DeepSlot = CurrentStack[CurrentStack.size() - I - 1];
           std::string Msg =
               (Twine("cannot swap ") +
@@ -329,14 +330,15 @@ void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
         auto SlotIt = llvm::find(llvm::reverse(CurrentStack), Slot);
         if (SlotIt != CurrentStack.rend()) {
           unsigned Depth = std::distance(CurrentStack.rbegin(), SlotIt);
-          if (Depth < 16) {
+          if (Depth < StackDepthLimit) {
             Emitter.emitDUP(static_cast<unsigned>(Depth + 1));
             return;
           }
           if (!Slot->isRematerializable()) {
             std::string Msg =
                 (isa<RegisterSlot>(Slot) ? "variable " : "slot ") +
-                Slot->toString() + " is " + std::to_string(Depth - 15) +
+                Slot->toString() + " is " +
+                std::to_string(Depth - (StackDepthLimit - 1)) +
                 " too deep in the stack " + stackToString(CurrentStack);
 
             report_fatal_error(MF.getName() + ": " + Msg);
@@ -380,7 +382,7 @@ void EVMStackifyCodeEmitter::createOperationLayout(const Operation &Op) {
     // Get the stack layout before the instruction.
     const Stack &DefaultTargetStack = Layout.getOperationEntryLayout(&Op);
     size_t DefaultCost = EVMStackLayoutPermutations::evaluateStackTransform(
-        CurrentStack, DefaultTargetStack);
+        CurrentStack, DefaultTargetStack, StackModel.stackDepthLimit());
 
     // Commutable operands always take top two stack slots.
     const unsigned OpIdx1 = 0, OpIdx2 = 1;
@@ -392,7 +394,7 @@ void EVMStackifyCodeEmitter::createOperationLayout(const Operation &Op) {
     std::swap(CommutedTargetStack[CommutedTargetStack.size() - OpIdx1 - 1],
               CommutedTargetStack[CommutedTargetStack.size() - OpIdx2 - 1]);
     size_t CommutedCost = EVMStackLayoutPermutations::evaluateStackTransform(
-        CurrentStack, CommutedTargetStack);
+        CurrentStack, CommutedTargetStack, StackModel.stackDepthLimit());
     // Choose the cheapest transformation.
     SwapCommutable = CommutedCost < DefaultCost;
     createStackLayout(SwapCommutable ? CommutedTargetStack

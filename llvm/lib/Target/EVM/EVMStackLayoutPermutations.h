@@ -22,7 +22,8 @@ class EVMStackLayoutPermutations {
 public:
   /// Returns the number of operations required to transform stack \p Source to
   /// \p Target.
-  static size_t evaluateStackTransform(Stack Source, const Stack &Target);
+  static size_t evaluateStackTransform(Stack Source, const Stack &Target,
+                                       unsigned StackDepth);
 
   /// Returns the ideal stack to have before executing the MachineInstr \p MI
   /// s.t. shuffling to \p Post is cheap (excluding the input of the operation
@@ -31,16 +32,19 @@ public:
   /// during shuffling.
   static Stack createIdealLayout(
       const SmallVector<StackSlot *> &OpDefs, const Stack &Post,
+      unsigned StackDepth,
       const std::function<bool(const StackSlot *)> &RematerializeSlot);
 
   /// Calculates the ideal stack layout, s.t., both \p Stack1 and \p Stack2 can
   /// be achieved with minimal stack shuffling when starting from the returned
   /// layout.
-  static Stack combineStack(const Stack &Stack1, const Stack &Stack2);
+  static Stack combineStack(const Stack &Stack1, const Stack &Stack2,
+                            unsigned StackDepth);
 
   /// Returns true if there is stack too deep error when shuffling \p Source
   /// to \p Target.
-  static bool hasStackTooDeep(const Stack &Source, const Stack &Target);
+  static bool hasStackTooDeep(const Stack &Source, const Stack &Target,
+                              unsigned StackDepth);
 
   /// Transforms \p CurrentStack to \p TargetStack, invoking the provided
   /// shuffling operations. Modifies `CurrentStack` itself after each invocation
@@ -53,6 +57,7 @@ public:
   /// \p Pop is a function that is called when the top most slot is popped.
   static void
   createStackLayout(Stack &CurrentStack, const Stack &TargetStack,
+                    unsigned StackDepth,
                     const std::function<void(unsigned)> &Swap,
                     const std::function<void(const StackSlot *)> &PushOrDup,
                     const std::function<void()> &Pop);
