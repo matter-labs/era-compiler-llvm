@@ -11,6 +11,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMStackifyCodeEmitter.h"
+#include "EVMMachineCFGInfo.h"
 #include "EVMMachineFunctionInfo.h"
 #include "EVMStackLayoutPermutations.h"
 #include "TargetInfo/EVMTargetInfo.h"

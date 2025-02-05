@@ -18,13 +18,14 @@
 #ifndef LLVM_LIB_TARGET_EVM_EVMBACKWARDSTACKLAYOUTGENERATOR_H
 #define LLVM_LIB_TARGET_EVM_EVMBACKWARDSTACKLAYOUTGENERATOR_H
 
-#include "EVMMachineCFGInfo.h"
 #include "EVMStackModel.h"
 #include "llvm/ADT/DenseMap.h"
-
 #include <deque>
 
 namespace llvm {
+
+class EVMMachineCFGInfo;
+class MachineLoopInfo;
 
 class EVMStackLayout {
 public:
