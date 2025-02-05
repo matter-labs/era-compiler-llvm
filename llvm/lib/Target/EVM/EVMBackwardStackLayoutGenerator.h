@@ -26,10 +26,6 @@
 
 namespace llvm {
 
-/// Returns the number of operations required to transform stack \p Source to
-/// \p Target.
-size_t EvaluateStackTransform(Stack Source, Stack const &Target);
-
 class EVMStackLayout {
 public:
   EVMStackLayout(DenseMap<const MachineBasicBlock *, Stack> &MBBEntryLayout,
@@ -64,13 +60,6 @@ private:
 
 class EVMBackwardStackLayoutGenerator {
 public:
-  struct StackTooDeep {
-    /// Number of slots that need to be saved.
-    size_t deficit = 0;
-    /// Set of variables, eliminating which would decrease the stack deficit.
-    SmallVector<Register> variableChoices;
-  };
-
   EVMBackwardStackLayoutGenerator(const MachineFunction &MF,
                                   const MachineLoopInfo *MLI,
                                   const EVMStackModel &StackModel,
@@ -108,22 +97,7 @@ private:
   std::optional<Stack> getExitLayoutOrStageDependencies(
       const MachineBasicBlock *Block,
       const DenseSet<const MachineBasicBlock *> &Visited,
-      std::deque<const MachineBasicBlock *> &DependencyList) const;
-
-  /// Calculates the ideal stack layout, s.t., both \p Stack1 and \p Stack2 can
-  /// be achieved with minimal stack shuffling when starting from the returned
-  /// layout.
-  static Stack combineStack(const Stack &Stack1, const Stack &Stack2);
-
-  /// Walks through the CFG and reports any stack too deep errors that would
-  /// occur when generating code for it without countermeasures.
-  SmallVector<StackTooDeep>
-  reportStackTooDeep(const MachineBasicBlock &Entry) const;
-
-  /// Returns a copy of \p Stack stripped of all duplicates and slots that can
-  /// be freely generated. Attempts to create a layout that requires a minimal
-  /// amount of operations to reconstruct the original stack \p Stack.
-  static Stack compressStack(Stack Stack);
+      std::deque<const MachineBasicBlock *> &ToVisit) const;
 
   const MachineFunction &MF;
   const MachineLoopInfo *MLI;

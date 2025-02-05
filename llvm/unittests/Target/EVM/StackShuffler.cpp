@@ -8,8 +8,8 @@
 
 #include "EVMRegisterInfo.h"
 #include "EVMStackDebug.h"
+#include "EVMStackLayoutPermutations.h"
 #include "EVMStackModel.h"
-#include "EVMStackShuffler.h"
 #include "EVMTargetMachine.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "llvm-c/Core.h"
@@ -172,7 +172,7 @@ PUSH JUNK\n\
 [ %1 %0 %2 %3 %4 %5 %6 %7 %9 %10 %11 %12 %13 %14 %15 %16 RET JUNK JUNK ]\n");
 
   std::ostringstream Output;
-  createStackLayout(
+  EVMStackLayoutPermutations::createStackLayout(
       SourceStack, TargetStack,
       [&](unsigned SwapDepth) { // swap
         Output << stackToString(SourceStack) << '\n';

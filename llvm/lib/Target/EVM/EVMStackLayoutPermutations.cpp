@@ -1,5 +1,4 @@
-//===-- EVMStackShuffler.h - Implementation of stack shuffling ---*- C++
-//-*-===//
+//===---- EVMStackLayoutPermutations.cpp - Stack layout permute -*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -7,93 +6,36 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file declares template algorithms to find optimal (cheapest) transition
-// between two stack layouts using three shuffling primitives: `swap`, `dup`,
-// and `pop`.
+// This file defines a set of methods for manipulating and optimizing the stack
+// layout.
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIB_TARGET_EVM_EVMSTACKSHUFFLER_H
-#define LLVM_LIB_TARGET_EVM_EVMSTACKSHUFFLER_H
+#include "EVMStackLayoutPermutations.h"
 
-#include "EVMStackModel.h"
-#include <cassert>
-#include <map>
-#include <set>
-#include <variant>
+using namespace llvm;
 
-namespace llvm {
+namespace {
 
-// Abstraction of stack shuffling operations. Can be defined as actual concept
-// once we switch to C++20. Used as an interface for the stack shuffler below.
-// The shuffle operation class is expected to internally keep track of a current
-// stack layout (the "source layout") that the shuffler is supposed to shuffle
-// to a fixed target stack layout. The shuffler works iteratively. At each
-// iteration it instantiates an instance of the shuffle operations and queries
-// it for various information about the current source stack layout and the
-// target layout, as described in the interface below. Based on that information
-// the shuffler decides which is the next optimal operation to perform on the
-// stack and calls the corresponding entry point in the shuffling operations
-// (swap, pushOrDupTarget or pop).
-/*
-template<typename ShuffleOperations>
-concept ShuffleOperationConcept =
-  requires(ShuffleOperations ops, size_t sourceOffset,
-  size_t targetOffset, size_t depth) {
-
-  // Returns true, iff the current slot at sourceOffset in source layout
-  // is a suitable slot at targetOffset.
-  { ops.isCompatible(sourceOffset, targetOffset) }
-      -> std::convertible_to<bool>;
-
-  // Returns true, iff the slots at the two given source offsets are identical.
-  { ops.sourceIsSame(sourceOffset, sourceOffset) } ->
-      std::convertible_to<bool>;
-
-  // Returns a positive integer n, if the slot at the given source offset
-  // needs n more copies. Returns a negative integer -n, if the slot at the
-  // given source offsets occurs n times too many. Returns zero if the amount
-  // of occurrences, in the current source layout, of the slot at the given
-  // source offset matches the desired amount of occurrences in the target.
-  { ops.sourceMultiplicity(sourceOffset) } -> std::convertible_to<int>;
-
-  // Returns a positive integer n, if the slot at the given target offset
-  // needs n more copies. Returns a negative integer -n, if the slot at the
-  // given target offsets occurs n times too many. Returns zero if the amount
-  // of occurrences, in the current source layout, of the slot at the given
-  // target offset matches the desired amount of occurrences in the target.
-  { ops.targetMultiplicity(targetOffset) } -> std::convertible_to<int>;
-
-  // Returns true, iff any slot is compatible with the given target offset.
-  { ops.targetIsArbitrary(targetOffset) } -> std::convertible_to<bool>;
-
-  // Returns the number of slots in the source layout.
-  { ops.sourceSize() } -> std::convertible_to<size_t>;
-
-  // Returns the number of slots in the target layout.
-  { ops.targetSize() } -> std::convertible_to<size_t>;
-
-  // Swaps the top most slot in the source with the slot `depth` slots below
-  // the top. In terms of EVM opcodes this is supposed to be a `SWAP<depth>`.
-  // In terms of vectors this is supposed to be
-  //`std::swap(source.at(source.size() - depth - 1, source.top))`.
-  { ops.swap(depth) };
-
-  // Pops the top most slot in the source, i.e. the slot at offset
-  // ops.sourceSize() - 1. In terms of EVM opcodes this is `POP`.
-  // In terms of vectors this is `source.pop();`.
-  { ops.pop() };
-
-  // Dups or pushes the slot that is supposed to end up at the given
-  // target offset.
-  { ops.pushOrDupTarget(targetOffset) };
+template <class... Ts> struct Overload : Ts... {
+  using Ts::operator()...;
 };
-*/
+template <class... Ts> Overload(Ts...) -> Overload<Ts...>;
+
+/// Return the number of hops from the beginning of the \p RangeOrContainer
+/// to the \p Item. If no \p Item is found in the \p RangeOrContainer,
+/// std::nullopt is returned.
+template <typename T, typename V>
+std::optional<size_t> offset(T &&RangeOrContainer, V &&Item) {
+  auto It = find(RangeOrContainer, Item);
+  return (It == adl_end(RangeOrContainer))
+             ? std::nullopt
+             : std::optional(std::distance(adl_begin(RangeOrContainer), It));
+}
 
 /// Helper class that can perform shuffling of a source stack layout to a target
 /// stack layout via abstracted shuffle operations.
-template </*ShuffleOperationConcept*/ typename ShuffleOperations>
-class Shuffler {
+template <typename ShuffleOperations> class Shuffler {
 public:
   /// Executes the stack shuffling operations. Instantiates an instance of
   /// ShuffleOperations in each iteration. Each iteration performs exactly one
@@ -437,29 +379,57 @@ private:
   int JunkSlotMultiplicity = 0;
 };
 
-/// Transforms \p CurrentStack to \p TargetStack, invoking the provided
-/// shuffling operations. Modifies `CurrentStack` itself after each invocation
-/// of the shuffling operations.
-/// \p Swap is a function with signature void(unsigned) that is called when the
-/// top most slot is swapped with the slot `depth` slots below the top. In terms
-/// of EVM opcodes this is supposed to be a `SWAP<depth>`.
-/// \p PushOrDup is a function with signature void(StackSlot const&) that is
-/// called to push or dup the slot given as its argument to the stack top.
-/// \p Pop is a function with signature void() that is called when the top most
-/// slot is popped.
-template <typename SwapT, typename PushOrDupT, typename PopT>
-void createStackLayout(Stack &CurrentStack, Stack const &TargetStack,
-                       SwapT Swap, PushOrDupT PushOrDup, PopT Pop) {
+/// Returns a copy of \p Stack stripped of all duplicates and slots that can
+/// be freely generated. Attempts to create a layout that requires a minimal
+/// amount of operations to reconstruct the original stack \p Stack.
+Stack compressStack(Stack CurStack) {
+  std::optional<size_t> FirstDupOffset;
+  do {
+    if (FirstDupOffset) {
+      if (*FirstDupOffset != (CurStack.size() - 1))
+        std::swap(CurStack[*FirstDupOffset], CurStack.back());
+      CurStack.pop_back();
+      FirstDupOffset.reset();
+    }
+
+    auto I = CurStack.rbegin(), E = CurStack.rend();
+    for (size_t Depth = 0; I < E; ++I, ++Depth) {
+      StackSlot *Slot = *I;
+      if (Slot->isRematerializable()) {
+        FirstDupOffset = CurStack.size() - Depth - 1;
+        break;
+      }
+
+      if (auto DupDepth =
+              offset(drop_begin(reverse(CurStack), Depth + 1), Slot)) {
+        if (Depth + *DupDepth <= 16) {
+          FirstDupOffset = CurStack.size() - Depth - 1;
+          break;
+        }
+      }
+    }
+  } while (FirstDupOffset);
+  return CurStack;
+}
+} // namespace
+
+void EVMStackLayoutPermutations::createStackLayout(
+    Stack &CurrentStack, const Stack &TargetStack,
+    const std::function<void(unsigned)> &Swap,
+    const std::function<void(const StackSlot *)> &PushOrDup,
+    const std::function<void()> &Pop) {
   struct ShuffleOperations {
     Stack &currentStack;
-    Stack const &targetStack;
-    SwapT swapCallback;
-    PushOrDupT pushOrDupCallback;
-    PopT popCallback;
+    const Stack &targetStack;
+    const std::function<void(unsigned)> &swapCallback;
+    const std::function<void(const StackSlot *)> &pushOrDupCallback;
+    const std::function<void()> &popCallback;
     Multiplicity multiplicity;
 
-    ShuffleOperations(Stack &CurrentStack, Stack const &TargetStack, SwapT Swap,
-                      PushOrDupT PushOrDup, PopT Pop)
+    ShuffleOperations(Stack &CurrentStack, const Stack &TargetStack,
+                      const std::function<void(unsigned)> &Swap,
+                      const std::function<void(const StackSlot *)> &PushOrDup,
+                      const std::function<void()> &Pop)
         : currentStack(CurrentStack), targetStack(TargetStack),
           swapCallback(Swap), pushOrDupCallback(PushOrDup), popCallback(Pop) {
       for (auto const &slot : currentStack)
@@ -531,5 +501,306 @@ void createStackLayout(Stack &CurrentStack, Stack const &TargetStack,
   }
 }
 
-} // end namespace llvm
-#endif // LLVM_LIB_TARGET_EVM_EVMSTACKSHUFFLER_H
+size_t EVMStackLayoutPermutations::evaluateStackTransform(Stack Source,
+                                                          const Stack &Target) {
+  size_t OpGas = 0;
+  auto Swap = [&](unsigned SwapDepth) {
+    if (SwapDepth > 16)
+      OpGas += 1000;
+    else
+      OpGas += 3; // SWAP* gas price;
+  };
+
+  auto DupOrPush = [&](const StackSlot *Slot) {
+    if (Slot->isRematerializable())
+      OpGas += 3;
+    else {
+      auto Depth = offset(reverse(Source), Slot);
+      if (!Depth)
+        llvm_unreachable("No slot in the stack");
+
+      if (*Depth < 16)
+        OpGas += 3; // DUP* gas price
+      else
+        OpGas += 1000;
+    }
+  };
+  auto Pop = [&]() { OpGas += 2; };
+
+  createStackLayout(Source, Target, Swap, DupOrPush, Pop);
+  return OpGas;
+}
+
+bool EVMStackLayoutPermutations::hasStackTooDeep(const Stack &Source,
+                                                 const Stack &Target) {
+  Stack CurrentStack = Source;
+  bool HasError = false;
+  createStackLayout(
+      CurrentStack, Target,
+      [&](unsigned I) {
+        if (I > 16)
+          HasError = true;
+      },
+      [&](const StackSlot *Slot) {
+        if (Slot->isRematerializable())
+          return;
+
+        if (auto Depth = offset(reverse(CurrentStack), Slot);
+            Depth && *Depth >= 16)
+          HasError = true;
+      },
+      [&]() {});
+  return HasError;
+}
+
+Stack EVMStackLayoutPermutations::createIdealLayout(
+    const SmallVector<StackSlot *> &OpDefs, const Stack &Post,
+    const std::function<bool(const StackSlot *)> &RematerializeSlot) {
+  struct PreviousSlot {
+    size_t slot;
+  };
+  using LayoutT = SmallVector<std::variant<PreviousSlot, StackSlot *>>;
+
+  // Determine the number of slots that have to be on stack before executing the
+  // operation (excluding the inputs of the operation itself). That is slots
+  // that should not be generated on the fly and are not outputs of the
+  // operation.
+  size_t PreOperationLayoutSize = Post.size();
+  for (const auto *Slot : Post)
+    if (is_contained(OpDefs, Slot) || RematerializeSlot(Slot))
+      --PreOperationLayoutSize;
+
+  // The symbolic layout directly after the operation has the form
+  // PreviousSlot{0}, ..., PreviousSlot{n}, [output<0>], ..., [output<m>]
+  LayoutT Layout;
+  for (size_t Index = 0; Index < PreOperationLayoutSize; ++Index)
+    Layout.emplace_back(PreviousSlot{Index});
+  append_range(Layout, OpDefs);
+
+  // Shortcut for trivial case.
+  if (Layout.empty())
+    return Stack{};
+
+  // Next we will shuffle the layout to the Post stack using ShuffleOperations
+  // that are aware of PreviousSlot's.
+  struct ShuffleOperations {
+    LayoutT &Layout;
+    const Stack &Post;
+    std::set<StackSlot *> Outputs;
+    Multiplicity Mult;
+    const std::function<bool(const StackSlot *)> &RematerializeSlot;
+    ShuffleOperations(
+        LayoutT &Layout, const Stack &Post,
+        const std::function<bool(const StackSlot *)> &RematerializeSlot)
+        : Layout(Layout), Post(Post), RematerializeSlot(RematerializeSlot) {
+      for (const auto &LayoutSlot : Layout)
+        if (const auto *Slot = std::get_if<StackSlot *>(&LayoutSlot))
+          Outputs.insert(*Slot);
+
+      for (const auto &LayoutSlot : Layout)
+        if (const auto *Slot = std::get_if<StackSlot *>(&LayoutSlot))
+          --Mult[*Slot];
+
+      for (auto *Slot : Post)
+        if (Outputs.count(Slot) || RematerializeSlot(Slot))
+          ++Mult[Slot];
+    }
+
+    bool isCompatible(size_t Source, size_t Target) {
+      return Source < Layout.size() && Target < Post.size() &&
+             (isa<JunkSlot>(Post[Target]) ||
+              std::visit(Overload{[&](const PreviousSlot &) {
+                                    return !Outputs.count(Post[Target]) &&
+                                           !RematerializeSlot(Post[Target]);
+                                  },
+                                  [&](const StackSlot *S) {
+                                    return S == Post[Target];
+                                  }},
+                         Layout[Source]));
+    }
+
+    bool sourceIsSame(size_t Lhs, size_t Rhs) {
+      if (std::holds_alternative<PreviousSlot>(Layout[Lhs]) &&
+          std::holds_alternative<PreviousSlot>(Layout[Rhs]))
+        return true;
+
+      auto *SlotLHS = std::get_if<StackSlot *>(&Layout[Lhs]);
+      auto *SlotRHS = std::get_if<StackSlot *>(&Layout[Rhs]);
+      return SlotLHS && SlotRHS && *SlotLHS == *SlotRHS;
+    }
+
+    int sourceMultiplicity(size_t Offset) {
+      return std::visit(
+          Overload{[&](const PreviousSlot &) { return 0; },
+                   [&](const StackSlot *S) { return Mult.at(S); }},
+          Layout[Offset]);
+    }
+
+    int targetMultiplicity(size_t Offset) {
+      if (!Outputs.count(Post[Offset]) && !RematerializeSlot(Post[Offset]))
+        return 0;
+      return Mult.at(Post[Offset]);
+    }
+
+    bool targetIsArbitrary(size_t Offset) {
+      return Offset < Post.size() && isa<JunkSlot>(Post[Offset]);
+    }
+
+    void swap(size_t I) {
+      assert(!std::holds_alternative<PreviousSlot>(
+                 Layout[Layout.size() - I - 1]) ||
+             !std::holds_alternative<PreviousSlot>(Layout.back()));
+      std::swap(Layout[Layout.size() - I - 1], Layout.back());
+    }
+
+    size_t sourceSize() { return Layout.size(); }
+
+    size_t targetSize() { return Post.size(); }
+
+    void pop() { Layout.pop_back(); }
+
+    void pushOrDupTarget(size_t Offset) { Layout.push_back(Post[Offset]); }
+  };
+
+  Shuffler<ShuffleOperations>::shuffle(Layout, Post, RematerializeSlot);
+
+  // Now we can construct the ideal layout before the operation.
+  // "layout" has shuffled the PreviousSlot{x} to new places using minimal
+  // operations to move the operation output in place. The resulting permutation
+  // of the PreviousSlot yields the ideal positions of slots before the
+  // operation, i.e. if PreviousSlot{2} is at a position at which Post contains
+  // VariableSlot{"tmp"}, then we want the variable tmp in the slot at offset 2
+  // in the layout before the operation.
+  assert(Layout.size() == Post.size());
+  SmallVector<StackSlot *> IdealLayout(Post.size(), nullptr);
+  for (unsigned Idx = 0; Idx < std::min(Layout.size(), Post.size()); ++Idx) {
+    auto *Slot = Post[Idx];
+    auto &IdealPosition = Layout[Idx];
+    if (auto *PrevSlot = std::get_if<PreviousSlot>(&IdealPosition))
+      IdealLayout[PrevSlot->slot] = Slot;
+  }
+
+  // The tail of layout must have contained the operation outputs and will not
+  // have been assigned slots in the last loop.
+  while (!IdealLayout.empty() && !IdealLayout.back())
+    IdealLayout.pop_back();
+
+  assert(IdealLayout.size() == PreOperationLayoutSize);
+
+  Stack Result;
+  for (auto *Item : IdealLayout) {
+    assert(Item);
+    Result.push_back(Item);
+  }
+
+  return Result;
+}
+
+Stack EVMStackLayoutPermutations::combineStack(const Stack &Stack1,
+                                               const Stack &Stack2) {
+  // TODO: it would be nicer to replace this by a constructive algorithm.
+  // Currently it uses a reduced version of the Heap Algorithm to partly
+  // brute-force, which seems to work decently well.
+
+  Stack CommonPrefix;
+  for (unsigned Idx = 0; Idx < std::min(Stack1.size(), Stack2.size()); ++Idx) {
+    StackSlot *Slot1 = Stack1[Idx];
+    const StackSlot *Slot2 = Stack2[Idx];
+    if (!(Slot1 == Slot2))
+      break;
+    CommonPrefix.push_back(Slot1);
+  }
+
+  Stack Stack1Tail, Stack2Tail;
+  for (auto *Slot : drop_begin(Stack1, CommonPrefix.size()))
+    Stack1Tail.push_back(Slot);
+
+  for (auto *Slot : drop_begin(Stack2, CommonPrefix.size()))
+    Stack2Tail.push_back(Slot);
+
+  if (Stack1Tail.empty()) {
+    CommonPrefix.append(compressStack(Stack2Tail));
+    return CommonPrefix;
+  }
+
+  if (Stack2Tail.empty()) {
+    CommonPrefix.append(compressStack(Stack1Tail));
+    return CommonPrefix;
+  }
+
+  Stack Candidate;
+  for (auto *Slot : Stack1Tail)
+    if (!is_contained(Candidate, Slot))
+      Candidate.push_back(Slot);
+
+  for (auto *Slot : Stack2Tail)
+    if (!is_contained(Candidate, Slot))
+      Candidate.push_back(Slot);
+
+  {
+    auto *RemIt = std::remove_if(
+        Candidate.begin(), Candidate.end(), [](const StackSlot *Slot) {
+          return isa<LiteralSlot>(Slot) || isa<SymbolSlot>(Slot) ||
+                 isa<FunctionCallReturnLabelSlot>(Slot);
+        });
+    Candidate.erase(RemIt, Candidate.end());
+  }
+
+  auto evaluate = [&](const Stack &Candidate) -> size_t {
+    size_t NumOps = 0;
+    Stack TestStack = Candidate;
+    auto Swap = [&](unsigned SwapDepth) {
+      ++NumOps;
+      if (SwapDepth > 16)
+        NumOps += 1000;
+    };
+
+    auto DupOrPush = [&](const StackSlot *Slot) {
+      if (Slot->isRematerializable())
+        return;
+
+      Stack Tmp = CommonPrefix;
+      Tmp.append(TestStack);
+      auto Depth = offset(reverse(Tmp), Slot);
+      if (Depth && *Depth >= 16)
+        NumOps += 1000;
+    };
+    createStackLayout(TestStack, Stack1Tail, Swap, DupOrPush, [&]() {});
+    TestStack = Candidate;
+    createStackLayout(TestStack, Stack2Tail, Swap, DupOrPush, [&]() {});
+    return NumOps;
+  };
+
+  // See https://en.wikipedia.org/wiki/Heap's_algorithm
+  size_t N = Candidate.size();
+  Stack BestCandidate = Candidate;
+  size_t BestCost = evaluate(Candidate);
+  SmallVector<size_t> C(N, 0);
+  size_t I = 1;
+  while (I < N) {
+    if (C[I] < I) {
+      if (I & 1)
+        std::swap(Candidate.front(), Candidate[I]);
+      else
+        std::swap(Candidate[C[I]], Candidate[I]);
+
+      size_t Cost = evaluate(Candidate);
+      if (Cost < BestCost) {
+        BestCost = Cost;
+        BestCandidate = Candidate;
+      }
+      ++C[I];
+      // Note that for a proper implementation of the Heap algorithm this would
+      // need to revert back to 'I = 1'. However, the incorrect implementation
+      // produces decent result and the proper version would have N! complexity
+      // and is thereby not feasible.
+      ++I;
+    } else {
+      C[I] = 0;
+      ++I;
+    }
+  }
+
+  CommonPrefix.append(BestCandidate);
+  return CommonPrefix;
+}
