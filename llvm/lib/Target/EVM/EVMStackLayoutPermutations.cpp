@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMStackLayoutPermutations.h"
+#include <deque>
 
 using namespace llvm;
 
@@ -91,10 +92,9 @@ private:
       // We need another copy of this slot.
       else if (Ops.sourceMultiplicity(SourceOffset) > 0) {
         // If this slot occurs again later, we skip this occurrence.
-        // TODO: use C++ 20 ranges::views::iota
         if (const auto &R =
                 llvm::seq<size_t>(SourceOffset + 1, Ops.sourceSize());
-            std::any_of(R.begin(), R.end(), [&](size_t Offset) {
+            any_of(R, [&](size_t Offset) {
               return Ops.sourceIsSame(SourceOffset, Offset);
             }))
           continue;
@@ -125,13 +125,13 @@ private:
   /// slot at ``nextOffset`` is fixed, the current source slot at ``nextOffset``
   /// will be at the stack top, which is the slot required at \p TargetOffset.
   static bool bringUpTargetSlot(ShuffleOperations &Ops, size_t TargetOffset) {
-    std::list<size_t> ToVisit{TargetOffset};
-    std::set<size_t> Visited;
+    std::deque<size_t> ToVisit{TargetOffset};
+    DenseSet<size_t> Visited;
 
     while (!ToVisit.empty()) {
       size_t Offset = *ToVisit.begin();
       ToVisit.erase(ToVisit.begin());
-      Visited.emplace(Offset);
+      Visited.insert(Offset);
       if (Ops.targetMultiplicity(Offset) > 0) {
         Ops.pushOrDupTarget(Offset);
         return true;
@@ -155,10 +155,8 @@ private:
     ShuffleOperations Ops{std::forward<Args>(args)...};
 
     // All source slots are final.
-    if (const auto &R = llvm::seq<size_t>(0u, Ops.sourceSize());
-        std::all_of(R.begin(), R.end(), [&](size_t Index) {
-          return Ops.isCompatible(Index, Index);
-        })) {
+    if (const auto &R = llvm::seq<size_t>(0u, Ops.sourceSize()); all_of(
+            R, [&](size_t Index) { return Ops.isCompatible(Index, Index); })) {
       // Bring up all remaining target slots, if any, or terminate otherwise.
       if (Ops.sourceSize() < Ops.targetSize()) {
         if (!dupDeepSlotIfRequired(Ops)) {
@@ -370,12 +368,12 @@ public:
   }
 
 private:
-  std::map<const FunctionCallReturnLabelSlot *, int>
+  DenseMap<const FunctionCallReturnLabelSlot *, int>
       FunctionCallReturnLabelSlotMultiplicity;
   int FunctionReturnLabelSlotMultiplicity = 0;
-  std::map<const RegisterSlot *, int> RegisterSlotMultiplicity;
-  std::map<const LiteralSlot *, int> LiteralSlotMultiplicity;
-  std::map<const SymbolSlot *, int> SymbolSlotMultiplicity;
+  DenseMap<const RegisterSlot *, int> RegisterSlotMultiplicity;
+  DenseMap<const LiteralSlot *, int> LiteralSlotMultiplicity;
+  DenseMap<const SymbolSlot *, int> SymbolSlotMultiplicity;
   int JunkSlotMultiplicity = 0;
 };
 
@@ -586,7 +584,7 @@ Stack EVMStackLayoutPermutations::createIdealLayout(
   struct ShuffleOperations {
     LayoutT &Layout;
     const Stack &Post;
-    std::set<StackSlot *> Outputs;
+    DenseSet<StackSlot *> Outputs;
     Multiplicity Mult;
     const std::function<bool(const StackSlot *)> &RematerializeSlot;
     ShuffleOperations(
@@ -737,14 +735,10 @@ Stack EVMStackLayoutPermutations::combineStack(const Stack &Stack1,
     if (!is_contained(Candidate, Slot))
       Candidate.push_back(Slot);
 
-  {
-    auto *RemIt = std::remove_if(
-        Candidate.begin(), Candidate.end(), [](const StackSlot *Slot) {
-          return isa<LiteralSlot>(Slot) || isa<SymbolSlot>(Slot) ||
-                 isa<FunctionCallReturnLabelSlot>(Slot);
-        });
-    Candidate.erase(RemIt, Candidate.end());
-  }
+  erase_if(Candidate, [](const StackSlot *Slot) {
+    return isa<LiteralSlot>(Slot) || isa<SymbolSlot>(Slot) ||
+           isa<FunctionCallReturnLabelSlot>(Slot);
+  });
 
   auto evaluate = [&](const Stack &Candidate) -> size_t {
     size_t NumOps = 0;

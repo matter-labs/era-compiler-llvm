@@ -196,8 +196,7 @@ void EVMBackwardStackLayoutGenerator::runPropagation() {
         MBBExitLayoutMap[Block] = *ExitLayout;
         MBBEntryLayoutMap[Block] =
             propagateStackThroughBlock(*ExitLayout, Block);
-        for (auto Pred : Block->predecessors())
-          ToVisit.emplace_back(Pred);
+        append_range(ToVisit, Block->predecessors());
       }
     }
 
