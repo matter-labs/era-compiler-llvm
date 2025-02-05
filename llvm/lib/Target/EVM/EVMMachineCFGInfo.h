@@ -15,7 +15,7 @@
 
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/DenseSet.h"
-#include "llvm/CodeGen/MachineOperand.h"
+#include "llvm/ADT/SmallVector.h"
 
 #include <memory>
 
@@ -24,7 +24,8 @@ namespace llvm {
 class LiveIntervals;
 class MachineFunction;
 class MachineBasicBlock;
-class MachineLoopInfo;
+class MachineInstr;
+class MachineOperand;
 class TargetInstrInfo;
 
 enum class MBBExitType {
@@ -88,7 +89,7 @@ class EVMMachineCFGInfo {
 public:
   EVMMachineCFGInfo(const EVMMachineCFGInfo &) = delete;
   EVMMachineCFGInfo &operator=(const EVMMachineCFGInfo &) = delete;
-  EVMMachineCFGInfo(MachineFunction &MF, MachineLoopInfo *MLI);
+  explicit EVMMachineCFGInfo(MachineFunction &MF);
 
   const EVMMBBTerminatorsInfo *
   getTerminatorsInfo(const MachineBasicBlock *MBB) const;
@@ -108,7 +109,6 @@ private:
   DenseSet<const MachineBasicBlock *> CutVertexes;
 
   void collectTerminatorsInfo(const TargetInstrInfo *TII,
-                              const MachineLoopInfo *MLI,
                               MachineBasicBlock &MBB);
   void collectBlocksLeadingToFunctionReturn(
       const SmallVector<const MachineBasicBlock *> &Returns);

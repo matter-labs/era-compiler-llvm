@@ -10,13 +10,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMStackModel.h"
-#include "EVM.h"
 #include "EVMMachineFunctionInfo.h"
 #include "EVMSubtarget.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
+#include "llvm/CodeGen/LiveIntervals.h"
 #include "llvm/CodeGen/MachineFunction.h"
-
-#include <ostream>
 
 using namespace llvm;
 

@@ -11,12 +11,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMMachineCFGInfo.h"
-#include "EVMMachineFunctionInfo.h"
 #include "EVMSubtarget.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "llvm/CodeGen/LiveIntervals.h"
 #include "llvm/CodeGen/MachineFunction.h"
-#include "llvm/CodeGen/MachineLoopInfo.h"
 
 using namespace llvm;
 
@@ -47,11 +45,10 @@ static bool isTerminate(const MachineInstr *MI) {
   }
 }
 
-EVMMachineCFGInfo::EVMMachineCFGInfo(MachineFunction &MF,
-                                     MachineLoopInfo *MLI) {
+EVMMachineCFGInfo::EVMMachineCFGInfo(MachineFunction &MF) {
   const TargetInstrInfo *TII = MF.getSubtarget().getInstrInfo();
   for (MachineBasicBlock &MBB : MF)
-    collectTerminatorsInfo(TII, MLI, MBB);
+    collectTerminatorsInfo(TII, MBB);
 
   SmallVector<const MachineBasicBlock *> ReturnBlocks;
   for (const MachineBasicBlock &MBB : MF) {
@@ -69,7 +66,6 @@ EVMMachineCFGInfo::getTerminatorsInfo(const MachineBasicBlock *MBB) const {
 }
 
 void EVMMachineCFGInfo::collectTerminatorsInfo(const TargetInstrInfo *TII,
-                                               const MachineLoopInfo *MLI,
                                                MachineBasicBlock &MBB) {
   assert(MBBTerminatorsInfoMap.count(&MBB) == 0);
 

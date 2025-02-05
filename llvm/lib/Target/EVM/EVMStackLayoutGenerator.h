@@ -18,13 +18,14 @@
 #ifndef LLVM_LIB_TARGET_EVM_EVMSTACKLAYOUTGENERATOR_H
 #define LLVM_LIB_TARGET_EVM_EVMSTACKLAYOUTGENERATOR_H
 
-#include "EVMMachineCFGInfo.h"
 #include "EVMStackModel.h"
 #include "llvm/ADT/DenseMap.h"
-
 #include <deque>
 
 namespace llvm {
+
+class EVMMachineCFGInfo;
+class MachineLoopInfo;
 
 /// Returns the number of operations required to transform stack \p Source to
 /// \p Target.
