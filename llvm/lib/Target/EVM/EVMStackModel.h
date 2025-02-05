@@ -219,7 +219,6 @@ class EVMStackModel {
 public:
   EVMStackModel(MachineFunction &MF, const LiveIntervals &LIS);
   Stack getFunctionParameters() const;
-  Stack getInstrInput(const MachineInstr &MI) const;
   Stack getReturnArguments(const MachineInstr &MI) const;
   const SmallVector<Operation> &
   getOperations(const MachineBasicBlock *MBB) const {
@@ -273,6 +272,7 @@ public:
   }
 
 private:
+  Stack getInstrInput(const MachineInstr &MI) const;
   void createOperation(MachineInstr &MI, SmallVector<Operation> &Ops) const;
 };
 } // namespace llvm

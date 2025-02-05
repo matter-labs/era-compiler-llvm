@@ -155,7 +155,7 @@ private:
     ShuffleOperations Ops{std::forward<Args>(args)...};
 
     // All source slots are final.
-    if (const auto &R = llvm::seq<size_t>(0u, Ops.sourceSize()); all_of(
+    if (const auto &R = llvm::seq<size_t>(0U, Ops.sourceSize()); all_of(
             R, [&](size_t Index) { return Ops.isCompatible(Index, Index); })) {
       // Bring up all remaining target slots, if any, or terminate otherwise.
       if (Ops.sourceSize() < Ops.targetSize()) {
@@ -336,15 +336,15 @@ private:
 class Multiplicity {
 public:
   int &operator[](const StackSlot *Slot) {
-    if (auto *p = dyn_cast<FunctionCallReturnLabelSlot>(Slot))
+    if (const auto *p = dyn_cast<FunctionCallReturnLabelSlot>(Slot))
       return FunctionCallReturnLabelSlotMultiplicity[p];
     if (isa<FunctionReturnLabelSlot>(Slot))
       return FunctionReturnLabelSlotMultiplicity;
-    if (auto *p = dyn_cast<RegisterSlot>(Slot))
+    if (const auto *p = dyn_cast<RegisterSlot>(Slot))
       return RegisterSlotMultiplicity[p];
-    if (auto *p = dyn_cast<LiteralSlot>(Slot))
+    if (const auto *p = dyn_cast<LiteralSlot>(Slot))
       return LiteralSlotMultiplicity[p];
-    if (auto *p = dyn_cast<SymbolSlot>(Slot))
+    if (const auto *p = dyn_cast<SymbolSlot>(Slot))
       return SymbolSlotMultiplicity[p];
 
     assert(isa<JunkSlot>(Slot));
@@ -352,15 +352,15 @@ public:
   }
 
   int at(const StackSlot *Slot) const {
-    if (auto *p = dyn_cast<FunctionCallReturnLabelSlot>(Slot))
+    if (const auto *p = dyn_cast<FunctionCallReturnLabelSlot>(Slot))
       return FunctionCallReturnLabelSlotMultiplicity.at(p);
     if (isa<FunctionReturnLabelSlot>(Slot))
       return FunctionReturnLabelSlotMultiplicity;
-    if (auto *p = dyn_cast<RegisterSlot>(Slot))
+    if (const auto *p = dyn_cast<RegisterSlot>(Slot))
       return RegisterSlotMultiplicity.at(p);
-    if (auto *p = dyn_cast<LiteralSlot>(Slot))
+    if (const auto *p = dyn_cast<LiteralSlot>(Slot))
       return LiteralSlotMultiplicity.at(p);
-    if (auto *p = dyn_cast<SymbolSlot>(Slot))
+    if (const auto *p = dyn_cast<SymbolSlot>(Slot))
       return SymbolSlotMultiplicity.at(p);
 
     assert(isa<JunkSlot>(Slot));
@@ -430,7 +430,7 @@ void EVMStackLayoutPermutations::createStackLayout(
                       const std::function<void()> &Pop)
         : currentStack(CurrentStack), targetStack(TargetStack),
           swapCallback(Swap), pushOrDupCallback(PushOrDup), popCallback(Pop) {
-      for (auto const &slot : currentStack)
+      for (const auto &slot : currentStack)
         --multiplicity[slot];
 
       for (unsigned Offset = 0; Offset < targetStack.size(); ++Offset) {
@@ -704,7 +704,7 @@ Stack EVMStackLayoutPermutations::combineStack(const Stack &Stack1,
   for (unsigned Idx = 0; Idx < std::min(Stack1.size(), Stack2.size()); ++Idx) {
     StackSlot *Slot1 = Stack1[Idx];
     const StackSlot *Slot2 = Stack2[Idx];
-    if (!(Slot1 == Slot2))
+    if (Slot1 != Slot2)
       break;
     CommonPrefix.push_back(Slot1);
   }

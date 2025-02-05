@@ -73,8 +73,8 @@ private:
   /// to it and the result can be transformed to \p ExitStack with minimal stack
   /// shuffling. Simultaneously stores the entry layout required for executing
   /// the operation in the map.
-  Stack propagateStackThroughOperation(Stack ExitStack,
-                                       Operation const &Operation,
+  Stack propagateStackThroughOperation(const Stack &ExitStack,
+                                       const Operation &Operation,
                                        bool AggressiveStackCompression = false);
 
   /// Returns the desired stack layout at the entry of \p Block, assuming the
@@ -88,9 +88,9 @@ private:
   /// backwards jumps until the layout is stabilized.
   void runPropagation();
 
-  /// Adds junks to the subgraph starting at \p Entry. It should only be
+  /// Adds junks to the subgraph starting at \p Block. It should only be
   /// called on cut-vertices, so the full subgraph retains proper stack balance.
-  void addJunksToStackBottom(const MachineBasicBlock *Entry, size_t NumJunk);
+  void addJunksToStackBottom(const MachineBasicBlock *Block, size_t NumJunk);
 
 #ifndef NDEBUG
   void dump(raw_ostream &OS);

@@ -22,7 +22,7 @@ using namespace llvm;
 #define DEBUG_TYPE "evm-stackify-code-emitter"
 
 // Return whether the function of the call instruction will return.
-bool callWillReturn(const MachineInstr *Call) {
+static bool callWillReturn(const MachineInstr *Call) {
   assert(Call->getOpcode() == EVM::FCALL && "Unexpected call instruction");
   const MachineOperand *FuncOp = Call->explicit_uses().begin();
   assert(FuncOp->isGlobal() && "Expected a global value");

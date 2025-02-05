@@ -61,7 +61,8 @@ std::unique_ptr<EVMStackLayout> EVMBackwardStackLayoutGenerator::run() {
 }
 
 Stack EVMBackwardStackLayoutGenerator::propagateStackThroughOperation(
-    Stack ExitStack, const Operation &Op, bool AggressiveStackCompression) {
+    const Stack &ExitStack, const Operation &Op,
+    bool AggressiveStackCompression) {
   // Enable aggressive stack compression for recursive calls.
   if (Op.isFunctionCall())
     // TODO: compress stack for recursive functions.
@@ -307,7 +308,7 @@ void EVMBackwardStackLayoutGenerator::runPropagation() {
     const Stack EntryLayout = MBBEntryLayoutMap.at(&MBB);
     const Stack &ExitLayout = MBBExitLayoutMap.at(&MBB);
     const SmallVector<Operation> &Ops = StackModel.getOperations(&MBB);
-    Stack const &NextLayout =
+    const Stack &NextLayout =
         Ops.empty() ? ExitLayout : OperationEntryLayoutMap.at(&Ops.front());
     if (EntryLayout != NextLayout) {
       size_t OptimalNumJunks = getOptimalNumberOfJunks(EntryLayout, NextLayout);
@@ -381,8 +382,8 @@ EVMBackwardStackLayoutGenerator::getExitLayoutOrStageDependencies(
 }
 
 void EVMBackwardStackLayoutGenerator::addJunksToStackBottom(
-    const MachineBasicBlock *Entry, size_t NumJunk) {
-  for (const MachineBasicBlock *MBB : depth_first(Entry)) {
+    const MachineBasicBlock *Block, size_t NumJunk) {
+  for (const MachineBasicBlock *MBB : depth_first(Block)) {
     Stack EntryTmp(NumJunk, EVMStackModel::getJunkSlot());
     EntryTmp.append(MBBEntryLayoutMap.at(MBB));
     MBBEntryLayoutMap[MBB] = std::move(EntryTmp);
@@ -422,7 +423,7 @@ void EVMBackwardStackLayoutGenerator::printBlock(
     raw_ostream &OS, const MachineBasicBlock &Block) {
   OS << "Block" << getBlockId(Block) << " [\n";
   OS << stackToString(MBBEntryLayoutMap.at(&Block)) << "\n";
-  for (auto const &Op : StackModel.getOperations(&Block)) {
+  for (const auto &Op : StackModel.getOperations(&Block)) {
     OS << "\n";
     Stack EntryLayout = OperationEntryLayoutMap.at(&Op);
     OS << stackToString(EntryLayout) << "\n";
