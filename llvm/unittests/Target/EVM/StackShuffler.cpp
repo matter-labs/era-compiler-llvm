@@ -9,23 +9,18 @@
 #include "EVMRegisterInfo.h"
 #include "EVMStackModel.h"
 #include "EVMStackShuffler.h"
-#include "EVMTargetMachine.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
-#include "llvm-c/Core.h"
-#include "llvm-c/IRReader.h"
 #include "llvm-c/TargetMachine.h"
+#include "llvm/CodeGen/LiveIntervals.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/MC/TargetRegistry.h"
-#include "llvm/Support/MemoryBuffer.h"
-#include "llvm/Target/CodeGenCWrappers.h"
 #include "llvm/Target/TargetMachine.h"
 #include "gtest/gtest.h"
 #include <memory>
-#include <string.h>
 
 using namespace llvm;
 

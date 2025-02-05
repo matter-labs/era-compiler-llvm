@@ -18,23 +18,15 @@
 #ifndef LLVM_LIB_TARGET_EVM_EVMSTACKMODEL_H
 #define LLVM_LIB_TARGET_EVM_EVMSTACKMODEL_H
 
-#include "llvm/ADT/APInt.h"
 #include "llvm/ADT/DenseMap.h"
-#include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/SmallVector.h"
-#include "llvm/CodeGen/LiveIntervals.h"
-#include "llvm/CodeGen/MachineInstr.h"
-#include "llvm/CodeGen/MachineLoopInfo.h"
-#include "llvm/CodeGen/Register.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
-#include "llvm/MC/MCSymbol.h"
-
-#include <variant>
 
 namespace llvm {
 
 class MachineFunction;
 class MachineBasicBlock;
+class MCSymbol;
 
 class StackSlot {
 public:

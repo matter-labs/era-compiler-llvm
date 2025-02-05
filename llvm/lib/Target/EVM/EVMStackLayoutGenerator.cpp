@@ -16,11 +16,13 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMStackLayoutGenerator.h"
+#include "EVMMachineCFGInfo.h"
 #include "EVMRegisterInfo.h"
 #include "EVMStackShuffler.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/CodeGen/MachineFunction.h"
+#include "llvm/CodeGen/MachineLoopInfo.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
 #include "llvm/IR/DebugLoc.h"
 #include "llvm/Support/Debug.h"
