@@ -310,7 +310,8 @@ static bool isSafeToMove(const MachineOperand *Def, const MachineOperand *Use,
     return true;
 
   // Don't move ARGUMENT instructions, as stackification pass relies on this.
-  if (DefI->getOpcode() == EVM::ARGUMENT)
+  if (DefI->getOpcode() == EVM::ARGUMENT ||
+      DefI->getOpcode() == EVM::PUSHDEPLOYADDRESS)
     return false;
 
   // Check for register dependencies.
