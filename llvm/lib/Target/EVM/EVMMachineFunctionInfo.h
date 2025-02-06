@@ -57,6 +57,9 @@ class EVMMachineFunctionInfo final : public MachineFunctionInfo {
   /// If the MF's instructions are in 'stack' form.
   bool IsStackified = false;
 
+  /// True if MF has PushDeployAddress instruction.
+  bool HasPushDeployAddress = false;
+
 public:
   explicit EVMMachineFunctionInfo(MachineFunction &MF) {}
   EVMMachineFunctionInfo(const Function &F, const TargetSubtargetInfo *STI) {}
@@ -101,6 +104,10 @@ public:
   void setIsStackified(bool Val = true) { IsStackified = Val; }
 
   bool getIsStackified() const { return IsStackified; }
+
+  void setHasPushDeployAddress(bool Val = true) { HasPushDeployAddress = Val; }
+
+  bool getHasPushDeployAddress() const { return HasPushDeployAddress; }
 };
 
 } // end namespace llvm

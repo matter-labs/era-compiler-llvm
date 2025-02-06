@@ -26,11 +26,15 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVM.h"
+#include "EVMMachineFunctionInfo.h"
 #include "EVMSubtarget.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "llvm/CodeGen/MachineBlockFrequencyInfo.h"
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/Support/raw_ostream.h"
+
+#include <deque>
+
 using namespace llvm;
 
 #define DEBUG_TYPE "evm-argument-move"
@@ -68,10 +72,17 @@ bool EVMArgumentMove::runOnMachineFunction(MachineFunction &MF) {
 
   bool Changed = false;
   MachineBasicBlock &EntryMBB = MF.front();
-  SmallVector<MachineInstr *> Args;
-  for (MachineInstr &MI : EntryMBB) {
-    if (EVM::ARGUMENT == MI.getOpcode())
-      Args.push_back(&MI);
+  std::deque<MachineInstr *> Args;
+  MachineInstr *PushDeployAddress = nullptr;
+  for (MachineBasicBlock &MBB : MF) {
+    for (MachineInstr &MI : MBB) {
+      if (EVM::ARGUMENT == MI.getOpcode())
+        Args.push_back(&MI);
+      else if (EVM::PUSHDEPLOYADDRESS == MI.getOpcode()) {
+        assert(!PushDeployAddress && "Multiple PUSHDEPLOYADDRESS instructions");
+        PushDeployAddress = &MI;
+      }
+    }
   }
 
   // Sort ARGUMENT instructions in ascending order of their arguments.
@@ -81,6 +92,13 @@ bool EVMArgumentMove::runOnMachineFunction(MachineFunction &MF) {
               int64_t Arg2Idx = MI2->getOperand(1).getImm();
               return Arg1Idx < Arg2Idx;
             });
+
+  // Should be the first instruction at the MF's entry.
+  if (PushDeployAddress) {
+    auto *MFI = MF.getInfo<EVMMachineFunctionInfo>();
+    MFI->setHasPushDeployAddress();
+    Args.push_front(PushDeployAddress);
+  }
 
   for (MachineInstr *MI : reverse(Args)) {
     MachineInstr *Arg = MI->removeFromParent();
