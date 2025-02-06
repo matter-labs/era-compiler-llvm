@@ -10,6 +10,7 @@
 
 #include "EVM.h"
 #include "EVMInstrInfo.h"
+#include "EVMMachineFunctionInfo.h"
 #include "EVMRegisterInfo.h"
 #include "EVMStackShuffler.h"
 #include "llvm/ADT/DepthFirstIterator.h"
@@ -426,15 +427,32 @@ void EVMStackSolver::runPropagation() {
     }
   }
 
+  Stack EntryStack;
+  bool IsNoReturn = MF.getFunction().hasFnAttribute(Attribute::NoReturn);
+  Stack FunctionParameters = StackModel.getFunctionParameters();
+
+  // We assume the function containing PUSHDEPLOYADDRESS instruction has the
+  // following properties:
+  //   - It is unique (verified in AsmPrinter)
+  //   - It appears first in the module layout. TODO: #778
+  //   - It does not return and has no arguments
+  if (const auto *MFI = MF.getInfo<EVMMachineFunctionInfo>();
+      MFI->getHasPushDeployAddress()) {
+    MachineBasicBlock::const_iterator I = MF.front().getFirstNonDebugInstr();
+    assert(I != MF.front().end() && I->getOpcode() == EVM::PUSHDEPLOYADDRESS &&
+           "MF has no PUSHDEPLOYADDRESS");
+    assert(IsNoReturn && FunctionParameters.empty() &&
+           "PUSHDEPLOYADDRESS in a non - void/nullary function");
+    EntryStack.push_back(StackModel.getRegisterSlot(I->getOperand(0).getReg()));
+  }
   // The entry MBB's stack contains the function parameters, which cannot be
   // inferred; put them to the stack.
-  Stack EntryStack;
-  if (!MF.getFunction().hasFnAttribute(Attribute::NoReturn))
+  if (!IsNoReturn)
     EntryStack.push_back(StackModel.getCalleeReturnSlot(&MF));
 
   // Calling convention: input arguments are passed in stack such that the
   // first one specified in the function declaration is passed on the stack TOP.
-  append_range(EntryStack, reverse(StackModel.getFunctionParameters()));
+  append_range(EntryStack, reverse(FunctionParameters));
   insertMBBEntryStack(&MF.front(), EntryStack);
 }
 

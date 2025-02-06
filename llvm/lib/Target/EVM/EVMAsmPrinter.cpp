@@ -13,6 +13,7 @@
 
 #include "EVM.h"
 #include "EVMMCInstLower.h"
+#include "EVMMachineFunctionInfo.h"
 #include "EVMTargetMachine.h"
 #include "MCTargetDesc/EVMMCAsmInfo.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
@@ -50,6 +51,11 @@ class EVMAsmPrinter : public AsmPrinter {
   StringSet<> WideRelocSymbolsSet;
   StringMap<unsigned> ImmutablesMap;
 
+  // True if there is a function that pushes deploy address.
+  bool ModuleHasPushDeployAddress = false;
+
+  bool FirstFunctIsHandled = false;
+
 public:
   EVMAsmPrinter(TargetMachine &TM, std::unique_ptr<MCStreamer> Streamer)
       : AsmPrinter(TM, std::move(Streamer)) {}
@@ -63,6 +69,9 @@ public:
   void emitFunctionEntryLabel() override;
 
   void emitEndOfAsmFile(Module &) override;
+
+  void emitFunctionBodyStart() override;
+  void emitFunctionBodyEnd() override;
 
 private:
   void emitJumpDest();
@@ -93,6 +102,29 @@ void EVMAsmPrinter::emitFunctionEntryLabel() {
     VRegMap.insert(std::make_pair(Vr, N + 1));
   }
 }
+
+void EVMAsmPrinter::emitFunctionBodyStart() {
+  if (const auto *MFI = MF->getInfo<EVMMachineFunctionInfo>();
+      MFI->getHasPushDeployAddress()) {
+    // TODO: #778. Move the function with PUSHDEPLOYADDRESS to the
+    // beginning of the module layout.
+    if (FirstFunctIsHandled)
+      report_fatal_error("Function with PUSHDEPLOYADDRESS isn't first.");
+
+    assert(!ModuleHasPushDeployAddress &&
+           "Multiple functions with PUSHDEPLOYADDRESS.");
+
+    // Deploy address is represented by a PUSH20 instruction at the
+    // start of the bytecode.
+    MCInst MCI;
+    MCI.setOpcode(EVM::PUSH20_S);
+    MCI.addOperand(MCOperand::createImm(0));
+    EmitToStreamer(*OutStreamer, MCI);
+    ModuleHasPushDeployAddress = true;
+  }
+}
+
+void EVMAsmPrinter::emitFunctionBodyEnd() { FirstFunctIsHandled = true; }
 
 void EVMAsmPrinter::emitBasicBlockStart(const MachineBasicBlock &MBB) {
   AsmPrinter::emitBasicBlockStart(MBB);
@@ -294,6 +326,8 @@ void EVMAsmPrinter::emitWideRelocatableSymbol(const MachineInstr *MI) {
 void EVMAsmPrinter::emitEndOfAsmFile(Module &) {
   WideRelocSymbolsSet.clear();
   ImmutablesMap.clear();
+  ModuleHasPushDeployAddress = false;
+  FirstFunctIsHandled = false;
 }
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMAsmPrinter() {
