@@ -272,6 +272,14 @@ def int_evm_linkersymbol : DefaultAttrsIntrinsic<
   [IntrNoMem, IntrWillReturn]
 >;
 
+// The intrinsic call should not be optimized out, even though
+// its result is not used. For this, IntrInaccessibleMemOnly is
+// used.
+def int_evm_pushdeployaddress : DefaultAttrsIntrinsic<
+  [llvm_i256_ty], [], [IntrInaccessibleMemOnly, IntrWillReturn,
+                       IntrNoDuplicate]
+>;
+
 // Immutables support.
 
 // Loads immutable value. Should be used only in runtime code.

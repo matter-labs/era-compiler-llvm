@@ -200,7 +200,7 @@ def ADJCALLSTACKUP
               [(EVMcallseq_end timm:$amt1, timm:$amt2)]>;
 }
 
-let hasSideEffects = 1, Defs = []<Register>,
+let hasSideEffects = 1, isNotDuplicable = 1, Defs = []<Register>,
     Uses = [ARGUMENTS] in def ARGUMENT
     : NRI<(outs GPR:$res),
           (ins i256imm:$argno), [(set GPR:$res, (EVMargument timm:$argno))],
@@ -1146,3 +1146,8 @@ let isAsCheapAsAMove = 1, isReMaterializable = 1, isCodeGenOnly = 1, hasSideEffe
     def LOADIMMUTABLE_S : NI<(outs), (ins jmptarget:$sym), [], true, "", 0, 0>;
   }
 }
+
+let isCodeGenOnly = 1, hasSideEffects = 1, isNotDuplicable = 1 in
+def PUSHDEPLOYADDRESS
+  : NRI<(outs GPR:$res), (ins), [(set GPR:$res, (int_evm_pushdeployaddress))],
+    "PUSHDEPLOYADDRESS $res">;
