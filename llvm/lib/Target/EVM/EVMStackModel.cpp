@@ -167,6 +167,7 @@ void EVMStackModel::createOperation(MachineInstr &MI,
   case EVM::DATASIZE:
   case EVM::DATAOFFSET:
   case EVM::LINKERSYMBOL:
+  case EVM::LOADIMMUTABLE:
     // The copy/data instructions just represent an assignment. This case is
     // handled below.
     break;
@@ -194,7 +195,8 @@ void EVMStackModel::createOperation(MachineInstr &MI,
   } break;
   case EVM::DATASIZE:
   case EVM::DATAOFFSET:
-  case EVM::LINKERSYMBOL: {
+  case EVM::LINKERSYMBOL:
+  case EVM::LOADIMMUTABLE: {
     const Register DefReg = MI.getOperand(0).getReg();
     MCSymbol *Sym = MI.getOperand(1).getMCSymbol();
     Input.push_back(getSymbolSlot(Sym, &MI));
