@@ -29,11 +29,12 @@ class MachineLoopInfo;
 
 class EVMStackLayout {
 public:
-  EVMStackLayout(DenseMap<const MachineBasicBlock *, Stack> &MBBEntryLayout,
-                 DenseMap<const MachineBasicBlock *, Stack> &MBBExitLayout,
-                 DenseMap<const Operation *, Stack> &OpsEntryLayout)
-      : MBBEntryLayoutMap(MBBEntryLayout), MBBExitLayoutMap(MBBExitLayout),
-        OperationEntryLayoutMap(OpsEntryLayout) {}
+  EVMStackLayout(DenseMap<const MachineBasicBlock *, Stack> MBBEntryLayout,
+                 DenseMap<const MachineBasicBlock *, Stack> MBBExitLayout,
+                 DenseMap<const Operation *, Stack> OpsEntryLayout)
+      : MBBEntryLayoutMap(std::move(MBBEntryLayout)),
+        MBBExitLayoutMap(std::move(MBBExitLayout)),
+        OperationEntryLayoutMap(std::move(OpsEntryLayout)) {}
   EVMStackLayout(const EVMStackLayout &) = delete;
   EVMStackLayout &operator=(const EVMStackLayout &) = delete;
 

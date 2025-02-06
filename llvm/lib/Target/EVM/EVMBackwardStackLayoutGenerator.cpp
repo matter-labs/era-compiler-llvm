@@ -56,8 +56,9 @@ std::unique_ptr<EVMStackLayout> EVMBackwardStackLayoutGenerator::run() {
     dump(dbgs());
   });
 
-  return std::make_unique<EVMStackLayout>(MBBEntryLayoutMap, MBBExitLayoutMap,
-                                          OperationEntryLayoutMap);
+  return std::make_unique<EVMStackLayout>(std::move(MBBEntryLayoutMap),
+                                          std::move(MBBExitLayoutMap),
+                                          std::move(OperationEntryLayoutMap));
 }
 
 Stack EVMBackwardStackLayoutGenerator::propagateStackThroughOperation(
