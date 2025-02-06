@@ -479,6 +479,14 @@ void EVMStackLayoutGenerator::runPropagation() {
   // Create the function entry layout.
   Stack EntryStack;
   bool IsNoReturn = MF.getFunction().hasFnAttribute(Attribute::NoReturn);
+
+  // Check if the first MBB contains PUSHDEPLOYADDRESS instruction.
+  if (MachineBasicBlock::const_iterator I = MF.front().getFirstNonDebugInstr();
+      I != MF.front().end() && I->getOpcode() == EVM::PUSHDEPLOYADDRESS) {
+    assert(IsNoReturn && "PUSHDEPLOYADDRESS in a function that returns");
+    EntryStack.push_back(StackModel.getVariableSlot(I->getOperand(0).getReg()));
+  }
+
   if (!IsNoReturn)
     EntryStack.push_back(StackModel.getFunctionReturnLabelSlot(&MF));
 

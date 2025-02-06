@@ -143,6 +143,12 @@ void EVMStackModel::createOperation(MachineInstr &MI,
   case EVM::ARGUMENT:
     // Is handled above.
     return;
+  case EVM::PUSHDEPLOYADDRESS: {
+    auto *MFI = MF.getInfo<EVMMachineFunctionInfo>();
+    MFI->HasPushDeployAddress = true;
+    assert(MI == MF.front().begin());
+  }
+    return;
   case EVM::FCALL: {
     Stack Input;
     for (const MachineOperand &MO : MI.operands()) {

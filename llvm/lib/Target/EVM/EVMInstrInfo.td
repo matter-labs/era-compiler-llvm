@@ -1150,3 +1150,8 @@ let isAsCheapAsAMove = 1, isReMaterializable = 1, isCodeGenOnly = 1, hasSideEffe
     def LOADIMMUTABLE_S : NI<(outs), (ins jmptarget:$sym), [], true, "", 0, 0>;
   }
 }
+
+let isCodeGenOnly = 1, isNotDuplicable = 1 in
+def PUSHDEPLOYADDRESS
+  : NRI<(outs GPR:$res), (ins), [(set GPR:$res, (int_evm_pushdeployaddress))],
+    "PUSHDEPLOYADDRESS $res">;

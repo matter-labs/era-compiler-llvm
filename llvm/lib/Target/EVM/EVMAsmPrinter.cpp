@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMMCInstLower.h"
+#include "EVMMachineFunctionInfo.h"
 #include "EVMTargetMachine.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "MCTargetDesc/EVMTargetStreamer.h"
@@ -48,6 +49,9 @@ class EVMAsmPrinter : public AsmPrinter {
   StringSet<> WideRelocSymbolsSet;
   StringMap<unsigned> ImmutablesMap;
 
+  // True if there exists a functions that pushes deploy address.
+  bool HasPushDeployAddress = false;
+
 public:
   EVMAsmPrinter(TargetMachine &TM, std::unique_ptr<MCStreamer> Streamer)
       : AsmPrinter(TM, std::move(Streamer)) {}
@@ -61,6 +65,8 @@ public:
   void emitFunctionEntryLabel() override;
 
   void emitEndOfAsmFile(Module &) override;
+
+  void emitFunctionBodyStart() override;
 
 private:
   void emitAssemblySymbol(const MachineInstr *MI);
@@ -89,6 +95,23 @@ void EVMAsmPrinter::emitFunctionEntryLabel() {
     DenseMap<unsigned, unsigned> &VRegMap = VRegMapping[RC];
     const unsigned N = VRegMap.size();
     VRegMap.insert(std::make_pair(Vr, N + 1));
+  }
+}
+
+void EVMAsmPrinter::emitFunctionBodyStart() {
+  auto *MFI = MF->getInfo<EVMMachineFunctionInfo>();
+  if (MFI->HasPushDeployAddress) {
+    assert(!HasPushDeployAddress &&
+           "Multiple functions with PushDeployAddress");
+
+    // Deploy address is represented as PUSH20 instruction at the
+    // beginning of the bytecode.
+    // FIXME: check that function comes first in the module layout.
+    MCInst MCI;
+    MCI.setOpcode(EVM::PUSH20_S);
+    MCI.addOperand(MCOperand::createImm(0));
+    EmitToStreamer(*OutStreamer, MCI);
+    HasPushDeployAddress = true;
   }
 }
 
@@ -285,6 +308,7 @@ void EVMAsmPrinter::emitWideRelocatableSymbol(const MachineInstr *MI) {
 void EVMAsmPrinter::emitEndOfAsmFile(Module &) {
   WideRelocSymbolsSet.clear();
   ImmutablesMap.clear();
+  HasPushDeployAddress = false;
 }
 
 void EVMAsmPrinter::emitJumpDest() {

@@ -101,6 +101,9 @@ public:
   void setIsStackified(bool Val = true) { IsStackified = Val; }
 
   bool getIsStackified() const { return IsStackified; }
+
+  /// True if MF has PushDeployAddress instruction.
+  bool HasPushDeployAddress = false;
 };
 
 } // end namespace llvm

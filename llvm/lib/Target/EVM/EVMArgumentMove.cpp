@@ -31,6 +31,9 @@
 #include "llvm/CodeGen/MachineBlockFrequencyInfo.h"
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/Support/raw_ostream.h"
+
+#include <deque>
+
 using namespace llvm;
 
 #define DEBUG_TYPE "evm-argument-move"
@@ -68,10 +71,15 @@ bool EVMArgumentMove::runOnMachineFunction(MachineFunction &MF) {
 
   bool Changed = false;
   MachineBasicBlock &EntryMBB = MF.front();
-  SmallVector<MachineInstr *> Args;
+  std::deque<MachineInstr *> Args;
+  MachineInstr *PushDeployAddress = nullptr;
   for (MachineInstr &MI : EntryMBB) {
     if (EVM::ARGUMENT == MI.getOpcode())
       Args.push_back(&MI);
+    if (EVM::PUSHDEPLOYADDRESS == MI.getOpcode()) {
+      assert(!PushDeployAddress && "Multiple PUSHDEPLOYADDRESS instructions");
+      PushDeployAddress = &MI;
+    }
   }
 
   // Sort ARGUMENT instructions in ascending order of their arguments.
@@ -81,6 +89,9 @@ bool EVMArgumentMove::runOnMachineFunction(MachineFunction &MF) {
               int64_t Arg2Idx = MI2->getOperand(1).getImm();
               return Arg1Idx < Arg2Idx;
             });
+
+  if (PushDeployAddress)
+    Args.push_front(PushDeployAddress);
 
   for (MachineInstr *MI : reverse(Args)) {
     MachineInstr *Arg = MI->removeFromParent();

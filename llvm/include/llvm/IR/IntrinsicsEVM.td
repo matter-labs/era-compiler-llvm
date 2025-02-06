@@ -272,6 +272,11 @@ def int_evm_linkersymbol : DefaultAttrsIntrinsic<
   [IntrNoMem, IntrWillReturn]
 >;
 
+def int_evm_pushdeployaddress : DefaultAttrsIntrinsic<
+  [llvm_i256_ty], [], [IntrNoMem, IntrWillReturn, IntrNoDuplicate]
+>;
+
+
 // Immutables support.
 
 // Loads immutable value. Should be used only in runtime code.
