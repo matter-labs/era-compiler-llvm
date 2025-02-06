@@ -91,7 +91,7 @@ private:
         // evasion.
       }
       // We need another copy of this slot.
-      else if (Ops.sourceMultiplicity(SourceOffset) > 0) {
+      else if (Ops.sourceUses(SourceOffset) > 0) {
         // If this slot occurs again later, we skip this occurrence.
         if (const auto &R =
                 llvm::seq<size_t>(SourceOffset + 1, Ops.sourceSize());
@@ -115,7 +115,7 @@ private:
 
   /// Finds a slot to dup or push with the aim of eventually fixing \p
   /// TargetOffset in the target. In the simplest case, the slot at \p
-  /// TargetOffset has a multiplicity > 0, i.e. it can directly be dupped or
+  /// TargetOffset has a uses > 0, i.e. it can directly be dupped or
   /// pushed and the next iteration will fix \p TargetOffset. But, in general,
   /// there may already be enough copies of the slot that is supposed to end up
   /// at \p TargetOffset on stack, s.t. it cannot be dupped again. In that case
@@ -133,7 +133,7 @@ private:
       size_t Offset = *ToVisit.begin();
       ToVisit.erase(ToVisit.begin());
       Visited.insert(Offset);
-      if (Ops.targetMultiplicity(Offset) > 0) {
+      if (Ops.targetUses(Offset) > 0) {
         Ops.pushOrDupTarget(Offset);
         return true;
       }
@@ -172,8 +172,7 @@ private:
     size_t SourceTop = Ops.sourceSize() - 1;
     // If we no longer need the current stack top, we pop it, unless we need an
     // arbitrary slot at this position in the target.
-    if (Ops.sourceMultiplicity(SourceTop) < 0 &&
-        !Ops.targetIsArbitrary(SourceTop)) {
+    if (Ops.sourceUses(SourceTop) < 0 && !Ops.targetIsArbitrary(SourceTop)) {
       Ops.pop();
       return true;
     }
@@ -200,8 +199,7 @@ private:
             // there.
             for (size_t SwapDepth = Ops.stackDepthLimit(); SwapDepth > 0;
                  --SwapDepth)
-              if (Ops.sourceMultiplicity(Ops.sourceSize() - 1 - SwapDepth) <
-                  0) {
+              if (Ops.sourceUses(Ops.sourceSize() - 1 - SwapDepth) < 0) {
                 Ops.swap(SwapDepth);
                 if (Ops.targetIsArbitrary(SourceTop))
                   // Usually we keep a slot that is to-be-removed, if the
@@ -228,8 +226,7 @@ private:
     for (size_t Offset = 0; Offset < Ops.sourceSize(); ++Offset)
       if (!Ops.isCompatible(
               Offset, Offset) && // The lower slot is not already in position.
-          Ops.sourceMultiplicity(Offset) <
-              0 && // We have too many copies of this slot.
+          Ops.sourceUses(Offset) < 0 && // We have too many copies of this slot.
           Offset <=
               Ops.targetSize() && // There is a target slot at this position.
           !Ops.targetIsArbitrary(
@@ -243,7 +240,7 @@ private:
 
     // At this point we want to keep all slots.
     for (size_t i = 0; i < Ops.sourceSize(); ++i)
-      assert(Ops.sourceMultiplicity(i) >= 0);
+      assert(Ops.sourceUses(i) >= 0);
     assert(Ops.sourceSize() <= Ops.targetSize());
 
     // If the top is not in position, try to find a slot that wants to be at the
@@ -271,8 +268,8 @@ private:
     assert(Ops.sourceSize() == Ops.targetSize());
     size_t Size = Ops.sourceSize();
     for (size_t I = 0; I < Ops.sourceSize(); ++I)
-      assert(Ops.sourceMultiplicity(I) == 0 &&
-             (Ops.targetIsArbitrary(I) || Ops.targetMultiplicity(I) == 0));
+      assert(Ops.sourceUses(I) == 0 &&
+             (Ops.targetIsArbitrary(I) || Ops.targetUses(I) == 0));
     assert(Ops.isCompatible(SourceTop, SourceTop));
 
     const auto &SwappableOffsets = llvm::seq<size_t>(
@@ -300,8 +297,7 @@ private:
     // We are in a stack-too-deep situation and try to reduce the stack size.
     // If the current top is merely kept since the target slot is arbitrary, pop
     // it.
-    if (Ops.targetIsArbitrary(SourceTop) &&
-        Ops.sourceMultiplicity(SourceTop) <= 0) {
+    if (Ops.targetIsArbitrary(SourceTop) && Ops.sourceUses(SourceTop) <= 0) {
       Ops.pop();
       return true;
     }
@@ -309,8 +305,7 @@ private:
     // If any reachable slot is merely kept, since the target slot is arbitrary,
     // swap it up and pop it.
     for (size_t Offset : SwappableOffsets)
-      if (Ops.targetIsArbitrary(Offset) &&
-          Ops.sourceMultiplicity(Offset) <= 0) {
+      if (Ops.targetIsArbitrary(Offset) && Ops.sourceUses(Offset) <= 0) {
         Ops.swap(Size - Offset - 1);
         Ops.pop();
         return true;
@@ -336,49 +331,49 @@ private:
   }
 };
 
-/// A simple optimized map for mapping StackSlot to ints.
-class Multiplicity {
+/// A class that keeps track of the number of uses of each stack slot.
+class StackSlotUses {
 public:
   int &operator[](const StackSlot *Slot) {
     if (const auto *p = dyn_cast<FunctionCallReturnLabelSlot>(Slot))
-      return FunctionCallReturnLabelSlotMultiplicity[p];
+      return FunctionCallReturnLabelSlotUses[p];
     if (isa<FunctionReturnLabelSlot>(Slot))
-      return FunctionReturnLabelSlotMultiplicity;
+      return FunctionReturnLabelSlotUses;
     if (const auto *p = dyn_cast<RegisterSlot>(Slot))
-      return RegisterSlotMultiplicity[p];
+      return RegisterSlotUses[p];
     if (const auto *p = dyn_cast<LiteralSlot>(Slot))
-      return LiteralSlotMultiplicity[p];
+      return LiteralSlotUses[p];
     if (const auto *p = dyn_cast<SymbolSlot>(Slot))
-      return SymbolSlotMultiplicity[p];
+      return SymbolSlotUses[p];
 
     assert(isa<JunkSlot>(Slot));
-    return JunkSlotMultiplicity;
+    return JunkSlotUses;
   }
 
   int at(const StackSlot *Slot) const {
     if (const auto *p = dyn_cast<FunctionCallReturnLabelSlot>(Slot))
-      return FunctionCallReturnLabelSlotMultiplicity.at(p);
+      return FunctionCallReturnLabelSlotUses.at(p);
     if (isa<FunctionReturnLabelSlot>(Slot))
-      return FunctionReturnLabelSlotMultiplicity;
+      return FunctionReturnLabelSlotUses;
     if (const auto *p = dyn_cast<RegisterSlot>(Slot))
-      return RegisterSlotMultiplicity.at(p);
+      return RegisterSlotUses.at(p);
     if (const auto *p = dyn_cast<LiteralSlot>(Slot))
-      return LiteralSlotMultiplicity.at(p);
+      return LiteralSlotUses.at(p);
     if (const auto *p = dyn_cast<SymbolSlot>(Slot))
-      return SymbolSlotMultiplicity.at(p);
+      return SymbolSlotUses.at(p);
 
     assert(isa<JunkSlot>(Slot));
-    return JunkSlotMultiplicity;
+    return JunkSlotUses;
   }
 
 private:
   DenseMap<const FunctionCallReturnLabelSlot *, int>
-      FunctionCallReturnLabelSlotMultiplicity;
-  int FunctionReturnLabelSlotMultiplicity = 0;
-  DenseMap<const RegisterSlot *, int> RegisterSlotMultiplicity;
-  DenseMap<const LiteralSlot *, int> LiteralSlotMultiplicity;
-  DenseMap<const SymbolSlot *, int> SymbolSlotMultiplicity;
-  int JunkSlotMultiplicity = 0;
+      FunctionCallReturnLabelSlotUses;
+  int FunctionReturnLabelSlotUses = 0;
+  DenseMap<const RegisterSlot *, int> RegisterSlotUses;
+  DenseMap<const LiteralSlot *, int> LiteralSlotUses;
+  DenseMap<const SymbolSlot *, int> SymbolSlotUses;
+  int JunkSlotUses = 0;
 };
 
 /// Returns a copy of \p Stack stripped of all duplicates and slots that can
@@ -426,7 +421,7 @@ void EVMStackLayoutPermutations::createStackLayout(
     const std::function<void(unsigned)> &swapCallback;
     const std::function<void(const StackSlot *)> &pushOrDupCallback;
     const std::function<void()> &popCallback;
-    Multiplicity multiplicity;
+    StackSlotUses Uses;
     unsigned StackDepthLimit;
 
     ShuffleOperations(Stack &CurrentStack, const Stack &TargetStack,
@@ -438,14 +433,14 @@ void EVMStackLayoutPermutations::createStackLayout(
           swapCallback(Swap), pushOrDupCallback(PushOrDup), popCallback(Pop),
           StackDepthLimit(StackDepthLimit) {
       for (const auto &slot : currentStack)
-        --multiplicity[slot];
+        --Uses[slot];
 
       for (unsigned Offset = 0; Offset < targetStack.size(); ++Offset) {
         auto *Slot = targetStack[Offset];
         if (isa<JunkSlot>(Slot) && Offset < currentStack.size())
-          ++multiplicity[currentStack[Offset]];
+          ++Uses[currentStack[Offset]];
         else
-          ++multiplicity[Slot];
+          ++Uses[Slot];
       }
     }
 
@@ -459,13 +454,9 @@ void EVMStackLayoutPermutations::createStackLayout(
       return currentStack[Lhs] == currentStack[Rhs];
     }
 
-    int sourceMultiplicity(size_t Offset) {
-      return multiplicity.at(currentStack[Offset]);
-    }
+    int sourceUses(size_t Offset) { return Uses.at(currentStack[Offset]); }
 
-    int targetMultiplicity(size_t Offset) {
-      return multiplicity.at(targetStack[Offset]);
-    }
+    int targetUses(size_t Offset) { return Uses.at(targetStack[Offset]); }
 
     bool targetIsArbitrary(size_t Offset) {
       return Offset < targetStack.size() && isa<JunkSlot>(targetStack[Offset]);
@@ -596,7 +587,7 @@ Stack EVMStackLayoutPermutations::createIdealLayout(
     LayoutT &Layout;
     const Stack &Post;
     DenseSet<StackSlot *> Outputs;
-    Multiplicity Mult;
+    StackSlotUses Uses;
     const std::function<bool(const StackSlot *)> &RematerializeSlot;
     unsigned StackDepthLimit;
     ShuffleOperations(
@@ -610,11 +601,11 @@ Stack EVMStackLayoutPermutations::createIdealLayout(
 
       for (const auto &LayoutSlot : Layout)
         if (const auto *Slot = std::get_if<StackSlot *>(&LayoutSlot))
-          --Mult[*Slot];
+          --Uses[*Slot];
 
       for (auto *Slot : Post)
         if (Outputs.count(Slot) || RematerializeSlot(Slot))
-          ++Mult[Slot];
+          ++Uses[Slot];
     }
 
     bool isCompatible(size_t Source, size_t Target) {
@@ -640,17 +631,17 @@ Stack EVMStackLayoutPermutations::createIdealLayout(
       return SlotLHS && SlotRHS && *SlotLHS == *SlotRHS;
     }
 
-    int sourceMultiplicity(size_t Offset) {
+    int sourceUses(size_t Offset) {
       return std::visit(
           Overload{[&](const PreviousSlot &) { return 0; },
-                   [&](const StackSlot *S) { return Mult.at(S); }},
+                   [&](const StackSlot *S) { return Uses.at(S); }},
           Layout[Offset]);
     }
 
-    int targetMultiplicity(size_t Offset) {
+    int targetUses(size_t Offset) {
       if (!Outputs.count(Post[Offset]) && !RematerializeSlot(Post[Offset]))
         return 0;
-      return Mult.at(Post[Offset]);
+      return Uses.at(Post[Offset]);
     }
 
     bool targetIsArbitrary(size_t Offset) {
