@@ -11,12 +11,10 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMMachineCFGInfo.h"
-#include "EVMMachineFunctionInfo.h"
 #include "EVMSubtarget.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "llvm/CodeGen/LiveIntervals.h"
 #include "llvm/CodeGen/MachineFunction.h"
-#include "llvm/CodeGen/MachineLoopInfo.h"
 
 using namespace llvm;
 
@@ -47,11 +45,10 @@ static bool isTerminate(const MachineInstr *MI) {
   }
 }
 
-EVMMachineCFGInfo::EVMMachineCFGInfo(MachineFunction &MF,
-                                     MachineLoopInfo *MLI) {
+EVMMachineCFGInfo::EVMMachineCFGInfo(MachineFunction &MF) {
   const TargetInstrInfo *TII = MF.getSubtarget().getInstrInfo();
   for (MachineBasicBlock &MBB : MF)
-    collectTerminatorsInfo(TII, MLI, MBB);
+    collectTerminatorsInfo(TII, MBB);
 
   SmallVector<const MachineBasicBlock *> ReturnBlocks;
   for (const MachineBasicBlock &MBB : MF) {
@@ -69,7 +66,6 @@ EVMMachineCFGInfo::getTerminatorsInfo(const MachineBasicBlock *MBB) const {
 }
 
 void EVMMachineCFGInfo::collectTerminatorsInfo(const TargetInstrInfo *TII,
-                                               const MachineLoopInfo *MLI,
                                                MachineBasicBlock &MBB) {
   assert(MBBTerminatorsInfoMap.count(&MBB) == 0);
 
@@ -135,7 +131,7 @@ void EVMMachineCFGInfo::collectBlocksLeadingToFunctionReturn(
       continue;
 
     ToFuncReturnVertexes.insert(MBB);
-    WorkList.append(MBB->pred_begin(), MBB->pred_end());
+    append_range(WorkList, MBB->predecessors());
   }
 }
 
@@ -160,7 +156,7 @@ void EVMMachineCFGInfo::collectCutVertexes(const MachineBasicBlock *Entry) {
       CutVertexes.insert(U);
       break;
     default:
-      Children.append(U->succ_begin(), U->succ_end());
+      append_range(Children, U->successors());
       break;
     }
 
@@ -175,8 +171,8 @@ void EVMMachineCFGInfo::collectCutVertexes(const MachineBasicBlock *Entry) {
         Low[U] = std::min(Low[U], Low[V]);
         if (Low[V] > Disc[U]) {
           // U <-> V is a cut edge in the undirected graph
-          bool EdgeVtoU = std::count(U->pred_begin(), U->pred_end(), V);
-          bool EdgeUtoV = std::count(V->pred_begin(), V->pred_end(), U);
+          bool EdgeVtoU = count(U->predecessors(), V);
+          bool EdgeUtoV = count(V->predecessors(), U);
           if (EdgeVtoU && !EdgeUtoV)
             // Cut edge V -> U
             CutVertexes.insert(U);

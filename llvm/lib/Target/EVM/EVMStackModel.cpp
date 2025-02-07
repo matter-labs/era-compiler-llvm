@@ -10,15 +10,21 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMStackModel.h"
-#include "EVM.h"
 #include "EVMMachineFunctionInfo.h"
 #include "EVMSubtarget.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
+#include "llvm/CodeGen/LiveIntervals.h"
 #include "llvm/CodeGen/MachineFunction.h"
 
-#include <ostream>
-
 using namespace llvm;
+
+std::string llvm::stackToString(const Stack &S) {
+  std::string Result("[ ");
+  for (const auto *Slot : S)
+    Result += Slot->toString() + ' ';
+  Result += ']';
+  return Result;
+}
 
 static const Function *getCalledFunction(const MachineInstr &MI) {
   for (const MachineOperand &MO : MI.operands()) {
@@ -59,8 +65,9 @@ std::string Operation::toString() const {
   return std::string(S);
 }
 
-EVMStackModel::EVMStackModel(MachineFunction &MF, const LiveIntervals &LIS)
-    : MF(MF), LIS(LIS) {
+EVMStackModel::EVMStackModel(MachineFunction &MF, const LiveIntervals &LIS,
+                             unsigned StackDepthLimit)
+    : MF(MF), LIS(LIS), StackDepthLimit(StackDepthLimit) {
   for (MachineBasicBlock &MBB : MF) {
     SmallVector<Operation> Ops;
     for (MachineInstr &MI : MBB)

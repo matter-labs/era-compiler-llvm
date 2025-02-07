@@ -18,23 +18,15 @@
 #ifndef LLVM_LIB_TARGET_EVM_EVMSTACKMODEL_H
 #define LLVM_LIB_TARGET_EVM_EVMSTACKMODEL_H
 
-#include "llvm/ADT/APInt.h"
 #include "llvm/ADT/DenseMap.h"
-#include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/SmallVector.h"
-#include "llvm/CodeGen/LiveIntervals.h"
-#include "llvm/CodeGen/MachineInstr.h"
-#include "llvm/CodeGen/MachineLoopInfo.h"
-#include "llvm/CodeGen/Register.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
-#include "llvm/MC/MCSymbol.h"
-
-#include <variant>
 
 namespace llvm {
 
 class MachineFunction;
 class MachineBasicBlock;
+class MCSymbol;
 
 class StackSlot {
 public:
@@ -179,6 +171,8 @@ public:
 /// The stack top is the last element of the vector.
 using Stack = SmallVector<StackSlot *>;
 
+std::string stackToString(const Stack &S);
+
 class Operation {
 public:
   enum OpType { BuiltinCall, FunctionCall, Assignment };
@@ -208,6 +202,7 @@ class EVMStackModel {
   MachineFunction &MF;
   const LiveIntervals &LIS;
   DenseMap<const MachineBasicBlock *, SmallVector<Operation>> OperationsMap;
+  unsigned StackDepthLimit;
 
   // Storage for stack slots.
   mutable DenseMap<APInt, std::unique_ptr<LiteralSlot>> LiteralStorage;
@@ -223,9 +218,9 @@ class EVMStackModel {
   mutable std::unique_ptr<FunctionReturnLabelSlot> TheFunctionReturnLabelSlot;
 
 public:
-  EVMStackModel(MachineFunction &MF, const LiveIntervals &LIS);
+  EVMStackModel(MachineFunction &MF, const LiveIntervals &LIS,
+                unsigned StackDepthLimit);
   Stack getFunctionParameters() const;
-  Stack getInstrInput(const MachineInstr &MI) const;
   Stack getReturnArguments(const MachineInstr &MI) const;
   const SmallVector<Operation> &
   getOperations(const MachineBasicBlock *MBB) const {
@@ -278,7 +273,10 @@ public:
     return &TheJunkSlot;
   }
 
+  unsigned stackDepthLimit() const { return StackDepthLimit; }
+
 private:
+  Stack getInstrInput(const MachineInstr &MI) const;
   void createOperation(MachineInstr &MI, SmallVector<Operation> &Ops) const;
 };
 } // namespace llvm

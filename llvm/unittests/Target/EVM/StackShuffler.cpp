@@ -7,26 +7,21 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMRegisterInfo.h"
-#include "EVMStackDebug.h"
+#include "EVMStackLayoutPermutations.h"
 #include "EVMStackModel.h"
-#include "EVMStackShuffler.h"
-#include "EVMTargetMachine.h"
+#include "EVMSubtarget.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
-#include "llvm-c/Core.h"
-#include "llvm-c/IRReader.h"
 #include "llvm-c/TargetMachine.h"
+#include "llvm/CodeGen/LiveIntervals.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/MC/TargetRegistry.h"
-#include "llvm/Support/MemoryBuffer.h"
-#include "llvm/Target/CodeGenCWrappers.h"
 #include "llvm/Target/TargetMachine.h"
 #include "gtest/gtest.h"
 #include <memory>
-#include <string.h>
 
 using namespace llvm;
 
@@ -69,7 +64,8 @@ class LLDCTest : public testing::Test {
     MF = &MMIWP->getMMI().getOrCreateMachineFunction(*F);
 
     LIS = std::make_unique<LiveIntervals>();
-    StackModel = std::make_unique<EVMStackModel>(*MF, *LIS.get());
+    StackModel = std::make_unique<EVMStackModel>(
+        *MF, *LIS.get(), MF->getSubtarget<EVMSubtarget>().stackDepthLimit());
   }
 
   void TearDown() override { LLVMDisposeTargetMachine(TM); }
@@ -172,8 +168,9 @@ PUSH JUNK\n\
 [ %1 %0 %2 %3 %4 %5 %6 %7 %9 %10 %11 %12 %13 %14 %15 %16 RET JUNK JUNK ]\n");
 
   std::ostringstream Output;
-  createStackLayout(
+  EVMStackLayoutPermutations::createStackLayout(
       SourceStack, TargetStack,
+      MF->getSubtarget<EVMSubtarget>().stackDepthLimit(),
       [&](unsigned SwapDepth) { // swap
         Output << stackToString(SourceStack) << '\n';
         Output << "SWAP" << SwapDepth << '\n';

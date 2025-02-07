@@ -9,6 +9,7 @@
 #include "EVMStackModel.h"
 #include "EVMTargetMachine.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
+#include "llvm/CodeGen/LiveIntervals.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
 #include "llvm/IR/LLVMContext.h"
@@ -59,7 +60,8 @@ class EVMStackModelTest : public testing::Test {
     MF = &MMIWP->getMMI().getOrCreateMachineFunction(*F);
 
     LIS = std::make_unique<LiveIntervals>();
-    StackModel = std::make_unique<EVMStackModel>(*MF, *LIS.get());
+    StackModel = std::make_unique<EVMStackModel>(
+        *MF, *LIS.get(), MF->getSubtarget<EVMSubtarget>().stackDepthLimit());
   }
 
   void TearDown() override { LLVMDisposeTargetMachine(TM); }

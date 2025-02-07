@@ -1,4 +1,4 @@
-//===---- EVMStackLayoutGenerator.h - Stack layout generator ----*- C++ -*-===//
+//===---- EVMBackwardStackLayoutGenerator.h - Stack layout gen --*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -15,28 +15,26 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIB_TARGET_EVM_EVMSTACKLAYOUTGENERATOR_H
-#define LLVM_LIB_TARGET_EVM_EVMSTACKLAYOUTGENERATOR_H
+#ifndef LLVM_LIB_TARGET_EVM_EVMBACKWARDSTACKLAYOUTGENERATOR_H
+#define LLVM_LIB_TARGET_EVM_EVMBACKWARDSTACKLAYOUTGENERATOR_H
 
-#include "EVMMachineCFGInfo.h"
 #include "EVMStackModel.h"
 #include "llvm/ADT/DenseMap.h"
-
 #include <deque>
 
 namespace llvm {
 
-/// Returns the number of operations required to transform stack \p Source to
-/// \p Target.
-size_t EvaluateStackTransform(Stack Source, Stack const &Target);
+class EVMMachineCFGInfo;
+class MachineLoopInfo;
 
 class EVMStackLayout {
 public:
-  EVMStackLayout(DenseMap<const MachineBasicBlock *, Stack> &MBBEntryLayout,
-                 DenseMap<const MachineBasicBlock *, Stack> &MBBExitLayout,
-                 DenseMap<const Operation *, Stack> &OpsEntryLayout)
-      : MBBEntryLayoutMap(MBBEntryLayout), MBBExitLayoutMap(MBBExitLayout),
-        OperationEntryLayoutMap(OpsEntryLayout) {}
+  EVMStackLayout(DenseMap<const MachineBasicBlock *, Stack> MBBEntryLayout,
+                 DenseMap<const MachineBasicBlock *, Stack> MBBExitLayout,
+                 DenseMap<const Operation *, Stack> OpsEntryLayout)
+      : MBBEntryLayoutMap(std::move(MBBEntryLayout)),
+        MBBExitLayoutMap(std::move(MBBExitLayout)),
+        OperationEntryLayoutMap(std::move(OpsEntryLayout)) {}
   EVMStackLayout(const EVMStackLayout &) = delete;
   EVMStackLayout &operator=(const EVMStackLayout &) = delete;
 
@@ -62,18 +60,12 @@ private:
   DenseMap<const Operation *, Stack> OperationEntryLayoutMap;
 };
 
-class EVMStackLayoutGenerator {
+class EVMBackwardStackLayoutGenerator {
 public:
-  struct StackTooDeep {
-    /// Number of slots that need to be saved.
-    size_t deficit = 0;
-    /// Set of variables, eliminating which would decrease the stack deficit.
-    SmallVector<Register> variableChoices;
-  };
-
-  EVMStackLayoutGenerator(const MachineFunction &MF, const MachineLoopInfo *MLI,
-                          const EVMStackModel &StackModel,
-                          const EVMMachineCFGInfo &CFGInfo);
+  EVMBackwardStackLayoutGenerator(const MachineFunction &MF,
+                                  const MachineLoopInfo *MLI,
+                                  const EVMStackModel &StackModel,
+                                  const EVMMachineCFGInfo &CFGInfo);
 
   std::unique_ptr<EVMStackLayout> run();
 
@@ -82,8 +74,8 @@ private:
   /// to it and the result can be transformed to \p ExitStack with minimal stack
   /// shuffling. Simultaneously stores the entry layout required for executing
   /// the operation in the map.
-  Stack propagateStackThroughOperation(Stack ExitStack,
-                                       Operation const &Operation,
+  Stack propagateStackThroughOperation(const Stack &ExitStack,
+                                       const Operation &Operation,
                                        bool AggressiveStackCompression = false);
 
   /// Returns the desired stack layout at the entry of \p Block, assuming the
@@ -97,9 +89,17 @@ private:
   /// backwards jumps until the layout is stabilized.
   void runPropagation();
 
-  /// Adds junks to the subgraph starting at \p Entry. It should only be
+  /// Adds junks to the subgraph starting at \p Block. It should only be
   /// called on cut-vertices, so the full subgraph retains proper stack balance.
-  void addJunksToStackBottom(const MachineBasicBlock *Entry, size_t NumJunk);
+  void addJunksToStackBottom(const MachineBasicBlock *Block, size_t NumJunk);
+
+#ifndef NDEBUG
+  void dump(raw_ostream &OS);
+  void printBlock(raw_ostream &OS, const MachineBasicBlock &Block);
+  std::string getBlockId(const MachineBasicBlock &Block);
+  DenseMap<const MachineBasicBlock *, size_t> BlockIds;
+  size_t BlockCount = 0;
+#endif
 
   /// Returns the best known exit layout of \p Block, if all dependencies are
   /// already \p Visited. If not, adds the dependencies to \p DependencyList and
@@ -107,22 +107,7 @@ private:
   std::optional<Stack> getExitLayoutOrStageDependencies(
       const MachineBasicBlock *Block,
       const DenseSet<const MachineBasicBlock *> &Visited,
-      std::deque<const MachineBasicBlock *> &DependencyList) const;
-
-  /// Calculates the ideal stack layout, s.t., both \p Stack1 and \p Stack2 can
-  /// be achieved with minimal stack shuffling when starting from the returned
-  /// layout.
-  static Stack combineStack(const Stack &Stack1, const Stack &Stack2);
-
-  /// Walks through the CFG and reports any stack too deep errors that would
-  /// occur when generating code for it without countermeasures.
-  SmallVector<StackTooDeep>
-  reportStackTooDeep(const MachineBasicBlock &Entry) const;
-
-  /// Returns a copy of \p Stack stripped of all duplicates and slots that can
-  /// be freely generated. Attempts to create a layout that requires a minimal
-  /// amount of operations to reconstruct the original stack \p Stack.
-  static Stack compressStack(Stack Stack);
+      std::deque<const MachineBasicBlock *> &ToVisit) const;
 
   const MachineFunction &MF;
   const MachineLoopInfo *MLI;
@@ -136,4 +121,4 @@ private:
 
 } // end namespace llvm
 
-#endif // LLVM_LIB_TARGET_EVM_EVMSTACKLAYOUTGENERATOR_H
+#endif // LLVM_LIB_TARGET_EVM_EVMBACKWARDSTACKLAYOUTGENERATOR_H
