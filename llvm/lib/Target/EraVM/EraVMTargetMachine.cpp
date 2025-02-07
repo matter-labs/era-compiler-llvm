@@ -64,7 +64,6 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   initializeEraVMAAWrapperPassPass(PR);
   initializeEraVMExternalAAWrapperPass(PR);
   initializeEraVMAlwaysInlinePass(PR);
-  initializeEraVMSHA3ConstFoldingPass(PR);
   initializeEraVMOptimizeSelectPostRAPass(PR);
   initializeEraVMTieSelectOperandsPass(PR);
   initializeEraVMHoistFlagSettingPass(PR);

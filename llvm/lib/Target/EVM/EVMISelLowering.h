@@ -72,12 +72,6 @@ public:
     return true;
   }
 
-  /// Return true if creating a shift of the type by the given
-  /// amount is not profitable.
-  bool shouldAvoidTransformToShift(EVT VT, unsigned Amount) const override {
-    return true;
-  }
-
   /// Return true if it is profitable to fold a pair of shifts into a mask.
   /// This is usually true on most targets. But some targets, like Thumb1,
   /// have immediate shift instructions, but no immediate "and" instruction;

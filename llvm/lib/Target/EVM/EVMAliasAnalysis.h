@@ -1,4 +1,4 @@
-//===-- EraVMAliasAnalysis.h - EraVM alias analysis -------------*- C++ -*-===//
+//===-- EVMAliasAnalysis.h - EVM alias analysis -----------------*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -6,19 +6,19 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This is the EraVM address space based alias analysis pass.
+// This is the EVM address space based alias analysis pass.
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIB_TARGET_ERAVM_ERAVMALIASANALYSIS_H
-#define LLVM_LIB_TARGET_ERAVM_ERAVMALIASANALYSIS_H
+#ifndef LLVM_LIB_TARGET_EVM_EVMALIASANALYSIS_H
+#define LLVM_LIB_TARGET_EVM_EVMALIASANALYSIS_H
 
 #include "llvm/Analysis/VMAliasAnalysis.h"
 
 namespace llvm {
 /// Analysis pass providing a never-invalidated alias analysis result.
-class EraVMAA : public AnalysisInfoMixin<EraVMAA> {
-  friend AnalysisInfoMixin<EraVMAA>;
+class EVMAA : public AnalysisInfoMixin<EVMAA> {
+  friend AnalysisInfoMixin<EVMAA>;
 
   static AnalysisKey Key;
 
@@ -28,13 +28,13 @@ public:
 };
 
 /// Legacy wrapper pass to provide the VMAAResult object.
-class EraVMAAWrapperPass : public ImmutablePass {
+class EVMAAWrapperPass : public ImmutablePass {
   std::unique_ptr<VMAAResult> Result;
 
 public:
   static char ID;
 
-  EraVMAAWrapperPass();
+  EVMAAWrapperPass();
 
   VMAAResult &getResult() { return *Result; }
   const VMAAResult &getResult() const { return *Result; }
@@ -50,18 +50,17 @@ public:
 
 // Wrapper around ExternalAAWrapperPass so that the default constructor gets the
 // callback.
-class EraVMExternalAAWrapper : public ExternalAAWrapperPass {
+class EVMExternalAAWrapper : public ExternalAAWrapperPass {
 public:
   static char ID;
 
-  EraVMExternalAAWrapper()
+  EVMExternalAAWrapper()
       : ExternalAAWrapperPass([](Pass &P, Function &, AAResults &AAR) {
-          if (auto *WrapperPass =
-                  P.getAnalysisIfAvailable<EraVMAAWrapperPass>())
+          if (auto *WrapperPass = P.getAnalysisIfAvailable<EVMAAWrapperPass>())
             AAR.addAAResult(WrapperPass->getResult());
         }) {}
 };
 
 } // end namespace llvm
 
-#endif // LLVM_LIB_TARGET_ERAVM_ERAVMALIASANALYSIS_H
+#endif // LLVM_LIB_TARGET_EVM_EVMALIASANALYSIS_H
