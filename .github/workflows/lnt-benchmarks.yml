@@ -14,7 +14,6 @@ concurrency:
 jobs:
 
   lnt-benchmarks:
-    if: github.event_name == 'pull_request' && !github.event.pull_request.head.repo.fork
     uses: matter-labs/era-compiler-ci/.github/workflows/lnt.yml@v1
     secrets: inherit
     with:
