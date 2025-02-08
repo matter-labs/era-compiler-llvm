@@ -199,8 +199,8 @@ public:
 
   std::string toString() const {
     std::string Result("[ ");
-    for (const auto *It = begin(); It != end(); ++It)
-      Result += (*It)->toString() + ' ';
+    for (const auto *It : *this)
+      Result += It->toString() + ' ';
     Result += ']';
     return Result;
   }
@@ -213,7 +213,7 @@ public:
 private:
   OpType Type;
   // Stack slots this operation expects at the top of the stack and consumes.
-  Stack Input;
+  SmallVector<StackSlot *> Input;
   // The emulated machine instruction.
   MachineInstr *MI = nullptr;
 
@@ -221,7 +221,7 @@ public:
   Operation(OpType Type, Stack Input, MachineInstr *MI)
       : Type(Type), Input(std::move(Input)), MI(MI) {}
 
-  const Stack &getInput() const { return Input; }
+  const SmallVector<StackSlot *> &getInput() const { return Input; }
   MachineInstr *getMachineInstr() const { return MI; }
 
   bool isBuiltinCall() const { return Type == BuiltinCall; }

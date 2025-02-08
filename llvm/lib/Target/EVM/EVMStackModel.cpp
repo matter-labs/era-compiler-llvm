@@ -176,7 +176,7 @@ void EVMStackModel::createOperation(MachineInstr &MI,
   }
 
   // Create Assignment operation for the MI.
-  Stack Input;
+  SmallVector<StackSlot *> Input;
   switch (MI.getOpcode()) {
   case EVM::CONST_I256: {
     const APInt Imm = MI.getOperand(1).getCImm()->getValue();
