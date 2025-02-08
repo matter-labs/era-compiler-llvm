@@ -149,72 +149,10 @@ private:
 /// called to push or dup the slot given as its argument to the stack top.
 /// \p Pop is a function with signature void() that is called when the top most
 /// slot is popped.
-template <typename SwapT, typename PushOrDupT, typename PopT>
 void createStackLayout(Stack &CurrentStack, Stack const &TargetStack,
-                       SwapT Swap, PushOrDupT PushOrDup, PopT Pop) {
-  EVMStackShuffler TheShuffler = EVMStackShuffler(CurrentStack, TargetStack);
-
-  TheShuffler.setGetCurrentSignificantUses(
-      [](size_t Idx, Stack &C, const Stack &T, bool CompressStack) {
-      DenseMap<const StackSlot *, int> Uses;
-      for (const auto *S : C)
-        --Uses[S];
-
-      for (size_t Offset = 0; Offset < T.size(); ++Offset) {
-        auto *Slot = T[Offset];
-        if (isa<JunkSlot>(Slot) && Offset < C.size())
-          ++Uses[C[Offset]];
-        else
-          ++Uses[Slot];
-      }
-      return Uses[C[Idx]];
-//        int CUses = -count(C, C[Idx]);
-//        for (size_t Off = 0; Off < T.size(); ++Off) {
-//          if (Off == Idx && isa<JunkSlot>(T[Off]))
-//            ++CUses;
-//          else if (T[Off] == C[Idx])
-//            ++CUses;
-//        }
-//        return CUses;
-      });
-
-  TheShuffler.setGetTargetSignificantUses(
-      [](size_t Idx, Stack &C, const Stack &T, bool CompressStack) {
-      DenseMap<const StackSlot *, int> Uses;
-      for (const auto *S : C)
-        --Uses[S];
-
-      for (size_t Offset = 0; Offset < T.size(); ++Offset) {
-        auto *Slot = T[Offset];
-        if (isa<JunkSlot>(Slot) && Offset < C.size())
-          ++Uses[C[Offset]];
-        else
-          ++Uses[Slot];
-      }
-      return Uses[T[Idx]];
-//        if (isa<JunkSlot>(T[Idx]))
-//          return 0;
-//        int TUses = -count(C, T[Idx]) + count(T, T[Idx]);
-//        return TUses;
-      });
-
-  TheShuffler.setSwap([&Swap](size_t Idx, Stack &C) { Swap(Idx); });
-  TheShuffler.setPop([&Pop]() { Pop(); });
-  TheShuffler.setPushOrDupTarget(
-      [&PushOrDup](const StackSlot *S) { PushOrDup(S); });
-
-  TheShuffler.shuffle();
-
-  assert(CurrentStack.size() == TargetStack.size());
-  for (unsigned I = 0; I < CurrentStack.size(); ++I) {
-    StackSlot *&Current = CurrentStack[I];
-    auto *Target = TargetStack[I];
-    if (isa<JunkSlot>(Target))
-      Current = EVMStackModel::getJunkSlot();
-    else
-      assert(Current == Target);
-  }
-}
+                       const std::function<void(unsigned)> &Swap,
+                       const std::function<void(const StackSlot *)> &PushOrDup,
+                       const std::function<void()> &Pop);
 
 } // end namespace llvm
 #endif // LLVM_LIB_TARGET_EVM_EVMSTACKSHUFFLER_H
