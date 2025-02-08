@@ -121,79 +121,46 @@ Stack createIdealLayout(const SmallVector<StackSlot *> &OpDefs,
   if (Layout.empty())
     return Stack{};
 
-  // Next we will shuffle the layout to the Post stack using ShuffleOperations
-  // that are aware of PreviousSlot's.
-  struct ShuffleOperations {
-    Stack &Layout;
-    const Stack &Post;
-    std::set<const StackSlot *> Outputs;
-    Multiplicity Mult;
-    bool CompressStack = false;
-    ShuffleOperations(Stack &Layout, Stack const &Post, bool CompressStack)
-        : Layout(Layout), Post(Post), CompressStack(CompressStack) {
-      for (auto *Slot : Layout)
-        if (!isa<UnknownSlot>(Slot))
-          Outputs.insert(Slot);
+  EVMStackShuffler Shuffler(Layout, Post, CompressStack);
 
-      for (const auto *Slot : Layout)
-        if (!isa<UnknownSlot>(Slot))
-          --Mult[Slot];
+  Shuffler.setIsCompatible([&OpDefs](const StackSlot *CSlot,
+                                     const StackSlot *TSlot,
+                                     bool CompressStack) {
+    if (isa<UnknownSlot>(CSlot))
+      return !count(OpDefs, TSlot) &&
+             !(CompressStack && TSlot->isRematerializable());
+    return CSlot == TSlot;
+  });
 
-      for (auto *Slot : Post)
-        if (!isSlotRequired(Slot))
-          ++Mult[Slot];
-    }
+  Shuffler.setGetCurrentSignificantUses(
+      [&OpDefs](size_t Idx, Stack &C, const Stack &T, bool CompressStack) {
+        if (isa<UnknownSlot>(C[Idx]))
+          return 0;
+        int CUses = -count(C, C[Idx]);
+        if (count(OpDefs, C[Idx]) ||
+            (CompressStack && C[Idx]->isRematerializable()))
+          CUses = CUses + count(T, C[Idx]);
+        return CUses;
+      });
 
-    // This is a huge tradeoff between code size, gas cost and stack size.
-    bool canRematerialize(const StackSlot *Slot) {
-      return CompressStack && Slot->isRematerializable();
-    }
-    bool isSlotRequired(const StackSlot *Slot) {
-      return !Outputs.count(Slot) && !canRematerialize(Slot);
-    }
+  Shuffler.setGetTargetSignificantUses(
+      [&OpDefs](size_t Idx, Stack &C, const Stack &T, bool CompressStack) {
+        if (!count(OpDefs, T[Idx]) &&
+            !(CompressStack && T[Idx]->isRematerializable()))
+          return 0;
+        int TUses = -count(C, T[Idx]);
+        if (count(OpDefs, T[Idx]) ||
+            (CompressStack && T[Idx]->isRematerializable()))
+          TUses = TUses + count(T, T[Idx]);
+        return TUses;
+      });
 
-    bool isCompatible(size_t Source, size_t Target) {
-      if (Source >= Layout.size() || Target >= Post.size())
-        return false;
-      if (isa<JunkSlot>(Post[Target]))
-        return true;
-      if (isa<UnknownSlot>(Layout[Source]))
-        return isSlotRequired(Post[Target]);
-      return Layout[Source] == Post[Target];
-    }
+  Shuffler.setSwap([](size_t I, Stack &C) {
+    assert(!isa<UnknownSlot>(C[C.size() - I - 1]) ||
+           !isa<UnknownSlot>(C.back()));
+  });
 
-    bool sourceIsSame(size_t Lhs, size_t Rhs) {
-      return Layout[Lhs] == Layout[Rhs];
-    }
-
-    int sourceMultiplicity(size_t Offset) {
-      return isa<UnknownSlot>(Layout[Offset]) ? 0 : Mult.at(Layout[Offset]);
-    }
-
-    int targetMultiplicity(size_t Offset) {
-      return isSlotRequired(Post[Offset]) ? 0 : Mult.at(Post[Offset]);
-    }
-
-    bool targetIsArbitrary(size_t Offset) {
-      return Offset < Post.size() && isa<JunkSlot>(Post[Offset]);
-    }
-
-    void swap(size_t I) {
-      assert(!isa<UnknownSlot>(Layout[Layout.size() - I - 1]) ||
-             !isa<UnknownSlot>(Layout.back()));
-      std::swap(Layout[Layout.size() - I - 1], Layout.back());
-    }
-
-    size_t sourceSize() { return Layout.size(); }
-
-    size_t targetSize() { return Post.size(); }
-
-    void pop() { Layout.pop_back(); }
-
-    void pushOrDupTarget(size_t Offset) { Layout.push_back(Post[Offset]); }
-  };
-
-  Shuffler<ShuffleOperations>::shuffle(Layout, Post, CompressStack);
+  Shuffler.shuffle();
 
   // Now we can construct the ideal layout before the operation.
   // "layout" has shuffled the PreviousSlot{x} to new places using minimal
