@@ -75,7 +75,7 @@ jobs:
           # Define general matrix parameters
           # Windows is not supported yet on era-compiler-tester side
           # WINDOWS='{"name":"Windows-x86","runner":"windows-2019-github-hosted-64core"}'
-          MACOS_AMD64='{"name":"MacOS-x86","runner":"macos-12-large"}'
+          MACOS_AMD64='{"name":"MacOS-x86","runner":"macos-13-large"}'
           MACOS_ARM64='{"name":"MacOS-arm64","runner":["self-hosted","macOS","ARM64"]}'
           LINUX_AMD64='{"name":"Linux-AMD64","runner":"matterlabs-ci-runner-high-performance","image":"ghcr.io/matter-labs/zksync-llvm-runner:latest"}'
           LINUX_ARM64='{"name":"Linux-ARM64","runner":"matterlabs-ci-runner-arm","image":"ghcr.io/matter-labs/zksync-llvm-runner:latest"}'
