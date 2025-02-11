@@ -125,27 +125,26 @@ bool EVMStackShuffler::shuffleStep() {
       if (!NeedsSwapping)
         continue;
 
-      if (Current.size() - Off - 1 <= 16) {
-        swap(Current.size() - Off - 1);
-        return true;
-      }
-
-      // We cannot swap that deep. If there is a reachable slot to be removed,
-      // park the current top there.
-      for (size_t SwapDepth = 16; SwapDepth > 0; --SwapDepth) {
-        if (getCurrentSignificantUses(Current.size() - 1 - SwapDepth) < 0) {
-          swap(SwapDepth);
-          if (isArbitraryTarget(CurrentTop)) {
-            // Usually we keep a slot that is to-be-removed, if the current top
-            // is arbitrary. However, since we are in a stack-too-deep
-            // situation, pop it immediately to compress the stack (we can
-            // always push back junk in the end).
-            pop();
+      // We cannot swap that deep.
+      if (Current.size() - Off - 1 > 16) {
+        // If there is a reachable slot to be removed, park the current top there.
+        for (size_t SwapDepth = 16; SwapDepth > 0; --SwapDepth) {
+          if (getCurrentSignificantUses(Current.size() - 1 - SwapDepth) < 0) {
+            swap(SwapDepth);
+            if (isArbitraryTarget(CurrentTop)) {
+              // Usually we keep a slot that is to-be-removed, if the current
+              // top is arbitrary. However, since we are in a stack-too-deep
+              // situation, pop it immediately to compress the stack (we can
+              // always push back junk in the end).
+              pop();
+            }
             return true;
           }
         }
+        // TODO: otherwise we rely on stack compression or stack-to-memory.
       }
-      // TODO: otherwise we rely on stack compression or stack-to-memory.
+      swap(Current.size() - Off - 1);
+      return true;
     }
   }
 
@@ -213,7 +212,7 @@ bool EVMStackShuffler::shuffleStep() {
   // If we find a lower slot that is out of position, but also compatible with
   // the top, swap that up.
   for (size_t Offset : SwappableOffsets) {
-    if (isCompatible(Offset, Offset) &&
+    if (!isCompatible(Offset, Offset) &&
         isCompatible(CurrentTop, Offset)) {
       swap(Size - Offset - 1);
       return true;
