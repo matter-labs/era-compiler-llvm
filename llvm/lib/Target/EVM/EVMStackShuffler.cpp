@@ -274,9 +274,7 @@ void llvm::createStackLayout(Stack &CurrentStack, Stack const &TargetStack,
                        const std::function<void(const StackSlot *)> &PushOrDup,
                        const std::function<void()> &Pop) {
   EVMStackShuffler TheShuffler = EVMStackShuffler(CurrentStack, TargetStack);
-
-  TheShuffler.setGetCurrentSignificantUses(
-      [](const StackSlot *Slot, Stack &C, const Stack &T) {
+  auto getSignificantUses = [](const StackSlot *Slot, Stack &C, const Stack &T) {
         int CUses = -count(C, Slot);
         if (T.size() > C.size())
           CUses += std::count(T.begin() + C.size(), T.end(), Slot);
@@ -287,21 +285,10 @@ void llvm::createStackLayout(Stack &CurrentStack, Stack const &TargetStack,
           return TSlot == Slot;
         });
         return CUses;
-      });
+      };
 
-  TheShuffler.setGetTargetSignificantUses(
-      [](const StackSlot *Slot, Stack &C, const Stack &T) {
-        int TUses = -count(C, Slot);
-        if (T.size() > C.size())
-          TUses += std::count(T.begin() + C.size(), T.end(), Slot);
-        TUses += count_if(zip(C, T), [Slot](auto In) {
-          auto [CSlot, TSlot] = In;
-          if (isa<JunkSlot>(TSlot))
-            return CSlot == Slot;
-          return TSlot == Slot;
-        });
-        return TUses;
-      });
+  TheShuffler.setGetCurrentSignificantUses(getSignificantUses);
+  TheShuffler.setGetTargetSignificantUses(getSignificantUses);
 
   TheShuffler.setSwap([&Swap](size_t Idx, Stack &C) { Swap(Idx); });
   TheShuffler.setPop([&Pop]() { Pop(); });
