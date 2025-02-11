@@ -276,30 +276,28 @@ void llvm::createStackLayout(Stack &CurrentStack, Stack const &TargetStack,
   EVMStackShuffler TheShuffler = EVMStackShuffler(CurrentStack, TargetStack);
 
   TheShuffler.setGetCurrentSignificantUses(
-      [](size_t Idx, Stack &C, const Stack &T, bool CompressStack) {
-        const StackSlot *Slot = C[Idx];
+      [](const StackSlot *Slot, Stack &C, const Stack &T) {
         int CUses = -count(C, Slot);
         if (T.size() > C.size())
           CUses += std::count(T.begin() + C.size(), T.end(), Slot);
         CUses += count_if(zip(C, T), [Slot](auto In) {
           auto [CSlot, TSlot] = In;
           if (isa<JunkSlot>(TSlot))
-             return CSlot == Slot;
+            return CSlot == Slot;
           return TSlot == Slot;
         });
         return CUses;
       });
 
   TheShuffler.setGetTargetSignificantUses(
-      [](size_t Idx, Stack &C, const Stack &T, bool CompressStack) {
-        const StackSlot *Slot = T[Idx];
+      [](const StackSlot *Slot, Stack &C, const Stack &T) {
         int TUses = -count(C, Slot);
         if (T.size() > C.size())
           TUses += std::count(T.begin() + C.size(), T.end(), Slot);
         TUses += count_if(zip(C, T), [Slot](auto In) {
           auto [CSlot, TSlot] = In;
           if (isa<JunkSlot>(TSlot))
-             return CSlot == Slot;
+            return CSlot == Slot;
           return TSlot == Slot;
         });
         return TUses;

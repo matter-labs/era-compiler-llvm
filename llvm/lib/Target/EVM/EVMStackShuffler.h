@@ -23,12 +23,10 @@ class EVMStackShuffler {
   Stack &Current;
   const Stack &Target;
 
-  bool CompressStack = false;
-
   using IsCompatibleFTy =
-      std::function<bool(const StackSlot *, const StackSlot *, bool)>;
+      std::function<bool(const StackSlot *, const StackSlot *)>;
   using GetSignificantUsesFTy =
-      std::function<int(size_t, Stack &, const Stack &, bool)>;
+      std::function<int(const StackSlot *, Stack &, const Stack &)>;
   using SwapFTy = std::function<void(size_t, Stack &)>;
   using PopFTy = std::function<void()>;
   using PushOrDupTargetFTy = std::function<void(const StackSlot *)>;
@@ -41,8 +39,8 @@ class EVMStackShuffler {
   PushOrDupTargetFTy PushOrDupTargetF = nullptr;
 
 public:
-  EVMStackShuffler(Stack &Current, const Stack &Target, bool CompressStack = false)
-      : Current(Current), Target(Target), CompressStack(CompressStack) {}
+  EVMStackShuffler(Stack &Current, const Stack &Target)
+      : Current(Current), Target(Target) {}
 
   void setIsCompatible(IsCompatibleFTy F) { IsCompatibleF = std::move(F); }
   void setGetCurrentSignificantUses(GetSignificantUsesFTy F) {
@@ -64,17 +62,17 @@ private:
     if (isa<JunkSlot>(Target[TIdx]))
       return true;
     if (IsCompatibleF)
-      return IsCompatibleF(Current[CIdx], Target[TIdx], CompressStack);
+      return IsCompatibleF(Current[CIdx], Target[TIdx]);
     return Current[CIdx] == Target[TIdx];
   }
   int getCurrentSignificantUses(size_t Idx) {
     if (GetCurrentSignificantUsesF)
-      return GetCurrentSignificantUsesF(Idx, Current, Target, CompressStack);
+      return GetCurrentSignificantUsesF(Current[Idx], Current, Target);
     return 0;
   }
   int getTargetSignificantUses(size_t Idx) {
     if (GetTargetSignificantUsesF)
-      return GetTargetSignificantUsesF(Idx, Current, Target, CompressStack);
+      return GetTargetSignificantUsesF(Target[Idx], Current, Target);
     return 0;
   }
   bool isArbitraryTarget(size_t Offset) {

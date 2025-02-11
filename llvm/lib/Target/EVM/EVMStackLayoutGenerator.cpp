@@ -121,37 +121,34 @@ Stack createIdealLayout(const SmallVector<StackSlot *> &OpDefs,
   if (Layout.empty())
     return Stack{};
 
-  EVMStackShuffler Shuffler(Layout, Post, CompressStack);
+  EVMStackShuffler Shuffler(Layout, Post);
 
-  Shuffler.setIsCompatible([&OpDefs](const StackSlot *CSlot,
-                                     const StackSlot *TSlot,
-                                     bool CompressStack) {
-    if (isa<UnknownSlot>(CSlot))
-      return !count(OpDefs, TSlot) &&
-             !(CompressStack && TSlot->isRematerializable());
-    return CSlot == TSlot;
-  });
+  auto canSkipSlot = [&OpDefs, CompressStack](const StackSlot *Slot) {
+    return count(OpDefs, Slot) || (CompressStack && Slot->isRematerializable());
+  };
+
+  Shuffler.setIsCompatible(
+      [&canSkipSlot](const StackSlot *CSlot, const StackSlot *TSlot) {
+        return isa<UnknownSlot>(CSlot) ? !canSkipSlot(TSlot) : CSlot == TSlot;
+      });
 
   Shuffler.setGetCurrentSignificantUses(
-      [&OpDefs](size_t Idx, Stack &C, const Stack &T, bool CompressStack) {
-        if (isa<UnknownSlot>(C[Idx]))
+      [&canSkipSlot](const StackSlot *Slot, Stack &C, const Stack &T) {
+        if (isa<UnknownSlot>(Slot))
           return 0;
-        int CUses = -count(C, C[Idx]);
-        if (count(OpDefs, C[Idx]) ||
-            (CompressStack && C[Idx]->isRematerializable()))
-          CUses = CUses + count(T, C[Idx]);
+        int CUses = -count(C, Slot);
+        if (canSkipSlot(Slot))
+          CUses = CUses + count(T, Slot);
         return CUses;
       });
 
   Shuffler.setGetTargetSignificantUses(
-      [&OpDefs](size_t Idx, Stack &C, const Stack &T, bool CompressStack) {
-        if (!count(OpDefs, T[Idx]) &&
-            !(CompressStack && T[Idx]->isRematerializable()))
+      [&canSkipSlot](const StackSlot *Slot, Stack &C, const Stack &T) {
+        if (!canSkipSlot(Slot))
           return 0;
-        int TUses = -count(C, T[Idx]);
-        if (count(OpDefs, T[Idx]) ||
-            (CompressStack && T[Idx]->isRematerializable()))
-          TUses = TUses + count(T, T[Idx]);
+        int TUses = -count(C, Slot);
+        if (canSkipSlot(Slot))
+          TUses = TUses + count(T, Slot);
         return TUses;
       });
 
