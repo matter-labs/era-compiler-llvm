@@ -277,46 +277,32 @@ void llvm::createStackLayout(Stack &CurrentStack, Stack const &TargetStack,
 
   TheShuffler.setGetCurrentSignificantUses(
       [](size_t Idx, Stack &C, const Stack &T, bool CompressStack) {
-      DenseMap<const StackSlot *, int> Uses;
-      for (const auto *S : C)
-        --Uses[S];
-
-      for (size_t Offset = 0; Offset < T.size(); ++Offset) {
-        auto *Slot = T[Offset];
-        if (isa<JunkSlot>(Slot) && Offset < C.size())
-          ++Uses[C[Offset]];
-        else
-          ++Uses[Slot];
-      }
-      return Uses[C[Idx]];
-//        int CUses = -count(C, C[Idx]);
-//        for (size_t Off = 0; Off < T.size(); ++Off) {
-//          if (Off == Idx && isa<JunkSlot>(T[Off]))
-//            ++CUses;
-//          else if (T[Off] == C[Idx])
-//            ++CUses;
-//        }
-//        return CUses;
+        const StackSlot *Slot = C[Idx];
+        int CUses = -count(C, Slot);
+        if (T.size() > C.size())
+          CUses += std::count(T.begin() + C.size(), T.end(), Slot);
+        CUses += count_if(zip(C, T), [Slot](auto In) {
+          auto [CSlot, TSlot] = In;
+          if (isa<JunkSlot>(TSlot))
+             return CSlot == Slot;
+          return TSlot == Slot;
+        });
+        return CUses;
       });
 
   TheShuffler.setGetTargetSignificantUses(
       [](size_t Idx, Stack &C, const Stack &T, bool CompressStack) {
-      DenseMap<const StackSlot *, int> Uses;
-      for (const auto *S : C)
-        --Uses[S];
-
-      for (size_t Offset = 0; Offset < T.size(); ++Offset) {
-        auto *Slot = T[Offset];
-        if (isa<JunkSlot>(Slot) && Offset < C.size())
-          ++Uses[C[Offset]];
-        else
-          ++Uses[Slot];
-      }
-      return Uses[T[Idx]];
-//        if (isa<JunkSlot>(T[Idx]))
-//          return 0;
-//        int TUses = -count(C, T[Idx]) + count(T, T[Idx]);
-//        return TUses;
+        const StackSlot *Slot = T[Idx];
+        int TUses = -count(C, Slot);
+        if (T.size() > C.size())
+          TUses += std::count(T.begin() + C.size(), T.end(), Slot);
+        TUses += count_if(zip(C, T), [Slot](auto In) {
+          auto [CSlot, TSlot] = In;
+          if (isa<JunkSlot>(TSlot))
+             return CSlot == Slot;
+          return TSlot == Slot;
+        });
+        return TUses;
       });
 
   TheShuffler.setSwap([&Swap](size_t Idx, Stack &C) { Swap(Idx); });
