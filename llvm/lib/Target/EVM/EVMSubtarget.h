@@ -56,6 +56,8 @@ public:
   }
 
   bool useAA() const override;
+
+  unsigned stackDepthLimit() const { return 16; }
 };
 } // namespace llvm
 

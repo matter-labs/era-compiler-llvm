@@ -37,12 +37,13 @@ bool EVMStackShuffler::bringUpTargetSlot(size_t TOffset) {
 bool EVMStackShuffler::dupDeepSlotIfRequired() {
   // Check if the stack is large enough for anything to potentially become
   // unreachable.
-  if (Current.size() < 15)
+  if (Current.size() < (StackDepthLimit - 1))
     return false;
 
   // Check whether any deep slot might still be needed later (i.e. we still
   // need to reach it with a DUP or SWAP).
-  for (size_t COffset = 0; COffset < (Current.size() - 15); ++COffset) {
+  for (size_t COffset = 0; COffset < (Current.size() - (StackDepthLimit - 1));
+       ++COffset) {
     if (isCompatible(COffset, COffset)) {
       // The slot is in place, but we might need another copy if it.
       if (getCurrentSignificantUses(COffset) > 0) {
@@ -126,10 +127,10 @@ bool EVMStackShuffler::shuffleStep() {
         continue;
 
       // We cannot swap that deep.
-      if (Current.size() - Off - 1 > 16) {
+      if (Current.size() - Off - 1 > StackDepthLimit) {
         // If there is a reachable slot to be removed, park the current top
         // there.
-        for (size_t SwapDepth = 16; SwapDepth > 0; --SwapDepth) {
+        for (size_t SwapDepth = StackDepthLimit; SwapDepth > 0; --SwapDepth) {
           if (getCurrentSignificantUses(Current.size() - 1 - SwapDepth) < 0) {
             swap(SwapDepth);
             if (isArbitraryTarget(CurrentTop)) {
@@ -207,8 +208,8 @@ bool EVMStackShuffler::shuffleStep() {
            (isArbitraryTarget(I) || getTargetSignificantUses(I) == 0));
   assert(isCompatible(CurrentTop, CurrentTop));
 
-  const auto &SwappableOffsets =
-      llvm::seq<size_t>(Size > 17 ? Size - 17 : 0u, Size);
+  const auto &SwappableOffsets = llvm::seq<size_t>(
+      Size > (StackDepthLimit + 1) ? Size - (StackDepthLimit + 1) : 0u, Size);
 
   // If we find a lower slot that is out of position, but also compatible with
   // the top, swap that up.
@@ -268,11 +269,12 @@ bool EVMStackShuffler::shuffleStep() {
 }
 
 void llvm::createStackLayout(
-    Stack &CurrentStack, Stack const &TargetStack,
+    Stack &CurrentStack, Stack const &TargetStack, unsigned StackDepthLimit,
     const std::function<void(unsigned)> &Swap,
     const std::function<void(const StackSlot *)> &PushOrDup,
     const std::function<void()> &Pop) {
-  EVMStackShuffler TheShuffler = EVMStackShuffler(CurrentStack, TargetStack);
+  EVMStackShuffler TheShuffler =
+      EVMStackShuffler(CurrentStack, TargetStack, StackDepthLimit);
   auto getSignificantUses = [](const StackSlot *Slot, Stack &C,
                                const Stack &T) {
     int CUses = -count(C, Slot);

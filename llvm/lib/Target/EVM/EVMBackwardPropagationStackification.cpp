@@ -93,7 +93,8 @@ bool EVMBPStackification::runOnMachineFunction(MachineFunction &MF) {
 
   assert(MRI.tracksLiveness() && "Stackification expects liveness");
   EVMMachineCFGInfo CFGInfo(MF);
-  EVMStackModel StackModel(MF, LIS);
+  EVMStackModel StackModel(MF, LIS,
+                           MF.getSubtarget<EVMSubtarget>().stackDepthLimit());
   std::unique_ptr<EVMStackLayout> Layout =
       EVMStackLayoutGenerator(MF, MLI, StackModel, CFGInfo).run();
   EVMStackifyCodeEmitter(*Layout, StackModel, CFGInfo, MF).run();

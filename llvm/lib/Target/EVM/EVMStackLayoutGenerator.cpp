@@ -58,7 +58,8 @@ template <typename T> auto take_back(T &&RangeOrContainer, size_t N = 1) {
 /// Returns all stack too deep errors that would occur when shuffling \p Source
 /// to \p Target.
 SmallVector<EVMStackLayoutGenerator::StackTooDeep>
-findStackTooDeep(Stack const &Source, Stack const &Target) {
+findStackTooDeep(Stack const &Source, Stack const &Target,
+                 unsigned StackDepthLimit) {
   Stack CurrentStack = Source;
   SmallVector<EVMStackLayoutGenerator::StackTooDeep> Errors;
 
@@ -72,20 +73,21 @@ findStackTooDeep(Stack const &Source, Stack const &Target) {
   };
 
   ::createStackLayout(
-      CurrentStack, Target,
+      CurrentStack, Target, StackDepthLimit,
       [&](unsigned I) {
-        if (I > 16)
+        if (I > StackDepthLimit)
           Errors.emplace_back(EVMStackLayoutGenerator::StackTooDeep{
-              I - 16, getVariableChoices(take_back(CurrentStack, I + 1))});
+              I - StackDepthLimit,
+              getVariableChoices(take_back(CurrentStack, I + 1))});
       },
       [&](const StackSlot *Slot) {
         if (Slot->isRematerializable())
           return;
 
         if (auto Depth = offset(reverse(CurrentStack), Slot);
-            Depth && *Depth >= 16)
+            Depth && *Depth >= StackDepthLimit)
           Errors.emplace_back(EVMStackLayoutGenerator::StackTooDeep{
-              *Depth - 15,
+              *Depth - (StackDepthLimit - 1),
               getVariableChoices(take_back(CurrentStack, *Depth + 1))});
       },
       [&]() {});
@@ -97,7 +99,8 @@ findStackTooDeep(Stack const &Source, Stack const &Target) {
 /// the operation itself). If \p CompressStack is true, rematerializable slots
 /// will not occur in the ideal stack, but rather be generated during shuffling.
 Stack createIdealLayout(const SmallVector<StackSlot *> &OpDefs,
-                        const Stack &Post, bool CompressStack) {
+                        const Stack &Post, bool CompressStack,
+                        unsigned StackDepthLimit) {
   // Determine the number of slots that have to be on stack before executing the
   // operation (excluding the inputs of the operation itself), i.e. slots that
   // cannot be rematerialized and that are not the instruction output.
@@ -121,7 +124,7 @@ Stack createIdealLayout(const SmallVector<StackSlot *> &OpDefs,
   if (Layout.empty())
     return Stack{};
 
-  EVMStackShuffler Shuffler(Layout, Post);
+  EVMStackShuffler Shuffler(Layout, Post, StackDepthLimit);
 
   auto canSkipSlot = [&OpDefs, CompressStack](const StackSlot *Slot) {
     return count(OpDefs, Slot) || (CompressStack && Slot->isRematerializable());
@@ -218,11 +221,13 @@ Stack EVMStackLayoutGenerator::propagateStackThroughOperation(
 
   SmallVector<StackSlot *> OpDefs =
       StackModel.getSlotsForInstructionDefs(Op.getMachineInstr());
+  const unsigned StackDepthLimit = StackModel.stackDepthLimit();
 
   // Determine the ideal permutation of the slots in ExitLayout that are not
   // operation outputs (and not to be generated on the fly), s.t. shuffling the
   // 'IdealStack + Operation.output' to ExitLayout is cheap.
-  Stack IdealStack = createIdealLayout(OpDefs, ExitStack, CompressStack);
+  Stack IdealStack =
+      createIdealLayout(OpDefs, ExitStack, CompressStack, StackDepthLimit);
 
 #ifndef NDEBUG
   // Make sure the resulting previous slots do not overlap with any assigned
@@ -251,7 +256,7 @@ Stack EVMStackLayoutGenerator::propagateStackThroughOperation(
       IdealStack.pop_back();
     else if (auto Offset = offset(drop_begin(reverse(IdealStack), 1),
                                   IdealStack.back())) {
-      if (*Offset + 2 < 16)
+      if (*Offset + 2 < StackDepthLimit)
         IdealStack.pop_back();
       else
         break;
@@ -268,7 +273,9 @@ Stack EVMStackLayoutGenerator::propagateStackThroughBlock(
   for (const Operation &Op : reverse(StackModel.getOperations(Block))) {
     Stack NewStack =
         propagateStackThroughOperation(CurrentStack, Op, CompressStack);
-    if (!CompressStack && !findStackTooDeep(NewStack, CurrentStack).empty())
+    if (!CompressStack &&
+        !findStackTooDeep(NewStack, CurrentStack, StackModel.stackDepthLimit())
+             .empty())
       // If we had stack errors, run again with stack compression enabled.
       return propagateStackThroughBlock(std::move(ExitStack), Block,
                                         /*CompressStack*/ true);
@@ -280,14 +287,17 @@ Stack EVMStackLayoutGenerator::propagateStackThroughBlock(
 // Returns the number of junk slots to be prepended to \p TargetLayout for
 // an optimal transition from \p EntryLayout to \p TargetLayout.
 static size_t getOptimalNumberOfJunks(const Stack &EntryLayout,
-                                      const Stack &TargetLayout) {
-  size_t BestCost = EvaluateStackTransform(EntryLayout, TargetLayout);
+                                      const Stack &TargetLayout,
+                                      unsigned StackDepthLimit) {
+  size_t BestCost =
+      EvaluateStackTransform(EntryLayout, TargetLayout, StackDepthLimit);
   size_t BestNumJunk = 0;
   size_t MaxJunk = EntryLayout.size();
   for (size_t NumJunk = 1; NumJunk <= MaxJunk; ++NumJunk) {
     Stack JunkedTarget(NumJunk, EVMStackModel::getJunkSlot());
     JunkedTarget.append(TargetLayout);
-    size_t Cost = EvaluateStackTransform(EntryLayout, JunkedTarget);
+    size_t Cost =
+        EvaluateStackTransform(EntryLayout, JunkedTarget, StackDepthLimit);
     if (Cost < BestCost) {
       BestCost = Cost;
       BestNumJunk = NumJunk;
@@ -451,7 +461,8 @@ void EVMStackLayoutGenerator::runPropagation() {
     Stack const &NextLayout =
         Ops.empty() ? ExitLayout : OperationEntryLayoutMap.at(&Ops.front());
     if (EntryLayout != NextLayout) {
-      size_t OptimalNumJunks = getOptimalNumberOfJunks(EntryLayout, NextLayout);
+      size_t OptimalNumJunks = getOptimalNumberOfJunks(
+          EntryLayout, NextLayout, StackModel.stackDepthLimit());
       if (OptimalNumJunks > 0) {
         addJunksToStackBottom(&MBB, OptimalNumJunks);
         MBBEntryLayoutMap[&MBB] = EntryLayout;
@@ -495,7 +506,8 @@ std::optional<Stack> EVMStackLayoutGenerator::getExitLayoutOrStageDependencies(
       // If the current iteration has already Visited both jump targets,
       // start from its entry layout.
       Stack CombinedStack = combineStack(MBBEntryLayoutMap.at(FalseBB),
-                                         MBBEntryLayoutMap.at(TrueBB));
+                                         MBBEntryLayoutMap.at(TrueBB),
+                                         StackModel.stackDepthLimit());
       // Additionally, the jump condition has to be at the stack top at
       // exit.
       CombinedStack.emplace_back(StackModel.getStackSlot(*Condition));
@@ -521,7 +533,8 @@ std::optional<Stack> EVMStackLayoutGenerator::getExitLayoutOrStageDependencies(
 }
 
 Stack EVMStackLayoutGenerator::combineStack(Stack const &Stack1,
-                                            Stack const &Stack2) {
+                                            Stack const &Stack2,
+                                            unsigned StackDepthLimit) {
   // TODO: it would be nicer to replace this by a constructive algorithm.
   // Currently it uses a reduced version of the Heap Algorithm to partly
   // brute-force, which seems to work decently well.
@@ -543,12 +556,12 @@ Stack EVMStackLayoutGenerator::combineStack(Stack const &Stack1,
     Stack2Tail.push_back(Slot);
 
   if (Stack1Tail.empty()) {
-    CommonPrefix.append(compressStack(Stack2Tail));
+    CommonPrefix.append(compressStack(Stack2Tail, StackDepthLimit));
     return CommonPrefix;
   }
 
   if (Stack2Tail.empty()) {
-    CommonPrefix.append(compressStack(Stack1Tail));
+    CommonPrefix.append(compressStack(Stack1Tail, StackDepthLimit));
     return CommonPrefix;
   }
 
@@ -575,7 +588,7 @@ Stack EVMStackLayoutGenerator::combineStack(Stack const &Stack1,
     Stack TestStack = Candidate;
     auto Swap = [&](unsigned SwapDepth) {
       ++NumOps;
-      if (SwapDepth > 16)
+      if (SwapDepth > StackDepthLimit)
         NumOps += 1000;
     };
 
@@ -586,12 +599,14 @@ Stack EVMStackLayoutGenerator::combineStack(Stack const &Stack1,
       Stack Tmp = CommonPrefix;
       Tmp.append(TestStack);
       auto Depth = offset(reverse(Tmp), Slot);
-      if (Depth && *Depth >= 16)
+      if (Depth && *Depth >= StackDepthLimit)
         NumOps += 1000;
     };
-    createStackLayout(TestStack, Stack1Tail, Swap, DupOrPush, [&]() {});
+    createStackLayout(TestStack, Stack1Tail, StackDepthLimit, Swap, DupOrPush,
+                      [&]() {});
     TestStack = Candidate;
-    createStackLayout(TestStack, Stack2Tail, Swap, DupOrPush, [&]() {});
+    createStackLayout(TestStack, Stack2Tail, StackDepthLimit, Swap, DupOrPush,
+                      [&]() {});
     return NumOps;
   };
 
@@ -629,7 +644,8 @@ Stack EVMStackLayoutGenerator::combineStack(Stack const &Stack1,
   return CommonPrefix;
 }
 
-Stack EVMStackLayoutGenerator::compressStack(Stack CurStack) {
+Stack EVMStackLayoutGenerator::compressStack(Stack CurStack,
+                                             unsigned StackDepthLimit) {
   std::optional<size_t> FirstDupOffset;
   do {
     if (FirstDupOffset) {
@@ -649,7 +665,7 @@ Stack EVMStackLayoutGenerator::compressStack(Stack CurStack) {
 
       if (auto DupDepth =
               offset(drop_begin(reverse(CurStack), Depth + 1), Slot)) {
-        if (Depth + *DupDepth <= 16) {
+        if (Depth + *DupDepth <= StackDepthLimit) {
           FirstDupOffset = CurStack.size() - Depth - 1;
           break;
         }
@@ -661,10 +677,11 @@ Stack EVMStackLayoutGenerator::compressStack(Stack CurStack) {
 
 /// Returns the number of operations required to transform stack \p Source to
 /// \p Target.
-size_t llvm::EvaluateStackTransform(Stack Source, Stack const &Target) {
+size_t llvm::EvaluateStackTransform(Stack Source, Stack const &Target,
+                                    unsigned StackDepthLimit) {
   size_t OpGas = 0;
   auto Swap = [&](unsigned SwapDepth) {
-    if (SwapDepth > 16)
+    if (SwapDepth > StackDepthLimit)
       OpGas += 1000;
     else
       OpGas += 3; // SWAP* gas price;
@@ -678,7 +695,7 @@ size_t llvm::EvaluateStackTransform(Stack Source, Stack const &Target) {
       if (!Depth)
         llvm_unreachable("No slot in the stack");
 
-      if (*Depth < 16)
+      if (*Depth < StackDepthLimit)
         OpGas += 3; // DUP* gas price
       else
         OpGas += 1000;
@@ -686,7 +703,7 @@ size_t llvm::EvaluateStackTransform(Stack Source, Stack const &Target) {
   };
   auto Pop = [&]() { OpGas += 2; };
 
-  createStackLayout(Source, Target, Swap, DupOrPush, Pop);
+  createStackLayout(Source, Target, StackDepthLimit, Swap, DupOrPush, Pop);
   return OpGas;
 }
 
