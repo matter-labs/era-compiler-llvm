@@ -235,6 +235,7 @@ class EVMStackModel {
   MachineFunction &MF;
   const LiveIntervals &LIS;
   DenseMap<const MachineBasicBlock *, SmallVector<Operation>> OperationsMap;
+  unsigned StackDepthLimit;
 
   // Storage for stack slots.
   mutable DenseMap<APInt, std::unique_ptr<LiteralSlot>> LiteralStorage;
@@ -250,7 +251,8 @@ class EVMStackModel {
   mutable std::unique_ptr<FunctionReturnLabelSlot> TheFunctionReturnLabelSlot;
 
 public:
-  EVMStackModel(MachineFunction &MF, const LiveIntervals &LIS);
+  EVMStackModel(MachineFunction &MF, const LiveIntervals &LIS,
+                unsigned StackDepthLimit);
   Stack getFunctionParameters() const;
   Stack getInstrInput(const MachineInstr &MI) const;
   Stack getReturnArguments(const MachineInstr &MI) const;
@@ -304,6 +306,8 @@ public:
     static JunkSlot TheJunkSlot;
     return &TheJunkSlot;
   }
+
+  unsigned stackDepthLimit() const { return StackDepthLimit; }
 
 private:
   void createOperation(MachineInstr &MI, SmallVector<Operation> &Ops) const;

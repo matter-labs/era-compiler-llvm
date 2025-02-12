@@ -22,6 +22,7 @@ namespace llvm {
 class EVMStackShuffler {
   Stack &Current;
   const Stack &Target;
+  unsigned StackDepthLimit;
 
   using IsCompatibleFTy =
       std::function<bool(const StackSlot *, const StackSlot *)>;
@@ -39,8 +40,9 @@ class EVMStackShuffler {
   PushOrDupTargetFTy PushOrDupTargetF = nullptr;
 
 public:
-  EVMStackShuffler(Stack &Current, const Stack &Target)
-      : Current(Current), Target(Target) {}
+  EVMStackShuffler(Stack &Current, const Stack &Target,
+                   unsigned StackDepthLimit)
+      : Current(Current), Target(Target), StackDepthLimit(StackDepthLimit) {}
 
   void setIsCompatible(IsCompatibleFTy F) { IsCompatibleF = std::move(F); }
   void setGetCurrentSignificantUses(GetSignificantUsesFTy F) {
@@ -148,6 +150,7 @@ private:
 /// \p Pop is a function with signature void() that is called when the top most
 /// slot is popped.
 void createStackLayout(Stack &CurrentStack, Stack const &TargetStack,
+                       unsigned StackDepthLimit,
                        const std::function<void(unsigned)> &Swap,
                        const std::function<void(const StackSlot *)> &PushOrDup,
                        const std::function<void()> &Pop);

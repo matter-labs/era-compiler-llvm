@@ -29,7 +29,8 @@ class MachineLoopInfo;
 
 /// Returns the number of operations required to transform stack \p Source to
 /// \p Target.
-size_t EvaluateStackTransform(Stack Source, Stack const &Target);
+size_t EvaluateStackTransform(Stack Source, Stack const &Target,
+                              unsigned StackDepthLimit);
 
 class EVMStackLayout {
 public:
@@ -121,7 +122,8 @@ private:
   /// Calculates the ideal stack layout, s.t., both \p Stack1 and \p Stack2 can
   /// be achieved with minimal stack shuffling when starting from the returned
   /// layout.
-  static Stack combineStack(const Stack &Stack1, const Stack &Stack2);
+  static Stack combineStack(const Stack &Stack1, const Stack &Stack2,
+                            unsigned StackDepthLimit);
 
   /// Walks through the CFG and reports any stack too deep errors that would
   /// occur when generating code for it without countermeasures.
@@ -131,7 +133,7 @@ private:
   /// Returns a copy of \p Stack stripped of all duplicates and slots that can
   /// be freely generated. Attempts to create a layout that requires a minimal
   /// amount of operations to reconstruct the original stack \p Stack.
-  static Stack compressStack(Stack Stack);
+  static Stack compressStack(Stack Stack, unsigned StackDepthLimit);
 
   const MachineFunction &MF;
   const MachineLoopInfo *MLI;
