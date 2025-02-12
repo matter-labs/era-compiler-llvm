@@ -177,9 +177,7 @@ public:
 
   size_t getIndex() { return Index; }
   bool isRematerializable() const override { return true; }
-  std::string toString() const override {
-    return "UNKNOWN";
-  }
+  std::string toString() const override { return "UNKNOWN"; }
 
   static bool classof(const StackSlot *S) {
     return S->getSlotKind() == SK_Unknown;
@@ -192,7 +190,8 @@ public:
   explicit Stack(StackSlot **Start, StackSlot **End)
       : SmallVector(Start, End) {}
   explicit Stack(size_t Size, StackSlot *Value) : SmallVector(Size, Value) {}
-  explicit Stack(SmallVector<StackSlot *> &&Slots) : SmallVector(std::move(Slots)) {}
+  explicit Stack(SmallVector<StackSlot *> &&Slots)
+      : SmallVector(std::move(Slots)) {}
   // TODO: should it be explicit? If yes, fix all build errors.
   Stack(const SmallVector<StackSlot *> &Slots) : SmallVector(Slots) {}
   Stack() = default;

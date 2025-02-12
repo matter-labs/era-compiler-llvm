@@ -127,7 +127,8 @@ bool EVMStackShuffler::shuffleStep() {
 
       // We cannot swap that deep.
       if (Current.size() - Off - 1 > 16) {
-        // If there is a reachable slot to be removed, park the current top there.
+        // If there is a reachable slot to be removed, park the current top
+        // there.
         for (size_t SwapDepth = 16; SwapDepth > 0; --SwapDepth) {
           if (getCurrentSignificantUses(Current.size() - 1 - SwapDepth) < 0) {
             swap(SwapDepth);
@@ -212,8 +213,7 @@ bool EVMStackShuffler::shuffleStep() {
   // If we find a lower slot that is out of position, but also compatible with
   // the top, swap that up.
   for (size_t Offset : SwappableOffsets) {
-    if (!isCompatible(Offset, Offset) &&
-        isCompatible(CurrentTop, Offset)) {
+    if (!isCompatible(Offset, Offset) && isCompatible(CurrentTop, Offset)) {
       swap(Size - Offset - 1);
       return true;
     }
@@ -250,8 +250,7 @@ bool EVMStackShuffler::shuffleStep() {
   // We cannot avoid a stack-too-deep error. Repeat the above without
   // restricting to reachable slots.
   for (size_t Offset = 0; Offset < Size; ++Offset) {
-    if (!isCompatible(Offset, Offset) &&
-        isCompatible(CurrentTop, Offset)) {
+    if (!isCompatible(Offset, Offset) && isCompatible(CurrentTop, Offset)) {
       swap(Size - Offset - 1);
       return true;
     }
@@ -268,23 +267,25 @@ bool EVMStackShuffler::shuffleStep() {
   llvm_unreachable("Unexpected state");
 }
 
-void llvm::createStackLayout(Stack &CurrentStack, Stack const &TargetStack,
-                       const std::function<void(unsigned)> &Swap,
-                       const std::function<void(const StackSlot *)> &PushOrDup,
-                       const std::function<void()> &Pop) {
+void llvm::createStackLayout(
+    Stack &CurrentStack, Stack const &TargetStack,
+    const std::function<void(unsigned)> &Swap,
+    const std::function<void(const StackSlot *)> &PushOrDup,
+    const std::function<void()> &Pop) {
   EVMStackShuffler TheShuffler = EVMStackShuffler(CurrentStack, TargetStack);
-  auto getSignificantUses = [](const StackSlot *Slot, Stack &C, const Stack &T) {
-        int CUses = -count(C, Slot);
-        if (T.size() > C.size())
-          CUses += std::count(T.begin() + C.size(), T.end(), Slot);
-        CUses += count_if(zip(C, T), [Slot](auto In) {
-          auto [CSlot, TSlot] = In;
-          if (isa<JunkSlot>(TSlot))
-            return CSlot == Slot;
-          return TSlot == Slot;
-        });
-        return CUses;
-      };
+  auto getSignificantUses = [](const StackSlot *Slot, Stack &C,
+                               const Stack &T) {
+    int CUses = -count(C, Slot);
+    if (T.size() > C.size())
+      CUses += std::count(T.begin() + C.size(), T.end(), Slot);
+    CUses += count_if(zip(C, T), [Slot](auto In) {
+      auto [CSlot, TSlot] = In;
+      if (isa<JunkSlot>(TSlot))
+        return CSlot == Slot;
+      return TSlot == Slot;
+    });
+    return CUses;
+  };
 
   TheShuffler.setGetCurrentSignificantUses(getSignificantUses);
   TheShuffler.setGetTargetSignificantUses(getSignificantUses);

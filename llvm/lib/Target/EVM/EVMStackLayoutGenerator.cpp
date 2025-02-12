@@ -728,8 +728,8 @@ void EVMStackLayoutGenerator::dump(raw_ostream &OS) {
     printBlock(OS, MBB);
 }
 
-void EVMStackLayoutGenerator::printBlock(
-    raw_ostream &OS, const MachineBasicBlock &Block) {
+void EVMStackLayoutGenerator::printBlock(raw_ostream &OS,
+                                         const MachineBasicBlock &Block) {
   OS << "Block" << getBlockId(Block) << " [\n";
   OS << MBBEntryLayoutMap.at(&Block).toString() << "\n";
   for (auto const &Op : StackModel.getOperations(&Block)) {
