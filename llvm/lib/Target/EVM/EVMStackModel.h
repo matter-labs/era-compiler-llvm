@@ -199,8 +199,8 @@ public:
 
   std::string toString() const {
     std::string Result("[ ");
-    for (const auto *It = begin(); It != end(); ++It)
-      Result += (*It)->toString() + ' ';
+    for (const auto *It : *this)
+      Result += It->toString() + ' ';
     Result += ']';
     return Result;
   }
