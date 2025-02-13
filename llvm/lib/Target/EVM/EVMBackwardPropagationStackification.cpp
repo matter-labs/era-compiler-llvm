@@ -95,8 +95,7 @@ bool EVMBPStackification::runOnMachineFunction(MachineFunction &MF) {
   EVMMachineCFGInfo CFGInfo(MF);
   EVMStackModel StackModel(MF, LIS,
                            MF.getSubtarget<EVMSubtarget>().stackDepthLimit());
-  std::unique_ptr<EVMStackLayout> Layout =
-      EVMStackLayoutGenerator(MF, MLI, StackModel, CFGInfo).run();
-  EVMStackifyCodeEmitter(*Layout, StackModel, CFGInfo, MF).run();
+  EVMMIRToStack StackMaps = EVMStackSolver(MF, MLI, StackModel, CFGInfo).run();
+  EVMStackifyCodeEmitter(StackMaps, StackModel, CFGInfo, MF).run();
   return true;
 }
