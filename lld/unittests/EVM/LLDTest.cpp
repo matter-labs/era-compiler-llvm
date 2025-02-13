@@ -145,109 +145,97 @@ define i256 @foo() {                                              \n\
   StringRef SymVal1(LinkerSymbolVal[0], 20);
   StringRef SymVal2(LinkerSymbolVal[1], 20);
 
-  std::array<LLVMMemoryBufferRef, 2> InMemBuf = {DeployObjMemBuffer,
-                                                 DeployedObjMemBuffer};
-  std::array<LLVMMemoryBufferRef, 2> OutMemBuf = {nullptr, nullptr};
   const char *InIDs[] = {"Test_26", "Test_26_deployed"};
+  std::array<LLVMMemoryBufferRef, 2> InData = {DeployObjMemBuffer,
+                                               DeployedObjMemBuffer};
+  LLVMMemoryBufferRef InMemBuf = nullptr;
+  LLVMMemoryBufferRef OutMemBuf = nullptr;
 
-  // Check load immutable references
+  // Assemble deploy with deployed.
+  {
+    if (LLVMAssembleEVM(InData.data(), InIDs, 2, &OutMemBuf, &ErrMsg)) {
+      FAIL() << "Failed to link:" << ErrMsg;
+      LLVMDisposeMessage(ErrMsg);
+      return;
+    }
+    EXPECT_TRUE(LLVMIsELFEVM(OutMemBuf));
+    std::swap(OutMemBuf, InMemBuf);
+  }
+
+  // Check load immutable references.
   {
     char **ImmutableIDs = nullptr;
     uint64_t *ImmutableOffsets = nullptr;
     uint64_t ImmCount =
-        LLVMGetImmutablesEVM(InMemBuf[1], &ImmutableIDs, &ImmutableOffsets);
+        LLVMGetImmutablesEVM(InData[1], &ImmutableIDs, &ImmutableOffsets);
     EXPECT_TRUE(ImmCount == 1);
     EXPECT_TRUE(std::strcmp(ImmutableIDs[0], "id") == 0);
     LLVMDisposeImmutablesEVM(ImmutableIDs, ImmutableOffsets, ImmCount);
   }
 
-  // No linker symbol definitions are provided, so we have to receive two ELF
-  // object files.
-  if (LLVMLinkEVM(InMemBuf.data(), InIDs, 2, OutMemBuf.data(), nullptr, nullptr,
-                  0, &ErrMsg)) {
+  // No linker symbol definitions are provided, so we have to receive ELF
+  // object file.
+  if (LLVMLinkEVM(InMemBuf, &OutMemBuf, nullptr, nullptr, 0, &ErrMsg)) {
     FAIL() << "Failed to link:" << ErrMsg;
     LLVMDisposeMessage(ErrMsg);
     return;
   }
 
-  EXPECT_TRUE(LLVMIsELFEVM(OutMemBuf[0]));
-  EXPECT_TRUE(LLVMIsELFEVM(OutMemBuf[1]));
+  EXPECT_TRUE(LLVMIsELFEVM(OutMemBuf));
 
   char **UndefLinkerSyms = nullptr;
   uint64_t NumLinkerUndefs = 0;
 
-  LLVMGetUndefinedReferencesEVM(OutMemBuf[0], &UndefLinkerSyms,
-                                &NumLinkerUndefs);
+  LLVMGetUndefinedReferencesEVM(OutMemBuf, &UndefLinkerSyms, &NumLinkerUndefs);
+
+  EXPECT_TRUE(NumLinkerUndefs == 2);
   EXPECT_TRUE((std::strcmp(UndefLinkerSyms[0], LinkerSymbol[0]) == 0));
+  EXPECT_TRUE((std::strcmp(UndefLinkerSyms[1], LinkerSymbol[1]) == 0));
   LLVMDisposeUndefinedReferences(UndefLinkerSyms, NumLinkerUndefs);
 
-  LLVMGetUndefinedReferencesEVM(OutMemBuf[1], &UndefLinkerSyms,
-                                &NumLinkerUndefs);
-  EXPECT_TRUE((std::strcmp(UndefLinkerSyms[0], LinkerSymbol[1]) == 0));
-  LLVMDisposeUndefinedReferences(UndefLinkerSyms, NumLinkerUndefs);
+  std::swap(OutMemBuf, InMemBuf);
+  LLVMDisposeMemoryBuffer(OutMemBuf);
 
-  InMemBuf.swap(OutMemBuf);
-  LLVMDisposeMemoryBuffer(OutMemBuf[0]);
-  LLVMDisposeMemoryBuffer(OutMemBuf[1]);
-
-  // The first linker symbol definitions is provided, so we still have to
-  // receive two ELF object files, because of the undefined second reference.
-  if (LLVMLinkEVM(InMemBuf.data(), InIDs, 2, OutMemBuf.data(), LinkerSymbol,
-                  LinkerSymbolVal, 1, &ErrMsg)) {
+  // The first linker symbol definitions is provided, so we still have
+  // to receive an ELF object file
+  if (LLVMLinkEVM(InMemBuf, &OutMemBuf, LinkerSymbol, LinkerSymbolVal, 1,
+                  &ErrMsg)) {
     FAIL() << "Failed to link:" << ErrMsg;
     LLVMDisposeMessage(ErrMsg);
     return;
   }
 
-  EXPECT_TRUE(LLVMIsELFEVM(OutMemBuf[0]));
-  EXPECT_TRUE(LLVMIsELFEVM(OutMemBuf[1]));
+  EXPECT_TRUE(LLVMIsELFEVM(OutMemBuf));
 
-  LLVMGetUndefinedReferencesEVM(OutMemBuf[0], &UndefLinkerSyms,
-                                &NumLinkerUndefs);
-  EXPECT_TRUE(NumLinkerUndefs == 0);
-  LLVMDisposeUndefinedReferences(UndefLinkerSyms, NumLinkerUndefs);
-
-  LLVMGetUndefinedReferencesEVM(OutMemBuf[1], &UndefLinkerSyms,
-                                &NumLinkerUndefs);
+  LLVMGetUndefinedReferencesEVM(OutMemBuf, &UndefLinkerSyms, &NumLinkerUndefs);
+  EXPECT_TRUE(NumLinkerUndefs == 1);
   EXPECT_TRUE((std::strcmp(UndefLinkerSyms[0], LinkerSymbol[1]) == 0));
   LLVMDisposeUndefinedReferences(UndefLinkerSyms, NumLinkerUndefs);
 
-  InMemBuf.swap(OutMemBuf);
-  LLVMDisposeMemoryBuffer(OutMemBuf[0]);
-  LLVMDisposeMemoryBuffer(OutMemBuf[1]);
+  std::swap(OutMemBuf, InMemBuf);
+  LLVMDisposeMemoryBuffer(OutMemBuf);
 
   // Both linker symbol definitions are provided, so we have to receive
-  // bytecodes files.
-  if (LLVMLinkEVM(InMemBuf.data(), InIDs, 2, OutMemBuf.data(), LinkerSymbol,
-                  LinkerSymbolVal, 2, &ErrMsg)) {
+  // a bytecode.
+  if (LLVMLinkEVM(InMemBuf, &OutMemBuf, LinkerSymbol, LinkerSymbolVal, 2,
+                  &ErrMsg)) {
     FAIL() << "Failed to link:" << ErrMsg;
     LLVMDisposeMessage(ErrMsg);
     return;
   }
 
-  EXPECT_TRUE(!LLVMIsELFEVM(OutMemBuf[0]));
-  EXPECT_TRUE(!LLVMIsELFEVM(OutMemBuf[1]));
+  EXPECT_TRUE(!LLVMIsELFEVM(OutMemBuf));
 
-  LLVMGetUndefinedReferencesEVM(OutMemBuf[0], &UndefLinkerSyms,
-                                &NumLinkerUndefs);
+  LLVMGetUndefinedReferencesEVM(OutMemBuf, &UndefLinkerSyms, &NumLinkerUndefs);
   EXPECT_TRUE(NumLinkerUndefs == 0);
   LLVMDisposeUndefinedReferences(UndefLinkerSyms, NumLinkerUndefs);
 
-  LLVMGetUndefinedReferencesEVM(OutMemBuf[1], &UndefLinkerSyms,
-                                &NumLinkerUndefs);
-  EXPECT_TRUE(NumLinkerUndefs == 0);
-  LLVMDisposeUndefinedReferences(UndefLinkerSyms, NumLinkerUndefs);
-
-  StringRef DeployBin(LLVMGetBufferStart(OutMemBuf[0]),
-                      LLVMGetBufferSize(OutMemBuf[0]));
-  StringRef DeployedBin(LLVMGetBufferStart(OutMemBuf[1]),
-                        LLVMGetBufferSize(OutMemBuf[1]));
+  StringRef DeployBin(LLVMGetBufferStart(OutMemBuf),
+                      LLVMGetBufferSize(OutMemBuf));
 
   EXPECT_TRUE(DeployBin.find(SymVal1) != StringRef::npos);
-  EXPECT_TRUE(DeployedBin.find(SymVal2) != StringRef::npos);
+  EXPECT_TRUE(DeployBin.find(SymVal2) != StringRef::npos);
 
-  for (unsigned I = 0; I < 2; ++I) {
-    LLVMDisposeMemoryBuffer(OutMemBuf[I]);
-    LLVMDisposeMemoryBuffer(InMemBuf[I]);
-  }
+  LLVMDisposeMemoryBuffer(OutMemBuf);
+  LLVMDisposeMemoryBuffer(InMemBuf);
 }

@@ -46,6 +46,9 @@ std::string getLinkerSymbolHash(StringRef SymName);
 std::string getLinkerSymbolSectionName(StringRef Name);
 std::string getDataSizeSymbol(StringRef SymbolName);
 std::string getDataOffsetSymbol(StringRef SymbolName);
+std::string getDataOffsetSymbol(StringRef Name);
+bool isDataOffsetSymbolName(StringRef Name);
+std::string extractDataOffseteName(StringRef SymbolName);
 bool isLoadImmutableSymbolName(StringRef Name);
 std::string getImmutableId(StringRef Name);
 } // namespace EVM
@@ -555,133 +558,6 @@ void LLVMDisposeUndefinedReferences(char *symbolNames[], uint64_t numSymbols) {
 
 //----------------------------------------------------------------------------//
 
-/// This function generates a linker script for EVM architecture.
-/// \p memBufs - array of input memory buffers with following structure:
-///
-///   memBufs[0] - deploy object code
-///   memBufs[1] - deployed object code
-///   --------------------------
-///   memBufs[2] - 1-st sub-contract (final EVM bytecode)
-///   ...
-///   memBufs[N] - N-st sub-contract (final EVM bytecode)
-///
-/// Sub-contracts are optional. They should have the same ordering as in
-/// the YUL layout.
-///
-/// \p bufIDs - array of string identifiers of the buffers. IDs correspond
-/// to the object names in the YUL layout.
-///
-/// For example, the YUL object:
-///
-///   |--D_105_deploy --||--D_105_deployed --||-- B_40 --|
-///
-///   __datasize_B_40 = 1384;
-///   SECTIONS {
-///     . = 0;
-///     .text : SUBALIGN(1) {
-///       D_105(.text);
-///       __dataoffset_D_105_deployed = .;
-///       D_105_deployed(.text);
-///       __datasize_D_105_deployed = . - __dataoffset_D_105_deployed;
-///       __dataoffset_B_40 = .;
-///       __datasize_D_105 = __dataoffset_B_40 + __datasize_B_40;
-///       LONG(__dataoffset_D_105_deployed);
-///     }
-///
-/// The dot '.' denotes current location in the resulting file.
-/// The purpose of the script is to define datasize/dataoffset absolute symbols
-/// that reflect the YUL layout.
-static std::string creteEVMLinkerScript(ArrayRef<LLVMMemoryBufferRef> memBufs,
-                                        ArrayRef<const char *> bufIDs) {
-  assert(memBufs.size() == bufIDs.size());
-  size_t numObjectsToLink = memBufs.size();
-
-  auto getDataOffsetName = [](StringRef name) {
-    return EVM::getDataOffsetSymbol(EVM::getLinkerSymbolHash(name));
-  };
-  auto getDataSizeName = [](StringRef name) {
-    return EVM::getDataSizeSymbol(EVM::getLinkerSymbolHash(name));
-  };
-
-  // Define the script part related to the top-level contract.
-  std::string topName = EVM::getLinkerSymbolHash(bufIDs[0]);
-  std::string deployed = EVM::getLinkerSymbolHash(bufIDs[1]);
-
-  // Contains the linker script part corresponding to the top-level contract.
-  // For the example above, this contains:
-  //   D_105(.text);
-  //   __dataoffset_D_105_deployed = .;
-  //   D_105_deployed(.text);
-  //   __datasize_D_105_deployed = . - __dataoffset_D_105_deployed;
-  std::string topLevelBuf;
-  raw_string_ostream topLevel(topLevelBuf);
-  topLevel << topName << "(.text);\n"
-           << EVM::getDataOffsetSymbol(deployed) << " = .;\n"
-           << deployed << "(.text);\n"
-           << EVM::getDataSizeSymbol(deployed) << " = . - "
-           << EVM::getDataOffsetSymbol(deployed) + ";\n";
-
-  // Contains symbols whose values are the sizes of the dependent contracts.
-  // For the example above, this contains:
-  //   __datasize_B_40 = 1384;
-  std::string dataSizeBuf;
-  raw_string_ostream symDatasizeDeps(dataSizeBuf);
-
-  // Contains symbols whose values are the offsets of the dependent contracts.
-  // For the example above, this contains:
-  //   __dataoffset_B_40 = .;
-  std::string dataOffsetBuf;
-  raw_string_ostream symDataOffsetDeps(dataOffsetBuf);
-  if (numObjectsToLink > 2) {
-    // Define datasize symbols for the dependent contracts. They start after
-    // {deploy, deployed} pair of the top-level contract, i.e. at index 2.
-    for (unsigned idx = 2; idx < numObjectsToLink; ++idx)
-      symDatasizeDeps << getDataSizeName(bufIDs[idx]) << " = "
-                      << LLVMGetBufferSize(memBufs[idx]) << ";\n";
-
-    symDataOffsetDeps << getDataOffsetName(bufIDs[2]) << " = .;\n";
-    for (unsigned idx = 3; idx < numObjectsToLink; ++idx)
-      symDataOffsetDeps << getDataOffsetName(bufIDs[idx]) << " = "
-                        << getDataOffsetName(bufIDs[idx - 1]) << " + "
-                        << getDataSizeName(bufIDs[idx - 1]) << ";\n";
-  }
-
-  // Contains a symbol whose value is the total size of the top-level contract
-  // with all the dependencies.
-  std::string dataSizeTopBuf;
-  raw_string_ostream symDatasizeTop(dataSizeTopBuf);
-  symDatasizeTop << EVM::getDataSizeSymbol(topName) << " = ";
-  if (numObjectsToLink > 2)
-    symDatasizeTop << getDataOffsetName(bufIDs.back()) << " + "
-                   << getDataSizeName(bufIDs.back()) << ";\n";
-  else
-    symDatasizeTop << ".;\n";
-
-  // Emit size of the deploy code offset as the 4-byte unsigned integer.
-  // This is needed to determine which offset the deployed code starts at
-  // in the linked binary.
-  std::string deploySize =
-      "LONG(" + EVM::getDataOffsetSymbol(deployed) + ");\n";
-
-  std::string script =
-      formatv("{0}\n\
-ENTRY(0);\n\
-SECTIONS {\n\
-  . = 0;\n\
-  .code : SUBALIGN(1) {\n\
-{1}\
-{2}\
-{3}\
-{4}\
-  }\n\
-}\n\
-",
-              symDatasizeDeps.str(), topLevel.str(), symDataOffsetDeps.str(),
-              symDatasizeTop.str(), deploySize);
-
-  return script;
-}
-
 /// Create linker script as described in the createEraVMRelLinkerScript.
 static std::string createEVMLinkerSymbolsDefinitions(
     const char *const *linkerSymbolNames,
@@ -689,61 +565,6 @@ static std::string createEVMLinkerSymbolsDefinitions(
     uint64_t numLinkerSymbols) {
   return createSymbolDefinitions(linkerSymbolNames, linkerSymbolValues,
                                  numLinkerSymbols, nullptr, nullptr, 0);
-}
-
-/// Resolve undefined linker symbols in the ELF object file \inBuffer
-/// and return the obtained ELF object file.
-static bool
-resolveEVMLinkerSymbols(MemoryBufferRef inBuffer,
-                        LLVMMemoryBufferRef *outBuffer,
-                        const char *const *linkerSymbolNames,
-                        const char linkerSymbolValues[][LINKER_SYMBOL_SIZE],
-                        uint64_t numLinkerSymbols, char **errorMessage) {
-  SmallVector<MemoryBufferRef> localInMemBufRefs(2);
-  localInMemBufRefs[0] = inBuffer;
-  std::string linkerScript = createEVMLinkerSymbolsDefinitions(
-      linkerSymbolNames, linkerSymbolValues, numLinkerSymbols);
-
-  std::unique_ptr<MemoryBuffer> linkerScriptBuf =
-      MemoryBuffer::getMemBuffer(linkerScript, "1");
-
-  localInMemBufRefs[1] = linkerScriptBuf->getMemBufferRef();
-
-  SmallVector<const char *, 16> lldArgs;
-  lldArgs.push_back("ld.lld");
-  lldArgs.push_back("-T");
-  lldArgs.push_back("1");
-
-  lldArgs.push_back("--relocatable");
-
-  // Push the name of the input object file - '0'.
-  lldArgs.push_back("0");
-
-  SmallString<0> codeString;
-  raw_svector_ostream ostream(codeString);
-  SmallString<0> errorString;
-  raw_svector_ostream errorOstream(errorString);
-
-  // Lld-as-a-library is not thread safe, as it has a global state,
-  // so we need to protect lld from simultaneous access from different threads.
-  std::unique_lock<std::mutex> lock(lldMutex);
-  const lld::Result s =
-      lld::lldMainMemBuf(localInMemBufRefs, &ostream, lldArgs, outs(),
-                         errorOstream, {{lld::Gnu, &lld::elf::linkMemBuf}});
-  lock.unlock();
-
-  bool Ret = !s.retCode && s.canRunAgain;
-  // For unification with other LLVM C-API functions, return 'true' in case of
-  // an error.
-  if (!Ret) {
-    *errorMessage = strdup(errorString.c_str());
-    return true;
-  }
-
-  StringRef data = ostream.str();
-  *outBuffer = LLVMCreateMemoryBufferWithMemoryRangeCopy(data.data(),
-                                                         data.size(), "result");
-  return false;
 }
 
 /// Returns true if the \p inBuffer contains an ELF object file.
@@ -779,89 +600,54 @@ void LLVMGetUndefinedReferencesEVM(LLVMMemoryBufferRef inBuffer,
                                              ReferenceSymbolType::Linker);
 }
 
-/// Links the deploy and runtime ELF object files using the information about
-//  dependencies.
-LLVMBool LLVMLinkEVM(LLVMMemoryBufferRef inBuffers[],
-                     const char *inBuffersIDs[], uint64_t numInBuffers,
-                     LLVMMemoryBufferRef outBuffers[2],
+/// Resolves undefined linker symbols in the ELF object file \inBuffer.
+/// Returns ELF object file if there remain unresolved linker symbols.
+/// Otherwise returns the bytecode.
+LLVMBool LLVMLinkEVM(LLVMMemoryBufferRef inBuffer,
+                     LLVMMemoryBufferRef *outBuffer,
                      const char *const *linkerSymbolNames,
                      const char linkerSymbolValues[][LINKER_SYMBOL_SIZE],
                      uint64_t numLinkerSymbols, char **errorMessage) {
-  assert(numInBuffers > 1);
-  SmallVector<MemoryBufferRef> localInMemBufRefs(3);
-  SmallVector<std::unique_ptr<MemoryBuffer>> localInMemBufs(3);
+  SmallVector<MemoryBufferRef> localInMemBufRefs(2);
+  localInMemBufRefs[0] = *unwrap(inBuffer);
 
-  // TODO: #740. Verify that the object files contain sections with original
-  // inBuffersIDs, i.e. before taking hash.
-  for (unsigned idx = 0; idx < 2; ++idx) {
-    MemoryBufferRef ref = *unwrap(inBuffers[idx]);
-    // We need to copy buffers to be able to change their names, as this matters
-    // for the linker.
-    localInMemBufs[idx] = MemoryBuffer::getMemBufferCopy(
-        ref.getBuffer(), EVM::getLinkerSymbolHash(inBuffersIDs[idx]));
-    localInMemBufRefs[idx] = localInMemBufs[idx]->getMemBufferRef();
+  *outBuffer = nullptr;
+  if (!LLVMIsELFEVM(inBuffer)) {
+    *errorMessage = strdup("Input binary is not an EVM ELF file");
+    return true;
   }
 
-  // We need to check 'init' and 'deploy' ELF files for the undefined reference
-  // symbols. They are located at the beginning of the localInMemBufRefs.
-  bool shouldEmitRelocatable = std::any_of(
-      localInMemBufRefs.begin(), std::next(localInMemBufRefs.begin(), 2),
-      [linkerSymbolNames, numLinkerSymbols](MemoryBufferRef bufRef) {
-        std::unique_ptr<Binary> InBinary = cantFail(createBinary(bufRef));
-        assert(InBinary->isObject());
-        return hasUndefinedReferenceSymbols(
-            *static_cast<ObjectFile *>(InBinary.get()), linkerSymbolNames,
-            numLinkerSymbols, nullptr, 0);
-      });
-
-  if (shouldEmitRelocatable) {
-    for (unsigned idx = 0; idx < 2; ++idx) {
-      LLVMMemoryBufferRef outBuf = nullptr;
-      char *errMsg = nullptr;
-      if (resolveEVMLinkerSymbols(localInMemBufRefs[idx], &outBuf,
-                                  linkerSymbolNames, linkerSymbolValues,
-                                  numLinkerSymbols, &errMsg)) {
-        *errorMessage = errMsg;
-        return true;
-      }
-      outBuffers[idx] = outBuf;
-    }
-    return false;
-  }
+  std::unique_ptr<Binary> inBinary =
+      cantFail(createBinary(localInMemBufRefs[0]));
+  assert(inBinary->isObject());
+  bool shouldEmitRelocatable = hasUndefinedReferenceSymbols(
+      *static_cast<ObjectFile *>(inBinary.get()), linkerSymbolNames,
+      numLinkerSymbols, nullptr, 0);
 
   std::string linkerScript = createEVMLinkerSymbolsDefinitions(
       linkerSymbolNames, linkerSymbolValues, numLinkerSymbols);
 
-  linkerScript += creteEVMLinkerScript(ArrayRef(inBuffers, numInBuffers),
-                                       ArrayRef(inBuffersIDs, numInBuffers));
+  std::unique_ptr<MemoryBuffer> linkerScriptBuf =
+      MemoryBuffer::getMemBuffer(linkerScript, "1");
 
-  std::unique_ptr<MemoryBuffer> scriptBuf =
-      MemoryBuffer::getMemBuffer(linkerScript, "script.x");
-  localInMemBufRefs[2] = scriptBuf->getMemBufferRef();
+  localInMemBufRefs[1] = linkerScriptBuf->getMemBufferRef();
 
   SmallVector<const char *, 16> lldArgs;
   lldArgs.push_back("ld.lld");
+
+  // Push the name of the linker script - '1'.
   lldArgs.push_back("-T");
-  lldArgs.push_back("script.x");
+  lldArgs.push_back("1");
 
-  // Use remapping of file names (a linker feature) to replace file names with
-  // indexes in the array of memory buffers.
-  const std::string remapStr("--remap-inputs=");
-  std::string topHash = EVM::getLinkerSymbolHash(inBuffersIDs[0]);
-  std::string deployedHash = EVM::getLinkerSymbolHash(inBuffersIDs[1]);
-  std::string remapDeployStr = remapStr + topHash + "=0";
-  lldArgs.push_back(remapDeployStr.c_str());
+  // Push the name of the input object file - '0'.
+  lldArgs.push_back("0");
 
-  std::string remapDeployedStr = remapStr + deployedHash + "=1";
-  lldArgs.push_back(remapDeployedStr.c_str());
-
-  lldArgs.push_back("--remap-inputs=script.x=2");
-
-  // Deploy code
-  lldArgs.push_back(topHash.c_str());
-  // Deployed code
-  lldArgs.push_back(deployedHash.c_str());
-  lldArgs.push_back("--oformat=binary");
+  // If all the symbols are supposed to be resolved, strip out the ELF format
+  // end emit the final bytecode. Otherwise emit an ELF relocatable file.
+  if (shouldEmitRelocatable)
+    lldArgs.push_back("--relocatable");
+  else
+    lldArgs.push_back("--oformat=binary");
 
   SmallString<0> codeString;
   raw_svector_ostream ostream(codeString);
@@ -883,18 +669,182 @@ LLVMBool LLVMLinkEVM(LLVMMemoryBufferRef inBuffers[],
   }
 
   StringRef data = ostream.str();
-  // Linker script adds size of the deploy code as a 8-byte BE unsigned to the
-  // end of .text section. Knowing this, we can extract final deploy and
-  // deployed codes.
-  assert(data.size() > 4);
-  size_t deploySize = support::endian::read32be(data.data() + data.size() - 4);
-  assert(deploySize < data.size());
-  size_t deployedSize = data.size() - deploySize - 4;
+  *outBuffer = LLVMCreateMemoryBufferWithMemoryRangeCopy(data.data(),
+                                                         data.size(), "deploy");
 
-  outBuffers[0] = LLVMCreateMemoryBufferWithMemoryRangeCopy(
-      data.data(), deploySize, "deploy");
-  outBuffers[1] = LLVMCreateMemoryBufferWithMemoryRangeCopy(
-      data.data() + deploySize, deployedSize, "deployed");
+  return false;
+}
+
+static std::string createEVMAssembeScript(ArrayRef<LLVMMemoryBufferRef> memBufs,
+                                          ArrayRef<const char *> bufIDs) {
+  assert(memBufs.size() == bufIDs.size());
+
+  auto getDataSizeName = [](StringRef name) {
+    return EVM::getDataSizeSymbol(EVM::getLinkerSymbolHash(name));
+  };
+
+  // A set of all the defined symbols within the script.
+  std::string definedSymbolsBuf;
+  raw_string_ostream definedSymbols(definedSymbolsBuf);
+
+  std::unique_ptr<Binary> topLevelBinary =
+      cantFail(createBinary(unwrap(memBufs[0])->getMemBufferRef()));
+  const auto *topLevelObjFile =
+      static_cast<const ObjectFile *>(topLevelBinary.get());
+
+  // Set of objects names that are referenced from the top level object.
+  StringSet<> topLevelDataOffsetRefs;
+  for (const SymbolRef &sym : topLevelObjFile->symbols()) {
+    section_iterator symSec = cantFail(sym.getSection());
+    if (symSec != topLevelObjFile->section_end())
+      continue;
+
+    StringRef symName = cantFail(sym.getName());
+    if (EVM::isDataOffsetSymbolName(symName)) {
+      std::string objName = EVM::extractDataOffseteName(symName);
+      topLevelDataOffsetRefs.insert(objName);
+    }
+  }
+
+  std::string textSectionBuf;
+  raw_string_ostream textSection(textSectionBuf);
+
+  // Define symbols whose values represent sizes of the dependencies.
+  // Skip the topLevelObject, as its size denotes .text section size of
+  // the resulting object file.
+  for (unsigned idx = 1; idx < memBufs.size(); ++idx) {
+    std::unique_ptr<Binary> binary =
+        cantFail(createBinary(unwrap(memBufs[idx])->getMemBufferRef()));
+    const auto *objFile = static_cast<const ObjectFile *>(binary.get());
+    for (const SectionRef &sec : objFile->sections()) {
+      if (!sec.isText())
+        continue;
+
+      StringRef secName = cantFail(sec.getName());
+      if (secName == ".text") {
+        std::string sym = getDataSizeName(bufIDs[idx]);
+        definedSymbols << sym << ";\n";
+        textSection << sym << " = " << sec.getSize() << ";\n";
+        break;
+      }
+    }
+  }
+
+  //   __dataoffset_Id_1 = .;
+  //   Id_1(.text);
+  //   __dataoffset_Id_2 = .;
+  //   Id_2(.text);
+  //   ...
+  //   __dataoffset_Id_N = .;
+  //   Id_N(.text);
+  for (unsigned idx = 0; idx < memBufs.size(); ++idx) {
+    std::string bufIdHash = EVM::getLinkerSymbolHash(bufIDs[idx]);
+    // Do not link the dependency if it's not referenced via
+    // __dataoffset.
+    if (idx > 0 && !topLevelDataOffsetRefs.count(bufIdHash))
+      continue;
+
+    std::string sym = EVM::getDataOffsetSymbol(bufIdHash);
+    definedSymbols << sym << ";\n";
+    textSection << sym << " = .;\n";
+    textSection << bufIdHash << "(.text);\n";
+  }
+
+  // Define the symbol whose value is size of the .text section.
+  std::string topDataSizeSym = getDataSizeName(bufIDs[0]);
+  definedSymbols << topDataSizeSym << ";\n";
+  textSection << topDataSizeSym << " = .;\n";
+
+  std::string script = formatv("ENTRY(0);\n\
+SECTIONS {\n\
+  . = 0;\n\
+  .text : SUBALIGN(1) {\n\
+{0}\
+  }\n\
+}\n\
+VERSION {\n\
+  { local:\n\
+{1}\
+  };\n\
+};\n\
+",
+                               textSection.str(), definedSymbols.str());
+
+  return script;
+}
+
+/// Links the deploy and runtime ELF object files using the information about
+//  dependencies.
+LLVMBool LLVMAssembleEVM(LLVMMemoryBufferRef inBuffers[],
+                         const char *inBuffersIDs[], uint64_t numInBuffers,
+                         LLVMMemoryBufferRef *outBuffer, char **errorMessage) {
+  assert(numInBuffers > 1);
+  SmallVector<MemoryBufferRef> localInMemBufRefs(numInBuffers + 1);
+  SmallVector<std::unique_ptr<MemoryBuffer>> localInMemBufs(numInBuffers + 1);
+
+  // TODO: #740. Verify that the object files contain sections with original
+  // inBuffersIDs, i.e. before taking hash.
+  for (unsigned idx = 0; idx < numInBuffers; ++idx) {
+    MemoryBufferRef ref = *unwrap(inBuffers[idx]);
+    // We need to copy buffers to be able to change their names, as this matters
+    // for the linker.
+    localInMemBufs[idx] = MemoryBuffer::getMemBufferCopy(
+        ref.getBuffer(), EVM::getLinkerSymbolHash(inBuffersIDs[idx]));
+    localInMemBufRefs[idx] = localInMemBufs[idx]->getMemBufferRef();
+  }
+
+  std::string linkerScript = createEVMAssembeScript(
+      ArrayRef(inBuffers, numInBuffers), ArrayRef(inBuffersIDs, numInBuffers));
+
+  std::unique_ptr<MemoryBuffer> scriptBuf =
+      MemoryBuffer::getMemBuffer(linkerScript, "script.x");
+  localInMemBufRefs[numInBuffers] = scriptBuf->getMemBufferRef();
+
+  SmallVector<const char *, 16> lldArgs;
+  lldArgs.push_back("ld.lld");
+
+  // Use remapping of file names (a linker feature) to replace file names with
+  // indexes in the array of memory buffers.
+  const std::string remapStr("--remap-inputs=");
+  SmallVector<std::string> args;
+  for (unsigned idx = 0; idx < numInBuffers; ++idx)
+    args.emplace_back(remapStr + EVM::getLinkerSymbolHash(inBuffersIDs[idx]) +
+                      "=" + std::to_string(idx));
+
+  args.emplace_back("-T");
+  args.emplace_back(std::to_string(numInBuffers));
+
+  for (unsigned idx = 0; idx < numInBuffers; ++idx)
+    args.emplace_back(std::to_string(idx));
+
+  for (const std::string &arg : args)
+    lldArgs.push_back(arg.c_str());
+
+  lldArgs.push_back("-r");
+
+  SmallString<0> codeString;
+  raw_svector_ostream ostream(codeString);
+  SmallString<0> errorString;
+  raw_svector_ostream errorOstream(errorString);
+
+  // Lld-as-a-library is not thread safe, as it has a global state,
+  // so we need to protect lld from simultaneous access from different threads.
+  std::unique_lock<std::mutex> lock(lldMutex);
+  const lld::Result s =
+      lld::lldMainMemBuf(localInMemBufRefs, &ostream, lldArgs, outs(),
+                         errorOstream, {{lld::Gnu, &lld::elf::linkMemBuf}});
+  lock.unlock();
+
+  bool ret = !s.retCode && s.canRunAgain;
+  if (!ret) {
+    *errorMessage = strdup(errorString.c_str());
+    return true;
+  }
+
+  StringRef data = ostream.str();
+  *outBuffer = LLVMCreateMemoryBufferWithMemoryRangeCopy(
+      data.data(), data.size(),
+      EVM::getLinkerSymbolHash(inBuffersIDs[0]).c_str());
 
   return false;
 }
