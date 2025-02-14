@@ -13,21 +13,22 @@
 #ifndef LLVM_LIB_TARGET_EVM_EVMSTACKIFYCODEEMITTER_H
 #define LLVM_LIB_TARGET_EVM_EVMSTACKIFYCODEEMITTER_H
 
-#include "EVMStackLayoutGenerator.h"
+#include "EVMStackSolver.h"
 #include "EVMSubtarget.h"
 
 namespace llvm {
 
 class MachineInstr;
 class MCSymbol;
+class EVMMachineCFGInfo;
 
 class EVMStackifyCodeEmitter {
 public:
-  EVMStackifyCodeEmitter(const EVMStackLayout &Layout,
+  EVMStackifyCodeEmitter(const EVMMIRToStack &StackMaps,
                          const EVMStackModel &StackModel,
                          const EVMMachineCFGInfo &CFGInfo, MachineFunction &MF)
-      : Emitter(MF), Layout(Layout), StackModel(StackModel), CFGInfo(CFGInfo),
-        MF(MF) {}
+      : Emitter(MF), StackMaps(StackMaps), StackModel(StackModel),
+        CFGInfo(CFGInfo), MF(MF) {}
 
   /// Stackify instructions, starting from the first MF's MBB.
   void run();
@@ -67,16 +68,11 @@ private:
   };
 
   CodeEmitter Emitter;
-  const EVMStackLayout &Layout;
+  const EVMMIRToStack &StackMaps;
   const EVMStackModel &StackModel;
   const EVMMachineCFGInfo &CFGInfo;
   MachineFunction &MF;
   Stack CurrentStack;
-
-  /// Checks if it's valid to transition from \p SourceStack to \p
-  /// TargetStack, that is \p SourceStack matches each slot in \p
-  /// TargetStack that is not a JunkSlot exactly.
-  bool areLayoutsCompatible(const Stack &SourceStack, const Stack &TargetStack);
 
   /// Shuffles CurrentStack to the desired \p TargetStack.
   void createStackLayout(const Stack &TargetStack);

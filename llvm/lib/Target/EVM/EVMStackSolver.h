@@ -29,68 +29,68 @@ class MachineLoopInfo;
 
 /// Returns the number of operations required to transform stack \p Source to
 /// \p Target.
-size_t EvaluateStackTransform(Stack Source, Stack const &Target,
+size_t evaluateStackTransform(Stack Source, const Stack &Target,
                               unsigned StackDepthLimit);
 
-class EVMStackLayout {
+class EVMMIRToStack {
 public:
-  EVMStackLayout(DenseMap<const MachineBasicBlock *, Stack> &MBBEntryLayout,
-                 DenseMap<const MachineBasicBlock *, Stack> &MBBExitLayout,
-                 DenseMap<const Operation *, Stack> &OpsEntryLayout)
-      : MBBEntryLayoutMap(MBBEntryLayout), MBBExitLayoutMap(MBBExitLayout),
-        OperationEntryLayoutMap(OpsEntryLayout) {}
-  EVMStackLayout(const EVMStackLayout &) = delete;
-  EVMStackLayout &operator=(const EVMStackLayout &) = delete;
+  EVMMIRToStack(DenseMap<const MachineBasicBlock *, Stack> &MBBEntryMap,
+                DenseMap<const MachineBasicBlock *, Stack> &MBBExitMap,
+                DenseMap<const Operation *, Stack> &OpsEntryMap)
+      : MBBEntryMap(MBBEntryMap), MBBExitMap(MBBExitMap),
+        OperationEntryMap(OpsEntryMap) {}
+  EVMMIRToStack(const EVMMIRToStack &) = delete;
+  EVMMIRToStack &operator=(const EVMMIRToStack &) = delete;
 
-  const Stack &getMBBEntryLayout(const MachineBasicBlock *MBB) const {
-    return MBBEntryLayoutMap.at(MBB);
+  const Stack &getMBBEntryMap(const MachineBasicBlock *MBB) const {
+    return MBBEntryMap.at(MBB);
   }
 
-  const Stack &getMBBExitLayout(const MachineBasicBlock *MBB) const {
-    return MBBExitLayoutMap.at(MBB);
+  const Stack &getMBBExitMap(const MachineBasicBlock *MBB) const {
+    return MBBExitMap.at(MBB);
   }
 
-  const Stack &getOperationEntryLayout(const Operation *Op) const {
-    return OperationEntryLayoutMap.at(Op);
+  const Stack &getOperationEntryMap(const Operation *Op) const {
+    return OperationEntryMap.at(Op);
   }
 
 private:
-  // Complete stack layout required at MBB entry.
-  DenseMap<const MachineBasicBlock *, Stack> MBBEntryLayoutMap;
-  // Complete stack layout required at MBB exit.
-  DenseMap<const MachineBasicBlock *, Stack> MBBExitLayoutMap;
-  // Complete stack layout that
-  // has the slots required for the operation at the stack top.
-  DenseMap<const Operation *, Stack> OperationEntryLayoutMap;
+  // Complete stack required at MBB entry.
+  DenseMap<const MachineBasicBlock *, Stack> MBBEntryMap;
+  // Complete stack required at MBB exit.
+  DenseMap<const MachineBasicBlock *, Stack> MBBExitMap;
+  // Complete stack that has the slots required for the operation at the stack
+  // top.
+  DenseMap<const Operation *, Stack> OperationEntryMap;
 };
 
-class EVMStackLayoutGenerator {
+class EVMStackSolver {
 public:
   struct StackTooDeep {
     /// Number of slots that need to be saved.
-    size_t deficit = 0;
+    size_t Deficit = 0;
     /// Set of variables, eliminating which would decrease the stack deficit.
-    SmallVector<Register> variableChoices;
+    SmallVector<Register> VariableChoices;
   };
 
-  EVMStackLayoutGenerator(const MachineFunction &MF, const MachineLoopInfo *MLI,
-                          const EVMStackModel &StackModel,
-                          const EVMMachineCFGInfo &CFGInfo);
+  EVMStackSolver(const MachineFunction &MF, const MachineLoopInfo *MLI,
+                 const EVMStackModel &StackModel,
+                 const EVMMachineCFGInfo &CFGInfo);
 
-  std::unique_ptr<EVMStackLayout> run();
+  EVMMIRToStack run();
 
 private:
   /// Returns the optimal entry stack layout, s.t. \p Operation can be applied
   /// to it and the result can be transformed to \p ExitStack with minimal stack
   /// shuffling. Simultaneously stores the entry layout required for executing
   /// the operation in the map.
-  Stack propagateStackThroughOperation(Stack ExitStack,
-                                       Operation const &Operation,
+  Stack propagateStackThroughOperation(const Stack &ExitStack,
+                                       const Operation &Operation,
                                        bool CompressStack = false);
 
   /// Returns the desired stack layout at the entry of \p Block, assuming the
   /// layout after executing the block should be \p ExitStack.
-  Stack propagateStackThroughBlock(Stack ExitStack,
+  Stack propagateStackThroughBlock(const Stack &ExitStack,
                                    const MachineBasicBlock *Block,
                                    bool CompressStack = false);
 
@@ -140,9 +140,9 @@ private:
   const EVMStackModel &StackModel;
   const EVMMachineCFGInfo &CFGInfo;
 
-  DenseMap<const MachineBasicBlock *, Stack> MBBEntryLayoutMap;
-  DenseMap<const MachineBasicBlock *, Stack> MBBExitLayoutMap;
-  DenseMap<const Operation *, Stack> OperationEntryLayoutMap;
+  DenseMap<const MachineBasicBlock *, Stack> MBBEntryMap;
+  DenseMap<const MachineBasicBlock *, Stack> MBBExitMap;
+  DenseMap<const Operation *, Stack> OperationEntryMap;
 };
 
 } // end namespace llvm

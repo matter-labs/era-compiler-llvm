@@ -22,12 +22,11 @@ using namespace llvm;
 #define DEBUG_TYPE "evm-stackify-code-emitter"
 
 // Return whether the function of the call instruction will return.
-bool callWillReturn(const MachineInstr *Call) {
+static bool callWillReturn(const MachineInstr *Call) {
   assert(Call->getOpcode() == EVM::FCALL && "Unexpected call instruction");
   const MachineOperand *FuncOp = Call->explicit_uses().begin();
   assert(FuncOp->isGlobal() && "Expected a global value");
   const auto *Func = cast<Function>(FuncOp->getGlobal());
-  assert(Func && "Expected a function");
   return !Func->hasFnAttribute(Attribute::NoReturn);
 }
 
@@ -283,8 +282,11 @@ void EVMStackifyCodeEmitter::processAssign(const Operation &Assignment) {
              CurrentStack.end() - MI->getNumExplicitDefs());
 }
 
-bool EVMStackifyCodeEmitter::areLayoutsCompatible(const Stack &SourceStack,
-                                                  const Stack &TargetStack) {
+// Checks if it's valid to transition from \p SourceStack to \p TargetStack,
+// that is \p SourceStack matches each slot in \p TargetStack that is not a
+// JunkSlot exactly.
+[[maybe_unused]] static bool areStacksCompatible(const Stack &SourceStack,
+                                                 const Stack &TargetStack) {
   return SourceStack.size() == TargetStack.size() &&
          all_of(zip_equal(SourceStack, TargetStack), [](const auto &Pair) {
            const auto [Src, Tgt] = Pair;
@@ -376,30 +378,29 @@ void EVMStackifyCodeEmitter::createOperationLayout(const Operation &Op) {
   // Create required layout for entering the Operation.
   // Check if we can choose cheaper stack shuffling if the Operation is an
   // instruction with commutable arguments.
+  const Stack &TargetStack = StackMaps.getOperationEntryMap(&Op);
   bool SwapCommutable = false;
   if (Op.isBuiltinCall() && Op.getMachineInstr()->isCommutable()) {
     // Get the stack layout before the instruction.
-    const Stack &DefaultTargetStack = Layout.getOperationEntryLayout(&Op);
-    size_t DefaultCost = EvaluateStackTransform(
-        CurrentStack, DefaultTargetStack, StackModel.stackDepthLimit());
+    size_t DefaultCost = evaluateStackTransform(CurrentStack, TargetStack,
+                                                StackModel.stackDepthLimit());
 
     // Commutable operands always take top two stack slots.
     const unsigned OpIdx1 = 0, OpIdx2 = 1;
-    assert(DefaultTargetStack.size() > 1);
+    assert(TargetStack.size() > 1);
 
     // Swap the commutable stack items and measure the stack shuffling cost
     // again.
-    Stack CommutedTargetStack = DefaultTargetStack;
+    Stack CommutedTargetStack = TargetStack;
     std::swap(CommutedTargetStack[CommutedTargetStack.size() - OpIdx1 - 1],
               CommutedTargetStack[CommutedTargetStack.size() - OpIdx2 - 1]);
-    size_t CommutedCost = EvaluateStackTransform(
+    size_t CommutedCost = evaluateStackTransform(
         CurrentStack, CommutedTargetStack, StackModel.stackDepthLimit());
     // Choose the cheapest transformation.
     SwapCommutable = CommutedCost < DefaultCost;
-    createStackLayout(SwapCommutable ? CommutedTargetStack
-                                     : DefaultTargetStack);
+    createStackLayout(SwapCommutable ? CommutedTargetStack : TargetStack);
   } else {
-    createStackLayout(Layout.getOperationEntryLayout(&Op));
+    createStackLayout(TargetStack);
   }
 
   // Assert that we have the inputs of the Operation on stack top.
@@ -412,7 +413,7 @@ void EVMStackifyCodeEmitter::createOperationLayout(const Operation &Op) {
     std::swap(StackInput[StackInput.size() - 1],
               StackInput[StackInput.size() - 2]);
   }
-  assert(areLayoutsCompatible(StackInput, Op.getInput()));
+  assert(areStacksCompatible(StackInput, Op.getInput()));
 }
 
 void EVMStackifyCodeEmitter::run() {
@@ -426,7 +427,7 @@ void EVMStackifyCodeEmitter::run() {
       continue;
 
     // Might set some slots to junk, if not required by the block.
-    CurrentStack = Layout.getMBBEntryLayout(Block);
+    CurrentStack = StackMaps.getMBBEntryMap(Block);
     Emitter.enterMBB(Block, CurrentStack.size());
 
     for (const auto &Op : StackModel.getOperations(Block)) {
@@ -465,11 +466,11 @@ void EVMStackifyCodeEmitter::run() {
     if (ExitType == MBBExitType::UnconditionalBranch) {
       auto [UncondBr, Target] = TermInfo->getUnconditionalBranch();
       // Create the stack expected at the jump target.
-      createStackLayout(Layout.getMBBEntryLayout(Target));
+      createStackLayout(StackMaps.getMBBEntryMap(Target));
 
       // Assert that we have a valid stack for the target.
       assert(
-          areLayoutsCompatible(CurrentStack, Layout.getMBBEntryLayout(Target)));
+          areStacksCompatible(CurrentStack, StackMaps.getMBBEntryMap(Target)));
 
       if (UncondBr)
         Emitter.emitUncondJump(UncondBr, Target);
@@ -479,7 +480,7 @@ void EVMStackifyCodeEmitter::run() {
           TermInfo->getConditionalBranch();
       // Create the shared entry layout of the jump targets, which is
       // stored as exit layout of the current block.
-      createStackLayout(Layout.getMBBExitLayout(Block));
+      createStackLayout(StackMaps.getMBBExitMap(Block));
 
       // Assert that we have the correct condition on stack.
       assert(!CurrentStack.empty());
@@ -493,9 +494,9 @@ void EVMStackifyCodeEmitter::run() {
 
       // Assert that we have a valid stack for both jump targets.
       assert(
-          areLayoutsCompatible(CurrentStack, Layout.getMBBEntryLayout(TrueBB)));
-      assert(areLayoutsCompatible(CurrentStack,
-                                  Layout.getMBBEntryLayout(FalseBB)));
+          areStacksCompatible(CurrentStack, StackMaps.getMBBEntryMap(TrueBB)));
+      assert(
+          areStacksCompatible(CurrentStack, StackMaps.getMBBEntryMap(FalseBB)));
 
       // Generate unconditional jump if needed.
       if (UncondBr)
@@ -507,8 +508,8 @@ void EVMStackifyCodeEmitter::run() {
       // Create the function return layout and jump.
       const MachineInstr *MI = TermInfo->getFunctionReturn();
       assert(StackModel.getReturnArguments(*MI) ==
-             Layout.getMBBExitLayout(Block));
-      createStackLayout(Layout.getMBBExitLayout(Block));
+             StackMaps.getMBBExitMap(Block));
+      createStackLayout(StackMaps.getMBBExitMap(Block));
       Emitter.emitRet(MI);
     }
   }

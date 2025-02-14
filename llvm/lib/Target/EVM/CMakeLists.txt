@@ -36,7 +36,7 @@ add_llvm_target(EVMCodeGen
   EVMRegisterInfo.cpp
   EVMSingleUseExpression.cpp
   EVMSplitCriticalEdges.cpp
-  EVMStackLayoutGenerator.cpp
+  EVMStackSolver.cpp
   EVMStackModel.cpp
   EVMStackify.cpp
   EVMStackifyCodeEmitter.cpp
