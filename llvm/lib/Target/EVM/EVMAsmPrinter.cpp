@@ -31,6 +31,8 @@
 
 using namespace llvm;
 
+extern cl::opt<bool> EVMKeepRegisters;
+
 #define DEBUG_TYPE "asm-printer"
 
 namespace {
@@ -52,17 +54,11 @@ public:
 
   StringRef getPassName() const override { return "EVM Assembly "; }
 
-  void SetupMachineFunction(MachineFunction &MF) override;
-
   void emitInstruction(const MachineInstr *MI) override;
 
-  void emitFunctionEntryLabel() override;
+  void emitBasicBlockStart(const MachineBasicBlock &MBB) override;
 
-  /// Return true if the basic block has exactly one predecessor and the control
-  /// transfer mechanism between the predecessor and this block is a
-  /// fall-through.
-  bool isBlockOnlyReachableByFallthrough(
-      const MachineBasicBlock *MBB) const override;
+  void emitFunctionEntryLabel() override;
 
   void emitEndOfAsmFile(Module &) override;
 
@@ -70,24 +66,9 @@ private:
   void emitAssemblySymbol(const MachineInstr *MI);
   void emitWideRelocatableSymbol(const MachineInstr *MI);
   void emitLoadImmutableLabel(const MachineInstr *MI);
+  void emitJumpDest();
 };
 } // end of anonymous namespace
-
-void EVMAsmPrinter::SetupMachineFunction(MachineFunction &MF) {
-  // Unbundle <push_label, jump> bundles.
-  for (MachineBasicBlock &MBB : MF) {
-    MachineBasicBlock::instr_iterator I = MBB.instr_begin(),
-                                      E = MBB.instr_end();
-    for (; I != E; ++I) {
-      if (I->isBundledWithPred()) {
-        assert(I->isConditionalBranch() || I->isUnconditionalBranch());
-        I->unbundleFromPred();
-      }
-    }
-  }
-
-  AsmPrinter::SetupMachineFunction(MF);
-}
 
 void EVMAsmPrinter::emitFunctionEntryLabel() {
   AsmPrinter::emitFunctionEntryLabel();
@@ -111,19 +92,84 @@ void EVMAsmPrinter::emitFunctionEntryLabel() {
   }
 }
 
+void EVMAsmPrinter::emitBasicBlockStart(const MachineBasicBlock &MBB) {
+  AsmPrinter::emitBasicBlockStart(MBB);
+
+  // Emit JUMPDEST instruction at the beginning of the basic block, if
+  // this is not a block that is only reachable by fallthrough.
+  if (!EVMKeepRegisters && !AsmPrinter::isBlockOnlyReachableByFallthrough(&MBB))
+    emitJumpDest();
+}
+
 void EVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
   EVMMCInstLower MCInstLowering(OutContext, *this, VRegMapping,
                                 MF->getRegInfo());
-  unsigned Opc = MI->getOpcode();
-  if (Opc == EVM::DATASIZE_S || Opc == EVM::DATAOFFSET_S) {
-    emitAssemblySymbol(MI);
+
+  switch (MI->getOpcode()) {
+  default:
+    break;
+  case EVM::PseudoCALL: {
+    // Generate push instruction with the address of a function.
+    MCInst Push;
+    Push.setOpcode(EVM::PUSH4_S);
+    assert(MI->getOperand(0).isGlobal() &&
+           "The first operand of PseudoCALL should be a GlobalValue.");
+
+    // TODO: #745: Refactor EVMMCInstLower::Lower so we could use lowerOperand
+    // instead of creating a MCOperand directly.
+    MCOperand MCOp = MCOperand::createExpr(MCSymbolRefExpr::create(
+        getSymbol(MI->getOperand(0).getGlobal()), OutContext));
+    Push.addOperand(MCOp);
+    EmitToStreamer(*OutStreamer, Push);
+
+    // Jump to a function.
+    MCInst Jump;
+    Jump.setOpcode(EVM::JUMP_S);
+    EmitToStreamer(*OutStreamer, Jump);
+
+    // In case a function has a return label, emit it, and also
+    // emit a JUMPDEST instruction.
+    if (MI->getNumExplicitOperands() > 1) {
+      assert(MI->getOperand(1).isMCSymbol() &&
+             "The second operand of PseudoCALL should be a MCSymbol.");
+      OutStreamer->emitLabel(MI->getOperand(1).getMCSymbol());
+      emitJumpDest();
+    }
     return;
   }
-  if (Opc == EVM::LINKERSYMBOL_S) {
+  case EVM::PseudoRET: {
+    // TODO: #746: Use PseudoInstExpansion and do this expansion in tblgen.
+    MCInst Jump;
+    Jump.setOpcode(EVM::JUMP_S);
+    EmitToStreamer(*OutStreamer, Jump);
+    return;
+  }
+  case EVM::PseudoJUMP:
+  case EVM::PseudoJUMPI: {
+    MCInst Push;
+    Push.setOpcode(EVM::PUSH4_S);
+
+    // TODO: #745: Refactor EVMMCInstLower::Lower so we could use lowerOperand
+    // instead of creating a MCOperand directly.
+    MCOperand MCOp = MCOperand::createExpr(MCSymbolRefExpr::create(
+        MI->getOperand(0).getMBB()->getSymbol(), OutContext));
+    Push.addOperand(MCOp);
+    EmitToStreamer(*OutStreamer, Push);
+
+    MCInst Jump;
+    Jump.setOpcode(MI->getOpcode() == EVM::PseudoJUMP ? EVM::JUMP_S
+                                                      : EVM::JUMPI_S);
+    EmitToStreamer(*OutStreamer, Jump);
+    return;
+  }
+  case EVM::LINKERSYMBOL_S:
     emitWideRelocatableSymbol(MI);
     return;
-  }
-  if (Opc == EVM::LOADIMMUTABLE_S) {
+  case EVM::DATASIZE_S:
+  case EVM::DATAOFFSET_S:
+    emitAssemblySymbol(MI);
+    return;
+  case EVM::LOADIMMUTABLE_S:
     emitLoadImmutableLabel(MI);
     return;
   }
@@ -131,12 +177,6 @@ void EVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
   MCInst TmpInst;
   MCInstLowering.Lower(MI, TmpInst);
   EmitToStreamer(*OutStreamer, TmpInst);
-}
-
-bool EVMAsmPrinter::isBlockOnlyReachableByFallthrough(
-    const MachineBasicBlock *MBB) const {
-  // For simplicity, always emit BB labels.
-  return false;
 }
 
 // Lowers LOADIMMUTABLE_S as show below:
@@ -245,6 +285,12 @@ void EVMAsmPrinter::emitWideRelocatableSymbol(const MachineInstr *MI) {
 void EVMAsmPrinter::emitEndOfAsmFile(Module &) {
   WideRelocSymbolsSet.clear();
   ImmutablesMap.clear();
+}
+
+void EVMAsmPrinter::emitJumpDest() {
+  MCInst JumpDest;
+  JumpDest.setOpcode(EVM::JUMPDEST_S);
+  EmitToStreamer(*OutStreamer, JumpDest);
 }
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMAsmPrinter() {

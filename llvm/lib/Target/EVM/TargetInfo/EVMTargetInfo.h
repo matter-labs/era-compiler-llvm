@@ -25,6 +25,8 @@ namespace EVM {
 unsigned getStackOpcode(unsigned Opcode);
 unsigned getRegisterOpcode(unsigned Opcode);
 unsigned getPUSHOpcode(const APInt &Imm);
+unsigned getDUPOpcode(unsigned Depth);
+unsigned getSWAPOpcode(unsigned Depth);
 
 } // namespace EVM
 
