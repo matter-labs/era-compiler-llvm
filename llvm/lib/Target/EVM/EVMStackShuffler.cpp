@@ -7,17 +7,18 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMStackShuffler.h"
+#include <deque>
 
 using namespace llvm;
 
 bool EVMStackShuffler::bringUpTargetSlot(size_t TOffset) {
-  std::list<size_t> ToVisit{TOffset};
-  std::set<size_t> Visited;
+  std::deque<size_t> ToVisit{TOffset};
+  DenseSet<size_t> Visited;
 
   while (!ToVisit.empty()) {
     size_t Offset = *ToVisit.begin();
     ToVisit.erase(ToVisit.begin());
-    Visited.emplace(Offset);
+    Visited.insert(Offset);
     if (getTargetSignificantUses(Offset) > 0) {
       pushOrDupTarget(Offset);
       return true;
@@ -49,7 +50,7 @@ bool EVMStackShuffler::dupDeepSlotIfRequired() {
       if (getCurrentSignificantUses(COffset) > 0) {
         // If this slot occurs again later, we skip this occurrence.
         if (const auto &R = llvm::seq<size_t>(COffset + 1, Current.size());
-            std::any_of(R.begin(), R.end(), [&](size_t Offset) {
+            any_of(R, [&](size_t Offset) {
               return Current[COffset] == Current[Offset];
             }))
           continue;
@@ -89,8 +90,7 @@ bool EVMStackShuffler::dupDeepSlotIfRequired() {
 bool EVMStackShuffler::shuffleStep() {
   // All source slots are final.
   if (const auto &R = llvm::seq<size_t>(0u, Current.size());
-      std::all_of(R.begin(), R.end(),
-                  [&](size_t Index) { return isCompatible(Index, Index); })) {
+      all_of(R, [&](size_t Index) { return isCompatible(Index, Index); })) {
     // Bring up all remaining target slots, if any, or terminate otherwise.
     if (Current.size() < Target.size()) {
       if (!dupDeepSlotIfRequired()) {
@@ -302,7 +302,7 @@ void llvm::calculateStack(
   assert(CurrentStack.size() == TargetStack.size());
   for (unsigned I = 0; I < CurrentStack.size(); ++I) {
     StackSlot *&Current = CurrentStack[I];
-    auto *Target = TargetStack[I];
+    const StackSlot *Target = TargetStack[I];
     if (isa<JunkSlot>(Target))
       Current = EVMStackModel::getJunkSlot();
     else

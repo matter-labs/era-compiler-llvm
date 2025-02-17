@@ -10,14 +10,13 @@
 #include "EVMMachineCFGInfo.h"
 #include "EVMRegisterInfo.h"
 #include "EVMStackShuffler.h"
-#include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineLoopInfo.h"
-#include "llvm/CodeGen/TargetInstrInfo.h"
-#include "llvm/IR/DebugLoc.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/raw_ostream.h"
+
+#include <deque>
 
 using namespace llvm;
 
@@ -42,43 +41,28 @@ template <typename T> auto take_back(T &&RangeOrContainer, size_t N = 1) {
                     adl_end(RangeOrContainer));
 }
 
-/// Returns all stack too deep errors that would occur when shuffling \p Source
-/// to \p Target.
-SmallVector<EVMStackSolver::StackTooDeep>
-findStackTooDeep(const Stack &Source, const Stack &Target,
-                 unsigned StackDepthLimit) {
+/// Returns true if there are unreachable stack elements when shuffling
+/// \p Source to \p Target.
+bool hasUnreachableStackSlots(const Stack &Source, const Stack &Target,
+                              unsigned StackDepthLimit) {
   Stack CurrentStack = Source;
-  SmallVector<EVMStackSolver::StackTooDeep> Errors;
-
-  auto getVariableChoices = [](auto &&SlotRange) {
-    SmallVector<Register> Result;
-    for (auto const *Slot : SlotRange)
-      if (auto const *RegSlot = dyn_cast<RegisterSlot>(Slot))
-        if (!is_contained(Result, RegSlot->getReg()))
-          Result.push_back(RegSlot->getReg());
-    return Result;
-  };
-
+  bool HasError = false;
   calculateStack(
       CurrentStack, Target, StackDepthLimit,
       [&](unsigned I) {
         if (I > StackDepthLimit)
-          Errors.emplace_back(EVMStackSolver::StackTooDeep{
-              I - StackDepthLimit,
-              getVariableChoices(take_back(CurrentStack, I + 1))});
+          HasError = true;
       },
       [&](const StackSlot *Slot) {
         if (Slot->isRematerializable())
           return;
 
-        if (auto Depth = offset(reverse(CurrentStack), Slot);
+        if (std::optional<size_t> Depth = offset(reverse(CurrentStack), Slot);
             Depth && *Depth >= StackDepthLimit)
-          Errors.emplace_back(EVMStackSolver::StackTooDeep{
-              *Depth - (StackDepthLimit - 1),
-              getVariableChoices(take_back(CurrentStack, *Depth + 1))});
+          HasError = true;
       },
       [&]() {});
-  return Errors;
+  return HasError;
 }
 
 /// Returns the ideal stack to have before executing a machine instruction that
@@ -102,7 +86,7 @@ Stack calculateStackBeforeInst(const SmallVector<StackSlot *> &InstDefs,
     UnknownSlots.emplace_back(Index);
 
   // The symbolic layout directly after the operation has the form
-  // PreviousSlot{0}, ..., PreviousSlot{n}, [output<0>], ..., [output<m>]
+  // UnknownSlot{0}, ..., UnknownSlot{n}, [output<0>], ..., [output<m>]
   Stack Tmp;
   for (auto &S : UnknownSlots)
     Tmp.push_back(&S);
@@ -152,10 +136,10 @@ Stack calculateStackBeforeInst(const SmallVector<StackSlot *> &InstDefs,
   Shuffler.shuffle();
 
   // Now we can construct the ideal layout before the operation.
-  // "layout" has shuffled the PreviousSlot{x} to new places using minimal
+  // "layout" has shuffled the UnknownSlot{x} to new places using minimal
   // operations to move the operation output in place. The resulting permutation
-  // of the PreviousSlot yields the ideal positions of slots before the
-  // operation, i.e. if PreviousSlot{2} is at a position at which Post contains
+  // of the UnknownSlot yields the ideal positions of slots before the
+  // operation, i.e. if UnknownSlot{2} is at a position at which Post contains
   // VariableSlot{"tmp"}, then we want the variable tmp in the slot at offset 2
   // in the layout before the operation.
   assert(Tmp.size() == AfterInst.size());
@@ -217,7 +201,8 @@ EVMMIRToStack EVMStackSolver::run() {
     dump(dbgs());
   });
 
-  return EVMMIRToStack(MBBEntryMap, MBBExitMap, OperationEntryMap);
+  return EVMMIRToStack(std::move(MBBEntryMap), std::move(MBBExitMap),
+                       std::move(OperationEntryMap));
 }
 
 Stack EVMStackSolver::propagateStackThroughInst(const Stack &AfterInst,
@@ -283,8 +268,8 @@ Stack EVMStackSolver::propagateStackThroughMBB(const Stack &ExitStack,
     Stack AfterInst =
         propagateStackThroughInst(CurrentStack, Op, CompressStack);
     if (!CompressStack &&
-        !findStackTooDeep(AfterInst, CurrentStack, StackModel.stackDepthLimit())
-             .empty())
+        hasUnreachableStackSlots(AfterInst, CurrentStack,
+                                 StackModel.stackDepthLimit()))
       // If we had stack errors, run again with stack compression enabled.
       return propagateStackThroughMBB(ExitStack, MBB,
                                       /*CompressStack*/ true);
@@ -339,22 +324,74 @@ void EVMStackSolver::runPropagation() {
   }
 
   while (!ToVisit.empty()) {
-    // First calculate stack layouts without walking backwards jumps, i.e.
-    // assuming the current preliminary entry layout of the backwards jump
-    // target as the initial exit layout of the backwards-jumping block.
+    // First calculate stack without walking backwards jumps, i.e.
+    // assuming the current preliminary entry stack of the backwards jump
+    // target as the initial exit stack of the backwards-jumping block.
     while (!ToVisit.empty()) {
       const MachineBasicBlock *MBB = *ToVisit.begin();
       ToVisit.pop_front();
       if (Visited.count(MBB))
         continue;
 
-      if (std::optional<Stack> ExitStack =
-              getExitStackOrStageDependencies(MBB, Visited, ToVisit)) {
+      // Get the MBB exit stack.
+      std::optional<Stack> ExitStack = std::nullopt;
+      const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(MBB);
+      MBBExitType ExitType = TermInfo->getExitType();
+      if (ExitType == MBBExitType::UnconditionalBranch) {
+        const MachineBasicBlock *Target = MBB->getSingleSuccessor();
+        if (MachineLoop *ML = MLI->getLoopFor(MBB);
+            ML && ML->isLoopLatch(MBB)) {
+          // Choose the best currently known entry stack of the jump target
+          // as initial exit. Note that this may not yet be the final
+          // stack.
+          auto It = MBBEntryMap.find(Target);
+          ExitStack = (It == MBBEntryMap.end() ? Stack{} : It->second);
+        } else {
+          // If the current iteration has already visited the jump target,
+          // start from its entry stack. Otherwise stage the jump target
+          // for visit and defer the current block.
+          if (Visited.count(Target))
+            ExitStack = MBBEntryMap.at(Target);
+          else
+            ToVisit.push_front(Target);
+        }
+      } else if (ExitType == MBBExitType::ConditionalBranch) {
+        auto [CondBr, UncondBr, TBB, FBB, Condition] =
+            TermInfo->getConditionalBranch();
+        bool FBBVisited = Visited.count(FBB);
+        bool TBBVisited = Visited.count(TBB);
+
+        // If one of the jump targets has not been visited, stage it for
+        // visit and defer the current block.
+        // TODO: CPR-1847. Investigate how the order in which successors are put
+        // into the deque affects the generated code.
+        if (!FBBVisited)
+          ToVisit.push_front(FBB);
+
+        if (!TBBVisited)
+          ToVisit.push_front(TBB);
+
+        // If we have visited both successors, start from their entry stacks.
+        if (FBBVisited && TBBVisited) {
+          Stack CombinedStack =
+              combineStack(MBBEntryMap.at(FBB), MBBEntryMap.at(TBB));
+          // Additionally, the jump condition has to be at the stack top at
+          // exit.
+          CombinedStack.emplace_back(StackModel.getStackSlot(*Condition));
+          ExitStack = std::move(CombinedStack);
+        }
+      } else if (ExitType == MBBExitType::FunctionReturn) {
+        ExitStack = StackModel.getReturnArguments(MBB->back());
+      } else
+        ExitStack = Stack{};
+
+      // If the MBB exit stack is known, we can back back propagate
+      // it till the MBB entry.
+      if (ExitStack) {
         Visited.insert(MBB);
         MBBExitMap[MBB] = *ExitStack;
         MBBEntryMap[MBB] = propagateStackThroughMBB(*ExitStack, MBB);
-        for (auto Pred : MBB->predecessors())
-          ToVisit.emplace_back(Pred);
+        append_range(ToVisit, MBB->predecessors());
       }
     }
 
@@ -396,9 +433,9 @@ void EVMStackSolver::runPropagation() {
     }
   }
 
-  // At this point layouts at conditional jumps are merely
+  // At this point stacks at conditional jumps are merely
   // compatible, i.e. the exit layout of the jumping block is a superset of the
-  // entry layout of the target block. We need to modify the entry layouts
+  // entry layout of the target block. We need to modify the entry stacks
   // of conditional jump targets, s.t., the entry layout of target blocks match
   // the exit layout of the jumping block exactly, except that slots not
   // required after the jump are marked as 'JunkSlot'.
@@ -463,72 +500,33 @@ void EVMStackSolver::runPropagation() {
     const SmallVector<Operation> &Ops = StackModel.getOperations(&MBB);
     const Stack &Next =
         Ops.empty() ? ExitStack : OperationEntryMap.at(&Ops.front());
-    if (EntryStack != Next) {
-      size_t OptimalNumJunks = getOptimalNumberOfJunks(
-          EntryStack, Next, StackModel.stackDepthLimit());
-      if (OptimalNumJunks > 0) {
-        appendJunks(&MBB, OptimalNumJunks);
-        MBBEntryMap[&MBB] = EntryStack;
+
+    if (EntryStack == Next)
+      continue;
+
+    size_t JunksNum =
+        getOptimalNumberOfJunks(EntryStack, Next, StackModel.stackDepthLimit());
+
+    if (!JunksNum)
+      continue;
+
+    for (const MachineBasicBlock *Succ : depth_first(&MBB)) {
+      Stack JunkedEntry(JunksNum, EVMStackModel::getJunkSlot());
+      JunkedEntry.append(MBBEntryMap.at(Succ));
+      MBBEntryMap[Succ] = std::move(JunkedEntry);
+
+      for (const Operation &Op : StackModel.getOperations(Succ)) {
+        Stack JunkedOpEntry(JunksNum, EVMStackModel::getJunkSlot());
+        JunkedOpEntry.append(OperationEntryMap.at(&Op));
+        OperationEntryMap[&Op] = std::move(JunkedOpEntry);
       }
+
+      Stack JunkedExit(JunksNum, EVMStackModel::getJunkSlot());
+      JunkedExit.append(MBBExitMap.at(Succ));
+      MBBExitMap[Succ] = std::move(JunkedExit);
     }
+    MBBEntryMap[&MBB] = EntryStack;
   }
-}
-
-std::optional<Stack> EVMStackSolver::getExitStackOrStageDependencies(
-    const MachineBasicBlock *MBB,
-    const DenseSet<const MachineBasicBlock *> &Visited,
-    std::deque<const MachineBasicBlock *> &ToVisit) {
-  const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(MBB);
-  MBBExitType ExitType = TermInfo->getExitType();
-  if (ExitType == MBBExitType::UnconditionalBranch) {
-    auto [_, Target] = TermInfo->getUnconditionalBranch();
-    if (MachineLoop *ML = MLI->getLoopFor(MBB); ML && ML->isLoopLatch(MBB)) {
-      // Choose the best currently known entry stack of the jump target
-      // as initial exit. Note that this may not yet be the final
-      // stack state.
-      auto It = MBBEntryMap.find(Target);
-      return It == MBBEntryMap.end() ? Stack{} : It->second;
-    }
-    // If the current iteration has already visited the jump target,
-    // start from its entry stack.
-    if (Visited.count(Target))
-      return MBBEntryMap.at(Target);
-    // Otherwise stage the jump target for visit and defer the current
-    // block.
-    ToVisit.emplace_front(Target);
-    return std::nullopt;
-  }
-  if (ExitType == MBBExitType::ConditionalBranch) {
-    auto [CondBr, UncondBr, TrueBB, FalseBB, Condition] =
-        TermInfo->getConditionalBranch();
-    bool FalseBBVisited = Visited.count(FalseBB);
-    bool TrueBBVisited = Visited.count(TrueBB);
-
-    if (FalseBBVisited && TrueBBVisited) {
-      // If the current iteration has already Visited both jump targets,
-      // start from its entry stack.
-      Stack CombinedStack =
-          combineStack(MBBEntryMap.at(FalseBB), MBBEntryMap.at(TrueBB));
-      // Additionally, the jump condition has to be at the stack top at
-      // exit.
-      CombinedStack.emplace_back(StackModel.getStackSlot(*Condition));
-      return CombinedStack;
-    }
-
-    // If one of the jump targets has not been visited, stage it for
-    // visit and defer the current block.
-    if (!FalseBBVisited)
-      ToVisit.emplace_front(FalseBB);
-
-    if (!TrueBBVisited)
-      ToVisit.emplace_front(TrueBB);
-
-    return std::nullopt;
-  }
-  if (ExitType == MBBExitType::FunctionReturn)
-    return StackModel.getReturnArguments(MBB->back());
-
-  return Stack{};
 }
 
 Stack EVMStackSolver::combineStack(const Stack &Stack1, const Stack &Stack2) {
@@ -558,24 +556,11 @@ Stack EVMStackSolver::combineStack(const Stack &Stack1, const Stack &Stack2) {
   }
 
   Stack Candidate;
-  for (auto *Slot : Stack1Tail)
-    if (!is_contained(Candidate, Slot))
+  for (auto *Slot : concat<StackSlot *>(Stack1Tail, Stack2Tail))
+    if (!is_contained(Candidate, Slot) && !Slot->isRematerializable())
       Candidate.push_back(Slot);
 
-  for (auto *Slot : Stack2Tail)
-    if (!is_contained(Candidate, Slot))
-      Candidate.push_back(Slot);
-
-  {
-    auto RemIt = std::remove_if(
-        Candidate.begin(), Candidate.end(), [](const StackSlot *Slot) {
-          return isa<LiteralSlot>(Slot) || isa<SymbolSlot>(Slot) ||
-                 isa<FunctionCallReturnLabelSlot>(Slot);
-        });
-    Candidate.erase(RemIt, Candidate.end());
-  }
-
-  auto evaluate = [&](Stack const &Candidate) -> size_t {
+  auto evaluate = [&](const Stack &Candidate) -> size_t {
     size_t NumOps = 0;
     Stack TestStack = Candidate;
     auto Swap = [&](unsigned SwapDepth) {
@@ -666,26 +651,11 @@ Stack EVMStackSolver::compressStack(Stack CurStack) {
   return CurStack;
 }
 
-void EVMStackSolver::appendJunks(const MachineBasicBlock *Entry,
-                                 size_t NumJunk) {
-  for (const MachineBasicBlock *MBB : depth_first(Entry)) {
-    Stack EntryTmp(NumJunk, EVMStackModel::getJunkSlot());
-    EntryTmp.append(MBBEntryMap.at(MBB));
-    MBBEntryMap[MBB] = std::move(EntryTmp);
-
-    for (const Operation &Op : StackModel.getOperations(MBB)) {
-      Stack OpEntryTmp(NumJunk, EVMStackModel::getJunkSlot());
-      OpEntryTmp.append(OperationEntryMap.at(&Op));
-      OperationEntryMap[&Op] = std::move(OpEntryTmp);
-    }
-
-    Stack ExitTmp(NumJunk, EVMStackModel::getJunkSlot());
-    ExitTmp.append(MBBExitMap.at(MBB));
-    MBBExitMap[MBB] = std::move(ExitTmp);
-  }
+#ifndef NDEBUG
+static std::string getMBBId(const MachineBasicBlock *MBB) {
+  return std::to_string(MBB->getNumber()) + "." + std::string(MBB->getName());
 }
 
-#ifndef NDEBUG
 void EVMStackSolver::dump(raw_ostream &OS) {
   OS << "Function: " << MF.getName() << "(";
   for (const StackSlot *ParamSlot : StackModel.getFunctionParameters()) {
@@ -695,71 +665,60 @@ void EVMStackSolver::dump(raw_ostream &OS) {
       OS << ParamSlot->toString();
   }
   OS << ");\n";
-  OS << "FunctionEntry "
-     << " -> Block" << getBlockId(&MF.front()) << ";\n";
+  OS << "Entry MBB: " << getMBBId(&MF.front()) << ";\n";
 
-  for (const auto &MBB : MF)
-    printMBB(OS, &MBB);
+  for (const MachineBasicBlock &MBB : MF)
+    dumpMBB(OS, &MBB);
 }
 
-void EVMStackSolver::printMBB(raw_ostream &OS, const MachineBasicBlock *MBB) {
-  std::string MBBId = getBlockId(MBB);
-  OS << "Block" << MBBId << " [\n";
-  OS << MBBEntryMap.at(MBB).toString() << "\n";
-  for (auto const &Op : StackModel.getOperations(MBB)) {
-    OS << "\n";
-    Stack EntryStack = OperationEntryMap.at(&Op);
-    OS << EntryStack.toString() << "\n";
-    OS << Op.toString() << "\n";
-    assert(Op.getInput().size() <= EntryStack.size());
-    EntryStack.resize(EntryStack.size() - Op.getInput().size());
-    EntryStack.append(
-        StackModel.getSlotsForInstructionDefs(Op.getMachineInstr()));
-    OS << EntryStack.toString() << "\n";
+void EVMStackSolver::dumpMBB(raw_ostream &OS, const MachineBasicBlock *MBB) {
+  OS << getMBBId(MBB) << ":\n";
+  OS << '\t' << MBBEntryMap.at(MBB).toString() << '\n';
+  for (const Operation &Op : StackModel.getOperations(MBB)) {
+    const Stack &OpOutput =
+        StackModel.getSlotsForInstructionDefs(Op.getMachineInstr());
+    if (Op.isAssignment() && Op.getInput() == OpOutput)
+      continue;
+
+    OS << '\n';
+    Stack OpEntry = OperationEntryMap.at(&Op);
+    OS << '\t' << OpEntry.toString() << '\n';
+    OS << '\t' << Op.toString() << '\n';
+    assert(Op.getInput().size() <= OpEntry.size());
+    OpEntry.resize(OpEntry.size() - Op.getInput().size());
+    OpEntry.append(OpOutput);
+    OS << '\t' << OpEntry.toString() << "\n";
   }
-  OS << "\n";
-  OS << MBBExitMap.at(MBB).toString() << "\n";
-  OS << "];\n";
+  OS << '\n';
+  OS << '\t' << MBBExitMap.at(MBB).toString() << "\n";
 
   const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(MBB);
   switch (TermInfo->getExitType()) {
   case MBBExitType::UnconditionalBranch: {
     auto [BranchInstr, Target] = TermInfo->getUnconditionalBranch();
-    OS << "Block" << MBBId << "Exit [label=\"Jump\"];\n";
-    OS << "Block" << MBBId << "Exit -> Block" << getBlockId(Target) << ";\n";
+    OS << "Exit type: unconditional branch\n";
+    OS << "Target: " << getMBBId(Target) << '\n';
   } break;
   case MBBExitType::ConditionalBranch: {
     auto [CondBr, UncondBr, TrueBB, FalseBB, Condition] =
         TermInfo->getConditionalBranch();
-    OS << "Block" << MBBId << "Exit [label=\"{ "
-       << StackModel.getStackSlot(*Condition)->toString()
-       << "| { <0> Zero | <1> NonZero }}\"];\n";
-    OS << "Block" << MBBId << "Exit:0 -> Block" << getBlockId(FalseBB) << ";\n";
-    OS << "Block" << MBBId << "Exit:1 -> Block" << getBlockId(TrueBB) << ";\n";
+    OS << "Exit type: conditional branch, ";
+    OS << "cond: " << StackModel.getStackSlot(*Condition)->toString() << '\n';
+    OS << "False branch: " << getMBBId(FalseBB) << '\n';
+    OS << "True branch: " << getMBBId(TrueBB) << '\n';
   } break;
   case MBBExitType::FunctionReturn: {
-    OS << "Block" << MBBId << "Exit [label=\"FunctionReturn[" << MF.getName()
-       << "]\"];\n";
+    OS << "Exit type: function return, " << MF.getName() << '\n';
     const MachineInstr &MI = MBB->back();
     OS << "Return values: " << StackModel.getReturnArguments(MI).toString()
-       << ";\n";
+       << '\n';
   } break;
-  case MBBExitType::Terminate: {
-    OS << "Block" << MBBId << "Exit [label=\"Terminated\"];\n";
-  } break;
+  case MBBExitType::Terminate:
+    OS << "Exit type: terminate\n";
+    break;
   default:
     break;
   }
-  OS << "\n";
-}
-
-std::string EVMStackSolver::getBlockId(const MachineBasicBlock *MBB) {
-  std::string Name =
-      std::to_string(MBB->getNumber()) + "." + std::string(MBB->getName());
-  if (auto It = BlockIds.find(MBB); It != BlockIds.end())
-    return std::to_string(It->second) + "(" + Name + ")";
-
-  size_t Id = BlockIds[MBB] = BlockCount++;
-  return std::to_string(Id) + "(" + Name + ")";
+  OS << '\n';
 }
 #endif // NDEBUG
