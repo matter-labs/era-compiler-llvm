@@ -44,6 +44,17 @@ static size_t getCallArgCount(const MachineInstr *Call) {
   return NumExplicitInputs - NumFuncOp + callWillReturn(Call);
 }
 
+static std::string getUnreachableStackSlotError(const MachineFunction &MF,
+                                                const Stack &CurrentStack,
+                                                const StackSlot *Slot,
+                                                size_t Depth, bool isSwap) {
+  return (MF.getName() + Twine(": cannot ") + (isSwap ? "swap " : "dup ") +
+          std::to_string(Depth) + "-th stack item, " + Slot->toString() +
+          ".\nItem it located too deep in the stack: " +
+          CurrentStack.toString())
+      .str();
+}
+
 size_t EVMStackifyCodeEmitter::CodeEmitter::stackHeight() const {
   return StackHeight;
 }
@@ -308,19 +319,10 @@ void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
         if (I <= StackDepthLimit) {
           Emitter.emitSWAP(I);
         } else {
-          int Deficit = static_cast<int>(I) - StackDepthLimit;
-          const StackSlot *DeepSlot = CurrentStack[CurrentStack.size() - I - 1];
-          std::string Msg =
-              (Twine("cannot swap ") +
-               (isa<RegisterSlot>(DeepSlot) ? "variable " : "slot ") +
-               DeepSlot->toString() + " with " +
-               (isa<RegisterSlot>(CurrentStack.back()) ? "variable "
-                                                       : "slot ") +
-               CurrentStack.back()->toString() + ": too deep in the stack by " +
-               std::to_string(Deficit) + " slots in " + CurrentStack.toString())
-                  .str();
-
-          report_fatal_error(MF.getName() + Twine(": ") + Msg);
+          const StackSlot *Slot = CurrentStack[CurrentStack.size() - I - 1];
+          std::string ErrMsg = getUnreachableStackSlotError(
+              MF, CurrentStack, Slot, I + 1, /* isSwap */ true);
+          report_fatal_error(ErrMsg.c_str());
         }
       },
       // Push or dup callback.
@@ -336,21 +338,13 @@ void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
             return;
           }
           if (!Slot->isRematerializable()) {
-            std::string Msg =
-                (isa<RegisterSlot>(Slot) ? "variable " : "slot ") +
-                Slot->toString() + " is " +
-                std::to_string(Depth - (StackDepthLimit - 1)) +
-                " too deep in the stack " + CurrentStack.toString();
-
-            report_fatal_error(MF.getName() + ": " + Msg);
-            return;
+            std::string ErrMsg = getUnreachableStackSlotError(
+                MF, CurrentStack, Slot, Depth + 1, /* isSwap */ false);
+            report_fatal_error(ErrMsg.c_str());
           }
-          // else: the slot is too deep in stack, but can be freely generated,
-          // we fall through to push it again.
         }
 
-        // The slot can be freely generated or is an unassigned return variable.
-        // Push it.
+        // The slot can be rematerialized.
         if (const auto *L = dyn_cast<LiteralSlot>(Slot)) {
           Emitter.emitConstant(L->getValue());
         } else if (const auto *S = dyn_cast<SymbolSlot>(Slot)) {

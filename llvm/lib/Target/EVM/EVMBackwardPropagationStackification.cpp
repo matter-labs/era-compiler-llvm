@@ -37,7 +37,7 @@
 
 using namespace llvm;
 
-#define DEBUG_TYPE "evm-ethereum-stackify"
+#define DEBUG_TYPE "evm-backward-propagation-stackification"
 
 namespace {
 class EVMBPStackification final : public MachineFunctionPass {
@@ -48,7 +48,7 @@ public:
 
 private:
   StringRef getPassName() const override {
-    return "EVM Ethereum stackification";
+    return "EVM backward propagation stackification";
   }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {

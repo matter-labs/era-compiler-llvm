@@ -20,7 +20,6 @@
 
 #include "EVMStackModel.h"
 #include "llvm/ADT/DenseMap.h"
-#include <deque>
 
 namespace llvm {
 
@@ -34,9 +33,9 @@ size_t calculateStackTransformCost(Stack Source, const Stack &Target,
 
 class EVMMIRToStack {
 public:
-  EVMMIRToStack(DenseMap<const MachineBasicBlock *, Stack> &MBBEntryMap,
-                DenseMap<const MachineBasicBlock *, Stack> &MBBExitMap,
-                DenseMap<const Operation *, Stack> &OpsEntryMap)
+  EVMMIRToStack(DenseMap<const MachineBasicBlock *, Stack> &&MBBEntryMap,
+                DenseMap<const MachineBasicBlock *, Stack> &&MBBExitMap,
+                DenseMap<const Operation *, Stack> &&OpsEntryMap)
       : MBBEntryMap(MBBEntryMap), MBBExitMap(MBBExitMap),
         OperationEntryMap(OpsEntryMap) {}
   EVMMIRToStack(const EVMMIRToStack &) = delete;
@@ -65,13 +64,6 @@ private:
 
 class EVMStackSolver {
 public:
-  struct StackTooDeep {
-    /// Number of slots that need to be saved.
-    size_t Deficit = 0;
-    /// Set of variables, eliminating which would decrease the stack deficit.
-    SmallVector<Register> VariableChoices;
-  };
-
   EVMStackSolver(const MachineFunction &MF, const MachineLoopInfo *MLI,
                  const EVMStackModel &StackModel,
                  const EVMMachineCFGInfo &CFGInfo);
@@ -103,28 +95,12 @@ private:
 
 #ifndef NDEBUG
   void dump(raw_ostream &OS);
-  void printMBB(raw_ostream &OS, const MachineBasicBlock *MBB);
-  std::string getBlockId(const MachineBasicBlock *MBB);
-  DenseMap<const MachineBasicBlock *, size_t> BlockIds;
-  size_t BlockCount = 0;
+  void dumpMBB(raw_ostream &OS, const MachineBasicBlock *MBB);
 #endif
-
-  /// Returns the best known exit stack of \p MBB, if all dependencies are
-  /// already \p Visited. If not, adds the dependencies to \p DependencyList and
-  /// returns std::nullopt.
-  std::optional<Stack> getExitStackOrStageDependencies(
-      const MachineBasicBlock *MBB,
-      const DenseSet<const MachineBasicBlock *> &Visited,
-      std::deque<const MachineBasicBlock *> &DependencyList);
 
   /// Calculates the ideal stack, s.t., both \p Stack1 and \p Stack2 can
   /// be achieved with minimal stack shuffling.
   Stack combineStack(const Stack &Stack1, const Stack &Stack2);
-
-  /// Walks through the CFG and reports any stack too deep errors that would
-  /// occur when generating code for it without countermeasures.
-  SmallVector<StackTooDeep>
-  reportStackTooDeep(const MachineBasicBlock &Entry) const;
 
   /// Returns a copy of \p Stack stripped of all duplicates and slots that can
   /// be freely generated. Attempts to create a layout that requires a minimal
