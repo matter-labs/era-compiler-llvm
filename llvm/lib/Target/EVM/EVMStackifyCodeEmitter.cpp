@@ -296,10 +296,10 @@ void EVMStackifyCodeEmitter::processAssign(const Operation &Assignment) {
 
 void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
   assert(Emitter.stackHeight() == CurrentStack.size());
-  // ::createStackLayout asserts that it has successfully achieved the target
-  // layout.
+  // ::calculateStack asserts that it has successfully achieved the target
+  // stack state.
   const unsigned StackDepthLimit = StackModel.stackDepthLimit();
-  ::createStackLayout(
+  ::calculateStack(
       CurrentStack, TargetStack, StackDepthLimit,
       // Swap callback.
       [&](unsigned I) {
@@ -382,8 +382,8 @@ void EVMStackifyCodeEmitter::createOperationLayout(const Operation &Op) {
   bool SwapCommutable = false;
   if (Op.isBuiltinCall() && Op.getMachineInstr()->isCommutable()) {
     // Get the stack layout before the instruction.
-    size_t DefaultCost = evaluateStackTransform(CurrentStack, TargetStack,
-                                                StackModel.stackDepthLimit());
+    size_t DefaultCost = calculateStackTransformCost(
+        CurrentStack, TargetStack, StackModel.stackDepthLimit());
 
     // Commutable operands always take top two stack slots.
     const unsigned OpIdx1 = 0, OpIdx2 = 1;
@@ -394,7 +394,7 @@ void EVMStackifyCodeEmitter::createOperationLayout(const Operation &Op) {
     Stack CommutedTargetStack = TargetStack;
     std::swap(CommutedTargetStack[CommutedTargetStack.size() - OpIdx1 - 1],
               CommutedTargetStack[CommutedTargetStack.size() - OpIdx2 - 1]);
-    size_t CommutedCost = evaluateStackTransform(
+    size_t CommutedCost = calculateStackTransformCost(
         CurrentStack, CommutedTargetStack, StackModel.stackDepthLimit());
     // Choose the cheapest transformation.
     SwapCommutable = CommutedCost < DefaultCost;

@@ -1,4 +1,4 @@
-//===---- EVMStackLayoutGenerator.h - Stack layout generator ----*- C++ -*-===//
+//===--------- EVMStackSolver.h - Calculate stack states --------*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
@@ -15,8 +15,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_LIB_TARGET_EVM_EVMSTACKLAYOUTGENERATOR_H
-#define LLVM_LIB_TARGET_EVM_EVMSTACKLAYOUTGENERATOR_H
+#ifndef LLVM_LIB_TARGET_EVM_EVMSTACKSOLVER_H
+#define LLVM_LIB_TARGET_EVM_EVMSTACKSOLVER_H
 
 #include "EVMStackModel.h"
 #include "llvm/ADT/DenseMap.h"
@@ -29,8 +29,8 @@ class MachineLoopInfo;
 
 /// Returns the number of operations required to transform stack \p Source to
 /// \p Target.
-size_t evaluateStackTransform(Stack Source, const Stack &Target,
-                              unsigned StackDepthLimit);
+size_t calculateStackTransformCost(Stack Source, const Stack &Target,
+                                   unsigned StackDepthLimit);
 
 class EVMMIRToStack {
 public:
@@ -59,8 +59,7 @@ private:
   DenseMap<const MachineBasicBlock *, Stack> MBBEntryMap;
   // Complete stack required at MBB exit.
   DenseMap<const MachineBasicBlock *, Stack> MBBExitMap;
-  // Complete stack that has the slots required for the operation at the stack
-  // top.
+  // Complete stack that required for the instruction at the stack top.
   DenseMap<const Operation *, Stack> OperationEntryMap;
 };
 
@@ -80,19 +79,18 @@ public:
   EVMMIRToStack run();
 
 private:
-  /// Returns the optimal entry stack layout, s.t. \p Operation can be applied
+  /// Returns the optimal entry stack layout, s.t. \p Op can be applied
   /// to it and the result can be transformed to \p ExitStack with minimal stack
   /// shuffling. Simultaneously stores the entry layout required for executing
   /// the operation in the map.
-  Stack propagateStackThroughOperation(const Stack &ExitStack,
-                                       const Operation &Operation,
-                                       bool CompressStack = false);
+  Stack propagateStackThroughInst(const Stack &ExitStack, const Operation &Op,
+                                  bool CompressStack = false);
 
-  /// Returns the desired stack layout at the entry of \p Block, assuming the
+  /// Returns the desired stack layout at the entry of \p MBB, assuming the
   /// layout after executing the block should be \p ExitStack.
-  Stack propagateStackThroughBlock(const Stack &ExitStack,
-                                   const MachineBasicBlock *Block,
-                                   bool CompressStack = false);
+  Stack propagateStackThroughMBB(const Stack &ExitStack,
+                                 const MachineBasicBlock *MBB,
+                                 bool CompressStack = false);
 
   /// Main algorithm walking the graph from entry to exit and propagating back
   /// the stack layouts to the entries. Iteratively reruns itself along
@@ -101,21 +99,21 @@ private:
 
   /// Adds junks to the subgraph starting at \p Entry. It should only be
   /// called on cut-vertices, so the full subgraph retains proper stack balance.
-  void addJunksToStackBottom(const MachineBasicBlock *Entry, size_t NumJunk);
+  void appendJunks(const MachineBasicBlock *Entry, size_t NumJunk);
 
 #ifndef NDEBUG
   void dump(raw_ostream &OS);
-  void printBlock(raw_ostream &OS, const MachineBasicBlock &Block);
-  std::string getBlockId(const MachineBasicBlock &Block);
+  void printMBB(raw_ostream &OS, const MachineBasicBlock *MBB);
+  std::string getBlockId(const MachineBasicBlock *MBB);
   DenseMap<const MachineBasicBlock *, size_t> BlockIds;
   size_t BlockCount = 0;
 #endif
 
-  /// Returns the best known exit layout of \p Block, if all dependencies are
+  /// Returns the best known exit stack of \p MBB, if all dependencies are
   /// already \p Visited. If not, adds the dependencies to \p DependencyList and
   /// returns std::nullopt.
-  std::optional<Stack> getExitLayoutOrStageDependencies(
-      const MachineBasicBlock *Block,
+  std::optional<Stack> getExitStackOrStageDependencies(
+      const MachineBasicBlock *MBB,
       const DenseSet<const MachineBasicBlock *> &Visited,
       std::deque<const MachineBasicBlock *> &DependencyList) const;
 
@@ -147,4 +145,4 @@ private:
 
 } // end namespace llvm
 
-#endif // LLVM_LIB_TARGET_EVM_EVMSTACKLAYOUTGENERATOR_H
+#endif // LLVM_LIB_TARGET_EVM_EVMSTACKSOLVER_H

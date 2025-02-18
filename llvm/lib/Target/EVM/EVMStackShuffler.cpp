@@ -268,7 +268,7 @@ bool EVMStackShuffler::shuffleStep() {
   llvm_unreachable("Unexpected state");
 }
 
-void llvm::createStackLayout(
+void llvm::calculateStack(
     Stack &CurrentStack, Stack const &TargetStack, unsigned StackDepthLimit,
     const std::function<void(unsigned)> &Swap,
     const std::function<void(const StackSlot *)> &PushOrDup,

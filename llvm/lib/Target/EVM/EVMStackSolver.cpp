@@ -1,17 +1,8 @@
-//===---- EVMStackLayoutGenerator.h - Stack layout generator ----*- C++ -*-===//
+//===--------------------- EVMStackSolver.cpp -------------------*- C++ -*-===//
 //
 // Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
 // See https://llvm.org/LICENSE.txt for license information.
 // SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
-//
-//===----------------------------------------------------------------------===//
-//
-// This file implements the stack layout generator which for each operation
-// finds complete stack layout that:
-//   - has the slots required for the operation at the stack top.
-//   - will have the operation result in a layout that makes it easy to achieve
-//     the next desired layout.
-// It also finds an entering/exiting stack layout for each block.
 //
 //===----------------------------------------------------------------------===//
 
@@ -30,7 +21,7 @@
 
 using namespace llvm;
 
-#define DEBUG_TYPE "evm-stack-layout-generator"
+#define DEBUG_TYPE "evm-stack-solver"
 
 namespace {
 
@@ -68,7 +59,7 @@ findStackTooDeep(const Stack &Source, const Stack &Target,
     return Result;
   };
 
-  ::createStackLayout(
+  calculateStack(
       CurrentStack, Target, StackDepthLimit,
       [&](unsigned I) {
         if (I > StackDepthLimit)
@@ -91,39 +82,41 @@ findStackTooDeep(const Stack &Source, const Stack &Target,
 }
 
 /// Returns the ideal stack to have before executing a machine instruction that
-/// outputs \p OpDefs s.t. shuffling to \p Post is cheap (excluding the input of
-/// the operation itself). If \p CompressStack is true, rematerializable slots
-/// will not occur in the ideal stack, but rather be generated during shuffling.
-Stack createIdealLayout(const SmallVector<StackSlot *> &OpDefs,
-                        const Stack &Post, bool CompressStack,
-                        unsigned StackDepthLimit) {
+/// outputs \p InstDefs s.t. shuffling to \p AfterInst is cheap (excluding the
+/// input of the instruction itself). If \p CompressStack is true,
+/// rematerializable slots will not occur in the ideal stack, but rather be
+/// generated during shuffling.
+Stack calculateStackBeforeInst(const SmallVector<StackSlot *> &InstDefs,
+                               const Stack &AfterInst, bool CompressStack,
+                               unsigned StackDepthLimit) {
   // Determine the number of slots that have to be on stack before executing the
   // operation (excluding the inputs of the operation itself), i.e. slots that
   // cannot be rematerialized and that are not the instruction output.
-  size_t PreOperationLayoutSize = count_if(Post, [&](const StackSlot *S) {
-    return !is_contained(OpDefs, S) &&
+  size_t BeforeInstSize = count_if(AfterInst, [&](const StackSlot *S) {
+    return !is_contained(InstDefs, S) &&
            !(CompressStack && S->isRematerializable());
   });
 
   SmallVector<UnknownSlot> UnknownSlots;
-  for (size_t Index = 0; Index < PreOperationLayoutSize; ++Index)
+  for (size_t Index = 0; Index < BeforeInstSize; ++Index)
     UnknownSlots.emplace_back(Index);
 
   // The symbolic layout directly after the operation has the form
   // PreviousSlot{0}, ..., PreviousSlot{n}, [output<0>], ..., [output<m>]
-  Stack Layout;
+  Stack Tmp;
   for (auto &S : UnknownSlots)
-    Layout.push_back(&S);
-  append_range(Layout, OpDefs);
+    Tmp.push_back(&S);
+  append_range(Tmp, InstDefs);
 
   // Shortcut for trivial case.
-  if (Layout.empty())
+  if (Tmp.empty())
     return Stack{};
 
-  EVMStackShuffler Shuffler(Layout, Post, StackDepthLimit);
+  EVMStackShuffler Shuffler(Tmp, AfterInst, StackDepthLimit);
 
-  auto canSkipSlot = [&OpDefs, CompressStack](const StackSlot *Slot) {
-    return count(OpDefs, Slot) || (CompressStack && Slot->isRematerializable());
+  auto canSkipSlot = [&InstDefs, CompressStack](const StackSlot *Slot) {
+    return count(InstDefs, Slot) ||
+           (CompressStack && Slot->isRematerializable());
   };
 
   Shuffler.setIsCompatible(
@@ -165,25 +158,58 @@ Stack createIdealLayout(const SmallVector<StackSlot *> &OpDefs,
   // operation, i.e. if PreviousSlot{2} is at a position at which Post contains
   // VariableSlot{"tmp"}, then we want the variable tmp in the slot at offset 2
   // in the layout before the operation.
-  assert(Layout.size() == Post.size());
-  SmallVector<StackSlot *> IdealLayout(Post.size(), nullptr);
-  for (unsigned Idx = 0; Idx < std::min(Layout.size(), Post.size()); ++Idx) {
-    if (auto *PrevSlot = dyn_cast<UnknownSlot>(Layout[Idx]))
-      IdealLayout[PrevSlot->getIndex()] = Post[Idx];
+  assert(Tmp.size() == AfterInst.size());
+  SmallVector<StackSlot *> BeforeInst(AfterInst.size(), nullptr);
+  for (unsigned Idx = 0; Idx < std::min(Tmp.size(), AfterInst.size()); ++Idx) {
+    if (const auto *Slot = dyn_cast<UnknownSlot>(Tmp[Idx]))
+      BeforeInst[Slot->getIndex()] = AfterInst[Idx];
   }
 
   // The tail of layout must have contained the operation outputs and will not
   // have been assigned slots in the last loop.
-  while (!IdealLayout.empty() && !IdealLayout.back())
-    IdealLayout.pop_back();
+  while (!BeforeInst.empty() && !BeforeInst.back())
+    BeforeInst.pop_back();
 
-  assert(IdealLayout.size() == PreOperationLayoutSize);
-  assert(all_of(IdealLayout,
+  assert(BeforeInst.size() == BeforeInstSize);
+  assert(all_of(BeforeInst,
                 [](const StackSlot *Slot) { return Slot != nullptr; }));
-  return IdealLayout;
+
+  return BeforeInst;
 }
 
 } // end anonymous namespace
+
+/// Returns the number of operations required to transform stack \p Source to
+/// \p Target.
+size_t llvm::calculateStackTransformCost(Stack Source, Stack const &Target,
+                                         unsigned StackDepthLimit) {
+  size_t OpGas = 0;
+  auto Swap = [&](unsigned SwapDepth) {
+    if (SwapDepth > StackDepthLimit)
+      OpGas += 1000;
+    else
+      OpGas += 3; // SWAP* gas price;
+  };
+
+  auto DupOrPush = [&](const StackSlot *Slot) {
+    if (Slot->isRematerializable())
+      OpGas += 3;
+    else {
+      auto Depth = offset(reverse(Source), Slot);
+      if (!Depth)
+        llvm_unreachable("No slot in the stack");
+
+      if (*Depth < StackDepthLimit)
+        OpGas += 3; // DUP* gas price
+      else
+        OpGas += 1000;
+    }
+  };
+  auto Pop = [&]() { OpGas += 2; };
+
+  calculateStack(Source, Target, StackDepthLimit, Swap, DupOrPush, Pop);
+  return OpGas;
+}
 
 EVMStackSolver::EVMStackSolver(const MachineFunction &MF,
                                const MachineLoopInfo *MLI,
@@ -194,101 +220,100 @@ EVMStackSolver::EVMStackSolver(const MachineFunction &MF,
 EVMMIRToStack EVMStackSolver::run() {
   runPropagation();
   LLVM_DEBUG({
-    dbgs() << "************* Stack Layout *************\n";
+    dbgs() << "************* Stack *************\n";
     dump(dbgs());
   });
 
   return EVMMIRToStack(MBBEntryMap, MBBExitMap, OperationEntryMap);
 }
 
-Stack EVMStackSolver::propagateStackThroughOperation(const Stack &ExitStack,
-                                                     const Operation &Op,
-                                                     bool CompressStack) {
+Stack EVMStackSolver::propagateStackThroughInst(const Stack &AfterInst,
+                                                const Operation &Op,
+                                                bool CompressStack) {
   // Enable aggressive stack compression for recursive calls.
   if (Op.isFunctionCall())
     // TODO: compress stack for recursive functions.
     CompressStack = false;
 
-  SmallVector<StackSlot *> OpDefs =
+  const SmallVector<StackSlot *> InstDefs =
       StackModel.getSlotsForInstructionDefs(Op.getMachineInstr());
   const unsigned StackDepthLimit = StackModel.stackDepthLimit();
 
   // Determine the ideal permutation of the slots in ExitLayout that are not
   // operation outputs (and not to be generated on the fly), s.t. shuffling the
   // 'IdealStack + Operation.output' to ExitLayout is cheap.
-  Stack IdealStack =
-      createIdealLayout(OpDefs, ExitStack, CompressStack, StackDepthLimit);
+  Stack BeforeInst = calculateStackBeforeInst(InstDefs, AfterInst,
+                                              CompressStack, StackDepthLimit);
 
 #ifndef NDEBUG
   // Make sure the resulting previous slots do not overlap with any assigned
   // variables.
   if (Op.isAssignment())
-    for (auto *StackSlot : IdealStack)
+    for (auto *StackSlot : BeforeInst)
       if (const auto *RegSlot = dyn_cast<RegisterSlot>(StackSlot))
         assert(!Op.getMachineInstr()->definesRegister(RegSlot->getReg()));
 #endif // NDEBUG
 
   // Since stack+Operation.output can be easily shuffled to ExitLayout, the
   // desired layout before the operation is stack+Operation.input;
-  IdealStack.append(Op.getInput());
+  BeforeInst.append(Op.getInput());
 
   // Store the exact desired operation entry layout. The stored layout will be
   // recreated by the code transform before executing the operation. However,
   // this recreation can produce slots that can be freely generated or are
   // duplicated, i.e. we can compress the stack afterwards without causing
   // problems for code generation later.
-  OperationEntryMap[&Op] = IdealStack;
+  OperationEntryMap[&Op] = BeforeInst;
 
   // Remove anything from the stack top that can be freely generated or dupped
   // from deeper on the stack.
-  while (!IdealStack.empty()) {
-    if (IdealStack.back()->isRematerializable())
-      IdealStack.pop_back();
-    else if (auto Offset = offset(drop_begin(reverse(IdealStack), 1),
-                                  IdealStack.back())) {
+  while (!BeforeInst.empty()) {
+    if (BeforeInst.back()->isRematerializable()) {
+      BeforeInst.pop_back();
+    } else if (auto Offset = offset(drop_begin(reverse(BeforeInst), 1),
+                                    BeforeInst.back())) {
       if (*Offset + 2 < StackDepthLimit)
-        IdealStack.pop_back();
+        BeforeInst.pop_back();
       else
         break;
     } else
       break;
   }
 
-  return IdealStack;
+  return BeforeInst;
 }
 
-Stack EVMStackSolver::propagateStackThroughBlock(const Stack &ExitStack,
-                                                 const MachineBasicBlock *Block,
-                                                 bool CompressStack) {
+Stack EVMStackSolver::propagateStackThroughMBB(const Stack &ExitStack,
+                                               const MachineBasicBlock *MBB,
+                                               bool CompressStack) {
   Stack CurrentStack = ExitStack;
-  for (const Operation &Op : reverse(StackModel.getOperations(Block))) {
-    Stack NewStack =
-        propagateStackThroughOperation(CurrentStack, Op, CompressStack);
+  for (const Operation &Op : reverse(StackModel.getOperations(MBB))) {
+    Stack AfterInst =
+        propagateStackThroughInst(CurrentStack, Op, CompressStack);
     if (!CompressStack &&
-        !findStackTooDeep(NewStack, CurrentStack, StackModel.stackDepthLimit())
+        !findStackTooDeep(AfterInst, CurrentStack, StackModel.stackDepthLimit())
              .empty())
       // If we had stack errors, run again with stack compression enabled.
-      return propagateStackThroughBlock(ExitStack, Block,
-                                        /*CompressStack*/ true);
-    CurrentStack = std::move(NewStack);
+      return propagateStackThroughMBB(ExitStack, MBB,
+                                      /*CompressStack*/ true);
+    CurrentStack = std::move(AfterInst);
   }
   return CurrentStack;
 }
 
-// Returns the number of junk slots to be prepended to \p TargetLayout for
-// an optimal transition from \p EntryLayout to \p TargetLayout.
-static size_t getOptimalNumberOfJunks(const Stack &EntryLayout,
-                                      const Stack &TargetLayout,
+// Returns the number of junk slots to be prepended to \p Target for
+// an optimal transition from \p Source to \p Target.
+static size_t getOptimalNumberOfJunks(const Stack &Source, const Stack &Target,
                                       unsigned StackDepthLimit) {
   size_t BestCost =
-      evaluateStackTransform(EntryLayout, TargetLayout, StackDepthLimit);
+      calculateStackTransformCost(Source, Target, StackDepthLimit);
   size_t BestNumJunk = 0;
-  size_t MaxJunk = EntryLayout.size();
+  size_t MaxJunk = Source.size();
   for (size_t NumJunk = 1; NumJunk <= MaxJunk; ++NumJunk) {
     Stack JunkedTarget(NumJunk, EVMStackModel::getJunkSlot());
-    JunkedTarget.append(TargetLayout);
+    JunkedTarget.append(Target);
     size_t Cost =
-        evaluateStackTransform(EntryLayout, JunkedTarget, StackDepthLimit);
+        calculateStackTransformCost(Source, JunkedTarget, StackDepthLimit);
     if (Cost < BestCost) {
       BestCost = Cost;
       BestNumJunk = NumJunk;
@@ -326,27 +351,27 @@ void EVMStackSolver::runPropagation() {
     // assuming the current preliminary entry layout of the backwards jump
     // target as the initial exit layout of the backwards-jumping block.
     while (!ToVisit.empty()) {
-      const MachineBasicBlock *Block = *ToVisit.begin();
+      const MachineBasicBlock *MBB = *ToVisit.begin();
       ToVisit.pop_front();
-      if (Visited.count(Block))
+      if (Visited.count(MBB))
         continue;
 
-      if (std::optional<Stack> ExitLayout =
-              getExitLayoutOrStageDependencies(Block, Visited, ToVisit)) {
-        Visited.insert(Block);
-        MBBExitMap[Block] = *ExitLayout;
-        MBBEntryMap[Block] = propagateStackThroughBlock(*ExitLayout, Block);
-        for (auto Pred : Block->predecessors())
+      if (std::optional<Stack> ExitStack =
+              getExitStackOrStageDependencies(MBB, Visited, ToVisit)) {
+        Visited.insert(MBB);
+        MBBExitMap[MBB] = *ExitStack;
+        MBBEntryMap[MBB] = propagateStackThroughMBB(*ExitStack, MBB);
+        for (auto Pred : MBB->predecessors())
           ToVisit.emplace_back(Pred);
       }
     }
 
     // Revisit these blocks again.
     for (auto [Latch, Header] : Backedges) {
-      const Stack &HeaderEntryLayout = MBBEntryMap[Header];
-      const Stack &LatchExitLayout = MBBExitMap[Latch];
-      if (all_of(HeaderEntryLayout, [LatchExitLayout](const StackSlot *Slot) {
-            return is_contained(LatchExitLayout, Slot);
+      const Stack &HeaderEntryStack = MBBEntryMap[Header];
+      const Stack &LatchExitStack = MBBExitMap[Latch];
+      if (all_of(HeaderEntryStack, [LatchExitStack](const StackSlot *Slot) {
+            return is_contained(LatchExitStack, Slot);
           }))
         continue;
 
@@ -391,39 +416,39 @@ void EVMStackSolver::runPropagation() {
     if (ExitType != MBBExitType::ConditionalBranch)
       continue;
 
-    Stack ExitLayout = MBBExitMap.at(&MBB);
+    Stack ExitStack = MBBExitMap.at(&MBB);
 
 #ifndef NDEBUG
     // The last block must have produced the condition at the stack top.
     auto [CondBr, UncondBr, TrueBB, FalseBB, Condition] =
         TermInfo->getConditionalBranch();
-    assert(ExitLayout.back() == StackModel.getStackSlot(*Condition));
+    assert(ExitStack.back() == StackModel.getStackSlot(*Condition));
 #endif // NDEBUG
 
     // The condition is consumed by the conditional jump.
-    ExitLayout.pop_back();
+    ExitStack.pop_back();
     for (const MachineBasicBlock *Succ : MBB.successors()) {
-      const Stack &SuccEntryLayout = MBBEntryMap.at(Succ);
-      Stack NewSuccEntryLayout = ExitLayout;
+      const Stack &SuccEntryStack = MBBEntryMap.at(Succ);
+      Stack NewSuccEntryStack = ExitStack;
       // Whatever the block being jumped to does not actually require,
       // can be marked as junk.
-      for (StackSlot *&Slot : NewSuccEntryLayout)
-        if (!is_contained(SuccEntryLayout, Slot))
+      for (StackSlot *&Slot : NewSuccEntryStack)
+        if (!is_contained(SuccEntryStack, Slot))
           Slot = EVMStackModel::getJunkSlot();
 
 #ifndef NDEBUG
       // Make sure everything the block being jumped to requires is
       // actually present or can be generated.
-      for (const StackSlot *Slot : SuccEntryLayout)
+      for (const StackSlot *Slot : SuccEntryStack)
         assert(Slot->isRematerializable() ||
-               is_contained(NewSuccEntryLayout, Slot));
+               is_contained(NewSuccEntryStack, Slot));
 #endif // NDEBUG
 
-      MBBEntryMap[Succ] = NewSuccEntryLayout;
+      MBBEntryMap[Succ] = NewSuccEntryStack;
     }
   }
 
-  // Create the function entry layout.
+  // Create the function entry stack.
   Stack EntryStack;
   bool IsNoReturn = MF.getFunction().hasFnAttribute(Attribute::NoReturn);
   if (!IsNoReturn)
@@ -445,40 +470,39 @@ void EVMStackSolver::runPropagation() {
     if (!CFGInfo.isCutVertex(&MBB) || CFGInfo.isOnPathToFuncReturn(&MBB))
       continue;
 
-    const Stack EntryLayout = MBBEntryMap.at(&MBB);
-    const Stack &ExitLayout = MBBExitMap.at(&MBB);
+    const Stack EntryStack = MBBEntryMap.at(&MBB);
+    const Stack &ExitStack = MBBExitMap.at(&MBB);
     const SmallVector<Operation> &Ops = StackModel.getOperations(&MBB);
-    Stack const &NextLayout =
-        Ops.empty() ? ExitLayout : OperationEntryMap.at(&Ops.front());
-    if (EntryLayout != NextLayout) {
+    const Stack &Next =
+        Ops.empty() ? ExitStack : OperationEntryMap.at(&Ops.front());
+    if (EntryStack != Next) {
       size_t OptimalNumJunks = getOptimalNumberOfJunks(
-          EntryLayout, NextLayout, StackModel.stackDepthLimit());
+          EntryStack, Next, StackModel.stackDepthLimit());
       if (OptimalNumJunks > 0) {
-        addJunksToStackBottom(&MBB, OptimalNumJunks);
-        MBBEntryMap[&MBB] = EntryLayout;
+        appendJunks(&MBB, OptimalNumJunks);
+        MBBEntryMap[&MBB] = EntryStack;
       }
     }
   }
 }
 
-std::optional<Stack> EVMStackSolver::getExitLayoutOrStageDependencies(
-    const MachineBasicBlock *Block,
+std::optional<Stack> EVMStackSolver::getExitStackOrStageDependencies(
+    const MachineBasicBlock *MBB,
     const DenseSet<const MachineBasicBlock *> &Visited,
     std::deque<const MachineBasicBlock *> &ToVisit) const {
-  const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(Block);
+  const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(MBB);
   MBBExitType ExitType = TermInfo->getExitType();
   if (ExitType == MBBExitType::UnconditionalBranch) {
     auto [_, Target] = TermInfo->getUnconditionalBranch();
-    if (MachineLoop *ML = MLI->getLoopFor(Block);
-        ML && ML->isLoopLatch(Block)) {
-      // Choose the best currently known entry layout of the jump target
+    if (MachineLoop *ML = MLI->getLoopFor(MBB); ML && ML->isLoopLatch(MBB)) {
+      // Choose the best currently known entry stack of the jump target
       // as initial exit. Note that this may not yet be the final
-      // layout.
+      // stack state.
       auto It = MBBEntryMap.find(Target);
       return It == MBBEntryMap.end() ? Stack{} : It->second;
     }
     // If the current iteration has already visited the jump target,
-    // start from its entry layout.
+    // start from its entry stack.
     if (Visited.count(Target))
       return MBBEntryMap.at(Target);
     // Otherwise stage the jump target for visit and defer the current
@@ -514,10 +538,8 @@ std::optional<Stack> EVMStackSolver::getExitLayoutOrStageDependencies(
 
     return std::nullopt;
   }
-  if (ExitType == MBBExitType::FunctionReturn) {
-    const MachineInstr &MI = Block->back();
-    return StackModel.getReturnArguments(MI);
-  }
+  if (ExitType == MBBExitType::FunctionReturn)
+    return StackModel.getReturnArguments(MBB->back());
 
   return Stack{};
 }
@@ -591,15 +613,15 @@ Stack EVMStackSolver::combineStack(const Stack &Stack1, const Stack &Stack2,
       if (Depth && *Depth >= StackDepthLimit)
         NumOps += 1000;
     };
-    createStackLayout(TestStack, Stack1Tail, StackDepthLimit, Swap, DupOrPush,
-                      [&]() {});
+    calculateStack(TestStack, Stack1Tail, StackDepthLimit, Swap, DupOrPush,
+                   [&]() {});
     TestStack = Candidate;
-    createStackLayout(TestStack, Stack2Tail, StackDepthLimit, Swap, DupOrPush,
-                      [&]() {});
+    calculateStack(TestStack, Stack2Tail, StackDepthLimit, Swap, DupOrPush,
+                   [&]() {});
     return NumOps;
   };
 
-  // See https://en.wikipedia.org/wiki/Heap's_algorithm
+  // See https://en.wikipedia.org/wiki/Heap's_algorithm.
   size_t N = Candidate.size();
   Stack BestCandidate = Candidate;
   size_t BestCost = evaluate(Candidate);
@@ -663,40 +685,8 @@ Stack EVMStackSolver::compressStack(Stack CurStack, unsigned StackDepthLimit) {
   return CurStack;
 }
 
-/// Returns the number of operations required to transform stack \p Source to
-/// \p Target.
-size_t llvm::evaluateStackTransform(Stack Source, Stack const &Target,
-                                    unsigned StackDepthLimit) {
-  size_t OpGas = 0;
-  auto Swap = [&](unsigned SwapDepth) {
-    if (SwapDepth > StackDepthLimit)
-      OpGas += 1000;
-    else
-      OpGas += 3; // SWAP* gas price;
-  };
-
-  auto DupOrPush = [&](const StackSlot *Slot) {
-    if (Slot->isRematerializable())
-      OpGas += 3;
-    else {
-      auto Depth = offset(reverse(Source), Slot);
-      if (!Depth)
-        llvm_unreachable("No slot in the stack");
-
-      if (*Depth < StackDepthLimit)
-        OpGas += 3; // DUP* gas price
-      else
-        OpGas += 1000;
-    }
-  };
-  auto Pop = [&]() { OpGas += 2; };
-
-  createStackLayout(Source, Target, StackDepthLimit, Swap, DupOrPush, Pop);
-  return OpGas;
-}
-
-void EVMStackSolver::addJunksToStackBottom(const MachineBasicBlock *Entry,
-                                           size_t NumJunk) {
+void EVMStackSolver::appendJunks(const MachineBasicBlock *Entry,
+                                 size_t NumJunk) {
   for (const MachineBasicBlock *MBB : depth_first(Entry)) {
     Stack EntryTmp(NumJunk, EVMStackModel::getJunkSlot());
     EntryTmp.append(MBBEntryMap.at(MBB));
@@ -718,77 +708,77 @@ void EVMStackSolver::addJunksToStackBottom(const MachineBasicBlock *Entry,
 void EVMStackSolver::dump(raw_ostream &OS) {
   OS << "Function: " << MF.getName() << "(";
   for (const StackSlot *ParamSlot : StackModel.getFunctionParameters()) {
-    if (const auto *Slot = dyn_cast<RegisterSlot>(ParamSlot))
-      OS << printReg(Slot->getReg(), nullptr, 0, nullptr) << ' ';
-    else if (isa<JunkSlot>(ParamSlot))
+    if (isa<JunkSlot>(ParamSlot))
       OS << "[unused param] ";
     else
-      llvm_unreachable("Unexpected stack slot");
+      OS << ParamSlot->toString();
   }
   OS << ");\n";
   OS << "FunctionEntry "
-     << " -> Block" << getBlockId(MF.front()) << ";\n";
+     << " -> Block" << getBlockId(&MF.front()) << ";\n";
 
   for (const auto &MBB : MF)
-    printBlock(OS, MBB);
+    printMBB(OS, &MBB);
 }
 
-void EVMStackSolver::printBlock(raw_ostream &OS,
-                                const MachineBasicBlock &Block) {
-  OS << "Block" << getBlockId(Block) << " [\n";
-  OS << MBBEntryMap.at(&Block).toString() << "\n";
-  for (auto const &Op : StackModel.getOperations(&Block)) {
+void EVMStackSolver::printMBB(raw_ostream &OS, const MachineBasicBlock *MBB) {
+  std::string MBBId = getBlockId(MBB);
+  OS << "Block" << MBBId << " [\n";
+  OS << MBBEntryMap.at(MBB).toString() << "\n";
+  for (auto const &Op : StackModel.getOperations(MBB)) {
     OS << "\n";
-    Stack EntryLayout = OperationEntryMap.at(&Op);
-    OS << EntryLayout.toString() << "\n";
+    Stack EntryStack = OperationEntryMap.at(&Op);
+    OS << EntryStack.toString() << "\n";
     OS << Op.toString() << "\n";
-    assert(Op.getInput().size() <= EntryLayout.size());
-    EntryLayout.resize(EntryLayout.size() - Op.getInput().size());
-    EntryLayout.append(
+    assert(Op.getInput().size() <= EntryStack.size());
+    EntryStack.resize(EntryStack.size() - Op.getInput().size());
+    EntryStack.append(
         StackModel.getSlotsForInstructionDefs(Op.getMachineInstr()));
-    OS << EntryLayout.toString() << "\n";
+    OS << EntryStack.toString() << "\n";
   }
   OS << "\n";
-  OS << MBBExitMap.at(&Block).toString() << "\n";
+  OS << MBBExitMap.at(MBB).toString() << "\n";
   OS << "];\n";
 
-  const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(&Block);
-  MBBExitType ExitType = TermInfo->getExitType();
-  if (ExitType == MBBExitType::UnconditionalBranch) {
+  const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(MBB);
+  switch (TermInfo->getExitType()) {
+  case MBBExitType::UnconditionalBranch: {
     auto [BranchInstr, Target] = TermInfo->getUnconditionalBranch();
-    OS << "Block" << getBlockId(Block) << "Exit [label=\"";
-    OS << "Jump\"];\n";
-    OS << "Block" << getBlockId(Block) << "Exit -> Block" << getBlockId(*Target)
-       << ";\n";
-  } else if (ExitType == MBBExitType::ConditionalBranch) {
+    OS << "Block" << MBBId << "Exit [label=\"Jump\"];\n";
+    OS << "Block" << MBBId << "Exit -> Block" << getBlockId(Target) << ";\n";
+  } break;
+  case MBBExitType::ConditionalBranch: {
     auto [CondBr, UncondBr, TrueBB, FalseBB, Condition] =
         TermInfo->getConditionalBranch();
-    OS << "Block" << getBlockId(Block) << "Exit [label=\"{ ";
-    OS << StackModel.getStackSlot(*Condition)->toString();
-    OS << "| { <0> Zero | <1> NonZero }}\"];\n";
-    OS << "Block" << getBlockId(Block);
-    OS << "Exit:0 -> Block" << getBlockId(*FalseBB) << ";\n";
-    OS << "Block" << getBlockId(Block);
-    OS << "Exit:1 -> Block" << getBlockId(*TrueBB) << ";\n";
-  } else if (ExitType == MBBExitType::FunctionReturn) {
-    OS << "Block" << getBlockId(Block) << "Exit [label=\"FunctionReturn["
-       << MF.getName() << "]\"];\n";
-    const MachineInstr &MI = Block.back();
+    OS << "Block" << MBBId << "Exit [label=\"{ "
+       << StackModel.getStackSlot(*Condition)->toString()
+       << "| { <0> Zero | <1> NonZero }}\"];\n";
+    OS << "Block" << MBBId << "Exit:0 -> Block" << getBlockId(FalseBB) << ";\n";
+    OS << "Block" << MBBId << "Exit:1 -> Block" << getBlockId(TrueBB) << ";\n";
+  } break;
+  case MBBExitType::FunctionReturn: {
+    OS << "Block" << MBBId << "Exit [label=\"FunctionReturn[" << MF.getName()
+       << "]\"];\n";
+    const MachineInstr &MI = MBB->back();
     OS << "Return values: " << StackModel.getReturnArguments(MI).toString()
        << ";\n";
-  } else if (ExitType == MBBExitType::Terminate) {
-    OS << "Block" << getBlockId(Block) << "Exit [label=\"Terminated\"];\n";
+  } break;
+  case MBBExitType::Terminate: {
+    OS << "Block" << MBBId << "Exit [label=\"Terminated\"];\n";
+  } break;
+  default:
+    break;
   }
   OS << "\n";
 }
 
-std::string EVMStackSolver::getBlockId(const MachineBasicBlock &Block) {
+std::string EVMStackSolver::getBlockId(const MachineBasicBlock *MBB) {
   std::string Name =
-      std::to_string(Block.getNumber()) + "." + std::string(Block.getName());
-  if (auto It = BlockIds.find(&Block); It != BlockIds.end())
+      std::to_string(MBB->getNumber()) + "." + std::string(MBB->getName());
+  if (auto It = BlockIds.find(MBB); It != BlockIds.end())
     return std::to_string(It->second) + "(" + Name + ")";
 
-  size_t Id = BlockIds[&Block] = BlockCount++;
+  size_t Id = BlockIds[MBB] = BlockCount++;
   return std::to_string(Id) + "(" + Name + ")";
 }
 #endif // NDEBUG

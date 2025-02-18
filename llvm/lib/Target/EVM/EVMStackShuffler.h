@@ -139,9 +139,8 @@ private:
   bool dupDeepSlotIfRequired();
 };
 
-/// Transforms \p CurrentStack to \p TargetStack, invoking the provided
-/// shuffling operations. Modifies `CurrentStack` itself after each invocation
-/// of the shuffling operations.
+/// Transforms \p CurrentStack to \p TargetStack. Modifies `CurrentStack` itself
+/// after each shuffleStep().
 /// \p Swap is a function with signature void(unsigned) that is called when the
 /// top most slot is swapped with the slot `depth` slots below the top. In terms
 /// of EVM opcodes this is supposed to be a `SWAP<depth>`.
@@ -149,11 +148,11 @@ private:
 /// called to push or dup the slot given as its argument to the stack top.
 /// \p Pop is a function with signature void() that is called when the top most
 /// slot is popped.
-void createStackLayout(Stack &CurrentStack, Stack const &TargetStack,
-                       unsigned StackDepthLimit,
-                       const std::function<void(unsigned)> &Swap,
-                       const std::function<void(const StackSlot *)> &PushOrDup,
-                       const std::function<void()> &Pop);
+void calculateStack(Stack &CurrentStack, Stack const &TargetStack,
+                    unsigned StackDepthLimit,
+                    const std::function<void(unsigned)> &Swap,
+                    const std::function<void(const StackSlot *)> &PushOrDup,
+                    const std::function<void()> &Pop);
 
 } // end namespace llvm
 #endif // LLVM_LIB_TARGET_EVM_EVMSTACKSHUFFLER_H

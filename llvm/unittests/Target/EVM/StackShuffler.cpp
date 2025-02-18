@@ -100,7 +100,7 @@ TEST_F(LLDCTest, Basic) {
   for (unsigned I = 0; I < 17; ++I)
     Instrs.emplace_back(CreateInstr());
 
-  // Create the source stack layout:
+  // Create the source stack:
   //   [ %0 %1 %2 %3 %4 %5 %6 %7 %9 %10 %11 %12 %13 %14 %15 %16 RET RET %5 ]
   SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[0].second));
   SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[1].second));
@@ -168,7 +168,7 @@ PUSH JUNK\n\
 [ %1 %0 %2 %3 %4 %5 %6 %7 %9 %10 %11 %12 %13 %14 %15 %16 RET JUNK JUNK ]\n");
 
   std::ostringstream Output;
-  createStackLayout(
+  calculateStack(
       SourceStack, TargetStack,
       MF->getSubtarget<EVMSubtarget>().stackDepthLimit(),
       [&](unsigned SwapDepth) { // swap
