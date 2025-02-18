@@ -115,13 +115,11 @@ private:
   std::optional<Stack> getExitStackOrStageDependencies(
       const MachineBasicBlock *MBB,
       const DenseSet<const MachineBasicBlock *> &Visited,
-      std::deque<const MachineBasicBlock *> &DependencyList) const;
+      std::deque<const MachineBasicBlock *> &DependencyList);
 
-  /// Calculates the ideal stack layout, s.t., both \p Stack1 and \p Stack2 can
-  /// be achieved with minimal stack shuffling when starting from the returned
-  /// layout.
-  static Stack combineStack(const Stack &Stack1, const Stack &Stack2,
-                            unsigned StackDepthLimit);
+  /// Calculates the ideal stack, s.t., both \p Stack1 and \p Stack2 can
+  /// be achieved with minimal stack shuffling.
+  Stack combineStack(const Stack &Stack1, const Stack &Stack2);
 
   /// Walks through the CFG and reports any stack too deep errors that would
   /// occur when generating code for it without countermeasures.
@@ -131,7 +129,7 @@ private:
   /// Returns a copy of \p Stack stripped of all duplicates and slots that can
   /// be freely generated. Attempts to create a layout that requires a minimal
   /// amount of operations to reconstruct the original stack \p Stack.
-  static Stack compressStack(Stack Stack, unsigned StackDepthLimit);
+  Stack compressStack(Stack Stack);
 
   const MachineFunction &MF;
   const MachineLoopInfo *MLI;
