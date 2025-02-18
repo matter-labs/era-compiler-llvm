@@ -175,7 +175,7 @@ class UnknownSlot final : public StackSlot {
 public:
   UnknownSlot(size_t Index) : StackSlot(SK_Unknown), Index(Index) {}
 
-  size_t getIndex() { return Index; }
+  size_t getIndex() const { return Index; }
   bool isRematerializable() const override { return true; }
   std::string toString() const override {
     return "UNKNOWN";
