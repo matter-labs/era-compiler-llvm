@@ -237,13 +237,12 @@ Stack EVMStackSolver::propagateStackThroughInst(const Stack &AfterInst,
 
   const SmallVector<StackSlot *> InstDefs =
       StackModel.getSlotsForInstructionDefs(Op.getMachineInstr());
-  const unsigned StackDepthLimit = StackModel.stackDepthLimit();
 
   // Determine the ideal permutation of the slots in ExitLayout that are not
   // operation outputs (and not to be generated on the fly), s.t. shuffling the
   // 'IdealStack + Operation.output' to ExitLayout is cheap.
-  Stack BeforeInst = calculateStackBeforeInst(InstDefs, AfterInst,
-                                              CompressStack, StackDepthLimit);
+  Stack BeforeInst = calculateStackBeforeInst(
+      InstDefs, AfterInst, CompressStack, StackModel.stackDepthLimit());
 
 #ifndef NDEBUG
   // Make sure the resulting previous slots do not overlap with any assigned
@@ -272,7 +271,7 @@ Stack EVMStackSolver::propagateStackThroughInst(const Stack &AfterInst,
       BeforeInst.pop_back();
     } else if (auto Offset = offset(drop_begin(reverse(BeforeInst), 1),
                                     BeforeInst.back())) {
-      if (*Offset + 2 < StackDepthLimit)
+      if (*Offset + 2 < StackModel.stackDepthLimit())
         BeforeInst.pop_back();
       else
         break;
@@ -489,7 +488,7 @@ void EVMStackSolver::runPropagation() {
 std::optional<Stack> EVMStackSolver::getExitStackOrStageDependencies(
     const MachineBasicBlock *MBB,
     const DenseSet<const MachineBasicBlock *> &Visited,
-    std::deque<const MachineBasicBlock *> &ToVisit) const {
+    std::deque<const MachineBasicBlock *> &ToVisit) {
   const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(MBB);
   MBBExitType ExitType = TermInfo->getExitType();
   if (ExitType == MBBExitType::UnconditionalBranch) {
@@ -518,10 +517,9 @@ std::optional<Stack> EVMStackSolver::getExitStackOrStageDependencies(
 
     if (FalseBBVisited && TrueBBVisited) {
       // If the current iteration has already Visited both jump targets,
-      // start from its entry layout.
+      // start from its entry stack.
       Stack CombinedStack =
-          combineStack(MBBEntryMap.at(FalseBB), MBBEntryMap.at(TrueBB),
-                       StackModel.stackDepthLimit());
+          combineStack(MBBEntryMap.at(FalseBB), MBBEntryMap.at(TrueBB));
       // Additionally, the jump condition has to be at the stack top at
       // exit.
       CombinedStack.emplace_back(StackModel.getStackSlot(*Condition));
@@ -544,8 +542,7 @@ std::optional<Stack> EVMStackSolver::getExitStackOrStageDependencies(
   return Stack{};
 }
 
-Stack EVMStackSolver::combineStack(const Stack &Stack1, const Stack &Stack2,
-                                   unsigned StackDepthLimit) {
+Stack EVMStackSolver::combineStack(const Stack &Stack1, const Stack &Stack2) {
   // TODO: it would be nicer to replace this by a constructive algorithm.
   // Currently it uses a reduced version of the Heap Algorithm to partly
   // brute-force, which seems to work decently well.
@@ -567,12 +564,12 @@ Stack EVMStackSolver::combineStack(const Stack &Stack1, const Stack &Stack2,
     Stack2Tail.push_back(Slot);
 
   if (Stack1Tail.empty()) {
-    CommonPrefix.append(compressStack(Stack2Tail, StackDepthLimit));
+    CommonPrefix.append(compressStack(Stack2Tail));
     return CommonPrefix;
   }
 
   if (Stack2Tail.empty()) {
-    CommonPrefix.append(compressStack(Stack1Tail, StackDepthLimit));
+    CommonPrefix.append(compressStack(Stack1Tail));
     return CommonPrefix;
   }
 
@@ -599,7 +596,7 @@ Stack EVMStackSolver::combineStack(const Stack &Stack1, const Stack &Stack2,
     Stack TestStack = Candidate;
     auto Swap = [&](unsigned SwapDepth) {
       ++NumOps;
-      if (SwapDepth > StackDepthLimit)
+      if (SwapDepth > StackModel.stackDepthLimit())
         NumOps += 1000;
     };
 
@@ -610,14 +607,14 @@ Stack EVMStackSolver::combineStack(const Stack &Stack1, const Stack &Stack2,
       Stack Tmp = CommonPrefix;
       Tmp.append(TestStack);
       auto Depth = offset(reverse(Tmp), Slot);
-      if (Depth && *Depth >= StackDepthLimit)
+      if (Depth && *Depth >= StackModel.stackDepthLimit())
         NumOps += 1000;
     };
-    calculateStack(TestStack, Stack1Tail, StackDepthLimit, Swap, DupOrPush,
-                   [&]() {});
+    calculateStack(TestStack, Stack1Tail, StackModel.stackDepthLimit(), Swap,
+                   DupOrPush, [&]() {});
     TestStack = Candidate;
-    calculateStack(TestStack, Stack2Tail, StackDepthLimit, Swap, DupOrPush,
-                   [&]() {});
+    calculateStack(TestStack, Stack2Tail, StackModel.stackDepthLimit(), Swap,
+                   DupOrPush, [&]() {});
     return NumOps;
   };
 
@@ -655,7 +652,7 @@ Stack EVMStackSolver::combineStack(const Stack &Stack1, const Stack &Stack2,
   return CommonPrefix;
 }
 
-Stack EVMStackSolver::compressStack(Stack CurStack, unsigned StackDepthLimit) {
+Stack EVMStackSolver::compressStack(Stack CurStack) {
   std::optional<size_t> FirstDupOffset;
   do {
     if (FirstDupOffset) {
@@ -675,7 +672,7 @@ Stack EVMStackSolver::compressStack(Stack CurStack, unsigned StackDepthLimit) {
 
       if (auto DupDepth =
               offset(drop_begin(reverse(CurStack), Depth + 1), Slot)) {
-        if (Depth + *DupDepth <= StackDepthLimit) {
+        if (Depth + *DupDepth <= StackModel.stackDepthLimit()) {
           FirstDupOffset = CurStack.size() - Depth - 1;
           break;
         }
