@@ -159,18 +159,11 @@ Stack calculateStackBeforeInst(const SmallVector<StackSlot *> &InstDefs,
   // VariableSlot{"tmp"}, then we want the variable tmp in the slot at offset 2
   // in the layout before the operation.
   assert(Tmp.size() == AfterInst.size());
-  SmallVector<StackSlot *> BeforeInst(AfterInst.size(), nullptr);
-  for (unsigned Idx = 0; Idx < std::min(Tmp.size(), AfterInst.size()); ++Idx) {
+  SmallVector<StackSlot *> BeforeInst(BeforeInstSize, nullptr);
+  for (unsigned Idx = 0; Idx < Tmp.size(); ++Idx) {
     if (const auto *Slot = dyn_cast<UnknownSlot>(Tmp[Idx]))
       BeforeInst[Slot->getIndex()] = AfterInst[Idx];
   }
-
-  // The tail of layout must have contained the operation outputs and will not
-  // have been assigned slots in the last loop.
-  while (!BeforeInst.empty() && !BeforeInst.back())
-    BeforeInst.pop_back();
-
-  assert(BeforeInst.size() == BeforeInstSize);
   assert(all_of(BeforeInst,
                 [](const StackSlot *Slot) { return Slot != nullptr; }));
 
@@ -411,8 +404,7 @@ void EVMStackSolver::runPropagation() {
   // required after the jump are marked as 'JunkSlot'.
   for (const MachineBasicBlock &MBB : MF) {
     const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(&MBB);
-    MBBExitType ExitType = TermInfo->getExitType();
-    if (ExitType != MBBExitType::ConditionalBranch)
+    if (TermInfo->getExitType() != MBBExitType::ConditionalBranch)
       continue;
 
     Stack ExitStack = MBBExitMap.at(&MBB);
@@ -449,15 +441,12 @@ void EVMStackSolver::runPropagation() {
 
   // Create the function entry stack.
   Stack EntryStack;
-  bool IsNoReturn = MF.getFunction().hasFnAttribute(Attribute::NoReturn);
-  if (!IsNoReturn)
+  if (!MF.getFunction().hasFnAttribute(Attribute::NoReturn))
     EntryStack.push_back(StackModel.getFunctionReturnLabelSlot(&MF));
 
   // Calling convention: input arguments are passed in stack such that the
   // first one specified in the function declaration is passed on the stack TOP.
-  EntryStack.append(StackModel.getFunctionParameters());
-  std::reverse(IsNoReturn ? EntryStack.begin() : std::next(EntryStack.begin()),
-               EntryStack.end());
+  append_range(EntryStack, reverse(StackModel.getFunctionParameters()));
   MBBEntryMap[&MF.front()] = std::move(EntryStack);
 
   // Traverse the CFG and at each block that allows junk, i.e. that is a
@@ -548,20 +537,15 @@ Stack EVMStackSolver::combineStack(const Stack &Stack1, const Stack &Stack2) {
   // brute-force, which seems to work decently well.
 
   Stack CommonPrefix;
-  for (unsigned Idx = 0; Idx < std::min(Stack1.size(), Stack2.size()); ++Idx) {
-    StackSlot *Slot1 = Stack1[Idx];
-    const StackSlot *Slot2 = Stack2[Idx];
-    if (!(Slot1 == Slot2))
+  for (const auto [S1, S2] : zip(Stack1, Stack2)) {
+    if (S1 != S2)
       break;
-    CommonPrefix.push_back(Slot1);
+    CommonPrefix.push_back(S1);
   }
 
   Stack Stack1Tail, Stack2Tail;
-  for (auto *Slot : drop_begin(Stack1, CommonPrefix.size()))
-    Stack1Tail.push_back(Slot);
-
-  for (auto *Slot : drop_begin(Stack2, CommonPrefix.size()))
-    Stack2Tail.push_back(Slot);
+  Stack1Tail.append(Stack1.begin() + CommonPrefix.size(), Stack1.end());
+  Stack2Tail.append(Stack2.begin() + CommonPrefix.size(), Stack2.end());
 
   if (Stack1Tail.empty()) {
     CommonPrefix.append(compressStack(Stack2Tail));
