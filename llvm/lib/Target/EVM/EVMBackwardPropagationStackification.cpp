@@ -25,6 +25,7 @@
 
 #include "EVM.h"
 #include "EVMMachineCFGInfo.h"
+#include "EVMStackSolver.h"
 #include "EVMStackifyCodeEmitter.h"
 #include "EVMSubtarget.h"
 #include "llvm/CodeGen/LiveIntervals.h"
@@ -95,7 +96,7 @@ bool EVMBPStackification::runOnMachineFunction(MachineFunction &MF) {
   EVMMachineCFGInfo CFGInfo(MF);
   EVMStackModel StackModel(MF, LIS,
                            MF.getSubtarget<EVMSubtarget>().stackDepthLimit());
-  EVMMIRToStack StackMaps = EVMStackSolver(MF, MLI, StackModel, CFGInfo).run();
-  EVMStackifyCodeEmitter(StackMaps, StackModel, CFGInfo, MF).run();
+  EVMStackSolver(MF, StackModel, MLI, CFGInfo).run();
+  EVMStackifyCodeEmitter(StackModel, CFGInfo, MF).run();
   return true;
 }

@@ -31,44 +31,13 @@ class MachineLoopInfo;
 size_t calculateStackTransformCost(Stack Source, const Stack &Target,
                                    unsigned StackDepthLimit);
 
-class EVMMIRToStack {
-public:
-  EVMMIRToStack(DenseMap<const MachineBasicBlock *, Stack> &&MBBEntryMap,
-                DenseMap<const MachineBasicBlock *, Stack> &&MBBExitMap,
-                DenseMap<const Operation *, Stack> &&OpsEntryMap)
-      : MBBEntryMap(MBBEntryMap), MBBExitMap(MBBExitMap),
-        OperationEntryMap(OpsEntryMap) {}
-  EVMMIRToStack(const EVMMIRToStack &) = delete;
-  EVMMIRToStack &operator=(const EVMMIRToStack &) = delete;
-
-  const Stack &getMBBEntryMap(const MachineBasicBlock *MBB) const {
-    return MBBEntryMap.at(MBB);
-  }
-
-  const Stack &getMBBExitMap(const MachineBasicBlock *MBB) const {
-    return MBBExitMap.at(MBB);
-  }
-
-  const Stack &getOperationEntryMap(const Operation *Op) const {
-    return OperationEntryMap.at(Op);
-  }
-
-private:
-  // Complete stack required at MBB entry.
-  DenseMap<const MachineBasicBlock *, Stack> MBBEntryMap;
-  // Complete stack required at MBB exit.
-  DenseMap<const MachineBasicBlock *, Stack> MBBExitMap;
-  // Complete stack that required for the instruction at the stack top.
-  DenseMap<const Operation *, Stack> OperationEntryMap;
-};
-
 class EVMStackSolver {
 public:
-  EVMStackSolver(const MachineFunction &MF, const MachineLoopInfo *MLI,
-                 const EVMStackModel &StackModel,
-                 const EVMMachineCFGInfo &CFGInfo);
+  EVMStackSolver(const MachineFunction &MF, EVMStackModel &StackModel,
+                 const MachineLoopInfo *MLI, const EVMMachineCFGInfo &CFGInfo);
 
-  EVMMIRToStack run();
+public:
+  void run();
 
 private:
   /// Returns the optimal entry stack layout, s.t. \p Op can be applied
@@ -107,14 +76,30 @@ private:
   /// amount of operations to reconstruct the original stack \p Stack.
   Stack compressStack(Stack Stack);
 
-  const MachineFunction &MF;
-  const MachineLoopInfo *MLI;
-  const EVMStackModel &StackModel;
-  const EVMMachineCFGInfo &CFGInfo;
+  // Manage StackModel.
+  void insertMBBEntryStack(const MachineBasicBlock *MBB, const Stack &S) {
+    StackModel.getMBBEntryMap()[MBB] = S;
+  }
+  void insertMBBExitStack(const MachineBasicBlock *MBB, const Stack &S) {
+    StackModel.getMBBExitMap()[MBB] = S;
+  }
+  void insertInstEntryStack(const Operation *Op, const Stack &S) {
+    StackModel.getInstEntryMap()[Op] = S;
+  }
+  void insertMBBEntryStack(const MachineBasicBlock *MBB, Stack &&S) {
+    StackModel.getMBBEntryMap()[MBB] = std::move(S);
+  }
+  void insertMBBExitStack(const MachineBasicBlock *MBB, Stack &&S) {
+    StackModel.getMBBExitMap()[MBB] = std::move(S);
+  }
+  void insertInstEntryStack(const Operation *Op, Stack &&S) {
+    StackModel.getInstEntryMap()[Op] = std::move(S);
+  }
 
-  DenseMap<const MachineBasicBlock *, Stack> MBBEntryMap;
-  DenseMap<const MachineBasicBlock *, Stack> MBBExitMap;
-  DenseMap<const Operation *, Stack> OperationEntryMap;
+  const MachineFunction &MF;
+  EVMStackModel &StackModel;
+  const MachineLoopInfo *MLI;
+  const EVMMachineCFGInfo &CFGInfo;
 };
 
 } // end namespace llvm

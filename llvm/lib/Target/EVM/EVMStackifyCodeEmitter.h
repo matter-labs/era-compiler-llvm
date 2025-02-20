@@ -13,7 +13,7 @@
 #ifndef LLVM_LIB_TARGET_EVM_EVMSTACKIFYCODEEMITTER_H
 #define LLVM_LIB_TARGET_EVM_EVMSTACKIFYCODEEMITTER_H
 
-#include "EVMStackSolver.h"
+#include "EVMStackModel.h"
 #include "EVMSubtarget.h"
 
 namespace llvm {
@@ -24,11 +24,9 @@ class EVMMachineCFGInfo;
 
 class EVMStackifyCodeEmitter {
 public:
-  EVMStackifyCodeEmitter(const EVMMIRToStack &StackMaps,
-                         const EVMStackModel &StackModel,
+  EVMStackifyCodeEmitter(const EVMStackModel &StackModel,
                          const EVMMachineCFGInfo &CFGInfo, MachineFunction &MF)
-      : Emitter(MF), StackMaps(StackMaps), StackModel(StackModel),
-        CFGInfo(CFGInfo), MF(MF) {}
+      : Emitter(MF), StackModel(StackModel), CFGInfo(CFGInfo), MF(MF) {}
 
   /// Stackify instructions, starting from the first MF's MBB.
   void run();
@@ -68,7 +66,6 @@ private:
   };
 
   CodeEmitter Emitter;
-  const EVMMIRToStack &StackMaps;
   const EVMStackModel &StackModel;
   const EVMMachineCFGInfo &CFGInfo;
   MachineFunction &MF;
