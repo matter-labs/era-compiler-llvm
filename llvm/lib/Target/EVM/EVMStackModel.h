@@ -234,7 +234,6 @@ public:
 class EVMStackModel {
   MachineFunction &MF;
   const LiveIntervals &LIS;
-  DenseMap<const MachineBasicBlock *, SmallVector<Operation>> OperationsMap;
   unsigned StackDepthLimit;
 
   // Storage for stack slots.
@@ -249,6 +248,25 @@ class EVMStackModel {
 
   // There should be a single FunctionReturnLabelSlot for the MF.
   mutable std::unique_ptr<FunctionReturnLabelSlot> TheFunctionReturnLabelSlot;
+
+  // Storage for operations.
+  DenseMap<const MachineBasicBlock *, SmallVector<Operation>> OperationsMap;
+
+  using MBBStackMap = DenseMap<const MachineBasicBlock *, Stack>;
+  using InstStackMap = DenseMap<const Operation *, Stack>;
+
+  // Map MBB to its entry and exit stacks.
+  MBBStackMap MBBEntryStackMap;
+  MBBStackMap MBBExitStackMap;
+
+  // Map Operation (MI) to its entry stack.
+  InstStackMap InstEntryStackMap;
+
+  // Mutable getters for EVMStackSolver to manage the maps.
+  MBBStackMap &getMBBEntryMap() { return MBBEntryStackMap; }
+  MBBStackMap &getMBBExitMap() { return MBBExitStackMap; }
+  InstStackMap &getInstEntryMap() { return InstEntryStackMap; }
+  friend class EVMStackSolver;
 
 public:
   EVMStackModel(MachineFunction &MF, const LiveIntervals &LIS,
@@ -304,6 +322,16 @@ public:
   static JunkSlot *getJunkSlot() {
     static JunkSlot TheJunkSlot;
     return &TheJunkSlot;
+  }
+
+  const Stack &getMBBEntryStack(const MachineBasicBlock *MBB) const {
+    return MBBEntryStackMap.at(MBB);
+  }
+  const Stack &getMBBExitStack(const MachineBasicBlock *MBB) const {
+    return MBBExitStackMap.at(MBB);
+  }
+  const Stack &getInstEntryStack(const Operation *Op) const {
+    return InstEntryStackMap.at(Op);
   }
 
   unsigned stackDepthLimit() const { return StackDepthLimit; }

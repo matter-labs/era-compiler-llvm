@@ -189,20 +189,17 @@ size_t llvm::calculateStackTransformCost(Stack Source, Stack const &Target,
 }
 
 EVMStackSolver::EVMStackSolver(const MachineFunction &MF,
+                               EVMStackModel &StackModel,
                                const MachineLoopInfo *MLI,
-                               const EVMStackModel &StackModel,
                                const EVMMachineCFGInfo &CFGInfo)
-    : MF(MF), MLI(MLI), StackModel(StackModel), CFGInfo(CFGInfo) {}
+    : MF(MF), StackModel(StackModel), MLI(MLI), CFGInfo(CFGInfo) {}
 
-EVMMIRToStack EVMStackSolver::run() {
+void EVMStackSolver::run() {
   runPropagation();
   LLVM_DEBUG({
     dbgs() << "************* Stack *************\n";
     dump(dbgs());
   });
-
-  return EVMMIRToStack(std::move(MBBEntryMap), std::move(MBBExitMap),
-                       std::move(OperationEntryMap));
 }
 
 Stack EVMStackSolver::propagateStackThroughInst(const Stack &AfterInst,
@@ -240,7 +237,7 @@ Stack EVMStackSolver::propagateStackThroughInst(const Stack &AfterInst,
   // this recreation can produce slots that can be freely generated or are
   // duplicated, i.e. we can compress the stack afterwards without causing
   // problems for code generation later.
-  OperationEntryMap[&Op] = BeforeInst;
+  insertInstEntryStack(&Op, BeforeInst);
 
   // Remove anything from the stack top that can be freely generated or dupped
   // from deeper on the stack.
@@ -344,14 +341,15 @@ void EVMStackSolver::runPropagation() {
           // Choose the best currently known entry stack of the jump target
           // as initial exit. Note that this may not yet be the final
           // stack.
-          auto It = MBBEntryMap.find(Target);
-          ExitStack = (It == MBBEntryMap.end() ? Stack{} : It->second);
+          auto It = StackModel.getMBBEntryMap().find(Target);
+          ExitStack =
+              (It == StackModel.getMBBEntryMap().end() ? Stack{} : It->second);
         } else {
           // If the current iteration has already visited the jump target,
           // start from its entry stack. Otherwise stage the jump target
           // for visit and defer the current block.
           if (Visited.count(Target))
-            ExitStack = MBBEntryMap.at(Target);
+            ExitStack = StackModel.getMBBEntryStack(Target);
           else
             ToVisit.push_front(Target);
         }
@@ -373,8 +371,8 @@ void EVMStackSolver::runPropagation() {
 
         // If we have visited both successors, start from their entry stacks.
         if (FBBVisited && TBBVisited) {
-          Stack CombinedStack =
-              combineStack(MBBEntryMap.at(FBB), MBBEntryMap.at(TBB));
+          Stack CombinedStack = combineStack(StackModel.getMBBEntryStack(FBB),
+                                             StackModel.getMBBEntryStack(TBB));
           // Additionally, the jump condition has to be at the stack top at
           // exit.
           CombinedStack.emplace_back(StackModel.getStackSlot(*Condition));
@@ -389,16 +387,16 @@ void EVMStackSolver::runPropagation() {
       // it till the MBB entry.
       if (ExitStack) {
         Visited.insert(MBB);
-        MBBExitMap[MBB] = *ExitStack;
-        MBBEntryMap[MBB] = propagateStackThroughMBB(*ExitStack, MBB);
+        insertMBBExitStack(MBB, *ExitStack);
+        insertMBBEntryStack(MBB, propagateStackThroughMBB(*ExitStack, MBB));
         append_range(ToVisit, MBB->predecessors());
       }
     }
 
     // Revisit these blocks again.
     for (auto [Latch, Header] : Backedges) {
-      const Stack &HeaderEntryStack = MBBEntryMap[Header];
-      const Stack &LatchExitStack = MBBExitMap[Latch];
+      const Stack &HeaderEntryStack = StackModel.getMBBEntryStack(Header);
+      const Stack &LatchExitStack = StackModel.getMBBExitStack(Latch);
       if (all_of(HeaderEntryStack, [LatchExitStack](const StackSlot *Slot) {
             return is_contained(LatchExitStack, Slot);
           }))
@@ -444,7 +442,7 @@ void EVMStackSolver::runPropagation() {
     if (TermInfo->getExitType() != MBBExitType::ConditionalBranch)
       continue;
 
-    Stack ExitStack = MBBExitMap.at(&MBB);
+    Stack ExitStack = StackModel.getMBBExitStack(&MBB);
 
 #ifndef NDEBUG
     // The last block must have produced the condition at the stack top.
@@ -456,7 +454,7 @@ void EVMStackSolver::runPropagation() {
     // The condition is consumed by the conditional jump.
     ExitStack.pop_back();
     for (const MachineBasicBlock *Succ : MBB.successors()) {
-      const Stack &SuccEntryStack = MBBEntryMap.at(Succ);
+      const Stack &SuccEntryStack = StackModel.getMBBEntryStack(Succ);
       Stack NewSuccEntryStack = ExitStack;
       // Whatever the block being jumped to does not actually require,
       // can be marked as junk.
@@ -472,7 +470,7 @@ void EVMStackSolver::runPropagation() {
                is_contained(NewSuccEntryStack, Slot));
 #endif // NDEBUG
 
-      MBBEntryMap[Succ] = NewSuccEntryStack;
+      insertMBBEntryStack(Succ, NewSuccEntryStack);
     }
   }
 
@@ -484,7 +482,7 @@ void EVMStackSolver::runPropagation() {
   // Calling convention: input arguments are passed in stack such that the
   // first one specified in the function declaration is passed on the stack TOP.
   append_range(EntryStack, reverse(StackModel.getFunctionParameters()));
-  MBBEntryMap[&MF.front()] = std::move(EntryStack);
+  insertMBBEntryStack(&MF.front(), EntryStack);
 
   // Traverse the CFG and at each block that allows junk, i.e. that is a
   // cut-vertex that never leads to a function return, checks if adding junk
@@ -495,11 +493,11 @@ void EVMStackSolver::runPropagation() {
     if (!CFGInfo.isCutVertex(&MBB) || CFGInfo.isOnPathToFuncReturn(&MBB))
       continue;
 
-    const Stack EntryStack = MBBEntryMap.at(&MBB);
-    const Stack &ExitStack = MBBExitMap.at(&MBB);
+    const Stack EntryStack = StackModel.getMBBEntryStack(&MBB);
+    const Stack &ExitStack = StackModel.getMBBExitStack(&MBB);
     const SmallVector<Operation> &Ops = StackModel.getOperations(&MBB);
     const Stack &Next =
-        Ops.empty() ? ExitStack : OperationEntryMap.at(&Ops.front());
+        Ops.empty() ? ExitStack : StackModel.getInstEntryStack(&Ops.front());
 
     if (EntryStack == Next)
       continue;
@@ -512,20 +510,20 @@ void EVMStackSolver::runPropagation() {
 
     for (const MachineBasicBlock *Succ : depth_first(&MBB)) {
       Stack JunkedEntry(JunksNum, EVMStackModel::getJunkSlot());
-      JunkedEntry.append(MBBEntryMap.at(Succ));
-      MBBEntryMap[Succ] = std::move(JunkedEntry);
+      JunkedEntry.append(StackModel.getMBBEntryStack(Succ));
+      insertMBBEntryStack(Succ, std::move(JunkedEntry));
 
       for (const Operation &Op : StackModel.getOperations(Succ)) {
         Stack JunkedOpEntry(JunksNum, EVMStackModel::getJunkSlot());
-        JunkedOpEntry.append(OperationEntryMap.at(&Op));
-        OperationEntryMap[&Op] = std::move(JunkedOpEntry);
+        JunkedOpEntry.append(StackModel.getInstEntryStack(&Op));
+        insertInstEntryStack(&Op, std::move(JunkedOpEntry));
       }
 
       Stack JunkedExit(JunksNum, EVMStackModel::getJunkSlot());
-      JunkedExit.append(MBBExitMap.at(Succ));
-      MBBExitMap[Succ] = std::move(JunkedExit);
+      JunkedExit.append(StackModel.getMBBExitStack(Succ));
+      insertMBBExitStack(Succ, std::move(JunkedExit));
     }
-    MBBEntryMap[&MBB] = EntryStack;
+    insertMBBEntryStack(&MBB, EntryStack);
   }
 }
 
@@ -673,7 +671,7 @@ void EVMStackSolver::dump(raw_ostream &OS) {
 
 void EVMStackSolver::dumpMBB(raw_ostream &OS, const MachineBasicBlock *MBB) {
   OS << getMBBId(MBB) << ":\n";
-  OS << '\t' << MBBEntryMap.at(MBB).toString() << '\n';
+  OS << '\t' << StackModel.getMBBEntryStack(MBB).toString() << '\n';
   for (const Operation &Op : StackModel.getOperations(MBB)) {
     const Stack &OpOutput =
         StackModel.getSlotsForInstructionDefs(Op.getMachineInstr());
@@ -681,7 +679,7 @@ void EVMStackSolver::dumpMBB(raw_ostream &OS, const MachineBasicBlock *MBB) {
       continue;
 
     OS << '\n';
-    Stack OpEntry = OperationEntryMap.at(&Op);
+    Stack OpEntry = StackModel.getInstEntryStack(&Op);
     OS << '\t' << OpEntry.toString() << '\n';
     OS << '\t' << Op.toString() << '\n';
     assert(Op.getInput().size() <= OpEntry.size());
@@ -690,7 +688,7 @@ void EVMStackSolver::dumpMBB(raw_ostream &OS, const MachineBasicBlock *MBB) {
     OS << '\t' << OpEntry.toString() << "\n";
   }
   OS << '\n';
-  OS << '\t' << MBBExitMap.at(MBB).toString() << "\n";
+  OS << '\t' << StackModel.getMBBExitStack(MBB).toString() << "\n";
 
   const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(MBB);
   switch (TermInfo->getExitType()) {

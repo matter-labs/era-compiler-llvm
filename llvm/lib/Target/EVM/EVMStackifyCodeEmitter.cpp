@@ -14,6 +14,7 @@
 #include "EVMMachineCFGInfo.h"
 #include "EVMMachineFunctionInfo.h"
 #include "EVMStackShuffler.h"
+#include "EVMStackSolver.h"
 #include "TargetInfo/EVMTargetInfo.h"
 #include "llvm/MC/MCContext.h"
 
@@ -372,7 +373,7 @@ void EVMStackifyCodeEmitter::createOperationLayout(const Operation &Op) {
   // Create required layout for entering the Operation.
   // Check if we can choose cheaper stack shuffling if the Operation is an
   // instruction with commutable arguments.
-  const Stack &TargetStack = StackMaps.getOperationEntryMap(&Op);
+  const Stack &TargetStack = StackModel.getInstEntryStack(&Op);
   bool SwapCommutable = false;
   if (Op.isBuiltinCall() && Op.getMachineInstr()->isCommutable()) {
     // Get the stack layout before the instruction.
@@ -421,7 +422,7 @@ void EVMStackifyCodeEmitter::run() {
       continue;
 
     // Might set some slots to junk, if not required by the block.
-    CurrentStack = StackMaps.getMBBEntryMap(Block);
+    CurrentStack = StackModel.getMBBEntryStack(Block);
     Emitter.enterMBB(Block, CurrentStack.size());
 
     for (const auto &Op : StackModel.getOperations(Block)) {
@@ -460,11 +461,11 @@ void EVMStackifyCodeEmitter::run() {
     if (ExitType == MBBExitType::UnconditionalBranch) {
       auto [UncondBr, Target] = TermInfo->getUnconditionalBranch();
       // Create the stack expected at the jump target.
-      createStackLayout(StackMaps.getMBBEntryMap(Target));
+      createStackLayout(StackModel.getMBBEntryStack(Target));
 
       // Assert that we have a valid stack for the target.
-      assert(
-          areStacksCompatible(CurrentStack, StackMaps.getMBBEntryMap(Target)));
+      assert(areStacksCompatible(CurrentStack,
+                                 StackModel.getMBBEntryStack(Target)));
 
       if (UncondBr)
         Emitter.emitUncondJump(UncondBr, Target);
@@ -474,7 +475,7 @@ void EVMStackifyCodeEmitter::run() {
           TermInfo->getConditionalBranch();
       // Create the shared entry layout of the jump targets, which is
       // stored as exit layout of the current block.
-      createStackLayout(StackMaps.getMBBExitMap(Block));
+      createStackLayout(StackModel.getMBBExitStack(Block));
 
       // Assert that we have the correct condition on stack.
       assert(!CurrentStack.empty());
@@ -487,10 +488,10 @@ void EVMStackifyCodeEmitter::run() {
       CurrentStack.pop_back();
 
       // Assert that we have a valid stack for both jump targets.
-      assert(
-          areStacksCompatible(CurrentStack, StackMaps.getMBBEntryMap(TrueBB)));
-      assert(
-          areStacksCompatible(CurrentStack, StackMaps.getMBBEntryMap(FalseBB)));
+      assert(areStacksCompatible(CurrentStack,
+                                 StackModel.getMBBEntryStack(TrueBB)));
+      assert(areStacksCompatible(CurrentStack,
+                                 StackModel.getMBBEntryStack(FalseBB)));
 
       // Generate unconditional jump if needed.
       if (UncondBr)
@@ -502,8 +503,8 @@ void EVMStackifyCodeEmitter::run() {
       // Create the function return layout and jump.
       const MachineInstr *MI = TermInfo->getFunctionReturn();
       assert(StackModel.getReturnArguments(*MI) ==
-             StackMaps.getMBBExitMap(Block));
-      createStackLayout(StackMaps.getMBBExitMap(Block));
+             StackModel.getMBBExitStack(Block));
+      createStackLayout(StackModel.getMBBExitStack(Block));
       Emitter.emitRet(MI);
     }
   }
