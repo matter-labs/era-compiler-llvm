@@ -124,7 +124,7 @@ void EVMStackModel::createOperation(MachineInstr &MI,
          "Unexpected stack memory instruction");
   // These instructions are handled separately.
   if (Opc == EVM::ARGUMENT || Opc == EVM::RET || Opc == EVM::JUMP ||
-      Opc == EVM::JUMPI)
+      Opc == EVM::JUMPI || Opc == EVM::JUMP_UNLESS)
     return;
   // If the virtual register has the only definition, ignore this instruction,
   // as we create literal slots from the immediate value at the register uses.

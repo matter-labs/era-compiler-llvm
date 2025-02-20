@@ -15,6 +15,7 @@
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Type.h"
 // EraVM local begin
+#include "llvm/IR/IntrinsicsEVM.h"
 #include "llvm/TargetParser/Triple.h"
 // EraVM local end
 #include <optional>
@@ -190,6 +191,14 @@ MemoryLocation MemoryLocation::getForArgument(const CallBase *Call,
       case Intrinsic::lifetime_end:
         // it is okay to have lifetime intrinsic
         break;
+      case Intrinsic::evm_sha3: {
+        assert((ArgIdx == 0) && "Invalid argument index for sha3");
+        const auto *LenCI = dyn_cast<ConstantInt>(Call->getArgOperand(1));
+        if (LenCI && LenCI->getValue().getActiveBits() <= 64)
+          return MemoryLocation(
+              Arg, LocationSize::precise(LenCI->getZExtValue()), AATags);
+        return MemoryLocation::getAfter(Arg, AATags);
+      }
       default:
         llvm_unreachable("Unexpected intrinsic for EraVM/EVM target");
         break;

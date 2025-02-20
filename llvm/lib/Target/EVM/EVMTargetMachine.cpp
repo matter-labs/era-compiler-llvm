@@ -12,6 +12,7 @@
 
 #include "EVM.h"
 
+#include "EVMAliasAnalysis.h"
 #include "EVMMachineFunctionInfo.h"
 #include "EVMTargetMachine.h"
 #include "EVMTargetObjectFile.h"
@@ -58,6 +59,9 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   initializeEVMSplitCriticalEdgesPass(PR);
   initializeEVMStackifyPass(PR);
   initializeEVMBPStackificationPass(PR);
+  initializeEVMAAWrapperPassPass(PR);
+  initializeEVMExternalAAWrapperPass(PR);
+  initializeEVMLowerJumpUnlessPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -114,6 +118,10 @@ bool EVMTargetMachine::parseMachineFunctionInfo(
   return false;
 }
 
+void EVMTargetMachine::registerDefaultAliasAnalyses(AAManager &AAM) {
+  AAM.registerFunctionAnalysis<EVMAA>();
+}
+
 void EVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
   PB.registerPipelineStartEPCallback(
       [](ModulePassManager &PM, OptimizationLevel Level) {
@@ -125,7 +133,31 @@ void EVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
       [](FunctionPassManager &PM, OptimizationLevel Level) {
         if (Level.getSizeLevel() || Level.getSpeedupLevel() > 1)
           PM.addPass(MergeIdenticalBBPass());
+        if (Level.isOptimizingForSpeed())
+          PM.addPass(EVMSHA3ConstFoldingPass());
       });
+
+  PB.registerAnalysisRegistrationCallback([](FunctionAnalysisManager &FAM) {
+    FAM.registerPass([] { return EVMAA(); });
+  });
+
+  PB.registerPipelineParsingCallback(
+      [](StringRef PassName, FunctionPassManager &PM,
+         ArrayRef<PassBuilder::PipelineElement>) {
+        if (PassName == "evm-sha3-constant-folding") {
+          PM.addPass(EVMSHA3ConstFoldingPass());
+          return true;
+        }
+        return false;
+      });
+
+  PB.registerParseAACallback([](StringRef AAName, AAManager &AAM) {
+    if (AAName == "evm-aa") {
+      AAM.registerFunctionAnalysis<EVMAA>();
+      return true;
+    }
+    return false;
+  });
 }
 
 namespace {
@@ -155,11 +187,20 @@ public:
   bool addInstSelector() override;
   void addPostRegAlloc() override;
   void addPreEmitPass() override;
+  void addPreEmitPass2() override;
 };
 } // namespace
 
 void EVMPassConfig::addIRPasses() {
   addPass(createEVMLowerIntrinsicsPass());
+  if (TM->getOptLevel() != CodeGenOpt::None) {
+    addPass(createEVMAAWrapperPass());
+    addPass(
+        createExternalAAWrapperPass([](Pass &P, Function &, AAResults &AAR) {
+          if (auto *WrapperPass = P.getAnalysisIfAvailable<EVMAAWrapperPass>())
+            AAR.addAAResult(WrapperPass->getResult());
+        }));
+  }
   TargetPassConfig::addIRPasses();
 }
 
@@ -206,7 +247,6 @@ void EVMPassConfig::addPreEmitPass() {
   // FIXME: enable all the passes below, but the Stackify with EVMKeepRegisters.
   if (!EVMKeepRegisters) {
     addPass(createEVMSplitCriticalEdges());
-    addPass(&MachineBlockPlacementID);
     addPass(createEVMOptimizeLiveIntervals());
     addPass(createEVMSingleUseExpression());
     if (EVMUseLocalStakify) {
@@ -216,8 +256,16 @@ void EVMPassConfig::addPreEmitPass() {
     } else {
       addPass(createEVMBPStackification());
     }
+
+    // Optimize branch instructions after stackification. This is done again
+    // here, since EVMSplitCriticalEdges may introduce new BBs that could
+    // contain only branches after stackification.
+    if (getOptLevel() != CodeGenOpt::None)
+      addPass(&BranchFolderPassID);
   }
 }
+
+void EVMPassConfig::addPreEmitPass2() { addPass(createEVMLowerJumpUnless()); }
 
 TargetPassConfig *EVMTargetMachine::createPassConfig(PassManagerBase &PM) {
   return new EVMPassConfig(*this, PM);

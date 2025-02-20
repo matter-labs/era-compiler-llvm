@@ -664,7 +664,9 @@ bool MachineSinking::isWorthBreakingCriticalEdge(MachineInstr &MI,
     }
   }
 
-  return false;
+  // Let the target decide if it's worth breaking this
+  // critical edge for a "cheap" instruction.
+  return TII->shouldBreakCriticalEdgeToSink(MI);
 }
 
 bool MachineSinking::PostponeSplitCriticalEdge(MachineInstr &MI,
