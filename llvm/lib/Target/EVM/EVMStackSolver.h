@@ -40,12 +40,11 @@ public:
   void run();
 
 private:
-  /// Returns the optimal entry stack layout, s.t. \p Op can be applied
-  /// to it and the result can be transformed to \p ExitStack with minimal stack
-  /// shuffling. Simultaneously stores the entry layout required for executing
-  /// the operation in the map.
-  Stack propagateStackThroughInst(const Stack &ExitStack, const Operation &Op,
-                                  bool CompressStack = false);
+  /// Returns the optimal entry stack, s.t. \p MI can be applied to it and the
+  /// result can be transformed to \p ExitStack with minimal stack shuffling.
+  /// Simultaneously stores the entry stack required for executing the MI.
+  Stack propagateStackThroughMI(const Stack &ExitStack, const MachineInstr &MI,
+                                bool CompressStack = false);
 
   /// Returns the desired stack layout at the entry of \p MBB, assuming the
   /// layout after executing the block should be \p ExitStack.
@@ -83,8 +82,8 @@ private:
   void insertMBBExitStack(const MachineBasicBlock *MBB, const Stack &S) {
     StackModel.getMBBExitMap()[MBB] = S;
   }
-  void insertInstEntryStack(const Operation *Op, const Stack &S) {
-    StackModel.getInstEntryMap()[Op] = S;
+  void insertInstEntryStack(const MachineInstr *MI, const Stack &S) {
+    StackModel.getInstEntryMap()[MI] = S;
   }
   void insertMBBEntryStack(const MachineBasicBlock *MBB, Stack &&S) {
     StackModel.getMBBEntryMap()[MBB] = std::move(S);
@@ -92,8 +91,8 @@ private:
   void insertMBBExitStack(const MachineBasicBlock *MBB, Stack &&S) {
     StackModel.getMBBExitMap()[MBB] = std::move(S);
   }
-  void insertInstEntryStack(const Operation *Op, Stack &&S) {
-    StackModel.getInstEntryMap()[Op] = std::move(S);
+  void insertInstEntryStack(const MachineInstr *MI, Stack &&S) {
+    StackModel.getInstEntryMap()[MI] = std::move(S);
   }
 
   const MachineFunction &MF;

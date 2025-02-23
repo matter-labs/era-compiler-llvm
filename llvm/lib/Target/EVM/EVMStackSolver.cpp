@@ -74,8 +74,8 @@ Stack calculateStackBeforeInst(const SmallVector<StackSlot *> &InstDefs,
                                const Stack &AfterInst, bool CompressStack,
                                unsigned StackDepthLimit) {
   // Determine the number of slots that have to be on stack before executing the
-  // operation (excluding the inputs of the operation itself), i.e. slots that
-  // cannot be rematerialized and that are not the instruction output.
+  // instruction (excluding the inputs of the instruction itself), i.e. slots
+  // that cannot be rematerialized and that are not the instruction output.
   size_t BeforeInstSize = count_if(AfterInst, [&](const StackSlot *S) {
     return !is_contained(InstDefs, S) &&
            !(CompressStack && S->isRematerializable());
@@ -85,7 +85,7 @@ Stack calculateStackBeforeInst(const SmallVector<StackSlot *> &InstDefs,
   for (size_t Index = 0; Index < BeforeInstSize; ++Index)
     UnknownSlots.emplace_back(Index);
 
-  // The symbolic layout directly after the operation has the form
+  // The symbolic layout directly after the instruction has the form
   // UnknownSlot{0}, ..., UnknownSlot{n}, [output<0>], ..., [output<m>]
   Stack Tmp;
   for (auto &S : UnknownSlots)
@@ -135,13 +135,13 @@ Stack calculateStackBeforeInst(const SmallVector<StackSlot *> &InstDefs,
 
   Shuffler.shuffle();
 
-  // Now we can construct the ideal layout before the operation.
-  // "layout" has shuffled the UnknownSlot{x} to new places using minimal
-  // operations to move the operation output in place. The resulting permutation
-  // of the UnknownSlot yields the ideal positions of slots before the
-  // operation, i.e. if UnknownSlot{2} is at a position at which Post contains
-  // VariableSlot{"tmp"}, then we want the variable tmp in the slot at offset 2
-  // in the layout before the operation.
+  // Now we can construct the stack before the instruction.
+  // "Tmp" has shuffled the UnknownSlot{x} to new places using minimal
+  // operations to move the instruction output in place. The resulting
+  // permutation of the UnknownSlot yields the ideal positions of slots before
+  // the instruction, i.e. if UnknownSlot{2} is at a position at which AfterMI
+  // contains RegisterSlot{"tmp"}, then we want the variable "tmp" in the slot
+  // at offset 2 on the stack before the instruction.
   assert(Tmp.size() == AfterInst.size());
   SmallVector<StackSlot *> BeforeInst(BeforeInstSize, nullptr);
   for (unsigned Idx = 0; Idx < Tmp.size(); ++Idx) {
@@ -202,75 +202,72 @@ void EVMStackSolver::run() {
   });
 }
 
-Stack EVMStackSolver::propagateStackThroughInst(const Stack &AfterInst,
-                                                const Operation &Op,
-                                                bool CompressStack) {
+Stack EVMStackSolver::propagateStackThroughMI(const Stack &AfterMI,
+                                              const MachineInstr &MI,
+                                              bool CompressStack) {
   // Enable aggressive stack compression for recursive calls.
-  if (Op.isFunctionCall())
+  if (MI.getOpcode() == EVM::FCALL)
     // TODO: compress stack for recursive functions.
     CompressStack = false;
 
-  const SmallVector<StackSlot *> InstDefs =
-      StackModel.getSlotsForInstructionDefs(Op.getMachineInstr());
+  const SmallVector<StackSlot *> MIDefs =
+      StackModel.getSlotsForInstructionDefs(&MI);
 
-  // Determine the ideal permutation of the slots in ExitLayout that are not
-  // operation outputs (and not to be generated on the fly), s.t. shuffling the
-  // 'IdealStack + Operation.output' to ExitLayout is cheap.
-  Stack BeforeInst = calculateStackBeforeInst(
-      InstDefs, AfterInst, CompressStack, StackModel.stackDepthLimit());
+  // Determine the ideal permutation of the slots in AfterMI that are not
+  // MI defs, s.t. shuffling the 'BeforeMI + MIDefs' to AfterMI is cheap.
+  Stack BeforeMI = calculateStackBeforeInst(MIDefs, AfterMI, CompressStack,
+                                            StackModel.stackDepthLimit());
 
 #ifndef NDEBUG
   // Make sure the resulting previous slots do not overlap with any assigned
   // variables.
-  if (Op.isAssignment())
-    for (auto *StackSlot : BeforeInst)
-      if (const auto *RegSlot = dyn_cast<RegisterSlot>(StackSlot))
-        assert(!Op.getMachineInstr()->definesRegister(RegSlot->getReg()));
+  for (auto *StackSlot : BeforeMI)
+    if (const auto *RegSlot = dyn_cast<RegisterSlot>(StackSlot))
+      assert(!MI.definesRegister(RegSlot->getReg()));
 #endif // NDEBUG
 
-  // Since stack+Operation.output can be easily shuffled to ExitLayout, the
-  // desired layout before the operation is stack+Operation.input;
-  BeforeInst.append(Op.getInput());
+  // Since 'BeforeMI + MIDefs' can be easily shuffled to AfterMI, the desired
+  // stack state before the MI is BeforeMI + MIInput;
+  BeforeMI.append(StackModel.getMIInput(MI));
 
-  // Store the exact desired operation entry layout. The stored layout will be
-  // recreated by the code transform before executing the operation. However,
-  // this recreation can produce slots that can be freely generated or are
-  // duplicated, i.e. we can compress the stack afterwards without causing
-  // problems for code generation later.
-  insertInstEntryStack(&Op, BeforeInst);
+  // Store the exact desired MI entry stack. The stored layout will be recreated
+  // by the code transform before executing the MI. However, this recreation can
+  // produce slots that can be freely generated or are duplicated, i.e. we can
+  // compress the stack afterwards without causing problems for code generation
+  // later.
+  insertInstEntryStack(&MI, BeforeMI);
 
   // Remove anything from the stack top that can be freely generated or dupped
   // from deeper on the stack.
-  while (!BeforeInst.empty()) {
-    if (BeforeInst.back()->isRematerializable()) {
-      BeforeInst.pop_back();
-    } else if (auto Offset = offset(drop_begin(reverse(BeforeInst), 1),
-                                    BeforeInst.back())) {
+  while (!BeforeMI.empty()) {
+    if (BeforeMI.back()->isRematerializable()) {
+      BeforeMI.pop_back();
+    } else if (auto Offset =
+                   offset(drop_begin(reverse(BeforeMI), 1), BeforeMI.back())) {
       if (*Offset + 2 < StackModel.stackDepthLimit())
-        BeforeInst.pop_back();
+        BeforeMI.pop_back();
       else
         break;
     } else
       break;
   }
 
-  return BeforeInst;
+  return BeforeMI;
 }
 
 Stack EVMStackSolver::propagateStackThroughMBB(const Stack &ExitStack,
                                                const MachineBasicBlock *MBB,
                                                bool CompressStack) {
   Stack CurrentStack = ExitStack;
-  for (const Operation &Op : reverse(StackModel.getOperations(MBB))) {
-    Stack AfterInst =
-        propagateStackThroughInst(CurrentStack, Op, CompressStack);
+  for (const auto &MI : StackModel.reverseInstructionsToProcess(MBB)) {
+    Stack BeforeMI = propagateStackThroughMI(CurrentStack, MI, CompressStack);
     if (!CompressStack &&
-        hasUnreachableStackSlots(AfterInst, CurrentStack,
+        hasUnreachableStackSlots(BeforeMI, CurrentStack,
                                  StackModel.stackDepthLimit()))
       // If we had stack errors, run again with stack compression enabled.
       return propagateStackThroughMBB(ExitStack, MBB,
                                       /*CompressStack*/ true);
-    CurrentStack = std::move(AfterInst);
+    CurrentStack = std::move(BeforeMI);
   }
   return CurrentStack;
 }
@@ -495,9 +492,11 @@ void EVMStackSolver::runPropagation() {
 
     const Stack EntryStack = StackModel.getMBBEntryStack(&MBB);
     const Stack &ExitStack = StackModel.getMBBExitStack(&MBB);
-    const SmallVector<Operation> &Ops = StackModel.getOperations(&MBB);
-    const Stack &Next =
-        Ops.empty() ? ExitStack : StackModel.getInstEntryStack(&Ops.front());
+    auto FirstMI =
+        find_if(MBB, [&](const auto &MI) { return !StackModel.skipMI(MI); });
+    const Stack &Next = FirstMI != MBB.end()
+                            ? StackModel.getInstEntryStack(&*FirstMI)
+                            : ExitStack;
 
     if (EntryStack == Next)
       continue;
@@ -513,10 +512,10 @@ void EVMStackSolver::runPropagation() {
       JunkedEntry.append(StackModel.getMBBEntryStack(Succ));
       insertMBBEntryStack(Succ, std::move(JunkedEntry));
 
-      for (const Operation &Op : StackModel.getOperations(Succ)) {
-        Stack JunkedOpEntry(JunksNum, EVMStackModel::getJunkSlot());
-        JunkedOpEntry.append(StackModel.getInstEntryStack(&Op));
-        insertInstEntryStack(&Op, std::move(JunkedOpEntry));
+      for (const auto &MI : StackModel.instructionsToProcess(Succ)) {
+        Stack JunkedMIEntry(JunksNum, EVMStackModel::getJunkSlot());
+        JunkedMIEntry.append(StackModel.getInstEntryStack(&MI));
+        insertInstEntryStack(&MI, std::move(JunkedMIEntry));
       }
 
       Stack JunkedExit(JunksNum, EVMStackModel::getJunkSlot());
@@ -669,23 +668,33 @@ void EVMStackSolver::dump(raw_ostream &OS) {
     dumpMBB(OS, &MBB);
 }
 
+static std::string getMIName(const MachineInstr *MI) {
+  if (MI->getOpcode() == EVM::FCALL) {
+    const MachineOperand *Callee = MI->explicit_uses().begin();
+    return Callee->getGlobal()->getName().str();
+  }
+  const MachineFunction *MF = MI->getParent()->getParent();
+  const TargetInstrInfo *TII = MF->getSubtarget().getInstrInfo();
+  return TII->getName(MI->getOpcode()).str();
+}
+
 void EVMStackSolver::dumpMBB(raw_ostream &OS, const MachineBasicBlock *MBB) {
   OS << getMBBId(MBB) << ":\n";
   OS << '\t' << StackModel.getMBBEntryStack(MBB).toString() << '\n';
-  for (const Operation &Op : StackModel.getOperations(MBB)) {
-    const Stack &OpOutput =
-        StackModel.getSlotsForInstructionDefs(Op.getMachineInstr());
-    if (Op.isAssignment() && Op.getInput() == OpOutput)
+  for (const auto &MI : StackModel.instructionsToProcess(MBB)) {
+    const Stack &MIOutput = StackModel.getSlotsForInstructionDefs(&MI);
+    const Stack &MIInput = StackModel.getMIInput(MI);
+    if (isConstCopyOrLinkerMI(MI) && MIInput == MIOutput)
       continue;
 
     OS << '\n';
-    Stack OpEntry = StackModel.getInstEntryStack(&Op);
-    OS << '\t' << OpEntry.toString() << '\n';
-    OS << '\t' << Op.toString() << '\n';
-    assert(Op.getInput().size() <= OpEntry.size());
-    OpEntry.resize(OpEntry.size() - Op.getInput().size());
-    OpEntry.append(OpOutput);
-    OS << '\t' << OpEntry.toString() << "\n";
+    Stack MIEntry = StackModel.getInstEntryStack(&MI);
+    OS << '\t' << MIEntry.toString() << '\n';
+    OS << '\t' << getMIName(&MI) << '\n';
+    assert(MIInput.size() <= MIEntry.size());
+    MIEntry.resize(MIEntry.size() - MIInput.size());
+    MIEntry.append(MIOutput);
+    OS << '\t' << MIEntry.toString() << "\n";
   }
   OS << '\n';
   OS << '\t' << StackModel.getMBBExitStack(MBB).toString() << "\n";

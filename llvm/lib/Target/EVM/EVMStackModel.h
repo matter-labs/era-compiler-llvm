@@ -7,9 +7,8 @@
 //===----------------------------------------------------------------------===//
 //
 // This file defines a representation used by the backwards propagation
-// stackification algorithm. It consists of 'Operation', 'StackSlot' and 'Stack'
-// entities. New stack representation is derived from Machine IR as following:
-// MachineInstr   -> Operation
+// stackification algorithm. It consists of 'StackSlot' and 'Stack' entities.
+// New stack representation is derived from Machine IR as following:
 // MachineOperand -> StackSlot
 // MI's defs/uses -> Stack (array of StackSlot)
 //
@@ -18,8 +17,11 @@
 #ifndef LLVM_LIB_TARGET_EVM_EVMSTACKMODEL_H
 #define LLVM_LIB_TARGET_EVM_EVMSTACKMODEL_H
 
+#include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/STLExtras.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/CodeGen/LiveIntervals.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
 
 namespace llvm {
@@ -177,9 +179,7 @@ public:
 
   size_t getIndex() const { return Index; }
   bool isRematerializable() const override { return true; }
-  std::string toString() const override {
-    return "UNKNOWN";
-  }
+  std::string toString() const override { return "UNKNOWN"; }
 
   static bool classof(const StackSlot *S) {
     return S->getSlotKind() == SK_Unknown;
@@ -192,7 +192,8 @@ public:
   explicit Stack(StackSlot **Start, StackSlot **End)
       : SmallVector(Start, End) {}
   explicit Stack(size_t Size, StackSlot *Value) : SmallVector(Size, Value) {}
-  explicit Stack(SmallVector<StackSlot *> &&Slots) : SmallVector(std::move(Slots)) {}
+  explicit Stack(SmallVector<StackSlot *> &&Slots)
+      : SmallVector(std::move(Slots)) {}
   // TODO: should it be explicit? If yes, fix all build errors.
   Stack(const SmallVector<StackSlot *> &Slots) : SmallVector(Slots) {}
   Stack() = default;
@@ -206,30 +207,7 @@ public:
   }
 };
 
-class Operation {
-public:
-  enum OpType { BuiltinCall, FunctionCall, Assignment };
-
-private:
-  OpType Type;
-  // Stack slots this operation expects at the top of the stack and consumes.
-  SmallVector<StackSlot *> Input;
-  // The emulated machine instruction.
-  MachineInstr *MI = nullptr;
-
-public:
-  Operation(OpType Type, Stack Input, MachineInstr *MI)
-      : Type(Type), Input(std::move(Input)), MI(MI) {}
-
-  const SmallVector<StackSlot *> &getInput() const { return Input; }
-  MachineInstr *getMachineInstr() const { return MI; }
-
-  bool isBuiltinCall() const { return Type == BuiltinCall; }
-  bool isFunctionCall() const { return Type == FunctionCall; }
-  bool isAssignment() const { return Type == Assignment; }
-
-  std::string toString() const;
-};
+bool isConstCopyOrLinkerMI(const MachineInstr &MI);
 
 class EVMStackModel {
   MachineFunction &MF;
@@ -249,18 +227,18 @@ class EVMStackModel {
   // There should be a single FunctionReturnLabelSlot for the MF.
   mutable std::unique_ptr<FunctionReturnLabelSlot> TheFunctionReturnLabelSlot;
 
-  // Storage for operations.
-  DenseMap<const MachineBasicBlock *, SmallVector<Operation>> OperationsMap;
-
   using MBBStackMap = DenseMap<const MachineBasicBlock *, Stack>;
-  using InstStackMap = DenseMap<const Operation *, Stack>;
+  using InstStackMap = DenseMap<const MachineInstr *, Stack>;
 
   // Map MBB to its entry and exit stacks.
   MBBStackMap MBBEntryStackMap;
   MBBStackMap MBBExitStackMap;
 
-  // Map Operation (MI) to its entry stack.
+  // Map an MI to its entry stack.
   InstStackMap InstEntryStackMap;
+
+  // Map an MI to its input slots.
+  DenseMap<const MachineInstr *, Stack> MIInputMap;
 
   // Mutable getters for EVMStackSolver to manage the maps.
   MBBStackMap &getMBBEntryMap() { return MBBEntryStackMap; }
@@ -273,9 +251,9 @@ public:
                 unsigned StackDepthLimit);
   Stack getFunctionParameters() const;
   Stack getReturnArguments(const MachineInstr &MI) const;
-  const SmallVector<Operation> &
-  getOperations(const MachineBasicBlock *MBB) const {
-    return OperationsMap.at(MBB);
+
+  const Stack &getMIInput(const MachineInstr &MI) const {
+    return MIInputMap.at(&MI);
   }
   SmallVector<StackSlot *>
   getSlotsForInstructionDefs(const MachineInstr *MI) const {
@@ -330,15 +308,36 @@ public:
   const Stack &getMBBExitStack(const MachineBasicBlock *MBB) const {
     return MBBExitStackMap.at(MBB);
   }
-  const Stack &getInstEntryStack(const Operation *Op) const {
-    return InstEntryStackMap.at(Op);
+  const Stack &getInstEntryStack(const MachineInstr *MI) const {
+    return InstEntryStackMap.at(MI);
   }
 
   unsigned stackDepthLimit() const { return StackDepthLimit; }
 
 private:
-  Stack getInstrInput(const MachineInstr &MI) const;
-  void createOperation(MachineInstr &MI, SmallVector<Operation> &Ops) const;
+  Stack getSlotsForInstructionUses(const MachineInstr &MI) const;
+  void processMI(const MachineInstr &MI);
+
+public:
+  bool skipMI(const MachineInstr &MI) const {
+    auto Opc = MI.getOpcode();
+    // If the virtual register has the only definition, ignore this instruction,
+    // as we create literal slots from the immediate value at the register uses.
+    if (Opc == EVM::CONST_I256 &&
+        LIS.getInterval(MI.getOperand(0).getReg()).containsOneValue())
+      return true;
+    return Opc == EVM::ARGUMENT || Opc == EVM::RET || Opc == EVM::JUMP ||
+           Opc == EVM::JUMPI;
+  }
+  auto instructionsToProcess(const MachineBasicBlock *MBB) const {
+    return make_filter_range(
+        MBB->instrs(), [this](const MachineInstr &MI) { return !skipMI(MI); });
+  }
+  auto reverseInstructionsToProcess(const MachineBasicBlock *MBB) const {
+    return make_filter_range(
+        make_range(MBB->rbegin(), MBB->rend()),
+        [this](const MachineInstr &MI) { return !skipMI(MI); });
+  }
 };
 } // namespace llvm
 
