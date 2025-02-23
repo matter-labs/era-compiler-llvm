@@ -14,7 +14,7 @@
 //     structure to LLVM CFG one, but employs wider notion of instruction.
 //   - Stack layout generator. Contains information about the stack layout at
 //     entry and exit of each CFG::BasicBlock. It also contains input/output
-//     stack layout for each operation.
+//     stack layout for each instruction.
 //   - Code transformation into stakified form. This component uses both CFG
 //     and the stack layout information to get stackified LLVM MIR.
 //   - Stack shuffler. Finds optimal (locally) transformation between two stack

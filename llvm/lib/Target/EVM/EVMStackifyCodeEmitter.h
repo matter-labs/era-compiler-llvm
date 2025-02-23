@@ -74,19 +74,15 @@ private:
   /// Shuffles CurrentStack to the desired \p TargetStack.
   void createStackLayout(const Stack &TargetStack);
 
-  /// Creates the Op.Input stack layout from the 'CurrentStack' taking into
-  /// account commutative property of the operation.
-  void createOperationLayout(const Operation &Op);
+  /// Creates the MI's entry stack from the 'CurrentStack' taking into
+  /// account commutative property of the instruction.
+  void emitMIEntryStack(const MachineInstr *MI);
 
   /// Remove the arguments from the stack and push the return values.
   void adjustStackForInst(const MachineInstr *MI, size_t NumArgs);
 
-  /// Generate code for the function call \p Call.
-  void processCall(const Operation &Call);
-  /// Generate code for the builtin call \p Call.
-  void processInst(const Operation &Call);
-  /// Generate code for the assignment \p Assignment.
-  void processAssign(const Operation &Assignment);
+  /// Generate code for the instruction.
+  void emitMI(const MachineInstr *MI);
 };
 
 } // namespace llvm
