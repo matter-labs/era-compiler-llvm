@@ -7,7 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMStackSolver.h"
-#include "EVMMachineCFGInfo.h"
+#include "EVMInstrInfo.h"
 #include "EVMRegisterInfo.h"
 #include "EVMStackShuffler.h"
 #include "llvm/ADT/DepthFirstIterator.h"
@@ -156,6 +156,27 @@ Stack calculateStackBeforeInst(const SmallVector<StackSlot *> &InstDefs,
 
 } // end anonymous namespace
 
+BranchInfoTy llvm::getBranchInfo(const MachineBasicBlock *MBB) {
+  const auto *EVMTII = static_cast<const EVMInstrInfo *>(
+      MBB->getParent()->getSubtarget().getInstrInfo());
+  auto *UnConstMBB = const_cast<MachineBasicBlock *>(MBB);
+  SmallVector<MachineOperand, 1> Cond;
+  SmallVector<MachineInstr *, 2> BranchInstrs;
+  MachineBasicBlock *TBB = nullptr, *FBB = nullptr;
+  auto BT = EVMTII->analyzeBranch(*UnConstMBB, TBB, FBB, Cond,
+                                        /* AllowModify */ false, BranchInstrs);
+  if (BT == EVMInstrInfo::BT_Cond && !FBB)
+    FBB = UnConstMBB->getFallThrough();
+
+  if (BT == EVMInstrInfo::BT_NoBranch && !TBB && !MBB->succ_empty())
+    TBB = UnConstMBB->getFallThrough();
+
+  assert((BT != EVMInstrInfo::BT_Cond && BT != EVMInstrInfo::BT_CondUncond) ||
+         !Cond.empty() && "Condition should be defined for a condition branch.");
+  return {BT, TBB, FBB, BranchInstrs,
+          Cond.empty() ? std::nullopt : std::optional(Cond[0])};
+}
+
 /// Returns the number of operations required to transform stack \p Source to
 /// \p Target.
 size_t llvm::calculateStackTransformCost(Stack Source, Stack const &Target,
@@ -190,9 +211,8 @@ size_t llvm::calculateStackTransformCost(Stack Source, Stack const &Target,
 
 EVMStackSolver::EVMStackSolver(const MachineFunction &MF,
                                EVMStackModel &StackModel,
-                               const MachineLoopInfo *MLI,
-                               const EVMMachineCFGInfo &CFGInfo)
-    : MF(MF), StackModel(StackModel), MLI(MLI), CFGInfo(CFGInfo) {}
+                               const MachineLoopInfo *MLI)
+    : MF(MF), StackModel(StackModel), MLI(MLI) {}
 
 void EVMStackSolver::run() {
   runPropagation();
@@ -293,6 +313,76 @@ static size_t getOptimalNumberOfJunks(const Stack &Source, const Stack &Target,
   return BestNumJunk;
 }
 
+// Collect cut-vertexes of the CFG, i.e. each blocks that begin a disconnected
+// sub-graph of the CFG. Entering a cut-vertex block means that control flow
+// will never return to a previously visited block.
+static void
+collectCutVertexes(const MachineBasicBlock *Entry,
+                   DenseSet<const MachineBasicBlock *> &CutVertexes) {
+  DenseSet<const MachineBasicBlock *> Visited;
+  DenseMap<const MachineBasicBlock *, size_t> Disc;
+  DenseMap<const MachineBasicBlock *, size_t> Low;
+  DenseMap<const MachineBasicBlock *, const MachineBasicBlock *> Parent;
+  size_t Time = 0;
+  auto Dfs = [&](const MachineBasicBlock *U, auto Recurse) -> void {
+    Visited.insert(U);
+    Disc[U] = Low[U] = Time;
+    Time++;
+
+    SmallVector<const MachineBasicBlock *> Children(U->predecessors());
+    bool IsTerminateExit = U->succ_empty() && !U->isReturnBlock();
+    if (IsTerminateExit)
+      CutVertexes.insert(U);
+    else
+      append_range(Children, U->successors());
+
+    for (const MachineBasicBlock *V : Children) {
+      // Ignore the loop edge, as it cannot be the bridge.
+      if (V == U)
+        continue;
+
+      if (!Visited.count(V)) {
+        Parent[V] = U;
+        Recurse(V, Recurse);
+        Low[U] = std::min(Low[U], Low[V]);
+        if (Low[V] > Disc[U]) {
+          // U <-> V is a cut edge in the undirected graph
+          bool EdgeVtoU = count(U->predecessors(), V);
+          bool EdgeUtoV = count(V->predecessors(), U);
+          if (EdgeVtoU && !EdgeUtoV)
+            // Cut edge V -> U
+            CutVertexes.insert(U);
+          else if (EdgeUtoV && !EdgeVtoU)
+            // Cut edge U -> v
+            CutVertexes.insert(V);
+        }
+      } else if (V != Parent[U])
+        Low[U] = std::min(Low[U], Disc[V]);
+    }
+  };
+  Dfs(Entry, Dfs);
+}
+
+// Mark basic blocks that have outgoing paths to function returns.
+static void collectBlocksLeadingToFunctionReturn(
+    const MachineFunction &MF,
+    DenseSet<const MachineBasicBlock *> &ToFuncReturnVertexes) {
+  SmallVector<const MachineBasicBlock *> WorkList;
+  for (const MachineBasicBlock &MBB : MF) {
+    if (MBB.isReturnBlock())
+      WorkList.emplace_back(&MBB);
+  }
+  SmallPtrSet<const MachineBasicBlock *, 32> Visited;
+  while (!WorkList.empty()) {
+    const MachineBasicBlock *MBB = WorkList.pop_back_val();
+    if (!Visited.insert(MBB).second)
+      continue;
+
+    ToFuncReturnVertexes.insert(MBB);
+    append_range(WorkList, MBB->predecessors());
+  }
+}
+
 void EVMStackSolver::runPropagation() {
   std::deque<const MachineBasicBlock *> ToVisit{&MF.front()};
   DenseSet<const MachineBasicBlock *> Visited;
@@ -329,15 +419,25 @@ void EVMStackSolver::runPropagation() {
 
       // Get the MBB exit stack.
       std::optional<Stack> ExitStack = std::nullopt;
-      const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(MBB);
-      MBBExitType ExitType = TermInfo->getExitType();
-      if (ExitType == MBBExitType::UnconditionalBranch) {
+      auto [BranchTy, TBB, FBB, BrInsts, Condition] = getBranchInfo(MBB);
+
+      switch (BranchTy) {
+      case EVMInstrInfo::BT_None: {
+        ExitStack = MBB->isReturnBlock()
+                        ? StackModel.getReturnArguments(MBB->back())
+                        : Stack{};
+      } break;
+      case EVMInstrInfo::BT_Uncond:
+      case EVMInstrInfo::BT_NoBranch: {
         const MachineBasicBlock *Target = MBB->getSingleSuccessor();
+        if (!Target) { // No successors.
+          ExitStack = Stack{};
+          break;
+        }
         if (MachineLoop *ML = MLI->getLoopFor(MBB);
             ML && ML->isLoopLatch(MBB)) {
           // Choose the best currently known entry stack of the jump target
-          // as initial exit. Note that this may not yet be the final
-          // stack.
+          // as initial exit. Note that this may not yet be the final stack.
           auto It = StackModel.getMBBEntryMap().find(Target);
           ExitStack =
               (It == StackModel.getMBBEntryMap().end() ? Stack{} : It->second);
@@ -350,9 +450,9 @@ void EVMStackSolver::runPropagation() {
           else
             ToVisit.push_front(Target);
         }
-      } else if (ExitType == MBBExitType::ConditionalBranch) {
-        auto [CondBr, UncondBr, TBB, FBB, Condition] =
-            TermInfo->getConditionalBranch();
+      } break;
+      case EVMInstrInfo::BT_Cond:
+      case EVMInstrInfo::BT_CondUncond: {
         bool FBBVisited = Visited.count(FBB);
         bool TBBVisited = Visited.count(TBB);
 
@@ -375,10 +475,8 @@ void EVMStackSolver::runPropagation() {
           CombinedStack.emplace_back(StackModel.getStackSlot(*Condition));
           ExitStack = std::move(CombinedStack);
         }
-      } else if (ExitType == MBBExitType::FunctionReturn) {
-        ExitStack = StackModel.getReturnArguments(MBB->back());
-      } else
-        ExitStack = Stack{};
+      }
+      }
 
       // If the MBB exit stack is known, we can back back propagate
       // it till the MBB entry.
@@ -404,6 +502,7 @@ void EVMStackSolver::runPropagation() {
       // and header again. We will visit blocks backwards starting from latch
       // and mark all MBBs to-be-visited again until we reach the header.
 
+      assert(Latch);
       ToVisit.emplace_back(Latch);
 
       // Since we are likely to permute the entry layout of 'Header', we
@@ -435,18 +534,16 @@ void EVMStackSolver::runPropagation() {
   // the exit layout of the jumping block exactly, except that slots not
   // required after the jump are marked as 'JunkSlot'.
   for (const MachineBasicBlock &MBB : MF) {
-    const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(&MBB);
-    if (TermInfo->getExitType() != MBBExitType::ConditionalBranch)
+    auto [BranchTy, TBB, FBB, BrInsts, Condition] = getBranchInfo(&MBB);
+
+    if (BranchTy != EVMInstrInfo::BT_Cond &&
+        BranchTy != EVMInstrInfo::BT_CondUncond)
       continue;
 
     Stack ExitStack = StackModel.getMBBExitStack(&MBB);
 
-#ifndef NDEBUG
     // The last block must have produced the condition at the stack top.
-    auto [CondBr, UncondBr, TrueBB, FalseBB, Condition] =
-        TermInfo->getConditionalBranch();
     assert(ExitStack.back() == StackModel.getStackSlot(*Condition));
-#endif // NDEBUG
 
     // The condition is consumed by the conditional jump.
     ExitStack.pop_back();
@@ -481,13 +578,19 @@ void EVMStackSolver::runPropagation() {
   append_range(EntryStack, reverse(StackModel.getFunctionParameters()));
   insertMBBEntryStack(&MF.front(), EntryStack);
 
+  DenseSet<const MachineBasicBlock *> CutVertexes;
+  collectCutVertexes(&MF.front(), CutVertexes);
+
+  DenseSet<const MachineBasicBlock *> ToFuncReturnVertexes;
+  collectBlocksLeadingToFunctionReturn(MF, ToFuncReturnVertexes);
+
   // Traverse the CFG and at each block that allows junk, i.e. that is a
   // cut-vertex that never leads to a function return, checks if adding junk
   // reduces the shuffling cost upon entering and if so recursively adds junk
   // to the spanned subgraph. This is needed only for optimization purposes,
   // not for correctness.
   for (const MachineBasicBlock &MBB : MF) {
-    if (!CFGInfo.isCutVertex(&MBB) || CFGInfo.isOnPathToFuncReturn(&MBB))
+    if (!CutVertexes.count(&MBB) || ToFuncReturnVertexes.count(&MBB))
       continue;
 
     const Stack EntryStack = StackModel.getMBBEntryStack(&MBB);
@@ -699,32 +802,33 @@ void EVMStackSolver::dumpMBB(raw_ostream &OS, const MachineBasicBlock *MBB) {
   OS << '\n';
   OS << '\t' << StackModel.getMBBExitStack(MBB).toString() << "\n";
 
-  const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(MBB);
-  switch (TermInfo->getExitType()) {
-  case MBBExitType::UnconditionalBranch: {
-    auto [BranchInstr, Target] = TermInfo->getUnconditionalBranch();
-    OS << "Exit type: unconditional branch\n";
-    OS << "Target: " << getMBBId(Target) << '\n';
+  auto [BranchTy, TBB, FBB, BrInsts, Condition] = getBranchInfo(MBB);
+  switch (BranchTy) {
+  case EVMInstrInfo::BT_None: {
+    if (MBB->isReturnBlock()) {
+      OS << "Exit type: function return, " << MF.getName() << '\n';
+      OS << "Return values: "
+         << StackModel.getReturnArguments(MBB->back()).toString() << '\n';
+    } else {
+      OS << "Exit type: terminate\n";
+    }
   } break;
-  case MBBExitType::ConditionalBranch: {
-    auto [CondBr, UncondBr, TrueBB, FalseBB, Condition] =
-        TermInfo->getConditionalBranch();
+  case EVMInstrInfo::BT_Uncond:
+  case EVMInstrInfo::BT_NoBranch: {
+    if (TBB) {
+      OS << "Exit type: unconditional branch\n";
+      OS << "Target: " << getMBBId(TBB) << '\n';
+    } else {
+      OS << "Exit type: terminate\n";
+    }
+  } break;
+  case EVMInstrInfo::BT_Cond:
+  case EVMInstrInfo::BT_CondUncond: {
     OS << "Exit type: conditional branch, ";
     OS << "cond: " << StackModel.getStackSlot(*Condition)->toString() << '\n';
-    OS << "False branch: " << getMBBId(FalseBB) << '\n';
-    OS << "True branch: " << getMBBId(TrueBB) << '\n';
+    OS << "False branch: " << getMBBId(FBB) << '\n';
+    OS << "True branch: " << getMBBId(TBB) << '\n';
   } break;
-  case MBBExitType::FunctionReturn: {
-    OS << "Exit type: function return, " << MF.getName() << '\n';
-    const MachineInstr &MI = MBB->back();
-    OS << "Return values: " << StackModel.getReturnArguments(MI).toString()
-       << '\n';
-  } break;
-  case MBBExitType::Terminate:
-    OS << "Exit type: terminate\n";
-    break;
-  default:
-    break;
   }
   OS << '\n';
 }

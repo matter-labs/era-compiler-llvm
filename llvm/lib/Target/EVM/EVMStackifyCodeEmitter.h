@@ -20,13 +20,11 @@ namespace llvm {
 
 class MachineInstr;
 class MCSymbol;
-class EVMMachineCFGInfo;
 
 class EVMStackifyCodeEmitter {
 public:
-  EVMStackifyCodeEmitter(const EVMStackModel &StackModel,
-                         const EVMMachineCFGInfo &CFGInfo, MachineFunction &MF)
-      : Emitter(MF), StackModel(StackModel), CFGInfo(CFGInfo), MF(MF) {}
+  EVMStackifyCodeEmitter(const EVMStackModel &StackModel, MachineFunction &MF)
+      : Emitter(MF), StackModel(StackModel), MF(MF) {}
 
   /// Stackify instructions, starting from the first MF's MBB.
   void run();
@@ -67,7 +65,6 @@ private:
 
   CodeEmitter Emitter;
   const EVMStackModel &StackModel;
-  const EVMMachineCFGInfo &CFGInfo;
   MachineFunction &MF;
   Stack CurrentStack;
 

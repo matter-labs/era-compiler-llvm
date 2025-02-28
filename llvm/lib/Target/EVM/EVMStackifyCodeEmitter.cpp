@@ -11,7 +11,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMStackifyCodeEmitter.h"
-#include "EVMMachineCFGInfo.h"
 #include "EVMMachineFunctionInfo.h"
 #include "EVMStackShuffler.h"
 #include "EVMStackSolver.h"
@@ -415,6 +414,11 @@ void EVMStackifyCodeEmitter::run() {
     CurrentStack = StackModel.getMBBEntryStack(MBB);
     Emitter.enterMBB(MBB, CurrentStack.size());
 
+    // Get branch information before we start to change the BB.
+    auto [BranchTy, TBB, FBB, BrInsts, Condition] = getBranchInfo(MBB);
+    bool HasReturn = MBB->isReturnBlock();
+    const MachineInstr *ReturnMI = HasReturn ? &MBB->back() : nullptr;
+
     // To process only instructions present before the emitter,  
     // store their pointers in a vector.  
     SmallVector<const MachineInstr *> MIs;
@@ -444,23 +448,34 @@ void EVMStackifyCodeEmitter::run() {
     }
 
     // Exit the block.
-    const EVMMBBTerminatorsInfo *TermInfo = CFGInfo.getTerminatorsInfo(MBB);
-    MBBExitType ExitType = TermInfo->getExitType();
-    if (ExitType == MBBExitType::UnconditionalBranch) {
-      auto [UncondBr, Target] = TermInfo->getUnconditionalBranch();
+    switch (BranchTy) {
+    case EVMInstrInfo::BT_None: {
+      if (!HasReturn)
+        break;
+      assert(!MF.getFunction().hasFnAttribute(Attribute::NoReturn));
+      // Create the function return layout and jump.
+      assert(StackModel.getReturnArguments(*ReturnMI) ==
+             StackModel.getMBBExitStack(MBB));
+      createStackLayout(StackModel.getMBBExitStack(MBB));
+      Emitter.emitRet(ReturnMI);
+    } break;
+    case EVMInstrInfo::BT_Uncond:
+    case EVMInstrInfo::BT_NoBranch: {
+      if (MBB->succ_empty())
+        break;
       // Create the stack expected at the jump target.
-      createStackLayout(StackModel.getMBBEntryStack(Target));
+      createStackLayout(StackModel.getMBBEntryStack(TBB));
 
       // Assert that we have a valid stack for the target.
       assert(areStacksCompatible(CurrentStack,
-                                 StackModel.getMBBEntryStack(Target)));
+                                 StackModel.getMBBEntryStack(TBB)));
 
-      if (UncondBr)
-        Emitter.emitUncondJump(UncondBr, Target);
-      WorkList.emplace_back(Target);
-    } else if (ExitType == MBBExitType::ConditionalBranch) {
-      auto [CondBr, UncondBr, TrueBB, FalseBB, Condition] =
-          TermInfo->getConditionalBranch();
+      if (!BrInsts.empty())
+        Emitter.emitUncondJump(BrInsts[0], TBB);
+      WorkList.push_back(TBB);
+    } break;
+    case EVMInstrInfo::BT_Cond:
+    case EVMInstrInfo::BT_CondUncond: {
       // Create the shared entry layout of the jump targets, which is
       // stored as exit layout of the current block.
       createStackLayout(StackModel.getMBBExitStack(MBB));
@@ -471,29 +486,22 @@ void EVMStackifyCodeEmitter::run() {
 
       // Emit the conditional jump to the non-zero label and update the
       // stored stack.
-      assert(CondBr);
-      Emitter.emitCondJump(CondBr, TrueBB);
+      assert(!BrInsts.empty());
+      Emitter.emitCondJump(BrInsts[BrInsts.size() - 1], TBB);
       CurrentStack.pop_back();
 
       // Assert that we have a valid stack for both jump targets.
       assert(areStacksCompatible(CurrentStack,
-                                 StackModel.getMBBEntryStack(TrueBB)));
+                                 StackModel.getMBBEntryStack(TBB)));
       assert(areStacksCompatible(CurrentStack,
-                                 StackModel.getMBBEntryStack(FalseBB)));
+                                 StackModel.getMBBEntryStack(FBB)));
 
       // Generate unconditional jump if needed.
-      if (UncondBr)
-        Emitter.emitUncondJump(UncondBr, FalseBB);
-      WorkList.emplace_back(TrueBB);
-      WorkList.emplace_back(FalseBB);
-    } else if (ExitType == MBBExitType::FunctionReturn) {
-      assert(!MF.getFunction().hasFnAttribute(Attribute::NoReturn));
-      // Create the function return layout and jump.
-      const MachineInstr *MI = TermInfo->getFunctionReturn();
-      assert(StackModel.getReturnArguments(*MI) ==
-             StackModel.getMBBExitStack(MBB));
-      createStackLayout(StackModel.getMBBExitStack(MBB));
-      Emitter.emitRet(MI);
+      if (BrInsts.size() == 2)
+        Emitter.emitUncondJump(BrInsts[0], FBB);
+      WorkList.push_back(TBB);
+      WorkList.push_back(FBB);
+    }
     }
   }
   Emitter.finalize();

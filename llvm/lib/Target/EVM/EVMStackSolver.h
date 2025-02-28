@@ -19,11 +19,11 @@
 #define LLVM_LIB_TARGET_EVM_EVMSTACKSOLVER_H
 
 #include "EVMStackModel.h"
+#include "EVMInstrInfo.h"
 #include "llvm/ADT/DenseMap.h"
 
 namespace llvm {
 
-class EVMMachineCFGInfo;
 class MachineLoopInfo;
 
 /// Returns the number of operations required to transform stack \p Source to
@@ -31,10 +31,18 @@ class MachineLoopInfo;
 size_t calculateStackTransformCost(Stack Source, const Stack &Target,
                                    unsigned StackDepthLimit);
 
+// TODO
+using BranchInfoTy =
+    std::tuple<EVMInstrInfo::BranchType, MachineBasicBlock *,
+               MachineBasicBlock *, SmallVector<MachineInstr *, 2>,
+               std::optional<MachineOperand>>;
+
+BranchInfoTy getBranchInfo(const MachineBasicBlock *MBB);
+
 class EVMStackSolver {
 public:
   EVMStackSolver(const MachineFunction &MF, EVMStackModel &StackModel,
-                 const MachineLoopInfo *MLI, const EVMMachineCFGInfo &CFGInfo);
+                 const MachineLoopInfo *MLI);
 
 public:
   void run();
@@ -98,7 +106,6 @@ private:
   const MachineFunction &MF;
   EVMStackModel &StackModel;
   const MachineLoopInfo *MLI;
-  const EVMMachineCFGInfo &CFGInfo;
 };
 
 } // end namespace llvm
