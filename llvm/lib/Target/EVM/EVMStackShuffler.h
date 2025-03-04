@@ -30,14 +30,14 @@ class EVMStackShuffler {
       std::function<int(const StackSlot *, Stack &, const Stack &)>;
   using SwapFTy = std::function<void(size_t, Stack &)>;
   using PopFTy = std::function<void()>;
-  using PushOrDupTargetFTy = std::function<void(const StackSlot *)>;
+  using RematerializeFTy = std::function<void(const StackSlot *)>;
 
   IsCompatibleFTy IsCompatibleF = nullptr;
   GetSignificantUsesFTy GetCurrentSignificantUsesF = nullptr;
   GetSignificantUsesFTy GetTargetSignificantUsesF = nullptr;
   SwapFTy SwapF = nullptr;
   PopFTy PopF = nullptr;
-  PushOrDupTargetFTy PushOrDupTargetF = nullptr;
+  RematerializeFTy RematerializeF = nullptr;
 
 public:
   EVMStackShuffler(Stack &Current, const Stack &Target,
@@ -53,9 +53,7 @@ public:
   }
   void setSwap(SwapFTy F) { SwapF = std::move(F); }
   void setPop(PopFTy F) { PopF = std::move(F); }
-  void setPushOrDupTarget(PushOrDupTargetFTy F) {
-    PushOrDupTargetF = std::move(F);
-  }
+  void setRematerialize(RematerializeFTy F) { RematerializeF = std::move(F); }
 
 private:
   bool isCompatible(size_t CIdx, size_t TIdx) {
@@ -90,9 +88,9 @@ private:
       PopF();
     Current.pop_back();
   }
-  void pushOrDupTarget(size_t Offset) {
-    if (PushOrDupTargetF)
-      PushOrDupTargetF(Target[Offset]);
+  void rematerialize(size_t Offset) {
+    if (RematerializeF)
+      RematerializeF(Target[Offset]);
     Current.push_back(Target[Offset]);
   }
 
@@ -141,14 +139,14 @@ private:
 /// \p Swap is a function with signature void(unsigned) that is called when the
 /// top most slot is swapped with the slot `depth` slots below the top. In terms
 /// of EVM opcodes this is supposed to be a `SWAP<depth>`.
-/// \p PushOrDup is a function with signature void(StackSlot const&) that is
+/// \p Rematerialize is a function with signature void(StackSlot const&) that is
 /// called to push or dup the slot given as its argument to the stack top.
 /// \p Pop is a function with signature void() that is called when the top most
 /// slot is popped.
 void calculateStack(Stack &CurrentStack, Stack const &TargetStack,
                     unsigned StackDepthLimit,
                     const std::function<void(unsigned)> &Swap,
-                    const std::function<void(const StackSlot *)> &PushOrDup,
+                    const std::function<void(const StackSlot *)> &Rematerialize,
                     const std::function<void()> &Pop);
 
 } // end namespace llvm

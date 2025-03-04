@@ -20,7 +20,7 @@ bool EVMStackShuffler::bringUpTargetSlot(size_t TOffset) {
     ToVisit.erase(ToVisit.begin());
     Visited.insert(Offset);
     if (getTargetSignificantUses(Offset) > 0) {
-      pushOrDupTarget(Offset);
+      rematerialize(Offset);
       return true;
     }
     // There must be another slot we can dup/push that will lead to the target
@@ -56,7 +56,7 @@ bool EVMStackShuffler::dupDeepSlotIfRequired() {
         // Duplicate unreachable slot.
         for (size_t TOffset = 0; TOffset < Target.size(); ++TOffset) {
           if (!isArbitraryTarget(TOffset) && isCompatible(COffset, TOffset)) {
-            pushOrDupTarget(TOffset);
+            rematerialize(TOffset);
             return true;
           }
         }
@@ -269,7 +269,7 @@ bool EVMStackShuffler::shuffleStep() {
 void llvm::calculateStack(
     Stack &CurrentStack, Stack const &TargetStack, unsigned StackDepthLimit,
     const std::function<void(unsigned)> &Swap,
-    const std::function<void(const StackSlot *)> &PushOrDup,
+    const std::function<void(const StackSlot *)> &Rematerialize,
     const std::function<void()> &Pop) {
   EVMStackShuffler TheShuffler =
       EVMStackShuffler(CurrentStack, TargetStack, StackDepthLimit);
@@ -292,8 +292,8 @@ void llvm::calculateStack(
 
   TheShuffler.setSwap([&Swap](size_t Idx, Stack &C) { Swap(Idx); });
   TheShuffler.setPop([&Pop]() { Pop(); });
-  TheShuffler.setPushOrDupTarget(
-      [&PushOrDup](const StackSlot *S) { PushOrDup(S); });
+  TheShuffler.setRematerialize(
+      [&Rematerialize](const StackSlot *S) { Rematerialize(S); });
 
   TheShuffler.shuffle();
 
