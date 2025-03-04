@@ -480,7 +480,7 @@ void EVMStackSolver::runPropagation() {
   // Create the function entry stack.
   Stack EntryStack;
   if (!MF.getFunction().hasFnAttribute(Attribute::NoReturn))
-    EntryStack.push_back(StackModel.getFunctionReturnLabelSlot(&MF));
+    EntryStack.push_back(StackModel.getCalleeReturnSlot(&MF));
 
   // Calling convention: input arguments are passed in stack such that the
   // first one specified in the function declaration is passed on the stack TOP.

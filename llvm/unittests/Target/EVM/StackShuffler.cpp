@@ -118,10 +118,8 @@ TEST_F(LLDCTest, Basic) {
   SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[14].second));
   SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[15].second));
   SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[16].second));
-  SourceStack.emplace_back(
-      StackModel->getFunctionReturnLabelSlot(MBB->getParent()));
-  SourceStack.emplace_back(
-      StackModel->getFunctionReturnLabelSlot(MBB->getParent()));
+  SourceStack.emplace_back(StackModel->getCalleeReturnSlot(MBB->getParent()));
+  SourceStack.emplace_back(StackModel->getCalleeReturnSlot(MBB->getParent()));
   SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[5].second));
 
   // [ %1 %0 %2 %3 %4 %5 %6 %7 %9 %10 %11 %12 %13 %14 %15 %16 RET JUNK JUNK ]
@@ -141,8 +139,7 @@ TEST_F(LLDCTest, Basic) {
   TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[14].second));
   TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[15].second));
   TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[16].second));
-  TargetStack.emplace_back(
-      StackModel->getFunctionReturnLabelSlot(MBB->getParent()));
+  TargetStack.emplace_back(StackModel->getCalleeReturnSlot(MBB->getParent()));
   TargetStack.emplace_back(StackModel->getJunkSlot());
   TargetStack.emplace_back(StackModel->getJunkSlot());
 

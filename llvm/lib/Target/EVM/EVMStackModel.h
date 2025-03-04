@@ -37,7 +37,7 @@ public:
     SK_Register,
     SK_Symbol,
     SK_CallerReturn,
-    SK_FunctionReturnLabel,
+    SK_CalleeReturn,
     SK_Junk,
     SK_Unknown
   };
@@ -139,21 +139,21 @@ public:
 /// The return jump target of a function while generating the code of the
 /// function body. I.e. the caller of a function pushes a
 /// 'CallerReturnSlot' (see above) before jumping to the function
-/// and this very slot is viewed as 'FunctionReturnLabelSlot' inside the
+/// and this very slot is viewed as 'CalleeReturnSlot' inside the
 /// function body and jumped to when returning from the function.
-class FunctionReturnLabelSlot final : public StackSlot {
+class CalleeReturnSlot final : public StackSlot {
   const MachineFunction *MF = nullptr;
 
 public:
-  FunctionReturnLabelSlot(const MachineFunction *MF)
-      : StackSlot(SK_FunctionReturnLabel), MF(MF) {}
+  CalleeReturnSlot(const MachineFunction *MF)
+      : StackSlot(SK_CalleeReturn), MF(MF) {}
   const MachineFunction *getMachineFunction() { return MF; }
 
   bool isRematerializable() const override { return false; }
   std::string toString() const override { return "RET"; }
 
   static bool classof(const StackSlot *S) {
-    return S->getSlotKind() == SK_FunctionReturnLabel;
+    return S->getSlotKind() == SK_CalleeReturn;
   }
 };
 
@@ -223,8 +223,8 @@ class EVMStackModel {
   mutable DenseMap<const MachineInstr *, std::unique_ptr<CallerReturnSlot>>
       CallerReturnStorage;
 
-  // There should be a single FunctionReturnLabelSlot for the MF.
-  mutable std::unique_ptr<FunctionReturnLabelSlot> TheFunctionReturnLabelSlot;
+  // There should be a single CalleeReturnSlot for the MF.
+  mutable std::unique_ptr<CalleeReturnSlot> TheCalleeReturnSlot;
 
   using MBBStackMap = DenseMap<const MachineBasicBlock *, Stack>;
   using InstStackMap = DenseMap<const MachineInstr *, Stack>;
@@ -285,13 +285,11 @@ public:
       CallerReturnStorage[Call] = std::make_unique<CallerReturnSlot>(Call);
     return CallerReturnStorage[Call].get();
   }
-  FunctionReturnLabelSlot *
-  getFunctionReturnLabelSlot(const MachineFunction *MF) const {
-    if (!TheFunctionReturnLabelSlot)
-      TheFunctionReturnLabelSlot =
-          std::make_unique<FunctionReturnLabelSlot>(MF);
-    assert(MF == TheFunctionReturnLabelSlot->getMachineFunction());
-    return TheFunctionReturnLabelSlot.get();
+  CalleeReturnSlot *getCalleeReturnSlot(const MachineFunction *MF) const {
+    if (!TheCalleeReturnSlot)
+      TheCalleeReturnSlot = std::make_unique<CalleeReturnSlot>(MF);
+    assert(MF == TheCalleeReturnSlot->getMachineFunction());
+    return TheCalleeReturnSlot.get();
   }
   // Junk is always the same slot.
   static JunkSlot *getJunkSlot() {

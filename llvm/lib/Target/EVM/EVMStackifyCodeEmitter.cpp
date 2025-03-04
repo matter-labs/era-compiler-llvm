@@ -342,10 +342,10 @@ void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
           Emitter.emitSymbol(S->getMachineInstr(), S->getSymbol());
         } else if (const auto *CallRet = dyn_cast<CallerReturnSlot>(Slot)) {
           Emitter.emitLabelReference(CallRet->getCall());
-        } else if (isa<FunctionReturnLabelSlot>(Slot)) {
-          llvm_unreachable("Cannot produce function return label");
+        } else if (isa<CalleeReturnSlot>(Slot)) {
+          llvm_unreachable("Cannot produce callee return.");
         } else if (isa<RegisterSlot>(Slot)) {
-          llvm_unreachable("Variable not found on stack");
+          llvm_unreachable("Variable not found on stack.");
         } else {
           assert(isa<JunkSlot>(Slot));
           // Note: this will always be popped, so we can push anything.

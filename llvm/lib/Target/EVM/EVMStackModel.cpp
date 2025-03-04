@@ -165,6 +165,6 @@ Stack EVMStackModel::getReturnArguments(const MachineInstr &MI) const {
   // Calling convention: return values are passed in stack such that the
   // last one specified in the RET instruction is passed on the stack TOP.
   std::reverse(Input.begin(), Input.end());
-  Input.push_back(getFunctionReturnLabelSlot(&MF));
+  Input.push_back(getCalleeReturnSlot(&MF));
   return Input;
 }

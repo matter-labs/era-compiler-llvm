@@ -135,10 +135,10 @@ TEST_F(EVMStackModelTest, CallerReturnSlot) {
   EXPECT_TRUE(RetSlot1->getCall() != RetSlot2->getCall());
 }
 
-TEST_F(EVMStackModelTest, FunctionReturnLabelSlot) {
-  // Be sure the slot for function return label is a single one.
-  EXPECT_TRUE(StackModel->getFunctionReturnLabelSlot(MF) ==
-              StackModel->getFunctionReturnLabelSlot(MF));
+TEST_F(EVMStackModelTest, CalleeReturnSlot) {
+  // Be sure the slot for callee return (the MF) is a single one.
+  EXPECT_TRUE(StackModel->getCalleeReturnSlot(MF) ==
+              StackModel->getCalleeReturnSlot(MF));
 }
 
 TEST_F(EVMStackModelTest, JunkSlot) {
