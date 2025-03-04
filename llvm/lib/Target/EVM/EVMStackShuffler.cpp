@@ -11,7 +11,7 @@
 
 using namespace llvm;
 
-bool EVMStackShuffler::bringUpTargetSlot(size_t TOffset) {
+bool EVMStackShuffler::bringUpTargetSlot(size_t TOffset, bool CannotFail) {
   std::deque<size_t> ToVisit{TOffset};
   DenseSet<size_t> Visited;
 
@@ -32,10 +32,13 @@ bool EVMStackShuffler::bringUpTargetSlot(size_t TOffset) {
         if (!Visited.count(NextOffset))
           ToVisit.emplace_back(NextOffset);
   }
+  if (CannotFail)
+    llvm_unreachable("Unexpected shuffler behavior.");
+
   return false;
 }
 
-bool EVMStackShuffler::dupDeepSlotIfRequired() {
+bool EVMStackShuffler::rematerializeUnreachableSlots() {
   if (Current.size() < (StackDepthLimit - 1))
     return false;
 
@@ -85,16 +88,14 @@ bool EVMStackShuffler::dupDeepSlotIfRequired() {
   return false;
 }
 
-bool EVMStackShuffler::shuffleStep() {
+bool EVMStackShuffler::step() {
   // All source slots are final.
   if (const auto &R = llvm::seq<size_t>(0u, Current.size());
       all_of(R, [&](size_t Index) { return isCompatible(Index, Index); })) {
     // Bring up all remaining target slots, if any, or terminate otherwise.
     if (Current.size() < Target.size()) {
-      if (!dupDeepSlotIfRequired()) {
-        [[maybe_unused]] bool Res = bringUpTargetSlot(Current.size());
-        assert(Res);
-      }
+      if (!rematerializeUnreachableSlots())
+        bringUpTargetSlot(Current.size(), /* can't fail */ true);
       return true;
     }
     return false;
@@ -163,10 +164,8 @@ bool EVMStackShuffler::shuffleStep() {
     // There are too many copies of the slot and there is a target slot at this
     // position.
     if (getCurrentSignificantUses(Off) < 0 && Off <= Target.size()) {
-      if (!dupDeepSlotIfRequired()) {
-        [[maybe_unused]] bool Res = bringUpTargetSlot(Off);
-        assert(Res);
-      }
+      if (!rematerializeUnreachableSlots())
+        bringUpTargetSlot(Off, /* can't fail */ true);
       return true;
     }
   }
@@ -190,10 +189,8 @@ bool EVMStackShuffler::shuffleStep() {
 
   // If we still need more slots, produce a suitable one.
   if (Current.size() < Target.size()) {
-    if (!dupDeepSlotIfRequired()) {
-      [[maybe_unused]] bool Res = bringUpTargetSlot(Current.size());
-      assert(Res);
-    }
+    if (!rematerializeUnreachableSlots())
+      bringUpTargetSlot(Current.size(), /* can't fail */ true);
     return true;
   }
 

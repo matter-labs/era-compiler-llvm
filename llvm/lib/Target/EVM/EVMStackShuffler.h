@@ -103,16 +103,16 @@ public:
   void shuffle() {
     // The shuffling algorithm should always terminate in polynomial time, but
     // we provide a limit in case it does not terminate due to a bug.
-    for (unsigned Step = 0; Step < 1000; ++Step)
-      if (!shuffleStep())
+    for (unsigned I = 0; I < 1000; ++I)
+      if (!step())
         return;
-    llvm_unreachable("Could not create stack layout after 1000 iterations.");
+    llvm_unreachable("Could not create stack after 1000 iterations.");
   }
 
 private:
   /// Performs a single stack operation, transforming the source layout closer
   /// to the target layout.
-  bool shuffleStep();
+  bool step();
 
   /// Finds a slot to dup or push with the aim of eventually fixing \p
   /// TargetOffset in the target. In the simplest case, the slot at \p
@@ -126,12 +126,12 @@ private:
   /// is supposed to end up at ``nextOffset`` in the *target*. When the target
   /// slot at ``nextOffset`` is fixed, the current source slot at ``nextOffset``
   /// will be at the stack top, which is the slot required at \p TargetOffset.
-  bool bringUpTargetSlot(size_t TOffset);
+  bool bringUpTargetSlot(size_t TOffset, bool CannotFail = false);
 
   // If dupping an ideal slot causes a slot that will still be required to
   // become unreachable, then dup the latter slot first.
   // Returns true, if it performed a dup.
-  bool dupDeepSlotIfRequired();
+  bool rematerializeUnreachableSlots();
 };
 
 /// Transforms \p CurrentStack to \p TargetStack. Modifies `CurrentStack` itself
