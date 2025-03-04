@@ -36,8 +36,6 @@ bool EVMStackShuffler::bringUpTargetSlot(size_t TOffset) {
 }
 
 bool EVMStackShuffler::dupDeepSlotIfRequired() {
-  // Check if the stack is large enough for anything to potentially become
-  // unreachable.
   if (Current.size() < (StackDepthLimit - 1))
     return false;
 
@@ -55,7 +53,7 @@ bool EVMStackShuffler::dupDeepSlotIfRequired() {
             }))
           continue;
 
-        // Bring up the target slot that would otherwise become unreachable.
+        // Duplicate unreachable slot.
         for (size_t TOffset = 0; TOffset < Target.size(); ++TOffset) {
           if (!isArbitraryTarget(TOffset) && isCompatible(COffset, TOffset)) {
             pushOrDupTarget(TOffset);

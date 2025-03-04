@@ -103,15 +103,12 @@ public:
   /// the same size and all slots in the source layout are compatible with the
   /// slots at the same target offset.
   void shuffle() {
-    bool NeedsMoreShuffling = true;
     // The shuffling algorithm should always terminate in polynomial time, but
     // we provide a limit in case it does not terminate due to a bug.
-    size_t IterationCount = 0;
-    while (IterationCount < 1000 && (NeedsMoreShuffling = shuffleStep()))
-      ++IterationCount;
-
-    if (NeedsMoreShuffling)
-      llvm_unreachable("Could not create stack layout after 1000 iterations.");
+    for (unsigned Step = 0; Step < 1000; ++Step)
+      if (!shuffleStep())
+        return;
+    llvm_unreachable("Could not create stack layout after 1000 iterations.");
   }
 
 private:

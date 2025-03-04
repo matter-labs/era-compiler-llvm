@@ -54,8 +54,8 @@ private:
   Stack propagateStackThroughMI(const Stack &ExitStack, const MachineInstr &MI,
                                 bool CompressStack = false);
 
-  /// Returns the desired stack layout at the entry of \p MBB, assuming the
-  /// layout after executing the block should be \p ExitStack.
+  /// Given \p ExitStack, compute the stack at the entry of \p MBB.
+  /// \par CompressStack: remove duplicates and rematerializable slots.
   Stack propagateStackThroughMBB(const Stack &ExitStack,
                                  const MachineBasicBlock *MBB,
                                  bool CompressStack = false);
@@ -70,13 +70,15 @@ private:
   void dumpMBB(raw_ostream &OS, const MachineBasicBlock *MBB);
 #endif
 
-  /// Calculates the ideal stack, s.t., both \p Stack1 and \p Stack2 can
-  /// be achieved with minimal stack shuffling.
+  /// Compute a stack S that minimizes the number of permutations
+  /// needed to transform S into \p Stack1 and \p Stack2.
+  /// TODO: Compute weighted sum based on branch probabilities.
   Stack combineStack(const Stack &Stack1, const Stack &Stack2);
 
-  /// Returns a copy of \p Stack stripped of all duplicates and slots that can
-  /// be freely generated. Attempts to create a layout that requires a minimal
-  /// amount of operations to reconstruct the original stack \p Stack.
+  /// Returns a copy of \p Stack with duplicates and rematerializable
+  /// slots removed.
+  /// Used when stackification faces slot accessibility issues.
+  /// Otherwise, copies and rematerializable entities are kept on stack.
   Stack compressStack(Stack Stack);
 
   // Manage StackModel.
