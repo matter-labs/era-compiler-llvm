@@ -8,6 +8,8 @@ define void @no_manipulations_needed_with_junk(i256 %a1, i256 %a2, i256 %a3) nor
 ; CHECK-LABEL: no_manipulations_needed_with_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    POP
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    REVERT
@@ -17,17 +19,19 @@ define void @no_manipulations_needed_with_junk(i256 %a1, i256 %a2, i256 %a3) nor
 }
 
 define void @no_manipulations_needed_with_junk_eq(i256 %a1, i256 %a2, i256 %a3) noreturn {
+; CHECK-LABEL: no_manipulations_needed_with_junk_eq:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    EQ
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
   %cmp = icmp eq i256 %a1, %a2
   %x1 = zext i1 %cmp to i256
   call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x1)
   unreachable
 
-; CHECK-LABEL: no_manipulations_needed_with_junk_eq:
-; CHECK:       ; %bb.0:
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    EQ
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    REVERT
 }
 
 define i256 @no_manipulations_needed_no_junk_addmod(i256 %a1, i256 %a2, i256 %a3) {
@@ -102,6 +106,8 @@ define void @reorder_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
 ; CHECK-LABEL: reorder_with_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    POP
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    REVERT
@@ -137,9 +143,6 @@ define void @swap_first_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
 }
 
 define i256 @two_commutable(i256 %a1, i256 %a2, i256 %a3) {
-  %x1 = add i256 %a3, %a2
-  %x2 = add i256 %a1, %x1
-  ret i256 %x2
 ; CHECK-LABEL: two_commutable:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
@@ -148,13 +151,18 @@ define i256 @two_commutable(i256 %a1, i256 %a2, i256 %a3) {
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
+  %x1 = add i256 %a3, %a2
+  %x2 = add i256 %a1, %x1
+  ret i256 %x2
 }
 
 define void @swap_second_with_junk(i256 %a1, i256 %a2, i256 %a3, i256 %a4) noreturn {
 ; CHECK-LABEL: swap_second_with_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    DUP4
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    POP
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    REVERT
@@ -195,9 +203,11 @@ define void @first_arg_alive_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
 ; CHECK-LABEL: first_arg_alive_with_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    DUP1
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    POP
 ; CHECK-NEXT:    PUSH1 4
-; CHECK-NEXT:    DUP2
-; CHECK-NEXT:    DUP4
+; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    SUB
@@ -238,7 +248,9 @@ define void @second_arg_alive_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    DUP2
 ; CHECK-NEXT:    PUSH1 4
-; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    SWAP4
+; CHECK-NEXT:    POP
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    SUB
@@ -277,8 +289,9 @@ define void @both_arg_alive_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
 ; CHECK-LABEL: both_arg_alive_with_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    SWAP1
-; CHECK-NEXT:    DUP2
+; CHECK-NEXT:    DUP1
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    POP
 ; CHECK-NEXT:    DUP2
 ; CHECK-NEXT:    DIV
 ; CHECK-NEXT:    SWAP2
@@ -333,12 +346,44 @@ define i256 @same_arg_dead_with_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
 }
 
 define void @commutable_not_in_function_entry() noreturn {
-
-; CHECK-LABEL: .BB{{[0-9]+}}_3:
-; CHECK:       JUMPDEST
-; CHECK-NEXT:  PUSH4 4294967295
-; CHECK-NEXT:  AND
-; CHECK-NEXT:  PUSH0
+; CHECK-LABEL: commutable_not_in_function_entry:
+; CHECK:       ; %bb.0: ; %enter
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    CALLDATALOAD
+; CHECK-NEXT:    PUSH1 1
+; CHECK-NEXT:  .BB22_1: ; %header
+; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 1
+; CHECK-NEXT:    DUP3
+; CHECK-NEXT:    PUSH1 3
+; CHECK-NEXT:    SIGNEXTEND
+; CHECK-NEXT:    SLT
+; CHECK-NEXT:    PUSH4 @.BB22_3
+; CHECK-NEXT:    JUMPI
+; CHECK-NEXT:  ; %bb.2: ; %do
+; CHECK-NEXT:    ; in Loop: Header=BB22_1 Depth=1
+; CHECK-NEXT:    DUP2
+; CHECK-NEXT:    PUSH1 1
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    MUL
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    SUB
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    PUSH4 @.BB22_1
+; CHECK-NEXT:    JUMP
+; CHECK-NEXT:  .BB22_3: ; %exit
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH4 4294967295
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    MSTORE
+; CHECK-NEXT:    PUSH1 32
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
 
 enter:
   %offset = inttoptr i256 0 to ptr addrspace(2)

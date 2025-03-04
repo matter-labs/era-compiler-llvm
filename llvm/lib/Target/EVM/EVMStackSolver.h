@@ -65,10 +65,6 @@ private:
   /// backwards jumps until the layout is stabilized.
   void runPropagation();
 
-  /// Adds junks to the subgraph starting at \p Entry. It should only be
-  /// called on cut-vertices, so the full subgraph retains proper stack balance.
-  void appendJunks(const MachineBasicBlock *Entry, size_t NumJunk);
-
 #ifndef NDEBUG
   void dump(raw_ostream &OS);
   void dumpMBB(raw_ostream &OS, const MachineBasicBlock *MBB);

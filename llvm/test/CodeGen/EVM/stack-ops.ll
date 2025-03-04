@@ -8,6 +8,9 @@ define void @no_manipulations_needed_with_junk(i256 %a1, i256 %a2, i256 %a3) nor
 ; CHECK-LABEL: no_manipulations_needed_with_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    POP
 ; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    REVERT
@@ -34,7 +37,8 @@ define void @reorder_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
 ; CHECK-LABEL: reorder_with_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    POP
 ; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    REVERT
@@ -74,8 +78,9 @@ define void @swap_second_with_junk(i256 %a1, i256 %a2, i256 %a3, i256 %a4) noret
 ; CHECK-LABEL: swap_second_with_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    DUP4
-; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    POP
 ; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    REVERT
@@ -116,7 +121,10 @@ define void @swap_both_with_junk(i256 %a1, i256 %a2, i256 %a3, i256 %a4) noretur
 ; CHECK-LABEL: swap_both_with_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    DUP4
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    POP
 ; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    REVERT
@@ -144,8 +152,10 @@ define void @first_arg_alive_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
 ; CHECK-LABEL: first_arg_alive_with_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    POP
 ; CHECK-NEXT:    PUSH1 4
-; CHECK-NEXT:    DUP3
+; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    DUP3
 ; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    SWAP2
@@ -186,6 +196,9 @@ define void @second_arg_alive_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    DUP2
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    PUSH1 4
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    SUB
@@ -227,8 +240,9 @@ define void @both_arg_alive_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
 ; CHECK-LABEL: both_arg_alive_with_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    SWAP1
-; CHECK-NEXT:    DUP2
+; CHECK-NEXT:    DUP1
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    POP
 ; CHECK-NEXT:    DUP2
 ; CHECK-NEXT:    DIV
 ; CHECK-NEXT:    SWAP2
