@@ -42,7 +42,7 @@ static std::string getInstName(const MachineInstr *MI) {
 std::string SymbolSlot::toString() const {
   return getInstName(MI) + ":" + std::string(Symbol->getName());
 }
-std::string FunctionCallReturnLabelSlot::toString() const {
+std::string CallerReturnSlot::toString() const {
   return "RET[" + std::string(getCalledFunction(*Call)->getName()) + "]";
 }
 
@@ -129,7 +129,7 @@ void EVMStackModel::processMI(const MachineInstr &MI) {
       if (MO.isGlobal()) {
         const auto *Func = cast<Function>(MO.getGlobal());
         if (!Func->hasFnAttribute(Attribute::NoReturn))
-          Input.push_back(getFunctionCallReturnLabelSlot(&MI));
+          Input.push_back(getCallerReturnSlot(&MI));
         break;
       }
     }

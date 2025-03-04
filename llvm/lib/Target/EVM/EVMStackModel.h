@@ -36,7 +36,7 @@ public:
     SK_Literal,
     SK_Register,
     SK_Symbol,
-    SK_FunctionCallReturnLabel,
+    SK_CallerReturn,
     SK_FunctionReturnLabel,
     SK_Junk,
     SK_Unknown
@@ -120,25 +120,25 @@ public:
 
 /// The label pushed as return label before a function call, i.e. the label the
 /// call is supposed to return to.
-class FunctionCallReturnLabelSlot final : public StackSlot {
+class CallerReturnSlot final : public StackSlot {
   const MachineInstr *Call = nullptr;
 
 public:
-  FunctionCallReturnLabelSlot(const MachineInstr *Call)
-      : StackSlot(SK_FunctionCallReturnLabel), Call(Call) {}
+  CallerReturnSlot(const MachineInstr *Call)
+      : StackSlot(SK_CallerReturn), Call(Call) {}
   const MachineInstr *getCall() const { return Call; }
 
   bool isRematerializable() const override { return true; }
   std::string toString() const override;
 
   static bool classof(const StackSlot *S) {
-    return S->getSlotKind() == SK_FunctionCallReturnLabel;
+    return S->getSlotKind() == SK_CallerReturn;
   }
 };
 
 /// The return jump target of a function while generating the code of the
 /// function body. I.e. the caller of a function pushes a
-/// 'FunctionCallReturnLabelSlot' (see above) before jumping to the function
+/// 'CallerReturnSlot' (see above) before jumping to the function
 /// and this very slot is viewed as 'FunctionReturnLabelSlot' inside the
 /// function body and jumped to when returning from the function.
 class FunctionReturnLabelSlot final : public StackSlot {
@@ -220,9 +220,8 @@ class EVMStackModel {
   mutable DenseMap<std::pair<MCSymbol *, const MachineInstr *>,
                    std::unique_ptr<SymbolSlot>>
       SymbolStorage;
-  mutable DenseMap<const MachineInstr *,
-                   std::unique_ptr<FunctionCallReturnLabelSlot>>
-      FunctionCallReturnLabelStorage;
+  mutable DenseMap<const MachineInstr *, std::unique_ptr<CallerReturnSlot>>
+      CallerReturnStorage;
 
   // There should be a single FunctionReturnLabelSlot for the MF.
   mutable std::unique_ptr<FunctionReturnLabelSlot> TheFunctionReturnLabelSlot;
@@ -281,12 +280,10 @@ public:
       SymbolStorage[Key] = std::make_unique<SymbolSlot>(S, MI);
     return SymbolStorage[Key].get();
   }
-  FunctionCallReturnLabelSlot *
-  getFunctionCallReturnLabelSlot(const MachineInstr *Call) const {
-    if (FunctionCallReturnLabelStorage.count(Call) == 0)
-      FunctionCallReturnLabelStorage[Call] =
-          std::make_unique<FunctionCallReturnLabelSlot>(Call);
-    return FunctionCallReturnLabelStorage[Call].get();
+  CallerReturnSlot *getCallerReturnSlot(const MachineInstr *Call) const {
+    if (CallerReturnStorage.count(Call) == 0)
+      CallerReturnStorage[Call] = std::make_unique<CallerReturnSlot>(Call);
+    return CallerReturnStorage[Call].get();
   }
   FunctionReturnLabelSlot *
   getFunctionReturnLabelSlot(const MachineFunction *MF) const {

@@ -250,9 +250,8 @@ void EVMStackifyCodeEmitter::emitMI(const MachineInstr *MI) {
 
     // Assert that we got the correct return label on stack.
     if (callWillReturn(MI)) {
-      [[maybe_unused]] const auto *ReturnLabelSlot =
-          dyn_cast<FunctionCallReturnLabelSlot>(
-              CurrentStack[CurrentStack.size() - NumArgs]);
+      [[maybe_unused]] const auto *ReturnLabelSlot = dyn_cast<CallerReturnSlot>(
+          CurrentStack[CurrentStack.size() - NumArgs]);
       assert(ReturnLabelSlot && ReturnLabelSlot->getCall() == MI);
     }
     // Emit call.
@@ -341,8 +340,7 @@ void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
           Emitter.emitConstant(L->getValue());
         } else if (const auto *S = dyn_cast<SymbolSlot>(Slot)) {
           Emitter.emitSymbol(S->getMachineInstr(), S->getSymbol());
-        } else if (const auto *CallRet =
-                       dyn_cast<FunctionCallReturnLabelSlot>(Slot)) {
+        } else if (const auto *CallRet = dyn_cast<CallerReturnSlot>(Slot)) {
           Emitter.emitLabelReference(CallRet->getCall());
         } else if (isa<FunctionReturnLabelSlot>(Slot)) {
           llvm_unreachable("Cannot produce function return label");

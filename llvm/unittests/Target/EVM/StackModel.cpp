@@ -121,16 +121,16 @@ TEST_F(EVMStackModelTest, SymbolSlot) {
   EXPECT_TRUE(SymSlot1->getSymbol() != SymSlot2->getSymbol());
 }
 
-TEST_F(EVMStackModelTest, FunctionCallReturnLabelSlot) {
+TEST_F(EVMStackModelTest, CallerReturnSlot) {
   const TargetInstrInfo *TII = MF->getSubtarget().getInstrInfo();
   auto Call = MF->CreateMachineInstr(TII->get(EVM::FCALL), DebugLoc());
   auto Call2 = MF->CreateMachineInstr(TII->get(EVM::FCALL), DebugLoc());
 
-  auto *RetSlot1 = StackModel->getFunctionCallReturnLabelSlot(Call);
-  auto *RetSlot1Copy = StackModel->getFunctionCallReturnLabelSlot(Call);
+  auto *RetSlot1 = StackModel->getCallerReturnSlot(Call);
+  auto *RetSlot1Copy = StackModel->getCallerReturnSlot(Call);
   EXPECT_TRUE(RetSlot1 == RetSlot1Copy);
 
-  auto *RetSlot2 = StackModel->getFunctionCallReturnLabelSlot(Call2);
+  auto *RetSlot2 = StackModel->getCallerReturnSlot(Call2);
   EXPECT_TRUE(RetSlot1 != RetSlot2);
   EXPECT_TRUE(RetSlot1->getCall() != RetSlot2->getCall());
 }
