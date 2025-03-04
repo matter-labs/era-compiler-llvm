@@ -187,15 +187,16 @@ public:
 };
 
 /// The stack top is the last element of the vector.
-class Stack : public SmallVector<StackSlot *> {
+class Stack : public SmallVector<const StackSlot *> {
 public:
-  explicit Stack(StackSlot **Start, StackSlot **End)
+  explicit Stack(const StackSlot **Start, const StackSlot **End)
       : SmallVector(Start, End) {}
-  explicit Stack(size_t Size, StackSlot *Value) : SmallVector(Size, Value) {}
-  explicit Stack(SmallVector<StackSlot *> &&Slots)
+  explicit Stack(size_t Size, const StackSlot *Value)
+      : SmallVector(Size, Value) {}
+  explicit Stack(SmallVector<const StackSlot *> &&Slots)
       : SmallVector(std::move(Slots)) {}
   // TODO: should it be explicit? If yes, fix all build errors.
-  Stack(const SmallVector<StackSlot *> &Slots) : SmallVector(Slots) {}
+  Stack(const SmallVector<const StackSlot *> &Slots) : SmallVector(Slots) {}
   Stack() = default;
 
   std::string toString() const {
@@ -254,9 +255,8 @@ public:
   const Stack &getMIInput(const MachineInstr &MI) const {
     return MIInputMap.at(&MI);
   }
-  SmallVector<StackSlot *>
-  getSlotsForInstructionDefs(const MachineInstr *MI) const {
-    SmallVector<StackSlot *> Defs;
+  Stack getSlotsForInstructionDefs(const MachineInstr *MI) const {
+    Stack Defs;
     for (const auto &MO : MI->defs())
       Defs.push_back(getRegisterSlot(MO.getReg()));
     return Defs;

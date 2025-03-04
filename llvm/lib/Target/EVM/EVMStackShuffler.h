@@ -88,10 +88,10 @@ private:
       PopF();
     Current.pop_back();
   }
-  void rematerialize(size_t Offset) {
+  void rematerialize(const StackSlot *S) {
     if (RematerializeF)
-      RematerializeF(Target[Offset]);
-    Current.push_back(Target[Offset]);
+      RematerializeF(S);
+    Current.push_back(S);
   }
 
 public:
@@ -139,8 +139,8 @@ private:
 /// \p Swap is a function with signature void(unsigned) that is called when the
 /// top most slot is swapped with the slot `depth` slots below the top. In terms
 /// of EVM opcodes this is supposed to be a `SWAP<depth>`.
-/// \p Rematerialize is a function with signature void(StackSlot const&) that is
-/// called to push or dup the slot given as its argument to the stack top.
+/// \p Rematerialize is a function with signature void(const StackSlot *) that
+/// is called to push or dup the slot given as its argument to the stack top.
 /// \p Pop is a function with signature void() that is called when the top most
 /// slot is popped.
 void calculateStack(Stack &CurrentStack, Stack const &TargetStack,

@@ -56,15 +56,14 @@ EVMStackModel::EVMStackModel(MachineFunction &MF, const LiveIntervals &LIS,
 
 Stack EVMStackModel::getFunctionParameters() const {
   auto *MFI = MF.getInfo<EVMMachineFunctionInfo>();
-  SmallVector<StackSlot *> Parameters(MFI->getNumParams(),
-                                      EVMStackModel::getUnusedSlot());
+  Stack Parameters(MFI->getNumParams(), EVMStackModel::getUnusedSlot());
   for (const MachineInstr &MI : MF.front()) {
     if (MI.getOpcode() == EVM::ARGUMENT) {
       int64_t ArgIdx = MI.getOperand(1).getImm();
       Parameters[ArgIdx] = getRegisterSlot(MI.getOperand(0).getReg());
     }
   }
-  return Stack(Parameters);
+  return Parameters;
 }
 
 StackSlot *EVMStackModel::getStackSlot(const MachineOperand &MO) const {

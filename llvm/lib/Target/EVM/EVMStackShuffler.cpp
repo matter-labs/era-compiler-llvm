@@ -20,7 +20,7 @@ bool EVMStackShuffler::bringUpTargetSlot(size_t TOffset) {
     ToVisit.erase(ToVisit.begin());
     Visited.insert(Offset);
     if (getTargetSignificantUses(Offset) > 0) {
-      rematerialize(Offset);
+      rematerialize(Target[Offset]);
       return true;
     }
     // There must be another slot we can dup/push that will lead to the target
@@ -56,7 +56,7 @@ bool EVMStackShuffler::dupDeepSlotIfRequired() {
         // Duplicate unreachable slot.
         for (size_t TOffset = 0; TOffset < Target.size(); ++TOffset) {
           if (!isArbitraryTarget(TOffset) && isCompatible(COffset, TOffset)) {
-            rematerialize(TOffset);
+            rematerialize(Target[TOffset]);
             return true;
           }
         }
@@ -291,15 +291,14 @@ void llvm::calculateStack(
   TheShuffler.setGetTargetSignificantUses(getSignificantUses);
 
   TheShuffler.setSwap([&Swap](size_t Idx, Stack &C) { Swap(Idx); });
-  TheShuffler.setPop([&Pop]() { Pop(); });
-  TheShuffler.setRematerialize(
-      [&Rematerialize](const StackSlot *S) { Rematerialize(S); });
+  TheShuffler.setPop(Pop);
+  TheShuffler.setRematerialize(Rematerialize);
 
   TheShuffler.shuffle();
 
   assert(CurrentStack.size() == TargetStack.size());
   for (unsigned I = 0; I < CurrentStack.size(); ++I) {
-    StackSlot *&Current = CurrentStack[I];
+    const StackSlot *&Current = CurrentStack[I];
     const StackSlot *Target = TargetStack[I];
     if (isa<UnusedSlot>(Target))
       Current = EVMStackModel::getUnusedSlot();

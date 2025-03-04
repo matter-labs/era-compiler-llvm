@@ -70,9 +70,8 @@ bool hasUnreachableStackSlots(const Stack &Source, const Stack &Target,
 /// input of the instruction itself). If \p CompressStack is true,
 /// rematerializable slots will not occur in the ideal stack, but rather be
 /// generated during shuffling.
-Stack calculateStackBeforeInst(const SmallVector<StackSlot *> &InstDefs,
-                               const Stack &AfterInst, bool CompressStack,
-                               unsigned StackDepthLimit) {
+Stack calculateStackBeforeInst(const Stack &InstDefs, const Stack &AfterInst,
+                               bool CompressStack, unsigned StackDepthLimit) {
   // Determine the number of slots that have to be on stack before executing the
   // instruction (excluding the inputs of the instruction itself), i.e. slots
   // that cannot be rematerialized and that are not the instruction output.
@@ -143,7 +142,7 @@ Stack calculateStackBeforeInst(const SmallVector<StackSlot *> &InstDefs,
   // contains RegisterSlot{"tmp"}, then we want the variable "tmp" in the slot
   // at offset 2 on the stack before the instruction.
   assert(Tmp.size() == AfterInst.size());
-  SmallVector<StackSlot *> BeforeInst(BeforeInstSize, nullptr);
+  SmallVector<const StackSlot *> BeforeInst(BeforeInstSize, nullptr);
   for (unsigned Idx = 0; Idx < Tmp.size(); ++Idx) {
     if (const auto *Slot = dyn_cast<UnknownSlot>(Tmp[Idx]))
       BeforeInst[Slot->getIndex()] = AfterInst[Idx];
@@ -230,8 +229,7 @@ Stack EVMStackSolver::propagateStackThroughMI(const Stack &AfterMI,
     // TODO: compress stack for recursive functions.
     CompressStack = false;
 
-  const SmallVector<StackSlot *> MIDefs =
-      StackModel.getSlotsForInstructionDefs(&MI);
+  const Stack MIDefs = StackModel.getSlotsForInstructionDefs(&MI);
 
   // Determine the ideal permutation of the slots in AfterMI that are not
   // MI defs, s.t. shuffling the 'BeforeMI + MIDefs' to AfterMI is cheap.
@@ -461,7 +459,7 @@ void EVMStackSolver::runPropagation() {
       Stack NewSuccEntryStack = ExitStack;
       // Whatever the block being jumped to does not actually require,
       // can be marked as unused.
-      for (StackSlot *&Slot : NewSuccEntryStack)
+      for (const StackSlot *&Slot : NewSuccEntryStack)
         if (!is_contained(SuccEntryStack, Slot))
           Slot = EVMStackModel::getUnusedSlot();
 
@@ -515,7 +513,7 @@ Stack EVMStackSolver::combineStack(const Stack &Stack1, const Stack &Stack2) {
   }
 
   Stack Candidate;
-  for (auto *Slot : concat<StackSlot *>(Stack1Tail, Stack2Tail))
+  for (const auto *Slot : concat<const StackSlot *>(Stack1Tail, Stack2Tail))
     if (!is_contained(Candidate, Slot) && !Slot->isRematerializable())
       Candidate.push_back(Slot);
 
@@ -592,7 +590,7 @@ Stack EVMStackSolver::compressStack(Stack CurStack) {
 
     auto I = CurStack.rbegin(), E = CurStack.rend();
     for (size_t Depth = 0; I < E; ++I, ++Depth) {
-      StackSlot *Slot = *I;
+      const StackSlot *Slot = *I;
       if (Slot->isRematerializable()) {
         FirstDupOffset = CurStack.size() - Depth - 1;
         break;
