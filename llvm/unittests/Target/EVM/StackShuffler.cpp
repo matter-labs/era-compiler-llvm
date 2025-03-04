@@ -140,8 +140,8 @@ TEST_F(LLDCTest, Basic) {
   TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[15].second));
   TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[16].second));
   TargetStack.emplace_back(StackModel->getCalleeReturnSlot(MBB->getParent()));
-  TargetStack.emplace_back(StackModel->getJunkSlot());
-  TargetStack.emplace_back(StackModel->getJunkSlot());
+  TargetStack.emplace_back(StackModel->getUnusedSlot());
+  TargetStack.emplace_back(StackModel->getUnusedSlot());
 
   StringRef Reference("\
 [ %0 %1 %2 %3 %4 %5 %6 %7 %9 %10 %11 %12 %13 %14 %15 %16 RET RET %5 ]\n\

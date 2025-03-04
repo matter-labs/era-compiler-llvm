@@ -275,7 +275,7 @@ void EVMStackifyCodeEmitter::emitMI(const MachineInstr *MI) {
     for (auto *&CurrentSlot : CurrentStack)
       if (const auto *RegSlot = dyn_cast<RegisterSlot>(CurrentSlot))
         if (MI->definesRegister(RegSlot->getReg()))
-          CurrentSlot = EVMStackModel::getJunkSlot();
+          CurrentSlot = EVMStackModel::getUnusedSlot();
 
     // Assign variables to current stack top.
     assert(CurrentStack.size() >= MI->getNumExplicitDefs());
@@ -286,13 +286,13 @@ void EVMStackifyCodeEmitter::emitMI(const MachineInstr *MI) {
 
 // Checks if it's valid to transition from \p SourceStack to \p TargetStack,
 // that is \p SourceStack matches each slot in \p TargetStack that is not a
-// JunkSlot exactly.
+// UnusedSlot exactly.
 [[maybe_unused]] static bool areStacksCompatible(const Stack &SourceStack,
                                                  const Stack &TargetStack) {
   return SourceStack.size() == TargetStack.size() &&
          all_of(zip_equal(SourceStack, TargetStack), [](const auto &Pair) {
            const auto [Src, Tgt] = Pair;
-           return isa<JunkSlot>(Tgt) || (Src == Tgt);
+           return isa<UnusedSlot>(Tgt) || (Src == Tgt);
          });
 }
 
@@ -347,7 +347,7 @@ void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
         } else if (isa<RegisterSlot>(Slot)) {
           llvm_unreachable("Variable not found on stack.");
         } else {
-          assert(isa<JunkSlot>(Slot));
+          assert(isa<UnusedSlot>(Slot));
           // Note: this will always be popped, so we can push anything.
           Emitter.emitConstant(0);
         }
@@ -408,7 +408,7 @@ void EVMStackifyCodeEmitter::run() {
     if (!Visited.insert(MBB).second)
       continue;
 
-    // Might set some slots to junk, if not required by the block.
+    // Might set some slots to unused, if not required by the block.
     CurrentStack = StackModel.getMBBEntryStack(MBB);
     Emitter.enterMBB(MBB, CurrentStack.size());
 

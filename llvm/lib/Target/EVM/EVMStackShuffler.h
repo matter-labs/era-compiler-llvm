@@ -61,7 +61,7 @@ private:
   bool isCompatible(size_t CIdx, size_t TIdx) {
     if (CIdx >= Current.size() || TIdx >= Target.size())
       return false;
-    if (isa<JunkSlot>(Target[TIdx]))
+    if (isa<UnusedSlot>(Target[TIdx]))
       return true;
     if (IsCompatibleF)
       return IsCompatibleF(Current[CIdx], Target[TIdx]);
@@ -78,7 +78,7 @@ private:
     return 0;
   }
   bool isArbitraryTarget(size_t Offset) {
-    return Offset < Target.size() && isa<JunkSlot>(Target[Offset]);
+    return Offset < Target.size() && isa<UnusedSlot>(Target[Offset]);
   }
   void swap(size_t I) {
     if (SwapF)

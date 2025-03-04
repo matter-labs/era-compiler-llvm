@@ -441,7 +441,7 @@ void EVMStackSolver::runPropagation() {
   // entry layout of the target block. We need to modify the entry stacks
   // of conditional jump targets, s.t., the entry layout of target blocks match
   // the exit layout of the jumping block exactly, except that slots not
-  // required after the jump are marked as 'JunkSlot'.
+  // required after the jump are marked as 'UnusedSlot'.
   for (const MachineBasicBlock &MBB : MF) {
     auto [BranchTy, TBB, FBB, BrInsts, Condition] = getBranchInfo(&MBB);
 
@@ -460,10 +460,10 @@ void EVMStackSolver::runPropagation() {
       const Stack &SuccEntryStack = StackModel.getMBBEntryStack(Succ);
       Stack NewSuccEntryStack = ExitStack;
       // Whatever the block being jumped to does not actually require,
-      // can be marked as junk.
+      // can be marked as unused.
       for (StackSlot *&Slot : NewSuccEntryStack)
         if (!is_contained(SuccEntryStack, Slot))
-          Slot = EVMStackModel::getJunkSlot();
+          Slot = EVMStackModel::getUnusedSlot();
 
 #ifndef NDEBUG
       // Make sure everything the block being jumped to requires is
@@ -617,12 +617,8 @@ static std::string getMBBId(const MachineBasicBlock *MBB) {
 
 void EVMStackSolver::dump(raw_ostream &OS) {
   OS << "Function: " << MF.getName() << "(";
-  for (const StackSlot *ParamSlot : StackModel.getFunctionParameters()) {
-    if (isa<JunkSlot>(ParamSlot))
-      OS << "[unused param] ";
-    else
-      OS << ParamSlot->toString();
-  }
+  for (const StackSlot *ParamSlot : StackModel.getFunctionParameters())
+    OS << ParamSlot->toString();
   OS << ");\n";
   OS << "Entry MBB: " << getMBBId(&MF.front()) << ";\n";
 

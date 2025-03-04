@@ -141,7 +141,7 @@ TEST_F(EVMStackModelTest, CalleeReturnSlot) {
               StackModel->getCalleeReturnSlot(MF));
 }
 
-TEST_F(EVMStackModelTest, JunkSlot) {
-  // Be sure the JunkSlot is a single one.
-  EXPECT_TRUE(EVMStackModel::getJunkSlot() == EVMStackModel::getJunkSlot());
+TEST_F(EVMStackModelTest, UnusedSlot) {
+  // Be sure the UnusedSlot is a single one.
+  EXPECT_TRUE(EVMStackModel::getUnusedSlot() == EVMStackModel::getUnusedSlot());
 }

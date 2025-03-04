@@ -135,7 +135,7 @@ bool EVMStackShuffler::shuffleStep() {
               // Usually we keep a slot that is to-be-removed, if the current
               // top is arbitrary. However, since we are in a stack-too-deep
               // situation, pop it immediately to compress the stack (we can
-              // always push back junk in the end).
+              // always push back an unused slot in the end).
               pop();
             }
             return true;
@@ -280,7 +280,7 @@ void llvm::calculateStack(
       CUses += std::count(T.begin() + C.size(), T.end(), Slot);
     CUses += count_if(zip(C, T), [Slot](auto In) {
       auto [CSlot, TSlot] = In;
-      if (isa<JunkSlot>(TSlot))
+      if (isa<UnusedSlot>(TSlot))
         return CSlot == Slot;
       return TSlot == Slot;
     });
@@ -301,8 +301,8 @@ void llvm::calculateStack(
   for (unsigned I = 0; I < CurrentStack.size(); ++I) {
     StackSlot *&Current = CurrentStack[I];
     const StackSlot *Target = TargetStack[I];
-    if (isa<JunkSlot>(Target))
-      Current = EVMStackModel::getJunkSlot();
+    if (isa<UnusedSlot>(Target))
+      Current = EVMStackModel::getUnusedSlot();
     else
       assert(Current == Target);
   }

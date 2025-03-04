@@ -38,7 +38,7 @@ public:
     SK_Symbol,
     SK_CallerReturn,
     SK_CalleeReturn,
-    SK_Junk,
+    SK_Unused,
     SK_Unknown
   };
 
@@ -159,15 +159,15 @@ public:
 
 /// A slot containing an arbitrary value that is always eventually popped and
 /// never used. Used to maintain stack balance on control flow joins.
-class JunkSlot final : public StackSlot {
+class UnusedSlot final : public StackSlot {
 public:
-  JunkSlot() : StackSlot(SK_Junk) {}
+  UnusedSlot() : StackSlot(SK_Unused) {}
 
   bool isRematerializable() const override { return true; }
-  std::string toString() const override { return "JUNK"; }
+  std::string toString() const override { return "Unused"; }
 
   static bool classof(const StackSlot *S) {
-    return S->getSlotKind() == SK_Junk;
+    return S->getSlotKind() == SK_Unused;
   }
 };
 
@@ -291,10 +291,10 @@ public:
     assert(MF == TheCalleeReturnSlot->getMachineFunction());
     return TheCalleeReturnSlot.get();
   }
-  // Junk is always the same slot.
-  static JunkSlot *getJunkSlot() {
-    static JunkSlot TheJunkSlot;
-    return &TheJunkSlot;
+  // Unused is always the same slot.
+  static UnusedSlot *getUnusedSlot() {
+    static UnusedSlot TheUnusedSlot;
+    return &TheUnusedSlot;
   }
 
   const Stack &getMBBEntryStack(const MachineBasicBlock *MBB) const {
