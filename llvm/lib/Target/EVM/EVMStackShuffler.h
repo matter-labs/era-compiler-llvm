@@ -56,14 +56,12 @@ public:
   void setRematerialize(RematerializeFTy F) { RematerializeF = std::move(F); }
 
 private:
-  bool isCompatible(size_t CIdx, size_t TIdx) {
-    if (CIdx >= Current.size() || TIdx >= Target.size())
+  bool isCompatible(const StackSlot *SrcSlot, const StackSlot *TgtSlot) {
+    if (!SrcSlot || !TgtSlot)
       return false;
-    if (isa<UnusedSlot>(Target[TIdx]))
+    if (isa<UnusedSlot>(TgtSlot))
       return true;
-    if (IsCompatibleF)
-      return IsCompatibleF(Current[CIdx], Target[TIdx]);
-    return Current[CIdx] == Target[TIdx];
+    return IsCompatibleF ? IsCompatibleF(SrcSlot, TgtSlot) : SrcSlot == TgtSlot;
   }
   int getCurrentSignificantUses(size_t Idx) {
     if (GetCurrentSignificantUsesF)
@@ -75,8 +73,29 @@ private:
       return GetTargetSignificantUsesF(Target[Idx], Current, Target);
     return 0;
   }
-  bool isArbitraryTarget(size_t Offset) {
-    return Offset < Target.size() && isa<UnusedSlot>(Target[Offset]);
+  bool swapIfCurrent(size_t StartRIdx, size_t EndRIdx,
+                     std::function<bool(const StackSlot *)> P) {
+    for (size_t RIdx = StartRIdx; RIdx < EndRIdx; ++RIdx) {
+      if (isCompatible(Current[RIdx], Target[RIdx]))
+        continue;
+      if (P(Current[RIdx])) {
+        swap(Current.size() - RIdx - 1);
+        return true;
+      }
+    }
+    return false;
+  }
+  bool swapIfTarget(size_t StartRIdx, size_t EndRIdx,
+                    std::function<bool(const StackSlot *)> P) {
+    for (size_t RIdx = StartRIdx; RIdx < EndRIdx; ++RIdx) {
+      if (isCompatible(Current[RIdx], Target[RIdx]))
+        continue;
+      if (P(Target[RIdx])) {
+        swap(Current.size() - RIdx - 1);
+        return true;
+      }
+    }
+    return false;
   }
   void swap(size_t I) {
     if (SwapF)

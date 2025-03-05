@@ -103,8 +103,9 @@ Stack calculateStackBeforeInst(const Stack &InstDefs, const Stack &AfterInst,
   };
 
   Shuffler.setIsCompatible(
-      [&canSkipSlot](const StackSlot *CSlot, const StackSlot *TSlot) {
-        return isa<UnknownSlot>(CSlot) ? !canSkipSlot(TSlot) : CSlot == TSlot;
+      [&canSkipSlot](const StackSlot *SrcSlot, const StackSlot *TgtSlot) {
+        return isa<UnknownSlot>(SrcSlot) ? !canSkipSlot(TgtSlot)
+                                         : SrcSlot == TgtSlot;
       });
 
   Shuffler.setGetCurrentSignificantUses(
