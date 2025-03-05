@@ -101,31 +101,29 @@ Stack calculateStackBeforeInst(const Stack &InstDefs, const Stack &AfterInst,
     return count(InstDefs, Slot) ||
            (CompressStack && Slot->isRematerializable());
   };
+  auto countOccurences = [&canSkipSlot](const StackSlot *Slot, Stack &C,
+                                        const Stack &T) {
+    int Num = -count(C, Slot);
+    if (canSkipSlot(Slot))
+      Num = Num + count(T, Slot);
+    return Num;
+  };
 
-  Shuffler.setIsCompatible(
+  Shuffler.setMatch(
       [&canSkipSlot](const StackSlot *SrcSlot, const StackSlot *TgtSlot) {
         return isa<UnknownSlot>(SrcSlot) ? !canSkipSlot(TgtSlot)
                                          : SrcSlot == TgtSlot;
       });
 
-  Shuffler.setGetCurrentSignificantUses(
-      [&canSkipSlot](const StackSlot *Slot, Stack &C, const Stack &T) {
-        if (isa<UnknownSlot>(Slot))
-          return 0;
-        int CUses = -count(C, Slot);
-        if (canSkipSlot(Slot))
-          CUses = CUses + count(T, Slot);
-        return CUses;
+  Shuffler.setGetCurrentNumOccurrences(
+      [&countOccurences](const StackSlot *Slot, Stack &C, const Stack &T) {
+        return isa<UnknownSlot>(Slot) ? 0 : countOccurences(Slot, C, T);
       });
 
-  Shuffler.setGetTargetSignificantUses(
-      [&canSkipSlot](const StackSlot *Slot, Stack &C, const Stack &T) {
-        if (!canSkipSlot(Slot))
-          return 0;
-        int TUses = -count(C, Slot);
-        if (canSkipSlot(Slot))
-          TUses = TUses + count(T, Slot);
-        return TUses;
+  Shuffler.setGetTargetNumOccurrences(
+      [&countOccurences, &canSkipSlot](const StackSlot *Slot, Stack &C,
+                                       const Stack &T) {
+        return !canSkipSlot(Slot) ? 0 : countOccurences(Slot, C, T);
       });
 
   Shuffler.setSwap([](size_t I, Stack &C) {

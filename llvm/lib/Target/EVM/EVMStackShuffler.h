@@ -24,17 +24,16 @@ class EVMStackShuffler {
   const Stack &Target;
   unsigned StackDepthLimit;
 
-  using IsCompatibleFTy =
-      std::function<bool(const StackSlot *, const StackSlot *)>;
-  using GetSignificantUsesFTy =
+  using MatchFTy = std::function<bool(const StackSlot *, const StackSlot *)>;
+  using GetNumOccurrencesFTy =
       std::function<int(const StackSlot *, Stack &, const Stack &)>;
   using SwapFTy = std::function<void(size_t, Stack &)>;
   using PopFTy = std::function<void()>;
   using RematerializeFTy = std::function<void(const StackSlot *)>;
 
-  IsCompatibleFTy IsCompatibleF = nullptr;
-  GetSignificantUsesFTy GetCurrentSignificantUsesF = nullptr;
-  GetSignificantUsesFTy GetTargetSignificantUsesF = nullptr;
+  MatchFTy MatchF = nullptr;
+  GetNumOccurrencesFTy GetCurrentNumOccurrencesF = nullptr;
+  GetNumOccurrencesFTy GetTargetNumOccurrencesF = nullptr;
   SwapFTy SwapF = nullptr;
   PopFTy PopF = nullptr;
   RematerializeFTy RematerializeF = nullptr;
@@ -44,39 +43,39 @@ public:
                    unsigned StackDepthLimit)
       : Current(Current), Target(Target), StackDepthLimit(StackDepthLimit) {}
 
-  void setIsCompatible(IsCompatibleFTy F) { IsCompatibleF = std::move(F); }
-  void setGetCurrentSignificantUses(GetSignificantUsesFTy F) {
-    GetCurrentSignificantUsesF = std::move(F);
+  void setMatch(MatchFTy F) { MatchF = std::move(F); }
+  void setGetCurrentNumOccurrences(GetNumOccurrencesFTy F) {
+    GetCurrentNumOccurrencesF = std::move(F);
   }
-  void setGetTargetSignificantUses(GetSignificantUsesFTy F) {
-    GetTargetSignificantUsesF = std::move(F);
+  void setGetTargetNumOccurrences(GetNumOccurrencesFTy F) {
+    GetTargetNumOccurrencesF = std::move(F);
   }
   void setSwap(SwapFTy F) { SwapF = std::move(F); }
   void setPop(PopFTy F) { PopF = std::move(F); }
   void setRematerialize(RematerializeFTy F) { RematerializeF = std::move(F); }
 
 private:
-  bool isCompatible(const StackSlot *SrcSlot, const StackSlot *TgtSlot) {
+  bool match(const StackSlot *SrcSlot, const StackSlot *TgtSlot) {
     if (!SrcSlot || !TgtSlot)
       return false;
     if (isa<UnusedSlot>(TgtSlot))
       return true;
-    return IsCompatibleF ? IsCompatibleF(SrcSlot, TgtSlot) : SrcSlot == TgtSlot;
+    return MatchF ? MatchF(SrcSlot, TgtSlot) : SrcSlot == TgtSlot;
   }
-  int getCurrentSignificantUses(size_t Idx) {
-    if (GetCurrentSignificantUsesF)
-      return GetCurrentSignificantUsesF(Current[Idx], Current, Target);
+  int getCurrentNumOccurrences(const StackSlot *SrcSlot) {
+    if (GetCurrentNumOccurrencesF)
+      return GetCurrentNumOccurrencesF(SrcSlot, Current, Target);
     return 0;
   }
-  int getTargetSignificantUses(size_t Idx) {
-    if (GetTargetSignificantUsesF)
-      return GetTargetSignificantUsesF(Target[Idx], Current, Target);
+  int getTargetNumOccurrences(const StackSlot *TgtSlot) {
+    if (GetTargetNumOccurrencesF)
+      return GetTargetNumOccurrencesF(TgtSlot, Current, Target);
     return 0;
   }
   bool swapIfCurrent(size_t StartRIdx, size_t EndRIdx,
                      std::function<bool(const StackSlot *)> P) {
     for (size_t RIdx = StartRIdx; RIdx < EndRIdx; ++RIdx) {
-      if (isCompatible(Current[RIdx], Target[RIdx]))
+      if (match(Current[RIdx], Target[RIdx]))
         continue;
       if (P(Current[RIdx])) {
         swap(Current.size() - RIdx - 1);
@@ -88,7 +87,7 @@ private:
   bool swapIfTarget(size_t StartRIdx, size_t EndRIdx,
                     std::function<bool(const StackSlot *)> P) {
     for (size_t RIdx = StartRIdx; RIdx < EndRIdx; ++RIdx) {
-      if (isCompatible(Current[RIdx], Target[RIdx]))
+      if (match(Current[RIdx], Target[RIdx]))
         continue;
       if (P(Target[RIdx])) {
         swap(Current.size() - RIdx - 1);

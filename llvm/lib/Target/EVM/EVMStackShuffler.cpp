@@ -19,7 +19,7 @@ bool EVMStackShuffler::bringUpTargetSlot(size_t StartRIdx, bool CannotFail) {
     size_t RIdx = Worklist.front();
     Worklist.pop_front();
     Visited.insert(RIdx);
-    if (getTargetSignificantUses(RIdx) > 0) {
+    if (getTargetNumOccurrences(Target[RIdx]) > 0) {
       rematerialize(Target[RIdx]);
       return true;
     }
@@ -29,9 +29,9 @@ bool EVMStackShuffler::bringUpTargetSlot(size_t StartRIdx, bool CannotFail) {
     for (size_t NextRIdx = 0; NextRIdx < Current.size(); ++NextRIdx) {
       if (Visited.count(NextRIdx))
         continue;
-      if (isCompatible(Current[NextRIdx], Target[NextRIdx]))
+      if (match(Current[NextRIdx], Target[NextRIdx]))
         continue;
-      if (RIdx < Target.size() && isCompatible(Current[NextRIdx], Target[RIdx]))
+      if (RIdx < Target.size() && match(Current[NextRIdx], Target[RIdx]))
         Worklist.push_back(NextRIdx);
     }
   }
@@ -51,8 +51,8 @@ bool EVMStackShuffler::rematerializeUnreachableSlots() {
   for (size_t RIdx = 0, REndIdx = Current.size() - StackDepthLimit - 1;
        RIdx < REndIdx; ++RIdx) {
     // The slot is in place, but we might need another copy if it.
-    if (isCompatible(Current[RIdx], Target[RIdx]) &&
-        getCurrentSignificantUses(RIdx) > 0) {
+    if (match(Current[RIdx], Target[RIdx]) &&
+        getCurrentNumOccurrences(Current[RIdx]) > 0) {
       // If this slot occurs again later, we skip this occurrence.
       auto It =
           std::find_if(Current.begin() + RIdx + 1, Current.end(),
@@ -64,7 +64,7 @@ bool EVMStackShuffler::rematerializeUnreachableSlots() {
       for (size_t TgtRIdx = 0; TgtRIdx < Target.size(); ++TgtRIdx) {
         if (isa<UnusedSlot>(Target[TgtRIdx]))
           continue;
-        if (isCompatible(Current[RIdx], Target[TgtRIdx])) {
+        if (match(Current[RIdx], Target[TgtRIdx])) {
           rematerialize(Target[TgtRIdx]);
           return true;
         }
@@ -74,7 +74,7 @@ bool EVMStackShuffler::rematerializeUnreachableSlots() {
 
     // This slot needs to be moved.
     // If the current top fixes the slot, swap it down now.
-    if (isCompatible(Current[Current.size() - 1], Target[RIdx])) {
+    if (match(Current[Current.size() - 1], Target[RIdx])) {
       swap(Current.size() - RIdx - 1);
       return true;
     }
@@ -83,7 +83,7 @@ bool EVMStackShuffler::rematerializeUnreachableSlots() {
       return true;
     // Otherwise swap up the slot that will fix the offending slot.
     if (swapIfCurrent(RIdx + 1, Current.size(), [&](const StackSlot *S) {
-          return isCompatible(S, Target[RIdx]);
+          return match(S, Target[RIdx]);
         }))
       return true;
     // Otherwise give up - we will need stack compression or stack limit
@@ -97,7 +97,7 @@ bool EVMStackShuffler::step() {
   if (Current.size() <= Target.size() &&
       all_of(zip(Current, Target),
              [&](std::pair<const StackSlot *, const StackSlot *> Slots) {
-               return isCompatible(Slots.first, Slots.second);
+               return match(Slots.first, Slots.second);
              })) {
     // Bring up all remaining target slots, if any, or terminate otherwise.
     if (Current.size() < Target.size()) {
@@ -114,7 +114,7 @@ bool EVMStackShuffler::step() {
 
   // If we no longer need the current stack top, we pop it, unless we need an
   // arbitrary slot at this position in the target.
-  if (getCurrentSignificantUses(Top) < 0 &&
+  if (getCurrentNumOccurrences(SrcTop) < 0 &&
       !isa_and_nonnull<UnusedSlot>(TgtTop)) {
     pop();
     return true;
@@ -123,15 +123,15 @@ bool EVMStackShuffler::step() {
   assert(Target.size() > 0);
   // If the top is not supposed to be exactly what is on top right now, try to
   // find a lower position to swap it to.
-  if (!isCompatible(SrcTop, TgtTop) || isa_and_nonnull<UnusedSlot>(TgtTop)) {
+  if (!match(SrcTop, TgtTop) || isa_and_nonnull<UnusedSlot>(TgtTop)) {
     for (size_t RIdx = 0, REndIdx = std::min(Current.size(), Target.size());
          RIdx < REndIdx; ++RIdx) {
       // It makes sense to swap to a lower position, if 1) the slots are not
-      // same, 2) the lower slot is not already in position, 3) the lower
+      // the same, 2) the lower slot is not already in position, 3) the lower
       // position wants to have this slot.
       bool CanSwap = SrcTop != Current[RIdx] &&
-                     !isCompatible(Current[RIdx], Target[RIdx]) &&
-                     isCompatible(SrcTop, Target[RIdx]);
+                     !match(Current[RIdx], Target[RIdx]) &&
+                     match(SrcTop, Target[RIdx]);
       if (!CanSwap)
         continue;
 
@@ -140,7 +140,8 @@ bool EVMStackShuffler::step() {
         // If there is a reachable slot to be removed, park the current top
         // there.
         for (size_t SwapDepth = StackDepthLimit; SwapDepth > 0; --SwapDepth) {
-          if (getCurrentSignificantUses(Current.size() - 1 - SwapDepth) < 0) {
+          if (getCurrentNumOccurrences(
+                  Current[Current.size() - 1 - SwapDepth]) < 0) {
             swap(SwapDepth);
             if (isa_and_nonnull<UnusedSlot>(TgtTop)) {
               // Usually we keep a slot that is to-be-removed, if the current
@@ -168,13 +169,12 @@ bool EVMStackShuffler::step() {
   // end up there. Note that after the cases above, there will always be
   // a target slot to duplicate in this case.
   for (size_t RIdx = 0, REndIdx = Current.size(); RIdx < REndIdx; ++RIdx) {
-    if (isCompatible(Current[RIdx], Target[RIdx]) ||
-        isa<UnusedSlot>(Target[RIdx]))
+    if (match(Current[RIdx], Target[RIdx]) || isa<UnusedSlot>(Target[RIdx]))
       continue;
 
     // There are too many copies of the slot and there is a target slot at this
     // position.
-    if (getCurrentSignificantUses(RIdx) < 0) {
+    if (getCurrentNumOccurrences(Current[RIdx]) < 0) {
       if (!rematerializeUnreachableSlots())
         bringUpTargetSlot(RIdx, /* can't fail */ true);
       return true;
@@ -183,13 +183,13 @@ bool EVMStackShuffler::step() {
 
   // At this point we want to keep all slots.
   for (size_t RIdx = 0, REndIdx = Current.size(); RIdx < REndIdx; ++RIdx)
-    assert(getCurrentSignificantUses(RIdx) >= 0);
+    assert(getCurrentNumOccurrences(Current[RIdx]) >= 0);
 
   // If the top is not in position, try to find a slot that wants to be at the
   // top and swap it up.
-  if (!isCompatible(SrcTop, TgtTop))
+  if (!match(SrcTop, TgtTop))
     if (swapIfCurrent(0, Current.size(), [&](const StackSlot *SrcSlot) {
-          return isCompatible(SrcSlot, TgtTop);
+          return match(SrcSlot, TgtTop);
         }))
       return true;
 
@@ -200,14 +200,15 @@ bool EVMStackShuffler::step() {
     return true;
   }
 
-  // The stack has the correct size, each slot has the correct number of
-  // copies and the top is in position.
   assert(Current.size() == Target.size());
-  for (size_t RIdx = 0, REndIdx = Current.size(); RIdx < REndIdx; ++RIdx)
-    assert(
-        getCurrentSignificantUses(RIdx) == 0 &&
-        (isa<UnusedSlot>(Target[RIdx]) || getTargetSignificantUses(RIdx) == 0));
-  assert(isCompatible(SrcTop, TgtTop));
+  for (size_t RIdx = 0, REndIdx = Current.size(); RIdx < REndIdx; ++RIdx) {
+    assert(getCurrentNumOccurrences(Current[RIdx]) == 0 &&
+           "Current stack should have required number of slot copies.");
+    assert((isa<UnusedSlot>(Target[RIdx]) ||
+            getTargetNumOccurrences(Target[RIdx]) == 0) &&
+           "Target stack should have required number of copies of used slots.");
+  }
+  assert(match(SrcTop, TgtTop) && "The top slot should be already shuffled.");
 
   size_t StartRIdx = Current.size() > (StackDepthLimit + 1)
                          ? Current.size() - (StackDepthLimit + 1)
@@ -215,7 +216,7 @@ bool EVMStackShuffler::step() {
   // If we find a lower slot that is out of position, but also compatible with
   // the top, swap that up.
   if (swapIfTarget(StartRIdx, Current.size(), [&](const StackSlot *TgtSlot) {
-        return isCompatible(SrcTop, TgtSlot);
+        return match(SrcTop, TgtSlot);
       }))
     return true;
 
@@ -228,7 +229,7 @@ bool EVMStackShuffler::step() {
   // We are in a stack-too-deep situation and try to reduce the stack size.
   // If the current top is merely kept since the target slot is arbitrary, pop
   // it.
-  if (isa<UnusedSlot>(TgtTop) && getCurrentSignificantUses(Top) <= 0) {
+  if (isa<UnusedSlot>(TgtTop) && getCurrentNumOccurrences(SrcTop) <= 0) {
     pop();
     return true;
   }
@@ -236,7 +237,8 @@ bool EVMStackShuffler::step() {
   // If any reachable slot is merely kept, since the target slot is arbitrary,
   // swap it up and pop it.
   for (size_t RIdx = 0, REndIdx = Current.size(); RIdx < REndIdx; ++RIdx) {
-    if (isa<UnusedSlot>(Target[RIdx]) && getCurrentSignificantUses(RIdx) <= 0) {
+    if (isa<UnusedSlot>(Target[RIdx]) &&
+        getCurrentNumOccurrences(Current[RIdx]) <= 0) {
       swap(Current.size() - RIdx - 1);
       pop();
       return true;
@@ -246,7 +248,7 @@ bool EVMStackShuffler::step() {
   // We cannot avoid a stack-too-deep error. Repeat the above without
   // restricting to reachable slots.
   if (swapIfTarget(0, Current.size(), [&](const StackSlot *TgtSlot) {
-        return isCompatible(SrcTop, TgtSlot);
+        return match(SrcTop, TgtSlot);
       }))
     return true;
 
@@ -265,22 +267,19 @@ void llvm::calculateStack(
     const std::function<void()> &Pop) {
   EVMStackShuffler TheShuffler =
       EVMStackShuffler(CurrentStack, TargetStack, StackDepthLimit);
-  auto getSignificantUses = [](const StackSlot *Slot, Stack &C,
-                               const Stack &T) {
+  auto getNumOccurrences = [](const StackSlot *Slot, Stack &C, const Stack &T) {
     int CUses = -count(C, Slot);
     if (T.size() > C.size())
       CUses += std::count(T.begin() + C.size(), T.end(), Slot);
     CUses += count_if(zip(C, T), [Slot](auto In) {
       auto [CSlot, TSlot] = In;
-      if (isa<UnusedSlot>(TSlot))
-        return CSlot == Slot;
-      return TSlot == Slot;
+      return isa<UnusedSlot>(TSlot) ? CSlot == Slot : TSlot == Slot;
     });
     return CUses;
   };
 
-  TheShuffler.setGetCurrentSignificantUses(getSignificantUses);
-  TheShuffler.setGetTargetSignificantUses(getSignificantUses);
+  TheShuffler.setGetCurrentNumOccurrences(getNumOccurrences);
+  TheShuffler.setGetTargetNumOccurrences(getNumOccurrences);
 
   TheShuffler.setSwap([&Swap](size_t Idx, Stack &C) { Swap(Idx); });
   TheShuffler.setPop(Pop);
