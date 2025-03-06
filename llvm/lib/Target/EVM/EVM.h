@@ -35,6 +35,13 @@ enum AddressSpaces {
 };
 } // namespace EVMAS
 
+namespace EVMCOST {
+unsigned constexpr SWAP = 3;
+unsigned constexpr DUP = 3;
+unsigned constexpr POP = 3;
+unsigned constexpr PUSH = 3;
+} // namespace EVMCOST
+
 // LLVM IR passes.
 ModulePass *createEVMLowerIntrinsicsPass();
 FunctionPass *createEVMCodegenPreparePass();

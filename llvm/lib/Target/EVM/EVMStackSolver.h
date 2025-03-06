@@ -11,18 +11,19 @@
 #ifndef LLVM_LIB_TARGET_EVM_EVMSTACKSOLVER_H
 #define LLVM_LIB_TARGET_EVM_EVMSTACKSOLVER_H
 
-#include "EVMStackModel.h"
 #include "EVMInstrInfo.h"
+#include "EVMStackModel.h"
 #include "llvm/ADT/DenseMap.h"
 
 namespace llvm {
 
 class MachineLoopInfo;
 
-/// Returns the number of operations required to transform stack \p Source to
-/// \p Target.
-size_t calculateStackTransformCost(Stack Source, const Stack &Target,
-                                   unsigned StackDepthLimit);
+/// Compute the gas cost to transform \p Source into \p Target.
+/// \note The copy of \p Source is intentional because the function modifies
+/// it during computation.
+unsigned calculateStackTransformCost(Stack Source, const Stack &Target,
+                                     unsigned StackDepthLimit);
 
 // TODO
 using BranchInfoTy =

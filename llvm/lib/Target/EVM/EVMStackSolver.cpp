@@ -7,6 +7,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMStackSolver.h"
+
+#include "EVM.h"
 #include "EVMInstrInfo.h"
 #include "EVMRegisterInfo.h"
 #include "EVMStackShuffler.h"
@@ -24,9 +26,7 @@ using namespace llvm;
 
 namespace {
 
-/// Return the number of hops from the beginning of the \p RangeOrContainer
-/// to the \p Item. If no \p Item is found in the \p RangeOrContainer,
-/// std::nullopt is returned.
+/// \return index of \p Item in \p RangeOrContainer or std::nullopt.
 template <typename T, typename V>
 std::optional<size_t> offset(T &&RangeOrContainer, V &&Item) {
   auto It = find(RangeOrContainer, Item);
@@ -35,63 +35,69 @@ std::optional<size_t> offset(T &&RangeOrContainer, V &&Item) {
              : std::optional(std::distance(adl_begin(RangeOrContainer), It));
 }
 
-/// Return a range covering  the last N elements of \p RangeOrContainer.
+/// \return a range covering the last N elements of \p RangeOrContainer.
 template <typename T> auto take_back(T &&RangeOrContainer, size_t N = 1) {
   return make_range(std::prev(adl_end(RangeOrContainer), N),
                     adl_end(RangeOrContainer));
 }
 
-/// Returns true if there are unreachable stack elements when shuffling
-/// \p Source to \p Target.
-bool hasUnreachableStackSlots(const Stack &Source, const Stack &Target,
+/// Return true if unreachable stack elements are detected during the
+/// transformation from \p Source to \p Target. An element is considered
+/// unreachable if the transformation requires a stack manipulation on an
+/// element deeper than \p StackDepthLimit, which EVM does not support.
+/// \note The copy of \p Source is intentional since it is modified during
+/// computation. We retain the original \p Source to reattempt the
+/// transformation using a compressed stack.
+bool hasUnreachableStackSlots(Stack Source, const Stack &Target,
                               unsigned StackDepthLimit) {
-  Stack CurrentStack = Source;
   bool HasError = false;
   calculateStack(
-      CurrentStack, Target, StackDepthLimit,
+      Source, Target, StackDepthLimit,
+      /* SWAP I */
       [&](unsigned I) {
         if (I > StackDepthLimit)
           HasError = true;
       },
+      /* Rematerialize */
       [&](const StackSlot *Slot) {
         if (Slot->isRematerializable())
           return;
 
-        if (std::optional<size_t> Depth = offset(reverse(CurrentStack), Slot);
+        if (std::optional<size_t> Depth = offset(reverse(Source), Slot);
             Depth && *Depth >= StackDepthLimit)
           HasError = true;
       },
+      /* POP */
       [&]() {});
   return HasError;
 }
 
-/// Returns the ideal stack to have before executing a machine instruction that
-/// outputs \p InstDefs s.t. shuffling to \p AfterInst is cheap (excluding the
-/// input of the instruction itself). If \p CompressStack is true,
-/// rematerializable slots will not occur in the ideal stack, but rather be
-/// generated during shuffling.
+/// Given stack \p AfterInst, compute stack before the instruction excluding
+/// instruction input operands.
+/// \par CompressStack: remove duplicates and rematerializable slots.
 Stack calculateStackBeforeInst(const Stack &InstDefs, const Stack &AfterInst,
                                bool CompressStack, unsigned StackDepthLimit) {
-  // Determine the number of slots that have to be on stack before executing the
-  // instruction (excluding the inputs of the instruction itself), i.e. slots
-  // that cannot be rematerialized and that are not the instruction output.
+  // Number of slots on stack before the instruction excluding its inputs.
   size_t BeforeInstSize = count_if(AfterInst, [&](const StackSlot *S) {
     return !is_contained(InstDefs, S) &&
            !(CompressStack && S->isRematerializable());
   });
 
+  // To use StackTransformer, the computed stack must be transformable to the
+  // AfterInst stack. Initialize it as follows:
+  //   UnknownSlot{0}, ..., UnknownSlot{BeforeInstSize - 1}, [def<0>], ...,
+  //   [def<m>]
+  // where UnknownSlot{I} denotes an element to be copied from the AfterInst
+  // stack to the I-th position in the BeforeInst stack.
   SmallVector<UnknownSlot> UnknownSlots;
   for (size_t Index = 0; Index < BeforeInstSize; ++Index)
     UnknownSlots.emplace_back(Index);
 
-  // The symbolic layout directly after the instruction has the form
-  // UnknownSlot{0}, ..., UnknownSlot{n}, [output<0>], ..., [output<m>]
   Stack Tmp;
   for (auto &S : UnknownSlots)
     Tmp.push_back(&S);
   append_range(Tmp, InstDefs);
 
-  // Shortcut for trivial case.
   if (Tmp.empty())
     return Stack{};
 
@@ -133,13 +139,9 @@ Stack calculateStackBeforeInst(const Stack &InstDefs, const Stack &AfterInst,
 
   Shuffler.shuffle();
 
-  // Now we can construct the stack before the instruction.
-  // "Tmp" has shuffled the UnknownSlot{x} to new places using minimal
-  // operations to move the instruction output in place. The resulting
-  // permutation of the UnknownSlot yields the ideal positions of slots before
-  // the instruction, i.e. if UnknownSlot{2} is at a position at which AfterMI
-  // contains RegisterSlot{"tmp"}, then we want the variable "tmp" in the slot
-  // at offset 2 on the stack before the instruction.
+  // After the stack transformation, for each index I, move the AfterInst slot
+  // corresponding to UnknownSlot{I} from Tmp to the I-th position of the
+  // BeforeInst.
   assert(Tmp.size() == AfterInst.size());
   SmallVector<const StackSlot *> BeforeInst(BeforeInstSize, nullptr);
   for (unsigned Idx = 0; Idx < Tmp.size(); ++Idx) {
@@ -162,7 +164,7 @@ BranchInfoTy llvm::getBranchInfo(const MachineBasicBlock *MBB) {
   SmallVector<MachineInstr *, 2> BranchInstrs;
   MachineBasicBlock *TBB = nullptr, *FBB = nullptr;
   auto BT = EVMTII->analyzeBranch(*UnConstMBB, TBB, FBB, Cond,
-                                        /* AllowModify */ false, BranchInstrs);
+                                  /* AllowModify */ false, BranchInstrs);
   if (BT == EVMInstrInfo::BT_Cond && !FBB)
     FBB = UnConstMBB->getFallThrough();
 
@@ -170,41 +172,37 @@ BranchInfoTy llvm::getBranchInfo(const MachineBasicBlock *MBB) {
     TBB = UnConstMBB->getFallThrough();
 
   assert((BT != EVMInstrInfo::BT_Cond && BT != EVMInstrInfo::BT_CondUncond) ||
-         !Cond.empty() && "Condition should be defined for a condition branch.");
+         !Cond.empty() &&
+             "Condition should be defined for a condition branch.");
   return {BT, TBB, FBB, BranchInstrs,
           Cond.empty() ? std::nullopt : std::optional(Cond[0])};
 }
 
-/// Returns the number of operations required to transform stack \p Source to
-/// \p Target.
-size_t llvm::calculateStackTransformCost(Stack Source, Stack const &Target,
-                                         unsigned StackDepthLimit) {
-  size_t OpGas = 0;
-  auto Swap = [&](unsigned SwapDepth) {
+unsigned llvm::calculateStackTransformCost(Stack Source, Stack const &Target,
+                                           unsigned StackDepthLimit) {
+  unsigned Gas = 0;
+  bool HasError = false;
+  auto Swap = [&Gas, &HasError, StackDepthLimit](unsigned SwapDepth) {
     if (SwapDepth > StackDepthLimit)
-      OpGas += 1000;
-    else
-      OpGas += 3; // SWAP* gas price;
+      HasError = true;
+    Gas += EVMCOST::SWAP;
   };
 
-  auto DupOrPush = [&](const StackSlot *Slot) {
+  auto Rematerialize = [&Gas, &HasError, &Source,
+                        StackDepthLimit](const StackSlot *Slot) {
     if (Slot->isRematerializable())
-      OpGas += 3;
+      Gas += EVMCOST::PUSH;
     else {
-      auto Depth = offset(reverse(Source), Slot);
-      if (!Depth)
-        llvm_unreachable("No slot in the stack");
-
-      if (*Depth < StackDepthLimit)
-        OpGas += 3; // DUP* gas price
-      else
-        OpGas += 1000;
+      size_t Depth = offset(reverse(Source), Slot).value();
+      if (Depth >= StackDepthLimit)
+        HasError = true;
+      Gas += EVMCOST::DUP;
     }
   };
-  auto Pop = [&]() { OpGas += 2; };
+  auto Pop = [&Gas]() { Gas += EVMCOST::POP; };
 
-  calculateStack(Source, Target, StackDepthLimit, Swap, DupOrPush, Pop);
-  return OpGas;
+  calculateStack(Source, Target, StackDepthLimit, Swap, Rematerialize, Pop);
+  return HasError ? std::numeric_limits<unsigned int>::max() : Gas;
 }
 
 EVMStackSolver::EVMStackSolver(const MachineFunction &MF,
