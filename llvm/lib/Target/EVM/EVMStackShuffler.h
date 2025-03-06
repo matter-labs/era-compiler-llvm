@@ -67,9 +67,9 @@ private:
   }
   bool isCompatible(const StackSlot *SrcSlot, const StackSlot *TgtSlot) {
     if (!SrcSlot || !TgtSlot)
-       return false;
+      return false;
     if (isa<UnusedSlot>(TgtSlot))
-       return true;
+      return true;
     return IsCompatibleF ? IsCompatibleF(SrcSlot, TgtSlot) : SrcSlot == TgtSlot;
   }
   int getCurrentSignificantUses(size_t Idx) {

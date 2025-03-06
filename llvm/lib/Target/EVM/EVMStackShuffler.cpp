@@ -48,22 +48,24 @@ bool EVMStackShuffler::rematerializeUnreachableSlots() {
 
   // Check whether any deep slot might still be needed later (i.e. we still
   // need to reach it with a DUP or SWAP).
-  for (size_t COffset = 0; COffset < (Current.size() - (StackDepthLimit - 1));
-       ++COffset) {
-    if (isCompatible(COffset, COffset)) {
-      // The slot is in place, but we might need another copy if it.
-      if (getCurrentSignificantUses(COffset) > 0) {
+  for (size_t RIdx = 0, REndIdx = Current.size() - StackDepthLimit - 1;
+       RIdx < REndIdx; ++RIdx) {
+    // The slot is in place, but we might need another copy if it.
+    if (isCompatible(Current[RIdx], Target[RIdx])) {
+      if (getCurrentSignificantUses(RIdx) > 0) {
         // If this slot occurs again later, we skip this occurrence.
-        if (const auto &R = llvm::seq<size_t>(COffset + 1, Current.size());
+        if (const auto &R = llvm::seq<size_t>(RIdx + 1, Current.size());
             any_of(R, [&](size_t Offset) {
-              return Current[COffset] == Current[Offset];
+              return Current[RIdx] == Current[Offset];
             }))
           continue;
 
         // Duplicate unreachable slot.
-        for (size_t TOffset = 0; TOffset < Target.size(); ++TOffset) {
-          if (!isArbitraryTarget(TOffset) && isCompatible(COffset, TOffset)) {
-            rematerialize(Target[TOffset]);
+        for (size_t TgtRIdx = 0; TgtRIdx < Target.size(); ++TgtRIdx) {
+          if (isa<UnusedSlot>(Target[TgtRIdx]))
+            continue;
+          if (isCompatible(Current[RIdx], Target[TgtRIdx])) {
+            rematerialize(Target[TgtRIdx]);
             return true;
           }
         }
@@ -73,16 +75,16 @@ bool EVMStackShuffler::rematerializeUnreachableSlots() {
 
     // This slot needs to be moved.
     // If the current top fixes the slot, swap it down now.
-    if (isCompatible(Current.size() - 1, COffset)) {
-      swap(Current.size() - COffset - 1);
+    if (isCompatible(Current[Current.size() - 1], Target[RIdx])) {
+      swap(Current.size() - RIdx - 1);
       return true;
     }
     // Bring up a slot to fix this now, if possible.
-    if (bringUpTargetSlot(COffset))
+    if (bringUpTargetSlot(RIdx))
       return true;
     // Otherwise swap up the slot that will fix the offending slot.
-    for (size_t Off = COffset + 1; Off < Current.size(); ++Off)
-      if (isCompatible(Off, COffset)) {
+    for (size_t Off = RIdx + 1; Off < Current.size(); ++Off)
+      if (isCompatible(Off, RIdx)) {
         swap(Current.size() - Off - 1);
         return true;
       }
