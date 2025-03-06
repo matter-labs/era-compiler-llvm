@@ -65,6 +65,13 @@ private:
       return IsCompatibleF(Current[CIdx], Target[TIdx]);
     return Current[CIdx] == Target[TIdx];
   }
+  bool isCompatible(const StackSlot *SrcSlot, const StackSlot *TgtSlot) {
+    if (!SrcSlot || !TgtSlot)
+       return false;
+    if (isa<UnusedSlot>(TgtSlot))
+       return true;
+    return IsCompatibleF ? IsCompatibleF(SrcSlot, TgtSlot) : SrcSlot == TgtSlot;
+  }
   int getCurrentSignificantUses(size_t Idx) {
     if (GetCurrentSignificantUsesF)
       return GetCurrentSignificantUsesF(Current[Idx], Current, Target);

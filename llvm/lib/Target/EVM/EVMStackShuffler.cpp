@@ -11,34 +11,38 @@
 
 using namespace llvm;
 
-bool EVMStackShuffler::bringUpTargetSlot(size_t TOffset, bool CannotFail) {
-  std::deque<size_t> ToVisit{TOffset};
+bool EVMStackShuffler::bringUpTargetSlot(size_t StartRIdx, bool CannotFail) {
+  std::deque<size_t> Worklist{StartRIdx};
   DenseSet<size_t> Visited;
 
-  while (!ToVisit.empty()) {
-    size_t Offset = *ToVisit.begin();
-    ToVisit.erase(ToVisit.begin());
-    Visited.insert(Offset);
-    if (getTargetSignificantUses(Offset) > 0) {
-      rematerialize(Target[Offset]);
+  while (!Worklist.empty()) {
+    size_t RIdx = Worklist.front();
+    Worklist.pop_front();
+    Visited.insert(RIdx);
+    if (getTargetSignificantUses(RIdx) > 0) {
+      rematerialize(Target[RIdx]);
       return true;
     }
     // There must be another slot we can dup/push that will lead to the target
-    // slot at ``offset`` to be fixed.
-    for (size_t NextOffset = 0;
-         NextOffset < std::min(Current.size(), Target.size()); ++NextOffset)
-      if (!isCompatible(NextOffset, NextOffset) &&
-          isCompatible(NextOffset, Offset))
-        if (!Visited.count(NextOffset))
-          ToVisit.emplace_back(NextOffset);
+    // slot at RIdx to be fixed.
+    assert(Current.size() <= Target.size());
+    for (size_t NextRIdx = 0; NextRIdx < Current.size(); ++NextRIdx) {
+      if (Visited.count(NextRIdx))
+        continue;
+      if (isCompatible(Current[NextRIdx], Target[NextRIdx]))
+        continue;
+      if (RIdx < Target.size() && isCompatible(Current[NextRIdx], Target[RIdx]))
+        Worklist.push_back(NextRIdx);
+    }
   }
   if (CannotFail)
-    llvm_unreachable("Unexpected shuffler behavior.");
+    report_fatal_error("Unexpected stack state.");
 
   return false;
 }
 
 bool EVMStackShuffler::rematerializeUnreachableSlots() {
+  assert(Current.size() <= Target.size());
   if (Current.size() < (StackDepthLimit - 1))
     return false;
 
