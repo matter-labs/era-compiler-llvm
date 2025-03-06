@@ -220,42 +220,27 @@ void EVMStackSolver::run() {
   });
 }
 
-Stack EVMStackSolver::propagateStackThroughMI(const Stack &AfterMI,
-                                              const MachineInstr &MI,
-                                              bool CompressStack) {
-  // Enable aggressive stack compression for recursive calls.
-  if (MI.getOpcode() == EVM::FCALL)
-    // TODO: compress stack for recursive functions.
-    CompressStack = false;
-
+Stack EVMStackSolver::propagateThroughMI(const Stack &AfterMI,
+                                         const MachineInstr &MI,
+                                         bool CompressStack) {
   const Stack MIDefs = StackModel.getSlotsForInstructionDefs(&MI);
-
-  // Determine the ideal permutation of the slots in AfterMI that are not
-  // MI defs, s.t. shuffling the 'BeforeMI + MIDefs' to AfterMI is cheap.
+  // Stack before MI except for MI inputs.
   Stack BeforeMI = calculateStackBeforeInst(MIDefs, AfterMI, CompressStack,
                                             StackModel.stackDepthLimit());
 
 #ifndef NDEBUG
-  // Make sure the resulting previous slots do not overlap with any assigned
-  // variables.
+  // Ensure MI defs are not present in BeforeMI stack.
   for (auto *StackSlot : BeforeMI)
     if (const auto *RegSlot = dyn_cast<RegisterSlot>(StackSlot))
       assert(!MI.definesRegister(RegSlot->getReg()));
 #endif // NDEBUG
 
-  // Since 'BeforeMI + MIDefs' can be easily shuffled to AfterMI, the desired
-  // stack state before the MI is BeforeMI + MIInput;
   BeforeMI.append(StackModel.getMIInput(MI));
-
-  // Store the exact desired MI entry stack. The stored layout will be recreated
-  // by the code transform before executing the MI. However, this recreation can
-  // produce slots that can be freely generated or are duplicated, i.e. we can
-  // compress the stack afterwards without causing problems for code generation
-  // later.
+  // Store computed stack to StackModel.
   insertInstEntryStack(&MI, BeforeMI);
 
-  // Remove anything from the stack top that can be freely generated or dupped
-  // from deeper on the stack.
+  // If the top stack slots can be rematerialized just before MI, remove it
+  // from propagation to reduce pressure.
   while (!BeforeMI.empty()) {
     if (BeforeMI.back()->isRematerializable()) {
       BeforeMI.pop_back();
@@ -272,25 +257,24 @@ Stack EVMStackSolver::propagateStackThroughMI(const Stack &AfterMI,
   return BeforeMI;
 }
 
-Stack EVMStackSolver::propagateStackThroughMBB(const Stack &ExitStack,
-                                               const MachineBasicBlock *MBB,
-                                               bool CompressStack) {
+Stack EVMStackSolver::propagateThroughMBB(const Stack &ExitStack,
+                                          const MachineBasicBlock *MBB,
+                                          bool CompressStack) {
   Stack CurrentStack = ExitStack;
   for (const auto &MI : StackModel.reverseInstructionsToProcess(MBB)) {
-    Stack BeforeMI = propagateStackThroughMI(CurrentStack, MI, CompressStack);
+    Stack BeforeMI = propagateThroughMI(CurrentStack, MI, CompressStack);
     if (!CompressStack &&
         hasUnreachableStackSlots(BeforeMI, CurrentStack,
                                  StackModel.stackDepthLimit()))
-      // If we had stack errors, run again with stack compression enabled.
-      return propagateStackThroughMBB(ExitStack, MBB,
-                                      /*CompressStack*/ true);
+      return propagateThroughMBB(ExitStack, MBB,
+                                 /*CompressStack*/ true);
     CurrentStack = std::move(BeforeMI);
   }
   return CurrentStack;
 }
 
 void EVMStackSolver::runPropagation() {
-  std::deque<const MachineBasicBlock *> ToVisit{&MF.front()};
+  std::deque<const MachineBasicBlock *> Worklist{&MF.front()};
   DenseSet<const MachineBasicBlock *> Visited;
 
   // Collect all the backedges in the MF.
@@ -313,13 +297,13 @@ void EVMStackSolver::runPropagation() {
     }
   }
 
-  while (!ToVisit.empty()) {
+  while (!Worklist.empty()) {
     // First calculate stack without walking backwards jumps, i.e.
     // assuming the current preliminary entry stack of the backwards jump
     // target as the initial exit stack of the backwards-jumping block.
-    while (!ToVisit.empty()) {
-      const MachineBasicBlock *MBB = *ToVisit.begin();
-      ToVisit.pop_front();
+    while (!Worklist.empty()) {
+      const MachineBasicBlock *MBB = *Worklist.begin();
+      Worklist.pop_front();
       if (Visited.count(MBB))
         continue;
 
@@ -354,7 +338,7 @@ void EVMStackSolver::runPropagation() {
           if (Visited.count(Target))
             ExitStack = StackModel.getMBBEntryStack(Target);
           else
-            ToVisit.push_front(Target);
+            Worklist.push_front(Target);
         }
       } break;
       case EVMInstrInfo::BT_Cond:
@@ -367,10 +351,10 @@ void EVMStackSolver::runPropagation() {
         // TODO: CPR-1847. Investigate how the order in which successors are put
         // into the deque affects the generated code.
         if (!FBBVisited)
-          ToVisit.push_front(FBB);
+          Worklist.push_front(FBB);
 
         if (!TBBVisited)
-          ToVisit.push_front(TBB);
+          Worklist.push_front(TBB);
 
         // If we have visited both successors, start from their entry stacks.
         if (FBBVisited && TBBVisited) {
@@ -389,8 +373,8 @@ void EVMStackSolver::runPropagation() {
       if (ExitStack) {
         Visited.insert(MBB);
         insertMBBExitStack(MBB, *ExitStack);
-        insertMBBEntryStack(MBB, propagateStackThroughMBB(*ExitStack, MBB));
-        append_range(ToVisit, MBB->predecessors());
+        insertMBBEntryStack(MBB, propagateThroughMBB(*ExitStack, MBB));
+        append_range(Worklist, MBB->predecessors());
       }
     }
 
@@ -409,7 +393,7 @@ void EVMStackSolver::runPropagation() {
       // and mark all MBBs to-be-visited again until we reach the header.
 
       assert(Latch);
-      ToVisit.emplace_back(Latch);
+      Worklist.emplace_back(Latch);
 
       // Since we are likely to permute the entry layout of 'Header', we
       // also visit its entries again. This is not required for correctness,
@@ -486,10 +470,6 @@ void EVMStackSolver::runPropagation() {
 }
 
 Stack EVMStackSolver::combineStack(const Stack &Stack1, const Stack &Stack2) {
-  // TODO: it would be nicer to replace this by a constructive algorithm.
-  // Currently it uses a reduced version of the Heap Algorithm to partly
-  // brute-force, which seems to work decently well.
-
   Stack CommonPrefix;
   for (const auto [S1, S2] : zip(Stack1, Stack2)) {
     if (S1 != S2)
@@ -525,7 +505,7 @@ Stack EVMStackSolver::combineStack(const Stack &Stack1, const Stack &Stack2) {
         NumOps += 1000;
     };
 
-    auto DupOrPush = [&](const StackSlot *Slot) {
+    auto Rematerialize = [&](const StackSlot *Slot) {
       if (Slot->isRematerializable())
         return;
 
@@ -536,10 +516,10 @@ Stack EVMStackSolver::combineStack(const Stack &Stack1, const Stack &Stack2) {
         NumOps += 1000;
     };
     calculateStack(TestStack, Stack1Tail, StackModel.stackDepthLimit(), Swap,
-                   DupOrPush, [&]() {});
+                   Rematerialize, [&]() {});
     TestStack = Candidate;
     calculateStack(TestStack, Stack2Tail, StackModel.stackDepthLimit(), Swap,
-                   DupOrPush, [&]() {});
+                   Rematerialize, [&]() {});
     return NumOps;
   };
 

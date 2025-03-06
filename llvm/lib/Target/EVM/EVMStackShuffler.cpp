@@ -26,7 +26,8 @@ bool EVMStackShuffler::bringUpTargetSlot(size_t StartRIdx, bool CannotFail) {
     // There must be another slot we can dup/push that will lead to the target
     // slot at RIdx to be fixed.
     assert(Current.size() <= Target.size());
-    for (size_t NextRIdx = 0; NextRIdx < Current.size(); ++NextRIdx) {
+    for (size_t NextRIdx = 0, Size = Current.size(); NextRIdx < Size;
+         ++NextRIdx) {
       if (Visited.count(NextRIdx))
         continue;
       if (match(Current[NextRIdx], Target[NextRIdx]))

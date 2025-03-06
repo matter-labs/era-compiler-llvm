@@ -6,13 +6,6 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file implements the stack layout generator which for each operation
-// finds complete stack layout that:
-//   - has the slots required for the operation at the stack top.
-//   - will have the operation result in a layout that makes it easy to achieve
-//     the next desired layout.
-// It also finds an entering/exiting stack layout for each block.
-//
 //===----------------------------------------------------------------------===//
 
 #ifndef LLVM_LIB_TARGET_EVM_EVMSTACKSOLVER_H
@@ -48,17 +41,19 @@ public:
   void run();
 
 private:
-  /// Returns the optimal entry stack, s.t. \p MI can be applied to it and the
-  /// result can be transformed to \p ExitStack with minimal stack shuffling.
-  /// Simultaneously stores the entry stack required for executing the MI.
-  Stack propagateStackThroughMI(const Stack &ExitStack, const MachineInstr &MI,
-                                bool CompressStack = false);
+  /// Given \p MI's \p ExitStack, compute the entry stack so that after
+  /// executing the instruction the cost to transform to \p ExitStack is
+  /// minimal.
+  /// Side effect: the computed entry stack is stored in StackModel.
+  /// \par CompressStack: remove duplicates and rematerializable slots.
+  Stack propagateThroughMI(const Stack &ExitStack, const MachineInstr &MI,
+                           bool CompressStack = false);
 
   /// Given \p ExitStack, compute the stack at the entry of \p MBB.
   /// \par CompressStack: remove duplicates and rematerializable slots.
-  Stack propagateStackThroughMBB(const Stack &ExitStack,
-                                 const MachineBasicBlock *MBB,
-                                 bool CompressStack = false);
+  Stack propagateThroughMBB(const Stack &ExitStack,
+                            const MachineBasicBlock *MBB,
+                            bool CompressStack = false);
 
   /// Main algorithm walking the graph from entry to exit and propagating back
   /// the stack layouts to the entries. Iteratively reruns itself along

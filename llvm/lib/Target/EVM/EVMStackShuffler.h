@@ -6,8 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file declares algorithms to find optimal (cheapest) transition between
-// two stack layouts using three shuffling primitives: `swap`, `dup`, and `pop`.
+// Attempts to find the cheapest transition between two stacks.
 //
 //===----------------------------------------------------------------------===//
 
@@ -19,6 +18,7 @@
 
 namespace llvm {
 
+/// Attempts to find the cheapest transition between two stacks.
 class EVMStackShuffler {
   Stack &Current;
   const Stack &Target;
@@ -55,7 +55,13 @@ public:
   void setRematerialize(RematerializeFTy F) { RematerializeF = std::move(F); }
 
 private:
+  /// Checks if \p SrcSlot can share the same position in a stack with
+  /// \p TgtSlot.
+  /// \return true if the slots are equal or if \p TgtSlot is
+  /// unused allowing any slot to be placed at that position.
   bool match(const StackSlot *SrcSlot, const StackSlot *TgtSlot) {
+    // nullptr is used to pad the smaller stack so it matches the larger one.
+    // A missing slot does not match any slot.
     if (!SrcSlot || !TgtSlot)
       return false;
     if (isa<UnusedSlot>(TgtSlot))
@@ -113,23 +119,21 @@ private:
   }
 
 public:
-  /// Executes the stack shuffling operations. Instantiates an instance of
-  /// ShuffleOperations in each iteration. Each iteration performs exactly one
-  /// operation that modifies the stack. After `shuffle`, source and target have
-  /// the same size and all slots in the source layout are compatible with the
-  /// slots at the same target offset.
+  /// After `shuffle`, the source and target stacks are of equal size and
+  /// corresponding slots match.
+  /// TODO: assert
   void shuffle() {
     // The shuffling algorithm should always terminate in polynomial time, but
     // we provide a limit in case it does not terminate due to a bug.
     for (unsigned I = 0; I < 1000; ++I)
       if (!step())
         return;
-    llvm_unreachable("Could not create stack after 1000 iterations.");
+    report_fatal_error("Could not create stack after 1000 iterations.");
   }
 
 private:
-  /// Performs a single stack operation, transforming the source layout closer
-  /// to the target layout.
+  /// Perform one stack manipulation (push, pop, dup, swap).
+  /// \return false if shuffling is done.
   bool step();
 
   /// Finds a slot to dup or push with the aim of eventually fixing \p
@@ -148,19 +152,12 @@ private:
 
   // If dupping an ideal slot causes a slot that will still be required to
   // become unreachable, then dup the latter slot first.
-  // Returns true, if it performed a dup.
+  // \return true, if it performed a dup.
   bool rematerializeUnreachableSlot();
 };
 
 /// Transforms \p CurrentStack to \p TargetStack. Modifies `CurrentStack` itself
-/// after each shuffleStep().
-/// \p Swap is a function with signature void(unsigned) that is called when the
-/// top most slot is swapped with the slot `depth` slots below the top. In terms
-/// of EVM opcodes this is supposed to be a `SWAP<depth>`.
-/// \p Rematerialize is a function with signature void(const StackSlot *) that
-/// is called to push or dup the slot given as its argument to the stack top.
-/// \p Pop is a function with signature void() that is called when the top most
-/// slot is popped.
+/// after each step().
 void calculateStack(Stack &CurrentStack, Stack const &TargetStack,
                     unsigned StackDepthLimit,
                     const std::function<void(unsigned)> &Swap,
