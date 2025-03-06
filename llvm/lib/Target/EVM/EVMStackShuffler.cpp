@@ -48,8 +48,8 @@ bool EVMStackShuffler::rematerializeUnreachableSlots() {
 
   // Check whether any deep slot might still be needed later (i.e. we still
   // need to reach it with a DUP or SWAP).
-  for (size_t RIdx = 0, REndIdx = Current.size() - StackDepthLimit - 1;
-       RIdx < REndIdx; ++RIdx) {
+  for (size_t RIdx = 0; RIdx < (Current.size() - (StackDepthLimit - 1));
+       ++RIdx) {
     // The slot is in place, but we might need another copy if it.
     if (isCompatible(Current[RIdx], Target[RIdx])) {
       if (getCurrentSignificantUses(RIdx) > 0) {
@@ -62,9 +62,8 @@ bool EVMStackShuffler::rematerializeUnreachableSlots() {
 
         // Duplicate unreachable slot.
         for (size_t TgtRIdx = 0; TgtRIdx < Target.size(); ++TgtRIdx) {
-          if (isa<UnusedSlot>(Target[TgtRIdx]))
-            continue;
-          if (isCompatible(Current[RIdx], Target[TgtRIdx])) {
+          if (!isa<UnusedSlot>(Target[TgtRIdx]) &&
+              isCompatible(Current[RIdx], Target[TgtRIdx])) {
             rematerialize(Target[TgtRIdx]);
             return true;
           }
