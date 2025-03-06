@@ -41,32 +41,34 @@ bool EVMStackShuffler::bringUpTargetSlot(size_t StartRIdx, bool CannotFail) {
   return false;
 }
 
-bool EVMStackShuffler::rematerializeUnreachableSlots() {
-  assert(Current.size() <= Target.size());
-  if (Current.size() < (StackDepthLimit - 1))
+bool EVMStackShuffler::rematerializeUnreachableSlot() {
+  size_t Limit = StackDepthLimit - 1;
+  size_t Size = Current.size();
+  if (Size < Limit)
     return false;
 
+  assert(Size <= Target.size());
   // Check whether any deep slot might still be needed later (i.e. we still
   // need to reach it with a DUP or SWAP).
-  for (size_t RIdx = 0, REndIdx = Current.size() - StackDepthLimit - 1;
-       RIdx < REndIdx; ++RIdx) {
+  for (size_t RIdx = 0, REndIdx = Size - Limit; RIdx < REndIdx; ++RIdx) {
     // The slot is in place, but we might need another copy if it.
-    if (match(Current[RIdx], Target[RIdx]) &&
-        getCurrentNumOccurrences(Current[RIdx]) > 0) {
-      // If this slot occurs again later, we skip this occurrence.
-      auto It =
-          std::find_if(Current.begin() + RIdx + 1, Current.end(),
-                       [&](const StackSlot *S) { return Current[RIdx] == S; });
-      if (It != Current.end())
-        continue;
-
-      // Duplicate unreachable slot.
-      for (size_t TgtRIdx = 0; TgtRIdx < Target.size(); ++TgtRIdx) {
-        if (isa<UnusedSlot>(Target[TgtRIdx]))
+    if (match(Current[RIdx], Target[RIdx])) {
+      if (getCurrentNumOccurrences(Current[RIdx]) > 0) {
+        // If this slot occurs again later, we skip this occurrence.
+        auto It = std::find_if(
+            Current.begin() + RIdx + 1, Current.end(),
+            [&](const StackSlot *S) { return Current[RIdx] == S; });
+        if (It != Current.end())
           continue;
-        if (match(Current[RIdx], Target[TgtRIdx])) {
-          rematerialize(Target[TgtRIdx]);
-          return true;
+
+        // Duplicate unreachable slot.
+        for (size_t TgtRIdx = 0; TgtRIdx < Target.size(); ++TgtRIdx) {
+          if (isa<UnusedSlot>(Target[TgtRIdx]))
+            continue;
+          if (match(Current[RIdx], Target[TgtRIdx])) {
+            rematerialize(Target[TgtRIdx]);
+            return true;
+          }
         }
       }
       continue;
@@ -74,15 +76,15 @@ bool EVMStackShuffler::rematerializeUnreachableSlots() {
 
     // This slot needs to be moved.
     // If the current top fixes the slot, swap it down now.
-    if (match(Current[Current.size() - 1], Target[RIdx])) {
-      swap(Current.size() - RIdx - 1);
+    if (match(Current[Size - 1], Target[RIdx])) {
+      swap(Size - RIdx - 1);
       return true;
     }
     // Bring up a slot to fix this now, if possible.
     if (bringUpTargetSlot(RIdx))
       return true;
     // Otherwise swap up the slot that will fix the offending slot.
-    if (swapIfCurrent(RIdx + 1, Current.size(), [&](const StackSlot *S) {
+    if (swapIfCurrent(RIdx + 1, Size, [&](const StackSlot *S) {
           return match(S, Target[RIdx]);
         }))
       return true;
@@ -101,7 +103,7 @@ bool EVMStackShuffler::step() {
              })) {
     // Bring up all remaining target slots, if any, or terminate otherwise.
     if (Current.size() < Target.size()) {
-      if (!rematerializeUnreachableSlots())
+      if (!rematerializeUnreachableSlot())
         bringUpTargetSlot(Current.size(), /* can't fail */ true);
       return true;
     }
@@ -175,7 +177,7 @@ bool EVMStackShuffler::step() {
     // There are too many copies of the slot and there is a target slot at this
     // position.
     if (getCurrentNumOccurrences(Current[RIdx]) < 0) {
-      if (!rematerializeUnreachableSlots())
+      if (!rematerializeUnreachableSlot())
         bringUpTargetSlot(RIdx, /* can't fail */ true);
       return true;
     }
@@ -195,7 +197,7 @@ bool EVMStackShuffler::step() {
 
   // If we still need more slots, produce a suitable one.
   if (Current.size() < Target.size()) {
-    if (!rematerializeUnreachableSlots())
+    if (!rematerializeUnreachableSlot())
       bringUpTargetSlot(Current.size(), /* can't fail */ true);
     return true;
   }

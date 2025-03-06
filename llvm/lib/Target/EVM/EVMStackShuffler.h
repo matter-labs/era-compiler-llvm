@@ -149,7 +149,7 @@ private:
   // If dupping an ideal slot causes a slot that will still be required to
   // become unreachable, then dup the latter slot first.
   // Returns true, if it performed a dup.
-  bool rematerializeUnreachableSlots();
+  bool rematerializeUnreachableSlot();
 };
 
 /// Transforms \p CurrentStack to \p TargetStack. Modifies `CurrentStack` itself
