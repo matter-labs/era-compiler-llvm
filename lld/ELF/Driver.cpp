@@ -2004,6 +2004,14 @@ static void readConfigs(Ctx &ctx, opt::InputArgList &args) {
     } else {
       ErrAlways(ctx) << "cannot find version script " << arg->getValue();
     }
+
+  // EVM local begin
+  if (args.hasArg(OPT_evm_assembly)) {
+    ctx.arg.evmAssembly = true;
+    ctx.arg.unresolvedSymbols = UnresolvedPolicy::Ignore;
+    ctx.arg.emitRelocs = true;
+  }
+  // EVM local end
 }
 
 // Some Config members do not directly correspond to any particular

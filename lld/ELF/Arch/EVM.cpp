@@ -53,6 +53,8 @@ RelExpr EVM::getRelExpr(RelType type, const Symbol &s,
   switch (type) {
   case R_EVM_DATA:
     return R_ABS;
+  case R_EVM_NONE:
+    return R_NONE;
   default:
     Err(ctx) << getErrorLoc(ctx, loc) << "unknown relocation (" << type.v
              << ") against symbol " << &s;

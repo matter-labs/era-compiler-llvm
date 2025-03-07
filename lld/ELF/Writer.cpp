@@ -2868,6 +2868,10 @@ static uint16_t getELFType(Ctx &ctx) {
     return ET_DYN;
   if (ctx.arg.relocatable)
     return ET_REL;
+  // EVM local begin
+  if (ctx.arg.evmAssembly)
+    return ET_REL;
+  // EVM local end
   return ET_EXEC;
 }
 
