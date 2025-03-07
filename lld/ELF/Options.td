@@ -396,6 +396,8 @@ defm rpath: Eq<"rpath", "Add a DT_RUNPATH to the output">;
 
 def relocatable: F<"relocatable">, HelpText<"Create relocatable object file">;
 
+def evm_assembly: F<"evm-assembly">, HelpText<"Create evm assembly object file">;
+
 defm retain_symbols_file:
   Eq<"retain-symbols-file", "Retain only the symbols listed in the file">,
   MetaVarName<"<file>">;

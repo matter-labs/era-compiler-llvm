@@ -1697,6 +1697,14 @@ static void readConfigs(opt::InputArgList &args) {
     } else {
       error(Twine("cannot find version script ") + arg->getValue());
     }
+
+  // EVM local begin
+  if (args.hasArg(OPT_evm_assembly)) {
+    config->evmAssembly = true;
+    config->unresolvedSymbols = UnresolvedPolicy::Ignore;
+    config->emitRelocs = true;
+  }
+  // EVM local end
 }
 
 // Some Config members do not directly correspond to any particular
