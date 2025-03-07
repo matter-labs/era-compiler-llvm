@@ -2706,6 +2706,10 @@ static uint16_t getELFType() {
     return ET_DYN;
   if (config->relocatable)
     return ET_REL;
+  // EVM local begin
+  if (config->evmAssembly)
+    return ET_REL;
+  // EVM local end
   return ET_EXEC;
 }
 

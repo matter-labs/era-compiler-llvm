@@ -446,6 +446,45 @@ void InputSection::copyRelocations(uint8_t *buf,
     auto *p = reinterpret_cast<typename ELFT::Rela *>(buf);
     buf += sizeof(RelTy);
 
+    // EVM local begin
+    // The --evm-assembly mode implies the --emit-relocs option, which
+    // instructs the linker to emit both applied relocations
+    // (for defined symbols) and unresolved relocations
+    // (for undefined symbols). We do not need to retain the applied
+    // relocations, as their symbols will be removed from the output file.
+    // To remove them from the '.rela' section, we would need to create a
+    // new synthetic section, copy only the necessary relocations there,
+    // and map that section to the output file. However, a simpler approach
+    // seems to be to use the original relocation sections and change the type
+    // of unnecessary relocations to 'NONE'. Please note that we cannot simply
+    // omit them from the output file, as by the time 'copyRelocations' is
+    // called, the ELF header (which describes section sizes) has already been
+    // emitted. Therefore, we cannot alter the number of relocations in the
+    // output
+    // '.rela' section.
+    // For example, the resulting '.rela' sections might look like:
+    //
+    //   Relocation section '.rela.text' at offset 0x1038 contains 9 entries:
+    //
+    //   Offset     Info    Type        Sym. Value  Symbol's Name + Addend
+    //   00000000  00000000 R_EVM_NONE                        0
+    //   00000000  00000000 R_EVM_NONE                        0
+    //   00000000  00000000 R_EVM_NONE                        0
+    //   00000000  00000000 R_EVM_NONE                        0
+    //   0000001f  00000601 R_EVM_DATA  00000000   __linker_symbol__0 + 0
+    //   00000023  00000701 R_EVM_DATA  00000000   __linker_symbol__1 + 0
+    //   00000027  00000801 R_EVM_DATA  00000000   __linker_symbol__2 + 0
+    //   0000002b  00000901 R_EVM_DATA  00000000   __linker_symbol__3 + 0
+    //   0000002f  00000a01 R_EVM_DATA  00000000   __linker_symbol__4 + 0
+    //
+    if (config->evmAssembly && sym.isDefined()) {
+      p->r_offset = 0;
+      p->r_addend = 0;
+      p->setSymbolAndType(0, 0, false);
+      continue;
+    }
+    // EVM local end
+
     if (RelTy::HasAddend)
       p->r_addend = rel.addend;
 
