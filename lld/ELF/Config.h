@@ -293,6 +293,9 @@ struct Config {
   bool relaxGP;
   bool relocatable;
   bool resolveGroups;
+  // EVM local begin
+  bool evmAssembly;
+  // EVM local end
   bool relrGlibc = false;
   bool relrPackDynRelocs = false;
   llvm::DenseSet<llvm::StringRef> saveTempsArgs;
