@@ -366,6 +366,18 @@ void InputSection::copyRelocations(uint8_t *buf, ArrayRef<RelTy> rels) {
     auto *p = reinterpret_cast<typename ELFT::Rela *>(buf);
     buf += sizeof(RelTy);
 
+    // EVM local begin
+    // We need to remove all the relocation that were applied,
+    // but as the file layout is already finalized the only we can
+    // do is to change type of the relocation to 'NONE'.
+    if (config->evmAssembly && sym.isDefined()) {
+      p->r_offset = 0;
+      p->r_addend = 0;
+      p->setSymbolAndType(0, 0, false);
+      continue;
+    }
+    // EVM local end
+
     if (RelTy::IsRela)
       p->r_addend = getAddend<ELFT>(rel);
 
