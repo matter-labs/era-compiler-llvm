@@ -336,16 +336,20 @@ void EVMStackifyCodeEmitter::emitMIEntryStack(const MachineInstr &MI) {
   if (MI.isCommutable()) {
     assert(TargetStack.size() > 1);
 
-    size_t DefaultCost = calculateStackTransformCost(
-        CurrentStack, TargetStack, StackModel.stackDepthLimit());
+    size_t DefaultCost =
+        calculateStackTransformCost(CurrentStack, TargetStack,
+                                    StackModel.stackDepthLimit())
+            .value_or(std::numeric_limits<unsigned>::max());
 
     // Swap the commutable stack items and measure the stack shuffling cost.
     // Commutable operands always take top two stack slots.
     Stack CommutedTargetStack = TargetStack;
     std::swap(CommutedTargetStack[CommutedTargetStack.size() - 1],
               CommutedTargetStack[CommutedTargetStack.size() - 2]);
-    size_t CommutedCost = calculateStackTransformCost(
-        CurrentStack, CommutedTargetStack, StackModel.stackDepthLimit());
+    size_t CommutedCost =
+        calculateStackTransformCost(CurrentStack, CommutedTargetStack,
+                                    StackModel.stackDepthLimit())
+            .value_or(std::numeric_limits<unsigned>::max());
 
     // Choose the cheapest transformation.
     SwapCommutable = CommutedCost < DefaultCost;

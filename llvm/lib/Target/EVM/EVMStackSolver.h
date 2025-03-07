@@ -22,8 +22,9 @@ class MachineLoopInfo;
 /// Compute the gas cost to transform \p Source into \p Target.
 /// \note The copy of \p Source is intentional because the function modifies
 /// it during computation.
-unsigned calculateStackTransformCost(Stack Source, const Stack &Target,
-                                     unsigned StackDepthLimit);
+std::optional<unsigned> calculateStackTransformCost(Stack Source,
+                                                    const Stack &Target,
+                                                    unsigned StackDepthLimit);
 
 // TODO
 using BranchInfoTy =

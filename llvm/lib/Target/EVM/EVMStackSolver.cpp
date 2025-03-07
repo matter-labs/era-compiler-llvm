@@ -41,35 +41,11 @@ template <typename T> auto take_back(T &&RangeOrContainer, size_t N = 1) {
                     adl_end(RangeOrContainer));
 }
 
-/// Return true if unreachable stack elements are detected during the
-/// transformation from \p Source to \p Target. An element is considered
-/// unreachable if the transformation requires a stack manipulation on an
-/// element deeper than \p StackDepthLimit, which EVM does not support.
-/// \note The copy of \p Source is intentional since it is modified during
-/// computation. We retain the original \p Source to reattempt the
-/// transformation using a compressed stack.
-bool hasUnreachableStackSlots(Stack Source, const Stack &Target,
-                              unsigned StackDepthLimit) {
-  bool HasError = false;
-  calculateStack(
-      Source, Target, StackDepthLimit,
-      /* SWAP I */
-      [&](unsigned I) {
-        if (I > StackDepthLimit)
-          HasError = true;
-      },
-      /* Rematerialize */
-      [&](const StackSlot *Slot) {
-        if (Slot->isRematerializable())
-          return;
-
-        if (std::optional<size_t> Depth = offset(reverse(Source), Slot);
-            Depth && *Depth >= StackDepthLimit)
-          HasError = true;
-      },
-      /* POP */
-      [&]() {});
-  return HasError;
+template <typename T>
+std::optional<T> add(std::optional<T> a, std::optional<T> b) {
+  if (a && b)
+    return *a + *b;
+  return std::nullopt;
 }
 
 /// Given stack \p AfterInst, compute stack before the instruction excluding
@@ -179,8 +155,18 @@ BranchInfoTy llvm::getBranchInfo(const MachineBasicBlock *MBB) {
           Cond.empty() ? std::nullopt : std::optional(Cond[0])};
 }
 
-unsigned llvm::calculateStackTransformCost(Stack Source, Stack const &Target,
-                                           unsigned StackDepthLimit) {
+/// Return cost of transformation in gas from \p Source to \p Target or
+/// nullopt if unreachable stack elements are detected during the
+/// transformation.
+/// An element is considered unreachable if the transformation requires a stack
+/// manipulation on an element deeper than \p StackDepthLimit, which EVM does
+/// not support.
+/// \note The copy of \p Source is intentional since it is modified during
+/// computation. We retain the original \p Source to reattempt the
+/// transformation using a compressed stack.
+std::optional<unsigned>
+llvm::calculateStackTransformCost(Stack Source, const Stack &Target,
+                                  unsigned StackDepthLimit) {
   unsigned Gas = 0;
   bool HasError = false;
   auto Swap = [&Gas, &HasError, StackDepthLimit](unsigned SwapDepth) {
@@ -194,8 +180,8 @@ unsigned llvm::calculateStackTransformCost(Stack Source, Stack const &Target,
     if (Slot->isRematerializable())
       Gas += EVMCOST::PUSH;
     else {
-      size_t Depth = offset(reverse(Source), Slot).value();
-      if (Depth >= StackDepthLimit)
+      std::optional<size_t> Depth = offset(reverse(Source), Slot);
+      if (Depth && *Depth >= StackDepthLimit)
         HasError = true;
       Gas += EVMCOST::DUP;
     }
@@ -203,7 +189,7 @@ unsigned llvm::calculateStackTransformCost(Stack Source, Stack const &Target,
   auto Pop = [&Gas]() { Gas += EVMCOST::POP; };
 
   calculateStack(Source, Target, StackDepthLimit, Swap, Rematerialize, Pop);
-  return HasError ? std::numeric_limits<unsigned int>::max() : Gas;
+  return HasError ? std::nullopt : std::optional(Gas);
 }
 
 EVMStackSolver::EVMStackSolver(const MachineFunction &MF,
@@ -263,8 +249,8 @@ Stack EVMStackSolver::propagateThroughMBB(const Stack &ExitStack,
   for (const auto &MI : StackModel.reverseInstructionsToProcess(MBB)) {
     Stack BeforeMI = propagateThroughMI(CurrentStack, MI, CompressStack);
     if (!CompressStack &&
-        hasUnreachableStackSlots(BeforeMI, CurrentStack,
-                                 StackModel.stackDepthLimit()))
+        !calculateStackTransformCost(BeforeMI, CurrentStack,
+                                     StackModel.stackDepthLimit()))
       return propagateThroughMBB(ExitStack, MBB,
                                  /*CompressStack*/ true);
     CurrentStack = std::move(BeforeMI);
@@ -469,16 +455,15 @@ void EVMStackSolver::runPropagation() {
 }
 
 Stack EVMStackSolver::combineStack(const Stack &Stack1, const Stack &Stack2) {
+  auto [it1, it2] =
+      std::mismatch(Stack1.begin(), Stack1.end(), Stack2.begin(), Stack2.end());
+
   Stack CommonPrefix;
-  for (const auto [S1, S2] : zip(Stack1, Stack2)) {
-    if (S1 != S2)
-      break;
-    CommonPrefix.push_back(S1);
-  }
+  CommonPrefix.append(Stack1.begin(), it1);
 
   Stack Stack1Tail, Stack2Tail;
-  Stack1Tail.append(Stack1.begin() + CommonPrefix.size(), Stack1.end());
-  Stack2Tail.append(Stack2.begin() + CommonPrefix.size(), Stack2.end());
+  Stack1Tail.append(it1, Stack1.end());
+  Stack2Tail.append(it2, Stack2.end());
 
   if (Stack1Tail.empty()) {
     CommonPrefix.append(compressStack(Stack2Tail));
@@ -495,37 +480,25 @@ Stack EVMStackSolver::combineStack(const Stack &Stack1, const Stack &Stack2) {
     if (!is_contained(Candidate, Slot) && !Slot->isRematerializable())
       Candidate.push_back(Slot);
 
-  auto evaluate = [&](const Stack &Candidate) -> size_t {
-    size_t NumOps = 0;
-    Stack TestStack = Candidate;
-    auto Swap = [&](unsigned SwapDepth) {
-      ++NumOps;
-      if (SwapDepth > StackModel.stackDepthLimit())
-        NumOps += 1000;
-    };
-
-    auto Rematerialize = [&](const StackSlot *Slot) {
-      if (Slot->isRematerializable())
-        return;
-
-      Stack Tmp = CommonPrefix;
-      Tmp.append(TestStack);
-      auto Depth = offset(reverse(Tmp), Slot);
-      if (Depth && *Depth >= StackModel.stackDepthLimit())
-        NumOps += 1000;
-    };
-    calculateStack(TestStack, Stack1Tail, StackModel.stackDepthLimit(), Swap,
-                   Rematerialize, [&]() {});
-    TestStack = Candidate;
-    calculateStack(TestStack, Stack2Tail, StackModel.stackDepthLimit(), Swap,
-                   Rematerialize, [&]() {});
-    return NumOps;
+  auto evaluate = [&CommonPrefix, &Stack1, &Stack2,
+                   this](const Stack &Candidate) {
+    Stack Test = CommonPrefix;
+    Test.append(Candidate);
+    return add(calculateStackTransformCost(Test, Stack1,
+                                           StackModel.stackDepthLimit()),
+               calculateStackTransformCost(Test, Stack2,
+                                           StackModel.stackDepthLimit()))
+        .value_or(std::numeric_limits<unsigned>::max());
   };
 
   // See https://en.wikipedia.org/wiki/Heap's_algorithm.
+  // This is a modified implementation that does not restart I at 1
+  // for each swap.
   size_t N = Candidate.size();
   Stack BestCandidate = Candidate;
   size_t BestCost = evaluate(Candidate);
+
+  // Initialize counters for Heap's algorithm.
   SmallVector<size_t> C(N, 0);
   size_t I = 1;
   while (I < N) {
@@ -541,10 +514,8 @@ Stack EVMStackSolver::combineStack(const Stack &Stack1, const Stack &Stack2) {
         BestCandidate = Candidate;
       }
       ++C[I];
-      // Note that for a proper implementation of the Heap algorithm this would
-      // need to revert back to 'I = 1'. However, the incorrect implementation
-      // produces decent result and the proper version would have N! complexity
-      // and is thereby not feasible.
+      // Note: A proper implementation would reset I to 1 here,
+      // but doing so would generate all N! permutations,
       ++I;
     } else {
       C[I] = 0;
