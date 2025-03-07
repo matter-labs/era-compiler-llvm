@@ -557,32 +557,25 @@ Stack EVMStackSolver::combineStack(const Stack &Stack1, const Stack &Stack2) {
 }
 
 Stack EVMStackSolver::compressStack(Stack CurStack) {
-  std::optional<size_t> FirstDupOffset;
-  do {
-    if (FirstDupOffset) {
-      if (*FirstDupOffset != (CurStack.size() - 1))
-        std::swap(CurStack[*FirstDupOffset], CurStack.back());
+  auto ShouldRemove =
+      [&CurStack, this](SmallVector<const StackSlot *>::reverse_iterator I) {
+        size_t RIdx = std::distance(CurStack.rbegin(), I);
+        if ((*I)->isRematerializable())
+          return true;
+        if (auto DistanceToCopy =
+                offset(make_range(std::next(I), CurStack.rend()), *I))
+          return (RIdx + *DistanceToCopy <= StackModel.stackDepthLimit());
+        return false;
+      };
+  for (auto I = CurStack.rbegin(); I != CurStack.rend();) {
+    if (ShouldRemove(I)) {
+      std::swap(*I, CurStack.back());
+      ++I; /* In case I == rbegin(), pop_back() will invalidate it */
       CurStack.pop_back();
-      FirstDupOffset.reset();
+      continue;
     }
-
-    auto I = CurStack.rbegin(), E = CurStack.rend();
-    for (size_t Depth = 0; I < E; ++I, ++Depth) {
-      const StackSlot *Slot = *I;
-      if (Slot->isRematerializable()) {
-        FirstDupOffset = CurStack.size() - Depth - 1;
-        break;
-      }
-
-      if (auto DupDepth =
-              offset(drop_begin(reverse(CurStack), Depth + 1), Slot)) {
-        if (Depth + *DupDepth <= StackModel.stackDepthLimit()) {
-          FirstDupOffset = CurStack.size() - Depth - 1;
-          break;
-        }
-      }
-    }
-  } while (FirstDupOffset);
+    ++I;
+  }
   return CurStack;
 }
 
