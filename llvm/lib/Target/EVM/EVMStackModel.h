@@ -208,7 +208,9 @@ public:
   }
 };
 
-bool isConstCopyOrLinkerMI(const MachineInstr &MI);
+bool isPushOrDupLikeMI(const MachineInstr &MI);
+bool isLinkerPseudoMI(const MachineInstr &MI);
+bool isNoReturnCallMI(const MachineInstr &MI);
 
 class EVMStackModel {
   MachineFunction &MF;

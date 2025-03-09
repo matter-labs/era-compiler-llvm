@@ -20,27 +20,16 @@ using namespace llvm;
 
 #define DEBUG_TYPE "evm-stackify-code-emitter"
 
-// Return whether the function of the call instruction will return.
-static bool callWillReturn(const MachineInstr *Call) {
-  assert(Call->getOpcode() == EVM::FCALL && "Unexpected call instruction");
-  const MachineOperand *FuncOp = Call->explicit_uses().begin();
-  assert(FuncOp->isGlobal() && "Expected a global value");
-  const auto *Func = cast<Function>(FuncOp->getGlobal());
-  return !Func->hasFnAttribute(Attribute::NoReturn);
-}
-
 // Return the number of input arguments of the call instruction.
-static size_t getCallArgCount(const MachineInstr *Call) {
+static size_t getCallNumArgs(const MachineInstr *Call) {
   assert(Call->getOpcode() == EVM::FCALL && "Unexpected call instruction");
   assert(Call->explicit_uses().begin()->isGlobal() &&
          "First operand must be a function");
-  size_t NumExplicitInputs =
-      Call->getNumExplicitOperands() - Call->getNumExplicitDefs();
-
-  // The first operand is a function, so don't count it. If function
-  // will return, we need to account for the return label.
-  constexpr size_t NumFuncOp = 1;
-  return NumExplicitInputs - NumFuncOp + callWillReturn(Call);
+  size_t NumArgs = Call->getNumExplicitOperands() - Call->getNumExplicitDefs();
+  // The first operand is a function, so don't count it.
+  NumArgs = NumArgs - 1;
+  // If function will return, we need to account for the return label.
+  return isNoReturnCallMI(*Call) ? NumArgs : NumArgs + 1;
 }
 
 static std::string getUnreachableStackSlotError(const MachineFunction &MF,
@@ -123,14 +112,11 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitConstant(uint64_t Val) {
 
 void EVMStackifyCodeEmitter::CodeEmitter::emitSymbol(const MachineInstr *MI,
                                                      MCSymbol *Symbol) {
-  unsigned Opc = MI->getOpcode();
-  assert(Opc == EVM::DATASIZE || Opc == EVM::DATAOFFSET ||
-         Opc == EVM::LINKERSYMBOL ||
-         Opc == EVM::LOADIMMUTABLE && "Unexpected symbol instruction");
+  assert(isLinkerPseudoMI(*MI) && "Unexpected symbol instruction");
   StackHeight += 1;
   // This is codegen-only instruction, that will be converted into PUSH4.
   auto NewMI = BuildMI(*CurMBB, CurMBB->end(), MI->getDebugLoc(),
-                       TII->get(EVM::getStackOpcode(Opc)))
+                       TII->get(EVM::getStackOpcode(MI->getOpcode())))
                    .addSym(Symbol);
   verify(NewMI);
 }
@@ -152,7 +138,7 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitFuncCall(const MachineInstr *MI) {
   assert(MI->getOpcode() == EVM::FCALL && "Unexpected call instruction");
   assert(CurMBB == MI->getParent());
 
-  size_t NumInputs = getCallArgCount(MI);
+  size_t NumInputs = getCallNumArgs(MI);
   assert(StackHeight >= NumInputs && "Not enough operands on the stack");
   StackHeight -= NumInputs;
 
@@ -168,7 +154,7 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitFuncCall(const MachineInstr *MI) {
 
   // If this function returns, add a return label so we can emit it together
   // with JUMPDEST. This is taken care in the AsmPrinter.
-  if (callWillReturn(MI))
+  if (!isNoReturnCallMI(*MI))
     NewMI.addSym(CallReturnSyms.at(MI));
   verify(NewMI);
 }
@@ -233,82 +219,77 @@ void EVMStackifyCodeEmitter::adjustStackForInst(const MachineInstr *MI,
   assert(Emitter.stackHeight() == CurrentStack.size());
 }
 
-void EVMStackifyCodeEmitter::emitMI(const MachineInstr *MI) {
-  if (MI->getOpcode() == EVM::FCALL) {
-    size_t NumArgs = getCallArgCount(MI);
-    // Validate stack.
-    assert(Emitter.stackHeight() == CurrentStack.size());
+void EVMStackifyCodeEmitter::emitMI(const MachineInstr &MI) {
+  assert(Emitter.stackHeight() == CurrentStack.size());
+
+  if (MI.getOpcode() == EVM::FCALL) {
+    size_t NumArgs = getCallNumArgs(&MI);
     assert(CurrentStack.size() >= NumArgs);
 
     // Assert that we got the correct return label on stack.
-    if (callWillReturn(MI)) {
+    if (!isNoReturnCallMI(MI)) {
       [[maybe_unused]] const auto *ReturnLabelSlot = dyn_cast<CallerReturnSlot>(
           CurrentStack[CurrentStack.size() - NumArgs]);
-      assert(ReturnLabelSlot && ReturnLabelSlot->getCall() == MI);
+      assert(ReturnLabelSlot && ReturnLabelSlot->getCall() == &MI);
     }
-    // Emit call.
-    Emitter.emitFuncCall(MI);
-    adjustStackForInst(MI, NumArgs);
-  } else if (!isConstCopyOrLinkerMI(*MI)) {
-    size_t NumArgs = MI->getNumExplicitOperands() - MI->getNumExplicitDefs();
-    // Validate stack.
-    assert(Emitter.stackHeight() == CurrentStack.size());
+    Emitter.emitFuncCall(&MI);
+    adjustStackForInst(&MI, NumArgs);
+  } else if (!isPushOrDupLikeMI(MI)) {
+    size_t NumArgs = MI.getNumExplicitOperands() - MI.getNumExplicitDefs();
     assert(CurrentStack.size() >= NumArgs);
     // TODO: assert that we got a correct stack for the call.
 
-    // Emit instruction.
-    Emitter.emitInst(MI);
-    adjustStackForInst(MI, NumArgs);
+    Emitter.emitInst(&MI);
+    adjustStackForInst(&MI, NumArgs);
   }
 
-  if (MI->getNumExplicitDefs()) {
-    assert(Emitter.stackHeight() == CurrentStack.size());
-    // Invalidate occurrences of the assigned variables.
-    for (auto *&CurrentSlot : CurrentStack)
-      if (const auto *RegSlot = dyn_cast<RegisterSlot>(CurrentSlot))
-        if (MI->definesRegister(RegSlot->getReg()))
-          CurrentSlot = EVMStackModel::getUnusedSlot();
+  // If the MI doesn't define anything, we are done.
+  if (!MI.getNumExplicitDefs())
+    return;
 
-    // Assign variables to current stack top.
-    assert(CurrentStack.size() >= MI->getNumExplicitDefs());
-    llvm::copy(StackModel.getSlotsForInstructionDefs(MI),
-               CurrentStack.end() - MI->getNumExplicitDefs());
-  }
+  // Invalidate occurrences of the assigned variables.
+  for (auto *&CurrentSlot : CurrentStack)
+    if (const auto *RegSlot = dyn_cast<RegisterSlot>(CurrentSlot))
+      if (MI.definesRegister(RegSlot->getReg()))
+        CurrentSlot = EVMStackModel::getUnusedSlot();
+
+  // Assign variables to current stack top.
+  assert(CurrentStack.size() >= MI.getNumExplicitDefs());
+  llvm::copy(StackModel.getSlotsForInstructionDefs(&MI),
+             CurrentStack.end() - MI.getNumExplicitDefs());
 }
 
 // Checks if it's valid to transition from \p SourceStack to \p TargetStack,
 // that is \p SourceStack matches each slot in \p TargetStack that is not a
 // UnusedSlot exactly.
-[[maybe_unused]] static bool areStacksCompatible(const Stack &SourceStack,
-                                                 const Stack &TargetStack) {
-  return SourceStack.size() == TargetStack.size() &&
-         all_of(zip_equal(SourceStack, TargetStack), [](const auto &Pair) {
+[[maybe_unused]] static bool match(const Stack &Source, const Stack &Target) {
+  return Source.size() == Target.size() &&
+         all_of(zip_equal(Source, Target), [](const auto &Pair) {
            const auto [Src, Tgt] = Pair;
            return isa<UnusedSlot>(Tgt) || (Src == Tgt);
          });
 }
 
-void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
+void EVMStackifyCodeEmitter::emitMBBExitStack(const Stack &TargetStack) {
   assert(Emitter.stackHeight() == CurrentStack.size());
-  // ::calculateStack asserts that it has successfully achieved the target
-  // stack state.
   const unsigned StackDepthLimit = StackModel.stackDepthLimit();
-  ::calculateStack(
+
+  calculateStack(
       CurrentStack, TargetStack, StackDepthLimit,
-      // Swap callback.
+      // Swap.
       [&](unsigned I) {
         assert(CurrentStack.size() == Emitter.stackHeight());
         assert(I > 0 && I < CurrentStack.size());
         if (I <= StackDepthLimit) {
           Emitter.emitSWAP(I);
-        } else {
-          const StackSlot *Slot = CurrentStack[CurrentStack.size() - I - 1];
-          std::string ErrMsg = getUnreachableStackSlotError(
-              MF, CurrentStack, Slot, I + 1, /* isSwap */ true);
-          report_fatal_error(ErrMsg.c_str());
+          return;
         }
+        const StackSlot *Slot = CurrentStack[CurrentStack.size() - I - 1];
+        std::string ErrMsg = getUnreachableStackSlotError(
+            MF, CurrentStack, Slot, I + 1, /* isSwap */ true);
+        report_fatal_error(ErrMsg.c_str());
       },
-      // Push or dup callback.
+      // Push or dup.
       [&](const StackSlot *Slot) {
         assert(CurrentStack.size() == Emitter.stackHeight());
 
@@ -327,67 +308,65 @@ void EVMStackifyCodeEmitter::createStackLayout(const Stack &TargetStack) {
           }
         }
 
-        // The slot can be rematerialized.
+        // Rematerialize the slot.
+        assert(Slot->isRematerializable());
         if (const auto *L = dyn_cast<LiteralSlot>(Slot)) {
           Emitter.emitConstant(L->getValue());
         } else if (const auto *S = dyn_cast<SymbolSlot>(Slot)) {
           Emitter.emitSymbol(S->getMachineInstr(), S->getSymbol());
         } else if (const auto *CallRet = dyn_cast<CallerReturnSlot>(Slot)) {
           Emitter.emitLabelReference(CallRet->getCall());
-        } else if (isa<CalleeReturnSlot>(Slot)) {
-          llvm_unreachable("Cannot produce callee return.");
-        } else if (isa<RegisterSlot>(Slot)) {
-          llvm_unreachable("Variable not found on stack.");
         } else {
           assert(isa<UnusedSlot>(Slot));
           // Note: this will always be popped, so we can push anything.
           Emitter.emitConstant(0);
         }
       },
-      // Pop callback.
+      // Pop.
       [&]() { Emitter.emitPOP(); });
 
   assert(Emitter.stackHeight() == CurrentStack.size());
 }
 
 // Emit the stack required for enterting the MI.
-void EVMStackifyCodeEmitter::emitMIEntryStack(const MachineInstr *MI) {
+void EVMStackifyCodeEmitter::emitMIEntryStack(const MachineInstr &MI) {
   // Check if we can choose cheaper stack shuffling if the MI is commutable.
-  const Stack &TargetStack = StackModel.getInstEntryStack(MI);
+  const Stack &TargetStack = StackModel.getInstEntryStack(&MI);
   bool SwapCommutable = false;
-  if (MI->isCommutable()) {
-    // Get the stack layout before the instruction.
+  if (MI.isCommutable()) {
+    assert(TargetStack.size() > 1);
+
     size_t DefaultCost = calculateStackTransformCost(
         CurrentStack, TargetStack, StackModel.stackDepthLimit());
 
+    // Swap the commutable stack items and measure the stack shuffling cost.
     // Commutable operands always take top two stack slots.
-    const unsigned OpIdx1 = 0, OpIdx2 = 1;
-    assert(TargetStack.size() > 1);
-
-    // Swap the commutable stack items and measure the stack shuffling cost
-    // again.
     Stack CommutedTargetStack = TargetStack;
-    std::swap(CommutedTargetStack[CommutedTargetStack.size() - OpIdx1 - 1],
-              CommutedTargetStack[CommutedTargetStack.size() - OpIdx2 - 1]);
+    std::swap(CommutedTargetStack[CommutedTargetStack.size() - 1],
+              CommutedTargetStack[CommutedTargetStack.size() - 2]);
     size_t CommutedCost = calculateStackTransformCost(
         CurrentStack, CommutedTargetStack, StackModel.stackDepthLimit());
+
     // Choose the cheapest transformation.
     SwapCommutable = CommutedCost < DefaultCost;
-    createStackLayout(SwapCommutable ? CommutedTargetStack : TargetStack);
+    emitMBBExitStack(SwapCommutable ? CommutedTargetStack : TargetStack);
   } else {
-    createStackLayout(TargetStack);
+    emitMBBExitStack(TargetStack);
   }
 
+#ifndef NDEBUG
   // Assert that we have the inputs of the MI on stack top.
-  const Stack &SavedInput = StackModel.getMIInput(*MI);
+  const Stack &SavedInput = StackModel.getMIInput(MI);
   assert(CurrentStack.size() == Emitter.stackHeight());
   assert(CurrentStack.size() >= SavedInput.size());
   Stack Input(CurrentStack.end() - SavedInput.size(), CurrentStack.end());
+
   // Adjust the Input if needed.
   if (SwapCommutable)
     std::swap(Input[Input.size() - 1], Input[Input.size() - 2]);
 
-  assert(areStacksCompatible(Input, SavedInput));
+  assert(match(Input, SavedInput));
+#endif // NDEBUG
 }
 
 void EVMStackifyCodeEmitter::run() {
@@ -400,7 +379,6 @@ void EVMStackifyCodeEmitter::run() {
     if (!Visited.insert(MBB).second)
       continue;
 
-    // Might set some slots to unused, if not required by the block.
     CurrentStack = StackModel.getMBBEntryStack(MBB);
     Emitter.enterMBB(MBB, CurrentStack.size());
 
@@ -409,23 +387,21 @@ void EVMStackifyCodeEmitter::run() {
     bool HasReturn = MBB->isReturnBlock();
     const MachineInstr *ReturnMI = HasReturn ? &MBB->back() : nullptr;
 
-    // To process only instructions present before the emitter,  
-    // store their pointers in a vector.  
-    SmallVector<const MachineInstr *> MIs;
-    for (const auto &MI : StackModel.instructionsToProcess(MBB))
-      MIs.push_back(&MI);
+    for (const auto &MI : StackModel.instructionsToProcess(MBB)) {
+      // We are done if the MI is in the stack form.
+      if (EVMInstrInfo::isStack(&MI))
+        break;
 
-    for (const auto *MI : MIs) {
       emitMIEntryStack(MI);
 
       [[maybe_unused]] size_t BaseHeight =
-          CurrentStack.size() - StackModel.getMIInput(*MI).size();
+          CurrentStack.size() - StackModel.getMIInput(MI).size();
 
       emitMI(MI);
 
 #ifndef NDEBUG
       // Assert that the MI produced its proclaimed output.
-      size_t NumDefs = MI->getNumExplicitDefs();
+      size_t NumDefs = MI.getNumExplicitDefs();
       size_t StackSize = CurrentStack.size();
       assert(StackSize == Emitter.stackHeight());
       assert(StackSize == BaseHeight + NumDefs);
@@ -433,46 +409,40 @@ void EVMStackifyCodeEmitter::run() {
       // Check that the top NumDefs slots are the MI defs.
       for (size_t I = StackSize - NumDefs; I < StackSize; ++I)
         assert(
-            MI->definesRegister(cast<RegisterSlot>(CurrentStack[I])->getReg()));
+            MI.definesRegister(cast<RegisterSlot>(CurrentStack[I])->getReg()));
 #endif // NDEBUG
     }
 
     // Exit the block.
-    switch (BranchTy) {
-    case EVMInstrInfo::BT_None: {
-      if (!HasReturn)
-        break;
-      assert(!MF.getFunction().hasFnAttribute(Attribute::NoReturn));
-      // Create the function return layout and jump.
-      assert(StackModel.getReturnArguments(*ReturnMI) ==
-             StackModel.getMBBExitStack(MBB));
-      createStackLayout(StackModel.getMBBExitStack(MBB));
-      Emitter.emitRet(ReturnMI);
-    } break;
-    case EVMInstrInfo::BT_Uncond:
-    case EVMInstrInfo::BT_NoBranch: {
-      if (MBB->succ_empty())
-        break;
-      // Create the stack expected at the jump target.
-      createStackLayout(StackModel.getMBBEntryStack(TBB));
+    if (BranchTy == EVMInstrInfo::BT_None) {
+      if (HasReturn) {
+        assert(!MF.getFunction().hasFnAttribute(Attribute::NoReturn));
+        assert(StackModel.getReturnArguments(*ReturnMI) ==
+               StackModel.getMBBExitStack(MBB));
+        // Create the function return stack and jump.
+        emitMBBExitStack(StackModel.getMBBExitStack(MBB));
+        Emitter.emitRet(ReturnMI);
+      }
+    } else if (BranchTy == EVMInstrInfo::BT_Uncond ||
+               BranchTy == EVMInstrInfo::BT_NoBranch) {
+      if (!MBB->succ_empty()) {
+        // Create the stack expected at the jump target.
+        emitMBBExitStack(StackModel.getMBBEntryStack(TBB));
+        assert(match(CurrentStack, StackModel.getMBBEntryStack(TBB)));
 
-      // Assert that we have a valid stack for the target.
-      assert(areStacksCompatible(CurrentStack,
-                                 StackModel.getMBBEntryStack(TBB)));
+        if (!BrInsts.empty())
+          Emitter.emitUncondJump(BrInsts[0], TBB);
 
-      if (!BrInsts.empty())
-        Emitter.emitUncondJump(BrInsts[0], TBB);
-      WorkList.push_back(TBB);
-    } break;
-    case EVMInstrInfo::BT_Cond:
-    case EVMInstrInfo::BT_CondUncond: {
-      // Create the shared entry layout of the jump targets, which is
-      // stored as exit layout of the current block.
-      createStackLayout(StackModel.getMBBExitStack(MBB));
-
-      // Assert that we have the correct condition on stack.
-      assert(!CurrentStack.empty());
-      assert(CurrentStack.back() == StackModel.getStackSlot(*Condition));
+        WorkList.push_back(TBB);
+      }
+    } else {
+      assert(BranchTy == EVMInstrInfo::BT_Cond ||
+             BranchTy == EVMInstrInfo::BT_CondUncond);
+      // Create the shared entry stack of the jump targets, which is
+      // stored as exit stack of the current MBB.
+      emitMBBExitStack(StackModel.getMBBExitStack(MBB));
+      assert(!CurrentStack.empty() &&
+             CurrentStack.back() == StackModel.getStackSlot(*Condition));
 
       // Emit the conditional jump to the non-zero label and update the
       // stored stack.
@@ -481,17 +451,15 @@ void EVMStackifyCodeEmitter::run() {
       CurrentStack.pop_back();
 
       // Assert that we have a valid stack for both jump targets.
-      assert(areStacksCompatible(CurrentStack,
-                                 StackModel.getMBBEntryStack(TBB)));
-      assert(areStacksCompatible(CurrentStack,
-                                 StackModel.getMBBEntryStack(FBB)));
+      assert(match(CurrentStack, StackModel.getMBBEntryStack(TBB)));
+      assert(match(CurrentStack, StackModel.getMBBEntryStack(FBB)));
 
       // Generate unconditional jump if needed.
       if (BrInsts.size() == 2)
         Emitter.emitUncondJump(BrInsts[0], FBB);
+
       WorkList.push_back(TBB);
       WorkList.push_back(FBB);
-    }
     }
   }
   Emitter.finalize();

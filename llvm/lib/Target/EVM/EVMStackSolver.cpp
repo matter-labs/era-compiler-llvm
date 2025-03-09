@@ -174,6 +174,7 @@ BranchInfoTy llvm::getBranchInfo(const MachineBasicBlock *MBB) {
   assert((BT != EVMInstrInfo::BT_Cond && BT != EVMInstrInfo::BT_CondUncond) ||
          !Cond.empty() &&
              "Condition should be defined for a condition branch.");
+  assert(BranchInstrs.size() <= 2);
   return {BT, TBB, FBB, BranchInstrs,
           Cond.empty() ? std::nullopt : std::optional(Cond[0])};
 }
@@ -617,7 +618,7 @@ void EVMStackSolver::dumpMBB(raw_ostream &OS, const MachineBasicBlock *MBB) {
   for (const auto &MI : StackModel.instructionsToProcess(MBB)) {
     const Stack &MIOutput = StackModel.getSlotsForInstructionDefs(&MI);
     const Stack &MIInput = StackModel.getMIInput(MI);
-    if (isConstCopyOrLinkerMI(MI) && MIInput == MIOutput)
+    if (isPushOrDupLikeMI(MI) && MIInput == MIOutput)
       continue;
 
     OS << '\n';

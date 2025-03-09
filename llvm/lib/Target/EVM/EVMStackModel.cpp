@@ -16,23 +16,22 @@
 
 using namespace llvm;
 
-bool llvm::isConstCopyOrLinkerMI(const MachineInstr &MI) {
-  return MI.getOpcode() == EVM::CONST_I256 ||
-         MI.getOpcode() == EVM::COPY_I256 || MI.getOpcode() == EVM::DATASIZE ||
-         MI.getOpcode() == EVM::DATAOFFSET ||
+bool llvm::isLinkerPseudoMI(const MachineInstr &MI) {
+  return MI.getOpcode() == EVM::DATASIZE || MI.getOpcode() == EVM::DATAOFFSET ||
          MI.getOpcode() == EVM::LOADIMMUTABLE ||
          MI.getOpcode() == EVM::LINKERSYMBOL;
 }
-
-static const Function *getCalledFunction(const MachineInstr &MI) {
-  for (const MachineOperand &MO : MI.operands()) {
-    if (!MO.isGlobal())
-      continue;
-    if (const auto *Func = dyn_cast<Function>(MO.getGlobal()))
-      return Func;
-  }
-  return nullptr;
+bool llvm::isPushOrDupLikeMI(const MachineInstr &MI) {
+  return isLinkerPseudoMI(MI) || MI.getOpcode() == EVM::CONST_I256 ||
+         MI.getOpcode() == EVM::COPY_I256;
 }
+bool llvm::isNoReturnCallMI(const MachineInstr &MI) {
+  assert(MI.getOpcode() == EVM::FCALL && "Unexpected call instruction");
+  const MachineOperand *FuncOp = MI.explicit_uses().begin();
+  const auto *F = cast<Function>(FuncOp->getGlobal());
+  return F->hasFnAttribute(Attribute::NoReturn);
+}
+
 static std::string getInstName(const MachineInstr *MI) {
   const MachineFunction *MF = MI->getParent()->getParent();
   const TargetInstrInfo *TII = MF->getSubtarget().getInstrInfo();
@@ -43,7 +42,9 @@ std::string SymbolSlot::toString() const {
   return getInstName(MI) + ":" + std::string(Symbol->getName());
 }
 std::string CallerReturnSlot::toString() const {
-  return "RET[" + std::string(getCalledFunction(*Call)->getName()) + "]";
+  const MachineOperand *FuncOp = Call->explicit_uses().begin();
+  const auto *F = cast<Function>(FuncOp->getGlobal());
+  return "RET[" + std::string(F->getName()) + "]";
 }
 
 EVMStackModel::EVMStackModel(MachineFunction &MF, const LiveIntervals &LIS,
@@ -121,39 +122,27 @@ void EVMStackModel::processMI(const MachineInstr &MI) {
                 }) &&
          "Unexpected explicit def or use");
 
-  switch (Opc) {
-  case EVM::FCALL: {
+  if (Opc == EVM::FCALL) {
     Stack Input;
-    for (const MachineOperand &MO : MI.operands()) {
-      if (MO.isGlobal()) {
-        const auto *Func = cast<Function>(MO.getGlobal());
-        if (!Func->hasFnAttribute(Attribute::NoReturn))
-          Input.push_back(getCallerReturnSlot(&MI));
-        break;
-      }
-    }
+    if (!isNoReturnCallMI(MI))
+      Input.push_back(getCallerReturnSlot(&MI));
+
     append_range(Input, getSlotsForInstructionUses(MI));
     MIInputMap[&MI] = Input;
     return;
   }
-  case EVM::CONST_I256: {
+  if (Opc == EVM::CONST_I256) {
     const APInt Imm = MI.getOperand(1).getCImm()->getValue();
     MIInputMap[&MI] = Stack(1, getLiteralSlot(std::move(Imm)));
     return;
   }
-  case EVM::DATASIZE:
-  case EVM::DATAOFFSET:
-  case EVM::LOADIMMUTABLE:
-  case EVM::LINKERSYMBOL: {
+  if (isLinkerPseudoMI(MI)) {
     MCSymbol *Sym = MI.getOperand(1).getMCSymbol();
     MIInputMap[&MI] = Stack(1, getSymbolSlot(Sym, &MI));
     return;
   }
-  default: {
-    MIInputMap[&MI] = getSlotsForInstructionUses(MI);
-    return;
-  }
-  }
+
+  MIInputMap[&MI] = getSlotsForInstructionUses(MI);
 }
 
 Stack EVMStackModel::getReturnArguments(const MachineInstr &MI) const {

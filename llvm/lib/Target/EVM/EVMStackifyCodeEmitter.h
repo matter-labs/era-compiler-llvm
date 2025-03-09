@@ -67,17 +67,17 @@ private:
   Stack CurrentStack;
 
   /// Shuffles CurrentStack to the desired \p TargetStack.
-  void createStackLayout(const Stack &TargetStack);
+  void emitMBBExitStack(const Stack &TargetStack);
 
   /// Creates the MI's entry stack from the 'CurrentStack' taking into
   /// account commutative property of the instruction.
-  void emitMIEntryStack(const MachineInstr *MI);
+  void emitMIEntryStack(const MachineInstr &MI);
 
   /// Remove the arguments from the stack and push the return values.
   void adjustStackForInst(const MachineInstr *MI, size_t NumArgs);
 
   /// Generate code for the instruction.
-  void emitMI(const MachineInstr *MI);
+  void emitMI(const MachineInstr &MI);
 };
 
 } // namespace llvm
