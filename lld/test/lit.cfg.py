@@ -172,3 +172,11 @@ if tar_executable:
 # ELF tests expect the default target for ld.lld to be ELF.
 if config.ld_lld_default_mingw:
     config.excludes.append("ELF")
+
+# EraVM local begin
+if config.target_triple.startswith("eravm"):
+    config.excludes.append("wasm")
+    config.excludes.append("MachO")
+    config.excludes.append("COFF")
+    config.excludes.append("MinGW")
+# EraVM local end
