@@ -234,6 +234,8 @@ class EVMStackModel {
 
   // Map MBB to its entry and exit stacks.
   MBBStackMap MBBEntryStackMap;
+  // Note: For branches ending with a conditional jump, the exit stack
+  // retains the jump condition slot, even though the jump consumes it.
   MBBStackMap MBBExitStackMap;
 
   // Map an MI to its entry stack.

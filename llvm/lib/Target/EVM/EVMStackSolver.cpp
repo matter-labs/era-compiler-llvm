@@ -282,10 +282,9 @@ void EVMStackSolver::runPropagation() {
     }
   }
 
+  // Propagate stack information until no new information is discovered.
   while (!Worklist.empty()) {
-    // First calculate stack without walking backwards jumps, i.e.
-    // assuming the current preliminary entry stack of the backwards jump
-    // target as the initial exit stack of the backwards-jumping block.
+    // Process blocks in the worklist without following backedges first.
     while (!Worklist.empty()) {
       const MachineBasicBlock *MBB = *Worklist.begin();
       Worklist.pop_front();
@@ -305,21 +304,22 @@ void EVMStackSolver::runPropagation() {
       case EVMInstrInfo::BT_Uncond:
       case EVMInstrInfo::BT_NoBranch: {
         const MachineBasicBlock *Target = MBB->getSingleSuccessor();
+        // Currently a basic block could end with FCALL and have no successors,
+        // but FCALL is not a terminator, so we fall into BT_NoBranch.
+        // TODO: #788 address it
         if (!Target) { // No successors.
           ExitStack = Stack{};
           break;
         }
         if (MachineLoop *ML = MLI->getLoopFor(MBB);
             ML && ML->isLoopLatch(MBB)) {
-          // Choose the best currently known entry stack of the jump target
-          // as initial exit. Note that this may not yet be the final stack.
+          // If the loop header's entry stack has been computed,
+          // use it as the latch's exit stack; otherwise, assume an empty
+          // exit stack to avoid non-termination.
           auto It = StackModel.getMBBEntryMap().find(Target);
           ExitStack =
               (It == StackModel.getMBBEntryMap().end() ? Stack{} : It->second);
         } else {
-          // If the current iteration has already visited the jump target,
-          // start from its entry stack. Otherwise stage the jump target
-          // for visit and defer the current block.
           if (Visited.count(Target))
             ExitStack = StackModel.getMBBEntryStack(Target);
           else
@@ -331,30 +331,22 @@ void EVMStackSolver::runPropagation() {
         bool FBBVisited = Visited.count(FBB);
         bool TBBVisited = Visited.count(TBB);
 
-        // If one of the jump targets has not been visited, stage it for
-        // visit and defer the current block.
-        // TODO: CPR-1847. Investigate how the order in which successors are put
-        // into the deque affects the generated code.
         if (!FBBVisited)
           Worklist.push_front(FBB);
-
         if (!TBBVisited)
           Worklist.push_front(TBB);
 
-        // If we have visited both successors, start from their entry stacks.
         if (FBBVisited && TBBVisited) {
           Stack CombinedStack = combineStack(StackModel.getMBBEntryStack(FBB),
                                              StackModel.getMBBEntryStack(TBB));
-          // Additionally, the jump condition has to be at the stack top at
-          // exit.
+          // Retain the jump condition in ExitStack because StackSolver doesn't
+          // propagate stacks through branch instructions.
           CombinedStack.emplace_back(StackModel.getStackSlot(*Condition));
           ExitStack = std::move(CombinedStack);
         }
       }
       }
 
-      // If the MBB exit stack is known, we can back back propagate
-      // it till the MBB entry.
       if (ExitStack) {
         Visited.insert(MBB);
         insertMBBExitStack(MBB, *ExitStack);
@@ -363,7 +355,7 @@ void EVMStackSolver::runPropagation() {
       }
     }
 
-    // Revisit these blocks again.
+    // Revisit blocks connected by loop backedges.
     for (auto [Latch, Header] : Backedges) {
       const Stack &HeaderEntryStack = StackModel.getMBBEntryStack(Header);
       const Stack &LatchExitStack = StackModel.getMBBExitStack(Latch);
@@ -372,18 +364,14 @@ void EVMStackSolver::runPropagation() {
           }))
         continue;
 
-      // The latch block does not provide all slots required by the loop
-      // header. Therefore we need to visit the subgraph between the latch
-      // and header again. We will visit blocks backwards starting from latch
-      // and mark all MBBs to-be-visited again until we reach the header.
-
+      // The latch block does not provide all the slots required by the loop
+      // header. Mark the subgraph between the latch and header for
+      // reprocessing.
       assert(Latch);
       Worklist.emplace_back(Latch);
 
-      // Since we are likely to permute the entry layout of 'Header', we
-      // also visit its entries again. This is not required for correctness,
-      // since the set of stack slots will match, but it may move some
-      // required stack shuffling from the loop condition to outside the loop.
+      // Since the loop header's entry may be permuted, revisit its predecessors
+      // to minimize stack transformation costs.
       for (const MachineBasicBlock *Pred : Header->predecessors())
         Visited.erase(Pred);
 
@@ -397,17 +385,14 @@ void EVMStackSolver::runPropagation() {
         }
         ++I;
       }
-      // TODO: Consider revisiting the entire graph to propagate the optimal
-      // layout above the loop.
     }
   }
 
-  // At this point stacks at conditional jumps are merely
-  // compatible, i.e. the exit layout of the jumping block is a superset of the
-  // entry layout of the target block. We need to modify the entry stacks
-  // of conditional jump targets, s.t., the entry layout of target blocks match
-  // the exit layout of the jumping block exactly, except that slots not
-  // required after the jump are marked as 'UnusedSlot'.
+  // For an MBB with multiple successors the exit stack is a union of the entry
+  // stack slots from all successors. Each successor's entry stack may be
+  // missing some slots present in the exit stack. Adjust each successor's entry
+  // stack to mirror the basic block's exit stack. For any slot that is dead in
+  // a successor, mark it as 'unused'.
   for (const MachineBasicBlock &MBB : MF) {
     auto [BranchTy, TBB, FBB, BrInsts, Condition] = getBranchInfo(&MBB);
 
@@ -417,23 +402,19 @@ void EVMStackSolver::runPropagation() {
 
     Stack ExitStack = StackModel.getMBBExitStack(&MBB);
 
-    // The last block must have produced the condition at the stack top.
+    // The condition must be on top of ExitStack, but a conditional jump
+    // consumes it.
     assert(ExitStack.back() == StackModel.getStackSlot(*Condition));
-
-    // The condition is consumed by the conditional jump.
     ExitStack.pop_back();
+
     for (const MachineBasicBlock *Succ : MBB.successors()) {
       const Stack &SuccEntryStack = StackModel.getMBBEntryStack(Succ);
       Stack NewSuccEntryStack = ExitStack;
-      // Whatever the block being jumped to does not actually require,
-      // can be marked as unused.
       for (const StackSlot *&Slot : NewSuccEntryStack)
         if (!is_contained(SuccEntryStack, Slot))
           Slot = EVMStackModel::getUnusedSlot();
 
 #ifndef NDEBUG
-      // Make sure everything the block being jumped to requires is
-      // actually present or can be generated.
       for (const StackSlot *Slot : SuccEntryStack)
         assert(Slot->isRematerializable() ||
                is_contained(NewSuccEntryStack, Slot));
@@ -443,7 +424,8 @@ void EVMStackSolver::runPropagation() {
     }
   }
 
-  // Create the function entry stack.
+  // The entry MBB's stack contains the function parameters, which cannot be
+  // inferred; put them to the stack.
   Stack EntryStack;
   if (!MF.getFunction().hasFnAttribute(Attribute::NoReturn))
     EntryStack.push_back(StackModel.getCalleeReturnSlot(&MF));

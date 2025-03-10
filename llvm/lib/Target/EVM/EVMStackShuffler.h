@@ -136,19 +136,10 @@ private:
   /// \return false if shuffling is done.
   bool step();
 
-  /// Finds a slot to dup or push with the aim of eventually fixing \p
-  /// TargetOffset in the target. In the simplest case, the slot at \p
-  /// TargetOffset has a multiplicity > 0, i.e. it can directly be dupped or
-  /// pushed and the next iteration will fix \p TargetOffset. But, in general,
-  /// there may already be enough copies of the slot that is supposed to end up
-  /// at \p TargetOffset on stack, s.t. it cannot be dupped again. In that case
-  /// there has to be a copy of the desired slot on stack already elsewhere that
-  /// is not yet in place (`nextOffset` below). The fact that ``nextOffset`` is
-  /// not in place means that we can (recursively) try bringing up the slot that
-  /// is supposed to end up at ``nextOffset`` in the *target*. When the target
-  /// slot at ``nextOffset`` is fixed, the current source slot at ``nextOffset``
-  /// will be at the stack top, which is the slot required at \p TargetOffset.
-  bool bringUpTargetSlot(size_t TOffset, bool CannotFail = false);
+  /// Copies a slot from the target stack into the current stack if it is either
+  /// missing or present in fewer copies.
+  /// \par StartRIdx The index from which to start searching.
+  bool copyMissingSlotFromTarget(size_t StartRIdx, bool CannotFail = false);
 
   // If dupping an ideal slot causes a slot that will still be required to
   // become unreachable, then dup the latter slot first.
