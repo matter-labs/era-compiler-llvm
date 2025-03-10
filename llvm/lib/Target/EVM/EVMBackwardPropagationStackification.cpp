@@ -24,6 +24,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVM.h"
+#include "EVMMachineFunctionInfo.h"
 #include "EVMStackSolver.h"
 #include "EVMStackifyCodeEmitter.h"
 #include "EVMSubtarget.h"
@@ -96,5 +97,11 @@ bool EVMBPStackification::runOnMachineFunction(MachineFunction &MF) {
                            MF.getSubtarget<EVMSubtarget>().stackDepthLimit());
   EVMStackSolver(MF, StackModel, MLI).run();
   EVMStackifyCodeEmitter(StackModel, MF).run();
+
+  auto *MFI = MF.getInfo<EVMMachineFunctionInfo>();
+  MFI->setIsStackified();
+
+  // In a stackified code register liveness has no meaning.
+  MRI.invalidateLiveness();
   return true;
 }

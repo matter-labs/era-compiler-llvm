@@ -48,16 +48,14 @@ private:
     void emitCondJump(const MachineInstr *MI, MachineBasicBlock *Target);
     void emitUncondJump(const MachineInstr *MI, MachineBasicBlock *Target);
     void emitLabelReference(const MachineInstr *Call);
-    /// Remove all the instructions that are not stackified and set that all
-    /// instructions are stackified in a function from now on. Also, invalidate
-    /// the register liveness, as it has no meaning in a stackified code.
+    /// Remove all the instructions that are not in stack form.
     void finalize();
 
   private:
     MachineFunction &MF;
     const EVMInstrInfo *TII;
     size_t StackHeight = 0;
-    MachineBasicBlock *CurMBB{};
+    MachineBasicBlock *CurMBB = nullptr;
     DenseMap<const MachineInstr *, MCSymbol *> CallReturnSyms;
 
     void verify(const MachineInstr *MI) const;

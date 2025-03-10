@@ -11,7 +11,6 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMStackifyCodeEmitter.h"
-#include "EVMMachineFunctionInfo.h"
 #include "EVMStackShuffler.h"
 #include "EVMStackSolver.h"
 #include "TargetInfo/EVMTargetInfo.h"
@@ -222,13 +221,6 @@ void EVMStackifyCodeEmitter::CodeEmitter::finalize() {
       // remove debug instructions.
       if (!EVMInstrInfo::isStack(&MI))
         MI.eraseFromParent();
-
-  auto *MFI = MF.getInfo<EVMMachineFunctionInfo>();
-  MFI->setIsStackified();
-
-  // In a stackified code register liveness has no meaning.
-  MachineRegisterInfo &MRI = MF.getRegInfo();
-  MRI.invalidateLiveness();
 }
 
 void EVMStackifyCodeEmitter::adjustStackForInst(const MachineInstr *MI,
