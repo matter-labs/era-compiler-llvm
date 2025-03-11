@@ -38,7 +38,7 @@ enum AddressSpaces {
 namespace EVMCOST {
 unsigned constexpr SWAP = 3;
 unsigned constexpr DUP = 3;
-unsigned constexpr POP = 3;
+unsigned constexpr POP = 2;
 unsigned constexpr PUSH = 3;
 } // namespace EVMCOST
 

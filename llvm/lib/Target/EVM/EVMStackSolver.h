@@ -26,7 +26,6 @@ std::optional<unsigned> calculateStackTransformCost(Stack Source,
                                                     const Stack &Target,
                                                     unsigned StackDepthLimit);
 
-// TODO
 using BranchInfoTy =
     std::tuple<EVMInstrInfo::BranchType, MachineBasicBlock *,
                MachineBasicBlock *, SmallVector<MachineInstr *, 2>,
@@ -47,12 +46,12 @@ private:
   /// executing the instruction the cost to transform to \p ExitStack is
   /// minimal.
   /// Side effect: the computed entry stack is stored in StackModel.
-  /// \par CompressStack: remove duplicates and rematerializable slots.
+  /// \p CompressStack: remove duplicates and rematerializable slots.
   Stack propagateThroughMI(const Stack &ExitStack, const MachineInstr &MI,
                            bool CompressStack = false);
 
   /// Given \p ExitStack, compute the stack at the entry of \p MBB.
-  /// \par CompressStack: remove duplicates and rematerializable slots.
+  /// \p CompressStack: remove duplicates and rematerializable slots.
   Stack propagateThroughMBB(const Stack &ExitStack,
                             const MachineBasicBlock *MBB,
                             bool CompressStack = false);

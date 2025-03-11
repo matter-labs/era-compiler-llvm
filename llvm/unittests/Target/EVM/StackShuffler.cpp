@@ -122,7 +122,8 @@ TEST_F(LLDCTest, Basic) {
   SourceStack.emplace_back(StackModel->getCalleeReturnSlot(MBB->getParent()));
   SourceStack.emplace_back(StackModel->getRegisterSlot(Instrs[5].second));
 
-  // [ %1 %0 %2 %3 %4 %5 %6 %7 %9 %10 %11 %12 %13 %14 %15 %16 RET JUNK JUNK ]
+  // [ %1 %0 %2 %3 %4 %5 %6 %7 %9 %10 %11 %12 %13 %14 %15 %16 RET Unused Unused
+  // ]
   TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[1].second));
   TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[0].second));
   TargetStack.emplace_back(StackModel->getRegisterSlot(Instrs[2].second));
@@ -159,10 +160,10 @@ SWAP16\n\
 [ %1 RET %2 %3 %4 %5 %6 %7 %9 %10 %11 %12 %13 %14 %15 %16 %0 ]\n\
 SWAP15\n\
 [ %1 %0 %2 %3 %4 %5 %6 %7 %9 %10 %11 %12 %13 %14 %15 %16 RET ]\n\
-PUSH JUNK\n\
-[ %1 %0 %2 %3 %4 %5 %6 %7 %9 %10 %11 %12 %13 %14 %15 %16 RET JUNK ]\n\
-PUSH JUNK\n\
-[ %1 %0 %2 %3 %4 %5 %6 %7 %9 %10 %11 %12 %13 %14 %15 %16 RET JUNK JUNK ]\n");
+PUSH Unused\n\
+[ %1 %0 %2 %3 %4 %5 %6 %7 %9 %10 %11 %12 %13 %14 %15 %16 RET Unused ]\n\
+PUSH Unused\n\
+[ %1 %0 %2 %3 %4 %5 %6 %7 %9 %10 %11 %12 %13 %14 %15 %16 RET Unused Unused ]\n");
 
   std::ostringstream Output;
   calculateStack(

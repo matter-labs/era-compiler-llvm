@@ -473,9 +473,8 @@ Stack EVMStackSolver::combineStack(const Stack &Stack1, const Stack &Stack2) {
         .value_or(std::numeric_limits<unsigned>::max());
   };
 
-  // See https://en.wikipedia.org/wiki/Heap's_algorithm.
-  // This is a modified implementation that does not restart I at 1
-  // for each swap.
+  // This is a modified implementation of the Heap algorithm that does
+  // not restart I at 1 for each swap.
   size_t N = Candidate.size();
   Stack BestCandidate = Candidate;
   size_t BestCost = evaluate(Candidate);
