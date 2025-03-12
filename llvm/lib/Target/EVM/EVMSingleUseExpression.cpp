@@ -374,6 +374,13 @@ static bool isSafeToMove(const MachineOperand *Def, const MachineOperand *Use,
       for (const MachineOperand &MO : I->operands())
         if (MO.isReg() && MO.isDef() && MO.getReg() == Reg)
           return false;
+
+    // Check that subsequent defs of a multivalue instruction are not
+    // defined/used by instructions between DefI and Insert.
+    for (const auto &SubDef : drop_begin(DefI->defs()))
+      for (const MachineOperand &MO : I->operands())
+        if (MO.isReg() && MO.getReg() == SubDef.getReg())
+          return false;
   }
 
   return true;
