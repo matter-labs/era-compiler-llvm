@@ -118,8 +118,7 @@ public:
   }
 };
 
-/// The label pushed as return label before a function call, i.e. the label the
-/// call is supposed to return to.
+/// The label pushed as the return address seen from the caller.
 class CallerReturnSlot final : public StackSlot {
   const MachineInstr *Call = nullptr;
 
@@ -136,11 +135,7 @@ public:
   }
 };
 
-/// The return jump target of a function while generating the code of the
-/// function body. I.e. the caller of a function pushes a
-/// 'CallerReturnSlot' (see above) before jumping to the function
-/// and this very slot is viewed as 'CalleeReturnSlot' inside the
-/// function body and jumped to when returning from the function.
+/// The label pushed as the return address seen from the callee.
 class CalleeReturnSlot final : public StackSlot {
   const MachineFunction *MF = nullptr;
 

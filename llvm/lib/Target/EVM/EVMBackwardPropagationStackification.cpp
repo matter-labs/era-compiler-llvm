@@ -9,17 +9,6 @@
 // This file implements backward propagation (BP) stackification.
 // Original idea was taken from the Ethereum's compiler (solc) stackification
 // algorithm.
-// The algorithm is broken into following components:
-//   - CFG (Control Flow Graph) and CFG builder. Stackification CFG has similar
-//     structure to LLVM CFG one, but employs wider notion of instruction.
-//   - Stack layout generator. Contains information about the stack layout at
-//     entry and exit of each CFG::BasicBlock. It also contains input/output
-//     stack layout for each instruction.
-//   - Code transformation into stakified form. This component uses both CFG
-//     and the stack layout information to get stackified LLVM MIR.
-//   - Stack shuffler. Finds optimal (locally) transformation between two stack
-//     layouts using three primitives: POP, PUSHn, DUPn. The stack shuffler
-//     is used by the components above.
 //
 //===----------------------------------------------------------------------===//
 

@@ -46,19 +46,19 @@ private:
   /// executing the instruction the cost to transform to \p ExitStack is
   /// minimal.
   /// Side effect: the computed entry stack is stored in StackModel.
-  /// \p CompressStack: remove duplicates and rematerializable slots.
+  /// \param CompressStack: remove duplicates and rematerializable slots.
   Stack propagateThroughMI(const Stack &ExitStack, const MachineInstr &MI,
                            bool CompressStack = false);
 
   /// Given \p ExitStack, compute the stack at the entry of \p MBB.
-  /// \p CompressStack: remove duplicates and rematerializable slots.
+  /// \param CompressStack: remove duplicates and rematerializable slots.
   Stack propagateThroughMBB(const Stack &ExitStack,
                             const MachineBasicBlock *MBB,
                             bool CompressStack = false);
 
-  /// Main algorithm walking the graph from entry to exit and propagating back
-  /// the stack layouts to the entries. Iteratively reruns itself along
-  /// backwards jumps until the layout is stabilized.
+  /// Main algorithm walking the graph from entry to exit and propagating stack
+  /// states back to the entries. Iteratively reruns itself along backward jumps
+  /// until the state is stabilized.
   void runPropagation();
 
 #ifndef NDEBUG

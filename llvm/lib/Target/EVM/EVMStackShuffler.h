@@ -137,7 +137,7 @@ private:
 
   /// Copies a slot from the target stack into the current stack if it is either
   /// missing or present in fewer copies.
-  /// \p StartRIdx The index from which to start searching.
+  /// \param StartRIdx The index from which to start searching.
   bool copyMissingSlotFromTarget(size_t StartRIdx, bool CannotFail = false);
 
   // If dupping an ideal slot causes a slot that will still be required to

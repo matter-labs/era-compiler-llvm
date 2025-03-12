@@ -50,7 +50,7 @@ std::optional<T> add(std::optional<T> a, std::optional<T> b) {
 
 /// Given stack \p AfterInst, compute stack before the instruction excluding
 /// instruction input operands.
-/// \par CompressStack: remove duplicates and rematerializable slots.
+/// \param CompressStack: remove duplicates and rematerializable slots.
 Stack calculateStackBeforeInst(const Stack &InstDefs, const Stack &AfterInst,
                                bool CompressStack, unsigned StackDepthLimit) {
   // Number of slots on stack before the instruction excluding its inputs.

@@ -66,8 +66,8 @@ private:
   MachineFunction &MF;
   Stack CurrentStack;
 
-  /// Shuffles CurrentStack to the desired \p TargetStack.
-  void emitMBBExitStack(const Stack &TargetStack);
+  /// Emit stack operations to turn CurrentStack into \p TargetStack.
+  void emitStackPermutations(const Stack &TargetStack);
 
   /// Creates the MI's entry stack from the 'CurrentStack' taking into
   /// account commutative property of the instruction.

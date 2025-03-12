@@ -270,7 +270,7 @@ void EVMStackifyCodeEmitter::emitMI(const MachineInstr &MI) {
          });
 }
 
-void EVMStackifyCodeEmitter::emitMBBExitStack(const Stack &TargetStack) {
+void EVMStackifyCodeEmitter::emitStackPermutations(const Stack &TargetStack) {
   assert(Emitter.stackHeight() == CurrentStack.size());
   const unsigned StackDepthLimit = StackModel.stackDepthLimit();
 
@@ -353,9 +353,9 @@ void EVMStackifyCodeEmitter::emitMIEntryStack(const MachineInstr &MI) {
 
     // Choose the cheapest transformation.
     SwapCommutable = CommutedCost < DefaultCost;
-    emitMBBExitStack(SwapCommutable ? CommutedTargetStack : TargetStack);
+    emitStackPermutations(SwapCommutable ? CommutedTargetStack : TargetStack);
   } else {
-    emitMBBExitStack(TargetStack);
+    emitStackPermutations(TargetStack);
   }
 
 #ifndef NDEBUG
@@ -424,14 +424,14 @@ void EVMStackifyCodeEmitter::run() {
         assert(StackModel.getReturnArguments(*ReturnMI) ==
                StackModel.getMBBExitStack(MBB));
         // Create the function return stack and jump.
-        emitMBBExitStack(StackModel.getMBBExitStack(MBB));
+        emitStackPermutations(StackModel.getMBBExitStack(MBB));
         Emitter.emitRet(ReturnMI);
       }
     } else if (BranchTy == EVMInstrInfo::BT_Uncond ||
                BranchTy == EVMInstrInfo::BT_NoBranch) {
       if (!MBB->succ_empty()) {
         // Create the stack expected at the jump target.
-        emitMBBExitStack(StackModel.getMBBEntryStack(TBB));
+        emitStackPermutations(StackModel.getMBBEntryStack(TBB));
         assert(match(CurrentStack, StackModel.getMBBEntryStack(TBB)));
 
         if (!BrInsts.empty())
@@ -444,7 +444,7 @@ void EVMStackifyCodeEmitter::run() {
              BranchTy == EVMInstrInfo::BT_CondUncond);
       // Create the shared entry stack of the jump targets, which is
       // stored as exit stack of the current MBB.
-      emitMBBExitStack(StackModel.getMBBExitStack(MBB));
+      emitStackPermutations(StackModel.getMBBExitStack(MBB));
       assert(!CurrentStack.empty() &&
              CurrentStack.back() == StackModel.getStackSlot(*Condition));
 
