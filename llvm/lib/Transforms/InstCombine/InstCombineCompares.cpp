@@ -27,6 +27,9 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/PatternMatch.h"
 #include "llvm/Support/KnownBits.h"
+// EVM local begin
+#include "llvm/TargetParser/Triple.h"
+// EVM local end
 #include "llvm/Transforms/InstCombine/InstCombiner.h"
 #include <bitset>
 
@@ -5354,9 +5357,24 @@ Instruction *InstCombinerImpl::foldICmpBinOp(ICmpInst &I,
       return new ICmpInst(ICmpInst::getSignedPredicate(Pred),
                           Constant::getNullValue(Op0->getType()), Op0);
   }
-
+  // EVM local begin
+  // Disable generation of llvm.?mul.with.overflow intrinsic for EVM, as
+  // its default lowering in ISel triggers an assertion:
+  //
+  //   LC != RTLIB::UNKNOWN_LIBCALL && "Cannot expand this operation!"
+  //
+  // when expanding ISD::?MULO. While we could expand MULO using MUL_LOHI,
+  // we would first need to custom lower the MUL_LOHI operation, which
+  // requires a dozen instructions.
+  // TODO: #794: Investigate whether it is reasonable to enable the generation.
+  Triple TT(I.getFunction()->getParent()->getTargetTriple());
+  if (!TT.isEVM()) {
+  // EVM local end
   if (Value *V = foldMultiplicationOverflowCheck(I))
     return replaceInstUsesWith(I, V);
+  // EVM local begin
+  }
+  // EVM local end
 
   if (Instruction *R = foldICmpAndXX(I, Q, *this))
     return R;
