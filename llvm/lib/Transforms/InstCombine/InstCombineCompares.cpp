@@ -4916,8 +4916,17 @@ Instruction *InstCombinerImpl::foldICmpBinOp(ICmpInst &I,
   }
   }
 
-  // At this moment EraVM sees a regression over folding umul
-  if (!TT.isEraVM()) {
+  // At this moment EraVM sees a regression over folding umul.
+  // Disable generation of llvm.?mul.with.overflow intrinsic for EVM, as
+  // its default lowering in ISel triggers an assertion:
+  //
+  //   LC != RTLIB::UNKNOWN_LIBCALL && "Cannot expand this operation!"
+  //
+  // when expanding ISD::?MULO. While we could expand MULO using MUL_LOHI,
+  // we would first need to custom lower the MUL_LOHI operation, which
+  // requires a dozen instructions.
+  // TODO: #794: Investigate whether it is reasonable to enable the generation.
+  if (!TT.isEraVM() && !TT.isEVM()) {
   // EraVM local end
   if (Value *V = foldMultiplicationOverflowCheck(I))
     return replaceInstUsesWith(I, V);
