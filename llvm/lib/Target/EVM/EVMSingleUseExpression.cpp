@@ -374,6 +374,28 @@ static bool isSafeToMove(const MachineOperand *Def, const MachineOperand *Use,
       for (const MachineOperand &MO : I->operands())
         if (MO.isReg() && MO.isDef() && MO.getReg() == Reg)
           return false;
+
+    // Check that subsequent defs of a multi-value instruction are not
+    // defined/used by instructions between 'DefI' and 'Insert'.
+    // For example, in the code:
+    //
+    //    bb.0:
+    //    liveins: %0, %4, %6
+    //
+    //    %1:gpr, %2:gpr = FCALL @multival, %0:gpr,
+    //    %3:gpr = SIGNEXTEND %4:gpr, %2:gpr
+    //    %5:gpr = AND %1:gpr, %6:gpr
+    //
+    //    bb.1:
+    //    liveins: %5, %3
+    //
+    // FCALL should not be moved after SIGNEXTEND, as this breaks
+    // data flow on the register '%2'.
+
+    for (const auto &SubDef : drop_begin(DefI->defs()))
+      for (const MachineOperand &MO : I->operands())
+        if (MO.isReg() && MO.getReg() == SubDef.getReg())
+          return false;
   }
 
   return true;
