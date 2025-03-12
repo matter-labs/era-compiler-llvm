@@ -4917,7 +4917,7 @@ Instruction *InstCombinerImpl::foldICmpBinOp(ICmpInst &I,
   }
 
   // At this moment EraVM sees a regression over folding umul
-  if (!TT.isEraVM()) {
+  if (!TT.isEraVM() && !TT.isEVM()) {
   // EraVM local end
   if (Value *V = foldMultiplicationOverflowCheck(I))
     return replaceInstUsesWith(I, V);
