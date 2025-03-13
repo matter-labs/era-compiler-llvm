@@ -17,7 +17,6 @@
 #include "EVMISelLowering.h"
 #include "EVMInstrInfo.h"
 #include "EVMRegisterInfo.h"
-#include "llvm/CodeGen/SelectionDAGTargetInfo.h"
 #include "llvm/CodeGen/TargetSubtargetInfo.h"
 
 #define GET_SUBTARGETINFO_ENUM
@@ -56,6 +55,8 @@ public:
   }
 
   bool useAA() const override;
+
+  unsigned stackDepthLimit() const { return 16; }
 };
 } // namespace llvm
 

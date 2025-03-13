@@ -17,13 +17,10 @@
 #include "EVMMachineFunctionInfo.h"
 #include "EVMSubtarget.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h" // for EVM::ARGUMENT_*
-#include "llvm/ADT/SmallPtrSet.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/CodeGen/LiveIntervals.h"
 #include "llvm/CodeGen/MachineBlockFrequencyInfo.h"
 #include "llvm/CodeGen/MachineDominators.h"
-#include "llvm/CodeGen/MachineInstrBuilder.h"
-#include "llvm/CodeGen/MachineModuleInfoImpls.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/IR/GlobalAlias.h"
@@ -311,6 +308,10 @@ static bool isSafeToMove(const MachineOperand *Def, const MachineOperand *Use,
     ;
   if (NextI == Insert)
     return true;
+
+  // Don't move ARGUMENT instructions, as stackification pass relies on this.
+  if (DefI->getOpcode() == EVM::ARGUMENT)
+    return false;
 
   // Check for register dependencies.
   SmallVector<unsigned, 4> MutableRegisters;

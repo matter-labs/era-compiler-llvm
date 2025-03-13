@@ -17,9 +17,7 @@
 //============================================================================//
 
 #include "llvm/IR/Function.h"
-#include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instructions.h"
-#include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IRReader/IRReader.h"
 #include "llvm/Linker/Linker.h"
@@ -27,7 +25,6 @@
 #include "llvm/Support/MemoryBuffer.h"
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/Transforms/IPO/Internalize.h"
-#include "llvm/Transforms/Scalar.h"
 
 #include <memory>
 
@@ -80,12 +77,6 @@ static bool EVMLinkRuntimeImpl(Module &M, const char *ModuleToLink) {
   if (!RTM) {
     Err.print("Unable to parse evm-stdlib.ll", errs());
     exit(1);
-  }
-
-  for (auto &F : M.functions()) {
-    if (!F.isDeclaration()) {
-      F.addFnAttr(Attribute::NoInline);
-    }
   }
 
   bool LinkErr = false;
