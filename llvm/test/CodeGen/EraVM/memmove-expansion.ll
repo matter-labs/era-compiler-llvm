@@ -97,9 +97,9 @@ define i256 @expand_known_backward() {
 ; CHECK-NEXT:    br label [[COPY_BACKWARDS_LOOP:%.*]]
 ; CHECK:       copy-backwards-loop:
 ; CHECK-NEXT:    [[BYTES_COUNT:%.*]] = phi i256 [ [[DECREMENT_BYTES:%.*]], [[COPY_BACKWARDS_LOOP]] ], [ 64, [[COPY_BACKWARDS_LOOP_PREHEADER]] ]
-; CHECK-NEXT:    [[LOAD_ADDR:%.*]] = getelementptr inbounds i8, ptr addrspace(1) getelementptr inbounds (i8, ptr addrspace(1) inttoptr (i256 10 to ptr addrspace(1)), i256 -1), i256 [[BYTES_COUNT]]
+; CHECK-NEXT:    [[LOAD_ADDR:%.*]] = getelementptr inbounds i8, ptr addrspace(1) getelementptr inbounds (i8, ptr addrspace(1) getelementptr inbounds (i8, ptr addrspace(1) inttoptr (i256 10 to ptr addrspace(1)), i256 31), i256 -32), i256 [[BYTES_COUNT]]
 ; CHECK-NEXT:    [[ELEMENT:%.*]] = load i256, ptr addrspace(1) [[LOAD_ADDR]], align 1
-; CHECK-NEXT:    [[STORE_ADDR:%.*]] = getelementptr inbounds i8, ptr addrspace(1) getelementptr inbounds (i8, ptr addrspace(1) inttoptr (i256 100 to ptr addrspace(1)), i256 -1), i256 [[BYTES_COUNT]]
+; CHECK-NEXT:    [[STORE_ADDR:%.*]] = getelementptr inbounds i8, ptr addrspace(1) getelementptr inbounds (i8, ptr addrspace(1) getelementptr inbounds (i8, ptr addrspace(1) inttoptr (i256 100 to ptr addrspace(1)), i256 31), i256 -32), i256 [[BYTES_COUNT]]
 ; CHECK-NEXT:    store i256 [[ELEMENT]], ptr addrspace(1) [[STORE_ADDR]], align 1
 ; CHECK-NEXT:    [[DECREMENT_BYTES]] = sub i256 [[BYTES_COUNT]], 32
 ; CHECK-NEXT:    [[COMPARE_BYTES:%.*]] = icmp eq i256 [[DECREMENT_BYTES]], 0
