@@ -200,12 +200,11 @@ def ADJCALLSTACKUP
               [(EVMcallseq_end timm:$amt1, timm:$amt2)]>;
 }
 
-let isCodeGenOnly = 1 in {
-let hasSideEffects = 1 in
-def ARGUMENT
-  : NRI<(outs GPR:$res), (ins i256imm:$argno),
-       [(set GPR:$res, (EVMargument timm:$argno))],
-       "ARGUMENT $res, $argno">;
+let hasSideEffects = 1, Defs = []<Register>,
+    Uses = [ARGUMENTS] in def ARGUMENT
+    : NRI<(outs GPR:$res),
+          (ins i256imm:$argno), [(set GPR:$res, (EVMargument timm:$argno))],
+          "ARGUMENT $res, $argno">;
 
 // This is not real EVM instruction. It should be eliminted while
 // stackification.
@@ -216,10 +215,8 @@ def CONST_I256
 
 // This is not real EVM instruction. It should be eliminted while
 // stackification.
-let isAsCheapAsAMove = 1 in
-def COPY_I256
-  : NRI<(outs GPR:$res), (ins GPR:$src), [], "COPY_I256 $res, $src">;
-}
+let isAsCheapAsAMove = 1 in def COPY_I256
+    : NRI<(outs GPR:$res), (ins GPR:$src), [], "COPY_I256 $res, $src">;
 
 def : Pat<(i256 (EVMTargetAddrWrapper tglobaladdr:$addr)),
           (CONST_I256 tglobaladdr:$addr)>;
@@ -252,6 +249,8 @@ def FCALL
         "FCALL\t$callee">;
 } // Uses = [SP], isCall = 1
 
+let isCall = 1 in def PseudoCALL
+    : EVMPseudo<(outs), (ins jmptarget:$callee, variable_ops), [], true>;
 
 //===----------------------------------------------------------------------===//
 // EVM arithmetic instructions.
@@ -272,17 +271,17 @@ defm SDIV : BinaryInst<sdiv, "SDIV", 0x05, 5>;
 defm MOD : BinaryInst<urem, "MOD", 0x06, 5>;
 defm SMOD : BinaryInst<srem, "SMOD", 0x07, 5>;
 
-defm ADDMOD
-  : I<(outs GPR:$dst), (ins GPR:$add_op1, GPR:$add_op2, GPR:$denom),
-      [(set GPR:$dst,
-       (int_evm_addmod GPR:$add_op1, GPR:$add_op2, GPR:$denom))],
-      "ADDMOD", " $dst, $add_op1, $add_op2, $denom", 0x08, 8>;
+let isCommutable = 1 in {
+  defm ADDMOD : I<(outs GPR:$dst), (ins GPR:$add_op1, GPR:$add_op2, GPR:$denom),
+                  [(set GPR:$dst, (int_evm_addmod GPR:$add_op1, GPR:$add_op2,
+                                      GPR:$denom))],
+                  "ADDMOD", " $dst, $add_op1, $add_op2, $denom", 0x08, 8>;
 
-defm MULMOD
-  : I<(outs GPR:$dst), (ins GPR:$mul_op1, GPR:$mul_op2, GPR:$denom),
-      [(set GPR:$dst,
-       (int_evm_mulmod GPR:$mul_op1, GPR:$mul_op2, GPR:$denom))],
-      "MULMOD", " $dst, $mul_op1, $mul_op2, $denom", 0x09, 8>;
+  defm MULMOD : I<(outs GPR:$dst), (ins GPR:$mul_op1, GPR:$mul_op2, GPR:$denom),
+                  [(set GPR:$dst, (int_evm_mulmod GPR:$mul_op1, GPR:$mul_op2,
+                                      GPR:$denom))],
+                  "MULMOD", " $dst, $mul_op1, $mul_op2, $denom", 0x09, 8>;
+}
 
 defm EXP
   : I<(outs GPR:$dst), (ins GPR:$base, GPR:$exp),
@@ -405,19 +404,23 @@ let isBranch = 1, isTerminator = 1 in {
 defm JUMPI
   : I<(outs), (ins jmptarget:$dst, GPR:$cond), [(brcond GPR:$cond, bb:$dst)],
       "JUMPI", " $dst, $cond", 0x57, 10>;
+def PseudoJUMPI : EVMPseudo<(outs), (ins jmptarget:$dst), [], true>;
 
-let isBarrier = 1 in
-defm JUMP
-  : I<(outs), (ins jmptarget:$dst), [(br bb:$dst)], "JUMP", " $dst", 0x56, 8>;
+let isBarrier = 1 in {
+  defm JUMP : I<(outs), (ins jmptarget:$dst), [(br bb:$dst)], "JUMP", " $dst",
+                0x56, 8>;
+  def PseudoJUMP : EVMPseudo<(outs), (ins jmptarget:$dst), [], true>;
+} // isBarrier = 1
 } // isBranch = 1, isTerminator = 1
 
 // This isn't really a control flow instruction, but it should be used to mark
 // destination of jump instructions.
 defm JUMPDEST : I<(outs), (ins), [], "JUMPDEST", "", 0x5B, 1>;
 
-let isBarrier = 1, isTerminator = 1, isReturn = 1 in
-def RET : NRI<(outs), (ins variable_ops), [(EVMret)], "RET">;
-
+let isBarrier = 1, isTerminator = 1, isReturn = 1 in {
+  def RET : NRI<(outs), (ins variable_ops), [(EVMret)], "RET">;
+  def PseudoRET : EVMPseudo<(outs), (ins), [], true>;
+}
 
 //===----------------------------------------------------------------------===//
 // EVM memory/storage instructions.
@@ -750,7 +753,7 @@ defm CREATE2
 // EVM instructions to return with error.
 //===----------------------------------------------------------------------===//
 
-let isTerminator = 1, isBarrier = 1, isReturn = 1 in {
+let isTerminator = 1, isBarrier = 1 in {
   defm REVERT
     : I<(outs), (ins GPR:$offset, GPR:$size),
         [(int_evm_revert GPR:$offset, GPR:$size)],
@@ -767,7 +770,7 @@ let hasSideEffects = 1 in {
       : I<(outs), (ins GPR:$addr), [(int_evm_selfdestruct GPR:$addr)],
           "SELFDESTRUCT", " $addr", 0xFF, 5000>;
 
-  let isTerminator = 1, isBarrier = 1, isReturn = 1 in {
+  let isTerminator = 1, isBarrier = 1 in {
     defm STOP : I<(outs), (ins), [(int_evm_stop)], "STOP", "", 0x00, 0>;
     defm INVALID : I<(outs), (ins), [(int_evm_invalid)], "INVALID", "", 0xFE, 0>;
   }
@@ -794,8 +797,8 @@ foreach I = {1-16} in {
 
 defm PUSH0 : I<(outs), (ins), [], "PUSH0", "", 0x5F, 2>;
 
-def PUSH_LABEL : NI<(outs), (ins jmptarget:$dst), [], false, "", 0, 0> {
-    let isCodeGenOnly = 1;
+def PUSH_LABEL : NI<(outs), (ins jmptarget:$dst), [], true, "", 0, 0> {
+  let isCodeGenOnly = 1;
 }
 
 // Define register PUSH* instructions

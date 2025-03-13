@@ -59,6 +59,16 @@ bool EVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
                                  MachineBasicBlock *&FBB,
                                  SmallVectorImpl<MachineOperand> &Cond,
                                  bool AllowModify) const {
+  SmallVector<MachineInstr *, 2> BranchInstrs;
+  BranchType BT = analyzeBranch(MBB, TBB, FBB, Cond, AllowModify, BranchInstrs);
+  return BT == BT_None;
+}
+
+EVMInstrInfo::BranchType EVMInstrInfo::analyzeBranch(
+    MachineBasicBlock &MBB, MachineBasicBlock *&TBB, MachineBasicBlock *&FBB,
+    SmallVectorImpl<MachineOperand> &Cond, bool AllowModify,
+    SmallVectorImpl<MachineInstr *> &BranchInstrs) const {
+
   LLVM_DEBUG(dbgs() << "Analyzing branches of " << printMBBReference(MBB)
                     << '\n');
 
@@ -70,79 +80,96 @@ bool EVMInstrInfo::analyzeBranch(MachineBasicBlock &MBB,
   const auto *MFI = MBB.getParent()->getInfo<EVMMachineFunctionInfo>();
   if (MFI->getIsStackified()) {
     LLVM_DEBUG(dbgs() << "Can't analyze terminators in stackified code");
-    return true;
+    return BT_None;
   }
 
-  // Iterate backwards and analyze all terminators.
-  MachineBasicBlock::reverse_iterator I = MBB.rbegin(), E = MBB.rend();
-  while (I != E) {
-    if (I->isUnconditionalBranch()) {
-      // There should be no other branches after the unconditional branch.
-      assert(!TBB && !FBB && Cond.empty() && "Unreachable branch found");
-      TBB = I->getOperand(0).getMBB();
+  MachineBasicBlock::reverse_iterator I = MBB.rbegin(), REnd = MBB.rend();
 
-      // Clean things up, if we're allowed to.
-      if (AllowModify) {
-        // There should be no instructions after the unconditional branch.
-        assert(I == MBB.rbegin());
-
-        // Delete the branch itself, if its target is the fall-through block.
-        if (MBB.isLayoutSuccessor(TBB)) {
-          LLVM_DEBUG(dbgs() << "Removing fall-through branch: "; I->dump());
-          I->eraseFromParent();
-          I = MBB.rbegin();
-          TBB = nullptr; // Fall-through case.
-          continue;
-        }
-      }
-    } else if (I->isConditionalBranch()) {
-      // There can't be several conditional branches in a single block just now.
-      assert(Cond.empty() && "Several conditional branches?");
-
-      // Set FBB to the destination of the previously encountered unconditional
-      // branch (if there was any).
-      FBB = TBB;
-      TBB = I->getOperand(0).getMBB();
-
-      // Put the "use" of the condition into Cond[0].
-      const MachineOperand &UseMO = I->getOperand(1);
-      Cond.push_back(UseMO);
-
-      // reverseBranch needs the instruction which feeds the branch, but only
-      // supports comparisons. See if we can find one.
-      for (MachineBasicBlock::reverse_iterator CI = I; CI != E; ++CI) {
-        // If it is the right comparison, put its result into Cond[1].
-        // TODO: This info is required for branch reversing, but this
-        // is not yet implemented.
-        if (CI->isCompare()) {
-          const MachineOperand &DefMO = CI->getOperand(0);
-          if (DefMO.getReg() == UseMO.getReg())
-            Cond.push_back(DefMO);
-          // Only give it one shot, this should be enough.
-          break;
-        }
-      }
-    } else if (I->isTerminator()) {
-      // Return, indirect branch, fall-through, or some other unrecognized
-      // terminator. Give up.
-      LLVM_DEBUG(dbgs() << "Unrecognized terminator: "; I->dump());
-      return true;
-    } else if (!I->isDebugValue()) {
-      // This is an ordinary instruction, meaning there are no terminators left
-      // to process. Finish the analysis.
-      break;
-    }
-
+  // Skip all the debug instructions.
+  while (I != REnd && I->isDebugInstr())
     ++I;
+
+  if (I == REnd || !isUnpredicatedTerminator(*I)) {
+    // This block ends with no branches (it just falls through to its succ).
+    // Leave TBB/FBB null.
+    return BT_NoBranch;
   }
+  if (!I->isBranch()) {
+    // Not a branch terminator.
+    return BT_None;
+  }
+
+  MachineInstr *LastInst = &*I++;
+  MachineInstr *SecondLastInst = nullptr;
+
+  // Skip any debug instruction to see if the second last is a branch.
+  while (I != REnd && I->isDebugInstr())
+    ++I;
+
+  if (I != REnd && I->isBranch())
+    SecondLastInst = &*I++;
 
   // Check that there are no unaccounted terminators left.
-  assert(std::none_of(I, E, [](MachineBasicBlock::reverse_iterator I) {
-    return I->isTerminator();
-  }));
+  assert(I == REnd ||
+         std::none_of(I, REnd, [](MachineBasicBlock::reverse_iterator I) {
+           return I->isTerminator();
+         }));
 
-  // If we didn't bail out earlier, the analysis was successful.
-  return false;
+  if (LastInst->isUnconditionalBranch()) {
+    TBB = LastInst->getOperand(0).getMBB();
+
+    // Clean things up, if we're allowed to.
+    if (AllowModify) {
+      // There should be no instructions after the unconditional branch.
+      assert(LastInst == MBB.rbegin());
+
+      // Delete the branch itself, if its target is the fall-through block.
+      if (MBB.isLayoutSuccessor(TBB)) {
+        LLVM_DEBUG(dbgs() << "Removing fall-through branch: ";
+                   LastInst->dump());
+        LastInst->eraseFromParent();
+        TBB = nullptr; // Fall-through case.
+      }
+    }
+    if (TBB)
+      BranchInstrs.push_back(LastInst);
+
+    if (!SecondLastInst)
+      return TBB ? BT_Uncond : BT_NoBranch;
+  }
+
+  MachineInstr *CondBr = SecondLastInst ? SecondLastInst : LastInst;
+  assert(CondBr->isConditionalBranch());
+  BranchInstrs.push_back(CondBr);
+
+  // Set FBB to the destination of the previously encountered unconditional
+  // branch (if there was any).
+  FBB = TBB;
+  TBB = CondBr->getOperand(0).getMBB();
+
+  // Put the "use" of the condition into Cond[0].
+  const MachineOperand &UseMO = CondBr->getOperand(1);
+  Cond.push_back(UseMO);
+
+  // reverseBranch needs the instruction which feeds the branch, but only
+  // supports comparisons. See if we can find one.
+  for (MachineBasicBlock::reverse_iterator CI = CondBr; CI != REnd; ++CI) {
+    // If it is the right comparison, put its result into Cond[1].
+    // TODO: This info is required for branch reversing, but this
+    // is not yet implemented.
+    if (CI->isCompare()) {
+      const MachineOperand &DefMO = CI->getOperand(0);
+      if (DefMO.getReg() == UseMO.getReg())
+        Cond.push_back(DefMO);
+      // Only give it one shot, this should be enough.
+      break;
+    }
+  }
+
+  if (!SecondLastInst)
+    return BT_Cond;
+
+  return BT_CondUncond;
 }
 
 unsigned EVMInstrInfo::removeBranch(MachineBasicBlock &MBB,
@@ -174,7 +201,7 @@ unsigned EVMInstrInfo::insertBranch(MachineBasicBlock &MBB,
                                     MachineBasicBlock *FBB,
                                     ArrayRef<MachineOperand> Cond,
                                     const DebugLoc &DL, int *BytesAdded) const {
-  assert(!BytesAdded && "Code is size not handled");
+  assert(!BytesAdded && "Code size not handled");
 
   // The number of instructions inserted.
   unsigned InstrCount = 0;

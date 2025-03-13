@@ -5,8 +5,8 @@ target triple = "evm"
 
 define i256 @udivrrr(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: @udivrrr
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: DIV [[TMP:\$[0-9]+]], [[IN1]], [[IN2]]
 
   %res = udiv i256 %rs1, %rs2
@@ -15,8 +15,8 @@ define i256 @udivrrr(i256 %rs1, i256 %rs2) nounwind {
 
 define i256 @sdivrrr(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: @sdivrrr
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: SDIV [[TMP:\$[0-9]+]], [[IN1]], [[IN2]]
 
   %res = sdiv i256 %rs1, %rs2
