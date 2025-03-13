@@ -38,6 +38,14 @@ class EVMInstrInfo final : public EVMGenInstrInfo {
 public:
   explicit EVMInstrInfo();
 
+  enum BranchType : uint8_t {
+    BT_None,      // Couldn't analyze branch.
+    BT_NoBranch,  // No branches found.
+    BT_Uncond,    // One unconditional branch.
+    BT_Cond,      // One conditional branch.
+    BT_CondUncond // A conditional branch followed by an unconditional branch.
+  };
+
   const EVMRegisterInfo &getRegisterInfo() const { return RI; }
 
   bool isReallyTriviallyReMaterializable(const MachineInstr &MI) const override;
@@ -51,6 +59,12 @@ public:
                      MachineBasicBlock *&FBB,
                      SmallVectorImpl<MachineOperand> &Cond,
                      bool AllowModify) const override;
+
+  BranchType analyzeBranch(MachineBasicBlock &MBB, MachineBasicBlock *&TBB,
+                           MachineBasicBlock *&FBB,
+                           SmallVectorImpl<MachineOperand> &Cond,
+                           bool AllowModify,
+                           SmallVectorImpl<MachineInstr *> &BranchInstrs) const;
 
   unsigned removeBranch(MachineBasicBlock &MBB,
                         int *BytesRemoved) const override;

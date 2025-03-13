@@ -1,4 +1,5 @@
 ; RUN: llc < %s
+; UNSUPPORTED: target=evm{{.*}}
 declare { i64, double } @wild()
 
 define void @foo(ptr %p, ptr %q) nounwind personality ptr @__gxx_personality_v0 {

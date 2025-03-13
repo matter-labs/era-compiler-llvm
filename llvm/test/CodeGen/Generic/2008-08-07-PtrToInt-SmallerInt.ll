@@ -1,6 +1,7 @@
 ; RUN: llc < %s
-; XFAIL: target=evm{{.*}}
+
 ; TODO: CPR-920 support operators
+; UNSUPPORTED: target=evm{{.*}}
 ; PR2603
         %struct.A = type { i8 }
         %struct.B = type { i8, [1 x i8] }
