@@ -35,6 +35,13 @@ enum AddressSpaces {
 };
 } // namespace EVMAS
 
+namespace EVMCOST {
+unsigned constexpr SWAP = 3;
+unsigned constexpr DUP = 3;
+unsigned constexpr POP = 2;
+unsigned constexpr PUSH = 3;
+} // namespace EVMCOST
+
 // LLVM IR passes.
 ModulePass *createEVMLowerIntrinsicsPass();
 FunctionPass *createEVMCodegenPreparePass();
@@ -50,7 +57,9 @@ ModulePass *createEVMLinkRuntimePass();
 FunctionPass *createEVMOptimizeLiveIntervals();
 FunctionPass *createEVMRegColoring();
 FunctionPass *createEVMSingleUseExpression();
+FunctionPass *createEVMSplitCriticalEdges();
 FunctionPass *createEVMStackify();
+FunctionPass *createEVMBPStackification();
 
 // PassRegistry initialization declarations.
 void initializeEVMCodegenPreparePass(PassRegistry &);
@@ -61,7 +70,9 @@ void initializeEVMLinkRuntimePass(PassRegistry &);
 void initializeEVMOptimizeLiveIntervalsPass(PassRegistry &);
 void initializeEVMRegColoringPass(PassRegistry &);
 void initializeEVMSingleUseExpressionPass(PassRegistry &);
+void initializeEVMSplitCriticalEdgesPass(PassRegistry &);
 void initializeEVMStackifyPass(PassRegistry &);
+void initializeEVMBPStackificationPass(PassRegistry &);
 
 struct EVMLinkRuntimePass : PassInfoMixin<EVMLinkRuntimePass> {
   EVMLinkRuntimePass() = default;
