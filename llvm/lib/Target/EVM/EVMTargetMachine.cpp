@@ -22,7 +22,6 @@
 #include "llvm/CodeGen/TargetLoweringObjectFileImpl.h"
 #include "llvm/CodeGen/TargetPassConfig.h"
 #include "llvm/InitializePasses.h"
-#include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Transforms/IPO/GlobalDCE.h"
@@ -35,9 +34,9 @@ using namespace llvm;
 // when assembly printing.
 cl::opt<bool>
     EVMKeepRegisters("evm-keep-registers", cl::Hidden,
-                     cl::desc("EVM: output stack registers in"
-                              " instruction output for test purposes only."),
-                     cl::init(false));
+                      cl::desc("EVM: output stack registers in"
+                               " instruction output for test purposes only."),
+                      cl::init(false));
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   // Register the target.
@@ -49,6 +48,8 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   initializeEVMLowerIntrinsicsPass(PR);
   initializeEVMOptimizeLiveIntervalsPass(PR);
   initializeEVMSingleUseExpressionPass(PR);
+  initializeEVMSplitCriticalEdgesPass(PR);
+  initializeEVMBPStackificationPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -72,7 +73,6 @@ EVMTargetMachine::EVMTargetMachine(const Target &T, const Triple &TT,
                                getEffectiveCodeModel(CM, CodeModel::Small), OL),
       TLOF(std::make_unique<TargetLoweringObjectFileELF>()),
       Subtarget(TT, std::string(CPU), std::string(FS), *this) {
-  setRequiresStructuredCFG(true);
   initAsmInfo();
 }
 
@@ -193,8 +193,11 @@ void EVMPassConfig::addPreEmitPass() {
 
   // FIXME: enable all the passes below, but the Stackify with EVMKeepRegisters.
   if (!EVMKeepRegisters) {
+    addPass(createEVMSplitCriticalEdges());
+    addPass(&MachineBlockPlacementID);
     addPass(createEVMOptimizeLiveIntervals());
     addPass(createEVMSingleUseExpression());
+    addPass(createEVMBPStackification());
   }
 }
 

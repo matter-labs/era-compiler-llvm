@@ -5,8 +5,8 @@ target triple = "evm"
 
 define void @mstore8(ptr addrspace(1) %offset, i256 %val) nounwind {
 ; CHECK-LABEL: @mstore8
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: MSTORE8 [[IN1]], [[IN2]]
 
   call void @llvm.evm.mstore8(ptr addrspace(1) %offset, i256 %val)
@@ -15,8 +15,8 @@ define void @mstore8(ptr addrspace(1) %offset, i256 %val) nounwind {
 
 define void @mstore(ptr addrspace(1) %offset, i256 %val) nounwind {
 ; CHECK-LABEL: @mstore
-; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: ARGUMENT [[IN1:\$[0-9]+]], 0
+; CHECK: ARGUMENT [[IN2:\$[0-9]+]], 1
 ; CHECK: MSTORE [[IN1]], [[IN2]]
 
   store i256 %val, ptr addrspace(1) %offset, align 32

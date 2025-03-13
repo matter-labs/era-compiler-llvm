@@ -47,19 +47,19 @@ def FOO32 : MyVarInst<MemOp32> {
   );
 }
 
-// CHECK-SMALL:      /* 0 */       MCD::OPC_ExtractField, 3, 5,  // Inst{7-3} ...
-// CHECK-SMALL-NEXT: /* 3 */       MCD::OPC_FilterValue, 8, 4, 0, // Skip to: 11
-// CHECK-SMALL-NEXT: /* 7 */       MCD::OPC_Decode, {{[0-9]+}}, {{[0-9]+}}, 0, // Opcode: FOO16
-// CHECK-SMALL-NEXT: /* 11 */      MCD::OPC_FilterValueOrFail, 9,
-// CHECK-SMALL-NEXT: /* 13 */      MCD::OPC_Decode, {{[0-9]+}}, {{[0-9]+}}, 1, // Opcode: FOO32
-// CHECK-SMALL-NEXT: /* 17 */      MCD::OPC_Fail,
+// CHECK-SMALL:      /* 0 */       MCD::OPC_ExtractField, 3, 5, 0,  // Inst{7-3} ...
+// CHECK-SMALL-NEXT: /* 4 */       MCD::OPC_FilterValue, 8, 4, 0, // Skip to: 12
+// CHECK-SMALL-NEXT: /* 8 */       MCD::OPC_Decode, {{[0-9]+}}, {{[0-9]+}}, 0, // Opcode: FOO16
+// CHECK-SMALL-NEXT: /* 12 */      MCD::OPC_FilterValueOrFail, 9,
+// CHECK-SMALL-NEXT: /* 14 */      MCD::OPC_Decode, {{[0-9]+}}, {{[0-9]+}}, 1, // Opcode: FOO32
+// CHECK-SMALL-NEXT: /* 18 */      MCD::OPC_Fail,
 
-// CHECK-LARGE:      /* 0 */       MCD::OPC_ExtractField, 3, 5,  // Inst{7-3} ...
-// CHECK-LARGE-NEXT: /* 3 */       MCD::OPC_FilterValue, 8, 4, 0, 0, // Skip to: 12
-// CHECK-LARGE-NEXT: /* 8 */       MCD::OPC_Decode, {{[0-9]+}}, {{[0-9]+}}, 0, // Opcode: FOO16
-// CHECK-LARGE-NEXT: /* 12 */      MCD::OPC_FilterValueOrFail, 9,
-// CHECK-LARGE-NEXT: /* 14 */      MCD::OPC_Decode, {{[0-9]+}}, {{[0-9]+}}, 1, // Opcode: FOO32
-// CHECK-LARGE-NEXT: /* 18 */      MCD::OPC_Fail,
+// CHECK-LARGE:      /* 0 */       MCD::OPC_ExtractField, 3, 5, 0,  // Inst{7-3} ...
+// CHECK-LARGE-NEXT: /* 4 */       MCD::OPC_FilterValue, 8, 4, 0, 0, // Skip to: 13
+// CHECK-LARGE-NEXT: /* 9 */       MCD::OPC_Decode, {{[0-9]+}}, {{[0-9]+}}, 0, // Opcode: FOO16
+// CHECK-LARGE-NEXT: /* 13 */      MCD::OPC_FilterValueOrFail, 9,
+// CHECK-LARGE-NEXT: /* 15 */      MCD::OPC_Decode, {{[0-9]+}}, {{[0-9]+}}, 1, // Opcode: FOO32
+// CHECK-LARGE-NEXT: /* 19 */      MCD::OPC_Fail,
 
 // Instruction length table
 // CHECK: 27,
