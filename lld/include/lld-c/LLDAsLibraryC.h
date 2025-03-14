@@ -131,56 +131,58 @@ void LLVMGetUndefinedReferencesEraVM(LLVMMemoryBufferRef inBuffer,
                                      char ***factoryDepSymbols,
                                      uint64_t *numFactoryDepSymbols);
 
-/** Returns true if the \p inBuffer contains an ELF object file. */
+/** Returns true if the \p inBuffer contains an EVM ELF object file. */
 LLVMBool LLVMIsELFEVM(LLVMMemoryBufferRef inBuffer);
 
+/**
+ * Performs the following steps, which are based on Ethereum's
+ * Assembly::assemble() logic:
+ *   - Concatenates the .text sections of input ELF files referenced
+ *     by __dataoffset* symbols from the first file.
+ *   - Resolves undefined __dataoffset* and __datasize* symbols.
+ *   - Gathers all undefined linker symbols (library references) from
+ *     all files.
+ *   - Ensures that the first file does not load and set
+ *     immutables simultaneously.
+ *
+ * \p codeSegment, 0 means the first file has a deploy code,
+ *                 1 - runtime code;
+ * \p inBuffers - relocatable ELF files to be assembled
+ * \p inBuffersIDs - their IDs
+ * \p outBuffer - resulting relocatable object file */
+LLVMBool LLVMAssembleEVM(uint64_t codeSegment,
+                         const LLVMMemoryBufferRef inBuffers[],
+                         const char *const inBuffersIDs[],
+                         uint64_t inBuffersNum, LLVMMemoryBufferRef *outBuffer,
+                         char **errorMessage);
+
+/** Returns an array of undefined linker symbol names
+ *  from the ELF object provided in \p inBuffer. */
 void LLVMGetUndefinedReferencesEVM(LLVMMemoryBufferRef inBuffer,
                                    char ***linkerSymbols,
                                    uint64_t *numLinkerSymbols);
 
-/** Disposes an array with symbols returned by the
- *  LLVMGetUndefinedReferences* functions. */
+/** Disposes of the array of symbols returned by the
+ *  'LLVMGetUndefinedReferences' function. */
 void LLVMDisposeUndefinedReferences(char *symbolNames[], uint64_t numSymbols);
 
-/** Links the deploy and runtime ELF object files using the information about
- *  dependencies.
- *  \p inBuffers - array of input memory buffers with following structure:
- *
- *   inBuffers[0] - deploy ELF object code
- *   inBuffers[1] - deployed (runtime) ELF object code
- *   --------------------------
- *   inBuffers[2] - 1-st sub-contract (final EVM bytecode)
- *   ...
- *   inBuffers[N] - N-st sub-contract (final EVM bytecode)
- *
- *  Sub-contracts are optional. They should have the same ordering as in
- *  the YUL layout.
- *
- *  \p inBuffersIDs - array of string identifiers of the buffers. IDs correspond
- *  to the object names in the YUL layout.
- *  On success, outBuffers[0] will contain the deploy bytecode and outBuffers[1]
- *  the runtime bytecode.
- *  \p linkerSymbolNames has the same meaning as for LLVMLinkEraVM.
- *  If at least one resulting binary contains unresolved linker symbols,
- *  output binaries will be returned as ELF object files. See LLVMLinkEraVM
- *  description.
- *  In case of an error the function returns 'true' and the error message is
- *  passes in \p errorMessage. The message should be disposed by
- *  'LLVMDisposeMessage'. */
-LLVMBool LLVMLinkEVM(LLVMMemoryBufferRef *inBuffers, const char *inBuffersIDs[],
-                     uint64_t numInBuffers, LLVMMemoryBufferRef outBuffers[2],
+/** Resolves undefined linker symbols in the ELF object file \p inBuffer.
+ *  Returns the ELF object file if any linker symbols remain unresolved;
+ *  otherwise, returns the bytecode. */
+LLVMBool LLVMLinkEVM(LLVMMemoryBufferRef inBuffer,
+                     LLVMMemoryBufferRef *outBuffer,
                      const char *const *linkerSymbolNames,
                      const char linkerSymbolValues[][LINKER_SYMBOL_SIZE],
                      uint64_t numLinkerSymbols, char **errorMessage);
 
-/// Returns immutables and their offsets of the ELF object
-/// file passed in \p inBuffer.
+/** Returns the immutable symbol names and their offsets from the ELF
+ *  object file provided in \p inBuffer. */
 uint64_t LLVMGetImmutablesEVM(LLVMMemoryBufferRef inBuffer,
                               char ***immutableIDs,
                               uint64_t **immutableOffsets);
 
-/// Disposes immutable names and their offsets returned by the
-/// LLVMGetImmutablesEVM.
+/** Disposes of the immutable names and their offsets returned by
+ *  'LLVMGetImmutablesEVM'. */
 void LLVMDisposeImmutablesEVM(char **immutableIDs, uint64_t *immutableOffsets,
                               uint64_t numOfImmutables);
 LLVM_C_EXTERN_C_END

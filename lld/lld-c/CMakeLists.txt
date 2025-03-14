@@ -7,6 +7,7 @@ add_lld_library(lldC
   Core
   EraVMDesc
   EVMDesc
+  ObjCopy
   Object
   Support
 
