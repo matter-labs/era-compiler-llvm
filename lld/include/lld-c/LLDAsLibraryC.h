@@ -145,10 +145,13 @@ LLVMBool LLVMIsELFEVM(LLVMMemoryBufferRef inBuffer);
  *   - Checks that inBuffers[0] object doesn't load and set immutables at
  *     the same time.
  *
+ * \p codeSegment, 0 means inBuffers[0] is deploy code,
+ *                 1 - runtime code;
  * \p inBuffers - relocatable ELF files to be assembled
  * \p inBuffersIDs - their IDs
  * \p outBuffer - resulting relocatable object file */
-LLVMBool LLVMAssembleEVM(const LLVMMemoryBufferRef inBuffers[],
+LLVMBool LLVMAssembleEVM(uint64_t codeSegment,
+                         const LLVMMemoryBufferRef inBuffers[],
                          const char *const inBuffersIDs[],
                          uint64_t numInBuffers, LLVMMemoryBufferRef *outBuffer,
                          char **errorMessage);

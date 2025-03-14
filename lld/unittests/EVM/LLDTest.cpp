@@ -64,12 +64,13 @@ public:
     return OutAssembly;
   }
 
-  LLVMMemoryBufferRef assemble(const std::vector<LLVMMemoryBufferRef> &Objs,
+  LLVMMemoryBufferRef assemble(uint64_t codeSegment,
+                               const std::vector<LLVMMemoryBufferRef> &Objs,
                                const std::vector<const char *> &IDs) {
     char *ErrMsg = nullptr;
     LLVMMemoryBufferRef OutAssembly = nullptr;
-    if (LLVMAssembleEVM(Objs.data(), IDs.data(), Objs.size(), &OutAssembly,
-                        &ErrMsg)) {
+    if (LLVMAssembleEVM(codeSegment, Objs.data(), IDs.data(), Objs.size(),
+                        &OutAssembly, &ErrMsg)) {
       LLVMDisposeMessage(ErrMsg);
       exit(1);
     }
@@ -143,45 +144,8 @@ define i256 @foo() {                                              \n\
 !1 = !{!\"library_id2\"}                                          \n\
 !2 = !{!\"id\"}";
 
-  // Wrap Source in a MemoryBuffer
-  LLVMMemoryBufferRef DeployIrMemBuffer = LLVMCreateMemoryBufferWithMemoryRange(
-      DeployIr.data(), DeployIr.size(), "deploy", 1);
-  char *ErrMsg = nullptr;
-  LLVMModuleRef DeployMod;
-  if (LLVMParseIRInContext(Context, DeployIrMemBuffer, &DeployMod, &ErrMsg)) {
-    FAIL() << "Failed to parse llvm ir:" << ErrMsg;
-    LLVMDisposeMessage(ErrMsg);
-    return;
-  }
-
-  LLVMMemoryBufferRef DeployedIrMemBuffer =
-      LLVMCreateMemoryBufferWithMemoryRange(DeployedIr.data(),
-                                            DeployedIr.size(), "deploy", 1);
-  LLVMModuleRef DeployedMod;
-  if (LLVMParseIRInContext(Context, DeployedIrMemBuffer, &DeployedMod,
-                           &ErrMsg)) {
-    FAIL() << "Failed to parse llvm ir:" << ErrMsg;
-    LLVMDisposeMessage(ErrMsg);
-    return;
-  }
-
-  // Run CodeGen to produce the buffers.
-  LLVMMemoryBufferRef DeployObjMemBuffer;
-  LLVMMemoryBufferRef DeployedObjMemBuffer;
-  if (LLVMTargetMachineEmitToMemoryBuffer(TM, DeployMod, LLVMObjectFile,
-                                          &ErrMsg, &DeployObjMemBuffer)) {
-    FAIL() << "Failed to compile llvm ir:" << ErrMsg;
-    LLVMDisposeModule(DeployMod);
-    LLVMDisposeMessage(ErrMsg);
-    return;
-  }
-  if (LLVMTargetMachineEmitToMemoryBuffer(TM, DeployedMod, LLVMObjectFile,
-                                          &ErrMsg, &DeployedObjMemBuffer)) {
-    FAIL() << "Failed to compile llvm ir:" << ErrMsg;
-    LLVMDisposeModule(DeployedMod);
-    LLVMDisposeMessage(ErrMsg);
-    return;
-  }
+  LLVMMemoryBufferRef DeployObjMemBuffer = compileIR(DeployIr);
+  LLVMMemoryBufferRef DeployedObjMemBuffer = compileIR(DeployedIr);
 
   EXPECT_TRUE(LLVMIsELFEVM(DeployObjMemBuffer));
   EXPECT_TRUE(LLVMIsELFEVM(DeployedObjMemBuffer));
@@ -199,11 +163,13 @@ define i256 @foo() {                                              \n\
                                                DeployedObjMemBuffer};
   LLVMMemoryBufferRef InMemBuf = nullptr;
   LLVMMemoryBufferRef OutMemBuf = nullptr;
+  char *ErrMsg = nullptr;
 
   // Assemble deploy with deployed.
   {
-    if (LLVMAssembleEVM(InData.data(), InIDs, 2, &OutMemBuf, &ErrMsg)) {
-      FAIL() << "Failed to link:" << ErrMsg;
+    if (LLVMAssembleEVM(/*codeSegment=*/0, InData.data(), InIDs, 2, &OutMemBuf,
+                        &ErrMsg)) {
+      FAIL() << "Failed to assemble:" << ErrMsg;
       LLVMDisposeMessage(ErrMsg);
       return;
     }
@@ -438,21 +404,27 @@ define i256 @get_initcode() {                                   \n\
 
   // A assemble.
   LLVMMemoryBufferRef A_assembly_deployed =
-      assemble({A_deployed_obj}, {"A_38_deployed"});
+      assemble(/*codeSegment=*/1, {A_deployed_obj}, {"A_38_deployed"});
   LLVMMemoryBufferRef A_assembly =
-      assemble({A_deploy_obj, A_deployed_obj}, {"A_38", "A_38_deployed"});
+      assemble(/*codeSegment=*/0, {A_deploy_obj, A_deployed_obj},
+               {"A_38", "A_38_deployed"});
 
   // D assemble.
   LLVMMemoryBufferRef D_assembly =
-      assemble({D_deploy_obj, D_deployed_obj}, {"D_51", "D_51_deployed"});
+      assemble(/*codeSegment=*/0, {D_deploy_obj, D_deployed_obj},
+               {"D_51", "D_51_deployed"});
 
   // R_deployed assemble.
+  // A_assembly is not required here, but we add it intentionaly to check
+  // that it will be ignored (the total number of library reference is 3).
   LLVMMemoryBufferRef R_deployed_assemble =
-      assemble({R_deployed_obj, D_assembly, A_assembly, A_assembly_deployed},
+      assemble(/*codeSegment=*/1,
+               {R_deployed_obj, D_assembly, A_assembly, A_assembly_deployed},
                {"R_107_deployed", "D_51", "A_38", "A_38.A_38_deployed"});
 
   // R assemble.
   LLVMMemoryBufferRef R_assembly = assemble(
+      /*codeSegment=*/0,
       {R_deploy_obj, R_deployed_assemble, A_assembly, A_assembly_deployed},
       {"R_107", "R_107_deployed", "A_38", "A_38.A_38_deployed"});
 
@@ -460,12 +432,13 @@ define i256 @get_initcode() {                                   \n\
   LLVMMemoryBufferRef TmpAssembly = link(R_assembly, "R", nullptr, nullptr, 0);
   EXPECT_TRUE(LLVMIsELFEVM(TmpAssembly));
 
-  // Linking with unused linker symbol.
+  // Linking with unused linker symbol. It has no effect.
   LLVMMemoryBufferRef TmpAssembly2 =
       link(TmpAssembly, "R", LinkerSymbol, LinkerSymbolVal, 1);
   EXPECT_TRUE(LLVMIsELFEVM(TmpAssembly2));
 
-  // Linking with both linker symbols.
+  // Linking with both linker symbols. The library reference should be resolved
+  // and resulting object is a final bytecode.
   LLVMMemoryBufferRef Bytecode =
       link(TmpAssembly2, "R", LinkerSymbol, LinkerSymbolVal, 2);
   EXPECT_TRUE(!LLVMIsELFEVM(Bytecode));
@@ -491,4 +464,54 @@ define i256 @get_initcode() {                                   \n\
   LLVMDisposeMemoryBuffer(TmpAssembly);
   LLVMDisposeMemoryBuffer(TmpAssembly2);
   LLVMDisposeMemoryBuffer(Bytecode);
+}
+
+TEST_F(LLDCTest, UndefNonRefSymbols) {
+  StringRef DeployIr = "\
+target datalayout = \"E-p:256:256-i256:256:256-S256-a:256:256\"   \n\
+target triple = \"evm\"                                           \n\
+declare i256 @llvm.evm.datasize(metadata)                         \n\
+declare i256 @llvm.evm.dataoffset(metadata)                       \n\
+declare i256 @llvm.evm.linkersymbol(metadata)                     \n\
+                                                                  \n\
+define i256 @bar() {                                              \n\
+  %datasize = tail call i256 @llvm.evm.datasize(metadata !1)      \n\
+  %dataoffset = tail call i256 @llvm.evm.dataoffset(metadata !1)  \n\
+  %res = add i256 %datasize, %dataoffset                          \n\
+  ret i256 %res                                                   \n\
+}                                                                 \n\
+!1 = !{!\"unknown\"}";
+
+  StringRef DeployedIr = "\
+target datalayout = \"E-p:256:256-i256:256:256-S256-a:256:256\"   \n\
+target triple = \"evm\"                                           \n\
+declare i256 @llvm.evm.linkersymbol(metadata)                     \n\
+declare i256 @llvm.evm.loadimmutable(metadata)                    \n\
+                                                                  \n\
+define i256 @foo() {                                              \n\
+  %res = call i256 @llvm.evm.linkersymbol(metadata !1)            \n\
+  %res2 = call i256 @llvm.evm.loadimmutable(metadata !2)          \n\
+  %res3 = add i256 %res, %res2                                    \n\
+  ret i256 %res3                                                  \n\
+}                                                                 \n\
+!1 = !{!\"library_id2\"}                                          \n\
+!2 = !{!\"id\"}";
+
+  LLVMMemoryBufferRef DeployObj = compileIR(DeployIr);
+  LLVMMemoryBufferRef DeployedObj = compileIR(DeployedIr);
+
+  EXPECT_TRUE(LLVMIsELFEVM(DeployObj));
+  EXPECT_TRUE(LLVMIsELFEVM(DeployedObj));
+
+  const std::array<LLVMMemoryBufferRef, 2> InObjs = {DeployObj, DeployedObj};
+  const std::array<const char *, 2> IDs = {"Test_26", "Test_26_deployed"};
+  LLVMMemoryBufferRef OutObj = nullptr;
+  char *ErrMsg = nullptr;
+  EXPECT_TRUE(LLVMAssembleEVM(/*codeSegment=*/0, InObjs.data(), IDs.data(),
+                              IDs.size(), &OutObj, &ErrMsg));
+  EXPECT_TRUE(StringRef(ErrMsg).contains("non-ref undefined symbol:"));
+  LLVMDisposeMessage(ErrMsg);
+
+  LLVMDisposeMemoryBuffer(DeployObj);
+  LLVMDisposeMemoryBuffer(DeployedObj);
 }

@@ -925,10 +925,13 @@ static void getUndefinedNonRefSymbols(LLVMMemoryBufferRef inBuffer,
 ///   - Checks that inBuffers[0] object doesn't load and set immutables at
 ///     the same time.
 ///
+/// \p codeSegment, 0 means inBuffers[0] is a deploy code,
+///                 1 - runtime code;
 /// \p inBuffers - relocatable ELF files to be assembled
 /// \p inBuffersIDs - their IDs
 /// \p outBuffer - resulting relocatable object file
-LLVMBool LLVMAssembleEVM(const LLVMMemoryBufferRef inBuffers[],
+LLVMBool LLVMAssembleEVM(uint64_t codeSegment,
+                         const LLVMMemoryBufferRef inBuffers[],
                          const char *const inBuffersIDs[],
                          uint64_t numInBuffers, LLVMMemoryBufferRef *outBuffer,
                          char **errorMessage) {
@@ -966,19 +969,11 @@ LLVMBool LLVMAssembleEVM(const LLVMMemoryBufferRef inBuffers[],
   }
 
   // Check if the first dependency object contains loadimmutable symbols.
-  // TODO: We assume that the first object containing loadimmutable is
-  // always the runtime code with respects to the top level object.
-  // Is that always true?
-  //
-  // Theoretically, we should check:
-  //  - that the only immediate dependency object contains
-  //    loadimmutable symbols (if any).
-  //  - the object with loadimmutable symbols comes first
-  //    in a dependency list (its idx == 1).
-  //  But we cannot distinguish immediate dependency for indirect one,
-  //  so these check should be carried out on the API user side.
+  // codeSegment == 0 means that the top level object contains deploy code
+  // which, in turn, implies the firs dependency (idx == 1) is the
+  // corresponding runtime code.
   bool depHasLoadImmutable = false;
-  if (numInBuffers > 1) {
+  if (codeSegment == 0 && numInBuffers > 1) {
     std::unique_ptr<Binary> binary =
         cantFail(createBinary(localInMemBufRefs[1]));
     const auto *oFile = static_cast<const ObjectFile *>(binary.get());
