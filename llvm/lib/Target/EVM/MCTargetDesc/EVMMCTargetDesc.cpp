@@ -150,12 +150,34 @@ std::string EVM::getLinkerSymbolName(StringRef Name) {
   return (Twine("__linker_symbol") + Name).str();
 }
 
-std::string EVM::getDataSizeSymbol(StringRef SymbolName) {
-  return (Twine("__datasize") + SymbolName).str();
+std::string EVM::getDataSizeSymbol(StringRef Name) {
+  return (Twine("__datasize") + Name).str();
 }
 
-std::string EVM::getDataOffsetSymbol(StringRef SymbolName) {
-  return (Twine("__dataoffset") + SymbolName).str();
+bool EVM::isDataSizeSymbolName(StringRef SymbolName) {
+  return SymbolName.find("__datasize") == 0;
+}
+
+std::string EVM::extractDataSizeName(StringRef SymbolName) {
+  if (!SymbolName.consume_front("__datasize"))
+    report_fatal_error("Unexpected datasize symbol format");
+
+  return SymbolName.str();
+}
+
+std::string EVM::getDataOffsetSymbol(StringRef Name) {
+  return (Twine("__dataoffset") + Name).str();
+}
+
+bool EVM::isDataOffsetSymbolName(StringRef Name) {
+  return Name.find("__dataoffset") == 0;
+}
+
+std::string EVM::extractDataOffseteName(StringRef SymbolName) {
+  if (!SymbolName.consume_front("__dataoffset"))
+    report_fatal_error("Unexpected dataoffset symbol format");
+
+  return SymbolName.str();
 }
 
 std::string EVM::getLoadImmutableSymbol(StringRef Name, unsigned Idx) {
