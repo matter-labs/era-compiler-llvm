@@ -40,14 +40,19 @@ std::unique_ptr<MCObjectTargetWriter> createEVMELFObjectWriter(uint8_t OSABI);
 namespace EVM {
 std::string getLinkerSymbolHash(StringRef SymName);
 std::string getSymbolIndexedName(StringRef Name, unsigned SubIdx);
-std::string getSymbolSectionName(StringRef Name);
 std::string getNonIndexedSymbolName(StringRef Name);
-std::string getLinkerSymbolName(StringRef Name);
+bool isSymbolSectionName(StringRef Name);
+std::string getSymbolSectionName(StringRef Name);
 bool isLinkerSymbolName(StringRef Name);
-std::string getDataSizeSymbol(StringRef SymbolName);
-std::string getDataOffsetSymbol(StringRef SymbolName);
-std::string getLoadImmutableSymbol(StringRef Name, unsigned Idx);
+std::string getLinkerSymbolName(StringRef Name);
+bool isDataSizeSymbolName(StringRef SymbolName);
+std::string getDataSizeSymbol(StringRef Name);
+std::string extractDataSizeName(StringRef SymbolName);
+bool isDataOffsetSymbolName(StringRef Name);
+std::string getDataOffsetSymbol(StringRef Name);
+std::string extractDataOffseteName(StringRef SymbolName);
 bool isLoadImmutableSymbolName(StringRef Name);
+std::string getLoadImmutableSymbol(StringRef Name, unsigned Idx);
 std::string getImmutableId(StringRef Name);
 } // namespace EVM
 } // namespace llvm
