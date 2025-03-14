@@ -186,6 +186,7 @@ const EraVMOpcodeInfo *analyzeEncodedOpcode(unsigned EncodedOpcode,
 std::string getSymbolHash(StringRef Name);
 std::string getSymbolIndexedName(StringRef Name, unsigned SubIdx);
 std::string getSymbolSectionName(StringRef Name);
+bool isSymbolSectionName(StringRef Name);
 std::string getNonIndexedSymbolName(StringRef Name);
 std::string getLinkerSymbolName(StringRef Name);
 std::string getFactoryDependencySymbolName(StringRef BaseName);
