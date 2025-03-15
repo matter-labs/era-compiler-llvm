@@ -55,7 +55,7 @@ void SwitchCG::SwitchLowering::findJumpTables(CaseClusterVector &Clusters,
     assert(C.Kind == CC_Range);
   for (unsigned i = 1, e = Clusters.size(); i < e; ++i)
     // EraVM local begin
-    if (!TM->getTargetTriple().isEraVM())
+    if (!TM->getTargetTriple().isEraVM() && !TM->getTargetTriple().isEVM())
     // EraVM local end
     assert(Clusters[i - 1].High->getValue().slt(Clusters[i].Low->getValue()));
     // EraVM local begin
@@ -220,7 +220,7 @@ bool SwitchCG::SwitchLowering::buildJumpTable(const CaseClusterVector &Clusters,
       // Fill the gap between this and the previous cluster.
       const APInt &PreviousHigh = Clusters[I - 1].High->getValue();
       // EraVM local begin
-      if (!TM->getTargetTriple().isEraVM())
+      if (!TM->getTargetTriple().isEraVM() && !TM->getTargetTriple().isEVM())
       // EraVM local end
       assert(PreviousHigh.slt(Low));
       // EraVM local begin
@@ -289,9 +289,9 @@ void SwitchCG::SwitchLowering::findBitTestClusters(CaseClusterVector &Clusters,
     assert(C.Kind == CC_Range || C.Kind == CC_JumpTable);
   for (unsigned i = 1; i < Clusters.size(); ++i)
     // EraVM local begin
-    if (!TM->getTargetTriple().isEraVM())
+    if (!TM->getTargetTriple().isEraVM() && !TM->getTargetTriple().isEVM())
     // EraVM local end
-    assert(Clusters[i-1].High->getValue().slt(Clusters[i].Low->getValue()));
+    assert(Clusters[i - 1].High->getValue().slt(Clusters[i].Low->getValue()));
     // EraVM local begin
     else
     assert(Clusters[i-1].High->getValue().ult(Clusters[i].Low->getValue()));
@@ -402,7 +402,7 @@ bool SwitchCG::SwitchLowering::buildBitTests(CaseClusterVector &Clusters,
   APInt Low = Clusters[First].Low->getValue();
   APInt High = Clusters[Last].High->getValue();
   // EraVM local begin
-  if (!TM->getTargetTriple().isEraVM())
+  if (!TM->getTargetTriple().isEraVM() && !TM->getTargetTriple().isEVM())
   // EraVM local end
   assert(Low.slt(High));
   // EraVM local begin
@@ -432,8 +432,9 @@ bool SwitchCG::SwitchLowering::buildBitTests(CaseClusterVector &Clusters,
 
   // EraVM local begin
   if (Low.isStrictlyPositive() &&
-      (TM->getTargetTriple().isEraVM() ? High.ult(BitWidth)
-                                       : High.slt(BitWidth))) {
+      ((TM->getTargetTriple().isEraVM() || TM->getTargetTriple().isEVM())
+           ? High.ult(BitWidth)
+           : High.slt(BitWidth))) {
     // EraVM local end
     // Optimize the case where all the case values fit in a word without having
     // to subtract minValue. In this case, we can optimize away the subtraction.

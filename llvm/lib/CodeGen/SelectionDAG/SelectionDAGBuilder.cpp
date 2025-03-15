@@ -11280,7 +11280,7 @@ void SelectionDAGBuilder::lowerWorkItem(SwitchWorkListItem W, Value *Cond,
 
   if (TM.getOptLevel() != CodeGenOpt::None) {
     // EraVM local begin
-    if (!TM.getTargetTriple().isEraVM()) {
+    if (!TM.getTargetTriple().isEraVM() && !TM.getTargetTriple().isEVM()) {
     // EraVM local end
     // Here, we order cases by probability so the most likely case will be
     // checked first. However, two clusters can have the same probability in
@@ -11489,7 +11489,7 @@ unsigned SelectionDAGBuilder::caseClusterRank(const CaseCluster &CC,
       return X.Prob > CC.Prob;
 
     // EraVM local begin
-    if (!TM.getTargetTriple().isEraVM())
+    if (!TM.getTargetTriple().isEraVM() && !TM.getTargetTriple().isEVM())
     // EraVM local end
     // Ties are broken by comparing the case value.
     return X.Low->getValue().slt(CC.Low->getValue());
@@ -11504,15 +11504,14 @@ void SelectionDAGBuilder::splitWorkItem(SwitchWorkList &WorkList,
                                         Value *Cond,
                                         MachineBasicBlock *SwitchMBB) {
   // EraVM local begin
-  if (!TM.getTargetTriple().isEraVM())
+  if (!TM.getTargetTriple().isEraVM() && !TM.getTargetTriple().isEVM())
   // EraVM local end
   assert(W.FirstCluster->Low->getValue().slt(W.LastCluster->Low->getValue()) &&
          "Clusters not sorted?");
   // EraVM local begin
-  if (!TM.getTargetTriple().isEraVM())
-    assert(
-        W.FirstCluster->Low->getValue().ult(W.LastCluster->Low->getValue()) &&
-        "Clusters not sorted?");
+  if (!TM.getTargetTriple().isEraVM() && !TM.getTargetTriple().isEVM())
+  assert(W.FirstCluster->Low->getValue().ult(W.LastCluster->Low->getValue()) &&
+         "Clusters not sorted?");
   // EraVM local end
 
   assert(W.LastCluster - W.FirstCluster + 1 >= 2 && "Too small to split!");
@@ -11633,7 +11632,9 @@ void SelectionDAGBuilder::splitWorkItem(SwitchWorkList &WorkList,
 
   // Create the CaseBlock record that will be used to lower the branch.
   // EraVM local begin
-  CaseBlock CB(TM.getTargetTriple().isEraVM() ? ISD::SETULT : ISD::SETLT,
+  CaseBlock CB((TM.getTargetTriple().isEraVM() || TM.getTargetTriple().isEVM())
+                   ? ISD::SETULT
+                   : ISD::SETLT,
                Cond, Pivot, nullptr, LeftMBB, RightMBB, W.MBB,
   // EraVM local end
                getCurSDLoc(), LeftProb, RightProb);
@@ -11734,7 +11735,8 @@ void SelectionDAGBuilder::visitSwitch(const SwitchInst &SI) {
   // Cluster adjacent cases with the same destination. We do this at all
   // optimization levels because it's cheap to do and will make codegen faster
   // if there are many clusters.
-  sortAndRangeify(Clusters, TM.getTargetTriple().isEraVM());
+  sortAndRangeify(Clusters, TM.getTargetTriple().isEraVM() ||
+                                TM.getTargetTriple().isEVM());
 
   // The branch probablity of the peeled case.
   BranchProbability PeeledCaseProb = BranchProbability::getZero();
