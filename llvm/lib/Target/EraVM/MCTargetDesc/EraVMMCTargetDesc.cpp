@@ -146,6 +146,11 @@ std::string EraVM::getSymbolSectionName(StringRef Name) {
   return (Twine(".symbol_name") + Name).str();
 }
 
+// Returns true if the \p Name starts with '.symbol_name'.
+bool EraVM::isSymbolSectionName(StringRef Name) {
+  return Name.find(".symbol_name") == 0;
+}
+
 // Strips index from the \p Name.
 std::string EraVM::getNonIndexedSymbolName(StringRef Name) {
   Regex suffixRegex(R"(.*[0-7]$)");

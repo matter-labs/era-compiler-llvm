@@ -2802,7 +2802,9 @@ static uint64_t getEntryAddr() {
 static uint16_t getELFType() {
   if (config->isPic)
     return ET_DYN;
-  if (config->relocatable)
+  // EVM local begin
+  if (config->relocatable || config->evmAssembly)
+    // EVM local end
     return ET_REL;
   return ET_EXEC;
 }
