@@ -11509,7 +11509,7 @@ void SelectionDAGBuilder::splitWorkItem(SwitchWorkList &WorkList,
   assert(W.FirstCluster->Low->getValue().slt(W.LastCluster->Low->getValue()) &&
          "Clusters not sorted?");
   // EraVM local begin
-  if (!TM.getTargetTriple().isEraVM())
+  if (TM.getTargetTriple().isEraVM())
     assert(
         W.FirstCluster->Low->getValue().ult(W.LastCluster->Low->getValue()) &&
         "Clusters not sorted?");
