@@ -108,13 +108,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - target: 'eravm'
-            toolchain: 'ir-llvm'
-            environment: 'zk_evm'
-          - target: 'evm'
-            toolchain: 'ir-llvm'
-            environment: 'EVMInterpreter'
+        target: '${{ needs.target-machine.outputs.* }}'
+        toolchain: [ 'ir-llvm' ]
     with:
       compiler_tester_reference_branch: ${{ needs.compiler-tester-ref.outputs.reference-ref }}
       compiler_tester_candidate_branch: ${{ needs.compiler-tester-ref.outputs.candidate-ref }}
@@ -125,8 +120,8 @@ jobs:
       compiler-llvm-repo: ${{ github.event.pull_request.head.repo.full_name }} # required to properly test forks
       target-machine: ${{ matrix.target }}
       toolchain: ${{ matrix.toolchain }}
+      environment: ${{ matrix.target == 'eravm' && 'zk_evm' || 'EVMInterpreter' }}
       ccache-key: 'llvm-Linux-X64-gnu'
-      environment: ${{ matrix.environment }}
 
   # Integration tests workflow call from the era-compiler-ci repository
   # This is a common part of the integration tests workflow for all repositories
