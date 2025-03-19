@@ -63,8 +63,8 @@ default:
 ; ASM-ELF-NEXT:  Offset     Info    Type                Sym. Value  Symbol's Name + Addend
 ; ASM-ELF-NEXT: 0000001e  00000202 R_ERAVM_16_SCALE_8     00000000   .text + 20
 ; ASM-ELF-NEXT: 0000003e  00000202 R_ERAVM_16_SCALE_8     00000000   .text + 40
-; ASM-ELF-NEXT: 0000005e  00000202 R_ERAVM_16_SCALE_8     00000000   .text + 50
-; ASM-ELF-NEXT: 0000007e  00000202 R_ERAVM_16_SCALE_8     00000000   .text + 60
+; ASM-ELF-NEXT: 0000005e  00000202 R_ERAVM_16_SCALE_8     00000000   .text + 30
+; ASM-ELF-NEXT: 0000007e  00000202 R_ERAVM_16_SCALE_8     00000000   .text + 50
 
 ; JTI0_0 starts at zero offset inside .rodata, as expected by the above checks
 ; ELF: Symbol table '.symtab' contains {{[0-9]+}} entries:
