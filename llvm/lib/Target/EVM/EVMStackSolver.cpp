@@ -340,8 +340,12 @@ void EVMStackSolver::runPropagation() {
           Worklist.push_front(TBB);
 
         if (FBBVisited && TBBVisited) {
-          Stack CombinedStack = combineStack(StackModel.getMBBEntryStack(FBB),
-                                             StackModel.getMBBEntryStack(TBB));
+          // The order of arguments in 'combineStack' influences the
+          // resulting combined stack, which is unexpected. Additionally,
+          // passing TBB's stack resolves many 'stack-too-deep' errors in CI.
+          // TODO: #781. Investigate the cause of this behavior.
+          Stack CombinedStack = combineStack(StackModel.getMBBEntryStack(TBB),
+                                             StackModel.getMBBEntryStack(FBB));
           // Retain the jump condition in ExitStack because StackSolver doesn't
           // propagate stacks through branch instructions.
           CombinedStack.emplace_back(StackModel.getStackSlot(*Condition));
