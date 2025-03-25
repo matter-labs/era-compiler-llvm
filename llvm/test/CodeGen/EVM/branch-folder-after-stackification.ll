@@ -8,9 +8,8 @@ define i256 @test(i256 %arg) {
 ; CHECK-LABEL: test:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    DUP3
+; CHECK-NEXT:    DUP2
 ; CHECK-NEXT:    SLT
 ; CHECK-NEXT:    ISZERO
 ; CHECK-NEXT:    PUSH4 @.BB0_2
@@ -26,18 +25,17 @@ define i256 @test(i256 %arg) {
 ; CHECK-NEXT:    PUSH1 20
 ; CHECK-NEXT:  .BB0_3:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    SGT
 ; CHECK-NEXT:    ISZERO
 ; CHECK-NEXT:    PUSH4 @.BB0_5
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.4:
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    POP
 ; CHECK-NEXT:    PUSH1 5
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:  .BB0_5:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %cmp1 = icmp sgt i256 %arg, 0
   %cmp2 = icmp slt i256 %arg, 0
