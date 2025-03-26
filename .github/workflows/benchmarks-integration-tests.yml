@@ -102,7 +102,7 @@ jobs:
   # This is a common part of the benchmarks workflow for all repositories
   # If you would like to make a change to the benchmarks workflow, please do it in the era-compiler-ci repository
   benchmarks:
-    needs: [compiler-tester-ref]
+    needs: [compiler-tester-ref, target-machine]
     uses: matter-labs/era-compiler-ci/.github/workflows/benchmarks.yml@v1
     secrets: inherit
     strategy:
