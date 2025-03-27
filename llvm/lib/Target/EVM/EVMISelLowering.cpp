@@ -71,6 +71,8 @@ EVMTargetLowering::EVMTargetLowering(const TargetMachine &TM,
   }
 
   setOperationAction(ISD::UMUL_LOHI, MVT::i256, Custom);
+  setOperationAction(ISD::BSWAP, MVT::i256, Custom);
+  setOperationAction(ISD::CTPOP, MVT::i256, Custom);
 
   // Custom lowering of extended loads.
   for (const MVT VT : MVT::integer_valuetypes()) {
@@ -130,7 +132,116 @@ SDValue EVMTargetLowering::LowerOperation(SDValue Op, SelectionDAG &DAG) const {
     return LowerUMUL_LOHI(Op, DAG);
   case ISD::INTRINSIC_VOID:
     return LowerINTRINSIC_VOID(Op, DAG);
+  case ISD::CTPOP:
+    return LowerCTPOP(Op, DAG);
+  case ISD::BSWAP:
+    return LowerBSWAP(Op, DAG);
   }
+}
+
+SDValue EVMTargetLowering::LowerBSWAP(SDValue BSWAP, SelectionDAG &DAG) const {
+  SDNode *N = BSWAP.getNode();
+  SDLoc dl(N);
+  EVT VT = N->getValueType(0);
+  SDValue Op = N->getOperand(0);
+  EVT SHVT = getShiftAmountTy(VT, DAG.getDataLayout());
+
+  assert(VT == MVT::i256 && "Unexpected type for bswap");
+
+  std::array<SDValue, 33> Tmp;
+
+  for (int i = 32; i >= 17; i--)
+    Tmp[i] = DAG.getNode(ISD::SHL, dl, VT, Op,
+                         DAG.getConstant(((i - 17) * 16) + 8, dl, SHVT));
+
+  for (int i = 16; i >= 1; i--)
+    Tmp[i] = DAG.getNode(ISD::SRL, dl, VT, Op,
+                         DAG.getConstant(((16 - i) * 16) + 8, dl, SHVT));
+
+  APInt FFMask = APInt(256, 255);
+
+  // Mask off unwanted bytes
+  for (int i = 2; i < 32; i++)
+    Tmp[i] = DAG.getNode(ISD::AND, dl, VT, Tmp[i],
+                         DAG.getConstant(FFMask << ((i - 1) * 8), dl, VT));
+
+  // OR everything together
+  for (int i = 2; i <= 32; i += 2)
+    Tmp[i] = DAG.getNode(ISD::OR, dl, VT, Tmp[i], Tmp[i - 1]);
+
+  for (int i = 4; i <= 32; i += 4)
+    Tmp[i] = DAG.getNode(ISD::OR, dl, VT, Tmp[i], Tmp[i - 2]);
+
+  for (int i = 8; i <= 32; i += 8)
+    Tmp[i] = DAG.getNode(ISD::OR, dl, VT, Tmp[i], Tmp[i - 4]);
+
+  Tmp[32] = DAG.getNode(ISD::OR, dl, VT, Tmp[32], Tmp[24]);
+  Tmp[16] = DAG.getNode(ISD::OR, dl, VT, Tmp[16], Tmp[8]);
+
+  return DAG.getNode(ISD::OR, dl, VT, Tmp[32], Tmp[16]);
+}
+
+// This function only counts the number of bits in the lower 128 bits
+// It is a slightly modified version of TargetLowering::expandCTPOP
+static SDValue countPOP128(SDValue Op, SelectionDAG &DAG) {
+  SDLoc dl(Op);
+  EVT VT = Op->getValueType(0);
+
+  // This is the "best" algorithm from
+  // http://graphics.stanford.edu/~seander/bithacks.html#CountBitsSetParallel
+  SDValue Mask55 = DAG.getConstant(
+      APInt::getSplat(VT.getScalarSizeInBits(), APInt(8, 0x55)), dl, VT);
+  SDValue Mask33 = DAG.getConstant(
+      APInt::getSplat(VT.getScalarSizeInBits(), APInt(8, 0x33)), dl, VT);
+  SDValue Mask0F = DAG.getConstant(
+      APInt::getSplat(VT.getScalarSizeInBits(), APInt(8, 0x0F)), dl, VT);
+
+  // v = v - ((v >> 1) & 0x55555555...)
+  Op = DAG.getNode(ISD::SUB, dl, VT, Op,
+                   DAG.getNode(ISD::AND, dl, VT,
+                               DAG.getNode(ISD::SRL, dl, VT, Op,
+                                           DAG.getConstant(1, dl, MVT::i256)),
+                               Mask55));
+  // v = (v & 0x33333333...) + ((v >> 2) & 0x33333333...)
+  Op = DAG.getNode(ISD::ADD, dl, VT, DAG.getNode(ISD::AND, dl, VT, Op, Mask33),
+                   DAG.getNode(ISD::AND, dl, VT,
+                               DAG.getNode(ISD::SRL, dl, VT, Op,
+                                           DAG.getConstant(2, dl, MVT::i256)),
+                               Mask33));
+  // v = (v + (v >> 4)) & 0x0F0F0F0F...
+  Op = DAG.getNode(ISD::AND, dl, VT,
+                   DAG.getNode(ISD::ADD, dl, VT, Op,
+                               DAG.getNode(ISD::SRL, dl, VT, Op,
+                                           DAG.getConstant(4, dl, MVT::i256))),
+                   Mask0F);
+
+  // v = (v * 0x01010101...) >> (Len - 8)
+  SDValue Mask01 = DAG.getConstant(
+      APInt::getSplat(VT.getScalarSizeInBits(), APInt(8, 0x01)), dl, VT);
+  return DAG.getNode(ISD::SRL, dl, VT,
+                     DAG.getNode(ISD::MUL, dl, VT, Op, Mask01),
+                     DAG.getConstant(120, dl, MVT::i256));
+}
+
+SDValue EVMTargetLowering::LowerCTPOP(SDValue CTPOP, SelectionDAG &DAG) const {
+  // TODO: Consider moving this implementation to
+  // TargetLowering::expandCTPOP() to support i256 types.
+  SDNode *Node = CTPOP.getNode();
+  SDLoc dl(Node);
+  EVT VT = Node->getValueType(0);
+  SDValue Op = Node->getOperand(0);
+
+  // Split the Op into two parts and count separately
+  SDValue hiPart =
+      DAG.getNode(ISD::SRL, dl, VT, Op, DAG.getConstant(128, dl, MVT::i256));
+  SDValue loPart =
+      DAG.getNode(ISD::AND, dl, VT, Op,
+                  DAG.getConstant(APInt::getLowBitsSet(256, 128), dl, VT));
+  auto loSum = DAG.getNode(ISD::AND, dl, VT, countPOP128(loPart, DAG),
+                           DAG.getConstant(255, dl, VT));
+  auto hiSum = DAG.getNode(ISD::AND, dl, VT, countPOP128(hiPart, DAG),
+                           DAG.getConstant(255, dl, VT));
+  return DAG.getNode(ISD::ADD, dl, VT, loSum, hiSum);
 }
 
 SDValue EVMTargetLowering::LowerGlobalAddress(SDValue Op,

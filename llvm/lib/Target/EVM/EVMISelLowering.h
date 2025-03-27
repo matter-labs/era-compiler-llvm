@@ -123,6 +123,10 @@ private:
 
   SDValue LowerOperation(SDValue Op, SelectionDAG &DAG) const override;
 
+  SDValue LowerBSWAP(SDValue BSWAP, SelectionDAG &DAG) const;
+
+  SDValue LowerCTPOP(SDValue CTPOP, SelectionDAG &DAG) const;
+
   SDValue LowerGlobalAddress(SDValue Op, SelectionDAG &DAG) const;
 
   SDValue lowerINTRINSIC_WO_CHAIN(SDValue Op, SelectionDAG &DAG) const;
