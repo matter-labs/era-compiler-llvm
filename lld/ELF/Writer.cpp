@@ -274,7 +274,9 @@ static void demoteSymbolsAndComputeIsPreemptible() {
   DenseMap<InputFile *, DenseMap<SectionBase *, size_t>> sectionIndexMap;
   for (Symbol *sym : symtab.getSymbols()) {
     if (auto *d = dyn_cast<Defined>(sym)) {
-      if (d->section && !d->section->isLive())
+      // EraVM local begin
+      if (d->section && !d->section->isLive() && config->emachine != EM_ERAVM)
+      // EraVM local end
         demoteDefined(*d, sectionIndexMap[d->file]);
     } else {
       auto *s = dyn_cast<SharedSymbol>(sym);
@@ -459,11 +461,11 @@ bool lld::elf::includeInSymtab(const Symbol &b) {
     SectionBase *sec = d->section;
     if (!sec)
       return true;
-    assert(sec->isLive());
+    /* assert(sec->isLive()); */// EraVM local
 
     if (auto *s = dyn_cast<MergeInputSection>(sec))
       return s->getSectionPiece(d->value).live;
-    return true;
+    return /* true */ sec->isLive(); // EraVM local
   }
   return b.used || !config->gcSections;
 }
@@ -483,7 +485,9 @@ static void demoteAndCopyLocalSymbols() {
       if (!dr)
         continue;
 
-      if (dr->section && !dr->section->isLive())
+      // EraVM local begin
+      if (dr->section && !dr->section->isLive() && config->emachine != EM_ERAVM)
+      // EraVM local end
         demoteDefined(*dr, sectionIndexMap);
       else if (in.symTab && includeInSymtab(*b) && shouldKeepInSymtab(*dr))
         in.symTab->addSymbol(b);
