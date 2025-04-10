@@ -1,0 +1,164 @@
+; RUN: llc < %s
+
+; calldata_struct_array_reencode test reduced with bugpoint.
+; before the fix the test caused stack too deep failure because of an incorrect
+; depth check in EVMStackSolver::compressStack.
+source_filename = "era-solidity/test/libsolidity/semanticTests/abiEncoderV2/calldata_struct_array_reencode.sol:C.runtime"
+target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
+target triple = "evm-unknown-unknown"
+
+; Function Attrs: nounwind willreturn memory(none)
+declare i256 @llvm.evm.calldatasize() #0
+
+; Function Attrs: nounwind willreturn memory(none)
+declare i256 @llvm.evm.callvalue() #0
+
+; Function Attrs: noreturn nounwind
+declare void @llvm.evm.return(ptr addrspace(1), i256) #1
+
+; Function Attrs: noreturn nounwind
+declare void @llvm.evm.revert(ptr addrspace(1), i256) #1
+
+; Function Attrs: nocallback nofree nounwind willreturn memory(argmem: readwrite)
+declare void @llvm.memmove.p1.p1.i256(ptr addrspace(1) nocapture writeonly, ptr addrspace(1) nocapture readonly, i256, i1 immarg) #2
+
+; Function Attrs: nocallback nofree nounwind willreturn memory(argmem: readwrite)
+declare void @llvm.memcpy.p1.p2.i256(ptr addrspace(1) noalias nocapture writeonly, ptr addrspace(2) noalias nocapture readonly, i256, i1 immarg) #2
+
+; Function Attrs: null_pointer_is_valid
+define void @__entry() local_unnamed_addr #3 {
+entry:
+  switch i32 poison, label %if_join [
+    i32 14668030, label %switch_case_branch_1_block
+    i32 594809185, label %switch_case_branch_2_block
+    i32 655224780, label %switch_case_branch_3_block
+    i32 1501966044, label %switch_case_branch_4_block
+    i32 1931402874, label %switch_case_branch_5_block
+    i32 -1789535483, label %switch_case_branch_6_block
+    i32 -1503295334, label %switch_case_branch_7_block
+  ]
+
+if_join:                                          ; preds = %switch_case_branch_6_block, %calldata_access_struct_D_calldata.exit, %for_body335, %for_body296, %entry
+  unreachable
+
+switch_case_branch_1_block:                       ; preds = %entry
+  unreachable
+
+switch_case_branch_2_block:                       ; preds = %entry
+  unreachable
+
+switch_case_branch_3_block:                       ; preds = %entry
+  %calldata_load_result264 = load i256, ptr addrspace(2) inttoptr (i256 4 to ptr addrspace(2)), align 4
+  %addition_result273 = add nuw nsw i256 %calldata_load_result264, 4
+  %calldataload_pointer.i853 = inttoptr i256 %addition_result273 to ptr addrspace(2)
+  %calldata_load_result.i854 = load i256, ptr addrspace(2) %calldataload_pointer.i853, align 1
+  %addition_result16.i856 = add nuw nsw i256 %calldata_load_result264, 36
+  br i1 poison, label %for_join298, label %for_body296.lr.ph
+
+for_body296.lr.ph:                                ; preds = %switch_case_branch_3_block
+  %reass.sub.i878 = add i256 0, -31
+  br label %for_body296
+
+for_body296:                                      ; preds = %for_join337, %for_body296.lr.ph
+  %pos_3.0952 = phi i256 [ 224, %for_body296.lr.ph ], [ %addition_result362, %for_join337 ]
+  %tail_4.0951 = phi i256 [ poison, %for_body296.lr.ph ], [ %tail_5.0.lcssa, %for_join337 ]
+  %srcPtr_3.0950 = phi i256 [ %addition_result16.i856, %for_body296.lr.ph ], [ 0, %for_join337 ]
+  %i_3.0949 = phi i256 [ 0, %for_body296.lr.ph ], [ %addition_result364, %for_join337 ]
+  %memory_store_pointer309 = inttoptr i256 %pos_3.0952 to ptr addrspace(1)
+  %calldataload_pointer.i858 = inttoptr i256 %srcPtr_3.0950 to ptr addrspace(2)
+  %calldata_load_result.i859 = load i256, ptr addrspace(2) %calldataload_pointer.i858, align 1
+  %comparison_result.not.i861 = icmp slt i256 %calldata_load_result.i859, poison
+  br i1 %comparison_result.not.i861, label %if_join.i863, label %if_join
+
+if_join.i863:                                     ; preds = %for_body296
+  %addition_result8.i = add i256 %calldata_load_result.i859, %addition_result16.i856
+  %calldataload_pointer10.i = inttoptr i256 %addition_result8.i to ptr addrspace(2)
+  %calldata_load_result11.i = load i256, ptr addrspace(2) %calldataload_pointer10.i, align 1
+  %addition_result13.i = add i256 %addition_result8.i, 32
+  br i1 poison, label %for_join337, label %for_body335.lr.ph
+
+for_body335.lr.ph:                                ; preds = %if_join.i863
+  %addition_result.i871 = add i256 0, -63
+  br label %for_body335
+
+for_join298:                                      ; preds = %for_join337, %switch_case_branch_3_block
+  %tail_4.0.lcssa = phi i256 [ poison, %switch_case_branch_3_block ], [ %tail_5.0.lcssa, %for_join337 ]
+  %addition_result369 = add i256 %tail_4.0.lcssa, -160
+  store i256 %addition_result369, ptr addrspace(1) inttoptr (i256 128 to ptr addrspace(1)), align 128
+  unreachable
+
+for_body335:                                      ; preds = %if_join.i.i879, %for_body335.lr.ph
+  %pos_4.0.in946 = phi i256 [ %tail_4.0951, %for_body335.lr.ph ], [ %pos_4.0, %if_join.i.i879 ]
+  %tail_5.0945 = phi i256 [ poison, %for_body335.lr.ph ], [ %addition_result19.i, %if_join.i.i879 ]
+  %srcPtr_4.0944 = phi i256 [ %addition_result13.i, %for_body335.lr.ph ], [ %addition_result353, %if_join.i.i879 ]
+  %i_4.0943 = phi i256 [ 0, %for_body335.lr.ph ], [ %addition_result357, %if_join.i.i879 ]
+  %pos_4.0 = add i256 %pos_4.0.in946, 32
+  %reass.sub = sub i256 %tail_5.0945, %tail_4.0951
+  %addition_result346 = add i256 %reass.sub, -32
+  %memory_store_pointer348 = inttoptr i256 %pos_4.0 to ptr addrspace(1)
+  store i256 %addition_result346, ptr addrspace(1) %memory_store_pointer348, align 1
+  %calldataload_pointer.i867 = inttoptr i256 %srcPtr_4.0944 to ptr addrspace(2)
+  %calldata_load_result.i868 = load i256, ptr addrspace(2) %calldataload_pointer.i867, align 1
+  %comparison_result.not.i872 = icmp slt i256 %calldata_load_result.i868, %addition_result.i871
+  br i1 %comparison_result.not.i872, label %calldata_access_struct_D_calldata.exit, label %if_join
+
+calldata_access_struct_D_calldata.exit:           ; preds = %for_body335
+  %addition_result8.i875 = add i256 %calldata_load_result.i868, %addition_result13.i
+  %calldataload_pointer.i.i876 = inttoptr i256 %addition_result8.i875 to ptr addrspace(2)
+  %calldata_load_result.i.i877 = load i256, ptr addrspace(2) %calldataload_pointer.i.i876, align 1
+  %addition_result.i.i = sub i256 %reass.sub.i878, %addition_result8.i875
+  %comparison_result.not.i.i = icmp slt i256 %calldata_load_result.i.i877, %addition_result.i.i
+  br i1 %comparison_result.not.i.i, label %if_join.i.i879, label %if_join
+
+if_join.i.i879:                                   ; preds = %calldata_access_struct_D_calldata.exit
+  %addition_result8.i.i = add i256 %calldata_load_result.i.i877, %addition_result8.i875
+  %calldataload_pointer10.i.i = inttoptr i256 %addition_result8.i.i to ptr addrspace(2)
+  %calldata_load_result11.i.i = load i256, ptr addrspace(2) %calldataload_pointer10.i.i, align 1
+  %shift_left_non_overflow_result.i.i880 = shl nuw nsw i256 %calldata_load_result11.i.i, 5
+  %addition_result15.i = add i256 %tail_5.0945, 64
+  %addition_result19.i = add i256 %shift_left_non_overflow_result.i.i880, %addition_result15.i
+  %addition_result353 = add i256 %srcPtr_4.0944, 32
+  %addition_result357 = add nuw nsw i256 %i_4.0943, 1
+  %comparison_result340 = icmp ult i256 %addition_result357, %calldata_load_result11.i
+  br i1 %comparison_result340, label %for_body335, label %for_join337
+
+for_join337:                                      ; preds = %if_join.i.i879, %if_join.i863
+  %tail_5.0.lcssa = phi i256 [ poison, %if_join.i863 ], [ %addition_result19.i, %if_join.i.i879 ]
+  %addition_result362 = add i256 %pos_3.0952, 32
+  %addition_result364 = add nuw nsw i256 %i_3.0949, 1
+  %comparison_result301 = icmp ult i256 %addition_result364, %calldata_load_result.i854
+  br i1 %comparison_result301, label %for_body296, label %for_join298
+
+switch_case_branch_4_block:                       ; preds = %entry
+  unreachable
+
+switch_case_branch_5_block:                       ; preds = %entry
+  unreachable
+
+switch_case_branch_6_block:                       ; preds = %entry
+  br label %if_join
+
+switch_case_branch_7_block:                       ; preds = %entry
+  unreachable
+}
+
+; Function Attrs: null_pointer_is_valid
+declare dso_local fastcc void @finalize_allocation() unnamed_addr #3
+
+; Function Attrs: null_pointer_is_valid
+declare dso_local fastcc void @abi_decode_array_struct_S_dyn() unnamed_addr #3
+
+; Function Attrs: memory(readwrite, inaccessiblemem: none)
+declare dso_local fastcc void @abi_encode_bytes() unnamed_addr #4
+
+; Function Attrs: null_pointer_is_valid
+declare dso_local fastcc void @abi_encode_struct_D_calldata() unnamed_addr #3
+
+; Function Attrs: null_pointer_is_valid
+declare dso_local fastcc void @abi_encode_array_struct_D_calldata_calldata() unnamed_addr #3
+
+attributes #0 = { nounwind willreturn memory(none) }
+attributes #1 = { noreturn nounwind }
+attributes #2 = { nocallback nofree nounwind willreturn memory(argmem: readwrite) }
+attributes #3 = { null_pointer_is_valid }
+attributes #4 = { memory(readwrite, inaccessiblemem: none) }
