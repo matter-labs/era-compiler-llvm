@@ -540,7 +540,7 @@ Stack EVMStackSolver::compressStack(Stack CurStack) {
           return true;
         if (auto DistanceToCopy =
                 offset(make_range(std::next(I), CurStack.rend()), *I))
-          return (RIdx + *DistanceToCopy <= StackModel.stackDepthLimit());
+          return (RIdx + *DistanceToCopy < StackModel.stackDepthLimit());
         return false;
       };
   for (auto I = CurStack.rbegin(); I != CurStack.rend();) {
