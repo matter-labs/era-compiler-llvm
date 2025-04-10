@@ -139,7 +139,8 @@ bool EVMAsmBackend::evaluateTargetFixup(const MCAssembler &Asm,
 
   if (const MCSymbolRefExpr *A = Target.getSymA()) {
     const MCSymbol &Sym = A->getSymbol();
-    assert(Sym.isDefined());
+    // If 'Sym' is undefined, 'getSymbolOffset' will
+    // raise 'unable to evaluate offset to undefined symbol' error.
     Value += Asm.getSymbolOffset(Sym);
     return true;
   }
