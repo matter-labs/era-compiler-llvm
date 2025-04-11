@@ -315,6 +315,25 @@ void EVMAsmPrinter::emitWideRelocatableSymbol(const MachineInstr *MI) {
 }
 
 void EVMAsmPrinter::emitEndOfAsmFile(Module &) {
+
+  // The deploy and runtime code must end with INVALID instruction to
+  // comply with 'solc'. To ensure this, we append an INVALID
+  // instruction at the end of the .text section.
+  OutStreamer->pushSection();
+  OutStreamer->switchSection(OutContext.getObjectFileInfo()->getTextSection());
+  MCInst MCI;
+  MCI.setOpcode(EVM::INVALID_S);
+
+  // Construct a local MCSubtargetInfo to use the streamer, as MachineFunction
+  // is not available here. Since we're at the global level we can use the
+  // default constructed subtarget.
+  std::unique_ptr<MCSubtargetInfo> STI(TM.getTarget().createMCSubtargetInfo(
+      TM.getTargetTriple().str(), TM.getTargetCPU(),
+      TM.getTargetFeatureString()));
+
+  OutStreamer->emitInstruction(MCI, *STI);
+  OutStreamer->popSection();
+
   WideRelocSymbolsSet.clear();
   ImmutablesMap.clear();
   ModuleHasPushDeployAddress = false;
