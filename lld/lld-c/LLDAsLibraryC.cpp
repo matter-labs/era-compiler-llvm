@@ -392,6 +392,7 @@ static void getSymbolNameSections(const ObjectFile *oFile, const char *fileID,
 ///       __$b5e66d52578d$__(.text);
 ///       __dataoffset__$12c297efd8baf$__ = ABSOLUTE(.);
 ///       __$12c297efd8baf$__(.text);
+///       __$b5e66d52578d$__(.metadata)
 ///       __datasize__$b5e66d52578d$__ = ABSOLUTE(.);
 ///     }
 ///     /DISCARD/ : {
@@ -473,6 +474,9 @@ static std::string createEVMAssembeScript(ArrayRef<LLVMMemoryBufferRef> memBufs,
     textSection << sym << " = ABSOLUTE(.);\n";
     textSection << bufIdHash << "(.text);\n";
   }
+
+  // Append matadata section of the first object (if any).
+  textSection << EVM::getLinkerSymbolHash(depIDs[0]) << "(.metadata);\n";
 
   // Define a symbol whose value is the total size of the output
   // '.text' section.
