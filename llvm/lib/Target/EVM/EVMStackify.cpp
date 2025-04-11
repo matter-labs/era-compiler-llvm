@@ -1023,8 +1023,7 @@ void StackModel::postProcess() {
         MI.removeOperand(0);
         if (Opc == EVM::PUSH0)
           MI.removeOperand(0);
-      } else if (MI.getOpcode() == EVM::COPY_I256 ||
-                 MI.getOpcode() == EVM::POP_KILL) {
+      } else if (MI.getOpcode() == EVM::COPY_I256) {
         // Just remove the copy instruction, as the code that
         // loads the argument and stores the result performs copying.
         // TODO: POP_KILL should be handled before stackification pass.

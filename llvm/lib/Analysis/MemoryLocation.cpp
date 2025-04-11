@@ -176,16 +176,25 @@ MemoryLocation MemoryLocation::getForArgument(const CallBase *Call,
     // location
     auto T = Call->getModule()->getTargetTriple();
     if (Triple(T).isEraVM() || Triple(T).isEVM()) {
+      // For EVM intrinsics, the memory size argument always immediately
+      // follows the memory argument, meaning its index is ArgIdx + 1.
+      auto GetMemLocation = [Call, Arg, &AATags](unsigned MemSizeArgIdx) {
+        const auto *LenCI =
+            dyn_cast<ConstantInt>(Call->getArgOperand(MemSizeArgIdx));
+        if (LenCI && LenCI->getValue().getActiveBits() <= 64)
+          return MemoryLocation(
+              Arg, LocationSize::precise(LenCI->getZExtValue()), AATags);
+        return MemoryLocation::getAfter(Arg, AATags);
+      };
+
       switch (II->getIntrinsicID()) {
       case Intrinsic::memcpy:
       case Intrinsic::memcpy_inline:
       case Intrinsic::memmove:
       case Intrinsic::memset:
         if (ConstantInt *LenCI = dyn_cast<ConstantInt>(II->getArgOperand(2)))
-          if (LenCI->getValue().getActiveBits() > 64) {
-            return MemoryLocation::getBeforeOrAfter(Call->getArgOperand(ArgIdx),
-                                                    AATags);
-          }
+          if (LenCI->getValue().getActiveBits() > 64)
+            return MemoryLocation::getAfter(Arg, AATags);
         break;
       case Intrinsic::lifetime_start:
       case Intrinsic::lifetime_end:
@@ -193,11 +202,15 @@ MemoryLocation MemoryLocation::getForArgument(const CallBase *Call,
         break;
       case Intrinsic::evm_sha3: {
         assert((ArgIdx == 0) && "Invalid argument index for sha3");
-        const auto *LenCI = dyn_cast<ConstantInt>(Call->getArgOperand(1));
-        if (LenCI && LenCI->getValue().getActiveBits() <= 64)
-          return MemoryLocation(
-              Arg, LocationSize::precise(LenCI->getZExtValue()), AATags);
-        return MemoryLocation::getAfter(Arg, AATags);
+        return GetMemLocation(1);
+      }
+      case Intrinsic::evm_mstore8: {
+        assert((ArgIdx == 0) && "Invalid argument index for mstore8");
+        return MemoryLocation(Arg, LocationSize::precise(1), AATags);
+      }
+      case Intrinsic::evm_calldataload: {
+        assert((ArgIdx == 0) && "Invalid argument index for calldataload");
+        return MemoryLocation(Arg, LocationSize::precise(32), AATags);
       }
       default:
         llvm_unreachable("Unexpected intrinsic for EraVM/EVM target");
