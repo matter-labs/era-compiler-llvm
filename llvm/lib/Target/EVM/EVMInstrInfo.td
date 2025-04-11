@@ -797,8 +797,6 @@ let hasSideEffects = 1 in {
 // EVM instructions for stack manipulation.
 //===----------------------------------------------------------------------===//
 
-def POP_KILL : EVMPseudo<(outs), (ins GPR:$val), [(int_evm_pop GPR:$val)]>;
-
 defm POP : I<(outs), (ins), [], "POP", "", 0x50, 2>;
 
 foreach I = {1-16} in {

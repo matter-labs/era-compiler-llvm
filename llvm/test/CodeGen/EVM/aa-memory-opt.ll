@@ -54,12 +54,13 @@ define i256 @test_different_locsizes() {
 }
 
 define i256 @test_gas() {
-; CHECK-LABEL: define noundef i256 @test_gas
+; CHECK-LABEL: define i256 @test_gas
 ; CHECK-SAME: () local_unnamed_addr #[[ATTR2:[0-9]+]] {
 ; CHECK-NEXT:    store i256 2, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
 ; CHECK-NEXT:    [[GAS:%.*]] = tail call i256 @llvm.evm.gas()
 ; CHECK-NEXT:    store i256 [[GAS]], ptr addrspace(1) inttoptr (i256 1 to ptr addrspace(1)), align 64
-; CHECK-NEXT:    ret i256 2
+; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
+; CHECK-NEXT:    ret i256 [[RET]]
 ;
   store i256 2, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
   %gas = call i256 @llvm.evm.gas()
@@ -69,11 +70,12 @@ define i256 @test_gas() {
 }
 
 define i256 @test_log0(ptr addrspace(1) %off, i256 %size) {
-; CHECK-LABEL: define noundef i256 @test_log0
-; CHECK-SAME: (ptr addrspace(1) nocapture readonly [[OFF:%.*]], i256 [[SIZE:%.*]]) local_unnamed_addr #[[ATTR3:[0-9]+]] {
+; CHECK-LABEL: define i256 @test_log0
+; CHECK-SAME: (ptr addrspace(1) [[OFF:%.*]], i256 [[SIZE:%.*]]) local_unnamed_addr #[[ATTR2]] {
 ; CHECK-NEXT:    store i256 2, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
 ; CHECK-NEXT:    tail call void @llvm.evm.log0(ptr addrspace(1) [[OFF]], i256 [[SIZE]])
-; CHECK-NEXT:    ret i256 2
+; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
+; CHECK-NEXT:    ret i256 [[RET]]
 ;
   store i256 2, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
   call void @llvm.evm.log0(ptr addrspace(1) %off, i256 %size)
