@@ -42,16 +42,15 @@ static void checkSectionData(ObjectFile &File, StringRef SectionName,
 }
 #endif // NDEBUG
 
-LLVMBool LLVMAddMetadataEraVM(LLVMMemoryBufferRef InBuffer,
-                              const char *MetadataPtr, uint64_t MetadataSize,
-                              LLVMMemoryBufferRef *OutBuffer,
-                              char **ErrorMessage) {
+LLVMBool LLVMAddMetadata(LLVMMemoryBufferRef InBuffer, const char *MetadataPtr,
+                         uint64_t MetadataSize, LLVMMemoryBufferRef *OutBuffer,
+                         char **ErrorMessage) {
   if (!MetadataSize) {
     *OutBuffer = nullptr;
     return false;
   }
 
-  StringRef MDSectionName = ".eravm-metadata";
+  StringRef MDSectionName = ".metadata";
 
   std::unique_ptr<MemoryBuffer> MDSectionBuffer = MemoryBuffer::getMemBuffer(
       StringRef(MetadataPtr, MetadataSize), MDSectionName, false);
