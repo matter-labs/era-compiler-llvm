@@ -258,7 +258,7 @@ static std::string createEraVMRelLinkerScript(
 ///
 ///       /* Add padding before the metadata. Here metadata size is 32 bytes */
 ///       . = ((((. + 32) >> 5) | 1 ) << 5) - 32;
-///       *(.eravm-metadata)
+///       *(.metadata)
 ///
 ///       ASSERT(. % 64 == 32, "size isn't odd number of words");
 ///
@@ -316,7 +316,7 @@ SECTIONS {                                                                  \n\
     /* Add padding before the metadata */\n";
 
   std::string scriptPart2 = "\
-    *(.eravm-metadata)                                                      \n\
+    *(.metadata)                                                            \n\
                                                                             \n\
     ASSERT(. % 64 == 32, \"size isn't odd number of words\");               \n\
                                                                             \n\
@@ -375,10 +375,10 @@ LLVMBool LLVMLinkEraVM(
     return false;
   }
 
-  // Get the size of the metadata (if any) contained in the '.eravm-metadata'
+  // Get the size of the metadata (if any) contained in the '.metadata'
   // section of the input ELF file.
-  uint64_t MDSize = getSectionSize(*static_cast<ObjectFile *>(InBinary.get()),
-                                   ".eravm-metadata");
+  uint64_t MDSize =
+      getSectionSize(*static_cast<ObjectFile *>(InBinary.get()), ".metadata");
 
   // The input ELF file can have undefined symbols. There can be the following
   // cases:
@@ -735,6 +735,7 @@ static void getSymbolNameSections(const ObjectFile *oFile, const char *fileID,
 ///       __$b5e66d52578d$__(.text);
 ///       __dataoffset__$12c297efd8baf$__ = ABSOLUTE(.);
 ///       __$12c297efd8baf$__(.text);
+///       __$b5e66d52578d$__(.metadata)
 ///       __datasize__$b5e66d52578d$__ = ABSOLUTE(.);
 ///     }
 ///     /DISCARD/ : {
@@ -816,6 +817,9 @@ static std::string createEVMAssembeScript(ArrayRef<LLVMMemoryBufferRef> memBufs,
     textSection << sym << " = ABSOLUTE(.);\n";
     textSection << bufIdHash << "(.text);\n";
   }
+
+  // Append matadata section of the first object (if any).
+  textSection << EVM::getLinkerSymbolHash(depIDs[0]) << "(.metadata);\n";
 
   // Define a symbol whose value is the total size of the output
   // '.text' section.

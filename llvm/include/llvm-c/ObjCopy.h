@@ -18,15 +18,14 @@
 
 LLVM_C_EXTERN_C_BEGIN
 
-/** Creates new section '.eravm-metadata' in the input object file \p InBuffer
+/** Creates new section '.metadata' in the input object file \p InBuffer
  *  and puts there the data pointed to by the \p MetadataPtr. The result is
  *  returned via \p OutBuffer. In case of an error the function returns 'true'
  *  and an error message is passes via \p ErrorMessage. The message should be
  *  disposed by LLVMDisposeMessage. **/
-LLVMBool LLVMAddMetadataEraVM(LLVMMemoryBufferRef InBuffer,
-                              const char *MetadataPtr, uint64_t MetadataSize,
-                              LLVMMemoryBufferRef *OutBuffer,
-                              char **ErrorMessage);
+LLVMBool LLVMAddMetadata(LLVMMemoryBufferRef InBuffer, const char *MetadataPtr,
+                         uint64_t MetadataSize, LLVMMemoryBufferRef *OutBuffer,
+                         char **ErrorMessage);
 LLVM_C_EXTERN_C_END
 
 #endif // LLVM_C_OBJCOPY_H
