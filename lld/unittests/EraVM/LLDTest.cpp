@@ -99,8 +99,8 @@ define i256 @get_glob() nounwind {                                \n\
                              0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20};
 
   LLVMMemoryBufferRef MDObjMemBuffer;
-  if (LLVMAddMetadataEraVM(ObjMemBuffer, MD.data(), MD.size(), &MDObjMemBuffer,
-                           &ErrMsg)) {
+  if (LLVMAddMetadata(ObjMemBuffer, MD.data(), MD.size(), &MDObjMemBuffer,
+                      &ErrMsg)) {
     errs() << "Failed to add metadata:" << ErrMsg;
     LLVMDisposeMessage(ErrMsg);
     return;
@@ -163,8 +163,8 @@ define i256 @get_glob() nounwind {                                \n\
       0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C, 0x1D, 0x1E, 0x1F, 0x20, 0x21};
 
   LLVMMemoryBufferRef MDObjMemBuffer;
-  if (LLVMAddMetadataEraVM(ObjMemBuffer, MD.data(), MD.size(), &MDObjMemBuffer,
-                           &ErrMsg)) {
+  if (LLVMAddMetadata(ObjMemBuffer, MD.data(), MD.size(), &MDObjMemBuffer,
+                      &ErrMsg)) {
     errs() << "Failed to add metadata:" << ErrMsg;
     LLVMDisposeMessage(ErrMsg);
     return;
