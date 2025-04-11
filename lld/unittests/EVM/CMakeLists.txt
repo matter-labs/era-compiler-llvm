@@ -12,5 +12,6 @@ target_link_libraries(EVMLLDTests
   LLVMEVMInfo
   LLVMEVMDesc
   LLVMIRReader
+  LLVMObjCopyC
   LLVMTarget
 )

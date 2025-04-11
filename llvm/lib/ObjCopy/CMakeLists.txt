@@ -81,3 +81,5 @@ add_llvm_component_library(LLVMObjCopy
   Support
   MC
   )
+
+add_subdirectory(ObjCopyC)
