@@ -51,6 +51,12 @@ std::optional<T> add(std::optional<T> a, std::optional<T> b) {
   return std::nullopt;
 }
 
+#ifndef NDEBUG
+std::string getMBBId(const MachineBasicBlock *MBB) {
+  return std::to_string(MBB->getNumber()) + "." + std::string(MBB->getName());
+}
+#endif
+
 /// Given stack \p AfterInst, compute stack before the instruction excluding
 /// instruction input operands.
 /// \param CompressStack: remove duplicates and rematerializable slots.
@@ -208,9 +214,13 @@ void EVMStackSolver::run() {
   });
 }
 
-Stack EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
-                                         const MachineInstr &MI,
-                                         bool CompressStack) {
+std::pair<Stack, bool>
+EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
+                                   const MachineInstr &MI, bool CompressStack) {
+  LLVM_DEBUG({
+    dbgs() << "\tMI: ";
+    MI.dump();
+  });
   const Stack MIDefs = StackModel.getSlotsForInstructionDefs(&MI);
   // Stack before MI except for MI inputs.
   Stack BeforeMI = calculateStackBeforeInst(MIDefs, ExitStack, CompressStack,
@@ -223,9 +233,18 @@ Stack EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
       assert(!MI.definesRegister(RegSlot->getReg(), /*TRI=*/nullptr));
 #endif // NDEBUG
 
+  // Check the exit stack from the MI can be smoothly transformed
+  // to the entry stack of the next MI.
+  Stack AfterMI = BeforeMI;
+  AfterMI.append(MIDefs);
+  bool Err = !calculateStackTransformCost(AfterMI, ExitStack,
+                                          StackModel.stackDepthLimit());
+
   BeforeMI.append(StackModel.getMIInput(MI));
   // Store computed stack to StackModel.
   insertInstEntryStack(&MI, BeforeMI);
+
+  LLVM_DEBUG({ dbgs() << "\tstack before: " << BeforeMI.toString() << ".\n"; });
 
   // If the top stack slots can be rematerialized just before MI, remove it
   // from propagation to reduce pressure.
@@ -242,21 +261,32 @@ Stack EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
       break;
   }
 
-  return BeforeMI;
+  return {BeforeMI, Err};
 }
 
 Stack EVMStackSolver::propagateThroughMBB(const Stack &ExitStack,
                                           const MachineBasicBlock *MBB,
                                           bool CompressStack) {
   Stack CurrentStack = ExitStack;
+
+  LLVM_DEBUG({
+    dbgs() << "EVMStackSolver: start back propagating stack through "
+           << getMBBId(MBB)
+           << " (CompressStack=" << (CompressStack ? "true" : "false")
+           << "):\n";
+  });
   for (const auto &MI : StackModel.reverseInstructionsToProcess(MBB)) {
-    Stack BeforeMI = propagateThroughMI(CurrentStack, MI, CompressStack);
-    if (!CompressStack &&
-        !calculateStackTransformCost(BeforeMI, CurrentStack,
-                                     StackModel.stackDepthLimit()))
+    auto [BeforeMI, Err] = propagateThroughMI(CurrentStack, MI, CompressStack);
+    CurrentStack = std::move(BeforeMI);
+
+    if (!CompressStack && Err) {
+      LLVM_DEBUG({
+        dbgs() << "\terror: stack-too-deep detected, trying to rerun with "
+                  "Compressstack=true.\n";
+      });
       return propagateThroughMBB(ExitStack, MBB,
                                  /*CompressStack*/ true);
-    CurrentStack = std::move(BeforeMI);
+    }
   }
   return CurrentStack;
 }
@@ -556,10 +586,6 @@ Stack EVMStackSolver::compressStack(Stack CurStack) {
 }
 
 #ifndef NDEBUG
-static std::string getMBBId(const MachineBasicBlock *MBB) {
-  return std::to_string(MBB->getNumber()) + "." + std::string(MBB->getName());
-}
-
 void EVMStackSolver::dump(raw_ostream &OS) {
   OS << "Function: " << MF.getName() << "(";
   for (const StackSlot *ParamSlot : StackModel.getFunctionParameters())
