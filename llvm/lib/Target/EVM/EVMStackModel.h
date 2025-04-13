@@ -174,7 +174,9 @@ public:
 
   size_t getIndex() const { return Index; }
   bool isRematerializable() const override { return true; }
-  std::string toString() const override { return "UNKNOWN"; }
+  std::string toString() const override {
+    return "UNKNOWN(" + std::to_string(Index) + ")";
+  }
 
   static bool classof(const StackSlot *S) {
     return S->getSlotKind() == SK_Unknown;

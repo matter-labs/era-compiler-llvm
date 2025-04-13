@@ -45,8 +45,9 @@ private:
   /// minimal.
   /// Side effect: the computed entry stack is stored in StackModel.
   /// \param CompressStack: remove duplicates and rematerializable slots.
-  Stack propagateThroughMI(const Stack &ExitStack, const MachineInstr &MI,
-                           bool CompressStack = false);
+  std::pair<Stack, bool> propagateThroughMI(const Stack &ExitStack,
+                                            const MachineInstr &MI,
+                                            bool CompressStack = false);
 
   /// Given \p ExitStack, compute the stack at the entry of \p MBB.
   /// \param CompressStack: remove duplicates and rematerializable slots.
