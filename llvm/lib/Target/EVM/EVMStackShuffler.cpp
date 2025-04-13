@@ -146,6 +146,8 @@ bool EVMStackShuffler::step() {
             return true;
           }
         }
+        // We are about to create a swap with a too deep element.
+        StackTooDeepErr = true;
       }
       swap(Current.size() - RIdx - 1);
       return true;

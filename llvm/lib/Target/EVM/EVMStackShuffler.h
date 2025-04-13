@@ -22,6 +22,7 @@ class EVMStackShuffler {
   Stack &Current;
   const Stack &Target;
   unsigned StackDepthLimit;
+  bool StackTooDeepErr = false;
 
   using MatchFTy = std::function<bool(const StackSlot *, const StackSlot *)>;
   using GetNumOccurrencesFTy =
@@ -42,6 +43,7 @@ public:
                    unsigned StackDepthLimit)
       : Current(Current), Target(Target), StackDepthLimit(StackDepthLimit) {}
 
+  bool hasError() { return StackTooDeepErr; }
   void setMatch(MatchFTy F) { MatchF = std::move(F); }
   void setGetCurrentNumOccurrences(GetNumOccurrencesFTy F) {
     GetCurrentNumOccurrencesF = std::move(F);

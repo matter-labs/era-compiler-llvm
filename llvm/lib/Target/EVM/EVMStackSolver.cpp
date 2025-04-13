@@ -54,8 +54,10 @@ std::optional<T> add(std::optional<T> a, std::optional<T> b) {
 /// Given stack \p AfterInst, compute stack before the instruction excluding
 /// instruction input operands.
 /// \param CompressStack: remove duplicates and rematerializable slots.
-Stack calculateStackBeforeInst(const Stack &InstDefs, const Stack &AfterInst,
-                               bool CompressStack, unsigned StackDepthLimit) {
+std::pair<Stack, bool> calculateStackBeforeInst(const Stack &InstDefs,
+                                                const Stack &AfterInst,
+                                                bool CompressStack,
+                                                unsigned StackDepthLimit) {
   // Number of slots on stack before the instruction excluding its inputs.
   size_t BeforeInstSize = count_if(AfterInst, [&](const StackSlot *S) {
     return !is_contained(InstDefs, S) &&
@@ -78,7 +80,7 @@ Stack calculateStackBeforeInst(const Stack &InstDefs, const Stack &AfterInst,
   append_range(Tmp, InstDefs);
 
   if (Tmp.empty())
-    return Stack{};
+    return { Stack{}, false };
 
   EVMStackShuffler Shuffler(Tmp, AfterInst, StackDepthLimit);
 
@@ -130,7 +132,7 @@ Stack calculateStackBeforeInst(const Stack &InstDefs, const Stack &AfterInst,
   assert(all_of(BeforeInst,
                 [](const StackSlot *Slot) { return Slot != nullptr; }));
 
-  return BeforeInst;
+  return { BeforeInst, Shuffler.hasError() };
 }
 
 } // end anonymous namespace
@@ -208,13 +210,13 @@ void EVMStackSolver::run() {
   });
 }
 
-Stack EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
-                                         const MachineInstr &MI,
-                                         bool CompressStack) {
+std::pair<Stack, bool>
+EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
+                                   const MachineInstr &MI, bool CompressStack) {
   const Stack MIDefs = StackModel.getSlotsForInstructionDefs(&MI);
   // Stack before MI except for MI inputs.
-  Stack BeforeMI = calculateStackBeforeInst(MIDefs, ExitStack, CompressStack,
-                                            StackModel.stackDepthLimit());
+  auto [BeforeMI, Err] = calculateStackBeforeInst(
+      MIDefs, ExitStack, CompressStack, StackModel.stackDepthLimit());
 
 #ifndef NDEBUG
   // Ensure MI defs are not present in BeforeMI stack.
@@ -242,7 +244,7 @@ Stack EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
       break;
   }
 
-  return BeforeMI;
+  return { BeforeMI, Err };
 }
 
 Stack EVMStackSolver::propagateThroughMBB(const Stack &ExitStack,
@@ -250,13 +252,14 @@ Stack EVMStackSolver::propagateThroughMBB(const Stack &ExitStack,
                                           bool CompressStack) {
   Stack CurrentStack = ExitStack;
   for (const auto &MI : StackModel.reverseInstructionsToProcess(MBB)) {
-    Stack BeforeMI = propagateThroughMI(CurrentStack, MI, CompressStack);
-    if (!CompressStack &&
-        !calculateStackTransformCost(BeforeMI, CurrentStack,
-                                     StackModel.stackDepthLimit()))
+    auto [BeforeMI, Err] = propagateThroughMI(CurrentStack, MI, CompressStack);
+    CurrentStack = std::move(BeforeMI);
+    if (CompressStack)
+      continue;
+    if (Err || !calculateStackTransformCost(BeforeMI, CurrentStack,
+                                            StackModel.stackDepthLimit()))
       return propagateThroughMBB(ExitStack, MBB,
                                  /*CompressStack*/ true);
-    CurrentStack = std::move(BeforeMI);
   }
   return CurrentStack;
 }
