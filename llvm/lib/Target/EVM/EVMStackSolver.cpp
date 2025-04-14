@@ -307,10 +307,12 @@ void EVMStackSolver::runPropagation() {
       case EVMInstrInfo::BT_Uncond:
       case EVMInstrInfo::BT_NoBranch: {
         const MachineBasicBlock *Target = MBB->getSingleSuccessor();
-        // Currently a basic block could end with FCALL and have no successors,
-        // but FCALL is not a terminator, so we fall into BT_NoBranch.
-        // TODO: #788 address it
+        // A basic block could end with a non-retminator instruction and
+        // have no successors.
         if (!Target) { // No successors.
+          // It’s reasonable to assert that MF is a no-return function which
+          // seems to be true in practice.
+          // However, certain LLVM IR tests violate this assumption.
           ExitStack = Stack{};
           break;
         }

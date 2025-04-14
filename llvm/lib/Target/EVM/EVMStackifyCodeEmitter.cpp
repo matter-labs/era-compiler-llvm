@@ -192,6 +192,12 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitCondJump(
   verify(NewMI);
 }
 
+void EVMStackifyCodeEmitter::CodeEmitter::emitStop() {
+  auto NewMI =
+      BuildMI(*CurMBB, CurMBB->end(), DebugLoc(), TII->get(EVM::STOP_S));
+  verify(NewMI);
+}
+
 // Verify that a stackified instruction doesn't have registers and dump it.
 void EVMStackifyCodeEmitter::CodeEmitter::verify(const MachineInstr *MI) const {
   assert(EVMInstrInfo::isStack(MI) &&
@@ -442,6 +448,8 @@ void EVMStackifyCodeEmitter::run() {
           Emitter.emitUncondJump(BrInsts[0], TBB);
 
         WorkList.push_back(TBB);
+      } else {
+        Emitter.emitStop();
       }
     } else {
       assert(BranchTy == EVMInstrInfo::BT_Cond ||

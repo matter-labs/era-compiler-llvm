@@ -45,6 +45,7 @@ private:
     void emitSymbol(const MachineInstr *MI, MCSymbol *Symbol);
     void emitFuncCall(const MachineInstr *MI);
     void emitRet(const MachineInstr *MI);
+    void emitStop();
     void emitCondJump(const MachineInstr *MI, MachineBasicBlock *Target);
     void emitUncondJump(const MachineInstr *MI, MachineBasicBlock *Target);
     void emitLabelReference(const MachineInstr *Call);
