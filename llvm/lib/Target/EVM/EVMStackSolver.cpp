@@ -259,6 +259,9 @@ EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
       break;
   }
 
+  if (CompressStack)
+    BeforeMI = compressStack(BeforeMI);
+
   return {BeforeMI, Err};
 }
 
