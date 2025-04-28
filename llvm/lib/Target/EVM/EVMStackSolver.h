@@ -33,6 +33,12 @@ using BranchInfoTy =
 
 BranchInfoTy getBranchInfo(const MachineBasicBlock *MBB);
 
+// Setup the level of stack compression while propogating through BB:
+// None             - no stack compression,
+// Rematerializable - remove rematerializable slots,
+// Full             - remove rematerializable and dublicates.
+enum StackCompression { None, Rematerializable, Full };
+
 class EVMStackSolver {
 public:
   EVMStackSolver(const MachineFunction &MF, EVMStackModel &StackModel,
@@ -44,16 +50,14 @@ private:
   /// executing the instruction the cost to transform to \p ExitStack is
   /// minimal.
   /// Side effect: the computed entry stack is stored in StackModel.
-  /// \param CompressStack: remove duplicates and rematerializable slots.
-  std::pair<Stack, bool> propagateThroughMI(const Stack &ExitStack,
-                                            const MachineInstr &MI,
-                                            bool CompressStack = false);
+  std::pair<Stack, bool>
+  propagateThroughMI(const Stack &ExitStack, const MachineInstr &MI,
+                     StackCompression Level = StackCompression::None);
 
   /// Given \p ExitStack, compute the stack at the entry of \p MBB.
-  /// \param CompressStack: remove duplicates and rematerializable slots.
   Stack propagateThroughMBB(const Stack &ExitStack,
                             const MachineBasicBlock *MBB,
-                            bool CompressStack = false);
+                            StackCompression Level = StackCompression::None);
 
   /// Main algorithm walking the graph from entry to exit and propagating stack
   /// states back to the entries. Iteratively reruns itself along backward jumps

@@ -214,15 +214,17 @@ void EVMStackSolver::run() {
 
 std::pair<Stack, bool>
 EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
-                                   const MachineInstr &MI, bool CompressStack) {
+                                   const MachineInstr &MI,
+                                   StackCompression CompressLevel) {
   LLVM_DEBUG({
     dbgs() << "\tMI: ";
     MI.dump();
   });
   const Stack MIDefs = StackModel.getSlotsForInstructionDefs(&MI);
   // Stack before MI except for MI inputs.
-  Stack BeforeMI = calculateStackBeforeInst(MIDefs, ExitStack, CompressStack,
-                                            StackModel.stackDepthLimit());
+  Stack BeforeMI = calculateStackBeforeInst(
+      MIDefs, ExitStack, CompressLevel != StackCompression::None,
+      StackModel.stackDepthLimit());
 
 #ifndef NDEBUG
   // Ensure MI defs are not present in BeforeMI stack.
@@ -237,6 +239,9 @@ EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
   AfterMI.append(MIDefs);
   bool Err = !calculateStackTransformCost(AfterMI, ExitStack,
                                           StackModel.stackDepthLimit());
+
+  if (CompressLevel == StackCompression::Full)
+    BeforeMI = compressStack(BeforeMI);
 
   BeforeMI.append(StackModel.getMIInput(MI));
   // Store computed stack to StackModel.
@@ -259,35 +264,57 @@ EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
       break;
   }
 
-  if (CompressStack)
-    BeforeMI = compressStack(BeforeMI);
-
   return {BeforeMI, Err};
 }
 
+static StackCompression getNextCompressionLevel(StackCompression Level) {
+  if (Level == StackCompression::None)
+    return StackCompression::Rematerializable;
+  if (Level == StackCompression::Rematerializable)
+    return StackCompression::Full;
+  assert(Level == StackCompression::Full);
+  return StackCompression::None;
+}
+
+#ifndef NDEBUG
+static StringRef getCompressionString(StackCompression Level) {
+  if (Level == StackCompression::None)
+    return "none";
+  if (Level == StackCompression::Rematerializable)
+    return "rematerializable";
+  assert(Level == StackCompression::Full);
+  return "full";
+}
+#endif // NDEBUG
+
 Stack EVMStackSolver::propagateThroughMBB(const Stack &ExitStack,
                                           const MachineBasicBlock *MBB,
-                                          bool CompressStack) {
+                                          StackCompression CompressLevel) {
   Stack CurrentStack = ExitStack;
 
   LLVM_DEBUG({
     dbgs() << "EVMStackSolver: start back propagating stack through "
            << getMBBId(MBB)
-           << " (CompressStack=" << (CompressStack ? "true" : "false")
+           << " (CompressionLevel=" << getCompressionString(CompressLevel)
            << "):\n";
   });
   for (const auto &MI : StackModel.reverseInstructionsToProcess(MBB)) {
-    auto [BeforeMI, Err] = propagateThroughMI(CurrentStack, MI, CompressStack);
+    auto [BeforeMI, Err] = propagateThroughMI(CurrentStack, MI, CompressLevel);
     CurrentStack = std::move(BeforeMI);
-
-    if (!CompressStack && Err) {
+    if (!Err)
+      continue;
+    if (auto NextLevel = getNextCompressionLevel(CompressLevel);
+        NextLevel != StackCompression::None) {
       LLVM_DEBUG({
         dbgs() << "\terror: stack-too-deep detected, trying to rerun with "
-                  "Compressstack=true.\n";
+                  "CompressionLevel="
+               << getCompressionString(NextLevel) << ".\n";
       });
-      return propagateThroughMBB(ExitStack, MBB,
-                                 /*CompressStack*/ true);
+
+      return propagateThroughMBB(ExitStack, MBB, NextLevel);
     }
+    report_fatal_error(Twine("EVMStackSolver: stack too deep  ") +
+                       CurrentStack.toString());
   }
   return CurrentStack;
 }
