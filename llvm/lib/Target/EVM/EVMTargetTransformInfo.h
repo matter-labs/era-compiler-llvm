@@ -56,8 +56,6 @@ public:
   }
 
   TypeSize getRegisterBitWidth(TargetTransformInfo::RegisterKind RK) const {
-    assert(RK == TargetTransformInfo::RGK_Scalar &&
-           "Vector registers aren't supported");
     return TypeSize::getFixed(256);
   }
 
