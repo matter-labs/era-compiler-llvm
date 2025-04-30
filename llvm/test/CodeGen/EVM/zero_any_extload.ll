@@ -9,7 +9,7 @@ define i8 @load_anyext_i8(ptr addrspace(1) %ptr) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    MLOAD
-; CHECK-NEXT:    PUSH1 248
+; CHECK-NEXT:    PUSH1 0xF8
 ; CHECK-NEXT:    SHR
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -23,7 +23,7 @@ define i16 @load_anyext_i16(ptr addrspace(1) %ptr) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    MLOAD
-; CHECK-NEXT:    PUSH1 240
+; CHECK-NEXT:    PUSH1 0xF0
 ; CHECK-NEXT:    SHR
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -37,7 +37,7 @@ define i32 @load_anyext_i32(ptr addrspace(1) %ptr) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    MLOAD
-; CHECK-NEXT:    PUSH1 224
+; CHECK-NEXT:    PUSH1 0xE0
 ; CHECK-NEXT:    SHR
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -51,7 +51,7 @@ define i64 @load_anyext_i64(ptr addrspace(1) %ptr) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    MLOAD
-; CHECK-NEXT:    PUSH1 192
+; CHECK-NEXT:    PUSH1 0xC0
 ; CHECK-NEXT:    SHR
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -65,7 +65,7 @@ define i128 @load_anyext_i128(ptr addrspace(1) %ptr) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    MLOAD
-; CHECK-NEXT:    PUSH1 128
+; CHECK-NEXT:    PUSH1 0x80
 ; CHECK-NEXT:    SHR
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -79,7 +79,7 @@ define i256 @load_zeroext_i8(ptr addrspace(1) %ptr) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    MLOAD
-; CHECK-NEXT:    PUSH1 248
+; CHECK-NEXT:    PUSH1 0xF8
 ; CHECK-NEXT:    SHR
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -94,7 +94,7 @@ define i256 @load_zeroext_i16(ptr addrspace(1) %ptr) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    MLOAD
-; CHECK-NEXT:    PUSH1 240
+; CHECK-NEXT:    PUSH1 0xF0
 ; CHECK-NEXT:    SHR
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -109,7 +109,7 @@ define i256 @load_zeroext_i32(ptr addrspace(1) %ptr) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    MLOAD
-; CHECK-NEXT:    PUSH1 224
+; CHECK-NEXT:    PUSH1 0xE0
 ; CHECK-NEXT:    SHR
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -124,7 +124,7 @@ define i256 @load_zeroext_i64(ptr addrspace(1) %ptr) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    MLOAD
-; CHECK-NEXT:    PUSH1 192
+; CHECK-NEXT:    PUSH1 0xC0
 ; CHECK-NEXT:    SHR
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -139,7 +139,7 @@ define i256 @load_zeroext_i128(ptr addrspace(1) %ptr) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    MLOAD
-; CHECK-NEXT:    PUSH1 128
+; CHECK-NEXT:    PUSH1 0x80
 ; CHECK-NEXT:    SHR
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP

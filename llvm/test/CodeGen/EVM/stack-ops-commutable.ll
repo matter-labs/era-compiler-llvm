@@ -206,7 +206,7 @@ define void @first_arg_alive_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
 ; CHECK-NEXT:    DUP1
 ; CHECK-NEXT:    SWAP3
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    PUSH1 4
+; CHECK-NEXT:    PUSH1 0x4
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    SWAP2
@@ -228,7 +228,7 @@ define i256 @first_arg_alive_no_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
 ; CHECK-NEXT:    DUP1
 ; CHECK-NEXT:    SWAP3
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    PUSH1 4
+; CHECK-NEXT:    PUSH1 0x4
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    SWAP2
@@ -247,7 +247,7 @@ define void @second_arg_alive_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    DUP2
-; CHECK-NEXT:    PUSH1 4
+; CHECK-NEXT:    PUSH1 0x4
 ; CHECK-NEXT:    SWAP3
 ; CHECK-NEXT:    SWAP4
 ; CHECK-NEXT:    POP
@@ -269,7 +269,7 @@ define i256 @second_arg_alive_no_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    DUP2
-; CHECK-NEXT:    PUSH1 4
+; CHECK-NEXT:    PUSH1 0x4
 ; CHECK-NEXT:    SWAP3
 ; CHECK-NEXT:    SWAP4
 ; CHECK-NEXT:    POP
@@ -351,13 +351,13 @@ define void @commutable_not_in_function_entry() noreturn {
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    CALLDATALOAD
-; CHECK-NEXT:    PUSH1 1
+; CHECK-NEXT:    PUSH1 0x1
 ; CHECK-NEXT:  .BB22_1: ; %header
 ; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH1 1
+; CHECK-NEXT:    PUSH1 0x1
 ; CHECK-NEXT:    DUP3
-; CHECK-NEXT:    PUSH1 3
+; CHECK-NEXT:    PUSH1 0x3
 ; CHECK-NEXT:    SIGNEXTEND
 ; CHECK-NEXT:    SLT
 ; CHECK-NEXT:    PUSH4 @.BB22_3
@@ -365,7 +365,7 @@ define void @commutable_not_in_function_entry() noreturn {
 ; CHECK-NEXT:  ; %bb.2: ; %do
 ; CHECK-NEXT:    ; in Loop: Header=BB22_1 Depth=1
 ; CHECK-NEXT:    DUP2
-; CHECK-NEXT:    PUSH1 1
+; CHECK-NEXT:    PUSH1 0x1
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    MUL
 ; CHECK-NEXT:    SWAP2
@@ -375,13 +375,13 @@ define void @commutable_not_in_function_entry() noreturn {
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .BB22_3: ; %exit
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH4 4294967295
+; CHECK-NEXT:    PUSH4 0xFFFFFFFF
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    POP
 ; CHECK-NEXT:    AND
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    MSTORE
-; CHECK-NEXT:    PUSH1 32
+; CHECK-NEXT:    PUSH1 0x20
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    RETURN
 
