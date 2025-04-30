@@ -88,7 +88,7 @@ define fastcc void @calldata_to_heap_csize(ptr addrspace(1) %dest, ptr addrspace
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SWAP1
-; CHECK-NEXT:    PUSH1 42
+; CHECK-NEXT:    PUSH1 0x2A
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    CALLDATACOPY
 ; CHECK-NEXT:    JUMP

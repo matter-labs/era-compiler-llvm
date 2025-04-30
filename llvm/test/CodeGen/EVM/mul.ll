@@ -20,7 +20,7 @@ define i256 @mulrri(i256 %rs1) nounwind {
 ; CHECK-LABEL: mulrri:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH3 500000
+; CHECK-NEXT:    PUSH3 0x7A120
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    MUL

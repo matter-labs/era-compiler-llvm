@@ -23,5 +23,5 @@ const EVMCImmMCExpr *EVMCImmMCExpr::create(const StringRef &Data,
 }
 
 void EVMCImmMCExpr::printImpl(raw_ostream &OS, const MCAsmInfo *MAI) const {
-  OS << Data;
+  OS << "0x" << Data;
 }
