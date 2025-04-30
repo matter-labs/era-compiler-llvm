@@ -10,7 +10,7 @@ define i256 @test1(i256 %arg) {
 ; CHECK-LABEL: test1:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH1 10
+; CHECK-NEXT:    PUSH1 0xA
 ; CHECK-NEXT:    EQ
 ; CHECK-NEXT:    PUSH4 @.BB0_2
 ; CHECK-NEXT:    JUMPI
@@ -44,7 +44,7 @@ define i256 @test2(i256 %arg) {
 ; CHECK-LABEL: test2:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH1 10
+; CHECK-NEXT:    PUSH1 0xA
 ; CHECK-NEXT:    EQ
 ; CHECK-NEXT:    PUSH4 @.BB1_2
 ; CHECK-NEXT:    JUMPI

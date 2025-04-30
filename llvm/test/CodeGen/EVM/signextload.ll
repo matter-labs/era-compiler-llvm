@@ -9,7 +9,7 @@ define i256 @load_signexti8(ptr addrspace(1) %ptr) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    MLOAD
-; CHECK-NEXT:    PUSH1 248
+; CHECK-NEXT:    PUSH1 0xF8
 ; CHECK-NEXT:    SAR
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -24,7 +24,7 @@ define i256 @load_signexti16(ptr addrspace(1) %ptr) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    MLOAD
-; CHECK-NEXT:    PUSH1 240
+; CHECK-NEXT:    PUSH1 0xF0
 ; CHECK-NEXT:    SAR
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -39,7 +39,7 @@ define i256 @load_signexti32(ptr addrspace(1) %ptr) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    MLOAD
-; CHECK-NEXT:    PUSH1 224
+; CHECK-NEXT:    PUSH1 0xE0
 ; CHECK-NEXT:    SAR
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -54,7 +54,7 @@ define i256 @load_signexti64(ptr addrspace(1) %ptr) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    MLOAD
-; CHECK-NEXT:    PUSH1 192
+; CHECK-NEXT:    PUSH1 0xC0
 ; CHECK-NEXT:    SAR
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -69,7 +69,7 @@ define i256 @load_signexti128(ptr addrspace(1) %ptr) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    MLOAD
-; CHECK-NEXT:    PUSH1 128
+; CHECK-NEXT:    PUSH1 0x80
 ; CHECK-NEXT:    SAR
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP

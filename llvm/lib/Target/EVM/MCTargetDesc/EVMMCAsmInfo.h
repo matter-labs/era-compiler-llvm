@@ -19,12 +19,18 @@
 namespace llvm {
 class Triple;
 
-class EVMMCAsmInfo final : public MCAsmInfoELF {
+// Inherit from MCAsmInfo instead of MCAsmInfoELF to enable overriding
+// getNonexecutableStackSection(), as the base class functionality is minimal
+// in this context.
+class EVMMCAsmInfo final : public MCAsmInfo {
 public:
   explicit EVMMCAsmInfo(const Triple &TT);
   bool shouldOmitSectionDirective(StringRef) const override;
   void printSpecifierExpr(raw_ostream &OS,
                           const MCSpecifierExpr &Expr) const override;
+  MCSection *getNonexecutableStackSection(MCContext &Ctx) const override {
+    return nullptr;
+  }
 };
 
 namespace EVM {
