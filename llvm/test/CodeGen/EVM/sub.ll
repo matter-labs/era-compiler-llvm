@@ -20,7 +20,7 @@ define i256 @addrri(i256 %rs1) nounwind {
 ; CHECK-LABEL: addrri:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH1 3
+; CHECK-NEXT:    PUSH1 0x3
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    SWAP1

@@ -105,7 +105,7 @@ unsigned EVMMCCodeEmitter::getMachineOpValue(const MCInst &MI,
     auto Kind = MO.getExpr()->getKind();
     if (Kind == MCExpr::ExprKind::Target) {
       const auto *CImmExp = cast<EVMCImmMCExpr>(MO.getExpr());
-      Op = APInt(Op.getBitWidth(), CImmExp->getString(), /*radix=*/10);
+      Op = APInt(Op.getBitWidth(), CImmExp->getString(), /*radix=*/16);
     } else if (Kind == MCExpr::ExprKind::SymbolRef) {
       const auto *RefExpr = cast<MCSymbolRefExpr>(MO.getExpr());
       MCSymbolRefExpr::VariantKind Kind = RefExpr->getKind();

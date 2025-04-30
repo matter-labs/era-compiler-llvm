@@ -47,8 +47,17 @@ void EVMInstPrinter::printRegName(raw_ostream &OS, MCRegister RegNo) const {
 void EVMInstPrinter::printInst(const MCInst *MI, uint64_t Address,
                                StringRef Annot, const MCSubtargetInfo &STI,
                                raw_ostream &O) {
-  // Print the instruction (this uses the AsmStrings from the .td files).
-  printInstruction(MI, Address, O);
+  // Print the instruction manually instead of using the TableGen-generated
+  // printInstruction() to allow custom formatting of the mnemonic.
+  O << "\t";
+  std::pair<const char *, uint64_t> MnemonicInfo = getMnemonic(MI);
+  // Add padding to the mnemonic so that it is 16 characters long.
+  if (MI->getNumOperands() > 0)
+    O << left_justify(MnemonicInfo.first, /*Width=*/16);
+  else
+    O << MnemonicInfo.first;
+  for (unsigned I = 0; I < MI->getNumOperands(); ++I)
+    printOperand(MI, I, O);
 
   // Print any additional variadic operands.
   const MCInstrDesc &Desc = MII.get(MI->getOpcode());
@@ -82,7 +91,7 @@ void EVMInstPrinter::printOperand(const MCInst *MI, unsigned OpNo,
   if (Op.isReg()) {
     printRegName(O, Op.getReg());
   } else if (Op.isImm()) {
-    O << Op.getImm();
+    O << format_hex(Op.getImm(), 0, /*Upper=*/true);
   } else {
     Op.getExpr()->print(O, &MAI);
   }
