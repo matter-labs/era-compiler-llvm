@@ -1088,6 +1088,7 @@ LLVMBool LLVMAssembleEVM(uint64_t codeSegment,
   }
 
   *outBuffer = removeLocalSymbols(Tmp, firstLoadImmutables);
+  LLVMDisposeMemoryBuffer(Tmp);
 
   return false;
 }
