@@ -14,7 +14,7 @@ concurrency:
 jobs:
 
   lnt-benchmarks:
-    uses: matter-labs/era-compiler-ci/.github/workflows/lnt.yml@v1
+    uses: matter-labs/era-compiler-ci/.github/workflows/lnt.yml@aba-fix-lnt
     secrets: inherit
     with:
       compiler_llvm_branch: ${{ github.head_ref }}
