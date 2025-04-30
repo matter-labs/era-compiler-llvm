@@ -10,9 +10,9 @@ define i256 @test1(i256 %x) {
 ; CHECK-LABEL: test1:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH1 32
+; CHECK-NEXT:    PUSH1 0x20
 ; CHECK-NEXT:    AND
-; CHECK-NEXT:    PUSH1 5
+; CHECK-NEXT:    PUSH1 0x5
 ; CHECK-NEXT:    SHR
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -29,9 +29,9 @@ define i256 @test2(i256 %x) {
 ; CHECK-LABEL: test2:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH1 32
+; CHECK-NEXT:    PUSH1 0x20
 ; CHECK-NEXT:    AND
-; CHECK-NEXT:    PUSH1 5
+; CHECK-NEXT:    PUSH1 0x5
 ; CHECK-NEXT:    SHR
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -48,9 +48,9 @@ define i256 @test3(i256 %x, i256 %a) {
 ; CHECK-LABEL: test3:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH1 244
+; CHECK-NEXT:    PUSH1 0xF4
 ; CHECK-NEXT:    SHL
-; CHECK-NEXT:    PUSH1 255
+; CHECK-NEXT:    PUSH1 0xFF
 ; CHECK-NEXT:    SAR
 ; CHECK-NEXT:    AND
 ; CHECK-NEXT:    SWAP1
@@ -69,7 +69,7 @@ define i256 @test4(i256 %x) {
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    NOT
-; CHECK-NEXT:    PUSH1 255
+; CHECK-NEXT:    PUSH1 0xFF
 ; CHECK-NEXT:    SAR
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -86,7 +86,7 @@ define i256 @test5(i256 %x) {
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    NOT
-; CHECK-NEXT:    PUSH1 255
+; CHECK-NEXT:    PUSH1 0xFF
 ; CHECK-NEXT:    SHR
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -102,7 +102,7 @@ define i256 @test6(i256 %x, i256 %a) {
 ; CHECK-LABEL: test6:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH1 255
+; CHECK-NEXT:    PUSH1 0xFF
 ; CHECK-NEXT:    SAR
 ; CHECK-NEXT:    AND
 ; CHECK-NEXT:    SWAP1
@@ -119,9 +119,9 @@ define i256 @test7(i256 %x) {
 ; CHECK-LABEL: test7:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH1 2
+; CHECK-NEXT:    PUSH1 0x2
 ; CHECK-NEXT:    SWAP1
-; CHECK-NEXT:    PUSH1 254
+; CHECK-NEXT:    PUSH1 0xFE
 ; CHECK-NEXT:    SHR
 ; CHECK-NEXT:    AND
 ; CHECK-NEXT:    SWAP1
@@ -139,7 +139,7 @@ define i256 @test8(i256 %a, i256 %b) {
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SGT
-; CHECK-NEXT:    PUSH1 5
+; CHECK-NEXT:    PUSH1 0x5
 ; CHECK-NEXT:    SHL
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP

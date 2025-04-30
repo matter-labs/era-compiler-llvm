@@ -154,7 +154,7 @@ define void @first_arg_alive_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    PUSH1 4
+; CHECK-NEXT:    PUSH1 0x4
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    DUP3
 ; CHECK-NEXT:    SUB
@@ -176,7 +176,7 @@ define i256 @first_arg_alive_no_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    PUSH1 4
+; CHECK-NEXT:    PUSH1 0x4
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    DUP3
 ; CHECK-NEXT:    SUB
@@ -199,7 +199,7 @@ define void @second_arg_alive_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
 ; CHECK-NEXT:    SWAP3
 ; CHECK-NEXT:    POP
 ; CHECK-NEXT:    SWAP1
-; CHECK-NEXT:    PUSH1 4
+; CHECK-NEXT:    PUSH1 0x4
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    SWAP2
@@ -222,7 +222,7 @@ define i256 @second_arg_alive_no_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
 ; CHECK-NEXT:    SWAP3
 ; CHECK-NEXT:    POP
 ; CHECK-NEXT:    SWAP1
-; CHECK-NEXT:    PUSH1 4
+; CHECK-NEXT:    PUSH1 0x4
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    SWAP2

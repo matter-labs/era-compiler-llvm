@@ -22,12 +22,12 @@ define void @storei32(i32 %val, ptr addrspace(1) %glob) nounwind {
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    DUP2
 ; CHECK-NEXT:    MLOAD
-; CHECK-NEXT:    PUSH1 32
+; CHECK-NEXT:    PUSH1 0x20
 ; CHECK-NEXT:    SHR
-; CHECK-NEXT:    PUSH1 32
+; CHECK-NEXT:    PUSH1 0x20
 ; CHECK-NEXT:    SHL
 ; CHECK-NEXT:    SWAP1
-; CHECK-NEXT:    PUSH1 224
+; CHECK-NEXT:    PUSH1 0xE0
 ; CHECK-NEXT:    SHL
 ; CHECK-NEXT:    OR
 ; CHECK-NEXT:    SWAP1

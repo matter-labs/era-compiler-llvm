@@ -8,7 +8,7 @@ define i8 @aexti8(i8 %rs1) nounwind {
 ; CHECK-LABEL: aexti8:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH1 1
+; CHECK-NEXT:    PUSH1 0x1
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP

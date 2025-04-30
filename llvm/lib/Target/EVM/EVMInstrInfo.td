@@ -259,7 +259,7 @@ let isCall = 1 in def PseudoCALL
 multiclass BinaryInst<SDNode node, string opcode_str, bits<8> inst, int cost>
   : I<(outs GPR:$dst), (ins GPR:$lhs, GPR:$rhs),
       [(set GPR:$dst, (node GPR:$lhs, GPR:$rhs))],
-      opcode_str, " $dst, $lhs, $rhs", inst, cost>;
+      opcode_str, "$dst, $lhs, $rhs", inst, cost>;
 
 let isCommutable = 1 in {
   defm ADD : BinaryInst<add, "ADD", 0x01, 3>;
@@ -275,23 +275,23 @@ let isCommutable = 1 in {
   defm ADDMOD : I<(outs GPR:$dst), (ins GPR:$add_op1, GPR:$add_op2, GPR:$denom),
                   [(set GPR:$dst, (int_evm_addmod GPR:$add_op1, GPR:$add_op2,
                                       GPR:$denom))],
-                  "ADDMOD", " $dst, $add_op1, $add_op2, $denom", 0x08, 8>;
+                  "ADDMOD", "$dst, $add_op1, $add_op2, $denom", 0x08, 8>;
 
   defm MULMOD : I<(outs GPR:$dst), (ins GPR:$mul_op1, GPR:$mul_op2, GPR:$denom),
                   [(set GPR:$dst, (int_evm_mulmod GPR:$mul_op1, GPR:$mul_op2,
                                       GPR:$denom))],
-                  "MULMOD", " $dst, $mul_op1, $mul_op2, $denom", 0x09, 8>;
+                  "MULMOD", "$dst, $mul_op1, $mul_op2, $denom", 0x09, 8>;
 }
 
 defm EXP
   : I<(outs GPR:$dst), (ins GPR:$base, GPR:$exp),
       [(set GPR:$dst, (int_evm_exp GPR:$base, GPR:$exp))],
-      "EXP", " $dst, $base, $exp", 0x0A, 10>;
+      "EXP", "$dst, $base, $exp", 0x0A, 10>;
 
 defm SIGNEXTEND
   : I<(outs GPR:$dst), (ins GPR:$size, GPR:$src),
       [(set GPR:$dst, (int_evm_signextend GPR:$size, GPR:$src))],
-      "SIGNEXTEND", " $dst, $size, $src", 0x0B, 5>;
+      "SIGNEXTEND", "$dst, $size, $src", 0x0B, 5>;
 
 // The first operand of SIGNEXTEND is the type size in bytes of
 // the value being extendent minus one.
@@ -326,7 +326,7 @@ multiclass ComparisonInst<CondCode cond, string opcode_str,
                           bits<8> inst, int cost>
   : I<(outs GPR:$dst), (ins GPR:$lhs, GPR:$rhs),
       [(set GPR:$dst, (setcc GPR:$lhs, GPR:$rhs, cond))],
-      opcode_str, " $dst, $lhs, $rhs", inst, cost>;
+      opcode_str, "$dst, $lhs, $rhs", inst, cost>;
 
 let isCompare = 1 in {
 defm ULT : ComparisonInst<SETULT, "LT", 0x10, 3>;
@@ -338,7 +338,7 @@ defm EQ : ComparisonInst<SETEQ, "EQ", 0x14, 3>;
 defm ISZERO
   : I<(outs GPR:$dst), (ins GPR:$src),
       [(set GPR:$dst, (setcc GPR:$src, 0, SETEQ))],
-      "ISZERO", " $dst, $src", 0x15, 3>;
+      "ISZERO", "$dst, $src", 0x15, 3>;
 } // isCompare = 1
 
 // Patterns for comparison operations that have no
@@ -363,18 +363,18 @@ let isCommutable = 1 in {
 }
 defm NOT
   : I<(outs GPR:$dst), (ins GPR:$src), [(set GPR:$dst, (not GPR:$src))],
-      "NOT", " $dst, $src", 0x19, 3>;
+      "NOT", "$dst, $src", 0x19, 3>;
 
 let mayLoad = 1 in
 defm SHA3
   : I<(outs GPR:$dst), (ins GPR:$offset, GPR:$size),
       [(set GPR:$dst, (int_evm_sha3 GPR:$offset, GPR:$size))],
-      "SHA3", " $dst, $offset, $size", 0x20, 30>;
+      "SHA3", "$dst, $offset, $size", 0x20, 30>;
 
 defm BYTE
   : I<(outs GPR:$dst), (ins GPR:$idx, GPR:$val),
       [(set GPR:$dst, (int_evm_byte GPR:$idx, GPR:$val))],
-      "BYTE", " $dst, $idx, $val", 0x1a, 3>;
+      "BYTE", "$dst, $idx, $val", 0x1a, 3>;
 
 
 //===----------------------------------------------------------------------===//
@@ -384,7 +384,7 @@ defm BYTE
 multiclass ShiftInst<SDNode node, string opcode_str, bits<8> inst, int cost>
   : I<(outs GPR:$dst), (ins GPR:$val, GPR:$shift),
       [(set GPR:$dst, (node GPR:$shift, GPR:$val))],
-      opcode_str, " $dst, $shift, $val", inst, cost>;
+      opcode_str, "$dst, $shift, $val", inst, cost>;
 
 defm SHL : ShiftInst<shl, "SHL", 0x1b, 3>;
 defm SHR : ShiftInst<srl, "SHR", 0x1c, 3>;
@@ -403,13 +403,13 @@ let isBranch = 1, isTerminator = 1 in {
 // The condition operand is a boolean value which EVM represents as i256.
 defm JUMPI
   : I<(outs), (ins jmptarget:$dst, GPR:$cond), [(brcond GPR:$cond, bb:$dst)],
-      "JUMPI", " $dst, $cond", 0x57, 10>;
+      "JUMPI", "$dst, $cond", 0x57, 10>;
 def JUMP_UNLESS : EVMPseudo<(outs), (ins jmptarget:$dst, GPR:$cond), []>;
 def PseudoJUMPI : EVMPseudo<(outs), (ins jmptarget:$dst), [], true>;
 def PseudoJUMP_UNLESS : EVMPseudo<(outs), (ins jmptarget:$dst), [], true>;
 
 let isBarrier = 1 in {
-  defm JUMP : I<(outs), (ins jmptarget:$dst), [(br bb:$dst)], "JUMP", " $dst",
+  defm JUMP : I<(outs), (ins jmptarget:$dst), [(br bb:$dst)], "JUMP", "$dst",
                 0x56, 8>;
   def PseudoJUMP : EVMPseudo<(outs), (ins jmptarget:$dst), [], true>;
 } // isBarrier = 1
@@ -445,57 +445,57 @@ let mayLoad = 1 in {
   defm MLOAD
     : I<(outs GPR:$dst), (ins GPR:$offset),
         [(set GPR:$dst, (load_heap GPR:$offset))],
-        "MLOAD", " $dst, $offset", 0x51, 3>;
+        "MLOAD", "$dst, $offset", 0x51, 3>;
 
   defm SLOAD
     : I<(outs GPR:$dst), (ins GPR:$key),
         [(set GPR:$dst, (load_storage GPR:$key))],
-        "SLOAD", " $dst, $key", 0x54, 100>;
+        "SLOAD", "$dst, $key", 0x54, 100>;
 
   defm TLOAD
     : I<(outs GPR:$dst), (ins GPR:$key),
         [(set GPR:$dst, (load_tstorage GPR:$key))],
-        "TLOAD", " $dst, $key", 0x5c, 100>;
+        "TLOAD", "$dst, $key", 0x5c, 100>;
 }
 
 let mayStore = 1 in {
   defm MSTORE
     : I<(outs), (ins GPR:$offset, GPR:$val),
         [(store_heap GPR:$val, GPR:$offset)],
-        "MSTORE", " $offset, $val", 0x52, 3>;
+        "MSTORE", "$offset, $val", 0x52, 3>;
 
   defm MSTORE8
     : I<(outs), (ins GPR:$offset, GPR:$val),
         [(int_evm_mstore8 GPR:$offset, GPR:$val)],
-        "MSTORE8", " $offset, $val", 0x53, 3>;
+        "MSTORE8", "$offset, $val", 0x53, 3>;
 
   defm SSTORE
     : I<(outs), (ins GPR:$key, GPR:$val), [(store_storage GPR:$val, GPR:$key)],
-        "SSTORE", " $key, $val", 0x55, 100>;
+        "SSTORE", "$key, $val", 0x55, 100>;
 
   defm TSTORE
     : I<(outs), (ins GPR:$key, GPR:$val), [(store_tstorage GPR:$val, GPR:$key)],
-        "TSTORE", " $key, $val", 0x5d, 100>;
+        "TSTORE", "$key, $val", 0x5d, 100>;
 }
 
 let mayStore = 1, mayLoad = 1 in
 defm MCOPY
   : I<(outs), (ins GPR:$dst, GPR:$src, GPR:$size), [],
-      "MCOPY", " $dst, $src, $size", 0x5E, 3>;
+      "MCOPY", "$dst, $src, $size", 0x5E, 3>;
 
 def : Pat<(EVMMemcpy_heap GPR:$dst, GPR:$src, GPR:$size),
           (MCOPY GPR:$dst, GPR:$src, GPR:$size)>;
 
 let hasSideEffects = 1 in {
   defm PC : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_pc))],
-               "PC", " $dst", 0x58, 2>;
+               "PC", "$dst", 0x58, 2>;
 
   defm GAS : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_gas))],
-                "GAS", " $dst", 0x5A, 2>;
+                "GAS", "$dst", 0x5A, 2>;
 }
 
 defm MSIZE : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_msize))],
-                "MSIZE", " $dst", 0x59, 2>;
+                "MSIZE", "$dst", 0x59, 2>;
 
 // The i8 store is handled a speciall way, as EVM has a dedicated instruction
 // for this.
@@ -550,82 +550,82 @@ def : Pat<(truncstorei8 GPR:$val, GPR:$off), (STACK_STORE GPR:$off, 0, GPR:$val)
 let isAsCheapAsAMove = 1, isReMaterializable = 1 in {
 defm ADDRESS
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_address))],
-      "ADDRESS", " $dst", 0x30, 2>;
+      "ADDRESS", "$dst", 0x30, 2>;
 
 defm ORIGIN
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_origin))],
-      "ORIGIN", " $dst", 0x32, 2>;
+      "ORIGIN", "$dst", 0x32, 2>;
 
 defm CALLER
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_caller))],
-      "CALLER", " $dst", 0x33, 2>;
+      "CALLER", "$dst", 0x33, 2>;
 
 defm CALLVALUE
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_callvalue))],
-      "CALLVALUE", " $dst", 0x34, 2>;
+      "CALLVALUE", "$dst", 0x34, 2>;
 
 defm CALLDATASIZE
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_calldatasize))],
-      "CALLDATASIZE", " $dst", 0x36, 2>;
+      "CALLDATASIZE", "$dst", 0x36, 2>;
 
 defm CODESIZE
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_codesize))],
-      "CODESIZE", " $dst", 0x38, 2>;
+      "CODESIZE", "$dst", 0x38, 2>;
 
 defm GASPRICE
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_gasprice))],
-      "GASPRICE", " $dst", 0x3A, 2>;
+      "GASPRICE", "$dst", 0x3A, 2>;
 
 defm COINBASE
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_coinbase))],
-      "COINBASE", " $dst", 0x41, 2>;
+      "COINBASE", "$dst", 0x41, 2>;
 
 defm TIMESTAMP
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_timestamp))],
-      "TIMESTAMP", " $dst", 0x42, 2>;
+      "TIMESTAMP", "$dst", 0x42, 2>;
 
 defm NUMBER
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_number))],
-      "NUMBER", " $dst", 0x43, 2>;
+      "NUMBER", "$dst", 0x43, 2>;
 
 defm DIFFICULTY
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_difficulty))],
-      "DIFFICULTY", " $dst", 0x44, 2>;
+      "DIFFICULTY", "$dst", 0x44, 2>;
 
 defm GASLIMIT
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_gaslimit))],
-      "GASLIMIT", " $dst", 0x45, 2>;
+      "GASLIMIT", "$dst", 0x45, 2>;
 
 defm CHAINID
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_chainid))],
-      "CHAINID", " $dst", 0x46, 2>;
+      "CHAINID", "$dst", 0x46, 2>;
 
 defm BASEFEE
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_basefee))],
-      "BASEFEE", " $dst", 0x48, 2>;
+      "BASEFEE", "$dst", 0x48, 2>;
 
 defm BLOBBASEFEE
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_blobbasefee))],
-      "BLOBBASEFEE", " $dst", 0x4A, 2>;
+      "BLOBBASEFEE", "$dst", 0x4A, 2>;
 }
 
 defm BALANCE
   : I<(outs GPR:$dst), (ins GPR:$addr),
       [(set GPR:$dst, (int_evm_balance GPR:$addr))],
-      "BALANCE", " $dst, $addr", 0x31, 100>;
+      "BALANCE", "$dst, $addr", 0x31, 100>;
 
 let mayLoad = 1 in
 defm CALLDATALOAD
   : I<(outs GPR:$dst), (ins GPR:$off),
       [(set GPR:$dst, (int_evm_calldataload GPR:$off))],
-      "CALLDATALOAD", " $dst, $off", 0x35, 2>;
+      "CALLDATALOAD", "$dst, $off", 0x35, 2>;
 
 def : Pat<(load_call_data GPR:$off), (CALLDATALOAD GPR:$off)>;
 
 let mayStore = 1 in
 defm CALLDATACOPY
   : I<(outs), (ins GPR:$dst_off, GPR:$src_off, GPR:$size), [],
-      "CALLDATACOPY", " $dst_off, $src_off, $size", 0x37, 3>;
+      "CALLDATACOPY", "$dst_off, $src_off, $size", 0x37, 3>;
 
 def : Pat<(EVMMemcpy_call_data GPR:$dst, GPR:$src, GPR:$size),
           (CALLDATACOPY GPR:$dst, GPR:$src, GPR:$size)>;
@@ -633,7 +633,7 @@ def : Pat<(EVMMemcpy_call_data GPR:$dst, GPR:$src, GPR:$size),
 let mayStore = 1 in
 defm CODECOPY
   : I<(outs), (ins GPR:$dst_off, GPR:$src_off, GPR:$size), [],
-      "CODECOPY", " $dst_off, $src_off, $size", 0x39, 3>;
+      "CODECOPY", "$dst_off, $src_off, $size", 0x39, 3>;
 
 def : Pat<(EVMMemcpy_code GPR:$dst, GPR:$src, GPR:$size),
           (CODECOPY GPR:$dst, GPR:$src, GPR:$size)>;
@@ -641,22 +641,22 @@ def : Pat<(EVMMemcpy_code GPR:$dst, GPR:$src, GPR:$size),
 defm EXTCODESIZE
   : I<(outs GPR:$dst), (ins GPR:$addr),
       [(set GPR:$dst, (int_evm_extcodesize GPR:$addr))],
-      "EXTCODESIZE", " $dst, $addr", 0x3B, 100>;
+      "EXTCODESIZE", "$dst, $addr", 0x3B, 100>;
 
 let mayStore = 1 in
 defm EXTCODECOPY
   : I<(outs), (ins GPR:$addr, GPR:$dst_off, GPR:$src_off, GPR:$size),
       [(int_evm_extcodecopy GPR:$addr, GPR:$dst_off, GPR:$src_off, GPR:$size)],
-      "EXTCODECOPY", " $addr, $dst_off, $src_off, $size", 0x3C, 100>;
+      "EXTCODECOPY", "$addr, $dst_off, $src_off, $size", 0x3C, 100>;
 
 defm RETURNDATASIZE
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_returndatasize))],
-      "RETURNDATASIZE", " $dst", 0x3D, 2>;
+      "RETURNDATASIZE", "$dst", 0x3D, 2>;
 
 let mayStore = 1 in
 defm RETURNDATACOPY
   : I<(outs), (ins GPR:$dst_off, GPR:$src_off, GPR:$size), [],
-      "RETURNDATACOPY", " $dst_off, $src_off, $size", 0x3E, 3>;
+      "RETURNDATACOPY", "$dst_off, $src_off, $size", 0x3E, 3>;
 
 def : Pat<(EVMMemcpy_return_data GPR:$dst, GPR:$src, GPR:$size),
           (RETURNDATACOPY GPR:$dst, GPR:$src, GPR:$size)>;
@@ -664,22 +664,22 @@ def : Pat<(EVMMemcpy_return_data GPR:$dst, GPR:$src, GPR:$size),
 defm EXTCODEHASH
   : I<(outs GPR:$dst), (ins GPR:$addr),
       [(set GPR:$dst, (int_evm_extcodehash GPR:$addr))],
-      "EXTCODEHASH", " $dst, $addr", 0x3F, 100>;
+      "EXTCODEHASH", "$dst, $addr", 0x3F, 100>;
 
 defm BLOCKHASH
   : I<(outs GPR:$dst), (ins GPR:$addr),
       [(set GPR:$dst, (int_evm_blockhash GPR:$addr))],
-      "BLOCKHASH", " $dst, $addr", 0x40, 20>;
+      "BLOCKHASH", "$dst, $addr", 0x40, 20>;
 
 let hasSideEffects = 1 in
 defm SELFBALANCE
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_selfbalance))],
-      "SELFBALANCE", " $dst", 0x47, 5>;
+      "SELFBALANCE", "$dst", 0x47, 5>;
 
 defm BLOBHASH
   : I<(outs GPR:$dst), (ins GPR:$index),
       [(set GPR:$dst, (int_evm_blobhash GPR:$index))],
-      "BLOBHASH", " $dst, $index", 0x49, 3>;
+      "BLOBHASH", "$dst, $index", 0x49, 3>;
 
 //===----------------------------------------------------------------------===//
 // EVM instructions for logging.
@@ -689,28 +689,28 @@ let mayLoad = 1, hasSideEffects = 1 in {
   defm LOG0
     : I<(outs), (ins GPR:$offset, GPR:$size),
         [(int_evm_log0 GPR:$offset, GPR:$size)],
-        "LOG0", " $offset, $size", 0xA0, 375>;
+        "LOG0", "$offset, $size", 0xA0, 375>;
 
   defm LOG1
     : I<(outs), (ins GPR:$offset, GPR:$size, GPR:$t1),
         [(int_evm_log1 GPR:$offset, GPR:$size, GPR:$t1)],
-        "LOG1", " $offset, $size, $t1", 0xA1, 750>;
+        "LOG1", "$offset, $size, $t1", 0xA1, 750>;
 
   defm LOG2
     : I<(outs), (ins GPR:$offset, GPR:$size, GPR:$t1, GPR:$t2),
         [(int_evm_log2 GPR:$offset, GPR:$size, GPR:$t1, GPR:$t2)],
-        "LOG2", " $offset, $size, $t1, $t2", 0xA2, 1125>;
+        "LOG2", "$offset, $size, $t1, $t2", 0xA2, 1125>;
 
   defm LOG3
     : I<(outs), (ins GPR:$offset, GPR:$size, GPR:$t1, GPR:$t2, GPR:$t3),
         [(int_evm_log3 GPR:$offset, GPR:$size, GPR:$t1, GPR:$t2, GPR:$t3)],
-        "LOG3", " $offset, $size, $t1, $t2, $t3", 0xA3, 1500>;
+        "LOG3", "$offset, $size, $t1, $t2, $t3", 0xA3, 1500>;
 
   defm LOG4
     : I<(outs), (ins GPR:$offset, GPR:$size, GPR:$t1, GPR:$t2, GPR:$t3, GPR:$t4),
         [(int_evm_log4 GPR:$offset, GPR:$size, GPR:$t1, GPR:$t2, GPR:$t3,
           GPR:$t4)],
-        "LOG4", " $offset, $size, $t1, $t2, $t3, $t4", 0xA4, 1875>;
+        "LOG4", "$offset, $size, $t1, $t2, $t3, $t4", 0xA4, 1875>;
 }
 
 //===----------------------------------------------------------------------===//
@@ -721,7 +721,7 @@ let mayLoad = 1, hasSideEffects = 1 in
 defm CREATE
   : I<(outs GPR:$dst), (ins GPR:$value, GPR:$offset, GPR:$size),
       [(set GPR:$dst, (int_evm_create GPR:$value, GPR:$offset, GPR:$size))],
-      "CREATE", " $dst, $value, $offset, $size", 0xF0, 32000>;
+      "CREATE", "$dst, $value, $offset, $size", 0xF0, 32000>;
 
 let isCall = 1, hasSideEffects = 1, mayLoad = 1, mayStore = 1 in {
   defm CALL
@@ -729,7 +729,7 @@ let isCall = 1, hasSideEffects = 1, mayLoad = 1, mayStore = 1 in {
                           GPR:$arg_size, GPR:$ret_off, GPR:$ret_size),
         [(set GPR:$dst, (int_evm_call GPR:$gas, GPR:$addr, GPR:$value,
           GPR:$arg_off, GPR:$arg_size, GPR:$ret_off, GPR:$ret_size))],
-        "CALL", " $dst, $gas, $addr, $value, $arg_off, $arg_size, $ret_off, $ret_size",
+        "CALL", "$dst, $gas, $addr, $value, $arg_off, $arg_size, $ret_off, $ret_size",
         0xF1, 100>;
 
   defm CALLCODE
@@ -737,7 +737,7 @@ let isCall = 1, hasSideEffects = 1, mayLoad = 1, mayStore = 1 in {
                           GPR:$arg_size, GPR:$ret_off, GPR:$ret_size),
         [(set GPR:$dst, (int_evm_callcode GPR:$gas, GPR:$addr, GPR:$value,
           GPR:$arg_off, GPR:$arg_size, GPR:$ret_off, GPR:$ret_size))],
-        "CALLCODE", " $dst, $gas, $addr, $value, $arg_off, $arg_size, $ret_off, $ret_size",
+        "CALLCODE", "$dst, $gas, $addr, $value, $arg_off, $arg_size, $ret_off, $ret_size",
         0xF2, 100>;
 
   defm DELEGATECALL
@@ -745,7 +745,7 @@ let isCall = 1, hasSideEffects = 1, mayLoad = 1, mayStore = 1 in {
                           GPR:$ret_off, GPR:$ret_size),
         [(set GPR:$dst, (int_evm_delegatecall GPR:$gas, GPR:$addr, GPR:$arg_off,
           GPR:$arg_size, GPR:$ret_off, GPR:$ret_size))],
-        "DELEGATECALL", " $dst, $gas, $addr, $arg_off, $arg_size, $ret_off, $ret_size",
+        "DELEGATECALL", "$dst, $gas, $addr, $arg_off, $arg_size, $ret_off, $ret_size",
         0xF4, 100>;
 
   defm STATICCALL
@@ -753,7 +753,7 @@ let isCall = 1, hasSideEffects = 1, mayLoad = 1, mayStore = 1 in {
                           GPR:$ret_off, GPR:$ret_size),
         [(set GPR:$dst, (int_evm_staticcall GPR:$gas, GPR:$addr, GPR:$arg_off,
           GPR:$arg_size, GPR:$ret_off, GPR:$ret_size))],
-        "STATICCALL", " $dst, $gas, $addr, $arg_off, $arg_size, $ret_off, $ret_size",
+        "STATICCALL", "$dst, $gas, $addr, $arg_off, $arg_size, $ret_off, $ret_size",
         0xFA, 100>;
 }
 
@@ -773,18 +773,18 @@ let isTerminator = 1, isBarrier = 1 in {
   defm REVERT
     : I<(outs), (ins GPR:$offset, GPR:$size),
         [(int_evm_revert GPR:$offset, GPR:$size)],
-        "REVERT", " $offset, $size", 0xFD, 0>;
+        "REVERT", "$offset, $size", 0xFD, 0>;
 
   defm RETURN
     : I<(outs), (ins GPR:$offset, GPR:$size),
         [(int_evm_return GPR:$offset, GPR:$size)],
-        "RETURN", " $offset, $size", 0xF3, 0>;
+        "RETURN", "$offset, $size", 0xF3, 0>;
 }
 
 let hasSideEffects = 1 in {
   defm SELFDESTRUCT
       : I<(outs), (ins GPR:$addr), [(int_evm_selfdestruct GPR:$addr)],
-          "SELFDESTRUCT", " $addr", 0xFF, 5000>;
+          "SELFDESTRUCT", "$addr", 0xFF, 5000>;
 
   let isTerminator = 1, isBarrier = 1 in {
     defm STOP : I<(outs), (ins), [(int_evm_stop)], "STOP", "", 0x00, 0>;
@@ -826,7 +826,7 @@ foreach I = {1 - 32} in {
 }
 
 // Define stack PUSH* instructions
-def PUSH1_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH1 $imm",
+def PUSH1_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH1$imm",
                   0x60, 3> {
   bits<8> imm;
   let Inst{15-8} = Opc;
@@ -835,7 +835,7 @@ def PUSH1_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH1 $imm",
   let BaseName = "PUSH1";
 }
 
-def PUSH2_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH2 $imm",
+def PUSH2_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH2$imm",
                   0x61, 3> {
   bits<16> imm;
   let Inst{23-16} = Opc;
@@ -844,7 +844,7 @@ def PUSH2_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH2 $imm",
   let BaseName = "PUSH2";
 }
 
-def PUSH3_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH3 $imm",
+def PUSH3_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH3$imm",
                   0x62, 3> {
   bits<24> imm;
   let Inst{31-24} = Opc;
@@ -853,7 +853,7 @@ def PUSH3_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH3 $imm",
   let BaseName = "PUSH3";
 }
 
-def PUSH4_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH4 $imm",
+def PUSH4_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH4$imm",
                   0x63, 3> {
   bits<32> imm;
   let Inst{39-32} = Opc;
@@ -862,7 +862,7 @@ def PUSH4_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH4 $imm",
   let BaseName = "PUSH4";
 }
 
-def PUSH5_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH5 $imm",
+def PUSH5_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH5$imm",
                   0x64, 3> {
   bits<40> imm;
   let Inst{47-40} = Opc;
@@ -871,7 +871,7 @@ def PUSH5_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH5 $imm",
   let BaseName = "PUSH5";
 }
 
-def PUSH6_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH6 $imm",
+def PUSH6_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH6$imm",
                   0x65, 3> {
   bits<48> imm;
   let Inst{55-48} = Opc;
@@ -880,7 +880,7 @@ def PUSH6_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH6 $imm",
   let BaseName = "PUSH6";
 }
 
-def PUSH7_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH7 $imm",
+def PUSH7_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH7$imm",
                   0x66, 3> {
   bits<56> imm;
   let Inst{63-56} = Opc;
@@ -889,7 +889,7 @@ def PUSH7_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH7 $imm",
   let BaseName = "PUSH7";
 }
 
-def PUSH8_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH8 $imm",
+def PUSH8_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH8$imm",
                   0x67, 3> {
   bits<64> imm;
   let Inst{71-64} = Opc;
@@ -898,7 +898,7 @@ def PUSH8_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH8 $imm",
   let BaseName = "PUSH8";
 }
 
-def PUSH9_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH9 $imm",
+def PUSH9_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH9$imm",
                   0x68, 3> {
   bits<72> imm;
   let Inst{79-72} = Opc;
@@ -908,7 +908,7 @@ def PUSH9_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH9 $imm",
   let DecoderMethod = "decodePUSH<9>";
 }
 
-def PUSH10_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH10 $imm",
+def PUSH10_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH10$imm",
                   0x69, 3> {
   bits<80> imm;
   let Inst{87-80} = Opc;
@@ -918,7 +918,7 @@ def PUSH10_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH10 $imm",
   let DecoderMethod = "decodePUSH<10>";
 }
 
-def PUSH11_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH11 $imm",
+def PUSH11_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH11$imm",
                   0x6a, 3> {
   bits<88> imm;
   let Inst{95-88} = Opc;
@@ -928,7 +928,7 @@ def PUSH11_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH11 $imm",
   let DecoderMethod = "decodePUSH<11>";
 }
 
-def PUSH12_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH12 $imm",
+def PUSH12_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH12$imm",
                   0x6b, 3> {
   bits<96> imm;
   let Inst{103-96} = Opc;
@@ -938,7 +938,7 @@ def PUSH12_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH12 $imm",
   let DecoderMethod = "decodePUSH<12>";
 }
 
-def PUSH13_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH13 $imm",
+def PUSH13_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH13$imm",
                   0x6c, 3> {
   bits<104> imm;
   let Inst{111-104} = Opc;
@@ -948,7 +948,7 @@ def PUSH13_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH13 $imm",
   let DecoderMethod = "decodePUSH<13>";
 }
 
-def PUSH14_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH14 $imm",
+def PUSH14_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH14$imm",
                   0x6d, 3> {
   bits<112> imm;
   let Inst{119-112} = Opc;
@@ -958,7 +958,7 @@ def PUSH14_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH14 $imm",
   let DecoderMethod = "decodePUSH<14>";
 }
 
-def PUSH15_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH15 $imm",
+def PUSH15_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH15$imm",
                   0x6e, 3> {
   bits<120> imm;
   let Inst{127-120} = Opc;
@@ -968,7 +968,7 @@ def PUSH15_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH15 $imm",
   let DecoderMethod = "decodePUSH<15>";
 }
 
-def PUSH16_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH16 $imm",
+def PUSH16_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH16$imm",
                   0x6f, 3> {
   bits<128> imm;
   let Inst{135-128} = Opc;
@@ -978,7 +978,7 @@ def PUSH16_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH16 $imm",
   let DecoderMethod = "decodePUSH<16>";
 }
 
-def PUSH17_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH17 $imm",
+def PUSH17_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH17$imm",
                   0x70, 3> {
   bits<136> imm;
   let Inst{143-136} = Opc;
@@ -988,7 +988,7 @@ def PUSH17_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH17 $imm",
   let DecoderMethod = "decodePUSH<17>";
 }
 
-def PUSH18_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH18 $imm",
+def PUSH18_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH18$imm",
                   0x71, 3> {
   bits<144> imm;
   let Inst{151-144} = Opc;
@@ -998,7 +998,7 @@ def PUSH18_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH18 $imm",
   let DecoderMethod = "decodePUSH<18>";
 }
 
-def PUSH19_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH19 $imm",
+def PUSH19_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH19$imm",
                   0x72, 3> {
   bits<152> imm;
   let Inst{159-152} = Opc;
@@ -1008,7 +1008,7 @@ def PUSH19_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH19 $imm",
   let DecoderMethod = "decodePUSH<19>";
 }
 
-def PUSH20_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH20 $imm",
+def PUSH20_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH20$imm",
                   0x73, 3> {
   bits<160> imm;
   let Inst{167-160} = Opc;
@@ -1018,7 +1018,7 @@ def PUSH20_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH20 $imm",
   let DecoderMethod = "decodePUSH<20>";
 }
 
-def PUSH21_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH21 $imm",
+def PUSH21_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH21$imm",
                   0x74, 3> {
   bits<168> imm;
   let Inst{175-168} = Opc;
@@ -1028,7 +1028,7 @@ def PUSH21_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH21 $imm",
   let DecoderMethod = "decodePUSH<21>";
 }
 
-def PUSH22_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH22 $imm",
+def PUSH22_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH22$imm",
                   0x75, 3> {
   bits<176> imm;
   let Inst{183-176} = Opc;
@@ -1038,7 +1038,7 @@ def PUSH22_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH22 $imm",
   let DecoderMethod = "decodePUSH<22>";
 }
 
-def PUSH23_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH23 $imm",
+def PUSH23_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH23$imm",
                   0x76, 3> {
   bits<184> imm;
   let Inst{191-184} = Opc;
@@ -1048,7 +1048,7 @@ def PUSH23_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH23 $imm",
   let DecoderMethod = "decodePUSH<23>";
 }
 
-def PUSH24_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH24 $imm",
+def PUSH24_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH24$imm",
                   0x77, 3> {
   bits<192> imm;
   let Inst{199-192} = Opc;
@@ -1058,7 +1058,7 @@ def PUSH24_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH24 $imm",
   let DecoderMethod = "decodePUSH<24>";
 }
 
-def PUSH25_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH25 $imm",
+def PUSH25_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH25$imm",
                   0x78, 3> {
   bits<200> imm;
   let Inst{207-200} = Opc;
@@ -1068,7 +1068,7 @@ def PUSH25_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH25 $imm",
   let DecoderMethod = "decodePUSH<25>";
 }
 
-def PUSH26_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH26 $imm",
+def PUSH26_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH26$imm",
                   0x79, 3> {
   bits<208> imm;
   let Inst{215-208} = Opc;
@@ -1078,7 +1078,7 @@ def PUSH26_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH26 $imm",
   let DecoderMethod = "decodePUSH<26>";
 }
 
-def PUSH27_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH27 $imm",
+def PUSH27_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH27$imm",
                   0x7a, 3> {
   bits<216> imm;
   let Inst{223-216} = Opc;
@@ -1088,7 +1088,7 @@ def PUSH27_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH27 $imm",
   let DecoderMethod = "decodePUSH<27>";
 }
 
-def PUSH28_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH28 $imm",
+def PUSH28_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH28$imm",
                   0x7b, 3> {
   bits<224> imm;
   let Inst{231-224} = Opc;
@@ -1098,7 +1098,7 @@ def PUSH28_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH28 $imm",
   let DecoderMethod = "decodePUSH<28>";
 }
 
-def PUSH29_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH29 $imm",
+def PUSH29_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH29$imm",
                   0x7c, 3> {
   bits<232> imm;
   let Inst{239-232} = Opc;
@@ -1108,7 +1108,7 @@ def PUSH29_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH29 $imm",
   let DecoderMethod = "decodePUSH<29>";
 }
 
-def PUSH30_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH30 $imm",
+def PUSH30_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH30$imm",
                   0x7d, 3> {
   bits<240> imm;
   let Inst{247-240} = Opc;
@@ -1118,7 +1118,7 @@ def PUSH30_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH30 $imm",
   let DecoderMethod = "decodePUSH<30>";
 }
 
-def PUSH31_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH31 $imm",
+def PUSH31_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH31$imm",
                   0x7e, 3> {
   bits<248> imm;
   let Inst{255-248} = Opc;
@@ -1128,7 +1128,7 @@ def PUSH31_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH31 $imm",
   let DecoderMethod = "decodePUSH<31>";
 }
 
-def PUSH32_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH32 $imm",
+def PUSH32_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH32$imm",
                   0x7f, 3> {
   bits<256> imm;
   let Inst{263-256} = Opc;

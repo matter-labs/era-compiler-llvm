@@ -16,6 +16,7 @@
 #include "MCTargetDesc/EVMMCExpr.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "TargetInfo/EVMTargetInfo.h"
+#include "llvm/ADT/APInt.h"
 #include "llvm/ADT/SmallString.h"
 #include "llvm/CodeGen/AsmPrinter.h"
 #include "llvm/CodeGen/MachineRegisterInfo.h"
@@ -118,7 +119,8 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
         // will be reallocated into the generic heap but not into the Ctx
         // arena and thus never deallocated.
         auto *Str = new (Ctx) SmallString<80>();
-        CImmVal.toStringUnsigned(*Str);
+        CImmVal.toString(*Str, /*Radix=*/16, /*Signed=*/false,
+                         /*formatAsCLiteral=*/false, /*UpperCase=*/true);
         MCOp = MCOperand::createExpr(EVMCImmMCExpr::create(*Str, Ctx));
       }
     } break;

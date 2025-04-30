@@ -8,7 +8,7 @@ define i256 @sexti1(i1 %rs1) nounwind {
 ; CHECK-LABEL: sexti1:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH1 1
+; CHECK-NEXT:    PUSH1 0x1
 ; CHECK-NEXT:    AND
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    SUB
@@ -36,7 +36,7 @@ define i256 @sexti16(i16 %rs1) nounwind {
 ; CHECK-LABEL: sexti16:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH1 1
+; CHECK-NEXT:    PUSH1 0x1
 ; CHECK-NEXT:    SIGNEXTEND
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -49,7 +49,7 @@ define i256 @sexti32(i32 %rs1) nounwind {
 ; CHECK-LABEL: sexti32:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH1 3
+; CHECK-NEXT:    PUSH1 0x3
 ; CHECK-NEXT:    SIGNEXTEND
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -62,7 +62,7 @@ define i256 @sexti64(i64 %rs1) nounwind {
 ; CHECK-LABEL: sexti64:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH1 7
+; CHECK-NEXT:    PUSH1 0x7
 ; CHECK-NEXT:    SIGNEXTEND
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -75,7 +75,7 @@ define i256 @sexti128(i128 %rs1) nounwind {
 ; CHECK-LABEL: sexti128:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH1 15
+; CHECK-NEXT:    PUSH1 0xF
 ; CHECK-NEXT:    SIGNEXTEND
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -89,9 +89,9 @@ define i256 @sexti40(i40 %rs1) nounwind {
 ; CHECK-LABEL: sexti40:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH1 216
+; CHECK-NEXT:    PUSH1 0xD8
 ; CHECK-NEXT:    SHL
-; CHECK-NEXT:    PUSH1 216
+; CHECK-NEXT:    PUSH1 0xD8
 ; CHECK-NEXT:    SAR
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
