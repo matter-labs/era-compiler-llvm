@@ -52,7 +52,10 @@ void EVMInstPrinter::printInst(const MCInst *MI, uint64_t Address,
   O << "\t";
   std::pair<const char *, uint64_t> MnemonicInfo = getMnemonic(MI);
   // Add padding to the mnemonic so that it is 16 characters long.
-  O << left_justify(MnemonicInfo.first, /*Width=*/16);
+  if (MI->getNumOperands() > 0)
+    O << left_justify(MnemonicInfo.first, /*Width=*/16);
+  else
+    O << MnemonicInfo.first;
   for (unsigned I = 0; I < MI->getNumOperands(); ++I)
     printOperand(MI, I, O);
 
