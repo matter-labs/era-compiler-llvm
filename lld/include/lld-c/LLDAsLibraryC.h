@@ -181,10 +181,19 @@ uint64_t LLVMGetImmutablesEVM(LLVMMemoryBufferRef inBuffer,
                               char ***immutableIDs,
                               uint64_t **immutableOffsets);
 
+/** Returns an array of offsets for the linker symbol relocations
+ *  of the ELF object file. */
+uint64_t LLVMSymbolOffsetsEVM(LLVMMemoryBufferRef inBuffer,
+                              const char *symbolName, uint64_t **symbolOffsets);
+
 /** Disposes of the immutable names and their offsets returned by
  *  'LLVMGetImmutablesEVM'. */
 void LLVMDisposeImmutablesEVM(char **immutableIDs, uint64_t *immutableOffsets,
                               uint64_t numOfImmutables);
+
+/** Releases the array of linker symbol offsets. */
+void LLVMDisposeSymbolOffsetsEVM(uint64_t *offsets);
+
 LLVM_C_EXTERN_C_END
 
 #endif // LLD_C_LLDASLIBRARYC_H
