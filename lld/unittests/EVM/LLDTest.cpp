@@ -23,7 +23,6 @@
 
 using namespace llvm;
 
-#include <iostream>
 static std::string expand(const char *Path) {
   llvm::SmallString<256> ThisPath;
   ThisPath.append(getenv("LLD_SRC_DIR"));
@@ -290,6 +289,13 @@ TEST_F(LLDCTest, Assembly) {
       /*codeSegment=*/0,
       {R_deploy_obj, R_deployed_assemble, A_assembly, A_assembly_deployed},
       {"R_107", "R_107_deployed", "A_38", "A_38.A_38_deployed"});
+
+  // Get linker symbols offsets
+  uint64_t *SymOffsets = nullptr;
+  uint64_t NumOffsets =
+      LLVMGetSymbolOffsetsEVM(R_assembly, LinkerSymbol[1], &SymOffsets);
+  EXPECT_TRUE(NumOffsets == 3);
+  LLVMDisposeSymbolOffsetsEVM(SymOffsets);
 
   // Linking with no linker symbols.
   LLVMMemoryBufferRef TmpAssembly = link(R_assembly, "R", nullptr, nullptr, 0);
