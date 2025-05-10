@@ -88,6 +88,7 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
       {EraVM::SELrir, EraVM::SELirr},
       {EraVM::SELrcr, EraVM::SELcrr},
       {EraVM::SELrsr, EraVM::SELsrr},
+      {EraVM::FATPTR_SELrrr, EraVM::FATPTR_SELrrr},
   };
 
   DenseMap<unsigned, unsigned> InverseCond{
@@ -131,8 +132,8 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
         unsigned MovOpc = movOpcode(OpNo, Opc);
         // Avoid unconditional mov rN, rN
         if (CC == EraVMCC::COND_NONE && IsRegister &&
-            EraVM::hasRROutAddressingMode(MI) &&
-            OperandIt->getReg() == Out->getReg())
+            OperandIt->getReg() == Out->getReg() &&
+            (EraVM::hasRROutAddressingMode(MI) || Opc == EraVM::FATPTR_SELrrr))
           return;
 
         MachineInstrBuilder Mov;
@@ -150,8 +151,11 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
         Mov.addImm(CC);
         if (CC != EraVMCC::COND_NONE)
           Mov.addReg(EraVM::Flags, RegState::Implicit);
-        return;
+
+        LLVM_DEBUG(dbgs() << '\t' << *Mov << '\n');
       };
+
+      LLVM_DEBUG(dbgs() << "Replace\t" << MI << "with:\n");
 
       if (ShouldInverse) {
         assert(CCVal != EraVMCC::COND_OF &&
