@@ -43,6 +43,7 @@ unsigned constexpr SWAP = 3;
 unsigned constexpr DUP = 3;
 unsigned constexpr POP = 2;
 unsigned constexpr PUSH = 3;
+unsigned constexpr MLOAD = 3;
 } // namespace EVMCOST
 
 // LLVM IR passes.
@@ -66,6 +67,7 @@ FunctionPass *createEVMSplitCriticalEdges();
 FunctionPass *createEVMStackify();
 FunctionPass *createEVMBPStackification();
 FunctionPass *createEVMLowerJumpUnless();
+ModulePass *createEVMFinalizeStackFrames();
 
 // PassRegistry initialization declarations.
 void initializeEVMCodegenPreparePass(PassRegistry &);
@@ -82,6 +84,7 @@ void initializeEVMBPStackificationPass(PassRegistry &);
 void initializeEVMAAWrapperPassPass(PassRegistry &);
 void initializeEVMExternalAAWrapperPass(PassRegistry &);
 void initializeEVMLowerJumpUnlessPass(PassRegistry &);
+void initializeEVMFinalizeStackFramesPass(PassRegistry &);
 
 struct EVMLinkRuntimePass : PassInfoMixin<EVMLinkRuntimePass> {
   EVMLinkRuntimePass() = default;

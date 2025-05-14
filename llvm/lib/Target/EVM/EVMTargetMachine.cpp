@@ -61,6 +61,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   initializeEVMAAWrapperPassPass(PR);
   initializeEVMExternalAAWrapperPass(PR);
   initializeEVMLowerJumpUnlessPass(PR);
+  initializeEVMFinalizeStackFramesPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -257,6 +258,8 @@ void EVMPassConfig::addPreEmitPass() {
       addPass(createEVMStackify());
     } else {
       addPass(createEVMBPStackification());
+      addPass(&StackSlotColoringID);
+      addPass(createEVMFinalizeStackFrames());
     }
 
     // Optimize branch instructions after stackification. This is done again

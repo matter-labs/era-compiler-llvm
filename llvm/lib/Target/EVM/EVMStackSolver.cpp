@@ -14,6 +14,7 @@
 #include "EVMRegisterInfo.h"
 #include "EVMStackShuffler.h"
 #include "llvm/ADT/DepthFirstIterator.h"
+#include "llvm/CodeGen/CalcSpillWeights.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineLoopInfo.h"
 #include "llvm/Support/Debug.h"
@@ -25,6 +26,11 @@
 using namespace llvm;
 
 #define DEBUG_TYPE "evm-stack-solver"
+
+static cl::opt<unsigned> MaxSpillIterations(
+    "evm-max-spill-iterations", cl::Hidden, cl::init(100),
+    cl::desc("Maximum number of iterations to spill stack slots "
+             "to avoid stack too deep issues."));
 
 namespace {
 
@@ -139,6 +145,51 @@ Stack calculateStackBeforeInst(const Stack &InstDefs, const Stack &AfterInst,
   return BeforeInst;
 }
 
+/// From a vector of spillable registers, find the cheapest one to spill based
+/// on the weights.
+Register getRegToSpill(const SmallSetVector<Register, 16> &SpillableRegs,
+                       const LiveIntervals &LIS) {
+  assert(!SpillableRegs.empty() && "SpillableRegs should not be empty");
+
+  const auto *BestInterval = &LIS.getInterval(SpillableRegs[0]);
+  for (auto Reg : drop_begin(SpillableRegs)) {
+    const auto *LI = &LIS.getInterval(Reg);
+
+    // Take this interval only if it has a non-zero weight and
+    // either BestInterval has zero weight or this interval has a lower
+    // weight than the current best.
+    if (LI->weight() != 0.0F && (BestInterval->weight() == 0.0F ||
+                                 LI->weight() < BestInterval->weight()))
+      BestInterval = LI;
+  }
+
+  LLVM_DEBUG({
+    for (Register Reg : SpillableRegs) {
+      dbgs() << "Spill candidate: ";
+      LIS.getInterval(Reg).dump();
+    }
+    dbgs() << "  Best spill candidate: ";
+    BestInterval->dump();
+    dbgs() << '\n';
+  });
+  return BestInterval->reg();
+}
+
+/// EVM-specific implementation of weight normalization.
+class EVMVirtRegAuxInfo final : public VirtRegAuxInfo {
+  float normalize(float UseDefFreq, unsigned Size, unsigned NumInstr) override {
+    // All intervals have a spill weight that is mostly proportional to the
+    // number of uses, with uses in loops having a bigger weight.
+    return NumInstr * VirtRegAuxInfo::normalize(UseDefFreq, Size, 1);
+  }
+
+public:
+  EVMVirtRegAuxInfo(MachineFunction &MF, LiveIntervals &LIS,
+                    const VirtRegMap &VRM, const MachineLoopInfo &Loops,
+                    const MachineBlockFrequencyInfo &MBFI)
+      : VirtRegAuxInfo(MF, LIS, VRM, Loops, MBFI) {}
+};
+
 } // end anonymous namespace
 
 BranchInfoTy llvm::getBranchInfo(const MachineBasicBlock *MBB) {
@@ -186,9 +237,16 @@ llvm::calculateStackTransformCost(Stack Source, const Stack &Target,
 
   auto Rematerialize = [&Gas, &HasError, &Source,
                         StackDepthLimit](const StackSlot *Slot) {
-    if (Slot->isRematerializable())
+    if (Slot->isRematerializable() && isa<RegisterSlot>(Slot)) {
+      // Prefer dup for spills and reloads, since it is cheaper.
+      std::optional<size_t> Depth = offset(reverse(Source), Slot);
+      if (Depth && *Depth < StackDepthLimit)
+        Gas += EVMCOST::DUP;
+      else
+        Gas += EVMCOST::PUSH + EVMCOST::MLOAD;
+    } else if (Slot->isRematerializable()) {
       Gas += EVMCOST::PUSH;
-    else {
+    } else {
       std::optional<size_t> Depth = offset(reverse(Source), Slot);
       if (Depth && *Depth >= StackDepthLimit)
         HasError = true;
@@ -201,52 +259,153 @@ llvm::calculateStackTransformCost(Stack Source, const Stack &Target,
   return HasError ? std::nullopt : std::optional(Gas);
 }
 
-EVMStackSolver::EVMStackSolver(const MachineFunction &MF,
-                               EVMStackModel &StackModel,
-                               const MachineLoopInfo *MLI)
-    : MF(MF), StackModel(StackModel), MLI(MLI) {}
-
-void EVMStackSolver::run() {
-  runPropagation();
-  LLVM_DEBUG({
-    dbgs() << "************* Stack *************\n";
-    dump(dbgs());
-  });
-  checkPropagationErrors();
+EVMStackSolver::EVMStackSolver(MachineFunction &MF, EVMStackModel &StackModel,
+                               const MachineLoopInfo *MLI,
+                               const VirtRegMap &VRM,
+                               const MachineBlockFrequencyInfo &MBFI,
+                               LiveIntervals &LIS)
+    : MF(MF), StackModel(StackModel), MLI(MLI), VRM(VRM), MBFI(MBFI), LIS(LIS) {
 }
 
-void EVMStackSolver::checkPropagationErrors() {
-  for (const MachineBasicBlock &MBB : MF) {
-    const Stack &EntryMBB = StackModel.getMBBEntryStack(&MBB);
-    const Stack &ExitMBB = StackModel.getMBBExitStack(&MBB);
-    const auto InstRange = StackModel.instructionsToProcess(&MBB);
+void EVMStackSolver::calculateSpillWeights() {
+  if (IsSpillWeightsCalculated)
+    return;
 
-    auto checkStackTransformation = [this](const Stack &From, const Stack &To) {
-      if (!calculateStackTransformCost(From, To, StackModel.stackDepthLimit()))
-        report_fatal_error(Twine("EVMStackSolver cannot transform ") +
-                           From.toString() + " to " + To.toString() +
-                           ": stack too deep.\n");
-    };
+  EVMVirtRegAuxInfo EVRAI(MF, LIS, VRM, *MLI, MBFI);
+  EVRAI.calculateSpillWeightsAndHints();
+  IsSpillWeightsCalculated = true;
+}
 
-    // Check transformation from the MBB's entry to exit stack if BB is empty.
-    if (InstRange.empty()) {
-      checkStackTransformation(EntryMBB, ExitMBB);
-      continue;
+EVMStackSolver::UnreachableSlotVec EVMStackSolver::getUnreachableSlots() const {
+  UnreachableSlotVec UnreachableSlots;
+  const unsigned StackDepthLimit = StackModel.stackDepthLimit();
+
+  // Check if the stack transformation is valid when transforming from
+  // \p From to \p To. If the transformation is not valid, collect the
+  // unreachable slots. \p From will be changed in place, but that is
+  // fine since we are not using it after.
+  auto checkStackTransformation =
+      [&UnreachableSlots, StackDepthLimit](Stack &From, const Stack &To) {
+        calculateStack(
+            From, To, StackDepthLimit,
+            // Swap.
+            [&](unsigned I) {
+              assert(I > 0 && I < From.size());
+              if (I > StackDepthLimit)
+                UnreachableSlots.push_back({From, From.size() - I - 1});
+            },
+            // Push or dup.
+            [&](const StackSlot *Slot) {
+              // Dup the slot, if already on stack and reachable.
+              auto SlotIt = llvm::find(llvm::reverse(From), Slot);
+              if (SlotIt != From.rend()) {
+                unsigned Depth = std::distance(From.rbegin(), SlotIt);
+                if (Depth >= StackDepthLimit && !Slot->isRematerializable()) {
+                  UnreachableSlots.push_back({From, From.size() - Depth - 1});
+                }
+              } else {
+                assert(Slot->isRematerializable());
+              }
+            },
+            // Pop.
+            [&]() {});
+      };
+
+  for (const auto &MBB : MF) {
+    Stack CurrentStack = StackModel.getMBBEntryStack(&MBB);
+
+    // Check the stack transformation for each instruction.
+    for (const auto &MI : StackModel.instructionsToProcess(&MBB)) {
+      checkStackTransformation(CurrentStack, StackModel.getInstEntryStack(&MI));
+      CurrentStack = getMIExitStack(&MI);
     }
 
-    // Check transformation from the MBB's entry to the entry of the first MI
-    // on the first iteration and then do the same from the exit stack of
-    // the previous MI to the entry stack of the next MI.
-    Stack ExitPrev = EntryMBB;
-    for (const auto &MI : InstRange) {
-      checkStackTransformation(ExitPrev, StackModel.getInstEntryStack(&MI));
-      ExitPrev = getMIExitStack(&MI);
-    }
+    auto [BranchTy, TBB, FBB, BrInsts, Condition] = getBranchInfo(&MBB);
 
-    // Check transformation from the exit stack of the last MI to
-    // the MBB's exit stack.
-    checkStackTransformation(ExitPrev, ExitMBB);
+    // Check the transformation for the exit stack. This mimics logic from
+    // the EVMStackifyCodeEmitter::run() method, as in some cases this is
+    // not needed.
+    switch (BranchTy) {
+    case EVMInstrInfo::BT_Uncond:
+    case EVMInstrInfo::BT_NoBranch:
+      if (!MBB.succ_empty())
+        checkStackTransformation(CurrentStack,
+                                 StackModel.getMBBEntryStack(TBB));
+      break;
+    case EVMInstrInfo::BT_None:
+      if (!MBB.isReturnBlock())
+        break;
+      LLVM_FALLTHROUGH;
+    case EVMInstrInfo::BT_Cond:
+    case EVMInstrInfo::BT_CondUncond:
+      checkStackTransformation(CurrentStack, StackModel.getMBBExitStack(&MBB));
+      break;
+    }
   }
+  return UnreachableSlots;
+}
+
+void EVMStackSolver::run() {
+  unsigned IterCount = 0;
+  while (true) {
+    runPropagation();
+    LLVM_DEBUG({
+      dbgs() << "************* Stack *************\n";
+      dump(dbgs());
+    });
+
+    auto UnreachableSlots = getUnreachableSlots();
+    if (UnreachableSlots.empty())
+      break;
+
+    if (++IterCount > MaxSpillIterations)
+      report_fatal_error("EVMStackSolver: maximum number of spill iterations "
+                         "exceeded.");
+
+    LLVM_DEBUG({
+      dbgs() << "Unreachable slots found: " << UnreachableSlots.size()
+             << ", iteration: " << IterCount << '\n';
+    });
+
+    // We are about to spill registers, so we need to calculate spill
+    // weights to determine which register to spill.
+    calculateSpillWeights();
+
+    SmallSet<Register, 4> RegsToSpill;
+    for (auto &[StackSlots, Idx] : UnreachableSlots) {
+      LLVM_DEBUG({
+        dbgs() << "Unreachable slot: " << StackSlots[Idx]->toString()
+               << " at index: " << Idx << '\n';
+        dbgs() << "Stack with unreachable slot: " << StackSlots.toString()
+               << '\n';
+      });
+
+      // Collect spillable registers from the stack slots starting from
+      // the given index.
+      SmallSetVector<Register, 16> SpillableRegs;
+      for (unsigned I = Idx, E = StackSlots.size(); I < E; ++I)
+        if (const auto *RegSlot = dyn_cast<RegisterSlot>(StackSlots[I]))
+          if (!RegSlot->isRematerializable())
+            SpillableRegs.insert(RegSlot->getReg());
+
+      if (!SpillableRegs.empty())
+        RegsToSpill.insert(getRegToSpill(SpillableRegs, LIS));
+    }
+
+    if (RegsToSpill.empty())
+      report_fatal_error("EVMStackSolver: no spillable registers found for "
+                         "unreachable slots.");
+    StackModel.addSpillRegs(RegsToSpill);
+  }
+}
+
+// Return true if the register is defined or used before MI.
+static bool isRegDefOrUsedBefore(const MachineInstr &MI, const Register &Reg) {
+  return std::any_of(std::next(MachineBasicBlock::const_reverse_iterator(MI)),
+                     MI.getParent()->rend(), [&Reg](const MachineInstr &Instr) {
+                       return Instr.readsRegister(Reg, /*TRI*/ nullptr) ||
+                              Instr.definesRegister(Reg, /*TRI=*/nullptr);
+                     });
 }
 
 Stack EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
@@ -277,10 +436,17 @@ Stack EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
   // If the top stack slots can be rematerialized just before MI, remove it
   // from propagation to reduce pressure.
   while (!BeforeMI.empty()) {
-    if (BeforeMI.back()->isRematerializable()) {
+    const auto *BackSlot = BeforeMI.back();
+    // Don't remove register spills if the register is used or defined before
+    // MI. They are not cheap and ideally we shouldn't do more than one reload
+    // in the BB.
+    if (BackSlot->isRematerializable() &&
+        (!isa<RegisterSlot>(BackSlot) ||
+         !isRegDefOrUsedBefore(MI, cast<RegisterSlot>(BackSlot)->getReg()))) {
       BeforeMI.pop_back();
-    } else if (auto Offset =
-                   offset(drop_begin(reverse(BeforeMI), 1), BeforeMI.back())) {
+      continue;
+    }
+    if (auto Offset = offset(drop_begin(reverse(BeforeMI), 1), BackSlot)) {
       if (*Offset + 2 < StackModel.stackDepthLimit())
         BeforeMI.pop_back();
       else
@@ -292,7 +458,7 @@ Stack EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
   return BeforeMI;
 }
 
-Stack EVMStackSolver::getMIExitStack(const MachineInstr *MI) {
+Stack EVMStackSolver::getMIExitStack(const MachineInstr *MI) const {
   const Stack &MIInput = StackModel.getMIInput(*MI);
   Stack MIEntry = StackModel.getInstEntryStack(MI);
   assert(MIInput.size() <= MIEntry.size());
@@ -338,6 +504,11 @@ Stack EVMStackSolver::propagateThroughMBB(const Stack &ExitStack,
 }
 
 void EVMStackSolver::runPropagation() {
+  // Reset StackModel's internal state.
+  StackModel.getMBBEntryMap().clear();
+  StackModel.getMBBExitMap().clear();
+  StackModel.getInstEntryMap().clear();
+
   std::deque<const MachineBasicBlock *> Worklist{&MF.front()};
   DenseSet<const MachineBasicBlock *> Visited;
 
