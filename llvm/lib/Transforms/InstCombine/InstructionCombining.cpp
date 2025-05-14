@@ -94,6 +94,9 @@
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/KnownBits.h"
 #include "llvm/Support/raw_ostream.h"
+// EraVM local begin
+#include "llvm/TargetParser/Triple.h"
+// EraVM local end
 #include "llvm/Transforms/InstCombine/InstCombine.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Transforms/Utils/Local.h"
@@ -3009,7 +3012,11 @@ Instruction *InstCombinerImpl::visitGetElementPtrInst(GetElementPtrInst &GEP) {
 
     // Try to replace ADD + GEP with GEP + GEP.
     Value *Idx1, *Idx2;
-    if (match(GEP.getOperand(1),
+    // EraVM local begin
+    Triple TT(GEP.getFunction()->getParent()->getTargetTriple());
+    if ((!TT.isEraVM() || GEP.getAddressSpace() != 3 /*EraVMAS::AS_GENERIC*/) &&
+        // EraVM local end
+        match(GEP.getOperand(1),
               m_OneUse(m_Add(m_Value(Idx1), m_Value(Idx2))))) {
       //   %idx = add i64 %idx1, %idx2
       //   %gep = getelementptr i32, ptr %ptr, i64 %idx
