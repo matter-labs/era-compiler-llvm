@@ -20,6 +20,7 @@
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "llvm/ADT/DenseMap.h"
 #include "llvm/ADT/STLExtras.h"
+#include "llvm/ADT/SmallSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/CodeGen/LiveIntervals.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
@@ -82,16 +83,22 @@ public:
 /// A slot containing a register def.
 class RegisterSlot final : public StackSlot {
   Register Reg;
+  bool IsSpill = false;
 
 public:
   explicit RegisterSlot(const Register &R) : StackSlot(SK_Register), Reg(R) {}
   const Register &getReg() const { return Reg; }
+  void setIsSpill(bool Spill = true) { IsSpill = Spill; }
 
-  bool isRematerializable() const override { return false; }
+  bool isRematerializable() const override { return IsSpill; }
   std::string toString() const override {
     SmallString<64> S;
     raw_svector_ostream OS(S);
+    if (IsSpill)
+      OS << "Spill[";
     OS << printReg(Reg, nullptr, 0, nullptr);
+    if (IsSpill)
+      OS << ']';
     return std::string(S.str());
   }
   static bool classof(const StackSlot *S) {
@@ -261,6 +268,15 @@ public:
     for (const auto &MO : MI->defs())
       Defs.push_back(getRegisterSlot(MO.getReg()));
     return Defs;
+  }
+
+  void addSpillRegs(const SmallSet<Register, 4> &SpillRegs) {
+    for (const auto &R : SpillRegs) {
+      auto *RegSlot = RegStorage.at(R).get();
+      assert(!RegSlot->isRematerializable() &&
+             "Register slot has already been marked as spill");
+      RegSlot->setIsSpill();
+    }
   }
 
   // Get or create a requested stack slot.

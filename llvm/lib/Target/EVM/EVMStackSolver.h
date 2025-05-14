@@ -35,8 +35,9 @@ BranchInfoTy getBranchInfo(const MachineBasicBlock *MBB);
 
 class EVMStackSolver {
 public:
-  EVMStackSolver(const MachineFunction &MF, EVMStackModel &StackModel,
-                 const MachineLoopInfo *MLI);
+  EVMStackSolver(MachineFunction &MF, EVMStackModel &StackModel,
+                 const MachineLoopInfo *MLI, const VirtRegMap &VRM,
+                 const MachineBlockFrequencyInfo &MBFI, LiveIntervals &LIS);
   void run();
 
 private:
@@ -55,10 +56,7 @@ private:
                             bool CompressStack = false);
 
   // Build the exit stack of the given \p MI.
-  Stack getMIExitStack(const MachineInstr *MI);
-
-  // Check and report for stack-too-deep errors.
-  void checkPropagationErrors();
+  Stack getMIExitStack(const MachineInstr *MI) const;
 
   /// Main algorithm walking the graph from entry to exit and propagating stack
   /// states back to the entries. Iteratively reruns itself along backward jumps
@@ -101,9 +99,21 @@ private:
     StackModel.getInstEntryMap()[MI] = std::move(S);
   }
 
-  const MachineFunction &MF;
+  using UnreachableSlotVec = SmallVector<std::pair<Stack, unsigned>>;
+  /// Get all unreachable slots in case of stack too deep issues.
+  UnreachableSlotVec getUnreachableSlots() const;
+
+  /// Calculate spill weights. This is needed to determine which register to
+  /// spill when we have multiple spillable registers.
+  void calculateSpillWeights();
+
+  MachineFunction &MF;
   EVMStackModel &StackModel;
   const MachineLoopInfo *MLI;
+  const VirtRegMap &VRM;
+  const MachineBlockFrequencyInfo &MBFI;
+  LiveIntervals &LIS;
+  bool IsSpillWeightsCalculated = false;
 };
 
 } // end namespace llvm
