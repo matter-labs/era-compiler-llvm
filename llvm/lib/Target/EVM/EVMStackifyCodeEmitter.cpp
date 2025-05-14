@@ -11,9 +11,13 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMStackifyCodeEmitter.h"
+#include "EVMStackModel.h"
 #include "EVMStackShuffler.h"
 #include "EVMStackSolver.h"
+#include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "TargetInfo/EVMTargetInfo.h"
+#include "llvm/CodeGen/LiveStacks.h"
+#include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/MC/MCContext.h"
 
 using namespace llvm;
@@ -47,6 +51,13 @@ size_t EVMStackifyCodeEmitter::CodeEmitter::stackHeight() const {
   return StackHeight;
 }
 
+void EVMStackifyCodeEmitter::CodeEmitter::reset(bool EmitInstrs) {
+  this->EmitInstrs = EmitInstrs;
+  StackHeight = 0;
+  CurMBB = nullptr;
+  CallReturnSyms.clear();
+}
+
 void EVMStackifyCodeEmitter::CodeEmitter::enterMBB(MachineBasicBlock *MBB,
                                                    int Height) {
   StackHeight = Height;
@@ -68,6 +79,8 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitInst(const MachineInstr *MI) {
   assert(StackHeight >= NumInputs && "Not enough operands on the stack");
   StackHeight -= NumInputs;
   StackHeight += MI->getNumExplicitDefs();
+  if (!EmitInstrs)
+    return;
 
   auto NewMI = BuildMI(*CurMBB, CurMBB->end(), MI->getDebugLoc(),
                        TII->get(EVM::getStackOpcode(Opc)));
@@ -77,6 +90,9 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitInst(const MachineInstr *MI) {
 void EVMStackifyCodeEmitter::CodeEmitter::emitSWAP(unsigned Depth) {
   assert(StackHeight >= (Depth + 1) &&
          "Not enough operands on the stack for SWAP");
+  if (!EmitInstrs)
+    return;
+
   unsigned Opc = EVM::getSWAPOpcode(Depth);
   auto NewMI = BuildMI(*CurMBB, CurMBB->end(), DebugLoc(),
                        TII->get(EVM::getStackOpcode(Opc)));
@@ -86,6 +102,9 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitSWAP(unsigned Depth) {
 void EVMStackifyCodeEmitter::CodeEmitter::emitDUP(unsigned Depth) {
   assert(StackHeight >= Depth && "Not enough operands on the stack for DUP");
   StackHeight += 1;
+  if (!EmitInstrs)
+    return;
+
   unsigned Opc = EVM::getDUPOpcode(Depth);
   auto NewMI = BuildMI(*CurMBB, CurMBB->end(), DebugLoc(),
                        TII->get(EVM::getStackOpcode(Opc)));
@@ -95,6 +114,9 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitDUP(unsigned Depth) {
 void EVMStackifyCodeEmitter::CodeEmitter::emitPOP() {
   assert(StackHeight > 0 && "Expected at least one operand on the stack");
   StackHeight -= 1;
+  if (!EmitInstrs)
+    return;
+
   auto NewMI =
       BuildMI(*CurMBB, CurMBB->end(), DebugLoc(), TII->get(EVM::POP_S));
   verify(NewMI);
@@ -102,6 +124,9 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitPOP() {
 
 void EVMStackifyCodeEmitter::CodeEmitter::emitConstant(const APInt &Val) {
   StackHeight += 1;
+  if (!EmitInstrs)
+    return;
+
   unsigned Opc = EVM::getPUSHOpcode(Val);
   auto NewMI = BuildMI(*CurMBB, CurMBB->end(), DebugLoc(),
                        TII->get(EVM::getStackOpcode(Opc)));
@@ -118,6 +143,9 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitSymbol(const MachineInstr *MI,
                                                      MCSymbol *Symbol) {
   assert(isLinkerPseudoMI(*MI) && "Unexpected symbol instruction");
   StackHeight += 1;
+  if (!EmitInstrs)
+    return;
+
   // This is codegen-only instruction, that will be converted into PUSH4.
   auto NewMI = BuildMI(*CurMBB, CurMBB->end(), MI->getDebugLoc(),
                        TII->get(EVM::getStackOpcode(MI->getOpcode())))
@@ -129,6 +157,9 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitLabelReference(
     const MachineInstr *Call) {
   assert(Call->getOpcode() == EVM::FCALL && "Unexpected call instruction");
   StackHeight += 1;
+  if (!EmitInstrs)
+    return;
+
   auto [It, Inserted] = CallReturnSyms.try_emplace(Call);
   if (Inserted)
     It->second = MF.getContext().createTempSymbol("FUNC_RET", true);
@@ -149,6 +180,8 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitFuncCall(const MachineInstr *MI) {
   // PUSH_LABEL increases the stack height on 1, but we don't increase it
   // explicitly here, as the label will be consumed by the following JUMP.
   StackHeight += MI->getNumExplicitDefs();
+  if (!EmitInstrs)
+    return;
 
   // Create pseudo jump to the function, that will be expanded into PUSH and
   // JUMP instructions in the AsmPrinter.
@@ -165,6 +198,9 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitFuncCall(const MachineInstr *MI) {
 
 void EVMStackifyCodeEmitter::CodeEmitter::emitRet(const MachineInstr *MI) {
   assert(MI->getOpcode() == EVM::RET && "Unexpected ret instruction");
+  if (!EmitInstrs)
+    return;
+
   auto NewMI = BuildMI(*CurMBB, CurMBB->end(), MI->getDebugLoc(),
                        TII->get(EVM::PseudoRET));
   verify(NewMI);
@@ -174,6 +210,9 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitUncondJump(
     const MachineInstr *MI, MachineBasicBlock *Target) {
   assert(MI->getOpcode() == EVM::JUMP &&
          "Unexpected unconditional jump instruction");
+  if (!EmitInstrs)
+    return;
+
   auto NewMI = BuildMI(*CurMBB, CurMBB->end(), MI->getDebugLoc(),
                        TII->get(EVM::PseudoJUMP))
                    .addMBB(Target);
@@ -187,12 +226,80 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitCondJump(
              "Unexpected conditional jump instruction");
   assert(StackHeight > 0 && "Expected at least one operand on the stack");
   StackHeight -= 1;
+  if (!EmitInstrs)
+    return;
+
   auto NewMI =
       BuildMI(*CurMBB, CurMBB->end(), MI->getDebugLoc(),
               TII->get(MI->getOpcode() == EVM::JUMPI ? EVM::PseudoJUMPI
                                                      : EVM::PseudoJUMP_UNLESS))
           .addMBB(Target);
   verify(NewMI);
+}
+
+void EVMStackifyCodeEmitter::CodeEmitter::emitReload(Register Reg) {
+  StackHeight += 1;
+  if (!EmitInstrs)
+    return;
+
+  auto NewMI =
+      BuildMI(*CurMBB, CurMBB->end(), DebugLoc(), TII->get(EVM::PUSH_FRAME))
+          .addFrameIndex(getStackSlot(Reg));
+  verify(NewMI);
+  NewMI = BuildMI(*CurMBB, CurMBB->end(), DebugLoc(), TII->get(EVM::MLOAD_S));
+  NewMI->setAsmPrinterFlag(MachineInstr::ReloadReuse);
+  verify(NewMI);
+}
+
+void EVMStackifyCodeEmitter::CodeEmitter::emitSpill(Register Reg,
+                                                    unsigned DupIdx) {
+  // Reduce height if we are not going to duplicate the register.
+  // In this case, register will be used by the MSTORE instruction
+  // that is used for spilling.
+  if (DupIdx == 0) {
+    assert(StackHeight > 0 && "Expected at least one operand on the stack");
+    StackHeight -= 1;
+  } else {
+    assert(StackHeight >= DupIdx &&
+           "Not enough operands on the stack for DUP while spilling");
+  }
+
+  if (!EmitInstrs)
+    return;
+
+  // If register is used after spill, we need to duplicate it.
+  if (DupIdx > 0) {
+    emitDUP(DupIdx);
+    // Since we are going to spill the register, stack height doesn't
+    // change, so we need to reduce it by 1, as emitDUP increases
+    // the stack height by that amount.
+    StackHeight -= 1;
+  }
+  auto NewMI =
+      BuildMI(*CurMBB, CurMBB->end(), DebugLoc(), TII->get(EVM::PUSH_FRAME))
+          .addFrameIndex(getStackSlot(Reg));
+  verify(NewMI);
+  NewMI = BuildMI(*CurMBB, CurMBB->end(), DebugLoc(), TII->get(EVM::MSTORE_S));
+  NewMI->setAsmPrinterFlag(MachineInstr::ReloadReuse);
+  verify(NewMI);
+}
+
+int EVMStackifyCodeEmitter::CodeEmitter::getStackSlot(Register Reg) {
+  int StackSlot = VRM.getStackSlot(Reg);
+  if (StackSlot != VirtRegMap::NO_STACK_SLOT)
+    return StackSlot;
+
+  // Generate a new stack slot for the register and add register's live interval
+  // to the stack slot. This is the same thing what InlineSpiller does, and this
+  // is needed to StackSlotColoring afterwards to reduce the stack area.
+  StackSlot = VRM.assignVirt2StackSlot(Reg);
+  auto &StackInt =
+      LSS.getOrCreateInterval(StackSlot, MF.getRegInfo().getRegClass(Reg));
+  StackInt.getNextValue(SlotIndex(), LSS.getVNInfoAllocator());
+  assert(StackInt.getNumValNums() == 1 && "Bad stack interval values");
+  StackInt.MergeSegmentsInAsValue(LIS.getInterval(Reg),
+                                  StackInt.getValNumInfo(0));
+  return StackSlot;
 }
 
 // Verify that a stackified instruction doesn't have registers and dump it.
@@ -207,6 +314,9 @@ void EVMStackifyCodeEmitter::CodeEmitter::verify(const MachineInstr *MI) const {
                     << "\n");
 }
 void EVMStackifyCodeEmitter::CodeEmitter::finalize() {
+  if (!EmitInstrs)
+    return;
+
   for (MachineBasicBlock &MBB : MF)
     for (MachineInstr &MI : make_early_inc_range(MBB))
       // Remove all the instructions that are not stackified.
@@ -266,6 +376,58 @@ void EVMStackifyCodeEmitter::emitMI(const MachineInstr &MI) {
              CurrentStack.end() - MI.getNumExplicitDefs());
 }
 
+void EVMStackifyCodeEmitter::emitSpills(const MachineBasicBlock &MBB,
+                                        MachineBasicBlock::const_iterator Start,
+                                        const Stack &Defs) {
+  // Check if we have any spillable registers.
+  if (find_if(Defs, [](const StackSlot *Slot) {
+        return isa<RegisterSlot>(Slot) && Slot->isRematerializable();
+      }) == Defs.end())
+    return;
+
+  // In case of a single definition, we can remove it from the stack
+  // if it is not used after spill.
+  if (Defs.size() == 1) {
+    // Find the first instruction from which we can get entry stack.
+    while (Start != MBB.end() && StackModel.skipMI(*Start))
+      ++Start;
+
+    // Find the next target stack, as we need to check if the register
+    // is used after spill.
+    const Stack &NextTargetStack =
+        Start != MBB.end() && !EVMInstrInfo::isStack(&*Start)
+            ? StackModel.getInstEntryStack(&*Start)
+            : StackModel.getMBBExitStack(&MBB);
+    const auto *RegSlot = dyn_cast<RegisterSlot>(Defs[0]);
+    assert(RegSlot && RegSlot->isRematerializable() &&
+           "Expected spillable register slot");
+
+    // Find if if the register is used after spill. If it is we need to
+    // emit DUP instruction to keep it on the stack.
+    bool UsedAfter = is_contained(NextTargetStack, RegSlot);
+    Emitter.emitSpill(RegSlot->getReg(), UsedAfter);
+
+    // Remove the register from the current stack, if it is not used
+    // after spill.
+    if (!UsedAfter)
+      CurrentStack.pop_back();
+  } else {
+    // TODO: In case definition are not used after spill, we can
+    // remove them from the current stack, and not emit DUP. This
+    // is more complex when we have multiple definitions, as we
+    // need to do stack manipulation to keep the stack in sync
+    // with the target stack.
+    for (auto [DefIdx, Def] : enumerate(reverse(Defs))) {
+      const auto *RegSlot = dyn_cast<RegisterSlot>(Def);
+      if (!RegSlot || !RegSlot->isRematerializable())
+        continue;
+
+      Emitter.emitSpill(RegSlot->getReg(), DefIdx + 1);
+    }
+  }
+  assert(Emitter.stackHeight() == CurrentStack.size());
+}
+
 // Checks if it's valid to transition from \p SourceStack to \p TargetStack,
 // that is \p SourceStack matches each slot in \p TargetStack that is not a
 // UnusedSlot exactly.
@@ -291,10 +453,14 @@ void EVMStackifyCodeEmitter::emitStackPermutations(const Stack &TargetStack) {
           Emitter.emitSWAP(I);
           return;
         }
+
         const StackSlot *Slot = CurrentStack[CurrentStack.size() - I - 1];
-        std::string ErrMsg = getUnreachableStackSlotError(
-            MF, CurrentStack, Slot, I + 1, /* isSwap */ true);
-        report_fatal_error(ErrMsg.c_str());
+        if (!CollectSpillCandidates) {
+          std::string ErrMsg = getUnreachableStackSlotError(
+              MF, CurrentStack, Slot, I + 1, /* isSwap */ true);
+          report_fatal_error(ErrMsg.c_str());
+        }
+        SpillCandidates.push_back({CurrentStack, CurrentStack.size() - I - 1});
       },
       // Push or dup.
       [&](const StackSlot *Slot) {
@@ -309,9 +475,19 @@ void EVMStackifyCodeEmitter::emitStackPermutations(const Stack &TargetStack) {
             return;
           }
           if (!Slot->isRematerializable()) {
-            std::string ErrMsg = getUnreachableStackSlotError(
-                MF, CurrentStack, Slot, Depth + 1, /* isSwap */ false);
-            report_fatal_error(ErrMsg.c_str());
+            if (!CollectSpillCandidates) {
+              std::string ErrMsg = getUnreachableStackSlotError(
+                  MF, CurrentStack, Slot, Depth + 1, /* isSwap */ false);
+              report_fatal_error(ErrMsg.c_str());
+            }
+
+            // Even though it's unreachable, we still need to increase
+            // the stack height. This is safe since at this point we are
+            // not emitting instructions.
+            Emitter.emitDUP(static_cast<unsigned>(Depth + 1));
+            SpillCandidates.push_back(
+                {CurrentStack, CurrentStack.size() - Depth - 1});
+            return;
           }
         }
 
@@ -323,6 +499,8 @@ void EVMStackifyCodeEmitter::emitStackPermutations(const Stack &TargetStack) {
           Emitter.emitSymbol(S->getMachineInstr(), S->getSymbol());
         } else if (const auto *CallRet = dyn_cast<CallerReturnSlot>(Slot)) {
           Emitter.emitLabelReference(CallRet->getCall());
+        } else if (const auto *Spill = dyn_cast<RegisterSlot>(Slot)) {
+          Emitter.emitReload(Spill->getReg());
         } else {
           assert(isa<UnusedSlot>(Slot));
           // Note: this will always be popped, so we can push anything.
@@ -380,7 +558,17 @@ void EVMStackifyCodeEmitter::emitMIEntryStack(const MachineInstr &MI) {
 #endif // NDEBUG
 }
 
-void EVMStackifyCodeEmitter::run() {
+void EVMStackifyCodeEmitter::reset(bool CollectSpillCandidates) {
+  this->CollectSpillCandidates = CollectSpillCandidates;
+  CurrentStack.clear();
+  SpillCandidates.clear();
+  Emitter.reset(!CollectSpillCandidates);
+}
+
+EVMStackifyCodeEmitter::SpillCandidatesVec
+EVMStackifyCodeEmitter::run(bool CollectSpillCandidates) {
+  reset(CollectSpillCandidates);
+
   assert(CurrentStack.empty() && Emitter.stackHeight() == 0);
 
   SmallPtrSet<MachineBasicBlock *, 32> Visited;
@@ -397,6 +585,10 @@ void EVMStackifyCodeEmitter::run() {
     auto [BranchTy, TBB, FBB, BrInsts, Condition] = getBranchInfo(MBB);
     bool HasReturn = MBB->isReturnBlock();
     const MachineInstr *ReturnMI = HasReturn ? &MBB->back() : nullptr;
+
+    // Emit the spills for the arguments in the entry block, if needed.
+    if (MBB == &MF.front())
+      emitSpills(*MBB, MBB->begin(), StackModel.getMBBEntryStack(MBB));
 
     for (const auto &MI : StackModel.instructionsToProcess(MBB)) {
       // We are done if the MI is in the stack form.
@@ -422,6 +614,10 @@ void EVMStackifyCodeEmitter::run() {
         assert(MI.definesRegister(cast<RegisterSlot>(CurrentStack[I])->getReg(),
                                   /*TRI=*/nullptr));
 #endif // NDEBUG
+
+      // Emit spills for the instruction definitions, if needed.
+      emitSpills(*MBB, std::next(MI.getIterator()),
+                 StackModel.getSlotsForInstructionDefs(&MI));
     }
 
     // Exit the block.
@@ -474,4 +670,6 @@ void EVMStackifyCodeEmitter::run() {
     }
   }
   Emitter.finalize();
+
+  return SpillCandidates;
 }

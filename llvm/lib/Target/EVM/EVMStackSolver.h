@@ -40,6 +40,8 @@ public:
   void run();
 
 private:
+  void reset();
+
   /// Given \p MI's \p ExitStack, compute the entry stack so that after
   /// executing the instruction the cost to transform to \p ExitStack is
   /// minimal.

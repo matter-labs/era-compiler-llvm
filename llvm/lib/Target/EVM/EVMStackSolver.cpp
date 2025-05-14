@@ -12,6 +12,7 @@
 #include "EVMInstrInfo.h"
 #include "EVMMachineFunctionInfo.h"
 #include "EVMRegisterInfo.h"
+#include "EVMStackModel.h"
 #include "EVMStackShuffler.h"
 #include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/CodeGen/MachineFunction.h"
@@ -186,9 +187,16 @@ llvm::calculateStackTransformCost(Stack Source, const Stack &Target,
 
   auto Rematerialize = [&Gas, &HasError, &Source,
                         StackDepthLimit](const StackSlot *Slot) {
-    if (Slot->isRematerializable())
+    if (Slot->isRematerializable() && isa<RegisterSlot>(Slot)) {
+      // Prefer dup for spills and reloads, since it is cheaper.
+      std::optional<size_t> Depth = offset(reverse(Source), Slot);
+      if (Depth && *Depth < StackDepthLimit)
+        Gas += EVMCOST::DUP;
+      else
+        Gas += EVMCOST::PUSH + EVMCOST::MLOAD;
+    } else if (Slot->isRematerializable()) {
       Gas += EVMCOST::PUSH;
-    else {
+    } else {
       std::optional<size_t> Depth = offset(reverse(Source), Slot);
       if (Depth && *Depth >= StackDepthLimit)
         HasError = true;
@@ -206,12 +214,29 @@ EVMStackSolver::EVMStackSolver(const MachineFunction &MF,
                                const MachineLoopInfo *MLI)
     : MF(MF), StackModel(StackModel), MLI(MLI) {}
 
+void EVMStackSolver::reset() {
+  // Reset StackModel's internal state.
+  StackModel.getMBBEntryMap().clear();
+  StackModel.getMBBExitMap().clear();
+  StackModel.getInstEntryMap().clear();
+}
+
 void EVMStackSolver::run() {
+  reset();
   runPropagation();
   LLVM_DEBUG({
     dbgs() << "************* Stack *************\n";
     dump(dbgs());
   });
+}
+
+// Return true if the register is defined or used before MI.
+static bool isRegDefOrUsedBefore(const MachineInstr &MI, const Register &Reg) {
+  return std::any_of(std::next(MachineBasicBlock::const_reverse_iterator(MI)),
+                     MI.getParent()->rend(), [&Reg](const MachineInstr &Instr) {
+                       return Instr.readsRegister(Reg, /*TRI*/ nullptr) ||
+                              Instr.definesRegister(Reg, /*TRI=*/nullptr);
+                     });
 }
 
 std::pair<Stack, bool>
@@ -249,10 +274,17 @@ EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
   // If the top stack slots can be rematerialized just before MI, remove it
   // from propagation to reduce pressure.
   while (!BeforeMI.empty()) {
-    if (BeforeMI.back()->isRematerializable()) {
+    const auto *BackSlot = BeforeMI.back();
+    // Don't remove register spills if the register is used or defined before
+    // MI. They are not cheap and ideally we shouldn't do more than one reload
+    // in the BB.
+    if (BackSlot->isRematerializable() &&
+        (!isa<RegisterSlot>(BackSlot) ||
+         !isRegDefOrUsedBefore(MI, cast<RegisterSlot>(BackSlot)->getReg()))) {
       BeforeMI.pop_back();
-    } else if (auto Offset =
-                   offset(drop_begin(reverse(BeforeMI), 1), BeforeMI.back())) {
+      continue;
+    }
+    if (auto Offset = offset(drop_begin(reverse(BeforeMI), 1), BackSlot)) {
       if (*Offset + 2 < StackModel.stackDepthLimit())
         BeforeMI.pop_back();
       else
