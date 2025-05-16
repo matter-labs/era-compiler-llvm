@@ -1195,8 +1195,16 @@ SDValue EraVMTargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
     return DAG.getNode(EraVMISD::PTR_TO_INT, DL, VT, Op.getOperand(1));
   }
   case Intrinsic::eravm_ptr_add: {
-    return DAG.getNode(EraVMISD::PTR_ADD, DL, VT, Op.getOperand(1),
-                       Op.getOperand(2));
+    SDValue Offset = Op.getOperand(2);
+    bool IsSub = false;
+    if (auto *CN = dyn_cast<ConstantSDNode>(Offset)) {
+      APInt IntOffset = CN->getAsAPIntVal();
+      IsSub = IntOffset.isNegative();
+      if (IsSub)
+        Offset = DAG.getConstant(-IntOffset, DL, MVT::i256);
+    }
+    return DAG.getNode(IsSub ? EraVMISD::PTR_SUB : EraVMISD::PTR_ADD, DL, VT,
+                       Op.getOperand(1), Offset);
   }
   case Intrinsic::eravm_ptr_shrink: {
     return DAG.getNode(EraVMISD::PTR_SHRINK, DL, VT, Op.getOperand(1),

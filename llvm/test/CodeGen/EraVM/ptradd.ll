@@ -20,6 +20,13 @@ define i8 addrspace(3)* @ptraddrir(i8 addrspace(3)* %rs1) nounwind {
   ret i8 addrspace(3)* %res1
 }
 
+; CHECK-LABEL: ptrsubrir
+define i8 addrspace(3)* @ptrsubrir(i8 addrspace(3)* %rs1) nounwind {
+; CHECK: subp.s 1, r1, r1
+  %res1 = getelementptr i8, i8 addrspace(3)* %rs1, i256 -1
+  ret i8 addrspace(3)* %res1
+}
+
 ; CHECK-LABEL: ptraddrsr
 define i8 addrspace(3)* @ptraddrsr(i8 addrspace(3)* %rs1) nounwind {
   %valptr = alloca i256
@@ -131,6 +138,15 @@ define void @ptraddris(i8 addrspace(3)* %rs1) nounwind {
   %result = alloca i8 addrspace(3)*
 ; CHECK: addp.s 42, r1, stack-[1]
   %res1 = getelementptr i8, i8 addrspace(3)* %rs1, i256 42
+  store i8 addrspace(3)* %res1, i8 addrspace(3)** %result
+  ret void
+}
+
+; CHECK-LABEL: ptrsubris
+define void @ptrsubris(i8 addrspace(3)* %rs1) nounwind {
+  %result = alloca i8 addrspace(3)*
+; CHECK: subp.s 1, r1, stack-[1]
+  %res1 = getelementptr i8, i8 addrspace(3)* %rs1, i256 -1
   store i8 addrspace(3)* %res1, i8 addrspace(3)** %result
   ret void
 }
