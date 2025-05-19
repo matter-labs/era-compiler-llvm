@@ -2,7 +2,6 @@
 ; RUN: opt < %s -passes=function-attrs -S | FileCheck --check-prefixes=COMMON,FNATTRS %s
 ; RUN: opt < %s -passes=attributor-light -S | FileCheck --check-prefixes=COMMON,ATTRIBUTOR %s
 ; RUN: opt < %s -passes=attributor-light-cgscc -S | FileCheck --check-prefixes=COMMON,ATTRIBUTOR-CGSCC %s
-; XFAIL: target=eravm{{.*}}, target=evm{{.*}}
 
 @x = global i32 0
 

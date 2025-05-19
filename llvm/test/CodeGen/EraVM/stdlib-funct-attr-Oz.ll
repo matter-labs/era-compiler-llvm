@@ -40,8 +40,8 @@ define i256 @test_sha3_noinline(ptr addrspace(1) %a, i256 %b, i1 %c) {
   ret i256 %res
 }
 
-; CHECK: attributes #[[EXP]] = { minsize mustprogress nofree norecurse nosync optsize willreturn memory(none) }
-; CHECK: attributes #[[EXIT]] = { minsize noreturn optsize }
+; CHECK: attributes #[[EXP]] = { minsize mustprogress nofree norecurse nosync nounwind optsize willreturn memory(none) }
+; CHECK: attributes #[[EXIT]] = { minsize noreturn nounwind optsize }
 ; CHECK: attributes #[[SHA3]] = { minsize nofree optsize memory(argmem: read) }
 ; CHECK: attributes #[[NOINLINE]] = { noinline }
 
