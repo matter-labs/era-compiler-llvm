@@ -102,9 +102,6 @@ define void @cmpz(i256 %in) {
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    EQ
-; CHECK-NEXT:    ISZERO
 ; CHECK-NEXT:    PUSH4 @.BB2_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %l1
