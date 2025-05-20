@@ -12,8 +12,6 @@ define i256 @select(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    SWAP3
 ; CHECK-NEXT:    EQ
-; CHECK-NEXT:    ISZERO
-; CHECK-NEXT:    ISZERO
 ; CHECK-NEXT:    PUSH4 @.BB0_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1:
