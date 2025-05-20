@@ -8,10 +8,9 @@ define i256 @diamond(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-LABEL: diamond:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    DUP2
-; CHECK-NEXT:    DUP2
-; CHECK-NEXT:    EQ
-; CHECK-NEXT:    ISZERO
+; CHECK-NEXT:    DUP1
+; CHECK-NEXT:    DUP3
+; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    PUSH4 @.BB0_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true_bb

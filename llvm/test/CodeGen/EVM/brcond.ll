@@ -12,8 +12,7 @@ define void @br_eq(i256 %a, i256 %b) {
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    EQ
-; CHECK-NEXT:    ISZERO
+; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    PUSH4 @.BB0_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
@@ -227,9 +226,6 @@ define void @br_eq_0(i256 %a) {
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    EQ
-; CHECK-NEXT:    ISZERO
 ; CHECK-NEXT:    PUSH4 @.BB10_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
@@ -329,9 +325,6 @@ define void @br_ule_0(i256 %a) {
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    EQ
-; CHECK-NEXT:    ISZERO
 ; CHECK-NEXT:    PUSH4 @.BB15_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
@@ -391,13 +384,11 @@ define void @br_slt_0(i256 %a) {
 ; CHECK-LABEL: br_slt_0:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    SWAP1
-; CHECK-NEXT:    POP
-; CHECK-NEXT:    PUSH1 0x1
 ; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    SUB
-; CHECK-NEXT:    SWAP1
-; CHECK-NEXT:    SGT
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    SLT
+; CHECK-NEXT:    ISZERO
 ; CHECK-NEXT:    PUSH4 @.BB18_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
