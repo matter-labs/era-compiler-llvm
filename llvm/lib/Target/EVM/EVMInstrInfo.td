@@ -366,10 +366,10 @@ defm NOT
       "NOT", "$dst, $src", 0x19, 3>;
 
 let mayLoad = 1 in
-defm SHA3
+defm KECCAK256
   : I<(outs GPR:$dst), (ins GPR:$offset, GPR:$size),
       [(set GPR:$dst, (int_evm_sha3 GPR:$offset, GPR:$size))],
-      "SHA3", "$dst, $offset, $size", 0x20, 30>;
+      "KECCAK256", "$dst, $offset, $size", 0x20, 30>;
 
 defm BYTE
   : I<(outs GPR:$dst), (ins GPR:$idx, GPR:$val),
