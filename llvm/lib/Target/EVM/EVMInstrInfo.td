@@ -417,8 +417,14 @@ let isBarrier = 1 in {
 
 def : Pat<(brcond (setcc GPR:$src, 0, SETEQ), bb:$dst),
            (JUMP_UNLESS bb:$dst, GPR:$src)>;
+def : Pat<(brcond (setcc GPR:$src, 0, SETNE), bb:$dst),
+           (JUMPI bb:$dst, GPR:$src)>;
+def : Pat<(brcond (setcc GPR:$src, -1, SETGT), bb:$dst),
+           (JUMP_UNLESS bb:$dst, (LT GPR:$src, (CONST_I256 0)))>;
+def : Pat<(brcond (setcc GPR:$rs0, GPR:$rs1, SETEQ), bb:$dst),
+           (JUMPI bb:$dst, (EQ GPR:$rs0, GPR:$rs1))>;
 def : Pat<(brcond (setcc GPR:$rs0, GPR:$rs1, SETNE), bb:$dst),
-           (JUMP_UNLESS bb:$dst, (EQ GPR:$rs0, GPR:$rs1))>;
+           (JUMPI bb:$dst, (SUB GPR:$rs1, GPR:$rs0))>;
 def : Pat<(brcond (setcc GPR:$rs0, GPR:$rs1, SETGE), bb:$dst),
            (JUMP_UNLESS bb:$dst, (LT GPR:$rs0, GPR:$rs1))>;
 def : Pat<(brcond (setcc GPR:$rs0, GPR:$rs1, SETLE), bb:$dst),
