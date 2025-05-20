@@ -128,7 +128,7 @@ define i256 @sha3(ptr addrspace(1) %offset, i256 %size) nounwind {
 ; CHECK-LABEL: sha3:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    SHA3
+; CHECK-NEXT:    KECCAK256
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
 
