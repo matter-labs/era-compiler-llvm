@@ -100,8 +100,10 @@ def int_evm_byte
               [IntrNoMem, IntrWillReturn]>;
 
 // Memory operations.
-def int_evm_mstore8 : Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
-                                    [IntrWriteMem, IntrArgMemOnly]>;
+def int_evm_mstore8
+  : Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
+                  [IntrWriteMem, IntrArgMemOnly, NoCapture<ArgIndex<0>>,
+                   IntrWillReturn]>;
 
 // Special getters that must not be relocated.
 def int_evm_msize : Intrinsic<[llvm_i256_ty], [], [IntrWillReturn]>;
@@ -140,7 +142,10 @@ def int_evm_extcodesize
 // it as read/write access to arbitrary memory.
 def int_evm_extcodecopy
   : Intrinsic<[], [llvm_i256_ty, LLVMQualPointerType<AS.HEAP>,
-                  LLVMQualPointerType<AS.CODE>, llvm_i256_ty], [IntrWillReturn]>;
+                   LLVMQualPointerType<AS.CODE>, llvm_i256_ty],
+                  [IntrInaccessibleMemOrArgMemOnly, WriteOnly<ArgIndex<1>>,
+                   ReadOnly<ArgIndex<2>>, NoCapture<ArgIndex<1>>, NoCapture<ArgIndex<2>>,
+                   IntrWillReturn]>;
 
 def int_evm_returndatasize
   : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly, IntrWillReturn]>;
@@ -243,10 +248,10 @@ def int_evm_invalid: Intrinsic<[], [], [IntrNoReturn]>;
 // These should ideally have the IntrReadMem attribute, but doing so causes DSE
 // to incorrectly eliminate necessary stores.
 def int_evm_return: Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
-                              [IntrNoReturn]>;
+                              [IntrReadMem, IntrArgMemOnly, ReadOnly<ArgIndex<0>>, IntrNoReturn]>;
 
 def int_evm_revert: Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
-                              [IntrNoReturn]>;
+                              [IntrReadMem, IntrArgMemOnly, ReadOnly<ArgIndex<0>>, IntrNoReturn]>;
 
 def int_evm_memmoveas1as1
   : Intrinsic<[],

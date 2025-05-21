@@ -15,6 +15,7 @@
 #define LLVM_ANALYSIS_VMALIASANALYSIS_H
 
 #include "llvm/Analysis/AliasAnalysis.h"
+#include "llvm/Support/ModRef.h"
 
 namespace llvm {
 
@@ -44,6 +45,11 @@ public:
 
   AliasResult alias(const MemoryLocation &LocA, const MemoryLocation &LocB,
                     AAQueryInfo &AAQI, const Instruction *I);
+
+  ModRefInfo getModRefInfo(const CallBase *Call, const MemoryLocation &Loc,
+                           AAQueryInfo &AAQI);
+  ModRefInfo getModRefInfo(const CallBase *Call1, const CallBase *Call2,
+                           AAQueryInfo &AAQI);
 };
 } // end namespace llvm
 
