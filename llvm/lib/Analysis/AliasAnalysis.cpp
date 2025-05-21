@@ -40,6 +40,10 @@
 #include "llvm/IR/BasicBlock.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
+// EVM local begin
+#include "llvm/IR/IntrinsicInst.h"
+#include "llvm/IR/IntrinsicsEVM.h"
+// EVM local end
 #include "llvm/IR/Type.h"
 #include "llvm/IR/Value.h"
 #include "llvm/InitializePasses.h"
@@ -123,10 +127,33 @@ AliasResult AAResults::alias(const MemoryLocation &LocA,
   }
 
   AAQI.Depth++;
-  for (const auto &AA : AAs) {
-    Result = AA->alias(LocA, LocB, AAQI, CtxI);
-    if (Result != AliasResult::MayAlias)
+
+  if (const auto *II = dyn_cast_or_null<IntrinsicInst>(CtxI)) {
+    switch (II->getIntrinsicID()) {
+    case Intrinsic::evm_return:
+    case Intrinsic::evm_revert:
+    case Intrinsic::evm_create:
+    case Intrinsic::evm_create2:
+    case Intrinsic::evm_call:
+    case Intrinsic::evm_callcode:
+    case Intrinsic::evm_delegatecall:
+    case Intrinsic::evm_staticcall: {
+      unsigned ASB = LocB.Ptr->getType()->getPointerAddressSpace();
+      if (ASB == 5 || ASB == 6) {
+        Result = AliasResult::MustAlias;
+      }
+    } break;
+    default:
       break;
+    }
+  }
+
+  if (Result == AliasResult::MayAlias) {
+    for (const auto &AA : AAs) {
+      Result = AA->alias(LocA, LocB, AAQI, CtxI);
+      if (Result != AliasResult::MayAlias)
+        break;
+    }
   }
   AAQI.Depth--;
 
@@ -214,6 +241,28 @@ ModRefInfo AAResults::getModRefInfo(const CallBase *Call,
                                     const MemoryLocation &Loc,
                                     AAQueryInfo &AAQI) {
   ModRefInfo Result = ModRefInfo::ModRef;
+
+  if (const auto *II = dyn_cast<IntrinsicInst>(Call)) {
+    unsigned LocAS = Loc.Ptr->getType()->getPointerAddressSpace();
+    switch (II->getIntrinsicID()) {
+    case Intrinsic::evm_return:
+    case Intrinsic::evm_revert:
+      if (LocAS == 5 || LocAS == 6)
+        return ModRefInfo::Ref;
+      break;
+    case Intrinsic::evm_create:
+    case Intrinsic::evm_create2:
+    case Intrinsic::evm_call:
+    case Intrinsic::evm_callcode:
+    case Intrinsic::evm_delegatecall:
+    case Intrinsic::evm_staticcall:
+      if (LocAS == 5 || LocAS == 6)
+        return ModRefInfo::ModRef;
+      break;
+    default:
+      break;
+    }
+  }
 
   for (const auto &AA : AAs) {
     Result &= AA->getModRefInfo(Call, Loc, AAQI);

@@ -88,9 +88,9 @@ def int_evm_exp
   : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
 
 def int_evm_sha3
-  : Intrinsic<[llvm_i256_ty],
-              [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
-              [IntrReadMem,IntrArgMemOnly, IntrWillReturn]>;
+    : Intrinsic<[llvm_i256_ty], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
+                [IntrReadMem, IntrArgMemOnly, IntrNoCallback,
+                 NoCapture<ArgIndex<0>>, IntrWillReturn]>;
 
 def int_evm_signextend
   : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
@@ -100,8 +100,10 @@ def int_evm_byte
               [IntrNoMem, IntrWillReturn]>;
 
 // Memory operations.
-def int_evm_mstore8 : Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
-                                    [IntrWriteMem, IntrArgMemOnly]>;
+def int_evm_mstore8
+    : Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
+                [IntrWriteMem, IntrArgMemOnly, NoCapture<ArgIndex<0>>,
+                 IntrNoCallback, IntrWillReturn]>;
 
 // Special getters that must not be relocated.
 def int_evm_msize : Intrinsic<[llvm_i256_ty], [], [IntrWillReturn]>;
@@ -119,131 +121,167 @@ def int_evm_origin : Intrinsic<[llvm_i256_ty], [],
 def int_evm_caller : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
 
 def int_evm_balance : Intrinsic<[llvm_i256_ty], [llvm_i256_ty],
-                                [IntrReadMem, IntrInaccessibleMemOnly, IntrWillReturn]>;
+                                [IntrReadMem, IntrInaccessibleMemOnly,
+                                 IntrNoCallback, IntrWillReturn]>;
 
 def int_evm_callvalue : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
 
 def int_evm_calldatasize : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
 
 def int_evm_calldataload
-  : Intrinsic<[llvm_i256_ty], [LLVMQualPointerType<AS.CALL_DATA>],
-              [IntrReadMem, IntrArgMemOnly]>;
+    : Intrinsic<[llvm_i256_ty], [LLVMQualPointerType<AS.CALL_DATA>],
+                [IntrReadMem, IntrArgMemOnly, IntrNoCallback, IntrWillReturn]>;
 
-def int_evm_codesize : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
+def int_evm_codesize : Intrinsic<[llvm_i256_ty], [],
+                                 [IntrNoMem, IntrNoCallback, IntrWillReturn]>;
 
-def int_evm_gasprice : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly,
-                                                      IntrWillReturn]>;
+def int_evm_gasprice : Intrinsic<[llvm_i256_ty], [],
+                                 [IntrReadMem, IntrInaccessibleMemOnly,
+                                  IntrNoCallback, IntrWillReturn]>;
 
-def int_evm_extcodesize
-  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrReadMem, IntrInaccessibleMemOnly, IntrWillReturn]>;
+def int_evm_extcodesize : Intrinsic<[llvm_i256_ty], [llvm_i256_ty],
+                                    [IntrReadMem, IntrInaccessibleMemOnly,
+                                     IntrNoCallback, IntrWillReturn]>;
 
-// This should have 'read of inaccessible' memory along with read/write memory accessed through
-// its pointer-typed arguments. Since we can't express that precisely here, we represent
-// it as read/write access to arbitrary memory.
 def int_evm_extcodecopy
-  : Intrinsic<[], [llvm_i256_ty, LLVMQualPointerType<AS.HEAP>,
-                  LLVMQualPointerType<AS.CODE>, llvm_i256_ty], [IntrWillReturn]>;
+    : Intrinsic<[],
+                [llvm_i256_ty, LLVMQualPointerType<AS.HEAP>,
+                 LLVMQualPointerType<AS.CODE>, llvm_i256_ty],
+                [IntrInaccessibleMemOrArgMemOnly, WriteOnly<ArgIndex<1>>,
+                 ReadOnly<ArgIndex<2>>, NoCapture<ArgIndex<1>>,
+                 NoCapture<ArgIndex<2>>, IntrNoCallback, IntrWillReturn]>;
 
-def int_evm_returndatasize
-  : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly, IntrWillReturn]>;
+def int_evm_returndatasize : Intrinsic<[llvm_i256_ty], [],
+                                       [IntrReadMem, IntrInaccessibleMemOnly,
+                                        IntrNoCallback, IntrWillReturn]>;
 
-def int_evm_extcodehash
-  : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrReadMem, IntrInaccessibleMemOnly, IntrWillReturn]>;
+def int_evm_extcodehash : Intrinsic<[llvm_i256_ty], [llvm_i256_ty],
+                                    [IntrReadMem, IntrInaccessibleMemOnly,
+                                     IntrNoCallback, IntrWillReturn]>;
 
 def int_evm_blockhash : Intrinsic<[llvm_i256_ty], [llvm_i256_ty],
-                                  [IntrReadMem, IntrInaccessibleMemOnly, IntrWillReturn]>;
+                                  [IntrReadMem, IntrInaccessibleMemOnly,
+                                   IntrNoCallback, IntrWillReturn]>;
 
 def int_evm_blobhash : Intrinsic<[llvm_i256_ty], [llvm_i256_ty],
-                                 [IntrReadMem, IntrInaccessibleMemOnly, IntrWillReturn]>;
+                                 [IntrReadMem, IntrInaccessibleMemOnly,
+                                  IntrNoCallback, IntrWillReturn]>;
 
-def int_evm_coinbase : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly,
-                                                      IntrWillReturn]>;
+def int_evm_coinbase : Intrinsic<[llvm_i256_ty], [],
+                                 [IntrReadMem, IntrInaccessibleMemOnly,
+                                  IntrNoCallback, IntrWillReturn]>;
 
-def int_evm_timestamp : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly,
-                                                       IntrWillReturn]>;
+def int_evm_timestamp : Intrinsic<[llvm_i256_ty], [],
+                                  [IntrReadMem, IntrInaccessibleMemOnly,
+                                   IntrNoCallback, IntrWillReturn]>;
 
-def int_evm_number : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly,
-                                                    IntrWillReturn]>;
+def int_evm_number : Intrinsic<[llvm_i256_ty], [],
+                               [IntrReadMem, IntrInaccessibleMemOnly,
+                                IntrNoCallback, IntrWillReturn]>;
 
-def int_evm_difficulty : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly,
-                                                        IntrWillReturn]>;
+def int_evm_difficulty : Intrinsic<[llvm_i256_ty], [],
+                                   [IntrReadMem, IntrInaccessibleMemOnly,
+                                    IntrNoCallback, IntrWillReturn]>;
 
-def int_evm_gaslimit : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly,
-                                                      IntrWillReturn]>;
+def int_evm_gaslimit : Intrinsic<[llvm_i256_ty], [],
+                                 [IntrReadMem, IntrInaccessibleMemOnly,
+                                  IntrNoCallback, IntrWillReturn]>;
 
-def int_evm_chainid : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly,
-                                                     IntrWillReturn]>;
+def int_evm_chainid : Intrinsic<[llvm_i256_ty], [],
+                                [IntrReadMem, IntrInaccessibleMemOnly,
+                                 IntrNoCallback, IntrWillReturn]>;
 
-def int_evm_selfbalance
-  : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly, IntrWillReturn]>;
+def int_evm_selfbalance : Intrinsic<[llvm_i256_ty], [],
+                                    [IntrReadMem, IntrInaccessibleMemOnly,
+                                     IntrNoCallback, IntrWillReturn]>;
 
-def int_evm_basefee : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly,
-                                                     IntrWillReturn]>;
+def int_evm_basefee : Intrinsic<[llvm_i256_ty], [],
+                                [IntrReadMem, IntrInaccessibleMemOnly,
+                                 IntrNoCallback, IntrWillReturn]>;
 
-def int_evm_blobbasefee : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly,
-                                                         IntrWillReturn]>;
+def int_evm_blobbasefee : Intrinsic<[llvm_i256_ty], [],
+                                    [IntrReadMem, IntrInaccessibleMemOnly,
+                                     IntrNoCallback, IntrWillReturn]>;
 
-// Logging.
-// Log intrinsics should have 'read/write of inaccessible' memory along with read memory
-// accessed through its pointer-typed arguments. Since we can't express that precisely
-// here, we represent it as read/write access to arbitrary memory.
-// Note: Attempting to mark them with both IntrReadMem and IntrHasSideEffects won't work,
-// because IntrHasSideEffects does not override IntrReadMem. As a result, intrinsics will
-// lack the 'HasSideEffects' flag entirely, making them subject to DCE.
-def int_evm_log0 : Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
-                             [IntrWillReturn]>;
+// Logging
+def int_evm_log0
+    : Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
+                [IntrInaccessibleMemOrArgMemOnly, ReadOnly<ArgIndex<0>>,
+                 NoCapture<ArgIndex<0>>, IntrNoCallback, IntrWillReturn]>;
 
-def int_evm_log1 : Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty, llvm_i256_ty],
-                             [IntrWillReturn]>;
+def int_evm_log1
+    : Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty, llvm_i256_ty],
+                [IntrInaccessibleMemOrArgMemOnly, ReadOnly<ArgIndex<0>>,
+                 NoCapture<ArgIndex<0>>, IntrNoCallback, IntrWillReturn]>;
 
-def int_evm_log2 : Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty,
-                                 llvm_i256_ty, llvm_i256_ty],
-                             [IntrWillReturn]>;
+def int_evm_log2
+    : Intrinsic<[],
+                [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty, llvm_i256_ty,
+                 llvm_i256_ty],
+                [IntrInaccessibleMemOrArgMemOnly, ReadOnly<ArgIndex<0>>,
+                 NoCapture<ArgIndex<0>>, IntrNoCallback, IntrWillReturn]>;
 
-def int_evm_log3 : Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty,
-                                  llvm_i256_ty, llvm_i256_ty, llvm_i256_ty],
-                             [IntrWillReturn]>;
+def int_evm_log3
+    : Intrinsic<[],
+                [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty, llvm_i256_ty,
+                 llvm_i256_ty, llvm_i256_ty],
+                [IntrInaccessibleMemOrArgMemOnly, ReadOnly<ArgIndex<0>>,
+                 NoCapture<ArgIndex<0>>, IntrNoCallback, IntrWillReturn]>;
 
-def int_evm_log4 : Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty, llvm_i256_ty,
-                                  llvm_i256_ty, llvm_i256_ty, llvm_i256_ty],
-                             [IntrWillReturn]>;
+def int_evm_log4
+    : Intrinsic<[],
+                [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty, llvm_i256_ty,
+                 llvm_i256_ty, llvm_i256_ty, llvm_i256_ty],
+                [IntrInaccessibleMemOrArgMemOnly, ReadOnly<ArgIndex<0>>,
+                 NoCapture<ArgIndex<0>>, IntrNoCallback, IntrWillReturn]>;
 
 // System calls
-// The above considerations also apply to xCALL intrinsics.
 def int_evm_create
-  : Intrinsic<[llvm_i256_ty],
-              [llvm_i256_ty, LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
-              [IntrWillReturn]>;
+    : Intrinsic<[llvm_i256_ty],
+                [llvm_i256_ty, LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
+                [IntrInaccessibleMemOrArgMemOnly, ReadOnly<ArgIndex<1>>,
+                 NoCapture<ArgIndex<1>>, IntrNoCallback, IntrWillReturn]>;
 
 def int_evm_call
-  : Intrinsic<[llvm_i256_ty],
-              [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty,
-               LLVMQualPointerType<AS.HEAP>, llvm_i256_ty,
-               LLVMQualPointerType<AS.HEAP>, llvm_i256_ty], [IntrWillReturn]>;
+    : Intrinsic<[llvm_i256_ty],
+                [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty,
+                 LLVMQualPointerType<AS.HEAP>, llvm_i256_ty,
+                 LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
+                [IntrInaccessibleMemOrArgMemOnly, ReadOnly<ArgIndex<3>>,
+                 WriteOnly<ArgIndex<5>>, NoCapture<ArgIndex<3>>,
+                 NoCapture<ArgIndex<5>>, IntrNoCallback, IntrWillReturn]>;
 
 def int_evm_callcode
-  : Intrinsic<[llvm_i256_ty],
-              [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty,
-               LLVMQualPointerType<AS.HEAP>, llvm_i256_ty,
-               LLVMQualPointerType<AS.HEAP>, llvm_i256_ty], [IntrWillReturn]>;
+    : Intrinsic<[llvm_i256_ty],
+                [llvm_i256_ty, llvm_i256_ty, llvm_i256_ty,
+                 LLVMQualPointerType<AS.HEAP>, llvm_i256_ty,
+                 LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
+                [IntrInaccessibleMemOrArgMemOnly, ReadOnly<ArgIndex<3>>,
+                 WriteOnly<ArgIndex<5>>, NoCapture<ArgIndex<3>>,
+                 NoCapture<ArgIndex<5>>, IntrNoCallback, IntrWillReturn]>;
 
 def int_evm_delegatecall
-  : Intrinsic<[llvm_i256_ty],
-              [llvm_i256_ty, llvm_i256_ty,
-               LLVMQualPointerType<AS.HEAP>, llvm_i256_ty,
-               LLVMQualPointerType<AS.HEAP>, llvm_i256_ty], [IntrWillReturn]>;
+    : Intrinsic<[llvm_i256_ty],
+                [llvm_i256_ty, llvm_i256_ty, LLVMQualPointerType<AS.HEAP>,
+                 llvm_i256_ty, LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
+                [IntrInaccessibleMemOrArgMemOnly, ReadOnly<ArgIndex<2>>,
+                 WriteOnly<ArgIndex<4>>, NoCapture<ArgIndex<2>>,
+                 NoCapture<ArgIndex<4>>, IntrNoCallback, IntrWillReturn]>;
 
 def int_evm_create2
-  : Intrinsic<[llvm_i256_ty],
-              [llvm_i256_ty, LLVMQualPointerType<AS.HEAP>,
-               llvm_i256_ty, llvm_i256_ty], [IntrWillReturn]>;
+    : Intrinsic<[llvm_i256_ty],
+                [llvm_i256_ty, LLVMQualPointerType<AS.HEAP>, llvm_i256_ty,
+                 llvm_i256_ty],
+                [IntrInaccessibleMemOrArgMemOnly, ReadOnly<ArgIndex<1>>,
+                 NoCapture<ArgIndex<1>>, IntrNoCallback, IntrWillReturn]>;
 
 def int_evm_staticcall
-  : Intrinsic<[llvm_i256_ty],
-              [llvm_i256_ty, llvm_i256_ty, LLVMQualPointerType<AS.HEAP>,
-               llvm_i256_ty, LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
-              [IntrWillReturn]>;
-
+    : Intrinsic<[llvm_i256_ty],
+                [llvm_i256_ty, llvm_i256_ty, LLVMQualPointerType<AS.HEAP>,
+                 llvm_i256_ty, LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
+                [IntrInaccessibleMemOrArgMemOnly, ReadOnly<ArgIndex<2>>,
+                 WriteOnly<ArgIndex<4>>, NoCapture<ArgIndex<2>>,
+                 NoCapture<ArgIndex<4>>, IntrNoCallback, IntrWillReturn]>;
 
 def int_evm_selfdestruct: Intrinsic<[], [llvm_i256_ty], []>;
 
@@ -251,14 +289,14 @@ def int_evm_stop: Intrinsic<[], [], [IntrNoReturn]>;
 
 def int_evm_invalid: Intrinsic<[], [], [IntrNoReturn]>;
 
-// Return with error.
-// These should ideally have the IntrReadMem attribute, but doing so causes DSE
-// to incorrectly eliminate necessary stores.
-def int_evm_return: Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
-                              [IntrNoReturn]>;
+// Return with error
+def int_evm_return :
+  Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
+            [IntrReadMem, IntrArgMemOnly, ReadOnly<ArgIndex<0>>, IntrNoReturn]>;
 
-def int_evm_revert: Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
-                              [IntrNoReturn]>;
+def int_evm_revert :
+  Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
+            [IntrReadMem, IntrArgMemOnly, ReadOnly<ArgIndex<0>>, IntrNoReturn]>;
 
 def int_evm_memmoveas1as1
   : Intrinsic<[],
