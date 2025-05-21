@@ -70,12 +70,11 @@ define i256 @test_gas() {
 }
 
 define i256 @test_log0(ptr addrspace(1) %off, i256 %size) {
-; CHECK-LABEL: define i256 @test_log0
-; CHECK-SAME: (ptr addrspace(1) [[OFF:%.*]], i256 [[SIZE:%.*]]) local_unnamed_addr #[[ATTR2]] {
+; CHECK-LABEL: define noundef i256 @test_log0
+; CHECK-SAME: (ptr addrspace(1) nocapture readonly [[OFF:%.*]], i256 [[SIZE:%.*]]) local_unnamed_addr #[[ATTR3:[0-9]+]] {
 ; CHECK-NEXT:    store i256 2, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
 ; CHECK-NEXT:    tail call void @llvm.evm.log0(ptr addrspace(1) [[OFF]], i256 [[SIZE]])
-; CHECK-NEXT:    [[RET:%.*]] = load i256, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
-; CHECK-NEXT:    ret i256 [[RET]]
+; CHECK-NEXT:    ret i256 2
 ;
   store i256 2, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
   call void @llvm.evm.log0(ptr addrspace(1) %off, i256 %size)

@@ -176,8 +176,6 @@ MemoryLocation MemoryLocation::getForArgument(const CallBase *Call,
     // location
     auto T = Call->getModule()->getTargetTriple();
     if (Triple(T).isEraVM() || Triple(T).isEVM()) {
-      // For EVM intrinsics, the memory size argument always immediately
-      // follows the memory argument, meaning its index is ArgIdx + 1.
       auto GetMemLocation = [Call, Arg, &AATags](unsigned MemSizeArgIdx) {
         const auto *LenCI =
             dyn_cast<ConstantInt>(Call->getArgOperand(MemSizeArgIdx));
@@ -211,6 +209,41 @@ MemoryLocation MemoryLocation::getForArgument(const CallBase *Call,
       case Intrinsic::evm_calldataload: {
         assert((ArgIdx == 0) && "Invalid argument index for calldataload");
         return MemoryLocation(Arg, LocationSize::precise(32), AATags);
+      }
+      case Intrinsic::evm_return:
+      case Intrinsic::evm_revert: {
+        assert((ArgIdx == 0) && "Invalid argument index for return/revert");
+        return GetMemLocation(ArgIdx + 1);
+      }
+      case Intrinsic::evm_extcodecopy: {
+        assert((ArgIdx == 1 || ArgIdx == 2) &&
+               "Invalid argument index for extcodecopy");
+        return GetMemLocation(3);
+      }
+      case Intrinsic::evm_log0:
+      case Intrinsic::evm_log1:
+      case Intrinsic::evm_log2:
+      case Intrinsic::evm_log3:
+      case Intrinsic::evm_log4: {
+        assert((ArgIdx == 0) && "Invalid argument index for log");
+        return GetMemLocation(ArgIdx + 1);
+      }
+      case Intrinsic::evm_create:
+      case Intrinsic::evm_create2: {
+        assert((ArgIdx == 1) && "Invalid argument index for create/create2");
+        return GetMemLocation(ArgIdx + 1);
+      }
+      case Intrinsic::evm_call:
+      case Intrinsic::evm_callcode: {
+        assert((ArgIdx == 3 || ArgIdx == 5) &&
+               "Invalid argument index for call/callcode");
+        return GetMemLocation(ArgIdx + 1);
+      }
+      case Intrinsic::evm_delegatecall:
+      case Intrinsic::evm_staticcall: {
+        assert((ArgIdx == 2 || ArgIdx == 4) &&
+               "Invalid argument index for delegatecall/staticcall");
+        return GetMemLocation(ArgIdx + 1);
       }
       default:
         llvm_unreachable("Unexpected intrinsic for EraVM/EVM target");
