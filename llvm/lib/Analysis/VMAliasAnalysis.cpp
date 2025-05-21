@@ -14,6 +14,9 @@
 #include "llvm/Analysis/VMAliasAnalysis.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/IntrinsicInst.h"
+#include "llvm/IR/IntrinsicsEVM.h"
+
 #include <optional>
 
 using namespace llvm;
@@ -102,6 +105,18 @@ AliasResult VMAAResult::alias(const MemoryLocation &LocA,
   if (ASA > MaxAS || ASB > MaxAS)
     return AAResultBase::alias(LocA, LocB, AAQI, I);
 
+  if (const auto *II = dyn_cast_or_null<IntrinsicInst>(I)) {
+    switch (II->getIntrinsicID()) {
+    case Intrinsic::evm_return:
+    case Intrinsic::evm_revert: {
+      if (ASB == 5)
+        return AliasResult::MustAlias;
+    } break;
+    default:
+      break;
+    }
+  }
+
   // Pointers can't alias if they are not in the same address space.
   if (ASA != ASB)
     return AliasResult::NoAlias;
@@ -170,4 +185,27 @@ AliasResult VMAAResult::alias(const MemoryLocation &LocA,
       !DoesOverlap(StartBVal, StartBVal + LocB.Size.getValue(), StartAVal))
     return AliasResult::NoAlias;
   return AliasResult::PartialAlias;
+}
+
+ModRefInfo VMAAResult::getModRefInfo(const CallBase *Call,
+                                     const MemoryLocation &Loc,
+                                     AAQueryInfo &AAQI) {
+  if (const auto *II = dyn_cast<IntrinsicInst>(Call)) {
+    switch (II->getIntrinsicID()) {
+    case Intrinsic::evm_return:
+    case Intrinsic::evm_revert: {
+      unsigned LocAS = Loc.Ptr->getType()->getPointerAddressSpace();
+      return LocAS == 5 ? ModRefInfo::Ref
+                        : AAResultBase::getModRefInfo(Call, Loc, AAQI);
+    }
+    default:
+      break;
+    }
+  }
+  return AAResultBase::getModRefInfo(Call, Loc, AAQI);
+}
+
+ModRefInfo VMAAResult::getModRefInfo(const CallBase *Call1,
+                                     const CallBase *Call2, AAQueryInfo &AAQI) {
+  return AAResultBase::getModRefInfo(Call1, Call2, AAQI);
 }

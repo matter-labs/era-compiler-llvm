@@ -243,10 +243,10 @@ def int_evm_invalid: Intrinsic<[], [], [IntrNoReturn]>;
 // These should ideally have the IntrReadMem attribute, but doing so causes DSE
 // to incorrectly eliminate necessary stores.
 def int_evm_return: Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
-                              [IntrNoReturn]>;
+                              [IntrReadMem, IntrArgMemOnly, ReadOnly<ArgIndex<0>>, IntrNoReturn]>;
 
 def int_evm_revert: Intrinsic<[], [LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
-                              [IntrNoReturn]>;
+                              [IntrReadMem, IntrArgMemOnly, ReadOnly<ArgIndex<0>>, IntrNoReturn]>;
 
 def int_evm_memmoveas1as1
   : Intrinsic<[],
