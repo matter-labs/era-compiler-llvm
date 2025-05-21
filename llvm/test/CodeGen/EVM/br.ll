@@ -95,3 +95,22 @@ loop.body:
 loop.exit:
   ret i256 %res
 }
+
+define void @cmpz(i256 %in) {
+; CHECK-LABEL: cmpz:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    PUSH4 @.BB2_2
+; CHECK-NEXT:    JUMPI
+; CHECK-NEXT:  ; %bb.1: ; %l1
+; CHECK-NEXT:  .BB2_2: ; %l2
+; CHECK-NEXT:    JUMPDEST
+  %cond = icmp eq i256 %in, 0
+  br i1 %cond, label %l1, label %l2
+l1:
+  unreachable
+l2:
+  unreachable
+}
