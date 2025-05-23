@@ -158,7 +158,9 @@ namespace {
 class EVMPassConfig final : public TargetPassConfig {
 public:
   EVMPassConfig(EVMTargetMachine &TM, PassManagerBase &PM)
-      : TargetPassConfig(TM, PM) {}
+      : TargetPassConfig(TM, PM) {
+    disablePass(&EarlyTailDuplicateLegacyID);
+  }
 
   EVMTargetMachine &getEVMTargetMachine() const {
     return getTM<EVMTargetMachine>();
@@ -227,6 +229,7 @@ void EVMPassConfig::addPostRegAlloc() {
   disablePass(&PatchableFunctionID);
   disablePass(&ShrinkWrapID);
   disablePass(&RemoveLoadsIntoFakeUsesID);
+  disablePass(&TailDuplicateLegacyID);
 
   // TODO: This pass is disabled in WebAssembly, as it hurts code size because
   // it can generate irreducible control flow. Check if this also true for EVM?

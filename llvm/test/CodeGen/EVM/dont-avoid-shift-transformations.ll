@@ -145,11 +145,13 @@ define i256 @test8(i256 %a, i256 %b) {
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    PUSH1 0x20
-; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    PUSH4 @.BB7_3
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .BB7_2: ; %entry
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:  .BB7_3: ; %entry
+; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
 entry:
