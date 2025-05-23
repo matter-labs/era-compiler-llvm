@@ -16,7 +16,7 @@ define i256 @test1(i256 %arg) {
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    PUSH4 @.BB0_3
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .BB0_2: ; %bb1
 ; CHECK-NEXT:    JUMPDEST
@@ -24,6 +24,8 @@ define i256 @test1(i256 %arg) {
 ; CHECK-NEXT:    PUSH4 @bar
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .FUNC_RET0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:  .BB0_3: ; %bb2
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
@@ -50,7 +52,7 @@ define i256 @test2(i256 %arg) {
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    ADDRESS
-; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    PUSH4 @.BB1_3
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .BB1_2: ; %bb1
 ; CHECK-NEXT:    JUMPDEST
@@ -58,6 +60,8 @@ define i256 @test2(i256 %arg) {
 ; CHECK-NEXT:    PUSH4 @bar
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .FUNC_RET1:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:  .BB1_3: ; %bb2
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
