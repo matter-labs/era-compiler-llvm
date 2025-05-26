@@ -14,6 +14,8 @@ concurrency:
 jobs:
 
   lnt-benchmarks:
+    # Run only for matter-labs pull requests, ignore for forks
+    if: ${{ github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'push' }}
     uses: matter-labs/era-compiler-ci/.github/workflows/lnt.yml@v1
     secrets: inherit
     with:
