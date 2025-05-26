@@ -63,6 +63,9 @@
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
+// EVM local begin
+#include "llvm/IR/IntrinsicsEVM.h"
+// EVM local begin
 #include "llvm/IR/Module.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/IR/PatternMatch.h"
@@ -73,6 +76,9 @@
 #include "llvm/Support/DebugCounter.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
+// EVM local begin
+#include "llvm/TargetParser/Triple.h"
+// EVM local end
 #include "llvm/Transforms/Utils/AssumeBundleBuilder.h"
 #include "llvm/Transforms/Utils/BuildLibCalls.h"
 #include "llvm/Transforms/Utils/Local.h"
@@ -1801,6 +1807,29 @@ struct DSEState {
     return false;
   }
 
+  /// Verify whether there is a path from the block containing the store to a
+  /// return block (i.e., a block that does not end with 'unreachable').
+  bool isOnPathToFunctionReturn(const MemoryDef *MaybeDeadDef) {
+    const BasicBlock *BB = MaybeDeadDef->getBlock();
+    // Handle the trivial case where the store resides in a block that ends
+    // with 'unreachable'.
+    if (isa<UnreachableInst>(BB->getTerminator()))
+      return false;
+
+    // Handle the general case by performing a depth-first traversal on the
+    // inverse control flow graph (CFG), starting from a return block and
+    // continuing until the block containing the store is reached.
+    for (const BasicBlock *R : PDT.roots()) {
+      if (isa<UnreachableInst>(R->getTerminator()))
+        continue;
+
+      for (auto I = idf_begin(R), E = idf_end(R); I != E; ++I)
+        if (*I == BB)
+          return true;
+    }
+    return false;
+  }
+
   /// Eliminate writes to objects that are not visible in the caller and are not
   /// accessed before returning from the function.
   bool eliminateDeadWritesAtEndOfFunction() {
@@ -1828,8 +1857,17 @@ struct DSEState {
         // underlying objects is very uncommon. If it turns out to be important,
         // we can use getUnderlyingObjects here instead.
         const Value *UO = getUnderlyingObject(DefLoc->Ptr);
-        if (!isInvisibleToCallerAfterRet(UO))
-          continue;
+        if (!isInvisibleToCallerAfterRet(UO)) {
+          // EVM local begin
+          Triple TT(DefI->getFunction()->getParent()->getTargetTriple());
+          unsigned LocAS = DefLoc->Ptr->getType()->getPointerAddressSpace();
+          if (!TT.isEVM() || LocAS == 5 || LocAS == 6)
+            continue;
+
+          if (isOnPathToFunctionReturn(Def))
+            continue;
+          // EVM local ed
+        }
 
         if (isWriteAtEndOfFunction(Def, *DefLoc)) {
           // See through pointer-to-pointer bitcasts
