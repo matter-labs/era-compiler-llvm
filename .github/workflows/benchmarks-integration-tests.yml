@@ -75,9 +75,8 @@ jobs:
   target-machine:
     runs-on: ubuntu-latest
     outputs:
-      evm: ${{ steps.evm.outputs.machine }}
-      eravm: ${{ steps.eravm.outputs.machine }}
-      default: ${{ steps.default.outputs.machine }}
+      evm: ${{ steps.evm.outputs.machine || steps.default.outputs.evm }}
+      eravm: ${{ steps.eravm.outputs.machine || steps.default.outputs.eravm }}
     steps:
 
       - name: Check for EraVM target
@@ -95,7 +94,8 @@ jobs:
         shell: bash -ex {0}
         run: |
           if [[ "${{ join(steps.*.outputs.*) }}" == "" ]]; then
-            echo "machine=eravm" | tee -a "${GITHUB_OUTPUT}"
+            echo "eravm=eravm" | tee -a "${GITHUB_OUTPUT}"
+            echo "evm=evm" | tee -a "${GITHUB_OUTPUT}"
           fi
 
   # Benchmarks workflow call from the era-compiler-ci repository
