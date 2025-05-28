@@ -18,6 +18,10 @@
 #include "EVMTargetObjectFile.h"
 #include "EVMTargetTransformInfo.h"
 #include "TargetInfo/EVMTargetInfo.h"
+#include "llvm/Analysis/BasicAliasAnalysis.h"
+#include "llvm/Analysis/GlobalsModRef.h"
+#include "llvm/Analysis/ScopedNoAliasAA.h"
+#include "llvm/Analysis/TypeBasedAliasAnalysis.h"
 #include "llvm/CodeGen/MIRParser/MIParser.h"
 #include "llvm/CodeGen/MIRYamlMapping.h"
 #include "llvm/CodeGen/Passes.h"
@@ -118,7 +122,34 @@ bool EVMTargetMachine::parseMachineFunctionInfo(
 }
 
 void EVMTargetMachine::registerDefaultAliasAnalyses(AAManager &AAM) {
-  AAM.registerFunctionAnalysis<EVMAA>();
+  // Construct a custom Alias Analysis pipeline that mirrors the sequence
+  // of passes registered in PassBuilder::buildDefaultAAPipeline(), with one
+  // key difference: the target-specific EVMAA in this case is placed first.
+  // The order of AA passes determines their priority during alias queries.
+  // 'EVMAA' is prioritized because it provides more accurate results for the
+  // EVM memory model Without this, 'BasicAA' might return incorrect results.
+  //
+  // For example:
+  //
+  //   store i256 2, ptr addrspace(5) null
+  //   call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
+  //
+  // 'EVMAA' identifies the following memory locations
+  //
+  //   <ptr: addrspace(5) null, size: 32>
+  //   <ptr: addrspace(1) null, size: 0>
+  //
+  // as 'MustAlias' due to the semantics of llvm.evm.revert.
+  // In contrast, 'BasicAA' would return 'NoAlias' because the second location
+  // has zero size.
+
+  AAManager AA;
+  AA.registerFunctionAnalysis<EVMAA>();
+  AA.registerFunctionAnalysis<BasicAA>();
+  AA.registerFunctionAnalysis<ScopedNoAliasAA>();
+  AA.registerFunctionAnalysis<TypeBasedAA>();
+  AA.registerModuleAnalysis<GlobalsAA>();
+  AAM = AA;
 }
 
 void EVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
