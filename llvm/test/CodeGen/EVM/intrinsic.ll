@@ -534,7 +534,7 @@ define i256 @create(i256 %val, ptr addrspace(1) %off, i256 %size) nounwind {
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
 
-  %ret = call i256 @llvm.evm.create(i256 %val, ptr addrspace(1) %off, i256 %size)
+  %ret = call i256 @llvm.evm.create.sptr(i256 %val, ptr addrspace(1) %off, i256 %size, ptr addrspace(5) null, ptr addrspace(6) null )
   ret i256 %ret
 }
 
@@ -546,7 +546,7 @@ define i256 @call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %arg_off, i
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
 
-  %ret = call i256 @llvm.evm.call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %arg_off, i256 %arg_size, ptr addrspace(1) %ret_off, i256 %ret_size)
+  %ret = call i256 @llvm.evm.call.sptr(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %arg_off, i256 %arg_size, ptr addrspace(1) %ret_off, i256 %ret_size, ptr addrspace(5) null, ptr addrspace(6) null)
   ret i256 %ret
 }
 
@@ -558,7 +558,7 @@ define i256 @delegatecall(i256 %gas, i256 %addr, ptr addrspace(1) %arg_off, i256
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
 
-  %ret = call i256 @llvm.evm.delegatecall(i256 %gas, i256 %addr, ptr addrspace(1) %arg_off, i256 %arg_size, ptr addrspace (1) %ret_off, i256 %ret_size)
+  %ret = call i256 @llvm.evm.delegatecall.sptr(i256 %gas, i256 %addr, ptr addrspace(1) %arg_off, i256 %arg_size, ptr addrspace (1) %ret_off, i256 %ret_size, ptr addrspace(5) null, ptr addrspace(6) null)
   ret i256 %ret
 }
 
@@ -570,7 +570,7 @@ define i256 @create2(i256 %val, ptr addrspace(1) %off, i256 %size, i256 %salt) n
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
 
-  %ret = call i256 @llvm.evm.create2(i256 %val, ptr addrspace(1) %off, i256 %size, i256 %salt)
+  %ret = call i256 @llvm.evm.create2.sptr(i256 %val, ptr addrspace(1) %off, i256 %size, i256 %salt, ptr addrspace(5) null, ptr addrspace(6) null)
   ret i256 %ret
 }
 
@@ -582,7 +582,18 @@ define i256 @staticcall(i256 %gas, i256 %addr, ptr addrspace(1) %arg_off, i256 %
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
 
-  %ret = call i256 @llvm.evm.staticcall(i256 %gas, i256 %addr, ptr addrspace(1) %arg_off, i256 %arg_size, ptr addrspace(1) %ret_off, i256 %ret_size)
+  %ret = call i256 @llvm.evm.staticcall.sptr(i256 %gas, i256 %addr, ptr addrspace(1) %arg_off, i256 %arg_size, ptr addrspace(1) %ret_off, i256 %ret_size, ptr addrspace(5) null, ptr addrspace(6) null)
+  ret i256 %ret
+}
+
+define i256 @callcode(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %arg_off, i256 %arg_size, ptr addrspace(1) %ret_off, i256 %ret_size) nounwind {
+; CHECK-LABEL: callcode:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    CALLCODE
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %ret = call i256 @llvm.evm.callcode.sptr(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %arg_off, i256 %arg_size, ptr addrspace(1) %ret_off, i256 %ret_size, ptr addrspace(5) null, ptr addrspace(6) null)
   ret i256 %ret
 }
 
@@ -604,7 +615,7 @@ define void @return(ptr addrspace(1) %rs1, i256 %rs2) nounwind {
 ; CHECK-NEXT:    RETURN
 ; CHECK-NEXT:    JUMP
 
-  call void @llvm.evm.return(ptr addrspace(1) %rs1, i256 %rs2)
+  call void @llvm.evm.return.sptr(ptr addrspace(1) %rs1, i256 %rs2, ptr addrspace(5) null, ptr addrspace(6) null)
   ret void
 }
 
@@ -615,7 +626,7 @@ define void @revert(ptr addrspace(1) %rs1, i256 %rs2) nounwind {
 ; CHECK-NEXT:    REVERT
 ; CHECK-NEXT:    JUMP
 
-  call void @llvm.evm.revert(ptr addrspace(1) %rs1, i256 %rs2)
+  call void @llvm.evm.revert.sptr(ptr addrspace(1) %rs1, i256 %rs2, ptr addrspace(5) null, ptr addrspace(6) null)
   ret void
 }
 
@@ -674,13 +685,14 @@ declare void @llvm.evm.log1(ptr addrspace(1), i256, i256)
 declare void @llvm.evm.log2(ptr addrspace(1), i256, i256, i256)
 declare void @llvm.evm.log3(ptr addrspace(1), i256, i256, i256, i256)
 declare void @llvm.evm.log4(ptr addrspace(1), i256, i256, i256, i256, i256)
-declare i256 @llvm.evm.create(i256, ptr addrspace(1), i256)
-declare i256 @llvm.evm.call(i256, i256, i256, ptr addrspace(1), i256, ptr addrspace(1), i256)
-declare i256 @llvm.evm.delegatecall(i256, i256, ptr addrspace(1), i256, ptr addrspace(1), i256)
-declare i256 @llvm.evm.create2(i256, ptr addrspace(1), i256, i256)
-declare i256 @llvm.evm.staticcall(i256, i256, ptr addrspace(1), i256, ptr addrspace(1), i256)
+declare i256 @llvm.evm.create.sptr(i256, ptr addrspace(1), i256, ptr addrspace(5), ptr addrspace(6))
+declare i256 @llvm.evm.call.sptr(i256, i256, i256, ptr addrspace(1), i256, ptr addrspace(1), i256, ptr addrspace(5), ptr addrspace(6))
+declare i256 @llvm.evm.delegatecall.sptr(i256, i256, ptr addrspace(1), i256, ptr addrspace(1), i256, ptr addrspace(5), ptr addrspace(6))
+declare i256 @llvm.evm.create2.sptr(i256, ptr addrspace(1), i256, i256, ptr addrspace(5), ptr addrspace(6))
+declare i256 @llvm.evm.staticcall.sptr(i256, i256, ptr addrspace(1), i256, ptr addrspace(1), i256, ptr addrspace(5), ptr addrspace(6))
+declare i256 @llvm.evm.callcode.sptr(i256, i256, i256, ptr addrspace(1), i256, ptr addrspace(1), i256, ptr addrspace(5), ptr addrspace(6))
 declare void @llvm.evm.selfdestruct(i256)
-declare void @llvm.evm.return(ptr addrspace(1), i256)
-declare void @llvm.evm.revert(ptr addrspace(1), i256)
+declare void @llvm.evm.return.sptr(ptr addrspace(1), i256, ptr addrspace(5), ptr addrspace(6))
+declare void @llvm.evm.revert.sptr(ptr addrspace(1), i256, ptr addrspace(5), ptr addrspace(6))
 declare void @llvm.evm.invalid()
 declare void @llvm.evm.pop(i256)

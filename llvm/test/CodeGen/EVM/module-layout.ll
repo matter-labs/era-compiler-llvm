@@ -2,7 +2,7 @@
 target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
 target triple = "evm"
 
-declare void @llvm.evm.return(ptr addrspace(1), i256)
+declare void @llvm.evm.return.sptr(ptr addrspace(1) readonly, i256, ptr addrspace(5), ptr addrspace(6))
 
 ; CHECK: LLVM ERROR: Entry function '__entry' isn't the first function in the module.
 
@@ -15,6 +15,6 @@ entry:
 define void @__entry() noreturn "evm-entry-function" {
 entry:
   %fun_res = tail call fastcc i256 @fun_fib(i256 7)
-  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 %fun_res)
+  tail call void @llvm.evm.return.sptr(ptr addrspace(1) null, i256 %fun_res, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 }

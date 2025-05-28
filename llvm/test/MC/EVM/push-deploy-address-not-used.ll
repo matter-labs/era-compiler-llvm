@@ -8,8 +8,8 @@ target triple = "evm-unknown-unknown"
 
 declare i256 @llvm.evm.pushdeployaddress()
 declare i256 @llvm.evm.address()
-declare void @llvm.evm.revert(ptr addrspace(1), i256)
-declare void @llvm.evm.return(ptr addrspace(1), i256)
+declare void @llvm.evm.revert.sptr(ptr addrspace(1), i256, ptr addrspace(5), ptr addrspace(6))
+declare void @llvm.evm.return.sptr(ptr addrspace(1), i256, ptr addrspace(5), ptr addrspace(6))
 
 define void @test() noreturn {
 entry:
@@ -20,11 +20,11 @@ entry:
   br i1 %cmp, label %exit, label %error
 
 error:
-  tail call void @llvm.evm.revert(ptr addrspace(1) noalias nocapture nofree noundef nonnull align 32 null, i256 0)
+  tail call void @llvm.evm.revert.sptr(ptr addrspace(1) noalias nocapture nofree noundef nonnull align 32 null, i256 0, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 
 exit:
-  tail call void @llvm.evm.return(ptr addrspace(1) noalias nocapture nofree noundef nonnull align 32 null, i256 0)
+  tail call void @llvm.evm.return.sptr(ptr addrspace(1) noalias nocapture nofree noundef nonnull align 32 null, i256 0, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 }
 

@@ -732,53 +732,50 @@ let mayLoad = 1, hasSideEffects = 1 in {
 //===----------------------------------------------------------------------===//
 // EVM system instructions.
 //===----------------------------------------------------------------------===//
+let hasSideEffects = 1, mayLoad = 1, mayStore = 1 in {
+  defm CREATE
+    : I<(outs GPR:$dst), (ins GPR:$value, GPR:$offset, GPR:$size),
+        [(set GPR:$dst, (int_evm_create_sptr GPR:$value, GPR:$offset, GPR:$size, 0, 0))],
+        "CREATE", "$dst, $value, $offset, $size", 0xF0, 32000>;
 
-let mayLoad = 1, hasSideEffects = 1 in
-defm CREATE
-  : I<(outs GPR:$dst), (ins GPR:$value, GPR:$offset, GPR:$size),
-      [(set GPR:$dst, (int_evm_create GPR:$value, GPR:$offset, GPR:$size))],
-      "CREATE", "$dst, $value, $offset, $size", 0xF0, 32000>;
+  defm CREATE2
+    : I<(outs GPR:$dst), (ins GPR:$value, GPR:$offset, GPR:$size, GPR:$salt),
+        [(set GPR:$dst, (int_evm_create2_sptr GPR:$value, GPR:$offset, GPR:$size,
+          GPR:$salt, 0, 0))],
+        "CREATE2", " $dst, $value, $offset, $size, $salt", 0xF5, 32000>;
 
-let isCall = 1, hasSideEffects = 1, mayLoad = 1, mayStore = 1 in {
   defm CALL
     : I<(outs GPR:$dst), (ins GPR:$gas, GPR:$addr, GPR:$value, GPR:$arg_off,
                           GPR:$arg_size, GPR:$ret_off, GPR:$ret_size),
-        [(set GPR:$dst, (int_evm_call GPR:$gas, GPR:$addr, GPR:$value,
-          GPR:$arg_off, GPR:$arg_size, GPR:$ret_off, GPR:$ret_size))],
+        [(set GPR:$dst, (int_evm_call_sptr GPR:$gas, GPR:$addr, GPR:$value,
+          GPR:$arg_off, GPR:$arg_size, GPR:$ret_off, GPR:$ret_size, 0, 0))],
         "CALL", "$dst, $gas, $addr, $value, $arg_off, $arg_size, $ret_off, $ret_size",
         0xF1, 100>;
 
   defm CALLCODE
     : I<(outs GPR:$dst), (ins GPR:$gas, GPR:$addr, GPR:$value, GPR:$arg_off,
                           GPR:$arg_size, GPR:$ret_off, GPR:$ret_size),
-        [(set GPR:$dst, (int_evm_callcode GPR:$gas, GPR:$addr, GPR:$value,
-          GPR:$arg_off, GPR:$arg_size, GPR:$ret_off, GPR:$ret_size))],
+        [(set GPR:$dst, (int_evm_callcode_sptr GPR:$gas, GPR:$addr, GPR:$value,
+          GPR:$arg_off, GPR:$arg_size, GPR:$ret_off, GPR:$ret_size, 0, 0))],
         "CALLCODE", "$dst, $gas, $addr, $value, $arg_off, $arg_size, $ret_off, $ret_size",
         0xF2, 100>;
 
   defm DELEGATECALL
     : I<(outs GPR:$dst), (ins GPR:$gas, GPR:$addr, GPR:$arg_off, GPR:$arg_size,
                           GPR:$ret_off, GPR:$ret_size),
-        [(set GPR:$dst, (int_evm_delegatecall GPR:$gas, GPR:$addr, GPR:$arg_off,
-          GPR:$arg_size, GPR:$ret_off, GPR:$ret_size))],
+        [(set GPR:$dst, (int_evm_delegatecall_sptr GPR:$gas, GPR:$addr, GPR:$arg_off,
+          GPR:$arg_size, GPR:$ret_off, GPR:$ret_size, 0, 0))],
         "DELEGATECALL", "$dst, $gas, $addr, $arg_off, $arg_size, $ret_off, $ret_size",
         0xF4, 100>;
 
   defm STATICCALL
     : I<(outs GPR:$dst), (ins GPR:$gas, GPR:$addr, GPR:$arg_off, GPR:$arg_size,
                           GPR:$ret_off, GPR:$ret_size),
-        [(set GPR:$dst, (int_evm_staticcall GPR:$gas, GPR:$addr, GPR:$arg_off,
-          GPR:$arg_size, GPR:$ret_off, GPR:$ret_size))],
+        [(set GPR:$dst, (int_evm_staticcall_sptr GPR:$gas, GPR:$addr, GPR:$arg_off,
+          GPR:$arg_size, GPR:$ret_off, GPR:$ret_size, 0, 0))],
         "STATICCALL", "$dst, $gas, $addr, $arg_off, $arg_size, $ret_off, $ret_size",
         0xFA, 100>;
 }
-
-let mayLoad = 1, hasSideEffects = 1 in
-defm CREATE2
-  : I<(outs GPR:$dst), (ins GPR:$value, GPR:$offset, GPR:$size, GPR:$salt),
-      [(set GPR:$dst, (int_evm_create2 GPR:$value, GPR:$offset, GPR:$size,
-        GPR:$salt))],
-      "CREATE2", " $dst, $value, $offset, $size, $salt", 0xF5, 32000>;
 
 
 //===----------------------------------------------------------------------===//
@@ -788,12 +785,12 @@ defm CREATE2
 let isTerminator = 1, isBarrier = 1 in {
   defm REVERT
     : I<(outs), (ins GPR:$offset, GPR:$size),
-        [(int_evm_revert GPR:$offset, GPR:$size)],
+        [(int_evm_revert_sptr GPR:$offset, GPR:$size, 0, 0)],
         "REVERT", "$offset, $size", 0xFD, 0>;
 
   defm RETURN
     : I<(outs), (ins GPR:$offset, GPR:$size),
-        [(int_evm_return GPR:$offset, GPR:$size)],
+        [(int_evm_return_sptr GPR:$offset, GPR:$size, 0, 0)],
         "RETURN", "$offset, $size", 0xF3, 0>;
 }
 
