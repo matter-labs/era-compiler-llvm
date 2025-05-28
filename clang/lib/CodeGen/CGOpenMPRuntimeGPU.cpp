@@ -323,7 +323,7 @@ public:
                                ArrayRef<const ValueDecl *> TeamsReductions)
       : CGF(CGF), EscapedDecls(TeamsReductions.begin(), TeamsReductions.end()) {
   }
-  virtual ~CheckVarsEscapingDeclContext() = default;
+  ~CheckVarsEscapingDeclContext() = default;
   void VisitDeclStmt(const DeclStmt *S) {
     if (!S)
       return;
