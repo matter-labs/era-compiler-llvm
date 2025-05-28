@@ -13,7 +13,7 @@ target triple = "evm-unknown-unknown"
 declare i256 @llvm.evm.sha3(ptr addrspace(1), i256) #0
 
 ; Function Attrs: nounwind willreturn
-declare i256 @llvm.evm.call(i256, i256, i256, ptr addrspace(1), i256, ptr addrspace(1), i256) #1
+declare i256 @llvm.evm.call.sptr(i256, i256, i256, ptr addrspace(1), i256, ptr addrspace(1), i256, ptr addrspace(5), ptr addrspace(6)) #1
 
 ; Function Attrs: nocallback nofree nounwind willreturn memory(argmem: readwrite)
 declare void @llvm.memmove.p1.p1.i256(ptr addrspace(1) nocapture writeonly, ptr addrspace(1) nocapture readonly, i256, i1 immarg) #2
@@ -28,7 +28,7 @@ entry:
   %keccak256 = tail call i256 @llvm.evm.sha3(ptr addrspace(1) %keccak256_input_offset_pointer, i256 0)
   tail call void @llvm.memmove.p1.p1.i256(ptr addrspace(1) null, ptr addrspace(1) %keccak256_input_offset_pointer, i256 0, i1 false)
   %call_input_offset_pointer829 = inttoptr i256 %abi_decode_bytest_bytest_bytest_bytes_call406.fca.0.extract to ptr addrspace(1)
-  %call831 = tail call i256 @llvm.evm.call(i256 0, i256 0, i256 0, ptr addrspace(1) %call_input_offset_pointer829, i256 0, ptr addrspace(1) null, i256 0)
+  %call831 = tail call i256 @llvm.evm.call.sptr(i256 0, i256 0, i256 0, ptr addrspace(1) %call_input_offset_pointer829, i256 0, ptr addrspace(1) null, i256 0, ptr addrspace(5) null, ptr addrspace(6) null)
   ret void
 }
 
