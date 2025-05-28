@@ -14,7 +14,7 @@ define void @no_manipulations_needed_with_junk(i256 %a1, i256 %a2, i256 %a3) nor
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    REVERT
   %x1 = add i256 %a1, %a2
-  call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x1)
+  call void @llvm.evm.revert.sptr(ptr addrspace(1) null, i256 %x1, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 }
 
@@ -29,7 +29,7 @@ define void @no_manipulations_needed_with_junk_eq(i256 %a1, i256 %a2, i256 %a3) 
 ; CHECK-NEXT:    REVERT
   %cmp = icmp eq i256 %a1, %a2
   %x1 = zext i1 %cmp to i256
-  call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x1)
+  call void @llvm.evm.revert.sptr(ptr addrspace(1) null, i256 %x1, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 
 }
@@ -112,7 +112,7 @@ define void @reorder_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    REVERT
   %x1 = add i256 %a2, %a1
-  call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x1)
+  call void @llvm.evm.revert.sptr(ptr addrspace(1) null, i256 %x1, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 }
 
@@ -138,7 +138,7 @@ define void @swap_first_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    REVERT
   %x1 = add i256 %a3, %a2
-  call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x1)
+  call void @llvm.evm.revert.sptr(ptr addrspace(1) null, i256 %x1, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 }
 
@@ -167,7 +167,7 @@ define void @swap_second_with_junk(i256 %a1, i256 %a2, i256 %a3, i256 %a4) noret
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    REVERT
   %x1 = add i256 %a1, %a4
-  call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x1)
+  call void @llvm.evm.revert.sptr(ptr addrspace(1) null, i256 %x1, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 }
 
@@ -217,7 +217,7 @@ define void @first_arg_alive_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
   %x1 = add i256 %a1, %a2
   %x2 = sub i256 %a1, 4
   %x3 = udiv i256 %x2, %x1
-  call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x3)
+  call void @llvm.evm.revert.sptr(ptr addrspace(1) null, i256 %x3, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 }
 
@@ -260,7 +260,7 @@ define void @second_arg_alive_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
   %x1 = add i256 %a1, %a2
   %x2 = sub i256 %a2, 4
   %x3 = udiv i256 %x2, %x1
-  call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x3)
+  call void @llvm.evm.revert.sptr(ptr addrspace(1) null, i256 %x3, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 }
 
@@ -302,7 +302,7 @@ define void @both_arg_alive_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
   %x1 = add i256 %a1, %a2
   %x2 = udiv i256 %a2, %a1
   %x3 = add i256 %x1, %x2
-  call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x3)
+  call void @llvm.evm.revert.sptr(ptr addrspace(1) null, i256 %x3, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 }
 
@@ -341,7 +341,7 @@ define i256 @same_arg_dead_with_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
 ; CHECK-NEXT:    REVERT
 ; CHECK-NEXT:    JUMP
   %x1 = add i256 %a2, %a2
-  call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x1)
+  call void @llvm.evm.revert.sptr(ptr addrspace(1) null, i256 %x1, ptr addrspace(5) null, ptr addrspace(6) null)
   ret i256 %x1
 }
 
@@ -405,12 +405,12 @@ do:
 exit:
   %res = zext i32 %phi2 to i256
   store i256 %res, ptr addrspace(1) null, align 4
-  call void @llvm.evm.return(ptr addrspace(1) null, i256 32)
+  call void @llvm.evm.return.sptr(ptr addrspace(1) null, i256 32, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 }
 
 declare i256 @llvm.evm.addmod(i256, i256, i256)
 declare i256 @llvm.evm.mulmod(i256, i256, i256)
 declare i256 @llvm.evm.calldataload(ptr addrspace(2))
-declare void @llvm.evm.return(ptr addrspace(1), i256)
-declare void @llvm.evm.revert(ptr addrspace(1), i256)
+declare void @llvm.evm.return.sptr(ptr addrspace(1), i256, ptr addrspace(5), ptr addrspace(6))
+declare void @llvm.evm.revert.sptr(ptr addrspace(1), i256, ptr addrspace(5), ptr addrspace(6))

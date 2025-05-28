@@ -50,6 +50,7 @@ add_llvm_target(EVMCodeGen
   EVMStackify.cpp
   EVMStackifyCodeEmitter.cpp
   EVMSubtarget.cpp
+  EVMSystemIntrinsicsPromotion.cpp
   EVMTargetMachine.cpp
   EVMTargetTransformInfo.cpp
 

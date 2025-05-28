@@ -15,7 +15,7 @@ define void @no_manipulations_needed_with_junk(i256 %a1, i256 %a2, i256 %a3) nor
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    REVERT
   %x1 = sub i256 %a1, %a2
-  call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x1)
+  call void @llvm.evm.revert.sptr(ptr addrspace(1) null, i256 %x1, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 }
 
@@ -43,7 +43,7 @@ define void @reorder_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    REVERT
   %x1 = sub i256 %a2, %a1
-  call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x1)
+  call void @llvm.evm.revert.sptr(ptr addrspace(1) null, i256 %x1, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 }
 
@@ -70,7 +70,7 @@ define void @swap_first_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    REVERT
   %x1 = sub i256 %a3, %a2
-  call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x1)
+  call void @llvm.evm.revert.sptr(ptr addrspace(1) null, i256 %x1, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 }
 
@@ -85,7 +85,7 @@ define void @swap_second_with_junk(i256 %a1, i256 %a2, i256 %a3, i256 %a4) noret
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    REVERT
   %x1 = sub i256 %a1, %a4
-  call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x1)
+  call void @llvm.evm.revert.sptr(ptr addrspace(1) null, i256 %x1, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 }
 
@@ -129,7 +129,7 @@ define void @swap_both_with_junk(i256 %a1, i256 %a2, i256 %a3, i256 %a4) noretur
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    REVERT
   %x1 = sub i256 %a4, %a1
-  call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x1)
+  call void @llvm.evm.revert.sptr(ptr addrspace(1) null, i256 %x1, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 }
 
@@ -166,7 +166,7 @@ define void @first_arg_alive_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
   %x1 = sub i256 %a1, %a2
   %x2 = sub i256 %a1, 4
   %x3 = udiv i256 %x2, %x1
-  call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x3)
+  call void @llvm.evm.revert.sptr(ptr addrspace(1) null, i256 %x3, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 }
 
@@ -210,7 +210,7 @@ define void @second_arg_alive_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
   %x1 = sub i256 %a1, %a2
   %x2 = sub i256 %a2, 4
   %x3 = udiv i256 %x2, %x1
-  call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x3)
+  call void @llvm.evm.revert.sptr(ptr addrspace(1) null, i256 %x3, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 }
 
@@ -253,7 +253,7 @@ define void @both_arg_alive_with_junk(i256 %a1, i256 %a2, i256 %a3) noreturn {
   %x1 = sub i256 %a1, %a2
   %x2 = udiv i256 %a2, %a1
   %x3 = add i256 %x1, %x2
-  call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x3)
+  call void @llvm.evm.revert.sptr(ptr addrspace(1) null, i256 %x3, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 }
 
@@ -292,7 +292,7 @@ define i256 @same_arg_dead_with_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
 ; CHECK-NEXT:    REVERT
 ; CHECK-NEXT:    JUMP
   %x1 = add i256 %a2, %a2
-  call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x1)
+  call void @llvm.evm.revert.sptr(ptr addrspace(1) null, i256 %x1, ptr addrspace(5) null, ptr addrspace(6) null)
   ret i256 %x1
 }
 
@@ -329,7 +329,7 @@ define i256 @same_arg_alive_with_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
 ; CHECK-NEXT:    JUMP
   %x1 = add i256 %a2, %a2
   %x2 = add i256 %a2, %x1
-  call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x2)
+  call void @llvm.evm.revert.sptr(ptr addrspace(1) null, i256 %x2, ptr addrspace(5) null, ptr addrspace(6) null)
   ret i256 %x2
 }
 
@@ -351,4 +351,4 @@ define i256 @same_arg_alive_no_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
   ret i256 %x2
 }
 
-declare void @llvm.evm.revert(ptr addrspace(1), i256)
+declare void @llvm.evm.revert.sptr(ptr addrspace(1), i256, ptr addrspace(5), ptr addrspace(6))

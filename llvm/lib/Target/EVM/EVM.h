@@ -65,6 +65,7 @@ FunctionPass *createEVMISelDag(EVMTargetMachine &TM,
 FunctionPass *createEVMArgumentMove();
 FunctionPass *createEVMAllocaHoistingPass();
 ModulePass *createEVMLinkRuntimePass();
+ModulePass *createEVMSystemIntrinsicsPromotionPass();
 
 // Late passes.
 FunctionPass *createEVMOptimizeLiveIntervals();
@@ -84,6 +85,7 @@ void initializeEVMAllocaHoistingPass(PassRegistry &);
 void initializeEVMLowerIntrinsicsPass(PassRegistry &);
 void initializeEVMArgumentMovePass(PassRegistry &);
 void initializeEVMLinkRuntimePass(PassRegistry &);
+void initializeEVMSystemIntrinsicsPromotionPass(PassRegistry &);
 void initializeEVMOptimizeLiveIntervalsPass(PassRegistry &);
 void initializeEVMRegColoringPass(PassRegistry &);
 void initializeEVMSingleUseExpressionPass(PassRegistry &);
@@ -101,6 +103,12 @@ void initializeEVMConstantUnfoldingPass(PassRegistry &);
 
 struct EVMLinkRuntimePass : PassInfoMixin<EVMLinkRuntimePass> {
   EVMLinkRuntimePass() = default;
+  PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
+};
+
+struct EVMSystemIntrinsicsPromotionPass
+    : PassInfoMixin<EVMSystemIntrinsicsPromotionPass> {
+  EVMSystemIntrinsicsPromotionPass() = default;
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
 };
 
