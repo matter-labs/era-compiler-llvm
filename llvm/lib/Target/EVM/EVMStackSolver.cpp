@@ -643,16 +643,6 @@ void EVMStackSolver::dump(raw_ostream &OS) {
     dumpMBB(OS, &MBB);
 }
 
-static std::string getMIName(const MachineInstr *MI) {
-  if (MI->getOpcode() == EVM::FCALL) {
-    const MachineOperand *Callee = MI->explicit_uses().begin();
-    return Callee->getGlobal()->getName().str();
-  }
-  const MachineFunction *MF = MI->getParent()->getParent();
-  const TargetInstrInfo *TII = MF->getSubtarget().getInstrInfo();
-  return TII->getName(MI->getOpcode()).str();
-}
-
 void EVMStackSolver::dumpMBB(raw_ostream &OS, const MachineBasicBlock *MBB) {
   OS << getMBBId(MBB) << ":\n";
   OS << '\t' << StackModel.getMBBEntryStack(MBB).toString() << '\n';
@@ -665,7 +655,8 @@ void EVMStackSolver::dumpMBB(raw_ostream &OS, const MachineBasicBlock *MBB) {
     OS << '\n';
     Stack MIEntry = StackModel.getInstEntryStack(&MI);
     OS << '\t' << MIEntry.toString() << '\n';
-    OS << '\t' << getMIName(&MI) << '\n';
+    OS << '\t';
+    MI.print(OS);
     assert(MIInput.size() <= MIEntry.size());
     MIEntry.resize(MIEntry.size() - MIInput.size());
     MIEntry.append(MIOutput);
