@@ -75,6 +75,8 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitInst(const MachineInstr *MI) {
 }
 
 void EVMStackifyCodeEmitter::CodeEmitter::emitSWAP(unsigned Depth) {
+  assert(StackHeight >= (Depth + 1) &&
+         "Not enough operands on the stack for SWAP");
   unsigned Opc = EVM::getSWAPOpcode(Depth);
   auto NewMI = BuildMI(*CurMBB, CurMBB->end(), DebugLoc(),
                        TII->get(EVM::getStackOpcode(Opc)));
@@ -82,6 +84,7 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitSWAP(unsigned Depth) {
 }
 
 void EVMStackifyCodeEmitter::CodeEmitter::emitDUP(unsigned Depth) {
+  assert(StackHeight >= Depth && "Not enough operands on the stack for DUP");
   StackHeight += 1;
   unsigned Opc = EVM::getDUPOpcode(Depth);
   auto NewMI = BuildMI(*CurMBB, CurMBB->end(), DebugLoc(),
