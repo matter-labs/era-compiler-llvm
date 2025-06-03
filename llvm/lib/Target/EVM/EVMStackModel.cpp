@@ -89,14 +89,11 @@ Stack EVMStackModel::getSlotsForInstructionUses(const MachineInstr &MI) const {
   for (const auto &MO : reverse(MI.explicit_uses())) {
     // All the non-register operands are handled in instruction specific
     // handlers.
-    if (!MO.isReg())
-      continue;
-
     // SP is not used anyhow.
-    if (MO.getReg() == EVM::SP)
-      continue;
-
-    In.push_back(getStackSlot(MO));
+    if (MO.isReg() && MO.getReg() != EVM::SP)
+      In.push_back(getStackSlot(MO));
+    else if (MO.isCImm())
+      In.push_back(getLiteralSlot(MO.getCImm()->getValue()));
   }
   return In;
 }

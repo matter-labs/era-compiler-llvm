@@ -85,7 +85,120 @@ void EVMDAGToDAGISel::Select(SDNode *Node) {
     ReplaceNode(Node, CallResults);
     return;
   }
+  case ISD::Constant: {
+    if (!CurDAG->shouldOptForSize())
+      break;
 
+    APInt Imm = cast<ConstantSDNode>(Node)->getAPIntValue();
+    if (Imm.isZero())
+      break;
+
+    // Decompose an arbitrary immediate:
+    //
+    //   0x0000001...100000000
+    //
+    // into:
+    //    - traling and leading zero bits
+    //    - 'value' part, that starts and and ends with '1'
+    //    - abs('value')
+    //
+    // The following transformations are considered, depending on their
+    // cost-effectiveness:
+    //   - ((0 - AbsVal) << shift_l) >> shift_r
+    //   - Val << shift
+    //
+    unsigned Ones = Imm.popcount();
+    unsigned TrailZ = Imm.countTrailingZeros();
+    unsigned LeadZ = Imm.countLeadingZeros();
+    APInt Val = Imm.extractBits(256 - TrailZ - LeadZ, TrailZ);
+    unsigned ValLen = Val.getActiveBits();
+    assert(ValLen == (256 - TrailZ - LeadZ));
+    assert(Val.isNegative());
+    APInt AbsVal = Val.abs();
+    SDValue NegativeVal =
+        SDValue(CurDAG->getMachineNode(
+                    EVM::SUB, DL, MVT::i256,
+                    CurDAG->getTargetConstant(0, DL, MVT::i256),
+                    CurDAG->getTargetConstant(AbsVal.zext(256), DL, MVT::i256)),
+                0);
+
+    SDValue ShiftVal = CurDAG->getTargetConstant(256 - ValLen, DL, MVT::i256);
+    if (!LeadZ && Ones > 4 * 8) {
+      // 0xfffffe000000000
+      // Costs:
+      //   PUSH AbsVal      // 1 + sizeof(AbsVal)
+      //   PUSH0            // 1
+      //   SUB              // 1
+      //   PUSH1 Shift1     // 2
+      //   SHL              // 1
+      //                    ---------
+      //                    6 + sizeof(AbsVal)
+      //
+      MachineSDNode *SHL = CurDAG->getMachineNode(EVM::SHL, DL, MVT::i256,
+                                                  ShiftVal, NegativeVal);
+      ReplaceNode(Node, SHL);
+      return;
+    }
+
+    bool IsMask = ((Ones + LeadZ + TrailZ) == Imm.getBitWidth());
+    if (IsMask && !TrailZ && Ones > 6 * 8) {
+      assert(AbsVal.isOne());
+      // 0x0000000000ffffffffffff
+      // Costs:
+      //   PUSH 1           // 2
+      //   PUSH0            // 1
+      //   SUB              // 1
+      //   PUSH1 Shift1     // 2
+      //   SHL              // 1
+      //                    ---------
+      //                    7
+      //
+      MachineSDNode *SHR = CurDAG->getMachineNode(EVM::SHR, DL, MVT::i256,
+                                                  ShiftVal, NegativeVal);
+      ReplaceNode(Node, SHR);
+      return;
+    }
+
+    if (ValLen > (AbsVal.getActiveBits() + 8 * 8)) {
+      // 0x0000000000fffffffffffe000000000000
+      // Costs:
+      //   PUSH AbsVal      // 1 + sizeof(AbsVal)
+      //   PUSH0            // 1
+      //   SUB              // 1
+      //   PUSH1 Shift1     // 2
+      //   SHL              // 1
+      //   PUSH1 Shift2     // 2
+      //   SHR              // 1
+      //                    ---------
+      //                    9 + size(AbsVal)
+      //
+      SDValue SHL = SDValue(CurDAG->getMachineNode(EVM::SHL, DL, MVT::i256,
+                                                   ShiftVal, NegativeVal),
+                            0);
+      SDValue ShiftRightVal = CurDAG->getTargetConstant(LeadZ, DL, MVT::i256);
+      MachineSDNode *SHR =
+          CurDAG->getMachineNode(EVM::SHR, DL, MVT::i256, ShiftRightVal, SHL);
+      ReplaceNode(Node, SHR);
+      return;
+    }
+
+    if (TrailZ > 3 * 8) {
+      // Costs:
+      //   PUSH1 Shift       // 2
+      //   PUSH  ShiftedVal  // 1 + sizeof(ShiftedVal)
+      //   SHL               // 1
+      //                     ---------
+      //                     4 + sizeof(ShiftedVal)
+      //
+      MachineSDNode *SHL = CurDAG->getMachineNode(
+          EVM::SHL, DL, MVT::i256,
+          CurDAG->getTargetConstant(TrailZ, DL, MVT::i256),
+          CurDAG->getTargetConstant(Imm.lshr(TrailZ), DL, MVT::i256));
+      ReplaceNode(Node, SHL);
+      return;
+    }
+    // Default materialization cost: 1 + sizeof(Val)
+  } break;
   default:
     break;
   }
