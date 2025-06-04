@@ -18,6 +18,7 @@ set(LLVM_LINK_COMPONENTS
 )
 
 add_llvm_target_unittest(EVMTests
+  SpillArea.cpp
   StackShuffler.cpp
   StackModel.cpp
   )

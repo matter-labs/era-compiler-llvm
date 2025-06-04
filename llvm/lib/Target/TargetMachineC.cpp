@@ -317,6 +317,14 @@ static LLVMBool LLVMTargetMachineEmit(LLVMTargetMachineRef T, LLVMModuleRef M,
 
   pass.run(*Mod);
 
+  // EVM local begin
+  if (Mod->getContext().getSpillAreaSize()) {
+    error = "Stackification requires a pre-allocated spill area";
+    *ErrorMessage = strdup(error.c_str());
+    return true;
+  }
+  // EVM local end
+
   OS.flush();
   return false;
 }
