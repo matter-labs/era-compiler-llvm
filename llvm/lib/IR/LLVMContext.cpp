@@ -283,6 +283,14 @@ void LLVMContext::diagnose(const DiagnosticInfo &DI) {
     exit(1);
 }
 
+// EVM local begin
+void LLVMContext::setSpillAreaSize(uint64_t Size) {
+  pImpl->SpillAreaSize = Size;
+}
+
+uint64_t LLVMContext::getSpillAreaSize() const { return pImpl->SpillAreaSize; }
+// EVM local end
+
 void LLVMContext::emitError(uint64_t LocCookie, const Twine &ErrorStr) {
   diagnose(DiagnosticInfoInlineAsm(LocCookie, ErrorStr));
 }
