@@ -594,6 +594,13 @@ LLVMDiagnosticHandler LLVMContextGetDiagnosticHandler(LLVMContextRef C);
  */
 void *LLVMContextGetDiagnosticContext(LLVMContextRef C);
 
+// EVM local begin
+/**
+ * Retrieve the spill area size needed for EVM stackification.
+ */
+uint64_t LLVMGetSpillAreaSizeEVM(LLVMContextRef C);
+// EVM local end
+
 /**
  * Set the yield callback function for this context.
  *
