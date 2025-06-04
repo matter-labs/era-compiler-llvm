@@ -1535,7 +1535,11 @@ MPPassManager::runOnModule(Module &M) {
   if (EmitICRemark)
     InstrCount = initSizeRemarkInfo(M, FunctionToInstrCount);
 
-  for (unsigned Index = 0; Index < getNumContainedPasses(); ++Index) {
+  // EVM local begin
+  for (unsigned Index = 0;
+       Index < getNumContainedPasses() && !M.getContext().getSpillAreaSize();
+       ++Index) {
+    // EVM local end
     ModulePass *MP = getContainedPass(Index);
     bool LocalChanged = false;
 
