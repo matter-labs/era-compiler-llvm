@@ -42,6 +42,9 @@
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/FileSystem.h"
+// EVM local begin
+#include "llvm/Support/FormatVariadic.h"
+// EVM local end
 #include "llvm/Support/FormattedStream.h"
 #include "llvm/Support/InitLLVM.h"
 #include "llvm/Support/PluginLoader.h"
@@ -738,6 +741,18 @@ static int compileModule(char **argv, LLVMContext &Context) {
     }
 
     PM.run(*M);
+
+    // EVM local begin
+    if (M->getContext().getSpillAreaSize()) {
+      std::string Msg =
+          formatv(
+              "stackification requires a pre-allocated spill area of {0} bytes",
+              std::to_string(M->getContext().getSpillAreaSize()))
+              .str();
+      reportError(Msg);
+      return 1;
+    }
+    // EVM local end
 
     if (Context.getDiagHandlerPtr()->HasErrors)
       return 1;
