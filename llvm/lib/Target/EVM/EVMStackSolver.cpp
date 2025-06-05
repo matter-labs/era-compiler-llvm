@@ -504,9 +504,16 @@ void EVMStackSolver::runPropagation() {
 
     if (!calculateStackTransformCost(EntryMBB, EntryNext,
                                      StackModel.stackDepthLimit())) {
-      report_fatal_error(
-          Twine("EVMStackSolver: stack too deep; cannot transform  ") +
-          EntryMBB.toString() + " to " + EntryNext.toString());
+      // Try to run propogation with compression enabled.
+      // FIXME: if we've already done this, skip to save compile time.
+      const Stack &NewEntryNext = propagateThroughMBB(
+          StackModel.getMBBExitStack(&MBB), &MBB, /*CompressStack*/ true);
+      if (EntryNext == NewEntryNext ||
+          !calculateStackTransformCost(EntryMBB, NewEntryNext,
+                                       StackModel.stackDepthLimit()))
+        report_fatal_error(
+            Twine("EVMStackSolver: stack too deep; cannot transform  ") +
+            EntryMBB.toString() + " to " + EntryNext.toString());
     }
   }
 }
