@@ -319,9 +319,6 @@ public:
     auto Opc = MI.getOpcode();
     // If the virtual register has the only definition, ignore this instruction,
     // as we create literal slots from the immediate value at the register uses.
-    if (Opc == EVM::CONST_I256 &&
-        LIS.getInterval(MI.getOperand(0).getReg()).containsOneValue())
-      return true;
     return Opc == EVM::ARGUMENT || Opc == EVM::RET || Opc == EVM::JUMP ||
            Opc == EVM::JUMPI || Opc == EVM::PUSHDEPLOYADDRESS ||
            Opc == EVM::JUMP_UNLESS;

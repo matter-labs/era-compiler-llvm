@@ -68,19 +68,6 @@ Stack EVMStackModel::getFunctionParameters() const {
 }
 
 StackSlot *EVMStackModel::getStackSlot(const MachineOperand &MO) const {
-  // If the virtual register defines a constant and this is the only
-  // definition, emit the literal slot as MI's input.
-  const LiveInterval *LI = &LIS.getInterval(MO.getReg());
-  if (LI->containsOneValue()) {
-    SlotIndex Idx = LIS.getInstructionIndex(*MO.getParent());
-    const VNInfo *VNI = LI->Query(Idx).valueIn();
-    assert(VNI && "Use of non-existing value");
-    assert(!VNI->isPHIDef());
-    const MachineInstr *DefMI = LIS.getInstructionFromIndex(VNI->def);
-    assert(DefMI && "Dead valno in interval");
-    if (DefMI->getOpcode() == EVM::CONST_I256)
-      return getLiteralSlot(DefMI->getOperand(1).getCImm()->getValue());
-  }
   return getRegisterSlot(MO.getReg());
 }
 
