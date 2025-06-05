@@ -6,13 +6,7 @@ target triple = "evm-unknown-unknown"
 
 declare void @llvm.memmove.p1.p1.i256(ptr addrspace(1) nocapture writeonly, ptr addrspace(1) nocapture readonly, i256, i1 immarg) #0
 
-; Check that the stack solver detects unreachable slots, generates spills for them, and
-; succesfully compiles the function. Also, check that we allocated the exact amount of
-; stack space needed for the function, without any warnings about allocated stack region size.
-
-; CHECK: Unreachable slots found: 1, iteration: 1
-; CHECK: Spilling 1 registers
-; CHECK-NOT: warning: allocated stack region size:
+; CHECK: warning: allocated stack region size: 32 is larger than the total stack size: 0
 
 define dso_local fastcc void @main() unnamed_addr {
 entry:

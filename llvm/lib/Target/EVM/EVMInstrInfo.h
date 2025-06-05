@@ -28,6 +28,9 @@ enum {
   // TSF flag to check if this is a stack instruction.
   IsStackPos = 0,
   IsStackMask = 0x1,
+  // TSF flag to check if this is a PUSH instruction.
+  IsPushPos = 1,
+  IsPushMask = 0x1,
 };
 
 } // namespace EVMII
@@ -88,6 +91,10 @@ public:
 
   static bool isStack(const MachineInstr *MI) {
     return getTSFlag(MI, EVMII::IsStackPos, EVMII::IsStackMask);
+  }
+
+  static bool isPush(const MachineInstr *MI) {
+    return getTSFlag(MI, EVMII::IsPushPos, EVMII::IsPushMask);
   }
 };
 
