@@ -1729,6 +1729,10 @@ public:
 
   std::string DefaultTargetCPU;
   std::string DefaultTargetFeatures;
+
+  // EVM local begin
+  uint64_t SpillAreaSize = 0;
+  // EVM local end
 };
 
 } // end namespace llvm

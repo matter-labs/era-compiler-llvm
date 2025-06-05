@@ -270,6 +270,12 @@ public:
   /// "warning: " for \a DS_Warning, and "note: " for \a DS_Note.
   void diagnose(const DiagnosticInfo &DI);
 
+  // EVM local begin
+  void setSpillAreaSize(uint64_t Size);
+
+  uint64_t getSpillAreaSize() const;
+  // EVM local end
+
   /// Registers a yield callback with the given context.
   ///
   /// The yield callback function may be called by LLVM to transfer control back
