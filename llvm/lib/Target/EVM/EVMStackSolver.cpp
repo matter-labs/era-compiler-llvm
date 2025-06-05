@@ -293,27 +293,6 @@ Stack EVMStackSolver::propagateThroughMBB(const Stack &ExitStack,
                          CurrentStack.toString());
     }
   }
-
-  // If we have the MBB's entry stack already calculated, check it can be
-  // transformed to the entry stack of the first MBB's MI, or report the failure
-  // otherwise.
-  if (StackModel.getMBBEntryMap().count(MBB)) {
-    if (!calculateStackTransformCost(StackModel.getMBBEntryStack(MBB),
-                                     CurrentStack,
-                                     StackModel.stackDepthLimit())) {
-      if (!CompressStack) {
-        LLVM_DEBUG({
-          dbgs() << "\terror: stack-too-deep detected, trying to rerun with "
-                    "Compressstack=true.\n";
-        });
-        return propagateThroughMBB(ExitStack, MBB,
-                                   /*CompressStack*/ true);
-      } else {
-        report_fatal_error(Twine("EVMStackSolver: stack too deep  ") +
-                           CurrentStack.toString());
-      }
-    }
-  }
   return CurrentStack;
 }
 
@@ -514,6 +493,22 @@ void EVMStackSolver::runPropagation() {
   // first one specified in the function declaration is passed on the stack TOP.
   append_range(EntryStack, reverse(FunctionParameters));
   insertMBBEntryStack(&MF.front(), EntryStack);
+
+  for (const MachineBasicBlock &MBB : MF) {
+    const Stack &EntryMBB = StackModel.getMBBEntryStack(&MBB);
+    const auto InstRange = StackModel.instructionsToProcess(&MBB);
+    const Stack &EntryNext =
+        InstRange.begin() != InstRange.end()
+            ? StackModel.getInstEntryStack(&*InstRange.begin())
+            : StackModel.getMBBExitStack(&MBB);
+
+    if (!calculateStackTransformCost(EntryMBB, EntryNext,
+                                     StackModel.stackDepthLimit())) {
+      report_fatal_error(
+          Twine("EVMStackSolver: stack too deep; cannot transform  ") +
+          EntryMBB.toString() + " to " + EntryNext.toString());
+    }
+  }
 }
 
 Stack EVMStackSolver::combineStack(const Stack &Stack1, const Stack &Stack2) {
