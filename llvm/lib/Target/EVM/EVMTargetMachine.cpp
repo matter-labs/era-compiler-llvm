@@ -61,6 +61,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   initializeEVMLowerJumpUnlessPass(PR);
   initializeEVMFinalizeStackFramesPass(PR);
   initializeEVMMarkRecursiveFunctionsPass(PR);
+  initializeEVMConstantUnfoldingPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -281,7 +282,10 @@ void EVMPassConfig::addPreEmitPass() {
   }
 }
 
-void EVMPassConfig::addPreEmitPass2() { addPass(createEVMLowerJumpUnless()); }
+void EVMPassConfig::addPreEmitPass2() {
+  addPass(createEVMLowerJumpUnless());
+  addPass(createEVMConstantUnfolding());
+}
 
 TargetPassConfig *EVMTargetMachine::createPassConfig(PassManagerBase &PM) {
   return new EVMPassConfig(*this, PM);
