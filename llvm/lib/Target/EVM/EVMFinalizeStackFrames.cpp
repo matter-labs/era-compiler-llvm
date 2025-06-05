@@ -160,10 +160,10 @@ bool EVMFinalizeStackFrames::runOnModule(Module &M) {
 
   // Check if it is valid to replace frame indices.
   if (TotalStackSize > 0) {
-    if (TotalStackSize > StackRegionSize)
-      report_fatal_error("Total stack size: " + Twine(TotalStackSize) +
-                         " is larger than the allocated stack region size: " +
-                         Twine(StackRegionSize));
+    if (TotalStackSize > StackRegionSize) {
+      M.getContext().setSpillAreaSize(TotalStackSize);
+      return true;
+    }
 
     if (StackRegionOffset == std::numeric_limits<uint64_t>::max())
       report_fatal_error("Stack region offset is not set, but total stack size "
