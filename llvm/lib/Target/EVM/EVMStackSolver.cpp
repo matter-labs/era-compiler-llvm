@@ -212,11 +212,46 @@ void EVMStackSolver::run() {
     dbgs() << "************* Stack *************\n";
     dump(dbgs());
   });
+  checkPropagationErrors();
 }
 
-std::pair<Stack, bool>
-EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
-                                   const MachineInstr &MI, bool CompressStack) {
+void EVMStackSolver::checkPropagationErrors() {
+  for (const MachineBasicBlock &MBB : MF) {
+    const Stack &EntryMBB = StackModel.getMBBEntryStack(&MBB);
+    const Stack &ExitMBB = StackModel.getMBBExitStack(&MBB);
+    const auto InstRange = StackModel.instructionsToProcess(&MBB);
+
+    auto checkStackTransformation = [this](const Stack &From, const Stack &To) {
+      if (!calculateStackTransformCost(From, To, StackModel.stackDepthLimit()))
+        report_fatal_error(Twine("EVMStackSolver cannot transform ") +
+                           From.toString() + " to " + To.toString() +
+                           ": stack too deep.\n");
+    };
+
+    // Check transformation from the MBB's entry to exit stack if BB is empty.
+    if (InstRange.empty()) {
+      checkStackTransformation(EntryMBB, ExitMBB);
+      continue;
+    }
+
+    // Check transformation from the MBB's entry to the entry of the first MI
+    // on the first iteration and then do the same from the exit stack of
+    // the previous MI to the entry stack of the next MI.
+    Stack ExitPrev = EntryMBB;
+    for (const auto &MI : InstRange) {
+      checkStackTransformation(ExitPrev, StackModel.getInstEntryStack(&MI));
+      ExitPrev = getMIExitStack(&MI);
+    }
+
+    // Check transformation from the exit stack of the last MI to
+    // the MBB's exit stack.
+    checkStackTransformation(ExitPrev, ExitMBB);
+  }
+}
+
+Stack EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
+                                         const MachineInstr &MI,
+                                         bool CompressStack) {
   LLVM_DEBUG({
     dbgs() << "\tMI: ";
     MI.dump();
@@ -232,13 +267,6 @@ EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
     if (const auto *RegSlot = dyn_cast<RegisterSlot>(StackSlot))
       assert(!MI.definesRegister(RegSlot->getReg(), /*TRI=*/nullptr));
 #endif // NDEBUG
-
-  // Check the exit stack from the MI can be smoothly transformed
-  // to the entry stack of the next MI.
-  Stack AfterMI = BeforeMI;
-  AfterMI.append(MIDefs);
-  bool Err = !calculateStackTransformCost(AfterMI, ExitStack,
-                                          StackModel.stackDepthLimit());
 
   BeforeMI.append(StackModel.getMIInput(MI));
   // Store computed stack to StackModel.
@@ -261,7 +289,16 @@ EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
       break;
   }
 
-  return {BeforeMI, Err};
+  return BeforeMI;
+}
+
+Stack EVMStackSolver::getMIExitStack(const MachineInstr *MI) {
+  const Stack &MIInput = StackModel.getMIInput(*MI);
+  Stack MIEntry = StackModel.getInstEntryStack(MI);
+  assert(MIInput.size() <= MIEntry.size());
+  MIEntry.resize(MIEntry.size() - MIInput.size());
+  MIEntry.append(StackModel.getSlotsForInstructionDefs(MI));
+  return MIEntry;
 }
 
 Stack EVMStackSolver::propagateThroughMBB(const Stack &ExitStack,
@@ -276,18 +313,27 @@ Stack EVMStackSolver::propagateThroughMBB(const Stack &ExitStack,
            << "):\n";
   });
   for (const auto &MI : StackModel.reverseInstructionsToProcess(MBB)) {
-    auto [BeforeMI, Err] = propagateThroughMI(CurrentStack, MI, CompressStack);
-    CurrentStack = std::move(BeforeMI);
+    Stack EntryMI = propagateThroughMI(CurrentStack, MI, CompressStack);
 
-    if (!CompressStack && Err) {
+    // Check the exit stack of the MI can be transformed to the entry stack
+    // of the next MI, or rerun the propagation with compression.
+    // It also checks that the last MIs exit stack can be tranformed to
+    // the MBBs exit stack, but it doesn't do that for MBBs entry stack to
+    // the first MI entry stack transformation to avoid false positives
+    // (we rewrite the MBBs entry stack just after the function finished).
+    if (!CompressStack &&
+        !calculateStackTransformCost(getMIExitStack(&MI), CurrentStack,
+                                     StackModel.stackDepthLimit())) {
       LLVM_DEBUG({
         dbgs() << "\terror: stack-too-deep detected, trying to rerun with "
-                  "Compressstack=true.\n";
+                  "CompressStack=true.\n";
       });
       return propagateThroughMBB(ExitStack, MBB,
                                  /*CompressStack*/ true);
     }
+    CurrentStack = EntryMI;
   }
+
   return CurrentStack;
 }
 
