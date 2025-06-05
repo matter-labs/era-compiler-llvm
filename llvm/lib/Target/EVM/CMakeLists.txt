@@ -22,6 +22,7 @@ add_llvm_target(EVMCodeGen
   EVMArgumentMove.cpp
   EVMAsmPrinter.cpp
   EVMBackwardPropagationStackification.cpp
+  EVMConstantUnfolding.cpp
   EVMCodegenPrepare.cpp
   EVMFrameLowering.cpp
   EVMISelDAGToDAG.cpp
