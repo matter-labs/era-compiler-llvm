@@ -278,14 +278,40 @@ Stack EVMStackSolver::propagateThroughMBB(const Stack &ExitStack,
   for (const auto &MI : StackModel.reverseInstructionsToProcess(MBB)) {
     auto [BeforeMI, Err] = propagateThroughMI(CurrentStack, MI, CompressStack);
     CurrentStack = std::move(BeforeMI);
+    if (!Err)
+      continue;
 
-    if (!CompressStack && Err) {
+    if (!CompressStack) {
       LLVM_DEBUG({
         dbgs() << "\terror: stack-too-deep detected, trying to rerun with "
                   "Compressstack=true.\n";
       });
       return propagateThroughMBB(ExitStack, MBB,
                                  /*CompressStack*/ true);
+    } else {
+      report_fatal_error(Twine("EVMStackSolver: stack too deep  ") +
+                         CurrentStack.toString());
+    }
+  }
+
+  // If we have the MBB's entry stack already calculated, check it can be
+  // transformed to the entry stack of the first MBB's MI, or report the failure
+  // otherwise.
+  if (StackModel.getMBBEntryMap().count(MBB)) {
+    if (!calculateStackTransformCost(StackModel.getMBBEntryStack(MBB),
+                                     CurrentStack,
+                                     StackModel.stackDepthLimit())) {
+      if (!CompressStack) {
+        LLVM_DEBUG({
+          dbgs() << "\terror: stack-too-deep detected, trying to rerun with "
+                    "Compressstack=true.\n";
+        });
+        return propagateThroughMBB(ExitStack, MBB,
+                                   /*CompressStack*/ true);
+      } else {
+        report_fatal_error(Twine("EVMStackSolver: stack too deep  ") +
+                           CurrentStack.toString());
+      }
     }
   }
   return CurrentStack;
