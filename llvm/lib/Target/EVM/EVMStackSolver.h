@@ -45,15 +45,20 @@ private:
   /// minimal.
   /// Side effect: the computed entry stack is stored in StackModel.
   /// \param CompressStack: remove duplicates and rematerializable slots.
-  std::pair<Stack, bool> propagateThroughMI(const Stack &ExitStack,
-                                            const MachineInstr &MI,
-                                            bool CompressStack = false);
+  Stack propagateThroughMI(const Stack &ExitStack, const MachineInstr &MI,
+                           bool CompressStack = false);
 
   /// Given \p ExitStack, compute the stack at the entry of \p MBB.
   /// \param CompressStack: remove duplicates and rematerializable slots.
   Stack propagateThroughMBB(const Stack &ExitStack,
                             const MachineBasicBlock *MBB,
                             bool CompressStack = false);
+
+  // Build the exit stack of the given \p MI.
+  Stack getMIExitStack(const MachineInstr *MI);
+
+  // Check and report for stack-too-deep errors.
+  void checkPropagationErrors();
 
   /// Main algorithm walking the graph from entry to exit and propagating stack
   /// states back to the entries. Iteratively reruns itself along backward jumps
