@@ -358,6 +358,14 @@ void EVMStackSolver::run() {
     if (UnreachableSlots.empty())
       break;
 
+    // For recursive functions we can't use spills to fix the stack too deep
+    // errors, as we are using memory to spill and not real stack. Report an
+    // error if this function is recursive.
+    if (MF.getFunction().hasFnAttribute("evm-recursive"))
+      report_fatal_error(
+          "Stackification failed for '" + MF.getName() +
+          "' function. It is recursive and has stack too deep errors.");
+
     if (++IterCount > MaxSpillIterations)
       report_fatal_error("EVMStackSolver: maximum number of spill iterations "
                          "exceeded.");

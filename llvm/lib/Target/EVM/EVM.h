@@ -68,6 +68,7 @@ FunctionPass *createEVMStackify();
 FunctionPass *createEVMBPStackification();
 FunctionPass *createEVMLowerJumpUnless();
 ModulePass *createEVMFinalizeStackFrames();
+ModulePass *createEVMMarkRecursiveFunctionsPass();
 
 // PassRegistry initialization declarations.
 void initializeEVMCodegenPreparePass(PassRegistry &);
@@ -85,6 +86,7 @@ void initializeEVMAAWrapperPassPass(PassRegistry &);
 void initializeEVMExternalAAWrapperPass(PassRegistry &);
 void initializeEVMLowerJumpUnlessPass(PassRegistry &);
 void initializeEVMFinalizeStackFramesPass(PassRegistry &);
+void initializeEVMMarkRecursiveFunctionsPass(PassRegistry &);
 
 struct EVMLinkRuntimePass : PassInfoMixin<EVMLinkRuntimePass> {
   EVMLinkRuntimePass() = default;
@@ -99,6 +101,12 @@ struct EVMAllocaHoistingPass : PassInfoMixin<EVMAllocaHoistingPass> {
 struct EVMSHA3ConstFoldingPass : PassInfoMixin<EVMSHA3ConstFoldingPass> {
   EVMSHA3ConstFoldingPass() = default;
   PreservedAnalyses run(Function &F, FunctionAnalysisManager &AM);
+};
+
+struct EVMMarkRecursiveFunctionsPass
+    : PassInfoMixin<EVMMarkRecursiveFunctionsPass> {
+  EVMMarkRecursiveFunctionsPass() = default;
+  PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
 };
 
 } // namespace llvm

@@ -62,6 +62,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   initializeEVMExternalAAWrapperPass(PR);
   initializeEVMLowerJumpUnlessPass(PR);
   initializeEVMFinalizeStackFramesPass(PR);
+  initializeEVMMarkRecursiveFunctionsPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -142,6 +143,16 @@ void EVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
   });
 
   PB.registerPipelineParsingCallback(
+      [](StringRef PassName, ModulePassManager &PM,
+         ArrayRef<PassBuilder::PipelineElement>) {
+        if (PassName == "evm-mark-recursive-functions") {
+          PM.addPass(EVMMarkRecursiveFunctionsPass());
+          return true;
+        }
+        return false;
+      });
+
+  PB.registerPipelineParsingCallback(
       [](StringRef PassName, FunctionPassManager &PM,
          ArrayRef<PassBuilder::PipelineElement>) {
         if (PassName == "evm-sha3-constant-folding") {
@@ -183,6 +194,7 @@ public:
   // No reg alloc
   bool addRegAssignAndRewriteOptimized() override { return false; }
 
+  bool addPreISel() override;
   void addCodeGenPrepare() override;
   void addIRPasses() override;
   bool addGCPasses() override { return false; }
@@ -204,6 +216,12 @@ void EVMPassConfig::addIRPasses() {
         }));
   }
   TargetPassConfig::addIRPasses();
+}
+
+bool EVMPassConfig::addPreISel() {
+  TargetPassConfig::addPreISel();
+  addPass(createEVMMarkRecursiveFunctionsPass());
+  return false;
 }
 
 void EVMPassConfig::addCodeGenPrepare() {
