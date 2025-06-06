@@ -32,6 +32,7 @@ add_llvm_target(EVMCodeGen
   EVMLowerIntrinsics.cpp
   EVMLowerJumpUnless.cpp
   EVMMachineFunctionInfo.cpp
+  EVMMarkRecursiveFunctions.cpp
   EVMMCInstLower.cpp
   EVMOptimizeLiveIntervals.cpp
   EVMRegColoring.cpp
