@@ -706,11 +706,23 @@ bool EVMSingleUseExpression::runOnMachineFunction(MachineFunction &MF) {
                 getVRegDef(DefI->getOperand(2).getReg(), DefI, MRI, LIS);
             assert(DefI1 && DefI2);
 
-            MachineInstr *OffsetI =
-                (DefI1->getOpcode() == EVM::CONST_I256) ? DefI1 : DefI2;
+            MachineInstr *OffsetI = nullptr;
+            Register BaseReg;
+            if (DefI1->getOpcode() == EVM::CONST_I256) {
+              OffsetI = DefI1;
+              BaseReg = DefI->getOperand(2).getReg();
+            } else {
+              OffsetI = DefI2;
+              BaseReg = DefI->getOperand(1).getReg();
+            }
             Insert = rematerializeCheapDef(Reg, Use, *DefI, MBB,
                                            Insert->getIterator(), LIS, MFI, MRI,
                                            TII, TRI);
+
+            // Recalculate live interval of the base register, since we created
+            // a new instruction that uses it.
+            LIS.removeInterval(BaseReg);
+            LIS.createAndComputeVirtRegInterval(BaseReg);
 
             MachineOperand &OffsetMO = (DefI1->getOpcode() == EVM::CONST_I256)
                                            ? Insert->getOperand(1)
