@@ -358,13 +358,26 @@ void EVMStackSolver::run() {
     if (UnreachableSlots.empty())
       break;
 
-    // For recursive functions we can't use spills to fix the stack too deep
-    // errors, as we are using memory to spill and not real stack. Report an
-    // error if this function is recursive.
-    if (MF.getFunction().hasFnAttribute("evm-recursive"))
-      report_fatal_error(
-          "Stackification failed for '" + MF.getName() +
-          "' function. It is recursive and has stack too deep errors.");
+    if (MF.getFunction().hasFnAttribute("evm-recursive")) {
+      // For recursive functions we can't use spills to fix the stack too deep
+      // errors, as we are using memory to spill and not real stack. Report an
+      // error if this function is recursive and we forced compress stack
+      // before.
+      if (ForceCompressStack)
+        report_fatal_error(
+            "Stackification failed for '" + MF.getName() +
+            "' function. It is recursive and has stack too deep errors.");
+
+      LLVM_DEBUG({
+        dbgs()
+            << "EVMStackSolver: force CompressStack for recursive function.\n";
+      });
+
+      // TODO: This is a little bit agressive, since we can detect MBBs where
+      // the stack is too deep and compress only them.
+      ForceCompressStack = true;
+      continue;
+    }
 
     if (++IterCount > MaxSpillIterations)
       report_fatal_error("EVMStackSolver: maximum number of spill iterations "
@@ -612,7 +625,8 @@ void EVMStackSolver::runPropagation() {
       if (ExitStack) {
         Visited.insert(MBB);
         insertMBBExitStack(MBB, *ExitStack);
-        insertMBBEntryStack(MBB, propagateThroughMBB(*ExitStack, MBB));
+        insertMBBEntryStack(
+            MBB, propagateThroughMBB(*ExitStack, MBB, ForceCompressStack));
         append_range(Worklist, MBB->predecessors());
       }
     }

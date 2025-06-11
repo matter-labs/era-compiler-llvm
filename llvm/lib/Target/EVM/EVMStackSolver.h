@@ -114,6 +114,11 @@ private:
   const MachineBlockFrequencyInfo &MBFI;
   LiveIntervals &LIS;
   bool IsSpillWeightsCalculated = false;
+  /// In case of recursive functions, we can't use spills to fix stack too deep
+  /// issues, as we are using memory to spill and not real stack. If we run into
+  /// stack too deep issues for recursive functions, we will force compress
+  /// stack across the whole function to try to fix the issues.
+  bool ForceCompressStack = false;
 };
 
 } // end namespace llvm
