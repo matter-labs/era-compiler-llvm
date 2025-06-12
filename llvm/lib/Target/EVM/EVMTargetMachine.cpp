@@ -48,19 +48,20 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   // Register the target.
   const RegisterTargetMachine<EVMTargetMachine> X(getTheEVMTarget());
   auto &PR = *PassRegistry::getPassRegistry();
-  initializeEVMCodegenPreparePass(PR);
+  initializeEVMAAWrapperPassPass(PR);
   initializeEVMAllocaHoistingPass(PR);
+  initializeEVMBPStackificationPass(PR);
+  initializeEVMCodegenPreparePass(PR);
+  initializeEVMExternalAAWrapperPass(PR);
   initializeEVMLinkRuntimePass(PR);
   initializeEVMLowerIntrinsicsPass(PR);
+  initializeEVMLowerJumpUnlessPass(PR);
   initializeEVMOptimizeLiveIntervalsPass(PR);
+  initializeEVMPeepholePass(PR);
   initializeEVMRegColoringPass(PR);
   initializeEVMSingleUseExpressionPass(PR);
   initializeEVMSplitCriticalEdgesPass(PR);
   initializeEVMStackifyPass(PR);
-  initializeEVMBPStackificationPass(PR);
-  initializeEVMAAWrapperPassPass(PR);
-  initializeEVMExternalAAWrapperPass(PR);
-  initializeEVMLowerJumpUnlessPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -267,7 +268,11 @@ void EVMPassConfig::addPreEmitPass() {
   }
 }
 
-void EVMPassConfig::addPreEmitPass2() { addPass(createEVMLowerJumpUnless()); }
+void EVMPassConfig::addPreEmitPass2() {
+  addPass(createEVMLowerJumpUnless());
+  if (getOptLevel() != CodeGenOptLevel::None)
+    addPass(createEVMPeepholePass());
+}
 
 TargetPassConfig *EVMTargetMachine::createPassConfig(PassManagerBase &PM) {
   return new EVMPassConfig(*this, PM);
