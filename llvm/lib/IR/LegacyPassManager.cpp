@@ -1584,6 +1584,14 @@ MPPassManager::runOnModule(Module &M) {
       removeNotPreservedAnalysis(MP);
     recordAvailableAnalysis(MP);
     removeDeadPasses(MP, M.getModuleIdentifier(), ON_MODULE_MSG);
+
+    // EVM local begin
+    // HACK: Interrupt the Module pass pipeline if the spill area size becomes
+    // non-zero after the preceding pass. This can occur only after the
+    // EVMFinalizeStackFrames pass.
+    if (M.getContext().getSpillAreaSize())
+      break;
+    // EVM local end
   }
 
   // Finalize module passes
