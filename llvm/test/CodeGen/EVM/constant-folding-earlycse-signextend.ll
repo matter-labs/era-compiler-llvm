@@ -8,8 +8,7 @@ declare i256 @llvm.evm.signextend(i256, i256)
 
 define i256 @test_signextend1() {
 ; CHECK-LABEL: define i256 @test_signextend1() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 0, i256 255)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 -1
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 0, i256 255)
@@ -18,8 +17,7 @@ define i256 @test_signextend1() {
 
 define i256 @test_signextend2() {
 ; CHECK-LABEL: define i256 @test_signextend2() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 1, i256 32767)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 32767
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 1, i256 32767)
@@ -28,8 +26,7 @@ define i256 @test_signextend2() {
 
 define i256 @test_signextend3() {
 ; CHECK-LABEL: define i256 @test_signextend3() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 undef, i256 32767)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 poison
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 undef, i256 32767)
@@ -38,8 +35,7 @@ define i256 @test_signextend3() {
 
 define i256 @test_signextend4() {
 ; CHECK-LABEL: define i256 @test_signextend4() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 1, i256 undef)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 poison
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 1, i256 undef)
@@ -48,8 +44,7 @@ define i256 @test_signextend4() {
 
 define i256 @test_signextend5() {
 ; CHECK-LABEL: define i256 @test_signextend5() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 32, i256 undef)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 poison
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 32, i256 undef)
@@ -58,8 +53,7 @@ define i256 @test_signextend5() {
 
 define i256 @test_signextend6() {
 ; CHECK-LABEL: define i256 @test_signextend6() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 0, i256 0)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 0
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 0, i256 0)
@@ -68,8 +62,7 @@ define i256 @test_signextend6() {
 
 define i256 @test_signextend7() {
 ; CHECK-LABEL: define i256 @test_signextend7() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 0, i256 1)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 1
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 0, i256 1)
@@ -78,8 +71,7 @@ define i256 @test_signextend7() {
 
 define i256 @test_signextend8() {
 ; CHECK-LABEL: define i256 @test_signextend8() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 0, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 67
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 0, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
@@ -88,8 +80,7 @@ define i256 @test_signextend8() {
 
 define i256 @test_signextend9() {
 ; CHECK-LABEL: define i256 @test_signextend9() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 0, i256 -1)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 -1
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 0, i256 -1)
@@ -98,8 +89,7 @@ define i256 @test_signextend9() {
 
 define i256 @test_signextend10() {
 ; CHECK-LABEL: define i256 @test_signextend10() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 1, i256 0)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 0
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 1, i256 0)
@@ -108,8 +98,7 @@ define i256 @test_signextend10() {
 
 define i256 @test_signextend11() {
 ; CHECK-LABEL: define i256 @test_signextend11() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 1, i256 1)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 1
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 1, i256 1)
@@ -118,8 +107,7 @@ define i256 @test_signextend11() {
 
 define i256 @test_signextend12() {
 ; CHECK-LABEL: define i256 @test_signextend12() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 1, i256 37670211480306196047687443673641227745170897112008692523754794019498533094467)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 -31677
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 1, i256 37670211480306196047687443673641227745170897112008692523754794019498533094467)
@@ -128,8 +116,7 @@ define i256 @test_signextend12() {
 
 define i256 @test_signextend13() {
 ; CHECK-LABEL: define i256 @test_signextend13() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 1, i256 -1)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 -1
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 1, i256 -1)
@@ -138,8 +125,7 @@ define i256 @test_signextend13() {
 
 define i256 @test_signextend14() {
 ; CHECK-LABEL: define i256 @test_signextend14() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 17, i256 0)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 0
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 17, i256 0)
@@ -148,8 +134,7 @@ define i256 @test_signextend14() {
 
 define i256 @test_signextend15() {
 ; CHECK-LABEL: define i256 @test_signextend15() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 4, i256 1)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 1
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 4, i256 1)
@@ -158,8 +143,7 @@ define i256 @test_signextend15() {
 
 define i256 @test_signextend16() {
 ; CHECK-LABEL: define i256 @test_signextend16() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 22, i256 9111590707254702215554908033119796504552448929051039916)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 9111590707254702215554908033119796504552448929051039916
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 22, i256 9111590707254702215554908033119796504552448929051039916)
@@ -168,8 +152,7 @@ define i256 @test_signextend16() {
 
 define i256 @test_signextend17() {
 ; CHECK-LABEL: define i256 @test_signextend17() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 17, i256 25236770892255973364820642850062731514599596)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 2936025693725350223284924577414370008619180
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 17, i256 25236770892255973364820642850062731514599596)
@@ -178,8 +161,7 @@ define i256 @test_signextend17() {
 
 define i256 @test_signextend18() {
 ; CHECK-LABEL: define i256 @test_signextend18() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 22, i256 16774068411584146507346643168871342422646144539969050796)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 -7745860242270075226386909265533604515253681414968584020
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 22, i256 16774068411584146507346643168871342422646144539969050796)
@@ -188,8 +170,7 @@ define i256 @test_signextend18() {
 
 define i256 @test_signextend19() {
 ; CHECK-LABEL: define i256 @test_signextend19() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 17, i256 93509753590725542020426220953279705230436762145237986916280948908)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 -5426753755723633454790969774828765556123476
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 17, i256 93509753590725542020426220953279705230436762145237986916280948908)
@@ -198,8 +179,7 @@ define i256 @test_signextend19() {
 
 define i256 @test_signextend20() {
 ; CHECK-LABEL: define i256 @test_signextend20() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 25, i256 -1)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 -1
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 25, i256 -1)
@@ -208,8 +188,7 @@ define i256 @test_signextend20() {
 
 define i256 @test_signextend21() {
 ; CHECK-LABEL: define i256 @test_signextend21() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 255, i256 0)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 0
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 255, i256 0)
@@ -218,8 +197,7 @@ define i256 @test_signextend21() {
 
 define i256 @test_signextend22() {
 ; CHECK-LABEL: define i256 @test_signextend22() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 255, i256 1)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 1
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 255, i256 1)
@@ -228,8 +206,7 @@ define i256 @test_signextend22() {
 
 define i256 @test_signextend23() {
 ; CHECK-LABEL: define i256 @test_signextend23() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 255, i256 -49173855447680950519990795082874703144781591387221730505838393986436314155965)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 -49173855447680950519990795082874703144781591387221730505838393986436314155965
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 255, i256 66618233789635244903580189925813204708488393278418833533619190021476815483971)
@@ -238,8 +215,7 @@ define i256 @test_signextend23() {
 
 define i256 @test_signextend24() {
 ; CHECK-LABEL: define i256 @test_signextend24() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 255, i256 -1)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 -1
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 255, i256 -1)
@@ -248,8 +224,7 @@ define i256 @test_signextend24() {
 
 define i256 @test_signextend25() {
 ; CHECK-LABEL: define i256 @test_signextend25() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 256, i256 0)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 0
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 256, i256 0)
@@ -258,8 +233,7 @@ define i256 @test_signextend25() {
 
 define i256 @test_signextend26() {
 ; CHECK-LABEL: define i256 @test_signextend26() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 256, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 37670211480306196047687443673641227745170897112008692523754794019498533073987
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 256, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
@@ -268,8 +242,7 @@ define i256 @test_signextend26() {
 
 define i256 @test_signextend27() {
 ; CHECK-LABEL: define i256 @test_signextend27() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 256, i256 -1)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 -1
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 256, i256 -1)
@@ -278,8 +251,7 @@ define i256 @test_signextend27() {
 
 define i256 @test_signextend28() {
 ; CHECK-LABEL: define i256 @test_signextend28() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 35242523534534534233424343343443, i256 1)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 1
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 35242523534534534233424343343443, i256 1)
@@ -288,8 +260,7 @@ define i256 @test_signextend28() {
 
 define i256 @test_signextend29() {
 ; CHECK-LABEL: define i256 @test_signextend29() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 35242523534534534233424343343443, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 37670211480306196047687443673641227745170897112008692523754794019498533073987
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 35242523534534534233424343343443, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
@@ -298,8 +269,7 @@ define i256 @test_signextend29() {
 
 define i256 @test_signextend30() {
 ; CHECK-LABEL: define i256 @test_signextend30() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 35242523534534534233424343343443, i256 -1)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 -1
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 35242523534534534233424343343443, i256 -1)
@@ -308,8 +278,7 @@ define i256 @test_signextend30() {
 
 define i256 @test_signextend31() {
 ; CHECK-LABEL: define i256 @test_signextend31() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 -1, i256 0)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 0
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 -1, i256 0)
@@ -318,8 +287,7 @@ define i256 @test_signextend31() {
 
 define i256 @test_signextend32() {
 ; CHECK-LABEL: define i256 @test_signextend32() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 -1, i256 1)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 1
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 -1, i256 1)
@@ -328,8 +296,7 @@ define i256 @test_signextend32() {
 
 define i256 @test_signextend33() {
 ; CHECK-LABEL: define i256 @test_signextend33() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 -1, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 37670211480306196047687443673641227745170897112008692523754794019498533073987
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 -1, i256 37670211480306196047687443673641227745170897112008692523754794019498533073987)
@@ -338,8 +305,7 @@ define i256 @test_signextend33() {
 
 define i256 @test_signextend34() {
 ; CHECK-LABEL: define i256 @test_signextend34() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 -1, i256 -1)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 -1
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 -1, i256 -1)
@@ -348,8 +314,7 @@ define i256 @test_signextend34() {
 
 define i256 @test_signextend35() {
 ; CHECK-LABEL: define i256 @test_signextend35() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.signextend(i256 0, i256 33023)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 -1
 ;
 
   %res = call i256 @llvm.evm.signextend(i256 0, i256 33023)
