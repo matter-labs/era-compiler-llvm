@@ -48,6 +48,9 @@
 #include "llvm/IR/IntrinsicsAArch64.h"
 #include "llvm/IR/IntrinsicsAMDGPU.h"
 #include "llvm/IR/IntrinsicsARM.h"
+// EVM local begin
+#include "llvm/IR/IntrinsicsEVM.h"
+// EVM local end
 #include "llvm/IR/IntrinsicsWebAssembly.h"
 #include "llvm/IR/IntrinsicsX86.h"
 #include "llvm/IR/Operator.h"
@@ -1550,6 +1553,13 @@ bool llvm::canConstantFoldCallTo(const CallBase *Call, const Function *F) {
   case Intrinsic::arm_mve_vctp32:
   case Intrinsic::arm_mve_vctp64:
   case Intrinsic::aarch64_sve_convert_from_svbool:
+  // EVM local begin
+  case Intrinsic::evm_addmod:
+  case Intrinsic::evm_mulmod:
+  case Intrinsic::evm_byte:
+  case Intrinsic::evm_exp:
+  case Intrinsic::evm_signextend:
+  // EVM local end
   // WebAssembly float semantics are always known
   case Intrinsic::wasm_trunc_signed:
   case Intrinsic::wasm_trunc_unsigned:
@@ -2605,6 +2615,12 @@ static Constant *evaluateCompare(const APFloat &Op1, const APFloat &Op2,
 static Constant *ConstantFoldSignextendCall(Type *Ty, const APInt &NumByte,
                                             const APInt &Val) {
   unsigned BitWidth = Ty->getIntegerBitWidth();
+
+  // Signextend operation returns original value if the extension
+  // overflows the type width.
+  if (NumByte.uge(APInt(BitWidth, (BitWidth / 8) - 1)))
+    return ConstantInt::get(Ty, Val);
+
   const APInt NumBits = NumByte * 8 + 7;
   const APInt NumBitInv = APInt(BitWidth, BitWidth) - NumBits;
   const APInt SignMask = APInt(BitWidth, 1).shl(NumBits);
@@ -2783,17 +2799,10 @@ static Constant *ConstantFoldLibCall2(StringRef Name, Type *Ty,
           !C0 || !C1)
         return PoisonValue::get(Ty);
 
-      const unsigned BitWidth = Ty->getIntegerBitWidth();
-      assert(BitWidth == 256);
+      assert(Ty->getIntegerBitWidth() == 256);
 
-      if (Name == "__signextend") {
-        // Signextend operation returns original value if the extension
-        // overflows the type width.
-        if (C0->uge(APInt(BitWidth, BitWidth / 8 - 1)))
-          return Operands[1];
-
+      if (Name == "__signextend")
         return ConstantFoldSignextendCall(Ty, *C0, *C1);
-      }
       if (Name == "__exp")
         return ConstantFoldExpCall(Ty, *C0, *C1);
       if (Name == "__div")
@@ -2883,6 +2892,33 @@ static Constant *ConstantFoldIntrinsicCall2(
     Intrinsic::ID IntrinsicID, Type * Ty, ArrayRef<Constant *> Operands,
     const CallBase *Call) {
   assert(Operands.size() == 2 && "Wrong number of operands.");
+
+  // EVM local begin
+  if (Operands[0]->getType()->isIntegerTy() &&
+      Operands[1]->getType()->isIntegerTy()) {
+    const APInt *C0 = nullptr, *C1 = nullptr;
+    if (!getConstIntOrUndef(Operands[0], C0) ||
+        !getConstIntOrUndef(Operands[1], C1))
+      return nullptr;
+
+    if (IntrinsicID == Intrinsic::evm_signextend ||
+        IntrinsicID == Intrinsic::evm_exp ||
+        IntrinsicID == Intrinsic::evm_byte) {
+      if (isa<PoisonValue>(Operands[0]) || isa<PoisonValue>(Operands[1]) ||
+          !C0 || !C1)
+        return PoisonValue::get(Ty);
+
+      assert(Ty->getIntegerBitWidth() == 256);
+
+      if (IntrinsicID == Intrinsic::evm_signextend)
+        return ConstantFoldSignextendCall(Ty, *C0, *C1);
+      if (IntrinsicID == Intrinsic::evm_exp)
+        return ConstantFoldExpCall(Ty, *C0, *C1);
+      if (IntrinsicID == Intrinsic::evm_byte)
+        return ConstantFoldByteCall(Ty, *C0, *C1);
+    }
+  }
+  // EVM local end
 
   if (Ty->isFloatingPointTy()) {
     // TODO: We should have undef handling for all of the FP intrinsics that
@@ -3510,7 +3546,9 @@ static Constant *ConstantFoldScalarCall3(StringRef Name,
     return ConstantFoldAMDGCNPermIntrinsic(Operands, Ty);
 
   // EraVM local begin
-  if (Name == "__addmod" || Name == "__mulmod") {
+  if (Name == "__addmod" || Name == "__mulmod" ||
+      IntrinsicID == Intrinsic::evm_addmod ||
+      IntrinsicID == Intrinsic::evm_mulmod) {
     const APInt *C0, *C1, *C2;
     if (!getConstIntOrUndef(Operands[0], C0) ||
         !getConstIntOrUndef(Operands[1], C1) ||
@@ -3523,9 +3561,9 @@ static Constant *ConstantFoldScalarCall3(StringRef Name,
 
     assert(Ty->getIntegerBitWidth() == 256);
 
-    if (Name == "__addmod")
+    if (Name == "__addmod" || IntrinsicID == Intrinsic::evm_addmod)
       return ConstantFoldAddModCall(Ty, *C0, *C1, *C2);
-    if (Name == "__mulmod")
+    if (Name == "__mulmod" || IntrinsicID == Intrinsic::evm_mulmod)
       return ConstantFoldMulModCall(Ty, *C0, *C1, *C2);
   }
   // EraVM local end

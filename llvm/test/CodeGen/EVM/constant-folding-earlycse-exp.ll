@@ -8,8 +8,7 @@ declare i256 @llvm.evm.exp(i256, i256)
 
 define i256 @test_exponent1() {
 ; CHECK-LABEL: define i256 @test_exponent1() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 0, i256 10)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 0
 ;
 
   %res = call i256 @llvm.evm.exp(i256 0, i256 10)
@@ -18,8 +17,7 @@ define i256 @test_exponent1() {
 
 define i256 @test_exponent2() {
 ; CHECK-LABEL: define i256 @test_exponent2() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 2, i256 undef)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 poison
 ;
 
   %res = call i256 @llvm.evm.exp(i256 2, i256 undef)
@@ -28,8 +26,7 @@ define i256 @test_exponent2() {
 
 define i256 @test_exponent3() {
 ; CHECK-LABEL: define i256 @test_exponent3() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 2, i256 255)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 -57896044618658097711785492504343953926634992332820282019728792003956564819968
 ;
 
   %res = call i256 @llvm.evm.exp(i256 2, i256 255)
@@ -38,8 +35,7 @@ define i256 @test_exponent3() {
 
 define i256 @test_exponent4() {
 ; CHECK-LABEL: define i256 @test_exponent4() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 307, i256 32)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 -26400738010602378953627016196889292963087978848325315750873680393886838386559
 ;
 
   %res = call i256 @llvm.evm.exp(i256 307, i256 32)
@@ -48,8 +44,7 @@ define i256 @test_exponent4() {
 
 define i256 @test_exponent5() {
 ; CHECK-LABEL: define i256 @test_exponent5() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 undef, i256 2)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 poison
 ;
 
   %res = call i256 @llvm.evm.exp(i256 undef, i256 2)
@@ -58,8 +53,7 @@ define i256 @test_exponent5() {
 
 define i256 @test_exponent6() {
 ; CHECK-LABEL: define i256 @test_exponent6() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 0, i256 0)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 1
 ;
 
   %res = call i256 @llvm.evm.exp(i256 0, i256 0)
@@ -68,8 +62,7 @@ define i256 @test_exponent6() {
 
 define i256 @test_exponent7() {
 ; CHECK-LABEL: define i256 @test_exponent7() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 1, i256 0)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 1
 ;
 
   %res = call i256 @llvm.evm.exp(i256 1, i256 0)
@@ -78,8 +71,7 @@ define i256 @test_exponent7() {
 
 define i256 @test_exponent7.1() {
 ; CHECK-LABEL: define i256 @test_exponent7.1() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 1, i256 1)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 1
 ;
 
   %res = call i256 @llvm.evm.exp(i256 1, i256 1)
@@ -88,8 +80,7 @@ define i256 @test_exponent7.1() {
 
 define i256 @test_exponent8() {
 ; CHECK-LABEL: define i256 @test_exponent8() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 0, i256 433478394034343)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 0
 ;
 
   %res = call i256 @llvm.evm.exp(i256 0, i256 433478394034343)
@@ -98,8 +89,7 @@ define i256 @test_exponent8() {
 
 define i256 @test_exponent9() {
 ; CHECK-LABEL: define i256 @test_exponent9() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 121563127839120, i256 0)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 1
 ;
 
   %res = call i256 @llvm.evm.exp(i256 121563127839120, i256 0)
@@ -108,8 +98,7 @@ define i256 @test_exponent9() {
 
 define i256 @test_exponent10() {
 ; CHECK-LABEL: define i256 @test_exponent10() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 1, i256 433478394034343)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 1
 ;
 
   %res = call i256 @llvm.evm.exp(i256 1, i256 433478394034343)
@@ -118,8 +107,7 @@ define i256 @test_exponent10() {
 
 define i256 @test_exponent11() {
 ; CHECK-LABEL: define i256 @test_exponent11() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 121563127839120, i256 1)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 121563127839120
 ;
 
   %res = call i256 @llvm.evm.exp(i256 121563127839120, i256 1)
@@ -128,8 +116,7 @@ define i256 @test_exponent11() {
 
 define i256 @test_exponent12() {
 ; CHECK-LABEL: define i256 @test_exponent12() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 21, i256 52)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 569381465857367090636427305760163241950353347303833610101782245331441
 ;
 
   %res = call i256 @llvm.evm.exp(i256 21, i256 52)
@@ -138,8 +125,7 @@ define i256 @test_exponent12() {
 
 define i256 @test_exponent13() {
 ; CHECK-LABEL: define i256 @test_exponent13() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 340282366920938463463374607431768211455, i256 2)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 -680564733841876926926749214863536422911
 ;
 
   ; 0x00000000000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF ^ 2 ->
@@ -150,8 +136,7 @@ define i256 @test_exponent13() {
 
 define i256 @test_exponent14() {
 ; CHECK-LABEL: define i256 @test_exponent14() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 65536, i256 16)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 0
 ;
 
   ; 0x0000000000000000000000000000000000000000000000000000000000010000 ^ 16 ->  0
@@ -161,8 +146,7 @@ define i256 @test_exponent14() {
 
 define i256 @test_exponent15() {
 ; CHECK-LABEL: define i256 @test_exponent15() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 21709470740815105492860156599188632070735699051917406219058709325770546741247, i256 -7627257922765187922181218227643122808087153271902696082090171450652228583425)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 46756260758475007021788099943083655901358133181480408838873172916982662561791
 ;
 
   ; 0x2fff1ffffffffff5ffffff0fffffffff2ffffffafffafffcffff1ff234ffffff ^
@@ -174,8 +158,7 @@ define i256 @test_exponent15() {
 
 define i256 @test_exponent16() {
 ; CHECK-LABEL: define i256 @test_exponent16() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 0, i256 -1)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 0
 ;
 
   ; 0 ^ 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff -> 0
@@ -185,8 +168,7 @@ define i256 @test_exponent16() {
 
 define i256 @test_exponent17() {
 ; CHECK-LABEL: define i256 @test_exponent17() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 -1, i256 0)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 1
 ;
 
   ; 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ^ 0 - > 1
@@ -196,8 +178,7 @@ define i256 @test_exponent17() {
 
 define i256 @test_exponent18() {
 ; CHECK-LABEL: define i256 @test_exponent18() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 1, i256 -1)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 1
 ;
 
   ; 1 ^ 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff -> 1
@@ -207,8 +188,7 @@ define i256 @test_exponent18() {
 
 define i256 @test_exponent19() {
 ; CHECK-LABEL: define i256 @test_exponent19() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 -1, i256 1)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 -1
 ;
 
   ; 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ^ 1 - >
@@ -219,8 +199,7 @@ define i256 @test_exponent19() {
 
 define i256 @test_exponent20() {
 ; CHECK-LABEL: define i256 @test_exponent20() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 7437834752357434334343423343443375834785783474, i256 -1)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 0
 ;
 
   ; 7437834752357434334343423343443375834785783474 ^
@@ -231,8 +210,7 @@ define i256 @test_exponent20() {
 
 define i256 @test_exponent21() {
 ; CHECK-LABEL: define i256 @test_exponent21() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 -1, i256 23784273472384723848213821342323233223)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 -1
 ;
 
   ; 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ^
@@ -244,8 +222,7 @@ define i256 @test_exponent21() {
 
 define i256 @test_exponent22() {
 ; CHECK-LABEL: define i256 @test_exponent22() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.exp(i256 -1, i256 -1)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 -1
 ;
 
   ; 0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff ^
