@@ -45,6 +45,9 @@
 #include "llvm/IR/IntrinsicsAArch64.h"
 #include "llvm/IR/IntrinsicsAMDGPU.h"
 #include "llvm/IR/IntrinsicsARM.h"
+// EVM local begin
+#include "llvm/IR/IntrinsicsEVM.h"
+// EVM local end
 #include "llvm/IR/IntrinsicsWebAssembly.h"
 #include "llvm/IR/IntrinsicsX86.h"
 #include "llvm/IR/Operator.h"
@@ -1551,6 +1554,13 @@ bool llvm::canConstantFoldCallTo(const CallBase *Call, const Function *F) {
   case Intrinsic::arm_mve_vctp32:
   case Intrinsic::arm_mve_vctp64:
   case Intrinsic::aarch64_sve_convert_from_svbool:
+  // EVM local begin
+  case Intrinsic::evm_addmod:
+  case Intrinsic::evm_mulmod:
+  case Intrinsic::evm_byte:
+  case Intrinsic::evm_exp:
+  case Intrinsic::evm_signextend:
+  // EVM local end
   // WebAssembly float semantics are always known
   case Intrinsic::wasm_trunc_signed:
   case Intrinsic::wasm_trunc_unsigned:
@@ -2577,6 +2587,91 @@ static Constant *evaluateCompare(const APFloat &Op1, const APFloat &Op2,
   return nullptr;
 }
 
+// EVM local begin
+/// Extending length of two’s complement signed integer.
+/// NumByte: the size in bytes minus one of the integer to sign extend.
+/// Val: the integer being extended.
+static Constant *ConstantFoldSignextendCall(Type *Ty, const APInt &NumByte,
+                                            const APInt &Val) {
+  unsigned BitWidth = Ty->getIntegerBitWidth();
+
+  // Signextend operation returns original value if the extension
+  // overflows the type width.
+  if (NumByte.uge(APInt(BitWidth, (BitWidth / 8) - 1)))
+    return ConstantInt::get(Ty, Val);
+
+  const APInt NumBits = NumByte * 8 + 7;
+  const APInt NumBitInv = APInt(BitWidth, BitWidth) - NumBits;
+  const APInt SignMask = APInt(BitWidth, 1).shl(NumBits);
+  const APInt ValMask = APInt::getAllOnes(BitWidth).lshr(NumBitInv);
+  const APInt Ext1 = APInt::getAllOnes(BitWidth).shl(NumBits);
+  const APInt SignVal = SignMask & Val;
+  const APInt ValClean = Val & ValMask;
+  const APInt Sext = SignVal.isZero() ? APInt::getZero(BitWidth) : Ext1;
+  const APInt Result = Sext | ValClean;
+  return ConstantInt::get(Ty, Result);
+}
+
+/// Exponential operation.
+/// Calculates:
+///   (base ** exp) (mod 2**256)
+/// This is an implementation of the binary exponentiation algorithm.
+static Constant *ConstantFoldExpCall(Type *Ty, const APInt &Base,
+                                     const APInt &Exp) {
+  const unsigned BitWidth = Ty->getIntegerBitWidth();
+  if (Base == 0 && Exp != 0)
+    return Constant::getNullValue(Ty);
+  if (Base == 1 || (Base == 0 && Exp == 0))
+    return ConstantInt::get(Ty, APInt(BitWidth, 1));
+  if (Base == 2 && Exp.ule(255))
+    return ConstantInt::get(Ty, APInt(BitWidth, 1).shl(Exp));
+
+  // The target algorithm is an implementation of the following C code,
+  // where m = 2 ** 256 and 'long long' type is replaced with i256 one.
+  // long long binpow(long long a, long long b, long long m) {
+  //   a %= m;
+  //   long long res = 1;
+  //   while (b > 0) {
+  //     if (b & 1)
+  //       res = res * a % m;
+  //     a = a * a % m;
+  //     b >>= 1;
+  //   }
+  //   return res;
+  // }
+
+  // Perform calculations in double bit-width, as we need to
+  // multiply.
+  const unsigned ExtBitWidth = BitWidth * 2;
+  const APInt ModExt = APInt(ExtBitWidth, 1).shl(BitWidth);
+  APInt ResExt(ExtBitWidth, 1);
+  APInt BaseExt = Base.zext(ExtBitWidth);
+  APInt CurrExp = Exp;
+  while (CurrExp.ugt(0)) {
+    if (CurrExp[0])
+      ResExt = (ResExt * BaseExt).urem(ModExt);
+
+    BaseExt = (BaseExt * BaseExt).urem(ModExt);
+    CurrExp.lshrInPlace(1);
+  }
+  return ConstantInt::get(Ty, ResExt.trunc(BitWidth));
+}
+
+/// Retrieve single byte from i256 word.
+/// Returns:
+///   (Val << ByteIdx * 8) >> 248.
+///   For the Nth byte, we count from the left
+///   (i.e. N=0 would be the most significant in big endian),
+///   0, if ByteIdx > 255.
+static Constant *ConstantFoldByteCall(Type *Ty, const APInt &ByteIdx,
+                                      const APInt &Val) {
+  // Please, note the case ByteIdx > 31 is properly handled by the shl
+  // implementation, see the comments for ConstantFoldSHRCall.
+  unsigned BitWidth = Ty->getIntegerBitWidth();
+  return ConstantInt::get(Ty, Val.shl(ByteIdx * 8).lshr(BitWidth - 8));
+}
+// EVM local end
+
 static Constant *ConstantFoldLibCall2(StringRef Name, Type *Ty,
                                       ArrayRef<Constant *> Operands,
                                       const TargetLibraryInfo *TLI) {
@@ -2645,6 +2740,33 @@ static Constant *ConstantFoldIntrinsicCall2(Intrinsic::ID IntrinsicID, Type *Ty,
                                             ArrayRef<Constant *> Operands,
                                             const CallBase *Call) {
   assert(Operands.size() == 2 && "Wrong number of operands.");
+
+  // EVM local begin
+  if (Operands[0]->getType()->isIntegerTy() &&
+      Operands[1]->getType()->isIntegerTy()) {
+    const APInt *C0 = nullptr, *C1 = nullptr;
+    if (!getConstIntOrUndef(Operands[0], C0) ||
+        !getConstIntOrUndef(Operands[1], C1))
+      return nullptr;
+
+    if (IntrinsicID == Intrinsic::evm_signextend ||
+        IntrinsicID == Intrinsic::evm_exp ||
+        IntrinsicID == Intrinsic::evm_byte) {
+      if (isa<PoisonValue>(Operands[0]) || isa<PoisonValue>(Operands[1]) ||
+          !C0 || !C1)
+        return PoisonValue::get(Ty);
+
+      assert(Ty->getIntegerBitWidth() == 256);
+
+      if (IntrinsicID == Intrinsic::evm_signextend)
+        return ConstantFoldSignextendCall(Ty, *C0, *C1);
+      if (IntrinsicID == Intrinsic::evm_exp)
+        return ConstantFoldExpCall(Ty, *C0, *C1);
+      if (IntrinsicID == Intrinsic::evm_byte)
+        return ConstantFoldByteCall(Ty, *C0, *C1);
+    }
+  }
+  // EVM local end
 
   if (Ty->isFloatingPointTy()) {
     // TODO: We should have undef handling for all of the FP intrinsics that
@@ -3097,6 +3219,46 @@ static Constant *ConstantFoldAMDGCNPermIntrinsic(ArrayRef<Constant *> Operands,
   return ConstantInt::get(Ty, Val);
 }
 
+// EVM local begin
+/// Unsigned modulo addition operation.
+/// Returns:
+///   0, if Mod == 0
+///   (Arg1 + Arg2) (mod Mod), if Mod != 0
+/// All intermediate calculations of this operation are not subject
+/// to the 2 ** 256 modulo.
+static Constant *ConstantFoldAddModCall(Type *Ty, const APInt &Arg1,
+                                        const APInt &Arg2, const APInt &Mod) {
+  const unsigned BitWidth = Ty->getIntegerBitWidth();
+  if (Mod.isZero())
+    return Constant::getNullValue(Ty);
+
+  // Sum representation of two N-bit values takes up to N + 1 bits.
+  const unsigned ExtBitWidth = BitWidth + 1;
+  const APInt Sum = Arg1.zext(ExtBitWidth) + Arg2.zext(ExtBitWidth);
+  const APInt Rem = Sum.urem(Mod.zext(ExtBitWidth));
+  return ConstantInt::get(Ty, Rem.trunc(BitWidth));
+}
+
+/// Unsigned modulo multiplication operation.
+/// Returns:
+///   0, if Mod == 0
+///   (Arg1 * Arg2) (mod Mod), if Mod != 0
+/// All intermediate calculations of this operation are not subject
+/// to the 2**256 modulo.
+static Constant *ConstantFoldMulModCall(Type *Ty, const APInt &Arg1,
+                                        const APInt &Arg2, const APInt &Mod) {
+  const unsigned BitWidth = Ty->getIntegerBitWidth();
+  if (Mod.isZero())
+    return Constant::getNullValue(Ty);
+
+  // Multiplication representation of two N-bit values takes up to 2 * N bits.
+  const unsigned ExtBitWidth = BitWidth * 2;
+  const APInt Product = Arg1.zext(ExtBitWidth) * Arg2.zext(ExtBitWidth);
+  const APInt Rem = Product.urem(Mod.zext(ExtBitWidth));
+  return ConstantInt::get(Ty, Rem.trunc(BitWidth));
+}
+// EVM local end
+
 static Constant *ConstantFoldScalarCall3(StringRef Name,
                                          Intrinsic::ID IntrinsicID,
                                          Type *Ty,
@@ -3230,6 +3392,28 @@ static Constant *ConstantFoldScalarCall3(StringRef Name,
 
   if (IntrinsicID == Intrinsic::amdgcn_perm)
     return ConstantFoldAMDGCNPermIntrinsic(Operands, Ty);
+
+  // EVM local begin
+  if (IntrinsicID == Intrinsic::evm_addmod ||
+      IntrinsicID == Intrinsic::evm_mulmod) {
+    const APInt *C0, *C1, *C2;
+    if (!getConstIntOrUndef(Operands[0], C0) ||
+        !getConstIntOrUndef(Operands[1], C1) ||
+        !getConstIntOrUndef(Operands[2], C2))
+      return nullptr;
+
+    if (isa<PoisonValue>(Operands[0]) || isa<PoisonValue>(Operands[1]) ||
+        isa<PoisonValue>(Operands[2]) || !C0 || !C1 || !C2)
+      return PoisonValue::get(Ty);
+
+    assert(Ty->getIntegerBitWidth() == 256);
+
+    if (IntrinsicID == Intrinsic::evm_addmod)
+      return ConstantFoldAddModCall(Ty, *C0, *C1, *C2);
+    if (IntrinsicID == Intrinsic::evm_mulmod)
+      return ConstantFoldMulModCall(Ty, *C0, *C1, *C2);
+  }
+  // EVM local end
 
   return nullptr;
 }
