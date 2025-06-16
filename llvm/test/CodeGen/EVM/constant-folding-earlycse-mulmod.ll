@@ -8,8 +8,7 @@ declare i256 @llvm.evm.mulmod(i256, i256, i256)
 
 define i256 @test_mulmod1() {
 ; CHECK-LABEL: define i256 @test_mulmod1() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.mulmod(i256 -2, i256 -2, i256 3)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 1
 ;
 
   ; Params are treated as unsigned values
@@ -19,8 +18,7 @@ define i256 @test_mulmod1() {
 
 define i256 @test_mulmod2() {
 ; CHECK-LABEL: define i256 @test_mulmod2() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.mulmod(i256 3, i256 17, i256 7)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 2
 ;
 
   %res = call i256 @llvm.evm.mulmod(i256 3, i256 17, i256 7)
@@ -29,8 +27,7 @@ define i256 @test_mulmod2() {
 
 define i256 @test_mulmod3() {
 ; CHECK-LABEL: define i256 @test_mulmod3() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.mulmod(i256 undef, i256 17, i256 7)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 poison
 ;
 
   %res = call i256 @llvm.evm.mulmod(i256 undef, i256 17, i256 7)
@@ -39,8 +36,7 @@ define i256 @test_mulmod3() {
 
 define i256 @test_mulmod4() {
 ; CHECK-LABEL: define i256 @test_mulmod4() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.mulmod(i256 17, i256 undef, i256 7)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 poison
 ;
 
   %res = call i256 @llvm.evm.mulmod(i256 17, i256 undef, i256 7)
@@ -49,8 +45,7 @@ define i256 @test_mulmod4() {
 
 define i256 @test_mulmod5() {
 ; CHECK-LABEL: define i256 @test_mulmod5() {
-; CHECK-NEXT:    [[RES:%.*]] = call i256 @llvm.evm.mulmod(i256 3, i256 17, i256 undef)
-; CHECK-NEXT:    ret i256 [[RES]]
+; CHECK-NEXT:    ret i256 poison
 ;
 
   %res = call i256 @llvm.evm.mulmod(i256 3, i256 17, i256 undef)
