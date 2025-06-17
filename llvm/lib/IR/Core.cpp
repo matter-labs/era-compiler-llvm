@@ -118,6 +118,12 @@ void *LLVMContextGetDiagnosticContext(LLVMContextRef C) {
   return unwrap(C)->getDiagnosticContext();
 }
 
+// EVM local begin
+uint64_t LLVMGetSpillAreaSizeEVM(LLVMContextRef C) {
+  return unwrap(C)->getSpillAreaSize();
+}
+// EVM local end
+
 void LLVMContextSetYieldCallback(LLVMContextRef C, LLVMYieldCallback Callback,
                                  void *OpaqueHandle) {
   auto YieldCallback =
