@@ -39,6 +39,11 @@ public:
 
 bool EVMPeephole::runOnMachineFunction(MachineFunction &MF) {
   bool Changed = false;
+  for (MachineBasicBlock &MBB : MF)
+    for (MachineInstr &MI : MBB)
+      if (MI.getOpcode() == EVM::JUMPI)
+        report_fatal_error("Unexpected JUMPI instruction found");
+
   for (MachineBasicBlock &MBB : MF) {
     Changed |= optimizeConditionaJumps(MBB);
   }
