@@ -20,11 +20,13 @@ namespace llvm {
 
 class MachineInstr;
 class MCSymbol;
+class LiveStacks;
 
 class EVMStackifyCodeEmitter {
 public:
-  EVMStackifyCodeEmitter(const EVMStackModel &StackModel, MachineFunction &MF)
-      : Emitter(MF), StackModel(StackModel), MF(MF) {}
+  EVMStackifyCodeEmitter(const EVMStackModel &StackModel, MachineFunction &MF,
+                         VirtRegMap &VRM, LiveStacks &LSS, LiveIntervals &LIS)
+      : Emitter(MF, VRM, LSS, LIS), StackModel(StackModel), MF(MF) {}
 
   /// Stackify instructions, starting from the first MF's MBB.
   void run();
@@ -32,8 +34,10 @@ public:
 private:
   class CodeEmitter {
   public:
-    explicit CodeEmitter(MachineFunction &MF)
-        : MF(MF), TII(MF.getSubtarget<EVMSubtarget>().getInstrInfo()) {}
+    explicit CodeEmitter(MachineFunction &MF, VirtRegMap &VRM, LiveStacks &LSS,
+                         const LiveIntervals &LIS)
+        : MF(MF), VRM(VRM), LSS(LSS), LIS(LIS),
+          TII(MF.getSubtarget<EVMSubtarget>().getInstrInfo()) {}
     size_t stackHeight() const;
     void enterMBB(MachineBasicBlock *MBB, int Height);
     void emitInst(const MachineInstr *MI);
@@ -48,17 +52,23 @@ private:
     void emitCondJump(const MachineInstr *MI, MachineBasicBlock *Target);
     void emitUncondJump(const MachineInstr *MI, MachineBasicBlock *Target);
     void emitLabelReference(const MachineInstr *Call);
+    void emitReload(Register Reg);
+    void emitSpill(Register Reg, unsigned DupIdx);
     /// Remove all the instructions that are not in stack form.
     void finalize();
 
   private:
     MachineFunction &MF;
+    VirtRegMap &VRM;
+    LiveStacks &LSS;
+    const LiveIntervals &LIS;
     const EVMInstrInfo *TII;
     size_t StackHeight = 0;
     MachineBasicBlock *CurMBB = nullptr;
     DenseMap<const MachineInstr *, MCSymbol *> CallReturnSyms;
 
     void verify(const MachineInstr *MI) const;
+    int getStackSlot(Register Reg);
   };
 
   CodeEmitter Emitter;
@@ -78,6 +88,10 @@ private:
 
   /// Generate code for the instruction.
   void emitMI(const MachineInstr &MI);
+
+  /// Emit spill instructions for the \p Defs, if needed.
+  void emitSpills(const MachineBasicBlock &MBB,
+                  MachineBasicBlock::const_iterator Start, const Stack &Defs);
 };
 
 } // namespace llvm

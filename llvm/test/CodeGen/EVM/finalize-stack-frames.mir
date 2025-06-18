@@ -1,0 +1,78 @@
+# RUN: llc -x mir -run-pass=evm-finalize-stack-frames -evm-stack-region-offset=128 -evm-stack-region-size=96 < %s | FileCheck %s
+# RUN: llc -x mir -run-pass=evm-finalize-stack-frames -evm-stack-region-offset=128 -evm-stack-region-size=128 < %s 2>&1 | FileCheck --check-prefix=CHECK-MOREALLOC %s
+# RUN: not --crash llc -x mir -run-pass=evm-finalize-stack-frames < %s 2>&1 | FileCheck --check-prefix=CHECK-NOALLOC %s
+# RUN: not --crash llc -x mir -run-pass=evm-finalize-stack-frames -evm-stack-region-size=96 < %s 2>&1 | FileCheck --check-prefix=CHECK-NOSTART %s
+# RUN: not --crash llc -x mir -run-pass=evm-finalize-stack-frames -evm-stack-region-offset=129 -evm-stack-region-size=96 < %s 2>&1 | FileCheck --check-prefix=CHECK-NOMOD %s
+
+# CHECK-MOREALLOC: warning: allocated stack region size: 128 is larger than the total stack size: 96
+# CHECK-NOALLOC: LLVM ERROR: Total stack size: 96 is larger than the allocated stack region size: 0
+# CHECK-NOSTART: LLVM ERROR: Stack region offset must be set when stack region size is set. Use --evm-stack-region-offset to set the offset.
+# CHECK-NOMOD: LLVM ERROR: Stack region offset must be a multiple of 32 bytes.
+
+--- |
+  source_filename = "test.ll"
+  target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
+  target triple = "evm"
+
+  define void @foo() {
+    ret void
+  }
+
+  define void @bar() {
+    ret void
+  }
+
+...
+---
+name:            foo
+alignment:       1
+stack:
+  - { id: 0, name: '', type: spill-slot, offset: 0, size: 32, alignment: 32,
+      stack-id: default, callee-saved-register: '', callee-saved-restored: true,
+      debug-info-variable: '', debug-info-expression: '', debug-info-location: '' }
+  - { id: 1, name: '', type: spill-slot, offset: 0, size: 32, alignment: 32,
+      stack-id: default, callee-saved-register: '', callee-saved-restored: true,
+      debug-info-variable: '', debug-info-expression: '', debug-info-location: '' }
+machineFunctionInfo:
+  isStackified:    true
+  numberOfParameters: 0
+  hasPushDeployAddress: false
+body:             |
+  bb.0 (%ir-block.0):
+    liveins: $arguments
+
+    ; CHECK-LABEL: name: foo
+    ; CHECK: liveins: $arguments
+    ; CHECK-NEXT: {{  $}}
+    ; CHECK-NEXT: PUSH1_S i256 128
+    ; CHECK-NEXT: PUSH1_S i256 160
+    ; CHECK-NEXT: PseudoRET
+    PUSH_FRAME %stack.0
+    PUSH_FRAME %stack.1
+    PseudoRET
+
+...
+---
+name:            bar
+alignment:       1
+stack:
+  - { id: 0, name: '', type: spill-slot, offset: 0, size: 32, alignment: 32,
+      stack-id: default, callee-saved-register: '', callee-saved-restored: true,
+      debug-info-variable: '', debug-info-expression: '', debug-info-location: '' }
+machineFunctionInfo:
+  isStackified:    true
+  numberOfParameters: 0
+  hasPushDeployAddress: false
+body:             |
+  bb.0 (%ir-block.0):
+    liveins: $arguments
+
+    ; CHECK-LABEL: name: bar
+    ; CHECK: liveins: $arguments
+    ; CHECK-NEXT: {{  $}}
+    ; CHECK-NEXT: PUSH1_S i256 192
+    ; CHECK-NEXT: PseudoRET
+    PUSH_FRAME %stack.0
+    PseudoRET
+
+...
