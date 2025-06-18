@@ -132,6 +132,17 @@ void EVMFinalizeStackFrames::replaceFrameIndices(
 bool EVMFinalizeStackFrames::runOnModule(Module &M) {
   LLVM_DEBUG({ dbgs() << "********** Finalize stack frames **********\n"; });
 
+  // Check if options for stack region size and offset are set correctly.
+  if (StackRegionSize.getNumOccurrences()) {
+    if (!StackRegionOffset.getNumOccurrences())
+      report_fatal_error("Stack region offset must be set when stack region "
+                         "size is set. Use --evm-stack-region-offset to set "
+                         "the offset.");
+
+    if (StackRegionOffset % 32 != 0)
+      report_fatal_error("Stack region offset must be a multiple of 32 bytes.");
+  }
+
   uint64_t TotalStackSize = 0;
   MachineModuleInfo &MMI = getAnalysis<MachineModuleInfoWrapperPass>().getMMI();
   SmallVector<std::pair<MachineFunction *, uint64_t>, 8> ToReplaceFI;
@@ -165,13 +176,11 @@ bool EVMFinalizeStackFrames::runOnModule(Module &M) {
                          " is larger than the allocated stack region size: " +
                          Twine(StackRegionSize));
 
-    if (StackRegionOffset == std::numeric_limits<uint64_t>::max())
-      report_fatal_error("Stack region offset is not set, but total stack size "
-                         "is greater than zero. Set --evm-stack-region-offset "
-                         "to a valid value.");
-
-    if (StackRegionOffset % 32 != 0)
-      report_fatal_error("Stack region offset must be a multiple of 32 bytes.");
+    if (StackRegionSize > TotalStackSize)
+      errs() << "warning: allocated stack region size: " +
+                    Twine(StackRegionSize) +
+                    " is larger than the total stack size: " +
+                    Twine(TotalStackSize) + "\n";
   }
 
   // Replace frame indices with their offsets.

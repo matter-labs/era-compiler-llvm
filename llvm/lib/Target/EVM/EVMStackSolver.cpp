@@ -71,7 +71,7 @@ Stack calculateStackBeforeInst(const Stack &InstDefs, const Stack &AfterInst,
   // Number of slots on stack before the instruction excluding its inputs.
   size_t BeforeInstSize = count_if(AfterInst, [&](const StackSlot *S) {
     return !is_contained(InstDefs, S) &&
-           !(CompressStack && S->isRematerializable());
+           !(CompressStack && (S->isRematerializable() || isSpillReg(S)));
   });
 
   // To use StackTransformer, the computed stack must be transformable to the
@@ -96,7 +96,7 @@ Stack calculateStackBeforeInst(const Stack &InstDefs, const Stack &AfterInst,
 
   auto canSkipSlot = [&InstDefs, CompressStack](const StackSlot *Slot) {
     return count(InstDefs, Slot) ||
-           (CompressStack && Slot->isRematerializable());
+           (CompressStack && (Slot->isRematerializable() || isSpillReg(Slot)));
   };
   auto countOccurences = [&canSkipSlot](const StackSlot *Slot, Stack &C,
                                         const Stack &T) {
@@ -237,7 +237,7 @@ llvm::calculateStackTransformCost(Stack Source, const Stack &Target,
 
   auto Rematerialize = [&Gas, &HasError, &Source,
                         StackDepthLimit](const StackSlot *Slot) {
-    if (Slot->isRematerializable() && isa<RegisterSlot>(Slot)) {
+    if (isSpillReg(Slot)) {
       // Prefer dup for spills and reloads, since it is cheaper.
       std::optional<size_t> Depth = offset(reverse(Source), Slot);
       if (Depth && *Depth < StackDepthLimit)
@@ -296,16 +296,15 @@ EVMStackSolver::UnreachableSlotVec EVMStackSolver::getUnreachableSlots() const {
             },
             // Push or dup.
             [&](const StackSlot *Slot) {
-              // Dup the slot, if already on stack and reachable.
+              if (Slot->isRematerializable() || isSpillReg(Slot))
+                return;
+
               auto SlotIt = llvm::find(llvm::reverse(From), Slot);
-              if (SlotIt != From.rend()) {
-                unsigned Depth = std::distance(From.rbegin(), SlotIt);
-                if (Depth >= StackDepthLimit && !Slot->isRematerializable()) {
-                  UnreachableSlots.push_back({From, From.size() - Depth - 1});
-                }
-              } else {
-                assert(Slot->isRematerializable());
-              }
+              assert(SlotIt != From.rend() &&
+                     "Slot for duplication not found on the stack.");
+              unsigned Depth = std::distance(From.rbegin(), SlotIt);
+              if (Depth >= StackDepthLimit)
+                UnreachableSlots.push_back({From, From.size() - Depth - 1});
             },
             // Pop.
             [&]() {});
@@ -329,6 +328,9 @@ EVMStackSolver::UnreachableSlotVec EVMStackSolver::getUnreachableSlots() const {
     case EVMInstrInfo::BT_Uncond:
     case EVMInstrInfo::BT_NoBranch:
       if (!MBB.succ_empty())
+        // For loop latches, exit stack is not the same as the entry stack
+        // of the successor block, so we need to check the transformation
+        // from the current stack to the entry stack of the successor block.
         checkStackTransformation(CurrentStack,
                                  StackModel.getMBBEntryStack(TBB));
       break;
@@ -373,6 +375,10 @@ void EVMStackSolver::run() {
             << "EVMStackSolver: force CompressStack for recursive function.\n";
       });
 
+      // propagateThroughMBB can't detect stack-too-deep errors for
+      // transformations from MBB's entry stack to the first instruction entry
+      // stack. Since a recursive function doesn't support spills and reloads,
+      // try to compress the stack.
       // TODO: This is a little bit agressive, since we can detect MBBs where
       // the stack is too deep and compress only them.
       ForceCompressStack = true;
@@ -406,13 +412,15 @@ void EVMStackSolver::run() {
       SmallSetVector<Register, 16> SpillableRegs;
       for (unsigned I = Idx, E = StackSlots.size(); I < E; ++I)
         if (const auto *RegSlot = dyn_cast<RegisterSlot>(StackSlots[I]))
-          if (!RegSlot->isRematerializable())
+          if (!RegSlot->isSpill())
             SpillableRegs.insert(RegSlot->getReg());
 
       if (!SpillableRegs.empty())
         RegsToSpill.insert(getRegToSpill(SpillableRegs, LIS));
     }
 
+    LLVM_DEBUG(
+        { dbgs() << "Spilling " << RegsToSpill.size() << " registers\n"; });
     if (RegsToSpill.empty())
       report_fatal_error("EVMStackSolver: no spillable registers found for "
                          "unreachable slots.");
@@ -461,13 +469,12 @@ Stack EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
     // Don't remove register spills if the register is used or defined before
     // MI. They are not cheap and ideally we shouldn't do more than one reload
     // in the BB.
-    if (BackSlot->isRematerializable() &&
-        (!isa<RegisterSlot>(BackSlot) ||
+    if (BackSlot->isRematerializable() ||
+        (isSpillReg(BackSlot) &&
          !isRegDefOrUsedBefore(MI, cast<RegisterSlot>(BackSlot)->getReg()))) {
       BeforeMI.pop_back();
-      continue;
-    }
-    if (auto Offset = offset(drop_begin(reverse(BeforeMI), 1), BackSlot)) {
+    } else if (auto Offset =
+                   offset(drop_begin(reverse(BeforeMI), 1), BackSlot)) {
       if (*Offset + 2 < StackModel.stackDepthLimit())
         BeforeMI.pop_back();
       else
@@ -692,7 +699,7 @@ void EVMStackSolver::runPropagation() {
 
 #ifndef NDEBUG
       for (const StackSlot *Slot : SuccEntryStack)
-        assert(Slot->isRematerializable() ||
+        assert(Slot->isRematerializable() || isSpillReg(Slot) ||
                is_contained(NewSuccEntryStack, Slot));
 #endif // NDEBUG
 
@@ -752,7 +759,8 @@ Stack EVMStackSolver::combineStack(const Stack &Stack1, const Stack &Stack2) {
 
   Stack Candidate;
   for (const auto *Slot : concat<const StackSlot *>(Stack1Tail, Stack2Tail))
-    if (!is_contained(Candidate, Slot) && !Slot->isRematerializable())
+    if (!is_contained(Candidate, Slot) && !Slot->isRematerializable() &&
+        !isSpillReg(Slot))
       Candidate.push_back(Slot);
 
   auto evaluate = [&CommonPrefix, &Stack1, &Stack2,
@@ -805,7 +813,7 @@ Stack EVMStackSolver::compressStack(Stack CurStack) {
   auto ShouldRemove =
       [&CurStack, this](SmallVector<const StackSlot *>::reverse_iterator I) {
         size_t RIdx = std::distance(CurStack.rbegin(), I);
-        if ((*I)->isRematerializable())
+        if ((*I)->isRematerializable() || isSpillReg(*I))
           return true;
         if (auto DistanceToCopy =
                 offset(make_range(std::next(I), CurStack.rend()), *I))

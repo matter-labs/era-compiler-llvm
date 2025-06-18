@@ -209,25 +209,26 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitReload(Register Reg) {
 
 void EVMStackifyCodeEmitter::CodeEmitter::emitSpill(Register Reg,
                                                     unsigned DupIdx) {
-  // Reduce height if we are not going to duplicate the register.
-  // In this case, register will be used by the MSTORE instruction
-  // that is used for spilling.
   if (DupIdx == 0) {
     assert(StackHeight > 0 && "Expected at least one operand on the stack");
+
+    // Reduce height if we are not going to duplicate the register.
+    // In this case, register will be used by the MSTORE instruction
+    // that is used for spilling.
     StackHeight -= 1;
   } else {
     assert(StackHeight >= DupIdx &&
            "Not enough operands on the stack for DUP while spilling");
-  }
 
-  // If register is used after spill, we need to duplicate it.
-  if (DupIdx > 0) {
+    // Register is used after spill, so we need to duplicate it.
     emitDUP(DupIdx);
+
     // Since we are going to spill the register, stack height doesn't
     // change, so we need to reduce it by 1, as emitDUP increases
     // the stack height by that amount.
     StackHeight -= 1;
   }
+
   auto NewMI =
       BuildMI(*CurMBB, CurMBB->end(), DebugLoc(), TII->get(EVM::PUSH_FRAME))
           .addFrameIndex(getStackSlot(Reg));
@@ -330,9 +331,8 @@ void EVMStackifyCodeEmitter::emitSpills(const MachineBasicBlock &MBB,
                                         MachineBasicBlock::const_iterator Start,
                                         const Stack &Defs) {
   // Check if we have any spillable registers.
-  if (find_if(Defs, [](const StackSlot *Slot) {
-        return isa<RegisterSlot>(Slot) && Slot->isRematerializable();
-      }) == Defs.end())
+  if (find_if(Defs, [](const StackSlot *Slot) { return isSpillReg(Slot); }) ==
+      Defs.end())
     return;
 
   // In case of a single definition, we can remove it from the stack
@@ -348,9 +348,7 @@ void EVMStackifyCodeEmitter::emitSpills(const MachineBasicBlock &MBB,
         Start != MBB.end() && !EVMInstrInfo::isStack(&*Start)
             ? StackModel.getInstEntryStack(&*Start)
             : StackModel.getMBBExitStack(&MBB);
-    const auto *RegSlot = dyn_cast<RegisterSlot>(Defs[0]);
-    assert(RegSlot && RegSlot->isRematerializable() &&
-           "Expected spillable register slot");
+    const auto *RegSlot = cast<RegisterSlot>(Defs[0]);
 
     // Find if if the register is used after spill. If it is we need to
     // emit DUP instruction to keep it on the stack.
@@ -367,13 +365,9 @@ void EVMStackifyCodeEmitter::emitSpills(const MachineBasicBlock &MBB,
     // is more complex when we have multiple definitions, as we
     // need to do stack manipulation to keep the stack in sync
     // with the target stack.
-    for (auto [DefIdx, Def] : enumerate(reverse(Defs))) {
-      const auto *RegSlot = dyn_cast<RegisterSlot>(Def);
-      if (!RegSlot || !RegSlot->isRematerializable())
-        continue;
-
-      Emitter.emitSpill(RegSlot->getReg(), DefIdx + 1);
-    }
+    for (auto [DefIdx, Def] : enumerate(reverse(Defs)))
+      if (isSpillReg(Def))
+        Emitter.emitSpill(cast<RegisterSlot>(Def)->getReg(), DefIdx + 1);
   }
   assert(Emitter.stackHeight() == CurrentStack.size());
 }
@@ -420,7 +414,7 @@ void EVMStackifyCodeEmitter::emitStackPermutations(const Stack &TargetStack) {
             Emitter.emitDUP(static_cast<unsigned>(Depth + 1));
             return;
           }
-          if (!Slot->isRematerializable()) {
+          if (!Slot->isRematerializable() && !isSpillReg(Slot)) {
             std::string ErrMsg = getUnreachableStackSlotError(
                 MF, CurrentStack, Slot, Depth + 1, /* isSwap */ false);
             report_fatal_error(ErrMsg.c_str());
@@ -428,7 +422,7 @@ void EVMStackifyCodeEmitter::emitStackPermutations(const Stack &TargetStack) {
         }
 
         // Rematerialize the slot.
-        assert(Slot->isRematerializable());
+        assert(Slot->isRematerializable() || isSpillReg(Slot));
         if (const auto *L = dyn_cast<LiteralSlot>(Slot)) {
           Emitter.emitConstant(L->getValue());
         } else if (const auto *S = dyn_cast<SymbolSlot>(Slot)) {

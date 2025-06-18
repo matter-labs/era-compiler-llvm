@@ -257,8 +257,8 @@ debugValueSubstitutions: []
 constants:       []
 machineFunctionInfo:
   isStackified:    false
-  NumberOfParameters: 4
-  HasPushDeployAddress: false
+  numberOfParameters: 4
+  hasPushDeployAddress: false
 body:             |
   ; CHECK-LABEL: name: main
   ; CHECK: bb.0.entry:

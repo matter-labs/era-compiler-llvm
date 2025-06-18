@@ -117,8 +117,8 @@ debugValueSubstitutions: []
 constants:       []
 machineFunctionInfo:
   isStackified:    false
-  NumberOfParameters: 14
-  HasPushDeployAddress: false
+  numberOfParameters: 14
+  hasPushDeployAddress: false
 body:             |
   bb.0.entry:
     liveins: $arguments, $value_stack

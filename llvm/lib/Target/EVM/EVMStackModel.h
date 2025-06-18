@@ -88,9 +88,11 @@ class RegisterSlot final : public StackSlot {
 public:
   explicit RegisterSlot(const Register &R) : StackSlot(SK_Register), Reg(R) {}
   const Register &getReg() const { return Reg; }
-  void setIsSpill(bool Spill = true) { IsSpill = Spill; }
 
-  bool isRematerializable() const override { return IsSpill; }
+  void setIsSpill(bool Spill = true) { IsSpill = Spill; }
+  bool isSpill() const { return IsSpill; }
+
+  bool isRematerializable() const override { return false; }
   std::string toString() const override {
     SmallString<64> S;
     raw_svector_ostream OS(S);
@@ -216,6 +218,12 @@ bool isPushOrDupLikeMI(const MachineInstr &MI);
 bool isLinkerPseudoMI(const MachineInstr &MI);
 bool isNoReturnCallMI(const MachineInstr &MI);
 
+/// Returns true if the \p Slot is a spill register slot.
+inline bool isSpillReg(const StackSlot *Slot) {
+  const auto *RegSlot = dyn_cast<RegisterSlot>(Slot);
+  return RegSlot && RegSlot->isSpill();
+}
+
 class EVMStackModel {
   MachineFunction &MF;
   const LiveIntervals &LIS;
@@ -273,7 +281,7 @@ public:
   void addSpillRegs(const SmallSet<Register, 4> &SpillRegs) {
     for (const auto &R : SpillRegs) {
       auto *RegSlot = RegStorage.at(R).get();
-      assert(!RegSlot->isRematerializable() &&
+      assert(!RegSlot->isSpill() &&
              "Register slot has already been marked as spill");
       RegSlot->setIsSpill();
     }

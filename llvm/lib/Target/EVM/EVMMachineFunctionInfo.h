@@ -38,8 +38,8 @@ struct EVMMachineFunctionInfo final : public yaml::MachineFunctionInfo {
 template <> struct MappingTraits<EVMMachineFunctionInfo> {
   static void mapping(IO &YamlIO, EVMMachineFunctionInfo &MFI) {
     YamlIO.mapOptional("isStackified", MFI.IsStackified, false);
-    YamlIO.mapOptional("NumberOfParameters", MFI.NumberOfParameters, 0);
-    YamlIO.mapOptional("HasPushDeployAddress", MFI.HasPushDeployAddress, false);
+    YamlIO.mapOptional("numberOfParameters", MFI.NumberOfParameters, 0);
+    YamlIO.mapOptional("hasPushDeployAddress", MFI.HasPushDeployAddress, false);
   }
 };
 } // end namespace yaml
