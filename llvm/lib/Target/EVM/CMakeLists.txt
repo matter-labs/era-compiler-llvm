@@ -30,19 +30,20 @@ add_llvm_target(EVMCodeGen
   EVMLinkRuntime.cpp
   EVMLowerIntrinsics.cpp
   EVMLowerJumpUnless.cpp
-  EVMMachineFunctionInfo.cpp
   EVMMCInstLower.cpp
+  EVMMachineFunctionInfo.cpp
   EVMOptimizeLiveIntervals.cpp
+  EVMPeephole.cpp
   EVMRegColoring.cpp
   EVMRegisterInfo.cpp
   EVMSHA3ConstFolding.cpp
   EVMSingleUseExpression.cpp
   EVMSplitCriticalEdges.cpp
-  EVMStackSolver.cpp
   EVMStackModel.cpp
+  EVMStackShuffler.cpp
+  EVMStackSolver.cpp
   EVMStackify.cpp
   EVMStackifyCodeEmitter.cpp
-  EVMStackShuffler.cpp
   EVMSubtarget.cpp
   EVMTargetMachine.cpp
   EVMTargetTransformInfo.cpp
@@ -64,8 +65,6 @@ add_llvm_target(EVMCodeGen
   Target
   TargetParser
   TransformUtils
-  EVMDesc
-  EVMInfo
 
   ADD_TO_COMPONENT
   EVM
