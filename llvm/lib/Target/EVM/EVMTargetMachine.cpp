@@ -51,6 +51,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   initializeEVMCodegenPreparePass(PR);
   initializeEVMAllocaHoistingPass(PR);
   initializeEVMLinkRuntimePass(PR);
+  initializeEVMSystemIntrinsicsPromotionPass(PR);
   initializeEVMLowerIntrinsicsPass(PR);
   initializeEVMOptimizeLiveIntervalsPass(PR);
   initializeEVMRegColoringPass(PR);
@@ -125,6 +126,7 @@ void EVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
   PB.registerPipelineStartEPCallback(
       [](ModulePassManager &PM, OptimizationLevel Level) {
         PM.addPass(EVMLinkRuntimePass());
+        PM.addPass(EVMSystemIntrinsicsPromotionPass());
         PM.addPass(GlobalDCEPass());
         PM.addPass(createModuleToFunctionPassAdaptor(EVMAllocaHoistingPass()));
       });
@@ -145,6 +147,16 @@ void EVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
          ArrayRef<PassBuilder::PipelineElement>) {
         if (PassName == "evm-sha3-constant-folding") {
           PM.addPass(EVMSHA3ConstFoldingPass());
+          return true;
+        }
+        return false;
+      });
+
+  PB.registerPipelineParsingCallback(
+      [](StringRef PassName, ModulePassManager &PM,
+         ArrayRef<PassBuilder::PipelineElement>) {
+        if (PassName == "evm-sys-intrinsics-promotion") {
+          PM.addPass(EVMSystemIntrinsicsPromotionPass());
           return true;
         }
         return false;
