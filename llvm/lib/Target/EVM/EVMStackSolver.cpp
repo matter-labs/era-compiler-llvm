@@ -276,6 +276,30 @@ void EVMStackSolver::calculateSpillWeights() {
   IsSpillWeightsCalculated = true;
 }
 
+bool EVMStackSolver::hasUnreachableDef(const Register &Reg) const {
+  for (const auto &MI : MF.getRegInfo().def_instructions(Reg)) {
+    int Depth = -1;
+    if (MI.getOpcode() == EVM::ARGUMENT) {
+      // For function arguments, first operand represents the index of the
+      // argument on the stack, so we can use it to determine the depth.
+      Depth = MI.getOperand(1).getImm();
+    } else {
+      for (auto [DefIdx, Def] : enumerate(reverse(MI.defs()))) {
+        if (Def.getReg() == Reg) {
+          Depth = DefIdx;
+          break;
+        }
+      }
+    }
+    assert(Depth >= 0 && "Register not found in the instruction defs.");
+
+    // If the def is deeper than the stack depth limit, it is unreachable.
+    if (static_cast<unsigned>(Depth + 1) > StackModel.stackDepthLimit())
+      return true;
+  }
+  return false;
+}
+
 EVMStackSolver::UnreachableSlotVec EVMStackSolver::getUnreachableSlots() const {
   UnreachableSlotVec UnreachableSlots;
   const unsigned StackDepthLimit = StackModel.stackDepthLimit();
@@ -413,7 +437,7 @@ void EVMStackSolver::run() {
       SmallSetVector<Register, 16> SpillableRegs;
       for (unsigned I = Idx, E = StackSlots.size(); I < E; ++I)
         if (const auto *RegSlot = dyn_cast<RegisterSlot>(StackSlots[I]))
-          if (!RegSlot->isSpill())
+          if (!RegSlot->isSpill() && !hasUnreachableDef(RegSlot->getReg()))
             SpillableRegs.insert(RegSlot->getReg());
 
       if (!SpillableRegs.empty())
