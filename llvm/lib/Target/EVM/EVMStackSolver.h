@@ -107,6 +107,10 @@ private:
   /// spill when we have multiple spillable registers.
   void calculateSpillWeights();
 
+  /// Return true if any definition of \p Reg is unreachable. This can happen
+  /// for function arguments and return values.
+  bool hasUnreachableDef(const Register &Reg) const;
+
   MachineFunction &MF;
   EVMStackModel &StackModel;
   const MachineLoopInfo *MLI;
