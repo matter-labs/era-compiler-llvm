@@ -468,12 +468,18 @@ void EVMStackSolver::run() {
   }
 }
 
-// Return true if the register is defined or used before MI.
-static bool isRegDefOrUsedBefore(const MachineInstr &MI, const Register &Reg) {
-  return std::any_of(std::next(MachineBasicBlock::const_reverse_iterator(MI)),
-                     MI.getParent()->rend(), [&Reg](const MachineInstr &Instr) {
-                       return Instr.readsRegister(Reg, /*TRI*/ nullptr) ||
-                              Instr.definesRegister(Reg, /*TRI=*/nullptr);
+/// Return true if \p Slot is a spillable register and it has no use or
+/// definition before \p MI.
+static bool spillRegHasNoUseOrDefBefore(const StackSlot *Slot,
+                                        const MachineInstr &MI) {
+  if (!isSpillReg(Slot))
+    return false;
+
+  auto Reg = cast<RegisterSlot>(Slot)->getReg();
+  return std::all_of(std::next(MachineBasicBlock::const_reverse_iterator(MI)),
+                     MI.getParent()->rend(), [Reg](const MachineInstr &Instr) {
+                       return !Instr.readsRegister(Reg, /*TRI*/ nullptr) &&
+                              !Instr.definesRegister(Reg, /*TRI=*/nullptr);
                      });
 }
 
@@ -510,8 +516,7 @@ Stack EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
     // MI. They are not cheap and ideally we shouldn't do more than one reload
     // in the BB.
     if (BackSlot->isRematerializable() ||
-        (isSpillReg(BackSlot) &&
-         !isRegDefOrUsedBefore(MI, cast<RegisterSlot>(BackSlot)->getReg()))) {
+        spillRegHasNoUseOrDefBefore(BackSlot, MI)) {
       BeforeMI.pop_back();
     } else if (auto Offset =
                    offset(drop_begin(reverse(BeforeMI), 1), BackSlot)) {
@@ -611,6 +616,9 @@ void EVMStackSolver::runPropagation() {
 
       // Get the MBB exit stack.
       std::optional<Stack> ExitStack = std::nullopt;
+      // True if we need to pop the spilled condition from propagating it
+      // through the MBB.
+      bool PopSpilledCond = false;
       auto [BranchTy, TBB, FBB, BrInsts, Condition] = getBranchInfo(MBB);
 
       switch (BranchTy) {
@@ -663,8 +671,16 @@ void EVMStackSolver::runPropagation() {
                                              StackModel.getMBBEntryStack(FBB));
           // Retain the jump condition in ExitStack because StackSolver doesn't
           // propagate stacks through branch instructions.
-          CombinedStack.emplace_back(StackModel.getStackSlot(*Condition));
+          const auto *CondSlot = StackModel.getStackSlot(*Condition);
+          CombinedStack.emplace_back(CondSlot);
           ExitStack = std::move(CombinedStack);
+
+          // If the condition is spilled, we should not propagate it through the
+          // MBB, if there is no use or def of the condition. This should reduce
+          // the stack pressure if the condition is not used in the MBB.
+          if (spillRegHasNoUseOrDefBefore(CondSlot,
+                                          *BrInsts[BrInsts.size() - 1]))
+            PopSpilledCond = true;
         }
       }
       }
@@ -672,6 +688,13 @@ void EVMStackSolver::runPropagation() {
       if (ExitStack) {
         Visited.insert(MBB);
         insertMBBExitStack(MBB, *ExitStack);
+        if (PopSpilledCond) {
+          assert(ExitStack->back() ==
+                     StackModel.getRegisterSlot(Condition->getReg()) &&
+                 "Condition slot should be on top of the exit stack.");
+          ExitStack->pop_back();
+        }
+
         insertMBBEntryStack(
             MBB, propagateThroughMBB(*ExitStack, MBB, ForceCompressStack));
         append_range(Worklist, MBB->predecessors());
