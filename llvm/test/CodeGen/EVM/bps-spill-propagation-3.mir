@@ -133,8 +133,6 @@ body:             |
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT:   POP_S
-  ; CHECK-NEXT:   PUSH_FRAME %stack.0
-  ; CHECK-NEXT:   MLOAD_S
   ; CHECK-NEXT:   PseudoJUMP %bb.5
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT: bb.2.bb1:
@@ -160,13 +158,12 @@ body:             |
   ; CHECK-NEXT:   successors: %bb.5(0x80000000)
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
-  ; CHECK-NEXT:   PUSH_FRAME %stack.0
-  ; CHECK-NEXT:   MLOAD_S
-  ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT: bb.5.bb2:
   ; CHECK-NEXT:   successors: %bb.7(0x50000000), %bb.6(0x30000000)
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
+  ; CHECK-NEXT:   PUSH_FRAME %stack.0
+  ; CHECK-NEXT:   MLOAD_S
   ; CHECK-NEXT:   PseudoJUMPI %bb.7
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT: bb.6:
