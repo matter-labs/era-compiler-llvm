@@ -32,6 +32,13 @@ static cl::opt<unsigned> MaxSpillIterations(
     cl::desc("Maximum number of iterations to spill stack slots "
              "to avoid stack too deep issues."));
 
+#ifndef NDEBUG
+static cl::list<unsigned>
+    ForceRegSpills("evm-force-reg-spills",
+                   llvm::cl::desc("Force spilling of the specified registers."),
+                   cl::CommaSeparated, cl::Hidden);
+#endif // NDEBUG
+
 namespace {
 
 /// \return index of \p Item in \p RangeOrContainer or std::nullopt.
@@ -372,6 +379,14 @@ EVMStackSolver::UnreachableSlotVec EVMStackSolver::getUnreachableSlots() const {
 }
 
 void EVMStackSolver::run() {
+#ifndef NDEBUG
+  SmallSet<Register, 4> ForceSpillRegs;
+  for (auto Reg : ForceRegSpills)
+    ForceSpillRegs.insert(Register::index2VirtReg(Reg));
+  if (!ForceSpillRegs.empty())
+    StackModel.addSpillRegs(ForceSpillRegs);
+#endif // NDEBUG
+
   unsigned IterCount = 0;
   while (true) {
     runPropagation();
