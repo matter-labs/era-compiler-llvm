@@ -15,6 +15,9 @@
 #define LLVM_C_ERRORHANDLING_H
 
 #include "llvm-c/ExternC.h"
+// EVM local beging
+#include <stdint.h>
+// EVM local end
 
 LLVM_C_EXTERN_C_BEGIN
 
@@ -25,6 +28,10 @@ LLVM_C_EXTERN_C_BEGIN
  */
 
 typedef void (*LLVMFatalErrorHandler)(const char *Reason);
+
+// EVM local begin
+typedef void (*LLVMStackErrorHandlerEVM)(uint64_t SpillRegionSize);
+// EVM local end
 
 /**
  * Install a fatal error handler. By default, if LLVM detects a fatal error, it
@@ -47,6 +54,19 @@ void LLVMResetFatalErrorHandler(void);
  * crash.
  */
 void LLVMEnablePrettyStackTrace(void);
+
+// EVM local begin
+/**
+ *  Register a handler that the stackification algorithm invokes when it
+ *  requires a pre-allocated spill region.
+ */
+void LLVMInstallEVMStackErrorHandler(LLVMStackErrorHandlerEVM Handler);
+
+/**
+ * Reset the EVM stack error handler.
+ */
+void LLVMResetEVMStackErrorHandler(void);
+// EVM local end
 
 /**
  * @}

@@ -15,6 +15,9 @@
 #define LLVM_SUPPORT_ERRORHANDLING_H
 
 #include "llvm/Support/Compiler.h"
+// EVM local begin
+#include <cstdint>
+// EVM local end
 
 namespace llvm {
   class StringRef;
@@ -24,6 +27,11 @@ namespace llvm {
   typedef void (*fatal_error_handler_t)(void *user_data,
                                         const char *reason,
                                         bool gen_crash_diag);
+
+  // EVM local begin
+  typedef void (*evm_stack_error_handler_t)(void *user_data,
+                                            uint64_t spill_region_size);
+  // EVM local end
 
   /// install_fatal_error_handler - Installs a new error handler to be used
   /// whenever a serious (non-recoverable) error is encountered by LLVM.
@@ -74,6 +82,11 @@ namespace llvm {
                                      bool gen_crash_diag = true);
 [[noreturn]] void report_fatal_error(const Twine &reason,
                                      bool gen_crash_diag = true);
+
+// EVM local begin
+/// Report a stackification error and request a spill region.
+void report_evm_stack_error(const Twine &reason, uint64_t spill_region_size);
+// EVM local end
 
 /// Installs a new bad alloc error handler that should be used whenever a
 /// bad alloc error, e.g. failing malloc/calloc, is encountered by LLVM.

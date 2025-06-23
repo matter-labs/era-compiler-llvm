@@ -45,6 +45,11 @@ static void *ErrorHandlerUserData = nullptr;
 static fatal_error_handler_t BadAllocErrorHandler = nullptr;
 static void *BadAllocErrorHandlerUserData = nullptr;
 
+// EVM local begin
+static evm_stack_error_handler_t EVMStackErrorHandler = nullptr;
+static void *EVMStackErrorHandlerUserData = nullptr;
+// EVM local end
+
 #if LLVM_ENABLE_THREADS == 1
 // Mutexes to synchronize installing error handlers and calling error handlers.
 // Do not use ManagedStatic, or that may allocate memory while attempting to
@@ -59,6 +64,9 @@ static void *BadAllocErrorHandlerUserData = nullptr;
 // builds. We can remove these ifdefs if that script goes away.
 static std::mutex ErrorHandlerMutex;
 static std::mutex BadAllocErrorHandlerMutex;
+// EVM local begin
+static std::mutex EVMStackErrorHandlerMutex;
+// EVM local end
 #endif
 
 void llvm::install_fatal_error_handler(fatal_error_handler_t handler,
@@ -233,6 +241,57 @@ void LLVMInstallFatalErrorHandler(LLVMFatalErrorHandler Handler) {
 void LLVMResetFatalErrorHandler() {
   remove_fatal_error_handler();
 }
+
+// EVM local begin
+static void bindingsEVMStackErrorHandler(void *user_data,
+                                         uint64_t spill_region_size) {
+  LLVMStackErrorHandlerEVM handler =
+      LLVM_EXTENSION reinterpret_cast<LLVMStackErrorHandlerEVM>(user_data);
+  handler(spill_region_size);
+}
+
+void LLVMInstallEVMStackErrorHandler(LLVMStackErrorHandlerEVM Handler) {
+#if LLVM_ENABLE_THREADS == 1
+  std::lock_guard<std::mutex> Lock(EVMStackErrorHandlerMutex);
+#endif
+  assert(!EVMStackErrorHandler && "Error handler already registered!\n");
+  EVMStackErrorHandler = bindingsEVMStackErrorHandler;
+  EVMStackErrorHandlerUserData =
+      LLVM_EXTENSION reinterpret_cast<void *>(Handler);
+}
+
+void LLVMResetEVMStackErrorHandler(void) {
+#if LLVM_ENABLE_THREADS == 1
+  std::lock_guard<std::mutex> Lock(EVMStackErrorHandlerMutex);
+#endif
+  EVMStackErrorHandler = nullptr;
+  EVMStackErrorHandlerUserData = nullptr;
+}
+
+void llvm::report_evm_stack_error(const Twine &Reason,
+                                  uint64_t spillRegionSize) {
+  llvm::evm_stack_error_handler_t handler = nullptr;
+  void *handlerData = nullptr;
+  {
+    // Only acquire the mutex while reading the handler, so as not to invoke a
+    // user-supplied callback under a lock.
+#if LLVM_ENABLE_THREADS == 1
+    std::lock_guard<std::mutex> Lock(EVMStackErrorHandlerMutex);
+#endif
+    handler = EVMStackErrorHandler;
+    handlerData = EVMStackErrorHandlerUserData;
+  }
+
+  if (handler)
+    handler(handlerData, spillRegionSize);
+
+  // If execution reaches this point, either the front-end handler wasn't
+  // set up, or it returned without calling abort()/exit().
+  // In either case, fall back to the default error handler.
+  report_fatal_error(Reason);
+}
+
+// EVM local end
 
 #ifdef _WIN32
 
