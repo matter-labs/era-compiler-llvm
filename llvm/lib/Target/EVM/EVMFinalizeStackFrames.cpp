@@ -171,10 +171,13 @@ bool EVMFinalizeStackFrames::runOnModule(Module &M) {
 
   // Check if it is valid to replace frame indices.
   if (TotalStackSize > 0) {
-    if (TotalStackSize > StackRegionSize)
-      report_fatal_error("Total stack size: " + Twine(TotalStackSize) +
-                         " is larger than the allocated stack region size: " +
-                         Twine(StackRegionSize));
+    if (TotalStackSize > StackRegionSize) {
+      report_evm_stack_error(
+          "Total stack size: " + Twine(TotalStackSize) +
+              " is larger than the allocated stack region size: " +
+              Twine(StackRegionSize),
+          TotalStackSize);
+    }
 
     if (StackRegionSize > TotalStackSize)
       errs() << "warning: allocated stack region size: " +
