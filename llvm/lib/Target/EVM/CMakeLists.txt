@@ -23,6 +23,7 @@ add_llvm_target(EVMCodeGen
   EVMAsmPrinter.cpp
   EVMBackwardPropagationStackification.cpp
   EVMCodegenPrepare.cpp
+  EVMFinalizeStackFrames.cpp
   EVMFrameLowering.cpp
   EVMISelDAGToDAG.cpp
   EVMISelLowering.cpp
@@ -31,6 +32,7 @@ add_llvm_target(EVMCodeGen
   EVMLowerIntrinsics.cpp
   EVMLowerJumpUnless.cpp
   EVMMachineFunctionInfo.cpp
+  EVMMarkRecursiveFunctions.cpp
   EVMMCInstLower.cpp
   EVMOptimizeLiveIntervals.cpp
   EVMRegColoring.cpp

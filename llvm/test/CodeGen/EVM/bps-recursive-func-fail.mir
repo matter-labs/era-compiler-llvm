@@ -1,0 +1,284 @@
+# RUN: not --crash llc -x mir -run-pass=evm-backward-propagation-stackification < %s 2>&1 | FileCheck %s
+
+# This is the same test as bps-spills-2.mir, just with an "evm-recursive" attribute.
+# Since for recursive functions we can't use spills and reloads, purpose of this is
+# to test that we issue an error if there are unreachable slots in a recursive
+# function and compression didn't help.
+
+# CHECK: LLVM ERROR: Stackification failed for 'main' function. It is recursive and has stack too deep errors. Consider refactoring it to use a non-recursive approach.
+
+--- |
+  source_filename = "reduced.ll"
+  target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
+  target triple = "evm-unknown-unknown"
+
+  declare void @llvm.memcpy.p1.p2.i256(ptr addrspace(1) noalias nocapture writeonly, ptr addrspace(2) noalias nocapture readonly, i256, i1 immarg) #0
+
+  define fastcc void @main(i256 %calldata_load_result2781, i256 %addition_result2798, i256 %shift_left_non_overflow_result3390, i256 %calldata_load_result1899, i256 %calldata_load_result3245, i1 %comparison_result3399.not, i256 %stack_var_012.36954, i256 %calldata_load_result2605, i1 %comparison_result4030.not) "evm-recursive" {
+  entry:
+    br label %conditional_rt_187_join_block
+
+  "block_rt_2/0":                                   ; preds = %conditional_rt_187_join_block, %conditional_rt_181_join_block, %"block_rt_165/1"
+    unreachable
+
+  "block_rt_160/3":                                 ; preds = %"block_rt_165/1"
+    %calldatacopy_destination_pointer3688 = inttoptr i256 %stack_var_021.0.in6947 to ptr addrspace(1)
+    %calldatacopy_source_pointer3689 = inttoptr i256 %addition_result3756 to ptr addrspace(2)
+    tail call void @llvm.evm.memcpyas1as2(ptr addrspace(1) %calldatacopy_destination_pointer3688, ptr addrspace(2) %calldatacopy_source_pointer3689, i256 %shift_left_non_overflow_result3390, i1 false)
+    br i1 %comparison_result3909.not, label %conditional_rt_181_join_block, label %"block_rt_181/0"
+
+  "block_rt_165/1":                                 ; preds = %conditional_rt_181_join_block
+    %addition_result3756 = or i256 %calldata_load_result1899, %addition_result4054
+    br i1 %comparison_result3399.not, label %"block_rt_2/0", label %"block_rt_160/3"
+
+  "block_rt_181/0":                                 ; preds = %"block_rt_160/3"
+    %addition_result4064 = or i256 %stack_var_011.36953, 1
+    %comparison_result4003.not = icmp ult i256 %stack_var_013.36955, %calldata_load_result2605
+    br i1 %comparison_result4003.not, label %conditional_rt_187_join_block, label %"block_rt_187/0.loopexit"
+
+  "block_rt_187/0.loopexit":                        ; preds = %"block_rt_181/0"
+    store i256 %stack_var_021.06950, ptr addrspace(1) null, align 64
+    unreachable
+
+  "block_rt_188/0":                                 ; preds = %conditional_rt_187_join_block
+    %addition_result4054 = or i256 %stack_var_012.36954, 1
+    %addition_result1909 = or i256 %calldata_load_result3245, 1
+    br label %conditional_rt_181_join_block
+
+  conditional_rt_181_join_block:                    ; preds = %"block_rt_188/0", %"block_rt_160/3"
+    %stack_var_021.06950 = phi i256 [ 0, %"block_rt_188/0" ], [ %addition_result2798, %"block_rt_160/3" ]
+    %comparison_result3909.not = phi i1 [ true, %"block_rt_188/0" ], [ false, %"block_rt_160/3" ]
+    %stack_var_021.0.in6947 = phi i256 [ 0, %"block_rt_188/0" ], [ %addition_result2798, %"block_rt_160/3" ]
+    store i256 %calldata_load_result2781, ptr addrspace(1) null, align 1
+    %comparison_result1913.not = icmp slt i256 0, %addition_result1909
+    br i1 %comparison_result1913.not, label %"block_rt_165/1", label %"block_rt_2/0"
+
+  conditional_rt_187_join_block:                    ; preds = %"block_rt_181/0", %entry
+    %stack_var_013.36955 = phi i256 [ 0, %entry ], [ 1, %"block_rt_181/0" ]
+    %stack_var_011.36953 = phi i256 [ 0, %entry ], [ %addition_result4064, %"block_rt_181/0" ]
+    br i1 %comparison_result4030.not, label %"block_rt_188/0", label %"block_rt_2/0"
+  }
+
+  declare void @llvm.evm.memcpyas1as2(ptr addrspace(1) noalias nocapture writeonly, ptr addrspace(2) noalias nocapture readonly, i256, i1 immarg) #0
+
+  attributes #0 = { nocallback nofree nounwind willreturn memory(argmem: readwrite) }
+
+...
+---
+name:            main
+alignment:       1
+exposesReturnsTwice: false
+legalized:       false
+regBankSelected: false
+selected:        false
+failedISel:      false
+tracksRegLiveness: true
+hasWinCFI:       false
+callsEHReturn:   false
+callsUnwindInit: false
+hasEHCatchret:   false
+hasEHScopes:     false
+hasEHFunclets:   false
+isOutlined:      false
+debugInstrRef:   false
+failsVerification: false
+tracksDebugUserValues: false
+registers:
+  - { id: 0, class: gpr, preferred-register: '' }
+  - { id: 1, class: gpr, preferred-register: '' }
+  - { id: 2, class: gpr, preferred-register: '' }
+  - { id: 3, class: gpr, preferred-register: '' }
+  - { id: 4, class: gpr, preferred-register: '' }
+  - { id: 5, class: gpr, preferred-register: '' }
+  - { id: 6, class: gpr, preferred-register: '' }
+  - { id: 7, class: gpr, preferred-register: '' }
+  - { id: 8, class: gpr, preferred-register: '' }
+  - { id: 9, class: gpr, preferred-register: '' }
+  - { id: 10, class: gpr, preferred-register: '' }
+  - { id: 11, class: gpr, preferred-register: '' }
+  - { id: 12, class: gpr, preferred-register: '' }
+  - { id: 13, class: gpr, preferred-register: '' }
+  - { id: 14, class: gpr, preferred-register: '' }
+  - { id: 15, class: gpr, preferred-register: '' }
+  - { id: 16, class: gpr, preferred-register: '' }
+  - { id: 17, class: gpr, preferred-register: '' }
+  - { id: 18, class: gpr, preferred-register: '' }
+  - { id: 19, class: gpr, preferred-register: '' }
+  - { id: 20, class: gpr, preferred-register: '' }
+  - { id: 21, class: gpr, preferred-register: '' }
+  - { id: 22, class: gpr, preferred-register: '' }
+  - { id: 23, class: gpr, preferred-register: '' }
+  - { id: 24, class: gpr, preferred-register: '' }
+  - { id: 25, class: gpr, preferred-register: '' }
+  - { id: 26, class: gpr, preferred-register: '' }
+  - { id: 27, class: gpr, preferred-register: '' }
+  - { id: 28, class: gpr, preferred-register: '' }
+  - { id: 29, class: gpr, preferred-register: '' }
+  - { id: 30, class: gpr, preferred-register: '' }
+  - { id: 31, class: gpr, preferred-register: '' }
+  - { id: 32, class: gpr, preferred-register: '' }
+  - { id: 33, class: gpr, preferred-register: '' }
+  - { id: 34, class: gpr, preferred-register: '' }
+  - { id: 35, class: gpr, preferred-register: '' }
+  - { id: 36, class: gpr, preferred-register: '' }
+  - { id: 37, class: gpr, preferred-register: '' }
+  - { id: 38, class: gpr, preferred-register: '' }
+  - { id: 39, class: gpr, preferred-register: '' }
+  - { id: 40, class: gpr, preferred-register: '' }
+  - { id: 41, class: gpr, preferred-register: '' }
+  - { id: 42, class: gpr, preferred-register: '' }
+  - { id: 43, class: gpr, preferred-register: '' }
+  - { id: 44, class: gpr, preferred-register: '' }
+  - { id: 45, class: gpr, preferred-register: '' }
+liveins:
+  - { reg: '$arguments', virtual-reg: '' }
+  - { reg: '$value_stack', virtual-reg: '' }
+frameInfo:
+  isFrameAddressTaken: false
+  isReturnAddressTaken: false
+  hasStackMap:     false
+  hasPatchPoint:   false
+  stackSize:       0
+  offsetAdjustment: 0
+  maxAlignment:    1
+  adjustsStack:    false
+  hasCalls:        false
+  stackProtector:  ''
+  functionContext: ''
+  maxCallFrameSize: 0
+  cvBytesOfCalleeSavedRegisters: 0
+  hasOpaqueSPAdjustment: false
+  hasVAStart:      false
+  hasMustTailInVarArgFunc: false
+  hasTailCall:     false
+  isCalleeSavedInfoValid: false
+  localFrameSize:  0
+  savePoint:       ''
+  restorePoint:    ''
+fixedStack:      []
+stack:           []
+entry_values:    []
+callSites:       []
+debugValueSubstitutions: []
+constants:       []
+machineFunctionInfo:
+  isStackified:    false
+  numberOfParameters: 9
+  hasPushDeployAddress: false
+body:             |
+  bb.0.entry:
+    successors: %bb.1(0x80000000)
+    liveins: $arguments, $value_stack
+
+    %9:gpr = ARGUMENT 0, implicit $arguments
+    %10:gpr = ARGUMENT 1, implicit $arguments
+    %11:gpr = ARGUMENT 2, implicit $arguments
+    %12:gpr = ARGUMENT 3, implicit $arguments
+    %13:gpr = ARGUMENT 4, implicit $arguments
+    %14:gpr = ARGUMENT 5, implicit $arguments
+    %15:gpr = ARGUMENT 6, implicit $arguments
+    %16:gpr = ARGUMENT 7, implicit $arguments
+    %17:gpr = ARGUMENT 8, implicit $arguments
+    %39:gpr = CONST_I256 i256 1, implicit-def dead $arguments, implicit-def $value_stack, implicit $value_stack
+    %20:gpr = AND %39, %17, implicit-def dead $arguments, implicit-def $value_stack, implicit $value_stack
+    %38:gpr = CONST_I256 i256 1, implicit-def dead $arguments, implicit-def $value_stack, implicit $value_stack
+    %26:gpr = AND %38, %14, implicit-def dead $arguments, implicit-def $value_stack, implicit $value_stack
+    %7:gpr = CONST_I256 i256 0, implicit-def dead $arguments
+    %8:gpr = CONST_I256 i256 0, implicit-def dead $arguments
+
+  bb.1.conditional_rt_187_join_block:
+    successors: %bb.7(0x80000000), %bb.10(0x00000000)
+    liveins: $value_stack
+
+    JUMPI %bb.7, %20, implicit-def $arguments
+
+  bb.10:
+    successors: %bb.2(0x80000000)
+    liveins: $value_stack
+
+  bb.2:
+    successors:
+    liveins: $value_stack
+
+  bb.3:
+    successors: %bb.12(0x00000000), %bb.4(0x80000000)
+    liveins: $value_stack
+
+    JUMP_UNLESS %bb.4, %26, implicit-def $arguments
+
+  bb.12:
+    successors: %bb.2(0x80000000)
+    liveins: $value_stack
+
+    JUMP %bb.2, implicit-def $arguments
+
+  bb.4:
+    successors: %bb.13(0x7c000000), %bb.5(0x04000000)
+    liveins: $value_stack
+
+    CALLDATACOPY %6, %0, %11, implicit-def dead $arguments
+    %40:gpr = CONST_I256 i256 1, implicit-def dead $arguments, implicit-def $value_stack, implicit $value_stack
+    %29:gpr = AND %5, %40, implicit-def dead $arguments, implicit-def $value_stack, implicit $value_stack
+    %5:gpr = CONST_I256 i256 0, implicit-def dead $arguments
+    %6:gpr = COPY_I256 %10, implicit-def $arguments
+    JUMP_UNLESS %bb.5, %29, implicit-def $arguments
+
+  bb.13:
+    successors: %bb.8(0x80000000)
+    liveins: $value_stack
+
+    JUMP %bb.8, implicit-def $arguments
+
+  bb.5:
+    successors: %bb.9(0x80000000), %bb.6(0x00000000)
+    liveins: $value_stack
+
+    %31:gpr = ULT %7, %16, implicit-def dead $arguments
+    %7:gpr = CONST_I256 i256 1, implicit-def dead $arguments
+    %41:gpr = CONST_I256 i256 1, implicit-def dead $arguments, implicit-def $value_stack, implicit $value_stack
+    %8:gpr = OR %8, %41, implicit-def dead $arguments, implicit-def $value_stack, implicit $value_stack
+    JUMP_UNLESS %bb.6, %31, implicit-def $arguments
+
+  bb.9:
+    successors: %bb.1(0x80000000)
+    liveins: $value_stack
+
+    JUMP %bb.1, implicit-def $arguments
+
+  bb.6:
+    successors:
+    liveins: $value_stack
+
+    %32:gpr = CONST_I256 i256 0, implicit-def dead $arguments, implicit-def $value_stack, implicit $value_stack
+    MSTORE %32, %4, implicit-def dead $arguments, implicit-def $value_stack, implicit $value_stack :: (store (s256) into `ptr addrspace(1) null`, align 64, addrspace 1)
+
+  bb.7:
+    successors: %bb.8(0x80000000)
+    liveins: $value_stack
+
+    %5:gpr = CONST_I256 i256 1, implicit-def dead $arguments
+    %6:gpr = CONST_I256 i256 0, implicit-def dead $arguments
+    %44:gpr = CONST_I256 i256 0, implicit-def dead $arguments, implicit-def $value_stack, implicit $value_stack
+    %43:gpr = CONST_I256 i256 1, implicit-def dead $arguments, implicit-def $value_stack, implicit $value_stack
+    %3:gpr = OR %13, %43, implicit-def dead $arguments, implicit-def $value_stack, implicit $value_stack
+    %24:gpr = GT %3, %44, implicit-def dead $arguments, implicit-def $value_stack, implicit $value_stack
+    %42:gpr = CONST_I256 i256 1, implicit-def dead $arguments, implicit-def $value_stack, implicit $value_stack
+    %2:gpr = OR %15, %42, implicit-def dead $arguments, implicit-def $value_stack, implicit $value_stack
+    %0:gpr = OR %12, %2, implicit-def dead $arguments, implicit-def $value_stack, implicit $value_stack
+
+  bb.8.conditional_rt_181_join_block:
+    successors: %bb.3(0x80000000), %bb.11(0x00000000)
+    liveins: $value_stack
+
+    %4:gpr = COPY_I256 %6, implicit-def $arguments
+    %45:gpr = CONST_I256 i256 0, implicit-def dead $arguments, implicit-def $value_stack, implicit $value_stack
+    MSTORE %45, %9, implicit-def dead $arguments, implicit-def $value_stack, implicit $value_stack :: (store (s256) into `ptr addrspace(1) null`, align 1, addrspace 1)
+    JUMPI %bb.3, %24, implicit-def $arguments
+
+  bb.11:
+    successors: %bb.2(0x80000000)
+    liveins: $value_stack
+
+    JUMP %bb.2, implicit-def $arguments
+
+...
