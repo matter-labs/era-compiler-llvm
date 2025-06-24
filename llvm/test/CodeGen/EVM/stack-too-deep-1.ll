@@ -1,27 +1,16 @@
-; RUN: not --crash llc < %s -o /dev/null 2>&1 | FileCheck %s
-
-; Test that EVMStackSolver can catch errors when transformation from
-; the BBs entry stack to the entry stack of the first MI is not possible.
-
-; The stack built for the 'bad' BB is
-;
-; 20.block_rt_88/7.outer:
-;  [ %82 %85 %7 %78 %70 %11 %64 %17 %19 %54 %46 %5 %2 %40 %9 %29 %33 ]
-;
-;  [ %82 %85 %7 %78 %70 %11 %64 %17 %19 %54 %46 %5 %2 %40 %9 %82 %85 %29 %33 7 21 ]
-;  EQ
-;  [ %82 %85 %7 %78 %70 %11 %64 %17 %19 %54 %46 %5 %2 %40 %9 %82 %85 %29 %33 %72 ]
-;
-;  [ %82 %85 %7 %78 %70 %11 %64 %17 %19 %54 %46 %5 %2 %40 %9 %82 %85 %29 %33 %72 ]
-
-; CHECK:      EVMStackSolver cannot transform
-; CHECK-SAME: [ %82 %85 %7 %78 %70 %11 %64 %17 %19 %54 %46 %5 %2 %40 %9 %29 %33 ]
-; CHECK-SAME: to
-; CHECK-SAME: [ %82 %85 %7 %78 %70 %11 %64 %17 %19 %54 %46 %5 %2 %40 %9 %82 %85 %29 %33 7 21 ]
-; CHECK-SAME: : stack too deep.
+; REQUIRES: asserts
+; RUN: llc -evm-stack-region-offset=128 -evm-stack-region-size=32 --debug-only=evm-stack-solver < %s 2>&1 | FileCheck %s
 
 target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
 target triple = "evm-unknown-unknown"
+
+; Check that the stack solver detects unreachable slots, generates spills for them, and
+; succesfully compiles the function. Also, check that we allocated the exact amount of
+; stack space needed for the function, without any warnings about allocated stack region size.
+
+; CHECK: Unreachable slots found: 2, iteration: 1
+; CHECK: Spilling 1 registers
+; CHECK-NOT: warning: allocated stack region size:
 
 define dso_local fastcc void @main() unnamed_addr {
 entry:
