@@ -368,7 +368,8 @@ void EVMStackSolver::run() {
       if (ForceCompressStack)
         report_fatal_error(
             "Stackification failed for '" + MF.getName() +
-            "' function. It is recursive and has stack too deep errors.");
+            "' function. It is recursive and has stack too deep errors. "
+            "Consider refactoring it to use a non-recursive approach.");
 
       LLVM_DEBUG({
         dbgs()

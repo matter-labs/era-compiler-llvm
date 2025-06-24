@@ -5,7 +5,7 @@
 # to test that we issue an error if there are unreachable slots in a recursive
 # function and compression didn't help.
 
-# CHECK: LLVM ERROR: Stackification failed for 'main' function. It is recursive and has stack too deep errors.
+# CHECK: LLVM ERROR: Stackification failed for 'main' function. It is recursive and has stack too deep errors. Consider refactoring it to use a non-recursive approach.
 
 --- |
   source_filename = "reduced.ll"
