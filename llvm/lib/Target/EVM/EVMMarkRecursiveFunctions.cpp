@@ -7,9 +7,12 @@
 //===----------------------------------------------------------------------===//
 //
 // This pass marks all recursive functions in the module with the
-// "evm-recursive" attribute by analyzing the call graph. This is needed during
-// stackification, since we can't use spills for recursive functions, as we are
-// using memory for spills, and not the real stack.
+// "evm-recursive" attribute by analyzing the call graph. We dont' need to check
+// functions to detect unknown calls (as it is implemented in FunctionAttrs.cpp,
+// function createSCCNodeSet), because all functions are known at compile time,
+// and we don't have any indirect calls.
+// This is needed during stackification, since we can't use spills for recursive
+// functions, as we are using memory for spills, and not the real stack.
 //
 //===----------------------------------------------------------------------===//
 
