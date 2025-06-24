@@ -508,6 +508,15 @@ Stack EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
 
   LLVM_DEBUG({ dbgs() << "\tstack before: " << BeforeMI.toString() << ".\n"; });
 
+  // If this is a commutable instruction, and second operand is spilled and
+  // has no use or def before MI, we can remove it from the stack. This should
+  // reduce the stack pressure and in some cases, it should reduce code size.
+  if (MI.isCommutable() &&
+      spillRegHasNoUseOrDefBefore(BeforeMI[BeforeMI.size() - 2], MI)) {
+    std::swap(BeforeMI[BeforeMI.size() - 1], BeforeMI[BeforeMI.size() - 2]);
+    BeforeMI.pop_back();
+  }
+
   // If the top stack slots can be rematerialized just before MI, remove it
   // from propagation to reduce pressure.
   while (!BeforeMI.empty()) {
