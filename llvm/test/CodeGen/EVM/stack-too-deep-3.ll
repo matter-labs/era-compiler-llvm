@@ -1,45 +1,18 @@
-; RUN: not --crash llc < %s -o /dev/null 2>&1 | FileCheck %s
-
-; Test that EVMStackSolver can catch errors when transformation from
-; an MIs exit stack to an entry stack of the next MI is not possible.
-
-; The stack built for the 'bad' BB is
-;
-; 2.block_rt_158/3:
-; 	[ %19 %64 %0 %20 %3 %21 %35 %22 %63 %41 %62 %23 %61 %65 ]
-;
-; 	[ %19 %19 %0 %20 %3 %21 %35 %22 %63 %41 %62 %23 %61 %65 %64 %19 ]
-; 	CALLDATALOAD
-; 	[ %19 %19 %0 %20 %3 %21 %35 %22 %63 %41 %62 %23 %61 %65 %64 %4 ]
-;
-; 	[ %19 %19 %0 %20 %3 %21 %35 %22 %63 %41 %62 %23 %61 %65 %4 %64 %4 5 ]
-; 	SHL
-; 	[ %19 %19 %0 %20 %3 %21 %35 %22 %63 %41 %62 %23 %61 %65 %4 %64 %5 ]
-;
-; 	[ %5 %19 %0 %20 %3 %21 %35 %22 %63 %41 %62 %23 %61 %65 %4 %64 %19 %5 0 ]
-; 	SUB
-; 	[ %5 %19 %0 %20 %3 %21 %35 %22 %63 %41 %62 %23 %61 %65 %4 %64 %19 %46 ]
-;
-; 	[ %5 %19 %0 %20 %3 %21 %35 %22 %63 %41 %62 %23 %61 %65 %4 %64 %46 32 %19 ]
-; 	ADD
-; 	[ %5 %19 %0 %20 %3 %21 %35 %22 %63 %41 %62 %23 %61 %65 %4 %64 %46 %71 ]
-;
-; 	[ %5 %19 %0 %20 %3 %21 %35 %22 %63 %41 %62 %23 %61 %65 %4 %64 %46 %71 ]
-; 	GT
-; 	[ %5 %19 %0 %20 %3 %21 %35 %22 %63 %41 %62 %23 %61 %65 %4 %64 %47 ]
-;
-; 	[ %5 %19 %0 %20 %3 %21 %35 %22 %63 %41 %62 %23 %61 %65 %4 %64 %47 ]
-
-; CHECK:      EVMStackSolver cannot transform
-; CHECK-SAME: [ %19 %19 %0 %20 %3 %21 %35 %22 %63 %41 %62 %23 %61 %65 %4 %64 %5 ]
-; CHECK-SAME: to
-; CHECK-SAME: [ %5 %19 %0 %20 %3 %21 %35 %22 %63 %41 %62 %23 %61 %65 %4 %64 %19 %5 0 ]
-; CHECK-SAME: : stack too deep.
+; REQUIRES: asserts
+; RUN: llc -evm-stack-region-offset=128 -evm-stack-region-size=32 --debug-only=evm-stack-solver < %s 2>&1 | FileCheck %s
 
 target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
 target triple = "evm-unknown-unknown"
 
 declare void @llvm.memmove.p1.p1.i256(ptr addrspace(1) nocapture writeonly, ptr addrspace(1) nocapture readonly, i256, i1 immarg) #0
+
+; Check that the stack solver detects unreachable slots, generates spills for them, and
+; succesfully compiles the function. Also, check that we allocated the exact amount of
+; stack space needed for the function, without any warnings about allocated stack region size.
+
+; CHECK: Unreachable slots found: 1, iteration: 1
+; CHECK: Spilling 1 registers
+; CHECK-NOT: warning: allocated stack region size:
 
 define dso_local fastcc void @main() unnamed_addr {
 entry:

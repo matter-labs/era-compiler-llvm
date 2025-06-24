@@ -18,6 +18,8 @@
 #include "EVMStackifyCodeEmitter.h"
 #include "EVMSubtarget.h"
 #include "llvm/CodeGen/LiveIntervals.h"
+#include "llvm/CodeGen/LiveStacks.h"
+#include "llvm/CodeGen/MachineBlockFrequencyInfo.h"
 #include "llvm/CodeGen/MachineLoopInfo.h"
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/CodeGen/TargetInstrInfo.h"
@@ -44,6 +46,13 @@ private:
   void getAnalysisUsage(AnalysisUsage &AU) const override {
     AU.addRequired<LiveIntervalsWrapperPass>();
     AU.addRequired<MachineLoopInfoWrapperPass>();
+    AU.addPreserved<SlotIndexesWrapperPass>();
+    AU.addRequired<VirtRegMap>();
+    AU.addPreserved<VirtRegMap>();
+    AU.addRequired<LiveStacks>();
+    AU.addPreserved<LiveStacks>();
+    AU.addRequired<MachineBlockFrequencyInfoWrapperPass>();
+    AU.addPreserved<MachineBlockFrequencyInfoWrapperPass>();
     MachineFunctionPass::getAnalysisUsage(AU);
   }
 
@@ -60,7 +69,12 @@ char EVMBPStackification::ID = 0;
 
 INITIALIZE_PASS_BEGIN(EVMBPStackification, DEBUG_TYPE,
                       "Backward propagation stackification", false, false)
+INITIALIZE_PASS_DEPENDENCY(LiveIntervalsWrapperPass)
 INITIALIZE_PASS_DEPENDENCY(MachineLoopInfoWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(SlotIndexesWrapperPass)
+INITIALIZE_PASS_DEPENDENCY(VirtRegMap)
+INITIALIZE_PASS_DEPENDENCY(LiveStacks)
+INITIALIZE_PASS_DEPENDENCY(MachineBlockFrequencyInfoWrapperPass)
 INITIALIZE_PASS_END(EVMBPStackification, DEBUG_TYPE,
                     "Backward propagation stackification", false, false)
 
@@ -77,6 +91,9 @@ bool EVMBPStackification::runOnMachineFunction(MachineFunction &MF) {
   MachineRegisterInfo &MRI = MF.getRegInfo();
   auto &LIS = getAnalysis<LiveIntervalsWrapperPass>().getLIS();
   MachineLoopInfo *MLI = &getAnalysis<MachineLoopInfoWrapperPass>().getLI();
+  auto &VRM = getAnalysis<VirtRegMap>();
+  auto &LSS = getAnalysis<LiveStacks>();
+  auto &MBFI = getAnalysis<MachineBlockFrequencyInfoWrapperPass>().getMBFI();
 
   // We don't preserve SSA form.
   MRI.leaveSSA();
@@ -84,8 +101,8 @@ bool EVMBPStackification::runOnMachineFunction(MachineFunction &MF) {
   assert(MRI.tracksLiveness() && "Stackification expects liveness");
   EVMStackModel StackModel(MF, LIS,
                            MF.getSubtarget<EVMSubtarget>().stackDepthLimit());
-  EVMStackSolver(MF, StackModel, MLI).run();
-  EVMStackifyCodeEmitter(StackModel, MF).run();
+  EVMStackSolver(MF, StackModel, MLI, VRM, MBFI, LIS).run();
+  EVMStackifyCodeEmitter(StackModel, MF, VRM, LSS, LIS).run();
 
   auto *MFI = MF.getInfo<EVMMachineFunctionInfo>();
   MFI->setIsStackified();

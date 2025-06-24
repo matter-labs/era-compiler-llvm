@@ -1,27 +1,28 @@
-; RUN: not --crash llc < %s -o /dev/null 2>&1 | FileCheck %s
-
-; Test that EVMStackSolver can catch errors when transformation from
-; the BBs entry stack to the BBs exit stack (empty BB) is not possible.
-
-; The stack built for the 'bad' BB is
-;
-; 69.:
-; 	[ RET %137 %8 %0 %105 %131 %154 %126 %18 %26 %28 %20 %81 %7 %19 %85 %3 %137 %16 %58 %63 ]
-;
-; 	[ RET %137 %20 %16 %0 %105 %131 %154 %126 %18 %26 %58 %137 %7 %19 %85 %81 %63 %3 %8 1 255 %28 ]
-
-; CHECK:      EVMStackSolver cannot transform
-; CHECK-SAME: [ RET %137 %8 %0 %105 %131 %154 %126 %18 %26 %28 %20 %81 %7 %19 %85 %3 %137 %16 %58 %63 ]
-; CHECK-SAME: to
-; CHECK-SAME: [ RET %137 %20 %16 %0 %105 %131 %154 %126 %18 %26 %58 %137 %7 %19 %85 %81 %63 %3 %8 1 255 %28 ]
-; CHECK-SAME: : stack too deep.
+; REQUIRES: asserts
+; RUN: llc -evm-stack-region-offset=128 -evm-stack-region-size=192 --debug-only=evm-stack-solver < %s 2>&1 | FileCheck %s
 
 target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
 target triple = "evm-unknown-unknown"
 
 declare i256 @checked_mul_uint8(i256)
 
-define private fastcc i256 @fun_test_462(i256 %0) unnamed_addr {
+; Check that the stack solver detects unreachable slots, generates spills for them, and
+; succesfully compiles the function. Also, check that we allocated the exact amount of
+; stack space needed for the function, without any warnings about allocated stack region size.
+
+; CHECK: Unreachable slots found: 30, iteration: 1
+; CHECK: Spilling 2 registers
+; CHECK: Unreachable slots found: 20, iteration: 2
+; CHECK: Spilling 1 registers
+; CHECK: Unreachable slots found: 8, iteration: 3
+; CHECK: Spilling 1 registers
+; CHECK: Unreachable slots found: 6, iteration: 4
+; CHECK: Spilling 1 registers
+; CHECK: Unreachable slots found: 2, iteration: 5
+; CHECK: Spilling 1 registers
+; CHECK-NOT: warning: allocated stack region size:
+
+define fastcc i256 @fun_test_462(i256 %0) unnamed_addr {
 entry:
   %and_result3 = and i256 %0, 255
   %trunc = trunc i256 %0 to i8

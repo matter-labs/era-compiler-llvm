@@ -26,7 +26,9 @@ yaml::EVMMachineFunctionInfo::~EVMMachineFunctionInfo() = default;
 
 yaml::EVMMachineFunctionInfo::EVMMachineFunctionInfo(
     const llvm::EVMMachineFunctionInfo &MFI)
-    : IsStackified(MFI.getIsStackified()) {}
+    : IsStackified(MFI.getIsStackified()),
+      NumberOfParameters(MFI.getNumParams()),
+      HasPushDeployAddress(MFI.getHasPushDeployAddress()) {}
 
 void yaml::EVMMachineFunctionInfo::mappingImpl(yaml::IO &YamlIO) {
   MappingTraits<EVMMachineFunctionInfo>::mapping(YamlIO, *this);
@@ -35,4 +37,6 @@ void yaml::EVMMachineFunctionInfo::mappingImpl(yaml::IO &YamlIO) {
 void EVMMachineFunctionInfo::initializeBaseYamlFields(
     const yaml::EVMMachineFunctionInfo &YamlMFI) {
   IsStackified = YamlMFI.IsStackified;
+  NumberOfParameters = YamlMFI.NumberOfParameters;
+  HasPushDeployAddress = YamlMFI.HasPushDeployAddress;
 }

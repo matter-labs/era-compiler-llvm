@@ -815,6 +815,10 @@ def PUSH_LABEL : NI<(outs), (ins jmptarget:$dst), [], true, "", 0, 0> {
   let isCodeGenOnly = 1;
 }
 
+def PUSH_FRAME : NI<(outs), (ins i256imm:$imm), [], true, "", 0, 0> {
+  let isCodeGenOnly = 1;
+}
+
 // Define register PUSH* instructions
 foreach I = {1 - 32} in {
   def PUSH#I : NI<(outs), (ins i256imm:$imm), [], false, "PUSH"#I#" $imm",
