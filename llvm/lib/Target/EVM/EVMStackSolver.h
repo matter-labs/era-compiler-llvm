@@ -111,6 +111,14 @@ private:
   /// for function arguments and return values.
   bool hasUnreachableDef(const Register &Reg) const;
 
+  /// Return true if \p Slot is a rematerializable slot and it can be removed.
+  /// In cases of LiteralSlot, it checks if the literal is used before \p MI,
+  /// and if it is not, it can be removed to reduce stack pressure. In case it
+  /// is used, we don't remove it to reduce size of the stack, as PUSH
+  /// instructions are large. Currently, this check whether to propagate large
+  /// literals is only enabled when optimizing for size.
+  bool shouldRemoveSlot(const StackSlot *Slot, const MachineInstr &MI) const;
+
   MachineFunction &MF;
   EVMStackModel &StackModel;
   const MachineLoopInfo *MLI;
