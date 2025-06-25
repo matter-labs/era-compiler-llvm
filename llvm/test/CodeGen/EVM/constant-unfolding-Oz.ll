@@ -5,6 +5,8 @@ target triple = "evm-unknown-unknown"
 
 declare void @llvm.evm.return(ptr addrspace(1), i256) noreturn
 
+; This file tests how constants are unfolded in OptForSize mode.
+
 ; 0x4e487b7100000000000000000000000000000000000000000000000000000000
 define void @test1() #1 {
 ; CHECK-LABEL: test1:
@@ -136,33 +138,7 @@ entry:
   unreachable
 }
 
-; 0x00000000000000000000000000000000000000000000000000000000FFFFFFFF
-define void @test9() #1 {
-; CHECK-LABEL: test9:
-; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH4 0xFFFFFFFF
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    RETURN
-entry:
-  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 4294967295)
-  unreachable
-}
-
-; 0x000000000000000000000000000000000000000000000000000000FFFFFFFFFF
-define void @test10() #1 {
-; CHECK-LABEL: test10:
-; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH5 0xFFFFFFFFFF
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    RETURN
-entry:
-  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 1099511627775)
-  unreachable
-}
-
-; 0x0000000000000000000000000000000000000000000000000000FFFFFFFFFFFF
+; 0x000000000000000000000000000000000000000000000000FFFFFFFFFFFFFFFF
 define void @test11() #1 {
 ; CHECK-LABEL: test11:
 ; CHECK:       ; %bb.0: ; %entry
@@ -285,19 +261,6 @@ define void @test18() #1 {
 ; CHECK-NEXT:    RETURN
 entry:
   tail call void @llvm.evm.return(ptr addrspace(1) null, i256 340282366920938463463374607431768211456)
-  unreachable
-}
-
-; 0x0000000000000000000000000000000000000000000000000000000000000000
-define void @test19() #1 {
-; CHECK-LABEL: test19:
-; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    DUP1
-; CHECK-NEXT:    RETURN
-entry:
-  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 }
 

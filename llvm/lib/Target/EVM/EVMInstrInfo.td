@@ -821,7 +821,7 @@ def PUSH_FRAME : NI<(outs), (ins i256imm:$imm), [], true, "", 0, 0> {
 
 // Define register PUSH* instructions
 foreach I = {1 - 32} in {
-  def PUSH#I : NI<(outs), (ins i256imm:$imm), [], false, "PUSH"#I#" $imm",
+  def PUSH#I : PushBase<(outs), (ins i256imm:$imm), [], false, "PUSH"#I#" $imm",
                   !add(I, 0x5F), 3> {
     let BaseName = "PUSH"#I;
     let Size = !add(I, 1);
@@ -830,7 +830,7 @@ foreach I = {1 - 32} in {
 }
 
 // Define stack PUSH* instructions
-def PUSH1_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH1$imm",
+def PUSH1_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH1$imm",
                   0x60, 3> {
   bits<8> imm;
   let Inst{15-8} = Opc;
@@ -839,7 +839,7 @@ def PUSH1_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH1$imm",
   let BaseName = "PUSH1";
 }
 
-def PUSH2_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH2$imm",
+def PUSH2_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH2$imm",
                   0x61, 3> {
   bits<16> imm;
   let Inst{23-16} = Opc;
@@ -848,7 +848,7 @@ def PUSH2_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH2$imm",
   let BaseName = "PUSH2";
 }
 
-def PUSH3_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH3$imm",
+def PUSH3_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH3$imm",
                   0x62, 3> {
   bits<24> imm;
   let Inst{31-24} = Opc;
@@ -857,7 +857,7 @@ def PUSH3_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH3$imm",
   let BaseName = "PUSH3";
 }
 
-def PUSH4_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH4$imm",
+def PUSH4_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH4$imm",
                   0x63, 3> {
   bits<32> imm;
   let Inst{39-32} = Opc;
@@ -866,7 +866,7 @@ def PUSH4_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH4$imm",
   let BaseName = "PUSH4";
 }
 
-def PUSH5_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH5$imm",
+def PUSH5_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH5$imm",
                   0x64, 3> {
   bits<40> imm;
   let Inst{47-40} = Opc;
@@ -875,7 +875,7 @@ def PUSH5_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH5$imm",
   let BaseName = "PUSH5";
 }
 
-def PUSH6_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH6$imm",
+def PUSH6_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH6$imm",
                   0x65, 3> {
   bits<48> imm;
   let Inst{55-48} = Opc;
@@ -884,7 +884,7 @@ def PUSH6_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH6$imm",
   let BaseName = "PUSH6";
 }
 
-def PUSH7_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH7$imm",
+def PUSH7_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH7$imm",
                   0x66, 3> {
   bits<56> imm;
   let Inst{63-56} = Opc;
@@ -893,7 +893,7 @@ def PUSH7_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH7$imm",
   let BaseName = "PUSH7";
 }
 
-def PUSH8_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH8$imm",
+def PUSH8_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH8$imm",
                   0x67, 3> {
   bits<64> imm;
   let Inst{71-64} = Opc;
@@ -902,7 +902,7 @@ def PUSH8_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH8$imm",
   let BaseName = "PUSH8";
 }
 
-def PUSH9_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH9$imm",
+def PUSH9_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH9$imm",
                   0x68, 3> {
   bits<72> imm;
   let Inst{79-72} = Opc;
@@ -912,7 +912,7 @@ def PUSH9_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH9$imm",
   let DecoderMethod = "decodePUSH<9>";
 }
 
-def PUSH10_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH10$imm",
+def PUSH10_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH10$imm",
                   0x69, 3> {
   bits<80> imm;
   let Inst{87-80} = Opc;
@@ -922,7 +922,7 @@ def PUSH10_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH10$imm",
   let DecoderMethod = "decodePUSH<10>";
 }
 
-def PUSH11_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH11$imm",
+def PUSH11_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH11$imm",
                   0x6a, 3> {
   bits<88> imm;
   let Inst{95-88} = Opc;
@@ -932,7 +932,7 @@ def PUSH11_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH11$imm",
   let DecoderMethod = "decodePUSH<11>";
 }
 
-def PUSH12_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH12$imm",
+def PUSH12_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH12$imm",
                   0x6b, 3> {
   bits<96> imm;
   let Inst{103-96} = Opc;
@@ -942,7 +942,7 @@ def PUSH12_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH12$imm",
   let DecoderMethod = "decodePUSH<12>";
 }
 
-def PUSH13_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH13$imm",
+def PUSH13_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH13$imm",
                   0x6c, 3> {
   bits<104> imm;
   let Inst{111-104} = Opc;
@@ -952,7 +952,7 @@ def PUSH13_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH13$imm",
   let DecoderMethod = "decodePUSH<13>";
 }
 
-def PUSH14_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH14$imm",
+def PUSH14_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH14$imm",
                   0x6d, 3> {
   bits<112> imm;
   let Inst{119-112} = Opc;
@@ -962,7 +962,7 @@ def PUSH14_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH14$imm",
   let DecoderMethod = "decodePUSH<14>";
 }
 
-def PUSH15_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH15$imm",
+def PUSH15_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH15$imm",
                   0x6e, 3> {
   bits<120> imm;
   let Inst{127-120} = Opc;
@@ -972,7 +972,7 @@ def PUSH15_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH15$imm",
   let DecoderMethod = "decodePUSH<15>";
 }
 
-def PUSH16_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH16$imm",
+def PUSH16_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH16$imm",
                   0x6f, 3> {
   bits<128> imm;
   let Inst{135-128} = Opc;
@@ -982,7 +982,7 @@ def PUSH16_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH16$imm",
   let DecoderMethod = "decodePUSH<16>";
 }
 
-def PUSH17_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH17$imm",
+def PUSH17_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH17$imm",
                   0x70, 3> {
   bits<136> imm;
   let Inst{143-136} = Opc;
@@ -992,7 +992,7 @@ def PUSH17_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH17$imm",
   let DecoderMethod = "decodePUSH<17>";
 }
 
-def PUSH18_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH18$imm",
+def PUSH18_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH18$imm",
                   0x71, 3> {
   bits<144> imm;
   let Inst{151-144} = Opc;
@@ -1002,7 +1002,7 @@ def PUSH18_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH18$imm",
   let DecoderMethod = "decodePUSH<18>";
 }
 
-def PUSH19_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH19$imm",
+def PUSH19_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH19$imm",
                   0x72, 3> {
   bits<152> imm;
   let Inst{159-152} = Opc;
@@ -1012,7 +1012,7 @@ def PUSH19_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH19$imm",
   let DecoderMethod = "decodePUSH<19>";
 }
 
-def PUSH20_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH20$imm",
+def PUSH20_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH20$imm",
                   0x73, 3> {
   bits<160> imm;
   let Inst{167-160} = Opc;
@@ -1022,7 +1022,7 @@ def PUSH20_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH20$imm",
   let DecoderMethod = "decodePUSH<20>";
 }
 
-def PUSH21_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH21$imm",
+def PUSH21_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH21$imm",
                   0x74, 3> {
   bits<168> imm;
   let Inst{175-168} = Opc;
@@ -1032,7 +1032,7 @@ def PUSH21_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH21$imm",
   let DecoderMethod = "decodePUSH<21>";
 }
 
-def PUSH22_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH22$imm",
+def PUSH22_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH22$imm",
                   0x75, 3> {
   bits<176> imm;
   let Inst{183-176} = Opc;
@@ -1042,7 +1042,7 @@ def PUSH22_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH22$imm",
   let DecoderMethod = "decodePUSH<22>";
 }
 
-def PUSH23_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH23$imm",
+def PUSH23_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH23$imm",
                   0x76, 3> {
   bits<184> imm;
   let Inst{191-184} = Opc;
@@ -1052,7 +1052,7 @@ def PUSH23_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH23$imm",
   let DecoderMethod = "decodePUSH<23>";
 }
 
-def PUSH24_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH24$imm",
+def PUSH24_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH24$imm",
                   0x77, 3> {
   bits<192> imm;
   let Inst{199-192} = Opc;
@@ -1062,7 +1062,7 @@ def PUSH24_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH24$imm",
   let DecoderMethod = "decodePUSH<24>";
 }
 
-def PUSH25_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH25$imm",
+def PUSH25_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH25$imm",
                   0x78, 3> {
   bits<200> imm;
   let Inst{207-200} = Opc;
@@ -1072,7 +1072,7 @@ def PUSH25_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH25$imm",
   let DecoderMethod = "decodePUSH<25>";
 }
 
-def PUSH26_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH26$imm",
+def PUSH26_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH26$imm",
                   0x79, 3> {
   bits<208> imm;
   let Inst{215-208} = Opc;
@@ -1082,7 +1082,7 @@ def PUSH26_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH26$imm",
   let DecoderMethod = "decodePUSH<26>";
 }
 
-def PUSH27_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH27$imm",
+def PUSH27_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH27$imm",
                   0x7a, 3> {
   bits<216> imm;
   let Inst{223-216} = Opc;
@@ -1092,7 +1092,7 @@ def PUSH27_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH27$imm",
   let DecoderMethod = "decodePUSH<27>";
 }
 
-def PUSH28_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH28$imm",
+def PUSH28_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH28$imm",
                   0x7b, 3> {
   bits<224> imm;
   let Inst{231-224} = Opc;
@@ -1102,7 +1102,7 @@ def PUSH28_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH28$imm",
   let DecoderMethod = "decodePUSH<28>";
 }
 
-def PUSH29_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH29$imm",
+def PUSH29_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH29$imm",
                   0x7c, 3> {
   bits<232> imm;
   let Inst{239-232} = Opc;
@@ -1112,7 +1112,7 @@ def PUSH29_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH29$imm",
   let DecoderMethod = "decodePUSH<29>";
 }
 
-def PUSH30_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH30$imm",
+def PUSH30_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH30$imm",
                   0x7d, 3> {
   bits<240> imm;
   let Inst{247-240} = Opc;
@@ -1122,7 +1122,7 @@ def PUSH30_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH30$imm",
   let DecoderMethod = "decodePUSH<30>";
 }
 
-def PUSH31_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH31$imm",
+def PUSH31_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH31$imm",
                   0x7e, 3> {
   bits<248> imm;
   let Inst{255-248} = Opc;
@@ -1132,7 +1132,7 @@ def PUSH31_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH31$imm",
   let DecoderMethod = "decodePUSH<31>";
 }
 
-def PUSH32_S : NI<(outs), (ins i256imm:$imm), [], true, "PUSH32$imm",
+def PUSH32_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH32$imm",
                   0x7f, 3> {
   bits<256> imm;
   let Inst{263-256} = Opc;

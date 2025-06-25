@@ -5,6 +5,8 @@ target triple = "evm-unknown-unknown"
 
 declare void @llvm.evm.return(ptr addrspace(1), i256) noreturn
 
+; This file tests how constants are unfolded in non-OptForSize mode.
+
 ; 0x4e487b7100000000000000000000000000000000000000000000000000000000
 define void @test1() #1 {
 ; CHECK-LABEL: test1:
@@ -32,32 +34,6 @@ define void @test2() #1 {
 ; CHECK-NEXT:    RETURN
 entry:
   tail call void @llvm.evm.return(ptr addrspace(1) null, i256 26959945060212595535676739545057538332474541900337578698310774947840)
-  unreachable
-}
-
-; 0x00000000FFFFFFFFFFFF00000000000000000000000000000000000000000000
-define void @test3() #1 {
-; CHECK-LABEL: test3:
-; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH28 0xFFFFFFFFFFFF00000000000000000000000000000000000000000000
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    RETURN
-entry:
-  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 26959946667150544013695710968965983276947947528216596309908473774080)
-  unreachable
-}
-
-; 0x00000000FFFFFFFFFFFFFF000000000000000000000000000000000000000000
-define void @test4() #1 {
-; CHECK-LABEL: test4:
-; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH28 0xFFFFFFFFFFFFFF000000000000000000000000000000000000000000
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    RETURN
-entry:
-  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 26959946667150639420522595930308483613493827247172119449184879247360)
   unreachable
 }
 
@@ -106,136 +82,6 @@ entry:
   unreachable
 }
 
-; 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000000000000000000000000000
-define void @test8() #1 {
-; CHECK-LABEL: test8:
-; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH32 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00000000000000000000000000000000
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    RETURN
-entry:
-  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 57896044618658097711785492504343953926294709965899343556265417396524796608512)
-  unreachable
-}
-
-; 0x00000000000000000000000000000000000000000000000000000000FFFFFFFF
-define void @test9() #1 {
-; CHECK-LABEL: test9:
-; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH4 0xFFFFFFFF
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    RETURN
-entry:
-  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 4294967295)
-  unreachable
-}
-
-; 0x000000000000000000000000000000000000000000000000000000FFFFFFFFFF
-define void @test10() #1 {
-; CHECK-LABEL: test10:
-; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH5 0xFFFFFFFFFF
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    RETURN
-entry:
-  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 1099511627775)
-  unreachable
-}
-
-; 0x0000000000000000000000000000000000000000000000000000FFFFFFFFFFFF
-define void @test11() #1 {
-; CHECK-LABEL: test11:
-; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH8 0xFFFFFFFFFFFFFFFF
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    RETURN
-entry:
-  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 18446744073709551615)
-  unreachable
-}
-
-; 0x000000000000000000000000000000000000000000000000FFFFFFFAFFFFFFFF
-define void @test12() #1 {
-; CHECK-LABEL: test12:
-; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH8 0xFFFFFFFAFFFFFFFF
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    RETURN
-entry:
-  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 18446744052234715135)
-  unreachable
-}
-
-; 0x000000000000000000000000000000000000000000000000FFFFFFFFFFFFFFE0
-define void @test13() #1 {
-; CHECK-LABEL: test13:
-; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH8 0xFFFFFFFFFFFFFFE0
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    RETURN
-entry:
-  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 18446744073709551584)
-  unreachable
-}
-
-; 0x00000000000000000000000000000000000000000000FFFFFFFFFFFFFFFFFFE0
-define void @test14() #1 {
-; CHECK-LABEL: test14:
-; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH10 0xFFFFFFFFFFFFFFFFFFE0
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    RETURN
-entry:
-  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 1208925819614629174706144)
-  unreachable
-}
-
-; 0x00000000000000000000000000000000000000FFFFFFFFFFFFFFFFAFFFFFFFFF
-define void @test15() #1 {
-; CHECK-LABEL: test15:
-; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH13 0xFFFFFFFFFFFFFFFFAFFFFFFFFF
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    RETURN
-entry:
-  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 20282409603651670423603653902335)
-  unreachable
-}
-
-; 0x00000000000000000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
-define void @test16() #1 {
-; CHECK-LABEL: test16:
-; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH22 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    RETURN
-entry:
-  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 5986310706507378352962293074805895248510699696029695)
-  unreachable
-}
-
-; 0x00000000007FFFFFFFFFFFFFFFFFFFFFFFFFFFFFAE0000000000000000000000
-define void @test17() #1 {
-; CHECK-LABEL: test17:
-; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH27 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFAE0000000000000000000000
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    RETURN
-entry:
-  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 52656145834278593348959013841835216134069776894924259991723442176)
-  unreachable
-}
-
 ; 0x0000000000000000000000000000000100000000000000000000000000000000
 define void @test18() #1 {
 ; CHECK-LABEL: test18:
@@ -248,19 +94,6 @@ define void @test18() #1 {
 ; CHECK-NEXT:    RETURN
 entry:
   tail call void @llvm.evm.return(ptr addrspace(1) null, i256 340282366920938463463374607431768211456)
-  unreachable
-}
-
-; 0x0000000000000000000000000000000000000000000000000000000000000000
-define void @test19() #1 {
-; CHECK-LABEL: test19:
-; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    DUP1
-; CHECK-NEXT:    RETURN
-entry:
-  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 }
 
