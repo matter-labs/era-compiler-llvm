@@ -33,6 +33,7 @@ class EVMInst<string asmstr, bit stack, int cost>
   // Imm.
   bits<264> Inst;
   bits<8> Opc;
+  bit IsPush = 0;
   bit StackBased = stack;
   string BaseName = NAME;
   int GasCost     = cost;
@@ -40,6 +41,7 @@ class EVMInst<string asmstr, bit stack, int cost>
   let Pattern     = [];
   let AsmString   = asmstr;
   let TSFlags{0}  = stack;
+  let TSFlags{1}  = IsPush;
 }
 
 // Normal instructions. Default instantiation of a EVMInst.
@@ -78,4 +80,10 @@ class EVMPseudo<dag oops, dag iops, list<dag> pattern, bit stack = 0>
     : NI<oops, iops, pattern, stack> {
   let isPseudo = 1;
   let isCodeGenOnly = 1;
+}
+
+class PushBase<dag oops, dag iops, list<dag> pattern, bit stack,
+               string asmstr = "", bits<8> inst = 0, int cost = 0>
+    : NI<oops, iops, pattern, stack, asmstr, inst, cost> {
+  let IsPush = 1;
 }
