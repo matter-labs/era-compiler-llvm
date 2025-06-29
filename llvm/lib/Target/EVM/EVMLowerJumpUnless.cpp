@@ -14,13 +14,19 @@
 #include "EVMMachineFunctionInfo.h"
 #include "EVMSubtarget.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
+#include "llvm/ADT/Statistic.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
+#include "llvm/Support/CodeGen.h"
+#include "llvm/Target/TargetMachine.h"
+#include "llvm/Target/TargetOptions.h"
 
 using namespace llvm;
 
 #define DEBUG_TYPE "evm-lower-jump-unless"
 #define EVM_LOWER_JUMP_UNLESS_NAME "EVM Lower jump_unless"
+
+STATISTIC(NumPseudoJumpUnlessFolded, "Number of PseudoJUMP_UNLESS folded");
 
 namespace {
 class EVMLowerJumpUnless final : public MachineFunctionPass {
@@ -66,14 +72,51 @@ static void lowerJumpUnless(MachineInstr &MI, const EVMInstrInfo *TII,
       .addReg(NewReg);
 }
 
-// Lower pseudo jump_unless into iszero and jumpi instructions. This pseudo
-// instruction can only be present in stackified functions.
+/// Fold `<PrevMI> ; PseudoJUMP_UNLESS` into `PseudoJUMPI`.
+///
+/// Supported `PrevMI` patterns and changes:
+///   • `ISZERO_S` -> delete `ISZERO_S`
+///   • `EQ_S`     -> change to `SUB_S`
+///   • `SUB_S`    -> change to `EQ_S`
+///
+/// Returns `true` if any fold was performed.
+static bool tryFoldJumpUnless(MachineInstr &MI, const EVMInstrInfo *TII) {
+  auto I = MachineBasicBlock::iterator(&MI);
+  auto *PrevMI = I == MI.getParent()->begin() ? nullptr : &*std::prev(I);
+  bool CanFold = PrevMI && (PrevMI->getOpcode() == EVM::ISZERO_S ||
+                            PrevMI->getOpcode() == EVM::EQ_S ||
+                            PrevMI->getOpcode() == EVM::SUB_S);
+
+  if (!CanFold)
+    return false;
+
+  ++NumPseudoJumpUnlessFolded;
+
+  if (PrevMI->getOpcode() == EVM::ISZERO_S)
+    PrevMI->eraseFromParent();
+  else if (PrevMI->getOpcode() == EVM::EQ_S)
+    PrevMI->setDesc(TII->get(EVM::SUB_S));
+  else if (PrevMI->getOpcode() == EVM::SUB_S)
+    PrevMI->setDesc(TII->get(EVM::EQ_S));
+  return true;
+}
+
+/// Lower a `PseudoJUMP_UNLESS` to condition-setting + `PseudoJUMPI`.
+///
+/// If `FoldJumps` is enabled and the local pattern allows it, an
+/// optimisation in `tryFoldJumpUnless` removes the explicit `ISZERO_S`.
+/// Otherwise the pseudo-op expands to:
+///     ISZERO_S
+///     PseudoJUMPI
 static void lowerPseudoJumpUnless(MachineInstr &MI, const EVMInstrInfo *TII,
-                                  const bool IsStackified) {
+                                  const bool IsStackified,
+                                  const bool FoldJumps) {
   assert(IsStackified && "Found pseudo jump_unless in non-stackified function");
   assert(MI.getNumExplicitOperands() == 1 &&
          "Unexpected number of operands in pseudo jump_unless");
-  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(EVM::ISZERO_S));
+
+  if (!FoldJumps || !tryFoldJumpUnless(MI, TII))
+    BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(EVM::ISZERO_S));
   BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(EVM::PseudoJUMPI))
       .add(MI.getOperand(0));
 }
@@ -84,6 +127,7 @@ bool EVMLowerJumpUnless::runOnMachineFunction(MachineFunction &MF) {
            << "********** Function: " << MF.getName() << '\n';
   });
 
+  CodeGenOptLevel OptLevel = MF.getTarget().getOptLevel();
   MachineRegisterInfo &MRI = MF.getRegInfo();
   const auto *TII = MF.getSubtarget<EVMSubtarget>().getInstrInfo();
   const bool IsStackified =
@@ -91,17 +135,24 @@ bool EVMLowerJumpUnless::runOnMachineFunction(MachineFunction &MF) {
 
   bool Changed = false;
   for (MachineBasicBlock &MBB : MF) {
-    for (auto &MI : make_early_inc_range(MBB)) {
-      if (MI.getOpcode() == EVM::PseudoJUMP_UNLESS)
-        lowerPseudoJumpUnless(MI, TII, IsStackified);
-      else if (MI.getOpcode() == EVM::JUMP_UNLESS)
-        lowerJumpUnless(MI, TII, IsStackified, MRI);
-      else
-        continue;
+    auto TermIt = MBB.getFirstInstrTerminator();
+    if (TermIt == MBB.end())
+      continue;
 
-      MI.eraseFromParent();
-      Changed = true;
+    switch (TermIt->getOpcode()) {
+    case EVM::PseudoJUMP_UNLESS:
+      lowerPseudoJumpUnless(*TermIt, TII, IsStackified,
+                            OptLevel != CodeGenOptLevel::None);
+      break;
+    case EVM::JUMP_UNLESS:
+      lowerJumpUnless(*TermIt, TII, IsStackified, MRI);
+      break;
+    default:
+      continue;
     }
+
+    TermIt->eraseFromParent();
+    Changed = true;
   }
   return Changed;
 }
