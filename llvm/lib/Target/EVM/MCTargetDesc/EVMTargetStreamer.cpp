@@ -64,7 +64,7 @@ void EVMTargetObjStreamer::emitWideRelocatableSymbol(const MCInst &PushInst,
   const MCSubtargetInfo *STI = Ctx.getSubtargetInfo();
   auto &S = static_cast<MCObjectStreamer &>(Streamer);
 
-  auto *DF = new MCDataFragment();
+  auto *DF = Ctx.allocFragment<MCDataFragment>();
   S.insert(DF);
   SmallString<128> Code;
   S.getAssembler().getEmitter().encodeInstruction(PushInst, Code,
