@@ -4,6 +4,13 @@
 target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
 target triple = "evm"
 
+declare i256 @llvm.evm.calldatasize()
+declare void @llvm.evm.extcodecopy(i256, ptr addrspace(1), ptr addrspace(4), i256)
+declare i256 @llvm.evm.create.sptr(i256, ptr addrspace(1), i256, ptr addrspace(5), ptr addrspace(6))
+declare void @llvm.evm.return.sptr(ptr addrspace(1) readonly, i256, ptr addrspace(5) immarg, ptr addrspace(6) immarg)
+declare void @llvm.evm.revert.sptr(ptr addrspace(1) readonly, i256, ptr addrspace(5), ptr addrspace(6))
+declare void @llvm.evm.log0(ptr addrspace(1), i256)
+
 define void @test() {
 ; CHECK-LABEL: define void @test() {
 ; CHECK-NEXT:    [[PTR2:%.*]] = inttoptr i256 32 to ptr addrspace(1)
@@ -14,5 +21,80 @@ define void @test() {
   %ptr2 = inttoptr i256 32 to ptr addrspace(1)
   store i256 2, ptr addrspace(1) %ptr1, align 64
   store i256 1, ptr addrspace(1) %ptr2, align 64
+  ret void
+}
+
+; Check that
+;
+;   store i256 1, ptr addrspace(6) null, align 32
+;   store i256 1, ptr addrspace(5) null, align 32
+;
+; are not DSE-ed.
+define void @no_dse_storage() {
+; CHECK-LABEL: define void @no_dse_storage() {
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    store i256 1, ptr addrspace(6) null, align 32
+; CHECK-NEXT:    [[CALLDATASIZE:%.*]] = tail call i256 @llvm.evm.calldatasize()
+; CHECK-NEXT:    br label [[IF_JOIN22:%.*]]
+; CHECK:       if_join22:
+; CHECK-NEXT:    store i256 1, ptr addrspace(5) null, align 32
+; CHECK-NEXT:    [[COMPARISON_RESULT_I:%.*]] = icmp ugt i256 [[CALLDATASIZE]], 4
+; CHECK-NEXT:    br i1 [[COMPARISON_RESULT_I]], label [[FUN_G_EXIT:%.*]], label [[IF_JOIN_I:%.*]]
+; CHECK:       if_join.i:
+; CHECK-NEXT:    store i256 2, ptr addrspace(6) null, align 32
+; CHECK-NEXT:    tail call void @llvm.evm.return.sptr(ptr addrspace(1) noalias nocapture nofree noundef nonnull align 32 null, i256 0, ptr addrspace(5) null, ptr addrspace(6) null)
+; CHECK-NEXT:    unreachable
+; CHECK:       fun_g.exit:
+; CHECK-NEXT:    store i256 2, ptr addrspace(5) null, align 32
+; CHECK-NEXT:    tail call void @llvm.evm.revert.sptr(ptr addrspace(1) noalias nocapture nofree noundef nonnull align 32 null, i256 0, ptr addrspace(5) null, ptr addrspace(6) null)
+; CHECK-NEXT:    unreachable
+;
+entry:
+  store i256 1, ptr addrspace(6) null, align 32
+  %calldatasize = tail call i256 @llvm.evm.calldatasize()
+  br label %if_join22
+
+if_join22:
+  store i256 1, ptr addrspace(5) null, align 32
+  %comparison_result.i = icmp ugt i256 %calldatasize, 4
+  br i1 %comparison_result.i, label %fun_g.exit, label %if_join.i
+
+if_join.i:
+  store i256 2, ptr addrspace(6) null, align 32
+  tail call void @llvm.evm.return.sptr(ptr addrspace(1) noalias nocapture nofree noundef nonnull align 32 null, i256 0, ptr addrspace(5) null, ptr addrspace(6) null)
+  unreachable
+
+fun_g.exit:                                       ; preds = %if_join22
+  store i256 2, ptr addrspace(5) null, align 32
+  tail call void @llvm.evm.revert.sptr(ptr addrspace(1) noalias nocapture nofree noundef nonnull align 32 null, i256 0, ptr addrspace(5) null, ptr addrspace(6) null)
+  unreachable
+}
+
+; Check that second llvm.evm.extcodecopy is not DSEed.
+define i256 @extcodecopy_no_dse(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %roff, i256 %rsize) nounwind {
+; CHECK-LABEL: define i256 @extcodecopy_no_dse
+; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) [[ROFF:%.*]], i256 [[RSIZE:%.*]]) #[[ATTR3:[0-9]+]] {
+; CHECK-NEXT:    call void @llvm.evm.extcodecopy(i256 0, ptr addrspace(1) null, ptr addrspace(4) null, i256 32)
+; CHECK-NEXT:    [[UNUSED:%.*]] = call i256 @llvm.evm.create.sptr(i256 1, ptr addrspace(1) inttoptr (i256 256 to ptr addrspace(1)), i256 32, ptr addrspace(5) null, ptr addrspace(6) null)
+; CHECK-NEXT:    call void @llvm.evm.extcodecopy(i256 0, ptr addrspace(1) null, ptr addrspace(4) null, i256 32)
+; CHECK-NEXT:    ret i256 0
+;
+  call void @llvm.evm.extcodecopy(i256 0, ptr addrspace(1) null, ptr addrspace(4) null, i256 32)
+  %unused = call i256 @llvm.evm.create.sptr(i256 1, ptr addrspace(1) inttoptr (i256 256 to ptr addrspace(1)), i256 32, ptr addrspace(5) null, ptr addrspace(6) null)
+  call void @llvm.evm.extcodecopy(i256 0, ptr addrspace(1) null, ptr addrspace(4) null, i256 32)
+  ret i256 0
+}
+
+; Check that the first store is removed.
+define void @storage_dse_log(ptr addrspace(1) %off, i256 %size) {
+; CHECK-LABEL: define void @storage_dse_log
+; CHECK-SAME: (ptr addrspace(1) [[OFF:%.*]], i256 [[SIZE:%.*]]) {
+; CHECK-NEXT:    call void @llvm.evm.log0(ptr addrspace(1) [[OFF]], i256 [[SIZE]])
+; CHECK-NEXT:    store i256 2, ptr addrspace(5) null, align 32
+; CHECK-NEXT:    ret void
+;
+  store i256 1, ptr addrspace(5) null, align 32
+  call void @llvm.evm.log0(ptr addrspace(1) %off, i256 %size)
+  store i256 2, ptr addrspace(5) null, align 32
   ret void
 }
