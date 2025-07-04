@@ -483,6 +483,44 @@ static bool spillRegHasNoUseOrDefBefore(const StackSlot *Slot,
                      });
 }
 
+bool EVMStackSolver::shouldRemoveSlot(const StackSlot *Slot,
+                                      const MachineInstr &MI) const {
+  const auto *Literal = dyn_cast<LiteralSlot>(Slot);
+  if (!Literal)
+    return Slot->isRematerializable();
+
+  // For now, remove all literals if we are not optimizing for size to reduce
+  // stack pressure.
+  if (!MI.getMF()->getFunction().hasOptSize())
+    return true;
+
+  const auto &Imm = Literal->getValue();
+
+  // PUSH0 is always profitable to remove, since it is one of the cheapest
+  // instructions.
+  if (Imm.isZero())
+    return true;
+
+  // Remove smaller literals, as they are not profitable to propagate and
+  // can increase stack pressure and potentially cause spilling. The minimum
+  // PUSH size of 4 is got after doing benchmarks with different sizes
+  // (9, 8, 6, 5, 4, 3).
+  const unsigned PushByteWidth = alignTo(Imm.getActiveBits(), 8) / 8;
+  constexpr unsigned MinPushByteWidth = 4;
+  if (PushByteWidth < MinPushByteWidth)
+    return true;
+
+  // If there is no other use of the literal in the MBB, we can remove it
+  // from the stack to reduce stack pressure, otherwise we keep it to reduce
+  // code size.
+  return std::all_of(
+      std::next(MachineBasicBlock::const_reverse_iterator(MI)),
+      MI.getParent()->rend(), [Literal, this](const MachineInstr &Instr) {
+        return StackModel.skipMI(Instr) ||
+               !is_contained(StackModel.getMIInput(Instr), Literal);
+      });
+}
+
 Stack EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
                                          const MachineInstr &MI,
                                          bool CompressStack) {
@@ -524,7 +562,7 @@ Stack EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
     // Don't remove register spills if the register is used or defined before
     // MI. They are not cheap and ideally we shouldn't do more than one reload
     // in the BB.
-    if (BackSlot->isRematerializable() ||
+    if (shouldRemoveSlot(BackSlot, MI) ||
         spillRegHasNoUseOrDefBefore(BackSlot, MI)) {
       BeforeMI.pop_back();
     } else if (auto Offset =
