@@ -27,20 +27,10 @@ bool EVMInstrInfo::isReallyTriviallyReMaterializable(
     const MachineInstr &MI) const {
   switch (MI.getOpcode()) {
   case EVM::ADDRESS:
-  case EVM::ORIGIN:
   case EVM::CALLER:
   case EVM::CALLVALUE:
   case EVM::CALLDATASIZE:
   case EVM::CODESIZE:
-  case EVM::GASPRICE:
-  case EVM::COINBASE:
-  case EVM::TIMESTAMP:
-  case EVM::NUMBER:
-  case EVM::DIFFICULTY:
-  case EVM::GASLIMIT:
-  case EVM::CHAINID:
-  case EVM::BASEFEE:
-  case EVM::BLOBBASEFEE:
   case EVM::CONST_I256:
     return true;
   default:
