@@ -113,7 +113,8 @@ def int_evm_gas : Intrinsic<[llvm_i256_ty], [], [IntrWillReturn]>;
 // Getting values from the context.
 def int_evm_address : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
 
-def int_evm_origin : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
+def int_evm_origin : Intrinsic<[llvm_i256_ty], [],
+                               [IntrReadMem, IntrInaccessibleMemOnly, IntrWillReturn]>;
 
 def int_evm_caller : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
 
@@ -130,7 +131,8 @@ def int_evm_calldataload
 
 def int_evm_codesize : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
 
-def int_evm_gasprice : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
+def int_evm_gasprice : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly,
+                                                      IntrWillReturn]>;
 
 def int_evm_extcodesize
   : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrReadMem, IntrInaccessibleMemOnly, IntrWillReturn]>;
@@ -148,28 +150,38 @@ def int_evm_returndatasize
 def int_evm_extcodehash
   : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrReadMem, IntrInaccessibleMemOnly, IntrWillReturn]>;
 
-def int_evm_blockhash : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
+def int_evm_blockhash : Intrinsic<[llvm_i256_ty], [llvm_i256_ty],
+                                  [IntrReadMem, IntrInaccessibleMemOnly, IntrWillReturn]>;
 
-def int_evm_blobhash : Intrinsic<[llvm_i256_ty], [llvm_i256_ty], [IntrNoMem, IntrWillReturn]>;
+def int_evm_blobhash : Intrinsic<[llvm_i256_ty], [llvm_i256_ty],
+                                 [IntrReadMem, IntrInaccessibleMemOnly, IntrWillReturn]>;
 
-def int_evm_coinbase : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
+def int_evm_coinbase : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly,
+                                                      IntrWillReturn]>;
 
-def int_evm_timestamp : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
+def int_evm_timestamp : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly,
+                                                       IntrWillReturn]>;
 
-def int_evm_number : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
+def int_evm_number : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly,
+                                                    IntrWillReturn]>;
 
-def int_evm_difficulty : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
+def int_evm_difficulty : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly,
+                                                        IntrWillReturn]>;
 
-def int_evm_gaslimit : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
+def int_evm_gaslimit : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly,
+                                                      IntrWillReturn]>;
 
-def int_evm_chainid : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
+def int_evm_chainid : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly,
+                                                     IntrWillReturn]>;
 
 def int_evm_selfbalance
   : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly, IntrWillReturn]>;
 
-def int_evm_basefee : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
+def int_evm_basefee : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly,
+                                                     IntrWillReturn]>;
 
-def int_evm_blobbasefee : Intrinsic<[llvm_i256_ty], [], [IntrNoMem, IntrWillReturn]>;
+def int_evm_blobbasefee : Intrinsic<[llvm_i256_ty], [], [IntrReadMem, IntrInaccessibleMemOnly,
+                                                         IntrWillReturn]>;
 
 // Logging.
 // Log intrinsics should have 'read/write of inaccessible' memory along with read memory
