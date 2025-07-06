@@ -545,10 +545,6 @@ defm ADDRESS
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_address))],
       "ADDRESS", "$dst", 0x30, 2>;
 
-defm ORIGIN
-  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_origin))],
-      "ORIGIN", "$dst", 0x32, 2>;
-
 defm CALLER
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_caller))],
       "CALLER", "$dst", 0x33, 2>;
@@ -564,14 +560,13 @@ defm CALLDATASIZE
 defm CODESIZE
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_codesize))],
       "CODESIZE", "$dst", 0x38, 2>;
+}
 
-defm GASPRICE
-  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_gasprice))],
-      "GASPRICE", "$dst", 0x3A, 2>;
+let isAsCheapAsAMove = 1 in {
 
-defm COINBASE
-  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_coinbase))],
-      "COINBASE", "$dst", 0x41, 2>;
+defm ORIGIN
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_origin))],
+      "ORIGIN", "$dst", 0x32, 2>;
 
 defm TIMESTAMP
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_timestamp))],
@@ -581,21 +576,29 @@ defm NUMBER
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_number))],
       "NUMBER", "$dst", 0x43, 2>;
 
-defm DIFFICULTY
-  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_difficulty))],
-      "DIFFICULTY", "$dst", 0x44, 2>;
-
 defm GASLIMIT
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_gaslimit))],
       "GASLIMIT", "$dst", 0x45, 2>;
+
+defm COINBASE
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_coinbase))],
+      "COINBASE", "$dst", 0x41, 2>;
+
+defm BASEFEE
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_basefee))],
+      "BASEFEE", "$dst", 0x48, 2>;
 
 defm CHAINID
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_chainid))],
       "CHAINID", "$dst", 0x46, 2>;
 
-defm BASEFEE
-  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_basefee))],
-      "BASEFEE", "$dst", 0x48, 2>;
+defm GASPRICE
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_gasprice))],
+      "GASPRICE", "$dst", 0x3A, 2>;
+
+defm DIFFICULTY
+  : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_difficulty))],
+      "DIFFICULTY", "$dst", 0x44, 2>;
 
 defm BLOBBASEFEE
   : I<(outs GPR:$dst), (ins), [(set GPR:$dst, (int_evm_blobbasefee))],
