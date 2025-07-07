@@ -38,6 +38,7 @@ add_custom_target(EVMStdLib DEPENDS "${EVM_STDLIB_PATH_OUT}")
 add_llvm_target(EVMCodeGen
   EVMAliasAnalysis.cpp
   EVMAllocaHoisting.cpp
+  EVMAlwaysInline.cpp
   EVMArgumentMove.cpp
   EVMAsmPrinter.cpp
   EVMBackwardPropagationStackification.cpp
@@ -55,6 +56,7 @@ add_llvm_target(EVMCodeGen
   EVMMarkRecursiveFunctions.cpp
   EVMMCInstLower.cpp
   EVMMachineFunctionInfo.cpp
+  EVMModuleLayout.cpp
   EVMOptimizeLiveIntervals.cpp
   EVMRegColoring.cpp
   EVMRegisterInfo.cpp
@@ -81,6 +83,7 @@ add_llvm_target(EVMCodeGen
   IRReader
   Linker
   MC
+  Passes
   Scalar
   SelectionDAG
   Support
