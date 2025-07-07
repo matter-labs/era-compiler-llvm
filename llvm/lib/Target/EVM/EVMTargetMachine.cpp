@@ -64,6 +64,8 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   initializeEVMBPStackificationPass(PR);
   initializeEVMAAWrapperPassPass(PR);
   initializeEVMExternalAAWrapperPass(PR);
+  initializeEVMAlwaysInlinePass(PR);
+  initializeEVMModuleLayoutPass(PR);
   initializeEVMLowerJumpUnlessPass(PR);
   initializeEVMFinalizeStackFramesPass(PR);
   initializeEVMMarkRecursiveFunctionsPass(PR);
@@ -131,6 +133,8 @@ void EVMTargetMachine::registerDefaultAliasAnalyses(AAManager &AAM) {
 void EVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
   PB.registerPipelineStartEPCallback(
       [](ModulePassManager &PM, OptimizationLevel Level) {
+        if (Level != OptimizationLevel::O0)
+          PM.addPass(EVMAlwaysInlinePass());
         PM.addPass(EVMLinkRuntimePass());
         PM.addPass(GlobalDCEPass());
         PM.addPass(createModuleToFunctionPassAdaptor(EVMAllocaHoistingPass()));
@@ -152,6 +156,10 @@ void EVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
          ArrayRef<PassBuilder::PipelineElement>) {
         if (PassName == "evm-mark-recursive-functions") {
           PM.addPass(EVMMarkRecursiveFunctionsPass());
+          return true;
+        }
+        if (PassName == "evm-always-inline") {
+          PM.addPass(EVMAlwaysInlinePass());
           return true;
         }
         return false;
@@ -230,6 +238,7 @@ bool EVMPassConfig::addPreISel() {
 }
 
 void EVMPassConfig::addCodeGenPrepare() {
+  addPass(createEVMModuleLayoutPass());
   addPass(createEVMCodegenPreparePass());
   TargetPassConfig::addCodeGenPrepare();
 }

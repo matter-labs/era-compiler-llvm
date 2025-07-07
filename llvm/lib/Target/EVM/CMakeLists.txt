@@ -19,6 +19,7 @@ file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/EVMStdLib.inc ${STDLIB_CONTENT})
 add_llvm_target(EVMCodeGen
   EVMAliasAnalysis.cpp
   EVMAllocaHoisting.cpp
+  EVMAlwaysInline.cpp
   EVMArgumentMove.cpp
   EVMAsmPrinter.cpp
   EVMBackwardPropagationStackification.cpp
@@ -36,6 +37,7 @@ add_llvm_target(EVMCodeGen
   EVMMarkRecursiveFunctions.cpp
   EVMMCInstLower.cpp
   EVMMachineFunctionInfo.cpp
+  EVMModuleLayout.cpp
   EVMOptimizeLiveIntervals.cpp
   EVMRegColoring.cpp
   EVMRegisterInfo.cpp
@@ -62,6 +64,7 @@ add_llvm_target(EVMCodeGen
   IRReader
   Linker
   MC
+  Passes
   Scalar
   SelectionDAG
   Support
