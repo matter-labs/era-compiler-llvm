@@ -56,6 +56,8 @@ ModulePass *createEVMLowerIntrinsicsPass();
 FunctionPass *createEVMCodegenPreparePass();
 ImmutablePass *createEVMAAWrapperPass();
 ImmutablePass *createEVMExternalAAWrapperPass();
+ModulePass *createEVMAlwaysInlinePass();
+ModulePass *createEVMModuleLayoutPass();
 
 // ISel and immediate followup passes.
 FunctionPass *createEVMISelDag(EVMTargetMachine &TM, CodeGenOptLevel OptLevel);
@@ -85,6 +87,8 @@ void initializeEVMSplitCriticalEdgesPass(PassRegistry &);
 void initializeEVMBPStackificationPass(PassRegistry &);
 void initializeEVMAAWrapperPassPass(PassRegistry &);
 void initializeEVMExternalAAWrapperPass(PassRegistry &);
+void initializeEVMAlwaysInlinePass(PassRegistry &);
+void initializeEVMModuleLayoutPass(PassRegistry &);
 void initializeEVMLowerJumpUnlessPass(PassRegistry &);
 void initializeEVMFinalizeStackFramesPass(PassRegistry &);
 void initializeEVMMarkRecursiveFunctionsPass(PassRegistry &);
@@ -108,6 +112,11 @@ struct EVMSHA3ConstFoldingPass : PassInfoMixin<EVMSHA3ConstFoldingPass> {
 struct EVMMarkRecursiveFunctionsPass
     : PassInfoMixin<EVMMarkRecursiveFunctionsPass> {
   EVMMarkRecursiveFunctionsPass() = default;
+  PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
+};
+
+struct EVMAlwaysInlinePass : PassInfoMixin<EVMAlwaysInlinePass> {
+  EVMAlwaysInlinePass() = default;
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
 };
 
