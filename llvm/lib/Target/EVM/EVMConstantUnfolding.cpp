@@ -575,5 +575,10 @@ bool EVMConstantUnfolding::runOnMachineFunction(MachineFunction &Mf) {
       Changed |= tryUnfoldConstant(MI);
     }
   }
+
+  // Clear the transformation cache, since in some cases, EVMConstantUnfolding
+  // is not destroyed after the run, and can be reused for other functions. In
+  // that case, we don't want to reuse the cache from the previous runs.
+  TransformationCache.clear();
   return Changed;
 }
