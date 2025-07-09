@@ -234,6 +234,7 @@ void EVMPassConfig::addIRPasses() {
 bool EVMPassConfig::addPreISel() {
   TargetPassConfig::addPreISel();
   addPass(createEVMMarkRecursiveFunctionsPass());
+  addPass(createFixIrreduciblePass());
   return false;
 }
 
@@ -241,6 +242,8 @@ void EVMPassConfig::addCodeGenPrepare() {
   addPass(createEVMModuleLayoutPass());
   addPass(createEVMCodegenPreparePass());
   TargetPassConfig::addCodeGenPrepare();
+
+  addPass(createLowerSwitchPass());
 }
 
 bool EVMPassConfig::addInstSelector() {
