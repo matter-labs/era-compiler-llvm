@@ -489,11 +489,6 @@ bool EVMStackSolver::shouldRemoveSlot(const StackSlot *Slot,
   if (!Literal)
     return Slot->isRematerializable();
 
-  // For now, remove all literals if we are not optimizing for size to reduce
-  // stack pressure.
-  if (!MI.getMF()->getFunction().hasOptSize())
-    return true;
-
   const auto &Imm = Literal->getValue();
 
   // PUSH0 is always profitable to remove, since it is one of the cheapest
@@ -506,7 +501,7 @@ bool EVMStackSolver::shouldRemoveSlot(const StackSlot *Slot,
   // PUSH size of 4 is got after doing benchmarks with different sizes
   // (9, 8, 6, 5, 4, 3).
   const unsigned PushByteWidth = alignTo(Imm.getActiveBits(), 8) / 8;
-  constexpr unsigned MinPushByteWidth = 4;
+  unsigned MinPushByteWidth = MI.getMF()->getFunction().hasOptSize() ? 4 : 8;
   if (PushByteWidth < MinPushByteWidth)
     return true;
 
