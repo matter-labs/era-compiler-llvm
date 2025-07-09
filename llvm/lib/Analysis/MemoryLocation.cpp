@@ -176,8 +176,6 @@ MemoryLocation MemoryLocation::getForArgument(const CallBase *Call,
     // location
     auto T = Call->getModule()->getTargetTriple();
     if (Triple(T).isEraVM() || Triple(T).isEVM()) {
-      // For EVM intrinsics, the memory size argument always immediately
-      // follows the memory argument, meaning its index is ArgIdx + 1.
       auto GetMemLocation = [Call, Arg, &AATags](unsigned MemSizeArgIdx) {
         const auto *LenCI =
             dyn_cast<ConstantInt>(Call->getArgOperand(MemSizeArgIdx));
@@ -211,6 +209,63 @@ MemoryLocation MemoryLocation::getForArgument(const CallBase *Call,
       case Intrinsic::evm_calldataload: {
         assert((ArgIdx == 0) && "Invalid argument index for calldataload");
         return MemoryLocation(Arg, LocationSize::precise(32), AATags);
+      }
+      case Intrinsic::evm_return_sptr:
+      case Intrinsic::evm_revert_sptr: {
+        assert((ArgIdx == 0 || ArgIdx == 2 || ArgIdx == 3) &&
+               "Invalid argument index for return/revert");
+        if (ArgIdx == 0)
+          return GetMemLocation(ArgIdx + 1);
+
+        return MemoryLocation::getBeforeOrAfter(Arg, AATags);
+      }
+      case Intrinsic::evm_extcodecopy: {
+        assert((ArgIdx == 1 || ArgIdx == 2) &&
+               "Invalid argument index for extcodecopy");
+        return GetMemLocation(3);
+      }
+      case Intrinsic::evm_log0:
+      case Intrinsic::evm_log1:
+      case Intrinsic::evm_log2:
+      case Intrinsic::evm_log3:
+      case Intrinsic::evm_log4: {
+        assert((ArgIdx == 0) && "Invalid argument index for log");
+        return GetMemLocation(ArgIdx + 1);
+      }
+      case Intrinsic::evm_create_sptr: {
+        assert((ArgIdx == 1 || ArgIdx == 3 || ArgIdx == 4) &&
+               "Invalid argument index for create");
+        if (ArgIdx == 1)
+          return GetMemLocation(ArgIdx + 1);
+
+        return MemoryLocation::getBeforeOrAfter(Arg, AATags);
+      }
+      case Intrinsic::evm_create2_sptr: {
+        assert((ArgIdx == 1 || ArgIdx == 4 || ArgIdx == 5) &&
+               "Invalid argument index for create2");
+        if (ArgIdx == 1)
+          return GetMemLocation(ArgIdx + 1);
+
+        return MemoryLocation::getBeforeOrAfter(Arg, AATags);
+      }
+
+      case Intrinsic::evm_call_sptr:
+      case Intrinsic::evm_callcode_sptr: {
+        assert((ArgIdx == 3 || ArgIdx == 5 || ArgIdx == 7 || ArgIdx == 8) &&
+               "Invalid argument index for call/callcode");
+        if (ArgIdx == 3 || ArgIdx == 5)
+          return GetMemLocation(ArgIdx + 1);
+
+        return MemoryLocation::getBeforeOrAfter(Arg, AATags);
+      }
+      case Intrinsic::evm_delegatecall_sptr:
+      case Intrinsic::evm_staticcall_sptr: {
+        assert((ArgIdx == 2 || ArgIdx == 4 || ArgIdx == 6 || ArgIdx == 7) &&
+               "Invalid argument index for delegatecall/staticcall");
+        if (ArgIdx == 2 || ArgIdx == 4)
+          return GetMemLocation(ArgIdx + 1);
+
+        return MemoryLocation::getBeforeOrAfter(Arg, AATags);
       }
       default:
         llvm_unreachable("Unexpected intrinsic for EraVM/EVM target");
