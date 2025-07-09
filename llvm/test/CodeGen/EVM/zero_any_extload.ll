@@ -9,8 +9,8 @@ define i8 @load_anyext_i8(ptr addrspace(1) %ptr) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    MLOAD
-; CHECK-NEXT:    PUSH1 0xF8
-; CHECK-NEXT:    SHR
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    BYTE
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
 
@@ -79,8 +79,8 @@ define i256 @load_zeroext_i8(ptr addrspace(1) %ptr) nounwind {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    MLOAD
-; CHECK-NEXT:    PUSH1 0xF8
-; CHECK-NEXT:    SHR
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    BYTE
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
 

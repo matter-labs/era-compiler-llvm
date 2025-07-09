@@ -125,6 +125,18 @@ def negate_imm : SDNodeXForm<imm, [{
   return CurDAG->getTargetConstant(-neg, SDLoc(N), MVT::i256);
 }]>;
 
+// Transform that maps the shift amount to BYTE‘s index (31 - Val / 8).
+def byte_shift : SDNodeXForm<imm, [{
+  uint64_t Val = cast<ConstantSDNode>(N)->getZExtValue();
+  uint64_t ByteIdx = Val / 8;
+  return CurDAG->getTargetConstant(31 - ByteIdx, SDLoc(N), MVT::i256);
+}]>;
+
+// Immediate predicate: imm divisible by 8 and within [0, 31 * 8].
+def byte_shift_imm : PatLeaf<(imm), [{
+  uint64_t Val = N->getZExtValue();
+  return (Val % 8) == 0 && Val <= 31 * 8;
+}]>;
 
 //===----------------------------------------------------------------------===//
 // Pattern fragments for memory instructions.
@@ -351,6 +363,24 @@ defm BYTE
       [(set GPR:$dst, (int_evm_byte GPR:$idx, GPR:$val))],
       "BYTE", "$dst, $idx, $val", 0x1a, 3>;
 
+def : Pat<(and (srl i256:$val, byte_shift_imm:$sh), (i256 255)),
+          (BYTE (CONST_I256 (byte_shift byte_shift_imm:$sh)), $val)>;
+
+// When the shift amount is 248, the node 'AND $val, 255' gets optimized away
+// in the lowered SelectionDAG, preventing the above pattern from matching
+// which results to the following instructions:
+//
+//   PUSH1 0xF8
+//   SHR
+//
+// However, using the BYTE instruction instead is often both cheaper in gas
+// and uses one less byte:
+//
+//   PUSH0
+//   BYTE
+//
+// So we explicitly match this case with a separate pattern:
+def : Pat<(srl i256:$val, (i256 248)), (BYTE (CONST_I256 0), $val)>;
 
 //===----------------------------------------------------------------------===//
 // EVM shift instructions.
