@@ -58,3 +58,16 @@ bool EVMTTIImpl::isLSRCostLess(const TargetTransformInfo::LSRCost &C1,
 }
 
 bool EVMTTIImpl::isNumRegsMajorCostOfLSR() const { return true; }
+
+InstructionCost EVMTTIImpl::getCmpSelInstrCost(unsigned Opcode, Type *ValTy,
+                                               Type *CondTy,
+                                               CmpInst::Predicate VecPred,
+                                               TTI::TargetCostKind CostKind,
+                                               const Instruction *I) {
+  InstructionCost Cost =
+      BaseT::getCmpSelInstrCost(Opcode, ValTy, CondTy, VecPred, CostKind, I);
+  if (Opcode == Instruction::Select)
+    return Cost + 25 * TargetTransformInfo::TCC_Expensive;
+
+  return Cost;
+}
