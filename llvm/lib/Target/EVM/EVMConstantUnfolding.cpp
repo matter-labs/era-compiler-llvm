@@ -48,14 +48,14 @@ STATISTIC(NumOfUnfoldings, "Number of unfolded constants");
 // impacting performance.
 static cl::opt<float>
     SizeGainThreshold("evm-const-unfolding-size-gain-threshold", cl::Hidden,
-                      cl::init(2.5),
+                      cl::init(2.0),
                       cl::desc("Minimum original-to-unfolded size ratio"
                                "required for constant unfolding when"
                                "optimizing for speed"));
 
 static cl::opt<unsigned>
     InstrNumLimitUnfolInto("evm-const-unfolding-inst-num-limit", cl::Hidden,
-                           cl::init(3),
+                           cl::init(4),
                            cl::desc("Maximum number of instructions an original"
                                     "instruction can be unfolded into"));
 
