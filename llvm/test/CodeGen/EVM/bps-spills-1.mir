@@ -614,7 +614,7 @@ body:             |
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT:   PUSH0_S
-  ; CHECK-NEXT:   DUP1_S
+  ; CHECK-NEXT:   PUSH0_S
   ; CHECK-NEXT:   SWAP2_S
   ; CHECK-NEXT:   EQ_S
   ; CHECK-NEXT:   PseudoJUMPI %bb.35

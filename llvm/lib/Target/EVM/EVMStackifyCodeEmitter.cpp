@@ -406,6 +406,14 @@ void EVMStackifyCodeEmitter::emitStackPermutations(const Stack &TargetStack) {
       [&](const StackSlot *Slot) {
         assert(CurrentStack.size() == Emitter.stackHeight());
 
+        if (const auto *Literal = dyn_cast<LiteralSlot>(Slot)) {
+          if (Literal->getValue().isZero()) {
+            // If the literal is zero, we can just emit a constant 0.
+            Emitter.emitConstant(0);
+            return;
+          }
+        }
+
         // Dup the slot, if already on stack and reachable.
         auto SlotIt = llvm::find(llvm::reverse(CurrentStack), Slot);
         if (SlotIt != CurrentStack.rend()) {
