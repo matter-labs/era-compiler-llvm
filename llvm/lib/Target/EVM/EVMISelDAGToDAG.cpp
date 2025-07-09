@@ -85,6 +85,32 @@ void EVMDAGToDAGISel::Select(SDNode *Node) {
     ReplaceNode(Node, CallResults);
     return;
   }
+  case ISD::AND: {
+    // Replace AND (SRL imm, v), 0xFF) -> BYTE (imm / 8), v,
+    // if imm % 8 == 0.
+    auto *CMask = dyn_cast<ConstantSDNode>(Node->getOperand(1));
+    if (!CMask || CMask->getAPIntValue() != 255)
+      break;
+
+    SDNode *SrlNode = Node->getOperand(0).getNode();
+    if (SrlNode->getOpcode() != ISD::SRL || !SrlNode->hasOneUse())
+      break;
+
+    auto *ShiftAmtNode = dyn_cast<ConstantSDNode>(SrlNode->getOperand(1));
+    if (!ShiftAmtNode || (ShiftAmtNode->getZExtValue() % 8))
+      break;
+
+    uint64_t ByteIdx = ShiftAmtNode->getZExtValue() / 8;
+    if (ByteIdx > 31)
+      break;
+
+    SDValue Value = SrlNode->getOperand(0);
+    MachineSDNode *Res = CurDAG->getMachineNode(
+        EVM::BYTE, DL, MVT::i256,
+        CurDAG->getTargetConstant(31 - ByteIdx, DL, MVT::i256), Value);
+    ReplaceNode(Node, Res);
+    return;
+  }
 
   default:
     break;
