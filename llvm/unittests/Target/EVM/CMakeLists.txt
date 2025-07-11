@@ -18,6 +18,7 @@ set(LLVM_LINK_COMPONENTS
 )
 
 add_llvm_target_unittest(EVMTests
+  BytecodeSize.cpp
   SpillRegion.cpp
   StackShuffler.cpp
   StackModel.cpp
