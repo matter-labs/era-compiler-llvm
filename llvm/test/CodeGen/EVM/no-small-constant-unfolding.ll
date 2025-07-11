@@ -15,7 +15,7 @@ define void @test1() #1 {
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    DUP1
+; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    RETURN
 entry:
   tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)

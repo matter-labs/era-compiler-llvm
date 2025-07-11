@@ -140,7 +140,7 @@ body:             |
     ; CHECK-NEXT: POP_S
     ; CHECK-NEXT: POP_S
     ; CHECK-NEXT: PUSH0_S
-    ; CHECK-NEXT: DUP1_S
+    ; CHECK-NEXT: PUSH0_S
     ; CHECK-NEXT: SSTORE_S
     ; CHECK-NEXT: DUP7_S
     ; CHECK-NEXT: SSTORE_S
@@ -168,19 +168,19 @@ body:             |
     ; CHECK-NEXT: SSTORE_S
     ; CHECK-NEXT: PUSH_LABEL <mcsymbol >
     ; CHECK-NEXT: PUSH0_S
-    ; CHECK-NEXT: DUP1_S
-    ; CHECK-NEXT: DUP1_S
-    ; CHECK-NEXT: DUP1_S
-    ; CHECK-NEXT: DUP1_S
-    ; CHECK-NEXT: DUP1_S
-    ; CHECK-NEXT: DUP1_S
-    ; CHECK-NEXT: DUP1_S
-    ; CHECK-NEXT: DUP1_S
-    ; CHECK-NEXT: DUP1_S
-    ; CHECK-NEXT: DUP1_S
-    ; CHECK-NEXT: DUP1_S
-    ; CHECK-NEXT: DUP1_S
-    ; CHECK-NEXT: DUP1_S
+    ; CHECK-NEXT: PUSH0_S
+    ; CHECK-NEXT: PUSH0_S
+    ; CHECK-NEXT: PUSH0_S
+    ; CHECK-NEXT: PUSH0_S
+    ; CHECK-NEXT: PUSH0_S
+    ; CHECK-NEXT: PUSH0_S
+    ; CHECK-NEXT: PUSH0_S
+    ; CHECK-NEXT: PUSH0_S
+    ; CHECK-NEXT: PUSH0_S
+    ; CHECK-NEXT: PUSH0_S
+    ; CHECK-NEXT: PUSH0_S
+    ; CHECK-NEXT: PUSH0_S
+    ; CHECK-NEXT: PUSH0_S
     ; CHECK-NEXT: PseudoCALL @_testRemoveAndInsertBack_rt_707, <mcsymbol >
     ; CHECK-NEXT: PseudoRET
     %3:gpr = ARGUMENT 0, implicit $arguments

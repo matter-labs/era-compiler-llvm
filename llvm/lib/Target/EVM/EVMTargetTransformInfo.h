@@ -111,6 +111,11 @@ public:
   /// implement their own isLSRCostLess and unset number of registers as major
   /// cost should return false, otherwise return true.
   bool isNumRegsMajorCostOfLSR() const;
+
+  InstructionCost getCmpSelInstrCost(unsigned Opcode, Type *ValTy, Type *CondTy,
+                                     CmpInst::Predicate VecPred,
+                                     TTI::TargetCostKind CostKind,
+                                     const Instruction *I = nullptr);
 };
 
 } // end namespace llvm
