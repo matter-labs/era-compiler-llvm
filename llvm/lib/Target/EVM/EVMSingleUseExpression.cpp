@@ -224,7 +224,7 @@ static bool shouldRematerialize(const MachineInstr &Def,
 
     return DefI->getOpcode() == EVM::CONST_I256 ? true : false;
   }
-
+/*
   if (Opcode == EVM::ADD) {
     MachineInstr *DefI1 =
         getVRegDef(Def.getOperand(1).getReg(), &Def, MRI, LIS);
@@ -256,6 +256,12 @@ static bool shouldRematerialize(const MachineInstr &Def,
                       << "DefLI: " << DefLI << ", BaseLI: " << BaseLI << '\n');
 
     return BaseLI.covers(DefLI);
+  }
+  */
+  if (Opcode == EVM::CONST_I256) {
+    const APInt &Imm = Def.getOperand(1).getCImm()->getValue().zext(256);
+    if (Imm.getActiveBits() > 32)
+      return false;
   }
   return Def.isAsCheapAsAMove() && TII->isTriviallyReMaterializable(Def);
 }
