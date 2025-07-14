@@ -37,6 +37,8 @@ public:
     return &Subtarget;
   }
 
+  const EVMSubtarget *getSubtarget() const { return &Subtarget; }
+
   TargetTransformInfo getTargetTransformInfo(const Function &F) const override;
 
   MachineFunctionInfo *
