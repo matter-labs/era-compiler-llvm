@@ -25,8 +25,8 @@ def AS_storage : ASList<[AS.STORAGE]>;
 def AS_tstorage : ASList<[AS.TSTORAGE]>;
 
 // EVM general instruction format.
-class EVMInst<string asmstr, bit stack, int cost>
-  : StackRel, RegisterRel, Instruction {
+class EVMInst<string asmstr, bit stack, bits<16> cost>
+    : StackRel, RegisterRel, Instruction {
   // Instruction encoding. Bitwidth corresponds to the maximum
   // size of possible EVM insturction.
   // This is 'PUSH32 Imm'. 8 bits for opcode, and 256 bits for
@@ -36,32 +36,31 @@ class EVMInst<string asmstr, bit stack, int cost>
   bit IsPush = 0;
   bit StackBased = stack;
   string BaseName = NAME;
-  int GasCost     = cost;
+  bits<16> BaseGasCost = cost;
   let Namespace   = "EVM";
   let Pattern     = [];
   let AsmString   = asmstr;
   let TSFlags{0}  = stack;
   let TSFlags{1}  = IsPush;
+  let TSFlags{17 -2} = BaseGasCost;
 }
 
 // Normal instructions. Default instantiation of a EVMInst.
-class NI<dag oops, dag iops, list<dag> pattern, bit stack,
-         string asmstr = "", bits<8> inst = 0, int cost = 0>
-    : EVMInst<asmstr, stack, cost> {
+class NI<dag oops, dag iops, list<dag> pattern, bit stack, string asmstr = "",
+         bits<8> inst = 0, bits<16> cost = 0> : EVMInst<asmstr, stack, cost> {
   dag OutOperandList = oops;
   dag InOperandList  = iops;
   let Pattern        = pattern;
   let Size           = 1;
   let Opc            = inst;
-  let Inst{7-0}      = Opc;
-  let GasCost        = cost;
+  let Inst{7 -0} = Opc;
   let Defs = !if(stack, [], [ARGUMENTS]);
 }
 
 // Generates both register and stack based versions of one actual instruction.
-multiclass I<dag oops_r, dag iops_r, list<dag> pattern_r,
-             string opcstr, string argstr_r, bits<8> inst,
-             int cost = 0, dag oops_s = (outs), dag iops_s = (ins), string argstr_s = ""> {
+multiclass I<dag oops_r, dag iops_r, list<dag> pattern_r, string opcstr,
+             string argstr_r, bits<8> inst, bits<16> cost, dag oops_s = (outs),
+             dag iops_s = (ins), string argstr_s = ""> {
   let isCodeGenOnly = 1 in
   def "" : NI<oops_r, iops_r, pattern_r, false, opcstr#argstr_r, inst, cost>;
   let BaseName = NAME, Defs = []<Register> in def _S
@@ -83,7 +82,7 @@ class EVMPseudo<dag oops, dag iops, list<dag> pattern, bit stack = 0>
 }
 
 class PushBase<dag oops, dag iops, list<dag> pattern, bit stack,
-               string asmstr = "", bits<8> inst = 0, int cost = 0>
+               string asmstr = "", bits<8> inst, bits<16> cost>
     : NI<oops, iops, pattern, stack, asmstr, inst, cost> {
   let IsPush = 1;
 }

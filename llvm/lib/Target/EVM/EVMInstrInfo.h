@@ -31,6 +31,9 @@ enum {
   // TSF flag to check if this is a PUSH instruction.
   IsPushPos = 1,
   IsPushMask = 0x1,
+  // Mask/offset representing instruction's base gas cost.
+  GasCostPos = 2,
+  GasCostMask = 0xFFFF,
 };
 
 } // namespace EVMII
@@ -84,17 +87,21 @@ public:
   reverseBranchCondition(SmallVectorImpl<MachineOperand> &Cond) const override;
 
   /// TSFlags extraction
-  static unsigned getTSFlag(const MachineInstr *MI, unsigned Pos,
-                            unsigned Mask) {
-    return (MI->getDesc().TSFlags >> Pos) & Mask;
+  static uint64_t getTSFlag(const MCInstrDesc &Desc, unsigned Pos,
+                            uint64_t Mask) {
+    return (Desc.TSFlags >> Pos) & Mask;
   }
 
   static bool isStack(const MachineInstr *MI) {
-    return getTSFlag(MI, EVMII::IsStackPos, EVMII::IsStackMask);
+    return getTSFlag(MI->getDesc(), EVMII::IsStackPos, EVMII::IsStackMask);
   }
 
   static bool isPush(const MachineInstr *MI) {
-    return getTSFlag(MI, EVMII::IsPushPos, EVMII::IsPushMask);
+    return getTSFlag(MI->getDesc(), EVMII::IsPushPos, EVMII::IsPushMask);
+  }
+
+  static uint64_t getGasCost(const MCInstrDesc &Desc) {
+    return getTSFlag(Desc, EVMII::GasCostPos, EVMII::GasCostMask);
   }
 };
 
