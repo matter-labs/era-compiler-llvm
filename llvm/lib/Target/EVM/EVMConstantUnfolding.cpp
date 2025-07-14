@@ -24,207 +24,240 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVM.h"
+#include "EVMCalculateModuleSize.h"
 #include "EVMInstrInfo.h"
-#include "EVMMachineFunctionInfo.h"
+#include "EVMTargetMachine.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "TargetInfo/EVMTargetInfo.h"
 #include "llvm/ADT/Statistic.h"
+#include "llvm/CodeGen/MachineDominators.h"
 #include "llvm/CodeGen/MachineLoopInfo.h"
-#include "llvm/CodeGen/Passes.h"
-#include "llvm/CodeGen/TargetInstrInfo.h"
+#include "llvm/CodeGen/MachineModuleInfo.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/PassInstrumentation.h"
+#include "llvm/IR/PassManager.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Support/Debug.h"
-#include "llvm/Support/raw_ostream.h"
 #include <functional>
+#include <optional>
 
 using namespace llvm;
 
 #define DEBUG_TYPE "evm-constant-unfolding"
+#define PASS_NAME "EVM constant unfolding"
 
 STATISTIC(NumOfUnfoldings, "Number of unfolded constants");
+STATISTIC(CodeSizeReduction, "Total size reduction across all functions");
 
 // The initial values of the following options were determined experimentally
 // to allow constant unfolding in non-OptForSize mode without noticeably
 // impacting performance.
 static cl::opt<float>
-    SizeGainThreshold("evm-const-unfolding-size-gain-threshold", cl::Hidden,
-                      cl::init(2.5),
-                      cl::desc("Minimum original-to-unfolded size ratio"
-                               "required for constant unfolding when"
-                               "optimizing for speed"));
+    SizeReductionThreshold("evm-const-unfolding-size-reduction-threshold",
+                           cl::Hidden, cl::init(2.5),
+                           cl::desc("Minimum original-to-unfolded size ratio"
+                                    "required for constant unfolding when"
+                                    "optimizing for speed"));
 
 static cl::opt<unsigned>
     InstrNumLimitUnfolInto("evm-const-unfolding-inst-num-limit", cl::Hidden,
-                           cl::init(3),
+                           cl::init(4),
                            cl::desc("Maximum number of instructions an original"
                                     "instruction can be unfolded into"));
-
-static cl::opt<unsigned> GasWeight("evm-const-unfolding-gas-weight", cl::Hidden,
-                                   cl::init(2),
-                                   cl::desc("Gas weight used as a factor in the"
-                                            "transformation cost function"));
 
 static cl::opt<unsigned>
     LoopDepthLimit("evm-const-loop-depth-limit", cl::Hidden, cl::init(2),
                    cl::desc("The maximum loop depth at which constant"
                             "unfolding is still considered beneficial"));
 
+static cl::opt<unsigned>
+    CodeSizeLimit("evm-bytecode-sizelimit", cl::Hidden, cl::init(24576),
+                  cl::desc("EVM contract bytecode size limit"));
+
 namespace {
-class EVMConstantUnfolding final : public MachineFunctionPass {
+
+// Estimates the execution cost of EVM-style stack operations.
+// Tracks instruction count, gas cost, and unfolded bytecode size.
+// It abstracts gas accounting for pushes and simple arithmetic/logical
+// operations.
+class StackCostModel {
+public:
+  StackCostModel() = default;
+
+  void accountInstr(unsigned Opc, const TargetInstrInfo *TII) {
+    ++InstrCount;
+    const MCInstrDesc &Desc = TII->get(Opc);
+    ByteSize += Desc.getSize();
+    Gas += EVMInstrInfo::getGasCost(Desc);
+  }
+
+  unsigned getInstrCount() const { return InstrCount; }
+  unsigned getByteSize() const { return ByteSize; }
+  unsigned getGas() const { return Gas; }
+
+private:
+  unsigned InstrCount{0};
+  unsigned ByteSize{0};
+  unsigned Gas{0};
+};
+
+// Builds and applies a sequence of machine instructions required to
+// unfold a constant. Instruction generation is deferred using lambdas,
+// allowing the TransformationBuilder object to be reused for repeated
+// constants. As new instructions are added, the StackCostModel is used
+// to track the accumulated cost.
+class TransformationBuilder {
+public:
+  TransformationBuilder(LLVMContext &Context, const TargetInstrInfo *TII)
+      : Context(Context), TII(TII) {}
+
+  void addSub() {
+    constexpr unsigned Opc = EVM::SUB_S;
+    CostModel.accountInstr(Opc, TII);
+    BuildItems.push_back([this](MachineInstr &MI) { insertInstr(MI, Opc); });
+  }
+
+  void addShl() {
+    constexpr unsigned Opc = EVM::SHL_S;
+    CostModel.accountInstr(Opc, TII);
+    BuildItems.push_back([this](MachineInstr &MI) { insertInstr(MI, Opc); });
+  }
+
+  void addShr() {
+    constexpr unsigned Opc = EVM::SHR_S;
+    CostModel.accountInstr(Opc, TII);
+    BuildItems.push_back([this](MachineInstr &MI) { insertInstr(MI, Opc); });
+  }
+
+  void addNot() {
+    constexpr unsigned Opc = EVM::NOT_S;
+    CostModel.accountInstr(Opc, TII);
+    BuildItems.push_back([this](MachineInstr &MI) { insertInstr(MI, Opc); });
+  }
+
+  void addImm(const APInt &Val) {
+    unsigned Opc = EVM::getStackOpcode(EVM::getPUSHOpcode(Val));
+    CostModel.accountInstr(Opc, TII);
+    BuildItems.push_back([this, Opc, Val = Val](MachineInstr &MI) {
+      insertImmInstr(MI, Opc, Val);
+    });
+  }
+
+  // Applies queued build instruction steps to replace a given instruction.
+  void apply(MachineInstr &MI) const {
+    for (const auto &func : BuildItems)
+      func(MI);
+  }
+
+  const StackCostModel &getCost() const { return CostModel; }
+
+private:
+  using BuildFunction = std::function<void(MachineInstr &)>;
+
+  LLVMContext &Context;
+  const TargetInstrInfo *TII{};
+
+  StackCostModel CostModel;
+  SmallVector<BuildFunction, 16> BuildItems;
+
+  void insertInstr(MachineInstr &MI, unsigned Opc) {
+    BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(Opc));
+  }
+
+  void insertImmInstr(MachineInstr &MI, unsigned Opc, const APInt &Val) {
+    auto NewMI = BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(Opc));
+    if (Opc != EVM::PUSH0_S)
+      NewMI.addCImm(ConstantInt::get(Context, Val));
+  }
+};
+
+// Discovers, applies, and caches optimal constant unfolding
+// transformations.
+class ConstantUnfolder {
+public:
+  ConstantUnfolder(LLVMContext *Context, const TargetInstrInfo *TII)
+      : Context(Context), TII(TII) {}
+
+  unsigned getCodeSizeReduction() const { return OverallCodeReductionSize; }
+
+  const TransformationBuilder *findOptimalTransformation(const APInt &Imm,
+                                                         bool OptForSize);
+
+  bool tryToUnfoldConstant(MachineInstr &MI, bool OptForSize);
+
+private:
+  LLVMContext *Context{};
+  const TargetInstrInfo *TII{};
+
+  // The 'second' field can be set to 0 or 1, indicating whether to
+  // optimize for performance or size.
+  using TransformationKey = std::pair<APInt, int>;
+  DenseMap<TransformationKey, std::unique_ptr<TransformationBuilder>>
+      TransformationCache;
+  unsigned OverallCodeReductionSize{0};
+
+  void reduceCodeSizeOn(unsigned Size) {
+    OverallCodeReductionSize += Size;
+    ++NumOfUnfoldings;
+  }
+};
+
+class EVMConstantUnfolding final : public ModulePass {
 public:
   static char ID;
 
-  EVMConstantUnfolding() : MachineFunctionPass(ID) {}
-
-private:
-  // Estimates the execution cost of EVM-style stack operations.
-  // Tracks instruction count, gas cost, and unfolded bytecode size.
-  // It abstracts gas accounting for pushes and simple arithmetic/logical
-  // operations.
-  class StackCostModel {
-  public:
-    StackCostModel() = default;
-
-    void push(const APInt &Val) {
-      Gas += (Val.isZero() ? EVMCOST::PUSH0 : EVMCOST::PUSH);
-      ByteSize += getPushSize(Val);
-      ++InstrCount;
-    }
-
-    void shift() { accountInstr(EVMCOST::SHIFT); }
-
-    void add() { accountInstr(EVMCOST::ADD); }
-
-    void sub() { accountInstr(EVMCOST::SUB); }
-
-    void bit_not() { accountInstr(EVMCOST::NOT); }
-
-    unsigned getInstrCount() const { return InstrCount; }
-    unsigned getByteSize() const { return ByteSize; }
-    unsigned getGas() const { return Gas; }
-
-    // Get the size of the PUSH instruction required for
-    // the immediate value.
-    static unsigned getPushSize(const APInt &Val) {
-      return 1 + (alignTo(Val.getActiveBits(), 8) / 8);
-    }
-
-  private:
-    void accountInstr(unsigned GasCost) {
-      ++InstrCount;
-      ++ByteSize;
-      Gas += GasCost;
-    }
-
-    unsigned InstrCount = 0;
-    unsigned ByteSize = 0;
-    unsigned Gas = 0;
-  };
-
-  // Builds and applies a sequence of machine instructions required to
-  // unfold a constant. Instruction generation is deferred using lambdas,
-  // allowing the TransformationBuilder object to be reused for repeated
-  // constants. As new instructions are added, the StackCostModel is used
-  // to track the accumulated cost.
-  class TransformationBuilder {
-  public:
-    TransformationBuilder(LLVMContext &Context, const TargetInstrInfo *TII)
-        : Context(Context), TII(TII) {}
-
-    void addSub() {
-      CostModel.sub();
-      BuildItems.push_back(
-          [this](MachineInstr &MI) { insertInstr(MI, EVM::SUB_S); });
-    }
-
-    void addShl() {
-      CostModel.shift();
-      BuildItems.push_back(
-          [this](MachineInstr &MI) { insertInstr(MI, EVM::SHL_S); });
-    }
-
-    void addShr() {
-      CostModel.shift();
-      BuildItems.push_back(
-          [this](MachineInstr &MI) { insertInstr(MI, EVM::SHR_S); });
-    }
-
-    void addNot() {
-      CostModel.bit_not();
-      BuildItems.push_back(
-          [this](MachineInstr &MI) { insertInstr(MI, EVM::NOT_S); });
-    }
-
-    void addImm(const APInt &Val) {
-      CostModel.push(Val);
-      BuildItems.push_back(
-          [this, Val = Val](MachineInstr &MI) { buildImm(MI, Val); });
-    }
-
-    // Applies queued build instruction steps to replace a given instruction.
-    void apply(MachineInstr &MI) const {
-      for (const auto &func : BuildItems)
-        func(MI);
-    }
-
-    const StackCostModel &getCost() const { return CostModel; }
-
-  private:
-    using BuildFunction = std::function<void(MachineInstr &)>;
-
-    LLVMContext &Context;
-    const TargetInstrInfo *TII;
-
-    StackCostModel CostModel;
-    SmallVector<BuildFunction, 16> BuildItems;
-
-    void insertInstr(MachineInstr &MI, unsigned Opcode) {
-      BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(Opcode));
-    }
-
-    void buildImm(MachineInstr &MI, const APInt &Val) {
-      unsigned PushOpc = EVM::getPUSHOpcode(Val);
-      auto NewMI = BuildMI(*MI.getParent(), MI, MI.getDebugLoc(),
-                           TII->get(EVM::getStackOpcode(PushOpc)));
-      if (PushOpc != EVM::PUSH0)
-        NewMI.addCImm(ConstantInt::get(Context, Val));
-    }
-  };
-
-  MachineFunction *MF = nullptr;
-  const TargetInstrInfo *TII = nullptr;
-  DenseMap<APInt, std::unique_ptr<TransformationBuilder>> TransformationCache;
-
-  StringRef getPassName() const override { return "EVM constant unfolding"; }
-
-  bool runOnMachineFunction(MachineFunction &MF) override;
-
-  void getAnalysisUsage(AnalysisUsage &AU) const override {
-    AU.addRequired<MachineLoopInfoWrapperPass>();
-    MachineFunctionPass::getAnalysisUsage(AU);
+  EVMConstantUnfolding() : ModulePass(ID) {
+    initializeEVMConstantUnfoldingPass(*PassRegistry::getPassRegistry());
   }
 
-  const TransformationBuilder *findOptimalTransfomtation(const APInt &Imm);
+private:
+  StringRef getPassName() const override { return PASS_NAME; }
 
-  bool tryUnfoldConstant(MachineInstr &MI);
+  bool runOnModule(Module &M) override;
+
+  void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<MachineModuleInfoWrapperPass>();
+    AU.addPreserved<MachineModuleInfoWrapperPass>();
+    AU.setPreservesAll();
+    ModulePass::getAnalysisUsage(AU);
+  }
 };
 } // end anonymous namespace
 
 char EVMConstantUnfolding::ID = 0;
 
-INITIALIZE_PASS_BEGIN(EVMConstantUnfolding, DEBUG_TYPE, "Constant unfolding",
-                      false, false)
-INITIALIZE_PASS_DEPENDENCY(MachineLoopInfoWrapperPass)
-INITIALIZE_PASS_END(EVMConstantUnfolding, DEBUG_TYPE, "Constant unfolding",
-                    false, false)
+INITIALIZE_PASS_BEGIN(EVMConstantUnfolding, DEBUG_TYPE, PASS_NAME, false, false)
+INITIALIZE_PASS_DEPENDENCY(MachineModuleInfoWrapperPass)
+INITIALIZE_PASS_END(EVMConstantUnfolding, DEBUG_TYPE, PASS_NAME, false, false)
 
-FunctionPass *llvm::createEVMConstantUnfolding() {
+ModulePass *llvm::createEVMConstantUnfolding() {
   return new EVMConstantUnfolding();
 }
 
-const EVMConstantUnfolding::TransformationBuilder *
-EVMConstantUnfolding::findOptimalTransfomtation(const APInt &Imm) {
-  if (auto It = TransformationCache.find(Imm);
+static bool isBetterCandidate(const TransformationBuilder &A,
+                              const TransformationBuilder &B, bool OptForSize) {
+  static constexpr unsigned Weight = 2;
+  const StackCostModel &CostA = A.getCost();
+  const StackCostModel &CostB = B.getCost();
+  unsigned ScoreA = 0;
+  unsigned ScoreB = 0;
+
+  if (OptForSize) {
+    ScoreA = (CostA.getByteSize() * Weight) + CostA.getGas();
+    ScoreB = (CostB.getByteSize() * Weight) + CostB.getGas();
+  } else {
+    ScoreA = CostA.getByteSize() + (Weight * CostA.getGas());
+    ScoreB = CostB.getByteSize() + (Weight * CostB.getGas());
+  }
+  if (ScoreA != ScoreB)
+    return ScoreA < ScoreB;
+
+  return CostA.getInstrCount() < CostB.getInstrCount();
+}
+
+const TransformationBuilder *
+ConstantUnfolder::findOptimalTransformation(const APInt &Imm, bool OptForSize) {
+  if (auto It = TransformationCache.find({Imm, OptForSize});
       It != TransformationCache.end()) {
     LLVM_DEBUG({ dbgs() << " Retrieving transformation from the cache\n"; });
     return It->second.get();
@@ -248,8 +281,6 @@ EVMConstantUnfolding::findOptimalTransfomtation(const APInt &Imm) {
   assert(ValLen == (Imm.getBitWidth() - TrailZ - LeadZ));
   assert(Val.isNegative());
 
-  bool OptForSize = MF->getFunction().hasOptSize();
-
   SmallVector<std::unique_ptr<TransformationBuilder>, 8> Transformations;
 
   // 1. A transformation that represents an immediate value as:
@@ -272,13 +303,9 @@ EVMConstantUnfolding::findOptimalTransfomtation(const APInt &Imm) {
   //   -------------------- // Optional
   //   PUSH1 shiftr    // 2
   //   SHL             // 1
-  //                   ---------
-  //                   [2 ... 8] + AbsValLen
   //
   {
-    // Not and left/right shift
-    auto Tr = std::make_unique<TransformationBuilder>(
-        MF->getFunction().getContext(), TII);
+    auto Tr = std::make_unique<TransformationBuilder>(*Context, TII);
     assert(!Val.abs().isZero());
     Tr->addImm(Val.abs() - 1);
     Tr->addNot();
@@ -307,13 +334,10 @@ EVMConstantUnfolding::findOptimalTransfomtation(const APInt &Imm) {
   //   NOT              // 1
   //   PUSH1 shift      // 2
   //   SHR              // 1
-  //                    ---------
-  //                    5
   //
   if (IsMask && !TrailZ) {
     assert(ValLen != 256);
-    auto Tr = std::make_unique<TransformationBuilder>(
-        MF->getFunction().getContext(), TII);
+    auto Tr = std::make_unique<TransformationBuilder>(*Context, TII);
     Tr->addImm(APInt::getZero(256));
     Tr->addNot();
     Tr->addImm(APInt(256, 256 - ValLen));
@@ -336,12 +360,9 @@ EVMConstantUnfolding::findOptimalTransfomtation(const APInt &Imm) {
   //   PUSH  Val        // 1 + ValLen
   //   PUSH1 shift      // 2
   //   SHL              // 1
-  //                    ---------
-  //                    4 + ValLen
   //
   if (TrailZ) {
-    auto Tr = std::make_unique<TransformationBuilder>(
-        MF->getFunction().getContext(), TII);
+    auto Tr = std::make_unique<TransformationBuilder>(*Context, TII);
     Tr->addImm(Val);
     Tr->addImm(APInt(256, TrailZ));
     Tr->addShl();
@@ -363,12 +384,9 @@ EVMConstantUnfolding::findOptimalTransfomtation(const APInt &Imm) {
     // Cost:
     //   PUSH             // 1 InvImm
     //   NOT              // 1
-    //                    ---------
-    //                    2 + InvImm
     //
     {
-      auto Tr = std::make_unique<TransformationBuilder>(
-          MF->getFunction().getContext(), TII);
+      auto Tr = std::make_unique<TransformationBuilder>(*Context, TII);
       Tr->addImm(~Imm);
       Tr->addNot();
       Transformations.emplace_back(std::move(Tr));
@@ -391,12 +409,9 @@ EVMConstantUnfolding::findOptimalTransfomtation(const APInt &Imm) {
     //   PUSH1 shift      // 2
     //   SHL              // 1
     //   NOT              // 1
-    //                    ---------
-    //                    5 + InvImmVal
     //
     {
-      auto Tr = std::make_unique<TransformationBuilder>(
-          MF->getFunction().getContext(), TII);
+      auto Tr = std::make_unique<TransformationBuilder>(*Context, TII);
       APInt ImmNot = ~Imm;
       unsigned Tz = ImmNot.countTrailingZeros();
       unsigned Lz = ImmNot.countLeadingZeros();
@@ -411,37 +426,16 @@ EVMConstantUnfolding::findOptimalTransfomtation(const APInt &Imm) {
 
   // 6. No transformation, leave immediate as is.
   {
-    auto Tr = std::make_unique<TransformationBuilder>(
-        MF->getFunction().getContext(), TII);
+    auto Tr = std::make_unique<TransformationBuilder>(*Context, TII);
     Tr->addImm(Imm);
     Transformations.emplace_back(std::move(Tr));
   }
 
-  auto *OptIt = std::min_element(
-      Transformations.begin(), Transformations.end(),
-      [OptForSize](const auto &TrA, const auto &TrB) {
-        const StackCostModel &CostA = TrA->getCost();
-        const StackCostModel &CostB = TrB->getCost();
-        // When optimizing for size, our primary goal is
-        // to minimize the total size of the instructions.
-        if (OptForSize) {
-          // First check, if sizes differ.
-          if (CostA.getByteSize() != CostB.getByteSize())
-            return CostA.getByteSize() < CostB.getByteSize();
-
-          // Then the number of operations.
-          return CostA.getInstrCount() < CostB.getInstrCount();
-        }
-        // Optimizing for speed.
-        // Expressing total cost in terms of both size and gas
-        // enables more performance-friendly transformation choices.
-        unsigned SizeGasA = CostA.getByteSize() + (GasWeight * CostA.getGas());
-        unsigned SizeGasB = CostB.getByteSize() + (GasWeight * CostB.getGas());
-        if (SizeGasA != SizeGasB)
-          return SizeGasA < SizeGasB;
-
-        return CostA.getInstrCount() < CostB.getInstrCount();
-      });
+  // Find optimal transformation.
+  auto *OptIt = std::min_element(Transformations.begin(), Transformations.end(),
+                                 [OptForSize](const auto &A, const auto &B) {
+                                   return isBetterCandidate(*A, *B, OptForSize);
+                                 });
 
 #ifndef NDEBUG
   LLVM_DEBUG({ dbgs() << " Candidate transformations:\n"; });
@@ -449,47 +443,63 @@ EVMConstantUnfolding::findOptimalTransfomtation(const APInt &Imm) {
     const StackCostModel &Cost = Tr->getCost();
     LLVM_DEBUG({
       dbgs() << "  [size: " << Cost.getByteSize()
-             << ", OpNum: " << Cost.getInstrCount()
-             << ", Gas: " << Cost.getGas() << "]\n";
+             << ", instr count: " << Cost.getInstrCount()
+             << ", gas: " << Cost.getGas() << "]\n";
     });
   }
 #endif // NDEBUG
 
   const TransformationBuilder *Tr = OptIt->get();
   [[maybe_unused]] auto Res =
-      TransformationCache.try_emplace(Imm, std::move(*OptIt));
+      TransformationCache.try_emplace({Imm, OptForSize}, std::move(*OptIt));
   assert(Res.second);
 
   return Tr;
 }
 
-bool EVMConstantUnfolding::tryUnfoldConstant(MachineInstr &MI) {
+static bool isProfitableToTranform(const APInt &Imm, const StackCostModel &Cost,
+                                   bool OptForSize) {
+  if (!OptForSize) {
+    unsigned OrigSize = (alignTo(Imm.getActiveBits(), 8) / 8) + 1;
+    // When optimizing for speed, only unfold constants if it reduces the size
+    // by a factor of at least the 'SizeReductionThreshold' and keeps the
+    // instruction count to 'InstrNumLimitUnfolInto' or fewer.
+    if ((static_cast<float>(OrigSize) / static_cast<float>(Cost.getByteSize()) <
+         SizeReductionThreshold) ||
+        Cost.getInstrCount() > InstrNumLimitUnfolInto)
+      return false;
+  }
+
+  return true;
+}
+
+bool ConstantUnfolder::tryToUnfoldConstant(MachineInstr &MI, bool OptForSize) {
   const APInt Imm = MI.getOperand(0).getCImm()->getValue().zext(256);
+  unsigned OrigSize = (alignTo(Imm.getActiveBits(), 8) / 8) + 1;
   assert(Imm.getActiveBits() > 4 * 8);
 
   // Check for the -1 value early
   if (Imm.isAllOnes()) {
-    auto Tr = std::make_unique<TransformationBuilder>(
-        MF->getFunction().getContext(), TII);
+    auto Tr = std::make_unique<TransformationBuilder>(*Context, TII);
     Tr->addImm(APInt::getZero(256));
     Tr->addNot();
     Tr->apply(MI);
     MI.eraseFromParent();
-    ++NumOfUnfoldings;
+    assert(OrigSize > Tr->getCost().getByteSize());
+    reduceCodeSizeOn(OrigSize - Tr->getCost().getByteSize());
 
     LLVM_DEBUG({ dbgs() << " Transforming -1 to ~0\n"; });
     return true;
   }
 
-  bool OptForSize = MF->getFunction().hasOptSize();
   const TransformationBuilder *OptTransformation =
-      findOptimalTransfomtation(Imm);
+      findOptimalTransformation(Imm, OptForSize);
 
   const StackCostModel &OptCost = OptTransformation->getCost();
   LLVM_DEBUG({
     dbgs() << " Transformation candidate:\n  [size: " << OptCost.getByteSize()
-           << ", OpNum: " << OptCost.getInstrCount()
-           << ", Gas: " << OptCost.getGas() << "]\n";
+           << ", instr count: " << OptCost.getInstrCount()
+           << ", gas: " << OptCost.getGas() << "]\n";
   });
 
   if (OptCost.getInstrCount() == 1) {
@@ -497,88 +507,217 @@ bool EVMConstantUnfolding::tryUnfoldConstant(MachineInstr &MI) {
     return false;
   }
 
-  bool Changed = false;
-  if (OptForSize) {
+  if (isProfitableToTranform(Imm, OptCost, OptForSize)) {
     OptTransformation->apply(MI);
-    Changed = true;
-  } else {
-    unsigned OrigSize = (alignTo(Imm.getActiveBits(), 8) / 8) + 1;
-    // When optimizing for speed, only unfold constants if it reduces the size
-    // by a factor of at least the 'SizeGainThreshold' and keeps the instruction
-    // count to 'InstrNumLimitUnfolInto' or fewer.
-    if ((static_cast<float>(OrigSize) /
-             static_cast<float>(OptCost.getByteSize()) >
-         SizeGainThreshold) &&
-        OptCost.getInstrCount() <= InstrNumLimitUnfolInto) {
-      OptTransformation->apply(MI);
-      Changed = true;
-    } else {
-      LLVM_DEBUG({
-        dbgs() << " Unfolding is omitted as its effect does not meet the"
-               << "required gain threshold\n";
-      });
-    }
+    MI.eraseFromParent();
+    assert(OrigSize > OptCost.getByteSize());
+    reduceCodeSizeOn(OrigSize - OptCost.getByteSize());
+    return true;
   }
 
-  if (Changed) {
-    MI.eraseFromParent();
-    ++NumOfUnfoldings;
+  LLVM_DEBUG({
+    dbgs() << " Unfolding is omitted as its effect does not meet the"
+           << "required reduction threshold\n";
+  });
+
+  return false;
+}
+
+static bool shouldSkip(const MachineInstr &MI) {
+  if (!EVMInstrInfo::isPush(&MI))
+    return true;
+
+  // It’s not practical to check small constants, since the default
+  // instructions are cheapest in those cases. The limit is based on the
+  // fact that the most compact transformation for representing a
+  // constant requires at least 5 bytes.
+  switch (MI.getOpcode()) {
+  case EVM::PUSH0_S:
+  case EVM::PUSH1_S:
+  case EVM::PUSH2_S:
+  case EVM::PUSH3_S:
+  case EVM::PUSH4_S: {
+    return true;
+  }
+  default:
+    return false;
+  }
+}
+
+// Process MF's blocks as follows:
+//  - If MinimizeSizeAtLoopDepthOnly is null, process both loop and non-loop
+//    blocks. Apply transformations based on the presence of the 'OptSize' flag.
+//  - If MinimizeSizeAtLoopDepthOnly is non null, process only blocks that
+//    belong to loops at the specified depth. A depth of 0 refers to non-loop
+//    blocks.
+//
+static bool processFunction(ConstantUnfolder &Unfolder, MachineFunction &MF,
+                            std::optional<unsigned> MinimizeSizeAtLoopDepthOnly,
+                            MachineLoopInfo *MLI) {
+  LLVM_DEBUG({ dbgs() << "Checking function: " << MF.getName() << '\n'; });
+
+  bool OptForSize =
+      !MinimizeSizeAtLoopDepthOnly ? MF.getFunction().hasOptSize() : true;
+
+  auto ProcessMBB = [&Unfolder, OptForSize](MachineBasicBlock &MBB) -> bool {
+    bool Changed = false;
+    for (MachineInstr &MI : llvm::make_early_inc_range(MBB)) {
+      if (shouldSkip(MI))
+        continue;
+
+      LLVM_DEBUG({ dbgs() << "Checking " << MI; });
+      Changed |= Unfolder.tryToUnfoldConstant(MI, OptForSize);
+    }
+    return Changed;
+  };
+
+  bool Changed = false;
+  if (MinimizeSizeAtLoopDepthOnly) {
+    // Restrict processing to MBBs outside of all loops.
+    if (*MinimizeSizeAtLoopDepthOnly == 0) {
+      for (MachineBasicBlock &MBB : MF)
+        if (!MLI->getLoopDepth(&MBB))
+          Changed |= ProcessMBB(MBB);
+
+      return Changed;
+    }
+    // Limit processing to MBBs within loops at the specified nesting depth.
+    for (const MachineLoop *L : *MLI) {
+      if (L->getLoopDepth() == *MinimizeSizeAtLoopDepthOnly)
+        for (MachineBasicBlock *MBB : L->getBlocks())
+          Changed |= ProcessMBB(*MBB);
+    }
+    return Changed;
+  }
+
+  // By default, process both loop and non-loop MBBs.
+  for (MachineBasicBlock &MBB : MF) {
+    if (MLI->getLoopDepth(&MBB) <= LoopDepthLimit)
+      Changed |= ProcessMBB(MBB);
   }
 
   return Changed;
 }
 
-bool EVMConstantUnfolding::runOnMachineFunction(MachineFunction &Mf) {
-  MF = &Mf;
+static bool processModule(unsigned ModuleCodeSize, ConstantUnfolder &Unfolder,
+                          std::optional<unsigned> MinimizeSizeAtLoopDepthOnly,
+                          Module &M, MachineModuleInfo &MMI,
+                          MachineFunctionAnalysisManager &MFAM) {
   bool Changed = false;
-  LLVM_DEBUG({
-    dbgs() << "\n********** Constant unfolding **********\n"
-           << "********** Function: " << Mf.getName() << '\n';
-  });
-
-  TII = MF->getSubtarget().getInstrInfo();
-  MachineLoopInfo *MLI = &getAnalysis<MachineLoopInfoWrapperPass>().getLI();
-  for (MachineBasicBlock &MBB : *MF) {
-    unsigned LoopDepth = MLI->getLoopDepth(&MBB);
-    if (LoopDepth > LoopDepthLimit) {
-      LLVM_DEBUG({
-        dbgs() << "Skipping block " << MBB.getName()
-               << " due to exceeding the loop depth limit: " << LoopDepthLimit
-               << '\n';
-      });
+  for (Function &F : M) {
+    MachineFunction *MF = MMI.getMachineFunction(F);
+    if (!MF)
       continue;
-    }
 
-    for (MachineInstr &MI : llvm::make_early_inc_range(MBB)) {
-      if (!EVMInstrInfo::isPush(&MI))
-        continue;
+    MachineLoopInfo &MLI = MFAM.getResult<MachineLoopAnalysis>(*MF);
 
-      LLVM_DEBUG({ dbgs() << "Checking " << MI; });
-
-      // It’s not practical to check small constants, since the default
-      // instructions are cheapest in those cases. The limit is based on the
-      // fact that the most compact transformation for representing a
-      // constant is SmallValueAndLeftShift which requires at least 5 bytes.
-      switch (MI.getOpcode()) {
-      case EVM::PUSH0_S:
-      case EVM::PUSH1_S:
-      case EVM::PUSH2_S:
-      case EVM::PUSH3_S:
-      case EVM::PUSH4_S: {
-        LLVM_DEBUG({ dbgs() << " Skipped due to bit-wise small constant\n"; });
-        continue;
-      }
-      default:
-        break;
-      }
-
-      Changed |= tryUnfoldConstant(MI);
-    }
+    Changed |=
+        processFunction(Unfolder, *MF, MinimizeSizeAtLoopDepthOnly, &MLI);
+    if (MinimizeSizeAtLoopDepthOnly &&
+        ModuleCodeSize < (CodeSizeLimit + Unfolder.getCodeSizeReduction()))
+      break;
   }
 
-  // Clear the transformation cache, since in some cases, EVMConstantUnfolding
-  // is not destroyed after the run, and can be reused for other functions. In
-  // that case, we don't want to reuse the cache from the previous runs.
-  TransformationCache.clear();
   return Changed;
+}
+
+static bool runImpl(Module &M, ModuleAnalysisManager &AM) {
+  bool Changed = false;
+  MachineModuleInfo &MMI = AM.getResult<MachineModuleAnalysis>(M).getMMI();
+  MachineFunctionAnalysisManager &MFAM =
+      AM.getResult<MachineFunctionAnalysisManagerModuleProxy>(M).getManager();
+
+  const auto &EVMTM = static_cast<const EVMTargetMachine &>(MMI.getTarget());
+  ConstantUnfolder Unfolder(&M.getContext(),
+                            EVMTM.getSubtarget()->getInstrInfo());
+
+  const unsigned ModuleCodeSize = EVM::calculateModuleCodeSize(M, MMI);
+
+  LLVM_DEBUG({ dbgs() << "Running constant unfolding in the default mode\n"; });
+  LLVM_DEBUG({ dbgs() << "Initial module size: " << ModuleCodeSize << '\n'; });
+
+  std::optional<unsigned> MinSizeAtLoopDepthOnly{};
+  Changed |= processModule(ModuleCodeSize, Unfolder, MinSizeAtLoopDepthOnly, M,
+                           MMI, MFAM);
+  CodeSizeReduction = Unfolder.getCodeSizeReduction();
+  if (ModuleCodeSize < CodeSizeLimit + CodeSizeReduction)
+    return Changed;
+
+  LLVM_DEBUG({
+    dbgs() << "Current module size is " << ModuleCodeSize - CodeSizeReduction
+           << ", which still exceeds the limit, falling back to "
+              "size-minimization mode\n";
+  });
+
+  for (unsigned LoopDepth = 0; LoopDepth <= LoopDepthLimit; ++LoopDepth) {
+    LLVM_DEBUG({
+      dbgs() << "Running constant unfolding in "
+                "size-minimization mode at loop depth "
+             << LoopDepth << '\n';
+    });
+
+    MinSizeAtLoopDepthOnly = LoopDepth;
+    Changed |= processModule(ModuleCodeSize, Unfolder, MinSizeAtLoopDepthOnly,
+                             M, MMI, MFAM);
+    CodeSizeReduction = Unfolder.getCodeSizeReduction();
+
+    LLVM_DEBUG({
+      dbgs() << "Current module size is " << ModuleCodeSize - CodeSizeReduction
+             << '\n';
+    });
+
+    if (ModuleCodeSize < CodeSizeLimit + CodeSizeReduction)
+      return Changed;
+  }
+  return Changed;
+}
+
+struct EVMConstantUnfoldingPass : PassInfoMixin<EVMConstantUnfoldingPass> {
+  EVMConstantUnfoldingPass() = default;
+  PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM) {
+    runImpl(M, AM);
+    return PreservedAnalyses::all();
+  }
+};
+
+bool EVMConstantUnfolding::runOnModule(Module &M) {
+  LLVM_DEBUG({ dbgs() << "********** " << PASS_NAME << " **********\n"; });
+
+  MachineModuleInfo &MMI = getAnalysis<MachineModuleInfoWrapperPass>().getMMI();
+
+  // This pass operates at the Module level but requires access to
+  // MachineLoopInfo, which is a MachineFunction-level analysis.
+  // Due to the CodeGen pipeline still relying on the legacy pass manager,
+  // cross-level analysis access is not supported. To work around this,
+  // we construct a local new pass manager and invoke the EVMConstantUnfolding
+  // pass through it.
+  // This approach has at least two drawbacks:
+  //   - MachineLoopAnalysis and MachineDominatorTreeAnalysis are recomputed
+  //     for every MachineFunction, leading to redundant analysis overhead.
+  //   - The local pass manager structure is not visible when using the
+  //     '-debug-pass=Structure' option, limiting debugging transparency.
+  // TODO: Remove this workaround once the EVM CodeGen pipeline adopts the new
+  // pass manager.
+
+  // The order of object construction is important to avoid
+  // stack-use-after-scope error.
+  MachineFunctionAnalysisManager MFAM;
+  ModuleAnalysisManager MAM;
+
+  // Register module analyses
+  MAM.registerPass([&MMI] { return MachineModuleAnalysis(MMI); });
+  MAM.registerPass([&] { return PassInstrumentationAnalysis(); });
+  MAM.registerPass(
+      [&MFAM] { return MachineFunctionAnalysisManagerModuleProxy(MFAM); });
+
+  // Register machine function analyses
+  MFAM.registerPass([&] { return PassInstrumentationAnalysis(); });
+  MFAM.registerPass([&] { return MachineDominatorTreeAnalysis(); });
+  MFAM.registerPass([&] { return MachineLoopAnalysis(); });
+
+  ModulePassManager MPM;
+  MPM.addPass(EVMConstantUnfoldingPass());
+  MPM.run(M, MAM);
+
+  return NumOfUnfoldings > 0;
 }
