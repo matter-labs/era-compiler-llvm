@@ -834,8 +834,6 @@ foreach I = {1-16} in {
                    "SWAP"#I, "", !add(I, 0x8F), 3>;
 }
 
-defm PUSH0 : I<(outs), (ins), [], "PUSH0", "", 0x5F, 2>;
-
 def PUSH_LABEL : NI<(outs), (ins jmptarget:$dst), [], true, "", 0, 0> {
   let isCodeGenOnly = 1;
   // PUSH4_S.
@@ -847,6 +845,10 @@ def PUSH_FRAME : NI<(outs), (ins i256imm:$imm), [], true, "", 0, 0> {
 }
 
 // Define register PUSH* instructions
+
+let IsPush = 1 in
+defm PUSH0 : I<(outs), (ins), [], "PUSH0", "", 0x5F, 2>;
+
 foreach I = {1 - 32} in {
   def PUSH#I : PushBase<(outs), (ins i256imm:$imm), [], false, "PUSH"#I#" $imm",
                   !add(I, 0x5F), 3> {
