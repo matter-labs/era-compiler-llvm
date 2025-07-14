@@ -96,4 +96,17 @@ entry:
   unreachable
 }
 
+; 0x000000000000000000000000FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+define void @test7() #1 {
+; CHECK-LABEL: test7:
+; CHECK:       ; %bb.0: ; %entry
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH20 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
+entry:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 1461501637330902918203684832716283019655932542975)
+  unreachable
+}
+
 attributes #1 = { nofree nounwind noreturn }
