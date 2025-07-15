@@ -177,6 +177,8 @@ def SELECT
   : EVMPseudo<(outs GPR:$dst), (ins GPR:$cond, GPR:$lhs, GPR:$rhs),
               [(set GPR:$dst, (select GPR:$cond, GPR:$lhs, GPR:$rhs))]>;
 
+def : Pat<(select (setne GPR:$cond, 0), GPR:$lhs, GPR:$rhs),
+          (SELECT GPR:$cond, GPR:$lhs, GPR:$rhs)>;
 
 //===----------------------------------------------------------------------===//
 // Additional instructions.
