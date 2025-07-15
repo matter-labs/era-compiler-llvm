@@ -211,11 +211,6 @@ def CONST_I256
 let isAsCheapAsAMove = 1 in def COPY_I256
     : NRI<(outs GPR:$res), (ins GPR:$src), [], "COPY_I256 $res, $src">;
 
-def : Pat<(i256 (EVMTargetAddrWrapper tglobaladdr:$addr)),
-          (CONST_I256 tglobaladdr:$addr)>;
-def : Pat<(i256 (EVMTargetAddrWrapper texternalsym:$addr)),
-          (CONST_I256 texternalsym:$addr)>;
-
 let Uses = [SP], isCall = 1 in {
 
 // CALL should take both variadic arguments and produce variadic results, but

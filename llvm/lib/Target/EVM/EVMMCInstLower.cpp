@@ -88,7 +88,10 @@ MCOperand EVMMCInstLower::LowerSymbolOperand(const MachineOperand &MO,
   return MCOperand::createExpr(Expr);
 }
 
-void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
+void EVMMCInstLower::Lower(
+    const MachineInstr *MI, MCInst &OutMI,
+    const DenseMap<const MCSymbol *, uint64_t> &GlobSymbolToOffsetMap,
+    const MCSymbol *DataSectionSymbol) {
   OutMI.setOpcode(MI->getOpcode());
   const MCInstrDesc &Desc = MI->getDesc();
   for (unsigned I = 0, E = MI->getNumOperands(); I != E; ++I) {
@@ -133,8 +136,18 @@ void EVMMCInstLower::Lower(const MachineInstr *MI, MCInst &OutMI) {
              Opc != EVM::LINKERSYMBOL_S && Opc != EVM::LOADIMMUTABLE_S);
 #endif // NDEBUG
 
-      MCOp = MCOperand::createExpr(
-          MCSymbolRefExpr::create(MO.getMCSymbol(), Ctx));
+      if (auto It = GlobSymbolToOffsetMap.find(MO.getMCSymbol());
+          It != GlobSymbolToOffsetMap.end()) {
+        const MCExpr *Expr = MCSymbolRefExpr::create(DataSectionSymbol, Ctx);
+        if (It->second)
+          Expr = MCBinaryExpr::createAdd(
+              Expr, MCConstantExpr::create(It->second, Ctx), Ctx);
+
+        MCOp = MCOperand::createExpr(Expr);
+        break;
+      }
+      MCOp =
+          MCOperand::createExpr(MCSymbolRefExpr::create(MO.getMCSymbol(), Ctx));
     } break;
     case MachineOperand::MO_MachineBasicBlock:
       MCOp = MCOperand::createExpr(

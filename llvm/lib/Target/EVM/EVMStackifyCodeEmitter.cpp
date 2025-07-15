@@ -117,11 +117,13 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitConstant(uint64_t Val) {
 
 void EVMStackifyCodeEmitter::CodeEmitter::emitSymbol(const MachineInstr *MI,
                                                      MCSymbol *Symbol) {
-  assert(isLinkerPseudoMI(*MI) && "Unexpected symbol instruction");
+  assert((isLinkerPseudoMI(*MI) || MI->getOpcode() == EVM::CODECOPY) &&
+         "Unexpected symbol instruction");
+
   StackHeight += 1;
-  // This is codegen-only instruction, that will be converted into PUSH4.
-  auto NewMI = BuildMI(*CurMBB, CurMBB->end(), MI->getDebugLoc(),
-                       TII->get(EVM::getStackOpcode(MI->getOpcode())))
+  unsigned Opc = isLinkerPseudoMI(*MI) ? EVM::getStackOpcode(MI->getOpcode())
+                                       : EVM::PUSH_LABEL;
+  auto NewMI = BuildMI(*CurMBB, CurMBB->end(), MI->getDebugLoc(), TII->get(Opc))
                    .addSym(Symbol);
   verify(NewMI);
 }
