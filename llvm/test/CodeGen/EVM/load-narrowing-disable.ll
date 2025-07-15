@@ -8,9 +8,8 @@ define i1 @simplify_setcc(ptr addrspace(1) %glob) {
 ; CHECK-LABEL: simplify_setcc:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH1 0x2
-; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    MLOAD
+; CHECK-NEXT:    PUSH1 0x2
 ; CHECK-NEXT:    AND
 ; CHECK-NEXT:    ISZERO
 ; CHECK-NEXT:    SWAP1

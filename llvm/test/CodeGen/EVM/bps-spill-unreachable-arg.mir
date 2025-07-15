@@ -186,10 +186,10 @@ body:             |
   ; CHECK-NEXT:   SWAP9_S
   ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   SWAP3_S
-  ; CHECK-NEXT:   SWAP2_S
-  ; CHECK-NEXT:   SWAP6_S
   ; CHECK-NEXT:   SWAP4_S
   ; CHECK-NEXT:   SWAP1_S
+  ; CHECK-NEXT:   SWAP6_S
+  ; CHECK-NEXT:   SWAP5_S
   ; CHECK-NEXT:   SWAP7_S
   ; CHECK-NEXT:   PUSH1_S i256 1
   ; CHECK-NEXT:   AND_S
@@ -201,7 +201,7 @@ body:             |
   ; CHECK-NEXT:   PUSH0_S
   ; CHECK-NEXT:   SWAP7_S
   ; CHECK-NEXT:   PUSH0_S
-  ; CHECK-NEXT:   SWAP6_S
+  ; CHECK-NEXT:   SWAP5_S
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT: bb.1.conditional_rt_187_join_block:
   ; CHECK-NEXT:   successors: %bb.11(0x80000000), %bb.2(0x00000000)
@@ -262,15 +262,16 @@ body:             |
   ; CHECK-NEXT:   successors: %bb.7(0x7c000000), %bb.8(0x04000000)
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
-  ; CHECK-NEXT:   DUP7_S
-  ; CHECK-NEXT:   DUP5_S
-  ; CHECK-NEXT:   PUSH1_S i256 1
-  ; CHECK-NEXT:   SWAP4_S
+  ; CHECK-NEXT:   DUP3_S
+  ; CHECK-NEXT:   DUP9_S
+  ; CHECK-NEXT:   SWAP2_S
   ; CHECK-NEXT:   CALLDATACOPY_S
+  ; CHECK-NEXT:   PUSH1_S i256 1
   ; CHECK-NEXT:   AND_S
   ; CHECK-NEXT:   PUSH0_S
+  ; CHECK-NEXT:   SWAP1_S
   ; CHECK-NEXT:   DUP10_S
-  ; CHECK-NEXT:   SWAP2_S
+  ; CHECK-NEXT:   SWAP1_S
   ; CHECK-NEXT:   PseudoJUMP_UNLESS %bb.8
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT: bb.7:
@@ -290,13 +291,13 @@ body:             |
   ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   POP_S
-  ; CHECK-NEXT:   DUP7_S
+  ; CHECK-NEXT:   DUP8_S
   ; CHECK-NEXT:   SWAP1_S
   ; CHECK-NEXT:   ULT_S
   ; CHECK-NEXT:   SWAP8_S
   ; CHECK-NEXT:   PUSH1_S i256 1
-  ; CHECK-NEXT:   DUP1_S
-  ; CHECK-NEXT:   SWAP9_S
+  ; CHECK-NEXT:   SWAP7_S
+  ; CHECK-NEXT:   PUSH1_S i256 1
   ; CHECK-NEXT:   OR_S
   ; CHECK-NEXT:   SWAP9_S
   ; CHECK-NEXT:   PseudoJUMP_UNLESS %bb.10
@@ -306,7 +307,7 @@ body:             |
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT:   SWAP8_S
-  ; CHECK-NEXT:   SWAP7_S
+  ; CHECK-NEXT:   SWAP6_S
   ; CHECK-NEXT:   SWAP9_S
   ; CHECK-NEXT:   SWAP10_S
   ; CHECK-NEXT:   POP_S
@@ -339,23 +340,23 @@ body:             |
   ; CHECK-NEXT:   PUSH0_S
   ; CHECK-NEXT:   PUSH0_S
   ; CHECK-NEXT:   PUSH1_S i256 1
-  ; CHECK-NEXT:   DUP9_S
-  ; CHECK-NEXT:   OR_S
-  ; CHECK-NEXT:   GT_S
-  ; CHECK-NEXT:   SWAP1_S
-  ; CHECK-NEXT:   PUSH1_S i256 1
   ; CHECK-NEXT:   DUP6_S
   ; CHECK-NEXT:   OR_S
-  ; CHECK-NEXT:   DUP8_S
+  ; CHECK-NEXT:   GT_S
+  ; CHECK-NEXT:   SWAP2_S
+  ; CHECK-NEXT:   PUSH1_S i256 1
+  ; CHECK-NEXT:   DUP7_S
   ; CHECK-NEXT:   OR_S
-  ; CHECK-NEXT:   SWAP3_S
+  ; CHECK-NEXT:   DUP9_S
+  ; CHECK-NEXT:   OR_S
+  ; CHECK-NEXT:   SWAP2_S
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT: bb.12.conditional_rt_181_join_block:
   ; CHECK-NEXT:   successors: %bb.4(0x80000000), %bb.13(0x00000000)
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
-  ; CHECK-NEXT:   DUP3_S
-  ; CHECK-NEXT:   DUP3_S
+  ; CHECK-NEXT:   DUP4_S
+  ; CHECK-NEXT:   DUP2_S
   ; CHECK-NEXT:   SWAP16_S
   ; CHECK-NEXT:   PUSH0_S
   ; CHECK-NEXT:   MSTORE_S

@@ -314,8 +314,9 @@ body:             |
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT:   DUP3_S
-  ; CHECK-NEXT:   DUP6_S
-  ; CHECK-NEXT:   DUP3_S
+  ; CHECK-NEXT:   DUP8_S
+  ; CHECK-NEXT:   DUP7_S
+  ; CHECK-NEXT:   DUP4_S
   ; CHECK-NEXT:   PUSH0_S
   ; CHECK-NEXT:   SWAP2_S
   ; CHECK-NEXT: {{  $}}
@@ -330,8 +331,8 @@ body:             |
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT:   POP_S
-  ; CHECK-NEXT:   PUSH1_S i256 1
   ; CHECK-NEXT:   SWAP2_S
+  ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   PseudoJUMP %bb.44
   ; CHECK-NEXT: {{  $}}
@@ -345,11 +346,9 @@ body:             |
   ; CHECK-NEXT:   successors: %bb.7(0x80000000)
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
-  ; CHECK-NEXT:   DUP6_S
-  ; CHECK-NEXT:   SWAP2_S
+  ; CHECK-NEXT:   DUP7_S
+  ; CHECK-NEXT:   SWAP3_S
   ; CHECK-NEXT:   POP_S
-  ; CHECK-NEXT:   DUP9_S
-  ; CHECK-NEXT:   SWAP1_S
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT: bb.7.conditional_rt_52_join_block3336:
   ; CHECK-NEXT:   successors: %bb.8(0x04000000), %bb.9(0x7c000000)
@@ -369,10 +368,8 @@ body:             |
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   POP_S
-  ; CHECK-NEXT:   SWAP1_S
-  ; CHECK-NEXT:   POP_S
-  ; CHECK-NEXT:   PUSH1_S i256 1
   ; CHECK-NEXT:   SWAP2_S
+  ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   PseudoJUMP %bb.44
   ; CHECK-NEXT: {{  $}}
@@ -425,11 +422,8 @@ body:             |
   ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   SWAP10_S
-  ; CHECK-NEXT:   PUSH1_S i256 1
-  ; CHECK-NEXT:   SWAP2_S
-  ; CHECK-NEXT:   POP_S
-  ; CHECK-NEXT:   DUP2_S
   ; CHECK-NEXT:   SWAP1_S
+  ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   PseudoJUMP %bb.42
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT: bb.15.remainder_join12885.preheader:
@@ -442,8 +436,9 @@ body:             |
   ; CHECK-NEXT:   SWAP2_S
   ; CHECK-NEXT:   PUSH1_S i256 1
   ; CHECK-NEXT:   SWAP4_S
+  ; CHECK-NEXT:   DUP13_S
   ; CHECK-NEXT:   PUSH0_S
-  ; CHECK-NEXT:   SWAP5_S
+  ; CHECK-NEXT:   SWAP6_S
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT: bb.16.remainder_join12885:
   ; CHECK-NEXT:   successors: %bb.17(0x3efbefbf), %bb.18(0x41041041)
@@ -456,14 +451,13 @@ body:             |
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT:   POP_S
+  ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   SWAP1_S
   ; CHECK-NEXT:   SWAP2_S
   ; CHECK-NEXT:   SWAP3_S
   ; CHECK-NEXT:   PUSH1_S i256 1
   ; CHECK-NEXT:   SWAP5_S
   ; CHECK-NEXT:   POP_S
-  ; CHECK-NEXT:   DUP5_S
-  ; CHECK-NEXT:   SWAP1_S
   ; CHECK-NEXT:   PseudoJUMP %bb.39
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT: bb.18.remainder_join12885:
@@ -477,6 +471,8 @@ body:             |
   ; CHECK-NEXT:   successors: %bb.7(0x80000000)
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
+  ; CHECK-NEXT:   SWAP5_S
+  ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   SWAP2_S
   ; CHECK-NEXT:   POP_S
@@ -484,15 +480,13 @@ body:             |
   ; CHECK-NEXT:   DUP7_S
   ; CHECK-NEXT:   SWAP3_S
   ; CHECK-NEXT:   POP_S
-  ; CHECK-NEXT:   DUP10_S
-  ; CHECK-NEXT:   SWAP2_S
-  ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   PseudoJUMP %bb.7
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT: bb.20:
   ; CHECK-NEXT:   successors: %bb.21(0x80000000)
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
+  ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   PUSH1_S i256 1
   ; CHECK-NEXT:   DUP1_S
   ; CHECK-NEXT:   SWAP6_S
@@ -511,8 +505,6 @@ body:             |
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT:   SWAP4_S
-  ; CHECK-NEXT:   PUSH0_S
-  ; CHECK-NEXT:   SWAP1_S
   ; CHECK-NEXT:   PseudoJUMP %bb.36
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT: bb.23:
@@ -529,13 +521,9 @@ body:             |
   ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   SWAP12_S
-  ; CHECK-NEXT:   SWAP1_S
-  ; CHECK-NEXT:   POP_S
-  ; CHECK-NEXT:   PUSH1_S i256 1
   ; CHECK-NEXT:   SWAP3_S
   ; CHECK-NEXT:   POP_S
-  ; CHECK-NEXT:   DUP3_S
-  ; CHECK-NEXT:   SWAP2_S
+  ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   PseudoJUMP %bb.42
   ; CHECK-NEXT: {{  $}}
@@ -614,8 +602,8 @@ body:             |
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT:   PUSH0_S
+  ; CHECK-NEXT:   SWAP1_S
   ; CHECK-NEXT:   PUSH0_S
-  ; CHECK-NEXT:   SWAP2_S
   ; CHECK-NEXT:   EQ_S
   ; CHECK-NEXT:   PseudoJUMPI %bb.35
   ; CHECK-NEXT: {{  $}}
@@ -625,9 +613,8 @@ body:             |
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   SWAP5_S
-  ; CHECK-NEXT:   PUSH0_S
+  ; CHECK-NEXT:   SWAP1_S
   ; CHECK-NEXT:   SWAP2_S
-  ; CHECK-NEXT:   SWAP3_S
   ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   PseudoJUMP %bb.36
   ; CHECK-NEXT: {{  $}}
@@ -645,6 +632,7 @@ body:             |
   ; CHECK-NEXT:   successors: %bb.37(0x04000000), %bb.38(0x7c000000)
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
+  ; CHECK-NEXT:   PUSH0_S
   ; CHECK-NEXT:   EQ_S
   ; CHECK-NEXT:   SWAP4_S
   ; CHECK-NEXT:   PUSH0_S
@@ -661,8 +649,7 @@ body:             |
   ; CHECK-NEXT:   SWAP3_S
   ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   PUSH1_S i256 1
-  ; CHECK-NEXT:   DUP1_S
-  ; CHECK-NEXT:   SWAP5_S
+  ; CHECK-NEXT:   SWAP4_S
   ; CHECK-NEXT:   PseudoJUMP %bb.39
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT: bb.38:
@@ -676,13 +663,15 @@ body:             |
   ; CHECK-NEXT:   successors: %bb.16(0x80000000)
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
+  ; CHECK-NEXT:   DUP5_S
   ; CHECK-NEXT:   AND_S
   ; CHECK-NEXT:   SWAP3_S
   ; CHECK-NEXT:   SWAP2_S
   ; CHECK-NEXT:   SWAP1_S
   ; CHECK-NEXT:   DUP15_S
-  ; CHECK-NEXT:   DUP9_S
-  ; CHECK-NEXT:   SWAP6_S
+  ; CHECK-NEXT:   DUP13_S
+  ; CHECK-NEXT:   DUP10_S
+  ; CHECK-NEXT:   SWAP7_S
   ; CHECK-NEXT:   PseudoJUMP %bb.16
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT: bb.40:
@@ -696,9 +685,7 @@ body:             |
   ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   PUSH1_S i256 1
-  ; CHECK-NEXT:   DUP1_S
-  ; CHECK-NEXT:   DUP1_S
-  ; CHECK-NEXT:   SWAP11_S
+  ; CHECK-NEXT:   SWAP9_S
   ; CHECK-NEXT:   PseudoJUMP %bb.42
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT: bb.41:
@@ -707,17 +694,18 @@ body:             |
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   POP_S
-  ; CHECK-NEXT:   PUSH1_S i256 1
-  ; CHECK-NEXT:   DUP1_S
+  ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   PUSH0_S
-  ; CHECK-NEXT:   SWAP11_S
+  ; CHECK-NEXT:   SWAP9_S
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT: bb.42:
   ; CHECK-NEXT:   successors: %bb.1(0x80000000)
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
+  ; CHECK-NEXT:   PUSH1_S i256 1
   ; CHECK-NEXT:   OR_S
-  ; CHECK-NEXT:   SWAP10_S
+  ; CHECK-NEXT:   SWAP9_S
+  ; CHECK-NEXT:   PUSH1_S i256 1
   ; CHECK-NEXT:   AND_S
   ; CHECK-NEXT:   PseudoJUMP %bb.1
   ; CHECK-NEXT: {{  $}}
@@ -729,11 +717,13 @@ body:             |
   ; CHECK-NEXT:   successors: %bb.3(0x80000000)
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
+  ; CHECK-NEXT:   PUSH1_S i256 1
   ; CHECK-NEXT:   OR_S
-  ; CHECK-NEXT:   DUP4_S
-  ; CHECK-NEXT:   SWAP1_S
-  ; CHECK-NEXT:   DUP3_S
   ; CHECK-NEXT:   DUP8_S
+  ; CHECK-NEXT:   DUP5_S
+  ; CHECK-NEXT:   SWAP2_S
+  ; CHECK-NEXT:   DUP4_S
+  ; CHECK-NEXT:   DUP9_S
   ; CHECK-NEXT:   PseudoJUMP %bb.3
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT: bb.45:
