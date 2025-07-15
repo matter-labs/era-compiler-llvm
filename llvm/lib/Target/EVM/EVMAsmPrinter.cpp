@@ -11,6 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "EVM.h"
 #include "EVMMCInstLower.h"
 #include "EVMMachineFunctionInfo.h"
 #include "EVMTargetMachine.h"
@@ -22,6 +23,7 @@
 #include "llvm/ADT/StringSet.h"
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/CodeGen/AsmPrinter.h"
+#include "llvm/IR/GlobalVariable.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCInst.h"
@@ -49,6 +51,12 @@ class EVMAsmPrinter : public AsmPrinter {
   StringSet<> WideRelocSymbolsSet;
   StringMap<unsigned> ImmutablesMap;
 
+  // Gathers global variables in address space AS_CODE that have constant
+  // initializers. These constants are emitted at the end of the '.text'
+  // section. During the optimization pipeline, globals with identical
+  // initializers are deduplicated, so don't care about this here.
+  SmallVector<const GlobalVariable *> CodeGlobalConstants;
+
   // True if there is a function that pushes deploy address.
   bool ModuleHasPushDeployAddress = false;
 
@@ -69,7 +77,10 @@ public:
   void emitEndOfAsmFile(Module &) override;
 
   void emitFunctionBodyStart() override;
+
   void emitFunctionBodyEnd() override;
+
+  void emitGlobalVariable(const GlobalVariable *GV) override;
 
 private:
   void emitAssemblySymbol(const MachineInstr *MI);
@@ -315,7 +326,6 @@ void EVMAsmPrinter::emitWideRelocatableSymbol(const MachineInstr *MI) {
 }
 
 void EVMAsmPrinter::emitEndOfAsmFile(Module &) {
-
   // The deploy and runtime code must end with INVALID instruction to
   // comply with 'solc'. To ensure this, we append an INVALID
   // instruction at the end of the .text section.
@@ -332,8 +342,15 @@ void EVMAsmPrinter::emitEndOfAsmFile(Module &) {
       TM.getTargetFeatureString()));
 
   OutStreamer->emitInstruction(MCI, *STI);
+
+  // Emit constants to the code.
+  for (const GlobalVariable *GV : CodeGlobalConstants) {
+    OutStreamer->emitLabel(getSymbol(GV));
+    emitGlobalConstant(GV->getDataLayout(), GV->getInitializer());
+  }
   OutStreamer->popSection();
 
+  CodeGlobalConstants.clear();
   WideRelocSymbolsSet.clear();
   ImmutablesMap.clear();
   ModuleHasPushDeployAddress = false;
@@ -344,6 +361,14 @@ void EVMAsmPrinter::emitJumpDest() {
   MCInst JumpDest;
   JumpDest.setOpcode(EVM::JUMPDEST_S);
   EmitToStreamer(*OutStreamer, JumpDest);
+}
+
+void EVMAsmPrinter::emitGlobalVariable(const GlobalVariable *GV) {
+  if (GV->getAddressSpace() == EVMAS::AS_CODE && GV->hasInitializer()) {
+    CodeGlobalConstants.push_back(GV);
+    return;
+  }
+  AsmPrinter::emitGlobalVariable(GV);
 }
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMAsmPrinter() {

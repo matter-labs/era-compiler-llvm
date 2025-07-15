@@ -29,9 +29,6 @@ def SDT_EVMRet
 def SDT_EVMSignextend
   : SDTypeProfile<1, 2, [SDTCisSameAs<0, 1>, SDTCisVT<1, i256>]>;
 
-def SDT_EVMTargetAddrWrapper
-  : SDTypeProfile<1, 1, [SDTCisPtrTy<0>]>;
-
 def SDT_EVMMemcpy
   : SDTypeProfile<0, 3, [SDTCisPtrTy<0>, SDTCisPtrTy<1>, SDTCisInt<2>]>;
 
@@ -56,9 +53,6 @@ def EVMret
 
 def EVMSignextend
   : SDNode<"EVMISD::SIGNEXTEND", SDT_EVMSignextend>;
-
-def EVMTargetAddrWrapper
-  : SDNode<"EVMISD::TARGET_ADDR_WRAPPER", SDT_EVMTargetAddrWrapper>;
 
 def EVMMemcpy_call_data
   : SDNode<"EVMISD::MEMCPY_CALL_DATA", SDT_EVMMemcpy,
@@ -210,11 +204,6 @@ def CONST_I256
 // stackification.
 let isAsCheapAsAMove = 1 in def COPY_I256
     : NRI<(outs GPR:$res), (ins GPR:$src), [], "COPY_I256 $res, $src">;
-
-def : Pat<(i256 (EVMTargetAddrWrapper tglobaladdr:$addr)),
-          (CONST_I256 tglobaladdr:$addr)>;
-def : Pat<(i256 (EVMTargetAddrWrapper texternalsym:$addr)),
-          (CONST_I256 texternalsym:$addr)>;
 
 let Uses = [SP], isCall = 1 in {
 
