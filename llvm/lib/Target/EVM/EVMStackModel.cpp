@@ -87,16 +87,10 @@ StackSlot *EVMStackModel::getStackSlot(const MachineOperand &MO) const {
 Stack EVMStackModel::getSlotsForInstructionUses(const MachineInstr &MI) const {
   Stack In;
   for (const auto &MO : reverse(MI.explicit_uses())) {
-    // All the non-register operands are handled in instruction specific
-    // handlers.
-    if (!MO.isReg())
-      continue;
-
-    // SP is not used anyhow.
-    if (MO.getReg() == EVM::SP)
-      continue;
-
-    In.push_back(getStackSlot(MO));
+    if (MO.isReg() && MO.getReg() != EVM::SP)
+      In.push_back(getStackSlot(MO));
+    else if (MO.isMCSymbol())
+      In.push_back(getSymbolSlot(MO.getMCSymbol(), &MI));
   }
   return In;
 }
