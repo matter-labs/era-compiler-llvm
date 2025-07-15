@@ -473,8 +473,16 @@ SDValue EVMTargetLowering::LowerINTRINSIC_VOID(SDValue Op,
     MemOpISD = EVMISD::MEMCPY_CODE;
     break;
   }
+
+  SDValue SrcOp = Op.getOperand(3);
+  // Support for copying bytes from a data section residing in code memory.
+  if (MemOpISD == EVMISD::MEMCPY_CODE)
+    if (const auto *GA = dyn_cast<GlobalAddressSDNode>(SrcOp))
+      SrcOp = DAG.getMCSymbol(DAG.getTarget().getSymbol(GA->getGlobal()),
+                              MVT::i256);
+
   return DAG.getNode(MemOpISD, DL, MVT::Other, Op.getOperand(0),
-                     Op.getOperand(2), Op.getOperand(3), Op.getOperand(4));
+                     Op.getOperand(2), SrcOp, Op.getOperand(4));
 }
 
 //===----------------------------------------------------------------------===//

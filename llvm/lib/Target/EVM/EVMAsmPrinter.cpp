@@ -11,6 +11,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "EVM.h"
 #include "EVMMCInstLower.h"
 #include "EVMMachineFunctionInfo.h"
 #include "EVMTargetMachine.h"
@@ -22,6 +23,8 @@
 #include "llvm/ADT/StringSet.h"
 #include "llvm/BinaryFormat/ELF.h"
 #include "llvm/CodeGen/AsmPrinter.h"
+#include "llvm/IR/GlobalVariable.h"
+#include "llvm/IR/Module.h"
 #include "llvm/MC/MCAsmInfo.h"
 #include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCInst.h"
@@ -49,6 +52,16 @@ class EVMAsmPrinter : public AsmPrinter {
   StringSet<> WideRelocSymbolsSet;
   StringMap<unsigned> ImmutablesMap;
 
+  // Contains constant global variable initializers in address space AS_CODE,
+  // which are concatenated into a single block. Duplicate initializers and
+  // those that are substrings of others are removed. This "data section"
+  // is emitted at the end of the .text section.
+  std::string DataSectionBuffer;
+  MCSymbol *DataSectionSymbol = nullptr;
+  // Maps each global variable symbol to the offset within the data section
+  // where its corresponding initializer is located.
+  DenseMap<const MCSymbol *, uint64_t> GlobSymbolToOffsetMap;
+
   // True if there is a function that pushes deploy address.
   bool ModuleHasPushDeployAddress = false;
 
@@ -68,14 +81,20 @@ public:
 
   void emitEndOfAsmFile(Module &) override;
 
+  void emitStartOfAsmFile(Module &) override;
+
   void emitFunctionBodyStart() override;
+
   void emitFunctionBodyEnd() override;
+
+  void emitGlobalVariable(const GlobalVariable *GV) override;
 
 private:
   void emitAssemblySymbol(const MachineInstr *MI);
   void emitWideRelocatableSymbol(const MachineInstr *MI);
   void emitLoadImmutableLabel(const MachineInstr *MI);
   void emitJumpDest();
+  void createDataSectionBuffer(const Module &M);
 };
 } // end of anonymous namespace
 
@@ -221,7 +240,7 @@ void EVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
   }
 
   MCInst TmpInst;
-  MCInstLowering.Lower(MI, TmpInst);
+  MCInstLowering.Lower(MI, TmpInst, GlobSymbolToOffsetMap, DataSectionSymbol);
   EmitToStreamer(*OutStreamer, TmpInst);
 }
 
@@ -328,8 +347,49 @@ void EVMAsmPrinter::emitWideRelocatableSymbol(const MachineInstr *MI) {
   OutStreamer->switchSection(CurrentSection);
 }
 
-void EVMAsmPrinter::emitEndOfAsmFile(Module &) {
+void EVMAsmPrinter::createDataSectionBuffer(const Module &M) {
+  SmallVector<std::pair<const GlobalVariable *, StringRef>, 16> Globals;
+  for (const GlobalVariable &GV : M.globals()) {
+    if (GV.getAddressSpace() != EVMAS::AS_CODE || !GV.hasInitializer())
+      continue;
 
+    const auto *CV = dyn_cast<ConstantDataSequential>(GV.getInitializer());
+    if (!CV)
+      continue;
+
+    Globals.emplace_back(&GV, CV->getRawDataValues());
+  }
+  // Sort global variables in descending order based on the size of their
+  // initializers.
+  stable_sort(Globals, [](const auto &A, const auto &B) {
+    return A.second.size() > B.second.size();
+  });
+
+  // Construct the data section by concatenating unique initializers,
+  // eliminating duplicates, and excluding any initializer that is a
+  // substring of another.
+  // NOTE: Rather than simply concatenating unique strings, we could attempt
+  // to compute the Shortest Common Superstring by allowing partial overlaps
+  // between strings. Although this is an NP-hard problem, we could explore
+  // an approximate greedy solution. Consider this approach if there are
+  // real programs that could benefit from the optimization.
+  DataSectionBuffer.clear();
+  raw_string_ostream Stream(DataSectionBuffer);
+  for (const auto &[_, Init] : Globals)
+    if (!StringRef(DataSectionBuffer).contains(Init))
+      Stream << Init;
+
+  // Compute offsets of each global initializer in the data section.
+  StringRef DataView(DataSectionBuffer);
+  for (const auto &[GV, Init] : Globals) {
+    size_t Offset = DataView.find(Init);
+    assert(Offset != StringRef::npos &&
+           "Initializer not found in data section");
+    GlobSymbolToOffsetMap[getSymbol(GV)] = Offset;
+  }
+}
+
+void EVMAsmPrinter::emitEndOfAsmFile(Module &) {
   // The deploy and runtime code must end with INVALID instruction to
   // comply with 'solc'. To ensure this, we append an INVALID
   // instruction at the end of the .text section.
@@ -346,8 +406,14 @@ void EVMAsmPrinter::emitEndOfAsmFile(Module &) {
       TM.getTargetFeatureString()));
 
   OutStreamer->emitInstruction(MCI, *STI);
+
+  // Emit constants to the code.
+  OutStreamer->emitLabel(DataSectionSymbol);
+  OutStreamer->emitBinaryData(DataSectionBuffer);
+
   OutStreamer->popSection();
 
+  GlobSymbolToOffsetMap.clear();
   WideRelocSymbolsSet.clear();
   ImmutablesMap.clear();
   ModuleHasPushDeployAddress = false;
@@ -358,6 +424,20 @@ void EVMAsmPrinter::emitJumpDest() {
   MCInst JumpDest;
   JumpDest.setOpcode(EVM::JUMPDEST_S);
   EmitToStreamer(*OutStreamer, JumpDest);
+}
+
+void EVMAsmPrinter::emitStartOfAsmFile(Module &M) {
+  createDataSectionBuffer(M);
+  DataSectionSymbol = OutContext.getOrCreateSymbol("code_data_section");
+}
+
+void EVMAsmPrinter::emitGlobalVariable(const GlobalVariable *GV) {
+  // Constant arrays are handled above.
+  if (GV->getAddressSpace() == EVMAS::AS_CODE && GV->hasInitializer())
+    if (isa<ConstantDataSequential>(GV->getInitializer()))
+      return;
+
+  AsmPrinter::emitGlobalVariable(GV);
 }
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMAsmPrinter() {

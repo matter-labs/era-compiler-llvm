@@ -102,23 +102,38 @@ unsigned EVMMCCodeEmitter::getMachineOpValue(const MCInst &MI,
                                              const MCSubtargetInfo &STI) const {
   if (MO.isImm()) {
     Op = MO.getImm();
-  } else if (MO.isExpr()) {
-    auto Kind = MO.getExpr()->getKind();
-    if (Kind == MCExpr::ExprKind::Target) {
-      const auto *CImmExp = cast<EVMCImmMCExpr>(MO.getExpr());
-      Op = APInt(Op.getBitWidth(), CImmExp->getString(), /*radix=*/16);
-    } else if (Kind == MCExpr::ExprKind::SymbolRef) {
-      const auto *RefExpr = cast<MCSymbolRefExpr>(MO.getExpr());
-      MCSymbolRefExpr::VariantKind Kind = RefExpr->getKind();
-      EVM::Fixups Fixup = getFixupForOpc(MI.getOpcode(), Kind);
-      // The byte index of start of the relocation is always 1, as
-      // we need to skip the instruction opcode which is always one byte.
-      Fixups.push_back(
-          MCFixup::create(1, MO.getExpr(), MCFixupKind(Fixup), MI.getLoc()));
-    }
-  } else {
-    llvm_unreachable("Unexpected MC operand type");
+    return 0;
   }
+
+  if (!MO.isExpr())
+    llvm_unreachable("Unable to encode MCOperand");
+
+  MCExpr::ExprKind Kind = MO.getExpr()->getKind();
+  if (Kind == MCExpr::ExprKind::Target) {
+    const auto *CImmExp = cast<EVMCImmMCExpr>(MO.getExpr());
+    Op = APInt(Op.getBitWidth(), CImmExp->getString(), /*radix=*/16);
+    return 0;
+  }
+
+  // We expect the relocatable immediate operand to be in the
+  // form: @symbol + imm.
+  const MCSymbolRefExpr *RefExpr = nullptr;
+  if (Kind == MCExpr::ExprKind::Binary) {
+    const auto *BE = cast<MCBinaryExpr>(MO.getExpr());
+    RefExpr = dyn_cast<MCSymbolRefExpr>(
+        isa<MCSymbolRefExpr>(BE->getLHS()) ? BE->getLHS() : BE->getRHS());
+  } else if (Kind == MCExpr::ExprKind::SymbolRef) {
+    RefExpr = cast<MCSymbolRefExpr>(MO.getExpr());
+  }
+
+  if (!RefExpr)
+    llvm_unreachable("Unexpected MCOperand type");
+
+  EVM::Fixups Fixup = getFixupForOpc(MI.getOpcode(), RefExpr->getKind());
+  // The byte index of start of the relocation is always 1, as
+  // we need to skip the instruction opcode which is always one byte.
+  Fixups.push_back(
+      MCFixup::create(1, MO.getExpr(), MCFixupKind(Fixup), MI.getLoc()));
 
   return 0;
 }

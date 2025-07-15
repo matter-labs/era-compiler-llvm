@@ -13,6 +13,7 @@
 
 namespace llvm {
 class AsmPrinter;
+class GlobalValue;
 class MCContext;
 class MCInst;
 class MCOperand;
@@ -40,7 +41,9 @@ public:
                  const VRegRCMap &VRegMapping, const MachineRegisterInfo &MRI)
       : Ctx(Ctx), Printer(Printer), VRegMapping(VRegMapping), MRI(MRI) {}
 
-  void Lower(const MachineInstr *MI, MCInst &OutMI);
+  void Lower(const MachineInstr *MI, MCInst &OutMI,
+             const DenseMap<const MCSymbol *, uint64_t> &GlobSymbolToOffsetMap,
+             const MCSymbol *DataSectionSymbol);
 
 private:
   // Encodes the register class in the upper 4 bits along with the register
