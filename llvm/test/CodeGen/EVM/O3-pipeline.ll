@@ -128,6 +128,8 @@ target triple = "evm"
 ; CHECK-NEXT:       Live Interval Analysis
 ; CHECK-NEXT:       EVM Optimize Live Intervals
 ; CHECK-NEXT:       EVM Single use expressions
+; CHECK-NEXT:       Slot index numbering
+; CHECK-NEXT:       Live Interval Analysis
 ; CHECK-NEXT:       Machine Natural Loop Construction
 ; CHECK-NEXT:       Virtual Register Map
 ; CHECK-NEXT:       Live Stack Slot Analysis
