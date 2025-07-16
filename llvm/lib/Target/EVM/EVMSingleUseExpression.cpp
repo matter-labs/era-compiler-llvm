@@ -42,9 +42,6 @@ class EVMSingleUseExpression final : public MachineFunctionPass {
     AU.addRequired<MachineDominatorTreeWrapperPass>();
     AU.addRequired<LiveIntervalsWrapperPass>();
     AU.addPreserved<MachineBlockFrequencyInfoWrapperPass>();
-    AU.addPreserved<SlotIndexesWrapperPass>();
-    AU.addPreserved<LiveIntervalsWrapperPass>();
-    AU.addPreservedID(LiveVariablesID);
     AU.addPreserved<MachineDominatorTreeWrapperPass>();
     MachineFunctionPass::getAnalysisUsage(AU);
   }
