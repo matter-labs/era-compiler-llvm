@@ -29,6 +29,8 @@ EVMTargetLowering::EVMTargetLowering(const TargetMachine &TM,
                                      const EVMSubtarget &STI)
     : TargetLowering(TM), Subtarget(&STI) {
 
+  setSchedulingPreference(Sched::RegPressure);
+
   // Booleans always contain 0 or 1.
   setBooleanContents(ZeroOrOneBooleanContent);
 
