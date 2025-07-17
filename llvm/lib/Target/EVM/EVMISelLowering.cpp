@@ -90,6 +90,9 @@ EVMTargetLowering::EVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::INTRINSIC_VOID, MVT::Other, Custom);
   setOperationAction(ISD::INTRINSIC_WO_CHAIN, MVT::Other, Custom);
 
+  // Custom DAGCombine patterns.
+  setTargetDAGCombine(ISD::SELECT);
+
   setJumpIsExpensive(true);
   setMaximumJumpTableSize(0);
 }
@@ -765,4 +768,128 @@ MachineBasicBlock *EVMTargetLowering::emitSelect(MachineInstr &MI,
 
   MI.eraseFromParent(); // The pseudo instruction is gone now.
   return BB;
+}
+
+// Fold
+//   (select C, (op Y, X), Y)  ->  (op Y, (select C, X, NEUTRAL))
+//   and
+//   (select C, Y, (op Y, X)) -> (op Y, (select not C, X, NEUTRAL))
+//   when 0 is the neutral element for op.
+//
+// That lets a later combine turn  (select C, X, 0)  into  (C * X).
+//
+// Examples:
+//   (select C, (sub Y, X), Y)  ->  (sub Y, (select C, X, 0))
+//   (select C, (or  Y, X), Y)  ->  (or  Y, (select C, X, 0))
+//   (select C, (or  X, Y), Y)  ->  (or  Y, (select C, X, 0))  ; commutativity
+//   handled.
+static SDValue tryFoldSelectIntoOp(SDNode *N, SelectionDAG &DAG, SDValue TrueV,
+                                   SDValue FalseV, bool Swapped) {
+
+  if (!TrueV.hasOneUse() || isa<ConstantSDNode>(FalseV))
+    return SDValue();
+
+  bool Commutative = true;
+  switch (TrueV.getOpcode()) {
+  default:
+    return SDValue();
+  case ISD::SHL:
+  case ISD::SRA:
+  case ISD::SRL:
+  case ISD::SUB:
+    Commutative = false;
+    break;
+  case ISD::ADD:
+  case ISD::OR:
+  case ISD::XOR:
+    break;
+  }
+
+  if (FalseV != TrueV.getOperand(0) &&
+      (!Commutative || FalseV != TrueV.getOperand(1)))
+    return SDValue();
+
+  EVT VT = N->getValueType(0);
+  SDLoc DL(N);
+  SDValue OtherOp =
+      FalseV == TrueV.getOperand(0) ? TrueV.getOperand(1) : TrueV.getOperand(0);
+  EVT OtherOpVT = OtherOp.getValueType();
+  SDValue IdentityOperand = DAG.getConstant(0, DL, OtherOpVT);
+
+  if (Swapped)
+    std::swap(OtherOp, IdentityOperand);
+  SDValue NewSel =
+      DAG.getSelect(DL, OtherOpVT, N->getOperand(0), OtherOp, IdentityOperand);
+  return DAG.getNode(TrueV.getOpcode(), DL, VT, FalseV, NewSel);
+}
+
+SDValue EVMTargetLowering::combineSELECT(SDNode *N,
+                                         DAGCombinerInfo &DCI) const {
+  // Perform combines only after DAG legalisation.
+  if (!DCI.isAfterLegalizeDAG())
+    return SDValue();
+
+  SelectionDAG &DAG = DCI.DAG;
+  SDValue CondV = N->getOperand(0);
+  SDValue TrueV = N->getOperand(1);
+  SDValue FalseV = N->getOperand(2);
+  SDLoc DL(N);
+  MVT VT = N->getSimpleValueType(0);
+
+  const auto freeze = [&DAG](const SDValue V) { return DAG.getFreeze(V); };
+  const auto iszero = [&DAG, DL, VT](const SDValue V) {
+    return SDValue(DAG.getMachineNode(EVM::ISZERO, DL, VT, V), 0);
+  };
+
+  // X* means freeze(X)
+  // fold (Cond ? X : 0) -> (X* * Cond)
+  if (isNullConstant(FalseV))
+    return DAG.getNode(ISD::MUL, DL, VT, freeze(TrueV), CondV);
+
+  // fold (Cond ? 0 : Y) -> (~Cond * Y*)
+  if (isNullConstant(TrueV))
+    return DAG.getNode(ISD::MUL, DL, VT, iszero(CondV), freeze(FalseV));
+
+  // fold (Cond ? X : 1) -> ((X* * Cond*) + ~Cond*)
+  if (isOneConstant(FalseV))
+    return DAG.getNode(
+        ISD::ADD, DL, VT, iszero(freeze(CondV)),
+        DAG.getNode(ISD::MUL, DL, VT, freeze(TrueV), freeze(CondV)));
+
+  // fold (Cond ? 1 : Y) -> (Cond* + ~Cond* * Y*)
+  if (isOneConstant(TrueV))
+    return DAG.getNode(
+        ISD::ADD, DL, VT, freeze(CondV),
+        DAG.getNode(ISD::MUL, DL, VT, freeze(FalseV), iszero(freeze(CondV))));
+
+  // fold (Cond ? X : -1) -> (Cond - 1) | X*)
+  if (isAllOnesConstant(FalseV)) {
+    const SDValue Const1 = DAG.getConstant(1, DL, VT);
+    return DAG.getNode(ISD::OR, DL, VT,
+                       DAG.getNode(ISD::SUB, DL, VT, CondV, Const1),
+                       freeze(TrueV));
+  }
+
+  // fold (Cond ? -1 : Y) -> (-Cond | Y*)
+  if (isAllOnesConstant(TrueV)) {
+    SDValue Neg = DAG.getNegative(CondV, DL, VT);
+    return DAG.getNode(ISD::OR, DL, VT, Neg, DAG.getFreeze(FalseV));
+  }
+
+  if (SDValue V = tryFoldSelectIntoOp(N, DAG, TrueV, FalseV, /*Swapped=*/false))
+    return V;
+  // NOLINTNEXTLINE(readability-suspicious-call-argument)
+  return tryFoldSelectIntoOp(N, DAG, FalseV, TrueV, /*Swapped=*/true);
+}
+
+SDValue EVMTargetLowering::PerformDAGCombine(SDNode *N,
+                                             DAGCombinerInfo &DCI) const {
+  switch (N->getOpcode()) {
+  default:
+    break;
+  case ISD::SELECT:
+    return combineSELECT(N, DCI);
+  }
+
+  return SDValue();
 }
