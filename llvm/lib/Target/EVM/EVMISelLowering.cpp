@@ -88,6 +88,9 @@ EVMTargetLowering::EVMTargetLowering(const TargetMachine &TM,
   setOperationAction(ISD::INTRINSIC_VOID, MVT::Other, Custom);
   setOperationAction(ISD::INTRINSIC_WO_CHAIN, MVT::Other, Custom);
 
+  // Custom DAGCombine patterns.
+  setTargetDAGCombine(ISD::SELECT);
+
   setJumpIsExpensive(true);
   setMaximumJumpTableSize(0);
 }
@@ -755,4 +758,40 @@ MachineBasicBlock *EVMTargetLowering::emitSelect(MachineInstr &MI,
 
   MI.eraseFromParent(); // The pseudo instruction is gone now.
   return BB;
+}
+
+SDValue EVMTargetLowering::combineSELECT(SDNode *N,
+                                         DAGCombinerInfo &DCI) const {
+  // Peform combineSelect after leagalize DAG.
+  if (!DCI.isAfterLegalizeDAG())
+    return SDValue();
+
+  SelectionDAG &DAG = DCI.DAG;
+  SDValue CondV = N->getOperand(0);
+  SDValue TrueV = N->getOperand(1);
+  SDValue FalseV = N->getOperand(2);
+  SDLoc DL(N);
+  MVT VT = N->getSimpleValueType(0);
+
+  if (isNullConstant(FalseV))
+    return DAG.getNode(ISD::MUL, DL, VT, TrueV, CondV);
+
+  if (isNullConstant(TrueV))
+    return DAG.getNode(
+        ISD::MUL, DL, VT,
+        SDValue(DAG.getMachineNode(EVM::ISZERO, DL, VT, CondV), 0), FalseV);
+
+  return SDValue();
+}
+
+SDValue EVMTargetLowering::PerformDAGCombine(SDNode *N,
+                                             DAGCombinerInfo &DCI) const {
+  switch (N->getOpcode()) {
+  default:
+    break;
+  case ISD::SELECT:
+    return combineSELECT(N, DCI);
+  }
+
+  return SDValue();
 }
