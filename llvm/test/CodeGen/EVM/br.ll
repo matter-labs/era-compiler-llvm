@@ -64,12 +64,11 @@ define i256 @loop(i256 %p1) nounwind {
 ; CHECK-NEXT:  ; %bb.2: ; %loop.body
 ; CHECK-NEXT:    ; in Loop: Header=BB1_1 Depth=1
 ; CHECK-NEXT:    SWAP1
-; CHECK-NEXT:    SWAP3
-; CHECK-NEXT:    DUP4
-; CHECK-NEXT:    PUSH1 0x1
-; CHECK-NEXT:    SWAP2
-; CHECK-NEXT:    ADD
+; CHECK-NEXT:    DUP1
 ; CHECK-NEXT:    SWAP4
+; CHECK-NEXT:    ADD
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    PUSH1 0x1
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    PUSH4 @.BB1_1

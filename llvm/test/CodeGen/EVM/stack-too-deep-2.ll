@@ -10,11 +10,11 @@ declare i256 @checked_mul_uint8(i256)
 ; succesfully compiles the function. Also, check that we allocated the exact amount of
 ; stack space needed for the function, without any warnings about allocated stack region size.
 
-; CHECK: Unreachable slots found: 30, iteration: 1
+; CHECK: Unreachable slots found: 23, iteration: 1
 ; CHECK: Spilling 2 registers
-; CHECK: Unreachable slots found: 20, iteration: 2
+; CHECK: Unreachable slots found: 19, iteration: 2
 ; CHECK: Spilling 1 registers
-; CHECK: Unreachable slots found: 8, iteration: 3
+; CHECK: Unreachable slots found: 7, iteration: 3
 ; CHECK: Spilling 1 registers
 ; CHECK: Unreachable slots found: 6, iteration: 4
 ; CHECK: Spilling 1 registers

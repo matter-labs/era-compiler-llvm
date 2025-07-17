@@ -115,6 +115,13 @@ public:
     return false;
   }
 
+  bool shouldNormalizeToSelectSequence(LLVMContext &Context,
+                                       EVT VT) const override {
+    return false;
+  }
+
+  bool convertSelectOfConstantsToMath(EVT VT) const override { return true; }
+
 private:
   const EVMSubtarget *Subtarget;
 

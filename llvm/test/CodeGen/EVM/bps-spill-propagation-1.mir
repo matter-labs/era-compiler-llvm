@@ -124,7 +124,6 @@ body:             |
   ; CHECK-NEXT:   successors: %bb.3(0x80000000)
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
-  ; CHECK-NEXT:   PUSH1_S i256 5
   ; CHECK-NEXT:   PUSH_FRAME %stack.0
   ; CHECK-NEXT:   MLOAD_S
   ; CHECK-NEXT:   PUSH2_S i256 1234
@@ -134,6 +133,7 @@ body:             |
   ; CHECK-NEXT:   SWAP2_S
   ; CHECK-NEXT:   OR_S
   ; CHECK-NEXT:   ADD_S
+  ; CHECK-NEXT:   PUSH1_S i256 5
   ; CHECK-NEXT:   ADD_S
   ; CHECK-NEXT:   SWAP1_S
   ; CHECK-NEXT: {{  $}}

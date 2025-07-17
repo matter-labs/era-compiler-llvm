@@ -111,8 +111,6 @@ body:             |
   ; CHECK-NEXT:   successors: %bb.2(0x50000000), %bb.1(0x30000000)
   ; CHECK-NEXT:   liveins: $arguments, $value_stack
   ; CHECK-NEXT: {{  $}}
-  ; CHECK-NEXT:   SWAP1_S
-  ; CHECK-NEXT:   SWAP3_S
   ; CHECK-NEXT:   SWAP2_S
   ; CHECK-NEXT:   PUSH0_S
   ; CHECK-NEXT:   SWAP1_S
@@ -120,11 +118,11 @@ body:             |
   ; CHECK-NEXT:   DUP1_S
   ; CHECK-NEXT:   PUSH_FRAME %stack.0
   ; CHECK-NEXT:   MSTORE_S
-  ; CHECK-NEXT:   DUP4_S
+  ; CHECK-NEXT:   DUP2_S
   ; CHECK-NEXT:   SUB_S
-  ; CHECK-NEXT:   SWAP3_S
+  ; CHECK-NEXT:   SWAP1_S
   ; CHECK-NEXT:   PUSH1_S i256 1
-  ; CHECK-NEXT:   DUP3_S
+  ; CHECK-NEXT:   DUP4_S
   ; CHECK-NEXT:   LT_S
   ; CHECK-NEXT:   PseudoJUMP_UNLESS %bb.2
   ; CHECK-NEXT: {{  $}}
@@ -148,9 +146,6 @@ body:             |
   ; CHECK-NEXT:   successors: %bb.8(0x80000000)
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
-  ; CHECK-NEXT:   PUSH1_S i256 10
-  ; CHECK-NEXT:   SWAP2_S
-  ; CHECK-NEXT:   SWAP3_S
   ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   PseudoJUMP %bb.8
   ; CHECK-NEXT: {{  $}}
@@ -170,6 +165,8 @@ body:             |
   ; CHECK-NEXT:   successors: %bb.9(0x80000000)
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
+  ; CHECK-NEXT:   SWAP2_S
+  ; CHECK-NEXT:   SWAP1_S
   ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT:   PseudoJUMP %bb.9
   ; CHECK-NEXT: {{  $}}
@@ -177,15 +174,13 @@ body:             |
   ; CHECK-NEXT:   successors: %bb.8(0x80000000)
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
-  ; CHECK-NEXT:   PUSH1_S i256 10
-  ; CHECK-NEXT:   SWAP2_S
-  ; CHECK-NEXT:   SWAP3_S
   ; CHECK-NEXT:   POP_S
   ; CHECK-NEXT: {{  $}}
   ; CHECK-NEXT: bb.8.bb3:
   ; CHECK-NEXT:   successors: %bb.9(0x80000000)
   ; CHECK-NEXT:   liveins: $value_stack
   ; CHECK-NEXT: {{  $}}
+  ; CHECK-NEXT:   PUSH1_S i256 10
   ; CHECK-NEXT:   ADD_S
   ; CHECK-NEXT:   SWAP1_S
   ; CHECK-NEXT: {{  $}}

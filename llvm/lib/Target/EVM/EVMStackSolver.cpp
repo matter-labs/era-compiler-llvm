@@ -541,13 +541,21 @@ Stack EVMStackSolver::propagateThroughMI(const Stack &ExitStack,
 
   LLVM_DEBUG({ dbgs() << "\tstack before: " << BeforeMI.toString() << ".\n"; });
 
-  // If this is a commutable instruction, and second operand is spilled and
-  // has no use or def before MI, we can remove it from the stack. This should
-  // reduce the stack pressure and in some cases, it should reduce code size.
-  if (MI.isCommutable() &&
-      spillRegHasNoUseOrDefBefore(BeforeMI[BeforeMI.size() - 2], MI)) {
-    std::swap(BeforeMI[BeforeMI.size() - 1], BeforeMI[BeforeMI.size() - 2]);
-    BeforeMI.pop_back();
+  // If this is a commutable instruction, we can remove second operand
+  // from the stack if it is a small literal or if the spill register has no
+  // use or def before MI.
+  if (MI.isCommutable()) {
+    auto isSmallLiteral = [](const StackSlot *Slot) {
+      const auto *Literal = dyn_cast<LiteralSlot>(Slot);
+      return Literal && Literal->getValue().isIntN(8);
+    };
+
+    const auto *SecondSlot = BeforeMI[BeforeMI.size() - 2];
+    if (isSmallLiteral(SecondSlot) ||
+        spillRegHasNoUseOrDefBefore(SecondSlot, MI)) {
+      std::swap(BeforeMI[BeforeMI.size() - 1], BeforeMI[BeforeMI.size() - 2]);
+      BeforeMI.pop_back();
+    }
   }
 
   // If the top stack slots can be rematerialized just before MI, remove it
