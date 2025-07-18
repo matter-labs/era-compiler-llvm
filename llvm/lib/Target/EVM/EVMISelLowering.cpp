@@ -773,13 +773,26 @@ SDValue EVMTargetLowering::combineSELECT(SDNode *N,
   SDLoc DL(N);
   MVT VT = N->getSimpleValueType(0);
 
+  // CondV ? TrueV : 0 => TrueV * CondV
   if (isNullConstant(FalseV))
     return DAG.getNode(ISD::MUL, DL, VT, TrueV, CondV);
 
+  const SDValue NotCondV =
+      SDValue(DAG.getMachineNode(EVM::ISZERO, DL, VT, CondV), 0);
+
+  // CondV ? 0 : FalseV => (1 - CondV) * FalseV
   if (isNullConstant(TrueV))
-    return DAG.getNode(
-        ISD::MUL, DL, VT,
-        SDValue(DAG.getMachineNode(EVM::ISZERO, DL, VT, CondV), 0), FalseV);
+    return DAG.getNode(ISD::MUL, DL, VT, NotCondV, FalseV);
+
+  // CondV ? TrueV : 1 => CondV * TrueV + (1 - CondV)
+  if (isOneConstant(FalseV))
+    return DAG.getNode(ISD::ADD, DL, VT, NotCondV,
+                       DAG.getNode(ISD::MUL, DL, VT, TrueV, CondV));
+
+  // CondV ? 1 : FalseV => CondV + (1 - CondV) * FalseV
+  if (isOneConstant(TrueV))
+    return DAG.getNode(ISD::ADD, DL, VT, CondV,
+                       DAG.getNode(ISD::MUL, DL, VT, TrueV, NotCondV));
 
   return SDValue();
 }
