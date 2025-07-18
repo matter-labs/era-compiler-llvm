@@ -760,6 +760,59 @@ MachineBasicBlock *EVMTargetLowering::emitSelect(MachineInstr &MI,
   return BB;
 }
 
+// Fold
+// (select C, (add Y, X), Y) -> (add Y, (select C, X, 0)).
+// (select C, (sub Y, X), Y) -> (sub Y, (select C, X, 0)).
+// (select C, (or Y, X), Y)  -> (or Y, (select C, X, 0)).
+// (select C, (xor Y, X), Y) -> (xor Y, (select C, X, 0)).
+static SDValue tryFoldSelectIntoOp(SDNode *N, SelectionDAG &DAG,
+                                   SDValue TrueV, SDValue FalseV,
+                                   bool Swapped) {
+  bool Commutative = true;
+  unsigned Opc = TrueV.getOpcode();
+  switch (Opc) {
+  default:
+    return SDValue();
+  case ISD::SHL:
+  case ISD::SRA:
+  case ISD::SRL:
+  case ISD::SUB:
+    Commutative = false;
+    break;
+  case ISD::ADD:
+  case ISD::OR:
+  case ISD::XOR:
+    break;
+  }
+
+  if (!TrueV.hasOneUse() || isa<ConstantSDNode>(FalseV))
+    return SDValue();
+
+  unsigned OpToFold;
+  if (FalseV == TrueV.getOperand(0))
+    OpToFold = 0;
+  else if (Commutative && FalseV == TrueV.getOperand(1))
+    OpToFold = 1;
+  else
+    return SDValue();
+
+  EVT VT = N->getValueType(0);
+  SDLoc DL(N);
+  SDValue OtherOp = TrueV.getOperand(1 - OpToFold);
+  EVT OtherOpVT = OtherOp.getValueType();
+  SDValue IdentityOperand =
+      DAG.getNeutralElement(Opc, DL, OtherOpVT, N->getFlags());
+  if (!Commutative)
+    IdentityOperand = DAG.getConstant(0, DL, OtherOpVT);
+  assert(IdentityOperand && "No identity operand!");
+
+  if (Swapped)
+    std::swap(OtherOp, IdentityOperand);
+  SDValue NewSel =
+      DAG.getSelect(DL, OtherOpVT, N->getOperand(0), OtherOp, IdentityOperand);
+  return DAG.getNode(TrueV.getOpcode(), DL, VT, FalseV, NewSel);
+}
+
 SDValue EVMTargetLowering::combineSELECT(SDNode *N,
                                          DAGCombinerInfo &DCI) const {
   // Peform combineSelect after leagalize DAG.
@@ -794,7 +847,9 @@ SDValue EVMTargetLowering::combineSELECT(SDNode *N,
     return DAG.getNode(ISD::ADD, DL, VT, CondV,
                        DAG.getNode(ISD::MUL, DL, VT, TrueV, NotCondV));
 
-  return SDValue();
+  if (SDValue V = tryFoldSelectIntoOp(N, DAG, TrueV, FalseV, /*Swapped*/ false))
+    return V;
+  return tryFoldSelectIntoOp(N, DAG, FalseV, TrueV, /*Swapped*/ true);
 }
 
 SDValue EVMTargetLowering::PerformDAGCombine(SDNode *N,

@@ -6,7 +6,7 @@ target triple = "evm"
 
 ; CHECK-NOT: JUMPI
 
-; Function for cond ? X : 0 (false value is 0)
+; select C, X, 0 -> X * C
 define i256 @sel_x_or_0(i1 %cond, i256 %x) {
 ; CHECK-LABEL: sel_x_or_0:
 ; CHECK:       ; %bb.0:
@@ -20,7 +20,7 @@ define i256 @sel_x_or_0(i1 %cond, i256 %x) {
 ret i256 %val
 }
 
-; Function for cond ? 0 : Y (true value is 0)
+; select C, 0, Y -> not C * Y
 define i256 @sel_0_or_y(i1 %cond, i256 %y) {
 ; CHECK-LABEL: sel_0_or_y:
 ; CHECK:       ; %bb.0:
@@ -35,7 +35,7 @@ define i256 @sel_0_or_y(i1 %cond, i256 %y) {
 ret i256 %val
 }
 
-; Function for cond ? X : 1 (false value is 1)
+; select C, X, 1 -> C * X + not C
 define i256 @sel_x_or_1(i1 %cond, i256 %x) {
 ; CHECK-LABEL: sel_x_or_1:
 ; CHECK:       ; %bb.0:
@@ -54,7 +54,7 @@ define i256 @sel_x_or_1(i1 %cond, i256 %x) {
 ret i256 %val
 }
 
-; Function for cond ? 1 : Y (true value is 1)
+; select C, 1, Y -> C + not C * Y
 define i256 @sel_1_or_y(i1 %cond, i256 %y) {
 ; CHECK-LABEL: sel_1_or_y:
 ; CHECK:       ; %bb.0:
@@ -70,4 +70,350 @@ define i256 @sel_1_or_y(i1 %cond, i256 %y) {
 ; CHECK-NEXT:    JUMP
 %val = select i1 %cond, i256 1, i256 %y
 ret i256 %val
+}
+
+; select C, (xor Y, X), Y -> xor Y, (select C, X, 0)
+define i256 @select_xor(i256 %A, i256 %B, i1 %cond) {
+; CHECK-LABEL: select_xor:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    MUL
+; CHECK-NEXT:    XOR
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+ %1 = xor i256 %B, %A
+ %2 = select i1 %cond, i256 %1, i256 %A
+ ret i256 %2
+}
+
+define i256 @select_xor_2(i256 %A, i256 %B, i1 %cond) {
+; CHECK-LABEL: select_xor_2:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    ISZERO
+; CHECK-NEXT:    MUL
+; CHECK-NEXT:    XOR
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+ %1 = xor i256 %B, %A
+ %2 = select i1 %cond, i256 %B, i256 %1
+ ret i256 %2
+}
+
+; ???
+define i256 @select_or(i256 %A, i256 %B, i1 %cond) {
+; CHECK-LABEL: select_or:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    OR
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+ %1 = or i256 %B, %A
+ %2 = select i1 %cond, i256 %1, i256 %B
+ ret i256 %1
+}
+
+define i256 @select_or_2(i256 %A, i256 %B, i1 %cond) {
+; CHECK-LABEL: select_or_2:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    OR
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+ %1 = or i256 %B, %A
+ %2 = select i1 %cond, i256 %A, i256 %1
+ ret i256 %1
+}
+
+; select C, (add Y, X), Y -> add Y, (select C, X, 0)
+define i256 @select_add(i1 %cond, i256 %A, i256 %B) {
+; CHECK-LABEL: select_add:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    MUL
+; CHECK-NEXT:    ADD
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %c = add i256 %A, %B
+  %res = select i1 %cond, i256 %c, i256 %B
+  ret i256 %res
+}
+
+define i256 @select_add_2(i1 %cond, i256 %A, i256 %B) {
+; CHECK-LABEL: select_add_2:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    ISZERO
+; CHECK-NEXT:    MUL
+; CHECK-NEXT:    ADD
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %c = add i256 %A, %B
+  %res = select i1 %cond, i256 %A, i256 %c
+  ret i256 %res
+}
+
+; select C, (sub Y, X), Y -> sub Y, (select C, X, 0)
+define i256 @select_sub(i1 %cond, i256 %A, i256 %B) {
+; CHECK-LABEL: select_sub:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    ISZERO
+; CHECK-NEXT:    MUL
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    SUB
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %c = sub i256 %A, %B
+  %res = select i1 %cond, i256 %A, i256 %c
+  ret i256 %res
+}
+
+; not commutative
+define i256 @select_sub_2(i1 %cond, i256 %A, i256 %B) {
+; CHECK-LABEL: select_sub_2:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    PUSH4 @.BB11_2
+; CHECK-NEXT:    JUMPI
+; CHECK-NEXT:  ; %bb.1:
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    PUSH4 @.BB11_3
+; CHECK-NEXT:    JUMP
+; CHECK-NEXT:  .BB11_2:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SUB
+; CHECK-NEXT:  .BB11_3:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %c = sub i256 %A, %B
+  %res = select i1 %cond, i256 %c, i256 %B
+  ret i256 %res
+}
+
+define i256 @select_and(i1 %cond, i256 %A, i256 %B) {
+; CHECK-LABEL: select_and:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    PUSH4 @.BB12_2
+; CHECK-NEXT:    JUMPI
+; CHECK-NEXT:  ; %bb.1:
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    PUSH4 @.BB12_3
+; CHECK-NEXT:    JUMP
+; CHECK-NEXT:  .BB12_2:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    AND
+; CHECK-NEXT:  .BB12_3:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %c = and i256 %A, %B
+  %res = select i1 %cond, i256 %c, i256 %B
+  ret i256 %res
+}
+
+define i256 @select_and_2(i1 %cond, i256 %A, i256 %B) {
+; CHECK-LABEL: select_and_2:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    ISZERO
+; CHECK-NEXT:    PUSH4 @.BB13_2
+; CHECK-NEXT:    JUMPI
+; CHECK-NEXT:  ; %bb.1:
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    PUSH4 @.BB13_3
+; CHECK-NEXT:    JUMP
+; CHECK-NEXT:  .BB13_2:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:  .BB13_3:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    JUMP
+  %c = and i256 %A, %B
+  %res = select i1 %cond, i256 %A, i256 %c
+  ret i256 %res
+}
+
+; select C, (shl Y, X), Y -> shl Y, (select C, X, 0)
+define i256 @select_shl(i1 %cond, i256 %A, i256 %B) {
+; CHECK-LABEL: select_shl:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    ISZERO
+; CHECK-NEXT:    MUL
+; CHECK-NEXT:    SHL
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %c = shl i256 %A, %B
+  %res = select i1 %cond, i256 %A, i256 %c
+  ret i256 %res
+}
+
+; not commutative
+define i256 @select_shl_2(i1 %cond, i256 %A, i256 %B) {
+; CHECK-LABEL: select_shl_2:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    PUSH4 @.BB15_2
+; CHECK-NEXT:    JUMPI
+; CHECK-NEXT:  ; %bb.1:
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    PUSH4 @.BB15_3
+; CHECK-NEXT:    JUMP
+; CHECK-NEXT:  .BB15_2:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SHL
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:  .BB15_3:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    JUMP
+  %c = shl i256 %A, %B
+  %res = select i1 %cond, i256 %c, i256 %B
+  ret i256 %res
+}
+
+; select C, (ashr Y, X), Y -> shl Y, (select C, X, 0)
+define i256 @select_ashr(i1 %cond, i256 %A, i256 %B) {
+; CHECK-LABEL: select_ashr:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    ISZERO
+; CHECK-NEXT:    MUL
+; CHECK-NEXT:    SAR
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %c = ashr i256 %A, %B
+  %res = select i1 %cond, i256 %A, i256 %c
+  ret i256 %res
+}
+
+; not commutative
+define i256 @select_ashr_2(i1 %cond, i256 %A, i256 %B) {
+; CHECK-LABEL: select_ashr_2:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    PUSH4 @.BB17_2
+; CHECK-NEXT:    JUMPI
+; CHECK-NEXT:  ; %bb.1:
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    PUSH4 @.BB17_3
+; CHECK-NEXT:    JUMP
+; CHECK-NEXT:  .BB17_2:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SAR
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:  .BB17_3:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    JUMP
+  %c = ashr i256 %A, %B
+  %res = select i1 %cond, i256 %c, i256 %B
+  ret i256 %res
+}
+
+; select C, (lshr Y, X), Y -> shl Y, (select C, X, 0)
+define i256 @select_lshr(i1 %cond, i256 %A, i256 %B) {
+; CHECK-LABEL: select_lshr:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    ISZERO
+; CHECK-NEXT:    MUL
+; CHECK-NEXT:    SHR
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %c = lshr i256 %A, %B
+  %res = select i1 %cond, i256 %A, i256 %c
+  ret i256 %res
+}
+
+; not commutative
+define i256 @select_lshr_2(i1 %cond, i256 %A, i256 %B) {
+; CHECK-LABEL: select_lshr_2:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    PUSH4 @.BB19_2
+; CHECK-NEXT:    JUMPI
+; CHECK-NEXT:  ; %bb.1:
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    PUSH4 @.BB19_3
+; CHECK-NEXT:    JUMP
+; CHECK-NEXT:  .BB19_2:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SHR
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:  .BB19_3:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    JUMP
+  %c = lshr i256 %A, %B
+  %res = select i1 %cond, i256 %c, i256 %B
+  ret i256 %res
 }
