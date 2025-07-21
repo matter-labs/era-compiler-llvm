@@ -115,6 +115,24 @@ public:
     return false;
   }
 
+  /// Returns true if we should normalize
+  /// select(N0&N1, X, Y) => select(N0, select(N1, X, Y), Y) and
+  /// select(N0|N1, X, Y) => select(N0, select(N1, X, Y, Y)) if it is likely
+  /// that it saves us from materializing N0 and N1 in an integer register.
+  /// For EVM, selects are expensive, so generating more selects is not
+  /// beneficial.
+  bool shouldNormalizeToSelectSequence(LLVMContext &Context,
+                                       EVT VT) const override {
+    return false;
+  }
+
+  /// Return true if a select of constants (select Cond, C1, C2) should be
+  /// transformed into simple math ops with the condition value. For example:
+  /// select Cond, C1, C1-1 --> add (zext Cond), C1-1
+  /// For EVM, selects are expensive, so reducing number of selects is
+  /// beneficial.
+  bool convertSelectOfConstantsToMath(EVT VT) const override { return true; }
+
 private:
   const EVMSubtarget *Subtarget;
 
