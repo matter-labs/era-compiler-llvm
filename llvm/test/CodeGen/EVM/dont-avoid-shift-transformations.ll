@@ -119,11 +119,10 @@ define i256 @test7(i256 %x) {
 ; CHECK-LABEL: test7:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH1 0x2
-; CHECK-NEXT:    SWAP1
-; CHECK-NEXT:    PUSH1 0xFE
+; CHECK-NEXT:    PUSH1 0xFF
 ; CHECK-NEXT:    SHR
-; CHECK-NEXT:    AND
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    SHL
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
 entry:
@@ -140,18 +139,8 @@ define i256 @test8(i256 %a, i256 %b) {
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SGT
-; CHECK-NEXT:    ISZERO
-; CHECK-NEXT:    PUSH4 @.BB7_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1:
-; CHECK-NEXT:    PUSH1 0x20
-; CHECK-NEXT:    PUSH4 @.BB7_3
-; CHECK-NEXT:    JUMP
-; CHECK-NEXT:  .BB7_2: ; %entry
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:  .BB7_3: ; %entry
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x5
+; CHECK-NEXT:    SHL
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
 entry:

@@ -22,18 +22,8 @@ define i256 @select_const_int_one_away(i1 %a) {
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    PUSH1 0x1
 ; CHECK-NEXT:    AND
-; CHECK-NEXT:    ISZERO
-; CHECK-NEXT:    PUSH4 @.BB1_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1:
-; CHECK-NEXT:    PUSH1 0x3
-; CHECK-NEXT:    PUSH4 @.BB1_3
-; CHECK-NEXT:    JUMP
-; CHECK-NEXT:  .BB1_2:
-; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    PUSH1 0x4
-; CHECK-NEXT:  .BB1_3:
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %1 = select i1 %a, i256 3, i256 4
@@ -46,18 +36,8 @@ define i256 @select_const_int_pow2_zero(i1 %a) {
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    PUSH1 0x1
 ; CHECK-NEXT:    AND
-; CHECK-NEXT:    ISZERO
-; CHECK-NEXT:    PUSH4 @.BB2_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1:
-; CHECK-NEXT:    PUSH1 0x4
-; CHECK-NEXT:    PUSH4 @.BB2_3
-; CHECK-NEXT:    JUMP
-; CHECK-NEXT:  .BB2_2:
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:  .BB2_3:
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x2
+; CHECK-NEXT:    SHL
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %1 = select i1 %a, i256 4, i256 0
@@ -92,19 +72,9 @@ define i256 @select_eq_zero_negone(i256 %a, i256 %b) {
 ; CHECK-LABEL: select_eq_zero_negone:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    EQ
+; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    SUB
-; CHECK-NEXT:    PUSH4 @.BB4_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1:
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    NOT
-; CHECK-NEXT:    PUSH4 @.BB4_3
-; CHECK-NEXT:    JUMP
-; CHECK-NEXT:  .BB4_2:
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:  .BB4_3:
-; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %1 = icmp eq i256 %a, %b
@@ -117,18 +87,9 @@ define i256 @select_ne_zero_negone(i256 %a, i256 %b) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    EQ
-; CHECK-NEXT:    PUSH4 @.BB5_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1:
+; CHECK-NEXT:    ISZERO
 ; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    NOT
-; CHECK-NEXT:    PUSH4 @.BB5_3
-; CHECK-NEXT:    JUMP
-; CHECK-NEXT:  .BB5_2:
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:  .BB5_3:
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %1 = icmp ne i256 %a, %b
@@ -141,19 +102,8 @@ define i256 @select_sgt_zero_negone(i256 %a, i256 %b) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SGT
-; CHECK-NEXT:    ISZERO
-; CHECK-NEXT:    PUSH4 @.BB6_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    NOT
-; CHECK-NEXT:    PUSH4 @.BB6_3
-; CHECK-NEXT:    JUMP
-; CHECK-NEXT:  .BB6_2:
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:  .BB6_3:
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %1 = icmp sgt i256 %a, %b
@@ -166,19 +116,8 @@ define i256 @select_slt_zero_negone(i256 %a, i256 %b) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SLT
-; CHECK-NEXT:    ISZERO
-; CHECK-NEXT:    PUSH4 @.BB7_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    NOT
-; CHECK-NEXT:    PUSH4 @.BB7_3
-; CHECK-NEXT:    JUMP
-; CHECK-NEXT:  .BB7_2:
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:  .BB7_3:
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %1 = icmp slt i256 %a, %b
@@ -191,18 +130,9 @@ define i256 @select_sge_zero_negone(i256 %a, i256 %b) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SLT
-; CHECK-NEXT:    PUSH4 @.BB8_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1:
+; CHECK-NEXT:    ISZERO
 ; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    NOT
-; CHECK-NEXT:    PUSH4 @.BB8_3
-; CHECK-NEXT:    JUMP
-; CHECK-NEXT:  .BB8_2:
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:  .BB8_3:
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %1 = icmp sge i256 %a, %b
@@ -215,18 +145,9 @@ define i256 @select_sle_zero_negone(i256 %a, i256 %b) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SGT
-; CHECK-NEXT:    PUSH4 @.BB9_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1:
+; CHECK-NEXT:    ISZERO
 ; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    NOT
-; CHECK-NEXT:    PUSH4 @.BB9_3
-; CHECK-NEXT:    JUMP
-; CHECK-NEXT:  .BB9_2:
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:  .BB9_3:
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %1 = icmp sle i256 %a, %b
@@ -239,19 +160,8 @@ define i256 @select_ugt_zero_negone(i256 %a, i256 %b) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    GT
-; CHECK-NEXT:    ISZERO
-; CHECK-NEXT:    PUSH4 @.BB10_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    NOT
-; CHECK-NEXT:    PUSH4 @.BB10_3
-; CHECK-NEXT:    JUMP
-; CHECK-NEXT:  .BB10_2:
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:  .BB10_3:
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %1 = icmp ugt i256 %a, %b
@@ -264,19 +174,8 @@ define i256 @select_ult_zero_negone(i256 %a, i256 %b) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    LT
-; CHECK-NEXT:    ISZERO
-; CHECK-NEXT:    PUSH4 @.BB11_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1:
 ; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    NOT
-; CHECK-NEXT:    PUSH4 @.BB11_3
-; CHECK-NEXT:    JUMP
-; CHECK-NEXT:  .BB11_2:
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:  .BB11_3:
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %1 = icmp ult i256 %a, %b
@@ -289,18 +188,9 @@ define i256 @select_uge_zero_negone(i256 %a, i256 %b) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    LT
-; CHECK-NEXT:    PUSH4 @.BB12_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1:
+; CHECK-NEXT:    ISZERO
 ; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    NOT
-; CHECK-NEXT:    PUSH4 @.BB12_3
-; CHECK-NEXT:    JUMP
-; CHECK-NEXT:  .BB12_2:
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:  .BB12_3:
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %1 = icmp uge i256 %a, %b
@@ -313,18 +203,9 @@ define i256 @select_ule_zero_negone(i256 %a, i256 %b) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    GT
-; CHECK-NEXT:    PUSH4 @.BB13_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1:
+; CHECK-NEXT:    ISZERO
 ; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    NOT
-; CHECK-NEXT:    PUSH4 @.BB13_3
-; CHECK-NEXT:    JUMP
-; CHECK-NEXT:  .BB13_2:
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:  .BB13_3:
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %1 = icmp ule i256 %a, %b
@@ -336,18 +217,9 @@ define i256 @select_eq_1_2(i256 %a, i256 %b) {
 ; CHECK-LABEL: select_eq_1_2:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    SUB
-; CHECK-NEXT:    PUSH4 @.BB14_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1:
-; CHECK-NEXT:    PUSH1 0x1
-; CHECK-NEXT:    PUSH4 @.BB14_3
-; CHECK-NEXT:    JUMP
-; CHECK-NEXT:  .BB14_2:
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    EQ
 ; CHECK-NEXT:    PUSH1 0x2
-; CHECK-NEXT:  .BB14_3:
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %1 = icmp eq i256 %a, %b
@@ -360,17 +232,9 @@ define i256 @select_ne_1_2(i256 %a, i256 %b) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    EQ
-; CHECK-NEXT:    PUSH4 @.BB15_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1:
-; CHECK-NEXT:    PUSH1 0x1
-; CHECK-NEXT:    PUSH4 @.BB15_3
-; CHECK-NEXT:    JUMP
-; CHECK-NEXT:  .BB15_2:
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    ISZERO
 ; CHECK-NEXT:    PUSH1 0x2
-; CHECK-NEXT:  .BB15_3:
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %1 = icmp ne i256 %a, %b
@@ -382,18 +246,10 @@ define i256 @select_eq_2_1(i256 %a, i256 %b) {
 ; CHECK-LABEL: select_eq_2_1:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    SUB
-; CHECK-NEXT:    PUSH4 @.BB16_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1:
-; CHECK-NEXT:    PUSH1 0x2
-; CHECK-NEXT:    PUSH4 @.BB16_3
-; CHECK-NEXT:    JUMP
-; CHECK-NEXT:  .BB16_2:
-; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    PUSH1 0x1
-; CHECK-NEXT:  .BB16_3:
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    EQ
+; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %1 = icmp eq i256 %a, %b
@@ -405,18 +261,11 @@ define i256 @select_ne_2_1(i256 %a, i256 %b) {
 ; CHECK-LABEL: select_ne_2_1:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    EQ
-; CHECK-NEXT:    PUSH4 @.BB17_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1:
-; CHECK-NEXT:    PUSH1 0x2
-; CHECK-NEXT:    PUSH4 @.BB17_3
-; CHECK-NEXT:    JUMP
-; CHECK-NEXT:  .BB17_2:
-; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    PUSH1 0x1
-; CHECK-NEXT:  .BB17_3:
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    EQ
+; CHECK-NEXT:    ISZERO
+; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %1 = icmp ne i256 %a, %b
@@ -428,18 +277,9 @@ define i256 @select_eq_10000_10001(i256 %a, i256 %b) {
 ; CHECK-LABEL: select_eq_10000_10001:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    SUB
-; CHECK-NEXT:    PUSH4 @.BB18_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1:
-; CHECK-NEXT:    PUSH2 0x2711
-; CHECK-NEXT:    PUSH4 @.BB18_3
-; CHECK-NEXT:    JUMP
-; CHECK-NEXT:  .BB18_2:
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    EQ
 ; CHECK-NEXT:    PUSH2 0x2712
-; CHECK-NEXT:  .BB18_3:
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %1 = icmp eq i256 %a, %b
@@ -452,17 +292,9 @@ define i256 @select_ne_10001_10002(i256 %a, i256 %b) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    EQ
-; CHECK-NEXT:    PUSH4 @.BB19_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1:
-; CHECK-NEXT:    PUSH2 0x2711
-; CHECK-NEXT:    PUSH4 @.BB19_3
-; CHECK-NEXT:    JUMP
-; CHECK-NEXT:  .BB19_2:
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    ISZERO
 ; CHECK-NEXT:    PUSH2 0x2712
-; CHECK-NEXT:  .BB19_3:
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SUB
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
   %1 = icmp ne i256 %a, %b
