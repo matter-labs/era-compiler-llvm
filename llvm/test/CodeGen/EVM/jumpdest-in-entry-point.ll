@@ -9,7 +9,6 @@ declare void @llvm.evm.return(ptr addrspace(1), i256)
 define void @__entry() noreturn {
 ; CHECK-LABEL: __entry:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    MLOAD
 ; CHECK-NEXT:    DUP1
