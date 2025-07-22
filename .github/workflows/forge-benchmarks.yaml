@@ -1,0 +1,24 @@
+name: Forge benchmarks
+
+on:
+  workflow_dispatch:
+    inputs:
+      solx-version:
+        description: 'Prebuilt `solx` version to use. For example: `0.1.0` without `v` prefix. If empty, `solx` will be built.'
+        required: false
+        default: ''
+      llvm-ref:
+        description: 'LLVM reference branch to use. If empty, the current branch will be used.'
+        required: false
+        default: ''
+  pull_request:
+
+jobs:
+  forge-benchmarks:
+    uses: matter-labs/era-compiler-ci/.github/workflows/forge-benchmarks.yaml@v1
+    secrets: inherit
+    with:
+      solx-version: ${{ inputs.solx-version || '' }}
+      upload-reports: ${{ github.event_name == 'pull_request' }}
+      print-markdown-tables: 'false' # do not print markdown tables to PRs
+      llvm-ref: ${{ inputs.llvm-ref || github.ref }}
