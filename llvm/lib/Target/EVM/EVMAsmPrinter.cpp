@@ -127,9 +127,18 @@ void EVMAsmPrinter::emitFunctionBodyEnd() { FirstFunctIsHandled = true; }
 void EVMAsmPrinter::emitBasicBlockStart(const MachineBasicBlock &MBB) {
   AsmPrinter::emitBasicBlockStart(MBB);
 
+  // If this is __entry function, we don't need to emit JUMPDEST
+  // instruction in the first basic block, as it is the entry point
+  // of the EVM bytecode.
+  auto IsEntryPoint = [this](const MachineBasicBlock &MBB) {
+    return !FirstFunctIsHandled && &MBB == &MF->front() &&
+           MF->getName() == "__entry";
+  };
+
   // Emit JUMPDEST instruction at the beginning of the basic block, if
   // this is not a block that is only reachable by fallthrough.
-  if (!EVMKeepRegisters && !AsmPrinter::isBlockOnlyReachableByFallthrough(&MBB))
+  if (!EVMKeepRegisters && !IsEntryPoint(MBB) &&
+      !AsmPrinter::isBlockOnlyReachableByFallthrough(&MBB))
     emitJumpDest();
 }
 
