@@ -6,7 +6,7 @@ target triple = "evm"
 
 declare void @llvm.evm.return(ptr addrspace(1), i256)
 
-define void @__entry() noreturn {
+define void @__entry() noreturn "evm-entry-function" {
 ; CHECK-LABEL: __entry:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    PUSH0
