@@ -132,12 +132,12 @@ void EVMAsmPrinter::emitFunctionBodyEnd() { FirstFunctIsHandled = true; }
 void EVMAsmPrinter::emitBasicBlockStart(const MachineBasicBlock &MBB) {
   AsmPrinter::emitBasicBlockStart(MBB);
 
-  // If this is __entry function, we don't need to emit JUMPDEST
+  // If this is the entry function, we don't need to emit JUMPDEST
   // instruction in the first basic block, as it is the entry point
   // of the EVM bytecode.
   auto IsEntryPoint = [this](const MachineBasicBlock &MBB) {
     return !FirstFunctIsHandled && &MBB == &MF->front() &&
-           MF->getName() == "__entry";
+           MF->getFunction().hasFnAttribute("evm-entry-function");
   };
 
   // Emit JUMPDEST instruction at the beginning of the basic block, if
