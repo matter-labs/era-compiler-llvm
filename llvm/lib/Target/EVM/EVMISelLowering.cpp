@@ -876,6 +876,49 @@ SDValue EVMTargetLowering::combineSELECT(SDNode *N,
     return DAG.getNode(ISD::OR, DL, VT, Neg, DAG.getFreeze(FalseV));
   }
 
+  // fold (Cond ? C1 : C2) -> (C2 + (C1 - C2) * Cond) if (C1 > C2)
+  // fold (Cond ? C1 : C2) -> (C2 - (C2 - C1) * Cond) if (C1 < C2)
+  //
+  // We distinguish between C1 > C2 and C1 < C2 to avoid generating
+  // negative constants, which are expensive in EVM.
+  if (isa<ConstantSDNode>(TrueV) && isa<ConstantSDNode>(FalseV)) {
+    APInt C1Val = cast<ConstantSDNode>(TrueV)->getAPIntValue();
+    APInt C2Val = cast<ConstantSDNode>(FalseV)->getAPIntValue();
+
+    // This should never happen, but just in case.
+    if (C1Val == C2Val)
+      return TrueV;
+
+    unsigned Opc = 0;
+    SDValue Scale;
+    if (C1Val.sgt(C2Val)) {
+      Opc = ISD::ADD;
+      Scale = DAG.getConstant(C1Val - C2Val, DL, VT);
+    } else {
+      // Use sub to avoid generating negative constants.
+      Opc = ISD::SUB;
+      Scale = DAG.getConstant(C2Val - C1Val, DL, VT);
+    }
+
+    SDValue Mul = DAG.getNode(ISD::MUL, DL, VT, CondV, Scale);
+    return DAG.getNode(Opc, DL, VT, FalseV, Mul);
+  }
+
+  // fold (Cond ? X : C) -> (C + (X* - C) * Cond)
+  // fold (Cond ? C : Y) -> (Y* + (C - Y*) * Cond)
+  if (isa<ConstantSDNode>(TrueV) || isa<ConstantSDNode>(FalseV)) {
+    if (!isa<ConstantSDNode>(TrueV))
+      TrueV = freeze(TrueV);
+    else if (!isa<ConstantSDNode>(FalseV))
+      FalseV = freeze(FalseV);
+    else
+      llvm_unreachable("Unexpected select operands");
+
+    SDValue Sub = DAG.getNode(ISD::SUB, DL, VT, TrueV, FalseV);
+    SDValue Mul = DAG.getNode(ISD::MUL, DL, VT, CondV, Sub);
+    return DAG.getNode(ISD::ADD, DL, VT, FalseV, Mul);
+  }
+
   if (SDValue V = tryFoldSelectIntoOp(N, DAG, TrueV, FalseV, /*Swapped=*/false))
     return V;
   // NOLINTNEXTLINE(readability-suspicious-call-argument)
