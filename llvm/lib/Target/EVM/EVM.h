@@ -57,7 +57,6 @@ FunctionPass *createEVMCodegenPreparePass();
 ImmutablePass *createEVMAAWrapperPass();
 ImmutablePass *createEVMExternalAAWrapperPass();
 ModulePass *createEVMAlwaysInlinePass();
-ModulePass *createEVMModuleLayoutPass();
 
 // ISel and immediate followup passes.
 FunctionPass *createEVMISelDag(EVMTargetMachine &TM,
@@ -93,7 +92,6 @@ void initializeEVMBPStackificationPass(PassRegistry &);
 void initializeEVMAAWrapperPassPass(PassRegistry &);
 void initializeEVMExternalAAWrapperPass(PassRegistry &);
 void initializeEVMAlwaysInlinePass(PassRegistry &);
-void initializeEVMModuleLayoutPass(PassRegistry &);
 void initializeEVMLowerJumpUnlessPass(PassRegistry &);
 void initializeEVMFinalizeStackFramesPass(PassRegistry &);
 void initializeEVMMarkRecursiveFunctionsPass(PassRegistry &);
