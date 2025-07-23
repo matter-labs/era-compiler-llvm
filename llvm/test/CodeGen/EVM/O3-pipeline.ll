@@ -55,8 +55,6 @@ target triple = "evm"
 ; CHECK-NEXT:       Expand reduction intrinsics
 ; CHECK-NEXT:       Natural Loop Information
 ; CHECK-NEXT:       TLS Variable Hoist
-; CHECK-NEXT:     EVM module layout
-; CHECK-NEXT:     FunctionPass Manager
 ; CHECK-NEXT:       Final transformations before code generation
 ; CHECK-NEXT:       Dominator Tree Construction
 ; CHECK-NEXT:       Natural Loop Information

@@ -102,6 +102,11 @@ void EVMAsmPrinter::emitFunctionEntryLabel() {
 }
 
 void EVMAsmPrinter::emitFunctionBodyStart() {
+  if (MF->getFunction().hasFnAttribute("evm-entry-function") &&
+      FirstFunctIsHandled)
+    report_fatal_error("Entry function '" + MF->getName() +
+                       "' isn't the first function in the module.");
+
   if (const auto *MFI = MF->getInfo<EVMMachineFunctionInfo>();
       MFI->getHasPushDeployAddress()) {
     // TODO: #778. Move the function with PUSHDEPLOYADDRESS to the
