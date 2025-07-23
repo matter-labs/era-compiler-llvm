@@ -65,7 +65,6 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   initializeEVMAAWrapperPassPass(PR);
   initializeEVMExternalAAWrapperPass(PR);
   initializeEVMAlwaysInlinePass(PR);
-  initializeEVMModuleLayoutPass(PR);
   initializeEVMLowerJumpUnlessPass(PR);
   initializeEVMFinalizeStackFramesPass(PR);
   initializeEVMMarkRecursiveFunctionsPass(PR);
@@ -238,7 +237,6 @@ bool EVMPassConfig::addPreISel() {
 }
 
 void EVMPassConfig::addCodeGenPrepare() {
-  addPass(createEVMModuleLayoutPass());
   addPass(createEVMCodegenPreparePass());
   TargetPassConfig::addCodeGenPrepare();
 }
