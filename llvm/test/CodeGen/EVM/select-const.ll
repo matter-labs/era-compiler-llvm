@@ -301,3 +301,183 @@ define i256 @select_ne_10001_10002(i256 %a, i256 %b) {
   %2 = select i1 %1, i256 10001, i256 10002
   ret i256 %2
 }
+
+define i256 @select_196_184(i1 %a) {
+; CHECK-LABEL: select_196_184:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    ISZERO
+; CHECK-NEXT:    PUSH4 @.BB20_2
+; CHECK-NEXT:    JUMPI
+; CHECK-NEXT:  ; %bb.1:
+; CHECK-NEXT:    PUSH1 0xC4
+; CHECK-NEXT:    PUSH4 @.BB20_3
+; CHECK-NEXT:    JUMP
+; CHECK-NEXT:  .BB20_2:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0xB8
+; CHECK-NEXT:  .BB20_3:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %1 = select i1 %a, i256 196, i256 184
+  ret i256 %1
+}
+
+define i256 @select_184_196(i1 %a) {
+; CHECK-LABEL: select_184_196:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    ISZERO
+; CHECK-NEXT:    PUSH4 @.BB21_2
+; CHECK-NEXT:    JUMPI
+; CHECK-NEXT:  ; %bb.1:
+; CHECK-NEXT:    PUSH1 0xB8
+; CHECK-NEXT:    PUSH4 @.BB21_3
+; CHECK-NEXT:    JUMP
+; CHECK-NEXT:  .BB21_2:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0xC4
+; CHECK-NEXT:  .BB21_3:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %1 = select i1 %a, i256 184, i256 196
+  ret i256 %1
+}
+
+define i256 @select_n196_n184(i1 %a) {
+; CHECK-LABEL: select_n196_n184:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    ISZERO
+; CHECK-NEXT:    PUSH4 @.BB22_2
+; CHECK-NEXT:    JUMPI
+; CHECK-NEXT:  ; %bb.1:
+; CHECK-NEXT:    PUSH1 0xC3
+; CHECK-NEXT:    NOT
+; CHECK-NEXT:    PUSH4 @.BB22_3
+; CHECK-NEXT:    JUMP
+; CHECK-NEXT:  .BB22_2:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0xB7
+; CHECK-NEXT:    NOT
+; CHECK-NEXT:  .BB22_3:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %1 = select i1 %a, i256 -196, i256 -184
+  ret i256 %1
+}
+
+define i256 @select_n184_n196(i1 %a) {
+; CHECK-LABEL: select_n184_n196:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    ISZERO
+; CHECK-NEXT:    PUSH4 @.BB23_2
+; CHECK-NEXT:    JUMPI
+; CHECK-NEXT:  ; %bb.1:
+; CHECK-NEXT:    PUSH1 0xB7
+; CHECK-NEXT:    NOT
+; CHECK-NEXT:    PUSH4 @.BB23_3
+; CHECK-NEXT:    JUMP
+; CHECK-NEXT:  .BB23_2:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0xC3
+; CHECK-NEXT:    NOT
+; CHECK-NEXT:  .BB23_3:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %1 = select i1 %a, i256 -184, i256 -196
+  ret i256 %1
+}
+
+define i256 @select_var_12345(i1 %a, i256 %b) {
+; CHECK-LABEL: select_var_12345:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    PUSH4 @.BB24_2
+; CHECK-NEXT:    JUMPI
+; CHECK-NEXT:  ; %bb.1:
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    PUSH2 0x3039
+; CHECK-NEXT:  .BB24_2:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %1 = select i1 %a, i256 %b, i256 12345
+  ret i256 %1
+}
+
+define i256 @select_12345_var(i1 %a, i256 %b) {
+; CHECK-LABEL: select_12345_var:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    ISZERO
+; CHECK-NEXT:    PUSH4 @.BB25_2
+; CHECK-NEXT:    JUMPI
+; CHECK-NEXT:  ; %bb.1:
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    PUSH2 0x3039
+; CHECK-NEXT:  .BB25_2:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %1 = select i1 %a, i256 12345, i256 %b
+  ret i256 %1
+}
+
+define i256 @select_var_n12345(i1 %a, i256 %b) {
+; CHECK-LABEL: select_var_n12345:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    PUSH4 @.BB26_2
+; CHECK-NEXT:    JUMPI
+; CHECK-NEXT:  ; %bb.1:
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    PUSH2 0x3038
+; CHECK-NEXT:    NOT
+; CHECK-NEXT:  .BB26_2:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %1 = select i1 %a, i256 %b, i256 -12345
+  ret i256 %1
+}
+
+define i256 @select_n12345_var(i1 %a, i256 %b) {
+; CHECK-LABEL: select_n12345_var:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    AND
+; CHECK-NEXT:    ISZERO
+; CHECK-NEXT:    PUSH4 @.BB27_2
+; CHECK-NEXT:    JUMPI
+; CHECK-NEXT:  ; %bb.1:
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    PUSH2 0x3038
+; CHECK-NEXT:    NOT
+; CHECK-NEXT:  .BB27_2:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+  %1 = select i1 %a, i256 -12345, i256 %b
+  ret i256 %1
+}
