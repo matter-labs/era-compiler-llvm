@@ -6,40 +6,51 @@ target triple = "evm"
 
 define i256 @test(i256 %arg) {
 ; CHECK-LABEL: test:
-; CHECK:       ; %bb.0:
+; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    DUP2
 ; CHECK-NEXT:    SLT
-; CHECK-NEXT:    ISZERO
 ; CHECK-NEXT:    PUSH4 @.BB0_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1:
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    PUSH1 0xA
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    PUSH1 0x14
 ; CHECK-NEXT:    PUSH4 @.BB0_3
 ; CHECK-NEXT:    JUMP
-; CHECK-NEXT:  .BB0_2:
+; CHECK-NEXT:  .BB0_2: ; %bb1
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    PUSH1 0x14
-; CHECK-NEXT:  .BB0_3:
+; CHECK-NEXT:    PUSH1 0x1
+; CHECK-NEXT:    PUSH1 0xA
+; CHECK-NEXT:  .BB0_3: ; %bb2
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SWAP2
-; CHECK-NEXT:    SGT
-; CHECK-NEXT:    ISZERO
+; CHECK-NEXT:    SLT
 ; CHECK-NEXT:    PUSH4 @.BB0_5
 ; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.4:
+; CHECK-NEXT:  ; %bb.4: ; %bb3
 ; CHECK-NEXT:    POP
 ; CHECK-NEXT:    PUSH1 0x5
-; CHECK-NEXT:  .BB0_5:
+; CHECK-NEXT:  .BB0_5: ; %bb4
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
-  %cmp1 = icmp sgt i256 %arg, 0
-  %cmp2 = icmp slt i256 %arg, 0
-  %select1 = select i1 %cmp2, i256 10, i256 20
-  %select2 = select i1 %cmp1, i256 5, i256 %select1
-  ret i256 %select2
+entry:
+  %cmp1 = icmp slt i256 %arg, 0
+  br i1 %cmp1, label %bb1, label %bb2
+
+bb1:
+  br label %bb2
+
+bb2:
+  %phi1 = phi i256 [ 20, %entry ], [ 10, %bb1 ]
+  %cmp2 = icmp sgt i256 %arg, 0
+  br i1 %cmp2, label %bb3, label %bb4
+
+bb3:
+  br label %bb4
+
+bb4:
+  %phi2 = phi i256 [ %phi1, %bb2 ], [ 5, %bb3 ]
+  ret i256 %phi2
 }
