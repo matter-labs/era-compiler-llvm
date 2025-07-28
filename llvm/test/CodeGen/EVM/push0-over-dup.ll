@@ -9,7 +9,7 @@ define { i256, i256 } @test() {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    DUP1
+; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    JUMP
   ret { i256, i256 } zeroinitializer
