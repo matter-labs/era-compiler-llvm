@@ -3,7 +3,7 @@
 target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
 target triple = "evm"
 
-; CHECK-LABEL: define private void @callee_inline
+; CHECK-NOT: define private void @callee_inline
 define private void @callee_inline(i256 %arg) {
 entry:
   %itptr = inttoptr i256 %arg to ptr addrspace(5)
@@ -24,7 +24,7 @@ bb2:
 ; CHECK-LABEL: define void @caller_inline1
 define void @caller_inline1(i256 %arg) {
 entry:
-; CHECK: call void @callee_inline(i256 %arg)
+; CHECK-NOT: call void @callee_inline(i256 %arg)
   call void @callee_inline(i256 %arg)
   %itptr = inttoptr i256 %arg to ptr addrspace(5)
   %load = load i256, ptr addrspace(5) %itptr, align 1
@@ -36,7 +36,7 @@ entry:
 ; CHECK-LABEL: define void @caller_inline2
 define void @caller_inline2(i256 %arg1, i256 %arg2) {
 entry:
-; CHECK: call void @callee_inline(i256 %arg2)
+; CHECK-NOT: call void @callee_inline(i256 %arg2)
   call void @callee_inline(i256 %arg2)
   %itptr = inttoptr i256 %arg2 to ptr addrspace(5)
   %load = load i256, ptr addrspace(5) %itptr, align 1

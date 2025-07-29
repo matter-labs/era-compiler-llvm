@@ -1911,8 +1911,15 @@ InlineCostCallAnalyzer::getHotCallSiteThreshold(CallBase &Call,
 void InlineCostCallAnalyzer::updateThreshold(CallBase &Call, Function &Callee) {
   // If no size growth is allowed for this inlining, set Threshold to 0.
   if (!allowSizeGrowth(Call)) {
-    Threshold = 0;
-    return;
+    // EVM local change begin
+    if (Triple(Call.getFunction()->getParent()->getTargetTriple()).isEVM()) {
+      constexpr int UnreachableThreshold = 10;
+      Threshold = std::min(Threshold, UnreachableThreshold);
+    } else {
+      Threshold = 0;
+      return;
+    }
+    // EVM local change end
   }
 
   Function *Caller = Call.getCaller();
