@@ -61,7 +61,8 @@ public:
   bool usesPhysRegsForValues() const override { return false; }
 
   void registerPassBuilderCallbacks(PassBuilder &PB) override;
-  void registerDefaultAliasAnalyses(AAManager &AAM) override;
+
+  void registerEarlyDefaultAliasAnalyses(AAManager &AAM) override;
 }; // EVMTargetMachine.
 
 } // end namespace llvm

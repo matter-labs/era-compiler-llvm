@@ -125,7 +125,7 @@ bool EVMTargetMachine::parseMachineFunctionInfo(
   return false;
 }
 
-void EVMTargetMachine::registerDefaultAliasAnalyses(AAManager &AAM) {
+void EVMTargetMachine::registerEarlyDefaultAliasAnalyses(AAManager &AAM) {
   AAM.registerFunctionAnalysis<EVMAA>();
 }
 
@@ -221,11 +221,7 @@ void EVMPassConfig::addIRPasses() {
   addPass(createEVMLowerIntrinsicsPass());
   if (TM->getOptLevel() != CodeGenOptLevel::None) {
     addPass(createEVMAAWrapperPass());
-    addPass(
-        createExternalAAWrapperPass([](Pass &P, Function &, AAResults &AAR) {
-          if (auto *WrapperPass = P.getAnalysisIfAvailable<EVMAAWrapperPass>())
-            AAR.addAAResult(WrapperPass->getResult());
-        }));
+    addPass(createEVMExternalAAWrapperPass());
   }
   TargetPassConfig::addIRPasses();
 }
