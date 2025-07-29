@@ -10,7 +10,7 @@ target triple = "evm"
 ; CHECK-NEXT: Machine Module Information
 ; CHECK-NEXT: Target Transform Information
 ; CHECK-NEXT: EVM Address space based Alias Analysis
-; CHECK-NEXT: External Alias Analysis
+; CHECK-NEXT: EVM Address space based Alias Analysis Wrapper
 ; CHECK-NEXT: Type-Based Alias Analysis
 ; CHECK-NEXT: Scoped NoAlias Alias Analysis
 ; CHECK-NEXT: Assumption Cache Tracker
