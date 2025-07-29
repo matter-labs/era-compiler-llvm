@@ -14,6 +14,8 @@
 #include "llvm/Analysis/VMAliasAnalysis.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/IntrinsicInst.h"
+#include "llvm/IR/IntrinsicsEVM.h"
 #include <optional>
 
 using namespace llvm;
@@ -97,6 +99,26 @@ AliasResult VMAAResult::alias(const MemoryLocation &LocA,
                               const Instruction *I) {
   const unsigned ASA = LocA.Ptr->getType()->getPointerAddressSpace();
   const unsigned ASB = LocB.Ptr->getType()->getPointerAddressSpace();
+
+  if (const auto *II = dyn_cast_or_null<IntrinsicInst>(I)) {
+    switch (II->getIntrinsicID()) {
+    case Intrinsic::evm_return:
+    case Intrinsic::evm_revert:
+    case Intrinsic::evm_create:
+    case Intrinsic::evm_create2:
+    case Intrinsic::evm_call:
+    case Intrinsic::evm_callcode:
+    case Intrinsic::evm_delegatecall:
+    case Intrinsic::evm_staticcall: {
+      unsigned ASB = LocB.Ptr->getType()->getPointerAddressSpace();
+      if (ASB == 5 || ASB == 6) {
+        return AliasResult::MustAlias;
+      }
+    } break;
+    default:
+      break;
+    }
+  }
 
   // If we don't know what this is, bail out.
   if (ASA > MaxAS || ASB > MaxAS)

@@ -213,6 +213,134 @@ define i256 @test_as6_large() {
   ret i256 %ret
 }
 
+; Verify that in the following tests all load operations are preserved.
+
+define i256 @test_noopt_create(ptr addrspace(5) %ptr1, ptr addrspace(6) %ptr2) {
+; CHECK-LABEL: define i256 @test_noopt_create
+; CHECK-SAME: (ptr addrspace(5) nocapture [[PTR1:%.*]], ptr addrspace(6) nocapture [[PTR2:%.*]]) local_unnamed_addr #[[ATTR4:[0-9]+]] {
+; CHECK-NEXT:    store i256 1, ptr addrspace(5) [[PTR1]], align 32
+; CHECK-NEXT:    store i256 2, ptr addrspace(6) [[PTR2]], align 32
+; CHECK-NEXT:    [[TMP1:%.*]] = tail call i256 @llvm.evm.create(i256 0, ptr addrspace(1) null, i256 1)
+; CHECK-NEXT:    [[RET1:%.*]] = load i256, ptr addrspace(5) [[PTR1]], align 32
+; CHECK-NEXT:    [[RET2:%.*]] = load i256, ptr addrspace(6) [[PTR2]], align 32
+; CHECK-NEXT:    [[RET:%.*]] = add i256 [[RET2]], [[RET1]]
+; CHECK-NEXT:    ret i256 [[RET]]
+;
+  store i256 1, ptr addrspace(5) %ptr1, align 32
+  store i256 2, ptr addrspace(6) %ptr2, align 32
+  call i256 @llvm.evm.create(i256 0, ptr addrspace(1) null, i256 1)
+  %ret1 = load i256, ptr addrspace(5) %ptr1
+  %ret2 = load i256, ptr addrspace(6) %ptr2
+  %ret = add i256 %ret1, %ret2
+  ret i256 %ret
+}
+
+define i256 @test_noopt_create2(ptr addrspace(5) %ptr1, ptr addrspace(6) %ptr2) {
+; CHECK-LABEL: define i256 @test_noopt_create2
+; CHECK-SAME: (ptr addrspace(5) nocapture [[PTR1:%.*]], ptr addrspace(6) nocapture [[PTR2:%.*]]) local_unnamed_addr #[[ATTR4]] {
+; CHECK-NEXT:    store i256 1, ptr addrspace(5) [[PTR1]], align 32
+; CHECK-NEXT:    store i256 2, ptr addrspace(6) [[PTR2]], align 32
+; CHECK-NEXT:    [[TMP1:%.*]] = tail call i256 @llvm.evm.create2(i256 0, ptr addrspace(1) null, i256 1, i256 0)
+; CHECK-NEXT:    [[RET1:%.*]] = load i256, ptr addrspace(5) [[PTR1]], align 32
+; CHECK-NEXT:    [[RET2:%.*]] = load i256, ptr addrspace(6) [[PTR2]], align 32
+; CHECK-NEXT:    [[RET:%.*]] = add i256 [[RET2]], [[RET1]]
+; CHECK-NEXT:    ret i256 [[RET]]
+;
+  store i256 1, ptr addrspace(5) %ptr1, align 32
+  store i256 2, ptr addrspace(6) %ptr2, align 32
+  call i256 @llvm.evm.create2(i256 0, ptr addrspace(1) null, i256 1, i256 0)
+  %ret1 = load i256, ptr addrspace(5) %ptr1
+  %ret2 = load i256, ptr addrspace(6) %ptr2
+  %ret = add i256 %ret1, %ret2
+  ret i256 %ret
+}
+
+define i256 @test_noopt_call(ptr addrspace(5) %ptr1, ptr addrspace(6) %ptr2) {
+; CHECK-LABEL: define i256 @test_noopt_call
+; CHECK-SAME: (ptr addrspace(5) nocapture [[PTR1:%.*]], ptr addrspace(6) nocapture [[PTR2:%.*]]) local_unnamed_addr #[[ATTR4]] {
+; CHECK-NEXT:    store i256 1, ptr addrspace(5) [[PTR1]], align 32
+; CHECK-NEXT:    store i256 2, ptr addrspace(6) [[PTR2]], align 32
+; CHECK-NEXT:    [[TMP1:%.*]] = tail call i256 @llvm.evm.call(i256 1, i256 1, i256 1, ptr addrspace(1) null, i256 1, ptr addrspace(1) null, i256 1)
+; CHECK-NEXT:    [[RET1:%.*]] = load i256, ptr addrspace(5) [[PTR1]], align 32
+; CHECK-NEXT:    [[RET2:%.*]] = load i256, ptr addrspace(6) [[PTR2]], align 32
+; CHECK-NEXT:    [[RET:%.*]] = add i256 [[RET2]], [[RET1]]
+; CHECK-NEXT:    ret i256 [[RET]]
+;
+  store i256 1, ptr addrspace(5) %ptr1, align 32
+  store i256 2, ptr addrspace(6) %ptr2, align 32
+  call i256 @llvm.evm.call(i256 1, i256 1, i256 1, ptr addrspace(1) null, i256 1, ptr addrspace(1) null, i256 1)
+  %ret1 = load i256, ptr addrspace(5) %ptr1
+  %ret2 = load i256, ptr addrspace(6) %ptr2
+  %ret = add i256 %ret1, %ret2
+  ret i256 %ret
+}
+
+define i256 @test_noopt_staticcall(ptr addrspace(5) %ptr1, ptr addrspace(6) %ptr2) {
+; CHECK-LABEL: define i256 @test_noopt_staticcall
+; CHECK-SAME: (ptr addrspace(5) nocapture [[PTR1:%.*]], ptr addrspace(6) nocapture [[PTR2:%.*]]) local_unnamed_addr #[[ATTR4]] {
+; CHECK-NEXT:    store i256 1, ptr addrspace(5) [[PTR1]], align 32
+; CHECK-NEXT:    store i256 2, ptr addrspace(6) [[PTR2]], align 32
+; CHECK-NEXT:    [[TMP1:%.*]] = tail call i256 @llvm.evm.staticcall(i256 1, i256 1, ptr addrspace(1) null, i256 1, ptr addrspace(1) null, i256 1)
+; CHECK-NEXT:    [[RET1:%.*]] = load i256, ptr addrspace(5) [[PTR1]], align 32
+; CHECK-NEXT:    [[RET2:%.*]] = load i256, ptr addrspace(6) [[PTR2]], align 32
+; CHECK-NEXT:    [[RET:%.*]] = add i256 [[RET2]], [[RET1]]
+; CHECK-NEXT:    ret i256 [[RET]]
+;
+  store i256 1, ptr addrspace(5) %ptr1, align 32
+  store i256 2, ptr addrspace(6) %ptr2, align 32
+  call i256 @llvm.evm.staticcall(i256 1, i256 1, ptr addrspace(1) null, i256 1, ptr addrspace(1) null, i256 1)
+  %ret1 = load i256, ptr addrspace(5) %ptr1
+  %ret2 = load i256, ptr addrspace(6) %ptr2
+  %ret = add i256 %ret1, %ret2
+  ret i256 %ret
+}
+
+define i256 @test_noopt_callcode(ptr addrspace(5) %ptr1, ptr addrspace(6) %ptr2) {
+; CHECK-LABEL: define i256 @test_noopt_callcode
+; CHECK-SAME: (ptr addrspace(5) nocapture [[PTR1:%.*]], ptr addrspace(6) nocapture [[PTR2:%.*]]) local_unnamed_addr #[[ATTR4]] {
+; CHECK-NEXT:    store i256 1, ptr addrspace(5) [[PTR1]], align 32
+; CHECK-NEXT:    store i256 2, ptr addrspace(6) [[PTR2]], align 32
+; CHECK-NEXT:    [[TMP1:%.*]] = tail call i256 @llvm.evm.callcode(i256 1, i256 1, i256 1, ptr addrspace(1) null, i256 1, ptr addrspace(1) null, i256 1)
+; CHECK-NEXT:    [[RET1:%.*]] = load i256, ptr addrspace(5) [[PTR1]], align 32
+; CHECK-NEXT:    [[RET2:%.*]] = load i256, ptr addrspace(6) [[PTR2]], align 32
+; CHECK-NEXT:    [[RET:%.*]] = add i256 [[RET2]], [[RET1]]
+; CHECK-NEXT:    ret i256 [[RET]]
+;
+  store i256 1, ptr addrspace(5) %ptr1, align 32
+  store i256 2, ptr addrspace(6) %ptr2, align 32
+  call i256 @llvm.evm.callcode(i256 1, i256 1, i256 1, ptr addrspace(1) null, i256 1, ptr addrspace(1) null, i256 1)
+  %ret1 = load i256, ptr addrspace(5) %ptr1
+  %ret2 = load i256, ptr addrspace(6) %ptr2
+  %ret = add i256 %ret1, %ret2
+  ret i256 %ret
+}
+
+define i256 @test_noopt_delegatecall(ptr addrspace(5) %ptr1, ptr addrspace(6) %ptr2) {
+; CHECK-LABEL: define i256 @test_noopt_delegatecall
+; CHECK-SAME: (ptr addrspace(5) nocapture [[PTR1:%.*]], ptr addrspace(6) nocapture [[PTR2:%.*]]) local_unnamed_addr #[[ATTR4]] {
+; CHECK-NEXT:    store i256 1, ptr addrspace(5) [[PTR1]], align 32
+; CHECK-NEXT:    store i256 2, ptr addrspace(6) [[PTR2]], align 32
+; CHECK-NEXT:    [[TMP1:%.*]] = tail call i256 @llvm.evm.delegatecall(i256 1, i256 1, ptr addrspace(1) null, i256 1, ptr addrspace(1) null, i256 1)
+; CHECK-NEXT:    [[RET1:%.*]] = load i256, ptr addrspace(5) [[PTR1]], align 32
+; CHECK-NEXT:    [[RET2:%.*]] = load i256, ptr addrspace(6) [[PTR2]], align 32
+; CHECK-NEXT:    [[RET:%.*]] = add i256 [[RET2]], [[RET1]]
+; CHECK-NEXT:    ret i256 [[RET]]
+;
+  store i256 1, ptr addrspace(5) %ptr1, align 32
+  store i256 2, ptr addrspace(6) %ptr2, align 32
+  call i256 @llvm.evm.delegatecall(i256 1, i256 1, ptr addrspace(1) null, i256 1, ptr addrspace(1) null, i256 1)
+  %ret1 = load i256, ptr addrspace(5) %ptr1
+  %ret2 = load i256, ptr addrspace(6) %ptr2
+  %ret = add i256 %ret1, %ret2
+  ret i256 %ret
+}
+
+declare i256 @llvm.evm.create(i256, ptr addrspace(1), i256)
+declare i256 @llvm.evm.call(i256, i256, i256, ptr addrspace(1), i256, ptr addrspace(1), i256)
+declare i256 @llvm.evm.callcode(i256, i256, i256, ptr addrspace(1), i256, ptr addrspace(1), i256)
+declare i256 @llvm.evm.delegatecall(i256, i256, ptr addrspace(1), i256, ptr addrspace(1), i256)
+declare i256 @llvm.evm.create2(i256, ptr addrspace(1), i256, i256)
+declare i256 @llvm.evm.staticcall(i256, i256, ptr addrspace(1), i256, ptr addrspace(1), i256)
 declare void @llvm.memcpy.p1.p1.i256(ptr addrspace(1), ptr addrspace(1), i256, i1 immarg)
 declare i256 @llvm.evm.gas()
 declare void @llvm.evm.log0(ptr addrspace(1), i256)

@@ -236,11 +236,15 @@ def int_evm_log4
                  NoCapture<ArgIndex<0>>, IntrNoCallback, IntrWillReturn]>;
 
 // System calls
+// Logically, we should also specify the ReadOnly<ArgIndex<1>> attribute,
+// but we avoid doing so to maintain a read-write memory effect, ensuring
+// correct aliasing with Storage/TStorage address spaces. The same applies
+// create2.
 def int_evm_create
     : Intrinsic<[llvm_i256_ty],
                 [llvm_i256_ty, LLVMQualPointerType<AS.HEAP>, llvm_i256_ty],
-                [IntrInaccessibleMemOrArgMemOnly, ReadOnly<ArgIndex<1>>,
-                 NoCapture<ArgIndex<1>>, IntrNoCallback, IntrWillReturn]>;
+                [IntrInaccessibleMemOrArgMemOnly, NoCapture<ArgIndex<1>>,
+                 IntrNoCallback, IntrWillReturn]>;
 
 def int_evm_call
     : Intrinsic<[llvm_i256_ty],
@@ -272,8 +276,8 @@ def int_evm_create2
     : Intrinsic<[llvm_i256_ty],
                 [llvm_i256_ty, LLVMQualPointerType<AS.HEAP>, llvm_i256_ty,
                  llvm_i256_ty],
-                [IntrInaccessibleMemOrArgMemOnly, ReadOnly<ArgIndex<1>>,
-                 NoCapture<ArgIndex<1>>, IntrNoCallback, IntrWillReturn]>;
+                [IntrInaccessibleMemOrArgMemOnly, NoCapture<ArgIndex<1>>,
+                 IntrNoCallback, IntrWillReturn]>;
 
 def int_evm_staticcall
     : Intrinsic<[llvm_i256_ty],
