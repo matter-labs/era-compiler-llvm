@@ -49,6 +49,7 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   initializeEVMLinkRuntimePass(PR);
   initializeEVMLowerIntrinsicsPass(PR);
   initializeEVMOptimizeLiveIntervalsPass(PR);
+  initializeEVMPeepholePass(PR);
   initializeEVMSingleUseExpressionPass(PR);
   initializeEVMSplitCriticalEdgesPass(PR);
   initializeEVMBPStackificationPass(PR);
@@ -284,6 +285,8 @@ void EVMPassConfig::addPreEmitPass() {
 void EVMPassConfig::addPreEmitPass2() {
   addPass(createEVMLowerJumpUnless());
   addPass(createEVMConstantUnfolding());
+  if (getOptLevel() != CodeGenOptLevel::None)
+    addPass(createEVMPeepholePass());
 }
 
 TargetPassConfig *EVMTargetMachine::createPassConfig(PassManagerBase &PM) {
