@@ -57,6 +57,7 @@ add_llvm_target(EVMCodeGen
   EVMMarkRecursiveFunctions.cpp
   EVMMCInstLower.cpp
   EVMOptimizeLiveIntervals.cpp
+  EVMPeephole.cpp
   EVMRegColoring.cpp
   EVMRegisterInfo.cpp
   EVMSHA3ConstFolding.cpp
