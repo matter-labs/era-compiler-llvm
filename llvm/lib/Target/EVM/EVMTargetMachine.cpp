@@ -295,6 +295,8 @@ void EVMPassConfig::addPreEmitPass() {
 void EVMPassConfig::addPreEmitPass2() {
   addPass(createEVMLowerJumpUnless());
   addPass(createEVMConstantUnfolding());
+  if (getOptLevel() != CodeGenOptLevel::None)
+    addPass(createEVMPeepholePass());
 }
 
 TargetPassConfig *EVMTargetMachine::createPassConfig(PassManagerBase &PM) {
