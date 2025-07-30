@@ -18,8 +18,7 @@ define i1 @test_ne(i256 %x) {
 ; CHECK-LABEL: test_ne:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    EQ
+; CHECK-NEXT:    ISZERO
 ; CHECK-NEXT:    ISZERO
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
