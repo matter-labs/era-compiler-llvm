@@ -64,9 +64,9 @@ add_llvm_target(EVMCodeGen
   EVMSingleUseExpression.cpp
   EVMSplitCriticalEdges.cpp
   EVMStackModel.cpp
-  EVMStackShuffler.cpp
   EVMStackSolver.cpp
   EVMStackifyCodeEmitter.cpp
+  EVMStackShuffler.cpp
   EVMSubtarget.cpp
   EVMTargetMachine.cpp
   EVMTargetTransformInfo.cpp
@@ -89,6 +89,8 @@ add_llvm_target(EVMCodeGen
   Target
   TargetParser
   TransformUtils
+  EVMDesc
+  EVMInfo
 
   ADD_TO_COMPONENT
   EVM
