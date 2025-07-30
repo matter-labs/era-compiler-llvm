@@ -45,19 +45,18 @@ bool EVMPeephole::runOnMachineFunction(MachineFunction &MF) {
   return Changed;
 }
 
-static bool isNegatadAndJumpedOn(const MachineBasicBlock &MBB,
+static bool isNegatedAndJumpedOn(const MachineBasicBlock &MBB,
                                  MachineBasicBlock::const_iterator I) {
   if (I == MBB.end() || I->getOpcode() != EVM::ISZERO_S)
     return false;
   ++I;
-  if (I == MBB.end())
-    return false;
-  if (I->getOpcode() == EVM::PseudoJUMPI)
-    return true;
-  if (I->getOpcode() != EVM::PUSH4_S)
-    return false;
-  ++I;
-  return I != MBB.end() && I->getOpcode() == EVM::JUMPI;
+  // When a conditional jump’s predicate is a (possibly nested) bitwise `or`,
+  // both operands are eligible for folding. Currently we only fold the operand
+  // computed last.
+  // TODO: #887 Apply folding to all operands.
+  while (I != MBB.end() && I->getOpcode() == EVM::OR_S)
+    ++I;
+  return I != MBB.end() && I->getOpcode() == EVM::PseudoJUMPI;
 }
 
 bool EVMPeephole::optimizeConditionaJumps(MachineBasicBlock &MBB) const {
@@ -67,7 +66,7 @@ bool EVMPeephole::optimizeConditionaJumps(MachineBasicBlock &MBB) const {
   while (I != MBB.end()) {
     // Fold ISZERO ISZERO to nothing, only if it's a predicate to JUMPI.
     if (I->getOpcode() == EVM::ISZERO_S &&
-        isNegatadAndJumpedOn(MBB, std::next(I))) {
+        isNegatedAndJumpedOn(MBB, std::next(I))) {
       std::next(I)->eraseFromParent();
       I->eraseFromParent();
       return true;
@@ -75,7 +74,7 @@ bool EVMPeephole::optimizeConditionaJumps(MachineBasicBlock &MBB) const {
 
     // Fold EQ ISZERO to SUB, only if it's a predicate to JUMPI.
     if (I->getOpcode() == EVM::EQ_S &&
-        isNegatadAndJumpedOn(MBB, std::next(I))) {
+        isNegatedAndJumpedOn(MBB, std::next(I))) {
       I->setDesc(TII->get(EVM::SUB_S));
       std::next(I)->eraseFromParent();
       return true;
@@ -83,7 +82,7 @@ bool EVMPeephole::optimizeConditionaJumps(MachineBasicBlock &MBB) const {
 
     // Fold SUB ISZERO to EQ, only if it's a predicate to JUMPI.
     if (I->getOpcode() == EVM::SUB_S &&
-        isNegatadAndJumpedOn(MBB, std::next(I))) {
+        isNegatedAndJumpedOn(MBB, std::next(I))) {
       I->setDesc(TII->get(EVM::EQ_S));
       std::next(I)->eraseFromParent();
       return true;
