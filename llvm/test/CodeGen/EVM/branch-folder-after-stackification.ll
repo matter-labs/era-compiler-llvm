@@ -9,10 +9,8 @@ define i256 @test(i256 %arg) {
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    NOT
 ; CHECK-NEXT:    DUP2
-; CHECK-NEXT:    SGT
-; CHECK-NEXT:    ISZERO
+; CHECK-NEXT:    SLT
 ; CHECK-NEXT:    PUSH4 @.BB0_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1:

@@ -147,6 +147,7 @@ target triple = "evm"
 ; CHECK-NEXT:       EVM Lower jump_unless
 ; CHECK-NEXT:     EVM constant unfolding
 ; CHECK-NEXT:     FunctionPass Manager
+; CHECK-NEXT:       EVM Peephole
 ; CHECK-NEXT:       Lazy Machine Block Frequency Analysis
 ; CHECK-NEXT:       Machine Optimization Remark Emitter
 ; CHECK-NEXT:       EVM Assembly
