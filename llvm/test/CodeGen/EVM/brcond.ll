@@ -423,3 +423,31 @@ false:
   unreachable
 }
 
+define void @br_or(i256 %a, i256 %b, i256 %c) {
+; CHECK-LABEL: br_or:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    SWAP3
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    DUP3
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    EQ
+; CHECK-NEXT:    ISZERO
+; CHECK-NEXT:    SWAP2
+; CHECK-NEXT:    SUB
+; CHECK-NEXT:    OR
+; CHECK-NEXT:    PUSH4 @.BB20_2
+; CHECK-NEXT:    JUMPI
+; CHECK-NEXT:  ; %bb.1: ; %false
+; CHECK-NEXT:  .BB20_2: ; %true
+; CHECK-NEXT:    JUMPDEST
+  %cond1 = icmp ne i256 %a, %b
+  %cond2 = icmp ne i256 %a, %c
+  %cond = or i1 %cond1, %cond2
+  br i1 %cond, label %true, label %false
+false:
+  unreachable
+true:
+  unreachable
+}
