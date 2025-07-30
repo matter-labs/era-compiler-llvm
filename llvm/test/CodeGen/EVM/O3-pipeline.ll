@@ -148,6 +148,7 @@ target triple = "evm"
 ; CHECK-NEXT:       MachineDominator Tree Construction
 ; CHECK-NEXT:       Machine Natural Loop Construction
 ; CHECK-NEXT:       EVM constant unfolding
+; CHECK-NEXT:       EVM Peephole
 ; CHECK-NEXT:       Lazy Machine Block Frequency Analysis
 ; CHECK-NEXT:       Machine Optimization Remark Emitter
 ; CHECK-NEXT:       EVM Assembly
