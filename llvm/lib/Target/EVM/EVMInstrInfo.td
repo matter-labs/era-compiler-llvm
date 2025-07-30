@@ -338,6 +338,7 @@ def : Pat<(setcc GPR:$rs0, GPR:$rs1, SETULE),
 def : Pat<(setcc GPR:$rs0, GPR:$rs1, SETUGE),
           (ISZERO (ULT GPR:$rs0, GPR:$rs1))>;
 
+def : Pat<(setcc GPR:$rs0, 0, SETNE), (ISZERO (ISZERO GPR:$rs0))>;
 
 //===----------------------------------------------------------------------===//
 // EVM bitwise instructions.
