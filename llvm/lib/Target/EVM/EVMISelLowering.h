@@ -141,6 +141,7 @@ private:
 
   SDValue PerformDAGCombine(SDNode *N, DAGCombinerInfo &DCI) const override;
   SDValue combineSELECT(SDNode *N, DAGCombinerInfo &DCI) const;
+  SDValue combineBRCOND(SDNode *N, DAGCombinerInfo &DCI) const;
 
   SDValue LowerOperation(SDValue Op, SelectionDAG &DAG) const override;
 

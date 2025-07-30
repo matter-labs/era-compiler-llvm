@@ -16,6 +16,7 @@
 #include "EVMMachineFunctionInfo.h"
 #include "EVMTargetMachine.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
+#include "llvm/CodeGen/ISDOpcodes.h"
 #include "llvm/IR/DiagnosticInfo.h"
 #include "llvm/IR/IntrinsicsEVM.h"
 #include "llvm/MC/MCContext.h"
@@ -92,6 +93,7 @@ EVMTargetLowering::EVMTargetLowering(const TargetMachine &TM,
 
   // Custom DAGCombine patterns.
   setTargetDAGCombine(ISD::SELECT);
+  setTargetDAGCombine(ISD::BRCOND);
 
   setJumpIsExpensive(true);
   setMaximumJumpTableSize(0);
@@ -925,6 +927,27 @@ SDValue EVMTargetLowering::combineSELECT(SDNode *N,
   return tryFoldSelectIntoOp(N, DAG, FalseV, TrueV, /*Swapped=*/true);
 }
 
+SDValue EVMTargetLowering::combineBRCOND(SDNode *N,
+                                         DAGCombinerInfo &DCI) const {
+  SDLoc DL(N);
+  SelectionDAG &DAG = DCI.DAG;
+  assert(N->getOpcode() == ISD::BRCOND);
+  SDValue Chain = N->getOperand(0);
+  SDValue Cond = N->getOperand(1);
+  SDValue Dest = N->getOperand(2);
+  EVT CondVT = Cond.getValueType();
+
+  // If the condition is still an i1, promote it now to i256:
+  if (CondVT == MVT::i1) {
+    // anyextend (zero‐extend would be fine too) to i256
+    SDValue Ext = DAG.getNode(ISD::ANY_EXTEND, DL, MVT::i256, Cond);
+
+    // Rebuild BRCOND as BRCOND.chain, Ext:i256, Dest
+    return DAG.getNode(ISD::BRCOND, DL, MVT::Other, Chain, Ext, Dest);
+  }
+  return {};
+}
+
 SDValue EVMTargetLowering::PerformDAGCombine(SDNode *N,
                                              DAGCombinerInfo &DCI) const {
   switch (N->getOpcode()) {
@@ -932,6 +955,8 @@ SDValue EVMTargetLowering::PerformDAGCombine(SDNode *N,
     break;
   case ISD::SELECT:
     return combineSELECT(N, DCI);
+  case ISD::BRCOND:
+    return combineBRCOND(N, DCI);
   }
 
   return SDValue();
