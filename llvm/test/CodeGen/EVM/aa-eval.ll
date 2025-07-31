@@ -333,8 +333,8 @@ define i256 @test_as6_as5_alias_delegatecall(ptr addrspace(5) %ptr1) {
 }
 
 ; CHECK-LABEL: Function: test_as6_as5_alias_revert
-; CHECK: Just Ref:  Ptr: i256* %ptr1	<->  call void @llvm.evm.revert
-; CHECK: Just Ref:  Ptr: i256* %ptr2	<->  call void @llvm.evm.revert
+; CHECK: NoModRef:  Ptr: i256* %ptr1	<->  call void @llvm.evm.revert
+; CHECK: NoModRef:  Ptr: i256* %ptr2	<->  call void @llvm.evm.revert
 define void @test_as6_as5_alias_revert(ptr addrspace(5) %ptr1) noreturn {
   store i256 1, ptr addrspace(5) %ptr1, align 32
   %ptr2 = inttoptr i256 32 to ptr addrspace(6)

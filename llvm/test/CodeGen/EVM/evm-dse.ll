@@ -24,7 +24,6 @@ define void @test(ptr addrspace(3) %src) noreturn {
 ; CHECK-NEXT:    tail call void @llvm.evm.return(ptr addrspace(1) noalias nocapture nofree noundef nonnull align 32 null, i256 32)
 ; CHECK-NEXT:    unreachable
 ; CHECK:       [[FUN_EXIT]]:
-; CHECK-NEXT:    store i256 2, ptr addrspace(5) null, align 32
 ; CHECK-NEXT:    tail call void @llvm.evm.revert(ptr addrspace(1) noalias nocapture nofree noundef nonnull align 32 null, i256 0)
 ; CHECK-NEXT:    unreachable
 ;
@@ -49,6 +48,7 @@ if_join:
 fun_exit:
   ; To be removed
   store i256 10, ptr addrspace(1) null, align 32
+  ; To Be removed
   store i256 2, ptr addrspace(5) null, align 32
   tail call void @llvm.evm.revert(ptr addrspace(1) noalias nocapture nofree noundef nonnull align 32 null, i256 0)
   unreachable

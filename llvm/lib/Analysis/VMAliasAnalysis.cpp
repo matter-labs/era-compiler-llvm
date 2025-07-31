@@ -103,7 +103,6 @@ AliasResult VMAAResult::alias(const MemoryLocation &LocA,
   if (const auto *II = dyn_cast_or_null<IntrinsicInst>(I)) {
     switch (II->getIntrinsicID()) {
     case Intrinsic::evm_return:
-    case Intrinsic::evm_revert:
     case Intrinsic::evm_create:
     case Intrinsic::evm_create2:
     case Intrinsic::evm_call:
