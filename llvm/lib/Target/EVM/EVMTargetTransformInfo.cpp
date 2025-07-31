@@ -12,9 +12,78 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMTargetTransformInfo.h"
+#include "llvm/IR/IntrinsicsEVM.h"
+#include "llvm/Transforms/InstCombine/InstCombiner.h"
 using namespace llvm;
+using namespace llvm::PatternMatch;
 
 #define DEBUG_TYPE "evmtti"
+
+static std::optional<Instruction *> instCombineSignExtend(InstCombiner &IC,
+                                                          IntrinsicInst &II) {
+  // Fold signextend(b, signextend(b, x)) -> signextend(b, x)
+  Value *B1 = nullptr, *B2 = nullptr, *X = nullptr;
+  if (!match(&II, m_Intrinsic<Intrinsic::evm_signextend>(
+                     m_Value(B1), m_Intrinsic<Intrinsic::evm_signextend>(
+                                     m_Value(B2), m_Value(X)))))
+    return std::nullopt;
+  if (B1 == B2)
+    return IC.replaceInstUsesWith(II, II.getArgOperand(1));
+  auto *C1 = dyn_cast<ConstantInt>(B1);
+  auto *C2 = dyn_cast<ConstantInt>(B2);
+  if (!C1 || !C2)
+    return std::nullopt;
+  if (C1 > C2) {
+    cast<IntrinsicInst>(II.getArgOperand(1))->setArgOperand(0, C1);
+    return IC.replaceInstUsesWith(II, II.getArgOperand(1));
+    /*II.setArgOperand(1, X);
+    return {&II};*/
+  }
+  return IC.replaceInstUsesWith(II, II.getArgOperand(1));
+}
+
+/*
+static std::optional<Instruction *>
+instCombineSignExtend(InstCombiner &IC, IntrinsicInst &II) {
+  // Match: evm_signextend(B1, evm_signextend(B2, X))
+  Value *B1 = nullptr, *B2 = nullptr, *X = nullptr;
+  if (!match(&II,
+             m_Intrinsic<Intrinsic::evm_signextend>(
+                 m_Value(B1),
+                 m_Intrinsic<Intrinsic::evm_signextend>(m_Value(B2), m_Value(X)))))
+    return std::nullopt;
+
+  // Same SSA index -> outer is redundant.
+  if (B1 == B2)
+    return IC.replaceInstUsesWith(II, II.getArgOperand(1));
+
+  // Both indices constant -> fold to min(B1,B2) (unsigned semantics).
+  if (auto *C1 = dyn_cast<ConstantInt>(B1))
+    if (auto *C2 = dyn_cast<ConstantInt>(B2)) {
+      APInt Min = APIntOps::umin(C1->getValue(), C2->getValue());
+
+      // If inner already uses the min, just drop the outer.
+      if (Min == C2->getValue())
+        return IC.replaceInstUsesWith(II, II.getArgOperand(1));
+
+      // Otherwise: signextend(Min, X).
+      auto *MinC = ConstantInt::get(B1->getType(), Min);
+      II.setArgOperand(0, MinC); // B := min(B1,B2)
+      II.setArgOperand(1, X);    // Y := X
+      return &II;
+    }
+
+  return std::nullopt;
+}
+*/
+
+std::optional<Instruction *>
+EVMTTIImpl::instCombineIntrinsic(InstCombiner &IC, IntrinsicInst &II) const {
+  if (II.getIntrinsicID() == Intrinsic::evm_signextend)
+    return instCombineSignExtend(IC, II);
+
+  return std::nullopt;
+}
 
 unsigned EVMTTIImpl::getAssumedAddrSpace(const Value *V) const {
   const auto *LD = dyn_cast<LoadInst>(V);
