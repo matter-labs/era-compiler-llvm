@@ -8,8 +8,7 @@ define i256 @test_const(i256 %x) {
 ; CHECK-LABEL: define i256 @test_const(
 ; CHECK-SAME: i256 [[X:%.*]]) {
 ; CHECK-NEXT:    [[SIGNEXT1:%.*]] = call i256 @llvm.evm.signextend(i256 15, i256 [[X]])
-; CHECK-NEXT:    [[SIGNEXT2:%.*]] = call i256 @llvm.evm.signextend(i256 15, i256 [[SIGNEXT1]])
-; CHECK-NEXT:    ret i256 [[SIGNEXT2]]
+; CHECK-NEXT:    ret i256 [[SIGNEXT1]]
 ;
   %signext1 = call i256 @llvm.evm.signextend(i256 15, i256 %x)
   %signext2 = call i256 @llvm.evm.signextend(i256 15, i256 %signext1)
@@ -32,8 +31,7 @@ define i256 @test_var(i256 %b, i256 %x) {
 ; CHECK-LABEL: define i256 @test_var(
 ; CHECK-SAME: i256 [[B:%.*]], i256 [[X:%.*]]) {
 ; CHECK-NEXT:    [[SIGNEXT1:%.*]] = call i256 @llvm.evm.signextend(i256 [[B]], i256 [[X]])
-; CHECK-NEXT:    [[SIGNEXT2:%.*]] = call i256 @llvm.evm.signextend(i256 [[B]], i256 [[SIGNEXT1]])
-; CHECK-NEXT:    ret i256 [[SIGNEXT2]]
+; CHECK-NEXT:    ret i256 [[SIGNEXT1]]
 ;
   %signext1 = call i256 @llvm.evm.signextend(i256 %b, i256 %x)
   %signext2 = call i256 @llvm.evm.signextend(i256 %b, i256 %signext1)

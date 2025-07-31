@@ -12,9 +12,32 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVMTargetTransformInfo.h"
+#include "llvm/IR/IntrinsicsEVM.h"
+#include "llvm/Transforms/InstCombine/InstCombiner.h"
 using namespace llvm;
+using namespace llvm::PatternMatch;
 
 #define DEBUG_TYPE "evmtti"
+
+static std::optional<Instruction *> instCombineSignExtend(InstCombiner &IC,
+                                                          IntrinsicInst &II) {
+  // Fold signextend(b, signextend(b, x)) -> signextend(b, x)
+  Value *B = nullptr, *X = nullptr;
+  if (match(&II, m_Intrinsic<Intrinsic::evm_signextend>(
+                     m_Value(B), m_Intrinsic<Intrinsic::evm_signextend>(
+                                     m_Deferred(B), m_Value(X)))))
+    return IC.replaceInstUsesWith(II, II.getArgOperand(1));
+
+  return std::nullopt;
+}
+
+std::optional<Instruction *>
+EVMTTIImpl::instCombineIntrinsic(InstCombiner &IC, IntrinsicInst &II) const {
+  if (II.getIntrinsicID() == Intrinsic::evm_signextend)
+    return instCombineSignExtend(IC, II);
+
+  return std::nullopt;
+}
 
 unsigned EVMTTIImpl::getAssumedAddrSpace(const Value *V) const {
   const auto *LD = dyn_cast<LoadInst>(V);
