@@ -14,6 +14,8 @@
 #include "llvm/Analysis/VMAliasAnalysis.h"
 #include "llvm/Analysis/ValueTracking.h"
 #include "llvm/IR/Instructions.h"
+#include "llvm/IR/IntrinsicInst.h"
+#include "llvm/IR/IntrinsicsEVM.h"
 #include <optional>
 
 using namespace llvm;
@@ -98,6 +100,25 @@ AliasResult VMAAResult::alias(const MemoryLocation &LocA,
   const unsigned ASA = LocA.Ptr->getType()->getPointerAddressSpace();
   const unsigned ASB = LocB.Ptr->getType()->getPointerAddressSpace();
 
+  if (const auto *II = dyn_cast_or_null<IntrinsicInst>(I)) {
+    switch (II->getIntrinsicID()) {
+    case Intrinsic::evm_return:
+    case Intrinsic::evm_create:
+    case Intrinsic::evm_create2:
+    case Intrinsic::evm_call:
+    case Intrinsic::evm_callcode:
+    case Intrinsic::evm_delegatecall:
+    case Intrinsic::evm_staticcall: {
+      unsigned ASB = LocB.Ptr->getType()->getPointerAddressSpace();
+      if (ASB == 5 || ASB == 6) {
+        return AliasResult::MustAlias;
+      }
+    } break;
+    default:
+      break;
+    }
+  }
+
   // If we don't know what this is, bail out.
   if (ASA > MaxAS || ASB > MaxAS)
     return AAResultBase::alias(LocA, LocB, AAQI, I);
@@ -156,6 +177,11 @@ AliasResult VMAAResult::alias(const MemoryLocation &LocA,
   // If heap locations are the same, they either must or partially alias based
   // on the size of locations.
   if (StartAVal == StartBVal) {
+    // If either of the memory references is empty, it doesn't matter what the
+    // pointer values are.
+    if (LocA.Size.isZero() || LocB.Size.isZero())
+      return AliasResult::NoAlias;
+
     if (LocA.Size == LocB.Size)
       return AliasResult::MustAlias;
     return AliasResult::PartialAlias;
