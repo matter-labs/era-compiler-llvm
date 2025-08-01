@@ -20,11 +20,14 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/IntrinsicsEVM.h"
+#include "llvm/IR/PatternMatch.h"
 #include "llvm/Pass.h"
+#include "llvm/Transforms/InstCombine/InstCombiner.h"
 
 #include "EVM.h"
 
 using namespace llvm;
+using namespace llvm::PatternMatch;
 
 #define DEBUG_TYPE "evm-codegen-prepare"
 
@@ -102,14 +105,47 @@ void EVMCodegenPrepare::processMemTransfer(MemTransferInst *M) {
   M->setCalledFunction(Intrinsic::getDeclaration(M->getModule(), IntrID));
 }
 
+static bool optimizeAShrInst(Instruction *I) {
+  auto *Ty = I->getType();
+  unsigned BitWidth = Ty->getIntegerBitWidth();
+  if (BitWidth != 256)
+    return false;
+
+  // Fold ashr(shl(x, c), c) -> signextend(((256 - c) / 8) - 1, x)
+  // where c is a constant and divisible by 8.
+  Value *X = nullptr;
+  ConstantInt *ShiftAmt = nullptr;
+  if (match(I->getOperand(0),
+            m_OneUse(m_Shl(m_Value(X), m_ConstantInt(ShiftAmt)))) &&
+      match(I->getOperand(1), m_Specific(ShiftAmt)) &&
+      ShiftAmt->getZExtValue() % 8 == 0) {
+    IRBuilder<> Builder(I);
+    unsigned ByteIdx = ((BitWidth - ShiftAmt->getZExtValue()) / 8) - 1;
+    auto *B = ConstantInt::get(Ty, ByteIdx);
+    auto *SignExtend =
+        Builder.CreateIntrinsic(Ty, Intrinsic::evm_signextend, {B, X});
+    SignExtend->takeName(I);
+    I->replaceAllUsesWith(SignExtend);
+
+    // Remove shl after ashr. If to do otherwise, assert will be triggered.
+    auto *ToRemove = cast<Instruction>(I->getOperand(0));
+    I->eraseFromParent();
+    ToRemove->eraseFromParent();
+    return true;
+  }
+  return false;
+}
+
 bool EVMCodegenPrepare::runOnFunction(Function &F) {
   bool Changed = false;
   for (auto &BB : F) {
-    for (auto &I : BB) {
+    for (auto &I : make_early_inc_range(BB)) {
       if (auto *M = dyn_cast<MemTransferInst>(&I)) {
         processMemTransfer(M);
         Changed = true;
       }
+      if (I.getOpcode() == Instruction::AShr)
+        Changed |= optimizeAShrInst(&I);
     }
   }
 
