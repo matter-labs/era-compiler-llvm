@@ -6,6 +6,7 @@ target triple = "evm"
 @data1 = private unnamed_addr addrspace(4) constant [13 x i8] c"hello world\0A\00"
 @data2 = private unnamed_addr addrspace(4) constant [5 x i8] c"world"
 
+declare void @llvm.evm.revert.sptr(ptr addrspace(1) readonly, i256, ptr addrspace(5), ptr addrspace(6))
 declare void @llvm.memcpy.p1.p4.i256(ptr addrspace(1) noalias nocapture writeonly, ptr addrspace(4) noalias nocapture readonly, i256, i1 immarg)
 
 define void @test() noreturn {
@@ -31,6 +32,6 @@ define void @test() noreturn {
   call void @llvm.memcpy.p1.p4.i256(ptr addrspace(1) null, ptr addrspace(4) @data1, i256 13, i1 false)
   %dst = inttoptr i256 64 to ptr addrspace(1)
   call void @llvm.memcpy.p1.p4.i256(ptr addrspace(1) %dst, ptr addrspace(4) @data2, i256 5, i1 false)
-  call void @llvm.evm.revert(ptr addrspace(1) null, i256 128)
+  call void @llvm.evm.revert.sptr(ptr addrspace(1) null, i256 128, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 }

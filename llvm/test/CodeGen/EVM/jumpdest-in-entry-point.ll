@@ -4,7 +4,7 @@
 target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
 target triple = "evm"
 
-declare void @llvm.evm.return(ptr addrspace(1), i256)
+declare void @llvm.evm.return.sptr(ptr addrspace(1) readonly, i256, ptr addrspace(5), ptr addrspace(6))
 
 define void @__entry() noreturn "evm-entry-function" {
 ; CHECK-LABEL: __entry:
@@ -37,6 +37,6 @@ bb1:
 bb2:
   %phi = phi i256 [ 0, %entry ], [ %load, %bb1 ]
   store i256 %phi, ptr addrspace(1) null, align 64
-  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 32)
+  tail call void @llvm.evm.return.sptr(ptr addrspace(1) null, i256 32, ptr addrspace(5) null, ptr addrspace(6) null)
   unreachable
 }
