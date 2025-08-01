@@ -244,7 +244,10 @@ def FCALL
 } // Uses = [SP], isCall = 1
 
 let isCall = 1 in def PseudoCALL
-    : EVMPseudo<(outs), (ins jmptarget:$callee, variable_ops), [], true>;
+    : EVMPseudo<(outs), (ins jmptarget:$callee, variable_ops), [], true> {
+  // PUSH4_S + JUMP_S.
+  let Size = 6;
+}
 
 //===----------------------------------------------------------------------===//
 // EVM arithmetic instructions.
@@ -411,13 +414,19 @@ defm JUMPI
   : I<(outs), (ins jmptarget:$dst, GPR:$cond), [(brcond GPR:$cond, bb:$dst)],
       "JUMPI", "$dst, $cond", 0x57, 10>;
 def JUMP_UNLESS : EVMPseudo<(outs), (ins jmptarget:$dst, GPR:$cond), []>;
-def PseudoJUMPI : EVMPseudo<(outs), (ins jmptarget:$dst), [], true>;
+def PseudoJUMPI : EVMPseudo<(outs), (ins jmptarget:$dst), [], true> {
+  // PUSH4_S + JUMPI_S.
+  let Size = 6;
+}
 def PseudoJUMP_UNLESS : EVMPseudo<(outs), (ins jmptarget:$dst), [], true>;
 
 let isBarrier = 1 in {
   defm JUMP : I<(outs), (ins jmptarget:$dst), [(br bb:$dst)], "JUMP", "$dst",
                 0x56, 8>;
-  def PseudoJUMP : EVMPseudo<(outs), (ins jmptarget:$dst), [], true>;
+  def PseudoJUMP : EVMPseudo<(outs), (ins jmptarget:$dst), [], true> {
+    // PUSH4_S + JUMP_S.
+    let Size = 6;
+  }
 } // isBarrier = 1
 } // isBranch = 1, isTerminator = 1
 
@@ -829,6 +838,8 @@ defm PUSH0 : I<(outs), (ins), [], "PUSH0", "", 0x5F, 2>;
 
 def PUSH_LABEL : NI<(outs), (ins jmptarget:$dst), [], true, "", 0, 0> {
   let isCodeGenOnly = 1;
+  // PUSH4_S.
+  let Size = 5;
 }
 
 def PUSH_FRAME : NI<(outs), (ins i256imm:$imm), [], true, "", 0, 0> {
@@ -1162,22 +1173,34 @@ def PUSH32_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH32$imm",
 let isAsCheapAsAMove = 1, isReMaterializable = 1, isCodeGenOnly = 1, hasSideEffects = 0 in {
   let  BaseName = "DATASIZE" in {
     def DATASIZE : NI<(outs GPR:$dst), (ins jmptarget:$reloc), [], false, "", 0, 0>;
-    def DATASIZE_S : NI<(outs), (ins jmptarget:$reloc), [], true, "", 0, 0>;
+    def DATASIZE_S : NI<(outs), (ins jmptarget:$reloc), [], true, "", 0, 0> {
+      // PUSH4_S
+      let Size = 5;
+    }
   }
 
   let BaseName = "DATAOFFSET" in {
     def DATAOFFSET : NI<(outs GPR:$dst), (ins jmptarget:$reloc), [], false, "", 0, 0>;
-    def DATAOFFSET_S : NI<(outs), (ins jmptarget:$reloc), [], true, "", 0, 0>;
+    def DATAOFFSET_S : NI<(outs), (ins jmptarget:$reloc), [], true, "", 0, 0> {
+      // PUSH4_S
+      let Size = 5;
+    }
   }
 
   let BaseName = "LINKERSYMBOL" in {
     def LINKERSYMBOL : NI<(outs GPR:$dst), (ins jmptarget:$sym), [], false, "", 0, 0>;
-    def LINKERSYMBOL_S : NI<(outs), (ins jmptarget:$sym), [], true, "", 0, 0>;
+    def LINKERSYMBOL_S : NI<(outs), (ins jmptarget:$sym), [], true, "", 0, 0> {
+      // PUSH20_S
+      let Size = 21;
+    }
   }
 
   let BaseName = "LOADIMMUTABLE" in {
     def LOADIMMUTABLE : NI<(outs GPR:$dst), (ins jmptarget:$sym), [], false, "", 0, 0>;
-    def LOADIMMUTABLE_S : NI<(outs), (ins jmptarget:$sym), [], true, "", 0, 0>;
+    def LOADIMMUTABLE_S : NI<(outs), (ins jmptarget:$sym), [], true, "", 0, 0> {
+      // PUSH32_S
+      let Size = 33;
+    }
   }
 }
 
