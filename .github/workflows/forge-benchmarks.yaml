@@ -3,22 +3,36 @@ name: Forge benchmarks
 on:
   workflow_dispatch:
     inputs:
-      solx-version:
-        description: 'Prebuilt `solx` version to use. For example: `0.1.0` without `v` prefix. If empty, `solx` will be built.'
+      solx_candidate_branch:
+        description: 'Solidity candidate branch to use. If empty, the current branch will be used.'
         required: false
         default: ''
-      llvm-ref:
-        description: 'LLVM reference branch to use. If empty, the current branch will be used.'
+      solx_reference_branch:
+        description: 'Solidity reference branch to use. If empty, the current branch will be used.'
+        required: false
+        default: ''
+      compiler_llvm_candidate_branch:
+        description: 'LLVM candidate branch to use. If empty, the current branch will be used.'
         required: false
         default: ''
   pull_request:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: ${{ github.repository_id }}-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   forge-benchmarks:
     uses: matter-labs/era-compiler-ci/.github/workflows/forge-benchmarks.yaml@v1
     secrets: inherit
     with:
-      solx-version: ${{ inputs.solx-version || '' }}
-      upload-reports: ${{ github.event_name == 'pull_request' }}
       print-markdown-tables: 'false' # do not print markdown tables to PRs
-      llvm-ref: ${{ inputs.llvm-ref || github.ref }}
+      upload-reports: ${{ github.event_name == 'pull_request' }}
+      solx_candidate_branch: ${{ inputs.solx_candidate_branch || 'main' }}
+      solx_reference_branch: ${{ inputs.solx_reference_branch || 'main' }}
+      compiler_llvm_candidate_branch: ${{ inputs.compiler_llvm_candidate_branch || github.head_ref }}
+      compiler-llvm-repo: ${{ github.event.pull_request.head.repo.full_name || 'matter-labs/era-compiler-llvm' }} # required to properly test forks
