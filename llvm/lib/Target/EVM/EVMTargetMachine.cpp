@@ -48,14 +48,10 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   // Register the target.
   const RegisterTargetMachine<EVMTargetMachine> X(getTheEVMTarget());
   auto &PR = *PassRegistry::getPassRegistry();
-  initializeEVMAAWrapperPassPass(PR);
-  initializeEVMAllocaHoistingPass(PR);
-  initializeEVMBPStackificationPass(PR);
   initializeEVMCodegenPreparePass(PR);
-  initializeEVMExternalAAWrapperPass(PR);
+  initializeEVMAllocaHoistingPass(PR);
   initializeEVMLinkRuntimePass(PR);
   initializeEVMLowerIntrinsicsPass(PR);
-  initializeEVMLowerJumpUnlessPass(PR);
   initializeEVMOptimizeLiveIntervalsPass(PR);
   initializeEVMRegColoringPass(PR);
   initializeEVMSingleUseExpressionPass(PR);
@@ -303,6 +299,8 @@ void EVMPassConfig::addPreEmitPass() {
 void EVMPassConfig::addPreEmitPass2() {
   addPass(createEVMLowerJumpUnless());
   addPass(createEVMConstantUnfolding());
+  if (getOptLevel() != CodeGenOptLevel::None)
+    addPass(createEVMPeepholePass());
 }
 
 TargetPassConfig *EVMTargetMachine::createPassConfig(PassManagerBase &PM) {
