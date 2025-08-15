@@ -16,6 +16,24 @@
 #include "llvm/Analysis/VMAliasAnalysis.h"
 
 namespace llvm {
+
+/// EVM-specific AA result. Note that we override certain non-virtual methods
+/// from AAResultBase, as clarified in its documentation.
+class EVMAAResult : public VMAAResult {
+public:
+  explicit EVMAAResult(const DataLayout &DL);
+
+  ModRefInfo getModRefInfo(const CallBase *Call, const MemoryLocation &Loc,
+                           AAQueryInfo &AAQI);
+
+  ModRefInfo getArgModRefInfo(const CallBase *Call, unsigned ArgIdx);
+
+  ModRefInfo getModRefInfo(const CallBase *Call1, const CallBase *Call2,
+                           AAQueryInfo &AAQI) {
+    return AAResultBase::getModRefInfo(Call1, Call2, AAQI);
+  }
+};
+
 /// Analysis pass providing a never-invalidated alias analysis result.
 class EVMAA : public AnalysisInfoMixin<EVMAA> {
   friend AnalysisInfoMixin<EVMAA>;
@@ -23,21 +41,20 @@ class EVMAA : public AnalysisInfoMixin<EVMAA> {
   static AnalysisKey Key;
 
 public:
-  using Result = VMAAResult;
-  VMAAResult run(Function &F, AnalysisManager<Function> &AM);
+  using Result = EVMAAResult;
+  EVMAAResult run(Function &F, AnalysisManager<Function> &AM);
 };
 
-/// Legacy wrapper pass to provide the VMAAResult object.
+/// Legacy wrapper pass to provide the EVMAAResult object.
 class EVMAAWrapperPass : public ImmutablePass {
-  std::unique_ptr<VMAAResult> Result;
+  std::unique_ptr<EVMAAResult> Result;
 
 public:
   static char ID;
 
   EVMAAWrapperPass();
 
-  VMAAResult &getResult() { return *Result; }
-  const VMAAResult &getResult() const { return *Result; }
+  EVMAAResult &getResult() { return *Result; }
 
   bool doFinalization(Module &M) override {
     Result.reset();
