@@ -225,7 +225,7 @@ define i256 @exp(i256 %rs1, i256 %rs2) nounwind {
 
 define i256 @sha3(ptr addrspace(1) %offset, i256 %size) nounwind {
 ; CHECK-LABEL: define i256 @sha3
-; CHECK-SAME: (ptr addrspace(1) [[OFFSET:%.*]], i256 [[SIZE:%.*]]) local_unnamed_addr #[[ATTR2:[0-9]+]] {
+; CHECK-SAME: (ptr addrspace(1) nocapture readonly [[OFFSET:%.*]], i256 [[SIZE:%.*]]) local_unnamed_addr #[[ATTR2:[0-9]+]] {
 ; CHECK-NEXT:    [[RES1:%.*]] = tail call i256 @llvm.evm.sha3(ptr addrspace(1) [[OFFSET]], i256 [[SIZE]])
 ; CHECK-NEXT:    [[RET:%.*]] = shl i256 [[RES1]], 1
 ; CHECK-NEXT:    ret i256 [[RET]]
@@ -345,7 +345,7 @@ define i256 @caller() nounwind {
 
 define i256 @balance(i256 %rs1) nounwind {
 ; CHECK-LABEL: define i256 @balance
-; CHECK-SAME: (i256 [[RS1:%.*]]) local_unnamed_addr #[[ATTR4]] {
+; CHECK-SAME: (i256 [[RS1:%.*]]) local_unnamed_addr #[[ATTR5:[0-9]+]] {
 ; CHECK-NEXT:    [[RES1:%.*]] = tail call i256 @llvm.evm.balance(i256 [[RS1]])
 ; CHECK-NEXT:    [[RET:%.*]] = shl i256 [[RES1]], 1
 ; CHECK-NEXT:    ret i256 [[RET]]
@@ -359,7 +359,7 @@ define i256 @balance(i256 %rs1) nounwind {
 ; Check that the %v2 gets CSEed, but %v3 is not because of the @llvm.evm.call call.
 define i256 @balance_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %roff, i256 %rsize) nounwind {
 ; CHECK-LABEL: define i256 @balance_call
-; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) nocapture writeonly [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR6:[0-9]+]] {
 ; CHECK-NEXT:    [[V1:%.*]] = tail call i256 @llvm.evm.balance(i256 [[ADDR]])
 ; CHECK-NEXT:    [[UNUSED:%.*]] = tail call i256 @llvm.evm.call(i256 [[GAS]], i256 [[ADDR]], i256 [[VAL]], ptr addrspace(1) nonnull inttoptr (i256 256 to ptr addrspace(1)), i256 32, ptr addrspace(1) [[ROFF]], i256 [[RSIZE]])
 ; CHECK-NEXT:    [[V3:%.*]] = tail call i256 @llvm.evm.balance(i256 [[ADDR]])
@@ -379,7 +379,7 @@ define i256 @balance_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %ro
 ; Check that the %v2 gets CSEed, but %v3 is not because of the @llvm.evm.call call.
 define i256 @origin_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %roff, i256 %rsize) nounwind {
 ; CHECK-LABEL: define i256 @origin_call
-; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) nocapture writeonly [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR3]] {
 ; CHECK-NEXT:    [[V1:%.*]] = tail call i256 @llvm.evm.origin()
 ; CHECK-NEXT:    [[UNUSED:%.*]] = tail call i256 @llvm.evm.call(i256 [[GAS]], i256 [[ADDR]], i256 [[VAL]], ptr addrspace(1) nonnull inttoptr (i256 256 to ptr addrspace(1)), i256 32, ptr addrspace(1) [[ROFF]], i256 [[RSIZE]])
 ; CHECK-NEXT:    [[V3:%.*]] = tail call i256 @llvm.evm.origin()
@@ -399,7 +399,7 @@ define i256 @origin_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %rof
 ; Check that the %v2 gets CSEed, but %v3 is not because of the @llvm.evm.call call.
 define i256 @gasprice_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %roff, i256 %rsize) nounwind {
 ; CHECK-LABEL: define i256 @gasprice_call
-; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) nocapture writeonly [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR6]] {
 ; CHECK-NEXT:    [[V1:%.*]] = tail call i256 @llvm.evm.gasprice()
 ; CHECK-NEXT:    [[UNUSED:%.*]] = tail call i256 @llvm.evm.call(i256 [[GAS]], i256 [[ADDR]], i256 [[VAL]], ptr addrspace(1) nonnull inttoptr (i256 256 to ptr addrspace(1)), i256 32, ptr addrspace(1) [[ROFF]], i256 [[RSIZE]])
 ; CHECK-NEXT:    [[V3:%.*]] = tail call i256 @llvm.evm.gasprice()
@@ -419,7 +419,7 @@ define i256 @gasprice_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %r
 ; Check that the %v2 gets CSEed, but %v3 is not because of the @llvm.evm.call call.
 define i256 @blockhash_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %roff, i256 %rsize) nounwind {
 ; CHECK-LABEL: define i256 @blockhash_call
-; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) nocapture writeonly [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR6]] {
 ; CHECK-NEXT:    [[V1:%.*]] = tail call i256 @llvm.evm.blockhash(i256 [[ADDR]])
 ; CHECK-NEXT:    [[UNUSED:%.*]] = tail call i256 @llvm.evm.call(i256 [[GAS]], i256 [[ADDR]], i256 [[VAL]], ptr addrspace(1) nonnull inttoptr (i256 256 to ptr addrspace(1)), i256 32, ptr addrspace(1) [[ROFF]], i256 [[RSIZE]])
 ; CHECK-NEXT:    [[V3:%.*]] = tail call i256 @llvm.evm.blockhash(i256 [[ADDR]])
@@ -439,7 +439,7 @@ define i256 @blockhash_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %
 ; Check that the %v2 gets CSEed, but %v3 is not because of the @llvm.evm.call call.
 define i256 @blobhash_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %roff, i256 %rsize) nounwind {
 ; CHECK-LABEL: define i256 @blobhash_call
-; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) nocapture writeonly [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR6]] {
 ; CHECK-NEXT:    [[V1:%.*]] = tail call i256 @llvm.evm.blobhash(i256 [[ADDR]])
 ; CHECK-NEXT:    [[UNUSED:%.*]] = tail call i256 @llvm.evm.call(i256 [[GAS]], i256 [[ADDR]], i256 [[VAL]], ptr addrspace(1) nonnull inttoptr (i256 256 to ptr addrspace(1)), i256 32, ptr addrspace(1) [[ROFF]], i256 [[RSIZE]])
 ; CHECK-NEXT:    [[V3:%.*]] = tail call i256 @llvm.evm.blobhash(i256 [[ADDR]])
@@ -459,7 +459,7 @@ define i256 @blobhash_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %r
 ; Check that the %v2 gets CSEed, but %v3 is not because of the @llvm.evm.call call.
 define i256 @coinbase_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %roff, i256 %rsize) nounwind {
 ; CHECK-LABEL: define i256 @coinbase_call
-; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) nocapture writeonly [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR6]] {
 ; CHECK-NEXT:    [[V1:%.*]] = tail call i256 @llvm.evm.coinbase()
 ; CHECK-NEXT:    [[UNUSED:%.*]] = tail call i256 @llvm.evm.call(i256 [[GAS]], i256 [[ADDR]], i256 [[VAL]], ptr addrspace(1) nonnull inttoptr (i256 256 to ptr addrspace(1)), i256 32, ptr addrspace(1) [[ROFF]], i256 [[RSIZE]])
 ; CHECK-NEXT:    [[V3:%.*]] = tail call i256 @llvm.evm.coinbase()
@@ -479,7 +479,7 @@ define i256 @coinbase_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %r
 ; Check that the %v2 gets CSEed, but %v3 is not because of the @llvm.evm.call call.
 define i256 @timestamp_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %roff, i256 %rsize) nounwind {
 ; CHECK-LABEL: define i256 @timestamp_call
-; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) nocapture writeonly [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR6]] {
 ; CHECK-NEXT:    [[V1:%.*]] = tail call i256 @llvm.evm.timestamp()
 ; CHECK-NEXT:    [[UNUSED:%.*]] = tail call i256 @llvm.evm.call(i256 [[GAS]], i256 [[ADDR]], i256 [[VAL]], ptr addrspace(1) nonnull inttoptr (i256 256 to ptr addrspace(1)), i256 32, ptr addrspace(1) [[ROFF]], i256 [[RSIZE]])
 ; CHECK-NEXT:    [[V3:%.*]] = tail call i256 @llvm.evm.timestamp()
@@ -499,7 +499,7 @@ define i256 @timestamp_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %
 ; Check that the %v2 gets CSEed, but %v3 is not because of the @llvm.evm.call call.
 define i256 @number_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %roff, i256 %rsize) nounwind {
 ; CHECK-LABEL: define i256 @number_call
-; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) nocapture writeonly [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR6]] {
 ; CHECK-NEXT:    [[V1:%.*]] = tail call i256 @llvm.evm.number()
 ; CHECK-NEXT:    [[UNUSED:%.*]] = tail call i256 @llvm.evm.call(i256 [[GAS]], i256 [[ADDR]], i256 [[VAL]], ptr addrspace(1) nonnull inttoptr (i256 256 to ptr addrspace(1)), i256 32, ptr addrspace(1) [[ROFF]], i256 [[RSIZE]])
 ; CHECK-NEXT:    [[V3:%.*]] = tail call i256 @llvm.evm.number()
@@ -519,7 +519,7 @@ define i256 @number_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %rof
 ; Check that the %v2 gets CSEed, but %v3 is not because of the @llvm.evm.call call.
 define i256 @difficulty_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %roff, i256 %rsize) nounwind {
 ; CHECK-LABEL: define i256 @difficulty_call
-; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) nocapture writeonly [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR6]] {
 ; CHECK-NEXT:    [[V1:%.*]] = tail call i256 @llvm.evm.difficulty()
 ; CHECK-NEXT:    [[UNUSED:%.*]] = tail call i256 @llvm.evm.call(i256 [[GAS]], i256 [[ADDR]], i256 [[VAL]], ptr addrspace(1) nonnull inttoptr (i256 256 to ptr addrspace(1)), i256 32, ptr addrspace(1) [[ROFF]], i256 [[RSIZE]])
 ; CHECK-NEXT:    [[V3:%.*]] = tail call i256 @llvm.evm.difficulty()
@@ -539,7 +539,7 @@ define i256 @difficulty_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) 
 ; Check that the %v2 gets CSEed, but %v3 is not because of the @llvm.evm.call call.
 define i256 @gaslimit_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %roff, i256 %rsize) nounwind {
 ; CHECK-LABEL: define i256 @gaslimit_call
-; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) nocapture writeonly [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR6]] {
 ; CHECK-NEXT:    [[V1:%.*]] = tail call i256 @llvm.evm.gaslimit()
 ; CHECK-NEXT:    [[UNUSED:%.*]] = tail call i256 @llvm.evm.call(i256 [[GAS]], i256 [[ADDR]], i256 [[VAL]], ptr addrspace(1) nonnull inttoptr (i256 256 to ptr addrspace(1)), i256 32, ptr addrspace(1) [[ROFF]], i256 [[RSIZE]])
 ; CHECK-NEXT:    [[V3:%.*]] = tail call i256 @llvm.evm.gaslimit()
@@ -559,7 +559,7 @@ define i256 @gaslimit_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %r
 ; Check that the %v2 gets CSEed, but %v3 is not because of the @llvm.evm.call call.
 define i256 @chainid_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %roff, i256 %rsize) nounwind {
 ; CHECK-LABEL: define i256 @chainid_call
-; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) nocapture writeonly [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR6]] {
 ; CHECK-NEXT:    [[V1:%.*]] = tail call i256 @llvm.evm.chainid()
 ; CHECK-NEXT:    [[UNUSED:%.*]] = tail call i256 @llvm.evm.call(i256 [[GAS]], i256 [[ADDR]], i256 [[VAL]], ptr addrspace(1) nonnull inttoptr (i256 256 to ptr addrspace(1)), i256 32, ptr addrspace(1) [[ROFF]], i256 [[RSIZE]])
 ; CHECK-NEXT:    [[V3:%.*]] = tail call i256 @llvm.evm.chainid()
@@ -579,7 +579,7 @@ define i256 @chainid_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %ro
 ; Check that the %v2 gets CSEed, but %v3 is not because of the @llvm.evm.call call.
 define i256 @basefee_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %roff, i256 %rsize) nounwind {
 ; CHECK-LABEL: define i256 @basefee_call
-; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) nocapture writeonly [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR6]] {
 ; CHECK-NEXT:    [[V1:%.*]] = tail call i256 @llvm.evm.basefee()
 ; CHECK-NEXT:    [[UNUSED:%.*]] = tail call i256 @llvm.evm.call(i256 [[GAS]], i256 [[ADDR]], i256 [[VAL]], ptr addrspace(1) nonnull inttoptr (i256 256 to ptr addrspace(1)), i256 32, ptr addrspace(1) [[ROFF]], i256 [[RSIZE]])
 ; CHECK-NEXT:    [[V3:%.*]] = tail call i256 @llvm.evm.basefee()
@@ -599,7 +599,7 @@ define i256 @basefee_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %ro
 ; Check that the %v2 gets CSEed, but %v3 is not because of the @llvm.evm.call call.
 define i256 @blobbasefee_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %roff, i256 %rsize) nounwind {
 ; CHECK-LABEL: define i256 @blobbasefee_call
-; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) nocapture writeonly [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR6]] {
 ; CHECK-NEXT:    [[V1:%.*]] = tail call i256 @llvm.evm.blobbasefee()
 ; CHECK-NEXT:    [[UNUSED:%.*]] = tail call i256 @llvm.evm.call(i256 [[GAS]], i256 [[ADDR]], i256 [[VAL]], ptr addrspace(1) nonnull inttoptr (i256 256 to ptr addrspace(1)), i256 32, ptr addrspace(1) [[ROFF]], i256 [[RSIZE]])
 ; CHECK-NEXT:    [[V3:%.*]] = tail call i256 @llvm.evm.blobbasefee()
@@ -631,7 +631,7 @@ define i256 @calldatasize() nounwind {
 
 define i256 @calldataload(ptr addrspace(2) %rs1) nounwind {
 ; CHECK-LABEL: define i256 @calldataload
-; CHECK-SAME: (ptr addrspace(2) [[RS1:%.*]]) local_unnamed_addr #[[ATTR5:[0-9]+]] {
+; CHECK-SAME: (ptr addrspace(2) [[RS1:%.*]]) local_unnamed_addr #[[ATTR2]] {
 ; CHECK-NEXT:    [[RES1:%.*]] = tail call i256 @llvm.evm.calldataload(ptr addrspace(2) [[RS1]])
 ; CHECK-NEXT:    [[RET:%.*]] = shl i256 [[RES1]], 1
 ; CHECK-NEXT:    ret i256 [[RET]]
@@ -657,7 +657,7 @@ define i256 @callvalue() nounwind {
 
 define i256 @codesize() nounwind {
 ; CHECK-LABEL: define i256 @codesize
-; CHECK-SAME: () local_unnamed_addr #[[ATTR1]] {
+; CHECK-SAME: () local_unnamed_addr #[[ATTR0]] {
 ; CHECK-NEXT:    [[RES1:%.*]] = tail call i256 @llvm.evm.codesize()
 ; CHECK-NEXT:    [[RET:%.*]] = shl i256 [[RES1]], 1
 ; CHECK-NEXT:    ret i256 [[RET]]
@@ -670,7 +670,7 @@ define i256 @codesize() nounwind {
 
 define i256 @gasprice() nounwind {
 ; CHECK-LABEL: define i256 @gasprice
-; CHECK-SAME: () local_unnamed_addr #[[ATTR4]] {
+; CHECK-SAME: () local_unnamed_addr #[[ATTR5]] {
 ; CHECK-NEXT:    [[RES1:%.*]] = tail call i256 @llvm.evm.gasprice()
 ; CHECK-NEXT:    [[RET:%.*]] = shl i256 [[RES1]], 1
 ; CHECK-NEXT:    ret i256 [[RET]]
@@ -683,7 +683,7 @@ define i256 @gasprice() nounwind {
 
 define i256 @extcodesize(i256 %rs1) nounwind {
 ; CHECK-LABEL: define i256 @extcodesize
-; CHECK-SAME: (i256 [[RS1:%.*]]) local_unnamed_addr #[[ATTR4]] {
+; CHECK-SAME: (i256 [[RS1:%.*]]) local_unnamed_addr #[[ATTR5]] {
 ; CHECK-NEXT:    [[RES1:%.*]] = tail call i256 @llvm.evm.extcodesize(i256 [[RS1]])
 ; CHECK-NEXT:    [[RET:%.*]] = shl i256 [[RES1]], 1
 ; CHECK-NEXT:    ret i256 [[RET]]
@@ -697,7 +697,7 @@ define i256 @extcodesize(i256 %rs1) nounwind {
 ; Check that the %v2 gets CSEed, but %v3 is not because of the @llvm.evm.call call.
 define i256 @extcodesize_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %roff, i256 %rsize) nounwind {
 ; CHECK-LABEL: define i256 @extcodesize_call
-; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) nocapture writeonly [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR6]] {
 ; CHECK-NEXT:    [[V1:%.*]] = tail call i256 @llvm.evm.extcodesize(i256 [[ADDR]])
 ; CHECK-NEXT:    [[UNUSED:%.*]] = tail call i256 @llvm.evm.call(i256 [[GAS]], i256 [[ADDR]], i256 [[VAL]], ptr addrspace(1) nonnull inttoptr (i256 256 to ptr addrspace(1)), i256 32, ptr addrspace(1) [[ROFF]], i256 [[RSIZE]])
 ; CHECK-NEXT:    [[V3:%.*]] = tail call i256 @llvm.evm.extcodesize(i256 [[ADDR]])
@@ -716,7 +716,7 @@ define i256 @extcodesize_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1)
 
 define i256 @extcodehash(i256 %rs1) nounwind {
 ; CHECK-LABEL: define i256 @extcodehash
-; CHECK-SAME: (i256 [[RS1:%.*]]) local_unnamed_addr #[[ATTR4]] {
+; CHECK-SAME: (i256 [[RS1:%.*]]) local_unnamed_addr #[[ATTR5]] {
 ; CHECK-NEXT:    [[RES1:%.*]] = tail call i256 @llvm.evm.extcodehash(i256 [[RS1]])
 ; CHECK-NEXT:    [[RET:%.*]] = shl i256 [[RES1]], 1
 ; CHECK-NEXT:    ret i256 [[RET]]
@@ -730,7 +730,7 @@ define i256 @extcodehash(i256 %rs1) nounwind {
 ; Check that the %v2 gets CSEed, but %v3 is not because of the @llvm.evm.call call.
 define i256 @extcodehash_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %roff, i256 %rsize) nounwind {
 ; CHECK-LABEL: define i256 @extcodehash_call
-; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) nocapture writeonly [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR6]] {
 ; CHECK-NEXT:    [[V1:%.*]] = tail call i256 @llvm.evm.extcodehash(i256 [[ADDR]])
 ; CHECK-NEXT:    [[UNUSED:%.*]] = tail call i256 @llvm.evm.call(i256 [[GAS]], i256 [[ADDR]], i256 [[VAL]], ptr addrspace(1) nonnull inttoptr (i256 256 to ptr addrspace(1)), i256 32, ptr addrspace(1) [[ROFF]], i256 [[RSIZE]])
 ; CHECK-NEXT:    [[V3:%.*]] = tail call i256 @llvm.evm.extcodehash(i256 [[ADDR]])
@@ -747,9 +747,36 @@ define i256 @extcodehash_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1)
   ret i256 %ret
 }
 
+; Check that the %v2 gets CSEed, but %v3 is not because of the @llvm.evm.call call.
+define i256 @extcodecopy_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %roff, i256 %rsize) nounwind {
+; CHECK-LABEL: define i256 @extcodecopy_call
+; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) nocapture writeonly [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR6]] {
+; CHECK-NEXT:    tail call void @llvm.evm.extcodecopy(i256 [[ADDR]], ptr addrspace(1) null, ptr addrspace(4) null, i256 32)
+; CHECK-NEXT:    [[V1:%.*]] = tail call i256 @llvm.evm.extcodehash(i256 [[ADDR]])
+; CHECK-NEXT:    tail call void @llvm.evm.extcodecopy(i256 [[ADDR]], ptr addrspace(1) null, ptr addrspace(4) null, i256 32)
+; CHECK-NEXT:    [[V2:%.*]] = tail call i256 @llvm.evm.extcodehash(i256 [[ADDR]])
+; CHECK-NEXT:    [[UNUSED:%.*]] = tail call i256 @llvm.evm.call(i256 [[GAS]], i256 [[ADDR]], i256 [[VAL]], ptr addrspace(1) nonnull inttoptr (i256 256 to ptr addrspace(1)), i256 32, ptr addrspace(1) [[ROFF]], i256 [[RSIZE]])
+; CHECK-NEXT:    [[V3:%.*]] = tail call i256 @llvm.evm.extcodehash(i256 [[ADDR]])
+; CHECK-NEXT:    [[TMP:%.*]] = add i256 [[V2]], [[V1]]
+; CHECK-NEXT:    [[RET:%.*]] = add i256 [[TMP]], [[V3]]
+; CHECK-NEXT:    tail call void @llvm.evm.extcodecopy(i256 [[ADDR]], ptr addrspace(1) null, ptr addrspace(4) null, i256 32)
+; CHECK-NEXT:    ret i256 [[RET]]
+;
+  call void @llvm.evm.extcodecopy(i256 %addr, ptr addrspace(1) null, ptr addrspace(4) null, i256 32)
+  %v1 = call i256 @llvm.evm.extcodehash(i256 %addr)
+  call void @llvm.evm.extcodecopy(i256 %addr, ptr addrspace(1) null, ptr addrspace(4) null, i256 32)
+  %v2 = call i256 @llvm.evm.extcodehash(i256 %addr)
+  %unused = call i256 @llvm.evm.call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) inttoptr (i256 256 to ptr addrspace(1)), i256 32, ptr addrspace(1) %roff, i256 %rsize)
+  %v3 = call i256 @llvm.evm.extcodehash(i256 %addr)
+  %tmp = add i256 %v1, %v2
+  %ret = add i256 %tmp, %v3
+  call void @llvm.evm.extcodecopy(i256 %addr, ptr addrspace(1) null, ptr addrspace(4) null, i256 32)
+  ret i256 %ret
+}
+
 define i256 @returndatasize() nounwind {
 ; CHECK-LABEL: define i256 @returndatasize
-; CHECK-SAME: () local_unnamed_addr #[[ATTR4]] {
+; CHECK-SAME: () local_unnamed_addr #[[ATTR5]] {
 ; CHECK-NEXT:    [[RES1:%.*]] = tail call i256 @llvm.evm.returndatasize()
 ; CHECK-NEXT:    [[RET:%.*]] = shl i256 [[RES1]], 1
 ; CHECK-NEXT:    ret i256 [[RET]]
@@ -762,7 +789,7 @@ define i256 @returndatasize() nounwind {
 
 define i256 @blockhash(i256 %rs1) nounwind {
 ; CHECK-LABEL: define i256 @blockhash
-; CHECK-SAME: (i256 [[RS1:%.*]]) local_unnamed_addr #[[ATTR4]] {
+; CHECK-SAME: (i256 [[RS1:%.*]]) local_unnamed_addr #[[ATTR5]] {
 ; CHECK-NEXT:    [[RES1:%.*]] = tail call i256 @llvm.evm.blockhash(i256 [[RS1]])
 ; CHECK-NEXT:    [[RET:%.*]] = shl i256 [[RES1]], 1
 ; CHECK-NEXT:    ret i256 [[RET]]
@@ -775,7 +802,7 @@ define i256 @blockhash(i256 %rs1) nounwind {
 
 define i256 @blobhash(i256 %rs1) nounwind {
 ; CHECK-LABEL: define i256 @blobhash
-; CHECK-SAME: (i256 [[RS1:%.*]]) local_unnamed_addr #[[ATTR4]] {
+; CHECK-SAME: (i256 [[RS1:%.*]]) local_unnamed_addr #[[ATTR5]] {
 ; CHECK-NEXT:    [[RES1:%.*]] = tail call i256 @llvm.evm.blobhash(i256 [[RS1]])
 ; CHECK-NEXT:    [[RET:%.*]] = shl i256 [[RES1]], 1
 ; CHECK-NEXT:    ret i256 [[RET]]
@@ -788,7 +815,7 @@ define i256 @blobhash(i256 %rs1) nounwind {
 
 define i256 @coinbase() nounwind {
 ; CHECK-LABEL: define i256 @coinbase
-; CHECK-SAME: () local_unnamed_addr #[[ATTR4]] {
+; CHECK-SAME: () local_unnamed_addr #[[ATTR5]] {
 ; CHECK-NEXT:    [[RES1:%.*]] = tail call i256 @llvm.evm.coinbase()
 ; CHECK-NEXT:    [[RET:%.*]] = shl i256 [[RES1]], 1
 ; CHECK-NEXT:    ret i256 [[RET]]
@@ -801,7 +828,7 @@ define i256 @coinbase() nounwind {
 
 define i256 @timestamp() nounwind {
 ; CHECK-LABEL: define i256 @timestamp
-; CHECK-SAME: () local_unnamed_addr #[[ATTR4]] {
+; CHECK-SAME: () local_unnamed_addr #[[ATTR5]] {
 ; CHECK-NEXT:    [[RES1:%.*]] = tail call i256 @llvm.evm.timestamp()
 ; CHECK-NEXT:    [[RET:%.*]] = shl i256 [[RES1]], 1
 ; CHECK-NEXT:    ret i256 [[RET]]
@@ -814,7 +841,7 @@ define i256 @timestamp() nounwind {
 
 define i256 @number() nounwind {
 ; CHECK-LABEL: define i256 @number
-; CHECK-SAME: () local_unnamed_addr #[[ATTR4]] {
+; CHECK-SAME: () local_unnamed_addr #[[ATTR5]] {
 ; CHECK-NEXT:    [[RES1:%.*]] = tail call i256 @llvm.evm.number()
 ; CHECK-NEXT:    [[RET:%.*]] = shl i256 [[RES1]], 1
 ; CHECK-NEXT:    ret i256 [[RET]]
@@ -827,7 +854,7 @@ define i256 @number() nounwind {
 
 define i256 @difficulty() nounwind {
 ; CHECK-LABEL: define i256 @difficulty
-; CHECK-SAME: () local_unnamed_addr #[[ATTR4]] {
+; CHECK-SAME: () local_unnamed_addr #[[ATTR5]] {
 ; CHECK-NEXT:    [[RES1:%.*]] = tail call i256 @llvm.evm.difficulty()
 ; CHECK-NEXT:    [[RET:%.*]] = shl i256 [[RES1]], 1
 ; CHECK-NEXT:    ret i256 [[RET]]
@@ -840,7 +867,7 @@ define i256 @difficulty() nounwind {
 
 define i256 @gaslimit() nounwind {
 ; CHECK-LABEL: define i256 @gaslimit
-; CHECK-SAME: () local_unnamed_addr #[[ATTR4]] {
+; CHECK-SAME: () local_unnamed_addr #[[ATTR5]] {
 ; CHECK-NEXT:    [[RES1:%.*]] = tail call i256 @llvm.evm.gaslimit()
 ; CHECK-NEXT:    [[RET:%.*]] = shl i256 [[RES1]], 1
 ; CHECK-NEXT:    ret i256 [[RET]]
@@ -853,7 +880,7 @@ define i256 @gaslimit() nounwind {
 
 define i256 @chainid() nounwind {
 ; CHECK-LABEL: define i256 @chainid
-; CHECK-SAME: () local_unnamed_addr #[[ATTR4]] {
+; CHECK-SAME: () local_unnamed_addr #[[ATTR5]] {
 ; CHECK-NEXT:    [[RES1:%.*]] = tail call i256 @llvm.evm.chainid()
 ; CHECK-NEXT:    [[RET:%.*]] = shl i256 [[RES1]], 1
 ; CHECK-NEXT:    ret i256 [[RET]]
@@ -866,7 +893,7 @@ define i256 @chainid() nounwind {
 
 define i256 @selfbalance() nounwind {
 ; CHECK-LABEL: define i256 @selfbalance
-; CHECK-SAME: () local_unnamed_addr #[[ATTR4]] {
+; CHECK-SAME: () local_unnamed_addr #[[ATTR5]] {
 ; CHECK-NEXT:    [[RES1:%.*]] = tail call i256 @llvm.evm.selfbalance()
 ; CHECK-NEXT:    [[RET:%.*]] = shl i256 [[RES1]], 1
 ; CHECK-NEXT:    ret i256 [[RET]]
@@ -880,7 +907,7 @@ define i256 @selfbalance() nounwind {
 ; Check that the %v2 gets CSEed, but %v3 is not because of the @llvm.evm.call call.
 define i256 @selfbalance_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1) %roff, i256 %rsize) nounwind {
 ; CHECK-LABEL: define i256 @selfbalance_call
-; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-SAME: (i256 [[GAS:%.*]], i256 [[ADDR:%.*]], i256 [[VAL:%.*]], ptr addrspace(1) nocapture writeonly [[ROFF:%.*]], i256 [[RSIZE:%.*]]) local_unnamed_addr #[[ATTR6]] {
 ; CHECK-NEXT:    [[V1:%.*]] = tail call i256 @llvm.evm.selfbalance()
 ; CHECK-NEXT:    [[UNUSED:%.*]] = tail call i256 @llvm.evm.call(i256 [[GAS]], i256 [[ADDR]], i256 [[VAL]], ptr addrspace(1) nonnull inttoptr (i256 256 to ptr addrspace(1)), i256 32, ptr addrspace(1) [[ROFF]], i256 [[RSIZE]])
 ; CHECK-NEXT:    [[V3:%.*]] = tail call i256 @llvm.evm.selfbalance()
@@ -899,7 +926,7 @@ define i256 @selfbalance_call(i256 %gas, i256 %addr, i256 %val, ptr addrspace(1)
 
 define i256 @basefee() nounwind {
 ; CHECK-LABEL: define i256 @basefee
-; CHECK-SAME: () local_unnamed_addr #[[ATTR4]] {
+; CHECK-SAME: () local_unnamed_addr #[[ATTR5]] {
 ; CHECK-NEXT:    [[RES1:%.*]] = tail call i256 @llvm.evm.basefee()
 ; CHECK-NEXT:    [[RET:%.*]] = shl i256 [[RES1]], 1
 ; CHECK-NEXT:    ret i256 [[RET]]
@@ -912,7 +939,7 @@ define i256 @basefee() nounwind {
 
 define i256 @blobbasefee() nounwind {
 ; CHECK-LABEL: define i256 @blobbasefee
-; CHECK-SAME: () local_unnamed_addr #[[ATTR4]] {
+; CHECK-SAME: () local_unnamed_addr #[[ATTR5]] {
 ; CHECK-NEXT:    [[RES1:%.*]] = tail call i256 @llvm.evm.blobbasefee()
 ; CHECK-NEXT:    [[RET:%.*]] = shl i256 [[RES1]], 1
 ; CHECK-NEXT:    ret i256 [[RET]]
@@ -925,7 +952,7 @@ define i256 @blobbasefee() nounwind {
 
 define void @log0(ptr addrspace(1) %off, i256 %size) nounwind {
 ; CHECK-LABEL: define void @log0
-; CHECK-SAME: (ptr addrspace(1) [[OFF:%.*]], i256 [[SIZE:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-SAME: (ptr addrspace(1) nocapture readonly [[OFF:%.*]], i256 [[SIZE:%.*]]) local_unnamed_addr #[[ATTR7:[0-9]+]] {
 ; CHECK-NEXT:    tail call void @llvm.evm.log0(ptr addrspace(1) [[OFF]], i256 [[SIZE]])
 ; CHECK-NEXT:    tail call void @llvm.evm.log0(ptr addrspace(1) [[OFF]], i256 [[SIZE]])
 ; CHECK-NEXT:    ret void
@@ -937,7 +964,7 @@ define void @log0(ptr addrspace(1) %off, i256 %size) nounwind {
 
 define void @log1(ptr addrspace(1) %off, i256 %size, i256 %t1) nounwind {
 ; CHECK-LABEL: define void @log1
-; CHECK-SAME: (ptr addrspace(1) [[OFF:%.*]], i256 [[SIZE:%.*]], i256 [[T1:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-SAME: (ptr addrspace(1) nocapture readonly [[OFF:%.*]], i256 [[SIZE:%.*]], i256 [[T1:%.*]]) local_unnamed_addr #[[ATTR7]] {
 ; CHECK-NEXT:    tail call void @llvm.evm.log1(ptr addrspace(1) [[OFF]], i256 [[SIZE]], i256 [[T1]])
 ; CHECK-NEXT:    tail call void @llvm.evm.log1(ptr addrspace(1) [[OFF]], i256 [[SIZE]], i256 [[T1]])
 ; CHECK-NEXT:    ret void
@@ -949,7 +976,7 @@ define void @log1(ptr addrspace(1) %off, i256 %size, i256 %t1) nounwind {
 
 define void @log2(ptr addrspace(1) %off, i256 %size, i256 %t1, i256 %t2) nounwind {
 ; CHECK-LABEL: define void @log2
-; CHECK-SAME: (ptr addrspace(1) [[OFF:%.*]], i256 [[SIZE:%.*]], i256 [[T1:%.*]], i256 [[T2:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-SAME: (ptr addrspace(1) nocapture readonly [[OFF:%.*]], i256 [[SIZE:%.*]], i256 [[T1:%.*]], i256 [[T2:%.*]]) local_unnamed_addr #[[ATTR7]] {
 ; CHECK-NEXT:    tail call void @llvm.evm.log2(ptr addrspace(1) [[OFF]], i256 [[SIZE]], i256 [[T1]], i256 [[T2]])
 ; CHECK-NEXT:    tail call void @llvm.evm.log2(ptr addrspace(1) [[OFF]], i256 [[SIZE]], i256 [[T1]], i256 [[T2]])
 ; CHECK-NEXT:    ret void
@@ -961,7 +988,7 @@ define void @log2(ptr addrspace(1) %off, i256 %size, i256 %t1, i256 %t2) nounwin
 
 define void @log3(ptr addrspace(1) %off, i256 %size, i256 %t1, i256 %t2, i256 %t3) nounwind {
 ; CHECK-LABEL: define void @log3
-; CHECK-SAME: (ptr addrspace(1) [[OFF:%.*]], i256 [[SIZE:%.*]], i256 [[T1:%.*]], i256 [[T2:%.*]], i256 [[T3:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-SAME: (ptr addrspace(1) nocapture readonly [[OFF:%.*]], i256 [[SIZE:%.*]], i256 [[T1:%.*]], i256 [[T2:%.*]], i256 [[T3:%.*]]) local_unnamed_addr #[[ATTR7]] {
 ; CHECK-NEXT:    tail call void @llvm.evm.log3(ptr addrspace(1) [[OFF]], i256 [[SIZE]], i256 [[T1]], i256 [[T2]], i256 [[T3]])
 ; CHECK-NEXT:    tail call void @llvm.evm.log3(ptr addrspace(1) [[OFF]], i256 [[SIZE]], i256 [[T1]], i256 [[T2]], i256 [[T3]])
 ; CHECK-NEXT:    ret void
@@ -973,7 +1000,7 @@ define void @log3(ptr addrspace(1) %off, i256 %size, i256 %t1, i256 %t2, i256 %t
 
 define void @log4(ptr addrspace(1) %off, i256 %size, i256 %t1, i256 %t2, i256 %t3, i256 %t4) nounwind {
 ; CHECK-LABEL: define void @log4
-; CHECK-SAME: (ptr addrspace(1) [[OFF:%.*]], i256 [[SIZE:%.*]], i256 [[T1:%.*]], i256 [[T2:%.*]], i256 [[T3:%.*]], i256 [[T4:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-SAME: (ptr addrspace(1) nocapture readonly [[OFF:%.*]], i256 [[SIZE:%.*]], i256 [[T1:%.*]], i256 [[T2:%.*]], i256 [[T3:%.*]], i256 [[T4:%.*]]) local_unnamed_addr #[[ATTR7]] {
 ; CHECK-NEXT:    tail call void @llvm.evm.log4(ptr addrspace(1) [[OFF]], i256 [[SIZE]], i256 [[T1]], i256 [[T2]], i256 [[T3]], i256 [[T4]])
 ; CHECK-NEXT:    tail call void @llvm.evm.log4(ptr addrspace(1) [[OFF]], i256 [[SIZE]], i256 [[T1]], i256 [[T2]], i256 [[T3]], i256 [[T4]])
 ; CHECK-NEXT:    ret void
@@ -1003,6 +1030,7 @@ declare i256 @llvm.evm.codesize()
 declare i256 @llvm.evm.gasprice()
 declare i256 @llvm.evm.extcodesize(i256)
 declare i256 @llvm.evm.extcodehash(i256)
+declare void @llvm.evm.extcodecopy(i256, ptr addrspace(1), ptr addrspace(4), i256)
 declare i256 @llvm.evm.blockhash(i256)
 declare i256 @llvm.evm.blobhash(i256)
 declare i256 @llvm.evm.returndatasize()
