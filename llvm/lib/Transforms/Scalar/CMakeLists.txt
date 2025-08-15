@@ -102,5 +102,6 @@ add_llvm_component_library(LLVMScalarOpts
   Core
   InstCombine
   Support
+  TargetParser # EVM local
   TransformUtils
   )
