@@ -156,6 +156,11 @@ AliasResult VMAAResult::alias(const MemoryLocation &LocA,
   // If heap locations are the same, they either must or partially alias based
   // on the size of locations.
   if (StartAVal == StartBVal) {
+    // If either of the memory references is empty, it doesn't matter what the
+    // pointer values are.
+    if (LocA.Size.isZero() || LocB.Size.isZero())
+      return AliasResult::NoAlias;
+
     if (LocA.Size == LocB.Size)
       return AliasResult::MustAlias;
     return AliasResult::PartialAlias;
