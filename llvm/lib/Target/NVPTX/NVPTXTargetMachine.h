@@ -64,7 +64,7 @@ public:
   createMachineFunctionInfo(BumpPtrAllocator &Allocator, const Function &F,
                             const TargetSubtargetInfo *STI) const override;
 
-  void registerEarlyDefaultAliasAnalyses(AAManager &AAM) override;
+  void registerDefaultAliasAnalyses(AAManager &AAM) override;
 
   void registerPassBuilderCallbacks(PassBuilder &PB) override;
 

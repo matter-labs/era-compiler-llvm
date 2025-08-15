@@ -788,49 +788,28 @@ bool AAResultsWrapperPass::runOnFunction(Function &F) {
   AAR.reset(
       new AAResults(getAnalysis<TargetLibraryInfoWrapperPass>().getTLI(F)));
 
-  // Add any target-specific alias analyses that should be run early.
-  auto *ExtWrapperPass = getAnalysisIfAvailable<ExternalAAWrapperPass>();
-  if (ExtWrapperPass && ExtWrapperPass->runEarly() && ExtWrapperPass->CB) {
-    LLVM_DEBUG(dbgs() << "AAResults register Early ExternalAA: "
-                      << ExtWrapperPass->getPassName() << "\n");
-    ExtWrapperPass->CB(*this, F, *AAR);
-  }
-
   // BasicAA is always available for function analyses. Also, we add it first
   // so that it can trump TBAA results when it proves MustAlias.
   // FIXME: TBAA should have an explicit mode to support this and then we
   // should reconsider the ordering here.
-  if (!DisableBasicAA) {
-    LLVM_DEBUG(dbgs() << "AAResults register BasicAA\n");
+  if (!DisableBasicAA)
     AAR->addAAResult(getAnalysis<BasicAAWrapperPass>().getResult());
-  }
 
   // Populate the results with the currently available AAs.
-  if (auto *WrapperPass =
-          getAnalysisIfAvailable<ScopedNoAliasAAWrapperPass>()) {
-    LLVM_DEBUG(dbgs() << "AAResults register ScopedNoAliasAA\n");
+  if (auto *WrapperPass = getAnalysisIfAvailable<ScopedNoAliasAAWrapperPass>())
     AAR->addAAResult(WrapperPass->getResult());
-  }
-  if (auto *WrapperPass = getAnalysisIfAvailable<TypeBasedAAWrapperPass>()) {
-    LLVM_DEBUG(dbgs() << "AAResults register TypeBasedAA\n");
+  if (auto *WrapperPass = getAnalysisIfAvailable<TypeBasedAAWrapperPass>())
     AAR->addAAResult(WrapperPass->getResult());
-  }
-  if (auto *WrapperPass = getAnalysisIfAvailable<GlobalsAAWrapperPass>()) {
-    LLVM_DEBUG(dbgs() << "AAResults register GlobalsAA\n");
+  if (auto *WrapperPass = getAnalysisIfAvailable<GlobalsAAWrapperPass>())
     AAR->addAAResult(WrapperPass->getResult());
-  }
-  if (auto *WrapperPass = getAnalysisIfAvailable<SCEVAAWrapperPass>()) {
-    LLVM_DEBUG(dbgs() << "AAResults register SCEVAA\n");
+  if (auto *WrapperPass = getAnalysisIfAvailable<SCEVAAWrapperPass>())
     AAR->addAAResult(WrapperPass->getResult());
-  }
 
   // If available, run an external AA providing callback over the results as
   // well.
-  if (ExtWrapperPass && !ExtWrapperPass->runEarly() && ExtWrapperPass->CB) {
-    LLVM_DEBUG(dbgs() << "AAResults register Late ExternalAA: "
-                      << ExtWrapperPass->getPassName() << "\n");
-    ExtWrapperPass->CB(*this, F, *AAR);
-  }
+  if (auto *WrapperPass = getAnalysisIfAvailable<ExternalAAWrapperPass>())
+    if (WrapperPass->CB)
+      WrapperPass->CB(*this, F, *AAR);
 
   // Analyses don't mutate the IR, so return false.
   return false;

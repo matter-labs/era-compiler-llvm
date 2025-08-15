@@ -221,7 +221,7 @@ MachineFunctionInfo *NVPTXTargetMachine::createMachineFunctionInfo(
                                                                     F, STI);
 }
 
-void NVPTXTargetMachine::registerEarlyDefaultAliasAnalyses(AAManager &AAM) {
+void NVPTXTargetMachine::registerDefaultAliasAnalyses(AAManager &AAM) {
   AAM.registerFunctionAnalysis<NVPTXAA>();
 }
 
@@ -317,7 +317,10 @@ void NVPTXPassConfig::addIRPasses() {
   disablePass(&ShrinkWrapID);
 
   addPass(createNVPTXAAWrapperPass());
-  addPass(createNVPTXExternalAAWrapperPass());
+  addPass(createExternalAAWrapperPass([](Pass &P, Function &, AAResults &AAR) {
+    if (auto *WrapperPass = P.getAnalysisIfAvailable<NVPTXAAWrapperPass>())
+      AAR.addAAResult(WrapperPass->getResult());
+  }));
 
   // NVVMReflectPass is added in addEarlyAsPossiblePasses, so hopefully running
   // it here does nothing.  But since we need it for correctness when lowering
