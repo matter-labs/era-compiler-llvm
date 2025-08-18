@@ -8,9 +8,11 @@ define i256 @test(i256 %arg) {
 ; CHECK-LABEL: test:
 ; CHECK:       ; %bb.0: ; %entry
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    DUP2
-; CHECK-NEXT:    SLT
+; CHECK-NEXT:    DUP1
+; CHECK-NEXT:    NOT
+; CHECK-NEXT:    PUSH1 0xFF
+; CHECK-NEXT:    SHR
+; CHECK-NEXT:    ISZERO
 ; CHECK-NEXT:    PUSH4 @.BB0_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1:

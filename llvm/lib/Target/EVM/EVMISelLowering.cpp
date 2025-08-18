@@ -940,7 +940,7 @@ SDValue EVMTargetLowering::combineBRCOND(SDNode *N,
   // If the condition is still an i1, promote it now to i256:
   if (CondVT == MVT::i1) {
     // anyextend (zero‐extend would be fine too) to i256
-    SDValue Ext = DAG.getNode(ISD::ANY_EXTEND, DL, MVT::i256, Cond);
+    SDValue Ext = DAG.getNode(ISD::ZERO_EXTEND, DL, MVT::i256, Cond);
 
     // Rebuild BRCOND as BRCOND.chain, Ext:i256, Dest
     return DAG.getNode(ISD::BRCOND, DL, MVT::Other, Chain, Ext, Dest);
