@@ -937,15 +937,52 @@ SDValue EVMTargetLowering::combineBRCOND(SDNode *N,
   SDValue Dest = N->getOperand(2);
   EVT CondVT = Cond.getValueType();
 
-  // If the condition is still an i1, promote it now to i256:
-  if (CondVT == MVT::i1) {
-    // anyextend (zero‐extend would be fine too) to i256
-    SDValue Ext = DAG.getNode(ISD::ZERO_EXTEND, DL, MVT::i256, Cond);
+  if (CondVT != MVT::i1 || (Cond.getNode()->getOpcode() == ISD::ANY_EXTEND))
+    return {};
 
-    // Rebuild BRCOND as BRCOND.chain, Ext:i256, Dest
-    return DAG.getNode(ISD::BRCOND, DL, MVT::Other, Chain, Ext, Dest);
+  SmallVector<SDNode *, 64> Worklist;
+  Worklist.push_back(Cond.getNode());
+
+  const Function &F = DAG.getMachineFunction().getFunction();
+  while (!Worklist.empty()) {
+    SDNode *Node = Worklist.pop_back_val();
+    unsigned Opcode = Node->getOpcode();
+
+    if (Opcode == ISD::SETCC)
+      continue;
+
+    if (Opcode == EVMISD::ARGUMENT) {
+      unsigned ArgIdx = Node->getConstantOperandVal(0);
+      Type *ArgTy = F.getArg(ArgIdx)->getType();
+      if (ArgTy->isIntegerTy() && ArgTy->getIntegerBitWidth() == 1)
+        continue;
+    }
+
+    if (Opcode == ISD::AND) {
+      const ConstantSDNode *ConstOp = nullptr;
+      if (auto *C = dyn_cast<ConstantSDNode>(N->getOperand(0)))
+        ConstOp = C;
+      else if (auto *C = dyn_cast<ConstantSDNode>(N->getOperand(1)))
+        ConstOp = C;
+
+      if (ConstOp && ConstOp->getAPIntValue().isOne())
+        continue;
+    }
+
+    for (const SDValue &Op : Node->op_values()) {
+      if (Op.getValueType() != MVT::i1)
+        return {};
+
+      Worklist.push_back(Op.getNode());
+    }
   }
-  return {};
+
+  // If the condition is still an i1, promote it now to i256:
+  // anyextend (zero‐extend would be fine too) to i256
+  SDValue Ext = DAG.getNode(ISD::ANY_EXTEND, DL, MVT::i256, Cond);
+
+  // Rebuild BRCOND as BRCOND.chain, Ext:i256, Dest
+  return DAG.getNode(ISD::BRCOND, DL, MVT::Other, Chain, Ext, Dest);
 }
 
 SDValue EVMTargetLowering::PerformDAGCombine(SDNode *N,
