@@ -929,19 +929,33 @@ SDValue EVMTargetLowering::combineSELECT(SDNode *N,
 
 SDValue EVMTargetLowering::combineBRCOND(SDNode *N,
                                          DAGCombinerInfo &DCI) const {
+  // Perform combines only after DAG legalisation.
+  if (!DCI.isAfterLegalizeDAG())
+    return SDValue();
+
   SDLoc DL(N);
   SelectionDAG &DAG = DCI.DAG;
   assert(N->getOpcode() == ISD::BRCOND);
   SDValue Chain = N->getOperand(0);
   SDValue Cond = N->getOperand(1);
   SDValue Dest = N->getOperand(2);
-  EVT CondVT = Cond.getValueType();
 
-  if (CondVT != MVT::i1 || (Cond.getNode()->getOpcode() == ISD::ANY_EXTEND))
-    return {};
+  SDNode *CondNode = Cond.getNode();
+  if (CondNode->getOpcode() != ISD::AND)
+    return SDValue();
 
+  if (!isa<ConstantSDNode>(CondNode->getOperand(0)) &&
+      !isa<ConstantSDNode>(CondNode->getOperand(1)))
+    return SDValue();
+
+  unsigned AndConstOpIdx = isa<ConstantSDNode>(CondNode->getOperand(0)) ? 0 : 1;
+  if (auto *C = cast<ConstantSDNode>(CondNode->getOperand(AndConstOpIdx));
+      !C->getAPIntValue().isOne())
+    return SDValue();
+
+  SDValue AndNonConstOp = CondNode->getOperand(!AndConstOpIdx);
   SmallVector<SDNode *, 64> Worklist;
-  Worklist.push_back(Cond.getNode());
+  Worklist.push_back(AndNonConstOp.getNode());
 
   const Function &F = DAG.getMachineFunction().getFunction();
   while (!Worklist.empty()) {
@@ -959,30 +973,24 @@ SDValue EVMTargetLowering::combineBRCOND(SDNode *N,
     }
 
     if (Opcode == ISD::AND) {
-      const ConstantSDNode *ConstOp = nullptr;
-      if (auto *C = dyn_cast<ConstantSDNode>(N->getOperand(0)))
-        ConstOp = C;
-      else if (auto *C = dyn_cast<ConstantSDNode>(N->getOperand(1)))
-        ConstOp = C;
+      for (const SDValue &Op : Node->op_values())
+        if (auto *C = dyn_cast<ConstantSDNode>(Op); C->getAPIntValue().isOne())
+          continue;
+    }
 
-      if (ConstOp && ConstOp->getAPIntValue().isOne())
+    if (Opcode == ISD::Constant)
+      if (!cast<ConstantSDNode>(Node)->getAPIntValue().isOne())
         continue;
-    }
 
-    for (const SDValue &Op : Node->op_values()) {
-      if (Op.getValueType() != MVT::i1)
-        return {};
+    if (Opcode != ISD::AND && Opcode != ISD::OR && Opcode != ISD::XOR)
+      return SDValue();
 
+    for (const SDValue &Op : Node->op_values())
       Worklist.push_back(Op.getNode());
-    }
   }
 
-  // If the condition is still an i1, promote it now to i256:
-  // anyextend (zero‐extend would be fine too) to i256
-  SDValue Ext = DAG.getNode(ISD::ANY_EXTEND, DL, MVT::i256, Cond);
-
   // Rebuild BRCOND as BRCOND.chain, Ext:i256, Dest
-  return DAG.getNode(ISD::BRCOND, DL, MVT::Other, Chain, Ext, Dest);
+  return DAG.getNode(ISD::BRCOND, DL, MVT::Other, Chain, AndNonConstOp, Dest);
 }
 
 SDValue EVMTargetLowering::PerformDAGCombine(SDNode *N,

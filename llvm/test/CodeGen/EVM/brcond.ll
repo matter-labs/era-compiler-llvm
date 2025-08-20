@@ -363,10 +363,10 @@ define void @br_sge_0(i256 %a) {
 ; CHECK-LABEL: br_sge_0:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    PUSH1 0xFF
-; CHECK-NEXT:    SHR
+; CHECK-NEXT:    SLT
 ; CHECK-NEXT:    PUSH4 @.BB17_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
@@ -384,11 +384,11 @@ define void @br_slt_0(i256 %a) {
 ; CHECK-LABEL: br_slt_0:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    NOT
-; CHECK-NEXT:    PUSH1 0xFF
-; CHECK-NEXT:    SHR
+; CHECK-NEXT:    SLT
+; CHECK-NEXT:    ISZERO
 ; CHECK-NEXT:    PUSH4 @.BB18_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
