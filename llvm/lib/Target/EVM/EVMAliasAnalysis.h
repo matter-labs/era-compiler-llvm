@@ -71,11 +71,17 @@ class EVMExternalAAWrapper : public ExternalAAWrapperPass {
 public:
   static char ID;
 
+  bool runEarly() override { return true; }
+
   EVMExternalAAWrapper()
       : ExternalAAWrapperPass([](Pass &P, Function &, AAResults &AAR) {
           if (auto *WrapperPass = P.getAnalysisIfAvailable<EVMAAWrapperPass>())
             AAR.addAAResult(WrapperPass->getResult());
         }) {}
+
+  StringRef getPassName() const override {
+    return "EVM Address space based Alias Analysis Wrapper";
+  }
 };
 
 } // end namespace llvm
