@@ -58,7 +58,7 @@ static cl::opt<float>
                                     "optimizing for speed"));
 
 static cl::opt<unsigned> InstrNumLimitUnfoldInto(
-    "evm-const-unfolding-inst-num-limit", cl::Hidden, cl::init(3),
+    "evm-const-unfolding-inst-num-limit", cl::Hidden, cl::init(4),
     cl::desc("Maximum number of instructions an original"
              "instruction can be unfolded into"));
 
