@@ -71,6 +71,10 @@ static cl::opt<unsigned>
     CodeSizeLimit("evm-bytecode-sizelimit", cl::Hidden, cl::init(24576),
                   cl::desc("EVM contract bytecode size limit"));
 
+static cl::opt<unsigned> MetadataSize("evm-metadata-size", cl::Hidden,
+                                      cl::init(0),
+                                      cl::desc("EVM metadata size"));
+
 namespace {
 using InstrsPerLoopDepthTy = SmallVector<SmallVector<MachineInstr *>>;
 
@@ -626,7 +630,9 @@ static bool runImpl(Module &M, MachineModuleInfo &MMI) {
   bool Changed = false;
   ConstantUnfolder Unfolder(&M.getContext());
 
-  const unsigned ModuleCodeSize = EVM::calculateModuleCodeSize(M, MMI);
+  // Metadata size is included into the bytecode size.
+  const unsigned ModuleCodeSize =
+      EVM::calculateModuleCodeSize(M, MMI) + MetadataSize;
 
   // Collect PUSH instructions to process.
   DenseMap<MachineFunction *, std::unique_ptr<LoopDepthInstrCache>>
