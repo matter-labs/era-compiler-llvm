@@ -51,21 +51,6 @@ FunctionPass *llvm::createEVMLowerJumpUnless() {
   return new EVMLowerJumpUnless();
 }
 
-// Lower jump_unless into iszero and jumpi instructions. This instruction
-// can only be present in non-stackified functions.
-static void lowerJumpUnless(MachineInstr &MI, const EVMInstrInfo *TII,
-                            const bool IsStackified, MachineRegisterInfo &MRI) {
-  assert(!IsStackified && "Found jump_unless in stackified function");
-  assert(MI.getNumExplicitOperands() == 2 &&
-         "Unexpected number of operands in jump_unless");
-  auto NewReg = MRI.createVirtualRegister(&EVM::GPRRegClass);
-  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(EVM::ISZERO), NewReg)
-      .add(MI.getOperand(1));
-  BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(EVM::JUMPI))
-      .add(MI.getOperand(0))
-      .addReg(NewReg);
-}
-
 // Lower pseudo jump_unless into iszero and jumpi instructions. This pseudo
 // instruction can only be present in stackified functions.
 static void lowerPseudoJumpUnless(MachineInstr &MI, const EVMInstrInfo *TII,
@@ -84,7 +69,6 @@ bool EVMLowerJumpUnless::runOnMachineFunction(MachineFunction &MF) {
            << "********** Function: " << MF.getName() << '\n';
   });
 
-  MachineRegisterInfo &MRI = MF.getRegInfo();
   const auto *TII = MF.getSubtarget<EVMSubtarget>().getInstrInfo();
   const bool IsStackified =
       MF.getInfo<EVMMachineFunctionInfo>()->getIsStackified();
@@ -92,13 +76,10 @@ bool EVMLowerJumpUnless::runOnMachineFunction(MachineFunction &MF) {
   bool Changed = false;
   for (MachineBasicBlock &MBB : MF) {
     for (auto &MI : make_early_inc_range(MBB)) {
-      if (MI.getOpcode() == EVM::PseudoJUMP_UNLESS)
-        lowerPseudoJumpUnless(MI, TII, IsStackified);
-      else if (MI.getOpcode() == EVM::JUMP_UNLESS)
-        lowerJumpUnless(MI, TII, IsStackified, MRI);
-      else
+      if (MI.getOpcode() != EVM::PseudoJUMP_UNLESS)
         continue;
 
+      lowerPseudoJumpUnless(MI, TII, IsStackified);
       MI.eraseFromParent();
       Changed = true;
     }
