@@ -190,6 +190,10 @@ MemoryLocation MemoryLocation::getForArgument(const CallBase *Call,
       case Intrinsic::memcpy_inline:
       case Intrinsic::memmove:
       case Intrinsic::memset:
+      case Intrinsic::evm_memmoveas1as1:
+      case Intrinsic::evm_memcpyas1as2:
+      case Intrinsic::evm_memcpyas1as3:
+      case Intrinsic::evm_memcpyas1as4:
         if (ConstantInt *LenCI = dyn_cast<ConstantInt>(II->getArgOperand(2)))
           if (LenCI->getValue().getActiveBits() > 64)
             return MemoryLocation::getAfter(Arg, AATags);

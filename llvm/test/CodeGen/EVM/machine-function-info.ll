@@ -7,6 +7,7 @@
 target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
 target triple = "evm"
 
+declare void @llvm.evm.revert(ptr addrspace(1), i256) noreturn
 declare i256 @llvm.evm.pushdeployaddress()
 
 define i256 @params(i256 %arg1, i256 %arg2) {
@@ -25,6 +26,7 @@ define void @pushdeploy() noreturn {
 ; CHECK-PUSHDEPLOY:   numberOfParameters: 0
 ; CHECK-PUSHDEPLOY:   hasPushDeployAddress: true
   %push = call i256 @llvm.evm.pushdeployaddress()
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 }
 

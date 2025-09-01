@@ -193,7 +193,6 @@ define i256 @sha3_test_9(ptr addrspace(1) %addr) nounwind {
 ; CHECK-LABEL: define noundef i256 @sha3_test_9
 ; CHECK-SAME: (ptr addrspace(1) nocapture writeonly [[ADDR:%.*]]) local_unnamed_addr #[[ATTR2]] {
 ; CHECK-NEXT:  entry:
-; CHECK-NEXT:    store i256 304594385234, ptr addrspace(1) [[ADDR]], align 1
 ; CHECK-NEXT:    [[NEXT_ADDR:%.*]] = getelementptr i8, ptr addrspace(1) [[ADDR]], i256 32
 ; CHECK-NEXT:    store i256 -53675409633959416604748946233496653964072736789863655143901645101595015023076, ptr addrspace(1) [[NEXT_ADDR]], align 1
 ; CHECK-NEXT:    store i256 111111111111, ptr addrspace(1) [[ADDR]], align 1
