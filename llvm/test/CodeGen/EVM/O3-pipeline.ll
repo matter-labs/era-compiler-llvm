@@ -9,25 +9,45 @@ target triple = "evm"
 ; CHECK-NEXT: Target Pass Configuration
 ; CHECK-NEXT: Machine Module Information
 ; CHECK-NEXT: Target Transform Information
+; CHECK-NEXT: Assumption Cache Tracker
+; CHECK-NEXT: Profile summary info
 ; CHECK-NEXT: EVM Address space based Alias Analysis
 ; CHECK-NEXT: EVM Address space based Alias Analysis Wrapper
 ; CHECK-NEXT: Type-Based Alias Analysis
 ; CHECK-NEXT: Scoped NoAlias Alias Analysis
-; CHECK-NEXT: Assumption Cache Tracker
-; CHECK-NEXT: Profile summary info
 ; CHECK-NEXT: Create Garbage Collector Module Metadata
 ; CHECK-NEXT: Machine Branch Probability Analysis
 ; CHECK-NEXT:   ModulePass Manager
 ; CHECK-NEXT:     Pre-ISel Intrinsic Lowering
 ; CHECK-NEXT:     EVM Lower Intrinsics
 ; CHECK-NEXT:     FunctionPass Manager
-; CHECK-NEXT:       Module Verifier
-; CHECK-NEXT:       Dominator Tree Construction
-; CHECK-NEXT:       Basic Alias Analysis (stateless AA impl)
-; CHECK-NEXT:       Natural Loop Information
-; CHECK-NEXT:       Canonicalize natural loops
-; CHECK-NEXT:       Scalar Evolution Analysis
-; CHECK-NEXT:       Loop Pass Manager
+; CHECK-NEXT:     Dominator Tree Construction
+; CHECK-NEXT:      Basic Alias Analysis (stateless AA impl)
+; CHECK-NEXT:      Function Alias Analysis Results
+; CHECK-NEXT:      Memory SSA
+; CHECK-NEXT:      Early CSE w/ MemorySSA
+; CHECK-NEXT:      Natural Loop Information
+; CHECK-NEXT:      Memory Dependence Analysis
+; CHECK-NEXT:      Lazy Branch Probability Analysis
+; CHECK-NEXT:      Lazy Block Frequency Analysis
+; CHECK-NEXT:      Optimization Remark Emitter
+; CHECK-NEXT:      Global Value Numbering
+; CHECK-NEXT:      Simplify the CFG
+; CHECK-NEXT:      Dominator Tree Construction
+; CHECK-NEXT:      Basic Alias Analysis (stateless AA impl)
+; CHECK-NEXT:      Function Alias Analysis Results
+; CHECK-NEXT:      Memory SSA
+; CHECK-NEXT:      Natural Loop Information
+; CHECK-NEXT:      Canonicalize natural loops
+; CHECK-NEXT:      LCSSA Verifier
+; CHECK-NEXT:      Loop-Closed SSA Form Pass
+; CHECK-NEXT:      Scalar Evolution Analysis
+; CHECK-NEXT:      Lazy Branch Probability Analysis
+; CHECK-NEXT:      Lazy Block Frequency Analysis
+; CHECK-NEXT:      Loop Pass Manager
+; CHECK-NEXT:         Loop Invariant Code Motion
+; CHECK-NEXT:      Module Verifier
+; CHECK-NEXT:      Loop Pass Manager
 ; CHECK-NEXT:         Canonicalize Freeze Instructions in Loops
 ; CHECK-NEXT:         Induction Variable Users
 ; CHECK-NEXT:         Loop Strength Reduction

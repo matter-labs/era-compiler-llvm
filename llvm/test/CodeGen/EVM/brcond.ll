@@ -6,6 +6,9 @@ target triple = "evm"
 
 ; Two-value comparisons
 
+declare void @llvm.evm.revert(ptr addrspace(1), i256) noreturn
+declare void @llvm.evm.return(ptr addrspace(1), i256) noreturn
+
 define void @br_eq(i256 %a, i256 %b) {
 ; CHECK-LABEL: br_eq:
 ; CHECK:       ; %bb.0:
@@ -16,13 +19,21 @@ define void @br_eq(i256 %a, i256 %b) {
 ; CHECK-NEXT:    PUSH4 @.BB0_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
 ; CHECK-NEXT:  .BB0_2: ; %false
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
   %cond = icmp eq i256 %a, %b
   br i1 %cond, label %true, label %false
 true:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 false:
+  tail call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
   unreachable
 }
 
@@ -36,13 +47,21 @@ define void @br_ne(i256 %a, i256 %b) {
 ; CHECK-NEXT:    PUSH4 @.BB1_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
 ; CHECK-NEXT:  .BB1_2: ; %false
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
   %cond = icmp ne i256 %a, %b
   br i1 %cond, label %true, label %false
 true:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 false:
+  tail call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
   unreachable
 }
 
@@ -58,13 +77,21 @@ define void @br_ugt(i256 %a, i256 %b) {
 ; CHECK-NEXT:    PUSH4 @.BB2_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
 ; CHECK-NEXT:  .BB2_2: ; %false
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
   %cond = icmp ugt i256 %a, %b
   br i1 %cond, label %true, label %false
 true:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 false:
+  tail call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
   unreachable
 }
 
@@ -79,13 +106,21 @@ define void @br_uge(i256 %a, i256 %b) {
 ; CHECK-NEXT:    PUSH4 @.BB3_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
 ; CHECK-NEXT:  .BB3_2: ; %false
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
   %cond = icmp uge i256 %a, %b
   br i1 %cond, label %true, label %false
 true:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 false:
+  tail call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
   unreachable
 }
 
@@ -101,13 +136,21 @@ define void @br_ult(i256 %a, i256 %b) {
 ; CHECK-NEXT:    PUSH4 @.BB4_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
 ; CHECK-NEXT:  .BB4_2: ; %false
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
   %cond = icmp ult i256 %a, %b
   br i1 %cond, label %true, label %false
 true:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 false:
+  tail call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
   unreachable
 }
 
@@ -122,13 +165,21 @@ define void @br_ule(i256 %a, i256 %b) {
 ; CHECK-NEXT:    PUSH4 @.BB5_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
 ; CHECK-NEXT:  .BB5_2: ; %false
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
   %cond = icmp ule i256 %a, %b
   br i1 %cond, label %true, label %false
 true:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 false:
+  tail call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
   unreachable
 }
 
@@ -144,13 +195,21 @@ define void @br_sgt(i256 %a, i256 %b) {
 ; CHECK-NEXT:    PUSH4 @.BB6_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
 ; CHECK-NEXT:  .BB6_2: ; %false
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
   %cond = icmp sgt i256 %a, %b
   br i1 %cond, label %true, label %false
 true:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 false:
+  tail call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
   unreachable
 }
 
@@ -165,13 +224,21 @@ define void @br_sge(i256 %a, i256 %b) {
 ; CHECK-NEXT:    PUSH4 @.BB7_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
 ; CHECK-NEXT:  .BB7_2: ; %false
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
   %cond = icmp sge i256 %a, %b
   br i1 %cond, label %true, label %false
 true:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 false:
+  tail call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
   unreachable
 }
 
@@ -187,13 +254,21 @@ define void @br_slt(i256 %a, i256 %b) {
 ; CHECK-NEXT:    PUSH4 @.BB8_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
 ; CHECK-NEXT:  .BB8_2: ; %false
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
   %cond = icmp slt i256 %a, %b
   br i1 %cond, label %true, label %false
 true:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 false:
+  tail call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
   unreachable
 }
 
@@ -208,13 +283,21 @@ define void @br_sle(i256 %a, i256 %b) {
 ; CHECK-NEXT:    PUSH4 @.BB9_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
 ; CHECK-NEXT:  .BB9_2: ; %false
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
   %cond = icmp sle i256 %a, %b
   br i1 %cond, label %true, label %false
 true:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 false:
+  tail call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
   unreachable
 }
 
@@ -229,13 +312,21 @@ define void @br_eq_0(i256 %a) {
 ; CHECK-NEXT:    PUSH4 @.BB10_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
 ; CHECK-NEXT:  .BB10_2: ; %false
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
   %cond = icmp eq i256 %a, 0
   br i1 %cond, label %true, label %false
 true:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 false:
+  tail call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
   unreachable
 }
 
@@ -249,13 +340,21 @@ define void @br_ne_0(i256 %a) {
 ; CHECK-NEXT:    PUSH4 @.BB11_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
 ; CHECK-NEXT:  .BB11_2: ; %false
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
   %cond = icmp ne i256 %a, 0
   br i1 %cond, label %true, label %false
 true:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 false:
+  tail call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
   unreachable
 }
 
@@ -269,53 +368,59 @@ define void @br_ugt_0(i256 %a) {
 ; CHECK-NEXT:    PUSH4 @.BB12_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
 ; CHECK-NEXT:  .BB12_2: ; %false
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
   %cond = icmp ugt i256 %a, 0
   br i1 %cond, label %true, label %false
 true:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 false:
+  tail call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
   unreachable
 }
 
 define void @br_uge_0(i256 %a) {
 ; CHECK-LABEL: br_uge_0:
-; CHECK:       ; %bb.0:
+; CHECK:       ; %bb.0: ; %true
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    POP
 ; CHECK-NEXT:    POP
 ; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    PUSH4 @.BB13_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1: ; %true
-; CHECK-NEXT:  .BB13_2: ; %false
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
   %cond = icmp uge i256 %a, 0
   br i1 %cond, label %true, label %false
 true:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 false:
+  tail call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
   unreachable
 }
 
 define void @br_ult_0(i256 %a) {
 ; CHECK-LABEL: br_ult_0:
-; CHECK:       ; %bb.0:
+; CHECK:       ; %bb.0: ; %false
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    POP
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    PUSH1 0x1
-; CHECK-NEXT:    PUSH4 @.BB14_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1: ; %true
-; CHECK-NEXT:  .BB14_2: ; %false
-; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
   %cond = icmp ult i256 %a, 0
   br i1 %cond, label %true, label %false
 true:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 false:
+  tail call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
   unreachable
 }
 
@@ -328,13 +433,21 @@ define void @br_ule_0(i256 %a) {
 ; CHECK-NEXT:    PUSH4 @.BB15_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
 ; CHECK-NEXT:  .BB15_2: ; %false
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
   %cond = icmp ule i256 %a, 0
   br i1 %cond, label %true, label %false
 true:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 false:
+  tail call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
   unreachable
 }
 
@@ -349,13 +462,21 @@ define void @br_sgt_0(i256 %a) {
 ; CHECK-NEXT:    PUSH4 @.BB16_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
 ; CHECK-NEXT:  .BB16_2: ; %false
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
   %cond = icmp sgt i256 %a, 0
   br i1 %cond, label %true, label %false
 true:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 false:
+  tail call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
   unreachable
 }
 
@@ -370,13 +491,21 @@ define void @br_sge_0(i256 %a) {
 ; CHECK-NEXT:    PUSH4 @.BB17_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
 ; CHECK-NEXT:  .BB17_2: ; %false
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
   %cond = icmp sge i256 %a, 0
   br i1 %cond, label %true, label %false
 true:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 false:
+  tail call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
   unreachable
 }
 
@@ -392,13 +521,21 @@ define void @br_slt_0(i256 %a) {
 ; CHECK-NEXT:    PUSH4 @.BB18_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
 ; CHECK-NEXT:  .BB18_2: ; %false
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
   %cond = icmp slt i256 %a, 0
   br i1 %cond, label %true, label %false
 true:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 false:
+  tail call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
   unreachable
 }
 
@@ -413,13 +550,21 @@ define void @br_sle_0(i256 %a) {
 ; CHECK-NEXT:    PUSH4 @.BB19_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %true
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
 ; CHECK-NEXT:  .BB19_2: ; %false
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
   %cond = icmp sle i256 %a, 0
   br i1 %cond, label %true, label %false
 true:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 false:
+  tail call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
   unreachable
 }
 
@@ -440,14 +585,22 @@ define void @br_or(i256 %a, i256 %b, i256 %c) {
 ; CHECK-NEXT:    PUSH4 @.BB20_2
 ; CHECK-NEXT:    JUMPI
 ; CHECK-NEXT:  ; %bb.1: ; %false
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    RETURN
 ; CHECK-NEXT:  .BB20_2: ; %true
 ; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    PUSH0
+; CHECK-NEXT:    REVERT
   %cond1 = icmp ne i256 %a, %b
   %cond2 = icmp ne i256 %a, %c
   %cond = or i1 %cond1, %cond2
   br i1 %cond, label %true, label %false
 false:
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 true:
+  tail call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
   unreachable
 }

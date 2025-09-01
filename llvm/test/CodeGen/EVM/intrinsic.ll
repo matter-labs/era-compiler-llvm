@@ -597,37 +597,34 @@ define void @selfdestruct(i256 %addr) nounwind {
   ret void
 }
 
-define void @return(ptr addrspace(1) %rs1, i256 %rs2) nounwind {
+define void @return(ptr addrspace(1) %rs1, i256 %rs2) nounwind noreturn {
 ; CHECK-LABEL: return:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    RETURN
-; CHECK-NEXT:    JUMP
 
   call void @llvm.evm.return(ptr addrspace(1) %rs1, i256 %rs2)
-  ret void
+  unreachable
 }
 
-define void @revert(ptr addrspace(1) %rs1, i256 %rs2) nounwind {
+define void @revert(ptr addrspace(1) %rs1, i256 %rs2) nounwind noreturn {
 ; CHECK-LABEL: revert:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    REVERT
-; CHECK-NEXT:    JUMP
 
   call void @llvm.evm.revert(ptr addrspace(1) %rs1, i256 %rs2)
-  ret void
+  unreachable
 }
 
-define void @invalid() nounwind {
+define void @invalid() nounwind noreturn {
 ; CHECK-LABEL: invalid:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    INVALID
-; CHECK-NEXT:    JUMP
 
   call void @llvm.evm.invalid()
-  ret void
+  unreachable
 }
 
 declare i256 @llvm.evm.sdiv(i256, i256)
