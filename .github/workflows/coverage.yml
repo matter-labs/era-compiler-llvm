@@ -20,17 +20,24 @@ env:
   OUTPUT_HTML_DIR: COVERAGE
 
 jobs:
-  run-with-coverage:
+
+  integration-tests-coverage:
     runs-on: matterlabs-ci-runner-high-performance
     container:
-      image: ghcr.io/matter-labs/zksync-llvm-runner:latest
+      image: ghcr.io/matter-labs/zksync-llvm-runner:main
+    env:
+      BOOST_PREFIX: ${{ github.workspace }}/era-solidity/boost/lib
+      SOLC_PREFIX: ${{ github.workspace }}/era-solidity/build
+      TARGET: 'x86_64-unknown-linux-gnu'
+      LATEST_SOLC_VERSION: 0.8
+      DEFAULT_BENCHMARKS_PATH: tests/solidity/complex/defi
     steps:
 
-      - name: Checkout solx
+      - name: Checkout compiler-tester
         uses: actions/checkout@v4
         with:
           ref: 'main'
-          repository: matter-labs/solx
+          repository: matter-labs/era-compiler-tester
           submodules: recursive
 
       # This step is required to checkout submodules
@@ -38,7 +45,18 @@ jobs:
       - name: Checkout submodules
         run: |
           git config --global --add safe.directory '*'
-          git submodule update --force --depth=1 --recursive --checkout
+          git submodule update --init --force --depth=1 --recursive --checkout
+
+      - name: Build LLVM for tester
+        uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
+        with:
+          clone-llvm: false
+
+      - name: Build compiler-tester
+        run: |
+          cargo build --release --target ${TARGET} --bin 'compiler-tester'
+          # Clean-up LLVM for the coverage build
+          rm -rf target-llvm
 
       - name: Remove llvm submodule
         run: rm -rf llvm
@@ -65,44 +83,144 @@ jobs:
           ccache-key: ${{ format('llvm-{0}-{1}', runner.os, runner.arch) }}
 
       - name: Build solx with coverage
-        uses: matter-labs/era-compiler-ci/.github/actions/build-rust@v1
         env:
-          BOOST_PREFIX: ${{ github.workspace }}/era-solidity/boost/lib
-          SOLC_PREFIX: ${{ github.workspace }}/era-solidity/build
-        with:
-          exec_name: 'solx'
-          target: 'x86_64-unknown-linux-gnu'
-          release-suffix: test
-          enable-coverage: true
-
-      - name: Running Lit tests
+          CARGO_CHECKOUT_DIR: /usr/local/cargo/git/checkouts
+          RUSTFLAGS: "-C instrument-coverage"
         run: |
-          ninja -C './target-llvm/build-final' verify-llvm -v || true
-          ninja -C './target-llvm/build-final' check-llvm-codegen-evm -v || true
-          ninja -C './target-llvm/build-final' check-llvm-codegen-generic -v || true
-          ninja -C './target-llvm/build-final' check-llvm-mc-evm -v || true
-          ninja -C './target-llvm/build-final' check-llvm-unit -v || true
+          cargo build --target ${TARGET} \
+            --manifest-path ${CARGO_CHECKOUT_DIR}/solx-*/*/Cargo.toml \
+            --target-dir './target-solx/'
+          cargo build --target ${TARGET} \
+            --manifest-path ${CARGO_CHECKOUT_DIR}/era-compiler-solidity-*/*/Cargo.toml \
+            --target-dir './target-zksolc/'
+
+#      - name: Running Lit tests
+#        run: |
+#          ninja -C './target-llvm/build-final' verify-llvm -v || true
+#          ninja -C './target-llvm/build-final' check-llvm-codegen-evm -v || true
+#          ninja -C './target-llvm/build-final' check-llvm-codegen-generic -v || true
+#          ninja -C './target-llvm/build-final' check-llvm-mc-evm -v || true
+#          ninja -C './target-llvm/build-final' check-llvm-unit -v || true
+
+      # TODO: maybe add optional path and mode to restrict the number of tests running
+      # it was used later because compilation with coverage was very very slow
+      # --path '${{ inputs.path || env.DEFAULT_BENCHMARKS_PATH }}' \
+      # --mode '${{ inputs.mode || env.LATEST_SOLC_VERSION }}' \
+      - name: Run integration tests with coverage
+        run: |
+          ./target/${TARGET}/release/compiler-tester \
+            --target evm \
+            --toolchain ir-llvm \
+            --solx "./target-solx/${TARGET}/debug/solx" \
+            --zksolc "./target-zksolc/${TARGET}/debug/zksolc" \
+            --load-system-contracts ./system-contracts-stable-build \
+            --path '${{ inputs.path || env.DEFAULT_BENCHMARKS_PATH }}' \
+            --mode '${{ inputs.mode || env.LATEST_SOLC_VERSION }}' \
+            --workflow build
 
       - name: Generate coverage reports
         run: |
-          llvm-profdata merge -sparse -o ${PROFDATA_FILE} ./target-llvm/build-final/profiles/*.profraw
+          find . -type f -name '*.profraw' -print > profiles.lst
+          ls -la ./target-llvm/build-final/bin
+          llvm-profdata --version
+          llvm-cov --version
+          llvm-profdata merge -sparse -o ${PROFDATA_FILE} @profiles.lst
           llvm-cov show --show-directory-coverage \
             --format=html --output-dir=${OUTPUT_HTML_DIR} \
-            -instr-profile=${PROFDATA_FILE} ./releases/test/solx-test
+            -instr-profile=${PROFDATA_FILE} ./target-solx/${TARGET}/debug/solx
           llvm-cov export --format=lcov -instr-profile=${PROFDATA_FILE} \
-            ./releases/test/solx-test > ./${LCOV_FILE}
+            ./target-solx/${TARGET}/debug/solx > ./llvm/${LCOV_FILE}
 
       - name: Upload coverage artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: 'Coverage HTML'
+          name: 'Coverage integration tests HTML'
           path: ${{ env.OUTPUT_HTML_DIR }}
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          working-directory: ${{ github.workspace }}/llvm # Mandatory if main repo is in different directory
-          directory: ${{ github.workspace }} # Mandatory if main repo is in different directory
-          token: ${{ secrets.CODECOV_TOKEN }}
-          file: ${{ env.LCOV_FILE }}
-          slug: ${{ github.repository }}
+
+#  run-with-coverage:
+#    runs-on: matterlabs-ci-runner-high-performance
+#    container:
+#      image: ghcr.io/matter-labs/zksync-llvm-runner:latest
+#    steps:
+#
+#      - name: Checkout solx
+#        uses: actions/checkout@v4
+#        with:
+#          ref: 'main'
+#          repository: matter-labs/solx
+#          submodules: recursive
+#
+#      # This step is required to checkout submodules
+#      # that are disabled in .gitmodules config
+#      - name: Checkout submodules
+#        run: |
+#          git config --global --add safe.directory '*'
+#          git submodule update --force --depth=1 --recursive --checkout
+#
+#      - name: Remove llvm submodule
+#        run: rm -rf llvm
+#
+#      - name: Checkout llvm
+#        uses: actions/checkout@v4
+#        with:
+#          path: llvm
+#
+#      - name: Building solc
+#        uses: matter-labs/era-compiler-ci/.github/actions/build-solc@v1
+#        with:
+#          cmake-build-type: 'Release'
+#          working-dir: 'era-solidity'
+#          upload-testing-binary: false
+#
+#      - name: Build LLVM with coverage
+#        uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
+#        with:
+#          clone-llvm: 'false'
+#          enable-coverage: true
+#          enable-tests: true
+#          enable-assertions: 'false'
+#          ccache-key: ${{ format('llvm-{0}-{1}', runner.os, runner.arch) }}
+#
+#      - name: Build solx with coverage
+#        uses: matter-labs/era-compiler-ci/.github/actions/build-rust@v1
+#        env:
+#          BOOST_PREFIX: ${{ github.workspace }}/era-solidity/boost/lib
+#          SOLC_PREFIX: ${{ github.workspace }}/era-solidity/build
+#        with:
+#          exec_name: 'solx'
+#          target: 'x86_64-unknown-linux-gnu'
+#          release-suffix: test
+#          enable-coverage: true
+#
+#      - name: Running Lit tests
+#        run: |
+#          ninja -C './target-llvm/build-final' verify-llvm -v || true
+#          ninja -C './target-llvm/build-final' check-llvm-codegen-evm -v || true
+#          ninja -C './target-llvm/build-final' check-llvm-codegen-generic -v || true
+#          ninja -C './target-llvm/build-final' check-llvm-mc-evm -v || true
+#          ninja -C './target-llvm/build-final' check-llvm-unit -v || true
+#
+#      - name: Generate coverage reports
+#        run: |
+#          llvm-profdata merge -sparse -o ${PROFDATA_FILE} ./target-llvm/build-final/profiles/*.profraw
+#          llvm-cov show --show-directory-coverage \
+#            --format=html --output-dir=${OUTPUT_HTML_DIR} \
+#            -instr-profile=${PROFDATA_FILE} ./releases/test/solx-test
+#          llvm-cov export --format=lcov -instr-profile=${PROFDATA_FILE} \
+#            ./releases/test/solx-test > ./${LCOV_FILE}
+#
+#      - name: Upload coverage artifacts
+#        uses: actions/upload-artifact@v4
+#        with:
+#          name: 'Coverage HTML'
+#          path: ${{ env.OUTPUT_HTML_DIR }}
+#
+#      - name: Upload coverage to Codecov
+#        uses: codecov/codecov-action@v4
+#        with:
+#          working-directory: ${{ github.workspace }}/llvm # Mandatory if main repo is in different directory
+#          directory: ${{ github.workspace }} # Mandatory if main repo is in different directory
+#          token: ${{ secrets.CODECOV_TOKEN }}
+#          file: ${{ env.LCOV_FILE }}
+#          slug: ${{ github.repository }}
