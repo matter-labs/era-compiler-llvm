@@ -25,8 +25,16 @@
 #include "llvm/InitializePasses.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Passes/PassBuilder.h"
+#include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/GlobalDCE.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Scalar/DeadStoreElimination.h"
+#include "llvm/Transforms/Scalar/EarlyCSE.h"
+#include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Scalar/MergeIdenticalBB.h"
+#include "llvm/Transforms/Scalar/NewGVN.h"
+#include "llvm/Transforms/Scalar/SimplifyCFG.h"
 #include "llvm/Transforms/Utils.h"
 
 using namespace llvm;
@@ -141,6 +149,14 @@ void EVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
     FAM.registerPass([] { return EVMAA(); });
   });
 
+  PB.registerOptimizerLastEPCallback(
+      [](ModulePassManager &PM, OptimizationLevel Level) {
+        if (Level != OptimizationLevel::O0)
+          // Earlier transformations may expose new opportunities for DSE,
+          // so we run it again.
+          PM.addPass(createModuleToFunctionPassAdaptor(DSEPass()));
+      });
+
   PB.registerPipelineParsingCallback(
       [](StringRef PassName, ModulePassManager &PM,
          ArrayRef<PassBuilder::PipelineElement>) {
@@ -212,6 +228,15 @@ public:
 void EVMPassConfig::addIRPasses() {
   addPass(createEVMLowerIntrinsicsPass());
   if (TM->getOptLevel() != CodeGenOptLevel::None) {
+    addPass(createEarlyCSEPass(true));
+    addPass(createGVNPass());
+    // Tests show that running the DSE pass at the end of the optimization
+    // pipeline can sometimes enable further CFG simplification.
+    addPass(createCFGSimplificationPass(SimplifyCFGOptions()
+                                            .convertSwitchRangeToICmp(true)
+                                            .hoistCommonInsts(true)
+                                            .sinkCommonInsts(true)));
+    addPass(createLICMPass());
     addPass(createEVMAAWrapperPass());
     addPass(createEVMExternalAAWrapperPass());
   }
