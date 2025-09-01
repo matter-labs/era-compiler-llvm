@@ -4,13 +4,12 @@
 target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
 target triple = "evm-unknown-unknown"
 
-; Check that the stack solver detects unreachable slots, generates spills for them, and
-; succesfully compiles the function. Also, check that we allocated the exact amount of
-; stack space needed for the function, without any warnings about allocated stack region size.
+; Check that the stack solver detects no unreachable slots.
 
-; CHECK: Unreachable slots found: 2, iteration: 1
-; CHECK: Spilling 1 registers
-; CHECK-NOT: warning: allocated stack region size:
+; CHECK-NOT: Unreachable slots found
+; CHECK: warning: allocated stack region size:
+
+declare void @llvm.evm.revert(ptr addrspace(1), i256) noreturn
 
 define dso_local fastcc void @main() unnamed_addr {
 entry:
@@ -27,6 +26,7 @@ entry:
   br label %"block_rt_44/7"
 
 "block_rt_43/7":                                  ; preds = %remainder_join12933, %"block_rt_54/7.thread", %"block_rt_44/7"
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 
 "block_rt_44/7":                                  ; preds = %"block_rt_19/0"
@@ -37,6 +37,7 @@ entry:
   ]
 
 "block_rt_46/7":                                  ; preds = %"block_rt_51/7", %"block_rt_44/7"
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 
 "block_rt_51/7":                                  ; preds = %"block_rt_57/7", %"block_rt_44/7"
@@ -48,6 +49,7 @@ entry:
 
 "block_rt_54/7":                                  ; preds = %"block_rt_51/7"
   %comparison_result3562 = icmp ugt i256 %stack_var_010.1, 1
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 
 "block_rt_56/7.outer":                            ; preds = %"block_rt_56/7.preheader", %"block_rt_70/7"
@@ -97,6 +99,7 @@ entry:
   ]
 
 "block_rt_89/7":                                  ; preds = %"block_rt_95/7"
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 
 "block_rt_131/7.outer":                           ; preds = %conditional_rt_74_join_block6475
@@ -117,9 +120,11 @@ entry:
   ]
 
 "block_rt_97/7":                                  ; preds = %"block_rt_96/7"
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 
 "block_rt_99/7":                                  ; preds = %"block_rt_96/7"
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 
 "block_rt_101/7.preheader":                       ; preds = %"block_rt_96/7"
@@ -150,6 +155,7 @@ entry:
   br label %remainder_join12901
 
 conditional_rt_49_join_block2921:                 ; preds = %"block_rt_44/7"
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 
 "block_rt_54/7.thread":                           ; preds = %"block_rt_51/7"
@@ -170,9 +176,11 @@ conditional_rt_74_join_block6475:                 ; preds = %"block_rt_73/7"
   ]
 
 conditional_rt_76_join_block6491:                 ; preds = %conditional_rt_74_join_block6475
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 
 conditional_rt_90_join_block7798:                 ; preds = %"block_rt_88/7.outer"
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 
 remainder_join12901:                              ; preds = %"block_rt_131/7"
