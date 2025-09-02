@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVM.h"
+#include "EVMConstantSpiller.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "TargetInfo/EVMTargetInfo.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
@@ -147,12 +148,31 @@ bool EVMFinalizeStackFrames::runOnModule(Module &M) {
   MachineModuleInfo &MMI = getAnalysis<MachineModuleInfoWrapperPass>().getMMI();
   SmallVector<std::pair<MachineFunction *, uint64_t>, 8> ToReplaceFI;
 
-  // Calculate the stack size for each function.
-  for (Function &F : M) {
-    MachineFunction *MF = MMI.getMachineFunction(F);
-    if (!MF)
-      continue;
+  SmallVector<MachineFunction *> MFs;
+  for (Function &F : M.getFunctionList()) {
+    if (MachineFunction *MF = MMI.getMachineFunction(F))
+      MFs.push_back(MF);
+  }
 
+  if (MFs.empty())
+    return false;
+
+  // For spilled constants, we allocate stack slots and perform the spilling
+  // in the first machine function of the module layout, even though reloads
+  // may occur in any function. In this case, we cannot use PUSH_FRAME.
+  // Instead, we compute the actual offset in the heap corresponding to the
+  // start of the constant spill area.
+  EVMConstantSpiller ConstantSpiller(MFs);
+  if (ConstantSpiller.getSpillSize()) {
+    MachineFunction *MF = MFs.front();
+    uint64_t StackSize = calculateFrameObjectOffsets(*MF);
+    MF->getFrameInfo().CreateSpillStackObject(ConstantSpiller.getSpillSize(),
+                                              Align(32));
+    ConstantSpiller.emitSpills(StackRegionOffset + StackSize, *MF);
+  }
+
+  // Calculate the stack size for each function.
+  for (MachineFunction *MF : MFs) {
     uint64_t StackSize = calculateFrameObjectOffsets(*MF);
     if (StackSize == 0)
       continue;
