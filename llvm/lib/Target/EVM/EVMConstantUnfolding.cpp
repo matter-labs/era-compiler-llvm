@@ -34,7 +34,6 @@
 #include "llvm/CodeGen/MachineLoopInfo.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/IR/Module.h"
-#include "llvm/IR/PassInstrumentation.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Support/Debug.h"
 #include <functional>
