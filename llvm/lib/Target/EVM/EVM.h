@@ -68,6 +68,7 @@ FunctionPass *createEVMSplitCriticalEdges();
 FunctionPass *createEVMStackify();
 FunctionPass *createEVMBPStackification();
 FunctionPass *createEVMLowerJumpUnless();
+FunctionPass *createEVMPeepholePass();
 ModulePass *createEVMFinalizeStackFrames();
 ModulePass *createEVMMarkRecursiveFunctionsPass();
 ModulePass *createEVMConstantUnfolding();
@@ -91,6 +92,7 @@ void initializeEVMLowerJumpUnlessPass(PassRegistry &);
 void initializeEVMFinalizeStackFramesPass(PassRegistry &);
 void initializeEVMMarkRecursiveFunctionsPass(PassRegistry &);
 void initializeEVMConstantUnfoldingPass(PassRegistry &);
+void initializeEVMPeepholePass(PassRegistry &);
 
 struct EVMLinkRuntimePass : PassInfoMixin<EVMLinkRuntimePass> {
   EVMLinkRuntimePass() = default;
