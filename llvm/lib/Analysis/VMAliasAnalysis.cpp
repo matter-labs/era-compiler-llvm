@@ -95,6 +95,10 @@ static std::optional<APInt> getConstStartLoc(const MemoryLocation &Loc,
 AliasResult VMAAResult::alias(const MemoryLocation &LocA,
                               const MemoryLocation &LocB, AAQueryInfo &AAQI,
                               const Instruction *I) {
+  if (!isa<PointerType>(LocA.Ptr->getType()) ||
+      !isa<PointerType>(LocB.Ptr->getType()))
+    return AAResultBase::alias(LocA, LocB, AAQI, I);
+
   const unsigned ASA = LocA.Ptr->getType()->getPointerAddressSpace();
   const unsigned ASB = LocB.Ptr->getType()->getPointerAddressSpace();
 

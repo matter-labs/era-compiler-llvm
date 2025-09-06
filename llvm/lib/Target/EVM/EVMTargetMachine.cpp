@@ -25,8 +25,16 @@
 #include "llvm/InitializePasses.h"
 #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Passes/PassBuilder.h"
+#include "llvm/Transforms/IPO.h"
 #include "llvm/Transforms/IPO/GlobalDCE.h"
+#include "llvm/Transforms/InstCombine/InstCombine.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/Scalar/DeadStoreElimination.h"
+#include "llvm/Transforms/Scalar/EarlyCSE.h"
+#include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Scalar/MergeIdenticalBB.h"
+#include "llvm/Transforms/Scalar/NewGVN.h"
+#include "llvm/Transforms/Scalar/SimplifyCFG.h"
 #include "llvm/Transforms/Utils.h"
 
 using namespace llvm;
@@ -150,6 +158,24 @@ void EVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
     FAM.registerPass([] { return EVMAA(); });
   });
 
+  PB.registerOptimizerLastEPCallback(
+      [](ModulePassManager &PM, OptimizationLevel Level) {
+        if (Level != OptimizationLevel::O0) {
+          PM.addPass(GlobalDCEPass());
+          FunctionPassManager FPM;
+          FPM.addPass(EarlyCSEPass(true /* Enable mem-ssa. */));
+          FPM.addPass(NewGVNPass());
+          FPM.addPass(DSEPass());
+          FPM.addPass(MergeIdenticalBBPass());
+          FPM.addPass(SimplifyCFGPass(SimplifyCFGOptions()
+                  .convertSwitchRangeToICmp(true)
+                  .hoistCommonInsts(true)
+                  .sinkCommonInsts(true)));
+          FPM.addPass(InstCombinePass());
+          PM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM), true));
+        }
+      });
+
   PB.registerPipelineParsingCallback(
       [](StringRef PassName, ModulePassManager &PM,
          ArrayRef<PassBuilder::PipelineElement>) {
@@ -219,7 +245,29 @@ public:
 
 void EVMPassConfig::addIRPasses() {
   addPass(createEVMLowerIntrinsicsPass());
+  addPass(createGlobalDCEPass());
   if (TM->getOptLevel() != CodeGenOptLevel::None) {
+    // Call SeparateConstOffsetFromGEP pass to extract constants within
+    // indices and lower a GEP with multiple indices to either arithmetic
+    // operations or multiple GEPs with single index.
+    addPass(createSeparateConstOffsetFromGEPPass(true));
+    // ReassociateGEPs exposes more opportunites for SLSR.
+    addPass(createStraightLineStrengthReducePass());
+    // SeparateConstOffsetFromGEP and SLSR creates common expressions which
+    // GVN or EarlyCSE can reuse. GVN generates significantly better code than
+    // EarlyCSE for some of our benchmarks.
+    addPass(createNewGVNPass());
+    addPass(createGVNHoistPass());
+    // Run NaryReassociate after EarlyCSE/GVN to be more effective.
+    addPass(createNaryReassociatePass());
+    // Call EarlyCSE pass to find and remove subexpressions in the lowered
+    // result.
+    addPass(createEarlyCSEPass(true));
+    addPass(createCFGSimplificationPass());
+    // Do loop invariant code motion in case part of the lowered result is
+    // invariant.
+    addPass(createLICMPass());
+
     addPass(createEVMAAWrapperPass());
     addPass(createEVMExternalAAWrapperPass());
   }
