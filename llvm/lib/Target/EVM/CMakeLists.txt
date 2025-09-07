@@ -44,6 +44,7 @@ add_llvm_target(EVMCodeGen
   EVMSHA3ConstFolding.cpp
   EVMSingleUseExpression.cpp
   EVMSplitCriticalEdges.cpp
+  EVMConstantSpiller.cpp
   EVMStackModel.cpp
   EVMStackShuffler.cpp
   EVMStackSolver.cpp
