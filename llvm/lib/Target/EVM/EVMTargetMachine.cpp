@@ -245,12 +245,14 @@ void EVMPassConfig::addIRPasses() {
     addPass(createSeparateConstOffsetFromGEPPass(true));
     addPass(createStraightLineStrengthReducePass());
     addPass(createNewGVNPass());
+    addPass(createGVNHoistPass());
     addPass(createNaryReassociatePass());
     addPass(createEarlyCSEPass(true));
     addPass(createCFGSimplificationPass(SimplifyCFGOptions()
                                             .convertSwitchRangeToICmp(true)
                                             .hoistCommonInsts(true)
                                             .sinkCommonInsts(true)));
+    addPass(createLICMPass());
 
     addPass(createEVMAAWrapperPass());
     addPass(createEVMExternalAAWrapperPass());
