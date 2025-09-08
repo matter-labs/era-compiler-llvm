@@ -158,17 +158,16 @@ void EVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
   PB.registerOptimizerLastEPCallback(
       [](ModulePassManager &PM, OptimizationLevel Level) {
         if (Level != OptimizationLevel::O0) {
-          PM.addPass(GlobalDCEPass());
           FunctionPassManager FPM;
-          FPM.addPass(EarlyCSEPass(true /* Enable mem-ssa. */));
-          FPM.addPass(NewGVNPass());
+          //  FPM.addPass(EarlyCSEPass(true /* Enable mem-ssa. */));
+          //  FPM.addPass(NewGVNPass());
           FPM.addPass(DSEPass());
-          FPM.addPass(MergeIdenticalBBPass());
-          FPM.addPass(SimplifyCFGPass(SimplifyCFGOptions()
-                  .convertSwitchRangeToICmp(true)
-                  .hoistCommonInsts(true)
-                  .sinkCommonInsts(true)));
-          FPM.addPass(InstCombinePass());
+          /*
+            FPM.addPass(SimplifyCFGPass(SimplifyCFGOptions()
+                        .convertSwitchRangeToICmp(true)
+                        .hoistCommonInsts(true)
+                        .sinkCommonInsts(true)));
+                        */
           PM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM), true));
         }
       });
@@ -243,6 +242,14 @@ public:
 void EVMPassConfig::addIRPasses() {
   addPass(createEVMLowerIntrinsicsPass());
   if (TM->getOptLevel() != CodeGenOptLevel::None) {
+    addPass(createNewGVNPass());
+    addPass(createNaryReassociatePass());
+    addPass(createEarlyCSEPass(true));
+    addPass(createCFGSimplificationPass(SimplifyCFGOptions()
+                                            .convertSwitchRangeToICmp(true)
+                                            .hoistCommonInsts(true)
+                                            .sinkCommonInsts(true)));
+
     addPass(createEVMAAWrapperPass());
     addPass(createEVMExternalAAWrapperPass());
   }
