@@ -136,6 +136,50 @@ static bool optimizeAShrInst(Instruction *I) {
   return false;
 }
 
+static bool optimizeICmp(ICmpInst *I) {
+  auto *Ty = I->getOperand(0)->getType();
+  if (!Ty->isIntegerTy(256))
+    return false;
+
+  if (I->getPredicate() == CmpInst::ICMP_ULT) {
+    Value *X = nullptr;
+    const APInt *CAdd = nullptr, *CCmp = nullptr;
+
+    // icmp ult (add x, CAdd), CCmp -> icmp eq (evm.signextend(b, x)), x
+    // where CCmp is a power of 2 and CAdd is twice smaller than CCmp.
+    if (match(I->getOperand(0), m_OneUse(m_c_Add(m_Value(X), m_APInt(CAdd)))) &&
+        match(I->getOperand(1), m_APInt(CCmp)) && CCmp->isPowerOf2() &&
+        *CAdd == CCmp->lshr(1)) {
+      unsigned CCmpLog2 = CCmp->logBase2();
+
+      // If CCmpLog2 is not divisible by 8, cannot use signextend.
+      if (CCmpLog2 % 8 != 0)
+        return false;
+
+      IRBuilder<> Builder(I);
+      unsigned ByteIdx = (CCmpLog2 / 8) - 1;
+
+      // ByteIdx should be in [0, 31].
+      if (ByteIdx > 31)
+        return false;
+
+      auto *B = ConstantInt::get(Ty, ByteIdx);
+      auto *SignExtend =
+          Builder.CreateIntrinsic(Ty, Intrinsic::evm_signextend, {B, X});
+      auto *NewCmp = Builder.CreateICmp(CmpInst::ICMP_EQ, SignExtend, X);
+      NewCmp->takeName(I);
+      I->replaceAllUsesWith(NewCmp);
+
+      // Remove add after icmp. If to do otherwise, assert will be triggered.
+      auto *ToRemove = cast<Instruction>(I->getOperand(0));
+      I->eraseFromParent();
+      ToRemove->eraseFromParent();
+      return true;
+    }
+  }
+  return false;
+}
+
 bool EVMCodegenPrepare::runOnFunction(Function &F) {
   bool Changed = false;
   for (auto &BB : F) {
@@ -146,6 +190,8 @@ bool EVMCodegenPrepare::runOnFunction(Function &F) {
       }
       if (I.getOpcode() == Instruction::AShr)
         Changed |= optimizeAShrInst(&I);
+      else if (I.getOpcode() == Instruction::ICmp)
+        Changed |= optimizeICmp(cast<ICmpInst>(&I));
     }
   }
 
