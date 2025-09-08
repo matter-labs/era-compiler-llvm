@@ -1210,3 +1210,26 @@ let isCodeGenOnly = 1, hasSideEffects = 1, isNotDuplicable = 1 in
 def PUSHDEPLOYADDRESS
   : NRI<(outs GPR:$res), (ins), [(set GPR:$res, (int_evm_pushdeployaddress))],
     "PUSHDEPLOYADDRESS $res">;
+
+// Constant predicate: C % 8 == 0 and C <= 255
+def ShAmtMul8U255 : PatLeaf<(imm), [{
+  auto *CN = dyn_cast<ConstantSDNode>(N);
+  if (!CN) return false;
+  const APInt &V = CN->getAPIntValue();
+  return V.ule(255) && (V.urem(8) == 0);
+}]>;
+
+// Transform shift-bits C -> byteIndex = (C/8) - 1
+def CToByteIndex : SDNodeXForm<imm, [{
+  auto *CN = cast<ConstantSDNode>(N);
+  uint64_t C = CN->getZExtValue();
+  uint64_t idx = (256 - C) / 8 - 1;
+  return CurDAG->getTargetConstant(idx, SDLoc(N), MVT::i256);
+}]>;
+
+// Fold: (sra C, (shl C, x))  ==>  SIGNEXTEND(byteIndex(C), x)
+// Note: generic DAG uses 'sra'/'shl'; EVM op is SIGNEXTEND(byteIndex, value).
+def : Pat<
+  (sra (shl GPR:$x, ShAmtMul8U255:$C), ShAmtMul8U255:$C),
+  (SIGNEXTEND (CONST_I256 (CToByteIndex ShAmtMul8U255:$C)), GPR:$x)
+>;
