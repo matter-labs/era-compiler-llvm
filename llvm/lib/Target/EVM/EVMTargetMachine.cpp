@@ -242,6 +242,8 @@ public:
 void EVMPassConfig::addIRPasses() {
   addPass(createEVMLowerIntrinsicsPass());
   if (TM->getOptLevel() != CodeGenOptLevel::None) {
+    addPass(createSeparateConstOffsetFromGEPPass(true));
+    addPass(createStraightLineStrengthReducePass());
     addPass(createNewGVNPass());
     addPass(createNaryReassociatePass());
     addPass(createEarlyCSEPass(true));
