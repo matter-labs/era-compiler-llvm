@@ -57,6 +57,7 @@
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/IntrinsicsAArch64.h"
 #include "llvm/IR/IntrinsicsAMDGPU.h"
+#include "llvm/IR/IntrinsicsEVM.h"
 #include "llvm/IR/IntrinsicsRISCV.h"
 #include "llvm/IR/IntrinsicsX86.h"
 #include "llvm/IR/LLVMContext.h"
@@ -3740,6 +3741,28 @@ static unsigned computeNumSignBitsVectorConstant(const Value *V,
   return MinSignBits;
 }
 
+static unsigned computeNumSignBitsForEVMSignExtend(const IntrinsicInst *II) {
+  auto *Ty = dyn_cast<IntegerType>(II->getType());
+  if (!Ty)
+    return 1;
+
+  unsigned BitWidth = Ty->getIntegerBitWidth();
+  if (BitWidth != 256)
+    return 1;
+
+  const auto *ByteIdxC = dyn_cast<ConstantInt>(II->getArgOperand(0));
+  if (!ByteIdxC)
+    return 1;
+
+  // ByteIdx must be in range [0, 31].
+  uint64_t ByteIdx = ByteIdxC->getZExtValue();
+  if (ByteIdx >= BitWidth / 8)
+    return 1;
+
+  unsigned Width = (ByteIdx + 1) * 8;
+  return BitWidth - Width + 1;
+}
+
 static unsigned ComputeNumSignBitsImpl(const Value *V,
                                        const APInt &DemandedElts,
                                        unsigned Depth, const SimplifyQuery &Q);
@@ -4070,6 +4093,8 @@ static unsigned ComputeNumSignBitsImpl(const Value *V,
         switch (II->getIntrinsicID()) {
         default:
           break;
+        case Intrinsic::evm_signextend:
+          return computeNumSignBitsForEVMSignExtend(II);
         case Intrinsic::abs:
           Tmp =
               ComputeNumSignBits(U->getOperand(0), DemandedElts, Depth + 1, Q);
@@ -9509,10 +9534,35 @@ static void setLimitsForBinOp(const BinaryOperator &BO, APInt &Lower,
   }
 }
 
+static ConstantRange getRangeForEVMSignExtend(const IntrinsicInst &II) {
+  unsigned BitWidth = II.getType()->getIntegerBitWidth();
+  if (BitWidth != 256)
+    return ConstantRange::getFull(BitWidth);
+
+  auto *ByteIdxC = dyn_cast<ConstantInt>(II.getArgOperand(0));
+  if (!ByteIdxC)
+    return ConstantRange::getFull(BitWidth);
+
+  // ByteIdx must be in range [0, 31].
+  uint64_t ByteIdx = ByteIdxC->getZExtValue();
+  if (ByteIdx >= BitWidth / 8)
+    return ConstantRange::getFull(BitWidth);
+
+  // Range that signextend produces is:
+  //  [ -2^(width-1), 2^(width-1)-1 ] in signed space
+  // Since ConstantRange is [Min, Max), and Max is exclusive, we need to add 1.
+  unsigned Width = (ByteIdx + 1) * 8;
+  return ConstantRange::getNonEmpty(
+      APInt::getSignedMinValue(Width).sext(BitWidth),
+      APInt::getSignedMaxValue(Width).sext(BitWidth) + 1);
+}
+
 static ConstantRange getRangeForIntrinsic(const IntrinsicInst &II) {
   unsigned Width = II.getType()->getScalarSizeInBits();
   const APInt *C;
   switch (II.getIntrinsicID()) {
+  case Intrinsic::evm_signextend:
+    return getRangeForEVMSignExtend(II);
   case Intrinsic::ctpop:
   case Intrinsic::ctlz:
   case Intrinsic::cttz:
