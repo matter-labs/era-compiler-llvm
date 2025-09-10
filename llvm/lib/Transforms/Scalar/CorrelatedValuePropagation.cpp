@@ -752,6 +752,8 @@ static bool narrowSDivOrSRem(BinaryOperator *Instr, const ConstantRange &LCR,
   assert(Instr->getOpcode() == Instruction::SDiv ||
          Instr->getOpcode() == Instruction::SRem);
 
+  return false;
+
   // Find the smallest power of two bitwidth that's sufficient to hold Instr's
   // operands.
   unsigned OrigWidth = Instr->getType()->getScalarSizeInBits();
@@ -885,6 +887,7 @@ static bool narrowUDivOrURem(BinaryOperator *Instr, const ConstantRange &XCR,
   assert(Instr->getOpcode() == Instruction::UDiv ||
          Instr->getOpcode() == Instruction::URem);
 
+  return false;
   // Find the smallest power of two bitwidth that's sufficient to hold Instr's
   // operands.
 
