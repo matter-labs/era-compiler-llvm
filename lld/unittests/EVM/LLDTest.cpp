@@ -27,7 +27,6 @@ static std::string expand(const char *Path) {
   llvm::SmallString<256> ThisPath;
   ThisPath.append(getenv("LLD_SRC_DIR"));
   llvm::sys::path::append(ThisPath, "unittests", "EVM", "Inputs", Path);
-  std::cerr << "Full path: " << ThisPath.str().str() << '\n';
   return ThisPath.str().str();
 }
 
@@ -354,4 +353,19 @@ TEST_F(LLDCTest, UndefNonRefSymbols) {
 
   LLVMDisposeMemoryBuffer(DeployObj);
   LLVMDisposeMemoryBuffer(DeployedObj);
+}
+
+TEST_F(LLDCTest, NoCrashOnNonELF) {
+  auto InFile = MemoryBuffer::getFile(expand("NonELFBinary.bin"),
+                                      /*IsText=*/false,
+                                      /*RequiresNullTerminator=*/false);
+  if (auto EC = InFile.getError())
+    exit(1);
+
+  std::string StrBinary = fromHex(InFile.get()->getBuffer().rtrim());
+  StringRef Binary(StrBinary.data(), StrBinary.size());
+  LLVMMemoryBufferRef BinaryBuffer = LLVMCreateMemoryBufferWithMemoryRange(
+      Binary.data(), Binary.size(), "", 1);
+  EXPECT_FALSE(LLVMIsELFEVM(BinaryBuffer));
+  LLVMDisposeMemoryBuffer(BinaryBuffer);
 }

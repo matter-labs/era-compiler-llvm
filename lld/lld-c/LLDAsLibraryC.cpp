@@ -575,13 +575,23 @@ static std::string createEVMLinkerSymbolsDefinitions(
 
 /// Returns true if the \p inBuffer contains an EVM ELF object file.
 LLVMBool LLVMIsELFEVM(LLVMMemoryBufferRef inBuffer) {
-  Expected<ELFObjectFile<ELF32BE>> inBinaryOrErr =
-      ELFObjectFile<ELF32BE>::create(unwrap(inBuffer)->getMemBufferRef());
-  if (!inBinaryOrErr) {
-    handleAllErrors(inBinaryOrErr.takeError(), [](const ErrorInfoBase &EI) {});
+  // Attempt to create a generic object binary. Internally, this invokes
+  // identify_magic, which inspects the magic bytes to determine the binary
+  // format.
+  Expected<std::unique_ptr<Binary>> BinOrErr =
+      createBinary(unwrap(inBuffer)->getMemBufferRef());
+  if (!BinOrErr) {
+    // Consume and discard error.
+    handleAllErrors(BinOrErr.takeError(), [](const ErrorInfoBase &EI) {});
     return false;
   }
-  return inBinaryOrErr.get().getArch() == Triple::evm;
+
+  Binary *Bin = BinOrErr->get();
+  // Check if it's an EVM ELF object.
+  if (auto *ELFObj = dyn_cast<ELFObjectFileBase>(Bin))
+    return ELFObj->getArch() == Triple::evm;
+
+  return false;
 }
 
 /// Returns an array of undefined linker symbol names
