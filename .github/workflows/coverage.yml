@@ -5,6 +5,9 @@ on:
     branches:
       - main
   pull_request:
+  schedule:
+    - cron: '0 0 * * 0' # Weekly on Sunday at 00:00
+  workflow_dispatch:
 
 defaults:
   run:
@@ -20,7 +23,9 @@ env:
   OUTPUT_HTML_DIR: COVERAGE
 
 jobs:
+
   run-with-coverage:
+    if: ${{ github.event_name == 'pull_request' || github.event_name == 'push' }}
     runs-on: matterlabs-ci-runner-high-performance
     container:
       image: ghcr.io/matter-labs/zksync-llvm-runner:latest
@@ -106,3 +111,125 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
           file: ${{ env.LCOV_FILE }}
           slug: ${{ github.repository }}
+
+  # Calculates full code coverage for LLVM
+  # based on regression AND integration tests together
+  # Runs for `main` branch by schedule or by request as it takes >3 hours to complete
+  integration-tests-coverage:
+    if: ${{ github.event_name != 'pull_request' && github.event_name != 'push' }}
+    runs-on: matterlabs-ci-runner-highdisk
+    container:
+      image: ghcr.io/matter-labs/zksync-llvm-runner:main
+    env:
+      BOOST_PREFIX: ${{ github.workspace }}/era-solidity/boost/lib
+      SOLC_PREFIX: ${{ github.workspace }}/era-solidity/build
+      TARGET: 'x86_64-unknown-linux-gnu'
+    steps:
+
+      - name: Checkout compiler-tester
+        uses: actions/checkout@v4
+        with:
+          ref: 'main'
+          repository: matter-labs/era-compiler-tester
+          submodules: recursive
+
+      # This step is required to checkout submodules
+      # that are disabled in .gitmodules config
+      - name: Checkout submodules
+        run: |
+          git config --global --add safe.directory '*'
+          git submodule update --init --force --depth=1 --recursive --checkout
+
+      - name: Remove llvm submodule
+        run: rm -rf llvm
+
+      - name: Checkout llvm
+        uses: actions/checkout@v4
+        with:
+          path: llvm
+
+      - name: Build LLVM for tester
+        uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
+        with:
+          clone-llvm: false
+
+      - name: Build compiler-tester
+        run: |
+          cargo build --release --target ${TARGET} --bin 'compiler-tester'
+          # Clean-up LLVM for the coverage build
+          rm -rf target-llvm
+
+      - name: Building solc
+        uses: matter-labs/era-compiler-ci/.github/actions/build-solc@v1
+        with:
+          cmake-build-type: 'Release'
+          working-dir: 'era-solidity'
+          upload-testing-binary: false
+
+      - name: Build LLVM with coverage
+        uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
+        with:
+          clone-llvm: 'false'
+          enable-coverage: true
+          enable-tests: true
+          enable-assertions: 'false'
+          ccache-key: ${{ format('llvm-{0}-{1}', runner.os, runner.arch) }}
+
+      - name: Build solx with coverage
+        env:
+          CARGO_CHECKOUT_DIR: /usr/local/cargo/git/checkouts
+          RUSTFLAGS: "-C instrument-coverage"
+        run: |
+          cargo build --target ${TARGET} \
+            --manifest-path ${CARGO_CHECKOUT_DIR}/solx-*/*/Cargo.toml \
+            --target-dir './target-solx/'
+
+      - name: Running Lit tests
+        run: |
+          ninja -C './target-llvm/build-final' verify-llvm -v || true
+          ninja -C './target-llvm/build-final' check-llvm-codegen-evm -v || true
+          ninja -C './target-llvm/build-final' check-llvm-codegen-generic -v || true
+          ninja -C './target-llvm/build-final' check-llvm-mc-evm -v || true
+          ninja -C './target-llvm/build-final' check-llvm-unit -v || true
+          llvm-profdata merge -sparse -o ${PROFDATA_FILE} ./target-llvm/build-final/profiles/*.profraw
+
+      - name: Run integration tests with coverage
+        run: |
+          TMP="${PROFDATA_FILE}.tmp"
+          for TEST_PATH in tests/solidity/complex/* tests/solidity/simple/* tests/solidity/ethereum/*; do
+            WORKDIR=$(basename ${TEST_PATH})
+            mkdir -p "${GITHUB_WORKSPACE}/${WORKDIR}"
+            ./target/${TARGET}/release/compiler-tester \
+              --target evm \
+              --toolchain ir-llvm \
+              --solx "./target-solx/${TARGET}/debug/solx" \
+              --load-system-contracts ./system-contracts-stable-build \
+              --path ${TEST_PATH} \
+              --workflow build \
+              --verbose
+          
+            mv *.profraw "${GITHUB_WORKSPACE}/${WORKDIR}/" || true
+            du -hs "${GITHUB_WORKSPACE}/${WORKDIR}"
+            find ${GITHUB_WORKSPACE}/${WORKDIR} -type f -name '*.profraw' -print > profiles.lst
+            if [[ -f "${PROFDATA_FILE}" ]]; then
+              llvm-profdata merge -sparse -num-threads="$(nproc)" -o "${TMP}" "${PROFDATA_FILE}" @profiles.lst
+            else
+              llvm-profdata merge -sparse -num-threads="$(nproc)" -o "${TMP}" @profiles.lst
+            fi
+            mv -f "${TMP}" "${PROFDATA_FILE}"
+            rm -rf "${GITHUB_WORKSPACE}/${WORKDIR}"
+          done
+
+      - name: Generate coverage reports
+        run: |
+          llvm-cov show --show-directory-coverage \
+            --format=html --output-dir=${OUTPUT_HTML_DIR} \
+            -instr-profile=${PROFDATA_FILE} ./target-solx/${TARGET}/debug/solx
+          llvm-cov export --format=lcov -instr-profile=${PROFDATA_FILE} \
+            ./target-solx/${TARGET}/debug/solx > ./llvm/${LCOV_FILE}
+
+      - name: Upload coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'Coverage integration tests HTML'
+          path: ${{ env.OUTPUT_HTML_DIR }}
