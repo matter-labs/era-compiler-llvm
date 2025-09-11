@@ -19,6 +19,34 @@ using namespace llvm::PatternMatch;
 
 #define DEBUG_TYPE "evmtti"
 
+static std::optional<Instruction *> foldSignExtendToConst(InstCombiner &IC,
+                                                          IntrinsicInst &II) {
+  constexpr unsigned BitWidth = 256;
+  if (!II.getType()->isIntegerTy(BitWidth))
+    return std::nullopt;
+
+  const auto *ByteIdxC = dyn_cast<ConstantInt>(II.getArgOperand(0));
+  if (!ByteIdxC)
+    return std::nullopt;
+
+  // ByteIdx must be in range [0, 31].
+  uint64_t ByteIdx = ByteIdxC->getZExtValue();
+  if (ByteIdx >= BitWidth / 8)
+    return std::nullopt;
+
+  // Compute known bits of the input.
+  KnownBits Known(BitWidth);
+  IC.computeKnownBits(II.getArgOperand(1), Known, 0, &II);
+
+  unsigned Width = (ByteIdx + 1) * 8;
+  APInt LowMask = APInt::getLowBitsSet(BitWidth, Width);
+  if (((Known.Zero | Known.One) & LowMask) == LowMask) {
+    APInt Folded = (Known.One & LowMask).trunc(Width).sext(BitWidth);
+    return IC.replaceInstUsesWith(II, ConstantInt::get(II.getType(), Folded));
+  }
+  return std::nullopt;
+}
+
 static std::optional<Instruction *> instCombineSignExtend(InstCombiner &IC,
                                                           IntrinsicInst &II) {
   // Fold signextend(b, signextend(b, x)) -> signextend(b, x)
@@ -28,7 +56,7 @@ static std::optional<Instruction *> instCombineSignExtend(InstCombiner &IC,
                                      m_Deferred(B), m_Value(X)))))
     return IC.replaceInstUsesWith(II, II.getArgOperand(1));
 
-  return std::nullopt;
+  return foldSignExtendToConst(IC, II);
 }
 
 std::optional<Instruction *>

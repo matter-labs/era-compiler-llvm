@@ -1630,6 +1630,30 @@ static void computeKnownBitsFromOperator(const Operator *I,
       switch (II->getIntrinsicID()) {
       default:
         break;
+      case Intrinsic::evm_signextend: {
+        auto *Ty = dyn_cast<IntegerType>(II->getType());
+        if (!Ty)
+          break;
+
+        unsigned BitWidth = Ty->getIntegerBitWidth();
+        if (BitWidth != 256)
+          break;
+
+        const auto *ByteIdxC = dyn_cast<ConstantInt>(II->getArgOperand(0));
+        if (!ByteIdxC)
+          break;
+
+        // ByteIdx must be in range [0, 31].
+        uint64_t ByteIdx = ByteIdxC->getZExtValue();
+        if (ByteIdx >= BitWidth / 8)
+          break;
+
+        computeKnownBits(I->getOperand(1), DemandedElts, Known2, Depth + 1, Q);
+        unsigned Width = (ByteIdx + 1) * 8;
+        Known = Known2.trunc(Width).sext(BitWidth);
+        break;
+      }
+
       case Intrinsic::abs: {
         computeKnownBits(I->getOperand(0), DemandedElts, Known2, Depth + 1, Q);
         bool IntMinIsPoison = match(II->getArgOperand(1), m_One());
@@ -3185,6 +3209,8 @@ static bool isKnownNonZeroFromOperator(const Operator *I,
         return true;
       case Intrinsic::experimental_get_vector_length:
         return isKnownNonZero(I->getOperand(0), Q, Depth);
+      case Intrinsic::evm_signextend:
+        return isKnownNonZero(II->getArgOperand(1), DemandedElts, Q, Depth);
       default:
         break;
       }
