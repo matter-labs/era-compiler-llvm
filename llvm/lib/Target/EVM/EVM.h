@@ -62,10 +62,8 @@ ModulePass *createEVMLinkRuntimePass();
 
 // Late passes.
 FunctionPass *createEVMOptimizeLiveIntervals();
-FunctionPass *createEVMRegColoring();
 FunctionPass *createEVMSingleUseExpression();
 FunctionPass *createEVMSplitCriticalEdges();
-FunctionPass *createEVMStackify();
 FunctionPass *createEVMBPStackification();
 FunctionPass *createEVMLowerJumpUnless();
 FunctionPass *createEVMPeepholePass();
@@ -80,10 +78,8 @@ void initializeEVMLowerIntrinsicsPass(PassRegistry &);
 void initializeEVMArgumentMovePass(PassRegistry &);
 void initializeEVMLinkRuntimePass(PassRegistry &);
 void initializeEVMOptimizeLiveIntervalsPass(PassRegistry &);
-void initializeEVMRegColoringPass(PassRegistry &);
 void initializeEVMSingleUseExpressionPass(PassRegistry &);
 void initializeEVMSplitCriticalEdgesPass(PassRegistry &);
-void initializeEVMStackifyPass(PassRegistry &);
 void initializeEVMBPStackificationPass(PassRegistry &);
 void initializeEVMAAWrapperPassPass(PassRegistry &);
 void initializeEVMExternalAAWrapperPass(PassRegistry &);
