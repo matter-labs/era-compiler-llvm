@@ -58,14 +58,12 @@ add_llvm_target(EVMCodeGen
   EVMMCInstLower.cpp
   EVMOptimizeLiveIntervals.cpp
   EVMPeephole.cpp
-  EVMRegColoring.cpp
   EVMRegisterInfo.cpp
   EVMSHA3ConstFolding.cpp
   EVMSingleUseExpression.cpp
   EVMSplitCriticalEdges.cpp
   EVMStackSolver.cpp
   EVMStackModel.cpp
-  EVMStackify.cpp
   EVMStackifyCodeEmitter.cpp
   EVMStackShuffler.cpp
   EVMSubtarget.cpp
