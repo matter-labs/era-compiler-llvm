@@ -36,13 +36,9 @@ using namespace llvm;
 // when assembly printing.
 cl::opt<bool>
     EVMKeepRegisters("evm-keep-registers", cl::Hidden,
-                      cl::desc("EVM: output stack registers in"
-                               " instruction output for test purposes only."),
-                      cl::init(false));
-cl::opt<bool>
-    EVMUseLocalStakify("evm-use-local-stackify", cl::Hidden,
-                       cl::desc("EVM: use the local stackification algorithm"),
-                       cl::init(false));
+                     cl::desc("EVM: output stack registers in"
+                              " instruction output for test purposes only."),
+                     cl::init(false));
 
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   // Register the target.
@@ -54,10 +50,8 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   initializeEVMLowerIntrinsicsPass(PR);
   initializeEVMOptimizeLiveIntervalsPass(PR);
   initializeEVMPeepholePass(PR);
-  initializeEVMRegColoringPass(PR);
   initializeEVMSingleUseExpressionPass(PR);
   initializeEVMSplitCriticalEdgesPass(PR);
-  initializeEVMStackifyPass(PR);
   initializeEVMBPStackificationPass(PR);
   initializeEVMAAWrapperPassPass(PR);
   initializeEVMExternalAAWrapperPass(PR);
@@ -275,15 +269,9 @@ void EVMPassConfig::addPreEmitPass() {
     addPass(createEVMSplitCriticalEdges());
     addPass(createEVMOptimizeLiveIntervals());
     addPass(createEVMSingleUseExpression());
-    if (EVMUseLocalStakify) {
-      // Run the register coloring pass to reduce the total number of registers.
-      addPass(createEVMRegColoring());
-      addPass(createEVMStackify());
-    } else {
-      addPass(createEVMBPStackification());
-      addPass(&StackSlotColoringID);
-      addPass(createEVMFinalizeStackFrames());
-    }
+    addPass(createEVMBPStackification());
+    addPass(&StackSlotColoringID);
+    addPass(createEVMFinalizeStackFrames());
 
     // Optimize branch instructions after stackification. This is done again
     // here, since EVMSplitCriticalEdges may introduce new BBs that could
