@@ -32,11 +32,10 @@ std::unique_ptr<LLVMTargetMachine> createTargetMachine() {
 class BytecodeSizeTest : public testing::Test {
 protected:
   static const char *MIRString;
+  static const char *MIRStringReadOnlyData;
   LLVMContext Context;
   std::unique_ptr<LLVMTargetMachine> TM;
   std::unique_ptr<MachineModuleInfo> MMI;
-  std::unique_ptr<MIRParser> Parser;
-  std::unique_ptr<Module> M;
 
   static void SetUpTestCase() {
     LLVMInitializeEVMTargetInfo();
@@ -44,33 +43,40 @@ protected:
     LLVMInitializeEVMTargetMC();
   }
 
-  void SetUp() override {
-    TM = createTargetMachine();
-    std::unique_ptr<MemoryBuffer> MBuffer =
-        MemoryBuffer::getMemBuffer(MIRString);
-    Parser = createMIRParser(std::move(MBuffer), Context);
+  std::unique_ptr<Module> parseMIR(StringRef MIR) {
+    std::unique_ptr<MemoryBuffer> MBuffer = MemoryBuffer::getMemBuffer(MIR);
+    std::unique_ptr<MIRParser> Parser =
+        createMIRParser(std::move(MBuffer), Context);
     if (!Parser)
       report_fatal_error("null MIRParser");
-    M = Parser->parseIRModule();
+    std::unique_ptr<Module> M = Parser->parseIRModule();
     if (!M)
       report_fatal_error("parseIRModule failed");
     M->setTargetTriple(TM->getTargetTriple().getTriple());
     M->setDataLayout(TM->createDataLayout());
-    MMI = std::make_unique<MachineModuleInfo>(TM.get());
     if (Parser->parseMachineFunctions(*M, *MMI))
       report_fatal_error("parseMachineFunctions failed");
+
+    return M;
+  }
+
+  void SetUp() override {
+    TM = createTargetMachine();
+    MMI = std::make_unique<MachineModuleInfo>(TM.get());
   }
 };
 
 TEST_F(BytecodeSizeTest, Test) {
-  uint64_t Size = EVM::calculateModuleCodeSize(*M, *MMI);
-  ASSERT_TRUE(Size == 131);
+  std::unique_ptr<Module> M(parseMIR(MIRString));
+  ASSERT_TRUE(EVM::calculateModuleCodeSize(*M, *MMI) == 131);
+
+  std::unique_ptr<Module> M2(parseMIR(MIRStringReadOnlyData));
+  // 23 = 21 (global variable initializers) + JUMPDEST + INVALID
+  ASSERT_TRUE(EVM::calculateModuleCodeSize(*M2, *MMI) == 23);
 }
 
 const char *BytecodeSizeTest::MIRString = R"MIR(
 --- |
-  ; ModuleID = '/Users/pavelkopyl/projects/mlab/era-compiler-tester/tests/llvm/evm/complex/egcd.ll'
-  source_filename = "/Users/pavelkopyl/projects/mlab/era-compiler-tester/tests/llvm/evm/complex/egcd.ll"
   target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
   target triple = "evm-unknown-unknown"
 
@@ -354,6 +360,40 @@ body:             |
     PUSH1_S i256 96
     PUSH0_S
     RETURN_S
+
+...
+)MIR";
+
+const char *BytecodeSizeTest::MIRStringReadOnlyData = R"MIR(
+--- |
+  target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
+  target triple = "evm"
+
+  @code_const.1 = private unnamed_addr addrspace(4) constant [7 x i8] c"global1"
+  @code_const.2 = private unnamed_addr addrspace(4) constant [7 x i8] c"global2"
+  @code_const.3 = private unnamed_addr addrspace(4) constant [7 x i8] c"global3"
+
+  ; The following globals are never generated and should not be taken into account.
+  @heap_const = private unnamed_addr addrspace(1) constant [7 x i8] c"invalid"
+  @code_global = addrspace(4) global i256 0
+  @code_global_ext = external addrspace(4) global i256
+
+  define void @test() noreturn {
+    unreachable
+  }
+
+...
+---
+name:            test
+alignment:       1
+tracksRegLiveness: true
+machineFunctionInfo:
+  isStackified:    true
+  numberOfParameters: 0
+  hasPushDeployAddress: false
+body:             |
+  bb.0 (%ir-block.0):
+    liveins: $arguments, $value_stack
 
 ...
 )MIR";
