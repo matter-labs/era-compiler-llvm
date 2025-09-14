@@ -67,13 +67,13 @@ FunctionPass *llvm::createEVMSingleUseExpression() {
 // the expression stack.
 static void imposeStackOrdering(MachineInstr *MI) {
   // Write the opaque VALUE_STACK register.
-  if (!MI->definesRegister(EVM::VALUE_STACK, /*TRI*/nullptr))
+  if (!MI->definesRegister(EVM::VALUE_STACK, /*TRI*/ nullptr))
     MI->addOperand(MachineOperand::CreateReg(EVM::VALUE_STACK,
                                              /*isDef=*/true,
                                              /*isImp=*/true));
 
   // Also read the opaque VALUE_STACK register.
-  if (!MI->readsRegister(EVM::VALUE_STACK, /*TRI*/nullptr))
+  if (!MI->readsRegister(EVM::VALUE_STACK, /*TRI*/ nullptr))
     MI->addOperand(MachineOperand::CreateReg(EVM::VALUE_STACK,
                                              /*isDef=*/false,
                                              /*isImp=*/true));
@@ -207,19 +207,19 @@ static bool hasOneUse(unsigned Reg, MachineInstr *Def, MachineRegisterInfo &MRI,
 // Test whether Def is safe and profitable to rematerialize.
 static bool shouldRematerialize(const MachineInstr &Def,
                                 const MachineRegisterInfo &MRI,
-                                LiveIntervals &LIS,
-                                const EVMInstrInfo *TII) {
+                                LiveIntervals &LIS, const EVMInstrInfo *TII) {
   // FIXME: remateralization of the CALLDATALOAD and ADD instructions
   // is just an ad-hoc solution to more aggressively form single use expressions
   // to eventually decrease runtime stack height, but this can significantly
   // increase a code size.
   unsigned Opcode = Def.getOpcode();
-  if (Opcode == EVM::CALLDATALOAD) {
+  if (Opcode == EVM::CALLDATALOAD &&
+      Def.getOperand(1).getReg() != Def.getOperand(0).getReg()) {
     MachineInstr *DefI = getVRegDef(Def.getOperand(1).getReg(), &Def, MRI, LIS);
     if (!DefI)
       return false;
 
-    return DefI->getOpcode() == EVM::CONST_I256 ? true : false;
+    return DefI->getOpcode() == EVM::CONST_I256;
   }
 
   if (Opcode == EVM::ADD) {
@@ -319,8 +319,8 @@ static bool isSafeToMove(const MachineOperand *Def, const MachineOperand *Use,
     Register Reg = MO.getReg();
 
     // If the register is dead here and at Insert, ignore it.
-    if (MO.isDead() && Insert->definesRegister(Reg, /*TRI*/nullptr) &&
-        !Insert->readsRegister(Reg, /*TRI*/nullptr))
+    if (MO.isDead() && Insert->definesRegister(Reg, /*TRI*/ nullptr) &&
+        !Insert->readsRegister(Reg, /*TRI*/ nullptr))
       continue;
 
     if (Register::isPhysicalRegister(Reg)) {
@@ -677,25 +677,23 @@ bool EVMSingleUseExpression::runOnMachineFunction(MachineFunction &MF) {
         // supports intra-block moves) and it's MachineSink's job to catch all
         // the sinking opportunities anyway.
         bool SameBlock = DefI->getParent() == &MBB;
-        bool CanMove = SameBlock &&
-                       isSafeToMove(Def, &Use, Insert, MFI, MRI) &&
+        bool CanMove = SameBlock && isSafeToMove(Def, &Use, Insert, MFI, MRI) &&
                        !TreeWalker.isOnStack(Reg);
         if (CanMove && hasOneUse(Reg, DefI, MRI, MDT, LIS)) {
-          Insert =
-              moveForSingleUse(Reg, Use, DefI, MBB, Insert, LIS, MFI, MRI);
+          Insert = moveForSingleUse(Reg, Use, DefI, MBB, Insert, LIS, MFI, MRI);
         } else if (shouldRematerialize(*DefI, MRI, LIS, TII)) {
           if (DefI->getOpcode() == EVM::CALLDATALOAD) {
-            MachineInstr *OffsetI = getVRegDef(DefI->getOperand(1).getReg(), DefI, MRI,
-                                               LIS);
+            MachineInstr *OffsetI =
+                getVRegDef(DefI->getOperand(1).getReg(), DefI, MRI, LIS);
             assert(OffsetI);
             Insert = rematerializeCheapDef(Reg, Use, *DefI, MBB,
-                                           Insert->getIterator(), LIS, MFI,
-                                           MRI, TII, TRI);
+                                           Insert->getIterator(), LIS, MFI, MRI,
+                                           TII, TRI);
 
             MachineOperand &OffsetMO = Insert->getOperand(1);
-            Insert = rematerializeCheapDef(OffsetMO.getReg(), OffsetMO, *OffsetI, MBB,
-                                           Insert->getIterator(), LIS, MFI,
-                                           MRI, TII, TRI);
+            Insert = rematerializeCheapDef(OffsetMO.getReg(), OffsetMO,
+                                           *OffsetI, MBB, Insert->getIterator(),
+                                           LIS, MFI, MRI, TII, TRI);
           } else if (DefI->getOpcode() == EVM::ADD) {
             MachineInstr *DefI1 =
                 getVRegDef(DefI->getOperand(1).getReg(), DefI, MRI, LIS);
@@ -729,8 +727,8 @@ bool EVMSingleUseExpression::runOnMachineFunction(MachineFunction &MF) {
                                            LIS, MFI, MRI, TII, TRI);
           } else {
             Insert = rematerializeCheapDef(Reg, Use, *DefI, MBB,
-                                         Insert->getIterator(), LIS, MFI,
-                                         MRI, TII, TRI);
+                                           Insert->getIterator(), LIS, MFI, MRI,
+                                           TII, TRI);
           }
         } else {
           // We failed to stackify the operand. If the problem was ordering
