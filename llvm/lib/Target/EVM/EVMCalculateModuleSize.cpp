@@ -123,6 +123,18 @@ uint64_t llvm::EVM::calculateFunctionCodeSize(const MachineFunction &MF) {
   return Size;
 }
 
+static uint64_t calculateReadOnlyDataSize(const Module &M) {
+  uint64_t Size = 0;
+  for (const GlobalVariable &GV : M.globals()) {
+    if (GV.getAddressSpace() != EVMAS::AS_CODE || !GV.hasInitializer())
+      continue;
+
+    if (const auto *CV = dyn_cast<ConstantDataSequential>(GV.getInitializer()))
+      Size += CV->getRawDataValues().size();
+  }
+  return Size;
+}
+
 uint64_t llvm::EVM::calculateModuleCodeSize(Module &M,
                                             const MachineModuleInfo &MMI) {
   uint64_t TotalSize = 0;
@@ -133,6 +145,8 @@ uint64_t llvm::EVM::calculateModuleCodeSize(Module &M,
     TotalSize += llvm::EVM::calculateFunctionCodeSize(*MF);
   }
 
+  // Take into account the read-only data that we append to the .text section.
+  TotalSize += calculateReadOnlyDataSize(M);
   // Take into account INVALID instruction at the end of the .text section.
   TotalSize++;
   return TotalSize;
