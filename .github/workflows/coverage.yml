@@ -87,6 +87,7 @@ jobs:
           ninja -C './target-llvm/build-final' check-llvm-codegen-generic -v || true
           ninja -C './target-llvm/build-final' check-llvm-mc-evm -v || true
           ninja -C './target-llvm/build-final' check-llvm-unit -v || true
+          ninja -C './target-llvm/build-final' check-lld-unit -v || true
 
       - name: Generate coverage reports
         run: |
@@ -191,6 +192,7 @@ jobs:
           ninja -C './target-llvm/build-final' check-llvm-codegen-generic -v || true
           ninja -C './target-llvm/build-final' check-llvm-mc-evm -v || true
           ninja -C './target-llvm/build-final' check-llvm-unit -v || true
+          ninja -C './target-llvm/build-final' check-lld-unit -v || true
           llvm-profdata merge -sparse -o ${PROFDATA_FILE} ./target-llvm/build-final/profiles/*.profraw
 
       - name: Run integration tests with coverage
