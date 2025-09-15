@@ -32,6 +32,7 @@
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Instructions.h"
 #include "llvm/IR/IntrinsicInst.h"
+#include "llvm/IR/IntrinsicsEVM.h"
 #include "llvm/IR/Module.h" // EraVM local
 #include "llvm/IR/Operator.h"
 #include "llvm/IR/PatternMatch.h"
@@ -654,12 +655,50 @@ static bool processSaturatingInst(SaturatingInst *SI, LazyValueInfo *LVI) {
   return true;
 }
 
+static bool processEVMSignExtend(IntrinsicInst *II, LazyValueInfo *LVI) {
+  constexpr unsigned BitWidth = 256;
+  if (!II->getType()->isIntegerTy(BitWidth))
+    return false;
+
+  const auto *ByteIdxC = dyn_cast<ConstantInt>(II->getArgOperand(0));
+  if (!ByteIdxC)
+    return false;
+
+  // ByteIdx must be in range [0, 31].
+  uint64_t ByteIdx = ByteIdxC->getZExtValue();
+  if (ByteIdx >= BitWidth / 8)
+    return false;
+
+  ConstantRange RRange =
+      LVI->getConstantRangeAtUse(II->getOperandUse(1), /*UndefAllowed*/ false);
+  if (RRange.isEmptySet())
+    return false;
+
+  // Range that signextend produces is:
+  //  [ -2^(width-1), 2^(width-1)-1 ] in signed space
+  // Since ConstantRange is [Min, Max), and Max is exclusive, we need to add 1.
+  unsigned Width = (ByteIdx + 1) * 8;
+  ConstantRange Range = ConstantRange::getNonEmpty(
+      APInt::getSignedMinValue(Width).sext(BitWidth),
+      APInt::getSignedMaxValue(Width).sext(BitWidth) + 1);
+
+  if (!Range.contains(RRange))
+    return false;
+
+  II->replaceAllUsesWith(II->getArgOperand(1));
+  II->eraseFromParent();
+  return true;
+}
+
 /// Infer nonnull attributes for the arguments at the specified callsite.
 static bool processCallSite(CallBase &CB, LazyValueInfo *LVI) {
 
   if (CB.getIntrinsicID() == Intrinsic::abs) {
     return processAbsIntrinsic(&cast<IntrinsicInst>(CB), LVI);
   }
+
+  if (CB.getIntrinsicID() == Intrinsic::evm_signextend)
+    return processEVMSignExtend(&cast<IntrinsicInst>(CB), LVI);
 
   if (auto *CI = dyn_cast<CmpIntrinsic>(&CB)) {
     return processCmpIntrinsic(CI, LVI);
