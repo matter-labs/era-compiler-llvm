@@ -181,7 +181,9 @@ jobs:
       # it includes `check-llvm` and special codegen tests
       # called via `verify-llvm-codegen-opt` and `verify-llvm-codegen-llc` targets
       - name: Running Lit tests
-        run: ninja -C './target-llvm/build-final' verify-llvm -v
+        run: |
+          ninja -C './target-llvm/build-final' verify-llvm -v
+          ninja -C './target-llvm/build-final' check-lld-unit -v
 
       - name: clang-tidy
         if: github.event_name == 'pull_request'
