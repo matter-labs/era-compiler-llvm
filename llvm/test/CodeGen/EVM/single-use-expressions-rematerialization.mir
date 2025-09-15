@@ -1,0 +1,61 @@
+# RUN: llc -x mir -run-pass=evm-single-use-expressions < %s | FileCheck %s
+
+--- |
+  ; ModuleID = 'rematerialize_calldataload.ll'
+  source_filename = "rematerialize_calldataload.ll"
+  target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
+  target triple = "evm-unknown-unknown"
+  
+  define void @dont_rematerialize_redefinition() {
+    ret void
+  }
+
+  define void @rematerialize_calldataload() {
+    ret void
+  }
+
+...
+---
+# CHECK-LABEL: name: dont_rematerialize_redefinition
+# CHECK: CALLDATALOAD %{{[0-9]+}}
+# CHECK-NOT: CALLDATALOAD %{{[0-9]+}}
+name:            dont_rematerialize_redefinition
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    liveins: $arguments
+  
+    %0:gpr = ARGUMENT 0, implicit $arguments
+    %2:gpr = CONST_I256 i256 1, implicit-def dead $arguments
+    JUMP %bb.2, implicit-def $arguments
+
+  bb.1:
+    %4:gpr = MUL %2, %0, implicit-def dead $arguments
+    RET %4, implicit-def dead $arguments
+
+  bb.2:
+    %2:gpr = CALLDATALOAD %2, implicit-def dead $arguments
+    %4:gpr = ADD %2, %2, implicit-def dead $arguments
+    JUMP %bb.1, implicit-def $arguments
+
+...
+---
+# CHECK-LABEL: name: rematerialize_calldataload
+# CHECK: [[K1:%[0-9]+]]:gpr = CONST_I256 i256 1
+# CHECK-NEXT: [[L1:%[0-9]+]]:gpr = CALLDATALOAD [[K1]]
+# CHECK-NEXT: [[K2:%[0-9]+]]:gpr = CONST_I256 i256 1
+# CHECK-NEXT: [[L2:%[0-9]+]]:gpr = CALLDATALOAD [[K2]]
+# CHECK-NEXT: [[SUM:%[0-9]+]]:gpr = ADD [[L2]], [[L1]]
+name:            rematerialize_calldataload
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    liveins: $arguments
+  
+    %0:gpr = ARGUMENT 0, implicit $arguments
+    %2:gpr = CONST_I256 i256 1, implicit-def dead $arguments
+    %3:gpr = CALLDATALOAD %2, implicit-def dead $arguments
+    %4:gpr = ADD %3, %3, implicit-def dead $arguments
+    RET %4, implicit-def dead $arguments
+
+...
