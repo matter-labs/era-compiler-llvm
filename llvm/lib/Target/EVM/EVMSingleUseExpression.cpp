@@ -213,7 +213,10 @@ static bool shouldRematerialize(const MachineInstr &Def,
   // to eventually decrease runtime stack height, but this can significantly
   // increase a code size.
   unsigned Opcode = Def.getOpcode();
-  if (Opcode == EVM::CALLDATALOAD) {
+  if (Opcode == EVM::CALLDATALOAD &&
+      // Don't rematerialize CALLDATALOAD which redefines the register it uses,
+      // as the use will no longer contribute to the register pressure.
+      Def.getOperand(0).getReg() != Def.getOperand(1).getReg()) {
     MachineInstr *DefI = getVRegDef(Def.getOperand(1).getReg(), &Def, MRI, LIS);
     if (!DefI)
       return false;
