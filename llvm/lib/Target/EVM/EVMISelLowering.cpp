@@ -110,6 +110,25 @@ const char *EVMTargetLowering::getTargetNodeName(unsigned Opcode) const {
   return nullptr;
 }
 
+bool EVMTargetLowering::isLegalAddressingMode(const DataLayout &DL,
+                                              const AddrMode &AM, Type *Ty,
+                                              unsigned AS,
+                                              Instruction *I) const {
+  // We don't support global and scaled addresses.
+  if (AM.BaseGV || AM.Scale)
+    return false;
+
+  // For CALLDATALOAD, benchmark numbers showed it is not profitable to set
+  // that we support r + imm.
+  if (AS == EVMAS::AS_CALL_DATA)
+    return !(AM.HasBaseReg && AM.BaseOffs);
+
+  // Allow r + imm addressing mode for other address spaces. This can help
+  // to reduce register pressure by sinking add with immediate to its uses,
+  // minimizing the need for extra registers and reducing spills and reloads.
+  return true;
+}
+
 //===----------------------------------------------------------------------===//
 // EVM Lowering private implementation.
 //===----------------------------------------------------------------------===//

@@ -40,6 +40,10 @@ public:
   /// DAG node.
   const char *getTargetNodeName(unsigned Opcode) const override;
 
+  bool isLegalAddressingMode(const DataLayout &DL, const AddrMode &AM, Type *Ty,
+                             unsigned AS,
+                             Instruction *I = nullptr) const override;
+
   EVT getSetCCResultType(const DataLayout &DL, LLVMContext &Context,
                          EVT VT) const override {
     return MVT::i256;
