@@ -10,11 +10,11 @@ define i256 @test_as1(i256 %arg) {
 ; CHECK-LABEL: define i256 @test_as1(
 ; CHECK-SAME: i256 [[ARG:%.*]]) {
 ; CHECK-NEXT:  [[ENTRY:.*]]:
-; CHECK-NEXT:    [[ADD:%.*]] = add i256 [[ARG]], 4
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp ugt i256 [[ARG]], 10
 ; CHECK-NEXT:    br i1 [[CMP]], label %[[THEN:.*]], label %[[EXIT:.*]]
 ; CHECK:       [[THEN]]:
-; CHECK-NEXT:    [[INTTOPTR:%.*]] = inttoptr i256 [[ADD]] to ptr addrspace(1)
+; CHECK-NEXT:    [[SUNKADDR:%.*]] = inttoptr i256 [[ARG]] to ptr addrspace(1)
+; CHECK-NEXT:    [[INTTOPTR:%.*]] = getelementptr i8, ptr addrspace(1) [[SUNKADDR]], i256 4
 ; CHECK-NEXT:    [[LOAD:%.*]] = load i256, ptr addrspace(1) [[INTTOPTR]], align 1
 ; CHECK-NEXT:    br label %[[EXIT]]
 ; CHECK:       [[EXIT]]:
@@ -40,11 +40,11 @@ define i256 @test_as5(i256 %arg) {
 ; CHECK-LABEL: define i256 @test_as5(
 ; CHECK-SAME: i256 [[ARG:%.*]]) {
 ; CHECK-NEXT:  [[ENTRY:.*]]:
-; CHECK-NEXT:    [[ADD:%.*]] = add i256 [[ARG]], 4
 ; CHECK-NEXT:    [[CMP:%.*]] = icmp ugt i256 [[ARG]], 10
 ; CHECK-NEXT:    br i1 [[CMP]], label %[[THEN:.*]], label %[[EXIT:.*]]
 ; CHECK:       [[THEN]]:
-; CHECK-NEXT:    [[INTTOPTR:%.*]] = inttoptr i256 [[ADD]] to ptr addrspace(5)
+; CHECK-NEXT:    [[SUNKADDR:%.*]] = inttoptr i256 [[ARG]] to ptr addrspace(5)
+; CHECK-NEXT:    [[INTTOPTR:%.*]] = getelementptr i8, ptr addrspace(5) [[SUNKADDR]], i256 4
 ; CHECK-NEXT:    [[LOAD:%.*]] = load i256, ptr addrspace(5) [[INTTOPTR]], align 1
 ; CHECK-NEXT:    br label %[[EXIT]]
 ; CHECK:       [[EXIT]]:
