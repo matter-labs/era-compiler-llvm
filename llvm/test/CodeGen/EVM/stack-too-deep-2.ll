@@ -1,8 +1,10 @@
 ; REQUIRES: asserts
-; RUN: llc -evm-stack-region-offset=128 -evm-stack-region-size=192 --debug-only=evm-stack-solver < %s 2>&1 | FileCheck %s
+; RUN: llc -evm-stack-region-offset=128 -evm-stack-region-size=160 --debug-only=evm-stack-solver < %s 2>&1 | FileCheck %s
 
 target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
 target triple = "evm-unknown-unknown"
+
+declare void @llvm.evm.revert(ptr addrspace(1), i256) noreturn
 
 declare i256 @checked_mul_uint8(i256)
 
@@ -10,13 +12,13 @@ declare i256 @checked_mul_uint8(i256)
 ; succesfully compiles the function. Also, check that we allocated the exact amount of
 ; stack space needed for the function, without any warnings about allocated stack region size.
 
-; CHECK: Unreachable slots found: 30, iteration: 1
-; CHECK: Spilling 2 registers
-; CHECK: Unreachable slots found: 20, iteration: 2
+; CHECK: Unreachable slots found: 20, iteration: 1
 ; CHECK: Spilling 1 registers
-; CHECK: Unreachable slots found: 8, iteration: 3
+; CHECK: Unreachable slots found: 18, iteration: 2
 ; CHECK: Spilling 1 registers
-; CHECK: Unreachable slots found: 6, iteration: 4
+; CHECK: Unreachable slots found: 14, iteration: 3
+; CHECK: Spilling 1 registers
+; CHECK: Unreachable slots found: 7, iteration: 4
 ; CHECK: Spilling 1 registers
 ; CHECK: Unreachable slots found: 2, iteration: 5
 ; CHECK: Spilling 1 registers
@@ -97,6 +99,7 @@ for_join65:                                       ; preds = %if_join84, %checked
   br label %for_condition22
 
 shift_left_non_overflow.i411:                     ; preds = %if_join309, %for_condition62
+  tail call void @llvm.evm.return(ptr addrspace(1) null, i256 0)
   unreachable
 
 checked_add_uint8.exit:                           ; preds = %for_condition62
