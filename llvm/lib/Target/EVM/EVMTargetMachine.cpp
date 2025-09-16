@@ -235,8 +235,7 @@ void EVMPassConfig::addIRPasses() {
     addPass(createStraightLineStrengthReducePass());
     // SeparateConstOffsetFromGEP and SLSR creates common expressions which
     // GVN or EarlyCSE can reuse.
-    addPass(createNewGVNPass());
-    addPass(createGVNHoistPass());
+    addPass(createGVNPass());
     // Run NaryReassociate after EarlyCSE/GVN to be more effective.
     addPass(createNaryReassociatePass());
     // Call EarlyCSE pass to find and remove subexpressions in the lowered
