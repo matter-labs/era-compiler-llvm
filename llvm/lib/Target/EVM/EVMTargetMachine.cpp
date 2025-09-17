@@ -224,8 +224,8 @@ bool EVMPassConfig::addPreISel() {
 }
 
 void EVMPassConfig::addCodeGenPrepare() {
-  addPass(createEVMCodegenPreparePass());
   TargetPassConfig::addCodeGenPrepare();
+  addPass(createEVMCodegenPreparePass());
 }
 
 bool EVMPassConfig::addInstSelector() {
