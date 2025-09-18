@@ -471,3 +471,19 @@ define void @test_as1_alias_extcodecopy() {
   call void @llvm.evm.extcodecopy(i256 0, ptr addrspace(1) null, ptr addrspace(4) null, i256 32)
   ret void
 }
+
+; CHECK-LABEL: Function: test_as1_alias_return_nonprecise
+; CHECK: NoModRef:  Ptr: i256* inttoptr (i256 32 to ptr addrspace(1))	<->  call void @llvm.evm.return
+define void @test_as1_alias_return_nonprecise(i256 %size) noreturn {
+  store i256 1, ptr addrspace(1) inttoptr (i256 32 to ptr addrspace(1)), align 32
+  call void @llvm.evm.return(ptr addrspace(1) inttoptr (i256 128 to ptr addrspace(1)), i256 %size)
+  unreachable
+}
+
+; CHECK-LABEL: Function: test_as1_part_alias_return_nonprecise
+; CHECK: Just Ref:  Ptr: i256* inttoptr (i256 100 to ptr addrspace(1))	<->  call void @llvm.evm.return
+define void @test_as1_part_alias_return_nonprecise(i256 %size) noreturn {
+  store i256 1, ptr addrspace(1) inttoptr (i256 100 to ptr addrspace(1)), align 32
+  call void @llvm.evm.return(ptr addrspace(1) inttoptr (i256 128 to ptr addrspace(1)), i256 %size)
+  unreachable
+}
