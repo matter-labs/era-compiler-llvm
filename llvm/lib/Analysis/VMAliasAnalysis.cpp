@@ -112,7 +112,7 @@ AliasResult VMAAResult::alias(const MemoryLocation &LocA,
     return AAResultBase::alias(LocA, LocB, AAQI, I);
 
   // Don't check unknown memory locations.
-  if (!LocA.Size.isPrecise() || !LocB.Size.isPrecise())
+  if (!LocA.Size.isPrecise() && !LocB.Size.isPrecise())
     return AAResultBase::alias(LocA, LocB, AAQI, I);
 
   // Only 256-bit keys are valid for storage.
@@ -165,6 +165,23 @@ AliasResult VMAAResult::alias(const MemoryLocation &LocA,
       return AliasResult::MustAlias;
     return AliasResult::PartialAlias;
   }
+
+  // If one of the locations is imprecise, they don’t alias as long as
+  // the other location is precise and ends before the first one begins.
+  if (LocB.Size == LocationSize::afterPointer()) {
+    if (StartBVal.sge(StartAVal + LocA.Size.getValue()))
+      return AliasResult::NoAlias;
+    return AliasResult::PartialAlias;
+  }
+
+  if (LocA.Size == LocationSize::afterPointer()) {
+    if (StartAVal.sge(StartBVal + LocB.Size.getValue()))
+      return AliasResult::NoAlias;
+    return AliasResult::PartialAlias;
+  }
+
+  if (!LocA.Size.isPrecise() || !LocB.Size.isPrecise())
+    return AAResultBase::alias(LocA, LocB, AAQI, I);
 
   auto DoesOverlap = [](const APInt &X, const APInt &XEnd, const APInt &Y) {
     return Y.sge(X) && Y.slt(XEnd);
