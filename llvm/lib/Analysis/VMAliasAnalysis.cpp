@@ -111,14 +111,17 @@ AliasResult VMAAResult::alias(const MemoryLocation &LocA,
   if (!StorageAS.count(ASA) && !HeapAS.count(ASA))
     return AAResultBase::alias(LocA, LocB, AAQI, I);
 
+  LocationSize SizeA = LocA.Size;
+  LocationSize SizeB = LocB.Size;
   // Don't check unknown memory locations.
-  if (!LocA.Size.isPrecise() || !LocB.Size.isPrecise())
+  if ((!SizeA.isPrecise() && SizeA != LocationSize::afterPointer()) ||
+      (!SizeB.isPrecise() && SizeB != LocationSize::afterPointer()))
     return AAResultBase::alias(LocA, LocB, AAQI, I);
 
   // Only 256-bit keys are valid for storage.
   if (StorageAS.count(ASA)) {
     constexpr unsigned KeyByteWidth = 32;
-    if (LocA.Size != KeyByteWidth || LocB.Size != KeyByteWidth)
+    if (SizeA != KeyByteWidth || SizeB != KeyByteWidth)
       return AAResultBase::alias(LocA, LocB, AAQI, I);
   }
 
@@ -158,21 +161,23 @@ AliasResult VMAAResult::alias(const MemoryLocation &LocA,
   if (StartAVal == StartBVal) {
     // If either of the memory references is empty, it doesn't matter what the
     // pointer values are.
-    if (LocA.Size.isZero() || LocB.Size.isZero())
+    if (SizeA.isZero() || SizeB.isZero())
       return AliasResult::NoAlias;
 
-    if (LocA.Size == LocB.Size)
+    if (SizeA == SizeB)
       return AliasResult::MustAlias;
     return AliasResult::PartialAlias;
   }
 
-  auto DoesOverlap = [](const APInt &X, const APInt &XEnd, const APInt &Y) {
-    return Y.sge(X) && Y.slt(XEnd);
+  auto DoesOverlap = [](const APInt &XStart, const LocationSize &XSize,
+                        const APInt &YStart) {
+    return YStart.sge(XStart) && ((XSize == LocationSize::afterPointer() ||
+                                   YStart.slt(XStart + XSize.getValue())));
   };
 
   // For heap accesses, if locations don't overlap, they are not aliasing.
-  if (!DoesOverlap(StartAVal, StartAVal + LocA.Size.getValue(), StartBVal) &&
-      !DoesOverlap(StartBVal, StartBVal + LocB.Size.getValue(), StartAVal))
+  if (!DoesOverlap(StartAVal, SizeA, StartBVal) &&
+      !DoesOverlap(StartBVal, SizeB, StartAVal))
     return AliasResult::NoAlias;
   return AliasResult::PartialAlias;
 }
