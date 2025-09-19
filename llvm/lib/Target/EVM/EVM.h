@@ -52,6 +52,8 @@ FunctionPass *createEVMCodegenPreparePass();
 ImmutablePass *createEVMAAWrapperPass();
 ImmutablePass *createEVMExternalAAWrapperPass();
 ModulePass *createEVMAlwaysInlinePass();
+ModulePass *createEVMRewriteToFreePtrPass();
+ModulePass *createEVMRewriteFromFreePtrPass();
 
 // ISel and immediate followup passes.
 FunctionPass *createEVMISelDag(EVMTargetMachine &TM,
@@ -89,6 +91,8 @@ void initializeEVMFinalizeStackFramesPass(PassRegistry &);
 void initializeEVMMarkRecursiveFunctionsPass(PassRegistry &);
 void initializeEVMConstantUnfoldingPass(PassRegistry &);
 void initializeEVMPeepholePass(PassRegistry &);
+void initializeEVMRewriteToFreePtrPass(PassRegistry &);
+void initializeEVMRewriteFromFreePtrPass(PassRegistry &);
 
 struct EVMLinkRuntimePass : PassInfoMixin<EVMLinkRuntimePass> {
   EVMLinkRuntimePass() = default;
@@ -113,6 +117,16 @@ struct EVMMarkRecursiveFunctionsPass
 
 struct EVMAlwaysInlinePass : PassInfoMixin<EVMAlwaysInlinePass> {
   EVMAlwaysInlinePass() = default;
+  PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
+};
+
+struct EVMRewriteToFreePtrPass : PassInfoMixin<EVMRewriteToFreePtrPass> {
+  EVMRewriteToFreePtrPass() = default;
+  PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
+};
+
+struct EVMRewriteFromFreePtrPass : PassInfoMixin<EVMRewriteFromFreePtrPass> {
+  EVMRewriteFromFreePtrPass() = default;
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
 };
 

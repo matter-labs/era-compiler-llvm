@@ -60,6 +60,8 @@ extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEVMTarget() {
   initializeEVMFinalizeStackFramesPass(PR);
   initializeEVMMarkRecursiveFunctionsPass(PR);
   initializeEVMConstantUnfoldingPass(PR);
+  initializeEVMRewriteToFreePtrPass(PR);
+  initializeEVMRewriteFromFreePtrPass(PR);
 }
 
 static std::string computeDataLayout() {
@@ -135,6 +137,12 @@ void EVMTargetMachine::registerPassBuilderCallbacks(PassBuilder &PB) {
           PM.addPass(MergeIdenticalBBPass());
         if (Level.isOptimizingForSpeed())
           PM.addPass(EVMSHA3ConstFoldingPass());
+      });
+
+  PB.registerPreInlinerOptimizationsEPCallback(
+      [](ModulePassManager &PM, OptimizationLevel Level) {
+        if (Level != OptimizationLevel::O0)
+          PM.addPass((EVMRewriteToFreePtrPass()));
       });
 
   PB.registerAnalysisRegistrationCallback([](FunctionAnalysisManager &FAM) {
@@ -220,6 +228,7 @@ void EVMPassConfig::addIRPasses() {
 bool EVMPassConfig::addPreISel() {
   TargetPassConfig::addPreISel();
   addPass(createEVMMarkRecursiveFunctionsPass());
+  addPass(createEVMRewriteFromFreePtrPass());
   return false;
 }
 

@@ -40,6 +40,8 @@ add_llvm_target(EVMCodeGen
   EVMOptimizeLiveIntervals.cpp
   EVMPeephole.cpp
   EVMRegisterInfo.cpp
+  EVMRewriteToFreePtr.cpp
+  EVMRewriteFromFreePtr.cpp
   EVMSHA3ConstFolding.cpp
   EVMSingleUseExpression.cpp
   EVMSplitCriticalEdges.cpp
