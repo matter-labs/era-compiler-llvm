@@ -285,6 +285,23 @@ define i256 @test_as6_large() {
   ret i256 %ret
 }
 
+define i256 @test_opt_staticcall(ptr addrspace(5) %ptr1, ptr addrspace(6) %ptr2) {
+; CHECK-LABEL: define noundef i256 @test_opt_staticcall
+; CHECK-SAME: (ptr addrspace(5) nocapture writeonly [[PTR1:%.*]], ptr addrspace(6) nocapture writeonly [[PTR2:%.*]]) local_unnamed_addr #[[ATTR3]] {
+; CHECK-NEXT:    store i256 1, ptr addrspace(5) [[PTR1]], align 32
+; CHECK-NEXT:    store i256 2, ptr addrspace(6) [[PTR2]], align 32
+; CHECK-NEXT:    [[TMP1:%.*]] = tail call i256 @llvm.evm.staticcall(i256 1, i256 1, ptr addrspace(1) null, i256 1, ptr addrspace(1) null, i256 1)
+; CHECK-NEXT:    ret i256 3
+;
+  store i256 1, ptr addrspace(5) %ptr1, align 32
+  store i256 2, ptr addrspace(6) %ptr2, align 32
+  call i256 @llvm.evm.staticcall(i256 1, i256 1, ptr addrspace(1) null, i256 1, ptr addrspace(1) null, i256 1)
+  %ret1 = load i256, ptr addrspace(5) %ptr1
+  %ret2 = load i256, ptr addrspace(6) %ptr2
+  %ret = add i256 %ret1, %ret2
+  ret i256 %ret
+}
+
 ; Verify that in the following tests all load operations are preserved.
 
 define i256 @test_noopt_create(ptr addrspace(5) %ptr1, ptr addrspace(6) %ptr2) {
@@ -341,26 +358,6 @@ define i256 @test_noopt_call(ptr addrspace(5) %ptr1, ptr addrspace(6) %ptr2) {
   store i256 1, ptr addrspace(5) %ptr1, align 32
   store i256 2, ptr addrspace(6) %ptr2, align 32
   call i256 @llvm.evm.call(i256 1, i256 1, i256 1, ptr addrspace(1) null, i256 1, ptr addrspace(1) null, i256 1)
-  %ret1 = load i256, ptr addrspace(5) %ptr1
-  %ret2 = load i256, ptr addrspace(6) %ptr2
-  %ret = add i256 %ret1, %ret2
-  ret i256 %ret
-}
-
-define i256 @test_noopt_staticcall(ptr addrspace(5) %ptr1, ptr addrspace(6) %ptr2) {
-; CHECK-LABEL: define i256 @test_noopt_staticcall
-; CHECK-SAME: (ptr addrspace(5) nocapture [[PTR1:%.*]], ptr addrspace(6) nocapture [[PTR2:%.*]]) local_unnamed_addr #[[ATTR3]] {
-; CHECK-NEXT:    store i256 1, ptr addrspace(5) [[PTR1]], align 32
-; CHECK-NEXT:    store i256 2, ptr addrspace(6) [[PTR2]], align 32
-; CHECK-NEXT:    [[TMP1:%.*]] = tail call i256 @llvm.evm.staticcall(i256 1, i256 1, ptr addrspace(1) null, i256 1, ptr addrspace(1) null, i256 1)
-; CHECK-NEXT:    [[RET1:%.*]] = load i256, ptr addrspace(5) [[PTR1]], align 32
-; CHECK-NEXT:    [[RET2:%.*]] = load i256, ptr addrspace(6) [[PTR2]], align 32
-; CHECK-NEXT:    [[RET:%.*]] = add i256 [[RET2]], [[RET1]]
-; CHECK-NEXT:    ret i256 [[RET]]
-;
-  store i256 1, ptr addrspace(5) %ptr1, align 32
-  store i256 2, ptr addrspace(6) %ptr2, align 32
-  call i256 @llvm.evm.staticcall(i256 1, i256 1, ptr addrspace(1) null, i256 1, ptr addrspace(1) null, i256 1)
   %ret1 = load i256, ptr addrspace(5) %ptr1
   %ret2 = load i256, ptr addrspace(6) %ptr2
   %ret = add i256 %ret1, %ret2
