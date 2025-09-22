@@ -25,6 +25,10 @@ class EVMTargetLowering final : public TargetLowering {
 public:
   EVMTargetLowering(const TargetMachine &TM, const EVMSubtarget &STI);
 
+  bool isLegalAddressingMode(const DataLayout &DL, const AddrMode &AM, Type *Ty,
+                             unsigned AS,
+                             Instruction *I = nullptr) const override;
+
   EVT getSetCCResultType(const DataLayout &DL, LLVMContext &Context,
                          EVT VT) const override {
     return MVT::i256;
