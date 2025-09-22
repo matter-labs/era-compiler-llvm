@@ -343,8 +343,8 @@ define i256 @test_as1_alias_call(ptr addrspace(1) %ptr1) {
 }
 
 ; CHECK-LABEL: Function: test_as6_as5_alias_staticcall
-; CHECK: Both ModRef: Ptr: i256* %ptr1	<->  %ret = call i256 @llvm.evm.staticcall
-; CHECK: Both ModRef: Ptr: i256* %ptr2	<->  %ret = call i256 @llvm.evm.staticcall
+; CHECK: Just Ref: Ptr: i256* %ptr1	<->  %ret = call i256 @llvm.evm.staticcall
+; CHECK: Just Ref: Ptr: i256* %ptr2	<->  %ret = call i256 @llvm.evm.staticcall
 define i256 @test_as6_as5_alias_staticcall(ptr addrspace(5) %ptr1) {
   store i256 1, ptr addrspace(5) %ptr1, align 32
   %ptr2 = inttoptr i256 32 to ptr addrspace(6)

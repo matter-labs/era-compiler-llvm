@@ -109,6 +109,7 @@ ModRefInfo EVMAAResult::getModRefInfo(const CallBase *Call,
   unsigned AS = Loc.Ptr->getType()->getPointerAddressSpace();
   switch (II->getIntrinsicID()) {
   case Intrinsic::evm_return:
+  case Intrinsic::evm_staticcall:
     if (AS == EVMAS::AS_STORAGE || AS == EVMAS::AS_TSTORAGE)
       return ModRefInfo::Ref;
     break;
@@ -117,7 +118,6 @@ ModRefInfo EVMAAResult::getModRefInfo(const CallBase *Call,
   case Intrinsic::evm_call:
   case Intrinsic::evm_callcode:
   case Intrinsic::evm_delegatecall:
-  case Intrinsic::evm_staticcall:
     if (AS == EVMAS::AS_STORAGE || AS == EVMAS::AS_TSTORAGE)
       return ModRefInfo::ModRef;
     break;
