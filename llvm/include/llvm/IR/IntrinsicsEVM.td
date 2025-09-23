@@ -108,6 +108,10 @@ def int_evm_msize : Intrinsic<[llvm_i256_ty], [], [IntrWillReturn]>;
 
 def int_evm_pc : Intrinsic<[llvm_i256_ty], [], [IntrWillReturn]>;
 
+// TODO: #904: Set IntrInaccessibleMemOnly attribute to gas intrinsic.
+// Currently, it is not set because benchmark numbers showed that it is not
+// profitable to do that for heap address space. Revisit this decision once
+// optimization for free ptr updates is implemented.
 def int_evm_gas : Intrinsic<[llvm_i256_ty], [], [IntrWillReturn]>;
 
 // Getting values from the context.

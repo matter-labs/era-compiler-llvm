@@ -53,6 +53,8 @@ define i256 @test_different_locsizes() {
   ret i256 %ret
 }
 
+; TODO: #904: It is safe to remove load in this test, but it is not done since benchmark
+; numbers showed that it is not profitable to do that for heap address space.
 define i256 @test_gas_as1() {
 ; CHECK-LABEL: define i256 @test_gas_as1
 ; CHECK-SAME: () local_unnamed_addr #[[ATTR2:[0-9]+]] {
@@ -74,8 +76,7 @@ define i256 @test_gas_as5() {
 ; CHECK-SAME: () local_unnamed_addr #[[ATTR2]] {
 ; CHECK-NEXT:    store i256 2, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
 ; CHECK-NEXT:    [[GAS:%.*]] = tail call i256 @llvm.evm.gas()
-; CHECK-NEXT:    [[LOAD:%.*]] = load i256, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
-; CHECK-NEXT:    [[RET:%.*]] = add i256 [[LOAD]], [[GAS]]
+; CHECK-NEXT:    [[RET:%.*]] = add i256 [[GAS]], 2
 ; CHECK-NEXT:    ret i256 [[RET]]
 ;
   store i256 2, ptr addrspace(5) inttoptr (i256 2 to ptr addrspace(5)), align 64
@@ -90,8 +91,7 @@ define i256 @test_gas_as6() {
 ; CHECK-SAME: () local_unnamed_addr #[[ATTR2]] {
 ; CHECK-NEXT:    store i256 2, ptr addrspace(6) inttoptr (i256 2 to ptr addrspace(6)), align 64
 ; CHECK-NEXT:    [[GAS:%.*]] = tail call i256 @llvm.evm.gas()
-; CHECK-NEXT:    [[LOAD:%.*]] = load i256, ptr addrspace(6) inttoptr (i256 2 to ptr addrspace(6)), align 64
-; CHECK-NEXT:    [[RET:%.*]] = add i256 [[LOAD]], [[GAS]]
+; CHECK-NEXT:    [[RET:%.*]] = add i256 [[GAS]], 2
 ; CHECK-NEXT:    ret i256 [[RET]]
 ;
   store i256 2, ptr addrspace(6) inttoptr (i256 2 to ptr addrspace(6)), align 64
