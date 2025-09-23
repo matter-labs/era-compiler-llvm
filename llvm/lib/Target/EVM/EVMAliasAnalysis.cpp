@@ -108,6 +108,13 @@ ModRefInfo EVMAAResult::getModRefInfo(const CallBase *Call,
 
   unsigned AS = Loc.Ptr->getType()->getPointerAddressSpace();
   switch (II->getIntrinsicID()) {
+  case Intrinsic::evm_gas:
+    // TODO: #904: Ideally, we would add IntrInaccessibleMemOnly attribute to
+    // gas intrinsic, but benchmark numbers showed that it is not profitable
+    // to do that for heap address space.
+    if (AS == EVMAS::AS_STORAGE || AS == EVMAS::AS_TSTORAGE)
+      return ModRefInfo::NoModRef;
+    return ModRefInfo::ModRef;
   case Intrinsic::evm_return:
   case Intrinsic::evm_staticcall:
     if (AS == EVMAS::AS_STORAGE || AS == EVMAS::AS_TSTORAGE)
