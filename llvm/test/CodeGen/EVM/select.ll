@@ -18,14 +18,11 @@ define i256 @select(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    POP
-; CHECK-NEXT:    PUSH4 @.BB0_3
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .BB0_2:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    POP
 ; CHECK-NEXT:    SWAP1
-; CHECK-NEXT:  .BB0_3:
-; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    JUMP
 
   %1 = icmp ne i256 %v3, %v4
