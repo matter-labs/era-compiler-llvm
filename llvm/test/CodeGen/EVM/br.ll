@@ -18,13 +18,11 @@ define i256 @diamond(i256 %rs1, i256 %rs2) nounwind {
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    POP
 ; CHECK-NEXT:    MUL
-; CHECK-NEXT:    PUSH4 @.BB0_3
+; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
 ; CHECK-NEXT:  .BB0_2: ; %false_bb
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    ADD
-; CHECK-NEXT:  .BB0_3: ; %end_bb
-; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    SWAP1
 ; CHECK-NEXT:    JUMP
 

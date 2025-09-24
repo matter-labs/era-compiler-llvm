@@ -203,6 +203,7 @@ public:
   bool addGCPasses() override { return false; }
   bool addInstSelector() override;
   void addPostRegAlloc() override;
+  void addMachineLateOptimization() override;
   void addPreEmitPass() override;
   void addPreEmitPass2() override;
 };
@@ -252,13 +253,16 @@ void EVMPassConfig::addPostRegAlloc() {
   disablePass(&LiveDebugValuesID);
   disablePass(&PatchableFunctionID);
   disablePass(&ShrinkWrapID);
-  disablePass(&TailDuplicateID);
 
   // TODO: This pass is disabled in WebAssembly, as it hurts code size because
   // it can generate irreducible control flow. Check if this also true for EVM?
   disablePass(&MachineBlockPlacementID);
 
   TargetPassConfig::addPostRegAlloc();
+}
+
+void EVMPassConfig::addMachineLateOptimization() {
+  addPass(&BranchFolderPassID);
 }
 
 void EVMPassConfig::addPreEmitPass() {
@@ -276,8 +280,10 @@ void EVMPassConfig::addPreEmitPass() {
     // Optimize branch instructions after stackification. This is done again
     // here, since EVMSplitCriticalEdges may introduce new BBs that could
     // contain only branches after stackification.
-    if (getOptLevel() != CodeGenOptLevel::None)
+    if (getOptLevel() != CodeGenOptLevel::None) {
       addPass(&BranchFolderPassID);
+      addPass(&TailDuplicateID);
+    }
   }
 }
 
