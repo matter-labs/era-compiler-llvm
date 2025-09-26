@@ -243,7 +243,8 @@ def FCALL
         "FCALL\t$callee">;
 } // Uses = [SP], isCall = 1
 
-let isCall = 1 in def PseudoCALL
+let isCall = 1, isNotDuplicable = 1 in
+def PseudoCALL
     : EVMPseudo<(outs), (ins jmptarget:$callee, variable_ops), [], true> {
   // PUSH4_S + JUMP_S.
   let Size = 6;
@@ -836,12 +837,14 @@ foreach I = {1-16} in {
 
 def PUSH_LABEL : NI<(outs), (ins jmptarget:$dst), [], true, "", 0, 0> {
   let isCodeGenOnly = 1;
+  let isNotDuplicable = 1;
   // PUSH4_S.
   let Size = 5;
 }
 
 def PUSH_FRAME : NI<(outs), (ins i256imm:$imm), [], true, "", 0, 0> {
   let isCodeGenOnly = 1;
+  let isNotDuplicable = 1;
 }
 
 // Define register PUSH* instructions
@@ -877,6 +880,7 @@ def PUSH2_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH2$imm",
   let BaseName = "PUSH2";
 }
 
+let isNotDuplicable = 1 in
 def PUSH3_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH3$imm",
                   0x62, 3> {
   bits<24> imm;
@@ -886,6 +890,7 @@ def PUSH3_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH3$imm",
   let BaseName = "PUSH3";
 }
 
+let isNotDuplicable = 1 in
 def PUSH4_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH4$imm",
                   0x63, 3> {
   bits<32> imm;
@@ -895,6 +900,7 @@ def PUSH4_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH4$imm",
   let BaseName = "PUSH4";
 }
 
+let isNotDuplicable = 1 in
 def PUSH5_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH5$imm",
                   0x64, 3> {
   bits<40> imm;
@@ -904,6 +910,7 @@ def PUSH5_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH5$imm",
   let BaseName = "PUSH5";
 }
 
+let isNotDuplicable = 1 in
 def PUSH6_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH6$imm",
                   0x65, 3> {
   bits<48> imm;
@@ -913,6 +920,7 @@ def PUSH6_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH6$imm",
   let BaseName = "PUSH6";
 }
 
+let isNotDuplicable = 1 in
 def PUSH7_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH7$imm",
                   0x66, 3> {
   bits<56> imm;
@@ -922,6 +930,7 @@ def PUSH7_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH7$imm",
   let BaseName = "PUSH7";
 }
 
+let isNotDuplicable = 1 in
 def PUSH8_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH8$imm",
                   0x67, 3> {
   bits<64> imm;
@@ -931,6 +940,7 @@ def PUSH8_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH8$imm",
   let BaseName = "PUSH8";
 }
 
+let isNotDuplicable = 1 in
 def PUSH9_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH9$imm",
                   0x68, 3> {
   bits<72> imm;
@@ -941,6 +951,7 @@ def PUSH9_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH9$imm",
   let DecoderMethod = "decodePUSH<9>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH10_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH10$imm",
                   0x69, 3> {
   bits<80> imm;
@@ -951,6 +962,7 @@ def PUSH10_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH10$imm",
   let DecoderMethod = "decodePUSH<10>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH11_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH11$imm",
                   0x6a, 3> {
   bits<88> imm;
@@ -961,6 +973,7 @@ def PUSH11_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH11$imm",
   let DecoderMethod = "decodePUSH<11>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH12_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH12$imm",
                   0x6b, 3> {
   bits<96> imm;
@@ -971,6 +984,7 @@ def PUSH12_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH12$imm",
   let DecoderMethod = "decodePUSH<12>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH13_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH13$imm",
                   0x6c, 3> {
   bits<104> imm;
@@ -981,6 +995,7 @@ def PUSH13_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH13$imm",
   let DecoderMethod = "decodePUSH<13>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH14_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH14$imm",
                   0x6d, 3> {
   bits<112> imm;
@@ -991,6 +1006,7 @@ def PUSH14_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH14$imm",
   let DecoderMethod = "decodePUSH<14>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH15_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH15$imm",
                   0x6e, 3> {
   bits<120> imm;
@@ -1001,6 +1017,7 @@ def PUSH15_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH15$imm",
   let DecoderMethod = "decodePUSH<15>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH16_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH16$imm",
                   0x6f, 3> {
   bits<128> imm;
@@ -1011,6 +1028,7 @@ def PUSH16_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH16$imm",
   let DecoderMethod = "decodePUSH<16>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH17_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH17$imm",
                   0x70, 3> {
   bits<136> imm;
@@ -1031,6 +1049,7 @@ def PUSH18_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH18$imm",
   let DecoderMethod = "decodePUSH<18>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH19_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH19$imm",
                   0x72, 3> {
   bits<152> imm;
@@ -1041,6 +1060,7 @@ def PUSH19_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH19$imm",
   let DecoderMethod = "decodePUSH<19>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH20_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH20$imm",
                   0x73, 3> {
   bits<160> imm;
@@ -1051,6 +1071,7 @@ def PUSH20_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH20$imm",
   let DecoderMethod = "decodePUSH<20>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH21_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH21$imm",
                   0x74, 3> {
   bits<168> imm;
@@ -1061,6 +1082,7 @@ def PUSH21_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH21$imm",
   let DecoderMethod = "decodePUSH<21>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH22_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH22$imm",
                   0x75, 3> {
   bits<176> imm;
@@ -1071,6 +1093,7 @@ def PUSH22_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH22$imm",
   let DecoderMethod = "decodePUSH<22>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH23_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH23$imm",
                   0x76, 3> {
   bits<184> imm;
@@ -1081,6 +1104,7 @@ def PUSH23_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH23$imm",
   let DecoderMethod = "decodePUSH<23>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH24_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH24$imm",
                   0x77, 3> {
   bits<192> imm;
@@ -1091,6 +1115,7 @@ def PUSH24_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH24$imm",
   let DecoderMethod = "decodePUSH<24>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH25_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH25$imm",
                   0x78, 3> {
   bits<200> imm;
@@ -1101,6 +1126,7 @@ def PUSH25_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH25$imm",
   let DecoderMethod = "decodePUSH<25>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH26_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH26$imm",
                   0x79, 3> {
   bits<208> imm;
@@ -1111,6 +1137,7 @@ def PUSH26_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH26$imm",
   let DecoderMethod = "decodePUSH<26>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH27_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH27$imm",
                   0x7a, 3> {
   bits<216> imm;
@@ -1121,6 +1148,7 @@ def PUSH27_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH27$imm",
   let DecoderMethod = "decodePUSH<27>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH28_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH28$imm",
                   0x7b, 3> {
   bits<224> imm;
@@ -1131,6 +1159,7 @@ def PUSH28_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH28$imm",
   let DecoderMethod = "decodePUSH<28>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH29_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH29$imm",
                   0x7c, 3> {
   bits<232> imm;
@@ -1141,6 +1170,7 @@ def PUSH29_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH29$imm",
   let DecoderMethod = "decodePUSH<29>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH30_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH30$imm",
                   0x7d, 3> {
   bits<240> imm;
@@ -1151,6 +1181,7 @@ def PUSH30_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH30$imm",
   let DecoderMethod = "decodePUSH<30>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH31_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH31$imm",
                   0x7e, 3> {
   bits<248> imm;
@@ -1161,6 +1192,7 @@ def PUSH31_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH31$imm",
   let DecoderMethod = "decodePUSH<31>";
 }
 
+let isNotDuplicable = 1 in
 def PUSH32_S : PushBase<(outs), (ins i256imm:$imm), [], true, "PUSH32$imm",
                   0x7f, 3> {
   bits<256> imm;
@@ -1176,6 +1208,7 @@ let isAsCheapAsAMove = 1, isReMaterializable = 1, isCodeGenOnly = 1, hasSideEffe
   let  BaseName = "DATASIZE" in {
     def DATASIZE : NI<(outs GPR:$dst), (ins jmptarget:$reloc), [], false, "", 0, 0>;
     def DATASIZE_S : NI<(outs), (ins jmptarget:$reloc), [], true, "", 0, 0> {
+      let isNotDuplicable = 1;
       // PUSH4_S
       let Size = 5;
     }
@@ -1184,6 +1217,7 @@ let isAsCheapAsAMove = 1, isReMaterializable = 1, isCodeGenOnly = 1, hasSideEffe
   let BaseName = "DATAOFFSET" in {
     def DATAOFFSET : NI<(outs GPR:$dst), (ins jmptarget:$reloc), [], false, "", 0, 0>;
     def DATAOFFSET_S : NI<(outs), (ins jmptarget:$reloc), [], true, "", 0, 0> {
+      let isNotDuplicable = 1;
       // PUSH4_S
       let Size = 5;
     }
@@ -1192,6 +1226,7 @@ let isAsCheapAsAMove = 1, isReMaterializable = 1, isCodeGenOnly = 1, hasSideEffe
   let BaseName = "LINKERSYMBOL" in {
     def LINKERSYMBOL : NI<(outs GPR:$dst), (ins jmptarget:$sym), [], false, "", 0, 0>;
     def LINKERSYMBOL_S : NI<(outs), (ins jmptarget:$sym), [], true, "", 0, 0> {
+      let isNotDuplicable = 1;
       // PUSH20_S
       let Size = 21;
     }
@@ -1200,6 +1235,7 @@ let isAsCheapAsAMove = 1, isReMaterializable = 1, isCodeGenOnly = 1, hasSideEffe
   let BaseName = "LOADIMMUTABLE" in {
     def LOADIMMUTABLE : NI<(outs GPR:$dst), (ins jmptarget:$sym), [], false, "", 0, 0>;
     def LOADIMMUTABLE_S : NI<(outs), (ins jmptarget:$sym), [], true, "", 0, 0> {
+      let isNotDuplicable = 1;
       // PUSH32_S
       let Size = 33;
     }
