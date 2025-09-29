@@ -14,8 +14,10 @@
 #include "EVMMachineFunctionInfo.h"
 #include "EVMSubtarget.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
+#include "llvm/CodeGen/MachineBranchProbabilityInfo.h"
 #include "llvm/CodeGen/MachineFunctionPass.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
+#include "llvm/InitializePasses.h"
 
 using namespace llvm;
 
@@ -34,6 +36,7 @@ public:
   StringRef getPassName() const override { return EVM_LOWER_JUMP_UNLESS_NAME; }
 
   void getAnalysisUsage(AnalysisUsage &AU) const override {
+    AU.addRequired<MachineBranchProbabilityInfoWrapperPass>();
     AU.setPreservesCFG();
     MachineFunctionPass::getAnalysisUsage(AU);
   }
@@ -44,8 +47,11 @@ public:
 
 char EVMLowerJumpUnless::ID = 0;
 
-INITIALIZE_PASS(EVMLowerJumpUnless, DEBUG_TYPE, EVM_LOWER_JUMP_UNLESS_NAME,
-                false, false)
+INITIALIZE_PASS_BEGIN(EVMLowerJumpUnless, DEBUG_TYPE,
+                      EVM_LOWER_JUMP_UNLESS_NAME, false, false)
+INITIALIZE_PASS_DEPENDENCY(MachineBranchProbabilityInfoWrapperPass)
+INITIALIZE_PASS_END(EVMLowerJumpUnless, DEBUG_TYPE, EVM_LOWER_JUMP_UNLESS_NAME,
+                    false, false)
 
 FunctionPass *llvm::createEVMLowerJumpUnless() {
   return new EVMLowerJumpUnless();
@@ -63,6 +69,28 @@ static void lowerPseudoJumpUnless(MachineInstr &MI, const EVMInstrInfo *TII,
       .add(MI.getOperand(0));
 }
 
+static bool optimizeBranches(MachineFunction &MF, const TargetInstrInfo *TII,
+                             const MachineBranchProbabilityInfo &MBPI) {
+  bool Changed = false;
+  for (auto &BB : MF) {
+    SmallVector<MachineOperand, 4> Cond;
+    MachineBasicBlock *TBB = nullptr, *FBB = nullptr;
+    if (!TII->analyzeBranch(BB, TBB, FBB, Cond)) {
+      // If PrevBB has a two-way branch, try to re-order the branches
+      // such that we branch to the successor with higher probability first.
+      if (TBB && !Cond.empty() && FBB &&
+          MBPI.getEdgeProbability(&BB, FBB) >
+              MBPI.getEdgeProbability(&BB, TBB) &&
+          !TII->reverseBranchCondition(Cond)) {
+        DebugLoc dl;
+        TII->removeBranch(BB);
+        TII->insertBranch(BB, FBB, TBB, Cond, dl);
+      }
+    }
+  }
+  return Changed;
+}
+
 bool EVMLowerJumpUnless::runOnMachineFunction(MachineFunction &MF) {
   LLVM_DEBUG({
     dbgs() << "********** Lower jump_unless instructions **********\n"
@@ -70,10 +98,11 @@ bool EVMLowerJumpUnless::runOnMachineFunction(MachineFunction &MF) {
   });
 
   const auto *TII = MF.getSubtarget<EVMSubtarget>().getInstrInfo();
+  auto &MBPI = getAnalysis<MachineBranchProbabilityInfoWrapperPass>().getMBPI();
   const bool IsStackified =
       MF.getInfo<EVMMachineFunctionInfo>()->getIsStackified();
 
-  bool Changed = false;
+  bool Changed = optimizeBranches(MF, TII, MBPI);
   for (MachineBasicBlock &MBB : MF) {
     for (auto &MI : make_early_inc_range(MBB)) {
       if (MI.getOpcode() != EVM::PseudoJUMP_UNLESS)
