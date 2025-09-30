@@ -34,7 +34,7 @@ jobs:
     uses: matter-labs/era-compiler-ci/.github/workflows/forge-benchmarks.yaml@v1
     secrets: inherit
     with:
-      print-markdown-tables: 'false' # do not print markdown tables to PRs
+      print-markdown-tables: 'true' # do not print markdown tables to PRs
       upload-reports: ${{ github.event_name == 'pull_request' }}
       solx_candidate_branch: ${{ inputs.solx_candidate_branch || 'main' }}
       solx_reference_branch: ${{ inputs.solx_reference_branch || 'main' }}
