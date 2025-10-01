@@ -940,8 +940,18 @@ SDValue EVMTargetLowering::combineSELECT(SDNode *N,
 
   if (SDValue V = tryFoldSelectIntoOp(N, DAG, TrueV, FalseV, /*Swapped=*/false))
     return V;
+
   // NOLINTNEXTLINE(readability-suspicious-call-argument)
-  return tryFoldSelectIntoOp(N, DAG, FalseV, TrueV, /*Swapped=*/true);
+  if (SDValue V = tryFoldSelectIntoOp(N, DAG, FalseV, TrueV, /*Swapped=*/true))
+    return V;
+
+  // Expand SELECT to arithmetical operations:
+  SDValue CondZExt = DAG.getNode(ISD::ZERO_EXTEND, DL, VT, freeze(CondV));
+  SDValue Mul = DAG.getNode(ISD::MUL, DL, VT, freeze(TrueV), CondZExt);
+  SDValue Sub = DAG.getNode(ISD::SUB, DL, VT, DAG.getConstant(1, DL, MVT::i256),
+                            CondZExt);
+  SDValue Mul2 = DAG.getNode(ISD::MUL, DL, VT, freeze(FalseV), Sub);
+  return DAG.getNode(ISD::ADD, DL, VT, Mul, Mul2);
 }
 
 SDValue EVMTargetLowering::PerformDAGCombine(SDNode *N,
