@@ -57,6 +57,7 @@
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/IntrinsicsAArch64.h"
 #include "llvm/IR/IntrinsicsAMDGPU.h"
+#include "llvm/IR/IntrinsicsEVM.h"
 #include "llvm/IR/IntrinsicsRISCV.h"
 #include "llvm/IR/IntrinsicsX86.h"
 #include "llvm/IR/LLVMContext.h"
@@ -1629,6 +1630,15 @@ static void computeKnownBitsFromOperator(const Operator *I,
       switch (II->getIntrinsicID()) {
       default:
         break;
+      case Intrinsic::evm_div: {
+        computeKnownBits(I->getOperand(0), DemandedElts, Known, Depth + 1, Q);
+        computeKnownBits(I->getOperand(1), DemandedElts, Known2, Depth + 1, Q);
+        if (Known2.isZero())
+          Known = KnownBits::makeConstant(APInt::getZero(Known.getBitWidth()));
+        else
+          Known = KnownBits::udiv(Known, Known2, false);
+        break;
+      }
       case Intrinsic::abs: {
         computeKnownBits(I->getOperand(0), DemandedElts, Known2, Depth + 1, Q);
         bool IntMinIsPoison = match(II->getArgOperand(1), m_One());
@@ -9509,10 +9519,35 @@ static void setLimitsForBinOp(const BinaryOperator &BO, APInt &Lower,
   }
 }
 
+static ConstantRange getRangeForEVMDiv(const IntrinsicInst &II) {
+  unsigned BitWidth = II.getType()->getIntegerBitWidth();
+  if (BitWidth != 256)
+    return ConstantRange::getFull(BitWidth);
+
+  const APInt *C = nullptr;
+  if (match(II.getOperand(1), m_APInt(C))) {
+    // x / 0 == 0 in EVM semantics.
+    if (C->isZero())
+      return ConstantRange::getNonEmpty(APInt::getZero(BitWidth),
+                                        APInt(BitWidth, 1));
+    // 'div x, C' produces [0, UINT_MAX / C].
+    return ConstantRange::getNonEmpty(
+        APInt::getZero(BitWidth), APInt::getMaxValue(BitWidth).udiv(*C) + 1);
+  }
+
+  // 'div C, x' produces [0, C].
+  if (match(II.getOperand(0), m_APInt(C)))
+    return ConstantRange::getNonEmpty(APInt::getZero(BitWidth), *C + 1);
+
+  return ConstantRange::getFull(BitWidth);
+}
+
 static ConstantRange getRangeForIntrinsic(const IntrinsicInst &II) {
   unsigned Width = II.getType()->getScalarSizeInBits();
   const APInt *C;
   switch (II.getIntrinsicID()) {
+  case Intrinsic::evm_div:
+    return getRangeForEVMDiv(II);
   case Intrinsic::ctpop:
   case Intrinsic::ctlz:
   case Intrinsic::cttz:

@@ -31,10 +31,33 @@ static std::optional<Instruction *> instCombineSignExtend(InstCombiner &IC,
   return std::nullopt;
 }
 
+static std::optional<Instruction *> instCombineDiv(InstCombiner &IC,
+                                                   IntrinsicInst &II) {
+  auto *C = dyn_cast<ConstantInt>(II.getArgOperand(1));
+
+  // Fold llvm.evm.div(x, 0) -> 0
+  if (C && C->isZero())
+    return IC.replaceInstUsesWith(II, ConstantInt::getNullValue(II.getType()));
+
+  // Fold llvm.evm.div(x, C) -> udiv(x, C) where C is a constant
+  if (C)
+    return IC.replaceInstUsesWith(
+        II, IC.Builder.CreateUDiv(II.getArgOperand(0), II.getArgOperand(1)));
+
+  if (Value *V =
+          simplifyUDivInst(II.getArgOperand(0), II.getArgOperand(1), false,
+                           IC.getSimplifyQuery().getWithInstruction(&II)))
+    return IC.replaceInstUsesWith(II, V);
+
+  return std::nullopt;
+}
+
 std::optional<Instruction *>
 EVMTTIImpl::instCombineIntrinsic(InstCombiner &IC, IntrinsicInst &II) const {
   if (II.getIntrinsicID() == Intrinsic::evm_signextend)
     return instCombineSignExtend(IC, II);
+  if (II.getIntrinsicID() == Intrinsic::evm_div)
+    return instCombineDiv(IC, II);
 
   return std::nullopt;
 }

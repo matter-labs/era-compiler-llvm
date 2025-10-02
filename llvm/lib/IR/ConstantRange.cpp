@@ -20,13 +20,14 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "llvm/IR/ConstantRange.h"
 #include "llvm/ADT/APInt.h"
 #include "llvm/Config/llvm-config.h"
-#include "llvm/IR/ConstantRange.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Intrinsics.h"
+#include "llvm/IR/IntrinsicsEVM.h"
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Operator.h"
 #include "llvm/Support/Compiler.h"
@@ -1009,6 +1010,7 @@ bool ConstantRange::isIntrinsicSupported(Intrinsic::ID IntrinsicID) {
   case Intrinsic::ctlz:
   case Intrinsic::cttz:
   case Intrinsic::ctpop:
+  case Intrinsic::evm_div:
     return true;
   default:
     return false;
@@ -1018,6 +1020,13 @@ bool ConstantRange::isIntrinsicSupported(Intrinsic::ID IntrinsicID) {
 ConstantRange ConstantRange::intrinsic(Intrinsic::ID IntrinsicID,
                                        ArrayRef<ConstantRange> Ops) {
   switch (IntrinsicID) {
+  case Intrinsic::evm_div: {
+    if (Ops[1].getUnsignedMax().isZero()) {
+      unsigned BitWidth = Ops[0].getBitWidth();
+      return getNonEmpty(APInt::getZero(BitWidth), APInt(BitWidth, 1));
+    }
+    return Ops[0].udiv(Ops[1]);
+  }
   case Intrinsic::uadd_sat:
     return Ops[0].uadd_sat(Ops[1]);
   case Intrinsic::usub_sat:

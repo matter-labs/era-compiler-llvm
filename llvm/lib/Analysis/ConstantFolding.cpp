@@ -1559,6 +1559,7 @@ bool llvm::canConstantFoldCallTo(const CallBase *Call, const Function *F) {
   case Intrinsic::evm_byte:
   case Intrinsic::evm_exp:
   case Intrinsic::evm_signextend:
+  case Intrinsic::evm_div:
   // EVM local end
   // WebAssembly float semantics are always known
   case Intrinsic::wasm_trunc_signed:
@@ -2903,13 +2904,16 @@ static Constant *ConstantFoldIntrinsicCall2(
 
     if (IntrinsicID == Intrinsic::evm_signextend ||
         IntrinsicID == Intrinsic::evm_exp ||
-        IntrinsicID == Intrinsic::evm_byte) {
+        IntrinsicID == Intrinsic::evm_byte ||
+        IntrinsicID == Intrinsic::evm_div) {
       if (isa<PoisonValue>(Operands[0]) || isa<PoisonValue>(Operands[1]) ||
           !C0 || !C1)
         return PoisonValue::get(Ty);
 
       assert(Ty->getIntegerBitWidth() == 256);
 
+      if (IntrinsicID == Intrinsic::evm_div)
+        return ConstantFoldDivCall(Ty, *C0, *C1);
       if (IntrinsicID == Intrinsic::evm_signextend)
         return ConstantFoldSignextendCall(Ty, *C0, *C1);
       if (IntrinsicID == Intrinsic::evm_exp)
