@@ -734,6 +734,12 @@ def LLVM_IntrCallOp : LLVM_Op<"intrcall"> {
   // TODO: Implement verifier (and custom asm format?)
 }
 
+def LLVM_SetImmutableOp : LLVM_Op<"setimmutable"> {
+  let summary = "Sets immutable in the runtime object in the EVM target";
+  let arguments = (ins I<256>:$addr, StrAttr:$name, I<256>:$val);
+  let assemblyFormat = "$addr `,` $name `,` $val attr-dict";
+}
+
 //===----------------------------------------------------------------------===//
 // ExtractElementOp
 //===----------------------------------------------------------------------===//
