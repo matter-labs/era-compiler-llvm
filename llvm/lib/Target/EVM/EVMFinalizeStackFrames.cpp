@@ -149,12 +149,16 @@ bool EVMFinalizeStackFrames::runOnModule(Module &M) {
   SmallVector<std::pair<MachineFunction *, uint64_t>, 8> ToReplaceFI;
 
   SmallVector<MachineFunction *> MFs;
-  for_each(M.getFunctionList(), [&MFs, &MMI](Function &F) {
-    if (MachineFunction *MF = MMI.getMachineFunction(F))
+  bool CanSpillConstants = false;
+  for_each(M.getFunctionList(), [&MFs, &MMI, &CanSpillConstants](Function &F) {
+    if (MachineFunction *MF = MMI.getMachineFunction(F)) {
+      CanSpillConstants |= MF->getFrameInfo().hasStackObjects();
       MFs.push_back(MF);
+    }
   });
-
-  if (!MFs.empty() &&
+  CanSpillConstants |=
+      !MMI.getModule()->getNamedMetadata("llvm.evm.hasunsafeasm");
+  if (!MFs.empty() && CanSpillConstants &&
       MFs.front()->getFunction().hasFnAttribute("evm-entry-function")) {
     EVMConstantSpiller ConstSpiller(M, MMI);
     if (ConstSpiller.getSpillSize()) {
