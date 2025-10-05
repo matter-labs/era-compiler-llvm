@@ -120,7 +120,7 @@ jobs:
       compiler-llvm-repo: ${{ github.event.pull_request.head.repo.full_name }} # required to properly test forks
       target-machine: ${{ matrix.target }}
       toolchain: ${{ matrix.toolchain }}
-      environment: ${{ matrix.target == 'eravm' && 'zk_evm' || 'EVMInterpreter' }}
+      environment: ${{ matrix.target == 'eravm' && 'zk_evm' || 'REVM' }}
       ccache-key: 'llvm-Linux-X64-gnu'
 
   # Integration tests workflow call from the era-compiler-ci repository
