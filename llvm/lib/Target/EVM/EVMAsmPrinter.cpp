@@ -237,6 +237,12 @@ void EVMAsmPrinter::emitInstruction(const MachineInstr *MI) {
   case EVM::LOADIMMUTABLE_S:
     emitLoadImmutableLabel(MI);
     return;
+  case EVM::POP_COND_S: {
+    MCInst Pop;
+    Pop.setOpcode(EVM::POP_S);
+    EmitToStreamer(*OutStreamer, Pop);
+    return;
+  }
   }
 
   MCInst TmpInst;
