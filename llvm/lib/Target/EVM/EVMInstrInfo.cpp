@@ -173,10 +173,18 @@ unsigned EVMInstrInfo::removeBranch(MachineBasicBlock &MBB,
   LLVM_DEBUG(dbgs() << "Removing branches out of " << printMBBReference(MBB)
                     << '\n');
 
-  unsigned Count = 0;
   // Only remove branches from the end of the MBB.
-  for (auto I = MBB.rbegin(); I != MBB.rend() && I->isBranch(); ++Count) {
+  unsigned Count = 0;
+  bool HasConditionalBranch = false;
+  MachineBasicBlock::iterator I = MBB.end();
+  while (I != MBB.begin()) {
+    --I;
+    if (I->isDebugInstr())
+      continue;
+    if (!I->isTerminator())
+      break;
 
+    HasConditionalBranch |= I->isConditionalBranch();
 #ifndef NDEBUG
     if (I->isUnconditionalBranch())
       assert(!Count && "Malformed basic block: unconditional branch is not the "
@@ -184,9 +192,39 @@ unsigned EVMInstrInfo::removeBranch(MachineBasicBlock &MBB,
 #endif // NDEBUG
 
     LLVM_DEBUG(dbgs() << "Removing branch: "; I->dump());
-    MBB.erase(&MBB.back());
-    I = MBB.rbegin();
+    I->eraseFromParent();
+    I = MBB.end();
+    ++Count;
   }
+
+  // Let's consider basic blocks that end with
+  //
+  //   JUMPI
+  //   JUMP
+  //
+  // or
+  //
+  //  JUMPI
+  //
+  // When removeBranch() is called, it removes all jump instructions.
+  // In stackified code, this can disrupt the stack layout by leaving an unused
+  // condition on top of the stack, a condition that would normally be consumed
+  // by the JUMPI instruction.
+  // To handle this, we add a POP_COND_S instruction at the end of the BB after
+  // removing the conditional branch, ensuring that the unused condition is
+  // properly consumed:
+  // In most cases, removeBranch() is followed by insertBranch(), which
+  // typically reinserts a JUMPI instruction, possibly with a different target.
+  // In such cases, the condition will again be consumed by the new JUMPI, so
+  // the POP_COND_S is no longer needed and is removed. Although this adds a
+  // small overhead, by creating and then removing POP_COND_S, the cost is
+  // negligible since it only affects stackified code.
+  //
+  const bool IsStackified =
+      MBB.getParent()->getInfo<EVMMachineFunctionInfo>()->getIsStackified();
+  if (IsStackified && HasConditionalBranch)
+    BuildMI(&MBB, DebugLoc(), get(EVM::POP_COND_S));
+
   return Count;
 }
 
@@ -214,6 +252,14 @@ unsigned EVMInstrInfo::insertBranch(MachineBasicBlock &MBB,
       CondOpc = Cond[0].getImm() ? EVM::JUMPI : EVM::JUMP_UNLESS;
     else
       CondOpc = Cond[0].getImm() ? EVM::PseudoJUMPI : EVM::PseudoJUMP_UNLESS;
+
+    // Remove the POP_COND_S instruction previously added by removeBranch,
+    // as the newly inserted conditional branch will now consume that
+    // condition.
+    auto Last = MBB.getLastNonDebugInstr();
+    if (IsStackified && Last != MBB.end() &&
+        Last->getOpcode() == EVM::POP_COND_S)
+      MBB.erase(*Last);
 
     auto NewMI = BuildMI(&MBB, DL, get(CondOpc)).addMBB(TBB);
 
