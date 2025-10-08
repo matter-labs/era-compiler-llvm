@@ -1,0 +1,136 @@
+# RUN: llc -x mir -run-pass=branch-folder < %s | FileCheck %s
+
+# Test that after branch folding, the condition at the top of
+# the stack is correctly cleared when a conditional branch is removed.
+
+--- |
+  ; ModuleID = 'test.ll'
+  source_filename = "test.ll"
+  target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
+  target triple = "evm"
+
+  define void @test() {
+  entry:
+    %calldata_load_result.i21 = load i256, ptr addrspace(2) null, align 4
+    %calldata_load_result.i27 = load i256, ptr addrspace(2) inttoptr (i256 32 to ptr addrspace(2)), align 4
+    %calldata_load_result.i35 = load i256, ptr addrspace(2) inttoptr (i256 64 to ptr addrspace(2)), align 4
+    %comparison_result111.i = icmp eq i256 %calldata_load_result.i35, 0
+    br i1 %comparison_result111.i, label %if_main114.i, label %if_main215.i
+
+  if_main114.i:                                     ; preds = %entry
+    %0 = or i256 %calldata_load_result.i21, %calldata_load_result.i27
+    %or.cond119 = icmp eq i256 %0, 0
+    br i1 %or.cond119, label %if_main.i.i5, label %fun_check_entrypoint_396.exit
+
+  if_main215.i:                                     ; preds = %entry
+    %1 = or i256 %calldata_load_result.i21, %calldata_load_result.i27
+    %or.cond118 = icmp eq i256 %1, 0
+    br i1 %or.cond118, label %if_main.i.i5, label %fun_check_entrypoint_396.exit
+
+  if_main.i.i5:                                     ; preds = %if_main215.i, %if_main114.i
+     call void @llvm.evm.revert(ptr addrspace(1) null, i256 0)
+     unreachable
+
+  fun_check_entrypoint_396.exit:                    ; preds = %if_main215.i, %if_main114.i
+     call void @llvm.evm.revert(ptr addrspace(1) null, i256 32)
+     unreachable
+  }
+
+  declare void @llvm.evm.revert(ptr addrspace(1), i256)
+
+...
+# CHECK-LABEL: name: test
+# CHECK:        POP_S
+# CHECK-NEXT:   PUSH1_S i256 64
+# CHECK-NEXT:   CALLDATALOAD_S
+# CHECK-NEXT:   POP_COND_S
+# CHECK-NEXT:   PUSH1_S i256 32
+# CHECK-NEXT:   CALLDATALOAD_S
+# CHECK-NEXT:   PUSH0_S
+# CHECK-NEXT:   CALLDATALOAD_S
+# CHECK-NEXT:   OR_S
+# CHECK-NEXT:   PseudoJUMP_UNLESS %bb.2
+# CHECK-LABEL: bb.1.fun_check_entrypoint_396.exit:
+# CHECK-NEXT:   PUSH1_S i256 32
+# CHECK-NEXT:   PUSH0_S
+# CHECK-NEXT:   REVERT_S
+# CHECK-LABEL: bb.2.if_main.i.i5:
+# CHECK-NEXT:   PUSH0_S
+# CHECK-NEXT:   PUSH0_S
+# CHECK-NEXT:   REVERT_S
+---
+name:            test
+alignment:       1
+machineFunctionInfo:
+  isStackified:    true
+  numberOfParameters: 0
+  hasPushDeployAddress: false
+body:             |
+  bb.0.entry:
+    successors: %bb.1(0x40000000), %bb.3(0x40000000); %bb.1(50.00%), %bb.3(50.00%)
+
+    POP_S
+    PUSH1_S i256 64
+    CALLDATALOAD_S
+    PseudoJUMPI %bb.3
+
+  bb.1.if_main114.i:
+  ; predecessors: %bb.0
+    successors: %bb.8(0x40000000), %bb.6(0x40000000); %bb.8(50.00%), %bb.6(50.00%)
+
+    PUSH1_S i256 32
+    CALLDATALOAD_S
+    PUSH0_S
+    CALLDATALOAD_S
+    OR_S
+    PseudoJUMPI %bb.6
+
+  bb.8:
+  ; predecessors: %bb.1
+    successors: %bb.4(0x80000000); %bb.4(100.00%)
+
+    PseudoJUMP %bb.4
+
+  bb.6:
+  ; predecessors: %bb.1
+    successors: %bb.2(0x80000000); %bb.2(100.00%)
+
+
+  bb.2.fun_check_entrypoint_396.exit:
+  ; predecessors: %bb.5, %bb.6
+
+    PUSH1_S i256 32
+    PUSH0_S
+    REVERT_S
+
+  bb.3.if_main215.i:
+  ; predecessors: %bb.0
+    successors: %bb.7(0x40000000), %bb.5(0x40000000); %bb.7(50.00%), %bb.5(50.00%)
+
+    PUSH1_S i256 32
+    CALLDATALOAD_S
+    PUSH0_S
+    CALLDATALOAD_S
+    OR_S
+    PseudoJUMPI %bb.5
+
+  bb.7:
+  ; predecessors: %bb.3
+    successors: %bb.4(0x80000000); %bb.4(100.00%)
+
+    PseudoJUMP %bb.4
+
+  bb.5:
+  ; predecessors: %bb.3
+    successors: %bb.2(0x80000000); %bb.2(100.00%)
+
+    PseudoJUMP %bb.2
+
+  bb.4.if_main.i.i5:
+  ; predecessors: %bb.7, %bb.8
+
+    PUSH0_S
+    PUSH0_S
+    REVERT_S
+
+...
