@@ -830,6 +830,11 @@ let hasSideEffects = 1 in {
 
 defm POP : I<(outs), (ins), [], "POP", "", 0x50, 2>;
 
+// This instruction is a regular POP operation that indicates it clears the
+// branch condition from the top of the stack.
+let isCodeGenOnly = 1 in
+def POP_COND_S : NI<(outs), (ins), [], true, "POP", 0x50, 2>;
+
 foreach I = {1-16} in {
   defm DUP#I : I<(outs), (ins), [],
                   "DUP"#I, "", !add(I, 0x7F), 3>;
