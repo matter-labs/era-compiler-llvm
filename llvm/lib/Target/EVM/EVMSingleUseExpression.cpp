@@ -223,39 +223,41 @@ static bool shouldRematerialize(const MachineInstr &Def,
 
     return DefI->getOpcode() == EVM::CONST_I256 ? true : false;
   }
+  /*
+    if (Opcode == EVM::ADD) {
+      MachineInstr *DefI1 =
+          getVRegDef(Def.getOperand(1).getReg(), &Def, MRI, LIS);
+      MachineInstr *DefI2 =
+          getVRegDef(Def.getOperand(2).getReg(), &Def, MRI, LIS);
+      if (!DefI1 || !DefI2)
+        return false;
 
-  if (Opcode == EVM::ADD) {
-    MachineInstr *DefI1 =
-        getVRegDef(Def.getOperand(1).getReg(), &Def, MRI, LIS);
-    MachineInstr *DefI2 =
-        getVRegDef(Def.getOperand(2).getReg(), &Def, MRI, LIS);
-    if (!DefI1 || !DefI2)
-      return false;
+      MachineInstr *DefBase = nullptr;
+      if (DefI1->getOpcode() == EVM::CONST_I256)
+        DefBase = DefI2;
+      else if (DefI2->getOpcode() == EVM::CONST_I256)
+        DefBase = DefI1;
+      else
+        return false;
 
-    MachineInstr *DefBase = nullptr;
-    if (DefI1->getOpcode() == EVM::CONST_I256)
-      DefBase = DefI2;
-    else if (DefI2->getOpcode() == EVM::CONST_I256)
-      DefBase = DefI1;
-    else
-      return false;
+      const Register BaseReg = DefBase->getOperand(0).getReg();
+      if (DefBase != MRI.getUniqueVRegDef(BaseReg))
+        return false;
 
-    const Register BaseReg = DefBase->getOperand(0).getReg();
-    if (DefBase != MRI.getUniqueVRegDef(BaseReg))
-      return false;
+      const Register DefReg = Def.getOperand(0).getReg();
+      if (&Def != MRI.getUniqueVRegDef(DefReg))
+        return false;
 
-    const Register DefReg = Def.getOperand(0).getReg();
-    if (&Def != MRI.getUniqueVRegDef(DefReg))
-      return false;
+      LiveInterval &DefLI = LIS.getInterval(DefReg);
+      LiveInterval &BaseLI = LIS.getInterval(BaseReg);
 
-    LiveInterval &DefLI = LIS.getInterval(DefReg);
-    LiveInterval &BaseLI = LIS.getInterval(BaseReg);
+      LLVM_DEBUG(dbgs() << "Can rematerialize ADD(base, const): " << Def
+                        << "DefLI: " << DefLI << ", BaseLI: " << BaseLI <<
+    '\n');
 
-    LLVM_DEBUG(dbgs() << "Can rematerialize ADD(base, const): " << Def
-                      << "DefLI: " << DefLI << ", BaseLI: " << BaseLI << '\n');
-
-    return BaseLI.covers(DefLI);
-  }
+      return BaseLI.covers(DefLI);
+    }
+  */
   return Def.isAsCheapAsAMove() && TII->isTriviallyReMaterializable(Def);
 }
 
