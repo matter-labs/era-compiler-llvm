@@ -223,7 +223,7 @@ static bool shouldRematerialize(const MachineInstr &Def,
 
     return DefI->getOpcode() == EVM::CONST_I256 ? true : false;
   }
-
+/*
   if (Opcode == EVM::ADD) {
     MachineInstr *DefI1 =
         getVRegDef(Def.getOperand(1).getReg(), &Def, MRI, LIS);
@@ -256,6 +256,7 @@ static bool shouldRematerialize(const MachineInstr &Def,
 
     return BaseLI.covers(DefLI);
   }
+  */
   return Def.isAsCheapAsAMove() && TII->isTriviallyReMaterializable(Def);
 }
 
