@@ -2845,7 +2845,7 @@ struct ExtAddrMode : public TargetLowering::AddrMode {
     case ScaledRegField:
       return ScaledReg;
     case BaseOffsField:
-      return ConstantInt::get(IntPtrTy, BaseOffs);
+      return ConstantInt::getSigned(IntPtrTy, BaseOffs);
     }
   }
 
@@ -5706,7 +5706,7 @@ bool CodeGenPrepare::optimizeMemoryInst(Instruction *MemoryInst, Value *Addr,
 
       // Add in the Base Offset if present.
       if (AddrMode.BaseOffs) {
-        Value *V = ConstantInt::get(IntPtrTy, AddrMode.BaseOffs);
+        Value *V = ConstantInt::getSigned(IntPtrTy, AddrMode.BaseOffs);
         if (ResultIndex) {
           // We need to add this separately from the scale above to help with
           // SDAG consecutive load/store merging.
@@ -5825,7 +5825,7 @@ bool CodeGenPrepare::optimizeMemoryInst(Instruction *MemoryInst, Value *Addr,
 
     // Add in the Base Offset if present.
     if (AddrMode.BaseOffs) {
-      Value *V = ConstantInt::get(IntPtrTy, AddrMode.BaseOffs);
+      Value *V = ConstantInt::getSigned(IntPtrTy, AddrMode.BaseOffs);
       if (Result)
         Result = Builder.CreateAdd(Result, V, "sunkaddr");
       else
