@@ -18,10 +18,18 @@ using namespace llvm;
 
 #define GET_SUBTARGETINFO_TARGET_DESC
 #define GET_SUBTARGETINFO_CTOR
+#define GET_SUBTARGETINFO_ENUM
 #include "EVMGenSubtargetInfo.inc"
+
+EVMSubtarget &EVMSubtarget::initializeSubtargetDependencies(StringRef CPU,
+                                                            StringRef FS) {
+  ParseSubtargetFeatures(CPU, /*TuneCPU*/ CPU, FS);
+  return *this;
+}
 
 EVMSubtarget::EVMSubtarget(const Triple &TT, const std::string &CPU,
                            const std::string &FS, const TargetMachine &TM)
-    : EVMGenSubtargetInfo(TT, CPU, /*TuneCPU*/ CPU, FS), TLInfo(TM, *this) {}
+    : EVMGenSubtargetInfo(TT, CPU, /*TuneCPU*/ CPU, FS),
+      TLInfo(TM, initializeSubtargetDependencies(CPU, FS)) {}
 
 bool EVMSubtarget::useAA() const { return true; }

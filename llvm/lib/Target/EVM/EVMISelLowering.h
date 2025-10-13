@@ -49,6 +49,10 @@ public:
     return MVT::i256;
   }
 
+  bool isCheapToSpeculateCttz(Type *Ty) const override;
+
+  bool isCheapToSpeculateCtlz(Type *Ty) const override;
+
   /// Return true if it is profitable to move this shift by a constant amount
   /// through its operand, adjusting any immediate operands as necessary to
   /// preserve semantics. This transformation may not be desirable if it
