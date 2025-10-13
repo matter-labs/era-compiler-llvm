@@ -14,6 +14,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "MCTargetDesc/EVMMCExpr.h"
+#include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "TargetInfo/EVMTargetInfo.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/MC/MCContext.h"

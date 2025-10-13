@@ -357,6 +357,11 @@ defm NOT
   : I<(outs GPR:$dst), (ins GPR:$src), [(set GPR:$dst, (not GPR:$src))],
       "NOT", "$dst, $src", 0x19, 3>;
 
+let Predicates = [HasCLZ] in
+defm CLZ
+  : I<(outs GPR:$dst), (ins GPR:$src), [(set GPR:$dst, (ctlz GPR:$src))],
+      "CLZ", "$dst, $src", 0x1e, 5>;
+
 let mayLoad = 1 in
 defm KECCAK256
   : I<(outs GPR:$dst), (ins GPR:$offset, GPR:$size),

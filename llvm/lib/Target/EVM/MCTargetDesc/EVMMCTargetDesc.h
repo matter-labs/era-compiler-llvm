@@ -65,4 +65,7 @@ std::string getImmutableId(StringRef Name);
 #define GET_INSTRINFO_MC_HELPER_DECLS
 #include "EVMGenInstrInfo.inc"
 
+#define GET_SUBTARGETINFO_ENUM
+#include "EVMGenSubtargetInfo.inc"
+
 #endif // LLVM_LIB_TARGET_EVM_MCTARGETDESC_EVMMCTARGETDESC_H
