@@ -26,9 +26,16 @@ using namespace llvm;
 
 namespace {
 class EVMDAGToDAGISel final : public SelectionDAGISel {
+  const EVMSubtarget *Subtarget = nullptr;
+
 public:
   EVMDAGToDAGISel(EVMTargetMachine &TM, CodeGenOptLevel OptLevel)
       : SelectionDAGISel(TM, OptLevel) {}
+
+  bool runOnMachineFunction(MachineFunction &MF) override {
+    Subtarget = &MF.getSubtarget<EVMSubtarget>();
+    return SelectionDAGISel::runOnMachineFunction(MF);
+  }
 
 private:
 

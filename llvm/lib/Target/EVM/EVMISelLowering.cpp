@@ -54,6 +54,9 @@ EVMTargetLowering::EVMTargetLowering(const TargetMachine &TM,
                       ISD::FrameIndex},
                      MVT::i256, Legal);
 
+  if (Subtarget->hasCLZ())
+    setOperationAction(ISD::CTLZ, MVT::i256, Legal);
+
   for (auto CC : {ISD::SETULT, ISD::SETUGT, ISD::SETLT, ISD::SETGT, ISD::SETGE,
                   ISD::SETUGE, ISD::SETLE, ISD::SETULE, ISD::SETEQ, ISD::SETNE})
     setCondCodeAction(CC, MVT::i256, Legal);
@@ -127,6 +130,14 @@ bool EVMTargetLowering::isLegalAddressingMode(const DataLayout &DL,
   // to reduce register pressure by sinking add with immediate to its uses,
   // minimizing the need for extra registers and reducing spills and reloads.
   return true;
+}
+
+bool EVMTargetLowering::isCheapToSpeculateCtlz(Type *Ty) const {
+  return Subtarget->hasCLZ();
+}
+
+bool EVMTargetLowering::isCheapToSpeculateCttz(Type *Ty) const {
+  return Subtarget->hasCLZ();
 }
 
 //===----------------------------------------------------------------------===//
