@@ -472,7 +472,6 @@ define void @test_as1_alias_extcodecopy() {
   ret void
 }
 
-
 ; CHECK-LABEL: Function: test_as1_alias_return_nonprecise
 ; CHECK: NoModRef:  Ptr: i256* inttoptr (i256 32 to ptr addrspace(1))	<->  call void @llvm.evm.return
 define void @test_as1_alias_return_nonprecise(i256 %size) noreturn {
