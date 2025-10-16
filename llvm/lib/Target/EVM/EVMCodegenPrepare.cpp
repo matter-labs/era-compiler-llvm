@@ -20,11 +20,14 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/Intrinsics.h"
 #include "llvm/IR/IntrinsicsEVM.h"
+#include "llvm/IR/PatternMatch.h"
 #include "llvm/Pass.h"
+#include "llvm/Transforms/InstCombine/InstCombiner.h"
 
 #include "EVM.h"
 
 using namespace llvm;
+using namespace llvm::PatternMatch;
 
 #define DEBUG_TYPE "evm-codegen-prepare"
 
@@ -105,7 +108,7 @@ void EVMCodegenPrepare::processMemTransfer(MemTransferInst *M) {
 bool EVMCodegenPrepare::runOnFunction(Function &F) {
   bool Changed = false;
   for (auto &BB : F) {
-    for (auto &I : BB) {
+    for (auto &I : make_early_inc_range(BB)) {
       if (auto *M = dyn_cast<MemTransferInst>(&I)) {
         processMemTransfer(M);
         Changed = true;
