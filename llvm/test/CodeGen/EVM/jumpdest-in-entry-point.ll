@@ -12,15 +12,9 @@ define void @__entry() noreturn "evm-entry-function" {
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    MLOAD
 ; CHECK-NEXT:    DUP1
-; CHECK-NEXT:    PUSH0
-; CHECK-NEXT:    SWAP1
-; CHECK-NEXT:    PUSH4 @.BB0_2
-; CHECK-NEXT:    JUMPI
-; CHECK-NEXT:  ; %bb.1:
-; CHECK-NEXT:    SWAP1
-; CHECK-NEXT:  .BB0_2: ; %bb1
-; CHECK-NEXT:    JUMPDEST
-; CHECK-NEXT:    POP
+; CHECK-NEXT:    ISZERO
+; CHECK-NEXT:    ISZERO
+; CHECK-NEXT:    MUL
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    MSTORE
 ; CHECK-NEXT:    PUSH1 0x20
