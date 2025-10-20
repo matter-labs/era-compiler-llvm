@@ -12,6 +12,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "EVM.h"
+#include "EVMConstantSpiller.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "TargetInfo/EVMTargetInfo.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
@@ -147,12 +148,30 @@ bool EVMFinalizeStackFrames::runOnModule(Module &M) {
   MachineModuleInfo &MMI = getAnalysis<MachineModuleInfoWrapperPass>().getMMI();
   SmallVector<std::pair<MachineFunction *, uint64_t>, 8> ToReplaceFI;
 
-  // Calculate the stack size for each function.
-  for (Function &F : M) {
-    MachineFunction *MF = MMI.getMachineFunction(F);
-    if (!MF)
-      continue;
+  SmallVector<MachineFunction *> MFs;
+  bool CanSpillConstants = false;
+  for_each(M.getFunctionList(), [&MFs, &MMI, &CanSpillConstants](Function &F) {
+    if (MachineFunction *MF = MMI.getMachineFunction(F)) {
+      CanSpillConstants |= MF->getFrameInfo().hasStackObjects();
+      MFs.push_back(MF);
+    }
+  });
+  CanSpillConstants |=
+      !MMI.getModule()->getNamedMetadata("llvm.evm.hasunsafeasm");
+  if (!MFs.empty() && CanSpillConstants &&
+      MFs.front()->getFunction().hasFnAttribute("evm-entry-function")) {
+    EVMConstantSpiller ConstSpiller(M, MMI);
+    if (ConstSpiller.getSpillSize()) {
+      MachineFunction *MF = MFs.front();
+      uint64_t StackSize = calculateFrameObjectOffsets(*MF);
+      MF->getFrameInfo().CreateSpillStackObject(ConstSpiller.getSpillSize(),
+                                                Align(32));
+      ConstSpiller.emitConstantSpills(StackRegionOffset + StackSize, *MF);
+    }
+  }
 
+  // Calculate the stack size for each function.
+  for (MachineFunction *MF : MFs) {
     uint64_t StackSize = calculateFrameObjectOffsets(*MF);
     if (StackSize == 0)
       continue;
