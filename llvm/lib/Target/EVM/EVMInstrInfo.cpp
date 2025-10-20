@@ -181,7 +181,7 @@ unsigned EVMInstrInfo::removeBranch(MachineBasicBlock &MBB,
     --I;
     if (I->isDebugInstr())
       continue;
-    if (!I->isTerminator())
+    if (!I->isBranch())
       break;
 
     HasConditionalBranch |= I->isConditionalBranch();
