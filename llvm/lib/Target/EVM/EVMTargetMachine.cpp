@@ -274,8 +274,6 @@ void EVMPassConfig::addPreEmitPass() {
     addPass(createEVMOptimizeLiveIntervals());
     addPass(createEVMSingleUseExpression());
     addPass(createEVMBPStackification());
-    addPass(&StackSlotColoringID);
-    addPass(createEVMFinalizeStackFrames());
 
     // Optimize branch instructions after stackification. This is done again
     // here, since EVMSplitCriticalEdges may introduce new BBs that could
@@ -289,9 +287,12 @@ void EVMPassConfig::addPreEmitPass() {
 
 void EVMPassConfig::addPreEmitPass2() {
   addPass(createEVMLowerJumpUnless());
-  addPass(createEVMConstantUnfolding());
-  if (getOptLevel() != CodeGenOptLevel::None)
+  addPass(&StackSlotColoringID);
+  if (getOptLevel() != CodeGenOptLevel::None) {
+    addPass(createEVMConstantUnfolding());
     addPass(createEVMPeepholePass());
+  }
+  addPass(createEVMFinalizeStackFrames());
 }
 
 TargetPassConfig *EVMTargetMachine::createPassConfig(PassManagerBase &PM) {
