@@ -133,12 +133,6 @@ target triple = "evm"
 ; CHECK-NEXT:       Live Stack Slot Analysis
 ; CHECK-NEXT:       Machine Block Frequency Analysis
 ; CHECK-NEXT:       EVM backward propagation stackification
-; CHECK-NEXT:       Stack Slot Coloring
-; CHECK-NEXT:     EVM finalize stack frames
-; CHECK-NEXT:     FunctionPass Manager
-; CHECK-NEXT:       MachineDominator Tree Construction
-; CHECK-NEXT:       Machine Natural Loop Construction
-; CHECK-NEXT:       Machine Block Frequency Analysis
 ; CHECK-NEXT:       Control Flow Optimizer
 ; CHECK-NEXT:       Lazy Machine Block Frequency Analysis
 ; CHECK-NEXT:       Tail Duplication
@@ -147,9 +141,17 @@ target triple = "evm"
 ; CHECK-NEXT:       Machine Optimization Remark Emitter
 ; CHECK-NEXT:       Stack Frame Layout Analysis
 ; CHECK-NEXT:       EVM Lower jump_unless
+; CHECK-NEXT:       Slot index numbering
+; CHECK-NEXT:       Live Stack Slot Analysis
+; CHECK-NEXT:       MachineDominator Tree Construction
+; CHECK-NEXT:       Machine Natural Loop Construction
+; CHECK-NEXT:       Machine Block Frequency Analysis
+; CHECK-NEXT:       Stack Slot Coloring
 ; CHECK-NEXT:     EVM constant unfolding
 ; CHECK-NEXT:     FunctionPass Manager
 ; CHECK-NEXT:       EVM Peephole
+; CHECK-NEXT:     EVM finalize stack frames
+; CHECK-NEXT:     FunctionPass Manager
 ; CHECK-NEXT:       Lazy Machine Block Frequency Analysis
 ; CHECK-NEXT:       Machine Optimization Remark Emitter
 ; CHECK-NEXT:       EVM Assembly
