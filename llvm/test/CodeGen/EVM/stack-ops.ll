@@ -277,7 +277,7 @@ define i256 @both_arg_alive_no_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
   ret i256 %x3
 }
 
-define i256 @same_arg_dead_with_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
+define i256 @same_arg_dead_with_junk(i256 %a1, i256 %a2, i256 %a3) nounwind noreturn {
 ; CHECK-LABEL: same_arg_dead_with_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
@@ -286,14 +286,11 @@ define i256 @same_arg_dead_with_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
 ; CHECK-NEXT:    SWAP2
 ; CHECK-NEXT:    POP
 ; CHECK-NEXT:    ADD
-; CHECK-NEXT:    SWAP1
-; CHECK-NEXT:    DUP2
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    REVERT
-; CHECK-NEXT:    JUMP
   %x1 = add i256 %a2, %a2
   call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x1)
-  ret i256 %x1
+  unreachable
 }
 
 define i256 @same_arg_dead_no_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
@@ -311,7 +308,7 @@ define i256 @same_arg_dead_no_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
   ret i256 %x1
 }
 
-define i256 @same_arg_alive_with_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
+define i256 @same_arg_alive_with_junk(i256 %a1, i256 %a2, i256 %a3) nounwind noreturn {
 ; CHECK-LABEL: same_arg_alive_with_junk:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
@@ -322,15 +319,12 @@ define i256 @same_arg_alive_with_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
 ; CHECK-NEXT:    POP
 ; CHECK-NEXT:    ADD
 ; CHECK-NEXT:    ADD
-; CHECK-NEXT:    SWAP1
-; CHECK-NEXT:    DUP2
 ; CHECK-NEXT:    PUSH0
 ; CHECK-NEXT:    REVERT
-; CHECK-NEXT:    JUMP
   %x1 = add i256 %a2, %a2
   %x2 = add i256 %a2, %x1
   call void @llvm.evm.revert(ptr addrspace(1) null, i256 %x2)
-  ret i256 %x2
+  unreachable
 }
 
 define i256 @same_arg_alive_no_junk(i256 %a1, i256 %a2, i256 %a3) nounwind {
