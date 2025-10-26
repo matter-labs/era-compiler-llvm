@@ -2,6 +2,9 @@
 ; RUN: opt -S -passes=function-attrs < %s | FileCheck --check-prefixes=COMMON,FNATTRS %s
 ; RUN: opt -S -passes=attributor-light < %s | FileCheck --check-prefixes=COMMON,ATTRIBUTOR %s
 
+; Temporary XFail on EVM since we disable some FunctionAttrs functionality.
+; XFAIL: target=evm{{.*}}
+
 ; Make sure norecurse is inferred on the calling functions
 
 define internal void @sendmsg_is_norecurse() {

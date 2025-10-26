@@ -2,6 +2,9 @@
 ; RUN: opt -passes=function-attrs -S < %s | FileCheck --check-prefixes=COMMON,FNATTRS %s
 ; RUN: opt -passes=attributor-light -S < %s | FileCheck --check-prefixes=COMMON,ATTRIBUTOR %s
 
+; Temporary XFail on EVM since we disable some FunctionAttrs functionality.
+; XFAIL: target=evm{{.*}}
+
 declare i32 @get_val()
 
 declare void @cold0() cold
