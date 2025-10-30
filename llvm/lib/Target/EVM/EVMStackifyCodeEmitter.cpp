@@ -103,7 +103,7 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitPOP() {
 
 void EVMStackifyCodeEmitter::CodeEmitter::emitConstant(const APInt &Val) {
   StackHeight += 1;
-  auto NewMI = TII->insertPush(Val, *CurMBB, CurMBB->end(), DebugLoc());
+  auto *NewMI = TII->insertPush(Val, *CurMBB, CurMBB->end(), DebugLoc());
   verify(NewMI);
 }
 
