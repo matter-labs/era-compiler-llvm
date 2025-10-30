@@ -44,6 +44,8 @@ void EVMConstantSpiller::emitSpills(uint64_t SpillOffset,
   }
 
   // Emit constant stores in prologue of the entry function.
+  // TODO: #925, elaborate analysis to determine the most suitable location
+  //       for performing constant spilling.
   MachineBasicBlock &SpillMBB = EntryMF.front();
   for (const auto &[Imm, Offset] : ConstantToSpillOffset) {
     LLVM_DEBUG({
