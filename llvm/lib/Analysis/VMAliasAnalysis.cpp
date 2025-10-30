@@ -113,9 +113,13 @@ AliasResult VMAAResult::alias(const MemoryLocation &LocA,
 
   LocationSize SizeA = LocA.Size;
   LocationSize SizeB = LocB.Size;
-  // Don't check unknown memory locations.
+
+  // We can only reason if one size is precise and the other is precise or
+  // afterPointer.
   if ((!SizeA.isPrecise() && SizeA != LocationSize::afterPointer()) ||
-      (!SizeB.isPrecise() && SizeB != LocationSize::afterPointer()))
+      (!SizeB.isPrecise() && SizeB != LocationSize::afterPointer()) ||
+      (SizeA == LocationSize::afterPointer() &&
+       SizeB == LocationSize::afterPointer()))
     return AAResultBase::alias(LocA, LocB, AAQI, I);
 
   // Only 256-bit keys are valid for storage.
@@ -156,6 +160,8 @@ AliasResult VMAAResult::alias(const MemoryLocation &LocA,
     return AliasResult::NoAlias;
   }
 
+  bool HasImpreciseSize = !SizeA.isPrecise() || !SizeB.isPrecise();
+
   // If heap locations are the same, they either must or partially alias based
   // on the size of locations.
   if (StartAVal == StartBVal) {
@@ -164,20 +170,46 @@ AliasResult VMAAResult::alias(const MemoryLocation &LocA,
     if (SizeA.isZero() || SizeB.isZero())
       return AliasResult::NoAlias;
 
+    // If both sizes are imprecise, we can't say for sure if they must or
+    // partially alias, so be conservative and forward the query.
+    if (HasImpreciseSize)
+      return AAResultBase::alias(LocA, LocB, AAQI, I);
     if (SizeA == SizeB)
       return AliasResult::MustAlias;
     return AliasResult::PartialAlias;
   }
 
-  auto DoesOverlap = [](const APInt &XStart, const LocationSize &XSize,
-                        const APInt &YStart) {
-    return YStart.sge(XStart) && ((XSize == LocationSize::afterPointer() ||
-                                   YStart.slt(XStart + XSize.getValue())));
+  // Handle the case where one of the sizes is imprecise.
+  if (HasImpreciseSize) {
+    APInt PreciseEnd, ImpreciseStart;
+    if (SizeA.isPrecise()) {
+      PreciseEnd = StartAVal + SizeA.getValue();
+      ImpreciseStart = StartBVal;
+    } else {
+      assert(SizeB.isPrecise() && "One size must be precise");
+      PreciseEnd = StartBVal + SizeB.getValue();
+      ImpreciseStart = StartAVal;
+    }
+
+    // We can only prove NoAlias iff the imprecise location is larger or equal
+    // than the precise location end.
+    if (ImpreciseStart.sge(PreciseEnd))
+      return AliasResult::NoAlias;
+
+    // If the imprecise location is in the middle of the precise location,
+    // we can return PartialAlias, but ignore such cases as unlikely to worth
+    // the effort.
+    return AAResultBase::alias(LocA, LocB, AAQI, I);
+  }
+
+  // Handle the case where both sizes are known.
+  auto DoesOverlap = [](const APInt &X, const APInt &XEnd, const APInt &Y) {
+    return Y.sge(X) && Y.slt(XEnd);
   };
 
   // For heap accesses, if locations don't overlap, they are not aliasing.
-  if (!DoesOverlap(StartAVal, SizeA, StartBVal) &&
-      !DoesOverlap(StartBVal, SizeB, StartAVal))
+  if (!DoesOverlap(StartAVal, StartAVal + SizeA.getValue(), StartBVal) &&
+      !DoesOverlap(StartBVal, StartBVal + SizeB.getValue(), StartAVal))
     return AliasResult::NoAlias;
   return AliasResult::PartialAlias;
 }
