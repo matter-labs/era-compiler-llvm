@@ -140,6 +140,11 @@ ModRefInfo EVMAAResult::getModRefInfo(const CallBase *Call,
     unsigned ArgIdx = I.index();
     MemoryLocation ArgLoc = getMemLocForArgument(Call, ArgIdx);
     AliasResult ArgAlias = VMAAResult::alias(ArgLoc, Loc, AAQI, Call);
+    LLVM_DEBUG({
+      // NOLINTNEXTLINE(clang-analyzer-core.NonNullParamChecker)
+      dbgs() << "  " << ArgAlias << ":\t" << *ArgLoc.Ptr << ", " << *Loc.Ptr
+             << "\n";
+    });
     if (ArgAlias != AliasResult::NoAlias)
       Result |= getArgModRefInfo(Call, ArgIdx);
   }
