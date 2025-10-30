@@ -13,6 +13,8 @@
 
 #include "EVM.h"
 #include "EVMConstantSpiller.h"
+#include "EVMInstrInfo.h"
+#include "EVMSubtarget.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "TargetInfo/EVMTargetInfo.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
@@ -106,7 +108,7 @@ void EVMFinalizeStackFrames::replaceFrameIndices(
   assert(MFI.hasStackObjects() &&
          "Cannot replace frame indices without stack objects");
 
-  const TargetInstrInfo *TII = MF.getSubtarget().getInstrInfo();
+  const EVMInstrInfo *TII = MF.getSubtarget<EVMSubtarget>().getInstrInfo();
   for (MachineBasicBlock &MBB : MF) {
     for (MachineInstr &MI : make_early_inc_range(MBB)) {
       if (MI.getOpcode() != EVM::PUSH_FRAME)
@@ -119,12 +121,7 @@ void EVMFinalizeStackFrames::replaceFrameIndices(
       // Replace the frame index with the corresponding stack offset.
       APInt Offset(256,
                    StackRegionStart + MFI.getObjectOffset(FIOp.getIndex()));
-      unsigned PushOpc = EVM::getPUSHOpcode(Offset);
-      auto NewMI = BuildMI(MBB, MI, MI.getDebugLoc(),
-                           TII->get(EVM::getStackOpcode(PushOpc)));
-      if (PushOpc != EVM::PUSH0)
-        NewMI.addCImm(ConstantInt::get(MF.getFunction().getContext(), Offset));
-
+      TII->insertPush(Offset, MBB, MI, MI.getDebugLoc());
       MI.eraseFromParent();
     }
   }

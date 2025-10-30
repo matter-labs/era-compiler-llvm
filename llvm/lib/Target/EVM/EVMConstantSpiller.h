@@ -6,9 +6,10 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file identifies IMM_RELOAD instructions representing spilled constants
-// throughout the module. It spills constants at the start of the entry function
-// and replaces IMM_RELOAD with the corresponding reload instructions.
+// This file identifies CONSTANT_RELOAD instructions representing spilled
+// constants throughout the module. It spills constants at the start of the
+// entry function and replaces CONSTANT_RELOAD with the corresponding reload
+// instructions.
 //
 //===----------------------------------------------------------------------===//
 
@@ -30,7 +31,7 @@ public:
   explicit EVMConstantSpiller(SmallVector<MachineFunction *> &MFs);
 
   /// Inserts constant spills into the first basic block of the entry
-  /// function and replaces IMM_RELOAD with the corresponding reload
+  /// function and replaces CONSTANT_RELOAD with the corresponding reload
   /// instructions at their use sites.
   void emitSpills(uint64_t SpillOffset, MachineFunction &EntryMF);
 
@@ -42,7 +43,8 @@ private:
   /// functions in the module
   SmallDenseMap<APInt, unsigned> ConstantToUseCount;
 
-  /// IMM_RELOAD instructions that need to be converted into actuall reloads.
+  /// CONSTANT_RELOAD instructions that need to be converted into actuall
+  /// reloads.
   SmallVector<MachineInstr *> Reloads;
 };
 } // namespace llvm

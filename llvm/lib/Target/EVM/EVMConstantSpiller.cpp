@@ -6,9 +6,10 @@
 //
 //===----------------------------------------------------------------------===//
 //
-// This file identifies IMM_RELOAD instructions representing spilled constants
-// throughout the module. It spills constants at the start of the entry function
-// and replaces IMM_RELOAD with the corresponding reload instructions.
+// This file identifies CONSTANT_RELOAD instructions representing spilled
+// constants throughout the module. It spills constants at the start of the
+// entry function and replaces CONSTANT_RELOAD with the corresponding reload
+// instructions.
 //
 //===----------------------------------------------------------------------===//
 
@@ -16,12 +17,10 @@
 #include "EVMInstrInfo.h"
 #include "EVMSubtarget.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
-#include "TargetInfo/EVMTargetInfo.h"
 #include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/CodeGen/Passes.h"
 #include "llvm/CodeGen/TargetSubtargetInfo.h"
-#include "llvm/IR/Module.h"
 #include "llvm/Support/Debug.h"
 
 using namespace llvm;
@@ -30,24 +29,12 @@ using namespace llvm;
 
 constexpr uint64_t SpillSlotSize = 32;
 
-static MachineInstr *emitPush(MachineBasicBlock &MBB,
-                              MachineBasicBlock::iterator InsertBefore,
-                              const EVMInstrInfo *TII, const APInt &Imm,
-                              LLVMContext &Ctx, const DebugLoc &DL) {
-  unsigned Opc = EVM::getPUSHOpcode(Imm);
-  auto MI = BuildMI(MBB, InsertBefore, DL, TII->get(EVM::getStackOpcode(Opc)));
-  if (Opc != EVM::PUSH0)
-    MI.addCImm(ConstantInt::get(Ctx, Imm));
-  return MI;
-}
-
 uint64_t EVMConstantSpiller::getSpillSize() const {
   return ConstantToUseCount.size() * SpillSlotSize;
 }
 
 void EVMConstantSpiller::emitSpills(uint64_t SpillOffset,
                                     MachineFunction &EntryMF) {
-  LLVMContext &Ctx = EntryMF.getFunction().getContext();
   const EVMInstrInfo *TII = EntryMF.getSubtarget<EVMSubtarget>().getInstrInfo();
 
   DenseMap<APInt, uint64_t> ConstantToSpillOffset;
@@ -65,10 +52,13 @@ void EVMConstantSpiller::emitSpills(uint64_t SpillOffset,
              << ", at offset: " << Offset << '\n';
     });
 
-    BuildMI(SpillMBB, SpillMBB.begin(), DebugLoc(), TII->get(EVM::MSTORE_S));
-    emitPush(SpillMBB, SpillMBB.begin(), TII, APInt(256, Offset), Ctx,
-             DebugLoc());
-    emitPush(SpillMBB, SpillMBB.begin(), TII, Imm, Ctx, DebugLoc());
+    // Push the constant
+    TII->insertPush(Imm, SpillMBB, SpillMBB.begin(), DebugLoc());
+    // Push the offset
+    TII->insertPush(APInt(256, Offset), SpillMBB, std::next(SpillMBB.begin()),
+                    DebugLoc());
+    BuildMI(SpillMBB, std::next(SpillMBB.begin(), 2), DebugLoc(),
+            TII->get(EVM::MSTORE_S));
   }
 
   // Reload spilled constants.
@@ -77,7 +67,7 @@ void EVMConstantSpiller::emitSpills(uint64_t SpillOffset,
     uint64_t Offset = ConstantToSpillOffset.at(Imm);
 
     MachineBasicBlock *MBB = MI->getParent();
-    emitPush(*MBB, MI, TII, APInt(256, Offset), Ctx, MI->getDebugLoc());
+    TII->insertPush(APInt(256, Offset), *MBB, MI, MI->getDebugLoc());
     auto Load = BuildMI(*MBB, MI, MI->getDebugLoc(), TII->get(EVM::MLOAD_S));
     Load->setAsmPrinterFlag(MachineInstr::ReloadReuse);
     MI->eraseFromParent();
@@ -88,7 +78,7 @@ EVMConstantSpiller::EVMConstantSpiller(SmallVector<MachineFunction *> &MFs) {
   for (MachineFunction *MF : MFs) {
     for (MachineBasicBlock &MBB : *MF) {
       for (MachineInstr &MI : MBB) {
-        if (MI.getOpcode() != EVM::IMM_RELOAD)
+        if (MI.getOpcode() != EVM::CONSTANT_RELOAD)
           continue;
 
         const APInt Imm = MI.getOperand(0).getCImm()->getValue().zext(256);

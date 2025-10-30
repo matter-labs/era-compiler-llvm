@@ -103,11 +103,7 @@ void EVMStackifyCodeEmitter::CodeEmitter::emitPOP() {
 
 void EVMStackifyCodeEmitter::CodeEmitter::emitConstant(const APInt &Val) {
   StackHeight += 1;
-  unsigned Opc = EVM::getPUSHOpcode(Val);
-  auto NewMI = BuildMI(*CurMBB, CurMBB->end(), DebugLoc(),
-                       TII->get(EVM::getStackOpcode(Opc)));
-  if (Opc != EVM::PUSH0)
-    NewMI.addCImm(ConstantInt::get(MF.getFunction().getContext(), Val));
+  auto NewMI = TII->insertPush(Val, *CurMBB, CurMBB->end(), DebugLoc());
   verify(NewMI);
 }
 

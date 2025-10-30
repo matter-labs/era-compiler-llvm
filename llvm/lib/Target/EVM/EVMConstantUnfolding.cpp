@@ -76,10 +76,10 @@ static cl::opt<unsigned> MetadataSize("evm-metadata-size", cl::Hidden,
                                       cl::init(0),
                                       cl::desc("EVM metadata size"));
 
-static cl::opt<unsigned> ConstantSpillThreshold(
-    "evm-constant-spill-threshold", cl::Hidden, cl::init(30),
+static cl::opt<unsigned> ConstantReloadThreshold(
+    "evm-constant-reload-threshold", cl::Hidden, cl::init(30),
     cl::desc("Minimum number of uses of a constant across the module required "
-             "before spilling it to memory is considered profitable"));
+             "before reloading it from memory is considered profitable"));
 
 static cl::opt<bool> EnableConstSpillWithoutUnsafeAsm(
     "enable-constant-spilling-without-unsafe-asm",
@@ -102,11 +102,12 @@ public:
     // spilling after stackification. This helps reduce compilation time,
     // since otherwise we would need to compile roughly twice as many
     // contracts.
-    CanSpill = any_of(MFs,
-                      [](const MachineFunction *MF) {
-                        return MF->getFrameInfo().hasStackObjects();
-                      }) ||
-               (EnableConstSpillWithoutUnsafeAsm && !HasUnsafeAsm);
+    if (none_of(MFs,
+                [](const MachineFunction *MF) {
+                  return MF->getFrameInfo().hasStackObjects();
+                }) &&
+        (!EnableConstSpillWithoutUnsafeAsm || HasUnsafeAsm))
+      return;
 
     for (MachineFunction *MF : MFs) {
       for (MachineBasicBlock &MBB : *MF) {
@@ -125,20 +126,15 @@ public:
   }
 
   bool isSpillEligible(const APInt &Imm) const {
-    if (!CanSpill)
-      return false;
-
     auto It = ImmToUseCount.find(Imm);
     if (It == ImmToUseCount.end())
       return false;
 
-    return It->second >= ConstantSpillThreshold;
+    return It->second >= ConstantReloadThreshold;
   }
 
 private:
   SmallDenseMap<APInt, unsigned> ImmToUseCount;
-
-  bool CanSpill = false;
 };
 
 // Estimates the execution cost of EVM-style stack operations.
@@ -189,7 +185,7 @@ private:
 // to track the accumulated cost.
 class TransformationCandidate {
 public:
-  TransformationCandidate(LLVMContext &Context, const TargetInstrInfo *TII)
+  TransformationCandidate(LLVMContext &Context, const EVMInstrInfo *TII)
       : Context(Context), TII(TII) {}
 
   void addShl() {
@@ -218,8 +214,8 @@ public:
   void addImm(const APInt &Val) {
     unsigned Opc = EVM::getStackOpcode(EVM::getPUSHOpcode(Val));
     CostModel.accountInstr(Opc, TII);
-    BuildItems.push_back([this, Opc, Val = Val](MachineInstr &MI) {
-      insertImmInstr(MI, Opc, Val);
+    BuildItems.push_back([this, Val = Val](MachineInstr &MI) {
+      TII->insertPush(Val, *MI.getParent(), MI, MI.getDebugLoc());
     });
   }
 
@@ -227,7 +223,7 @@ public:
   void apply(MachineInstr &MI) const {
     if (IsReload) {
       auto NewMI = BuildMI(*MI.getParent(), MI, MI.getDebugLoc(),
-                           TII->get(EVM::IMM_RELOAD));
+                           TII->get(EVM::CONSTANT_RELOAD));
 
       const APInt Imm = MI.getOperand(0).getCImm()->getValue();
       NewMI.addCImm(ConstantInt::get(Context, Imm));
@@ -246,7 +242,7 @@ private:
   using BuildFunction = std::function<void(MachineInstr &)>;
 
   LLVMContext &Context;
-  const TargetInstrInfo *TII{};
+  const EVMInstrInfo *TII{};
 
   StackCostModel CostModel;
   SmallVector<BuildFunction, 16> BuildItems;
@@ -255,12 +251,6 @@ private:
 
   void insertInstr(MachineInstr &MI, unsigned Opc) {
     BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(Opc));
-  }
-
-  void insertImmInstr(MachineInstr &MI, unsigned Opc, const APInt &Val) {
-    auto NewMI = BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(Opc));
-    if (Opc != EVM::PUSH0_S)
-      NewMI.addCImm(ConstantInt::get(Context, Val));
   }
 };
 
@@ -274,7 +264,7 @@ public:
   unsigned getCodeSizeReduction() const { return OverallCodeReductionSize; }
 
   bool tryToUnfoldConstant(MachineInstr &MI, bool OptForSize,
-                           const TargetInstrInfo *TII);
+                           const EVMInstrInfo *TII);
 
 private:
   LLVMContext *Context{};
@@ -290,7 +280,7 @@ private:
 
   const TransformationCandidate *
   findOptimalTransformation(const APInt &Imm, bool OptForSize,
-                            const TargetInstrInfo *TII);
+                            const EVMInstrInfo *TII);
 
   void reduceCodeSizeOn(unsigned Size) {
     OverallCodeReductionSize += Size;
@@ -354,7 +344,7 @@ static bool isBetterCandidate(const TransformationCandidate &A,
 
 const TransformationCandidate *
 ConstantUnfolder::findOptimalTransformation(const APInt &Imm, bool OptForSize,
-                                            const TargetInstrInfo *TII) {
+                                            const EVMInstrInfo *TII) {
   if (auto It = TransformationCache.find({Imm, OptForSize});
       It != TransformationCache.end()) {
     LLVM_DEBUG(
@@ -592,7 +582,7 @@ static bool isProfitableToTranform(const APInt &Imm, const StackCostModel &Cost,
 }
 
 bool ConstantUnfolder::tryToUnfoldConstant(MachineInstr &MI, bool OptForSize,
-                                           const TargetInstrInfo *TII) {
+                                           const EVMInstrInfo *TII) {
   const APInt Imm = MI.getOperand(0).getCImm()->getValue().zext(256);
   unsigned OrigSize = (alignTo(Imm.getActiveBits(), 8) / 8) + 1;
   assert(Imm.getActiveBits() > 4 * 8);
@@ -728,7 +718,7 @@ private:
 static bool processInstructions(ConstantUnfolder &Unfolder,
                                 const SmallVector<MachineInstr *> &Instrs,
                                 DenseSet<const MachineInstr *> &Visited,
-                                bool OptForSize, const TargetInstrInfo *TII) {
+                                bool OptForSize, const EVMInstrInfo *TII) {
   bool Changed = false;
   for (MachineInstr *MI : Instrs) {
     if (Visited.count(MI))
