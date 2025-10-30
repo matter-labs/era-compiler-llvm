@@ -8,7 +8,7 @@ declare void @llvm.evm.return(ptr addrspace(1), i256)
 declare void @llvm.memcpy.p1.p1.i256(ptr addrspace(1), ptr addrspace(1), i256, i1 immarg)
 
 ; CHECK-LABEL: Function: test_both_imprecise
-; CHECK: PartialAlias: ptr addrspace(1) inttoptr (i256 128 to ptr addrspace(1)), ptr addrspace(1) inttoptr (i256 256 to ptr addrspace(1))
+; CHECK: MayAlias: ptr addrspace(1) inttoptr (i256 128 to ptr addrspace(1)), ptr addrspace(1) inttoptr (i256 256 to ptr addrspace(1))
 define void @test_both_imprecise(i256 %size) noreturn {
   tail call void @llvm.memcpy.p1.p1.i256(ptr addrspace(1) inttoptr (i256 256 to ptr addrspace(1)), ptr addrspace(1) inttoptr (i256 512 to ptr addrspace(1)), i256 %size, i1 false)
   call void @llvm.evm.return(ptr addrspace(1) inttoptr (i256 128 to ptr addrspace(1)), i256 %size)
@@ -16,7 +16,7 @@ define void @test_both_imprecise(i256 %size) noreturn {
 }
 
 ; CHECK-LABEL: Function: test_mayalias1
-; CHECK: PartialAlias: ptr addrspace(1) inttoptr (i256 32 to ptr addrspace(1)), ptr addrspace(1) inttoptr (i256 128 to ptr addrspace(1))
+; CHECK: MayAlias: ptr addrspace(1) inttoptr (i256 32 to ptr addrspace(1)), ptr addrspace(1) inttoptr (i256 128 to ptr addrspace(1))
 define void @test_mayalias1(i256 %size) noreturn {
   tail call void @llvm.memcpy.p1.p1.i256(ptr addrspace(1) inttoptr (i256 128 to ptr addrspace(1)), ptr addrspace(1) inttoptr (i256 512 to ptr addrspace(1)), i256 32, i1 false)
   call void @llvm.evm.return(ptr addrspace(1) inttoptr (i256 32 to ptr addrspace(1)), i256 %size)
@@ -24,7 +24,7 @@ define void @test_mayalias1(i256 %size) noreturn {
 }
 
 ; CHECK-LABEL: Function: test_mayalias2
-; CHECK: PartialAlias: ptr addrspace(1) inttoptr (i256 128 to ptr addrspace(1)), ptr addrspace(1) inttoptr (i256 128 to ptr addrspace(1))
+; CHECK: MayAlias: ptr addrspace(1) inttoptr (i256 128 to ptr addrspace(1)), ptr addrspace(1) inttoptr (i256 128 to ptr addrspace(1))
 define void @test_mayalias2(i256 %size) noreturn {
   tail call void @llvm.memcpy.p1.p1.i256(ptr addrspace(1) inttoptr (i256 128 to ptr addrspace(1)), ptr addrspace(1) inttoptr (i256 512 to ptr addrspace(1)), i256 32, i1 false)
   call void @llvm.evm.return(ptr addrspace(1) inttoptr (i256 128 to ptr addrspace(1)), i256 %size)
@@ -32,7 +32,7 @@ define void @test_mayalias2(i256 %size) noreturn {
 }
 
 ; CHECK-LABEL: Function: test_partialalias
-; CHECK: PartialAlias: ptr addrspace(1) inttoptr (i256 130 to ptr addrspace(1)), ptr addrspace(1) inttoptr (i256 128 to ptr addrspace(1))
+; CHECK: MayAlias: ptr addrspace(1) inttoptr (i256 130 to ptr addrspace(1)), ptr addrspace(1) inttoptr (i256 128 to ptr addrspace(1))
 define void @test_partialalias(i256 %size) noreturn {
   tail call void @llvm.memcpy.p1.p1.i256(ptr addrspace(1) inttoptr (i256 128 to ptr addrspace(1)), ptr addrspace(1) inttoptr (i256 512 to ptr addrspace(1)), i256 32, i1 false)
   call void @llvm.evm.return(ptr addrspace(1) inttoptr (i256 130 to ptr addrspace(1)), i256 %size)
