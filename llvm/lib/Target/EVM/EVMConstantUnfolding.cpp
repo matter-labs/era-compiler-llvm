@@ -635,7 +635,8 @@ static bool runImpl(Module &M, MachineModuleInfo &MMI) {
       EVM::calculateModuleCodeSize(M, MMI) + MetadataSize;
 
   // Collect PUSH instructions to process.
-  DenseMap<MachineFunction *, std::unique_ptr<LoopDepthInstrCache>>
+  SmallVector<
+      std::pair<MachineFunction *, std::unique_ptr<LoopDepthInstrCache>>, 16>
       InstrCacheMap;
 
   for (Function &F : M) {
@@ -653,9 +654,8 @@ static bool runImpl(Module &M, MachineModuleInfo &MMI) {
     OwnedMLI->analyze(MDT->getBase());
     const MachineLoopInfo *MLI = OwnedMLI.get();
 
-    [[maybe_unused]] auto It = InstrCacheMap.try_emplace(
+    InstrCacheMap.emplace_back(
         MF, std::make_unique<LoopDepthInstrCache>(*MF, *MLI));
-    assert(It.second);
   }
 
   LLVM_DEBUG({
