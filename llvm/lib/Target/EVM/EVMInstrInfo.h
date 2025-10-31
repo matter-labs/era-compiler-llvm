@@ -86,6 +86,13 @@ public:
   bool
   reverseBranchCondition(SmallVectorImpl<MachineOperand> &Cond) const override;
 
+  /// EVMInstrInfo specific methods.
+
+  /// Inserts a PUSH instruction appropriate for the bit width of the Imm.
+  MachineInstr *insertPush(const APInt &Imm, MachineBasicBlock &MBB,
+                           MachineBasicBlock::iterator I,
+                           const DebugLoc &DL) const;
+
   /// TSFlags extraction
   static uint64_t getTSFlag(const MCInstrDesc &Desc, unsigned Pos,
                             uint64_t Mask) {
