@@ -19,8 +19,40 @@ using namespace llvm::PatternMatch;
 
 #define DEBUG_TYPE "evmtti"
 
+static std::optional<Instruction *> foldSignExtendToConst(InstCombiner &IC,
+                                                          IntrinsicInst &II) {
+  constexpr unsigned BitWidth = 256;
+  if (!II.getType()->isIntegerTy(BitWidth))
+    return std::nullopt;
+
+  const auto *ByteIdxC = dyn_cast<ConstantInt>(II.getArgOperand(0));
+  if (!ByteIdxC)
+    return std::nullopt;
+
+  // ByteIdx must be in range [0, 31].
+  uint64_t ByteIdx = ByteIdxC->getZExtValue();
+  if (ByteIdx >= BitWidth / 8)
+    return std::nullopt;
+
+  // Compute known bits of the input.
+  KnownBits Known(BitWidth);
+  IC.computeKnownBits(II.getArgOperand(1), Known, 0, &II);
+
+  unsigned Width = (ByteIdx + 1) * 8;
+  APInt LowMask = APInt::getLowBitsSet(BitWidth, Width);
+  if (((Known.Zero | Known.One) & LowMask) == LowMask) {
+    APInt Folded = (Known.One & LowMask).trunc(Width).sext(BitWidth);
+    return IC.replaceInstUsesWith(II, ConstantInt::get(II.getType(), Folded));
+  }
+  return std::nullopt;
+}
+
 static std::optional<Instruction *> instCombineSignExtend(InstCombiner &IC,
                                                           IntrinsicInst &II) {
+  constexpr unsigned BitWidth = 256;
+  if (!II.getType()->isIntegerTy(BitWidth))
+    return std::nullopt;
+
   // Fold signextend(b, signextend(b, x)) -> signextend(b, x)
   Value *B = nullptr, *X = nullptr;
   if (match(&II, m_Intrinsic<Intrinsic::evm_signextend>(
@@ -28,7 +60,64 @@ static std::optional<Instruction *> instCombineSignExtend(InstCombiner &IC,
                                      m_Deferred(B), m_Value(X)))))
     return IC.replaceInstUsesWith(II, II.getArgOperand(1));
 
-  return std::nullopt;
+  // From now on, we only handle signextend with constant byte index.
+  const auto *ByteIdxC = dyn_cast<ConstantInt>(II.getArgOperand(0));
+  if (!ByteIdxC)
+    return std::nullopt;
+
+  // ByteIdx must be in range [0, 31].
+  uint64_t ByteIdx = ByteIdxC->getZExtValue();
+  if (ByteIdx >= BitWidth / 8)
+    return std::nullopt;
+
+  unsigned Width = (ByteIdx + 1) * 8;
+
+  // Fold signextend into shifts, if second operand or the result is shift
+  // with constant. LLVM will fuse those shifts, and will replace signextend
+  // with a shift, which is cheaper.
+  if (match(II.getArgOperand(1),
+            m_OneUse(m_Shift(m_Value(), m_ConstantInt()))) ||
+      (II.hasOneUse() &&
+       match(II.user_back(), m_Shift(m_Specific(&II), m_ConstantInt())))) {
+    unsigned ShiftAmt = BitWidth - Width;
+    auto *Shl = IC.Builder.CreateShl(II.getArgOperand(1), ShiftAmt);
+    auto *Ashr = IC.Builder.CreateAShr(Shl, ShiftAmt);
+    return IC.replaceInstUsesWith(II, Ashr);
+  }
+
+  const APInt *AndVal = nullptr;
+  // Match signextend(b, and(x, C))
+  if (match(II.getArgOperand(1), m_And(m_Value(X), m_APInt(AndVal)))) {
+    APInt LowMask = APInt::getLowBitsSet(BitWidth, Width);
+
+    // signextend(b, x & C) -> signextend(b, x)
+    // If and fully preservs low bits, we can drop it.
+    if ((*AndVal & LowMask) == LowMask)
+      return IC.replaceOperand(II, 1, X);
+
+    // signextend(b, x & C) -> (x & C)
+    // If and doesn't touch upper bits, and clears sign bit, we can drop
+    // signextend.
+    APInt SignBit = APInt(BitWidth, 1).shl(Width - 1);
+    if ((*AndVal & ~LowMask).isZero() && (*AndVal & SignBit).isZero())
+      return IC.replaceInstUsesWith(II, II.getArgOperand(1));
+
+    // signextend(b, x & C) -> 0
+    // If and clears all low bits, result is always 0.
+    if ((*AndVal & LowMask).isZero())
+      return IC.replaceInstUsesWith(II,
+                                    ConstantInt::getNullValue(II.getType()));
+  }
+
+  // and(signextend(b, x), C) -> and(x, C)
+  // If and doesn't touch upper bits, we can drop signextend.
+  if (II.hasOneUse() &&
+      match(II.user_back(), m_And(m_Specific(&II), m_APInt(AndVal)))) {
+    APInt LowMask = APInt::getLowBitsSet(BitWidth, Width);
+    if ((*AndVal & ~LowMask).isZero())
+      return IC.replaceInstUsesWith(II, II.getArgOperand(1));
+  }
+  return foldSignExtendToConst(IC, II);
 }
 
 std::optional<Instruction *>
