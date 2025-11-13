@@ -22,6 +22,6 @@ def InstA : TestInstruction {
   let AsmString = "InstA";
 }
 
-// CHECK:      /* 0 */       MCD::OPC_CheckField, 128, 2, 8, 0, 126, 4, 0, 0, // Skip to: 13
-// CHECK-NEXT: /* 9 */       MCD::OPC_Decode, {{[0-9]+}}, {{[0-9]+}}, 0, // Opcode: InstA
-// CHECK-NEXT: /* 13 */      MCD::OPC_Fail,
+// CHECK:      /* 0 */       MCD::OPC_CheckFieldOrFail, 128, 2, 8, 0, 126,
+// CHECK-NEXT: /* 6 */       MCD::OPC_Decode, 186, 2, 0, // Opcode: InstA, DecodeIdx: 0
+// CHECK-NEXT: /* 10 */      MCD::OPC_Fail,

@@ -105,7 +105,8 @@ void EVMCodegenPrepare::processMemTransfer(MemTransferInst *M) {
     IntrID = Intrinsic::evm_memcpyas1as4;
     break;
   }
-  M->setCalledFunction(Intrinsic::getDeclaration(M->getModule(), IntrID));
+  M->setCalledFunction(
+      Intrinsic::getOrInsertDeclaration(M->getModule(), IntrID));
 }
 
 bool EVMCodegenPrepare::runOnFunction(Function &F) {

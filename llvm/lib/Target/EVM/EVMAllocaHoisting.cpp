@@ -54,7 +54,7 @@ static bool runImpl(Function &F) {
     for (auto BI = I->begin(), BE = I->end(); BI != BE;) {
       auto *Alloca = dyn_cast<AllocaInst>(BI++);
       if (Alloca && isa<ConstantInt>(Alloca->getArraySize())) {
-        Alloca->moveBefore(FirstTerminatorInst);
+        Alloca->moveBefore(FirstTerminatorInst->getIterator());
         Modified = true;
       }
     }

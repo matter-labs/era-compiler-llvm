@@ -320,7 +320,7 @@ Type *Type::getWasm_FuncrefTy(LLVMContext &C) {
 
 // EVM local begin
 PointerType *Type::getInt256PtrTy(LLVMContext &C, unsigned AS) {
-  return getInt256Ty(C)->getPointerTo(AS);
+  return PointerType::get(C, AS);
 }
 // EVM local end
 
