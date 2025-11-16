@@ -527,6 +527,16 @@ define i256 @ctlztest(i256 %v) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    DUP1
+; CHECK-NEXT:    PUSH4 @.BB3_2
+; CHECK-NEXT:    JUMPI
+; CHECK-NEXT:  ; %bb.1:
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    PUSH2 256
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+; CHECK-NEXT:  .BB3_2: ; %cond.false
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    DUP1
 ; CHECK-NEXT:    PUSH1 1
 ; CHECK-NEXT:    SHR
 ; CHECK-NEXT:    OR
@@ -633,6 +643,16 @@ define i256 @ctlztest(i256 %v) {
 define i256 @cttztest(i256 %v) {
 ; CHECK-LABEL: cttztest:
 ; CHECK:       ; %bb.0:
+; CHECK-NEXT:    JUMPDEST
+; CHECK-NEXT:    DUP1
+; CHECK-NEXT:    PUSH4 @.BB4_2
+; CHECK-NEXT:    JUMPI
+; CHECK-NEXT:  ; %bb.1:
+; CHECK-NEXT:    POP
+; CHECK-NEXT:    PUSH2 256
+; CHECK-NEXT:    SWAP1
+; CHECK-NEXT:    JUMP
+; CHECK-NEXT:  .BB4_2: ; %cond.false
 ; CHECK-NEXT:    JUMPDEST
 ; CHECK-NEXT:    PUSH1 1
 ; CHECK-NEXT:    DUP2
