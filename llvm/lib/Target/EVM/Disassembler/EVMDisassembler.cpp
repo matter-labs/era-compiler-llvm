@@ -58,7 +58,7 @@ static DecodeStatus decodePUSH(MCInst &Inst, APInt &Insn, uint64_t Address,
   assert(alignTo(Insn.getActiveBits(), 8) == (ImmByteWidth + 1) * 8);
   MCContext &Ctx = Decoder->getContext();
   auto *Str = new (Ctx) SmallString<80>();
-  Insn.extractBits(ImmByteWidth * 8, 0).toStringUnsigned(*Str);
+  Insn.extractBits(ImmByteWidth * 8, 0).toStringUnsigned(*Str, 16);
   Inst.addOperand(MCOperand::createExpr(EVMCImmMCExpr::create(*Str, Ctx)));
   return MCDisassembler::Success;
 }
