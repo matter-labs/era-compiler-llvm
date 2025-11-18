@@ -5,6 +5,6 @@ target triple = "evm"
 
 define i256 @test() {
 ; CHECK-LABEL:  <test>:
-; CHECK:  69 11 22 33 44 55 66 77 88 99 ff     	PUSH10          0x80911113678783024503295
+; CHECK:  69 11 22 33 44 55 66 77 88 99 ff     	PUSH10          0x112233445566778899FF
   ret i256 80911113678783024503295
 }
