@@ -857,6 +857,11 @@ def PUSH_FRAME : NI<(outs), (ins i256imm:$imm), [], true, "", 0, 0> {
   let isNotDuplicable = 1;
 }
 
+def CONSTANT_RELOAD : NI<(outs), (ins i256imm:$imm), [], true, "", 0, 0> {
+  let isCodeGenOnly = 1;
+  let isNotDuplicable = 1;
+}
+
 // Define register PUSH* instructions
 
 let IsPush = 1 in
