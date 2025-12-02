@@ -459,12 +459,24 @@ void EVMStackSolver::run() {
         RegsToSpill.insert(getRegToSpill(SpillableRegs, LIS));
     }
 
-    LLVM_DEBUG(
-        { dbgs() << "Spilling " << RegsToSpill.size() << " registers\n"; });
-    if (RegsToSpill.empty())
+    if (!RegsToSpill.empty()) {
+      LLVM_DEBUG(
+          { dbgs() << "Spilling " << RegsToSpill.size() << " registers\n"; });
+      StackModel.addSpillRegs(RegsToSpill);
+      continue;
+    }
+
+    // If we did aggressive stack compression, we can't do anything else, so
+    // report an error.
+    if (ForceCompressStack)
       report_fatal_error("EVMStackSolver: no spillable registers found for "
                          "unreachable slots.");
-    StackModel.addSpillRegs(RegsToSpill);
+
+    LLVM_DEBUG({
+      dbgs() << "EVMStackSolver: no spillable registers found, running with "
+                "ForceCompressStack=true to avoid stack too deep errors.\n";
+    });
+    ForceCompressStack = true;
   }
 }
 
