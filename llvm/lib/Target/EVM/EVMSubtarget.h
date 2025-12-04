@@ -20,7 +20,6 @@
 #include "EVMSelectionDAGInfo.h"
 #include "llvm/CodeGen/TargetSubtargetInfo.h"
 
-#define GET_SUBTARGETINFO_ENUM
 #define GET_SUBTARGETINFO_HEADER
 #include "EVMGenSubtargetInfo.inc"
 
@@ -29,10 +28,18 @@ class StringRef;
 
 class EVMSubtarget final : public EVMGenSubtargetInfo {
 private:
+  enum class EVMVersion : uint8_t {
+    Generic = 0, // Older versions of the EVM.
+    Fusaka,
+  };
+  EVMVersion Version = EVMVersion::Generic;
+
   EVMFrameLowering FrameLowering;
   EVMInstrInfo InstrInfo;
   EVMTargetLowering TLInfo;
   std::unique_ptr<const SelectionDAGTargetInfo> TSInfo;
+
+  EVMSubtarget &initializeSubtargetDependencies(StringRef CPU, StringRef FS);
 
 public:
   // This constructor initializes the data members to match that
@@ -63,6 +70,8 @@ public:
   bool useAA() const override;
 
   unsigned stackDepthLimit() const { return 16; }
+
+  bool hasCLZ() const { return Version >= EVMVersion::Fusaka; }
 };
 } // namespace llvm
 
