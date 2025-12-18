@@ -2277,11 +2277,9 @@ deriveAttrsInPostOrder(ArrayRef<Function *> Functions, AARGetterT &&AARGetter,
   addArgumentReturnedAttrs(Nodes.SCCNodes, Changed);
   addMemoryAttrs(Nodes.SCCNodes, AARGetter, Changed);
   // EVM local begin
-  if (!Triple(Functions[0]->getParent()->getTargetTriple()).isEVM()) {
-  // EVM local end
-    addArgumentAttrs(Nodes.SCCNodes, Changed, /*SkipInitializes=*/false);
-  // EVM local begin
-  }
+  bool SkipInitializes =
+      Triple(Functions[0]->getParent()->getTargetTriple()).isEVM();
+  addArgumentAttrs(Nodes.SCCNodes, Changed, SkipInitializes);
   // EVM local end
   inferConvergent(Nodes.SCCNodes, Changed);
   addNoReturnAttrs(Nodes.SCCNodes, Changed);
