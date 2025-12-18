@@ -20,8 +20,8 @@ include "llvm/Target/Target.td"
 // EVM Versions
 //===----------------------------------------------------------------------===//
 
-def FeatureFusaka : SubtargetFeature<"fusaka", "Version", "EVMVersion::Fusaka",
-                                     "Fusaka release">;
+def FeatureOsaka : SubtargetFeature<"osaka", "Version", "EVMVersion::Osaka",
+                                    "Osaka release">;
 def HasCLZ : Predicate<"Subtarget->hasCLZ()">;
 
 //===----------------------------------------------------------------------===//
