@@ -1731,7 +1731,10 @@ Instruction *InstCombinerImpl::visitUDiv(BinaryOperator &I) {
       return Log2;
 
     // Op0 udiv Op1 -> Op0 lshr cttz(Op1), if Op1 is a power of 2.
-    if (isKnownToBeAPowerOfTwo(Denom, /*OrZero=*/true, &I))
+    // EVM local begin
+    Triple TT(I.getFunction()->getParent()->getTargetTriple());
+    if (!TT.isEVM() && isKnownToBeAPowerOfTwo(Denom, /*OrZero=*/true, &I))
+      // EVM local end
       // This will increase instruction count but it's okay
       // since bitwise operations are substantially faster than
       // division.
