@@ -30,7 +30,7 @@ class EVMSubtarget final : public EVMGenSubtargetInfo {
 private:
   enum class EVMVersion : uint8_t {
     Generic = 0, // Older versions of the EVM.
-    Fusaka,
+    Osaka,
   };
   EVMVersion Version = EVMVersion::Generic;
 
@@ -71,7 +71,7 @@ public:
 
   unsigned stackDepthLimit() const { return 16; }
 
-  bool hasCLZ() const { return Version >= EVMVersion::Fusaka; }
+  bool hasCLZ() const { return Version >= EVMVersion::Osaka; }
 };
 } // namespace llvm
 

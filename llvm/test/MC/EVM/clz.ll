@@ -1,4 +1,4 @@
-; RUN: llc -filetype=obj -mattr=+fusaka %s -o - | llvm-objdump --no-leading-addr --disassemble - | FileCheck %s
+; RUN: llc -filetype=obj -mattr=+osaka %s -o - | llvm-objdump --no-leading-addr --disassemble - | FileCheck %s
 
 target datalayout = "E-p:256:256-i256:256:256-S256-a:256:256"
 target triple = "evm"
