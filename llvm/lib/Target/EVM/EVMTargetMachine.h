@@ -22,7 +22,7 @@ namespace llvm {
 ///
 class EVMTargetMachine final : public CodeGenTargetMachineImpl {
   std::unique_ptr<TargetLoweringObjectFile> TLOF;
-  EVMSubtarget Subtarget;
+  mutable StringMap<std::unique_ptr<EVMSubtarget>> SubtargetMap;
 
 public:
   EVMTargetMachine(const Target &T, const Triple &TT, StringRef CPU,
@@ -33,9 +33,11 @@ public:
 
   TargetPassConfig *createPassConfig(PassManagerBase &PM) override;
 
-  const EVMSubtarget *getSubtargetImpl(const Function &F) const override {
-    return &Subtarget;
-  }
+  const EVMSubtarget *getSubtargetImpl(const Function &F) const override;
+  // DO NOT IMPLEMENT: There is no such thing as a valid default subtarget,
+  // subtargets are per-function entities based on the target-specific
+  // attributes of each function.
+  const EVMSubtarget *getSubtargetImpl() const = delete;
 
   TargetTransformInfo getTargetTransformInfo(const Function &F) const override;
 

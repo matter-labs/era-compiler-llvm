@@ -130,19 +130,37 @@ define i256 @clz(i256 %v) {
   ret i256 %res
 }
 
+define i256 @clz_target_features(i256 %v) "target-features"="+osaka" {
+; GENERIC-LABEL: clz_target_features:
+; GENERIC:       ; %bb.0:
+; GENERIC-NEXT:    JUMPDEST
+; GENERIC-NEXT:    CLZ
+; GENERIC-NEXT:    SWAP1
+; GENERIC-NEXT:    JUMP
+;
+; OSAKA-LABEL: clz_target_features:
+; OSAKA:       ; %bb.0:
+; OSAKA-NEXT:    JUMPDEST
+; OSAKA-NEXT:    CLZ
+; OSAKA-NEXT:    SWAP1
+; OSAKA-NEXT:    JUMP
+  %res = call i256 @llvm.ctlz.i256(i256 %v, i1 false)
+  ret i256 %res
+}
+
 define i256 @ctz(i256 %v) {
 ; GENERIC-LABEL: ctz:
 ; GENERIC:       ; %bb.0:
 ; GENERIC-NEXT:    JUMPDEST
 ; GENERIC-NEXT:    DUP1
-; GENERIC-NEXT:    PUSH4 @.BB1_2
+; GENERIC-NEXT:    PUSH4 @.BB2_2
 ; GENERIC-NEXT:    JUMPI
 ; GENERIC-NEXT:  ; %bb.1:
 ; GENERIC-NEXT:    POP
 ; GENERIC-NEXT:    PUSH2 0x100
 ; GENERIC-NEXT:    SWAP1
 ; GENERIC-NEXT:    JUMP
-; GENERIC-NEXT:  .BB1_2: ; %cond.false
+; GENERIC-NEXT:  .BB2_2: ; %cond.false
 ; GENERIC-NEXT:    JUMPDEST
 ; GENERIC-NEXT:    PUSH32 0x101010101010101010101010101010101010101010101010101010101010101
 ; GENERIC-NEXT:    PUSH16 0xF0F0F0F0F0F0F0F0F0F0F0F0F0F0F0F
