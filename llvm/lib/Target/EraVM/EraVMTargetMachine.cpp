@@ -44,6 +44,15 @@ static cl::opt<bool> DisableStraightLineScalarOptPasses(
              "purpose only)"),
     cl::init(false), cl::Hidden);
 
+// Note: Be very careful when enabling these passes as they may cause
+// miscompilations. These can give some performance improvements, but enable
+// them only after careful testing.
+static cl::opt<bool>
+    EnableNewGVNPasses("eravm-enable-new-gvn-passes",
+                       cl::desc("Enable the NewGVN and GVNHoist passes. Be "
+                                "cautious as this may cause miscompilations."),
+                       cl::init(false), cl::Hidden);
+
 extern "C" LLVM_EXTERNAL_VISIBILITY void LLVMInitializeEraVMTarget() {
   // Register the target.
   RegisterTargetMachine<EraVMTargetMachine> X(getTheEraVMTarget());
@@ -250,8 +259,12 @@ void EraVMPassConfig::addIRPasses() {
       // SeparateConstOffsetFromGEP and SLSR creates common expressions which
       // GVN or EarlyCSE can reuse. GVN generates significantly better code than
       // EarlyCSE for some of our benchmarks.
-      addPass(createNewGVNPass());
-      addPass(createGVNHoistPass());
+      if (EnableNewGVNPasses) {
+        addPass(createNewGVNPass());
+        addPass(createGVNHoistPass());
+      } else {
+        addPass(createGVNPass());
+      }
       // Run NaryReassociate after EarlyCSE/GVN to be more effective.
       addPass(createNaryReassociatePass());
       // Call EarlyCSE pass to find and remove subexpressions in the lowered

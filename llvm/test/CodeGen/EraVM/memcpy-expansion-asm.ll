@@ -84,14 +84,22 @@ entry:
 define void @expand_known_p1_p3_loop_iter1(ptr addrspace(1) %dest, ptr addrspace(3) %src) {
 ; CHECK-LABEL: expand_known_p1_p3_loop_iter1:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    ldpi r2, r2, r3
-; CHECK-NEXT:    stmi.h r1, r2, r1
-; CHECK-NEXT:    ldm.h r1, r2
-; CHECK-NEXT:    and code[@CPI2_0], r2, r2
-; CHECK-NEXT:    ldp r3, r3
-; CHECK-NEXT:    and code[@CPI2_1], r3, r3
-; CHECK-NEXT:    or r3, r2, r2
-; CHECK-NEXT:    stm.h r1, r2
+; CHECK-NEXT:    add 32, r1, r3
+; CHECK-NEXT:    addp r2, r0, r4
+; CHECK-NEXT:  .BB2_1: ; %load-store-loop
+; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
+; CHECK-NEXT:    ldpi r4, r5, r4
+; CHECK-NEXT:    stmi.h r1, r5, r1
+; CHECK-NEXT:    sub! r1, r3, r0
+; CHECK-NEXT:    jump.ne @.BB2_1
+; CHECK-NEXT:  ; %bb.2: ; %memcpy-split
+; CHECK-NEXT:    ldm.h r3, r1
+; CHECK-NEXT:    and code[@CPI2_0], r1, r1
+; CHECK-NEXT:    addp.s 32, r2, r2
+; CHECK-NEXT:    ldp r2, r2
+; CHECK-NEXT:    and code[@CPI2_1], r2, r2
+; CHECK-NEXT:    or r2, r1, r1
+; CHECK-NEXT:    stm.h r3, r1
 ; CHECK-NEXT:    ret
 entry:
   call void @llvm.memcpy.p1.p3.i256(ptr addrspace(1) %dest, ptr addrspace(3) %src, i256 42, i1 false)
@@ -101,14 +109,22 @@ entry:
 define void @expand_known_p1_p1_loop_iter1(ptr addrspace(1) %dest, ptr addrspace(1) %src) {
 ; CHECK-LABEL: expand_known_p1_p1_loop_iter1:
 ; CHECK:       ; %bb.0: ; %entry
-; CHECK-NEXT:    ldmi.h r2, r2, r3
-; CHECK-NEXT:    stmi.h r1, r2, r1
-; CHECK-NEXT:    ldm.h r1, r2
-; CHECK-NEXT:    and code[@CPI3_0], r2, r2
-; CHECK-NEXT:    ldm.h r3, r3
-; CHECK-NEXT:    and code[@CPI3_1], r3, r3
-; CHECK-NEXT:    or r3, r2, r2
-; CHECK-NEXT:    stm.h r1, r2
+; CHECK-NEXT:    add 32, r1, r3
+; CHECK-NEXT:    add r2, r0, r4
+; CHECK-NEXT:  .BB3_1: ; %load-store-loop
+; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
+; CHECK-NEXT:    ldmi.h r4, r5, r4
+; CHECK-NEXT:    stmi.h r1, r5, r1
+; CHECK-NEXT:    sub! r1, r3, r0
+; CHECK-NEXT:    jump.ne @.BB3_1
+; CHECK-NEXT:  ; %bb.2: ; %memcpy-split
+; CHECK-NEXT:    ldm.h r3, r1
+; CHECK-NEXT:    and code[@CPI3_0], r1, r1
+; CHECK-NEXT:    add 32, r2, r2
+; CHECK-NEXT:    ldm.h r2, r2
+; CHECK-NEXT:    and code[@CPI3_1], r2, r2
+; CHECK-NEXT:    or r2, r1, r1
+; CHECK-NEXT:    stm.h r3, r1
 ; CHECK-NEXT:    ret
 entry:
   call void @llvm.memcpy.p1.p1.i256(ptr addrspace(1) %dest, ptr addrspace(1) %src, i256 42, i1 false)
