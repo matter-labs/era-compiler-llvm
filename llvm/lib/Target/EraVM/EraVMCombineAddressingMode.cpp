@@ -568,7 +568,9 @@ bool EraVMCombineAddressingMode::combineMoveImmUse(MachineFunction &MF) {
                 !MDT->dominates(&MI, Use))
               return false;
             // TODO: CPR-1499 Support select.
-            return !TII->isSel(*Use) && EraVM::hasRRInAddressingMode(*Use);
+            return !TII->isSel(*Use) && EraVM::hasRRInAddressingMode(*Use) &&
+                   (EraVM::in0Iterator(*Use)->getReg() !=
+                    EraVM::in1Iterator(*Use)->getReg());
           }))
         continue;
       UsesToUpdate.insert(Uses.begin(), Uses.end());
