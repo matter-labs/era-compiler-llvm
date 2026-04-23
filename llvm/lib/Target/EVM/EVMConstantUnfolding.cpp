@@ -25,16 +25,17 @@
 
 #include "EVM.h"
 #include "EVMCalculateModuleSize.h"
+#include "EVMConstantSpiller.h"
 #include "EVMInstrInfo.h"
 #include "EVMSubtarget.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
 #include "TargetInfo/EVMTargetInfo.h"
 #include "llvm/ADT/Statistic.h"
 #include "llvm/CodeGen/MachineDominators.h"
+#include "llvm/CodeGen/MachineFrameInfo.h"
 #include "llvm/CodeGen/MachineLoopInfo.h"
 #include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/IR/Module.h"
-#include "llvm/IR/PassInstrumentation.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Support/Debug.h"
 #include <functional>
@@ -75,8 +76,66 @@ static cl::opt<unsigned> MetadataSize("evm-metadata-size", cl::Hidden,
                                       cl::init(0),
                                       cl::desc("EVM metadata size"));
 
+static cl::opt<unsigned> ConstantReloadThreshold(
+    "evm-constant-reload-threshold", cl::Hidden, cl::init(30),
+    cl::desc("Minimum number of uses of a constant across the module required "
+             "before reloading it from memory is considered profitable"));
+
+static cl::opt<bool> EnableConstSpillWithoutUnsafeAsm(
+    "enable-constant-spilling-without-unsafe-asm",
+    cl::desc("Also enable constant spilling if there is no unsafe asm in the "
+             "module"),
+    cl::init(false),
+    cl::Hidden // optional: hide from general users if needed
+);
+
 namespace {
 using InstrsPerLoopDepthTy = SmallVector<SmallVector<MachineInstr *>>;
+
+// This helper calculates the frequency of constants across all machine
+// functions in the module and determines whether a given constant is
+// eligible for spilling.
+class SpillHelper {
+public:
+  explicit SpillHelper(SmallVector<MachineFunction *> &MFs, bool HasUnsafeAsm) {
+    // Perform constant spilling only if the module already requires
+    // spilling after stackification. This helps reduce compilation time,
+    // since otherwise we would need to compile roughly twice as many
+    // contracts.
+    if (none_of(MFs,
+                [](const MachineFunction *MF) {
+                  return MF->getFrameInfo().hasStackObjects();
+                }) &&
+        (!EnableConstSpillWithoutUnsafeAsm || HasUnsafeAsm))
+      return;
+
+    for (MachineFunction *MF : MFs) {
+      for (MachineBasicBlock &MBB : *MF) {
+        for (MachineInstr &MI : MBB) {
+          if (!EVMInstrInfo::isPush(&MI) || (MI.getOpcode() == EVM::PUSH0_S))
+            continue;
+
+          const APInt Imm = MI.getOperand(0).getCImm()->getValue().zext(256);
+          // Perform spilling only for large constants where it can have
+          // a noticeable impact.
+          if (Imm.getActiveBits() > 16 * 8)
+            ImmToUseCount[Imm]++;
+        }
+      }
+    }
+  }
+
+  bool isSpillEligible(const APInt &Imm) const {
+    auto It = ImmToUseCount.find(Imm);
+    if (It == ImmToUseCount.end())
+      return false;
+
+    return It->second >= ConstantReloadThreshold;
+  }
+
+private:
+  SmallDenseMap<APInt, unsigned> ImmToUseCount;
+};
 
 // Estimates the execution cost of EVM-style stack operations.
 // Tracks instruction count, gas cost, and unfolded bytecode size.
@@ -91,6 +150,22 @@ public:
     const MCInstrDesc &Desc = TII->get(Opc);
     ByteSize += Desc.getSize();
     Gas += EVMInstrInfo::getGasCost(Desc);
+  }
+
+  void accountSpill(const TargetInstrInfo *TII) {
+    // In most cases, offsets within the spill area can be represented
+    // using a single byte, but let's pessimistically assume they require
+    // 2 bytes.
+    //
+    //   PUSH2 offset
+    //   MLOAD
+
+    InstrCount = 2;
+    const MCInstrDesc &PushDesc = TII->get(EVM::PUSH2_S);
+    const MCInstrDesc &LoadDesc = TII->get(EVM::MLOAD_S);
+    ByteSize = PushDesc.getSize() + LoadDesc.getSize();
+    Gas =
+        EVMInstrInfo::getGasCost(PushDesc) + EVMInstrInfo::getGasCost(LoadDesc);
   }
 
   unsigned getInstrCount() const { return InstrCount; }
@@ -110,7 +185,7 @@ private:
 // to track the accumulated cost.
 class TransformationCandidate {
 public:
-  TransformationCandidate(LLVMContext &Context, const TargetInstrInfo *TII)
+  TransformationCandidate(LLVMContext &Context, const EVMInstrInfo *TII)
       : Context(Context), TII(TII) {}
 
   void addShl() {
@@ -131,39 +206,51 @@ public:
     BuildItems.push_back([this](MachineInstr &MI) { insertInstr(MI, Opc); });
   }
 
+  void addReload() {
+    CostModel.accountSpill(TII);
+    IsReload = true;
+  }
+
   void addImm(const APInt &Val) {
     unsigned Opc = EVM::getStackOpcode(EVM::getPUSHOpcode(Val));
     CostModel.accountInstr(Opc, TII);
-    BuildItems.push_back([this, Opc, Val = Val](MachineInstr &MI) {
-      insertImmInstr(MI, Opc, Val);
+    BuildItems.push_back([this, Val = Val](MachineInstr &MI) {
+      TII->insertPush(Val, *MI.getParent(), MI, MI.getDebugLoc());
     });
   }
 
   // Applies queued build instruction steps to replace a given instruction.
   void apply(MachineInstr &MI) const {
+    if (IsReload) {
+      auto NewMI = BuildMI(*MI.getParent(), MI, MI.getDebugLoc(),
+                           TII->get(EVM::CONSTANT_RELOAD));
+
+      const APInt Imm = MI.getOperand(0).getCImm()->getValue();
+      NewMI.addCImm(ConstantInt::get(Context, Imm));
+      return;
+    }
+
     for (const auto &func : BuildItems)
       func(MI);
   }
 
   const StackCostModel &getCost() const { return CostModel; }
 
+  bool isReload() const { return IsReload; }
+
 private:
   using BuildFunction = std::function<void(MachineInstr &)>;
 
   LLVMContext &Context;
-  const TargetInstrInfo *TII{};
+  const EVMInstrInfo *TII{};
 
   StackCostModel CostModel;
   SmallVector<BuildFunction, 16> BuildItems;
 
+  bool IsReload = false;
+
   void insertInstr(MachineInstr &MI, unsigned Opc) {
     BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(Opc));
-  }
-
-  void insertImmInstr(MachineInstr &MI, unsigned Opc, const APInt &Val) {
-    auto NewMI = BuildMI(*MI.getParent(), MI, MI.getDebugLoc(), TII->get(Opc));
-    if (Opc != EVM::PUSH0_S)
-      NewMI.addCImm(ConstantInt::get(Context, Val));
   }
 };
 
@@ -171,15 +258,17 @@ private:
 // transformations.
 class ConstantUnfolder {
 public:
-  explicit ConstantUnfolder(LLVMContext *Context) : Context(Context) {}
+  explicit ConstantUnfolder(LLVMContext *Context, SpillHelper &SpillHelper)
+      : Context(Context), SpillHelper(SpillHelper) {}
 
   unsigned getCodeSizeReduction() const { return OverallCodeReductionSize; }
 
   bool tryToUnfoldConstant(MachineInstr &MI, bool OptForSize,
-                           const TargetInstrInfo *TII);
+                           const EVMInstrInfo *TII);
 
 private:
   LLVMContext *Context{};
+  SpillHelper &SpillHelper;
 
   // The 'second' field can be set to 0 or 1, indicating whether to
   // optimize for performance or size.
@@ -191,7 +280,7 @@ private:
 
   const TransformationCandidate *
   findOptimalTransformation(const APInt &Imm, bool OptForSize,
-                            const TargetInstrInfo *TII);
+                            const EVMInstrInfo *TII);
 
   void reduceCodeSizeOn(unsigned Size) {
     OverallCodeReductionSize += Size;
@@ -241,11 +330,11 @@ static bool isBetterCandidate(const TransformationCandidate &A,
   unsigned ScoreB = 0;
 
   if (OptForSize) {
-    ScoreA = (CostA.getByteSize() * Weight) + CostA.getGas();
-    ScoreB = (CostB.getByteSize() * Weight) + CostB.getGas();
+    ScoreA = (CostA.getByteSize() * Weight) + CostA.getGas() + A.isReload();
+    ScoreB = (CostB.getByteSize() * Weight) + CostB.getGas() + B.isReload();
   } else {
-    ScoreA = CostA.getByteSize() + (Weight * CostA.getGas());
-    ScoreB = CostB.getByteSize() + (Weight * CostB.getGas());
+    ScoreA = CostA.getByteSize() + (Weight * CostA.getGas()) + A.isReload();
+    ScoreB = CostB.getByteSize() + (Weight * CostB.getGas()) + B.isReload();
   }
   if (ScoreA != ScoreB)
     return ScoreA < ScoreB;
@@ -255,7 +344,7 @@ static bool isBetterCandidate(const TransformationCandidate &A,
 
 const TransformationCandidate *
 ConstantUnfolder::findOptimalTransformation(const APInt &Imm, bool OptForSize,
-                                            const TargetInstrInfo *TII) {
+                                            const EVMInstrInfo *TII) {
   if (auto It = TransformationCache.find({Imm, OptForSize});
       It != TransformationCache.end()) {
     LLVM_DEBUG(
@@ -432,6 +521,20 @@ ConstantUnfolder::findOptimalTransformation(const APInt &Imm, bool OptForSize,
     Transformations.emplace_back(std::move(Tr));
   }
 
+  // 7. Checks whether spilling the constant is appropriate.
+  //
+  // Cost:
+  //   PUSH1 frame_off  // 2
+  //   MLOAD            // 1
+  //
+  // Typically one byte is enough to encode the offset.
+  //
+  if (SpillHelper.isSpillEligible(Imm)) {
+    auto Tr = std::make_unique<TransformationCandidate>(*Context, TII);
+    Tr->addReload();
+    Transformations.emplace_back(std::move(Tr));
+  }
+
   // Find optimal transformation.
   auto *OptIt = std::min_element(Transformations.begin(), Transformations.end(),
                                  [OptForSize](const auto &A, const auto &B) {
@@ -445,7 +548,10 @@ ConstantUnfolder::findOptimalTransformation(const APInt &Imm, bool OptForSize,
     LLVM_DEBUG({
       dbgs() << "       [size: " << Cost.getByteSize()
              << ", instr count: " << Cost.getInstrCount()
-             << ", gas: " << Cost.getGas() << "]\n";
+             << ", gas: " << Cost.getGas();
+      if (Tr->isReload())
+        dbgs() << ", IsRelaod";
+      dbgs() << "]\n";
     });
   }
 #endif // NDEBUG
@@ -476,7 +582,7 @@ static bool isProfitableToTranform(const APInt &Imm, const StackCostModel &Cost,
 }
 
 bool ConstantUnfolder::tryToUnfoldConstant(MachineInstr &MI, bool OptForSize,
-                                           const TargetInstrInfo *TII) {
+                                           const EVMInstrInfo *TII) {
   const APInt Imm = MI.getOperand(0).getCImm()->getValue().zext(256);
   unsigned OrigSize = (alignTo(Imm.getActiveBits(), 8) / 8) + 1;
   assert(Imm.getActiveBits() > 4 * 8);
@@ -503,7 +609,10 @@ bool ConstantUnfolder::tryToUnfoldConstant(MachineInstr &MI, bool OptForSize,
     dbgs() << "      Optimal transformation:\n"
            << "       [size: " << OptCost.getByteSize()
            << ", instr count: " << OptCost.getInstrCount()
-           << ", gas: " << OptCost.getGas() << "]\n";
+           << ", gas: " << OptCost.getGas();
+    if (OptTransformation->isReload())
+      dbgs() << ", IsRelaod";
+    dbgs() << "]\n";
   });
 
   if (OptCost.getInstrCount() == 1) {
@@ -609,7 +718,7 @@ private:
 static bool processInstructions(ConstantUnfolder &Unfolder,
                                 const SmallVector<MachineInstr *> &Instrs,
                                 DenseSet<const MachineInstr *> &Visited,
-                                bool OptForSize, const TargetInstrInfo *TII) {
+                                bool OptForSize, const EVMInstrInfo *TII) {
   bool Changed = false;
   for (MachineInstr *MI : Instrs) {
     if (Visited.count(MI))
@@ -628,7 +737,15 @@ static bool processInstructions(ConstantUnfolder &Unfolder,
 
 static bool runImpl(Module &M, MachineModuleInfo &MMI) {
   bool Changed = false;
-  ConstantUnfolder Unfolder(&M.getContext());
+
+  SmallVector<MachineFunction *> MFs;
+  for_each(M.getFunctionList(), [&MFs, &MMI](Function &F) {
+    if (MachineFunction *MF = MMI.getMachineFunction(F))
+      MFs.push_back(MF);
+  });
+
+  SpillHelper SpillHelper(MFs, M.getNamedMetadata("llvm.evm.hasunsafeasm"));
+  ConstantUnfolder Unfolder(&M.getContext(), SpillHelper);
 
   // Metadata size is included into the bytecode size.
   const unsigned ModuleCodeSize =
@@ -639,11 +756,7 @@ static bool runImpl(Module &M, MachineModuleInfo &MMI) {
       std::pair<MachineFunction *, std::unique_ptr<LoopDepthInstrCache>>, 16>
       InstrCacheMap;
 
-  for (Function &F : M) {
-    MachineFunction *MF = MMI.getMachineFunction(F);
-    if (!MF)
-      continue;
-
+  for (MachineFunction *MF : MFs) {
     // Compute MachineLoopInfo on the fly, as it's not available on the
     // Module pass level.
     auto OwnedMDT = std::make_unique<MachineDominatorTree>();
