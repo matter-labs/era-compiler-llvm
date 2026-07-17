@@ -150,7 +150,7 @@ class PragmaCommentDecl final
                     PragmaMSCommentKind CommentKind)
       : Decl(PragmaComment, TU, CommentLoc), CommentKind(CommentKind) {}
 
-  virtual void anchor();
+  LLVM_DECLARE_VIRTUAL_ANCHOR_FUNCTION();
 
 public:
   static PragmaCommentDecl *Create(const ASTContext &C, TranslationUnitDecl *DC,
@@ -184,7 +184,7 @@ class PragmaDetectMismatchDecl final
                            size_t ValueStart)
       : Decl(PragmaDetectMismatch, TU, Loc), ValueStart(ValueStart) {}
 
-  virtual void anchor();
+  LLVM_DECLARE_VIRTUAL_ANCHOR_FUNCTION();
 
 public:
   static PragmaDetectMismatchDecl *Create(const ASTContext &C,
@@ -4856,7 +4856,7 @@ public:
 ///   export void foo();
 /// \endcode
 class ExportDecl final : public Decl, public DeclContext {
-  virtual void anchor();
+  LLVM_DECLARE_VIRTUAL_ANCHOR_FUNCTION();
 
 private:
   friend class ASTDeclReader;
