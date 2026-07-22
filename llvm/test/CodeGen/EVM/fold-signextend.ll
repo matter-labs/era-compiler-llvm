@@ -7,7 +7,8 @@ target triple = "evm"
 define i256 @test_const(i256 %x) {
 ; CHECK-LABEL: define i256 @test_const(
 ; CHECK-SAME: i256 [[X:%.*]]) {
-; CHECK-NEXT:    [[SIGNEXT1:%.*]] = call i256 @llvm.evm.signextend(i256 15, i256 [[X]])
+; CHECK-NEXT:    [[TMP1:%.*]] = shl i256 [[X]], 128
+; CHECK-NEXT:    [[SIGNEXT1:%.*]] = ashr exact i256 [[TMP1]], 128
 ; CHECK-NEXT:    ret i256 [[SIGNEXT1]]
 ;
   %signext1 = call i256 @llvm.evm.signextend(i256 15, i256 %x)
@@ -18,8 +19,8 @@ define i256 @test_const(i256 %x) {
 define i256 @test_const_ne(i256 %x) {
 ; CHECK-LABEL: define i256 @test_const_ne(
 ; CHECK-SAME: i256 [[X:%.*]]) {
-; CHECK-NEXT:    [[SIGNEXT1:%.*]] = call i256 @llvm.evm.signextend(i256 15, i256 [[X]])
-; CHECK-NEXT:    [[SIGNEXT2:%.*]] = call i256 @llvm.evm.signextend(i256 10, i256 [[SIGNEXT1]])
+; CHECK-NEXT:    [[TMP1:%.*]] = shl i256 [[X]], 168
+; CHECK-NEXT:    [[SIGNEXT2:%.*]] = ashr exact i256 [[TMP1]], 168
 ; CHECK-NEXT:    ret i256 [[SIGNEXT2]]
 ;
   %signext1 = call i256 @llvm.evm.signextend(i256 15, i256 %x)
