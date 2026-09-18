@@ -342,9 +342,10 @@ define void @selrss(i1 %cond, i256 %x, ptr %p, ptr %out) {
 ; CHECK-LABEL: selrss:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub! r1, r0, r0
-; CHECK-NEXT:    shr.s 5, r4, r1
-; CHECK-NEXT:    add stack[r3], r0, stack[r1]
-; CHECK-NEXT:    add.ne r2, r0, stack[r1]
+; CHECK-NEXT:    shr.s 5, r3, r1
+; CHECK-NEXT:    shr.s 5, r4, r3
+; CHECK-NEXT:    add stack[r1], r0, stack[r3]
+; CHECK-NEXT:    add.ne r2, r0, stack[r3]
 ; CHECK-NEXT:    ret
   %l = load i256, ptr %p
   %s = select i1 %cond, i256 %x, i256 %l
@@ -356,9 +357,10 @@ define void @seliss(i1 %cond, ptr %p, ptr %out) {
 ; CHECK-LABEL: seliss:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub! r1, r0, r0
-; CHECK-NEXT:    shr.s 5, r3, r1
-; CHECK-NEXT:    add stack[r2], r0, stack[r1]
-; CHECK-NEXT:    add.ne 12345, r0, stack[r1]
+; CHECK-NEXT:    shr.s 5, r2, r1
+; CHECK-NEXT:    shr.s 5, r3, r2
+; CHECK-NEXT:    add stack[r1], r0, stack[r2]
+; CHECK-NEXT:    add.ne 12345, r0, stack[r2]
 ; CHECK-NEXT:    ret
   %l = load i256, ptr %p
   %s = select i1 %cond, i256 12345, i256 %l
@@ -371,9 +373,10 @@ define void @selcss(i1 %cond, ptr %p, ptr %out) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    add code[@val], r0, r4
 ; CHECK-NEXT:    sub! r1, r0, r0
-; CHECK-NEXT:    shr.s 5, r3, r1
-; CHECK-NEXT:    add stack[r2], r0, stack[r1]
-; CHECK-NEXT:    add.ne r4, r0, stack[r1]
+; CHECK-NEXT:    shr.s 5, r2, r1
+; CHECK-NEXT:    shr.s 5, r3, r2
+; CHECK-NEXT:    add stack[r1], r0, stack[r2]
+; CHECK-NEXT:    add.ne r4, r0, stack[r2]
 ; CHECK-NEXT:    ret
   %c = load i256, ptr addrspace(4) @val
   %l = load i256, ptr %p
@@ -387,9 +390,10 @@ define void @selscs(i1 %cond, ptr %p, ptr %out) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    add code[@val], r0, r4
 ; CHECK-NEXT:    sub! r1, r0, r0
-; CHECK-NEXT:    shr.s 5, r3, r1
-; CHECK-NEXT:    add r4, r0, stack[r1]
-; CHECK-NEXT:    add.ne stack[r2], r0, stack[r1]
+; CHECK-NEXT:    shr.s 5, r2, r1
+; CHECK-NEXT:    shr.s 5, r3, r2
+; CHECK-NEXT:    add r4, r0, stack[r2]
+; CHECK-NEXT:    add.ne stack[r1], r0, stack[r2]
 ; CHECK-NEXT:    ret
   %l = load i256, ptr %p
   %c = load i256, ptr addrspace(4) @val
@@ -402,9 +406,10 @@ define void @selsrs(i1 %cond, ptr %p, i256 %y, ptr %out) {
 ; CHECK-LABEL: selsrs:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub! r1, r0, r0
-; CHECK-NEXT:    shr.s 5, r4, r1
-; CHECK-NEXT:    add r3, r0, stack[r1]
-; CHECK-NEXT:    add.ne stack[r2], r0, stack[r1]
+; CHECK-NEXT:    shr.s 5, r2, r1
+; CHECK-NEXT:    shr.s 5, r4, r2
+; CHECK-NEXT:    add r3, r0, stack[r2]
+; CHECK-NEXT:    add.ne stack[r1], r0, stack[r2]
 ; CHECK-NEXT:    ret
   %l = load i256, ptr %p
   %s = select i1 %cond, i256 %l, i256 %y
@@ -416,9 +421,10 @@ define void @selsis(i1 %cond, ptr %p, ptr %out) {
 ; CHECK-LABEL: selsis:
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    sub! r1, r0, r0
-; CHECK-NEXT:    shr.s 5, r3, r1
-; CHECK-NEXT:    add 12345, r0, stack[r1]
-; CHECK-NEXT:    add.ne stack[r2], r0, stack[r1]
+; CHECK-NEXT:    shr.s 5, r2, r1
+; CHECK-NEXT:    shr.s 5, r3, r2
+; CHECK-NEXT:    add 12345, r0, stack[r2]
+; CHECK-NEXT:    add.ne stack[r1], r0, stack[r2]
 ; CHECK-NEXT:    ret
   %l = load i256, ptr %p
   %s = select i1 %cond, i256 %l, i256 12345
@@ -455,7 +461,7 @@ define void @selcrs_off(i1 %cond, i256 %y, ptr %out) {
 ; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    shr.s 5, r3, r1
 ; CHECK-NEXT:    add r2, r0, stack[r1]
-; CHECK-NEXT:    add.ne code[@arr+64], r0, stack[r1]
+; CHECK-NEXT:    add.ne code[@arr+2], r0, stack[r1]
 ; CHECK-NEXT:    ret
   %c = load i256, ptr addrspace(4) getelementptr inbounds ([4 x i256], ptr addrspace(4) @arr, i256 0, i256 2)
   %s = select i1 %cond, i256 %c, i256 %y
@@ -469,7 +475,7 @@ define void @selcis_off(i1 %cond, ptr %out) {
 ; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    shr.s 5, r2, r1
 ; CHECK-NEXT:    add 777, r0, stack[r1]
-; CHECK-NEXT:    add.ne code[@arr+64], r0, stack[r1]
+; CHECK-NEXT:    add.ne code[@arr+2], r0, stack[r1]
 ; CHECK-NEXT:    ret
   %c = load i256, ptr addrspace(4) getelementptr inbounds ([4 x i256], ptr addrspace(4) @arr, i256 0, i256 2)
   %s = select i1 %cond, i256 %c, i256 777
