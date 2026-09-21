@@ -112,6 +112,13 @@ jobs:
           fetch-depth: ${{ needs.prepare-test-matrix.outputs.fetch_depth }}
           repository: ${{ github.event.pull_request.head.repo.full_name }}
 
+      # The workspace is created by the runner user, but the job runs as root
+      # inside the container, so git refuses to touch the checkout with
+      # `detected dubious ownership`. Without this, the `git show` below fails
+      # silently and `--start-rev` is passed to the formatter empty.
+      - name: Mark the workspace as safe for git
+        run: git config --global --add safe.directory "${GITHUB_WORKSPACE}"
+
       - name: Define previous commit
         id: previous-commit
         run: echo "sha=$(git show --quiet --pretty='%H' ${{ matrix.commit }}^1)" | tee -a "${GITHUB_OUTPUT}"
@@ -165,6 +172,15 @@ jobs:
         working-directory: llvm
         id: previous-commit
         run: echo "sha=$(git show --quiet --pretty='%H' ${{ matrix.commit }}^1)" | tee -a "${GITHUB_OUTPUT}"
+
+      # The runner image defaults to Rust 1.84, but `cargo install
+      # compiler-llvm-builder` resolves dependencies that need `edition2024`,
+      # i.e. Cargo 1.85+. The other workflows pick up a newer toolchain
+      # implicitly from the `rust-toolchain.toml` of the repository they check
+      # out; this job checks out into `llvm/`, so there is none at the
+      # workspace root and rustup falls back to the image default.
+      - name: Select the Rust toolchain
+        run: rustup default 1.88.0
 
       - name: Build LLVM
         uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
