@@ -131,7 +131,7 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
             argumentType(OpNo, MI) == EraVM::ArgumentType::Register;
         unsigned MovOpc = movOpcode(OpNo, Opc);
         // Avoid unconditional mov rN, rN
-        if (CC == EraVMCC::COND_NONE && IsRegister &&
+        if (CC == EraVMCC::COND_NONE && IsRegister && Out->isReg() &&
             OperandIt->getReg() == Out->getReg() &&
             (EraVM::hasRROutAddressingMode(MI) || Opc == EraVM::FATPTR_SELrrr))
           return;
