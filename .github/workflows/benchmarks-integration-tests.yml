@@ -105,6 +105,12 @@ jobs:
     needs: [compiler-tester-ref, target-machine]
     uses: matter-labs/era-compiler-ci/.github/workflows/benchmarks.yml@v1
     secrets: inherit
+    # The reusable workflow posts the Excel report link as a PR comment.
+    # Note this still cannot work for pull requests from forks, where
+    # GITHUB_TOKEN is read-only regardless of what is declared here.
+    permissions:
+      contents: read
+      pull-requests: write
     strategy:
       fail-fast: false
       matrix:

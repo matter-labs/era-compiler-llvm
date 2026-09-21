@@ -19,7 +19,13 @@ on:
         description: 'LLVM reference branch to use. If empty, the default repository branch will be used.'
         required: false
         default: 'main'
-  pull_request:
+  # NOTE: the `pull_request` trigger is disabled. The reusable workflow in
+  # `era-compiler-ci` builds `solx` from the `era-solidity`/`llvm` submodules and
+  # reads the project list from `matter-labs/solx:.github/forge-benchmarks.toml`.
+  # None of those exist any more: `solx` renamed the submodules to
+  # `solx-solidity`/`solx-llvm`, dropped `.github/forge-benchmarks.toml`, and moved
+  # its benchmarks to `compile-benchmark.yaml`. Until the reusable workflow is
+  # ported to the new layout this job can only fail, so it no longer gates PRs.
 
 permissions:
   contents: read
