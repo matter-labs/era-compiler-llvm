@@ -95,7 +95,7 @@ jobs:
 
   check-formatting:
     if: github.event_name == 'pull_request'
-    runs-on: [ci-runner-compiler, Linux]
+    runs-on: matterlabs-ci-runner-high-performance
     container:
       image: ghcr.io/matter-labs/zksync-llvm-runner:latest
       options: -m 110g
@@ -142,7 +142,7 @@ jobs:
             --changed-files ${{ steps.changed-files.outputs.all_changed_files }}
 
   regression-tests:
-    runs-on: [ci-runner-compiler, Linux]
+    runs-on: matterlabs-ci-runner-high-performance
     container:
       image: ghcr.io/matter-labs/zksync-llvm-runner:latest
       options: -m 110g
