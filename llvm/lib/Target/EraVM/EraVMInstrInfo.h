@@ -284,6 +284,12 @@ public:
 
   bool isPredicable(const MachineInstr &MI) const override;
 
+  /// Report flag-defining instructions to generic passes (IfConversion's
+  /// diamond common-head hoist relies on this to avoid lifting a flag setter
+  /// above a predicated tail).
+  bool ClobbersPredicate(MachineInstr &MI, std::vector<MachineOperand> &Pred,
+                         bool SkipDead) const override;
+
   bool isProfitableToIfCvt(MachineBasicBlock &MBB, unsigned NumCycles,
                            unsigned ExtraPredCycles,
                            BranchProbability Probability) const override;
