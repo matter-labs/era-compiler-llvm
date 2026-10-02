@@ -64,7 +64,10 @@ void EraVMTargetELFStreamer::emitCell(const APInt &Value) {
   assert(Value.getBitWidth() <= EraVM::CellBitWidth);
   // aligned by 256 bit
   Streamer.emitValueToAlignment(Align(EraVM::CellBitWidth / 8));
-  Streamer.emitIntValue(Value.sext(EraVM::CellBitWidth));
+  // Zero-extend: the APInt holds the initializer's exact bit pattern, and a
+  // cell is an unsigned 256-bit word. Sign-extending turned the byte 0xFF in a
+  // [4 x i8] initializer into 2^256-1.
+  Streamer.emitIntValue(Value.zext(EraVM::CellBitWidth));
 }
 
 void EraVMTargetELFStreamer::emitJumpTarget(const MCExpr *Expr) {
@@ -142,7 +145,11 @@ void EraVMTargetAsmStreamer::emitCell(const APInt &Value) {
 
   SmallString<86> Str;
   raw_svector_ostream OS(Str);
-  OS << "\t.cell\t" << Value;
+  // Zero-extend before printing, as the ELF path does. A sub-256-bit APInt
+  // prints with its own signedness otherwise, so the byte 0xFF came out as
+  // `.cell -1`, which reassembles to 2^256-1. Widening first is a no-op for a
+  // value that is already a full cell, so 256-bit constants still print signed.
+  OS << "\t.cell\t" << Value.zext(EraVM::CellBitWidth);
 
   Streamer.emitRawText(OS.str());
 }

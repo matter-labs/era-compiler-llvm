@@ -105,31 +105,62 @@ void EraVMAsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
   if (!Value)
     return; // Doesn't change encoding.
 
-  // Shift the value into position.
-  Value <<= Info.TargetOffset;
-
   unsigned Offset = Fixup.getOffset();
   unsigned NumBytes = alignTo(Info.TargetSize + Info.TargetOffset, 8) / 8;
-
   assert(Offset + NumBytes <= Data.size() && "Invalid fixup offset!");
 
-  // For each byte of the fragment that the fixup touches, mask in the
-  // bits from the fixup value.
-  for (unsigned i = 0; i != NumBytes; ++i) {
-    Data[Offset + i] |= uint8_t((Value >> (i * 8)) & 0xff);
+  // EraVM fields are big-endian, the two target fixup kinds are scaled and
+  // are ADDED to the value already in place (see EraVMFixupKinds.h and
+  // lld/ELF/Arch/EraVM.cpp, which implements exactly this for the
+  // unresolved case).
+  uint64_t Scale = 1;
+  bool Accumulate = false;
+  switch (Fixup.getTargetKind()) {
+  case EraVM::fixup_16_scale_32:
+    Scale = 32;
+    Accumulate = true;
+    break;
+  case EraVM::fixup_16_scale_8:
+    Scale = 8;
+    Accumulate = true;
+    break;
+  default:
+    break;
   }
+
+  if (Value % Scale != 0) {
+    Asm.getContext().reportError(Fixup.getLoc(),
+                                 "improper alignment for relocation");
+    return;
+  }
+  uint64_t Scaled = Value / Scale;
+
+  uint64_t Cur = 0;
+  if (Accumulate)
+    for (unsigned i = 0; i != NumBytes; ++i)
+      Cur = (Cur << 8) | static_cast<uint8_t>(Data[Offset + i]);
+  uint64_t Res = Cur + Scaled;
+
+  for (unsigned i = 0; i != NumBytes; ++i)
+    Data[Offset + NumBytes - 1 - i] = uint8_t((Res >> (i * 8)) & 0xff);
 }
 
 bool EraVMAsmBackend::writeNopData(raw_ostream &OS, uint64_t Count,
                                    const MCSubtargetInfo *STI) const {
   (void)STI;
-  if ((Count % 2) != 0)
+  // EraVM instructions are 8 bytes wide, so padding must be a whole number of
+  // them. The previous guard and payload were copied from MSP430AsmBackend:
+  // 0x4303 is MSP430 `mov #0, r3`, which on EraVM is neither a nop nor even a
+  // whole instruction, so padding in an executable section disassembled as a
+  // live instruction.
+  constexpr uint64_t InstructionByteWidth = 8;
+  if ((Count % InstructionByteWidth) != 0)
     return false;
 
-  // The canonical nop on EraVM is mov #0, r3
-  uint64_t NopCount = Count / 2;
+  // The canonical EraVM nop, as the assembler encodes `nop`.
+  uint64_t NopCount = Count / InstructionByteWidth;
   while (NopCount--)
-    OS.write("\x03\x43", 2);
+    OS.write("\x00\x00\x00\x00\x00\x00\x00\x01", InstructionByteWidth);
 
   return true;
 }
