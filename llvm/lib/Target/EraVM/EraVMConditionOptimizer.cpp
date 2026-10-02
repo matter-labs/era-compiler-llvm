@@ -255,8 +255,17 @@ bool EraVMConditionOptimizer::tryToAdjustCompareWithImm(
     LLVM_DEBUG(dbgs() << "   Adjusting cond inst:"; NextMI.dump(););
 
     // Update the condition code of the select or conditional branch.
-    EraVM::ccIterator(NextMI)->setCImm(
-        ConstantInt::get(*Context, APInt(ImmBitWidth, AdjustedCond[CCNextMI])));
+    // The cc operand is a plain MO_Immediate whenever the branch was rebuilt
+    // by EraVMInstrInfo::insertBranch, which uses .addImm(). setCImm() only
+    // asserts the kind, so in a release build it writes a ConstantInt* into
+    // the operand union and the condition code becomes a pointer value.
+    // Handle both kinds, exactly as the immediate operand above does.
+    MachineOperand &CCOp = *EraVM::ccIterator(NextMI);
+    const unsigned NewCC = AdjustedCond[CCNextMI];
+    if (CCOp.isCImm())
+      CCOp.setCImm(ConstantInt::get(*Context, APInt(ImmBitWidth, NewCC)));
+    else
+      CCOp.setImm(NewCC);
 
     LLVM_DEBUG(dbgs() << "                    to:"; NextMI.dump();
                dbgs() << "to potentially CSE " << GoodToAdjust
