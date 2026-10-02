@@ -1269,6 +1269,12 @@ bool EraVMInstrInfo::isPredicated(const MachineInstr &MI) const {
   return CC != EraVMCC::COND_INVALID && CC != EraVMCC::COND_NONE;
 }
 
+bool EraVMInstrInfo::ClobbersPredicate(MachineInstr &MI,
+                                       std::vector<MachineOperand> &Pred,
+                                       bool SkipDead) const {
+  return MI.definesRegister(EraVM::Flags, /*TRI=*/nullptr);
+}
+
 bool EraVMInstrInfo::isPredicable(const MachineInstr &MI) const {
   if (!isPredicatedInstr(MI))
     return false;
