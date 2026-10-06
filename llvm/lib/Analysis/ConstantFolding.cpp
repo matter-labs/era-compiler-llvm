@@ -38,6 +38,7 @@
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/Function.h"
+#include "llvm/IR/GetElementPtrTypeIterator.h" // EraVM local
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/GlobalVariable.h"
 #include "llvm/IR/InstrTypes.h"
@@ -892,11 +893,37 @@ Constant *SymbolicallyEvaluateGEP(const GEPOperator *GEP,
       return nullptr;
 
   unsigned BitWidth = DL.getTypeSizeInBits(IntIdxTy);
-  APInt Offset = APInt(
-      BitWidth,
-      DL.getIndexedOffsetInType(
-          SrcElemTy, ArrayRef((Value *const *)Ops.data() + 1, Ops.size() - 1)),
-      /*isSigned=*/true, /*implicitTrunc=*/true);
+  // EraVM local begin
+  // DataLayout::getIndexedOffsetInType accumulates the byte offset into an
+  // int64_t.  EraVM's GEP index type is i256, so an offset that does not fit
+  // a signed 64-bit integer would be folded to its low 64 bits and the
+  // resulting address would be wrong.  Recompute it in the index width.
+  APInt Offset = APInt(BitWidth, 0);
+  {
+    // Upcast each element rather than casting the buffer: gep_type_iterator
+    // only accepts `Value *const *`, and a pointer-to-pointer cast between
+    // unrelated types is neither safe nor permitted by the lint configuration.
+    SmallVector<Value *, 8> IdxOps(Ops.begin() + 1, Ops.end());
+    for (generic_gep_type_iterator<Value *const *>
+             GTI = gep_type_begin(SrcElemTy, ArrayRef<Value *>(IdxOps)),
+             GTE = gep_type_end(SrcElemTy, ArrayRef<Value *>(IdxOps));
+         GTI != GTE; ++GTI) {
+      Value *Idx = GTI.getOperand();
+      if (StructType *STy = GTI.getStructTypeOrNull()) {
+        unsigned FieldNo = cast<ConstantInt>(Idx)->getZExtValue();
+        Offset += APInt(
+            BitWidth,
+            DL.getStructLayout(STy)->getElementOffset(FieldNo).getFixedValue());
+      } else {
+        APInt ArrayIdx =
+            cast<ConstantInt>(Idx)->getValue().sextOrTrunc(BitWidth);
+        Offset +=
+            ArrayIdx *
+            APInt(BitWidth, GTI.getSequentialElementStride(DL).getFixedValue());
+      }
+    }
+  }
+  // EraVM local end
 
   std::optional<ConstantRange> InRange = GEP->getInRange();
   if (InRange)
