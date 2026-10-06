@@ -93,7 +93,7 @@ jobs:
 
   integration-tests:
     needs: prepare-matrix
-    uses: matter-labs/era-compiler-ci/.github/workflows/integration-tests.yaml@main
+    uses: matter-labs/era-compiler-ci/.github/workflows/integration-tests.yaml@9f40f1ebd5ec6bbb037be408cf3203cd09187428 # main
     secrets: inherit
     if: ${{ inputs.run_integration_tests || github.event_name == 'schedule' }}
     with:
@@ -121,10 +121,10 @@ jobs:
 
       - name: Prepare Windows env
         if: runner.os == 'Windows'
-        uses: matter-labs/era-compiler-ci/.github/actions/prepare-msys@v1
+        uses: matter-labs/era-compiler-ci/.github/actions/prepare-msys@9f40f1ebd5ec6bbb037be408cf3203cd09187428 # v1
 
       - name: Build LLVM
-        uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
+        uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@9f40f1ebd5ec6bbb037be408cf3203cd09187428 # v1
         with:
           enable-tests: true
           enable-assertions: ${{ inputs.enable_assertions }}

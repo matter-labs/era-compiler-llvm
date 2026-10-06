@@ -54,14 +54,14 @@ jobs:
           path: llvm
 
       - name: Building solc
-        uses: matter-labs/era-compiler-ci/.github/actions/build-solc@v1
+        uses: matter-labs/era-compiler-ci/.github/actions/build-solc@9f40f1ebd5ec6bbb037be408cf3203cd09187428 # v1
         with:
           cmake-build-type: 'Release'
           working-dir: 'era-solidity'
           upload-testing-binary: false
 
       - name: Build LLVM with coverage
-        uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
+        uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@9f40f1ebd5ec6bbb037be408cf3203cd09187428 # v1
         with:
           clone-llvm: 'false'
           enable-coverage: true
@@ -70,7 +70,7 @@ jobs:
           ccache-key: ${{ format('llvm-{0}-{1}', runner.os, runner.arch) }}
 
       - name: Build solx with coverage
-        uses: matter-labs/era-compiler-ci/.github/actions/build-rust@v1
+        uses: matter-labs/era-compiler-ci/.github/actions/build-rust@9f40f1ebd5ec6bbb037be408cf3203cd09187428 # v1
         env:
           BOOST_PREFIX: ${{ github.workspace }}/era-solidity/boost/lib
           SOLC_PREFIX: ${{ github.workspace }}/era-solidity/build
@@ -150,7 +150,7 @@ jobs:
           path: llvm
 
       - name: Build LLVM for tester
-        uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
+        uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@9f40f1ebd5ec6bbb037be408cf3203cd09187428 # v1
         with:
           clone-llvm: false
 
@@ -161,14 +161,14 @@ jobs:
           rm -rf target-llvm
 
       - name: Building solc
-        uses: matter-labs/era-compiler-ci/.github/actions/build-solc@v1
+        uses: matter-labs/era-compiler-ci/.github/actions/build-solc@9f40f1ebd5ec6bbb037be408cf3203cd09187428 # v1
         with:
           cmake-build-type: 'Release'
           working-dir: 'era-solidity'
           upload-testing-binary: false
 
       - name: Build LLVM with coverage
-        uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@v1
+        uses: matter-labs/era-compiler-ci/.github/actions/build-llvm@9f40f1ebd5ec6bbb037be408cf3203cd09187428 # v1
         with:
           clone-llvm: 'false'
           enable-coverage: true

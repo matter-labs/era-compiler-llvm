@@ -37,7 +37,7 @@ jobs:
 
   # Check for secrets leak in the repository
   secrets-scanner:
-    uses: matter-labs/era-compiler-ci/.github/workflows/secrets-scanner.yaml@v1
+    uses: matter-labs/era-compiler-ci/.github/workflows/secrets-scanner.yaml@9f40f1ebd5ec6bbb037be408cf3203cd09187428 # v1
     secrets: inherit
 
   compiler-tester-ref:
@@ -103,7 +103,7 @@ jobs:
   # If you would like to make a change to the benchmarks workflow, please do it in the era-compiler-ci repository
   benchmarks:
     needs: [compiler-tester-ref, target-machine]
-    uses: matter-labs/era-compiler-ci/.github/workflows/benchmarks.yml@v1
+    uses: matter-labs/era-compiler-ci/.github/workflows/benchmarks.yml@9f40f1ebd5ec6bbb037be408cf3203cd09187428 # v1
     secrets: inherit
     # The reusable workflow posts the Excel report link as a PR comment.
     # Note this still cannot work for pull requests from forks, where
@@ -134,7 +134,7 @@ jobs:
   # If you would like to make a change to the integration tests workflow, please do it in the era-compiler-ci repository
   integration-tests:
     needs: [compiler-tester-ref, target-machine]
-    uses: matter-labs/era-compiler-ci/.github/workflows/integration-tests.yaml@v1
+    uses: matter-labs/era-compiler-ci/.github/workflows/integration-tests.yaml@9f40f1ebd5ec6bbb037be408cf3203cd09187428 # v1
     secrets: inherit
     strategy:
       fail-fast: false

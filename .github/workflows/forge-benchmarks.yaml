@@ -37,7 +37,7 @@ concurrency:
 
 jobs:
   forge-benchmarks:
-    uses: matter-labs/era-compiler-ci/.github/workflows/forge-benchmarks.yaml@v1
+    uses: matter-labs/era-compiler-ci/.github/workflows/forge-benchmarks.yaml@9f40f1ebd5ec6bbb037be408cf3203cd09187428 # v1
     secrets: inherit
     with:
       print-markdown-tables: 'true' # do not print markdown tables to PRs
