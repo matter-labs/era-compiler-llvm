@@ -398,10 +398,14 @@ MemoryLocation MemoryLocation::getForArgument(const CallBase *Call,
       return MemoryLocation::getAfter(Arg, AATags);
     case LibFunc_xvm_sha3:
       assert((ArgIdx == 0) && "Invalid argument index for sha3");
+      // __sha3's length is i256. getZExtValue() asserts above 64 bits and,
+      // with NDEBUG, silently returns the low word -- which would model an
+      // astronomically large (always-panicking) region as a small precise one.
       if (const ConstantInt *LenCI =
               dyn_cast<ConstantInt>(Call->getArgOperand(1)))
-        return MemoryLocation(Arg, LocationSize::precise(LenCI->getZExtValue()),
-                              AATags);
+        if (LenCI->getValue().getActiveBits() <= 64)
+          return MemoryLocation(
+              Arg, LocationSize::precise(LenCI->getZExtValue()), AATags);
       return MemoryLocation::getAfter(Arg, AATags);
     default:
       break;
