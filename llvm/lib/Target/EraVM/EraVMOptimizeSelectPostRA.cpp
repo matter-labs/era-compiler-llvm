@@ -235,10 +235,25 @@ bool EraVMOptimizeSelectPostRA::runOnMachineFunction(MachineFunction &MF) {
   for (auto [CMov, FoldInst] : Deleted) {
     LLVM_DEBUG(dbgs() << "== Folding cond move:"; CMov->dump();
                dbgs() << "                into:"; FoldInst->dump(););
+    // DIV and MUL define two registers (quotient/remainder and low/high). The
+    // conditional move consumes whichever one getOutRegToFold() selected, and
+    // that may be out1. Renaming out0 unconditionally retargets the wrong
+    // (dead) definition onto the CMov's destination and leaves the consumed
+    // value in its original register.
+    const Register FoldedOutReg = getOutRegToFold(*FoldInst);
     EraVM::ccIterator(*FoldInst)->ChangeToImmediate(
         getImmOrCImm(*EraVM::ccIterator(*CMov)));
-    EraVM::out0Iterator(*FoldInst)->setReg(
-        EraVM::out0Iterator(*CMov)->getReg());
+    bool Renamed = false;
+    for (MachineOperand &MO : FoldInst->defs()) {
+      if (MO.getReg() != FoldedOutReg)
+        continue;
+      MO.setReg(EraVM::out0Iterator(*CMov)->getReg());
+      MO.setIsDead(false);
+      Renamed = true;
+      break;
+    }
+    assert(Renamed && "folded output register has no definition");
+    (void)Renamed;
     CMov->eraseFromParent();
   }
 
