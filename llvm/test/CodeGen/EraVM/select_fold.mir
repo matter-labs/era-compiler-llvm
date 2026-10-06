@@ -215,7 +215,10 @@ body:             |
 ---
 # CHECK-LABEL: test_mul2
 # CHECK-LABEL: bb.0:
-# CHECK: dead $r1, $r4 = MULrrrr_s $r3, $r1, 9
+# The conditional move consumes out1 here, so out1 is the definition that
+# must be renamed onto its destination; out0 stays dead in its original
+# register. Contrast the test above, whose move consumes out0.
+# CHECK: dead $r2, $r1 = MULrrrr_s $r3, $r1, 9
 name: test_mul2
 tracksRegLiveness: true
 body:             |
@@ -241,7 +244,10 @@ body:             |
 ---
 # CHECK-LABEL: test_div2
 # CHECK-LABEL: bb.0:
-# CHECK: dead $r1, $r4 = DIVrrrr_s $r3, $r1, 9
+# The conditional move consumes out1 here, so out1 is the definition that
+# must be renamed onto its destination; out0 stays dead in its original
+# register. Contrast the test above, whose move consumes out0.
+# CHECK: dead $r2, $r1 = DIVrrrr_s $r3, $r1, 9
 name: test_div2
 tracksRegLiveness: true
 body:             |
