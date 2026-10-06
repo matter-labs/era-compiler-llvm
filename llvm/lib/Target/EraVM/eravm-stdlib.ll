@@ -239,9 +239,10 @@ exponent_loop_body:
 
 define i256 @__exp_pow2(i256 %val_log2, i256 %exp) #0 {
 entry:
-  %shift = mul nuw nsw i256 %val_log2, %exp
-  %is_overflow = icmp ugt i256 %shift, 255
-  %shift_res = shl nuw i256 1, %shift
+  %limit = udiv i256 255, %val_log2
+  %is_overflow = icmp ugt i256 %exp, %limit
+  %shift = mul i256 %val_log2, %exp
+  %shift_res = shl i256 1, %shift
   %res = select i1 %is_overflow, i256 0, i256 %shift_res
   ret i256 %res
 }
