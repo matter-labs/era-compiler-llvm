@@ -428,8 +428,8 @@ define void @selsrs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    incsp 2
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add r2, r0, stack-[2]
-; CHECK-NEXT:    add.gt stack-[1], r0, stack-[2]
+; CHECK-NEXT:    add stack-[1], r0, stack-[2]
+; CHECK-NEXT:    add.le r2, r0, stack-[2]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
   %data = alloca i256
@@ -495,8 +495,8 @@ define void @selsis(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK:       ; %bb.0:
 ; CHECK-NEXT:    incsp 2
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add 42, r0, stack-[2]
-; CHECK-NEXT:    add.gt stack-[1], r0, stack-[2]
+; CHECK-NEXT:    add stack-[1], r0, stack-[2]
+; CHECK-NEXT:    add.le 42, r0, stack-[2]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
   %data = alloca i256
@@ -567,8 +567,8 @@ define void @selscs(i256 %v1, i256 %v2, i256 %v3, i256 %v4) {
 ; CHECK-NEXT:    incsp 2
 ; CHECK-NEXT:    add code[@val], r0, r1
 ; CHECK-NEXT:    sub! r3, r4, r0
-; CHECK-NEXT:    add r1, r0, stack-[2]
-; CHECK-NEXT:    add.lt stack-[1], r0, stack-[2]
+; CHECK-NEXT:    add stack-[1], r0, stack-[2]
+; CHECK-NEXT:    add.ge r1, r0, stack-[2]
 ; CHECK-NEXT:    ret
   %resptr = alloca i256
   %ptr = alloca i256
