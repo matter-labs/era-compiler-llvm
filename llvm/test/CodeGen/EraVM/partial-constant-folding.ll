@@ -103,8 +103,10 @@ define i256 @test_exp2(i256 %a) {
 
 define i256 @test_exp3(i256 %a) {
 ; CHECK-LABEL: @test_exp3
-; CHECK: mul nuw nsw i256 %a, 3
-; CHECK-NEXT: icmp ugt i256 {{.*}}, 85
+; The product log2(base) * exp can wrap, so the multiplication carries no
+; nuw/nsw and the guard is derived from the exponent alone: 255 / 3 == 85.
+; CHECK: icmp ugt i256 %a, 85
+; CHECK-NEXT: mul i256 %a, 3
 ; CHECK-NEXT: shl nuw i256 1, {{.*}}
 ; CHECK-NEXT: select
   %res = call i256 @__exp(i256 8, i256 %a)
