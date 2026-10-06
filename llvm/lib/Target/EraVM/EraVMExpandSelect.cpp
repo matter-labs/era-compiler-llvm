@@ -157,7 +157,16 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
 
       LLVM_DEBUG(dbgs() << "Replace\t" << MI << "with:\n");
 
-      if (ShouldInverse) {
+      // A stack-output select is expanded into two movs that both write the
+      // destination. Emitting the unconditional one first destroys the source
+      // when in0 names that same stack slot, turning `x = c ? x : y` into
+      // `x = y`. When in0 is a stack operand, emit it first instead: writing
+      // dst = in0 is harmless even if they alias.
+      const bool In0MayAliasOut = EraVM::hasSROutAddressingMode(MI) &&
+                                  argumentType(EraVM::ArgumentKind::In0, MI) ==
+                                      EraVM::ArgumentType::Stack &&
+                                  InverseCond.count(CCVal);
+      if (ShouldInverse || In0MayAliasOut) {
         assert(CCVal != EraVMCC::COND_OF &&
                "The overflow LT shouldn't be inversed");
         buildMOV(EraVM::ArgumentKind::In0, EraVMCC::COND_NONE);

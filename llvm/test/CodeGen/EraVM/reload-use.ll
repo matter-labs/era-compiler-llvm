@@ -425,8 +425,11 @@ define void @spill_selrrs1(i256 %a, i1 %cond) nounwind {
   %slot = alloca i256
   %b = call i256 @foo()
 ; CHECK: sub! stack-[1], r0, r0
-; CHECK: add r1, r0, stack-[3]
-; CHECK: add.ne stack-[2], r0, stack-[3]
+; %a was spilled, so in0 is a stack operand and is written first, with in1
+; predicated on the inverse condition. Contrast spill_selrrs2 below, whose
+; in0 is a register and therefore keeps the original order.
+; CHECK: add stack-[2], r0, stack-[3]
+; CHECK: add.eq r1, r0, stack-[3]
   %sel = select i1 %cond, i256 %a, i256 %b
   store i256 %sel, i256* %slot
   ret void

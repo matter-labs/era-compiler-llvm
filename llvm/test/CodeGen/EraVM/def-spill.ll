@@ -38,8 +38,11 @@ define i256 @spill_addr_selris_use(i256 %a, i256 %b, i1 %cond) nounwind {
   ; CHECK: add r1, r2, stack-[1]
   %x = add i256 %a, %b
   ; CHECK: sub! r3, r0, r0
-  ; CHECK: add 1234, r0, stack-[2]
-  ; CHECK: add.ne stack-[1], r0, stack-[2]
+  ; in0 is a stack operand, so it is written first and in1 is predicated on
+  ; the inverse condition; the reverse order would clobber in0 when it names
+  ; the destination slot.
+  ; CHECK: add stack-[1], r0, stack-[2]
+  ; CHECK: add.eq 1234, r0, stack-[2]
   %sel = select i1 %cond, i256 %x, i256 1234
   store i256 %sel, i256* %slot
   %c = call i256 @foo()
