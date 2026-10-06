@@ -75,3 +75,20 @@ define i256 @test_reg2(i256 %a, i256 %b) {
   %select = select i1 %cmp, i256 %a, i256 %div
   ret i256 %select
 }
+
+; Check that when a select is folded into div after RA, the remainder is
+; renamed to the select output.
+define i256 @test_rem_postra(i256 %a, i256 %b, i256 %x, i256 %c, i256 %y) {
+; CHECK-LABEL: test_rem_postra:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    sub! r4, r0, r0
+; CHECK-NEXT:    add.ne r1, r0, r5
+; CHECK-NEXT:    div.ne r5, r2, r0, r3
+; CHECK-NEXT:    add r3, r0, r1
+; CHECK-NEXT:    ret
+  %cmp = icmp eq i256 %c, 0
+  %a1 = select i1 %cmp, i256 %y, i256 %a
+  %rem = urem i256 %a1, %b
+  %select = select i1 %cmp, i256 %x, i256 %rem
+  ret i256 %select
+}

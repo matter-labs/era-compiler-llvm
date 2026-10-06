@@ -213,9 +213,10 @@ body:             |
     RET 0
 ...
 ---
+# Check that out1 is renamed if the conditional move reads it.
 # CHECK-LABEL: test_mul2
 # CHECK-LABEL: bb.0:
-# CHECK: dead $r1, $r4 = MULrrrr_s $r3, $r1, 9
+# CHECK: dead $r2, $r1 = MULrrrr_s $r3, $r1, 9
 name: test_mul2
 tracksRegLiveness: true
 body:             |
@@ -239,9 +240,10 @@ body:             |
     RET 0
 ...
 ---
+# Check that out1 is renamed if the conditional move reads it.
 # CHECK-LABEL: test_div2
 # CHECK-LABEL: bb.0:
-# CHECK: dead $r1, $r4 = DIVrrrr_s $r3, $r1, 9
+# CHECK: dead $r2, $r1 = DIVrrrr_s $r3, $r1, 9
 name: test_div2
 tracksRegLiveness: true
 body:             |
