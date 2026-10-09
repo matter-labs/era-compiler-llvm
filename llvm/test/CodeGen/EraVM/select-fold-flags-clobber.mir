@@ -1,0 +1,41 @@
+# RUN: llc -x mir -run-pass=eravm-opt-select-postra -verify-machineinstrs < %s | FileCheck %s
+
+# Check that we do not fold a conditional move across or into an instruction
+# that writes $flags, even if it's not a `!` instruction.
+
+--- |
+  target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
+  target triple = "eravm"
+  define void @no_fold_across_flags_clobber() { ret void }
+  define void @no_fold_into_flags_def() { ret void }
+...
+---
+# Inline asm clobbers $flags between the def and the conditional move.
+# CHECK-LABEL: name: no_fold_across_flags_clobber
+# CHECK:      $r2 = ADDrrr_s $r1, $r1, i256 0
+# CHECK-NEXT: INLINEASM
+# CHECK-NEXT: $r3 = ADDrrr_s killed $r2, $r0, i256 2
+name: no_fold_across_flags_clobber
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    liveins: $r1, $r3
+    $r2 = ADDrrr_s $r1, $r1, i256 0
+    INLINEASM &"", 1 /* sideeffect attdialect */, 12 /* clobber */, implicit-def early-clobber $flags
+    $r3 = ADDrrr_s killed $r2, $r0, i256 2, implicit $flags, implicit $r3
+    RET 0, implicit $r3
+...
+---
+# The def itself writes $flags.
+# CHECK-LABEL: name: no_fold_into_flags_def
+# CHECK:      $r2 = ADDrrr_s $r1, $r1, i256 0, implicit-def $flags
+# CHECK-NEXT: $r3 = ADDrrr_s killed $r2, $r0, i256 2
+name: no_fold_into_flags_def
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    liveins: $r1, $r3
+    $r2 = ADDrrr_s $r1, $r1, i256 0, implicit-def $flags
+    $r3 = ADDrrr_s killed $r2, $r0, i256 2, implicit $flags, implicit $r3
+    RET 0, implicit $r3
+...
