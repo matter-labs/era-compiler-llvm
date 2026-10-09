@@ -396,7 +396,7 @@ bool EraVMOptimizeSelectPreRA::tryFoldToSelect(MachineBasicBlock &MBB) {
   for (auto &MI : MBB) {
     if ((!TII->isArithmetic(MI) && !TII->isBitwise(MI)) ||
         TII->getCCCode(MI) != EraVMCC::COND_NONE ||
-        EraVMInstrInfo::isFlagSettingInstruction(MI) ||
+        MI.definesRegister(EraVM::Flags, /*TRI=*/nullptr) ||
         !EraVM::hasRROutAddressingMode(MI))
       continue;
 

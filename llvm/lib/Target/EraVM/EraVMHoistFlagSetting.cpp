@@ -164,7 +164,7 @@ static MachineInstr *findFlagSettingToHoist(MachineInstr &IndVar,
                                             const EraVMInstrInfo *TII) {
   for (auto &MI : make_range(std::next(IndVar.getIterator()),
                              IndVar.getParent()->instr_end())) {
-    if (!EraVMInstrInfo::isFlagSettingInstruction(MI))
+    if (!MI.definesRegister(EraVM::Flags, /*TRI=*/nullptr))
       continue;
 
     // If the first flag setting instruction doesn't read phi output or it is
