@@ -390,16 +390,6 @@ public:
 
   void tagFatPointerCopy(MachineInstr &) const override;
 
-  static bool isFlagSettingInstruction(uint16_t opcode) {
-    // a reverse lookup: for an `_v` instruction, it should return values
-    // other than -1
-    return EraVM::getNonFlagSettingOpcode(opcode) != -1;
-  }
-
-  static bool isFlagSettingInstruction(const MachineInstr &MI) {
-    return EraVMInstrInfo::isFlagSettingInstruction(MI.getOpcode());
-  }
-
   bool isPredicatedInstr(const MachineInstr &MI) const;
   EraVMCC::CondCodes getCCCode(const MachineInstr &MI) const;
 
