@@ -149,8 +149,14 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
           EraVM::copyOperands(Mov, EraVM::out0Range(MI));
 
         Mov.addImm(CC);
-        if (CC != EraVMCC::COND_NONE)
+        if (CC != EraVMCC::COND_NONE) {
           Mov.addReg(EraVM::Flags, RegState::Implicit);
+          // A predicated mov writes its output only when the predicate holds,
+          // so the previous value of the output register stays live through
+          // it. Without this use, the preceding unconditional mov looks dead.
+          if (!EraVM::hasSROutAddressingMode(MI))
+            Mov.addReg(Out->getReg(), RegState::Implicit);
+        }
 
         LLVM_DEBUG(dbgs() << '\t' << *Mov << '\n');
       };
