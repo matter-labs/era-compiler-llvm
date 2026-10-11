@@ -38,7 +38,7 @@ body:             |
 ---
 # Stack output, no implicit register use is added.
 # CHECK-LABEL: name: sel_stack_out
-# CHECK: ADDsrs_s i256 0, $r1, 0, $r0, i256 0, $r2, 0, 6, implicit $flags{{$}}
+# CHECK: ADDirs_s i256 42, $r0, i256 0, $r2, 0, 3, implicit $flags{{$}}
 name: sel_stack_out
 tracksRegLiveness: true
 body:             |
