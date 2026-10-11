@@ -140,7 +140,7 @@ EraVMOptimizeSelectPostRA::findFoldingCandidateInstr(
   if (!RDA->hasLocalDefBefore(MI, UseReg))
     return {};
   MachineInstr *DefMI = RDA->getUniqueReachingMIDef(MI, UseReg);
-  if (!DefMI || EraVMInstrInfo::isFlagSettingInstruction(*DefMI))
+  if (!DefMI || DefMI->definesRegister(EraVM::Flags, /*TRI=*/nullptr))
     return {};
 
   // TODO: CPR-1399 generalize idiom checking
@@ -163,7 +163,7 @@ EraVMOptimizeSelectPostRA::findFoldingCandidateInstr(
   // and MI:
   for (const MachineInstr &I : make_range(std::next(DefMIIter), MIIter)) {
     // This instruction cannot set flags:
-    if (EraVMInstrInfo::isFlagSettingInstruction(I))
+    if (I.definesRegister(EraVM::Flags, /*TRI=*/nullptr))
       return {};
 
     // folding registers cannot appear in between:
@@ -239,6 +239,17 @@ bool EraVMOptimizeSelectPostRA::runOnMachineFunction(MachineFunction &MF) {
         getImmOrCImm(*EraVM::ccIterator(*CMov)));
     EraVM::out0Iterator(*FoldInst)->setReg(
         EraVM::out0Iterator(*CMov)->getReg());
+    // FoldInst is predicated now, so like CMov it reads the flags and, when
+    // the predicate is false, keeps the previous value of its output. Carry
+    // CMov's implicit uses over without kill flags: FoldInst precedes CMov, so
+    // a kill on CMov does not end the live range at FoldInst.
+    MachineInstrBuilder MIB(MF, FoldInst);
+    for (const MachineOperand &MO : CMov->implicit_operands())
+      if (MO.isReg() && MO.isUse() &&
+          !FoldInst->readsRegister(MO.getReg(), /*TRI=*/nullptr))
+        MIB.addReg(MO.getReg(), RegState::Implicit);
+    if (!FoldInst->readsRegister(EraVM::Flags, /*TRI=*/nullptr))
+      MIB.addReg(EraVM::Flags, RegState::Implicit);
     CMov->eraseFromParent();
   }
 

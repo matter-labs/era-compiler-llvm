@@ -149,15 +149,30 @@ bool EraVMExpandSelect::runOnMachineFunction(MachineFunction &MF) {
           EraVM::copyOperands(Mov, EraVM::out0Range(MI));
 
         Mov.addImm(CC);
-        if (CC != EraVMCC::COND_NONE)
+        if (CC != EraVMCC::COND_NONE) {
           Mov.addReg(EraVM::Flags, RegState::Implicit);
+          // A predicated mov writes its output only when the predicate holds,
+          // so the previous value of the output register stays live through
+          // it. Without this use, the preceding unconditional mov looks dead.
+          if (!EraVM::hasSROutAddressingMode(MI))
+            Mov.addReg(Out->getReg(), RegState::Implicit);
+        }
 
         LLVM_DEBUG(dbgs() << '\t' << *Mov << '\n');
       };
 
       LLVM_DEBUG(dbgs() << "Replace\t" << MI << "with:\n");
 
-      if (ShouldInverse) {
+      // A stack-output select is expanded into two movs that both write the
+      // output, so the input read by the second one must not alias it. If in0
+      // is a stack operand, read it first. If in1 is a stack operand as well,
+      // neither order is safe, so SELsss is never created.
+      assert(Opc != EraVM::SELsss && "SELsss can't be expanded safely");
+      const bool In0MayAliasOut = EraVM::hasSROutAddressingMode(MI) &&
+                                  argumentType(EraVM::ArgumentKind::In0, MI) ==
+                                      EraVM::ArgumentType::Stack &&
+                                  InverseCond.count(CCVal);
+      if (ShouldInverse || In0MayAliasOut) {
         assert(CCVal != EraVMCC::COND_OF &&
                "The overflow LT shouldn't be inversed");
         buildMOV(EraVM::ArgumentKind::In0, EraVMCC::COND_NONE);

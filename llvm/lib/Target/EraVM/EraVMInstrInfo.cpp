@@ -435,7 +435,7 @@ unsigned EraVMInstrInfo::insertBranch(
 bool EraVMInstrInfo::analyzeCompare(const MachineInstr &MI, Register &SrcReg,
                                     Register &SrcReg2, int64_t &CmpMask,
                                     int64_t &CmpValue) const {
-  return isSub(MI) && isFlagSettingInstruction(MI);
+  return isSub(MI) && MI.definesRegister(EraVM::Flags, /*TRI=*/nullptr);
 }
 
 bool EraVMInstrInfo::optimizeCompareInstr(
@@ -481,14 +481,11 @@ bool EraVMInstrInfo::optimizeCompareInstr(
   auto From = std::next(MachineBasicBlock::reverse_iterator(CmpInstr));
   auto FlagSettingInst = std::find_if(
       From, CmpInstr.getParent()->rend(), [](const MachineInstr &MI) {
-        return any_of(MI.implicit_operands(), [](const MachineOperand &MO) {
-          return MO.isReg() && MO.isDef() && MO.getReg() == EraVM::Flags;
-        });
+        return MI.definesRegister(EraVM::Flags, /*TRI=*/nullptr);
       });
 
   // Bail out if we didn't find identical compare instruction.
   if (FlagSettingInst == CmpInstr.getParent()->rend() ||
-      !isFlagSettingInstruction(*FlagSettingInst) ||
       !FlagSettingInst->isIdenticalTo(CmpInstr, MachineInstr::IgnoreVRegDefs))
     return false;
 
@@ -1269,6 +1266,12 @@ bool EraVMInstrInfo::isPredicated(const MachineInstr &MI) const {
   return CC != EraVMCC::COND_INVALID && CC != EraVMCC::COND_NONE;
 }
 
+bool EraVMInstrInfo::ClobbersPredicate(MachineInstr &MI,
+                                       std::vector<MachineOperand> &Pred,
+                                       bool SkipDead) const {
+  return MI.definesRegister(EraVM::Flags, /*TRI=*/nullptr);
+}
+
 bool EraVMInstrInfo::isPredicable(const MachineInstr &MI) const {
   if (!isPredicatedInstr(MI))
     return false;
@@ -1278,7 +1281,7 @@ bool EraVMInstrInfo::isPredicable(const MachineInstr &MI) const {
     return false;
 
   // we cannot make a flag setting instruction predicated execute
-  if (EraVMInstrInfo::isFlagSettingInstruction(MI.getOpcode()))
+  if (MI.definesRegister(EraVM::Flags, /*TRI=*/nullptr))
     return false;
 
   // CPR-1241: We temporarily disable ld/st instructions from being predicated

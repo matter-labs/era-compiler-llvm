@@ -420,13 +420,15 @@ define i256 @spill_select(i256 %a, i1 %cond) nounwind {
   ret i256 %res
 }
 
+; Check that a stack in0 is read before the output is written, as they may
+; alias.
 ; CHECK-LABEL: spill_selrrs1
 define void @spill_selrrs1(i256 %a, i1 %cond) nounwind {
   %slot = alloca i256
   %b = call i256 @foo()
 ; CHECK: sub! stack-[1], r0, r0
-; CHECK: add r1, r0, stack-[3]
-; CHECK: add.ne stack-[2], r0, stack-[3]
+; CHECK: add stack-[2], r0, stack-[3]
+; CHECK: add.eq r1, r0, stack-[3]
   %sel = select i1 %cond, i256 %a, i256 %b
   store i256 %sel, i256* %slot
   ret void
@@ -441,6 +443,36 @@ define void @spill_selrrs2(i256 %a, i1 %cond) nounwind {
 ; CHECK: add.ne r1, r0, stack-[3]
   %sel = select i1 %cond, i256 %b, i256 %a
   store i256 %sel, i256* %slot
+  ret void
+}
+
+; Check that the reload isn't combined into in0 of a select whose in1 and output
+; are both stack operands, as either input may alias the output.
+; CHECK-LABEL: spill_selrss
+define void @spill_selrss(i256 %a, i1 %cond, i256* %q, i256* %out) nounwind {
+  %b = call i256 @foo()
+; CHECK: sub! stack-[1], r0, r0
+; CHECK: add stack-[3], r0, [[REG:r[0-9]+]]
+; CHECK: add stack[r{{[0-9]+}}], r0, stack[r{{[0-9]+}}]
+; CHECK: add.ne [[REG]], r0, stack[r{{[0-9]+}}]
+  %l = load i256, i256* %q
+  %sel = select i1 %cond, i256 %a, i256 %l
+  store i256 %sel, i256* %out
+  ret void
+}
+
+; Check that the reload isn't combined into in1 of a select whose in0 and output
+; are both stack operands, as either input may alias the output.
+; CHECK-LABEL: spill_selsrs
+define void @spill_selsrs(i256 %a, i1 %cond, i256* %q, i256* %out) nounwind {
+  %b = call i256 @foo()
+; CHECK: sub! stack-[1], r0, r0
+; CHECK: add stack-[3], r0, [[REG:r[0-9]+]]
+; CHECK: add stack[r{{[0-9]+}}], r0, stack[r{{[0-9]+}}]
+; CHECK: add.eq [[REG]], r0, stack[r{{[0-9]+}}]
+  %l = load i256, i256* %q
+  %sel = select i1 %cond, i256 %l, i256 %a
+  store i256 %sel, i256* %out
   ret void
 }
 
