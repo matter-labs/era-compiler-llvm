@@ -239,6 +239,17 @@ bool EraVMOptimizeSelectPostRA::runOnMachineFunction(MachineFunction &MF) {
         getImmOrCImm(*EraVM::ccIterator(*CMov)));
     EraVM::out0Iterator(*FoldInst)->setReg(
         EraVM::out0Iterator(*CMov)->getReg());
+    // FoldInst is predicated now, so like CMov it reads the flags and, when
+    // the predicate is false, keeps the previous value of its output. Carry
+    // CMov's implicit uses over without kill flags: FoldInst precedes CMov, so
+    // a kill on CMov does not end the live range at FoldInst.
+    MachineInstrBuilder MIB(MF, FoldInst);
+    for (const MachineOperand &MO : CMov->implicit_operands())
+      if (MO.isReg() && MO.isUse() &&
+          !FoldInst->readsRegister(MO.getReg(), /*TRI=*/nullptr))
+        MIB.addReg(MO.getReg(), RegState::Implicit);
+    if (!FoldInst->readsRegister(EraVM::Flags, /*TRI=*/nullptr))
+      MIB.addReg(EraVM::Flags, RegState::Implicit);
     CMov->eraseFromParent();
   }
 
