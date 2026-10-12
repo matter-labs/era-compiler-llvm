@@ -295,9 +295,11 @@ add_lit_testsuite(verify-llvm-codegen-llc "Running EraVM LLVM regression tests w
 CodeGen/EraVM/fold-similar-instructions.mir$<SEMICOLON>\
 CodeGen/EraVM/flag-setting-set-implicit-flags.ll$<SEMICOLON>\
 CodeGen/EraVM/hoist-flag-setting.mir$<SEMICOLON>\
+CodeGen/EraVM/ifcvt-flags-def-unpredicable.mir$<SEMICOLON>\
 CodeGen/EraVM/indexed-ld-in-a-loop-bug.ll$<SEMICOLON>\
 CodeGen/EraVM/machine-outliner-tail.mir$<SEMICOLON>\
 CodeGen/EraVM/machine-outliner.mir$<SEMICOLON>\
+CodeGen/EraVM/select-fold-flags-clobber.mir$<SEMICOLON>\
 CodeGen/EraVM/select-zero-bitrot.mir$<SEMICOLON>\
 CodeGen/EraVM/select-zero-flags.mir$<SEMICOLON>\
 CodeGen/EraVM/select_fold.mir$<SEMICOLON>\
