@@ -392,8 +392,8 @@ define void @selscs(i1 %cond, ptr %p, ptr %out) {
 ; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    shr.s 5, r2, r1
 ; CHECK-NEXT:    shr.s 5, r3, r2
-; CHECK-NEXT:    add r4, r0, stack[r2]
-; CHECK-NEXT:    add.ne stack[r1], r0, stack[r2]
+; CHECK-NEXT:    add stack[r1], r0, stack[r2]
+; CHECK-NEXT:    add.eq r4, r0, stack[r2]
 ; CHECK-NEXT:    ret
   %l = load i256, ptr %p
   %c = load i256, ptr addrspace(4) @val
@@ -408,8 +408,8 @@ define void @selsrs(i1 %cond, ptr %p, i256 %y, ptr %out) {
 ; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    shr.s 5, r2, r1
 ; CHECK-NEXT:    shr.s 5, r4, r2
-; CHECK-NEXT:    add r3, r0, stack[r2]
-; CHECK-NEXT:    add.ne stack[r1], r0, stack[r2]
+; CHECK-NEXT:    add stack[r1], r0, stack[r2]
+; CHECK-NEXT:    add.eq r3, r0, stack[r2]
 ; CHECK-NEXT:    ret
   %l = load i256, ptr %p
   %s = select i1 %cond, i256 %l, i256 %y
@@ -423,8 +423,8 @@ define void @selsis(i1 %cond, ptr %p, ptr %out) {
 ; CHECK-NEXT:    sub! r1, r0, r0
 ; CHECK-NEXT:    shr.s 5, r2, r1
 ; CHECK-NEXT:    shr.s 5, r3, r2
-; CHECK-NEXT:    add 12345, r0, stack[r2]
-; CHECK-NEXT:    add.ne stack[r1], r0, stack[r2]
+; CHECK-NEXT:    add stack[r1], r0, stack[r2]
+; CHECK-NEXT:    add.eq 12345, r0, stack[r2]
 ; CHECK-NEXT:    ret
   %l = load i256, ptr %p
   %s = select i1 %cond, i256 %l, i256 12345

@@ -336,9 +336,10 @@ let mayLoad = 1 in {
   def SELscs : SELPseudo<(outs), (ins stackin:$src, memop:$src2, stackout:$dst, i256imm:$cc),
                           [(store_stack
                              (EraVMselectcc_oneuse (load_stack stackaddr:$src), (load_code memaddr:$src2), imm:$cc), stackaddr:$dst)], OpndSC>;
+  // No pattern: either input may alias the output, so ExpandSelect can't lower
+  // SELsss. SELssr and a store are selected instead.
   def SELsss : SELPseudo<(outs), (ins stackin:$src, stackin:$src2, stackout:$dst, i256imm:$cc),
-                          [(store_stack
-                             (EraVMselectcc_oneuse (load_stack stackaddr:$src), (load_stack stackaddr:$src2), imm:$cc), stackaddr:$dst)], OpndSS>;
+                          [], OpndSS>;
 }
 }
 
