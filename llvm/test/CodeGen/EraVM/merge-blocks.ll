@@ -314,5 +314,63 @@ exit:
   ret i32 %phi
 }
 
+declare i32 @next()
+
+define i32 @kept_value_used_outside(i32 %x) {
+; CHECK-LABEL: @kept_value_used_outside(
+; CHECK:         [[A:%.*]] = call i32 @next()
+; CHECK:         [[B:%.*]] = call i32 @next()
+; CHECK:         [[R:%.*]] = add i32 [[A]], {{%.*}}
+; CHECK-NEXT:    ret i32 [[R]]
+;
+entry:
+  br label %first
+
+first:
+  %a = call i32 @next()
+  br label %header
+
+header:
+  %last = phi i32 [ %a, %first ], [ %b, %body ]
+  %c = icmp ult i32 %last, %x
+  br i1 %c, label %body, label %exit
+
+body:
+  %b = call i32 @next()
+  br label %header
+
+exit:
+  %r = add i32 %a, %last
+  ret i32 %r
+}
+
+define i32 @dropped_value_used_outside(i32 %x) {
+; CHECK-LABEL: @dropped_value_used_outside(
+; CHECK:         [[A:%.*]] = call i32 @next()
+; CHECK:         [[B:%.*]] = call i32 @next()
+; CHECK:         [[R:%.*]] = add i32 [[A]], {{%.*}}
+; CHECK-NEXT:    ret i32 [[R]]
+;
+entry:
+  br label %first
+
+body:
+  %b = call i32 @next()
+  br label %header
+
+header:
+  %last = phi i32 [ %a, %first ], [ %b, %body ]
+  %c = icmp ult i32 %last, %x
+  br i1 %c, label %body, label %exit
+
+first:
+  %a = call i32 @next()
+  br label %header
+
+exit:
+  %r = add i32 %a, %last
+  ret i32 %r
+}
+
 ; CHECK: !1 = !{i32 0, i32 15}
 
