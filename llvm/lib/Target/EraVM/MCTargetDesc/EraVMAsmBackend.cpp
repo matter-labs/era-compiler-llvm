@@ -123,13 +123,13 @@ void EraVMAsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
 bool EraVMAsmBackend::writeNopData(raw_ostream &OS, uint64_t Count,
                                    const MCSubtargetInfo *STI) const {
   (void)STI;
-  if ((Count % 2) != 0)
+  constexpr uint64_t InstructionByteWidth = 8;
+  if ((Count % InstructionByteWidth) != 0)
     return false;
 
-  // The canonical nop on EraVM is mov #0, r3
-  uint64_t NopCount = Count / 2;
+  uint64_t NopCount = Count / InstructionByteWidth;
   while (NopCount--)
-    OS.write("\x03\x43", 2);
+    OS.write("\x00\x00\x00\x00\x00\x00\x00\x01", InstructionByteWidth);
 
   return true;
 }
