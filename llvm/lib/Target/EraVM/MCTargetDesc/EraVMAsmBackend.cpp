@@ -23,6 +23,7 @@
 #include "llvm/MC/MCObjectWriter.h"
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/MC/MCSymbol.h"
+#include "llvm/Support/Endian.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/raw_ostream.h"
 
@@ -104,6 +105,38 @@ void EraVMAsmBackend::applyFixup(const MCAssembler &Asm, const MCFixup &Fixup,
   MCFixupKindInfo Info = getFixupKindInfo(Fixup.getKind());
   if (!Value)
     return; // Doesn't change encoding.
+
+  // Target fixups add the scaled value to the big-endian 16-bit field in
+  // place, see EraVMFixupKinds.h.
+  uint64_t Scale = 0;
+  switch (Fixup.getTargetKind()) {
+  case EraVM::fixup_16_scale_32:
+    Scale = 32;
+    break;
+  case EraVM::fixup_16_scale_8:
+    Scale = 8;
+    break;
+  default:
+    break;
+  }
+  if (Scale) {
+    if (Value % Scale) {
+      Asm.getContext().reportError(
+          Fixup.getLoc(), "fixup value is not a multiple of " + Twine(Scale));
+      return;
+    }
+    const unsigned Offset = Fixup.getOffset();
+    assert(Offset + 2 <= Data.size() && "Invalid fixup offset!");
+    const uint64_t Field =
+        support::endian::read16be(&Data[Offset]) + (Value / Scale);
+    if (!isUInt<16>(Field)) {
+      Asm.getContext().reportError(Fixup.getLoc(),
+                                   "fixup value is out of range");
+      return;
+    }
+    support::endian::write16be(&Data[Offset], Field);
+    return;
+  }
 
   // Shift the value into position.
   Value <<= Info.TargetOffset;
