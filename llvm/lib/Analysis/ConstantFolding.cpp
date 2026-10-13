@@ -2769,12 +2769,13 @@ static Constant *ConstantFoldSARCall(Type *Ty, const APInt &Shift,
 ///   (Val << ByteIdx * 8) >> 248.
 ///   For the Nth byte, we count from the left
 ///   (i.e. N=0 would be the most significant in big endian),
-///   0, if ByteIdx > 255.
+///   0, if ByteIdx > 31.
 static Constant *ConstantFoldByteCall(Type *Ty, const APInt &ByteIdx,
                                       const APInt &Val) {
-  // Please, note the case ByteIdx > 31 is properly handled by the shl
-  // implementation, see the comments for ConstantFoldSHRCall.
+  // Don't rely on the shl to handle ByteIdx > 31, as ByteIdx * 8 may wrap.
   unsigned BitWidth = Ty->getIntegerBitWidth();
+  if (ByteIdx.uge(BitWidth / 8))
+    return Constant::getNullValue(Ty);
   return ConstantInt::get(Ty, Val.shl(ByteIdx * 8).lshr(BitWidth - 8));
 }
 // EraVM local end
