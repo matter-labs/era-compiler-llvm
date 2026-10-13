@@ -140,8 +140,14 @@ bool EraVMIndexedMemOpsPrepare::rewriteToFavorIndexedMemOps(
   Type *RstType = BasePtr->getResultElementType();
   Type *GEPType = BasePtr->getType();
   const bool IsGEPInBounds = BasePtr->isInBounds();
-  const unsigned GEPElementSize =
-      BasePtr->getResultElementType()->getPrimitiveSizeInBits();
+  // The number of elements per cell is derived from the element's stride in
+  // memory, i.e. its alloc size. The primitive size would be 0 for pointers
+  // and aggregates, and 1 bit for i1, which occupies a byte.
+  const uint64_t GEPElementSize =
+      BasePtr->getDataLayout().getTypeAllocSizeInBits(RstType);
+  assert(GEPElementSize &&
+         TypeOfCopyLen->getScalarSizeInBits() % GEPElementSize == 0 &&
+         "A cell must be a whole number of elements");
 
   // Create a new PHI node to represent the change of BasePtr.
   IRBuilder<> Builder(BasePtr);
