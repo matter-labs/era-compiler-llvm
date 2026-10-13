@@ -164,3 +164,47 @@ define i256 @test_dont_elim_identical_cmps(i256 %a, ptr addrspace(1) %ptr) {
   %select2 = select i1 %cmp2, i256 10, i256 15
   ret i256 %select2
 }
+
+; Check that the condition code is adjusted when it is an Imm rather than a
+; CImm. Early tail duplication rebuilds the branch in the entry block with
+; insertBranch, which creates an Imm.
+define void @test_imm_cc(i256 %a, i256 %n) {
+; CHECK-LABEL: test_imm_cc:
+; CHECK:       ; %bb.0: ; %entry
+; CHECK-NEXT:    incsp 2
+; CHECK-NEXT:    add r2, r0, stack-[1] ; 32-byte Folded Spill
+; CHECK-NEXT:    add r1, r0, stack-[2] ; 32-byte Folded Spill
+; CHECK-NEXT:    sub.s 42, r1, r1
+; CHECK-NEXT:    call r0, @use, @DEFAULT_UNWIND
+; CHECK-NEXT:    add stack-[2], r0, r1 ; 32-byte Folded Reload
+; CHECK-NEXT:    sub.s! 42, r1, r0
+; CHECK-NEXT:    jump.lt @.BB9_2
+; CHECK-NEXT:  .BB9_1: ; %loop
+; CHECK-NEXT:    ; =>This Inner Loop Header: Depth=1
+; CHECK-NEXT:    add r1, r0, stack-[2] ; 32-byte Folded Spill
+; CHECK-NEXT:    add stack-[2], r0, r1 ; 32-byte Folded Reload
+; CHECK-NEXT:    call r0, @use, @DEFAULT_UNWIND
+; CHECK-NEXT:    add stack-[2], r0, r1 ; 32-byte Folded Reload
+; CHECK-NEXT:    add 1, r1, stack-[2]
+; CHECK-NEXT:    add stack-[2], r0, r2 ; 32-byte Folded Reload
+; CHECK-NEXT:    sub.s! stack-[1], r2, r0
+; CHECK-NEXT:    add stack-[2], r0, r1 ; 32-byte Folded Reload
+; CHECK-NEXT:    jump.ne @.BB9_1
+; CHECK-NEXT:  .BB9_2: ; %exit
+; CHECK-NEXT:    ret
+entry:
+  %sub = sub i256 %a, 42
+  call void @use(i256 %sub)
+  %cmp = icmp ugt i256 %a, 41
+  br i1 %cmp, label %preheader, label %exit
+loop:
+  %i = phi i256 [ %a, %preheader ], [ %i.next, %loop ]
+  call void @use(i256 %i)
+  %i.next = add i256 %i, 1
+  %done = icmp eq i256 %i.next, %n
+  br i1 %done, label %exit, label %loop
+exit:
+  ret void
+preheader:
+  br label %loop
+}
