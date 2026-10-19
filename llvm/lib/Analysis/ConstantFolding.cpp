@@ -892,11 +892,10 @@ Constant *SymbolicallyEvaluateGEP(const GEPOperator *GEP,
       return nullptr;
 
   unsigned BitWidth = DL.getTypeSizeInBits(IntIdxTy);
-  APInt Offset = APInt(
-      BitWidth,
-      DL.getIndexedOffsetInType(
-          SrcElemTy, ArrayRef((Value *const *)Ops.data() + 1, Ops.size() - 1)),
-      /*isSigned=*/true, /*implicitTrunc=*/true);
+  APInt Offset(BitWidth, 0);
+  SmallVector<const Value *, 4> Indices(llvm::drop_begin(Ops));
+  if (!GEPOperator::accumulateConstantOffset(SrcElemTy, Indices, DL, Offset))
+    return nullptr;
 
   std::optional<ConstantRange> InRange = GEP->getInRange();
   if (InRange)
@@ -910,14 +909,10 @@ Constant *SymbolicallyEvaluateGEP(const GEPOperator *GEP,
 
     SmallVector<Value *, 4> NestedOps(llvm::drop_begin(GEP->operands()));
 
-    // Do not try the incorporate the sub-GEP if some index is not a number.
-    bool AllConstantInt = true;
-    for (Value *NestedOp : NestedOps)
-      if (!isa<ConstantInt>(NestedOp)) {
-        AllConstantInt = false;
-        break;
-      }
-    if (!AllConstantInt)
+    // Do not try to incorporate the sub-GEP if some index is not a number.
+    APInt NestedOffset(BitWidth, 0);
+    if (!GEPOperator::accumulateConstantOffset(GEP->getSourceElementType(),
+                                               NestedOps, DL, NestedOffset))
       break;
 
     // TODO: Try to intersect two inrange attributes?
@@ -930,9 +925,7 @@ Constant *SymbolicallyEvaluateGEP(const GEPOperator *GEP,
 
     Ptr = cast<Constant>(GEP->getOperand(0));
     SrcElemTy = GEP->getSourceElementType();
-    Offset = Offset.sadd_ov(
-        APInt(BitWidth, DL.getIndexedOffsetInType(SrcElemTy, NestedOps), true), // EraVM local
-        Overflow);
+    Offset = Offset.sadd_ov(NestedOffset, Overflow);
   }
 
   // Preserving nusw (without inbounds) also requires that the offset
