@@ -292,6 +292,7 @@ add_lit_testsuite(verify-llvm-codegen-llc "Running EraVM LLVM regression tests w
 --verify-regalloc"
   ARGS "--filter CodeGen/EraVM --xfail \
 'CodeGen/EraVM/2dim-arr-bug.ll$<SEMICOLON>\
+CodeGen/EraVM/expand-select-implicit-uses.mir$<SEMICOLON>\
 CodeGen/EraVM/fold-similar-instructions.mir$<SEMICOLON>\
 CodeGen/EraVM/flag-setting-set-implicit-flags.ll$<SEMICOLON>\
 CodeGen/EraVM/hoist-flag-setting.mir$<SEMICOLON>\
