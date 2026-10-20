@@ -140,7 +140,7 @@ EraVMOptimizeSelectPostRA::findFoldingCandidateInstr(
   if (!RDA->hasLocalDefBefore(MI, UseReg))
     return {};
   MachineInstr *DefMI = RDA->getUniqueReachingMIDef(MI, UseReg);
-  if (!DefMI || EraVMInstrInfo::isFlagSettingInstruction(*DefMI))
+  if (!DefMI || DefMI->definesRegister(EraVM::Flags, /*TRI=*/nullptr))
     return {};
 
   // TODO: CPR-1399 generalize idiom checking
@@ -163,7 +163,7 @@ EraVMOptimizeSelectPostRA::findFoldingCandidateInstr(
   // and MI:
   for (const MachineInstr &I : make_range(std::next(DefMIIter), MIIter)) {
     // This instruction cannot set flags:
-    if (EraVMInstrInfo::isFlagSettingInstruction(I))
+    if (I.definesRegister(EraVM::Flags, /*TRI=*/nullptr))
       return {};
 
     // folding registers cannot appear in between:
