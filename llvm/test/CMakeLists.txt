@@ -303,6 +303,7 @@ CodeGen/EraVM/machine-outliner.mir$<SEMICOLON>\
 CodeGen/EraVM/select-fold-flags-clobber.mir$<SEMICOLON>\
 CodeGen/EraVM/select-zero-bitrot.mir$<SEMICOLON>\
 CodeGen/EraVM/select-zero-flags.mir$<SEMICOLON>\
+CodeGen/EraVM/select-fold-implicit-uses.mir$<SEMICOLON>\
 CodeGen/EraVM/select_fold.mir$<SEMICOLON>\
 CodeGen/EraVM/select_tie.mir'"
   DEPENDS ${LLVM_TEST_DEPENDS}
