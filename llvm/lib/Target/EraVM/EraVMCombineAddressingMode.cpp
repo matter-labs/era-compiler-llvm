@@ -186,14 +186,18 @@ void EraVMCombineAddressingMode::mergeSelect(
       {EraVM::SELrrr, EraVM::SELsrr}, {EraVM::SELrir, EraVM::SELsir},
       {EraVM::SELrcr, EraVM::SELscr}, {EraVM::SELrsr, EraVM::SELssr},
       {EraVM::SELrrs, EraVM::SELsrs}, {EraVM::SELris, EraVM::SELsis},
-      {EraVM::SELrcs, EraVM::SELscs}, {EraVM::SELrss, EraVM::SELsss},
+      {EraVM::SELrcs, EraVM::SELscs},
   };
   DenseMap<unsigned, unsigned> In1Map = {
       {EraVM::SELrrr, EraVM::SELrsr}, {EraVM::SELirr, EraVM::SELisr},
       {EraVM::SELcrr, EraVM::SELcsr}, {EraVM::SELsrr, EraVM::SELssr},
       {EraVM::SELrrs, EraVM::SELrss}, {EraVM::SELirs, EraVM::SELiss},
-      {EraVM::SELcrs, EraVM::SELcss}, {EraVM::SELsrs, EraVM::SELsss},
+      {EraVM::SELcrs, EraVM::SELcss},
   };
+  // SELrss and SELsrs aren't combined into SELsss. ExpandSelect lowers a
+  // stack-output select to two movs, and the input read by the second one
+  // must not alias the output. With both inputs on the stack, either may.
+  // The combining could be allowed if we could prove one of them doesn't.
   auto NewMI = BuildMI(
       *Base.getParent(), Base, Base.getDebugLoc(),
       TII->get(IsIn0 ? In0Map[Base.getOpcode()] : In1Map[Base.getOpcode()]));
@@ -272,6 +276,9 @@ bool EraVMCombineAddressingMode::canCombineUse(
   // Select isn't in addr mode maps, and doesn't restricted with
   // RR input addressing mode, handle it separately.
   if (TII->isSel(Use)) {
+    // Don't create SELsss, see mergeSelect.
+    if (Use.getOpcode() == EraVM::SELrss || Use.getOpcode() == EraVM::SELsrs)
+      return false;
     const MachineOperand &FirstOpnd = *EraVM::in0Iterator(Use);
     const MachineOperand &SecondOpnd = *EraVM::in1Iterator(Use);
     return (FirstOpnd.isReg() && FirstOpnd.getReg() == Def) ||
