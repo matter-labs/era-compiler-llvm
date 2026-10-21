@@ -113,7 +113,8 @@ public:
 
 private:
   /// Check whether \p BasePtr is valid and increased by one cell.
-  bool isValidGEPAndIncByOneCell(GetElementPtrInst *BasePtr) const;
+  bool isValidGEPAndIncByOneCell(GetElementPtrInst *BasePtr,
+                                 const Instruction *MemOpInst) const;
 
   /// The \p BasePtr is defined by a GEP instruction. The \p MemOpInst
   /// is the load or store instruction that uses \p BasePtr as a base
@@ -184,7 +185,7 @@ bool EraVMIndexedMemOpsPrepare::rewriteToFavorIndexedMemOps(
 }
 
 bool EraVMIndexedMemOpsPrepare::isValidGEPAndIncByOneCell(
-    GetElementPtrInst *BasePtr) const {
+    GetElementPtrInst *BasePtr, const Instruction *MemOpInst) const {
   // Use SCEV info to check whether this BasePtr is increased
   // by one cell per iteration.
   const auto *AddRec =
@@ -213,8 +214,11 @@ bool EraVMIndexedMemOpsPrepare::isValidGEPAndIncByOneCell(
 
   // The PHI node must be in the loop header, and BasePtr BB must dominate
   // the latch BB.
+  // rewriteToFavorIndexedMemOps inserts the increment at the memory op, not at
+  // the GEP, so it is the memory op's block that must dominate the latch.
   if (CurrentLoop->getHeader() != PHI->getParent() ||
-      !DT->dominates(BasePtr->getParent(), CurrentLoop->getLoopLatch()))
+      !DT->dominates(BasePtr->getParent(), CurrentLoop->getLoopLatch()) ||
+      !DT->dominates(MemOpInst->getParent(), CurrentLoop->getLoopLatch()))
     return false;
 
   // In rewriteToFavorIndexedMemOps, new PHI is created with incoming values
@@ -258,7 +262,7 @@ bool EraVMIndexedMemOpsPrepare::runOnLoop(Loop *L, LPPassManager &) {
         continue;
 
       // Use SCEV info to check whether baseptr is increased by one cell
-      if (!isValidGEPAndIncByOneCell(BasePtrValue))
+      if (!isValidGEPAndIncByOneCell(BasePtrValue, &I))
         continue;
 
       // Let's try to rewrite the GEP instruction in a way that will
