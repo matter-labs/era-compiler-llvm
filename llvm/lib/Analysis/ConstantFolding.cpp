@@ -2772,9 +2772,12 @@ static Constant *ConstantFoldSARCall(Type *Ty, const APInt &Shift,
 ///   0, if ByteIdx > 255.
 static Constant *ConstantFoldByteCall(Type *Ty, const APInt &ByteIdx,
                                       const APInt &Val) {
-  // Please, note the case ByteIdx > 31 is properly handled by the shl
-  // implementation, see the comments for ConstantFoldSHRCall.
+  // byte(n, x) is 0 for every n > 31. This cannot be left to shl: ByteIdx * 8
+  // is a 256-bit multiply and wraps, so n = k*2^253 + m yields a small shift
+  // and returns byte m instead of 0.
   unsigned BitWidth = Ty->getIntegerBitWidth();
+  if (ByteIdx.uge(BitWidth / 8))
+    return ConstantInt::get(Ty, 0);
   return ConstantInt::get(Ty, Val.shl(ByteIdx * 8).lshr(BitWidth - 8));
 }
 // EraVM local end
