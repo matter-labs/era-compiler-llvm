@@ -71,8 +71,10 @@
 #include "llvm/Analysis/LoopPass.h"
 #include "llvm/Analysis/ScalarEvolution.h"
 #include "llvm/Analysis/ScalarEvolutionExpressions.h"
+#include "llvm/IR/DataLayout.h"
 #include "llvm/IR/Dominators.h"
 #include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/Module.h"
 #include "llvm/InitializePasses.h"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Debug.h"
@@ -138,8 +140,14 @@ bool EraVMIndexedMemOpsPrepare::rewriteToFavorIndexedMemOps(
   Type *RstType = BasePtr->getResultElementType();
   Type *GEPType = BasePtr->getType();
   const bool IsGEPInBounds = BasePtr->isInBounds();
+  // getPrimitiveSizeInBits is 0 for pointers and aggregates (division by zero
+  // below) and is a bit count, not a byte count, for sub-byte integers.
   const unsigned GEPElementSize =
-      BasePtr->getResultElementType()->getPrimitiveSizeInBits();
+      static_cast<unsigned>(
+          BasePtr->getModule()->getDataLayout().getTypeAllocSize(RstType)) *
+      8;
+  if (GEPElementSize == 0)
+    return false;
 
   // Create a new PHI node to represent the change of BasePtr.
   IRBuilder<> Builder(BasePtr);
