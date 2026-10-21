@@ -297,6 +297,7 @@ CodeGen/EraVM/fold-similar-instructions.mir$<SEMICOLON>\
 CodeGen/EraVM/flag-setting-set-implicit-flags.ll$<SEMICOLON>\
 CodeGen/EraVM/hoist-flag-setting.mir$<SEMICOLON>\
 CodeGen/EraVM/ifcvt-flags-def-unpredicable.mir$<SEMICOLON>\
+CodeGen/EraVM/ifcvt-predicated-use-kill.mir$<SEMICOLON>\
 CodeGen/EraVM/indexed-ld-in-a-loop-bug.ll$<SEMICOLON>\
 CodeGen/EraVM/machine-outliner-tail.mir$<SEMICOLON>\
 CodeGen/EraVM/machine-outliner.mir$<SEMICOLON>\
