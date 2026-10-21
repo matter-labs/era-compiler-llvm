@@ -46,10 +46,12 @@ RelExpr EraVM::getRelExpr(RelType type, const Symbol &s,
 
 void EraVM::relocate(uint8_t *loc, const Relocation &rel, uint64_t val) const {
   auto add16scaled = [loc, &rel](uint64_t value, uint64_t scale) {
-    uint64_t scaledValue = value / scale;
+    // The scaled value is added to the field in place, so check the sum, as
+    // the assembler does for the fixups it resolves.
+    uint64_t field = read16be(loc) + value / scale;
     checkAlignment(loc, value, scale, rel);
-    checkIntUInt(loc, scaledValue, 16, rel);
-    write16be(loc, read16be(loc) + scaledValue);
+    checkIntUInt(loc, field, 16, rel);
+    write16be(loc, field);
   };
 
   switch (rel.type) {
