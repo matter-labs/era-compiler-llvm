@@ -80,6 +80,11 @@ static uint64_t hashBlock(const BasicBlock &BB) {
 }
 
 static bool canMergeBlocks(const BasicBlock &BB1, const BasicBlock &BB2) {
+  // BB2 is going to be erased. If its address is taken, the blockaddress
+  // would be replaced with a constant.
+  if (BB2.hasAddressTaken())
+    return false;
+
   // Quickly bail out if successors don't match.
   if (!std::equal(
           succ_begin(&BB1), succ_end(&BB1), succ_begin(&BB2),
