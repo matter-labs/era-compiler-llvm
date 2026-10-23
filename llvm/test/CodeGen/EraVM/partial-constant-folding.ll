@@ -103,11 +103,35 @@ define i256 @test_exp2(i256 %a) {
 
 define i256 @test_exp3(i256 %a) {
 ; CHECK-LABEL: @test_exp3
-; CHECK: mul nuw nsw i256 %a, 3
-; CHECK-NEXT: icmp ugt i256 {{.*}}, 85
+; CHECK: icmp ugt i256 %a, 85
+; CHECK-NEXT: mul i256 %a, 3
 ; CHECK-NEXT: shl nuw i256 1, {{.*}}
 ; CHECK-NEXT: select
   %res = call i256 @__exp(i256 8, i256 %a)
+  ret i256 %res
+}
+
+; Check that the overflow is detected if log2(base) * exp wraps:
+; 3 * e == 2 (mod 2^256), so the result is 0 rather than 8 ** 2.
+define i256 @test_exp_wrap(i1 %b) {
+; CHECK-LABEL: @test_exp_wrap
+; CHECK-NEXT: select i1 %b, i256 0, i256 8
+  %e = select i1 %b, i256 38597363079105398474523661669562635951089994888546854679819194669304376546646, i256 1
+  %res = call i256 @__exp(i256 8, i256 %e)
+  ret i256 %res
+}
+
+define internal i256 @exp4(i256 %a) noinline {
+  %res = call i256 @__exp(i256 4, i256 %a)
+  ret i256 %res
+}
+
+; Check that 4 ** 2^255 is 0 if the exponent is propagated after the call is
+; turned into __exp_pow2.
+; CHECK-LABEL: @exp4
+; CHECK-NEXT: ret i256 0
+define i256 @test_exp_propagated() {
+  %res = call i256 @exp4(i256 57896044618658097711785492504343953926634992332820282019728792003956564819968)
   ret i256 %res
 }
 
