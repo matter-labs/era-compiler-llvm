@@ -41,3 +41,31 @@ bb7:
   %phi2 = phi i256 [ 0, %entry ], [ %add, %bb6 ]
   ret i256 %phi2
 }
+
+; Check that the GEP isn't rewritten if it dominates the latch, but the store
+; doesn't, as the increment is inserted before the store.
+define void @test_memop_not_dominating_latch(ptr addrspace(1) %arg, i256 %n, i256 %v) {
+; CHECK-LABEL: @test_memop_not_dominating_latch(
+entry:
+  br label %header
+
+header:
+  %phi = phi i256 [ 0, %entry ], [ %add, %latch ]
+  ; CHECK: getelementptr inbounds i256, ptr addrspace(1) %arg, i256 %phi
+  %gep = getelementptr inbounds i256, ptr addrspace(1) %arg, i256 %phi
+  %and = and i256 %phi, 1
+  %icmp1 = icmp eq i256 %and, 0
+  br i1 %icmp1, label %then, label %latch
+
+then:
+  store i256 %v, ptr addrspace(1) %gep, align 32
+  br label %latch
+
+latch:
+  %add = add nuw i256 %phi, 1
+  %icmp2 = icmp eq i256 %add, %n
+  br i1 %icmp2, label %exit, label %header
+
+exit:
+  ret void
+}
