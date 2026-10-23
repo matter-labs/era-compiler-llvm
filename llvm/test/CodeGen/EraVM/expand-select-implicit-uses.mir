@@ -36,9 +36,11 @@ body:             |
     RET 0, implicit $r1
 ...
 ---
-# Stack output, no implicit register use is added.
+# Stack output, no implicit register use is added. The stack in0 is read first,
+# as it may alias the output.
 # CHECK-LABEL: name: sel_stack_out
-# CHECK: ADDsrs_s i256 0, $r1, 0, $r0, i256 0, $r2, 0, 6, implicit $flags{{$}}
+# CHECK:      ADDsrs_s i256 0, $r1, 0, $r0, i256 0, $r2, 0, 0{{$}}
+# CHECK-NEXT: ADDirs_s i256 42, $r0, i256 0, $r2, 0, 3, implicit $flags{{$}}
 name: sel_stack_out
 tracksRegLiveness: true
 body:             |
