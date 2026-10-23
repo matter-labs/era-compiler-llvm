@@ -254,9 +254,11 @@ bool EraVMConditionOptimizer::tryToAdjustCompareWithImm(
     LLVM_DEBUG(dbgs() << "                    to:"; MI.dump(););
     LLVM_DEBUG(dbgs() << "   Adjusting cond inst:"; NextMI.dump(););
 
-    // Update the condition code of the select or conditional branch.
-    EraVM::ccIterator(NextMI)->setCImm(
-        ConstantInt::get(*Context, APInt(ImmBitWidth, AdjustedCond[CCNextMI])));
+    // Update the condition code of the select or conditional branch. It may
+    // be an Imm rather than a CImm if the branch was rebuilt by insertBranch.
+    [[maybe_unused]] const bool Updated = TII->updateCCCode(
+        NextMI, static_cast<EraVMCC::CondCodes>(AdjustedCond[CCNextMI]));
+    assert(Updated && "Failed to update the condition code");
 
     LLVM_DEBUG(dbgs() << "                    to:"; NextMI.dump();
                dbgs() << "to potentially CSE " << GoodToAdjust
