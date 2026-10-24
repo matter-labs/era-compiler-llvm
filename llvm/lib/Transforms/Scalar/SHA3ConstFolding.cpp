@@ -246,12 +246,15 @@ private:
   std::array<uint8_t, 32>
   computeKeccak256Hash(const SmallVectorImpl<MemClobber> &MemClobbers) const;
 
-  /// Check if we can ignore non store clobber instruction that doesn't actually
-  /// clobber heap memory. For example, a memcpy to AS other than heap.
+  /// Check if we can ignore clobber instruction that doesn't actually clobber
+  /// heap memory. For example, a store or a memcpy to AS other than heap.
   /// Probably we should check more cases here. TODO: CPR-1370.
   bool shouldSkipClobber(const Instruction *MemInst) const {
     if (!MemInst->mayWriteToMemory())
       return true;
+
+    if (const auto *SI = dyn_cast<StoreInst>(MemInst))
+      return SI->getPointerAddressSpace() != HeapAS;
 
     if (const auto *Intr = dyn_cast<AnyMemIntrinsic>(MemInst))
       return Intr->getDestAddressSpace() != HeapAS;
