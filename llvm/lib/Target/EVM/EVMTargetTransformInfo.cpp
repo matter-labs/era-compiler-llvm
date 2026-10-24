@@ -21,6 +21,28 @@ using namespace llvm::PatternMatch;
 
 static std::optional<Instruction *> instCombineSignExtend(InstCombiner &IC,
                                                           IntrinsicInst &II) {
+  unsigned BitWidth = II.getType()->getIntegerBitWidth();
+  if (BitWidth != 256)
+    return std::nullopt;
+
+  // Unfold signextend(c, x) ->
+  //        ashr(shl(x, 256 - (c + 1) * 8), 256 - (c + 1) * 8)
+  // where c is a constant integer.
+  ConstantInt *C = nullptr;
+  if (match(II.getArgOperand(0), m_ConstantInt(C))) {
+    const APInt &B = C->getValue();
+
+    // If the signextend is larger than 31 bits, leave constant
+    // folding to handle it.
+    if (B.uge(APInt(BitWidth, (BitWidth / 8) - 1)))
+      return std::nullopt;
+
+    unsigned ShiftAmt = BitWidth - ((B.getZExtValue() + 1) * 8);
+    auto *Shl = IC.Builder.CreateShl(II.getArgOperand(1), ShiftAmt);
+    auto *Ashr = IC.Builder.CreateAShr(Shl, ShiftAmt);
+    return IC.replaceInstUsesWith(II, Ashr);
+  }
+
   // Fold signextend(b, signextend(b, x)) -> signextend(b, x)
   Value *B = nullptr, *X = nullptr;
   if (match(&II, m_Intrinsic<Intrinsic::evm_signextend>(
