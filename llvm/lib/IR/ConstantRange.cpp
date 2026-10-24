@@ -27,6 +27,7 @@
 #include "llvm/IR/InstrTypes.h"
 #include "llvm/IR/Instruction.h"
 #include "llvm/IR/Intrinsics.h"
+#include "llvm/IR/IntrinsicsEVM.h"
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Operator.h"
 #include "llvm/Support/Compiler.h"
@@ -1009,6 +1010,7 @@ bool ConstantRange::isIntrinsicSupported(Intrinsic::ID IntrinsicID) {
   case Intrinsic::ctlz:
   case Intrinsic::cttz:
   case Intrinsic::ctpop:
+  case Intrinsic::evm_signextend:
     return true;
   default:
     return false;
@@ -1018,6 +1020,8 @@ bool ConstantRange::isIntrinsicSupported(Intrinsic::ID IntrinsicID) {
 ConstantRange ConstantRange::intrinsic(Intrinsic::ID IntrinsicID,
                                        ArrayRef<ConstantRange> Ops) {
   switch (IntrinsicID) {
+  case Intrinsic::evm_signextend:
+    return Ops[0].evmSignExtend(Ops[1]);
   case Intrinsic::uadd_sat:
     return Ops[0].uadd_sat(Ops[1]);
   case Intrinsic::usub_sat:
@@ -1951,6 +1955,26 @@ ConstantRange ConstantRange::ctpop() const {
   // Handle [0, Upper)
   ConstantRange CR2 = getUnsignedPopCountRange(Zero, Upper);
   return CR1.unionWith(CR2);
+}
+
+ConstantRange ConstantRange::evmSignExtend(const ConstantRange &Other) const {
+  unsigned BitWidth = getBitWidth();
+  if (BitWidth != 256)
+    return getFull();
+
+  if (isEmptySet() || Other.isEmptySet())
+    return getEmpty();
+
+  if (!isSingleElement())
+    return getFull();
+
+  // ByteIdx must be in range [0, 31].
+  uint64_t ByteIdx = getSingleElement()->getZExtValue();
+  if (ByteIdx >= BitWidth / 8)
+    return getFull();
+
+  unsigned Width = (ByteIdx + 1) * 8;
+  return Other.truncate(Width).signExtend(BitWidth);
 }
 
 ConstantRange::OverflowResult ConstantRange::unsignedAddMayOverflow(
