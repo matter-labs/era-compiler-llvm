@@ -2141,6 +2141,12 @@ void IfConverter::PredicateBlock(BBInfo &BBI,
       llvm_unreachable(nullptr);
     }
 
+    // A predicated use doesn't end the live range of a register, as the value
+    // survives if the predicate is false. Clear kill flags, so that
+    // UpdatePredRedefs keeps such a register live and adds an implicit use to
+    // its later predicated redefinition. They are recomputed after conversion.
+    I.clearKillInfo();
+
     // If the predicated instruction now redefines a register as the result of
     // if-conversion, add an implicit kill.
     UpdatePredRedefs(I, Redefs);
@@ -2190,6 +2196,9 @@ void IfConverter::CopyAndPredicateBlock(BBInfo &ToBBI, BBInfo &FromBBI,
         llvm_unreachable(nullptr);
       }
     }
+
+    // See PredicateBlock.
+    MI->clearKillInfo();
 
     // If the predicated instruction now redefines a register as the result of
     // if-conversion, add an implicit kill.
