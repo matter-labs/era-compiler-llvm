@@ -217,3 +217,24 @@ define i256 @test_hi_lo_dont_fold(i256 %a, i256 %b) {
   %add = add i256 %select, %res1
   ret i256 %add
 }
+
+; Check that when a select is folded into mul after RA, the high half is renamed
+; to the select output.
+define i256 @test_hi_postra(i256 %a, i256 %b, i256 %x, i256 %c, i256 %y) {
+; CHECK-LABEL: test_hi_postra:
+; CHECK:       ; %bb.0:
+; CHECK-NEXT:    sub! r4, r0, r0
+; CHECK-NEXT:    add.ne r1, r0, r5
+; CHECK-NEXT:    mul.ne r5, r2, r0, r3
+; CHECK-NEXT:    add r3, r0, r1
+; CHECK-NEXT:    ret
+  %cmp = icmp eq i256 %c, 0
+  %a1 = select i1 %cmp, i256 %y, i256 %a
+  %al = zext i256 %a1 to i512
+  %bl = zext i256 %b to i512
+  %mul = mul i512 %al, %bl
+  %resl = lshr i512 %mul, 256
+  %res = trunc i512 %resl to i256
+  %select = select i1 %cmp, i256 %x, i256 %res
+  ret i256 %select
+}
