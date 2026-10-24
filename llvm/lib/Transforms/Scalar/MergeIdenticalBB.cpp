@@ -109,6 +109,11 @@ static bool canMergeBlocks(const BasicBlock &BB1, const BasicBlock &BB2) {
       if (Call->cannotMerge())
         return false;
 
+    // A use in a successor phi is compared below. Any other use outside the
+    // block would see the kept block's value on paths through the dropped one.
+    if (I1.isUsedOutsideOfBlock(&BB1) || I2.isUsedOutsideOfBlock(&BB2))
+      return false;
+
     if (!std::equal(I1.op_begin(), I1.op_end(), I2.op_begin(), I2.op_end(),
                     ValuesEqual))
       return false;
