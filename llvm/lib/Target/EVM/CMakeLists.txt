@@ -24,6 +24,7 @@ add_llvm_target(EVMCodeGen
   EVMAsmPrinter.cpp
   EVMBackwardPropagationStackification.cpp
   EVMCalculateModuleSize.cpp
+  EVMConstantSpiller.cpp
   EVMConstantUnfolding.cpp
   EVMCodegenPrepare.cpp
   EVMFinalizeStackFrames.cpp

@@ -1,5 +1,5 @@
 # RUN: llc -x mir -run-pass=branch-folder < %s | FileCheck %s
-# RUN: llc -x mir -start-after=evm-finalize-stack-frames < %s | FileCheck --check-prefix=ASM %s
+# RUN: llc -x mir -start-after=evm-backward-propagation-stackification < %s | FileCheck --check-prefix=ASM %s
 
 # Test that after branch folding, the condition at the top of
 # the stack is correctly cleared when a conditional branch is removed.
