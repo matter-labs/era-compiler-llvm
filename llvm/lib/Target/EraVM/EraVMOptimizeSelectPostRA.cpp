@@ -230,15 +230,21 @@ bool EraVMOptimizeSelectPostRA::runOnMachineFunction(MachineFunction &MF) {
 
   // Do the following:
   // 1. Move the CMov condition code to FoldInst.
-  // 2. Replace output register of FoldInst with CMov's.
+  // 2. Replace the output register of FoldInst read by CMov with CMov's.
   // 3. Remove CMov instruction.
   for (auto [CMov, FoldInst] : Deleted) {
     LLVM_DEBUG(dbgs() << "== Folding cond move:"; CMov->dump();
                dbgs() << "                into:"; FoldInst->dump(););
     EraVM::ccIterator(*FoldInst)->ChangeToImmediate(
         getImmOrCImm(*EraVM::ccIterator(*CMov)));
-    EraVM::out0Iterator(*FoldInst)->setReg(
-        EraVM::out0Iterator(*CMov)->getReg());
+    // MUL and DIV define two registers, and CMov may read either of them.
+    const Register FoldedReg = EraVM::in0Iterator(*CMov)->getReg();
+    auto *FoldedOut = EraVM::out0Iterator(*FoldInst)->getReg() == FoldedReg
+                          ? EraVM::out0Iterator(*FoldInst)
+                          : EraVM::out1Iterator(*FoldInst);
+    assert(FoldedOut->getReg() == FoldedReg &&
+           "CMov must read an output of FoldInst");
+    FoldedOut->setReg(EraVM::out0Iterator(*CMov)->getReg());
     // FoldInst is predicated now, so like CMov it reads the flags and, when
     // the predicate is false, keeps the previous value of its output. Carry
     // CMov's implicit uses over without kill flags: FoldInst precedes CMov, so
