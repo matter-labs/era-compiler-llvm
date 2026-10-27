@@ -13,6 +13,9 @@
 #include "EVMInstrInfo.h"
 #include "EVMMachineFunctionInfo.h"
 #include "MCTargetDesc/EVMMCTargetDesc.h"
+#include "TargetInfo/EVMTargetInfo.h"
+#include "llvm/IR/LLVMContext.h"
+
 using namespace llvm;
 
 #define DEBUG_TYPE "evm-instr-info"
@@ -291,4 +294,14 @@ bool EVMInstrInfo::reverseBranchCondition(
   assert(Cond[0].isImm() && "Unexpected condition type");
   Cond.front() = MachineOperand::CreateImm(!Cond.front().getImm());
   return false;
+}
+
+MachineInstr *EVMInstrInfo::insertPush(const APInt &Imm, MachineBasicBlock &MBB,
+                                       MachineBasicBlock::iterator I,
+                                       const DebugLoc &DL) const {
+  unsigned Opc = EVM::getPUSHOpcode(Imm);
+  auto MI = BuildMI(MBB, I, DL, get(EVM::getStackOpcode(Opc)));
+  if (Opc != EVM::PUSH0)
+    MI.addCImm(ConstantInt::get(MI->getMF()->getFunction().getContext(), Imm));
+  return MI;
 }
