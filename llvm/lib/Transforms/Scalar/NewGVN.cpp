@@ -925,6 +925,18 @@ bool StoreExpression::equals(const Expression &Other) const {
   return true;
 }
 
+bool CallExpression::equals(const Expression &Other) const {
+  if (!MemoryExpression::equals(Other))
+    return false;
+
+  if (auto *RHS = dyn_cast<CallExpression>(&Other))
+    return Call->getAttributes()
+        .intersectWith(Call->getContext(), RHS->Call->getAttributes())
+        .has_value();
+
+  return false;
+}
+
 // Determine if the edge From->To is a backedge
 bool NewGVN::isBackedge(BasicBlock *From, BasicBlock *To) const {
   return From == To ||
@@ -3948,6 +3960,7 @@ bool NewGVN::eliminateInstructions(Function &F) {
           MembersLeft.insert(Member);
           continue;
         }
+
         LLVM_DEBUG(dbgs() << "Found replacement " << *(Leader) << " for "
                           << *Member << "\n");
         auto *I = cast<Instruction>(Member);
@@ -4097,9 +4110,6 @@ bool NewGVN::eliminateInstructions(Function &F) {
           // Don't replace our existing users with ourselves.
           if (U->get() == DominatingLeader)
             continue;
-          LLVM_DEBUG(dbgs()
-                     << "Found replacement " << *DominatingLeader << " for "
-                     << *U->get() << " in " << *(U->getUser()) << "\n");
 
           // If we replaced something in an instruction, handle the patching of
           // metadata.  Skip this if we are replacing predicateinfo with its
@@ -4108,6 +4118,10 @@ bool NewGVN::eliminateInstructions(Function &F) {
           auto *PI = PredInfo->getPredicateInfoFor(ReplacedInst);
           if (!PI || DominatingLeader != PI->OriginalOp)
             patchReplacementInstruction(ReplacedInst, DominatingLeader);
+
+          LLVM_DEBUG(dbgs()
+                     << "Found replacement " << *DominatingLeader << " for "
+                     << *U->get() << " in " << *(U->getUser()) << "\n");
           U->set(DominatingLeader);
           // This is now a use of the dominating leader, which means if the
           // dominating leader was dead, it's now live!
