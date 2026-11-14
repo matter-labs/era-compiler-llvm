@@ -201,8 +201,10 @@ jobs:
           ninja -C './target-llvm/build-final' verify-llvm -v
           ninja -C './target-llvm/build-final' check-lld-unit -v
 
+      # Disabled for now: most changes are cherry-picks from LLVM mainline,
+      # which doesn't use this clang-tidy configuration.
       - name: clang-tidy
-        if: github.event_name == 'pull_request'
+        if: false && github.event_name == 'pull_request'
         working-directory: llvm
         run: |
           CHANGES=$(git diff -U0 ${{ steps.previous-commit.outputs.sha }})
