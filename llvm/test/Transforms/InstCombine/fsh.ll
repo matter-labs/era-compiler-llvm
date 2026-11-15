@@ -1010,3 +1010,19 @@ define <2 x i32> @fshr_vec_zero_elem(<2 x i32> %x, <2 x i32> %y) {
   %fsh = call <2 x i32> @llvm.fshr.v2i32(<2 x i32> %x, <2 x i32> %y, <2 x i32> <i32 2, i32 0>)
   ret <2 x i32> %fsh
 }
+
+;; Issue #124387 Range attribute no longer holds after operands changed.
+define i8 @fshl_range_trunc(i1 %x) {
+; CHECK-LABEL: @fshl_range_trunc(
+; CHECK-NEXT:    [[ZEXT:%.*]] = zext i1 [[X:%.*]] to i32
+; CHECK-NEXT:    [[OR:%.*]] = or disjoint i32 [[ZEXT]], 126
+; CHECK-NEXT:    [[FSHL:%.*]] = call i32 @llvm.fshl.i32(i32 [[OR]], i32 -2, i32 1)
+; CHECK-NEXT:    [[TR:%.*]] = trunc nuw i32 [[FSHL]] to i8
+; CHECK-NEXT:    ret i8 [[TR]]
+;
+  %zext = zext i1 %x to i32
+  %or = or disjoint i32 %zext, -2
+  %fshl = call range(i32 -4, 2) i32 @llvm.fshl.i32(i32 %or, i32 %or, i32 1)
+  %tr = trunc nsw i32 %fshl to i8
+  ret i8 %tr
+}
