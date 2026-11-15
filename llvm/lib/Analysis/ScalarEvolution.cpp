@@ -5798,6 +5798,8 @@ const SCEV *ScalarEvolution::createSimpleAffineAddRec(PHINode *PN,
   return PHISCEV;
 }
 
+static bool isGuaranteedNotToCauseUB(const SCEV *Op, ScalarEvolution &SE);
+
 const SCEV *ScalarEvolution::createAddRecFromPHI(PHINode *PN) {
   const Loop *L = LI.getLoopFor(PN->getParent());
   if (!L || L->getHeader() != PN->getParent())
@@ -5938,8 +5940,9 @@ const SCEV *ScalarEvolution::createAddRecFromPHI(PHINode *PN) {
     //   PHI(f(0), f({1,+,1})) --> f({0,+,1})
     const SCEV *Shifted = SCEVShiftRewriter::rewrite(BEValue, L, *this);
     const SCEV *Start = SCEVInitRewriter::rewrite(Shifted, L, *this, false);
-    if (Shifted != getCouldNotCompute() &&
-        Start != getCouldNotCompute()) {
+    if (Shifted != getCouldNotCompute() && Start != getCouldNotCompute() &&
+        isGuaranteedNotToCauseUB(Shifted, *this) &&
+        ::impliesPoison(Shifted, Start)) {
       const SCEV *StartVal = getSCEV(StartValueV);
       if (Start == StartVal) {
         // Okay, for the entire analysis of this edge we assumed the PHI
@@ -7319,6 +7322,24 @@ bool ScalarEvolution::isGuaranteedToTransferExecutionTo(const Instruction *A,
   return false;
 }
 
+
+static bool isGuaranteedNotToBePoisonSCEV(const SCEV *Op) {
+  SCEVPoisonCollector PC(/* LookThroughMaybePoisonBlocking */ true);
+  visitAll(Op, PC);
+  return PC.MaybePoison.empty();
+}
+
+static bool isGuaranteedNotToCauseUB(const SCEV *Op, ScalarEvolution &SE) {
+  return !SCEVExprContains(Op, [&SE](const SCEV *S) {
+    if (const auto *UDiv = dyn_cast<SCEVUDivExpr>(S)) {
+      const SCEV *Op1 = UDiv->getRHS();
+      // The UDiv may be UB if the divisor is poison or zero. Unless the
+      // divisor is a non-zero constant, we have to assume the UDiv may be UB.
+      return !SE.isKnownNonZero(Op1) || !isGuaranteedNotToBePoisonSCEV(Op1);
+    }
+    return false;
+  });
+}
 
 bool ScalarEvolution::isSCEVExprNeverPoison(const Instruction *I) {
   // Only proceed if we can prove that I does not yield poison.
