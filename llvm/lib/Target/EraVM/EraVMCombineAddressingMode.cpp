@@ -238,6 +238,22 @@ static bool areEqualStackSlots(MachineInstr::const_mop_iterator It1,
   return true;
 }
 
+// Check whether MI may read the stack slot Slot. Select isn't in the input
+// addressing mode maps, so hasSRInAddressingMode() is false for it even if it
+// reads the stack, and unlike other instructions, it can read it via in1.
+static bool mayReadStackSlot(const MachineInstr &MI,
+                             MachineInstr::const_mop_iterator Slot) {
+  if (EraVM::isSelect(MI))
+    return (EraVM::argumentType(EraVM::ArgumentKind::In0, MI) ==
+                EraVM::ArgumentType::Stack &&
+            areEqualStackSlots(EraVM::in0Iterator(MI), Slot)) ||
+           (EraVM::argumentType(EraVM::ArgumentKind::In1, MI) ==
+                EraVM::ArgumentType::Stack &&
+            areEqualStackSlots(EraVM::in1Iterator(MI), Slot));
+  return EraVM::hasSRInAddressingMode(MI) &&
+         areEqualStackSlots(EraVM::in0Iterator(MI), Slot);
+}
+
 bool EraVMCombineAddressingMode::canCombineUse(
     const MachineInstr &Reload, const MachineInstr &Use,
     MachineInstr::const_mop_iterator StackDefIt,
@@ -341,7 +357,7 @@ bool EraVMCombineAddressingMode::canCombineDef(
   if (Def.getParent() != Spill.getParent() || !MDT->dominates(&Def, &Spill))
     return false;
   // No def or use of the spilled stack slot is expected in between Def and
-  // Spill.
+  // Spill, because the combined instruction writes it at the Def.
   if (std::any_of(std::next(Def.getIterator()), Spill.getIterator(),
                   [&Spill](const MachineInstr &CurMI) {
                     bool ClobberedStackSlot = false;
@@ -349,10 +365,8 @@ bool EraVMCombineAddressingMode::canCombineDef(
                       ClobberedStackSlot |=
                           areEqualStackSlots(EraVM::out0Iterator(Spill),
                                              EraVM::out0Iterator(CurMI));
-                    if (EraVM::hasSRInAddressingMode(CurMI))
-                      ClobberedStackSlot |=
-                          areEqualStackSlots(EraVM::out0Iterator(Spill),
-                                             EraVM::in0Iterator(CurMI));
+                    ClobberedStackSlot |=
+                        mayReadStackSlot(CurMI, EraVM::out0Iterator(Spill));
                     return ClobberedStackSlot;
                   }))
     return false;
@@ -433,6 +447,9 @@ bool EraVMCombineAddressingMode::combineDefSpill(MachineFunction &MF) {
   // addressing modes disallow two stack in operands, so keep track uses that
   // are pending to be combined to prevent second combining attempt.
   DenseSet<MachineInstr *> UsesToUpdate;
+  // Uses of the collected combines, mapped to the spill whose stack slot they
+  // read once rewritten.
+  DenseMap<const MachineInstr *, const MachineInstr *> PendingSlotReads;
   // The pass consists of two phases to not to recompute RDA on every single
   // rewrite.
   // 1. Collect all instructions to be combined.
@@ -459,6 +476,17 @@ bool EraVMCombineAddressingMode::combineDefSpill(MachineFunction &MF) {
       if (UsesToUpdate.count(DefMI) || UsesToUpdate.count(&MI) ||
           !canCombineDef(*DefMI, MI))
         continue;
+      // canCombineDef sees the code before any rewrite, so it misses a use of
+      // an already collected combine in between, which will read the slot.
+      if (std::any_of(std::next(DefMI->getIterator()), MI.getIterator(),
+                      [&MI, &PendingSlotReads](const MachineInstr &CurMI) {
+                        auto It = PendingSlotReads.find(&CurMI);
+                        return It != PendingSlotReads.end() &&
+                               areEqualStackSlots(
+                                   EraVM::out0Iterator(*It->second),
+                                   EraVM::out0Iterator(MI));
+                      }))
+        continue;
       RDA->getGlobalUses(DefMI, Spilled, DefUses);
 
       if (!all_of(DefUses, [&MI, DefMI, &UsesToUpdate,
@@ -478,6 +506,9 @@ bool EraVMCombineAddressingMode::combineDefSpill(MachineFunction &MF) {
       Deleted.emplace_back(DefMI, &MI, DefUses);
       UsesToUpdate.insert(DefUses.begin(), DefUses.end());
       UsesToUpdate.insert(DefMI);
+      for (const MachineInstr *DefUse : DefUses)
+        if (DefUse != &MI)
+          PendingSlotReads[DefUse] = &MI;
     }
   }
 
