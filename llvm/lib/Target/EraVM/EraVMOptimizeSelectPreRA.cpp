@@ -65,6 +65,11 @@ private:
   bool hasFlagsDefBetween(MachineBasicBlock::iterator Start,
                           MachineBasicBlock::iterator End) const;
 
+  /// Check whether anything in [Start, End) may write memory. A folded stack
+  /// input is read at a different position, so it must not cross a store.
+  bool hasMemWriteBetween(MachineBasicBlock::iterator Start,
+                          MachineBasicBlock::iterator End) const;
+
   /// Check whether current MI can form a neutral operation with immediate zero,
   /// such as add with zero, sub with zero and etc.
   bool isSupportedMI(const MachineInstr &MI, unsigned Reg) const;
@@ -163,6 +168,17 @@ bool EraVMOptimizeSelectPreRA::hasFlagsDefBetween(
     return any_of(MI.implicit_operands(), [](const MachineOperand &MO) {
       return MO.isReg() && MO.isDef() && MO.getReg() == EraVM::Flags;
     });
+  });
+}
+
+bool EraVMOptimizeSelectPreRA::hasMemWriteBetween(
+    MachineBasicBlock::iterator Start, MachineBasicBlock::iterator End) const {
+  // In case of different basic blocks, conservatively assume true.
+  if (Start->getParent() != End->getParent())
+    return true;
+
+  return std::any_of(Start, End, [](const MachineInstr &MI) {
+    return MI.mayStore() || MI.isCall() || MI.hasUnmodeledSideEffects();
   });
 }
 
@@ -345,6 +361,12 @@ bool EraVMOptimizeSelectPreRA::tryFoldSelectZero(MachineBasicBlock &MBB) {
     bool In0IsZeroSelect = (In0Type == EraVM::ArgumentType::Immediate &&
                             In0Select->getCImm()->isZero());
 
+    // The non-zero input is read at UseMI after folding. If it is a stack
+    // operand, it must not be written in between.
+    if ((In0IsZeroSelect ? In1Type : In0Type) == EraVM::ArgumentType::Stack &&
+        hasMemWriteBetween(MI.getIterator(), UseMI.getIterator()))
+      continue;
+
     auto CCSelect = getImmOrCImm(*EraVM::ccIterator(MI));
 
     // The COND_OF is overflow LT which hasn't reversal version, so we don't
@@ -425,6 +447,12 @@ bool EraVMOptimizeSelectPreRA::tryFoldToSelect(MachineBasicBlock &MBB) {
     if (UseMI.getOpcode() != EraVM::SELrrr ||
         (!InRegs.count(EraVM::in0Iterator(UseMI)->getReg()) &&
          !InRegs.count(EraVM::in1Iterator(UseMI)->getReg())))
+      continue;
+
+    // MI is re-emitted at the SELECT, so a stack input of MI must not be
+    // written in between.
+    if (EraVM::hasSRInAddressingMode(MI) &&
+        hasMemWriteBetween(MI.getIterator(), UseMI.getIterator()))
       continue;
 
     bool OutIsIn1Use = OutReg == EraVM::in1Iterator(UseMI)->getReg();
