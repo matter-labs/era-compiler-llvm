@@ -554,6 +554,8 @@ public:
   /// Calculate ctpop range.
   ConstantRange ctpop() const;
 
+  ConstantRange evmSignExtend(const ConstantRange &Other) const;
+
   /// Represents whether an operation on the given constant range is known to
   /// always or never overflow.
   enum class OverflowResult {
