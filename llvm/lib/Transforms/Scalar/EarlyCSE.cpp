@@ -405,7 +405,8 @@ static bool isEqualImpl(SimpleValue LHS, SimpleValue RHS) {
     return LII->getArgOperand(0) == RII->getArgOperand(1) &&
            LII->getArgOperand(1) == RII->getArgOperand(0) &&
            std::equal(LII->arg_begin() + 2, LII->arg_end(),
-                      RII->arg_begin() + 2, RII->arg_end());
+                      RII->arg_begin() + 2, RII->arg_end()) &&
+           LII->hasSameSpecialState(RII, /*IgnoreAlignment=*/false);
   }
 
   // See comment above in `getHashValue()`.
