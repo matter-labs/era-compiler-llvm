@@ -467,7 +467,7 @@ bool EraVMCombineAddressingMode::combineDefSpill(MachineFunction &MF) {
               return false;
             if (DefUse == &MI)
               return true;
-            return canCombineUse(*DefMI, *DefUse, EraVM::in0Iterator(MI), &MI);
+            return canCombineUse(*DefMI, *DefUse, EraVM::out0Iterator(MI), &MI);
           }))
         continue;
 

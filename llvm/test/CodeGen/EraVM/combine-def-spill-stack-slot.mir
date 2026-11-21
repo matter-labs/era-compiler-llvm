@@ -1,0 +1,53 @@
+# RUN: llc -x mir -run-pass=eravm-combine-addressing-mode < %s | FileCheck %s
+
+--- |
+  target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
+  target triple = "eravm"
+
+  define void @combine_def_spill_different_slot() { ret void }
+  define void @dont_combine_def_spill_same_slot() { ret void }
+
+...
+---
+# The intervening stack store writes to a different slot (-2), so def and spill
+# can be safely combined and the use rewritten to read from slot -1.
+# CHECK-LABEL: name: combine_def_spill_different_slot
+# CHECK:      ADDrrs_s $r1, $r2, $sp, 32, -1, 0
+# CHECK-NEXT: ADDrrs_s killed $r9, $r0, $sp, 32, -2, 0
+# CHECK-NEXT: $r6 = ADDsrr_s $sp, 32, -1, $r3, 0
+# CHECK-NEXT: RET 0, implicit $r6
+name:            combine_def_spill_different_slot
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    liveins: $r1, $r2, $r3, $r9
+
+    $r4 = ADDrrr_s $r1, $r2, 0
+    ADDrrs_s $r4, $r0, $sp, 32, -1, 0
+    ADDrrs_s killed $r9, $r0, $sp, 32, -2, 0
+    $r6 = ADDrrr_s killed $r4, $r3, 0
+    RET 0, implicit $r6
+
+...
+---
+# The intervening stack store redefines the same slot (-1) between the spill
+# and the use, so the def and spill must NOT be combined.
+# CHECK-LABEL: name: dont_combine_def_spill_same_slot
+# CHECK:      $r4 = ADDrrr_s $r1, $r2, 0
+# CHECK-NEXT: ADDrrs_s $r4, $r0, $sp, 32, -1, 0
+# CHECK-NEXT: ADDrrs_s killed $r9, $r0, $sp, 32, -1, 0
+# CHECK-NEXT: $r6 = ADDrrr_s killed $r4, $r3, 0
+# CHECK-NEXT: RET 0, implicit $r6
+name:            dont_combine_def_spill_same_slot
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    liveins: $r1, $r2, $r3, $r9
+
+    $r4 = ADDrrr_s $r1, $r2, 0
+    ADDrrs_s $r4, $r0, $sp, 32, -1, 0
+    ADDrrs_s killed $r9, $r0, $sp, 32, -1, 0
+    $r6 = ADDrrr_s killed $r4, $r3, 0
+    RET 0, implicit $r6
+
+...
