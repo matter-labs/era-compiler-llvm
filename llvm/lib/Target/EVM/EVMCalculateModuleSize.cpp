@@ -89,6 +89,10 @@ static unsigned getInstSize(const MachineInstr &MI,
     // already exceeds the cap, so the push width is moot.
     Size += TII->get(EVM::PUSH2_S).getSize() + TII->get(EVM::JUMP_S).getSize();
     break;
+  case EVM::PUSH_FRAME:
+    // Typical frame index offsets can be encoded in a single byte, but to
+    // be conservative, let’s assume 2 bytes per offset.
+    LLVM_FALLTHROUGH;
   case EVM::PUSH_LABEL:
     // We emit PUSH4_S here. The linker usually relaxes it to PUSH2_S,
     // since a 16-bit immediate covers the 24,576-byte EVM runtime code cap
