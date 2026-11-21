@@ -75,10 +75,8 @@ target triple = "evm"
 ; CHECK-NEXT:       Expand reduction intrinsics
 ; CHECK-NEXT:       Natural Loop Information
 ; CHECK-NEXT:       TLS Variable Hoist
-; CHECK-NEXT:       Final transformations before code generation
-; CHECK-NEXT:       Dominator Tree Construction
-; CHECK-NEXT:       Natural Loop Information
 ; CHECK-NEXT:       CodeGen Prepare
+; CHECK-NEXT:       Final transformations before code generation
 ; CHECK-NEXT:       Lower invoke and unwind, for unwindless code generators
 ; CHECK-NEXT:       Remove unreachable blocks from the CFG
 ; CHECK-NEXT:     CallGraph Construction
