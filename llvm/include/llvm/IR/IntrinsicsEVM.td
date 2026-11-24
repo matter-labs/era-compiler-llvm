@@ -91,8 +91,8 @@ def int_evm_sha3
                  NoCapture<ArgIndex<0>>, IntrWillReturn]>;
 
 def int_evm_signextend
-    : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty],
-                [IntrNoMem, IntrWillReturn]>;
+    : DefaultAttrsIntrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty],
+                            [IntrNoMem, IntrSpeculatable]>;
 
 def int_evm_byte : Intrinsic<[llvm_i256_ty], [llvm_i256_ty, llvm_i256_ty],
                              [IntrNoMem, IntrWillReturn]>;
