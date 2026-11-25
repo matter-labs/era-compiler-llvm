@@ -1,0 +1,143 @@
+# RUN: llc -x mir -run-pass=eravm-opt-select-prera -compile-twice=false -verify-machineinstrs < %s | FileCheck %s
+
+# Both folds re-emit an instruction at a different position, so a stack input
+# of it is read there. It must not be moved across a store, which may write
+# the slot. zksolc keeps context values, like returndatasize, in stack
+# globals, and updates them after each call.
+
+--- |
+
+  target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
+  target triple = "eravm"
+
+  @g = private unnamed_addr global i256 0
+
+  define void @dont_fold_select_zero_across_store() { ret void }
+  define void @fold_select_zero() { ret void }
+  define void @dont_fold_to_select_across_store() { ret void }
+  define void @fold_to_select() { ret void }
+
+...
+---
+# The select reads @g, which is written before its user. Folding the select
+# into the user would read @g after the store.
+# CHECK-LABEL: name: dont_fold_select_zero_across_store
+# CHECK:      %3:gr256 = SELsir i256 0, i256 0, @g, i256 0, i256 2, implicit $flags
+# CHECK-NEXT: ADDirs_s i256 5, %1, i256 0, i256 0, @g, i256 0
+# CHECK-NEXT: %4:gr256 = ADDrrr_s killed %3, %1, i256 0
+name:            dont_fold_select_zero_across_store
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gr256 }
+  - { id: 1, class: gr256 }
+  - { id: 2, class: gr256 }
+  - { id: 3, class: gr256 }
+  - { id: 4, class: gr256 }
+liveins:
+  - { reg: '$r1', virtual-reg: '%0' }
+  - { reg: '$r2', virtual-reg: '%1' }
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+
+    %1:gr256 = COPY $r2
+    %0:gr256 = COPY $r1
+    dead %2:gr256 = SUBrrr_v %0, %1, i256 0, implicit-def $flags
+    %3:gr256 = SELsir i256 0, i256 0, @g, i256 0, i256 2, implicit $flags :: (dereferenceable load (s256) from @g)
+    ADDirs_s i256 5, %1, i256 0, i256 0, @g, i256 0 :: (store (s256) into @g)
+    %4:gr256 = ADDrrr_s killed %3, %1, i256 0
+    $r1 = COPY %4
+    RET 0, implicit $r1
+
+...
+---
+# No store in between, so the select is folded.
+# CHECK-LABEL: name: fold_select_zero
+# CHECK-NOT:  SELsir
+# CHECK:      %4:gr256 = ADDsrr_s i256 0, i256 0, @g, %1, 2, implicit %1(tied-def 0), implicit $flags
+name:            fold_select_zero
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gr256 }
+  - { id: 1, class: gr256 }
+  - { id: 2, class: gr256 }
+  - { id: 3, class: gr256 }
+  - { id: 4, class: gr256 }
+liveins:
+  - { reg: '$r1', virtual-reg: '%0' }
+  - { reg: '$r2', virtual-reg: '%1' }
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+
+    %1:gr256 = COPY $r2
+    %0:gr256 = COPY $r1
+    dead %2:gr256 = SUBrrr_v %0, %1, i256 0, implicit-def $flags
+    %3:gr256 = SELsir i256 0, i256 0, @g, i256 0, i256 2, implicit $flags :: (dereferenceable load (s256) from @g)
+    %4:gr256 = ADDrrr_s killed %3, %1, i256 0
+    $r1 = COPY %4
+    RET 0, implicit $r1
+
+...
+---
+# The add reads @g, which is written before the select. Folding the add into
+# the select would read @g after the store.
+# CHECK-LABEL: name: dont_fold_to_select_across_store
+# CHECK:      %3:gr256 = ADDsrr_s i256 0, i256 0, @g, %1, i256 0
+# CHECK-NEXT: ADDirs_s i256 5, %1, i256 0, i256 0, @g, i256 0
+# CHECK-NEXT: dead %2:gr256 = SUBrrr_v %0, %1, i256 0, implicit-def $flags
+# CHECK-NEXT: %4:gr256 = SELrrr killed %3, %1, i256 2, implicit $flags
+name:            dont_fold_to_select_across_store
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gr256 }
+  - { id: 1, class: gr256 }
+  - { id: 2, class: gr256 }
+  - { id: 3, class: gr256 }
+  - { id: 4, class: gr256 }
+liveins:
+  - { reg: '$r1', virtual-reg: '%0' }
+  - { reg: '$r2', virtual-reg: '%1' }
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+
+    %1:gr256 = COPY $r2
+    %0:gr256 = COPY $r1
+    %3:gr256 = ADDsrr_s i256 0, i256 0, @g, %1, i256 0 :: (dereferenceable load (s256) from @g)
+    ADDirs_s i256 5, %1, i256 0, i256 0, @g, i256 0 :: (store (s256) into @g)
+    dead %2:gr256 = SUBrrr_v %0, %1, i256 0, implicit-def $flags
+    %4:gr256 = SELrrr killed %3, %1, i256 2, implicit $flags
+    $r1 = COPY %4
+    RET 0, implicit $r1
+
+...
+---
+# No store in between, so the add is folded into the select.
+# CHECK-LABEL: name: fold_to_select
+# CHECK-NOT:  SELrrr
+# CHECK:      %4:gr256 = ADDsrr_s i256 0, i256 0, @g, %1, 2, implicit %1(tied-def 0), implicit $flags
+name:            fold_to_select
+tracksRegLiveness: true
+registers:
+  - { id: 0, class: gr256 }
+  - { id: 1, class: gr256 }
+  - { id: 2, class: gr256 }
+  - { id: 3, class: gr256 }
+  - { id: 4, class: gr256 }
+liveins:
+  - { reg: '$r1', virtual-reg: '%0' }
+  - { reg: '$r2', virtual-reg: '%1' }
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+
+    %1:gr256 = COPY $r2
+    %0:gr256 = COPY $r1
+    %3:gr256 = ADDsrr_s i256 0, i256 0, @g, %1, i256 0 :: (dereferenceable load (s256) from @g)
+    dead %2:gr256 = SUBrrr_v %0, %1, i256 0, implicit-def $flags
+    %4:gr256 = SELrrr killed %3, %1, i256 2, implicit $flags
+    $r1 = COPY %4
+    RET 0, implicit $r1
+
+...
