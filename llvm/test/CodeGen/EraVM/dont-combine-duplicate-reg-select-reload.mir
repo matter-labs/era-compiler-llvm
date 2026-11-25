@@ -1,0 +1,51 @@
+# RUN: llc -x mir -run-pass=eravm-combine-addressing-mode -verify-machineinstrs -compile-twice=false < %s | FileCheck %s
+
+--- |
+
+  target datalayout = "E-p:256:256-i256:256:256-S32-a:256:256"
+  target triple = "eravm"
+
+  define void @dont_combine_duplicate_reg_select_reload() { ret void }
+  define void @dont_combine_duplicate_reg_select_def() { ret void }
+
+...
+---
+# A reload must not be folded into a select whose two inputs are both the
+# reloaded register: mergeSelect can rewrite only one of them.
+# CHECK-LABEL: dont_combine_duplicate_reg_select_reload
+# CHECK-LABEL: bb.0:
+# CHECK:       $r6 = ADDsrr_s $sp, 32, -1, $r0, 0
+# CHECK:       $r6 = SELrrr killed $r6, $r6, i256 3
+name:            dont_combine_duplicate_reg_select_reload
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    liveins: $r1, $r2, $r6
+    $r6 = ADDsrr_s $sp, 32, -1, $r0, 0
+    dead $r0 = SUBrrr_v $r1, $r2, i256 0, implicit-def $flags
+    $r6 = SELrrr killed $r6, $r6, i256 3, implicit killed $flags, implicit $r6(tied-def 0)
+    $r1 = ADDrrr_s killed $r6, $r0, 0
+    RET 0, implicit $r1
+
+...
+---
+# The same for a def combined with its spill: the select would read the
+# spill slot via one input and the erased def via the other.
+# CHECK-LABEL: dont_combine_duplicate_reg_select_def
+# CHECK-LABEL: bb.0:
+# CHECK:       $r6 = ADDrrr_s $r1, $r2, 0
+# CHECK-NEXT:  ADDrrs_s $r6, $r0, $sp, 32, -1, 0
+# CHECK:       $r6 = SELrrr killed $r6, $r6, i256 3
+name:            dont_combine_duplicate_reg_select_def
+tracksRegLiveness: true
+body:             |
+  bb.0:
+    liveins: $r1, $r2
+    $r6 = ADDrrr_s $r1, $r2, 0
+    ADDrrs_s $r6, $r0, $sp, 32, -1, 0
+    dead $r0 = SUBrrr_v $r1, $r2, i256 0, implicit-def $flags
+    $r6 = SELrrr killed $r6, $r6, i256 3, implicit killed $flags, implicit $r6(tied-def 0)
+    $r1 = ADDrrr_s killed $r6, $r0, 0
+    RET 0, implicit $r1
+
+...
