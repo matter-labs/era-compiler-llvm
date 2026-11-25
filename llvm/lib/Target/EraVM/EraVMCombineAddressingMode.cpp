@@ -297,8 +297,11 @@ bool EraVMCombineAddressingMode::canCombineUse(
       return false;
     const MachineOperand &FirstOpnd = *EraVM::in0Iterator(Use);
     const MachineOperand &SecondOpnd = *EraVM::in1Iterator(Use);
-    return (FirstOpnd.isReg() && FirstOpnd.getReg() == Def) ||
-           (SecondOpnd.isReg() && SecondOpnd.getReg() == Def);
+    bool FirstIsDef = FirstOpnd.isReg() && FirstOpnd.getReg() == Def;
+    bool SecondIsDef = SecondOpnd.isReg() && SecondOpnd.getReg() == Def;
+    // mergeSelect rewrites one input only. If both read Def, the other one
+    // would read a stale register once the reload or def is erased.
+    return FirstIsDef != SecondIsDef;
   }
   // In case use defines a stack slot, disallow to read from it
   // in between reload and use, otherwise the pattern S1 -> R1,
