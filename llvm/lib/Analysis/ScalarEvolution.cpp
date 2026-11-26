@@ -7420,6 +7420,10 @@ ScalarEvolution::getLoopProperties(const Loop *L) {
       if (auto *SI = dyn_cast<StoreInst>(I))
         return !SI->isSimple();
 
+      // Droppable intrinsics only model a memory write; they are not progress.
+      if (I->isDroppable())
+        return false;
+
       return I->mayThrow() || I->mayWriteToMemory();
     };
 
