@@ -143,6 +143,8 @@ struct llvm::GVNPass::Expression {
   Type *type = nullptr;
   SmallVector<uint32_t, 4> varargs;
 
+  AttributeList attrs;
+
   Expression(uint32_t o = ~2U) : opcode(o) {}
 
   bool operator==(const Expression &other) const {
@@ -153,6 +155,9 @@ struct llvm::GVNPass::Expression {
     if (type != other.type)
       return false;
     if (varargs != other.varargs)
+      return false;
+    if ((!attrs.isEmpty() || !other.attrs.isEmpty()) &&
+        !attrs.intersectWith(type->getContext(), other.attrs).has_value())
       return false;
     return true;
   }
@@ -364,6 +369,8 @@ GVNPass::Expression GVNPass::ValueTable::createExpr(Instruction *I) {
   } else if (auto *SVI = dyn_cast<ShuffleVectorInst>(I)) {
     ArrayRef<int> ShuffleMask = SVI->getShuffleMask();
     e.varargs.append(ShuffleMask.begin(), ShuffleMask.end());
+  } else if (auto *CB = dyn_cast<CallBase>(I)) {
+    e.attrs = CB->getAttributes();
   }
 
   return e;
