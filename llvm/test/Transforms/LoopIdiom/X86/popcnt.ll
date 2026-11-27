@@ -181,3 +181,56 @@ while.end:                                        ; preds = %while.body, %entry
   %c.0.lcssa = phi i32 [ 0, %entry ], [ %inc, %while.body ]
   ret i32 %c.0.lcssa
 }
+
+; In this example the loop-closing phi for the population count occupies a
+; narrower bitwidth than required to represent the maximum population count of
+; the input. Make sure that the new trip-count induction variable we introduce
+; is wide enough so that the preheader and / or decrement don't underflow.
+;
+; CHECK-LABEL: define i4 @popcount_truncated(
+; CHECK-SAME: i32 [[X:%.*]])
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[TMP0:%.*]] = call i32 @llvm.ctpop.i32(i32 [[X]])
+; CHECK-NEXT:    [[TMP1:%.*]] = trunc i32 [[TMP0]] to i4
+; CHECK-NEXT:    [[TMP2:%.*]] = icmp eq i32 [[TMP0]], 0
+; CHECK-NEXT:    br i1 [[TMP2]], label %exit, label %loop.preheader
+; CHECK:       loop.preheader:
+; CHECK-NEXT:    br label %loop
+; CHECK:       loop:
+; CHECK-NEXT:    [[TCPHI:%.*]] = phi i32 [ [[TMP0]], %loop.preheader ], [ [[TCDEC:%.*]], %loop ]
+; CHECK-NEXT:    [[IV:%.*]] = phi i32 [ [[X_NEXT:%.*]], %loop ], [ [[X]], %loop.preheader ]
+; CHECK-NEXT:    [[COUNT:%.*]] = phi i4 [ [[COUNT_NEXT:%.*]], %loop ], [ 0, %loop.preheader ]
+; CHECK-NEXT:    [[X_DEC:%.*]] = sub i32 [[IV]], 1
+; CHECK-NEXT:    [[X_NEXT]] = and i32 [[IV]], [[X_DEC]]
+; CHECK-NEXT:    call void @foo()
+; CHECK-NEXT:    [[COUNT_NEXT]] = add i4 [[COUNT]], 1
+; CHECK-NEXT:    [[TCDEC]] = sub nuw i32 [[TCPHI]], 1
+; CHECK-NEXT:    [[EC:%.*]] = icmp eq i32 [[TCDEC]], 0
+; CHECK-NEXT:    br i1 [[EC]], label %exit.loopexit, label %loop
+; CHECK:       exit.loopexit:
+; CHECK-NEXT:    [[COUNT_NEXT_LCSSA:%.*]] = phi i4 [ [[TMP1]], %loop ]
+; CHECK-NEXT:    br label %exit
+; CHECK:       exit:
+; CHECK-NEXT:    [[COUNT_PHI:%.*]] = phi i4 [ 0, %entry ], [ [[COUNT_NEXT_LCSSA]], %exit.loopexit ]
+; CHECK-NEXT:    ret i4 [[COUNT_PHI]]
+define i4 @popcount_truncated(i32 %x) {
+entry:
+  %x.zero = icmp eq i32 %x, 0
+  br i1 %x.zero, label %exit, label %loop
+
+loop:
+  %iv = phi i32 [ %x, %entry ], [ %x.next, %loop ]
+  %count = phi i4 [ 0, %entry ], [ %count.next, %loop ]
+  %x.dec = sub i32 %iv, 1
+  %x.next = and i32 %iv, %x.dec
+  call void @foo()
+  %count.next = add i4 %count, 1
+  %ec = icmp eq i32 %x.next, 0
+  br i1 %ec, label %exit, label %loop
+
+exit:
+  %count.phi = phi i4 [ 0, %entry ], [ %count.next, %loop ]
+  ret i4 %count.phi
+}
+
+declare void @foo()
