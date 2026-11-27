@@ -38,3 +38,45 @@ exit:
 }
 
 declare void @llvm.assume(i1)
+
+define i1 @pr140481(i32 %x) {
+; CHECK-LABEL: define i1 @pr140481(
+; CHECK-SAME: i32 [[X:%.*]]) {
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[COND:%.*]] = icmp slt i32 [[X]], 0
+; CHECK-NEXT:    call void @llvm.assume(i1 [[COND]])
+; CHECK-NEXT:    [[ADD:%.*]] = add nsw i32 [[X]], 5001000
+; CHECK-NEXT:    [[MUL1:%.*]] = mul nsw i32 [[ADD]], -5001000
+; CHECK-NEXT:    [[MUL2:%.*]] = mul nsw i32 [[MUL1]], 5001000
+; CHECK-NEXT:    [[CMP2:%.*]] = icmp sgt i32 [[MUL2]], 0
+; CHECK-NEXT:    ret i1 [[CMP2]]
+;
+entry:
+  %cond = icmp slt i32 %x, 0
+  call void @llvm.assume(i1 %cond)
+  %add = add nsw i32 %x, 5001000
+  %mul1 = mul nsw i32 %add, -5001000
+  %mul2 = mul nsw i32 %mul1, 5001000
+  %cmp2 = icmp sgt i32 %mul2, 0
+  ret i1 %cmp2
+}
+
+define i1 @nested_shl_nuw_overflow(i64 %x) {
+; CHECK-LABEL: define i1 @nested_shl_nuw_overflow(
+; CHECK-SAME: i64 [[X:%.*]]) {
+; CHECK-NEXT:  entry:
+; CHECK-NEXT:    [[S1:%.*]] = shl nuw i64 [[X]], 31
+; CHECK-NEXT:    [[S:%.*]] = shl nuw i64 [[S1]], 32
+; CHECK-NEXT:    [[O:%.*]] = or disjoint i64 [[S]], 1
+; CHECK-NEXT:    [[SUM:%.*]] = add nuw i64 [[O]], [[X]]
+; CHECK-NEXT:    [[C:%.*]] = icmp ule i64 [[SUM]], 1
+; CHECK-NEXT:    ret i1 [[C]]
+;
+entry:
+  %s1 = shl nuw i64 %x, 31
+  %s = shl nuw i64 %s1, 32
+  %o = or disjoint i64 %s, 1
+  %sum = add nuw i64 %o, %x
+  %c = icmp ule i64 %sum, 1
+  ret i1 %c
+}
